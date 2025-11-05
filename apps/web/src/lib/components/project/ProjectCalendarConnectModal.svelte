@@ -130,13 +130,13 @@
 		<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
 			<Button
 				variant="ghost"
-				on:click={handleClose}
+				onclick={handleClose}
 				disabled={isConnecting}
 				class="sm:min-w-[120px]"
 			>
 				Cancel
 			</Button>
-			<Button on:click={startConnection} loading={isConnecting} class="sm:min-w-[170px]">
+			<Button onclick={startConnection} loading={isConnecting} class="sm:min-w-[170px]">
 				Connect Google Calendar
 			</Button>
 		</div>

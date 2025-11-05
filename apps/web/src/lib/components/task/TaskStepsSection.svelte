@@ -91,18 +91,13 @@
 		{#if !isEditing}
 			<div class="flex space-x-2">
 				{#if hasSteps}
-					<Button on:click={startEditing} variant="secondary" size="sm">
+					<Button onclick={startEditing} variant="secondary" size="sm">
 						<Edit3 class="w-4 h-4 mr-1.5" />
 						Edit Steps
 					</Button>
 				{/if}
 
-				<Button
-					on:click={generateSteps}
-					disabled={isGenerating}
-					variant="primary"
-					size="sm"
-				>
+				<Button onclick={generateSteps} disabled={isGenerating} variant="primary" size="sm">
 					{#if isGenerating}
 						<RefreshCw class="w-4 h-4 mr-1.5 animate-spin" />
 						Generating...
@@ -114,11 +109,11 @@
 			</div>
 		{:else}
 			<div class="flex space-x-2">
-				<Button on:click={cancelEditing} variant="ghost" size="sm">
+				<Button onclick={cancelEditing} variant="ghost" size="sm">
 					<X class="w-4 h-4 mr-1.5" />
 					Cancel
 				</Button>
-				<Button on:click={saveSteps} variant="primary" size="sm">
+				<Button onclick={saveSteps} variant="primary" size="sm">
 					<Save class="w-4 h-4 mr-1.5" />
 					Save Steps
 				</Button>
@@ -198,14 +193,14 @@
 				</p>
 
 				<div class="space-y-3">
-					<Button on:click={generateSteps} variant="primary" size="md">
+					<Button onclick={generateSteps} variant="primary" size="md">
 						<Brain class="w-5 h-5 mr-2" />
 						Generate Steps with AI
 					</Button>
 
 					<div class="text-sm text-gray-500 dark:text-gray-400">or</div>
 
-					<Button on:click={startEditing} variant="secondary" size="md">
+					<Button onclick={startEditing} variant="secondary" size="md">
 						<Plus class="w-5 h-5 mr-2" />
 						Create Steps Manually
 					</Button>

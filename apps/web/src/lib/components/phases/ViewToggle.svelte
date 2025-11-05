@@ -15,7 +15,7 @@
 </script>
 
 <Button
-	on:click={toggleView}
+	onclick={toggleView}
 	variant="outline"
 	size="sm"
 	icon={viewMode === 'kanban' ? GanttChart : Kanban}

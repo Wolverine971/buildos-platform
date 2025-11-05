@@ -5,15 +5,15 @@
 
 	type HeaderVariant = 'default' | 'gradient' | 'accent';
 
-	interface $$Props extends HTMLAttributes<HTMLDivElement> {
+	// Svelte 5 runes: Use $props() with rest syntax
+	let {
+		variant = 'default',
+		class: className = '',
+		...restProps
+	}: {
 		variant?: HeaderVariant;
 		class?: string;
-	}
-
-	export let variant: HeaderVariant = 'default';
-
-	let className = '';
-	export { className as class };
+	} & HTMLAttributes<HTMLDivElement> = $props();
 
 	const variantClasses = {
 		default: 'bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700',
@@ -23,13 +23,15 @@
 	};
 
 	// Optimized for high information density (Apple-style)
-	$: headerClasses = twMerge(
-		'px-3 py-2 sm:py-2.5', // Compact: 12px horizontal, 8-10px vertical
-		variantClasses[variant],
-		className
+	let headerClasses = $derived(
+		twMerge(
+			'px-3 py-2 sm:py-2.5', // Compact: 12px horizontal, 8-10px vertical
+			variantClasses[variant],
+			className
+		)
 	);
 </script>
 
-<div class={headerClasses} {...$$restProps}>
+<div class={headerClasses} {...restProps}>
 	<slot />
 </div>

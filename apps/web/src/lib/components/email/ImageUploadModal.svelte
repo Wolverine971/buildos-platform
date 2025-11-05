@@ -242,7 +242,7 @@
 		<div class="border-b border-gray-200 dark:border-gray-700">
 			<nav class="-mb-px flex space-x-6 sm:space-x-8">
 				<Button
-					on:click={() => (activeTab = 'upload')}
+					onclick={() => (activeTab = 'upload')}
 					variant="ghost"
 					size="md"
 					class="border-b-2 font-medium {activeTab === 'upload'
@@ -253,7 +253,7 @@
 					Upload New
 				</Button>
 				<Button
-					on:click={() => (activeTab = 'gallery')}
+					onclick={() => (activeTab = 'gallery')}
 					variant="ghost"
 					size="md"
 					class="border-b-2 font-medium {activeTab === 'gallery'
@@ -274,9 +274,9 @@
 					class="border-2 border-dashed rounded-lg p-8 text-center {dragActive
 						? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
 						: 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500'}"
-					on:dragover={handleDragOver}
-					on:dragleave={handleDragLeave}
-					on:drop={handleDrop}
+					ondragover={handleDragOver}
+					ondragleave={handleDragLeave}
+					ondrop={handleDrop}
 				>
 					{#if uploadPreview}
 						<!-- Upload Preview -->
@@ -296,7 +296,7 @@
 								class="flex flex-col sm:flex-row justify-center gap-3 sm:space-x-3"
 							>
 								<Button
-									on:click={uploadImage}
+									onclick={uploadImage}
 									disabled={isUploading}
 									variant="primary"
 									size="md"
@@ -306,7 +306,7 @@
 									{isUploading ? 'Uploading...' : 'Upload Image'}
 								</Button>
 								<Button
-									on:click={clearUpload}
+									onclick={clearUpload}
 									disabled={isUploading}
 									variant="outline"
 									size="md"
@@ -333,7 +333,7 @@
 							<div class="text-xs text-gray-500 dark:text-gray-400">
 								Supports: JPG, PNG, GIF, WebP (Max 10MB)
 							</div>
-							<Button on:click={() => fileInput?.click()} variant="primary" size="md">
+							<Button onclick={() => fileInput?.click()} variant="primary" size="md">
 								Select Image
 							</Button>
 						</div>
@@ -345,7 +345,7 @@
 					bind:this={fileInput}
 					type="file"
 					accept="image/*"
-					on:change={handleFileSelect}
+					onchange={handleFileSelect}
 					class="hidden"
 				/>
 			</div>
@@ -380,7 +380,7 @@
 							bind:value={selectedFilter}
 							size="md"
 							class="text-xs sm:text-sm"
-							on:change={(e) => (selectedFilter = e.detail)}
+							onchange={(e) => (selectedFilter = e.detail)}
 						>
 							<option value="all">All Images</option>
 							<option value="email">This Email</option>
@@ -428,7 +428,7 @@
 										class="opacity-0 group-hover:opacity-100 transition-opacity flex space-x-2"
 									>
 										<Button
-											on:click={() => selectImage(image)}
+											onclick={() => selectImage(image)}
 											variant="primary"
 											size="sm"
 											class="p-3 rounded-full"
@@ -437,7 +437,7 @@
 											<Eye class="h-4 w-4 sm:h-5 sm:w-5" />
 										</Button>
 										<Button
-											on:click={() => deleteImage(image)}
+											onclick={() => deleteImage(image)}
 											variant="primary"
 											size="sm"
 											class="p-3 rounded-full bg-rose-600 hover:bg-rose-700"
@@ -479,8 +479,6 @@
 		class="flex justify-end px-3 sm:px-4 lg:px-6 py-3 sm:py-4 border-t border-gray-200 dark:border-gray-700"
 		slot="footer"
 	>
-		<Button on:click={close} variant="outline" size="md" class="w-full sm:w-auto">
-			Cancel
-		</Button>
+		<Button onclick={close} variant="outline" size="md" class="w-full sm:w-auto">Cancel</Button>
 	</div>
 </Modal>

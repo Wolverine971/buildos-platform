@@ -95,7 +95,7 @@
 		slot="footer"
 	>
 		<Button
-			on:click={handleCancel}
+			onclick={handleCancel}
 			disabled={loading}
 			variant="secondary"
 			size="md"
@@ -105,7 +105,7 @@
 		</Button>
 
 		<Button
-			on:click={handleConfirm}
+			onclick={handleConfirm}
 			disabled={loading}
 			{loading}
 			variant={confirmVariant}

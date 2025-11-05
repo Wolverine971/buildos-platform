@@ -56,7 +56,7 @@
 			<div class="flex-1">
 				<TextInput
 					bind:value={searchQuery}
-					on:input={handleSearchInput}
+					oninput={handleSearchInput}
 					placeholder={activeTab === 'projects'
 						? 'Search projects...'
 						: 'Search briefs...'}
@@ -71,7 +71,7 @@
 			<div class="flex items-center space-x-2">
 				<Select
 					bind:value={projectFilter}
-					on:change={handleProjectFilterChange}
+					onchange={handleProjectFilterChange}
 					size="md"
 					placeholder="All Projects"
 				>
@@ -87,7 +87,7 @@
 				<Calendar class="w-4 h-4 text-gray-500 dark:text-gray-400" />
 				<Select
 					bind:value={briefDateRange}
-					on:change={handleBriefDateRangeChange}
+					onchange={handleBriefDateRangeChange}
 					size="md"
 					placeholder="This Week"
 				>
@@ -100,7 +100,7 @@
 			<div class="flex items-center space-x-2">
 				<Select
 					bind:value={selectedProjectFilter}
-					on:change={handleSelectedProjectChange}
+					onchange={handleSelectedProjectChange}
 					size="md"
 					placeholder="All Projects"
 				>

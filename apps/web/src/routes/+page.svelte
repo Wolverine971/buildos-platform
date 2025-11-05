@@ -13,26 +13,28 @@
 	import BuildOSFlow from '$lib/components/dashboard/BuildOSFlow.svelte';
 	import Button from '$components/ui/Button.svelte';
 
-	export let data: PageData;
+	let { data } = $props();
 
-	// Simple reactive check for authentication
-	$: isAuthenticated = !!data?.user;
-	$: user = data?.user as User | null;
-	$: dashboardData = data?.dashboardData as DashboardData | null;
-	$: dashboardError = data?.dashboardError as string | null;
-	$: isLoadingDashboard = (data?.dashboardLoading || false) as boolean;
+	// Svelte 5 runes: Convert reactive declarations to $derived
+	let isAuthenticated = $derived(!!data?.user);
+	let user = $derived(data?.user as User | null);
+	let dashboardData = $derived(data?.dashboardData as DashboardData | null);
+	let dashboardError = $derived(data?.dashboardError as string | null);
+	let isLoadingDashboard = $derived((data?.dashboardLoading || false) as boolean);
 
-	let innerWidth: number;
+	let innerWidth = $state<number | 0>(0);
 
 	// Lazy load Dashboard component only when needed
-	let Dashboard: any = null;
+	let Dashboard = $state<any>(null);
 
-	// Only import Dashboard once when authenticated
-	$: if (isAuthenticated && !Dashboard && browser) {
-		import('$lib/components/dashboard/Dashboard.svelte').then((module) => {
-			Dashboard = module.default;
-		});
-	}
+	// Svelte 5 runes: Use $effect instead of reactive statement for side effects
+	$effect(() => {
+		if (isAuthenticated && !Dashboard && browser) {
+			import('$lib/components/dashboard/Dashboard.svelte').then((module) => {
+				Dashboard = module.default;
+			});
+		}
+	});
 
 	let heroVideoLoaded = false;
 
@@ -199,13 +201,12 @@
 {#if isAuthenticated}
 	<!-- PERFORMANCE: Render Dashboard when component is loaded -->
 	{#if Dashboard}
-		<svelte:component
-			this={Dashboard}
+		<Dashboard
 			user={data.user}
 			initialData={dashboardData}
 			{isLoadingDashboard}
 			{dashboardError}
-			on:refresh={handleDashboardRefresh}
+			onrefresh={handleDashboardRefresh}
 		/>
 	{:else}
 		<!-- PERFORMANCE: Lightweight loading state with better UX -->

@@ -89,7 +89,7 @@
 
 					<div class="flex gap-3">
 						<Button
-							on:click={reset}
+							onclick={reset}
 							variant="primary"
 							size="sm"
 							class="flex items-center gap-2"
@@ -97,7 +97,7 @@
 							<RefreshCw class="w-4 h-4" />
 							Try Again
 						</Button>
-						<Button on:click={() => window.history.back()} variant="outline" size="sm">
+						<Button onclick={() => window.history.back()} variant="outline" size="sm">
 							Go Back
 						</Button>
 					</div>

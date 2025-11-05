@@ -325,7 +325,7 @@
 					</h2>
 					<Button
 						type="button"
-						on:click={(e) => dispatch('close')}
+						onclick={(e) => dispatch('close')}
 						variant="ghost"
 						size="sm"
 						class="!p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
@@ -351,7 +351,7 @@
 				</div>
 				<Button
 					type="button"
-					on:click={(e) => dispatch('close')}
+					onclick={(e) => dispatch('close')}
 					variant="ghost"
 					size="sm"
 					class="!p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 ml-2"
@@ -448,7 +448,7 @@
 							<div class="flex items-center gap-2">
 								<Button
 									type="button"
-									on:click={copyContext}
+									onclick={copyContext}
 									variant="ghost"
 									size="sm"
 									class="flex items-center gap-1.5 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
@@ -459,7 +459,7 @@
 
 								<Button
 									type="button"
-									on:click={handleExportPDF}
+									onclick={handleExportPDF}
 									disabled={!project?.id}
 									variant="primary"
 									size="sm"
@@ -551,7 +551,7 @@
 							id="project-status"
 							bind:value={statusValue}
 							size="sm"
-							on:change={(e) => (statusValue = e.detail)}
+							onchange={(e) => (statusValue = e.detail)}
 							class="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
 						>
 							{#each statusOptions as option}
@@ -647,13 +647,13 @@
 									id="tag-input"
 									bind:value={tagInput}
 									placeholder="Add tag..."
-									on:keydown={handleTagKeydown}
+									onkeydown={handleTagKeydown}
 									size="sm"
 									class="flex-1 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
 								/>
 								<Button
 									type="button"
-									on:click={addTag}
+									onclick={addTag}
 									variant="ghost"
 									size="sm"
 									class="!px-3 bg-blue-500 text-white hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-500"
@@ -670,7 +670,7 @@
 											{tag}
 											<Button
 												type="button"
-												on:click={() => removeTag(tag)}
+												onclick={() => removeTag(tag)}
 												variant="ghost"
 												size="sm"
 												class="ml-1.5 p-0.5 !text-blue-600 dark:!text-blue-300 hover:!text-blue-800 dark:hover:!text-blue-100"

@@ -136,7 +136,7 @@
 <Modal {isOpen} {onClose} title="Edit Task" size="lg" closeOnBackdrop={true}>
 	<!-- Form Content -->
 	<form
-		on:submit={(e) => {
+		onsubmit={(e) => {
 			e.preventDefault();
 			handleSave();
 		}}
@@ -254,7 +254,7 @@
 									id={fieldId}
 									type="datetime-local"
 									value={formatDateTimeLocal(value as string)}
-									on:change={(e) => handleDateTimeChange(field, e)}
+									onchange={(e) => handleDateTimeChange(field, e)}
 									size="sm"
 									class="text-sm"
 								/>
@@ -273,7 +273,7 @@
 									id={fieldId}
 									type="date"
 									value={formatDate(value as string)}
-									on:change={(e) => handleDateChange(field, e)}
+									onchange={(e) => handleDateChange(field, e)}
 									size="sm"
 									class="text-sm"
 								/>
@@ -312,7 +312,7 @@
 								<TextInput
 									id={fieldId}
 									value={Array.isArray(value) ? value.join(', ') : ''}
-									on:input={(e) => handleTagsInput(e)}
+									oninput={(e) => handleTagsInput(e)}
 									placeholder={config.placeholder ||
 										'Enter tags separated by commas'}
 									size="sm"
@@ -365,10 +365,10 @@
 		<div
 			class="flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700"
 		>
-			<Button on:click={onClose} variant="outline" size="sm" class="min-w-[80px]">
+			<Button onclick={onClose} variant="outline" size="sm" class="min-w-[80px]">
 				Cancel
 			</Button>
-			<Button on:click={handleSave} variant="primary" size="sm" class="min-w-[100px]">
+			<Button onclick={handleSave} variant="primary" size="sm" class="min-w-[100px]">
 				<Save class="w-3.5 h-3.5 mr-1.5" />
 				Save Changes
 			</Button>

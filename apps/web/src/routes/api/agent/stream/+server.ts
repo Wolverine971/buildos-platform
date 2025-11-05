@@ -425,9 +425,7 @@ export const POST: RequestHandler = async ({
 		}
 
 		const historyToUse =
-			loadedConversationHistory.length > 0
-				? loadedConversationHistory
-				: conversationHistory;
+			loadedConversationHistory.length > 0 ? loadedConversationHistory : conversationHistory;
 
 		const agentStream = SSEResponse.createChatStream();
 
@@ -488,14 +486,12 @@ export const POST: RequestHandler = async ({
 						});
 					}
 
-					const { error: sysMessageError } = await supabase
-						.from('chat_messages')
-						.insert({
-							session_id: chatSession.id,
-							user_id: userId,
-							role: 'system',
-							content: `Context shifted to ${contextShift.new_context} for "${contextShift.entity_name}" (ID: ${contextShift.entity_id})`
-						});
+					const { error: sysMessageError } = await supabase.from('chat_messages').insert({
+						session_id: chatSession.id,
+						user_id: userId,
+						role: 'system',
+						content: `Context shifted to ${contextShift.new_context} for "${contextShift.entity_name}" (ID: ${contextShift.entity_id})`
+					});
 
 					if (sysMessageError) {
 						console.error('[API] Failed to insert system message:', sysMessageError);
@@ -563,9 +559,9 @@ export const POST: RequestHandler = async ({
 					if (ontologyContext) {
 						await sendEvent({
 							type: 'ontology_loaded',
-							summary: `Loaded ${ontologyContext.type} ontology context with ${Object.keys(
-								ontologyContext.metadata?.entity_count || {}
-							).length} entity types`
+							summary: `Loaded ${ontologyContext.type} ontology context with ${
+								Object.keys(ontologyContext.metadata?.entity_count || {}).length
+							} entity types`
 						} as StreamEvent);
 					}
 
@@ -622,8 +618,7 @@ export const POST: RequestHandler = async ({
 						);
 
 						if (result) {
-							const normalizedResult =
-								result.tool_result ?? result.result ?? result;
+							const normalizedResult = result.tool_result ?? result.result ?? result;
 
 							const { error: toolError } = await supabase
 								.from('chat_messages')

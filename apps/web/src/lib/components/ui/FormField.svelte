@@ -2,38 +2,47 @@
 <script lang="ts">
 	import { Info, AlertCircle } from 'lucide-svelte';
 
-	export let label: string = '';
-	export let labelFor: string = '';
-	export let error: string = '';
-	export let hint: string = '';
-	export let required: boolean = false;
-	export let showOptional: boolean = true;
-	export let uppercase: boolean = true;
+	// Svelte 5 runes: Use $props()
+	let {
+		label = '',
+		labelFor = '',
+		error = '',
+		hint = '',
+		required = false,
+		showOptional = true,
+		uppercase = true,
+		class: className = ''
+	}: {
+		label?: string;
+		labelFor?: string;
+		error?: string;
+		hint?: string;
+		required?: boolean;
+		showOptional?: boolean;
+		uppercase?: boolean;
+		class?: string;
+	} = $props();
 
-	// Allow class prop to be passed through
-	let className = '';
-	export { className as class };
+	let containerClasses = $derived(['space-y-1.5', className].filter(Boolean).join(' '));
 
-	$: containerClasses = ['space-y-1.5', className].filter(Boolean).join(' ');
+	let labelClasses = $derived(
+		[
+			'block text-sm font-semibold',
+			uppercase && 'uppercase tracking-wider',
+			'text-gray-900 dark:text-white',
+			'mb-2'
+		]
+			.filter(Boolean)
+			.join(' ')
+	);
 
-	$: labelClasses = [
-		'block text-sm font-semibold',
-		uppercase && 'uppercase tracking-wider',
-		'text-gray-900 dark:text-white',
-		'mb-2'
-	]
-		.filter(Boolean)
-		.join(' ');
+	let errorClasses = $derived(
+		['flex items-center gap-1.5 mt-1.5', 'text-sm text-red-600 dark:text-red-400'].join(' ')
+	);
 
-	$: errorClasses = [
-		'flex items-center gap-1.5 mt-1.5',
-		'text-sm text-red-600 dark:text-red-400'
-	].join(' ');
-
-	$: hintClasses = [
-		'flex items-center gap-1.5 mt-1.5',
-		'text-sm text-gray-500 dark:text-gray-400'
-	].join(' ');
+	let hintClasses = $derived(
+		['flex items-center gap-1.5 mt-1.5', 'text-sm text-gray-500 dark:text-gray-400'].join(' ')
+	);
 </script>
 
 <div class={containerClasses}>

@@ -134,7 +134,7 @@
 <div class="flex flex-wrap items-center gap-2" role="group" aria-label="Task filters">
 	{#if showAllButton}
 		<Button
-			on:click={selectAll}
+			onclick={selectAll}
 			variant={getAllButtonVariant()}
 			size="sm"
 			class="rounded-full transition-all duration-200 transform hover:scale-105 {size === 'sm'
@@ -155,7 +155,7 @@
 		{@const contentClasses = getContentClasses(isActive, option.color)}
 
 		<Button
-			on:click={() => toggleFilter(option.id)}
+			onclick={() => toggleFilter(option.id)}
 			{variant}
 			size="sm"
 			class="rounded-full group transition-all duration-200 transform hover:scale-105 {size ===

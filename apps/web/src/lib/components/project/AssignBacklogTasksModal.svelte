@@ -223,8 +223,8 @@
 			</h3>
 			<div class="space-y-2">
 				{#each assignmentMethods as method}
-					<button
-						on:click={() => handleMethodChange(method.value)}
+					<Button
+						onclick={() => handleMethodChange(method.value)}
 						disabled={method.disabled}
 						class="w-full p-3 sm:p-4 rounded-lg border-2 transition-all text-left
 									{selectedMethod === method.value
@@ -259,7 +259,7 @@
 								{/if}
 							</div>
 						</div>
-					</button>
+					</Button>
 				{/each}
 			</div>
 		</div>
@@ -278,7 +278,7 @@
 					id="auto-assign"
 					type="checkbox"
 					bind:checked={autoAssign}
-					on:change={(e) => handleAutoAssignChange(e.currentTarget.checked)}
+					onchange={(e) => handleAutoAssignChange(e.currentTarget.checked)}
 					class="h-5 w-5 text-blue-600 rounded border-gray-300 dark:border-gray-600 focus:ring-blue-500"
 				/>
 			</div>
@@ -310,7 +310,7 @@
 							</div>
 							<select
 								bind:value={taskPhaseAssignments[task.id]}
-								on:change={(e) => handlePhaseChange(task.id, e.currentTarget.value)}
+								onchange={(e) => handlePhaseChange(task.id, e.currentTarget.value)}
 								class="px-3 py-1.5 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
 							>
 								{#each sortedPhases as phase}
@@ -369,7 +369,7 @@
 	>
 		<div class="flex flex-col-reverse sm:flex-row gap-2 sm:gap-4 sm:justify-end">
 			<Button
-				on:click={handleClose}
+				onclick={handleClose}
 				variant="outline"
 				disabled={loading}
 				class="w-full sm:w-auto"
@@ -377,7 +377,7 @@
 				Cancel
 			</Button>
 			<Button
-				on:click={handleAssign}
+				onclick={handleAssign}
 				variant="primary"
 				disabled={loading ||
 					(!autoAssign && Object.keys(taskPhaseAssignments).length === 0)}

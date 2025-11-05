@@ -185,81 +185,83 @@
 	<!-- Header -->
 	<Card variant="elevated" padding="none" class="mb-6">
 		<CardBody padding="md">
-		<!-- Back button and transitions -->
-		<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-			<Button variant="ghost" size="sm" onclick={() => goto('/ontology')}>
-				<svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						stroke-width="2"
-						d="M10 19l-7-7m0 0l7-7m-7 7h18"
-					/>
-				</svg>
-				<span class="font-medium">Back to Projects</span>
-			</Button>
-		</div>
+			<!-- Back button and transitions -->
+			<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+				<Button variant="ghost" size="sm" onclick={() => goto('/ontology')}>
+					<svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M10 19l-7-7m0 0l7-7m-7 7h18"
+						/>
+					</svg>
+					<span class="font-medium">Back to Projects</span>
+				</Button>
+			</div>
 
-		<!-- Project title and metadata -->
-		<div class="mb-6">
-			<h1 class="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-4">
-				{project.name}
-			</h1>
-			<div class="flex flex-wrap items-center gap-3 mb-4">
-				<span class="text-sm font-mono text-gray-500 dark:text-gray-400">
-					{project.type_key}
-				</span>
-				<span
-					class="px-3 py-1 rounded-full text-xs font-semibold capitalize {project.state_key ===
-					'draft'
-						? 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
-						: project.state_key === 'todo' || project.state_key === 'planning'
-							? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
-							: project.state_key === 'active' || project.state_key === 'in_progress'
-								? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-								: project.state_key === 'completed' || project.state_key === 'done'
-									? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400'
-									: 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'}"
-				>
-					{project.state_key}
-				</span>
-				{#if project.facet_context}
-					<span
-						class="px-2.5 py-1 rounded-md text-xs font-medium bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 capitalize"
-					>
-						{project.facet_context}
+			<!-- Project title and metadata -->
+			<div class="mb-6">
+				<h1 class="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-4">
+					{project.name}
+				</h1>
+				<div class="flex flex-wrap items-center gap-3 mb-4">
+					<span class="text-sm font-mono text-gray-500 dark:text-gray-400">
+						{project.type_key}
 					</span>
-				{/if}
-				{#if project.facet_scale}
 					<span
-						class="px-2.5 py-1 rounded-md text-xs font-medium bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-400 capitalize"
+						class="px-3 py-1 rounded-full text-xs font-semibold capitalize {project.state_key ===
+						'draft'
+							? 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+							: project.state_key === 'todo' || project.state_key === 'planning'
+								? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
+								: project.state_key === 'active' ||
+									  project.state_key === 'in_progress'
+									? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+									: project.state_key === 'completed' ||
+										  project.state_key === 'done'
+										? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400'
+										: 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'}"
 					>
-						{project.facet_scale}
+						{project.state_key}
 					</span>
-				{/if}
-				{#if project.facet_stage}
-					<span
-						class="px-2.5 py-1 rounded-md text-xs font-medium bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 capitalize"
-					>
-						{project.facet_stage}
-					</span>
+					{#if project.facet_context}
+						<span
+							class="px-2.5 py-1 rounded-md text-xs font-medium bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 capitalize"
+						>
+							{project.facet_context}
+						</span>
+					{/if}
+					{#if project.facet_scale}
+						<span
+							class="px-2.5 py-1 rounded-md text-xs font-medium bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-400 capitalize"
+						>
+							{project.facet_scale}
+						</span>
+					{/if}
+					{#if project.facet_stage}
+						<span
+							class="px-2.5 py-1 rounded-md text-xs font-medium bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 capitalize"
+						>
+							{project.facet_stage}
+						</span>
+					{/if}
+				</div>
+				{#if project.description}
+					<p class="text-gray-600 dark:text-gray-400 leading-relaxed">
+						{project.description}
+					</p>
 				{/if}
 			</div>
-			{#if project.description}
-				<p class="text-gray-600 dark:text-gray-400 leading-relaxed">
-					{project.description}
-				</p>
-			{/if}
-		</div>
 
-		<FSMStateVisualizer
-			entityId={project.id}
-			entityKind="project"
-			entityName={project.name}
-			currentState={project.state_key}
-			initialTransitions={initialTransitionDetails}
-			on:stateChange={handleStateChange}
-		/>
+			<FSMStateVisualizer
+				entityId={project.id}
+				entityKind="project"
+				entityName={project.name}
+				currentState={project.state_key}
+				initialTransitions={initialTransitionDetails}
+				on:stateChange={handleStateChange}
+			/>
 		</CardBody>
 	</Card>
 

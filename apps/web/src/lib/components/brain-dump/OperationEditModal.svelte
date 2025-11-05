@@ -312,7 +312,7 @@
 					</div>
 				</div>
 				<Button
-					on:click={onClose}
+					onclick={onClose}
 					variant="ghost"
 					size="sm"
 					class="!p-1.5 -mr-1.5"
@@ -385,10 +385,8 @@
 		{/if}
 
 		<!-- Compact Form -->
-		<form
-			on:submit|preventDefault={handleSave}
-			class="px-4 sm:px-6 py-4 space-y-3 sm:space-y-4"
-		>
+		<form onsubmit={(e) => { e.preventDefault()
+		handleSave()}} class="px-4 sm:px-6 py-4 space-y-3 sm:space-y-4">
 			{#if fieldsToDisplay.length === 0}
 				<div class="text-center py-8">
 					<div
@@ -451,7 +449,7 @@
 									</legend>
 									<Button
 										type="button"
-										on:click={() => toggleJsonView(field)}
+										onclick={() => toggleJsonView(field)}
 										variant="ghost"
 										size="sm"
 										class="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 !p-1"
@@ -487,7 +485,7 @@
 										<Textarea
 											id="json-{fieldId}"
 											value={jsonTextValues[field] || '{}'}
-											on:input={(e) => handleJsonTextChange(field, e)}
+											oninput={(e) => handleJsonTextChange(field, e)}
 											rows={5}
 											class="font-mono text-xs border-0 bg-transparent resize-none focus:ring-0 p-2"
 											placeholder="Enter valid JSON..."
@@ -507,7 +505,7 @@
 														id="key-{entryId}"
 														type="text"
 														value={key}
-														on:blur={(e) =>
+														onblur={(e) =>
 															updateJsonbKey(
 																field,
 																key,
@@ -521,7 +519,7 @@
 														id="value-{entryId}"
 														type="text"
 														{value}
-														on:input={(e) =>
+														oninput={(e) =>
 															updateJsonbValue(
 																field,
 																key,
@@ -533,8 +531,7 @@
 													/>
 													<Button
 														type="button"
-														on:click={() =>
-															removeJsonbField(field, key)}
+														onclick={() => removeJsonbField(field, key)}
 														variant="ghost"
 														size="sm"
 														class="!p-1 text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:text-rose-400 dark:hover:text-rose-300 dark:hover:bg-rose-900/20 opacity-0 group-hover:opacity-100 transition-opacity"
@@ -547,7 +544,7 @@
 										{/if}
 										<Button
 											type="button"
-											on:click={() => addJsonbField(field)}
+											onclick={() => addJsonbField(field)}
 											variant="outline"
 											size="sm"
 											class="w-full justify-center text-xs !py-1"
@@ -576,7 +573,7 @@
 										id={fieldId}
 										bind:value={editedData[field]}
 										size="sm"
-										on:change={(e) => (editedData[field] = e.detail)}
+										onchange={(e) => (editedData[field] = e.detail)}
 										class="text-sm"
 									>
 										<option value="">Select {config.label}</option>
@@ -599,7 +596,7 @@
 										value={editedData[field]
 											? new Date(editedData[field]).toISOString().slice(0, 16)
 											: ''}
-										on:change={(e) => {
+										onchange={(e) => {
 											const value = e.target.value;
 											editedData[field] = value
 												? new Date(value).toISOString()
@@ -627,7 +624,7 @@
 											id={fieldId}
 											type="checkbox"
 											checked={editedData[field] || false}
-											on:change={(e) => handleBooleanInput(field, e)}
+											onchange={(e) => handleBooleanInput(field, e)}
 											class="h-3.5 w-3.5 text-primary-600 focus:ring-primary-500 border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700"
 										/>
 										<label
@@ -644,7 +641,7 @@
 											value={Array.isArray(editedData[field])
 												? editedData[field].join(', ')
 												: ''}
-											on:input={(e) => handleTagsInput(field, e)}
+											oninput={(e) => handleTagsInput(field, e)}
 											placeholder={config.placeholder ||
 												'Enter tags separated by commas'}
 											size="sm"
@@ -676,10 +673,10 @@
 		<div
 			class="flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700"
 		>
-			<Button on:click={onClose} variant="outline" size="sm" class="min-w-[80px]">
+			<Button onclick={onClose} variant="outline" size="sm" class="min-w-[80px]">
 				Cancel
 			</Button>
-			<Button on:click={handleSave} variant="primary" size="sm" class="min-w-[100px]">
+			<Button onclick={handleSave} variant="primary" size="sm" class="min-w-[100px]">
 				<Save class="w-3.5 h-3.5 mr-1.5" />
 				Save Changes
 			</Button>

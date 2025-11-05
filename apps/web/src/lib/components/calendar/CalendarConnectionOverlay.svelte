@@ -150,7 +150,7 @@
 
 				<!-- CTA Button -->
 				<Button
-					on:click={handleConnect}
+					onclick={handleConnect}
 					disabled={isConnecting}
 					variant="primary"
 					size="lg"

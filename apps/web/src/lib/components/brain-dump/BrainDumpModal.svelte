@@ -1,6 +1,6 @@
 <!-- apps/web/src/lib/components/brain-dump/BrainDumpModal.svelte -->
 <script lang="ts">
-	import { onDestroy, createEventDispatcher, tick, untrack } from 'svelte';
+	import { onDestroy, tick, untrack } from 'svelte';
 	import { browser } from '$app/environment';
 	import { fade } from 'svelte/transition';
 	import Modal from '$lib/components/ui/Modal.svelte';
@@ -134,20 +134,23 @@
 	import type { ParsedOperation, DisplayedBrainDumpQuestion } from '$lib/types/brain-dump';
 	type CleanupReason = 'close' | 'destroy' | 'handoff';
 
-	// Props - Using Svelte 5 $props() for runes mode
+	// Props - Using Svelte 5 $props() with callback props
+	// isOpen must be bindable to support both one-way and two-way binding
 	let {
-		isOpen = false,
+		isOpen = $bindable(false),
 		project = null,
 		showNavigationOnSuccess = true,
-		onNavigateToProject = null
+		onNavigateToProject = null,
+		onClose,
+		onOpenAgent
 	}: {
 		isOpen?: boolean;
 		project?: any;
 		showNavigationOnSuccess?: boolean;
 		onNavigateToProject?: ((url: string) => void) | null;
+		onClose?: () => void;
+		onOpenAgent?: (detail: { projectId: string; chatType: string }) => void;
 	} = $props();
-
-	const dispatch = createEventDispatcher();
 
 	// Component loading states
 	const initialComponentLoadState = {
@@ -568,8 +571,8 @@
 		// Reset handoff state
 		isHandingOff = false;
 
-		// Notify parent
-		dispatch('close');
+		// Notify parent via callback
+		onClose?.();
 
 		// Skip global invalidation - let specific components refresh their own data if needed
 		// This prevents unnecessary full page data reloads
@@ -1102,9 +1105,8 @@
 			// Reset handoff state
 			isHandingOff = false;
 
-			// Request parent to close the modal - parent will trigger handleModalClose via prop change
-			isOpen = false;
-			dispatch('close');
+			// Request parent to close the modal via callback
+			onClose?.();
 		};
 
 		// Wrap in view transition for smooth morphing effect
@@ -1366,12 +1368,19 @@
 		brainDumpActions.clearParseResults();
 	}
 
-	function handleContinueWithAgent(event: CustomEvent) {
-		const { projectId } = event.detail;
+	function handleContinueWithAgent(detail: { projectId: string }) {
+		const { projectId } = detail;
 		// Close brain dump modal
 		handleModalClose();
-		// Dispatch event to parent to open agent modal
-		dispatch('openAgent', { projectId, chatType: 'project_update' });
+		// Call parent callback to open agent modal
+		onOpenAgent?.({ projectId, chatType: 'project_update' });
+	}
+
+	function handleNavigateToHistory(detail: { url: string }) {
+		// Navigate to history with braindump filter
+		if (browser) {
+			window.location.href = detail.url;
+		}
 	}
 
 	// Keep edit operation handler for potential future use
@@ -1395,7 +1404,10 @@
 
 <Modal
 	{isOpen}
-	onClose={handleModalClose}
+	onClose={() => {
+		console.log('handleModalClose');
+		handleModalClose;
+	}}
 	title=""
 	size="lg"
 	showCloseButton={!isProcessing}
@@ -1445,7 +1457,7 @@
 			{#if !isProcessing}
 				<Button
 					variant="ghost"
-					on:click={handleModalClose}
+					onclick={handleModalClose}
 					class="close-button"
 					aria-label="Close dialog"
 					icon={X}
@@ -1604,10 +1616,11 @@
 						{successData}
 						{showNavigationOnSuccess}
 						inModal={true}
-						on:goToProject={handleGoToProject}
-						on:startNew={handleStartNew}
-						on:continueWithAgent={handleContinueWithAgent}
-						on:close={handleModalClose}
+						onGoToProject={handleGoToProject}
+						onStartNew={handleStartNew}
+						onContinueWithAgent={handleContinueWithAgent}
+						onNavigateToHistory={handleNavigateToHistory}
+						onClose={handleModalClose}
 					/>
 				</div>
 			{:else}

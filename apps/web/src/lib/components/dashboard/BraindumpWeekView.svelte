@@ -108,7 +108,7 @@
 				<p class="text-sm text-gray-500 dark:text-gray-400 mb-6 max-w-md mx-auto">
 					Start capturing your thoughts and ideas. Your braindumps will appear here.
 				</p>
-				<Button variant="primary" size="md" on:click={() => dispatch('openBrainDump')}>
+				<Button variant="primary" size="md" onclick={() => dispatch('openBrainDump')}>
 					<Plus class="h-4 w-4 mr-2" />
 					Create your first braindump
 				</Button>
@@ -156,7 +156,7 @@
 							<div class="space-y-2">
 								{#each day.braindumps as braindump}
 									<button
-										on:click={() => handleBraindumpClick(braindump)}
+										onclick={() => handleBraindumpClick(braindump)}
 										class="w-full text-left p-3 rounded-lg border transition-all hover:shadow-md
 											{braindump.projects
 											? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 hover:bg-blue-100 dark:hover:bg-blue-900/30'
@@ -243,7 +243,7 @@
 							{#if dayBraindumps.length > 0}
 								{#each dayBraindumps.slice(0, 3) as braindump}
 									<button
-										on:click={() => handleBraindumpClick(braindump)}
+										onclick={() => handleBraindumpClick(braindump)}
 										class="w-full text-left p-2 rounded-lg border text-xs transition-all hover:shadow-md hover:scale-105
 											{braindump.projects
 											? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 hover:bg-blue-100 dark:hover:bg-blue-900/30'
@@ -332,7 +332,7 @@
 					variant="primary"
 					size="sm"
 					class="hidden sm:block"
-					on:click={() => dispatch('openBrainDump')}
+					onclick={() => dispatch('openBrainDump')}
 				>
 					New braindump
 					<Plus class="h-4 w-4 ml-2" />

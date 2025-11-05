@@ -298,7 +298,7 @@
 		<div class="flex items-center gap-3 px-4 sm:px-5 py-3 sm:py-4 max-w-full">
 			{#if !inModal}
 				<Button
-					on:click={handleBack}
+					onclick={handleBack}
 					variant="ghost"
 					size="sm"
 					icon={ChevronLeft}
@@ -311,7 +311,7 @@
 				{#if allowProjectChange}
 					<Select
 						bind:value={selectedProjectId}
-						on:change={handleProjectChange}
+						onchange={handleProjectChange}
 						size="sm"
 						class="w-full font-semibold text-[0.9375rem]"
 					>
@@ -560,7 +560,7 @@
 				{/if}
 
 				<Button
-					on:click={handleParse}
+					onclick={handleParse}
 					disabled={!canParse}
 					loading={currentPhase === 'parsing'}
 					variant="primary"

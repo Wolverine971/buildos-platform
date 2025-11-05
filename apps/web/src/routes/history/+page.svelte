@@ -499,14 +499,14 @@
 						<TextInput
 							type="text"
 							bind:value={searchQuery}
-							on:keydown={handleKeyDown}
+							onkeydown={handleKeyDown}
 							placeholder="Filter timeline by keyword..."
 							class="pl-10 pr-12"
 							size="md"
 						/>
 						{#if searchQuery}
 							<Button
-								on:click={clearSearch}
+								onclick={clearSearch}
 								variant="ghost"
 								size="sm"
 								class="absolute inset-y-0 right-0 pr-3 flex items-center min-h-0"
@@ -517,7 +517,7 @@
 
 					<!-- Filter button -->
 					<Button
-						on:click={handleSearch}
+						onclick={handleSearch}
 						disabled={!searchQuery.trim() || isLoading}
 						variant="secondary"
 						size="md"
@@ -541,7 +541,7 @@
 							<Search class="w-3 h-3" />
 							<span>"{searchQuery}"</span>
 							<Button
-								on:click={clearSearch}
+								onclick={clearSearch}
 								variant="ghost"
 								size="sm"
 								class="ml-1 p-0 min-h-0"
@@ -557,7 +557,7 @@
 							<Calendar class="w-3 h-3" />
 							<span>{formatDate(selectedDay)}</span>
 							<Button
-								on:click={clearDaySelection}
+								onclick={clearDaySelection}
 								variant="ghost"
 								size="sm"
 								class="ml-1 p-0 min-h-0"
@@ -589,7 +589,7 @@
 				<div class="flex items-center space-x-2">
 					{#if availableYears.length > 1}
 						<Button
-							on:click={() => navigateToYear(selectedYear - 1)}
+							onclick={() => navigateToYear(selectedYear - 1)}
 							disabled={selectedYear <= Math.min(...availableYears) || isLoading}
 							variant="ghost"
 							size="sm"
@@ -599,7 +599,7 @@
 
 						<Select
 							bind:value={selectedYear}
-							on:change={(e) => {
+							onchange={(e) => {
 								selectedYear = e.detail;
 								navigateToYear(parseInt(e.detail));
 							}}
@@ -612,7 +612,7 @@
 						</Select>
 
 						<Button
-							on:click={() => navigateToYear(selectedYear + 1)}
+							onclick={() => navigateToYear(selectedYear + 1)}
 							disabled={selectedYear >= Math.max(...availableYears) || isLoading}
 							variant="ghost"
 							size="sm"
@@ -692,7 +692,7 @@
 						<p class="text-gray-500 dark:text-gray-400 mb-6">
 							No braindumps match your search for "{searchQuery}"
 						</p>
-						<Button on:click={clearSearch} variant="outline" size="md">
+						<Button onclick={clearSearch} variant="outline" size="md">
 							Clear search
 						</Button>
 					</div>
@@ -707,7 +707,7 @@
 						<p class="text-gray-500 dark:text-gray-400 mb-6">
 							No braindumps were recorded on {formatDate(selectedDay)}
 						</p>
-						<Button on:click={clearDaySelection} variant="outline" size="md">
+						<Button onclick={clearDaySelection} variant="outline" size="md">
 							View recent braindumps
 						</Button>
 					</div>

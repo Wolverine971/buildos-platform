@@ -207,7 +207,7 @@
 			<div class="grid gap-5 sm:grid-cols-2">
 				<!-- Global conversation -->
 				<button
-					on:click={selectGlobal}
+					onclick={selectGlobal}
 					class="group flex h-full flex-col justify-between gap-6 rounded-2xl border border-slate-200/60 bg-gradient-to-br from-blue-50/70 via-slate-50/40 to-white/80 p-7 text-left shadow-[0_20px_60px_-40px_rgba(59,130,246,0.75)] transition-all duration-200 hover:-translate-y-1 hover:border-blue-300/60 hover:shadow-[0_35px_80px_-50px_rgba(37,99,235,0.65)] active:translate-y-0 dark:border-slate-700/60 dark:from-slate-900/80 dark:via-slate-900/50 dark:to-slate-900/70 dark:hover:border-blue-500/60"
 				>
 					<div class="flex items-center gap-4">
@@ -237,7 +237,7 @@
 
 				<!-- Projects workspace -->
 				<button
-					on:click={goToProjectHub}
+					onclick={goToProjectHub}
 					class="group flex h-full flex-col justify-between gap-6 rounded-2xl border border-slate-200/60 bg-gradient-to-br from-emerald-50/70 via-teal-50/40 to-white/80 p-7 text-left shadow-[0_20px_60px_-40px_rgba(16,185,129,0.75)] transition-all duration-200 hover:-translate-y-1 hover:border-emerald-300/60 hover:shadow-[0_35px_80px_-50px_rgba(5,150,105,0.55)] active:translate-y-0 dark:border-slate-700/60 dark:from-slate-900/80 dark:via-slate-900/50 dark:to-slate-900/70 dark:hover:border-emerald-500/60"
 				>
 					<div class="flex items-center gap-4">
@@ -270,7 +270,7 @@
 			<div class="mt-8 grid gap-5 sm:grid-cols-2">
 				<!-- Task-focused session -->
 				<button
-					on:click={selectTaskUpdate}
+					onclick={selectTaskUpdate}
 					class="group flex h-full flex-col justify-between gap-5 rounded-2xl border border-slate-200/60 bg-gradient-to-br from-amber-50/70 via-orange-50/40 to-white/80 p-6 text-left shadow-[0_18px_55px_-42px_rgba(251,191,36,0.65)] transition-all duration-200 hover:-translate-y-1 hover:border-amber-300/60 hover:shadow-[0_30px_75px_-52px_rgba(217,119,6,0.5)] active:translate-y-0 dark:border-slate-700/60 dark:from-slate-900/80 dark:via-slate-900/50 dark:to-slate-900/70 dark:hover:border-amber-500/60"
 				>
 					<div class="flex items-center gap-4">
@@ -300,7 +300,7 @@
 
 				<!-- Daily brief tuning -->
 				<button
-					on:click={selectDailyBrief}
+					onclick={selectDailyBrief}
 					class="group flex h-full flex-col justify-between gap-5 rounded-2xl border border-slate-200/60 bg-gradient-to-br from-rose-50/70 via-pink-50/40 to-white/80 p-6 text-left shadow-[0_18px_55px_-42px_rgba(244,114,182,0.55)] transition-all duration-200 hover:-translate-y-1 hover:border-rose-300/60 hover:shadow-[0_30px_75px_-52px_rgba(219,39,119,0.45)] active:translate-y-0 dark:border-slate-700/60 dark:from-slate-900/80 dark:via-slate-900/50 dark:to-slate-900/70 dark:hover:border-rose-500/60"
 				>
 					<div class="flex items-center gap-4">
@@ -349,7 +349,7 @@
 				class="border-b border-slate-200/60 bg-white/85 px-4 py-4 backdrop-blur-md dark:border-slate-700/60 dark:bg-slate-900/80"
 			>
 				<button
-					on:click={backToPrimary}
+					onclick={backToPrimary}
 					class="mb-3 inline-flex items-center gap-2 text-sm text-slate-600 transition-colors hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
 				>
 					<ChevronLeft class="h-4 w-4" />
@@ -362,8 +362,8 @@
 			</div>
 			<div class="mx-auto w-full max-w-4xl flex-1 overflow-y-auto p-5 sm:p-8">
 				<div class="grid gap-5 sm:grid-cols-2">
-					<button
-						on:click={selectProjectCreate}
+					<Button
+						onclick={selectProjectCreate}
 						class="group flex h-full flex-col justify-between gap-6 rounded-2xl border border-slate-200/60 bg-gradient-to-br from-purple-50/70 via-fuchsia-50/40 to-white/85 p-7 text-left shadow-[0_24px_70px_-48px_rgba(147,51,234,0.6)] transition-all duration-200 hover:-translate-y-1 hover:border-purple-300/60 hover:shadow-[0_36px_90px_-56px_rgba(126,34,206,0.55)] active:translate-y-0 dark:border-slate-700/60 dark:from-slate-900/85 dark:via-slate-900/55 dark:to-slate-900/75 dark:hover:border-purple-500/60"
 					>
 						<div class="flex items-center gap-4">
@@ -389,10 +389,10 @@
 								class="h-5 w-5 transition-transform group-hover:translate-x-1"
 							/>
 						</div>
-					</button>
+					</Button>
 
-					<button
-						on:click={showProjectSelection}
+					<Button
+						onclick={showProjectSelection}
 						disabled={isLoadingProjects || !hasProjects}
 						class="group flex h-full flex-col justify-between gap-6 rounded-2xl border border-slate-200/60 bg-gradient-to-br from-slate-50/80 via-slate-50/40 to-white/85 p-7 text-left shadow-[0_24px_70px_-48px_rgba(15,23,42,0.45)] transition-all duration-200 hover:-translate-y-1 hover:border-emerald-300/60 hover:shadow-[0_36px_90px_-56px_rgba(20,83,45,0.45)] active:translate-y-0 disabled:translate-y-0 disabled:opacity-60 disabled:shadow-none dark:border-slate-700/60 dark:from-slate-900/85 dark:via-slate-900/55 dark:to-slate-900/75 dark:hover:border-emerald-500/60"
 					>
@@ -427,7 +427,7 @@
 								class="h-5 w-5 transition-transform group-hover:translate-x-1"
 							/>
 						</div>
-					</button>
+					</Button>
 				</div>
 
 				{#if projectsError}
@@ -449,7 +449,7 @@
 				class="border-b border-slate-200/60 bg-white/80 px-4 py-3 backdrop-blur-sm dark:border-slate-700/60 dark:bg-slate-900/80"
 			>
 				<button
-					on:click={backToProjectHub}
+					onclick={backToProjectHub}
 					class="mb-2 flex items-center gap-2 text-sm text-slate-600 transition-colors hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
 				>
 					<ChevronLeft class="h-4 w-4" />
@@ -472,18 +472,18 @@
 				{:else if projectsError}
 					<div class="flex flex-col items-center justify-center py-16 text-center">
 						<p class="mb-4 text-sm text-red-600 dark:text-red-400">{projectsError}</p>
-						<button
-							on:click={loadProjects}
+						<Button
+							onclick={loadProjects}
 							class="text-sm font-medium text-blue-600 hover:underline dark:text-blue-400"
 						>
 							Try again
-						</button>
+						</Button>
 					</div>
 				{:else if activeProjects.length > 0}
 					<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
 						{#each activeProjects as project (project.id)}
 							<button
-								on:click={() => selectProject(project)}
+								onclick={() => selectProject(project)}
 								class="group flex flex-col rounded-xl border border-slate-200/50 bg-white/70 p-4 text-left backdrop-blur-sm transition-all duration-200 hover:scale-[1.02] hover:border-slate-300/70 hover:shadow-lg active:scale-[0.99] dark:border-slate-700/50 dark:bg-slate-800/70 dark:hover:border-slate-600/70"
 							>
 								<div class="mb-3 flex items-start justify-between">
@@ -541,7 +541,7 @@
 				class="border-b border-slate-200/60 bg-white/80 px-4 py-3 backdrop-blur-sm dark:border-slate-700/60 dark:bg-slate-900/80"
 			>
 				<button
-					on:click={backToProjectSelection}
+					onclick={backToProjectSelection}
 					class="mb-2 flex items-center gap-2 text-sm text-slate-600 transition-colors hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
 				>
 					<ChevronLeft class="h-4 w-4" />
@@ -559,8 +559,8 @@
 			<div class="mx-auto w-full max-w-3xl flex-1 overflow-y-auto p-6">
 				<div class="grid gap-4 sm:grid-cols-3">
 					<!-- Project Update -->
-					<button
-						on:click={() => selectMode('project_update')}
+					<Button
+						onclick={() => selectMode('project_update')}
 						class="group flex flex-col items-center gap-4 rounded-xl border-2 border-blue-200/50 bg-gradient-to-br from-blue-50/50 to-indigo-50/50 p-6 text-center transition-all duration-200 hover:scale-[1.02] hover:border-blue-300 hover:shadow-lg active:scale-[0.99] dark:border-blue-800/50 dark:from-blue-900/20 dark:to-indigo-900/20 dark:hover:border-blue-700"
 					>
 						<div
@@ -576,11 +576,11 @@
 								Make changes to tasks and context
 							</p>
 						</div>
-					</button>
+					</Button>
 
 					<!-- Project Audit -->
-					<button
-						on:click={() => selectMode('project_audit')}
+					<Button
+						onclick={() => selectMode('project_audit')}
 						class="group flex flex-col items-center gap-4 rounded-xl border-2 border-amber-200/50 bg-gradient-to-br from-amber-50/50 to-orange-50/50 p-6 text-center transition-all duration-200 hover:scale-[1.02] hover:border-amber-300 hover:shadow-lg active:scale-[0.99] dark:border-amber-800/50 dark:from-amber-900/20 dark:to-orange-900/20 dark:hover:border-amber-700"
 					>
 						<div
@@ -596,11 +596,11 @@
 								Critical review across dimensions
 							</p>
 						</div>
-					</button>
+					</Button>
 
 					<!-- Project Forecast -->
-					<button
-						on:click={() => selectMode('project_forecast')}
+					<Button
+						onclick={() => selectMode('project_forecast')}
 						class="group flex flex-col items-center gap-4 rounded-xl border-2 border-emerald-200/50 bg-gradient-to-br from-emerald-50/50 to-teal-50/50 p-6 text-center transition-all duration-200 hover:scale-[1.02] hover:border-emerald-300 hover:shadow-lg active:scale-[0.99] dark:border-emerald-800/50 dark:from-emerald-900/20 dark:to-teal-900/20 dark:hover:border-emerald-700"
 					>
 						<div
@@ -616,7 +616,7 @@
 								Scenario planning and outcomes
 							</p>
 						</div>
-					</button>
+					</Button>
 				</div>
 
 				<!-- Mode Descriptions -->

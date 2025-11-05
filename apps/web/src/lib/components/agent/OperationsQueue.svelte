@@ -232,7 +232,7 @@
 			<div class="flex items-center gap-3">
 				<button
 					class="flex cursor-pointer items-center border-none bg-transparent p-0"
-					on:click={toggleAll}
+					onclick={toggleAll}
 					title={allSelected ? 'Deselect all' : 'Select all'}
 					aria-label={allSelected ? 'Deselect all operations' : 'Select all operations'}
 				>
@@ -252,7 +252,7 @@
 			<div class="flex items-center gap-2">
 				<button
 					class="flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-1 text-xs transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800"
-					on:click={() => {
+					onclick={() => {
 						const options: Array<'sequence' | 'type' | 'table'> = [
 							'sequence',
 							'type',
@@ -291,7 +291,7 @@
 						<div class="flex flex-shrink-0 items-center gap-2">
 							<button
 								class="flex cursor-pointer items-center border-none bg-transparent p-0"
-								on:click={() => toggleSelection(operation.id)}
+								onclick={() => toggleSelection(operation.id)}
 								aria-label={isSelected
 									? `Deselect ${getOperationTitle(operation)}`
 									: `Select ${getOperationTitle(operation)}`}
@@ -354,14 +354,14 @@
 						<!-- Actions -->
 						<div class="flex flex-shrink-0 items-center gap-1">
 							<Button
-								on:click={() => editOperation(operation)}
+								onclick={() => editOperation(operation)}
 								variant="ghost"
 								size="sm"
 								icon={Edit}
 								title="Edit operation"
 							/>
 							<Button
-								on:click={() => {
+								onclick={() => {
 									selectedOperations.clear();
 									selectedOperations.add(operation.id);
 									approveSelected();
@@ -385,7 +385,7 @@
 			<div class="flex items-center gap-2">
 				{#if selectedOperations.size > 0}
 					<Button
-						on:click={rejectSelected}
+						onclick={rejectSelected}
 						variant="secondary"
 						size="sm"
 						disabled={isProcessing}
@@ -399,7 +399,7 @@
 			<div class="flex items-center gap-2">
 				{#if selectedOperations.size > 0}
 					<Button
-						on:click={approveSelected}
+						onclick={approveSelected}
 						variant="primary"
 						size="sm"
 						disabled={isProcessing}
@@ -411,7 +411,7 @@
 					</Button>
 				{/if}
 				<Button
-					on:click={approveAll}
+					onclick={approveAll}
 					variant="success"
 					size="sm"
 					disabled={isProcessing || operations.length === 0}

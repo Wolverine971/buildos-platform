@@ -106,7 +106,7 @@
 			<!-- Single Instance -->
 			<button
 				type="button"
-				on:click={() => (selectedScope = 'single')}
+				onclick={() => (selectedScope = 'single')}
 				class="w-full text-left p-4 rounded-lg border-2 transition-all {selectedScope ===
 				'single'
 					? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
@@ -152,7 +152,7 @@
 			<!-- Future Instances -->
 			<button
 				type="button"
-				on:click={() => (selectedScope = 'future')}
+				onclick={() => (selectedScope = 'future')}
 				class="w-full text-left p-4 rounded-lg border-2 transition-all {selectedScope ===
 				'future'
 					? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
@@ -193,7 +193,7 @@
 			<!-- All Instances -->
 			<button
 				type="button"
-				on:click={() => (selectedScope = 'all')}
+				onclick={() => (selectedScope = 'all')}
 				class="w-full text-left p-4 rounded-lg border-2 transition-all {selectedScope ===
 				'all'
 					? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
@@ -255,8 +255,8 @@
 		class="flex flex-col sm:flex-row gap-3 sm:justify-end px-4 sm:px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30"
 		slot="footer"
 	>
-		<Button type="button" on:click={handleCancel} variant="ghost" size="md">Cancel</Button>
-		<Button type="button" on:click={handleConfirm} variant="primary" size="md" icon={RefreshCw}>
+		<Button type="button" onclick={handleCancel} variant="ghost" size="md">Cancel</Button>
+		<Button type="button" onclick={handleConfirm} variant="primary" size="md" icon={RefreshCw}>
 			Update {selectedScope === 'single'
 				? 'Instance'
 				: selectedScope === 'future'

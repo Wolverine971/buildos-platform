@@ -156,7 +156,7 @@
 			<div class="space-y-3">
 				{#if errorConfig.showSignIn}
 					<Button
-						on:click={handleSignIn}
+						onclick={handleSignIn}
 						variant="primary"
 						size="lg"
 						fullWidth
@@ -168,13 +168,13 @@
 				{/if}
 
 				<div class="flex flex-col sm:flex-row gap-3 justify-center">
-					<Button on:click={handleGoHome} variant="outline" size="md" icon={Home}>
+					<Button onclick={handleGoHome} variant="outline" size="md" icon={Home}>
 						Go Home
 					</Button>
 
 					{#if status >= 500}
 						<Button
-							on:click={handleRefresh}
+							onclick={handleRefresh}
 							variant="outline"
 							size="md"
 							icon={RefreshCw}
@@ -185,7 +185,7 @@
 				</div>
 
 				<Button
-					on:click={handleGoBack}
+					onclick={handleGoBack}
 					variant="ghost"
 					size="sm"
 					fullWidth

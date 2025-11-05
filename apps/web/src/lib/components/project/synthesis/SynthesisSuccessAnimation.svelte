@@ -52,7 +52,7 @@
 						</div>
 					</div>
 					<Button
-						on:click={onDismiss}
+						onclick={onDismiss}
 						aria-label="Dismiss"
 						variant="ghost"
 						size="sm"

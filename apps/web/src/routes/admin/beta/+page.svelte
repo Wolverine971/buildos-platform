@@ -514,7 +514,7 @@
 				</div>
 				{#if activeTab === 'dataview'}
 					<Button
-						on:click={exportToCSV}
+						onclick={exportToCSV}
 						variant="primary"
 						size="md"
 						icon={Download}
@@ -527,7 +527,7 @@
 				{/if}
 				{#if activeTab !== 'emails'}
 					<Button
-						on:click={loadData}
+						onclick={loadData}
 						disabled={isLoading}
 						variant="primary"
 						size="md"
@@ -545,7 +545,7 @@
 		<div class="border-b border-gray-200 dark:border-gray-700 mb-4">
 			<nav class="-mb-px flex overflow-x-auto">
 				<Button
-					on:click={() => (activeTab = 'signups')}
+					onclick={() => (activeTab = 'signups')}
 					variant="ghost"
 					size="md"
 					class="flex-shrink-0 py-2 px-3 sm:px-4 border-b-2 font-medium text-sm rounded-none {activeTab ===
@@ -557,7 +557,7 @@
 					<span class="hidden xs:inline">Signups</span>
 				</Button>
 				<Button
-					on:click={() => (activeTab = 'dataview')}
+					onclick={() => (activeTab = 'dataview')}
 					variant="ghost"
 					size="md"
 					class="flex-shrink-0 py-2 px-3 sm:px-4 border-b-2 font-medium text-sm rounded-none {activeTab ===
@@ -569,7 +569,7 @@
 					<span class="hidden xs:inline">Data View</span>
 				</Button>
 				<Button
-					on:click={() => (activeTab = 'members')}
+					onclick={() => (activeTab = 'members')}
 					variant="ghost"
 					size="md"
 					class="flex-shrink-0 py-2 px-3 sm:px-4 border-b-2 font-medium text-sm rounded-none {activeTab ===
@@ -581,7 +581,7 @@
 					<span class="hidden xs:inline">Members</span>
 				</Button>
 				<Button
-					on:click={() => (activeTab = 'emails')}
+					onclick={() => (activeTab = 'emails')}
 					variant="ghost"
 					size="md"
 					class="flex-shrink-0 py-2 px-3 sm:px-4 border-b-2 font-medium text-sm rounded-none {activeTab ===
@@ -637,7 +637,7 @@
 					<div>
 						<Select
 							bind:value={dataViewFilters.status}
-							on:change={(e) => (dataViewFilters.status = e.detail)}
+							onchange={(e) => (dataViewFilters.status = e.detail)}
 							size="md"
 						>
 							<option value="all">All Status</option>
@@ -652,7 +652,7 @@
 					<div>
 						<Select
 							bind:value={dataViewFilters.sortBy}
-							on:change={(e) => (dataViewFilters.sortBy = e.detail)}
+							onchange={(e) => (dataViewFilters.sortBy = e.detail)}
 							size="md"
 						>
 							<option value="created_at">Date Applied</option>
@@ -708,7 +708,7 @@
 									<!-- Sortable Status Header -->
 									<th
 										class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
-										on:click={() => handleSort('signup_status')}
+										onclick={() => handleSort('signup_status')}
 										title="Click to sort by status"
 									>
 										<div class="flex items-center space-x-1">
@@ -739,7 +739,7 @@
 									<!-- Sortable Referral Source Header -->
 									<th
 										class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
-										on:click={() => handleSort('referral_source')}
+										onclick={() => handleSort('referral_source')}
 										title="Click to sort by referral source"
 									>
 										<div class="flex items-center space-x-1">
@@ -792,7 +792,7 @@
 										<!-- Sortable Job Title -->
 										<th
 											class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
-											on:click={() => handleSort('job_title')}
+											onclick={() => handleSort('job_title')}
 											title="Click to sort by job title"
 										>
 											<div class="flex items-center space-x-1">
@@ -823,7 +823,7 @@
 										<!-- Sortable Company -->
 										<th
 											class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
-											on:click={() => handleSort('company_name')}
+											onclick={() => handleSort('company_name')}
 											title="Click to sort by company"
 										>
 											<div class="flex items-center space-x-1">
@@ -861,7 +861,7 @@
 										<!-- Sortable Timezone -->
 										<th
 											class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
-											on:click={() => handleSort('user_timezone')}
+											onclick={() => handleSort('user_timezone')}
 											title="Click to sort by timezone"
 										>
 											<div class="flex items-center space-x-1">
@@ -893,7 +893,7 @@
 									<!-- Sortable Applied Date -->
 									<th
 										class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
-										on:click={() => handleSort('created_at')}
+										onclick={() => handleSort('created_at')}
 										title="Click to sort by application date"
 									>
 										<div class="flex items-center space-x-1">
@@ -990,7 +990,7 @@
 														? 'cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 p-2 rounded'
 														: ''}"
 													title={signup.why_interested || 'Not provided'}
-													on:click={() => {
+													onclick={() => {
 														if (
 															signup.why_interested &&
 															signup.why_interested.length > 100
@@ -1017,7 +1017,7 @@
 														: ''}"
 													title={signup.biggest_challenge ||
 														'Not provided'}
-													on:click={() => {
+													onclick={() => {
 														if (
 															signup.biggest_challenge &&
 															signup.biggest_challenge.length > 100
@@ -1130,7 +1130,7 @@
 											<div class="flex items-center justify-end space-x-2">
 												<!-- View Details -->
 												<Button
-													on:click={() => {
+													onclick={() => {
 														selectedItem = signup;
 														showModal = true;
 													}}
@@ -1143,7 +1143,7 @@
 
 												<!-- Send Email -->
 												<Button
-													on:click={() => {
+													onclick={() => {
 														emailUserId = signup.user_id || '';
 														emailUserName = signup.full_name;
 														emailUserEmail = signup.email;
@@ -1159,7 +1159,7 @@
 												<!-- Quick Actions for Pending -->
 												{#if signup.signup_status === 'pending'}
 													<Button
-														on:click={() =>
+														onclick={() =>
 															updateSignupStatus(
 																signup.id,
 																'approved',
@@ -1173,7 +1173,7 @@
 														title="Approve and create member"
 													></Button>
 													<Button
-														on:click={() =>
+														onclick={() =>
 															updateSignupStatus(
 																signup.id,
 																'declined'
@@ -1201,7 +1201,7 @@
 						>
 							<div class="flex-1 flex justify-between sm:hidden">
 								<Button
-									on:click={prevPage}
+									onclick={prevPage}
 									disabled={currentPage === 1}
 									variant="outline"
 									size="md"
@@ -1214,7 +1214,7 @@
 									{currentPage} of {totalPages}
 								</span>
 								<Button
-									on:click={nextPage}
+									onclick={nextPage}
 									disabled={currentPage === totalPages}
 									variant="outline"
 									size="md"
@@ -1237,7 +1237,7 @@
 										class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px"
 									>
 										<Button
-											on:click={prevPage}
+											onclick={prevPage}
 											disabled={currentPage === 1}
 											variant="outline"
 											size="sm"
@@ -1245,7 +1245,7 @@
 											class="rounded-l-md rounded-r-none"
 										></Button>
 										<Button
-											on:click={nextPage}
+											onclick={nextPage}
 											disabled={currentPage === totalPages}
 											variant="outline"
 											size="sm"
@@ -1266,7 +1266,7 @@
 				<!-- Mobile Filter Toggle -->
 				<div class="sm:hidden mb-4">
 					<Button
-						on:click={() => (showMobileFilters = !showMobileFilters)}
+						onclick={() => (showMobileFilters = !showMobileFilters)}
 						variant="secondary"
 						size="md"
 						fullWidth={true}
@@ -1301,7 +1301,7 @@
 							</label>
 							<Select
 								bind:value={signupFilters.status}
-								on:change={(e) => (signupFilters.status = e.detail)}
+								onchange={(e) => (signupFilters.status = e.detail)}
 								size="md"
 							>
 								<option value="all">All Status</option>
@@ -1321,7 +1321,7 @@
 							</label>
 							<Select
 								bind:value={signupFilters.sortBy}
-								on:change={(e) => (signupFilters.sortBy = e.detail)}
+								onchange={(e) => (signupFilters.sortBy = e.detail)}
 								size="md"
 							>
 								<option value="created_at">Date Applied</option>
@@ -1339,7 +1339,7 @@
 							</label>
 							<Select
 								bind:value={memberFilters.tier}
-								on:change={(e) => (memberFilters.tier = e.detail)}
+								onchange={(e) => (memberFilters.tier = e.detail)}
 								size="md"
 							>
 								<option value="all">All Tiers</option>
@@ -1382,7 +1382,7 @@
 						<div>
 							<Select
 								bind:value={signupFilters.status}
-								on:change={(e) => (signupFilters.status = e.detail)}
+								onchange={(e) => (signupFilters.status = e.detail)}
 								size="md"
 							>
 								<option value="all">All Status</option>
@@ -1397,7 +1397,7 @@
 						<div>
 							<Select
 								bind:value={signupFilters.sortBy}
-								on:change={(e) => (signupFilters.sortBy = e.detail)}
+								onchange={(e) => (signupFilters.sortBy = e.detail)}
 								size="md"
 							>
 								<option value="created_at">Date Applied</option>
@@ -1410,7 +1410,7 @@
 						<div>
 							<Select
 								bind:value={memberFilters.tier}
-								on:change={(e) => (memberFilters.tier = e.detail)}
+								onchange={(e) => (memberFilters.tier = e.detail)}
 								size="md"
 							>
 								<option value="all">All Tiers</option>
@@ -1499,7 +1499,7 @@
 											</div>
 										</div>
 										<Button
-											on:click={() => {
+											onclick={() => {
 												selectedItem = signup;
 												showModal = true;
 											}}
@@ -1534,7 +1534,7 @@
 									{#if signup.signup_status === 'pending'}
 										<div class="flex space-x-2">
 											<Button
-												on:click={() => showApprovalConfirmation(signup)}
+												onclick={() => showApprovalConfirmation(signup)}
 												disabled={isUpdating}
 												variant="primary"
 												size="sm"
@@ -1544,7 +1544,7 @@
 												Approve & Email
 											</Button>
 											<Button
-												on:click={() =>
+												onclick={() =>
 													updateSignupStatus(signup.id, 'declined')}
 												disabled={isUpdating}
 												variant="danger"
@@ -1595,7 +1595,7 @@
 											</div>
 										</div>
 										<Button
-											on:click={() => {
+											onclick={() => {
 												selectedItem = member;
 												showModal = true;
 											}}
@@ -1630,7 +1630,7 @@
 									<!-- Quick Actions -->
 									<div class="flex space-x-2">
 										<Button
-											on:click={() =>
+											onclick={() =>
 												updateMember(member.id, {
 													is_active: !member.is_active
 												})}
@@ -1659,7 +1659,7 @@
 										<!-- Signups table headers -->
 										<th
 											class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
-											on:click={() => handleSignupSort('full_name')}
+											onclick={() => handleSignupSort('full_name')}
 											title="Click to sort by name"
 										>
 											<div class="flex items-center space-x-1">
@@ -1688,7 +1688,7 @@
 										</th>
 										<th
 											class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
-											on:click={() => handleSignupSort('company_name')}
+											onclick={() => handleSignupSort('company_name')}
 											title="Click to sort by company"
 										>
 											<div class="flex items-center space-x-1">
@@ -1717,7 +1717,7 @@
 										</th>
 										<th
 											class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
-											on:click={() => handleSignupSort('signup_status')}
+											onclick={() => handleSignupSort('signup_status')}
 											title="Click to sort by status"
 										>
 											<div class="flex items-center space-x-1">
@@ -1746,7 +1746,7 @@
 										</th>
 										<th
 											class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
-											on:click={() => handleSignupSort('created_at')}
+											onclick={() => handleSignupSort('created_at')}
 											title="Click to sort by date"
 										>
 											<div class="flex items-center space-x-1">
@@ -1777,7 +1777,7 @@
 										<!-- Members table headers -->
 										<th
 											class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
-											on:click={() => handleMemberSort('full_name')}
+											onclick={() => handleMemberSort('full_name')}
 											title="Click to sort by name"
 										>
 											<div class="flex items-center space-x-1">
@@ -1806,7 +1806,7 @@
 										</th>
 										<th
 											class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
-											on:click={() => handleMemberSort('company_name')}
+											onclick={() => handleMemberSort('company_name')}
 											title="Click to sort by company"
 										>
 											<div class="flex items-center space-x-1">
@@ -1835,7 +1835,7 @@
 										</th>
 										<th
 											class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
-											on:click={() => handleMemberSort('beta_tier')}
+											onclick={() => handleMemberSort('beta_tier')}
 											title="Click to sort by tier"
 										>
 											<div class="flex items-center space-x-1">
@@ -1864,7 +1864,7 @@
 										</th>
 										<th
 											class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
-											on:click={() => handleMemberSort('joined_at')}
+											onclick={() => handleMemberSort('joined_at')}
 											title="Click to sort by date"
 										>
 											<div class="flex items-center space-x-1">
@@ -1966,7 +1966,7 @@
 												>
 													<!-- View Details -->
 													<Button
-														on:click={() => {
+														onclick={() => {
 															selectedItem = signup;
 															showModal = true;
 														}}
@@ -1980,7 +1980,7 @@
 
 													<!-- Send Email -->
 													<Button
-														on:click={() => {
+														onclick={() => {
 															emailUserId = signup.user_id || '';
 															emailUserName = signup.full_name;
 															emailUserEmail = signup.email;
@@ -1997,7 +1997,7 @@
 													<!-- Quick Actions -->
 													{#if signup.signup_status === 'pending'}
 														<Button
-															on:click={() =>
+															onclick={() =>
 																showApprovalConfirmation(signup)}
 															disabled={isUpdating}
 															variant="ghost"
@@ -2008,7 +2008,7 @@
 															title="Approve and send email"
 														/>
 														<Button
-															on:click={() =>
+															onclick={() =>
 																updateSignupStatus(
 																	signup.id,
 																	'declined'
@@ -2096,7 +2096,7 @@
 												>
 													<!-- Send Email -->
 													<Button
-														on:click={() => {
+														onclick={() => {
 															emailUserId = member.user_id || '';
 															emailUserName = member.full_name;
 															emailUserEmail = member.email;
@@ -2111,7 +2111,7 @@
 													/>
 													<!-- View Details -->
 													<Button
-														on:click={() => {
+														onclick={() => {
 															selectedItem = member;
 															showModal = true;
 														}}
@@ -2125,7 +2125,7 @@
 
 													<!-- Toggle Active Status -->
 													<Button
-														on:click={() =>
+														onclick={() =>
 															updateMember(member.id, {
 																is_active: !member.is_active
 															})}
@@ -2155,7 +2155,7 @@
 						>
 							<div class="flex-1 flex justify-between sm:hidden">
 								<Button
-									on:click={prevPage}
+									onclick={prevPage}
 									disabled={currentPage === 1}
 									variant="outline"
 									size="md"
@@ -2168,7 +2168,7 @@
 									{currentPage} of {totalPages}
 								</span>
 								<Button
-									on:click={nextPage}
+									onclick={nextPage}
 									disabled={currentPage === totalPages}
 									variant="outline"
 									size="md"
@@ -2191,7 +2191,7 @@
 										class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px"
 									>
 										<Button
-											on:click={prevPage}
+											onclick={prevPage}
 											disabled={currentPage === 1}
 											variant="outline"
 											size="sm"
@@ -2199,7 +2199,7 @@
 											class="rounded-l-md rounded-r-none"
 										></Button>
 										<Button
-											on:click={nextPage}
+											onclick={nextPage}
 											disabled={currentPage === totalPages}
 											variant="outline"
 											size="sm"
@@ -2273,7 +2273,7 @@
 							: 'Member Details'}
 					</h3>
 					<Button
-						on:click={() => (showModal = false)}
+						onclick={() => (showModal = false)}
 						variant="ghost"
 						size="sm"
 						icon={X}
@@ -2672,13 +2672,13 @@
 
 				<!-- Action Buttons - Mobile Responsive -->
 				<div class="mt-6 flex flex-wrap gap-2">
-					<Button on:click={() => (showModal = false)} variant="secondary" size="md">
+					<Button onclick={() => (showModal = false)} variant="secondary" size="md">
 						Close
 					</Button>
 
 					{#if (activeTab === 'signups' || activeTab === 'dataview') && selectedItem.signup_status === 'pending'}
 						<Button
-							on:click={() => {
+							onclick={() => {
 								showApprovalConfirmation(selectedItem);
 								// updateSignupStatus(selectedItem.id, 'approved', true);
 								// showModal = false;
@@ -2691,7 +2691,7 @@
 							Approve & Create Member
 						</Button>
 						<Button
-							on:click={() => {
+							onclick={() => {
 								updateSignupStatus(selectedItem.id, 'waitlist');
 								selectedItem.signup_status = 'waitlist';
 							}}
@@ -2702,7 +2702,7 @@
 							Move to Waitlist
 						</Button>
 						<Button
-							on:click={() => {
+							onclick={() => {
 								updateSignupStatus(selectedItem.id, 'declined');
 								selectedItem.signup_status = 'declined';
 							}}
@@ -2716,7 +2716,7 @@
 
 					{#if activeTab === 'members'}
 						<Button
-							on:click={() => {
+							onclick={() => {
 								updateMember(selectedItem.id, {
 									is_active: !selectedItem.is_active
 								});

@@ -1087,7 +1087,7 @@
 					icon={MoreHorizontal}
 					aria-label="Chat session actions"
 					class="rounded-full border border-slate-200/60 bg-white/70 px-3 py-2 text-sm font-medium text-gray-700 shadow-sm backdrop-blur hover:bg-white/90 dark:border-slate-700/60 dark:bg-slate-900/70 dark:text-gray-200 dark:hover:bg-slate-900/90 disabled:opacity-40"
-					on:click={toggleSessionMenu}
+					onclick={toggleSessionMenu}
 					aria-haspopup="true"
 					aria-expanded={showSessionMenu}
 					disabled={!sessionActionId ||
@@ -1104,7 +1104,7 @@
 						<button
 							type="button"
 							class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-gray-700 transition-all duration-150 hover:bg-blue-500/10 hover:text-blue-600 dark:text-gray-200 dark:hover:bg-blue-500/20 dark:hover:text-blue-300"
-							on:click={openRenameDialog}
+							onclick={openRenameDialog}
 						>
 							<Pencil class="h-4 w-4" />
 							Rename chat
@@ -1112,7 +1112,7 @@
 						<button
 							type="button"
 							class="mt-1 flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-rose-500 transition-all duration-150 hover:bg-rose-500/10 dark:hover:bg-rose-500/20"
-							on:click={openDeleteDialog}
+							onclick={openDeleteDialog}
 						>
 							<Trash2 class="h-4 w-4" />
 							Delete chat
@@ -1126,7 +1126,7 @@
 				icon={Plus}
 				class="rounded-full border border-slate-200/60 bg-white/70 px-3 py-2 text-sm font-medium text-gray-700 shadow-sm backdrop-blur hover:bg-white/90 dark:border-slate-700/60 dark:bg-slate-900/70 dark:text-gray-200 dark:hover:bg-slate-900/90"
 				aria-label="Start new chat"
-				on:click={clearSession}
+				onclick={clearSession}
 			/>
 			<Button
 				variant="ghost"
@@ -1134,7 +1134,7 @@
 				icon={X}
 				class="rounded-full border border-slate-200/60 bg-white/70 px-3 py-2 text-sm font-medium text-gray-700 shadow-sm backdrop-blur hover:bg-white/90 dark:border-slate-700/60 dark:bg-slate-900/70 dark:text-gray-200 dark:hover:bg-slate-900/90"
 				aria-label="Close chat"
-				on:click={handleClose}
+				onclick={handleClose}
 			/>
 		</div>
 	</div>
@@ -1163,7 +1163,7 @@
 					size="sm"
 					icon={Plus}
 					aria-label="Start new chat"
-					on:click={clearSession}
+					onclick={clearSession}
 					class="hidden rounded-full border border-slate-200/60 bg-white/70 px-3 py-2 text-sm font-medium text-gray-700 backdrop-blur hover:bg-white/90 md:inline-flex dark:border-slate-700/60 dark:bg-slate-900/70 dark:text-gray-200 dark:hover:bg-slate-900/90"
 				/>
 			</div>
@@ -1183,7 +1183,7 @@
 						<button
 							type="button"
 							class="mt-3 text-xs font-medium text-primary-600 hover:underline dark:text-primary-400"
-							on:click={() => loadRecentSessions(true)}
+							onclick={() => loadRecentSessions(true)}
 						>
 							Try again
 						</button>
@@ -1207,7 +1207,7 @@
 										? 'border-blue-200/60 bg-gradient-to-r from-blue-50/90 via-indigo-50/80 to-purple-50/80 text-blue-700 shadow-sm ring-1 ring-blue-200/30 dark:border-blue-800/60 dark:from-blue-950/40 dark:via-indigo-950/40 dark:to-purple-950/40 dark:text-blue-200'
 										: 'border-transparent hover:border-slate-200/60 hover:bg-white/80 hover:shadow-sm dark:hover:border-slate-700/60 dark:hover:bg-slate-900/60'
 								} disabled:cursor-not-allowed disabled:opacity-60`}
-								on:click={() => handleSessionSelect(session.id)}
+								onclick={() => handleSessionSelect(session.id)}
 								disabled={isStreaming && activeSessionId !== session.id}
 							>
 								<div class="flex items-center justify-between gap-2">
@@ -1348,7 +1348,13 @@
 				<div
 					class="border-t border-slate-200/60 bg-white/85 px-4 py-5 backdrop-blur-xl dark:border-slate-700/60 dark:bg-slate-900/85 sm:px-6"
 				>
-					<form on:submit|preventDefault={sendMessage} class="space-y-3">
+					<form
+						onsubmit={(e) => {
+							e.preventDefault();
+							sendMessage();
+						}}
+						class="space-y-3"
+					>
 						<div class="relative">
 							<div
 								class="relative rounded-[28px] border border-slate-200/60 bg-white/90 shadow-[0_12px_32px_-20px_rgba(15,23,42,0.4)] transition duration-200 ease-out focus-within:border-blue-300 focus-within:shadow-[0_20px_48px_-24px_rgba(59,130,246,0.45)] focus-within:ring-1 focus-within:ring-blue-200/40 dark:border-slate-700/60 dark:bg-slate-900/80 dark:shadow-[0_20px_40px_-24px_rgba(15,23,42,0.6)] dark:focus-within:border-blue-500/40 dark:focus-within:ring-blue-500/20"
@@ -1361,7 +1367,7 @@
 									rows={1}
 									maxRows={8}
 									disabled={isStreaming || isInitializingRecording}
-									on:keydown={handleKeyDown}
+									onkeydown={handleKeyDown}
 								/>
 
 								<div class="absolute inset-y-1 right-2 flex items-end gap-2">
@@ -1374,7 +1380,7 @@
 													? 'border-blue-200 bg-gradient-to-br from-blue-500/20 to-indigo-500/20 text-blue-600 dark:border-blue-700 dark:text-blue-300'
 													: 'border-slate-200/60 bg-white/70 hover:bg-white/90 dark:border-slate-700/60 dark:bg-slate-900/70 dark:hover:bg-slate-900/90'
 										} ${voiceButtonState.disabled ? 'opacity-50 cursor-not-allowed hover:scale-100' : ''}`}
-										on:click={(event) => {
+										onclick={(event) => {
 											event.preventDefault();
 											void handleVoiceToggle();
 										}}
@@ -1480,7 +1486,7 @@
 						? 'chat-session-rename-title'
 						: 'chat-session-delete-title'}
 					tabindex="-1"
-					on:keydown={(event) => {
+					onkeydown={(event) => {
 						if (event.key === 'Escape' && !isSessionActionLoading) {
 							event.preventDefault();
 							closeSessionDialogs();
@@ -1488,7 +1494,7 @@
 					}}
 				>
 					{#if sessionDialog === 'rename'}
-						<form class="space-y-5" on:submit={submitRenameSession}>
+						<form class="space-y-5" onsubmit={submitRenameSession}>
 							<div>
 								<h3
 									id="chat-session-rename-title"
@@ -1511,7 +1517,7 @@
 									maxlength="120"
 									spellcheck="false"
 									aria-invalid={sessionActionError ? 'true' : 'false'}
-									on:keydown={(event) => {
+									onkeydown={(event) => {
 										if (event.key === 'Escape') {
 											event.preventDefault();
 											closeSessionDialogs();
@@ -1528,7 +1534,7 @@
 								<button
 									type="button"
 									class="rounded-full border border-slate-200/60 bg-white/70 px-5 py-2 text-sm font-medium text-gray-700 backdrop-blur transition hover:bg-white/90 dark:border-slate-700/60 dark:bg-slate-900/70 dark:text-gray-200 dark:hover:bg-slate-900/90 disabled:cursor-not-allowed disabled:opacity-60"
-									on:click={closeSessionDialogs}
+									onclick={closeSessionDialogs}
 									disabled={isSessionActionLoading}
 								>
 									Cancel
@@ -1565,7 +1571,7 @@
 								<button
 									type="button"
 									class="rounded-full border border-slate-200/60 bg-white/70 px-5 py-2 text-sm font-medium text-gray-700 backdrop-blur transition hover:bg-white/90 dark:border-slate-700/60 dark:bg-slate-900/70 dark:text-gray-200 dark:hover:bg-slate-900/90 disabled:cursor-not-allowed disabled:opacity-60"
-									on:click={closeSessionDialogs}
+									onclick={closeSessionDialogs}
 									disabled={isSessionActionLoading}
 								>
 									Cancel
@@ -1573,7 +1579,7 @@
 								<button
 									type="button"
 									class="rounded-full bg-gradient-to-r from-rose-500 to-rose-600 px-5 py-2 text-sm font-semibold text-white shadow-[0_12px_28px_-16px_rgba(244,63,94,0.6)] transition hover:scale-[1.02] hover:shadow-[0_16px_32px_-14px_rgba(225,29,72,0.6)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-400 disabled:cursor-not-allowed disabled:opacity-60"
-									on:click={confirmDeleteSession}
+									onclick={confirmDeleteSession}
 									disabled={isSessionActionLoading}
 								>
 									{isSessionActionLoading ? 'Deleting…' : 'Delete'}

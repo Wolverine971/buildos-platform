@@ -270,7 +270,7 @@
 				<div class="flex items-center gap-2 flex-wrap">
 					{#if !editingBriefPreferences}
 						<Button
-							on:click={() => startEditingBriefPreferences()}
+							onclick={() => startEditingBriefPreferences()}
 							variant="primary"
 							size="sm"
 							class="flex-1 sm:flex-initial"
@@ -280,7 +280,7 @@
 						</Button>
 					{:else}
 						<Button
-							on:click={() => resetBriefPreferences()}
+							onclick={() => resetBriefPreferences()}
 							variant="ghost"
 							size="sm"
 							class="text-xs sm:text-sm"
@@ -289,7 +289,7 @@
 							<span class="hidden sm:inline">Reset</span>
 						</Button>
 						<Button
-							on:click={() => cancelEditingBriefPreferences()}
+							onclick={() => cancelEditingBriefPreferences()}
 							variant="ghost"
 							size="sm"
 							class="text-xs sm:text-sm"
@@ -298,7 +298,7 @@
 							<span class="hidden sm:inline">Cancel</span>
 						</Button>
 						<Button
-							on:click={() => saveBriefPreferences()}
+							onclick={() => saveBriefPreferences()}
 							disabled={briefPreferencesState.isSaving}
 							variant="primary"
 							size="sm"
@@ -329,7 +329,7 @@
 					<p class="text-sm sm:text-base text-gray-500 dark:text-gray-400 mb-4">
 						Failed to load brief preferences
 					</p>
-					<Button on:click={loadBriefPreferences} variant="primary" size="sm">
+					<Button onclick={loadBriefPreferences} variant="primary" size="sm">
 						<RefreshCw class="w-4 h-4 mr-2" />
 						Retry
 					</Button>
@@ -413,7 +413,7 @@
 							<Select
 								id="brief-frequency"
 								bind:value={briefPreferencesForm.frequency}
-								on:change={(e) => (briefPreferencesForm.frequency = e.detail)}
+								onchange={(e) => (briefPreferencesForm.frequency = e.detail)}
 								size="md"
 							>
 								<option value="daily">Daily</option>
@@ -426,7 +426,7 @@
 								<Select
 									id="brief-day-of-week"
 									bind:value={briefPreferencesForm.day_of_week}
-									on:change={(e) => (briefPreferencesForm.day_of_week = e.detail)}
+									onchange={(e) => (briefPreferencesForm.day_of_week = e.detail)}
 									size="md"
 								>
 									{#each DAY_OPTIONS as day}
@@ -520,7 +520,7 @@
 				</div>
 				<div class="flex items-center gap-2">
 					<Button
-						on:click={refreshBriefJobs}
+						onclick={refreshBriefJobs}
 						disabled={refreshingJobs}
 						variant="ghost"
 						size="sm"
@@ -593,7 +593,7 @@
 								</span>
 								{#if job.status === 'pending'}
 									<Button
-										on:click={() => cancelBriefJob(job)}
+										onclick={() => cancelBriefJob(job)}
 										variant="ghost"
 										size="sm"
 										class="p-1 text-red-400 hover:text-red-600 dark:hover:text-red-300 rounded"

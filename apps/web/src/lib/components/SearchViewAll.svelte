@@ -109,7 +109,7 @@
 <div class="container mx-auto px-4 py-8 max-w-4xl">
 	<div class="mb-6">
 		<button
-			on:click={() => window.history.back()}
+			onclick={() => window.history.back()}
 			class="inline-flex items-center gap-2 text-primary-600 dark:text-primary-400
 			       hover:text-primary-700 dark:hover:text-primary-300 transition-colors duration-200"
 		>
@@ -131,7 +131,7 @@
 	<div class="space-y-4">
 		{#each results as result}
 			<button
-				on:click={() => navigateToItem(result)}
+				onclick={() => navigateToItem(result)}
 				class="w-full p-4 bg-white dark:bg-gray-800
 				       border-2 border-gray-200 dark:border-gray-700 rounded-lg
 				       hover:shadow-lg dark:hover:shadow-2xl
@@ -176,7 +176,7 @@
 	{#if hasMore}
 		<div class="mt-8 text-center">
 			<Button
-				on:click={() => loadResults(true)}
+				onclick={() => loadResults(true)}
 				variant="primary"
 				size="md"
 				loading={isLoading}

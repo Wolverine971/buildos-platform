@@ -407,8 +407,8 @@
 <div
 	id="phase-task-{task.id}"
 	draggable="true"
-	on:dragstart={handleDragStart}
-	on:dragend={handleDragEnd}
+	ondragstart={handleDragStart}
+	ondragend={handleDragEnd}
 	class="task-item group bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg cursor-move hover:shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-200 {isDragging
 		? 'dragging opacity-50'
 		: ''}"
@@ -429,7 +429,7 @@
 			<div class="flex-1 min-w-0">
 				<!-- Title Row -->
 				<button
-					on:click={handleEditTask}
+					onclick={handleEditTask}
 					class="w-full text-left {task.status === 'done'
 						? 'line-through text-gray-500 dark:text-gray-400'
 						: 'text-gray-900 dark:text-white'} hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-150 focus:outline-none"
@@ -492,7 +492,7 @@
 												id="mobile-datetime-{task.id}"
 												type="datetime-local"
 												bind:value={tempDateTime}
-												on:click={(e) => e.stopPropagation()}
+												onclick={(e) => e.stopPropagation()}
 												class="text-xs {dateEditError
 													? 'border-red-500'
 													: ''}"
@@ -502,7 +502,7 @@
 													: undefined}
 											/>
 											<Button
-												on:click={saveDate}
+												onclick={saveDate}
 												variant="ghost"
 												size="sm"
 												icon={Save}
@@ -510,7 +510,7 @@
 												aria-label="Save date"
 											/>
 											<Button
-												on:click={cancelDateEdit}
+												onclick={cancelDateEdit}
 												variant="ghost"
 												size="sm"
 												icon={X}
@@ -530,7 +530,7 @@
 									</div>
 								{:else}
 									<Button
-										on:click={startEditingDate}
+										onclick={startEditingDate}
 										variant="ghost"
 										size="sm"
 										class="!text-xs !p-0 !min-h-0 hover:!text-blue-600 dark:hover:!text-blue-400 justify-start"
@@ -554,7 +554,7 @@
 
 					<!-- Delete Button -->
 					<Button
-						on:click={handleDeleteTask}
+						onclick={handleDeleteTask}
 						variant="ghost"
 						size="sm"
 						icon={Trash2}
@@ -586,8 +586,8 @@
 				<div class="flex-1 min-w-0">
 					<!-- Title Row - Full width, clear and unobscured -->
 					<div class="flex items-start justify-between gap-2 mb-2">
-						<button
-							on:click={handleEditTask}
+						<Button
+							onclick={handleEditTask}
 							class="flex-1 text-left {task.status === 'done'
 								? 'line-through text-gray-500 dark:text-gray-400'
 								: 'text-gray-900 dark:text-white'} hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-150 focus:outline-none"
@@ -604,7 +604,7 @@
 									/>
 								{/if}
 							</span>
-						</button>
+						</Button>
 
 						{#if task.deleted_at}
 							<div class="text-xs text-red-500">
@@ -614,7 +614,7 @@
 
 						<!-- Delete Button -->
 						<Button
-							on:click={handleDeleteTask}
+							onclick={handleDeleteTask}
 							variant="ghost"
 							size="sm"
 							icon={Trash2}
@@ -669,7 +669,7 @@
 													id="kanban-datetime-{task.id}"
 													type="datetime-local"
 													bind:value={tempDateTime}
-													on:click={(e) => e.stopPropagation()}
+													onclick={(e) => e.stopPropagation()}
 													class="text-xs {dateEditError
 														? 'border-red-500'
 														: ''}"
@@ -679,7 +679,7 @@
 														: undefined}
 												/>
 												<Button
-													on:click={saveDate}
+													onclick={saveDate}
 													variant="ghost"
 													size="sm"
 													icon={Save}
@@ -687,7 +687,7 @@
 													aria-label="Save date"
 												/>
 												<Button
-													on:click={cancelDateEdit}
+													onclick={cancelDateEdit}
 													variant="ghost"
 													size="sm"
 													icon={X}
@@ -707,7 +707,7 @@
 										</div>
 									{:else}
 										<Button
-											on:click={startEditingDate}
+											onclick={startEditingDate}
 											variant="ghost"
 											size="sm"
 											class="!text-xs !p-0 !min-h-0 hover:!text-blue-600 dark:hover:!text-blue-400"
@@ -743,7 +743,7 @@
 
 			<!-- Title -->
 			<button
-				on:click={handleEditTask}
+				onclick={handleEditTask}
 				class="flex-1 text-left {task.status === 'done'
 					? 'line-through text-gray-500 dark:text-gray-400'
 					: 'text-gray-900 dark:text-white'} hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-150 focus:outline-none truncate"
@@ -800,7 +800,7 @@
 										id="desktop-datetime-{task.id}"
 										type="datetime-local"
 										bind:value={tempDateTime}
-										on:click={(e) => e.stopPropagation()}
+										onclick={(e) => e.stopPropagation()}
 										class="text-xs w-40 {dateEditError ? 'border-red-500' : ''}"
 										size="sm"
 										aria-describedby={dateEditError
@@ -808,7 +808,7 @@
 											: undefined}
 									/>
 									<Button
-										on:click={saveDate}
+										onclick={saveDate}
 										variant="ghost"
 										size="sm"
 										icon={Save}
@@ -816,7 +816,7 @@
 										aria-label="Save date"
 									/>
 									<Button
-										on:click={cancelDateEdit}
+										onclick={cancelDateEdit}
 										variant="ghost"
 										size="sm"
 										icon={X}
@@ -836,7 +836,7 @@
 							</div>
 						{:else}
 							<Button
-								on:click={startEditingDate}
+								onclick={startEditingDate}
 								variant="ghost"
 								size="sm"
 								class="!text-xs !p-1 !min-h-0 hover:!text-blue-600 dark:hover:!text-blue-400 w-20 text-left"
@@ -853,7 +853,7 @@
 
 			<!-- Delete Button -->
 			<Button
-				on:click={handleDeleteTask}
+				onclick={handleDeleteTask}
 				variant="ghost"
 				size="sm"
 				icon={Trash2}

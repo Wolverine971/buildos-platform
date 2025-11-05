@@ -166,7 +166,7 @@
 	<Button
 		variant="primary"
 		size="lg"
-		on:click={onStart}
+		onclick={onStart}
 		class="px-10 py-4 text-lg font-semibold shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 bg-gradient-to-r from-purple-600 via-blue-600 to-indigo-600 hover:from-purple-700 hover:via-blue-700 hover:to-indigo-700 border-none"
 	>
 		<span class="flex items-center gap-3">

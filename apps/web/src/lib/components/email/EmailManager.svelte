@@ -229,7 +229,7 @@
 		<div>
 			{#if activeView !== 'list'}
 				<Button
-					on:click={backToList}
+					onclick={backToList}
 					variant="ghost"
 					size="sm"
 					icon={ChevronLeft}
@@ -263,7 +263,7 @@
 					{totalItems} total emails
 				</div>
 				<Button
-					on:click={loadEmails}
+					onclick={loadEmails}
 					disabled={isLoading}
 					variant="secondary"
 					size="md"
@@ -272,7 +272,7 @@
 				>
 					Refresh
 				</Button>
-				<Button on:click={createNewEmail} variant="primary" size="md" icon={Plus}>
+				<Button onclick={createNewEmail} variant="primary" size="md" icon={Plus}>
 					Compose Email
 				</Button>
 			</div>
@@ -295,7 +295,7 @@
 			<!-- Mobile Filter Toggle -->
 			<div class="sm:hidden mb-4">
 				<Button
-					on:click={() => (showMobileFilters = !showMobileFilters)}
+					onclick={() => (showMobileFilters = !showMobileFilters)}
 					variant="ghost"
 					size="md"
 					icon={Filter}
@@ -328,7 +328,7 @@
 				<FormField label="Status" labelFor="mobile-status-filter">
 					<Select
 						bind:value={statusFilter}
-						on:change={(e) => (statusFilter = e.detail)}
+						onchange={(e) => (statusFilter = e.detail)}
 						size="md"
 						placeholder="All Status"
 						id="mobile-status-filter"
@@ -346,7 +346,7 @@
 				<FormField label="Sort By" labelFor="mobile-sort-by">
 					<Select
 						bind:value={sortBy}
-						on:change={(e) => (sortBy = e.detail)}
+						onchange={(e) => (sortBy = e.detail)}
 						size="md"
 						placeholder="Date Created"
 						id="mobile-sort-by"
@@ -382,7 +382,7 @@
 						bind:value={statusFilter}
 						size="md"
 						placeholder="All Status"
-						on:change={(e) => (statusFilter = e.detail)}
+						onchange={(e) => (statusFilter = e.detail)}
 					>
 						<option value="all">All Status</option>
 						<option value="draft">Draft</option>
@@ -399,7 +399,7 @@
 						bind:value={sortBy}
 						size="md"
 						placeholder="Date Created"
-						on:change={(e) => (sortBy = e.detail)}
+						onchange={(e) => (sortBy = e.detail)}
 					>
 						<option value="created_at">Date Created</option>
 						<option value="subject">Subject</option>
@@ -428,7 +428,7 @@
 							? 'Try adjusting your search criteria.'
 							: 'Start by creating your first email.'}
 					</p>
-					<Button on:click={createNewEmail} variant="primary" size="md" icon={Plus}>
+					<Button onclick={createNewEmail} variant="primary" size="md" icon={Plus}>
 						Compose Email
 					</Button>
 				</div>
@@ -450,7 +450,7 @@
 								</div>
 								<div class="flex items-center space-x-2 ml-3">
 									<Button
-										on:click={() => viewEmail(email)}
+										onclick={() => viewEmail(email)}
 										variant="ghost"
 										size="sm"
 										icon={Eye}
@@ -459,7 +459,7 @@
 									/>
 									{#if email.status === 'draft' || email.status === 'scheduled'}
 										<Button
-											on:click={() => editEmail(email)}
+											onclick={() => editEmail(email)}
 											variant="ghost"
 											size="sm"
 											icon={Edit}
@@ -469,7 +469,7 @@
 									{/if}
 									{#if email.status === 'draft'}
 										<Button
-											on:click={() => confirmDeleteEmail(email)}
+											onclick={() => confirmDeleteEmail(email)}
 											variant="ghost"
 											size="sm"
 											icon={Trash2}
@@ -607,7 +607,7 @@
 									>
 										<div class="flex items-center justify-end space-x-2">
 											<Button
-												on:click={() => viewEmail(email)}
+												onclick={() => viewEmail(email)}
 												variant="ghost"
 												size="sm"
 												icon={Eye}
@@ -616,7 +616,7 @@
 											/>
 											{#if email.status === 'draft' || email.status === 'scheduled'}
 												<Button
-													on:click={() => editEmail(email)}
+													onclick={() => editEmail(email)}
 													variant="ghost"
 													size="sm"
 													icon={Edit}
@@ -626,7 +626,7 @@
 											{/if}
 											{#if email.status === 'draft'}
 												<Button
-													on:click={() => confirmDeleteEmail(email)}
+													onclick={() => confirmDeleteEmail(email)}
 													variant="ghost"
 													size="sm"
 													icon={Trash2}
@@ -649,7 +649,7 @@
 					>
 						<div class="flex-1 flex justify-between sm:hidden">
 							<Button
-								on:click={prevPage}
+								onclick={prevPage}
 								disabled={currentPage === 1}
 								variant="secondary"
 								size="sm"
@@ -662,7 +662,7 @@
 								{currentPage} of {totalPages}
 							</span>
 							<Button
-								on:click={nextPage}
+								onclick={nextPage}
 								disabled={currentPage === totalPages}
 								variant="secondary"
 								size="sm"
@@ -682,7 +682,7 @@
 									class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px"
 								>
 									<Button
-										on:click={prevPage}
+										onclick={prevPage}
 										disabled={currentPage === 1}
 										variant="secondary"
 										size="sm"
@@ -690,7 +690,7 @@
 										class="!rounded-r-none"
 									/>
 									<Button
-										on:click={nextPage}
+										onclick={nextPage}
 										disabled={currentPage === totalPages}
 										variant="secondary"
 										size="sm"

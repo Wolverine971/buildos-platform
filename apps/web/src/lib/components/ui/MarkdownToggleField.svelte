@@ -84,7 +84,7 @@
 		<div class="flex justify-end mb-2">
 			<Button
 				type="button"
-				on:click={toggleMode}
+				onclick={toggleMode}
 				{disabled}
 				variant="ghost"
 				size="sm"
@@ -108,9 +108,9 @@
 			<Textarea
 				bind:this={textareaElement}
 				value={internalValue}
-				on:change={handleInput}
-				on:blur={handleBlur}
-				on:keydown={handleKeydown}
+				onchange={handleInput}
+				onblur={handleBlur}
+				onkeydown={handleKeydown}
 				{rows}
 				{disabled}
 				{placeholder}
@@ -127,8 +127,8 @@
 				class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800 min-h-[2.5rem] cursor-pointer transition-colors hover:bg-gray-100 dark:hover:bg-gray-700 {showPlaceholder
 					? 'flex items-center'
 					: ''}"
-				on:click={toggleMode}
-				on:keydown={(e) => (e.key === 'Enter' || e.key === ' ') && toggleMode()}
+				onclick={toggleMode}
+				onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && toggleMode()}
 				role="button"
 				tabindex={disabled ? -1 : 0}
 				aria-label="Click to edit content"

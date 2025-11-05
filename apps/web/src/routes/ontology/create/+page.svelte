@@ -56,8 +56,8 @@
 
 	let { data } = $props();
 
-	const grouped = $derived(data.grouped as Record<string, Template[]> || {});
-	const facets = $derived(data.facets as Record<string, FacetValue[]> || {});
+	const grouped = $derived((data.grouped as Record<string, Template[]>) || {});
+	const facets = $derived((data.facets as Record<string, FacetValue[]>) || {});
 
 	const facetOptions = $derived({
 		context: facets.context ?? [],
@@ -119,7 +119,9 @@
 				? (template.schema.required as string[])
 				: [];
 
-			for (const [key, schema] of Object.entries(template.schema.properties as Record<string, JSONSchemaProperty>)) {
+			for (const [key, schema] of Object.entries(
+				template.schema.properties as Record<string, JSONSchemaProperty>
+			)) {
 				const isRequired = required.includes(key);
 				let initial: unknown;
 

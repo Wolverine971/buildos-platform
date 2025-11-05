@@ -179,7 +179,7 @@
 		</div>
 		{#if !isProcessing}
 			<Button
-				on:click={handleCancel}
+				onclick={handleCancel}
 				variant="ghost"
 				size="sm"
 				icon={X}
@@ -230,7 +230,7 @@
 								variant="ghost"
 								size="sm"
 								icon={showErrorDetails ? EyeOff : Eye}
-								on:click={() => (showErrorDetails = !showErrorDetails)}
+								onclick={() => (showErrorDetails = !showErrorDetails)}
 								class="text-amber-700 dark:text-amber-300 hover:text-amber-800 dark:hover:text-amber-200"
 							>
 								{showErrorDetails
@@ -384,7 +384,7 @@
 							<!-- Actions -->
 							<div class="flex items-center gap-1">
 								<Button
-									on:click={() => handleEditOperation(operation)}
+									onclick={() => handleEditOperation(operation)}
 									variant="ghost"
 									size="sm"
 									icon={Edit3}
@@ -394,7 +394,7 @@
 									title={hasError ? 'Fix operation errors' : 'Edit operation'}
 								/>
 								<Button
-									on:click={() => handleRemoveOperation(operation.id)}
+									onclick={() => handleRemoveOperation(operation.id)}
 									variant="ghost"
 									size="sm"
 									icon={Trash2}
@@ -403,7 +403,7 @@
 								/>
 
 								<Button
-									on:click={() => toggleOperationExpansion(operation.id)}
+									onclick={() => toggleOperationExpansion(operation.id)}
 									variant="ghost"
 									size="sm"
 									icon={Eye}
@@ -417,7 +417,7 @@
 									<input
 										type="checkbox"
 										checked={!isDisabled}
-										on:change={() => handleToggleOperation(operation.id)}
+										onchange={() => handleToggleOperation(operation.id)}
 										class="w-5 h-5 text-primary-600 border-gray-300 rounded focus:ring-primary-500 !p-2"
 									/>
 								{:else}
@@ -668,7 +668,7 @@
 				<Button
 					variant="secondary"
 					size="sm"
-					on:click={handleCancel}
+					onclick={handleCancel}
 					disabled={isProcessing}
 					class="px-3 sm:px-4"
 				>
@@ -679,7 +679,7 @@
 					variant="primary"
 					size="sm"
 					disabled={isProcessing || enabledValidOperations.length === 0}
-					on:click={handleApply}
+					onclick={handleApply}
 					loading={isProcessing || applyingChanges}
 					icon={criticalErrors.length > 0 ? AlertTriangle : undefined}
 					class="{criticalErrors.length > 0

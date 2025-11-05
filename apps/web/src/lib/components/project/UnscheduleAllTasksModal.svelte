@@ -327,7 +327,7 @@
 	>
 		<div class="flex flex-col-reverse sm:flex-row gap-2 sm:gap-4 sm:justify-end">
 			<Button
-				on:click={handleClose}
+				onclick={handleClose}
 				variant="outline"
 				disabled={loading}
 				class="w-full sm:w-auto"
@@ -335,7 +335,7 @@
 				Cancel
 			</Button>
 			<Button
-				on:click={handleUnschedule}
+				onclick={handleUnschedule}
 				variant="danger"
 				disabled={loading}
 				{loading}

@@ -173,7 +173,7 @@
 			<div class="flex flex-col sm:flex-row gap-4">
 				<Select
 					bind:value={selectedPeriod}
-					on:change={(e) => (selectedPeriod = e.detail)}
+					onchange={(e) => (selectedPeriod = e.detail)}
 					size="md"
 				>
 					<option value="month">Monthly</option>
@@ -184,7 +184,7 @@
 				{#if selectedPeriod === 'month'}
 					<Select
 						bind:value={selectedMonth}
-						on:change={(e) => (selectedMonth = e.detail)}
+						onchange={(e) => (selectedMonth = e.detail)}
 						size="md"
 					>
 						{#each Array(12) as _, i}
@@ -197,7 +197,7 @@
 
 				<Select
 					bind:value={selectedYear}
-					on:change={(e) => (selectedYear = e.detail)}
+					onchange={(e) => (selectedYear = e.detail)}
 					size="md"
 				>
 					{#each Array(5) as _, i}
@@ -209,12 +209,12 @@
 
 				<div class="flex-1"></div>
 
-				<Button on:click={exportRevenue} variant="primary" size="md" icon={Download}>
+				<Button onclick={exportRevenue} variant="primary" size="md" icon={Download}>
 					Export
 				</Button>
 
 				<Button
-					on:click={loadRevenueData}
+					onclick={loadRevenueData}
 					disabled={isLoading}
 					loading={isLoading}
 					variant="secondary"

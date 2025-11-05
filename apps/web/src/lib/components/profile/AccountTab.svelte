@@ -235,7 +235,7 @@
 				aria-label="Account sections"
 			>
 				<Button
-					on:click={() => switchSection('profile')}
+					onclick={() => switchSection('profile')}
 					disabled={loading}
 					variant="ghost"
 					size="md"
@@ -249,7 +249,7 @@
 					<span class="sm:hidden">Profile</span>
 				</Button>
 				<Button
-					on:click={() => switchSection('password')}
+					onclick={() => switchSection('password')}
 					disabled={loading}
 					variant="ghost"
 					size="md"
@@ -263,7 +263,7 @@
 					<span class="sm:hidden">Password</span>
 				</Button>
 				<Button
-					on:click={() => switchSection('danger')}
+					onclick={() => switchSection('danger')}
 					disabled={loading}
 					variant="ghost"
 					size="md"
@@ -325,7 +325,7 @@
 
 					<div class="flex justify-end">
 						<Button
-							on:click={updateProfile}
+							onclick={updateProfile}
 							disabled={loading}
 							variant="primary"
 							size="md"
@@ -370,7 +370,7 @@
 								/>
 								<button
 									type="button"
-									on:click={() => (showCurrentPassword = !showCurrentPassword)}
+									onclick={() => (showCurrentPassword = !showCurrentPassword)}
 									class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
 								>
 									{#if showCurrentPassword}
@@ -399,7 +399,7 @@
 								/>
 								<button
 									type="button"
-									on:click={() => (showNewPassword = !showNewPassword)}
+									onclick={() => (showNewPassword = !showNewPassword)}
 									class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
 								>
 									{#if showNewPassword}
@@ -427,7 +427,7 @@
 								/>
 								<button
 									type="button"
-									on:click={() => (showConfirmPassword = !showConfirmPassword)}
+									onclick={() => (showConfirmPassword = !showConfirmPassword)}
 									class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
 								>
 									{#if showConfirmPassword}
@@ -442,7 +442,7 @@
 
 					<div class="flex justify-end">
 						<Button
-							on:click={updatePassword}
+							onclick={updatePassword}
 							disabled={loading}
 							variant="primary"
 							size="md"
@@ -501,7 +501,7 @@
 
 						<div class="flex justify-end mt-4 sm:mt-6">
 							<Button
-								on:click={() => (showDeleteConfirmation = true)}
+								onclick={() => (showDeleteConfirmation = true)}
 								disabled={loading}
 								variant="outline"
 								size="md"

@@ -249,7 +249,7 @@
 	<div class="relative">
 		<textarea
 			bind:value={instructions}
-			on:input={handleTextInput}
+			oninput={handleTextInput}
 			{placeholder}
 			{disabled}
 			maxlength={maxLength}
@@ -261,7 +261,7 @@
 		{#if isVoiceSupported}
 			<div class="absolute top-2 right-2">
 				<button
-					on:click={handleVoiceToggle}
+					onclick={handleVoiceToggle}
 					disabled={voiceButtonState.disabled}
 					class="w-9 h-9 p-0 rounded-full flex items-center justify-center transition-all duration-200 {isCurrentlyRecording
 						? 'bg-red-600 hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600 text-white scale-110 animate-recording-pulse shadow-lg'

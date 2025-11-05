@@ -142,7 +142,7 @@
 
 			<!-- CTA Button with enhanced gradient -->
 			<Button
-				on:click={handleStartBrainDump}
+				onclick={handleStartBrainDump}
 				variant="primary"
 				size="lg"
 				class="w-full sm:w-auto min-w-[240px] px-8 py-4 text-base font-semibold shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 bg-gradient-to-r from-purple-600 via-blue-600 to-indigo-600 hover:from-purple-700 hover:via-blue-700 hover:to-indigo-700 border-none"
@@ -211,7 +211,7 @@
 					Have another project in mind? Brain dump it to get started.
 				</p>
 				<Button
-					on:click={handleStartBrainDump}
+					onclick={handleStartBrainDump}
 					variant="outline"
 					size="sm"
 					class="hover:bg-purple-50 dark:hover:bg-purple-900/30 border-purple-300 dark:border-purple-600 text-purple-700 dark:text-purple-300 font-medium transition-all duration-200"

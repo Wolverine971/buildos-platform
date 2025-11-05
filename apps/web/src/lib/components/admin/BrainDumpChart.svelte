@@ -135,8 +135,8 @@
 							stroke="white"
 							stroke-width="2"
 							class="hover:r-6 cursor-pointer transition-all"
-							on:mouseenter={() => (hoveredPoint = { point, x, y })}
-							on:mouseleave={() => (hoveredPoint = null)}
+							onmouseenter={() => (hoveredPoint = { point, x, y })}
+							onmouseleave={() => (hoveredPoint = null)}
 						/>
 
 						<!-- Month labels -->

@@ -161,7 +161,7 @@
 								<button
 									type="button"
 									class="inline-flex items-center justify-center rounded-md border border-blue-400/40 bg-blue-500/10 px-3 py-1.5 text-xs font-medium text-blue-600 transition hover:bg-blue-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 disabled:cursor-not-allowed disabled:opacity-50 dark:border-blue-500/40 dark:bg-blue-500/20 dark:text-blue-100 dark:hover:bg-blue-500/30"
-									on:click={() => handleRegenerate(block.id)}
+									onclick={() => handleRegenerate(block.id)}
 									disabled={isRegenerating(block.id)}
 								>
 									{#if isRegenerating(block.id)}
@@ -176,7 +176,7 @@
 								<button
 									type="button"
 									class="inline-flex items-center justify-center rounded-md border border-rose-400/40 bg-rose-500/10 px-3 py-1.5 text-xs font-medium text-rose-600 transition hover:bg-rose-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/40 dark:border-rose-400/40 dark:bg-rose-400/10 dark:text-rose-200 dark:hover:bg-rose-400/20"
-									on:click={() => handleDelete(block.id)}
+									onclick={() => handleDelete(block.id)}
 								>
 									Delete
 								</button>

@@ -189,8 +189,8 @@
 			       border-2 border-gray-300 dark:border-gray-600 rounded-lg
 			       focus:ring-2 focus:ring-primary-500 focus:border-transparent
 			       dark:focus:ring-primary-400 transition-all duration-200"
-			on:input={handleInput}
-			on:keydown={handleKeyDown}
+			oninput={handleInput}
+			onkeydown={handleKeyDown}
 			aria-label="Search"
 			aria-autocomplete="list"
 			aria-controls="search-results"
@@ -207,7 +207,7 @@
 
 		{#if searchQuery}
 			<button
-				on:click={closeSearch}
+				onclick={closeSearch}
 				class="absolute inset-y-0 right-0 flex items-center pr-3 transition-colors duration-200"
 				aria-label="Clear search"
 			>
@@ -247,7 +247,7 @@
 						</div>
 						{#each results.braindumps as result, index}
 							<button
-								on:click={() => navigateToItem(result)}
+								onclick={() => navigateToItem(result)}
 								class="w-full px-4 py-3 text-left transition-all duration-200
 								       hover:bg-gradient-to-r hover:from-blue-50/50 hover:to-purple-50/50
 								       dark:hover:from-blue-900/20 dark:hover:to-purple-900/20
@@ -312,7 +312,7 @@
 						{/each}
 						{#if hasMore.braindumps}
 							<button
-								on:click={() => loadMore('braindump')}
+								onclick={() => loadMore('braindump')}
 								class="w-full px-4 py-2 text-sm font-medium text-primary-600 dark:text-primary-400
 								       hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50
 								       dark:hover:from-blue-900/20 dark:hover:to-purple-900/20
@@ -336,7 +336,7 @@
 						</div>
 						{#each results.projects as result, index}
 							<button
-								on:click={() => navigateToItem(result)}
+								onclick={() => navigateToItem(result)}
 								class="w-full px-4 py-3 text-left transition-all duration-200
 								       hover:bg-gradient-to-r hover:from-blue-50/50 hover:to-purple-50/50
 								       dark:hover:from-blue-900/20 dark:hover:to-purple-900/20
@@ -398,7 +398,7 @@
 						{/each}
 						{#if hasMore.projects}
 							<button
-								on:click={() => loadMore('project')}
+								onclick={() => loadMore('project')}
 								class="w-full px-4 py-2 text-sm font-medium text-primary-600 dark:text-primary-400
 								       hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50
 								       dark:hover:from-blue-900/20 dark:hover:to-purple-900/20
@@ -422,7 +422,7 @@
 						</div>
 						{#each results.tasks as result, index}
 							<button
-								on:click={() => navigateToItem(result)}
+								onclick={() => navigateToItem(result)}
 								class="w-full px-4 py-3 text-left transition-all duration-200
 								       hover:bg-gradient-to-r hover:from-blue-50/50 hover:to-purple-50/50
 								       dark:hover:from-blue-900/20 dark:hover:to-purple-900/20
@@ -475,7 +475,7 @@
 						{/each}
 						{#if hasMore.tasks}
 							<button
-								on:click={() => loadMore('task')}
+								onclick={() => loadMore('task')}
 								class="w-full px-4 py-2 text-sm font-medium text-primary-600 dark:text-primary-400
 								       hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50
 								       dark:hover:from-blue-900/20 dark:hover:to-purple-900/20

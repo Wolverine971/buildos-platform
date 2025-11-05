@@ -79,7 +79,11 @@ export class ExecutorCoordinator {
 
 		const executorSystemPrompt =
 			this.options.defaultSystemPrompt ??
-			this.buildExecutorPrompt(params, context, tools.map((tool) => this.getToolName(tool)));
+			this.buildExecutorPrompt(
+				params,
+				context,
+				tools.map((tool) => this.getToolName(tool))
+			);
 
 		const executorAgentId = await this.createExecutorAgentRecord(
 			params,
@@ -185,10 +189,7 @@ export class ExecutorCoordinator {
 	/**
 	 * Build executor task payload
 	 */
-	private buildExecutorTask(
-		params: ExecutorSpawnParams,
-		context: ServiceContext
-	): ExecutorTask {
+	private buildExecutorTask(params: ExecutorSpawnParams, context: ServiceContext): ExecutorTask {
 		const contextData = Object.fromEntries(params.previousStepResults.entries());
 
 		return {

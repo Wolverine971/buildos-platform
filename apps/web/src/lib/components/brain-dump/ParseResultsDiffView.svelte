@@ -498,7 +498,7 @@
 		</div>
 		{#if !isProcessing}
 			<Button
-				on:click={handleCancel}
+				onclick={handleCancel}
 				variant="ghost"
 				size="sm"
 				icon={X}
@@ -626,7 +626,7 @@
 										</div>
 										<div class="flex items-center gap-1 flex-shrink-0">
 											<button
-												on:click={(e) => {
+												onclick={(e) => {
 													e.stopPropagation();
 													toggleOperationExpansion(operation.id, e);
 												}}
@@ -636,7 +636,7 @@
 												<Eye class="w-3.5 h-3.5" />
 											</button>
 											<button
-												on:click={(e) => {
+												onclick={(e) => {
 													e.stopPropagation();
 													handleEditOperation(operation, e);
 												}}
@@ -652,7 +652,7 @@
 												{/if}
 											</button>
 											<button
-												on:click={(e) => {
+												onclick={(e) => {
 													e.stopPropagation();
 													handleRemoveOperation(operation.id, e);
 												}}
@@ -672,7 +672,7 @@
 												checked={!isDisabled}
 												disabled={isProcessing ||
 													isActionLoading(operation.id, 'toggle')}
-												on:change={(e) => {
+												onchange={(e) => {
 													e.stopPropagation();
 													handleToggleOperation(operation.id, e);
 												}}
@@ -994,7 +994,7 @@
 										</div>
 										<div class="flex items-center gap-1 flex-shrink-0">
 											<button
-												on:click={(e) => {
+												onclick={(e) => {
 													e.stopPropagation();
 													toggleOperationExpansion(operation.id, e);
 												}}
@@ -1004,7 +1004,7 @@
 												<Eye class="w-3.5 h-3.5" />
 											</button>
 											<button
-												on:click={(e) => {
+												onclick={(e) => {
 													e.stopPropagation();
 													handleEditOperation(operation, e);
 												}}
@@ -1020,7 +1020,7 @@
 												{/if}
 											</button>
 											<button
-												on:click={(e) => {
+												onclick={(e) => {
 													e.stopPropagation();
 													handleRemoveOperation(operation.id, e);
 												}}
@@ -1040,7 +1040,7 @@
 												checked={!isDisabled}
 												disabled={isProcessing ||
 													isActionLoading(operation.id, 'toggle')}
-												on:change={(e) => {
+												onchange={(e) => {
 													e.stopPropagation();
 													handleToggleOperation(operation.id, e);
 												}}
@@ -1289,7 +1289,7 @@
 							type="checkbox"
 							id="auto-accept-next-time"
 							bind:checked={autoAcceptEnabled}
-							on:change={handleAutoAcceptToggle}
+							onchange={handleAutoAcceptToggle}
 							class="w-4 h-4 text-purple-600 border-purple-300 rounded focus:ring-purple-500 focus:ring-2"
 						/>
 						<label
@@ -1307,7 +1307,7 @@
 					{#if autoAcceptEnabled && canAutoAcceptCurrent}
 						<Button
 							size="sm"
-							on:click={handleApplyAutoAccept}
+							onclick={handleApplyAutoAccept}
 							disabled={isProcessing || applyingChanges || isApplying}
 							class="ml-auto px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white"
 							loading={acceptLoading}
@@ -1323,7 +1323,7 @@
 				<Button
 					variant="secondary"
 					size="sm"
-					on:click={handleCancel}
+					onclick={handleCancel}
 					disabled={isProcessing}
 					class="px-3 sm:px-4"
 				>
@@ -1334,7 +1334,7 @@
 					variant="primary"
 					size="sm"
 					disabled={isProcessing || isApplying || enabledValidOperations.length === 0}
-					on:click={handleApply}
+					onclick={handleApply}
 					loading={isProcessing || applyingChanges || isApplying}
 					icon={criticalErrors.length > 0 ? AlertTriangle : undefined}
 					class="{criticalErrors.length > 0

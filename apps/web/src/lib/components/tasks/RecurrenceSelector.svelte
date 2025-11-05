@@ -113,7 +113,7 @@
 					name="recurrence-end"
 					value="never"
 					checked={endOption === 'never'}
-					on:change={() => (endOption = 'never')}
+					onchange={() => (endOption = 'never')}
 					class="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
 				/>
 				<span class="text-sm text-gray-900 dark:text-gray-100">Never</span>
@@ -128,7 +128,7 @@
 						name="recurrence-end"
 						value="date"
 						checked={endOption === 'date'}
-						on:change={() => (endOption = 'date')}
+						onchange={() => (endOption = 'date')}
 						class="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
 					/>
 					<span class="text-sm text-gray-900 dark:text-gray-100">On date</span>

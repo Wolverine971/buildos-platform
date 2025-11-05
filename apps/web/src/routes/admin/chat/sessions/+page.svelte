@@ -189,7 +189,7 @@
 				<!-- Timeframe -->
 				<Select
 					bind:value={selectedTimeframe}
-					on:change={(e) => (selectedTimeframe = e.detail)}
+					onchange={(e) => (selectedTimeframe = e.detail)}
 					size="md"
 					placeholder="Last 7 Days"
 				>
@@ -200,7 +200,7 @@
 
 				<!-- Refresh -->
 				<Button
-					on:click={loadSessions}
+					onclick={loadSessions}
 					disabled={isLoading}
 					variant="secondary"
 					size="sm"
@@ -215,7 +215,7 @@
 		<!-- Search and Filters -->
 		<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 mb-6">
 			<!-- Search Bar -->
-			<form on:submit={handleSearch} class="mb-4">
+			<form onsubmit={handleSearch} class="mb-4">
 				<div class="flex items-center space-x-2">
 					<div class="flex-1 relative">
 						<Search
@@ -234,7 +234,7 @@
 
 			<!-- Filter Toggle -->
 			<button
-				on:click={() => (showFilters = !showFilters)}
+				onclick={() => (showFilters = !showFilters)}
 				class="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
 			>
 				<Filter class="h-4 w-4" />
@@ -258,7 +258,7 @@
 						</label>
 						<Select
 							bind:value={selectedStatus}
-							on:change={(e) => (selectedStatus = e.detail)}
+							onchange={(e) => (selectedStatus = e.detail)}
 							size="md"
 						>
 							<option value="all">All Statuses</option>
@@ -277,7 +277,7 @@
 						</label>
 						<Select
 							bind:value={selectedContextType}
-							on:change={(e) => (selectedContextType = e.detail)}
+							onchange={(e) => (selectedContextType = e.detail)}
 							size="md"
 						>
 							<option value="all">All Contexts</option>
@@ -332,8 +332,8 @@
 		{:else}
 			<div class="space-y-4">
 				{#each sessions as session}
-					<button
-						on:click={() => viewSession(session.id)}
+					<Button
+						onclick={() => viewSession(session.id)}
 						class="w-full bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg transition-shadow text-left"
 					>
 						<!-- Header -->
@@ -424,7 +424,7 @@
 								</span>
 							{/if}
 						</div>
-					</button>
+					</Button>
 				{/each}
 			</div>
 
@@ -438,7 +438,7 @@
 				</div>
 				<div class="flex items-center space-x-2">
 					<Button
-						on:click={previousPage}
+						onclick={previousPage}
 						disabled={currentPage === 1}
 						variant="secondary"
 						size="sm"
@@ -449,7 +449,7 @@
 						Page {currentPage} of {Math.ceil(totalSessions / pageSize)}
 					</span>
 					<Button
-						on:click={nextPage}
+						onclick={nextPage}
 						disabled={currentPage * pageSize >= totalSessions}
 						variant="secondary"
 						size="sm"

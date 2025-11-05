@@ -158,7 +158,10 @@
 
 			<button
 				type="button"
-				on:click|stopPropagation={() => notification.actions.reviewResults?.()}
+				onclick={(e) => {
+					e.stopPropagation();
+					notification.actions.reviewResults?.();
+				}}
 				class="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium transition-colors"
 			>
 				Review Results →
@@ -171,7 +174,10 @@
 			</p>
 			<button
 				type="button"
-				on:click|stopPropagation={() => notification.actions.retry?.()}
+				onclick={(e) => {
+					e.stopPropagation();
+					notification.actions.retry?.();
+				}}
 				class="text-xs text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 font-medium transition-colors"
 			>
 				Retry Synthesis

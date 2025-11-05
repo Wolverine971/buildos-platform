@@ -118,7 +118,7 @@
 				>
 				<div class="flex items-center space-x-2">
 					<Button
-						on:click={() => {
+						onclick={() => {
 							const newWindow = window.open('', '_blank');
 							newWindow.document.write(emailHTML);
 							newWindow.document.close();

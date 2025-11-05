@@ -60,8 +60,8 @@
 	let previousPath = $state('');
 	let isDark = $state(false);
 	let showChatModal = $state(false);
+	let showBrainDumpModal = $state(false);
 
-	const showBrainDumpModal = $derived($brainDumpModalIsOpen);
 	const currentPath = $derived($page.url.pathname);
 	const storeProject = $derived($brainDumpV2Store?.core?.selectedProject ?? null);
 	const routeProject = $derived(
@@ -115,6 +115,11 @@
 			loadingLink = '';
 			closeAllMenus();
 		}
+	});
+
+	// Sync showBrainDumpModal with the store
+	$effect(() => {
+		showBrainDumpModal = $brainDumpModalIsOpen;
 	});
 
 	async function handleSignOut() {
@@ -217,10 +222,13 @@
 		brainDumpV2Store.closeModal();
 	}
 
-	function handleOpenChat(detail?: { projectId: string; chatType: string }) {
+	function handleOpenChat(
+		detailOrEvent?: { projectId: string; chatType: string } | MouseEvent | CustomEvent
+	) {
 		closeAllMenus();
 		showChatModal = true;
 		// TODO: Pass projectId and chatType to AgentChatModal when needed
+		// If detailOrEvent has projectId, it's the detail object we need
 	}
 
 	function handleChatClose() {
@@ -269,7 +277,7 @@
 			<div class="flex items-center min-w-0 flex-1">
 				<!-- Logo -->
 				<div class="flex-shrink-0 flex items-center">
-					<a href="/" class="flex items-center" on:click={() => handleMenuItemClick('/')}>
+					<a href="/" class="flex items-center" onclick={() => handleMenuItemClick('/')}>
 						<span class="sr-only">BuildOS</span>
 						<span class="buildos-logo" aria-hidden="true">
 							<span class="buildos-logo__word">Build</span>
@@ -286,7 +294,7 @@
 						{#each NAV_ITEMS as item}
 							<a
 								href={item.href}
-								on:click={() => handleMenuItemClick(item.href)}
+								onclick={() => handleMenuItemClick(item.href)}
 								class="inline-flex items-center px-1.5 md:px-2 lg:px-2 xl:px-2.5 2xl:px-3 py-1.5 md:py-2 text-xs md:text-sm font-medium rounded-md transition-colors duration-200 whitespace-nowrap
 								{currentPath === item.href
 									? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20'
@@ -361,7 +369,7 @@
 						<Button
 							variant="outline"
 							size="sm"
-							on:click={handleOpenChat}
+							onclick={handleOpenChat}
 							class={`relative flex items-center gap-2 px-3 h-9 rounded-lg font-medium text-xs md:text-sm transition-all duration-200 group border-transparent dark:border-transparent bg-white/85 dark:bg-gray-900/45 shadow-[0_1px_3px_rgba(15,23,42,0.08)] hover:bg-blue-50/40 dark:hover:bg-blue-900/35 hover:text-blue-700 dark:hover:text-blue-200 hover:shadow-[0_4px_14px_rgba(59,130,246,0.12)] ${showChatModal ? 'text-blue-700 dark:text-blue-300 bg-blue-50/40 dark:bg-blue-900/35' : 'text-gray-700 dark:text-gray-200'}`}
 							aria-label="Open Multi-Agent Chat"
 							title="Multi-Agent System - Planner + Executor Agents"
@@ -380,7 +388,7 @@
 							<a
 								href="/onboarding"
 								data-onboarding-link
-								on:click={() => handleMenuItemClick('/onboarding')}
+								onclick={() => handleMenuItemClick('/onboarding')}
 								class="inline-flex items-center px-2 md:px-3 lg:px-3.5 xl:px-4 py-1.5 md:py-2 lg:py-2.5 text-xs md:text-sm lg:text-sm font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 whitespace-nowrap
 								{onboardingUrgent
 									? 'bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 hover:from-amber-600 hover:via-orange-600 hover:to-red-600 text-white animate-pulse border-none'
@@ -415,7 +423,7 @@
 
 					<!-- Mobile menu button -->
 					<Button
-						on:click={toggleMobileMenu}
+						onclick={toggleMobileMenu}
 						data-mobile-menu-button
 						disabled={loggingOut}
 						variant="ghost"
@@ -429,7 +437,7 @@
 					<!-- Desktop User menu -->
 					<div class="hidden md:block relative" data-user-menu>
 						<Button
-							on:click={toggleUserMenu}
+							onclick={toggleUserMenu}
 							disabled={loggingOut}
 							variant="outline"
 							size="sm"
@@ -490,7 +498,7 @@
 									{#if needsOnboarding}
 										<a
 											href="/onboarding"
-											on:click={() => handleMenuItemClick('/onboarding')}
+											onclick={() => handleMenuItemClick('/onboarding')}
 											class="flex items-center w-full px-4 py-2.5 text-sm font-medium rounded-lg mx-2 mb-2 transition-all duration-200
 												{onboardingUrgent
 												? 'bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 hover:from-amber-600 hover:via-orange-600 hover:to-red-600 text-white shadow-md'
@@ -510,7 +518,7 @@
 
 									<a
 										href="/profile"
-										on:click={() => handleMenuItemClick('/profile')}
+										onclick={() => handleMenuItemClick('/profile')}
 										class="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors
 										{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
 									>
@@ -523,7 +531,7 @@
 											href={subscription?.hasActiveSubscription
 												? '/profile?tab=billing'
 												: '/pricing'}
-											on:click={() =>
+											onclick={() =>
 												handleMenuItemClick(
 													subscription?.hasActiveSubscription
 														? '/profile?tab=billing'
@@ -554,7 +562,7 @@
 									{#if user?.is_admin}
 										<a
 											href="/admin"
-											on:click={() => handleMenuItemClick('/admin')}
+											onclick={() => handleMenuItemClick('/admin')}
 											class="flex items-center w-full px-4 py-2 text-sm text-red-700 dark:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors
 											{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
 										>
@@ -564,7 +572,7 @@
 									{/if}
 
 									<button
-										on:click={toggleMode}
+										onclick={toggleMode}
 										class="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors
 										{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
 										disabled={loggingOut}
@@ -580,7 +588,7 @@
 									</button>
 
 									<Button
-										on:click={handleSignOut}
+										onclick={handleSignOut}
 										disabled={loggingOut}
 										variant="ghost"
 										size="sm"
@@ -620,7 +628,7 @@
 
 					<!-- Mobile auth menu toggle -->
 					<Button
-						on:click={toggleMobileMenu}
+						onclick={toggleMobileMenu}
 						data-mobile-menu-button
 						variant="ghost"
 						size="sm"
@@ -650,7 +658,7 @@
 					{#if needsOnboarding}
 						<a
 							href="/onboarding"
-							on:click={() => handleMenuItemClick('/onboarding')}
+							onclick={() => handleMenuItemClick('/onboarding')}
 							class="flex items-center px-4 py-3 text-base font-semibold text-white rounded-xl shadow-lg transition-all duration-300 hover:scale-[1.02]
 							{onboardingUrgent
 								? 'bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 hover:from-amber-600 hover:via-orange-600 hover:to-red-600 animate-pulse'
@@ -672,7 +680,7 @@
 					{#each NAV_ITEMS as item}
 						<a
 							href={item.href}
-							on:click={() => handleMenuItemClick(item.href)}
+							onclick={() => handleMenuItemClick(item.href)}
 							class="flex items-center px-3 py-2 text-base font-medium rounded-md transition-colors
 							{currentPath === item.href
 								? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20'
@@ -727,7 +735,7 @@
 					<div class="px-2 space-y-1">
 						<a
 							href="/profile"
-							on:click={() => handleMenuItemClick('/profile')}
+							onclick={() => handleMenuItemClick('/profile')}
 							class="flex items-center px-3 py-2 text-base font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700 rounded-md transition-colors
 							{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
 						>
@@ -740,7 +748,7 @@
 								href={subscription?.hasActiveSubscription
 									? '/profile?tab=billing'
 									: '/pricing'}
-								on:click={() =>
+								onclick={() =>
 									handleMenuItemClick(
 										subscription?.hasActiveSubscription
 											? '/profile?tab=billing'
@@ -769,7 +777,7 @@
 						{#if user?.is_admin}
 							<a
 								href="/admin"
-								on:click={() => handleMenuItemClick('/admin')}
+								onclick={() => handleMenuItemClick('/admin')}
 								class="flex items-center px-3 py-2 text-base font-medium text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors
 								{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
 							>
@@ -779,7 +787,7 @@
 						{/if}
 
 						<button
-							on:click={toggleMode}
+							onclick={toggleMode}
 							class="flex items-center px-3 py-2 text-base font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700 rounded-md transition-colors
 							{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
 							disabled={loggingOut}
@@ -795,7 +803,7 @@
 						</button>
 
 						<Button
-							on:click={handleSignOut}
+							onclick={handleSignOut}
 							disabled={loggingOut}
 							variant="ghost"
 							size="md"
@@ -814,14 +822,14 @@
 				<div class="px-2 pt-2 pb-3 space-y-1">
 					<a
 						href="/auth/login"
-						on:click={() => handleMenuItemClick('/auth/login')}
+						onclick={() => handleMenuItemClick('/auth/login')}
 						class="block px-3 py-2 text-base font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700 rounded-md transition-colors"
 					>
 						Sign In
 					</a>
 					<a
 						href="/auth/register"
-						on:click={() => handleMenuItemClick('/auth/register')}
+						onclick={() => handleMenuItemClick('/auth/register')}
 						class="block px-3 py-2 text-base font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 rounded-md transition-colors"
 					>
 						Sign Up
@@ -834,7 +842,7 @@
 
 <!-- Brain Dump Modal -->
 <BrainDumpModal
-	bind:isOpen={showBrainDumpModal}
+	isOpen={showBrainDumpModal}
 	project={modalProject}
 	showNavigationOnSuccess={true}
 	onClose={handleBrainDumpClose}

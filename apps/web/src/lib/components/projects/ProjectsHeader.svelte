@@ -24,7 +24,7 @@
 			Organize and track your work and personal projects
 		</p>
 	</div>
-	<Button on:click={handleNewProject} disabled={creatingProject} variant="primary" size="md">
+	<Button onclick={handleNewProject} disabled={creatingProject} variant="primary" size="md">
 		{#if creatingProject}
 			<Loader2 class="w-4 h-4 mr-2 animate-spin" />
 			Creating...

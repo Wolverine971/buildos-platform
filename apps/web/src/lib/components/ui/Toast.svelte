@@ -66,7 +66,7 @@
 	<!-- Dismiss button -->
 	{#if toast.dismissible}
 		<Button
-			on:click={handleDismiss}
+			onclick={handleDismiss}
 			variant="ghost"
 			size="sm"
 			icon={X}

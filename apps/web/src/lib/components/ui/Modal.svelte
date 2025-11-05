@@ -45,8 +45,11 @@
 	import Button from './Button.svelte';
 	import { portal } from '$lib/actions/portal';
 
+	// Modal can work in two modes:
+	// 1. Controlled via onClose callback (isOpen is one-way prop)
+	// 2. Two-way binding via bind:isOpen (isOpen is bindable)
 	let {
-		isOpen = false,
+		isOpen = $bindable(false),
 		onClose,
 		title = '',
 		size = 'md',
@@ -59,7 +62,7 @@
 		ariaDescribedBy = ''
 	}: {
 		isOpen?: boolean;
-		onClose: () => void;
+		onClose?: () => void;
 		title?: string;
 		size?: 'sm' | 'md' | 'lg' | 'xl';
 		showCloseButton?: boolean;
@@ -86,8 +89,12 @@
 	let contentId = `${modalId}-content`;
 
 	function handleBackdropClick(event: MouseEvent | TouchEvent) {
+		console.log('want to close on backdrop');
 		if (event.target === event.currentTarget && closeOnBackdrop && !persistent) {
-			onClose();
+			// Try callback first (preferred), then fallback to direct mutation
+			onClose?.();
+			// Also set isOpen = false as fallback for bind:isOpen scenarios
+			isOpen = false;
 		}
 	}
 
@@ -106,7 +113,10 @@
 	function handleKeydown(event: KeyboardEvent) {
 		if (event.key === 'Escape' && closeOnEscape && !persistent) {
 			event.preventDefault();
-			onClose();
+			// Try callback first (preferred), then fallback to direct mutation
+			onClose?.();
+			// Also set isOpen = false as fallback for bind:isOpen scenarios
+			isOpen = false;
 		}
 	}
 
@@ -187,15 +197,15 @@
 	});
 </script>
 
-<svelte:window on:keydown={handleKeydown} />
+<svelte:window onkeydown={handleKeydown} />
 
 {#if isOpen}
 	<div use:portal class="modal-root" transition:fade={{ duration: 150 }} role="presentation">
 		<!-- Backdrop -->
 		<div
 			class="fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-70 backdrop-blur-sm z-[100]"
-			on:click={handleBackdropClick}
-			on:touchend={handleBackdropClick}
+			onclick={handleBackdropClick}
+			ontouchend={handleBackdropClick}
 			aria-hidden="true"
 		></div>
 
@@ -217,8 +227,8 @@
 					aria-label={!title && ariaLabel ? ariaLabel : undefined}
 					aria-describedby={ariaDescribedBy || undefined}
 					tabindex="-1"
-					on:click={handleModalContentClick}
-					on:keydown={handleModalContentKeydown}
+					onclick={handleModalContentClick}
+					onkeydown={handleModalContentKeydown}
 				>
 					<!-- Header -->
 					<slot name="header">
@@ -239,7 +249,12 @@
 
 								{#if showCloseButton && !persistent}
 									<Button
-										on:click={onClose}
+										onclick={() => {
+											console.log('want to close');
+											// Try callback first, then direct mutation
+											onClose?.();
+											isOpen = false;
+										}}
 										variant="ghost"
 										size="sm"
 										icon={X}

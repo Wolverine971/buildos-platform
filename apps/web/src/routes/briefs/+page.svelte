@@ -653,7 +653,7 @@
 
 						<Button
 							type="button"
-							on:click={() => (showSettingsModal = true)}
+							onclick={() => (showSettingsModal = true)}
 							variant="ghost"
 							size="sm"
 							class="hidden sm:flex items-center gap-2 px-3 py-2"
@@ -663,7 +663,7 @@
 						</Button>
 						<Button
 							type="button"
-							on:click={() => (showMobileMenu = !showMobileMenu)}
+							onclick={() => (showMobileMenu = !showMobileMenu)}
 							variant="ghost"
 							size="sm"
 							class="sm:hidden p-2"
@@ -683,7 +683,7 @@
 								{#each viewConfigs as view}
 									<Button
 										type="button"
-										on:click={() => changeView(view.id)}
+										onclick={() => changeView(view.id)}
 										variant={selectedView === view.id ? 'primary' : 'ghost'}
 										size="sm"
 										class={selectedView === view.id
@@ -702,7 +702,7 @@
 									{#if !isToday}
 										<Button
 											type="button"
-											on:click={goToToday}
+											onclick={goToToday}
 											variant="primary"
 											size="sm"
 											class="bg-blue-600 text-white hover:bg-blue-700"
@@ -716,7 +716,7 @@
 									>
 										<Button
 											type="button"
-											on:click={() => navigateDate('prev')}
+											onclick={() => navigateDate('prev')}
 											variant="ghost"
 											size="sm"
 											class="p-2 rounded-l-lg rounded-r-none hover:bg-gray-200 dark:hover:bg-gray-600"
@@ -734,7 +734,7 @@
 
 										<Button
 											type="button"
-											on:click={() => navigateDate('next')}
+											onclick={() => navigateDate('next')}
 											variant="ghost"
 											size="sm"
 											class="p-2 rounded-r-lg rounded-l-none hover:bg-gray-200 dark:hover:bg-gray-600"
@@ -747,7 +747,7 @@
 							{:else if selectedView === 'list'}
 								<Button
 									type="button"
-									on:click={() => (showFilters = !showFilters)}
+									onclick={() => (showFilters = !showFilters)}
 									variant="ghost"
 									size="sm"
 									class="p-2 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
@@ -799,7 +799,7 @@
 							{#each viewConfigs as view}
 								<Button
 									type="button"
-									on:click={() => changeView(view.id)}
+									onclick={() => changeView(view.id)}
 									variant={selectedView === view.id ? 'primary' : 'ghost'}
 									size="md"
 									class={selectedView === view.id
@@ -822,7 +822,7 @@
 						>
 							<Button
 								type="button"
-								on:click={() => navigateDate('prev')}
+								onclick={() => navigateDate('prev')}
 								variant="ghost"
 								size="sm"
 								class="p-2"
@@ -838,7 +838,7 @@
 
 							<Button
 								type="button"
-								on:click={() => navigateDate('next')}
+								onclick={() => navigateDate('next')}
 								variant="ghost"
 								size="sm"
 								class="p-2"
@@ -851,7 +851,7 @@
 						{#if !isToday}
 							<Button
 								type="button"
-								on:click={goToToday}
+								onclick={goToToday}
 								variant="primary"
 								size="sm"
 								class="w-full mt-2 bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-300 dark:hover:bg-blue-800"
@@ -888,7 +888,7 @@
 						</div>
 						<Button
 							type="button"
-							on:click={cancelGeneration}
+							onclick={cancelGeneration}
 							variant="ghost"
 							size="sm"
 							class="p-1 sm:p-1.5 text-gray-400 hover:text-red-600 dark:hover:text-red-400 ml-2"
@@ -936,7 +936,7 @@
 						</p>
 						<Button
 							type="button"
-							on:click={() => (error = null)}
+							onclick={() => (error = null)}
 							variant="ghost"
 							size="sm"
 							class="ml-2 p-0 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-200"
@@ -974,7 +974,7 @@
 								<Select
 									id="dateRange"
 									bind:value={selectedDateRange}
-									on:change={(e) => (selectedDateRange = e.detail)}
+									onchange={(e) => (selectedDateRange = e.detail)}
 									size="sm"
 								>
 									<option value="today">Today</option>
@@ -1062,7 +1062,7 @@
 										<div class="flex items-center space-x-1 sm:space-x-1">
 											<Button
 												type="button"
-												on:click={() => selectBriefDate(brief.brief_date)}
+												onclick={() => selectBriefDate(brief.brief_date)}
 												variant="ghost"
 												size="sm"
 												class="p-1.5 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20"
@@ -1071,7 +1071,7 @@
 											></Button>
 											<Button
 												type="button"
-												on:click={() => copyBrief(brief)}
+												onclick={() => copyBrief(brief)}
 												variant="ghost"
 												size="sm"
 												class="p-1.5 text-gray-400 hover:text-green-600 dark:hover:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20"
@@ -1080,7 +1080,7 @@
 											></Button>
 											<Button
 												type="button"
-												on:click={() => exportBrief(brief)}
+												onclick={() => exportBrief(brief)}
 												variant="ghost"
 												size="sm"
 												class="p-1.5 text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20"
@@ -1089,7 +1089,7 @@
 											></Button>
 											<Button
 												type="button"
-												on:click={() => showDeleteBriefConfirmation(brief)}
+												onclick={() => showDeleteBriefConfirmation(brief)}
 												variant="ghost"
 												size="sm"
 												class="p-1.5 text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
@@ -1180,7 +1180,7 @@
 							{#if isToday}
 								<Button
 									type="button"
-									on:click={() => generateDailyBrief()}
+									onclick={() => generateDailyBrief()}
 									disabled={currentStreamingStatus?.isGenerating ||
 										checkingExistingGeneration}
 									loading={checkingExistingGeneration ||
@@ -1232,7 +1232,7 @@
 								<div class="flex items-center space-x-1 ml-3 sm:ml-0">
 									<Button
 										type="button"
-										on:click={() => exportBrief(displayDailyBrief)}
+										onclick={() => exportBrief(displayDailyBrief)}
 										variant="ghost"
 										size="sm"
 										class="p-1.5 text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20"
@@ -1241,7 +1241,7 @@
 									></Button>
 									<Button
 										type="button"
-										on:click={() => copyBrief(displayDailyBrief)}
+										onclick={() => copyBrief(displayDailyBrief)}
 										variant="ghost"
 										size="sm"
 										class="p-1.5 text-gray-400 hover:text-green-600 dark:hover:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20"
@@ -1250,7 +1250,7 @@
 									></Button>
 									<Button
 										type="button"
-										on:click={() => generateDailyBrief(true)}
+										onclick={() => generateDailyBrief(true)}
 										disabled={currentStreamingStatus?.isGenerating}
 										variant="ghost"
 										size="sm"

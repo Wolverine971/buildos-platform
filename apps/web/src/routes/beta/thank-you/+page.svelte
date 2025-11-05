@@ -226,7 +226,7 @@
 
 				<div class="flex flex-col sm:flex-row gap-4 justify-center">
 					<Button
-						on:click={shareOnTwitter}
+						onclick={shareOnTwitter}
 						variant="primary"
 						size="lg"
 						icon={Twitter}

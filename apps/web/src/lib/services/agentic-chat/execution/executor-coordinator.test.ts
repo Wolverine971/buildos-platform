@@ -14,7 +14,10 @@ import type {
 	ExecutorSpawnParams,
 	PersistenceOperations
 } from '../shared/types';
-import type { AgentExecutorService, ExecutorResult as AgentExecutorRunResult } from '../../agent-executor-service';
+import type {
+	AgentExecutorService,
+	ExecutorResult as AgentExecutorRunResult
+} from '../../agent-executor-service';
 
 describe('ExecutorCoordinator', () => {
 	let coordinator: ExecutorCoordinator;

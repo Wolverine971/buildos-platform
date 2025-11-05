@@ -26,7 +26,7 @@
 	{#each projects as project (project.id)}
 		<div
 			class={`group bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-md transition-all duration-200 border border-gray-200 dark:border-gray-700 overflow-hidden ${project.status === 'archived' ? 'archived-card' : ''}`}
-			on:click={(e) => handleCardClick(e, project.id)}
+			onclick={(e) => handleCardClick(e, project.id)}
 			role="presentation"
 		>
 			<ProjectCard

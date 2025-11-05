@@ -99,9 +99,9 @@
 							fill="#3b82f6"
 							rx="2"
 							class="hover:opacity-80 cursor-pointer"
-							on:mouseenter={() =>
+							onmouseenter={() =>
 								(hoveredBar = { type: 'tasks', project, value: project.tasks })}
-							on:mouseleave={() => (hoveredBar = null)}
+							onmouseleave={() => (hoveredBar = null)}
 						/>
 
 						<!-- Notes bar -->
@@ -113,9 +113,9 @@
 							fill="#10b981"
 							rx="2"
 							class="hover:opacity-80 cursor-pointer"
-							on:mouseenter={() =>
+							onmouseenter={() =>
 								(hoveredBar = { type: 'notes', project, value: project.notes })}
-							on:mouseleave={() => (hoveredBar = null)}
+							onmouseleave={() => (hoveredBar = null)}
 						/>
 
 						<!-- Completed bar -->
@@ -127,13 +127,13 @@
 							fill="#8b5cf6"
 							rx="2"
 							class="hover:opacity-80 cursor-pointer"
-							on:mouseenter={() =>
+							onmouseenter={() =>
 								(hoveredBar = {
 									type: 'completed',
 									project,
 									value: project.completed_tasks
 								})}
-							on:mouseleave={() => (hoveredBar = null)}
+							onmouseleave={() => (hoveredBar = null)}
 						/>
 
 						<!-- Project name -->

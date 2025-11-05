@@ -98,7 +98,7 @@
 		size="lg"
 		fullWidth
 		btnType="container"
-		on:click={toggleCollapsed}
+		onclick={toggleCollapsed}
 		aria-expanded={!isCollapsed}
 		aria-controls="backlog-content"
 		class="p-4 bg-gray-50 dark:bg-gray-800 text-left hover:bg-gray-100 dark:hover:bg-gray-700 min-h-[56px] rounded-none rounded-t-lg justify-start font-normal border-none"
@@ -154,9 +154,9 @@
 		class="content-wrapper {isCollapsed ? 'collapsed' : 'expanded'} {dragOverPhase === null
 			? 'drag-over'
 			: ''}"
-		on:dragover={handleDragOver}
-		on:dragleave={handleDragLeave}
-		on:drop={handleDrop}
+		ondragover={handleDragOver}
+		ondragleave={handleDragLeave}
+		ondrop={handleDrop}
 		role="application"
 		aria-label="Backlog task drop zone"
 		aria-describedby="backlog-drop-instructions"
@@ -285,7 +285,7 @@
 	}
 
 	/* Focus states */
-	:global(.content-wrapper button:focus-visible) {
+	:global(.content-wrapper buttonfocus-visible) {
 		outline: 2px solid rgb(59 130 246);
 		outline-offset: 2px;
 	}

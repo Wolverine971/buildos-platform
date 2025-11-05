@@ -198,7 +198,7 @@
 					>
 						<Textarea
 							value={getDimensionValue(dimension.key) || ''}
-							on:input={(e) => onUpdate(dimension.key, e.currentTarget.value || null)}
+							oninput={(e) => onUpdate(dimension.key, e.currentTarget.value || null)}
 							placeholder={dimension.placeholder}
 							rows={4}
 							class="w-full text-sm bg-gray-50 dark:bg-gray-900/50 border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400"

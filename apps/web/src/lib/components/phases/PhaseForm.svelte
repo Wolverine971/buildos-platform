@@ -267,7 +267,7 @@
 
 				<div class="flex items-center gap-2 pt-2">
 					<Button
-						on:click={handleSubmit}
+						onclick={handleSubmit}
 						variant="primary"
 						size="sm"
 						disabled={!isFormValid || !projectCreationCheck.canCreate}
@@ -275,7 +275,7 @@
 						<Save class="w-4 h-4 mr-1.5" />
 						Create Phase
 					</Button>
-					<Button on:click={handleCancel} variant="outline" size="sm">
+					<Button onclick={handleCancel} variant="outline" size="sm">
 						<X class="w-4 h-4 mr-1.5" />
 						Cancel
 					</Button>

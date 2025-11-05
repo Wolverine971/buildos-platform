@@ -312,7 +312,7 @@
 						<p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
 							{loadError}
 						</p>
-						<Button on:click={loadPreferences} variant="outline" size="sm">
+						<Button onclick={loadPreferences} variant="outline" size="sm">
 							Try Again
 						</Button>
 					</div>
@@ -595,7 +595,7 @@
 				<!-- Save Button -->
 				<div class="flex justify-end pt-6 border-t border-gray-200 dark:border-gray-700">
 					<Button
-						on:click={savePreferences}
+						onclick={savePreferences}
 						disabled={isSaving}
 						variant="primary"
 						loading={isSaving}

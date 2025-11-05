@@ -368,7 +368,7 @@
 	<!-- Header -->
 	<div class="flex items-center bg-gray-50 dark:bg-gray-800">
 		<Button
-			on:click={toggleExpanded}
+			onclick={toggleExpanded}
 			class="flex-1 px-4 py-3 flex items-center justify-between hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
 			variant="ghost"
 			btnType="container"
@@ -403,7 +403,7 @@
 		</Button>
 		<div class="border-l border-gray-200 dark:border-gray-700">
 			<Button
-				on:click={copyUserContext}
+				onclick={copyUserContext}
 				class="px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center gap-2"
 				variant="ghost"
 				btnType="container"
@@ -964,7 +964,7 @@
 								class="bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden"
 							>
 								<Button
-									on:click={() => toggleEmailExpanded(email.id)}
+									onclick={() => toggleEmailExpanded(email.id)}
 									class="w-full p-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer text-left group"
 									variant="ghost"
 									btnType="container"
@@ -1101,7 +1101,7 @@
 													Full Email Content
 												</div>
 												<Button
-													on:click={() => {
+													onclick={() => {
 														navigator.clipboard.writeText(
 															email.content
 														);

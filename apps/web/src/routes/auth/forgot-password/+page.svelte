@@ -91,7 +91,7 @@
 							bind:value={email}
 							placeholder="Enter your email"
 							size="lg"
-							on:blur={validateEmail}
+							onblur={validateEmail}
 						/>
 						{#if emailError}
 							<p class="mt-1 text-sm text-red-600 dark:text-red-400">{emailError}</p>

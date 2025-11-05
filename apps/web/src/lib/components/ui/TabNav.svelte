@@ -176,13 +176,13 @@
 	}
 
 	/* Focus state for keyboard navigation */
-	.tab-button:focus-visible {
+	.tab-buttonfocus-visible {
 		outline: 2px solid rgb(59 130 246);
 		outline-offset: -2px;
 		border-radius: 0.375rem;
 	}
 
-	:global(.dark) .tab-button:focus-visible {
+	:global(.dark) .tab-buttonfocus-visible {
 		outline-color: rgb(96 165 250);
 	}
 

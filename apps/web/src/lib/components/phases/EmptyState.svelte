@@ -40,7 +40,7 @@
 	{/if}
 	<div class="flex items-center justify-center gap-3">
 		<Button
-			on:click={() => dispatch('createPhase')}
+			onclick={() => dispatch('createPhase')}
 			variant="outline"
 			size="md"
 			icon={Plus}
@@ -49,7 +49,7 @@
 			Create Phase
 		</Button>
 		<Button
-			on:click={() => dispatch('generatePhases')}
+			onclick={() => dispatch('generatePhases')}
 			disabled={generating || !hasProjectDates}
 			variant="primary"
 			size="lg"

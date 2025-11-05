@@ -173,7 +173,7 @@
 					{timeDisplay}
 				</span>
 				<Button
-					on:click={handleDelete}
+					onclick={handleDelete}
 					variant="ghost"
 					size="sm"
 					btnType="container"
@@ -227,7 +227,7 @@
 					<a
 						href="/projects/{linkedProject.id}"
 						class="flex items-center space-x-1 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
-						on:click={(e) => e.stopPropagation()}
+						onclick={(e) => e.stopPropagation()}
 					>
 						<ExternalLink class="w-3 h-3" />
 						<span class="hidden sm:inline">View</span>

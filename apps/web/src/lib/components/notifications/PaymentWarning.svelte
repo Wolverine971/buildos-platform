@@ -43,7 +43,7 @@
 			{#if notification.action_url}
 				<div class="mt-4">
 					<Button
-						on:click={handleAction}
+						onclick={handleAction}
 						variant="danger"
 						size="sm"
 						icon={CreditCard}
@@ -56,7 +56,7 @@
 		</div>
 		<div class="ml-auto pl-3">
 			<Button
-				on:click={dismiss}
+				onclick={dismiss}
 				variant="ghost"
 				size="sm"
 				icon={X}

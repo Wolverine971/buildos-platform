@@ -212,7 +212,7 @@
 		<div
 			class="flex justify-end px-3 sm:px-4 lg:px-6 py-3 sm:py-4 border-t border-gray-200 dark:border-gray-700"
 		>
-			<Button on:click={closeModal} variant="outline" size="md">Close</Button>
+			<Button onclick={closeModal} variant="outline" size="md">Close</Button>
 		</div>
 	</svelte:fragment>
 </Modal>

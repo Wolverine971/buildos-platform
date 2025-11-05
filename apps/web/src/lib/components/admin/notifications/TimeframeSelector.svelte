@@ -51,7 +51,7 @@
 	</label>
 
 	<!-- Timeframe Selector -->
-	<Select bind:value on:change={handleTimeframeChange} size="md" placeholder="Select timeframe">
+	<Select bind:value onchange={handleTimeframeChange} size="md" placeholder="Select timeframe">
 		<option value="24h">Last 24 Hours</option>
 		<option value="7d">Last 7 Days</option>
 		<option value="30d">Last 30 Days</option>
@@ -60,7 +60,7 @@
 
 	<!-- Refresh Button -->
 	<Button
-		on:click={handleRefresh}
+		onclick={handleRefresh}
 		disabled={loading}
 		variant="secondary"
 		size="sm"

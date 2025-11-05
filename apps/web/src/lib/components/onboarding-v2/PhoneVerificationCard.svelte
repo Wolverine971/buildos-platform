@@ -245,8 +245,8 @@
 						<TextInput
 							id="phone-number"
 							bind:value={phoneNumber}
-							on:input={(e) => handlePhoneInput(e.detail)}
-							on:keypress={(e) => handleKeyPress(e.detail)}
+							oninput={(e) => handlePhoneInput(e.detail)}
+							onkeypress={(e) => handleKeyPress(e.detail)}
 							type="tel"
 							placeholder="(555) 123-4567"
 							disabled={isSending}
@@ -272,7 +272,7 @@
 					<div class="flex gap-2 flex-wrap">
 						<Button
 							variant="primary"
-							on:click={sendVerificationCode}
+							onclick={sendVerificationCode}
 							loading={isSending}
 							disabled={phoneNumber.replace(/\D/g, '').length < 10}
 							class="flex-1 min-w-[120px]"
@@ -283,7 +283,7 @@
 								Send Code
 							{/if}
 						</Button>
-						<Button variant="ghost" on:click={onSkip} disabled={isSending}>
+						<Button variant="ghost" onclick={onSkip} disabled={isSending}>
 							Skip for now
 						</Button>
 					</div>
@@ -301,7 +301,7 @@
 							</label>
 							<button
 								type="button"
-								on:click={changePhoneNumber}
+								onclick={changePhoneNumber}
 								class="text-xs text-blue-600 dark:text-blue-400 hover:underline"
 								disabled={isVerifying}
 							>
@@ -314,7 +314,7 @@
 						<TextInput
 							id="verification-code"
 							bind:value={verificationCode}
-							on:keypress={(e) => handleKeyPress(e.detail)}
+							onkeypress={(e) => handleKeyPress(e.detail)}
 							type="text"
 							inputmode="numeric"
 							pattern="[0-9]*"
@@ -340,7 +340,7 @@
 					<div class="flex gap-2 flex-wrap">
 						<Button
 							variant="primary"
-							on:click={confirmVerification}
+							onclick={confirmVerification}
 							loading={isVerifying}
 							disabled={verificationCode.length !== 6}
 							class="flex-1 min-w-[120px]"
@@ -359,7 +359,7 @@
 						{:else}
 							<Button
 								variant="ghost"
-								on:click={sendVerificationCode}
+								onclick={sendVerificationCode}
 								disabled={isSending}
 							>
 								Resend Code

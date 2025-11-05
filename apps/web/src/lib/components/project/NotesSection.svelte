@@ -137,7 +137,7 @@
 
 <div class="flex items-center justify-between mb-6">
 	<h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100">Notes</h2>
-	<Button on:click={onCreateNote} variant="primary" size="sm">
+	<Button onclick={onCreateNote} variant="primary" size="sm">
 		<Plus class="w-4 h-4 mr-2" />
 		Add Note
 	</Button>
@@ -193,7 +193,7 @@
 							<!-- Action buttons - always visible on mobile, right-aligned on desktop -->
 							<div class="flex items-center space-x-1 flex-shrink-0">
 								<Button
-									on:click={() => onEditNote(note)}
+									onclick={() => onEditNote(note)}
 									variant="ghost"
 									size="sm"
 									title="Edit note"
@@ -201,7 +201,7 @@
 									<Edit3 class="w-4 h-4" />
 								</Button>
 								<Button
-									on:click={() => handleDeleteNote(note)}
+									onclick={() => handleDeleteNote(note)}
 									disabled={loading || deleteModalLoading}
 									variant="ghost"
 									size="sm"
@@ -243,7 +243,7 @@
 
 								{#if shouldShowExpand}
 									<Button
-										on:click={() => toggleNoteExpansion(note.id)}
+										onclick={() => toggleNoteExpansion(note.id)}
 										variant="ghost"
 										size="sm"
 										class="mt-2 sm:mt-3 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
@@ -286,7 +286,7 @@
 	>
 		<FileText class="w-12 h-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
 		<p class="text-gray-600 dark:text-gray-400 mb-6 font-medium">No notes yet</p>
-		<Button on:click={onCreateNote} variant="outline" size="sm">
+		<Button onclick={onCreateNote} variant="outline" size="sm">
 			<Plus class="w-4 h-4 mr-2" />
 			Create first note
 		</Button>

@@ -95,7 +95,7 @@
 					</div>
 					<div class="ml-4 flex-shrink-0 flex items-center space-x-4">
 						<Button
-							on:click={handleSubscribe}
+							onclick={handleSubscribe}
 							variant={bannerClass.warning ? 'danger' : 'primary'}
 							size="sm"
 							icon={CreditCard}
@@ -104,7 +104,7 @@
 							Subscribe Now
 						</Button>
 						<Button
-							on:click={dismiss}
+							onclick={dismiss}
 							variant="ghost"
 							size="sm"
 							icon={X}

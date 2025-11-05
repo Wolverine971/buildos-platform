@@ -278,7 +278,7 @@
 			<div class="flex items-center gap-2">
 				<Button
 					class="inline-flex items-center justify-center rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm transition hover:shadow-md hover:from-blue-700 hover:to-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50 sm:px-4 sm:py-2 sm:text-sm"
-					on:click={(e) => openCreateModal()}
+					onclick={(e) => openCreateModal()}
 					disabled={data.projects.length === 0}
 					icon={Plus}
 					type="button"

@@ -275,7 +275,7 @@
 	}
 </script>
 
-<svelte:window on:keydown={handleKeydown} />
+<svelte:window onkeydown={handleKeydown} />
 
 <svelte:head>
 	<title>Error Logs - BuildOS Admin</title>
@@ -294,7 +294,7 @@
 			<div slot="actions" class="flex items-center space-x-4">
 				{#if selectedErrorIds.size > 0}
 					<Button
-						on:click={openBulkResolveModal}
+						onclick={openBulkResolveModal}
 						disabled={bulkProcessing}
 						variant="primary"
 						size="sm"
@@ -305,7 +305,7 @@
 					</Button>
 				{/if}
 				<Button
-					on:click={() => {
+					onclick={() => {
 						filterResolved = filterResolved === false ? null : false;
 						loadErrors();
 					}}
@@ -315,7 +315,7 @@
 					{filterResolved === false ? 'Show All' : 'Show Unresolved'}
 				</Button>
 				<Button
-					on:click={loadErrors}
+					onclick={loadErrors}
 					disabled={loading}
 					variant="secondary"
 					size="sm"
@@ -363,7 +363,7 @@
 					>
 					<Select
 						bind:value={filterSeverity}
-						on:change={loadErrors}
+						onchange={loadErrors}
 						size="md"
 						placeholder="All Severities"
 					>
@@ -381,7 +381,7 @@
 					>
 					<Select
 						bind:value={filterType}
-						on:change={loadErrors}
+						onchange={loadErrors}
 						size="md"
 						placeholder="All Types"
 					>
@@ -400,7 +400,7 @@
 					>
 					<Select
 						bind:value={filterResolved}
-						on:change={loadErrors}
+						onchange={loadErrors}
 						size="md"
 						placeholder="Unresolved"
 					>
@@ -417,7 +417,7 @@
 					<TextInput
 						type="text"
 						bind:value={filterUserId}
-						on:blur={loadErrors}
+						onblur={loadErrors}
 						placeholder="Email or User ID..."
 						size="md"
 					/>
@@ -430,7 +430,7 @@
 					<TextInput
 						type="text"
 						bind:value={filterProjectId}
-						on:blur={loadErrors}
+						onblur={loadErrors}
 						placeholder="Filter by project..."
 						size="md"
 					/>
@@ -450,7 +450,7 @@
 								<input
 									type="checkbox"
 									checked={selectAll}
-									on:change={toggleSelectAll}
+									onchange={toggleSelectAll}
 									class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded dark:border-gray-600 dark:bg-gray-700 dark:ring-offset-gray-800"
 									aria-label="Select all errors"
 								/>
@@ -497,7 +497,7 @@
 									<input
 										type="checkbox"
 										checked={error.id && selectedErrorIds.has(error.id)}
-										on:change={() => error.id && toggleErrorSelection(error.id)}
+										onchange={() => error.id && toggleErrorSelection(error.id)}
 										class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded dark:border-gray-600 dark:bg-gray-700 dark:ring-offset-gray-800"
 										aria-label="Select error {error.id}"
 									/>
@@ -560,18 +560,18 @@
 								</td>
 								<td class="px-4 py-3">
 									<button
-										on:click={() => (selectedError = error)}
+										onclick={() => (selectedError = error)}
 										class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 text-sm mr-2 transition-colors"
 									>
 										View
 									</button>
 									{#if !error.resolved}
-										<button
-											on:click={() => openResolveModal(error.id)}
+										<Button
+											onclick={() => openResolveModal(error.id)}
 											class="text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300 text-sm transition-colors"
 										>
 											Resolve
-										</button>
+										</Button>
 									{/if}
 								</td>
 							</tr>
@@ -593,7 +593,7 @@
 				>
 					<div class="flex items-center space-x-2">
 						<Button
-							on:click={() => changePage(1)}
+							onclick={() => changePage(1)}
 							disabled={currentPage === 1 || loading}
 							variant="secondary"
 							size="sm"
@@ -602,7 +602,7 @@
 							First
 						</Button>
 						<Button
-							on:click={() => changePage(Math.max(1, currentPage - 1))}
+							onclick={() => changePage(Math.max(1, currentPage - 1))}
 							disabled={currentPage === 1 || loading}
 							variant="secondary"
 							size="sm"
@@ -625,7 +625,7 @@
 
 					<div class="flex items-center space-x-2">
 						<Button
-							on:click={() => changePage(currentPage + 1)}
+							onclick={() => changePage(currentPage + 1)}
 							disabled={!hasMore || loading}
 							variant="secondary"
 							size="sm"
@@ -636,7 +636,7 @@
 						</Button>
 						<Select
 							bind:value={itemsPerPage}
-							on:change={() => {
+							onchange={() => {
 								currentPage = 1;
 								loadErrors();
 							}}
@@ -660,14 +660,14 @@
 	<!-- svelte-ignore a11y-click-events-have-key-events -->
 	<div
 		class="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center p-4 z-50"
-		on:click={() => (selectedError = null)}
-		on:keydown={(e) => e.key === 'Escape' && (selectedError = null)}
+		onclick={() => (selectedError = null)}
+		onkeydown={(e) => e.key === 'Escape' && (selectedError = null)}
 	>
 		<!-- svelte-ignore a11y-no-static-element-interactions -->
 		<!-- svelte-ignore a11y-click-events-have-key-events -->
 		<div
 			class="bg-white dark:bg-gray-800 rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col"
-			on:click|stopPropagation
+			onclick={(e) => e.stopPropagation()}
 		>
 			<!-- Modal Header -->
 			<div
@@ -675,7 +675,7 @@
 			>
 				<h2 class="text-xl font-bold text-gray-900 dark:text-white">Error Details</h2>
 				<button
-					on:click={() => (selectedError = null)}
+					onclick={() => (selectedError = null)}
 					class="text-gray-400 hover:text-gray-500 dark:text-gray-500 dark:hover:text-gray-400 transition-colors"
 					aria-label="Close modal"
 				>
@@ -1236,7 +1236,7 @@
 				<div class="flex justify-end space-x-3">
 					{#if selectedError && !selectedError.resolved && selectedError.id}
 						<Button
-							on:click={() => {
+							onclick={() => {
 								if (selectedError?.id) {
 									openResolveModal(selectedError.id);
 								}
@@ -1249,7 +1249,7 @@
 							Mark as Resolved
 						</Button>
 					{/if}
-					<Button on:click={() => (selectedError = null)} variant="secondary" size="sm">
+					<Button onclick={() => (selectedError = null)} variant="secondary" size="sm">
 						Close
 					</Button>
 				</div>

@@ -238,8 +238,8 @@
 			<!-- Left side: Clickable title area with expand button -->
 			<div
 				class="title-section"
-				on:click={toggleExpanded}
-				on:keydown={handleKeyDown}
+				onclick={toggleExpanded}
+				onkeydown={handleKeyDown}
 				role="button"
 				tabindex="0"
 			>
@@ -255,7 +255,10 @@
 				<!-- Integrated expand button -->
 				<button
 					class="expand-toggle"
-					on:click|stopPropagation={toggleExpanded}
+					onclick={(e) => {
+						e.stopPropagation();
+						toggleExpanded();
+					}}
 					aria-label="{isExpanded ? 'Collapse' : 'Expand'} project details"
 					aria-expanded={isExpanded}
 					aria-controls="header-content"
@@ -274,7 +277,7 @@
 				<div class="hidden sm:flex items-center gap-2">
 					{#if onEdit}
 						<Button
-							on:click={handleEditContext}
+							onclick={handleEditContext}
 							variant="outline"
 							size="sm"
 							class="min-h-0 p-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
@@ -289,7 +292,7 @@
 					<!-- More menu -->
 					<div class="relative">
 						<Button
-							on:click={toggleDesktopMenu}
+							onclick={toggleDesktopMenu}
 							variant="ghost"
 							size="sm"
 							style="postion: relative;"
@@ -310,7 +313,7 @@
 							>
 								{#if showConnectButton}
 									<button
-										on:click={() => {
+										onclick={() => {
 											handleConnectCalendar();
 											closeDesktopMenu();
 										}}
@@ -322,7 +325,7 @@
 									</button>
 								{:else if showCalendarSettings}
 									<button
-										on:click={() => {
+										onclick={() => {
 											handleCalendarSettings();
 											closeDesktopMenu();
 										}}
@@ -338,7 +341,7 @@
 
 								{#if onViewHistory}
 									<button
-										on:click={() => {
+										onclick={() => {
 											handleViewHistory();
 											closeDesktopMenu();
 										}}
@@ -355,7 +358,7 @@
 										class="border-t border-gray-200 dark:border-gray-700 my-1"
 									></div>
 									<button
-										on:click={() => {
+										onclick={() => {
 											handleDelete();
 											closeDesktopMenu();
 										}}
@@ -375,7 +378,7 @@
 				<div class="sm:hidden flex items-center gap-2">
 					{#if onEdit}
 						<Button
-							on:click={handleEditContext}
+							onclick={handleEditContext}
 							variant="ghost"
 							size="sm"
 							class="min-h-0 p-2 text-gray-600 dark:text-gray-300"
@@ -386,7 +389,7 @@
 					{/if}
 
 					<Button
-						on:click={toggleMobileMenu}
+						onclick={toggleMobileMenu}
 						variant="ghost"
 						size="sm"
 						class="min-h-0 p-2 text-gray-600 dark:text-gray-300"
@@ -404,7 +407,7 @@
 						>
 							{#if showConnectButton || showCalendarSettings}
 								<button
-									on:click={() => {
+									onclick={() => {
 										showConnectButton
 											? handleConnectCalendar()
 											: handleCalendarSettings();
@@ -424,7 +427,7 @@
 
 							{#if onViewHistory}
 								<button
-									on:click={() => {
+									onclick={() => {
 										handleViewHistory();
 										closeMobileMenu();
 									}}
@@ -441,7 +444,7 @@
 									class="border-t border-gray-200 dark:border-gray-700 my-1"
 								></div>
 								<button
-									on:click={() => {
+									onclick={() => {
 										handleDelete();
 										closeMobileMenu();
 									}}
@@ -703,13 +706,13 @@
 		opacity: 0.6;
 	}
 
-	.title-section:focus {
+	.title-sectionfocus {
 		outline: 2px solid rgb(59 130 246);
 		outline-offset: 2px;
 		border-radius: 8px;
 	}
 
-	.title-section:focus:not(:focus-visible) {
+	.title-sectionfocus:not(:focus-visible) {
 		outline: none;
 	}
 

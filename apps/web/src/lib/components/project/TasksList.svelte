@@ -879,7 +879,7 @@
 	});
 </script>
 
-<svelte:window on:click={handleClickOutside} />
+<svelte:window onclick={handleClickOutside} />
 
 <div class="space-y-6">
 	<!-- Header -->

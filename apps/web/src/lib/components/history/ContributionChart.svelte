@@ -274,9 +274,9 @@
 										? `${formatTooltipDate(day.date)}: ${day.count} braindump${day.count !== 1 ? 's' : ''}`
 										: 'No data'}
 									disabled={!day}
-									on:click={() => handleDayClick(day)}
-									on:mouseenter={(e) => handleDayMouseEnter(e, day)}
-									on:mouseleave={handleDayMouseLeave}
+									onclick={() => handleDayClick(day)}
+									onmouseenter={(e) => handleDayMouseEnter(e, day)}
+									onmouseleave={handleDayMouseLeave}
 								></Button>
 							{/each}
 						</div>

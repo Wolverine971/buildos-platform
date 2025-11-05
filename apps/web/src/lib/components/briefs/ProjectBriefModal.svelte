@@ -121,7 +121,7 @@
 				</div>
 				<Button
 					type="button"
-					on:click={close}
+					onclick={close}
 					variant="secondary"
 					size="md"
 					class="w-full sm:w-auto"

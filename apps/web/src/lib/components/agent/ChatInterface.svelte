@@ -454,7 +454,7 @@
 					</span>
 				</div>
 				<button
-					on:click={exitProjectContext}
+					onclick={exitProjectContext}
 					class="text-xs font-medium text-blue-600 transition-colors hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
 				>
 					Exit Project Mode
@@ -523,7 +523,7 @@
 		<div class="flex flex-col gap-2 sm:gap-3">
 			<textarea
 				bind:value={input}
-				on:keydown={handleKeydown}
+				onkeydown={handleKeydown}
 				placeholder={isStreaming ? 'Please wait...' : 'Type your message...'}
 				disabled={isStreaming}
 				rows="3"
@@ -531,7 +531,7 @@
 			/>
 			<div class="flex justify-end">
 				<Button
-					on:click={sendMessage}
+					onclick={sendMessage}
 					disabled={!input.trim() || isStreaming}
 					variant="primary"
 					size="md"

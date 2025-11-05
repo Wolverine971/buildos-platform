@@ -216,7 +216,7 @@
 		<div class="mt-2 sm:mt-3 mb-1 sm:mb-2">
 			<Button
 				type="button"
-				on:click={handleViewBrief}
+				onclick={handleViewBrief}
 				variant="outline"
 				size="sm"
 				class="w-full text-blue-600 dark:text-blue-400 border-blue-300 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-900/20 text-[10px] sm:text-xs py-1 sm:py-1.5"

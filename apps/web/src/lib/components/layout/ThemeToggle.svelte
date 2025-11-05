@@ -49,7 +49,7 @@
 </script>
 
 <Button
-	on:click={toggleMode}
+	onclick={toggleMode}
 	variant="ghost"
 	size="sm"
 	icon={isDark ? Sun : Moon}

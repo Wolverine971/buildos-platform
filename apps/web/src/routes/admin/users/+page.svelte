@@ -312,7 +312,7 @@
 				{totalUsers} total users
 			</div>
 			<Button
-				on:click={loadUsers}
+				onclick={loadUsers}
 				disabled={isLoading}
 				variant="primary"
 				size="sm"
@@ -341,7 +341,7 @@
 			<div>
 				<Select
 					bind:value={filterByAdmin}
-					on:change={(e) => (filterByAdmin = e.detail)}
+					onchange={(e) => (filterByAdmin = e.detail)}
 					size="md"
 					placeholder="All Users"
 				>
@@ -355,7 +355,7 @@
 			<div>
 				<Select
 					bind:value={filterByOnboarding}
-					on:change={(e) => (filterByOnboarding = e.detail)}
+					onchange={(e) => (filterByOnboarding = e.detail)}
 					size="md"
 					placeholder="All Onboarding"
 				>
@@ -369,7 +369,7 @@
 			<div>
 				<Select
 					bind:value={sortBy}
-					on:change={(e) => (sortBy = e.detail)}
+					onchange={(e) => (sortBy = e.detail)}
 					size="md"
 					placeholder="Last Visit"
 				>
@@ -422,7 +422,7 @@
 						<tr>
 							<th
 								class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
-								on:click={() => handleSort('email')}
+								onclick={() => handleSort('email')}
 								title="Click to sort by email"
 							>
 								<div class="flex items-center space-x-1">
@@ -451,7 +451,7 @@
 							</th>
 							<th
 								class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
-								on:click={() => handleSort('last_visit')}
+								onclick={() => handleSort('last_visit')}
 								title="Click to sort by last visit"
 							>
 								<div class="flex items-center space-x-1">
@@ -480,7 +480,7 @@
 							</th>
 							<th
 								class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
-								on:click={() => handleSort('created_at')}
+								onclick={() => handleSort('created_at')}
 								title="Click to sort by join date"
 							>
 								<div class="flex items-center space-x-1">
@@ -509,7 +509,7 @@
 							</th>
 							<th
 								class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
-								on:click={() => handleSort('brain_dump_count')}
+								onclick={() => handleSort('brain_dump_count')}
 								title="Click to sort by brain dumps"
 							>
 								<div class="flex items-center space-x-1">
@@ -538,7 +538,7 @@
 							</th>
 							<th
 								class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
-								on:click={() => handleSort('project_count')}
+								onclick={() => handleSort('project_count')}
 								title="Click to sort by projects"
 							>
 								<div class="flex items-center space-x-1">
@@ -567,7 +567,7 @@
 							</th>
 							<th
 								class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
-								on:click={() => handleSort('brief_count')}
+								onclick={() => handleSort('brief_count')}
 								title="Click to sort by briefs"
 							>
 								<div class="flex items-center space-x-1">
@@ -596,7 +596,7 @@
 							</th>
 							<th
 								class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
-								on:click={() => handleSort('has_generated_phases')}
+								onclick={() => handleSort('has_generated_phases')}
 								title="Click to sort by phase generation"
 							>
 								<div class="flex items-center space-x-1">
@@ -631,7 +631,7 @@
 							</th>
 							<th
 								class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
-								on:click={() => handleSort('completed_onboarding')}
+								onclick={() => handleSort('completed_onboarding')}
 								title="Click to sort by onboarding status"
 							>
 								<div class="flex items-center space-x-1">
@@ -773,7 +773,7 @@
 									<div class="flex items-center justify-end space-x-2">
 										<!-- Send Email -->
 										<Button
-											on:click={() => {
+											onclick={() => {
 												emailUserId = user.id;
 												emailUserName = user.name;
 												emailUserEmail = user.email;
@@ -787,7 +787,7 @@
 										/>
 										<!-- View Activity -->
 										<Button
-											on:click={() => loadUserActivity(user.id)}
+											onclick={() => loadUserActivity(user.id)}
 											variant="ghost"
 											size="sm"
 											icon={Activity}
@@ -797,7 +797,7 @@
 
 										<!-- Toggle Admin Status -->
 										<Button
-											on:click={() =>
+											onclick={() =>
 												toggleAdminStatus(user.id, user.is_admin)}
 											variant="ghost"
 											size="sm"
@@ -808,7 +808,7 @@
 
 										<!-- View Details -->
 										<Button
-											on:click={() => {
+											onclick={() => {
 												selectedUser = user;
 												showUserModal = true;
 											}}
@@ -833,7 +833,7 @@
 				>
 					<div class="flex-1 flex justify-between sm:hidden">
 						<Button
-							on:click={prevPage}
+							onclick={prevPage}
 							disabled={currentPage === 1}
 							variant="secondary"
 							size="sm"
@@ -841,7 +841,7 @@
 							Previous
 						</Button>
 						<Button
-							on:click={nextPage}
+							onclick={nextPage}
 							disabled={currentPage === totalPages}
 							variant="secondary"
 							size="sm"
@@ -859,7 +859,7 @@
 						<div>
 							<nav class="relative z-0 inline-flex -space-x-px">
 								<Button
-									on:click={prevPage}
+									onclick={prevPage}
 									disabled={currentPage === 1}
 									variant="secondary"
 									size="sm"
@@ -867,7 +867,7 @@
 									class="rounded-r-none border-r-0"
 								/>
 								<Button
-									on:click={nextPage}
+									onclick={nextPage}
 									disabled={currentPage === totalPages}
 									variant="secondary"
 									size="sm"
@@ -893,7 +893,7 @@
 						User Details
 					</h3>
 					<Button
-						on:click={() => (showUserModal = false)}
+						onclick={() => (showUserModal = false)}
 						variant="ghost"
 						size="sm"
 						class="!p-1 text-2xl leading-none"
@@ -1003,7 +1003,7 @@
 
 				<div class="mt-6 flex justify-between space-x-3">
 					<Button
-						on:click={() => {
+						onclick={() => {
 							showUserModal = false;
 							loadUserActivity(selectedUser.id);
 						}}
@@ -1015,14 +1015,14 @@
 					</Button>
 					<div class="flex space-x-2">
 						<Button
-							on:click={() => (showUserModal = false)}
+							onclick={() => (showUserModal = false)}
 							variant="secondary"
 							size="sm"
 						>
 							Close
 						</Button>
 						<Button
-							on:click={() =>
+							onclick={() =>
 								toggleAdminStatus(selectedUser.id, selectedUser.is_admin)}
 							variant="primary"
 							size="sm"

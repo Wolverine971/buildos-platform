@@ -364,7 +364,7 @@
 							</p>
 							<Button
 								variant="primary"
-								on:click={() => (wantsToEnableSMS = true)}
+								onclick={() => (wantsToEnableSMS = true)}
 								class="w-full"
 							>
 								Enable SMS Notifications
@@ -513,7 +513,7 @@
 	<div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 mt-8">
 		<Button
 			variant="ghost"
-			on:click={handleSkipSMS}
+			onclick={handleSkipSMS}
 			disabled={isSaving}
 			class="order-2 sm:order-1"
 		>
@@ -523,7 +523,7 @@
 		<Button
 			variant="primary"
 			size="lg"
-			on:click={saveAndContinue}
+			onclick={saveAndContinue}
 			loading={isSaving}
 			class="flex-1 sm:flex-initial min-w-[200px] order-1 sm:order-2"
 		>

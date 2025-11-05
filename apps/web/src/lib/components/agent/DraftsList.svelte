@@ -123,7 +123,7 @@
 			{/if}
 		</div>
 		<Button
-			on:click={handleRefresh}
+			onclick={handleRefresh}
 			variant="ghost"
 			size="sm"
 			disabled={isRefreshing}
@@ -172,7 +172,7 @@
 				>
 					<button
 						class="flex w-full items-start justify-between gap-3 p-3 text-left transition-colors hover:bg-slate-50/50 dark:hover:bg-slate-800/50"
-						on:click={() => toggleExpanded(draft.id)}
+						onclick={() => toggleExpanded(draft.id)}
 					>
 						<div class="flex min-w-0 flex-1 items-start gap-2">
 							<div class="flex-shrink-0 pt-0.5">
@@ -343,16 +343,12 @@
 							<div
 								class="flex gap-2 border-t border-slate-200/60 pt-3 dark:border-slate-700/60"
 							>
-								<Button
-									on:click={() => onSelect(draft)}
-									variant="primary"
-									size="sm"
-								>
+								<Button onclick={() => onSelect(draft)} variant="primary" size="sm">
 									Resume Session
 								</Button>
 								{#if completeness >= 25}
 									<Button
-										on:click={() => onSelect(draft)}
+										onclick={() => onSelect(draft)}
 										variant="secondary"
 										size="sm"
 									>

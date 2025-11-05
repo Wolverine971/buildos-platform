@@ -1,14 +1,17 @@
 <!-- apps/web/src/lib/components/brain-dump/SuccessView.svelte -->
 <script lang="ts">
 	import { Check, ExternalLink, FileText, Sparkles, ArrowRight, Brain } from 'lucide-svelte';
-	import { createEventDispatcher } from 'svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import OperationErrorsDisplay from './OperationErrorsDisplay.svelte';
 
 	let {
 		successData = {},
 		showNavigationOnSuccess = true,
-		inModal = false
+		inModal = false,
+		onStartNew,
+		onGoToProject,
+		onContinueWithAgent,
+		onNavigateToHistory
 	} = $props<{
 		successData?: {
 			brainDumpId?: string;
@@ -28,23 +31,25 @@
 		};
 		showNavigationOnSuccess?: boolean;
 		inModal?: boolean;
+		onStartNew?: () => void;
+		onGoToProject?: () => void;
+		onContinueWithAgent?: (detail: { projectId: string }) => void;
+		onNavigateToHistory?: (detail: { url: string }) => void;
 	}>();
-
-	const dispatch = createEventDispatcher();
 
 	function handleStartNew(e: Event) {
 		e.stopPropagation();
-		dispatch('startNew');
+		onStartNew?.();
 	}
 
 	function handleGoToProject(e: Event) {
 		e.stopPropagation();
-		dispatch('goToProject');
+		onGoToProject?.();
 	}
 
 	function handleContinueWithAgent(e: Event) {
 		e.stopPropagation();
-		dispatch('continueWithAgent', { projectId: successData.projectId });
+		onContinueWithAgent?.({ projectId: successData.projectId! });
 	}
 </script>
 
@@ -143,7 +148,7 @@
 			<div class="space-y-2 sm:space-y-2.5">
 				{#if showNavigationOnSuccess && successData.projectId}
 					<Button
-						on:click={handleGoToProject}
+						onclick={handleGoToProject}
 						class="w-full"
 						variant="success"
 						size="md"
@@ -174,8 +179,8 @@
 						variant="outline"
 						size="md"
 						btnType="container"
-						on:click={() => {
-							dispatch('navigateToHistory', {
+						onclick={() => {
+							onNavigateToHistory?.({
 								url: `/history?braindump=${successData.brainDumpId}`
 							});
 						}}
@@ -197,7 +202,7 @@
 			<div class="space-y-2">
 				{#if successData.projectId}
 					<Button
-						on:click={handleContinueWithAgent}
+						onclick={handleContinueWithAgent}
 						variant="outline"
 						size="md"
 						fullWidth
@@ -209,7 +214,7 @@
 				{/if}
 
 				<Button
-					on:click={handleStartNew}
+					onclick={handleStartNew}
 					variant="outline"
 					size="md"
 					fullWidth
@@ -295,7 +300,7 @@
 	}
 
 	/* Better focus styles for accessibility */
-	button:focus-visible {
+	buttonfocus-visible {
 		outline: 2px solid transparent;
 		outline-offset: 2px;
 	}

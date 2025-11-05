@@ -114,7 +114,7 @@
 		<div class="space-y-3">
 			<slot name="actions">
 				<Button
-					on:click={handlePrimary}
+					onclick={handlePrimary}
 					variant="primary"
 					size="xl"
 					fullWidth={true}
@@ -129,7 +129,7 @@
 
 				{#if secondaryButtonText}
 					<Button
-						on:click={handleSecondary}
+						onclick={handleSecondary}
 						variant="ghost"
 						size="xl"
 						fullWidth={true}

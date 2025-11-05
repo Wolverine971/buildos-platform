@@ -226,7 +226,7 @@
 
 				{#if braindumpDetails?.braindump?.content}
 					<Button
-						on:click={copyContent}
+						onclick={copyContent}
 						variant="ghost"
 						size="sm"
 						icon={Copy}
@@ -236,7 +236,7 @@
 				{/if}
 
 				<Button
-					on:click={handleDelete}
+					onclick={handleDelete}
 					variant="ghost"
 					size="sm"
 					icon={Trash2}
@@ -268,7 +268,7 @@
 			<div class="text-center">
 				<div class="text-rose-600 dark:text-rose-400 text-sm mb-2">{error}</div>
 				<Button
-					on:click={fetchBraindumpDetails}
+					onclick={fetchBraindumpDetails}
 					variant="ghost"
 					size="sm"
 					class="text-purple-600 hover:text-violet-700 dark:text-purple-400"

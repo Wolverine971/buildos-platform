@@ -181,7 +181,7 @@
 		size="lg"
 		fullWidth
 		btnType="container"
-		on:click={toggleCollapsed}
+		onclick={toggleCollapsed}
 		aria-expanded={!isCollapsed}
 		aria-controls="recurring-content"
 		class="p-4 bg-blue-50 dark:bg-blue-900/20 text-left hover:bg-blue-100 dark:hover:bg-blue-900/30 min-h-[56px] rounded-none rounded-t-lg justify-start font-normal border-none"
@@ -253,8 +253,8 @@
 								role="listitem"
 								class="recurring-task-item bg-gray-50 dark:bg-gray-800 rounded-lg p-4 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer"
 								animate:flip={{ duration: 300, easing: cubicOut }}
-								on:click={() => dispatch('editTask', { task })}
-								on:keydown={(e) => {
+								onclick={() => dispatch('editTask', { task })}
+								onkeydown={(e) => {
 									if (e.key === 'Enter' || e.key === ' ') {
 										e.preventDefault();
 										dispatch('editTask', { task });
@@ -382,7 +382,7 @@
 										<Button
 											variant="ghost"
 											size="sm"
-											on:click={(e) => {
+											onclick={(e) => {
 												e.stopPropagation();
 												dispatch('editTask', { task });
 											}}

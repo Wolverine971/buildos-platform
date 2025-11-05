@@ -1102,7 +1102,7 @@
 					<!-- Close button for mobile -->
 					<Button
 						type="button"
-						on:click={onClose}
+						onclick={onClose}
 						variant="ghost"
 						size="sm"
 						class="!p-1.5 text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-200"
@@ -1136,7 +1136,7 @@
 				<div class="flex items-center">
 					<Button
 						type="button"
-						on:click={onClose}
+						onclick={onClose}
 						variant="ghost"
 						size="sm"
 						class="!p-1.5 text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-200"
@@ -1314,7 +1314,7 @@
 						id="task-status"
 						bind:value={statusValue}
 						size="sm"
-						on:change={(e) => (statusValue = e.detail)}
+						onchange={(e) => (statusValue = e.detail)}
 						class="border-slate-200/60 bg-white/85 dark:border-slate-600/60 dark:bg-slate-900/60"
 					>
 						{#each statusOptions as option}
@@ -1332,7 +1332,7 @@
 					<Select
 						id="task-priority"
 						bind:value={priorityValue}
-						on:change={(e) => (priorityValue = e.detail)}
+						onchange={(e) => (priorityValue = e.detail)}
 						size="sm"
 						class="border-slate-200/60 bg-white/85 dark:border-slate-600/60 dark:bg-slate-900/60"
 					>
@@ -1403,7 +1403,7 @@
 						<Select
 							id="task-type"
 							bind:value={taskTypeValue}
-							on:change={(e) => (taskTypeValue = e.detail)}
+							onchange={(e) => (taskTypeValue = e.detail)}
 							size="sm"
 							class="border-slate-200/60 bg-white/85 dark:border-slate-600/60 dark:bg-slate-900/60"
 						>
@@ -1480,7 +1480,7 @@
 											{#if action.type === 'button'}
 												<Button
 													type="button"
-													on:click={action.onClick}
+													onclick={action.onClick}
 													icon={action.icon}
 													size="sm"
 													variant={action.variant ?? 'ghost'}
@@ -1533,7 +1533,7 @@
 									{dependency}
 									<Button
 										type="button"
-										on:click={() => removeDependency(dependency)}
+										onclick={() => removeDependency(dependency)}
 										variant="ghost"
 										size="sm"
 										class="ml-1 p-0.5 !text-orange-600 dark:!text-orange-300 hover:!text-orange-800 dark:hover:!text-orange-100"
@@ -1548,7 +1548,7 @@
 					<TextInput
 						id="task-dependencies"
 						bind:value={dependencyInput}
-						on:keydown={handleDependencyKeydown}
+						onkeydown={handleDependencyKeydown}
 						placeholder="Add dependency (press Enter)..."
 						size="sm"
 						class="bg-white/70 dark:bg-gray-800/70 "

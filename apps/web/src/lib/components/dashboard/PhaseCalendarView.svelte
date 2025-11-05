@@ -290,24 +290,24 @@
 					<div
 						class="sm:hidden flex items-center bg-gray-100 dark:bg-gray-800 rounded-xl p-1"
 					>
-						<button
-							on:click={() => (mobileView = 'list')}
+						<Button
+							onclick={() => (mobileView = 'list')}
 							class="px-4 py-2 text-sm font-medium rounded-lg transition-all {mobileView ===
 							'list'
 								? 'bg-white dark:bg-gray-700 shadow-sm text-gray-900 dark:text-white'
 								: 'text-gray-600 dark:text-gray-400'}"
 						>
 							List
-						</button>
-						<button
-							on:click={() => (mobileView = 'week')}
+						</Button>
+						<Button
+							onclick={() => (mobileView = 'week')}
 							class="px-4 py-2 text-sm font-medium rounded-lg transition-all {mobileView ===
 							'week'
 								? 'bg-white dark:bg-gray-700 shadow-sm text-gray-900 dark:text-white'
 								: 'text-gray-600 dark:text-gray-400'}"
 						>
 							Week
-						</button>
+						</Button>
 					</div>
 				</div>
 
@@ -316,7 +316,7 @@
 					class="hidden sm:flex items-center gap-3 bg-gray-100 dark:bg-gray-800 rounded-xl p-1"
 				>
 					<Button
-						on:click={() => navigateCalendar('prev')}
+						onclick={() => navigateCalendar('prev')}
 						variant="ghost"
 						size="md"
 						class="w-10 h-10 rounded-lg"
@@ -325,15 +325,15 @@
 						<ChevronLeft class="h-5 w-5" />
 					</Button>
 
-					<button
-						on:click={resetToToday}
+					<Button
+						onclick={resetToToday}
 						class="px-4 py-2 text-sm font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors"
 					>
 						{format(startDate, 'MMM yyyy')}
-					</button>
+					</Button>
 
 					<Button
-						on:click={() => navigateCalendar('next')}
+						onclick={() => navigateCalendar('next')}
 						variant="ghost"
 						size="md"
 						class="w-10 h-10 rounded-lg"
@@ -374,8 +374,8 @@
 					{#each sortedPhases as phase, index}
 						{@const active = isPhaseActive(phase)}
 						{@const colorConfig = getPhaseColorConfig(phase)}
-						<button
-							on:click={() => handlePhaseClick(phase)}
+						<Button
+							onclick={() => handlePhaseClick(phase)}
 							class="w-full text-left p-2 rounded-xl border-2 transition-all duration-200 hover:shadow-lg hover:scale-[1.02] min-h-[80px] bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700"
 							style={active
 								? `border-color: ${colorConfig.hex}; box-shadow: 0 0 0 1px ${colorConfig.hex}20;`
@@ -430,7 +430,7 @@
 							<div class="mt-2 flex items-center justify-end">
 								<ExternalLink class="h-4 w-4 text-gray-400" />
 							</div>
-						</button>
+						</Button>
 					{/each}
 				</div>
 			{/if}
@@ -441,21 +441,21 @@
 					<!-- Week navigation -->
 					<div class="flex items-center justify-between mb-6">
 						<Button
-							on:click={() => navigateCalendar('prev')}
+							onclick={() => navigateCalendar('prev')}
 							variant="ghost"
 							size="md"
 							class="w-12 h-12 rounded-xl"
 						>
 							<ChevronLeft class="h-5 w-5" />
 						</Button>
-						<button
-							on:click={resetToToday}
+						<Button
+							onclick={resetToToday}
 							class="px-4 py-2 text-sm font-semibold rounded-xl bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
 						>
 							{format(startDate, 'MMM d')} - {format(addDays(startDate, 6), 'MMM d')}
-						</button>
+						</Button>
 						<Button
-							on:click={() => navigateCalendar('next')}
+							onclick={() => navigateCalendar('next')}
 							variant="ghost"
 							size="md"
 							class="w-12 h-12 rounded-xl"
@@ -498,7 +498,7 @@
 										{#each dayPhases as phase, index}
 											{@const colorConfig = getPhaseColorConfig(phase)}
 											<button
-												on:click={() => handlePhaseClick(phase)}
+												onclick={() => handlePhaseClick(phase)}
 												class={`w-full p-3 text-sm rounded-xl transition-all duration-200 hover:shadow-md hover:scale-105 min-h-[48px] flex items-center justify-center ${colorConfig.textClass}`}
 												style={`background-color: ${colorConfig.hex};`}
 											>
@@ -585,7 +585,7 @@
 													? 'rounded-xl'
 													: `${phaseBar.isStart ? 'rounded-l-xl' : 'rounded-l-md'} ${phaseBar.isEnd ? 'rounded-r-xl' : 'rounded-r-md'}`}
 											<button
-												on:click={() => handlePhaseClick(phaseBar)}
+												onclick={() => handlePhaseClick(phaseBar)}
 												class={`w-full h-full px-3 text-sm font-semibold transition-all duration-200 hover:shadow-lg hover:scale-[1.01] flex items-center justify-center shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60 focus-visible:ring-offset-1 focus-visible:ring-offset-gray-900/0 ${colorConfig.textClass} ${radiusClasses}`}
 												style={`grid-column: ${phaseBar.startCol + 1} / span ${phaseBar.span}; grid-row: ${phaseBar.lane + 1}; background-color: ${colorConfig.hex};`}
 												title="{phaseBar.name} • {phaseBar.projects?.name ||

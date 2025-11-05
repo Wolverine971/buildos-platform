@@ -163,7 +163,7 @@
 									<Button
 										size="sm"
 										variant="secondary"
-										on:click={() => onRetry?.(delivery.delivery_id)}
+										onclick={() => onRetry?.(delivery.delivery_id)}
 									>
 										Retry
 									</Button>
@@ -171,7 +171,7 @@
 								<Button
 									size="sm"
 									variant="secondary"
-									on:click={() => onResend?.(delivery.delivery_id)}
+									onclick={() => onResend?.(delivery.delivery_id)}
 								>
 									Resend
 								</Button>
@@ -254,7 +254,7 @@
 				{#if delivery.attempts < delivery.max_attempts}
 					<Button
 						variant="secondary"
-						on:click={() => {
+						onclick={() => {
 							onRetry?.(delivery.delivery_id);
 							closeErrorModal();
 						}}
@@ -264,7 +264,7 @@
 				{/if}
 				<Button
 					variant="primary"
-					on:click={() => {
+					onclick={() => {
 						onResend?.(delivery.delivery_id);
 						closeErrorModal();
 					}}

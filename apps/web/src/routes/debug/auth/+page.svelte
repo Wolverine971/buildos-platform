@@ -126,13 +126,13 @@
 
 		<!-- Actions -->
 		<div class="flex gap-4">
-			<Button on:click={checkSession} disabled={checking} variant="primary" size="sm">
+			<Button onclick={checkSession} disabled={checking} variant="primary" size="sm">
 				Check Session
 			</Button>
-			<Button on:click={refreshSession} disabled={checking} variant="success" size="sm">
+			<Button onclick={refreshSession} disabled={checking} variant="success" size="sm">
 				Refresh Session
 			</Button>
-			<Button on:click={signOut} variant="danger" size="sm">Sign Out (Client Only)</Button>
+			<Button onclick={signOut} variant="danger" size="sm">Sign Out (Client Only)</Button>
 		</div>
 
 		<!-- Raw Data -->

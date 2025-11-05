@@ -517,7 +517,7 @@ main {
 	}
 
 	/* Better focus indicators for mobile */
-	button:focus,
+	buttonfocus,
 	a:focus,
 	input:focus,
 	select:focus,

@@ -498,7 +498,7 @@
 
 							<div class="flex items-center gap-2">
 								<Button
-									on:click={refreshCalendarData}
+									onclick={refreshCalendarData}
 									disabled={refreshingCalendar}
 									variant="ghost"
 									size="sm"
@@ -508,7 +508,7 @@
 								></Button>
 
 								<Button
-									on:click={handleDisconnectClick}
+									onclick={handleDisconnectClick}
 									variant="danger"
 									size="sm"
 									class="sm:size-md"
@@ -523,7 +523,7 @@
 						</div>
 					{:else}
 						<Button
-							on:click={connectCalendar}
+							onclick={connectCalendar}
 							variant="primary"
 							size="md"
 							icon={Link}
@@ -752,7 +752,7 @@
 									id="calendarTimezone"
 									name="timezone"
 									bind:value={calendarPreferences.timezone}
-									on:change={(e) => (calendarPreferences.timezone = e.detail)}
+									onchange={(e) => (calendarPreferences.timezone = e.detail)}
 									required
 									size="md"
 								>
@@ -957,7 +957,7 @@
 								<Button
 									variant="primary"
 									size="sm"
-									on:click={startCalendarAnalysis}
+									onclick={startCalendarAnalysis}
 									disabled={analysisInProgress}
 									loading={analysisInProgress}
 									icon={Brain}
@@ -1038,7 +1038,7 @@
 											<Button
 												variant="ghost"
 												size="sm"
-												on:click={() => goto('/projects?source=calendar')}
+												onclick={() => goto('/projects?source=calendar')}
 											>
 												View all {calendarProjects.length} calendar projects
 											</Button>
@@ -1057,7 +1057,7 @@
 			<p class="text-gray-500 dark:text-gray-400 mb-4">
 				Failed to load calendar settings. Please try again.
 			</p>
-			<Button on:click={loadCalendarData} variant="primary" size="sm" icon={RefreshCw}>
+			<Button onclick={loadCalendarData} variant="primary" size="sm" icon={RefreshCw}>
 				Retry
 			</Button>
 		</div>

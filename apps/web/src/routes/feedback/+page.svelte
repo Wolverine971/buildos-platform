@@ -372,7 +372,7 @@
 								bind:value={userEmail}
 								placeholder="your@email.com"
 								size="md"
-								on:blur={validateEmail}
+								onblur={validateEmail}
 							/>
 							{#if emailError}
 								<p class="mt-1 text-sm text-red-600 dark:text-red-400">

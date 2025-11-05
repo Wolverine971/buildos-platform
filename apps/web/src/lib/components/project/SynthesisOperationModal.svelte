@@ -252,7 +252,7 @@
 										<div class="flex justify-end">
 											<Button
 												type="button"
-												on:click={() =>
+												onclick={() =>
 													(previewMode[field] = !previewMode[field])}
 												variant="ghost"
 												size="sm"
@@ -297,7 +297,7 @@
 							{:else if config.type === 'select'}
 								<Select
 									bind:value={editedData[field]}
-									on:change={(e) => (editedData[field] = e.detail)}
+									onchange={(e) => (editedData[field] = e.detail)}
 									size="md"
 									class="text-xs sm:text-sm"
 								>
@@ -354,10 +354,10 @@
 			<div
 				class="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700"
 			>
-				<Button on:click={onClose} variant="outline" size="md" class="w-full sm:w-auto">
+				<Button onclick={onClose} variant="outline" size="md" class="w-full sm:w-auto">
 					Cancel
 				</Button>
-				<Button on:click={handleSave} variant="primary" size="md" class="w-full sm:w-auto">
+				<Button onclick={handleSave} variant="primary" size="md" class="w-full sm:w-auto">
 					<Save class="w-4 h-4 mr-2" />
 					Save Changes
 				</Button>

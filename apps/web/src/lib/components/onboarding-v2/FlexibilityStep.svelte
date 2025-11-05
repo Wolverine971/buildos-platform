@@ -457,7 +457,7 @@
 
 	<!-- Navigation -->
 	<div class="flex justify-end mt-8">
-		<Button variant="primary" size="lg" on:click={onNext} class="min-w-[200px]">
+		<Button variant="primary" size="lg" onclick={onNext} class="min-w-[200px]">
 			Continue
 			<Sparkles class="w-5 h-5 ml-2" />
 		</Button>

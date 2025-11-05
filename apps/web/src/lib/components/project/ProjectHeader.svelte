@@ -873,7 +873,7 @@
 				>
 					{#if onEdit}
 						<Button
-							on:click={handleEditContext}
+							onclick={handleEditContext}
 							variant="outline"
 							size="sm"
 							aria-label="Edit project {project?.name} context"
@@ -885,7 +885,7 @@
 
 					{#if showConnectButton}
 						<Button
-							on:click={handleConnectCalendar}
+							onclick={handleConnectCalendar}
 							variant="outline"
 							size="sm"
 							aria-label="Connect Google Calendar"
@@ -895,7 +895,7 @@
 						</Button>
 					{:else if showCustomizeButton}
 						<Button
-							on:click={handleCalendarSettings}
+							onclick={handleCalendarSettings}
 							variant="outline"
 							size="sm"
 							aria-label="Customize project calendar"
@@ -908,7 +908,7 @@
 					<div class="relative" role="presentation">
 						<button
 							type="button"
-							on:click={toggleDesktopMenu}
+							onclick={toggleDesktopMenu}
 							class="inline-flex items-center justify-center rounded-md border border-transparent p-2 text-gray-500 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
 							aria-haspopup="true"
 							aria-expanded={showDesktopMenu}
@@ -924,12 +924,12 @@
 								role="menu"
 								aria-label="Project settings"
 								tabindex="-1"
-								on:keydown={(e) => e.key === 'Escape' && closeDesktopMenu()}
+								onkeydown={(e) => e.key === 'Escape' && closeDesktopMenu()}
 								bind:this={desktopMenuPanel}
 							>
 								{#if onViewHistory}
 									<button
-										on:click={() => {
+										onclick={() => {
 											handleViewHistory();
 											closeDesktopMenu();
 										}}
@@ -946,7 +946,7 @@
 
 								{#if showCalendarSettings}
 									<button
-										on:click={() => {
+										onclick={() => {
 											handleCalendarSettings();
 											closeDesktopMenu();
 										}}
@@ -971,7 +971,7 @@
 									</button>
 								{:else if showMenuCalendarConnect}
 									<button
-										on:click={() => {
+										onclick={() => {
 											handleConnectCalendar();
 											closeDesktopMenu();
 										}}
@@ -991,7 +991,7 @@
 										class="border-t border-gray-200 dark:border-gray-700 my-1"
 									></div>
 									<button
-										on:click={() => {
+										onclick={() => {
 											handleDelete();
 											closeDesktopMenu();
 										}}
@@ -1014,7 +1014,7 @@
 				<div class="sm:hidden flex items-center space-x-2">
 					{#if onEdit}
 						<Button
-							on:click={handleEditContext}
+							onclick={handleEditContext}
 							variant="outline"
 							size="sm"
 							aria-label="Edit project {project?.name} context"
@@ -1026,7 +1026,7 @@
 
 					{#if showConnectButton}
 						<Button
-							on:click={handleConnectCalendar}
+							onclick={handleConnectCalendar}
 							variant="outline"
 							size="sm"
 							aria-label="Connect Google Calendar"
@@ -1036,7 +1036,7 @@
 						</Button>
 					{:else if showCustomizeButton}
 						<Button
-							on:click={handleCalendarSettings}
+							onclick={handleCalendarSettings}
 							variant="outline"
 							size="sm"
 							aria-label="Customize project calendar"
@@ -1048,23 +1048,23 @@
 
 					<!-- Mobile Menu Button -->
 					<div class="relative">
-						<button
-							on:click={toggleMobileMenu}
+						<Button
+							onclick={toggleMobileMenu}
 							class="inline-flex items-center justify-center rounded-md p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500"
 							aria-label="Open project settings menu"
 							aria-expanded={showMobileMenu}
 							aria-haspopup="true"
 						>
 							<MoreHorizontal class="w-5 h-5" aria-hidden="true" />
-						</button>
+						</Button>
 
 						<!-- Mobile Dropdown Menu -->
 						{#if showMobileMenu}
 							<!-- Backdrop -->
 							<div
 								class="fixed inset-0 z-40"
-								on:click={closeMobileMenu}
-								on:keydown={(e) => e.key === 'Escape' && closeMobileMenu()}
+								onclick={closeMobileMenu}
+								onkeydown={(e) => e.key === 'Escape' && closeMobileMenu()}
 								role="button"
 								tabindex="-1"
 								aria-label="Close menu"
@@ -1079,7 +1079,7 @@
 							>
 								{#if onViewHistory}
 									<button
-										on:click={() => {
+										onclick={() => {
 											handleViewHistory();
 											closeMobileMenu();
 										}}
@@ -1096,7 +1096,7 @@
 
 								{#if showCalendarSettings}
 									<button
-										on:click={() => {
+										onclick={() => {
 											handleCalendarSettings();
 											closeMobileMenu();
 										}}
@@ -1121,7 +1121,7 @@
 									</button>
 								{:else if showMenuCalendarConnect}
 									<button
-										on:click={() => {
+										onclick={() => {
 											handleConnectCalendar();
 											closeMobileMenu();
 										}}
@@ -1141,7 +1141,7 @@
 										class="border-t border-gray-200 dark:border-gray-700 my-1"
 									></div>
 									<button
-										on:click={() => {
+										onclick={() => {
 											handleDelete();
 											closeMobileMenu();
 										}}
@@ -1392,8 +1392,8 @@
 														: '12px'}; height: {dot.size === 'small'
 														? '8px'
 														: '12px'}; z-index: 0;"
-													on:click={() => scrollToTask(dot.id)}
-													on:keydown={(e) =>
+													onclick={() => scrollToTask(dot.id)}
+													onkeydown={(e) =>
 														e.key === 'Enter' && scrollToTask(dot.id)}
 													role="button"
 													tabindex="0"
@@ -1441,7 +1441,7 @@
 															endPos - startPos,
 															10
 														)}%; top: {track * 20}px; height: 16px;"
-														on:click={() => scrollToPhase(phase.id)}
+														onclick={() => scrollToPhase(phase.id)}
 														aria-label="Navigate to phase {phase.name}"
 														title="{phase.name} ({progress}% complete)"
 													>
@@ -1521,7 +1521,7 @@
 	{#if showMobileMenu}
 		<button
 			class="fixed inset-0 z-0 bg-transparent"
-			on:click={closeMobileMenu}
+			onclick={closeMobileMenu}
 			tabindex="-1"
 			aria-label="Close menu"
 		></button>

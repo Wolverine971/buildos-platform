@@ -209,12 +209,12 @@
 	}
 </script>
 
-<svelte:window on:keydown={handleKeydown} on:click={handleClickOutside} />
+<svelte:window onkeydown={handleKeydown} onclick={handleClickOutside} />
 
 <div class="filter-dropdown-container relative" bind:this={dropdownContainer}>
 	{#key activeFilters.join(',')}
 		<Button
-			on:click={(e) => {
+			onclick={(e) => {
 				e.stopPropagation();
 				isOpen = !isOpen;
 			}}
@@ -250,7 +250,7 @@
 						? `top: ${dropdownTop}px;`
 						: `bottom: ${dropdownBottom}px;`
 					: ''}"
-				on:click|stopPropagation
+				onclick={(e) => e.stopPropagation()}
 				role="menu"
 				aria-orientation="vertical"
 				transition:scale={{ duration: 100, easing: quintOut, start: 0.75 }}
@@ -263,7 +263,7 @@
 						</h3>
 						<div class="flex items-center gap-2">
 							<Button
-								on:click={selectAll}
+								onclick={selectAll}
 								variant="ghost"
 								size="sm"
 								class="!text-xs !px-2 !py-1 !h-auto transition-all duration-100 hover:scale-105"
@@ -271,7 +271,7 @@
 								All
 							</Button>
 							<Button
-								on:click={clearAll}
+								onclick={clearAll}
 								variant="ghost"
 								size="sm"
 								class="!text-xs !px-2 !py-1 !h-auto transition-all duration-100 hover:scale-105"
@@ -291,7 +291,7 @@
 						<Button
 							variant="ghost"
 							class="w-full px-3 py-2.5 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-100 group"
-							on:click={() => toggleFilter(option.id)}
+							onclick={() => toggleFilter(option.id)}
 							role="menuitemcheckbox"
 							aria-checked={isChecked}
 							aria-label="{option.label} - {count} tasks"
@@ -344,7 +344,7 @@
 					</span>
 					<div class="flex items-center gap-2">
 						<Button
-							on:click={cancel}
+							onclick={cancel}
 							variant="outline"
 							size="sm"
 							class="!text-xs transition-all duration-100 hover:scale-105"
@@ -352,7 +352,7 @@
 							Cancel
 						</Button>
 						<Button
-							on:click={applyFilters}
+							onclick={applyFilters}
 							variant="primary"
 							size="sm"
 							class="!text-xs transition-all duration-100 hover:scale-105"

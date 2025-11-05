@@ -332,7 +332,7 @@
 							<div class="space-y-2">
 								{#each day.tasks as task}
 									<button
-										on:click={() => onTaskClick(task)}
+										onclick={() => onTaskClick(task)}
 										class="w-full text-left p-3 rounded-lg border transition-all hover:shadow-md
 											{task.completed
 											? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 hover:bg-green-100 dark:hover:bg-green-900/30'
@@ -440,8 +440,8 @@
 									<!-- Render time blocks first -->
 									{#each timeBlocksInSlot as { data: block }}
 										{@const colors = getTimeBlockColorClasses(block)}
-										<button
-											on:click={() => onTimeBlockClick?.(block)}
+										<Button
+											onclick={() => onTimeBlockClick?.(block)}
 											class="w-full text-left p-2 rounded-lg border-l-3 transition-all hover:shadow-md hover:scale-105 {colors.bg} {colors.border} {colors.hover}"
 											disabled={!onTimeBlockClick}
 										>
@@ -464,7 +464,7 @@
 											>
 												{block.duration_minutes} min
 											</div>
-										</button>
+										</Button>
 									{/each}
 
 									<!-- Render tasks for this time slot -->
@@ -481,7 +481,7 @@
 											<div class="grid grid-cols-2 gap-1">
 												{#each tasksInSlot as task}
 													<button
-														on:click={() => onTaskClick(task)}
+														onclick={() => onTaskClick(task)}
 														class="w-full text-left p-1.5 rounded-lg border text-[10px] transition-all hover:shadow-md
 															{task.completed
 															? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 hover:bg-green-100 dark:hover:bg-green-900/30'
@@ -521,7 +521,7 @@
 										<!-- Single task or unscheduled tasks -->
 										{#each tasksInSlot as task}
 											<button
-												on:click={() => onTaskClick(task)}
+												onclick={() => onTaskClick(task)}
 												class="w-full text-left p-2 rounded-lg border text-xs transition-all hover:shadow-md hover:scale-105
 													{task.completed
 													? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 hover:bg-green-100 dark:hover:bg-green-900/30'

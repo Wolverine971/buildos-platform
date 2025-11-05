@@ -124,7 +124,7 @@
 			{/if}
 		</div>
 		<Button
-			on:click={handleClose}
+			onclick={handleClose}
 			variant="ghost"
 			size="sm"
 			icon={X}

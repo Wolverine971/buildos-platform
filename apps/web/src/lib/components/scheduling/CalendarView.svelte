@@ -202,7 +202,7 @@
 	>
 		<div class="flex items-center gap-2 flex-1">
 			<Button
-				on:click={() => navigatePeriod(-1)}
+				onclick={() => navigatePeriod(-1)}
 				variant="ghost"
 				size="sm"
 				class="p-1.5"
@@ -218,7 +218,7 @@
 			</span>
 
 			<Button
-				on:click={() => navigatePeriod(1)}
+				onclick={() => navigatePeriod(1)}
 				variant="ghost"
 				size="sm"
 				class="p-1.5"
@@ -227,14 +227,14 @@
 				<ChevronRight class="w-4 h-4 sm:w-5 sm:h-5" />
 			</Button>
 
-			<Button on:click={goToToday} variant="ghost" size="sm" class="px-2 py-1 text-xs">
+			<Button onclick={goToToday} variant="ghost" size="sm" class="px-2 py-1 text-xs">
 				Today
 			</Button>
 		</div>
 
 		<div class="flex items-center gap-2">
 			<Button
-				on:click={handleRefresh}
+				onclick={handleRefresh}
 				disabled={refreshing || loading}
 				variant="ghost"
 				size="sm"
@@ -246,7 +246,7 @@
 
 			<div class="flex items-center gap-1 bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
 				<Button
-					on:click={() => changeViewMode('day')}
+					onclick={() => changeViewMode('day')}
 					variant={viewMode === 'day' ? 'primary' : 'ghost'}
 					size="sm"
 					class="px-2 sm:px-3 py-1.5 text-xs sm:text-sm"
@@ -254,7 +254,7 @@
 					Day
 				</Button>
 				<Button
-					on:click={() => changeViewMode('week')}
+					onclick={() => changeViewMode('week')}
 					variant={viewMode === 'week' ? 'primary' : 'ghost'}
 					size="sm"
 					class="px-2 sm:px-3 py-1.5 text-xs sm:text-sm"
@@ -262,7 +262,7 @@
 					Week
 				</Button>
 				<Button
-					on:click={() => changeViewMode('month')}
+					onclick={() => changeViewMode('month')}
 					variant={viewMode === 'month' ? 'primary' : 'ghost'}
 					size="sm"
 					class="px-2 sm:px-3 py-1.5 text-xs sm:text-sm"
@@ -286,8 +286,8 @@
 			<!-- Day View -->
 			<div class="max-w-2xl mx-auto space-y-3">
 				{#each getEventsForDay(internalDate) as event}
-					<button
-						on:click={() => handleEventClick(event)}
+					<Button
+						onclick={() => handleEventClick(event)}
 						class="w-full text-left p-4 rounded-lg border transition-colors hover:shadow-md {event.type ===
 						'proposed'
 							? 'border-primary-200 dark:border-primary-800'
@@ -316,7 +316,7 @@
 								<Clock class="w-5 h-5 text-gray-400" />
 							{/if}
 						</div>
-					</button>
+					</Button>
 				{/each}
 
 				{#if getEventsForDay(internalDate).length === 0}
@@ -370,7 +370,7 @@
 						>
 							{#each dayEvents as event}
 								<button
-									on:click={() => handleEventClick(event)}
+									onclick={() => handleEventClick(event)}
 									class="absolute left-1 right-1 p-1 rounded text-xs overflow-hidden transition-opacity hover:opacity-90 {event.color}"
 									style="top: {getTimePosition(event.start)}%; height: {Math.max(
 										5,
@@ -415,7 +415,7 @@
 						<div class="space-y-1">
 							{#each dayEvents.slice(0, 3) as event}
 								<button
-									on:click={() => handleEventClick(event)}
+									onclick={() => handleEventClick(event)}
 									class="w-full text-xs p-1 rounded truncate text-left transition-opacity hover:opacity-90 {event.color}"
 								>
 									<span class="truncate">{event.title}</span>

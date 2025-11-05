@@ -123,8 +123,9 @@
 				<!-- Help Text -->
 				<p class="text-sm text-gray-500 dark:text-gray-400 mt-6">
 					If this problem persists, please contact support or check the
-					<a href="https://status.buildos.dev" class="text-blue-600 dark:text-blue-400 hover:underline"
-						>system status</a
+					<a
+						href="https://status.buildos.dev"
+						class="text-blue-600 dark:text-blue-400 hover:underline">system status</a
 					>.
 				</p>
 			</CardBody>

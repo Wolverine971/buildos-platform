@@ -556,7 +556,7 @@
 								type="button"
 								variant="outline"
 								size="sm"
-								on:click={handleRegenerate}
+								onclick={handleRegenerate}
 								loading={isRegenerating}
 								class="hidden sm:inline-flex"
 							>
@@ -645,7 +645,7 @@
 										type="button"
 										variant="primary"
 										size="sm"
-										on:click={handleRegenerate}
+										onclick={handleRegenerate}
 										loading={isRegenerating}
 										class="sm:hidden"
 									>
@@ -686,7 +686,7 @@
 							variant={editingEnabled ? 'outline' : 'primary'}
 							size="sm"
 							class="w-full justify-center"
-							on:click={() => (editingEnabled = !editingEnabled)}
+							onclick={() => (editingEnabled = !editingEnabled)}
 						>
 							<PencilLine class="h-4 w-4" />
 							<span>{editingEnabled ? 'Exit Edit Mode' : 'Edit Session'}</span>
@@ -701,7 +701,7 @@
 							variant="secondary"
 							size="sm"
 							class="w-full justify-center"
-							on:click={handleRegenerate}
+							onclick={handleRegenerate}
 							loading={isRegenerating}
 							disabled={!block}
 						>

@@ -395,13 +395,13 @@
 		</div>
 
 		<div class="flex flex-col sm:flex-row sm:justify-end gap-2 w-full sm:w-auto">
-			<Button variant="ghost" on:click={handleMinimize} class="w-full sm:w-auto">
+			<Button variant="ghost" onclick={handleMinimize} class="w-full sm:w-auto">
 				Minimize
 			</Button>
 			{#if showRetry}
 				<Button
 					variant="secondary"
-					on:click={handleRetry}
+					onclick={handleRetry}
 					icon={RefreshCw}
 					class="w-full sm:w-auto"
 				>
@@ -411,14 +411,14 @@
 			{#if showReviewResults}
 				<Button
 					variant="primary"
-					on:click={handleReviewResults}
+					onclick={handleReviewResults}
 					icon={ExternalLink}
 					class="w-full sm:w-auto"
 				>
 					Review Results
 				</Button>
 			{:else}
-				<Button variant="primary" on:click={handleClose} class="w-full sm:w-auto">
+				<Button variant="primary" onclick={handleClose} class="w-full sm:w-auto">
 					Close
 				</Button>
 			{/if}

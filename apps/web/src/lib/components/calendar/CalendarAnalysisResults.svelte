@@ -486,7 +486,7 @@
 				<div class="mt-6 flex justify-center">
 					<Button
 						variant="primary"
-						on:click={() => {
+						onclick={() => {
 							analysisTriggered = true;
 							startAnalysis();
 						}}
@@ -580,7 +580,7 @@
 						<div class="flex items-start gap-4">
 							<!-- Selection Indicator -->
 							<button
-								on:click={() => toggleSuggestion(suggestion.id)}
+								onclick={() => toggleSuggestion(suggestion.id)}
 								class="mt-1 flex-shrink-0 transition-transform duration-200 hover:scale-110"
 								disabled={processing}
 							>
@@ -696,7 +696,7 @@
 									{@const tasksAreExpanded = tasksExpanded.has(suggestion.id)}
 									<button
 										class="flex items-center gap-2 mt-4 text-sm text-gray-500 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 transition-all duration-200"
-										on:click={() => toggleTasksExpanded(suggestion.id)}
+										onclick={() => toggleTasksExpanded(suggestion.id)}
 									>
 										<span
 											>View {tasks.length} suggested task{tasks.length !== 1
@@ -924,7 +924,7 @@
 																	size="sm"
 																	variant="ghost"
 																	icon={Edit3}
-																	on:click={() =>
+																	onclick={() =>
 																		startEditingTask(
 																			suggestion.id,
 																			index
@@ -946,7 +946,7 @@
 								{#if suggestion.ai_reasoning}
 									<button
 										class="flex items-center gap-2 mt-4 text-sm text-gray-500 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 transition-all duration-200"
-										on:click={() => toggleExpanded(suggestion.id)}
+										onclick={() => toggleExpanded(suggestion.id)}
 									>
 										<span>Why this was suggested</span>
 										{#if isExpanded}
@@ -1051,7 +1051,7 @@
 										<Button
 											size="sm"
 											variant="primary"
-											on:click={saveEditingSuggestion}
+											onclick={saveEditingSuggestion}
 											class="px-4 py-2"
 										>
 											Save
@@ -1059,7 +1059,7 @@
 										<Button
 											size="sm"
 											variant="secondary"
-											on:click={() => cancelEditingSuggestion(suggestion.id)}
+											onclick={() => cancelEditingSuggestion(suggestion.id)}
 											class="px-4 py-2"
 										>
 											Cancel
@@ -1067,7 +1067,7 @@
 									{:else}
 										<button
 											class="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/20 rounded-lg transition-all duration-200"
-											on:click={() => startEditingSuggestion(suggestion.id)}
+											onclick={() => startEditingSuggestion(suggestion.id)}
 											disabled={processing}
 										>
 											<Edit2 class="w-4 h-4" />
@@ -1075,7 +1075,7 @@
 										</button>
 										<button
 											class="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/20 rounded-lg transition-all duration-200"
-											on:click={() => toggleSuggestion(suggestion.id)}
+											onclick={() => toggleSuggestion(suggestion.id)}
 											disabled={processing}
 										>
 											{isSelected ? 'Deselect' : 'Select'}
@@ -1126,7 +1126,7 @@
 			<div class="flex items-center gap-3">
 				<Button
 					variant="secondary"
-					on:click={handleClose}
+					onclick={handleClose}
 					disabled={processing}
 					class="px-6 py-2.5"
 				>
@@ -1135,7 +1135,7 @@
 				{#if suggestions.length > 0}
 					<Button
 						variant="primary"
-						on:click={handleCreateProjects}
+						onclick={handleCreateProjects}
 						disabled={selectedSuggestions.size === 0 || processing}
 						loading={processing}
 						class="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0"

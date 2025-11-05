@@ -136,19 +136,19 @@
 					{acceptedSuggestions.size} of {filteredSuggestions.length} selected
 				</span>
 				<div class="flex gap-2">
-					<button
-						on:click={selectAll}
+					<Button
+						onclick={selectAll}
 						class="text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300"
 					>
 						Select all
-					</button>
+					</Button>
 					<span class="text-gray-400">•</span>
-					<button
-						on:click={deselectAll}
+					<Button
+						onclick={deselectAll}
 						class="text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300"
 					>
 						Deselect all
-					</button>
+					</Button>
 				</div>
 			</div>
 		</div>
@@ -169,7 +169,7 @@
 							<input
 								type="checkbox"
 								checked={acceptedSuggestions.has(suggestion.task_id)}
-								on:change={() => toggleSuggestion(suggestion.task_id)}
+								onchange={() => toggleSuggestion(suggestion.task_id)}
 								class="mt-1 w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
 							/>
 
@@ -293,12 +293,12 @@
 					Changes will be applied after phases are generated
 				</p>
 				<div class="flex flex-col-reverse sm:flex-row gap-2 sm:gap-4 w-full sm:w-auto">
-					<Button variant="secondary" on:click={handleSkip} class="w-full sm:w-auto"
+					<Button variant="secondary" onclick={handleSkip} class="w-full sm:w-auto"
 						>Skip All Changes</Button
 					>
 					<Button
 						variant="primary"
-						on:click={handleConfirm}
+						onclick={handleConfirm}
 						disabled={acceptedSuggestions.size === 0}
 						class="w-full sm:w-auto"
 					>

@@ -136,7 +136,7 @@
 			: helperText
 				? 'helper-text'
 				: undefined}
-		on:keydown={handleKeyDown}
+		onkeydown={handleKeyDown}
 	>
 		{#if options.length > 0}
 			<!-- Render options using Radio component -->
@@ -152,7 +152,7 @@
 						disabled={disabled || option.disabled}
 						{size}
 						{error}
-						on:change={() => handleChange(option.value)}
+						onchange={() => handleChange(option.value)}
 					/>
 				{/await}
 			{/each}

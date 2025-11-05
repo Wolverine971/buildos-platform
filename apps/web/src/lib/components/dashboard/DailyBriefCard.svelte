@@ -127,7 +127,7 @@
 
 				<!-- Action button - Apple-like styling -->
 				<Button
-					on:click={openBriefModal}
+					onclick={openBriefModal}
 					variant="outline"
 					class="w-full text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-semibold border-blue-200 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-900/20 shadow-sm hover:shadow transition-all"
 				>
@@ -161,7 +161,7 @@
 
 				<!-- Generate button - refined Apple styling -->
 				<Button
-					on:click={navigateToBriefs}
+					onclick={navigateToBriefs}
 					variant="primary"
 					class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold shadow-md hover:shadow-lg transition-all"
 					icon={Sparkles}

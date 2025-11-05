@@ -182,8 +182,8 @@
 					<TextInput
 						type="text"
 						bind:value={searchQuery}
-						on:focus={() => (showSearch = true)}
-						on:blur={() => setTimeout(() => (showSearch = false), 200)}
+						onfocus={() => (showSearch = true)}
+						onblur={() => setTimeout(() => (showSearch = false), 200)}
 						placeholder="Search articles..."
 						size="md"
 						class="pl-10"

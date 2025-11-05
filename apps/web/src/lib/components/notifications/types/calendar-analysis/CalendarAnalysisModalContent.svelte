@@ -62,14 +62,14 @@
 				<Button
 					variant="ghost"
 					size="sm"
-					on:click={handleMinimize}
+					onclick={handleMinimize}
 					aria-label="Minimize"
 					icon={ChevronDown}
 				></Button>
 				<Button
 					variant="ghost"
 					size="sm"
-					on:click={handleClose}
+					onclick={handleClose}
 					aria-label="Close notification"
 					icon={X}
 				></Button>
@@ -108,14 +108,14 @@
 				<Button
 					variant="ghost"
 					size="sm"
-					on:click={handleMinimize}
+					onclick={handleMinimize}
 					aria-label="Minimize"
 					icon={ChevronDown}
 				></Button>
 				<Button
 					variant="ghost"
 					size="sm"
-					on:click={handleClose}
+					onclick={handleClose}
 					aria-label="Close notification"
 					icon={X}
 				></Button>

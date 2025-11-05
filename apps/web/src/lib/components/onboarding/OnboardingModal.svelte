@@ -116,7 +116,7 @@
 
 	<svelte:fragment slot="actions">
 		<Button
-			on:click={handleStartOnboarding}
+			onclick={handleStartOnboarding}
 			variant="primary"
 			size="lg"
 			fullWidth
@@ -129,7 +129,7 @@
 		</Button>
 
 		<Button
-			on:click={handleDismiss}
+			onclick={handleDismiss}
 			variant="ghost"
 			size="lg"
 			fullWidth

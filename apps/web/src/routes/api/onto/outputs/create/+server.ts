@@ -61,7 +61,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		if (actorCheckError || !actorId) {
 			console.error('[Output API] Failed to get actor:', actorCheckError);
-			return ApiResponse.internalError(actorCheckError || new Error('Failed to resolve user actor'));
+			return ApiResponse.internalError(
+				actorCheckError || new Error('Failed to resolve user actor')
+			);
 		}
 
 		if (project.created_by !== actorId) {

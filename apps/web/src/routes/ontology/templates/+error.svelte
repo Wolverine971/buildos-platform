@@ -94,7 +94,8 @@
 					<div
 						class="bg-gray-100 dark:bg-gray-800 rounded-lg px-4 py-3 mb-6 text-sm text-gray-700 dark:text-gray-300 text-left"
 					>
-						<strong>Technical Details:</strong> {message}
+						<strong>Technical Details:</strong>
+						{message}
 					</div>
 				{/if}
 
@@ -138,8 +139,8 @@
 							<strong>Need Admin Access?</strong>
 						</p>
 						<p class="text-sm text-amber-800 dark:text-amber-300 mt-1">
-							Template management is restricted to administrators. If you need access, please
-							contact your system administrator.
+							Template management is restricted to administrators. If you need access,
+							please contact your system administrator.
 						</p>
 					</div>
 				{/if}
@@ -147,12 +148,14 @@
 				<!-- Help Text -->
 				<p class="text-sm text-gray-500 dark:text-gray-400 mt-6">
 					If you continue to experience issues, please
-					<a href="mailto:support@buildos.dev" class="text-blue-600 dark:text-blue-400 hover:underline"
-						>contact support</a
+					<a
+						href="mailto:support@buildos.dev"
+						class="text-blue-600 dark:text-blue-400 hover:underline">contact support</a
 					>
 					or check the
-					<a href="https://status.buildos.dev" class="text-blue-600 dark:text-blue-400 hover:underline"
-						>system status</a
+					<a
+						href="https://status.buildos.dev"
+						class="text-blue-600 dark:text-blue-400 hover:underline">system status</a
 					>.
 				</p>
 			</CardBody>

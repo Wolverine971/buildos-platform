@@ -213,7 +213,7 @@
 		{#if !isMobile}
 			<div class="flex items-center gap-2">
 				<Button
-					on:click={() => handleAction('addTask')}
+					onclick={() => handleAction('addTask')}
 					variant="outline"
 					size="md"
 					icon={Plus}
@@ -225,7 +225,7 @@
 				<!-- Phase Actions Dropdown -->
 				<div class="relative" use:clickOutside={closePhaseActionsDropdown}>
 					<Button
-						on:click={togglePhaseActionsDropdown}
+						onclick={togglePhaseActionsDropdown}
 						variant="outline"
 						size="md"
 						aria-label="Phase actions"
@@ -245,7 +245,7 @@
 						>
 							<!-- Add/Generate Phase Section -->
 							<button
-								on:click={() => handleAction('addPhase')}
+								onclick={() => handleAction('addPhase')}
 								class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
 								role="menuitem"
 							>
@@ -255,7 +255,7 @@
 
 							{#if hasPhases}
 								<button
-									on:click={() => handleAction('regeneratePhases')}
+									onclick={() => handleAction('regeneratePhases')}
 									disabled={!canGenerate}
 									class="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 {!canGenerate
 										? 'text-gray-400 dark:text-gray-600 cursor-not-allowed'
@@ -267,7 +267,7 @@
 								</button>
 							{:else}
 								<button
-									on:click={() => handleAction('generatePhases')}
+									onclick={() => handleAction('generatePhases')}
 									disabled={!canGenerate}
 									class="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 {!canGenerate
 										? 'text-gray-400 dark:text-gray-600 cursor-not-allowed'
@@ -289,7 +289,7 @@
 							<!-- Task Management Section -->
 							{#if hasBacklogTasks}
 								<button
-									on:click={handleAssignBacklogTasks}
+									onclick={handleAssignBacklogTasks}
 									class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
 									role="menuitem"
 								>
@@ -300,7 +300,7 @@
 
 							{#if canSchedule && hasUnscheduledTasks}
 								<button
-									on:click={handleScheduleAllPhases}
+									onclick={handleScheduleAllPhases}
 									class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
 									role="menuitem"
 								>
@@ -311,7 +311,7 @@
 
 							{#if hasTasksInPhases || hasAnyTasksWithDates}
 								<button
-									on:click={handleUnscheduleAllPhases}
+									onclick={handleUnscheduleAllPhases}
 									class="w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2"
 									role="menuitem"
 								>
@@ -328,7 +328,7 @@
 
 							{#if hasOverdueTasks}
 								<button
-									on:click={handleRescheduleOverdueTasks}
+									onclick={handleRescheduleOverdueTasks}
 									class="w-full text-left px-4 py-2 text-sm text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/20 flex items-center gap-2"
 									role="menuitem"
 								>
@@ -344,7 +344,7 @@
 			<!-- Mobile: Actions dropdown -->
 			<div class="relative" use:clickOutside={closeDropdown}>
 				<Button
-					on:click={toggleDropdown}
+					onclick={toggleDropdown}
 					variant="outline"
 					size="md"
 					icon={MoreVertical}
@@ -362,30 +362,30 @@
 						role="menu"
 						aria-orientation="vertical"
 					>
-						<button
-							on:click={() => handleAction('addTask')}
+						<Button
+							onclick={() => handleAction('addTask')}
 							class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
 							role="menuitem"
 						>
 							<Plus class="w-4 h-4" />
 							Add Task
-						</button>
+						</Button>
 
-						<button
-							on:click={() => handleAction('addPhase')}
+						<Button
+							onclick={() => handleAction('addPhase')}
 							class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
 							role="menuitem"
 						>
 							<Plus class="w-4 h-4" />
 							Add Phase
-						</button>
+						</Button>
 
 						{#if hasBacklogTasks || hasTasksInPhases || hasOverdueTasks || (canSchedule && hasUnscheduledTasks)}
 							<div class="border-t border-gray-200 dark:border-gray-700 my-1"></div>
 
 							{#if hasBacklogTasks}
 								<button
-									on:click={handleAssignBacklogTasks}
+									onclick={handleAssignBacklogTasks}
 									class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
 									role="menuitem"
 								>
@@ -396,7 +396,7 @@
 
 							{#if canSchedule && hasUnscheduledTasks}
 								<button
-									on:click={handleScheduleAllPhases}
+									onclick={handleScheduleAllPhases}
 									class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
 									role="menuitem"
 								>
@@ -407,7 +407,7 @@
 
 							{#if hasTasksInPhases || hasAnyTasksWithDates}
 								<button
-									on:click={handleUnscheduleAllPhases}
+									onclick={handleUnscheduleAllPhases}
 									class="w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2"
 									role="menuitem"
 								>
@@ -424,7 +424,7 @@
 
 							{#if hasOverdueTasks}
 								<button
-									on:click={handleRescheduleOverdueTasks}
+									onclick={handleRescheduleOverdueTasks}
 									class="w-full text-left px-4 py-2 text-sm text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/20 flex items-center gap-2"
 									role="menuitem"
 								>
@@ -438,7 +438,7 @@
 
 						{#if hasPhases}
 							<button
-								on:click={() => handleAction('regeneratePhases')}
+								onclick={() => handleAction('regeneratePhases')}
 								disabled={!canGenerate}
 								class="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 {!canGenerate
 									? 'text-gray-400 dark:text-gray-600 cursor-not-allowed'
@@ -450,7 +450,7 @@
 							</button>
 						{:else}
 							<button
-								on:click={() => handleAction('generatePhases')}
+								onclick={() => handleAction('generatePhases')}
 								disabled={!canGenerate}
 								class="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 {!canGenerate
 									? 'text-gray-400 dark:text-gray-600 cursor-not-allowed'

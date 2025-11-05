@@ -117,7 +117,7 @@
 				transition:scale={{ duration: 200, start: 0.95 }}
 			>
 				<Button
-					on:click={hasRecentCompletedJobs && recentCompletedJobs[0]?.result?.projectId
+					onclick={hasRecentCompletedJobs && recentCompletedJobs[0]?.result?.projectId
 						? () => handleViewProject(recentCompletedJobs[0].result?.projectId)
 						: toggleExpanded}
 					class="w-full p-4 flex items-center justify-between rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
@@ -232,7 +232,7 @@
 						</h3>
 						<div class="flex items-center gap-1">
 							<Button
-								on:click={hideIndicator}
+								onclick={hideIndicator}
 								class="p-1.5 min-h-0 min-w-0 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-all duration-200 hover:shadow-sm"
 								variant="ghost"
 								size="sm"
@@ -244,7 +244,7 @@
 								/>
 							</Button>
 							<Button
-								on:click={toggleExpanded}
+								onclick={toggleExpanded}
 								class="p-1.5 min-h-0 min-w-0 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-all duration-200 hover:shadow-sm"
 								variant="ghost"
 								size="sm"
@@ -325,8 +325,7 @@
 									{/if}
 									{#if job.result?.projectId}
 										<Button
-											on:click={() =>
-												handleViewProject(job.result?.projectId)}
+											onclick={() => handleViewProject(job.result?.projectId)}
 											class="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-green-700 dark:text-green-300 bg-green-100 dark:bg-green-900/50 hover:bg-green-200 dark:hover:bg-green-900/70 rounded-lg transition-all duration-200 group min-h-0 min-w-0"
 											variant="ghost"
 											size="sm"
@@ -364,7 +363,7 @@
 										{job.error || 'An unexpected error occurred'}
 									</p>
 									<Button
-										on:click={() => handleRetry(job.id)}
+										onclick={() => handleRetry(job.id)}
 										class="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red-700 dark:text-red-300 bg-red-100 dark:bg-red-900/50 hover:bg-red-200 dark:hover:bg-red-900/70 rounded-lg transition-all duration-200 group min-h-0 min-w-0"
 										variant="ghost"
 										size="sm"

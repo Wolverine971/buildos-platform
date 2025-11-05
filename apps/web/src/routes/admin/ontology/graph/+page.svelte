@@ -39,7 +39,7 @@
 		<button
 			class="lg:hidden fixed top-24 left-4 z-50 p-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg"
 			aria-label="Toggle graph controls"
-			on:click={() => (isMobileMenuOpen = !isMobileMenuOpen)}
+			onclick={() => (isMobileMenuOpen = !isMobileMenuOpen)}
 		>
 			<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 				<path
@@ -60,7 +60,7 @@
 				<button
 					class="fixed inset-0 bg-black/50 z-30 lg:hidden"
 					aria-label="Close graph controls"
-					on:click={() => (isMobileMenuOpen = false)}
+					onclick={() => (isMobileMenuOpen = false)}
 				/>
 			{/if}
 

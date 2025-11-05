@@ -103,27 +103,27 @@
 					</p>
 
 					{#if !showDetails}
-						<button
-							on:click={() => (showDetails = true)}
+						<Button
+							onclick={() => (showDetails = true)}
 							class="mt-2 text-sm text-amber-700 dark:text-amber-300 hover:text-amber-900 dark:hover:text-amber-100 flex items-center gap-1 transition-colors"
 						>
 							<ChevronDown class="w-4 h-4" />
 							Show details
-						</button>
+						</Button>
 					{:else}
-						<button
-							on:click={() => (showDetails = false)}
+						<Button
+							onclick={() => (showDetails = false)}
 							class="mt-2 text-sm text-amber-700 dark:text-amber-300 hover:text-amber-900 dark:hover:text-amber-100 flex items-center gap-1 transition-colors"
 						>
 							<ChevronUp class="w-4 h-4" />
 							Hide details
-						</button>
+						</Button>
 					{/if}
 				</div>
 			</div>
 
 			<button
-				on:click={() => (dismissed = true)}
+				onclick={() => (dismissed = true)}
 				class="text-amber-600 dark:text-amber-400 hover:text-amber-800 dark:hover:text-amber-200 transition-colors"
 				aria-label="Dismiss"
 			>

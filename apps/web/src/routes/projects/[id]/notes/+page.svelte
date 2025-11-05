@@ -194,7 +194,7 @@
 					<!-- Create Note Button -->
 					<Button
 						type="button"
-						on:click={() => openNoteModal()}
+						onclick={() => openNoteModal()}
 						variant="primary"
 						size="md"
 						icon={Plus}
@@ -205,7 +205,7 @@
 					<!-- Project Context -->
 					<Button
 						type="button"
-						on:click={openProjectContextModal}
+						onclick={openProjectContextModal}
 						variant="ghost"
 						size="sm"
 						class="p-2"
@@ -280,7 +280,7 @@
 					<!-- Category Filter -->
 					<Select
 						bind:value={selectedCategory}
-						on:change={(e) => (selectedCategory = e.detail)}
+						onchange={(e) => (selectedCategory = e.detail)}
 						size="md"
 					>
 						<option value="">All categories</option>
@@ -292,7 +292,7 @@
 					<!-- Tag Filter -->
 					<Select
 						bind:value={selectedTag}
-						on:change={(e) => (selectedTag = e.detail)}
+						onchange={(e) => (selectedTag = e.detail)}
 						size="md"
 					>
 						<option value="">All tags</option>
@@ -303,7 +303,7 @@
 
 					<!-- Clear Filters -->
 					{#if searchTerm || selectedCategory || selectedTag}
-						<Button type="button" on:click={clearFilters} variant="outline" size="md">
+						<Button type="button" onclick={clearFilters} variant="outline" size="md">
 							Clear filters
 						</Button>
 					{/if}
@@ -318,8 +318,8 @@
 					{@const categoryDisplay = getCategoryDisplay(note.category)}
 					<div
 						class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-shadow cursor-pointer group"
-						on:click={() => viewNote(note.id)}
-						on:keydown={(e) => e.key === 'Enter' && viewNote(note.id)}
+						onclick={() => viewNote(note.id)}
+						onkeydown={(e) => e.key === 'Enter' && viewNote(note.id)}
 						role="button"
 						tabindex="0"
 					>
@@ -337,7 +337,7 @@
 							</div>
 							<Button
 								type="button"
-								on:click={(e) => {
+								onclick={(e) => {
 									e.stopPropagation();
 									openNoteModal(note);
 								}}
@@ -449,7 +449,7 @@
 				{#if searchTerm || selectedCategory || selectedTag}
 					<Button
 						type="button"
-						on:click={clearFilters}
+						onclick={clearFilters}
 						variant="secondary"
 						size="md"
 						class="mr-3"
@@ -459,7 +459,7 @@
 				{/if}
 				<Button
 					type="button"
-					on:click={() => openNoteModal()}
+					onclick={() => openNoteModal()}
 					variant="primary"
 					size="md"
 					icon={Plus}

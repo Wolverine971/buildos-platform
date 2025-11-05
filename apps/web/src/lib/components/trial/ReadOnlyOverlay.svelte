@@ -28,7 +28,7 @@
 
 			<div class="flex space-x-3">
 				<Button
-					on:click={handleSubscribe}
+					onclick={handleSubscribe}
 					variant="primary"
 					size="md"
 					icon={CreditCard}
@@ -37,12 +37,7 @@
 				>
 					Subscribe Now
 				</Button>
-				<Button
-					on:click={() => (show = false)}
-					variant="secondary"
-					size="md"
-					class="flex-1"
-				>
+				<Button onclick={() => (show = false)} variant="secondary" size="md" class="flex-1">
 					Cancel
 				</Button>
 			</div>

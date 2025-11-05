@@ -392,7 +392,7 @@
 							</div>
 							<div class="flex items-center gap-1 flex-shrink-0">
 								<Button
-									on:click={() => toggleExpanded(consolidation.operation.id)}
+									onclick={() => toggleExpanded(consolidation.operation.id)}
 									class="p-1.5 min-h-0 min-w-0 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-all duration-200"
 									variant="ghost"
 									size="sm"
@@ -405,7 +405,7 @@
 								</Button>
 								{#if onOperationEdit}
 									<Button
-										on:click={() => handleEditClick(consolidation.operation)}
+										onclick={() => handleEditClick(consolidation.operation)}
 										class="p-1.5 min-h-0 min-w-0 text-gray-500 hover:text-indigo-600 dark:text-gray-400 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition-all duration-200"
 										variant="ghost"
 										size="sm"
@@ -568,7 +568,7 @@
 							</div>
 							<div class="flex items-center gap-1 flex-shrink-0">
 								<Button
-									on:click={() => toggleExpanded(update.operation.id)}
+									onclick={() => toggleExpanded(update.operation.id)}
 									class="p-1.5 min-h-0 min-w-0 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-all duration-200"
 									variant="ghost"
 									size="sm"
@@ -581,7 +581,7 @@
 								</Button>
 								{#if onOperationEdit}
 									<Button
-										on:click={() => handleEditClick(update.operation)}
+										onclick={() => handleEditClick(update.operation)}
 										class="p-1.5 min-h-0 min-w-0 text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all duration-200"
 										variant="ghost"
 										size="sm"
@@ -737,7 +737,7 @@
 							</div>
 							{#if onOperationEdit}
 								<Button
-									on:click={() => handleEditClick(creation)}
+									onclick={() => handleEditClick(creation)}
 									class="p-2 text-gray-500 hover:text-emerald-600 dark:text-gray-400 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-xl transition-all duration-200"
 									variant="ghost"
 									size="sm"
@@ -825,7 +825,7 @@
 							</div>
 							{#if onOperationEdit}
 								<Button
-									on:click={() => handleEditClick(deleted)}
+									onclick={() => handleEditClick(deleted)}
 									class="p-1.5 min-h-0 min-w-0 text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all duration-200"
 									variant="ghost"
 									size="sm"

@@ -51,7 +51,7 @@
 					{#if brief.projects?.slug}
 						<Button
 							type="button"
-							on:click={goToProject}
+							onclick={goToProject}
 							variant="ghost"
 							size="sm"
 							class="p-1 text-gray-400 hover:text-primary-600 dark:hover:text-primary-400"
@@ -97,7 +97,7 @@
 				{#if isCompleted && brief.brief_content}
 					<Button
 						type="button"
-						on:click={handleViewBrief}
+						onclick={handleViewBrief}
 						variant="ghost"
 						size="sm"
 						title="View brief"
@@ -137,7 +137,7 @@
 			{#if brief.brief_content.length > 200}
 				<Button
 					type="button"
-					on:click={handleViewBrief}
+					onclick={handleViewBrief}
 					variant="ghost"
 					size="sm"
 					class="mt-3 text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300"

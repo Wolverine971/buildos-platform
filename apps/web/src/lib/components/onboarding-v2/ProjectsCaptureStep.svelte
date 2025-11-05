@@ -786,7 +786,7 @@
 					</div>
 				{:else}
 					<!-- Skip Button -->
-					<Button variant="ghost" on:click={skipProjectCapture} disabled={isProcessing}>
+					<Button variant="ghost" onclick={skipProjectCapture} disabled={isProcessing}>
 						I'll add projects later
 					</Button>
 				{/if}
@@ -821,7 +821,7 @@
 				<Button
 					variant="primary"
 					size="lg"
-					on:click={processBrainDump}
+					onclick={processBrainDump}
 					disabled={projectInput.trim().length < 20 ||
 						isProcessing ||
 						isCurrentlyRecording}

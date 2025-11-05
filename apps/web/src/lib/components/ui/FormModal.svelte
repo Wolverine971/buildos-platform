@@ -356,7 +356,7 @@
 						</div>
 						<Button
 							type="button"
-							on:click={handleClose}
+							onclick={handleClose}
 							disabled={loading}
 							variant="ghost"
 							size="sm"
@@ -384,7 +384,7 @@
 	</div>
 
 	<slot name="before-form"></slot>
-	<form on:submit={handleSubmit} class="flex flex-col flex-1 min-h-0">
+	<form onsubmit={handleSubmit} class="flex flex-col flex-1 min-h-0">
 		{#if errors.length > 0}
 			<div
 				class="bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 rounded-lg p-4 mx-4 sm:mx-6 lg:mx-8 mb-4"
@@ -441,7 +441,7 @@
 						{#if config.copyButton && field === 'context'}
 							<Button
 								type="button"
-								on:click={() => copyFieldValue(field)}
+								onclick={() => copyFieldValue(field)}
 								variant="outline"
 								size="sm"
 								class="flex items-center gap-1.5"
@@ -474,7 +474,7 @@
 								<Textarea
 									id={`field-${field}`}
 									value={formData[field] || ''}
-									on:input={(e) => handleFieldChange(field, e.detail)}
+									oninput={(e) => handleFieldChange(field, e.detail)}
 									rows={config.rows || 3}
 									disabled={loading}
 									placeholder={config.placeholder || ''}
@@ -485,7 +485,7 @@
 							<Select
 								id={`field-${field}`}
 								value={formData[field] || ''}
-								on:change={(e) =>
+								onchange={(e) =>
 									handleFieldChange(
 										field,
 										e.detail || (e.target as HTMLSelectElement)?.value
@@ -506,7 +506,7 @@
 								id={`field-${field}`}
 								type="date"
 								value={getFieldValue(field)}
-								on:input={(e) => handleFieldChange(field, e.detail)}
+								oninput={(e) => handleFieldChange(field, e.detail)}
 								disabled={loading}
 								size="md"
 							/>
@@ -515,7 +515,7 @@
 								id={`field-${field}`}
 								type="datetime-local"
 								value={getFieldValue(field)}
-								on:input={(e) => handleDateTimeChange(field, e)}
+								oninput={(e) => handleDateTimeChange(field, e)}
 								disabled={loading}
 								size="md"
 							/>
@@ -524,7 +524,7 @@
 								id={`field-${field}`}
 								type="number"
 								value={getFieldValue(field)}
-								on:input={(e) => {
+								oninput={(e) => {
 									const target = e.target as HTMLInputElement | null;
 									handleFieldChange(
 										field,
@@ -548,7 +548,7 @@
 									aria-describedby={config.description
 										? `field-${field}-description`
 										: undefined}
-									on:change={(e) => {
+									onchange={(e) => {
 										const target = e.target as HTMLInputElement | null;
 										handleFieldChange(
 											field,
@@ -573,7 +573,7 @@
 								id={`field-${field}`}
 								type="text"
 								value={getFieldValue(field)}
-								on:input={(e) => handleTagsInput(field, e.detail)}
+								oninput={(e) => handleTagsInput(field, e.detail)}
 								disabled={loading}
 								placeholder={config.placeholder || 'Enter tags separated by commas'}
 								size="md"
@@ -583,7 +583,7 @@
 								id={`field-${field}`}
 								type="text"
 								value={getFieldValue(field)}
-								on:input={(e) => handleFieldChange(field, e.detail)}
+								oninput={(e) => handleFieldChange(field, e.detail)}
 								disabled={loading}
 								placeholder={config.placeholder || ''}
 								size="md"
@@ -618,7 +618,7 @@
 				<div class="grid grid-cols-2 gap-2">
 					<Button
 						type="button"
-						on:click={handleClose}
+						onclick={handleClose}
 						disabled={loading}
 						variant="ghost"
 						size="md"
@@ -629,7 +629,7 @@
 					{#if (formData.id || initialData.id) && onDelete}
 						<Button
 							type="button"
-							on:click={handleDelete}
+							onclick={handleDelete}
 							disabled={loading}
 							variant="danger"
 							size="md"
@@ -646,7 +646,7 @@
 				{#if (formData.id || initialData.id) && onDelete}
 					<Button
 						type="button"
-						on:click={handleDelete}
+						onclick={handleDelete}
 						disabled={loading}
 						variant="danger"
 						size="md"
@@ -660,7 +660,7 @@
 				<div class="flex gap-3">
 					<Button
 						type="button"
-						on:click={handleClose}
+						onclick={handleClose}
 						disabled={loading}
 						variant="outline"
 						size="md"

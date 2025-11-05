@@ -199,7 +199,7 @@
 						</a>
 					{:else}
 						<Button
-							on:click={handleSubscribe}
+							onclick={handleSubscribe}
 							disabled={isLoading}
 							loading={isLoading}
 							variant="primary"

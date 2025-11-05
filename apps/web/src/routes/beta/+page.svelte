@@ -279,7 +279,7 @@
 			{:else}
 				<div class="flex flex-col sm:flex-row gap-4 justify-center">
 					<Button
-						on:click={openSignupForm}
+						onclick={openSignupForm}
 						variant="primary"
 						size="lg"
 						aria-describedby="join-beta-description"
@@ -322,7 +322,7 @@
 							Join BuildOS Beta
 						</h2>
 						<Button
-							on:click={closeSignupForm}
+							onclick={closeSignupForm}
 							variant="ghost"
 							size="sm"
 							class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 min-w-0 p-2"
@@ -347,7 +347,7 @@
 						</div>
 					{/if}
 
-					<form on:submit={handleSubmit} class="space-y-6" novalidate>
+					<form onsubmit={handleSubmit} class="space-y-6" novalidate>
 						<!-- Honeypot field -->
 						<div class="hidden">
 							<label for="honeypot">Don't fill this out</label>
@@ -373,7 +373,7 @@
 									required
 									aria-required="true"
 									size="md"
-									on:blur={validateEmail}
+									onblur={validateEmail}
 								/>
 								{#if emailError}
 									<p class="mt-1 text-sm text-red-600 dark:text-red-400">
@@ -450,7 +450,7 @@
 								{#each productivityToolOptions as tool}
 									<Button
 										type="button"
-										on:click={() => toggleProductivityTool(tool)}
+										onclick={() => toggleProductivityTool(tool)}
 										variant={productivityTools.includes(tool)
 											? 'primary'
 											: 'outline'}
@@ -493,7 +493,7 @@
 							<Select
 								id="referralSource"
 								bind:value={referralSource}
-								on:change={(e) => (referralSource = e.detail)}
+								onchange={(e) => (referralSource = e.detail)}
 								size="md"
 							>
 								<option value="">Select an option</option>
@@ -542,7 +542,7 @@
 						<div class="flex gap-4" role="group" aria-label="Form actions">
 							<Button
 								type="button"
-								on:click={closeSignupForm}
+								onclick={closeSignupForm}
 								variant="outline"
 								size="lg"
 								class="flex-1"
@@ -721,7 +721,7 @@
 			{#if !existingSignupStatus}
 				<div class="flex flex-col sm:flex-row gap-4 justify-center">
 					<Button
-						on:click={openSignupForm}
+						onclick={openSignupForm}
 						variant="primary"
 						size="lg"
 						aria-label="Join the BuildOS beta program"

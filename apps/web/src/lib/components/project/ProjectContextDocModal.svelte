@@ -399,7 +399,7 @@
 		<div class="flex items-center gap-2">
 			<Button
 				type="button"
-				on:click={copyFullContext}
+				onclick={copyFullContext}
 				disabled={copySuccess}
 				variant={copySuccess ? 'primary' : 'outline'}
 				size="sm"
@@ -410,7 +410,7 @@
 				<span class="sm:hidden">Copy</span>
 			</Button>
 
-			<Button type="button" on:click={handleExportPDF} variant="primary" size="sm">
+			<Button type="button" onclick={handleExportPDF} variant="primary" size="sm">
 				<FileDown class="w-3 h-3 mr-1.5" />
 				<span class="hidden sm:inline">Export PDF</span>
 				<span class="sm:hidden">PDF</span>
@@ -486,12 +486,7 @@
 						</div>
 					</div>
 
-					<Button
-						type="button"
-						on:click={startEditingProject}
-						variant="outline"
-						size="sm"
-					>
+					<Button type="button" onclick={startEditingProject} variant="outline" size="sm">
 						<Edit3 class="w-4 h-4 mr-1.5" />
 						Edit
 					</Button>
@@ -557,7 +552,7 @@
 									<Select
 										id="project-status"
 										bind:value={projectFormData.status}
-										on:change={(e) => (projectFormData.status = e.detail)}
+										onchange={(e) => (projectFormData.status = e.detail)}
 										size="md"
 									>
 										<option value="">Select Status</option>
@@ -576,7 +571,7 @@
 									<TextInput
 										id="project-tags"
 										value={getFieldValue('tags')}
-										on:input={(e) => handleTagsInput(e)}
+										oninput={(e) => handleTagsInput(e)}
 										placeholder="tag1, tag2, tag3"
 										size="md"
 									/>
@@ -632,7 +627,7 @@
 					>
 						<Button
 							type="button"
-							on:click={cancelEditing}
+							onclick={cancelEditing}
 							variant="outline"
 							size="md"
 							class="order-2 sm:order-1 w-full sm:w-auto"
@@ -642,7 +637,7 @@
 						</Button>
 						<Button
 							type="button"
-							on:click={saveProjectChanges}
+							onclick={saveProjectChanges}
 							disabled={savingProject || !hasProjectChanges}
 							variant="primary"
 							size="md"
@@ -713,7 +708,7 @@
 				>
 					<Button
 						type="button"
-						on:click={cancelContextChanges}
+						onclick={cancelContextChanges}
 						disabled={savingContext}
 						variant="outline"
 						size="md"
@@ -724,7 +719,7 @@
 					</Button>
 					<Button
 						type="button"
-						on:click={saveContextChanges}
+						onclick={saveContextChanges}
 						disabled={savingContext || !hasContextChanges}
 						variant="primary"
 						size="md"

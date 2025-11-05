@@ -491,7 +491,7 @@
 				{#each viewConfigs as view}
 					<Button
 						type="button"
-						on:click={() => changeView(view.id)}
+						onclick={() => changeView(view.id)}
 						variant={selectedView === view.id ? 'primary' : 'ghost'}
 						size="sm"
 						class={selectedView === view.id
@@ -510,7 +510,7 @@
 					{#if !isToday}
 						<Button
 							type="button"
-							on:click={goToToday}
+							onclick={goToToday}
 							variant="outline"
 							size="sm"
 							class="text-blue-600 dark:text-blue-400"
@@ -521,7 +521,7 @@
 					<div class="flex items-center">
 						<Button
 							type="button"
-							on:click={() => navigateDate('prev')}
+							onclick={() => navigateDate('prev')}
 							variant="ghost"
 							size="sm"
 							class="p-2"
@@ -533,7 +533,7 @@
 						</span>
 						<Button
 							type="button"
-							on:click={() => navigateDate('next')}
+							onclick={() => navigateDate('next')}
 							variant="ghost"
 							size="sm"
 							class="p-2"
@@ -547,7 +547,7 @@
 				<!-- Filter button for list view -->
 				<Button
 					type="button"
-					on:click={() => (showFilters = !showFilters)}
+					onclick={() => (showFilters = !showFilters)}
 					variant="ghost"
 					size="sm"
 					class="p-2 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
@@ -559,7 +559,7 @@
 			<!-- Settings Button -->
 			<Button
 				type="button"
-				on:click={() => (showSettingsModal = true)}
+				onclick={() => (showSettingsModal = true)}
 				variant="ghost"
 				size="sm"
 				class="flex items-center gap-2 px-3 py-2"
@@ -580,12 +580,12 @@
 					<TextInput
 						bind:value={searchQuery}
 						placeholder="Search briefs..."
-						on:input={() => filterBriefs()}
+						oninput={() => filterBriefs()}
 					/>
 				</FormField>
 
 				<FormField label="Date Range">
-					<Select bind:value={selectedDateRange} on:change={() => filterBriefs()}>
+					<Select bind:value={selectedDateRange} onchange={() => filterBriefs()}>
 						<option value="today">Today</option>
 						<option value="week">Last 7 days</option>
 						<option value="month">Last 30 days</option>
@@ -598,14 +598,14 @@
 						<TextInput
 							type="date"
 							bind:value={customStartDate}
-							on:change={() => filterBriefs()}
+							onchange={() => filterBriefs()}
 						/>
 					</FormField>
 					<FormField label="End Date">
 						<TextInput
 							type="date"
 							bind:value={customEndDate}
-							on:change={() => filterBriefs()}
+							onchange={() => filterBriefs()}
 						/>
 					</FormField>
 				{/if}
@@ -634,7 +634,7 @@
 				</div>
 				<Button
 					type="button"
-					on:click={cancelGeneration}
+					onclick={cancelGeneration}
 					variant="ghost"
 					size="sm"
 					class="p-1.5 text-gray-400 hover:text-red-600 dark:hover:text-red-400 ml-2"
@@ -677,7 +677,7 @@
 				</p>
 				<Button
 					type="button"
-					on:click={() => (error = null)}
+					onclick={() => (error = null)}
 					variant="ghost"
 					size="sm"
 					class="ml-2 p-0 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-200"
@@ -729,7 +729,7 @@
 							<div class="flex items-center space-x-1">
 								<Button
 									type="button"
-									on:click={(e) => {
+									onclick={(e) => {
 										e.stopPropagation();
 										selectBriefDate(brief.brief_date);
 									}}
@@ -741,7 +741,7 @@
 								></Button>
 								<Button
 									type="button"
-									on:click={(e) => {
+									onclick={(e) => {
 										e.stopPropagation();
 										exportBrief(brief);
 									}}
@@ -753,7 +753,7 @@
 								></Button>
 								<Button
 									type="button"
-									on:click={(e) => {
+									onclick={(e) => {
 										e.stopPropagation();
 										showDeleteBriefConfirmation(brief);
 									}}
@@ -836,7 +836,7 @@
 					{#if isToday}
 						<Button
 							type="button"
-							on:click={() => generateDailyBrief()}
+							onclick={() => generateDailyBrief()}
 							disabled={currentStreamingStatus?.isGenerating ||
 								checkingExistingGeneration ||
 								!user}
@@ -875,7 +875,7 @@
 						<div class="flex items-center space-x-1">
 							<Button
 								type="button"
-								on:click={() =>
+								onclick={() =>
 									displayDailyBrief &&
 									exportBrief(displayDailyBrief as DailyBrief)}
 								variant="ghost"
@@ -886,7 +886,7 @@
 							></Button>
 							<Button
 								type="button"
-								on:click={() =>
+								onclick={() =>
 									displayDailyBrief && copyBrief(displayDailyBrief as DailyBrief)}
 								variant="ghost"
 								size="sm"
@@ -896,7 +896,7 @@
 							></Button>
 							<Button
 								type="button"
-								on:click={() => generateDailyBrief(true)}
+								onclick={() => generateDailyBrief(true)}
 								disabled={currentStreamingStatus?.isGenerating}
 								variant="ghost"
 								size="sm"

@@ -364,15 +364,15 @@ Guidelines:
 					Email: {userName || userEmail}
 				</h2>
 				{#if emailHistory.length > 0}
-					<button
-						on:click={() => (showEmailHistory = !showEmailHistory)}
+					<Button
+						onclick={() => (showEmailHistory = !showEmailHistory)}
 						class="inline-flex items-center gap-1 text-xs sm:text-sm px-3 py-2 rounded-lg
 								 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300
 								 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors w-full sm:w-auto justify-center"
 					>
 						<History class="w-4 h-4" />
 						History ({emailHistory.length})
-					</button>
+					</Button>
 				{/if}
 			</div>
 		</div>
@@ -390,7 +390,7 @@ Guidelines:
 					<div class="space-y-2 max-h-48 overflow-y-auto">
 						{#each emailHistory as email (email.id)}
 							<button
-								on:click={() => openEmailViewer(email)}
+								onclick={() => openEmailViewer(email)}
 								class="w-full text-left p-2 rounded hover:bg-blue-100 dark:hover:bg-blue-800/50 transition-colors text-xs sm:text-sm"
 							>
 								<div class="flex items-start gap-2">
@@ -425,7 +425,7 @@ Guidelines:
 				<Button
 					variant={editMode === 'manual' ? 'primary' : 'outline'}
 					size="sm"
-					on:click={() => (editMode = 'manual')}
+					onclick={() => (editMode = 'manual')}
 					class="text-xs sm:text-sm flex-shrink-0"
 				>
 					<PenTool class="w-4 h-4" />
@@ -434,7 +434,7 @@ Guidelines:
 				<Button
 					variant={editMode === 'split' ? 'primary' : 'outline'}
 					size="sm"
-					on:click={() => (editMode = 'split')}
+					onclick={() => (editMode = 'split')}
 					class="text-xs sm:text-sm flex-shrink-0"
 				>
 					<Edit3 class="w-4 h-4" />
@@ -443,7 +443,7 @@ Guidelines:
 				<Button
 					variant={editMode === 'ai' ? 'primary' : 'outline'}
 					size="sm"
-					on:click={() => (editMode = 'ai')}
+					onclick={() => (editMode = 'ai')}
 					class="text-xs sm:text-sm flex-shrink-0"
 				>
 					<Bot class="w-4 h-4" />
@@ -462,8 +462,8 @@ Guidelines:
 				<div
 					class="bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden"
 				>
-					<button
-						on:click={() => (contextPanelExpanded = !contextPanelExpanded)}
+					<Button
+						onclick={() => (contextPanelExpanded = !contextPanelExpanded)}
 						class="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
 					>
 						<span class="text-sm font-medium text-gray-900 dark:text-white"
@@ -474,7 +474,7 @@ Guidelines:
 						{:else}
 							<ChevronDown class="w-4 h-4 text-gray-600 dark:text-gray-400" />
 						{/if}
-					</button>
+					</Button>
 					{#if contextPanelExpanded}
 						<div class="px-4 py-3 border-t border-gray-200 dark:border-gray-700">
 							<UserContextPanel {userContext} expanded={true} />
@@ -500,7 +500,7 @@ Guidelines:
 									 bg-white dark:bg-gray-800 text-gray-900 dark:text-white
 									 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
 							bind:value={emailType}
-							on:change={handleTemplateChange}
+							onchange={handleTemplateChange}
 						>
 							{#each emailTemplates as template}
 								<option value={template.value}>{template.label}</option>
@@ -522,7 +522,7 @@ Guidelines:
 									 bg-white dark:bg-gray-800 text-gray-900 dark:text-white
 									 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
 							bind:value={tone}
-							on:change={() => {
+							onchange={() => {
 								defaultSystemPrompt = generateDefaultSystemPrompt();
 								if (!showSystemPrompt) {
 									customSystemPrompt = defaultSystemPrompt;
@@ -565,8 +565,8 @@ Guidelines:
 						</div>
 
 						<!-- System Prompt Toggle -->
-						<button
-							on:click={() => (showSystemPrompt = !showSystemPrompt)}
+						<Button
+							onclick={() => (showSystemPrompt = !showSystemPrompt)}
 							class="text-xs sm:text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 flex items-center gap-1"
 						>
 							{#if showSystemPrompt}
@@ -576,7 +576,7 @@ Guidelines:
 								<ChevronDown class="w-3 h-3" />
 								Show/Edit System Prompt
 							{/if}
-						</button>
+						</Button>
 
 						<!-- System Prompt Editor -->
 						{#if showSystemPrompt}
@@ -602,7 +602,7 @@ Guidelines:
 									<Button
 										variant="ghost"
 										size="sm"
-										on:click={() => (customSystemPrompt = defaultSystemPrompt)}
+										onclick={() => (customSystemPrompt = defaultSystemPrompt)}
 										class="text-xs"
 									>
 										Reset to Default
@@ -619,14 +619,14 @@ Guidelines:
 					<div class="flex flex-col sm:flex-row justify-end gap-2">
 						<Button
 							variant="outline"
-							on:click={() => (instructions = '')}
+							onclick={() => (instructions = '')}
 							disabled={!instructions || isGenerating}
 							class="text-sm"
 						>
 							Clear
 						</Button>
 						<Button
-							on:click={generateEmail}
+							onclick={generateEmail}
 							disabled={!instructions.trim() || isGenerating || !userContext}
 							class="text-sm"
 						>
@@ -651,7 +651,7 @@ Guidelines:
 							<Button
 								variant="ghost"
 								size="sm"
-								on:click={useAiContent}
+								onclick={useAiContent}
 								disabled={!generatedEmail}
 								class="text-xs sm:text-sm text-green-600 dark:text-green-400"
 							>
@@ -662,7 +662,7 @@ Guidelines:
 							<Button
 								variant="ghost"
 								size="sm"
-								on:click={copyManualToAi}
+								onclick={copyManualToAi}
 								disabled={!manualEmail}
 								class="text-xs sm:text-sm text-blue-600 dark:text-blue-400"
 							>
@@ -743,16 +743,16 @@ Guidelines:
 			class="px-4 sm:px-6 py-3 sm:py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50"
 		>
 			<div class="flex flex-col sm:flex-row gap-3 sm:gap-4 sm:justify-between">
-				<Button variant="outline" on:click={closeModal} class="text-sm">Cancel</Button>
+				<Button variant="outline" onclick={closeModal} class="text-sm">Cancel</Button>
 
 				{#if generatedEmail || manualEmail}
 					<div class="flex flex-col sm:flex-row gap-3 sm:gap-4">
-						<Button variant="outline" on:click={copyToClipboard} class="text-sm">
+						<Button variant="outline" onclick={copyToClipboard} class="text-sm">
 							<Copy class="w-4 h-4 mr-2" />
 							<span class="hidden sm:inline">Copy to Clipboard</span>
 							<span class="sm:hidden">Copy</span>
 						</Button>
-						<Button on:click={sendEmail} disabled={isSending} class="text-sm">
+						<Button onclick={sendEmail} disabled={isSending} class="text-sm">
 							{#if isSending}
 								<Loader2 class="w-4 h-4 mr-2 animate-spin" />
 								Sending...

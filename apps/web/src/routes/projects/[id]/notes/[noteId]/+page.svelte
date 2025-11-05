@@ -241,7 +241,7 @@
 					<!-- Project Context -->
 					<Button
 						type="button"
-						on:click={openProjectContextModal}
+						onclick={openProjectContextModal}
 						variant="ghost"
 						size="sm"
 						class="p-2 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400"
@@ -296,7 +296,7 @@
 						<input
 							type="text"
 							bind:value={titleValue}
-							on:blur={() => quickUpdateField('title', titleValue)}
+							onblur={() => quickUpdateField('title', titleValue)}
 							placeholder="Note title..."
 							class="w-full text-2xl font-bold px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 transition-all group-hover:border-gray-400"
 						/>
@@ -319,8 +319,8 @@
 						<Textarea
 							id="note-content"
 							bind:value={contentValue}
-							on:blur={() => quickUpdateField('content', contentValue)}
-							on:input={(e) => autoResize(e.target)}
+							onblur={() => quickUpdateField('content', contentValue)}
+							oninput={(e) => autoResize(e.target)}
 							placeholder="Start writing your note content here...
 
 You can include:
@@ -373,7 +373,7 @@ This area will auto-save when you click away or switch focus."
 						<Select
 							id="note-category"
 							bind:value={categoryValue}
-							on:change={(e) => {
+							onchange={(e) => {
 								categoryValue = e.detail;
 								quickUpdateField('category', categoryValue);
 							}}
@@ -412,7 +412,7 @@ This area will auto-save when you click away or switch focus."
 										{tag}
 										<Button
 											type="button"
-											on:click={() => removeTag(tag)}
+											onclick={() => removeTag(tag)}
 											variant="ghost"
 											size="sm"
 											class="ml-1 p-0 w-5 h-5 text-blue-600 dark:text-blue-300 hover:text-blue-800 dark:hover:text-blue-100"
@@ -440,7 +440,7 @@ This area will auto-save when you click away or switch focus."
 						<input
 							type="text"
 							bind:value={tagInput}
-							on:keydown={handleTagKeydown}
+							onkeydown={handleTagKeydown}
 							placeholder="Add tags (press Enter)..."
 							class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
 						/>

@@ -379,7 +379,7 @@
 							<button
 								class="task-dot {dot.color}"
 								style="left: {dot.position}%"
-								on:click={() => scrollToTask(dot.id)}
+								onclick={() => scrollToTask(dot.id)}
 								title="{dot.title} ({dot.status})"
 								aria-label="Task: {dot.title}"
 							></button>
@@ -421,7 +421,7 @@
 							<button
 								class="phase-bar {getPhaseColor(index)}"
 								style="left: {startPos}%; width: {Math.max(endPos - startPos, 5)}%"
-								on:click={() => scrollToPhase(phase.id)}
+								onclick={() => scrollToPhase(phase.id)}
 								title="{phase.name} ({progress}% complete)"
 							>
 								<span class="phase-name">{phase.name}</span>

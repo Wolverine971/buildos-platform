@@ -296,7 +296,7 @@
 						</p>
 					</div>
 					<Button
-						on:click={() => (saveSuccess = false)}
+						onclick={() => (saveSuccess = false)}
 						variant="ghost"
 						size="sm"
 						class="p-1 text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300"
@@ -319,7 +319,7 @@
 						</p>
 					</div>
 					<Button
-						on:click={() => (saveError = false)}
+						onclick={() => (saveError = false)}
 						variant="ghost"
 						size="sm"
 						class="p-1 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
@@ -370,7 +370,7 @@
 				<div class="flex items-center">
 					{#if !data.userContext || !data.completedOnboarding || progressData.missingRequiredFields?.length > 0}
 						<Button
-							on:click={() => goto('/onboarding')}
+							onclick={() => goto('/onboarding')}
 							variant="primary"
 							size="sm"
 							class="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow hover:shadow-lg transform hover:scale-[1.02] transition-all duration-200 w-full sm:w-auto text-xs sm:text-sm"
@@ -397,7 +397,7 @@
 			<TabNav
 				tabs={profileTabs}
 				{activeTab}
-				on:change={(event) => switchTab(event.detail)}
+				onchange={(event) => switchTab(event.detail)}
 				containerClass="mb-0 border-0"
 				navClass="mx-0 px-3 sm:px-6"
 				ariaLabel="Profile sections"
@@ -595,7 +595,7 @@
 													</a>
 												{:else if invoice.stripe_invoice_id}
 													<Button
-														on:click={() =>
+														onclick={() =>
 															downloadInvoice(
 																invoice.stripe_invoice_id
 															)}
@@ -702,7 +702,7 @@
 								{/if}
 							</h3>
 							<Button
-								on:click={closeTemplateEditor}
+								onclick={closeTemplateEditor}
 								variant="ghost"
 								size="sm"
 								class="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
@@ -798,7 +798,7 @@
 							>
 								<Button
 									type="button"
-									on:click={closeTemplateEditor}
+									onclick={closeTemplateEditor}
 									variant="ghost"
 									size="md"
 								>

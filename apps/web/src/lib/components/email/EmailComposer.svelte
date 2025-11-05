@@ -607,7 +607,7 @@
 			<!-- Action Buttons -->
 			<div class="flex items-center space-x-2">
 				<Button
-					on:click={saveEmail}
+					onclick={saveEmail}
 					disabled={isSaving || isEmailSent}
 					variant="secondary"
 					size="md"
@@ -618,7 +618,7 @@
 				</Button>
 
 				<Button
-					on:click={() => (showSendModal = true)}
+					onclick={() => (showSendModal = true)}
 					disabled={!canSend || isSending || isEmailSent}
 					variant="primary"
 					size="md"
@@ -634,7 +634,7 @@
 		<div class="mt-4 border-b border-gray-200 dark:border-gray-700">
 			<nav class="-mb-px flex space-x-8">
 				<Button
-					on:click={() => (activeTab = 'compose')}
+					onclick={() => (activeTab = 'compose')}
 					variant="ghost"
 					size="sm"
 					class="!py-2 !px-1 !border-b-2 !rounded-none {activeTab === 'compose'
@@ -644,7 +644,7 @@
 					Compose
 				</Button>
 				<Button
-					on:click={() => (activeTab = 'preview')}
+					onclick={() => (activeTab = 'preview')}
 					variant="ghost"
 					size="sm"
 					class="!py-2 !px-1 !border-b-2 !rounded-none {activeTab === 'preview'
@@ -665,7 +665,7 @@
 			<div class="flex justify-between items-center">
 				<p class="text-red-800 dark:text-red-200">{error}</p>
 				<Button
-					on:click={clearMessages}
+					onclick={clearMessages}
 					variant="ghost"
 					size="sm"
 					icon={Trash2}
@@ -682,7 +682,7 @@
 			<div class="flex justify-between items-center">
 				<p class="text-green-800 dark:text-green-200">{success}</p>
 				<Button
-					on:click={clearMessages}
+					onclick={clearMessages}
 					variant="ghost"
 					size="sm"
 					icon={Trash2}
@@ -700,7 +700,7 @@
 				<div class="flex items-center justify-between">
 					<div class="flex items-center space-x-4">
 						<Button
-							on:click={() => (composeMode = 'manual')}
+							onclick={() => (composeMode = 'manual')}
 							variant={composeMode === 'manual' ? 'primary' : 'secondary'}
 							size="sm"
 							icon={PenTool}
@@ -709,7 +709,7 @@
 							Manual Draft
 						</Button>
 						<Button
-							on:click={() => (composeMode = 'ai-assist')}
+							onclick={() => (composeMode = 'ai-assist')}
 							variant={composeMode === 'ai-assist' ? 'primary' : 'secondary'}
 							size="sm"
 							icon={Bot}
@@ -723,7 +723,7 @@
 					{#if composeMode === 'ai-assist'}
 						<div class="flex items-center space-x-2">
 							<Button
-								on:click={useAiContent}
+								onclick={useAiContent}
 								disabled={!aiGeneratedContent ||
 									aiGeneratedContent ===
 										'<p>AI-generated email will appear here...</p>'}
@@ -736,7 +736,7 @@
 								Use AI Content
 							</Button>
 							<Button
-								on:click={copyToAi}
+								onclick={copyToAi}
 								disabled={!emailData.content || emailData.content === ''}
 								variant="ghost"
 								size="sm"
@@ -758,7 +758,7 @@
 					<FormField label="From Email" labelFor="from-email">
 						<Select
 							bind:value={emailData.from_email}
-							on:change={(e) => (emailData.from_email = e.detail)}
+							onchange={(e) => (emailData.from_email = e.detail)}
 							disabled={isEmailSent}
 							size="md"
 							placeholder="Select sender email"
@@ -796,7 +796,7 @@
 							Recipients ({emailData.recipients.length})
 						</label>
 						<Button
-							on:click={() => (showRecipientModal = true)}
+							onclick={() => (showRecipientModal = true)}
 							disabled={isEmailSent}
 							variant="ghost"
 							size="sm"
@@ -901,7 +901,7 @@
 								</FormField>
 								<div class="flex items-end">
 									<Button
-										on:click={generateEmail}
+										onclick={generateEmail}
 										disabled={isGeneratingEmail ||
 											emailData.recipients.length === 0}
 										variant="primary"
@@ -946,7 +946,7 @@
 						<div class="flex flex-wrap items-center gap-2">
 							<!-- Text Formatting -->
 							<Button
-								on:click={toggleBold}
+								onclick={toggleBold}
 								variant="ghost"
 								size="sm"
 								class="!p-2 {editor?.isActive('bold')
@@ -957,7 +957,7 @@
 								<strong>B</strong>
 							</Button>
 							<Button
-								on:click={toggleItalic}
+								onclick={toggleItalic}
 								variant="ghost"
 								size="sm"
 								class="!p-2 {editor?.isActive('italic')
@@ -972,7 +972,7 @@
 
 							<!-- Headings -->
 							<Button
-								on:click={() => insertHeading(1)}
+								onclick={() => insertHeading(1)}
 								variant="ghost"
 								size="sm"
 								class="!px-2 !py-1 {editor?.isActive('heading', { level: 1 })
@@ -983,7 +983,7 @@
 								H1
 							</Button>
 							<Button
-								on:click={() => insertHeading(2)}
+								onclick={() => insertHeading(2)}
 								variant="ghost"
 								size="sm"
 								class="!px-2 !py-1 {editor?.isActive('heading', { level: 2 })
@@ -998,7 +998,7 @@
 
 							<!-- Text Alignment -->
 							<Button
-								on:click={() => setTextAlign('left')}
+								onclick={() => setTextAlign('left')}
 								variant="ghost"
 								size="sm"
 								class="!p-2 {editor?.isActive({ textAlign: 'left' })
@@ -1009,7 +1009,7 @@
 								⫸
 							</Button>
 							<Button
-								on:click={() => setTextAlign('center')}
+								onclick={() => setTextAlign('center')}
 								variant="ghost"
 								size="sm"
 								class="!p-2 {editor?.isActive({ textAlign: 'center' })
@@ -1020,7 +1020,7 @@
 								⫷
 							</Button>
 							<Button
-								on:click={() => setTextAlign('right')}
+								onclick={() => setTextAlign('right')}
 								variant="ghost"
 								size="sm"
 								class="!p-2 {editor?.isActive({ textAlign: 'right' })
@@ -1035,7 +1035,7 @@
 
 							<!-- Insert Options -->
 							<Button
-								on:click={addLink}
+								onclick={addLink}
 								variant="ghost"
 								size="sm"
 								class="!p-2"
@@ -1056,7 +1056,7 @@
 								</svg>
 							</Button>
 							<Button
-								on:click={() => (showImageModal = true)}
+								onclick={() => (showImageModal = true)}
 								variant="ghost"
 								size="sm"
 								icon={ImageIcon}

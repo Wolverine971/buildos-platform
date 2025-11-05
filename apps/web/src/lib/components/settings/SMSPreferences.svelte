@@ -420,7 +420,7 @@
 						class="flex justify-between items-center pt-6 border-t border-gray-200 dark:border-gray-700"
 					>
 						<Button
-							on:click={savePreferences}
+							onclick={savePreferences}
 							disabled={isSaving || isOptedOut}
 							variant="primary"
 							loading={isSaving}
@@ -431,7 +431,7 @@
 
 						{#if !isOptedOut}
 							<Button
-								on:click={handleOptOut}
+								onclick={handleOptOut}
 								variant="outline"
 								icon={XCircle}
 								class="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 hover:border-red-300 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950/30 dark:hover:text-red-300"

@@ -184,7 +184,7 @@
 			<div class="mb-6">
 				<Button
 					type="button"
-					on:click={handleGoogleLogin}
+					onclick={handleGoogleLogin}
 					disabled={googleLoading || loading}
 					loading={googleLoading}
 					fullWidth={true}
@@ -228,7 +228,7 @@
 				</div>
 			</div>
 
-			<form on:submit={handleSubmit} class="space-y-6">
+			<form onsubmit={handleSubmit} class="space-y-6">
 				{#if error}
 					<div
 						class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 px-4 py-3 rounded-lg"
@@ -248,7 +248,7 @@
 							disabled={loading || googleLoading}
 							placeholder="Enter your email"
 							size="lg"
-							on:blur={validateEmail}
+							onblur={validateEmail}
 						/>
 						{#if emailError}
 							<p class="mt-1 text-sm text-red-600 dark:text-red-400">{emailError}</p>
@@ -263,7 +263,7 @@
 							autocomplete="current-password"
 							required
 							disabled={loading || googleLoading}
-							on:keydown={handleKeydown}
+							onkeydown={handleKeydown}
 							placeholder="Enter your password"
 							size="lg"
 						/>

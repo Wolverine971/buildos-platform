@@ -315,8 +315,8 @@
 						method.value
 							? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
 							: ''} {method.disabled ? 'opacity-50 cursor-not-allowed' : ''}"
-						on:click={() => handleSchedulingMethodChange(method.value)}
-						on:keydown={(e) => {
+						onclick={() => handleSchedulingMethodChange(method.value)}
+						onkeydown={(e) => {
 							if (e.key === 'Enter' || e.key === ' ') {
 								e.preventDefault();
 								handleSchedulingMethodChange(method.value);
@@ -412,7 +412,7 @@
 						id="project-start-date"
 						type="date"
 						bind:value={localProjectStartDate}
-						on:change={handleProjectDateChange}
+						onchange={handleProjectDateChange}
 						size="md"
 						required
 					/>
@@ -422,7 +422,7 @@
 						id="project-end-date"
 						type="date"
 						bind:value={localProjectEndDate}
-						on:change={handleProjectDateChange}
+						onchange={handleProjectDateChange}
 						size="md"
 						required={selectedSchedulingMethod !== 'phases_only'}
 					/>
@@ -462,7 +462,7 @@
 						<input
 							type="checkbox"
 							bind:checked={preserveExistingDates}
-							on:change={loadPreviewData}
+							onchange={loadPreviewData}
 							class="mt-1 w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
 						/>
 						<div>
@@ -621,7 +621,7 @@
 			<div class="flex flex-wrap gap-2">
 				{#each statusOptions as option}
 					<Button
-						on:click={() => toggleStatus(option.value)}
+						onclick={() => toggleStatus(option.value)}
 						variant={selectedStatuses.includes(option.value) ? 'primary' : 'outline'}
 						size="sm"
 						class="rounded-full"
@@ -656,7 +656,7 @@
 									<input
 										type="checkbox"
 										bind:checked={includeRecurringTasks}
-										on:change={loadPreviewData}
+										onchange={loadPreviewData}
 										class="mt-1 w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
 									/>
 									<div>
@@ -680,7 +680,7 @@
 											<input
 												type="checkbox"
 												bind:checked={allowRecurringReschedule}
-												on:change={loadPreviewData}
+												onchange={loadPreviewData}
 												class="mt-1 w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
 											/>
 											<div>
@@ -724,13 +724,13 @@
 								<!-- Show recurring tasks list -->
 								{#if showRecurringTasks && previewData?.recurring_task_info?.tasks}
 									<div class="mt-3">
-										<button
-											on:click={() => (showRecurringTasks = false)}
+										<Button
+											onclick={() => (showRecurringTasks = false)}
 											class="text-xs text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 flex items-center gap-1"
 										>
 											<ChevronUp class="w-3 h-3" />
 											Hide recurring tasks
-										</button>
+										</Button>
 										<div class="mt-2 space-y-1 max-h-32 overflow-y-auto">
 											{#each previewData.recurring_task_info.tasks as task}
 												<div
@@ -747,7 +747,7 @@
 									</div>
 								{:else if previewData?.recurring_task_info?.tasks?.length > 0}
 									<button
-										on:click={() => (showRecurringTasks = true)}
+										onclick={() => (showRecurringTasks = true)}
 										class="text-xs text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 flex items-center gap-1"
 									>
 										<ChevronDown class="w-3 h-3" />
@@ -803,7 +803,7 @@
 			{#if hasConflicts}
 				<div class="mb-6">
 					<Button
-						on:click={() => (showTaskConflicts = !showTaskConflicts)}
+						onclick={() => (showTaskConflicts = !showTaskConflicts)}
 						variant="ghost"
 						size="md"
 						fullWidth
@@ -899,7 +899,7 @@
 			{#if hasRescheduled && selectedSchedulingMethod !== 'phases_only'}
 				<div class="mb-6">
 					<Button
-						on:click={() => (showRescheduledTasks = !showRescheduledTasks)}
+						onclick={() => (showRescheduledTasks = !showRescheduledTasks)}
 						variant="ghost"
 						size="md"
 						fullWidth
@@ -942,7 +942,7 @@
 			{#if totalSelectedTasks > 0}
 				<div class="mb-6">
 					<Button
-						on:click={() => (showTaskBreakdown = !showTaskBreakdown)}
+						onclick={() => (showTaskBreakdown = !showTaskBreakdown)}
 						variant="ghost"
 						size="md"
 						fullWidth
@@ -1005,11 +1005,11 @@
 		slot="footer"
 		class="p-4 sm:p-5 md:p-6 border-t border-gray-200 dark:border-gray-700 flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-4"
 	>
-		<Button on:click={handleCancel} variant="secondary" size="md" class="w-full sm:w-auto"
+		<Button onclick={handleCancel} variant="secondary" size="md" class="w-full sm:w-auto"
 			>Cancel</Button
 		>
 		<Button
-			on:click={handleConfirm}
+			onclick={handleConfirm}
 			disabled={!previewData || totalSelectedTasks === 0 || loading || !localProjectStartDate}
 			variant="primary"
 			size="md"

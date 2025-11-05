@@ -3,12 +3,18 @@
 ## Document Metadata
 
 - **Version**: 1.0.0
-- **Date**: 2025-11-04
+- **Date**: 2025-11-05
 - **Author**: System Architect
 - **Purpose**: Complete implementation guide for AI agent to enhance chat system
 - **Estimated Implementation Time**: 40-60 hours
 - **Priority**: High
 - **Dependencies**: Existing BuildOS codebase with ontology system
+
+## Status Update (2025-11-05)
+
+- Refactored agentic chat architecture is now assembled through `apps/web/src/lib/services/agentic-chat/index.ts` and can be toggled via `ENABLE_NEW_AGENTIC_CHAT` inside `apps/web/src/routes/api/agent/stream/+server.ts`.
+- Streaming contract gained plan and executor lifecycle events; ensure consuming clients handle `step_start`, `step_complete`, `executor_spawned`, and `executor_result` before enabling the feature flag broadly.
+- Outstanding work: migrate integration tests to cover the new orchestrator path and validate Supabase persistence using real fixtures prior to production rollout.
 
 ## Executive Brief for Implementing Agent
 

@@ -181,7 +181,7 @@
 
 	<div class="grid grid-cols-2 md:grid-cols-3 gap-2 mb-4">
 		<Button
-			on:click={fullDiagnostic}
+			onclick={fullDiagnostic}
 			disabled={isLoggingOut}
 			size="sm"
 			variant="ghost"
@@ -191,7 +191,7 @@
 		</Button>
 
 		<Button
-			on:click={testStandardLogout}
+			onclick={testStandardLogout}
 			disabled={isLoggingOut}
 			size="sm"
 			variant="ghost"
@@ -201,7 +201,7 @@
 		</Button>
 
 		<Button
-			on:click={testForceLogout}
+			onclick={testForceLogout}
 			disabled={isLoggingOut}
 			size="sm"
 			variant="ghost"
@@ -211,7 +211,7 @@
 		</Button>
 
 		<Button
-			on:click={checkAuthState}
+			onclick={checkAuthState}
 			disabled={isLoggingOut}
 			size="sm"
 			variant="ghost"
@@ -221,7 +221,7 @@
 		</Button>
 
 		<Button
-			on:click={manualCookieClear}
+			onclick={manualCookieClear}
 			disabled={isLoggingOut}
 			size="sm"
 			variant="ghost"
@@ -231,7 +231,7 @@
 		</Button>
 
 		<Button
-			on:click={forceRefresh}
+			onclick={forceRefresh}
 			disabled={isLoggingOut}
 			size="sm"
 			variant="ghost"

@@ -621,9 +621,9 @@
 			class="w-full bg-gray-50 dark:bg-gray-800/50 {isDragOver
 				? 'bg-purple-50 dark:bg-purple-900/20'
 				: ''} rounded-t-lg transition-colors relative"
-			on:dragover={handleTaskDragOver}
-			on:dragleave={handleTaskDragLeave}
-			on:drop={handleTaskDrop}
+			ondragover={handleTaskDragOver}
+			ondragleave={handleTaskDragLeave}
+			ondrop={handleTaskDrop}
 		>
 			<!-- Track indicator bar -->
 			{#if showTrackIndicator && maxTracks > 1}
@@ -638,7 +638,7 @@
 				size="lg"
 				fullWidth
 				btnType="container"
-				on:click={handleToggleCollapse}
+				onclick={handleToggleCollapse}
 				aria-expanded={!isCollapsed}
 				aria-controls="phase-content-{phase.id}"
 				class="w-full px-3 pt-3 sm:px-4 text-left rounded-t-lg hover:bg-gray-100 dark:hover:bg-gray-700 touch-manipulation justify-start font-normal rounded-b-none {maxTracks >
@@ -828,7 +828,7 @@
 							<Button
 								variant="ghost"
 								size="sm"
-								on:click={handleCreateTaskInPhase}
+								onclick={handleCreateTaskInPhase}
 								aria-label="Add task to {phase.name}"
 							>
 								<Plus class="w-5 h-5 sm:w-4 sm:h-4" aria-hidden="true" />
@@ -836,7 +836,7 @@
 							<Button
 								variant="ghost"
 								size="sm"
-								on:click={handleSchedulePhase}
+								onclick={handleSchedulePhase}
 								disabled={!calendarConnected || !!phase.tasks?.length}
 								aria-label="Schedule tasks for {phase.name}"
 							>
@@ -845,7 +845,7 @@
 							<Button
 								variant="ghost"
 								size="sm"
-								on:click={handleEditPhase}
+								onclick={handleEditPhase}
 								aria-label="Edit phase {phase.name}"
 							>
 								<PenTool class="w-5 h-5 sm:w-4 sm:h-4" aria-hidden="true" />
@@ -853,7 +853,7 @@
 							<Button
 								variant="ghost"
 								size="sm"
-								on:click={handleDeletePhase}
+								onclick={handleDeletePhase}
 								aria-label="Delete phase {phase.name}"
 								class="hover:text-red-600 dark:hover:text-red-400"
 							>
@@ -924,7 +924,7 @@
 				{#if isEditing}
 					<!-- Phase editing form -->
 					<form
-						on:submit={(e) => {
+						onsubmit={(e) => {
 							e.preventDefault();
 							handleSavePhase();
 						}}
@@ -1068,7 +1068,7 @@
 							<Button
 								type="button"
 								variant="outline"
-								on:click={handleCancelEdit}
+								onclick={handleCancelEdit}
 								aria-label="Cancel editing phase {phase.name}"
 							>
 								<X class="w-4 h-4 mr-1.5" aria-hidden="true" />
@@ -1154,7 +1154,7 @@
 									variant="ghost"
 									title="Add task to phase"
 									size="md"
-									on:click={handleCreateTaskInPhase}
+									onclick={handleCreateTaskInPhase}
 									aria-label="Add task to phase {phase.name}"
 								>
 									<Plus class="w-4 h-4" aria-hidden="true" />
@@ -1163,7 +1163,7 @@
 									variant="ghost"
 									title="Schedule phase"
 									size="md"
-									on:click={handleSchedulePhase}
+									onclick={handleSchedulePhase}
 									disabled={!calendarConnected || !phase.tasks?.length}
 									aria-label="Schedule tasks for phase {phase.name}"
 								>
@@ -1172,7 +1172,7 @@
 								<Button
 									variant="ghost"
 									size="md"
-									on:click={handleEditPhase}
+									onclick={handleEditPhase}
 									aria-label="Edit phase {phase.name}"
 								>
 									<PenTool class="w-4 h-4" aria-hidden="true" />
@@ -1180,7 +1180,7 @@
 								<Button
 									variant="ghost"
 									size="md"
-									on:click={handleDeletePhase}
+									onclick={handleDeletePhase}
 									aria-label="Delete phase {phase.name}"
 								>
 									<Trash2 class="w-4 h-4" aria-hidden="true" />
@@ -1203,7 +1203,7 @@
 									<Button
 										variant="ghost"
 										size="sm"
-										on:click={handleResetPhaseFilters}
+										onclick={handleResetPhaseFilters}
 										class="!text-xs !px-2 !py-1 transition-all duration-200 hover:scale-105"
 									>
 										Reset to global
@@ -1231,7 +1231,7 @@
 										activeFilters={localPhaseFilters}
 										taskCounts={phaseTaskCounts}
 										label="Phase Filters"
-										on:change={(e) => handlePhaseFilterChange(e.detail)}
+										onchange={(e) => handlePhaseFilterChange(e.detail)}
 									/>
 								</div>
 							{/if}
@@ -1244,9 +1244,12 @@
 						bind:this={containerElement}
 						class:filter-transitioning={isFilterTransition}
 						class:has-custom-filters={hasCustomFilters}
-						on:dragover|preventDefault={handleTaskDragOver}
-						on:dragleave|preventDefault={handleTaskDragLeave}
-						on:drop|preventDefault={handleTaskDrop}
+						ondragover={(e) => { e.preventDefault()
+						handleTaskDragOver(e)}}
+						ondragleave={(e) => { e.preventDefault()
+						handleTaskDragLeave(e)}}
+						ondrop={(e) => {e.preventDefault()
+						handleTaskDrop(e)}}
 					>
 						{#if filteredTasks && filteredTasks.length > 0}
 							{@const sortedTasks = [...filteredTasks].sort(
@@ -1258,9 +1261,9 @@
 								class="space-y-1 min-h-[40px] p-2 rounded border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 transition-all duration-300 {isDragOver
 									? 'border-blue-400 dark:border-blue-500 bg-blue-50 dark:bg-blue-900/20 shadow-lg transform scale-[1.01]'
 									: ''}"
-								on:dragover={handleTaskDragOver}
-								on:dragleave={handleTaskDragLeave}
-								on:drop={handleTaskDrop}
+								ondragover={handleTaskDragOver}
+								ondragleave={handleTaskDragLeave}
+								ondrop={handleTaskDrop}
 								role="region"
 								aria-label="Tasks for {phase.name}"
 								aria-describedby="task-drop-instructions-{phase.id}"
@@ -1335,9 +1338,9 @@
 								class="empty-state p-3 sm:p-4 rounded border-2 border-dashed text-center transition-all duration-300 {isDragOver
 									? 'border-blue-400 dark:border-blue-500 bg-blue-50 dark:bg-blue-900/20 border-solid transform scale-[1.01] shadow-lg'
 									: 'border-gray-300 dark:border-gray-600'}"
-								on:dragover={handleTaskDragOver}
-								on:dragleave={handleTaskDragLeave}
-								on:drop={handleTaskDrop}
+								ondragover={handleTaskDragOver}
+								ondragleave={handleTaskDragLeave}
+								ondrop={handleTaskDrop}
 								role="region"
 								aria-label="Empty task area for {phase.name}"
 								aria-describedby="empty-drop-instructions-{phase.id}"
@@ -1380,7 +1383,7 @@
 				size="sm"
 				fullWidth
 				btnType="container"
-				on:click={handleToggleCollapse}
+				onclick={handleToggleCollapse}
 				aria-expanded={!isCollapsed}
 				aria-controls="kanban-phase-content-{phase.id}"
 				class="w-full px-3 py-2 text-left rounded-t-lg hover:bg-gray-100 dark:hover:bg-gray-700 touch-manipulation justify-start font-normal"
@@ -1478,7 +1481,8 @@
 						{/if}
 
 						<!-- Phase editing form -->
-						<form class="space-y-3 mb-3" on:submit|preventDefault={handleSavePhase}>
+						<form class="space-y-3 mb-3" onsubmit={(e) => { e.preventDefault()
+						handleSavePhase()}}>
 							<FormField label="Description" error={validationErrors.description}>
 								<Textarea
 									id="phase-description-{phase.id}"
@@ -1543,7 +1547,7 @@
 									type="button"
 									variant="outline"
 									size="sm"
-									on:click={handleCancelEdit}
+									onclick={handleCancelEdit}
 									aria-label="Cancel editing {phase.name}"
 								>
 									<X class="w-3 h-3 mr-1" aria-hidden="true" />
@@ -1561,9 +1565,12 @@
 					class:filter-transitioning={isFilterTransition}
 					style="max-height: 16rem; overflow-y: auto;"
 					bind:this={containerElement}
-					on:dragover|preventDefault={handleTaskDragOver}
-					on:dragleave|preventDefault={handleTaskDragLeave}
-					on:drop|preventDefault={handleTaskDrop}
+					ondragover={(e) => { e.preventDefault()
+						handleTaskDragOver(e)}}
+					ondragleave={(e) => { e.preventDefault()
+						handleTaskDragLeave(e)}}
+					ondrop={(e) => { e.preventDefault()
+					handleTaskDrop(e)}}
 					role="region"
 					aria-label="Tasks for {phase.name}"
 					aria-describedby="task-drop-instructions-{phase.id}"
@@ -1588,7 +1595,7 @@
 									<Button
 										variant="ghost"
 										size="sm"
-										on:click={handleResetPhaseFilters}
+										onclick={handleResetPhaseFilters}
 										class="!text-xs !px-1.5 !py-0.5 transition-all duration-200 hover:scale-105"
 									>
 										Reset
@@ -1601,7 +1608,7 @@
 									activeFilters={localPhaseFilters}
 									taskCounts={phaseTaskCounts}
 									label="Filter"
-									on:change={(e) => handlePhaseFilterChange(e.detail)}
+									onchange={(e) => handlePhaseFilterChange(e.detail)}
 								/>
 							</div>
 						</div>

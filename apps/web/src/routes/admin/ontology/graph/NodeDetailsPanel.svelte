@@ -72,7 +72,7 @@
 			variant="ghost"
 			size="sm"
 			class="p-2 text-gray-500 dark:text-gray-400"
-			on:click={onClose}
+			onclick={onClose}
 			aria-label="Close details panel"
 		>
 			<X class="w-4 h-4" />
@@ -147,11 +147,11 @@
 	<CardFooter
 		class="flex-col items-stretch justify-start gap-2 px-4 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50"
 	>
-		<Button variant="primary" size="sm" fullWidth={true} on:click={navigateToDetail}>
+		<Button variant="primary" size="sm" fullWidth={true} onclick={navigateToDetail}>
 			<ExternalLink class="w-4 h-4 mr-2" />
 			View Detail Page
 		</Button>
-		<Button variant="secondary" size="sm" fullWidth={true} on:click={() => {}}>
+		<Button variant="secondary" size="sm" fullWidth={true} onclick={() => {}}>
 			<Network class="w-4 h-4 mr-2" />
 			Show Related Nodes
 		</Button>

@@ -104,12 +104,12 @@
 	});
 </script>
 
-<svelte:window on:keydown={handleKeydown} />
+<svelte:window onkeydown={handleKeydown} />
 
 <div class="relative inline-block">
 	{#if !showDropdown}
 		<Button
-			on:click={toggleDropdown}
+			onclick={toggleDropdown}
 			variant="outline"
 			size="sm"
 			icon={Link2}
@@ -146,7 +146,7 @@
 				</Select>
 
 				<Button
-					on:click={linkToProject}
+					onclick={linkToProject}
 					variant="primary"
 					size="sm"
 					icon={isLinking ? Loader2 : Check}
@@ -157,7 +157,7 @@
 				</Button>
 
 				<Button
-					on:click={() => {
+					onclick={() => {
 						showDropdown = false;
 						selectedProjectId = '';
 					}}

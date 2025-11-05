@@ -58,7 +58,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		if (actorCheckError || !actorId) {
 			console.error('[Output Generate API] Failed to get actor:', actorCheckError);
-			return ApiResponse.internalError(actorCheckError || new Error('Failed to resolve user actor'));
+			return ApiResponse.internalError(
+				actorCheckError || new Error('Failed to resolve user actor')
+			);
 		}
 
 		// ✅ SECURITY: Verify user owns the project (via actor)

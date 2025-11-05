@@ -199,7 +199,7 @@
 					<Select
 						id="note-category"
 						bind:value={categoryValue}
-						on:change={(e) => (categoryValue = e.detail)}
+						onchange={(e) => (categoryValue = e.detail)}
 						size="sm"
 						placeholder="Select category..."
 					>
@@ -217,7 +217,7 @@
 							{#each tagsValue as tag}
 								<Button
 									type="button"
-									on:click={() => removeTag(tag)}
+									onclick={() => removeTag(tag)}
 									variant="outline"
 									size="sm"
 									class="m-1 p-1 text-blue-600 dark:text-blue-300 hover:text-blue-800 dark:hover:text-blue-100 min-h-[24px]"
@@ -245,7 +245,7 @@
 					<TextInput
 						id="note-tags"
 						bind:value={tagInput}
-						on:keydown={handleTagKeydown}
+						onkeydown={handleTagKeydown}
 						placeholder="Add tags (press Enter)..."
 						size="sm"
 					/>

@@ -485,7 +485,7 @@
 				<!-- Timeframe -->
 				<Select
 					bind:value={selectedTimeframe}
-					on:change={(e) => (selectedTimeframe = e.detail)}
+					onchange={(e) => (selectedTimeframe = e.detail)}
 					size="md"
 					placeholder="Last 30 Days"
 				>
@@ -495,13 +495,13 @@
 				</Select>
 
 				<!-- Export -->
-				<Button on:click={exportAnalytics} variant="primary" size="sm" icon={Download}>
+				<Button onclick={exportAnalytics} variant="primary" size="sm" icon={Download}>
 					Export
 				</Button>
 
 				<!-- Refresh -->
 				<Button
-					on:click={loadAnalytics}
+					onclick={loadAnalytics}
 					disabled={isLoading}
 					variant="secondary"
 					size="sm"

@@ -173,7 +173,7 @@
 	}
 </script>
 
-<svelte:window on:click={handleClickOutside} />
+<svelte:window onclick={handleClickOutside} />
 
 <svelte:head>
 	<title>Subscription Management - Admin</title>
@@ -198,7 +198,7 @@
 					<TextInput
 						type="text"
 						bind:value={searchQuery}
-						on:keyup={(e) => e.key === 'Enter' && searchUsers()}
+						onkeyup={(e) => e.key === 'Enter' && searchUsers()}
 						placeholder="Search by email or name..."
 						size="md"
 					/>
@@ -207,7 +207,7 @@
 				<!-- Status Filter -->
 				<Select
 					bind:value={statusFilter}
-					on:change={(e) => (statusFilter = e.detail)}
+					onchange={(e) => (statusFilter = e.detail)}
 					size="md"
 					placeholder="All Statuses"
 				>
@@ -221,7 +221,7 @@
 
 				<!-- Search Button -->
 				<Button
-					on:click={searchUsers}
+					onclick={searchUsers}
 					disabled={isLoading}
 					variant="primary"
 					size="md"
@@ -232,7 +232,7 @@
 
 				<!-- Refresh -->
 				<Button
-					on:click={loadUsers}
+					onclick={loadUsers}
 					disabled={isLoading}
 					variant="secondary"
 					size="md"
@@ -389,7 +389,7 @@
 										{#if subscription}
 											<div class="relative" data-action-menu>
 												<Button
-													on:click={(e) => {
+													onclick={(e) => {
 														e.stopPropagation();
 														toggleActionMenu(user.id);
 													}}
@@ -407,7 +407,7 @@
 														<div class="py-1">
 															{#if subscription.status === 'active'}
 																<Button
-																	on:click={() =>
+																	onclick={() =>
 																		performAction(
 																			'cancel',
 																			user.id,
@@ -424,7 +424,7 @@
 
 															{#if subscription.status === 'trialing'}
 																<Button
-																	on:click={() =>
+																	onclick={() =>
 																		performAction(
 																			'extend_trial',
 																			user.id,
@@ -440,7 +440,7 @@
 															{/if}
 
 															<Button
-																on:click={() =>
+																onclick={() =>
 																	performAction(
 																		'add_discount',
 																		user.id,
@@ -455,7 +455,7 @@
 															</Button>
 
 															<Button
-																on:click={() => {
+																onclick={() => {
 																	emailUserId = user.id;
 																	emailUserName = user.name;
 																	emailUserEmail = user.email;
@@ -495,7 +495,7 @@
 				>
 					<div class="flex-1 flex justify-between sm:hidden">
 						<Button
-							on:click={() => (currentPage = Math.max(1, currentPage - 1))}
+							onclick={() => (currentPage = Math.max(1, currentPage - 1))}
 							disabled={currentPage === 1}
 							variant="secondary"
 							size="sm"
@@ -503,7 +503,7 @@
 							Previous
 						</Button>
 						<Button
-							on:click={() => (currentPage = Math.min(totalPages, currentPage + 1))}
+							onclick={() => (currentPage = Math.min(totalPages, currentPage + 1))}
 							disabled={currentPage === totalPages}
 							variant="secondary"
 							size="sm"
@@ -522,7 +522,7 @@
 						<div>
 							<nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
 								<Button
-									on:click={() => (currentPage = Math.max(1, currentPage - 1))}
+									onclick={() => (currentPage = Math.max(1, currentPage - 1))}
 									disabled={currentPage === 1}
 									variant="secondary"
 									size="sm"
@@ -530,7 +530,7 @@
 									class="rounded-r-none"
 								/>
 								<Button
-									on:click={() =>
+									onclick={() =>
 										(currentPage = Math.min(totalPages, currentPage + 1))}
 									disabled={currentPage === totalPages}
 									variant="secondary"

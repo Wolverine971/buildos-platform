@@ -158,7 +158,7 @@
 
 <div
 	draggable="true"
-	on:dragstart={handleDragStart}
+	ondragstart={(e) => handleDragStart(e)}
 	class="backlog-task-item group bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg cursor-move hover:shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-200 p-3"
 	role="listitem"
 	aria-label="Task: {task.title}"
@@ -175,7 +175,7 @@
 		<div class="flex-1 min-w-0">
 			<!-- Title - Allow wrapping -->
 			<button
-				on:click={handleEditTask}
+				onclick={handleEditTask}
 				class="w-full text-left {task.status === 'done'
 					? 'line-through text-gray-500 dark:text-gray-400'
 					: 'text-gray-900 dark:text-white'} hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-150 focus:outline-none"
@@ -219,7 +219,7 @@
 		<!-- Delete Button -->
 		<div class="flex-shrink-0">
 			<Button
-				on:click={handleDeleteTask}
+				onclick={handleDeleteTask}
 				variant="ghost"
 				size="sm"
 				icon={Trash2}

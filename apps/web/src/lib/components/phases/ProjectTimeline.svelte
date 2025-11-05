@@ -214,7 +214,7 @@
 							<button
 								class="flex items-center space-x-3 w-full text-left p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
 								style="margin-left: {track * 16}px"
-								on:click={() => scrollToPhase(phase.id)}
+								onclick={() => scrollToPhase(phase.id)}
 								aria-label="Click to scroll to phase {phase.name}"
 								title="Click to scroll to {phase.name}"
 							>
@@ -310,7 +310,7 @@
 							title="Click to scroll to {phase.name} - {status
 								.charAt(0)
 								.toUpperCase() + status.slice(1)} ({getPhaseProgress(phase)}%)"
-							on:click={() => scrollToPhase(phase.id)}
+							onclick={() => scrollToPhase(phase.id)}
 						>
 							<!-- Phase label on hover -->
 							<div

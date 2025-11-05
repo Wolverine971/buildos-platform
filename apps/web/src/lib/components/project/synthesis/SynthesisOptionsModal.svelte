@@ -172,8 +172,8 @@ This analysis helps streamline your project by reducing redundancy, improving wo
 		<!-- Backdrop -->
 		<div
 			class="fixed inset-0 bg-gray-900/50 dark:bg-gray-900/70 backdrop-blur-sm"
-			on:click={onClose}
-			on:keydown={(e) => e.key === 'Escape' && onClose()}
+			onclick={onClose}
+			onkeydown={(e) => e.key === 'Escape' && onClose()}
 			role="button"
 			tabindex="0"
 			aria-label="Close modal"
@@ -204,13 +204,13 @@ This analysis helps streamline your project by reducing redundancy, improving wo
 								</p>
 							</div>
 						</div>
-						<button
-							on:click={onClose}
+						<Button
+							onclick={onClose}
 							class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
 							aria-label="Close"
 						>
 							<X class="w-5 h-5 text-gray-500 dark:text-gray-400" />
-						</button>
+						</Button>
 					</div>
 				</div>
 
@@ -233,8 +233,8 @@ This analysis helps streamline your project by reducing redundancy, improving wo
 								<div class="flex items-start space-x-3">
 									<!-- Checkbox -->
 									<div class="pt-0.5">
-										<button
-											on:click={() => toggleOption(option)}
+										<Button
+											onclick={() => toggleOption(option)}
 											disabled={!option.available}
 											class="w-5 h-5 rounded border-2 flex items-center justify-center transition-all
 												{option.enabled && option.available
@@ -245,7 +245,7 @@ This analysis helps streamline your project by reducing redundancy, improving wo
 											{#if option.enabled && option.available}
 												<Check class="w-3 h-3 text-white" />
 											{/if}
-										</button>
+										</Button>
 									</div>
 
 									<!-- Content -->
@@ -273,7 +273,7 @@ This analysis helps streamline your project by reducing redundancy, improving wo
 
 											{#if option.available && option.enabled}
 												<button
-													on:click={() => toggleConfig(option.id)}
+													onclick={() => toggleConfig(option.id)}
 													class="p-2 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-lg transition-colors"
 													aria-label={expandedConfigs.has(option.id)
 														? 'Collapse configuration'

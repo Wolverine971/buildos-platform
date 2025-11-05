@@ -58,11 +58,11 @@
 		</p>
 
 		{#if hasFilters}
-			<Button on:click={handleClearFilters} variant="secondary" size="md">
+			<Button onclick={handleClearFilters} variant="secondary" size="md">
 				Clear Filters
 			</Button>
 		{:else if type === 'projects'}
-			<Button on:click={handleCreateProject} variant="primary" size="md" icon={Plus}>
+			<Button onclick={handleCreateProject} variant="primary" size="md" icon={Plus}>
 				Create your first project
 			</Button>
 		{/if}

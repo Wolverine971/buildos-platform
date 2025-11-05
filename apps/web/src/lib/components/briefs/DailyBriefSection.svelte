@@ -266,7 +266,7 @@
 					<div class="card-actions">
 						<Button
 							type="button"
-							on:click={cancelGeneration}
+							onclick={cancelGeneration}
 							variant="ghost"
 							size="sm"
 							class="card-action"
@@ -306,7 +306,7 @@
 			<button
 				type="button"
 				class="daily-brief-card display-state clickable-card"
-				on:click={handleViewBrief}
+				onclick={handleViewBrief}
 				aria-label="View full daily brief"
 			>
 				<!-- Header -->
@@ -363,7 +363,7 @@
 					</div>
 					<Button
 						type="button"
-						on:click={(e) => {
+						onclick={(e) => {
 							e.stopPropagation();
 							enableEmailNotifications();
 						}}
@@ -393,7 +393,7 @@
 					</div>
 					<Button
 						type="button"
-						on:click={() => generateDailyBrief()}
+						onclick={() => generateDailyBrief()}
 						disabled={currentStreamingStatus?.isGenerating || !user}
 						loading={currentStreamingStatus?.isGenerating}
 						variant="primary"

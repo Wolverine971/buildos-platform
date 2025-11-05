@@ -41,7 +41,7 @@
 					<input
 						type="checkbox"
 						checked={config.consolidation.enabled}
-						on:change={() => toggleFeature('consolidation', 'enabled')}
+						onchange={() => toggleFeature('consolidation', 'enabled')}
 						class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
 					/>
 				</div>
@@ -54,7 +54,7 @@
 							</label>
 							<select
 								value={config.consolidation.aggressiveness}
-								on:change={(e) =>
+								onchange={(e) =>
 									updateSetting(
 										'consolidation',
 										'aggressiveness',
@@ -78,7 +78,7 @@
 							<input
 								type="checkbox"
 								checked={config.consolidation.preserveDetails}
-								on:change={() => toggleFeature('consolidation', 'preserveDetails')}
+								onchange={() => toggleFeature('consolidation', 'preserveDetails')}
 								class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
 							/>
 							<span class="text-xs text-gray-600 dark:text-gray-400">
@@ -103,7 +103,7 @@
 					<input
 						type="checkbox"
 						checked={config.sequencing.enabled}
-						on:change={() => toggleFeature('sequencing', 'enabled')}
+						onchange={() => toggleFeature('sequencing', 'enabled')}
 						class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
 					/>
 				</div>
@@ -114,8 +114,7 @@
 							<input
 								type="checkbox"
 								checked={config.sequencing.considerDependencies}
-								on:change={() =>
-									toggleFeature('sequencing', 'considerDependencies')}
+								onchange={() => toggleFeature('sequencing', 'considerDependencies')}
 								class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
 							/>
 							<span class="text-xs text-gray-600 dark:text-gray-400">
@@ -127,7 +126,7 @@
 							<input
 								type="checkbox"
 								checked={config.sequencing.optimizeForParallel}
-								on:change={() => toggleFeature('sequencing', 'optimizeForParallel')}
+								onchange={() => toggleFeature('sequencing', 'optimizeForParallel')}
 								class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
 							/>
 							<span class="text-xs text-gray-600 dark:text-gray-400">
@@ -152,7 +151,7 @@
 					<input
 						type="checkbox"
 						checked={config.timeEstimation.enabled}
-						on:change={() => toggleFeature('timeEstimation', 'enabled')}
+						onchange={() => toggleFeature('timeEstimation', 'enabled')}
 						class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
 					/>
 				</div>
@@ -165,7 +164,7 @@
 							</label>
 							<select
 								value={config.timeEstimation.confidenceLevel}
-								on:change={(e) =>
+								onchange={(e) =>
 									updateSetting(
 										'timeEstimation',
 										'confidenceLevel',
@@ -187,7 +186,7 @@
 							<input
 								type="checkbox"
 								checked={config.timeEstimation.includeBufferTime}
-								on:change={() =>
+								onchange={() =>
 									toggleFeature('timeEstimation', 'includeBufferTime')}
 								class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
 							/>
@@ -213,7 +212,7 @@
 					<input
 						type="checkbox"
 						checked={config.gapAnalysis.enabled}
-						on:change={() => toggleFeature('gapAnalysis', 'enabled')}
+						onchange={() => toggleFeature('gapAnalysis', 'enabled')}
 						class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
 					/>
 				</div>
@@ -224,7 +223,7 @@
 							<input
 								type="checkbox"
 								checked={config.gapAnalysis.includePrerequisites}
-								on:change={() =>
+								onchange={() =>
 									toggleFeature('gapAnalysis', 'includePrerequisites')}
 								class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
 							/>
@@ -237,7 +236,7 @@
 							<input
 								type="checkbox"
 								checked={config.gapAnalysis.includeFollowUps}
-								on:change={() => toggleFeature('gapAnalysis', 'includeFollowUps')}
+								onchange={() => toggleFeature('gapAnalysis', 'includeFollowUps')}
 								class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
 							/>
 							<span class="text-xs text-gray-600 dark:text-gray-400">
@@ -249,7 +248,7 @@
 							<input
 								type="checkbox"
 								checked={config.gapAnalysis.suggestMilestones}
-								on:change={() => toggleFeature('gapAnalysis', 'suggestMilestones')}
+								onchange={() => toggleFeature('gapAnalysis', 'suggestMilestones')}
 								class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
 							/>
 							<span class="text-xs text-gray-600 dark:text-gray-400">
@@ -274,7 +273,7 @@
 					<input
 						type="checkbox"
 						checked={config.dependencies.enabled}
-						on:change={() => toggleFeature('dependencies', 'enabled')}
+						onchange={() => toggleFeature('dependencies', 'enabled')}
 						class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
 					/>
 				</div>
@@ -285,7 +284,7 @@
 							<input
 								type="checkbox"
 								checked={config.dependencies.autoDetect}
-								on:change={() => toggleFeature('dependencies', 'autoDetect')}
+								onchange={() => toggleFeature('dependencies', 'autoDetect')}
 								class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
 							/>
 							<span class="text-xs text-gray-600 dark:text-gray-400">
@@ -297,7 +296,7 @@
 							<input
 								type="checkbox"
 								checked={config.dependencies.strictMode}
-								on:change={() => toggleFeature('dependencies', 'strictMode')}
+								onchange={() => toggleFeature('dependencies', 'strictMode')}
 								class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
 							/>
 							<span class="text-xs text-gray-600 dark:text-gray-400">
@@ -322,7 +321,7 @@
 					<input
 						type="checkbox"
 						checked={config.grouping.enabled}
-						on:change={() => toggleFeature('grouping', 'enabled')}
+						onchange={() => toggleFeature('grouping', 'enabled')}
 						class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
 					/>
 				</div>
@@ -335,7 +334,7 @@
 							</label>
 							<select
 								value={config.grouping.strategy}
-								on:change={(e) =>
+								onchange={(e) =>
 									updateSetting('grouping', 'strategy', e.currentTarget.value)}
 								class="mt-1 block w-full text-sm border-gray-300 dark:border-gray-600 rounded-md
 									bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
@@ -359,7 +358,7 @@
 								min="2"
 								max="10"
 								value={config.grouping.maxGroupSize}
-								on:input={(e) =>
+								oninput={(e) =>
 									updateSetting(
 										'grouping',
 										'maxGroupSize',

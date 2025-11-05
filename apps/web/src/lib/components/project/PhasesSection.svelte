@@ -664,7 +664,7 @@
 					isCreating={true}
 					bind:formData={newPhaseData}
 					{project}
-					on:submit={createPhase}
+					onsubmit={createPhase}
 					on:cancel={cancelPhaseCreation}
 					on:error={(e) => toastService.error(e.detail)}
 				/>

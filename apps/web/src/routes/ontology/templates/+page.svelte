@@ -40,12 +40,14 @@
 
 	let { data } = $props();
 
-	const templates = $derived(data.templates as Template[] || []);
-	const grouped = $derived(data.grouped as Record<string, Template[]> || {});
-	const byScope = $derived(data.byScope as Record<string, Template[]> || {});
-	const filterOptions = $derived((data.filterOptions || { realms: [], scopes: [], facets: {} }) as FilterOptions);
+	const templates = $derived((data.templates as Template[]) || []);
+	const grouped = $derived((data.grouped as Record<string, Template[]>) || {});
+	const byScope = $derived((data.byScope as Record<string, Template[]>) || {});
+	const filterOptions = $derived(
+		(data.filterOptions || { realms: [], scopes: [], facets: {} }) as FilterOptions
+	);
 	const currentFilters = $derived((data.currentFilters || {}) as CurrentFilters);
-	const isAdmin = $derived(data.isAdmin as boolean || false);
+	const isAdmin = $derived((data.isAdmin as boolean) || false);
 
 	let viewMode = $state<'realm' | 'scope'>('realm');
 	let selectedScope = $state(currentFilters.scope || '');

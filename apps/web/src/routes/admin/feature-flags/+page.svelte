@@ -110,7 +110,7 @@
 							<button
 								class="btn-toggle"
 								disabled={pendingUserId === user.id}
-								on:click={() =>
+								onclick={() =>
 									toggleFeature(
 										user.id,
 										'time_play',

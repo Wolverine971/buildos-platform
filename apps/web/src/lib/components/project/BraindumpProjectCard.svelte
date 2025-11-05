@@ -88,8 +88,8 @@
          border-purple-200 dark:border-purple-800
          hover:border-purple-300 dark:hover:border-purple-700
          transition-all duration-200 cursor-pointer group hover:shadow-md"
-	on:click={onClick}
-	on:keydown={handleKeyDown}
+	onclick={onClick}
+	onkeydown={handleKeyDown}
 	role="button"
 	tabindex="0"
 	aria-label="Brain dump: {braindump.title || 'Untitled'}"
@@ -115,7 +115,7 @@
 
 				<!-- Delete button (hover reveal) -->
 				<Button
-					on:click={handleDelete}
+					onclick={handleDelete}
 					variant="ghost"
 					size="sm"
 					btnType="container"
@@ -165,7 +165,7 @@
                                      text-blue-700 dark:text-blue-300
                                      hover:bg-blue-100 dark:hover:bg-blue-900/30
                                      transition-colors truncate max-w-[150px]"
-								on:click={(e) => handleTaskClick(e, task.id)}
+								onclick={(e) => handleTaskClick(e, task.id)}
 								title={task.title}
 								aria-label="View task: {task.title}"
 							>

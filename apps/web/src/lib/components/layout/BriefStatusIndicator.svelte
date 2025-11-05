@@ -147,7 +147,7 @@
 
 {#if isGenerating}
 	<Button
-		on:click={handleClick}
+		onclick={handleClick}
 		variant="ghost"
 		btnType="container"
 		class="relative flex items-center space-x-2 px-2 py-1 rounded-lg transition-all duration-200 transform hover:scale-105 min-h-0 bg-blue-100 dark:bg-blue-900/30 hover:bg-blue-200 dark:hover:bg-blue-900/50"

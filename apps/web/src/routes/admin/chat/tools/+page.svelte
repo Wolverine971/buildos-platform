@@ -119,7 +119,7 @@
 				<!-- Timeframe -->
 				<Select
 					bind:value={selectedTimeframe}
-					on:change={(e) => (selectedTimeframe = e.detail)}
+					onchange={(e) => (selectedTimeframe = e.detail)}
 					size="md"
 					placeholder="Last 7 Days"
 				>
@@ -130,7 +130,7 @@
 
 				<!-- Refresh -->
 				<Button
-					on:click={loadDashboard}
+					onclick={loadDashboard}
 					disabled={isLoading}
 					variant="secondary"
 					size="sm"

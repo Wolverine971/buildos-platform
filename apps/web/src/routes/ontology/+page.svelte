@@ -169,203 +169,209 @@
 	<section class="mb-8 space-y-6">
 		<Card variant="elevated" padding="none">
 			<CardBody padding="md" class="space-y-4">
-			<div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-				<div class="flex-1 flex items-center gap-3">
-					<div class="relative flex-1">
-						<input
-							type="search"
-							class="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-colors"
-							placeholder="Search projects by name, type, or description…"
-							bind:value={searchQuery}
-						/>
-						<svg
-							class="w-5 h-5 text-gray-400 dark:text-gray-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
-							xmlns="http://www.w3.org/2000/svg"
-							fill="none"
-							viewBox="0 0 24 24"
-							stroke="currentColor"
-						>
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								stroke-width="2"
-								d="M21 21l-4.35-4.35M17 10a7 7 0 11-14 0 7 7 0 0114 0z"
+				<div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+					<div class="flex-1 flex items-center gap-3">
+						<div class="relative flex-1">
+							<input
+								type="search"
+								class="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-colors"
+								placeholder="Search projects by name, type, or description…"
+								bind:value={searchQuery}
 							/>
-						</svg>
+							<svg
+								class="w-5 h-5 text-gray-400 dark:text-gray-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+								xmlns="http://www.w3.org/2000/svg"
+								fill="none"
+								viewBox="0 0 24 24"
+								stroke="currentColor"
+							>
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="2"
+									d="M21 21l-4.35-4.35M17 10a7 7 0 11-14 0 7 7 0 0114 0z"
+								/>
+							</svg>
+						</div>
+						{#if hasFilters}
+							<button
+								type="button"
+								class="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
+								onclick={clearFilters}
+							>
+								Clear filters
+							</button>
+						{/if}
 					</div>
-					{#if hasFilters}
-						<button
-							type="button"
-							class="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
-							onclick={clearFilters}
-						>
-							Clear filters
-						</button>
-					{/if}
 				</div>
-			</div>
 
-			<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-				<div
-					class="rounded-lg border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/40 px-4 py-3"
-				>
-					<p
-						class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 font-semibold"
+				<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+					<div
+						class="rounded-lg border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/40 px-4 py-3"
 					>
-						Projects
-					</p>
-					<p class="text-2xl font-semibold text-gray-900 dark:text-white">
-						{stats.totalProjects}
-					</p>
-				</div>
-				<div
-					class="rounded-lg border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/40 px-4 py-3"
-				>
-					<p
-						class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 font-semibold"
-					>
-						Tasks
-					</p>
-					<p class="text-2xl font-semibold text-gray-900 dark:text-white">
-						{stats.totalTasks}
-					</p>
-				</div>
-				<div
-					class="rounded-lg border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/40 px-4 py-3"
-				>
-					<p
-						class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 font-semibold"
-					>
-						Outputs
-					</p>
-					<p class="text-2xl font-semibold text-gray-900 dark:text-white">
-						{stats.totalOutputs}
-					</p>
-				</div>
-				<div
-					class="rounded-lg border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/40 px-4 py-3"
-				>
-					<p
-						class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 font-semibold"
-					>
-						Active
-					</p>
-					<p class="text-2xl font-semibold text-gray-900 dark:text-white">
-						{stats.activeProjects}
-					</p>
-				</div>
-			</div>
-
-			<div class="space-y-3">
-				{#if availableStates.length}
-					<div class="flex flex-col gap-2">
 						<p
-							class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400"
+							class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 font-semibold"
 						>
-							State
+							Projects
 						</p>
-						<div class="flex flex-wrap gap-2">
-							{#each availableStates as state (state)}
-								<button
-									type="button"
-									class="px-3 py-1.5 rounded-full text-xs font-medium border transition-colors {selectedStates.includes(
-										state
-									)
-										? 'bg-blue-600 text-white border-blue-600'
-										: 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:border-blue-400'}"
-									onclick={() =>
-										(selectedStates = toggleValue(selectedStates, state))}
-								>
-									{state}
-								</button>
-							{/each}
-						</div>
+						<p class="text-2xl font-semibold text-gray-900 dark:text-white">
+							{stats.totalProjects}
+						</p>
 					</div>
-				{/if}
-
-				<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
-					{#if availableContexts.length}
-						<div class="flex flex-col gap-2">
-							<p
-								class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400"
-							>
-								Context
-							</p>
-							<div class="flex flex-wrap gap-2">
-								{#each availableContexts as context (context)}
-									<button
-										type="button"
-										class="px-3 py-1.5 rounded-full text-xs font-medium border transition-colors {selectedContexts.includes(
-											context
-										)
-											? 'bg-amber-500 text-white border-amber-500'
-											: 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:border-amber-400'}"
-										onclick={() =>
-											(selectedContexts = toggleValue(
-												selectedContexts,
-												context
-											))}
-									>
-										{context}
-									</button>
-								{/each}
-							</div>
-						</div>
-					{/if}
-
-					{#if availableScales.length}
-						<div class="flex flex-col gap-2">
-							<p
-								class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400"
-							>
-								Scale
-							</p>
-							<div class="flex flex-wrap gap-2">
-								{#each availableScales as scale (scale)}
-									<button
-										type="button"
-										class="px-3 py-1.5 rounded-full text-xs font-medium border transition-colors {selectedScales.includes(
-											scale
-										)
-											? 'bg-purple-500 text-white border-purple-500'
-											: 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:border-purple-400'}"
-										onclick={() =>
-											(selectedScales = toggleValue(selectedScales, scale))}
-									>
-										{scale}
-									</button>
-								{/each}
-							</div>
-						</div>
-					{/if}
-
-					{#if availableStages.length}
-						<div class="flex flex-col gap-2">
-							<p
-								class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400"
-							>
-								Stage
-							</p>
-							<div class="flex flex-wrap gap-2">
-								{#each availableStages as stage (stage)}
-									<button
-										type="button"
-										class="px-3 py-1.5 rounded-full text-xs font-medium border transition-colors {selectedStages.includes(
-											stage
-										)
-											? 'bg-emerald-500 text-white border-emerald-500'
-											: 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:border-emerald-400'}"
-										onclick={() =>
-											(selectedStages = toggleValue(selectedStages, stage))}
-									>
-										{stage}
-									</button>
-								{/each}
-							</div>
-						</div>
-					{/if}
+					<div
+						class="rounded-lg border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/40 px-4 py-3"
+					>
+						<p
+							class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 font-semibold"
+						>
+							Tasks
+						</p>
+						<p class="text-2xl font-semibold text-gray-900 dark:text-white">
+							{stats.totalTasks}
+						</p>
+					</div>
+					<div
+						class="rounded-lg border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/40 px-4 py-3"
+					>
+						<p
+							class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 font-semibold"
+						>
+							Outputs
+						</p>
+						<p class="text-2xl font-semibold text-gray-900 dark:text-white">
+							{stats.totalOutputs}
+						</p>
+					</div>
+					<div
+						class="rounded-lg border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/40 px-4 py-3"
+					>
+						<p
+							class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 font-semibold"
+						>
+							Active
+						</p>
+						<p class="text-2xl font-semibold text-gray-900 dark:text-white">
+							{stats.activeProjects}
+						</p>
+					</div>
 				</div>
-			</div>
+
+				<div class="space-y-3">
+					{#if availableStates.length}
+						<div class="flex flex-col gap-2">
+							<p
+								class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400"
+							>
+								State
+							</p>
+							<div class="flex flex-wrap gap-2">
+								{#each availableStates as state (state)}
+									<button
+										type="button"
+										class="px-3 py-1.5 rounded-full text-xs font-medium border transition-colors {selectedStates.includes(
+											state
+										)
+											? 'bg-blue-600 text-white border-blue-600'
+											: 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:border-blue-400'}"
+										onclick={() =>
+											(selectedStates = toggleValue(selectedStates, state))}
+									>
+										{state}
+									</button>
+								{/each}
+							</div>
+						</div>
+					{/if}
+
+					<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+						{#if availableContexts.length}
+							<div class="flex flex-col gap-2">
+								<p
+									class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400"
+								>
+									Context
+								</p>
+								<div class="flex flex-wrap gap-2">
+									{#each availableContexts as context (context)}
+										<button
+											type="button"
+											class="px-3 py-1.5 rounded-full text-xs font-medium border transition-colors {selectedContexts.includes(
+												context
+											)
+												? 'bg-amber-500 text-white border-amber-500'
+												: 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:border-amber-400'}"
+											onclick={() =>
+												(selectedContexts = toggleValue(
+													selectedContexts,
+													context
+												))}
+										>
+											{context}
+										</button>
+									{/each}
+								</div>
+							</div>
+						{/if}
+
+						{#if availableScales.length}
+							<div class="flex flex-col gap-2">
+								<p
+									class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400"
+								>
+									Scale
+								</p>
+								<div class="flex flex-wrap gap-2">
+									{#each availableScales as scale (scale)}
+										<button
+											type="button"
+											class="px-3 py-1.5 rounded-full text-xs font-medium border transition-colors {selectedScales.includes(
+												scale
+											)
+												? 'bg-purple-500 text-white border-purple-500'
+												: 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:border-purple-400'}"
+											onclick={() =>
+												(selectedScales = toggleValue(
+													selectedScales,
+													scale
+												))}
+										>
+											{scale}
+										</button>
+									{/each}
+								</div>
+							</div>
+						{/if}
+
+						{#if availableStages.length}
+							<div class="flex flex-col gap-2">
+								<p
+									class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400"
+								>
+									Stage
+								</p>
+								<div class="flex flex-wrap gap-2">
+									{#each availableStages as stage (stage)}
+										<button
+											type="button"
+											class="px-3 py-1.5 rounded-full text-xs font-medium border transition-colors {selectedStages.includes(
+												stage
+											)
+												? 'bg-emerald-500 text-white border-emerald-500'
+												: 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:border-emerald-400'}"
+											onclick={() =>
+												(selectedStages = toggleValue(
+													selectedStages,
+													stage
+												))}
+										>
+											{stage}
+										</button>
+									{/each}
+								</div>
+							</div>
+						{/if}
+					</div>
+				</div>
 			</CardBody>
 		</Card>
 	</section>

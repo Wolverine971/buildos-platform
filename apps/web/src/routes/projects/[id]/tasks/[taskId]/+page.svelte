@@ -350,7 +350,7 @@ What would you like help with?`;
 	<meta name="robots" content="noindex, nofollow" />
 </svelte:head>
 
-<svelte:window on:keydown={handleKeyboardShortcut} />
+<svelte:window onkeydown={handleKeyboardShortcut} />
 
 <div
 	class="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900"
@@ -401,21 +401,21 @@ What would you like help with?`;
 						updatedAt={task.updated_at}
 						size="xs"
 					/>
-					<button
-						on:click={openChatModal}
+					<Button
+						onclick={openChatModal}
 						class="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:text-blue-400 dark:hover:bg-blue-900/20 transition-all"
 						title="Chat (⌘K)"
 						disabled={isDeleted}
 					>
 						<MessageCircle class="w-4 h-4" />
-					</button>
-					<button
-						on:click={openProjectContextModal}
+					</Button>
+					<Button
+						onclick={openProjectContextModal}
 						class="p-1.5 rounded-lg text-gray-400 hover:text-purple-600 hover:bg-purple-50 dark:hover:text-purple-400 dark:hover:bg-purple-900/20 transition-all"
 						title="Project Context"
 					>
 						<Settings class="w-4 h-4" />
-					</button>
+					</Button>
 				</div>
 			</div>
 		</div>
@@ -467,7 +467,7 @@ What would you like help with?`;
 						<input
 							type="text"
 							bind:value={titleValue}
-							on:blur={() => !isDeleted && quickUpdateField('title', titleValue)}
+							onblur={() => !isDeleted && quickUpdateField('title', titleValue)}
 							placeholder="Task title..."
 							class="w-full text-xl font-semibold bg-transparent border-0 p-0 focus:outline-none focus:ring-0 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600"
 							disabled={isDeleted}
@@ -487,7 +487,7 @@ What would you like help with?`;
 					<div class="px-4 pb-3">
 						<textarea
 							bind:value={descriptionValue}
-							on:blur={() =>
+							onblur={() =>
 								!isDeleted && quickUpdateField('description', descriptionValue)}
 							placeholder="Brief description..."
 							rows={2}
@@ -548,9 +548,9 @@ What would you like help with?`;
 							>
 							<textarea
 								bind:value={detailsValue}
-								on:blur={() =>
+								onblur={() =>
 									!isDeleted && quickUpdateField('details', detailsValue)}
-								on:input={(e) => autoResize(e.target)}
+								oninput={(e) => autoResize(e.target)}
 								placeholder="Add detailed information, requirements, or notes..."
 								rows={6}
 								class="w-full mt-2 text-sm text-gray-700 dark:text-gray-300 bg-transparent border-0 p-0 resize-none focus:outline-none focus:ring-0 placeholder-gray-400 dark:placeholder-gray-600"
@@ -569,7 +569,7 @@ What would you like help with?`;
 					{#if taskStepsValue || !isDeleted}
 						<div class="border-t border-gray-200 dark:border-gray-700">
 							<button
-								on:click={() => (expandedSections.steps = !expandedSections.steps)}
+								onclick={() => (expandedSections.steps = !expandedSections.steps)}
 								class="w-full px-4 py-2 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
 								type="button"
 							>
@@ -599,10 +599,10 @@ What would you like help with?`;
 								<div class="px-4 pb-3">
 									<textarea
 										bind:value={taskStepsValue}
-										on:blur={() =>
+										onblur={() =>
 											!isDeleted &&
 											quickUpdateField('task_steps', taskStepsValue)}
-										on:input={(e) => autoResize(e.target)}
+										oninput={(e) => autoResize(e.target)}
 										placeholder="1. First step&#10;2. Second step&#10;3. Third step..."
 										rows={6}
 										class="w-full text-sm text-gray-700 dark:text-gray-300 bg-transparent border-0 p-0 resize-none focus:outline-none focus:ring-0 placeholder-gray-400 dark:placeholder-gray-600 font-mono"
@@ -683,7 +683,7 @@ What would you like help with?`;
 							>
 							<select
 								bind:value={statusValue}
-								on:change={() =>
+								onchange={() =>
 									!isDeleted && quickUpdateField('status', statusValue)}
 								class="w-full mt-1 text-xs bg-transparent border border-gray-200 dark:border-gray-700 rounded-md px-2 py-1 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
 								disabled={isDeleted}
@@ -706,7 +706,7 @@ What would you like help with?`;
 							>
 							<select
 								bind:value={priorityValue}
-								on:change={() =>
+								onchange={() =>
 									!isDeleted && quickUpdateField('priority', priorityValue)}
 								class="w-full mt-1 text-xs bg-transparent border border-gray-200 dark:border-gray-700 rounded-md px-2 py-1 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
 								disabled={isDeleted}
@@ -724,7 +724,7 @@ What would you like help with?`;
 							>
 							<select
 								bind:value={taskTypeValue}
-								on:change={() =>
+								onchange={() =>
 									!isDeleted && quickUpdateField('task_type', taskTypeValue)}
 								class="w-full mt-1 text-xs bg-transparent border border-gray-200 dark:border-gray-700 rounded-md px-2 py-1 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
 								disabled={isDeleted}
@@ -743,7 +743,7 @@ What would you like help with?`;
 							<input
 								type="datetime-local"
 								bind:value={startDateValue}
-								on:change={() =>
+								onchange={() =>
 									!isDeleted &&
 									quickUpdateField(
 										'start_date',
@@ -762,7 +762,7 @@ What would you like help with?`;
 							<input
 								type="number"
 								bind:value={durationMinutesValue}
-								on:change={() =>
+								onchange={() =>
 									!isDeleted &&
 									quickUpdateField('duration_minutes', durationMinutesValue)}
 								min="1"
@@ -779,7 +779,7 @@ What would you like help with?`;
 								>
 								<select
 									bind:value={recurrencePatternValue}
-									on:change={() =>
+									onchange={() =>
 										!isDeleted &&
 										quickUpdateField(
 											'recurrence_pattern',
@@ -804,7 +804,7 @@ What would you like help with?`;
 									<input
 										type="date"
 										bind:value={recurrenceEndsValue}
-										on:change={() =>
+										onchange={() =>
 											!isDeleted &&
 											quickUpdateField(
 												'recurrence_ends',
@@ -844,7 +844,7 @@ What would you like help with?`;
 					{#if !isDeleted}
 						<div class="p-3 border-t border-gray-200 dark:border-gray-700">
 							<button
-								on:click={handleDeleteClick}
+								onclick={handleDeleteClick}
 								disabled={isDeleting}
 								class="w-full text-xs font-medium text-rose-600 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300 py-2 px-3 rounded-md hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors"
 							>
@@ -903,7 +903,7 @@ What would you like help with?`;
 <!-- Floating Chat Button -->
 {#if !isDeleted}
 	<button
-		on:click={openChatModal}
+		onclick={openChatModal}
 		class="fixed bottom-6 right-6 z-0 flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg hover:shadow-xl hover:scale-110 transition-all focus:outline-none focus:ring-4 focus:ring-blue-500/30"
 		aria-label="Chat about this task"
 		title="Chat (⌘K)"

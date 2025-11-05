@@ -33,7 +33,7 @@
 	<div class="mb-8 text-center">
 		<div class="flex justify-between items-start mb-4">
 			<div class="flex-1"></div>
-			<Button variant="ghost" on:click={handleSkip} size="sm" class="text-gray-500">
+			<Button variant="ghost" onclick={handleSkip} size="sm" class="text-gray-500">
 				Skip Tour →
 			</Button>
 		</div>
@@ -296,8 +296,8 @@
 
 	<!-- Navigation -->
 	<div class="flex justify-between items-center mt-8">
-		<Button variant="ghost" on:click={handleSkip}>Skip Tour</Button>
-		<Button variant="primary" size="lg" on:click={onNext} class="min-w-[200px]">
+		<Button variant="ghost" onclick={handleSkip}>Skip Tour</Button>
+		<Button variant="primary" size="lg" onclick={onNext} class="min-w-[200px]">
 			Continue to Summary
 			<ArrowRight class="w-5 h-5 ml-2" />
 		</Button>

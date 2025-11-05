@@ -48,7 +48,7 @@
 			{#each options as option}
 				<Button
 					type="button"
-					on:click={() => selectOption(option.id)}
+					onclick={() => selectOption(option.id)}
 					disabled={option.disabled}
 					variant="ghost"
 					size="md"
@@ -101,7 +101,7 @@
 	>
 		<Button
 			type="button"
-			on:click={handleCancel}
+			onclick={handleCancel}
 			variant="secondary"
 			size="md"
 			class="order-2 sm:order-1 w-full sm:w-auto"
@@ -110,7 +110,7 @@
 		</Button>
 		<Button
 			type="button"
-			on:click={handleConfirm}
+			onclick={handleConfirm}
 			disabled={!allowEmpty && !selectedId}
 			variant="primary"
 			size="md"

@@ -1,36 +1,43 @@
 <!-- apps/web/src/lib/components/ui/Select.svelte -->
 <script lang="ts">
 	import type { HTMLSelectAttributes } from 'svelte/elements';
-	import { createEventDispatcher } from 'svelte';
+	import type { Snippet } from 'svelte';
 	import { ChevronDown } from 'lucide-svelte';
 	import { twMerge } from 'tailwind-merge';
 
 	type SelectSize = 'sm' | 'md' | 'lg';
 
-	interface $$Props extends HTMLSelectAttributes {
+	// Svelte 5 runes: Use $props() with rest syntax instead of export let and $$restProps
+	let {
+		value = $bindable(''),
+		size = 'md',
+		error = false,
+		required = false,
+		disabled = false,
+		placeholder = 'Select an option',
+		errorMessage = undefined,
+		helperText = undefined,
+		class: className = '',
+		onchange,
+		onfocus,
+		onblur,
+		children,
+		...restProps
+	}: {
+		value?: string | number;
 		size?: SelectSize;
 		error?: boolean;
 		required?: boolean;
+		disabled?: boolean;
 		placeholder?: string;
 		errorMessage?: string;
 		helperText?: string;
 		class?: string;
-	}
-
-	export let value: string | number = '';
-	export let size: SelectSize = 'md';
-	export let error = false;
-	export let required = false;
-	export let disabled = false;
-	export let placeholder = 'Select an option';
-	export let errorMessage: string | undefined = undefined;
-	export let helperText: string | undefined = undefined;
-
-	// Allow class prop to be passed through
-	let className = '';
-	export { className as class };
-
-	const dispatch = createEventDispatcher();
+		onchange?: (value: string | number) => void;
+		onfocus?: (event: FocusEvent) => void;
+		onblur?: (event: FocusEvent) => void;
+		children?: Snippet;
+	} & Omit<HTMLSelectAttributes, 'onchange' | 'onfocus' | 'onblur'> = $props();
 
 	// Size classes with minimum touch target of 44x44px per WCAG AA standards
 	const sizeClasses = {
@@ -46,46 +53,60 @@
 		lg: 'w-6 h-6'
 	};
 
-	$: selectClasses = twMerge(
-		// Base classes
-		'w-full rounded-lg appearance-none cursor-pointer',
-		'border transition-colors duration-200',
-		'focus:outline-none focus:ring-2 focus:ring-offset-2',
-		'disabled:cursor-not-allowed',
+	// Svelte 5 runes: Convert reactive declarations to $derived
+	let selectClasses = $derived(
+		twMerge(
+			// Base classes
+			'w-full rounded-lg appearance-none cursor-pointer',
+			'border transition-colors duration-200',
+			'focus:outline-none focus:ring-2 focus:ring-offset-2',
+			'disabled:cursor-not-allowed',
 
-		// Size classes
-		sizeClasses[size],
+			// Size classes
+			sizeClasses[size],
 
-		// State classes - error takes precedence over normal state
-		disabled && error
-			? 'border-red-300 dark:border-red-500/50 opacity-50'
-			: error
-				? 'border-red-500 focus:ring-red-500 dark:border-red-400'
-				: disabled
-					? 'border-gray-300 dark:border-gray-600 opacity-50'
-					: 'border-gray-300 focus:ring-blue-500 dark:border-gray-600',
+			// State classes - error takes precedence over normal state
+			disabled && error
+				? 'border-red-300 dark:border-red-500/50 opacity-50'
+				: error
+					? 'border-red-500 focus:ring-red-500 dark:border-red-400'
+					: disabled
+						? 'border-gray-300 dark:border-gray-600 opacity-50'
+						: 'border-gray-300 focus:ring-blue-500 dark:border-gray-600',
 
-		// Background
-		'bg-white dark:bg-gray-800',
+			// Background
+			'bg-white dark:bg-gray-800',
 
-		// Text color
-		value ? 'text-gray-900 dark:text-gray-100' : 'text-gray-400 dark:text-gray-500',
+			// Text color
+			value ? 'text-gray-900 dark:text-gray-100' : 'text-gray-400 dark:text-gray-500',
 
-		// Custom classes (these will override conflicts)
-		className
+			// Custom classes (these will override conflicts)
+			className
+		)
 	);
 
 	// Icon position classes
-	$: iconClasses = twMerge(
-		'absolute top-1/2 -translate-y-1/2 right-3 pointer-events-none',
-		'text-gray-400 dark:text-gray-500',
-		iconSizes[size]
+	let iconClasses = $derived(
+		twMerge(
+			'absolute top-1/2 -translate-y-1/2 right-3 pointer-events-none',
+			'text-gray-400 dark:text-gray-500',
+			iconSizes[size]
+		)
 	);
 
 	function handleChange(event: Event) {
 		const target = event.target as HTMLSelectElement;
 		value = target.value;
-		dispatch('change', value);
+		// Call the callback prop if provided
+		onchange?.(value);
+	}
+
+	function handleFocus(event: FocusEvent) {
+		onfocus?.(event);
+	}
+
+	function handleBlur(event: FocusEvent) {
+		onblur?.(event);
 	}
 </script>
 
@@ -101,17 +122,17 @@
 				? 'select-helper'
 				: undefined}
 		class={selectClasses}
-		on:change={handleChange}
-		on:focus
-		on:blur
-		{...$$restProps}
+		onchange={handleChange}
+		onfocus={handleFocus}
+		onblur={handleBlur}
+		{...restProps}
 	>
 		{#if placeholder}
 			<option value="" disabled selected hidden aria-hidden="true">
 				{placeholder}
 			</option>
 		{/if}
-		<slot />
+		{@render children?.()}
 	</select>
 
 	<div class={iconClasses}>

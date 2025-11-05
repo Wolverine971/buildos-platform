@@ -79,7 +79,7 @@
 			<p class="error-message">{error}</p>
 			<button
 				class="retry-button"
-				on:click={() => {
+				onclick={() => {
 					error = null;
 					isLoading = true;
 					window.location.reload();

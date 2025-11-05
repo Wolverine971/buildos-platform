@@ -273,7 +273,7 @@
 					{/if}
 				</div>
 			</div>
-			<Button on:click={handleClose} variant="ghost" size="sm" icon={X} class="!p-1" />
+			<Button onclick={handleClose} variant="ghost" size="sm" icon={X} class="!p-1" />
 		</div>
 
 		<!-- Alerts -->

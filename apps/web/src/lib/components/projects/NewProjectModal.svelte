@@ -67,7 +67,7 @@
 			<!-- Brain Dump Option -->
 			<Button
 				type="button"
-				on:click={handleBrainDump}
+				onclick={handleBrainDump}
 				variant="outline"
 				size="lg"
 				fullWidth={true}
@@ -104,7 +104,7 @@
 			<!-- Quick Project Option -->
 			<Button
 				type="button"
-				on:click={handleQuickForm}
+				onclick={handleQuickForm}
 				variant="outline"
 				size="lg"
 				fullWidth={true}
@@ -134,6 +134,6 @@
 		slot="footer"
 		class="flex justify-end px-3 sm:px-4 lg:px-6 py-3 sm:py-4 border-t border-gray-200 dark:border-gray-700"
 	>
-		<Button type="button" on:click={handleClose} variant="secondary" size="md">Cancel</Button>
+		<Button type="button" onclick={handleClose} variant="secondary" size="md">Cancel</Button>
 	</div>
 </Modal>

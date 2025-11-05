@@ -218,7 +218,7 @@
 				>
 					<button
 						class="flex w-full items-center justify-between bg-transparent p-3 text-left transition-colors hover:bg-slate-50/50 dark:hover:bg-slate-800/50"
-						on:click={() => toggleOperation(operation.id)}
+						onclick={() => toggleOperation(operation.id)}
 						aria-label={isExpanded
 							? `Collapse ${getOperationTitle(operation)}`
 							: `Expand ${getOperationTitle(operation)}`}

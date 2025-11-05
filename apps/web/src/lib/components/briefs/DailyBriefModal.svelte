@@ -308,7 +308,7 @@
 			<p class="text-gray-900 dark:text-white font-medium mb-2">Failed to load brief</p>
 			<p class="text-gray-600 dark:text-gray-400 text-sm mb-4">{error}</p>
 			<Button
-				on:click={() => briefDate && loadBriefByDate(briefDate)}
+				onclick={() => briefDate && loadBriefByDate(briefDate)}
 				variant="primary"
 				size="sm"
 			>
@@ -360,7 +360,7 @@
 						</p>
 					</div>
 					<Button
-						on:click={enableEmailNotifications}
+						onclick={enableEmailNotifications}
 						variant="primary"
 						size="sm"
 						loading={emailOptInLoading}
@@ -376,7 +376,7 @@
 			<div class="flex flex-col sm:flex-row gap-3 sm:justify-between">
 				<div class="flex flex-col sm:flex-row gap-2 w-full">
 					<Button
-						on:click={copyToClipboard}
+						onclick={copyToClipboard}
 						variant="outline"
 						size="sm"
 						icon={copiedToClipboard ? CheckCircle : Copy}
@@ -386,7 +386,7 @@
 						{copiedToClipboard ? 'Copied!' : 'Copy to Clipboard'}
 					</Button>
 					<Button
-						on:click={downloadBrief}
+						onclick={downloadBrief}
 						variant="outline"
 						size="sm"
 						icon={Download}
@@ -396,7 +396,7 @@
 						Download
 					</Button>
 					<Button
-						on:click={regenerateBrief}
+						onclick={regenerateBrief}
 						variant="primary"
 						size="sm"
 						icon={RefreshCw}

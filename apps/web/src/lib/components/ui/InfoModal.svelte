@@ -44,7 +44,7 @@
 		class="flex justify-end px-3 sm:px-4 lg:px-6 py-3 sm:py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30"
 		slot="footer"
 	>
-		<Button on:click={handleClose} variant="primary" size="md" class="w-full sm:w-auto">
+		<Button onclick={handleClose} variant="primary" size="md" class="w-full sm:w-auto">
 			{buttonText}
 		</Button>
 	</div>

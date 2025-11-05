@@ -6,19 +6,19 @@
 	type CardVariant = 'default' | 'elevated' | 'interactive' | 'outline';
 	type CardPadding = 'none' | 'sm' | 'md' | 'lg';
 
-	interface $$Props extends HTMLAttributes<HTMLDivElement> {
+	// Svelte 5 runes: Use $props() with rest syntax
+	let {
+		variant = 'default',
+		padding = 'md',
+		hoverable = false,
+		class: className = '',
+		...restProps
+	}: {
 		variant?: CardVariant;
 		padding?: CardPadding;
 		hoverable?: boolean;
 		class?: string;
-	}
-
-	export let variant: CardVariant = 'default';
-	export let padding: CardPadding = 'md';
-	export let hoverable = false;
-
-	let className = '';
-	export { className as class };
+	} & HTMLAttributes<HTMLDivElement> = $props();
 
 	// Variant styles
 	const variantClasses = {
@@ -38,25 +38,28 @@
 		lg: 'p-4 sm:p-6' // Comfortable: 16-24px - for special emphasis cards
 	};
 
-	$: cardClasses = twMerge(
-		// Base styles
-		'rounded-lg transition-all duration-300',
+	// Svelte 5 runes: Convert reactive declaration to $derived
+	let cardClasses = $derived(
+		twMerge(
+			// Base styles
+			'rounded-lg transition-all duration-300',
 
-		// Variant
-		variantClasses[variant],
+			// Variant
+			variantClasses[variant],
 
-		// Padding
-		paddingClasses[padding],
+			// Padding
+			paddingClasses[padding],
 
-		// Hoverable
-		hoverable && 'hover:shadow-lg hover:scale-105 hover:-translate-y-0.5 cursor-pointer',
+			// Hoverable
+			hoverable && 'hover:shadow-lg hover:scale-105 hover:-translate-y-0.5 cursor-pointer',
 
-		// Custom classes
-		className
+			// Custom classes
+			className
+		)
 	);
 </script>
 
-<div class={cardClasses} {...$$restProps}>
+<div class={cardClasses} {...restProps}>
 	<slot />
 </div>
 

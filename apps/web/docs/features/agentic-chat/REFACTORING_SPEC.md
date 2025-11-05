@@ -10,6 +10,20 @@
     - [Original Integration Spec](../ontology/AGENT_CHAT_ONTOLOGY_INTEGRATION_SPEC.md)
     - [Phase 2-5 Implementation](../ontology/AGENT_CHAT_ONTOLOGY_INTEGRATION_SPEC_PHASES_2-5.md)
 
+## Progress Log
+
+- **2025-11-05**
+    - Completed domain service extraction with unit tests across `apps/web/src/lib/services/agentic-chat/**`, covering persistence, analysis, planning, execution, synthesis, and orchestration layers.
+    - Added dependency factory in `apps/web/src/lib/services/agentic-chat/index.ts` to compose the refactored stack with existing LLM, executor, and context services.
+    - Integrated feature-flagged orchestration path in `apps/web/src/routes/api/agent/stream/+server.ts`, guarded by `ENABLE_NEW_AGENTIC_CHAT` to safely switch between legacy and refactored flows.
+    - Expanded shared streaming contract in `apps/web/src/lib/services/agentic-chat/shared/types.ts` and wired handler updates in `apps/web/src/lib/components/agent/ChatInterface.svelte` and `apps/web/src/lib/components/agent/AgentChatModal.svelte` to surface plan and executor lifecycle events.
+
+### Implementation Notes (2025-11-05)
+
+- Integration tests remain outstanding for each service; backfill once Supabase harness and end-to-end fixtures are available.
+- Coordinate rollout of `ENABLE_NEW_AGENTIC_CHAT` with DevOps; keep disabled by default until QA validates streaming parity and persistence behavior.
+- Monitor front-end event handling for new executor lifecycle events to ensure analytics, transcripts, and UI states remain consistent before expanding rollout.
+
 ## Executive Summary
 
 The current agent chat system has grown into a 2,263-line monolithic service (`agent-planner-service.ts`) that violates core architectural principles. This specification outlines a complete domain-based service separation refactor that will improve maintainability, testability, and scalability while preserving all existing functionality.
@@ -398,39 +412,39 @@ logger.info('[ServiceName] Operation started', {
 ### Pre-Implementation
 
 - [ ] Review and approve this specification
-- [ ] Set up feature flag infrastructure
-- [ ] Create folder structure
-- [ ] Define shared types
+- [x] Set up feature flag infrastructure
+- [x] Create folder structure
+- [x] Define shared types
 
 ### Implementation
 
 - [ ] Phase 1: AgentPersistenceService
-    - [ ] Write unit tests
-    - [ ] Implement service
+    - [x] Write unit tests
+    - [x] Implement service
     - [ ] Integration tests
 - [ ] Phase 2: StrategyAnalyzer
-    - [ ] Write unit tests
-    - [ ] Implement service
+    - [x] Write unit tests
+    - [x] Implement service
     - [ ] Integration tests
 - [ ] Phase 3: ToolExecutionService
-    - [ ] Write unit tests
-    - [ ] Implement service
+    - [x] Write unit tests
+    - [x] Implement service
     - [ ] Integration tests
 - [ ] Phase 4: ResponseSynthesizer
-    - [ ] Write unit tests
-    - [ ] Implement service
+    - [x] Write unit tests
+    - [x] Implement service
     - [ ] Integration tests
 - [ ] Phase 5: PlanOrchestrator
-    - [ ] Write unit tests
-    - [ ] Implement service
+    - [x] Write unit tests
+    - [x] Implement service
     - [ ] Integration tests
 - [ ] Phase 6: ExecutorCoordinator
-    - [ ] Write unit tests
-    - [ ] Implement service
+    - [x] Write unit tests
+    - [x] Implement service
     - [ ] Integration tests
 - [ ] Phase 7: AgentChatOrchestrator
-    - [ ] Write unit tests
-    - [ ] Implement service
+    - [x] Write unit tests
+    - [x] Implement service
     - [ ] Integration tests
 
 ### Post-Implementation
@@ -440,6 +454,14 @@ logger.info('[ServiceName] Operation started', {
 - [ ] A/B testing setup
 - [ ] Documentation update
 - [ ] Team training
+
+### Progress Log
+
+- Added `ExecutorCoordinator` service with unit tests and wired it into the planning layer via `ExecutorSpawnParams` for richer executor task context.
+- Extracted `AgentChatOrchestrator` to coordinate strategy analysis, planning, execution, and synthesis; introduced `createAgentChatOrchestrator` factory for dependency wiring and reuse.
+- Updated `/api/agent/stream` endpoint to support a feature-flagged rollout (`ENABLE_NEW_AGENTIC_CHAT`) that streams through the new architecture while preserving the legacy planner as fallback.
+- Normalized tool call arguments and persistence of tool results to handle both legacy and refactored payload shapes.
+- Extended shared streaming event types to cover clarifying questions and strategy selection so the UI can remain compatible during rollout.
 
 ## Success Criteria
 

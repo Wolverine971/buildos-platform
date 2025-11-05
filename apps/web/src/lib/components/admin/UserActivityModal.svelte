@@ -372,7 +372,7 @@
 				<p class="text-red-800 dark:text-red-200">
 					Error loading user context: {contextError}
 				</p>
-				<Button on:click={loadUserContext} variant="outline" size="sm" class="mt-2">
+				<Button onclick={loadUserContext} variant="outline" size="sm" class="mt-2">
 					Retry
 				</Button>
 			</div>
@@ -594,7 +594,7 @@
 		<div
 			class="flex justify-end px-4 sm:px-6 py-3 sm:py-4 border-t border-gray-200 dark:border-gray-700"
 		>
-			<Button on:click={handleClose} variant="secondary" size="sm" class="text-sm"
+			<Button onclick={handleClose} variant="secondary" size="sm" class="text-sm"
 				>Close</Button
 			>
 		</div>

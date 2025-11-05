@@ -188,7 +188,7 @@
 					New Task Date
 				</h3>
 				<Button
-					on:click={() => (isEditingDate = !isEditingDate)}
+					onclick={() => (isEditingDate = !isEditingDate)}
 					variant="outline"
 					size="sm"
 				>
@@ -283,7 +283,7 @@
 	<svelte:fragment slot="footer">
 		<div class="flex flex-col sm:flex-row items-center justify-end gap-3 p-3 sm:p-4">
 			<Button
-				on:click={handleCancel}
+				onclick={handleCancel}
 				variant="outline"
 				size="md"
 				class="order-2 sm:order-1 w-full sm:w-auto"
@@ -291,7 +291,7 @@
 				Cancel
 			</Button>
 			<Button
-				on:click={handleConfirm}
+				onclick={handleConfirm}
 				disabled={isEditingDate && !validateEditableDate()}
 				variant="primary"
 				size="md"

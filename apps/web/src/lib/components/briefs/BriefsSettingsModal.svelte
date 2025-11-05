@@ -276,7 +276,7 @@
 				<p class="text-gray-500 dark:text-gray-400 mb-4">
 					Failed to load brief preferences
 				</p>
-				<Button on:click={loadBriefPreferences} variant="primary" size="sm">
+				<Button onclick={loadBriefPreferences} variant="primary" size="sm">
 					<RefreshCw class="w-4 h-4 mr-2" />
 					Retry
 				</Button>
@@ -390,7 +390,7 @@
 						<Select
 							id="brief-frequency"
 							bind:value={briefPreferencesForm.frequency}
-							on:change={(e) => (briefPreferencesForm.frequency = e.detail)}
+							onchange={(e) => (briefPreferencesForm.frequency = e.detail)}
 							size="md"
 						>
 							<option value="daily">Daily</option>
@@ -403,7 +403,7 @@
 							<Select
 								id="brief-day-of-week"
 								bind:value={briefPreferencesForm.day_of_week}
-								on:change={(e) => (briefPreferencesForm.day_of_week = e.detail)}
+								onchange={(e) => (briefPreferencesForm.day_of_week = e.detail)}
 								size="md"
 							>
 								{#each DAY_OPTIONS as day}
@@ -426,7 +426,7 @@
 						<Select
 							id="briefTimezone"
 							bind:value={briefPreferencesForm.timezone}
-							on:change={(e) => (briefPreferencesForm.timezone = e.detail)}
+							onchange={(e) => (briefPreferencesForm.timezone = e.detail)}
 							size="md"
 						>
 							{#each TIMEZONE_OPTIONS as tz}
@@ -566,22 +566,22 @@
 	>
 		<div class="flex justify-end space-x-2">
 			{#if !isEditing}
-				<Button on:click={onClose} variant="ghost" size="md">Close</Button>
-				<Button on:click={startEditing} variant="primary" size="md">
+				<Button onclick={onClose} variant="ghost" size="md">Close</Button>
+				<Button onclick={startEditing} variant="primary" size="md">
 					<Bell class="w-4 h-4 mr-2" />
 					Edit Settings
 				</Button>
 			{:else}
-				<Button on:click={resetBriefPreferences} variant="ghost" size="md">
+				<Button onclick={resetBriefPreferences} variant="ghost" size="md">
 					<RotateCcw class="w-4 h-4 mr-2" />
 					Reset
 				</Button>
-				<Button on:click={cancelEditing} variant="ghost" size="md">
+				<Button onclick={cancelEditing} variant="ghost" size="md">
 					<X class="w-4 h-4 mr-2" />
 					Cancel
 				</Button>
 				<Button
-					on:click={saveBriefPreferences}
+					onclick={saveBriefPreferences}
 					disabled={briefPreferencesState.isSaving}
 					variant="primary"
 					size="md"

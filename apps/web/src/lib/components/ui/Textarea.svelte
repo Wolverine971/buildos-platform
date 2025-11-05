@@ -121,13 +121,7 @@
 			? 'textarea-helper'
 			: undefined}
 	class={textareaClasses}
-	on:input={handleInput}
-	on:change
-	on:focus
-	on:blur
-	on:keydown
-	on:keyup
-	on:keypress
+	oninput={handleInput}
 	{...$$restProps}
 ></textarea>
 {#if error && errorMessage}

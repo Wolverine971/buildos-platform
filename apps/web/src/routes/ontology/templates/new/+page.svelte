@@ -253,7 +253,7 @@
 					mode="create"
 					availableParents={data.availableParents}
 					loading={saving}
-					on:submit={handleBasicFormSubmit}
+					onsubmit={handleBasicFormSubmit}
 					on:cancel={handleCancel}
 				/>
 			{:else if currentStep === 2}

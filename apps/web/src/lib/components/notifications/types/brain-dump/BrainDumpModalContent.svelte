@@ -637,13 +637,13 @@
 			<div class="flex items-center gap-2">
 				<Button
 					variant="ghost"
-					on:click={handleMinimize}
+					onclick={handleMinimize}
 					aria-label="Minimize"
 					icon={ChevronDown}
 				></Button>
 				<Button
 					variant="ghost"
-					on:click={handleClose}
+					onclick={handleClose}
 					aria-label="Close notification"
 					icon={X}
 				></Button>
@@ -779,10 +779,10 @@
 				Your changes have been applied. Refresh the page to see the latest updates.
 			</p>
 			<div class="flex gap-3 justify-center">
-				<Button variant="ghost" on:click={handleRefreshCancel} class="min-w-[100px]">
+				<Button variant="ghost" onclick={handleRefreshCancel} class="min-w-[100px]">
 					Later
 				</Button>
-				<Button variant="primary" on:click={handleRefreshConfirm} class="min-w-[100px]">
+				<Button variant="primary" onclick={handleRefreshConfirm} class="min-w-[100px]">
 					Refresh Now
 				</Button>
 			</div>

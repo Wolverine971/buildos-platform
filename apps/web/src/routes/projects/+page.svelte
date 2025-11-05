@@ -660,7 +660,7 @@
 
 					<!-- New Project Button -->
 					<Button
-						on:click={handleNewProject}
+						onclick={handleNewProject}
 						variant="outline"
 						disabled={creatingProject}
 						class="flex-1 sm:flex-initial"
@@ -675,7 +675,7 @@
 			<TabNav
 				{tabs}
 				{activeTab}
-				on:change={(e) => handleTabChange(e.detail)}
+				onchange={(e) => handleTabChange(e.detail)}
 				ariaLabel="Project content tabs"
 			/>
 		</div>
@@ -725,7 +725,7 @@
 						<!-- Show error state -->
 						<div class="text-center py-12 fade-in">
 							<p class="text-red-500 dark:text-red-400 mb-4">{projectsError}</p>
-							<Button on:click={loadProjectsWithCacheBust} variant="outline"
+							<Button onclick={loadProjectsWithCacheBust} variant="outline"
 								>Retry</Button
 							>
 						</div>

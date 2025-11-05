@@ -65,7 +65,9 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 
 		if (actorCheckError || !actorId) {
 			console.error('[Output API] Failed to get actor:', actorCheckError);
-			return ApiResponse.internalError(actorCheckError || new Error('Failed to resolve user actor'));
+			return ApiResponse.internalError(
+				actorCheckError || new Error('Failed to resolve user actor')
+			);
 		}
 
 		// Check if user owns the project (via actor)
@@ -152,7 +154,9 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 
 		if (actorCheckError || !actorId) {
 			console.error('[Output API] Failed to get actor:', actorCheckError);
-			return ApiResponse.internalError(actorCheckError || new Error('Failed to resolve user actor'));
+			return ApiResponse.internalError(
+				actorCheckError || new Error('Failed to resolve user actor')
+			);
 		}
 
 		if (project.created_by !== actorId) {

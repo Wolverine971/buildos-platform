@@ -294,7 +294,7 @@
 				<div class="flex justify-between items-center">
 					<p class="text-red-800 dark:text-red-200 text-sm">{error}</p>
 					<Button
-						on:click={clearMessages}
+						onclick={clearMessages}
 						variant="ghost"
 						size="sm"
 						class="!text-red-400 hover:!text-red-600 p-1"
@@ -332,7 +332,7 @@
 		<div class="border-b border-gray-200 dark:border-gray-700">
 			<nav class="-mb-px flex space-x-8">
 				<Button
-					on:click={() => (activeTab = 'beta_users')}
+					onclick={() => (activeTab = 'beta_users')}
 					variant="ghost"
 					size="sm"
 					class="py-2 px-1 border-b-2 font-medium {activeTab === 'beta_users'
@@ -343,7 +343,7 @@
 					Beta Users ({betaUsers.length})
 				</Button>
 				<Button
-					on:click={() => (activeTab = 'beta_members')}
+					onclick={() => (activeTab = 'beta_members')}
 					variant="ghost"
 					size="sm"
 					class="py-2 px-1 border-b-2 font-medium {activeTab === 'beta_members'
@@ -354,7 +354,7 @@
 					Beta Members ({betaMembers.length})
 				</Button>
 				<Button
-					on:click={() => (activeTab = 'custom')}
+					onclick={() => (activeTab = 'custom')}
 					variant="ghost"
 					size="sm"
 					class="py-2 px-1 border-b-2 font-medium {activeTab === 'custom'
@@ -389,7 +389,7 @@
 						<!-- Select All / Deselect All Button -->
 						<div class="mb-4 flex justify-start">
 							<Button
-								on:click={allBetaUsersSelected
+								onclick={allBetaUsersSelected
 									? deselectAllBetaUsers
 									: selectAllBetaUsers}
 								variant="outline"
@@ -408,7 +408,7 @@
 										<input
 											type="checkbox"
 											checked={selectedUserIds.has(user.id)}
-											on:change={() => toggleUserSelection(user.id)}
+											onchange={() => toggleUserSelection(user.id)}
 											class="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 cursor-pointer dark:bg-gray-700 dark:checked:bg-blue-600"
 										/>
 										<div class="flex-shrink-0">
@@ -478,7 +478,7 @@
 										<input
 											type="checkbox"
 											checked={selectedMemberIds.has(member.id)}
-											on:change={() => toggleMemberSelection(member.id)}
+											onchange={() => toggleMemberSelection(member.id)}
 											class="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 cursor-pointer dark:bg-gray-700 dark:checked:bg-blue-600"
 										/>
 										<div class="flex-shrink-0">
@@ -562,14 +562,14 @@
 									</div>
 									<div class="flex justify-end space-x-2">
 										<Button
-											on:click={() => (showCustomForm = false)}
+											onclick={() => (showCustomForm = false)}
 											variant="outline"
 											size="md"
 										>
 											Cancel
 										</Button>
 										<Button
-											on:click={addCustomRecipient}
+											onclick={addCustomRecipient}
 											variant="primary"
 											size="md"
 										>
@@ -579,7 +579,7 @@
 								</div>
 							{:else}
 								<Button
-									on:click={() => (showCustomForm = true)}
+									onclick={() => (showCustomForm = true)}
 									variant="outline"
 									size="md"
 									class="w-full border-2 border-dashed border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500"
@@ -610,8 +610,7 @@
 											<input
 												type="checkbox"
 												checked={selectedCustomIds.has(custom.email)}
-												on:change={() =>
-													toggleCustomSelection(custom.email)}
+												onchange={() => toggleCustomSelection(custom.email)}
 												class="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 cursor-pointer dark:bg-gray-700 dark:checked:bg-blue-600"
 											/>
 											<div class="flex-shrink-0">
@@ -646,7 +645,7 @@
 												Custom
 											</span>
 											<Button
-												on:click={() => removeCustomRecipient(custom.email)}
+												onclick={() => removeCustomRecipient(custom.email)}
 												variant="ghost"
 												size="sm"
 												icon={X}
@@ -670,8 +669,8 @@
 			{totalSelected} recipient{totalSelected !== 1 ? 's' : ''} selected
 		</span>
 		<div class="flex space-x-3">
-			<Button on:click={close} variant="secondary" size="md">Cancel</Button>
-			<Button on:click={saveSelection} variant="primary" size="md">Save Selection</Button>
+			<Button onclick={close} variant="secondary" size="md">Cancel</Button>
+			<Button onclick={saveSelection} variant="primary" size="md">Save Selection</Button>
 		</div>
 	</div>
 </Modal>

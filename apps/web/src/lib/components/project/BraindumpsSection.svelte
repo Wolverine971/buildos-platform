@@ -138,7 +138,7 @@
 	}
 </script>
 
-<svelte:window on:click={handleClickOutside} />
+<svelte:window onclick={handleClickOutside} />
 
 <div class="space-y-4">
 	<!-- Header with sort controls -->

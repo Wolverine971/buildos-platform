@@ -287,7 +287,7 @@
 			</div>
 			<button
 				type="button"
-				on:click={handleClose}
+				onclick={handleClose}
 				class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
 				aria-label="Close modal"
 			>
@@ -336,7 +336,7 @@
 					</div>
 				{/if}
 
-				<form on:submit={handleSubmit} class="space-y-5">
+				<form onsubmit={handleSubmit} class="space-y-5">
 					<!-- Calendar Status -->
 					<div
 						class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 shadow-sm"
@@ -433,7 +433,7 @@
 							{#each Object.entries(GOOGLE_CALENDAR_COLORS) as [colorId, colorInfo]}
 								<button
 									type="button"
-									on:click={() =>
+									onclick={() =>
 										(formData.selectedColorId = colorId as GoogleColorId)}
 									class="group relative aspect-square w-full rounded-xl border-2 transition-all hover:scale-110 {formData.selectedColorId ===
 									colorId
@@ -507,7 +507,7 @@
 								</div>
 								<Button
 									type="button"
-									on:click={syncToCalendar}
+									onclick={syncToCalendar}
 									disabled={syncing}
 									variant="outline"
 									size="sm"
@@ -551,7 +551,7 @@
 								</Select>
 								<Button
 									type="button"
-									on:click={shareCalendar}
+									onclick={shareCalendar}
 									disabled={!shareEmail}
 									size="sm"
 									variant="outline"
@@ -599,7 +599,7 @@
 			{#if calendarExists}
 				<Button
 					type="button"
-					on:click={deleteCalendar}
+					onclick={deleteCalendar}
 					disabled={deleting}
 					variant="ghost"
 					size="sm"
@@ -619,7 +619,7 @@
 			<div class="flex gap-3">
 				<Button
 					type="button"
-					on:click={handleClose}
+					onclick={handleClose}
 					variant="outline"
 					disabled={saving || deleting}
 					class="min-w-[80px]"
@@ -627,7 +627,7 @@
 					Cancel
 				</Button>
 				<Button
-					on:click={handleSubmit}
+					onclick={handleSubmit}
 					variant="primary"
 					disabled={saving || !formData.calendarName}
 					class="min-w-[140px] bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white shadow-sm"

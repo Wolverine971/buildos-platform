@@ -220,7 +220,7 @@
 					{totalItems} total submissions
 				</div>
 				<Button
-					on:click={loadFeedback}
+					onclick={loadFeedback}
 					disabled={isLoading}
 					variant="primary"
 					size="sm"
@@ -237,7 +237,7 @@
 			<!-- Mobile Filter Toggle -->
 			<div class="sm:hidden mb-4">
 				<Button
-					on:click={() => (showMobileFilters = !showMobileFilters)}
+					onclick={() => (showMobileFilters = !showMobileFilters)}
 					variant="ghost"
 					size="md"
 					class="w-full justify-between bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
@@ -266,7 +266,7 @@
 					<Select
 						id="mobile-status"
 						bind:value={filterByStatus}
-						on:change={(e) => (filterByStatus = e.detail)}
+						onchange={(e) => (filterByStatus = e.detail)}
 						size="md"
 					>
 						<option value="all">All Status</option>
@@ -283,7 +283,7 @@
 					<Select
 						id="mobile-category"
 						bind:value={filterByCategory}
-						on:change={(e) => (filterByCategory = e.detail)}
+						onchange={(e) => (filterByCategory = e.detail)}
 						size="md"
 					>
 						<option value="all">All Categories</option>
@@ -299,7 +299,7 @@
 					<Select
 						id="mobile-sort"
 						bind:value={sortBy}
-						on:change={(e) => (sortBy = e.detail)}
+						onchange={(e) => (sortBy = e.detail)}
 						size="md"
 					>
 						<option value="created_at">Date Created</option>
@@ -326,7 +326,7 @@
 				<div class="py-2">
 					<Select
 						bind:value={filterByStatus}
-						on:change={(e) => (filterByStatus = e.detail)}
+						onchange={(e) => (filterByStatus = e.detail)}
 						size="md"
 					>
 						<option value="all">All Status</option>
@@ -342,7 +342,7 @@
 				<div class="py-2">
 					<Select
 						bind:value={filterByCategory}
-						on:change={(e) => (filterByCategory = e.detail)}
+						onchange={(e) => (filterByCategory = e.detail)}
 						size="md"
 					>
 						<option value="all">All Categories</option>
@@ -355,7 +355,7 @@
 
 				<!-- Sort -->
 				<div class="py-2">
-					<Select bind:value={sortBy} on:change={(e) => (sortBy = e.detail)} size="md">
+					<Select bind:value={sortBy} onchange={(e) => (sortBy = e.detail)} size="md">
 						<option value="created_at">Date Created</option>
 						<option value="rating">Rating</option>
 						<option value="status">Status</option>
@@ -409,7 +409,7 @@
 							</div>
 							<div class="flex space-x-1">
 								<Button
-									on:click={() => {
+									onclick={() => {
 										selectedFeedback = item;
 										showFeedbackModal = true;
 									}}
@@ -422,7 +422,7 @@
 								</Button>
 								{#if item.user_email}
 									<Button
-										on:click={() => {
+										onclick={() => {
 											emailUserId = item.user_id || '';
 											emailUserName = item.user_name || '';
 											emailUserEmail = item.user_email;
@@ -471,7 +471,7 @@
 						<div class="flex items-center justify-end space-x-2 mt-3">
 							{#if item.status === 'new'}
 								<Button
-									on:click={() => updateFeedbackStatus(item.id, 'reviewed')}
+									onclick={() => updateFeedbackStatus(item.id, 'reviewed')}
 									disabled={isUpdating}
 									variant="secondary"
 									size="sm"
@@ -482,7 +482,7 @@
 							{/if}
 							{#if item.status !== 'resolved'}
 								<Button
-									on:click={() => updateFeedbackStatus(item.id, 'resolved')}
+									onclick={() => updateFeedbackStatus(item.id, 'resolved')}
 									disabled={isUpdating}
 									variant="secondary"
 									size="sm"
@@ -593,7 +593,7 @@
 									<div class="flex items-center justify-end space-x-2">
 										<!-- View Details -->
 										<Button
-											on:click={() => {
+											onclick={() => {
 												selectedFeedback = item;
 												showFeedbackModal = true;
 											}}
@@ -606,7 +606,7 @@
 										<!-- Send Email -->
 										{#if item.user_email}
 											<Button
-												on:click={() => {
+												onclick={() => {
 													emailUserId = item.user_id || '';
 													emailUserName = item.user_name || '';
 													emailUserEmail = item.user_email;
@@ -623,7 +623,7 @@
 										<!-- Quick Status Updates -->
 										{#if item.status === 'new'}
 											<Button
-												on:click={() =>
+												onclick={() =>
 													updateFeedbackStatus(item.id, 'reviewed')}
 												disabled={isUpdating}
 												variant="ghost"
@@ -636,7 +636,7 @@
 
 										{#if item.status !== 'resolved'}
 											<Button
-												on:click={() =>
+												onclick={() =>
 													updateFeedbackStatus(item.id, 'resolved')}
 												disabled={isUpdating}
 												variant="ghost"
@@ -661,7 +661,7 @@
 				>
 					<div class="flex-1 flex justify-between sm:hidden">
 						<Button
-							on:click={prevPage}
+							onclick={prevPage}
 							disabled={currentPage === 1}
 							variant="secondary"
 							size="sm"
@@ -672,7 +672,7 @@
 							{currentPage} of {totalPages}
 						</span>
 						<Button
-							on:click={nextPage}
+							onclick={nextPage}
 							disabled={currentPage === totalPages}
 							variant="secondary"
 							size="sm"
@@ -690,7 +690,7 @@
 						<div>
 							<nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
 								<Button
-									on:click={prevPage}
+									onclick={prevPage}
 									disabled={currentPage === 1}
 									variant="secondary"
 									size="sm"
@@ -698,7 +698,7 @@
 									icon={ChevronLeft}
 								></Button>
 								<Button
-									on:click={nextPage}
+									onclick={nextPage}
 									disabled={currentPage === totalPages}
 									variant="secondary"
 									size="sm"
@@ -726,7 +726,7 @@
 						Feedback Details
 					</h3>
 					<Button
-						on:click={() => (showFeedbackModal = false)}
+						onclick={() => (showFeedbackModal = false)}
 						variant="ghost"
 						size="sm"
 						class="p-1"
@@ -861,7 +861,7 @@
 				<!-- Action Buttons - Mobile Responsive -->
 				<div class="mt-6 flex flex-wrap gap-2">
 					<Button
-						on:click={() => (showFeedbackModal = false)}
+						onclick={() => (showFeedbackModal = false)}
 						variant="secondary"
 						size="sm"
 					>
@@ -870,7 +870,7 @@
 
 					{#if selectedFeedback.status === 'new'}
 						<Button
-							on:click={() => {
+							onclick={() => {
 								updateFeedbackStatus(selectedFeedback.id, 'reviewed');
 								selectedFeedback.status = 'reviewed';
 							}}
@@ -885,7 +885,7 @@
 
 					{#if selectedFeedback.status === 'reviewed'}
 						<Button
-							on:click={() => {
+							onclick={() => {
 								updateFeedbackStatus(selectedFeedback.id, 'in_progress');
 								selectedFeedback.status = 'in_progress';
 							}}
@@ -899,7 +899,7 @@
 
 					{#if selectedFeedback.status !== 'resolved'}
 						<Button
-							on:click={() => {
+							onclick={() => {
 								updateFeedbackStatus(selectedFeedback.id, 'resolved');
 								selectedFeedback.status = 'resolved';
 							}}
@@ -914,7 +914,7 @@
 
 					{#if selectedFeedback.status !== 'closed'}
 						<Button
-							on:click={() => {
+							onclick={() => {
 								updateFeedbackStatus(selectedFeedback.id, 'closed');
 								selectedFeedback.status = 'closed';
 							}}

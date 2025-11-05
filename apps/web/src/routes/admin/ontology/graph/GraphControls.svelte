@@ -152,7 +152,7 @@
 		>
 		<TextInput
 			bind:value={searchQuery}
-			on:input={handleSearch}
+			oninput={handleSearch}
 			placeholder="Type to search..."
 			size="sm"
 			icon={Search}
@@ -167,7 +167,7 @@
 			size="sm"
 			placeholder=""
 			class="w-full text-sm"
-			on:change={handleFilterSelect}
+			onchange={handleFilterSelect}
 		>
 			{#each filters as filter}
 				<option value={filter.value}>{filter.label}</option>
@@ -177,7 +177,7 @@
 
 	<div class="space-y-2 pt-4 border-t border-gray-200 dark:border-gray-700">
 		<Button
-			on:click={() => graphInstance?.fitToView()}
+			onclick={() => graphInstance?.fitToView()}
 			variant="primary"
 			size="sm"
 			fullWidth={true}
@@ -186,7 +186,7 @@
 		</Button>
 
 		<Button
-			on:click={() => {
+			onclick={() => {
 				const instance = graphInstance;
 				if (instance?.cy) {
 					const png = instance.cy.png({ scale: 2 });

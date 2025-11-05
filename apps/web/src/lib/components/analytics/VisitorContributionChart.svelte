@@ -333,7 +333,7 @@
 									variant={viewMode === 'graph' ? 'primary' : 'ghost'}
 									size="sm"
 									class="px-2 sm:px-3 py-1 text-xs sm:text-sm rounded-md"
-									on:click={() => (viewMode = 'graph')}
+									onclick={() => (viewMode = 'graph')}
 								>
 									<svg
 										class="w-3 h-3 sm:w-4 sm:h-4 mr-1 inline"
@@ -354,7 +354,7 @@
 									variant={viewMode === 'chart' ? 'primary' : 'ghost'}
 									size="sm"
 									class="px-2 sm:px-3 py-1 text-xs sm:text-sm rounded-md"
-									on:click={() => (viewMode = 'chart')}
+									onclick={() => (viewMode = 'chart')}
 								>
 									<svg
 										class="w-3 h-3 sm:w-4 sm:h-4 mr-1 inline"
@@ -453,8 +453,8 @@
 										title={day
 											? `${day.visitor_count} visitor${day.visitor_count !== 1 ? 's' : ''} on ${formatTooltipDate(day.date)}`
 											: 'No data'}
-										on:mouseenter={(e) => handleDayMouseEnter(e, day)}
-										on:mouseleave={handleDayMouseLeave}
+										onmouseenter={(e) => handleDayMouseEnter(e, day)}
+										onmouseleave={handleDayMouseLeave}
 										role="button"
 										tabindex="0"
 									></div>
@@ -514,8 +514,8 @@
 										fill="rgb(34, 197, 94)"
 										fill-opacity="0.6"
 										class="hover:fill-opacity-100 cursor-pointer transition-all duration-200"
-										on:mouseenter={(e) => handleSignupMouseEnter(e, point)}
-										on:mouseleave={handleSignupMouseLeave}
+										onmouseenter={(e) => handleSignupMouseEnter(e, point)}
+										onmouseleave={handleSignupMouseLeave}
 									/>
 								{/each}
 							{/if}
@@ -543,8 +543,8 @@
 										r="3"
 										fill="rgb(59, 130, 246)"
 										class="hover:r-5 cursor-pointer transition-all duration-200"
-										on:mouseenter={(e) => handlePointMouseEnter(e, point)}
-										on:mouseleave={handlePointMouseLeave}
+										onmouseenter={(e) => handlePointMouseEnter(e, point)}
+										onmouseleave={handlePointMouseLeave}
 									/>
 								{/each}
 

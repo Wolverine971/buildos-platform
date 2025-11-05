@@ -107,7 +107,7 @@
 			slot="footer"
 			class="p-4 sm:p-5 md:p-6 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50"
 		>
-			<Button variant="outline" on:click={closeViewer} class="w-full sm:w-auto">Close</Button>
+			<Button variant="outline" onclick={closeViewer} class="w-full sm:w-auto">Close</Button>
 		</div>
 	</Modal>
 {/if}

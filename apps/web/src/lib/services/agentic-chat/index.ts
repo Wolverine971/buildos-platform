@@ -15,7 +15,10 @@ import { AgentExecutorService } from '$lib/services/agent-executor-service';
 import { ChatToolExecutor } from '$lib/chat/tool-executor';
 
 import { AgentPersistenceService } from './persistence/agent-persistence-service';
-import { ToolExecutionService, type ToolExecutorFunction } from './execution/tool-execution-service';
+import {
+	ToolExecutionService,
+	type ToolExecutorFunction
+} from './execution/tool-execution-service';
 import { ExecutorCoordinator } from './execution/executor-coordinator';
 import { StrategyAnalyzer } from './analysis/strategy-analyzer';
 import { PlanOrchestrator } from './planning/plan-orchestrator';
@@ -86,7 +89,12 @@ function createToolExecutor(
 	fetchFn: typeof fetch
 ): ToolExecutorFunction {
 	return async (toolName, args, context) => {
-		const toolExecutor = new ChatToolExecutor(supabase, context.userId, context.sessionId, fetchFn);
+		const toolExecutor = new ChatToolExecutor(
+			supabase,
+			context.userId,
+			context.sessionId,
+			fetchFn
+		);
 
 		const call: ChatToolCall = {
 			id: uuidv4(),

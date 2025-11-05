@@ -272,7 +272,7 @@ What could go wrong and what are we assuming?`;
 			{#if !isSubmitting}
 				<Button
 					variant="ghost"
-					on:click={handleClose}
+					onclick={handleClose}
 					class="close-button"
 					aria-label="Close dialog"
 					icon={X}
@@ -282,7 +282,13 @@ What could go wrong and what are we assuming?`;
 	</div>
 
 	<!-- Form Content -->
-	<form on:submit|preventDefault={handleSubmit} class="px-4 sm:px-6 py-6 space-y-6">
+	<form
+		onsubmit={(e) => {
+			e.preventDefault();
+			handleSubmit();
+		}}
+		class="px-4 sm:px-6 py-6 space-y-6"
+	>
 		<!-- Basic Information Section -->
 		<div class="space-y-4">
 			<div class="border-b border-gray-200 dark:border-gray-700 pb-2">
@@ -327,7 +333,7 @@ What could go wrong and what are we assuming?`;
 							type="text"
 							bind:value={formData.tagInput}
 							placeholder="Add tags (press Enter or comma)"
-							on:keydown={handleTagKeydown}
+							onkeydown={handleTagKeydown}
 							class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
 							       focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400
 							       bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100
@@ -337,7 +343,7 @@ What could go wrong and what are we assuming?`;
 						<Button
 							type="button"
 							variant="secondary"
-							on:click={addTag}
+							onclick={addTag}
 							disabled={!formData.tagInput.trim() || isSubmitting}
 							class="min-h-[44px]"
 						>
@@ -354,7 +360,7 @@ What could go wrong and what are we assuming?`;
 									{tag}
 									<button
 										type="button"
-										on:click={() => removeTag(i)}
+										onclick={() => removeTag(i)}
 										class="ml-2 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-200"
 										disabled={isSubmitting}
 									>
@@ -413,7 +419,7 @@ What could go wrong and what are we assuming?`;
 		<div class="space-y-4">
 			<button
 				type="button"
-				on:click={toggleContextSection}
+				onclick={toggleContextSection}
 				class="w-full flex items-center justify-between p-3 bg-gradient-to-r from-gray-50 to-gray-100
 				       dark:from-gray-800 dark:to-gray-750 rounded-lg hover:shadow-sm transition-all duration-200
 				       border border-gray-200 dark:border-gray-700"
@@ -498,19 +504,14 @@ What could go wrong and what are we assuming?`;
 					variant="ghost"
 					size="lg"
 					class="w-full min-h-[44px]"
-					on:click={handleClose}
+					onclick={handleClose}
 					disabled={isSubmitting}
 				>
 					Cancel
 				</Button>
 			{:else}
 				<!-- Desktop layout -->
-				<Button
-					type="button"
-					variant="ghost"
-					on:click={handleClose}
-					disabled={isSubmitting}
-				>
+				<Button type="button" variant="ghost" onclick={handleClose} disabled={isSubmitting}>
 					Cancel
 				</Button>
 				<Button

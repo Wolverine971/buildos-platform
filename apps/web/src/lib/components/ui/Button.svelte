@@ -1,5 +1,5 @@
 <!-- apps/web/src/lib/components/ui/Button.svelte -->
-<script context="module" lang="ts">
+<script module lang="ts">
 	export type ButtonVariant =
 		| 'primary'
 		| 'secondary'
@@ -13,32 +13,35 @@
 
 <script lang="ts">
 	import type { HTMLButtonAttributes } from 'svelte/elements';
+	import type { Snippet } from 'svelte';
 	import { LoaderCircle } from 'lucide-svelte';
 	import { twMerge } from 'tailwind-merge';
 
-	interface $$Props extends HTMLButtonAttributes {
+	// Svelte 5 runes: Use $props() with rest syntax instead of export let and $$restProps
+	let {
+		variant = 'primary',
+		size = 'md',
+		loading = false,
+		icon = undefined,
+		iconPosition = 'left',
+		fullWidth = false,
+		disabled = false,
+		btnType = 'regular',
+		class: className = '',
+		children,
+		...restProps
+	}: {
 		variant?: ButtonVariant;
 		size?: ButtonSize;
 		loading?: boolean;
 		icon?: typeof LoaderCircle;
 		iconPosition?: 'left' | 'right';
 		fullWidth?: boolean;
-		class?: string;
+		disabled?: boolean;
 		btnType?: 'container' | 'regular';
-	}
-
-	export let variant: ButtonVariant = 'primary';
-	export let size: ButtonSize = 'md';
-	export let loading = false;
-	export let icon: typeof LoaderCircle | undefined = undefined;
-	export let iconPosition: 'left' | 'right' = 'left';
-	export let fullWidth = false;
-	export let disabled = false;
-	export let btnType: 'container' | 'regular' = 'regular';
-
-	// Allow class prop to be passed through
-	let className = '';
-	export { className as class };
+		class?: string;
+		children?: Snippet;
+	} & HTMLButtonAttributes = $props();
 
 	// Size classes ensuring minimum touch target of 44x44px per WCAG AA standards
 	const sizeClasses = {
@@ -122,63 +125,57 @@
 		xl: 'w-7 h-7'
 	};
 
-	$: buttonClasses = twMerge(
-		// Base classes
-		'inline-flex items-center justify-center',
-		'font-medium rounded-lg',
-		'transition-all duration-200',
-		'focus:outline-none focus-visible:ring-2',
-		'touch-manipulation',
+	// Svelte 5 runes: Convert reactive declarations to $derived
+	let buttonClasses = $derived(
+		twMerge(
+			// Base classes
+			'inline-flex items-center justify-center',
+			'font-medium rounded-lg',
+			'transition-all duration-200',
+			'focus:outline-none focus-visible:ring-2',
+			'touch-manipulation',
 
-		// Size classes
-		sizeClasses[size],
+			// Size classes
+			sizeClasses[size],
 
-		// Variant classes
-		variantClasses[variant],
+			// Variant classes
+			variantClasses[variant],
 
-		// Full width
-		fullWidth && 'w-full',
+			// Full width
+			fullWidth && 'w-full',
 
-		// Loading state
-		loading && 'cursor-wait',
+			// Loading state
+			loading && 'cursor-wait',
 
-		// Custom classes (these will override conflicts)
-		className
+			// Custom classes (these will override conflicts)
+			className
+		)
 	);
 
-	$: iconClass = [iconSizes[size], loading ? 'animate-spin' : ''].filter(Boolean).join(' ');
+	let iconClass = $derived(
+		[iconSizes[size], loading ? 'animate-spin' : ''].filter(Boolean).join(' ')
+	);
 
-	$: iconSpacingClass = size === 'sm' ? 'gap-1.5' : 'gap-2';
+	let iconSpacingClass = $derived(size === 'sm' ? 'gap-1.5' : 'gap-2');
 </script>
 
-<button
-	type="button"
-	class={buttonClasses}
-	on:click
-	on:mouseenter
-	on:mouseleave
-	on:focus
-	on:blur
-	on:keydown
-	on:keyup
-	on:keypress
-	disabled={disabled || loading}
-	{...$$restProps}
->
+<button type="button" class={buttonClasses} disabled={disabled || loading} {...restProps}>
 	{#if btnType === 'container'}
-		<slot />
+		{@render children?.()}
 	{:else}
 		<span class="inline-flex items-center {iconSpacingClass}">
 			{#if loading}
 				<LoaderCircle class="{iconClass} animate-spin" />
 			{:else if icon && iconPosition === 'left'}
-				<svelte:component this={icon} class={iconClass} />
+				{@const IconComponent = icon}
+				<IconComponent class={iconClass} />
 			{/if}
 
-			<slot />
+			{@render children?.()}
 
 			{#if !loading && icon && iconPosition === 'right'}
-				<svelte:component this={icon} class={iconClass} />
+				{@const IconComponent = icon}
+				<IconComponent class={iconClass} />
 			{/if}
 		</span>
 	{/if}
@@ -191,7 +188,7 @@
 	}
 
 	/* Ensure proper focus ring offset in dark mode */
-	:global(.dark) button:focus-visible {
+	:global(.dark) buttonfocus-visible {
 		--tw-ring-offset-color: rgb(31 41 55);
 	}
 </style>

@@ -93,7 +93,7 @@
 			<div class="grid gap-4 sm:grid-cols-3">
 				<!-- Option 1: Chat Globally -->
 				<button
-					on:click={selectGlobal}
+					onclick={selectGlobal}
 					class="group flex flex-col items-center justify-center gap-4 rounded-xl border-2 border-dashed border-gray-300/50 bg-gradient-to-br from-blue-50/30 to-indigo-50/30 p-6 text-center transition-all duration-200 hover:scale-[1.02] hover:border-blue-300/50 hover:shadow-lg active:scale-[0.99] dark:border-gray-600/50 dark:from-blue-900/10 dark:to-indigo-900/10 dark:hover:border-blue-600/50"
 				>
 					<div
@@ -114,7 +114,7 @@
 
 				<!-- Option 2: Create New Project -->
 				<button
-					on:click={selectProjectCreate}
+					onclick={selectProjectCreate}
 					class="group flex flex-col items-center justify-center gap-4 rounded-xl border-2 border-dashed border-purple-300/50 bg-gradient-to-br from-purple-50/30 to-pink-50/30 p-6 text-center transition-all duration-200 hover:scale-[1.02] hover:border-purple-400/50 hover:shadow-lg active:scale-[0.99] dark:border-purple-600/50 dark:from-purple-900/10 dark:to-pink-900/10 dark:hover:border-purple-500/50"
 				>
 					<div
@@ -135,7 +135,7 @@
 
 				<!-- Option 3: Existing Project -->
 				<button
-					on:click={showProjectSelection}
+					onclick={showProjectSelection}
 					disabled={projects.length === 0}
 					class="group flex flex-col items-center justify-center gap-4 rounded-xl border-2 border-dashed border-emerald-300/50 bg-gradient-to-br from-emerald-50/30 to-teal-50/30 p-6 text-center transition-all duration-200 hover:scale-[1.02] hover:border-emerald-400/50 hover:shadow-lg active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100 dark:border-emerald-600/50 dark:from-emerald-900/10 dark:to-teal-900/10 dark:hover:border-emerald-500/50"
 				>
@@ -182,7 +182,7 @@
 				class="border-b border-gray-200/60 bg-white/80 px-4 py-3 backdrop-blur-sm dark:border-gray-700/60 dark:bg-gray-900/80"
 			>
 				<button
-					on:click={backToPrimary}
+					onclick={backToPrimary}
 					class="mb-2 flex items-center gap-2 text-sm text-gray-600 transition-colors hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
 				>
 					<ChevronLeft class="h-4 w-4" />
@@ -202,7 +202,7 @@
 					<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
 						{#each activeProjects as project}
 							<button
-								on:click={() => selectProject(project)}
+								onclick={() => selectProject(project)}
 								class="group flex flex-col rounded-xl border border-gray-200/50 bg-white/70 p-4 text-left backdrop-blur-sm transition-all duration-200 hover:scale-[1.02] hover:border-gray-300/70 hover:shadow-lg active:scale-[0.99] dark:border-gray-700/50 dark:bg-gray-800/70 dark:hover:border-gray-600/70"
 							>
 								<div class="mb-3 flex items-start justify-between">
@@ -260,7 +260,7 @@
 				class="border-b border-gray-200/60 bg-white/80 px-4 py-3 backdrop-blur-sm dark:border-gray-700/60 dark:bg-gray-900/80"
 			>
 				<button
-					on:click={backToProjectSelection}
+					onclick={backToProjectSelection}
 					class="mb-2 flex items-center gap-2 text-sm text-gray-600 transition-colors hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
 				>
 					<ChevronLeft class="h-4 w-4" />
@@ -276,8 +276,8 @@
 			<div class="mx-auto w-full max-w-3xl flex-1 overflow-y-auto p-6">
 				<div class="grid gap-4 sm:grid-cols-3">
 					<!-- Project Update -->
-					<button
-						on:click={() => selectMode('project_update')}
+					<Button
+						onclick={() => selectMode('project_update')}
 						class="group flex flex-col items-center gap-4 rounded-xl border-2 border-blue-200/50 bg-gradient-to-br from-blue-50/50 to-indigo-50/50 p-6 text-center transition-all duration-200 hover:scale-[1.02] hover:border-blue-300 hover:shadow-lg active:scale-[0.99] dark:border-blue-800/50 dark:from-blue-900/20 dark:to-indigo-900/20 dark:hover:border-blue-700"
 					>
 						<div
@@ -293,11 +293,11 @@
 								Make changes to tasks and context
 							</p>
 						</div>
-					</button>
+					</Button>
 
 					<!-- Project Audit -->
-					<button
-						on:click={() => selectMode('project_audit')}
+					<Button
+						onclick={() => selectMode('project_audit')}
 						class="group flex flex-col items-center gap-4 rounded-xl border-2 border-amber-200/50 bg-gradient-to-br from-amber-50/50 to-orange-50/50 p-6 text-center transition-all duration-200 hover:scale-[1.02] hover:border-amber-300 hover:shadow-lg active:scale-[0.99] dark:border-amber-800/50 dark:from-amber-900/20 dark:to-orange-900/20 dark:hover:border-amber-700"
 					>
 						<div
@@ -313,11 +313,11 @@
 								Critical review across dimensions
 							</p>
 						</div>
-					</button>
+					</Button>
 
 					<!-- Project Forecast -->
-					<button
-						on:click={() => selectMode('project_forecast')}
+					<Button
+						onclick={() => selectMode('project_forecast')}
 						class="group flex flex-col items-center gap-4 rounded-xl border-2 border-emerald-200/50 bg-gradient-to-br from-emerald-50/50 to-teal-50/50 p-6 text-center transition-all duration-200 hover:scale-[1.02] hover:border-emerald-300 hover:shadow-lg active:scale-[0.99] dark:border-emerald-800/50 dark:from-emerald-900/20 dark:to-teal-900/20 dark:hover:border-emerald-700"
 					>
 						<div
@@ -333,7 +333,7 @@
 								Scenario planning and outcomes
 							</p>
 						</div>
-					</button>
+					</Button>
 				</div>
 
 				<!-- Mode Descriptions -->

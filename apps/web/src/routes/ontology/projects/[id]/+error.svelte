@@ -61,13 +61,9 @@
 						: 'bg-red-100 dark:bg-red-900/20'} flex items-center justify-center"
 				>
 					{#if status === 404}
-						<FileX
-							class="w-10 h-10 text-amber-600 dark:text-amber-400"
-						/>
+						<FileX class="w-10 h-10 text-amber-600 dark:text-amber-400" />
 					{:else}
-						<AlertCircle
-							class="w-10 h-10 text-red-600 dark:text-red-400"
-						/>
+						<AlertCircle class="w-10 h-10 text-red-600 dark:text-red-400" />
 					{/if}
 				</div>
 
@@ -100,7 +96,8 @@
 					<div
 						class="bg-gray-100 dark:bg-gray-800 rounded-lg px-4 py-3 mb-6 text-sm text-gray-700 dark:text-gray-300 text-left"
 					>
-						<strong>Details:</strong> {message}
+						<strong>Details:</strong>
+						{message}
 					</div>
 				{/if}
 
@@ -111,7 +108,11 @@
 							<ArrowLeft class="w-4 h-4" />
 							View All Projects
 						</Button>
-						<Button variant="outline" size="md" onclick={() => goto('/ontology/create')}>
+						<Button
+							variant="outline"
+							size="md"
+							onclick={() => goto('/ontology/create')}
+						>
 							Create New Project
 						</Button>
 					{:else}

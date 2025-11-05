@@ -140,7 +140,7 @@
 						type="tel"
 						id="phone"
 						value={phoneNumber}
-						on:input={(e) => handlePhoneInput(e.detail)}
+						oninput={(e) => handlePhoneInput(e.detail)}
 						placeholder="(555) 123-4567"
 						disabled={isLoading}
 						class="flex-1"
@@ -149,7 +149,7 @@
 						iconPosition="left"
 					/>
 					<Button
-						on:click={sendVerification}
+						onclick={sendVerification}
 						disabled={isLoading || !phoneNumber}
 						variant="primary"
 						loading={isLoading}
@@ -188,7 +188,7 @@
 						autocomplete="one-time-code"
 					/>
 					<Button
-						on:click={confirmVerification}
+						onclick={confirmVerification}
 						disabled={isVerifying || !verificationCode}
 						variant="success"
 						loading={isVerifying}
@@ -201,7 +201,7 @@
 
 			<div class="mt-4 pt-4 border-t border-green-200 dark:border-green-800">
 				<button
-					on:click={resetVerification}
+					onclick={resetVerification}
 					class="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors"
 					type="button"
 				>

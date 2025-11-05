@@ -69,7 +69,7 @@
 		<!-- Primary Action -->
 		<section class="mb-8">
 			<button
-				on:click={() => handleProjectSelection({ id: 'new', name: 'New Project / Note' })}
+				onclick={() => handleProjectSelection({ id: 'new', name: 'New Project / Note' })}
 				disabled={isProjectProcessing('new')}
 				class="w-full flex items-center justify-between p-4 sm:p-5 bg-gradient-to-r from-purple-50/30 to-pink-50/30 dark:from-purple-900/10 dark:to-pink-900/10 backdrop-blur-sm border-2 border-dashed {isProjectProcessing(
 					'new'
@@ -138,8 +138,8 @@
 					class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-3"
 				>
 					{#each activeProjects as project}
-						<button
-							on:click={() => handleProjectSelection(project)}
+						<Button
+							onclick={() => handleProjectSelection(project)}
 							disabled={isProjectProcessing(project.id)}
 							class="relative flex flex-col p-3 sm:p-4 bg-white/70 dark:bg-gray-800/70 backdrop-blur-sm border {isProjectProcessing(
 								project.id
@@ -209,7 +209,7 @@
 									{/if}
 								</div>
 							{/if}
-						</button>
+						</Button>
 					{/each}
 				</div>
 			</section>
@@ -234,8 +234,8 @@
 
 				<div class="flex flex-col gap-1">
 					{#each inactiveProjects as project}
-						<button
-							on:click={() => handleProjectSelection(project)}
+						<Button
+							onclick={() => handleProjectSelection(project)}
 							disabled={isProjectProcessing(project.id)}
 							class="flex items-center justify-between w-full p-3 bg-white dark:bg-gray-800 border {isProjectProcessing(
 								project.id
@@ -268,7 +268,7 @@
 									class="w-4 h-4 text-gray-400 dark:text-gray-500 flex-shrink-0"
 								/>
 							{/if}
-						</button>
+						</Button>
 					{/each}
 				</div>
 			</section>

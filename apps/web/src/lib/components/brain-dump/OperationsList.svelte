@@ -296,7 +296,7 @@
 							</div>
 							<div class="flex items-center gap-1">
 								<Button
-									on:click={() => onEditOperation(operation)}
+									onclick={() => onEditOperation(operation)}
 									disabled={disabledOperations.has(operation.id)}
 									variant="ghost"
 									size="sm"
@@ -305,7 +305,7 @@
 									icon={Edit3}
 								></Button>
 								<Button
-									on:click={() => onRemoveOperation(operation.id)}
+									onclick={() => onRemoveOperation(operation.id)}
 									variant="ghost"
 									size="sm"
 									class="p-2 !text-gray-400 hover:!text-red-600 dark:hover:!text-red-400"
@@ -389,7 +389,7 @@
 						<!-- Desktop: Actions -->
 						<div class="hidden sm:flex items-center space-x-1">
 							<Button
-								on:click={() => onEditOperation(operation)}
+								onclick={() => onEditOperation(operation)}
 								disabled={disabledOperations.has(operation.id)}
 								variant="ghost"
 								size="sm"
@@ -397,7 +397,7 @@
 								title="Edit operation"
 							/>
 							<Button
-								on:click={() => onRemoveOperation(operation.id)}
+								onclick={() => onRemoveOperation(operation.id)}
 								variant="ghost"
 								size="sm"
 								icon={Trash2}

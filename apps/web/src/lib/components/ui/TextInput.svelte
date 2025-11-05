@@ -1,37 +1,37 @@
 <!-- apps/web/src/lib/components/ui/TextInput.svelte -->
 <script lang="ts">
 	import type { HTMLInputAttributes } from 'svelte/elements';
-	import { createEventDispatcher } from 'svelte';
 	import { twMerge } from 'tailwind-merge';
 
 	type InputSize = 'sm' | 'md' | 'lg';
 
-	interface $$Props extends HTMLInputAttributes {
+	// Svelte 5 runes: Use $props() with rest syntax, callback props instead of dispatcher
+	let {
+		value = $bindable(''),
+		size = 'md',
+		error = false,
+		required = false,
+		disabled = false,
+		icon = undefined,
+		iconPosition = 'left',
+		errorMessage = undefined,
+		helperText = undefined,
+		class: className = '',
+		oninput,
+		...restProps
+	}: {
+		value?: string | number | null;
 		size?: InputSize;
 		error?: boolean;
 		required?: boolean;
-		icon?: any; // Lucide icon component
+		disabled?: boolean;
+		icon?: any;
 		iconPosition?: 'left' | 'right';
 		errorMessage?: string;
 		helperText?: string;
 		class?: string;
-	}
-
-	export let value: string | number | null = '';
-	export let size: InputSize = 'md';
-	export let error = false;
-	export let required = false;
-	export let disabled = false;
-	export let icon: any = undefined;
-	export let iconPosition: 'left' | 'right' = 'left';
-	export let errorMessage: string | undefined = undefined;
-	export let helperText: string | undefined = undefined;
-
-	// Allow class prop to be passed through
-	let className = '';
-	export { className as class };
-
-	const dispatch = createEventDispatcher();
+		oninput?: (event: Event) => void;
+	} & HTMLInputAttributes = $props();
 
 	// Size classes with minimum touch target of 44x44px per WCAG AA standards
 	const sizeClasses = {
@@ -61,60 +61,59 @@
 		}
 	};
 
-	$: inputClasses = twMerge(
-		// Base classes
-		'w-full rounded-lg',
-		'border transition-colors duration-200',
-		'focus:outline-none focus:ring-2 focus:ring-offset-2',
-		'disabled:cursor-not-allowed disabled:opacity-50',
-		'placeholder:text-gray-400 dark:placeholder:text-gray-500',
+	let inputClasses = $derived(
+		twMerge(
+			// Base classes
+			'w-full rounded-lg',
+			'border transition-colors duration-200',
+			'focus:outline-none focus:ring-2 focus:ring-offset-2',
+			'disabled:cursor-not-allowed disabled:opacity-50',
+			'placeholder:text-gray-400 dark:placeholder:text-gray-500',
 
-		// Size classes
-		sizeClasses[size],
+			// Size classes
+			sizeClasses[size],
 
-		// Icon padding
-		icon && iconPosition === 'left' && iconPaddingClasses.left[size],
-		icon && iconPosition === 'right' && iconPaddingClasses.right[size],
+			// Icon padding
+			icon && iconPosition === 'left' && iconPaddingClasses.left[size],
+			icon && iconPosition === 'right' && iconPaddingClasses.right[size],
 
-		// State classes
-		error
-			? 'border-red-500 focus:ring-red-500 dark:border-red-400'
-			: 'border-gray-300 focus:ring-blue-500 dark:border-gray-600',
+			// State classes
+			error
+				? 'border-red-500 focus:ring-red-500 dark:border-red-400'
+				: 'border-gray-300 focus:ring-blue-500 dark:border-gray-600',
 
-		// Background
-		'bg-white dark:bg-gray-800',
+			// Background
+			'bg-white dark:bg-gray-800',
 
-		// Text color
-		'text-gray-900 dark:text-gray-100',
+			// Text color
+			'text-gray-900 dark:text-gray-100',
 
-		// Custom classes (these will override conflicts)
-		className
+			// Custom classes (these will override conflicts)
+			className
+		)
 	);
 
 	// Icon position classes
-	$: iconClasses = twMerge(
-		'absolute top-1/2 -translate-y-1/2 pointer-events-none',
-		'text-gray-400 dark:text-gray-500',
-		iconPosition === 'left' ? 'left-3' : 'right-3',
-		iconSizes[size]
+	let iconClasses = $derived(
+		twMerge(
+			'absolute top-1/2 -translate-y-1/2 pointer-events-none',
+			'text-gray-400 dark:text-gray-500',
+			iconPosition === 'left' ? 'left-3' : 'right-3',
+			iconSizes[size]
+		)
 	);
-
-	function handleInput(event: Event) {
-		const target = event.target as HTMLInputElement;
-		value = target.value;
-		dispatch('input', value);
-	}
 </script>
 
 <div class="relative">
 	{#if icon}
+		{@const IconComponent = icon}
 		<div class={iconClasses}>
-			<svelte:component this={icon} />
+			<IconComponent />
 		</div>
 	{/if}
 
 	<input
-		{value}
+		bind:value
 		{disabled}
 		aria-invalid={error}
 		aria-required={required}
@@ -124,14 +123,8 @@
 				? 'input-helper'
 				: undefined}
 		class={inputClasses}
-		on:input={handleInput}
-		on:change
-		on:focus
-		on:blur
-		on:keydown
-		on:keyup
-		on:keypress
-		{...$$restProps}
+		{oninput}
+		{...restProps}
 	/>
 </div>
 {#if error && errorMessage}

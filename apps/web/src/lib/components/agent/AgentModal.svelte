@@ -252,13 +252,13 @@
 
 				<div class="flex flex-col gap-2 sm:flex-row">
 					<Button
-						on:click={() => resumeSession(resumableDraft)}
+						onclick={() => resumeSession(resumableDraft)}
 						variant="primary"
 						size="md"
 					>
 						Continue Session
 					</Button>
-					<Button variant="secondary" size="md" on:click={() => startFresh()}>
+					<Button variant="secondary" size="md" onclick={() => startFresh()}>
 						Start Fresh
 					</Button>
 				</div>
@@ -285,8 +285,8 @@
 						>
 							{chatType === 'project_create' ? 'Drafts' : 'Sessions'}
 						</h3>
-						<button
-							on:click={() => (showLeftPanel = false)}
+						<Button
+							onclick={() => (showLeftPanel = false)}
 							class="rounded-md p-1 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-300"
 							title="Collapse panel"
 						>
@@ -303,7 +303,7 @@
 									d="M15 19l-7-7 7-7"
 								/>
 							</svg>
-						</button>
+						</Button>
 					</div>
 					<div class="flex-1 overflow-hidden">
 						{#if chatType === 'project_create'}
@@ -320,7 +320,7 @@
 			{:else}
 				<!-- Collapsed State -->
 				<button
-					on:click={() => (showLeftPanel = true)}
+					onclick={() => (showLeftPanel = true)}
 					class="flex h-full flex-col items-center justify-center gap-4 px-2 py-8 transition-colors hover:bg-slate-100/50 dark:hover:bg-slate-800/50"
 					title="Show drafts"
 				>
@@ -375,7 +375,7 @@
 					<div class="flex gap-1 lg:hidden">
 						{#if drafts.length > 0}
 							<button
-								on:click={() => (showLeftPanel = !showLeftPanel)}
+								onclick={() => (showLeftPanel = !showLeftPanel)}
 								class="rounded-md p-2 text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
 								title="Toggle drafts"
 							>
@@ -396,7 +396,7 @@
 						{/if}
 						{#if operations.length > 0 || queuedOperations.length > 0}
 							<button
-								on:click={() => (showRightPanel = !showRightPanel)}
+								onclick={() => (showRightPanel = !showRightPanel)}
 								class="rounded-md p-2 text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
 								title="Toggle operations"
 							>
@@ -468,8 +468,8 @@
 						>
 							Operations
 						</h3>
-						<button
-							on:click={() => (showRightPanel = false)}
+						<Button
+							onclick={() => (showRightPanel = false)}
 							class="rounded-md p-1 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-300"
 							title="Collapse panel"
 						>
@@ -486,7 +486,7 @@
 									d="M9 5l7 7-7 7"
 								/>
 							</svg>
-						</button>
+						</Button>
 					</div>
 					<div class="flex flex-1 flex-col gap-3 overflow-y-auto p-3">
 						<!-- Operations Log -->
@@ -495,7 +495,7 @@
 						>
 							<button
 								class="flex items-center justify-between border-b border-slate-200/60 bg-blue-50 px-3 py-2 text-left transition-colors hover:bg-blue-100 dark:border-slate-700/60 dark:bg-blue-950/30 dark:hover:bg-blue-950/40"
-								on:click={() => (showOperationsLog = !showOperationsLog)}
+								onclick={() => (showOperationsLog = !showOperationsLog)}
 								aria-label={showOperationsLog
 									? 'Collapse operations log'
 									: 'Expand operations log'}
@@ -526,7 +526,7 @@
 							>
 								<button
 									class="flex items-center justify-between border-b border-amber-200/60 bg-amber-100 px-3 py-2 text-left transition-colors hover:bg-amber-200 dark:border-amber-800/40 dark:bg-amber-950/30 dark:hover:bg-amber-950/40"
-									on:click={() => (showOperationsQueue = !showOperationsQueue)}
+									onclick={() => (showOperationsQueue = !showOperationsQueue)}
 									aria-label={showOperationsQueue
 										? 'Collapse operations queue'
 										: 'Expand operations queue'}
@@ -560,7 +560,7 @@
 			{:else}
 				<!-- Collapsed State -->
 				<button
-					on:click={() => (showRightPanel = true)}
+					onclick={() => (showRightPanel = true)}
 					class="flex h-full flex-col items-center justify-center gap-4 px-2 py-8 transition-colors hover:bg-slate-100/50 dark:hover:bg-slate-800/50"
 					title="Show operations"
 				>

@@ -47,7 +47,7 @@
 <Card variant="default" class="overflow-hidden {hasIssues ? 'ring-2 ring-amber-500/20' : ''}">
 	<!-- Phase Header (Always Visible) -->
 	<button
-		on:click={toggleExpanded}
+		onclick={toggleExpanded}
 		class="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700
 			   transition-colors flex items-center justify-between"
 		disabled={loading}

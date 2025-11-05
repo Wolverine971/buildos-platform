@@ -482,7 +482,7 @@
 									<Button
 										variant="primary"
 										size="sm"
-										on:click={onRegenerate}
+										onclick={onRegenerate}
 										disabled={isRegenerating}
 										loading={isRegenerating}
 										class="sm:hidden"
@@ -535,7 +535,7 @@
 							variant={isEditMode ? 'outline' : 'primary'}
 							size="sm"
 							class="w-full justify-center"
-							on:click={() => (isEditMode ? exitEditMode() : enterEditMode())}
+							onclick={() => (isEditMode ? exitEditMode() : enterEditMode())}
 						>
 							<PencilLine class="h-4 w-4" />
 							<span>{isEditMode ? 'Close Editor' : 'Edit Session'}</span>
@@ -546,7 +546,7 @@
 							variant="secondary"
 							size="sm"
 							class="w-full justify-center"
-							on:click={onRegenerate}
+							onclick={onRegenerate}
 							loading={isRegenerating}
 							disabled={isRegenerating}
 						>
@@ -760,7 +760,7 @@
 					variant="outline"
 					size="sm"
 					class="w-full sm:w-auto"
-					on:click={exitEditMode}
+					onclick={exitEditMode}
 					disabled={isSaving}
 				>
 					Cancel
@@ -769,7 +769,7 @@
 					variant="primary"
 					size="sm"
 					class="w-full sm:w-auto"
-					on:click={handleSaveChanges}
+					onclick={handleSaveChanges}
 					loading={isSaving}
 					disabled={validationErrors.length > 0 || isSaving}
 				>
@@ -778,10 +778,10 @@
 			</div>
 		{:else}
 			<div class="flex flex-col sm:flex-row gap-3 w-full sm:justify-between">
-				<Button variant="danger" size="sm" class="w-full sm:w-auto" on:click={handleDelete}>
+				<Button variant="danger" size="sm" class="w-full sm:w-auto" onclick={handleDelete}>
 					Delete Block
 				</Button>
-				<Button variant="outline" size="sm" class="w-full sm:w-auto" on:click={onClose}>
+				<Button variant="outline" size="sm" class="w-full sm:w-auto" onclick={onClose}>
 					Close
 				</Button>
 			</div>

@@ -766,7 +766,7 @@
 				<div class="text-center">
 					<AlertTriangle class="h-8 w-8 text-red-500 dark:text-red-400 mx-auto mb-3" />
 					<p class="text-red-600 dark:text-red-400 mb-4">{dashboardError}</p>
-					<Button on:click={requestRefresh} variant="danger" size="sm">Try Again</Button>
+					<Button onclick={requestRefresh} variant="danger" size="sm">Try Again</Button>
 				</div>
 			</div>
 		{/if}
