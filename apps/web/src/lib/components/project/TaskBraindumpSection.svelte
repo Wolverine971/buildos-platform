@@ -237,8 +237,10 @@
 									>
 										{braindump.title || 'Untitled braindump'}
 									</span>
-									<svelte:component
-										this={isExpanded ? ChevronDown : ChevronRight}
+									{@const IsExpandedChevronDownChevronRight = isExpanded
+										? ChevronDown
+										: ChevronRight}
+									<IsExpandedChevronDownChevronRight
 										class="w-4 h-4 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300 flex-shrink-0"
 									/>
 								</div>
@@ -262,10 +264,8 @@
 									</span>
 
 									<span class="flex items-center {statusInfo.color}">
-										<svelte:component
-											this={statusInfo.icon}
-											class="w-3 h-3 mr-1"
-										/>
+										{@const Icon = statusInfo.icon}
+										<Icon class="w-3 h-3 mr-1" />
 										{statusInfo.label}
 									</span>
 								</div>

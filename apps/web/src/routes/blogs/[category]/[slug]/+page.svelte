@@ -224,7 +224,8 @@
 						</p>
 					</div>
 				{:else if ContentComponent}
-					<svelte:component this={ContentComponent} />
+					{@const ContentComponent = ContentComponent}
+					<ContentComponent />
 				{:else}
 					<div class="text-center py-12">
 						<p class="text-gray-500 dark:text-gray-400">Content not available.</p>

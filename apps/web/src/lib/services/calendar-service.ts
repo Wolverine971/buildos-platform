@@ -595,8 +595,8 @@ export class CalendarService {
 						const startFormatted = this.formatDateTimeForCalendar(slot.start, timeZone);
 						const endFormatted = this.formatDateTimeForCalendar(slot.end, timeZone);
 						availableSlots.push({
-							start: startFormatted,
-							end: endFormatted,
+							start: startFormatted.dateTime,
+							end: endFormatted.dateTime,
 							duration_minutes,
 							timeZone
 						});
@@ -1556,6 +1556,9 @@ export class CalendarService {
 
 			// Use the first matching calendar (most recent if multiple)
 			const createdCalendar = matchingCalendars[0];
+			if (!createdCalendar) {
+				throw new Error('No matching calendar found in list');
+			}
 			console.log('Found created calendar:', createdCalendar);
 
 			const calendarId = createdCalendar.id;
@@ -1753,10 +1756,10 @@ export class CalendarService {
 				response.data.items?.map((cal) => ({
 					id: cal.id || '',
 					summary: cal.summary || '',
-					description: cal.description,
-					colorId: cal.colorId,
-					primary: cal.primary,
-					accessRole: cal.accessRole
+					description: cal.description || undefined,
+					colorId: cal.colorId || undefined,
+					primary: cal.primary || undefined,
+					accessRole: cal.accessRole || undefined
 				})) || [];
 
 			return {

@@ -27,7 +27,7 @@ export const toastService = {
 		toasts.update((currentToasts) => [...currentToasts, newToast]);
 
 		// Auto remove after duration
-		if (newToast.duration > 0) {
+		if (newToast.duration && newToast.duration > 0) {
 			const timeoutId = setTimeout(() => {
 				toastTimeouts.delete(id);
 				toastService.remove(id);

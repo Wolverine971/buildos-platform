@@ -33,10 +33,8 @@
 				class="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white flex items-center"
 			>
 				{#if icon}
-					<svelte:component
-						this={icon}
-						class="mr-3 h-5 w-5 sm:h-6 sm:w-6 lg:h-8 lg:w-8 text-blue-600"
-					/>
+					{@const Icon = icon}
+					<Icon class="mr-3 h-5 w-5 sm:h-6 sm:w-6 lg:h-8 lg:w-8 text-blue-600" />
 				{/if}
 				{title}
 			</h1>

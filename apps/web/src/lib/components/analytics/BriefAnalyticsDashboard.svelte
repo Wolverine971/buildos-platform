@@ -527,8 +527,8 @@
 									<div
 										class="w-6 h-6 bg-{achievement.color}-100 dark:bg-{achievement.color}-900/20 rounded-full flex items-center justify-center flex-shrink-0"
 									>
-										<svelte:component
-											this={achievement.icon}
+										{@const Icon = achievement.icon}
+										<Icon
 											class="w-3 h-3 text-{achievement.color}-600 dark:text-{achievement.color}-400"
 										/>
 									</div>

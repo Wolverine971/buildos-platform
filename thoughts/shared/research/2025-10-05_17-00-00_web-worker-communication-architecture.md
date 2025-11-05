@@ -522,6 +522,7 @@ function advanceStep(controller: PhaseGenerationController, targetStep: number) 
   {#if notification?.progress?.type === 'steps'}
     <ProgressSteps steps={notification.progress.steps} />
   {/if}
+
 </script>
 ```
 

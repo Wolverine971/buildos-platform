@@ -58,10 +58,8 @@
 					</p>
 				</div>
 				{#if Icon}
-					<svelte:component
-						this={Icon}
-						class="h-8 w-8 {colorClasses} flex-shrink-0 ml-3"
-					/>
+					{@const Icon = Icon}
+					<Icon class="h-8 w-8 {colorClasses} flex-shrink-0 ml-3" />
 				{/if}
 			</div>
 

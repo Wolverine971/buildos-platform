@@ -84,8 +84,8 @@
 <div class="p-4 space-y-3">
 	<div class="flex items-start gap-3">
 		<div class="flex-shrink-0">
-			<svelte:component
-				this={statusIcon}
+			{@const StatusIcon = statusIcon}
+			<StatusIcon
 				class={`w-5 h-5 ${
 					notification.status === 'processing' ? 'animate-spin' : ''
 				} ${statusIconClasses}`}

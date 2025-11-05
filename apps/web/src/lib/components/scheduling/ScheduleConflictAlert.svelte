@@ -132,10 +132,8 @@
 								{#each errorConflicts as conflict}
 									<li class="flex flex-col gap-1.5">
 										<div class="flex items-start gap-2">
-											<svelte:component
-												this={getConflictIcon(conflict.type)}
-												class="w-3.5 h-3.5 flex-shrink-0 mt-0.5"
-											/>
+											{@const Type = getConflictIcon(conflict.type)}
+											<Type class="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
 											<div class="flex-1">
 												{#if conflict.taskName && conflict.taskId}
 													<button
@@ -217,10 +215,8 @@
 								{#each warningConflicts as conflict}
 									<li class="flex flex-col gap-1.5">
 										<div class="flex items-start gap-2">
-											<svelte:component
-												this={getConflictIcon(conflict.type)}
-												class="w-3.5 h-3.5 flex-shrink-0 mt-0.5"
-											/>
+											{@const Type = getConflictIcon(conflict.type)}
+											<Type class="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
 											<div class="flex-1">
 												{#if conflict.taskName && conflict.taskId}
 													<button

@@ -1454,9 +1454,7 @@
 									<div
 										class={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${calendarPanel.iconContainerClasses}`}
 									>
-										<PanelIcon
-											class={calendarPanel.iconClasses}
-										/>
+										<PanelIcon class={calendarPanel.iconClasses} />
 									</div>
 									<div class="space-y-1">
 										<p

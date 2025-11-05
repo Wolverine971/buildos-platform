@@ -233,8 +233,8 @@
 										{/if}
 										<div class="flex items-center justify-between">
 											<div class="flex items-center gap-1">
-												<svelte:component
-													this={getStatusIcon(task.status)}
+												{@const Status = getStatusIcon(task.status)}
+												<Status
 													class="w-3 h-3 {task.status === 'done'
 														? 'text-green-600 dark:text-green-400'
 														: task.status === 'in_progress'
@@ -320,8 +320,8 @@
 									{/if}
 									<div class="flex items-center justify-between">
 										<div class="flex items-center gap-1">
-											<svelte:component
-												this={getStatusIcon(mapping.newTask.status)}
+											{@const Status = getStatusIcon(mapping.newTask.status)}
+											<Status
 												class="w-3 h-3 {mapping.newTask.status === 'done'
 													? 'text-green-600 dark:text-green-400'
 													: mapping.newTask.status === 'in_progress'
@@ -458,8 +458,10 @@
 									{/if}
 									<div class="flex items-center justify-between">
 										<div class="flex items-center gap-1">
-											<svelte:component
-												this={getStatusIcon(newTaskItem.newTask.status)}
+											{@const Status = getStatusIcon(
+												newTaskItem.newTask.status
+											)}
+											<Status
 												class="w-3 h-3 text-gray-500 dark:text-gray-400"
 											/>
 											<span class="text-xs text-gray-600 dark:text-gray-400">
@@ -558,8 +560,8 @@
 									{/if}
 									<div class="flex items-center justify-between">
 										<div class="flex items-center gap-1">
-											<svelte:component
-												this={getStatusIcon(deletedItem.task.status)}
+											{@const Status = getStatusIcon(deletedItem.task.status)}
+											<Status
 												class="w-3 h-3 {deletedItem.task.status === 'done'
 													? 'text-green-600 dark:text-green-400'
 													: deletedItem.task.status === 'in_progress'

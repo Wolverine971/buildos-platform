@@ -69,6 +69,10 @@ export async function loadBlogPosts(): Promise<BlogPost[]> {
 		const pathParts = path.split('/');
 		const filename = pathParts[pathParts.length - 1];
 		const category = pathParts[pathParts.length - 2];
+
+		// Skip if filename is undefined
+		if (!filename || !category) continue;
+
 		const slug = filename.replace('.md', '');
 
 		if (module && typeof module === 'object' && 'metadata' in module) {
@@ -141,7 +145,8 @@ export async function loadBlogPostMetadata(category: string, slug: string): Prom
 
 	// Calculate reading time
 	let readingTime = metadata.readingTime || 5;
-	if (module.default) {
+	const moduleWithDefault = module as { default?: unknown; metadata: unknown };
+	if (moduleWithDefault.default) {
 		try {
 			readingTime = metadata.readingTime || calculateReadingTime(metadata.description || '');
 		} catch (e) {

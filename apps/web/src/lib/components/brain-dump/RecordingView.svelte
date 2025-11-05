@@ -508,8 +508,8 @@
 								<!-- Show stop square when recording -->
 								<Square class="w-4 h-4 fill-current" />
 							{:else}
-								<svelte:component
-									this={voiceButtonState.icon}
+								{@const Icon = voiceButtonState.icon}
+								<Icon
 									class="w-5 h-5 {voiceButtonState.isLoading
 										? 'animate-spin'
 										: ''}"

@@ -314,7 +314,7 @@ export class ActivityLogger {
 		// Try various headers for IP address
 		const forwardedFor = request.headers.get('x-forwarded-for');
 		if (forwardedFor) {
-			return forwardedFor.split(',')[0].trim();
+			return forwardedFor.split(',')[0]?.trim() || null;
 		}
 
 		const realIP = request.headers.get('x-real-ip');

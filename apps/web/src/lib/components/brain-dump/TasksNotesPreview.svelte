@@ -227,10 +227,8 @@
 						<!-- Note Icon -->
 						<div class="note-icon">
 							{#if note.category && categoryIcons[note.category]}
-								<svelte:component
-									this={categoryIcons[note.category]}
-									class="w-4 h-4"
-								/>
+								{@const Category = categoryIcons[note.category]}
+								<Category class="w-4 h-4" />
 							{:else}
 								<FileText class="w-4 h-4" />
 							{/if}

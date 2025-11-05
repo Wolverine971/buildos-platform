@@ -130,9 +130,7 @@
 					<div
 						class="w-20 h-20 {colorClasses.bg} {colorClasses.border} border-2 rounded-full flex items-center justify-center"
 					>
-						<ErrorIcon
-							class="w-10 h-10 {colorClasses.icon}"
-						/>
+						<ErrorIcon class="w-10 h-10 {colorClasses.icon}" />
 					</div>
 				</div>
 

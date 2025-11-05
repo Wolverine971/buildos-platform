@@ -104,8 +104,11 @@ export class RecurrencePatternBuilder {
 				) {
 					// Handle "2nd Tuesday" type patterns
 					const dayAbbreviations = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'];
-					const dayCode = dayAbbreviations[pattern.daysOfWeek[0]];
-					rrule += `;BYDAY=${pattern.weekOfMonth}${dayCode}`;
+					const firstDay = pattern.daysOfWeek[0];
+					if (firstDay !== undefined) {
+						const dayCode = dayAbbreviations[firstDay];
+						rrule += `;BYDAY=${pattern.weekOfMonth}${dayCode}`;
+					}
 				} else if (startDate) {
 					// Use the day of month from start date
 					const dayOfMonth = new Date(startDate).getDate();
@@ -299,7 +302,7 @@ export class RecurrencePatternBuilder {
 	 */
 	getNextOccurrence(config: RecurrenceConfig, after: Date): Date | null {
 		const instances = this.calculateInstances(config, 1, after);
-		return instances.length > 0 ? instances[0] : null;
+		return instances.length > 0 ? (instances[0] ?? null) : null;
 	}
 
 	/**
@@ -380,6 +383,7 @@ export class RecurrencePatternBuilder {
 
 		// Google Calendar typically uses the first recurrence rule
 		const rrule = recurrence[0];
+		if (!rrule) return null;
 		return this.parseRRule(rrule);
 	}
 

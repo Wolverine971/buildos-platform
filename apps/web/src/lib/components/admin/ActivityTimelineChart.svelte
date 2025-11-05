@@ -179,6 +179,10 @@
 								<!-- Activities for this day -->
 								<div class="space-y-2">
 									{#each dayActivities as activity}
+										{@const Activity_type = getActivityIcon(
+											activity.activity_type
+										)}
+
 										<div
 											class="flex items-start space-x-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
 										>
@@ -187,10 +191,7 @@
 													activity.activity_type
 												)}"
 											>
-												<svelte:component
-													this={getActivityIcon(activity.activity_type)}
-													class="w-4 h-4"
-												/>
+												<Activity_type class="w-4 h-4" />
 											</div>
 
 											<div class="flex-1 min-w-0">

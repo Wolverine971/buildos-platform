@@ -236,12 +236,12 @@
 								<div class="flex items-center space-x-2">
 									{#each Object.entries(delivery.timeline) as [stage, timestamp]}
 										{#if stage !== 'created'}
+											{@const GetTimelineIconstage = getTimelineIcon(stage)}
 											<div
 												class="flex flex-col items-center"
 												title="{stage}: {formatDate(timestamp)}"
 											>
-												<svelte:component
-													this={getTimelineIcon(stage)}
+												<GetTimelineIconstage
 													class="w-4 h-4 {getTimelineColor(
 														stage,
 														!!timestamp

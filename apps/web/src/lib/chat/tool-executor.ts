@@ -724,23 +724,21 @@ export class ChatToolExecutor {
 		if (error) throw error;
 
 		// Convert to abbreviated format
-		const abbreviatedTasks: AbbreviatedTask[] = ((tasks || []) as TaskWithProject[]).map(
-			(t) => ({
-				id: t.id,
-				title: t.title,
-				status: t.status,
-				priority: t.priority,
-				start_date: t.start_date,
-				duration_minutes: t.duration_minutes,
-				description_preview: t.description?.substring(0, 100) || '',
-				details_preview: t.details?.substring(0, 100) || null,
-				has_subtasks: t.subtasks?.length > 0,
-				has_dependencies: t.dependencies?.length > 0,
-				is_recurring: !!t.recurrence_pattern,
-				project_name: t.project?.name || undefined,
-				is_overdue: this.isOverdue(t.start_date, t.status)
-			})
-		);
+		const abbreviatedTasks: AbbreviatedTask[] = ((tasks || []) as any[]).map((t: any) => ({
+			id: t.id,
+			title: t.title,
+			status: t.status as 'backlog' | 'in_progress' | 'done' | 'blocked',
+			priority: t.priority,
+			start_date: t.start_date,
+			duration_minutes: t.duration_minutes,
+			description_preview: t.description?.substring(0, 100) || '',
+			details_preview: t.details?.substring(0, 100) || null,
+			has_subtasks: t.subtasks?.length > 0,
+			has_dependencies: (t.dependencies?.length || 0) > 0,
+			is_recurring: !!t.recurrence_pattern,
+			project_name: Array.isArray(t.project) ? t.project[0]?.name : t.project?.name,
+			is_overdue: this.isOverdue(t.start_date, t.status)
+		}));
 
 		const total = count || 0;
 		const hasMore = total > limit;
@@ -949,14 +947,14 @@ export class ChatToolExecutor {
 		if (error) throw error;
 
 		// Convert to abbreviated format
-		const abbreviatedNotes: AbbreviatedNote[] = (notes || []).map((n) => ({
+		const abbreviatedNotes: AbbreviatedNote[] = (notes || []).map((n: any) => ({
 			id: n.id,
 			title: n.title,
 			category: n.category,
 			content_preview: n.content?.substring(0, 200) || '',
 			tags: n.tags,
 			created_at: n.created_at,
-			project_name: n.project?.name
+			project_name: Array.isArray(n.project) ? n.project[0]?.name : n.project?.name
 		}));
 
 		return {
@@ -1008,13 +1006,13 @@ export class ChatToolExecutor {
 		if (error) throw error;
 
 		// Convert to abbreviated format
-		const abbreviatedDumps: AbbreviatedBrainDump[] = (dumps || []).map((d) => ({
+		const abbreviatedDumps: AbbreviatedBrainDump[] = (dumps || []).map((d: any) => ({
 			id: d.id,
 			title: d.title,
 			ai_summary: d.ai_summary,
 			status: d.status,
 			created_at: d.created_at,
-			project_name: d.project?.name,
+			project_name: Array.isArray(d.project) ? d.project[0]?.name : d.project?.name,
 			operation_count: 0 // Operations tracked separately in chat_operations table
 		}));
 

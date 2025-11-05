@@ -66,9 +66,7 @@
 						{#if option.icon}
 							{@const OptionIcon = option.icon}
 							<div class="flex-shrink-0 mt-1">
-								<OptionIcon
-									class="w-5 h-5 text-gray-600 dark:text-gray-400"
-								/>
+								<OptionIcon class="w-5 h-5 text-gray-600 dark:text-gray-400" />
 							</div>
 						{/if}
 

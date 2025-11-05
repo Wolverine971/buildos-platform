@@ -809,10 +809,8 @@
 						{:else if isCurrentlyRecording}
 							<Square class="w-4 h-4 mx-auto fill-current" />
 						{:else}
-							<svelte:component
-								this={voiceButtonState.icon}
-								class="w-5 h-5 mx-auto"
-							/>
+							{@const Icon = voiceButtonState.icon}
+							<Icon class="w-5 h-5 mx-auto" />
 						{/if}
 					</button>
 				{/if}

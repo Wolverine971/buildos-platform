@@ -292,6 +292,8 @@
 						class="hidden md:ml-3 lg:ml-4 xl:ml-6 2xl:ml-8 md:flex md:gap-0.5 lg:gap-0.5 xl:gap-1"
 					>
 						{#each NAV_ITEMS as item}
+							{@const Icon = item.icon}
+
 							<a
 								href={item.href}
 								onclick={() => handleMenuItemClick(item.href)}
@@ -302,8 +304,7 @@
 								{loggingOut ? 'opacity-50 pointer-events-none' : ''}
 								{loadingLink === item.href ? 'pulse' : ''}"
 							>
-								<svelte:component
-									this={item.icon}
+								<Icon
 									class="w-3.5 md:w-4 h-3.5 md:h-4 mr-0.5 lg:mr-1 xl:mr-1.5 2xl:mr-2 flex-shrink-0 {currentPath ===
 									item.href
 										? 'text-blue-600 dark:text-blue-400'
@@ -678,6 +679,7 @@
 					{/if}
 
 					{#each NAV_ITEMS as item}
+						{@const Icon = item.icon}
 						<a
 							href={item.href}
 							onclick={() => handleMenuItemClick(item.href)}
@@ -688,8 +690,7 @@
 							{loggingOut ? 'opacity-50 pointer-events-none' : ''}
 							{loadingLink === item.href ? 'pulse-mobile' : ''}"
 						>
-							<svelte:component
-								this={item.icon}
+							<Icon
 								class="w-5 h-5 mr-3 {currentPath === item.href
 									? 'text-blue-600 dark:text-blue-400'
 									: 'text-gray-500 dark:text-gray-400'}"

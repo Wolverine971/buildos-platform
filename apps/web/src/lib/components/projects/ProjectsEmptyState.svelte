@@ -45,8 +45,8 @@
 		class="bg-white dark:bg-gray-800 rounded-xl p-8 max-w-md mx-auto shadow-sm
 			border border-gray-200 dark:border-gray-700"
 	>
-		<svelte:component
-			this={icon}
+		{@const Icon = icon}
+		<Icon
 			class="w-{hasFilters ? '12' : '16'} h-{hasFilters ? '12' : '16'}
 				text-gray-400 mx-auto mb-4"
 		/>

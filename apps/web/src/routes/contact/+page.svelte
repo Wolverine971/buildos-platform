@@ -146,8 +146,8 @@
 						{/if}
 						<div class="flex items-start space-x-4">
 							<div class="flex-shrink-0">
-								<svelte:component
-									this={card.icon}
+								{@const Icon = card.icon}
+								<Icon
 									class="w-8 h-8 {card.iconColor} group-hover:scale-110 transition-transform"
 								/>
 							</div>
@@ -262,9 +262,7 @@
 						<div
 							class="flex items-center justify-center w-12 h-12 {method.bgColor} rounded-xl mb-4 mx-auto group-hover:scale-110 transition-transform"
 						>
-							<MethodIcon
-								class="w-6 h-6 {method.iconColor}"
-							/>
+							<MethodIcon class="w-6 h-6 {method.iconColor}" />
 						</div>
 						<h3 class="font-semibold text-gray-900 dark:text-white text-center mb-2">
 							{method.title}
@@ -291,9 +289,7 @@
 								: {}}
 							class="inline-flex items-center space-x-2 px-4 py-2 {founder.bgColor} rounded-lg hover:shadow-md transition-all duration-300"
 						>
-							<FounderIcon
-								class="w-4 h-4 {founder.iconColor}"
-							/>
+							<FounderIcon class="w-4 h-4 {founder.iconColor}" />
 							<div class="text-left">
 								<span
 									class="block text-sm font-medium text-gray-900 dark:text-white"

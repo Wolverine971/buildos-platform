@@ -189,6 +189,7 @@
 					class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700"
 				>
 					{#each logs as log}
+						{@const Level = getLevelIcon(log.level)}
 						<tr
 							class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors {log.level ===
 								'error' || log.level === 'fatal'
@@ -215,10 +216,7 @@
 							</td>
 							<td class="px-4 py-3 whitespace-nowrap">
 								<div class="flex items-center space-x-1">
-									<svelte:component
-										this={getLevelIcon(log.level)}
-										class="w-4 h-4 {getLevelTextColor(log.level)}"
-									/>
+									<Level class="w-4 h-4 {getLevelTextColor(log.level)}" />
 									<span
 										class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium {getLevelColor(
 											log.level

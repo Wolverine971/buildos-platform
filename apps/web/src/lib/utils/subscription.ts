@@ -58,7 +58,9 @@ export async function checkUserSubscription(
 		return {
 			hasActiveSubscription: rpcData.has_subscription,
 			subscriptionStatus: rpcData.subscription_status,
-			currentPeriodEnd: rpcData.current_period_end ? new Date(rpcData.current_period_end) : null,
+			currentPeriodEnd: rpcData.current_period_end
+				? new Date(rpcData.current_period_end)
+				: null,
 			isBetaUser: rpcData.is_beta_user,
 			isTrialing: rpcData.subscription_status === 'trialing'
 		};

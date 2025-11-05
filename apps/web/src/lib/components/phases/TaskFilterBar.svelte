@@ -166,8 +166,8 @@
 			aria-label="{option.label} tasks: {count} {isActive ? 'shown' : 'hidden'}"
 		>
 			<div class="flex items-center gap-1.5">
-				<svelte:component
-					this={option.icon}
+				{@const Icon = option.icon}
+				<Icon
 					class="w-3.5 h-3.5 flex-shrink-0 transition-colors duration-200 {contentClasses.icon}"
 				/>
 				<span class="font-medium transition-colors duration-200 {contentClasses.text}">

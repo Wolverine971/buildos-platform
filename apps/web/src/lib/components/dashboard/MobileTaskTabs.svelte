@@ -260,8 +260,8 @@
 	<!-- Active tab content -->
 	<div class="">
 		<div class="flex items-center gap-2 mb-4">
-			<svelte:component
-				this={activeTabConfig.icon}
+			{@const Icon = activeTabConfig.icon}
+			<Icon
 				class="h-4 w-4 {activeTabConfig.color === 'red'
 					? 'text-red-600'
 					: activeTabConfig.color === 'blue'

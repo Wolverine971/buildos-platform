@@ -223,10 +223,8 @@
 											hover:bg-gray-50 dark:hover:bg-gray-800 rounded-md transition-colors"
 									>
 										{#if link.icon}
-											<svelte:component
-												this={link.icon}
-												class="w-4 h-4 mr-2"
-											/>
+											{@const Icon = link.icon}
+											<Icon class="w-4 h-4 mr-2" />
 										{/if}
 										{link.label}
 									</a>
@@ -460,8 +458,8 @@
 														hover:text-gray-900 dark:hover:text-white transition-colors group"
 												>
 													{#if link.icon}
-														<svelte:component
-															this={link.icon}
+														{@const Icon = link.icon}
+														<Icon
 															class="w-4 h-4 mr-2 text-gray-400 group-hover:text-gray-600
 																dark:group-hover:text-gray-300 transition-colors"
 														/>

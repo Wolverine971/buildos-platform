@@ -210,7 +210,8 @@
 						{#each linkedTypes.slice(0, 2) as type}
 							{@const typeInfo = getLinkedTypeInfo(type)}
 							<div class="flex items-center space-x-1 text-xs {typeInfo.color}">
-								<svelte:component this={typeInfo.icon} class="w-3 h-3" />
+								{@const Icon = typeInfo.icon}
+								<Icon class="w-3 h-3" />
 								<span>{typeInfo.label}</span>
 							</div>
 						{/each}
@@ -240,7 +241,8 @@
 				<div
 					class="inline-flex items-center px-2 py-1 rounded text-xs font-medium {statusInfo.color}"
 				>
-					<svelte:component this={statusInfo.icon} class="w-3 h-3 mr-1" />
+					{@const Icon = statusInfo.icon}
+					<Icon class="w-3 h-3 mr-1" />
 					<span class="capitalize">{braindump.status || 'draft'}</span>
 				</div>
 			</div>

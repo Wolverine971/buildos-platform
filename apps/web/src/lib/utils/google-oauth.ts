@@ -213,7 +213,7 @@ export class GoogleOAuthHandler {
 			if (insertError) {
 				console.error('Error creating user record:', insertError);
 				// Use the newUser object as fallback
-				dbUser = newUser;
+				dbUser = newUser as any;
 			} else {
 				dbUser = insertedUser;
 			}

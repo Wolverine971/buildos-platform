@@ -152,13 +152,11 @@
 
 {#if typeSpecificComponent}
 	<!-- Type-specific modal content (e.g., BrainDumpModalContent) - already has Modal wrapper -->
-	<svelte:component
-		this={typeSpecificComponent}
-		{notification}
+	{@const TypeSpecificComponent = typeSpecificComponent}
+				<TypeSpecificComponent{notification}
 		on:minimize={handleMinimize}
 		on:close={handleDismiss}
-		on:cancel={handleDismiss}
-	/>
+		on:cancel={handleDismiss} />
 {:else}
 	<!-- Generic fallback modal -->
 	<Modal
