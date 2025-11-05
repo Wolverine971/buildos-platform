@@ -486,6 +486,68 @@ POST /api/onto/outputs/[id]/versions
 }
 ```
 
+### Generate Output Content (AI-Assisted)
+
+```http
+POST /api/onto/outputs/generate
+```
+
+**Description:** Uses AI to generate content for text-based outputs (articles, blog posts, chapters, etc.) based on template type and user instructions.
+
+**Technology:** Uses `SmartLLMService` with quality profile for high-quality content generation. Automatically logs usage metrics and costs.
+
+**Request Body:**
+
+```json
+{
+	"template_key": "output.article",
+	"instructions": "Write an engaging article about sustainable technology trends in 2025",
+	"project_id": "uuid",
+	"current_props": {
+		"target_word_count": 1500,
+		"keywords": ["sustainability", "technology", "2025"],
+		"tone": "professional"
+	}
+}
+```
+
+**Response:**
+
+```json
+{
+	"success": true,
+	"data": {
+		"content": "<h1>Sustainable Technology Trends in 2025</h1><p>...</p>"
+	}
+}
+```
+
+**Supported Output Types:**
+
+- `output.chapter` - Book chapters with narrative structure
+- `output.article` - Articles and essays with SEO optimization
+- `output.blog_post` - Blog posts with conversational tone
+- `output.case_study` - Structured case studies
+- `output.whitepaper` - Authoritative research documents
+- `output.newsletter` - Newsletter editions
+
+**Features:**
+
+- Template-specific content generation (different prompts per output type)
+- Project context integration
+- Automatic HTML formatting with semantic tags
+- Quality-focused LLM model selection (Claude 3.5 Sonnet, GPT-4o, DeepSeek Chat V3)
+- Usage tracking and cost monitoring
+
+**Error Responses:**
+
+- `400` - Missing template_key or instructions
+- `401` - Authentication required
+- `403` - User does not own the project
+- `404` - Project not found
+- `500` - Content generation failed
+- `503` - API timeout or quota exceeded
+
 ---
 
 ## 🤖 AI-Assisted Operations

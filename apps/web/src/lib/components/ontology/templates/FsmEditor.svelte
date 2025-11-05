@@ -474,7 +474,9 @@
 					<span
 						class="px-3 py-1 bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200 rounded-full text-xs font-semibold"
 					>
-						{validationWarnings.length} warning{validationWarnings.length === 1 ? '' : 's'}
+						{validationWarnings.length} warning{validationWarnings.length === 1
+							? ''
+							: 's'}
 					</span>
 				{:else if stateCount > 0}
 					<span

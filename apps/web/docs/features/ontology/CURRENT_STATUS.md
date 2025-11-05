@@ -233,13 +233,21 @@ The BuildOS Ontology System is **production-ready for core functionality** with 
 
 ### 5. UI Components (90% Complete)
 
-#### Entity Creation Modals (100% ✅)
+#### Entity Creation & Editing Modals (100% ✅)
+
+**Create Modals:**
 
 ```svelte
-✅ TaskCreateModal.svelte // Two-step with 7 task template types ✅ TaskEditModal.svelte // Full
-editing with delete & FSM viz ✅ PlanCreateModal.svelte // Date ranges, 3 plan template types ✅
-GoalCreateModal.svelte // Success criteria, 4 goal types ✅ OutputCreateModal.svelte // Document
-creation
+✅ TaskCreateModal.svelte // Two-step with 7 task template types ✅ PlanCreateModal.svelte // Date
+ranges, 3 plan template types ✅ GoalCreateModal.svelte // Success criteria, 4 goal types ✅
+OutputCreateModal.svelte // Document creation
+```
+
+**Edit Modals:** ✅ **COMPLETE (Nov 4, 2025)**
+
+```svelte
+✅ TaskEditModal.svelte // Full editing with delete & FSM viz ✅ PlanEditModal.svelte // Edit dates,
+description, state ✅ GoalEditModal.svelte // Edit priority, target date, criteria
 ```
 
 **Modal Features:**
@@ -263,14 +271,14 @@ Rich text editing
 #### Template Management Components (95% 🚧)
 
 ```svelte
-✅ FsmEditor.svelte          // 100% - Visual graph with validation ✅ COMPLETE
-✅ SchemaBuilder.svelte      // 100% - All constraints implemented ✅ COMPLETE
-🚧 TemplateForm.svelte       // Basic structure ready
-🚧 MetadataEditor.svelte     // Functional, needs UX polish
-🚧 FacetDefaultsEditor.svelte // Working, needs polish
+✅ FsmEditor.svelte // 100% - Visual graph with validation ✅ COMPLETE ✅ SchemaBuilder.svelte //
+100% - All constraints implemented ✅ COMPLETE 🚧 TemplateForm.svelte // Basic structure ready 🚧
+MetadataEditor.svelte // Functional, needs UX polish 🚧 FacetDefaultsEditor.svelte // Working, needs
+polish
 ```
 
 **SchemaBuilder.svelte ✅ COMPLETE (Nov 4, 2025):**
+
 - ✅ Min/max constraints for numbers
 - ✅ Pattern validation for strings
 - ✅ Enum value editor with visual chips
@@ -278,6 +286,7 @@ Rich text editing
 - ✅ Keyboard shortcuts (Enter to add enum values)
 
 **FsmEditor.svelte ✅ COMPLETE (Nov 4, 2025):**
+
 - ✅ Cytoscape.js visual graph with dagre layout
 - ✅ Interactive click-to-edit states and transitions
 - ✅ Guard conditions with help text
@@ -325,6 +334,7 @@ Rich text editing
 
 **Status:** ✅ **COMPLETE** - Full 5-step wizard for editing templates
 **Features:**
+
 - Pre-populates all existing template data
 - Prevents circular parent references
 - Admin authentication required
@@ -333,21 +343,12 @@ Rich text editing
 #### ~~Visual Editors Need Polish~~ ✅ **MOSTLY RESOLVED** (Nov 4, 2025)
 
 ```svelte
-✅ FsmEditor.svelte ✅ **COMPLETE** (Nov 4, 2025)
-   - ✅ Visual graph with Cytoscape.js (interactive, zoomable)
-   - ✅ Guards and actions support
-   - ✅ Real-time validation with warnings
-   - ✅ Click-to-edit states and transitions
-
-✅ SchemaBuilder.svelte ✅ **COMPLETE** (Nov 4, 2025)
-   - ✅ All constraints implemented (min/max, pattern, enum)
-   - ✅ Visual enum editor with chips
-   - ✅ Help text and examples
-
-🚧 TemplateForm.svelte (Minor polish remaining)
-   - Current: Basic structure exists
-   - Missing: Wizard flow polish, step validation
-   - Effort: 1-2 days (low priority)
+✅ FsmEditor.svelte ✅ **COMPLETE** (Nov 4, 2025) - ✅ Visual graph with Cytoscape.js (interactive,
+zoomable) - ✅ Guards and actions support - ✅ Real-time validation with warnings - ✅ Click-to-edit
+states and transitions ✅ SchemaBuilder.svelte ✅ **COMPLETE** (Nov 4, 2025) - ✅ All constraints
+implemented (min/max, pattern, enum) - ✅ Visual enum editor with chips - ✅ Help text and examples
+🚧 TemplateForm.svelte (Minor polish remaining) - Current: Basic structure exists - Missing: Wizard
+flow polish, step validation - Effort: 1-2 days (low priority)
 ```
 
 ---
@@ -357,12 +358,19 @@ Rich text editing
 #### Testing
 
 ```bash
-❌ Unit test coverage < 30%
+🚧 Service layer tests created (59 tests, 79.7% passing)
+   ✅ template-validation.service.test.ts (32 tests, 31 passing)
+   ✅ template-crud.service.test.ts (27 tests, 16 passing)
+   ✅ template-resolver.service.test.ts (existing, passing)
+   ✅ instantiation.service.test.ts (existing, passing)
+   🔧 Mock implementation needs refinement for remaining 12 tests
+❌ No API endpoint tests yet (planned for Week 2)
 ❌ No E2E tests for ontology
 ❌ No integration tests for API layer
 ```
 
-**Estimated Effort:** 5-7 days
+**Progress:** Started November 4, 2025 - Service layer tests 80% done
+**Remaining Effort:** 3-5 days (fix mocks, add API tests, integration tests)
 
 #### Performance
 

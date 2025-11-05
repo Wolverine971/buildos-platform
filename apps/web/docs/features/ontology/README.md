@@ -22,6 +22,7 @@
 
 ### Agent Chat Integration
 
+- **[Intelligent Project Creation](./INTELLIGENT_PROJECT_CREATION.md)** ✨ **NEW** - Smart project creation with template selection and inference (Complete)
 - **[CRUD Tools Implementation](./CRUD_TOOLS_IMPLEMENTATION.md)** ✨ - CREATE/UPDATE/DELETE tools for AI agent (Complete)
 - **[Ontology First Refactoring](./ONTOLOGY_FIRST_REFACTORING.md)** - Tool separation and context-aware selection
 - **[Agent Chat Integration Status](./AGENT_CHAT_ONTOLOGY_INTEGRATION_STATUS.md)** - Complete integration status

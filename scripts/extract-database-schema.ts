@@ -68,18 +68,14 @@ lightweightSchema += tables
 	.join(',\n');
 lightweightSchema += `\n] as const;\n`;
 
-// Write the lightweight schema to both locations
+// Write the lightweight schema to shared-types only
 const sharedTypesOutputPath = path.join(
 	process.cwd(),
 	'packages/shared-types/src/database.schema.ts'
 );
-const webOutputPath = path.join(process.cwd(), 'apps/web/src/lib/database.schema.ts');
 
 fs.writeFileSync(sharedTypesOutputPath, lightweightSchema, 'utf-8');
-fs.writeFileSync(webOutputPath, lightweightSchema, 'utf-8');
 
 console.log(`✅ Lightweight schema extracted successfully!`);
-console.log(`📁 Output files:`);
-console.log(`   - ${sharedTypesOutputPath}`);
-console.log(`   - ${webOutputPath}`);
+console.log(`📁 Output file: ${sharedTypesOutputPath}`);
 console.log(`📊 Found ${tables.length} tables`);

@@ -382,7 +382,9 @@
 
 								{#if plan.created_at}
 									<div class="flex justify-between">
-										<span class="text-gray-600 dark:text-gray-400">Created:</span>
+										<span class="text-gray-600 dark:text-gray-400"
+											>Created:</span
+										>
 										<span class="text-gray-900 dark:text-white">
 											{new Date(plan.created_at).toLocaleDateString()}
 										</span>
@@ -391,7 +393,9 @@
 
 								{#if plan.updated_at}
 									<div class="flex justify-between">
-										<span class="text-gray-600 dark:text-gray-400">Updated:</span>
+										<span class="text-gray-600 dark:text-gray-400"
+											>Updated:</span
+										>
 										<span class="text-gray-900 dark:text-white">
 											{new Date(plan.updated_at).toLocaleDateString()}
 										</span>
@@ -422,8 +426,8 @@
 							{:else}
 								<div class="space-y-3">
 									<p class="text-sm text-red-700 dark:text-red-300">
-										Are you sure you want to delete this plan? This action cannot be
-										undone.
+										Are you sure you want to delete this plan? This action
+										cannot be undone.
 									</p>
 									<div class="flex gap-2">
 										<Button

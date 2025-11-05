@@ -17,6 +17,194 @@ Each entry includes:
 
 ---
 
+## 2025-11-05 - Voice Input: Fixed SpeechRecognition Race Condition
+
+**Type**: Bug Fix
+**Severity**: Medium (user-facing, affected voice recording reliability)
+
+**Root Cause**:
+
+The Web Speech API's SpeechRecognition auto-restart logic had a race condition causing `InvalidStateError: recognition has already started` errors. When recognition stopped (due to natural pauses, browser limits, or user action), the `onend` handler would immediately try to restart it. However, the recognition object might not be fully in the "stopped" state yet, causing the error.
+
+**Symptoms**:
+
+- Console warnings: `[SpeechRecognition] Failed to restart: InvalidStateError`
+- Voice transcription would sometimes fail to restart after pauses
+- Users would see intermittent failures in live transcript
+
+**Fix Description**:
+
+Implemented state tracking and delayed restart mechanism:
+
+1. **Added state flag**: `isRecognitionStarting` to track when recognition is starting/restarting
+2. **Added 100ms delay**: Before restart to ensure recognition is fully stopped
+3. **Guard condition**: Prevents overlapping start/restart calls
+4. **Proper cleanup**: Reset flag in all cleanup paths
+
+**Technical Details**:
+
+```typescript
+// Before (problematic):
+recognition.onend = () => {
+	if (get(isRecording) && recognition) {
+		recognition.start(); // ❌ Race condition
+	}
+};
+
+// After (fixed):
+recognition.onend = () => {
+	if (get(isRecording) && recognition && !isRecognitionStarting) {
+		isRecognitionStarting = true;
+		setTimeout(() => {
+			if (get(isRecording) && recognition) {
+				try {
+					recognition.start(); // ✅ Safe restart after delay
+				} catch (error) {
+					console.warn('[SpeechRecognition] Failed to restart:', error);
+					isRecognitionStarting = false;
+				}
+			} else {
+				isRecognitionStarting = false;
+			}
+		}, 100); // 100ms delay ensures API is ready
+	}
+};
+```
+
+**Files Changed**:
+
+- `apps/web/src/lib/utils/voice.ts`:
+    - Added `isRecognitionStarting` state flag (line 23)
+    - Updated `recognition.onend` handler with delay and state tracking (lines 167-186)
+    - Updated `startRecording()` to set/reset flag (lines 333-346)
+    - Updated `cleanupResources()` to reset flag (line 226)
+
+**Testing**:
+
+- ✅ Type checking passes
+- ✅ Code compiles successfully
+- Manual testing needed: Record voice → pause → resume → verify no console errors
+
+**Related Docs**:
+
+- Voice recording system: `apps/web/src/lib/utils/voice.ts`
+- Related to brain dump voice input feature
+
+---
+
+## 2025-11-05 - Output Generation API: Migrated from Direct OpenAI to SmartLLMService
+
+**Type**: Refactoring / Technical Debt Reduction
+**Severity**: Medium (inconsistent LLM usage, missing analytics)
+
+**Root Cause**:
+
+The `/api/onto/outputs/generate` endpoint was using direct OpenAI API calls (`openai` package) instead of the centralized `SmartLLMService` that the rest of the platform uses. This created several issues:
+
+1. **Inconsistent LLM Access**: Only endpoint still using direct OpenAI
+2. **No Usage Tracking**: Content generation costs and metrics weren't being logged to `llm_usage_logs`
+3. **No Model Optimization**: Missed out on SmartLLMService's intelligent model routing and cost optimization
+4. **Hard-coded Model**: Used `gpt-4-turbo-preview` (expensive) instead of adaptive model selection
+5. **Poor Error Handling**: OpenAI-specific error handling instead of unified LLM error patterns
+
+**Impact**:
+
+- Missing analytics: Output generation costs weren't tracked in admin dashboards
+- Higher costs: Using expensive GPT-4 Turbo for all requests instead of cost-effective alternatives
+- Maintenance burden: Required separate OpenAI API key management
+- No failover: Single model dependency without fallback options
+
+**Fix Description**:
+
+Refactored the endpoint to use `SmartLLMService` with proper integration:
+
+1. **Removed Direct Dependencies**:
+    - Removed `import { OpenAI } from 'openai'`
+    - Removed `OPENAI_API_KEY` import
+    - Removed OpenAI client instantiation
+
+2. **Integrated SmartLLMService**:
+
+    ```typescript
+    const smartLLM = new SmartLLMService({
+    	supabase: locals.supabase,
+    	httpReferer: 'https://build-os.com',
+    	appName: 'BuildOS Output Generator'
+    });
+    ```
+
+3. **Updated LLM Call**:
+    - Changed from `openai.chat.completions.create()` to `smartLLM.generateText()`
+    - Uses `quality` profile for high-quality content generation
+    - Includes `operationType: 'output_generation'` for proper tracking
+    - Passes `projectId` for cost attribution
+
+4. **Enhanced Error Handling**:
+    - Replaced OpenAI-specific error checks with generic LLM error handling
+    - Handles timeout, quota, and rate limit errors consistently
+
+5. **Automatic Benefits**:
+    - Usage automatically logged to `llm_usage_logs` table
+    - Intelligent model routing (may use Claude 3.5 Sonnet, GPT-4o, or DeepSeek Chat V3)
+    - Cost optimization through model fallbacks
+    - Performance tracking and metrics
+    - Project-level cost attribution
+
+**Files Changed** (1 file modified):
+
+- `/apps/web/src/routes/api/onto/outputs/generate/+server.ts` - Complete refactoring
+
+**Documentation Updated** (2 files):
+
+- `/apps/web/docs/features/ontology/API_ENDPOINTS.md` - Added detailed endpoint documentation
+- `/apps/web/docs/technical/services/LLM_USAGE_TRACKING.md` - Added `output_generation` operation type and example
+
+**Key Improvements**:
+
+| Before                     | After                                      |
+| -------------------------- | ------------------------------------------ |
+| Direct OpenAI API          | SmartLLMService                            |
+| Hard-coded GPT-4 Turbo     | Adaptive model selection (quality profile) |
+| No usage tracking          | Full analytics & cost tracking             |
+| OpenAI-specific errors     | Unified error handling                     |
+| ~$0.01-0.04 per request    | ~$0.002-0.02 per request (model dependent) |
+| Single model (no fallback) | Multiple fallback models                   |
+
+**Testing**:
+
+- ✅ Type checking passed (`pnpm run check`)
+- ✅ Prettier validation passed
+- ✅ No breaking changes to API contract
+- ✅ Response format unchanged (backward compatible)
+
+**Technical Details**:
+
+The SmartLLMService `quality` profile prioritizes content quality over speed:
+
+- Primary models: Claude 3.5 Sonnet, GPT-4o, DeepSeek Chat V3
+- Temperature: 0.7 (configurable)
+- Max tokens: 4000
+- Automatic HTML formatting with semantic tags
+- Template-specific prompt customization (chapters, articles, blog posts, case studies, etc.)
+
+**Cross-references**:
+
+- SmartLLMService implementation: `/apps/web/src/lib/services/smart-llm-service.ts`
+- Similar pattern in chat API: `/apps/web/src/routes/api/chat/stream/+server.ts:107`
+- LLM usage service: `/apps/web/src/lib/services/llm-usage.service.ts`
+- Usage logging: Automatic via `SmartLLMService.logUsageToDatabase()`
+
+**Admin Dashboard Impact**:
+
+Output generation costs will now appear in:
+
+- LLM usage analytics dashboard
+- Project cost breakdown reports
+- Operation type breakdown (new `output_generation` category)
+- User usage summaries
+
+---
+
 ## 2025-11-04 - Ontology Templates: Implemented "New Template" Placeholder Page
 
 **Severity**: Medium (broken navigation, poor UX)
@@ -6468,3 +6656,82 @@ Potential enhancements to consider:
 ---
 
 Last updated: 2025-10-21
+
+## 2025-11-05 - Agent Chat: Fixed Infinite Loop in Project Creation Flow
+
+**Type**: Bug Fix
+**Severity**: High (system stability, token usage, user experience)
+
+**Root Cause**:
+
+The agent chat system was getting stuck in an infinite loop when the context was set to `project_create`. The LLM was repeatedly calling `listOntoTemplates` without proceeding to project creation, causing:
+1. **Ambiguous System Prompt**: Instructions said to "use list_onto_templates() to search more specifically" but didn't specify when to stop
+2. **No Loop Prevention**: The multi-turn loop had no mechanism to prevent repeated tool calls
+3. **Unclear Workflow**: After calling the tool, the LLM wasn't clearly instructed to proceed
+
+**Symptoms**:
+
+- System repeatedly calling `listOntoTemplates` in a loop
+- Project creation never completing
+- High token usage from repeated API calls
+- User frustration from stuck conversations
+
+**Fix Description**:
+
+Implemented two-pronged solution to prevent infinite loops:
+
+1. **Updated System Prompt** (`agent-context-service.ts`):
+   - Added explicit instruction to call `list_onto_templates()` ONCE only
+   - Clear directive to proceed immediately after getting results
+   - Critical instructions emphasizing decision-making over searching
+
+2. **Added Loop Prevention** (`agent-planner-service.ts`):
+   - Track tool call frequency with `toolCallHistory` Map
+   - Prevent `list_onto_templates` from being called more than once
+   - Add system message to guide LLM if it tries to repeat
+   - General protection against any tool being called >3 times
+
+**Technical Details**:
+
+```typescript
+// Loop prevention logic added:
+const toolCallHistory = new Map<string, number>();
+
+// Check for repeated calls
+if (toolName === 'list_onto_templates' && callCount > 1) {
+	console.warn(`Preventing repeated call to ${toolName}`);
+	messages.push({
+		role: 'system',
+		content: `You have already called list_onto_templates. Please proceed with creating the project using create_onto_project() now.`
+	});
+	toolCalls = toolCalls.filter(tc => tc.id !== toolCall.id);
+}
+```
+
+**Files Changed**:
+
+1. `/apps/web/src/lib/services/agent-context-service.ts`
+   - Lines 322-324: Updated Step 1 workflow instructions
+   - Lines 383-389: Updated CRITICAL INSTRUCTIONS section
+
+2. `/apps/web/src/lib/services/agent-planner-service.ts`
+   - Line 570: Added toolCallHistory tracking
+   - Lines 612-639: Added loop prevention logic
+
+**Testing Recommendations**:
+
+- Test project creation with various project types
+- Verify `list_onto_templates` called at most once per conversation
+- Ensure smooth project creation after template selection
+- Test edge cases with no suitable templates
+
+**Impact**:
+
+- Improved system stability (no infinite loops)
+- Reduced token usage (no repeated API calls)
+- Better user experience (faster project creation)
+- Clear conversation flow (no stuck states)
+
+---
+
+Last updated: 2025-11-05

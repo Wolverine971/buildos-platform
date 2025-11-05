@@ -10,7 +10,7 @@
 -->
 
 <script lang="ts">
-	import { tick } from 'svelte';
+	import { tick, onMount } from 'svelte';
 	import {
 		X,
 		Send,
@@ -19,7 +19,10 @@
 		Zap,
 		BrainCircuit,
 		Sparkles,
-		CheckCircle
+		CheckCircle,
+		Mic,
+		MicOff,
+		LoaderCircle
 	} from 'lucide-svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
@@ -29,6 +32,13 @@
 	import { SSEProcessor, type StreamCallbacks } from '$lib/utils/sse-processor';
 	import type { ChatSession, ChatContextType } from '@buildos/shared-types';
 	import { renderMarkdown, getProseClasses, hasMarkdownFormatting } from '$lib/utils/markdown';
+	// Add ontology integration imports
+	import type { LastTurnContext } from '$lib/types/agent-chat-enhancement';
+	import {
+		voiceRecordingService,
+		type TranscriptionService
+	} from '$lib/services/voiceRecording.service';
+	import { liveTranscript } from '$lib/utils/voice';
 
 	interface Props {
 		isOpen?: boolean;
@@ -156,6 +166,15 @@
 	let currentAssistantMessageId = $state<string | null>(null);
 	let messagesContainer: HTMLElement;
 
+	// Ontology integration state
+	let lastTurnContext = $state<LastTurnContext | null>(null);
+	let currentStrategy = $state<string | null>(null);
+	let strategyConfidence = $state<number>(0);
+	let clarifyingQuestions = $state<string[]>([]);
+	let showClarifyingDialog = $state(false);
+	let ontologyLoaded = $state(false);
+	let ontologySummary = $state<string | null>(null);
+
 	interface AgentMessage {
 		id: string;
 		type: 'user' | 'assistant' | 'activity' | 'plan' | 'step' | 'executor';
@@ -164,7 +183,269 @@
 		timestamp: Date;
 	}
 
-	const isSendDisabled = $derived(!selectedContextType || !inputValue.trim() || isStreaming);
+	const agentTranscriptionService: TranscriptionService = {
+		async transcribeAudio(audioFile: File) {
+			const formData = new FormData();
+			formData.append('audio', audioFile);
+
+			const response = await fetch('/api/transcribe', {
+				method: 'POST',
+				body: formData
+			});
+
+			if (!response.ok) {
+				let errorMessage = `Transcription failed: ${response.status}`;
+				try {
+					const errorPayload = await response.json();
+					if (errorPayload?.error) {
+						errorMessage = errorPayload.error;
+					}
+				} catch {
+					// Ignore JSON parse errors and use default message
+				}
+				throw new Error(errorMessage);
+			}
+
+			const result = await response.json();
+			if (result?.success && result?.data?.transcript) {
+				return { transcript: result.data.transcript };
+			}
+
+			if (result?.transcript) {
+				return { transcript: result.transcript };
+			}
+
+			throw new Error('No transcript returned from transcription service');
+		}
+	};
+
+	// Voice recording state
+	let isVoiceSupported = $state(false);
+	let isCurrentlyRecording = $state(false);
+	let isInitializingRecording = $state(false);
+	let isTranscribing = $state(false);
+	let voiceError = $state('');
+	let microphonePermissionGranted = $state(false);
+	let canUseLiveTranscript = $state(false);
+	let recordingDuration = $state(0);
+	let hasAttemptedVoice = $state(false);
+	let liveTranscriptPreview = $state('');
+
+	const isLiveTranscribing = $derived(
+		isCurrentlyRecording && liveTranscriptPreview.trim().length > 0
+	);
+
+	const isSendDisabled = $derived(
+		!selectedContextType ||
+			!inputValue.trim() ||
+			isStreaming ||
+			isCurrentlyRecording ||
+			isInitializingRecording ||
+			isTranscribing
+	);
+
+	const voiceButtonState = $derived.by(() => {
+		if (!isVoiceSupported) {
+			return {
+				icon: MicOff,
+				label: 'Voice capture unavailable',
+				disabled: true,
+				isLoading: false,
+				variant: 'muted' as const
+			};
+		}
+
+		if (isCurrentlyRecording) {
+			return {
+				icon: MicOff,
+				label: 'Stop recording',
+				disabled: false,
+				isLoading: false,
+				variant: 'recording' as const
+			};
+		}
+
+		if (isInitializingRecording) {
+			return {
+				icon: LoaderCircle,
+				label: 'Preparing microphone…',
+				disabled: true,
+				isLoading: true,
+				variant: 'loading' as const
+			};
+		}
+
+		if (isTranscribing) {
+			return {
+				icon: LoaderCircle,
+				label: 'Transcribing…',
+				disabled: true,
+				isLoading: true,
+				variant: 'loading' as const
+			};
+		}
+
+		if (!microphonePermissionGranted && (hasAttemptedVoice || voiceError)) {
+			return {
+				icon: Mic,
+				label: 'Enable microphone',
+				disabled: false,
+				isLoading: false,
+				variant: 'prompt' as const
+			};
+		}
+
+		if (isStreaming) {
+			return {
+				icon: Mic,
+				label: 'Wait for agents…',
+				disabled: true,
+				isLoading: false,
+				variant: 'muted' as const
+			};
+		}
+
+		return {
+			icon: Mic,
+			label: 'Record voice note',
+			disabled: false,
+			isLoading: false,
+			variant: 'ready' as const
+		};
+	});
+
+	const voiceButtonClasses = $derived.by(() => {
+		switch (voiceButtonState.variant) {
+			case 'recording':
+				return 'bg-gradient-to-br from-rose-500 to-orange-500 text-white shadow-[0_16px_32px_-20px_rgba(244,63,94,0.6)] animate-pulse';
+			case 'loading':
+				return 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-300';
+			case 'prompt':
+				return 'border border-blue-400/40 bg-blue-50/80 text-blue-600 dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-300';
+			case 'muted':
+				return 'bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500';
+			default:
+				return 'bg-gradient-to-br from-blue-500 to-indigo-500 text-white shadow-[0_12px_32px_-20px_rgba(59,130,246,0.55)] hover:scale-105 hover:shadow-[0_20px_40px_-18px_rgba(59,130,246,0.5)] dark:from-blue-500 dark:to-indigo-500';
+		}
+	});
+
+	function formatDuration(seconds: number): string {
+		const mins = Math.floor(seconds / 60);
+		const secs = seconds % 60;
+		return `${mins}:${secs.toString().padStart(2, '0')}`;
+	}
+
+	onMount(() => {
+		isVoiceSupported = voiceRecordingService.isVoiceSupported();
+		canUseLiveTranscript = voiceRecordingService.isLiveTranscriptSupported();
+
+		voiceRecordingService.initialize(
+			{
+				onTextUpdate: (text: string) => {
+					inputValue = text;
+					voiceError = '';
+				},
+				onError: (error: string) => {
+					voiceError = error;
+					isCurrentlyRecording = false;
+					isInitializingRecording = false;
+				},
+				onPhaseChange: (phase: 'idle' | 'transcribing') => {
+					isTranscribing = phase === 'transcribing';
+				},
+				onPermissionGranted: () => {
+					microphonePermissionGranted = true;
+					voiceError = '';
+				},
+				onCapabilityUpdate: (update: { canUseLiveTranscript: boolean }) => {
+					canUseLiveTranscript = update.canUseLiveTranscript;
+				}
+			},
+			agentTranscriptionService
+		);
+
+		const durationStore = voiceRecordingService.getRecordingDuration();
+		const unsubscribeDuration = durationStore.subscribe((value) => {
+			recordingDuration = value;
+		});
+
+		const unsubscribeTranscript = liveTranscript.subscribe((value) => {
+			liveTranscriptPreview = value;
+		});
+
+		return () => {
+			unsubscribeDuration();
+			unsubscribeTranscript();
+			voiceRecordingService.cleanup();
+			isCurrentlyRecording = false;
+			isInitializingRecording = false;
+			isTranscribing = false;
+			liveTranscriptPreview = '';
+		};
+	});
+
+	async function startVoiceRecording() {
+		if (
+			!isVoiceSupported ||
+			isStreaming ||
+			isInitializingRecording ||
+			isCurrentlyRecording ||
+			isTranscribing
+		) {
+			return;
+		}
+
+		hasAttemptedVoice = true;
+		voiceError = '';
+		liveTranscriptPreview = '';
+		isInitializingRecording = true;
+
+		try {
+			await voiceRecordingService.startRecording(inputValue);
+			isInitializingRecording = false;
+			isCurrentlyRecording = true;
+			microphonePermissionGranted = true;
+		} catch (error) {
+			console.error('Failed to start voice recording:', error);
+			const message =
+				error instanceof Error
+					? error.message
+					: 'Unable to access microphone. Please check permissions.';
+			voiceError = message;
+			microphonePermissionGranted = false;
+			isInitializingRecording = false;
+			isCurrentlyRecording = false;
+		}
+	}
+
+	async function stopVoiceRecording() {
+		if (!isCurrentlyRecording && !isInitializingRecording) {
+			return;
+		}
+
+		try {
+			await voiceRecordingService.stopRecording(inputValue);
+		} catch (error) {
+			console.error('Failed to stop voice recording:', error);
+			const message =
+				error instanceof Error ? error.message : 'Failed to stop recording. Try again.';
+			voiceError = message;
+		} finally {
+			liveTranscriptPreview = '';
+			isCurrentlyRecording = false;
+			isInitializingRecording = false;
+		}
+	}
+
+	async function handleVoiceToggle() {
+		if (!isVoiceSupported) return;
+
+		if (isCurrentlyRecording || isInitializingRecording) {
+			await stopVoiceRecording();
+		} else {
+			await startVoiceRecording();
+		}
+	}
 
 	function resetConversation() {
 		messages = [];
@@ -176,6 +457,16 @@
 		userHasScrolled = false;
 		currentAssistantMessageId = null;
 		isStreaming = false;
+		// Reset ontology state
+		lastTurnContext = null;
+		currentStrategy = null;
+		strategyConfidence = 0;
+		clarifyingQuestions = [];
+		showClarifyingDialog = false;
+		ontologyLoaded = false;
+		ontologySummary = null;
+		voiceError = '';
+		hasAttemptedVoice = false;
 	}
 
 	function handleContextSelect(event: CustomEvent<ContextSelectionDetail>) {
@@ -189,6 +480,9 @@
 
 	function changeContext() {
 		if (isStreaming) return;
+		if (isCurrentlyRecording || isInitializingRecording) {
+			stopVoiceRecording();
+		}
 		selectedContextType = null;
 		selectedEntityId = undefined;
 		selectedContextLabel = null;
@@ -237,19 +531,31 @@
 	});
 
 	function handleClose() {
+		if (isCurrentlyRecording || isInitializingRecording) {
+			stopVoiceRecording();
+		}
 		if (onClose) onClose();
 	}
 
 	function handleKeyDown(event: KeyboardEvent) {
 		if (event.key === 'Enter' && !event.shiftKey) {
 			event.preventDefault();
-			sendMessage();
+			if (!isSendDisabled) {
+				sendMessage();
+			}
 		}
 	}
 
 	async function sendMessage() {
 		const trimmed = inputValue.trim();
-		if (!trimmed || isStreaming) return;
+		if (
+			!trimmed ||
+			isStreaming ||
+			isCurrentlyRecording ||
+			isInitializingRecording ||
+			isTranscribing
+		)
+			return;
 		if (!selectedContextType) {
 			error = 'Select a focus before starting the conversation.';
 			return;
@@ -278,6 +584,7 @@
 
 		messages = [...messages, userMessage];
 		inputValue = '';
+		liveTranscriptPreview = '';
 		error = null;
 		isStreaming = true;
 		currentActivity = 'Analyzing request...';
@@ -287,6 +594,13 @@
 		userHasScrolled = false;
 
 		try {
+			// Determine ontology entity type from context
+			let ontologyEntityType: 'task' | 'plan' | 'goal' | 'document' | 'output' | undefined;
+			if (selectedContextType === 'task' || selectedContextType === 'task_update') {
+				ontologyEntityType = 'task';
+			}
+			// Could add more mappings here for other entity types
+
 			const response = await fetch('/api/agent/stream', {
 				method: 'POST',
 				headers: {
@@ -297,7 +611,9 @@
 					session_id: currentSession?.id,
 					context_type: selectedContextType,
 					entity_id: selectedEntityId,
-					conversation_history: conversationHistory // Pass conversation history for compression
+					conversation_history: conversationHistory, // Pass conversation history for compression
+					lastTurnContext: lastTurnContext, // Pass last turn context for continuity
+					ontologyEntityType: ontologyEntityType // Pass entity type for ontology loading
 				})
 			});
 
@@ -356,6 +672,44 @@
 							selectedContextLabel;
 					}
 				}
+				break;
+
+			case 'ontology_loaded':
+				// Ontology context was loaded
+				ontologyLoaded = true;
+				ontologySummary = data.summary || 'Ontology context loaded';
+				addActivityMessage(`📊 ${ontologySummary}`);
+				break;
+
+			case 'last_turn_context':
+				// Store last turn context for next message
+				lastTurnContext = data.context;
+				console.log('[AgentChat] Stored last turn context:', lastTurnContext);
+				break;
+
+			case 'strategy_selected':
+				// Strategy was selected by planner
+				currentStrategy = data.strategy;
+				strategyConfidence = data.confidence || 0;
+				const strategyName = data.strategy?.replace(/_/g, ' ') || 'unknown';
+				const confidencePercent = Math.round((data.confidence || 0) * 100);
+				addActivityMessage(
+					`🎯 Strategy: ${strategyName} (${confidencePercent}% confidence)`
+				);
+				break;
+
+			case 'clarifying_questions':
+				// Agent needs clarification
+				clarifyingQuestions = data.questions || [];
+				if (clarifyingQuestions.length > 0) {
+					showClarifyingDialog = true;
+					addActivityMessage(`❓ ${clarifyingQuestions.length} clarifying questions`);
+				}
+				break;
+
+			case 'executor_instructions':
+				// Executor instructions generated
+				addActivityMessage(`📋 Generated executor instructions`);
 				break;
 
 			case 'analysis':
@@ -569,12 +923,32 @@
 						</span>
 					{/if}
 				</div>
-				{#if currentActivity}
-					<div class="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-						<div class="h-2 w-2 animate-pulse rounded-full bg-blue-500"></div>
-						<span>{currentActivity}</span>
-					</div>
-				{/if}
+				<div class="flex flex-wrap items-center gap-2">
+					{#if ontologyLoaded}
+						<Badge
+							size="sm"
+							class="!rounded-full border border-emerald-200/60 bg-emerald-50/90 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:border-emerald-700/60 dark:bg-emerald-900/40 dark:text-emerald-300"
+						>
+							📊 Ontology
+						</Badge>
+					{/if}
+					{#if currentStrategy}
+						<Badge
+							size="sm"
+							class="!rounded-full border border-blue-200/60 bg-blue-50/90 px-2 py-0.5 text-[10px] font-semibold text-blue-700 dark:border-blue-700/60 dark:bg-blue-900/40 dark:text-blue-300"
+						>
+							🎯 {currentStrategy.replace(/_/g, ' ')}
+						</Badge>
+					{/if}
+					{#if currentActivity}
+						<div
+							class="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400"
+						>
+							<div class="h-2 w-2 animate-pulse rounded-full bg-blue-500"></div>
+							<span>{currentActivity}</span>
+						</div>
+					{/if}
+				</div>
 			</div>
 		</div>
 	</div>
@@ -813,13 +1187,13 @@
 					}}
 					class="space-y-3"
 				>
-					<div class="relative">
+					<div class="relative space-y-2">
 						<div
 							class="relative rounded-[28px] border border-slate-200/60 bg-white/90 shadow-[0_12px_32px_-20px_rgba(15,23,42,0.4)] transition duration-200 ease-out focus-within:border-purple-300 focus-within:shadow-[0_20px_48px_-24px_rgba(168,85,247,0.45)] focus-within:ring-1 focus-within:ring-purple-200/40 dark:border-slate-700/60 dark:bg-slate-900/80 dark:shadow-[0_20px_40px_-24px_rgba(15,23,42,0.6)] dark:focus-within:border-purple-500/40 dark:focus-within:ring-purple-500/20"
 						>
 							<Textarea
 								bind:value={inputValue}
-								class="border-none bg-transparent px-6 py-4 pr-20 text-[15px] leading-relaxed text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-0 dark:text-gray-100 dark:placeholder:text-gray-500"
+								class="border-none bg-transparent px-6 py-4 pr-36 text-[15px] leading-relaxed text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-0 dark:text-gray-100 dark:placeholder:text-gray-500"
 								placeholder={`Share the next thing about ${displayContextLabel.toLowerCase()}...`}
 								autoResize
 								rows={1}
@@ -828,7 +1202,24 @@
 								onkeydown={handleKeyDown}
 							/>
 
-							<div class="absolute inset-y-1 right-2 flex items-end">
+							<div class="absolute inset-y-1 right-2 flex items-center gap-2">
+								<button
+									type="button"
+									class={`flex h-11 w-11 items-center justify-center rounded-full border border-transparent transition-all duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-400 disabled:cursor-not-allowed disabled:opacity-60 sm:h-12 sm:w-12 ${voiceButtonClasses}`}
+									onclick={handleVoiceToggle}
+									aria-label={voiceButtonState.label}
+									title={voiceButtonState.label}
+									aria-pressed={isCurrentlyRecording}
+									disabled={voiceButtonState.disabled}
+								>
+									{#if voiceButtonState.isLoading}
+										<LoaderCircle class="h-5 w-5 animate-spin" />
+									{:else}
+										{@const VoiceIcon = voiceButtonState.icon}
+										<VoiceIcon class="h-5 w-5" />
+									{/if}
+								</button>
+
 								<button
 									type="submit"
 									class="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 to-pink-500 text-white shadow-[0_16px_32px_-20px_rgba(168,85,247,0.55)] transition-all duration-200 hover:scale-105 hover:shadow-[0_20px_40px_-18px_rgba(236,72,153,0.6)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-400 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100 dark:from-purple-400 dark:to-pink-400"
@@ -842,31 +1233,157 @@
 									{/if}
 								</button>
 							</div>
+
+							{#if isLiveTranscribing && canUseLiveTranscript}
+								<div class="pointer-events-none absolute bottom-4 left-6 right-28">
+									<div
+										class="pointer-events-auto max-h-24 overflow-y-auto rounded-xl border border-purple-300/60 bg-gradient-to-r from-purple-50/80 to-pink-50/80 px-4 py-2 text-sm text-purple-700 shadow-[0_8px_24px_-18px_rgba(168,85,247,0.45)] backdrop-blur dark:border-purple-500/40 dark:from-purple-950/40 dark:to-pink-950/40 dark:text-purple-200"
+									>
+										<p class="m-0 whitespace-pre-wrap leading-relaxed">
+											{liveTranscriptPreview}
+										</p>
+									</div>
+								</div>
+							{/if}
 						</div>
 					</div>
 
 					<div
-						class="flex flex-wrap items-center justify-between gap-2 text-xs font-medium text-gray-500 dark:text-gray-400"
+						class="flex flex-wrap items-center justify-between gap-3 text-xs font-medium text-gray-500 dark:text-gray-400"
 					>
-						<span class="hidden sm:inline"
-							>Press Enter to send · Shift + Enter for new line</span
-						>
-						<span class="sm:hidden">Enter to send · Shift + Enter for line</span>
-						{#if isStreaming}
-							<div
-								class="flex items-center gap-2 rounded-full border border-emerald-200/40 bg-emerald-50/60 px-3 py-1 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300"
-							>
+						<div class="flex flex-wrap items-center gap-3">
+							{#if isCurrentlyRecording}
+								<span
+									class="flex items-center gap-2 text-rose-500 dark:text-rose-400"
+								>
+									<span
+										class="relative flex h-2.5 w-2.5 items-center justify-center"
+									>
+										<span
+											class="absolute inline-flex h-full w-full animate-ping rounded-full bg-rose-400/70"
+										></span>
+										<span
+											class="relative inline-flex h-2 w-2 rounded-full bg-rose-500"
+										></span>
+									</span>
+									<span class="flex items-center gap-1">
+										Listening
+										<span class="font-semibold tracking-wide"
+											>{formatDuration(recordingDuration)}</span
+										>
+									</span>
+								</span>
+							{:else if isTranscribing}
+								<span class="flex items-center gap-2">
+									<LoaderCircle class="h-4 w-4 animate-spin" />
+									<span>Transcribing your voice note…</span>
+								</span>
+							{:else}
+								<span class="hidden sm:inline"
+									>Press Enter to send · Shift + Enter for new line</span
+								>
+								<span class="sm:hidden">Enter to send · Shift + Enter for line</span
+								>
+							{/if}
+
+							{#if canUseLiveTranscript && isCurrentlyRecording}
+								<span
+									class="hidden rounded-full border border-blue-200/40 bg-blue-50/60 px-3 py-0.5 text-[11px] font-semibold uppercase tracking-[0.24em] text-blue-500 dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-300 sm:inline"
+								>
+									Live transcript
+								</span>
+							{/if}
+						</div>
+
+						<div class="flex flex-wrap items-center gap-3">
+							{#if voiceError}
+								<span
+									role="alert"
+									class="flex items-center gap-2 rounded-full bg-rose-50/80 px-3 py-1 text-rose-500 dark:bg-rose-900/20 dark:text-rose-300"
+								>
+									{voiceError}
+								</span>
+							{/if}
+
+							{#if isStreaming}
 								<div
-									class="h-2 w-2 animate-pulse rounded-full bg-emerald-500"
-								></div>
-								<span class="text-xs font-semibold">Agents working...</span>
-							</div>
-						{/if}
+									class="flex items-center gap-2 rounded-full border border-emerald-200/40 bg-emerald-50/60 px-3 py-1 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300"
+								>
+									<div
+										class="h-2 w-2 animate-pulse rounded-full bg-emerald-500"
+									></div>
+									<span class="text-xs font-semibold">Agents working...</span>
+								</div>
+							{/if}
+						</div>
 					</div>
 				</form>
 			</div>
 		{/if}
 	</div>
+
+	<!-- Clarifying Questions Dialog -->
+	{#if showClarifyingDialog}
+		<div
+			class="absolute inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+			onclick={() => (showClarifyingDialog = false)}
+		>
+			<div
+				class="relative mx-4 w-full max-w-lg rounded-2xl border border-slate-200/60 bg-white/95 p-6 shadow-2xl backdrop-blur-xl dark:border-slate-700/60 dark:bg-slate-900/95"
+				onclick={(e) => e.stopPropagation()}
+			>
+				<div class="mb-4 flex items-start justify-between">
+					<div>
+						<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+							Clarifying Questions
+						</h3>
+						<p class="mt-1 text-sm text-slate-600 dark:text-slate-400">
+							The assistant needs more information to help you better
+						</p>
+					</div>
+					<button
+						onclick={() => (showClarifyingDialog = false)}
+						class="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-300"
+					>
+						<X class="h-5 w-5" />
+					</button>
+				</div>
+
+				<div class="space-y-3">
+					{#each clarifyingQuestions as question, i}
+						<div
+							class="rounded-lg border border-slate-200 bg-slate-50/50 p-4 dark:border-slate-700 dark:bg-slate-800/50"
+						>
+							<div class="flex items-start gap-3">
+								<span
+									class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-500/10 text-xs font-semibold text-blue-600 dark:bg-blue-500/20 dark:text-blue-400"
+								>
+									{i + 1}
+								</span>
+								<p class="flex-1 text-sm text-gray-700 dark:text-gray-200">
+									{question}
+								</p>
+							</div>
+						</div>
+					{/each}
+				</div>
+
+				<div class="mt-6 flex flex-col gap-2">
+					<p class="text-xs text-slate-500 dark:text-slate-400">
+						Answer these questions in your next message to get a more helpful response.
+					</p>
+					<Button
+						variant="primary"
+						size="md"
+						class="w-full"
+						on:click={() => (showClarifyingDialog = false)}
+					>
+						Got it, I'll provide more details
+					</Button>
+				</div>
+			</div>
+		</div>
+	{/if}
 </Modal>
 
 <style>

@@ -156,12 +156,6 @@
 			"exports": ["AgentExecutorService"]
 		},
 		{
-			"file": "src/lib/services/agent-orchestrator.service.ts",
-			"type": "service",
-			"components": [],
-			"exports": ["AgentOrchestrator"]
-		},
-		{
 			"file": "src/lib/services/agent-planner-service.ts",
 			"type": "service",
 			"components": [],
@@ -342,6 +336,12 @@
 			"type": "service",
 			"components": [],
 			"exports": ["NotificationTestService", "notificationTestService"]
+		},
+		{
+			"file": "src/lib/services/oldagent-orchestrator.service.ts",
+			"type": "service",
+			"components": [],
+			"exports": ["AgentOrchestrator"]
 		},
 		{
 			"file": "src/lib/services/onboarding-v2.service.ts",

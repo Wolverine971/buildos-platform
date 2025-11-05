@@ -23,6 +23,12 @@
 	let currentPhase = $state('gathering_info');
 	let streamController = $state<AbortController | null>(null);
 
+	// Context shift state (can change during conversation)
+	let currentContext = $state<ChatContextType>(chatType);
+	let currentEntityId = $state<string | null>(entityId);
+	let currentEntityName = $state<string | null>(null);
+	let currentEntityType = $state<'project' | 'task' | 'plan' | 'goal' | null>(null);
+
 	// Dispatcher
 	const dispatch = createEventDispatcher();
 
@@ -293,6 +299,13 @@
 				messages = messages;
 				break;
 
+			case 'context_shift':
+				// Handle automatic context shift (e.g., after project creation)
+				if (event.context_shift) {
+					handleContextShift(event.context_shift);
+				}
+				break;
+
 			case 'done':
 				// All done - clear phase and finalize
 				currentPhase = 'completed';
@@ -308,6 +321,88 @@
 				];
 				break;
 		}
+	}
+
+	// Handle context shift event
+	function handleContextShift(shift: {
+		new_context: ChatContextType;
+		entity_id: string;
+		entity_name: string;
+		entity_type: 'project' | 'task' | 'plan' | 'goal';
+		message: string;
+	}) {
+		console.log('[ChatInterface] Context shift received:', shift);
+
+		// Update local context state
+		currentContext = shift.new_context;
+		currentEntityId = shift.entity_id;
+		currentEntityName = shift.entity_name;
+		currentEntityType = shift.entity_type;
+
+		// Add system message to chat
+		messages = [
+			...messages,
+			{
+				role: 'system',
+				content: shift.message
+			}
+		];
+
+		// Dispatch event to parent component
+		dispatch('context_changed', {
+			context: shift.new_context,
+			entity_id: shift.entity_id,
+			entity_name: shift.entity_name,
+			entity_type: shift.entity_type
+		});
+
+		console.log('[ChatInterface] Context updated:', {
+			currentContext,
+			currentEntityId,
+			currentEntityName
+		});
+	}
+
+	// Exit project context and return to global
+	async function exitProjectContext() {
+		console.log('[ChatInterface] Exiting project context');
+
+		// Update local state
+		currentContext = 'global';
+		currentEntityId = null;
+		currentEntityName = null;
+		currentEntityType = null;
+
+		// Update session in DB if we have a session ID
+		if (sessionId) {
+			try {
+				await fetch(`/api/agent/sessions/${sessionId}`, {
+					method: 'PATCH',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						context_type: 'global',
+						entity_id: null
+					})
+				});
+			} catch (error) {
+				console.error('[ChatInterface] Failed to update session:', error);
+			}
+		}
+
+		// Add system message
+		messages = [
+			...messages,
+			{
+				role: 'system',
+				content: 'Returned to global chat mode.'
+			}
+		];
+
+		// Dispatch event to parent
+		dispatch('context_changed', {
+			context: 'global',
+			entity_id: null
+		});
 	}
 
 	// Handle Enter key
@@ -337,6 +432,37 @@
 </script>
 
 <div class="flex h-full flex-col">
+	<!-- Context Indicator (shows when in project_update mode) -->
+	{#if currentContext === 'project_update' && currentEntityName}
+		<div
+			class="border-b border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 p-3 backdrop-blur-sm dark:border-blue-800 dark:from-blue-950/40 dark:to-indigo-950/40"
+		>
+			<div class="flex items-center justify-between">
+				<div class="flex items-center gap-2">
+					<!-- Folder Icon -->
+					<svg
+						class="h-4 w-4 text-blue-600 dark:text-blue-400"
+						fill="currentColor"
+						viewBox="0 0 20 20"
+					>
+						<path
+							d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"
+						/>
+					</svg>
+					<span class="text-sm font-medium text-blue-900 dark:text-blue-100">
+						Managing: {currentEntityName}
+					</span>
+				</div>
+				<button
+					on:click={exitProjectContext}
+					class="text-xs font-medium text-blue-600 transition-colors hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+				>
+					Exit Project Mode
+				</button>
+			</div>
+		</div>
+	{/if}
+
 	<!-- Phase Indicator -->
 	<div
 		class="border-b border-slate-200/60 bg-gradient-to-r from-blue-50/50 to-indigo-50/50 px-4 py-2 backdrop-blur-sm dark:border-slate-700/60 dark:from-blue-950/30 dark:to-indigo-950/30"

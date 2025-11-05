@@ -103,6 +103,7 @@ export type PlannerEvent =
 	| { type: 'step_complete'; step: PlanStep }
 	| { type: 'executor_spawned'; executorId: string; task: ExecutorTask }
 	| { type: 'executor_result'; executorId: string; result: ExecutorResult }
+	| { type: 'strategy_selected'; strategy: PlanningStrategy | string; confidence: number }
 	| { type: 'text'; content: string }
 	| { type: 'tool_call'; toolCall: ChatToolCall }
 	| { type: 'tool_result'; result: any }
@@ -144,6 +145,7 @@ export class AgentPlannerService {
 	private executorService: AgentExecutorService;
 	private conversationService: AgentConversationService;
 	private smartLLM: SmartLLMService;
+	private fetchFn: typeof fetch; // Custom fetch function for API requests
 
 	// Complexity thresholds for strategy selection
 	private readonly COMPLEXITY_THRESHOLDS = {
@@ -156,8 +158,11 @@ export class AgentPlannerService {
 		private supabase: SupabaseClient<Database>,
 		executorService?: AgentExecutorService,
 		smartLLM?: SmartLLMService,
-		compressionService?: ChatCompressionService
+		compressionService?: ChatCompressionService,
+		fetchFn?: typeof fetch
 	) {
+		// Store fetch function (use global fetch as fallback)
+		this.fetchFn = fetchFn || fetch;
 		// Pass compression service to context service for intelligent history compression
 		this.contextService = new AgentContextService(supabase, compressionService);
 
@@ -171,10 +176,15 @@ export class AgentPlannerService {
 			});
 
 		// Use injected executor service or create new one
-		this.executorService = executorService || new AgentExecutorService(supabase, this.smartLLM);
+		this.executorService =
+			executorService || new AgentExecutorService(supabase, this.smartLLM, this.fetchFn);
 
 		// Initialize conversation service for LLM-to-LLM orchestration
-		this.conversationService = new AgentConversationService(supabase, this.smartLLM);
+		this.conversationService = new AgentConversationService(
+			supabase,
+			this.smartLLM,
+			this.fetchFn
+		);
 	}
 
 	// ============================================
@@ -235,86 +245,117 @@ export class AgentPlannerService {
 				);
 			}
 
-			// 3. Check if we have enhanced ontology context
-			const hasOntology =
-				'metadata' in plannerContext &&
-				plannerContext.metadata?.hasOntology &&
-				'ontologyContext' in plannerContext;
+			// 3. Check context type for special handling
+			const currentContextType = plannerContext.metadata.contextType;
 
-			if (hasOntology) {
+			// Special flow for project creation
+			if (currentContextType === 'project_create') {
 				// ========================================
-				// NEW: Enhanced Strategy Analysis Flow
+				// PROJECT CREATION: Direct Tool Flow
 				// ========================================
+				// For project creation, we use a direct tool query flow
+				// with template overview already loaded in context
 
-				// 3a. Analyze user intent with ontology awareness
-				const strategyAnalysis = await this.analyzeUserIntent(
-					{message, context: plannerContext, lastTurnContext, userId});
-
-				// Yield strategy selection event
-				yield {
-					type: 'strategy_selected' as any,
-					strategy: strategyAnalysis.primary_strategy,
-					confidence: strategyAnalysis.confidence
-				};
-
-				// 3b. Execute strategy
-				// Note: executeStrategy doesn't support streaming yet, so we execute and then yield
-				const researchResult = await this.executeStrategy(
-					strategyAnalysis,
-					plannerContext,
+				for await (const event of this.handleToolQuery(
 					message,
-					async (event: any) => {
-						// Note: Can't yield inside callback, events are logged internally
-						// Future enhancement: Make this properly streaming
-					},
-					userId
-				);
-
-				// 3c. Generate final response
-				const finalResponse = await this.generateResponse(researchResult, plannerContext, userId);
-				yield { type: 'text', content: finalResponse };
+					plannerContext,
+					sessionId,
+					realUserId,
+					plannerAgentId
+				)) {
+					yield event;
+				}
 			} else {
-				// ========================================
-				// EXISTING: Legacy Complexity Analysis Flow
-				// ========================================
+				// Standard flow: Check if we have enhanced ontology context
+				const hasOntology =
+					'metadata' in plannerContext &&
+					'hasOntology' in plannerContext.metadata &&
+					plannerContext.metadata.hasOntology &&
+					'ontologyContext' in plannerContext;
 
-				// 3a. Analyze message complexity (legacy)
-				const analysis = await this.analyzeMessageComplexity(
-					message,
-					plannerContext,
-					realUserId
-				);
-				yield { type: 'analysis', analysis };
+				if (hasOntology) {
+					// ========================================
+					// NEW: Enhanced Strategy Analysis Flow
+					// ========================================
 
-				// 3b. Route to appropriate strategy (legacy)
-				switch (analysis.strategy) {
-					case 'direct':
-						// Direct query with tools available - LLM decides if it needs them
-						for await (const event of this.handleToolQuery(
-							message,
-							plannerContext,
-							sessionId,
-							realUserId,
-							plannerAgentId
-						)) {
-							yield event;
-						}
-						break;
+					// 3a. Analyze user intent with ontology awareness
+					const strategyAnalysis = await this.analyzeUserIntent({
+						message,
+						context: plannerContext,
+						lastTurnContext,
+						userId
+					});
 
-					case 'complex':
-						// Multi-step query - create plan and spawn executors
-						for await (const event of this.handleComplexQuery(
-							message,
-							plannerContext,
-							sessionId,
-							realUserId,
-							plannerAgentId,
-							contextType,
-							entityId
-						)) {
-							yield event;
-						}
-						break;
+					// Yield strategy selection event
+					yield {
+						type: 'strategy_selected' as any,
+						strategy: strategyAnalysis.primary_strategy,
+						confidence: strategyAnalysis.confidence
+					};
+
+					// 3b. Execute strategy
+					// Note: executeStrategy doesn't support streaming yet, so we execute and then yield
+					const researchResult = await this.executeStrategy(
+						strategyAnalysis,
+						plannerContext,
+						message,
+						(event: any) => {
+							// Note: Can't yield inside callback, events are logged internally
+							// Future enhancement: Make this properly streaming
+						},
+						userId
+					);
+
+					// 3c. Generate final response
+					const finalResponse = await this.generateResponse(
+						researchResult,
+						plannerContext,
+						userId
+					);
+					yield { type: 'text', content: finalResponse };
+				} else {
+					// ========================================
+					// EXISTING: Legacy Complexity Analysis Flow
+					// ========================================
+
+					// 3a. Analyze message complexity (legacy)
+					const analysis = await this.analyzeMessageComplexity(
+						message,
+						plannerContext,
+						realUserId
+					);
+					yield { type: 'analysis', analysis };
+
+					// 3b. Route to appropriate strategy (legacy)
+					switch (analysis.strategy) {
+						case 'direct':
+							// Direct query with tools available - LLM decides if it needs them
+							for await (const event of this.handleToolQuery(
+								message,
+								plannerContext,
+								sessionId,
+								realUserId,
+								plannerAgentId
+							)) {
+								yield event;
+							}
+							break;
+
+						case 'complex':
+							// Multi-step query - create plan and spawn executors
+							for await (const event of this.handleComplexQuery(
+								message,
+								plannerContext,
+								sessionId,
+								realUserId,
+								plannerAgentId,
+								contextType,
+								entityId
+							)) {
+								yield event;
+							}
+							break;
+					}
 				}
 			}
 
@@ -513,7 +554,8 @@ Respond with JSON in this exact format:
 		const toolExecutor = new ChatToolExecutor(
 			this.supabase,
 			userId,
-			context.metadata.sessionId
+			context.metadata.sessionId,
+			this.fetchFn
 		);
 
 		// Save prompt for audit (initial state before multi-turn loop)
@@ -543,6 +585,7 @@ Respond with JSON in this exact format:
 		const MAX_TURNS = 10;
 		let currentTurn = 0;
 		let shouldContinue = true;
+		const toolCallHistory = new Map<string, number>(); // Track tool call frequency
 
 		while (shouldContinue && currentTurn < MAX_TURNS) {
 			currentTurn++;
@@ -584,6 +627,39 @@ Respond with JSON in this exact format:
 
 			// After streaming completes, check if we had tool calls
 			if (toolCalls.length > 0) {
+				// Check for repeated tool calls to prevent infinite loops
+				for (const toolCall of toolCalls) {
+					const toolName = toolCall.function.name;
+					const callCount = (toolCallHistory.get(toolName) || 0) + 1;
+					toolCallHistory.set(toolName, callCount);
+
+					// Special handling for list_onto_templates in project_create context
+					if (toolName === 'list_onto_templates' && callCount > 1) {
+						console.warn(
+							`[Planner] Preventing repeated call to ${toolName} (called ${callCount} times)`
+						);
+						// Add a system message to guide the LLM
+						messages.push({
+							role: 'system',
+							content: `You have already called list_onto_templates. Please proceed with creating the project using create_onto_project() now. Do not search for templates again.`
+						});
+						// Skip this tool call
+						toolCalls = toolCalls.filter((tc) => tc.id !== toolCall.id);
+					} else if (callCount > 3) {
+						// General protection against any tool being called too many times
+						console.error(
+							`[Planner] Tool ${toolName} called ${callCount} times, stopping to prevent infinite loop`
+						);
+						shouldContinue = false;
+						break;
+					}
+				}
+
+				// If all tool calls were filtered out, continue to get new instructions
+				if (toolCalls.length === 0) {
+					continue;
+				}
+
 				// Execute all tool calls in parallel for 3x speed improvement
 				const toolExecutionPromises = toolCalls.map((toolCall) =>
 					toolExecutor
@@ -613,13 +689,13 @@ Respond with JSON in this exact format:
 					} else {
 						yield {
 							type: 'error',
-							error: `Tool execution failed: ${result.errorMessage}`
+							error: `Tool execution failed: ${'errorMessage' in result ? result.errorMessage : 'Unknown error'}`
 						};
 					}
 				}
 
 				// Add assistant message with tool calls
-				const assistantMsg = {
+				const assistantMsg: LLMMessage = {
 					role: 'assistant',
 					content: assistantContent || '',
 					tool_calls: toolCalls
@@ -635,13 +711,13 @@ Respond with JSON in this exact format:
 						plannerAgentId,
 						'assistant',
 						assistantContent || '',
-						toolCalls
+						toolCalls as unknown as Json
 					);
 				}
 
 				// Add tool result messages
 				for (const { toolCall, result } of toolResults) {
-					const toolMsg = {
+					const toolMsg: LLMMessage = {
 						role: 'tool',
 						content: JSON.stringify(result),
 						tool_call_id: toolCall.id
@@ -1499,23 +1575,11 @@ Synthesized response:`;
 		tokensUsed?: number,
 		modelUsed?: string
 	): Promise<void> {
-		const message: {
-			agent_session_id: string;
-			sender_type: string;
-			sender_agent_id: string;
-			role: string;
-			content: string;
-			tool_calls?: Json;
-			tool_call_id?: string;
-			tokens_used: number;
-			model_used: string;
-			parent_user_session_id: string;
-			user_id: string;
-		} = {
+		const message = {
 			agent_session_id: agentSessionId,
-			sender_type: 'planner',
+			sender_type: 'planner' as const,
 			sender_agent_id: plannerAgentId,
-			role,
+			role: role as 'system' | 'user' | 'assistant' | 'tool',
 			content,
 			tool_calls: toolCalls || undefined,
 			tool_call_id: toolCallId || undefined,
@@ -1565,13 +1629,17 @@ Synthesized response:`;
 	/**
 	 * Analyze user intent and select strategy
 	 */
-	async analyzeUserIntent({message, context, lastTurnContext, userId}: {
-		message: string,
-		context: EnhancedPlannerContext | PlannerContext,
-		lastTurnContext?: LastTurnContext,
-		userId: string
-	}
-	): Promise<StrategyAnalysis> {
+	async analyzeUserIntent({
+		message,
+		context,
+		lastTurnContext,
+		userId
+	}: {
+		message: string;
+		context: EnhancedPlannerContext | PlannerContext;
+		lastTurnContext?: LastTurnContext;
+		userId: string;
+	}): Promise<StrategyAnalysis> {
 		console.log('[Planner] Analyzing user intent', {
 			message: message.substring(0, 100),
 			contextType: context.metadata.contextType,
@@ -1673,7 +1741,7 @@ Return a JSON object with:
 		context: EnhancedPlannerContext | PlannerContext,
 		userMessage: string,
 		streamCallback: (event: any) => void,
-		userId: string,
+		userId: string
 	): Promise<ResearchResult> {
 		console.log('[Planner] Executing strategy:', {
 			strategy: analysis.primary_strategy,
@@ -1694,7 +1762,8 @@ Return a JSON object with:
 					analysis,
 					context,
 					userMessage,
-					streamCallback
+					streamCallback,
+					userId
 				);
 
 			case ChatStrategy.COMPLEX_RESEARCH:
@@ -1721,7 +1790,8 @@ Return a JSON object with:
 		analysis: StrategyAnalysis,
 		context: EnhancedPlannerContext | PlannerContext,
 		userMessage: string,
-		streamCallback: (event: any) => void
+		streamCallback: (event: any) => void,
+		userId: string
 	): Promise<ResearchResult> {
 		console.log('[Planner] Executing simple research with tools:', analysis.required_tools);
 
@@ -1731,7 +1801,12 @@ Return a JSON object with:
 		const toolsUsed: string[] = [];
 
 		// Initialize tool executor
-		const toolExecutor = new ChatToolExecutor(this.supabase, context.metadata.sessionId, );
+		const toolExecutor = new ChatToolExecutor(
+			this.supabase,
+			userId,
+			context.metadata.sessionId,
+			this.fetchFn
+		);
 
 		// Execute tools directly (no executor agent needed)
 		for (const toolName of tools) {
@@ -1747,13 +1822,17 @@ Return a JSON object with:
 
 			try {
 				// Execute tool via tool executor
-				const toolResult = await toolExecutor.executeTool(
-					toolName,
-					this.generateToolArguments(toolName, userMessage, context),
-					context.metadata.sessionId // Use session ID as user context
-				);
+				const toolCall: ChatToolCall = {
+					id: uuidv4(),
+					type: 'function',
+					function: {
+						name: toolName,
+						arguments: this.generateToolArguments(toolName, userMessage, context)
+					}
+				};
+				const toolResult = await toolExecutor.execute(toolCall);
 
-				results.push(toolResult);
+				results.push(toolResult.result);
 				toolsUsed.push(toolName);
 
 				// Extract entity IDs from result
@@ -1776,7 +1855,7 @@ Return a JSON object with:
 					result: {
 						tool: toolName,
 						success: false,
-						error: error.message
+						error: error instanceof Error ? error.message : String(error)
 					}
 				});
 			}
@@ -1824,7 +1903,7 @@ Return a JSON object with:
 		streamCallback({
 			type: 'plan_created',
 			plan: {
-				steps: plan.steps.map((s) => ({
+				steps: plan.steps.map((s: any) => ({
 					stepNumber: s.stepNumber,
 					description: s.description,
 					status: 'pending'
@@ -1833,7 +1912,7 @@ Return a JSON object with:
 		});
 
 		// Check if we need executors
-		if (plan.steps.some((s) => s.requiresExecutor)) {
+		if (plan.steps.some((s: any) => s.requiresExecutor)) {
 			// Generate just-in-time instructions
 			const instructionGen = new ExecutorInstructionGenerator();
 			const instructions = instructionGen.generateInstructions(
@@ -1854,7 +1933,7 @@ Return a JSON object with:
 		const results: any[] = [];
 		const entitiesAccessed: string[] = [];
 		const toolsUsed: string[] = [];
-		const toolExecutor = new ChatToolExecutor(this.supabase, userId);
+		const toolExecutor = new ChatToolExecutor(this.supabase, userId, undefined, this.fetchFn);
 
 		for (const step of plan.steps) {
 			streamCallback({
@@ -1868,14 +1947,18 @@ Return a JSON object with:
 			// Execute step
 			for (const tool of step.requiredTools) {
 				try {
-					const stepResult = await toolExecutor.executeTool(
-						tool,
-						this.generateToolArguments(tool, userMessage, context),
-						context.metadata.sessionId
-					);
+					const toolCall: ChatToolCall = {
+						id: uuidv4(),
+						type: 'function',
+						function: {
+							name: tool,
+							arguments: this.generateToolArguments(tool, userMessage, context)
+						}
+					};
+					const toolResult = await toolExecutor.execute(toolCall);
 
-					results.push(stepResult);
-					entitiesAccessed.push(...this.extractEntityIds(stepResult));
+					results.push(toolResult.result);
+					entitiesAccessed.push(...this.extractEntityIds(toolResult.result));
 					toolsUsed.push(tool);
 				} catch (error) {
 					console.error(`[Planner] Step ${step.stepNumber} tool ${tool} failed:`, error);
@@ -2039,11 +2122,11 @@ Generate a helpful response that:
 
 		// Extract IDs from various result formats
 		if (Array.isArray(result)) {
-			result.forEach((item) => {
+			result.forEach((item: any) => {
 				if (item?.id) ids.push(item.id);
 			});
 		} else if (result?.data && Array.isArray(result.data)) {
-			result.data.forEach((item) => {
+			result.data.forEach((item: any) => {
 				if (item?.id) ids.push(item.id);
 			});
 		} else if (result?.id) {
@@ -2052,12 +2135,12 @@ Generate a helpful response that:
 
 		// Also check for nested entities
 		if (result?.tasks) {
-			result.tasks.forEach((task) => {
+			result.tasks.forEach((task: any) => {
 				if (task?.id) ids.push(task.id);
 			});
 		}
 		if (result?.goals) {
-			result.goals.forEach((goal) => {
+			result.goals.forEach((goal: any) => {
 				if (goal?.id) ids.push(goal.id);
 			});
 		}
@@ -2131,11 +2214,11 @@ Generate a helpful response that:
 		console.log('[Planner] Would spawn executors for plan', plan);
 
 		const executorService = new AgentExecutorService(this.supabase, this.smartLLM);
-		const results = [];
-		const entitiesAccessed = [];
-		const toolsUsed = [];
+		const results: ExecutorResult[] = [];
+		const entitiesAccessed: string[] = [];
+		const toolsUsed: string[] = [];
 
-		for (const step of plan.steps.filter((s) => s.requiresExecutor)) {
+		for (const step of plan.steps.filter((s: any) => s.requiresExecutor)) {
 			streamCallback({
 				type: 'executor_spawned',
 				task: {
@@ -2144,10 +2227,11 @@ Generate a helpful response that:
 			});
 
 			// Create executor task
-			const task = {
+			const task: ExecutorTask = {
+				id: uuidv4(),
 				description: step.description,
-				tools: step.requiredTools,
-				context: {
+				goal: step.description,
+				contextData: {
 					projectId: context.metadata.entityId,
 					userMessage
 				}
@@ -2155,16 +2239,20 @@ Generate a helpful response that:
 
 			// Execute (simplified)
 			try {
-				const result = await executorService.executeTask(
-					task,
-					step.requiredTools,
-					context.metadata.sessionId
-				);
+				const result = await executorService.executeTask({
+					executorId: task.id,
+					sessionId: context.metadata.sessionId,
+					userId: context.metadata.sessionId, // Using sessionId as userId fallback
+					task: task,
+					tools: await this.getToolsForStep({
+						...step,
+						tools: step.requiredTools
+					} as PlanStep)
+				});
 
 				results.push(result);
-				if (result.entitiesAccessed) {
-					entitiesAccessed.push(...result.entitiesAccessed);
-				}
+				// Note: entitiesAccessed not available in ExecutorResult
+				// Extract from result.data if needed
 				toolsUsed.push(...step.requiredTools);
 
 				streamCallback({

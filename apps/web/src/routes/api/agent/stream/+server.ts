@@ -27,6 +27,14 @@ import type {
 	ChatContextType,
 	ChatMessage
 } from '@buildos/shared-types';
+// Add after existing imports
+import { OntologyContextLoader } from '$lib/services/ontology-context-loader';
+import type {
+	LastTurnContext,
+	OntologyContext,
+	EnhancedAgentStreamRequest,
+	AgentSSEEvent
+} from '$lib/types/agent-chat-enhancement';
 
 // ============================================
 // RATE LIMITING
@@ -68,9 +76,159 @@ interface AgentSSEMessage {
 		| 'text'
 		| 'tool_call'
 		| 'tool_result'
+		| 'context_shift'
 		| 'done'
 		| 'error';
 	[key: string]: any;
+	context_shift?: {
+		new_context: ChatContextType;
+		entity_id: string;
+		entity_name: string;
+		entity_type: 'project' | 'task' | 'plan' | 'goal';
+		message: string;
+	};
+}
+
+// ============================================
+// HELPER FUNCTIONS
+// ============================================
+
+/**
+ * Load ontology context based on context type and optional entity type
+ */
+async function loadOntologyContext(
+	supabase: any,
+	contextType: ChatContextType,
+	entityId?: string,
+	ontologyEntityType?: 'task' | 'plan' | 'goal' | 'document' | 'output'
+): Promise<OntologyContext | null> {
+	console.log('[API] Loading ontology context', {
+		contextType,
+		entityId,
+		ontologyEntityType
+	});
+
+	const loader = new OntologyContextLoader(supabase);
+
+	try {
+		// If entity type is specified, load element context
+		if (ontologyEntityType && entityId) {
+			console.log('[API] Loading element-level ontology context');
+			return await loader.loadElementContext(ontologyEntityType, entityId);
+		}
+
+		// If project context, load project-level ontology
+		if (
+			(contextType === 'project' ||
+				contextType === 'project_update' ||
+				contextType === 'project_audit') &&
+			entityId
+		) {
+			console.log('[API] Loading project-level ontology context');
+			return await loader.loadProjectContext(entityId);
+		}
+
+		// Otherwise, load global context
+		if (contextType === 'global' || contextType === 'general') {
+			console.log('[API] Loading global ontology context');
+			return await loader.loadGlobalContext();
+		}
+
+		// No ontology context applicable
+		console.log('[API] No ontology context applicable for context type:', contextType);
+		return null;
+	} catch (error) {
+		console.error('[API] Failed to load ontology context:', error);
+		return null; // Don't fail the request, just proceed without ontology
+	}
+}
+
+/**
+ * Generate last turn context from recent messages
+ * Provides conversation continuity between turns
+ */
+function generateLastTurnContext(
+	recentMessages: ChatMessage[],
+	contextType: ChatContextType
+): LastTurnContext | null {
+	if (!recentMessages || recentMessages.length < 2) {
+		// Need at least user + assistant message pair
+		return null;
+	}
+
+	// Get the last assistant message (most recent response)
+	const lastAssistantMsg = recentMessages.filter((m) => m.role === 'assistant').pop();
+
+	// Get the last user message
+	const lastUserMsg = recentMessages.filter((m) => m.role === 'user').pop();
+
+	if (!lastAssistantMsg || !lastUserMsg) {
+		return null;
+	}
+
+	console.log('[API] Generating last turn context from messages', {
+		lastUserContent: lastUserMsg.content.substring(0, 50),
+		lastAssistantContent: lastAssistantMsg.content.substring(0, 50)
+	});
+
+	// Extract entity IDs from tool calls
+	const entities: LastTurnContext['entities'] = {};
+	const toolsUsed: string[] = [];
+
+	// Check if last assistant message had tool calls
+	if (lastAssistantMsg.tool_calls) {
+		try {
+			const toolCalls = Array.isArray(lastAssistantMsg.tool_calls)
+				? lastAssistantMsg.tool_calls
+				: JSON.parse(lastAssistantMsg.tool_calls as any);
+
+			toolCalls.forEach((tc: any) => {
+				const toolName = tc.function?.name || tc.name;
+				if (toolName) {
+					toolsUsed.push(toolName);
+
+					// Extract entity IDs from tool arguments
+					const argsStr = tc.function?.arguments || tc.arguments;
+					if (argsStr) {
+						try {
+							const args =
+								typeof argsStr === 'string' ? JSON.parse(argsStr) : argsStr;
+
+							if (args.project_id) entities.project_id = args.project_id;
+							if (args.task_id) {
+								entities.task_ids = entities.task_ids || [];
+								entities.task_ids.push(args.task_id);
+							}
+							if (args.goal_id) {
+								entities.goal_ids = entities.goal_ids || [];
+								entities.goal_ids.push(args.goal_id);
+							}
+							if (args.plan_id) entities.plan_id = args.plan_id;
+							if (args.document_id) entities.document_id = args.document_id;
+							if (args.output_id) entities.output_id = args.output_id;
+						} catch (e) {
+							console.warn('[API] Failed to parse tool arguments:', e);
+						}
+					}
+				}
+			});
+		} catch (e) {
+			console.warn('[API] Failed to extract tool calls:', e);
+		}
+	}
+
+	// Generate a brief summary (10-20 words) of the interaction
+	const userMessagePreview = lastUserMsg.content.substring(0, 100).trim();
+	const summary = `${userMessagePreview.substring(0, 60)}...`;
+
+	return {
+		summary,
+		entities,
+		context_type: contextType,
+		data_accessed: toolsUsed,
+		strategy_used: undefined, // Will be filled by planner if available
+		timestamp: lastAssistantMsg.created_at || new Date().toISOString()
+	};
 }
 
 // ============================================
@@ -81,7 +239,11 @@ interface AgentSSEMessage {
  * POST /api/agent/stream
  * Stream a multi-agent system response with planner-executor coordination
  */
-export const POST: RequestHandler = async ({ request, locals: { supabase, safeGetSession } }) => {
+export const POST: RequestHandler = async ({
+	request,
+	fetch,
+	locals: { supabase, safeGetSession }
+}) => {
 	// Check authentication
 	const { user } = await safeGetSession();
 	if (!user?.id) {
@@ -220,9 +382,46 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 			// Don't fail the request, just log
 		}
 
+		// === ONTOLOGY INTEGRATION ===
+
+		// Parse enhanced request fields
+		const enhancedBody = body as EnhancedAgentStreamRequest;
+		const ontologyEntityType = enhancedBody.ontologyEntityType;
+		let lastTurnContext = enhancedBody.lastTurnContext ?? undefined;
+
+		// Load ontology context if applicable
+		// Skip for project_create as it uses template overview instead
+		const ontologyContext =
+			normalizedContextType === 'project_create'
+				? null
+				: await loadOntologyContext(
+						supabase,
+						normalizedContextType,
+						entity_id,
+						ontologyEntityType
+					);
+
+		console.log('[API] Ontology context loaded:', {
+			hasOntology: !!ontologyContext,
+			type: ontologyContext?.type,
+			entityCount: ontologyContext?.metadata?.entity_count
+		});
+
+		// Generate last turn context if not provided
+		if (!lastTurnContext && loadedConversationHistory.length > 0) {
+			lastTurnContext =
+				generateLastTurnContext(loadedConversationHistory, normalizedContextType) ??
+				undefined;
+			console.log('[API] Generated last turn context:', {
+				hasContext: !!lastTurnContext,
+				summary: lastTurnContext?.summary,
+				entitiesCount: Object.keys(lastTurnContext?.entities || {}).length
+			});
+		}
+
 		// Initialize services
 		const smartLLM = new SmartLLMService({ supabase });
-		const executorService = new AgentExecutorService(supabase, smartLLM);
+		const executorService = new AgentExecutorService(supabase, smartLLM, fetch);
 
 		// Initialize compression service for intelligent chat history compression
 		const compressionService = new ChatCompressionService(supabase);
@@ -232,7 +431,8 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 			supabase,
 			executorService,
 			smartLLM,
-			compressionService
+			compressionService,
+			fetch
 		);
 
 		// Create SSE response
@@ -252,6 +452,22 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 					session: chatSession
 				});
 
+				// Send ontology context event if loaded
+				if (ontologyContext) {
+					await agentStream.sendMessage({
+						type: 'ontology_loaded',
+						summary: `Loaded ${ontologyContext.type} ontology context with ${Object.keys(ontologyContext.metadata?.entity_count || {}).length} entity types`
+					});
+				}
+
+				// Send last turn context event if available
+				if (lastTurnContext) {
+					await agentStream.sendMessage({
+						type: 'last_turn_context',
+						context: lastTurnContext
+					});
+				}
+
 				// Use database history if available (source of truth), otherwise use frontend history
 				const historyToUse =
 					loadedConversationHistory.length > 0
@@ -265,7 +481,9 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 					message,
 					contextType: normalizedContextType,
 					entityId: entity_id,
-					conversationHistory: historyToUse
+					conversationHistory: historyToUse,
+					ontologyContext: ontologyContext || undefined,
+					lastTurnContext: lastTurnContext || undefined
 				})) {
 					// Accumulate text for saving to database
 					if (event.type === 'text' && event.content) {
@@ -280,6 +498,64 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 					// Accumulate tool results for saving to database
 					if (event.type === 'tool_result' && event.result) {
 						toolResults.push(event.result);
+
+						// Check if tool result contains context_shift metadata
+						if (event.result?.context_shift) {
+							const contextShift = event.result.context_shift;
+							console.log('[API] Context shift detected:', contextShift);
+
+							// Send context_shift SSE event to client
+							await agentStream.sendMessage({
+								type: 'context_shift',
+								context_shift: {
+									new_context: contextShift.new_context,
+									entity_id: contextShift.entity_id,
+									entity_name: contextShift.entity_name,
+									entity_type: contextShift.entity_type,
+									message: `✓ Project created successfully. I'm now helping you manage "${contextShift.entity_name}". What would you like to add?`
+								}
+							});
+
+							// Update chat session with new context
+							const { error: updateError } = await supabase
+								.from('chat_sessions')
+								.update({
+									context_type: contextShift.new_context,
+									entity_id: contextShift.entity_id,
+									updated_at: new Date().toISOString()
+								})
+								.eq('id', chatSession.id);
+
+							if (updateError) {
+								console.error(
+									'[API] Failed to update chat session context:',
+									updateError
+								);
+							} else {
+								console.log('[API] Chat session context updated:', {
+									session_id: chatSession.id,
+									new_context: contextShift.new_context,
+									entity_id: contextShift.entity_id
+								});
+							}
+
+							// Insert system message to mark the context shift in conversation history
+							const { error: sysMessageError } = await supabase
+								.from('chat_messages')
+								.insert({
+									session_id: chatSession.id,
+									user_id: userId,
+									role: 'system',
+									content: `Context shifted to ${contextShift.new_context} for "${contextShift.entity_name}" (ID: ${contextShift.entity_id})`
+								});
+
+							if (sysMessageError) {
+								console.error(
+									'[API] Failed to insert system message:',
+									sysMessageError
+								);
+							}
+						}
 					}
 
 					// Map planner events to SSE messages

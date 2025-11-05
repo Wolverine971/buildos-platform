@@ -37,7 +37,9 @@ interface BlogContext {
 }
 
 const BASE_URL = 'https://build-os.com';
-const DEFAULT_LASTMOD = new Date().toISOString().split('T')[0]; // Today's date in YYYY-MM-DD format
+// Use a static fallback date instead of today's date to avoid constantly changing dates
+// This should be the date of the initial blog launch or earliest blog post
+const DEFAULT_LASTMOD = '2025-10-05'; // Static fallback date for empty categories
 
 // Static URLs from your existing sitemap
 const STATIC_URLS: SitemapUrl[] = [
@@ -157,7 +159,7 @@ function getPostLastMod(post: BlogPost): string {
 	return DEFAULT_LASTMOD;
 }
 
-function getMostRecentPostDate(posts: { [slug: string]: BlogPost | null }): string {
+function getMostRecentPostDate(posts: { [slug: string]: BlogPost | null }): string | null {
 	let mostRecentDate = '';
 
 	Object.values(posts).forEach((post) => {
@@ -169,7 +171,8 @@ function getMostRecentPostDate(posts: { [slug: string]: BlogPost | null }): stri
 		}
 	});
 
-	return mostRecentDate || DEFAULT_LASTMOD;
+	// Return null if no published posts found, instead of DEFAULT_LASTMOD
+	return mostRecentDate || null;
 }
 
 function getAllPostsLastModDate(blogContext: BlogContext): string {
@@ -177,12 +180,14 @@ function getAllPostsLastModDate(blogContext: BlogContext): string {
 
 	Object.values(blogContext.categories).forEach((category) => {
 		const categoryMostRecent = getMostRecentPostDate(category.posts);
-		if (!mostRecentDate || categoryMostRecent > mostRecentDate) {
+		// Only consider categories that have published posts (non-null dates)
+		if (categoryMostRecent && (!mostRecentDate || categoryMostRecent > mostRecentDate)) {
 			mostRecentDate = categoryMostRecent;
 		}
 	});
 
-	return mostRecentDate || DEFAULT_LASTMOD;
+	// Use the original static blogs page date as fallback if no posts found
+	return mostRecentDate || '2025-06-28';
 }
 
 function generateBlogUrls(blogContext: BlogContext): SitemapUrl[] {
@@ -196,18 +201,23 @@ function generateBlogUrls(blogContext: BlogContext): SitemapUrl[] {
 		console.log(`📅 Updated main blogs page lastmod to: ${mostRecentGlobalDate}`);
 	}
 
-	// Add category pages with smart lastmod dates
+	// Add category pages with smart lastmod dates (only if they have published posts)
 	Object.entries(blogContext.categories).forEach(([categoryKey, category]) => {
 		const mostRecentPostDate = getMostRecentPostDate(category.posts);
 
-		urls.push({
-			loc: `${BASE_URL}/blogs/${categoryKey}`,
-			lastmod: mostRecentPostDate,
-			changefreq: 'weekly',
-			priority: '0.6'
-		});
+		// Only add category page if it has published posts
+		if (mostRecentPostDate) {
+			urls.push({
+				loc: `${BASE_URL}/blogs/${categoryKey}`,
+				lastmod: mostRecentPostDate,
+				changefreq: 'weekly',
+				priority: '0.6'
+			});
 
-		console.log(`📅 Category '${categoryKey}' lastmod set to: ${mostRecentPostDate}`);
+			console.log(`📅 Category '${categoryKey}' lastmod set to: ${mostRecentPostDate}`);
+		} else {
+			console.log(`⏩ Skipping category '${categoryKey}' - no published posts`);
+		}
 	});
 
 	// Add individual blog post pages

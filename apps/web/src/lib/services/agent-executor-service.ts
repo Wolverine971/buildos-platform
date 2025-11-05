@@ -84,6 +84,7 @@ export type ExecutorEvent =
 export class AgentExecutorService {
 	private contextService: AgentContextService;
 	private smartLLM: SmartLLMService;
+	private fetchFn: typeof fetch; // Custom fetch function for API requests
 
 	// Execution limits for safety
 	private readonly LIMITS = {
@@ -94,8 +95,11 @@ export class AgentExecutorService {
 
 	constructor(
 		private supabase: SupabaseClient<Database>,
-		smartLLM?: SmartLLMService
+		smartLLM?: SmartLLMService,
+		fetchFn?: typeof fetch
 	) {
+		// Store fetch function (use global fetch as fallback)
+		this.fetchFn = fetchFn || fetch;
 		this.contextService = new AgentContextService(supabase);
 
 		// Initialize SmartLLMService if not provided
@@ -278,7 +282,8 @@ export class AgentExecutorService {
 		const toolExecutor = new ChatToolExecutor(
 			this.supabase,
 			userId,
-			context.metadata.sessionId
+			context.metadata.sessionId,
+			this.fetchFn
 		);
 
 		// Save prompt for audit

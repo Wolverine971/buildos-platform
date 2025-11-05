@@ -42,6 +42,192 @@ import { CalendarService } from '$lib/services/calendar-service';
 import { getToolCategory, ENTITY_FIELD_INFO } from './tools.config';
 
 /**
+ * Ontology tool argument types
+ */
+interface ListOntoTasksArgs {
+	project_id?: string;
+	state_key?: string;
+	limit?: number;
+}
+
+interface ListOntoGoalsArgs {
+	project_id?: string;
+	limit?: number;
+}
+
+interface ListOntoPlansArgs {
+	project_id?: string;
+	limit?: number;
+}
+
+interface ListOntoProjectsArgs {
+	state_key?: string;
+	type_key?: string;
+	limit?: number;
+}
+
+interface GetOntoProjectDetailsArgs {
+	project_id: string;
+}
+
+interface GetOntoTaskDetailsArgs {
+	task_id: string;
+}
+
+interface GetEntityRelationshipsArgs {
+	entity_id: string;
+	direction?: 'outgoing' | 'incoming' | 'both';
+}
+
+/**
+ * Ontology ACTION tool argument types (Create/Update/Delete)
+ */
+interface CreateOntoTaskArgs {
+	project_id: string;
+	title: string;
+	description?: string;
+	type_key?: string;
+	state_key?: string;
+	priority?: number;
+	plan_id?: string;
+	due_at?: string;
+	props?: any;
+}
+
+interface CreateOntoGoalArgs {
+	project_id: string;
+	name: string;
+	description?: string;
+	type_key?: string;
+	props?: any;
+}
+
+interface CreateOntoPlanArgs {
+	project_id: string;
+	name: string;
+	description?: string;
+	type_key?: string;
+	state_key?: string;
+	props?: any;
+}
+
+interface UpdateOntoTaskArgs {
+	task_id: string;
+	title?: string;
+	description?: string;
+	state_key?: string;
+	priority?: number;
+	plan_id?: string;
+	due_at?: string;
+	props?: any;
+}
+
+interface UpdateOntoProjectArgs {
+	project_id: string;
+	name?: string;
+	description?: string;
+	state_key?: string;
+	props?: any;
+}
+
+interface DeleteOntoTaskArgs {
+	task_id: string;
+}
+
+interface DeleteOntoGoalArgs {
+	goal_id: string;
+}
+
+interface DeleteOntoPlanArgs {
+	plan_id: string;
+}
+
+/**
+ * Template and Project Creation tool argument types
+ */
+interface ListOntoTemplatesArgs {
+	scope?: 'project' | 'plan' | 'task' | 'output' | 'document' | 'goal' | 'requirement';
+	realm?: string;
+	search?: string;
+	context?: string;
+	scale?: string;
+	stage?: string;
+}
+
+interface CreateOntoProjectArgs {
+	project: {
+		name: string;
+		type_key: string;
+		description?: string;
+		also_types?: string[];
+		state_key?: string;
+		props?: {
+			facets?: {
+				context?: string;
+				scale?: string;
+				stage?: string;
+			};
+			[key: string]: any;
+		};
+		start_at?: string;
+		end_at?: string;
+	};
+	goals?: Array<{
+		name: string;
+		type_key?: string;
+		description?: string;
+		props?: any;
+	}>;
+	requirements?: Array<{
+		text: string;
+		type_key?: string;
+		props?: any;
+	}>;
+	plans?: Array<{
+		name: string;
+		type_key: string;
+		state_key?: string;
+		props?: any;
+	}>;
+	tasks?: Array<{
+		title: string;
+		plan_name?: string;
+		state_key?: string;
+		priority?: number;
+		due_at?: string;
+		props?: any;
+	}>;
+	outputs?: Array<{
+		name: string;
+		type_key: string;
+		state_key?: string;
+		props?: any;
+	}>;
+	documents?: Array<{
+		title: string;
+		type_key: string;
+		state_key?: string;
+		props?: any;
+	}>;
+	clarifications?: Array<{
+		key: string;
+		question: string;
+		required: boolean;
+		choices?: string[];
+		help_text?: string;
+	}>;
+	meta?: {
+		model?: string;
+		confidence?: number;
+		suggested_facets?: {
+			context?: string;
+			scale?: string;
+			stage?: string;
+		};
+	};
+}
+
+/**
  * Type for task query result with project relationship
  */
 interface TaskWithProject {
@@ -88,20 +274,20 @@ const UPDATABLE_PROJECT_FIELDS = new Set([
 
 export class ChatToolExecutor {
 	private calendarService: CalendarService;
-	private baseUrl: string = ''; // Will be set based on environment
 	private sessionId?: string; // Optional, can be set after construction
+	private fetchFn: typeof fetch; // Custom fetch function (supports event.fetch)
 
 	constructor(
 		private supabase: SupabaseClient,
 		private userId: string,
-		sessionId?: string
+		sessionId?: string,
+		fetchFn?: typeof fetch
 	) {
 		this.calendarService = new CalendarService(supabase);
 		this.sessionId = sessionId;
-		// In browser context, we can use relative URLs
-		if (typeof window !== 'undefined') {
-			this.baseUrl = window.location.origin;
-		}
+		// Use provided fetch or fall back to global fetch
+		// When called from server-side code, pass event.fetch for relative URLs
+		this.fetchFn = fetchFn || fetch;
 	}
 
 	/**
@@ -128,7 +314,7 @@ export class ChatToolExecutor {
 
 	/**
 	 * Make authenticated API request
-	 * @param path - API endpoint path
+	 * @param path - API endpoint path (can be relative like '/api/...')
 	 * @param options - Fetch options
 	 * @returns Parsed JSON response
 	 * @throws {Error} If request fails with detailed error information
@@ -137,22 +323,54 @@ export class ChatToolExecutor {
 		const headers = await this.getAuthHeaders();
 		const method = options.method || 'GET';
 
-		const response = await fetch(`${this.baseUrl}${path}`, {
-			...options,
-			headers: {
-				...headers,
-				...(options.headers || {})
+		try {
+			// Use custom fetch function (supports event.fetch for server-side relative URLs)
+			const response = await this.fetchFn(path, {
+				...options,
+				headers: {
+					...headers,
+					...(options.headers || {})
+				}
+			});
+
+			if (!response.ok) {
+				// Try to parse error as JSON (API uses ApiResponse format)
+				let errorMessage: string;
+				let errorDetails: any = null;
+
+				try {
+					const errorData = await response.json();
+					// ApiResponse format: { error: string, code?: string, details?: any }
+					errorMessage = errorData.error || errorData.message || 'Unknown error';
+					errorDetails = errorData.details;
+
+					// Include validation errors if present
+					if (errorDetails?.errors) {
+						const validationErrors = Object.entries(errorDetails.errors)
+							.map(([field, error]) => `${field}: ${error}`)
+							.join(', ');
+						errorMessage = `${errorMessage} (${validationErrors})`;
+					}
+				} catch (e) {
+					// If JSON parsing fails, fall back to text
+					errorMessage = await response.text();
+				}
+
+				// Construct detailed error message
+				const detailedError = `API ${method} ${path} failed (${response.status} ${response.statusText}): ${errorMessage}`;
+
+				throw new Error(detailedError);
 			}
-		});
 
-		if (!response.ok) {
-			const error = await response.text();
-			throw new Error(
-				`API ${method} ${path} failed: ${response.status} ${response.statusText} - ${error}`
-			);
+			return response.json();
+		} catch (error) {
+			// If fetch itself fails (network error, timeout, etc.)
+			if (error instanceof Error && !error.message.includes('API')) {
+				throw new Error(`Network error calling ${method} ${path}: ${error.message}`);
+			}
+			// Re-throw API errors as-is
+			throw error;
 		}
-
-		return response.json();
 	}
 
 	/**
@@ -284,6 +502,86 @@ export class ChatToolExecutor {
 					);
 					break;
 
+				// ========================================
+				// ONTOLOGY OPERATIONS (onto_* tables)
+				// ========================================
+
+				case 'list_onto_tasks':
+					result = await this.listOntoTasks(args as ListOntoTasksArgs);
+					break;
+
+				case 'list_onto_goals':
+					result = await this.listOntoGoals(args as ListOntoGoalsArgs);
+					break;
+
+				case 'list_onto_plans':
+					result = await this.listOntoPlans(args as ListOntoPlansArgs);
+					break;
+
+				case 'list_onto_projects':
+					result = await this.listOntoProjects(args as ListOntoProjectsArgs);
+					break;
+
+				case 'get_onto_project_details':
+					result = await this.getOntoProjectDetails(args as GetOntoProjectDetailsArgs);
+					break;
+
+				case 'get_onto_task_details':
+					result = await this.getOntoTaskDetails(args as GetOntoTaskDetailsArgs);
+					break;
+
+				case 'get_entity_relationships':
+					result = await this.getEntityRelationships(args as GetEntityRelationshipsArgs);
+					break;
+
+				// ========================================
+				// TEMPLATE & PROJECT CREATION OPERATIONS
+				// ========================================
+
+				case 'list_onto_templates':
+					result = await this.listOntoTemplates(args as ListOntoTemplatesArgs);
+					break;
+
+				case 'create_onto_project':
+					result = await this.createOntoProject(args as CreateOntoProjectArgs);
+					break;
+
+				// ========================================
+				// ONTOLOGY ACTION OPERATIONS (Mutations)
+				// ========================================
+
+				case 'create_onto_task':
+					result = await this.createOntoTask(args as CreateOntoTaskArgs);
+					break;
+
+				case 'create_onto_goal':
+					result = await this.createOntoGoal(args as CreateOntoGoalArgs);
+					break;
+
+				case 'create_onto_plan':
+					result = await this.createOntoPlan(args as CreateOntoPlanArgs);
+					break;
+
+				case 'update_onto_task':
+					result = await this.updateOntoTask(args as UpdateOntoTaskArgs);
+					break;
+
+				case 'update_onto_project':
+					result = await this.updateOntoProject(args as UpdateOntoProjectArgs);
+					break;
+
+				case 'delete_onto_task':
+					result = await this.deleteOntoTask(args as DeleteOntoTaskArgs);
+					break;
+
+				case 'delete_onto_goal':
+					result = await this.deleteOntoGoal(args as DeleteOntoGoalArgs);
+					break;
+
+				case 'delete_onto_plan':
+					result = await this.deleteOntoPlan(args as DeleteOntoPlanArgs);
+					break;
+
 				default:
 					throw new Error(`Unknown tool: ${toolCall.function.name}`);
 			}
@@ -301,29 +599,65 @@ export class ChatToolExecutor {
 			};
 		} catch (error: any) {
 			const duration = Date.now() - startTime;
+			const toolName = toolCall.function.name;
 
 			// Special handling for calendar disconnection
 			if (
 				error.message?.includes('requires reconnection') ||
 				error.code === 'GOOGLE_AUTH_EXPIRED'
 			) {
+				const calendarError =
+					'Calendar connection required. Please reconnect your Google Calendar in settings.';
+
+				await this.logToolExecution(toolCall, null, duration, false, calendarError);
+
 				return {
 					tool_call_id: toolCall.id,
 					result: null,
 					success: false,
-					error: 'Calendar connection required. Please reconnect your Google Calendar in settings.',
+					error: calendarError,
 					requires_user_action: true
 				};
 			}
 
+			// Build context-aware error message
+			let errorMessage = error.message || 'Tool execution failed';
+
+			// Add tool name context if not already present
+			if (!errorMessage.includes(toolName)) {
+				errorMessage = `Tool '${toolName}' failed: ${errorMessage}`;
+			}
+
+			// Add actionable guidance for common errors
+			if (errorMessage.includes('Authentication required') || errorMessage.includes('401')) {
+				errorMessage += ' Please ensure you are logged in.';
+			} else if (errorMessage.includes('not found') || errorMessage.includes('404')) {
+				errorMessage += ' The requested resource does not exist or has been deleted.';
+			} else if (
+				errorMessage.includes('Invalid ProjectSpec') ||
+				errorMessage.includes('400')
+			) {
+				errorMessage +=
+					' Check that all required fields are provided and in the correct format.';
+			} else if (errorMessage.includes('Network error')) {
+				errorMessage += ' Please check your internet connection and try again.';
+			}
+
 			// Log failed execution
-			await this.logToolExecution(toolCall, null, duration, false, error.message);
+			await this.logToolExecution(toolCall, null, duration, false, errorMessage);
+
+			console.error(`[ChatToolExecutor] Tool execution failed:`, {
+				tool: toolName,
+				error: errorMessage,
+				duration_ms: duration,
+				args: toolCall.function.arguments
+			});
 
 			return {
 				tool_call_id: toolCall.id,
 				result: null,
 				success: false,
-				error: error.message || 'Tool execution failed'
+				error: errorMessage
 			};
 		}
 	}
@@ -1529,5 +1863,637 @@ export class ChatToolExecutor {
 		// Look for BuildOS Task ID in description
 		const match = event.description.match(/\[BuildOS Task #([a-f0-9-]+)\]/);
 		return match ? match[1] : undefined;
+	}
+
+	// ========================================
+	// ONTOLOGY OPERATIONS (onto_* tables)
+	// ========================================
+
+	/**
+	 * List tasks from onto_tasks table
+	 */
+	private async listOntoTasks(args: ListOntoTasksArgs): Promise<{
+		tasks: any[];
+		total: number;
+		message: string;
+	}> {
+		let query = this.supabase
+			.from('onto_tasks')
+			.select('id, name, state_key, type_key, description, props', { count: 'exact' });
+
+		// Filter by user_id (CRITICAL: prevents accessing other users' data)
+		query = query.eq('user_id', this.userId);
+
+		// Apply filters
+		if (args.project_id) {
+			// Filter via onto_edges where src_id = project_id and dst_id = task_id
+			const { data: edges } = await this.supabase
+				.from('onto_edges')
+				.select('dst_id')
+				.eq('src_id', args.project_id)
+				.eq('dst_kind', 'task');
+
+			if (edges && edges.length > 0) {
+				const taskIds = edges.map((e) => e.dst_id);
+				query = query.in('id', taskIds);
+			} else {
+				// No tasks found for this project
+				return {
+					tasks: [],
+					total: 0,
+					message: 'No tasks found for this project'
+				};
+			}
+		}
+
+		if (args.state_key) {
+			query = query.eq('state_key', args.state_key);
+		}
+
+		// Limit
+		const limit = Math.min(args.limit || 20, 50);
+		query = query.limit(limit);
+
+		const { data: tasks, count, error } = await query;
+
+		if (error) throw error;
+
+		return {
+			tasks: tasks || [],
+			total: count || 0,
+			message: `Found ${tasks?.length || 0} ontology tasks. Use get_onto_task_details for complete information.`
+		};
+	}
+
+	/**
+	 * List goals from onto_goals table
+	 */
+	private async listOntoGoals(args: ListOntoGoalsArgs): Promise<{
+		goals: any[];
+		total: number;
+		message: string;
+	}> {
+		let query = this.supabase
+			.from('onto_goals')
+			.select('id, name, state_key, type_key, description, props', { count: 'exact' });
+
+		// Filter by user_id
+		query = query.eq('user_id', this.userId);
+
+		// Apply filters
+		if (args.project_id) {
+			const { data: edges } = await this.supabase
+				.from('onto_edges')
+				.select('dst_id')
+				.eq('src_id', args.project_id)
+				.eq('dst_kind', 'goal');
+
+			if (edges && edges.length > 0) {
+				const goalIds = edges.map((e) => e.dst_id);
+				query = query.in('id', goalIds);
+			} else {
+				return {
+					goals: [],
+					total: 0,
+					message: 'No goals found for this project'
+				};
+			}
+		}
+
+		// Limit
+		const limit = Math.min(args.limit || 10, 30);
+		query = query.limit(limit);
+
+		const { data: goals, count, error } = await query;
+
+		if (error) throw error;
+
+		return {
+			goals: goals || [],
+			total: count || 0,
+			message: `Found ${goals?.length || 0} ontology goals.`
+		};
+	}
+
+	/**
+	 * List plans from onto_plans table
+	 */
+	private async listOntoPlans(args: ListOntoPlansArgs): Promise<{
+		plans: any[];
+		total: number;
+		message: string;
+	}> {
+		let query = this.supabase
+			.from('onto_plans')
+			.select('id, name, state_key, type_key, description, props', { count: 'exact' });
+
+		// Filter by user_id
+		query = query.eq('user_id', this.userId);
+
+		// Apply filters
+		if (args.project_id) {
+			const { data: edges } = await this.supabase
+				.from('onto_edges')
+				.select('dst_id')
+				.eq('src_id', args.project_id)
+				.eq('dst_kind', 'plan');
+
+			if (edges && edges.length > 0) {
+				const planIds = edges.map((e) => e.dst_id);
+				query = query.in('id', planIds);
+			} else {
+				return {
+					plans: [],
+					total: 0,
+					message: 'No plans found for this project'
+				};
+			}
+		}
+
+		// Limit
+		const limit = Math.min(args.limit || 10, 20);
+		query = query.limit(limit);
+
+		const { data: plans, count, error } = await query;
+
+		if (error) throw error;
+
+		return {
+			plans: plans || [],
+			total: count || 0,
+			message: `Found ${plans?.length || 0} ontology plans.`
+		};
+	}
+
+	/**
+	 * List projects from onto_projects table
+	 */
+	private async listOntoProjects(args: ListOntoProjectsArgs): Promise<{
+		projects: any[];
+		total: number;
+		message: string;
+	}> {
+		let query = this.supabase
+			.from('onto_projects')
+			.select('id, name, state_key, type_key, description, props', { count: 'exact' });
+
+		// Filter by user_id
+		query = query.eq('user_id', this.userId);
+
+		// Apply filters
+		if (args.state_key) {
+			query = query.eq('state_key', args.state_key);
+		}
+
+		if (args.type_key) {
+			query = query.eq('type_key', args.type_key);
+		}
+
+		// Order by created_at
+		query = query.order('created_at', { ascending: false });
+
+		// Limit
+		const limit = Math.min(args.limit || 10, 30);
+		query = query.limit(limit);
+
+		const { data: projects, count, error } = await query;
+
+		if (error) throw error;
+
+		return {
+			projects: projects || [],
+			total: count || 0,
+			message: `Found ${projects?.length || 0} ontology projects. Use get_onto_project_details for complete information.`
+		};
+	}
+
+	/**
+	 * Get complete details for an ontology project
+	 */
+	private async getOntoProjectDetails(args: GetOntoProjectDetailsArgs): Promise<{
+		project: any;
+		message: string;
+	}> {
+		const { data: project, error } = await this.supabase
+			.from('onto_projects')
+			.select('*')
+			.eq('id', args.project_id)
+			.eq('user_id', this.userId)
+			.single();
+
+		if (error) throw error;
+		if (!project) throw new Error('Ontology project not found');
+
+		return {
+			project,
+			message: 'Complete ontology project details loaded.'
+		};
+	}
+
+	/**
+	 * Get complete details for an ontology task
+	 */
+	private async getOntoTaskDetails(args: GetOntoTaskDetailsArgs): Promise<{
+		task: any;
+		message: string;
+	}> {
+		const { data: task, error } = await this.supabase
+			.from('onto_tasks')
+			.select('*')
+			.eq('id', args.task_id)
+			.eq('user_id', this.userId)
+			.single();
+
+		if (error) throw error;
+		if (!task) throw new Error('Ontology task not found');
+
+		return {
+			task,
+			message: 'Complete ontology task details loaded.'
+		};
+	}
+
+	/**
+	 * Get entity relationships from onto_edges
+	 */
+	private async getEntityRelationships(args: GetEntityRelationshipsArgs): Promise<{
+		relationships: any[];
+		message: string;
+	}> {
+		const direction = args.direction || 'both';
+		let edges: any[] = [];
+
+		if (direction === 'outgoing' || direction === 'both') {
+			const { data: outgoing } = await this.supabase
+				.from('onto_edges')
+				.select('*')
+				.eq('src_id', args.entity_id)
+				.limit(50);
+
+			if (outgoing) {
+				edges.push(
+					...outgoing.map((e) => ({
+						...e,
+						direction: 'outgoing'
+					}))
+				);
+			}
+		}
+
+		if (direction === 'incoming' || direction === 'both') {
+			const { data: incoming } = await this.supabase
+				.from('onto_edges')
+				.select('*')
+				.eq('dst_id', args.entity_id)
+				.limit(50);
+
+			if (incoming) {
+				edges.push(
+					...incoming.map((e) => ({
+						...e,
+						direction: 'incoming'
+					}))
+				);
+			}
+		}
+
+		return {
+			relationships: edges,
+			message: `Found ${edges.length} relationships for entity ${args.entity_id}.`
+		};
+	}
+
+	// ========================================
+	// ONTOLOGY ACTION OPERATIONS (Create/Update/Delete)
+	// ========================================
+
+	/**
+	 * Create a new task in the ontology system
+	 */
+	private async createOntoTask(args: CreateOntoTaskArgs): Promise<{
+		task: any;
+		message: string;
+	}> {
+		const taskData = {
+			project_id: args.project_id,
+			title: args.title,
+			description: args.description || null,
+			type_key: args.type_key || 'task.basic',
+			state_key: args.state_key || 'todo',
+			priority: args.priority || 3,
+			plan_id: args.plan_id || null,
+			due_at: args.due_at || null,
+			props: args.props || {}
+		};
+
+		// Call API endpoint
+		const result = await this.apiRequest('/api/onto/tasks/create', {
+			method: 'POST',
+			body: JSON.stringify(taskData)
+		});
+
+		return {
+			task: result.task,
+			message: `Created ontology task "${result.task.title}" (ID: ${result.task.id})`
+		};
+	}
+
+	/**
+	 * Create a new goal in the ontology system
+	 */
+	private async createOntoGoal(args: CreateOntoGoalArgs): Promise<{
+		goal: any;
+		message: string;
+	}> {
+		const goalData = {
+			project_id: args.project_id,
+			name: args.name,
+			description: args.description || null,
+			type_key: args.type_key || 'goal.basic',
+			props: args.props || {}
+		};
+
+		// Call API endpoint
+		const result = await this.apiRequest('/api/onto/goals/create', {
+			method: 'POST',
+			body: JSON.stringify(goalData)
+		});
+
+		return {
+			goal: result.goal,
+			message: `Created ontology goal "${result.goal.name}" (ID: ${result.goal.id})`
+		};
+	}
+
+	/**
+	 * Create a new plan in the ontology system
+	 */
+	private async createOntoPlan(args: CreateOntoPlanArgs): Promise<{
+		plan: any;
+		message: string;
+	}> {
+		const planData = {
+			project_id: args.project_id,
+			name: args.name,
+			description: args.description || null,
+			type_key: args.type_key || 'plan.basic',
+			state_key: args.state_key || 'draft',
+			props: args.props || {}
+		};
+
+		// Call API endpoint
+		const result = await this.apiRequest('/api/onto/plans/create', {
+			method: 'POST',
+			body: JSON.stringify(planData)
+		});
+
+		return {
+			plan: result.plan,
+			message: `Created ontology plan "${result.plan.name}" (ID: ${result.plan.id})`
+		};
+	}
+
+	/**
+	 * Update an existing task in the ontology system
+	 */
+	private async updateOntoTask(args: UpdateOntoTaskArgs): Promise<{
+		task: any;
+		message: string;
+	}> {
+		const updateData: any = {};
+
+		// Only include fields that were provided
+		if (args.title !== undefined) updateData.title = args.title;
+		if (args.description !== undefined) updateData.description = args.description;
+		if (args.state_key !== undefined) updateData.state_key = args.state_key;
+		if (args.priority !== undefined) updateData.priority = args.priority;
+		if (args.plan_id !== undefined) updateData.plan_id = args.plan_id;
+		if (args.due_at !== undefined) updateData.due_at = args.due_at;
+		if (args.props !== undefined) updateData.props = args.props;
+
+		// Call API endpoint
+		const result = await this.apiRequest(`/api/onto/tasks/${args.task_id}`, {
+			method: 'PATCH',
+			body: JSON.stringify(updateData)
+		});
+
+		// Build descriptive message
+		const updatedFields = Object.keys(updateData);
+		return {
+			task: result.task,
+			message: `Updated ontology task "${result.task.title}" (${updatedFields.join(', ')})`
+		};
+	}
+
+	/**
+	 * Update an existing project in the ontology system
+	 */
+	private async updateOntoProject(args: UpdateOntoProjectArgs): Promise<{
+		project: any;
+		message: string;
+	}> {
+		const updateData: any = {};
+
+		// Only include fields that were provided
+		if (args.name !== undefined) updateData.name = args.name;
+		if (args.description !== undefined) updateData.description = args.description;
+		if (args.state_key !== undefined) updateData.state_key = args.state_key;
+		if (args.props !== undefined) updateData.props = args.props;
+
+		// Call API endpoint
+		const result = await this.apiRequest(`/api/onto/projects/${args.project_id}`, {
+			method: 'PATCH',
+			body: JSON.stringify(updateData)
+		});
+
+		// Build descriptive message
+		const updatedFields = Object.keys(updateData);
+		return {
+			project: result.project,
+			message: `Updated ontology project "${result.project.name}" (${updatedFields.join(', ')})`
+		};
+	}
+
+	/**
+	 * Delete a task from the ontology system
+	 */
+	private async deleteOntoTask(args: DeleteOntoTaskArgs): Promise<{
+		success: boolean;
+		message: string;
+	}> {
+		// Call API endpoint
+		const result = await this.apiRequest(`/api/onto/tasks/${args.task_id}`, {
+			method: 'DELETE'
+		});
+
+		return {
+			success: true,
+			message: result.message || 'Ontology task deleted successfully'
+		};
+	}
+
+	/**
+	 * Delete a goal from the ontology system
+	 */
+	private async deleteOntoGoal(args: DeleteOntoGoalArgs): Promise<{
+		success: boolean;
+		message: string;
+	}> {
+		// Call API endpoint
+		const result = await this.apiRequest(`/api/onto/goals/${args.goal_id}`, {
+			method: 'DELETE'
+		});
+
+		return {
+			success: true,
+			message: result.message || 'Ontology goal deleted successfully'
+		};
+	}
+
+	/**
+	 * Delete a plan from the ontology system
+	 */
+	private async deleteOntoPlan(args: DeleteOntoPlanArgs): Promise<{
+		success: boolean;
+		message: string;
+	}> {
+		// Call API endpoint
+		const result = await this.apiRequest(`/api/onto/plans/${args.plan_id}`, {
+			method: 'DELETE'
+		});
+
+		return {
+			success: true,
+			message: result.message || 'Ontology plan deleted successfully'
+		};
+	}
+
+	// ========================================
+	// TEMPLATE & PROJECT CREATION OPERATIONS
+	// ========================================
+
+	/**
+	 * List and search ontology templates
+	 * Helps the LLM find appropriate templates for project creation
+	 */
+	private async listOntoTemplates(args: ListOntoTemplatesArgs): Promise<{
+		templates: any[];
+		count: number;
+		message: string;
+	}> {
+		// Build query parameters
+		const params = new URLSearchParams();
+
+		if (args.scope) params.append('scope', args.scope);
+		if (args.realm) params.append('realm', args.realm);
+		if (args.search) params.append('search', args.search);
+		if (args.context) params.append('context', args.context);
+		if (args.scale) params.append('scale', args.scale);
+		if (args.stage) params.append('stage', args.stage);
+
+		// Call API endpoint
+		const result = await this.apiRequest(`/api/onto/templates?${params.toString()}`);
+
+		return {
+			templates: result.templates || [],
+			count: result.count || 0,
+			message: `Found ${result.count || 0} templates${args.scope ? ` for ${args.scope}` : ''}${args.realm ? ` in ${args.realm} realm` : ''}.`
+		};
+	}
+
+	/**
+	 * Create a complete project with all related entities
+	 * This is the intelligent project creation tool that accepts a ProjectSpec
+	 */
+	private async createOntoProject(args: CreateOntoProjectArgs): Promise<{
+		project_id: string;
+		counts: {
+			goals?: number;
+			requirements?: number;
+			plans?: number;
+			tasks?: number;
+			outputs?: number;
+			documents?: number;
+			edges?: number;
+		};
+		clarifications?: Array<{
+			key: string;
+			question: string;
+			required: boolean;
+			choices?: string[];
+			help_text?: string;
+		}>;
+		message: string;
+		context_shift?: {
+			new_context: 'project_update';
+			entity_id: string;
+			entity_name: string;
+			entity_type: 'project';
+		};
+	}> {
+		// If clarifications were provided, return them to the user
+		if (args.clarifications && args.clarifications.length > 0) {
+			return {
+				project_id: '', // Empty until user answers
+				counts: {},
+				clarifications: args.clarifications,
+				message: `I need some additional information before creating the project. Please answer the following questions.`
+			};
+		}
+
+		// Prepare the ProjectSpec (API expects only project + entity arrays, NO meta)
+		const projectSpec = {
+			project: args.project,
+			...(args.goals && args.goals.length > 0 && { goals: args.goals }),
+			...(args.requirements &&
+				args.requirements.length > 0 && { requirements: args.requirements }),
+			...(args.plans && args.plans.length > 0 && { plans: args.plans }),
+			...(args.tasks && args.tasks.length > 0 && { tasks: args.tasks }),
+			...(args.outputs && args.outputs.length > 0 && { outputs: args.outputs }),
+			...(args.documents && args.documents.length > 0 && { documents: args.documents })
+			// NOTE: meta is NOT sent to API - it's for LLM guidance only
+		};
+
+		// Call the instantiation API endpoint
+		const result = await this.apiRequest('/api/onto/projects/instantiate', {
+			method: 'POST',
+			body: JSON.stringify(projectSpec)
+		});
+
+		// Build a descriptive summary
+		const counts = result.counts || {};
+		const countSummary: string[] = [];
+
+		if (counts.goals > 0)
+			countSummary.push(`${counts.goals} goal${counts.goals !== 1 ? 's' : ''}`);
+		if (counts.requirements > 0)
+			countSummary.push(
+				`${counts.requirements} requirement${counts.requirements !== 1 ? 's' : ''}`
+			);
+		if (counts.plans > 0)
+			countSummary.push(`${counts.plans} plan${counts.plans !== 1 ? 's' : ''}`);
+		if (counts.tasks > 0)
+			countSummary.push(`${counts.tasks} task${counts.tasks !== 1 ? 's' : ''}`);
+		if (counts.outputs > 0)
+			countSummary.push(`${counts.outputs} output${counts.outputs !== 1 ? 's' : ''}`);
+		if (counts.documents > 0)
+			countSummary.push(`${counts.documents} document${counts.documents !== 1 ? 's' : ''}`);
+
+		const message =
+			`Created project "${args.project.name}" (ID: ${result.project_id})` +
+			(countSummary.length > 0 ? ` with ${countSummary.join(', ')}` : '');
+
+		return {
+			project_id: result.project_id,
+			counts: result.counts,
+			message,
+			// Include context shift metadata to trigger automatic context switch
+			context_shift: {
+				new_context: 'project_update',
+				entity_id: result.project_id,
+				entity_name: args.project.name,
+				entity_type: 'project'
+			}
+		};
 	}
 }

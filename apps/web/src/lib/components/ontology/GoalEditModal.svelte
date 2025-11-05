@@ -406,7 +406,9 @@
 
 								{#if goal.created_at}
 									<div class="flex justify-between">
-										<span class="text-gray-600 dark:text-gray-400">Created:</span>
+										<span class="text-gray-600 dark:text-gray-400"
+											>Created:</span
+										>
 										<span class="text-gray-900 dark:text-white">
 											{new Date(goal.created_at).toLocaleDateString()}
 										</span>
@@ -415,7 +417,9 @@
 
 								{#if goal.updated_at}
 									<div class="flex justify-between">
-										<span class="text-gray-600 dark:text-gray-400">Updated:</span>
+										<span class="text-gray-600 dark:text-gray-400"
+											>Updated:</span
+										>
 										<span class="text-gray-900 dark:text-white">
 											{new Date(goal.updated_at).toLocaleDateString()}
 										</span>
@@ -446,8 +450,8 @@
 							{:else}
 								<div class="space-y-3">
 									<p class="text-sm text-red-700 dark:text-red-300">
-										Are you sure you want to delete this goal? This action cannot be
-										undone.
+										Are you sure you want to delete this goal? This action
+										cannot be undone.
 									</p>
 									<div class="flex gap-2">
 										<Button

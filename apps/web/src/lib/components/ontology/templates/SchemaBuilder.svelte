@@ -524,7 +524,8 @@
 															{value}
 															<button
 																type="button"
-																onclick={() => handleRemoveEnumValue(value)}
+																onclick={() =>
+																	handleRemoveEnumValue(value)}
 																class="hover:text-red-600 dark:hover:text-red-400"
 																title="Remove value"
 																aria-label="Remove {value}"

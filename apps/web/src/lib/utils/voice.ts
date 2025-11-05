@@ -1,4 +1,7 @@
 // apps/web/src/lib/utils/voice.ts
+
+/// <reference types="dom-speech-recognition" />
+
 import { writable, get } from 'svelte/store';
 import { browser } from '$app/environment';
 
@@ -20,6 +23,7 @@ let audioChunks: Blob[] = [];
 let currentStream: MediaStream | null = null;
 let isInitialized = false;
 let runtimeValidationDone = false;
+let isRecognitionStarting = false; // Track if recognition is currently starting/restarting
 
 // Accumulated transcript to preserve speech across SpeechRecognition restarts (e.g., after pauses)
 let accumulatedFinalTranscript = '';
@@ -116,23 +120,29 @@ function initializeSpeechRecognition() {
 	if (!browser || recognition || !capabilitiesCache?.speechRecognition) return;
 
 	try {
-		recognition = new capabilitiesCache.speechRecognition();
-		recognition.continuous = true;
-		recognition.interimResults = true;
-		recognition.lang = 'en-US';
+		// Create new instance and assign to local variable for type safety
+		const newRecognition = new capabilitiesCache.speechRecognition() as SpeechRecognition;
+		newRecognition.continuous = true;
+		newRecognition.interimResults = true;
+		newRecognition.lang = 'en-US';
 
 		// Optimized result handling
-		recognition.onresult = (event: SpeechRecognitionEvent) => {
+		newRecognition.onresult = (event: SpeechRecognitionEvent) => {
 			let newFinalText = '';
 			let interimText = '';
 
 			// Process only new results for better performance
 			for (let i = event.resultIndex; i < event.results.length; i++) {
-				const transcript = event.results[i][0].transcript;
-				if (event.results[i].isFinal) {
-					newFinalText += transcript + ' ';
-				} else {
-					interimText += transcript;
+				const result = event.results[i];
+				const alternative = result?.[0];
+
+				if (result && alternative?.transcript) {
+					const transcript = alternative.transcript;
+					if (result.isFinal) {
+						newFinalText += transcript + ' ';
+					} else {
+						interimText += transcript;
+					}
 				}
 			}
 
@@ -147,7 +157,7 @@ function initializeSpeechRecognition() {
 			liveTranscript.set(combinedText);
 		};
 
-		recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+		newRecognition.onerror = (event: SpeechRecognitionErrorEvent) => {
 			console.warn('[SpeechRecognition] Error:', event.error);
 
 			// Notify UI of capability loss on permission errors
@@ -163,16 +173,29 @@ function initializeSpeechRecognition() {
 			// since MediaRecorder is the primary capture method
 		};
 
-		recognition.onend = () => {
+		newRecognition.onend = () => {
 			// Auto-restart if still recording (improves reliability)
-			if (get(isRecording) && recognition) {
-				try {
-					recognition.start();
-				} catch (error) {
-					console.warn('[SpeechRecognition] Failed to restart:', error);
-				}
+			if (get(isRecording) && recognition && !isRecognitionStarting) {
+				// Add a small delay to ensure recognition is fully stopped before restarting
+				// This prevents race conditions where start() is called while still stopping
+				isRecognitionStarting = true;
+				setTimeout(() => {
+					if (get(isRecording) && recognition) {
+						try {
+							recognition.start();
+						} catch (error) {
+							console.warn('[SpeechRecognition] Failed to restart:', error);
+							isRecognitionStarting = false;
+						}
+					} else {
+						isRecognitionStarting = false;
+					}
+				}, 100); // 100ms delay is enough for the API to settle
 			}
 		};
+
+		// Assign to module-level variable after successful initialization
+		recognition = newRecognition;
 	} catch (error) {
 		console.error('[SpeechRecognition] Initialization failed:', error);
 		recognition = null;
@@ -212,6 +235,7 @@ function cleanupResources() {
 	isRecording.set(false);
 	liveTranscript.set('');
 	accumulatedFinalTranscript = ''; // Reset accumulated transcript
+	isRecognitionStarting = false; // Reset recognition state flag
 }
 
 /* ---------- SAFE PUBLIC API ---------- */
@@ -321,9 +345,15 @@ export async function startRecording(): Promise<void> {
 		// Start speech recognition if available (non-blocking, happens after MediaRecorder starts)
 		if (recognition) {
 			try {
+				isRecognitionStarting = true;
 				recognition.start();
+				// Recognition started successfully, reset the flag after a brief moment
+				setTimeout(() => {
+					isRecognitionStarting = false;
+				}, 50);
 			} catch (error) {
 				console.warn('[SpeechRecognition] Start failed:', error);
+				isRecognitionStarting = false;
 				// Continue with MediaRecorder only
 			}
 		}

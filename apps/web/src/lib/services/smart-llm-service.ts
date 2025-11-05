@@ -25,7 +25,7 @@ export interface ModelProfile {
 	limitations?: string[];
 }
 
-export interface JSONRequestOptions<T> {
+export interface JSONRequestOptions {
 	systemPrompt: string;
 	userPrompt: string;
 	userId: string;
@@ -420,7 +420,6 @@ export class SmartLLMService {
 
 	// Optional: For logging and metrics
 	private supabase?: SupabaseClient<Database>;
-	private userId?: string;
 
 	// Configuration
 	private httpReferer: string;
@@ -559,7 +558,7 @@ export class SmartLLMService {
 	// JSON RESPONSE METHOD
 	// ============================================
 
-	async getJSONResponse<T = any>(options: JSONRequestOptions<T>): Promise<T> {
+	async getJSONResponse<T = any>(options: JSONRequestOptions): Promise<T> {
 		const requestStartedAt = new Date();
 		const startTime = performance.now();
 		const profile = options.profile || 'balanced';
@@ -584,14 +583,14 @@ export class SmartLLMService {
 		// We send all preferred models at once and let OpenRouter handle routing
 		try {
 			const response = await this.callOpenRouter({
-				model: preferredModels[0], // Primary model
+				model: preferredModels[0] || 'openai/gpt-4o-mini', // Primary model with fallback
 				models: preferredModels, // All models for fallback routing
 				messages: [
 					{ role: 'system', content: enhancedSystemPrompt },
 					{ role: 'user', content: options.userPrompt }
 				],
 				temperature: options.temperature || 0.2,
-				response_format: this.supportsJsonMode(preferredModels[0])
+				response_format: this.supportsJsonMode(preferredModels[0] || 'openai/gpt-4o-mini')
 					? { type: 'json_object' }
 					: undefined,
 				max_tokens: 8192,
@@ -599,9 +598,18 @@ export class SmartLLMService {
 				provider: providerPrefs
 			});
 
+			// Guard against malformed response
+			if (!response.choices || response.choices.length === 0) {
+				throw new Error('OpenRouter returned empty choices array');
+			}
+
+			const content = response.choices[0]?.message?.content;
+			if (!content) {
+				throw new Error('OpenRouter returned empty content');
+			}
+
 			// Parse the response
 			let result: T;
-			const content = response.choices[0].message.content;
 			let cleaned = ''; // Declare outside try block for error logging
 
 			try {
@@ -610,15 +618,15 @@ export class SmartLLMService {
 				result = JSON.parse(cleaned) as T;
 			} catch (parseError) {
 				// Log which model actually responded
-				const actualModel = response.model || preferredModels[0];
+				const actualModel = response.model || preferredModels[0] || 'unknown';
 				console.error(`JSON parse error with ${actualModel}:`, parseError);
 
 				// Enhanced error logging with context
 				if (parseError instanceof SyntaxError && parseError.message.includes('position')) {
 					// Extract position from error message (e.g., "at position 1618")
 					const posMatch = parseError.message.match(/position (\d+)/);
-					if (posMatch) {
-						const errorPos = parseInt(posMatch[1]);
+					if (posMatch && posMatch[1]) {
+						const errorPos = parseInt(posMatch[1], 10);
 						const contextStart = Math.max(0, errorPos - 100);
 						const contextEnd = Math.min(cleaned.length, errorPos + 100);
 						console.error(
@@ -638,6 +646,7 @@ export class SmartLLMService {
 						`Retrying with powerful model (attempt ${retryCount}/${maxRetries})`
 					);
 
+					let cleanedRetry = ''; // Declare outside try block for error logging
 					try {
 						// Try again with powerful profile
 						const retryResponse = await this.callOpenRouter({
@@ -653,8 +662,17 @@ export class SmartLLMService {
 							route: 'fallback'
 						});
 
-						const retryContent = retryResponse.choices[0].message.content;
-						const cleanedRetry = this.cleanJSONResponse(retryContent);
+						// Guard against malformed retry response
+						if (!retryResponse.choices || retryResponse.choices.length === 0) {
+							throw new Error('Retry: OpenRouter returned empty choices array');
+						}
+
+						const retryContent = retryResponse.choices[0]?.message?.content;
+						if (!retryContent) {
+							throw new Error('Retry: OpenRouter returned empty content');
+						}
+
+						cleanedRetry = this.cleanJSONResponse(retryContent);
 						result = JSON.parse(cleanedRetry) as T;
 					} catch (retryError) {
 						// If retry also fails, throw original error with context
@@ -672,11 +690,11 @@ export class SmartLLMService {
 								{
 									operation: 'getJSONResponse_retry_parse_failure',
 									errorType: 'llm_json_parse_failure_after_retry',
-									modelRequested: preferredModels[0],
+									modelRequested: preferredModels[0] || 'openai/gpt-4o-mini',
 									retryModel: 'anthropic/claude-3.5-sonnet',
 									retryAttempt: retryCount,
 									maxRetries,
-									responseLength: cleanedRetry?.length || 0
+									responseLength: cleanedRetry.length || 0
 								}
 							);
 						}
@@ -708,7 +726,7 @@ export class SmartLLMService {
 			// Track metrics
 			const duration = performance.now() - startTime;
 			const requestCompletedAt = new Date();
-			const actualModel = response.model || preferredModels[0];
+			const actualModel = response.model || preferredModels[0] || 'openai/gpt-4o-mini';
 			this.trackPerformance(actualModel, duration);
 			this.trackCost(actualModel, response.usage);
 
@@ -733,7 +751,7 @@ export class SmartLLMService {
 			this.logUsageToDatabase({
 				userId: options.userId,
 				operationType: options.operationType || 'other',
-				modelRequested: preferredModels[0],
+				modelRequested: preferredModels[0] || 'openai/gpt-4o-mini',
 				modelUsed: actualModel,
 				provider: response.provider || modelConfig?.provider,
 				promptTokens: response.usage?.prompt_tokens || 0,
@@ -780,7 +798,7 @@ export class SmartLLMService {
 				await this.errorLogger.logAPIError(error, this.apiUrl, 'POST', options.userId, {
 					operation: 'getJSONResponse',
 					errorType: 'llm_api_request_failure',
-					modelRequested: preferredModels[0],
+					modelRequested: preferredModels[0] || 'openai/gpt-4o-mini',
 					profile,
 					complexity,
 					isTimeout: lastError.message.includes('timeout'),
@@ -794,8 +812,8 @@ export class SmartLLMService {
 			this.logUsageToDatabase({
 				userId: options.userId,
 				operationType: options.operationType || 'other',
-				modelRequested: preferredModels[0],
-				modelUsed: preferredModels[0],
+				modelRequested: preferredModels[0] || 'openai/gpt-4o-mini',
+				modelUsed: preferredModels[0] || 'openai/gpt-4o-mini',
 				promptTokens: 0,
 				completionTokens: 0,
 				totalTokens: 0,
@@ -850,7 +868,7 @@ export class SmartLLMService {
 		// Make the OpenRouter API call with model routing
 		try {
 			const response = await this.callOpenRouter({
-				model: preferredModels[0], // Primary model
+				model: preferredModels[0] || 'openai/gpt-4o-mini', // Primary model with fallback
 				models: preferredModels, // All models for fallback routing
 				messages: [
 					{
@@ -868,8 +886,17 @@ export class SmartLLMService {
 				provider: providerPrefs
 			});
 
-			const content = response.choices[0].message.content;
-			const actualModel = response.model || preferredModels[0];
+			// Guard against malformed response
+			if (!response.choices || response.choices.length === 0) {
+				throw new Error('OpenRouter returned empty choices array');
+			}
+
+			const content = response.choices[0]?.message?.content;
+			if (!content) {
+				throw new Error('OpenRouter returned empty content');
+			}
+
+			const actualModel = response.model || preferredModels[0] || 'openai/gpt-4o-mini';
 
 			// Track metrics
 			const duration = performance.now() - startTime;
@@ -898,7 +925,7 @@ export class SmartLLMService {
 			this.logUsageToDatabase({
 				userId: options.userId,
 				operationType: options.operationType || 'other',
-				modelRequested: preferredModels[0],
+				modelRequested: preferredModels[0] || 'openai/gpt-4o-mini',
 				modelUsed: actualModel,
 				provider: response.provider || modelConfig?.provider,
 				promptTokens: response.usage?.prompt_tokens || 0,
@@ -944,7 +971,7 @@ export class SmartLLMService {
 				await this.errorLogger.logAPIError(error, this.apiUrl, 'POST', options.userId, {
 					operation: 'generateText',
 					errorType: 'llm_text_generation_failure',
-					modelRequested: preferredModels[0],
+					modelRequested: preferredModels[0] || 'openai/gpt-4o-mini',
 					profile,
 					estimatedLength,
 					isTimeout: (error as Error).message.includes('timeout'),
@@ -958,8 +985,8 @@ export class SmartLLMService {
 			this.logUsageToDatabase({
 				userId: options.userId,
 				operationType: options.operationType || 'other',
-				modelRequested: preferredModels[0],
-				modelUsed: preferredModels[0],
+				modelRequested: preferredModels[0] || 'openai/gpt-4o-mini',
+				modelUsed: preferredModels[0] || 'openai/gpt-4o-mini',
 				promptTokens: 0,
 				completionTokens: 0,
 				totalTokens: 0,
@@ -1633,7 +1660,7 @@ You must respond with valid JSON only. Follow these rules:
 
 						// Log usage if available
 						if (usage) {
-							const actualModel = preferredModels[0];
+							const actualModel = preferredModels[0] || 'openai/gpt-4o-mini';
 							const modelConfig = TEXT_MODELS[actualModel];
 							const inputCost = modelConfig
 								? ((usage.prompt_tokens || 0) / 1_000_000) * modelConfig.cost
@@ -1647,7 +1674,7 @@ You must respond with valid JSON only. Follow these rules:
 							this.logUsageToDatabase({
 								userId: options.userId,
 								operationType: 'chat_stream',
-								modelRequested: preferredModels[0],
+								modelRequested: preferredModels[0] || 'openai/gpt-4o-mini',
 								modelUsed: actualModel,
 								provider: modelConfig?.provider,
 								promptTokens: usage.prompt_tokens || 0,
@@ -1763,8 +1790,8 @@ You must respond with valid JSON only. Follow these rules:
 			this.logUsageToDatabase({
 				userId: options.userId,
 				operationType: 'chat_stream',
-				modelRequested: preferredModels[0],
-				modelUsed: preferredModels[0],
+				modelRequested: preferredModels[0] || 'openai/gpt-4o-mini',
+				modelUsed: preferredModels[0] || 'openai/gpt-4o-mini',
 				promptTokens: 0,
 				completionTokens: 0,
 				totalTokens: 0,

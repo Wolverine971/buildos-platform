@@ -243,7 +243,12 @@ describe('TemplateValidationService', () => {
 		});
 
 		it('passes when type_key has valid format', async () => {
-			const validKeys = ['task.base', 'creative.writing.novel', 'coach.client', 'developer.app'];
+			const validKeys = [
+				'task.base',
+				'creative.writing.novel',
+				'coach.client',
+				'developer.app'
+			];
 
 			for (const typeKey of validKeys) {
 				const data: TemplateData = {

@@ -272,7 +272,10 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 			.or(`src_id.eq.${params.id},dst_id.eq.${params.id}`);
 
 		// Delete the goal
-		const { error: deleteError } = await supabase.from('onto_goals').delete().eq('id', params.id);
+		const { error: deleteError } = await supabase
+			.from('onto_goals')
+			.delete()
+			.eq('id', params.id);
 
 		if (deleteError) {
 			console.error('Error deleting goal:', deleteError);

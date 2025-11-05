@@ -109,6 +109,7 @@ export interface ExecutorResponse {
 
 export class AgentConversationService {
 	private smartLLM: SmartLLMService;
+	private fetchFn: typeof fetch; // Custom fetch function for API requests
 
 	// Configuration
 	private readonly CONFIG = {
@@ -120,8 +121,11 @@ export class AgentConversationService {
 
 	constructor(
 		private supabase: SupabaseClient<Database>,
-		smartLLM?: SmartLLMService
+		smartLLM?: SmartLLMService,
+		fetchFn?: typeof fetch
 	) {
+		// Store fetch function (use global fetch as fallback)
+		this.fetchFn = fetchFn || fetch;
 		this.smartLLM =
 			smartLLM ||
 			new SmartLLMService({
@@ -432,7 +436,7 @@ export class AgentConversationService {
 
 		// Filter to READ-ONLY tools
 		const readOnlyTools = getToolsForAgent(session.tools, 'read_only');
-		const toolExecutor = new ChatToolExecutor(this.supabase, userId);
+		const toolExecutor = new ChatToolExecutor(this.supabase, userId, undefined, this.fetchFn);
 		toolExecutor.setSessionId(session.parentSessionId); // Use parent user chat session for logging
 
 		// Save prompt for audit

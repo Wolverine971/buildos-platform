@@ -114,7 +114,9 @@ function createMockClient() {
 					}
 
 					if (toDelete.length > 0) {
-						mockTemplates = mockTemplates.filter((t) => !toDelete.find((d) => d.id === t.id));
+						mockTemplates = mockTemplates.filter(
+							(t) => !toDelete.find((d) => d.id === t.id)
+						);
 						return { data: null, error: null };
 					}
 				}
@@ -635,7 +637,10 @@ describe('TemplateCrudService', () => {
 				from: () => ({
 					insert: () => ({
 						select: () => ({
-							single: async () => ({ data: null, error: { message: 'Database error' } })
+							single: async () => ({
+								data: null,
+								error: { message: 'Database error' }
+							})
 						})
 					})
 				})

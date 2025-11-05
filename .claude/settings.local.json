@@ -34,7 +34,8 @@
 			"Bash(mkdir:*)",
 			"Bash(awk:*)",
 			"Bash(npx tsc:*)",
-			"mcp__ide__getDiagnostics"
+			"mcp__ide__getDiagnostics",
+			"Bash(pnpm test:*)"
 		],
 		"deny": [],
 		"ask": []
