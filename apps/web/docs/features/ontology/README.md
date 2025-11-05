@@ -20,6 +20,12 @@
 - **[API Endpoint Reference](./API_ENDPOINTS.md)** - Complete API documentation
 - **[Template Taxonomy](./TEMPLATE_TAXONOMY.md)** - Deliverables and outputs catalog
 
+### Agent Chat Integration
+
+- **[CRUD Tools Implementation](./CRUD_TOOLS_IMPLEMENTATION.md)** ✨ - CREATE/UPDATE/DELETE tools for AI agent (Complete)
+- **[Ontology First Refactoring](./ONTOLOGY_FIRST_REFACTORING.md)** - Tool separation and context-aware selection
+- **[Agent Chat Integration Status](./AGENT_CHAT_ONTOLOGY_INTEGRATION_STATUS.md)** - Complete integration status
+
 ### Development Resources
 
 - **Components**: `/src/lib/components/ontology/` - UI components
@@ -396,8 +402,8 @@ POST /api/onto/projects/instantiate
 ### Short Term (Next 2 Weeks)
 
 - [ ] Add template versioning
-- [ ] Implement PlanEditModal
-- [ ] Implement GoalEditModal
+- [x] ~~Implement PlanEditModal~~ ✅ **DONE** (Nov 4, 2025)
+- [x] ~~Implement GoalEditModal~~ ✅ **DONE** (Nov 4, 2025)
 - [ ] Add bulk operations
 - [ ] Write unit tests
 

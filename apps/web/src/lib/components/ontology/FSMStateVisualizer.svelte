@@ -1,6 +1,6 @@
 <!-- apps/web/src/lib/components/ontology/FSMStateVisualizer.svelte -->
 <script lang="ts">
-	import { createEventDispatcher, onMount } from 'svelte';
+	import { onMount } from 'svelte';
 	import { RefreshCw, AlertTriangle, ShieldCheck } from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 
@@ -21,12 +21,9 @@
 		entityName?: string;
 		initialTransitions?: FSMTransitionDisplay[];
 		confirmBeforeRun?: boolean;
+		onstatechange?: (data: { state: string; actions: string[]; event: string }) => void;
+		onrefresh?: (data: { transitions: FSMTransitionDisplay[] }) => void;
 	}
-
-	const dispatch = createEventDispatcher<{
-		stateChange: { state: string; actions: string[]; event: string };
-		refresh: { transitions: FSMTransitionDisplay[] };
-	}>();
 
 	const {
 		entityId,
@@ -34,7 +31,9 @@
 		currentState,
 		entityName = '',
 		initialTransitions = [],
-		confirmBeforeRun = true
+		confirmBeforeRun = true,
+		onstatechange,
+		onrefresh
 	}: Props = $props();
 
 	let transitions = $state<FSMTransitionDisplay[]>(initialTransitions);
@@ -86,7 +85,7 @@
 			// ✅ FIX: Extract from ApiResponse.data wrapper
 			transitions = (payload.data?.transitions ?? []) as FSMTransitionDisplay[];
 			lastFetchedState = currentState;
-			dispatch('refresh', { transitions });
+			onrefresh?.({ transitions });
 		} catch (err) {
 			console.error('[FSM] Failed to fetch transitions:', err);
 			fetchError = err instanceof Error ? err.message : 'Failed to load transitions';
@@ -132,7 +131,7 @@
 
 			localState = stateAfter;
 			successInfo = { event, to: stateAfter, actions: actionsRun };
-			dispatch('stateChange', { state: stateAfter, actions: actionsRun, event });
+			onstatechange?.({ state: stateAfter, actions: actionsRun, event });
 
 			await refreshTransitions();
 		} catch (err) {

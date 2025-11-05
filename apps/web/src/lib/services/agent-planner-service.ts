@@ -38,6 +38,15 @@ import { ChatCompressionService } from './chat-compression-service';
 import { ChatToolExecutor } from '$lib/chat/tool-executor';
 import { v4 as uuidv4 } from 'uuid';
 import { savePromptForAudit } from '$lib/utils/prompt-audit';
+// Add after existing imports
+import { ChatStrategy } from '$lib/types/agent-chat-enhancement';
+import type {
+	StrategyAnalysis,
+	ResearchResult,
+	EnhancedPlannerContext,
+	LastTurnContext
+} from '$lib/types/agent-chat-enhancement';
+import { ExecutorInstructionGenerator } from './agent-executor-instructions';
 
 // ============================================
 // TYPES
@@ -122,6 +131,8 @@ export interface ProcessMessageParams {
 	contextType: ChatContextType;
 	entityId?: string;
 	conversationHistory?: ChatMessage[];
+	lastTurnContext?: LastTurnContext;
+	ontologyContext?: any; // OntologyContext from agent-chat-enhancement types
 }
 
 // ============================================
@@ -185,7 +196,9 @@ export class AgentPlannerService {
 			message,
 			contextType,
 			entityId,
-			conversationHistory = []
+			conversationHistory = [],
+			lastTurnContext,
+			ontologyContext
 		} = params;
 
 		// Get real user_id from chat_sessions
@@ -195,14 +208,16 @@ export class AgentPlannerService {
 		let plannerAgentId: string | undefined;
 
 		try {
-			// 1. Build planner context
+			// 1. Build planner context (with optional ontology enhancement)
 			const plannerContext = await this.contextService.buildPlannerContext({
 				sessionId,
 				userId,
 				conversationHistory,
 				userMessage: message,
 				contextType,
-				entityId
+				entityId,
+				lastTurnContext,
+				ontologyContext
 			});
 
 			// 2. Create planner agent
@@ -220,44 +235,87 @@ export class AgentPlannerService {
 				);
 			}
 
-			// 3. Analyze message complexity
-			const analysis = await this.analyzeMessageComplexity(
-				message,
-				plannerContext,
-				realUserId
-			);
-			yield { type: 'analysis', analysis };
+			// 3. Check if we have enhanced ontology context
+			const hasOntology =
+				'metadata' in plannerContext &&
+				plannerContext.metadata?.hasOntology &&
+				'ontologyContext' in plannerContext;
 
-			// 4. Route to appropriate strategy
+			if (hasOntology) {
+				// ========================================
+				// NEW: Enhanced Strategy Analysis Flow
+				// ========================================
 
-			switch (analysis.strategy) {
-				case 'direct':
-					// Direct query with tools available - LLM decides if it needs them
-					for await (const event of this.handleToolQuery(
-						message,
-						plannerContext,
-						sessionId,
-						realUserId,
-						plannerAgentId
-					)) {
-						yield event;
-					}
-					break;
+				// 3a. Analyze user intent with ontology awareness
+				const strategyAnalysis = await this.analyzeUserIntent(
+					{message, context: plannerContext, lastTurnContext, userId});
 
-				case 'complex':
-					// Multi-step query - create plan and spawn executors
-					for await (const event of this.handleComplexQuery(
-						message,
-						plannerContext,
-						sessionId,
-						realUserId,
-						plannerAgentId,
-						contextType,
-						entityId
-					)) {
-						yield event;
-					}
-					break;
+				// Yield strategy selection event
+				yield {
+					type: 'strategy_selected' as any,
+					strategy: strategyAnalysis.primary_strategy,
+					confidence: strategyAnalysis.confidence
+				};
+
+				// 3b. Execute strategy
+				// Note: executeStrategy doesn't support streaming yet, so we execute and then yield
+				const researchResult = await this.executeStrategy(
+					strategyAnalysis,
+					plannerContext,
+					message,
+					async (event: any) => {
+						// Note: Can't yield inside callback, events are logged internally
+						// Future enhancement: Make this properly streaming
+					},
+					userId
+				);
+
+				// 3c. Generate final response
+				const finalResponse = await this.generateResponse(researchResult, plannerContext, userId);
+				yield { type: 'text', content: finalResponse };
+			} else {
+				// ========================================
+				// EXISTING: Legacy Complexity Analysis Flow
+				// ========================================
+
+				// 3a. Analyze message complexity (legacy)
+				const analysis = await this.analyzeMessageComplexity(
+					message,
+					plannerContext,
+					realUserId
+				);
+				yield { type: 'analysis', analysis };
+
+				// 3b. Route to appropriate strategy (legacy)
+				switch (analysis.strategy) {
+					case 'direct':
+						// Direct query with tools available - LLM decides if it needs them
+						for await (const event of this.handleToolQuery(
+							message,
+							plannerContext,
+							sessionId,
+							realUserId,
+							plannerAgentId
+						)) {
+							yield event;
+						}
+						break;
+
+					case 'complex':
+						// Multi-step query - create plan and spawn executors
+						for await (const event of this.handleComplexQuery(
+							message,
+							plannerContext,
+							sessionId,
+							realUserId,
+							plannerAgentId,
+							contextType,
+							entityId
+						)) {
+							yield event;
+						}
+						break;
+				}
 			}
 
 			// 5. Mark planner agent as completed
@@ -1502,5 +1560,631 @@ Synthesized response:`;
 			console.error('Failed to update agent chat session:', error);
 			// Don't throw - this is not critical
 		}
+	}
+
+	/**
+	 * Analyze user intent and select strategy
+	 */
+	async analyzeUserIntent({message, context, lastTurnContext, userId}: {
+		message: string,
+		context: EnhancedPlannerContext | PlannerContext,
+		lastTurnContext?: LastTurnContext,
+		userId: string
+	}
+	): Promise<StrategyAnalysis> {
+		console.log('[Planner] Analyzing user intent', {
+			message: message.substring(0, 100),
+			contextType: context.metadata.contextType,
+			hasOntology: 'hasOntology' in context.metadata ? context.metadata.hasOntology : false,
+			hasLastTurn: !!lastTurnContext
+		});
+
+		const systemPrompt = `You are a strategy analyzer for BuildOS chat.
+
+Available strategies:
+1. simple_research: Can be completed with 1-2 tool calls
+   - Direct lookups, lists, simple searches
+   - No coordination needed
+   - Examples: "Show me X project", "List Y tasks"
+
+2. complex_research: Requires multiple steps or coordination
+   - Multi-entity analysis
+   - Aggregation across data sources
+   - May need executor agents
+   - Examples: "Analyze project health", "Generate comprehensive report"
+
+3. ask_clarifying_questions: Ambiguity that research can't resolve
+   - Multiple matches for entity names
+   - Unclear time ranges or scopes
+   - Missing required parameters
+   - ONLY after attempting research first
+
+Context available:
+- Type: ${context.metadata.contextType}
+- Has ontology: ${'hasOntology' in context.metadata ? context.metadata.hasOntology : false}
+- Previous turn: ${lastTurnContext?.summary || 'First message'}
+- Available tools: ${context.availableTools.length}
+- Entities from last turn: ${JSON.stringify(lastTurnContext?.entities || {})}
+
+IMPORTANT:
+- Prefer research strategies over asking questions
+- Only suggest clarifying questions if research cannot resolve the ambiguity
+- Consider the context type when estimating complexity`;
+
+		const analysisPrompt = `Analyze this user message and determine the best strategy:
+
+User message: "${message}"
+
+Previous context: ${lastTurnContext ? `User was ${lastTurnContext.summary}` : 'This is the first message'}
+
+Consider:
+1. How many tools/steps are needed?
+2. Is there ambiguity that research can't resolve?
+3. Does this need coordination across multiple data sources?
+4. Can this be answered with the abbreviated data from LIST tools?
+
+Return a JSON object with:
+{
+  "primary_strategy": "simple_research" | "complex_research" | "ask_clarifying_questions",
+  "confidence": 0.0-1.0,
+  "reasoning": "Brief explanation of why this strategy was chosen",
+  "needs_clarification": boolean,
+  "clarifying_questions": ["question1", "question2"] or null,
+  "estimated_steps": number,
+  "required_tools": ["tool1", "tool2"],
+  "can_complete_directly": boolean
+}`;
+
+		try {
+			const response = await this.smartLLM.generateText({
+				systemPrompt,
+				prompt: analysisPrompt,
+				temperature: 0.3,
+				maxTokens: 500,
+				userId: userId,
+				operationType: 'strategy_analysis'
+			});
+
+			const analysis = JSON.parse(response) as StrategyAnalysis;
+
+			// Validate and normalize
+			return this.validateStrategyAnalysis(analysis);
+		} catch (error) {
+			console.error('[Planner] Failed to analyze intent:', error);
+
+			// Fallback to simple research
+			return {
+				primary_strategy: ChatStrategy.SIMPLE_RESEARCH,
+				confidence: 0.5,
+				reasoning: 'Defaulting to simple research due to analysis error',
+				needs_clarification: false,
+				estimated_steps: 1,
+				required_tools: [],
+				can_complete_directly: true
+			};
+		}
+	}
+
+	/**
+	 * Execute the selected strategy
+	 */
+	async executeStrategy(
+		analysis: StrategyAnalysis,
+		context: EnhancedPlannerContext | PlannerContext,
+		userMessage: string,
+		streamCallback: (event: any) => void,
+		userId: string,
+	): Promise<ResearchResult> {
+		console.log('[Planner] Executing strategy:', {
+			strategy: analysis.primary_strategy,
+			confidence: analysis.confidence,
+			steps: analysis.estimated_steps
+		});
+
+		// Send strategy selection event
+		streamCallback({
+			type: 'strategy_selected',
+			strategy: analysis.primary_strategy,
+			confidence: analysis.confidence
+		});
+
+		switch (analysis.primary_strategy) {
+			case ChatStrategy.SIMPLE_RESEARCH:
+				return await this.executeSimpleResearch(
+					analysis,
+					context,
+					userMessage,
+					streamCallback
+				);
+
+			case ChatStrategy.COMPLEX_RESEARCH:
+				return await this.executeComplexResearch(
+					analysis,
+					context,
+					userMessage,
+					streamCallback,
+					userId
+				);
+
+			case ChatStrategy.ASK_CLARIFYING:
+				return await this.executeClarifyingQuestions(analysis, context, streamCallback);
+
+			default:
+				throw new Error(`Unknown strategy: ${analysis.primary_strategy}`);
+		}
+	}
+
+	/**
+	 * Execute simple research (1-2 tool calls)
+	 */
+	private async executeSimpleResearch(
+		analysis: StrategyAnalysis,
+		context: EnhancedPlannerContext | PlannerContext,
+		userMessage: string,
+		streamCallback: (event: any) => void
+	): Promise<ResearchResult> {
+		console.log('[Planner] Executing simple research with tools:', analysis.required_tools);
+
+		const tools = analysis.required_tools.slice(0, 2); // Max 2 tools
+		const results: any[] = [];
+		const entitiesAccessed: string[] = [];
+		const toolsUsed: string[] = [];
+
+		// Initialize tool executor
+		const toolExecutor = new ChatToolExecutor(this.supabase, context.metadata.sessionId, );
+
+		// Execute tools directly (no executor agent needed)
+		for (const toolName of tools) {
+			streamCallback({
+				type: 'tool_call',
+				tool_call: {
+					function: {
+						name: toolName,
+						arguments: this.generateToolArguments(toolName, userMessage, context)
+					}
+				}
+			});
+
+			try {
+				// Execute tool via tool executor
+				const toolResult = await toolExecutor.executeTool(
+					toolName,
+					this.generateToolArguments(toolName, userMessage, context),
+					context.metadata.sessionId // Use session ID as user context
+				);
+
+				results.push(toolResult);
+				toolsUsed.push(toolName);
+
+				// Extract entity IDs from result
+				const entityIds = this.extractEntityIds(toolResult);
+				entitiesAccessed.push(...entityIds);
+
+				streamCallback({
+					type: 'tool_result',
+					result: {
+						tool: toolName,
+						success: true,
+						preview: this.getResultPreview(toolResult),
+						entity_count: entityIds.length
+					}
+				});
+			} catch (error) {
+				console.error(`[Planner] Tool ${toolName} failed:`, error);
+				streamCallback({
+					type: 'tool_result',
+					result: {
+						tool: toolName,
+						success: false,
+						error: error.message
+					}
+				});
+			}
+		}
+
+		// Check if clarification is needed after research
+		if (analysis.needs_clarification && !this.hasEnoughInfo(results)) {
+			console.log('[Planner] Research incomplete, need clarification');
+			return {
+				strategy_used: ChatStrategy.SIMPLE_RESEARCH,
+				data_found: results,
+				entities_accessed: entitiesAccessed,
+				tools_used: toolsUsed,
+				needs_followup: true,
+				followup_questions: analysis.clarifying_questions,
+				success: true
+			};
+		}
+
+		return {
+			strategy_used: ChatStrategy.SIMPLE_RESEARCH,
+			data_found: results,
+			entities_accessed: entitiesAccessed,
+			tools_used: toolsUsed,
+			needs_followup: false,
+			success: true
+		};
+	}
+
+	/**
+	 * Execute complex research (multi-step with possible executors)
+	 */
+	private async executeComplexResearch(
+		analysis: StrategyAnalysis,
+		context: EnhancedPlannerContext | PlannerContext,
+		userMessage: string,
+		streamCallback: (event: any) => void,
+		userId: string
+	): Promise<ResearchResult> {
+		console.log('[Planner] Executing complex research');
+
+		// Create multi-step plan
+		const plan = await this.createResearchPlan(analysis, context, userMessage);
+
+		streamCallback({
+			type: 'plan_created',
+			plan: {
+				steps: plan.steps.map((s) => ({
+					stepNumber: s.stepNumber,
+					description: s.description,
+					status: 'pending'
+				}))
+			}
+		});
+
+		// Check if we need executors
+		if (plan.steps.some((s) => s.requiresExecutor)) {
+			// Generate just-in-time instructions
+			const instructionGen = new ExecutorInstructionGenerator();
+			const instructions = instructionGen.generateInstructions(
+				plan,
+				context as EnhancedPlannerContext
+			);
+
+			streamCallback({
+				type: 'executor_instructions',
+				instructions
+			});
+
+			// Execute with executors
+			return await this.executeWithExecutors(plan, context, userMessage, streamCallback);
+		}
+
+		// Execute sequentially without executors
+		const results: any[] = [];
+		const entitiesAccessed: string[] = [];
+		const toolsUsed: string[] = [];
+		const toolExecutor = new ChatToolExecutor(this.supabase, userId);
+
+		for (const step of plan.steps) {
+			streamCallback({
+				type: 'step_start',
+				step: {
+					stepNumber: step.stepNumber,
+					description: step.description
+				}
+			});
+
+			// Execute step
+			for (const tool of step.requiredTools) {
+				try {
+					const stepResult = await toolExecutor.executeTool(
+						tool,
+						this.generateToolArguments(tool, userMessage, context),
+						context.metadata.sessionId
+					);
+
+					results.push(stepResult);
+					entitiesAccessed.push(...this.extractEntityIds(stepResult));
+					toolsUsed.push(tool);
+				} catch (error) {
+					console.error(`[Planner] Step ${step.stepNumber} tool ${tool} failed:`, error);
+				}
+			}
+
+			streamCallback({
+				type: 'step_complete',
+				step: {
+					stepNumber: step.stepNumber,
+					success: true
+				}
+			});
+		}
+
+		return {
+			strategy_used: ChatStrategy.COMPLEX_RESEARCH,
+			data_found: results,
+			entities_accessed: entitiesAccessed,
+			tools_used: toolsUsed,
+			needs_followup: false,
+			success: true
+		};
+	}
+
+	/**
+	 * Execute clarifying questions strategy
+	 */
+	private async executeClarifyingQuestions(
+		analysis: StrategyAnalysis,
+		context: EnhancedPlannerContext | PlannerContext,
+		streamCallback: (event: any) => void
+	): Promise<ResearchResult> {
+		console.log('[Planner] Asking clarifying questions');
+
+		const questions = analysis.clarifying_questions || [
+			'Could you provide more specific details about what you are looking for?',
+			'Which project or timeframe are you interested in?'
+		];
+
+		streamCallback({
+			type: 'clarifying_questions',
+			questions
+		});
+
+		return {
+			strategy_used: ChatStrategy.ASK_CLARIFYING,
+			data_found: null,
+			entities_accessed: [],
+			tools_used: [],
+			needs_followup: true,
+			followup_questions: questions,
+			success: true
+		};
+	}
+
+	/**
+	 * Generate response from research results
+	 */
+	async generateResponse(
+		result: ResearchResult,
+		context: EnhancedPlannerContext | PlannerContext,
+		userId: string
+	): Promise<string> {
+		if (!result.success || !result.data_found) {
+			return 'I encountered an issue while researching your request. Please try again.';
+		}
+
+		const systemPrompt = `You are presenting research results to the user.
+Context type: ${context.metadata.contextType}
+Strategy used: ${result.strategy_used}
+Tools used: ${result.tools_used.join(', ')}
+
+Format the response clearly and concisely.
+If abbreviated data was retrieved, mention that more details are available.`;
+
+		const dataPrompt = `Research results:
+${JSON.stringify(result.data_found, null, 2)}
+
+Entities accessed: ${result.entities_accessed.join(', ') || 'none'}
+
+Generate a helpful response that:
+1. Answers the user's question
+2. Mentions if more detailed information is available
+3. References specific entities by name and ID
+4. Is formatted with markdown for readability`;
+
+		const response = await this.smartLLM.generateText({
+			systemPrompt,
+			prompt: dataPrompt,
+			temperature: 0.7,
+			maxTokens: 1000,
+			userId: userId,
+			operationType: 'response_generation'
+		});
+
+		return response;
+	}
+
+	// === Helper Methods ===
+
+	private validateStrategyAnalysis(analysis: any): StrategyAnalysis {
+		// Map string strategies to enum
+		let strategy: ChatStrategy;
+		if (analysis.primary_strategy === 'simple_research') {
+			strategy = ChatStrategy.SIMPLE_RESEARCH;
+		} else if (analysis.primary_strategy === 'complex_research') {
+			strategy = ChatStrategy.COMPLEX_RESEARCH;
+		} else if (
+			analysis.primary_strategy === 'ask_clarifying_questions' ||
+			analysis.primary_strategy === 'clarifying'
+		) {
+			strategy = ChatStrategy.ASK_CLARIFYING;
+		} else {
+			strategy = ChatStrategy.SIMPLE_RESEARCH; // Default
+		}
+
+		return {
+			primary_strategy: strategy,
+			confidence: Math.max(0, Math.min(1, analysis.confidence || 0.5)),
+			reasoning: analysis.reasoning || 'No reasoning provided',
+			needs_clarification: !!analysis.needs_clarification,
+			clarifying_questions: Array.isArray(analysis.clarifying_questions)
+				? analysis.clarifying_questions
+				: undefined,
+			estimated_steps: Math.max(1, analysis.estimated_steps || 1),
+			required_tools: Array.isArray(analysis.required_tools) ? analysis.required_tools : [],
+			can_complete_directly: analysis.can_complete_directly !== false
+		};
+	}
+
+	private generateToolArguments(toolName: string, userMessage: string, context: any): string {
+		// Generate appropriate arguments based on tool name
+		const args: any = {};
+
+		if (toolName.includes('list') || toolName.includes('search')) {
+			if (context.metadata.entityId) {
+				args.project_id = context.metadata.entityId;
+			}
+			if (toolName.includes('search')) {
+				// Extract search terms from user message
+				args.query = userMessage.substring(0, 100);
+			}
+		} else if (toolName.includes('get') && toolName.includes('details')) {
+			// Need specific ID
+			if (context.lastTurnContext?.entities) {
+				const entities = context.lastTurnContext.entities;
+				if (toolName.includes('project') && entities.project_id) {
+					args.id = entities.project_id;
+				} else if (toolName.includes('task') && entities.task_ids?.length) {
+					args.id = entities.task_ids[0];
+				}
+			}
+		}
+
+		return JSON.stringify(args);
+	}
+
+	private extractEntityIds(result: any): string[] {
+		const ids: string[] = [];
+
+		// Extract IDs from various result formats
+		if (Array.isArray(result)) {
+			result.forEach((item) => {
+				if (item?.id) ids.push(item.id);
+			});
+		} else if (result?.data && Array.isArray(result.data)) {
+			result.data.forEach((item) => {
+				if (item?.id) ids.push(item.id);
+			});
+		} else if (result?.id) {
+			ids.push(result.id);
+		}
+
+		// Also check for nested entities
+		if (result?.tasks) {
+			result.tasks.forEach((task) => {
+				if (task?.id) ids.push(task.id);
+			});
+		}
+		if (result?.goals) {
+			result.goals.forEach((goal) => {
+				if (goal?.id) ids.push(goal.id);
+			});
+		}
+
+		return [...new Set(ids)]; // Deduplicate
+	}
+
+	private hasEnoughInfo(results: any[]): boolean {
+		// Check if results contain enough information
+		if (!results || results.length === 0) return false;
+
+		// Check if we have actual data
+		const hasData = results.some((r) => {
+			if (!r) return false;
+			if (Array.isArray(r) && r.length > 0) return true;
+			if (r.data && Array.isArray(r.data) && r.data.length > 0) return true;
+			if (typeof r === 'object' && Object.keys(r).length > 1) return true;
+			return false;
+		});
+
+		return hasData;
+	}
+
+	private getResultPreview(result: any): string {
+		if (Array.isArray(result)) {
+			return `Found ${result.length} items`;
+		} else if (result?.data && Array.isArray(result.data)) {
+			return `Retrieved ${result.data.length} ${result.type || 'items'}`;
+		} else if (result?.id) {
+			return `Retrieved ${result.type || 'entity'} ${result.id}`;
+		}
+		return 'Data retrieved';
+	}
+
+	private async createResearchPlan(
+		analysis: StrategyAnalysis,
+		context: EnhancedPlannerContext | PlannerContext,
+		userMessage: string
+	): Promise<any> {
+		// Create a plan based on analysis
+		const steps = [];
+
+		for (let i = 0; i < analysis.estimated_steps; i++) {
+			const toolsForStep = analysis.required_tools.slice(i * 2, (i + 1) * 2);
+
+			steps.push({
+				stepNumber: i + 1,
+				description: `Execute ${toolsForStep.join(' and ')}`,
+				requiresExecutor: analysis.estimated_steps > 3 && i > 0,
+				requiredTools: toolsForStep,
+				successCriteria: 'Return valid data',
+				requiresProjectContext: context.metadata.entityId != null,
+				requiresHistoricalData: i > 0 // Later steps may need earlier results
+			});
+		}
+
+		return {
+			steps,
+			requiresParallelExecution: analysis.estimated_steps > 3
+		};
+	}
+
+	private async executeWithExecutors(
+		plan: any,
+		context: EnhancedPlannerContext | PlannerContext,
+		userMessage: string,
+		streamCallback: (event: any) => void
+	): Promise<ResearchResult> {
+		// This is where we would spawn actual executor agents
+		// For now, we'll simulate the execution
+		console.log('[Planner] Would spawn executors for plan', plan);
+
+		const executorService = new AgentExecutorService(this.supabase, this.smartLLM);
+		const results = [];
+		const entitiesAccessed = [];
+		const toolsUsed = [];
+
+		for (const step of plan.steps.filter((s) => s.requiresExecutor)) {
+			streamCallback({
+				type: 'executor_spawned',
+				task: {
+					description: step.description
+				}
+			});
+
+			// Create executor task
+			const task = {
+				description: step.description,
+				tools: step.requiredTools,
+				context: {
+					projectId: context.metadata.entityId,
+					userMessage
+				}
+			};
+
+			// Execute (simplified)
+			try {
+				const result = await executorService.executeTask(
+					task,
+					step.requiredTools,
+					context.metadata.sessionId
+				);
+
+				results.push(result);
+				if (result.entitiesAccessed) {
+					entitiesAccessed.push(...result.entitiesAccessed);
+				}
+				toolsUsed.push(...step.requiredTools);
+
+				streamCallback({
+					type: 'executor_result',
+					result: {
+						success: result.success
+					}
+				});
+			} catch (error) {
+				console.error('[Planner] Executor failed:', error);
+			}
+		}
+
+		return {
+			strategy_used: ChatStrategy.COMPLEX_RESEARCH,
+			data_found: results,
+			entities_accessed: entitiesAccessed,
+			tools_used: toolsUsed,
+			needs_followup: false,
+			success: true
+		};
 	}
 }

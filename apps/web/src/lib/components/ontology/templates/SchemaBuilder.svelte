@@ -227,7 +227,7 @@
 		</div>
 	</CardHeader>
 
-	<CardBody padding="none">
+	<CardBody padding="sm">
 		<div class="flex h-[600px]">
 			<!-- Properties List -->
 			<div
@@ -337,13 +337,21 @@
 											{prop.type}
 										</div>
 									</div>
-									<button
-										type="button"
+									<div
+										role="button"
+										tabindex="0"
 										onclick={(e) => {
 											e.stopPropagation();
 											handleToggleRequired(propName);
 										}}
-										class="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
+										onkeydown={(e) => {
+											if (e.key === 'Enter' || e.key === ' ') {
+												e.preventDefault();
+												e.stopPropagation();
+												handleToggleRequired(propName);
+											}
+										}}
+										class="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600 cursor-pointer"
 										title={`${(workingSchema.required || []).includes(propName) ? 'Remove from' : 'Mark as'} required`}
 									>
 										<svg
@@ -365,7 +373,7 @@
 												d="M5 13l4 4L19 7"
 											/>
 										</svg>
-									</button>
+									</div>
 								</div>
 							</button>
 						{:else}
@@ -504,7 +512,7 @@
 									<FormField
 										label="Enum Values (Optional)"
 										labelFor="prop-enum"
-										helpText="Restrict to specific allowed values"
+										hint="Restrict to specific allowed values"
 									>
 										<div class="space-y-2">
 											{#if enumValues.length > 0}
@@ -519,6 +527,7 @@
 																onclick={() => handleRemoveEnumValue(value)}
 																class="hover:text-red-600 dark:hover:text-red-400"
 																title="Remove value"
+																aria-label="Remove {value}"
 															>
 																<svg
 																	class="w-3 h-3"

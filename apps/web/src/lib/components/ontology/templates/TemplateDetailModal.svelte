@@ -1,6 +1,6 @@
 <!-- apps/web/src/lib/components/ontology/templates/TemplateDetailModal.svelte -->
 <script lang="ts">
-	import { createEventDispatcher, onMount } from 'svelte';
+	import { onMount } from 'svelte';
 	import type { ResolvedTemplate } from '$lib/services/ontology/template-resolver.service';
 
 	type TemplateSummary = {
@@ -19,16 +19,21 @@
 		error?: string | null;
 		template: ResolvedTemplate | null;
 		children?: TemplateSummary[];
-		onClose?: () => void;
+		onclose?: () => void;
+		oncreateproject?: (data: { template: ResolvedTemplate }) => void;
+		onselecttemplate?: (data: { typeKey: string; scope: string }) => void;
 	}
 
-	const dispatch = createEventDispatcher<{
-		close: void;
-		createProject: { template: ResolvedTemplate };
-		selectTemplate: { typeKey: string; scope: string };
-	}>();
-
-	let { open, loading, error = null, template = null, children = [], onClose }: Props = $props();
+	let {
+		open,
+		loading,
+		error = null,
+		template = null,
+		children = [],
+		onclose,
+		oncreateproject,
+		onselecttemplate
+	}: Props = $props();
 
 	let dialogRef = $state<HTMLDivElement | undefined>(undefined);
 
@@ -39,8 +44,7 @@
 	}
 
 	function close() {
-		onClose?.();
-		dispatch('close');
+		onclose?.();
 	}
 
 	function handleEsc(event: KeyboardEvent) {
@@ -79,7 +83,7 @@
 	);
 
 	function selectChild(child: TemplateSummary) {
-		dispatch('selectTemplate', { typeKey: child.type_key, scope: child.scope });
+		onselecttemplate?.({ typeKey: child.type_key, scope: child.scope });
 	}
 </script>
 
@@ -525,7 +529,7 @@
 						<button
 							type="button"
 							class="px-4 py-2 rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 text-white text-sm font-semibold shadow-sm hover:from-blue-500 hover:to-purple-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-400 dark:focus:ring-offset-gray-900 transition-all"
-							onclick={() => dispatch('createProject', { template })}
+							onclick={() => oncreateproject?.({ template })}
 						>
 							Create Project
 						</button>

@@ -6,8 +6,8 @@ import {
 	type Facets,
 	type ProjectSpec
 } from '$lib/types/onto';
+import { Json } from '@buildos/shared-types';
 import type { TypedSupabaseClient } from '@buildos/supabase-client';
-import type { Json } from '@buildos/shared-types/database.types';
 
 type InstantiationCounts = {
 	goals: number;

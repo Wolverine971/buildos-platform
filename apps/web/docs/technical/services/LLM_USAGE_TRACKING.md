@@ -87,6 +87,7 @@ Use these standard operation types for consistency:
 - `project_synthesis` - Project synthesis
 - `email_generation` - Email generation
 - `question_generation` - Question generation
+- `output_generation` - AI-generated content for outputs (articles, chapters, blog posts, etc.)
 - `embedding` - Embedding generation
 - `other` - Default fallback
 
@@ -315,6 +316,34 @@ const tasks = await llmService.getJSONResponse({
 	projectId: project.id,
 	brainDumpId: brainDump.id
 });
+```
+
+### Track Output Generation
+
+```typescript
+// In /api/onto/outputs/generate/+server.ts
+const smartLLM = new SmartLLMService({
+	supabase: locals.supabase,
+	httpReferer: 'https://build-os.com',
+	appName: 'BuildOS Output Generator'
+});
+
+const content = await smartLLM.generateText({
+	prompt: generationPrompt,
+	userId: user.id,
+	profile: 'quality', // Uses high-quality models
+	systemPrompt: 'You are a professional content writer...',
+	temperature: 0.7,
+	maxTokens: 4000,
+	operationType: 'output_generation', // Tracked as output generation
+	projectId: project_id // Attribution to project
+});
+
+// This will automatically log:
+// - Model used (e.g., Claude 3.5 Sonnet, GPT-4o)
+// - Token usage and costs
+// - Response time
+// - Project attribution
 ```
 
 ### Display Usage to User

@@ -1,6 +1,5 @@
 <!-- apps/web/src/lib/components/ontology/templates/TemplateForm.svelte -->
 <script lang="ts">
-	import { createEventDispatcher } from 'svelte';
 	import Card from '$lib/components/ui/Card.svelte';
 	import CardHeader from '$lib/components/ui/CardHeader.svelte';
 	import CardBody from '$lib/components/ui/CardBody.svelte';
@@ -9,13 +8,6 @@
 	import Select from '$lib/components/ui/Select.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import type { Template } from '$lib/types/onto';
-
-	interface Props {
-		mode?: 'create' | 'edit';
-		initialData?: Partial<Template>;
-		availableParents?: Array<{ id: string; name: string; type_key: string }>;
-		loading?: boolean;
-	}
 
 	interface TemplateFormData {
 		name: string;
@@ -26,17 +18,23 @@
 		is_abstract: boolean;
 	}
 
+	interface Props {
+		mode?: 'create' | 'edit';
+		initialData?: Partial<Template>;
+		availableParents?: Array<{ id: string; name: string; type_key: string }>;
+		loading?: boolean;
+		onsubmit?: (data: TemplateFormData) => void;
+		oncancel?: () => void;
+	}
+
 	let {
 		mode = 'create',
 		initialData = {},
 		availableParents = [],
-		loading = false
+		loading = false,
+		onsubmit,
+		oncancel
 	}: Props = $props();
-
-	const dispatch = createEventDispatcher<{
-		submit: TemplateFormData;
-		cancel: void;
-	}>();
 
 	// Form state using Svelte 5 runes
 	let name = $state(initialData.name || '');
@@ -118,11 +116,11 @@
 			is_abstract: isAbstract
 		};
 
-		dispatch('submit', formData);
+		onsubmit?.(formData);
 	}
 
 	function handleCancel() {
-		dispatch('cancel');
+		oncancel?.();
 	}
 
 	// Auto-generate type_key from name
