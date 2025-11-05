@@ -1,4 +1,62 @@
 <!-- apps/web/src/lib/components/ui/FormModal.svelte -->
+<!--
+	FormModal Component
+
+	High-level form-specialized modal built on top of Modal.svelte:
+	- Automatic form generation from config
+	- Built-in validation and error handling
+	- 9+ field types (text, textarea, select, date, tags, etc.)
+	- Loading states and button management
+	- Deep cloning to prevent data mutations
+	- Mobile-responsive button layout
+
+	Documentation:
+	- 📖 Modal Documentation Hub: /apps/web/docs/technical/components/modals/README.md
+	- 🚀 Quick Reference Guide: /apps/web/docs/technical/components/modals/QUICK_REFERENCE.md
+	- 🎨 Visual Diagrams: /apps/web/docs/technical/components/modals/VISUAL_GUIDE.md
+	- 🔬 Technical Analysis: /apps/web/docs/technical/components/modals/TECHNICAL_ANALYSIS.md
+	- 📚 Form Types: /apps/web/src/lib/types/form.ts
+
+	Field Types Supported:
+	- text: Single-line text input
+	- textarea: Multi-line text (with optional markdown support)
+	- select: Dropdown selection
+	- date: Date picker
+	- datetime: Date and time picker
+	- number: Numeric input
+	- tags: Comma-separated tags
+	- checkbox: Boolean toggle
+	- radio: Radio button group
+
+	Props:
+	- title: string - Modal title
+	- config: FormConfig - Field configuration object
+	- initialData?: Record<string, any> - Initial form values
+	- onSubmit: (data) => Promise<{success, error?}> - Submit handler
+	- onCancel?: () => void - Cancel handler
+	- onDelete?: () => Promise<void> - Delete handler
+	- submitLabel?: string - Submit button text
+	- cancelLabel?: string - Cancel button text
+	- deleteLabel?: string - Delete button text
+	- isOpen?: boolean - Control visibility
+	- loading?: boolean - Loading state
+	- error?: string - Error message
+	- hideForm?: boolean - Hide form (for custom content)
+
+	Slots:
+	- header - Custom header content
+	- before-form - Content before form fields
+	- after-form - Content after fields, before buttons
+	- default - Replace entire form content
+
+	Usage Examples:
+	- Ontology Modals: /apps/web/src/lib/components/ontology/*CreateModal.svelte
+	- Quick Reference: /apps/web/docs/technical/components/modals/QUICK_REFERENCE.md
+
+	Related:
+	- Base Modal: /apps/web/src/lib/components/ui/Modal.svelte
+	- Form Config Type: /apps/web/src/lib/types/form.ts
+-->
 <script lang="ts">
 	import {
 		AlertCircle,

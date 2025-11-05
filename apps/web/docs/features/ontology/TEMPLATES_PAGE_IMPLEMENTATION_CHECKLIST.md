@@ -3,8 +3,8 @@
 **Feature:** `/ontology/templates`
 **Spec:** See `TEMPLATES_PAGE_SPEC.md`
 **Date:** 2025-11-03
-**Status:** Phase 1A Complete - Ready for Testing
-**Last Updated:** 2025-11-03
+**Status:** Phase 1A Complete + Template Creation Placeholder Implemented
+**Last Updated:** 2025-11-04
 
 ## ✅ Implementation Status
 
@@ -23,11 +23,44 @@
 - Template detail modal (not yet started)
 - Advanced features (not yet started)
 
+**Template Creation Placeholder** - ✅ **COMPLETE (2025-11-04)**
+
+- Created `/ontology/templates/new` route with professional "Coming Soon" page
+- Provides context about Phase 2 roadmap
+- Links to alternative (Ontology Graph admin tool)
+- Uses proper BuildOS design patterns (responsive, dark mode, Card components)
+- Admin-only access with authentication checks
+
 ---
 
-## 🐛 Bugs Found and Fixed (2025-11-03)
+## 🐛 Bugs Found and Fixed
 
 During implementation and code review, the following issues were identified and resolved:
+
+### 2025-11-04: Template Creation Button Navigation Failure
+
+**Error:** "New Template" button navigated to non-existent `/ontology/templates/new` route, causing 404 error for admin users.
+
+**Root Cause:** Button was implemented in Phase 1A UI, but actual template creation functionality is deferred to Phase 2. This created a broken user flow.
+
+**Fix:** Created professional "Coming Soon" placeholder page at `/ontology/templates/new` that:
+
+- Explains Phase 2 development status
+- Lists upcoming features (guided creation, FSM editor, schema builder)
+- Provides alternative link to Ontology Graph admin tool
+- Uses BuildOS design patterns (Card, Button, proper responsive design, dark mode)
+- Includes admin authentication checks
+
+**Files Created:**
+
+- `/apps/web/src/routes/ontology/templates/new/+page.server.ts` - Server-side auth and data loading
+- `/apps/web/src/routes/ontology/templates/new/+page.svelte` - Professional placeholder UI
+
+**Impact:** Admin users now see a polished "coming soon" page instead of 404 error. Sets proper expectations and provides context about roadmap.
+
+---
+
+### 2025-11-03: Initial Implementation Bugs
 
 ### 1. JSON Parsing Error in Server Load Function
 
@@ -488,8 +521,8 @@ apps/web/src/routes/ontology/templates/
 ✅ apps/web/src/routes/ontology/templates/
    ├── ✅ +page.server.ts
    ├── ✅ +page.svelte
-   ├── ⬜ new/+page.server.ts (Phase 2)
-   ├── ⬜ new/+page.svelte (Phase 2)
+   ├── ✅ new/+page.server.ts (Placeholder - 2025-11-04)
+   ├── ✅ new/+page.svelte (Placeholder - 2025-11-04)
    └── ⬜ [id]/
        ├── ⬜ +page.server.ts (Phase 2)
        ├── ⬜ +page.svelte (Phase 2)

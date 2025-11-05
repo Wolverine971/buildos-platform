@@ -1,5 +1,5 @@
 // Lightweight database schema - auto-generated from database.types.ts
-// Generated on: 2025-11-04T18:02:49.892Z
+// Generated on: 2025-11-05T00:02:52.375Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -911,27 +911,6 @@ export type DatabaseSchema = {
 		props: Json;
 		rationale: string | null;
 		title: string;
-	};
-	onto_deliverable_versions: {
-		created_at: string;
-		created_by: string;
-		deliverable_id: string;
-		id: string;
-		number: number;
-		props: Json;
-		storage_uri: string;
-	};
-	onto_deliverables: {
-		created_at: string;
-		created_by: string;
-		facet_stage: string | null;
-		id: string;
-		name: string;
-		project_id: string;
-		props: Json;
-		state_key: string;
-		type_key: string;
-		updated_at: string;
 	};
 	onto_document_versions: {
 		created_at: string;
@@ -1941,8 +1920,6 @@ export const tableNames = [
 	'onto_actors',
 	'onto_assignments',
 	'onto_decisions',
-	'onto_deliverable_versions',
-	'onto_deliverables',
 	'onto_document_versions',
 	'onto_documents',
 	'onto_edges',

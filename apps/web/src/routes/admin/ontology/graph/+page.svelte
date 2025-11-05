@@ -52,7 +52,7 @@
 		</button>
 
 		<div class="flex h-[calc(100vh-12rem)] gap-4 mt-6">
-				<aside class={controlsClass}>
+			<aside class={controlsClass}>
 				<GraphControls bind:viewMode {graphInstance} stats={data.stats} />
 			</aside>
 

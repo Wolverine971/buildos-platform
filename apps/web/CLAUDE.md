@@ -19,7 +19,26 @@ All technical documentation is organized under `/docs/`:
 - `/docs/user-guide/` - End user documentation
 - `/docs/archive/` - Archived/outdated documentation
 
-### Feature-Specific Documentation (Root Level)
+### Feature-Specific Documentation
+
+#### 🧭 Quick Navigation
+
+- **[NAVIGATION INDEX](/apps/web/docs/NAVIGATION_INDEX.md)** - Complete guide to finding any documentation quickly
+
+#### Major Features
+
+- **[Ontology System](/apps/web/docs/features/ontology/README.md)** - Template-driven entity management system
+    - **[Data Models](/apps/web/docs/features/ontology/DATA_MODELS.md)** - Complete database schema (31KB, 15 tables)
+    - **[Implementation Summary](/apps/web/docs/features/ontology/IMPLEMENTATION_SUMMARY.md)** - CRUD operations status
+    - Components: `/src/lib/components/ontology/`
+    - API Endpoints: `/src/routes/api/onto/`
+    - **Key Features:** Tasks, Plans, Goals, Documents, FSM state machines, template inheritance
+
+- **[Modal Components](/apps/web/docs/technical/components/modals/README.md)** - Comprehensive modal system
+    - **[Quick Reference](/apps/web/docs/technical/components/modals/QUICK_REFERENCE.md)** - Usage cheatsheet
+    - **[Visual Guide](/apps/web/docs/technical/components/modals/VISUAL_GUIDE.md)** - Diagrams & layouts
+    - **[Technical Analysis](/apps/web/docs/technical/components/modals/TECHNICAL_ANALYSIS.md)** - Deep dive
+    - Components: `/src/lib/components/ui/Modal.svelte`, `/src/lib/components/ui/FormModal.svelte`
 
 - **[Notification System](../../NOTIFICATION_SYSTEM_DOCS_MAP.md)** - Generic stackable notification system
     - **[Documentation Map](../../NOTIFICATION_SYSTEM_DOCS_MAP.md)** - START HERE - Complete guide to all docs

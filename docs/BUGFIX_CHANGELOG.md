@@ -17,6 +17,185 @@ Each entry includes:
 
 ---
 
+## 2025-11-04 - Ontology Templates: Implemented "New Template" Placeholder Page
+
+**Severity**: Medium (broken navigation, poor UX)
+
+**Root Cause**:
+
+The "New Template" button on `/ontology/templates` navigated to `/ontology/templates/new`, but this route didn't exist. The button was implemented as part of Phase 1A (basic browse functionality), but the actual template creation feature is deferred to Phase 2 according to the implementation roadmap.
+
+This created a broken user experience where admin users clicking "New Template" would encounter a 404 error page.
+
+**Impact**:
+
+Admin users attempting to create new templates received a 404 error instead of a clear explanation or alternative. This made the platform feel incomplete and unprofessional, and provided no context about when the feature would be available or what alternatives existed.
+
+**Fix Description**:
+
+Created a professional "Coming Soon" placeholder page at `/ontology/templates/new` that provides a polished interim experience:
+
+1. **Clear Status Communication**: Explains that template creation is Phase 2 work currently in development
+2. **Feature Preview**: Lists upcoming capabilities (guided creation, visual FSM editor, JSON schema builder, validation tools)
+3. **Alternative Path**: Provides link to existing Ontology Graph admin tool as a temporary alternative
+4. **Proper Auth**: Implements admin-only access with authentication checks
+5. **BuildOS Design Standards**: Uses Card components, responsive design, dark mode support, and proper styling
+
+**Implementation Details**:
+
+Created two new files:
+
+```typescript
+// +page.server.ts - Authentication and admin checks
+export const load: PageServerLoad = async ({ locals }) => {
+	const { user } = await locals.safeGetSession();
+	if (!user) throw redirect(302, '/auth/login');
+	if (!user.is_admin) throw redirect(302, '/ontology/templates');
+	return { user };
+};
+```
+
+The Svelte page provides:
+
+- Informative header with back navigation
+- Feature status card with "Coming Soon" indicator
+- List of planned Phase 2 features with checkmarks
+- Alternative action (View Ontology Graph)
+- Links to documentation and existing templates
+- Full responsive design with dark mode support
+
+**Files Changed** (2 files created):
+
+- `/apps/web/src/routes/ontology/templates/new/+page.server.ts` - Server-side auth and data loading
+- `/apps/web/src/routes/ontology/templates/new/+page.svelte` - Professional placeholder UI
+
+**Related Docs**:
+
+- `/apps/web/docs/features/ontology/TEMPLATES_PAGE_IMPLEMENTATION_CHECKLIST.md` - Updated with fix details
+- `/apps/web/docs/features/ontology/TEMPLATES_PAGE_SPEC.md` - Original specification with Phase 2 roadmap
+
+**Cross-references**:
+
+- Template browse page: `/apps/web/src/routes/ontology/templates/+page.svelte:199` (New Template button)
+- Ontology Graph alternative: `/apps/web/src/routes/admin/ontology/graph/+page.svelte`
+- Phase 2 will replace this placeholder with full creation UI
+
+**Manual Verification Steps**:
+
+1. As admin user, navigate to `/ontology/templates`
+2. Click "New Template" button in header
+3. Verify placeholder page loads with proper styling
+4. Verify "Coming Soon" message displays clearly
+5. Click "View Ontology Graph" - should navigate to `/admin/ontology/graph`
+6. Click "Back to Templates" - should return to browse page
+7. Test on mobile - verify responsive design works
+8. Toggle dark mode - verify proper contrast and styling
+9. As non-admin user, try accessing `/ontology/templates/new` directly - should redirect to `/ontology/templates`
+
+**Design Decision**:
+
+This placeholder approach was chosen over alternatives because it:
+
+- ✅ Maintains feature discoverability (button stays visible)
+- ✅ Sets proper user expectations (explains it's coming)
+- ✅ Provides professional UX (polished page, not error)
+- ✅ Offers alternatives (links to graph tool)
+- ✅ Easy to replace (swap page when Phase 2 ships)
+
+Alternatives rejected:
+
+- ❌ Hiding button: Removes discoverability
+- ❌ Modal popup: Adds state complexity
+- ❌ Leaving 404: Unprofessional
+- ❌ Implementing full feature: Wrong scope/timing
+
+---
+
+## 2025-11-04 - Ontology Templates Page: Fixed Server Crash on API Error Responses
+
+**Severity**: High (server crash, user-facing error)
+
+**Root Cause**:
+
+The ontology templates page server (`/ontology/templates/+page.server.ts`) incorrectly destructured the API response without checking whether it was a success or error response.
+
+The API endpoint (`/api/onto/templates`) uses `ApiResponse.success()` and `ApiResponse.error()` which return different response structures:
+
+- Success: `{ success: true, data: { templates, grouped, count } }`
+- Error: `{ error: string, code?: string, details?: any }`
+
+The page server assumed `templates` and `grouped` existed at the top level:
+
+```typescript
+const { templates, grouped } = await response.json();
+```
+
+When the API returned an error response, `templates` was `undefined`, causing the subsequent `.reduce()` call to crash:
+
+```
+Cannot read properties of undefined (reading 'reduce')
+```
+
+**Impact**:
+
+Any user visiting `/ontology/templates` when the API encountered an error (authentication failure, database error, service issues) would see a server error instead of a proper error page. This affected all users and prevented graceful error handling.
+
+**Fix Description**:
+
+Added proper error handling to detect and handle both success and error response formats:
+
+1. **Parse response once**: Store JSON response in `responseData` variable
+2. **Check for error responses**: Detect `error` property and throw SvelteKit error with message
+3. **Extract from data property**: For success responses, extract from `responseData.data`
+4. **Validate data structure**: Ensure `templates` exists and is an array before calling `.reduce()`
+
+```typescript
+// After fix:
+const responseData = await response.json();
+
+// Handle API error responses (ApiResponse.error format)
+if ('error' in responseData) {
+	console.error('[Ontology Templates] API error:', responseData.error);
+	throw error(500, responseData.error || 'Failed to fetch templates');
+}
+
+// Extract data from successful ApiResponse.success format
+const { templates, grouped } = responseData.data || {};
+
+// Validate that we got the expected data structure
+if (!templates || !Array.isArray(templates)) {
+	console.error('[Ontology Templates] Invalid response structure:', responseData);
+	throw error(500, 'Invalid response from templates API');
+}
+```
+
+**Files Changed** (1 file):
+
+- `/apps/web/src/routes/ontology/templates/+page.server.ts` - Added error response handling
+
+**Related Docs**:
+
+- `/apps/web/docs/features/ontology/TEMPLATES_PAGE_SPEC.md` - Templates page specification
+- `/apps/web/CLAUDE.md` - Documents `ApiResponse` pattern usage
+- `/apps/web/src/lib/utils/api-response.ts` - Response wrapper implementation
+
+**Cross-references**:
+
+- API endpoint: `/apps/web/src/routes/api/onto/templates/+server.ts:112-122`
+- Similar pattern needed in: `/apps/web/src/routes/ontology/create/+page.server.ts` (potential issue)
+
+**Manual Verification Steps**:
+
+1. Visit `/ontology/templates` with valid authentication - should load normally
+2. Test error scenarios:
+    - Invalid authentication (expired session)
+    - Database connection issues
+    - Invalid query parameters
+3. Verify error messages are displayed properly instead of server crashes
+4. Check browser console and server logs for proper error logging
+
+---
+
 ## 2025-11-04 - Supabase Client Architecture: Removed Admin Client from User-Facing Endpoints
 
 **Severity**: High (security risk, architectural violation)
@@ -26,6 +205,7 @@ Each entry includes:
 Incorrect use of `createAdminSupabaseClient` in user-facing API endpoints and services throughout the ontology system. The admin client bypasses Row Level Security (RLS) policies, exposing a security vulnerability where user operations could access data outside their permissions.
 
 Pattern violations found:
+
 - 12 ontology API endpoints in `/api/onto/*` were creating admin clients for user operations
 - 2 ontology services were instantiating their own Supabase clients instead of receiving them as parameters
 - 9 FSM (Finite State Machine) engine and action files lacked dependency injection
@@ -35,10 +215,12 @@ Pattern violations found:
 **Impact**:
 
 Security risks:
+
 - RLS policies bypassed for user operations, potentially allowing unauthorized data access
 - User requests executed with admin privileges instead of user-scoped permissions
 
 Architectural issues:
+
 - Violation of dependency injection principles (services creating their own clients)
 - Multiple client instantiations in a single request path (performance overhead)
 - Inconsistent patterns across the codebase (confusion for developers)
@@ -49,47 +231,51 @@ Architectural issues:
 Comprehensive architectural refactoring to enforce proper client usage patterns:
 
 1. **API Endpoints Pattern**: Changed all user-facing endpoints to use `locals.supabase` instead of `createAdminSupabaseClient`
-   ```typescript
-   // Before:
-   const client = createAdminSupabaseClient();
 
-   // After:
-   const supabase = locals.supabase; // RLS-enabled, user-scoped
-   ```
+    ```typescript
+    // Before:
+    const client = createAdminSupabaseClient();
+
+    // After:
+    const supabase = locals.supabase; // RLS-enabled, user-scoped
+    ```
 
 2. **Service Pattern**: Updated all ontology services to accept Supabase client as parameter
-   ```typescript
-   // Before:
-   export async function instantiateProject(spec: ProjectSpec, userId: string)
 
-   // After:
-   export async function instantiateProject(
-     client: TypedSupabaseClient,
-     spec: ProjectSpec,
-     userId: string
-   )
-   ```
+    ```typescript
+    // Before:
+    export async function instantiateProject(spec: ProjectSpec, userId: string);
+
+    // After:
+    export async function instantiateProject(
+    	client: TypedSupabaseClient,
+    	spec: ProjectSpec,
+    	userId: string
+    );
+    ```
 
 3. **FSM Engine Pattern**: Updated FSM engine and all action executors to accept optional client with fallback
-   ```typescript
-   // FSM actions now support both patterns:
-   export async function executeNotifyAction(
-     action: FSMAction,
-     entity: EntityContext,
-     ctx: TransitionContext,
-     clientParam?: TypedSupabaseClient
-   ): Promise<string> {
-     // Fallback to admin client for background jobs
-     const client = clientParam ?? createAdminSupabaseClient();
-     // ...
-   }
-   ```
+
+    ```typescript
+    // FSM actions now support both patterns:
+    export async function executeNotifyAction(
+    	action: FSMAction,
+    	entity: EntityContext,
+    	ctx: TransitionContext,
+    	clientParam?: TypedSupabaseClient
+    ): Promise<string> {
+    	// Fallback to admin client for background jobs
+    	const client = clientParam ?? createAdminSupabaseClient();
+    	// ...
+    }
+    ```
 
 4. **Page Servers Pattern**: Updated helper functions to accept client parameter
 
 **Files Changed** (26 files):
 
 API Endpoints (12 files):
+
 - `/apps/web/src/routes/api/onto/projects/+server.ts`
 - `/apps/web/src/routes/api/onto/projects/[id]/+server.ts`
 - `/apps/web/src/routes/api/onto/projects/instantiate/+server.ts`
@@ -102,19 +288,22 @@ API Endpoints (12 files):
 - `/apps/web/src/routes/api/onto/fsm/transitions/+server.ts`
 
 Page Servers (2 files):
+
 - `/apps/web/src/routes/ontology/create/+page.server.ts`
 - `/apps/web/src/routes/ontology/projects/[id]/+page.server.ts`
 
 Ontology Services (2 files):
+
 - `/apps/web/src/lib/services/ontology/template-resolver.service.ts`
-  - Updated `resolveTemplateWithClient()` signature
-  - Updated `getAvailableTemplates()` signature
-  - Updated `getTextDocumentTemplates()` signature
-  - Updated `validateTemplateForInstantiation()` signature
+    - Updated `resolveTemplateWithClient()` signature
+    - Updated `getAvailableTemplates()` signature
+    - Updated `getTextDocumentTemplates()` signature
+    - Updated `validateTemplateForInstantiation()` signature
 - `/apps/web/src/lib/services/ontology/instantiation.service.ts`
-  - Updated `instantiateProject()` signature to accept client as first parameter
+    - Updated `instantiateProject()` signature to accept client as first parameter
 
 FSM Engine & Actions (9 files):
+
 - `/apps/web/src/lib/server/fsm/engine.ts` - Updated `runTransition()` to accept and pass client
 - `/apps/web/src/lib/server/fsm/actions/notify.ts`
 - `/apps/web/src/lib/server/fsm/actions/email-user.ts`
@@ -126,16 +315,19 @@ FSM Engine & Actions (9 files):
 - `/apps/web/src/lib/server/fsm/actions/run-llm-critique.ts`
 
 Additional Fixes:
+
 - `/apps/web/src/routes/api/onto/projects/+server.ts` - Fixed `ProjectRow` type to match schema (`props: Record<string, unknown> | null`)
 
 **Benefits**:
 
 Security improvements:
+
 - ✅ RLS policies now properly enforced for all user operations
 - ✅ User operations execute with appropriate user-scoped permissions
 - ✅ Admin client only used where truly needed (webhooks, cron jobs, background workers)
 
 Architectural improvements:
+
 - ✅ Proper dependency injection pattern throughout service layer
 - ✅ Single Supabase client instance per request (performance improvement)
 - ✅ Consistent pattern across all API endpoints
@@ -143,6 +335,7 @@ Architectural improvements:
 - ✅ Clearer separation of concerns (endpoints pass clients to services)
 
 Code quality:
+
 - ✅ All 26 files refactored successfully
 - ✅ Type checking passes without errors (`pnpm typecheck`)
 - ✅ Follows BuildOS conventions from `/apps/web/CLAUDE.md`
@@ -162,6 +355,7 @@ Code quality:
 **Admin Client Usage Preserved**:
 
 The following files correctly continue to use `createAdminSupabaseClient` as they perform system-level operations:
+
 - Webhook handlers (require admin privileges for external system events)
 - Cron job handlers (background tasks not associated with a user request)
 - FSM background actions (when called without user context)

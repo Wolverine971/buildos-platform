@@ -144,6 +144,12 @@
 			"exports": ["AgentConversationService"]
 		},
 		{
+			"file": "src/lib/services/agent-executor-instructions.ts",
+			"type": "service",
+			"components": [],
+			"exports": ["ExecutorInstructionGenerator"]
+		},
+		{
 			"file": "src/lib/services/agent-executor-service.ts",
 			"type": "service",
 			"components": [],
@@ -354,6 +360,12 @@
 			"type": "service",
 			"components": [],
 			"exports": ["OnboardingProgressService"]
+		},
+		{
+			"file": "src/lib/services/ontology-context-loader.ts",
+			"type": "service",
+			"components": [],
+			"exports": ["OntologyContextLoader"]
 		},
 		{
 			"file": "src/lib/services/phase-generation-notification.bridge.ts",

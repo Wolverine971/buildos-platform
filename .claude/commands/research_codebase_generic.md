@@ -1,235 +1,250 @@
-# Research Codebase
+# Research Codebase - BuildOS Platform
 
-You are tasked with conducting comprehensive research across the codebase to answer user questions by spawning parallel sub-agents and synthesizing their findings.
+You are conducting targeted research in the BuildOS codebase to answer specific questions by efficiently exploring the monorepo structure.
 
-## Initial Setup:
+## Initial Response
 
-When this command is invoked, respond with:
+When invoked, respond with:
 
 ```
-I'm ready to research the codebase. Please provide your research question or area of interest, and I'll analyze it thoroughly by exploring relevant components and connections.
+🔍 BuildOS Codebase Researcher
+
+I'll analyze the codebase to answer your question. I can research:
+- Feature implementations and patterns
+- Architecture and system design
+- Component relationships and data flow
+- Historical decisions and context
+
+What would you like me to research?
 ```
 
-Then wait for the user's research query.
+## Research Process
 
-## Steps to follow after receiving the research query:
+### Phase 1: Query Analysis & Planning
 
-1. **Read any directly mentioned files first:**
-    - If the user mentions specific files (tickets, docs, JSON), read them FULLY first
-    - **IMPORTANT**: Use the Read tool WITHOUT limit/offset parameters to read entire files
-    - **CRITICAL**: Read these files yourself in the main context before spawning any sub-tasks
-    - This ensures you have full context before decomposing the research
+1. **Parse the research question** - Identify scope (web/worker/shared/all)
+2. **Read any mentioned files FIRST** (full reads, no limit/offset)
+3. **Check relevant navigation docs**:
+    - `/apps/web/docs/NAVIGATION_INDEX.md` for web app structure
+    - `/docs/README.md` for system-wide navigation
+    - `/docs/TASK_INDEX.md` for task-based lookup
 
-2. **Analyze and decompose the research question:**
-    - Break down the user's query into composable research areas
-    - Take time to ultrathink about the underlying patterns, connections, and architectural implications the user might be seeking
-    - Identify specific components, patterns, or concepts to investigate
-    - Create a research plan using TodoWrite to track all subtasks
-    - Consider which directories, files, or architectural patterns are relevant
+4. **Create research plan** with TodoWrite:
+    ```
+    - [ ] Check documentation for [topic]
+    - [ ] Search codebase for [patterns]
+    - [ ] Analyze [component] relationships
+    - [ ] Review thoughts/ for historical context
+    - [ ] Synthesize findings
+    ```
 
-3. **Spawn parallel sub-agent tasks for comprehensive research:**
-    - Create multiple Task agents to research different aspects concurrently
+### Phase 2: Parallel Investigation
 
-    The key is to use these agents intelligently:
-    - Start with locator agents to find what exists
-    - Then use analyzer agents on the most promising findings
-    - Run multiple agents in parallel when they're searching for different things
-    - Each agent knows its job - just tell it what you're looking for
-    - Don't write detailed prompts about HOW to search - the agents already know
+Spawn focused sub-agents for different aspects:
 
-4. **Wait for all sub-agents to complete and synthesize findings:**
-    - IMPORTANT: Wait for ALL sub-agent tasks to complete before proceeding
-    - Compile all sub-agent results (both codebase and thoughts findings)
-    - Prioritize live codebase findings as primary source of truth
-    - Use thoughts/ findings as supplementary historical context
-    - Connect findings across different components
-    - Include specific file paths and line numbers for reference
-    - Verify all thoughts/ paths are correct (e.g., thoughts/allison/ not thoughts/shared/ for personal files)
-    - Highlight patterns, connections, and architectural decisions
-    - Answer the user's specific questions with concrete evidence
+```markdown
+## Sub-Agent Tasks
 
-5. **Gather metadata for the research document:**
-    - generate all relevant metadata
-    - Filename: `thoughts/shared/research/YYYY-MM-DD_HH-MM-SS_topic.md`
-    - **CRITICAL**: Research documents MUST be saved in `/thoughts/shared/research/` with proper timestamps
-    - NEVER save research documents at the project root or in other locations
+**Task 1: Documentation Scanner**
 
-6. **Generate research document:**
-    - Use the metadata gathered in step 5
-    - Structure the document with YAML frontmatter followed by content:
+- Search /apps/web/docs/features/ for [feature]
+- Check /docs/architecture/ for design decisions
+- Look for ADRs in /docs/architecture/decisions/
 
-        ```markdown
-        ---
-        date: [Current date and time with timezone in ISO format]
-        researcher: [Researcher name]
-        git_commit: [Current commit hash]
-        branch: [Current branch name]
-        repository: [Repository name]
-        topic: "[User's Question/Topic]"
-        tags: [research, codebase, relevant-component-names]
-        status: complete
-        last_updated: [Current date in YYYY-MM-DD format]
-        last_updated_by: [Researcher name]
-        ---
+**Task 2: Code Pattern Finder**
 
-        # Research: [User's Question/Topic]
+- Find all [pattern] usage in /apps/web/src/
+- Locate [service] implementations
+- Identify Svelte 5 component patterns
 
-        **Date**: [Current date and time with timezone from step 4]
-        **Researcher**: [Researcher name]
-        **Git Commit**: [Current commit hash from step 4]
-        **Branch**: [Current branch name from step 4]
-        **Repository**: [Repository name]
+**Task 3: Data Model Analyzer**
 
-        ## Research Question
+- Review relevant tables in database.schema.ts
+- Find RPC functions if needed
+- Trace data relationships
 
-        [Original user query]
+**Task 4: Historical Context**
 
-        ## Summary
+- Search thoughts/shared/ for past decisions
+- Check thoughts/shared/research/ for related research
+- Look for implementation notes
+```
 
-        [High-level findings answering the user's question]
+### Phase 3: BuildOS-Specific Research Areas
 
-        ## Detailed Findings
+**For UI/Component Research:**
 
-        ### [Component/Area 1]
+- Component patterns in `/apps/web/src/lib/components/`
+- Route structures in `/apps/web/src/routes/`
+- Style guide compliance
+- Svelte 5 runes usage patterns
+- Dark mode and responsive implementations
 
-        - Finding with reference ([file.ext:line](link))
-        - Connection to other components
-        - Implementation details
+**For API/Backend Research:**
 
-        ### [Component/Area 2]
+- API routes in `/apps/web/src/routes/*/+server.ts`
+- Service patterns in `/apps/web/src/lib/services/`
+- Supabase integration patterns
+- ApiResponse usage patterns
 
-        ...
+**For Worker/Queue Research:**
 
-        ## Code References
+- Job implementations in `/apps/worker/src/jobs/`
+- Queue configuration in `/apps/worker/src/queues/`
+- Scheduler patterns
+- BullMQ usage patterns
 
-        - `path/to/file.py:123` - Description of what's there
-        - `another/file.ts:45-67` - Description of the code block
+**For Architecture Research:**
 
-        ## Architecture Insights
+- Monorepo structure and dependencies
+- Package relationships in `/packages/`
+- Deployment topology
+- Environment configuration
 
-        [Patterns, conventions, and design decisions discovered]
+### Phase 4: Synthesis & Documentation
 
-        ## Historical Context (from thoughts/)
+Create comprehensive research document:
 
-        [Relevant insights from thoughts/ directory with references]
+````markdown
+---
+date: [ISO format with timezone]
+researcher: Claude
+repository: buildos-platform
+topic: '[Research Question]'
+tags: [research, buildos, relevant-features]
+status: complete
+---
 
-        - `thoughts/shared/something.md` - Historical decision about X
-        - `thoughts/local/notes.md` - Past exploration of Y
-          Note: Paths exclude "searchable/" even if found there
+# Research: [Topic]
 
-        ## Related Research
+## Executive Summary
 
-        [Links to other research documents in thoughts/shared/research/]
+[2-3 sentence answer to the research question]
 
-        ## Open Questions
+## Research Question
 
-        [Any areas that need further investigation]
-        ```
+[Original query]
 
-7. **Add GitHub permalinks (if applicable):**
-    - Check if on main branch or if commit is pushed: `git branch --show-current` and `git status`
-    - If on main/master or pushed, generate GitHub permalinks:
-        - Get repo info: `gh repo view --json owner,name`
-        - Create permalinks: `https://github.com/{owner}/{repo}/blob/{commit}/{file}#L{line}`
-    - Replace local file references with permalinks in the document
+## Key Findings
 
-8. **Sync and present findings:**
-    - Present a concise summary of findings to the user
-    - Include key file references for easy navigation
-    - Ask if they have follow-up questions or need clarification
+### Finding 1: [Component/Pattern Name]
 
-9. **Handle follow-up questions:**
-    - If the user has follow-up questions, append to the same research document
-    - Update the frontmatter fields `last_updated` and `last_updated_by` to reflect the update
-    - Add `last_updated_note: "Added follow-up research for [brief description]"` to frontmatter
-    - Add a new section: `## Follow-up Research [timestamp]`
-    - Spawn new sub-agents as needed for additional investigation
-    - Continue updating the document and syncing
+**Location**: `apps/web/src/[path]`
 
-## Important notes:
+**Implementation Details**:
 
-- Always use parallel Task agents to maximize efficiency and minimize context usage
-- Always run fresh codebase research - never rely solely on existing research documents
-- The thoughts/ directory provides historical context to supplement live findings
-- Focus on finding concrete file paths and line numbers for developer reference
-- Research documents should be self-contained with all necessary context
-- Each sub-agent prompt should be specific and focused on read-only operations
-- Consider cross-component connections and architectural patterns
-- Include temporal context (when the research was conducted)
-- Link to GitHub when possible for permanent references
-- Keep the main agent focused on synthesis, not deep file reading
-- Encourage sub-agents to find examples and usage patterns, not just definitions
-- Explore all of thoughts/ directory, not just research subdirectory
-- **File reading**: Always read mentioned files FULLY (no limit/offset) before spawning sub-tasks
-- **Critical ordering**: Follow the numbered steps exactly
-    - ALWAYS read mentioned files first before spawning sub-tasks (step 1)
-    - ALWAYS wait for all sub-agents to complete before synthesizing (step 4)
-    - ALWAYS gather metadata before writing the document (step 5 before step 6)
-    - NEVER write the research document with placeholder values
-- **Path handling**: The thoughts/searchable/ directory contains hard links for searching
-    - Always document paths by removing ONLY "searchable/" - preserve all other subdirectories
-    - Examples of correct transformations:
-        - `thoughts/searchable/allison/old_stuff/notes.md` → `thoughts/allison/old_stuff/notes.md`
-        - `thoughts/searchable/shared/prs/123.md` → `thoughts/shared/prs/123.md`
-        - `thoughts/searchable/global/shared/templates.md` → `thoughts/global/shared/templates.md`
-    - NEVER change allison/ to shared/ or vice versa - preserve the exact directory structure
-    - This ensures paths are correct for editing and navigation
-- **Frontmatter consistency**:
-    - Always include frontmatter at the beginning of research documents
-    - Keep frontmatter fields consistent across all research documents
-    - Update frontmatter when adding follow-up research
-    - Use snake_case for multi-word field names (e.g., `last_updated`, `git_commit`)
-    - Tags should be relevant to the research topic and components studied
+- Uses Svelte 5 runes pattern with $state and $derived
+- Implements dark mode with dark: prefixes
+- Follows ApiResponse pattern for endpoints
 
-## Document Organization Guidelines
+**Code Example**:
 
-### Where to Save Different Document Types
+```typescript
+// Relevant code snippet
+```
+````
 
-**Research Documents (Always in `/thoughts/shared/research/`):**
+**Related Components**:
 
-- All codebase research with timestamped filenames: `YYYY-MM-DD_HH-MM-SS_topic.md`
-- Planning and exploration documents
-- Meta-documentation (documentation about documentation)
-- Feature ideas and brainstorming
-- Investigation results and analysis
+- `[Component A]` - [relationship]
+- `[Service B]` - [how it connects]
 
-**Implementation/Progress Documents (In appropriate feature docs):**
+### Finding 2: [Architecture Decision]
 
-- Implementation summaries → `/apps/web/docs/features/[feature]/implementation/`
-- Progress checklists → `/apps/web/docs/features/[feature]/implementation/`
-- Phase completion docs → `/apps/web/docs/features/[feature]/implementation/`
-- Environment setup guides → `/apps/web/docs/features/[feature]/implementation/`
+**Documentation**: `/docs/architecture/decisions/ADR-XXX.md`
 
-**Specifications (In feature docs):**
+**Rationale**: [Why this approach was chosen]
 
-- Feature specifications → `/apps/web/docs/features/[feature]/`
-- API documentation → `/apps/web/docs/technical/api/`
-- Architecture decisions → `/docs/architecture/decisions/`
+**Impact**: [How this affects the system]
 
-**NEVER:**
+## BuildOS-Specific Patterns Found
 
-- Save documents at the project root (except CLAUDE.md, README.md, CHANGELOG.md)
-- Create random markdown files outside the established structure
-- Save research documents in feature directories (use `/thoughts/shared/research/` instead)
+### Pattern: [Name]
 
-### Examples of Proper Organization
+- **Where Used**: [List of locations]
+- **Purpose**: [Why this pattern exists]
+- **Example**: [Code or reference]
 
-**Good:**
+## Data Model Insights
 
-- `/thoughts/shared/research/2025-10-06_06-00-00_notification-system-research.md` ✅
-- `/apps/web/docs/features/notifications/implementation/PHASE1_IMPLEMENTATION_SUMMARY.md` ✅
-- `/apps/web/docs/features/brain-dump/README.md` ✅
+**Relevant Tables**:
 
-**Bad:**
+- `projects` - [purpose and key fields]
+- `tasks` - [relationships]
 
-- `/NOTIFICATION_RESEARCH.md` ❌ (should be in thoughts/shared/research/ with timestamp)
-- `/apps/web/docs/features/notifications/2025-10-06_research.md` ❌ (research goes in thoughts/)
-- `/random-notes.md` ❌ (no random files at root)
+**Key Relationships**:
+[Diagram or description of data flow]
 
-### When Creating New Documents
+## Historical Context
 
-1. **Ask yourself**: Is this research/exploration or implementation tracking?
-2. **Research/Exploration** → `/thoughts/shared/research/YYYY-MM-DD_HH-MM-SS_topic.md`
-3. **Implementation/Progress** → `/apps/web/docs/features/[feature]/implementation/`
-4. **Specification** → `/apps/web/docs/features/[feature]/`
-5. **Always use proper timestamps** for research documents (YYYY-MM-DD_HH-MM-SS format)
+From `thoughts/shared/[path]`:
+
+- [Relevant historical decision or note]
+
+## Recommendations
+
+Based on this research:
+
+1. [Actionable insight 1]
+2. [Actionable insight 2]
+
+## Related Research
+
+- `/thoughts/shared/research/[previous-research].md`
+
+## File References
+
+Critical files for this topic:
+
+- `apps/web/src/[specific-file-1]` - [what it does]
+- `apps/web/src/[specific-file-2]` - [what it does]
+- `/apps/web/docs/features/[feature]/` - [documentation]
+
+````
+
+Save to: `/thoughts/shared/research/YYYY-MM-DD_HH-MM-SS_[topic-slug].md`
+
+### Phase 5: Follow-up Support
+
+After presenting findings:
+
+```markdown
+## Research Complete
+
+I've documented the findings in:
+`/thoughts/shared/research/[timestamp]_[topic].md`
+
+**Key Insights**:
+1. [Most important finding]
+2. [Second key finding]
+
+**Relevant Files** to explore further:
+- [Path 1] - [Why relevant]
+- [Path 2] - [Why relevant]
+
+Would you like me to:
+- Dive deeper into any specific area?
+- Research related components?
+- Create an implementation plan based on these findings?
+````
+
+## Research Efficiency Tips
+
+1. **Use parallel sub-agents** for different aspects to minimize context usage
+2. **Start with documentation** - often faster than code diving
+3. **Check thoughts/shared/research/** for existing related research
+4. **Focus on patterns over individual files** when possible
+5. **Reference the style guide** for UI/UX questions
+
+## Quick Reference for BuildOS Research
+
+| Research Area | Primary Sources                                              |
+| ------------- | ------------------------------------------------------------ |
+| UI Patterns   | `/apps/web/docs/technical/components/BUILDOS_STYLE_GUIDE.md` |
+| API Design    | `/apps/web/docs/technical/api/`                              |
+| Features      | `/apps/web/docs/features/[feature]/`                         |
+| Architecture  | `/docs/architecture/diagrams/`                               |
+| Database      | `/packages/shared-types/src/database.schema.ts`              |
+| Worker Jobs   | `/apps/worker/docs/features/`                                |
+| Historical    | `/thoughts/shared/`                                          |
+| Past Research | `/thoughts/shared/research/`                                 |

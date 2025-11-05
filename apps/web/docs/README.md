@@ -1,10 +1,14 @@
 # Web App Documentation
 
+## 🧭 Quick Navigation
+
+**📍 NEW: [NAVIGATION INDEX](./NAVIGATION_INDEX.md)** - Complete guide to finding any documentation quickly
+
 ## 🌐 Deployment Target: Vercel
 
 This is **web app-specific** documentation (`/apps/web`).
 
-**For worker docs**, see `/apps/worker/docs/`  
+**For worker docs**, see `/apps/worker/docs/`
 **For shared concerns**, see `/docs/`
 
 ## What This App Does

@@ -1,4 +1,43 @@
 <!-- apps/web/src/lib/components/ui/Modal.svelte -->
+<!--
+	Base Modal Component
+
+	Provides foundational modal functionality for BuildOS:
+	- Focus trap with Tab/Shift+Tab cycling
+	- Keyboard handling (Escape to close)
+	- Responsive animations (mobile slide-up, desktop scale)
+	- Accessibility features (ARIA attributes)
+	- Portal-based rendering (outside DOM tree)
+
+	Documentation:
+	- 📖 Modal Documentation Hub: /apps/web/docs/technical/components/modals/README.md
+	- 🚀 Quick Reference Guide: /apps/web/docs/technical/components/modals/QUICK_REFERENCE.md
+	- 🎨 Visual Diagrams: /apps/web/docs/technical/components/modals/VISUAL_GUIDE.md
+	- 🔬 Technical Analysis: /apps/web/docs/technical/components/modals/TECHNICAL_ANALYSIS.md
+	- 🎯 BuildOS Style Guide: /apps/web/docs/technical/components/BUILDOS_STYLE_GUIDE.md
+
+	Props:
+	- isOpen: boolean - Controls visibility
+	- onClose: () => void - Close callback
+	- title?: string - Header title
+	- size?: 'sm' | 'md' | 'lg' | 'xl' - Modal width
+	- showCloseButton?: boolean - Show X button
+	- closeOnBackdrop?: boolean - Click outside to close
+	- closeOnEscape?: boolean - Escape key to close
+	- persistent?: boolean - Disable auto-close behaviors
+	- customClasses?: string - Additional CSS classes
+	- ariaLabel?: string - Accessibility label
+	- ariaDescribedBy?: string - Accessibility description
+
+	Slots:
+	- header - Custom header content
+	- default - Main content
+	- footer - Footer actions
+
+	Related Components:
+	- FormModal: /apps/web/src/lib/components/ui/FormModal.svelte
+	- Usage Examples: /apps/web/src/lib/components/ontology/*Modal.svelte
+-->
 <script lang="ts">
 	import { X } from 'lucide-svelte';
 	import { fade, scale } from 'svelte/transition';

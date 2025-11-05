@@ -166,25 +166,25 @@ export class OntologyGraphService {
 		return edges
 			.filter((edge) => edge.src_id && edge.dst_id && edge.src_id !== edge.dst_id)
 			.map((edge) => {
-			const weight =
-				typeof edge.props === 'object' &&
-				edge.props !== null &&
-				'weight' in edge.props &&
-				typeof (edge.props as Record<string, unknown>).weight === 'number'
-					? Number((edge.props as Record<string, unknown>).weight)
-					: undefined;
+				const weight =
+					typeof edge.props === 'object' &&
+					edge.props !== null &&
+					'weight' in edge.props &&
+					typeof (edge.props as Record<string, unknown>).weight === 'number'
+						? Number((edge.props as Record<string, unknown>).weight)
+						: undefined;
 
-			return {
-				data: {
-					id: edge.id,
-					source: edge.src_id,
-					target: edge.dst_id,
-					label: edge.rel,
-					relationship: edge.rel,
-					strength: weight
-				}
-			};
-		});
+				return {
+					data: {
+						id: edge.id,
+						source: edge.src_id,
+						target: edge.dst_id,
+						label: edge.rel,
+						relationship: edge.rel,
+						strength: weight
+					}
+				};
+			});
 	}
 
 	/**

@@ -32,6 +32,7 @@ buildos-platform/
 
 | When You Want To...               | Start Here                                                  |
 | --------------------------------- | ----------------------------------------------------------- |
+| **Find web app documentation** ⭐ | `/apps/web/docs/NAVIGATION_INDEX.md` (complete navigation)  |
 | **Understand the system**         | `/docs/README.md` (navigation hub)                          |
 | **See web-worker communication**  | `/docs/architecture/diagrams/WEB-WORKER-ARCHITECTURE.md` ⭐ |
 | **See architecture & deployment** | `/docs/DEPLOYMENT_TOPOLOGY.md`                              |
@@ -52,13 +53,15 @@ buildos-platform/
 
 ### Feature Documentation
 
-| Feature               | Documentation Path                              |
-| --------------------- | ----------------------------------------------- |
-| Brain Dump System     | `/apps/web/docs/features/brain-dump/`           |
-| Calendar Integration  | `/apps/web/docs/features/calendar-integration/` |
-| Notification System   | `/apps/web/docs/features/notifications/`        |
-| Onboarding Flow       | `/apps/web/docs/features/onboarding/`           |
-| Daily Briefs (Worker) | `/apps/worker/docs/features/daily-briefs/`      |
+| Feature                 | Documentation Path                              |
+| ----------------------- | ----------------------------------------------- |
+| **Ontology System** ⭐  | `/apps/web/docs/features/ontology/`             |
+| Brain Dump System       | `/apps/web/docs/features/brain-dump/`           |
+| Calendar Integration    | `/apps/web/docs/features/calendar-integration/` |
+| Notification System     | `/apps/web/docs/features/notifications/`        |
+| Onboarding Flow         | `/apps/web/docs/features/onboarding/`           |
+| Daily Briefs (Worker)   | `/apps/worker/docs/features/daily-briefs/`      |
+| **Modal Components** ⭐ | `/apps/web/docs/technical/components/modals/`   |
 
 ### Architecture & Deployment
 

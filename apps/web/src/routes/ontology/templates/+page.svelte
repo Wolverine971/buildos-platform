@@ -122,8 +122,10 @@
 				throw new Error(body.message || 'Failed to load template details');
 			}
 			const detail = await response.json();
-			detailTemplate = detail.template as ResolvedTemplate;
-			detailChildren = detail.children ?? [];
+			// Unwrap ApiResponse format: { success: true, data: {...} }
+			const data = detail.success && detail.data ? detail.data : detail;
+			detailTemplate = data.template as ResolvedTemplate;
+			detailChildren = data.children ?? [];
 			detailLoading = false;
 		} catch (err) {
 			console.error('[Template Detail] Failed:', err);

@@ -57,7 +57,22 @@ export const load: PageServerLoad = async ({ url, locals, fetch }) => {
 		throw error(500, 'Failed to fetch templates');
 	}
 
-	const { templates, grouped } = await response.json();
+	const responseData = await response.json();
+
+	// Handle API error responses (ApiResponse.error format)
+	if ('error' in responseData) {
+		console.error('[Ontology Templates] API error:', responseData.error);
+		throw error(500, responseData.error || 'Failed to fetch templates');
+	}
+
+	// Extract data from successful ApiResponse.success format
+	const { templates, grouped } = responseData.data || {};
+
+	// Validate that we got the expected data structure
+	if (!templates || !Array.isArray(templates)) {
+		console.error('[Ontology Templates] Invalid response structure:', responseData);
+		throw error(500, 'Invalid response from templates API');
+	}
 
 	// Group templates by scope for alternate view
 	const byScope = (templates as Template[]).reduce(

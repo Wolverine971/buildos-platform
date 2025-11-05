@@ -5,14 +5,9 @@
  */
 
 import type { RequestHandler } from './$types';
-import { OpenAI } from 'openai';
-import { OPENAI_API_KEY } from '$env/static/private';
+import { SmartLLMService } from '$lib/services/smart-llm-service';
 import { resolveTemplateWithClient } from '$lib/services/ontology/template-resolver.service';
 import { ApiResponse } from '$lib/utils/api-response';
-
-const openai = new OpenAI({
-	apiKey: OPENAI_API_KEY
-});
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	try {
@@ -73,6 +68,13 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			);
 		}
 
+		// Initialize SmartLLMService
+		const smartLLM = new SmartLLMService({
+			supabase: locals.supabase,
+			httpReferer: 'https://build-os.com',
+			appName: 'BuildOS Output Generator'
+		});
+
 		// Build prompt based on template type
 		const prompt = buildGenerationPrompt({
 			templateKey: template_key,
@@ -82,27 +84,20 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			currentProps: current_props || {}
 		});
 
-		// Generate content with OpenAI
-		const completion = await openai.chat.completions.create({
-			model: 'gpt-4-turbo-preview',
-			messages: [
-				{
-					role: 'system',
-					content:
-						'You are a professional content writer helping users create high-quality documents. Generate content in clean HTML format with proper semantic tags (h1, h2, p, ul, ol, etc.).'
-				},
-				{
-					role: 'user',
-					content: prompt
-				}
-			],
+		// Generate content with SmartLLMService
+		const content = await smartLLM.generateText({
+			prompt,
+			userId: user.id,
+			profile: 'quality', // Use quality profile for content generation
+			systemPrompt:
+				'You are a professional content writer helping users create high-quality documents. Generate content in clean HTML format with proper semantic tags (h1, h2, p, ul, ol, etc.).',
 			temperature: 0.7,
-			max_tokens: 4000
+			maxTokens: 4000,
+			operationType: 'output_generation',
+			projectId: project_id
 		});
 
-		const content = completion.choices[0]?.message?.content;
-
-		if (!content) {
+		if (!content || !content.trim()) {
 			return ApiResponse.error('Failed to generate content: Empty response from AI', 500);
 		}
 
@@ -110,13 +105,13 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	} catch (err: any) {
 		console.error('[API] Output generation error:', err);
 
-		// Handle OpenAI-specific errors
-		if (err?.error?.type === 'insufficient_quota') {
-			return ApiResponse.error('API quota exceeded. Please try again later.', 503);
+		// Handle LLM service errors
+		if (err.message?.includes('timeout')) {
+			return ApiResponse.error('Request timeout. Please try again.', 503);
 		}
 
-		if (err?.error?.type === 'invalid_request_error') {
-			return ApiResponse.badRequest(err.message || 'Invalid request to AI service');
+		if (err.message?.includes('quota') || err.message?.includes('rate limit')) {
+			return ApiResponse.error('API quota exceeded. Please try again later.', 503);
 		}
 
 		return ApiResponse.internalError(

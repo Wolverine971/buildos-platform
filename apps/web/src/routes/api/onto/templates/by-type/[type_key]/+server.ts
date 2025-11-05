@@ -1,4 +1,4 @@
-// apps/web/src/routes/api/onto/templates/[type_key]/+server.ts
+// apps/web/src/routes/api/onto/templates/by-type/[type_key]/+server.ts
 /**
  * GET /api/onto/templates/[type_key]
  * Returns resolved template metadata (schema, FSM, inheritance chain, children)
