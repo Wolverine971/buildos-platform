@@ -2,54 +2,80 @@
 import type { PageLoad } from './$types';
 import { browser } from '$app/environment';
 
-export const load: PageLoad = async ({ data, url, fetch, depends }) => {
-	// Add dependency for dashboard data
-	depends('dashboard:data');
+function isPromiseLike<T>(value: unknown): value is PromiseLike<T> {
+	return !!value && typeof (value as PromiseLike<T>).then === 'function';
+}
 
-	// Initialize dashboard data
-	let dashboardData = null;
-	let dashboardError = null;
-	let dashboardLoading = false;
+function getErrorMessage(error: unknown, fallback: string): string {
+	if (error instanceof Error && error.message) return error.message;
+	if (typeof error === 'string' && error.length > 0) return error;
+	return fallback;
+}
 
-	// Only fetch dashboard data if user is authenticated and in browser
-	if (data.user && browser) {
+export const load: PageLoad = async ({ data, fetch, url }) => {
+	const base = {
+		...data,
+		clientLoadTime: new Date().toISOString(),
+		searchParams: url.searchParams.toString()
+	};
+
+	if (!browser || !data.user) {
+		return base;
+	}
+
+	let dashboardData = data.dashboardData as any;
+	let dashboardError = data.dashboardError ?? null;
+	let dashboardLoading = data.dashboardLoading ?? false;
+
+	if (isPromiseLike(dashboardData)) {
+		try {
+			dashboardData = await dashboardData;
+			dashboardError = null;
+		} catch (error) {
+			dashboardData = null;
+			dashboardError = getErrorMessage(error, 'Failed to load dashboard data');
+		}
+	}
+
+	const clientTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+	const serverTimezone = data.dashboardTimezone as string | null;
+
+	if (
+		data.user &&
+		clientTimezone &&
+		(!dashboardData || (serverTimezone && clientTimezone !== serverTimezone))
+	) {
 		dashboardLoading = true;
 
 		try {
-			// Get the user's timezone
-			const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+			const response = await fetch(
+				`/api/dashboard?timezone=${encodeURIComponent(clientTimezone)}`
+			);
 
-			// Fetch dashboard data with timezone
-			const response = await fetch(`/api/dashboard?timezone=${encodeURIComponent(timezone)}`);
-
-			if (response.ok) {
-				const result = await response.json();
-				if (result.success) {
-					dashboardData = result.data;
-				} else {
-					dashboardError = result.error || 'Failed to load dashboard data';
-				}
-			} else {
-				dashboardError = `Failed to load dashboard data: ${response.statusText}`;
+			if (!response.ok) {
+				throw new Error(`Failed to load dashboard data: ${response.statusText}`);
 			}
+
+			const payload = await response.json();
+
+			if (!payload.success) {
+				throw new Error(payload.error || 'Failed to load dashboard data');
+			}
+
+			dashboardData = payload.data;
+			dashboardError = null;
 		} catch (error) {
-			// Error loading dashboard data
-			dashboardError =
-				error instanceof Error ? error.message : 'Failed to load dashboard data';
+			dashboardError = getErrorMessage(error, 'Failed to load dashboard data');
 		} finally {
 			dashboardLoading = false;
 		}
 	}
 
-	// Pass through the server data with dashboard data and client-side enhancements
 	return {
-		...data,
+		...base,
 		dashboardData,
 		dashboardError,
 		dashboardLoading,
-		// Add client-side timestamp for cache busting if needed
-		clientLoadTime: new Date().toISOString(),
-		// Add any URL parameters that might be useful for client-side routing
-		searchParams: url.searchParams.toString()
+		clientTimezone
 	};
 };

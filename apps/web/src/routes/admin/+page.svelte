@@ -41,9 +41,12 @@
 	const loadErrorFromServer = data?.loadError as string | undefined;
 
 	let isLoading = $state(initialDashboard ? false : true);
-	let error = $state<string | null>(loadErrorFromServer ?? null);
-	let selectedTimeframe = $state<'7d' | '30d' | '90d'>(defaultTimeframe);
-	let autoRefresh = $state(false);
+let error = $state<string | null>(loadErrorFromServer ?? null);
+let selectedTimeframe = $state<'7d' | '30d' | '90d'>(defaultTimeframe);
+let autoRefresh = $state(false);
+
+const navCardBaseClasses =
+	'group relative flex min-h-[180px] flex-col justify-between rounded-2xl border border-slate-200/70 bg-white/85 p-6 sm:p-7 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl dark:border-slate-800/70 dark:bg-slate-900/70';
 
 	let refreshTimer: ReturnType<typeof setInterval> | null = null;
 	let currentRequest: AbortController | null = null;
@@ -436,8 +439,8 @@
 	<meta name="robots" content="noindex, nofollow" />
 </svelte:head>
 
-<div class="min-h-screen bg-gray-50 dark:bg-gray-900">
-	<div class="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
+<div class="space-y-12">
+	<div class="space-y-10">
 		<!-- Header without Back Button (this is the main admin page) -->
 		<AdminPageHeader
 			title="Admin Dashboard"
@@ -483,217 +486,276 @@
 		</AdminPageHeader>
 
 		<!-- Navigation Cards -->
-		<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-4">
-			<a
-				href="/admin/users"
-				class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg transition-shadow relative"
-			>
+		<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 mb-10">
+			<a href="/admin/users" class={navCardBaseClasses}>
 				{#if comprehensiveAnalytics.userMetrics.newUsersLast24h > 0}
-					<div class="absolute top-3 right-3">
-						<span
-							class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-						>
+					<div class="absolute right-5 top-5">
+						<span class="inline-flex items-center rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-800 shadow-sm dark:bg-green-900/40 dark:text-green-200">
 							+{comprehensiveAnalytics.userMetrics.newUsersLast24h} new
 						</span>
 					</div>
 				{/if}
-				<div class="flex items-center justify-between">
-					<div class="flex items-center">
-						<Users class="h-8 w-8 text-blue-600 mr-3" />
-						<div>
-							<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-								Users
-							</h3>
-							<p class="text-sm text-gray-600 dark:text-gray-400">
-								Manage user accounts
-							</p>
+				<div class="flex flex-1 flex-col gap-6">
+					<div class="flex items-start justify-between gap-4">
+						<div class="flex flex-1 items-start gap-4">
+							<span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500/20 via-indigo-500/15 to-blue-400/20 text-blue-600 dark:text-blue-200">
+								<Users class="h-6 w-6" />
+							</span>
+							<div class="space-y-1">
+								<h3 class="text-lg font-semibold text-slate-900 dark:text-slate-50">
+									Users
+								</h3>
+								<p class="text-sm text-slate-600 dark:text-slate-400">
+									Manage user accounts
+								</p>
+							</div>
+						</div>
+						{#if comprehensiveAnalytics.userMetrics.totalUsers > 0}
+							<span class="rounded-xl bg-blue-50 px-3 py-1 text-xl font-semibold text-blue-600 dark:bg-blue-500/10 dark:text-blue-200">
+								{comprehensiveAnalytics.userMetrics.totalUsers}
+							</span>
+						{/if}
+					</div>
+					<span class="mt-auto text-xs font-semibold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">
+						View module
+					</span>
+				</div>
+			</a>
+
+			<a href="/admin/notifications" class={navCardBaseClasses}>
+				<div class="flex flex-1 flex-col gap-6">
+					<div class="flex items-start justify-between gap-4">
+						<div class="flex flex-1 items-start gap-4">
+							<span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500/20 via-blue-500/15 to-indigo-400/20 text-indigo-600 dark:text-indigo-200">
+								<Bell class="h-6 w-6" />
+							</span>
+							<div class="space-y-1">
+								<h3 class="text-lg font-semibold text-slate-900 dark:text-slate-50">
+									Notifications
+								</h3>
+								<p class="text-sm text-slate-600 dark:text-slate-400">
+									Analytics &amp; testing
+								</p>
+							</div>
 						</div>
 					</div>
-					{#if comprehensiveAnalytics.userMetrics.totalUsers > 0}
-						<span class="text-2xl font-bold text-blue-600">
-							{comprehensiveAnalytics.userMetrics.totalUsers}
-						</span>
-					{/if}
+					<span class="mt-auto text-xs font-semibold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">
+						View module
+					</span>
 				</div>
 			</a>
 
-			<a
-				href="/admin/notifications"
-				class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg transition-shadow"
-			>
-				<div class="flex items-center">
-					<Bell class="h-8 w-8 text-indigo-600 mr-3" />
-					<div>
-						<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-							Notifications
-						</h3>
-						<p class="text-sm text-gray-600 dark:text-gray-400">Analytics & testing</p>
+			<a href="/admin/ontology/graph" class={navCardBaseClasses}>
+				<div class="flex flex-1 flex-col gap-6">
+					<div class="flex items-start justify-between gap-4">
+						<div class="flex flex-1 items-start gap-4">
+							<span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-500/20 via-cyan-500/15 to-blue-400/20 text-sky-600 dark:text-sky-200">
+								<Workflow class="h-6 w-6" />
+							</span>
+							<div class="space-y-1">
+								<h3 class="text-lg font-semibold text-slate-900 dark:text-slate-50">
+									Ontology Graph
+								</h3>
+								<p class="text-sm text-slate-600 dark:text-slate-400">
+									Visualize ontology relationships
+								</p>
+							</div>
+						</div>
 					</div>
+					<span class="mt-auto text-xs font-semibold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">
+						View module
+					</span>
 				</div>
 			</a>
 
-			<a
-				href="/admin/ontology/graph"
-				class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg transition-shadow"
-			>
-				<div class="flex items-center">
-					<Workflow class="h-8 w-8 text-sky-600 mr-3" />
-					<div>
-						<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-							Ontology Graph
-						</h3>
-						<p class="text-sm text-gray-600 dark:text-gray-400">
-							Visualize ontology relationships
-						</p>
+			<a href="/admin/chat" class={navCardBaseClasses}>
+				<div class="flex flex-1 flex-col gap-6">
+					<div class="flex items-start justify-between gap-4">
+						<div class="flex flex-1 items-start gap-4">
+							<span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-500/20 via-teal-500/15 to-blue-400/20 text-cyan-600 dark:text-cyan-200">
+								<MessageSquare class="h-6 w-6" />
+							</span>
+							<div class="space-y-1">
+								<h3 class="text-lg font-semibold text-slate-900 dark:text-slate-50">
+									Chat Monitoring
+								</h3>
+								<p class="text-sm text-slate-600 dark:text-slate-400">
+									AI chat analytics
+								</p>
+							</div>
+						</div>
 					</div>
+					<span class="mt-auto text-xs font-semibold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">
+						View module
+					</span>
 				</div>
 			</a>
 
-			<a
-				href="/admin/chat"
-				class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg transition-shadow"
-			>
-				<div class="flex items-center">
-					<MessageSquare class="h-8 w-8 text-cyan-600 mr-3" />
-					<div>
-						<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-							Chat Monitoring
-						</h3>
-						<p class="text-sm text-gray-600 dark:text-gray-400">AI chat analytics</p>
-					</div>
-				</div>
-			</a>
-
-			<a
-				href="/admin/beta"
-				class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg transition-shadow relative"
-			>
+			<a href="/admin/beta" class={navCardBaseClasses}>
 				{#if comprehensiveAnalytics.userMetrics.newBetaSignupsLast24h > 0}
-					<div class="absolute top-3 right-3">
-						<span
-							class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200"
-						>
+					<div class="absolute right-5 top-5">
+						<span class="inline-flex items-center rounded-full bg-purple-100 px-3 py-1 text-xs font-semibold text-purple-800 shadow-sm dark:bg-purple-900/40 dark:text-purple-200">
 							+{comprehensiveAnalytics.userMetrics.newBetaSignupsLast24h} new
 						</span>
 					</div>
 				{/if}
-				<div class="flex items-center justify-between">
-					<div class="flex items-center">
-						<UserCheck class="h-8 w-8 text-purple-600 mr-3" />
-						<div>
-							<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-								Beta Program
-							</h3>
-							<p class="text-sm text-gray-600 dark:text-gray-400">
-								Manage beta members
-							</p>
+				<div class="flex flex-1 flex-col gap-6">
+					<div class="flex items-start justify-between gap-4">
+						<div class="flex flex-1 items-start gap-4">
+							<span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-purple-500/20 via-fuchsia-500/15 to-indigo-400/20 text-purple-600 dark:text-purple-200">
+								<UserCheck class="h-6 w-6" />
+							</span>
+							<div class="space-y-1">
+								<h3 class="text-lg font-semibold text-slate-900 dark:text-slate-50">
+									Beta Program
+								</h3>
+								<p class="text-sm text-slate-600 dark:text-slate-400">
+									Manage beta members
+								</p>
+							</div>
 						</div>
+						{#if comprehensiveAnalytics.userMetrics.totalBetaUsers > 0}
+							<span class="rounded-xl bg-purple-50 px-3 py-1 text-xl font-semibold text-purple-600 dark:bg-purple-500/10 dark:text-purple-200">
+								{comprehensiveAnalytics.userMetrics.totalBetaUsers}
+							</span>
+						{/if}
 					</div>
-					{#if comprehensiveAnalytics.userMetrics.totalBetaUsers > 0}
-						<span class="text-2xl font-bold text-purple-600">
-							{comprehensiveAnalytics.userMetrics.totalBetaUsers}
-						</span>
-					{/if}
+					<span class="mt-auto text-xs font-semibold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">
+						View module
+					</span>
 				</div>
 			</a>
-			<a
-				href="/admin/feedback"
-				class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg transition-shadow relative"
-			>
+
+			<a href="/admin/feedback" class={navCardBaseClasses}>
 				{#if feedbackOverview.overview.recent_24h > 0}
-					<div class="absolute top-3 right-3">
-						<span
-							class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
-						>
+					<div class="absolute right-5 top-5">
+						<span class="inline-flex items-center rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800 shadow-sm dark:bg-amber-900/40 dark:text-amber-200">
 							+{feedbackOverview.overview.recent_24h} new
 						</span>
 					</div>
 				{/if}
-				<div class="flex items-center">
-					<MessageSquare class="h-8 w-8 text-green-600 mr-3" />
-					<div>
-						<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-							Feedback
-						</h3>
-						<p class="text-sm text-gray-600 dark:text-gray-400">Review user feedback</p>
+				<div class="flex flex-1 flex-col gap-6">
+					<div class="flex items-start justify-between gap-4">
+						<div class="flex flex-1 items-start gap-4">
+							<span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500/20 via-lime-500/15 to-teal-400/20 text-emerald-600 dark:text-emerald-200">
+								<MessageSquare class="h-6 w-6" />
+							</span>
+							<div class="space-y-1">
+								<h3 class="text-lg font-semibold text-slate-900 dark:text-slate-50">
+									Feedback
+								</h3>
+								<p class="text-sm text-slate-600 dark:text-slate-400">
+									Review user feedback
+								</p>
+							</div>
+						</div>
 					</div>
-				</div>
-			</a>
-			<a
-				href="/admin/llm-usage"
-				class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg transition-shadow"
-			>
-				<div class="flex items-center">
-					<Zap class="h-8 w-8 text-yellow-600 mr-3" />
-					<div>
-						<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-							LLM Usage
-						</h3>
-						<p class="text-sm text-gray-600 dark:text-gray-400">
-							AI costs & performance
-						</p>
-					</div>
+					<span class="mt-auto text-xs font-semibold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">
+						View module
+					</span>
 				</div>
 			</a>
 
-			<a
-				href="/admin/errors"
-				class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg transition-shadow"
-			>
-				<div class="flex items-center justify-between">
-					<div class="flex items-center">
-						<XCircle class="h-8 w-8 text-red-600 mr-3" />
-						<div>
-							<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-								Errors
-							</h3>
-							<p class="text-sm text-gray-600 dark:text-gray-400">
-								System error logs
-							</p>
+			<a href="/admin/llm-usage" class={navCardBaseClasses}>
+				<div class="flex flex-1 flex-col gap-6">
+					<div class="flex items-start justify-between gap-4">
+						<div class="flex flex-1 items-start gap-4">
+							<span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-500/20 via-orange-500/15 to-yellow-400/20 text-amber-600 dark:text-amber-200">
+								<Zap class="h-6 w-6" />
+							</span>
+							<div class="space-y-1">
+								<h3 class="text-lg font-semibold text-slate-900 dark:text-slate-50">
+									LLM Usage
+								</h3>
+								<p class="text-sm text-slate-600 dark:text-slate-400">
+									AI costs &amp; performance
+								</p>
+							</div>
 						</div>
 					</div>
-					{#if errorsData.unresolved_errors > 0}
-						<span class="text-2xl font-bold text-red-600">
-							{errorsData.unresolved_errors}
-						</span>
-					{/if}
+					<span class="mt-auto text-xs font-semibold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">
+						View module
+					</span>
+				</div>
+			</a>
+
+			<a href="/admin/errors" class={navCardBaseClasses}>
+				<div class="flex flex-1 flex-col gap-6">
+					<div class="flex items-start justify-between gap-4">
+						<div class="flex flex-1 items-start gap-4">
+							<span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500/20 via-red-500/15 to-rose-400/20 text-rose-600 dark:text-rose-200">
+								<XCircle class="h-6 w-6" />
+							</span>
+							<div class="space-y-1">
+								<h3 class="text-lg font-semibold text-slate-900 dark:text-slate-50">
+									Errors
+								</h3>
+								<p class="text-sm text-slate-600 dark:text-slate-400">
+									System error logs
+								</p>
+							</div>
+						</div>
+						{#if errorsData.unresolved_errors > 0}
+							<span class="rounded-xl bg-rose-50 px-3 py-1 text-xl font-semibold text-rose-600 dark:bg-rose-500/10 dark:text-rose-200">
+								{errorsData.unresolved_errors}
+							</span>
+						{/if}
+					</div>
+					<span class="mt-auto text-xs font-semibold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">
+						View module
+					</span>
 				</div>
 			</a>
 
 			{#if subscriptionData.stripeEnabled}
-				<a
-					href="/admin/subscriptions"
-					class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg transition-shadow"
-				>
-					<div class="flex items-center">
-						<CreditCard class="h-8 w-8 text-orange-600 mr-3" />
-						<div>
-							<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-								Subscriptions
-							</h3>
-							<p class="text-sm text-gray-600 dark:text-gray-400">Manage billing</p>
+				<a href="/admin/subscriptions" class={navCardBaseClasses}>
+					<div class="flex flex-1 flex-col gap-6">
+						<div class="flex items-start justify-between gap-4">
+							<div class="flex flex-1 items-start gap-4">
+								<span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-500/20 via-amber-500/15 to-yellow-400/20 text-orange-600 dark:text-orange-200">
+									<CreditCard class="h-6 w-6" />
+								</span>
+								<div class="space-y-1">
+									<h3 class="text-lg font-semibold text-slate-900 dark:text-slate-50">
+										Subscriptions
+									</h3>
+									<p class="text-sm text-slate-600 dark:text-slate-400">
+										Manage billing
+									</p>
+								</div>
+							</div>
 						</div>
+						<span class="mt-auto text-xs font-semibold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">
+							View module
+						</span>
 					</div>
 				</a>
 
-				<a
-					href="/admin/revenue"
-					class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg transition-shadow"
-				>
-					<div class="flex items-center">
-						<DollarSign class="h-8 w-8 text-green-600 mr-3" />
-						<div>
-							<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-								Revenue
-							</h3>
-							<p class="text-sm text-gray-600 dark:text-gray-400">
-								Financial metrics
-							</p>
+				<a href="/admin/revenue" class={navCardBaseClasses}>
+					<div class="flex flex-1 flex-col gap-6">
+						<div class="flex items-start justify-between gap-4">
+							<div class="flex flex-1 items-start gap-4">
+								<span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500/20 via-green-500/15 to-teal-400/20 text-emerald-600 dark:text-emerald-200">
+									<DollarSign class="h-6 w-6" />
+								</span>
+								<div class="space-y-1">
+									<h3 class="text-lg font-semibold text-slate-900 dark:text-slate-50">
+										Revenue
+									</h3>
+									<p class="text-sm text-slate-600 dark:text-slate-400">
+										Financial metrics
+									</p>
+								</div>
+							</div>
 						</div>
+						<span class="mt-auto text-xs font-semibold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">
+							View module
+						</span>
 					</div>
 				</a>
 			{/if}
 		</div>
+
 
 		{#if error}
 			<div

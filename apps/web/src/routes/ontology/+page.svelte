@@ -15,6 +15,7 @@
 		OntologyGraphInstance,
 		GraphStats
 	} from '$lib/components/ontology/graph/lib/graph.types';
+	import type { OntologyProjectSummary } from '$lib/services/ontology/ontology-projects.service';
 	import { ontologyGraphStore } from '$lib/stores/ontology-graph.store';
 
 	let { data } = $props();
@@ -37,7 +38,53 @@
 		totalDocuments: 0
 	};
 
-	const projects = $derived(data.projects || []);
+	function isPromiseLike<T>(value: unknown): value is PromiseLike<T> {
+		return !!value && typeof (value as PromiseLike<T>).then === 'function';
+	}
+
+	function getErrorMessage(error: unknown, fallback: string): string {
+		if (error instanceof Error && error.message) return error.message;
+		if (typeof error === 'string' && error.length > 0) return error;
+		return fallback;
+	}
+
+	let projectsStreamVersion = 0;
+	let projectsLoading = $state(
+		isPromiseLike<OntologyProjectSummary[]>(data.projects) ? true : false
+	);
+	let projectsError = $state<string | null>(null);
+	let projectSummaries = $state<OntologyProjectSummary[]>(
+		Array.isArray(data.projects) ? (data.projects as OntologyProjectSummary[]) : []
+	);
+
+	$effect(() => {
+		const incoming = data.projects;
+		const currentVersion = ++projectsStreamVersion;
+		projectsError = null;
+
+		if (isPromiseLike<OntologyProjectSummary[]>(incoming)) {
+			projectsLoading = true;
+
+			incoming
+				.then((result) => {
+					if (currentVersion !== projectsStreamVersion) return;
+					projectSummaries = Array.isArray(result) ? result : [];
+					projectsLoading = false;
+				})
+				.catch((err) => {
+					if (currentVersion !== projectsStreamVersion) return;
+					projectsError = getErrorMessage(err, 'Failed to load ontology projects');
+					projectSummaries = [];
+					projectsLoading = false;
+				});
+			return;
+		}
+
+		projectSummaries = Array.isArray(incoming) ? (incoming as OntologyProjectSummary[]) : [];
+		projectsLoading = false;
+	});
+
+	const projects = $derived(projectSummaries);
 	const availableStates = $derived(
 		Array.from(
 			new Set(
@@ -320,255 +367,315 @@
 
 	{#if activeTab === 'overview'}
 		<section class="space-y-5 sm:space-y-6">
-			<Card variant="elevated" padding="none">
-				<CardBody
-					padding="md"
-					class="space-y-4 lg:flex lg:items-start lg:justify-between lg:gap-6 lg:space-y-0"
-				>
-					<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4 lg:flex-1">
-						<div class="relative flex-1">
-							<input
-								type="search"
-								class="w-full rounded-xl border border-slate-200 bg-white/90 py-2 pl-10 pr-4 text-sm text-slate-900 placeholder:text-slate-400 shadow-sm transition focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:ring-indigo-400"
-								placeholder="Search projects by name, type, or description..."
-								bind:value={searchQuery}
-							/>
-							<svg
-								class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500"
-								xmlns="http://www.w3.org/2000/svg"
-								fill="none"
-								viewBox="0 0 24 24"
-								stroke="currentColor"
+			{#if projectsLoading}
+				<div class="space-y-6">
+					<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+						{#each Array.from({ length: 3 }) as _}
+							<div
+								class="rounded-2xl border border-slate-200/70 bg-white/80 p-4 shadow-sm animate-pulse dark:border-slate-800/70 dark:bg-slate-900/70"
 							>
-								<path
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									stroke-width="2"
-									d="M21 21l-4.35-4.35M17 10a7 7 0 11-14 0 7 7 0 0114 0z"
-								/>
-							</svg>
-						</div>
-
-						{#if hasFilters}
-							<Button
-								variant="ghost"
-								size="sm"
-								class="text-blue-600 hover:text-blue-700 dark:text-blue-300 dark:hover:text-blue-200"
-								onclick={clearFilters}
-							>
-								Clear filters
-							</Button>
-						{/if}
+								<div class="h-5 w-1/3 rounded bg-slate-200 dark:bg-slate-800"></div>
+								<div
+									class="mt-4 h-4 w-3/4 rounded bg-slate-100 dark:bg-slate-800/80"
+								></div>
+								<div
+									class="mt-2 h-3 w-2/3 rounded bg-slate-100 dark:bg-slate-800/80"
+								></div>
+							</div>
+						{/each}
 					</div>
-
-					<div class="flex flex-wrap gap-2">
-						<button
-							type="button"
-							class="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 transition hover:border-blue-400 hover:text-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-slate-700 dark:text-slate-300 dark:hover:border-indigo-500 dark:hover:text-indigo-200"
-							onclick={() => goto('/ontology/create')}
-						>
-							<svg
-								class="h-4 w-4"
-								xmlns="http://www.w3.org/2000/svg"
-								fill="none"
-								viewBox="0 0 24 24"
-								stroke="currentColor"
-							>
-								<path
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									stroke-width="2"
-									d="M12 4v16m8-8H4"
-								/>
-							</svg>
-							<span>New project</span>
-						</button>
-						<button
-							type="button"
-							class="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 transition hover:border-blue-400 hover:text-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-slate-700 dark:text-slate-300 dark:hover:border-indigo-500 dark:hover:text-indigo-200"
-							onclick={() => goto('/ontology/templates')}
-						>
-							<svg
-								class="h-4 w-4"
-								xmlns="http://www.w3.org/2000/svg"
-								fill="none"
-								viewBox="0 0 24 24"
-								stroke="currentColor"
-							>
-								<path
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									stroke-width="2"
-									d="M4 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 16a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1H5a1 1 0 01-1-1v-3zM14 16a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1h-4a1 1 0 01-1-1v-3z"
-								/>
-							</svg>
-							<span>Templates</span>
-						</button>
-					</div>
-				</CardBody>
-			</Card>
-
-			<div class="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
-				<div
-					class="rounded-xl border border-slate-200 bg-white/70 px-3 py-2.5 shadow-sm dark:border-slate-800 dark:bg-slate-900/60"
-				>
-					<p
-						class="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+					<div
+						class="rounded-2xl border border-slate-200/70 bg-white/80 p-6 shadow-sm animate-pulse dark:border-slate-800/70 dark:bg-slate-900/70"
 					>
-						Projects
-					</p>
-					<p class="text-xl font-semibold text-slate-900 dark:text-slate-50">
-						{stats.totalProjects}
-					</p>
-				</div>
-				<div
-					class="rounded-xl border border-slate-200 bg-white/70 px-3 py-2.5 shadow-sm dark:border-slate-800 dark:bg-slate-900/60"
-				>
-					<p
-						class="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
-					>
-						Tasks
-					</p>
-					<p class="text-xl font-semibold text-slate-900 dark:text-slate-50">
-						{stats.totalTasks}
-					</p>
-				</div>
-				<div
-					class="rounded-xl border border-slate-200 bg-white/70 px-3 py-2.5 shadow-sm dark:border-slate-800 dark:bg-slate-900/60"
-				>
-					<p
-						class="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
-					>
-						Outputs
-					</p>
-					<p class="text-xl font-semibold text-slate-900 dark:text-slate-50">
-						{stats.totalOutputs}
-					</p>
-				</div>
-				<div
-					class="rounded-xl border border-slate-200 bg-white/70 px-3 py-2.5 shadow-sm dark:border-slate-800 dark:bg-slate-900/60"
-				>
-					<p
-						class="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
-					>
-						Active
-					</p>
-					<p class="text-xl font-semibold text-slate-900 dark:text-slate-50">
-						{stats.activeProjects}
-					</p>
-				</div>
-			</div>
-
-			<div class="space-y-4">
-				{#if availableStates.length}
-					<div class="flex flex-col gap-2">
-						<p
-							class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
-						>
-							State
-						</p>
-						<div class="flex flex-wrap gap-2">
-							{#each availableStates as state (state)}
-								<button
-									type="button"
-									class={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-xs font-medium transition ${
-										selectedStates.includes(state)
-											? 'border-transparent bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-sm'
-											: 'border-slate-300 text-slate-600 hover:border-blue-400 hover:text-blue-600 dark:border-slate-600 dark:text-slate-300 dark:hover:border-indigo-400 dark:hover:text-indigo-200'
-									}`}
-									onclick={() =>
-										(selectedStates = toggleValue(selectedStates, state))}
-								>
-									{state}
-								</button>
+						<div class="h-5 w-1/4 rounded bg-slate-200 dark:bg-slate-800"></div>
+						<div class="mt-4 grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+							{#each Array.from({ length: 6 }) as _}
+								<div
+									class="h-24 rounded-xl bg-slate-100 dark:bg-slate-800/80"
+								></div>
 							{/each}
 						</div>
 					</div>
-				{/if}
-
-				<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
-					{#if availableContexts.length}
-						<div class="flex flex-col gap-2">
-							<p
-								class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
-							>
-								Context
-							</p>
-							<div class="flex flex-wrap gap-2">
-								{#each availableContexts as context (context)}
-									<button
-										type="button"
-										class={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-xs font-medium transition ${
-											selectedContexts.includes(context)
-												? 'border-transparent bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-sm'
-												: 'border-slate-300 text-slate-600 hover:border-amber-400 hover:text-amber-600 dark:border-slate-600 dark:text-slate-300 dark:hover:border-amber-400 dark:hover:text-amber-300'
-										}`}
-										onclick={() =>
-											(selectedContexts = toggleValue(
-												selectedContexts,
-												context
-											))}
-									>
-										{context}
-									</button>
-								{/each}
-							</div>
-						</div>
-					{/if}
-
-					{#if availableScales.length}
-						<div class="flex flex-col gap-2">
-							<p
-								class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
-							>
-								Scale
-							</p>
-							<div class="flex flex-wrap gap-2">
-								{#each availableScales as scale (scale)}
-									<button
-										type="button"
-										class={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-xs font-medium transition ${
-											selectedScales.includes(scale)
-												? 'border-transparent bg-gradient-to-r from-purple-500 to-indigo-500 text-white shadow-sm'
-												: 'border-slate-300 text-slate-600 hover:border-purple-400 hover:text-purple-600 dark:border-slate-600 dark:text-slate-300 dark:hover:border-purple-400 dark:hover:text-purple-200'
-										}`}
-										onclick={() =>
-											(selectedScales = toggleValue(selectedScales, scale))}
-									>
-										{scale}
-									</button>
-								{/each}
-							</div>
-						</div>
-					{/if}
-
-					{#if availableStages.length}
-						<div class="flex flex-col gap-2">
-							<p
-								class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
-							>
-								Stage
-							</p>
-							<div class="flex flex-wrap gap-2">
-								{#each availableStages as stage (stage)}
-									<button
-										type="button"
-										class={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-xs font-medium transition ${
-											selectedStages.includes(stage)
-												? 'border-transparent bg-gradient-to-r from-emerald-500 to-green-500 text-white shadow-sm'
-												: 'border-slate-300 text-slate-600 hover:border-emerald-400 hover:text-emerald-600 dark:border-slate-600 dark:text-slate-300 dark:hover:border-emerald-400 dark:hover:text-emerald-200'
-										}`}
-										onclick={() =>
-											(selectedStages = toggleValue(selectedStages, stage))}
-									>
-										{stage}
-									</button>
-								{/each}
-							</div>
-						</div>
-					{/if}
 				</div>
-			</div>
+			{:else if projectsError}
+				<div
+					class="rounded-2xl border border-slate-200/80 bg-white/90 p-6 text-center shadow-sm dark:border-slate-800/80 dark:bg-slate-900/80"
+				>
+					<h2 class="text-base font-semibold text-slate-900 dark:text-slate-100">
+						Unable to load ontology projects
+					</h2>
+					<p class="mt-2 text-sm text-slate-600 dark:text-slate-400">
+						{projectsError}
+					</p>
+					<div class="mt-4 flex justify-center">
+						<Button
+							variant="primary"
+							size="sm"
+							onclick={() => goto('/ontology', { replaceState: true })}
+						>
+							Try again
+						</Button>
+					</div>
+				</div>
+			{:else}
+				<Card variant="elevated" padding="none">
+					<CardBody
+						padding="md"
+						class="space-y-4 lg:flex lg:items-start lg:justify-between lg:gap-6 lg:space-y-0"
+					>
+						<div
+							class="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4 lg:flex-1"
+						>
+							<div class="relative flex-1">
+								<input
+									type="search"
+									class="w-full rounded-xl border border-slate-200 bg-white/90 py-2 pl-10 pr-4 text-sm text-slate-900 placeholder:text-slate-400 shadow-sm transition focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:ring-indigo-400"
+									placeholder="Search projects by name, type, or description..."
+									bind:value={searchQuery}
+								/>
+								<svg
+									class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500"
+									xmlns="http://www.w3.org/2000/svg"
+									fill="none"
+									viewBox="0 0 24 24"
+									stroke="currentColor"
+								>
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										stroke-width="2"
+										d="M21 21l-4.35-4.35M17 10a7 7 0 11-14 0 7 7 0 0114 0z"
+									/>
+								</svg>
+							</div>
+
+							{#if hasFilters}
+								<Button
+									variant="ghost"
+									size="sm"
+									class="text-blue-600 hover:text-blue-700 dark:text-blue-300 dark:hover:text-blue-200"
+									onclick={clearFilters}
+								>
+									Clear filters
+								</Button>
+							{/if}
+						</div>
+
+						<div class="flex flex-wrap gap-2">
+							<button
+								type="button"
+								class="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 transition hover:border-blue-400 hover:text-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-slate-700 dark:text-slate-300 dark:hover:border-indigo-500 dark:hover:text-indigo-200"
+								onclick={() => goto('/ontology/create')}
+							>
+								<svg
+									class="h-4 w-4"
+									xmlns="http://www.w3.org/2000/svg"
+									fill="none"
+									viewBox="0 0 24 24"
+									stroke="currentColor"
+								>
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										stroke-width="2"
+										d="M12 4v16m8-8H4"
+									/>
+								</svg>
+								<span>New project</span>
+							</button>
+							<button
+								type="button"
+								class="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 transition hover:border-blue-400 hover:text-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-slate-700 dark:text-slate-300 dark:hover:border-indigo-500 dark:hover:text-indigo-200"
+								onclick={() => goto('/ontology/templates')}
+							>
+								<svg
+									class="h-4 w-4"
+									xmlns="http://www.w3.org/2000/svg"
+									fill="none"
+									viewBox="0 0 24 24"
+									stroke="currentColor"
+								>
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										stroke-width="2"
+										d="M4 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 16a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1H5a1 1 0 01-1-1v-3zM14 16a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1h-4a1 1 0 01-1-1v-3z"
+									/>
+								</svg>
+								<span>Templates</span>
+							</button>
+						</div>
+					</CardBody>
+				</Card>
+
+				<div class="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
+					<div
+						class="rounded-xl border border-slate-200 bg-white/70 px-3 py-2.5 shadow-sm dark:border-slate-800 dark:bg-slate-900/60"
+					>
+						<p
+							class="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+						>
+							Projects
+						</p>
+						<p class="text-xl font-semibold text-slate-900 dark:text-slate-50">
+							{stats.totalProjects}
+						</p>
+					</div>
+					<div
+						class="rounded-xl border border-slate-200 bg-white/70 px-3 py-2.5 shadow-sm dark:border-slate-800 dark:bg-slate-900/60"
+					>
+						<p
+							class="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+						>
+							Tasks
+						</p>
+						<p class="text-xl font-semibold text-slate-900 dark:text-slate-50">
+							{stats.totalTasks}
+						</p>
+					</div>
+					<div
+						class="rounded-xl border border-slate-200 bg-white/70 px-3 py-2.5 shadow-sm dark:border-slate-800 dark:bg-slate-900/60"
+					>
+						<p
+							class="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+						>
+							Outputs
+						</p>
+						<p class="text-xl font-semibold text-slate-900 dark:text-slate-50">
+							{stats.totalOutputs}
+						</p>
+					</div>
+					<div
+						class="rounded-xl border border-slate-200 bg-white/70 px-3 py-2.5 shadow-sm dark:border-slate-800 dark:bg-slate-900/60"
+					>
+						<p
+							class="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+						>
+							Active
+						</p>
+						<p class="text-xl font-semibold text-slate-900 dark:text-slate-50">
+							{stats.activeProjects}
+						</p>
+					</div>
+				</div>
+
+				<div class="space-y-4">
+					{#if availableStates.length}
+						<div class="flex flex-col gap-2">
+							<p
+								class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+							>
+								State
+							</p>
+							<div class="flex flex-wrap gap-2">
+								{#each availableStates as state (state)}
+									<button
+										type="button"
+										class={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-xs font-medium transition ${
+											selectedStates.includes(state)
+												? 'border-transparent bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-sm'
+												: 'border-slate-300 text-slate-600 hover:border-blue-400 hover:text-blue-600 dark:border-slate-600 dark:text-slate-300 dark:hover:border-indigo-400 dark:hover:text-indigo-200'
+										}`}
+										onclick={() =>
+											(selectedStates = toggleValue(selectedStates, state))}
+									>
+										{state}
+									</button>
+								{/each}
+							</div>
+						</div>
+					{/if}
+
+					<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+						{#if availableContexts.length}
+							<div class="flex flex-col gap-2">
+								<p
+									class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+								>
+									Context
+								</p>
+								<div class="flex flex-wrap gap-2">
+									{#each availableContexts as context (context)}
+										<button
+											type="button"
+											class={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-xs font-medium transition ${
+												selectedContexts.includes(context)
+													? 'border-transparent bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-sm'
+													: 'border-slate-300 text-slate-600 hover:border-amber-400 hover:text-amber-600 dark:border-slate-600 dark:text-slate-300 dark:hover:border-amber-400 dark:hover:text-amber-300'
+											}`}
+											onclick={() =>
+												(selectedContexts = toggleValue(
+													selectedContexts,
+													context
+												))}
+										>
+											{context}
+										</button>
+									{/each}
+								</div>
+							</div>
+						{/if}
+
+						{#if availableScales.length}
+							<div class="flex flex-col gap-2">
+								<p
+									class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+								>
+									Scale
+								</p>
+								<div class="flex flex-wrap gap-2">
+									{#each availableScales as scale (scale)}
+										<button
+											type="button"
+											class={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-xs font-medium transition ${
+												selectedScales.includes(scale)
+													? 'border-transparent bg-gradient-to-r from-purple-500 to-indigo-500 text-white shadow-sm'
+													: 'border-slate-300 text-slate-600 hover:border-purple-400 hover:text-purple-600 dark:border-slate-600 dark:text-slate-300 dark:hover:border-purple-400 dark:hover:text-purple-200'
+											}`}
+											onclick={() =>
+												(selectedScales = toggleValue(
+													selectedScales,
+													scale
+												))}
+										>
+											{scale}
+										</button>
+									{/each}
+								</div>
+							</div>
+						{/if}
+
+						{#if availableStages.length}
+							<div class="flex flex-col gap-2">
+								<p
+									class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+								>
+									Stage
+								</p>
+								<div class="flex flex-wrap gap-2">
+									{#each availableStages as stage (stage)}
+										<button
+											type="button"
+											class={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-xs font-medium transition ${
+												selectedStages.includes(stage)
+													? 'border-transparent bg-gradient-to-r from-emerald-500 to-green-500 text-white shadow-sm'
+													: 'border-slate-300 text-slate-600 hover:border-emerald-400 hover:text-emerald-600 dark:border-slate-600 dark:text-slate-300 dark:hover:border-emerald-400 dark:hover:text-emerald-200'
+											}`}
+											onclick={() =>
+												(selectedStages = toggleValue(
+													selectedStages,
+													stage
+												))}
+										>
+											{stage}
+										</button>
+									{/each}
+								</div>
+							</div>
+						{/if}
+					</div>
+				</div>
+			{/if}
 		</section>
 
 		{#if filteredProjects.length === 0}

@@ -26,6 +26,7 @@
 
 	// NEW: Use v2 store and services
 	import { projectStoreV2 } from '$lib/stores/project.store';
+	import type { ProjectStoreV2State } from '$lib/stores/project.store';
 	import { ProjectDataService } from '$lib/services/projectData.service';
 	import { ProjectSynthesisService } from '$lib/services/project-synthesis.service';
 	import { startPhaseGeneration } from '$lib/services/phase-generation-notification.bridge';
@@ -39,6 +40,12 @@
 		endTimer,
 		takeMemorySnapshot
 	} from '$lib/utils/performance-monitor';
+	import type {
+		TaskWithCalendarEvents,
+		ProcessedPhase,
+		TaskStats,
+		CalendarStatus
+	} from '$lib/types/project-page.types';
 	import { supabase } from '$lib/supabase';
 	import type { Phase, Note, Task } from '$lib/types/project';
 	import { loadingStateManager } from '$lib/utils/loadingStateManager';
@@ -80,6 +87,20 @@
 		// Note: WeakMap doesn't have iteration, so we handle cleanup in effectCleanup
 		// This is for tracking purposes and future enhancement
 	}
+
+	function isPromiseLike<T>(value: unknown): value is PromiseLike<T> {
+		return !!value && typeof (value as PromiseLike<T>).then === 'function';
+	}
+
+	function getErrorMessage(error: unknown, fallback: string): string {
+		if (error instanceof Error && error.message) return error.message;
+		if (typeof error === 'string' && error.length > 0) return error;
+		return fallback;
+	}
+
+	type StreamHydrationKey = 'tasks' | 'phases' | 'notes' | 'stats' | 'calendarStatus';
+	type LoadingStateKey = keyof ProjectStoreV2State['loadingStates'];
+	type ErrorStateKey = keyof ProjectStoreV2State['errors'];
 
 	// Helper to resolve current project path for redirects
 	function getCurrentProjectPath(): string {
@@ -1358,31 +1379,192 @@
 									registeredProjectService
 								);
 
-								// Initialize store with captured references
+								const wasInitialized = storeInitialized;
+
 								if (!storeInitialized) {
 									projectStoreV2.initialize(currentProject, projectCalendar);
 									storeInitialized = true;
 								}
 
-								// FIXED: Load all essential data eagerly on project init
-								// console.log('[Page] Loading essential data...');
-								await Promise.allSettled([
-									dataService.loadPhases(),
-									dataService.loadTasks(),
-									dataService.loadNotes(),
-									dataService.loadStats(),
-									dataService.loadCalendarStatus() // FIXED: Load calendar status for tasks
-								]);
+								const shouldSetInitialLoadingState = !wasInitialized;
 
-								// FIXED: Load overview component AFTER data is loaded and await it
-								// console.log('[Page] Loading PhasesSection component...');
+								const streamConfigs: {
+									key: StreamHydrationKey;
+									loadKey: LoadingStateKey;
+									errorKey: ErrorStateKey;
+									promise: unknown;
+									hydrate: (value: unknown) => void;
+									fallback: () => Promise<void>;
+								}[] = [
+									{
+										key: 'tasks',
+										loadKey: 'tasks',
+										errorKey: 'tasks',
+										promise: data.tasks,
+										hydrate: (value) =>
+											projectStoreV2.hydrateFromServer({
+												tasks: value as TaskWithCalendarEvents[]
+											}),
+										fallback: () => dataService.loadTasks({ force: true })
+									},
+									{
+										key: 'phases',
+										loadKey: 'phases',
+										errorKey: 'phases',
+										promise: data.phases,
+										hydrate: (value) =>
+											projectStoreV2.hydrateFromServer({
+												phases: value as ProcessedPhase[]
+											}),
+										fallback: () => dataService.loadPhases({ force: true })
+									},
+									{
+										key: 'notes',
+										loadKey: 'notes',
+										errorKey: 'notes',
+										promise: data.notes,
+										hydrate: (value) =>
+											projectStoreV2.hydrateFromServer({
+												notes: value as Note[]
+											}),
+										fallback: () => dataService.loadNotes({ force: true })
+									},
+									{
+										key: 'stats',
+										loadKey: 'stats',
+										errorKey: 'stats',
+										promise: data.stats,
+										hydrate: (value) =>
+											projectStoreV2.hydrateFromServer({
+												stats: value as TaskStats
+											}),
+										fallback: () => dataService.loadStats({ force: true })
+									},
+									{
+										key: 'calendarStatus',
+										loadKey: 'calendar',
+										errorKey: 'calendar',
+										promise: data.calendarStatus,
+										hydrate: (value) =>
+											projectStoreV2.hydrateFromServer({
+												calendarStatus: value as CalendarStatus
+											}),
+										fallback: () =>
+											dataService.loadCalendarStatus({ force: true })
+									}
+								];
+
+								const streamPromises: Promise<{ key: StreamHydrationKey }>[] = [];
+
+								for (const config of streamConfigs) {
+									if (typeof config.promise === 'undefined') {
+										continue;
+									}
+
+									if (shouldSetInitialLoadingState) {
+										projectStoreV2.setLoadingState(config.loadKey, 'loading');
+									}
+
+									if (isPromiseLike(config.promise)) {
+										streamPromises.push(
+											(config.promise as Promise<unknown>)
+												.then((value) => {
+													config.hydrate(value);
+													return { key: config.key };
+												})
+												.catch((err) => {
+													const message = getErrorMessage(
+														err,
+														`Failed to load ${config.key}`
+													);
+													console.error(
+														`[Page] Streaming ${config.key} failed:`,
+														err
+													);
+													projectStoreV2.setStreamingError(
+														config.errorKey,
+														message
+													);
+													throw { key: config.key, error: err };
+												})
+										);
+									} else {
+										try {
+											config.hydrate(config.promise);
+										} catch (err) {
+											const message = getErrorMessage(
+												err,
+												`Failed to load ${config.key}`
+											);
+											console.error(
+												`[Page] Hydration for ${config.key} failed:`,
+												err
+											);
+											projectStoreV2.setStreamingError(
+												config.errorKey,
+												message
+											);
+										}
+									}
+								}
+
+								const hydrationResults = await Promise.allSettled(streamPromises);
+
+								const failedHydrations = hydrationResults
+									.filter(
+										(
+											result
+										): result is PromiseRejectedResult & {
+											reason: { key: StreamHydrationKey; error: unknown };
+										} => result.status === 'rejected'
+									)
+									.map((result) => result.reason.key);
+
+								if (failedHydrations.length > 0) {
+									await Promise.allSettled(
+										failedHydrations.map((key) => {
+											switch (key) {
+												case 'tasks':
+													return dataService.loadTasks({ force: true });
+												case 'phases':
+													return dataService.loadPhases({ force: true });
+												case 'notes':
+													return dataService.loadNotes({ force: true });
+												case 'stats':
+													return dataService.loadStats({ force: true });
+												case 'calendarStatus':
+													return dataService.loadCalendarStatus({
+														force: true
+													});
+												default:
+													return Promise.resolve();
+											}
+										})
+									);
+								}
+
+								// Load overview component after initial hydration completes
 								await loadComponent('PhasesSection', 'overview');
-								// console.log('[Page] PhasesSection component loaded');
 
-								// Mark all tabs as having data loaded
-								loadingStateManager.setDataLoading('overview', 'success', true);
-								loadingStateManager.setDataLoading('tasks', 'success', true);
-								loadingStateManager.setDataLoading('notes', 'success', true);
+								// Prefetch remaining data using priority loader (skips cached datasets)
+								await dataService.loadByPriority(data.activeTab ?? 'overview');
+
+								const finalSnapshot = projectStoreV2.getState();
+								loadingStateManager.setDataLoading(
+									'overview',
+									finalSnapshot.loadingStates.phases,
+									finalSnapshot.phases.length > 0
+								);
+								loadingStateManager.setDataLoading(
+									'tasks',
+									finalSnapshot.loadingStates.tasks,
+									finalSnapshot.tasks.length > 0
+								);
+								loadingStateManager.setDataLoading(
+									'notes',
+									finalSnapshot.loadingStates.notes,
+									finalSnapshot.notes.length > 0
+								);
 
 								// Initialize real-time subscriptions
 								if (supabase) {

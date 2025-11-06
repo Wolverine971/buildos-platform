@@ -3,6 +3,7 @@
 **Created:** November 6, 2025
 **Audit Reference:** [sveltekit-supabase-audit-2025-11.md](./sveltekit-supabase-audit-2025-11.md)
 
+todo 2
 ---
 
 ## Overview
@@ -54,28 +55,29 @@ import { timingSafeEqual } from 'crypto';
 import { ApiResponse } from '$lib/utils/api-response';
 
 function constantTimeCompare(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  try {
-    return timingSafeEqual(Buffer.from(a), Buffer.from(b));
-  } catch {
-    return false;
-  }
+	if (a.length !== b.length) return false;
+	try {
+		return timingSafeEqual(Buffer.from(a), Buffer.from(b));
+	} catch {
+		return false;
+	}
 }
 
 export const GET: RequestHandler = async ({ request }) => {
-  const authHeader = request.headers.get('authorization');
-  const expectedAuth = `Bearer ${PRIVATE_CRON_SECRET}`;
+	const authHeader = request.headers.get('authorization');
+	const expectedAuth = `Bearer ${PRIVATE_CRON_SECRET}`;
 
-  // ✅ Use constant-time comparison
-  if (!authHeader || !constantTimeCompare(authHeader, expectedAuth)) {
-    return ApiResponse.unauthorized();
-  }
+	// ✅ Use constant-time comparison
+	if (!authHeader || !constantTimeCompare(authHeader, expectedAuth)) {
+		return ApiResponse.unauthorized();
+	}
 
-  // ... rest of handler
+	// ... rest of handler
 };
 ```
 
 **Testing:**
+
 ```bash
 # Test with correct secret
 curl -H "Authorization: Bearer $CRON_SECRET" http://localhost:5173/api/cron/renew-webhooks
@@ -85,6 +87,7 @@ curl -H "Authorization: Bearer wrong" http://localhost:5173/api/cron/renew-webho
 ```
 
 **Acceptance Criteria:**
+
 - [ ] All cron endpoints use `constantTimeCompare()`
 - [ ] No timing variation between correct/incorrect secrets
 - [ ] Tests pass with valid and invalid credentials
@@ -113,47 +116,48 @@ import { browser } from '$app/environment';
 const supabase = browser ? createSupabaseBrowser() : null;
 
 onMount(() => {
-  if (!supabase) return;
+	if (!supabase) return;
 
-  // Subscribe to auth state changes
-  const { data: { subscription } } = supabase.auth.onAuthStateChange(
-    async (event, session) => {
-      console.log('[Auth] State changed:', event);
+	// Subscribe to auth state changes
+	const {
+		data: { subscription }
+	} = supabase.auth.onAuthStateChange(async (event, session) => {
+		console.log('[Auth] State changed:', event);
 
-      switch (event) {
-        case 'SIGNED_OUT':
-          // User signed out - redirect to login
-          await goto('/auth/login', { invalidateAll: true });
-          break;
+		switch (event) {
+			case 'SIGNED_OUT':
+				// User signed out - redirect to login
+				await goto('/auth/login', { invalidateAll: true });
+				break;
 
-        case 'TOKEN_REFRESHED':
-          // Token refreshed - update layout data
-          await invalidate('app:auth');
-          break;
+			case 'TOKEN_REFRESHED':
+				// Token refreshed - update layout data
+				await invalidate('app:auth');
+				break;
 
-        case 'USER_UPDATED':
-          // User profile updated - refresh data
-          await invalidate('app:auth');
-          break;
+			case 'USER_UPDATED':
+				// User profile updated - refresh data
+				await invalidate('app:auth');
+				break;
 
-        case 'SIGNED_IN':
-          // User signed in - might want to redirect
-          if (window.location.pathname.startsWith('/auth')) {
-            await goto('/', { invalidateAll: true });
-          }
-          break;
-      }
-    }
-  );
+			case 'SIGNED_IN':
+				// User signed in - might want to redirect
+				if (window.location.pathname.startsWith('/auth')) {
+					await goto('/', { invalidateAll: true });
+				}
+				break;
+		}
+	});
 
-  // Cleanup subscription on unmount
-  return () => {
-    subscription.unsubscribe();
-  };
+	// Cleanup subscription on unmount
+	return () => {
+		subscription.unsubscribe();
+	};
 });
 ```
 
 **Testing:**
+
 1. Open app in two tabs
 2. Log out in one tab
 3. Verify other tab redirects to login
@@ -161,6 +165,7 @@ onMount(() => {
 5. Update user profile, verify UI updates
 
 **Acceptance Criteria:**
+
 - [ ] Auth state changes trigger UI updates
 - [ ] Logout in one tab affects all tabs
 - [ ] Token refresh updates session data
@@ -179,6 +184,7 @@ onMount(() => {
 Some cron endpoints use `json()` instead of `ApiResponse`, breaking consistent error format.
 
 **Files to Update:**
+
 - `apps/web/src/routes/api/cron/trial-reminders/+server.ts`
 - `apps/web/src/routes/api/cron/renew-webhooks/+server.ts`
 - `apps/web/src/routes/api/cron/dunning/+server.ts`
@@ -198,6 +204,7 @@ return ApiResponse.success({ sent });
 ```
 
 **Search and Replace:**
+
 ```bash
 # Find all instances
 grep -r "return json(" apps/web/src/routes/api/cron/
@@ -209,12 +216,14 @@ grep -r "return json(" apps/web/src/routes/api/cron/
 ```
 
 **Testing:**
+
 ```bash
 # Test each cron endpoint
 pnpm run test src/routes/api/cron/
 ```
 
 **Acceptance Criteria:**
+
 - [ ] All API endpoints use `ApiResponse`
 - [ ] No direct `json()` calls in API routes
 - [ ] Error format consistent across all endpoints
@@ -239,22 +248,22 @@ Root layout loads subscription, trial, and payment data for EVERY page, even pub
 // apps/web/src/routes/+layout.server.ts
 
 export const load: LayoutServerLoad = async ({
-  locals: { safeGetSession },
-  cookies,
-  url,
-  depends
+	locals: { safeGetSession },
+	cookies,
+	url,
+	depends
 }) => {
-  depends('app:auth');
+	depends('app:auth');
 
-  const { user } = await safeGetSession();
+	const { user } = await safeGetSession();
 
-  // Return only essential data
-  return {
-    user,
-    url: url.origin,
-    cookies: cookies.getAll(),
-    stripeEnabled: StripeService.isEnabled()
-  };
+	// Return only essential data
+	return {
+		user,
+		url: url.origin,
+		cookies: cookies.getAll(),
+		stripeEnabled: StripeService.isEnabled()
+	};
 };
 ```
 
@@ -263,29 +272,26 @@ export const load: LayoutServerLoad = async ({
 ```typescript
 // apps/web/src/routes/(authenticated)/+layout.server.ts
 
-export const load: LayoutServerLoad = async ({
-  parent,
-  locals: { supabase }
-}) => {
-  const { user } = await parent();
+export const load: LayoutServerLoad = async ({ parent, locals: { supabase } }) => {
+	const { user } = await parent();
 
-  if (!user) {
-    throw redirect(303, '/auth/login');
-  }
+	if (!user) {
+		throw redirect(303, '/auth/login');
+	}
 
-  // Load authenticated user data
-  const [subscription, trialStatus, paymentWarnings] = await Promise.all([
-    checkUserSubscription(supabase, user.id),
-    supabase.rpc('get_user_trial_status', { p_user_id: user.id }).single(),
-    fetchPaymentWarnings(supabase, user.id)
-  ]);
+	// Load authenticated user data
+	const [subscription, trialStatus, paymentWarnings] = await Promise.all([
+		checkUserSubscription(supabase, user.id),
+		supabase.rpc('get_user_trial_status', { p_user_id: user.id }).single(),
+		fetchPaymentWarnings(supabase, user.id)
+	]);
 
-  return {
-    subscription,
-    trialStatus: trialStatus.data,
-    paymentWarnings: paymentWarnings || [],
-    isReadOnly: trialStatus.data?.is_read_only || false
-  };
+	return {
+		subscription,
+		trialStatus: trialStatus.data,
+		paymentWarnings: paymentWarnings || [],
+		isReadOnly: trialStatus.data?.is_read_only || false
+	};
 };
 ```
 
@@ -314,30 +320,31 @@ apps/web/src/routes/
 ```svelte
 <!-- apps/web/src/routes/(authenticated)/+layout.svelte -->
 <script lang="ts">
-  import { page } from '$app/stores';
-  import TrialBanner from '$lib/components/trial/TrialBanner.svelte';
-  import PaymentWarning from '$lib/components/notifications/PaymentWarning.svelte';
+	import { page } from '$app/stores';
+	import TrialBanner from '$lib/components/trial/TrialBanner.svelte';
+	import PaymentWarning from '$lib/components/notifications/PaymentWarning.svelte';
 
-  let { data, children } = $props();
-  let { user, subscription, trialStatus, paymentWarnings, isReadOnly } = data;
+	let { data, children } = $props();
+	let { user, subscription, trialStatus, paymentWarnings, isReadOnly } = data;
 </script>
 
 {#if user && trialStatus}
-  <TrialBanner {user} {trialStatus} />
+	<TrialBanner {user} {trialStatus} />
 {/if}
 
 {#if paymentWarnings.length > 0}
-  <div class="container mx-auto px-4 mt-4">
-    {#each paymentWarnings as warning (warning.id)}
-      <PaymentWarning notification={warning} />
-    {/each}
-  </div>
+	<div class="container mx-auto px-4 mt-4">
+		{#each paymentWarnings as warning (warning.id)}
+			<PaymentWarning notification={warning} />
+		{/each}
+	</div>
 {/if}
 
 <slot />
 ```
 
 **Testing:**
+
 ```bash
 # Measure before
 time curl http://localhost:5173/about
@@ -350,6 +357,7 @@ curl http://localhost:5173/projects
 ```
 
 **Acceptance Criteria:**
+
 - [ ] Public pages don't load subscription data
 - [ ] Authenticated pages load subscription data
 - [ ] Navigation to `/about` is 50%+ faster
@@ -374,38 +382,40 @@ Login, register, and forgot-password pages duplicate 50+ lines of layout code.
 ```svelte
 <!-- apps/web/src/routes/auth/+layout.svelte -->
 <script lang="ts">
-  let { children } = $props();
+	let { children } = $props();
 </script>
 
-<div class="flex items-center justify-center min-h-screen min-h-[100dvh] px-4 bg-slate-50 dark:bg-slate-900">
-  <div class="max-w-md w-full space-y-8 py-12">
-    <!-- Shared branding -->
-    <div class="text-center">
-      <video
-        src="/onboarding-assets/animations/brain-bolt-electric.mp4"
-        autoplay
-        loop
-        muted
-        playsinline
-        class="h-24 w-24 mx-auto mb-4"
-      />
-      <a href="/" class="text-2xl font-bold text-blue-600 dark:text-blue-400">
-        BuildOS
-      </a>
-    </div>
+<div
+	class="flex items-center justify-center min-h-screen min-h-[100dvh] px-4 bg-slate-50 dark:bg-slate-900"
+>
+	<div class="max-w-md w-full space-y-8 py-12">
+		<!-- Shared branding -->
+		<div class="text-center">
+			<video
+				src="/onboarding-assets/animations/brain-bolt-electric.mp4"
+				autoplay
+				loop
+				muted
+				playsinline
+				class="h-24 w-24 mx-auto mb-4"
+			/>
+			<a href="/" class="text-2xl font-bold text-blue-600 dark:text-blue-400"> BuildOS </a>
+		</div>
 
-    <!-- Page content -->
-    <div class="bg-white dark:bg-slate-800 rounded-lg shadow-lg p-8">
-      {@render children()}
-    </div>
+		<!-- Page content -->
+		<div class="bg-white dark:bg-slate-800 rounded-lg shadow-lg p-8">
+			{@render children()}
+		</div>
 
-    <!-- Shared footer links -->
-    <div class="text-center text-sm text-gray-600 dark:text-gray-400">
-      <p>
-        Need help? <a href="/help" class="text-blue-600 dark:text-blue-400 hover:underline">Contact Support</a>
-      </p>
-    </div>
-  </div>
+		<!-- Shared footer links -->
+		<div class="text-center text-sm text-gray-600 dark:text-gray-400">
+			<p>
+				Need help? <a href="/help" class="text-blue-600 dark:text-blue-400 hover:underline"
+					>Contact Support</a
+				>
+			</p>
+		</div>
+	</div>
 </div>
 ```
 
@@ -414,20 +424,19 @@ Login, register, and forgot-password pages duplicate 50+ lines of layout code.
 ```svelte
 <!-- apps/web/src/routes/auth/login/+page.svelte -->
 <script lang="ts">
-  // Remove all layout code
-  // Just keep form logic
+	// Remove all layout code
+	// Just keep form logic
 </script>
 
-<h2 class="text-3xl font-bold text-center mb-8 text-gray-900 dark:text-white">
-  Welcome back
-</h2>
+<h2 class="text-3xl font-bold text-center mb-8 text-gray-900 dark:text-white">Welcome back</h2>
 
 <form>
-  <!-- Form fields -->
+	<!-- Form fields -->
 </form>
 ```
 
 **Diff Preview:**
+
 ```diff
 <!-- login/+page.svelte -->
 - <div class="flex items-center justify-center px-4">
@@ -445,6 +454,7 @@ Login, register, and forgot-password pages duplicate 50+ lines of layout code.
 ```
 
 **Testing:**
+
 1. Visit `/auth/login` - should look the same
 2. Visit `/auth/register` - should look the same
 3. Visit `/auth/forgot-password` - should look the same
@@ -452,6 +462,7 @@ Login, register, and forgot-password pages duplicate 50+ lines of layout code.
 5. Test responsive layout on mobile
 
 **Acceptance Criteria:**
+
 - [ ] Auth pages look identical before/after
 - [ ] No code duplication
 - [ ] Dark mode works
@@ -481,45 +492,46 @@ import { ApiResponse } from '$lib/utils/api-response';
 import type { RequestHandler } from '@sveltejs/kit';
 
 export interface RateLimitConfig {
-  limit: typeof RATE_LIMITS[keyof typeof RATE_LIMITS];
-  keyFn?: (event: any) => string;  // Custom key extraction
-  skipAuth?: boolean;               // Skip auth check (for public endpoints)
+	limit: (typeof RATE_LIMITS)[keyof typeof RATE_LIMITS];
+	keyFn?: (event: any) => string; // Custom key extraction
+	skipAuth?: boolean; // Skip auth check (for public endpoints)
 }
 
 export function rateLimitMiddleware(
-  handler: RequestHandler,
-  config: RateLimitConfig
+	handler: RequestHandler,
+	config: RateLimitConfig
 ): RequestHandler {
-  return async (event) => {
-    const { locals } = event;
+	return async (event) => {
+		const { locals } = event;
 
-    // Get rate limit key (default: user ID)
-    let key: string;
-    if (config.keyFn) {
-      key = config.keyFn(event);
-    } else if (config.skipAuth) {
-      // Use IP address for public endpoints
-      key = event.request.headers.get('x-forwarded-for') ||
-            event.request.headers.get('x-real-ip') ||
-            'unknown';
-    } else {
-      const { user } = await locals.safeGetSession();
-      if (!user) {
-        return ApiResponse.unauthorized();
-      }
-      key = user.id;
-    }
+		// Get rate limit key (default: user ID)
+		let key: string;
+		if (config.keyFn) {
+			key = config.keyFn(event);
+		} else if (config.skipAuth) {
+			// Use IP address for public endpoints
+			key =
+				event.request.headers.get('x-forwarded-for') ||
+				event.request.headers.get('x-real-ip') ||
+				'unknown';
+		} else {
+			const { user } = await locals.safeGetSession();
+			if (!user) {
+				return ApiResponse.unauthorized();
+			}
+			key = user.id;
+		}
 
-    // Check rate limit
-    const result = rateLimiter.check(key, config.limit);
-    if (!result.allowed) {
-      const retryAfter = Math.ceil((result.resetTime - Date.now()) / 1000);
-      return ApiResponse.rateLimit(retryAfter);
-    }
+		// Check rate limit
+		const result = rateLimiter.check(key, config.limit);
+		if (!result.allowed) {
+			const retryAfter = Math.ceil((result.resetTime - Date.now()) / 1000);
+			return ApiResponse.rateLimit(retryAfter);
+		}
 
-    // Call handler
-    return handler(event);
-  };
+		// Call handler
+		return handler(event);
+	};
 }
 ```
 
@@ -529,24 +541,24 @@ export function rateLimitMiddleware(
 // apps/web/src/lib/utils/api-response.ts
 
 export class ApiResponse {
-  // ... existing methods
+	// ... existing methods
 
-  static rateLimit(retryAfter: number): Response {
-    return json(
-      {
-        error: 'Rate limit exceeded',
-        retryAfter,
-        message: `Too many requests. Please try again in ${retryAfter} seconds.`
-      },
-      {
-        status: 429,
-        headers: {
-          'Retry-After': retryAfter.toString(),
-          'X-RateLimit-Remaining': '0'
-        }
-      }
-    );
-  }
+	static rateLimit(retryAfter: number): Response {
+		return json(
+			{
+				error: 'Rate limit exceeded',
+				retryAfter,
+				message: `Too many requests. Please try again in ${retryAfter} seconds.`
+			},
+			{
+				status: 429,
+				headers: {
+					'Retry-After': retryAfter.toString(),
+					'X-RateLimit-Remaining': '0'
+				}
+			}
+		);
+	}
 }
 ```
 
@@ -556,19 +568,19 @@ export class ApiResponse {
 // apps/web/src/lib/services/rate-limiter.ts
 
 export const RATE_LIMITS = {
-  // AI operations
-  API_AI: { max: 20, window: 60 * 60 * 1000 },       // 20/hour
-  API_AI_HEAVY: { max: 5, window: 60 * 60 * 1000 },  // 5/hour
+	// AI operations
+	API_AI: { max: 20, window: 60 * 60 * 1000 }, // 20/hour
+	API_AI_HEAVY: { max: 5, window: 60 * 60 * 1000 }, // 5/hour
 
-  // Mutations
-  API_MUTATION: { max: 100, window: 60 * 1000 },     // 100/min
-  API_MUTATION_HEAVY: { max: 30, window: 60 * 1000 }, // 30/min
+	// Mutations
+	API_MUTATION: { max: 100, window: 60 * 1000 }, // 100/min
+	API_MUTATION_HEAVY: { max: 30, window: 60 * 1000 }, // 30/min
 
-  // Reads
-  API_READ: { max: 300, window: 60 * 1000 },         // 300/min
+	// Reads
+	API_READ: { max: 300, window: 60 * 1000 }, // 300/min
 
-  // Public endpoints
-  PUBLIC_FORM: { max: 5, window: 60 * 1000 }         // 5/min
+	// Public endpoints
+	PUBLIC_FORM: { max: 5, window: 60 * 1000 } // 5/min
 } as const;
 ```
 
@@ -581,40 +593,40 @@ import { rateLimitMiddleware } from '$lib/middleware/rate-limit';
 import { RATE_LIMITS } from '$lib/services/rate-limiter';
 
 export const POST = rateLimitMiddleware(
-  async ({ request, locals }) => {
-    // Create project logic
-    // ...
-    return ApiResponse.success(project);
-  },
-  { limit: RATE_LIMITS.API_MUTATION }
+	async ({ request, locals }) => {
+		// Create project logic
+		// ...
+		return ApiResponse.success(project);
+	},
+	{ limit: RATE_LIMITS.API_MUTATION }
 );
 
 export const GET = rateLimitMiddleware(
-  async ({ locals }) => {
-    // List projects logic
-    // ...
-    return ApiResponse.success(projects);
-  },
-  { limit: RATE_LIMITS.API_READ }
+	async ({ locals }) => {
+		// List projects logic
+		// ...
+		return ApiResponse.success(projects);
+	},
+	{ limit: RATE_LIMITS.API_READ }
 );
 ```
 
 **Endpoints to Update (Priority Order):**
 
 1. **AI Operations** (Heavy)
-   - ✅ Already done: `/api/braindumps/stream`
-   - `/api/chat/stream`
-   - `/api/phases/generate`
+    - ✅ Already done: `/api/braindumps/stream`
+    - `/api/chat/stream`
+    - `/api/phases/generate`
 
 2. **Mutations** (Medium)
-   - `/api/projects/+server.ts` (POST)
-   - `/api/tasks/+server.ts` (POST, PUT, DELETE)
-   - `/api/notes/+server.ts` (POST, PUT, DELETE)
-   - `/api/feedback/+server.ts` (POST)
+    - `/api/projects/+server.ts` (POST)
+    - `/api/tasks/+server.ts` (POST, PUT, DELETE)
+    - `/api/notes/+server.ts` (POST, PUT, DELETE)
+    - `/api/feedback/+server.ts` (POST)
 
 3. **Public Forms** (Low)
-   - `/api/auth/register/+server.ts`
-   - `/api/feedback/+server.ts` (public)
+    - `/api/auth/register/+server.ts`
+    - `/api/feedback/+server.ts` (public)
 
 **Testing:**
 
@@ -625,57 +637,57 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { rateLimitMiddleware } from './rate-limit';
 
 describe('rateLimitMiddleware', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
 
-  it('allows requests under limit', async () => {
-    const handler = vi.fn().mockResolvedValue({ status: 200 });
-    const middleware = rateLimitMiddleware(handler, {
-      limit: { max: 10, window: 60000 }
-    });
+	it('allows requests under limit', async () => {
+		const handler = vi.fn().mockResolvedValue({ status: 200 });
+		const middleware = rateLimitMiddleware(handler, {
+			limit: { max: 10, window: 60000 }
+		});
 
-    const event = mockEvent({ userId: 'user-1' });
-    const response = await middleware(event);
+		const event = mockEvent({ userId: 'user-1' });
+		const response = await middleware(event);
 
-    expect(handler).toHaveBeenCalled();
-    expect(response.status).toBe(200);
-  });
+		expect(handler).toHaveBeenCalled();
+		expect(response.status).toBe(200);
+	});
 
-  it('blocks requests over limit', async () => {
-    const handler = vi.fn();
-    const middleware = rateLimitMiddleware(handler, {
-      limit: { max: 1, window: 60000 }
-    });
+	it('blocks requests over limit', async () => {
+		const handler = vi.fn();
+		const middleware = rateLimitMiddleware(handler, {
+			limit: { max: 1, window: 60000 }
+		});
 
-    const event = mockEvent({ userId: 'user-1' });
+		const event = mockEvent({ userId: 'user-1' });
 
-    // First request - allowed
-    await middleware(event);
+		// First request - allowed
+		await middleware(event);
 
-    // Second request - blocked
-    const response = await middleware(event);
+		// Second request - blocked
+		const response = await middleware(event);
 
-    expect(handler).toHaveBeenCalledTimes(1);
-    expect(response.status).toBe(429);
-    expect(response.headers.get('Retry-After')).toBeDefined();
-  });
+		expect(handler).toHaveBeenCalledTimes(1);
+		expect(response.status).toBe(429);
+		expect(response.headers.get('Retry-After')).toBeDefined();
+	});
 
-  it('uses IP for public endpoints', async () => {
-    const handler = vi.fn().mockResolvedValue({ status: 200 });
-    const middleware = rateLimitMiddleware(handler, {
-      limit: { max: 10, window: 60000 },
-      skipAuth: true
-    });
+	it('uses IP for public endpoints', async () => {
+		const handler = vi.fn().mockResolvedValue({ status: 200 });
+		const middleware = rateLimitMiddleware(handler, {
+			limit: { max: 10, window: 60000 },
+			skipAuth: true
+		});
 
-    const event = mockEvent({
-      ip: '127.0.0.1',
-      skipAuth: true
-    });
+		const event = mockEvent({
+			ip: '127.0.0.1',
+			skipAuth: true
+		});
 
-    await middleware(event);
-    expect(handler).toHaveBeenCalled();
-  });
+		await middleware(event);
+		expect(handler).toHaveBeenCalled();
+	});
 });
 ```
 
@@ -684,6 +696,7 @@ pnpm run test src/lib/middleware/rate-limit.test.ts
 ```
 
 **Acceptance Criteria:**
+
 - [ ] Middleware created and tested
 - [ ] Rate limits defined for all endpoint types
 - [ ] AI endpoints limited to 20/hour
@@ -715,110 +728,116 @@ import type { Actions } from './$types';
 import { fail, redirect } from '@sveltejs/kit';
 
 export const actions: Actions = {
-  default: async ({ request, locals, cookies }) => {
-    const formData = await request.formData();
-    const email = formData.get('email') as string;
-    const password = formData.get('password') as string;
+	default: async ({ request, locals, cookies }) => {
+		const formData = await request.formData();
+		const email = formData.get('email') as string;
+		const password = formData.get('password') as string;
 
-    // Validation
-    if (!email || !password) {
-      return fail(400, {
-        error: 'Email and password are required',
-        email
-      });
-    }
+		// Validation
+		if (!email || !password) {
+			return fail(400, {
+				error: 'Email and password are required',
+				email
+			});
+		}
 
-    // Authenticate
-    const { error } = await locals.supabase.auth.signInWithPassword({
-      email,
-      password
-    });
+		// Authenticate
+		const { error } = await locals.supabase.auth.signInWithPassword({
+			email,
+			password
+		});
 
-    if (error) {
-      return fail(401, {
-        error: error.message,
-        email
-      });
-    }
+		if (error) {
+			return fail(401, {
+				error: error.message,
+				email
+			});
+		}
 
-    // Success - redirect
-    throw redirect(303, '/');
-  }
+		// Success - redirect
+		throw redirect(303, '/');
+	}
 };
 ```
 
 ```svelte
 <!-- apps/web/src/routes/auth/login/+page.svelte -->
 <script lang="ts">
-  import { enhance } from '$app/forms';
-  import type { ActionData } from './$types';
+	import { enhance } from '$app/forms';
+	import type { ActionData } from './$types';
 
-  let { form }: { form: ActionData } = $props();
+	let { form }: { form: ActionData } = $props();
 
-  let isSubmitting = $state(false);
+	let isSubmitting = $state(false);
 </script>
 
 <h2 class="text-3xl font-bold text-center mb-8">Welcome back</h2>
 
 {#if form?.error}
-  <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-4">
-    <p class="text-red-800 dark:text-red-200 text-sm">{form.error}</p>
-  </div>
+	<div
+		class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-4"
+	>
+		<p class="text-red-800 dark:text-red-200 text-sm">{form.error}</p>
+	</div>
 {/if}
 
 <form
-  method="POST"
-  use:enhance={() => {
-    isSubmitting = true;
-    return async ({ update }) => {
-      await update();
-      isSubmitting = false;
-    };
-  }}
+	method="POST"
+	use:enhance={() => {
+		isSubmitting = true;
+		return async ({ update }) => {
+			await update();
+			isSubmitting = false;
+		};
+	}}
 >
-  <div class="space-y-4">
-    <div>
-      <label for="email" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-        Email
-      </label>
-      <input
-        id="email"
-        name="email"
-        type="email"
-        required
-        value={form?.email || ''}
-        class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-slate-700 dark:border-slate-600"
-      />
-    </div>
+	<div class="space-y-4">
+		<div>
+			<label
+				for="email"
+				class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+			>
+				Email
+			</label>
+			<input
+				id="email"
+				name="email"
+				type="email"
+				required
+				value={form?.email || ''}
+				class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-slate-700 dark:border-slate-600"
+			/>
+		</div>
 
-    <div>
-      <label for="password" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-        Password
-      </label>
-      <input
-        id="password"
-        name="password"
-        type="password"
-        required
-        class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-slate-700 dark:border-slate-600"
-      />
-    </div>
+		<div>
+			<label
+				for="password"
+				class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+			>
+				Password
+			</label>
+			<input
+				id="password"
+				name="password"
+				type="password"
+				required
+				class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-slate-700 dark:border-slate-600"
+			/>
+		</div>
 
-    <button
-      type="submit"
-      disabled={isSubmitting}
-      class="w-full py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium rounded-lg transition-colors"
-    >
-      {isSubmitting ? 'Signing in...' : 'Sign In'}
-    </button>
-  </div>
+		<button
+			type="submit"
+			disabled={isSubmitting}
+			class="w-full py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium rounded-lg transition-colors"
+		>
+			{isSubmitting ? 'Signing in...' : 'Sign In'}
+		</button>
+	</div>
 </form>
 
 <p class="mt-4 text-center text-sm text-gray-600 dark:text-gray-400">
-  Don't have an account?
-  <a href="/auth/register" class="text-blue-600 dark:text-blue-400 hover:underline">
-    Sign up
-  </a>
+	Don't have an account?
+	<a href="/auth/register" class="text-blue-600 dark:text-blue-400 hover:underline"> Sign up </a>
 </p>
 ```
 
@@ -828,57 +847,57 @@ export const actions: Actions = {
 // apps/web/src/routes/auth/register/+page.server.ts
 
 export const actions: Actions = {
-  default: async ({ request, locals }) => {
-    const formData = await request.formData();
-    const email = formData.get('email') as string;
-    const password = formData.get('password') as string;
-    const name = formData.get('name') as string;
+	default: async ({ request, locals }) => {
+		const formData = await request.formData();
+		const email = formData.get('email') as string;
+		const password = formData.get('password') as string;
+		const name = formData.get('name') as string;
 
-    // Validation
-    if (!email || !password || !name) {
-      return fail(400, {
-        error: 'All fields are required',
-        email,
-        name
-      });
-    }
+		// Validation
+		if (!email || !password || !name) {
+			return fail(400, {
+				error: 'All fields are required',
+				email,
+				name
+			});
+		}
 
-    if (password.length < 8) {
-      return fail(400, {
-        error: 'Password must be at least 8 characters',
-        email,
-        name
-      });
-    }
+		if (password.length < 8) {
+			return fail(400, {
+				error: 'Password must be at least 8 characters',
+				email,
+				name
+			});
+		}
 
-    // Create account
-    const { data, error } = await locals.supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { name }
-      }
-    });
+		// Create account
+		const { data, error } = await locals.supabase.auth.signUp({
+			email,
+			password,
+			options: {
+				data: { name }
+			}
+		});
 
-    if (error) {
-      return fail(400, {
-        error: error.message,
-        email,
-        name
-      });
-    }
+		if (error) {
+			return fail(400, {
+				error: error.message,
+				email,
+				name
+			});
+		}
 
-    // Check if email confirmation required
-    if (data.user && !data.session) {
-      return {
-        success: true,
-        message: 'Please check your email to confirm your account'
-      };
-    }
+		// Check if email confirmation required
+		if (data.user && !data.session) {
+			return {
+				success: true,
+				message: 'Please check your email to confirm your account'
+			};
+		}
 
-    // Auto-signed in - redirect
-    throw redirect(303, '/');
-  }
+		// Auto-signed in - redirect
+		throw redirect(303, '/');
+	}
 };
 ```
 
@@ -888,33 +907,33 @@ export const actions: Actions = {
 // apps/web/src/routes/auth/forgot-password/+page.server.ts
 
 export const actions: Actions = {
-  default: async ({ request, locals, url }) => {
-    const formData = await request.formData();
-    const email = formData.get('email') as string;
+	default: async ({ request, locals, url }) => {
+		const formData = await request.formData();
+		const email = formData.get('email') as string;
 
-    if (!email) {
-      return fail(400, {
-        error: 'Email is required'
-      });
-    }
+		if (!email) {
+			return fail(400, {
+				error: 'Email is required'
+			});
+		}
 
-    // Send reset email
-    const { error } = await locals.supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${url.origin}/auth/reset-password`
-    });
+		// Send reset email
+		const { error } = await locals.supabase.auth.resetPasswordForEmail(email, {
+			redirectTo: `${url.origin}/auth/reset-password`
+		});
 
-    if (error) {
-      return fail(400, {
-        error: error.message,
-        email
-      });
-    }
+		if (error) {
+			return fail(400, {
+				error: error.message,
+				email
+			});
+		}
 
-    return {
-      success: true,
-      message: 'Password reset email sent! Check your inbox.'
-    };
-  }
+		return {
+			success: true,
+			message: 'Password reset email sent! Check your inbox.'
+		};
+	}
 };
 ```
 
@@ -933,6 +952,7 @@ export const actions: Actions = {
 ```
 
 **Acceptance Criteria:**
+
 - [ ] Login form works without JavaScript
 - [ ] Register form works without JavaScript
 - [ ] Forgot password form works without JavaScript
@@ -965,57 +985,57 @@ import { writable, derived } from 'svelte/store';
 import type { Project, Task, Note } from '$lib/types';
 
 export interface ProjectDataState {
-  project: Project | null;
-  tasks: Task[];
-  notes: Note[];
-  isLoading: boolean;
-  error: string | null;
+	project: Project | null;
+	tasks: Task[];
+	notes: Note[];
+	isLoading: boolean;
+	error: string | null;
 }
 
 export function useProjectData(projectId: string) {
-  const state = writable<ProjectDataState>({
-    project: null,
-    tasks: [],
-    notes: [],
-    isLoading: true,
-    error: null
-  });
+	const state = writable<ProjectDataState>({
+		project: null,
+		tasks: [],
+		notes: [],
+		isLoading: true,
+		error: null
+	});
 
-  async function loadProject() {
-    state.update(s => ({ ...s, isLoading: true, error: null }));
+	async function loadProject() {
+		state.update((s) => ({ ...s, isLoading: true, error: null }));
 
-    try {
-      const [project, tasks, notes] = await Promise.all([
-        fetchProject(projectId),
-        fetchTasks(projectId),
-        fetchNotes(projectId)
-      ]);
+		try {
+			const [project, tasks, notes] = await Promise.all([
+				fetchProject(projectId),
+				fetchTasks(projectId),
+				fetchNotes(projectId)
+			]);
 
-      state.update(s => ({
-        ...s,
-        project,
-        tasks,
-        notes,
-        isLoading: false
-      }));
-    } catch (err) {
-      state.update(s => ({
-        ...s,
-        error: err.message,
-        isLoading: false
-      }));
-    }
-  }
+			state.update((s) => ({
+				...s,
+				project,
+				tasks,
+				notes,
+				isLoading: false
+			}));
+		} catch (err) {
+			state.update((s) => ({
+				...s,
+				error: err.message,
+				isLoading: false
+			}));
+		}
+	}
 
-  async function refreshProject() {
-    await loadProject();
-  }
+	async function refreshProject() {
+		await loadProject();
+	}
 
-  return {
-    state,
-    loadProject,
-    refreshProject
-  };
+	return {
+		state,
+		loadProject,
+		refreshProject
+	};
 }
 ```
 
@@ -1023,26 +1043,26 @@ export function useProjectData(projectId: string) {
 // apps/web/src/routes/projects/[id]/_composables/useProjectHandlers.ts
 
 export function useProjectHandlers(projectData) {
-  async function handleTaskCreate(taskData: Partial<Task>) {
-    // Create task logic
-    await projectData.refreshProject();
-  }
+	async function handleTaskCreate(taskData: Partial<Task>) {
+		// Create task logic
+		await projectData.refreshProject();
+	}
 
-  async function handleTaskUpdate(taskId: string, updates: Partial<Task>) {
-    // Update task logic
-    await projectData.refreshProject();
-  }
+	async function handleTaskUpdate(taskId: string, updates: Partial<Task>) {
+		// Update task logic
+		await projectData.refreshProject();
+	}
 
-  async function handleTaskDelete(taskId: string) {
-    // Delete task logic
-    await projectData.refreshProject();
-  }
+	async function handleTaskDelete(taskId: string) {
+		// Delete task logic
+		await projectData.refreshProject();
+	}
 
-  return {
-    handleTaskCreate,
-    handleTaskUpdate,
-    handleTaskDelete
-  };
+	return {
+		handleTaskCreate,
+		handleTaskUpdate,
+		handleTaskDelete
+	};
 }
 ```
 
@@ -1051,65 +1071,61 @@ export function useProjectHandlers(projectData) {
 ```svelte
 <!-- apps/web/src/routes/projects/[id]/_components/ProjectHeader.svelte -->
 <script lang="ts">
-  import type { Project } from '$lib/types';
+	import type { Project } from '$lib/types';
 
-  let { project, onEdit, onDelete } = $props<{
-    project: Project;
-    onEdit: () => void;
-    onDelete: () => void;
-  }>();
+	let { project, onEdit, onDelete } = $props<{
+		project: Project;
+		onEdit: () => void;
+		onDelete: () => void;
+	}>();
 </script>
 
 <div class="flex items-center justify-between mb-6">
-  <div>
-    <h1 class="text-3xl font-bold text-gray-900 dark:text-white">
-      {project.name}
-    </h1>
-    <p class="text-gray-600 dark:text-gray-400 mt-1">
-      {project.description}
-    </p>
-  </div>
+	<div>
+		<h1 class="text-3xl font-bold text-gray-900 dark:text-white">
+			{project.name}
+		</h1>
+		<p class="text-gray-600 dark:text-gray-400 mt-1">
+			{project.description}
+		</p>
+	</div>
 
-  <div class="flex gap-2">
-    <button onclick={onEdit} class="btn btn-secondary">
-      Edit
-    </button>
-    <button onclick={onDelete} class="btn btn-danger">
-      Delete
-    </button>
-  </div>
+	<div class="flex gap-2">
+		<button onclick={onEdit} class="btn btn-secondary"> Edit </button>
+		<button onclick={onDelete} class="btn btn-danger"> Delete </button>
+	</div>
 </div>
 ```
 
 ```svelte
 <!-- apps/web/src/routes/projects/[id]/_components/ProjectTabs.svelte -->
 <script lang="ts">
-  let { activeTab, onTabChange } = $props<{
-    activeTab: string;
-    onTabChange: (tab: string) => void;
-  }>();
+	let { activeTab, onTabChange } = $props<{
+		activeTab: string;
+		onTabChange: (tab: string) => void;
+	}>();
 
-  const tabs = [
-    { id: 'tasks', label: 'Tasks', icon: 'CheckSquare' },
-    { id: 'notes', label: 'Notes', icon: 'FileText' },
-    { id: 'calendar', label: 'Calendar', icon: 'Calendar' },
-    { id: 'context', label: 'Context', icon: 'Info' }
-  ];
+	const tabs = [
+		{ id: 'tasks', label: 'Tasks', icon: 'CheckSquare' },
+		{ id: 'notes', label: 'Notes', icon: 'FileText' },
+		{ id: 'calendar', label: 'Calendar', icon: 'Calendar' },
+		{ id: 'context', label: 'Context', icon: 'Info' }
+	];
 </script>
 
 <div class="border-b border-gray-200 dark:border-gray-700">
-  <nav class="flex space-x-8">
-    {#each tabs as tab}
-      <button
-        onclick={() => onTabChange(tab.id)}
-        class="py-4 px-1 border-b-2 font-medium text-sm {activeTab === tab.id
-          ? 'border-blue-500 text-blue-600'
-          : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}"
-      >
-        {tab.label}
-      </button>
-    {/each}
-  </nav>
+	<nav class="flex space-x-8">
+		{#each tabs as tab}
+			<button
+				onclick={() => onTabChange(tab.id)}
+				class="py-4 px-1 border-b-2 font-medium text-sm {activeTab === tab.id
+					? 'border-blue-500 text-blue-600'
+					: 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}"
+			>
+				{tab.label}
+			</button>
+		{/each}
+	</nav>
 </div>
 ```
 
@@ -1118,71 +1134,68 @@ export function useProjectHandlers(projectData) {
 ```svelte
 <!-- apps/web/src/routes/projects/[id]/+page.svelte -->
 <script lang="ts">
-  import { onMount } from 'svelte';
-  import { page } from '$app/stores';
-  import ProjectHeader from './_components/ProjectHeader.svelte';
-  import ProjectTabs from './_components/ProjectTabs.svelte';
-  import TasksList from './_components/TasksList.svelte';
-  import NotesList from './_components/NotesList.svelte';
-  import { useProjectData } from './_composables/useProjectData';
-  import { useProjectHandlers } from './_composables/useProjectHandlers';
+	import { onMount } from 'svelte';
+	import { page } from '$app/stores';
+	import ProjectHeader from './_components/ProjectHeader.svelte';
+	import ProjectTabs from './_components/ProjectTabs.svelte';
+	import TasksList from './_components/TasksList.svelte';
+	import NotesList from './_components/NotesList.svelte';
+	import { useProjectData } from './_composables/useProjectData';
+	import { useProjectHandlers } from './_composables/useProjectHandlers';
 
-  let { data } = $props();
+	let { data } = $props();
 
-  // Composition functions
-  const projectData = useProjectData($page.params.id);
-  const handlers = useProjectHandlers(projectData);
+	// Composition functions
+	const projectData = useProjectData($page.params.id);
+	const handlers = useProjectHandlers(projectData);
 
-  let activeTab = $state('tasks');
+	let activeTab = $state('tasks');
 
-  onMount(() => {
-    projectData.loadProject();
-  });
+	onMount(() => {
+		projectData.loadProject();
+	});
 
-  $effect(() => {
-    // Subscribe to real-time updates
-    const unsubscribe = subscribeToProjectUpdates($page.params.id, () => {
-      projectData.refreshProject();
-    });
-    return unsubscribe;
-  });
+	$effect(() => {
+		// Subscribe to real-time updates
+		const unsubscribe = subscribeToProjectUpdates($page.params.id, () => {
+			projectData.refreshProject();
+		});
+		return unsubscribe;
+	});
 </script>
 
 <div class="max-w-7xl mx-auto">
-  {#if $projectData.state.isLoading}
-    <ProjectSkeleton />
-  {:else if $projectData.state.error}
-    <ErrorMessage message={$projectData.state.error} />
-  {:else if $projectData.state.project}
-    <ProjectHeader
-      project={$projectData.state.project}
-      onEdit={handlers.handleProjectEdit}
-      onDelete={handlers.handleProjectDelete}
-    />
+	{#if $projectData.state.isLoading}
+		<ProjectSkeleton />
+	{:else if $projectData.state.error}
+		<ErrorMessage message={$projectData.state.error} />
+	{:else if $projectData.state.project}
+		<ProjectHeader
+			project={$projectData.state.project}
+			onEdit={handlers.handleProjectEdit}
+			onDelete={handlers.handleProjectDelete}
+		/>
 
-    <ProjectTabs
-      {activeTab}
-      onTabChange={(tab) => activeTab = tab}
-    />
+		<ProjectTabs {activeTab} onTabChange={(tab) => (activeTab = tab)} />
 
-    <div class="mt-6">
-      {#if activeTab === 'tasks'}
-        <TasksList
-          tasks={$projectData.state.tasks}
-          onCreate={handlers.handleTaskCreate}
-          onUpdate={handlers.handleTaskUpdate}
-          onDelete={handlers.handleTaskDelete}
-        />
-      {:else if activeTab === 'notes'}
-        <NotesList
-          notes={$projectData.state.notes}
-          onCreate={handlers.handleNoteCreate}
-          onUpdate={handlers.handleNoteUpdate}
-          onDelete={handlers.handleNoteDelete}
-        />
-      {/if}
-    </div>
-  {/if}
+		<div class="mt-6">
+			{#if activeTab === 'tasks'}
+				<TasksList
+					tasks={$projectData.state.tasks}
+					onCreate={handlers.handleTaskCreate}
+					onUpdate={handlers.handleTaskUpdate}
+					onDelete={handlers.handleTaskDelete}
+				/>
+			{:else if activeTab === 'notes'}
+				<NotesList
+					notes={$projectData.state.notes}
+					onCreate={handlers.handleNoteCreate}
+					onUpdate={handlers.handleNoteUpdate}
+					onDelete={handlers.handleNoteDelete}
+				/>
+			{/if}
+		</div>
+	{/if}
 </div>
 ```
 
@@ -1209,6 +1222,7 @@ projects/[id]/
 ```
 
 **Testing:**
+
 ```bash
 # Test all functionality still works
 pnpm run test src/routes/projects/[id]/
@@ -1219,6 +1233,7 @@ pnpm run analyze  # Should see smaller chunks
 ```
 
 **Acceptance Criteria:**
+
 - [ ] Main page component < 300 lines
 - [ ] Each sub-component < 250 lines
 - [ ] All functionality preserved
@@ -1243,41 +1258,41 @@ No timeout protection on long-running database queries.
 // apps/web/src/lib/utils/timeout.ts
 
 export class TimeoutError extends Error {
-  constructor(message: string = 'Operation timed out') {
-    super(message);
-    this.name = 'TimeoutError';
-  }
+	constructor(message: string = 'Operation timed out') {
+		super(message);
+		this.name = 'TimeoutError';
+	}
 }
 
 export async function withTimeout<T>(
-  promise: Promise<T>,
-  timeoutMs: number,
-  errorMessage?: string
+	promise: Promise<T>,
+	timeoutMs: number,
+	errorMessage?: string
 ): Promise<T> {
-  let timeoutId: NodeJS.Timeout;
+	let timeoutId: NodeJS.Timeout;
 
-  const timeoutPromise = new Promise<never>((_, reject) => {
-    timeoutId = setTimeout(() => {
-      reject(new TimeoutError(errorMessage || `Operation timed out after ${timeoutMs}ms`));
-    }, timeoutMs);
-  });
+	const timeoutPromise = new Promise<never>((_, reject) => {
+		timeoutId = setTimeout(() => {
+			reject(new TimeoutError(errorMessage || `Operation timed out after ${timeoutMs}ms`));
+		}, timeoutMs);
+	});
 
-  try {
-    const result = await Promise.race([promise, timeoutPromise]);
-    clearTimeout(timeoutId!);
-    return result;
-  } catch (error) {
-    clearTimeout(timeoutId!);
-    throw error;
-  }
+	try {
+		const result = await Promise.race([promise, timeoutPromise]);
+		clearTimeout(timeoutId!);
+		return result;
+	} catch (error) {
+		clearTimeout(timeoutId!);
+		throw error;
+	}
 }
 
 // Convenience wrapper for Supabase queries
 export function withQueryTimeout<T>(
-  queryFn: () => Promise<T>,
-  timeoutMs: number = 10000
+	queryFn: () => Promise<T>,
+	timeoutMs: number = 10000
 ): Promise<T> {
-  return withTimeout(queryFn(), timeoutMs, 'Database query timed out');
+	return withTimeout(queryFn(), timeoutMs, 'Database query timed out');
 }
 ```
 
@@ -1290,30 +1305,30 @@ import { withQueryTimeout } from '$lib/utils/timeout';
 import { ApiResponse } from '$lib/utils/api-response';
 
 export const GET: RequestHandler = async ({ locals }) => {
-  const { user } = await locals.safeGetSession();
-  if (!user) return ApiResponse.unauthorized();
+	const { user } = await locals.safeGetSession();
+	if (!user) return ApiResponse.unauthorized();
 
-  try {
-    // Add timeout to expensive query
-    const data = await withQueryTimeout(
-      async () => {
-        const { data } = await locals.supabase
-          .from('brain_dumps')
-          .select('*')
-          .gte('created_at', startDate)
-          .lte('created_at', endDate);
-        return data;
-      },
-      15000  // 15 second timeout
-    );
+	try {
+		// Add timeout to expensive query
+		const data = await withQueryTimeout(
+			async () => {
+				const { data } = await locals.supabase
+					.from('brain_dumps')
+					.select('*')
+					.gte('created_at', startDate)
+					.lte('created_at', endDate);
+				return data;
+			},
+			15000 // 15 second timeout
+		);
 
-    return ApiResponse.success(data);
-  } catch (err) {
-    if (err instanceof TimeoutError) {
-      return ApiResponse.error('Query took too long. Please try a smaller date range.', 504);
-    }
-    return ApiResponse.internalError(err, 'Failed to fetch analytics');
-  }
+		return ApiResponse.success(data);
+	} catch (err) {
+		if (err instanceof TimeoutError) {
+			return ApiResponse.error('Query took too long. Please try a smaller date range.', 504);
+		}
+		return ApiResponse.internalError(err, 'Failed to fetch analytics');
+	}
 };
 ```
 
@@ -1323,17 +1338,17 @@ export const GET: RequestHandler = async ({ locals }) => {
 // apps/web/src/lib/utils/api-response.ts
 
 export class ApiResponse {
-  // ... existing methods
+	// ... existing methods
 
-  static timeout(message: string = 'Request timed out'): Response {
-    return json(
-      {
-        error: message,
-        code: 'TIMEOUT'
-      },
-      { status: 504 }
-    );
-  }
+	static timeout(message: string = 'Request timed out'): Response {
+		return json(
+			{
+				error: message,
+				code: 'TIMEOUT'
+			},
+			{ status: 504 }
+		);
+	}
 }
 ```
 
@@ -1353,40 +1368,33 @@ import { describe, it, expect, vi } from 'vitest';
 import { withTimeout, TimeoutError } from './timeout';
 
 describe('withTimeout', () => {
-  it('resolves with result if promise completes in time', async () => {
-    const result = await withTimeout(
-      Promise.resolve('success'),
-      1000
-    );
-    expect(result).toBe('success');
-  });
+	it('resolves with result if promise completes in time', async () => {
+		const result = await withTimeout(Promise.resolve('success'), 1000);
+		expect(result).toBe('success');
+	});
 
-  it('rejects with TimeoutError if promise takes too long', async () => {
-    await expect(
-      withTimeout(
-        new Promise(resolve => setTimeout(() => resolve('late'), 200)),
-        100
-      )
-    ).rejects.toThrow(TimeoutError);
-  });
+	it('rejects with TimeoutError if promise takes too long', async () => {
+		await expect(
+			withTimeout(new Promise((resolve) => setTimeout(() => resolve('late'), 200)), 100)
+		).rejects.toThrow(TimeoutError);
+	});
 
-  it('clears timeout on success', async () => {
-    const clearTimeoutSpy = vi.spyOn(global, 'clearTimeout');
-    await withTimeout(Promise.resolve('success'), 1000);
-    expect(clearTimeoutSpy).toHaveBeenCalled();
-  });
+	it('clears timeout on success', async () => {
+		const clearTimeoutSpy = vi.spyOn(global, 'clearTimeout');
+		await withTimeout(Promise.resolve('success'), 1000);
+		expect(clearTimeoutSpy).toHaveBeenCalled();
+	});
 
-  it('clears timeout on error', async () => {
-    const clearTimeoutSpy = vi.spyOn(global, 'clearTimeout');
-    await expect(
-      withTimeout(Promise.reject('error'), 1000)
-    ).rejects.toThrow();
-    expect(clearTimeoutSpy).toHaveBeenCalled();
-  });
+	it('clears timeout on error', async () => {
+		const clearTimeoutSpy = vi.spyOn(global, 'clearTimeout');
+		await expect(withTimeout(Promise.reject('error'), 1000)).rejects.toThrow();
+		expect(clearTimeoutSpy).toHaveBeenCalled();
+	});
 });
 ```
 
 **Acceptance Criteria:**
+
 - [ ] Timeout utility created and tested
 - [ ] Applied to 10+ expensive endpoints
 - [ ] Custom timeout durations per operation
@@ -1412,66 +1420,67 @@ Server load functions await all promises or return minimal data. No streaming.
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ params, locals }) => {
-  const { user } = await locals.safeGetSession();
-  if (!user) throw redirect(303, '/auth/login');
+	const { user } = await locals.safeGetSession();
+	if (!user) throw redirect(303, '/auth/login');
 
-  const projectId = params.id;
+	const projectId = params.id;
 
-  // ✅ Return unwrapped promises - SvelteKit streams them
-  return {
-    // Critical data - await this
-    project: await fetchProject(projectId, user.id),
+	// ✅ Return unwrapped promises - SvelteKit streams them
+	return {
+		// Critical data - await this
+		project: await fetchProject(projectId, user.id),
 
-    // Non-critical data - stream these
-    tasks: fetchTasks(projectId),
-    notes: fetchNotes(projectId),
-    calendar: fetchCalendar(projectId),
-    stats: fetchStats(projectId),
-    recentActivity: fetchRecentActivity(projectId)
-  };
+		// Non-critical data - stream these
+		tasks: fetchTasks(projectId),
+		notes: fetchNotes(projectId),
+		calendar: fetchCalendar(projectId),
+		stats: fetchStats(projectId),
+		recentActivity: fetchRecentActivity(projectId)
+	};
 };
 ```
 
 ```svelte
 <!-- apps/web/src/routes/projects/[id]/+page.svelte -->
 <script lang="ts">
-  let { data } = $props();
+	let { data } = $props();
 </script>
 
 <div class="max-w-7xl mx-auto">
-  <!-- Project header renders immediately (awaited) -->
-  <ProjectHeader project={data.project} />
+	<!-- Project header renders immediately (awaited) -->
+	<ProjectHeader project={data.project} />
 
-  <!-- Tasks stream in -->
-  {#await data.tasks}
-    <TasksSkeleton />
-  {:then tasks}
-    <TasksList {tasks} />
-  {:catch error}
-    <ErrorMessage message="Failed to load tasks" />
-  {/await}
+	<!-- Tasks stream in -->
+	{#await data.tasks}
+		<TasksSkeleton />
+	{:then tasks}
+		<TasksList {tasks} />
+	{:catch error}
+		<ErrorMessage message="Failed to load tasks" />
+	{/await}
 
-  <!-- Notes stream in -->
-  {#await data.notes}
-    <NotesSkeleton />
-  {:then notes}
-    <NotesList {notes} />
-  {:catch error}
-    <ErrorMessage message="Failed to load notes" />
-  {/await}
+	<!-- Notes stream in -->
+	{#await data.notes}
+		<NotesSkeleton />
+	{:then notes}
+		<NotesList {notes} />
+	{:catch error}
+		<ErrorMessage message="Failed to load notes" />
+	{/await}
 
-  <!-- Stats stream in -->
-  {#await data.stats}
-    <StatsSkeleton />
-  {:then stats}
-    <StatsDisplay {stats} />
-  {:catch error}
-    <ErrorMessage message="Failed to load stats" />
-  {/await}
+	<!-- Stats stream in -->
+	{#await data.stats}
+		<StatsSkeleton />
+	{:then stats}
+		<StatsDisplay {stats} />
+	{:catch error}
+		<ErrorMessage message="Failed to load stats" />
+	{/await}
 </div>
 ```
 
 **Benefits:**
+
 - Project header renders immediately
 - Tasks, notes, stats load in parallel
 - Page is interactive sooner
@@ -1485,36 +1494,38 @@ import { render, waitFor } from '@testing-library/svelte';
 import ProjectPage from './+page.svelte';
 
 it('renders project immediately and streams other data', async () => {
-  const { getByText, queryByText } = render(ProjectPage, {
-    props: {
-      data: {
-        project: { name: 'Test Project' },
-        tasks: new Promise(resolve => setTimeout(() => resolve([]), 100)),
-        notes: new Promise(resolve => setTimeout(() => resolve([]), 200))
-      }
-    }
-  });
+	const { getByText, queryByText } = render(ProjectPage, {
+		props: {
+			data: {
+				project: { name: 'Test Project' },
+				tasks: new Promise((resolve) => setTimeout(() => resolve([]), 100)),
+				notes: new Promise((resolve) => setTimeout(() => resolve([]), 200))
+			}
+		}
+	});
 
-  // Project renders immediately
-  expect(getByText('Test Project')).toBeInTheDocument();
+	// Project renders immediately
+	expect(getByText('Test Project')).toBeInTheDocument();
 
-  // Skeletons show initially
-  expect(queryByText('Loading tasks...')).toBeInTheDocument();
+	// Skeletons show initially
+	expect(queryByText('Loading tasks...')).toBeInTheDocument();
 
-  // Data loads progressively
-  await waitFor(() => {
-    expect(queryByText('Loading tasks...')).not.toBeInTheDocument();
-  });
+	// Data loads progressively
+	await waitFor(() => {
+		expect(queryByText('Loading tasks...')).not.toBeInTheDocument();
+	});
 });
 ```
 
 **Pages to Update:**
+
 1. Projects list page (stream project stats)
 2. Project detail page (stream tasks, notes, calendar)
 3. Admin dashboard (stream analytics)
 4. Ontology pages (stream templates, entities)
 
 **Acceptance Criteria:**
+
 - [ ] Critical data renders immediately
 - [ ] Non-critical data streams in
 - [ ] Proper loading skeletons
@@ -1527,20 +1538,24 @@ it('renders project immediately and streams other data', async () => {
 ## Implementation Timeline
 
 ### Week 1: Security & Critical Fixes (12 hours)
+
 - [ ] Day 1 (4h): Tasks #1-2 (Timing attack, Auth listener)
 - [ ] Day 2 (4h): Task #3 (Standardize API responses)
 - [ ] Day 3 (4h): Task #4 (Reduce root layout loading)
 
 ### Week 2: Standards & Performance (14 hours)
+
 - [ ] Day 1 (2h): Task #5 (Shared auth layout)
 - [ ] Day 2-3 (4h): Task #6 (Rate limiting middleware)
 - [ ] Day 4-5 (6h): Task #7 (Form actions for auth)
 
 ### Week 3: Maintainability (15 hours)
+
 - [ ] Day 1-2 (12h): Task #8 (Split large components)
 - [ ] Day 3 (3h): Task #9 (Request timeout protection)
 
 ### Week 4: Optimizations & Testing (7 hours)
+
 - [ ] Day 1-2 (6h): Task #10 (Server-side streaming)
 - [ ] Day 3 (1h): Final testing and documentation
 
@@ -1551,24 +1566,28 @@ it('renders project immediately and streams other data', async () => {
 ## Success Metrics
 
 ### Security
+
 - [ ] All cron endpoints use constant-time comparison
 - [ ] Auth state updates in real-time across tabs
 - [ ] Rate limiting protects all mutation endpoints
 - [ ] No security vulnerabilities in security scan
 
 ### Performance
+
 - [ ] Root layout loads < 100ms
 - [ ] Public pages render < 500ms
 - [ ] Authenticated pages time-to-interactive < 2s
 - [ ] Bundle size unchanged or reduced
 
 ### Standards
+
 - [ ] All auth flows work without JavaScript
 - [ ] Consistent error handling across all endpoints
 - [ ] All components < 500 lines
 - [ ] Test coverage > 80%
 
 ### Developer Experience
+
 - [ ] Clear code organization
 - [ ] Comprehensive documentation
 - [ ] Easy to add new features
@@ -1579,18 +1598,21 @@ it('renders project immediately and streams other data', async () => {
 ## Post-Implementation
 
 ### Monitoring
+
 1. Add error tracking (Sentry)
 2. Monitor API response times
 3. Track rate limit hits
 4. Monitor timeout occurrences
 
 ### Documentation
+
 1. Update architecture docs
 2. Create migration guide
 3. Document new patterns
 4. Update testing guide
 
 ### Team Training
+
 1. Share best practices doc
 2. Code review new patterns
 3. Update style guide
@@ -1598,4 +1620,4 @@ it('renders project immediately and streams other data', async () => {
 
 ---
 
-*Last Updated: November 6, 2025*
+_Last Updated: November 6, 2025_

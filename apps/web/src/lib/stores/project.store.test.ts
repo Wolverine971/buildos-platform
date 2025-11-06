@@ -1,5 +1,7 @@
 // apps/web/src/lib/stores/project.store.test.ts
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { projectStoreV2 } from './project.store';
+import type { TaskWithCalendarEvents, TaskStats } from '$lib/types/project-page.types';
 
 describe('ProjectStore - Real-time Sync Race Condition', () => {
 	let mockRealtimeService: any;
@@ -403,5 +405,79 @@ describe('ProjectStore - Real-time Sync Race Condition', () => {
 			// Restore original Date.now
 			Date.now = originalNow;
 		});
+	});
+});
+
+describe('ProjectStoreV2 streaming integration', () => {
+	beforeEach(() => {
+		projectStoreV2.reset();
+	});
+
+	it('hydrates streamed tasks and notes with correct metadata', () => {
+		vi.useFakeTimers();
+		const fixedDate = new Date('2024-01-01T00:00:00.000Z');
+		vi.setSystemTime(fixedDate);
+
+		const streamedTasks = [
+			{
+				id: 'task-1',
+				status: 'todo',
+				deleted_at: null,
+				task_calendar_events: []
+			},
+			{
+				id: 'task-2',
+				status: 'done',
+				deleted_at: null,
+				task_calendar_events: []
+			}
+		] as TaskWithCalendarEvents[];
+
+		projectStoreV2.hydrateFromServer({
+			tasks: streamedTasks,
+			notes: []
+		});
+
+		vi.runAllTimers();
+
+		const state = projectStoreV2.getState();
+		const expectedTimestamp = fixedDate.getTime();
+		expect(state.tasks).toEqual(streamedTasks);
+		expect(state.loadingStates.tasks).toBe('success');
+		expect(state.errors.tasks).toBeNull();
+		expect(state.lastFetch.tasks).toBe(expectedTimestamp);
+		expect(state.loadingStates.notes).toBe('success');
+		expect(state.lastFetch.notes).toBe(expectedTimestamp);
+		expect(state.stats.total).toBe(2);
+		expect(state.stats.completed).toBe(1);
+		expect(state.stats.active).toBe(1);
+
+		vi.useRealTimers();
+	});
+
+	it('applies streamed stats when provided without tasks', () => {
+		const customStats: TaskStats = {
+			total: 10,
+			completed: 7,
+			inProgress: 2,
+			blocked: 1,
+			deleted: 0,
+			active: 3,
+			backlog: 2,
+			scheduled: 4
+		};
+
+		projectStoreV2.hydrateFromServer({ stats: customStats });
+
+		const state = projectStoreV2.getState();
+		expect(state.stats).toMatchObject(customStats);
+	});
+
+	it('records streaming errors for individual slices', () => {
+		projectStoreV2.setStreamingError('tasks', 'Failed to load tasks');
+
+		const state = projectStoreV2.getState();
+		expect(state.loadingStates.tasks).toBe('error');
+		expect(state.errors.tasks).toBe('Failed to load tasks');
 	});
 });

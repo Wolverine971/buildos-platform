@@ -157,8 +157,8 @@
 	<title>Revenue Recognition - Admin</title>
 </svelte:head>
 
-<div class="min-h-screen bg-gray-50 dark:bg-gray-900">
-	<div class="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+<div class="space-y-12">
+	<div class="space-y-10">
 		<!-- Header with Back Button -->
 		<AdminPageHeader
 			title="Revenue Recognition"

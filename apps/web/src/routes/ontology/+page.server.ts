@@ -11,23 +11,23 @@ import {
 	fetchProjectSummaries
 } from '$lib/services/ontology/ontology-projects.service';
 
-export const load: PageServerLoad = async ({ locals }) => {
+export const load: PageServerLoad = async ({ locals, depends }) => {
 	const { user } = await locals.safeGetSession();
 	if (!user) {
 		throw error(401, 'Authentication required');
 	}
 
-	try {
-		const actorId = await ensureActorId(locals.supabase, user.id);
-		const projects = await fetchProjectSummaries(locals.supabase, actorId);
-		return {
-			projects
-		};
-	} catch (err) {
+	depends('ontology:projects');
+
+	const actorId = await ensureActorId(locals.supabase, user.id);
+
+	const projects = fetchProjectSummaries(locals.supabase, actorId).catch((err) => {
 		console.error('[Ontology Dashboard] Failed to load project summaries', err);
-		return {
-			projects: [],
-			error: 'Failed to load projects'
-		};
-	}
+		throw err;
+	});
+
+	return {
+		actorId,
+		projects
+	};
 };

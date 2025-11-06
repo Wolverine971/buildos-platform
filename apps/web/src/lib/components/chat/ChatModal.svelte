@@ -1052,7 +1052,9 @@
 		class="relative z-[60] flex items-center justify-between gap-4 border-b border-slate-200/60 bg-white/90 px-6 py-5 backdrop-blur-md dark:border-slate-700/60 dark:bg-slate-900/85"
 	>
 		<div class="flex items-center gap-4">
-			<div class="hidden h-12 w-12 items-center justify-center rounded-2xl gradient-icon-primary dark:flex">
+			<div
+				class="hidden h-12 w-12 items-center justify-center rounded-2xl gradient-icon-primary dark:flex"
+			>
 				<MessageSquare class="h-5 w-5 text-blue-600 dark:text-blue-300" />
 			</div>
 			<div class="flex flex-col gap-1">
@@ -1277,8 +1279,12 @@
 							class="flex flex-col items-center justify-center gap-4 py-16 text-center text-gray-600 dark:text-gray-300"
 						>
 							<div class="relative">
-								<div class="absolute inset-0 animate-pulse rounded-3xl gradient-glow-primary blur-xl"></div>
-								<div class="relative flex h-16 w-16 items-center justify-center rounded-2xl gradient-icon-primary">
+								<div
+									class="absolute inset-0 animate-pulse rounded-3xl gradient-glow-primary blur-xl"
+								></div>
+								<div
+									class="relative flex h-16 w-16 items-center justify-center rounded-2xl gradient-icon-primary"
+								>
 									<MessageSquare
 										class="h-7 w-7 text-blue-600 dark:text-blue-300"
 									/>

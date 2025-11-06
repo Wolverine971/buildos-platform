@@ -18,7 +18,14 @@
 		onClose?: () => void;
 	}
 
-	let { isOpen = $bindable(false), note = null, projectId, onSave, onDelete, onClose }: Props = $props();
+	let {
+		isOpen = $bindable(false),
+		note = null,
+		projectId,
+		onSave,
+		onDelete,
+		onClose
+	}: Props = $props();
 
 	// Computed values using $derived
 	let isEditing = $derived(note !== null && !!note?.id);
@@ -30,12 +37,14 @@
 	const noteFormConfig = {};
 
 	// Set initial data with proper defaults using $derived
-	let initialData = $derived(note || {
-		title: '',
-		content: '',
-		category: '',
-		tags: []
-	});
+	let initialData = $derived(
+		note || {
+			title: '',
+			content: '',
+			category: '',
+			tags: []
+		}
+	);
 
 	// State for main content fields using $state
 	let titleValue = $state('');

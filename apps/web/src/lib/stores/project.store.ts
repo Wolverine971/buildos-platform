@@ -1,7 +1,12 @@
 // apps/web/src/lib/stores/project.store.ts
 import { writable, derived, get } from 'svelte/store';
 import type { Project, Note } from '$lib/types/project';
-import type { TaskWithCalendarEvents, ProcessedPhase } from '$lib/types/project-page.types';
+import type {
+	TaskWithCalendarEvents,
+	ProcessedPhase,
+	CalendarStatus,
+	TaskStats
+} from '$lib/types/project-page.types';
 import { eventBus, PROJECT_EVENTS, type LocalUpdatePayload } from '$lib/utils/event-bus';
 import { performanceMonitor } from '$lib/utils/performance-monitor';
 
@@ -41,17 +46,8 @@ interface ProjectStoreV2State {
 	braindumps: any[] | null;
 
 	// Metadata
-	stats: {
-		total: number;
-		completed: number;
-		inProgress: number;
-		blocked: number;
-		deleted: number;
-		active: number;
-		scheduled: number;
-		backlog: number;
-	};
-	calendarStatus: any | null;
+	stats: TaskStats;
+	calendarStatus: CalendarStatus | null;
 
 	// Loading states for each data type
 	loadingStates: {
@@ -186,6 +182,89 @@ class ProjectStoreV2 {
 
 		// FIXED: Start periodic cleanup to prevent memory leaks
 		this.startCleanupInterval();
+	}
+
+	// Hydrate store slices with data streamed from the server load
+	hydrateFromServer(data: {
+		tasks?: TaskWithCalendarEvents[];
+		phases?: ProcessedPhase[];
+		notes?: Note[];
+		stats?: TaskStats;
+		calendarStatus?: CalendarStatus | null;
+	}): void {
+		const timestamp = Date.now();
+		let shouldRecalculateStats = false;
+
+		this.store.update((state) => {
+			const nextState = {
+				...state,
+				loadingStates: { ...state.loadingStates },
+				errors: { ...state.errors },
+				lastFetch: { ...state.lastFetch }
+			};
+
+			if (data.tasks) {
+				nextState.tasks = data.tasks;
+				nextState.loadingStates.tasks = 'success';
+				nextState.errors.tasks = null;
+				nextState.lastFetch.tasks = timestamp;
+				shouldRecalculateStats = true;
+			}
+
+			if (data.notes) {
+				nextState.notes = data.notes;
+				nextState.loadingStates.notes = 'success';
+				nextState.errors.notes = null;
+				nextState.lastFetch.notes = timestamp;
+			}
+
+			if (data.phases) {
+				const phasesWithTasks = data.phases.map((phase) => ({
+					...phase,
+					tasks: Array.isArray(phase.tasks) ? phase.tasks : [],
+					task_count: phase.task_count ?? phase.tasks?.length ?? 0,
+					completed_tasks:
+						phase.completed_tasks ??
+						((phase.tasks || []).filter(
+							(task: any) => task.status === 'done' && !task.deleted_at
+						).length ||
+							0)
+				}));
+
+				nextState.phases = phasesWithTasks;
+				nextState.loadingStates.phases = 'success';
+				nextState.errors.phases = null;
+				nextState.lastFetch.phases = timestamp;
+				shouldRecalculateStats = true;
+			}
+
+			if (typeof data.calendarStatus !== 'undefined') {
+				nextState.calendarStatus = data.calendarStatus;
+				nextState.loadingStates.calendar = 'success';
+				nextState.errors.calendar = null;
+				nextState.lastFetch.calendar = timestamp;
+			}
+
+			if (data.stats) {
+				nextState.stats = {
+					...nextState.stats,
+					...data.stats
+				};
+				nextState.loadingStates.stats = 'success';
+				nextState.errors.stats = null;
+				nextState.lastFetch.stats = timestamp;
+			}
+
+			return nextState;
+		});
+
+		if (shouldRecalculateStats) {
+			this.updateStats();
+		}
+	}
+
+	setStreamingError(key: keyof ProjectStoreV2State['errors'], message: string): void {
+		this.setError(key, message);
 	}
 
 	// Progressive data loading methods

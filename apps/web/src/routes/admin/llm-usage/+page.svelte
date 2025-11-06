@@ -70,8 +70,8 @@
 	}
 </script>
 
-<div class="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 sm:p-6">
-	<div class="mx-auto max-w-7xl">
+<div class="space-y-12">
+	<div class="space-y-10">
 		<!-- Header -->
 		<div class="mb-4 sm:mb-6">
 			<h1 class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">

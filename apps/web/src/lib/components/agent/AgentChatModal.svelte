@@ -10,8 +10,8 @@
 -->
 
 <script lang="ts">
-import { tick, onMount, onDestroy } from 'svelte';
-import { dev } from '$app/environment';
+	import { tick, onMount, onDestroy } from 'svelte';
+	import { dev } from '$app/environment';
 	import {
 		X,
 		Send,

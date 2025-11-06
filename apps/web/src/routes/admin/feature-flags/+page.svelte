@@ -1,5 +1,9 @@
 <!-- apps/web/src/routes/admin/feature-flags/+page.svelte -->
 <script lang="ts">
+	import { GitBranch } from 'lucide-svelte';
+	import AdminPageHeader from '$lib/components/admin/AdminPageHeader.svelte';
+	import Badge from '$lib/components/ui/Badge.svelte';
+	import Button from '$lib/components/ui/Button.svelte';
 	import type { PageData } from './$types';
 	import type { FeatureName } from '@buildos/shared-types';
 
@@ -54,62 +58,90 @@
 	}
 </script>
 
-<div class="feature-flags-page">
-	<header class="page-header">
-		<h1>Feature Flags</h1>
-		<p class="subtitle">Enable or disable gated features for individual users.</p>
-	</header>
+<svelte:head>
+	<title>Feature Flags - BuildOS Admin</title>
+	<meta name="robots" content="noindex, nofollow" />
+</svelte:head>
+
+<div class="space-y-12">
+	<AdminPageHeader
+		title="Feature Flags"
+		description="Enable or disable gated features for individual users."
+		icon={GitBranch}
+		backHref="/admin"
+		backLabel="Dashboard"
+	/>
 
 	{#if errorMessage}
-		<div class="alert alert-error">
+		<div
+			class="rounded-2xl border border-red-200/70 bg-red-50/80 px-5 py-4 text-sm font-medium text-red-700 shadow-sm dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-200"
+		>
 			{errorMessage}
 		</div>
 	{/if}
 
-	<div class="card">
-		<table class="flags-table">
-			<thead>
-				<tr>
-					<th>User</th>
-					<th>Email</th>
-					<th>TimeBlocks</th>
-					<th>Last Updated</th>
-					<th></th>
+	<div
+		class="overflow-hidden rounded-3xl border border-slate-200/70 bg-white/80 shadow-sm ring-1 ring-black/5 dark:border-slate-800/70 dark:bg-slate-900/60 dark:ring-white/10"
+	>
+		<table class="min-w-full divide-y divide-slate-200/70 text-sm dark:divide-slate-800/70">
+			<thead class="bg-slate-50/80 dark:bg-slate-900/60">
+				<tr
+					class="text-left text-xs font-semibold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400"
+				>
+					<th class="px-5 py-3">User</th>
+					<th class="px-5 py-3">Email</th>
+					<th class="px-5 py-3">Time Blocks</th>
+					<th class="px-5 py-3">Last Updated</th>
+					<th class="px-5 py-3 text-right">Actions</th>
 				</tr>
 			</thead>
-			<tbody>
+			<tbody class="divide-y divide-slate-200/60 dark:divide-slate-800/60">
 				{#each data.users as user}
 					{@const timePlayFlag = getFlag(user, 'time_play')}
-					<tr>
-						<td>
-							<div class="user-cell">
-								<span class="user-name">{user.name ?? '—'}</span>
+					<tr class="transition-colors hover:bg-slate-50/80 dark:hover:bg-slate-800/50">
+						<td class="px-5 py-4 align-middle">
+							<div class="flex flex-col gap-1.5">
+								<span
+									class="text-sm font-semibold text-slate-900 dark:text-slate-100"
+								>
+									{user.name ?? 'No name'}
+								</span>
 								{#if user.id === pendingUserId}
-									<span class="badge badge-muted">Updating…</span>
+									<Badge size="sm" variant="info" class="w-max">Updating...</Badge
+									>
 								{/if}
 							</div>
 						</td>
-						<td>{user.email}</td>
-						<td>
+						<td class="px-5 py-4 text-sm text-slate-600 dark:text-slate-300"
+							>{user.email}</td
+						>
+						<td class="px-5 py-4">
 							{#if timePlayFlag?.enabled}
-								<span class="badge badge-success">Enabled</span>
+								<Badge size="sm" variant="success">Enabled</Badge>
 							{:else}
-								<span class="badge badge-muted">Disabled</span>
+								<Badge
+									size="sm"
+									variant="info"
+									class="bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700"
+								>
+									Disabled
+								</Badge>
 							{/if}
 						</td>
-						<td>
+						<td class="px-5 py-4 text-sm text-slate-600 dark:text-slate-300">
 							{#if timePlayFlag?.updated_at}
 								<time datetime={timePlayFlag.updated_at}>
 									{new Date(timePlayFlag.updated_at).toLocaleString()}
 								</time>
 							{:else}
-								—
+								<span class="text-slate-400 dark:text-slate-500">Not set</span>
 							{/if}
 						</td>
-						<td class="actions">
-							<button
-								class="btn-toggle"
-								disabled={pendingUserId === user.id}
+						<td class="px-5 py-4 text-right">
+							<Button
+								size="sm"
+								variant={timePlayFlag?.enabled ? 'secondary' : 'primary'}
+								loading={pendingUserId === user.id}
 								onclick={() =>
 									toggleFeature(
 										user.id,
@@ -118,7 +150,7 @@
 									)}
 							>
 								{timePlayFlag?.enabled ? 'Disable' : 'Enable'}
-							</button>
+							</Button>
 						</td>
 					</tr>
 				{/each}
@@ -126,112 +158,3 @@
 		</table>
 	</div>
 </div>
-
-<style>
-	.feature-flags-page {
-		max-width: 960px;
-		margin: 0 auto;
-		padding: 2rem;
-		display: flex;
-		flex-direction: column;
-		gap: 1.5rem;
-	}
-
-	.page-header h1 {
-		font-size: 1.75rem;
-		margin: 0;
-	}
-
-	.subtitle {
-		color: var(--text-secondary);
-		margin: 0.25rem 0 0 0;
-	}
-
-	.alert {
-		padding: 0.75rem 1rem;
-		border-radius: 0.5rem;
-		font-size: 0.95rem;
-	}
-
-	.alert-error {
-		background-color: #fee2e2;
-		color: #991b1b;
-	}
-
-	.card {
-		border: 1px solid var(--border-color, rgba(0, 0, 0, 0.08));
-		border-radius: 0.75rem;
-		background: var(--card-bg, #ffffff);
-		overflow: hidden;
-	}
-
-	.flags-table {
-		width: 100%;
-		border-collapse: collapse;
-	}
-
-	.flags-table th,
-	.flags-table td {
-		padding: 0.9rem 1rem;
-		text-align: left;
-		border-bottom: 1px solid var(--border-color, rgba(0, 0, 0, 0.05));
-	}
-
-	.flags-table thead {
-		background: var(--table-header-bg, rgba(0, 0, 0, 0.02));
-	}
-
-	.flags-table tbody tr:last-child td {
-		border-bottom: none;
-	}
-
-	.user-cell {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-	}
-
-	.user-name {
-		font-weight: 600;
-	}
-
-	.badge {
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		padding: 0.15rem 0.5rem;
-		border-radius: 999px;
-		font-size: 0.75rem;
-		font-weight: 600;
-	}
-
-	.badge-success {
-		background-color: #dcfce7;
-		color: #166534;
-	}
-
-	.badge-muted {
-		background-color: #e5e7eb;
-		color: #374151;
-	}
-
-	.actions {
-		text-align: right;
-	}
-
-	.btn-toggle {
-		border: none;
-		border-radius: 0.5rem;
-		padding: 0.4rem 0.9rem;
-		font-weight: 600;
-		cursor: pointer;
-		background-color: #0f172a;
-		color: #ffffff;
-		transition: opacity 0.2s ease;
-	}
-
-	.btn-toggle[disabled] {
-		cursor: not-allowed;
-		opacity: 0.6;
-	}
-</style>

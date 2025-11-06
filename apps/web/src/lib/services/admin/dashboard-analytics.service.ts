@@ -558,7 +558,9 @@ export async function getBetaOverview(client: TypedSupabaseClient) {
 }
 
 export async function getSubscriptionOverview(client: TypedSupabaseClient) {
-	const { data: rawOverview, error: overviewError } = await client.rpc('get_subscription_overview');
+	const { data: rawOverview, error: overviewError } = await client.rpc(
+		'get_subscription_overview'
+	);
 	if (overviewError) {
 		throw new Error(overviewError.message);
 	}
@@ -714,7 +716,7 @@ export async function getComprehensiveAnalytics(
 			.lte('created_at', endDate.toISOString()),
 		client
 			.from('phases')
-			.select('created_by, users!inner(email)')
+			.select('user_id, users!inner(email)')
 			.gte('created_at', startDate.toISOString())
 			.lte('created_at', endDate.toISOString())
 	]);
@@ -797,7 +799,7 @@ export async function getComprehensiveAnalytics(
 			projectUpdates: formatLeaderboard(projectUpdateUsers.data ?? [], 'user_id'),
 			tasksCreated: formatLeaderboard(taskCreators.data ?? [], 'user_id'),
 			tasksScheduled: formatLeaderboard(scheduledTaskUsers.data ?? [], 'user_id'),
-			phasesCreated: formatLeaderboard(phaseCreators.data ?? [], 'created_by')
+			phasesCreated: formatLeaderboard(phaseCreators.data ?? [], 'user_id')
 		}
 	};
 }
@@ -833,11 +835,7 @@ export interface DashboardAnalyticsPayload {
 	errorsData: Awaited<ReturnType<typeof getErrorSummary>>;
 }
 
-async function safeFetch<T>(
-	label: string,
-	fallback: () => T,
-	fn: () => Promise<T>
-): Promise<T> {
+async function safeFetch<T>(label: string, fallback: () => T, fn: () => Promise<T>): Promise<T> {
 	try {
 		return await fn();
 	} catch (err) {
@@ -866,33 +864,75 @@ export async function getDashboardAnalytics(
 		comprehensiveAnalytics,
 		errorsData
 	] = await Promise.all([
-		safeFetch('system overview', () => clone(DEFAULT_SYSTEM_OVERVIEW), () =>
-			getSystemOverview(client)
+		safeFetch(
+			'system overview',
+			() => clone(DEFAULT_SYSTEM_OVERVIEW),
+			() => getSystemOverview(client)
 		),
-		safeFetch('visitor overview', () => clone(DEFAULT_VISITOR_OVERVIEW), () =>
-			getVisitorOverview(client)
+		safeFetch(
+			'visitor overview',
+			() => clone(DEFAULT_VISITOR_OVERVIEW),
+			() => getVisitorOverview(client)
 		),
-		safeFetch('daily visitors', () => [], () => getDailyVisitors(client, timeframe)),
-		safeFetch('daily signups', () => [], () => getDailySignups(client, timeframe)),
-		safeFetch('daily active users', () => [], () => getDailyActiveUsers(client, timeframe)),
-		safeFetch('brief stats', () => [], () => getBriefGenerationStats(client, timeframe)),
-		safeFetch('system metrics', () => [], () => getSystemMetrics(client)),
-		safeFetch('recent activity', () => [], () => getRecentActivity(client)),
-		safeFetch('template usage stats', () => [], () => getTemplateUsageStats(client)),
-		safeFetch('feedback overview', () => clone(DEFAULT_FEEDBACK_OVERVIEW), () =>
-			getFeedbackOverview(client)
+		safeFetch(
+			'daily visitors',
+			() => [],
+			() => getDailyVisitors(client, timeframe)
 		),
-		safeFetch('beta overview', () => clone(DEFAULT_BETA_OVERVIEW), () =>
-			getBetaOverview(client)
+		safeFetch(
+			'daily signups',
+			() => [],
+			() => getDailySignups(client, timeframe)
 		),
-		safeFetch('subscription overview', () => clone(DEFAULT_SUBSCRIPTION_OVERVIEW), () =>
-			getSubscriptionOverview(client)
+		safeFetch(
+			'daily active users',
+			() => [],
+			() => getDailyActiveUsers(client, timeframe)
 		),
-		safeFetch('comprehensive analytics', () => clone(DEFAULT_COMPREHENSIVE_ANALYTICS), () =>
-			getComprehensiveAnalytics(client, timeframe)
+		safeFetch(
+			'brief stats',
+			() => [],
+			() => getBriefGenerationStats(client, timeframe)
 		),
-		safeFetch('error summary', () => clone(DEFAULT_ERROR_SUMMARY), () =>
-			getErrorSummary(client)
+		safeFetch(
+			'system metrics',
+			() => [],
+			() => getSystemMetrics(client)
+		),
+		safeFetch(
+			'recent activity',
+			() => [],
+			() => getRecentActivity(client)
+		),
+		safeFetch(
+			'template usage stats',
+			() => [],
+			() => getTemplateUsageStats(client)
+		),
+		safeFetch(
+			'feedback overview',
+			() => clone(DEFAULT_FEEDBACK_OVERVIEW),
+			() => getFeedbackOverview(client)
+		),
+		safeFetch(
+			'beta overview',
+			() => clone(DEFAULT_BETA_OVERVIEW),
+			() => getBetaOverview(client)
+		),
+		safeFetch(
+			'subscription overview',
+			() => clone(DEFAULT_SUBSCRIPTION_OVERVIEW),
+			() => getSubscriptionOverview(client)
+		),
+		safeFetch(
+			'comprehensive analytics',
+			() => clone(DEFAULT_COMPREHENSIVE_ANALYTICS),
+			() => getComprehensiveAnalytics(client, timeframe)
+		),
+		safeFetch(
+			'error summary',
+			() => clone(DEFAULT_ERROR_SUMMARY),
+			() => getErrorSummary(client)
 		)
 	]);
 

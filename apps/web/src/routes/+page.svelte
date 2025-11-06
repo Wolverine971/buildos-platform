@@ -15,11 +15,64 @@
 	let { data } = $props();
 
 	// Svelte 5 runes: Convert reactive declarations to $derived
+	function isPromiseLike<T>(value: unknown): value is PromiseLike<T> {
+		return !!value && typeof (value as PromiseLike<T>).then === 'function';
+	}
+
+	function getErrorMessage(error: unknown, fallback: string): string {
+		if (error instanceof Error && error.message) return error.message;
+		if (typeof error === 'string' && error.length > 0) return error;
+		return fallback;
+	}
+
 	let isAuthenticated = $derived(!!data?.user);
 	let user = $derived(data?.user as User | null);
-	let dashboardData = $derived(data?.dashboardData as DashboardData | null);
-	let dashboardError = $derived(data?.dashboardError as string | null);
-	let isLoadingDashboard = $derived((data?.dashboardLoading || false) as boolean);
+
+	let dashboardStreamVersion = 0;
+	let dashboardDataState = $state<DashboardData | null>(
+		isPromiseLike<DashboardData>(data.dashboardData)
+			? null
+			: ((data.dashboardData as DashboardData | null) ?? null)
+	);
+	let dashboardErrorState = $state<string | null>(data.dashboardError ?? null);
+	let dashboardLoadingState = $state<boolean>(
+		Boolean(data.dashboardLoading) || isPromiseLike<DashboardData>(data.dashboardData)
+	);
+
+	$effect(() => {
+		const incoming = data.dashboardData;
+		const incomingError = data.dashboardError ?? null;
+		const incomingLoading = Boolean(data.dashboardLoading);
+		const currentVersion = ++dashboardStreamVersion;
+
+		if (isPromiseLike<DashboardData>(incoming)) {
+			dashboardLoadingState = true;
+
+			incoming
+				.then((result) => {
+					if (currentVersion !== dashboardStreamVersion) return;
+					dashboardDataState = (result as DashboardData) ?? null;
+					dashboardErrorState = incomingError;
+					dashboardLoadingState = incomingLoading;
+				})
+				.catch((error) => {
+					if (currentVersion !== dashboardStreamVersion) return;
+					dashboardDataState = null;
+					dashboardErrorState = getErrorMessage(error, 'Failed to load dashboard data');
+					dashboardLoadingState = false;
+				});
+
+			return;
+		}
+
+		dashboardDataState = (incoming as DashboardData | null) ?? null;
+		dashboardErrorState = incomingError;
+		dashboardLoadingState = incomingLoading;
+	});
+
+	let dashboardData = $derived(dashboardDataState);
+	let dashboardError = $derived(dashboardErrorState);
+	let isLoadingDashboard = $derived(dashboardLoadingState);
 
 	let innerWidth = $state<number | 0>(0);
 
