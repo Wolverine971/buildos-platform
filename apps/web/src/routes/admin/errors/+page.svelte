@@ -696,19 +696,21 @@
 					<!-- Basic Info -->
 					<div class="grid grid-cols-2 gap-4">
 						<div>
-							<label
+							<div
 								class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1"
-								>Error ID:</label
 							>
+								Error ID:
+							</div>
 							<p class="text-gray-900 dark:text-white font-mono text-sm">
 								{selectedError.id}
 							</p>
 						</div>
 						<div>
-							<label
+							<div
 								class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1"
-								>Occurred At:</label
 							>
+								Occurred At:
+							</div>
 							<p class="text-gray-900 dark:text-white text-sm">
 								{formatDate(selectedError.created_at || selectedError.createdAt)}
 							</p>
@@ -718,10 +720,11 @@
 					<!-- Severity, Type, and Error Code -->
 					<div class="grid grid-cols-2 md:grid-cols-3 gap-4">
 						<div>
-							<label
+							<div
 								class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1"
-								>Severity:</label
 							>
+								Severity:
+							</div>
 							<span
 								class="{getSeverityColor(
 									selectedError.severity
@@ -731,10 +734,11 @@
 							</span>
 						</div>
 						<div>
-							<label
+							<div
 								class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1"
-								>Type:</label
 							>
+								Type:
+							</div>
 							<span
 								class="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-2 py-1 rounded text-xs font-medium inline-block"
 							>
@@ -743,10 +747,11 @@
 						</div>
 						{#if selectedError.error_code || selectedError.errorCode}
 							<div>
-								<label
+								<div
 									class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1"
-									>Error Code:</label
 								>
+									Error Code:
+								</div>
 								<span
 									class="bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 px-2 py-1 rounded text-xs font-mono inline-block"
 								>
@@ -759,10 +764,11 @@
 					<!-- User Information Section -->
 					{#if selectedError.user || selectedError.user_id || selectedError.userId}
 						<div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
-							<label
+							<div
 								class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2"
-								>User Information:</label
 							>
+								User Information:
+							</div>
 							{#if selectedError.user}
 								<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
 									<div>
@@ -807,10 +813,11 @@
 					<!-- Request Context Section -->
 					{#if selectedError.endpoint || selectedError.http_method || selectedError.httpMethod || selectedError.request_id || selectedError.requestId || selectedError.ip_address || selectedError.ipAddress}
 						<div class="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-4">
-							<label
+							<div
 								class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2"
-								>Request Context:</label
 							>
+								Request Context:
+							</div>
 							<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
 								{#if selectedError.endpoint}
 									<div>
@@ -873,10 +880,11 @@
 					<!-- Project and Brain Dump Context -->
 					{#if selectedError.project_id || selectedError.projectId || selectedError.brain_dump_id || selectedError.brainDumpId}
 						<div class="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-4">
-							<label
+							<div
 								class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2"
-								>Related Resources:</label
 							>
+								Related Resources:
+							</div>
 							<div class="space-y-2">
 								{#if selectedError.project_id || selectedError.projectId}
 									<div>
@@ -905,10 +913,11 @@
 
 					<!-- Error Message -->
 					<div>
-						<label
+						<div
 							class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1"
-							>Error Message:</label
 						>
+							Error Message:
+						</div>
 						<p
 							class="text-gray-900 dark:text-white whitespace-pre-wrap text-sm bg-gray-50 dark:bg-gray-900 p-3 rounded font-mono"
 						>

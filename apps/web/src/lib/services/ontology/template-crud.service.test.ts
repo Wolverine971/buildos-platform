@@ -602,12 +602,8 @@ describe('TemplateCrudService', () => {
 
 			expect(result.success).toBe(true);
 			expect(result.data.fsm).toBeDefined();
-			expect(result.data.fsm.states).toContainEqual(
-				expect.objectContaining({
-					name: 'draft',
-					initial: true
-				})
-			);
+			expect(result.data.fsm.states).toContain('draft');
+			expect(result.data.fsm.states[0]).toBe('draft');
 			expect(result.data.fsm.transitions).toBeDefined();
 		});
 

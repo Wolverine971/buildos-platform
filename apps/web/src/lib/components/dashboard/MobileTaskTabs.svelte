@@ -260,14 +260,16 @@
 	<!-- Active tab content -->
 	<div class="">
 		<div class="flex items-center gap-2 mb-4">
-			{@const Icon = activeTabConfig.icon}
-			<Icon
-				class="h-4 w-4 {activeTabConfig.color === 'red'
-					? 'text-red-600'
-					: activeTabConfig.color === 'blue'
-						? 'text-blue-600'
-						: 'text-green-600'}"
-			/>
+			{#if activeTabConfig?.icon}
+				{@const Icon = activeTabConfig.icon}
+				<Icon
+					class="h-4 w-4 {activeTabConfig.color === 'red'
+						? 'text-red-600'
+						: activeTabConfig.color === 'blue'
+							? 'text-blue-600'
+							: 'text-green-600'}"
+				/>
+			{/if}
 			<h3 class="text-lg font-semibold text-gray-900 dark:text-white tracking-tight">
 				{activeTabConfig.label}
 				{#if activeTabConfig.count > 0}

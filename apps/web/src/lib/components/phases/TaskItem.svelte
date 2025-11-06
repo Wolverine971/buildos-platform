@@ -64,12 +64,12 @@
 	const dispatch = createEventDispatcher();
 
 	// Date editing state
-	let editingDate = false;
-	let tempDateTime = '';
-	let dateEditError: string | null = null;
+	let editingDate = $state(false);
+	let tempDateTime = $state('');
+	let dateEditError = $state<string | null>(null);
 
 	// Drag state
-	let isDragging = false;
+	let isDragging = $state(false);
 
 	// Simplified date conversion helper functions (from TaskModal)
 	function formatDateTimeForInput(date: Date | string | null): string {

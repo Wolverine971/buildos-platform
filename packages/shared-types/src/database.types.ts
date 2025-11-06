@@ -8382,7 +8382,7 @@ export type Database = {
         }[]
       }
       validate_facet_values: {
-        Args: { p_facets: Json }
+        Args: { p_facets: Json; p_scope: string }
         Returns: {
           error: string
           facet_key: string

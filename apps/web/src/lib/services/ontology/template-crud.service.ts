@@ -48,11 +48,11 @@ export class TemplateCrudService {
 			status: input.status || 'draft',
 			parent_template_id: input.parent_template_id || null,
 			is_abstract: input.is_abstract || false,
-			fsm: input.fsm || this.getDefaultFSM(),
+			fsm: input.fsm || this.getDefaultFSM(input.type_key),
 			schema: input.schema || this.getDefaultSchema(),
 			metadata: input.metadata || {},
 			default_props: input.default_props || {},
-			default_views: input.default_views || {},
+			default_views: Array.isArray(input.default_views) ? input.default_views : [],
 			facet_defaults: input.facet_defaults || {},
 			created_by: input.created_by
 		};
@@ -117,7 +117,11 @@ export class TemplateCrudService {
 			schema: updates.schema ?? existing.schema,
 			metadata: updates.metadata ?? existing.metadata,
 			default_props: updates.default_props ?? existing.default_props,
-			default_views: updates.default_views ?? existing.default_views,
+			default_views: Array.isArray(updates.default_views)
+				? updates.default_views
+				: Array.isArray(existing.default_views)
+					? existing.default_views
+					: [],
 			facet_defaults: updates.facet_defaults ?? existing.facet_defaults
 		};
 
@@ -148,7 +152,11 @@ export class TemplateCrudService {
 		if (updates.schema !== undefined) updateData.schema = updates.schema;
 		if (updates.metadata !== undefined) updateData.metadata = updates.metadata;
 		if (updates.default_props !== undefined) updateData.default_props = updates.default_props;
-		if (updates.default_views !== undefined) updateData.default_views = updates.default_views;
+		if (updates.default_views !== undefined) {
+			updateData.default_views = Array.isArray(updates.default_views)
+				? updates.default_views
+				: [];
+		}
 		if (updates.facet_defaults !== undefined)
 			updateData.facet_defaults = updates.facet_defaults;
 
@@ -214,7 +222,7 @@ export class TemplateCrudService {
 				cloned_at: new Date().toISOString()
 			},
 			default_props: source.default_props,
-			default_views: source.default_views,
+			default_views: Array.isArray(source.default_views) ? source.default_views : [],
 			facet_defaults: source.facet_defaults,
 			created_by: userId
 		};
@@ -385,24 +393,10 @@ export class TemplateCrudService {
 	/**
 	 * Get default FSM structure for new templates
 	 */
-	private static getDefaultFSM(): any {
+	private static getDefaultFSM(typeKey: string): any {
 		return {
-			states: [
-				{
-					name: 'draft',
-					initial: true,
-					description: 'Initial state'
-				},
-				{
-					name: 'active',
-					description: 'Active state'
-				},
-				{
-					name: 'complete',
-					final: true,
-					description: 'Completed state'
-				}
-			],
+			type_key: typeKey,
+			states: ['draft', 'active', 'complete'],
 			transitions: [
 				{
 					from: 'draft',

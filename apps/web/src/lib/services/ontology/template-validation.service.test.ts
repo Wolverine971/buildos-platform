@@ -148,6 +148,7 @@ describe('TemplateValidationService', () => {
 
 	beforeEach(() => {
 		mockClient = createMockClient();
+		mockProjects.length = 0;
 	});
 
 	describe('validateBasicFields', () => {
@@ -420,11 +421,7 @@ describe('TemplateValidationService', () => {
 				scope: 'task',
 				status: 'draft',
 				fsm: {
-					states: [
-						{ name: 'draft', initial: true },
-						{ name: 'active' },
-						{ name: 'complete', final: true }
-					],
+					states: ['draft', 'active', 'complete'],
 					transitions: [
 						{ from: 'draft', to: 'active', event: 'start' },
 						{ from: 'active', to: 'complete', event: 'finish' }
@@ -478,14 +475,14 @@ describe('TemplateValidationService', () => {
 			);
 		});
 
-		it('fails when FSM has no initial state', async () => {
+		it('fails when FSM contains empty state names', async () => {
 			const data: TemplateData = {
 				type_key: 'task.test',
 				name: 'Test',
 				scope: 'task',
 				status: 'draft',
 				fsm: {
-					states: [{ name: 'draft' }, { name: 'active' }],
+					states: ['draft', ''],
 					transitions: []
 				}
 			};
@@ -495,7 +492,7 @@ describe('TemplateValidationService', () => {
 			expect(result.errors).toContainEqual(
 				expect.objectContaining({
 					field: 'fsm.states',
-					code: 'MISSING_INITIAL_STATE'
+					code: 'INVALID_STATE_NAME'
 				})
 			);
 		});
@@ -507,10 +504,7 @@ describe('TemplateValidationService', () => {
 				scope: 'task',
 				status: 'draft',
 				fsm: {
-					states: [
-						{ name: 'draft', initial: true },
-						{ name: 'draft' } // Duplicate
-					],
+					states: ['draft', 'draft'],
 					transitions: []
 				}
 			};
@@ -532,7 +526,7 @@ describe('TemplateValidationService', () => {
 				scope: 'task',
 				status: 'draft',
 				fsm: {
-					states: [{ name: 'draft', initial: true }, { name: 'active' }],
+					states: ['draft', 'active'],
 					transitions: [{ from: 'draft', to: 'nonexistent', event: 'go' }]
 				}
 			};
@@ -554,7 +548,7 @@ describe('TemplateValidationService', () => {
 				scope: 'task',
 				status: 'draft',
 				fsm: {
-					states: [{ name: 'draft', initial: true }],
+					states: ['draft'],
 					transitions: [{ from: 'draft' } as any] // Missing to and event
 				}
 			};
@@ -759,6 +753,23 @@ describe('TemplateValidationService', () => {
 				expect.objectContaining({
 					field: 'template',
 					code: 'HAS_CHILDREN'
+				})
+			);
+		});
+
+		it('fails when template type is used by projects', async () => {
+			mockProjects.push({
+				id: 'proj-1',
+				type_key: 'task.base'
+			});
+
+			const result = await TemplateValidationService.canDelete(mockClient, 'tpl-1');
+
+			expect(result.valid).toBe(false);
+			expect(result.errors).toContainEqual(
+				expect.objectContaining({
+					field: 'template',
+					code: 'IN_USE_BY_PROJECTS'
 				})
 			);
 		});

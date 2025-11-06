@@ -279,36 +279,27 @@ export class TemplateValidationService {
 			return;
 		}
 
-		// Check for initial state
-		const hasInitialState = fsm.states.some((state: any) => state.initial === true);
-		if (!hasInitialState) {
-			errors.push({
-				field: 'fsm.states',
-				message: 'FSM must have one initial state',
-				code: 'MISSING_INITIAL_STATE'
-			});
-		}
-
-		// Validate state names are unique
+		// Validate state names (string-based)
 		const stateNames = new Set<string>();
 		for (const state of fsm.states) {
-			if (!state.name) {
+			if (typeof state !== 'string' || state.trim().length === 0) {
 				errors.push({
 					field: 'fsm.states',
-					message: 'All states must have a name',
-					code: 'REQUIRED_FIELD'
+					message: 'All states must be non-empty strings',
+					code: 'INVALID_STATE_NAME'
 				});
 				continue;
 			}
 
-			if (stateNames.has(state.name)) {
+			const normalized = state.trim();
+			if (stateNames.has(normalized)) {
 				errors.push({
 					field: 'fsm.states',
-					message: `Duplicate state name: ${state.name}`,
+					message: `Duplicate state name: ${normalized}`,
 					code: 'DUPLICATE_STATE_NAME'
 				});
 			}
-			stateNames.add(state.name);
+			stateNames.add(normalized);
 		}
 
 		// Validate transitions
@@ -323,15 +314,20 @@ export class TemplateValidationService {
 					continue;
 				}
 
+				const fromState =
+					typeof transition.from === 'string' ? transition.from.trim() : transition.from;
+				const toState =
+					typeof transition.to === 'string' ? transition.to.trim() : transition.to;
+
 				// Check that from and to states exist
-				if (!stateNames.has(transition.from)) {
+				if (typeof fromState !== 'string' || !stateNames.has(fromState)) {
 					errors.push({
 						field: 'fsm.transitions',
 						message: `Transition from state "${transition.from}" does not exist`,
 						code: 'INVALID_STATE_REFERENCE'
 					});
 				}
-				if (!stateNames.has(transition.to)) {
+				if (typeof toState !== 'string' || !stateNames.has(toState)) {
 					errors.push({
 						field: 'fsm.transitions',
 						message: `Transition to state "${transition.to}" does not exist`,
@@ -463,6 +459,41 @@ export class TemplateValidationService {
 	): Promise<ValidationResult> {
 		const errors: ValidationError[] = [];
 
+		// Resolve template metadata up front
+		const { data: template, error: templateFetchError } = await client
+			.from('onto_templates')
+			.select('id, type_key')
+			.eq('id', templateId)
+			.maybeSingle();
+
+		if (templateFetchError) {
+			console.error(
+				'[Template Validation] Failed to load template for delete check:',
+				templateFetchError
+			);
+			errors.push({
+				field: 'template',
+				message: 'Unable to verify template usage',
+				code: 'VALIDATION_ERROR'
+			});
+			return {
+				valid: false,
+				errors
+			};
+		}
+
+		if (!template) {
+			errors.push({
+				field: 'template',
+				message: 'Template not found',
+				code: 'NOT_FOUND'
+			});
+			return {
+				valid: false,
+				errors
+			};
+		}
+
 		// Check if template has children
 		const { data: children } = await client
 			.from('onto_templates')
@@ -482,7 +513,7 @@ export class TemplateValidationService {
 		const { data: projects } = await client
 			.from('onto_projects')
 			.select('id')
-			.eq('type_key', templateId) // Assuming projects reference type_key
+			.eq('type_key', template.type_key)
 			.limit(1);
 
 		if (projects && projects.length > 0) {

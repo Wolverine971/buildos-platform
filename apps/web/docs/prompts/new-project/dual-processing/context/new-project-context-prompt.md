@@ -1,6 +1,6 @@
 # Prompt Audit: new-project-dual-context
 
-**Generated at:** 2025-10-28T19:03:33.304Z
+**Generated at:** 2025-11-06T01:05:08.973Z
 **Environment:** Development
 
 
@@ -8,12 +8,11 @@
 
 ```json
 {
-  "userId": "255735ad-a34b-4ca9-942c-397ed8cc1435",
-  "projectId": null,
-  "brainDumpLength": 545,
+  "userId": "test-user-123",
+  "brainDumpLength": 21,
   "hasExistingProject": false,
   "existingContextLength": 0,
-  "timestamp": "2025-10-28T19:03:33.302Z"
+  "timestamp": "2025-11-06T01:05:08.973Z"
 }
 ```
 
@@ -26,7 +25,7 @@ A user just brain dumped information about a new project and you need to create 
 Your Job is to analyze the brain dump and create a well-structured project with comprehensive context.
 
 **IMPORTANT CONTEXT:**
-Current date and time: 2025-10-28T19:03:32.477Z
+Current date and time: 2025-11-06T01:05:08.973Z
 
 ## Project Creation Decision:
 **Decision Matrix**:
@@ -191,7 +190,7 @@ Convert natural language dates to YYYY-MM-DD format:
    - "Q2" → end_date: June 30th of current year
    - Always calculate actual YYYY-MM-DD dates, NEVER use relative terms
    - If no timeline mentioned, use start_date: today, end_date: null
-   - Current date context: Today is 2025-10-28
+   - Current date context: Today is 2025-11-06
 
 ## Output JSON for Project WITH Context:
 ```json
@@ -217,7 +216,7 @@ Convert natural language dates to YYYY-MM-DD format:
         "executive_summary": "2-3 sentence executive summary",
         "tags": ["project", "tags"],
         "status": "active",
-        "start_date": "2025-10-28",
+        "start_date": "2025-11-06",
         "end_date": null,
         "core_integrity_ideals": "Complete updated paragraph or omit if not mentioned",
 		"core_people_bonds": "Complete updated paragraph or omit if not mentioned",
@@ -242,26 +241,14 @@ Focus on extracting strategic project information and creating comprehensive con
 ```
 Process this brain dump for project context:
 
-I'm starting my first fantasy novel - 'The Last Ember'.
-
-Main plot: A young blacksmith discovers she can forge magical weapons when the kingdom's last dragon dies and darkness threatens the realm.
-
-Need to:
-
-- Develop main character backstory (orphan, raised by master blacksmith)
-- Create magic system based on metal and fire
-- Map out the kingdom of Aethermoor
-- Write character profiles for the antagonist (The Shadow King)
-- Outline first three chapters
-- Research medieval blacksmithing techniques
-- Design the prophecy that drives the plot
+Create a test project
 ```
 
 ## Token Estimates
 
 - **System Prompt:** ~2761 tokens
-- **User Prompt:** ~148 tokens
-- **Total Estimate:** ~2909 tokens
+- **User Prompt:** ~17 tokens
+- **Total Estimate:** ~2778 tokens
 
 
 ---

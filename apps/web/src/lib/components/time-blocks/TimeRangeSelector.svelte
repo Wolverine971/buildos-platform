@@ -546,13 +546,13 @@
 		}
 	}
 
-	.preset-buttonfocus-visible,
+	.preset-button:focus-visible,
 	.date-input:focus-visible {
 		outline: 2px solid rgb(59 130 246);
 		outline-offset: 2px;
 	}
 
-	:global(.dark) .preset-buttonfocus-visible,
+	:global(.dark) .preset-button:focus-visible,
 	:global(.dark) .date-input:focus-visible {
 		outline-color: rgb(96 165 250);
 	}

@@ -8,6 +8,7 @@ drop function if exists get_project_with_template(uuid);
 drop function if exists get_allowed_transitions(text, uuid);
 drop function if exists get_template_catalog(text, text, text);
 drop function if exists validate_facet_values(jsonb);
+drop function if exists validate_facet_values(jsonb, text);
 
 drop function if exists onto_jsonb_extract(jsonb, text);
 drop function if exists onto_jsonb_extract_text(jsonb, text);
@@ -379,7 +380,7 @@ comment on function get_template_catalog(text, text, text) is
 -- validate_facet_values
 -- ============================================
 
-create or replace function validate_facet_values(p_facets jsonb)
+create or replace function validate_facet_values(p_facets jsonb, p_scope text)
 returns table (
 	facet_key text,
 	provided_value text,
@@ -392,6 +393,11 @@ declare
 	v_text_value text;
 begin
 	if p_facets is null or jsonb_typeof(p_facets) <> 'object' then
+		return;
+	end if;
+
+	if p_scope is null or length(trim(p_scope)) = 0 then
+		raise exception 'validate_facet_values requires a non-null scope';
 		return;
 	end if;
 
@@ -414,7 +420,7 @@ begin
 
 		v_text_value := v_entry.value #>> '{}';
 
-		-- Ensure the facet key exists
+		-- Ensure the facet key exists and applies to the given scope
 		if not exists (
 			select 1
 			from onto_facet_definitions d
@@ -423,6 +429,19 @@ begin
 			facet_key := v_entry.key;
 			provided_value := v_text_value;
 			error := format('Unknown facet key: %s', v_entry.key);
+			return next;
+			continue;
+		end if;
+
+		if not exists (
+			select 1
+			from onto_facet_definitions d
+			where d.key = v_entry.key
+				and p_scope = any(d.applies_to)
+		) then
+			facet_key := v_entry.key;
+			provided_value := v_text_value;
+			error := format('Facet "%s" does not apply to scope "%s"', v_entry.key, p_scope);
 			return next;
 			continue;
 		end if;
@@ -443,8 +462,8 @@ begin
 end;
 $$;
 
-comment on function validate_facet_values(jsonb) is
-  'Validates facet values against the ontology facet taxonomy. Returns rows only for invalid entries.';
+comment on function validate_facet_values(jsonb, text) is
+  'Validates facet values against the ontology facet taxonomy with scope awareness. Returns rows only for invalid entries.';
 
 -- ============================================
 -- GRANTS
@@ -453,6 +472,6 @@ comment on function validate_facet_values(jsonb) is
 grant execute on function get_project_with_template(uuid) to authenticated;
 grant execute on function get_allowed_transitions(text, uuid) to authenticated;
 grant execute on function get_template_catalog(text, text, text) to authenticated;
-grant execute on function validate_facet_values(jsonb) to authenticated;
+grant execute on function validate_facet_values(jsonb, text) to authenticated;
 
 -- Internal helpers are left with default privileges (accessible to invoker functions).

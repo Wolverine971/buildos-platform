@@ -1,6 +1,6 @@
 # Prompt Audit: preparatory-analysis
 
-**Generated at:** 2025-10-24T01:06:42.617Z
+**Generated at:** 2025-11-06T01:05:06.423Z
 **Environment:** Development
 
 
@@ -8,13 +8,13 @@
 
 ```json
 {
-  "userId": "255735ad-a34b-4ca9-942c-397ed8cc1435",
-  "projectId": "1747a600-cf41-4c66-bb67-98d6786aa709",
-  "brainDumpLength": 510,
-  "taskCount": 7,
-  "hasExistingContext": true,
-  "existingContextLength": 723,
-  "timestamp": "2025-10-24T01:06:42.617Z"
+  "userId": "550e8400-e29b-41d4-a716-446655440000",
+  "projectId": "test-brain-dump-id-3",
+  "brainDumpLength": 34,
+  "taskCount": 0,
+  "hasExistingContext": false,
+  "existingContextLength": 0,
+  "timestamp": "2025-11-06T01:05:06.423Z"
 }
 ```
 
@@ -148,56 +148,29 @@ Analyze the braindump and respond with ONLY the JSON, no other text.
 
 
 ## Current Project Overview:
-Project: "The Last Ember"
-Description: A fantasy novel about a young blacksmith who discovers her ability to forge magical weapons.
-Status: active
-Tags: fantasy, novel, world-building, magic
-Start Date: 2025-10-24
+Project: "undefined"
+Description: No description
+Status: undefined
+Tags: None
+Start Date: Not set
 End Date: Not set
-Has Context: Yes (existing strategic document)
-Executive Summary: The Last Ember is a fantasy novel that explores the journey of a young blacksmith who discovers her magical abilities amidst a kingdom's crisis. The story will delve into character development, a unique magic system, and the intricacies of the kingdom of Aethermoor.
+Has Context: No
+Executive Summary: None
 
-## Existing Tasks (7 total):
-- [backlog] Design the prophecy (ID: dc28ae49-096e-4533-98ed-87ff901270c9)
-  Description: Create a prophecy that drives the plot.
-- [backlog] Research medieval blacksmithing techniques (ID: 7efa2b1e-2389-4393-9203-630f9dd6c858)
-  Description: Gather information on historical blacksmithing methods.
-- [backlog] Outline first three chapters (ID: 96c38ee8-acd3-4f28-8bd5-5eb75da5ee23)
-  Description: Create an outline for the initial chapters of the novel.
-- [backlog] Write character profiles for the antagonist (ID: 8eb82987-2039-4560-8a6a-8bb692479f35)
-  Description: Develop detailed profiles for the antagonist.
-- [backlog] Map out the kingdom of Aethermoor (ID: ed3f07db-0c0f-49b9-b7de-492b414c723f)
-  Description: Create a detailed map of the kingdom.
-- [backlog] Create magic system (ID: 7e7ab668-b800-47c1-9365-0a46e69768db)
-  Description: Develop a unique magic system for the novel.
-- [backlog] Develop main character backstory (ID: 6877df7b-55b3-4141-8cef-ff083637234b)
-  Description: Create a detailed backstory for the main character.
+## Existing Tasks (0 total):
+
 
 			
 			Analyze this braindump:
 
-Finished chapter 2 today - 4,500 words. The scene where Elena discovers the dragon forge went really well.
-
-Issues to address:
-
-- Need to strengthen the dialogue between Elena and Master Thorne
-- The pacing in the middle feels slow
-- Add more sensory details about the forge
-
-Chapter 3 plans:
-
-- Elena's first attempt at magical forging
-- Introduce the Shadow King's herald
-- Foreshadow the prophecy
-
-Also need to go back and fix continuity issue - Elena's age mentioned as 16 in chapter 1 but 17 in chapter 2.
+Test brain dump for database error
 ```
 
 ## Token Estimates
 
 - **System Prompt:** ~1370 tokens
-- **User Prompt:** ~554 tokens
-- **Total Estimate:** ~1924 tokens
+- **User Prompt:** ~71 tokens
+- **Total Estimate:** ~1441 tokens
 
 
 ---

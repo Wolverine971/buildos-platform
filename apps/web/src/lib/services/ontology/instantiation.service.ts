@@ -99,15 +99,21 @@ export async function instantiateProject(
 	const actorId = await ensureActorExists(client, userId);
 	const projectTemplate = await getProjectTemplate(client, parsed.project.type_key);
 
+	if (!projectTemplate) {
+		throw new OntologyInstantiationError(
+			`Active project template not found for type_key "${parsed.project.type_key}"`
+		);
+	}
+
 	const resolvedProjectFacets = resolveFacets(
-		projectTemplate?.facet_defaults as FacetDefaults | undefined,
+		projectTemplate.facet_defaults as FacetDefaults | undefined,
 		(parsed.project.props?.facets as Facets | undefined) ?? undefined
 	);
 
-	await assertValidFacets(client, resolvedProjectFacets, 'project');
+	await assertValidFacets(client, resolvedProjectFacets, 'project', 'project');
 
 	const mergedProjectProps = mergeProps(
-		(projectTemplate?.default_props as Record<string, unknown> | undefined) ?? {},
+		(projectTemplate.default_props as Record<string, unknown> | undefined) ?? {},
 		parsed.project.props ?? {}
 	);
 
@@ -282,7 +288,7 @@ export async function instantiateProject(
 		if (parsed.plans?.length) {
 			for (const plan of parsed.plans) {
 				const resolvedPlanFacets = resolveFacets(undefined, plan.props?.facets as Facets);
-				await assertValidFacets(client, resolvedPlanFacets, `plan "${plan.name}"`);
+				await assertValidFacets(client, resolvedPlanFacets, 'plan', `plan "${plan.name}"`);
 
 				const mergedPlanProps = mergeProps(plan.props ?? {});
 				if (hasFacetValues(resolvedPlanFacets)) {
@@ -340,7 +346,7 @@ export async function instantiateProject(
 				}
 
 				const resolvedTaskFacets = resolveFacets(undefined, task.props?.facets as Facets);
-				await assertValidFacets(client, resolvedTaskFacets, `task "${task.title}"`);
+				await assertValidFacets(client, resolvedTaskFacets, 'task', `task "${task.title}"`);
 
 				const mergedTaskProps = mergeProps(task.props ?? {});
 				if (hasFacetValues(resolvedTaskFacets)) {
@@ -401,7 +407,12 @@ export async function instantiateProject(
 					undefined,
 					output.props?.facets as Facets
 				);
-				await assertValidFacets(client, resolvedOutputFacets, `output "${output.name}"`);
+				await assertValidFacets(
+					client,
+					resolvedOutputFacets,
+					'output',
+					`output "${output.name}"`
+				);
 
 				const mergedOutputProps = mergeProps(output.props ?? {});
 				if (hasFacetValues(resolvedOutputFacets)) {
@@ -716,6 +727,8 @@ async function getProjectTemplate(
 		.select('id, default_props, facet_defaults')
 		.eq('scope', 'project')
 		.eq('type_key', typeKey)
+		.eq('status', 'active')
+		.eq('is_abstract', false)
 		.maybeSingle();
 
 	if (error) {
@@ -738,19 +751,21 @@ async function getProjectTemplate(
 async function assertValidFacets(
 	client: TypedSupabaseClient,
 	facets: Facets | undefined,
-	contextLabel: string
+	scope: string,
+	contextLabel?: string
 ): Promise<void> {
 	if (!hasFacetValues(facets)) {
 		return;
 	}
 
 	const { data, error } = await client.rpc('validate_facet_values', {
-		p_facets: facets
+		p_facets: facets,
+		p_scope: scope
 	});
 
 	if (error) {
 		throw new OntologyInstantiationError(
-			`Facet validation failed for ${contextLabel}: ${error.message}`
+			`Facet validation failed for ${contextLabel ?? scope}: ${error.message}`
 		);
 	}
 
@@ -761,7 +776,7 @@ async function assertValidFacets(
 			})
 			.join('; ');
 		throw new OntologyInstantiationError(
-			`Facet validation failed for ${contextLabel}: ${messages}`
+			`Facet validation failed for ${contextLabel ?? scope}: ${messages}`
 		);
 	}
 }
