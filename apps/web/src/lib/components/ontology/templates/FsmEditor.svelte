@@ -144,7 +144,8 @@
 						'font-family': 'Inter, system-ui, sans-serif',
 						'text-wrap': 'wrap',
 						'text-max-width': '100px',
-						color: '#ffffff'
+						color: '#ffffff',
+						cursor: 'pointer'
 					}
 				},
 				{
@@ -838,9 +839,3 @@
 		</div>
 	</CardBody>
 </Card>
-
-<style>
-	:global(.hover) {
-		cursor: pointer;
-	}
-</style>

@@ -285,7 +285,7 @@
 	}
 
 	/* Focus states */
-	:global(.content-wrapper buttonfocus-visible) {
+	:global(.content-wrapper button:focus-visible) {
 		outline: 2px solid rgb(59 130 246);
 		outline-offset: 2px;
 	}

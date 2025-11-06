@@ -97,12 +97,7 @@
 
 	/* Active tab - refined with Tailwind */
 	.tab-active {
-		@apply border-b-2 border-blue-500 dark:border-blue-400 text-blue-600 dark:text-blue-400 font-semibold;
-		background: linear-gradient(to bottom, rgb(59 130 246 / 0.05), rgb(59 130 246 / 0.08));
-	}
-
-	:global(.dark) .tab-active {
-		background: linear-gradient(to bottom, rgb(96 165 250 / 0.08), rgb(96 165 250 / 0.12));
+		@apply border-b-2 border-blue-500 dark:border-blue-400 text-blue-600 dark:text-blue-400 font-semibold bg-gradient-to-b from-blue-500/5 to-blue-500/8 dark:from-blue-400/8 dark:to-blue-400/12;
 	}
 
 	/* Inactive tab - subtle */
@@ -112,12 +107,7 @@
 
 	/* Hover state */
 	.tab-inactive:hover {
-		@apply text-gray-900 dark:text-gray-100 border-b-2 border-gray-300 dark:border-gray-600;
-		background: linear-gradient(to bottom, rgb(0 0 0 / 0.02), rgb(0 0 0 / 0.03));
-	}
-
-	:global(.dark) .tab-inactive:hover {
-		background: linear-gradient(to bottom, rgb(255 255 255 / 0.03), rgb(255 255 255 / 0.05));
+		@apply text-gray-900 dark:text-gray-100 border-b-2 border-gray-300 dark:border-gray-600 bg-gradient-to-b from-black/2 to-black/3 dark:from-white/3 dark:to-white/5;
 	}
 
 	/* Focus state for keyboard navigation */
@@ -137,7 +127,7 @@
 
 	@media (min-width: 640px) {
 		.tab-icon {
-			@apply w-5 h-5;
+			@apply w-4.5 h-4.5;
 		}
 	}
 

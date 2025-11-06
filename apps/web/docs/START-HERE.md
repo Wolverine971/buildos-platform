@@ -225,7 +225,7 @@ This is the **definitive navigation guide** for all BuildOS web app documentatio
     - [incident-response.md](technical/deployment/runbooks/incident-response.md)
     - [performance-issues.md](technical/deployment/runbooks/performance-issues.md)
     - [calendar-webhook-failures.md](technical/deployment/runbooks/calendar-webhook-failures.md)
-    - [stripe-webhook-failures.md](technical/deployment/runbooks/stripe-webhook-failures.md)
+    - [Stripe Webhook Failure Recovery](../../../docs/integrations/stripe/runbooks/webhook-failures.md)
     - [openai-rate-limiting.md](technical/deployment/runbooks/openai-rate-limiting.md)
     - [database-recovery.md](technical/deployment/runbooks/database-recovery.md)
 
@@ -679,8 +679,8 @@ This is the **definitive navigation guide** for all BuildOS web app documentatio
 3. [supabase-recovery.md](technical/deployment/runbooks/supabase-recovery.md)
 4. [supabase-connection-recovery.md](technical/deployment/runbooks/supabase-connection-recovery.md)
 5. [calendar-webhook-failures.md](technical/deployment/runbooks/calendar-webhook-failures.md)
-6. [stripe-webhook-failures.md](technical/deployment/runbooks/stripe-webhook-failures.md)
-7. [stripe-webhook-validation.md](technical/deployment/runbooks/stripe-webhook-validation.md)
+6. [Stripe Webhook Failure Recovery](../../../docs/integrations/stripe/runbooks/webhook-failures.md)
+7. [Stripe Webhook Validation](../../../docs/integrations/stripe/runbooks/webhook-validation.md)
 8. [openai-rate-limiting.md](technical/deployment/runbooks/openai-rate-limiting.md)
 9. [performance-issues.md](technical/deployment/runbooks/performance-issues.md)
 
@@ -713,11 +713,11 @@ This is the **definitive navigation guide** for all BuildOS web app documentatio
 
 **Stripe Integration (Complete):**
 
-- [STRIPE_IMPLEMENTATION_SUMMARY.md](technical/integrations/STRIPE_IMPLEMENTATION_SUMMARY.md) - Status: 4/8 complete
-- [stripe-integration-overview.md](technical/integrations/stripe-integration-overview.md) - Business overview
-- [stripe-setup.md](technical/integrations/stripe-setup.md) - Developer setup
+- [Stripe Implementation Summary](../../../docs/integrations/stripe/implementation-summary.md) - Status: 4/8 complete
+- [Stripe Integration Overview](../../../docs/integrations/stripe/overview.md) - Business overview
+- [Stripe Setup Guide](../../../docs/integrations/stripe/setup.md) - Developer setup
 
-**Also see:** [integrations/](integrations/) directory with 5 Stripe docs
+**Also see:** [/docs/integrations/stripe/](../../../docs/integrations/stripe/) for the consolidated Stripe docs
 
 **Missing Integrations:**
 

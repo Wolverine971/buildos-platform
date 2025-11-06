@@ -215,7 +215,7 @@ Created 11 new README.md files providing navigation, quick references, and overv
 | `/apps/web/docs/audits/README.md`              | Audit Index       | Feature implementations, critical issues            |
 | `/apps/web/docs/design/README.md`              | Design Index      | Design system, components, quick nav by role        |
 | `/apps/web/docs/operations/README.md`          | Operations Guide  | Deployment workflow, checklist, troubleshooting     |
-| `/apps/web/docs/integrations/README.md`        | Integration Guide | Stripe (50% done), missing integrations (20%)       |
+| `/docs/integrations/README.md`                 | Integration Guide | Stripe (50% done), missing integrations (20%)       |
 | `/apps/web/docs/migrations/README.md`          | Migration Guide   | Migration lifecycle, tracking                       |
 | Updated `/docs/README.md`                      | Main Hub          | Added audits section, clearer structure             |
 | Updated `/apps/web/docs/README.md`             | App Hub           | Added audits, README.md column                      |
@@ -265,7 +265,7 @@ Created 11 new README.md files providing navigation, quick references, and overv
     - Workaround: Read `database.schema.ts` directly
 
 3. **Integration Documentation** (⚠️ 80% MISSING)
-    - Location: `/apps/web/docs/integrations/README.md`
+    - Location: `/docs/integrations/README.md`
     - Documented: Stripe (50%)
     - Missing: Google OAuth, Google Calendar, Twilio, OpenAI
 
@@ -342,7 +342,7 @@ Created 11 new README.md files providing navigation, quick references, and overv
 - `/apps/web/docs/features/README.md` ✅
 - `/apps/web/docs/design/README.md` ✅
 - `/apps/web/docs/operations/README.md` ✅
-- `/apps/web/docs/integrations/README.md` ✅
+- `/docs/integrations/README.md` ✅
 - `/apps/web/docs/migrations/README.md` ✅
 
 ### Files Moved

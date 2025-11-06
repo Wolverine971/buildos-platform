@@ -20,6 +20,16 @@ This directory contains comprehensive audits, findings, and fix verification doc
 - **[WORKER_TYPE_SAFETY_AUDIT.md](WORKER_TYPE_SAFETY_AUDIT.md)** - Type safety audit findings
 - **[WORKER_TYPE_SAFETY_FINDINGS.md](WORKER_TYPE_SAFETY_FINDINGS.md)** - Type safety findings details
 
+### API Response Standardization
+
+- **[apiresponse-audit-report.md](apiresponse-audit-report.md)** - End-to-end assessment of `ApiResponse` adoption across endpoints and frontend clients
+
+### Component Library Audits
+
+- **[component-pattern-consistency.md](component-pattern-consistency.md)** - UI component consistency audit and remediation plan
+- **[component-audit-summary.txt](component-audit-summary.txt)** - Executive summary of component audit health
+- **[component-library-audit-summary.txt](component-library-audit-summary.txt)** - Scorecard for component library coverage and outstanding issues
+
 ### Changelog & Bug Fixes
 
 - **[BUGFIX_CHANGELOG.md](BUGFIX_CHANGELOG.md)** - Complete changelog of bug fixes applied
@@ -42,16 +52,18 @@ This directory contains comprehensive audits, findings, and fix verification doc
 
 ## 📊 Audit Status Overview
 
-| Audit                | Status | Severity | Document Count |
-| -------------------- | ------ | -------- | -------------- |
-| Svelte 5 Migration   | Active | High     | 4 docs         |
-| Worker Queue System  | Active | High     | 4 docs         |
-| Type Safety (Worker) | Active | Medium   | 2 docs         |
-| Bug Fixes            | Active | Ongoing  | 1 doc          |
+| Audit                        | Status | Severity | Document Count |
+| ---------------------------- | ------ | -------- | -------------- |
+| Svelte 5 Migration           | Active | High     | 4 docs         |
+| Worker Queue System          | Active | High     | 4 docs         |
+| Type Safety (Worker)         | Active | Medium   | 2 docs         |
+| API Response Standardization | Active | High     | 1 doc          |
+| Component Library            | Active | Medium   | 3 docs         |
+| Bug Fixes                    | Active | Ongoing  | 1 doc          |
 
 ## 🔍 Quick Facts
 
-- **Total Audit Documents**: 11
+- **Total Audit Documents**: 15
 - **Svelte 5 Issues**: Multiple (see findings)
 - **Worker Queue Issues**: Comprehensive audit completed
 - **Type Safety Issues**: Audited and documented

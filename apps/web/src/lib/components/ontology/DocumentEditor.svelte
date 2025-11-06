@@ -583,87 +583,52 @@
 </div>
 
 <style>
-	/* Editor base styles - responsive and dark mode support */
+	/* Editor base styles - responsive and dark mode support with Tailwind colors */
 	:global(.editor) {
-		min-height: 400px;
-		padding: 1rem;
+		@apply min-h-[400px] p-4 sm:p-6 lg:p-8;
 	}
 
-	@media (min-width: 640px) {
-		:global(.editor) {
-			padding: 1.5rem;
-		}
-	}
-
-	@media (min-width: 1024px) {
-		:global(.editor) {
-			padding: 2rem;
-		}
-	}
-
+	/* Paragraph styles */
 	:global(.editor p) {
-		margin: 0.5em 0;
-		color: #111827; /* gray-900 */
+		@apply my-2 text-gray-900 dark:text-gray-200;
 	}
 
-	:global(.dark .editor p) {
-		color: #e5e7eb; /* gray-200 */
-	}
-
+	/* Heading 1 styles */
 	:global(.editor h1) {
-		font-size: 2em;
-		font-weight: bold;
-		margin: 0.67em 0;
-		color: #111827; /* gray-900 */
+		@apply text-4xl font-bold my-4 text-gray-900 dark:text-gray-50;
 	}
 
-	:global(.dark .editor h1) {
-		color: #f9fafb; /* gray-50 */
-	}
-
+	/* Heading 2 styles */
 	:global(.editor h2) {
-		font-size: 1.5em;
-		font-weight: bold;
-		margin: 0.75em 0;
-		color: #111827; /* gray-900 */
+		@apply text-3xl font-bold my-3 text-gray-900 dark:text-gray-50;
 	}
 
-	:global(.dark .editor h2) {
-		color: #f9fafb; /* gray-50 */
+	/* List styles */
+	:global(.editor ul) {
+		@apply pl-8 my-2 text-gray-900 dark:text-gray-200;
 	}
 
-	:global(.editor ul, .editor ol) {
-		padding-left: 2em;
-		margin: 0.5em 0;
-		color: #111827; /* gray-900 */
+	:global(.editor ol) {
+		@apply pl-8 my-2 text-gray-900 dark:text-gray-200;
 	}
 
-	:global(.dark .editor ul, .dark .editor ol) {
-		color: #e5e7eb; /* gray-200 */
-	}
-
+	/* Link styles */
 	:global(.editor a) {
-		color: #2563eb; /* blue-600 */
-		text-decoration: underline;
+		@apply text-blue-600 dark:text-blue-400 underline;
 	}
 
-	:global(.dark .editor a) {
-		color: #60a5fa; /* blue-400 */
-	}
-
+	/* Image styles */
 	:global(.editor img) {
-		max-width: 100%;
-		height: auto;
-		border-radius: 0.5rem;
+		@apply max-w-full h-auto rounded-lg;
 	}
 
-	/* Selection colors for better visibility */
+	/* Selection colors for better visibility with Tailwind colors */
 	:global(.editor ::selection) {
-		background-color: rgba(147, 51, 234, 0.2); /* purple-600 with opacity */
+		background-color: rgb(147, 51, 234, 0.2); /* purple-600 with opacity */
 	}
 
 	:global(.dark .editor ::selection) {
-		background-color: rgba(192, 132, 252, 0.3); /* purple-400 with opacity */
+		background-color: rgb(192, 132, 252, 0.3); /* purple-400 with opacity */
 	}
 
 	/* Prosemirror focus outline */
@@ -671,16 +636,12 @@
 		outline: none;
 	}
 
-	/* Placeholder styling */
+	/* Placeholder styling with Tailwind colors */
 	:global(.editor .ProseMirror p.is-editor-empty:first-child::before) {
-		color: #9ca3af; /* gray-400 */
+		@apply text-gray-400 dark:text-gray-500;
 		content: attr(data-placeholder);
 		float: left;
 		height: 0;
 		pointer-events: none;
-	}
-
-	:global(.dark .editor .ProseMirror p.is-editor-empty:first-child::before) {
-		color: #6b7280; /* gray-500 */
 	}
 </style>

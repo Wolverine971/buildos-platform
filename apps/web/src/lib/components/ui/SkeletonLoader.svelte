@@ -94,7 +94,12 @@
 <style>
 	.skeleton-loader {
 		contain: layout style paint;
-		background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+		background: linear-gradient(
+			90deg,
+			rgb(243, 244, 246) 25%,
+			rgb(229, 231, 235) 50%,
+			rgb(243, 244, 246) 75%
+		);
 		background-size: 200% 100%;
 		animation: skeleton-loading 1.5s infinite;
 		border-radius: 8px;
@@ -102,7 +107,12 @@
 	}
 
 	.dark .skeleton-loader {
-		background: linear-gradient(90deg, #374151 25%, #4b5563 50%, #374151 75%);
+		background: linear-gradient(
+			90deg,
+			rgb(55, 65, 81) 25%,
+			rgb(75, 85, 99) 50%,
+			rgb(55, 65, 81) 75%
+		);
 		background-size: 200% 100%;
 	}
 
@@ -117,148 +127,108 @@
 
 	/* Card Skeleton */
 	.card-skeleton {
-		padding: 1rem;
-		min-height: 200px;
-		display: flex;
-		flex-direction: column;
-		gap: 1rem;
+		@apply p-4 min-h-[200px] flex flex-col gap-4;
 	}
 
 	.skeleton-header {
-		display: flex;
-		align-items: center;
-		gap: 0.75rem;
+		@apply flex items-center gap-3;
 	}
 
 	.skeleton-avatar {
-		width: 40px;
-		height: 40px;
-		border-radius: 50%;
-		background: rgba(255, 255, 255, 0.3);
-		flex-shrink: 0;
+		@apply w-10 h-10 rounded-full bg-white/30 flex-shrink-0;
 	}
 
 	.skeleton-avatar-sm {
-		width: 32px;
-		height: 32px;
+		@apply w-8 h-8;
 	}
 
 	.dark .skeleton-avatar {
-		background: rgba(255, 255, 255, 0.1);
+		@apply bg-white/10;
 	}
 
 	.skeleton-lines {
-		flex: 1;
-		display: flex;
-		flex-direction: column;
-		gap: 0.5rem;
+		@apply flex-1 flex flex-col gap-2;
 	}
 
 	.skeleton-line {
-		height: 12px;
-		border-radius: 6px;
-		background: rgba(255, 255, 255, 0.4);
+		@apply h-3 rounded-md bg-white/40;
 	}
 
 	.dark .skeleton-line {
-		background: rgba(255, 255, 255, 0.2);
+		@apply bg-white/20;
 	}
 
 	.skeleton-line-xs {
-		width: 60%;
+		@apply w-3/5;
 	}
 	.skeleton-line-sm {
-		width: 70%;
+		@apply w-[70%];
 	}
 	.skeleton-line-md {
-		width: 80%;
+		@apply w-4/5;
 	}
 	.skeleton-line-lg {
-		width: 90%;
+		@apply w-[90%];
 	}
 	.skeleton-line-full {
-		width: 100%;
+		@apply w-full;
 	}
 
 	.skeleton-content {
-		flex: 1;
-		display: flex;
-		flex-direction: column;
-		gap: 0.5rem;
+		@apply flex-1 flex flex-col gap-2;
 	}
 
 	.skeleton-footer {
-		display: flex;
-		gap: 0.5rem;
-		justify-content: flex-end;
+		@apply flex gap-2 justify-end;
 	}
 
 	.skeleton-button {
-		height: 32px;
-		width: 80px;
-		border-radius: 6px;
-		background: rgba(255, 255, 255, 0.3);
+		@apply h-8 w-20 rounded-md bg-white/30;
 	}
 
 	.skeleton-button-sm {
-		width: 60px;
+		@apply w-16;
 	}
 
 	.dark .skeleton-button {
-		background: rgba(255, 255, 255, 0.1);
+		@apply bg-white/10;
 	}
 
 	/* Text Skeleton */
 	.text-skeleton {
-		padding: 0.5rem 0;
-		display: flex;
-		flex-direction: column;
-		gap: 0.5rem;
+		@apply py-2 flex flex-col gap-2;
 	}
 
 	/* Avatar Skeleton */
 	.avatar-skeleton {
-		border-radius: 50%;
+		@apply rounded-full;
 	}
 
 	/* Button Skeleton */
 	.button-skeleton {
-		border-radius: 6px;
+		@apply rounded-md;
 	}
 
 	/* List Skeleton */
 	.list-skeleton {
-		padding: 0.5rem 0;
+		@apply py-2;
 	}
 
 	.skeleton-list-item {
-		display: flex;
-		align-items: center;
-		gap: 0.75rem;
-		padding: 0.5rem 0;
+		@apply flex items-center gap-3 py-2;
 	}
 
 	/* Table Skeleton */
 	.table-skeleton {
-		display: flex;
-		flex-direction: column;
-		gap: 0.5rem;
-		padding: 1rem;
+		@apply flex flex-col gap-2 p-4;
 	}
 
 	.skeleton-table-header {
-		display: grid;
-		grid-template-columns: repeat(4, 1fr);
-		gap: 1rem;
-		padding-bottom: 0.5rem;
-		border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+		@apply grid grid-cols-4 gap-4 pb-2 border-b border-white/20;
 	}
 
 	.skeleton-table-row {
-		display: grid;
-		grid-template-columns: repeat(4, 1fr);
-		gap: 1rem;
-		padding: 0.5rem 0;
+		@apply grid grid-cols-4 gap-4 py-2;
 	}
 
 	/* Accessibility */
@@ -271,18 +241,16 @@
 	/* Mobile optimizations */
 	@media (max-width: 768px) {
 		.card-skeleton {
-			padding: 0.75rem;
-			min-height: 150px;
+			@apply p-3 min-h-[150px];
 		}
 
 		.skeleton-avatar {
-			width: 32px;
-			height: 32px;
+			@apply w-8 h-8;
 		}
 
 		.skeleton-table-header,
 		.skeleton-table-row {
-			grid-template-columns: repeat(2, 1fr);
+			@apply grid-cols-2;
 		}
 	}
 </style>

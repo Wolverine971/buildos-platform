@@ -8,8 +8,7 @@
 		Clock,
 		Edit3,
 		ChevronRight,
-		Sparkles,
-		Archive
+		Sparkles
 	} from 'lucide-svelte';
 
 	export let projects: any[] = [];
@@ -138,7 +137,7 @@
 					class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-3"
 				>
 					{#each activeProjects as project}
-						<Button
+						<button
 							onclick={() => handleProjectSelection(project)}
 							disabled={isProjectProcessing(project.id)}
 							class="relative flex flex-col p-3 sm:p-4 bg-white/70 dark:bg-gray-800/70 backdrop-blur-sm border {isProjectProcessing(
@@ -209,7 +208,7 @@
 									{/if}
 								</div>
 							{/if}
-						</Button>
+						</button>
 					{/each}
 				</div>
 			</section>
@@ -234,7 +233,7 @@
 
 				<div class="flex flex-col gap-1">
 					{#each inactiveProjects as project}
-						<Button
+						<button
 							onclick={() => handleProjectSelection(project)}
 							disabled={isProjectProcessing(project.id)}
 							class="flex items-center justify-between w-full p-3 bg-white dark:bg-gray-800 border {isProjectProcessing(
@@ -268,7 +267,7 @@
 									class="w-4 h-4 text-gray-400 dark:text-gray-500 flex-shrink-0"
 								/>
 							{/if}
-						</Button>
+						</button>
 					{/each}
 				</div>
 			</section>

@@ -54,6 +54,14 @@ When styling pages or components, act as a high-end Apple designer creating simp
 - Transitions between screens and components should be buttery smooth
 - Don't make big changes unless needed - if a big change is required, discuss it first
 
+### Tailwind-First Implementation Update (Nov 2025)
+
+- Favor Tailwind utilities for layout shells (`flex min-h-screen min-h-[100dvh] flex-col`, `max-w-[1200px] px-4 sm:px-6 lg:px-8`) and reserve bespoke CSS for component-level nuance
+- The legacy `.pulse` / `.pulse-mobile` helpers are retired; use the shared `animate-pulse-accent` animation from `tailwind.config.js`
+- Keep shared rules inside `app.css` under `@layer components` or `@layer utilities` so unused selectors are tree-shaken
+- Apply safe-area padding inline on the root container instead of shipping cap-wide padding utilities
+- Extend Tailwind keyframes for bespoke motion (see `pulseAccent`) rather than scattering `<style>` blocks through components
+
 ---
 
 ## Color System

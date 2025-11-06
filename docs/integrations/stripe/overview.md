@@ -197,8 +197,8 @@ Webhook ← Stripe processes payment → Update Database → User is Premium
 
 ### Documentation
 
-- [Stripe Testing Guide](./stripe-testing-plan.md)
-- [Implementation Checklist](./stripe-implementation-checklist.md)
+- [Stripe Testing Guide](./testing-plan.md)
+- [Implementation Checklist](./implementation-checklist.md)
 - [Stripe API Docs](https://stripe.com/docs)
 
 ### Key Files to Know

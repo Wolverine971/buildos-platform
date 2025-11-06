@@ -1,7 +1,7 @@
 ---
 title: Ontology API Reference
 description: REST endpoints that power the BuildOS ontology system.
-last_updated: 2025-02-12
+last_updated: 2025-11-05
 ---
 
 # Ontology API Reference
@@ -93,7 +93,7 @@ Authorization: Bearer <token>
 
 ### POST `/api/onto/projects/instantiate`
 
-Creates a project graph from a `ProjectSpec` payload. Validates via Zod before invoking the instantiation service.
+Creates a project graph from a `ProjectSpec` payload. Validates via Zod before invoking the instantiation service. As of 2025‑11‑05 the backend enforces that the referenced template is **active**, **non-abstract**, and that supplied facets match the taxonomy for the corresponding scope.
 
 ```http
 POST /api/onto/projects/instantiate
@@ -138,6 +138,12 @@ Content-Type: application/json
 	}
 }
 ```
+
+**Possible errors**
+
+- `400 INVALID_TEMPLATE` — The supplied `type_key` has no active, non-abstract template.
+- `400 INVALID_FACET_VALUE` — Facet values are not strings or are not allowed for the entity scope.
+- `400 INVALID_FACET_SCOPE` — Facet keys that do not apply to the entity scope (`validate_facet_values` now checks `applies_to`).
 
 ---
 

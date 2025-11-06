@@ -373,9 +373,9 @@
 
 					<!-- Filter -->
 					<div class="flex items-center space-x-2">
-						<label class="text-sm font-medium text-gray-700 dark:text-gray-300"
-							>Filter:</label
-						>
+						<div class="text-sm font-medium text-gray-700 dark:text-gray-300">
+							Filter:
+						</div>
 						<Select
 							bind:value={selectedFilter}
 							size="md"

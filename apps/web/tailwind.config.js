@@ -64,6 +64,7 @@ export default {
 				'slide-down': 'slideDown 0.3s ease-out',
 				'fade-in': 'fadeIn 0.3s ease-out',
 				'scale-in': 'scaleIn 0.2s ease-out',
+				'pulse-accent': 'pulseAccent 1.4s ease-in-out infinite',
 				shimmer: 'shimmer 2s linear infinite'
 			},
 			keyframes: {
@@ -82,6 +83,16 @@ export default {
 				scaleIn: {
 					'0%': { transform: 'scale(0.95)', opacity: '0' },
 					'100%': { transform: 'scale(1)', opacity: '1' }
+				},
+				pulseAccent: {
+					'0%, 100%': {
+						transform: 'scale(1)',
+						boxShadow: '0 0 0 0 rgba(79, 70, 229, 0.25)'
+					},
+					'50%': {
+						transform: 'scale(1.02)',
+						boxShadow: '0 0 0 14px rgba(79, 70, 229, 0.07)'
+					}
 				},
 				shimmer: {
 					'0%': { backgroundPosition: '-1000px 0' },

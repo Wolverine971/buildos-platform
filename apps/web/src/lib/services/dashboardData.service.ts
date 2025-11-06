@@ -20,11 +20,16 @@ export interface DashboardData {
 		activeTasks: number;
 		completedToday: number;
 		upcomingDeadlines: number;
+		weeklyProgress?: {
+			completed: number;
+			total: number;
+		};
 	};
 	calendarStatus: {
 		isConnected?: boolean; // API returns isConnected
 		needsRefresh?: boolean;
 	};
+	timezone?: string; // User's timezone
 }
 
 // Response types with proper generics

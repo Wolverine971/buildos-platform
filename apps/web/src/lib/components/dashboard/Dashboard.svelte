@@ -65,8 +65,6 @@
 	// ============================================
 
 	// Core data state - now using reactive store
-	console.log('[Dashboard] Initial data:', initialData);
-
 	// Use initial data until store is initialized
 	const pastDueTasks = $derived(
 		$dashboardStore.initialized ? $dashboardStore.pastDueTasks : initialData?.pastDueTasks || []
@@ -116,16 +114,6 @@
 	const storeLoading = $derived($dashboardStore.loading);
 	const storeError = $derived($dashboardStore.error);
 	const storeInitialized = $derived($dashboardStore.initialized);
-
-	// Debug calendar status
-	$effect(() => {
-		console.log(
-			'[Dashboard] Calendar status:',
-			calendarStatus,
-			'Store initialized:',
-			storeInitialized
-		);
-	});
 
 	// Modal states
 	let showTaskModal = $state(false);
@@ -199,7 +187,6 @@
 	function initializeStore(data: DashboardData) {
 		if (!data) return;
 
-		console.log('[Dashboard] Initializing store with data:', data);
 		const mappedCalendarStatus = data.calendarStatus
 			? {
 					// Map isConnected from API to connected for store
@@ -212,8 +199,6 @@
 					loading: false,
 					error: null
 				};
-
-		console.log('[Dashboard] Mapped calendar status for store:', mappedCalendarStatus);
 
 		dashboardStore.updateState({
 			pastDueTasks: data.pastDueTasks || [],
@@ -277,12 +262,10 @@
 	onMount(async () => {
 		// Initialize store with existing data if available, otherwise load fresh
 		if (initialData) {
-			console.log('[Dashboard] Using initial data from +page.ts');
 			initializeStore(initialData);
 		} else {
 			// Fallback: load fresh data with correct timezone
 			const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-			console.log('[Dashboard] No initial data, loading fresh with timezone:', timezone);
 			await dashboardDataService.loadDashboardData(timezone);
 		}
 
@@ -291,10 +274,6 @@
 
 		// Setup lazy loading for bottom sections
 		setupLazyLoading();
-
-		// REMOVED: Automatic initialization of real-time dashboard updates
-		// Real-time updates are not needed for the dashboard - data is loaded on mount
-		// and can be manually refreshed by the user if needed
 	});
 
 	onDestroy(async () => {
@@ -306,8 +285,6 @@
 			clearTimeout(invalidationTimeout);
 			invalidationTimeout = null;
 		}
-
-		// REMOVED: Real-time subscription cleanup (service is no longer initialized)
 	});
 
 	// ============================================
@@ -547,7 +524,11 @@
 		return `${progress.completed}/${progress.total} completed`;
 	}
 
-	function calculateDisplayMode() {
+	function calculateDisplayMode():
+		| 'first-time'
+		| 'getting-started'
+		| 'intermediate'
+		| 'experienced' {
 		const hasProjects = (activeProjects?.length || 0) > 0;
 		const hasTasks =
 			(pastDueTasks?.length || 0) +
@@ -575,13 +556,7 @@
 	async function requestRefresh() {
 		// Refresh dashboard data using the service
 		const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-		console.log('[Dashboard] Manual refresh requested');
 		await dashboardDataService.loadDashboardData(timezone);
-	}
-
-	function handleBrainDumpSuccess(event: CustomEvent) {
-		requestRefresh();
-		toastService?.success?.('Brain dump saved successfully!');
 	}
 
 	async function handleTaskClick(task: any) {
@@ -602,7 +577,6 @@
 	}
 
 	function handleStartBrainDump() {
-		console.log('[Dashboard] Opening brain dump modal');
 		brainDumpV2Store.openModal({ resetSelection: true });
 	}
 	function handleCloseTaskModal() {
@@ -638,7 +612,8 @@
 			);
 
 			if (!result.success) {
-				throw new Error(result.error || result.message || 'Failed to update task');
+				const errorMsg = result.errors?.[0] || result.message || 'Failed to update task';
+				throw new Error(errorMsg);
 			}
 
 			dispatch('taskUpdated', result.data);
@@ -685,13 +660,6 @@
 			taskModalLoading = false;
 			handleCloseTaskModal();
 		}
-	}
-
-	// No longer needed - the store handles all state updates
-	// Kept for backward compatibility but can be removed
-	function updateLocalTaskState(task: any, action: 'update' | 'delete') {
-		// The dashboard store now handles all optimistic updates
-		// This function is no longer needed but kept for backward compatibility
 	}
 
 	// ============================================
@@ -869,75 +837,65 @@
 			{#if showTaskCards}
 				<!-- Mobile: Tab view with Time Blocks -->
 				<section class="sm:hidden mb-6">
-					{#key [pastDueTasks, todaysTasks, tomorrowsTasks, timeBlocks]}
-						<MobileTaskTabs
-							{pastDueTasks}
-							{todaysTasks}
-							{tomorrowsTasks}
-							{timeBlocks}
-							{calendarStatus}
-							onTaskClick={handleTaskClick}
-							onTimeBlockClick={handleTimeBlockClick}
-							onNewTimeBlock={handleNewTimeBlock}
-						/>
-					{/key}
+					<MobileTaskTabs
+						{pastDueTasks}
+						{todaysTasks}
+						{tomorrowsTasks}
+						{timeBlocks}
+						{calendarStatus}
+						onTaskClick={handleTaskClick}
+						onTimeBlockClick={handleTimeBlockClick}
+						onNewTimeBlock={handleNewTimeBlock}
+					/>
 				</section>
 
 				<!-- Desktop: Grid view -->
 				<section
 					class="hidden sm:grid auto-rows-fr items-stretch sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-5 mb-4 sm:mb-6"
 				>
-					{#key pastDueTasks}
-						<TimeBlocksCard
-							title="Past Due"
-							tasks={pastDueTasks || []}
-							{calendarStatus}
-							onTaskClick={handleTaskClick}
-							emptyMessage="No overdue tasks"
-							emptyIcon={CheckCircle2}
-						/>
-					{/key}
-					{#key [todaysTasks, timeBlocks]}
-						<TimeBlocksCard
-							title="Today"
-							tasks={todaysTasks || []}
-							{timeBlocks}
-							{calendarStatus}
-							onTaskClick={handleTaskClick}
-							onTimeBlockClick={handleTimeBlockClick}
-							onNewTimeBlock={handleNewTimeBlock}
-							emptyMessage="No tasks for today"
-							emptyIcon={CheckCircle2}
-						/>
-					{/key}
-					{#key [tomorrowsTasks, timeBlocks]}
-						<TimeBlocksCard
-							title="Tomorrow"
-							tasks={tomorrowsTasks || []}
-							{timeBlocks}
-							{calendarStatus}
-							onTaskClick={handleTaskClick}
-							onTimeBlockClick={handleTimeBlockClick}
-							onNewTimeBlock={handleNewTimeBlock}
-							emptyMessage="No tasks for tomorrow"
-							emptyIcon={Calendar}
-						/>
-					{/key}
+					<TimeBlocksCard
+						title="Past Due"
+						tasks={pastDueTasks || []}
+						{calendarStatus}
+						onTaskClick={handleTaskClick}
+						emptyMessage="No overdue tasks"
+						emptyIcon={CheckCircle2}
+					/>
+					<TimeBlocksCard
+						title="Today"
+						tasks={todaysTasks || []}
+						{timeBlocks}
+						{calendarStatus}
+						onTaskClick={handleTaskClick}
+						onTimeBlockClick={handleTimeBlockClick}
+						onNewTimeBlock={handleNewTimeBlock}
+						emptyMessage="No tasks for today"
+						emptyIcon={CheckCircle2}
+					/>
+					<TimeBlocksCard
+						title="Tomorrow"
+						tasks={tomorrowsTasks || []}
+						{timeBlocks}
+						{calendarStatus}
+						onTaskClick={handleTaskClick}
+						onTimeBlockClick={handleTimeBlockClick}
+						onNewTimeBlock={handleNewTimeBlock}
+						emptyMessage="No tasks for tomorrow"
+						emptyIcon={Calendar}
+					/>
 				</section>
 			{/if}
 
 			<!-- Weekly Calendar -->
 			{#if showWeeklyCalendar && weeklyTasks && weeklyTasks.length > 0}
 				<section class="mb-4 sm:mb-6">
-					{#key weeklyTasksByDate}
-						<WeeklyTaskCalendar
-							tasksByDate={weeklyTasksByDate}
-							{timeBlocks}
-							{calendarStatus}
-							onTaskClick={handleTaskClick}
-							onTimeBlockClick={handleTimeBlockClick}
-						/>
-					{/key}
+					<WeeklyTaskCalendar
+						tasksByDate={weeklyTasksByDate}
+						{timeBlocks}
+						{calendarStatus}
+						onTaskClick={handleTaskClick}
+						onTimeBlockClick={handleTimeBlockClick}
+					/>
 				</section>
 			{/if}
 

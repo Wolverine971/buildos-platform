@@ -17,6 +17,44 @@ Each entry includes:
 
 ---
 
+## 2025-11-05 - Ontology Guardrails Restored (Templates, FSM, Facets)
+
+**Type**: Bug Fix  
+**Severity**: High (prevented data corruption and invalid ontology state)
+
+**Root Cause**:
+
+- Template lifecycle checks compared project usage against the wrong identifier, allowing deletion of in-use templates.
+- Template CRUD defaults persisted malformed JSON structures (`default_views` as objects, FSMs without `type_key`).
+- FSM validation and defaults disagreed with seeded data (object-based vs. string-based states).
+- Project instantiation ignored template status and facet applicability, letting invalid graphs and facets through.
+
+**Fix Description**:
+
+1. Updated `TemplateValidationService.canDelete` to fetch the template and compare on `type_key`, with regression tests.
+2. Normalized template defaults (`default_views` arrays, FSM tagged with template `type_key`) and updated CRUD tests.
+3. Reconciled FSM contract around string-based states; validators, tests, and defaults aligned.
+4. Hardened project instantiation to require active, non-abstract templates and to pass scope-aware facet validation.
+5. Extended the `validate_facet_values` RPC to enforce `applies_to` and regenerated shared types.
+
+**Files Changed** (excerpt):
+
+- `apps/web/src/lib/services/ontology/template-validation.service.ts`
+- `apps/web/src/lib/services/ontology/template-validation.service.test.ts`
+- `apps/web/src/lib/services/ontology/template-crud.service.ts`
+- `apps/web/src/lib/services/ontology/template-crud.service.test.ts`
+- `apps/web/src/lib/services/ontology/instantiation.service.ts`
+- `supabase/migrations/20250601000002_ontology_helpers.sql`
+- `packages/shared-types/src/database.types.ts`
+
+**Related Docs**:
+
+- `docs/reports/ontology-implementation-audit.md`
+- `docs/technical/ontology-remediation-plan.md`
+- `docs/api/ontology-endpoints.md`
+
+---
+
 ## 2025-11-05 - Voice Input: Fixed SpeechRecognition Race Condition
 
 **Type**: Bug Fix

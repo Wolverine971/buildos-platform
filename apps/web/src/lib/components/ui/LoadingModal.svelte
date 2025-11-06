@@ -26,16 +26,6 @@
 {/if}
 
 <style>
-	@keyframes spin {
-		to {
-			transform: rotate(360deg);
-		}
-	}
-
-	.animate-spin {
-		animation: spin 1s linear infinite;
-	}
-
 	.loading-modal-root {
 		position: fixed;
 		top: 0;

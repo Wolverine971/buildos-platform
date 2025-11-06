@@ -957,11 +957,11 @@
 					>
 						<div class="space-y-3 sm:grid sm:grid-cols-3 sm:gap-4 sm:space-y-0">
 							<div class="sm:col-span-3 md:col-span-1">
-								<label
+								<div
 									class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1"
 								>
 									Search
-								</label>
+								</div>
 								<TextInput
 									type="text"
 									bind:value={searchQuery}

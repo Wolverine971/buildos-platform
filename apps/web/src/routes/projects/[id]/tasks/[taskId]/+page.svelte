@@ -676,9 +676,9 @@ What would you like help with?`;
 					<div class="p-3 space-y-2.5">
 						<!-- Status -->
 						<div>
-							<label class="text-xs text-gray-500 dark:text-gray-400 font-medium"
-								>Status</label
-							>
+							<div class="text-xs text-gray-500 dark:text-gray-400 font-medium">
+								Status
+							</div>
 							<select
 								bind:value={statusValue}
 								onchange={() =>
@@ -699,9 +699,9 @@ What would you like help with?`;
 
 						<!-- Priority -->
 						<div>
-							<label class="text-xs text-gray-500 dark:text-gray-400 font-medium"
-								>Priority</label
-							>
+							<div class="text-xs text-gray-500 dark:text-gray-400 font-medium">
+								Priority
+							</div>
 							<select
 								bind:value={priorityValue}
 								onchange={() =>
@@ -717,9 +717,9 @@ What would you like help with?`;
 
 						<!-- Task Type -->
 						<div>
-							<label class="text-xs text-gray-500 dark:text-gray-400 font-medium"
-								>Type</label
-							>
+							<div class="text-xs text-gray-500 dark:text-gray-400 font-medium">
+								Type
+							</div>
 							<select
 								bind:value={taskTypeValue}
 								onchange={() =>
@@ -735,9 +735,9 @@ What would you like help with?`;
 
 						<!-- Start Date -->
 						<div>
-							<label class="text-xs text-gray-500 dark:text-gray-400 font-medium"
-								>Start Date</label
-							>
+							<div class="text-xs text-gray-500 dark:text-gray-400 font-medium">
+								Start Date
+							</div>
 							<input
 								type="datetime-local"
 								bind:value={startDateValue}
@@ -754,9 +754,9 @@ What would you like help with?`;
 
 						<!-- Duration -->
 						<div>
-							<label class="text-xs text-gray-500 dark:text-gray-400 font-medium"
-								>Duration (min)</label
-							>
+							<div class="text-xs text-gray-500 dark:text-gray-400 font-medium">
+								Duration (min)
+							</div>
 							<input
 								type="number"
 								bind:value={durationMinutesValue}
@@ -772,9 +772,9 @@ What would you like help with?`;
 						<!-- Recurrence Pattern (only for recurring tasks with start date) -->
 						{#if taskTypeValue === 'recurring' && startDateValue}
 							<div>
-								<label class="text-xs text-gray-500 dark:text-gray-400 font-medium"
-									>Recurrence</label
-								>
+								<div class="text-xs text-gray-500 dark:text-gray-400 font-medium">
+									Recurrence
+								</div>
 								<select
 									bind:value={recurrencePatternValue}
 									onchange={() =>

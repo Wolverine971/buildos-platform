@@ -32,14 +32,14 @@ The “Ontology Implementation Audit” (`docs/reports/ontology-implementation-a
 
 ## 4. Implementation Phases
 
-| Phase | Focus                           | Key Deliverables                                                            |
-| ----- | ------------------------------- | --------------------------------------------------------------------------- |
-| P1    | Template lifecycle guard        | Correct `canDelete`, add regression tests, migrate existing data if needed. |
-| P2    | Template defaults normalization | Fix creation defaults, audit existing rows, extend CRUD tests.              |
-| P3    | FSM contract reconciliation     | Align Zod schema, service validator, and seed data; update tests/docs.      |
-| P4    | Instantiation enforcement       | Enforce template existence + status checks, tighten facet validation.       |
-| P5    | Facet RPC hardening             | Pass entity scope, extend `validate_facet_values`, add coverage.            |
-| P6    | Documentation & verification    | Update audit report, changelog, spec closure summary.                       |
+| Phase | Focus                           | Key Deliverables                                                            | Status                  |
+| ----- | ------------------------------- | --------------------------------------------------------------------------- | ----------------------- |
+| P1    | Template lifecycle guard        | Correct `canDelete`, add regression tests, migrate existing data if needed. | ✅ Completed 2025-11-05 |
+| P2    | Template defaults normalization | Fix creation defaults, audit existing rows, extend CRUD tests.              | ✅ Completed 2025-11-05 |
+| P3    | FSM contract reconciliation     | Align Zod schema, service validator, and seed data; update tests/docs.      | ✅ Completed 2025-11-05 |
+| P4    | Instantiation enforcement       | Enforce template existence + status checks, tighten facet validation.       | ✅ Completed 2025-11-05 |
+| P5    | Facet RPC hardening             | Pass entity scope, extend `validate_facet_values`, add coverage.            | ✅ Completed 2025-11-05 |
+| P6    | Documentation & verification    | Update audit report, changelog, spec closure summary.                       | ✅ Completed 2025-11-05 |
 
 ## 5. Detailed Tasks
 
@@ -110,11 +110,11 @@ The “Ontology Implementation Audit” (`docs/reports/ontology-implementation-a
 
 ## 9. Completion Checklist
 
-- [ ] P1 – Template lifecycle guard fixed & tested.
-- [ ] P2 – Template defaults normalized & data audited.
-- [ ] P3 – FSM contract aligned (code + seeds).
-- [ ] P4 – Instantiation enforcement hardened.
-- [ ] P5 – Facet validation respects scope.
-- [ ] P6 – Documentation + changelog updated.
+- [x] P1 – Template lifecycle guard fixed & tested.
+- [x] P2 – Template defaults normalized & data audited.
+- [x] P3 – FSM contract aligned (code + seeds).
+- [x] P4 – Instantiation enforcement hardened.
+- [x] P5 – Facet validation respects scope.
+- [x] P6 – Documentation + changelog updated.
 
 > This living document will be updated as each phase completes.

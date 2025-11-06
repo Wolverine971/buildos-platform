@@ -369,7 +369,7 @@
 			<div>
 				<Select
 					bind:value={sortBy}
-					onchange={(e) => (sortBy = e.detail)}
+					onchange={(e) => (sortBy = e?.toString())}
 					size="md"
 					placeholder="Last Visit"
 				>
@@ -904,25 +904,25 @@
 
 				<div class="space-y-4">
 					<div>
-						<label class="block text-sm font-medium text-gray-700 dark:text-gray-300"
-							>Email</label
-						>
+						<div class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+							Email
+						</div>
 						<p class="text-sm text-gray-900 dark:text-white">{selectedUser.email}</p>
 					</div>
 
 					<div>
-						<label class="block text-sm font-medium text-gray-700 dark:text-gray-300"
-							>Name</label
-						>
+						<div class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+							Name
+						</div>
 						<p class="text-sm text-gray-900 dark:text-white">
 							{selectedUser.name || 'Not provided'}
 						</p>
 					</div>
 
 					<div>
-						<label class="block text-sm font-medium text-gray-700 dark:text-gray-300"
-							>Admin Status</label
-						>
+						<div class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+							Admin Status
+						</div>
 						<span
 							class="inline-flex px-2 py-1 text-xs font-semibold rounded-full {selectedUser.is_admin
 								? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
@@ -933,9 +933,9 @@
 					</div>
 
 					<div>
-						<label class="block text-sm font-medium text-gray-700 dark:text-gray-300"
-							>Onboarding</label
-						>
+						<div class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+							Onboarding
+						</div>
 						<div class="flex items-center mt-1">
 							{#if selectedUser.completed_onboarding}
 								<CheckCircle class="h-4 w-4 text-green-500 mr-2" />
@@ -948,9 +948,9 @@
 					</div>
 
 					<div>
-						<label class="block text-sm font-medium text-gray-700 dark:text-gray-300"
-							>Activity</label
-						>
+						<div class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+							Activity
+						</div>
 						<p class="text-sm text-gray-900 dark:text-white">
 							{selectedUser.brain_dump_count || 0} brain dumps, {selectedUser.project_count ||
 								0} projects, {selectedUser.brief_count} briefs
@@ -958,9 +958,9 @@
 					</div>
 
 					<div>
-						<label class="block text-sm font-medium text-gray-700 dark:text-gray-300"
-							>Calendar</label
-						>
+						<div class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+							Calendar
+						</div>
 						<div class="flex items-center mt-1">
 							{#if selectedUser.calendar_connected}
 								<Calendar class="h-4 w-4 text-green-500 mr-2" />
@@ -973,18 +973,18 @@
 					</div>
 
 					<div>
-						<label class="block text-sm font-medium text-gray-700 dark:text-gray-300"
-							>Last Visit</label
-						>
+						<div class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+							Last Visit
+						</div>
 						<p class="text-sm text-gray-900 dark:text-white">
 							{formatLastVisit(selectedUser.last_visit)}
 						</p>
 					</div>
 
 					<div>
-						<label class="block text-sm font-medium text-gray-700 dark:text-gray-300"
-							>Joined</label
-						>
+						<div class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+							Joined
+						</div>
 						<p class="text-sm text-gray-900 dark:text-white">
 							{formatDate(selectedUser.created_at)}
 						</p>

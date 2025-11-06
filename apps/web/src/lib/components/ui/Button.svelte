@@ -188,7 +188,7 @@
 	}
 
 	/* Ensure proper focus ring offset in dark mode */
-	:global(.dark) buttonfocus-visible {
+	:global(.dark) button:focus-visible {
 		--tw-ring-offset-color: rgb(31 41 55);
 	}
 </style>

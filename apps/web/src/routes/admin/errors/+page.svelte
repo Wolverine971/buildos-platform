@@ -358,9 +358,9 @@
 			</div>
 			<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
 				<div>
-					<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-						>Severity</label
-					>
+					<div class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+						Severity
+					</div>
 					<Select
 						bind:value={filterSeverity}
 						onchange={loadErrors}
@@ -376,9 +376,9 @@
 				</div>
 
 				<div>
-					<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-						>Type</label
-					>
+					<div class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+						Type
+					</div>
 					<Select
 						bind:value={filterType}
 						onchange={loadErrors}
@@ -395,9 +395,9 @@
 				</div>
 
 				<div>
-					<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-						>Status</label
-					>
+					<div class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+						Status
+					</div>
 					<Select
 						bind:value={filterResolved}
 						onchange={loadErrors}
@@ -411,9 +411,9 @@
 				</div>
 
 				<div>
-					<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-						>User</label
-					>
+					<div class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+						User
+					</div>
 					<TextInput
 						type="text"
 						bind:value={filterUserId}
@@ -424,9 +424,9 @@
 				</div>
 
 				<div>
-					<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-						>Project ID</label
-					>
+					<div class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+						Project ID
+					</div>
 					<TextInput
 						type="text"
 						bind:value={filterProjectId}

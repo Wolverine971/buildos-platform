@@ -38,7 +38,8 @@
 			"Bash(pnpm test:*)",
 			"Bash(pnpm run gen:schema:*)",
 			"Bash(sed:*)",
-			"Bash(do grep -l \"import\" \"$file\")"
+			"Bash(do grep -l \"import\" \"$file\")",
+			"Bash(rm:*)"
 		],
 		"deny": [],
 		"ask": []

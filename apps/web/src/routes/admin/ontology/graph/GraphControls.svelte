@@ -128,8 +128,7 @@
 	</Card>
 
 	<div class="space-y-2">
-		<label class="block text-xs font-semibold text-gray-700 dark:text-gray-300">View Mode</label
-		>
+		<div class="block text-xs font-semibold text-gray-700 dark:text-gray-300">View Mode</div>
 		<Select bind:value={viewMode} size="sm" placeholder="" class="w-full text-sm">
 			<option value="templates">Templates Hierarchy</option>
 			<option value="projects">Projects & Entities</option>
@@ -138,7 +137,7 @@
 	</div>
 
 	<div class="space-y-2">
-		<label class="block text-xs font-semibold text-gray-700 dark:text-gray-300">Layout</label>
+		<div class="block text-xs font-semibold text-gray-700 dark:text-gray-300">Layout</div>
 		<Select bind:value={selectedLayout} size="sm" placeholder="" class="w-full text-sm">
 			{#each layouts as layout}
 				<option value={layout.value}>{layout.label}</option>
@@ -147,9 +146,7 @@
 	</div>
 
 	<div class="space-y-2">
-		<label class="block text-xs font-semibold text-gray-700 dark:text-gray-300"
-			>Search Nodes</label
-		>
+		<div class="block text-xs font-semibold text-gray-700 dark:text-gray-300">Search Nodes</div>
 		<TextInput
 			bind:value={searchQuery}
 			oninput={handleSearch}
@@ -161,7 +158,7 @@
 	</div>
 
 	<div class="space-y-2">
-		<label class="block text-xs font-semibold text-gray-700 dark:text-gray-300">Filter</label>
+		<div class="block text-xs font-semibold text-gray-700 dark:text-gray-300">Filter</div>
 		<Select
 			bind:value={selectedFilter}
 			size="sm"

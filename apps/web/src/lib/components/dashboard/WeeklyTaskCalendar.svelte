@@ -14,26 +14,38 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import type { TimeBlockWithProject } from '@buildos/shared-types';
 
-	export let tasksByDate: Record<string, any[]> = {};
-	export let timeBlocks: TimeBlockWithProject[] = [];
-	export let calendarStatus: any = { isConnected: false };
-	export let onTaskClick: (task: any) => void = () => {};
-	export let onTimeBlockClick: ((block: TimeBlockWithProject) => void) | undefined = undefined;
+	type Props = {
+		tasksByDate?: Record<string, any[]>;
+		timeBlocks?: TimeBlockWithProject[];
+		calendarStatus?: any;
+		onTaskClick?: (task: any) => void;
+		onTimeBlockClick?: (block: TimeBlockWithProject) => void;
+	};
+
+	let {
+		tasksByDate = {},
+		timeBlocks = [],
+		calendarStatus = { isConnected: false },
+		onTaskClick = () => {},
+		onTimeBlockClick = undefined
+	}: Props = $props();
 
 	// Generate the next 7 days
 	const today = new Date();
-	$: weekDays = Array.from({ length: 7 }, (_, i) => {
-		const date = addDays(today, i);
-		return {
-			date,
-			dateStr: format(date, 'yyyy-MM-dd'),
-			isToday: isSameDay(date, today),
-			dayName: format(date, 'EEE'),
-			dayNumber: format(date, 'd'),
-			monthName: format(date, 'MMM'),
-			fullDate: format(date, 'MMM d')
-		};
-	});
+	const weekDays = $derived(
+		Array.from({ length: 7 }, (_, i) => {
+			const date = addDays(today, i);
+			return {
+				date,
+				dateStr: format(date, 'yyyy-MM-dd'),
+				isToday: isSameDay(date, today),
+				dayName: format(date, 'EEE'),
+				dayNumber: format(date, 'd'),
+				monthName: format(date, 'MMM'),
+				fullDate: format(date, 'MMM d')
+			};
+		})
+	);
 
 	function getTasksForDate(dateStr: string): any[] {
 		return tasksByDate[dateStr] || [];
@@ -242,12 +254,14 @@
 	}
 
 	// Group tasks by day for mobile view
-	$: mobileTaskDays = weekDays
-		.map((day) => ({
-			...day,
-			tasks: getTasksForDate(day.dateStr)
-		}))
-		.filter((day) => day.tasks.length > 0 || day.isToday);
+	const mobileTaskDays = $derived(
+		weekDays
+			.map((day) => ({
+				...day,
+				tasks: getTasksForDate(day.dateStr)
+			}))
+			.filter((day) => day.tasks.length > 0 || day.isToday)
+	);
 </script>
 
 <div

@@ -1,93 +1,50 @@
 # Design System & UI Documentation
 
-This directory contains the design system, UI/UX specifications, and component standards for the BuildOS web application.
+BuildOS keeps all product and interface guidance in this directory.
 
-## 📚 Key Documents
+## Key References
 
-### Design System & Principles
+- **[design-system.md](design-system.md)** - canonical color, typography, spacing, and component rules
+- **[design-principles-checklist.md](design-principles-checklist.md)** - lightweight review checklist before shipping
+- **[components/modal-standards.md](components/modal-standards.md)** - modal lifecycle, accessibility, and motion specifications
 
-- **[design-system.md](design-system.md)** - ⭐ Comprehensive design system v1.1.0
-    - Color system with semantic mappings
-    - Typography and spacing standards
-    - Component patterns and guidelines
-    - Animations and transitions
-    - Accessibility requirements
+## Supporting Specs
 
-- **[design-principles-checklist.md](design-principles-checklist.md)** - Design principles and quality checklist
+- **[context-framework-philosophy.md](context-framework-philosophy.md)** and **[universal-project-context-format.md](universal-project-context-format.md)** define our context model
+- **[calendar-per-project-architecture.md](calendar-per-project-architecture.md)** & **[calendar-webhook-integration.md](calendar-webhook-integration.md)** capture scheduling flows
+- **[project-page-patterns.md](project-page-patterns.md)** outlines authenticated layouts
+- Additional docs cover prompts, audits, integrations, and feature deep dives across the `design/` subtree
 
-### Component Standards
+## Tailwind-First Implementation (Nov 2025 Refresh)
 
-- **[components/modal-standards.md](components/modal-standards.md)** - Modal component standards (303 lines)
-    - Dialog patterns
-    - Modal lifecycle
-    - Accessibility considerations
+- Use Tailwind utilities as the default styling surface; add CSS only when utilities cannot express the intent
+- Page shells should default to `max-w-[1200px]` with compact `px-4 sm:px-6 lg:px-8` gutters for higher information density
+- Loading affordances now rely on the shared `animate-pulse-accent` helper; legacy `.pulse`/`.pulse-mobile` classes were removed
+- Safe-area padding lives inline or via narrow utilities; avoid blanket padding rules that bloat the bundle
+- When custom rules are unavoidable, place them in `@layer components` or `@layer utilities` so Tailwind can tree-shake correctly
 
-### Architecture & Frameworks
-
-- **[context-framework-philosophy.md](context-framework-philosophy.md)** - Context framework design philosophy
-- **[universal-project-context-format.md](universal-project-context-format.md)** - Project context data format
-
-### Feature-Specific Design
-
-- **[calendar-per-project-architecture.md](calendar-per-project-architecture.md)** - Per-project calendar design
-- **[calendar-webhook-integration.md](calendar-webhook-integration.md)** - Calendar webhook integration spec
-- **[email-flow-spec.md](email-flow-spec.md)** - Email flow and template design
-- **[brain-dump-question-fix.md](brain-dump-question-fix.md)** - Brain dump question UI fix
-- **[project-page-patterns.md](project-page-patterns.md)** - Project page component patterns
-- **[prompt-template-refactoring-plan.md](prompt-template-refactoring-plan.md)** - Prompt template architecture
-
-## 📂 Structure
+## Repository Layout
 
 ```
-/design/
-├── README.md (this file)
-├── design-system.md
-├── design-principles-checklist.md
-├── context-framework-philosophy.md
-├── universal-project-context-format.md
-├── calendar-per-project-architecture.md
-├── calendar-webhook-integration.md
-├── email-flow-spec.md
-├── brain-dump-question-fix.md
-├── project-page-patterns.md
-├── prompt-template-refactoring-plan.md
-└── /components/
-    └── modal-standards.md
+design/
+|-- README.md
+|-- design-system.md
+|-- design-principles-checklist.md
+|-- components/
+|   |-- modal-standards.md
+|-- calendar-per-project-architecture.md
+|-- calendar-webhook-integration.md
+|-- context-framework-philosophy.md
+|-- project-page-patterns.md
+|-- prompt-template-refactoring-plan.md
+|-- ...
 ```
 
-## 🎯 Quick Navigation
+## Working Notes
 
-### For Designers
+- Design system version: 1.1.0 (cleanup applied November 2025)
+- Component implementations live in `/apps/web/src/lib/components`
+- Technical component guidance sits under `../technical`
+- Accessibility, dark mode, and performance remain non-negotiable requirements
 
-1. Start with [design-system.md](design-system.md) for complete system overview
-2. Review [design-principles-checklist.md](design-principles-checklist.md)
-3. Check component specs for your specific component
-
-### For Developers
-
-1. Reference [design-system.md](design-system.md) for implementation details
-2. Use [components/modal-standards.md](components/modal-standards.md) for modal implementations
-3. Check feature-specific design docs for UI requirements
-
-### For Feature Implementation
-
-1. Read feature-specific design doc (e.g., email-flow-spec.md)
-2. Check component standards
-3. Verify accessibility in design-principles-checklist.md
-
-## 🔗 Related Documentation
-
-- **Component Implementation**: `/apps/web/src/lib/components/`
-- **Technical Components Guide**: `/apps/web/docs/technical/components/`
-- **Feature Specs**: `/apps/web/docs/features/`
-
-## 📝 Notes
-
-- Design system is version 1.1.0 (last updated Oct 2025)
-- All components should follow modal standards as reference
-- Accessibility is mandatory for all designs
-- See technical/components/ for implementation patterns
-
----
-
-**Last Updated**: October 20, 2025
+_Last updated: 2025-11-06_

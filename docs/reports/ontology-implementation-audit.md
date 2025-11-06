@@ -11,6 +11,14 @@ This document summarizes a code-level review of the ontology implementation agai
 - ⚠️ DB helper functions do not fully enforce facet applicability, allowing invalid combinations of scope and facet keys.
 - ⚠️ Template lifecycle safeguards (deletion checks, default data) contain logic errors that can leave the ontology catalog in an inconsistent state.
 
+### Remediation Status (2025-11-05)
+
+- ✅ **Template lifecycle guard** now resolves the template first and checks `onto_projects.type_key`, with regression coverage (`template-validation.service.ts`, `template-validation.service.test.ts`).
+- ✅ **Template CRUD defaults** seed array-based `default_views` and tag default FSMs with the template `type_key`; unit tests updated to reflect the new contract.
+- ✅ **FSM contract** is unified on string-based state arrays; validation/tests expect this schema, and defaults/seeds conform.
+- ✅ **Project instantiation** requires an active, non-abstract template and aborts when none exists; facet validation callers pass entity scope.
+- ✅ **Facet validation RPC** (`validate_facet_values`) now enforces taxonomy applicability by scope and is reflected in generated shared types.
+
 The high-priority issues are listed below with file references and recommended remediation.
 
 ## Findings
@@ -21,6 +29,7 @@ The high-priority issues are listed below with file references and recommended r
 - **Issue:** `TemplateValidationService.canDelete` checks `onto_projects.type_key` against a template **UUID** (`templateId`). Because `type_key` stores the string identifier (e.g., `writer.book`), the query never matches and templates can be deleted or deprecated while still referenced by live projects.
 - **Impact:** Violates the master plan’s requirement that templates act as canonical blueprints; allows destructive changes without safety checks.
 - **Fix:** Fetch the template’s type key first (or join on `template_id` if modeled) and compare projects against that string.
+- **Status (2025-11-05):** ✅ Implemented. `TemplateValidationService.canDelete` now loads the template and compares on `type_key` with regression coverage.
 
 ### 2. Template CRUD defaults persist malformed JSON
 
@@ -28,6 +37,7 @@ The high-priority issues are listed below with file references and recommended r
 - **Issue:** `createTemplate` seeds `default_views` with `{}` and injects a default FSM that lacks `type_key`. The database column expects an array (`jsonb[]` semantics) and downstream resolvers assume `default_views` is an array. The missing `type_key` also contradicts the typed schema.
 - **Impact:** Newly created templates via API/UI ship with inconsistent defaults, confusing consumers that rely on `default_views` array semantics or FSM metadata.
 - **Fix:** Default `default_views` to `[]`, and include a `type_key` (or drop the unused field consistently) in the default FSM payload.
+- **Status (2025-11-05):** ✅ Implemented with CRUD/service tests ensuring array defaults and tagged FSMs.
 
 ### 3. FSM validation schema conflicts with seeded data
 
@@ -38,6 +48,7 @@ The high-priority issues are listed below with file references and recommended r
 - **Issue:** Internal contracts disagree on the FSM structure. The validation service demands object states and flags missing `initial` markers, while the master plan and seed data use string literals (e.g., `"states":["planning","writing","editing","published"]`).
 - **Impact:** Legitimate FSM definitions (including the seeded catalog) fail service-layer validation, blocking template authoring through the app/API and inviting inconsistent data.
 - **Fix:** Decide on a single representation (string list vs. object list) and update both the Zod schema and validator accordingly. If richer metadata is needed, update the seeds and migrations to match.
+- **Status (2025-11-05):** ✅ Implemented. Validation now expects string states, defaults follow suit, and tests cover the agreed contract.
 
 ### 4. Project instantiation does not enforce template availability or status
 
@@ -47,6 +58,7 @@ The high-priority issues are listed below with file references and recommended r
 - **Issue:** Projects can be instantiated with arbitrary `type_key` values, even if no active, concrete template exists. This contradicts the master plan’s “type-first” guarantee and bypasses schema/FSM validation.
 - **Impact:** Creates orphaned project types without blueprint enforcement, undermining the ontology’s consistency and AI guidance.
 - **Fix:** Make template lookup mandatory (`throw` if not found) and restrict selection to active, non-abstract templates only.
+- **Status (2025-11-05):** ✅ Implemented. `instantiateProject` now fails fast and `getProjectTemplate` filters to active, non-abstract templates.
 
 ### 5. Facet validator ignores scope applicability
 
@@ -54,6 +66,7 @@ The high-priority issues are listed below with file references and recommended r
 - **Issue:** The helper ensures facet keys and values exist but does **not** verify the target entity scope is listed in `onto_facet_definitions.applies_to`. For example, tasks can persist a `stage` facet even though the taxonomy restricts stage to `{project, plan, output}`.
 - **Impact:** Breaks the master plan’s “three orthogonal facets” contract and leads to inconsistent analytics/filtering.
 - **Fix:** Extend `validate_facet_values` to accept the entity scope (or look it up) and reject facet keys that do not apply.
+- **Status (2025-11-05):** ✅ Implemented. The RPC now accepts `p_scope`, enforces applicability, and shared types/callers were updated.
 
 ## Additional Observations
 

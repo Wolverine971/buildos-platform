@@ -254,13 +254,13 @@
 	}
 
 	/* Focus state for keyboard navigation */
-	.tab-buttonfocus-visible {
+	.tab-button:focus-visible {
 		outline: 2px solid var(--project-tab-focus-color);
 		outline-offset: -2px;
 		border-radius: 0.375rem;
 	}
 
-	:global(.dark) .tab-buttonfocus-visible {
+	:global(.dark) .tab-button:focus-visible {
 		outline-color: var(--project-tab-focus-color-dark);
 	}
 

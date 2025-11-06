@@ -289,9 +289,9 @@
 				<div
 					class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6"
 				>
-					<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+					<div class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
 						Note Title
-					</label>
+					</div>
 					<div class="group">
 						<input
 							type="text"
@@ -401,160 +401,160 @@ This area will auto-save when you click away or switch focus."
 							<Hash class="w-4 h-4 mr-1" />
 							Tags
 						</label>
+					</div>
 
-						<!-- Tags Display -->
-						{#if tagsValue.length > 0}
-							<div class="flex flex-wrap gap-1 mb-2">
-								{#each tagsValue as tag}
-									<span
-										class="inline-flex items-center px-2 py-1 text-xs font-medium bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200 rounded-md"
+					<!-- Tags Display -->
+					{#if tagsValue.length > 0}
+						<div class="flex flex-wrap gap-1 mb-2">
+							{#each tagsValue as tag}
+								<span
+									class="inline-flex items-center px-2 py-1 text-xs font-medium bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200 rounded-md"
+								>
+									{tag}
+									<Button
+										type="button"
+										onclick={() => removeTag(tag)}
+										variant="ghost"
+										size="sm"
+										class="ml-1 p-0 w-5 h-5 text-blue-600 dark:text-blue-300 hover:text-blue-800 dark:hover:text-blue-100"
 									>
-										{tag}
-										<Button
-											type="button"
-											onclick={() => removeTag(tag)}
-											variant="ghost"
-											size="sm"
-											class="ml-1 p-0 w-5 h-5 text-blue-600 dark:text-blue-300 hover:text-blue-800 dark:hover:text-blue-100"
+										<svg
+											class="w-3 h-3"
+											fill="none"
+											stroke="currentColor"
+											viewBox="0 0 24 24"
 										>
-											<svg
-												class="w-3 h-3"
-												fill="none"
-												stroke="currentColor"
-												viewBox="0 0 24 24"
-											>
-												<path
-													stroke-linecap="round"
-													stroke-linejoin="round"
-													stroke-width="2"
-													d="M6 18L18 6M6 6l12 12"
-												/>
-											</svg>
-										</Button>
-									</span>
-								{/each}
-							</div>
-						{/if}
+											<path
+												stroke-linecap="round"
+												stroke-linejoin="round"
+												stroke-width="2"
+												d="M6 18L18 6M6 6l12 12"
+											/>
+										</svg>
+									</Button>
+								</span>
+							{/each}
+						</div>
+					{/if}
 
-						<!-- Tag Input -->
-						<input
-							type="text"
-							bind:value={tagInput}
-							onkeydown={handleTagKeydown}
-							placeholder="Add tags (press Enter)..."
-							class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
-						/>
-						{#if savingField === 'tags'}
-							<div
-								class="mt-1 text-xs text-blue-600 dark:text-blue-400 flex items-center"
-							>
-								<Save class="w-3 h-3 mr-1 animate-pulse" />
-								Saving...
-							</div>
-						{/if}
-					</div>
-
-					<!-- Content Preview -->
-					<div>
-						<label
-							class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 items-center"
-						>
-							<Eye class="w-4 h-4 mr-1" />
-							Preview
-						</label>
+					<!-- Tag Input -->
+					<input
+						type="text"
+						bind:value={tagInput}
+						onkeydown={handleTagKeydown}
+						placeholder="Add tags (press Enter)..."
+						class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
+					/>
+					{#if savingField === 'tags'}
 						<div
-							class="text-xs p-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-600 dark:text-gray-400 max-h-32 overflow-y-auto leading-relaxed"
+							class="mt-1 text-xs text-blue-600 dark:text-blue-400 flex items-center"
 						>
-							{#if contentValue.trim()}
-								{contentValue.slice(0, 200)}{contentValue.length > 200 ? '...' : ''}
-							{:else}
-								<em class="text-gray-400"
-									>No content yet. Start writing to see a preview...</em
-								>
-							{/if}
-						</div>
-					</div>
-
-					<!-- Content Stats -->
-					<div class="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-3">
-						<h4
-							class="text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-2"
-						>
-							Statistics
-						</h4>
-						<div class="space-y-1 text-xs text-gray-600 dark:text-gray-400">
-							<div class="flex justify-between">
-								<span>Characters:</span>
-								<span class="font-medium">{contentValue.length}</span>
-							</div>
-							<div class="flex justify-between">
-								<span>Words:</span>
-								<span class="font-medium"
-									>{contentValue.split(/\s+/).filter((word) => word.length > 0)
-										.length}</span
-								>
-							</div>
-							<div class="flex justify-between">
-								<span>Lines:</span>
-								<span class="font-medium">{contentValue.split('\n').length}</span>
-							</div>
-							<div class="flex justify-between">
-								<span>Tags:</span>
-								<span class="font-medium">{tagsValue.length}</span>
-							</div>
-						</div>
-					</div>
-
-					<!-- Creation/Update Info -->
-					{#if note}
-						<hr class="border-gray-200 dark:border-gray-700" />
-						<div class="space-y-2 text-xs text-gray-600 dark:text-gray-400">
-							<div class="flex items-center text-gray-500 dark:text-gray-400 mb-2">
-								<Calendar class="w-3 h-3 mr-1" />
-								<span class="font-medium">Timeline</span>
-							</div>
-							{#if note.created_at}
-								<div>
-									<span class="font-medium">Created:</span>
-									<br />
-									{new Date(note.created_at).toLocaleDateString('en-US', {
-										weekday: 'short',
-										month: 'short',
-										day: 'numeric',
-										year: 'numeric',
-										timeZone
-									})}
-									<br />
-									{new Date(note.created_at).toLocaleTimeString('en-US', {
-										hour: 'numeric',
-										minute: '2-digit',
-										timeZone
-									})}
-								</div>
-							{/if}
-							{#if note.updated_at && note.updated_at !== note.created_at}
-								<div>
-									<span class="font-medium">Last updated:</span>
-									<br />
-									{new Date(note.updated_at).toLocaleDateString('en-US', {
-										weekday: 'short',
-										month: 'short',
-										day: 'numeric',
-										year: 'numeric',
-										timeZone
-									})}
-									<br />
-									{new Date(note.updated_at).toLocaleTimeString('en-US', {
-										hour: 'numeric',
-										minute: '2-digit',
-										timeZone
-									})}
-								</div>
-							{/if}
+							<Save class="w-3 h-3 mr-1 animate-pulse" />
+							Saving...
 						</div>
 					{/if}
 				</div>
+
+				<!-- Content Preview -->
+				<div>
+					<label
+						class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 items-center"
+					>
+						<Eye class="w-4 h-4 mr-1" />
+						Preview
+					</label>
+				</div>
+				<div
+					class="text-xs p-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-600 dark:text-gray-400 max-h-32 overflow-y-auto leading-relaxed"
+				>
+					{#if contentValue.trim()}
+						{contentValue.slice(0, 200)}{contentValue.length > 200 ? '...' : ''}
+					{:else}
+						<em class="text-gray-400"
+							>No content yet. Start writing to see a preview...</em
+						>
+					{/if}
+				</div>
 			</div>
+
+			<!-- Content Stats -->
+			<div class="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-3">
+				<h4
+					class="text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-2"
+				>
+					Statistics
+				</h4>
+				<div class="space-y-1 text-xs text-gray-600 dark:text-gray-400">
+					<div class="flex justify-between">
+						<span>Characters:</span>
+						<span class="font-medium">{contentValue.length}</span>
+					</div>
+					<div class="flex justify-between">
+						<span>Words:</span>
+						<span class="font-medium"
+							>{contentValue.split(/\s+/).filter((word) => word.length > 0)
+								.length}</span
+						>
+					</div>
+					<div class="flex justify-between">
+						<span>Lines:</span>
+						<span class="font-medium">{contentValue.split('\n').length}</span>
+					</div>
+					<div class="flex justify-between">
+						<span>Tags:</span>
+						<span class="font-medium">{tagsValue.length}</span>
+					</div>
+				</div>
+			</div>
+
+			<!-- Creation/Update Info -->
+			{#if note}
+				<hr class="border-gray-200 dark:border-gray-700" />
+				<div class="space-y-2 text-xs text-gray-600 dark:text-gray-400">
+					<div class="flex items-center text-gray-500 dark:text-gray-400 mb-2">
+						<Calendar class="w-3 h-3 mr-1" />
+						<span class="font-medium">Timeline</span>
+					</div>
+					{#if note.created_at}
+						<div>
+							<span class="font-medium">Created:</span>
+							<br />
+							{new Date(note.created_at).toLocaleDateString('en-US', {
+								weekday: 'short',
+								month: 'short',
+								day: 'numeric',
+								year: 'numeric',
+								timeZone
+							})}
+							<br />
+							{new Date(note.created_at).toLocaleTimeString('en-US', {
+								hour: 'numeric',
+								minute: '2-digit',
+								timeZone
+							})}
+						</div>
+					{/if}
+					{#if note.updated_at && note.updated_at !== note.created_at}
+						<div>
+							<span class="font-medium">Last updated:</span>
+							<br />
+							{new Date(note.updated_at).toLocaleDateString('en-US', {
+								weekday: 'short',
+								month: 'short',
+								day: 'numeric',
+								year: 'numeric',
+								timeZone
+							})}
+							<br />
+							{new Date(note.updated_at).toLocaleTimeString('en-US', {
+								hour: 'numeric',
+								minute: '2-digit',
+								timeZone
+							})}
+						</div>
+					{/if}
+				</div>
+			{/if}
 		</div>
 	</main>
 </div>

@@ -251,11 +251,11 @@
 				<div class="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
 					<!-- Status Filter -->
 					<div>
-						<label
+						<div
 							class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
 						>
 							Status
-						</label>
+						</div>
 						<Select
 							bind:value={selectedStatus}
 							onchange={(e) => (selectedStatus = e.detail)}
@@ -270,11 +270,11 @@
 
 					<!-- Context Type Filter -->
 					<div>
-						<label
+						<div
 							class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
 						>
 							Context Type
-						</label>
+						</div>
 						<Select
 							bind:value={selectedContextType}
 							onchange={(e) => (selectedContextType = e.detail)}

@@ -610,14 +610,14 @@
 						Comprehensive Signup Data
 					</h3>
 					<div class="flex items-center space-x-2">
-						<label class="flex items-center text-sm text-gray-600 dark:text-gray-400">
+						<div class="flex items-center text-sm text-gray-600 dark:text-gray-400">
 							<input
 								type="checkbox"
 								bind:checked={dataViewFilters.showAllColumns}
 								class="mr-2 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
 							/>
 							Show all columns
-						</label>
+						</div>
 					</div>
 				</div>
 
@@ -1294,11 +1294,11 @@
 					{#if activeTab === 'signups'}
 						<!-- Signup Status Filter -->
 						<div>
-							<label
+							<div
 								class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
 							>
 								Status
-							</label>
+							</div>
 							<Select
 								bind:value={signupFilters.status}
 								onchange={(e) => (signupFilters.status = e.detail)}
@@ -1314,11 +1314,11 @@
 
 						<!-- Sort -->
 						<div>
-							<label
+							<div
 								class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
 							>
 								Sort By
-							</label>
+							</div>
 							<Select
 								bind:value={signupFilters.sortBy}
 								onchange={(e) => (signupFilters.sortBy = e.detail)}
@@ -1332,11 +1332,11 @@
 					{:else}
 						<!-- Member Tier Filter -->
 						<div>
-							<label
+							<div
 								class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
 							>
 								Tier
-							</label>
+							</div>
 							<Select
 								bind:value={memberFilters.tier}
 								onchange={(e) => (memberFilters.tier = e.detail)}
@@ -1351,7 +1351,7 @@
 
 						<!-- Active Only Toggle -->
 						<div>
-							<label class="flex items-center space-x-2">
+							<div class="flex items-center space-x-2">
 								<input
 									type="checkbox"
 									bind:checked={memberFilters.activeOnly}
@@ -1360,7 +1360,7 @@
 								<span class="text-sm text-gray-700 dark:text-gray-300"
 									>Active Only</span
 								>
-							</label>
+							</div>
 						</div>
 					{/if}
 				</div>
@@ -1422,7 +1422,7 @@
 
 						<!-- Active Only Toggle -->
 						<div class="flex items-center">
-							<label class="flex items-center space-x-2">
+							<div class="flex items-center space-x-2">
 								<input
 									type="checkbox"
 									bind:checked={memberFilters.activeOnly}
@@ -1431,7 +1431,7 @@
 								<span class="text-sm text-gray-600 dark:text-gray-400"
 									>Active Only</span
 								>
-							</label>
+							</div>
 						</div>
 					{/if}
 				</div>

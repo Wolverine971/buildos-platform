@@ -43,9 +43,9 @@ mkdir -p docs/technical/deployment
 # Move integration docs
 echo "🔌 Migrating integration documentation..."
 mkdir -p docs/technical/integrations
-[ -f docs/integrations/stripe-setup.md ] && cp docs/integrations/stripe-setup.md docs/technical/integrations/
-[ -f docs/integrations/stripe-integration-overview.md ] && cp docs/integrations/stripe-integration-overview.md docs/technical/integrations/
-[ -f docs/integrations/STRIPE_IMPLEMENTATION_SUMMARY.md ] && cp docs/integrations/STRIPE_IMPLEMENTATION_SUMMARY.md docs/technical/integrations/
+[ -f docs/integrations/stripe/setup.md ] && cp docs/integrations/stripe/setup.md docs/technical/integrations/
+[ -f docs/integrations/stripe/overview.md ] && cp docs/integrations/stripe/overview.md docs/technical/integrations/
+[ -f docs/integrations/stripe/implementation-summary.md ] && cp docs/integrations/stripe/implementation-summary.md docs/technical/integrations/
 
 # Move audit docs
 echo "📊 Migrating audit documentation..."

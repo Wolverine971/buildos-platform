@@ -446,7 +446,7 @@
 								{#each groupedContent.timeBlockGroups as { block, tasks: blockTasks }}
 									{@const blockStyle = getTimeBlockStyle(block)}
 									<section class="space-y-2">
-										<Button
+										<button
 											onclick={() => onTimeBlockClick(block)}
 											class="timeblock-card group relative w-full overflow-hidden rounded-2xl border border-gray-200/60 bg-transparent px-4 py-3 text-left shadow-sm transition-shadow duration-200 hover:shadow-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-blue-500/40 appearance-none dark:border-gray-700/60"
 										>
@@ -509,7 +509,7 @@
 													</p>
 												{/if}
 											</div>
-										</Button>
+										</button>
 
 										{#if blockTasks.length > 0}
 											<div class="timeline-connector ml-6 space-y-2 pl-2">
@@ -769,13 +769,13 @@
 							</div>
 						</div>
 
-						<Button
+						<button
 							onclick={onNewTimeBlock}
 							class="inline-flex items-center justify-center gap-2 rounded-xl border border-dashed border-blue-300/70 bg-blue-50/50 px-4 py-2 text-sm font-semibold text-blue-600 transition-all duration-200 hover:bg-blue-100/70 hover:text-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 dark:border-blue-500/40 dark:bg-blue-900/20 dark:text-blue-300 dark:hover:bg-blue-900/30"
 						>
 							<Plus class="h-4 w-4" />
 							<span>Schedule focus session</span>
-						</Button>
+						</button>
 					</div>
 				{:else}
 					<div class="flex h-full flex-col items-center justify-center gap-3 text-center">
@@ -788,13 +788,13 @@
 								Start your day with a focused session.
 							</p>
 						</div>
-						<Button
+						<button
 							onclick={onNewTimeBlock}
 							class="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50"
 						>
 							<Plus class="h-4 w-4" />
 							<span>Schedule focus session</span>
-						</Button>
+						</button>
 					</div>
 				{/if}
 			{:else if tasks.length > 0}
@@ -997,7 +997,7 @@
 		-webkit-tap-highlight-color: transparent;
 	}
 
-	:global(.dark) buttonfocus-visible {
+	:global(.dark) button:focus-visible {
 		--tw-ring-offset-color: rgb(17 24 39);
 	}
 </style>

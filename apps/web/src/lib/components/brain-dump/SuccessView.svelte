@@ -300,7 +300,7 @@
 	}
 
 	/* Better focus styles for accessibility */
-	buttonfocus-visible {
+	button:focus-visible {
 		outline: 2px solid transparent;
 		outline-offset: 2px;
 	}

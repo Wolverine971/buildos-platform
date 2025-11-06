@@ -57,7 +57,7 @@
 	aria-label="Current time indicator"
 >
 	<!-- Left line -->
-	<div class="absolute left-0 w-full h-0.5 bg-red-500 opacity-75 z-0"></div>
+	<div class="absolute left-0 w-full h-0.5 bg-red-500 opacity-75 z-0 animate-pulse"></div>
 
 	<!-- Center badge -->
 	<div
@@ -73,20 +73,3 @@
 		{/if}
 	</div>
 </div>
-
-<style>
-	/* Animation for the line */
-	@keyframes pulse {
-		0%,
-		100% {
-			opacity: 0.75;
-		}
-		50% {
-			opacity: 1;
-		}
-	}
-
-	.relative div:first-child {
-		animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-	}
-</style>

@@ -61,13 +61,13 @@ Navigation organized by **what you want to do**, not just what exists.
 
 ### Environment Configuration
 
-| Task                     | File/Location               | Documentation                                           |
-| ------------------------ | --------------------------- | ------------------------------------------------------- |
-| Configure Supabase       | `.env` + Supabase dashboard | `/packages/supabase-client/docs/`                       |
-| Configure OpenAI API     | `.env` (OPENAI_API_KEY)     | `/apps/web/docs/technical/services/`                    |
-| Configure Google OAuth   | `.env` + Google Console     | `/apps/web/docs/`                                       |
-| Configure Stripe         | `.env` + Stripe dashboard   | `/apps/web/docs/technical/integrations/stripe-setup.md` |
-| Configure Email (Worker) | `.env` (EMAIL\_\* vars)     | `/apps/worker/docs/integrations/email/`                 |
+| Task                     | File/Location               | Documentation                           |
+| ------------------------ | --------------------------- | --------------------------------------- |
+| Configure Supabase       | `.env` + Supabase dashboard | `/packages/supabase-client/docs/`       |
+| Configure OpenAI API     | `.env` (OPENAI_API_KEY)     | `/apps/web/docs/technical/services/`    |
+| Configure Google OAuth   | `.env` + Google Console     | `/apps/web/docs/`                       |
+| Configure Stripe         | `.env` + Stripe dashboard   | `/docs/integrations/stripe/setup.md`    |
+| Configure Email (Worker) | `.env` (EMAIL\_\* vars)     | `/apps/worker/docs/integrations/email/` |
 
 ## Debugging Tasks
 

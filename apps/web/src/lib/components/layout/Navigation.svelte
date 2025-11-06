@@ -104,6 +104,9 @@
 		{ href: '/history', label: 'History', icon: StickyNote }
 	];
 
+	const loadingAccentClass =
+		'animate-pulse-accent ring-1 ring-blue-300/60 dark:ring-indigo-500/40 shadow-[0_12px_32px_-18px_rgba(59,130,246,0.45)]';
+
 	const needsOnboarding = $derived(user && (!completedOnboarding || onboardingProgress < 100));
 	const onboardingUrgent = $derived(user && onboardingProgress < 50);
 	const userName = $derived(user?.name || user?.email || '');
@@ -279,9 +282,16 @@
 				<div class="flex-shrink-0 flex items-center">
 					<a href="/" class="flex items-center" onclick={() => handleMenuItemClick('/')}>
 						<span class="sr-only">BuildOS</span>
-						<span class="buildos-logo" aria-hidden="true">
-							<span class="buildos-logo__word">Build</span>
-							<span class="buildos-logo__accent">OS</span>
+						<span
+							class="inline-flex items-baseline gap-[0.08em] px-[0.1rem] font-semibold tracking-tight text-[clamp(1.55rem,2.3vw,1.9rem)] leading-none text-slate-900 dark:text-slate-50"
+							aria-hidden="true"
+						>
+							<span class="text-slate-900 dark:text-slate-50">Build</span>
+							<span
+								class="bg-gradient-to-br from-blue-600 via-indigo-500 to-purple-500 bg-clip-text text-transparent drop-shadow-[0_6px_16px_rgba(79,70,229,0.25)] dark:drop-shadow-[0_8px_18px_rgba(148,163,246,0.35)]"
+							>
+								OS
+							</span>
 						</span>
 					</a>
 				</div>
@@ -302,7 +312,7 @@
 									? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20'
 									: 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700'}
 								{loggingOut ? 'opacity-50 pointer-events-none' : ''}
-								{loadingLink === item.href ? 'pulse' : ''}"
+								{loadingLink === item.href ? loadingAccentClass : ''}"
 							>
 								<Icon
 									class="w-3.5 md:w-4 h-3.5 md:h-4 mr-0.5 lg:mr-1 xl:mr-1.5 2xl:mr-2 flex-shrink-0 {currentPath ===
@@ -395,7 +405,7 @@
 									? 'bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 hover:from-amber-600 hover:via-orange-600 hover:to-red-600 text-white animate-pulse border-none'
 									: 'bg-gradient-to-r from-purple-600 via-blue-600 to-indigo-600 hover:from-purple-700 hover:via-blue-700 hover:to-indigo-700 text-white border-none'}
 								{loggingOut ? 'opacity-50 pointer-events-none' : ''}
-								{loadingLink === '/onboarding' ? 'pulse' : ''}"
+								{loadingLink === '/onboarding' ? loadingAccentClass : ''}"
 							>
 								{#if onboardingUrgent}
 									<AlertCircle
@@ -650,22 +660,22 @@
 		>
 			{#if user}
 				<!-- Mobile Brief Status -->
-				<div class="px-4 pt-3 pb-2">
+				<div class="px-3 pt-2 pb-2">
 					<BriefStatusIndicator />
 				</div>
 
 				<!-- Mobile Navigation -->
-				<div class="px-2 pt-2 pb-3 space-y-1">
+				<div class="px-2 pt-1.5 pb-2 space-y-1">
 					{#if needsOnboarding}
 						<a
 							href="/onboarding"
 							onclick={() => handleMenuItemClick('/onboarding')}
-							class="flex items-center px-4 py-3 text-base font-semibold text-white rounded-xl shadow-lg transition-all duration-300 hover:scale-[1.02]
+							class="flex items-center px-3 py-2.5 text-base font-semibold text-white rounded-xl shadow-lg transition-all duration-300 hover:scale-[1.02]
 							{onboardingUrgent
 								? 'bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 hover:from-amber-600 hover:via-orange-600 hover:to-red-600 animate-pulse'
 								: 'bg-gradient-to-r from-purple-600 via-blue-600 to-indigo-600 hover:from-purple-700 hover:via-blue-700 hover:to-indigo-700'}
 							{loggingOut ? 'opacity-50 pointer-events-none' : ''}
-							{loadingLink === '/onboarding' ? 'pulse-mobile' : ''}"
+							{loadingLink === '/onboarding' ? loadingAccentClass : ''}"
 						>
 							{#if onboardingUrgent}
 								<AlertCircle class="w-5 h-5 mr-3 animate-pulse" />
@@ -683,12 +693,12 @@
 						<a
 							href={item.href}
 							onclick={() => handleMenuItemClick(item.href)}
-							class="flex items-center px-3 py-2 text-base font-medium rounded-md transition-colors
+							class="flex items-center px-3 py-1.5 text-base font-medium rounded-md transition-colors
 							{currentPath === item.href
 								? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20'
 								: 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700'}
 							{loggingOut ? 'opacity-50 pointer-events-none' : ''}
-							{loadingLink === item.href ? 'pulse-mobile' : ''}"
+							{loadingLink === item.href ? loadingAccentClass : ''}"
 						>
 							<Icon
 								class="w-5 h-5 mr-3 {currentPath === item.href
@@ -701,8 +711,8 @@
 				</div>
 
 				<!-- Mobile User Section -->
-				<div class="pt-4 pb-3 border-t border-gray-200 dark:border-gray-700">
-					<div class="px-4 mb-3">
+				<div class="pt-3 pb-3 border-t border-gray-200 dark:border-gray-700">
+					<div class="px-3 mb-2.5">
 						<div
 							class="text-base font-medium text-gray-800 dark:text-gray-200 flex items-center"
 						>
@@ -737,7 +747,7 @@
 						<a
 							href="/profile"
 							onclick={() => handleMenuItemClick('/profile')}
-							class="flex items-center px-3 py-2 text-base font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700 rounded-md transition-colors
+							class="flex items-center px-3 py-1.5 text-base font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700 rounded-md transition-colors
 							{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
 						>
 							<User class="w-5 h-5 mr-3" />
@@ -755,7 +765,7 @@
 											? '/profile?tab=billing'
 											: '/pricing'
 									)}
-								class="flex items-center px-3 py-2 text-base font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700 rounded-md transition-colors
+								class="flex items-center px-3 py-1.5 text-base font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700 rounded-md transition-colors
 								{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
 							>
 								<svg
@@ -779,7 +789,7 @@
 							<a
 								href="/admin"
 								onclick={() => handleMenuItemClick('/admin')}
-								class="flex items-center px-3 py-2 text-base font-medium text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors
+								class="flex items-center px-3 py-1.5 text-base font-medium text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors
 								{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
 							>
 								<Shield class="w-5 h-5 mr-3" />
@@ -789,7 +799,7 @@
 
 						<button
 							onclick={toggleMode}
-							class="flex items-center px-3 py-2 text-base font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700 rounded-md transition-colors
+							class="flex items-center px-3 py-1.5 text-base font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700 rounded-md transition-colors
 							{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
 							disabled={loggingOut}
 							aria-label="Toggle theme"
@@ -812,7 +822,7 @@
 							icon={loggingOut ? Loader2 : LogOut}
 							iconPosition="left"
 							loading={loggingOut}
-							class="justify-start px-3 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 min-h-0"
+							class="justify-start px-3 py-1.5 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 min-h-0"
 						>
 							{loggingOut ? 'Signing out...' : 'Sign out'}
 						</Button>
@@ -820,18 +830,18 @@
 				</div>
 			{:else}
 				<!-- Mobile auth menu for non-authenticated users -->
-				<div class="px-2 pt-2 pb-3 space-y-1">
+				<div class="px-2 pt-1.5 pb-2 space-y-1">
 					<a
 						href="/auth/login"
 						onclick={() => handleMenuItemClick('/auth/login')}
-						class="block px-3 py-2 text-base font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700 rounded-md transition-colors"
+						class="block px-3 py-1.5 text-base font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700 rounded-md transition-colors"
 					>
 						Sign In
 					</a>
 					<a
 						href="/auth/register"
 						onclick={() => handleMenuItemClick('/auth/register')}
-						class="block px-3 py-2 text-base font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 rounded-md transition-colors"
+						class="block px-3 py-1.5 text-base font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 rounded-md transition-colors"
 					>
 						Sign Up
 					</a>
@@ -859,95 +869,3 @@
 		onClose={handleChatClose}
 	/>
 {/if}
-
-<style>
-	/* Optimized logo animation - replaces heavy video */
-	.logo-container {
-		position: relative;
-	}
-
-	/* Recreated BuildOS wordmark as text to replace legacy image */
-	.buildos-logo {
-		display: inline-flex;
-		align-items: baseline;
-		font-family:
-			'SF Pro Display',
-			'SF Pro Text',
-			'Helvetica Neue',
-			-apple-system,
-			BlinkMacSystemFont,
-			'Segoe UI',
-			sans-serif;
-		font-weight: 700;
-		font-size: clamp(1.55rem, 2.4vw, 1.85rem);
-		letter-spacing: -0.045em;
-		line-height: 1;
-		gap: 0.05em;
-		padding-inline: 0.1rem;
-	}
-
-	.buildos-logo__word {
-		color: #0f172a;
-		letter-spacing: -0.04em;
-		padding-left: 3px;
-	}
-
-	.buildos-logo__accent {
-		padding-right: 3px;
-		background: linear-gradient(120deg, #1d4ed8 0%, #4338ca 45%, #7c3aed 100%);
-		-webkit-background-clip: text;
-		background-clip: text;
-		color: transparent;
-		letter-spacing: -0.06em;
-		text-shadow: 0 6px 16px rgba(79, 70, 229, 0.25);
-	}
-
-	:global(.dark) .buildos-logo__word {
-		color: #f8fafc;
-	}
-
-	:global(.dark) .buildos-logo__accent {
-		/* background: linear-gradient(118deg, #bfdbfe 0%, #c7d2fe 35%, #ddd6fe 65%, #ede9fe 100%); */
-		text-shadow: 0 10px 22px rgba(148, 163, 246, 0.45);
-		filter: drop-shadow(0 6px 14px rgba(29, 78, 216, 0.28));
-	}
-
-	.logo-glow {
-		position: absolute;
-		inset: -4px;
-		background: linear-gradient(90deg, rgb(96 165 250), rgb(168 85 247), rgb(96 165 250));
-		background-size: 200% 200%;
-		border-radius: 0.5rem;
-		filter: blur(4px);
-		opacity: 0.4;
-		animation: glow-pulse 3s ease-in-out infinite;
-	}
-
-	@keyframes glow-pulse {
-		0%,
-		100% {
-			opacity: 0.4;
-			background-position: 0% 50%;
-		}
-		50% {
-			opacity: 0.6;
-			background-position: 100% 50%;
-		}
-	}
-
-	.logo-border {
-		position: relative;
-		background: linear-gradient(135deg, rgb(59 130 246), rgb(147 51 234));
-		padding: 2px;
-		border-radius: 0.5rem;
-		box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-	}
-
-	/* Disable animations for users who prefer reduced motion */
-	@media (prefers-reduced-motion: reduce) {
-		.logo-glow {
-			animation: none;
-			opacity: 0.4;
-		}
-	}
-</style>

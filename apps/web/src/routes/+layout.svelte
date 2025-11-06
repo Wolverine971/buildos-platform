@@ -479,7 +479,10 @@
 <ModeWatcher />
 <IOSSplashScreens />
 
-<div class="layout-container">
+<div
+	class="flex min-h-screen min-h-[100dvh] w-full flex-col overflow-x-hidden bg-slate-50 transition-colors dark:bg-slate-900"
+	style="padding-left: max(0px, env(safe-area-inset-left)); padding-right: max(0px, env(safe-area-inset-right));"
+>
 	<!-- Skip to main content link for accessibility -->
 	<a
 		href="#main-content"
@@ -497,14 +500,17 @@
 	{/if}
 
 	{#if paymentWarnings.length > 0 && PaymentWarning}
-		<div class="container mx-auto px-4 sm:px-6 lg:px-8 mt-4">
+		<div class="container mx-auto px-3 sm:px-6 lg:px-8 mt-3 sm:mt-4">
 			{#each paymentWarnings as warning (warning.id)}
 				<PaymentWarning notification={warning} ondismiss={handlePaymentWarningDismiss} />
 			{/each}
 		</div>
 	{/if}
 
-	<main id="main-content" class="main-content {showNavigation ? '' : 'min-h-screen'} !my-4">
+	<main
+		id="main-content"
+		class={`relative mx-auto my-3 sm:my-4 flex-1 w-full max-w-[1200px] px-3 sm:px-6 lg:px-8 xl:px-10 ${showNavigation ? '' : 'min-h-screen'} py-4 sm:py-6 lg:py-8`}
+	>
 		{#if children}
 			{@render children()}
 		{/if}
@@ -536,132 +542,3 @@
 	<!-- Notification System -->
 	<NotificationStackManager />
 </div>
-
-<style>
-	.layout-container {
-		min-height: 100vh;
-		min-height: 100dvh;
-		background-color: rgb(249 250 251);
-		display: flex;
-		flex-direction: column;
-		overflow-x: hidden;
-		max-width: 100vw;
-		padding: 0;
-		padding-left: max(0px, env(safe-area-inset-left));
-		padding-right: max(0px, env(safe-area-inset-right));
-
-		/* PERFORMANCE: Enable hardware acceleration for better performance */
-		/* transform: translateZ(0); */
-		-webkit-backface-visibility: hidden;
-		backface-visibility: hidden;
-	}
-
-	:global(.dark) .layout-container {
-		background-color: rgb(17 24 39);
-	}
-
-	.main-content {
-		flex: 1;
-		width: 100%;
-		max-width: 1200px;
-		margin: 0 auto;
-		overflow-x: hidden;
-		position: relative;
-
-		/* PERFORMANCE: Optimize rendering */
-		/* contain: layout style; */
-	}
-
-	/* RESPONSIVE: Optimized breakpoints for better performance */
-	@media (max-width: 640px) {
-		.layout-container {
-			-webkit-overflow-scrolling: touch;
-			-webkit-text-size-adjust: 100%;
-		}
-		.main-content {
-			max-width: 100%;
-			padding: 0;
-		}
-	}
-
-	@media (min-width: 641px) and (max-width: 1023px) {
-		.main-content {
-			max-width: 768px;
-			padding: 0 1rem;
-		}
-	}
-
-	@media (min-width: 1024px) {
-		.main-content {
-			max-width: 1200px;
-			padding: 0 2rem;
-		}
-	}
-
-	@media (min-width: 1240px) {
-		.main-content {
-			padding: 0;
-		}
-	}
-
-	/* PERFORMANCE: Optimize for landscape mobile */
-	@media (max-width: 767px) and (orientation: landscape) {
-		.layout-container {
-			min-height: 100vh;
-		}
-	}
-
-	/* PERFORMANCE: Better font rendering on high-DPI displays */
-	@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
-		.layout-container {
-			-webkit-font-smoothing: antialiased;
-			-moz-osx-font-smoothing: grayscale;
-		}
-	}
-
-	/* ACCESSIBILITY: Respect user motion preferences */
-	@media (prefers-reduced-motion: reduce) {
-		* {
-			animation-duration: 0.01ms !important;
-			animation-iteration-count: 1 !important;
-			transition-duration: 0.01ms !important;
-		}
-	}
-
-	/* PERFORMANCE: Optimize focus indicators */
-	:global(:focus-visible) {
-		outline: 2px solid #3b82f6;
-		outline-offset: 2px;
-	}
-
-	/* PERFORMANCE: Improve scrolling performance */
-	@supports (scroll-behavior: smooth) {
-		:global(html) {
-			scroll-behavior: smooth;
-		}
-	}
-
-	/* ACCESSIBILITY: Screen reader only content */
-	:global(.sr-only) {
-		position: absolute;
-		width: 1px;
-		height: 1px;
-		padding: 0;
-		margin: -1px;
-		overflow: hidden;
-		clip: rect(0, 0, 0, 0);
-		white-space: nowrap;
-		border-width: 0;
-	}
-
-	:global(.focus\:not-sr-only:focus) {
-		position: absolute;
-		width: auto;
-		height: auto;
-		padding: 0.5rem 1rem;
-		margin: 0;
-		overflow: visible;
-		clip: auto;
-		white-space: normal;
-	}
-</style>

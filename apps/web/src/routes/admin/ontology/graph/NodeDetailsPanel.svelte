@@ -6,8 +6,9 @@
 	import CardFooter from '$lib/components/ui/CardFooter.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import { X, ExternalLink, Network } from 'lucide-svelte';
+	import type { GraphNode } from './lib/ontology-graph.types';
 
-	let { node, onClose }: { node: any; onClose: () => void } = $props();
+	let { node, onClose }: { node: GraphNode | null; onClose: () => void } = $props();
 
 	const typeColors: Record<string, string> = {
 		template: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400',
