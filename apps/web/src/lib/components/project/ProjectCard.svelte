@@ -119,8 +119,8 @@
 		</div>
 		<!-- Status indicator - icon only on mobile -->
 		{#if project.status && projectStatusConfig}
+			{@const ProjectStatusConfig = projectStatusConfig}
 			<div class="flex items-center space-x-1 flex-shrink-0 ml-1">
-				{@const ProjectStatusConfig = projectStatusConfig}
 				<ProjectStatusConfig class="w-3.5 h-3.5 sm:w-4 sm:h-4 {projectStatusColor}" />
 				<span class="hidden sm:inline text-xs font-medium {projectStatusColor} capitalize">
 					{projectStatusText}

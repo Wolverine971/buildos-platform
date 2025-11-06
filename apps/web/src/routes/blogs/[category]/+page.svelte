@@ -17,7 +17,7 @@
 	} from 'lucide-svelte';
 	import type { PageData } from './$types';
 
-	export let data: PageData;
+	let { data }: { data: PageData } = $props();
 
 	const categoryIcons = {
 		'getting-started': Brain,
@@ -37,9 +37,9 @@
 		philosophy: 'indigo'
 	};
 
-	$: categoryKey = $page.params.category;
-	$: IconComponent = categoryIcons[categoryKey as keyof typeof categoryIcons];
-	$: color = categoryColors[categoryKey as keyof typeof categoryColors];
+	let categoryKey = $derived($page.params.category);
+	let IconComponent = $derived(categoryIcons[categoryKey as keyof typeof categoryIcons]);
+	let color = $derived(categoryColors[categoryKey as keyof typeof categoryColors]);
 
 	function getCategoryColorClasses(category: string) {
 		const color = categoryColors[category as keyof typeof categoryColors];
@@ -92,10 +92,10 @@
 		return JSON.stringify(jsonLd, null, 2);
 	}
 
-	$: colors = getCategoryColorClasses(categoryKey);
+	let colors = $derived(getCategoryColorClasses(categoryKey));
 
 	// Generate JSON-LD string reactively
-	$: jsonLdString = generateCategoryJsonLd(data.category, data.posts, categoryKey);
+	let jsonLdString = $derived(generateCategoryJsonLd(data.category, data.posts, categoryKey));
 </script>
 
 <svelte:head>

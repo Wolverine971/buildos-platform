@@ -1072,13 +1072,13 @@
 											>
 												{#if operation.data.details || operation.data.content}
 													<div>
-														<label
+														<p
 															class="block text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1"
 														>
 															{operation.table === 'notes'
 																? 'Content'
 																: 'Details'}
-														</label>
+														</p>
 														<div
 															class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap"
 														>
@@ -1095,11 +1095,11 @@
 													>
 														{#if operation.data.priority}
 															<div>
-																<label
+																<p
 																	class="block text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1"
 																>
 																	Priority
-																</label>
+																</p>
 																<span
 																	class="inline-flex px-2 py-1 text-xs font-medium rounded-full
 																	{operation.data.priority === 'high'
@@ -1117,11 +1117,11 @@
 
 														{#if operation.data.status}
 															<div>
-																<label
+																<p
 																	class="block text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1"
 																>
 																	Status
-																</label>
+																</p>
 																<span
 																	class="text-sm text-gray-700 dark:text-gray-300"
 																>
@@ -1132,11 +1132,11 @@
 
 														{#if operation.data.duration_minutes}
 															<div>
-																<label
+																<p
 																	class="block text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1"
 																>
 																	Duration
-																</label>
+																</p>
 																<div
 																	class="flex items-center gap-1 text-sm text-gray-700 dark:text-gray-300"
 																>
@@ -1151,11 +1151,11 @@
 
 														{#if operation.data.start_date}
 															<div>
-																<label
+																<p
 																	class="block text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1"
 																>
 																	Start Date
-																</label>
+																</p>
 																<div
 																	class="flex items-center gap-1 text-sm text-gray-700 dark:text-gray-300"
 																>
@@ -1174,11 +1174,11 @@
 
 												{#if operation.table === 'projects' && operation.data.tags && operation.data.tags.length > 0}
 													<div>
-														<label
+														<p
 															class="block text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1"
 														>
 															Tags
-														</label>
+														</p>
 														<div class="flex flex-wrap gap-2">
 															{#each operation.data.tags as tag}
 																<span

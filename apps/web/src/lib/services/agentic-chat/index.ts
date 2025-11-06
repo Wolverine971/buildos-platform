@@ -1,3 +1,4 @@
+// apps/web/src/lib/services/agentic-chat/index.ts
 /**
  * Agentic Chat Service Factory
  *

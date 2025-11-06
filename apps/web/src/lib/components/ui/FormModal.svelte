@@ -78,23 +78,37 @@
 	import { toastService } from '$lib/stores/toast.store';
 	import type { FormConfig } from '$lib/types/form';
 
-	export let isOpen: boolean;
-	export let title: string;
-	export let submitText: string;
-	export let loadingText: string;
-	export let formConfig: FormConfig;
-	export let initialData: Record<string, any> = {};
-	export let onSubmit: (data: Record<string, any>) => Promise<void>;
-	export let onDelete: ((id: string) => Promise<void>) | null = null;
-	export let onClose: () => void;
-	export let size: 'sm' | 'md' | 'lg' | 'xl' = 'md';
-	export let customClasses: string = '';
+	let {
+		isOpen,
+		title,
+		submitText,
+		loadingText,
+		formConfig,
+		initialData = {},
+		onSubmit,
+		onDelete = null,
+		onClose,
+		size = 'md',
+		customClasses = ''
+	}: {
+		isOpen: boolean;
+		title: string;
+		submitText: string;
+		loadingText: string;
+		formConfig: FormConfig;
+		initialData?: Record<string, any>;
+		onSubmit: (data: Record<string, any>) => Promise<void>;
+		onDelete?: ((id: string) => Promise<void>) | null;
+		onClose: () => void;
+		size?: 'sm' | 'md' | 'lg' | 'xl';
+		customClasses?: string;
+	} = $props();
 
-	let loading = false;
-	let errors: string[] = [];
-	let formData: Record<string, any> = {};
-	let lastOpenState = false;
-	let hasInitialized = false;
+	let loading = $state(false);
+	let errors = $state<string[]>([]);
+	let formData = $state<Record<string, any>>({});
+	let lastOpenState = $state(false);
+	let hasInitialized = $state(false);
 
 	// Deep clone helper that preserves dates and handles edge cases
 	function deepClone(obj: any): any {
@@ -114,27 +128,29 @@
 	}
 
 	// Initialize form data when modal opens OR when initialData changes
-	$: if (isOpen) {
-		// Check if we need to initialize or re-initialize
-		const hasData = Object.keys(initialData).length > 0;
-		const isFirstOpen = !lastOpenState;
-		const dataChanged = hasData && !hasInitialized;
+	$effect(() => {
+		if (isOpen) {
+			// Check if we need to initialize or re-initialize
+			const hasData = Object.keys(initialData).length > 0;
+			const isFirstOpen = !lastOpenState;
+			const dataChanged = hasData && !hasInitialized;
 
-		if (isFirstOpen || dataChanged) {
-			// Deep clone initial data to avoid mutations
-			formData = deepClone(initialData);
-			errors = [];
-			hasInitialized = hasData;
+			if (isFirstOpen || dataChanged) {
+				// Deep clone initial data to avoid mutations
+				formData = deepClone(initialData);
+				errors = [];
+				hasInitialized = hasData;
+			}
 		}
-	}
 
-	// Reset initialization flag when modal closes
-	$: if (!isOpen && lastOpenState) {
-		hasInitialized = false;
-	}
+		// Reset initialization flag when modal closes
+		if (!isOpen && lastOpenState) {
+			hasInitialized = false;
+		}
 
-	// Track open state changes
-	$: lastOpenState = isOpen;
+		// Track open state changes
+		lastOpenState = isOpen;
+	});
 
 	async function handleDelete() {
 		if ((!formData.id && !initialData.id) || !onDelete) {
@@ -493,10 +509,16 @@
 							>
 								<option value="">Select {config.label}</option>
 								{#each config.options || [] as option}
-									<option value={option}>
-										{option.charAt(0).toUpperCase() +
-											option.slice(1).replace('_', ' ')}
-									</option>
+									{#if typeof option === 'object' && 'value' in option && 'label' in option}
+										<option value={option.value}>
+											{option.label}
+										</option>
+									{:else if typeof option === 'string'}
+										<option value={option}>
+											{option.charAt(0).toUpperCase() +
+												option.slice(1).replace('_', ' ')}
+										</option>
+									{/if}
 								{/each}
 							</Select>
 						{:else if config.type === 'date'}

@@ -18,7 +18,7 @@
 	import TextInput from '$lib/components/ui/TextInput.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 
-	export let data: PageData;
+	let { data }: { data: PageData } = $props();
 
 	const categoryIcons = {
 		'getting-started': Brain,
@@ -94,21 +94,22 @@
 		return JSON.stringify(jsonLd, null, 2);
 	}
 
-	let searchQuery = '';
-	let showSearch = false;
+	let searchQuery = $state('');
+	let showSearch = $state(false);
 
 	// Get all posts for direct display when < 10 total
-	$: allPosts =
+	let allPosts = $derived(
 		data.totalPosts < 10
 			? Object.values(data.categorizedPosts)
 					.flat()
 					.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-			: [];
+			: []
+	);
 
-	$: showDirectPosts = data.totalPosts < 10;
+	let showDirectPosts = $derived(data.totalPosts < 10);
 
 	// Generate JSON-LD string reactively
-	$: jsonLdString = generateBlogJsonLd(data.categorizedPosts);
+	let jsonLdString = $derived(generateBlogJsonLd(data.categorizedPosts));
 </script>
 
 <svelte:head>

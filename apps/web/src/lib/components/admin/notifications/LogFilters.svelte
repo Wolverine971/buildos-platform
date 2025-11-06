@@ -115,7 +115,10 @@
 		<!-- Search -->
 		{#if config.showSearch}
 			<div class="lg:col-span-2">
-				<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+				<label
+					for="log-filter-search"
+					class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+				>
 					Search
 				</label>
 				<div class="relative">
@@ -123,6 +126,7 @@
 						class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"
 					/>
 					<input
+						id="log-filter-search"
 						type="text"
 						value={filters.search || ''}
 						oninput={(e) => updateFilter('search', e.currentTarget.value)}
@@ -136,10 +140,14 @@
 		<!-- Event Type -->
 		{#if config.showEventType}
 			<div>
-				<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+				<label
+					for="log-filter-event-type"
+					class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+				>
 					Event Type
 				</label>
 				<Select
+					id="log-filter-event-type"
 					value={filters.event_type || ''}
 					onchange={(e) => updateFilter('event_type', e.detail)}
 					size="md"
@@ -160,10 +168,14 @@
 		<!-- Channel -->
 		{#if config.showChannel}
 			<div>
-				<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+				<label
+					for="log-filter-channel"
+					class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+				>
 					Channel
 				</label>
 				<Select
+					id="log-filter-channel"
 					value={filters.channel || ''}
 					onchange={(e) => updateFilter('channel', e.detail)}
 					size="md"
@@ -180,10 +192,14 @@
 		<!-- Status -->
 		{#if config.showStatus}
 			<div>
-				<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+				<label
+					for="log-filter-status"
+					class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+				>
 					Status
 				</label>
 				<Select
+					id="log-filter-status"
 					value={filters.status || ''}
 					onchange={(e) => updateFilter('status', e.detail)}
 					size="md"
@@ -204,10 +220,14 @@
 		<!-- Log Level -->
 		{#if config.showLevel}
 			<div>
-				<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+				<label
+					for="log-filter-level"
+					class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+				>
 					Log Level
 				</label>
 				<Select
+					id="log-filter-level"
 					value={filters.level || ''}
 					onchange={(e) => updateFilter('level', e.detail)}
 					size="md"
@@ -224,10 +244,14 @@
 		<!-- Namespace -->
 		{#if config.showNamespace}
 			<div>
-				<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+				<label
+					for="log-filter-namespace"
+					class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+				>
 					Namespace
 				</label>
 				<input
+					id="log-filter-namespace"
 					type="text"
 					value={filters.namespace || ''}
 					oninput={(e) => updateFilter('namespace', e.currentTarget.value)}
@@ -240,7 +264,10 @@
 		<!-- Date Range -->
 		{#if config.showDateRange}
 			<div>
-				<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+				<label
+					for="log-filter-from"
+					class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+				>
 					From Date
 				</label>
 				<div class="relative">
@@ -248,6 +275,7 @@
 						class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"
 					/>
 					<input
+						id="log-filter-from"
 						type="datetime-local"
 						value={filters.from || ''}
 						oninput={(e) => updateFilter('from', e.currentTarget.value)}
@@ -257,7 +285,10 @@
 			</div>
 
 			<div>
-				<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+				<label
+					for="log-filter-to"
+					class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+				>
 					To Date
 				</label>
 				<div class="relative">
@@ -265,6 +296,7 @@
 						class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"
 					/>
 					<input
+						id="log-filter-to"
 						type="datetime-local"
 						value={filters.to || ''}
 						oninput={(e) => updateFilter('to', e.currentTarget.value)}

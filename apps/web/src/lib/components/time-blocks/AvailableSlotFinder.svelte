@@ -132,9 +132,9 @@
 		<div class="space-y-3 px-3 py-3 sm:px-4 sm:py-4">
 			<!-- Buffer Time -->
 			<div class="space-y-1.5">
-				<label class="block text-xs font-semibold text-slate-700 dark:text-slate-200">
+				<p class="block text-xs font-semibold text-slate-700 dark:text-slate-200">
 					Buffer Time
-				</label>
+				</p>
 				<div class="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
 					{#each [0, 15, 30, 60] as time}
 						<button
@@ -154,9 +154,9 @@
 
 			<!-- Slot Duration -->
 			<div class="space-y-1.5">
-				<label class="block text-xs font-semibold text-slate-700 dark:text-slate-200">
+				<p class="block text-xs font-semibold text-slate-700 dark:text-slate-200">
 					Slot Duration
-				</label>
+				</p>
 				<div
 					class="flex items-center justify-between text-xs text-slate-600 dark:text-slate-400"
 				>
@@ -220,9 +220,9 @@
 
 			<!-- Time Window -->
 			<div class="space-y-1.5">
-				<label class="block text-xs font-semibold text-slate-700 dark:text-slate-200">
+				<p class="block text-xs font-semibold text-slate-700 dark:text-slate-200">
 					Time Window
-				</label>
+				</p>
 				<div
 					class="flex items-center justify-between text-xs text-slate-600 dark:text-slate-400"
 				>

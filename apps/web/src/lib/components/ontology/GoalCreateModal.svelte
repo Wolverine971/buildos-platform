@@ -126,49 +126,39 @@
 		showTemplateSelection = false;
 	}
 
-	async function handleSubmit(formData: Record<string, any>) {
-		try {
-			const requestBody = {
-				project_id: projectId,
-				type_key: selectedTemplate?.type_key || 'goal.basic',
-				name: formData.name?.trim(),
+	async function handleSubmit(formData: Record<string, any>): Promise<void> {
+		const requestBody = {
+			project_id: projectId,
+			type_key: selectedTemplate?.type_key || 'goal.basic',
+			name: formData.name?.trim(),
+			description: formData.description?.trim() || null,
+			state_key: formData.state_key || 'draft',
+			props: {
 				description: formData.description?.trim() || null,
-				state_key: formData.state_key || 'draft',
-				props: {
-					description: formData.description?.trim() || null,
-					target_date: formData.target_date || null,
-					measurement_criteria: formData.measurement_criteria?.trim() || null,
-					priority: formData.priority || 'medium',
-					...(selectedTemplate?.default_props || {})
-				}
-			};
-
-			const response = await fetch('/api/onto/goals/create', {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify(requestBody)
-			});
-
-			const result = await response.json();
-
-			if (!response.ok) {
-				throw new Error(result.error || 'Failed to create goal');
+				target_date: formData.target_date || null,
+				measurement_criteria: formData.measurement_criteria?.trim() || null,
+				priority: formData.priority || 'medium',
+				...(selectedTemplate?.default_props || {})
 			}
+		};
 
-			// Success! Call the callback
-			if (onCreated) {
-				onCreated(result.data.goal.id);
-			}
+		const response = await fetch('/api/onto/goals/create', {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json'
+			},
+			body: JSON.stringify(requestBody)
+		});
 
-			return { success: true };
-		} catch (err) {
-			console.error('Error creating goal:', err);
-			return {
-				success: false,
-				error: err instanceof Error ? err.message : 'Failed to create goal'
-			};
+		const result = await response.json();
+
+		if (!response.ok) {
+			throw new Error(result.error || 'Failed to create goal');
+		}
+
+		// Success! Call the callback
+		if (onCreated) {
+			onCreated(result.data.goal.id);
 		}
 	}
 

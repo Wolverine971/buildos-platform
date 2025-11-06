@@ -15,7 +15,8 @@ export interface FieldConfig {
 	required?: boolean;
 	placeholder?: string;
 	description?: string;
-	options?: string[];
+	options?: string[] | Array<{ value: string | number; label: string }>;
+	value?: any; // Default/initial value for the field
 	min?: number;
 	max?: number;
 	rows?: number;

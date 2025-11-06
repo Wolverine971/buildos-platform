@@ -21,15 +21,15 @@
 	import SEOHead from '$lib/components/SEOHead.svelte';
 	import { validateOptionalEmailClient } from '$lib/utils/client-email-validation';
 
-	let selectedCategory = '';
-	let rating = 0;
-	let feedbackText = '';
-	let userEmail = '';
-	let honeypot = ''; // Hidden field for bot detection
-	let isSubmitting = false;
-	let submitSuccess = false;
-	let submitError = '';
-	let emailError = '';
+	let selectedCategory = $state('');
+	let rating = $state(0);
+	let feedbackText = $state('');
+	let userEmail = $state('');
+	let honeypot = $state(''); // Hidden field for bot detection
+	let isSubmitting = $state(false);
+	let submitSuccess = $state(false);
+	let submitError = $state('');
+	let emailError = $state('');
 
 	const feedbackCategories = [
 		{ id: 'feature', label: 'Feature Request', icon: Lightbulb, color: 'blue' },
@@ -271,15 +271,19 @@
 						</div>
 
 						<!-- Feedback Category -->
-						<div>
-							<label
-								class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-4"
+						<fieldset class="space-y-4">
+							<legend
+								id="feedback-category-legend"
+								class="block text-sm font-medium text-gray-700 dark:text-gray-300"
 							>
-								What type of feedback do you have? <span class="text-red-500"
-									>*</span
-								>
-							</label>
-							<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+								What type of feedback do you have?
+								<span class="text-red-500">*</span>
+							</legend>
+							<div
+								class="grid grid-cols-1 md:grid-cols-2 gap-4"
+								role="radiogroup"
+								aria-labelledby="feedback-category-legend"
+							>
 								{#each feedbackCategories as category}
 									{@const CategoryIcon = category.icon}
 									<Button
@@ -291,6 +295,9 @@
 										category.id
 											? `border-${category.color}-500 bg-${category.color}-50 dark:bg-${category.color}-900/20`
 											: 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500'}"
+										role="radio"
+										aria-checked={selectedCategory === category.id}
+										aria-label={category.label}
 									>
 										<div
 											class="flex items-center justify-center w-10 h-10 bg-{category.color}-100 dark:bg-{category.color}-900/30 rounded-lg mr-4"
@@ -307,24 +314,33 @@
 									</Button>
 								{/each}
 							</div>
-						</div>
+						</fieldset>
 
 						<!-- Rating -->
-						<div>
-							<label
-								class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-4"
+						<fieldset class="space-y-4">
+							<legend
+								id="feedback-rating-legend"
+								class="block text-sm font-medium text-gray-700 dark:text-gray-300"
 							>
 								How would you rate your overall experience with BuildOS?
-							</label>
-							<div class="flex items-center space-x-2">
+							</legend>
+							<div
+								class="flex items-center space-x-2"
+								role="radiogroup"
+								aria-labelledby="feedback-rating-legend"
+							>
 								{#each Array(5) as _, i}
+									{@const ratingValue = i + 1}
 									<Button
 										type="button"
-										onclick={() => setRating(i + 1)}
+										onclick={() => setRating(ratingValue)}
 										variant="ghost"
 										size="sm"
 										class="p-1"
 										icon={Star}
+										role="radio"
+										aria-checked={rating === ratingValue}
+										aria-label={`Rate ${ratingValue} out of 5`}
 									></Button>
 								{/each}
 								{#if rating > 0}
@@ -341,7 +357,7 @@
 									</span>
 								{/if}
 							</div>
-						</div>
+						</fieldset>
 
 						<!-- Feedback Text -->
 						<FormField

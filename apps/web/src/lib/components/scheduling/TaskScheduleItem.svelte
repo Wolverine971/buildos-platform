@@ -140,6 +140,10 @@
 			: 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800'}"
 >
 	{#if isEditing}
+		{@const baseId = schedule.task?.id ?? schedule.id ?? 'task'}
+		{@const startInputId = `${baseId}-start-datetime`.replace(/[^a-z0-9-]/gi, '-')}
+		{@const durationInputId = `${baseId}-duration-minutes`.replace(/[^a-z0-9-]/gi, '-')}
+
 		<!-- Editing Mode (Expanded) -->
 		<div class="p-4 space-y-4">
 			<div class="flex items-center justify-between">
@@ -157,11 +161,13 @@
 			<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 				<div>
 					<label
+						for={startInputId}
 						class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5"
 					>
 						Start Date & Time
 					</label>
 					<TextInput
+						id={startInputId}
 						type="datetime-local"
 						bind:value={tempStart}
 						class="text-sm"
@@ -172,11 +178,13 @@
 
 				<div>
 					<label
+						for={durationInputId}
 						class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5"
 					>
 						Duration (minutes)
 					</label>
 					<TextInput
+						id={durationInputId}
 						type="number"
 						bind:value={tempDuration}
 						min="15"

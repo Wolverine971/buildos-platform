@@ -153,10 +153,12 @@
 {#if typeSpecificComponent}
 	<!-- Type-specific modal content (e.g., BrainDumpModalContent) - already has Modal wrapper -->
 	{@const TypeSpecificComponent = typeSpecificComponent}
-				<TypeSpecificComponent{notification}
+	<TypeSpecificComponent
+		{notification}
 		on:minimize={handleMinimize}
 		on:close={handleDismiss}
-		on:cancel={handleDismiss} />
+		on:cancel={handleDismiss}
+	/>
 {:else}
 	<!-- Generic fallback modal -->
 	<Modal

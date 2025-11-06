@@ -130,9 +130,9 @@
 								class="text-sm text-red-700 dark:text-red-300 space-y-3 flex-1 ml-6"
 							>
 								{#each errorConflicts as conflict}
+									{@const Type = getConflictIcon(conflict.type)}
 									<li class="flex flex-col gap-1.5">
 										<div class="flex items-start gap-2">
-											{@const Type = getConflictIcon(conflict.type)}
 											<Type class="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
 											<div class="flex-1">
 												{#if conflict.taskName && conflict.taskId}
@@ -213,9 +213,9 @@
 								class="text-sm text-amber-700 dark:text-amber-300 space-y-3 flex-1 ml-6"
 							>
 								{#each warningConflicts as conflict}
+									{@const Type = getConflictIcon(conflict.type)}
 									<li class="flex flex-col gap-1.5">
 										<div class="flex items-start gap-2">
-											{@const Type = getConflictIcon(conflict.type)}
 											<Type class="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
 											<div class="flex-1">
 												{#if conflict.taskName && conflict.taskId}

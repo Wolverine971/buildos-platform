@@ -792,9 +792,9 @@
 				<!-- Recipients -->
 				<div>
 					<div class="flex items-center justify-between mb-2">
-						<label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+						<p class="block text-sm font-medium text-gray-700 dark:text-gray-300">
 							Recipients ({emailData.recipients.length})
-						</label>
+						</p>
 						<Button
 							onclick={() => (showRecipientModal = true)}
 							disabled={isEmailSent}

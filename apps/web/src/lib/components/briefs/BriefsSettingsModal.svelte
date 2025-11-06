@@ -306,18 +306,18 @@
 				{/if}
 
 				<div>
-					<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+					<p class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
 						Time
-					</label>
+					</p>
 					<div class="px-3 py-2 bg-gray-50 dark:bg-gray-700 rounded-lg">
 						{convertTimeToHHMM(briefPreferences?.time_of_day)}
 					</div>
 				</div>
 
 				<div>
-					<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+					<p class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
 						Timezone
-					</label>
+					</p>
 					<div class="px-3 py-2 bg-gray-50 dark:bg-gray-700 rounded-lg">
 						{TIMEZONE_OPTIONS.find((tz) => tz.value === briefPreferences?.timezone)
 							?.label || briefPreferences?.timezone}
@@ -325,9 +325,9 @@
 				</div>
 
 				<div class="md:col-span-2">
-					<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+					<p class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
 						Status
-					</label>
+					</p>
 					<div class="space-y-3">
 						<div class="flex items-center space-x-2">
 							<div

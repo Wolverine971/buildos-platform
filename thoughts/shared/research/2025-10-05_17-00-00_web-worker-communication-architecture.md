@@ -511,7 +511,8 @@ function advanceStep(controller: PhaseGenerationController, targetStep: number) 
 
 **UI Component Consumption:**
 
-```svelte
+<!--
+svelte
 <script lang="ts">
   import { notificationStore } from '$lib/stores/notification.store';
 
@@ -524,7 +525,7 @@ function advanceStep(controller: PhaseGenerationController, targetStep: number) 
   {/if}
 
 </script>
-```
+ -->
 
 ## 6. Communication Patterns with Code Examples
 

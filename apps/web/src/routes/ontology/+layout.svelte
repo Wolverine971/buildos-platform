@@ -2,7 +2,7 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 
-	let { data, children } = $props();
+	let { children } = $props();
 	let isMobileMenuOpen = $state(false);
 </script>
 

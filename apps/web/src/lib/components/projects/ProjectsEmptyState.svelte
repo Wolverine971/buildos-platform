@@ -45,11 +45,13 @@
 		class="bg-white dark:bg-gray-800 rounded-xl p-8 max-w-md mx-auto shadow-sm
 			border border-gray-200 dark:border-gray-700"
 	>
-		{@const Icon = icon}
-		<Icon
-			class="w-{hasFilters ? '12' : '16'} h-{hasFilters ? '12' : '16'}
-				text-gray-400 mx-auto mb-4"
-		/>
+		{#if icon}
+			<svelte:component
+				this={icon}
+				class="w-{hasFilters ? '12' : '16'} h-{hasFilters ? '12' : '16'}
+					text-gray-400 mx-auto mb-4"
+			/>
+		{/if}
 		<h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">
 			{title}
 		</h3>

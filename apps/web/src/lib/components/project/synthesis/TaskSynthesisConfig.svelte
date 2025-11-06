@@ -206,10 +206,14 @@
 			<Search class="w-4 h-4 text-gray-400 dark:text-gray-500 mt-1" />
 			<div class="flex-1 space-y-2">
 				<div class="flex items-center justify-between">
-					<label class="text-sm font-medium text-gray-700 dark:text-gray-300">
+					<label
+						for="gap-analysis-enabled"
+						class="text-sm font-medium text-gray-700 dark:text-gray-300"
+					>
 						Gap Analysis
 					</label>
 					<input
+						id="gap-analysis-enabled"
 						type="checkbox"
 						checked={config.gapAnalysis.enabled}
 						onchange={() => toggleFeature('gapAnalysis', 'enabled')}

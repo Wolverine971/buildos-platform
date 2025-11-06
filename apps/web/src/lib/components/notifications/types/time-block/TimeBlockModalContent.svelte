@@ -114,7 +114,10 @@
 	closeOnBackdrop={true}
 >
 	<div slot="header" class="flex items-center gap-3 px-6 py-4 border-b dark:border-gray-700">
-		<{statusCopy.icon} class={statusCopy.iconClass} />
+		{@const StatusIcon = statusCopy.icon}
+		{#if StatusIcon}
+			<StatusIcon class={statusCopy.iconClass} />
+		{/if}
 		<div class="flex-1">
 			<h2 class="text-xl font-semibold text-gray-900 dark:text-white">
 				{notification.data.blockType === 'project' ? 'Project Time Block' : 'Build Block'}

@@ -1,3 +1,4 @@
+// apps/web/src/lib/services/agentic-chat/execution/executor-coordinator.test.ts
 /**
  * Test Suite for ExecutorCoordinator
  *

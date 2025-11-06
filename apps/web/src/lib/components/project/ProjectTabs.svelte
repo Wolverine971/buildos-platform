@@ -1,15 +1,6 @@
 <!-- apps/web/src/lib/components/project/ProjectTabs.svelte -->
 <script lang="ts">
-	import {
-		LayoutGrid,
-		CheckSquare,
-		FileText,
-		Calendar,
-		Brain,
-		Layers,
-		AlertCircle,
-		Clock
-	} from 'lucide-svelte';
+	import { LayoutGrid, CheckSquare, FileText, Brain, Layers, AlertCircle } from 'lucide-svelte';
 	import { createEventDispatcher } from 'svelte';
 
 	// Define ExtendedTabType locally
@@ -96,6 +87,7 @@
 <div class="tab-container">
 	<div class="tab-nav" role="tablist" aria-label="Project sections">
 		{#each visibleTabs as tab (tab.id)}
+			{@const TabIcon = tab.icon}
 			<button
 				type="button"
 				role="tab"
@@ -104,7 +96,9 @@
 				onclick={() => dispatch('change', tab.id)}
 				class="tab-button {activeTab === tab.id ? 'tab-active' : 'tab-inactive'}"
 			>
-				<{tab.icon} class="tab-icon" />
+				{#if tab.icon}
+					<TabIcon class="tab-icon" />
+				{/if}
 				<span class="tab-label"
 					>{isMobile && tab.mobileLabel ? tab.mobileLabel : tab.label}</span
 				>

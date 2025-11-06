@@ -521,13 +521,13 @@
 					<div class="space-y-2">
 						{#if achievements?.length}
 							{#each achievements as achievement}
+								{@const Icon = achievement.icon}
 								<div
 									class="flex items-center space-x-2 p-2 bg-gray-50 dark:bg-gray-700/50 rounded"
 								>
 									<div
 										class="w-6 h-6 bg-{achievement.color}-100 dark:bg-{achievement.color}-900/20 rounded-full flex items-center justify-center flex-shrink-0"
 									>
-										{@const Icon = achievement.icon}
 										<Icon
 											class="w-3 h-3 text-{achievement.color}-600 dark:text-{achievement.color}-400"
 										/>

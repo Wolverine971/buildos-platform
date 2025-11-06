@@ -133,6 +133,7 @@
 		<section class="mb-12">
 			<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
 				{#each actionCards as card}
+					{@const Icon = card.icon}
 					<a
 						href={card.href}
 						class="relative block bg-gradient-to-r {card.gradient} border {card.border} rounded-xl p-6 hover:shadow-lg transition-all duration-300 group focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800"
@@ -146,7 +147,6 @@
 						{/if}
 						<div class="flex items-start space-x-4">
 							<div class="flex-shrink-0">
-								{@const Icon = card.icon}
 								<Icon
 									class="w-8 h-8 {card.iconColor} group-hover:scale-110 transition-transform"
 								/>

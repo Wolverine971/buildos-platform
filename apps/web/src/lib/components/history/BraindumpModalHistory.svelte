@@ -11,10 +11,8 @@
 		FileText,
 		ExternalLink,
 		Copy,
-		X,
 		Loader2,
 		Sparkles,
-		Settings,
 		Zap,
 		Trash2
 	} from 'lucide-svelte';
@@ -25,15 +23,21 @@
 	import LinkBraindumpToProject from './LinkBraindumpToProject.svelte';
 	import { renderMarkdown, getProseClasses } from '$lib/utils/markdown';
 
-	export let braindump: any;
-	export let isOpen: boolean = false;
-	export let onClose: () => void;
+	let {
+		braindump,
+		isOpen = false,
+		onClose
+	}: {
+		braindump: any;
+		isOpen?: boolean;
+		onClose: () => void;
+	} = $props();
 
 	const dispatch = createEventDispatcher();
 
-	let braindumpDetails: any = null;
-	let isLoading = true;
-	let error = '';
+	let braindumpDetails = $state<any>(null);
+	let isLoading = $state(true);
+	let error = $state('');
 
 	// Fetch detailed braindump data when modal opens
 	async function fetchBraindumpDetails() {
@@ -139,27 +143,22 @@
 	}
 
 	// Watch for modal open/close and braindump changes
-	$: if (isOpen && braindump) {
-		fetchBraindumpDetails();
-	}
+	$effect(() => {
+		if (isOpen && braindump) {
+			fetchBraindumpDetails();
+		}
+	});
 
-	$: statusInfo = getStatusInfo(braindump?.status);
-	$: timeDisplay = braindump?.updated_at ? getTimeDisplay(braindump?.updated_at) : '';
-	$: isUnlinked = braindump?.isNote;
-	$: isNewProject = braindump?.isNewProject;
-	$: linkedProject = braindump?.linkedProject;
-	$: linkedTypes = braindump?.linkedTypes || [];
+	let statusInfo = $derived(getStatusInfo(braindump?.status));
+	let timeDisplay = $derived(braindump?.updated_at ? getTimeDisplay(braindump?.updated_at) : '');
+	let isUnlinked = $derived(braindump?.isNote);
+	let isNewProject = $derived(braindump?.isNewProject);
+	let linkedProject = $derived(braindump?.linkedProject);
+	let linkedTypes = $derived(braindump?.linkedTypes || []);
 
 	// Handle braindump linked event
 	function handleBraindumpLinked(event: CustomEvent) {
-		const { projectName, projectId } = event.detail;
-		// Update the local state to reflect the link
-		isUnlinked = false;
-		linkedProject = {
-			id: projectId,
-			name: projectName
-		};
-		// Refresh the braindump details
+		// Refresh the braindump details (the derived values will update automatically)
 		fetchBraindumpDetails();
 	}
 
@@ -210,7 +209,9 @@
 				<div
 					class="inline-flex items-center px-2 py-1 rounded text-xs font-medium {statusInfo.color} flex-shrink-0"
 				>
-					<{statusInfo.icon} class="w-3 h-3 mr-1" />
+					{#if statusInfo.icon}
+						<svelte:component this={statusInfo.icon} class="w-3 h-3 mr-1" />
+					{/if}
 					<span class="capitalize">{braindump?.status || 'draft'}</span>
 				</div>
 			</div>
@@ -301,7 +302,9 @@
 							<div
 								class="inline-flex items-center px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-xs {typeInfo.color}"
 							>
-								<{typeInfo.icon} class="w-3 h-3 mr-1" />
+								{#if typeInfo.icon}
+									<svelte:component this={typeInfo.icon} class="w-3 h-3 mr-1" />
+								{/if}
 								{typeInfo.label}
 							</div>
 						{/each}

@@ -84,12 +84,14 @@
 <div class="p-4 space-y-3">
 	<div class="flex items-start gap-3">
 		<div class="flex-shrink-0">
-			{@const StatusIcon = statusIcon}
-			<StatusIcon
-				class={`w-5 h-5 ${
-					notification.status === 'processing' ? 'animate-spin' : ''
-				} ${statusIconClasses}`}
-			/>
+			{#if statusIcon}
+				{@const StatusIcon = statusIcon}
+				<StatusIcon
+					class={`w-5 h-5 ${
+						notification.status === 'processing' ? 'animate-spin' : ''
+					} ${statusIconClasses}`}
+				/>
+			{/if}
 		</div>
 
 		<div class="flex-1 min-w-0 space-y-1">

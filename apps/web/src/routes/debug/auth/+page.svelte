@@ -7,12 +7,12 @@
 	import LogoutTest from '$lib/components/test/LogoutTest.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 
-	export let data: PageData;
+	let { data }: { data: PageData } = $props();
 
 	let supabase = createSupabaseBrowser();
-	let clientSession: any = null;
-	let authStates: string[] = [];
-	let checking = false;
+	let clientSession = $state<any>(null);
+	let authStates = $state<string[]>([]);
+	let checking = $state(false);
 
 	async function checkSession() {
 		checking = true;
@@ -62,8 +62,8 @@
 		return () => subscription.unsubscribe();
 	});
 
-	$: serverUser = data?.user;
-	$: urlParams = Object.fromEntries($page.url.searchParams);
+	let serverUser = $derived(data?.user);
+	let urlParams = $derived(Object.fromEntries($page.url.searchParams));
 </script>
 
 <div class="max-w-6xl mx-auto p-8">

@@ -6,9 +6,9 @@
 	import TextInput from '$lib/components/ui/TextInput.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 
-	export let form: ActionData;
+	let { form }: { form?: ActionData } = $props();
 
-	let loading = false;
+	let loading = $state(false);
 </script>
 
 <svelte:head>

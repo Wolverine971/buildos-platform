@@ -1054,6 +1054,7 @@
 								class="absolute z-30 mt-1 w-40 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg"
 							>
 								{#each [{ value: 'backlog', label: 'Backlog', icon: Circle }, { value: 'in_progress', label: 'In Progress', icon: LoaderCircle }, { value: 'done', label: 'Done', icon: CircleCheck }, { value: 'blocked', label: 'Blocked', icon: TriangleAlert }] as status}
+									{@const StatusIcon = status.icon}
 									<button
 										onclick={(e) => {
 											e.stopPropagation();
@@ -1061,7 +1062,9 @@
 										}}
 										class="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-600 flex items-center gap-2"
 									>
-										<{status.icon} class="w-3.5 h-3.5" />
+										{#if status.icon}
+											<StatusIcon class="w-3.5 h-3.5" />
+										{/if}
 										{status.label}
 									</button>
 								{/each}

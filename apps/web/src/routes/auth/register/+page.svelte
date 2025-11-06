@@ -11,16 +11,16 @@
 	import SEOHead from '$lib/components/SEOHead.svelte';
 	import { validateEmailClient } from '$lib/utils/client-email-validation';
 
-	let loading = false;
-	let googleLoading = false;
-	let email = '';
-	let password = '';
-	let confirmPassword = '';
-	let name = '';
-	let error = '';
-	let success = false;
-	let successMessage = '';
-	let emailError = '';
+	let loading = $state(false);
+	let googleLoading = $state(false);
+	let email = $state('');
+	let password = $state('');
+	let confirmPassword = $state('');
+	let name = $state('');
+	let error = $state('');
+	let success = $state(false);
+	let successMessage = $state('');
+	let emailError = $state('');
 
 	// Show any URL messages as toasts
 	onMount(() => {
@@ -202,8 +202,10 @@
 	}
 
 	// Real-time password validation feedback
-	$: passwordStrength = (() => {
-		if (!password) return null;
+	let passwordStrength = $derived.by(() => {
+		if (!password) {
+			return null;
+		}
 
 		const checks = {
 			length: password.length >= 8,
@@ -214,9 +216,9 @@
 
 		const score = Object.values(checks).filter(Boolean).length;
 		return { checks, score };
-	})();
+	});
 
-	$: passwordsMatch = !confirmPassword || password === confirmPassword;
+	let passwordsMatch = $derived(!confirmPassword || password === confirmPassword);
 </script>
 
 <SEOHead

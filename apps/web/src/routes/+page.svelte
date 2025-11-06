@@ -2,7 +2,6 @@
 <script lang="ts">
 	import { CheckCircle2, Calendar, Zap } from 'lucide-svelte';
 	import './dashboard.css';
-	import type { PageData } from './$types';
 	import type { User } from '$lib/types/dashboard';
 	import type { DashboardData } from '$lib/services/dashboardData.service';
 	import { onMount } from 'svelte';

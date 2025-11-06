@@ -26,6 +26,9 @@
 	export let helperText = '';
 	export let errorText = '';
 
+	const generatedLabelId = crypto.randomUUID();
+	$: labelId = label ? `${(name || generatedLabelId).toString()}-label` : undefined;
+
 	// Allow class prop to be passed through
 	let className = '';
 	export { className as class };
@@ -118,18 +121,19 @@
 
 <div class={containerClasses}>
 	{#if label}
-		<label class={labelClasses}>
+		<p id={labelId} class={labelClasses}>
 			{label}
 			{#if required}
 				<span class="text-red-500 ml-0.5">*</span>
 			{/if}
-		</label>
+		</p>
 	{/if}
 
 	<div
 		class={groupClasses}
 		role="radiogroup"
-		aria-label={label}
+		aria-label={labelId ? undefined : label || undefined}
+		aria-labelledby={labelId}
 		aria-required={required}
 		aria-invalid={error}
 		aria-describedby={error && errorText

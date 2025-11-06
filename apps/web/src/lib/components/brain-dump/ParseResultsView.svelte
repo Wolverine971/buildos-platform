@@ -473,11 +473,11 @@
 							<div class="mt-3 space-y-3 text-sm">
 								{#if operation.data?.description}
 									<div>
-										<label
+										<p
 											class="block text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1"
 										>
 											Description
-										</label>
+										</p>
 										<p class="text-gray-700 dark:text-gray-300">
 											{operation.data.description}
 										</p>
@@ -486,11 +486,11 @@
 
 								{#if operation.data?.details || operation.data?.content}
 									<div>
-										<label
+										<p
 											class="block text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1"
 										>
 											{operation.table === 'notes' ? 'Content' : 'Details'}
-										</label>
+										</p>
 										<div
 											class="text-gray-700 dark:text-gray-300 whitespace-pre-wrap"
 										>
@@ -504,11 +504,11 @@
 									<div class="grid grid-cols-2 md:grid-cols-4 gap-3">
 										{#if operation.data?.priority}
 											<div>
-												<label
+												<p
 													class="block text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1"
 												>
 													Priority
-												</label>
+												</p>
 												<span
 													class="inline-flex px-2 py-1 text-xs font-medium rounded-full
 													{operation.data.priority === 'high'
@@ -524,11 +524,11 @@
 
 										{#if operation.data?.status}
 											<div>
-												<label
+												<p
 													class="block text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1"
 												>
 													Status
-												</label>
+												</p>
 												<span class="text-gray-700 dark:text-gray-300"
 													>{operation.data.status}</span
 												>
@@ -537,11 +537,11 @@
 
 										{#if operation.data?.duration_minutes}
 											<div>
-												<label
+												<p
 													class="block text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1"
 												>
 													Duration
-												</label>
+												</p>
 												<div
 													class="flex items-center gap-1 text-gray-700 dark:text-gray-300"
 												>
@@ -554,11 +554,11 @@
 
 										{#if operation.data?.start_date}
 											<div>
-												<label
+												<p
 													class="block text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1"
 												>
 													Start Date
-												</label>
+												</p>
 												<div
 													class="flex items-center gap-1 text-gray-700 dark:text-gray-300"
 												>
@@ -578,11 +578,11 @@
 								{#if operation.table === 'projects'}
 									{#if operation.data?.executive_summary}
 										<div>
-											<label
+											<p
 												class="block text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1"
 											>
 												Executive Summary
-											</label>
+											</p>
 											<p class="text-gray-700 dark:text-gray-300">
 												{operation.data.executive_summary}
 											</p>
@@ -591,11 +591,11 @@
 
 									{#if operation.data?.tags && operation.data.tags.length > 0}
 										<div>
-											<label
+											<p
 												class="block text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1"
 											>
 												Tags
-											</label>
+											</p>
 											<div class="flex flex-wrap gap-2">
 												{#each operation.data.tags as tag}
 													<span
@@ -613,11 +613,11 @@
 								<!-- References -->
 								{#if operation.data?.project_ref || operation.data?.parent_task_ref}
 									<div>
-										<label
+										<p
 											class="block text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1"
 										>
 											References
-										</label>
+										</p>
 										<div class="space-y-1">
 											{#if operation.data.project_ref}
 												<p class="text-gray-700 dark:text-gray-300">

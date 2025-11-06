@@ -361,22 +361,18 @@
 					{/if}
 
 					<div>
-						<label
-							class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-						>
+						<p class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
 							Time
-						</label>
+						</p>
 						<div class="px-3 py-2 bg-gray-50 dark:bg-gray-700 rounded-lg">
 							{convertTimeToHHMM(briefPreferences?.time_of_day)}
 						</div>
 					</div>
 
 					<div class="sm:col-span-2">
-						<label
-							class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-						>
+						<p class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
 							Status
-						</label>
+						</p>
 						<div class="space-y-2">
 							<div class="flex flex-col sm:flex-row sm:items-center gap-2">
 								<div

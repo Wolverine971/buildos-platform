@@ -531,17 +531,19 @@
 
 						<!-- Description -->
 						<div>
-							<label
+							<p
+								id="project-description-label"
 								class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
 							>
 								Description
-							</label>
+							</p>
 							<MarkdownToggleField
 								value={projectFormData.description || ''}
 								onUpdate={(newValue) =>
 									handleMarkdownUpdate('description', newValue)}
 								placeholder="Brief description of the project"
 								rows={3}
+								ariaLabelledby="project-description-label"
 							/>
 						</div>
 
@@ -606,17 +608,19 @@
 
 						<!-- Executive Summary -->
 						<div>
-							<label
+							<p
+								id="project-executive-summary-label"
 								class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
 							>
 								Executive Summary
-							</label>
+							</p>
 							<MarkdownToggleField
 								value={projectFormData.executive_summary || ''}
 								onUpdate={(newValue) =>
 									handleMarkdownUpdate('executive_summary', newValue)}
 								placeholder="Brief overview of the project goals and current status"
 								rows={3}
+								ariaLabelledby="project-executive-summary-label"
 							/>
 						</div>
 					</div>

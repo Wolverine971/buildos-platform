@@ -170,9 +170,9 @@
 			</div>
 
 			<div class="form-control">
-				<label class="label">
-					<span class="label-text">&nbsp;</span>
-				</label>
+				<div class="label">
+					<span class="label-text" aria-hidden="true">&nbsp;</span>
+				</div>
 				<button class="btn btn-primary" onclick={applyFilters}>Refresh</button>
 			</div>
 		</div>

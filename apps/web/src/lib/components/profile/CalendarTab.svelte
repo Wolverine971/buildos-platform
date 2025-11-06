@@ -658,12 +658,12 @@
 						</div>
 
 						<!-- Working Days -->
-						<div>
-							<label
-								class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+						<fieldset class="space-y-2">
+							<legend
+								class="block text-sm font-medium text-gray-700 dark:text-gray-300"
 							>
 								Working Days
-							</label>
+							</legend>
 							<div class="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
 								{#each DAY_NAMES as day, index}
 									<label class="flex items-center space-x-2 cursor-pointer">
@@ -683,7 +683,7 @@
 									</label>
 								{/each}
 							</div>
-						</div>
+						</fieldset>
 
 						<!-- Task Duration Settings -->
 						<div class="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">

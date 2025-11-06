@@ -126,48 +126,38 @@
 		showTemplateSelection = false;
 	}
 
-	async function handleSubmit(formData: Record<string, any>) {
-		try {
-			const requestBody = {
-				project_id: projectId,
-				type_key: selectedTemplate?.type_key || 'task.basic',
-				title: formData.title?.trim(),
+	async function handleSubmit(formData: Record<string, any>): Promise<void> {
+		const requestBody = {
+			project_id: projectId,
+			type_key: selectedTemplate?.type_key || 'task.basic',
+			title: formData.title?.trim(),
+			description: formData.description?.trim() || null,
+			priority: formData.priority || 3,
+			plan_id: formData.plan_id || null,
+			state_key: formData.state_key || 'todo',
+			props: {
 				description: formData.description?.trim() || null,
-				priority: formData.priority || 3,
-				plan_id: formData.plan_id || null,
-				state_key: formData.state_key || 'todo',
-				props: {
-					description: formData.description?.trim() || null,
-					...(selectedTemplate?.default_props || {})
-				}
-			};
-
-			const response = await fetch('/api/onto/tasks/create', {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify(requestBody)
-			});
-
-			const result = await response.json();
-
-			if (!response.ok) {
-				throw new Error(result.error || 'Failed to create task');
+				...(selectedTemplate?.default_props || {})
 			}
+		};
 
-			// Success! Call the callback
-			if (onCreated) {
-				onCreated(result.data.task.id);
-			}
+		const response = await fetch('/api/onto/tasks/create', {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json'
+			},
+			body: JSON.stringify(requestBody)
+		});
 
-			return { success: true };
-		} catch (err) {
-			console.error('Error creating task:', err);
-			return {
-				success: false,
-				error: err instanceof Error ? err.message : 'Failed to create task'
-			};
+		const result = await response.json();
+
+		if (!response.ok) {
+			throw new Error(result.error || 'Failed to create task');
+		}
+
+		// Success! Call the callback
+		if (onCreated) {
+			onCreated(result.data.task.id);
 		}
 	}
 

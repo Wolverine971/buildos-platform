@@ -12,6 +12,7 @@
 	export let disabled: boolean = false;
 	export let size: 'sm' | 'base' | 'lg' = 'sm';
 	export let autoFocus: boolean = false;
+	export let ariaLabelledby: string | undefined = undefined;
 
 	let isEditMode = false;
 	let textareaElement: HTMLTextAreaElement;
@@ -116,6 +117,7 @@
 				{placeholder}
 				autofocus={autoFocus}
 				size="md"
+				aria-labelledby={ariaLabelledby}
 			/>
 			<!-- Helper text for edit mode -->
 			<div class="mt-1 text-xs text-gray-500 dark:text-gray-400">
@@ -132,6 +134,7 @@
 				role="button"
 				tabindex={disabled ? -1 : 0}
 				aria-label="Click to edit content"
+				aria-labelledby={ariaLabelledby}
 			>
 				{#if showPlaceholder}
 					<span class="text-gray-400 italic text-sm">

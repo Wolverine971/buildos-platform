@@ -91,8 +91,8 @@
 	</div>
 
 	<!-- End Options -->
-	<div>
-		<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+	<fieldset class="space-y-2">
+		<legend class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
 			Ends
 			{#if projectEndDate && endOption === 'never'}
 				<span class="text-xs text-gray-500 dark:text-gray-400 ml-2">
@@ -103,7 +103,21 @@
 					})})
 				</span>
 			{/if}
+		</legend>
+		<label
+			class="flex items-center space-x-2 cursor-pointer p-2 rounded hover:bg-gray-50 dark:hover:bg-gray-800"
+		>
+			<input
+				type="radio"
+				name="recurrence-end"
+				value="never"
+				checked={endOption === 'never'}
+				onchange={() => (endOption = 'never')}
+				class="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+			/>
+			<span class="text-sm text-gray-900 dark:text-gray-100">Never</span>
 		</label>
+
 		<div class="space-y-2">
 			<label
 				class="flex items-center space-x-2 cursor-pointer p-2 rounded hover:bg-gray-50 dark:hover:bg-gray-800"
@@ -111,46 +125,30 @@
 				<input
 					type="radio"
 					name="recurrence-end"
-					value="never"
-					checked={endOption === 'never'}
-					onchange={() => (endOption = 'never')}
+					value="date"
+					checked={endOption === 'date'}
+					onchange={() => (endOption = 'date')}
 					class="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
 				/>
-				<span class="text-sm text-gray-900 dark:text-gray-100">Never</span>
+				<span class="text-sm text-gray-900 dark:text-gray-100">On date</span>
 			</label>
 
-			<div class="space-y-2">
-				<label
-					class="flex items-center space-x-2 cursor-pointer p-2 rounded hover:bg-gray-50 dark:hover:bg-gray-800"
-				>
-					<input
-						type="radio"
-						name="recurrence-end"
-						value="date"
-						checked={endOption === 'date'}
-						onchange={() => (endOption = 'date')}
-						class="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+			{#if endOption === 'date'}
+				<div class="ml-8 mt-1">
+					<TextInput
+						id="end-date"
+						type="date"
+						bind:value={endDate}
+						min={startDate}
+						max={projectEndDate || undefined}
+						size="sm"
+						placeholder="Select end date"
+						class="w-full max-w-xs"
 					/>
-					<span class="text-sm text-gray-900 dark:text-gray-100">On date</span>
-				</label>
-
-				{#if endOption === 'date'}
-					<div class="ml-8 mt-1">
-						<TextInput
-							id="end-date"
-							type="date"
-							bind:value={endDate}
-							min={startDate}
-							max={projectEndDate || undefined}
-							size="sm"
-							placeholder="Select end date"
-							class="w-full max-w-xs"
-						/>
-					</div>
-				{/if}
-			</div>
+				</div>
+			{/if}
 		</div>
-	</div>
+	</fieldset>
 
 	<!-- Preview -->
 	{#if nextOccurrences.length > 0}

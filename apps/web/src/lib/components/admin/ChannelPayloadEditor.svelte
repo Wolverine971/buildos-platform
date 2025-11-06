@@ -62,6 +62,9 @@
 	$effect(() => {
 		selectedChannels.forEach((channel) => ensureChannelPayload(channel));
 	});
+
+	const fieldId = (channel: NotificationChannel, field: string) =>
+		`${channel}-${field}`.replace(/[^a-z0-9-]/gi, '-');
 </script>
 
 <div class="space-y-6">
@@ -81,11 +84,13 @@
 					<div class="space-y-4">
 						<div>
 							<label
+								for={fieldId(channel, 'title')}
 								class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
 							>
 								Title *
 							</label>
 							<input
+								id={fieldId(channel, 'title')}
 								type="text"
 								bind:value={channelPayloads.push.title}
 								class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
@@ -95,11 +100,13 @@
 
 						<div>
 							<label
+								for={fieldId(channel, 'body')}
 								class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
 							>
 								Body *
 							</label>
 							<textarea
+								id={fieldId(channel, 'body')}
 								bind:value={channelPayloads.push.body}
 								rows="3"
 								class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
@@ -110,11 +117,13 @@
 						<div class="grid grid-cols-2 gap-4">
 							<div>
 								<label
+									for={fieldId(channel, 'priority')}
 									class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
 								>
 									Priority
 								</label>
 								<select
+									id={fieldId(channel, 'priority')}
 									bind:value={channelPayloads.push.priority}
 									class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
 								>
@@ -126,11 +135,13 @@
 
 							<div>
 								<label
+									for={fieldId(channel, 'tag')}
 									class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
 								>
 									Tag
 								</label>
 								<input
+									id={fieldId(channel, 'tag')}
 									type="text"
 									bind:value={channelPayloads.push.tag}
 									class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
@@ -141,11 +152,13 @@
 
 						<div>
 							<label
+								for={fieldId(channel, 'action-url')}
 								class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
 							>
 								Action URL
 							</label>
 							<input
+								id={fieldId(channel, 'action-url')}
 								type="url"
 								bind:value={channelPayloads.push.action_url}
 								class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
@@ -155,11 +168,13 @@
 
 						<div>
 							<label
+								for={fieldId(channel, 'icon-url')}
 								class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
 							>
 								Icon URL
 							</label>
 							<input
+								id={fieldId(channel, 'icon-url')}
 								type="url"
 								bind:value={channelPayloads.push.icon_url}
 								class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
@@ -169,11 +184,13 @@
 
 						<div>
 							<label
+								for={fieldId(channel, 'event-type')}
 								class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
 							>
 								Event Type
 							</label>
 							<input
+								id={fieldId(channel, 'event-type')}
 								type="text"
 								bind:value={channelPayloads.push.event_type}
 								class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
@@ -187,11 +204,13 @@
 						<div class="grid grid-cols-2 gap-4">
 							<div>
 								<label
+									for={fieldId(channel, 'type')}
 									class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
 								>
 									Type
 								</label>
 								<select
+									id={fieldId(channel, 'type')}
 									bind:value={channelPayloads.in_app.type}
 									class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
 								>
@@ -203,11 +222,13 @@
 
 							<div>
 								<label
+									for={fieldId(channel, 'priority')}
 									class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
 								>
 									Priority
 								</label>
 								<select
+									id={fieldId(channel, 'priority')}
 									bind:value={channelPayloads.in_app.priority}
 									class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
 								>
@@ -220,11 +241,13 @@
 
 						<div>
 							<label
+								for={fieldId(channel, 'title')}
 								class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
 							>
 								Title *
 							</label>
 							<input
+								id={fieldId(channel, 'title')}
 								type="text"
 								bind:value={channelPayloads.in_app.title}
 								class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
@@ -234,11 +257,13 @@
 
 						<div>
 							<label
+								for={fieldId(channel, 'body')}
 								class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
 							>
 								Body *
 							</label>
 							<textarea
+								id={fieldId(channel, 'body')}
 								bind:value={channelPayloads.in_app.body}
 								rows="3"
 								class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
@@ -248,11 +273,13 @@
 
 						<div>
 							<label
+								for={fieldId(channel, 'action-url')}
 								class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
 							>
 								Action URL
 							</label>
 							<input
+								id={fieldId(channel, 'action-url')}
 								type="url"
 								bind:value={channelPayloads.in_app.action_url}
 								class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
@@ -262,11 +289,13 @@
 
 						<div>
 							<label
+								for={fieldId(channel, 'expires-at')}
 								class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
 							>
 								Expires At
 							</label>
 							<input
+								id={fieldId(channel, 'expires-at')}
 								type="datetime-local"
 								bind:value={channelPayloads.in_app.expires_at}
 								class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
@@ -278,11 +307,13 @@
 					<div class="space-y-4">
 						<div>
 							<label
+								for={fieldId(channel, 'subject')}
 								class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
 							>
 								Subject *
 							</label>
 							<input
+								id={fieldId(channel, 'subject')}
 								type="text"
 								bind:value={channelPayloads.email.title}
 								class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
@@ -292,11 +323,13 @@
 
 						<div>
 							<label
+								for={fieldId(channel, 'body')}
 								class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
 							>
 								Body *
 							</label>
 							<textarea
+								id={fieldId(channel, 'body')}
 								bind:value={channelPayloads.email.body}
 								rows="5"
 								class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
@@ -309,11 +342,13 @@
 
 						<div>
 							<label
+								for={fieldId(channel, 'action-url')}
 								class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
 							>
 								Action URL (CTA Button)
 							</label>
 							<input
+								id={fieldId(channel, 'action-url')}
 								type="url"
 								bind:value={channelPayloads.email.action_url}
 								class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
@@ -323,11 +358,13 @@
 
 						<div>
 							<label
+								for={fieldId(channel, 'image-url')}
 								class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
 							>
 								Image URL
 							</label>
 							<input
+								id={fieldId(channel, 'image-url')}
 								type="url"
 								bind:value={channelPayloads.email.image_url}
 								class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
@@ -337,11 +374,13 @@
 
 						<div>
 							<label
+								for={fieldId(channel, 'event-type')}
 								class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
 							>
 								Event Type
 							</label>
 							<input
+								id={fieldId(channel, 'event-type')}
 								type="text"
 								bind:value={channelPayloads.email.event_type}
 								class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
@@ -354,11 +393,13 @@
 					<div class="space-y-4">
 						<div>
 							<label
+								for={fieldId(channel, 'title')}
 								class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
 							>
 								Title
 							</label>
 							<input
+								id={fieldId(channel, 'title')}
 								type="text"
 								bind:value={channelPayloads.sms.title}
 								class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
@@ -368,11 +409,13 @@
 
 						<div>
 							<label
+								for={fieldId(channel, 'body')}
 								class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
 							>
 								Message *
 							</label>
 							<textarea
+								id={fieldId(channel, 'body')}
 								bind:value={channelPayloads.sms.body}
 								rows="3"
 								maxlength="160"
@@ -386,11 +429,13 @@
 
 						<div>
 							<label
+								for={fieldId(channel, 'priority')}
 								class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
 							>
 								Priority
 							</label>
 							<select
+								id={fieldId(channel, 'priority')}
 								bind:value={channelPayloads.sms.priority}
 								class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
 							>
@@ -402,11 +447,13 @@
 
 						<div>
 							<label
+								for={fieldId(channel, 'event-type')}
 								class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
 							>
 								Event Type
 							</label>
 							<input
+								id={fieldId(channel, 'event-type')}
 								type="text"
 								bind:value={channelPayloads.sms.event_type}
 								class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"

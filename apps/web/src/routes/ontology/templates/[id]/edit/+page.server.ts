@@ -6,11 +6,10 @@
 
 import type { PageServerLoad } from './$types';
 import { error, redirect } from '@sveltejs/kit';
-import { createAdminSupabaseClient } from '$lib/supabase/admin';
 
-export const load: PageServerLoad = async ({ params, locals }) => {
+export const load: PageServerLoad = async ({ params, locals: { safeGetSession, supabase } }) => {
 	// Check authentication and admin status
-	const { user } = await locals.safeGetSession();
+	const { user } = await safeGetSession();
 
 	if (!user) {
 		throw redirect(302, '/auth/login');
@@ -24,10 +23,9 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 	const templateId = params.id;
 
 	// Use admin client to load template and available parents
-	const adminClient = createAdminSupabaseClient();
 
 	// Load the template to edit
-	const { data: template, error: templateError } = await adminClient
+	const { data: template, error: templateError } = await supabase
 		.from('onto_templates')
 		.select('*')
 		.eq('id', templateId)
@@ -42,7 +40,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 
 	// Load all active templates (for parent selection)
 	// Exclude the current template and its children to prevent circular references
-	const { data: allTemplates, error: templatesError } = await adminClient
+	const { data: allTemplates, error: templatesError } = await supabase
 		.from('onto_templates')
 		.select('id, name, type_key, scope, parent_template_id')
 		.eq('status', 'active')

@@ -7,11 +7,11 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import { validateEmailClient } from '$lib/utils/client-email-validation';
 
-	export let form: ActionData;
+	let { form }: { form?: ActionData } = $props();
 
-	let loading = false;
-	let email = form?.email ?? '';
-	let emailError = '';
+	let loading = $state(false);
+	let email = $state(form?.email ?? '');
+	let emailError = $state('');
 
 	// Validate email on blur for instant feedback
 	function validateEmail() {

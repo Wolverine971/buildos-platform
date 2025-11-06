@@ -175,9 +175,9 @@
 		}
 	}
 
-	async function handleStateChange(event: CustomEvent) {
-		const newState = event.detail.newState;
-		stateKey = newState;
+	async function handleStateChange(data: { state: string; actions: string[]; event: string }) {
+		debugger;
+		stateKey = data.state;
 		await handleSave();
 		await loadTransitions();
 	}
@@ -318,7 +318,7 @@
 										entityName={name}
 										currentState={stateKey}
 										initialTransitions={allowedTransitions}
-										on:stateChange={handleStateChange}
+										onstatechange={handleStateChange}
 									/>
 								</div>
 							{:else}

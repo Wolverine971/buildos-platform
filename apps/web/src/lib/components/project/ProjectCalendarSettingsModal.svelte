@@ -422,9 +422,9 @@
 							>
 								<Palette class="w-4 h-4 text-purple-600 dark:text-purple-400" />
 							</div>
-							<label class="text-sm font-semibold text-gray-900 dark:text-white">
+							<p class="text-sm font-semibold text-gray-900 dark:text-white">
 								Calendar Color
-							</label>
+							</p>
 						</div>
 						<p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
 							Choose a color to identify this calendar in Google Calendar
@@ -533,9 +533,9 @@
 								>
 									<Users class="h-4 w-4 text-blue-600 dark:text-blue-400" />
 								</div>
-								<label class="text-sm font-semibold text-gray-900 dark:text-white">
+								<p class="text-sm font-semibold text-gray-900 dark:text-white">
 									Share Calendar
-								</label>
+								</p>
 							</div>
 
 							<div class="flex flex-col sm:flex-row gap-2">

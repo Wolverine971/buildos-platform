@@ -213,9 +213,9 @@
 		<!-- Custom Fields -->
 		<div>
 			<div class="flex items-center justify-between mb-3">
-				<label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+				<p class="block text-sm font-medium text-gray-700 dark:text-gray-300">
 					Custom Fields
-				</label>
+				</p>
 				<button
 					type="button"
 					onclick={addCustomField}

@@ -6,11 +6,10 @@
 
 import type { PageServerLoad } from './$types';
 import { redirect } from '@sveltejs/kit';
-import { createAdminSupabaseClient } from '$lib/supabase/admin';
 
-export const load: PageServerLoad = async ({ locals }) => {
+export const load: PageServerLoad = async ({ locals: { safeGetSession, supabase } }) => {
 	// Check authentication and admin status
-	const { user } = await locals.safeGetSession();
+	const { user } = await safeGetSession();
 
 	if (!user) {
 		throw redirect(302, '/auth/login');
@@ -21,10 +20,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 		throw redirect(302, '/ontology/templates');
 	}
 
-	// Use admin client to load all templates (for parent selection)
-	const adminClient = createAdminSupabaseClient();
-
-	const { data: templates, error } = await adminClient
+	const { data: templates, error } = await supabase
 		.from('onto_templates')
 		.select('id, name, type_key, scope')
 		.eq('status', 'active')

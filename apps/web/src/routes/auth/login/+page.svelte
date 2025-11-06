@@ -11,12 +11,12 @@
 	import SEOHead from '$lib/components/SEOHead.svelte';
 	import { validateEmailClient } from '$lib/utils/client-email-validation';
 
-	let loading = false;
-	let googleLoading = false;
-	let email = '';
-	let password = '';
-	let error = '';
-	let emailError = '';
+	let loading = $state(false);
+	let googleLoading = $state(false);
+	let email = $state('');
+	let password = $state('');
+	let error = $state('');
+	let emailError = $state('');
 
 	// Validate email on blur for instant feedback
 	function validateEmail() {

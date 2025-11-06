@@ -232,11 +232,11 @@
 <div class="w-full">
 	<!-- Header -->
 	<div class="flex items-center justify-between mb-2">
-		<label class="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+		<p class="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
 			<MessageSquare class="w-4 h-4" />
 			Phase Scheduling Instructions
 			<span class="text-xs text-gray-500 dark:text-gray-400">(optional)</span>
-		</label>
+		</p>
 
 		{#if instructions.length > 0}
 			<span class="text-xs text-gray-500 dark:text-gray-400">

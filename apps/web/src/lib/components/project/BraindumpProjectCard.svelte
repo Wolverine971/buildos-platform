@@ -6,10 +6,17 @@
 	import type { BraindumpWithLinks } from '$lib/types/brain-dump';
 	import Button from '$lib/components/ui/Button.svelte';
 
-	export let braindump: BraindumpWithLinks;
-	export let onClick: (() => void) | undefined = undefined;
-	export let onDelete: (() => void) | undefined = undefined;
-	export let onTaskClick: ((taskId: string) => void) | undefined = undefined;
+	let {
+		braindump,
+		onClick = undefined,
+		onDelete = undefined,
+		onTaskClick = undefined
+	}: {
+		braindump: BraindumpWithLinks;
+		onClick?: (() => void) | undefined;
+		onDelete?: (() => void) | undefined;
+		onTaskClick?: ((taskId: string) => void) | undefined;
+	} = $props();
 
 	const dispatch = createEventDispatcher();
 
@@ -79,8 +86,8 @@
 		}
 	}
 
-	$: statusInfo = getStatusInfo(braindump.status);
-	$: timeDisplay = getTimeDisplay(braindump.created_at);
+	let statusInfo = $derived(getStatusInfo(braindump.status));
+	let timeDisplay = $derived(getTimeDisplay(braindump.created_at));
 </script>
 
 <div
@@ -205,7 +212,9 @@
 				<div
 					class="inline-flex items-center px-2 py-1 rounded text-xs font-medium {statusInfo.color}"
 				>
-					<{statusInfo.icon} class="w-3 h-3 mr-1" />
+					{#if statusInfo.icon}
+						<svelte:component this={statusInfo.icon} class="w-3 h-3 mr-1" />
+					{/if}
 					<span>{statusInfo.label}</span>
 				</div>
 			</div>

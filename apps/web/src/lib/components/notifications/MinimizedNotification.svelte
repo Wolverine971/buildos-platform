@@ -233,7 +233,8 @@
 >
 	{#if typeSpecificComponent}
 		<!-- Type-specific view (brain dump, phase generation, etc.) -->
-		<{typeSpecificComponent} {notification} />
+		{@const TypeComponent = typeSpecificComponent}
+		<TypeComponent {notification} />
 	{:else}
 		<!-- Generic fallback view -->
 		<div class="p-4">

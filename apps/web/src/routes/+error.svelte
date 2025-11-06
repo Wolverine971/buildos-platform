@@ -14,85 +14,95 @@
 	} from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 
-	$: status = $page.status;
-	$: message = $page.error?.message || 'An unexpected error occurred';
+	let status = $derived($page.status);
+	let message = $derived($page.error?.message || 'An unexpected error occurred');
 
 	// Simple error configurations
-	$: errorConfig = {
-		401: {
-			title: 'Authentication Required',
-			description: 'You need to sign in to access this page.',
-			icon: Lock,
-			color: 'amber',
-			showSignIn: true
-		},
-		403: {
-			title: 'Access Forbidden',
-			description: "You don't have permission to access this resource.",
-			icon: Shield,
-			color: 'red',
-			showSignIn: false
-		},
-		404: {
-			title: 'Page Not Found',
-			description: "The page you're looking for doesn't exist.",
-			icon: HelpCircle,
-			color: 'blue',
-			showSignIn: false
-		},
-		500: {
-			title: 'Server Error',
-			description: 'Something went wrong on our end.',
-			icon: ServerCrash,
-			color: 'red',
-			showSignIn: false
-		},
-		503: {
-			title: 'Service Unavailable',
-			description: 'BuildOS is temporarily unavailable.',
-			icon: ServerCrash,
-			color: 'orange',
-			showSignIn: false
-		}
-	}[status] || {
-		title: `Error ${status}`,
-		description: 'An unexpected error occurred.',
-		icon: AlertTriangle,
-		color: 'gray',
-		showSignIn: false
-	};
+	let errorConfig = $derived.by(() => {
+		const config = {
+			401: {
+				title: 'Authentication Required',
+				description: 'You need to sign in to access this page.',
+				icon: Lock,
+				color: 'amber',
+				showSignIn: true
+			},
+			403: {
+				title: 'Access Forbidden',
+				description: "You don't have permission to access this resource.",
+				icon: Shield,
+				color: 'red',
+				showSignIn: false
+			},
+			404: {
+				title: 'Page Not Found',
+				description: "The page you're looking for doesn't exist.",
+				icon: HelpCircle,
+				color: 'blue',
+				showSignIn: false
+			},
+			500: {
+				title: 'Server Error',
+				description: 'Something went wrong on our end.',
+				icon: ServerCrash,
+				color: 'red',
+				showSignIn: false
+			},
+			503: {
+				title: 'Service Unavailable',
+				description: 'BuildOS is temporarily unavailable.',
+				icon: ServerCrash,
+				color: 'orange',
+				showSignIn: false
+			}
+		}[status];
+
+		return (
+			config ?? {
+				title: `Error ${status}`,
+				description: 'An unexpected error occurred.',
+				icon: AlertTriangle,
+				color: 'gray',
+				showSignIn: false
+			}
+		);
+	});
 
 	// Color classes based on error type
-	$: colorClasses = {
-		amber: {
-			bg: 'bg-amber-50 dark:bg-amber-900/10',
-			border: 'border-amber-200 dark:border-amber-800',
-			icon: 'text-amber-600 dark:text-amber-400'
-		},
-		red: {
-			bg: 'bg-red-50 dark:bg-red-900/10',
-			border: 'border-red-200 dark:border-red-800',
-			icon: 'text-red-600 dark:text-red-400'
-		},
-		blue: {
-			bg: 'bg-blue-50 dark:bg-blue-900/10',
-			border: 'border-blue-200 dark:border-blue-800',
-			icon: 'text-blue-600 dark:text-blue-400'
-		},
-		orange: {
-			bg: 'bg-orange-50 dark:bg-orange-900/10',
-			border: 'border-orange-200 dark:border-orange-800',
-			icon: 'text-orange-600 dark:text-orange-400'
-		},
-		gray: {
-			bg: 'bg-gray-50 dark:bg-gray-900/10',
-			border: 'border-gray-200 dark:border-gray-800',
-			icon: 'text-gray-600 dark:text-gray-400'
-		}
-	}[errorConfig.color];
+	let colorClasses = $derived.by(() => {
+		const palette = {
+			amber: {
+				bg: 'bg-amber-50 dark:bg-amber-900/10',
+				border: 'border-amber-200 dark:border-amber-800',
+				icon: 'text-amber-600 dark:text-amber-400'
+			},
+			red: {
+				bg: 'bg-red-50 dark:bg-red-900/10',
+				border: 'border-red-200 dark:border-red-800',
+				icon: 'text-red-600 dark:text-red-400'
+			},
+			blue: {
+				bg: 'bg-blue-50 dark:bg-blue-900/10',
+				border: 'border-blue-200 dark:border-blue-800',
+				icon: 'text-blue-600 dark:text-blue-400'
+			},
+			orange: {
+				bg: 'bg-orange-50 dark:bg-orange-900/10',
+				border: 'border-orange-200 dark:border-orange-800',
+				icon: 'text-orange-600 dark:text-orange-400'
+			},
+			gray: {
+				bg: 'bg-gray-50 dark:bg-gray-900/10',
+				border: 'border-gray-200 dark:border-gray-800',
+				icon: 'text-gray-600 dark:text-gray-400'
+			}
+		};
+
+		return palette[errorConfig.color] ?? palette.gray;
+	});
 
 	// Extract error icon for template usage
-	$: ErrorIcon = errorConfig.icon;
+	let ErrorIcon = $derived(errorConfig.icon);
 
 	function handleRefresh() {
 		window.location.reload();

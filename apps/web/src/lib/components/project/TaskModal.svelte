@@ -1307,6 +1307,7 @@
 				<!-- Status -->
 				<div class="mt-4 space-y-2">
 					<label
+						for="task-status"
 						class="block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
 						>Status
 					</label>
@@ -1326,6 +1327,7 @@
 				<!-- Priority -->
 				<div class="space-y-2">
 					<label
+						for="task-priority"
 						class="block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
 						>Priority
 					</label>
@@ -1345,6 +1347,7 @@
 				<!-- Start Date -->
 				<div class="space-y-2">
 					<label
+						for="task-start-date"
 						class="block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
 						>Schedule
 					</label>
@@ -1377,6 +1380,7 @@
 				<!-- Duration -->
 				<div class="space-y-2">
 					<label
+						for="task-duration"
 						class="block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
 						>Duration
 					</label>
@@ -1516,53 +1520,6 @@
 						</div>
 					{/if}
 				{/if}
-
-				<!-- Dependencies -->
-				<!-- <div>
-					<label class="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-2 block">
-						Dependencies
-					</label>
-
-					{#if dependenciesValue.length > 0}
-						<div class="flex flex-wrap gap-1 mb-2">
-							{#each dependenciesValue as dependency}
-								<span
-									class="inline-flex items-center px-2 py-1 text-xs font-medium bg-orange-100 dark:bg-orange-900/50 text-orange-800 dark:text-orange-200 rounded-md"
-								>
-									{dependency}
-									<Button
-										type="button"
-										onclick={() => removeDependency(dependency)}
-										variant="ghost"
-										size="sm"
-										class="ml-1 p-0.5 !text-orange-600 dark:!text-orange-300 hover:!text-orange-800 dark:hover:!text-orange-100"
-									>
-										<X class="w-3 h-3" />
-									</Button>
-								</span>
-							{/each}
-						</div>
-					{/if}
-
-					<TextInput
-						id="task-dependencies"
-						bind:value={dependencyInput}
-						onkeydown={handleDependencyKeydown}
-						placeholder="Add dependency (press Enter)..."
-						size="sm"
-						class="bg-white/70 dark:bg-gray-800/70 "
-					/>
-				</div> -->
-
-				<!-- Parent Task -->
-				<!-- <FormField label="Parent Task ID" labelFor="task-parent">
-					<TextInput
-						id="task-parent"
-						bind:value={parentTaskIdValue}
-						placeholder="Parent task ID..."
-						size="sm"
-					/>
-				</FormField> -->
 
 				<!-- Task Steps -->
 				<div class="space-y-2">

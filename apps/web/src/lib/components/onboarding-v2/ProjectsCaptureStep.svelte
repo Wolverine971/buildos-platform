@@ -498,7 +498,11 @@
 			class="mb-4 bg-white dark:bg-gray-800 rounded-lg p-8 text-center border-2 border-dashed border-gray-300 dark:border-gray-600"
 		>
 			<p class="text-gray-400 text-sm">
-				<img src="/onboarding-assets/screenshots/brain-dump-1.png" />
+				<img
+					src="/onboarding-assets/screenshots/brain-dump-1.png"
+					alt="Screenshot of BuildOS brain dump input with highlighted project guidance"
+					loading="lazy"
+				/>
 			</p>
 		</div>
 		<h3 class="font-semibold mb-3 flex items-center gap-2 text-gray-900 dark:text-white">
@@ -543,7 +547,11 @@
 			class="mt-4 bg-white dark:bg-gray-800 rounded-lg p-8 text-center border-2 border-dashed border-gray-300 dark:border-gray-600"
 		>
 			<p class="text-gray-400 text-sm">
-				<img src="/onboarding-assets/screenshots/brain-dump-2.png" />
+				<img
+					src="/onboarding-assets/screenshots/brain-dump-2.png"
+					alt="Screenshot of BuildOS showing generated project summaries after processing a brain dump"
+					loading="lazy"
+				/>
 			</p>
 		</div>
 	</div>

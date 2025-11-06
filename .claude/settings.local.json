@@ -36,7 +36,9 @@
 			"Bash(npx tsc:*)",
 			"mcp__ide__getDiagnostics",
 			"Bash(pnpm test:*)",
-			"Bash(pnpm run gen:schema:*)"
+			"Bash(pnpm run gen:schema:*)",
+			"Bash(sed:*)",
+			"Bash(do grep -l \"import\" \"$file\")"
 		],
 		"deny": [],
 		"ask": []

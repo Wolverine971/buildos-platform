@@ -2,14 +2,15 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import type { PageData } from './$types';
+	import type { ComponentType } from 'svelte';
 	import { format } from 'date-fns';
 	import { ArrowLeft, Calendar, Clock, Tag, ArrowRight } from 'lucide-svelte';
 
-	export let data: PageData;
+	let { data }: { data: PageData } = $props();
 
-	let ContentComponent: any = null;
-	let loading = true;
-	let error: string | null = null;
+	let contentComponent = $state<ComponentType | null>(null);
+	let loading = $state(true);
+	let error = $state<string | null>(null);
 
 	const formattedDate = format(new Date(data.post.date), 'MMMM dd, yyyy');
 	const categoryDisplayName = data.post.category
@@ -22,7 +23,7 @@
 			const module = await import(
 				`../../../../content/blogs/${data.post.category}/${data.post.slug}.md`
 			);
-			ContentComponent = module.default;
+			contentComponent = module.default;
 		} catch (err) {
 			error = 'Failed to load blog content';
 			// Error loading blog content
@@ -223,9 +224,9 @@
 							Please try refreshing the page.
 						</p>
 					</div>
-				{:else if ContentComponent}
-					{@const ContentComponent = ContentComponent}
-					<ContentComponent />
+				{:else if contentComponent}
+					{@const MarkdownContent = contentComponent}
+					<MarkdownContent />
 				{:else}
 					<div class="text-center py-12">
 						<p class="text-gray-500 dark:text-gray-400">Content not available.</p>

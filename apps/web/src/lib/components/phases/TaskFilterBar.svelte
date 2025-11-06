@@ -153,6 +153,7 @@
 		{@const isActive = activeFiltersSet.has(option.id)}
 		{@const variant = getButtonVariant(isActive, option.activeVariant)}
 		{@const contentClasses = getContentClasses(isActive, option.color)}
+		{@const Icon = option.icon}
 
 		<Button
 			onclick={() => toggleFilter(option.id)}
@@ -166,7 +167,6 @@
 			aria-label="{option.label} tasks: {count} {isActive ? 'shown' : 'hidden'}"
 		>
 			<div class="flex items-center gap-1.5">
-				{@const Icon = option.icon}
 				<Icon
 					class="w-3.5 h-3.5 flex-shrink-0 transition-colors duration-200 {contentClasses.icon}"
 				/>

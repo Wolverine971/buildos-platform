@@ -236,15 +236,20 @@
 				>
 					{#each getTableFields(operation.table) as field}
 						{@const config = getFieldConfig(operation.table, field)}
+						{@const fieldId =
+							`${operation.id ?? operation.table ?? 'operation'}-${field}`
+								.replace(/[^a-z0-9-]/gi, '-')
+								.toLowerCase()}
 						<div>
-							<label
+							<p
+								id={`${fieldId}-label`}
 								class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
 							>
 								{config.label}
 								{#if config.required}
 									<span class="text-rose-500 dark:text-rose-400">*</span>
 								{/if}
-							</label>
+							</p>
 
 							{#if config.type === 'textarea'}
 								<div class="space-y-2">
@@ -286,20 +291,24 @@
 										</div>
 									{:else}
 										<Textarea
+											id={fieldId}
 											bind:value={editedData[field]}
 											rows={3}
 											placeholder={config.placeholder || ''}
 											size="md"
 											class="text-sm"
+											aria-labelledby={`${fieldId}-label`}
 										/>
 									{/if}
 								</div>
 							{:else if config.type === 'select'}
 								<Select
+									id={fieldId}
 									bind:value={editedData[field]}
 									onchange={(e) => (editedData[field] = e.detail)}
 									size="md"
 									class="text-xs sm:text-sm"
+									aria-labelledby={`${fieldId}-label`}
 								>
 									<option value="">Select {config.label}</option>
 									{#each config.options as option}
@@ -308,31 +317,39 @@
 								</Select>
 							{:else if config.type === 'date'}
 								<TextInput
+									id={fieldId}
 									type="date"
 									bind:value={editedData[field]}
 									size="md"
 									class="text-xs sm:text-sm"
+									aria-labelledby={`${fieldId}-label`}
 								/>
 							{:else if config.type === 'datetime-local'}
 								<TextInput
+									id={fieldId}
 									type="datetime-local"
 									bind:value={editedData[field]}
 									size="md"
 									class="text-sm"
+									aria-labelledby={`${fieldId}-label`}
 								/>
 							{:else if config.type === 'number'}
 								<TextInput
+									id={fieldId}
 									type="number"
 									bind:value={editedData[field]}
 									placeholder={config.placeholder || ''}
 									size="md"
+									aria-labelledby={`${fieldId}-label`}
 								/>
 							{:else if config.type === 'checkbox'}
 								<label class="flex items-center">
 									<input
+										id={fieldId}
 										type="checkbox"
 										bind:checked={editedData[field]}
 										class="h-5 w-5 text-primary-600 border-gray-300 dark:border-gray-600 rounded focus:ring-primary-500 cursor-pointer dark:bg-gray-700 dark:checked:bg-primary-600"
+										aria-labelledby={`${fieldId}-label`}
 									/>
 									<span class="ml-2 text-sm text-gray-600 dark:text-gray-400"
 										>{config.label}</span
@@ -340,9 +357,11 @@
 								</label>
 							{:else}
 								<TextInput
+									id={fieldId}
 									bind:value={editedData[field]}
 									placeholder={config.placeholder || ''}
 									size="md"
+									aria-labelledby={`${fieldId}-label`}
 								/>
 							{/if}
 						</div>
