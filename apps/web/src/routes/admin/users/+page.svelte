@@ -339,12 +339,7 @@
 
 			<!-- Admin Filter -->
 			<div>
-				<Select
-					bind:value={filterByAdmin}
-					onchange={(e) => (filterByAdmin = e.detail)}
-					size="md"
-					placeholder="All Users"
-				>
+				<Select bind:value={filterByAdmin} size="md" placeholder="All Users">
 					<option value="all">All Users</option>
 					<option value="admin">Admins Only</option>
 					<option value="regular">Regular Users</option>
@@ -353,12 +348,7 @@
 
 			<!-- Onboarding Filter -->
 			<div>
-				<Select
-					bind:value={filterByOnboarding}
-					onchange={(e) => (filterByOnboarding = e.detail)}
-					size="md"
-					placeholder="All Onboarding"
-				>
+				<Select bind:value={filterByOnboarding} size="md" placeholder="All Onboarding">
 					<option value="all">All Onboarding</option>
 					<option value="completed">Completed</option>
 					<option value="pending">Pending</option>
@@ -367,12 +357,7 @@
 
 			<!-- Sort -->
 			<div>
-				<Select
-					bind:value={sortBy}
-					onchange={(e) => (sortBy = e?.toString())}
-					size="md"
-					placeholder="Last Visit"
-				>
+				<Select bind:value={sortBy} size="md" placeholder="Last Visit">
 					<option value="last_visit">Last Visit</option>
 					<option value="created_at">Join Date</option>
 					<option value="brain_dump_count">Brain Dumps</option>

@@ -24,9 +24,6 @@
 	import Select from '$lib/components/ui/Select.svelte';
 	import TextInput from '$lib/components/ui/TextInput.svelte';
 
-	// Props
-	export let saveSuccess = false;
-
 	// Create event dispatcher for parent communication
 	const dispatch = createEventDispatcher();
 
@@ -409,7 +406,6 @@
 							<Select
 								id="brief-frequency"
 								bind:value={briefPreferencesForm.frequency}
-								onchange={(e) => (briefPreferencesForm.frequency = e.detail)}
 								size="md"
 							>
 								<option value="daily">Daily</option>
@@ -422,7 +418,6 @@
 								<Select
 									id="brief-day-of-week"
 									bind:value={briefPreferencesForm.day_of_week}
-									onchange={(e) => (briefPreferencesForm.day_of_week = e.detail)}
 									size="md"
 								>
 									{#each DAY_OPTIONS as day}

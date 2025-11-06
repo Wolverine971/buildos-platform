@@ -453,10 +453,19 @@
 										title={day
 											? `${day.visitor_count} visitor${day.visitor_count !== 1 ? 's' : ''} on ${formatTooltipDate(day.date)}`
 											: 'No data'}
-										onmouseenter={(e) => handleDayMouseEnter(e, day)}
-										onmouseleave={handleDayMouseLeave}
 										role="button"
 										tabindex="0"
+										aria-label={day
+											? `${day.visitor_count} visitor${day.visitor_count !== 1 ? 's' : ''} on ${formatTooltipDate(day.date)}`
+											: 'No data'}
+										onmouseenter={(e) => handleDayMouseEnter(e, day)}
+										onmouseleave={handleDayMouseLeave}
+										onkeydown={(e) => {
+											if (day && (e.key === 'Enter' || e.key === ' ')) {
+												e.preventDefault();
+												handleDayMouseEnter(e, day);
+											}
+										}}
 									></div>
 								{/each}
 							</div>
@@ -514,8 +523,17 @@
 										fill="rgb(34, 197, 94)"
 										fill-opacity="0.6"
 										class="hover:fill-opacity-100 cursor-pointer transition-all duration-200"
+										role="button"
+										tabindex="0"
+										aria-label="{point.signup_count} signups on {point.formattedDate}"
 										onmouseenter={(e) => handleSignupMouseEnter(e, point)}
 										onmouseleave={handleSignupMouseLeave}
+										onkeydown={(e) => {
+											if (e.key === 'Enter' || e.key === ' ') {
+												e.preventDefault();
+												handleSignupMouseEnter(e, point);
+											}
+										}}
 									/>
 								{/each}
 							{/if}
@@ -543,8 +561,17 @@
 										r="3"
 										fill="rgb(59, 130, 246)"
 										class="hover:r-5 cursor-pointer transition-all duration-200"
+										role="button"
+										tabindex="0"
+										aria-label="{point.visitor_count} visitors on {point.formattedDate}"
 										onmouseenter={(e) => handlePointMouseEnter(e, point)}
 										onmouseleave={handlePointMouseLeave}
+										onkeydown={(e) => {
+											if (e.key === 'Enter' || e.key === ' ') {
+												e.preventDefault();
+												handlePointMouseEnter(e, point);
+											}
+										}}
 									/>
 								{/each}
 

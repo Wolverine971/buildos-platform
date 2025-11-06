@@ -305,7 +305,6 @@
 								<Select
 									id={fieldId}
 									bind:value={editedData[field]}
-									onchange={(e) => (editedData[field] = e.detail)}
 									size="md"
 									class="text-xs sm:text-sm"
 									aria-labelledby={`${fieldId}-label`}

@@ -143,7 +143,6 @@
 				<FormField label="Timeframe" labelFor="timeframe-select" class="mb-0">
 					<Select
 						bind:value={selectedTimeframe}
-						onchange={(e) => (selectedTimeframe = e.detail)}
 						size="md"
 						placeholder="Select timeframe"
 						id="timeframe-select"

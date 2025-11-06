@@ -490,12 +490,7 @@
 							labelFor="referralSource"
 							size="md"
 						>
-							<Select
-								id="referralSource"
-								bind:value={referralSource}
-								onchange={(e) => (referralSource = e.detail)}
-								size="md"
-							>
+							<Select id="referralSource" bind:value={referralSource} size="md">
 								<option value="">Select an option</option>
 								{#each referralSources as source}
 									<option value={source}>{source}</option>

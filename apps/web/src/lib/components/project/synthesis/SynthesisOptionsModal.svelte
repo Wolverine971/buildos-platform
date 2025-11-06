@@ -177,7 +177,7 @@ This analysis helps streamline your project by reducing redundancy, improving wo
 			role="button"
 			tabindex="0"
 			aria-label="Close modal"
-		/>
+		></div>
 
 		<!-- Modal -->
 		<div class="relative min-h-screen flex items-center justify-center p-4">

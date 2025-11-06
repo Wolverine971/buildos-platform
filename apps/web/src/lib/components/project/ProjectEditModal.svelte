@@ -1,6 +1,5 @@
 <!-- apps/web/src/lib/components/project/ProjectEditModal.svelte -->
 <script lang="ts">
-	import { createEventDispatcher } from 'svelte';
 	import FormModal from '$lib/components/ui/FormModal.svelte';
 	import FormField from '$lib/components/ui/FormField.svelte';
 	import TextInput from '$lib/components/ui/TextInput.svelte';
@@ -15,73 +14,77 @@
 	import type { Project } from '$lib/types/project';
 	import { format } from 'date-fns';
 
-	export let isOpen = false;
-	export let project: Project | null;
-	export let onClose: () => void = () => {
-		isOpen = false;
-	};
-	const dispatch = createEventDispatcher();
+	interface Props {
+		isOpen?: boolean;
+		project: Project | null;
+		onUpdated?: (project: Project) => void;
+		onClose?: () => void;
+	}
+
+	let { isOpen = $bindable(false), project, onUpdated, onClose }: Props = $props();
 
 	// Form state
-	let loading = false;
-	let errors: string[] = [];
+	let loading = $state(false);
+	let errors = $state<string[]>([]);
 
-	// Form data - using let bindings for reactivity with FormModal
-	let nameValue = '';
-	let descriptionValue = '';
-	let statusValue = 'active';
-	let startDateValue = '';
-	let endDateValue = '';
-	let tagsValue: string[] = [];
-	let executiveSummaryValue = '';
-	let contextValue = '';
+	// Form data - using $state for reactivity
+	let nameValue = $state('');
+	let descriptionValue = $state('');
+	let statusValue = $state('active');
+	let startDateValue = $state('');
+	let endDateValue = $state('');
+	let tagsValue = $state<string[]>([]);
+	let executiveSummaryValue = $state('');
+	let contextValue = $state('');
 
 	// Core dimensions
-	let coreIntegrityIdeals: string | null = null;
-	let corePeopleBonds: string | null = null;
-	let coreGoalsMomentum: string | null = null;
-	let coreMeaningIdentity: string | null = null;
-	let coreRealityUnderstanding: string | null = null;
-	let coreTrustSafeguards: string | null = null;
-	let coreOpportunityFreedom: string | null = null;
-	let corePowerResources: string | null = null;
-	let coreHarmonyIntegration: string | null = null;
+	let coreIntegrityIdeals = $state<string | null>(null);
+	let corePeopleBonds = $state<string | null>(null);
+	let coreGoalsMomentum = $state<string | null>(null);
+	let coreMeaningIdentity = $state<string | null>(null);
+	let coreRealityUnderstanding = $state<string | null>(null);
+	let coreTrustSafeguards = $state<string | null>(null);
+	let coreOpportunityFreedom = $state<string | null>(null);
+	let corePowerResources = $state<string | null>(null);
+	let coreHarmonyIntegration = $state<string | null>(null);
 
 	// Tag input
-	let tagInput = '';
+	let tagInput = $state('');
 
-	// Computed values
-	$: modalTitle = project ? `Edit ${project.name || 'Project'}` : 'Edit Project';
-	$: submitText = 'Save Changes';
-	$: loadingText = 'Saving...';
+	// Computed values using $derived
+	let modalTitle = $derived(project ? `Edit ${project.name || 'Project'}` : 'Edit Project');
+	let submitText = $derived('Save Changes');
+	let loadingText = $derived('Saving...');
 
 	// Form configuration for FormModal compatibility
 	const projectFormConfig = {};
 
-	// Initialize form data when project changes or modal opens
-	$: if (project && isOpen) {
-		nameValue = project.name || '';
-		descriptionValue = project.description || '';
-		statusValue = project.status || 'active';
-		startDateValue = project.start_date || '';
-		endDateValue = project.end_date || '';
-		tagsValue = project.tags || [];
-		executiveSummaryValue = project.executive_summary || '';
-		contextValue = project.context || '';
+	// Initialize form data when project changes or modal opens using $effect
+	$effect(() => {
+		if (project && isOpen) {
+			nameValue = project.name || '';
+			descriptionValue = project.description || '';
+			statusValue = project.status || 'active';
+			startDateValue = project.start_date || '';
+			endDateValue = project.end_date || '';
+			tagsValue = project.tags || [];
+			executiveSummaryValue = project.executive_summary || '';
+			contextValue = project.context || '';
 
-		// Initialize core dimensions
-		coreIntegrityIdeals = (project as any).core_integrity_ideals || null;
-		corePeopleBonds = (project as any).core_people_bonds || null;
-		coreGoalsMomentum = (project as any).core_goals_momentum || null;
-		coreMeaningIdentity = (project as any).core_meaning_identity || null;
-		coreRealityUnderstanding = (project as any).core_reality_understanding || null;
-		coreTrustSafeguards = (project as any).core_trust_safeguards || null;
-		coreOpportunityFreedom = (project as any).core_opportunity_freedom || null;
-		corePowerResources = (project as any).core_power_resources || null;
-		coreHarmonyIntegration = (project as any).core_harmony_integration || null;
+			// Initialize core dimensions
+			coreIntegrityIdeals = (project as any).core_integrity_ideals || null;
+			corePeopleBonds = (project as any).core_people_bonds || null;
+			coreGoalsMomentum = (project as any).core_goals_momentum || null;
+			coreMeaningIdentity = (project as any).core_meaning_identity || null;
+			coreRealityUnderstanding = (project as any).core_reality_understanding || null;
+			coreTrustSafeguards = (project as any).core_trust_safeguards || null;
+			coreOpportunityFreedom = (project as any).core_opportunity_freedom || null;
+			corePowerResources = (project as any).core_power_resources || null;
+			coreHarmonyIntegration = (project as any).core_harmony_integration || null;
 
-		errors = [];
-	}
+			errors = [];
+		}
+	});
 
 	// Copy context to clipboard
 	async function copyContext() {
@@ -260,18 +263,17 @@
 				message: 'Project updated successfully'
 			});
 
-			// Dispatch success event and close modal
-			dispatch('updated', updatedProject);
-
-			dispatch('close');
+			// Call success callback and close modal
+			onUpdated?.(updatedProject);
+			onClose?.();
 		} catch (error) {
 			console.error('Error updating project:', error);
 			throw error;
 		}
 	}
 
-	// Initial data for FormModal
-	$: initialData = project || {};
+	// Initial data for FormModal using $derived
+	let initialData = $derived(project || {});
 
 	// Status options
 	const statusOptions = [
@@ -281,8 +283,8 @@
 		{ value: 'archived', label: 'Archived' }
 	];
 
-	// Compute project duration and progress
-	$: projectDuration = (() => {
+	// Compute project duration and progress using $derived
+	let projectDuration = $derived.by(() => {
 		if (!startDateValue || !endDateValue) return null;
 		const start = new Date(startDateValue);
 		const end = new Date(endDateValue);
@@ -295,7 +297,7 @@
 			)
 		);
 		return { days, progress };
-	})();
+	});
 </script>
 
 <FormModal
@@ -307,7 +309,7 @@
 	{initialData}
 	onSubmit={handleSubmit}
 	onDelete={null}
-	onClose={() => dispatch('close')}
+	onClose={() => onClose?.()}
 	size="xl"
 >
 	<div slot="header">
@@ -325,7 +327,7 @@
 					</h2>
 					<Button
 						type="button"
-						onclick={(e) => dispatch('close')}
+						onclick={() => onClose?.()}
 						variant="ghost"
 						size="sm"
 						class="!p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
@@ -351,7 +353,7 @@
 				</div>
 				<Button
 					type="button"
-					onclick={(e) => dispatch('close')}
+					onclick={() => onClose?.()}
 					variant="ghost"
 					size="sm"
 					class="!p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 ml-2"
@@ -551,7 +553,6 @@
 							id="project-status"
 							bind:value={statusValue}
 							size="sm"
-							onchange={(e) => (statusValue = e.detail)}
 							class="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
 						>
 							{#each statusOptions as option}

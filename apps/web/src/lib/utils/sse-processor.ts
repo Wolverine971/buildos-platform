@@ -18,6 +18,8 @@ export interface SSEProcessorOptions {
 	parseJSON?: boolean;
 	/** Custom error handler for parsing errors */
 	onParseError?: (error: Error, chunk: string) => void;
+	/** Optional abort signal to cancel the stream */
+	signal?: AbortSignal;
 }
 
 /**
@@ -38,7 +40,12 @@ export class SSEProcessor {
 		callbacks: StreamCallbacks,
 		options: SSEProcessorOptions = {}
 	): Promise<void> {
-		const { timeout = SSEProcessor.DEFAULT_TIMEOUT, parseJSON = true, onParseError } = options;
+		const {
+			timeout = SSEProcessor.DEFAULT_TIMEOUT,
+			parseJSON = true,
+			onParseError,
+			signal
+		} = options;
 
 		if (!response.body) {
 			throw new Error('Response body is empty');
@@ -48,6 +55,19 @@ export class SSEProcessor {
 		const decoder = new TextDecoder();
 		let buffer = '';
 		let timeoutId: NodeJS.Timeout | null = null;
+		const abortHandler = () => {
+			reader.cancel().catch(() => {
+				/* intentional noop */
+			});
+		};
+
+		if (signal) {
+			if (signal.aborted) {
+				abortHandler();
+				return;
+			}
+			signal.addEventListener('abort', abortHandler);
+		}
 
 		// Set up timeout
 		const timeoutPromise = new Promise<never>((_, reject) => {
@@ -73,6 +93,9 @@ export class SSEProcessor {
 			// Clean up
 			if (timeoutId) {
 				clearTimeout(timeoutId);
+			}
+			if (signal) {
+				signal.removeEventListener('abort', abortHandler);
 			}
 			reader.releaseLock();
 		}

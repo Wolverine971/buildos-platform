@@ -10,7 +10,8 @@
 -->
 
 <script lang="ts">
-	import { tick, onMount } from 'svelte';
+import { tick, onMount, onDestroy } from 'svelte';
+import { dev } from '$app/environment';
 	import {
 		X,
 		Send,
@@ -72,7 +73,7 @@
 		},
 		project: {
 			title: 'Project context',
-			subtitle: 'Focus on a single project’s goals, tasks, and insights.'
+			subtitle: "Focus on a single project's goals, tasks, and insights."
 		},
 		task: {
 			title: 'Task focus',
@@ -84,7 +85,7 @@
 		},
 		general: {
 			title: 'Global conversation',
-			subtitle: 'Legacy mode – use global instead.'
+			subtitle: 'Legacy mode - use global instead.'
 		},
 		project_create: {
 			title: 'New project flow',
@@ -158,6 +159,7 @@
 	let messages = $state<AgentMessage[]>([]);
 	let currentSession = $state<ChatSession | null>(null);
 	let isStreaming = $state(false);
+	let currentStreamController: AbortController | null = null;
 	let inputValue = $state('');
 	let error = $state<string | null>(null);
 	let currentPlan = $state<any>(null);
@@ -268,7 +270,7 @@
 		if (isInitializingRecording) {
 			return {
 				icon: LoaderCircle,
-				label: 'Preparing microphone…',
+				label: 'Preparing microphone...',
 				disabled: true,
 				isLoading: true,
 				variant: 'loading' as const
@@ -278,7 +280,7 @@
 		if (isTranscribing) {
 			return {
 				icon: LoaderCircle,
-				label: 'Transcribing…',
+				label: 'Transcribing...',
 				disabled: true,
 				isLoading: true,
 				variant: 'loading' as const
@@ -298,7 +300,7 @@
 		if (isStreaming) {
 			return {
 				icon: Mic,
-				label: 'Wait for agents…',
+				label: 'Wait for agents...',
 				disabled: true,
 				isLoading: false,
 				variant: 'muted' as const
@@ -317,7 +319,7 @@
 	const voiceButtonClasses = $derived.by(() => {
 		switch (voiceButtonState.variant) {
 			case 'recording':
-				return 'bg-gradient-to-br from-rose-500 to-orange-500 text-white shadow-[0_16px_32px_-20px_rgba(244,63,94,0.6)] animate-pulse';
+				return 'gradient-btn-recording';
 			case 'loading':
 				return 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-300';
 			case 'prompt':
@@ -325,7 +327,7 @@
 			case 'muted':
 				return 'bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500';
 			default:
-				return 'bg-gradient-to-br from-blue-500 to-indigo-500 text-white shadow-[0_12px_32px_-20px_rgba(59,130,246,0.55)] hover:scale-105 hover:shadow-[0_20px_40px_-18px_rgba(59,130,246,0.5)] dark:from-blue-500 dark:to-indigo-500';
+				return 'gradient-btn-primary';
 		}
 	});
 
@@ -448,6 +450,11 @@
 	}
 
 	function resetConversation() {
+		if (currentStreamController) {
+			currentStreamController.abort();
+			currentStreamController = null;
+		}
+		voiceRecordingService.cleanup();
 		messages = [];
 		currentSession = null;
 		currentPlan = null;
@@ -534,6 +541,11 @@
 		if (isCurrentlyRecording || isInitializingRecording) {
 			stopVoiceRecording();
 		}
+		if (currentStreamController) {
+			currentStreamController.abort();
+			currentStreamController = null;
+		}
+		voiceRecordingService.cleanup();
 		if (onClose) onClose();
 	}
 
@@ -594,6 +606,13 @@
 		userHasScrolled = false;
 
 		try {
+			if (currentStreamController) {
+				currentStreamController.abort();
+				currentStreamController = null;
+			}
+			const streamController = new AbortController();
+			currentStreamController = streamController;
+
 			// Determine ontology entity type from context
 			let ontologyEntityType: 'task' | 'plan' | 'goal' | 'document' | 'output' | undefined;
 			if (selectedContextType === 'task' || selectedContextType === 'task_update') {
@@ -606,6 +625,7 @@
 				headers: {
 					'Content-Type': 'application/json'
 				},
+				signal: streamController.signal,
 				body: JSON.stringify({
 					message: trimmed,
 					session_id: currentSession?.id,
@@ -631,18 +651,31 @@
 						typeof err === 'string' ? err : 'Connection error occurred while streaming';
 					isStreaming = false;
 					currentActivity = '';
+					currentStreamController = null;
 				},
 				onComplete: () => {
 					isStreaming = false;
 					currentActivity = '';
+					currentStreamController = null;
 				}
 			};
 
 			await SSEProcessor.processStream(response, callbacks, {
 				timeout: 120000, // 2 minutes for agent conversations
-				parseJSON: true
+				parseJSON: true,
+				signal: streamController.signal
 			});
 		} catch (err) {
+			currentStreamController = null;
+			if ((err as DOMException)?.name === 'AbortError') {
+				if (dev) {
+					console.debug('[AgentChat] Stream aborted');
+				}
+				isStreaming = false;
+				currentActivity = '';
+				return;
+			}
+
 			console.error('Failed to send message:', err);
 			error = 'Failed to send message. Please try again.';
 			isStreaming = false;
@@ -678,13 +711,15 @@
 				// Ontology context was loaded
 				ontologyLoaded = true;
 				ontologySummary = data.summary || 'Ontology context loaded';
-				addActivityMessage(`📊 ${ontologySummary}`);
+				addActivityMessage(`Ontology context: ${ontologySummary}`);
 				break;
 
 			case 'last_turn_context':
 				// Store last turn context for next message
 				lastTurnContext = data.context;
-				console.log('[AgentChat] Stored last turn context:', lastTurnContext);
+				if (dev) {
+					console.debug('[AgentChat] Stored last turn context:', lastTurnContext);
+				}
 				break;
 
 			case 'strategy_selected':
@@ -694,7 +729,7 @@
 				const strategyName = data.strategy?.replace(/_/g, ' ') || 'unknown';
 				const confidencePercent = Math.round((data.confidence || 0) * 100);
 				addActivityMessage(
-					`🎯 Strategy: ${strategyName} (${confidencePercent}% confidence)`
+					`Strategy selected: ${strategyName} (${confidencePercent}% confidence)`
 				);
 				break;
 
@@ -703,13 +738,15 @@
 				clarifyingQuestions = data.questions || [];
 				if (clarifyingQuestions.length > 0) {
 					showClarifyingDialog = true;
-					addActivityMessage(`❓ ${clarifyingQuestions.length} clarifying questions`);
+					addActivityMessage(
+						`Clarifying questions requested (${clarifyingQuestions.length})`
+					);
 				}
 				break;
 
 			case 'executor_instructions':
 				// Executor instructions generated
-				addActivityMessage(`📋 Generated executor instructions`);
+				addActivityMessage('Executor instructions generated');
 				break;
 
 			case 'analysis':
@@ -736,7 +773,7 @@
 			case 'executor_spawned':
 				// Executor agent spawned
 				currentActivity = `Executor working on task...`;
-				addActivityMessage(`🤖 Executor spawned for: ${data.task?.description}`);
+				addActivityMessage(`Executor started for: ${data.task?.description}`);
 				break;
 
 			case 'text':
@@ -749,27 +786,25 @@
 			case 'tool_call':
 				// Tool being called
 				const toolName = data.tool_call?.function?.name || 'unknown';
-				addActivityMessage(`🔧 Using tool: ${toolName}`);
+				addActivityMessage(`Using tool: ${toolName}`);
 				break;
 
 			case 'tool_result':
 				// Tool result received
-				addActivityMessage(`✅ Tool completed`);
+				addActivityMessage('Tool execution completed');
 				break;
 
 			case 'executor_result':
 				// Executor finished
-				const success = data.result?.success ? '✅' : '❌';
 				addActivityMessage(
-					`${success} Executor ${data.result?.success ? 'completed' : 'failed'}`
+					data.result?.success ? 'Executor completed successfully' : 'Executor failed'
 				);
 				break;
 
 			case 'step_complete':
 				// Step completed
-				addActivityMessage(`✓ Step ${data.step?.stepNumber} complete`);
+				addActivityMessage(`Step ${data.step?.stepNumber} complete`);
 				break;
-
 			case 'done':
 				// All done - clear activity and re-enable input
 				currentActivity = '';
@@ -848,6 +883,18 @@
 
 	// Get prose classes for markdown rendering
 	const proseClasses = getProseClasses('sm');
+	onDestroy(() => {
+		if (isCurrentlyRecording || isInitializingRecording) {
+			stopVoiceRecording().catch((err) =>
+				console.error('[AgentChat] Failed to stop recording during cleanup', err)
+			);
+		}
+		if (currentStreamController) {
+			currentStreamController.abort();
+			currentStreamController = null;
+		}
+		voiceRecordingService.cleanup();
+	});
 </script>
 
 <Modal
@@ -865,7 +912,7 @@
 			<div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
 				<div class="flex items-start gap-4">
 					<div
-						class="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-purple-500/15 via-pink-500/12 to-indigo-500/15 shadow-[0_12px_30px_-18px_rgba(168,85,247,0.55)] dark:from-purple-400/18 dark:via-pink-400/12 dark:to-indigo-400/18"
+						class="flex h-12 w-12 items-center justify-center rounded-2xl gradient-icon-brand"
 					>
 						<Sparkles class="h-5 w-5 text-purple-600 dark:text-purple-300" />
 					</div>
@@ -896,7 +943,7 @@
 							disabled={isStreaming}
 							onclick={changeContext}
 						>
-							{isStreaming ? 'Focus locked while running…' : 'Change focus'}
+							{isStreaming ? 'Focus locked while running...' : 'Change focus'}
 						</Button>
 					{/if}
 					<Button
@@ -974,7 +1021,7 @@
 						>
 							<div class="flex items-start gap-3">
 								<div
-									class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500/15 via-sky-500/10 to-indigo-500/15 text-blue-600 dark:text-blue-300"
+									class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl gradient-chip-blue"
 								>
 									<BrainCircuit class="h-5 w-5" />
 								</div>
@@ -1001,7 +1048,7 @@
 							<div class="mt-4 space-y-2.5">
 								<div class="flex items-start gap-3">
 									<div
-										class="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500/20 to-indigo-500/20 text-xs font-bold text-blue-600 dark:text-blue-300"
+										class="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full gradient-badge-blue"
 									>
 										1
 									</div>
@@ -1011,7 +1058,7 @@
 								</div>
 								<div class="flex items-start gap-3">
 									<div
-										class="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-purple-500/20 to-pink-500/20 text-xs font-bold text-purple-600 dark:text-purple-300"
+										class="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full gradient-badge-purple"
 									>
 										2
 									</div>
@@ -1032,7 +1079,7 @@
 							{#if message.type === 'user'}
 								<!-- User Message -->
 								<div
-									class="group max-w-[85%] rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 px-4 py-3 shadow-[0_8px_24px_-12px_rgba(59,130,246,0.4)] transition-all duration-200 hover:shadow-[0_12px_32px_-10px_rgba(79,70,229,0.5)] sm:max-w-[75%]"
+									class="group max-w-[85%] rounded-2xl gradient-message-assistant px-4 py-3 sm:max-w-[75%]"
 								>
 									<div
 										class="whitespace-pre-wrap break-words text-[15px] leading-relaxed text-white"
@@ -1048,7 +1095,7 @@
 								<div class="flex max-w-[85%] gap-3 sm:max-w-[75%]">
 									<div class="flex-shrink-0">
 										<div
-											class="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-purple-500/15 to-pink-500/15 shadow-sm dark:from-purple-400/20 dark:to-pink-400/20"
+											class="flex h-9 w-9 items-center justify-center rounded-full gradient-avatar-purple"
 										>
 											<MessageSquare
 												class="h-4 w-4 text-purple-600 dark:text-purple-400"
@@ -1060,7 +1107,7 @@
 									>
 										{#if shouldRenderAsMarkdown(message.content)}
 											<!-- Markdown content -->
-											<div class="agent-markdown {proseClasses}">
+											<div class={proseClasses}>
 												{@html renderMarkdown(message.content)}
 											</div>
 										{:else}
@@ -1101,7 +1148,7 @@
 							{:else if message.type === 'plan'}
 								<!-- Plan Created -->
 								<div
-									class="w-full rounded-2xl border border-purple-200/60 bg-gradient-to-br from-purple-50/90 via-pink-50/80 to-indigo-50/90 p-4 shadow-sm backdrop-blur-sm dark:border-purple-800/60 dark:from-purple-950/40 dark:via-pink-950/40 dark:to-indigo-950/40"
+									class="w-full rounded-2xl border border-purple-200/60 gradient-card-purple p-4 shadow-sm backdrop-blur-sm dark:border-purple-800/60"
 								>
 									<div class="mb-3 flex items-center gap-2.5">
 										<div
@@ -1222,7 +1269,7 @@
 
 								<button
 									type="submit"
-									class="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 to-pink-500 text-white shadow-[0_16px_32px_-20px_rgba(168,85,247,0.55)] transition-all duration-200 hover:scale-105 hover:shadow-[0_20px_40px_-18px_rgba(236,72,153,0.6)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-400 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100 dark:from-purple-400 dark:to-pink-400"
+									class="flex h-12 w-12 items-center justify-center rounded-full gradient-fab-purple"
 									aria-label="Send message"
 									disabled={isSendDisabled}
 								>
@@ -1276,7 +1323,7 @@
 							{:else if isTranscribing}
 								<span class="flex items-center gap-2">
 									<LoaderCircle class="h-4 w-4 animate-spin" />
-									<span>Transcribing your voice note…</span>
+									<span>Transcribing your voice note...</span>
 								</span>
 							{:else}
 								<span class="hidden sm:inline"
@@ -1434,232 +1481,5 @@
 
 	:global(.dark .agent-chat-scroll::-webkit-scrollbar-thumb:hover) {
 		background: rgb(100 116 139);
-	}
-
-	/* Markdown Prose Styling for Agent Messages */
-	:global(.agent-markdown) {
-		font-size: 15px;
-		line-height: 1.6;
-	}
-
-	/* Paragraphs */
-	:global(.agent-markdown p) {
-		margin: 0.75em 0;
-		color: rgb(17 24 39);
-	}
-
-	:global(.dark .agent-markdown p) {
-		color: rgb(243 244 246);
-	}
-
-	:global(.agent-markdown p:first-child) {
-		margin-top: 0;
-	}
-
-	:global(.agent-markdown p:last-child) {
-		margin-bottom: 0;
-	}
-
-	/* Headings */
-	:global(.agent-markdown h1, .agent-markdown h2, .agent-markdown h3) {
-		margin: 1em 0 0.5em;
-		font-weight: 600;
-		line-height: 1.3;
-		color: rgb(17 24 39);
-	}
-
-	:global(.dark .agent-markdown h1, .dark .agent-markdown h2, .dark .agent-markdown h3) {
-		color: rgb(255 255 255);
-	}
-
-	:global(
-		.agent-markdown h1:first-child,
-		.agent-markdown h2:first-child,
-		.agent-markdown h3:first-child
-	) {
-		margin-top: 0;
-	}
-
-	:global(.agent-markdown h1) {
-		font-size: 1.5em;
-	}
-
-	:global(.agent-markdown h2) {
-		font-size: 1.3em;
-	}
-
-	:global(.agent-markdown h3) {
-		font-size: 1.15em;
-	}
-
-	/* Lists */
-	:global(.agent-markdown ul, .agent-markdown ol) {
-		margin: 0.75em 0;
-		padding-left: 1.75em;
-	}
-
-	:global(.agent-markdown li) {
-		margin: 0.35em 0;
-		color: rgb(55 65 81);
-	}
-
-	:global(.dark .agent-markdown li) {
-		color: rgb(229 231 235);
-	}
-
-	:global(.agent-markdown ul) {
-		list-style-type: disc;
-	}
-
-	:global(.agent-markdown ol) {
-		list-style-type: decimal;
-	}
-
-	:global(.agent-markdown ul ul, .agent-markdown ol ul) {
-		list-style-type: circle;
-	}
-
-	:global(.agent-markdown ol ol, .agent-markdown ul ol) {
-		list-style-type: lower-alpha;
-	}
-
-	/* Inline Code */
-	:global(.agent-markdown code) {
-		background-color: rgb(243 244 246);
-		color: rgb(239 68 68);
-		padding: 0.15em 0.4em;
-		border-radius: 0.25em;
-		font-size: 0.9em;
-		font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-		font-weight: 500;
-	}
-
-	:global(.dark .agent-markdown code) {
-		background-color: rgb(31 41 55);
-		color: rgb(252 165 165);
-	}
-
-	/* Code Blocks */
-	:global(.agent-markdown pre) {
-		margin: 1em 0;
-		padding: 1em;
-		border-radius: 0.75em;
-		overflow-x: auto;
-		background-color: rgb(17 24 39);
-		border: 1px solid rgb(75 85 99);
-	}
-
-	:global(.dark .agent-markdown pre) {
-		background-color: rgb(15 23 42);
-		border-color: rgb(51 65 85);
-	}
-
-	:global(.agent-markdown pre code) {
-		background-color: transparent;
-		color: rgb(229 231 235);
-		padding: 0;
-		font-size: 0.875em;
-		font-weight: 400;
-	}
-
-	/* Blockquotes */
-	:global(.agent-markdown blockquote) {
-		margin: 1em 0;
-		padding-left: 1em;
-		border-left: 3px solid rgb(168 85 247);
-		color: rgb(75 85 99);
-		font-style: italic;
-	}
-
-	:global(.dark .agent-markdown blockquote) {
-		border-left-color: rgb(192 132 252);
-		color: rgb(156 163 175);
-	}
-
-	/* Links */
-	:global(.agent-markdown a) {
-		color: rgb(168 85 247);
-		text-decoration: underline;
-		text-decoration-color: rgb(168 85 247 / 0.3);
-		text-underline-offset: 2px;
-		transition: all 150ms ease;
-	}
-
-	:global(.agent-markdown a:hover) {
-		color: rgb(147 51 234);
-		text-decoration-color: rgb(147 51 234 / 0.5);
-	}
-
-	:global(.dark .agent-markdown a) {
-		color: rgb(192 132 252);
-		text-decoration-color: rgb(192 132 252 / 0.3);
-	}
-
-	:global(.dark .agent-markdown a:hover) {
-		color: rgb(216 180 254);
-		text-decoration-color: rgb(216 180 254 / 0.5);
-	}
-
-	/* Strong/Bold */
-	:global(.agent-markdown strong) {
-		font-weight: 600;
-		color: rgb(17 24 39);
-	}
-
-	:global(.dark .agent-markdown strong) {
-		color: rgb(255 255 255);
-	}
-
-	/* Emphasis/Italic */
-	:global(.agent-markdown em) {
-		font-style: italic;
-	}
-
-	/* Horizontal Rules */
-	:global(.agent-markdown hr) {
-		margin: 1.5em 0;
-		border: none;
-		border-top: 1px solid rgb(229 231 235);
-	}
-
-	:global(.dark .agent-markdown hr) {
-		border-top-color: rgb(55 65 81);
-	}
-
-	/* Tables */
-	:global(.agent-markdown table) {
-		margin: 1em 0;
-		width: 100%;
-		border-collapse: collapse;
-		font-size: 0.9em;
-	}
-
-	:global(.agent-markdown th, .agent-markdown td) {
-		padding: 0.5em 0.75em;
-		border: 1px solid rgb(229 231 235);
-		text-align: left;
-	}
-
-	:global(.dark .agent-markdown th, .dark .agent-markdown td) {
-		border-color: rgb(55 65 81);
-	}
-
-	:global(.agent-markdown th) {
-		background-color: rgb(243 244 246);
-		font-weight: 600;
-		color: rgb(17 24 39);
-	}
-
-	:global(.dark .agent-markdown th) {
-		background-color: rgb(31 41 55);
-		color: rgb(255 255 255);
-	}
-
-	/* Images */
-	:global(.agent-markdown img) {
-		max-width: 100%;
-		height: auto;
-		border-radius: 0.5em;
-		margin: 1em 0;
 	}
 </style>

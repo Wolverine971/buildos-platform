@@ -869,7 +869,7 @@
 						<NodeDetailsPanel
 							node={selectedGraphNode}
 							onClose={() => (selectedGraphNode = null)}
-						/>
+						></NodeDetailsPanel>
 					{:else}
 						<div
 							class="flex h-full items-center justify-center p-6 text-sm text-slate-500 dark:text-slate-400"

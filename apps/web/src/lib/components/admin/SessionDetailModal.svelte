@@ -109,9 +109,16 @@
 	<!-- Modal Backdrop -->
 	<div
 		class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
-		onclick={handleBackdropClick}
 		role="dialog"
 		aria-modal="true"
+		aria-label="Session details dialog"
+		tabindex="0"
+		onclick={handleBackdropClick}
+		onkeydown={(e) => {
+			if (e.key === 'Escape') {
+				onClose();
+			}
+		}}
 	>
 		<!-- Modal Content -->
 		<div

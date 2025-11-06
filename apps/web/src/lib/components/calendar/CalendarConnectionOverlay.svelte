@@ -79,10 +79,10 @@
 						<!-- Animated rings -->
 						<div
 							class="absolute inset-0 rounded-full bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-950/50 dark:to-indigo-950/50 animate-ping opacity-20"
-						/>
+						></div>
 						<div
 							class="absolute inset-0 rounded-full bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-950/50 dark:to-indigo-950/50 animate-ping animation-delay-200 opacity-15"
-						/>
+						></div>
 
 						<!-- Icon circle -->
 						<div
@@ -91,7 +91,7 @@
 							<Calendar
 								class="w-10 h-10 text-blue-600 dark:text-blue-400"
 								strokeWidth={1.5}
-							/>
+							></Calendar>
 						</div>
 					</div>
 				</div>
@@ -119,7 +119,7 @@
 						<div
 							class="flex-shrink-0 w-8 h-8 rounded-full bg-emerald-50 dark:bg-emerald-950/50 flex items-center justify-center"
 						>
-							<Clock class="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+							<Clock class="w-4 h-4 text-emerald-600 dark:text-emerald-400"></Clock>
 						</div>
 						<p class="text-sm text-gray-700 dark:text-gray-300">
 							Blocks sync to your calendar automatically
@@ -129,7 +129,7 @@
 						<div
 							class="flex-shrink-0 w-8 h-8 rounded-full bg-purple-50 dark:bg-purple-950/50 flex items-center justify-center"
 						>
-							<Shield class="w-4 h-4 text-purple-600 dark:text-purple-400" />
+							<Shield class="w-4 h-4 text-purple-600 dark:text-purple-400"></Shield>
 						</div>
 						<p class="text-sm text-gray-700 dark:text-gray-300">
 							See available time slots between events
@@ -160,13 +160,13 @@
 						<div class="flex items-center justify-center gap-2">
 							<div
 								class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"
-							/>
+							></div>
 							<span>Connecting...</span>
 						</div>
 					{:else}
 						<div class="flex items-center justify-center gap-2">
 							<span>Connect Google Calendar</span>
-							<ArrowRight class="w-4 h-4" />
+							<ArrowRight class="w-4 h-4"></ArrowRight>
 						</div>
 					{/if}
 				</Button>

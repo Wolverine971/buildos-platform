@@ -210,7 +210,8 @@
 					class="inline-flex items-center px-2 py-1 rounded text-xs font-medium {statusInfo.color} flex-shrink-0"
 				>
 					{#if statusInfo.icon}
-						<svelte:component this={statusInfo.icon} class="w-3 h-3 mr-1" />
+						{@const Icon = statusInfo.icon}
+						<Icon class="w-3 h-3 mr-1" />
 					{/if}
 					<span class="capitalize">{braindump?.status || 'draft'}</span>
 				</div>
@@ -303,7 +304,8 @@
 								class="inline-flex items-center px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-xs {typeInfo.color}"
 							>
 								{#if typeInfo.icon}
-									<svelte:component this={typeInfo.icon} class="w-3 h-3 mr-1" />
+									{@const Icon = typeInfo.icon}
+									<Icon class="w-3 h-3 mr-1" />
 								{/if}
 								{typeInfo.label}
 							</div>

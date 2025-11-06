@@ -50,16 +50,26 @@
 	const isAdmin = $derived((data.isAdmin as boolean) || false);
 
 	let viewMode = $state<'realm' | 'scope'>('realm');
-	let selectedScope = $state(currentFilters.scope || '');
-	let selectedRealm = $state(currentFilters.realm || '');
-	let searchQuery = $state(currentFilters.search || '');
-	let selectedContexts = $state<string[]>([...(currentFilters.contexts || [])]);
-	let selectedScales = $state<string[]>([...(currentFilters.scales || [])]);
-	let selectedStages = $state<string[]>([...(currentFilters.stages || [])]);
-	let sortBy = $state(currentFilters.sort || 'name');
-	let sortDirection = $state<'asc' | 'desc'>(
-		currentFilters.direction === 'desc' ? 'desc' : 'asc'
-	);
+	let selectedScope = $state('');
+	let selectedRealm = $state('');
+	let searchQuery = $state('');
+	let selectedContexts = $state<string[]>([]);
+	let selectedScales = $state<string[]>([]);
+	let selectedStages = $state<string[]>([]);
+	let sortBy = $state('name');
+	let sortDirection = $state<'asc' | 'desc'>('asc');
+
+	// Sync filter state with URL/server data
+	$effect(() => {
+		selectedScope = currentFilters.scope || '';
+		selectedRealm = currentFilters.realm || '';
+		searchQuery = currentFilters.search || '';
+		selectedContexts = [...(currentFilters.contexts || [])];
+		selectedScales = [...(currentFilters.scales || [])];
+		selectedStages = [...(currentFilters.stages || [])];
+		sortBy = currentFilters.sort || 'name';
+		sortDirection = currentFilters.direction === 'desc' ? 'desc' : 'asc';
+	});
 
 	let detailOpen = $state(false);
 	let detailLoading = $state(false);

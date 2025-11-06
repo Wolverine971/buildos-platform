@@ -51,10 +51,8 @@
 					class="rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800 overflow-hidden"
 				>
 					{#if selectedNode}
-						<NodeDetailsPanel
-							node={selectedNode}
-							onClose={() => (selectedNode = null)}
-						/>
+						<NodeDetailsPanel node={selectedNode} onClose={() => (selectedNode = null)}
+						></NodeDetailsPanel>
 					{:else}
 						<div
 							class="flex h-full items-center justify-center p-6 text-sm text-gray-500 dark:text-gray-400"

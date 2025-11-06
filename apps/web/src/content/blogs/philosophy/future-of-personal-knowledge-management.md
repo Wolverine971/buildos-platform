@@ -119,7 +119,7 @@ You get:
 
 - The system already knows your highest-priority tasks and adapts as new information comes in
 
-This is where **BuildOS's philosophy** comes in: **brain dump � AI organization � action.** You don't start with perfect structure. You start with chaos. Raw thoughts. Half-finished ideas. Then the system turns that chaos into clarity, and most importantly, into momentum.
+This is where **BuildOS's philosophy** comes in: **brain dump -> AI organization -> action.** You don't start with perfect structure. You start with chaos. Raw thoughts. Half-finished ideas. Then the system turns that chaos into clarity, and most importantly, into momentum.
 
 It's not about managing knowledge. It's about creating movement.
 

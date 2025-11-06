@@ -30,7 +30,6 @@
 	import TextInput from '$lib/components/ui/TextInput.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 
-	export let emailId: string | null = null;
 	export let initialEmail: any = null;
 
 	const dispatch = createEventDispatcher();
@@ -758,7 +757,7 @@
 					<FormField label="From Email" labelFor="from-email">
 						<Select
 							bind:value={emailData.from_email}
-							onchange={(e) => (emailData.from_email = e.detail)}
+							onchange={(e) => (emailData.from_email = e)}
 							disabled={isEmailSent}
 							size="md"
 							placeholder="Select sender email"
@@ -921,7 +920,7 @@
 									placeholder="Describe what you want the email to say... (e.g., 'Thank them for signing up for the beta program and highlight the key features they can explore')"
 									rows="3"
 									class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white resize-none"
-								/>
+								></textarea>
 							</FormField>
 							{#if emailData.recipients.length === 0}
 								<div

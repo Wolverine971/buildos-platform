@@ -8,37 +8,41 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import type { Note } from '$lib/types/project';
 	import { formatDateTimeForDisplay } from '$lib/utils/date-utils';
-	import { createEventDispatcher } from 'svelte';
 
-	const dispatch = createEventDispatcher();
+	interface Props {
+		isOpen?: boolean;
+		note?: Partial<Note> | null;
+		projectId: string;
+		onSave?: (note: Partial<Note>) => void;
+		onDelete?: (id: string) => void;
+		onClose?: () => void;
+	}
 
-	export let isOpen = false;
-	export let note: Partial<Note> | null = null;
-	export let projectId: string;
+	let { isOpen = $bindable(false), note = null, projectId, onSave, onDelete, onClose }: Props = $props();
 
-	// Computed values
-	$: isEditing = note !== null && !!note?.id;
-	$: modalTitle = isEditing ? 'Edit Note' : 'Create New Note';
-	$: submitText = isEditing ? 'Save Note' : 'Create Note';
-	$: loadingText = isEditing ? 'Saving...' : 'Creating...';
+	// Computed values using $derived
+	let isEditing = $derived(note !== null && !!note?.id);
+	let modalTitle = $derived(isEditing ? 'Edit Note' : 'Create New Note');
+	let submitText = $derived(isEditing ? 'Save Note' : 'Create Note');
+	let loadingText = $derived(isEditing ? 'Saving...' : 'Creating...');
 
 	// Form configuration (empty since we handle fields manually)
 	const noteFormConfig = {};
 
-	// Set initial data with proper defaults
-	$: initialData = note || {
+	// Set initial data with proper defaults using $derived
+	let initialData = $derived(note || {
 		title: '',
 		content: '',
 		category: '',
 		tags: []
-	};
+	});
 
-	// State for main content fields
-	let titleValue = '';
-	let contentValue = '';
-	let categoryValue = '';
-	let tagsValue: string[] = [];
-	let tagInput = '';
+	// State for main content fields using $state
+	let titleValue = $state('');
+	let contentValue = $state('');
+	let categoryValue = $state('');
+	let tagsValue = $state<string[]>([]);
+	let tagInput = $state('');
 
 	// Category options
 	const categoryOptions = [
@@ -51,18 +55,20 @@
 		{ value: 'question', label: 'Question' }
 	];
 
-	// Initialize content fields when note changes
-	$: if (note) {
-		titleValue = note.title || '';
-		contentValue = note.content || '';
-		categoryValue = note.category || '';
-		tagsValue = note.tags || [];
-	} else if (!isOpen) {
-		titleValue = '';
-		contentValue = '';
-		categoryValue = '';
-		tagsValue = [];
-	}
+	// Initialize content fields when note changes using $effect
+	$effect(() => {
+		if (note) {
+			titleValue = note.title || '';
+			contentValue = note.content || '';
+			categoryValue = note.category || '';
+			tagsValue = note.tags || [];
+		} else if (!isOpen) {
+			titleValue = '';
+			contentValue = '';
+			categoryValue = '';
+			tagsValue = [];
+		}
+	});
 
 	// Auto-resize textarea
 	function autoResize(textarea: HTMLTextAreaElement) {
@@ -106,7 +112,7 @@
 		}
 
 		// Delegate note persistence to parent so it can manage optimistic store updates
-		dispatch('save', noteData);
+		onSave?.(noteData);
 	}
 
 	// Handle deletion with optimistic updates
@@ -115,11 +121,11 @@
 			throw new Error('Cannot delete note: Invalid note ID.');
 		}
 
-		dispatch('delete', note.id);
+		onDelete?.(note.id);
 	}
 
 	function close() {
-		dispatch('close');
+		onClose?.();
 	}
 </script>
 
@@ -199,7 +205,6 @@
 					<Select
 						id="note-category"
 						bind:value={categoryValue}
-						onchange={(e) => (categoryValue = e.detail)}
 						size="sm"
 						placeholder="Select category..."
 					>

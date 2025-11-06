@@ -1,6 +1,7 @@
 <!-- apps/web/src/lib/components/ui/CardBody.svelte -->
 <script lang="ts">
 	import type { HTMLAttributes } from 'svelte/elements';
+	import type { Snippet } from 'svelte';
 	import { twMerge } from 'tailwind-merge';
 
 	type BodyPadding = 'sm' | 'md' | 'lg';
@@ -9,10 +10,12 @@
 	let {
 		padding = 'md',
 		class: className = '',
+		children,
 		...restProps
 	}: {
 		padding?: BodyPadding;
 		class?: string;
+		children: Snippet;
 	} & HTMLAttributes<HTMLDivElement> = $props();
 
 	// Optimized for high information density (Apple-style)
@@ -26,5 +29,5 @@
 </script>
 
 <div class={bodyClasses} {...restProps}>
-	<slot />
+	{@render children()}
 </div>

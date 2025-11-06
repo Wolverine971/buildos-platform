@@ -390,7 +390,7 @@
 						<Select
 							id="brief-frequency"
 							bind:value={briefPreferencesForm.frequency}
-							onchange={(e) => (briefPreferencesForm.frequency = e.detail)}
+							onchange={(e) => (briefPreferencesForm.frequency = e)}
 							size="md"
 						>
 							<option value="daily">Daily</option>
@@ -403,7 +403,7 @@
 							<Select
 								id="brief-day-of-week"
 								bind:value={briefPreferencesForm.day_of_week}
-								onchange={(e) => (briefPreferencesForm.day_of_week = e.detail)}
+								onchange={(e) => (briefPreferencesForm.day_of_week = e)}
 								size="md"
 							>
 								{#each DAY_OPTIONS as day}
@@ -426,7 +426,7 @@
 						<Select
 							id="briefTimezone"
 							bind:value={briefPreferencesForm.timezone}
-							onchange={(e) => (briefPreferencesForm.timezone = e.detail)}
+							onchange={(e) => (briefPreferencesForm.timezone = e)}
 							size="md"
 						>
 							{#each TIMEZONE_OPTIONS as tz}

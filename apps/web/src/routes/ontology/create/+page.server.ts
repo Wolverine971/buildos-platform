@@ -95,4 +95,3 @@ function mapFacetValuesByKey(facetValues: FacetValue[]): Record<string, FacetVal
 		{} as Record<string, FacetValue[]>
 	);
 }
-

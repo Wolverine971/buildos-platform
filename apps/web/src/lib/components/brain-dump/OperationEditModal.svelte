@@ -16,24 +16,30 @@
 	} from '$lib/utils/field-config-generator';
 	import type { ParsedOperation } from '$lib/types/brain-dump';
 
-	export let isOpen: boolean;
-	export let operation: ParsedOperation | null;
-	export let onSave: (operation: ParsedOperation) => void;
-	export let onClose: () => void;
+	interface Props {
+		isOpen: boolean;
+		operation: ParsedOperation | null;
+		onSave: (operation: ParsedOperation) => void;
+		onClose: () => void;
+	}
 
-	let editedData: Record<string, any> = {};
-	let errors: string[] = [];
-	let jsonViewMode: Record<string, boolean> = {};
-	let jsonTextValues: Record<string, string> = {};
+	let { isOpen, operation, onSave, onClose }: Props = $props();
 
-	// Dynamic field configurations based on database schema and operation type
-	$: fieldConfigs = operation
-		? generateFieldConfig(
-				operation.table,
-				getCustomOverrides(),
-				operation.operation as 'create' | 'update'
-			)
-		: {};
+	let editedData = $state<Record<string, any>>({});
+	let errors = $state<string[]>([]);
+	let jsonViewMode = $state<Record<string, boolean>>({});
+	let jsonTextValues = $state<Record<string, string>>({});
+
+	// Dynamic field configurations based on database schema and operation type using $derived
+	let fieldConfigs = $derived(
+		operation
+			? generateFieldConfig(
+					operation.table,
+					getCustomOverrides(),
+					operation.operation as 'create' | 'update'
+				)
+			: {}
+	);
 
 	// Custom overrides for specific tables/fields
 	function getCustomOverrides(): Record<string, Partial<FieldConfig>> {
@@ -104,19 +110,24 @@
 		return overrides;
 	}
 
-	$: if (operation) {
-		editedData = { ...operation.data };
-		jsonViewMode = {};
-	}
+	// Initialize edited data when operation changes using $effect
+	$effect(() => {
+		if (operation) {
+			editedData = { ...operation.data };
+			jsonViewMode = {};
+		}
+	});
 
-	// Initialize JSON text values separately after fieldConfigs is ready
-	$: if (operation && fieldConfigs && Object.keys(fieldConfigs).length > 0) {
-		for (const [field, config] of Object.entries(fieldConfigs)) {
-			if (config.type === 'jsonb' && editedData[field]) {
-				jsonTextValues[field] = JSON.stringify(editedData[field], null, 2);
+	// Initialize JSON text values separately after fieldConfigs is ready using $effect
+	$effect(() => {
+		if (operation && fieldConfigs && Object.keys(fieldConfigs).length > 0) {
+			for (const [field, config] of Object.entries(fieldConfigs)) {
+				if (config.type === 'jsonb' && editedData[field]) {
+					jsonTextValues[field] = JSON.stringify(editedData[field], null, 2);
+				}
 			}
 		}
-	}
+	});
 
 	// Helper function to check if a field has data
 	function fieldHasData(field: string): boolean {
@@ -141,14 +152,16 @@
 		return true;
 	}
 
-	// Get fields to display - show all fields if there are errors, otherwise only fields with data
-	$: fieldsToDisplay = operation
-		? operation.error
-			? getTableFields(operation.table) // Show all fields if there are errors
-			: getTableFields(operation.table).filter(
-					(field) => fieldHasData(field) || fieldConfigs[field]?.required
-				)
-		: [];
+	// Get fields to display - show all fields if there are errors, otherwise only fields with data using $derived
+	let fieldsToDisplay = $derived(
+		operation
+			? operation.error
+				? getTableFields(operation.table) // Show all fields if there are errors
+				: getTableFields(operation.table).filter(
+						(field) => fieldHasData(field) || fieldConfigs[field]?.required
+					)
+			: []
+	);
 
 	function handleSave() {
 		if (!operation) return;
@@ -578,7 +591,7 @@
 										id={fieldId}
 										bind:value={editedData[field]}
 										size="sm"
-										onchange={(e) => (editedData[field] = e.detail)}
+										onchange={(e) => (editedData[field] = e)}
 										class="text-sm"
 									>
 										<option value="">Select {config.label}</option>

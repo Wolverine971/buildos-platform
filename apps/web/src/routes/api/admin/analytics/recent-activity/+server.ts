@@ -1,6 +1,7 @@
 // apps/web/src/routes/api/admin/analytics/recent-activity/+server.ts
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
+import { getRecentActivity } from '$lib/services/admin/dashboard-analytics.service';
 
 export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession } }) => {
 	const { user } = await safeGetSession();
@@ -13,33 +14,8 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
 	}
 
 	try {
-		const { data, error } = await supabase
-			.from('user_activity_logs')
-			.select(
-				`
-                activity_type,
-                activity_data,
-                created_at,
-                users (
-                    email
-                )
-            `
-			)
-			.order('created_at', { ascending: false })
-			.limit(50);
-
-		if (error) {
-			return ApiResponse.databaseError(error);
-		}
-
-		const formattedData = (data || []).map((activity) => ({
-			activity_type: activity.activity_type,
-			user_email: activity.users?.email || 'Unknown',
-			created_at: activity.created_at,
-			activity_data: activity.activity_data
-		}));
-
-		return ApiResponse.success(formattedData);
+		const data = await getRecentActivity(supabase);
+		return ApiResponse.success(data);
 	} catch (error) {
 		console.error('Error fetching recent activity:', error);
 		return ApiResponse.internalError(error, 'Failed to fetch recent activity');

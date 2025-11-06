@@ -1,6 +1,7 @@
 <!-- apps/web/src/lib/components/ui/CardHeader.svelte -->
 <script lang="ts">
 	import type { HTMLAttributes } from 'svelte/elements';
+	import type { Snippet } from 'svelte';
 	import { twMerge } from 'tailwind-merge';
 
 	type HeaderVariant = 'default' | 'gradient' | 'accent';
@@ -9,10 +10,12 @@
 	let {
 		variant = 'default',
 		class: className = '',
+		children,
 		...restProps
 	}: {
 		variant?: HeaderVariant;
 		class?: string;
+		children: Snippet;
 	} & HTMLAttributes<HTMLDivElement> = $props();
 
 	const variantClasses = {
@@ -33,5 +36,5 @@
 </script>
 
 <div class={headerClasses} {...restProps}>
-	<slot />
+	{@render children()}
 </div>

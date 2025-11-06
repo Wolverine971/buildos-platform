@@ -453,11 +453,11 @@
 											<span
 												class={`absolute inset-0 rounded-2xl opacity-95 ${blockStyle.surface}`}
 												aria-hidden="true"
-											/>
+											></span>
 											<span
 												class={`absolute inset-0 rounded-2xl ring-1 ring-inset ${blockStyle.ring}`}
 												aria-hidden="true"
-											/>
+											></span>
 											<div class="relative flex flex-col gap-2">
 												<div
 													class="flex items-center justify-between gap-3"

@@ -599,8 +599,8 @@
 										value={editingProperty.items?.type || 'string'}
 										onchange={(e) => {
 											if (editingProperty && editingProperty.items) {
-												editingProperty.items.type = e.currentTarget
-													.value as JsonSchemaType;
+												editingProperty.items.type =
+													e.value as JsonSchemaType;
 											}
 										}}
 										disabled={loading}

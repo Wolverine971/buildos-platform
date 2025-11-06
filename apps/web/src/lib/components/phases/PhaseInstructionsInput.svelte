@@ -255,7 +255,7 @@
 			maxlength={maxLength}
 			class="w-full min-h-[100px] p-3 pr-14 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg outline-none resize-y text-gray-900 dark:text-gray-100 text-sm leading-relaxed placeholder:text-gray-500 dark:placeholder:text-gray-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500/50"
 			spellcheck="true"
-		/>
+		></textarea>
 
 		<!-- Voice Button (positioned in top-right of textarea) -->
 		{#if isVoiceSupported}

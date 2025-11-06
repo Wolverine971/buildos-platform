@@ -278,11 +278,7 @@
 					</div>
 
 					<!-- Category Filter -->
-					<Select
-						bind:value={selectedCategory}
-						onchange={(e) => (selectedCategory = e.detail)}
-						size="md"
-					>
+					<Select bind:value={selectedCategory} size="md">
 						<option value="">All categories</option>
 						{#each allCategories as category}
 							<option value={category}>{getCategoryDisplay(category).label}</option>
@@ -290,11 +286,7 @@
 					</Select>
 
 					<!-- Tag Filter -->
-					<Select
-						bind:value={selectedTag}
-						onchange={(e) => (selectedTag = e.detail)}
-						size="md"
-					>
+					<Select bind:value={selectedTag} size="md">
 						<option value="">All tags</option>
 						{#each allTags as tag}
 							<option value={tag}>{tag}</option>

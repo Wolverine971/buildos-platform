@@ -84,6 +84,7 @@
 		<nav class="mt-5 flex-1 space-y-2 overflow-y-auto pr-1">
 			{#each navLinks as link}
 				{@const active = link.match(currentPath)}
+				{@const Icon = link.icon}
 				<a
 					href={link.href}
 					class={`group relative flex w-full items-start gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
@@ -101,7 +102,7 @@
 								: 'border-slate-200/80 bg-white/70 text-slate-500 dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-300'
 						}`}
 					>
-						<svelte:component this={link.icon} class="h-4 w-4" />
+						<Icon class="h-4 w-4" />
 					</span>
 					<span class="flex flex-col whitespace-pre-wrap leading-tight">
 						<span>{link.label}</span>

@@ -1052,9 +1052,7 @@
 		class="relative z-[60] flex items-center justify-between gap-4 border-b border-slate-200/60 bg-white/90 px-6 py-5 backdrop-blur-md dark:border-slate-700/60 dark:bg-slate-900/85"
 	>
 		<div class="flex items-center gap-4">
-			<div
-				class="hidden h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500/15 via-purple-500/12 to-indigo-500/15 shadow-[0_12px_30px_-18px_rgba(59,130,246,0.55)] dark:flex dark:from-blue-400/18 dark:via-purple-400/12 dark:to-indigo-400/16"
-			>
+			<div class="hidden h-12 w-12 items-center justify-center rounded-2xl gradient-icon-primary dark:flex">
 				<MessageSquare class="h-5 w-5 text-blue-600 dark:text-blue-300" />
 			</div>
 			<div class="flex flex-col gap-1">
@@ -1204,7 +1202,7 @@
 								type="button"
 								class={`group w-full rounded-2xl border px-5 py-3 text-left transition-all duration-200 ${
 									isActive
-										? 'border-blue-200/60 bg-gradient-to-r from-blue-50/90 via-indigo-50/80 to-purple-50/80 text-blue-700 shadow-sm ring-1 ring-blue-200/30 dark:border-blue-800/60 dark:from-blue-950/40 dark:via-indigo-950/40 dark:to-purple-950/40 dark:text-blue-200'
+										? 'border-blue-200/60 gradient-card-primary dark:border-blue-800/60'
 										: 'border-transparent hover:border-slate-200/60 hover:bg-white/80 hover:shadow-sm dark:hover:border-slate-700/60 dark:hover:bg-slate-900/60'
 								} disabled:cursor-not-allowed disabled:opacity-60`}
 								onclick={() => handleSessionSelect(session.id)}
@@ -1279,12 +1277,8 @@
 							class="flex flex-col items-center justify-center gap-4 py-16 text-center text-gray-600 dark:text-gray-300"
 						>
 							<div class="relative">
-								<div
-									class="absolute inset-0 animate-pulse rounded-3xl bg-gradient-to-br from-blue-500/12 via-indigo-500/10 to-purple-500/12 blur-xl"
-								></div>
-								<div
-									class="relative flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500/15 via-indigo-500/12 to-purple-500/15 shadow-[0_28px_50px_-32px_rgba(59,130,246,0.65)] dark:from-blue-400/18 dark:via-indigo-400/12 dark:to-purple-400/18"
-								>
+								<div class="absolute inset-0 animate-pulse rounded-3xl gradient-glow-primary blur-xl"></div>
+								<div class="relative flex h-16 w-16 items-center justify-center rounded-2xl gradient-icon-primary">
 									<MessageSquare
 										class="h-7 w-7 text-blue-600 dark:text-blue-300"
 									/>
@@ -1377,7 +1371,7 @@
 											voiceButtonState.variant === 'recording'
 												? 'border-rose-300 bg-gradient-to-br from-rose-500 via-rose-500/95 to-rose-500/90 text-white shadow-[0_16px_32px_-20px_rgba(244,63,94,0.6)]'
 												: voiceButtonState.variant === 'prompt'
-													? 'border-blue-200 bg-gradient-to-br from-blue-500/20 to-indigo-500/20 text-blue-600 dark:border-blue-700 dark:text-blue-300'
+													? 'border-blue-200 gradient-badge-blue dark:border-blue-700'
 													: 'border-slate-200/60 bg-white/70 hover:bg-white/90 dark:border-slate-700/60 dark:bg-slate-900/70 dark:hover:bg-slate-900/90'
 										} ${voiceButtonState.disabled ? 'opacity-50 cursor-not-allowed hover:scale-100' : ''}`}
 										onclick={(event) => {
@@ -1395,7 +1389,7 @@
 
 									<button
 										type="submit"
-										class="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-500 text-white shadow-[0_16px_32px_-20px_rgba(59,130,246,0.55)] transition-all duration-200 hover:scale-105 hover:shadow-[0_20px_40px_-18px_rgba(99,102,241,0.6)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100"
+										class="flex h-12 w-12 items-center justify-center rounded-full gradient-btn-primary"
 										aria-label="Send message"
 										disabled={isSendDisabled}
 									>

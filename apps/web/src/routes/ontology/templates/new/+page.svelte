@@ -22,10 +22,10 @@
 	const totalSteps = 5;
 
 	// Component references
-	let metadataEditorRef: any;
-	let facetEditorRef: any;
-	let fsmEditorRef: any;
-	let schemaBuilderRef: any;
+	let metadataEditorRef = $state<any>();
+	let facetEditorRef = $state<any>();
+	let fsmEditorRef = $state<any>();
+	let schemaBuilderRef = $state<any>();
 
 	// Collected form data
 	let basicFormData = $state<any>(null);

@@ -1,6 +1,10 @@
 // apps/web/src/routes/api/admin/analytics/daily-visitors/+server.ts
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
+import {
+	getDailyVisitors,
+	type AnalyticsTimeframe
+} from '$lib/services/admin/dashboard-analytics.service';
 
 export const GET: RequestHandler = async ({ url, locals: { safeGetSession, supabase } }) => {
 	const { user } = await safeGetSession();
@@ -12,28 +16,13 @@ export const GET: RequestHandler = async ({ url, locals: { safeGetSession, supab
 		return ApiResponse.forbidden('Admin access required');
 	}
 
-	const timeframe = url.searchParams.get('timeframe') || '30d';
-	const days = timeframe === '7d' ? 7 : timeframe === '90d' ? 90 : 30;
+	const timeframeParam = url.searchParams.get('timeframe') as AnalyticsTimeframe | null;
+	const timeframe: AnalyticsTimeframe =
+		timeframeParam === '7d' || timeframeParam === '90d' ? timeframeParam : '30d';
 
 	try {
-		const endDate = new Date();
-		const startDate = new Date(endDate.getTime() - days * 24 * 60 * 60 * 1000);
-
-		const { data, error } = await supabase.rpc('get_daily_visitors', {
-			start_date: startDate.toISOString().split('T')[0],
-			end_date: endDate.toISOString().split('T')[0]
-		});
-
-		if (error) {
-			return ApiResponse.databaseError(error);
-		}
-
-		const transformedData = (data || []).map((row: any) => ({
-			date: row.date,
-			visitor_count: parseInt(row.visitor_count) || 0
-		}));
-
-		return ApiResponse.success(transformedData);
+		const data = await getDailyVisitors(supabase, timeframe);
+		return ApiResponse.success(data);
 	} catch (error) {
 		console.error('Error fetching daily visitors analytics:', error);
 		return ApiResponse.internalError(error, 'Failed to fetch daily visitors analytics');

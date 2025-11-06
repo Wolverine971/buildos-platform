@@ -1315,7 +1315,6 @@
 						id="task-status"
 						bind:value={statusValue}
 						size="sm"
-						onchange={(e) => (statusValue = e.detail)}
 						class="border-slate-200/60 bg-white/85 dark:border-slate-600/60 dark:bg-slate-900/60"
 					>
 						{#each statusOptions as option}
@@ -1334,7 +1333,6 @@
 					<Select
 						id="task-priority"
 						bind:value={priorityValue}
-						onchange={(e) => (priorityValue = e.detail)}
 						size="sm"
 						class="border-slate-200/60 bg-white/85 dark:border-slate-600/60 dark:bg-slate-900/60"
 					>
@@ -1407,7 +1405,6 @@
 						<Select
 							id="task-type"
 							bind:value={taskTypeValue}
-							onchange={(e) => (taskTypeValue = e.detail)}
 							size="sm"
 							class="border-slate-200/60 bg-white/85 dark:border-slate-600/60 dark:bg-slate-900/60"
 						>

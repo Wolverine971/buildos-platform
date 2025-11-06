@@ -32,12 +32,21 @@
 	import Button from '$lib/components/ui/Button.svelte';
 
 	import { browser } from '$app/environment';
+	import type { DashboardAnalyticsPayload } from '$lib/services/admin/dashboard-analytics.service';
+	import { onDestroy } from 'svelte';
 
-	let isLoading = $state(true);
-	let error = $state<string | null>(null);
-	let selectedTimeframe = $state<'7d' | '30d' | '90d'>('30d');
+	let { data } = $props();
+	const initialDashboard = (data?.initialDashboard ?? null) as DashboardAnalyticsPayload | null;
+	const defaultTimeframe = (data?.defaultTimeframe ?? '30d') as '7d' | '30d' | '90d';
+	const loadErrorFromServer = data?.loadError as string | undefined;
+
+	let isLoading = $state(initialDashboard ? false : true);
+	let error = $state<string | null>(loadErrorFromServer ?? null);
+	let selectedTimeframe = $state<'7d' | '30d' | '90d'>(defaultTimeframe);
 	let autoRefresh = $state(false);
-	let refreshInterval = $state<number | undefined>(undefined);
+
+	let refreshTimer: ReturnType<typeof setInterval> | null = null;
+	let currentRequest: AbortController | null = null;
 
 	// Analytics data
 	let systemOverview = $state({
@@ -188,155 +197,120 @@
 	let dailyVisitors = $state<Array<{ date: string; visitor_count: number }>>([]);
 	let dailySignups = $state<Array<{ date: string; signup_count: number }>>([]);
 
+	function applyDashboardPayload(payload: DashboardAnalyticsPayload) {
+		systemOverview = payload.systemOverview;
+		visitorOverview = payload.visitorOverview;
+		dailyVisitors = payload.dailyVisitors ?? [];
+		dailySignups = payload.dailySignups ?? [];
+		dailyActiveUsers = payload.dailyActiveUsers ?? [];
+		briefGenerationStats = payload.briefGenerationStats ?? [];
+		systemMetrics = payload.systemMetrics ?? [];
+		recentActivity = payload.recentActivity ?? [];
+		templateUsageStats = payload.templateUsageStats ?? [];
+		feedbackOverview = payload.feedbackOverview;
+		betaOverview = payload.betaOverview;
+		comprehensiveAnalytics = payload.comprehensiveAnalytics;
+		errorsData = payload.errorsData;
+		if (payload.subscriptionData) {
+			subscriptionData = payload.subscriptionData;
+		} else {
+			subscriptionData = {
+				...subscriptionData,
+				stripeEnabled: false
+			};
+		}
+	}
+
+	if (initialDashboard) {
+		applyDashboardPayload(initialDashboard);
+	}
+
+	let skipNextLoad = Boolean(initialDashboard);
+
 	// Load data on mount and when timeframe changes
 	$effect(() => {
 		selectedTimeframe; // Track this dependency
+		if (skipNextLoad) {
+			skipNextLoad = false;
+			return;
+		}
 		loadAnalytics();
 	});
 
 	// Set up auto-refresh interval when enabled
 	$effect(() => {
 		if (autoRefresh) {
-			const interval = setInterval(loadAnalytics, 30000);
-			return () => clearInterval(interval); // Cleanup on unmount or when autoRefresh changes
+			if (refreshTimer) {
+				clearInterval(refreshTimer);
+			}
+			refreshTimer = setInterval(() => loadAnalytics(true), 30000);
+			return () => {
+				if (refreshTimer) {
+					clearInterval(refreshTimer);
+					refreshTimer = null;
+				}
+			}; // Cleanup on unmount or when autoRefresh changes
+		}
+		if (refreshTimer) {
+			clearInterval(refreshTimer);
+			refreshTimer = null;
 		}
 	});
 
-	async function loadAnalytics() {
+	async function loadAnalytics(skipSpinner = false) {
 		if (!browser) return;
-		isLoading = true;
+		if (currentRequest) {
+			currentRequest.abort();
+		}
+		const controller = new AbortController();
+		currentRequest = controller;
+		if (!skipSpinner) {
+			isLoading = true;
+		}
 		error = null;
 
 		try {
-			const [
-				overviewRes,
-				visitorOverviewRes,
-				dailyVisitorsRes,
-				dailySignupsRes,
-				dailyUsersRes,
-				briefStatsRes,
-				systemMetricsRes,
-				activityRes,
-				templateStatsRes,
-				feedbackRes,
-				betaRes,
-				subscriptionRes,
-				comprehensiveRes,
-				errorsRes
-			] = await Promise.all([
-				fetch('/api/admin/analytics/overview'),
-				fetch('/api/admin/analytics/visitor-overview'),
-				fetch(`/api/admin/analytics/daily-visitors?timeframe=${selectedTimeframe}`),
-				fetch(`/api/admin/analytics/daily-signups?timeframe=${selectedTimeframe}`),
-				fetch(`/api/admin/analytics/daily-users?timeframe=${selectedTimeframe}`),
-				fetch(`/api/admin/analytics/brief-stats?timeframe=${selectedTimeframe}`),
-				fetch('/api/admin/analytics/system-metrics'),
-				fetch('/api/admin/analytics/recent-activity'),
-				fetch('/api/admin/analytics/template-usage'),
-				fetch('/api/admin/feedback/overview'),
-				fetch('/api/admin/beta/overview'),
-				fetch('/api/admin/subscriptions/overview'),
-				fetch(`/api/admin/analytics/comprehensive?timeframe=${selectedTimeframe}`),
-				fetch('/api/admin/errors?resolved=false&limit=10')
-			]);
-
-			if (!overviewRes.ok) throw new Error('Failed to load overview data');
-			if (!visitorOverviewRes.ok) throw new Error('Failed to load visitor overview');
-			if (!dailyVisitorsRes.ok) throw new Error('Failed to load daily visitors data');
-			if (!dailySignupsRes.ok) throw new Error('Failed to load daily signups data');
-			if (!dailyUsersRes.ok) throw new Error('Failed to load daily users data');
-			if (!briefStatsRes.ok) throw new Error('Failed to load brief stats');
-			if (!systemMetricsRes.ok) throw new Error('Failed to load system metrics');
-			if (!activityRes.ok) throw new Error('Failed to load recent activity');
-			if (!templateStatsRes.ok) throw new Error('Failed to load template usage');
-			if (!feedbackRes.ok) throw new Error('Failed to load feedback data');
-			if (!betaRes.ok) throw new Error('Failed to load beta data');
-			// Subscription data is optional (only if Stripe is enabled)
-			if (subscriptionRes.ok) {
-				subscriptionData = await subscriptionRes.json();
-			}
-			// Errors data
-			if (errorsRes.ok) {
-				const errorResponse = await errorsRes.json();
-				if (errorResponse.success) {
-					const summary = errorResponse.data.summary;
-					if (summary && summary.length > 0) {
-						const summaryData = summary[0];
-						errorsData = {
-							total_errors: summaryData.total_errors || 0,
-							unresolved_errors: summaryData.unresolved_errors || 0,
-							critical_errors: summaryData.critical_errors || 0,
-							recent_errors_24h: summaryData.errors_last_24h || 0,
-							error_trend: summaryData.error_trend || 0
-						};
-					}
+			const response = await fetch(
+				`/api/admin/analytics/dashboard?timeframe=${selectedTimeframe}`,
+				{
+					signal: controller.signal
 				}
+			);
+
+			if (!response.ok) throw new Error('Failed to load analytics dashboard');
+
+			const json = await response.json();
+			if (!json.success || !json.data) {
+				throw new Error(json.error || 'Failed to load analytics dashboard');
 			}
-			// Comprehensive analytics
-			if (comprehensiveRes.ok) {
-				const comprehensiveData = await comprehensiveRes.json();
-				if (comprehensiveData.success) {
-					comprehensiveAnalytics = comprehensiveData.data;
-				}
-			}
 
-			const overviewJson = await overviewRes.json();
-			if (!overviewJson.success) throw new Error('Overview response missing success flag');
-			systemOverview = overviewJson.data?.[0] ?? systemOverview;
-
-			const visitorOverviewJson = await visitorOverviewRes.json();
-			if (!visitorOverviewJson.success)
-				throw new Error('Visitor overview response missing success flag');
-			visitorOverview = visitorOverviewJson.data;
-
-			const dailyVisitorsJson = await dailyVisitorsRes.json();
-			if (!dailyVisitorsJson.success)
-				throw new Error('Daily visitors response missing success flag');
-			dailyVisitors = dailyVisitorsJson.data ?? [];
-
-			const dailySignupsJson = await dailySignupsRes.json();
-			if (!dailySignupsJson.success)
-				throw new Error('Daily signups response missing success flag');
-			dailySignups = dailySignupsJson.data ?? [];
-
-			const dailyUsersJson = await dailyUsersRes.json();
-			if (!dailyUsersJson.success)
-				throw new Error('Daily users response missing success flag');
-			dailyActiveUsers = dailyUsersJson.data ?? [];
-
-			const briefStatsJson = await briefStatsRes.json();
-			if (!briefStatsJson.success)
-				throw new Error('Brief stats response missing success flag');
-			briefGenerationStats = briefStatsJson.data ?? [];
-
-			const systemMetricsJson = await systemMetricsRes.json();
-			if (!systemMetricsJson.success)
-				throw new Error('System metrics response missing success flag');
-			systemMetrics = systemMetricsJson.data ?? [];
-
-			const activityJson = await activityRes.json();
-			if (!activityJson.success)
-				throw new Error('Recent activity response missing success flag');
-			recentActivity = activityJson.data ?? [];
-
-			const templateStatsJson = await templateStatsRes.json();
-			if (!templateStatsJson.success)
-				throw new Error('Template usage response missing success flag');
-			templateUsageStats = templateStatsJson.data ?? [];
-
-			feedbackOverview = await feedbackRes.json();
-
-			const betaOverviewJson = await betaRes.json();
-			if (!betaOverviewJson.success)
-				throw new Error('Beta overview response missing success flag');
-			betaOverview = betaOverviewJson.data;
+			applyDashboardPayload(json.data as DashboardAnalyticsPayload);
 		} catch (err) {
+			if ((err as DOMException)?.name === 'AbortError') {
+				return;
+			}
 			console.error('Error loading analytics:', err);
 			error = err instanceof Error ? err.message : 'Failed to load analytics';
 		} finally {
-			isLoading = false;
+			if (currentRequest === controller) {
+				currentRequest = null;
+			}
+			if (!controller.signal.aborted) {
+				isLoading = false;
+			}
 		}
 	}
+
+	onDestroy(() => {
+		if (refreshTimer) {
+			clearInterval(refreshTimer);
+			refreshTimer = null;
+		}
+		if (currentRequest) {
+			currentRequest.abort();
+			currentRequest = null;
+		}
+	});
 
 	function getTimeframeDays(): number {
 		switch (selectedTimeframe) {
@@ -483,12 +457,7 @@
 				</label>
 
 				<!-- Timeframe -->
-				<Select
-					bind:value={selectedTimeframe}
-					onchange={(e) => (selectedTimeframe = e.detail)}
-					size="md"
-					placeholder="Last 30 Days"
-				>
+				<Select bind:value={selectedTimeframe} size="md" placeholder="Last 30 Days">
 					<option value="7d">Last 7 Days</option>
 					<option value="30d">Last 30 Days</option>
 					<option value="90d">Last 90 Days</option>

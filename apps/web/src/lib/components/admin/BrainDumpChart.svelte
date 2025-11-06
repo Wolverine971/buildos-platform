@@ -135,8 +135,17 @@
 							stroke="white"
 							stroke-width="2"
 							class="hover:r-6 cursor-pointer transition-all"
+							role="button"
+							tabindex="0"
+							aria-label="{point.count} brain dumps in {point.month}"
 							onmouseenter={() => (hoveredPoint = { point, x, y })}
 							onmouseleave={() => (hoveredPoint = null)}
+							onkeydown={(e) => {
+								if (e.key === 'Enter' || e.key === ' ') {
+									e.preventDefault();
+									hoveredPoint = { point, x, y };
+								}
+							}}
 						/>
 
 						<!-- Month labels -->

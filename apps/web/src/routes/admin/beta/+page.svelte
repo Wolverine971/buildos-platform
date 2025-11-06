@@ -990,11 +990,34 @@
 														? 'cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 p-2 rounded'
 														: ''}"
 													title={signup.why_interested || 'Not provided'}
+													role={signup.why_interested &&
+													signup.why_interested.length > 100
+														? 'button'
+														: undefined}
+													aria-label={signup.why_interested &&
+													signup.why_interested.length > 100
+														? 'Click to view full text'
+														: undefined}
+													tabindex={signup.why_interested &&
+													signup.why_interested.length > 100
+														? 0
+														: undefined}
 													onclick={() => {
 														if (
 															signup.why_interested &&
 															signup.why_interested.length > 100
 														) {
+															selectedItem = signup;
+															showModal = true;
+														}
+													}}
+													onkeydown={(e) => {
+														if (
+															signup.why_interested &&
+															signup.why_interested.length > 100 &&
+															(e.key === 'Enter' || e.key === ' ')
+														) {
+															e.preventDefault();
 															selectedItem = signup;
 															showModal = true;
 														}
@@ -1017,11 +1040,35 @@
 														: ''}"
 													title={signup.biggest_challenge ||
 														'Not provided'}
+													role={signup.biggest_challenge &&
+													signup.biggest_challenge.length > 100
+														? 'button'
+														: undefined}
+													
+													aria-label={signup.biggest_challenge &&
+													signup.biggest_challenge.length > 100
+														? 'Click to view full text'
+														: undefined}
+													tabindex={signup.biggest_challenge &&
+													signup.biggest_challenge.length > 100
+														? 0
+														: undefined}
 													onclick={() => {
 														if (
 															signup.biggest_challenge &&
 															signup.biggest_challenge.length > 100
 														) {
+															selectedItem = signup;
+															showModal = true;
+														}
+													}}
+													onkeydown={(e) => {
+														if (
+															signup.biggest_challenge &&
+															signup.biggest_challenge.length > 100 &&
+															(e.key === 'Enter' || e.key === ' ')
+														) {
+															e.preventDefault();
 															selectedItem = signup;
 															showModal = true;
 														}
@@ -1339,7 +1386,7 @@
 							</div>
 							<Select
 								bind:value={memberFilters.tier}
-								onchange={(e) => (memberFilters.tier = e.detail)}
+								onchange={(e) => (memberFilters.tier = e)}
 								size="md"
 							>
 								<option value="all">All Tiers</option>

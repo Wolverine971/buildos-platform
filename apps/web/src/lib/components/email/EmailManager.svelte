@@ -328,7 +328,7 @@
 				<FormField label="Status" labelFor="mobile-status-filter">
 					<Select
 						bind:value={statusFilter}
-						onchange={(e) => (statusFilter = e.detail)}
+						onchange={(e) => (statusFilter = e)}
 						size="md"
 						placeholder="All Status"
 						id="mobile-status-filter"
@@ -346,7 +346,7 @@
 				<FormField label="Sort By" labelFor="mobile-sort-by">
 					<Select
 						bind:value={sortBy}
-						onchange={(e) => (sortBy = e.detail)}
+						onchange={(e) => (sortBy = e)}
 						size="md"
 						placeholder="Date Created"
 						id="mobile-sort-by"
@@ -382,7 +382,7 @@
 						bind:value={statusFilter}
 						size="md"
 						placeholder="All Status"
-						onchange={(e) => (statusFilter = e.detail)}
+						onchange={(e) => (statusFilter = e)}
 					>
 						<option value="all">All Status</option>
 						<option value="draft">Draft</option>
@@ -399,7 +399,7 @@
 						bind:value={sortBy}
 						size="md"
 						placeholder="Date Created"
-						onchange={(e) => (sortBy = e.detail)}
+						onchange={(e) => (sortBy = e)}
 					>
 						<option value="created_at">Date Created</option>
 						<option value="subject">Subject</option>

@@ -1,8 +1,8 @@
-// apps/web/src/routes/api/admin/analytics/daily-users/+server.ts
+// apps/web/src/routes/api/admin/analytics/dashboard/+server.ts
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import {
-	getDailyActiveUsers,
+	getDashboardAnalytics,
 	type AnalyticsTimeframe
 } from '$lib/services/admin/dashboard-analytics.service';
 
@@ -12,7 +12,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 		return ApiResponse.unauthorized();
 	}
 
-	if (!user?.is_admin) {
+	if (!user.is_admin) {
 		return ApiResponse.forbidden('Admin access required');
 	}
 
@@ -21,10 +21,10 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 		timeframeParam === '7d' || timeframeParam === '90d' ? timeframeParam : '30d';
 
 	try {
-		const data = await getDailyActiveUsers(supabase, timeframe);
+		const data = await getDashboardAnalytics(supabase, timeframe);
 		return ApiResponse.success(data);
-	} catch (error) {
-		console.error('Error fetching daily users analytics:', error);
-		return ApiResponse.internalError(error, 'Failed to fetch daily users analytics');
+	} catch (err) {
+		console.error('[Admin Analytics] Failed to build dashboard payload:', err);
+		return ApiResponse.internalError(err, 'Failed to load analytics dashboard data');
 	}
 };

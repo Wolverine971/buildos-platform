@@ -558,25 +558,25 @@ Guidelines:
 										 placeholder-gray-400 dark:placeholder-gray-500
 										 focus:ring-2 focus:ring-primary-500 focus:border-transparent
 										 resize-none"
-							/>
+							></textarea>
 							<div class="mt-1 text-xs text-gray-500 dark:text-gray-400 text-right">
 								{instructions.length}/5000
 							</div>
 						</div>
 
 						<!-- System Prompt Toggle -->
-						<Button
+						<button
 							onclick={() => (showSystemPrompt = !showSystemPrompt)}
 							class="text-xs sm:text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 flex items-center gap-1"
 						>
 							{#if showSystemPrompt}
-								<ChevronUp class="w-3 h-3" />
+								<ChevronUp class="w-3 h-3"></ChevronUp>
 								Hide System Prompt
 							{:else}
-								<ChevronDown class="w-3 h-3" />
+								<ChevronDown class="w-3 h-3"></ChevronDown>
 								Show/Edit System Prompt
 							{/if}
-						</Button>
+						</button>
 
 						<!-- System Prompt Editor -->
 						{#if showSystemPrompt}
@@ -597,7 +597,7 @@ Guidelines:
 											 placeholder-gray-400 dark:placeholder-gray-500
 											 focus:ring-2 focus:ring-primary-500 focus:border-transparent
 											 resize-y font-mono"
-								/>
+								></textarea>
 								<div class="mt-1 flex flex-col sm:flex-row justify-between gap-2">
 									<Button
 										variant="ghost"
@@ -648,28 +648,24 @@ Guidelines:
 						<div
 							class="flex flex-col sm:flex-row gap-2 justify-center sm:justify-start"
 						>
-							<Button
-								variant="ghost"
-								size="sm"
+							<button
 								onclick={useAiContent}
 								disabled={!generatedEmail}
-								class="text-xs sm:text-sm text-green-600 dark:text-green-400"
+								class="text-xs sm:text-sm text-green-600 dark:text-green-400 inline-flex items-center gap-1 px-3 py-2"
 							>
-								<ArrowRight class="w-3 h-3 mr-1" />
+								<ArrowRight class="w-3 h-3"></ArrowRight>
 								<span class="hidden sm:inline">Use AI Content</span>
 								<span class="sm:hidden">Use AI</span>
-							</Button>
-							<Button
-								variant="ghost"
-								size="sm"
+							</button>
+							<button
 								onclick={copyManualToAi}
 								disabled={!manualEmail}
-								class="text-xs sm:text-sm text-blue-600 dark:text-blue-400"
+								class="text-xs sm:text-sm text-blue-600 dark:text-blue-400 inline-flex items-center gap-1 px-3 py-2"
 							>
-								<Copy class="w-3 h-3 mr-1" />
+								<Copy class="w-3 h-3"></Copy>
 								<span class="hidden sm:inline">Copy to AI</span>
 								<span class="sm:hidden">Copy</span>
-							</Button>
+							</button>
 						</div>
 					{/if}
 
@@ -684,7 +680,7 @@ Guidelines:
 								<div class="flex items-center gap-2">
 									<PenTool
 										class="w-3 h-3 sm:w-4 sm:h-4 text-gray-600 dark:text-gray-400"
-									/>
+									></PenTool>
 									<label
 										for="manual-email"
 										class="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300"
@@ -702,7 +698,7 @@ Guidelines:
 											 placeholder-gray-400 dark:placeholder-gray-500
 											 focus:ring-2 focus:ring-primary-500 focus:border-transparent
 											 resize-y"
-								/>
+								></textarea>
 							</div>
 						{/if}
 
@@ -712,7 +708,7 @@ Guidelines:
 								<div class="flex items-center gap-2">
 									<Bot
 										class="w-3 h-3 sm:w-4 sm:h-4 text-blue-600 dark:text-blue-400"
-									/>
+									></Bot>
 									<label
 										for="generated-email"
 										class="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300"
@@ -730,7 +726,7 @@ Guidelines:
 											 placeholder-gray-400 dark:placeholder-gray-500
 											 focus:ring-2 focus:ring-primary-500 focus:border-transparent
 											 resize-y"
-								/>
+								></textarea>
 							</div>
 						{/if}
 					</div>

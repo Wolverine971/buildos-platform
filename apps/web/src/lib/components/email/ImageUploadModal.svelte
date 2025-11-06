@@ -274,9 +274,19 @@
 					class="border-2 border-dashed rounded-lg p-8 text-center {dragActive
 						? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
 						: 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500'}"
+					role="button"
+					tabindex="0"
+					aria-label="Drag and drop image upload area"
+					onclick={() => fileInput?.click()}
 					ondragover={handleDragOver}
 					ondragleave={handleDragLeave}
 					ondrop={handleDrop}
+					onkeydown={(e) => {
+						if (e.key === 'Enter' || e.key === ' ') {
+							e.preventDefault();
+							fileInput?.click();
+						}
+					}}
 				>
 					{#if uploadPreview}
 						<!-- Upload Preview -->
@@ -380,7 +390,7 @@
 							bind:value={selectedFilter}
 							size="md"
 							class="text-xs sm:text-sm"
-							onchange={(e) => (selectedFilter = e.detail)}
+							onchange={(e) => (selectedFilter = e)}
 						>
 							<option value="all">All Images</option>
 							<option value="email">This Email</option>

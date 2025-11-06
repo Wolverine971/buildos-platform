@@ -1,14 +1,17 @@
 <!-- apps/web/src/lib/components/ui/CardFooter.svelte -->
 <script lang="ts">
 	import type { HTMLAttributes } from 'svelte/elements';
+	import type { Snippet } from 'svelte';
 	import { twMerge } from 'tailwind-merge';
 
 	// Svelte 5 runes: Use $props() with rest syntax
 	let {
 		class: className = '',
+		children,
 		...restProps
 	}: {
 		class?: string;
+		children: Snippet;
 	} & HTMLAttributes<HTMLDivElement> = $props();
 
 	// Optimized for high information density (Apple-style)
@@ -21,5 +24,5 @@
 </script>
 
 <div class={footerClasses} {...restProps}>
-	<slot />
+	{@render children()}
 </div>

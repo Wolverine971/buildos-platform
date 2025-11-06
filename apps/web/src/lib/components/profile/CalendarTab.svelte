@@ -752,7 +752,6 @@
 									id="calendarTimezone"
 									name="timezone"
 									bind:value={calendarPreferences.timezone}
-									onchange={(e) => (calendarPreferences.timezone = e.detail)}
 									required
 									size="md"
 								>

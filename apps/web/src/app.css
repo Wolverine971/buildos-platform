@@ -1,3 +1,4 @@
+/* apps/web/src/app.css */
 @import './lib/styles/performance-optimizations.css';
 
 @tailwind base;
@@ -156,5 +157,59 @@
 @supports (scrollbar-gutter: stable) {
 	html {
 		scrollbar-gutter: stable;
+	}
+}
+
+@layer components {
+	.gradient-btn-primary {
+		@apply bg-gradient-to-br from-blue-500 to-indigo-500 text-white shadow-[0_12px_32px_-20px_rgba(59,130,246,0.55)] transition-all duration-200 hover:scale-105 hover:shadow-[0_20px_40px_-18px_rgba(99,102,241,0.6)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100 dark:from-blue-500 dark:to-indigo-500;
+	}
+
+	.gradient-btn-recording {
+		@apply bg-gradient-to-br from-rose-500 to-orange-500 text-white shadow-[0_16px_32px_-20px_rgba(244,63,94,0.6)] animate-pulse;
+	}
+
+	.gradient-icon-primary {
+		@apply bg-gradient-to-br from-blue-500/20 via-indigo-500/10 to-purple-500/20 shadow-[0_28px_50px_-32px_rgba(59,130,246,0.65)] dark:from-blue-400/20 dark:via-indigo-400/25 dark:to-purple-400/20;
+	}
+
+	.gradient-glow-primary {
+		@apply bg-gradient-to-br from-blue-500/10 via-indigo-500/10 to-purple-500/10;
+	}
+
+	.gradient-icon-brand {
+		@apply bg-gradient-to-br from-purple-500/20 via-pink-500/10 to-indigo-500/20 shadow-[0_12px_30px_-18px_rgba(168,85,247,0.55)] dark:from-purple-400/20 dark:via-pink-400/20 dark:to-indigo-400/20;
+	}
+
+	.gradient-badge-blue {
+		@apply bg-gradient-to-br from-blue-500/20 to-indigo-500/20 text-xs font-bold text-blue-600 dark:text-blue-300;
+	}
+
+	.gradient-badge-purple {
+		@apply bg-gradient-to-br from-purple-500/20 to-pink-500/20 text-xs font-bold text-purple-600 dark:text-purple-300;
+	}
+
+	.gradient-message-assistant {
+		@apply bg-gradient-to-br from-blue-600 to-indigo-600 shadow-[0_8px_24px_-12px_rgba(59,130,246,0.4)] transition-all duration-200 hover:shadow-[0_12px_32px_-10px_rgba(79,70,229,0.5)];
+	}
+
+	.gradient-avatar-purple {
+		@apply bg-gradient-to-br from-purple-500/20 to-pink-500/20 shadow-sm dark:from-purple-400/25 dark:to-pink-400/25;
+	}
+
+	.gradient-card-purple {
+		@apply bg-gradient-to-br from-purple-50/90 via-pink-50/80 to-indigo-50/90 dark:from-purple-950/40 dark:via-pink-950/40 dark:to-indigo-950/40;
+	}
+
+	.gradient-card-primary {
+		@apply bg-gradient-to-r from-blue-50/90 via-indigo-50/80 to-purple-50/80 text-blue-700 shadow-sm ring-1 ring-blue-200/30 dark:from-blue-950/40 dark:via-indigo-950/40 dark:to-purple-950/40 dark:text-blue-200;
+	}
+
+	.gradient-fab-purple {
+		@apply bg-gradient-to-br from-purple-500 to-pink-500 text-white shadow-[0_16px_32px_-20px_rgba(168,85,247,0.55)] transition-all duration-200 hover:scale-105 hover:shadow-[0_20px_40px_-18px_rgba(236,72,153,0.6)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-400 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100 dark:from-purple-400 dark:to-pink-400;
+	}
+
+	.gradient-chip-blue {
+		@apply bg-gradient-to-br from-blue-500/20 via-sky-500/10 to-indigo-500/20 text-blue-600 dark:text-blue-300;
 	}
 }

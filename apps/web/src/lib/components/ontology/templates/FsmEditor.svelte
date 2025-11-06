@@ -741,6 +741,7 @@
 														type="button"
 														onclick={() => handleRemoveAction(action)}
 														class="hover:text-red-600 dark:hover:text-red-400"
+														aria-label="Remove action"
 														title="Remove action"
 													>
 														<svg

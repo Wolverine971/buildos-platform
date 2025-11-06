@@ -554,7 +554,6 @@
 									<Select
 										id="project-status"
 										bind:value={projectFormData.status}
-										onchange={(e) => (projectFormData.status = e.detail)}
 										size="md"
 									>
 										<option value="">Select Status</option>

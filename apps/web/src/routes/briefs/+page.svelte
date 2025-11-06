@@ -971,12 +971,7 @@
 							</div>
 
 							<FormField label="Date Range" labelFor="dateRange">
-								<Select
-									id="dateRange"
-									bind:value={selectedDateRange}
-									onchange={(e) => (selectedDateRange = e.detail)}
-									size="sm"
-								>
+								<Select id="dateRange" bind:value={selectedDateRange} size="sm">
 									<option value="today">Today</option>
 									<option value="week">Last Week</option>
 									<option value="month">Last Month</option>

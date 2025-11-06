@@ -112,6 +112,7 @@
 			type="button"
 			role="switch"
 			aria-checked={config.enabled}
+			aria-label="Toggle available slot finder"
 			class={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-emerald-500/40 ${
 				config.enabled
 					? 'bg-emerald-500 dark:bg-emerald-600'
@@ -123,7 +124,7 @@
 				class={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-150 ease-in-out ${
 					config.enabled ? 'translate-x-5' : 'translate-x-0'
 				}`}
-			/>
+			></span>
 		</button>
 	</div>
 

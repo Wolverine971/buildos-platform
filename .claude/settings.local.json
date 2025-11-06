@@ -39,7 +39,8 @@
 			"Bash(pnpm run gen:schema:*)",
 			"Bash(sed:*)",
 			"Bash(do grep -l \"import\" \"$file\")",
-			"Bash(rm:*)"
+			"Bash(rm:*)",
+			"WebFetch(domain:supabase.com)"
 		],
 		"deny": [],
 		"ask": []

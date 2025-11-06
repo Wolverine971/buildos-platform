@@ -99,9 +99,18 @@
 							fill="#3b82f6"
 							rx="2"
 							class="hover:opacity-80 cursor-pointer"
+							role="button"
+							tabindex="0"
+							aria-label="{project.tasks} tasks in {project.fullName}"
 							onmouseenter={() =>
 								(hoveredBar = { type: 'tasks', project, value: project.tasks })}
 							onmouseleave={() => (hoveredBar = null)}
+							onkeydown={(e) => {
+								if (e.key === 'Enter' || e.key === ' ') {
+									e.preventDefault();
+									hoveredBar = { type: 'tasks', project, value: project.tasks };
+								}
+							}}
 						/>
 
 						<!-- Notes bar -->
@@ -113,9 +122,18 @@
 							fill="#10b981"
 							rx="2"
 							class="hover:opacity-80 cursor-pointer"
+							role="button"
+							tabindex="0"
+							aria-label="{project.notes} notes in {project.fullName}"
 							onmouseenter={() =>
 								(hoveredBar = { type: 'notes', project, value: project.notes })}
 							onmouseleave={() => (hoveredBar = null)}
+							onkeydown={(e) => {
+								if (e.key === 'Enter' || e.key === ' ') {
+									e.preventDefault();
+									hoveredBar = { type: 'notes', project, value: project.notes };
+								}
+							}}
 						/>
 
 						<!-- Completed bar -->
@@ -127,6 +145,9 @@
 							fill="#8b5cf6"
 							rx="2"
 							class="hover:opacity-80 cursor-pointer"
+							role="button"
+							tabindex="0"
+							aria-label="{project.completed_tasks} completed tasks in {project.fullName}"
 							onmouseenter={() =>
 								(hoveredBar = {
 									type: 'completed',
@@ -134,6 +155,16 @@
 									value: project.completed_tasks
 								})}
 							onmouseleave={() => (hoveredBar = null)}
+							onkeydown={(e) => {
+								if (e.key === 'Enter' || e.key === ' ') {
+									e.preventDefault();
+									hoveredBar = {
+										type: 'completed',
+										project,
+										value: project.completed_tasks
+									};
+								}
+							}}
 						/>
 
 						<!-- Project name -->
