@@ -391,7 +391,7 @@
 					warnings={[]}
 					phaseValidationWarning={null}
 				/>
-				<div class="mt-4" />
+				<div class="mt-4"></div>
 			{/if}
 
 			<!-- Phase Cards -->

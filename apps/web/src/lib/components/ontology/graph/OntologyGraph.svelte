@@ -1,15 +1,18 @@
-<!-- apps/web/src/routes/admin/ontology/graph/OntologyGraph.svelte -->
+<!-- apps/web/src/lib/components/ontology/graph/OntologyGraph.svelte -->
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte';
 	import cytoscape from 'cytoscape';
 	import dagre from 'cytoscape-dagre';
 	import cola from 'cytoscape-cola';
 	import coseBilkent from 'cytoscape-cose-bilkent';
-	import type { PageData } from './$types';
-	import { OntologyGraphService } from './lib/ontology-graph.service';
-	import type { OntologyGraphInstance, ViewMode } from './lib/ontology-graph.types';
+	import { OntologyGraphService } from './lib/graph.service';
+	import type {
+		GraphNode,
+		GraphSourceData,
+		OntologyGraphInstance,
+		ViewMode
+	} from './lib/graph.types';
 
-	// Register Cytoscape layouts (safe to call multiple times; guarded to avoid duplication).
 	const CYTOSCAPE_PLUGINS_KEY = '__buildos_cytoscape_layouts_registered__';
 	if (!(cytoscape as unknown as Record<string, unknown>)[CYTOSCAPE_PLUGINS_KEY]) {
 		cytoscape.use(dagre);
@@ -21,12 +24,12 @@
 	let {
 		data,
 		viewMode,
-		selectedNode = $bindable<any | null>(),
+		selectedNode = $bindable<GraphNode | null>(),
 		graphInstance = $bindable<OntologyGraphInstance | null>()
 	}: {
-		data: PageData;
+		data: GraphSourceData;
 		viewMode: ViewMode;
-		selectedNode: any | null;
+		selectedNode: GraphNode | null;
 		graphInstance: OntologyGraphInstance | null;
 	} = $props();
 
@@ -126,13 +129,13 @@
 			layout: getLayoutOptions(currentLayout),
 			minZoom: 0.1,
 			maxZoom: 4,
-			wheelSensitivity: 0.1
+			wheelSensitivity: 0.35
 		});
 
 		cy.on('tap', 'node', (evt) => {
 			const node = evt.target;
 			selectedNode = {
-				...node.data(),
+				...(node.data() as GraphNode),
 				connectedEdges: node.connectedEdges().length,
 				neighbors: node.neighborhood().nodes().length
 			};
@@ -300,7 +303,7 @@
 	});
 </script>
 
-<div bind:this={container} class="w-full h-full bg-gray-50 dark:bg-gray-900" />
+<div bind:this={container} class="w-full h-full bg-gray-50 dark:bg-gray-900"></div>
 
 <style>
 	:global(.highlight) {

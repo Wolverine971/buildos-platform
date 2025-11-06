@@ -494,7 +494,7 @@
 		<div class="flex h-[600px]">
 			<!-- Graph Canvas -->
 			<div class="flex-1 relative bg-gray-50 dark:bg-gray-900">
-				<div bind:this={container} class="w-full h-full" />
+				<div bind:this={container} class="w-full h-full"></div>
 
 				<!-- Floating Toolbar -->
 				<div
@@ -542,7 +542,7 @@
 						</svg>
 						Add Transition
 					</Button>
-					<div class="w-px bg-gray-200 dark:bg-gray-700" />
+					<div class="w-px bg-gray-200 dark:bg-gray-700"></div>
 					<Button variant="ghost" size="sm" onclick={handleFitToView} disabled={loading}>
 						<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 							<path

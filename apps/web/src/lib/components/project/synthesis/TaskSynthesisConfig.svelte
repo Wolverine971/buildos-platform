@@ -35,9 +35,9 @@
 			<GitMerge class="w-4 h-4 text-gray-400 dark:text-gray-500 mt-1" />
 			<div class="flex-1 space-y-2">
 				<div class="flex items-center justify-between">
-					<label class="text-sm font-medium text-gray-700 dark:text-gray-300">
+					<div class="text-sm font-medium text-gray-700 dark:text-gray-300">
 						Task Consolidation
-					</label>
+					</div>
 					<input
 						type="checkbox"
 						checked={config.consolidation.enabled}
@@ -49,9 +49,9 @@
 				{#if config.consolidation.enabled}
 					<div class="pl-4 space-y-2">
 						<div>
-							<label class="text-xs text-gray-600 dark:text-gray-400">
+							<div class="text-xs text-gray-600 dark:text-gray-400">
 								Consolidation Aggressiveness
-							</label>
+							</div>
 							<select
 								value={config.consolidation.aggressiveness}
 								onchange={(e) =>
@@ -97,9 +97,9 @@
 			<Layers class="w-4 h-4 text-gray-400 dark:text-gray-500 mt-1" />
 			<div class="flex-1 space-y-2">
 				<div class="flex items-center justify-between">
-					<label class="text-sm font-medium text-gray-700 dark:text-gray-300">
+					<div class="text-sm font-medium text-gray-700 dark:text-gray-300">
 						Task Sequencing
-					</label>
+					</div>
 					<input
 						type="checkbox"
 						checked={config.sequencing.enabled}
@@ -145,9 +145,9 @@
 			<Clock class="w-4 h-4 text-gray-400 dark:text-gray-500 mt-1" />
 			<div class="flex-1 space-y-2">
 				<div class="flex items-center justify-between">
-					<label class="text-sm font-medium text-gray-700 dark:text-gray-300">
+					<div class="text-sm font-medium text-gray-700 dark:text-gray-300">
 						Time Estimation
-					</label>
+					</div>
 					<input
 						type="checkbox"
 						checked={config.timeEstimation.enabled}
@@ -159,9 +159,9 @@
 				{#if config.timeEstimation.enabled}
 					<div class="pl-4 space-y-2">
 						<div>
-							<label class="text-xs text-gray-600 dark:text-gray-400">
+							<div class="text-xs text-gray-600 dark:text-gray-400">
 								Confidence Level
-							</label>
+							</div>
 							<select
 								value={config.timeEstimation.confidenceLevel}
 								onchange={(e) =>
@@ -206,12 +206,9 @@
 			<Search class="w-4 h-4 text-gray-400 dark:text-gray-500 mt-1" />
 			<div class="flex-1 space-y-2">
 				<div class="flex items-center justify-between">
-					<label
-						for="gap-analysis-enabled"
-						class="text-sm font-medium text-gray-700 dark:text-gray-300"
-					>
+					<div class="text-sm font-medium text-gray-700 dark:text-gray-300">
 						Gap Analysis
-					</label>
+					</div>
 					<input
 						id="gap-analysis-enabled"
 						type="checkbox"
@@ -271,9 +268,9 @@
 			<Link class="w-4 h-4 text-gray-400 dark:text-gray-500 mt-1" />
 			<div class="flex-1 space-y-2">
 				<div class="flex items-center justify-between">
-					<label class="text-sm font-medium text-gray-700 dark:text-gray-300">
+					<div class="text-sm font-medium text-gray-700 dark:text-gray-300">
 						Task Dependencies
-					</label>
+					</div>
 					<input
 						type="checkbox"
 						checked={config.dependencies.enabled}
@@ -319,9 +316,9 @@
 			<Layers class="w-4 h-4 text-gray-400 dark:text-gray-500 mt-1" />
 			<div class="flex-1 space-y-2">
 				<div class="flex items-center justify-between">
-					<label class="text-sm font-medium text-gray-700 dark:text-gray-300">
+					<div class="text-sm font-medium text-gray-700 dark:text-gray-300">
 						Task Grouping
-					</label>
+					</div>
 					<input
 						type="checkbox"
 						checked={config.grouping.enabled}
@@ -333,9 +330,9 @@
 				{#if config.grouping.enabled}
 					<div class="pl-4 space-y-2">
 						<div>
-							<label class="text-xs text-gray-600 dark:text-gray-400">
+							<div class="text-xs text-gray-600 dark:text-gray-400">
 								Grouping Strategy
-							</label>
+							</div>
 							<select
 								value={config.grouping.strategy}
 								onchange={(e) =>
@@ -354,9 +351,9 @@
 						</div>
 
 						<div>
-							<label class="text-xs text-gray-600 dark:text-gray-400">
+							<div class="text-xs text-gray-600 dark:text-gray-400">
 								Maximum Group Size: {config.grouping.maxGroupSize}
-							</label>
+							</div>
 							<input
 								type="range"
 								min="2"

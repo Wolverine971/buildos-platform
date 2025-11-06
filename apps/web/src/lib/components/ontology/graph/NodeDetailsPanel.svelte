@@ -1,4 +1,4 @@
-<!-- apps/web/src/routes/admin/ontology/graph/NodeDetailsPanel.svelte -->
+<!-- apps/web/src/lib/components/ontology/graph/NodeDetailsPanel.svelte -->
 <script lang="ts">
 	import Card from '$lib/components/ui/Card.svelte';
 	import CardHeader from '$lib/components/ui/CardHeader.svelte';
@@ -6,7 +6,7 @@
 	import CardFooter from '$lib/components/ui/CardFooter.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import { X, ExternalLink, Network } from 'lucide-svelte';
-	import type { GraphNode } from './lib/ontology-graph.types';
+	import type { GraphNode } from './lib/graph.types';
 
 	let { node, onClose }: { node: GraphNode | null; onClose: () => void } = $props();
 
@@ -46,7 +46,7 @@
 
 		const base = routes[node?.type];
 		if (base) {
-			window.location.href = `${base}/${node.id}`;
+			window.location.href = `${base}/${node?.id}`;
 		}
 	}
 </script>
@@ -92,7 +92,7 @@
 					<div class="flex justify-between">
 						<dt class="text-gray-600 dark:text-gray-400">ID</dt>
 						<dd class="font-mono text-[11px] text-gray-900 dark:text-white">
-							{(node?.id ?? '').toString().slice(0, 8)}…
+							{(node?.id ?? '').toString().slice(0, 8)}...
 						</dd>
 					</div>
 					{#if typeof node?.connectedEdges === 'number'}

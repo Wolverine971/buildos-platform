@@ -1636,7 +1636,7 @@
 						>
 							Quick Navigation
 						</span>
-						<div class="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
+						<div class="flex-1 h-px bg-gray-200 dark:bg-gray-700"></div>
 					</div>
 
 					<!-- Navigation Buttons - Stack on mobile, inline on desktop -->

@@ -1,13 +1,13 @@
 // apps/web/src/routes/ontology/templates/+page.server.ts
 /**
- * Server-side data loading for ontology templates browse page
- * Fetches template catalog via API endpoint
+ * Server-side data loading for ontology templates browse page.
  */
 
 import type { PageServerLoad } from './$types';
 import { redirect, error } from '@sveltejs/kit';
 import type { Template } from '$lib/types/onto';
 import type { TypedSupabaseClient } from '@buildos/supabase-client';
+import { fetchTemplateCatalog } from '$lib/services/ontology/ontology-template-catalog.service';
 
 type FacetValue = {
 	facet_key: string;
@@ -17,15 +17,14 @@ type FacetValue = {
 	color: string | null;
 };
 
-export const load: PageServerLoad = async ({ url, locals, fetch }) => {
-	// Check authentication
+export const load: PageServerLoad = async ({ url, locals }) => {
 	const { user } = await locals.safeGetSession();
 
 	if (!user) {
 		throw redirect(302, '/auth/login');
 	}
 
-	// Get filter parameters from URL
+	// Collect filter parameters from URL
 	const scope = url.searchParams.get('scope');
 	const realm = url.searchParams.get('realm');
 	const search = url.searchParams.get('search');
@@ -33,49 +32,35 @@ export const load: PageServerLoad = async ({ url, locals, fetch }) => {
 	const scales = url.searchParams.getAll('scale');
 	const stages = url.searchParams.getAll('stage');
 	const sort = url.searchParams.get('sort') ?? 'name';
-	const direction = url.searchParams.get('direction') ?? 'asc';
+	const directionParam = url.searchParams.get('direction');
+	const direction = directionParam && directionParam.toLowerCase() === 'desc' ? 'desc' : 'asc';
 	const detailParam = url.searchParams.get('detail');
 
-	// Build API URL with query parameters
-	const apiParams = new URLSearchParams();
-	if (scope) apiParams.set('scope', scope);
-	if (realm) apiParams.set('realm', realm);
-	if (search) apiParams.set('search', search);
-	contexts.forEach((value) => apiParams.append('context', value));
-	scales.forEach((value) => apiParams.append('scale', value));
-	stages.forEach((value) => apiParams.append('stage', value));
-	if (sort) apiParams.set('sort', sort);
-	if (direction) apiParams.set('direction', direction);
+	let templates: Template[];
+	let groupedByRealm: Record<string, Template[]>;
 
-	const apiUrl = `/api/onto/templates${apiParams.toString() ? '?' + apiParams.toString() : ''}`;
+	try {
+		const result = await fetchTemplateCatalog(locals.supabase, {
+			scope,
+			realm,
+			search,
+			primitive: url.searchParams.get('primitive'),
+			contexts,
+			scales,
+			stages,
+			sort,
+			direction
+		});
 
-	// Fetch templates via API endpoint (following BuildOS pattern)
-	const response = await fetch(apiUrl);
-
-	if (!response.ok) {
-		console.error('[Ontology Templates] API fetch failed:', response.statusText);
+		templates = result.templates;
+		groupedByRealm = result.groupedByRealm;
+	} catch (catalogError) {
+		console.error('[Ontology Templates] Failed to load templates:', catalogError);
 		throw error(500, 'Failed to fetch templates');
 	}
 
-	const responseData = await response.json();
-
-	// Handle API error responses (ApiResponse.error format)
-	if ('error' in responseData) {
-		console.error('[Ontology Templates] API error:', responseData.error);
-		throw error(500, responseData.error || 'Failed to fetch templates');
-	}
-
-	// Extract data from successful ApiResponse.success format
-	const { templates, grouped } = responseData.data || {};
-
-	// Validate that we got the expected data structure
-	if (!templates || !Array.isArray(templates)) {
-		console.error('[Ontology Templates] Invalid response structure:', responseData);
-		throw error(500, 'Invalid response from templates API');
-	}
-
 	// Group templates by scope for alternate view
-	const byScope = (templates as Template[]).reduce(
+	const byScope = templates.reduce(
 		(acc, template) => {
 			if (!acc[template.scope]) {
 				acc[template.scope] = [];
@@ -87,17 +72,15 @@ export const load: PageServerLoad = async ({ url, locals, fetch }) => {
 	);
 
 	// Get unique realms and scopes for filter options
-	const uniqueRealms = Array.from(
-		new Set((templates as Template[]).map((t) => t.metadata?.realm ?? 'other'))
-	);
-	const uniqueScopes = Array.from(new Set((templates as Template[]).map((t) => t.scope)));
+	const uniqueRealms = Array.from(new Set(templates.map((t) => t.metadata?.realm ?? 'other')));
+	const uniqueScopes = Array.from(new Set(templates.map((t) => t.scope)));
 
 	const facets = await getFacetValues(locals.supabase);
 	const facetOptions = mapFacetValuesByKey(facets);
 
 	return {
-		templates: templates as Template[],
-		grouped: grouped as Record<string, Template[]>,
+		templates,
+		grouped: groupedByRealm,
 		byScope,
 		currentFilters: {
 			scope,
@@ -115,7 +98,7 @@ export const load: PageServerLoad = async ({ url, locals, fetch }) => {
 			scopes: uniqueScopes,
 			facets: facetOptions
 		},
-		isAdmin: user.is_admin ?? false // For showing admin-only features
+		isAdmin: user.is_admin ?? false
 	};
 };
 

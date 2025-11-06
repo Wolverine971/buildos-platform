@@ -1,4 +1,4 @@
-<!-- apps/web/src/routes/admin/ontology/graph/GraphControls.svelte -->
+<!-- apps/web/src/lib/components/ontology/graph/GraphControls.svelte -->
 <script lang="ts">
 	import { onDestroy } from 'svelte';
 	import Card from '$lib/components/ui/Card.svelte';
@@ -8,7 +8,7 @@
 	import TextInput from '$lib/components/ui/TextInput.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import { Search, Download } from 'lucide-svelte';
-	import type { GraphStats, OntologyGraphInstance, ViewMode } from './lib/ontology-graph.types';
+	import type { GraphStats, OntologyGraphInstance, ViewMode } from './lib/graph.types';
 
 	let {
 		viewMode = $bindable<ViewMode>(),
@@ -50,7 +50,18 @@
 	function handleSearch() {
 		if (searchTimeout) clearTimeout(searchTimeout);
 		searchTimeout = setTimeout(() => {
-			graphInstance?.search(searchQuery);
+			const query = searchQuery.trim();
+			graphInstance?.search(query);
+			if (typeof window !== 'undefined') {
+				window.dispatchEvent(
+					new CustomEvent('ontology-graph.interaction', {
+						detail: {
+							type: 'search',
+							query
+						}
+					})
+				);
+			}
 		}, 300);
 	}
 
@@ -63,6 +74,16 @@
 		graphInstance;
 		if (graphInstance) {
 			graphInstance.changeLayout(selectedLayout);
+			if (typeof window !== 'undefined') {
+				window.dispatchEvent(
+					new CustomEvent('ontology-graph.interaction', {
+						detail: {
+							type: 'layout_change',
+							value: selectedLayout
+						}
+					})
+				);
+			}
 		}
 	});
 
@@ -82,6 +103,16 @@
 			graphInstance.resetFilters();
 		} else {
 			graphInstance.filterByType(selectedFilter);
+		}
+		if (typeof window !== 'undefined') {
+			window.dispatchEvent(
+				new CustomEvent('ontology-graph.interaction', {
+					detail: {
+						type: 'filter',
+						value: selectedFilter
+					}
+				})
+			);
 		}
 	});
 </script>
@@ -174,7 +205,18 @@
 
 	<div class="space-y-2 pt-4 border-t border-gray-200 dark:border-gray-700">
 		<Button
-			onclick={() => graphInstance?.fitToView()}
+			onclick={() => {
+				graphInstance?.fitToView();
+				if (typeof window !== 'undefined') {
+					window.dispatchEvent(
+						new CustomEvent('ontology-graph.interaction', {
+							detail: {
+								type: 'fit_to_view'
+							}
+						})
+					);
+				}
+			}}
 			variant="primary"
 			size="sm"
 			fullWidth={true}
@@ -191,6 +233,16 @@
 					link.href = png;
 					link.download = `ontology-graph-${Date.now()}.png`;
 					link.click();
+					if (typeof window !== 'undefined') {
+						window.dispatchEvent(
+							new CustomEvent('ontology-graph.interaction', {
+								detail: {
+									type: 'export',
+									format: 'png'
+								}
+							})
+						);
+					}
 				}
 			}}
 			variant="secondary"

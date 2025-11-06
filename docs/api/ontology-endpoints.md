@@ -25,6 +25,8 @@ All endpoints are served from the SvelteKit application (`apps/web`). Requests *
     - [GET `/api/onto/outputs/[id]`](#get-apiontooutputsid)
     - [PATCH `/api/onto/outputs/[id]`](#patch-apiontooutputsid)
     - [POST `/api/onto/outputs/generate`](#post-apiontooutputsgenerate)
+5. [Graph](#graph)
+    - [GET `/api/onto/graph`](#get-apiontograph)
 
 ---
 
@@ -398,6 +400,64 @@ Content-Type: application/json
 	"content": "<h1>Introducing the AI Launch Suite</h1>..."
 }
 ```
+
+### GET `/api/onto/graph`
+
+Returns the ontology graph dataset for the authenticated actor. Entities are filtered using `ensure_actor_for_user`, and relationships are trimmed so both endpoints exist in the accessible set.
+
+```http
+GET /api/onto/graph?viewMode=full&limit=1000
+Authorization: Bearer <token>
+Accept: application/json
+```
+
+#### Query Parameters
+
+| Name       | Type                            | Default | Description                                                             |
+| ---------- | ------------------------------- | ------- | ----------------------------------------------------------------------- |
+| `viewMode` | `templates \| projects \| full` | `full`  | Optional hint for server-side graph pruning.                            |
+| `limit`    | number                          | `1000`  | Maximum allowed node count; responses exceeding the limit return `413`. |
+
+#### Response Body
+
+```json
+{
+	"data": {
+		"source": {
+			"templates": [],
+			"projects": [],
+			"tasks": [],
+			"outputs": [],
+			"documents": [],
+			"edges": []
+		},
+		"graph": {
+			"nodes": [],
+			"edges": []
+		},
+		"stats": {
+			"totalTemplates": 0,
+			"totalProjects": 0,
+			"activeProjects": 0,
+			"totalEdges": 0,
+			"totalTasks": 0,
+			"totalOutputs": 0,
+			"totalDocuments": 0
+		},
+		"metadata": {
+			"viewMode": "full",
+			"generatedAt": "2025-11-06T00:00:00.000Z"
+		}
+	}
+}
+```
+
+#### Error Codes
+
+- `401 Unauthorized` if the request lacks a valid session.
+- `400 Bad Request` for invalid parameters (e.g., `viewMode`).
+- `413 Payload Too Large` when the resulting graph exceeds the configured node limit.
+- `500 Internal Server Error` for unexpected load failures.
 
 ---
 

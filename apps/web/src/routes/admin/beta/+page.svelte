@@ -2287,19 +2287,21 @@
 					<!-- Basic Info -->
 					<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 						<div>
-							<label
+							<div
 								class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-								>Name</label
 							>
+								Name
+							</div>
 							<p class="text-sm text-gray-900 dark:text-white">
 								{selectedItem.full_name}
 							</p>
 						</div>
 						<div>
-							<label
+							<div
 								class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-								>Email</label
 							>
+								Email
+							</div>
 							<p class="text-sm text-gray-900 dark:text-white break-all">
 								{selectedItem.email}
 							</p>
@@ -2308,19 +2310,21 @@
 
 					<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 						<div>
-							<label
+							<div
 								class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-								>Job Title</label
 							>
+								Job Title
+							</div>
 							<p class="text-sm text-gray-900 dark:text-white">
 								{selectedItem.job_title || 'Not provided'}
 							</p>
 						</div>
 						<div>
-							<label
+							<div
 								class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-								>Company</label
 							>
+								Company
+							</div>
 							<p class="text-sm text-gray-900 dark:text-white">
 								{selectedItem.company_name || 'Not provided'}
 							</p>
@@ -2331,10 +2335,11 @@
 						<!-- Signup specific fields -->
 						{#if selectedItem.why_interested}
 							<div>
-								<label
+								<div
 									class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-									>Why Interested</label
 								>
+									Why Interested
+								</div>
 								<div class="mt-1 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg border">
 									<p
 										class="text-sm text-gray-900 dark:text-white whitespace-pre-wrap leading-relaxed"
@@ -2347,10 +2352,11 @@
 
 						{#if selectedItem.biggest_challenge}
 							<div>
-								<label
+								<div
 									class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-									>Biggest Challenge</label
 								>
+									Biggest Challenge
+								</div>
 								<div class="mt-1 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg border">
 									<p
 										class="text-sm text-gray-900 dark:text-white whitespace-pre-wrap leading-relaxed"
@@ -2363,10 +2369,11 @@
 
 						{#if selectedItem.productivity_tools && selectedItem.productivity_tools.length > 0}
 							<div>
-								<label
+								<div
 									class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-									>Current Tools</label
 								>
+									Current Tools
+								</div>
 								<div class="mt-1 flex flex-wrap gap-2">
 									{#each selectedItem.productivity_tools as tool}
 										<span
@@ -2381,10 +2388,11 @@
 
 						<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 							<div>
-								<label
+								<div
 									class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-									>Status</label
 								>
+									Status
+								</div>
 								<span
 									class="inline-flex px-3 py-1 text-sm font-semibold rounded-full {getStatusColor(
 										selectedItem.signup_status
@@ -2394,10 +2402,11 @@
 								</span>
 							</div>
 							<div>
-								<label
+								<div
 									class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-									>Applied</label
 								>
+									Applied
+								</div>
 								<p class="text-sm text-gray-900 dark:text-white">
 									{formatDate(selectedItem.created_at)}
 								</p>
@@ -2406,10 +2415,11 @@
 
 						{#if selectedItem.referral_source}
 							<div>
-								<label
+								<div
 									class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-									>How they heard about us</label
 								>
+									How they heard about us
+								</div>
 								<p class="text-sm text-gray-900 dark:text-white">
 									{selectedItem.referral_source}
 								</p>
@@ -2418,19 +2428,21 @@
 
 						<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 							<div>
-								<label
+								<div
 									class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-									>Wants Weekly Calls</label
 								>
+									Wants Weekly Calls
+								</div>
 								<p class="text-sm text-gray-900 dark:text-white">
 									{selectedItem.wants_weekly_calls ? 'Yes' : 'No'}
 								</p>
 							</div>
 							<div>
-								<label
+								<div
 									class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-									>Wants Community Access</label
 								>
+									Wants Community Access
+								</div>
 								<p class="text-sm text-gray-900 dark:text-white">
 									{selectedItem.wants_community_access ? 'Yes' : 'No'}
 								</p>
@@ -2439,10 +2451,11 @@
 
 						{#if selectedItem.user_timezone}
 							<div>
-								<label
+								<div
 									class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-									>Timezone</label
 								>
+									Timezone
+								</div>
 								<p class="text-sm text-gray-900 dark:text-white">
 									{selectedItem.user_timezone}
 								</p>
@@ -2452,10 +2465,11 @@
 						<!-- Member specific fields (keep existing member modal content) -->
 						<div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
 							<div>
-								<label
+								<div
 									class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-									>Beta Tier</label
 								>
+									Beta Tier
+								</div>
 								<span
 									class="inline-flex px-2 py-1 text-xs font-semibold rounded-full {getTierColor(
 										selectedItem.beta_tier
@@ -2465,19 +2479,21 @@
 								</span>
 							</div>
 							<div>
-								<label
+								<div
 									class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-									>Access Level</label
 								>
+									Access Level
+								</div>
 								<p class="text-sm text-gray-900 dark:text-white capitalize">
 									{selectedItem.access_level}
 								</p>
 							</div>
 							<div>
-								<label
+								<div
 									class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-									>Status</label
 								>
+									Status
+								</div>
 								<span
 									class="inline-flex px-2 py-1 text-xs font-semibold rounded-full {selectedItem.is_active
 										? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
@@ -2490,20 +2506,22 @@
 
 						<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 							<div>
-								<label
+								<div
 									class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-									>Joined</label
 								>
+									Joined
+								</div>
 								<p class="text-sm text-gray-900 dark:text-white">
 									{formatDate(selectedItem.joined_at)}
 								</p>
 							</div>
 							{#if selectedItem.last_active_at}
 								<div>
-									<label
+									<div
 										class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-										>Last Active</label
 									>
+										Last Active
+									</div>
 									<p class="text-sm text-gray-900 dark:text-white">
 										{formatDate(selectedItem.last_active_at)}
 									</p>
@@ -2513,28 +2531,31 @@
 
 						<div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
 							<div>
-								<label
+								<div
 									class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-									>Feedback Submitted</label
 								>
+									Feedback Submitted
+								</div>
 								<p class="text-sm text-gray-900 dark:text-white">
 									{selectedItem.total_feedback_submitted || 0}
 								</p>
 							</div>
 							<div>
-								<label
+								<div
 									class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-									>Features Requested</label
 								>
+									Features Requested
+								</div>
 								<p class="text-sm text-gray-900 dark:text-white">
 									{selectedItem.total_features_requested || 0}
 								</p>
 							</div>
 							<div>
-								<label
+								<div
 									class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-									>Calls Attended</label
 								>
+									Calls Attended
+								</div>
 								<p class="text-sm text-gray-900 dark:text-white">
 									{selectedItem.total_calls_attended || 0}
 								</p>
@@ -2544,10 +2565,11 @@
 						{#if selectedItem.has_lifetime_pricing}
 							<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 								<div>
-									<label
+									<div
 										class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-										>Lifetime Pricing</label
 									>
+										Lifetime Pricing
+									</div>
 									<span
 										class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300"
 									>
@@ -2555,10 +2577,11 @@
 									</span>
 								</div>
 								<div>
-									<label
+									<div
 										class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-										>Discount</label
 									>
+										Discount
+									</div>
 									<p class="text-sm text-gray-900 dark:text-white">
 										{selectedItem.discount_percentage}%
 									</p>
@@ -2577,10 +2600,11 @@
 
 								{#if selectedItem.beta_signups.why_interested}
 									<div class="mb-4">
-										<label
+										<div
 											class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-											>Why They're Interested</label
 										>
+											Why They're Interested
+										</div>
 										<div
 											class="mt-1 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg border"
 										>
@@ -2595,10 +2619,11 @@
 
 								{#if selectedItem.beta_signups.biggest_challenge}
 									<div class="mb-4">
-										<label
+										<div
 											class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-											>Biggest Challenge</label
 										>
+											Biggest Challenge
+										</div>
 										<div
 											class="mt-1 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg border"
 										>
@@ -2613,10 +2638,11 @@
 
 								{#if selectedItem.beta_signups.productivity_tools && selectedItem.beta_signups.productivity_tools.length > 0}
 									<div class="mb-4">
-										<label
+										<div
 											class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-											>Current Tools</label
 										>
+											Current Tools
+										</div>
 										<div class="mt-1 flex flex-wrap gap-2">
 											{#each selectedItem.beta_signups.productivity_tools as tool}
 												<span
@@ -2631,10 +2657,11 @@
 
 								{#if selectedItem.beta_signups.referral_source}
 									<div class="mb-4">
-										<label
+										<div
 											class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-											>How they heard about us</label
 										>
+											How they heard about us
+										</div>
 										<p class="text-sm text-gray-900 dark:text-white">
 											{selectedItem.beta_signups.referral_source}
 										</p>
@@ -2643,10 +2670,11 @@
 
 								<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 									<div>
-										<label
+										<div
 											class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-											>Wants Weekly Calls</label
 										>
+											Wants Weekly Calls
+										</div>
 										<p class="text-sm text-gray-900 dark:text-white">
 											{selectedItem.beta_signups.wants_weekly_calls
 												? 'Yes'
@@ -2654,10 +2682,11 @@
 										</p>
 									</div>
 									<div>
-										<label
+										<div
 											class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-											>Wants Community Access</label
 										>
+											Wants Community Access
+										</div>
 										<p class="text-sm text-gray-900 dark:text-white">
 											{selectedItem.beta_signups.wants_community_access
 												? 'Yes'

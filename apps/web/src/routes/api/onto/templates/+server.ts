@@ -6,13 +6,9 @@
 
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
-import {
-	getTextDocumentTemplates,
-	getAvailableTemplates
-} from '$lib/services/ontology/template-resolver.service';
+import { fetchTemplateCatalog } from '$lib/services/ontology/ontology-template-catalog.service';
 import { TemplateCrudService } from '$lib/services/ontology/template-crud.service';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
-import type { Template } from '$lib/types/onto';
 
 export const GET: RequestHandler = async ({ url, locals }) => {
 	try {
@@ -29,92 +25,26 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		const scales = url.searchParams.getAll('scale');
 		const stages = url.searchParams.getAll('stage');
 		const sort = url.searchParams.get('sort') ?? 'name';
+		const directionParam = url.searchParams.get('direction');
 		const direction =
-			(url.searchParams.get('direction') ?? 'asc').toLowerCase() === 'desc' ? 'desc' : 'asc';
+			directionParam && directionParam.toLowerCase() === 'desc' ? 'desc' : 'asc';
 
-		let templates: any[];
-
-		const supabase = locals.supabase;
-
-		// If requesting text documents specifically, use the specialized function
-		if (primitive === 'TEXT_DOCUMENT' && scope === 'output') {
-			templates = await getTextDocumentTemplates(supabase);
-		} else if (scope) {
-			// Get all templates for a scope (non-abstract by default)
-			templates = await getAvailableTemplates(supabase, scope, false);
-
-			// Apply additional filters
-			if (realm) {
-				templates = templates.filter((t) => t.metadata?.realm === realm);
-			}
-
-			if (contexts.length) {
-				templates = templates.filter((t) =>
-					contexts.includes((t.facet_defaults?.context as string | undefined) ?? '')
-				);
-			}
-
-			if (scales.length) {
-				templates = templates.filter((t) =>
-					scales.includes((t.facet_defaults?.scale as string | undefined) ?? '')
-				);
-			}
-
-			if (stages.length) {
-				templates = templates.filter((t) =>
-					stages.includes((t.facet_defaults?.stage as string | undefined) ?? '')
-				);
-			}
-
-			if (primitive) {
-				templates = templates.filter((t) => t.metadata?.primitive === primitive);
-			}
-
-			if (search) {
-				const searchLower = search.toLowerCase();
-				templates = templates.filter(
-					(t) =>
-						t.name.toLowerCase().includes(searchLower) ||
-						t.type_key.toLowerCase().includes(searchLower) ||
-						(t.metadata?.description &&
-							t.metadata.description.toLowerCase().includes(searchLower))
-				);
-			}
-		} else {
-			// No scope specified - fall back to RPC
-			const supabase = locals.supabase;
-			const { data, error: rpcError } = await supabase.rpc('get_template_catalog', {
-				p_scope: scope ?? undefined,
-				p_realm: realm ?? undefined,
-				p_search: search ?? undefined
-			});
-
-			if (rpcError) {
-				console.error('[Ontology] Failed to fetch templates via RPC:', rpcError);
-				return ApiResponse.error(`Failed to fetch templates: ${rpcError.message}`, 500);
-			}
-
-			templates = (data ?? []) as Template[];
-		}
-
-		const sorted = sortTemplates(templates, sort, direction);
-
-		const grouped = sorted.reduce(
-			(acc, template) => {
-				const templateRealm = template.metadata?.realm ?? 'other';
-				if (!acc[templateRealm]) {
-					acc[templateRealm] = [];
-				}
-				acc[templateRealm].push(template);
-				return acc;
-			},
-			{} as Record<string, Template[]>
-		);
+		const { templates, groupedByRealm } = await fetchTemplateCatalog(locals.supabase, {
+			scope,
+			realm,
+			search,
+			primitive,
+			contexts,
+			scales,
+			stages,
+			sort,
+			direction
+		});
 
 		return ApiResponse.success({
-			templates: sorted,
-			grouped,
-			count: sorted.length
+			templates,
+			grouped: groupedByRealm,
+			count: templates.length
 		});
 	} catch (err) {
 		console.error('[Ontology] Failed to fetch templates:', err);
@@ -174,41 +104,3 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		return ApiResponse.internalError(err, 'Failed to create template');
 	}
 };
-
-function sortTemplates(templates: any[], sort: string, direction: 'asc' | 'desc') {
-	const sorted = [...templates];
-	const factor = direction === 'desc' ? -1 : 1;
-
-	const getValue = (template: any) => {
-		switch (sort) {
-			case 'type_key':
-				return template.type_key ?? '';
-			case 'realm':
-				return template.metadata?.realm ?? '';
-			case 'scope':
-				return template.scope ?? '';
-			case 'status':
-				return template.status ?? '';
-			case 'name':
-			default:
-				return template.name ?? '';
-		}
-	};
-
-	sorted.sort((a, b) => {
-		const aValue = getValue(a);
-		const bValue = getValue(b);
-
-		if (typeof aValue === 'number' && typeof bValue === 'number') {
-			return (aValue - bValue) * factor;
-		}
-
-		const aString = String(aValue).toLowerCase();
-		const bString = String(bValue).toLowerCase();
-
-		if (aString === bString) return 0;
-		return aString > bString ? factor : -factor;
-	});
-
-	return sorted;
-}

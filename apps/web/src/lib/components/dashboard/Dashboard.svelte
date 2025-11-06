@@ -1010,7 +1010,7 @@
 
 			<!-- Lazy load trigger - positioned before lazy loaded sections for earlier loading -->
 			{#if showLazyLoadedSections}
-				<div bind:this={lazyLoadTrigger} class="h-px opacity-0" />
+				<div bind:this={lazyLoadTrigger} class="h-px opacity-0"></div>
 			{/if}
 
 			<!-- Lazy loaded sections -->

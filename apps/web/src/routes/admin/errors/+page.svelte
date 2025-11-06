@@ -928,10 +928,11 @@
 					<!-- Stack Trace -->
 					{#if selectedError.error_stack || selectedError.errorStack}
 						<div>
-							<label
+							<div
 								class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1"
-								>Stack Trace:</label
 							>
+								Stack Trace:
+							</div>
 							<pre
 								class="bg-gray-100 dark:bg-gray-900 p-3 rounded text-xs overflow-x-auto text-gray-800 dark:text-gray-200 max-h-64">{selectedError.error_stack ||
 									selectedError.errorStack}</pre>
@@ -941,10 +942,11 @@
 					<!-- Database Operation Details -->
 					{#if selectedError.operation_type || selectedError.operationType || selectedError.table_name || selectedError.tableName || selectedError.record_id || selectedError.recordId}
 						<div class="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-4">
-							<label
+							<div
 								class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2"
-								>Database Operation:</label
 							>
+								Database Operation:
+							</div>
 							<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
 								{#if selectedError.operation_type || selectedError.operationType}
 									<div>
@@ -1000,10 +1002,11 @@
 					<!-- LLM Details -->
 					{#if selectedError.llm_provider || selectedError.llmProvider}
 						<div class="bg-green-50 dark:bg-green-900/20 rounded-lg p-4">
-							<label
+							<div
 								class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2"
-								>LLM Details:</label
 							>
+								LLM Details:
+							</div>
 							<div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
 								<div>
 									<span class="text-xs text-gray-600 dark:text-gray-400"
@@ -1108,10 +1111,11 @@
 					<!-- Environment and App Info -->
 					{#if selectedError.environment || selectedError.app_version || selectedError.appVersion}
 						<div class="bg-indigo-50 dark:bg-indigo-900/20 rounded-lg p-4">
-							<label
+							<div
 								class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2"
-								>Environment Info:</label
 							>
+								Environment Info:
+							</div>
 							<div class="grid grid-cols-2 gap-3">
 								{#if selectedError.environment}
 									<div>
@@ -1142,10 +1146,11 @@
 					<!-- Browser Info -->
 					{#if selectedError.browser_info || selectedError.browserInfo}
 						<div class="bg-cyan-50 dark:bg-cyan-900/20 rounded-lg p-4">
-							<label
+							<div
 								class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2"
-								>Browser Info:</label
 							>
+								Browser Info:
+							</div>
 							<pre
 								class="bg-white dark:bg-gray-900 p-2 rounded text-xs overflow-x-auto text-gray-800 dark:text-gray-200">{JSON.stringify(
 									selectedError.browser_info || selectedError.browserInfo,
@@ -1158,10 +1163,11 @@
 					<!-- Additional Metadata -->
 					{#if selectedError.metadata && Object.keys(selectedError.metadata).length > 0}
 						<div>
-							<label
+							<div
 								class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1"
-								>Additional Metadata:</label
 							>
+								Additional Metadata:
+							</div>
 							<pre
 								class="bg-gray-100 dark:bg-gray-900 p-3 rounded text-xs overflow-x-auto text-gray-800 dark:text-gray-200 max-h-64">{JSON.stringify(
 									selectedError.metadata,
@@ -1176,10 +1182,11 @@
 						<div
 							class="bg-green-50 dark:bg-green-900/20 rounded-lg p-4 border border-green-200 dark:border-green-800"
 						>
-							<label
+							<div
 								class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2"
-								>Resolution Details:</label
 							>
+								Resolution Details:
+							</div>
 							<div class="space-y-2">
 								<div>
 									<span class="text-xs text-gray-600 dark:text-gray-400"

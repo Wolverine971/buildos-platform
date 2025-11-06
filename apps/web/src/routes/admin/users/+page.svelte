@@ -992,10 +992,9 @@
 
 					{#if selectedUser.bio}
 						<div>
-							<label
-								class="block text-sm font-medium text-gray-700 dark:text-gray-300"
-								>Bio</label
-							>
+							<div class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+								Bio
+							</div>
 							<p class="text-sm text-gray-900 dark:text-white">{selectedUser.bio}</p>
 						</div>
 					{/if}

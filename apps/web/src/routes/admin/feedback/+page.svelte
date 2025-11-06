@@ -738,10 +738,11 @@
 					<!-- Category and Rating -->
 					<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 						<div>
-							<label
+							<div
 								class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-								>Category</label
 							>
+								Category
+							</div>
 							<span
 								class="text-sm font-medium {getCategoryColor(
 									selectedFeedback.category
@@ -751,10 +752,11 @@
 							</span>
 						</div>
 						<div>
-							<label
+							<div
 								class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-								>Rating</label
 							>
+								Rating
+							</div>
 							{#if selectedFeedback.rating}
 								<div class="flex items-center">
 									{#each Array(5) as _, i}
@@ -776,10 +778,11 @@
 
 					<!-- User Info -->
 					<div>
-						<label
+						<div
 							class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-							>User</label
 						>
+							User
+						</div>
 						<p class="text-sm text-gray-900 dark:text-white">
 							{selectedFeedback.user_email || 'Anonymous'}
 						</p>
@@ -787,10 +790,11 @@
 
 					<!-- Feedback Text -->
 					<div>
-						<label
+						<div
 							class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-							>Feedback</label
 						>
+							Feedback
+						</div>
 						<div class="mt-1 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
 							<p class="text-sm text-gray-900 dark:text-white whitespace-pre-wrap">
 								{selectedFeedback.feedback_text}
@@ -800,10 +804,11 @@
 
 					<!-- Status -->
 					<div>
-						<label
+						<div
 							class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-							>Current Status</label
 						>
+							Current Status
+						</div>
 						<span
 							class="inline-flex px-2 py-1 text-xs font-semibold rounded-full {getStatusColor(
 								selectedFeedback.status
@@ -816,20 +821,22 @@
 					<!-- Timestamps -->
 					<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 						<div>
-							<label
+							<div
 								class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-								>Created</label
 							>
+								Created
+							</div>
 							<p class="text-sm text-gray-900 dark:text-white">
 								{formatDate(selectedFeedback.created_at)}
 							</p>
 						</div>
 						{#if selectedFeedback.updated_at !== selectedFeedback.created_at}
 							<div>
-								<label
+								<div
 									class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-									>Updated</label
 								>
+									Updated
+								</div>
 								<p class="text-sm text-gray-900 dark:text-white">
 									{formatDate(selectedFeedback.updated_at)}
 								</p>
@@ -840,10 +847,11 @@
 					<!-- Technical Info -->
 					{#if selectedFeedback.user_agent || selectedFeedback.user_ip}
 						<div>
-							<label
+							<div
 								class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-								>Technical Info</label
 							>
+								Technical Info
+							</div>
 							<div class="text-xs text-gray-500 space-y-1">
 								{#if selectedFeedback.user_agent}
 									<p class="break-all">

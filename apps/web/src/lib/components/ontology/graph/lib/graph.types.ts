@@ -1,9 +1,8 @@
-// apps/web/src/routes/admin/ontology/graph/lib/ontology-graph.types.ts
+// apps/web/src/lib/components/ontology/graph/lib/graph.types.ts
 import type { Database } from '@buildos/shared-types';
 
-// Note: Cytoscape types are imported dynamically at runtime to avoid build-time dependency
-// The actual cytoscape library is loaded on-demand in the browser
-export type CytoscapeCore = any; // Will be properly typed when cytoscape is loaded
+// Cytoscape is runtime-loaded; keep loose typing until dedicated types are added.
+export type CytoscapeCore = any;
 
 export type OntoTemplate = Database['public']['Tables']['onto_templates']['Row'];
 export type OntoProject = Database['public']['Tables']['onto_projects']['Row'];
@@ -50,6 +49,15 @@ export interface CytoscapeEdge {
 export interface GraphData {
 	nodes: CytoscapeNode[];
 	edges: CytoscapeEdge[];
+}
+
+export interface GraphSourceData {
+	templates: OntoTemplate[];
+	projects: OntoProject[];
+	edges: OntoEdge[];
+	tasks: OntoTask[];
+	outputs: OntoOutput[];
+	documents: OntoDocument[];
 }
 
 export interface GraphStats {

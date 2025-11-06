@@ -8,6 +8,7 @@ import type { PageServerLoad } from './$types';
 import { error } from '@sveltejs/kit';
 import type { Template } from '$lib/types/onto';
 import type { TypedSupabaseClient } from '@buildos/supabase-client';
+import { fetchTemplateCatalog } from '$lib/services/ontology/ontology-template-catalog.service';
 
 type FacetValue = {
 	facet_key: string;
@@ -17,19 +18,33 @@ type FacetValue = {
 	color: string | null;
 };
 
-export const load: PageServerLoad = async ({ fetch, locals }) => {
+export const load: PageServerLoad = async ({ locals }) => {
 	const { user } = await locals.safeGetSession();
 	if (!user) {
 		throw error(401, 'Authentication required');
 	}
 
-	const [templatesResponse, facetValues] = await Promise.all([
-		fetch('/api/onto/templates?scope=project'),
-		getFacetValues(locals.supabase)
-	]);
+	try {
+		const [catalog, facetValues] = await Promise.all([
+			fetchTemplateCatalog(locals.supabase, {
+				scope: 'project',
+				sort: 'name',
+				direction: 'asc'
+			}),
+			getFacetValues(locals.supabase)
+		]);
 
-	if (!templatesResponse.ok) {
-		console.error('[Create Project] Failed to fetch templates:', templatesResponse.statusText);
+		const templates = catalog.templates;
+		const grouped = groupTemplatesByRealm(templates);
+		const facets = mapFacetValuesByKey(facetValues);
+
+		return {
+			templates,
+			grouped,
+			facets
+		};
+	} catch (catalogError) {
+		console.error('[Create Project] Failed to load templates:', catalogError);
 		return {
 			templates: [],
 			grouped: {},
@@ -37,18 +52,6 @@ export const load: PageServerLoad = async ({ fetch, locals }) => {
 			error: 'Failed to load templates'
 		};
 	}
-
-	const templatesData = await templatesResponse.json();
-	// ✅ Extract from ApiResponse.data wrapper
-	const templates = templatesData.data?.templates ?? [];
-	const grouped = groupTemplatesByRealm(templates);
-	const facets = mapFacetValuesByKey(facetValues);
-
-	return {
-		templates,
-		grouped,
-		facets
-	};
 };
 
 async function getFacetValues(supabase: TypedSupabaseClient): Promise<FacetValue[]> {
@@ -92,3 +95,4 @@ function mapFacetValuesByKey(facetValues: FacetValue[]): Record<string, FacetVal
 		{} as Record<string, FacetValue[]>
 	);
 }
+

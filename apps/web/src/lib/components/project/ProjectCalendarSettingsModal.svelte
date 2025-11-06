@@ -613,7 +613,7 @@
 					Delete Calendar
 				</Button>
 			{:else}
-				<div />
+				<div></div>
 			{/if}
 
 			<div class="flex gap-3">

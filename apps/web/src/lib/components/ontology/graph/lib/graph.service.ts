@@ -1,25 +1,22 @@
-// apps/web/src/routes/admin/ontology/graph/lib/ontology-graph.service.ts
-import {
-	type CytoscapeEdge,
-	type CytoscapeNode,
-	type GraphData,
-	type OntoDocument,
-	type OntoEdge,
-	type OntoOutput,
-	type OntoProject,
-	type OntoTask,
-	type OntoTemplate,
-	type ViewMode
-} from './ontology-graph.types';
+// apps/web/src/lib/components/ontology/graph/lib/graph.service.ts
+import type {
+	CytoscapeEdge,
+	CytoscapeNode,
+	GraphData,
+	GraphSourceData,
+	OntoDocument,
+	OntoEdge,
+	OntoOutput,
+	OntoProject,
+	OntoTask,
+	OntoTemplate,
+	ViewMode
+} from './graph.types';
 
 /**
- * Service for transforming ontology database entities into Cytoscape graph format.
- * Each method returns Cytoscape-friendly data structures with BuildOS-specific styling.
+ * Transform ontology entities into Cytoscape-friendly payloads with consistent styling.
  */
 export class OntologyGraphService {
-	/**
-	 * Convert templates to hierarchical nodes showing inheritance relationships.
-	 */
 	static templatesToNodes(templates: OntoTemplate[]): CytoscapeNode[] {
 		return templates.map((template) => ({
 			data: {
@@ -44,9 +41,6 @@ export class OntologyGraphService {
 		}));
 	}
 
-	/**
-	 * Convert projects to nodes with facet-based coloring and sizing.
-	 */
 	static projectsToNodes(projects: OntoProject[]): CytoscapeNode[] {
 		return projects.map((project) => {
 			const stateColors: Record<string, string> = {
@@ -76,8 +70,8 @@ export class OntologyGraphService {
 						context: project.facet_context,
 						scale: project.facet_scale,
 						stage: project.facet_stage,
-						startAt: project.start_at,
-						endAt: project.end_at,
+						startAt: (project as any).start_at,
+						endAt: (project as any).end_at,
 						createdBy: project.created_by,
 						props: project.props
 					},
@@ -89,9 +83,6 @@ export class OntologyGraphService {
 		});
 	}
 
-	/**
-	 * Convert tasks to nodes linked to their parent projects.
-	 */
 	static tasksToNodes(tasks: OntoTask[]): CytoscapeNode[] {
 		return tasks.map((task) => ({
 			data: {
@@ -114,9 +105,6 @@ export class OntologyGraphService {
 		}));
 	}
 
-	/**
-	 * Convert outputs to nodes linked to their parent projects.
-	 */
 	static outputsToNodes(outputs: OntoOutput[]): CytoscapeNode[] {
 		return outputs.map((output) => ({
 			data: {
@@ -137,9 +125,6 @@ export class OntologyGraphService {
 		}));
 	}
 
-	/**
-	 * Convert documents to nodes linked to their parent projects.
-	 */
 	static documentsToNodes(documents: OntoDocument[]): CytoscapeNode[] {
 		return documents.map((document) => ({
 			data: {
@@ -159,9 +144,6 @@ export class OntologyGraphService {
 		}));
 	}
 
-	/**
-	 * Convert onto_edges to Cytoscape edges with relationship metadata.
-	 */
 	static edgesToCytoscape(edges: OntoEdge[]): CytoscapeEdge[] {
 		return edges
 			.filter((edge) => edge.src_id && edge.dst_id && edge.src_id !== edge.dst_id)
@@ -187,20 +169,7 @@ export class OntologyGraphService {
 			});
 	}
 
-	/**
-	 * Build complete graph data based on the selected view mode.
-	 */
-	static buildGraphData(
-		data: {
-			templates: OntoTemplate[];
-			projects: OntoProject[];
-			edges: OntoEdge[];
-			tasks: OntoTask[];
-			outputs: OntoOutput[];
-			documents: OntoDocument[];
-		},
-		viewMode: ViewMode
-	): GraphData {
+	static buildGraphData(data: GraphSourceData, viewMode: ViewMode): GraphData {
 		let nodes: CytoscapeNode[] = [];
 		let edges: CytoscapeEdge[] = [];
 

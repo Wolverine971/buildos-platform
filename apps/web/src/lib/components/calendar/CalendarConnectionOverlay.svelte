@@ -69,7 +69,7 @@
 			transition:fade={{ duration: 300, delay: 100 }}
 		>
 			<!-- Decorative gradient top bar -->
-			<div class="h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500" />
+			<div class="h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500"></div>
 
 			<!-- Content -->
 			<div class="px-8 py-10 sm:px-10 sm:py-12 text-center">

@@ -540,10 +540,11 @@ What would you like help with?`;
 					<!-- Details Section -->
 					<div class="border-t border-gray-200 dark:border-gray-700">
 						<div class="px-4 py-3">
-							<label
+							<div
 								class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
-								>Details</label
 							>
+								Details
+							</div>
 							<textarea
 								bind:value={detailsValue}
 								onblur={() =>
@@ -795,10 +796,11 @@ What would you like help with?`;
 							<!-- Recurrence End -->
 							{#if recurrenceEndOption === 'date'}
 								<div>
-									<label
+									<div
 										class="text-xs text-gray-500 dark:text-gray-400 font-medium"
-										>End Date</label
 									>
+										End Date
+									</div>
 									<input
 										type="date"
 										bind:value={recurrenceEndsValue}

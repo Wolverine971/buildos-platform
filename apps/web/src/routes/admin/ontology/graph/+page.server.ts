@@ -10,7 +10,7 @@ import type {
 	OntoProject,
 	OntoTask,
 	OntoTemplate
-} from './lib/ontology-graph.types';
+} from '$lib/components/ontology/graph/lib/graph.types';
 
 export const load: PageServerLoad = async ({ locals: { safeGetSession, supabase } }) => {
 	const { user } = await safeGetSession();
