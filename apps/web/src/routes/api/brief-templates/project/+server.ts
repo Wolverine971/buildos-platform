@@ -1,11 +1,11 @@
 // apps/web/src/routes/api/brief-templates/project/+server.ts
-import { json } from '@sveltejs/kit';
+import { ApiResponse } from '$lib/utils/api-response';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession } }) => {
 	const { user } = await safeGetSession();
 	if (!user) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
+		return ApiResponse.unauthorized('Unauthorized');
 	}
 
 	try {
@@ -16,17 +16,17 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
 
 		if (error) throw error;
 
-		return json({ templates: data });
+		return ApiResponse.success({ templates: data });
 	} catch (error) {
 		console.error('Error fetching project brief templates:', error);
-		return json({ error: 'Failed to fetch templates' }, { status: 500 });
+		return ApiResponse.internalError(error, 'Failed to fetch templates');
 	}
 };
 
 export const POST: RequestHandler = async ({ request, locals: { supabase, safeGetSession } }) => {
 	const { user } = await safeGetSession();
 	if (!user) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
+		return ApiResponse.unauthorized('Unauthorized');
 	}
 
 	try {
@@ -40,9 +40,9 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 
 		if (error) throw error;
 
-		return json({ template: data });
+		return ApiResponse.success({ template: data }, 'Template created');
 	} catch (error) {
 		console.error('Error creating project brief template:', error);
-		return json({ error: 'Failed to create template' }, { status: 500 });
+		return ApiResponse.internalError(error, 'Failed to create template');
 	}
 };

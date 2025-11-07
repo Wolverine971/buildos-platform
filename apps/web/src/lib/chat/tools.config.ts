@@ -75,14 +75,22 @@ export const ENTITY_FIELD_INFO: Record<string, Record<string, FieldInfo>> = {
 		},
 		facet_stage: {
 			type: 'enum',
-			enum_values: ['discovery', 'planning', 'execution', 'launch', 'maintenance', 'complete'],
+			enum_values: [
+				'discovery',
+				'planning',
+				'execution',
+				'launch',
+				'maintenance',
+				'complete'
+			],
 			description: 'Stage facet derived from props.facets.stage',
 			required: false,
 			example: 'execution'
 		},
 		props: {
 			type: 'string',
-			description: 'JSON properties blob for custom metadata (store as JSON string when updating)',
+			description:
+				'JSON properties blob for custom metadata (store as JSON string when updating)',
 			required: false,
 			example: '{"facets":{"context":"client","scale":"medium"}}'
 		},

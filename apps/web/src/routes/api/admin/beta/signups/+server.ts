@@ -1,5 +1,5 @@
 // apps/web/src/routes/api/admin/beta/signups/+server.ts
-import { json } from '@sveltejs/kit';
+import { ApiResponse } from '$lib/utils/api-response';
 
 import type { RequestHandler } from './$types';
 import { generateMinimalEmailHTML } from '$lib/utils/emailTemplate.js';
@@ -215,7 +215,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 	const { user } = await safeGetSession();
 
 	if (!user?.is_admin) {
-		return json({ error: 'Admin access required' }, { status: 403 });
+		return ApiResponse.forbidden('Admin access required');
 	}
 
 	try {
@@ -253,7 +253,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 
 		const totalPages = Math.ceil((count || 0) / limit);
 
-		return json({
+		return ApiResponse.success({
 			signups: signups || [],
 			pagination: {
 				current_page: page,
@@ -264,7 +264,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 		});
 	} catch (error) {
 		console.error('Error fetching beta signups:', error);
-		return json({ error: 'Failed to fetch beta signups' }, { status: 500 });
+		return ApiResponse.internalError(error, 'Failed to fetch beta signups');
 	}
 };
 
@@ -272,14 +272,14 @@ export const PATCH: RequestHandler = async ({ request, locals: { supabase, safeG
 	const { user } = await safeGetSession();
 
 	if (!user?.is_admin) {
-		return json({ error: 'Admin access required' }, { status: 403 });
+		return ApiResponse.forbidden('Admin access required');
 	}
 
 	try {
 		const { signup_id, status, create_member, send_approval_email } = await request.json();
 
 		if (!signup_id || !status) {
-			return json({ error: 'Signup ID and status are required' }, { status: 400 });
+			return ApiResponse.badRequest('Signup ID and status are required');
 		}
 
 		// Get the signup data first
@@ -291,7 +291,7 @@ export const PATCH: RequestHandler = async ({ request, locals: { supabase, safeG
 
 		if (fetchError) {
 			console.error('Error fetching signup data:', fetchError);
-			return json({ error: 'Failed to fetch signup data' }, { status: 500 });
+			return ApiResponse.internalError(fetchError, 'Failed to fetch signup data');
 		}
 
 		// Update signup status
@@ -328,7 +328,7 @@ export const PATCH: RequestHandler = async ({ request, locals: { supabase, safeG
 
 			if (memberError) {
 				console.error('Error creating beta member:', memberError);
-				return json({ error: 'Failed to create beta member' }, { status: 500 });
+				return ApiResponse.internalError(memberError, 'Failed to create beta member');
 			}
 
 			// Update the user's is_beta_user flag if they have an account
@@ -365,24 +365,21 @@ export const PATCH: RequestHandler = async ({ request, locals: { supabase, safeG
 				await sendBetaApprovalEmail(updatedSignup);
 			} catch (emailError) {
 				console.error('Failed to send approval email:', emailError);
-				return json(
-					{
-						error: 'Signup approved but failed to send email. Please contact the user manually.',
-						signup: updatedSignup,
-						email_failed: true
-					},
-					{ status: 207 }
+				return ApiResponse.error(
+					'Signup approved but failed to send email. Please contact the user manually.',
+					207,
+					undefined,
+					{ signup: updatedSignup, email_failed: true }
 				); // 207 Multi-Status (partial success)
 			}
 		}
 
-		return json({
-			success: true,
+		return ApiResponse.success({
 			signup: updatedSignup,
 			email_sent: status === 'approved' && send_approval_email
 		});
 	} catch (error) {
 		console.error('Error updating beta signup:', error);
-		return json({ error: 'Failed to update beta signup' }, { status: 500 });
+		return ApiResponse.internalError(error, 'Failed to update beta signup');
 	}
 };

@@ -1,9 +1,25 @@
 // apps/web/src/routes/+layout.server.ts
 import type { LayoutServerLoad } from './$types';
 import { OnboardingProgressService } from '$lib/services/onboardingProgress.service';
-import { checkUserSubscription } from '$lib/utils/subscription';
 import { StripeService } from '$lib/services/stripe-service';
 import { checkAndRegisterWebhookIfNeeded } from '$lib/services/calendar-webhook-check';
+import { fetchBillingContext } from '$lib/server/billing-context';
+
+const clampProgress = (progress?: number | null) => {
+	if (typeof progress !== 'number' || Number.isNaN(progress)) {
+		return 0;
+	}
+
+	return Math.max(0, Math.min(100, progress));
+};
+
+const createEmptyBillingContext = (loading: boolean) => ({
+	subscription: null,
+	trialStatus: null,
+	paymentWarnings: [],
+	isReadOnly: false,
+	loading
+});
 
 export const load: LayoutServerLoad = async ({
 	locals: { safeGetSession, supabase },
@@ -27,57 +43,8 @@ export const load: LayoutServerLoad = async ({
 			user: null,
 			completedOnboarding: true,
 			onboardingProgress: 100,
-			subscription: null,
-			paymentWarnings: [],
-			trialStatus: null,
-			isReadOnly: false
+			billingContext: createEmptyBillingContext(false)
 		};
-	}
-
-	const subscriptionPromise = stripeEnabled
-		? checkUserSubscription(supabase, user.id)
-		: Promise.resolve(null);
-	const trialStatusPromise = supabase
-		.rpc('get_user_trial_status', { p_user_id: user.id })
-		.single();
-
-	const onboardingPromise = user.completed_onboarding
-		? Promise.resolve(null)
-		: new OnboardingProgressService(supabase).getOnboardingProgress(user.id).catch((error) => {
-				console.error('Failed to load onboarding progress:', error);
-				return null;
-			});
-
-	const [subscriptionResult, trialStatusResult, onboardingData] = await Promise.all([
-		subscriptionPromise,
-		trialStatusPromise,
-		onboardingPromise
-	]);
-	const subscription = stripeEnabled ? subscriptionResult : null;
-
-	let trialStatus = trialStatusResult?.data ?? null;
-	if (trialStatusResult?.error) {
-		console.error('Failed to fetch trial status:', trialStatusResult.error);
-		trialStatus = null;
-	}
-
-	let paymentWarnings: any[] = [];
-	if (stripeEnabled && subscription?.subscriptionStatus === 'past_due') {
-		const { data: notifications, error } = await supabase
-			.from('user_notifications')
-			.select('*')
-			.eq('user_id', user.id)
-			.eq('type', 'payment_warning')
-			.is('read_at', null)
-			.is('dismissed_at', null)
-			.or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
-			.order('created_at', { ascending: false });
-
-		if (error) {
-			console.error('Failed to fetch payment warnings:', error);
-		} else if (notifications) {
-			paymentWarnings = notifications;
-		}
 	}
 
 	checkAndRegisterWebhookIfNeeded(supabase, user.id, url.origin).catch((error) => {
@@ -85,18 +52,36 @@ export const load: LayoutServerLoad = async ({
 	});
 
 	const completedOnboarding = Boolean(user.completed_onboarding);
-	const onboardingProgress = completedOnboarding
-		? 100
-		: Math.max(0, Math.min(100, onboardingData?.progress ?? 0));
+	const onboardingProgressPromise = completedOnboarding
+		? Promise.resolve(100)
+		: new OnboardingProgressService(supabase)
+				.getOnboardingProgress(user.id)
+				.then((data) => clampProgress(data?.progress))
+				.catch((error) => {
+					console.error('Failed to load onboarding progress:', error);
+					return 0;
+				});
+
+	const billingContextPromise = stripeEnabled
+		? fetchBillingContext(supabase, user.id, stripeEnabled)
+				.then((context) => ({
+					subscription: context?.subscription ?? null,
+					trialStatus: context?.trialStatus ?? null,
+					paymentWarnings: context?.paymentWarnings ?? [],
+					isReadOnly: Boolean(context?.isReadOnly),
+					loading: false
+				}))
+				.catch((error) => {
+					console.error('Failed to load billing context:', error);
+					return createEmptyBillingContext(false);
+				})
+		: createEmptyBillingContext(false);
 
 	return {
 		...baseData,
 		user,
 		completedOnboarding,
-		onboardingProgress,
-		subscription,
-		paymentWarnings,
-		trialStatus,
-		isReadOnly: Boolean(trialStatus?.is_read_only)
+		onboardingProgress: completedOnboarding ? 100 : onboardingProgressPromise,
+		billingContext: billingContextPromise
 	};
 };

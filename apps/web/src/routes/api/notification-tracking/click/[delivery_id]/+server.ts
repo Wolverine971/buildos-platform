@@ -1,7 +1,7 @@
 // apps/web/src/routes/api/notification-tracking/click/[delivery_id]/+server.ts
 
 import type { RequestHandler } from './$types';
-import { json } from '@sveltejs/kit';
+import { ApiResponse } from '$lib/utils/api-response';
 
 /**
  * Track notification click
@@ -16,7 +16,7 @@ export const POST: RequestHandler = async ({ params, request, locals: { supabase
 		const delivery_id = params.delivery_id;
 
 		if (!delivery_id) {
-			return json({ success: false, error: 'delivery_id is required' }, { status: 400 });
+			return ApiResponse.badRequest('delivery_id is required');
 		}
 
 		console.log(`[NotificationTracking] Click tracking for delivery: ${delivery_id}`);
@@ -30,10 +30,7 @@ export const POST: RequestHandler = async ({ params, request, locals: { supabase
 
 		if (fetchError || !delivery) {
 			console.error(`[NotificationTracking] Delivery not found: ${delivery_id}`, fetchError);
-			return json(
-				{ success: false, error: 'Delivery not found', delivery_id },
-				{ status: 404 }
-			);
+			return ApiResponse.notFound('Delivery');
 		}
 
 		const now = new Date().toISOString();
@@ -72,16 +69,12 @@ export const POST: RequestHandler = async ({ params, request, locals: { supabase
 				`[NotificationTracking] Failed to update delivery ${delivery_id}:`,
 				updateError
 			);
-			return json(
-				{ success: false, error: 'Failed to update delivery', delivery_id },
-				{ status: 500 }
-			);
+			return ApiResponse.internalError(updateError, 'Failed to update delivery');
 		}
 
 		console.log(`[NotificationTracking] Successfully tracked click for ${delivery_id}`);
 
-		return json({
-			success: true,
+		return ApiResponse.success({
 			delivery_id,
 			clicked_at: updateData.clicked_at || delivery.clicked_at,
 			opened_at: updateData.opened_at || delivery.opened_at,
@@ -90,14 +83,7 @@ export const POST: RequestHandler = async ({ params, request, locals: { supabase
 		});
 	} catch (error: any) {
 		console.error('[NotificationTracking] Error tracking click:', error);
-		return json(
-			{
-				success: false,
-				error: error.message || 'Unknown error',
-				delivery_id: params.delivery_id
-			},
-			{ status: 500 }
-		);
+		return ApiResponse.internalError(error, 'Error tracking notification click');
 	}
 };
 
@@ -105,7 +91,7 @@ export const POST: RequestHandler = async ({ params, request, locals: { supabase
  * GET handler for CORS preflight and health check
  */
 export const GET: RequestHandler = async ({ params }) => {
-	return json({
+	return ApiResponse.success({
 		endpoint: 'notification-tracking/click',
 		delivery_id: params.delivery_id,
 		method: 'POST',

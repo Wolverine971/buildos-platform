@@ -95,3 +95,37 @@ export async function apiRequest<T = any>(
 		};
 	}
 }
+
+/**
+ * Ensure an API response succeeded, throwing with a helpful message otherwise.
+ * Returns the parsed `ClientResponse` so callers can inspect `data`, `message`, etc.
+ */
+export async function requireApiSuccess<T = any>(
+	response: Response,
+	fallbackMessage = 'Request failed'
+): Promise<ClientResponse<T>> {
+	const result = await parseApiResponse<T>(response);
+
+	if (!result.success) {
+		throw new Error(result.error || result.message || fallbackMessage);
+	}
+
+	return result;
+}
+
+/**
+ * Convenience helper for endpoints that always return a payload in `data`.
+ * Throws if the response failed or if the payload is missing.
+ */
+export async function requireApiData<T = any>(
+	response: Response,
+	fallbackMessage = 'Request failed'
+): Promise<T> {
+	const result = await requireApiSuccess<T>(response, fallbackMessage);
+
+	if (result.data === undefined) {
+		throw new Error(fallbackMessage);
+	}
+
+	return result.data;
+}

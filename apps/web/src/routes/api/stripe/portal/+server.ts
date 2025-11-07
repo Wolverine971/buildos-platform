@@ -1,5 +1,5 @@
 // apps/web/src/routes/api/stripe/portal/+server.ts
-import { json } from '@sveltejs/kit';
+import { ApiResponse } from '$lib/utils/api-response';
 import type { RequestHandler } from './$types';
 import { StripeService } from '$lib/services/stripe-service';
 import { PUBLIC_APP_URL } from '$env/static/public';
@@ -8,12 +8,12 @@ export const POST: RequestHandler = async ({ locals: { supabase, safeGetSession 
 	try {
 		// Check if Stripe is enabled
 		if (!StripeService.isEnabled()) {
-			return json({ error: 'Billing portal is not enabled' }, { status: 400 });
+			return ApiResponse.badRequest('Billing portal is not enabled');
 		}
 
 		const { user } = await safeGetSession();
 		if (!user) {
-			return json({ error: 'Unauthorized' }, { status: 401 });
+			return ApiResponse.unauthorized('Unauthorized');
 		}
 
 		// Get user's Stripe customer ID
@@ -24,7 +24,7 @@ export const POST: RequestHandler = async ({ locals: { supabase, safeGetSession 
 			.single();
 
 		if (!userData?.stripe_customer_id) {
-			return json({ error: 'No billing account found' }, { status: 400 });
+			return ApiResponse.badRequest('No billing account found');
 		}
 
 		// Create Stripe service instance
@@ -36,12 +36,12 @@ export const POST: RequestHandler = async ({ locals: { supabase, safeGetSession 
 			returnUrl: `${PUBLIC_APP_URL || url.origin}/profile?tab=billing`
 		});
 
-		return json({ url: portalUrl });
+		return ApiResponse.success({ url: portalUrl });
 	} catch (error) {
 		console.error('Error creating portal session:', error);
-		return json(
-			{ error: error instanceof Error ? error.message : 'Failed to create portal session' },
-			{ status: 500 }
+		return ApiResponse.internalError(
+			error,
+			error instanceof Error ? error.message : 'Failed to create portal session'
 		);
 	}
 };

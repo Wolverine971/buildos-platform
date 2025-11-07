@@ -21,6 +21,7 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { validateEmailClient } from '$lib/utils/client-email-validation';
+	import { requireApiData, requireApiSuccess } from '$lib/utils/api-client-helpers';
 
 	// Form state
 	let email = '';
@@ -106,9 +107,12 @@
 
 		try {
 			const response = await fetch(`/api/beta/signup?email=${encodeURIComponent(email)}`);
-			const result = await response.json();
+			const result = await requireApiData<{ status?: string }>(
+				response,
+				'Failed to check signup status'
+			);
 
-			if (result.status && result.status !== 'not_found') {
+			if (result?.status && result.status !== 'not_found') {
 				existingSignupStatus = result.status;
 			}
 		} catch (error) {
@@ -185,20 +189,20 @@
 				})
 			});
 
-			const result = await response.json();
-
-			if (!response.ok) {
-				submitError =
-					result.error || 'There was an error with your signup. Please try again.';
-				return;
-			}
+			await requireApiSuccess(
+				response,
+				'There was an error with your signup. Please try again.'
+			);
 
 			// Redirect to thank you page with email parameter
 			const emailParam = encodeURIComponent(email.trim());
 			goto(`/beta/thank-you?email=${emailParam}`);
 		} catch (error) {
 			// Signup error
-			submitError = 'There was an unexpected error. Please try again later.';
+			submitError =
+				error instanceof Error
+					? error.message
+					: 'There was an unexpected error. Please try again later.';
 		} finally {
 			isSubmitting = false;
 		}

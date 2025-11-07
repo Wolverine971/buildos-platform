@@ -1,5 +1,5 @@
 // apps/web/src/routes/api/calendar/events/+server.ts
-import { json, error } from '@sveltejs/kit';
+import { ApiResponse } from '$lib/utils/api-response';
 import type { RequestHandler } from './$types';
 import { CalendarService } from '$lib/services/calendar-service';
 
@@ -7,7 +7,7 @@ export const GET: RequestHandler = async ({ url, locals: { safeGetSession, supab
 	const { user } = await safeGetSession();
 
 	if (!user) {
-		throw error(401, 'Unauthorized');
+		return ApiResponse.unauthorized('Unauthorized');
 	}
 
 	try {
@@ -25,9 +25,9 @@ export const GET: RequestHandler = async ({ url, locals: { safeGetSession, supab
 			maxResults: maxResults ? parseInt(maxResults) : 200
 		});
 
-		return json(result);
+		return ApiResponse.success(result);
 	} catch (err) {
 		console.error('Error fetching calendar events:', err);
-		throw error(500, 'Failed to fetch calendar events');
+		return ApiResponse.internalError(err, 'Failed to fetch calendar events');
 	}
 };

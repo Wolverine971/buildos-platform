@@ -1,18 +1,18 @@
 // apps/web/src/routes/api/templates/+server.ts
 import type { RequestHandler } from './$types';
-import { json, error } from '@sveltejs/kit';
+import { ApiResponse } from '$lib/utils/api-response';
 
 export const GET: RequestHandler = async ({ url, locals: { safeGetSession, supabase } }) => {
 	const { user } = await safeGetSession();
 
 	if (!user) {
-		throw error(401, 'Unauthorized');
+		return ApiResponse.unauthorized('Unauthorized');
 	}
 
 	const templateType = url.searchParams.get('type'); // 'project'
 
 	if (!templateType || !['project'].includes(templateType)) {
-		throw error(400, 'Invalid template type. Must be "project"');
+		return ApiResponse.badRequest('Invalid template type. Must be "project"');
 	}
 
 	try {
@@ -27,13 +27,14 @@ export const GET: RequestHandler = async ({ url, locals: { safeGetSession, supab
 			.order('name', { ascending: true });
 
 		if (templateError) {
-			throw templateError;
+			console.error('Error fetching templates:', templateError);
+			return ApiResponse.internalError(templateError, 'Failed to fetch templates');
 		}
 
-		return json({ templates: templates || [] });
+		return ApiResponse.success({ templates: templates || [] });
 	} catch (err) {
 		console.error('Error fetching templates:', err);
-		throw error(500, 'Failed to fetch templates');
+		return ApiResponse.internalError(err, 'Failed to fetch templates');
 	}
 };
 
@@ -41,7 +42,7 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 	const { user } = await safeGetSession();
 
 	if (!user) {
-		throw error(401, 'Unauthorized');
+		return ApiResponse.unauthorized('Unauthorized');
 	}
 
 	try {
@@ -49,7 +50,7 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 		const { action, type, templateId, name, description, template_content } = body;
 
 		if (!action || !type || !['project'].includes(type)) {
-			throw error(400, 'Missing or invalid required fields: action, type');
+			return ApiResponse.badRequest('Missing or invalid required fields: action, type');
 		}
 
 		const tableName = 'project_brief_templates';
@@ -57,7 +58,7 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 		switch (action) {
 			case 'set_in_use': {
 				if (!templateId) {
-					throw error(400, 'Missing templateId for set_in_use action');
+					return ApiResponse.badRequest('Missing templateId for set_in_use action');
 				}
 
 				// Set the specified template as in_use (trigger will handle setting others to false)
@@ -71,7 +72,8 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 					.single();
 
 				if (updateError) {
-					throw updateError;
+					console.error('Failed to set template active:', updateError);
+					return ApiResponse.internalError(updateError, 'Failed to set template active');
 				}
 
 				// Log activity
@@ -90,12 +92,12 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 					console.warn('Failed to log template activation:', logError);
 				}
 
-				return json({ template });
+				return ApiResponse.success({ template });
 			}
 
 			case 'copy': {
 				if (!templateId) {
-					throw error(400, 'Missing templateId for copy action');
+					return ApiResponse.badRequest('Missing templateId for copy action');
 				}
 
 				// Use the database function to copy the template
@@ -110,7 +112,8 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 				);
 
 				if (copyError) {
-					throw copyError;
+					console.error('Error copying template:', copyError);
+					return ApiResponse.internalError(copyError, 'Failed to copy template');
 				}
 
 				// Get the newly created template
@@ -121,7 +124,8 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 					.single();
 
 				if (fetchError) {
-					throw fetchError;
+					console.error('Error fetching copied template:', fetchError);
+					return ApiResponse.internalError(fetchError, 'Failed to fetch copied template');
 				}
 
 				// Log activity
@@ -141,12 +145,14 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 					console.warn('Failed to log template copy:', logError);
 				}
 
-				return json({ template: newTemplate });
+				return ApiResponse.success({ template: newTemplate });
 			}
 
 			case 'create': {
 				if (!name || !template_content) {
-					throw error(400, 'Missing required fields for create: name, template_content');
+					return ApiResponse.badRequest(
+						'Missing required fields for create: name, template_content'
+					);
 				}
 
 				// Create new template for user
@@ -166,7 +172,8 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 					.single();
 
 				if (createError) {
-					throw createError;
+					console.error('Error creating template:', createError);
+					return ApiResponse.internalError(createError, 'Failed to create template');
 				}
 
 				// Log activity
@@ -185,18 +192,17 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 					console.warn('Failed to log template creation:', logError);
 				}
 
-				return json({ template });
+				return ApiResponse.success({ template });
 			}
 
 			default:
-				throw error(400, 'Invalid action. Must be "set_in_use", "copy", or "create"');
+				return ApiResponse.badRequest(
+					'Invalid action. Must be "set_in_use", "copy", or "create"'
+				);
 		}
 	} catch (err) {
 		console.error('Error managing template:', err);
-		if (err instanceof Response) {
-			throw err;
-		}
-		throw error(500, 'Failed to manage template');
+		return ApiResponse.internalError(err, 'Failed to manage template');
 	}
 };
 
@@ -204,7 +210,7 @@ export const PUT: RequestHandler = async ({ request, locals: { safeGetSession, s
 	const { user } = await safeGetSession();
 
 	if (!user) {
-		throw error(401, 'Unauthorized');
+		return ApiResponse.unauthorized('Unauthorized');
 	}
 
 	try {
@@ -212,11 +218,11 @@ export const PUT: RequestHandler = async ({ request, locals: { safeGetSession, s
 		const { id, type, name, description, template_content } = body;
 
 		if (!id || !type || !['project'].includes(type)) {
-			throw error(400, 'Missing or invalid required fields: id, type');
+			return ApiResponse.badRequest('Missing or invalid required fields: id, type');
 		}
 
 		if (!name || !template_content) {
-			throw error(400, 'Missing required fields: name, template_content');
+			return ApiResponse.badRequest('Missing required fields: name, template_content');
 		}
 
 		const tableName = 'project_brief_templates';
@@ -235,7 +241,8 @@ export const PUT: RequestHandler = async ({ request, locals: { safeGetSession, s
 			.single();
 
 		if (updateError) {
-			throw updateError;
+			console.error('Error updating template:', updateError);
+			return ApiResponse.internalError(updateError, 'Failed to update template');
 		}
 
 		// Log activity
@@ -254,13 +261,10 @@ export const PUT: RequestHandler = async ({ request, locals: { safeGetSession, s
 			console.warn('Failed to log template update:', logError);
 		}
 
-		return json({ template });
+		return ApiResponse.success({ template });
 	} catch (err) {
 		console.error('Error updating template:', err);
-		if (err instanceof Response) {
-			throw err;
-		}
-		throw error(500, 'Failed to update template');
+		return ApiResponse.internalError(err, 'Failed to update template');
 	}
 };
 
@@ -275,7 +279,7 @@ export const DELETE: RequestHandler = async ({ url, locals: { safeGetSession, su
 	const type = url.searchParams.get('type');
 
 	if (!templateId || !type || !['project'].includes(type)) {
-		throw error(400, 'Missing or invalid required parameters: id, type');
+		return ApiResponse.badRequest('Missing or invalid required parameters: id, type');
 	}
 
 	try {
@@ -289,7 +293,8 @@ export const DELETE: RequestHandler = async ({ url, locals: { safeGetSession, su
 			.eq('user_id', user.id); // Security: only delete user's own templates
 
 		if (deleteError) {
-			throw deleteError;
+			console.error('Error deleting template:', deleteError);
+			return ApiResponse.internalError(deleteError, 'Failed to delete template');
 		}
 
 		// Log activity
@@ -307,12 +312,9 @@ export const DELETE: RequestHandler = async ({ url, locals: { safeGetSession, su
 			console.warn('Failed to log template deletion:', logError);
 		}
 
-		return json({ success: true });
+		return ApiResponse.success({ success: true });
 	} catch (err) {
 		console.error('Error deleting template:', err);
-		if (err instanceof Response) {
-			throw err;
-		}
-		throw error(500, 'Failed to delete template');
+		return ApiResponse.internalError(err, 'Failed to delete template');
 	}
 };

@@ -1,5 +1,5 @@
 // apps/web/src/routes/api/webhooks/twilio/status/+server.ts
-import { json } from '@sveltejs/kit';
+import { ApiResponse } from '$lib/utils/api-response';
 import type { RequestHandler } from './$types';
 import twilio from 'twilio';
 import { PRIVATE_TWILIO_AUTH_TOKEN } from '$env/static/private';
@@ -112,7 +112,7 @@ export const POST: RequestHandler = async ({ request, url }) => {
 				messageSid: messageSid || 'missing',
 				messageStatus: messageStatus || 'missing'
 			});
-			return json({ error: 'Missing required parameters' }, { status: 400 });
+			return ApiResponse.badRequest('Missing required parameters');
 		}
 
 		// Try to extract correlation ID from SMS message metadata
@@ -154,7 +154,7 @@ export const POST: RequestHandler = async ({ request, url }) => {
 
 			if (!isValid) {
 				logger.error('Invalid Twilio webhook signature');
-				return json({ error: 'Invalid signature' }, { status: 401 });
+				return ApiResponse.error('Invalid signature', 401);
 			}
 		} else {
 			logger.warn('Webhook signature missing (development mode?)');
@@ -400,7 +400,7 @@ export const POST: RequestHandler = async ({ request, url }) => {
 		});
 
 		// Twilio expects a 200 OK response
-		return json({ success: true, processed: true });
+		return ApiResponse.success({ processed: true });
 	} catch (error: any) {
 		const processingTime = Date.now() - startTime;
 		baseLogger.error('Webhook processing failed', error, {
@@ -409,6 +409,6 @@ export const POST: RequestHandler = async ({ request, url }) => {
 
 		// Always return 200 to prevent Twilio from retrying
 		// We've logged the error for investigation
-		return json({ success: true, error: 'Internal error logged' });
+		return ApiResponse.success({ error: 'Internal error logged' });
 	}
 };

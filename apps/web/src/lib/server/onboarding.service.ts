@@ -6,7 +6,11 @@ import { RailwayWorkerService } from '$lib/services/railwayWorker.service';
 import type { UserContext } from '$lib/types/user-context';
 
 type SupabaseClientType = SupabaseClient<Database>;
-type OnboardingInputKey = 'input_projects' | 'input_work_style' | 'input_challenges' | 'input_help_focus';
+type OnboardingInputKey =
+	| 'input_projects'
+	| 'input_work_style'
+	| 'input_challenges'
+	| 'input_help_focus';
 
 export class OnboardingServerService {
 	private supabase: SupabaseClientType;

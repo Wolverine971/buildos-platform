@@ -1,5 +1,5 @@
 // apps/web/src/routes/api/projects/[id]/synthesize/apply/+server.ts
-import { json } from '@sveltejs/kit';
+import { ApiResponse } from '$lib/utils/api-response';
 import type { RequestHandler } from './$types';
 import { ProjectSynthesisService } from '$lib/services/projectSynthesis.service';
 import { ActivityLogger } from '$lib/utils/activityLogger';
@@ -11,14 +11,14 @@ export const POST: RequestHandler = async ({
 }) => {
 	const { user } = await safeGetSession();
 	if (!user) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
+		return ApiResponse.unauthorized('Unauthorized');
 	}
 
 	try {
 		const { operations } = await request.json();
 
 		if (!operations || !Array.isArray(operations)) {
-			return json({ error: 'Invalid operations provided' }, { status: 400 });
+			return ApiResponse.badRequest('Invalid operations provided');
 		}
 
 		// Verify project ownership
@@ -29,11 +29,11 @@ export const POST: RequestHandler = async ({
 			.single();
 
 		if (projectError || !project) {
-			return json({ error: 'Project not found' }, { status: 404 });
+			return ApiResponse.notFound('Project');
 		}
 
 		if (project.user_id !== user.id) {
-			return json({ error: 'Forbidden' }, { status: 403 });
+			return ApiResponse.forbidden('Forbidden');
 		}
 
 		// Initialize services
@@ -66,7 +66,7 @@ export const POST: RequestHandler = async ({
 			total_operations: operations.length
 		});
 
-		return json({
+		return ApiResponse.success({
 			success: true,
 			successful: results.successful,
 			failed: results.failed,
@@ -90,12 +90,9 @@ export const POST: RequestHandler = async ({
 			console.warn('Failed to log synthesis apply failure:', logError);
 		}
 
-		return json(
-			{
-				error: 'Failed to apply synthesis operations',
-				details: error instanceof Error ? error.message : 'Unknown error'
-			},
-			{ status: 500 }
+		return ApiResponse.internalError(
+			error,
+			error instanceof Error ? error.message : 'Failed to apply synthesis operations'
 		);
 	}
 };

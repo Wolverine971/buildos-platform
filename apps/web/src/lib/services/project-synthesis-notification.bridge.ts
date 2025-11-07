@@ -30,6 +30,7 @@ import type {
 } from '$lib/types/notification.types';
 import type { SynthesisOptions } from '$lib/types/synthesis';
 import type { ParsedOperation } from '$lib/types/brain-dump';
+import { requireApiData } from '$lib/utils/api-client-helpers';
 
 // ============================================================================
 // Controller Interface
@@ -360,12 +361,10 @@ async function executeSynthesis(
 			body: JSON.stringify(controller.requestPayload)
 		});
 
-		if (!response.ok) {
-			const error = await response.json();
-			throw new Error(error?.error || 'Failed to generate synthesis');
-		}
-
-		const payload = await response.json();
+		const payload = await requireApiData<{ synthesis: any }>(
+			response,
+			'Failed to generate synthesis'
+		);
 		const synthesis = payload.synthesis;
 
 		// Jump to final step

@@ -1,5 +1,5 @@
 // apps/web/src/routes/api/webhooks/send-notification-email/+server.ts
-import { json } from '@sveltejs/kit';
+import { ApiResponse } from '$lib/utils/api-response';
 import type { RequestHandler } from './$types';
 import { PRIVATE_BUILDOS_WEBHOOK_SECRET } from '$env/static/private';
 import { EmailService } from '$lib/services/email-service';
@@ -38,12 +38,12 @@ export const POST: RequestHandler = async ({ request }) => {
 			console.error(
 				'[NotificationEmailWebhook] PRIVATE_BUILDOS_WEBHOOK_SECRET not configured'
 			);
-			return json({ error: 'Webhook not configured' }, { status: 500 });
+			return ApiResponse.internalError(null, 'Webhook not configured');
 		}
 
 		if (!authHeader || authHeader !== `Bearer ${expectedSecret}`) {
 			console.warn('[NotificationEmailWebhook] Invalid or missing authorization header');
-			return json({ error: 'Unauthorized' }, { status: 401 });
+			return ApiResponse.unauthorized('Unauthorized');
 		}
 
 		// Parse request body
@@ -56,9 +56,8 @@ export const POST: RequestHandler = async ({ request }) => {
 				hasUserId: !!body.recipientUserId,
 				hasSubject: !!body.subject
 			});
-			return json(
-				{ error: 'Missing required fields: recipientEmail, recipientUserId, subject' },
-				{ status: 400 }
+			return ApiResponse.badRequest(
+				'Missing required fields: recipientEmail, recipientUserId, subject'
 			);
 		}
 
@@ -104,13 +103,10 @@ export const POST: RequestHandler = async ({ request }) => {
 							: 'email_enabled'
 				}
 			);
-			return json(
-				{
-					success: false,
-					error: 'Cancelled: User preferences do not allow email notifications'
-				},
-				{ status: 200 } // Return 200 to prevent retries
-			);
+			return ApiResponse.success({
+				success: false,
+				error: 'Cancelled: User preferences do not allow email notifications'
+			});
 		}
 
 		const emailService = new EmailService(supabase);
@@ -140,13 +136,7 @@ export const POST: RequestHandler = async ({ request }) => {
 				error: result.error
 			});
 
-			return json(
-				{
-					success: false,
-					error: result.error || 'Failed to send email'
-				},
-				{ status: 500 }
-			);
+			return ApiResponse.internalError(result.error, result.error || 'Failed to send email');
 		}
 
 		const duration = Date.now() - startTime;
@@ -154,7 +144,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			`[NotificationEmailWebhook] ✅ Email sent successfully in ${duration}ms (messageId: ${result.messageId}, delivery: ${body.deliveryId})`
 		);
 
-		return json({
+		return ApiResponse.success({
 			success: true,
 			messageId: result.messageId,
 			duration
@@ -167,12 +157,6 @@ export const POST: RequestHandler = async ({ request }) => {
 			duration
 		});
 
-		return json(
-			{
-				success: false,
-				error: error.message || 'Internal server error'
-			},
-			{ status: 500 }
-		);
+		return ApiResponse.internalError(error, error.message || 'Internal server error');
 	}
 };

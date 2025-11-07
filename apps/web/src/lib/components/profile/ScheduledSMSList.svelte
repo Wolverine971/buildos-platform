@@ -14,6 +14,7 @@
 	import { format, parseISO, isFuture } from 'date-fns';
 	import { formatInTimeZone } from 'date-fns-tz';
 	import Button from '$lib/components/ui/Button.svelte';
+	import { requireApiData, requireApiSuccess } from '$lib/utils/api-client-helpers';
 
 	interface ScheduledSMS {
 		id: string;
@@ -68,13 +69,11 @@
 			error = null;
 
 			const response = await fetch('/api/sms/scheduled?limit=100');
-			const result = await response.json();
-
-			if (!result?.success) {
-				throw new Error(result?.error?.[0] || 'Failed to load scheduled messages');
-			}
-
-			scheduledMessages = result.data || [];
+			const result = await requireApiData<ScheduledSMS[] | { messages?: ScheduledSMS[] }>(
+				response,
+				'Failed to load scheduled messages'
+			);
+			scheduledMessages = Array.isArray(result) ? result : result.messages || [];
 		} catch (err: any) {
 			console.error('Error loading scheduled SMS:', err);
 			error = err.message || 'Failed to load scheduled messages';
@@ -94,12 +93,7 @@
 			const response = await fetch(`/api/sms/scheduled/${messageId}`, {
 				method: 'DELETE'
 			});
-
-			const result = await response.json();
-
-			if (!result?.success) {
-				throw new Error(result?.error?.[0] || 'Failed to cancel message');
-			}
+			await requireApiSuccess(response, 'Failed to cancel message');
 
 			// Refresh the list
 			await loadScheduledMessages();

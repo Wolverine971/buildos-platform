@@ -1,12 +1,12 @@
 // apps/web/src/routes/api/projects/[id]/history/+server.ts
-import { json } from '@sveltejs/kit';
+import { ApiResponse } from '$lib/utils/api-response';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetSession } }) => {
 	try {
 		const { user } = await safeGetSession();
 		if (!user) {
-			return json({ error: 'Unauthorized' }, { status: 401 });
+			return ApiResponse.unauthorized('Unauthorized');
 		}
 		const projectId = params.id;
 
@@ -22,11 +22,11 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 			.single();
 
 		if (projectError || !project) {
-			return json({ error: 'Project not found' }, { status: 404 });
+			return ApiResponse.notFound('Project');
 		}
 
 		if (project.user_id !== user?.id) {
-			return json({ error: 'Unauthorized' }, { status: 403 });
+			return ApiResponse.forbidden('Unauthorized');
 		}
 
 		// Get all project history versions
@@ -108,12 +108,12 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 			})
 		);
 
-		return json({
+		return ApiResponse.success({
 			versions: versionsWithBraindumps,
 			total_versions: versionsWithBraindumps.length
 		});
 	} catch (error) {
 		console.error('Unexpected error in project history endpoint:', error);
-		return json({ error: 'Internal server error' }, { status: 500 });
+		return ApiResponse.internalError(error, 'Internal server error');
 	}
 };

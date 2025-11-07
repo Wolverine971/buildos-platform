@@ -1,5 +1,5 @@
 // apps/web/src/routes/api/calendar/retry-failed/+server.ts
-import { json } from '@sveltejs/kit';
+import { ApiResponse } from '$lib/utils/api-response';
 import type { RequestHandler } from './$types';
 import { CalendarService } from '$lib/services/calendar-service';
 
@@ -20,7 +20,7 @@ export const GET: RequestHandler = async ({ locals: { supabase } }) => {
 			.limit(50); // Process max 50 at a time
 
 		if (!failedEvents?.length) {
-			return json({ message: 'No failed events to retry', count: 0 });
+			return ApiResponse.success({ message: 'No failed events to retry', count: 0 });
 		}
 
 		const calendarService = new CalendarService(supabase);
@@ -133,7 +133,7 @@ export const GET: RequestHandler = async ({ locals: { supabase } }) => {
 			}
 		}
 
-		return json({
+		return ApiResponse.success({
 			message: 'Retry completed',
 			processed: failedEvents.length,
 			retried: totalRetried,
@@ -142,6 +142,6 @@ export const GET: RequestHandler = async ({ locals: { supabase } }) => {
 		});
 	} catch (error) {
 		console.error('Retry failed events error:', error);
-		return json({ error: 'Failed to retry events' }, { status: 500 });
+		return ApiResponse.internalError(error, 'Failed to retry events');
 	}
 };

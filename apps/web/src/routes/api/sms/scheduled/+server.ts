@@ -1,5 +1,5 @@
 // apps/web/src/routes/api/sms/scheduled/+server.ts
-import { json } from '@sveltejs/kit';
+import { ApiResponse } from '$lib/utils/api-response';
 import type { RequestHandler } from './$types';
 import { PUBLIC_RAILWAY_WORKER_URL } from '$env/static/public';
 
@@ -14,7 +14,7 @@ import { PUBLIC_RAILWAY_WORKER_URL } from '$env/static/public';
 export const GET: RequestHandler = async ({ url, locals: { safeGetSession } }) => {
 	const { user } = await safeGetSession();
 	if (!user) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
+		return ApiResponse.unauthorized('Unauthorized');
 	}
 
 	try {
@@ -32,19 +32,21 @@ export const GET: RequestHandler = async ({ url, locals: { safeGetSession } }) =
 
 		if (!response.ok) {
 			const errorData = await response.json().catch(() => ({ error: 'Failed to fetch' }));
-			return json(errorData, { status: response.status });
+			return ApiResponse.error(
+				errorData.error || 'Failed to fetch scheduled SMS messages',
+				response.status,
+				undefined,
+				{ details: errorData }
+			);
 		}
 
 		const data = await response.json();
-		return json(data);
+		return ApiResponse.success(data);
 	} catch (error: any) {
 		console.error('Error fetching scheduled SMS:', error);
-		return json(
-			{
-				success: false,
-				error: error.message || 'Failed to fetch scheduled SMS messages'
-			},
-			{ status: 500 }
+		return ApiResponse.internalError(
+			error,
+			error.message || 'Failed to fetch scheduled SMS messages'
 		);
 	}
 };

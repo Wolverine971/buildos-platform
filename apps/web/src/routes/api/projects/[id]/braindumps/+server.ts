@@ -1,6 +1,6 @@
 // apps/web/src/routes/api/projects/[id]/braindumps/+server.ts
 import type { RequestHandler } from './$types';
-import { error, json } from '@sveltejs/kit';
+import { ApiResponse } from '$lib/utils/api-response';
 import type { BraindumpWithLinks } from '$lib/types/brain-dump';
 
 /**
@@ -17,7 +17,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 	const { user } = await safeGetSession();
 
 	if (!user) {
-		throw error(401, 'Unauthorized');
+		return ApiResponse.unauthorized('Unauthorized');
 	}
 
 	const { id: projectId } = params;
@@ -60,7 +60,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 
 		if (err) {
 			console.error('Error fetching project braindumps:', err);
-			throw error(500, 'Failed to fetch braindumps');
+			return ApiResponse.internalError(err, 'Failed to fetch braindumps');
 		}
 
 		// Group by braindump_id to consolidate multiple links
@@ -115,12 +115,12 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		// Convert map to array
 		const braindumps: BraindumpWithLinks[] = Array.from(braindumpsMap.values());
 
-		return json({
+		return ApiResponse.success({
 			braindumps,
 			count: braindumps.length
 		});
 	} catch (err: any) {
 		console.error('Error in project braindumps endpoint:', err);
-		throw error(err.status || 500, err.message || 'Internal server error');
+		return ApiResponse.internalError(err, err.message || 'Internal server error');
 	}
 };

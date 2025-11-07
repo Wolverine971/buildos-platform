@@ -1,13 +1,13 @@
 // apps/web/src/routes/api/stripe/test-webhook-config/+server.ts
 // TEMPORARY TEST ENDPOINT - REMOVE IN PRODUCTION
-import { json } from '@sveltejs/kit';
+import { ApiResponse } from '$lib/utils/api-response';
 import type { RequestHandler } from './$types';
 import { STRIPE_WEBHOOK_SECRET } from '$env/static/private';
 
 export const GET: RequestHandler = async () => {
 	// Only allow in development
 	if (process.env.NODE_ENV === 'production') {
-		return json({ error: 'Not available in production' }, { status: 403 });
+		return ApiResponse.forbidden('Not available in production');
 	}
 
 	const webhookSecretInfo = {
@@ -36,5 +36,5 @@ export const GET: RequestHandler = async () => {
 		console.log('✅ Webhook secret appears to be configured correctly');
 	}
 
-	return json(webhookSecretInfo);
+	return ApiResponse.success(webhookSecretInfo);
 };

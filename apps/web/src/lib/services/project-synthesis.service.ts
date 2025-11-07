@@ -1,6 +1,6 @@
 // apps/web/src/lib/services/project-synthesis.service.ts
 import { toastService } from '$lib/stores/toast.store';
-import { parseApiResponse } from '$lib/utils/api-client-helpers';
+import { requireApiData, requireApiSuccess } from '$lib/utils/api-client-helpers';
 
 export class ProjectSynthesisService {
 	private projectId: string;
@@ -12,13 +12,16 @@ export class ProjectSynthesisService {
 	async loadSynthesis(): Promise<any | null> {
 		try {
 			const response = await fetch(`/api/projects/${this.projectId}/synthesize`);
-			const result = await parseApiResponse(response);
+			const result = await requireApiData<{ synthesis?: any } | null>(
+				response,
+				'Failed to load synthesis'
+			);
 
-			if (!result.success) {
-				throw new Error(result.errors?.[0] || 'Failed to load synthesis');
+			if (result && typeof result === 'object' && 'synthesis' in result) {
+				return result.synthesis ?? null;
 			}
 
-			return result.data?.synthesis || null;
+			return result;
 		} catch (error) {
 			console.error('Error loading synthesis:', error);
 			// Don't show error toast - null synthesis is valid (means none exists yet)
@@ -37,19 +40,12 @@ export class ProjectSynthesisService {
 				})
 			});
 
-			// Handle the raw response since the API doesn't use ApiResponse wrapper for this endpoint
-			if (!response.ok) {
-				const error = await response.json();
-				throw new Error(error.error || 'Failed to generate synthesis');
-			}
+			const result = await requireApiData<{ synthesis?: any }>(
+				response,
+				'Failed to generate synthesis'
+			);
 
-			const result = await response.json();
-
-			if (result.synthesis) {
-				return result.synthesis;
-			}
-
-			return null;
+			return result.synthesis ?? null;
 		} catch (error) {
 			console.error('Error generating synthesis:', error);
 			toastService.error(
@@ -75,12 +71,10 @@ export class ProjectSynthesisService {
 				})
 			});
 
-			if (!response.ok) {
-				const error = await response.json();
-				throw new Error(error.error || 'Failed to save synthesis');
-			}
-
-			const result = await response.json();
+			const result = await requireApiData<{ synthesis?: any }>(
+				response,
+				'Failed to save synthesis'
+			);
 			toastService.success('Synthesis saved successfully');
 			return result.synthesis;
 		} catch (error) {
@@ -96,10 +90,7 @@ export class ProjectSynthesisService {
 				method: 'DELETE'
 			});
 
-			if (!response.ok) {
-				const error = await response.json();
-				throw new Error(error.error || 'Failed to delete synthesis');
-			}
+			await requireApiSuccess(response, 'Failed to delete synthesis');
 
 			toastService.success('Synthesis deleted successfully');
 			return true;
@@ -120,9 +111,7 @@ export class ProjectSynthesisService {
 				body: JSON.stringify({ content })
 			});
 
-			if (!response.ok) {
-				throw new Error('Failed to update synthesis');
-			}
+			await requireApiSuccess(response, 'Failed to update synthesis');
 
 			toastService.success('Synthesis updated successfully');
 			return true;

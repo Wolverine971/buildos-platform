@@ -1,12 +1,12 @@
 // apps/web/src/routes/api/admin/beta/members/+server.ts
-import { json } from '@sveltejs/kit';
+import { ApiResponse } from '$lib/utils/api-response';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSession } }) => {
 	const { user } = await safeGetSession();
 
 	if (!user?.is_admin) {
-		return json({ error: 'Admin access required' }, { status: 403 });
+		return ApiResponse.forbidden('Admin access required');
 	}
 
 	try {
@@ -62,7 +62,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 
 		const totalPages = Math.ceil((count || 0) / limit);
 
-		return json({
+		return ApiResponse.success({
 			members: members || [],
 			pagination: {
 				current_page: page,
@@ -73,7 +73,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 		});
 	} catch (error) {
 		console.error('Error fetching beta members:', error);
-		return json({ error: 'Failed to fetch beta members' }, { status: 500 });
+		return ApiResponse.internalError(error, 'Failed to fetch beta members');
 	}
 };
 
@@ -81,14 +81,14 @@ export const PATCH: RequestHandler = async ({ request, locals: { supabase, safeG
 	const { user } = await safeGetSession();
 
 	if (!user?.is_admin) {
-		return json({ error: 'Admin access required' }, { status: 403 });
+		return ApiResponse.forbidden('Admin access required');
 	}
 
 	try {
 		const { member_id, updates } = await request.json();
 
 		if (!member_id) {
-			return json({ error: 'Member ID is required' }, { status: 400 });
+			return ApiResponse.badRequest('Member ID is required');
 		}
 
 		// If deactivating member, set deactivated_at
@@ -111,9 +111,9 @@ export const PATCH: RequestHandler = async ({ request, locals: { supabase, safeG
 
 		if (error) throw error;
 
-		return json({ success: true, member: data });
+		return ApiResponse.success({ member: data }, 'Member updated');
 	} catch (error) {
 		console.error('Error updating beta member:', error);
-		return json({ error: 'Failed to update beta member' }, { status: 500 });
+		return ApiResponse.internalError(error, 'Failed to update beta member');
 	}
 };

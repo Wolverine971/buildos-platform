@@ -30,6 +30,7 @@
 	import type { SynthesisOptions } from '$lib/types/synthesis';
 	import { onMount, onDestroy } from 'svelte';
 	import { projectStoreV2 } from '$lib/stores/project.store';
+	import { requireApiData } from '$lib/utils/api-client-helpers';
 
 	// Props - only callbacks and configuration (following the standard pattern)
 	export let loading = false;
@@ -230,13 +231,7 @@
 				body: JSON.stringify({ operations: enabledOperations })
 			});
 
-			const result = await response.json();
-
-			if (!response.ok) {
-				throw new Error(
-					result.error || `Failed to apply operations (status: ${response.status})`
-				);
-			}
+			const result = await requireApiData<any>(response, 'Failed to apply operations');
 
 			processingResults = result;
 

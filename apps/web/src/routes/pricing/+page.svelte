@@ -5,6 +5,7 @@
 	import type { PageData } from './$types';
 	import Button from '$lib/components/ui/Button.svelte';
 	import SEOHead from '$lib/components/SEOHead.svelte';
+	import { requireApiData } from '$lib/utils/api-client-helpers';
 
 	export let data: PageData;
 
@@ -34,11 +35,10 @@
 				body: JSON.stringify({})
 			});
 
-			const result = await response.json();
-
-			if (!response.ok) {
-				throw new Error(result.error || 'Failed to create checkout session');
-			}
+			const result = await requireApiData<{ url?: string }>(
+				response,
+				'Failed to create checkout session'
+			);
 
 			if (result.url) {
 				window.location.href = result.url;

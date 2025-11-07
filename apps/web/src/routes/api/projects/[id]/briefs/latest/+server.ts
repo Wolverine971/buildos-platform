@@ -1,11 +1,11 @@
 // apps/web/src/routes/api/projects/[id]/briefs/latest/+server.ts
-import { json } from '@sveltejs/kit';
+import { ApiResponse } from '$lib/utils/api-response';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetSession } }) => {
 	const { user } = await safeGetSession();
 	if (!user) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
+		return ApiResponse.unauthorized('Unauthorized');
 	}
 
 	try {
@@ -17,11 +17,11 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 			.single();
 
 		if (projectError) {
-			return json({ error: 'Project not found' }, { status: 404 });
+			return ApiResponse.notFound('Project');
 		}
 
 		if (project.user_id !== user.id) {
-			return json({ error: 'Forbidden' }, { status: 403 });
+			return ApiResponse.forbidden('Forbidden');
 		}
 
 		// Get the latest brief for this project
@@ -37,15 +37,15 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 		if (briefError) {
 			if (briefError.code === 'PGRST116') {
 				// No brief found - this is okay
-				return json({ brief: null });
+				return ApiResponse.success({ brief: null });
 			}
 			console.error('Error fetching latest project brief:', briefError);
-			return json({ error: briefError.message }, { status: 500 });
+			return ApiResponse.internalError(briefError, briefError.message);
 		}
 
-		return json({ brief });
+		return ApiResponse.success({ brief });
 	} catch (err) {
 		console.error('Error in GET /api/projects/[id]/briefs/latest:', err);
-		return json({ error: 'Internal server error' }, { status: 500 });
+		return ApiResponse.internalError(err, 'Internal server error');
 	}
 };

@@ -1,5 +1,5 @@
 // apps/web/src/routes/api/sms/scheduled/[id]/+server.ts
-import { json } from '@sveltejs/kit';
+import { ApiResponse } from '$lib/utils/api-response';
 import type { RequestHandler } from './$types';
 import { PUBLIC_RAILWAY_WORKER_URL } from '$env/static/public';
 
@@ -10,7 +10,7 @@ import { PUBLIC_RAILWAY_WORKER_URL } from '$env/static/public';
 export const DELETE: RequestHandler = async ({ params, locals: { safeGetSession, supabase } }) => {
 	const { user } = await safeGetSession();
 	if (!user) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
+		return ApiResponse.unauthorized('Unauthorized');
 	}
 
 	const { id } = params;
@@ -24,11 +24,11 @@ export const DELETE: RequestHandler = async ({ params, locals: { safeGetSession,
 			.single();
 
 		if (verifyError || !smsMessage) {
-			return json({ error: 'SMS message not found' }, { status: 404 });
+			return ApiResponse.notFound('SMS message');
 		}
 
 		if (smsMessage.user_id !== user.id) {
-			return json({ error: 'Unauthorized' }, { status: 403 });
+			return ApiResponse.forbidden('Unauthorized');
 		}
 
 		// Call worker API to cancel
@@ -45,19 +45,18 @@ export const DELETE: RequestHandler = async ({ params, locals: { safeGetSession,
 
 		if (!response.ok) {
 			const errorData = await response.json().catch(() => ({ error: 'Failed to cancel' }));
-			return json(errorData, { status: response.status });
+			return ApiResponse.error(
+				errorData.error || 'Failed to cancel SMS message',
+				response.status,
+				undefined,
+				{ details: errorData }
+			);
 		}
 
 		const data = await response.json();
-		return json(data);
+		return ApiResponse.success(data);
 	} catch (error: any) {
 		console.error('Error cancelling scheduled SMS:', error);
-		return json(
-			{
-				success: false,
-				error: error.message || 'Failed to cancel SMS message'
-			},
-			{ status: 500 }
-		);
+		return ApiResponse.internalError(error, error.message || 'Failed to cancel SMS message');
 	}
 };

@@ -30,6 +30,7 @@
 		getFileExtensionForMimeType
 	} from '$lib/utils/voice';
 	import { toastService } from '$lib/stores/toast.store';
+	import { requireApiSuccess } from '$lib/utils/api-client-helpers';
 
 	// V2 Onboarding Components
 	import WelcomeStep from '$lib/components/onboarding-v2/WelcomeStep.svelte';
@@ -276,11 +277,7 @@
 				})
 			});
 
-			if (!response.ok) {
-				throw new Error(`Failed to save inputs: ${response.status}`);
-			}
-
-			await response.json().catch(() => ({}));
+			await requireApiSuccess(response, 'Failed to save inputs');
 			lastSavedInputs = nextLastSavedInputs;
 			saveFailed = false;
 			return true;
@@ -350,11 +347,14 @@
 
 		try {
 			// Complete onboarding
-			await fetch('/api/onboarding', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ action: 'complete' })
-			});
+			await requireApiSuccess(
+				await fetch('/api/onboarding', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ action: 'complete' })
+				}),
+				'Failed to complete onboarding'
+			);
 
 			showCompletionScreen = true;
 			toastService.success('Setup complete! Preparing your personalized experience...');

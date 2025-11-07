@@ -1,5 +1,5 @@
 // apps/web/src/routes/api/stripe/checkout/+server.ts
-import { json } from '@sveltejs/kit';
+import { ApiResponse } from '$lib/utils/api-response';
 import type { RequestHandler } from './$types';
 import { StripeService } from '$lib/services/stripe-service';
 import { STRIPE_PRICE_ID } from '$env/static/private';
@@ -13,12 +13,12 @@ export const POST: RequestHandler = async ({
 	try {
 		// Check if Stripe is enabled
 		if (!StripeService.isEnabled()) {
-			return json({ error: 'Payments are not enabled' }, { status: 400 });
+			return ApiResponse.badRequest('Payments are not enabled');
 		}
 
 		const { user } = await safeGetSession();
 		if (!user) {
-			return json({ error: 'Unauthorized' }, { status: 401 });
+			return ApiResponse.unauthorized('Unauthorized');
 		}
 
 		// Get user email
@@ -29,7 +29,7 @@ export const POST: RequestHandler = async ({
 			.single();
 
 		if (!userData?.email) {
-			return json({ error: 'User email not found' }, { status: 400 });
+			return ApiResponse.badRequest('User email not found');
 		}
 
 		// Get discount code from request if provided
@@ -51,12 +51,12 @@ export const POST: RequestHandler = async ({
 			}
 		});
 
-		return json({ url: checkoutUrl });
+		return ApiResponse.success({ url: checkoutUrl });
 	} catch (error) {
 		console.error('Error creating checkout session:', error);
-		return json(
-			{ error: error instanceof Error ? error.message : 'Failed to create checkout session' },
-			{ status: 500 }
+		return ApiResponse.internalError(
+			error,
+			error instanceof Error ? error.message : 'Failed to create checkout session'
 		);
 	}
 };

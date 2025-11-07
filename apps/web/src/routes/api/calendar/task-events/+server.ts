@@ -1,5 +1,5 @@
 // apps/web/src/routes/api/calendar/task-events/+server.ts
-import { json, error } from '@sveltejs/kit';
+import { ApiResponse } from '$lib/utils/api-response';
 import type { RequestHandler } from './$types';
 
 /**
@@ -12,14 +12,14 @@ export const GET: RequestHandler = async ({ url, locals: { safeGetSession, supab
 	const { user } = await safeGetSession();
 
 	if (!user) {
-		throw error(401, 'Unauthorized');
+		return ApiResponse.unauthorized('Unauthorized');
 	}
 
 	const timeMin = url.searchParams.get('timeMin');
 	const timeMax = url.searchParams.get('timeMax');
 
 	if (!timeMin || !timeMax) {
-		throw error(400, 'timeMin and timeMax query parameters are required');
+		return ApiResponse.badRequest('timeMin and timeMax query parameters are required');
 	}
 
 	try {
@@ -48,17 +48,11 @@ export const GET: RequestHandler = async ({ url, locals: { safeGetSession, supab
 			}
 		}
 
-		return json({
-			success: true,
-			data: {
-				calendar_event_ids: calendarEventIds
-			}
+		return ApiResponse.success({
+			calendar_event_ids: calendarEventIds
 		});
 	} catch (err) {
 		console.error('[API] Error in task-events endpoint:', err);
-		if (err && typeof err === 'object' && 'status' in err) {
-			throw err;
-		}
-		throw error(500, 'Internal server error');
+		return ApiResponse.internalError(err, 'Internal server error');
 	}
 };

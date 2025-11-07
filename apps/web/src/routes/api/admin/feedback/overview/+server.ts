@@ -1,5 +1,5 @@
 // apps/web/src/routes/api/admin/feedback/overview/+server.ts
-import { json } from '@sveltejs/kit';
+import { ApiResponse } from '$lib/utils/api-response';
 import type { RequestHandler } from './$types';
 import { getFeedbackOverview } from '$lib/services/admin/dashboard-analytics.service';
 
@@ -7,14 +7,14 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
 	const { user } = await safeGetSession();
 
 	if (!user?.is_admin) {
-		return json({ error: 'Admin access required' }, { status: 403 });
+		return ApiResponse.forbidden('Admin access required');
 	}
 
 	try {
 		const data = await getFeedbackOverview(supabase);
-		return json(data);
+		return ApiResponse.success(data);
 	} catch (error) {
 		console.error('Error fetching feedback overview:', error);
-		return json({ error: 'Failed to fetch feedback overview' }, { status: 500 });
+		return ApiResponse.internalError(error, 'Failed to fetch feedback overview');
 	}
 };

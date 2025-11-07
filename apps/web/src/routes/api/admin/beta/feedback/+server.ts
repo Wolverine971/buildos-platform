@@ -1,12 +1,12 @@
 // apps/web/src/routes/api/admin/beta/feedback/+server.ts
-import { json } from '@sveltejs/kit';
+import { ApiResponse } from '$lib/utils/api-response';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSession } }) => {
 	const { user } = await safeGetSession();
 
 	if (!user?.is_admin) {
-		return json({ error: 'Admin access required' }, { status: 403 });
+		return ApiResponse.forbidden('Admin access required');
 	}
 
 	try {
@@ -59,7 +59,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 
 		const totalPages = Math.ceil((count || 0) / limit);
 
-		return json({
+		return ApiResponse.success({
 			feedback: feedback || [],
 			pagination: {
 				current_page: page,
@@ -70,7 +70,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 		});
 	} catch (error) {
 		console.error('Error fetching beta feedback:', error);
-		return json({ error: 'Failed to fetch beta feedback' }, { status: 500 });
+		return ApiResponse.internalError(error, 'Failed to fetch beta feedback');
 	}
 };
 
@@ -78,14 +78,14 @@ export const PATCH: RequestHandler = async ({ request, locals: { supabase, safeG
 	const { user } = await safeGetSession();
 
 	if (!user?.is_admin) {
-		return json({ error: 'Admin access required' }, { status: 403 });
+		return ApiResponse.forbidden('Admin access required');
 	}
 
 	try {
 		const { feedback_id, updates } = await request.json();
 
 		if (!feedback_id) {
-			return json({ error: 'Feedback ID is required' }, { status: 400 });
+			return ApiResponse.badRequest('Feedback ID is required');
 		}
 
 		// If implementing feedback, update implemented_at
@@ -116,9 +116,9 @@ export const PATCH: RequestHandler = async ({ request, locals: { supabase, safeG
 
 		if (error) throw error;
 
-		return json({ success: true, feedback: data });
+		return ApiResponse.success({ feedback: data }, 'Feedback updated');
 	} catch (error) {
 		console.error('Error updating beta feedback:', error);
-		return json({ error: 'Failed to update beta feedback' }, { status: 500 });
+		return ApiResponse.internalError(error, 'Failed to update beta feedback');
 	}
 };

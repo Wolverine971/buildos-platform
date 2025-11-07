@@ -3,6 +3,7 @@ import type { Session, SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@buildos/shared-types';
 
 type User = Database['public']['Tables']['users']['Row'];
+type Streamable<T> = T | Promise<T>;
 
 declare global {
 	// Vite defined constants
@@ -28,20 +29,23 @@ declare global {
 			user: User | null;
 			url?: string;
 			completedOnboarding?: boolean;
-			onboardingProgress?: number;
-			subscription?: any;
-			paymentWarnings?: any[];
+			onboardingProgress?: Streamable<number>;
 			stripeEnabled?: boolean;
-			trialStatus?: {
-				is_in_trial: boolean;
-				is_trial_expired: boolean;
-				is_in_grace_period: boolean;
-				days_until_trial_end: number;
-				trial_end_date: string | null;
-				has_active_subscription: boolean;
-				is_read_only: boolean;
-			} | null;
-			isReadOnly?: boolean;
+			billingContext?: Streamable<{
+				subscription: any | null;
+				trialStatus: {
+					is_in_trial: boolean;
+					is_trial_expired: boolean;
+					is_in_grace_period: boolean;
+					days_until_trial_end: number;
+					trial_end_date: string | null;
+					has_active_subscription: boolean;
+					is_read_only: boolean;
+				} | null;
+				paymentWarnings: any[];
+				isReadOnly: boolean;
+				loading?: boolean;
+			}>;
 		}
 	}
 }

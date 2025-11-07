@@ -1,11 +1,11 @@
 // apps/web/src/routes/api/brief-templates/project/[id]/+server.ts
-import { json } from '@sveltejs/kit';
+import { ApiResponse } from '$lib/utils/api-response';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetSession } }) => {
 	const { user } = await safeGetSession();
 	if (!user) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
+		return ApiResponse.unauthorized('Unauthorized');
 	}
 
 	try {
@@ -17,10 +17,10 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 
 		if (error) throw error;
 
-		return json({ template: data });
+		return ApiResponse.success({ template: data });
 	} catch (error) {
 		console.error('Error fetching project brief template:', error);
-		return json({ error: 'Template not found' }, { status: 404 });
+		return ApiResponse.notFound('Template');
 	}
 };
 
@@ -31,7 +31,7 @@ export const PUT: RequestHandler = async ({
 }) => {
 	const { user } = await safeGetSession();
 	if (!user) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
+		return ApiResponse.unauthorized('Unauthorized');
 	}
 
 	try {
@@ -46,17 +46,17 @@ export const PUT: RequestHandler = async ({
 
 		if (error) throw error;
 
-		return json({ template: data });
+		return ApiResponse.success({ template: data }, 'Template updated');
 	} catch (error) {
 		console.error('Error updating project brief template:', error);
-		return json({ error: 'Failed to update template' }, { status: 500 });
+		return ApiResponse.internalError(error, 'Failed to update template');
 	}
 };
 
 export const DELETE: RequestHandler = async ({ params, locals: { supabase, safeGetSession } }) => {
 	const { user } = await safeGetSession();
 	if (!user) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
+		return ApiResponse.unauthorized('Unauthorized');
 	}
 
 	try {
@@ -67,9 +67,9 @@ export const DELETE: RequestHandler = async ({ params, locals: { supabase, safeG
 
 		if (error) throw error;
 
-		return json({ success: true });
+		return ApiResponse.success({ success: true }, 'Template deleted');
 	} catch (error) {
 		console.error('Error deleting project brief template:', error);
-		return json({ error: 'Failed to delete template' }, { status: 500 });
+		return ApiResponse.internalError(error, 'Failed to delete template');
 	}
 };

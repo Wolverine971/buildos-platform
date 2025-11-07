@@ -1,12 +1,12 @@
 // apps/web/src/routes/api/analytics/briefs/+server.ts
-import { json } from '@sveltejs/kit';
+import { ApiResponse } from '$lib/utils/api-response';
 import type { RequestHandler } from './$types';
 import type { BriefAnalytics } from '$lib/types/daily-brief';
 
 export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSession } }) => {
 	const { user } = await safeGetSession();
 	if (!user) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
+		return ApiResponse.unauthorized('Unauthorized');
 	}
 
 	const userId = user.id;
@@ -46,10 +46,10 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 			template_usage: templateUsage
 		};
 
-		return json(analytics);
+		return ApiResponse.success(analytics);
 	} catch (error) {
 		console.error('Error generating analytics:', error);
-		return json({ error: 'Failed to generate analytics' }, { status: 500 });
+		return ApiResponse.internalError(error, 'Failed to generate analytics');
 	}
 };
 

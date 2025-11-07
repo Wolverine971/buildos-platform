@@ -8,7 +8,7 @@
  * 3. TaskTimeSlotFinder verifies and optimizes suggested time slots
  * 4. Provides reasoning for scheduling decisions
  */
-import { json } from '@sveltejs/kit';
+import { ApiResponse } from '$lib/utils/api-response';
 import type { RequestHandler } from './$types';
 import { CalendarService } from '$lib/services/calendar-service';
 import { TaskTimeSlotFinder } from '$lib/services/task-time-slot-finder';
@@ -282,7 +282,7 @@ export const POST: RequestHandler = async ({
 	try {
 		const { user } = await safeGetSession();
 		if (!user) {
-			return json({ error: 'Unauthorized' }, { status: 401 });
+			return ApiResponse.unauthorized('Unauthorized');
 		}
 
 		const { id: projectId, phaseId } = params;
@@ -302,7 +302,7 @@ export const POST: RequestHandler = async ({
 			.single();
 
 		if (projectError || !project) {
-			return json({ error: 'Project not found' }, { status: 404 });
+			return ApiResponse.notFound('Project');
 		}
 
 		// Get phase with tasks
@@ -334,7 +334,7 @@ export const POST: RequestHandler = async ({
 			.single();
 
 		if (phaseError || !phase) {
-			return json({ error: 'Phase not found' }, { status: 404 });
+			return ApiResponse.notFound('Phase');
 		}
 
 		// Get user calendar preferences
@@ -362,7 +362,7 @@ export const POST: RequestHandler = async ({
 			.filter((task: any) => task.status !== 'done');
 
 		if (tasks.length === 0) {
-			return json({
+			return ApiResponse.success({
 				schedule: [],
 				warnings: ['No tasks to schedule in this phase']
 			});
@@ -385,14 +385,14 @@ export const POST: RequestHandler = async ({
 				currentDateTime
 			);
 
-			return json({
+			return ApiResponse.success({
 				schedule: proposedSchedule,
 				warnings
 			});
 		} else {
 			// Save schedule and create/update calendar events
 			if (!manualSchedule || !Array.isArray(manualSchedule)) {
-				return json({ error: 'Schedule data required' }, { status: 400 });
+				return ApiResponse.badRequest('Schedule data required');
 			}
 
 			const results = [];
@@ -567,7 +567,7 @@ export const POST: RequestHandler = async ({
 				responseWarnings.push(`${errors.length} calendar operation(s) failed`);
 			}
 
-			return json({
+			return ApiResponse.success({
 				success: true,
 				results,
 				errors,
@@ -582,10 +582,7 @@ export const POST: RequestHandler = async ({
 		}
 	} catch (error) {
 		console.error('Error in phase scheduling:', error);
-		return json(
-			{ error: error instanceof Error ? error.message : 'Internal server error' },
-			{ status: 500 }
-		);
+		return ApiResponse.internalError(error, error instanceof Error ? error.message : undefined);
 	}
 };
 
@@ -597,7 +594,7 @@ export const DELETE: RequestHandler = async ({
 	try {
 		const { user } = await safeGetSession();
 		if (!user) {
-			return json({ error: 'Unauthorized' }, { status: 401 });
+			return ApiResponse.unauthorized('Unauthorized');
 		}
 
 		const { id: projectId, phaseId } = params;
@@ -612,7 +609,7 @@ export const DELETE: RequestHandler = async ({
 			.single();
 
 		if (projectError || !project) {
-			return json({ error: 'Project not found' }, { status: 404 });
+			return ApiResponse.notFound('Project');
 		}
 
 		// Get phase with tasks
@@ -637,7 +634,7 @@ export const DELETE: RequestHandler = async ({
 			.single();
 
 		if (phaseError || !phase) {
-			return json({ error: 'Phase not found' }, { status: 404 });
+			return ApiResponse.notFound('Phase');
 		}
 
 		// Extract tasks from phase_tasks that have schedules
@@ -646,7 +643,7 @@ export const DELETE: RequestHandler = async ({
 			.filter((task: any) => task.start_date);
 
 		if (scheduledTasks.length === 0) {
-			return json({
+			return ApiResponse.success({
 				success: true,
 				message: 'No scheduled tasks found in this phase',
 				unscheduled_tasks: [],
@@ -723,7 +720,7 @@ export const DELETE: RequestHandler = async ({
 		const successCount = results.length;
 		const errorCount = errors.length;
 
-		return json({
+		return ApiResponse.success({
 			success: true,
 			unscheduled_tasks: results,
 			errors,
@@ -737,10 +734,7 @@ export const DELETE: RequestHandler = async ({
 		});
 	} catch (error) {
 		console.error('Error in phase unscheduling:', error);
-		return json(
-			{ error: error instanceof Error ? error.message : 'Internal server error' },
-			{ status: 500 }
-		);
+		return ApiResponse.internalError(error, error instanceof Error ? error.message : undefined);
 	}
 };
 

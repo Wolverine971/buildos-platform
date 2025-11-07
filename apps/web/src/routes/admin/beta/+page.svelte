@@ -30,6 +30,7 @@
 	import Select from '$lib/components/ui/Select.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import { formatDateTimeForDisplay } from '$lib/utils/date-utils';
+	import { requireApiData, requireApiSuccess } from '$lib/utils/api-client-helpers';
 
 	let activeTab = $state<'signups' | 'members' | 'emails' | 'dataview'>('signups');
 	let isLoading = $state(true);
@@ -230,12 +231,14 @@
 			}
 
 			const response = await fetch(`/api/admin/beta/signups?${params}`);
-			if (!response.ok) throw new Error('Failed to load signups');
+			const payload = await requireApiData<{
+				signups: any[];
+				pagination: { total_pages: number; total_items: number };
+			}>(response, 'Failed to load signups');
 
-			const data = await response.json();
-			signups = data.signups;
-			totalPages = data.pagination.total_pages;
-			totalItems = data.pagination.total_items;
+			signups = payload.signups || [];
+			totalPages = payload.pagination?.total_pages ?? 1;
+			totalItems = payload.pagination?.total_items ?? 0;
 		} catch (err) {
 			console.error('Error loading signups:', err);
 			error = err instanceof Error ? err.message : 'Failed to load signups';
@@ -267,12 +270,14 @@
 			}
 
 			const response = await fetch(`/api/admin/beta/members?${params}`);
-			if (!response.ok) throw new Error('Failed to load members');
+			const payload = await requireApiData<{
+				members: any[];
+				pagination: { total_pages: number; total_items: number };
+			}>(response, 'Failed to load members');
 
-			const data = await response.json();
-			members = data.members;
-			totalPages = data.pagination.total_pages;
-			totalItems = data.pagination.total_items;
+			members = payload.members || [];
+			totalPages = payload.pagination?.total_pages ?? 1;
+			totalItems = payload.pagination?.total_items ?? 0;
 		} catch (err) {
 			console.error('Error loading members:', err);
 			error = err instanceof Error ? err.message : 'Failed to load members';
@@ -307,10 +312,7 @@
 				})
 			});
 
-			if (!response.ok) {
-				const errorData = await response.json();
-				throw new Error(errorData.error || 'Failed to approve signup');
-			}
+			await requireApiSuccess(response, 'Failed to approve signup');
 
 			await loadSignups();
 			if (selectedItem && selectedItem.id === pendingApprovalSignup.id) {
@@ -353,7 +355,7 @@
 				})
 			});
 
-			if (!response.ok) throw new Error('Failed to update signup');
+			await requireApiSuccess(response, 'Failed to update signup');
 
 			await loadSignups();
 			if (selectedItem && selectedItem.id === signupId) {
@@ -381,7 +383,7 @@
 				})
 			});
 
-			if (!response.ok) throw new Error('Failed to update member');
+			await requireApiSuccess(response, 'Failed to update member');
 
 			await loadMembers();
 			if (selectedItem && selectedItem.id === memberId) {

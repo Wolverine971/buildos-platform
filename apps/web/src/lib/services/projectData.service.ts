@@ -3,6 +3,7 @@ import { projectStoreV2, type LoadingState } from '$lib/stores/project.store';
 import { ApiResponse } from '$lib/utils/api-response';
 import type { TaskWithCalendarEvents, ProcessedPhase } from '$lib/types/project-page.types';
 import type { Note } from '$lib/types/project';
+import { requireApiData } from '$lib/utils/api-client-helpers';
 
 interface FetchOptions {
 	force?: boolean;
@@ -257,18 +258,21 @@ export class ProjectDataService {
 				method: 'GET' // Explicitly use GET to load existing synthesis
 			});
 
-			if (!response.ok) {
-				console.log('Synthesis not available for this project');
+			if (response.status === 404) {
+				projectStoreV2.setSynthesis(null);
 				projectStoreV2.setLoadingState('synthesis', 'idle');
 				return;
 			}
 
-			const result = await response.json();
-			// The GET endpoint returns { synthesis: ... } directly
-			if (result.synthesis) {
-				projectStoreV2.setSynthesis(result.synthesis);
+			const result = await requireApiData<{ synthesis?: any } | null>(
+				response,
+				'Failed to load synthesis'
+			);
+
+			if (result && 'synthesis' in result) {
+				projectStoreV2.setSynthesis(result.synthesis ?? null);
 			} else {
-				projectStoreV2.setSynthesis(null);
+				projectStoreV2.setSynthesis(result);
 			}
 			projectStoreV2.setLoadingState('synthesis', 'success');
 		} catch (error) {

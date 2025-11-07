@@ -241,9 +241,11 @@ export class ChatToolExecutor {
 				// ignore JSON parse errors
 			}
 
-			throw new Error(`API ${method} ${path} failed: ${errorMessage}${
-				errorDetails ? ` (${JSON.stringify(errorDetails)})` : ''
-			}`);
+			throw new Error(
+				`API ${method} ${path} failed: ${errorMessage}${
+					errorDetails ? ` (${JSON.stringify(errorDetails)})` : ''
+				}`
+			);
 		}
 
 		const payload = await response.json();

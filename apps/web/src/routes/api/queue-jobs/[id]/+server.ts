@@ -1,11 +1,11 @@
 // apps/web/src/routes/api/queue-jobs/[id]/+server.ts
-import { json } from '@sveltejs/kit';
+import { ApiResponse } from '$lib/utils/api-response';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetSession } }) => {
 	const { user } = await safeGetSession();
 	if (!user) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
+		return ApiResponse.unauthorized('Unauthorized');
 	}
 
 	try {
@@ -18,22 +18,22 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 
 		if (error) {
 			if (error.code === 'PGRST116') {
-				return json({ error: 'Job not found' }, { status: 404 });
+				return ApiResponse.notFound('Job');
 			}
 			throw error;
 		}
 
-		return json(job);
+		return ApiResponse.success(job);
 	} catch (error) {
 		console.error('Error fetching queue job:', error);
-		return json({ error: 'Failed to fetch job' }, { status: 500 });
+		return ApiResponse.internalError(error, 'Failed to fetch job');
 	}
 };
 
 export const DELETE: RequestHandler = async ({ params, locals: { supabase, safeGetSession } }) => {
 	const { user } = await safeGetSession();
 	if (!user) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
+		return ApiResponse.unauthorized('Unauthorized');
 	}
 
 	try {
@@ -53,9 +53,9 @@ export const DELETE: RequestHandler = async ({ params, locals: { supabase, safeG
 			throw error;
 		}
 
-		return json({ success: true });
+		return ApiResponse.success({ success: true }, 'Job cancelled');
 	} catch (error) {
 		console.error('Error cancelling job:', error);
-		return json({ error: 'Failed to cancel job' }, { status: 500 });
+		return ApiResponse.internalError(error, 'Failed to cancel job');
 	}
 };

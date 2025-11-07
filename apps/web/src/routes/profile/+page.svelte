@@ -28,6 +28,7 @@
 	import type { Tab as TabNavTab } from '$lib/components/ui/TabNav.svelte';
 	import Textarea from '$lib/components/ui/Textarea.svelte';
 	import FormField from '$lib/components/ui/FormField.svelte';
+	import { requireApiData } from '$lib/utils/api-client-helpers';
 
 	// Import the new components
 	import BriefsTab from '$lib/components/profile/BriefsTab.svelte';
@@ -128,9 +129,10 @@
 	async function downloadInvoice(invoiceId: string) {
 		try {
 			const response = await fetch(`/api/stripe/invoice/${invoiceId}/download`);
-			if (!response.ok) throw new Error('Failed to get invoice');
-
-			const { url } = await response.json();
+			const { url } = await requireApiData<{ url?: string }>(
+				response,
+				'Failed to get invoice'
+			);
 			if (url) {
 				window.open(url, '_blank');
 			}
@@ -149,10 +151,11 @@
 			if (activeTab === 'prompts') {
 				// Fetch templates separately if not handled by store
 				const response = await fetch('/api/templates');
-				if (response.ok) {
-					const data = await response.json();
-					projectTemplates = data.projectTemplates || [];
-				}
+				const templateData = await requireApiData<{ projectTemplates?: any[] }>(
+					response,
+					'Failed to load templates'
+				);
+				projectTemplates = templateData.projectTemplates || [];
 			}
 		} catch (error) {
 			console.error('Error refreshing data:', error);

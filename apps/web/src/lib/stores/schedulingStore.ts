@@ -5,6 +5,7 @@ import { calendarAPI } from '$lib/api/calendar-client';
 import type { PhaseWithTasks, TaskWithCalendarEvents } from '$lib/types/project-page.types';
 import type { ProposedTaskSchedule, ConflictInfo, WorkingHours } from '$lib/utils/schedulingUtils';
 import { validateTaskSchedule, sortTasksByDependencies } from '$lib/utils/schedulingUtils';
+import { requireApiData, requireApiSuccess } from '$lib/utils/api-client-helpers';
 
 export type SchedulingStatus = 'idle' | 'loading' | 'ready' | 'saving' | 'refreshing' | 'error';
 
@@ -100,17 +101,21 @@ function createSchedulingStore() {
 
 			try {
 				// Load user preferences
-				const prefsResponse = await fetch('/api/users/calendar-preferences');
 				let userPreferences = initialState.workingHours;
-
-				if (prefsResponse.ok) {
-					const prefs = await prefsResponse.json();
+				try {
+					const prefsResponse = await fetch('/api/users/calendar-preferences');
+					const prefs = await requireApiData<WorkingHours>(
+						prefsResponse,
+						'Failed to load calendar preferences'
+					);
 					if (prefs) {
 						userPreferences = {
 							...prefs,
-							timeZone: initialState.timeZone
+							timeZone: prefs.timeZone || initialState.timeZone
 						};
 					}
+				} catch (prefsError) {
+					console.warn('Unable to load calendar preferences, using defaults', prefsError);
 				}
 
 				// Generate proposed schedule
@@ -127,11 +132,17 @@ function createSchedulingStore() {
 					}
 				);
 
-				if (!scheduleResponse.ok) {
-					throw new Error('Failed to generate schedule');
-				}
-
-				const scheduleData = await scheduleResponse.json();
+				const scheduleData = await requireApiData<{
+					schedule: Array<{
+						taskId: string;
+						proposedStart: string;
+						proposedEnd: string;
+						hasConflict?: boolean;
+						conflictReason?: string;
+						duration_minutes?: number;
+					}>;
+					warnings?: string[];
+				}>(scheduleResponse, 'Failed to generate schedule');
 
 				// Parse the schedule data
 				const proposedSchedules: ProposedTaskSchedule[] = scheduleData.schedule
@@ -298,12 +309,10 @@ function createSchedulingStore() {
 					}
 				);
 
-				if (!response.ok) {
-					const errorData = await response.json();
-					throw new Error(errorData.error || 'Failed to schedule tasks');
-				}
-
-				const result = await response.json();
+				const result = await requireApiData<{ warnings?: string[] }>(
+					response,
+					'Failed to schedule tasks'
+				);
 
 				update((s) => ({
 					...s,

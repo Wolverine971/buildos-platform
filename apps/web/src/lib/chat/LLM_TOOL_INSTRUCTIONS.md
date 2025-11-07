@@ -7,48 +7,55 @@ Operate exclusively on ontology entities (`onto_projects`, `onto_plans`, `onto_t
 ## Reading Ontology Data
 
 1. **List first, then zoom in.** Use the lightweight list tools to gather IDs before requesting details:
-   ```javascript
-   const tasks = await list_onto_tasks({ project_id: 'proj_uuid', state_key: 'in_progress' });
-   const taskDetails = await get_onto_task_details({ task_id: tasks.tasks[0].id });
-   ```
+    ```javascript
+    const tasks = await list_onto_tasks({ project_id: 'proj_uuid', state_key: 'in_progress' });
+    const taskDetails = await get_onto_task_details({ task_id: tasks.tasks[0].id });
+    ```
 2. **Available list tools**
-   - `list_onto_projects` – project summaries (`state_key`, `type_key`, facets)
-   - `list_onto_plans` – execution plans within a project
-   - `list_onto_goals` – strategic goals for a project
-   - `list_onto_tasks` – actionable tasks (filter by project or state)
+    - `list_onto_projects` – project summaries (`state_key`, `type_key`, facets)
+    - `list_onto_plans` – execution plans within a project
+    - `list_onto_goals` – strategic goals for a project
+    - `list_onto_tasks` – actionable tasks (filter by project or state)
 3. **Detail tools**
-   - `get_onto_project_details` – full project graph (goals, plans, tasks, documents, allowed transitions)
-   - `get_onto_task_details` – complete task payload including props and linked plan
+    - `get_onto_project_details` – full project graph (goals, plans, tasks, documents, allowed transitions)
+    - `get_onto_task_details` – complete task payload including props and linked plan
 4. **Relationship graphs**
-   - `get_entity_relationships({ entity_id, direction })` reveals nodes connected via `onto_edges`. Use it to answer prompts like “what connects this task to the rest of the project?”
+    - `get_entity_relationships({ entity_id, direction })` reveals nodes connected via `onto_edges`. Use it to answer prompts like “what connects this task to the rest of the project?”
 
 ### Response Style
+
 - Summarize what the tool returned and cite entities by name + ID when relevant.
 - Example: “Found 4 tasks for **AI Knowledge Base Launch** (proj_123). `Draft onboarding emails` (task_45) is `in_progress`.”
 
 ## Template Search & Project Creation
 
 1. **Always search templates first**
-   ```javascript
-   const templates = await list_onto_templates({ scope: 'project', realm: 'writer', search: 'book' });
-   ```
-   Call it once per creation flow—pick the best template and move on.
+    ```javascript
+    const templates = await list_onto_templates({
+    	scope: 'project',
+    	realm: 'writer',
+    	search: 'book'
+    });
+    ```
+    Call it once per creation flow—pick the best template and move on.
 2. **Create projects with full specs**
-   ```javascript
-   await create_onto_project({
-     project: {
-       name: 'Writer Pipeline',
-       type_key: 'project.writer.pipeline',
-       props: { facets: { context: 'client', scale: 'medium' } }
-     },
-     goals: [{ name: 'Publish v1 playbook', type_key: 'goal.writer.playbook' }],
-     plans: [{ name: 'Drafting plan', type_key: 'plan.writer.drafting' }],
-     tasks: [{ title: 'Outline chapters', state_key: 'todo' }]
-   });
-   ```
-   - Infer as much as possible from the user’s request.
-   - Use `clarifications[]` only when absolutely necessary (critical missing info you cannot infer).
-   - The API returns counts plus `project_id`; emit a context-shift response so the UI can jump into the new project.
+
+    ```javascript
+    await create_onto_project({
+    	project: {
+    		name: 'Writer Pipeline',
+    		type_key: 'project.writer.pipeline',
+    		props: { facets: { context: 'client', scale: 'medium' } }
+    	},
+    	goals: [{ name: 'Publish v1 playbook', type_key: 'goal.writer.playbook' }],
+    	plans: [{ name: 'Drafting plan', type_key: 'plan.writer.drafting' }],
+    	tasks: [{ title: 'Outline chapters', state_key: 'todo' }]
+    });
+    ```
+
+    - Infer as much as possible from the user’s request.
+    - Use `clarifications[]` only when absolutely necessary (critical missing info you cannot infer).
+    - The API returns counts plus `project_id`; emit a context-shift response so the UI can jump into the new project.
 
 ## Updating or Deleting Entities
 
@@ -65,6 +72,7 @@ Operate exclusively on ontology entities (`onto_projects`, `onto_plans`, `onto_t
 ## Schema Questions
 
 Use `get_field_info` for any question about valid states, priority ranges, or required fields. Supported entity types:
+
 - `ontology_project`
 - `ontology_task`
 - `ontology_plan`
@@ -72,17 +80,21 @@ Use `get_field_info` for any question about valid states, priority ranges, or re
 - `ontology_template`
 
 Example:
+
 ```javascript
 const schema = await get_field_info({ entity_type: 'ontology_task', field_name: 'state_key' });
 ```
+
 This returns valid values (`todo`, `in_progress`, `blocked`, `done`) plus descriptions. Do not guess allowed values; always consult this tool when uncertain.
 
 ## Relationship-Focused Answers
 
 When users ask how entities connect:
+
 ```javascript
 const rels = await get_entity_relationships({ entity_id: 'task_uuid', direction: 'both' });
 ```
+
 - Summarize outgoing vs incoming links (“Task outputs to Output_12; belongs to Plan_4”).
 - If the entity is outside the user’s workspace the API will block it—never bypass this guardrail.
 

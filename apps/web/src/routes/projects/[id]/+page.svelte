@@ -49,6 +49,7 @@
 	import { supabase } from '$lib/supabase';
 	import type { Phase, Note, Task } from '$lib/types/project';
 	import { loadingStateManager } from '$lib/utils/loadingStateManager';
+	import { requireApiData, requireApiSuccess } from '$lib/utils/api-client-helpers';
 	import { get } from 'svelte/store';
 
 	let { data }: { data: PageData } = $props();
@@ -818,10 +819,7 @@
 				method: 'DELETE'
 			});
 
-			if (!response.ok) {
-				const error = await response.json();
-				throw new Error(error.message || 'Failed to delete project');
-			}
+			await requireApiSuccess(response, 'Failed to delete project');
 
 			toastService.success('Project deleted successfully');
 			modalStore.close('projectDelete');
@@ -897,13 +895,10 @@
 						}
 					);
 
-					const result = await response.json();
-
-					if (!response.ok) {
-						throw new Error(
-							result.error || `Failed to unschedule tasks in phase: ${phase.name}`
-						);
-					}
+					const result = await requireApiData<any>(
+						response,
+						`Failed to unschedule tasks in phase: ${phase.name}`
+					);
 
 					results.push({
 						phaseId: phase.id,

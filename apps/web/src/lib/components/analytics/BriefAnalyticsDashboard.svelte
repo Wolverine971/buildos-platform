@@ -20,6 +20,7 @@
 	import Card from '$lib/components/ui/Card.svelte';
 	import CardBody from '$lib/components/ui/CardBody.svelte';
 	import type { BriefAnalytics } from '$lib/types/daily-brief';
+	import { requireApiData } from '$lib/utils/api-client-helpers';
 
 	let analytics = $state<BriefAnalytics | null>(null);
 	let isLoading = $state(true);
@@ -38,12 +39,7 @@
 
 		try {
 			const response = await fetch(`/api/analytics/briefs?timeframe=${selectedTimeframe}`);
-
-			if (!response.ok) {
-				throw new Error('Failed to load analytics');
-			}
-
-			analytics = await response.json();
+			analytics = await requireApiData<BriefAnalytics>(response, 'Failed to load analytics');
 		} catch (err) {
 			console.error('Error loading analytics:', err);
 			error = err instanceof Error ? err.message : 'Failed to load analytics';

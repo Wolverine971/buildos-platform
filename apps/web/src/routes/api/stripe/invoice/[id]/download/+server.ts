@@ -1,16 +1,16 @@
 // apps/web/src/routes/api/stripe/invoice/[id]/download/+server.ts
-import { json } from '@sveltejs/kit';
+import { ApiResponse } from '$lib/utils/api-response';
 import type { RequestHandler } from './$types';
 import { StripeService } from '$lib/services/stripe-service';
 
 export const GET: RequestHandler = async ({ params, locals: { safeGetSession, supabase } }) => {
 	const { user } = await safeGetSession();
 	if (!user) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
+		return ApiResponse.unauthorized('Unauthorized');
 	}
 
 	if (!StripeService.isEnabled()) {
-		return json({ error: 'Stripe is not enabled' }, { status: 400 });
+		return ApiResponse.badRequest('Stripe is not enabled');
 	}
 
 	const invoiceId = params.id;
@@ -25,12 +25,12 @@ export const GET: RequestHandler = async ({ params, locals: { safeGetSession, su
 			.single();
 
 		if (error || !invoice) {
-			return json({ error: 'Invoice not found' }, { status: 404 });
+			return ApiResponse.notFound('Invoice');
 		}
 
 		// If we already have the PDF URL, return it
 		if (invoice.invoice_pdf) {
-			return json({ url: invoice.invoice_pdf });
+			return ApiResponse.success({ url: invoice.invoice_pdf });
 		}
 
 		// Otherwise, fetch from Stripe
@@ -52,10 +52,10 @@ export const GET: RequestHandler = async ({ params, locals: { safeGetSession, su
 						.eq('stripe_invoice_id', invoiceId);
 				}
 
-				return json({ url: finalizedInvoice.invoice_pdf });
+				return ApiResponse.success({ url: finalizedInvoice.invoice_pdf });
 			}
 
-			return json({ error: 'PDF not available for this invoice' }, { status: 400 });
+			return ApiResponse.badRequest('PDF not available for this invoice');
 		}
 
 		// Update our database with the PDF URL
@@ -64,9 +64,9 @@ export const GET: RequestHandler = async ({ params, locals: { safeGetSession, su
 			.update({ invoice_pdf: stripeInvoice.invoice_pdf })
 			.eq('stripe_invoice_id', invoiceId);
 
-		return json({ url: stripeInvoice.invoice_pdf });
+		return ApiResponse.success({ url: stripeInvoice.invoice_pdf });
 	} catch (error) {
 		console.error('Error retrieving invoice:', error);
-		return json({ error: 'Failed to retrieve invoice' }, { status: 500 });
+		return ApiResponse.internalError(error, 'Failed to retrieve invoice');
 	}
 };

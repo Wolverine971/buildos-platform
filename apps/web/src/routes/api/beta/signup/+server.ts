@@ -1,5 +1,5 @@
 // apps/web/src/routes/api/beta/signup/+server.ts
-import { json } from '@sveltejs/kit';
+import { ApiResponse } from '$lib/utils/api-response';
 import type { RequestHandler } from './$types';
 import { generateMinimalEmailHTML } from '$lib/utils/emailTemplate.js';
 import { createGmailTransporter, getDefaultSender } from '$lib/utils/email-config';
@@ -264,7 +264,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase } }) =>
 		// Validate input data
 		const validationError = validateSignupData(data);
 		if (validationError) {
-			return json({ error: validationError }, { status: 400 });
+			return ApiResponse.badRequest(validationError);
 		}
 
 		// Normalize email (validation already passed, so this should always succeed)
@@ -285,16 +285,18 @@ export const POST: RequestHandler = async ({ request, locals: { supabase } }) =>
 		if (checkError && checkError.code !== 'PGRST116') {
 			// PGRST116 = no rows found
 			console.error('Error checking existing signup:', checkError);
-			return json({ error: 'Failed to process signup. Please try again.' }, { status: 500 });
+			return ApiResponse.internalError(
+				checkError,
+				'Failed to process signup. Please try again.'
+			);
 		}
 
 		if (existingSignup) {
-			return json(
-				{
-					error: "You've already signed up for the beta program. Check your email for updates!",
-					status: existingSignup.signup_status
-				},
-				{ status: 409 }
+			return ApiResponse.error(
+				"You've already signed up for the beta program. Check your email for updates!",
+				409,
+				undefined,
+				{ status: existingSignup.signup_status }
 			);
 		}
 
@@ -321,7 +323,10 @@ export const POST: RequestHandler = async ({ request, locals: { supabase } }) =>
 
 		if (insertError) {
 			console.error('Database insert error:', insertError);
-			return json({ error: 'Failed to save signup. Please try again.' }, { status: 500 });
+			return ApiResponse.internalError(
+				insertError,
+				'Failed to save signup. Please try again.'
+			);
 		}
 
 		// Log successful signup
@@ -330,18 +335,13 @@ export const POST: RequestHandler = async ({ request, locals: { supabase } }) =>
 		// Send welcome email!
 		await sendBetaWelcomeEmail(insertData);
 
-		return json(
-			{
-				success: true,
-				id: insertData.id,
-				message:
-					'Thank you for joining our beta program! Check your email for a welcome message.'
-			},
-			{ status: 201 }
+		return ApiResponse.created(
+			{ id: insertData.id },
+			'Thank you for joining our beta program! Check your email for a welcome message.'
 		);
 	} catch (error) {
 		console.error('Beta signup error:', error);
-		return json({ error: 'Internal server error' }, { status: 500 });
+		return ApiResponse.internalError(error, 'Internal server error');
 	}
 };
 
@@ -350,13 +350,13 @@ export const GET: RequestHandler = async ({ url, locals: { supabase } }) => {
 	const email = url.searchParams.get('email');
 
 	if (!email) {
-		return json({ error: 'Email parameter required' }, { status: 400 });
+		return ApiResponse.badRequest('Email parameter required');
 	}
 
 	// Validate and normalize email
 	const emailValidation = validateEmail(email);
 	if (!emailValidation.success) {
-		return json({ error: 'Invalid email address' }, { status: 400 });
+		return ApiResponse.badRequest('Invalid email address');
 	}
 
 	try {
@@ -368,18 +368,18 @@ export const GET: RequestHandler = async ({ url, locals: { supabase } }) => {
 
 		if (error) {
 			if (error.code === 'PGRST116') {
-				return json({ status: 'not_found' });
+				return ApiResponse.success({ status: 'not_found' });
 			}
 			console.error('Error checking signup status:', error);
-			return json({ error: 'Failed to check status' }, { status: 500 });
+			return ApiResponse.internalError(error, 'Failed to check status');
 		}
 
-		return json({
+		return ApiResponse.success({
 			status: signup.signup_status,
 			signedUpAt: signup.created_at
 		});
 	} catch (error) {
 		console.error('Beta status check error:', error);
-		return json({ error: 'Internal server error' }, { status: 500 });
+		return ApiResponse.internalError(error, 'Internal server error');
 	}
 };

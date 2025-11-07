@@ -1,5 +1,5 @@
 // apps/web/src/routes/api/projects/[id]/synthesize/+server.ts
-import { json } from '@sveltejs/kit';
+import { ApiResponse } from '$lib/utils/api-response';
 import type { RequestHandler } from './$types';
 import { ProjectSynthesisService } from '$lib/services/projectSynthesis.service';
 import { ActivityLogger } from '$lib/utils/activityLogger';
@@ -11,7 +11,7 @@ export const POST: RequestHandler = async ({
 }) => {
 	const { user } = await safeGetSession();
 	if (!user) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
+		return ApiResponse.unauthorized('Unauthorized');
 	}
 
 	try {
@@ -25,11 +25,11 @@ export const POST: RequestHandler = async ({
 			.single();
 
 		if (projectError || !project) {
-			return json({ error: 'Project not found' }, { status: 404 });
+			return ApiResponse.notFound('Project');
 		}
 
 		if (project.user_id !== user.id) {
-			return json({ error: 'Forbidden' }, { status: 403 });
+			return ApiResponse.forbidden('Forbidden');
 		}
 
 		// Initialize services
@@ -44,7 +44,7 @@ export const POST: RequestHandler = async ({
 		});
 
 		// Return in a format that matches what the frontend expects
-		return json({
+		return ApiResponse.success({
 			synthesis: {
 				id: synthesisResult.id,
 				synthesis_content: {
@@ -58,20 +58,14 @@ export const POST: RequestHandler = async ({
 		});
 	} catch (error) {
 		console.error('Error in project synthesis:', error);
-		return json(
-			{
-				error: 'Failed to synthesize project',
-				details: error instanceof Error ? error.message : 'Unknown error'
-			},
-			{ status: 500 }
-		);
+		return ApiResponse.internalError(error, 'Failed to synthesize project');
 	}
 };
 
 export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetSession } }) => {
 	const { user } = await safeGetSession();
 	if (!user) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
+		return ApiResponse.unauthorized('Unauthorized');
 	}
 
 	try {
@@ -83,11 +77,11 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 			.single();
 
 		if (projectError || !project) {
-			return json({ error: 'Project not found' }, { status: 404 });
+			return ApiResponse.notFound('Project');
 		}
 
 		if (project.user_id !== user.id) {
-			return json({ error: 'Forbidden' }, { status: 403 });
+			return ApiResponse.forbidden('Forbidden');
 		}
 
 		// Get existing synthesis - use limit(1) to always get an array
@@ -102,16 +96,16 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 
 		if (synthesisError) {
 			console.error('Error fetching synthesis:', synthesisError);
-			return json({ error: 'Failed to fetch synthesis' }, { status: 500 });
+			return ApiResponse.internalError(synthesisError, 'Failed to fetch synthesis');
 		}
 
 		// Return the first synthesis if exists, otherwise null
-		return json({
+		return ApiResponse.success({
 			synthesis: syntheses && syntheses.length > 0 ? syntheses[0] : null
 		});
 	} catch (error) {
 		console.error('Error fetching project synthesis:', error);
-		return json({ error: 'Internal server error' }, { status: 500 });
+		return ApiResponse.internalError(error, 'Internal server error');
 	}
 };
 
@@ -123,7 +117,7 @@ export const PUT: RequestHandler = async ({
 }) => {
 	const { user } = await safeGetSession();
 	if (!user) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
+		return ApiResponse.unauthorized('Unauthorized');
 	}
 
 	try {
@@ -144,7 +138,7 @@ export const PUT: RequestHandler = async ({
 				.single();
 
 			if (fetchError || !recentSynthesis) {
-				return json({ error: 'No synthesis found to update' }, { status: 404 });
+				return ApiResponse.notFound('Synthesis');
 			}
 
 			targetSynthesisId = recentSynthesis.id;
@@ -160,7 +154,7 @@ export const PUT: RequestHandler = async ({
 			.single();
 
 		if (synthError || !synthesis) {
-			return json({ error: 'Synthesis not found or access denied' }, { status: 404 });
+			return ApiResponse.notFound('Synthesis');
 		}
 
 		// Update the specific synthesis
@@ -178,15 +172,15 @@ export const PUT: RequestHandler = async ({
 
 		if (updateError) {
 			console.error('Error updating synthesis:', updateError);
-			return json({ error: 'Failed to update synthesis' }, { status: 500 });
+			return ApiResponse.internalError(updateError, 'Failed to update synthesis');
 		}
 
-		return json({
+		return ApiResponse.success({
 			synthesis: updatedSynthesis
 		});
 	} catch (error) {
 		console.error('Error updating synthesis:', error);
-		return json({ error: 'Internal server error' }, { status: 500 });
+		return ApiResponse.internalError(error, 'Internal server error');
 	}
 };
 
@@ -194,7 +188,7 @@ export const PUT: RequestHandler = async ({
 export const DELETE: RequestHandler = async ({ params, locals: { supabase, safeGetSession } }) => {
 	const { user } = await safeGetSession();
 	if (!user) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
+		return ApiResponse.unauthorized('Unauthorized');
 	}
 
 	try {
@@ -206,11 +200,11 @@ export const DELETE: RequestHandler = async ({ params, locals: { supabase, safeG
 			.single();
 
 		if (projectError || !project) {
-			return json({ error: 'Project not found' }, { status: 404 });
+			return ApiResponse.notFound('Project');
 		}
 
 		if (project.user_id !== user.id) {
-			return json({ error: 'Forbidden' }, { status: 403 });
+			return ApiResponse.forbidden('Forbidden');
 		}
 
 		// Get the most recent synthesis first
@@ -224,11 +218,11 @@ export const DELETE: RequestHandler = async ({ params, locals: { supabase, safeG
 
 		if (fetchError) {
 			console.error('Error fetching synthesis:', fetchError);
-			return json({ error: 'Failed to fetch synthesis' }, { status: 500 });
+			return ApiResponse.internalError(fetchError, 'Failed to fetch synthesis');
 		}
 
 		if (!syntheses || syntheses.length === 0) {
-			return json({ error: 'No synthesis found to delete' }, { status: 404 });
+			return ApiResponse.notFound('Synthesis');
 		}
 
 		const synthesisToDelete = syntheses[0];
@@ -242,15 +236,15 @@ export const DELETE: RequestHandler = async ({ params, locals: { supabase, safeG
 
 		if (deleteError) {
 			console.error('Error deleting synthesis:', deleteError);
-			return json({ error: 'Failed to delete synthesis' }, { status: 500 });
+			return ApiResponse.internalError(deleteError, 'Failed to delete synthesis');
 		}
 
-		return json({
+		return ApiResponse.success({
 			message: 'Synthesis deleted successfully',
 			deletedId: synthesisToDelete.id
 		});
 	} catch (error) {
 		console.error('Error deleting synthesis:', error);
-		return json({ error: 'Internal server error' }, { status: 500 });
+		return ApiResponse.internalError(error, 'Internal server error');
 	}
 };

@@ -13,6 +13,7 @@
 	import { formatDistanceToNow, format, differenceInHours } from 'date-fns';
 	import { slide } from 'svelte/transition';
 	import { quintOut } from 'svelte/easing';
+	import { requireApiData } from '$lib/utils/api-client-helpers';
 
 	// Types
 	interface Braindump {
@@ -49,12 +50,10 @@
 
 		try {
 			const response = await fetch(`/api/tasks/${taskId}/braindumps`);
-
-			if (!response.ok) {
-				throw new Error('Failed to load braindumps');
-			}
-
-			const data = await response.json();
+			const data = await requireApiData<{ braindumps?: Braindump[] }>(
+				response,
+				'Failed to load braindumps'
+			);
 			braindumps = data.braindumps || [];
 			loaded = true;
 		} catch (err: any) {

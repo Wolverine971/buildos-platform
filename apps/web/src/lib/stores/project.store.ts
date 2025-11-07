@@ -9,6 +9,7 @@ import type {
 } from '$lib/types/project-page.types';
 import { eventBus, PROJECT_EVENTS, type LocalUpdatePayload } from '$lib/utils/event-bus';
 import { performanceMonitor } from '$lib/utils/performance-monitor';
+import { requireApiData } from '$lib/utils/api-client-helpers';
 
 // Loading states for granular control
 export type LoadingState = 'idle' | 'loading' | 'success' | 'error' | 'refreshing';
@@ -525,9 +526,10 @@ class ProjectStoreV2 {
 
 		try {
 			const response = await fetch(`/api/projects/${state.project.id}/braindumps`);
-			if (!response.ok) throw new Error('Failed to fetch braindumps');
-
-			const result = await response.json();
+			const result = await requireApiData<{ braindumps?: any[] }>(
+				response,
+				'Failed to fetch braindumps'
+			);
 			const braindumpsList = result.braindumps || [];
 
 			this.store.update((state) => ({

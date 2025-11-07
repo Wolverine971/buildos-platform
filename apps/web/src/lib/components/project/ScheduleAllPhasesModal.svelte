@@ -8,6 +8,7 @@
 	import ScheduleConflictAlert from '$lib/components/scheduling/ScheduleConflictAlert.svelte';
 	import { calendarAPI } from '$lib/api/calendar-client';
 	import { toastService } from '$lib/stores/toast.store';
+	import { requireApiData } from '$lib/utils/api-client-helpers';
 	import type { PhaseWithTasks } from '$lib/types/project-page.types';
 	import type { ProposedTaskSchedule, ConflictInfo } from '$lib/utils/schedulingUtils';
 
@@ -88,12 +89,17 @@
 
 		try {
 			// Load user preferences
-			const prefsResponse = await fetch('/api/users/calendar-preferences');
-			if (prefsResponse.ok) {
-				const prefs = await prefsResponse.json();
+			try {
+				const prefsResponse = await fetch('/api/users/calendar-preferences');
+				const prefs = await requireApiData<typeof userPreferences>(
+					prefsResponse,
+					'Failed to load calendar preferences'
+				);
 				if (prefs) {
-					userPreferences = { ...prefs, timeZone };
+					userPreferences = { ...prefs, timeZone: prefs.timeZone || timeZone };
 				}
+			} catch (prefsError) {
+				console.warn('Unable to load calendar preferences, using defaults', prefsError);
 			}
 
 			// Load calendar events for the project duration
@@ -141,11 +147,18 @@
 					}
 				);
 
-				if (!response.ok) {
-					throw new Error(`Failed to generate schedule for phase ${phase.name}`);
-				}
-
-				const result = await response.json();
+				const result = await requireApiData<{
+					schedule: Array<{
+						taskId: string;
+						proposedStart: string;
+						proposedEnd: string;
+						hasConflict?: boolean;
+						conflictReason?: string;
+						duration_minutes?: number;
+					}>;
+					conflicts?: ConflictInfo[];
+					warnings?: string[];
+				}>(response, `Failed to generate schedule for phase ${phase.name}`);
 
 				// Process the schedule data
 				const phaseData: PhaseScheduleData = {
@@ -261,11 +274,10 @@
 						}
 					);
 
-					if (!response.ok) {
-						throw new Error(`Failed to schedule phase ${scheduleData.phase.name}`);
-					}
-
-					const result = await response.json();
+					const result = await requireApiData<{ warnings?: string[] }>(
+						response,
+						`Failed to schedule phase ${scheduleData.phase.name}`
+					);
 					results.push(result);
 					successCount += scheduleData.proposedSchedule.length;
 				} catch (err) {

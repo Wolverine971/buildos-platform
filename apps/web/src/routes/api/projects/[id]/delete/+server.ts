@@ -1,12 +1,12 @@
 // apps/web/src/routes/api/projects/[id]/delete/+server.ts
-import { json } from '@sveltejs/kit';
+import { ApiResponse } from '$lib/utils/api-response';
 import type { RequestHandler } from './$types';
 import { CalendarService, CalendarConnectionError } from '$lib/services/calendar-service';
 
 export const DELETE: RequestHandler = async ({ params, locals: { supabase, safeGetSession } }) => {
 	const { user } = await safeGetSession();
 	if (!user) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
+		return ApiResponse.unauthorized('Unauthorized');
 	}
 
 	const projectId = params.id;
@@ -234,17 +234,14 @@ export const DELETE: RequestHandler = async ({ params, locals: { supabase, safeG
 			throw new Error('Failed to delete project');
 		}
 
-		return json({
+		return ApiResponse.success({
 			success: true,
 			warnings: warnings.length > 0 ? warnings : undefined,
 			errors: errors.length > 0 ? errors : undefined
 		});
 	} catch (error) {
 		console.error('Error in delete project handler:', error);
-		return json(
-			{ error: error instanceof Error ? error.message : 'Failed to delete project' },
-			{ status: 500 }
-		);
+		return ApiResponse.internalError(error, 'Failed to delete project');
 	}
 };
 

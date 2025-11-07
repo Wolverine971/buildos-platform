@@ -14,6 +14,7 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import DiffView from '$lib/components/ui/DiffView.svelte';
 	import { type FieldDiff, createLineDiff } from '$lib/utils/diff';
+	import { requireApiData } from '$lib/utils/api-client-helpers';
 	import { onMount } from 'svelte';
 
 	let { isOpen = false, projectId } = $props<{ isOpen?: boolean; projectId: string }>();
@@ -170,11 +171,10 @@
 
 		try {
 			const response = await fetch(`/api/projects/${projectId}/history`);
-			if (!response.ok) {
-				throw new Error('Failed to load project history');
-			}
-
-			const data = await response.json();
+			const data = await requireApiData<{ versions: ProjectVersion[] }>(
+				response,
+				'Failed to load project history'
+			);
 			versions = data.versions || [];
 
 			// Create sequential comparisons

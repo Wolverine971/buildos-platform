@@ -1,6 +1,6 @@
 // apps/web/src/routes/api/tasks/[id]/braindumps/+server.ts
 import type { RequestHandler } from './$types';
-import { error, json } from '@sveltejs/kit';
+import { ApiResponse } from '$lib/utils/api-response';
 
 /**
  * GET /api/tasks/:id/braindumps
@@ -13,7 +13,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 	const { user } = await safeGetSession();
 
 	if (!user) {
-		throw error(401, 'Unauthorized');
+		return ApiResponse.unauthorized('Unauthorized');
 	}
 
 	const { id: taskId } = params;
@@ -44,7 +44,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 
 		if (err) {
 			console.error('Error fetching task braindumps:', err);
-			throw error(500, 'Failed to fetch braindumps');
+			return ApiResponse.internalError(err, 'Failed to fetch braindumps');
 		}
 
 		// Transform the data - flatten the nested structure
@@ -53,12 +53,12 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			linked_at: link.linked_at
 		}));
 
-		return json({
+		return ApiResponse.success({
 			braindumps,
 			count: braindumps.length
 		});
 	} catch (err: any) {
 		console.error('Error in braindumps endpoint:', err);
-		throw error(err.status || 500, err.message || 'Internal server error');
+		return ApiResponse.internalError(err, err.message || 'Internal server error');
 	}
 };

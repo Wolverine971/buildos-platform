@@ -1,5 +1,5 @@
 // apps/web/src/routes/api/projects/[id]/generate-brief-template/+server.ts
-import { json } from '@sveltejs/kit';
+import { ApiResponse } from '$lib/utils/api-response';
 import type { RequestHandler } from './$types';
 import { ProjectBriefTemplateGeneratorService } from '$lib/services/projectBriefTemplateGenerator.service';
 
@@ -10,7 +10,7 @@ export const POST: RequestHandler = async ({
 }) => {
 	const { user } = await safeGetSession();
 	if (!user) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
+		return ApiResponse.unauthorized('Unauthorized');
 	}
 
 	try {
@@ -32,23 +32,16 @@ export const POST: RequestHandler = async ({
 			description
 		});
 
-		return json({
-			success: true,
-			template
-		});
+		return ApiResponse.success({ template }, 'Template generated');
 	} catch (error) {
 		console.error('Error generating project brief template:', error);
 
 		const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 		const statusCode = errorMessage.includes('not found') ? 404 : 500;
 
-		return json(
-			{
-				error: 'Failed to generate template',
-				details: errorMessage
-			},
-			{ status: statusCode }
-		);
+		return ApiResponse.error('Failed to generate template', statusCode, undefined, {
+			details: errorMessage
+		});
 	}
 };
 
@@ -56,7 +49,7 @@ export const POST: RequestHandler = async ({
 export const PUT: RequestHandler = async ({ params, locals: { supabase, safeGetSession } }) => {
 	const { user } = await safeGetSession();
 	if (!user) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
+		return ApiResponse.unauthorized('Unauthorized');
 	}
 
 	try {
@@ -72,12 +65,7 @@ export const PUT: RequestHandler = async ({ params, locals: { supabase, safeGetS
 			.single();
 
 		if (!existingTemplate) {
-			return json(
-				{
-					error: 'No template found for this project'
-				},
-				{ status: 404 }
-			);
+			return ApiResponse.notFound('Template');
 		}
 
 		// Initialize services
@@ -86,23 +74,13 @@ export const PUT: RequestHandler = async ({ params, locals: { supabase, safeGetS
 		// Regenerate the template
 		const template = await templateGenerator.regenerateTemplate(existingTemplate.id, userId);
 
-		return json({
-			success: true,
-			template,
-			regenerated: true
-		});
+		return ApiResponse.success({ template, regenerated: true }, 'Template regenerated');
 	} catch (error) {
 		console.error('Error regenerating project brief template:', error);
 
 		const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
-		return json(
-			{
-				error: 'Failed to regenerate template',
-				details: errorMessage
-			},
-			{ status: 500 }
-		);
+		return ApiResponse.internalError(error, 'Failed to regenerate template');
 	}
 };
 
@@ -110,7 +88,7 @@ export const PUT: RequestHandler = async ({ params, locals: { supabase, safeGetS
 export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetSession } }) => {
 	const { user } = await safeGetSession();
 	if (!user) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
+		return ApiResponse.unauthorized('Unauthorized');
 	}
 
 	try {
@@ -126,22 +104,12 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 			.single();
 
 		if (error || !template) {
-			return json(
-				{
-					error: 'No active template found for this project'
-				},
-				{ status: 404 }
-			);
+			return ApiResponse.notFound('Active template');
 		}
 
-		return json({ template });
+		return ApiResponse.success({ template });
 	} catch (error) {
 		console.error('Error fetching project brief template:', error);
-		return json(
-			{
-				error: 'Failed to fetch template'
-			},
-			{ status: 500 }
-		);
+		return ApiResponse.internalError(error, 'Failed to fetch template');
 	}
 };

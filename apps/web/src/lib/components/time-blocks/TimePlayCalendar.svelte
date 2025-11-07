@@ -6,6 +6,7 @@
 	import type { CalendarEvent } from '$lib/services/calendar-service';
 	import type { AvailableSlot } from '$lib/types/time-blocks';
 	import { formatSlotDuration, formatTimeRange } from '$lib/utils/slot-finder';
+	import { requireApiData } from '$lib/utils/api-client-helpers';
 
 	let {
 		blocks = [],
@@ -299,11 +300,10 @@
 				)
 			]);
 
-			if (!calendarResponse.ok) {
-				throw new Error('Failed to fetch calendar events');
-			}
-
-			const calendarData = await calendarResponse.json();
+			const calendarData = await requireApiData<{ events?: CalendarEvent[] }>(
+				calendarResponse,
+				'Failed to fetch calendar events'
+			);
 			const allCalendarEvents: CalendarEvent[] = calendarData.events || [];
 
 			// Collect BuildOS calendar event IDs (time blocks + tasks)
@@ -317,14 +317,19 @@
 			});
 
 			// Add task calendar event IDs
-			if (taskEventsResponse.ok) {
-				const taskEventsData = await taskEventsResponse.json();
-				const taskEventIds = taskEventsData.data?.calendar_event_ids || [];
+			try {
+				const taskEventsData = await requireApiData<{ calendar_event_ids?: string[] }>(
+					taskEventsResponse,
+					'Failed to fetch task calendar events'
+				);
+				const taskEventIds = taskEventsData.calendar_event_ids || [];
 				taskEventIds.forEach((id: string) => {
 					if (id) {
 						buildOSEventIds.add(id);
 					}
 				});
+			} catch (taskError) {
+				console.error('Error loading task calendar events:', taskError);
 			}
 
 			// Filter out BuildOS-created events - only show external calendar events in grey

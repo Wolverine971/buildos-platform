@@ -87,12 +87,12 @@ export async function executeCreateDocFromTemplateAction(
 		document_id: document.id,
 		number: 1,
 		storage_uri: `generated/${document.id}/v1.md`,
-			props: {
-				content,
-				format: 'markdown',
-				generated_at: new Date().toISOString(),
-				template_key: action.template_key
-			} as Json,
+		props: {
+			content,
+			format: 'markdown',
+			generated_at: new Date().toISOString(),
+			template_key: action.template_key
+		} as Json,
 		created_by: ctx.actor_id
 	});
 
