@@ -3,8 +3,7 @@
 **Created:** November 6, 2025
 **Audit Reference:** [sveltekit-supabase-audit-2025-11.md](./sveltekit-supabase-audit-2025-11.md)
 
-todo 2
----
+## todo 2
 
 ## Overview
 

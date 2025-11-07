@@ -14,7 +14,7 @@ related:
 
 ## Executive Summary
 
-After a user successfully creates a project via the agent chat, the context must automatically shift from `project_create` to `project_update` mode. This enables seamless continuation where the user can immediately start managing their new project without manually switching contexts or navigating away.
+After a user successfully creates a project via the agent chat, the context must automatically shift from `project_create` to `project` mode. This enables seamless continuation where the user can immediately start managing their new project without manually switching contexts or navigating away.
 
 **Goal**: Transform the post-creation experience from:
 
@@ -30,7 +30,7 @@ To:
 
 1. **Context Types Already Defined** (`ChatContextType` enum):
     - `project_create` - For creating new projects
-    - `project_update` - For updating existing projects
+    - `project` - For updating existing projects
     - Both contexts supported in UI and backend
 
 2. **Chat Interface** (`ChatInterface.svelte`):
@@ -81,9 +81,9 @@ To:
 **When**: User successfully creates a project via `create_onto_project` tool
 **Then**:
 
-- Chat context automatically switches to `project_update`
+- Chat context automatically switches to `project`
 - Chat session `entity_id` updates to new `project_id`
-- Chat session `context_type` updates to `project_update`
+- Chat session `context_type` updates to `project`
 - User can immediately issue update commands
 
 **Priority**: P0 (Critical)
@@ -112,7 +112,7 @@ To:
 
 #### FR-4: Tool Adaptation
 
-**When**: In `project_update` context
+**When**: In `project` context
 **Then**:
 
 - `create_onto_project` tool hidden/disabled
@@ -135,7 +135,7 @@ To:
 
 #### FR-6: Project Information Available
 
-**When**: In `project_update` context
+**When**: In `project` context
 **Then**:
 
 - Project details loaded into context (name, type_key, description, current state)
@@ -183,11 +183,11 @@ User: "Create a book writing project"
     ↓
 *** NEW: Context Shift Flow ***
     ↓
-[Agent emits SSE event: { type: 'context_shift', new_context: 'project_update', entity_id: 'abc-123' }]
+[Agent emits SSE event: { type: 'context_shift', new_context: 'project', entity_id: 'abc-123' }]
     ↓
 [Chat Interface receives context_shift event]
     ↓
-[Updates local state: chatType = 'project_update', entityId = 'abc-123']
+[Updates local state: chatType = 'project', entityId = 'abc-123']
     ↓
 [Updates chat session in DB via PATCH /api/agent/sessions/[id]]
     ↓
@@ -197,7 +197,7 @@ User: "Create a book writing project"
     ↓
 [Updates UI header with project name + exit button]
     ↓
-[Next message uses project_update tools with auto-filled project_id]
+[Next message uses project tools with auto-filled project_id]
 ```
 
 ### Database Changes
@@ -279,7 +279,7 @@ private async createOntoProject(args: CreateOntoProjectArgs): Promise<{
   message: string;
   // NEW: Signal context shift
   context_shift?: {
-    new_context: 'project_update';
+    new_context: 'project';
     entity_id: string;
     entity_name: string;
     entity_type: 'project';
@@ -294,7 +294,7 @@ private async createOntoProject(args: CreateOntoProjectArgs): Promise<{
     message,
     // NEW: Include context shift metadata
     context_shift: {
-      new_context: 'project_update',
+      new_context: 'project',
       entity_id: result.project_id,
       entity_name: args.project.name,
       entity_type: 'project'
@@ -457,7 +457,7 @@ Add context shift handling:
 </script>
 
 <!-- NEW: Context indicator header -->
-{#if currentContext === 'project_update' && currentEntityName}
+{#if currentContext === 'project' && currentEntityName}
 	<div
 		class="context-header bg-blue-50 dark:bg-blue-900/20 p-3 border-b border-blue-200 dark:border-blue-800 flex items-center justify-between"
 	>
@@ -506,7 +506,7 @@ Handle context change events:
 		entityName = event.detail.entity_name;
 
 		// Optional: Navigate to project page
-		if (chatContext === 'project_update' && entityId) {
+		if (chatContext === 'project' && entityId) {
 			// Could show a toast: "View project details →"
 			// Or automatically navigate after delay
 		}
@@ -544,7 +544,7 @@ You have access to:
 DO NOT mention update/delete tools - project doesn't exist yet.
 `;
 
-    case 'project_update':
+    case 'project':
       return basePrompt + `
 ## AVAILABLE TOOLS (PROJECT MANAGEMENT)
 
@@ -591,7 +591,7 @@ export class ChatToolExecutor {
   // Auto-fill project_id in project context
   private async createOntoTask(args: CreateOntoTaskArgs): Promise<...> {
     // Auto-fill project_id if in project context and not provided
-    if (!args.project_id && this.sessionContext?.type === 'project_update') {
+    if (!args.project_id && this.sessionContext?.type === 'project') {
       args.project_id = this.sessionContext.entity_id;
     }
 
@@ -687,7 +687,7 @@ describe('createOntoProject', () => {
 		});
 
 		expect(result.context_shift).toBeDefined();
-		expect(result.context_shift.new_context).toBe('project_update');
+		expect(result.context_shift.new_context).toBe('project');
 		expect(result.context_shift.entity_id).toBe(result.project_id);
 		expect(result.context_shift.entity_name).toBe('Test Project');
 	});
@@ -704,14 +704,14 @@ describe('ChatInterface context shift', () => {
 		await fireEvent.sseMessage({
 			type: 'context_shift',
 			context_shift: {
-				new_context: 'project_update',
+				new_context: 'project',
 				entity_id: 'abc-123',
 				entity_name: 'My Project',
 				message: 'Now managing My Project'
 			}
 		});
 
-		expect(component.currentContext).toBe('project_update');
+		expect(component.currentContext).toBe('project');
 		expect(component.currentEntityId).toBe('abc-123');
 	});
 });
@@ -722,7 +722,7 @@ describe('ChatInterface context shift', () => {
 1. **Full Flow Test**:
     - Start in `project_create` context
     - Create project via chat
-    - Verify context shifts to `project_update`
+    - Verify context shifts to `project`
     - Verify session updated in DB
     - Verify can create task immediately
 
@@ -732,7 +732,7 @@ describe('ChatInterface context shift', () => {
     - No orphaned context shifts
 
 3. **Context Exit**:
-    - In `project_update` mode
+    - In `project` mode
     - Click "Exit Project Mode"
     - Verify returns to `global`
     - Verify can create new project
@@ -785,7 +785,7 @@ describe('ChatInterface context shift', () => {
 
 ### Edge Case 4: Project Deletion
 
-**Scenario**: Project is deleted while in project_update mode
+**Scenario**: Project is deleted while in project mode
 
 **Solution**:
 
@@ -834,7 +834,7 @@ SELECT
   AVG(EXTRACT(EPOCH FROM (created_at - session_created))) as avg_time_to_shift_seconds
 FROM chat_context_shifts
 WHERE from_context = 'project_create'
-  AND to_context = 'project_update';
+  AND to_context = 'project';
 
 -- Find abandoned projects (created but no tasks)
 SELECT p.id, p.name, p.created_at
@@ -851,7 +851,7 @@ WHERE t.id IS NULL
 logger.info('Context shift', {
 	session_id: sessionId,
 	from_context: 'project_create',
-	to_context: 'project_update',
+	to_context: 'project',
 	entity_id: projectId,
 	entity_name: projectName,
 	time_in_previous_context_seconds: durationSeconds

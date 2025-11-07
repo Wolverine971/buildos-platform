@@ -22,7 +22,7 @@
 					"pic": "planning",
 					"slug": "advanced-task-dependency-management-interview",
 					"category": "advanced-guides",
-					"filePath": "C:\\Users\\User\\buildos-platform\\apps\\web\\src\\content\\blogs\\advanced-guides\\advanced-task-dependency-management-interview.md"
+					"filePath": "src/content/blogs/advanced-guides/advanced-task-dependency-management-interview.md"
 				},
 				"advanced-task-dependency-management": {
 					"title": "Advanced Task Dependency Management: Orchestrating Complex Workflows",
@@ -46,7 +46,7 @@
 					"pic": "task-dependencies",
 					"slug": "advanced-task-dependency-management",
 					"category": "advanced-guides",
-					"filePath": "C:\\Users\\User\\buildos-platform\\apps\\web\\src\\content\\blogs\\advanced-guides\\advanced-task-dependency-management.md"
+					"filePath": "src/content/blogs/advanced-guides/advanced-task-dependency-management.md"
 				},
 				"api-integration-workflows-interview": {
 					"title": "Blog Guide: API Integration Workflows",
@@ -63,7 +63,7 @@
 					"pic": "planning",
 					"slug": "api-integration-workflows-interview",
 					"category": "advanced-guides",
-					"filePath": "C:\\Users\\User\\buildos-platform\\apps\\web\\src\\content\\blogs\\advanced-guides\\api-integration-workflows-interview.md"
+					"filePath": "src/content/blogs/advanced-guides/api-integration-workflows-interview.md"
 				},
 				"api-integration-workflows": {
 					"title": "API Integration Workflows: Connecting BuildOS to Your Tools",
@@ -87,7 +87,7 @@
 					"pic": "api-integrations",
 					"slug": "api-integration-workflows",
 					"category": "advanced-guides",
-					"filePath": "C:\\Users\\User\\buildos-platform\\apps\\web\\src\\content\\blogs\\advanced-guides\\api-integration-workflows.md"
+					"filePath": "src/content/blogs/advanced-guides/api-integration-workflows.md"
 				},
 				"custom-context-field-mastery-interview": {
 					"title": "Blog Guide: Custom Context Field Mastery",
@@ -104,7 +104,7 @@
 					"pic": "planning",
 					"slug": "custom-context-field-mastery-interview",
 					"category": "advanced-guides",
-					"filePath": "C:\\Users\\User\\buildos-platform\\apps\\web\\src\\content\\blogs\\advanced-guides\\custom-context-field-mastery-interview.md"
+					"filePath": "src/content/blogs/advanced-guides/custom-context-field-mastery-interview.md"
 				},
 				"custom-context-field-mastery": {
 					"title": "Custom Context Field Mastery: Making Projects Remember What Matters",
@@ -128,7 +128,7 @@
 					"pic": "context-fields",
 					"slug": "custom-context-field-mastery",
 					"category": "advanced-guides",
-					"filePath": "C:\\Users\\User\\buildos-platform\\apps\\web\\src\\content\\blogs\\advanced-guides\\custom-context-field-mastery.md"
+					"filePath": "src/content/blogs/advanced-guides/custom-context-field-mastery.md"
 				},
 				"power-user-automation-techniques-interview": {
 					"title": "Blog Guide: Power User Automation Techniques",
@@ -145,7 +145,7 @@
 					"pic": "planning",
 					"slug": "power-user-automation-techniques-interview",
 					"category": "advanced-guides",
-					"filePath": "C:\\Users\\User\\buildos-platform\\apps\\web\\src\\content\\blogs\\advanced-guides\\power-user-automation-techniques-interview.md"
+					"filePath": "src/content/blogs/advanced-guides/power-user-automation-techniques-interview.md"
 				},
 				"power-user-automation-techniques": {
 					"title": "Power User Automation Techniques: Maximizing BuildOS Efficiency",
@@ -169,7 +169,7 @@
 					"pic": "power-user",
 					"slug": "power-user-automation-techniques",
 					"category": "advanced-guides",
-					"filePath": "C:\\Users\\User\\buildos-platform\\apps\\web\\src\\content\\blogs\\advanced-guides\\power-user-automation-techniques.md"
+					"filePath": "src/content/blogs/advanced-guides/power-user-automation-techniques.md"
 				},
 				"troubleshooting-common-issues": {
 					"title": "Troubleshooting Common Build OS Issues: Solutions and Workarounds",
@@ -192,7 +192,7 @@
 					"pic": "troubleshooting-guide",
 					"slug": "troubleshooting-common-issues",
 					"category": "advanced-guides",
-					"filePath": "C:\\Users\\User\\buildos-platform\\apps\\web\\src\\content\\blogs\\advanced-guides\\troubleshooting-common-issues.md"
+					"filePath": "src/content/blogs/advanced-guides/troubleshooting-common-issues.md"
 				}
 			}
 		},
@@ -218,7 +218,7 @@
 					"pic": "planning",
 					"slug": "academic-researcher-time-management-interview",
 					"category": "case-studies",
-					"filePath": "C:\\Users\\User\\buildos-platform\\apps\\web\\src\\content\\blogs\\case-studies\\academic-researcher-time-management-interview.md"
+					"filePath": "src/content/blogs/case-studies/academic-researcher-time-management-interview.md"
 				},
 				"academic-researcher-time-management": {
 					"title": "Case Study: Academic Researcher Time Management Transformation",
@@ -242,7 +242,7 @@
 					"pic": "academic-case-study",
 					"slug": "academic-researcher-time-management",
 					"category": "case-studies",
-					"filePath": "C:\\Users\\User\\buildos-platform\\apps\\web\\src\\content\\blogs\\case-studies\\academic-researcher-time-management.md"
+					"filePath": "src/content/blogs/case-studies/academic-researcher-time-management.md"
 				},
 				"creative-professional-project-organization-interview": {
 					"title": "Blog Guide: Creative Professional Case Study",
@@ -259,7 +259,7 @@
 					"pic": "planning",
 					"slug": "creative-professional-project-organization-interview",
 					"category": "case-studies",
-					"filePath": "C:\\Users\\User\\buildos-platform\\apps\\web\\src\\content\\blogs\\case-studies\\creative-professional-project-organization-interview.md"
+					"filePath": "src/content/blogs/case-studies/creative-professional-project-organization-interview.md"
 				},
 				"creative-professional-project-organization": {
 					"title": "Case Study: Creative Professional Project Organization Success",
@@ -283,7 +283,7 @@
 					"pic": "creative-case-study",
 					"slug": "creative-professional-project-organization",
 					"category": "case-studies",
-					"filePath": "C:\\Users\\User\\buildos-platform\\apps\\web\\src\\content\\blogs\\case-studies\\creative-professional-project-organization.md"
+					"filePath": "src/content/blogs/case-studies/creative-professional-project-organization.md"
 				},
 				"remote-team-coordination-success-interview": {
 					"title": "Blog Guide: Remote Team Coordination Case Study",
@@ -300,7 +300,7 @@
 					"pic": "planning",
 					"slug": "remote-team-coordination-success-interview",
 					"category": "case-studies",
-					"filePath": "C:\\Users\\User\\buildos-platform\\apps\\web\\src\\content\\blogs\\case-studies\\remote-team-coordination-success-interview.md"
+					"filePath": "src/content/blogs/case-studies/remote-team-coordination-success-interview.md"
 				},
 				"remote-team-coordination-success": {
 					"title": "Case Study: Remote Team Coordination Success with BuildOS",
@@ -324,7 +324,7 @@
 					"pic": "remote-team-case-study",
 					"slug": "remote-team-coordination-success",
 					"category": "case-studies",
-					"filePath": "C:\\Users\\User\\buildos-platform\\apps\\web\\src\\content\\blogs\\case-studies\\remote-team-coordination-success.md"
+					"filePath": "src/content/blogs/case-studies/remote-team-coordination-success.md"
 				},
 				"startup-founder-productivity-transformation-interview": {
 					"title": "Blog Guide: Startup Founder Case Study",
@@ -341,7 +341,7 @@
 					"pic": "planning",
 					"slug": "startup-founder-productivity-transformation-interview",
 					"category": "case-studies",
-					"filePath": "C:\\Users\\User\\buildos-platform\\apps\\web\\src\\content\\blogs\\case-studies\\startup-founder-productivity-transformation-interview.md"
+					"filePath": "src/content/blogs/case-studies/startup-founder-productivity-transformation-interview.md"
 				},
 				"startup-founder-productivity-transformation": {
 					"title": "Case Study: Startup Founder Productivity Transformation",
@@ -365,7 +365,7 @@
 					"pic": "founder-case-study",
 					"slug": "startup-founder-productivity-transformation",
 					"category": "case-studies",
-					"filePath": "C:\\Users\\User\\buildos-platform\\apps\\web\\src\\content\\blogs\\case-studies\\startup-founder-productivity-transformation.md"
+					"filePath": "src/content/blogs/case-studies/startup-founder-productivity-transformation.md"
 				}
 			}
 		},
@@ -397,7 +397,7 @@
 					"pic": "daily-briefs-guide",
 					"slug": "daily-brief-guide",
 					"category": "getting-started",
-					"filePath": "C:\\Users\\User\\buildos-platform\\apps\\web\\src\\content\\blogs\\getting-started\\daily-brief-guide.md"
+					"filePath": "src/content/blogs/getting-started/daily-brief-guide.md"
 				},
 				"effective-brain-dumping": {
 					"title": "How to Master the Art of Brain Dumping in Build OS",
@@ -414,7 +414,7 @@
 					"pic": "brain-dumping-guide",
 					"slug": "effective-brain-dumping",
 					"category": "getting-started",
-					"filePath": "C:\\Users\\User\\buildos-platform\\apps\\web\\src\\content\\blogs\\getting-started\\effective-brain-dumping.md"
+					"filePath": "src/content/blogs/getting-started/effective-brain-dumping.md"
 				},
 				"first-project-setup": {
 					"title": "Setting Up Your First Project in Build OS: A Complete Guide",
@@ -431,7 +431,7 @@
 					"pic": "first-project-setup",
 					"slug": "first-project-setup",
 					"category": "getting-started",
-					"filePath": "C:\\Users\\User\\buildos-platform\\apps\\web\\src\\content\\blogs\\getting-started\\first-project-setup.md"
+					"filePath": "src/content/blogs/getting-started/first-project-setup.md"
 				},
 				"understanding-life-goals": {
 					"title": "Understanding Life Goals vs Projects: Strategic vs Tactical Thinking",
@@ -448,7 +448,7 @@
 					"pic": "goals-vs-projects",
 					"slug": "understanding-life-goals",
 					"category": "getting-started",
-					"filePath": "C:\\Users\\User\\buildos-platform\\apps\\web\\src\\content\\blogs\\getting-started\\understanding-life-goals.md"
+					"filePath": "src/content/blogs/getting-started/understanding-life-goals.md"
 				}
 			}
 		},
@@ -485,7 +485,7 @@
 					"pic": "context-vs-agentic",
 					"slug": "agentic-vrs-context-engineering",
 					"category": "philosophy",
-					"filePath": "C:\\Users\\User\\buildos-platform\\apps\\web\\src\\content\\blogs\\philosophy\\agentic-vrs-context-engineering.md"
+					"filePath": "src/content/blogs/philosophy/agentic-vrs-context-engineering.md"
 				},
 				"anti-ai-assistant-execution-engine": {
 					"title": "Build OS: The Anti-AI-Assistant That Actually Helps You Ship",
@@ -515,7 +515,7 @@
 					"pic": "ai-clarity-execution",
 					"slug": "anti-ai-assistant-execution-engine",
 					"category": "philosophy",
-					"filePath": "C:\\Users\\User\\buildos-platform\\apps\\web\\src\\content\\blogs\\philosophy\\anti-ai-assistant-execution-engine.md"
+					"filePath": "src/content/blogs/philosophy/anti-ai-assistant-execution-engine.md"
 				},
 				"future-of-personal-knowledge-management-interview": {
 					"title": "Blog Guide: Future of Personal Knowledge Management",
@@ -532,7 +532,7 @@
 					"pic": "planning",
 					"slug": "future-of-personal-knowledge-management-interview",
 					"category": "philosophy",
-					"filePath": "C:\\Users\\User\\buildos-platform\\apps\\web\\src\\content\\blogs\\philosophy\\future-of-personal-knowledge-management-interview.md"
+					"filePath": "src/content/blogs/philosophy/future-of-personal-knowledge-management-interview.md"
 				},
 				"future-of-personal-knowledge-management": {
 					"title": "The Future of Personal Knowledge Management: From Collection to Action",
@@ -562,7 +562,7 @@
 					"pic": "knowledge-management-future",
 					"slug": "future-of-personal-knowledge-management",
 					"category": "philosophy",
-					"filePath": "C:\\Users\\User\\buildos-platform\\apps\\web\\src\\content\\blogs\\philosophy\\future-of-personal-knowledge-management.md"
+					"filePath": "src/content/blogs/philosophy/future-of-personal-knowledge-management.md"
 				},
 				"information-architecture-principles-interview": {
 					"title": "Blog Guide: Information Architecture Principles",
@@ -579,7 +579,7 @@
 					"pic": "planning",
 					"slug": "information-architecture-principles-interview",
 					"category": "philosophy",
-					"filePath": "C:\\Users\\User\\buildos-platform\\apps\\web\\src\\content\\blogs\\philosophy\\information-architecture-principles-interview.md"
+					"filePath": "src/content/blogs/philosophy/information-architecture-principles-interview.md"
 				},
 				"information-architecture-principles": {
 					"title": "Information Architecture Principles for Personal Knowledge Management",
@@ -602,7 +602,7 @@
 					"pic": "information-architecture",
 					"slug": "information-architecture-principles",
 					"category": "philosophy",
-					"filePath": "C:\\Users\\User\\buildos-platform\\apps\\web\\src\\content\\blogs\\philosophy\\information-architecture-principles.md"
+					"filePath": "src/content/blogs/philosophy/information-architecture-principles.md"
 				},
 				"personal-operating-system-manifesto-interview": {
 					"title": "Blog Guide: Personal Operating System Manifesto",
@@ -619,7 +619,7 @@
 					"pic": "planning",
 					"slug": "personal-operating-system-manifesto-interview",
 					"category": "philosophy",
-					"filePath": "C:\\Users\\User\\buildos-platform\\apps\\web\\src\\content\\blogs\\philosophy\\personal-operating-system-manifesto-interview.md"
+					"filePath": "src/content/blogs/philosophy/personal-operating-system-manifesto-interview.md"
 				},
 				"personal-operating-system-manifesto": {
 					"title": "The Personal Operating System Manifesto: Rethinking Productivity",
@@ -643,7 +643,7 @@
 					"pic": "manifesto",
 					"slug": "personal-operating-system-manifesto",
 					"category": "philosophy",
-					"filePath": "C:\\Users\\User\\buildos-platform\\apps\\web\\src\\content\\blogs\\philosophy\\personal-operating-system-manifesto.md"
+					"filePath": "src/content/blogs/philosophy/personal-operating-system-manifesto.md"
 				},
 				"productivity-vs-busy-work-interview": {
 					"title": "Blog Guide: Productivity vs Busy Work",
@@ -660,7 +660,7 @@
 					"pic": "planning",
 					"slug": "productivity-vs-busy-work-interview",
 					"category": "philosophy",
-					"filePath": "C:\\Users\\User\\buildos-platform\\apps\\web\\src\\content\\blogs\\philosophy\\productivity-vs-busy-work-interview.md"
+					"filePath": "src/content/blogs/philosophy/productivity-vs-busy-work-interview.md"
 				},
 				"productivity-vs-busy-work": {
 					"title": "Productivity vs Busy Work: Why Being Busy Doesn't Mean Being Productive",
@@ -684,7 +684,7 @@
 					"pic": "productivity-vs-busy",
 					"slug": "productivity-vs-busy-work",
 					"category": "philosophy",
-					"filePath": "C:\\Users\\User\\buildos-platform\\apps\\web\\src\\content\\blogs\\philosophy\\productivity-vs-busy-work.md"
+					"filePath": "src/content/blogs/philosophy/productivity-vs-busy-work.md"
 				}
 			}
 		},
@@ -710,7 +710,7 @@
 					"pic": "planning",
 					"slug": "build-os-beta-launch-interview",
 					"category": "product-updates",
-					"filePath": "C:\\Users\\User\\buildos-platform\\apps\\web\\src\\content\\blogs\\product-updates\\build-os-beta-launch-interview.md"
+					"filePath": "src/content/blogs/product-updates/build-os-beta-launch-interview.md"
 				},
 				"build-os-beta-launch": {
 					"title": "BuildOS Beta Launch: Your Personal Operating System is Here",
@@ -727,7 +727,7 @@
 					"pic": "beta-launch",
 					"slug": "build-os-beta-launch",
 					"category": "product-updates",
-					"filePath": "C:\\Users\\User\\buildos-platform\\apps\\web\\src\\content\\blogs\\product-updates\\build-os-beta-launch.md"
+					"filePath": "src/content/blogs/product-updates/build-os-beta-launch.md"
 				},
 				"calendar-integration-announcement-interview": {
 					"title": "Blog Guide: Calendar Integration Announcement",
@@ -744,7 +744,7 @@
 					"pic": "planning",
 					"slug": "calendar-integration-announcement-interview",
 					"category": "product-updates",
-					"filePath": "C:\\Users\\User\\buildos-platform\\apps\\web\\src\\content\\blogs\\product-updates\\calendar-integration-announcement-interview.md"
+					"filePath": "src/content/blogs/product-updates/calendar-integration-announcement-interview.md"
 				},
 				"calendar-integration-announcement": {
 					"title": "Introducing Calendar Integration: Your Schedule Meets Your Projects",
@@ -767,7 +767,7 @@
 					"pic": "calendar-announcement",
 					"slug": "calendar-integration-announcement",
 					"category": "product-updates",
-					"filePath": "C:\\Users\\User\\buildos-platform\\apps\\web\\src\\content\\blogs\\product-updates\\calendar-integration-announcement.md"
+					"filePath": "src/content/blogs/product-updates/calendar-integration-announcement.md"
 				},
 				"dynamic-context-feature-interview": {
 					"title": "Blog Guide: Dynamic Context Feature",
@@ -784,7 +784,7 @@
 					"pic": "planning",
 					"slug": "dynamic-context-feature-interview",
 					"category": "product-updates",
-					"filePath": "C:\\Users\\User\\buildos-platform\\apps\\web\\src\\content\\blogs\\product-updates\\dynamic-context-feature-interview.md"
+					"filePath": "src/content/blogs/product-updates/dynamic-context-feature-interview.md"
 				},
 				"dynamic-context-feature": {
 					"title": "Dynamic Context Feature: Projects That Remember Everything",
@@ -807,7 +807,7 @@
 					"pic": "dynamic-context",
 					"slug": "dynamic-context-feature",
 					"category": "product-updates",
-					"filePath": "C:\\Users\\User\\buildos-platform\\apps\\web\\src\\content\\blogs\\product-updates\\dynamic-context-feature.md"
+					"filePath": "src/content/blogs/product-updates/dynamic-context-feature.md"
 				},
 				"phase-management-update-interview": {
 					"title": "Blog Guide: Phase Management Update",
@@ -824,7 +824,7 @@
 					"pic": "planning",
 					"slug": "phase-management-update-interview",
 					"category": "product-updates",
-					"filePath": "C:\\Users\\User\\buildos-platform\\apps\\web\\src\\content\\blogs\\product-updates\\phase-management-update-interview.md"
+					"filePath": "src/content/blogs/product-updates/phase-management-update-interview.md"
 				},
 				"phase-management-update": {
 					"title": "Phase Management Update: Organize Projects Your Way",
@@ -847,7 +847,7 @@
 					"pic": "phase-update",
 					"slug": "phase-management-update",
 					"category": "product-updates",
-					"filePath": "C:\\Users\\User\\buildos-platform\\apps\\web\\src\\content\\blogs\\product-updates\\phase-management-update.md"
+					"filePath": "src/content/blogs/product-updates/phase-management-update.md"
 				}
 			}
 		},
@@ -873,7 +873,7 @@
 					"pic": "planning",
 					"slug": "calendar-integration-workflow-interview",
 					"category": "productivity-tips",
-					"filePath": "C:\\Users\\User\\buildos-platform\\apps\\web\\src\\content\\blogs\\productivity-tips\\calendar-integration-workflow-interview.md"
+					"filePath": "src/content/blogs/productivity-tips/calendar-integration-workflow-interview.md"
 				},
 				"calendar-integration-workflow": {
 					"title": "Calendar Integration Workflow: Mastering Time Blocking with BuildOS",
@@ -897,7 +897,7 @@
 					"pic": "calendar-workflow",
 					"slug": "calendar-integration-workflow",
 					"category": "productivity-tips",
-					"filePath": "C:\\Users\\User\\buildos-platform\\apps\\web\\src\\content\\blogs\\productivity-tips\\calendar-integration-workflow.md"
+					"filePath": "src/content/blogs/productivity-tips/calendar-integration-workflow.md"
 				},
 				"context-engineering-101": {
 					"title": "Prompt Engineering is Out. Context Engineering is In.",
@@ -925,7 +925,7 @@
 					"pic": "",
 					"slug": "context-engineering-101",
 					"category": "productivity-tips",
-					"filePath": "C:\\Users\\User\\buildos-platform\\apps\\web\\src\\content\\blogs\\productivity-tips\\context-engineering-101.md"
+					"filePath": "src/content/blogs/productivity-tips/context-engineering-101.md"
 				},
 				"evolution-of-note-taking": {
 					"title": "The Evolution of Note-Taking: From Paper to AI-Powered Organization",
@@ -951,7 +951,7 @@
 					"pic": "note-taking-evolution",
 					"slug": "evolution-of-note-taking",
 					"category": "productivity-tips",
-					"filePath": "C:\\Users\\User\\buildos-platform\\apps\\web\\src\\content\\blogs\\productivity-tips\\evolution-of-note-taking.md"
+					"filePath": "src/content/blogs/productivity-tips/evolution-of-note-taking.md"
 				},
 				"focus-time-optimization-interview": {
 					"title": "Blog Guide: Focus Time Optimization",
@@ -968,7 +968,7 @@
 					"pic": "planning",
 					"slug": "focus-time-optimization-interview",
 					"category": "productivity-tips",
-					"filePath": "C:\\Users\\User\\buildos-platform\\apps\\web\\src\\content\\blogs\\productivity-tips\\focus-time-optimization-interview.md"
+					"filePath": "src/content/blogs/productivity-tips/focus-time-optimization-interview.md"
 				},
 				"focus-time-optimization": {
 					"title": "Focus Time Optimization: Protecting Your Deep Work",
@@ -992,7 +992,7 @@
 					"pic": "focus-time",
 					"slug": "focus-time-optimization",
 					"category": "productivity-tips",
-					"filePath": "C:\\Users\\User\\buildos-platform\\apps\\web\\src\\content\\blogs\\productivity-tips\\focus-time-optimization.md"
+					"filePath": "src/content/blogs/productivity-tips/focus-time-optimization.md"
 				},
 				"phase-based-project-execution-interview": {
 					"title": "Blog Guide: Phase-Based Project Execution",
@@ -1009,7 +1009,7 @@
 					"pic": "planning",
 					"slug": "phase-based-project-execution-interview",
 					"category": "productivity-tips",
-					"filePath": "C:\\Users\\User\\buildos-platform\\apps\\web\\src\\content\\blogs\\productivity-tips\\phase-based-project-execution-interview.md"
+					"filePath": "src/content/blogs/productivity-tips/phase-based-project-execution-interview.md"
 				},
 				"phase-based-project-execution": {
 					"title": "Phase-Based Project Execution: Breaking Down Complexity",
@@ -1033,7 +1033,7 @@
 					"pic": "phase-execution",
 					"slug": "phase-based-project-execution",
 					"category": "productivity-tips",
-					"filePath": "C:\\Users\\User\\buildos-platform\\apps\\web\\src\\content\\blogs\\productivity-tips\\phase-based-project-execution.md"
+					"filePath": "src/content/blogs/productivity-tips/phase-based-project-execution.md"
 				},
 				"task-management-best-practices": {
 					"title": "Task Management Best Practices: Beyond To-Do Lists",
@@ -1056,12 +1056,12 @@
 					"pic": "task-management-mastery",
 					"slug": "task-management-best-practices",
 					"category": "productivity-tips",
-					"filePath": "C:\\Users\\User\\buildos-platform\\apps\\web\\src\\content\\blogs\\productivity-tips\\task-management-best-practices.md"
+					"filePath": "src/content/blogs/productivity-tips/task-management-best-practices.md"
 				}
 			}
 		}
 	},
-	"generatedAt": "2025-11-06T08:20:41.523Z",
+	"generatedAt": "2025-11-07T00:01:13.149Z",
 	"totalPosts": 48,
 	"totalCategories": 6
 }

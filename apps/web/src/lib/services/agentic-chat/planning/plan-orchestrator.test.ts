@@ -10,7 +10,7 @@
 
 import { describe, it, expect, beforeEach, vi, type Mock } from 'vitest';
 import { PlanOrchestrator } from './plan-orchestrator';
-import { ChatStrategy, PlanningStrategy } from '$lib/types/agent-chat-enhancement';
+import { ChatStrategy } from '$lib/types/agent-chat-enhancement';
 import type {
 	ServiceContext,
 	PlannerContext,
@@ -85,8 +85,8 @@ describe('PlanOrchestrator', () => {
 			conversationHistory: [],
 			locationContext: 'Project: Test Project',
 			availableTools: [
-				{ name: 'list_tasks', description: 'List tasks', parameters: {} },
-				{ name: 'create_task', description: 'Create task', parameters: {} }
+				{ name: 'list_onto_tasks', description: 'List tasks', parameters: {} },
+				{ name: 'create_onto_task', description: 'Create task', parameters: {} }
 			],
 			metadata: {
 				sessionId: 'session_123',
@@ -106,7 +106,7 @@ describe('PlanOrchestrator', () => {
 						stepNumber: 1,
 						type: 'research',
 						description: 'List all tasks',
-						tools: ['list_tasks'],
+						tools: ['list_onto_tasks'],
 						executorRequired: false
 					}
 				],
@@ -127,8 +127,11 @@ describe('PlanOrchestrator', () => {
 			expect(plan).toBeDefined();
 			expect(plan.strategy).toBe(ChatStrategy.SIMPLE_RESEARCH);
 			expect(plan.steps).toHaveLength(1);
-			expect(plan.steps[0].tools).toContain('list_tasks');
+			expect(plan.steps[0].tools).toContain('list_onto_tasks');
 			expect(mockPersistence.createPlan).toHaveBeenCalled();
+			expect(mockPersistence.createPlan).toHaveBeenCalledWith(
+				expect.objectContaining({ strategy: 'simple_research' })
+			);
 		});
 
 		it('should create a complex research plan with multiple steps', async () => {
@@ -138,7 +141,7 @@ describe('PlanOrchestrator', () => {
 						stepNumber: 1,
 						type: 'research',
 						description: 'Gather project data',
-						tools: ['get_project', 'list_tasks'],
+						tools: ['get_onto_project_details', 'list_onto_tasks'],
 						executorRequired: false
 					},
 					{
@@ -176,6 +179,9 @@ describe('PlanOrchestrator', () => {
 			expect(plan.steps).toHaveLength(3);
 			expect(plan.steps[1].executorRequired).toBe(true);
 			expect(plan.steps[2].dependsOn).toContain(2);
+			expect(mockPersistence.createPlan).toHaveBeenCalledWith(
+				expect.objectContaining({ strategy: 'complex_research' })
+			);
 		});
 
 		it('should handle invalid plan generation', async () => {
@@ -237,7 +243,7 @@ describe('PlanOrchestrator', () => {
 						type: 'research',
 						description: 'List tasks',
 						executorRequired: false,
-						tools: ['list_tasks'],
+						tools: ['list_onto_tasks'],
 						status: 'pending'
 					},
 					{
@@ -245,7 +251,7 @@ describe('PlanOrchestrator', () => {
 						type: 'action',
 						description: 'Create task',
 						executorRequired: false,
-						tools: ['create_task'],
+						tools: ['create_onto_task'],
 						status: 'pending',
 						dependsOn: [1]
 					}
@@ -379,7 +385,7 @@ describe('PlanOrchestrator', () => {
 
 			mockToolExecutor.mockImplementation(async (toolName) => {
 				const stepNumber =
-					toolName === 'list_tasks' ? 1 : toolName === 'create_task' ? 2 : 3;
+					toolName === 'list_onto_tasks' ? 1 : toolName === 'create_onto_task' ? 2 : 3;
 				executionOrder.push(stepNumber);
 				return { result: 'success' };
 			});

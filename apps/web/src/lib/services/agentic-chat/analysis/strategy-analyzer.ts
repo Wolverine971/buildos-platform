@@ -159,9 +159,19 @@ export class StrategyAnalyzer {
 		});
 
 		try {
-			return JSON.parse(response) as StrategyAnalysis;
+			// Extract JSON from markdown code blocks if present
+			let jsonString = response.trim();
+			if (jsonString.startsWith('```json')) {
+				// Remove opening ```json and closing ```
+				jsonString = jsonString.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+			} else if (jsonString.startsWith('```')) {
+				// Remove opening ``` and closing ```
+				jsonString = jsonString.replace(/^```\s*/, '').replace(/\s*```$/, '');
+			}
+			return JSON.parse(jsonString) as StrategyAnalysis;
 		} catch (error) {
 			console.error('[StrategyAnalyzer] Failed to parse LLM response:', error);
+			console.error('[StrategyAnalyzer] Raw response:', response);
 			throw new Error('Invalid LLM response format');
 		}
 	}

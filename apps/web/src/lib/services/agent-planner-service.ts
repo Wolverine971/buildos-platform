@@ -328,7 +328,7 @@ export class AgentPlannerService {
 
 					// 3b. Route to appropriate strategy (legacy)
 					switch (analysis.strategy) {
-						case 'direct':
+						case 'simple_research':
 							// Direct query with tools available - LLM decides if it needs them
 							for await (const event of this.handleToolQuery(
 								message,
@@ -341,7 +341,7 @@ export class AgentPlannerService {
 							}
 							break;
 
-						case 'complex':
+						case 'complex_research':
 							// Multi-step query - create plan and spawn executors
 							for await (const event of this.handleComplexQuery(
 								message,
@@ -402,7 +402,7 @@ Available Tools: ${context.availableTools.map((t) => t.function.name).join(', ')
 
 Classification Criteria:
 
-**DIRECT** (strategy: "direct"):
+**SIMPLE** (strategy: "simple_research"):
 - Single operation or simple request
 - Can be handled by one agent with available tools
 - Conversational queries (greetings, questions about capabilities)
@@ -413,7 +413,7 @@ Classification Criteria:
   - "Update the deadline for task X"
   - "Hello, how can you help me?"
 
-**COMPLEX** (strategy: "complex"):
+**COMPLEX** (strategy: "complex_research"):
 - Multiple sequential operations with dependencies
 - Requires breaking down into steps
 - Needs coordination between multiple executors
@@ -434,7 +434,7 @@ ${context.metadata.entityId ? `Entity ID: ${context.metadata.entityId}` : ''}
 
 Respond with JSON in this exact format:
 {
-  "strategy": "direct" | "complex",
+  "strategy": "simple_research" | "complex_research",
   "reasoning": "brief explanation of classification",
   "estimatedOperations": number,
   "requiresTools": boolean,
@@ -478,7 +478,7 @@ Respond with JSON in this exact format:
 
 			if (hasSequentialWords || wordCount > 50) {
 				return {
-					strategy: 'complex',
+					strategy: 'complex_research',
 					reasoning: 'Fallback heuristic: detected sequential language or long query',
 					estimatedOperations: 3,
 					requiresTools: true,
@@ -487,7 +487,7 @@ Respond with JSON in this exact format:
 			}
 
 			return {
-				strategy: 'direct',
+				strategy: 'simple_research',
 				reasoning: 'Fallback heuristic: simple query',
 				estimatedOperations: 1,
 				requiresTools: true,
@@ -985,7 +985,7 @@ Respond with JSON in this exact format:
 			sessionId,
 			userId,
 			userMessage: message,
-			strategy: 'complex',
+			strategy: 'complex_research',
 			steps,
 			status: 'pending',
 			createdAt: new Date()

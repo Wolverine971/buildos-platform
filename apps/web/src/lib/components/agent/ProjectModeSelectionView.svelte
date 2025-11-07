@@ -60,7 +60,7 @@
 	}
 
 	// Mode selection
-	function selectMode(mode: 'project_update' | 'project_audit' | 'project_forecast') {
+	function selectMode(mode: 'project' | 'project_audit' | 'project_forecast') {
 		if (!selectedProject) return;
 		dispatch('select', { contextType: mode, entityId: selectedProject.id });
 	}
@@ -152,7 +152,7 @@
 							{#if projects.length === 0}
 								No projects yet
 							{:else}
-								Update, audit, or forecast projects
+								Open a project workspace, audit, or forecast
 							{/if}
 						</p>
 					</div>
@@ -275,9 +275,9 @@
 			<!-- Mode Options -->
 			<div class="mx-auto w-full max-w-3xl flex-1 overflow-y-auto p-6">
 				<div class="grid gap-4 sm:grid-cols-3">
-					<!-- Project Update -->
+					<!-- Project Workspace -->
 					<Button
-						onclick={() => selectMode('project_update')}
+						onclick={() => selectMode('project')}
 						class="group flex flex-col items-center gap-4 rounded-xl border-2 border-blue-200/50 bg-gradient-to-br from-blue-50/50 to-indigo-50/50 p-6 text-center transition-all duration-200 hover:scale-[1.02] hover:border-blue-300 hover:shadow-lg active:scale-[0.99] dark:border-blue-800/50 dark:from-blue-900/20 dark:to-indigo-900/20 dark:hover:border-blue-700"
 					>
 						<div
@@ -287,10 +287,10 @@
 						</div>
 						<div>
 							<h3 class="mb-1 text-sm font-semibold text-gray-900 dark:text-white">
-								Update Project
+								Project workspace
 							</h3>
 							<p class="text-xs text-gray-600 dark:text-gray-400">
-								Make changes to tasks and context
+								Ask questions, explore, or make updates
 							</p>
 						</div>
 					</Button>
@@ -342,10 +342,10 @@
 						<Target class="h-4 w-4 flex-shrink-0 text-gray-400 dark:text-gray-500" />
 						<div>
 							<span class="font-semibold text-gray-900 dark:text-white">
-								Update
+								Workspace
 							</span>
 							<span class="text-gray-600 dark:text-gray-400">
-								- Quick task updates and context modifications
+								- Ask questions, explore data, or make updates
 							</span>
 						</div>
 					</div>

@@ -54,7 +54,7 @@ describe('ResponseSynthesizer', () => {
 				{
 					success: true,
 					data: { tasks: [{ id: 'task_1', title: 'Task 1' }] },
-					toolName: 'list_tasks',
+					toolName: 'list_onto_tasks',
 					toolCallId: 'call_1'
 				}
 			];
@@ -82,7 +82,7 @@ describe('ResponseSynthesizer', () => {
 				{
 					success: false,
 					error: 'Database connection failed',
-					toolName: 'list_tasks',
+					toolName: 'list_onto_tasks',
 					toolCallId: 'call_1'
 				}
 			];
@@ -110,13 +110,13 @@ describe('ResponseSynthesizer', () => {
 				{
 					success: true,
 					data: { projects: [{ id: 'proj_1', name: 'Project 1' }] },
-					toolName: 'list_projects',
+					toolName: 'list_onto_projects',
 					toolCallId: 'call_1'
 				},
 				{
 					success: false,
 					error: 'Insufficient permissions',
-					toolName: 'list_tasks',
+					toolName: 'list_onto_tasks',
 					toolCallId: 'call_2'
 				}
 			];

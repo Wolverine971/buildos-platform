@@ -49,8 +49,8 @@ export interface ParsedOperation {
 
 export type AgentChatType =
   | 'general'
+  | 'project'
   | 'project_create'    // Creating a new project from scratch
-  | 'project_update'    // Updating existing project
   | 'project_audit'     // Critical review of project
   | 'project_forecast'  // Scenario forecasting
   | 'task_update'       // Updating tasks
@@ -289,7 +289,7 @@ export const DEFAULT_AGENT_CONFIG: AgentConfig = {
   modes_enabled: {
     general: true,
     project_create: true,
-    project_update: true,
+    project: true,
     project_audit: false,  // Phase 2
     project_forecast: false, // Phase 2
     task_update: false,     // Phase 2
@@ -354,7 +354,7 @@ export function isAgentChatType(type: string): type is AgentChatType {
   return [
     'general',
     'project_create',
-    'project_update',
+    'project',
     'project_audit',
     'project_forecast',
     'task_update',
@@ -445,10 +445,26 @@ export interface Agent {
 
 /**
  * Planning Strategy
- * - direct: Single-step query that can be handled with tools (formerly 'simple' and 'tool_use')
- * - complex: Multi-step query requiring plan creation and executor coordination
+ * Mirrors the ChatStrategy enum returned by the planner LLM so we can
+ * persist the full intent (not just direct/complex shorthands).
  */
-export type PlanningStrategy = 'direct' | 'complex';
+export type PlanningStrategy =
+  | 'simple_research'
+  | 'complex_research'
+  | 'ask_clarifying_questions';
+
+/**
+ * Structured metadata captured for each plan
+ */
+export interface AgentPlanMetadata {
+  estimatedDuration?: number;
+  actualDuration?: number;
+  totalTokensUsed?: number;
+  requiredTools?: string[];
+  executorCount?: number;
+  notes?: string;
+  [key: string]: any;
+}
 
 /**
  * Agent Plan - Multi-step execution plan created by planner
@@ -465,6 +481,7 @@ export interface AgentPlan {
   user_message: string; // Original user message
   strategy: PlanningStrategy;
   steps: AgentPlanStep[];
+  metadata?: AgentPlanMetadata | null;
 
   // Status
   status: 'pending' | 'executing' | 'completed' | 'failed';

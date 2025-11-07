@@ -33,9 +33,9 @@ import type {
 	ExecutorSpawnParams
 } from '../shared/types';
 import { PlanExecutionError } from '../shared/types';
-import { ChatStrategy, PlanningStrategy } from '$lib/types/agent-chat-enhancement';
+import { ChatStrategy } from '$lib/types/agent-chat-enhancement';
 import type { ChatToolCall } from '@buildos/shared-types';
-import { v4 as uuidv4 } from 'uuid';
+import { v4 as uuidv4, validate as uuidValidate } from 'uuid';
 
 /**
  * Tool executor function type
@@ -94,6 +94,17 @@ export interface PlanValidation {
  * Service for creating and orchestrating plans
  */
 export class PlanOrchestrator implements BaseService {
+	private static readonly PROJECT_CONTEXT_TOOLS = new Set([
+		'get_onto_project_details',
+		'list_onto_tasks',
+		'list_onto_goals',
+		'list_onto_plans',
+		'create_onto_task',
+		'create_onto_goal',
+		'create_onto_plan',
+		'update_onto_project'
+	]);
+
 	constructor(
 		private llmService: LLMService,
 		private toolExecutor: ToolExecutorFunction,
@@ -106,7 +117,7 @@ export class PlanOrchestrator implements BaseService {
 	 */
 	async createPlan(
 		userMessage: string,
-		strategy: ChatStrategy | PlanningStrategy,
+		strategy: ChatStrategy,
 		plannerContext: PlannerContext,
 		context: ServiceContext
 	): Promise<AgentPlan> {
@@ -436,7 +447,7 @@ export class PlanOrchestrator implements BaseService {
 	 */
 	private async generatePlanWithLLM(
 		userMessage: string,
-		strategy: ChatStrategy | PlanningStrategy,
+		strategy: ChatStrategy,
 		plannerContext: PlannerContext,
 		context: ServiceContext
 	): Promise<{ steps: any[]; reasoning?: string }> {
@@ -453,9 +464,19 @@ export class PlanOrchestrator implements BaseService {
 		});
 
 		try {
-			return JSON.parse(response);
+			// Extract JSON from markdown code blocks if present
+			let jsonString = response.trim();
+			if (jsonString.startsWith('```json')) {
+				// Remove opening ```json and closing ```
+				jsonString = jsonString.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+			} else if (jsonString.startsWith('```')) {
+				// Remove opening ``` and closing ```
+				jsonString = jsonString.replace(/^```\s*/, '').replace(/\s*```$/, '');
+			}
+			return JSON.parse(jsonString);
 		} catch (error) {
 			console.error('[PlanOrchestrator] Failed to parse plan response:', error);
+			console.error('[PlanOrchestrator] Raw response:', response);
 			throw new Error('Invalid plan format from LLM');
 		}
 	}
@@ -464,7 +485,7 @@ export class PlanOrchestrator implements BaseService {
 	 * Build system prompt for plan generation
 	 */
 	private buildPlanSystemPrompt(
-		strategy: ChatStrategy | PlanningStrategy,
+		strategy: ChatStrategy,
 		plannerContext: PlannerContext,
 		context: ServiceContext
 	): string {
@@ -597,7 +618,7 @@ Generate an execution plan to fulfill this request.`;
 			const toolResults: any[] = [];
 
 			for (const toolName of step.tools) {
-				const args = this.buildToolArgs(toolName, step, stepResults);
+				const args = this.buildToolArgs(toolName, step, stepResults, context);
 				const result = await this.toolExecutor(toolName, args, context);
 				toolResults.push(result);
 			}
@@ -616,10 +637,28 @@ Generate an execution plan to fulfill this request.`;
 	private buildToolArgs(
 		toolName: string,
 		step: PlanStep,
-		stepResults: Map<number, any>
+		stepResults: Map<number, any>,
+		context: ServiceContext
 	): Record<string, any> {
 		// Extract relevant data from previous steps
-		const args: Record<string, any> = {};
+		const args: Record<string, any> = {
+			...(step.metadata?.toolArguments ?? {}),
+			...(step.metadata?.arguments ?? {})
+		};
+
+		const normalizedInitialProject = this.normalizeProjectId(args.project_id);
+		if (normalizedInitialProject) {
+			args.project_id = normalizedInitialProject;
+		} else {
+			delete args.project_id;
+		}
+
+		if (!args.project_id) {
+			const metaProjectId = this.normalizeProjectId(step.metadata?.projectId);
+			if (metaProjectId) {
+				args.project_id = metaProjectId;
+			}
+		}
 
 		// Add context from dependencies
 		if (step.dependsOn) {
@@ -635,7 +674,127 @@ Generate an execution plan to fulfill this request.`;
 			}
 		}
 
+		if (!args.project_id && this.toolRequiresProjectId(toolName)) {
+			const projectId = this.resolveProjectId(step, stepResults, context);
+			if (projectId) {
+				args.project_id = projectId;
+			}
+		}
+
+		const requiresProject = this.toolRequiresProjectId(toolName);
+		if (requiresProject && args.project_id) {
+			const normalized = this.normalizeProjectId(args.project_id);
+			if (normalized) {
+				args.project_id = normalized;
+			} else {
+				delete args.project_id;
+			}
+		}
+
+		if (requiresProject && !args.project_id) {
+			throw new Error(
+				`Missing project context for tool ${toolName}. Provide project_id in plan metadata or ensure dependencies return a project id.`
+			);
+		}
+
 		return args;
+	}
+
+	private toolRequiresProjectId(toolName: string): boolean {
+		return PlanOrchestrator.PROJECT_CONTEXT_TOOLS.has(toolName);
+	}
+
+	private resolveProjectId(
+		step: PlanStep,
+		stepResults: Map<number, any>,
+		context: ServiceContext
+	): string | undefined {
+		const metaProjectId = this.normalizeProjectId(step.metadata?.projectId);
+		if (metaProjectId) {
+			return metaProjectId;
+		}
+
+		if (context.contextType === 'project' && context.entityId) {
+			const contextProjectId = this.normalizeProjectId(context.entityId);
+			if (contextProjectId) {
+				return contextProjectId;
+			}
+		}
+
+		if (step.dependsOn) {
+			for (const dep of step.dependsOn) {
+				const depResult = stepResults.get(dep);
+				const candidate = this.extractProjectIdFromResult(depResult);
+				if (candidate) {
+					return candidate;
+				}
+			}
+		}
+
+		return undefined;
+	}
+
+	private extractProjectIdFromResult(result: any): string | undefined {
+		if (!result) {
+			return undefined;
+		}
+
+		if (typeof result === 'string') {
+			return this.normalizeProjectId(result);
+		}
+
+		if (Array.isArray(result)) {
+			for (const item of result) {
+				const candidate = this.extractProjectIdFromResult(item);
+				if (candidate) {
+					return candidate;
+				}
+			}
+			return undefined;
+		}
+
+		if (typeof result === 'object') {
+			const nestedKeys = ['project_id', 'id'];
+			for (const key of nestedKeys) {
+				if (key in result) {
+					const candidate = this.normalizeProjectId((result as Record<string, any>)[key]);
+					if (candidate) {
+						if (key === 'id' && !this.looksLikeProject(result as Record<string, any>)) {
+							// Skip ambiguous ids unless object looks like a project
+							continue;
+						}
+						return candidate;
+					}
+				}
+			}
+
+			const deeperKeys = ['project', 'projects', 'data', 'result', 'items'];
+			for (const key of deeperKeys) {
+				const nested = (result as Record<string, any>)[key];
+				const candidate = this.extractProjectIdFromResult(nested);
+				if (candidate) {
+					return candidate;
+				}
+			}
+		}
+
+		return undefined;
+	}
+
+	private normalizeProjectId(value: any): string | undefined {
+		if (typeof value !== 'string') {
+			return undefined;
+		}
+		const trimmed = value.trim();
+		if (!trimmed) {
+			return undefined;
+		}
+		return uuidValidate(trimmed) ? trimmed : undefined;
+	}
+
+	private looksLikeProject(value: Record<string, any>): boolean {
+		const projectHints = ['phases', 'dimensions', 'status', 'workspace_id'];
+		return projectHints.some((hint) => hint in value);
 	}
 
 	/**

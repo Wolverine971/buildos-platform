@@ -347,6 +347,7 @@ export type Database = {
           completed_at: string | null
           created_at: string
           id: string
+          metadata: Json | null
           planner_agent_id: string
           session_id: string
           status: Database["public"]["Enums"]["execution_status"]
@@ -360,6 +361,7 @@ export type Database = {
           completed_at?: string | null
           created_at?: string
           id?: string
+          metadata?: Json | null
           planner_agent_id: string
           session_id: string
           status?: Database["public"]["Enums"]["execution_status"]
@@ -373,6 +375,7 @@ export type Database = {
           completed_at?: string | null
           created_at?: string
           id?: string
+          metadata?: Json | null
           planner_agent_id?: string
           session_id?: string
           status?: Database["public"]["Enums"]["execution_status"]
@@ -8424,7 +8427,10 @@ export type Database = {
       message_sender_type: "planner" | "executor" | "system"
       onto_actor_kind: "human" | "agent"
       onto_template_status: "draft" | "active" | "deprecated"
-      planning_strategy: "direct" | "complex"
+      planning_strategy:
+        | "simple_research"
+        | "complex_research"
+        | "ask_clarifying_questions"
       priority_level: "low" | "medium" | "high"
       project_status: "active" | "paused" | "completed" | "archived"
       queue_status:
@@ -8641,7 +8647,11 @@ export const Constants = {
       message_sender_type: ["planner", "executor", "system"],
       onto_actor_kind: ["human", "agent"],
       onto_template_status: ["draft", "active", "deprecated"],
-      planning_strategy: ["direct", "complex"],
+      planning_strategy: [
+        "simple_research",
+        "complex_research",
+        "ask_clarifying_questions",
+      ],
       priority_level: ["low", "medium", "high"],
       project_status: ["active", "paused", "completed", "archived"],
       queue_status: [

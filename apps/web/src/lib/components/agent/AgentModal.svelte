@@ -308,7 +308,7 @@
 					<div class="flex-1 overflow-hidden">
 						{#if chatType === 'project_create'}
 							<DraftsList {drafts} onSelect={loadDraft} onRefresh={loadUserDrafts} />
-						{:else if chatType === 'project_update'}
+						{:else if chatType === 'project'}
 							<div class="p-4">
 								<p class="text-sm text-slate-600 dark:text-slate-400">
 									Previous conversations about this project
@@ -356,8 +356,8 @@
 					>
 						{chatType === 'project_create'
 							? 'Create Project'
-							: chatType === 'project_update'
-								? 'Update Project'
+							: chatType === 'project'
+								? 'Project Workspace'
 								: chatType === 'project_audit'
 									? 'Audit Project'
 									: 'Forecast Project'}

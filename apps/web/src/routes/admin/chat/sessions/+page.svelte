@@ -283,9 +283,8 @@
 							<option value="all">All Contexts</option>
 							<option value="global">Global</option>
 							<option value="general">General</option>
-							<option value="project">Project</option>
+							<option value="project">Project workspace</option>
 							<option value="project_create">Project Create</option>
-							<option value="project_update">Project Update</option>
 							<option value="project_audit">Project Audit</option>
 							<option value="project_forecast">Project Forecast</option>
 							<option value="task">Task</option>

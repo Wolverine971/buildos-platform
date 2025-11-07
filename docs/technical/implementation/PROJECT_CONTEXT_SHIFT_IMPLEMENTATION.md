@@ -18,7 +18,7 @@ related:
 
 ## What Was Implemented
 
-This implementation enables **automatic context switching** from `project_create` to `project_update` mode after a user successfully creates a project via the agent chat. The system now seamlessly transitions the conversation to project management mode without user intervention.
+This implementation enables **automatic context switching** from `project_create` to `project` mode after a user successfully creates a project via the agent chat. The system now seamlessly transitions the conversation to project management mode without user intervention.
 
 ## Architecture Overview
 
@@ -102,7 +102,7 @@ private async createOntoProject(args: CreateOntoProjectArgs): Promise<{
 	message: string;
 	// NEW: Context shift metadata
 	context_shift?: {
-		new_context: 'project_update';
+		new_context: 'project';
 		entity_id: string;
 		entity_name: string;
 		entity_type: 'project';
@@ -116,7 +116,7 @@ private async createOntoProject(args: CreateOntoProjectArgs): Promise<{
 		message,
 		// Include context shift metadata to trigger automatic context switch
 		context_shift: {
-			new_context: 'project_update',
+			new_context: 'project',
 			entity_id: result.project_id,
 			entity_name: args.project.name,
 			entity_type: 'project'
@@ -344,8 +344,8 @@ async function exitProjectContext() {
 Added visual context header:
 
 ```svelte
-<!-- Context Indicator (shows when in project_update mode) -->
-{#if currentContext === 'project_update' && currentEntityName}
+<!-- Context Indicator (shows when in project mode) -->
+{#if currentContext === 'project' && currentEntityName}
 	<div
 		class="border-b border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 p-3 backdrop-blur-sm dark:border-blue-800 dark:from-blue-950/40 dark:to-indigo-950/40"
 	>
@@ -382,7 +382,7 @@ Added visual context header:
 - ✅ Dark mode support with `dark:` prefixes
 - ✅ Follows BuildOS style guide (gradient backgrounds, subtle borders)
 - ✅ Clear affordance for exiting context
-- ✅ Only shows in `project_update` mode
+- ✅ Only shows in `project` mode
 
 ## User Experience Flow
 
@@ -404,7 +404,7 @@ User: "Create a book writing project"
 ### After Context Shift (Automatic)
 
 ```
-[Chat Interface - project_update mode]
+[Chat Interface - project mode]
 ┌─────────────────────────────────────┐
 │ 📁 Managing: Book Writing Project   │  [Exit Project Mode]
 ├─────────────────────────────────────┤
@@ -429,7 +429,7 @@ User: "Create a book writing project"
 ```
 User: "Add a task to outline the chapters"
 
-[System automatically uses project_update tools]
+[System automatically uses project tools]
 - project_id is known from context
 - LLM uses create_onto_task with project_id auto-filled
 - Task created in correct project
@@ -585,7 +585,7 @@ SELECT
   COUNT(m.id) as message_count
 FROM chat_sessions s
 LEFT JOIN chat_messages m ON m.session_id = s.id
-WHERE s.context_type = 'project_update'
+WHERE s.context_type = 'project'
   AND s.created_at > NOW() - INTERVAL '7 days'
 GROUP BY s.id
 ORDER BY s.updated_at DESC;

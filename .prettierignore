@@ -28,3 +28,19 @@ node_modules/
 coverage/
 *.log
 .DS_Store
+
+# User thoughts and research
+thoughts/
+
+# IDE and tool configs
+.claude/
+.vscode/
+
+# Auto-generated files
+postgrest.api.d.ts
+
+# Deprecated/archived code
+delete/
+
+# Scripts (one-off migrations)
+*.sh

@@ -49,8 +49,7 @@ export class AgentPersistenceService implements PersistenceOperations {
 			const agentData: AgentInsert = {
 				id: uuidv4(),
 				...data,
-				created_at: new Date().toISOString(),
-				started_at: new Date().toISOString()
+				created_at: new Date().toISOString()
 			};
 
 			const { data: agent, error } = await this.supabase
@@ -94,15 +93,16 @@ export class AgentPersistenceService implements PersistenceOperations {
 	 */
 	async updateAgent(id: string, data: Partial<AgentInsert>): Promise<void> {
 		try {
-			// Add updated_at timestamp
 			const updateData = {
-				...data,
-				updated_at: new Date().toISOString()
+				...data
 			};
 
-			// If status is being set to completed or error, add ended_at
-			if (data.status === 'completed' || data.status === 'error') {
-				updateData.ended_at = updateData.ended_at || new Date().toISOString();
+			// If status is being set to completed or error, add completed_at when missing
+			if (
+				(data.status === 'completed' || data.status === 'error') &&
+				!updateData.completed_at
+			) {
+				updateData.completed_at = new Date().toISOString();
 			}
 
 			const { error } = await this.supabase
@@ -366,8 +366,7 @@ export class AgentPersistenceService implements PersistenceOperations {
 			const sessionData: AgentChatSessionInsert = {
 				id: uuidv4(),
 				...data,
-				created_at: new Date().toISOString(),
-				started_at: new Date().toISOString()
+				created_at: new Date().toISOString()
 			};
 
 			const { data: session, error } = await this.supabase
@@ -412,13 +411,15 @@ export class AgentPersistenceService implements PersistenceOperations {
 	async updateChatSession(id: string, data: Partial<AgentChatSessionInsert>): Promise<void> {
 		try {
 			const updateData = {
-				...data,
-				updated_at: new Date().toISOString()
+				...data
 			};
 
-			// If status is completed or error, add ended_at
-			if (data.status === 'completed' || data.status === 'error') {
-				updateData.ended_at = updateData.ended_at || new Date().toISOString();
+			// If status is completed or error, add completed_at when missing
+			if (
+				(data.status === 'completed' || data.status === 'error') &&
+				!updateData.completed_at
+			) {
+				updateData.completed_at = new Date().toISOString();
 			}
 
 			const { error } = await this.supabase

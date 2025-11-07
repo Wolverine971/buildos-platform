@@ -15,30 +15,6 @@
 	import { initializePWAEnhancements, setupInstallPrompt } from '$lib/utils/pwa-enhancements';
 	import type { LayoutData } from './$types';
 
-	// Enable View Transitions API ONLY for specific navigations to improve performance
-	onNavigate((navigation) => {
-		const from = navigation.from?.route.id;
-		const to = navigation.to?.route.id;
-
-		// Only use view transitions for projects list <-> detail navigation
-		const shouldTransition =
-			(from === '/projects' && to === '/projects/[id]') ||
-			(from === '/projects/[id]' && to === '/projects') ||
-			(from === '/projects/[id]' && to === '/projects/[id]');
-
-		// Check if browser supports view transitions and if we should use them
-		if (!shouldTransition || !document.startViewTransition) {
-			return; // Skip view transition for better performance
-		}
-
-		return new Promise((fulfillNavigation) => {
-			document.startViewTransition(async () => {
-				fulfillNavigation();
-				await navigation.complete;
-			});
-		});
-	});
-
 	// Notification system integration
 	import NotificationStackManager from '$lib/components/notifications/NotificationStackManager.svelte';
 	import {

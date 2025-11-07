@@ -295,10 +295,10 @@
 						<h1
 							class="text-4xl sm:text-5xl md:text-6xl font-bold mb-6 leading-tight fade-in"
 						>
-							Your thoughts, organized.<br />
+							Project organization built <br />for
 							<span
 								class="bg-gradient-to-r from-primary-400 to-purple-400 dark:from-primary-300 dark:to-purple-300 bg-clip-text text-transparent"
-								>Your next step, clear.</span
+								>the AI era.</span
 							>
 						</h1>
 
@@ -306,13 +306,15 @@
 						<p
 							class="text-xl text-gray-600 dark:text-gray-300 mb-8 max-w-2xl mx-auto fade-in leading-relaxed"
 						>
-							Stop fighting your brain. Start working with it.<br />
-							Just talk through what's on your mind and watch it transform into organized
-							action.
+							Your thoughts, organized.<br class="hidden sm:block" />
+							Your next step, clear.
 						</p>
 
 						<!-- CTA -->
-						<a href="/auth/register" aria-label="Start building with BuildOS">
+						<p class="text-lg font-medium text-gray-900 dark:text-white mb-4">
+							Ready for BuildOS to help you organize your projects?
+						</p>
+						<a href="/auth/register" aria-label="Start working with BuildOS">
 							<Button variant="primary">Start Brain Dumping →</Button>
 						</a>
 

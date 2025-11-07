@@ -47,9 +47,9 @@ describe('StrategyAnalyzer', () => {
 			conversationHistory: [],
 			locationContext: 'Project: Test Project',
 			availableTools: [
-				{ name: 'list_tasks', description: 'List tasks', parameters: {} },
-				{ name: 'create_task', description: 'Create a task', parameters: {} },
-				{ name: 'search_projects', description: 'Search projects', parameters: {} }
+				{ name: 'list_onto_tasks', description: 'List tasks', parameters: {} },
+				{ name: 'create_onto_task', description: 'Create a task', parameters: {} },
+				{ name: 'list_onto_projects', description: 'Search projects', parameters: {} }
 			],
 			metadata: {
 				sessionId: 'session_123',
@@ -68,10 +68,10 @@ describe('StrategyAnalyzer', () => {
 				JSON.stringify({
 					primary_strategy: 'simple_research',
 					confidence: 0.9,
-					reasoning: 'Direct lookup query that can be answered with list_tasks',
+					reasoning: 'Direct lookup query that can be answered with list_onto_tasks',
 					needs_clarification: false,
 					estimated_steps: 1,
-					required_tools: ['list_tasks'],
+					required_tools: ['list_onto_tasks'],
 					can_complete_directly: true
 				})
 			);
@@ -85,7 +85,7 @@ describe('StrategyAnalyzer', () => {
 			expect(result.primary_strategy).toBe(ChatStrategy.SIMPLE_RESEARCH);
 			expect(result.confidence).toBeGreaterThanOrEqual(0.9);
 			expect(result.estimated_steps).toBe(1);
-			expect(result.required_tools).toContain('list_tasks');
+			expect(result.required_tools).toContain('list_onto_tasks');
 			expect(result.can_complete_directly).toBe(true);
 		});
 
@@ -98,8 +98,8 @@ describe('StrategyAnalyzer', () => {
 					needs_clarification: false,
 					estimated_steps: 4,
 					required_tools: [
-						'list_tasks',
-						'search_projects',
+						'list_onto_tasks',
+						'list_onto_projects',
 						'analyze_data',
 						'generate_report'
 					],
@@ -180,7 +180,7 @@ describe('StrategyAnalyzer', () => {
 
 	describe('estimateComplexity', () => {
 		it('should estimate low complexity for simple queries', () => {
-			const complexity = analyzer.estimateComplexity('List all tasks', ['list_tasks']);
+			const complexity = analyzer.estimateComplexity('List all tasks', ['list_onto_tasks']);
 
 			expect(complexity).toBeLessThanOrEqual(2);
 		});
@@ -188,7 +188,7 @@ describe('StrategyAnalyzer', () => {
 		it('should estimate high complexity for analytical queries', () => {
 			const complexity = analyzer.estimateComplexity(
 				'Analyze project health across all dimensions and generate a comprehensive report with recommendations',
-				['list_tasks', 'analyze_data', 'generate_report', 'create_recommendations']
+				['list_onto_tasks', 'analyze_data', 'generate_report', 'create_recommendations']
 			);
 
 			expect(complexity).toBeGreaterThan(3);
@@ -299,7 +299,7 @@ describe('StrategyAnalyzer', () => {
 					task_ids: ['task_1', 'task_2']
 				},
 				context_type: 'project' as const,
-				data_accessed: ['list_tasks'],
+				data_accessed: ['list_onto_tasks'],
 				timestamp: new Date().toISOString()
 			};
 
@@ -310,7 +310,7 @@ describe('StrategyAnalyzer', () => {
 					reasoning: 'Following up on previous task view with specific query',
 					needs_clarification: false,
 					estimated_steps: 1,
-					required_tools: ['get_task_details'],
+					required_tools: ['get_onto_task_details'],
 					can_complete_directly: true
 				})
 			);

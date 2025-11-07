@@ -37,7 +37,7 @@ describe('ToolExecutionService', () => {
 		// Setup mock tool definitions
 		mockToolDefinitions = [
 			{
-				name: 'list_tasks',
+				name: 'list_onto_tasks',
 				description: 'List tasks in a project',
 				parameters: {
 					type: 'object',
@@ -47,7 +47,7 @@ describe('ToolExecutionService', () => {
 				}
 			},
 			{
-				name: 'create_task',
+				name: 'create_onto_task',
 				description: 'Create a new task',
 				parameters: {
 					type: 'object',
@@ -59,7 +59,7 @@ describe('ToolExecutionService', () => {
 				}
 			},
 			{
-				name: 'search_projects',
+				name: 'list_onto_projects',
 				description: 'Search for projects',
 				parameters: {
 					type: 'object',
@@ -77,7 +77,7 @@ describe('ToolExecutionService', () => {
 		it('should execute a tool successfully', async () => {
 			const toolCall: ChatToolCall = {
 				id: 'call_123',
-				name: 'list_tasks',
+				name: 'list_onto_tasks',
 				arguments: { project_id: 'proj_123' }
 			};
 
@@ -94,10 +94,10 @@ describe('ToolExecutionService', () => {
 
 			expect(result.success).toBe(true);
 			expect(result.data).toEqual(expectedResult);
-			expect(result.toolName).toBe('list_tasks');
+			expect(result.toolName).toBe('list_onto_tasks');
 			expect(result.toolCallId).toBe('call_123');
 			expect(mockToolExecutor).toHaveBeenCalledWith(
-				'list_tasks',
+				'list_onto_tasks',
 				{ project_id: 'proj_123' },
 				mockContext
 			);
@@ -106,7 +106,7 @@ describe('ToolExecutionService', () => {
 		it('should handle tool execution errors', async () => {
 			const toolCall: ChatToolCall = {
 				id: 'call_456',
-				name: 'create_task',
+				name: 'create_onto_task',
 				arguments: { title: 'New Task' }
 			};
 
@@ -122,7 +122,7 @@ describe('ToolExecutionService', () => {
 		it('should validate required parameters', async () => {
 			const toolCall: ChatToolCall = {
 				id: 'call_789',
-				name: 'create_task',
+				name: 'create_onto_task',
 				arguments: { description: 'Missing title' } // Missing required 'title'
 			};
 
@@ -150,7 +150,7 @@ describe('ToolExecutionService', () => {
 		it('should track entities accessed during execution', async () => {
 			const toolCall: ChatToolCall = {
 				id: 'call_entities',
-				name: 'list_tasks',
+				name: 'list_onto_tasks',
 				arguments: { project_id: 'proj_123' }
 			};
 
@@ -170,7 +170,7 @@ describe('ToolExecutionService', () => {
 		it('should handle null/undefined arguments', async () => {
 			const toolCall: ChatToolCall = {
 				id: 'call_null',
-				name: 'search_projects',
+				name: 'list_onto_projects',
 				arguments: null as any
 			};
 
@@ -179,7 +179,7 @@ describe('ToolExecutionService', () => {
 			const result = await service.executeTool(toolCall, mockContext, mockToolDefinitions);
 
 			expect(result.success).toBe(true);
-			expect(mockToolExecutor).toHaveBeenCalledWith('search_projects', {}, mockContext);
+			expect(mockToolExecutor).toHaveBeenCalledWith('list_onto_projects', {}, mockContext);
 		});
 	});
 
@@ -188,12 +188,12 @@ describe('ToolExecutionService', () => {
 			const toolCalls: ChatToolCall[] = [
 				{
 					id: 'call_1',
-					name: 'list_tasks',
+					name: 'list_onto_tasks',
 					arguments: { project_id: 'proj_123' }
 				},
 				{
 					id: 'call_2',
-					name: 'create_task',
+					name: 'create_onto_task',
 					arguments: { title: 'New Task', description: 'Description' }
 				}
 			];
@@ -210,16 +210,16 @@ describe('ToolExecutionService', () => {
 
 			expect(results).toHaveLength(2);
 			expect(results[0].success).toBe(true);
-			expect(results[0].toolName).toBe('list_tasks');
+			expect(results[0].toolName).toBe('list_onto_tasks');
 			expect(results[1].success).toBe(true);
-			expect(results[1].toolName).toBe('create_task');
+			expect(results[1].toolName).toBe('create_onto_task');
 		});
 
 		it('should continue execution even if one tool fails', async () => {
 			const toolCalls: ChatToolCall[] = [
 				{
 					id: 'call_1',
-					name: 'list_tasks',
+					name: 'list_onto_tasks',
 					arguments: { project_id: 'proj_123' }
 				},
 				{
@@ -229,7 +229,7 @@ describe('ToolExecutionService', () => {
 				},
 				{
 					id: 'call_3',
-					name: 'search_projects',
+					name: 'list_onto_projects',
 					arguments: { query: 'test' }
 				}
 			];
@@ -266,7 +266,7 @@ describe('ToolExecutionService', () => {
 		it('should validate a correct tool call', () => {
 			const toolCall: ChatToolCall = {
 				id: 'call_valid',
-				name: 'create_task',
+				name: 'create_onto_task',
 				arguments: { title: 'Task', description: 'Desc' }
 			};
 
@@ -292,7 +292,7 @@ describe('ToolExecutionService', () => {
 		it('should detect missing required parameters', () => {
 			const toolCall: ChatToolCall = {
 				id: 'call_missing',
-				name: 'create_task',
+				name: 'create_onto_task',
 				arguments: { description: 'No title' }
 			};
 
@@ -305,7 +305,7 @@ describe('ToolExecutionService', () => {
 		it('should validate parameter types', () => {
 			const toolCall: ChatToolCall = {
 				id: 'call_type',
-				name: 'list_tasks',
+				name: 'list_onto_tasks',
 				arguments: { project_id: 123 } // Should be string
 			};
 
@@ -318,10 +318,10 @@ describe('ToolExecutionService', () => {
 
 	describe('getToolDefinition', () => {
 		it('should return the correct tool definition', () => {
-			const definition = service.getToolDefinition('list_tasks', mockToolDefinitions);
+			const definition = service.getToolDefinition('list_onto_tasks', mockToolDefinitions);
 
 			expect(definition).toBeDefined();
-			expect(definition?.name).toBe('list_tasks');
+			expect(definition?.name).toBe('list_onto_tasks');
 			expect(definition?.description).toContain('List tasks');
 		});
 
@@ -337,13 +337,13 @@ describe('ToolExecutionService', () => {
 			const result: ToolExecutionResult = {
 				success: true,
 				data: { tasks: [{ id: '1', title: 'Task' }] },
-				toolName: 'list_tasks',
+				toolName: 'list_onto_tasks',
 				toolCallId: 'call_123'
 			};
 
 			const formatted = service.formatToolResult(result);
 
-			expect(formatted).toContain('list_tasks');
+			expect(formatted).toContain('list_onto_tasks');
 			expect(formatted).toContain('tasks');
 			expect(formatted).toContain('Task');
 		});
@@ -352,14 +352,14 @@ describe('ToolExecutionService', () => {
 			const result: ToolExecutionResult = {
 				success: false,
 				error: 'Database connection failed',
-				toolName: 'create_task',
+				toolName: 'create_onto_task',
 				toolCallId: 'call_456'
 			};
 
 			const formatted = service.formatToolResult(result);
 
 			expect(formatted).toContain('Error');
-			expect(formatted).toContain('create_task');
+			expect(formatted).toContain('create_onto_task');
 			expect(formatted).toContain('Database connection failed');
 		});
 
@@ -471,7 +471,7 @@ describe('ToolExecutionService', () => {
 		it('should handle timeout scenarios', async () => {
 			const toolCall: ChatToolCall = {
 				id: 'call_timeout',
-				name: 'list_tasks',
+				name: 'list_onto_tasks',
 				arguments: { project_id: 'proj_123' }
 			};
 

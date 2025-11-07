@@ -23,12 +23,19 @@
 	} from 'lucide-svelte';
 	import type { ChatContextType } from '@buildos/shared-types';
 
-	interface Project {
+	interface OntologyProjectSummary {
 		id: string;
 		name: string;
 		description: string | null;
-		status: string;
-		taskCount?: number;
+		typeKey: string;
+		stateKey: string;
+		facetContext: string | null;
+		facetScale: string | null;
+		facetStage: string | null;
+		createdAt: string;
+		updatedAt: string;
+		taskCount: number;
+		outputCount: number;
 	}
 
 	interface ContextSelection {
@@ -47,11 +54,13 @@
 	// State
 	let selectedView: 'primary' | 'projectHub' | 'project-selection' | 'mode-selection' =
 		$state('primary');
-	let selectedProject: Project | null = $state(null);
-	let projects = $state<Project[]>([]);
+	let selectedProject: OntologyProjectSummary | null = $state(null);
+	let projects = $state<OntologyProjectSummary[]>([]);
 	let isLoadingProjects = $state(false);
 	let projectsError = $state<string | null>(null);
 	let hasLoadedProjects = $state(false);
+
+	const INACTIVE_PROJECT_STATE_KEYS = new Set(['archived', 'completed', 'retired', 'closed']);
 
 	const dispatch = createEventDispatcher<{
 		select: ContextSelection;
@@ -71,39 +80,45 @@
 		projectsError = null;
 
 		try {
-			const response = await fetch(
-				'/api/projects?mode=context-selection&include_counts=true&limit=100',
-				{
-					method: 'GET',
-					credentials: 'same-origin',
-					cache: 'no-store',
-					headers: {
-						Accept: 'application/json'
-					}
+			const response = await fetch('/api/onto/projects', {
+				method: 'GET',
+				credentials: 'same-origin',
+				cache: 'no-store',
+				headers: {
+					Accept: 'application/json'
 				}
-			);
+			});
 			const payload = await response.json();
 
-			if (!response.ok || !payload?.success) {
-				projectsError = payload?.error || 'Failed to load projects';
+			if (!response.ok || payload?.success === false) {
+				projectsError = payload?.error || 'Failed to load ontology projects';
 				projects = [];
 				hasLoadedProjects = true;
 				return;
 			}
 
-			const fetchedProjects = payload?.data?.projects ?? [];
-			const processedProjects: Project[] = fetchedProjects.map((project: any) => ({
-				id: project.id,
-				name: project.name,
-				description: project.description,
-				status: project.status,
-				taskCount: project.task_count ?? project.taskCount ?? 0
-			}));
+			const fetchedProjects = payload?.data?.projects ?? payload?.projects ?? [];
+			const processedProjects: OntologyProjectSummary[] = fetchedProjects.map(
+				(project: any) => ({
+					id: project.id,
+					name: project.name ?? 'Untitled project',
+					description: project.description ?? null,
+					typeKey: project.type_key ?? project.typeKey ?? 'project.generic',
+					stateKey: project.state_key ?? project.stateKey ?? 'draft',
+					facetContext: project.facet_context ?? project.facetContext ?? null,
+					facetScale: project.facet_scale ?? project.facetScale ?? null,
+					facetStage: project.facet_stage ?? project.facetStage ?? null,
+					createdAt: project.created_at ?? project.createdAt ?? '',
+					updatedAt: project.updated_at ?? project.updatedAt ?? '',
+					taskCount: project.task_count ?? project.taskCount ?? 0,
+					outputCount: project.output_count ?? project.outputCount ?? 0
+				})
+			);
 			projects = processedProjects;
 			hasLoadedProjects = true;
 		} catch (err) {
-			console.error('Failed to load projects:', err);
-			projectsError = 'Failed to load projects';
+			console.error('Failed to load ontology projects:', err);
+			projectsError = 'Failed to load ontology projects';
 			hasLoadedProjects = true;
 		} finally {
 			isLoadingProjects = false;
@@ -134,7 +149,7 @@
 	}
 
 	// Project selection
-	function selectProject(project: Project) {
+	function selectProject(project: OntologyProjectSummary) {
 		selectedProject = project;
 		selectedView = 'mode-selection';
 	}
@@ -155,7 +170,7 @@
 	}
 
 	// Mode selection
-	function selectMode(mode: 'project_update' | 'project_audit' | 'project_forecast') {
+	function selectMode(mode: 'project' | 'project_audit' | 'project_forecast') {
 		if (!selectedProject) return;
 		dispatch('select', {
 			contextType: mode,
@@ -173,14 +188,35 @@
 		dispatch('select', { contextType: 'daily_brief_update', label: 'Daily brief tuning' });
 	}
 
+	function formatKeyLabel(value?: string | null) {
+		if (!value) return '';
+		return value
+			.split(/[._]/)
+			.filter(Boolean)
+			.map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+			.join(' ');
+	}
+
+	function getFacetSummary(project: OntologyProjectSummary) {
+		return [project.facetContext, project.facetScale, project.facetStage]
+			.filter(Boolean)
+			.map((value) => formatKeyLabel(value))
+			.join(' • ');
+	}
+
 	// Computed
 	const projectModeLabels = {
-		project_update: 'Project update',
+		project: 'Project workspace',
 		project_audit: 'Project audit',
 		project_forecast: 'Project forecast'
 	} as const;
 
-	const activeProjects = $derived(projects.filter((p) => p.status === 'active'));
+	const activeProjects = $derived(
+		projects.filter((project) => {
+			const state = project.stateKey?.toLowerCase();
+			return !state || !INACTIVE_PROJECT_STATE_KEYS.has(state);
+		})
+	);
 	const hasProjects = $derived(projects.length > 0);
 </script>
 
@@ -362,7 +398,7 @@
 			</div>
 			<div class="mx-auto w-full max-w-4xl flex-1 overflow-y-auto p-5 sm:p-8">
 				<div class="grid gap-5 sm:grid-cols-2">
-					<Button
+					<button
 						onclick={selectProjectCreate}
 						class="group flex h-full flex-col justify-between gap-6 rounded-2xl border border-slate-200/60 bg-gradient-to-br from-purple-50/70 via-fuchsia-50/40 to-white/85 p-7 text-left shadow-[0_24px_70px_-48px_rgba(147,51,234,0.6)] transition-all duration-200 hover:-translate-y-1 hover:border-purple-300/60 hover:shadow-[0_36px_90px_-56px_rgba(126,34,206,0.55)] active:translate-y-0 dark:border-slate-700/60 dark:from-slate-900/85 dark:via-slate-900/55 dark:to-slate-900/75 dark:hover:border-purple-500/60"
 					>
@@ -389,9 +425,9 @@
 								class="h-5 w-5 transition-transform group-hover:translate-x-1"
 							/>
 						</div>
-					</Button>
+					</button>
 
-					<Button
+					<button
 						onclick={showProjectSelection}
 						disabled={isLoadingProjects || !hasProjects}
 						class="group flex h-full flex-col justify-between gap-6 rounded-2xl border border-slate-200/60 bg-gradient-to-br from-slate-50/80 via-slate-50/40 to-white/85 p-7 text-left shadow-[0_24px_70px_-48px_rgba(15,23,42,0.45)] transition-all duration-200 hover:-translate-y-1 hover:border-emerald-300/60 hover:shadow-[0_36px_90px_-56px_rgba(20,83,45,0.45)] active:translate-y-0 disabled:translate-y-0 disabled:opacity-60 disabled:shadow-none dark:border-slate-700/60 dark:from-slate-900/85 dark:via-slate-900/55 dark:to-slate-900/75 dark:hover:border-emerald-500/60"
@@ -421,13 +457,13 @@
 						>
 							<span
 								>{#if hasProjects}{activeProjects.length} ready projects{:else}No
-									active projects yet{/if}</span
+									ontology projects yet{/if}</span
 							>
 							<ChevronRight
 								class="h-5 w-5 transition-transform group-hover:translate-x-1"
 							/>
 						</div>
-					</Button>
+					</button>
 				</div>
 
 				{#if projectsError}
@@ -472,16 +508,17 @@
 				{:else if projectsError}
 					<div class="flex flex-col items-center justify-center py-16 text-center">
 						<p class="mb-4 text-sm text-red-600 dark:text-red-400">{projectsError}</p>
-						<Button
+						<button
 							onclick={loadProjects}
 							class="text-sm font-medium text-blue-600 hover:underline dark:text-blue-400"
 						>
 							Try again
-						</Button>
+						</button>
 					</div>
 				{:else if activeProjects.length > 0}
 					<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
 						{#each activeProjects as project (project.id)}
+							{@const facetSummary = getFacetSummary(project)}
 							<button
 								onclick={() => selectProject(project)}
 								class="group flex flex-col rounded-xl border border-slate-200/50 bg-white/70 p-4 text-left backdrop-blur-sm transition-all duration-200 hover:scale-[1.02] hover:border-slate-300/70 hover:shadow-lg active:scale-[0.99] dark:border-slate-700/50 dark:bg-slate-800/70 dark:hover:border-slate-600/70"
@@ -497,6 +534,27 @@
 										class="h-4 w-4 flex-shrink-0 text-slate-400 dark:text-slate-500"
 									/>
 								</div>
+								{#if project.stateKey || project.typeKey}
+									<div
+										class="mb-2 flex flex-wrap items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400"
+									>
+										{#if project.stateKey}
+											<span
+												class="rounded-full border border-slate-200 px-2 py-0.5 dark:border-slate-600"
+											>
+												{formatKeyLabel(project.stateKey)}
+											</span>
+										{/if}
+										{#if project.typeKey}
+											<span>{formatKeyLabel(project.typeKey)}</span>
+										{/if}
+									</div>
+								{/if}
+								{#if facetSummary}
+									<p class="mb-2 text-xs text-slate-500 dark:text-slate-400">
+										{facetSummary}
+									</p>
+								{/if}
 								{#if project.description}
 									<p
 										class="mb-3 line-clamp-2 text-xs text-slate-600 dark:text-slate-400"
@@ -504,11 +562,26 @@
 										{project.description}
 									</p>
 								{/if}
-								{#if project.taskCount !== undefined && project.taskCount > 0}
+								{#if project.taskCount > 0 || project.outputCount > 0}
 									<div
 										class="mt-auto border-t border-slate-100 pt-2 text-xs text-slate-500 dark:border-slate-700 dark:text-slate-400"
 									>
-										{project.taskCount} task{project.taskCount !== 1 ? 's' : ''}
+										{#if project.taskCount > 0}
+											<span>
+												{project.taskCount} task{project.taskCount !== 1
+													? 's'
+													: ''}
+											</span>
+										{/if}
+										{#if project.taskCount > 0 && project.outputCount > 0}
+											<span class="mx-2 text-slate-400">•</span>
+										{/if}
+										{#if project.outputCount > 0}
+											<span>
+												{project.outputCount} output
+												{project.outputCount !== 1 ? 's' : ''}
+											</span>
+										{/if}
 									</div>
 								{/if}
 							</button>
@@ -522,10 +595,10 @@
 							<FolderOpen class="h-10 w-10 text-slate-400 dark:text-slate-500" />
 						</div>
 						<h3 class="mb-2 text-lg font-semibold text-slate-900 dark:text-white">
-							No Active Projects
+							No Ontology Projects
 						</h3>
 						<p class="max-w-xs text-sm text-slate-600 dark:text-slate-400">
-							Create your first project to get started
+							Instantiate your first ontology project to get started
 						</p>
 					</div>
 				{/if}
@@ -558,9 +631,9 @@
 			<!-- Mode Options -->
 			<div class="mx-auto w-full max-w-3xl flex-1 overflow-y-auto p-6">
 				<div class="grid gap-4 sm:grid-cols-3">
-					<!-- Project Update -->
-					<Button
-						onclick={() => selectMode('project_update')}
+					<!-- Project Workspace -->
+					<button
+						onclick={() => selectMode('project')}
 						class="group flex flex-col items-center gap-4 rounded-xl border-2 border-blue-200/50 bg-gradient-to-br from-blue-50/50 to-indigo-50/50 p-6 text-center transition-all duration-200 hover:scale-[1.02] hover:border-blue-300 hover:shadow-lg active:scale-[0.99] dark:border-blue-800/50 dark:from-blue-900/20 dark:to-indigo-900/20 dark:hover:border-blue-700"
 					>
 						<div
@@ -570,16 +643,16 @@
 						</div>
 						<div>
 							<h3 class="mb-1 text-sm font-semibold text-slate-900 dark:text-white">
-								Update Project
+								Project workspace
 							</h3>
 							<p class="text-xs text-slate-600 dark:text-slate-400">
-								Make changes to tasks and context
+								Ask questions, explore, or make updates
 							</p>
 						</div>
-					</Button>
+					</button>
 
 					<!-- Project Audit -->
-					<Button
+					<button
 						onclick={() => selectMode('project_audit')}
 						class="group flex flex-col items-center gap-4 rounded-xl border-2 border-amber-200/50 bg-gradient-to-br from-amber-50/50 to-orange-50/50 p-6 text-center transition-all duration-200 hover:scale-[1.02] hover:border-amber-300 hover:shadow-lg active:scale-[0.99] dark:border-amber-800/50 dark:from-amber-900/20 dark:to-orange-900/20 dark:hover:border-amber-700"
 					>
@@ -596,10 +669,10 @@
 								Critical review across dimensions
 							</p>
 						</div>
-					</Button>
+					</button>
 
 					<!-- Project Forecast -->
-					<Button
+					<button
 						onclick={() => selectMode('project_forecast')}
 						class="group flex flex-col items-center gap-4 rounded-xl border-2 border-emerald-200/50 bg-gradient-to-br from-emerald-50/50 to-teal-50/50 p-6 text-center transition-all duration-200 hover:scale-[1.02] hover:border-emerald-300 hover:shadow-lg active:scale-[0.99] dark:border-emerald-800/50 dark:from-emerald-900/20 dark:to-teal-900/20 dark:hover:border-emerald-700"
 					>
@@ -616,7 +689,7 @@
 								Scenario planning and outcomes
 							</p>
 						</div>
-					</Button>
+					</button>
 				</div>
 
 				<!-- Mode Descriptions -->
@@ -626,9 +699,11 @@
 							class="h-4 w-4 flex-shrink-0 text-slate-400 dark:text-slate-500"
 						/>
 						<div>
-							<span class="font-semibold text-slate-900 dark:text-white">Update</span>
+							<span class="font-semibold text-slate-900 dark:text-white"
+								>Workspace</span
+							>
 							<span class="text-slate-600 dark:text-slate-400">
-								- Quick task updates and context modifications
+								- Ask questions, explore data, or make updates
 							</span>
 						</div>
 					</div>

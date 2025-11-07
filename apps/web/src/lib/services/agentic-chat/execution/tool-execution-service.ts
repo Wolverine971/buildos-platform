@@ -69,31 +69,52 @@ export class ToolExecutionService implements BaseService {
 		availableTools: ChatToolDefinition[],
 		options: ToolExecutionOptions = {}
 	): Promise<ToolExecutionResult> {
+		const { name: toolName, rawArguments } = this.resolveToolCall(toolCall);
+
 		console.log('[ToolExecutionService] Executing tool', {
-			toolName: toolCall.name,
+			toolName,
 			callId: toolCall.id,
-			hasArgs: !!toolCall.arguments
+			hasArgs: rawArguments !== undefined && rawArguments !== null
 		});
 
-		// Validate the tool call
-		const validation = this.validateToolCall(toolCall, availableTools);
-		if (!validation.isValid) {
+		if (!toolName) {
 			return {
 				success: false,
-				error: validation.errors.join('; '),
-				toolName: toolCall.name,
+				error: 'Tool call did not include a function name',
+				toolName: 'unknown',
 				toolCallId: toolCall.id
 			};
 		}
 
-		// Normalize arguments
-		const args = this.normalizeArguments(toolCall.arguments);
+		let args: Record<string, any>;
+		try {
+			args = this.normalizeArguments(rawArguments, toolName);
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			return {
+				success: false,
+				error: message,
+				toolName,
+				toolCallId: toolCall.id
+			};
+		}
+
+		// Validate the tool call
+		const validation = this.validateToolCall(toolName, args, availableTools);
+		if (!validation.isValid) {
+			return {
+				success: false,
+				error: validation.errors.join('; '),
+				toolName,
+				toolCallId: toolCall.id
+			};
+		}
 
 		try {
 			// Execute with timeout if specified
 			const timeout = options.timeout ?? ToolExecutionService.DEFAULT_TIMEOUT;
 			const result = await this.executeWithTimeout(
-				() => this.toolExecutor(toolCall.name, args, context),
+				() => this.toolExecutor(toolName, args, context),
 				timeout
 			);
 
@@ -106,20 +127,20 @@ export class ToolExecutionService implements BaseService {
 			return {
 				success: true,
 				data: cleanedResult,
-				toolName: toolCall.name,
+				toolName,
 				toolCallId: toolCall.id,
 				entitiesAccessed: entitiesAccessed.length > 0 ? entitiesAccessed : undefined
 			};
 		} catch (error) {
 			console.error('[ToolExecutionService] Tool execution failed', {
-				toolName: toolCall.name,
+				toolName,
 				error: error instanceof Error ? error.message : error
 			});
 
 			return {
 				success: false,
 				error: error instanceof Error ? error.message : String(error),
-				toolName: toolCall.name,
+				toolName,
 				toolCallId: toolCall.id
 			};
 		}
@@ -136,7 +157,7 @@ export class ToolExecutionService implements BaseService {
 	): Promise<ToolExecutionResult[]> {
 		console.log('[ToolExecutionService] Executing multiple tools', {
 			count: toolCalls.length,
-			tools: toolCalls.map((t) => t.name)
+			tools: toolCalls.map((call) => this.resolveToolCall(call).name || 'unknown')
 		});
 
 		const results: ToolExecutionResult[] = [];
@@ -152,53 +173,59 @@ export class ToolExecutionService implements BaseService {
 	/**
 	 * Validate a tool call
 	 */
-	validateToolCall(toolCall: ChatToolCall, availableTools: ChatToolDefinition[]): ToolValidation {
+	validateToolCall(
+		toolName: string,
+		args: Record<string, any>,
+		availableTools: ChatToolDefinition[]
+	): ToolValidation {
 		const errors: string[] = [];
 
 		// Check if tool exists
-		const toolDef = this.getToolDefinition(toolCall.name, availableTools);
+		const toolDef = this.getToolDefinition(toolName, availableTools);
 		if (!toolDef) {
-			errors.push(`Unknown tool: ${toolCall.name}`);
+			errors.push(`Unknown tool: ${toolName}`);
 			return { isValid: false, errors };
 		}
 
-		// Validate parameters if defined
-		if (toolDef.parameters && typeof toolDef.parameters === 'object') {
-			const params = toolDef.parameters as any;
-			const args = this.normalizeArguments(toolCall.arguments);
+		const paramSchema = toolDef.function?.parameters;
+		if (paramSchema && typeof paramSchema === 'object') {
+			const requiredParams = Array.isArray(paramSchema.required) ? paramSchema.required : [];
 
-			// Check required parameters
-			if (params.required && Array.isArray(params.required)) {
-				for (const required of params.required) {
-					if (!(required in args)) {
-						errors.push(`Missing required parameter: ${required}`);
-					}
+			for (const required of requiredParams) {
+				if (
+					!(required in args) ||
+					args[required] === undefined ||
+					args[required] === null
+				) {
+					errors.push(`Missing required parameter: ${required}`);
 				}
 			}
 
-			// Check parameter types
-			if (params.properties) {
-				for (const [key, value] of Object.entries(args)) {
-					const paramDef = params.properties[key];
-					if (!paramDef) continue;
+			const properties = paramSchema.properties ?? {};
+			for (const [key, value] of Object.entries(args)) {
+				const paramDef = properties[key];
+				if (!paramDef || typeof paramDef !== 'object') continue;
 
-					const expectedType = (paramDef as any).type;
-					const actualType = typeof value;
+				const expectedType = paramDef.type;
+				const actualType = Array.isArray(value) ? 'array' : typeof value;
 
-					// Basic type checking
-					if (expectedType === 'string' && actualType !== 'string') {
-						errors.push(
-							`Invalid type for parameter ${key}: expected string, got ${actualType}`
-						);
-					} else if (expectedType === 'number' && actualType !== 'number') {
-						errors.push(
-							`Invalid type for parameter ${key}: expected number, got ${actualType}`
-						);
-					} else if (expectedType === 'boolean' && actualType !== 'boolean') {
-						errors.push(
-							`Invalid type for parameter ${key}: expected boolean, got ${actualType}`
-						);
-					}
+				// Basic type checking
+				if (expectedType === 'string' && actualType !== 'string') {
+					errors.push(
+						`Invalid type for parameter ${key}: expected string, got ${actualType}`
+					);
+				} else if (expectedType === 'number' && actualType !== 'number') {
+					errors.push(
+						`Invalid type for parameter ${key}: expected number, got ${actualType}`
+					);
+				} else if (expectedType === 'boolean' && actualType !== 'boolean') {
+					errors.push(
+						`Invalid type for parameter ${key}: expected boolean, got ${actualType}`
+					);
+				} else if (expectedType === 'array' && actualType !== 'array') {
+					errors.push(
+						`Invalid type for parameter ${key}: expected array, got ${actualType}`
+					);
 				}
 			}
 		}
@@ -216,7 +243,7 @@ export class ToolExecutionService implements BaseService {
 		toolName: string,
 		availableTools: ChatToolDefinition[]
 	): ChatToolDefinition | undefined {
-		return availableTools.find((t) => t.name === toolName);
+		return availableTools.find((t) => t.function?.name === toolName);
 	}
 
 	/**
@@ -345,6 +372,7 @@ export class ToolExecutionService implements BaseService {
 	): Promise<ToolExecutionResult> {
 		const retryCount = options.retryCount ?? ToolExecutionService.DEFAULT_RETRY_COUNT;
 		const retryDelay = options.retryDelay ?? ToolExecutionService.DEFAULT_RETRY_DELAY;
+		const { name: toolName } = this.resolveToolCall(toolCall);
 
 		let lastError: Error | undefined;
 
@@ -378,7 +406,7 @@ export class ToolExecutionService implements BaseService {
 		return {
 			success: false,
 			error: `Failed after ${retryCount + 1} attempts: ${lastError?.message || 'Unknown error'}`,
-			toolName: toolCall.name,
+			toolName: toolName || 'unknown',
 			toolCallId: toolCall.id
 		};
 	}
@@ -424,8 +452,8 @@ export class ToolExecutionService implements BaseService {
 	/**
 	 * Normalize tool call arguments to an object
 	 */
-	private normalizeArguments(args: ChatToolCall['arguments']): Record<string, any> {
-		if (!args) {
+	private normalizeArguments(args: unknown, toolName?: string): Record<string, any> {
+		if (args === undefined || args === null) {
 			return {};
 		}
 
@@ -434,15 +462,23 @@ export class ToolExecutionService implements BaseService {
 				return JSON.parse(args);
 			} catch (error) {
 				throw new ToolExecutionError(
-					`Invalid JSON for tool arguments: ${
-						error instanceof Error ? error.message : 'unknown error'
-					}`,
-					'unknown',
+					`Invalid JSON for tool arguments: ${error instanceof Error ? error.message : 'unknown error'}`,
+					toolName ?? 'unknown',
 					{ args }
 				);
 			}
 		}
 
-		return args;
+		if (typeof args === 'object') {
+			return args as Record<string, any>;
+		}
+
+		return {};
+	}
+
+	private resolveToolCall(toolCall: ChatToolCall): { name: string; rawArguments: unknown } {
+		const name = toolCall.function?.name ?? (toolCall as any)?.name ?? '';
+		const rawArguments = toolCall.function?.arguments ?? (toolCall as any)?.arguments;
+		return { name, rawArguments };
 	}
 }

@@ -158,13 +158,14 @@ describe('AgentPersistenceService', () => {
 				await service.updateAgent('agent_123', {
 					status: 'error',
 					error_message: 'Task failed',
-					ended_at: new Date().toISOString()
+					completed_at: new Date().toISOString()
 				});
 
 				expect(mockTable.update).toHaveBeenCalledWith(
 					expect.objectContaining({
 						status: 'error',
-						error_message: 'Task failed'
+						error_message: 'Task failed',
+						completed_at: expect.any(String)
 					})
 				);
 			});
@@ -419,13 +420,13 @@ describe('AgentPersistenceService', () => {
 
 				await service.updateChatSession('session_123', {
 					status: 'completed',
-					ended_at: new Date().toISOString()
+					completed_at: new Date().toISOString()
 				});
 
 				expect(mockTable.update).toHaveBeenCalledWith(
 					expect.objectContaining({
 						status: 'completed',
-						ended_at: expect.any(String)
+						completed_at: expect.any(String)
 					})
 				);
 			});

@@ -77,7 +77,7 @@
 		}
 		// Project page: /projects/[id]
 		if (currentPath.match(/^\/projects\/[^/]+$/) && $page.data?.project) {
-			return 'project_update';
+			return 'project';
 		}
 		// Default: global context
 		return 'global';

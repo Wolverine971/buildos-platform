@@ -22,7 +22,6 @@ import type {
 	AgentPlanInsert,
 	AgentChatSessionInsert,
 	AgentChatMessageInsert,
-	PlanningStrategy,
 	ChatSession,
 	Json
 } from '@buildos/shared-types';
@@ -126,7 +125,7 @@ export interface AgentPlan {
 	userId: string;
 	plannerAgentId: string;
 	userMessage: string;
-	strategy: PlanningStrategy | ChatStrategy;
+	strategy: ChatStrategy;
 	steps: PlanStep[];
 	status: 'pending' | 'executing' | 'completed' | 'failed';
 	createdAt: Date;
@@ -196,7 +195,7 @@ export type StreamEvent =
 	| { type: 'session'; session: ChatSession }
 	| { type: 'ontology_loaded'; summary: string }
 	| { type: 'last_turn_context'; context: LastTurnContext }
-	| { type: 'strategy_selected'; strategy: ChatStrategy | PlanningStrategy; confidence: number }
+	| { type: 'strategy_selected'; strategy: ChatStrategy; confidence: number }
 	| { type: 'clarifying_questions'; questions: string[] }
 	| { type: 'analysis'; analysis: StrategyAnalysis }
 	| { type: 'plan_created'; plan: AgentPlan }

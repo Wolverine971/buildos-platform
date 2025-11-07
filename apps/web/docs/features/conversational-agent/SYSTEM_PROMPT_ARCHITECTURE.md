@@ -74,19 +74,19 @@ User receives specialized agent response
 
 ---
 
-### 3. `project_update` - Efficient Project Updater
+### 3. `project` - Project Workspace
 
-**Handler**: `handleProjectUpdate()`
-**System Prompt**: `AGENT_SYSTEM_PROMPTS.project_update`
+**Handler**: `handleProjectUpdate()` (legacy name)
+**System Prompt**: `AGENT_SYSTEM_PROMPTS.project`
 
-**Purpose**: Quickly execute updates to existing projects without unnecessary conversation.
+**Purpose**: Act as the user's dedicated project workspace—answer questions, explore context, or execute updates as needed.
 
 **Behavior**:
 
-- Direct and action-oriented
-- Shows preview of changes
-- Executes quickly unless ambiguous
-- Focuses on tasks unless project context needs updating
+- Determine whether the request is informational or operational before acting
+- Start with list/search/detail tools, then escalate to write operations when requested
+- Show previews of planned changes when modifying data
+- Surface related risks, blockers, or next steps proactively
 - Temperature: 0.3 (precise)
 
 **Requires**: `entity_id` (project ID)
@@ -225,7 +225,7 @@ CREATE TABLE chat_sessions (
   -- Both store same value (agent chat type)
   context_type TEXT NOT NULL CHECK (context_type IN (
     'global', 'project', 'task', 'calendar',  -- Legacy values
-    'general', 'project_create', 'project_update',
+    'general', 'project_create', 'project',
     'project_audit', 'project_forecast',
     'task_update', 'daily_brief_update'  -- Agent values
   )),

@@ -1,340 +1,97 @@
-# LLM Tool Instructions for BuildOS Chat
+# LLM Tool Instructions for BuildOS Agentic Chat
 
 ## Core Principle
 
-Use existing API endpoints for all mutations. Never directly manipulate the database for create/update/delete operations.
+Operate exclusively on ontology entities (`onto_projects`, `onto_plans`, `onto_tasks`, `onto_goals`, `onto_templates`). All mutations must go through the `/api/onto/*` endpoints. Never touch legacy tables, calendar services, or direct SQL updates—everything routes through the existing API + ChatToolExecutor.
 
-## Task-Calendar Management
+## Reading Ontology Data
 
-### Before Scheduling Any Task
+1. **List first, then zoom in.** Use the lightweight list tools to gather IDs before requesting details:
+   ```javascript
+   const tasks = await list_onto_tasks({ project_id: 'proj_uuid', state_key: 'in_progress' });
+   const taskDetails = await get_onto_task_details({ task_id: tasks.tasks[0].id });
+   ```
+2. **Available list tools**
+   - `list_onto_projects` – project summaries (`state_key`, `type_key`, facets)
+   - `list_onto_plans` – execution plans within a project
+   - `list_onto_goals` – strategic goals for a project
+   - `list_onto_tasks` – actionable tasks (filter by project or state)
+3. **Detail tools**
+   - `get_onto_project_details` – full project graph (goals, plans, tasks, documents, allowed transitions)
+   - `get_onto_task_details` – complete task payload including props and linked plan
+4. **Relationship graphs**
+   - `get_entity_relationships({ entity_id, direction })` reveals nodes connected via `onto_edges`. Use it to answer prompts like “what connects this task to the rest of the project?”
 
-**ALWAYS** check for existing calendar events first:
+### Response Style
+- Summarize what the tool returned and cite entities by name + ID when relevant.
+- Example: “Found 4 tasks for **AI Knowledge Base Launch** (proj_123). `Draft onboarding emails` (task_45) is `in_progress`.”
 
+## Template Search & Project Creation
+
+1. **Always search templates first**
+   ```javascript
+   const templates = await list_onto_templates({ scope: 'project', realm: 'writer', search: 'book' });
+   ```
+   Call it once per creation flow—pick the best template and move on.
+2. **Create projects with full specs**
+   ```javascript
+   await create_onto_project({
+     project: {
+       name: 'Writer Pipeline',
+       type_key: 'project.writer.pipeline',
+       props: { facets: { context: 'client', scale: 'medium' } }
+     },
+     goals: [{ name: 'Publish v1 playbook', type_key: 'goal.writer.playbook' }],
+     plans: [{ name: 'Drafting plan', type_key: 'plan.writer.drafting' }],
+     tasks: [{ title: 'Outline chapters', state_key: 'todo' }]
+   });
+   ```
+   - Infer as much as possible from the user’s request.
+   - Use `clarifications[]` only when absolutely necessary (critical missing info you cannot infer).
+   - The API returns counts plus `project_id`; emit a context-shift response so the UI can jump into the new project.
+
+## Updating or Deleting Entities
+
+- `update_onto_task` and `update_onto_project` accept partial fields—only include keys you intend to change.
+- Validate state transitions from the detail payload (projects expose `allowed_transitions`).
+- Deletions (`delete_onto_task`, `delete_onto_goal`, `delete_onto_plan`) are permanent. Confirm the user’s intent before calling.
+- Keep mutations scoped to ontology IDs provided by the user or discovered via list/detail calls. Never guess IDs.
+
+## Creating Additional Ontology Objects
+
+- `create_onto_task` / `create_onto_goal` / `create_onto_plan` all require a `project_id`. Ensure the project has been identified earlier in the conversation.
+- When linking tasks to plans, pass the `plan_id` from prior tool output—never invent one.
+
+## Schema Questions
+
+Use `get_field_info` for any question about valid states, priority ranges, or required fields. Supported entity types:
+- `ontology_project`
+- `ontology_task`
+- `ontology_plan`
+- `ontology_goal`
+- `ontology_template`
+
+Example:
 ```javascript
-// Option 1: Quick check
-check_task_has_calendar_event({
-	task_id: 'task-uuid'
-});
-
-// Option 2: Detailed check
-get_task_calendar_events({
-	task_id: 'task-uuid',
-	include_deleted: false
-});
+const schema = await get_field_info({ entity_type: 'ontology_task', field_name: 'state_key' });
 ```
+This returns valid values (`todo`, `in_progress`, `blocked`, `done`) plus descriptions. Do not guess allowed values; always consult this tool when uncertain.
 
-### Smart Scheduling Pattern
+## Relationship-Focused Answers
 
-**ALWAYS** use `update_or_schedule_task` for existing tasks:
-
+When users ask how entities connect:
 ```javascript
-// Correct - Smart scheduling
-update_or_schedule_task({
-	project_id: 'project-uuid',
-	task_id: 'task-uuid',
-	start_time: '2024-01-15T14:00:00Z',
-	duration_minutes: 60
-});
-
-// Wrong - Direct scheduling (may create duplicates)
-schedule_task({
-	task_id: 'task-uuid',
-	start_time: '2024-01-15T14:00:00Z'
-});
+const rels = await get_entity_relationships({ entity_id: 'task_uuid', direction: 'both' });
 ```
+- Summarize outgoing vs incoming links (“Task outputs to Output_12; belongs to Plan_4”).
+- If the entity is outside the user’s workspace the API will block it—never bypass this guardrail.
 
-### Common Scenarios
+## Checklist Before Responding
 
-#### 1. User: "Schedule my task for tomorrow at 2pm"
+1. **Did you list before fetching details?** Avoid costly detail calls unless the user explicitly needs them.
+2. **Are you using only `onto_*` tools?** Legacy and calendar tools are removed—do not reference them.
+3. **Did you confirm ownership via prior tool output?** Never mutate entities you haven’t surfaced in the conversation.
+4. **Did you surface template info before project creation?** `list_onto_templates` precedes every `create_onto_project` call.
+5. **Did you answer schema questions with `get_field_info`?** No guessing valid values.
 
-```javascript
-// Step 1: Check existing events
-const check = check_task_has_calendar_event({ task_id });
-
-// Step 2: Smart update/create
-update_or_schedule_task({
-	project_id,
-	task_id,
-	start_time: '2024-01-15T14:00:00Z',
-	duration_minutes: 60
-});
-
-// Step 3: Confirm
-("I've scheduled your task for tomorrow at 2pm");
-```
-
-#### 2. User: "Reschedule this task to next week"
-
-```javascript
-// Step 1: Get current events
-const events = get_task_calendar_events({ task_id });
-
-// Step 2: Update (handles existing events automatically)
-update_or_schedule_task({
-	project_id,
-	task_id,
-	start_time: '2024-01-22T14:00:00Z'
-});
-
-// Step 3: Confirm
-("I've rescheduled your task from [old_date] to next week");
-```
-
-#### 3. User: "Make this a weekly recurring task"
-
-```javascript
-// The API handles deletion of old events and creation of series
-update_or_schedule_task({
-	project_id,
-	task_id,
-	start_time: '2024-01-15T14:00:00Z',
-	recurrence_pattern: 'weekly',
-	recurrence_ends: '2024-03-15' // Optional end date
-});
-```
-
-#### 4. User: "Remove this task from my calendar but keep the task"
-
-```javascript
-// Update task without calendar flag
-update_task({
-	task_id,
-	updates: {
-		start_date: null // This triggers calendar event deletion
-	}
-});
-```
-
-## Critical Rules
-
-### 1. Task Updates with Dates
-
-When updating a task's `start_date`, the API automatically handles calendar sync:
-
-```javascript
-// Correct - API handles calendar automatically
-update_task({
-	task_id,
-	updates: {
-		start_date: '2024-01-15T14:00:00Z',
-		duration_minutes: 90
-	}
-});
-// The API adds addTaskToCalendar: true internally when start_date changes
-```
-
-### 2. Force Recreate
-
-Only use `force_recreate: true` when user explicitly requests:
-
-```javascript
-// User: "Delete the old event and create a fresh one"
-update_or_schedule_task({
-	project_id,
-	task_id,
-	start_time: '2024-01-15T14:00:00Z',
-	force_recreate: true // Only when explicitly requested
-});
-```
-
-### 3. Error Handling
-
-Always inform users of calendar issues:
-
-```javascript
-// If calendar disconnected
-if (error.code === 'GOOGLE_AUTH_EXPIRED') {
-	return 'Your Google Calendar needs to be reconnected. Please go to Settings > Calendar Integration to reconnect.';
-}
-
-// If sync failed
-if (result.sync_status === 'error') {
-	return 'The task was updated but calendar sync failed. You can retry from the task details page.';
-}
-```
-
-## Progressive Disclosure Pattern
-
-### Step 1: List/Search (Abbreviated)
-
-Use for initial queries:
-
-```javascript
-list_tasks({
-	status: ['in_progress', 'backlog'],
-	has_date: true,
-	limit: 10
-});
-// Returns: Abbreviated task summaries
-```
-
-### Step 2: Get Details (Complete)
-
-Use only when user needs full information:
-
-```javascript
-get_task_details({
-	task_id: 'uuid',
-	include_subtasks: true,
-	include_project_context: true
-});
-// Returns: Complete task with all relationships
-```
-
-## Tool Categories & Usage
-
-### List Tools (Low Token Cost)
-
-- `list_tasks` - Abbreviated task list
-- `search_projects` - Project summaries
-- `search_notes` - Note previews
-- `search_brain_dumps` - Brain dump summaries
-- `get_calendar_events` - Event list
-
-### Detail Tools (Higher Token Cost)
-
-- `get_task_details` - Complete task data
-- `get_project_details` - Full project context
-- `get_note_details` - Complete note content
-- `get_brain_dump_details` - Full brain dump
-
-### Action Tools (API Mutations)
-
-- `create_task` - Via `/api/projects/[id]/tasks`
-- `update_task` - Via `/api/projects/[id]/tasks/[taskId]`
-- `create_note` - Via `/api/notes`
-- `update_project_context` - Via `/api/projects/[id]`
-
-### Calendar Tools
-
-- `get_task_calendar_events` - Check task's calendar links
-- `check_task_has_calendar_event` - Quick existence check
-- `update_or_schedule_task` - Smart scheduling
-- `find_available_slots` - Find free time
-- `update_calendar_event` - Modify existing event
-- `delete_calendar_event` - Remove event
-
-## Response Patterns
-
-### Successful Scheduling
-
-```
-✓ I've scheduled your task "Review documentation" for tomorrow at 2pm (90 minutes).
-  The calendar event has been created and linked to your task.
-```
-
-### Rescheduling
-
-```
-✓ I've rescheduled "Team meeting" from Tuesday to Thursday at 3pm.
-  The calendar event has been updated automatically.
-```
-
-### Calendar Not Connected
-
-```
-⚠️ Your task has been updated, but I couldn't add it to your calendar.
-   Please connect your Google Calendar in Settings to enable calendar sync.
-```
-
-### Sync Failed
-
-```
-⚠️ The task was updated but calendar sync failed.
-   You can retry the sync from the task details page or try again later.
-```
-
-## Performance Tips
-
-### Parallel Operations
-
-When operations are independent, run in parallel:
-
-```javascript
-// Good - Parallel execution
-Promise.all([
-	list_tasks({ status: ['in_progress'] }),
-	get_calendar_events({ timeMin: today }),
-	search_notes({ query: 'meeting' })
-]);
-
-// Bad - Sequential (slower)
-await list_tasks({ status: ['in_progress'] });
-await get_calendar_events({ timeMin: today });
-await search_notes({ query: 'meeting' });
-```
-
-### Minimize Detail Calls
-
-Only fetch full details when necessary:
-
-```javascript
-// Good - Progressive disclosure
-const tasks = await list_tasks({ limit: 10 });
-// Only get details for specific task user asks about
-if (userAsksAboutTask) {
-	const details = await get_task_details({ task_id });
-}
-
-// Bad - Fetching all details upfront
-const tasks = await list_tasks({ limit: 10 });
-for (const task of tasks) {
-	await get_task_details({ task_id: task.id }); // Unnecessary
-}
-```
-
-## Common Mistakes to Avoid
-
-### ❌ Direct Calendar Scheduling for Existing Tasks
-
-```javascript
-// Wrong
-schedule_task({ task_id, start_time });
-
-// Right
-update_or_schedule_task({ project_id, task_id, start_time });
-```
-
-### ❌ Not Checking for Existing Events
-
-```javascript
-// Wrong
-update_or_schedule_task({ ... }); // Without checking first
-
-// Right
-const check = await check_task_has_calendar_event({ task_id });
-if (check.has_event) {
-  // Inform user task is already scheduled
-}
-await update_or_schedule_task({ ... });
-```
-
-### ❌ Using Direct DB for Mutations
-
-```javascript
-// Wrong
-supabase.from('tasks').update({ ... });
-
-// Right
-await updateTaskViaAPI({ ... });  // Uses API endpoint
-```
-
-### ❌ Fetching Full Details for Lists
-
-```javascript
-// Wrong
-const projects = await Promise.all(projectIds.map((id) => get_project_details({ project_id: id })));
-
-// Right
-const projects = await search_projects({ limit: 20 });
-```
-
-## Remember
-
-1. **API First**: Always use API endpoints for mutations
-2. **Check First**: Always check for existing calendar events
-3. **Smart Tools**: Use `update_or_schedule_task` for existing tasks
-4. **Progressive**: Start with lists, fetch details only when needed
-5. **Inform Users**: Always communicate calendar sync status
-6. **Handle Errors**: Gracefully handle calendar disconnection
-7. **Be Efficient**: Run independent operations in parallel
+Following these guardrails keeps the agent aligned with the new ontology-first architecture and prevents regressions back into legacy systems.

@@ -43,7 +43,6 @@ export type ChatContextType =
 	// Agent proactive modes
 	| 'general' // General agent assistant
 	| 'project_create' // Creating new project with guided questions
-	| 'project_update' // Updating existing project
 	| 'project_audit' // Critical review of project
 	| 'project_forecast' // Scenario forecasting
 	| 'task_update' // Quick task updates

@@ -41,12 +41,12 @@
 	const loadErrorFromServer = data?.loadError as string | undefined;
 
 	let isLoading = $state(initialDashboard ? false : true);
-let error = $state<string | null>(loadErrorFromServer ?? null);
-let selectedTimeframe = $state<'7d' | '30d' | '90d'>(defaultTimeframe);
-let autoRefresh = $state(false);
+	let error = $state<string | null>(loadErrorFromServer ?? null);
+	let selectedTimeframe = $state<'7d' | '30d' | '90d'>(defaultTimeframe);
+	let autoRefresh = $state(false);
 
-const navCardBaseClasses =
-	'group relative flex min-h-[180px] flex-col justify-between rounded-2xl border border-slate-200/70 bg-white/85 p-6 sm:p-7 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl dark:border-slate-800/70 dark:bg-slate-900/70';
+	const navCardBaseClasses =
+		'group relative flex min-h-[180px] flex-col justify-between rounded-2xl border border-slate-200/70 bg-white/85 p-6 sm:p-7 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl dark:border-slate-800/70 dark:bg-slate-900/70';
 
 	let refreshTimer: ReturnType<typeof setInterval> | null = null;
 	let currentRequest: AbortController | null = null;
@@ -490,7 +490,9 @@ const navCardBaseClasses =
 			<a href="/admin/users" class={navCardBaseClasses}>
 				{#if comprehensiveAnalytics.userMetrics.newUsersLast24h > 0}
 					<div class="absolute right-5 top-5">
-						<span class="inline-flex items-center rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-800 shadow-sm dark:bg-green-900/40 dark:text-green-200">
+						<span
+							class="inline-flex items-center rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-800 shadow-sm dark:bg-green-900/40 dark:text-green-200"
+						>
 							+{comprehensiveAnalytics.userMetrics.newUsersLast24h} new
 						</span>
 					</div>
@@ -498,7 +500,9 @@ const navCardBaseClasses =
 				<div class="flex flex-1 flex-col gap-6">
 					<div class="flex items-start justify-between gap-4">
 						<div class="flex flex-1 items-start gap-4">
-							<span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500/20 via-indigo-500/15 to-blue-400/20 text-blue-600 dark:text-blue-200">
+							<span
+								class="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500/20 via-indigo-500/15 to-blue-400/20 text-blue-600 dark:text-blue-200"
+							>
 								<Users class="h-6 w-6" />
 							</span>
 							<div class="space-y-1">
@@ -511,12 +515,16 @@ const navCardBaseClasses =
 							</div>
 						</div>
 						{#if comprehensiveAnalytics.userMetrics.totalUsers > 0}
-							<span class="rounded-xl bg-blue-50 px-3 py-1 text-xl font-semibold text-blue-600 dark:bg-blue-500/10 dark:text-blue-200">
+							<span
+								class="rounded-xl bg-blue-50 px-3 py-1 text-xl font-semibold text-blue-600 dark:bg-blue-500/10 dark:text-blue-200"
+							>
 								{comprehensiveAnalytics.userMetrics.totalUsers}
 							</span>
 						{/if}
 					</div>
-					<span class="mt-auto text-xs font-semibold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">
+					<span
+						class="mt-auto text-xs font-semibold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500"
+					>
 						View module
 					</span>
 				</div>
@@ -526,7 +534,9 @@ const navCardBaseClasses =
 				<div class="flex flex-1 flex-col gap-6">
 					<div class="flex items-start justify-between gap-4">
 						<div class="flex flex-1 items-start gap-4">
-							<span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500/20 via-blue-500/15 to-indigo-400/20 text-indigo-600 dark:text-indigo-200">
+							<span
+								class="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500/20 via-blue-500/15 to-indigo-400/20 text-indigo-600 dark:text-indigo-200"
+							>
 								<Bell class="h-6 w-6" />
 							</span>
 							<div class="space-y-1">
@@ -539,7 +549,9 @@ const navCardBaseClasses =
 							</div>
 						</div>
 					</div>
-					<span class="mt-auto text-xs font-semibold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">
+					<span
+						class="mt-auto text-xs font-semibold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500"
+					>
 						View module
 					</span>
 				</div>
@@ -549,7 +561,9 @@ const navCardBaseClasses =
 				<div class="flex flex-1 flex-col gap-6">
 					<div class="flex items-start justify-between gap-4">
 						<div class="flex flex-1 items-start gap-4">
-							<span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-500/20 via-cyan-500/15 to-blue-400/20 text-sky-600 dark:text-sky-200">
+							<span
+								class="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-500/20 via-cyan-500/15 to-blue-400/20 text-sky-600 dark:text-sky-200"
+							>
 								<Workflow class="h-6 w-6" />
 							</span>
 							<div class="space-y-1">
@@ -562,7 +576,9 @@ const navCardBaseClasses =
 							</div>
 						</div>
 					</div>
-					<span class="mt-auto text-xs font-semibold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">
+					<span
+						class="mt-auto text-xs font-semibold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500"
+					>
 						View module
 					</span>
 				</div>
@@ -572,7 +588,9 @@ const navCardBaseClasses =
 				<div class="flex flex-1 flex-col gap-6">
 					<div class="flex items-start justify-between gap-4">
 						<div class="flex flex-1 items-start gap-4">
-							<span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-500/20 via-teal-500/15 to-blue-400/20 text-cyan-600 dark:text-cyan-200">
+							<span
+								class="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-500/20 via-teal-500/15 to-blue-400/20 text-cyan-600 dark:text-cyan-200"
+							>
 								<MessageSquare class="h-6 w-6" />
 							</span>
 							<div class="space-y-1">
@@ -585,7 +603,9 @@ const navCardBaseClasses =
 							</div>
 						</div>
 					</div>
-					<span class="mt-auto text-xs font-semibold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">
+					<span
+						class="mt-auto text-xs font-semibold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500"
+					>
 						View module
 					</span>
 				</div>
@@ -594,7 +614,9 @@ const navCardBaseClasses =
 			<a href="/admin/beta" class={navCardBaseClasses}>
 				{#if comprehensiveAnalytics.userMetrics.newBetaSignupsLast24h > 0}
 					<div class="absolute right-5 top-5">
-						<span class="inline-flex items-center rounded-full bg-purple-100 px-3 py-1 text-xs font-semibold text-purple-800 shadow-sm dark:bg-purple-900/40 dark:text-purple-200">
+						<span
+							class="inline-flex items-center rounded-full bg-purple-100 px-3 py-1 text-xs font-semibold text-purple-800 shadow-sm dark:bg-purple-900/40 dark:text-purple-200"
+						>
 							+{comprehensiveAnalytics.userMetrics.newBetaSignupsLast24h} new
 						</span>
 					</div>
@@ -602,7 +624,9 @@ const navCardBaseClasses =
 				<div class="flex flex-1 flex-col gap-6">
 					<div class="flex items-start justify-between gap-4">
 						<div class="flex flex-1 items-start gap-4">
-							<span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-purple-500/20 via-fuchsia-500/15 to-indigo-400/20 text-purple-600 dark:text-purple-200">
+							<span
+								class="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-purple-500/20 via-fuchsia-500/15 to-indigo-400/20 text-purple-600 dark:text-purple-200"
+							>
 								<UserCheck class="h-6 w-6" />
 							</span>
 							<div class="space-y-1">
@@ -615,12 +639,16 @@ const navCardBaseClasses =
 							</div>
 						</div>
 						{#if comprehensiveAnalytics.userMetrics.totalBetaUsers > 0}
-							<span class="rounded-xl bg-purple-50 px-3 py-1 text-xl font-semibold text-purple-600 dark:bg-purple-500/10 dark:text-purple-200">
+							<span
+								class="rounded-xl bg-purple-50 px-3 py-1 text-xl font-semibold text-purple-600 dark:bg-purple-500/10 dark:text-purple-200"
+							>
 								{comprehensiveAnalytics.userMetrics.totalBetaUsers}
 							</span>
 						{/if}
 					</div>
-					<span class="mt-auto text-xs font-semibold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">
+					<span
+						class="mt-auto text-xs font-semibold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500"
+					>
 						View module
 					</span>
 				</div>
@@ -629,7 +657,9 @@ const navCardBaseClasses =
 			<a href="/admin/feedback" class={navCardBaseClasses}>
 				{#if feedbackOverview.overview.recent_24h > 0}
 					<div class="absolute right-5 top-5">
-						<span class="inline-flex items-center rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800 shadow-sm dark:bg-amber-900/40 dark:text-amber-200">
+						<span
+							class="inline-flex items-center rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800 shadow-sm dark:bg-amber-900/40 dark:text-amber-200"
+						>
 							+{feedbackOverview.overview.recent_24h} new
 						</span>
 					</div>
@@ -637,7 +667,9 @@ const navCardBaseClasses =
 				<div class="flex flex-1 flex-col gap-6">
 					<div class="flex items-start justify-between gap-4">
 						<div class="flex flex-1 items-start gap-4">
-							<span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500/20 via-lime-500/15 to-teal-400/20 text-emerald-600 dark:text-emerald-200">
+							<span
+								class="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500/20 via-lime-500/15 to-teal-400/20 text-emerald-600 dark:text-emerald-200"
+							>
 								<MessageSquare class="h-6 w-6" />
 							</span>
 							<div class="space-y-1">
@@ -650,7 +682,9 @@ const navCardBaseClasses =
 							</div>
 						</div>
 					</div>
-					<span class="mt-auto text-xs font-semibold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">
+					<span
+						class="mt-auto text-xs font-semibold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500"
+					>
 						View module
 					</span>
 				</div>
@@ -660,7 +694,9 @@ const navCardBaseClasses =
 				<div class="flex flex-1 flex-col gap-6">
 					<div class="flex items-start justify-between gap-4">
 						<div class="flex flex-1 items-start gap-4">
-							<span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-500/20 via-orange-500/15 to-yellow-400/20 text-amber-600 dark:text-amber-200">
+							<span
+								class="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-500/20 via-orange-500/15 to-yellow-400/20 text-amber-600 dark:text-amber-200"
+							>
 								<Zap class="h-6 w-6" />
 							</span>
 							<div class="space-y-1">
@@ -673,7 +709,9 @@ const navCardBaseClasses =
 							</div>
 						</div>
 					</div>
-					<span class="mt-auto text-xs font-semibold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">
+					<span
+						class="mt-auto text-xs font-semibold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500"
+					>
 						View module
 					</span>
 				</div>
@@ -683,7 +721,9 @@ const navCardBaseClasses =
 				<div class="flex flex-1 flex-col gap-6">
 					<div class="flex items-start justify-between gap-4">
 						<div class="flex flex-1 items-start gap-4">
-							<span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500/20 via-red-500/15 to-rose-400/20 text-rose-600 dark:text-rose-200">
+							<span
+								class="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500/20 via-red-500/15 to-rose-400/20 text-rose-600 dark:text-rose-200"
+							>
 								<XCircle class="h-6 w-6" />
 							</span>
 							<div class="space-y-1">
@@ -696,12 +736,16 @@ const navCardBaseClasses =
 							</div>
 						</div>
 						{#if errorsData.unresolved_errors > 0}
-							<span class="rounded-xl bg-rose-50 px-3 py-1 text-xl font-semibold text-rose-600 dark:bg-rose-500/10 dark:text-rose-200">
+							<span
+								class="rounded-xl bg-rose-50 px-3 py-1 text-xl font-semibold text-rose-600 dark:bg-rose-500/10 dark:text-rose-200"
+							>
 								{errorsData.unresolved_errors}
 							</span>
 						{/if}
 					</div>
-					<span class="mt-auto text-xs font-semibold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">
+					<span
+						class="mt-auto text-xs font-semibold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500"
+					>
 						View module
 					</span>
 				</div>
@@ -712,11 +756,15 @@ const navCardBaseClasses =
 					<div class="flex flex-1 flex-col gap-6">
 						<div class="flex items-start justify-between gap-4">
 							<div class="flex flex-1 items-start gap-4">
-								<span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-500/20 via-amber-500/15 to-yellow-400/20 text-orange-600 dark:text-orange-200">
+								<span
+									class="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-500/20 via-amber-500/15 to-yellow-400/20 text-orange-600 dark:text-orange-200"
+								>
 									<CreditCard class="h-6 w-6" />
 								</span>
 								<div class="space-y-1">
-									<h3 class="text-lg font-semibold text-slate-900 dark:text-slate-50">
+									<h3
+										class="text-lg font-semibold text-slate-900 dark:text-slate-50"
+									>
 										Subscriptions
 									</h3>
 									<p class="text-sm text-slate-600 dark:text-slate-400">
@@ -725,7 +773,9 @@ const navCardBaseClasses =
 								</div>
 							</div>
 						</div>
-						<span class="mt-auto text-xs font-semibold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">
+						<span
+							class="mt-auto text-xs font-semibold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500"
+						>
 							View module
 						</span>
 					</div>
@@ -735,11 +785,15 @@ const navCardBaseClasses =
 					<div class="flex flex-1 flex-col gap-6">
 						<div class="flex items-start justify-between gap-4">
 							<div class="flex flex-1 items-start gap-4">
-								<span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500/20 via-green-500/15 to-teal-400/20 text-emerald-600 dark:text-emerald-200">
+								<span
+									class="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500/20 via-green-500/15 to-teal-400/20 text-emerald-600 dark:text-emerald-200"
+								>
 									<DollarSign class="h-6 w-6" />
 								</span>
 								<div class="space-y-1">
-									<h3 class="text-lg font-semibold text-slate-900 dark:text-slate-50">
+									<h3
+										class="text-lg font-semibold text-slate-900 dark:text-slate-50"
+									>
 										Revenue
 									</h3>
 									<p class="text-sm text-slate-600 dark:text-slate-400">
@@ -748,14 +802,15 @@ const navCardBaseClasses =
 								</div>
 							</div>
 						</div>
-						<span class="mt-auto text-xs font-semibold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">
+						<span
+							class="mt-auto text-xs font-semibold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500"
+						>
 							View module
 						</span>
 					</div>
 				</a>
 			{/if}
 		</div>
-
 
 		{#if error}
 			<div

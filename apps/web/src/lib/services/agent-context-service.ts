@@ -21,7 +21,7 @@ import type {
 	SystemPromptMetadata,
 	LocationContext
 } from '@buildos/shared-types';
-import { CHAT_TOOLS, getToolsForContext, type GetToolsOptions } from '$lib/chat/tools.config';
+import { CHAT_TOOLS, getToolsForContext } from '$lib/chat/tools.config';
 import { getToolsForAgent } from '@buildos/shared-types';
 import { ChatCompressionService } from './chat-compression-service';
 import { ChatContextService } from './chat-context-service';
@@ -178,7 +178,8 @@ export class AgentContextService {
 		const systemPrompt = await this.buildEnhancedSystemPrompt(
 			contextType,
 			ontologyContext,
-			lastTurnContext
+			lastTurnContext,
+			entityId
 		);
 
 		// Step 2: Process conversation history with compression if needed
@@ -276,7 +277,8 @@ export class AgentContextService {
 	private async buildEnhancedSystemPrompt(
 		contextType: ChatContextType,
 		ontologyContext?: OntologyContext,
-		lastTurnContext?: LastTurnContext
+		lastTurnContext?: LastTurnContext,
+		entityId?: string
 	): Promise<string> {
 		let prompt = `You are an AI assistant in BuildOS with advanced context awareness.
 
@@ -315,6 +317,24 @@ Analyze each request and choose the appropriate strategy:
 - Maintain conversation continuity using the last_turn_context
 - Respect token limits through progressive disclosure
 - Start with LIST/SEARCH tools before using DETAIL tools`;
+
+		// Special handling for project context workspace
+		if (contextType === 'project' || ontologyContext?.type === 'project') {
+			const projectName =
+				(ontologyContext?.data?.name as string | undefined) ?? 'current project';
+			const projectIdentifier = ontologyContext?.data?.id || entityId || 'not provided';
+			prompt += `
+
+## Project Workspace Operating Guide
+- You are fully scoped to Project **${projectName}** (ID: ${projectIdentifier}).
+- Treat this chat as the user's dedicated project workspace: they may ask for summaries, risks, decisions, or request concrete changes.
+- Default workflow:
+  1. Identify whether the request is informational (answer with existing data) or operational (requires write tools).
+  2. Start with ontology list/detail tools (e.g., list_onto_projects, list_onto_tasks, get_onto_project_details, get_onto_task_details) to ground your answer before suggesting edits.
+  3. If the user clearly asks to change data, call the corresponding create/update tool and describe the result.
+  4. Proactively surface related insights (risks, blockers, next steps) when helpful—even if the user asked a simple question.
+- Always mention when additional detail is available via tools and ask if you'd like to dive deeper before modifying data.`;
+		}
 
 		// Special handling for project_create context
 		if (contextType === 'project_create') {
@@ -401,6 +421,18 @@ CRITICAL INSTRUCTIONS:
 - Do NOT ask for confirmation unless critical info is missing
 - Be decisive and proactive
 - IMPORTANT: Do not get stuck searching for templates - make a decision and create the project`;
+		}
+
+		if (lastTurnContext) {
+			const entityHighlights = this.formatLastTurnEntities(lastTurnContext.entities);
+			prompt += `
+
+## Last Turn Highlights
+- Summary: ${lastTurnContext.summary}
+- Strategy Used: ${lastTurnContext.strategy_used || 'not recorded'}
+- Data Accessed: ${lastTurnContext.data_accessed.length > 0 ? lastTurnContext.data_accessed.join(', ') : 'none'}
+${entityHighlights.length > 0 ? entityHighlights.map((line) => `- ${line}`).join('\n') : '- No entities tracked last turn'}
+- Continue the conversation by referencing these entities when relevant (e.g., pick up the last touched task before moving on).`;
 		}
 
 		// Add ontology-specific context for projects
@@ -580,9 +612,9 @@ ${
 ${(ontology?.relationships?.edges?.length ?? 0) > 5 ? `... and ${(ontology?.relationships?.edges?.length ?? 0) - 5} more` : ''}
 
 ### Hints
-- Use list_tasks, list_goals, list_plans to see entities
+- Use list_onto_tasks, list_onto_goals, list_onto_plans to see entities
 - Use get_entity_relationships for full graph
-- Use get_project_details for complete information`;
+- Use get_onto_project_details for complete information`;
 		} else if (ontology.type === 'element') {
 			const elem = ontology.data.element;
 			content += `### Element Information
@@ -614,9 +646,9 @@ ${
 }
 
 ### Hints
-- Use get_element_details for complete information
-- Use get_parent_project for project context
-- Use get_related_elements for connected items`;
+- Use the appropriate onto detail tool (e.g., get_onto_task_details) for complete information
+- Use get_onto_project_details for full project context
+- Use get_entity_relationships for connected items`;
 		} else if (ontology.type === 'global') {
 			content += `### Global Overview
 - Total Projects: ${ontology.data.total_projects}
@@ -638,9 +670,9 @@ ${
 }
 
 ### Hints
-- Use search_projects to find specific projects
-- Use create_project to start new project
-- Use list_all_projects for complete list`;
+- Use list_onto_projects to find specific projects
+- Use create_onto_project to start new projects
+- Use list_onto_templates for a broader catalog`;
 		}
 
 		return {
@@ -655,7 +687,7 @@ ${
 	 */
 	private async getContextTools(
 		contextType: ChatContextType,
-		ontologyContext?: OntologyContext
+		_ontologyContext?: OntologyContext
 	): Promise<ChatToolDefinition[]> {
 		// Special handling for project_create context
 		if (contextType === 'project_create') {
@@ -671,15 +703,9 @@ ${
 			]);
 		}
 
-		// Determine if we have ontology context
-		const hasOntology = !!ontologyContext;
-
-		// Get ontology-focused tools when available
+		// Always provide ontology-first tools for the new agentic flow
 		const tools = getToolsForContext({
-			useOntology: hasOntology, // Use ontology tools when context available
-			includeLegacy: !hasOntology, // Fall back to legacy when no ontology
-			includeCalendar: true, // Always include calendar
-			includeUtility: true // Always include utility tools
+			includeUtility: true
 		});
 
 		// Filter to read-write permissions for planner
@@ -842,8 +868,8 @@ You are the PLANNING layer of a multi-agent system. Your responsibilities:
 - You have tools available - use them ONLY if needed
 - Examples:
   - "What is BuildOS?" → Just respond conversationally (no tools)
-  - "Show me my tasks" → Use list_tasks tool
-  - "Tell me about my marketing project" → Use search_projects + get_project_details
+  - "Show me my tasks" → Use list_onto_tasks tool
+  - "Tell me about my marketing project" → Use list_onto_projects + get_onto_project_details
 → Respond directly, using tools as needed
 
 ### Complex Multi-Step Query (Rare)
@@ -863,9 +889,9 @@ When spawning executors, give them:
 ## Available Tools
 
 You have access to:
-- **LIST/SEARCH tools**: Abbreviated results (list_tasks, search_projects, search_notes)
-- **DETAIL tools**: Complete info (get_task_details, get_project_details)
-- **ACTION tools**: Mutations (create_task, update_task, update_project)
+- **LIST/SEARCH tools**: Ontology queries (list_onto_projects, list_onto_tasks, list_onto_goals, list_onto_plans)
+- **DETAIL tools**: Complete ontology info (get_onto_project_details, get_onto_task_details)
+- **ACTION tools**: Ontology mutations (create_onto_task, create_onto_goal, create_onto_plan, update_onto_task, update_onto_project)
 - **CALENDAR tools**: Scheduling (schedule_task, find_available_slots)
 - **EXECUTOR tool**: spawn_executor (for delegating tasks)
 
@@ -908,12 +934,11 @@ You have access to:
 	private getContextDisplayName(contextType: ChatContextType): string {
 		const labels: Record<ChatContextType, string> = {
 			global: 'Global Assistant Mode',
-			project: 'Project Context',
+			project: 'Project Workspace',
 			task: 'Task Context',
 			calendar: 'Calendar Context',
 			general: 'Global Assistant Mode',
 			project_create: 'Project Creation Mode',
-			project_update: 'Project Update Mode',
 			project_audit: 'Project Audit Mode',
 			project_forecast: 'Project Forecast Mode',
 			task_update: 'Task Update Mode',
@@ -921,6 +946,39 @@ You have access to:
 		};
 
 		return labels[contextType] ?? contextType.replace(/_/g, ' ');
+	}
+
+	private formatLastTurnEntities(entities: LastTurnContext['entities'] = {}): string[] {
+		const lines: string[] = [];
+
+		if (entities.project_id) {
+			lines.push(`Current project focus: ${entities.project_id}`);
+		}
+
+		if (entities.task_ids?.length) {
+			const [primaryTask, ...restTasks] = entities.task_ids;
+			const suffix =
+				restTasks.length > 0 ? ` (additional tasks: ${restTasks.join(', ')})` : '';
+			lines.push(`Last touched task: ${primaryTask}${suffix}`);
+		}
+
+		if (entities.plan_id) {
+			lines.push(`Active plan: ${entities.plan_id}`);
+		}
+
+		if (entities.goal_ids?.length) {
+			lines.push(`Goals referenced: ${entities.goal_ids.join(', ')}`);
+		}
+
+		if (entities.document_id) {
+			lines.push(`Document in focus: ${entities.document_id}`);
+		}
+
+		if (entities.output_id) {
+			lines.push(`Output referenced: ${entities.output_id}`);
+		}
+
+		return lines;
 	}
 
 	private getProgressiveDisclosureForPlanner(): string {
@@ -955,12 +1013,7 @@ You have access to:
 			metadata.userName = userMetadata.userName;
 		}
 
-		const projectContexts: ChatContextType[] = [
-			'project',
-			'project_update',
-			'project_audit',
-			'project_forecast'
-		];
+		const projectContexts: ChatContextType[] = ['project', 'project_audit', 'project_forecast'];
 
 		const taskContexts: ChatContextType[] = ['task', 'task_update'];
 
@@ -1115,7 +1168,6 @@ You have access to:
 
 	private resolveDataContextType(contextType: ChatContextType): ChatContextType {
 		switch (contextType) {
-			case 'project_update':
 			case 'project_audit':
 			case 'project_forecast':
 				return 'project';
@@ -1136,24 +1188,19 @@ You have access to:
 		switch (contextType) {
 			case 'project':
 				return entityId
-					? `## Current Project\nProject ID: ${entityId}\n\nUse search_projects or get_project_details tools to load project information.`
-					: 'No project context available. Use search_projects to find projects.';
+					? `## Project Workspace\nProject ID: ${entityId}\n\nUse ontology tools (list_onto_projects, get_onto_project_details, list_onto_tasks) to explore or update this workspace. Start with list/search tools before making changes.`
+					: 'No project selected. Use list_onto_projects to find a project before continuing.';
 
 			case 'task':
 				return entityId
-					? `## Current Task\nTask ID: ${entityId}\n\nUse get_task_details tool to load task information.`
-					: 'No task context available. Use list_tasks to find tasks.';
+					? `## Current Task\nTask ID: ${entityId}\n\nUse get_onto_task_details tool to load task information.`
+					: 'No task context available. Use list_onto_tasks to find tasks.';
 
 			case 'calendar':
 				return `## Calendar Context\n\nUse calendar tools (find_available_slots, get_task_calendar_events) to access schedule information.`;
 
 			case 'project_create':
 				return `## Project Creation Mode\nHelp the user create a well-structured project by asking clarifying questions.`;
-
-			case 'project_update':
-				return entityId
-					? `## Project Update Mode\nProject ID: ${entityId}\n\nUse project tools to load and update project information.`
-					: 'Project update mode requires a project ID.';
 
 			case 'project_audit':
 				return entityId

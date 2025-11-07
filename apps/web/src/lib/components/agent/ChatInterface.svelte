@@ -57,8 +57,6 @@
 		switch (type) {
 			case 'project_create':
 				return "What project are you working on? Tell me everything that's on your mind about it.";
-			case 'project_update':
-				return "What's new with your project? What would you like to update?";
 			case 'project_audit':
 				return 'Let me review your project with a critical eye. What concerns you most?';
 			case 'project_forecast':
@@ -71,7 +69,7 @@
 			case 'general':
 				return 'How can I help you with your projects today?';
 			case 'project':
-				return "Let's discuss this project. What would you like to know?";
+				return 'Welcome back to your project workspace. What would you like to explore or update?';
 			case 'task':
 				return "Let's work on this task. What do you need?";
 			case 'calendar':
@@ -432,8 +430,8 @@
 </script>
 
 <div class="flex h-full flex-col">
-	<!-- Context Indicator (shows when in project_update mode) -->
-	{#if currentContext === 'project_update' && currentEntityName}
+	<!-- Context Indicator (shows when in project workspace mode) -->
+	{#if currentContext === 'project' && currentEntityName}
 		<div
 			class="border-b border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 p-3 backdrop-blur-sm dark:border-blue-800 dark:from-blue-950/40 dark:to-indigo-950/40"
 		>
@@ -457,7 +455,7 @@
 					onclick={exitProjectContext}
 					class="text-xs font-medium text-blue-600 transition-colors hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
 				>
-					Exit Project Mode
+					Exit Project Workspace
 				</button>
 			</div>
 		</div>

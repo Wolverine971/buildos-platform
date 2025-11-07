@@ -457,9 +457,16 @@ You can search across all projects, tasks, and notes as needed.`,
 
 			project: `
 
-## Current Context: Project
-You're focused on a specific project. The abbreviated project context has been loaded.
-Prioritize project-related tasks and information in your responses.${metadata?.projectName ? `\nProject: ${metadata.projectName}` : ''}`,
+## Project Workspace
+You're focused on a specific project workspace. The abbreviated context is loaded so you can answer questions, run analyses, or make updates.${metadata?.projectName ? `\nProject: ${metadata.projectName}` : ''}${metadata?.projectId ? `\nProject ID: ${metadata.projectId}` : ''}
+
+### How to work here
+1. Decide whether the user request is informational (summaries, status, insight) or operational (requires an update).
+2. Start with search/list/detail tools (e.g., list_project_elements, get_project_details, get_task_details) before making edits.
+3. When the user explicitly asks for a change—or a fix is clearly implied—call the matching update/create tool and explain what changed.
+4. Highlight relevant risks, blockers, or next steps when answering, even if the user asked a simple question.
+
+Always mention when more data is available via tools and confirm before modifying important project data.`,
 
 			task: `
 
@@ -528,33 +535,6 @@ Focus your questions on the remaining relevant dimensions. Don't re-ask about co
 - Ask 3-5 questions for simple projects, 7-10 for complex ones
 - After initial questions, offer: "Ready to create the project, or would you like to answer a few more questions?"
 - Be warm, encouraging, and patient - you're a thoughtful consultant, not a form`,
-
-			project_update: `
-
-## Your Role
-You are an efficient project assistant focused on quickly updating existing projects.${metadata?.projectName ? ` You're working on: ${metadata.projectName}` : ''}
-
-Identify what needs changing and execute updates efficiently. Be direct and action-oriented.
-
-## Available Context
-The abbreviated project context has been loaded, including:
-- Project summary and executive summary
-- 500-char context preview (use get_project_details() for full context if needed)
-- Task counts and completion percentage
-- Top 5 active tasks (abbreviated)
-
-## Progressive Disclosure Tools Available
-Use these tools to get more information as needed:
-- \`list_tasks(project_id)\` - Get all tasks for this project
-- \`get_project_details(project_id, include_tasks: true)\` - Get full project context
-- \`get_task_details(task_id)\` - Get specific task details
-
-## Guidelines
-- Don't ask unnecessary questions - act on clear requests
-- Show what you're about to change before applying updates
-- Execute quickly unless there's ambiguity
-- Focus mainly on task updates unless project-level context needs updating
-- Use progressive disclosure - only fetch full details when needed`,
 
 			project_audit: `
 
@@ -747,7 +727,6 @@ You are a helpful assistant for updating daily brief preferences and content.
 
 	private resolveLocationContextType(contextType: ChatContextType): ChatContextType {
 		switch (contextType) {
-			case 'project_update':
 			case 'project_audit':
 			case 'project_forecast':
 				return 'project';
@@ -2111,6 +2090,25 @@ Use this when users ask questions like:
 				];
 
 			case 'project':
+				// Project workspace: allow both read and write helpers
+				return [
+					PROACTIVE_TOOLS.update_project,
+					PROACTIVE_TOOLS.create_task,
+					PROACTIVE_TOOLS.update_task,
+					PROACTIVE_TOOLS.schedule_task,
+					REACTIVE_TOOLS.list_tasks,
+					REACTIVE_TOOLS.get_task_details,
+					REACTIVE_TOOLS.search_projects,
+					REACTIVE_TOOLS.get_project_details,
+					REACTIVE_TOOLS.search_notes,
+					REACTIVE_TOOLS.get_note_details,
+					REACTIVE_TOOLS.search_brain_dumps,
+					REACTIVE_TOOLS.get_brain_dump_details,
+					REACTIVE_TOOLS.get_calendar_events,
+					REACTIVE_TOOLS.find_available_slots,
+					UTILITY_TOOLS.get_field_info
+				];
+
 			case 'task':
 			case 'calendar':
 				// Reactive contexts get list/detail tools only
@@ -2141,19 +2139,6 @@ Use this when users ask questions like:
 					PROACTIVE_TOOLS.create_project,
 					PROACTIVE_TOOLS.create_task,
 					REACTIVE_TOOLS.search_projects, // For reference
-					UTILITY_TOOLS.get_field_info
-				];
-
-			case 'project_update':
-				// Project update mode - includes schema tool for field reference
-				return [
-					PROACTIVE_TOOLS.update_project,
-					PROACTIVE_TOOLS.create_task,
-					PROACTIVE_TOOLS.update_task,
-					PROACTIVE_TOOLS.schedule_task,
-					REACTIVE_TOOLS.list_tasks,
-					REACTIVE_TOOLS.get_task_details,
-					REACTIVE_TOOLS.get_project_details,
 					UTILITY_TOOLS.get_field_info
 				];
 

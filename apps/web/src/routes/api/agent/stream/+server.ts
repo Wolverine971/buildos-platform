@@ -123,12 +123,7 @@ async function loadOntologyContext(
 		}
 
 		// If project context, load project-level ontology
-		if (
-			(contextType === 'project' ||
-				contextType === 'project_update' ||
-				contextType === 'project_audit') &&
-			entityId
-		) {
+		if ((contextType === 'project' || contextType === 'project_audit') && entityId) {
 			console.log('[API] Loading project-level ontology context');
 			return await loader.loadProjectContext(entityId);
 		}
@@ -429,7 +424,7 @@ export const POST: RequestHandler = async ({
 
 		const agentStream = SSEResponse.createChatStream();
 
-		const useNewArchitecture = env.ENABLE_NEW_AGENTIC_CHAT === 'true';
+		const useNewArchitecture = true;
 
 		let totalTokens = 0;
 		let assistantResponse = '';

@@ -1373,7 +1373,7 @@
 		// Close brain dump modal
 		handleModalClose();
 		// Call parent callback to open agent modal
-		onOpenAgent?.({ projectId, chatType: 'project_update' });
+		onOpenAgent?.({ projectId, chatType: 'project' });
 	}
 
 	function handleNavigateToHistory(detail: { url: string }) {

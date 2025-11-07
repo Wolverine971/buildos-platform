@@ -68,7 +68,7 @@ describe('ExecutorCoordinator', () => {
 			conversationHistory: [],
 			locationContext: 'Project workspace',
 			availableTools: [
-				{ name: 'list_tasks', description: 'List tasks', parameters: {} },
+				{ name: 'list_onto_tasks', description: 'List ontology tasks', parameters: {} },
 				{ name: 'analyze_project', description: 'Analyze project metrics', parameters: {} }
 			],
 			metadata: {

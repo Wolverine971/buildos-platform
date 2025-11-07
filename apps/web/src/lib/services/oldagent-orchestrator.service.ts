@@ -74,7 +74,7 @@ export class AgentOrchestrator {
 			case 'project_create':
 				yield* this.handleProjectCreate(session, userMessage, userId, autoAccept);
 				break;
-			case 'project_update':
+			case 'project':
 				yield* this.handleProjectUpdate(session, userMessage, userId, autoAccept);
 				break;
 			case 'project_audit':
@@ -370,7 +370,7 @@ export class AgentOrchestrator {
 		};
 
 		// Use LLM to analyze what needs updating
-		const systemPrompt = this.contextService.getSystemPrompt('project_update', promptMetadata);
+		const systemPrompt = this.contextService.getSystemPrompt('project', promptMetadata);
 
 		// Analyze what the user wants to update
 		const updateAnalysis = await this.analyzeUpdateRequest(userMessage, context, systemPrompt);

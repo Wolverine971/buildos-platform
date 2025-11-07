@@ -76,7 +76,7 @@ describe('AgentChatOrchestrator', () => {
 			availableTools: [
 				{
 					function: {
-						name: 'list_tasks',
+						name: 'list_onto_tasks',
 						description: 'List tasks',
 						parameters: {
 							type: 'object',
@@ -102,13 +102,13 @@ describe('AgentChatOrchestrator', () => {
 			reasoning: 'Simple lookup',
 			needs_clarification: false,
 			estimated_steps: 1,
-			required_tools: ['list_tasks'],
+			required_tools: ['list_onto_tasks'],
 			can_complete_directly: true
 		});
 
 		(deps.toolExecutionService.executeTool as Mock).mockResolvedValue({
 			success: true,
-			toolName: 'list_tasks',
+			toolName: 'list_onto_tasks',
 			toolCallId: 'call_1',
 			data: { tasks: [] }
 		});

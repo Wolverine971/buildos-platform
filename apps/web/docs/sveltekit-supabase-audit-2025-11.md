@@ -4,8 +4,7 @@
 **Auditor:** Senior Engineering Review (Claude Code)
 **Scope:** SvelteKit routing patterns, Supabase client architecture, authentication, API patterns, and performance
 
-todo 1
----
+## todo 1
 
 ## Executive Summary
 

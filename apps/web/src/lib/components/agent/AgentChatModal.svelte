@@ -72,8 +72,8 @@
 			subtitle: 'Work across projects, tasks, and the calendar without constraints.'
 		},
 		project: {
-			title: 'Project context',
-			subtitle: "Focus on a single project's goals, tasks, and insights."
+			title: 'Project workspace',
+			subtitle: 'Answer questions, explore insights, or update a selected project.'
 		},
 		task: {
 			title: 'Task focus',
@@ -90,10 +90,6 @@
 		project_create: {
 			title: 'New project flow',
 			subtitle: 'Guide creation of a structured project from a spark of an idea.'
-		},
-		project_update: {
-			title: 'Project update',
-			subtitle: 'Review progress, make adjustments, and capture new work.'
 		},
 		project_audit: {
 			title: 'Project audit',
@@ -118,8 +114,6 @@
 		project: 'bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-300',
 		project_create:
 			'bg-purple-500/10 text-purple-600 dark:bg-purple-500/15 dark:text-purple-300',
-		project_update:
-			'bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-300',
 		project_audit: 'bg-amber-500/10 text-amber-600 dark:bg-amber-500/15 dark:text-amber-300',
 		project_forecast: 'bg-teal-500/10 text-teal-600 dark:bg-teal-500/15 dark:text-teal-300',
 		task_update: 'bg-orange-500/10 text-orange-600 dark:bg-orange-500/15 dark:text-orange-300',
@@ -449,12 +443,9 @@
 		}
 	}
 
-	function resetConversation() {
-		if (currentStreamController) {
-			currentStreamController.abort();
-			currentStreamController = null;
-		}
-		voiceRecordingService.cleanup();
+	function resetConversation(options: { preserveContext?: boolean } = {}) {
+		const { preserveContext = true } = options;
+
 		messages = [];
 		currentSession = null;
 		currentPlan = null;
@@ -474,15 +465,22 @@
 		ontologySummary = null;
 		voiceError = '';
 		hasAttemptedVoice = false;
+
+		if (!preserveContext) {
+			selectedContextType = null;
+			selectedEntityId = undefined;
+			selectedContextLabel = null;
+		}
 	}
 
 	function handleContextSelect(event: CustomEvent<ContextSelectionDetail>) {
+		resetConversation();
+
 		const detail = event.detail;
 		selectedContextType = detail.contextType;
 		selectedEntityId = detail.entityId;
 		selectedContextLabel =
 			detail.label ?? CONTEXT_DESCRIPTORS[detail.contextType]?.title ?? null;
-		resetConversation();
 	}
 
 	function changeContext() {
@@ -490,10 +488,7 @@
 		if (isCurrentlyRecording || isInitializingRecording) {
 			stopVoiceRecording();
 		}
-		selectedContextType = null;
-		selectedEntityId = undefined;
-		selectedContextLabel = null;
-		resetConversation();
+		resetConversation({ preserveContext: false });
 	}
 
 	// Helper: Check if user is scrolled to bottom (within threshold)
@@ -793,6 +788,35 @@
 				// Tool result received
 				addActivityMessage('Tool execution completed');
 				break;
+
+			case 'context_shift': {
+				const shift = data.context_shift;
+				if (shift) {
+					const normalizedContext = (
+						shift.new_context === 'general' ? 'global' : shift.new_context
+					) as ChatContextType;
+					selectedContextType = normalizedContext;
+					selectedEntityId = shift.entity_id;
+					selectedContextLabel =
+						shift.entity_name ??
+						CONTEXT_DESCRIPTORS[normalizedContext]?.title ??
+						selectedContextLabel;
+
+					if (currentSession) {
+						currentSession = {
+							...currentSession,
+							context_type: normalizedContext,
+							entity_id: shift.entity_id
+						};
+					}
+
+					const activityMessage =
+						shift.message ??
+						`Context updated to ${selectedContextLabel ?? normalizedContext}`;
+					addActivityMessage(activityMessage);
+				}
+				break;
+			}
 
 			case 'executor_result':
 				// Executor finished

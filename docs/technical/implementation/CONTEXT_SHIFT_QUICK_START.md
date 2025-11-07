@@ -6,7 +6,7 @@
 
 ## What Was Built
 
-Automatic context switching from `project_create` to `project_update` mode when a user successfully creates a project via the agent chat.
+Automatic context switching from `project_create` to `project` mode when a user successfully creates a project via the agent chat.
 
 ## Try It Out
 
@@ -26,7 +26,7 @@ The assistant will:
 
 1. Call the `create_onto_project` tool
 2. Create the project with tasks
-3. **Automatically shift context** to `project_update`
+3. **Automatically shift context** to `project`
 4. Show a blue context header: "📁 Managing: Book Writing Project"
 
 ### 4. Continue Managing the Project
@@ -76,7 +76,7 @@ Click the "Exit Project Mode" button in the blue header to return to global chat
 
 - [ ] Create project with clarifications (should NOT shift until answered)
 - [ ] Create project that fails (should NOT shift)
-- [ ] Refresh page while in project_update mode (should persist)
+- [ ] Refresh page while in project mode (should persist)
 - [ ] Test on mobile (responsive design)
 - [ ] Test in dark mode (should look good)
 

@@ -1,5 +1,7 @@
 # Agentic Chat System - Architecture Refactoring Specification
 
+<!-- todocheck -->
+
 ## Document Metadata
 
 - **Version**: 1.0.0

@@ -522,7 +522,7 @@
 		},
 		project: {
 			badge: '📁 Project',
-			description: 'Project-focused session'
+			description: 'Project workspace'
 		},
 		task: {
 			badge: '✅ Task',
@@ -539,10 +539,6 @@
 		project_create: {
 			badge: '➕ New Project',
 			description: 'Creating new project'
-		},
-		project_update: {
-			badge: '🔄 Update Project',
-			description: 'Updating project'
 		},
 		project_audit: {
 			badge: '🔍 Audit',
