@@ -157,8 +157,8 @@
 	<title>Revenue Recognition - Admin</title>
 </svelte:head>
 
-<div class="space-y-12">
-	<div class="space-y-10">
+<div class="admin-page">
+	<div class="admin-page">
 		<!-- Header with Back Button -->
 		<AdminPageHeader
 			title="Revenue Recognition"
@@ -169,7 +169,7 @@
 		/>
 
 		<!-- Controls -->
-		<div class="admin-panel mb-4 p-4">
+		<div class="admin-panel p-4">
 			<div class="flex flex-col sm:flex-row gap-4">
 				<Select
 					bind:value={selectedPeriod}

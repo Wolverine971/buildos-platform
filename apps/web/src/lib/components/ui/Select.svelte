@@ -75,7 +75,8 @@
 		onblur,
 		children,
 		...restProps
-	}: SelectProps & Omit<HTMLSelectAttributes, 'onchange' | 'onfocus' | 'onblur' | 'size'> = $props();
+	}: SelectProps &
+		Omit<HTMLSelectAttributes, 'onchange' | 'onfocus' | 'onblur' | 'size'> = $props();
 
 	/**
 	 * Helper function to resolve responsive size configuration into Tailwind classes

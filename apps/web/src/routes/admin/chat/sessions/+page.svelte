@@ -176,8 +176,8 @@
 	<meta name="robots" content="noindex, nofollow" />
 </svelte:head>
 
-<div class="space-y-12">
-	<div class="space-y-10">
+<div class="admin-page">
+	<div class="admin-page">
 		<!-- Header -->
 		<AdminPageHeader
 			title="Chat Sessions"
@@ -213,7 +213,7 @@
 		</AdminPageHeader>
 
 		<!-- Search and Filters -->
-		<div class="admin-panel p-4 mb-6">
+		<div class="admin-panel p-4">
 			<!-- Search Bar -->
 			<form onsubmit={handleSearch} class="mb-4">
 				<div class="flex items-center space-x-2">

@@ -106,8 +106,8 @@
 	<meta name="robots" content="noindex, nofollow" />
 </svelte:head>
 
-<div class="space-y-12">
-	<div class="space-y-10">
+<div class="admin-page">
+	<div class="admin-page">
 		<!-- Header -->
 		<AdminPageHeader
 			title="Tool Analytics"
@@ -242,7 +242,7 @@
 
 			<!-- Tool Categories -->
 			{#if dashboardData.by_category && dashboardData.by_category.length > 0}
-				<div class="admin-panel p-6 mb-6">
+				<div class="admin-panel p-6">
 					<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
 						Usage by Category
 					</h3>
@@ -294,7 +294,7 @@
 
 			<!-- Top Tools by Usage -->
 			{#if dashboardData.top_tools && dashboardData.top_tools.length > 0}
-				<div class="admin-panel p-6 mb-6">
+				<div class="admin-panel p-6">
 					<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
 						Top 10 Tools by Usage
 					</h3>
@@ -412,7 +412,7 @@
 
 			<!-- Top Errors -->
 			{#if dashboardData.errors && dashboardData.errors.top_errors && dashboardData.errors.top_errors.length > 0}
-				<div class="admin-panel p-6 mb-6">
+				<div class="admin-panel p-6">
 					<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
 						Top Errors ({formatNumber(dashboardData.errors.total_errors)} total)
 					</h3>

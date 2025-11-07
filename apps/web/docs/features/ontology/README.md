@@ -1,6 +1,6 @@
 # Ontology System Documentation
 
-**Last Updated**: November 4, 2025
+**Last Updated**: November 8, 2025
 **Status**: Phase 3 Complete ✅ (Visual Editors + Validation)
 **Location**: `/apps/web/docs/features/ontology/`
 
@@ -16,6 +16,7 @@
 - **[Implementation Roadmap](./ontology-implementation-roadmap.md)** - Detailed implementation plan and progress tracking
 - **[Data Models](./DATA_MODELS.md)** - Complete database schema (25 tables, 2783 lines)
 - **[Implementation Summary](./IMPLEMENTATION_SUMMARY.md)** - Recent CRUD implementation details
+- **[Recurring Series](./RECURRING_SERIES.md)** ✨ - Timezone-aware recurring task architecture & API usage
 - **[Phase 2A Status](./PHASE_2A_STATUS.md)** - Template API foundation (Complete)
 - **[API Endpoint Reference](./API_ENDPOINTS.md)** - Complete API documentation
 - **[Template Taxonomy](./TEMPLATE_TAXONOMY.md)** - Deliverables and outputs catalog
@@ -148,6 +149,16 @@ POST / api / onto / fsm / transition; // Execute state transition
 - Edit template pages
 - Integration testing
 - Performance optimization
+
+### Recurring Task Series (✨ New – Nov 2025)
+
+- Any ontology task can now be marked recurring post-creation via the Task Edit modal.
+- Series metadata lives entirely in `onto_tasks.props` (`series_id`, `series` object, and per-instance `recurrence` block) so no schema migrations were required.
+- **API Endpoints**
+    - `POST /api/onto/tasks/[id]/series` — validate RRULE + timezone, mark the task as series master, and generate instances transactionally through `task_series_enable`.
+    - `DELETE /api/onto/task-series/[seriesId]` — remove the master + pending instances (or force delete all) via the `task_series_delete` RPC.
+- **Timezone-aware scheduling** powered by `rrule` + `date-fns-tz`; UI collects timezone + start datetime and previews the generated RRULE string.
+- **UI** highlights when a task is a series master/instance, surfaces the RRULE/instance count, and exposes series deletion controls.
 
 ---
 

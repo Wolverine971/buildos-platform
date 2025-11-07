@@ -179,8 +179,8 @@
 	<title>Subscription Management - Admin</title>
 </svelte:head>
 
-<div class="space-y-12">
-	<div class="space-y-10">
+<div class="admin-page">
+	<div class="admin-page">
 		<!-- Header with Back Button -->
 		<AdminPageHeader
 			title="Subscription Management"
@@ -191,7 +191,7 @@
 		/>
 
 		<!-- Filters and Search -->
-		<div class="admin-panel mb-6 p-4">
+		<div class="admin-panel p-4">
 			<div class="flex flex-col sm:flex-row gap-4">
 				<!-- Search -->
 				<div class="flex-1">

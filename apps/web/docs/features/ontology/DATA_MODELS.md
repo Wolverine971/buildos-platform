@@ -116,6 +116,34 @@ interface OntoTask {
 }
 ```
 
+**Recurring series props**
+
+Tasks can now act as series masters or instances without schema changes. We mirror `series_id` at the root of `props` for quick filtering and then store detailed metadata under `props.series`:
+
+```json
+{
+	"series_id": "6671bfe9-0a45-4bb2-aa7a-2e62ac4db4ad",
+	"series": {
+		"id": "6671bfe9-0a45-4bb2-aa7a-2e62ac4db4ad",
+		"role": "master", // or "instance"
+		"timezone": "America/Los_Angeles",
+		"rrule": "RRULE:FREQ=WEEKLY;COUNT=8",
+		"dtstart": "2025-11-12T09:00:00-08:00",
+		"instance_count": 8,
+		"master_task_id": "task-master-uuid",
+		"index": 0 // only present on instances
+	},
+	"recurrence": {
+		"occurrence_at": "2025-11-26T17:00:00Z",
+		"local_occurrence_at": "2025-11-26T09:00:00-08:00",
+		"source_entity_id": "task-master-uuid",
+		"source_type_key": "task.quick-action"
+	}
+}
+```
+
+Instances clone the master’s props but replace `series` with the instance metadata and append a `recurrence` block for analytics. The partial index `idx_onto_tasks_series_id` covers `props->>'series_id'` for fast lookups.
+
 **State Machine States (typically):**
 
 - `todo` → `in_progress` → `done`

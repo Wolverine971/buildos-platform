@@ -22,6 +22,7 @@
 	} from 'lucide-svelte';
 	import { browser } from '$app/environment';
 	import AdminPageHeader from '$lib/components/admin/AdminPageHeader.svelte';
+	import AdminCard from '$lib/components/admin/AdminCard.svelte';
 	import EmailManager from '$lib/components/email/EmailManager.svelte';
 	import EmailComposerModal from '$lib/components/admin/EmailComposerModal.svelte';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
@@ -496,8 +497,7 @@
 	<meta name="robots" content="noindex, nofollow" />
 </svelte:head>
 
-<div class="space-y-12">
-	<div class="space-y-10">
+<div class="admin-page">
 		<!-- Header with Back Button -->
 		<AdminPageHeader
 			title="Beta Program Management"
@@ -606,7 +606,7 @@
 
 			<!-- Data View Tab Content -->
 			<!-- Filters for Data View -->
-			<div class="admin-panel p-4 sm:p-6 mb-4">
+			<div class="admin-panel p-4 sm:p-6">
 				<div class="flex items-center justify-between mb-4">
 					<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
 						Comprehensive Signup Data
@@ -668,11 +668,13 @@
 			</div>
 
 			{#if error}
-				<div
-					class="bg-red-50 border border-red-200 rounded-lg p-4 mb-4 dark:bg-red-900/20 dark:border-red-800"
+				<AdminCard
+					tone="danger"
+					padding="sm"
+					class="text-sm font-medium text-rose-900 dark:text-rose-100"
 				>
-					<p class="text-red-800 dark:text-red-200">{error}</p>
-				</div>
+					{error}
+				</AdminCard>
 			{/if}
 
 			<!-- Enhanced Data View Table -->
@@ -1310,7 +1312,7 @@
 		{:else}
 			<!-- Existing Signups/Members Content -->
 			<!-- Filters and Search -->
-			<div class="admin-panel p-4 sm:p-6 mb-4">
+			<div class="admin-panel p-4 sm:p-6">
 				<!-- Mobile Filter Toggle -->
 				<div class="sm:hidden mb-4">
 					<Button
@@ -2263,7 +2265,7 @@
 			</div>
 		{/if}
 	</div>
-</div>
+
 
 <!-- Approval Confirmation Modal -->
 <ConfirmationModal
@@ -2310,9 +2312,7 @@
 <!-- Details Modal - Keep your existing modal content -->
 {#if showModal && selectedItem}
 	<div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-		<div
-			class="admin-panel-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto"
-		>
+		<div class="admin-panel-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
 			<div class="p-4 sm:p-6">
 				<div class="flex items-center justify-between mb-4">
 					<h3 class="text-lg font-semibold text-gray-900 dark:text-white">

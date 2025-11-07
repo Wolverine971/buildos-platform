@@ -31,6 +31,14 @@ This document summarizes the comprehensive CRUD implementation for the BuildOS o
 - **PATCH** `/api/onto/tasks/[id]` - Update task
 - **DELETE** `/api/onto/tasks/[id]` - Delete task with edge cleanup
 
+#### Recurring Task Series (NEW)
+
+- **TaskSeriesModal** (`/src/lib/components/ontology/TaskSeriesModal.svelte`) collects timezone, start datetime, and RRULE.
+- **TaskEditModal** now shows a dedicated Recurrence card with metadata + delete actions.
+- Backend service (`task-series.service.ts`) wraps RRULE parsing, timezone validation, and RPC calls.
+- RPC helpers (`task_series_enable`, `task_series_delete`) guarantee transactional writes and safe deletions.
+- **POST** `/api/onto/tasks/[id]/series` and **DELETE** `/api/onto/task-series/[seriesId]` power the REST flow.
+
 ### 2. Plan Management System
 
 #### Components Created

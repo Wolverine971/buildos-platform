@@ -75,8 +75,8 @@
 	}
 </script>
 
-<div class="space-y-12">
-	<div class="space-y-10">
+<div class="admin-page">
+	<div class="admin-page">
 		<AdminPageHeader
 			title="LLM Usage"
 			description="Monitor AI API usage, costs, and performance across the platform"
@@ -90,7 +90,9 @@
 			class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"
 		>
 			<div class="flex-1 space-y-2">
-				<p class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">
+				<p
+					class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400"
+				>
 					Time Range
 				</p>
 				<Select bind:value={days} size="md" onchange={() => fetchStats()}>

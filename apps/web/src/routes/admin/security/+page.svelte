@@ -1,6 +1,12 @@
 <!-- apps/web/src/routes/admin/security/+page.svelte -->
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { ShieldCheck, RefreshCw, AlertTriangle } from 'lucide-svelte';
+	import AdminPageHeader from '$lib/components/admin/AdminPageHeader.svelte';
+	import AdminCard from '$lib/components/admin/AdminCard.svelte';
+	import Select from '$lib/components/ui/Select.svelte';
+	import Button from '$lib/components/ui/Button.svelte';
+	import Badge from '$lib/components/ui/Badge.svelte';
 	import type { PageData } from './$types';
 
 	interface Props {
@@ -70,31 +76,31 @@
 			.join(' ');
 	}
 
-	function getEventBadgeClass(eventType: string): string {
+	function eventBadgeVariant(eventType: string): BadgeVariant {
 		switch (eventType) {
 			case 'prompt_injection_blocked':
-				return 'badge-error';
+				return 'error';
 			case 'prompt_injection_detected':
-				return 'badge-warning';
+				return 'warning';
 			case 'prompt_injection_false_positive':
-				return 'badge-success';
+				return 'success';
 			case 'rate_limit_exceeded':
-				return 'badge-error';
+				return 'error';
 			default:
-				return 'badge-neutral';
+				return 'info';
 		}
 	}
 
-	function getSeverityBadgeClass(severity: string): string {
+	function severityBadgeVariant(severity: string): BadgeVariant {
 		switch (severity) {
 			case 'high':
-				return 'badge-error';
+				return 'error';
 			case 'medium':
-				return 'badge-warning';
+				return 'warning';
 			case 'low':
-				return 'badge-info';
+				return 'info';
 			default:
-				return 'badge-neutral';
+				return 'info';
 		}
 	}
 
@@ -112,281 +118,282 @@
 	}
 </script>
 
-<div class="container mx-auto p-6">
-	<h1 class="text-3xl font-bold mb-4">Security Logs</h1>
+<div class="admin-page">
+	<AdminPageHeader
+		title="Security Logs"
+		description="Monitor prompt injection attempts and rate-limit enforcement in real time"
+		icon={ShieldCheck}
+		backHref="/admin"
+		backLabel="Dashboard"
+	/>
 
-	<!-- Filters -->
-	<div class="card bg-base-200 p-4 mb-4">
-		<div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-			<div class="form-control">
-				<label class="label" for="eventType">
-					<span class="label-text">Event Type</span>
+	<div class="admin-panel p-5">
+		<div class="grid grid-cols-1 gap-4 md:grid-cols-4">
+			<div class="space-y-2">
+				<label class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+					Event Type
 				</label>
-				<select
-					id="eventType"
-					class="select select-bordered"
-					bind:value={eventTypeFilter}
-					onchange={applyFilters}
-				>
+				<Select bind:value={eventTypeFilter} size="md" on:change={applyFilters}>
 					<option value="all">All Events</option>
 					<option value="prompt_injection_blocked">Blocked</option>
 					<option value="prompt_injection_detected">Detected</option>
 					<option value="prompt_injection_false_positive">False Positives</option>
 					<option value="rate_limit_exceeded">Rate Limit Exceeded</option>
-				</select>
+				</Select>
 			</div>
 
-			<div class="form-control">
-				<label class="label" for="wasBlocked">
-					<span class="label-text">Status</span>
+			<div class="space-y-2">
+				<label class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+					Status
 				</label>
-				<select
-					id="wasBlocked"
-					class="select select-bordered"
-					bind:value={wasBlockedFilter}
-					onchange={applyFilters}
-				>
+				<Select bind:value={wasBlockedFilter} size="md" on:change={applyFilters}>
 					<option value="all">All</option>
 					<option value="true">Blocked</option>
 					<option value="false">Allowed</option>
-				</select>
+				</Select>
 			</div>
 
-			<div class="form-control">
-				<label class="label" for="dateFilter">
-					<span class="label-text">Time Period</span>
+			<div class="space-y-2">
+				<label class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+					Time Period
 				</label>
-				<select
-					id="dateFilter"
-					class="select select-bordered"
-					bind:value={dateFilter}
-					onchange={applyFilters}
-				>
+				<Select bind:value={dateFilter} size="md" on:change={applyFilters}>
 					<option value="24hours">Last 24 Hours</option>
 					<option value="7days">Last 7 Days</option>
 					<option value="30days">Last 30 Days</option>
 					<option value="all">All Time</option>
-				</select>
+				</Select>
 			</div>
 
-			<div class="form-control">
-				<div class="label">
-					<span class="label-text" aria-hidden="true">&nbsp;</span>
-				</div>
-				<button class="btn btn-primary" onclick={applyFilters}>Refresh</button>
+			<div class="flex items-end">
+				<Button variant="secondary" size="sm" icon={RefreshCw} on:click={applyFilters}>
+					Refresh
+				</Button>
 			</div>
 		</div>
 	</div>
 
-	<!-- Loading State -->
-	{#if loading}
-		<div class="flex justify-center items-center py-12">
-			<span class="loading loading-spinner loading-lg"></span>
-		</div>
-	{/if}
-
-	<!-- Error State -->
 	{#if error}
-		<div class="alert alert-error mb-4">
-			<svg
-				xmlns="http://www.w3.org/2000/svg"
-				class="stroke-current shrink-0 h-6 w-6"
-				fill="none"
-				viewBox="0 0 24 24"
-			>
-				<path
-					stroke-linecap="round"
-					stroke-linejoin="round"
-					stroke-width="2"
-					d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
-				/>
-			</svg>
+		<AdminCard tone="danger" padding="sm" class="flex items-center gap-3 text-sm">
+			<AlertTriangle class="h-4 w-4" />
 			<span>{error}</span>
-		</div>
+		</AdminCard>
 	{/if}
 
-	<!-- Security Logs Table -->
-	{#if !loading && securityLogs.length > 0}
-		<div class="overflow-x-auto">
-			<table class="table table-zebra w-full">
-				<thead>
-					<tr>
-						<th>Time</th>
-						<th>User ID</th>
-						<th>Event Type</th>
-						<th>Status</th>
-						<th>Patterns</th>
-						<th>LLM Confidence</th>
-						<th>Actions</th>
-					</tr>
-				</thead>
-				<tbody>
-					{#each securityLogs as log}
-						<tr>
-							<td class="text-sm">{formatDate(log.created_at)}</td>
-							<td class="font-mono text-xs">{log.user_id.slice(0, 8)}...</td>
-							<td>
-								<span class="badge {getEventBadgeClass(log.event_type)}">
-									{formatEventType(log.event_type)}
-								</span>
-							</td>
-							<td>
-								{#if log.was_blocked}
-									<span class="badge badge-error">Blocked</span>
-								{:else}
-									<span class="badge badge-success">Allowed</span>
-								{/if}
-							</td>
-							<td>
-								{#if log.regex_patterns && log.regex_patterns.length > 0}
-									<div class="flex gap-1 flex-wrap">
-										{#each log.regex_patterns.slice(0, 2) as pattern}
-											<span
-												class="badge {getSeverityBadgeClass(
-													pattern.severity
-												)} badge-sm"
-											>
-												{pattern.severity}
-											</span>
-										{/each}
-										{#if log.regex_patterns.length > 2}
-											<span class="badge badge-sm"
-												>+{log.regex_patterns.length - 2}</span
-											>
-										{/if}
-									</div>
-								{:else}
-									<span class="text-gray-500">-</span>
-								{/if}
-							</td>
-							<td>
-								{#if log.llm_validation}
-									<span
-										class="badge {getSeverityBadgeClass(
-											log.llm_validation.confidence
-										)}"
-									>
-										{log.llm_validation.confidence}
-									</span>
-								{:else}
-									<span class="text-gray-500">N/A</span>
-								{/if}
-							</td>
-							<td>
-								<button
-									class="btn btn-sm btn-ghost"
-									onclick={() => viewDetails(log)}
-								>
-									View
-								</button>
-							</td>
+	{#if loading}
+		<AdminCard padding="md" class="flex items-center gap-3 text-sm text-slate-500">
+			<RefreshCw class="h-4 w-4 animate-spin" />
+			<span>Loading security logs...</span>
+		</AdminCard>
+	{:else if securityLogs.length > 0}
+		<AdminCard padding="none" class="overflow-hidden">
+			<div class="overflow-x-auto">
+				<table class="min-w-full divide-y divide-slate-200 text-sm dark:divide-slate-800">
+					<thead class="bg-slate-50/80 dark:bg-slate-900/40">
+						<tr
+							class="text-left text-[0.65rem] font-semibold uppercase tracking-[0.25em] text-slate-500"
+						>
+							<th class="px-5 py-3">Time</th>
+							<th class="px-5 py-3">User ID</th>
+							<th class="px-5 py-3">Event</th>
+							<th class="px-5 py-3">Status</th>
+							<th class="px-5 py-3">Patterns</th>
+							<th class="px-5 py-3">LLM Confidence</th>
+							<th class="px-5 py-3 text-right">Actions</th>
 						</tr>
-					{/each}
-				</tbody>
-			</table>
-		</div>
-	{:else if !loading}
-		<div class="text-center py-12 text-gray-500">
+					</thead>
+					<tbody class="divide-y divide-slate-200 dark:divide-slate-800">
+						{#each securityLogs as log}
+							<tr class="hover:bg-slate-50/60 dark:hover:bg-slate-900/40">
+								<td
+									class="whitespace-nowrap px-5 py-3 text-sm text-slate-600 dark:text-slate-300"
+								>
+									{formatDate(log.created_at)}
+								</td>
+								<td
+									class="px-5 py-3 font-mono text-xs text-slate-500 dark:text-slate-400"
+								>
+									{log.user_id.slice(0, 8)}...
+								</td>
+								<td class="px-5 py-3">
+									<Badge size="sm" variant={eventBadgeVariant(log.event_type)}>
+										{formatEventType(log.event_type)}
+									</Badge>
+								</td>
+								<td class="px-5 py-3">
+									<Badge
+										size="sm"
+										variant={log.was_blocked ? 'error' : 'success'}
+									>
+										{log.was_blocked ? 'Blocked' : 'Allowed'}
+									</Badge>
+								</td>
+								<td class="px-5 py-3">
+									{#if log.regex_patterns && log.regex_patterns.length > 0}
+										<div class="flex flex-wrap gap-1.5">
+											{#each log.regex_patterns.slice(0, 2) as pattern}
+												<Badge
+													size="sm"
+													variant={severityBadgeVariant(pattern.severity)}
+												>
+													{pattern.severity}
+												</Badge>
+											{/each}
+											{#if log.regex_patterns.length > 2}
+												<Badge size="sm" variant="info">
+													+{log.regex_patterns.length - 2}
+												</Badge>
+											{/if}
+										</div>
+									{:else}
+										<span class="text-slate-400">—</span>
+									{/if}
+								</td>
+								<td class="px-5 py-3">
+									{#if log.llm_validation}
+										<Badge
+											size="sm"
+											variant={severityBadgeVariant(
+												log.llm_validation.confidence
+											)}
+										>
+											{log.llm_validation.confidence}
+										</Badge>
+									{:else}
+										<span class="text-slate-400">N/A</span>
+									{/if}
+								</td>
+								<td class="px-5 py-3 text-right">
+									<Button
+										variant="ghost"
+										size="sm"
+										on:click={() => viewDetails(log)}
+									>
+										View
+									</Button>
+								</td>
+							</tr>
+						{/each}
+					</tbody>
+				</table>
+			</div>
+		</AdminCard>
+	{:else}
+		<AdminCard padding="lg" class="text-center text-sm text-slate-500">
 			<p>No security logs found for the selected filters.</p>
-		</div>
+		</AdminCard>
 	{/if}
 
-	<!-- Detail Modal -->
 	{#if selectedLog}
-		<div class="modal modal-open">
-			<div class="modal-box max-w-4xl">
-				<h3 class="font-bold text-lg mb-4">Security Log Details</h3>
-
-				<div class="space-y-4">
-					<!-- Event Info -->
+		<div
+			class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur"
+		>
+			<div class="admin-panel w-full max-w-4xl overflow-y-auto p-6">
+				<div class="flex items-start justify-between gap-4">
 					<div>
-						<h4 class="font-semibold mb-2">Event Information</h4>
-						<div class="grid grid-cols-2 gap-2 text-sm">
-							<div>
-								<span class="font-medium">Event Type:</span>
-								{formatEventType(selectedLog.event_type)}
-							</div>
-							<div>
-								<span class="font-medium">Time:</span>
+						<p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+							Log Detail
+						</p>
+						<h3 class="text-lg font-semibold text-slate-900 dark:text-white">
+							{formatEventType(selectedLog.event_type)}
+						</h3>
+					</div>
+					<Button variant="ghost" size="sm" on:click={closeDetails}>Close</Button>
+				</div>
+
+				<div class="mt-6 space-y-5 text-sm">
+					<div
+						class="grid gap-4 rounded-lg bg-slate-100/60 p-4 dark:bg-slate-900/40 sm:grid-cols-2"
+					>
+						<div>
+							<p class="text-xs uppercase text-slate-500">Time</p>
+							<p class="font-semibold text-slate-900 dark:text-white">
 								{formatDate(selectedLog.created_at)}
-							</div>
-							<div>
-								<span class="font-medium">User ID:</span>
+							</p>
+						</div>
+						<div>
+							<p class="text-xs uppercase text-slate-500">User ID</p>
+							<p class="font-mono text-xs text-slate-600 dark:text-slate-300">
 								{selectedLog.user_id}
-							</div>
-							<div>
-								<span class="font-medium">Status:</span>
+							</p>
+						</div>
+						<div>
+							<p class="text-xs uppercase text-slate-500">Status</p>
+							<Badge
+								size="sm"
+								variant={selectedLog.was_blocked ? 'error' : 'success'}
+							>
 								{selectedLog.was_blocked ? 'Blocked' : 'Allowed'}
-							</div>
+							</Badge>
 						</div>
-					</div>
-
-					<!-- Flagged Content -->
-					<div>
-						<h4 class="font-semibold mb-2">Flagged Content</h4>
-						<div class="bg-base-200 p-3 rounded max-h-48 overflow-y-auto">
-							<pre class="text-sm whitespace-pre-wrap">{selectedLog.content}</pre>
-						</div>
-					</div>
-
-					<!-- Regex Patterns -->
-					{#if selectedLog.regex_patterns && selectedLog.regex_patterns.length > 0}
-						<div>
-							<h4 class="font-semibold mb-2">
-								Detected Patterns ({selectedLog.regex_patterns.length})
-							</h4>
-							<div class="space-y-2">
-								{#each selectedLog.regex_patterns as pattern}
-									<div class="bg-base-200 p-2 rounded text-sm">
-										<div class="flex justify-between items-start mb-1">
-											<span class="font-medium">{pattern.pattern}</span>
-											<span
-												class="badge {getSeverityBadgeClass(
-													pattern.severity
-												)} badge-sm"
-											>
-												{pattern.severity}
-											</span>
-										</div>
-										<div class="text-xs text-gray-600">
-											Matched: "{pattern.matchedText}" at position {pattern.position}
-										</div>
-										<div class="text-xs text-gray-500">
-											Category: {pattern.category}
-										</div>
-									</div>
-								{/each}
-							</div>
-						</div>
-					{/if}
-
-					<!-- LLM Validation -->
-					{#if selectedLog.llm_validation}
-						<div>
-							<h4 class="font-semibold mb-2">LLM Validation Result</h4>
-							<div class="bg-base-200 p-3 rounded space-y-2 text-sm">
-								<div>
-									<span class="font-medium">Is Malicious:</span>
-									{selectedLog.llm_validation.isMalicious ? 'Yes' : 'No'}
+						{#if selectedLog.regex_patterns?.length}
+							<div>
+								<p class="text-xs uppercase text-slate-500">Patterns</p>
+								<div class="mt-1 flex flex-wrap gap-1.5">
+									{#each selectedLog.regex_patterns as pattern}
+										<Badge
+											size="sm"
+											variant={severityBadgeVariant(pattern.severity)}
+										>
+											{pattern.severity}
+										</Badge>
+									{/each}
 								</div>
-								<div>
+							</div>
+						{/if}
+					</div>
+
+					<div class="space-y-2">
+						<p class="text-xs uppercase text-slate-500">Flagged Content</p>
+						<div
+							class="rounded-lg bg-slate-900/5 p-4 text-xs font-mono dark:bg-slate-100/5"
+						>
+							<pre class="whitespace-pre-wrap">{selectedLog.content}</pre>
+						</div>
+					</div>
+
+					{#if selectedLog.llm_validation}
+						<div class="space-y-2">
+							<p class="text-xs uppercase text-slate-500">LLM Validation</p>
+							<div
+								class="space-y-2 rounded-lg bg-slate-100/60 p-4 dark:bg-slate-900/40"
+							>
+								<div class="flex items-center gap-2">
+									<span class="font-medium">Is Malicious:</span>
+									<Badge
+										size="sm"
+										variant={selectedLog.llm_validation.isMalicious
+											? 'error'
+											: 'success'}
+									>
+										{selectedLog.llm_validation.isMalicious ? 'Yes' : 'No'}
+									</Badge>
+								</div>
+								<div class="flex items-center gap-2">
 									<span class="font-medium">Confidence:</span>
-									<span
-										class="badge {getSeverityBadgeClass(
+									<Badge
+										size="sm"
+										variant={severityBadgeVariant(
 											selectedLog.llm_validation.confidence
-										)}"
+										)}
 									>
 										{selectedLog.llm_validation.confidence}
-									</span>
+									</Badge>
 								</div>
 								<div>
 									<span class="font-medium">Reason:</span>
-									<p class="mt-1">{selectedLog.llm_validation.reason}</p>
+									<p
+										class="mt-1 leading-relaxed text-slate-600 dark:text-slate-300"
+									>
+										{selectedLog.llm_validation.reason}
+									</p>
 								</div>
-								{#if selectedLog.llm_validation.matchedPatterns && selectedLog.llm_validation.matchedPatterns.length > 0}
+								{#if selectedLog.llm_validation.matchedPatterns?.length}
 									<div>
-										<span class="font-medium">Matched Injection Patterns:</span>
-										<ul class="list-disc list-inside mt-1">
+										<span class="font-medium">Matched Patterns:</span>
+										<ul
+											class="mt-1 list-disc pl-5 text-slate-600 dark:text-slate-300"
+										>
 											{#each selectedLog.llm_validation.matchedPatterns as pattern}
 												<li>{pattern}</li>
 											{/each}
@@ -397,12 +404,13 @@
 						</div>
 					{/if}
 
-					<!-- Metadata -->
 					{#if selectedLog.metadata}
-						<div>
-							<h4 class="font-semibold mb-2">Additional Metadata</h4>
-							<div class="bg-base-200 p-3 rounded">
-								<pre class="text-xs">{JSON.stringify(
+						<div class="space-y-2">
+							<p class="text-xs uppercase text-slate-500">Metadata</p>
+							<div
+								class="rounded-lg bg-slate-900/5 p-4 text-xs font-mono dark:bg-slate-100/5"
+							>
+								<pre class="whitespace-pre-wrap">{JSON.stringify(
 										selectedLog.metadata,
 										null,
 										2
@@ -411,37 +419,8 @@
 						</div>
 					{/if}
 				</div>
-
-				<div class="modal-action">
-					<button class="btn" onclick={closeDetails}>Close</button>
-				</div>
 			</div>
 		</div>
 	{/if}
 </div>
-
-<style>
-	.badge {
-		@apply text-xs font-semibold px-2 py-1 rounded;
-	}
-
-	.badge-error {
-		@apply bg-red-100 text-red-800;
-	}
-
-	.badge-warning {
-		@apply bg-yellow-100 text-yellow-800;
-	}
-
-	.badge-success {
-		@apply bg-green-100 text-green-800;
-	}
-
-	.badge-info {
-		@apply bg-blue-100 text-blue-800;
-	}
-
-	.badge-neutral {
-		@apply bg-gray-100 text-gray-800;
-	}
-</style>
+type BadgeVariant = 'success' | 'warning' | 'error' | 'info';

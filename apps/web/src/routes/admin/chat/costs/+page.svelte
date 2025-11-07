@@ -112,8 +112,8 @@
 	<meta name="robots" content="noindex, nofollow" />
 </svelte:head>
 
-<div class="space-y-12">
-	<div class="space-y-10">
+<div class="admin-page">
+	<div class="admin-page">
 		<!-- Header -->
 		<AdminPageHeader
 			title="Cost Analytics"
@@ -349,7 +349,7 @@
 
 			<!-- Cost by Model -->
 			{#if dashboardData.by_model && dashboardData.by_model.length > 0}
-				<div class="admin-panel p-6 mb-6">
+				<div class="admin-panel p-6">
 					<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
 						Cost by Model
 					</h3>
@@ -374,7 +374,7 @@
 			{/if}
 
 			<!-- Top Sessions by Cost -->
-			<div class="admin-panel p-6 mb-6">
+			<div class="admin-panel p-6">
 				<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
 					Top Sessions by Cost
 				</h3>

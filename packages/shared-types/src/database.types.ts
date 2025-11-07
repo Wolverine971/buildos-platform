@@ -8312,6 +8312,22 @@ export type Database = {
           started: boolean
         }[]
       }
+      task_series_delete: {
+        Args: { p_force?: boolean; p_series_id: string }
+        Returns: {
+          deleted_instances: number
+          deleted_master: number
+        }[]
+      }
+      task_series_enable: {
+        Args: {
+          p_instance_rows: Json
+          p_master_props: Json
+          p_series_id: string
+          p_task_id: string
+        }
+        Returns: undefined
+      }
       unaccent: { Args: { "": string }; Returns: string }
       update_brief_generation_progress: {
         Args: {

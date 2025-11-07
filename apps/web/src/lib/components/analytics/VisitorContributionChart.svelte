@@ -281,33 +281,59 @@
 </script>
 
 <section class="admin-panel p-4 sm:p-6 relative" bind:this={chartContainer}>
-		{#if isLoading}
-			<div class="flex items-center justify-center py-8 sm:py-12">
-				<div class="animate-pulse flex space-x-1">
-					{#each Array(5) as _, i}
-						<div class="flex flex-col space-y-1">
-							{#each Array(7) as _, j}
-								<div
-									class="w-2 h-2 sm:w-3 sm:h-3 bg-gray-200 dark:bg-gray-700 rounded-sm"
-								></div>
-							{/each}
-						</div>
-					{/each}
-				</div>
+	{#if isLoading}
+		<div class="flex items-center justify-center py-8 sm:py-12">
+			<div class="animate-pulse flex space-x-1">
+				{#each Array(5) as _, i}
+					<div class="flex flex-col space-y-1">
+						{#each Array(7) as _, j}
+							<div
+								class="w-2 h-2 sm:w-3 sm:h-3 bg-gray-200 dark:bg-gray-700 rounded-sm"
+							></div>
+						{/each}
+					</div>
+				{/each}
 			</div>
-		{:else}
-			<!-- Chart header - Mobile Responsive -->
-			<div class="mb-4">
-				<div
-					class="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-3 space-y-3 sm:space-y-0"
-				>
-					<div class="flex-1">
-						<div class="flex flex-col sm:flex-row sm:items-center">
-							<h4
-								class="text-base sm:text-lg font-semibold text-gray-900 dark:!text-white flex items-center mb-2 sm:mb-0"
+		</div>
+	{:else}
+		<!-- Chart header - Mobile Responsive -->
+		<div class="mb-4">
+			<div
+				class="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-3 space-y-3 sm:space-y-0"
+			>
+				<div class="flex-1">
+					<div class="flex flex-col sm:flex-row sm:items-center">
+						<h4
+							class="text-base sm:text-lg font-semibold text-gray-900 dark:!text-white flex items-center mb-2 sm:mb-0"
+						>
+							<svg
+								class="mr-2 h-4 w-4 sm:h-5 sm:w-5 text-blue-600"
+								fill="none"
+								stroke="currentColor"
+								viewBox="0 0 24 24"
+							>
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="2"
+									d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+								/>
+							</svg>
+							<span class="hidden sm:inline">Daily Visitors (Last 30 Days)</span>
+							<span class="sm:hidden">Daily Visitors</span>
+						</h4>
+						<!-- View Toggle -->
+						<div
+							class="flex items-center bg-gray-100 dark:bg-gray-700 rounded-lg p-1 sm:ml-4"
+						>
+							<Button
+								variant={viewMode === 'graph' ? 'primary' : 'ghost'}
+								size="sm"
+								class="px-2 sm:px-3 py-1 text-xs sm:text-sm rounded-md"
+								onclick={() => (viewMode = 'graph')}
 							>
 								<svg
-									class="mr-2 h-4 w-4 sm:h-5 sm:w-5 text-blue-600"
+									class="w-3 h-3 sm:w-4 sm:h-4 mr-1 inline"
 									fill="none"
 									stroke="currentColor"
 									viewBox="0 0 24 24"
@@ -316,366 +342,340 @@
 										stroke-linecap="round"
 										stroke-linejoin="round"
 										stroke-width="2"
-										d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+										d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"
 									/>
 								</svg>
-								<span class="hidden sm:inline">Daily Visitors (Last 30 Days)</span>
-								<span class="sm:hidden">Daily Visitors</span>
-							</h4>
-							<!-- View Toggle -->
-							<div
-								class="flex items-center bg-gray-100 dark:bg-gray-700 rounded-lg p-1 sm:ml-4"
+								<span class="hidden sm:inline">Graph</span>
+							</Button>
+							<Button
+								variant={viewMode === 'chart' ? 'primary' : 'ghost'}
+								size="sm"
+								class="px-2 sm:px-3 py-1 text-xs sm:text-sm rounded-md"
+								onclick={() => (viewMode = 'chart')}
 							>
-								<Button
-									variant={viewMode === 'graph' ? 'primary' : 'ghost'}
-									size="sm"
-									class="px-2 sm:px-3 py-1 text-xs sm:text-sm rounded-md"
-									onclick={() => (viewMode = 'graph')}
+								<svg
+									class="w-3 h-3 sm:w-4 sm:h-4 mr-1 inline"
+									fill="none"
+									stroke="currentColor"
+									viewBox="0 0 24 24"
 								>
-									<svg
-										class="w-3 h-3 sm:w-4 sm:h-4 mr-1 inline"
-										fill="none"
-										stroke="currentColor"
-										viewBox="0 0 24 24"
-									>
-										<path
-											stroke-linecap="round"
-											stroke-linejoin="round"
-											stroke-width="2"
-											d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"
-										/>
-									</svg>
-									<span class="hidden sm:inline">Graph</span>
-								</Button>
-								<Button
-									variant={viewMode === 'chart' ? 'primary' : 'ghost'}
-									size="sm"
-									class="px-2 sm:px-3 py-1 text-xs sm:text-sm rounded-md"
-									onclick={() => (viewMode = 'chart')}
-								>
-									<svg
-										class="w-3 h-3 sm:w-4 sm:h-4 mr-1 inline"
-										fill="none"
-										stroke="currentColor"
-										viewBox="0 0 24 24"
-									>
-										<path
-											stroke-linecap="round"
-											stroke-linejoin="round"
-											stroke-width="2"
-											d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-										/>
-									</svg>
-									<span class="hidden sm:inline">Chart</span>
-								</Button>
-							</div>
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										stroke-width="2"
+										d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+									/>
+								</svg>
+								<span class="hidden sm:inline">Chart</span>
+							</Button>
 						</div>
-						<p class="text-xs sm:text-sm text-gray-600 dark:!text-gray-400 mt-1">
-							{totalVisitors} total visitors • {averageDaily} avg per day • {totalSignups}
-							signups
-						</p>
 					</div>
-					{#if viewMode === 'chart'}
-						<div
-							class="flex items-center space-x-1 sm:space-x-2 text-xs text-gray-500 dark:!text-gray-400"
-						>
-							<span class="hidden sm:inline">Less</span>
-							<div class="flex space-x-1">
-								{#each [0, 1, 2, 3, 4] as level}
-									<div
-										class="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-sm"
-										style="background-color: {getVisitorColor(level)}"
-									></div>
-								{/each}
-							</div>
-							<span class="hidden sm:inline">More</span>
-						</div>
-					{/if}
+					<p class="text-xs sm:text-sm text-gray-600 dark:!text-gray-400 mt-1">
+						{totalVisitors} total visitors • {averageDaily} avg per day • {totalSignups}
+						signups
+					</p>
 				</div>
-			</div>
-
-			{#if visitors.length === 0}
-				<div class="text-center py-8 sm:py-12">
-					<div class="text-gray-400 mb-2">No visitor data</div>
-					<div class="text-xs sm:text-sm text-gray-500 dark:!text-gray-400">
-						Visitor activity will appear here once tracking begins
-					</div>
-				</div>
-			{:else if viewMode === 'chart'}
-				<!-- Month labels for chart view - Mobile Responsive -->
-				{#if weeks.length > 0}
-					<div class="relative h-3 sm:h-4 mb-2">
-						<div class="flex space-x-0.5 sm:space-x-1">
-							{#each weeks as week, weekIndex}
-								<div class="w-2 sm:w-3 h-3 sm:h-4 relative">
-									{#each monthLabels as month}
-										{#if month.weekIndex === weekIndex}
-											<div
-												class="absolute -top-1 left-0 text-xs text-gray-500 dark:!text-gray-400 whitespace-nowrap"
-											>
-												{month.name}
-											</div>
-										{/if}
-									{/each}
-								</div>
+				{#if viewMode === 'chart'}
+					<div
+						class="flex items-center space-x-1 sm:space-x-2 text-xs text-gray-500 dark:!text-gray-400"
+					>
+						<span class="hidden sm:inline">Less</span>
+						<div class="flex space-x-1">
+							{#each [0, 1, 2, 3, 4] as level}
+								<div
+									class="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-sm"
+									style="background-color: {getVisitorColor(level)}"
+								></div>
 							{/each}
 						</div>
+						<span class="hidden sm:inline">More</span>
 					</div>
 				{/if}
+			</div>
+		</div>
 
-				<!-- Chart grid - Mobile Responsive -->
-				<div class="flex overflow-x-auto">
-					<!-- Day labels -->
-					<div
-						class="flex flex-col justify-between text-xs text-gray-500 dark:!text-gray-400 mr-2 sm:mr-3 py-0.5 flex-shrink-0"
-					>
-						{#each dayLabels as label, index}
-							{#if index % 2 === 1}
-								<!-- Only show Mon, Wed, Fri for space -->
-								<div class="h-2 sm:h-3 flex items-center">{label}</div>
-							{:else}
-								<div class="h-2 sm:h-3"></div>
-							{/if}
-						{/each}
-					</div>
-
-					<!-- Contribution grid -->
-					<div class="flex space-x-0.5 sm:space-x-1 min-w-0">
+		{#if visitors.length === 0}
+			<div class="text-center py-8 sm:py-12">
+				<div class="text-gray-400 mb-2">No visitor data</div>
+				<div class="text-xs sm:text-sm text-gray-500 dark:!text-gray-400">
+					Visitor activity will appear here once tracking begins
+				</div>
+			</div>
+		{:else if viewMode === 'chart'}
+			<!-- Month labels for chart view - Mobile Responsive -->
+			{#if weeks.length > 0}
+				<div class="relative h-3 sm:h-4 mb-2">
+					<div class="flex space-x-0.5 sm:space-x-1">
 						{#each weeks as week, weekIndex}
-							<div class="flex flex-col space-y-0.5 sm:space-y-1">
-								{#each week as day, dayIndex}
-									<div
-										class="w-2 h-2 sm:w-3 sm:h-3 rounded-sm transition-all duration-200 hover:ring-1 sm:hover:ring-2 hover:ring-blue-300 hover:ring-opacity-50 hover:scale-110 cursor-pointer"
-										style="background-color: {getVisitorColor(day?.level || 0)}"
-										title={day
-											? `${day.visitor_count} visitor${day.visitor_count !== 1 ? 's' : ''} on ${formatTooltipDate(day.date)}`
-											: 'No data'}
-										role="button"
-										tabindex="0"
-										aria-label={day
-											? `${day.visitor_count} visitor${day.visitor_count !== 1 ? 's' : ''} on ${formatTooltipDate(day.date)}`
-											: 'No data'}
-										onmouseenter={(e) => handleDayMouseEnter(e, day)}
-										onmouseleave={handleDayMouseLeave}
-										onkeydown={(e) => {
-											if (day && (e.key === 'Enter' || e.key === ' ')) {
-												e.preventDefault();
-												handleDayMouseEnter(e, day);
-											}
-										}}
-									></div>
+							<div class="w-2 sm:w-3 h-3 sm:h-4 relative">
+								{#each monthLabels as month}
+									{#if month.weekIndex === weekIndex}
+										<div
+											class="absolute -top-1 left-0 text-xs text-gray-500 dark:!text-gray-400 whitespace-nowrap"
+										>
+											{month.name}
+										</div>
+									{/if}
 								{/each}
 							</div>
 						{/each}
-					</div>
-				</div>
-			{:else}
-				<!-- Graph view - Mobile Responsive -->
-				<div class="mt-4">
-					<!-- Legend -->
-					<div class="flex items-center space-x-4 mb-4 text-xs sm:text-sm">
-						<div class="flex items-center">
-							<div class="w-3 h-3 bg-blue-500 rounded-full mr-2"></div>
-							<span class="text-gray-600 dark:text-gray-400">Visitors (Line)</span>
-						</div>
-						<div class="flex items-center">
-							<div class="w-3 h-3 bg-green-500 rounded-sm mr-2 opacity-60"></div>
-							<span class="text-gray-600 dark:text-gray-400">Signups (Bars)</span>
-						</div>
-					</div>
-
-					<div class="overflow-x-auto">
-						<svg class="w-full min-w-[300px] h-48 sm:h-64" viewBox="0 0 800 200">
-							<!-- Grid lines -->
-							{#each Array(6) as _, i}
-								<line
-									x1="50"
-									y1={30 + i * 28}
-									x2="750"
-									y2={30 + i * 28}
-									stroke="rgb(229, 231, 235)"
-									stroke-width="1"
-									class="dark:stroke-gray-600"
-								/>
-								<text
-									x="45"
-									y={35 + i * 28}
-									fill="rgb(107, 114, 128)"
-									font-size="10"
-									text-anchor="end"
-									class="dark:fill-gray-400"
-								>
-									{Math.round(maxValue - (i * maxValue) / 5)}
-								</text>
-							{/each}
-
-							<!-- Signups bars -->
-							{#if signupGraphData.length > 0}
-								{#each signupGraphData as point, index}
-									<rect
-										x={45 + index * (700 / (signupGraphData.length - 1))}
-										y={170 - (point.signup_count / maxValue) * 140}
-										width="10"
-										height={(point.signup_count / maxValue) * 140}
-										fill="rgb(34, 197, 94)"
-										fill-opacity="0.6"
-										class="hover:fill-opacity-100 cursor-pointer transition-all duration-200"
-										role="button"
-										tabindex="0"
-										aria-label="{point.signup_count} signups on {point.formattedDate}"
-										onmouseenter={(e) => handleSignupMouseEnter(e, point)}
-										onmouseleave={handleSignupMouseLeave}
-										onkeydown={(e) => {
-											if (e.key === 'Enter' || e.key === ' ') {
-												e.preventDefault();
-												handleSignupMouseEnter(e, point);
-											}
-										}}
-									/>
-								{/each}
-							{/if}
-
-							<!-- Visitors line -->
-							{#if graphData.length > 1}
-								<path
-									d="M {graphData
-										.map(
-											(point, index) =>
-												`${50 + index * (700 / (graphData.length - 1))},${170 - (point.visitor_count / maxValue) * 140}`
-										)
-										.join(' L ')}"
-									fill="none"
-									stroke="rgb(59, 130, 246)"
-									stroke-width="2"
-									class="transition-all duration-300"
-								/>
-
-								<!-- Visitors data points -->
-								{#each graphData as point, index}
-									<circle
-										cx={50 + index * (700 / (graphData.length - 1))}
-										cy={170 - (point.visitor_count / maxValue) * 140}
-										r="3"
-										fill="rgb(59, 130, 246)"
-										class="hover:r-5 cursor-pointer transition-all duration-200"
-										role="button"
-										tabindex="0"
-										aria-label="{point.visitor_count} visitors on {point.formattedDate}"
-										onmouseenter={(e) => handlePointMouseEnter(e, point)}
-										onmouseleave={handlePointMouseLeave}
-										onkeydown={(e) => {
-											if (e.key === 'Enter' || e.key === ' ') {
-												e.preventDefault();
-												handlePointMouseEnter(e, point);
-											}
-										}}
-									/>
-								{/each}
-
-								<!-- X-axis labels -->
-								{#each graphData as point, index}
-									{#if index % Math.max(1, Math.floor(graphData.length / 6)) === 0 || index === graphData.length - 1}
-										<text
-											x={50 + index * (700 / (graphData.length - 1))}
-											y="190"
-											fill="rgb(107, 114, 128)"
-											font-size="9"
-											text-anchor="middle"
-											class="dark:fill-gray-400"
-										>
-											{point.formattedDate}
-										</text>
-									{/if}
-								{/each}
-							{/if}
-						</svg>
 					</div>
 				</div>
 			{/if}
 
-			<!-- Summary stats - Mobile Responsive -->
-			<div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+			<!-- Chart grid - Mobile Responsive -->
+			<div class="flex overflow-x-auto">
+				<!-- Day labels -->
 				<div
-					class="flex flex-col sm:flex-row sm:items-center sm:justify-between text-xs sm:text-sm space-y-2 sm:space-y-0"
+					class="flex flex-col justify-between text-xs text-gray-500 dark:!text-gray-400 mr-2 sm:mr-3 py-0.5 flex-shrink-0"
 				>
-					<div
-						class="flex flex-col sm:flex-row sm:items-center sm:space-x-4 space-y-1 sm:space-y-0 text-gray-600 dark:!text-gray-400"
-					>
-						<span
-							>📈 Peak day: {Math.max(...visitors.map((v) => v.visitor_count))} visitors</span
-						>
-						<span
-							>📅 Active days: {visitors.filter((v) => v.visitor_count > 0)
-								.length}/30</span
-						>
+					{#each dayLabels as label, index}
+						{#if index % 2 === 1}
+							<!-- Only show Mon, Wed, Fri for space -->
+							<div class="h-2 sm:h-3 flex items-center">{label}</div>
+						{:else}
+							<div class="h-2 sm:h-3"></div>
+						{/if}
+					{/each}
+				</div>
+
+				<!-- Contribution grid -->
+				<div class="flex space-x-0.5 sm:space-x-1 min-w-0">
+					{#each weeks as week, weekIndex}
+						<div class="flex flex-col space-y-0.5 sm:space-y-1">
+							{#each week as day, dayIndex}
+								<div
+									class="w-2 h-2 sm:w-3 sm:h-3 rounded-sm transition-all duration-200 hover:ring-1 sm:hover:ring-2 hover:ring-blue-300 hover:ring-opacity-50 hover:scale-110 cursor-pointer"
+									style="background-color: {getVisitorColor(day?.level || 0)}"
+									title={day
+										? `${day.visitor_count} visitor${day.visitor_count !== 1 ? 's' : ''} on ${formatTooltipDate(day.date)}`
+										: 'No data'}
+									role="button"
+									tabindex="0"
+									aria-label={day
+										? `${day.visitor_count} visitor${day.visitor_count !== 1 ? 's' : ''} on ${formatTooltipDate(day.date)}`
+										: 'No data'}
+									onmouseenter={(e) => handleDayMouseEnter(e, day)}
+									onmouseleave={handleDayMouseLeave}
+									onkeydown={(e) => {
+										if (day && (e.key === 'Enter' || e.key === ' ')) {
+											e.preventDefault();
+											handleDayMouseEnter(e, day);
+										}
+									}}
+								></div>
+							{/each}
+						</div>
+					{/each}
+				</div>
+			</div>
+		{:else}
+			<!-- Graph view - Mobile Responsive -->
+			<div class="mt-4">
+				<!-- Legend -->
+				<div class="flex items-center space-x-4 mb-4 text-xs sm:text-sm">
+					<div class="flex items-center">
+						<div class="w-3 h-3 bg-blue-500 rounded-full mr-2"></div>
+						<span class="text-gray-600 dark:text-gray-400">Visitors (Line)</span>
+					</div>
+					<div class="flex items-center">
+						<div class="w-3 h-3 bg-green-500 rounded-sm mr-2 opacity-60"></div>
+						<span class="text-gray-600 dark:text-gray-400">Signups (Bars)</span>
 					</div>
 				</div>
+
+				<div class="overflow-x-auto">
+					<svg class="w-full min-w-[300px] h-48 sm:h-64" viewBox="0 0 800 200">
+						<!-- Grid lines -->
+						{#each Array(6) as _, i}
+							<line
+								x1="50"
+								y1={30 + i * 28}
+								x2="750"
+								y2={30 + i * 28}
+								stroke="rgb(229, 231, 235)"
+								stroke-width="1"
+								class="dark:stroke-gray-600"
+							/>
+							<text
+								x="45"
+								y={35 + i * 28}
+								fill="rgb(107, 114, 128)"
+								font-size="10"
+								text-anchor="end"
+								class="dark:fill-gray-400"
+							>
+								{Math.round(maxValue - (i * maxValue) / 5)}
+							</text>
+						{/each}
+
+						<!-- Signups bars -->
+						{#if signupGraphData.length > 0}
+							{#each signupGraphData as point, index}
+								<rect
+									x={45 + index * (700 / (signupGraphData.length - 1))}
+									y={170 - (point.signup_count / maxValue) * 140}
+									width="10"
+									height={(point.signup_count / maxValue) * 140}
+									fill="rgb(34, 197, 94)"
+									fill-opacity="0.6"
+									class="hover:fill-opacity-100 cursor-pointer transition-all duration-200"
+									role="button"
+									tabindex="0"
+									aria-label="{point.signup_count} signups on {point.formattedDate}"
+									onmouseenter={(e) => handleSignupMouseEnter(e, point)}
+									onmouseleave={handleSignupMouseLeave}
+									onkeydown={(e) => {
+										if (e.key === 'Enter' || e.key === ' ') {
+											e.preventDefault();
+											handleSignupMouseEnter(e, point);
+										}
+									}}
+								/>
+							{/each}
+						{/if}
+
+						<!-- Visitors line -->
+						{#if graphData.length > 1}
+							<path
+								d="M {graphData
+									.map(
+										(point, index) =>
+											`${50 + index * (700 / (graphData.length - 1))},${170 - (point.visitor_count / maxValue) * 140}`
+									)
+									.join(' L ')}"
+								fill="none"
+								stroke="rgb(59, 130, 246)"
+								stroke-width="2"
+								class="transition-all duration-300"
+							/>
+
+							<!-- Visitors data points -->
+							{#each graphData as point, index}
+								<circle
+									cx={50 + index * (700 / (graphData.length - 1))}
+									cy={170 - (point.visitor_count / maxValue) * 140}
+									r="3"
+									fill="rgb(59, 130, 246)"
+									class="hover:r-5 cursor-pointer transition-all duration-200"
+									role="button"
+									tabindex="0"
+									aria-label="{point.visitor_count} visitors on {point.formattedDate}"
+									onmouseenter={(e) => handlePointMouseEnter(e, point)}
+									onmouseleave={handlePointMouseLeave}
+									onkeydown={(e) => {
+										if (e.key === 'Enter' || e.key === ' ') {
+											e.preventDefault();
+											handlePointMouseEnter(e, point);
+										}
+									}}
+								/>
+							{/each}
+
+							<!-- X-axis labels -->
+							{#each graphData as point, index}
+								{#if index % Math.max(1, Math.floor(graphData.length / 6)) === 0 || index === graphData.length - 1}
+									<text
+										x={50 + index * (700 / (graphData.length - 1))}
+										y="190"
+										fill="rgb(107, 114, 128)"
+										font-size="9"
+										text-anchor="middle"
+										class="dark:fill-gray-400"
+									>
+										{point.formattedDate}
+									</text>
+								{/if}
+							{/each}
+						{/if}
+					</svg>
+				</div>
 			</div>
 		{/if}
 
-		<!-- Chart view tooltip - Mobile Responsive -->
-		{#if hoveredDay}
+		<!-- Summary stats - Mobile Responsive -->
+		<div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
 			<div
-				class="absolute z-10 px-2 sm:px-3 py-1 sm:py-2 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded-lg shadow-lg pointer-events-none transform -translate-x-1/2 -translate-y-full"
-				style="left: {hoveredDay.x}px; top: {hoveredDay.y}px;"
+				class="flex flex-col sm:flex-row sm:items-center sm:justify-between text-xs sm:text-sm space-y-2 sm:space-y-0"
 			>
-				<div class="font-medium text-xs sm:text-sm">
-					{formatTooltipDate(hoveredDay.date)}
-				</div>
-				<div class="text-gray-300 text-xs">
-					{hoveredDay.count} visitor{hoveredDay.count !== 1 ? 's' : ''}
-				</div>
-
-				<!-- Tooltip arrow -->
-				<div class="absolute top-full left-1/2 transform -translate-x-1/2">
-					<div
-						class="border-4 border-transparent border-t-gray-900 dark:border-t-gray-700"
-					></div>
+				<div
+					class="flex flex-col sm:flex-row sm:items-center sm:space-x-4 space-y-1 sm:space-y-0 text-gray-600 dark:!text-gray-400"
+				>
+					<span
+						>📈 Peak day: {Math.max(...visitors.map((v) => v.visitor_count))} visitors</span
+					>
+					<span
+						>📅 Active days: {visitors.filter((v) => v.visitor_count > 0)
+							.length}/30</span
+					>
 				</div>
 			</div>
-		{/if}
+		</div>
+	{/if}
 
-		<!-- Graph view tooltip - Mobile Responsive -->
-		{#if hoveredPoint}
-			<div
-				class="absolute z-10 px-2 sm:px-3 py-1 sm:py-2 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded-lg shadow-lg pointer-events-none transform -translate-x-1/2 -translate-y-full"
-				style="left: {hoveredPoint.x}px; top: {hoveredPoint.y}px;"
-			>
-				<div class="font-medium text-xs sm:text-sm">
-					{formatTooltipDate(hoveredPoint.date)}
-				</div>
-				<div class="text-gray-300 text-xs">
-					{hoveredPoint.count} visitor{hoveredPoint.count !== 1 ? 's' : ''}
-				</div>
-
-				<!-- Tooltip arrow -->
-				<div class="absolute top-full left-1/2 transform -translate-x-1/2">
-					<div
-						class="border-4 border-transparent border-t-gray-900 dark:border-t-gray-700"
-					></div>
-				</div>
+	<!-- Chart view tooltip - Mobile Responsive -->
+	{#if hoveredDay}
+		<div
+			class="absolute z-10 px-2 sm:px-3 py-1 sm:py-2 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded-lg shadow-lg pointer-events-none transform -translate-x-1/2 -translate-y-full"
+			style="left: {hoveredDay.x}px; top: {hoveredDay.y}px;"
+		>
+			<div class="font-medium text-xs sm:text-sm">
+				{formatTooltipDate(hoveredDay.date)}
 			</div>
-		{/if}
-
-		<!-- Signup tooltip - Mobile Responsive -->
-		{#if hoveredSignup}
-			<div
-				class="absolute z-10 px-2 sm:px-3 py-1 sm:py-2 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded-lg shadow-lg pointer-events-none transform -translate-x-1/2 -translate-y-full"
-				style="left: {hoveredSignup.x}px; top: {hoveredSignup.y}px;"
-			>
-				<div class="font-medium text-xs sm:text-sm">
-					{formatTooltipDate(hoveredSignup.date)}
-				</div>
-				<div class="text-gray-300 text-xs">
-					{hoveredSignup.count} signup{hoveredSignup.count !== 1 ? 's' : ''}
-				</div>
-
-				<!-- Tooltip arrow -->
-				<div class="absolute top-full left-1/2 transform -translate-x-1/2">
-					<div
-						class="border-4 border-transparent border-t-gray-900 dark:border-t-gray-700"
-					></div>
-				</div>
+			<div class="text-gray-300 text-xs">
+				{hoveredDay.count} visitor{hoveredDay.count !== 1 ? 's' : ''}
 			</div>
-		{/if}
-	</section>
+
+			<!-- Tooltip arrow -->
+			<div class="absolute top-full left-1/2 transform -translate-x-1/2">
+				<div
+					class="border-4 border-transparent border-t-gray-900 dark:border-t-gray-700"
+				></div>
+			</div>
+		</div>
+	{/if}
+
+	<!-- Graph view tooltip - Mobile Responsive -->
+	{#if hoveredPoint}
+		<div
+			class="absolute z-10 px-2 sm:px-3 py-1 sm:py-2 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded-lg shadow-lg pointer-events-none transform -translate-x-1/2 -translate-y-full"
+			style="left: {hoveredPoint.x}px; top: {hoveredPoint.y}px;"
+		>
+			<div class="font-medium text-xs sm:text-sm">
+				{formatTooltipDate(hoveredPoint.date)}
+			</div>
+			<div class="text-gray-300 text-xs">
+				{hoveredPoint.count} visitor{hoveredPoint.count !== 1 ? 's' : ''}
+			</div>
+
+			<!-- Tooltip arrow -->
+			<div class="absolute top-full left-1/2 transform -translate-x-1/2">
+				<div
+					class="border-4 border-transparent border-t-gray-900 dark:border-t-gray-700"
+				></div>
+			</div>
+		</div>
+	{/if}
+
+	<!-- Signup tooltip - Mobile Responsive -->
+	{#if hoveredSignup}
+		<div
+			class="absolute z-10 px-2 sm:px-3 py-1 sm:py-2 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded-lg shadow-lg pointer-events-none transform -translate-x-1/2 -translate-y-full"
+			style="left: {hoveredSignup.x}px; top: {hoveredSignup.y}px;"
+		>
+			<div class="font-medium text-xs sm:text-sm">
+				{formatTooltipDate(hoveredSignup.date)}
+			</div>
+			<div class="text-gray-300 text-xs">
+				{hoveredSignup.count} signup{hoveredSignup.count !== 1 ? 's' : ''}
+			</div>
+
+			<!-- Tooltip arrow -->
+			<div class="absolute top-full left-1/2 transform -translate-x-1/2">
+				<div
+					class="border-4 border-transparent border-t-gray-900 dark:border-t-gray-700"
+				></div>
+			</div>
+		</div>
+	{/if}
+</section>

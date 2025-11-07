@@ -23,13 +23,13 @@ Because everything is transactional, pausing or changing preferences immediately
 3. Pick your **time of day** (HH:MM). The UI stores it as `time_of_day` in 24 hour format.
 4. Confirm your **timezone**. BuildOS uses IANA strings (for example `America/New_York`) to make sure "8 AM" means the correct local hour even when you travel.
 5. Choose a **frequency**:
-   - **Daily** - every day
-   - **Weekdays** - Monday through Friday
-   - **Custom** - specify exact days
+    - **Daily** - every day
+    - **Weekdays** - Monday through Friday
+    - **Custom** - specify exact days
 6. Decide on **delivery channels**:
-   - **In-app** (always on when `is_active = true`)
-   - **Email**: toggle "Email me the brief" to set `email_daily_brief = true`
-   - **SMS** (optional beta): requires a verified phone number from onboarding; turns on `sms_daily_brief`
+    - **In-app** (always on when `is_active = true`)
+    - **Email**: toggle "Email me the brief" to set `email_daily_brief = true`
+    - **SMS** (optional beta): requires a verified phone number from onboarding; turns on `sms_daily_brief`
 
 Changes save instantly through `/api/brief-preferences` and trigger any necessary re-scheduling (existing jobs are cancelled if you pause or move the time).
 
@@ -62,12 +62,12 @@ If you want richer briefs, make sure to:
 
 ## 5. Troubleshooting
 
-| Symptom | What to check | Fix |
-| --- | --- | --- |
-| No brief arrived at the scheduled time | Verify `is_active` is still on and that your timezone is correct. Remember the cron checks hourly, so allow up to 60 minutes. | Toggle off/on to force re-scheduling or hit "Send test brief" if available. |
+| Symptom                                 | What to check                                                                                                                                                                                                  | Fix                                                                                             |
+| --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| No brief arrived at the scheduled time  | Verify `is_active` is still on and that your timezone is correct. Remember the cron checks hourly, so allow up to 60 minutes.                                                                                  | Toggle off/on to force re-scheduling or hit "Send test brief" if available.                     |
 | In-app badge shows a brief but no email | Confirm "Email me the brief" is enabled and that your email address in Profile is valid. Email jobs re-check `email_daily_brief` right before sending, so a recently disabled toggle stops delivery instantly. | Re-enable the toggle and wait for the next run, or trigger a resend from the brief detail page. |
-| Duplicate briefs | Usually caused by manually changing time multiple times within the same hour. Check the history tab; if the same date is listed twice, report it so we can inspect `queue_jobs`. | Contact support; dedup keys should prevent this, so it may signal a bug. |
-| SMS reminder missing | Ensure your phone number is verified (Settings -> Notifications -> SMS). The SMS worker skips delivery if verification failed or if you disabled a specific SMS type such as "Morning Kickoff." | Re-verify your number and re-save preferences. |
+| Duplicate briefs                        | Usually caused by manually changing time multiple times within the same hour. Check the history tab; if the same date is listed twice, report it so we can inspect `queue_jobs`.                               | Contact support; dedup keys should prevent this, so it may signal a bug.                        |
+| SMS reminder missing                    | Ensure your phone number is verified (Settings -> Notifications -> SMS). The SMS worker skips delivery if verification failed or if you disabled a specific SMS type such as "Morning Kickoff."                | Re-verify your number and re-save preferences.                                                  |
 
 ---
 

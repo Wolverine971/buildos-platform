@@ -200,23 +200,23 @@
 		unique_visitors_today: 0
 	});
 
-let dailyVisitors = $state<Array<{ date: string; visitor_count: number }>>([]);
-let dailySignups = $state<Array<{ date: string; signup_count: number }>>([]);
+	let dailyVisitors = $state<Array<{ date: string; visitor_count: number }>>([]);
+	let dailySignups = $state<Array<{ date: string; signup_count: number }>>([]);
 
-const timeframeDisplayMap: Record<Timeframe, string> = {
-	'7d': 'Last 7 Days',
-	'30d': 'Last 30 Days',
-	'90d': 'Last 90 Days'
-};
+	const timeframeDisplayMap: Record<Timeframe, string> = {
+		'7d': 'Last 7 Days',
+		'30d': 'Last 30 Days',
+		'90d': 'Last 90 Days'
+	};
 
-const timeframeRelativeMap: Record<Timeframe, string> = {
-	'7d': 'Past 7 days',
-	'30d': 'Past 30 days',
-	'90d': 'Past 90 days'
-};
+	const timeframeRelativeMap: Record<Timeframe, string> = {
+		'7d': 'Past 7 days',
+		'30d': 'Past 30 days',
+		'90d': 'Past 90 days'
+	};
 
-const timeframeRangeLabel = $derived(timeframeDisplayMap[selectedTimeframe]);
-const timeframeRelativeLabel = $derived(timeframeRelativeMap[selectedTimeframe]);
+	const timeframeRangeLabel = $derived(timeframeDisplayMap[selectedTimeframe]);
+	const timeframeRelativeLabel = $derived(timeframeRelativeMap[selectedTimeframe]);
 
 	const navCards = $derived(() => {
 		const cards = [
@@ -328,7 +328,7 @@ const timeframeRelativeLabel = $derived(timeframeRelativeMap[selectedTimeframe])
 				systemOverview.total_users > 0
 					? `${formatPercentage(
 							(systemOverview.active_users_7d / systemOverview.total_users) * 100
-					  )} of total`
+						)} of total`
 					: '0% of total'
 		},
 		{
@@ -414,14 +414,24 @@ const timeframeRelativeLabel = $derived(timeframeRelativeMap[selectedTimeframe])
 		icon: ComponentType;
 		accent: string;
 	}> = [
-		{ key: 'brainDumps', title: 'Top Brain Dumpers', icon: FileText, accent: 'text-indigo-600' },
+		{
+			key: 'brainDumps',
+			title: 'Top Brain Dumpers',
+			icon: FileText,
+			accent: 'text-indigo-600'
+		},
 		{
 			key: 'projectUpdates',
 			title: 'Top Project Updaters',
 			icon: RefreshCw,
 			accent: 'text-blue-600'
 		},
-		{ key: 'tasksCreated', title: 'Top Task Creators', icon: Activity, accent: 'text-green-600' },
+		{
+			key: 'tasksCreated',
+			title: 'Top Task Creators',
+			icon: Activity,
+			accent: 'text-green-600'
+		},
 		{
 			key: 'tasksScheduled',
 			title: 'Top Task Schedulers',
@@ -747,15 +757,20 @@ const timeframeRelativeLabel = $derived(timeframeRelativeMap[selectedTimeframe])
 	<meta name="robots" content="noindex, nofollow" />
 </svelte:head>
 
-<div class="space-y-10 sm:space-y-12">
+<div class="admin-page">
 	<AdminPageHeader
 		title="Admin Dashboard"
 		description="System overview and user analytics"
 		icon={BarChart3}
 		showBack={false}
 	>
-		<div slot="actions" class="flex w-full flex-wrap items-center gap-3 sm:gap-4 sm:justify-end">
-			<label class="flex items-center gap-2 text-xs font-medium text-slate-600 dark:text-slate-400">
+		<div
+			slot="actions"
+			class="flex w-full flex-wrap items-center gap-3 sm:gap-4 sm:justify-end"
+		>
+			<label
+				class="flex items-center gap-2 text-xs font-medium text-slate-600 dark:text-slate-400"
+			>
 				<input
 					type="checkbox"
 					bind:checked={autoRefresh}
@@ -799,7 +814,7 @@ const timeframeRelativeLabel = $derived(timeframeRelativeMap[selectedTimeframe])
 		</div>
 	</AdminPageHeader>
 
-	<div class="space-y-8 sm:space-y-10">
+	<div class="admin-page">
 		<!-- Navigation Cards -->
 		<div
 			class="grid auto-rows-fr grid-cols-1 gap-6 sm:gap-7 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 mb-8"
@@ -874,19 +889,19 @@ const timeframeRelativeLabel = $derived(timeframeRelativeMap[selectedTimeframe])
 
 			<!-- Key Metrics Cards - Mobile Responsive -->
 
-		<!-- Row 2: System Metrics -->
-		<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-5 mb-4 sm:mb-5">
-			{#each primaryMetrics as metric (metric.label)}
-				<AdminStatCard
-					label={metric.label}
-					value={metric.value}
-					icon={metric.icon}
-					tone={metric.tone}
-					footnote={metric.footnote}
-					compact
-				/>
-			{/each}
-		</div>
+			<!-- Row 2: System Metrics -->
+			<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-5 mb-4 sm:mb-5">
+				{#each primaryMetrics as metric (metric.label)}
+					<AdminStatCard
+						label={metric.label}
+						value={metric.value}
+						icon={metric.icon}
+						tone={metric.tone}
+						footnote={metric.footnote}
+						compact
+					/>
+				{/each}
+			</div>
 
 			<!-- Daily Visitors Chart -->
 			<div class="mb-4 sm:mb-6">
@@ -905,7 +920,9 @@ const timeframeRelativeLabel = $derived(timeframeRelativeMap[selectedTimeframe])
 						({timeframeRangeLabel})
 					</span>
 				</h2>
-				<div class="admin-stat-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-5">
+				<div
+					class="admin-stat-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-5"
+				>
 					{#each brainDumpCards as card (card.label)}
 						<AdminStatCard {...card} compact />
 					{/each}
@@ -940,7 +957,9 @@ const timeframeRelativeLabel = $derived(timeframeRelativeMap[selectedTimeframe])
 											class="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-700 last:border-0"
 										>
 											<div class="flex items-center space-x-3">
-												<span class="text-xs font-semibold text-gray-500 w-6">
+												<span
+													class="text-xs font-semibold text-gray-500 w-6"
+												>
 													#{index + 1}
 												</span>
 												<span
@@ -956,7 +975,9 @@ const timeframeRelativeLabel = $derived(timeframeRelativeMap[selectedTimeframe])
 									{/each}
 								</div>
 							{:else}
-								<p class="text-gray-500 text-center py-4 text-sm">No data available</p>
+								<p class="text-gray-500 text-center py-4 text-sm">
+									No data available
+								</p>
 							{/if}
 						</AdminCard>
 					{/each}
@@ -970,7 +991,9 @@ const timeframeRelativeLabel = $derived(timeframeRelativeMap[selectedTimeframe])
 						Subscription Analytics
 					</h2>
 
-					<div class="admin-stat-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+					<div
+						class="admin-stat-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6"
+					>
 						{#each subscriptionMetricCards as card (card.label)}
 							<AdminStatCard {...card} compact />
 						{/each}
@@ -981,15 +1004,20 @@ const timeframeRelativeLabel = $derived(timeframeRelativeMap[selectedTimeframe])
 							<div class="flex items-start gap-3">
 								<AlertTriangle class="h-5 w-5 flex-shrink-0" />
 								<div>
-									<h3 class="text-sm font-semibold text-red-900 dark:text-red-100">
+									<h3
+										class="text-sm font-semibold text-red-900 dark:text-red-100"
+									>
 										Failed Payments Require Attention
 									</h3>
 									<p class="text-sm text-red-800 dark:text-red-200 mt-1">
-										{subscriptionData.failedPayments.length} payment{subscriptionData.failedPayments.length > 1 ? 's' : ''} failed in the last 30 days
+										{subscriptionData.failedPayments.length} payment{subscriptionData
+											.failedPayments.length > 1
+											? 's'
+											: ''} failed in the last 30 days
 									</p>
 									<a
-										 href="/admin/subscriptions"
-										 class="inline-flex items-center text-sm font-medium text-red-800 hover:text-red-600 dark:text-red-200 mt-2"
+										href="/admin/subscriptions"
+										class="inline-flex items-center text-sm font-medium text-red-800 hover:text-red-600 dark:text-red-200 mt-2"
 									>
 										View details
 										<ExternalLink class="w-3 h-3 ml-1" />
@@ -1007,44 +1035,50 @@ const timeframeRelativeLabel = $derived(timeframeRelativeMap[selectedTimeframe])
 							<div class="space-y-3">
 								{#each subscriptionData.recentChanges.slice(0, 5) as change}
 									<div
-									 class="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-700 last:border-0"
+										class="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-700 last:border-0"
 									>
-									<div class="flex items-center space-x-3">
-										<div class="flex-shrink-0">
-											{#if change.status === 'active'}
-												<div class="w-2 h-2 bg-green-500 rounded-full" />
-											{:else if change.status === 'canceled'}
-												<div class="w-2 h-2 bg-red-500 rounded-full" />
-											{:else if change.status === 'trialing'}
-												<div class="w-2 h-2 bg-blue-500 rounded-full" />
-											{:else}
-												<div class="w-2 h-2 bg-gray-500 rounded-full" />
-											{/if}
+										<div class="flex items-center space-x-3">
+											<div class="flex-shrink-0">
+												{#if change.status === 'active'}
+													<div
+														class="w-2 h-2 bg-green-500 rounded-full"
+													/>
+												{:else if change.status === 'canceled'}
+													<div class="w-2 h-2 bg-red-500 rounded-full" />
+												{:else if change.status === 'trialing'}
+													<div class="w-2 h-2 bg-blue-500 rounded-full" />
+												{:else}
+													<div class="w-2 h-2 bg-gray-500 rounded-full" />
+												{/if}
+											</div>
+											<div>
+												<p
+													class="text-sm font-medium text-gray-900 dark:text-white"
+												>
+													{change.users?.email || 'Unknown User'}
+												</p>
+												<p class="text-xs text-gray-500 dark:text-gray-400">
+													{change.subscription_plans?.name} · {change.status}
+												</p>
+											</div>
 										</div>
-										<div>
-											<p class="text-sm font-medium text-gray-900 dark:text-white">
-												{change.users?.email || 'Unknown User'}
+										<div class="text-right">
+											<p class="text-sm text-gray-600 dark:text-gray-400">
+												${(change.subscription_plans?.price / 100).toFixed(
+													2
+												)}/{change.subscription_plans?.interval}
 											</p>
 											<p class="text-xs text-gray-500 dark:text-gray-400">
-												{change.subscription_plans?.name} · {change.status}
+												{new Date(change.updated_at).toLocaleDateString()}
 											</p>
 										</div>
 									</div>
-									<div class="text-right">
-										<p class="text-sm text-gray-600 dark:text-gray-400">
-											${(change.subscription_plans?.price / 100).toFixed(2)}/{change.subscription_plans?.interval}
-										</p>
-										<p class="text-xs text-gray-500 dark:text-gray-400">
-											{new Date(change.updated_at).toLocaleDateString()}
-										</p>
-									</div>
-								</div>
 								{/each}
 							</div>
 							<div class="mt-4">
 								<a
-								 href="/admin/subscriptions"
-								 class="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+									href="/admin/subscriptions"
+									class="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
 								>
 									View all subscription activity →
 								</a>
@@ -1055,7 +1089,9 @@ const timeframeRelativeLabel = $derived(timeframeRelativeMap[selectedTimeframe])
 			{/if}
 			<!-- Feedback Overview -->
 			<div class="mb-4 sm:mb-6">
-				<div class="admin-stat-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+				<div
+					class="admin-stat-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6"
+				>
 					{#each feedbackMetricCards as card (card.label)}
 						<AdminStatCard {...card} compact />
 					{/each}

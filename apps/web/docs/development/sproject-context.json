@@ -497,6 +497,12 @@
 			"exports": ["StripeService"]
 		},
 		{
+			"file": "src/lib/services/task-series.service.ts",
+			"type": "service",
+			"components": [],
+			"exports": ["enableTaskSeries", "deleteTaskSeries"]
+		},
+		{
 			"file": "src/lib/services/task-time-slot-finder.ts",
 			"type": "service",
 			"components": [],

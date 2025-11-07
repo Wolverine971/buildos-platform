@@ -30,17 +30,19 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
 		let query = supabase.from('users').select(
 			`
 				*,
+				payment_methods (
+					type,
+					card_last4,
+					card_brand,
+					is_default
+				),
 				customer_subscriptions (
 					*,
-					subscription_plans (
+					subscription_plans!customer_subscriptions_plan_id_fkey (
 						name,
-						price,
-						interval
-					),
-					payment_methods (
-						type,
-						last4,
-						brand
+						price:price_cents,
+						interval:billing_interval,
+						interval_count
 					)
 				)
 			`,
@@ -65,8 +67,30 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
 
 		if (error) throw error;
 
+		const normalizedUsers =
+			users?.map((user: any) => {
+				const paymentMethods =
+					user.payment_methods?.map((method: any) => ({
+						...method,
+						last4: method.card_last4,
+						brand: method.card_brand
+					})) ?? [];
+
+				const subscriptions =
+					user.customer_subscriptions?.map((subscription: any) => ({
+						...subscription,
+						payment_methods: paymentMethods
+					})) ?? [];
+
+				return {
+					...user,
+					payment_methods: paymentMethods,
+					customer_subscriptions: subscriptions
+				};
+			}) ?? [];
+
 		// Filter by subscription status if needed
-		let filteredUsers = users || [];
+		let filteredUsers = normalizedUsers;
 		if (status !== 'all') {
 			filteredUsers = filteredUsers.filter((user) => {
 				const sub = user.customer_subscriptions?.[0];

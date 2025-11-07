@@ -89,8 +89,8 @@
 	<meta name="robots" content="noindex, nofollow" />
 </svelte:head>
 
-<div class="space-y-12">
-	<div class="space-y-10">
+<div class="admin-page">
+	<div class="admin-page">
 		<!-- Header -->
 		<AdminPageHeader
 			title="Agent Analytics"
@@ -412,7 +412,7 @@
 
 			<!-- Top Errors -->
 			{#if dashboardData.errors.top_errors && dashboardData.errors.top_errors.length > 0}
-				<div class="admin-panel p-6 mb-6">
+				<div class="admin-panel p-6">
 					<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
 						Top Errors ({formatNumber(dashboardData.errors.total_errors || 0)} total)
 					</h3>

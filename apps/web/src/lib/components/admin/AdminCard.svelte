@@ -20,32 +20,27 @@
 	} & HTMLAttributes<HTMLDivElement> = $props();
 
 	const toneClasses: Record<Tone, string> = {
-		default:
-			'border-slate-200/70 bg-white/85 backdrop-blur-sm dark:border-slate-800/70 dark:bg-slate-900/70',
-		muted:
-			'border-transparent bg-slate-50/80 dark:bg-slate-900/60 dark:border-slate-800/60',
-		brand:
-			'border-blue-500/30 bg-gradient-to-br from-blue-500/10 via-indigo-500/10 to-cyan-400/10 dark:border-blue-400/30',
+		default: 'border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900',
+		muted: 'border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900/60',
+		brand: 'border-blue-200 bg-blue-50 dark:border-blue-500/40 dark:bg-blue-500/10',
 		success:
-			'border-emerald-500/30 bg-gradient-to-br from-emerald-500/10 via-green-500/10 to-teal-400/10 dark:border-emerald-400/30',
-		danger:
-			'border-rose-500/30 bg-gradient-to-br from-rose-500/10 via-red-500/10 to-orange-400/10 dark:border-rose-400/30',
-		warning:
-			'border-amber-500/30 bg-gradient-to-br from-amber-500/10 via-yellow-500/10 to-orange-400/10 dark:border-amber-400/30',
-		info: 'border-indigo-500/30 bg-gradient-to-br from-indigo-500/10 via-blue-500/10 to-cyan-400/10 dark:border-indigo-400/30'
+			'border-emerald-200 bg-emerald-50 dark:border-emerald-500/40 dark:bg-emerald-500/10',
+		danger: 'border-rose-200 bg-rose-50 dark:border-rose-500/40 dark:bg-rose-500/10',
+		warning: 'border-amber-200 bg-amber-50 dark:border-amber-500/40 dark:bg-amber-500/10',
+		info: 'border-sky-200 bg-sky-50 dark:border-sky-500/40 dark:bg-sky-500/10'
 	};
 
 	const paddingClasses: Record<Padding, string> = {
 		none: '',
-		sm: 'px-4 py-3 sm:px-4 sm:py-4',
+		sm: 'px-4 py-3 sm:px-5 sm:py-4',
 		md: 'px-5 py-4 sm:px-6 sm:py-5',
-		lg: 'px-6 py-5 sm:px-7 sm:py-7'
+		lg: 'px-6 py-5 sm:px-7 sm:py-6'
 	};
 
 	let cardClasses = $derived(
 		twMerge(
-			'relative overflow-hidden rounded-3xl border shadow-sm transition-all duration-300',
-			interactive && 'hover:-translate-y-1 hover:shadow-xl',
+			'relative overflow-hidden rounded-xl border shadow-sm transition-all duration-200',
+			interactive && 'hover:-translate-y-[2px] hover:shadow-md',
 			toneClasses[tone],
 			paddingClasses[padding],
 			className
@@ -55,7 +50,7 @@
 
 <div class={cardClasses} {...rest}>
 	<div
-		class="pointer-events-none absolute inset-0 opacity-75 blur-2xl"
+		class="pointer-events-none absolute inset-0 opacity-40 blur-xl"
 		class:opacity-0={tone === 'default' || tone === 'muted'}
 	/>
 	<div class="relative">

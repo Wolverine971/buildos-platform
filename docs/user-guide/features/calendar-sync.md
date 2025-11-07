@@ -16,8 +16,8 @@ Connecting Google Calendar gives BuildOS real-time context for what is already o
 
 1. Go to **Settings -> Integrations -> Calendar** or click **"Use my calendar"** during onboarding.
 2. Select **Connect Google Calendar**. You will be redirected to the Google OAuth consent screen requesting:
-   - `calendar.readonly` for event ingestion and free/busy checks
-   - `calendar.events` for optional write access (creating slots directly from BuildOS)
+    - `calendar.readonly` for event ingestion and free/busy checks
+    - `calendar.events` for optional write access (creating slots directly from BuildOS)
 3. Approve the scopes. You will return to BuildOS at `/auth/google/register-callback` and the UI will confirm the link.
 4. Pick which calendars to include (primary only, or any shared calendars you own). Choices are stored in `user_calendar_preferences`.
 5. Optional: enable **real-time updates**. This turns on Google push notifications so new events propagate without waiting for the hourly refresh.
@@ -40,18 +40,21 @@ The sync currently pulls the upcoming seven days by default. You can extend to 3
 ## 3. Using calendar data inside BuildOS
 
 ### Calendar Analysis (Projects capture)
+
 - Open the analysis modal from onboarding or the Projects page to auto-create projects from existing events.
 - BuildOS highlights recurring meetings, travel, or prep sessions and lets you accept or reject each suggested project.
 
 ### Phase Scheduling Modal
+
 - Access from any Project -> Phase -> "Schedule with AI".
 - Tabs for **Day**, **Week**, and **Month** views reuse the `CalendarView.svelte` component:
-  - Existing events: light gray cards
-  - AI proposals: blue cards
-  - Conflicts: amber with warning icon
+    - Existing events: light gray cards
+    - AI proposals: blue cards
+    - Conflicts: amber with warning icon
 - Click any suggestion to expand the editable `TaskScheduleItem` form where you can adjust start time (datetime input) and duration (15-480 minutes). The UI recalculates the end time immediately.
 
 ### TimeBlock experiments
+
 - When enabled, TimeBlocks reuse the same gap detection plus the energy labels you give tasks. BuildOS recommends the best task for each empty slot and explains why (for example, "Deep work fits your 9-11 AM peak block").
 
 ---

@@ -206,29 +206,30 @@
 	);
 
 	const avatarClasses =
-		'flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 via-purple-500 to-cyan-500 text-sm font-semibold uppercase text-white shadow-lg shadow-blue-500/25';
-
+		'flex h-10 w-10 items-center justify-center rounded-full bg-slate-900 text-sm font-semibold uppercase text-white dark:bg-slate-100 dark:text-slate-900';
 </script>
 
 <div
-	class="admin-shell relative flex min-h-screen bg-slate-50/70 text-slate-900 transition-colors dark:bg-slate-950 dark:text-slate-100"
+	class="admin-shell relative flex min-h-screen bg-slate-100 text-slate-900 transition-colors dark:bg-slate-950 dark:text-slate-100"
 >
 	<!-- Desktop sidebar -->
 	<aside
-		class="relative hidden w-80 shrink-0 border-r border-slate-200/70 bg-white/80 backdrop-blur-xl dark:border-slate-800/80 dark:bg-slate-900/70 lg:flex lg:flex-col"
+		class="relative hidden w-64 shrink-0 border-r border-slate-200 bg-white/95 dark:border-slate-800 dark:bg-slate-900 lg:flex lg:flex-col"
 	>
-		<div class="border-b border-slate-200/70 px-7 py-7 dark:border-slate-800/80">
-			<div class="flex items-center space-x-4">
+		<div class="border-b border-slate-200 px-5 py-5 dark:border-slate-800/80">
+			<div class="flex items-center gap-3">
 				<div
-					class="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 via-purple-500 to-cyan-500 text-white shadow-lg shadow-blue-500/20"
+					class="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900"
 				>
 					<Layers class="h-4 w-4" />
 				</div>
 				<div>
-					<p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+					<p
+						class="text-[0.6rem] font-semibold uppercase tracking-[0.25em] text-slate-400"
+					>
 						BuildOS
 					</p>
-					<p class="text-base font-semibold text-slate-900 dark:text-white">
+					<p class="text-sm font-semibold text-slate-900 dark:text-white">
 						Admin Control
 					</p>
 				</div>
@@ -237,8 +238,8 @@
 
 		<AdminSidebar groups={navGroups} {pathname} />
 
-		<div class="border-t border-slate-200/70 px-6 py-5 dark:border-slate-800/80">
-			<div class="flex items-center space-x-4">
+		<div class="border-t border-slate-200 px-5 py-4 dark:border-slate-800/80">
+			<div class="flex items-center gap-3">
 				<div class={avatarClasses}>{initials}</div>
 				<div>
 					<p class="text-sm font-semibold text-slate-900 dark:text-white">
@@ -253,12 +254,12 @@
 	</aside>
 
 	<!-- Main content -->
-	<div class="flex min-h-screen flex-1 flex-col">
+	<div class="flex min-h-screen min-w-0 flex-1 flex-col">
 		<header
-			class="sticky top-0 z-30 border-b border-slate-200/70 bg-white/80 backdrop-blur-xl transition-all duration-300 dark:border-slate-800/70 dark:bg-slate-950/85"
+			class="sticky top-0 z-30 border-b border-slate-200/80 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/85 transition-all duration-300 dark:border-slate-800/70 dark:bg-slate-950/90"
 		>
 			<div
-				class="mx-auto flex w-full max-w-[1400px] items-center justify-between px-5 py-4 sm:px-8 lg:px-12"
+				class="mx-auto flex w-full max-w-[1600px] items-center justify-between px-4 py-3 sm:px-6 lg:px-10"
 			>
 				<div class="flex items-center space-x-3">
 					<Button
@@ -280,7 +281,9 @@
 							<Layers class="h-4 w-4" />
 						</div>
 						<div>
-							<p class="text-[0.55rem] font-semibold uppercase tracking-[0.18em] text-slate-400">
+							<p
+								class="text-[0.55rem] font-semibold uppercase tracking-[0.18em] text-slate-400"
+							>
 								BuildOS
 							</p>
 							<p class="text-sm font-semibold text-slate-900 dark:text-white">
@@ -292,7 +295,9 @@
 
 				<div class="flex items-center space-x-3">
 					<div class="hidden flex-col text-right sm:flex">
-						<p class="text-[0.6rem] uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">
+						<p
+							class="text-[0.6rem] uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500"
+						>
 							Active Admin
 						</p>
 						<p class="text-sm font-semibold text-slate-900 dark:text-white">
@@ -304,20 +309,14 @@
 			</div>
 		</header>
 
-		<main class="relative flex-1 pb-12">
-			<div
-				class="pointer-events-none absolute inset-x-0 top-0 h-48 bg-gradient-to-br from-blue-500/15 via-purple-500/10 to-cyan-400/10 blur-2xl dark:from-blue-600/10 dark:via-purple-500/15 dark:to-cyan-500/10"
-			/>
-
-			<div
-				class="relative z-10 mx-auto w-full max-w-[1400px] px-5 pb-10 pt-6 sm:px-8 lg:px-12"
-			>
+		<main class="relative flex-1 min-w-0 pb-10 pt-4 sm:pt-6">
+			<div class="mx-auto w-full max-w-[1600px] px-4 pb-10 sm:px-6 lg:px-10 xl:px-12">
 				{#if $$slots.hero}
-					<div class="mb-6 sm:mb-8">
+					<div class="mb-5 sm:mb-6">
 						<slot name="hero" />
 					</div>
 				{/if}
-				<div class="space-y-9 sm:space-y-12">
+				<div class="admin-stack">
 					<slot />
 				</div>
 			</div>
@@ -379,28 +378,26 @@
 
 <style>
 	:global(.admin-shell) {
-		--admin-surface-bg: rgba(255, 255, 255, 0.92);
-		--admin-surface-border: rgba(148, 163, 184, 0.35);
-		--admin-surface-shadow: 0 25px 45px rgba(15, 23, 42, 0.08);
-		--admin-panel-backdrop: blur(8px);
+		background-color: #f8fafc;
 	}
 
 	:global(.dark .admin-shell) {
-		--admin-surface-bg: rgba(15, 23, 42, 0.88);
-		--admin-surface-border: rgba(71, 85, 105, 0.65);
-		--admin-surface-shadow: 0 30px 55px rgba(2, 6, 23, 0.65);
-	}
-
-	:global(.admin-shell .admin-panel) {
-		border-radius: 1.5rem;
-		background: var(--admin-surface-bg);
-		border: 1px solid var(--admin-surface-border);
-		box-shadow: var(--admin-surface-shadow);
-		backdrop-filter: var(--admin-panel-backdrop);
+		background-color: #020617;
 	}
 
 	:global(.admin-shell .admin-panel) {
 		position: relative;
+		border-radius: 0.875rem;
+		background: rgba(255, 255, 255, 0.97);
+		border: 1px solid rgba(148, 163, 184, 0.35);
+		box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+		backdrop-filter: blur(10px);
+	}
+
+	:global(.dark .admin-shell .admin-panel) {
+		background: rgba(2, 6, 23, 0.92);
+		border-color: rgba(71, 85, 105, 0.65);
+		box-shadow: 0 20px 40px rgba(2, 6, 23, 0.75);
 	}
 
 	:global(.admin-shell .admin-panel--tinted) {
@@ -411,17 +408,44 @@
 		content: '';
 		position: absolute;
 		inset: 0;
-		background: linear-gradient(135deg, rgba(59, 130, 246, 0.08), rgba(236, 72, 153, 0.06));
-		opacity: 0.6;
+		background: linear-gradient(135deg, rgba(59, 130, 246, 0.07), rgba(14, 165, 233, 0.05));
+		opacity: 0.45;
 		pointer-events: none;
 	}
 
 	:global(.dark .admin-shell .admin-panel--tinted::after) {
-		opacity: 0.3;
+		opacity: 0.25;
 	}
 
 	:global(.admin-shell .admin-panel > *) {
 		position: relative;
 		z-index: 1;
+	}
+
+	:global(.admin-stack),
+	:global(.admin-page) {
+		display: flex;
+		flex-direction: column;
+		width: 100%;
+		gap: 1.25rem;
+	}
+
+	:global(.admin-stack > *),
+	:global(.admin-page > *) {
+		min-width: 0;
+	}
+
+	@media (min-width: 640px) {
+		:global(.admin-stack),
+		:global(.admin-page) {
+			gap: 1.5rem;
+		}
+	}
+
+	@media (min-width: 1024px) {
+		:global(.admin-stack),
+		:global(.admin-page) {
+			gap: 1.75rem;
+		}
 	}
 </style>

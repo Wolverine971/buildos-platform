@@ -21,6 +21,7 @@
 	} from 'lucide-svelte';
 	import { browser } from '$app/environment';
 	import AdminPageHeader from '$lib/components/admin/AdminPageHeader.svelte';
+	import AdminCard from '$lib/components/admin/AdminCard.svelte';
 	import EmailComposerModal from '$lib/components/admin/EmailComposerModal.svelte';
 	import TextInput from '$lib/components/ui/TextInput.svelte';
 	import FormField from '$lib/components/ui/FormField.svelte';
@@ -205,8 +206,7 @@
 	<meta name="robots" content="noindex, nofollow" />
 </svelte:head>
 
-<div class="space-y-12">
-	<div class="space-y-10">
+<div class="admin-page">
 		<!-- Header with Back Button -->
 		<AdminPageHeader
 			title="Feedback Management"
@@ -233,7 +233,7 @@
 		</AdminPageHeader>
 
 		<!-- Filters and Search -->
-		<div class="admin-panel p-4 sm:p-6 mb-2">
+		<div class="admin-panel p-4 sm:p-6">
 			<!-- Mobile Filter Toggle -->
 			<div class="sm:hidden mb-4">
 				<Button
@@ -364,14 +364,15 @@
 				</div>
 			</div>
 		</div>
-	</div>
 
 	{#if error}
-		<div
-			class="bg-red-50 border border-red-200 rounded-lg p-4 mb-2 dark:bg-red-900/20 dark:border-red-800"
+		<AdminCard
+			tone="danger"
+			padding="sm"
+			class="text-sm font-medium text-rose-900 dark:text-rose-100"
 		>
-			<p class="text-red-800 dark:text-red-200">{error}</p>
-		</div>
+			{error}
+		</AdminCard>
 	{/if}
 
 	<!-- Feedback Content -->
@@ -717,9 +718,7 @@
 <!-- Feedback Details Modal - Mobile Responsive -->
 {#if showFeedbackModal && selectedFeedback}
 	<div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-		<div
-			class="admin-panel-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
-		>
+		<div class="admin-panel-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
 			<div class="p-4 sm:p-6">
 				<div class="flex items-center justify-between mb-4">
 					<h3 class="text-lg font-semibold text-gray-900 dark:text-white">

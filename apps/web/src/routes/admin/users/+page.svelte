@@ -21,6 +21,7 @@
 	} from 'lucide-svelte';
 	import { browser } from '$app/environment';
 	import AdminPageHeader from '$lib/components/admin/AdminPageHeader.svelte';
+	import AdminCard from '$lib/components/admin/AdminCard.svelte';
 	import UserActivityModal from '$lib/components/admin/UserActivityModal.svelte';
 	import EmailComposerModal from '$lib/components/admin/EmailComposerModal.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
@@ -298,7 +299,7 @@
 	<meta name="robots" content="noindex, nofollow" />
 </svelte:head>
 
-<div class="container mx-auto px-4 py-4 sm:py-6 lg:py-8">
+<div class="admin-page">
 	<!-- Header with Back Button -->
 	<AdminPageHeader
 		title="User Management"
@@ -325,7 +326,7 @@
 	</AdminPageHeader>
 
 	<!-- Filters and Search -->
-	<div class="admin-panel p-4 mb-6">
+	<div class="admin-panel p-4">
 		<div class="grid grid-cols-1 md:grid-cols-5 gap-4">
 			<!-- Search -->
 			<div class="md:col-span-2">
@@ -374,11 +375,13 @@
 	</div>
 
 	{#if error}
-		<div
-			class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6 dark:bg-red-900/20 dark:border-red-800"
+		<AdminCard
+			tone="danger"
+			padding="sm"
+			class="text-sm font-medium text-rose-900 dark:text-rose-100"
 		>
-			<p class="text-red-800 dark:text-red-200">{error}</p>
-		</div>
+			{error}
+		</AdminCard>
 	{/if}
 
 	<!-- Users Table -->

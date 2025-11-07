@@ -100,8 +100,8 @@
 	<meta name="robots" content="noindex, nofollow" />
 </svelte:head>
 
-<div class="space-y-12">
-	<div class="space-y-10">
+<div class="admin-page">
+	<div class="admin-page">
 		<!-- Header -->
 		<AdminPageHeader
 			title="Notification Analytics"

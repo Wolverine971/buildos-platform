@@ -282,8 +282,8 @@
 	<meta name="robots" content="noindex, nofollow" />
 </svelte:head>
 
-<div class="space-y-12">
-	<div class="space-y-10">
+<div class="admin-page">
+	<div class="admin-page">
 		<!-- Header -->
 		<AdminPageHeader
 			title="Error Logs"
@@ -351,7 +351,7 @@
 		</div>
 
 		<!-- Filters -->
-		<div class="admin-panel p-4 sm:p-6 mb-6">
+		<div class="admin-panel p-4 sm:p-6">
 			<div class="flex items-center mb-4">
 				<Filter class="h-5 w-5 text-gray-400 mr-2" />
 				<h2 class="text-lg font-semibold text-gray-900 dark:text-white">Filters</h2>

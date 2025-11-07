@@ -206,8 +206,8 @@
 	<meta name="robots" content="noindex, nofollow" />
 </svelte:head>
 
-<div class="space-y-12">
-	<div class="space-y-10">
+<div class="admin-page">
+	<div class="admin-page">
 		<!-- Header -->
 		<AdminPageHeader
 			title="Chat Monitoring"
@@ -274,10 +274,7 @@
 				</div>
 			</a>
 
-			<a
-				href="/admin/chat/agents"
-				class="admin-panel p-6 hover:shadow-lg transition-shadow"
-			>
+			<a href="/admin/chat/agents" class="admin-panel p-6 hover:shadow-lg transition-shadow">
 				<div class="flex items-center">
 					<Bot class="h-8 w-8 text-purple-600 mr-3" />
 					<div>
@@ -287,10 +284,7 @@
 				</div>
 			</a>
 
-			<a
-				href="/admin/chat/costs"
-				class="admin-panel p-6 hover:shadow-lg transition-shadow"
-			>
+			<a href="/admin/chat/costs" class="admin-panel p-6 hover:shadow-lg transition-shadow">
 				<div class="flex items-center">
 					<DollarSign class="h-8 w-8 text-green-600 mr-3" />
 					<div>
@@ -300,10 +294,7 @@
 				</div>
 			</a>
 
-			<a
-				href="/admin/chat/tools"
-				class="admin-panel p-6 hover:shadow-lg transition-shadow"
-			>
+			<a href="/admin/chat/tools" class="admin-panel p-6 hover:shadow-lg transition-shadow">
 				<div class="flex items-center">
 					<Zap class="h-8 w-8 text-yellow-600 mr-3" />
 					<div>

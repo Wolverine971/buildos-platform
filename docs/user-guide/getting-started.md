@@ -12,10 +12,10 @@ BuildOS launches every new account into an onboarding flow that captures your pr
 
 ### Account creation options
 
-| Method | Where it happens | What to expect |
-| --- | --- | --- |
-| Email + password | `/auth/register` | Strong-password check, optional name field, and immediate redirect to the app if email confirmation is not required. |
-| Google OAuth | Same UI, Google button | Uses the Google consent screen, then returns to `/auth/google/register-callback` before redirecting into the app. |
+| Method           | Where it happens       | What to expect                                                                                                       |
+| ---------------- | ---------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| Email + password | `/auth/register`       | Strong-password check, optional name field, and immediate redirect to the app if email confirmation is not required. |
+| Google OAuth     | Same UI, Google button | Uses the Google consent screen, then returns to `/auth/google/register-callback` before redirecting into the app.    |
 
 Behind the scenes both paths create a Supabase Auth user, insert a matching `public.users` row, and trigger `handle_new_user_trial()` which starts your 14 day trial and flags the account for onboarding by appending `?onboarding=true` to the first redirect.
 
@@ -25,31 +25,31 @@ Behind the scenes both paths create a Supabase Auth user, insert a matching `pub
 
 The onboarding modal appears on the homepage until you finish or skip each segment. Progress auto-saves every roughly 1.5 seconds in `user_context`, so you can close the tab at any point and resume from the same step.
 
-| Step | What you do | What BuildOS configures | Status |
-| --- | --- | --- | --- |
-| Welcome | Review how brain dumps, calendar sync, and reminders work; start the flow. | Flags `onboarding_v2_started` and captures skipped steps for analytics. | Live |
-| Capture work | Brain dump current projects, optionally import from Calendar, and let AI auto-create projects. | Auto-accepts brain dump output into Projects + Phases, stores examples for future reference. | Live |
-| Notifications | Verify a phone number, toggle SMS reminders, and pick email daily brief settings. | Writes to `/api/sms/preferences` and `/api/brief-preferences`, enables SMS webhooks when verified. | Live |
-| Archetypes and challenges | Select archetype, top blockers, and focus areas (guides prompt tuning). | Populates `onboarding_archetypes` plus `productivity_challenges`. | Rolling out |
-| Summary and finish | Review what was created, connect missing integrations, and jump into the dashboard. | Marks `completed_onboarding_at`, clears modal flag. | Planned |
+| Step                      | What you do                                                                                    | What BuildOS configures                                                                            | Status      |
+| ------------------------- | ---------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- | ----------- |
+| Welcome                   | Review how brain dumps, calendar sync, and reminders work; start the flow.                     | Flags `onboarding_v2_started` and captures skipped steps for analytics.                            | Live        |
+| Capture work              | Brain dump current projects, optionally import from Calendar, and let AI auto-create projects. | Auto-accepts brain dump output into Projects + Phases, stores examples for future reference.       | Live        |
+| Notifications             | Verify a phone number, toggle SMS reminders, and pick email daily brief settings.              | Writes to `/api/sms/preferences` and `/api/brief-preferences`, enables SMS webhooks when verified. | Live        |
+| Archetypes and challenges | Select archetype, top blockers, and focus areas (guides prompt tuning).                        | Populates `onboarding_archetypes` plus `productivity_challenges`.                                  | Rolling out |
+| Summary and finish        | Review what was created, connect missing integrations, and jump into the dashboard.            | Marks `completed_onboarding_at`, clears modal flag.                                                | Planned     |
 
 ### Step-by-step detail
 
 1. **Welcome screen**
-   - Highlights brain dump, calendar sync, and smart reminders.
-   - "Start Setting Up" drops you into the capture step without leaving the modal.
+    - Highlights brain dump, calendar sync, and smart reminders.
+    - "Start Setting Up" drops you into the capture step without leaving the modal.
 
 2. **Capture current projects**
-   - Speak or paste a detailed brain dump (20+ characters required to run).
-   - Auto-accept mode immediately creates projects and phases without the manual review queue.
-   - "Use my calendar" opens the Calendar Analysis modal so you can mine existing events for projects before you have even connected anything else.
+    - Speak or paste a detailed brain dump (20+ characters required to run).
+    - Auto-accept mode immediately creates projects and phases without the manual review queue.
+    - "Use my calendar" opens the Calendar Analysis modal so you can mine existing events for projects before you have even connected anything else.
 
 3. **Notification preferences**
-   - Phone verification uses `smsService.verifyPhoneNumber()` and a six-digit confirmation; once verified we enable Morning Kickoff plus Event Reminders by default.
-   - Email toggles call `/api/brief-preferences` (see [Daily Briefs](features/daily-briefs.md) for details). You can revisit both choices later from Settings -> Notifications.
+    - Phone verification uses `smsService.verifyPhoneNumber()` and a six-digit confirmation; once verified we enable Morning Kickoff plus Event Reminders by default.
+    - Email toggles call `/api/brief-preferences` (see [Daily Briefs](features/daily-briefs.md) for details). You can revisit both choices later from Settings -> Notifications.
 
 4. **(Upcoming) Archetypes and challenges**
-   - Coming releases add archetype selection, productivity challenges, and a summary step. These are already scaffolded in `onboarding-v2.service.ts`; you might see placeholders if you are on the beta channel.
+    - Coming releases add archetype selection, productivity challenges, and a summary step. These are already scaffolded in `onboarding-v2.service.ts`; you might see placeholders if you are on the beta channel.
 
 ### Auto-save and resume rules
 

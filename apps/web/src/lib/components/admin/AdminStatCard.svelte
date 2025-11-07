@@ -32,7 +32,7 @@
 	} = $props();
 
 	const formattedValue = $derived(
-		typeof value === 'number' ? new Intl.NumberFormat().format(value) : value ?? '—'
+		typeof value === 'number' ? new Intl.NumberFormat().format(value) : (value ?? '—')
 	);
 
 	const resolvedDirection: Direction = $derived(() => {
@@ -68,25 +68,25 @@
 
 	const labelClasses = $derived(
 		twMerge(
-			'font-semibold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400',
-			compact ? 'text-[0.65rem]' : 'text-[0.7rem]'
+			'font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400',
+			compact ? 'text-[0.6rem]' : 'text-[0.65rem]'
 		)
 	);
 
 	const valueClasses = $derived(
 		compact
-			? 'text-2xl font-semibold text-slate-900 dark:text-slate-50 sm:text-3xl'
-			: 'text-3xl font-semibold text-slate-900 dark:text-slate-50 sm:text-4xl'
+			? 'text-2xl font-semibold text-slate-900 dark:text-slate-50 sm:text-[1.7rem]'
+			: 'text-[2rem] font-semibold text-slate-900 dark:text-slate-50 sm:text-[2.35rem]'
 	);
 
 	const iconWrapperClasses = $derived(
-		`flex ${compact ? 'h-10 w-10' : 'h-12 w-12'} items-center justify-center rounded-2xl bg-white/60 text-blue-600 shadow-md dark:bg-slate-900/40 dark:text-blue-200`
+		`flex ${compact ? 'h-10 w-10' : 'h-11 w-11'} items-center justify-center rounded-xl bg-slate-900/5 text-slate-700 dark:bg-white/5 dark:text-slate-200`
 	);
 
 	const iconSize = $derived(compact ? 'h-5 w-5' : 'h-6 w-6');
 </script>
 
-<AdminCard tone={tone} padding={compact ? 'md' : 'lg'} class="h-full">
+<AdminCard {tone} padding={compact ? 'md' : 'lg'} class="h-full">
 	<div class="flex items-start justify-between gap-4">
 		<div class={compact ? 'space-y-1.5' : 'space-y-2'}>
 			<p class={labelClasses}>{label}</p>

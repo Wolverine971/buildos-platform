@@ -2,6 +2,7 @@
 <script lang="ts">
 	import { GitBranch } from 'lucide-svelte';
 	import AdminPageHeader from '$lib/components/admin/AdminPageHeader.svelte';
+	import AdminCard from '$lib/components/admin/AdminCard.svelte';
 	import Badge from '$lib/components/ui/Badge.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import type { PageData } from './$types';
@@ -63,7 +64,7 @@
 	<meta name="robots" content="noindex, nofollow" />
 </svelte:head>
 
-<div class="space-y-12">
+<div class="admin-page">
 	<AdminPageHeader
 		title="Feature Flags"
 		description="Enable or disable gated features for individual users."
@@ -73,88 +74,93 @@
 	/>
 
 	{#if errorMessage}
-		<div
-			class="rounded-2xl border border-red-200/70 bg-red-50/80 px-5 py-4 text-sm font-medium text-red-700 shadow-sm dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-200"
+		<AdminCard
+			tone="danger"
+			padding="sm"
+			class="text-sm font-medium text-rose-900 dark:text-rose-100"
 		>
 			{errorMessage}
-		</div>
+		</AdminCard>
 	{/if}
 
-	<div
-		class="overflow-hidden rounded-3xl border border-slate-200/70 bg-white/80 shadow-sm ring-1 ring-black/5 dark:border-slate-800/70 dark:bg-slate-900/60 dark:ring-white/10"
-	>
-		<table class="min-w-full divide-y divide-slate-200/70 text-sm dark:divide-slate-800/70">
-			<thead class="bg-slate-50/80 dark:bg-slate-900/60">
-				<tr
-					class="text-left text-xs font-semibold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400"
-				>
-					<th class="px-5 py-3">User</th>
-					<th class="px-5 py-3">Email</th>
-					<th class="px-5 py-3">Time Blocks</th>
-					<th class="px-5 py-3">Last Updated</th>
-					<th class="px-5 py-3 text-right">Actions</th>
-				</tr>
-			</thead>
-			<tbody class="divide-y divide-slate-200/60 dark:divide-slate-800/60">
-				{#each data.users as user}
-					{@const timePlayFlag = getFlag(user, 'time_play')}
-					<tr class="transition-colors hover:bg-slate-50/80 dark:hover:bg-slate-800/50">
-						<td class="px-5 py-4 align-middle">
-							<div class="flex flex-col gap-1.5">
-								<span
-									class="text-sm font-semibold text-slate-900 dark:text-slate-100"
-								>
-									{user.name ?? 'No name'}
-								</span>
-								{#if user.id === pendingUserId}
-									<Badge size="sm" variant="info" class="w-max">Updating...</Badge
-									>
-								{/if}
-							</div>
-						</td>
-						<td class="px-5 py-4 text-sm text-slate-600 dark:text-slate-300"
-							>{user.email}</td
-						>
-						<td class="px-5 py-4">
-							{#if timePlayFlag?.enabled}
-								<Badge size="sm" variant="success">Enabled</Badge>
-							{:else}
-								<Badge
-									size="sm"
-									variant="info"
-									class="bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700"
-								>
-									Disabled
-								</Badge>
-							{/if}
-						</td>
-						<td class="px-5 py-4 text-sm text-slate-600 dark:text-slate-300">
-							{#if timePlayFlag?.updated_at}
-								<time datetime={timePlayFlag.updated_at}>
-									{new Date(timePlayFlag.updated_at).toLocaleString()}
-								</time>
-							{:else}
-								<span class="text-slate-400 dark:text-slate-500">Not set</span>
-							{/if}
-						</td>
-						<td class="px-5 py-4 text-right">
-							<Button
-								size="sm"
-								variant={timePlayFlag?.enabled ? 'secondary' : 'primary'}
-								loading={pendingUserId === user.id}
-								onclick={() =>
-									toggleFeature(
-										user.id,
-										'time_play',
-										timePlayFlag?.enabled ?? false
-									)}
-							>
-								{timePlayFlag?.enabled ? 'Disable' : 'Enable'}
-							</Button>
-						</td>
+	<AdminCard padding="none" class="overflow-hidden">
+		<div class="overflow-x-auto">
+			<table class="min-w-full divide-y divide-slate-200/70 text-sm dark:divide-slate-800/70">
+				<thead class="bg-slate-50/80 dark:bg-slate-900/60">
+					<tr
+						class="text-left text-xs font-semibold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400"
+					>
+						<th class="px-5 py-3">User</th>
+						<th class="px-5 py-3">Email</th>
+						<th class="px-5 py-3">Time Blocks</th>
+						<th class="px-5 py-3">Last Updated</th>
+						<th class="px-5 py-3 text-right">Actions</th>
 					</tr>
-				{/each}
-			</tbody>
-		</table>
-	</div>
+				</thead>
+				<tbody class="divide-y divide-slate-200/60 dark:divide-slate-800/60">
+					{#each data.users as user}
+						{@const timePlayFlag = getFlag(user, 'time_play')}
+						<tr
+							class="transition-colors hover:bg-slate-50/80 dark:hover:bg-slate-800/50"
+						>
+							<td class="px-5 py-4 align-middle">
+								<div class="flex flex-col gap-1.5">
+									<span
+										class="text-sm font-semibold text-slate-900 dark:text-slate-100"
+									>
+										{user.name ?? 'No name'}
+									</span>
+									{#if user.id === pendingUserId}
+										<Badge size="sm" variant="info" class="w-max">
+											Updating...
+										</Badge>
+									{/if}
+								</div>
+							</td>
+							<td class="px-5 py-4 text-sm text-slate-600 dark:text-slate-300">
+								{user.email}
+							</td>
+							<td class="px-5 py-4">
+								{#if timePlayFlag?.enabled}
+									<Badge size="sm" variant="success">Enabled</Badge>
+								{:else}
+									<Badge
+										size="sm"
+										variant="info"
+										class="bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700"
+									>
+										Disabled
+									</Badge>
+								{/if}
+							</td>
+							<td class="px-5 py-4 text-sm text-slate-600 dark:text-slate-300">
+								{#if timePlayFlag?.updated_at}
+									<time datetime={timePlayFlag.updated_at}>
+										{new Date(timePlayFlag.updated_at).toLocaleString()}
+									</time>
+								{:else}
+									<span class="text-slate-400 dark:text-slate-500">Not set</span>
+								{/if}
+							</td>
+							<td class="px-5 py-4 text-right">
+								<Button
+									size="sm"
+									variant={timePlayFlag?.enabled ? 'secondary' : 'primary'}
+									loading={pendingUserId === user.id}
+									onclick={() =>
+										toggleFeature(
+											user.id,
+											'time_play',
+											timePlayFlag?.enabled ?? false
+										)}
+								>
+									{timePlayFlag?.enabled ? 'Disable' : 'Enable'}
+								</Button>
+							</td>
+						</tr>
+					{/each}
+				</tbody>
+			</table>
+		</div>
+	</AdminCard>
 </div>

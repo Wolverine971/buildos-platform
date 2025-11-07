@@ -308,6 +308,62 @@ DELETE /api/onto/tasks/[id]
 
 Removes task and all associated edges
 
+### Make Task Recurring
+
+```http
+POST /api/onto/tasks/[id]/series
+```
+
+**Request Body**
+
+```json
+{
+	"timezone": "America/Los_Angeles",
+	"rrule": "FREQ=WEEKLY;COUNT=8",
+	"start_at": "2025-11-12T17:00:00.000Z",
+	"max_instances": 12,
+	"regenerate_on_update": false
+}
+```
+
+**Response**
+
+```json
+{
+  "success": true,
+  "data": {
+    "series_id": "6671bfe9-0a45-4bb2-aa7a-2e62ac4db4ad",
+    "master": { "...updated task..." },
+    "instances": [{ "...first instance..." }],
+    "total_instances": 8
+  }
+}
+```
+
+### Delete Task Series
+
+```http
+DELETE /api/onto/task-series/[seriesId]
+```
+
+**Query Parameters**
+
+| Name    | Description                                                                                                   |
+| ------- | ------------------------------------------------------------------------------------------------------------- |
+| `force` | `true` removes _all_ instances (even completed). Omit to delete only pending tasks and detach completed ones. |
+
+**Response**
+
+```json
+{
+	"success": true,
+	"data": {
+		"deleted_master": 1,
+		"deleted_instances": 6
+	}
+}
+```
+
 ---
 
 ## 📅 Plan Management

@@ -29,6 +29,8 @@
 	import CardHeader from '$lib/components/ui/CardHeader.svelte';
 	import { fade } from 'svelte/transition';
 	import FSMStateVisualizer from './FSMStateVisualizer.svelte';
+	import TaskSeriesModal from './TaskSeriesModal.svelte';
+	import { toastService } from '$lib/stores/toast.store';
 
 	interface Props {
 		taskId: string;
@@ -54,9 +56,29 @@
 	let priority = $state<number>(3);
 	let planId = $state('');
 	let stateKey = $state('todo');
+	let showSeriesModal = $state(false);
+	let showSeriesDeleteConfirm = $state(false);
+	let isDeletingSeries = $state(false);
+	let seriesActionError = $state('');
 
 	// FSM related
 	let allowedTransitions = $state<any[]>([]);
+
+	const seriesMeta = $derived(() => {
+		if (!task?.props || typeof task.props !== 'object') return null;
+		const meta = (task.props as Record<string, any>).series;
+		return meta && typeof meta === 'object' ? meta : null;
+	});
+
+	const seriesId = $derived(() => {
+		if (!task?.props || typeof task.props !== 'object') {
+			return null;
+		}
+		return (task.props as Record<string, any>).series_id ?? null;
+	});
+
+	const isSeriesMaster = $derived(() => seriesMeta?.role === 'master');
+	const isSeriesInstance = $derived(() => seriesMeta?.role === 'instance');
 
 	// Load task data when modal opens
 	$effect(() => {
@@ -78,6 +100,8 @@
 				priority = task.priority || 3;
 				planId = task.plan_id || '';
 				stateKey = task.state_key || 'todo';
+				seriesActionError = '';
+				showSeriesDeleteConfirm = false;
 			}
 
 			// Load FSM transitions if available
@@ -181,6 +205,44 @@
 		stateKey = newState;
 		await handleSave();
 		await loadTransitions();
+	}
+
+	async function handleSeriesCreated() {
+		await loadTask();
+		showSeriesModal = false;
+		toastService.success('Task marked as recurring');
+		onUpdated?.();
+	}
+
+	async function handleDeleteSeries(force = false) {
+		if (!seriesId) return;
+		seriesActionError = '';
+		isDeletingSeries = true;
+
+		try {
+			const response = await fetch(
+				`/api/onto/task-series/${seriesId}${force ? '?force=true' : ''}`,
+				{
+					method: 'DELETE'
+				}
+			);
+			const result = await response.json();
+			if (!response.ok) {
+				throw new Error(result?.error || 'Failed to delete series');
+			}
+
+			toastService.success('Series deleted');
+			showSeriesDeleteConfirm = false;
+			await loadTask();
+			onUpdated?.();
+		} catch (err) {
+			console.error('Failed to delete task series', err);
+			const message = err instanceof Error ? err.message : 'Failed to delete series';
+			seriesActionError = message;
+			toastService.error(message);
+		} finally {
+			isDeletingSeries = false;
+		}
 	}
 
 	function handleKeydown(event: KeyboardEvent) {
@@ -415,6 +477,134 @@
 							</div>
 						</div>
 
+						<!-- Recurrence -->
+						<div
+							class="bg-indigo-50 dark:bg-indigo-900/20 rounded-lg p-4 space-y-3 border border-indigo-200 dark:border-indigo-800/70"
+						>
+							<h3
+								class="text-sm font-semibold text-indigo-900 dark:text-indigo-100 uppercase tracking-wide"
+							>
+								Recurrence
+							</h3>
+
+							{#if isSeriesMaster && seriesMeta}
+								<div class="space-y-2 text-sm">
+									<p class="text-indigo-900 dark:text-indigo-100">
+										This task controls a recurring series.
+									</p>
+									<ul class="text-indigo-800 dark:text-indigo-100 space-y-1">
+										{#if seriesId}
+											<li>
+												<span class="font-medium">Series ID:</span>
+												<span class="font-mono text-xs break-all"
+													>{seriesId}</span
+												>
+											</li>
+										{/if}
+										<li>
+											<span class="font-medium">Timezone:</span>
+											{seriesMeta.timezone}
+										</li>
+										{#if seriesMeta.rrule}
+											<li class="break-all">
+												<span class="font-medium">RRULE:</span>
+												{seriesMeta.rrule}
+											</li>
+										{/if}
+										{#if seriesMeta.instance_count}
+											<li>
+												<span class="font-medium">Instances:</span>
+												{seriesMeta.instance_count}
+											</li>
+										{/if}
+									</ul>
+								</div>
+
+								{#if seriesActionError}
+									<p class="text-sm text-red-600 dark:text-red-400">
+										{seriesActionError}
+									</p>
+								{/if}
+
+								{#if !showSeriesDeleteConfirm}
+									<Button
+										size="sm"
+										variant="danger"
+										class="w-full"
+										onclick={() => (showSeriesDeleteConfirm = true)}
+									>
+										Delete Series
+									</Button>
+								{:else}
+									<div class="space-y-2">
+										<p class="text-sm text-indigo-900 dark:text-indigo-100">
+											Delete this series? Completed instances remain unless
+											you force delete.
+										</p>
+										<div class="flex flex-col gap-2">
+											<Button
+												variant="danger"
+												size="sm"
+												disabled={isDeletingSeries}
+												onclick={() => handleDeleteSeries(false)}
+											>
+												{#if isDeletingSeries}
+													<Loader class="w-4 h-4 animate-spin" />
+													Removing…
+												{:else}
+													Delete Upcoming Only
+												{/if}
+											</Button>
+											<Button
+												variant="danger"
+												size="sm"
+												disabled={isDeletingSeries}
+												onclick={() => handleDeleteSeries(true)}
+											>
+												{#if isDeletingSeries}
+													<Loader class="w-4 h-4 animate-spin" />
+													Removing…
+												{:else}
+													Force Delete All
+												{/if}
+											</Button>
+											<Button
+												variant="ghost"
+												size="sm"
+												onclick={() => {
+													showSeriesDeleteConfirm = false;
+													seriesActionError = '';
+												}}
+												disabled={isDeletingSeries}
+											>
+												Cancel
+											</Button>
+										</div>
+									</div>
+								{/if}
+							{:else if isSeriesInstance && seriesMeta}
+								<p class="text-sm text-indigo-900 dark:text-indigo-100">
+									This task is part of a recurring series
+									{#if seriesMeta.master_task_id}
+										(master task: {seriesMeta.master_task_id})
+									{/if}
+									. Manage recurrence from the series master.
+								</p>
+							{:else}
+								<p class="text-sm text-indigo-900 dark:text-indigo-100">
+									Automatically create future instances on a schedule.
+								</p>
+								<Button
+									size="sm"
+									variant="secondary"
+									class="w-full"
+									onclick={() => (showSeriesModal = true)}
+								>
+									Make Recurring
+								</Button>
+							{/if}
+						</div>
+
 						<!-- Danger Zone -->
 						<div class="border border-red-200 dark:border-red-800 rounded-lg p-4">
 							<h3
@@ -502,3 +692,12 @@
 		</CardBody>
 	</Card>
 </div>
+
+{#if task}
+	<TaskSeriesModal
+		{task}
+		bind:isOpen={showSeriesModal}
+		onClose={() => (showSeriesModal = false)}
+		on:success={handleSeriesCreated}
+	/>
+{/if}

@@ -96,7 +96,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 			.select(
 				`
         *,
-        subscription_plans (
+        subscription_plans!customer_subscriptions_plan_id_fkey (
           price_cents,
           billing_interval,
           interval_count

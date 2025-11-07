@@ -52,7 +52,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
         ),
         customer_subscriptions (
           stripe_price_id,
-          subscription_plans (
+          subscription_plans!customer_subscriptions_plan_id_fkey (
             name,
             price,
             interval
