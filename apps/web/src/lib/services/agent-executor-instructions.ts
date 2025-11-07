@@ -241,6 +241,11 @@ ${this.generateCoordinationStrategy(plan)}
 			}
 		};
 
-		return examples[taskType] || examples['list_tasks'];
+		const fallback = examples['list_tasks'];
+		if (!fallback) {
+			throw new Error('Executor examples missing default task');
+		}
+
+		return examples[taskType] ?? fallback;
 	}
 }

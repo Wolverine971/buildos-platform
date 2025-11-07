@@ -12,6 +12,7 @@
 
 import { supabase } from '$lib/supabase';
 import type { Database } from '@buildos/shared-types';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 type User = Database['public']['Tables']['users']['Row'];
 type UserSMSPreferences = Database['public']['Tables']['user_sms_preferences']['Row'];
@@ -37,12 +38,21 @@ export interface OnboardingStepData {
 }
 
 export class OnboardingV2Service {
+	private get client(): SupabaseClient<Database> {
+		const client = supabase;
+		if (!client) {
+			throw new Error('Supabase client is not initialized');
+		}
+		return client;
+	}
+
 	/**
 	 * Get onboarding progress for a user
 	 */
 	async getProgress(userId: string): Promise<OnboardingProgress> {
+		const client = this.client;
 		// Fetch user data
-		const { data: user } = await supabase
+		const { data: user } = await client
 			.from('users')
 			.select(
 				'usage_archetype, productivity_challenges, onboarding_v2_completed_at, onboarding_v2_skipped_calendar, onboarding_v2_skipped_sms'
@@ -51,17 +61,14 @@ export class OnboardingV2Service {
 			.single();
 
 		// Fetch SMS preferences
-		const { data: smsPrefs } = await supabase
+		const { data: smsPrefs } = await client
 			.from('user_sms_preferences')
 			.select('phone_verified')
 			.eq('user_id', userId)
 			.maybeSingle();
 
 		// Fetch projects
-		const { data: projects } = await supabase
-			.from('projects')
-			.select('id')
-			.eq('user_id', userId);
+		const { data: projects } = await client.from('projects').select('id').eq('user_id', userId);
 
 		return {
 			currentStep: this.calculateCurrentStep(user),
@@ -80,7 +87,8 @@ export class OnboardingV2Service {
 	 * Save user archetype selection
 	 */
 	async saveArchetype(userId: string, archetype: string) {
-		const { data, error } = await supabase
+		const client = this.client;
+		const { data, error } = await client
 			.from('users')
 			.update({ usage_archetype: archetype })
 			.eq('id', userId)
@@ -99,7 +107,8 @@ export class OnboardingV2Service {
 	 * Save productivity challenges
 	 */
 	async saveChallenges(userId: string, challenges: string[]) {
-		const { data, error } = await supabase
+		const client = this.client;
+		const { data, error } = await client
 			.from('users')
 			.update({ productivity_challenges: challenges })
 			.eq('id', userId)
@@ -118,7 +127,8 @@ export class OnboardingV2Service {
 	 * Mark calendar analysis as skipped
 	 */
 	async markCalendarSkipped(userId: string, skipped: boolean = true) {
-		const { data, error } = await supabase
+		const client = this.client;
+		const { data, error } = await client
 			.from('users')
 			.update({ onboarding_v2_skipped_calendar: skipped })
 			.eq('id', userId)
@@ -137,7 +147,8 @@ export class OnboardingV2Service {
 	 * Mark SMS setup as skipped
 	 */
 	async markSMSSkipped(userId: string, skipped: boolean = true) {
-		const { data, error } = await supabase
+		const client = this.client;
+		const { data, error } = await client
 			.from('users')
 			.update({ onboarding_v2_skipped_sms: skipped })
 			.eq('id', userId)
@@ -156,7 +167,8 @@ export class OnboardingV2Service {
 	 * Complete onboarding v2
 	 */
 	async completeOnboarding(userId: string) {
-		const { data, error } = await supabase
+		const client = this.client;
+		const { data, error } = await client
 			.from('users')
 			.update({
 				onboarding_v2_completed_at: new Date().toISOString(),
@@ -178,7 +190,8 @@ export class OnboardingV2Service {
 	 * Update onboarding version in user_context
 	 */
 	async updateOnboardingVersion(userId: string, version: number = 2) {
-		const { data, error } = await supabase
+		const client = this.client;
+		const { data, error } = await client
 			.from('user_context')
 			.update({ onboarding_version: version })
 			.eq('user_id', userId)
@@ -197,7 +210,8 @@ export class OnboardingV2Service {
 	 * Check if user has completed onboarding v2
 	 */
 	async hasCompletedOnboarding(userId: string): Promise<boolean> {
-		const { data } = await supabase
+		const client = this.client;
+		const { data } = await client
 			.from('users')
 			.select('onboarding_v2_completed_at')
 			.eq('id', userId)
@@ -209,7 +223,7 @@ export class OnboardingV2Service {
 	/**
 	 * Calculate current step based on user data
 	 */
-	private calculateCurrentStep(user: User | null): number {
+	private calculateCurrentStep(user: Partial<User> | null): number {
 		if (!user) return 0; // Welcome step
 
 		// Check archetype (step 3)
@@ -226,7 +240,7 @@ export class OnboardingV2Service {
 	/**
 	 * Get list of completed steps
 	 */
-	private getCompletedSteps(user: User | null): string[] {
+	private getCompletedSteps(user: Partial<User> | null): string[] {
 		const completed: string[] = [];
 
 		if (!user) return completed;
@@ -256,7 +270,7 @@ export class OnboardingV2Service {
 	/**
 	 * Get list of skipped steps
 	 */
-	private getSkippedSteps(user: User | null): string[] {
+	private getSkippedSteps(user: Partial<User> | null): string[] {
 		const skipped: string[] = [];
 
 		if (!user) return skipped;
@@ -276,7 +290,8 @@ export class OnboardingV2Service {
 	 * Reset onboarding progress (for testing)
 	 */
 	async resetOnboarding(userId: string) {
-		const { data, error } = await supabase
+		const client = this.client;
+		const { data, error } = await client
 			.from('users')
 			.update({
 				usage_archetype: null,
@@ -296,7 +311,7 @@ export class OnboardingV2Service {
 		}
 
 		// Also reset user_context version
-		await supabase.from('user_context').update({ onboarding_version: 1 }).eq('user_id', userId);
+		await client.from('user_context').update({ onboarding_version: 1 }).eq('user_id', userId);
 
 		return { success: true, data };
 	}

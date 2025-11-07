@@ -283,14 +283,8 @@ Return a JSON object with:
 	/**
 	 * Fallback analysis using heuristics
 	 */
-	private fallbackAnalysis(
-		message: string,
-		availableToolNames: string[]
-	): StrategyAnalysis {
-		const complexity = this.estimateComplexity(
-			message,
-			availableToolNames
-		);
+	private fallbackAnalysis(message: string, availableToolNames: string[]): StrategyAnalysis {
+		const complexity = this.estimateComplexity(message, availableToolNames);
 
 		// Determine strategy based on complexity
 		let strategy: ChatStrategy;
@@ -311,10 +305,7 @@ Return a JSON object with:
 			reasoning,
 			needs_clarification: false,
 			estimated_steps: complexity,
-			required_tools: this.estimateRequiredTools(
-				message,
-				availableToolNames
-			),
+			required_tools: this.estimateRequiredTools(message, availableToolNames),
 			can_complete_directly: complexity <= 2
 		};
 	}

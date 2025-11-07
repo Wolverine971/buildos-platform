@@ -65,7 +65,7 @@
 										: 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100 hover:bg-slate-100/60 dark:hover:bg-slate-800/70'
 								}`}
 								aria-current={active ? 'page' : undefined}
-								on:click={handleNavigate}
+								onclick={handleNavigate}
 							>
 								<span
 									class={`flex h-10 w-10 items-center justify-center rounded-2xl border text-base transition-all duration-200 ${
@@ -117,7 +117,7 @@
 														: 'text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-100'
 												}`}
 												aria-current={childActive ? 'page' : undefined}
-												on:click={handleNavigate}
+												onclick={handleNavigate}
 											>
 												<span
 													class="mr-2 flex h-8 w-8 items-center justify-center rounded-md border border-transparent bg-white text-slate-400 dark:bg-slate-900 dark:text-slate-500"

@@ -283,7 +283,7 @@
 					<a href="/" class="flex items-center" onclick={() => handleMenuItemClick('/')}>
 						<span class="sr-only">BuildOS</span>
 						<span
-						style="font-weight: bolder;"
+							style="font-weight: bolder;"
 							class="inline-flex items-baseline gap-[0.08em] px-[0.1rem] font-semibold tracking-tight text-[clamp(1.55rem,2.3vw,1.9rem)] leading-none text-slate-900 dark:text-slate-50"
 							aria-hidden="true"
 						>

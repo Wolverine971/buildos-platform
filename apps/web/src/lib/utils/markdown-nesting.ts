@@ -34,7 +34,7 @@ export function adjustMarkdownHeadingLevels(
 		const headerMatch = line.match(/^(#{1,6})\s+(.*)$/);
 
 		if (headerMatch) {
-			const [, hashes, headerText] = headerMatch;
+			const [, hashes = '', headerText = ''] = headerMatch;
 			const currentLevel = hashes.length;
 
 			// Calculate new level (minimum baseLevel + 1, maximum 6)
@@ -72,7 +72,7 @@ export function normalizeMarkdownHeadings(content: string, targetBaseLevel: numb
 	const headingLevels: number[] = [];
 	lines.forEach((line) => {
 		const headerMatch = line.match(/^(#{1,6})\s+(.*)$/);
-		if (headerMatch) {
+		if (headerMatch && headerMatch[1]) {
 			headingLevels.push(headerMatch[1].length);
 		}
 	});
@@ -88,8 +88,8 @@ export function normalizeMarkdownHeadings(content: string, targetBaseLevel: numb
 
 		const adjustedLines = lines.map((line) => {
 			const headerMatch = line.match(/^(#{1,6})\s+(.*)$/);
-			if (headerMatch) {
-				const [, hashes, headerText] = headerMatch;
+			if (headerMatch && headerMatch[1]) {
+				const [, hashes = '', headerText = ''] = headerMatch;
 				const currentLevel = hashes.length;
 				const newLevel = Math.max(currentLevel - levelOffset, 1); // Minimum H1
 				const newHashes = '#'.repeat(newLevel);
@@ -115,7 +115,7 @@ export function hasInflatedHeadings(content: string, expectedMaxDepth: number = 
 
 	lines.forEach((line) => {
 		const headerMatch = line.match(/^(#{1,6})\s+(.*)$/);
-		if (headerMatch) {
+		if (headerMatch && headerMatch[1]) {
 			headingLevels.push(headerMatch[1].length);
 		}
 	});
@@ -583,8 +583,22 @@ function formatSingleTaskForPrompt(
 	return `- ${parts.join(' ')}\n`;
 }
 
-function groupTasks(tasks: Task[]): Record<string, Task[]> {
-	const groups: Record<string, Task[]> = {
+function groupTasks(tasks: Task[]): {
+	in_progress: Task[];
+	blocked: Task[];
+	high_priority: Task[];
+	one_off: Task[];
+	recurring: Task[];
+	backlog: Task[];
+} {
+	const groups: {
+		in_progress: Task[];
+		blocked: Task[];
+		high_priority: Task[];
+		one_off: Task[];
+		recurring: Task[];
+		backlog: Task[];
+	} = {
 		in_progress: [],
 		blocked: [],
 		high_priority: [],

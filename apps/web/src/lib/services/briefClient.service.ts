@@ -114,6 +114,10 @@ export class BriefClientService {
 
 			if (existingJob && !options.forceRegenerate) {
 				// Resume monitoring existing job
+				if (!existingJob.queue_job_id) {
+					console.warn('Existing job missing queue_job_id');
+					return;
+				}
 				this.generationState.jobId = existingJob.queue_job_id;
 				unifiedBriefGenerationStore.update(
 					{
@@ -141,7 +145,9 @@ export class BriefClientService {
 			if (railwayAvailable) {
 				console.log('Starting Railway worker generation...');
 				await this.startRailwayGeneration({
-					...options,
+					briefDate: options.briefDate,
+					forceRegenerate: options.forceRegenerate,
+					user: options.user,
 					timezone: options.timezone || this.getUserTimezone()
 				});
 			} else {

@@ -55,7 +55,9 @@ export function getCurrentDateInTimezone(timezone: string): string {
 	} catch (err) {
 		console.error('Error getting current date in timezone:', err);
 		// Fallback to UTC
-		return new Date().toISOString().split('T')[0];
+		const isoString = new Date().toISOString();
+		const [datePart] = isoString.split('T');
+		return datePart ?? isoString;
 	}
 }
 
@@ -161,8 +163,10 @@ export function getRelativeTime(date: Date | string, timezone: string): string {
 export function parseDateInTimezone(dateString: string, timezone: string): Date {
 	// If it's just a date (YYYY-MM-DD), append midnight in the target timezone
 	if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
-		// Create a date at midnight in the target timezone
-		const [year, month, day] = dateString.split('-').map(Number);
+		const [yearStr, monthStr, dayStr] = dateString.split('-');
+		const year = Number(yearStr);
+		const month = Number(monthStr);
+		const day = Number(dayStr);
 
 		// Create a date string with timezone info
 		const formatter = new Intl.DateTimeFormat('en-US', {

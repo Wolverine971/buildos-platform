@@ -4,6 +4,7 @@ import type { FSMAction } from '$lib/types/onto';
 import { mergeDeep } from './utils';
 import type { TransitionContext } from '../engine';
 import type { TypedSupabaseClient } from '@buildos/supabase-client';
+import type { Json } from '@buildos/shared-types';
 
 type EntityRow = {
 	id: string;
@@ -145,7 +146,7 @@ export async function executeRunLlmCritiqueAction(
 
 	const { error: updateError } = await client
 		.from('onto_outputs')
-		.update({ props: updatedProps })
+		.update({ props: updatedProps as Json })
 		.eq('id', outputId);
 
 	if (updateError) {

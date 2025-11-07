@@ -143,9 +143,9 @@ export class RealtimeBriefService {
 				this.handleSubscriptionStatus(status);
 			});
 
-			// Check if subscription was successful
-			if (subscription === 'error' || subscription === 'timed_out') {
-				throw new Error(`Subscription failed: ${subscription}`);
+			// subscription returned is the channel; status handled via callback
+			if (!subscription) {
+				throw new Error('Failed to create realtime subscription channel');
 			}
 		} catch (error) {
 			console.error('Error setting up real-time subscription:', error);
@@ -240,8 +240,14 @@ export class RealtimeBriefService {
 		if (!utcDateString) return undefined;
 
 		try {
-			// Use the timezone utility function
-			return getCurrentDateInTimezone(this.state.userTimezone, new Date(utcDateString));
+			const formatter = new Intl.DateTimeFormat('en-CA', {
+				timeZone: this.state.userTimezone,
+				year: 'numeric',
+				month: '2-digit',
+				day: '2-digit'
+			});
+
+			return formatter.format(new Date(utcDateString));
 		} catch (error) {
 			console.error('Error converting date:', error);
 			return undefined;
@@ -265,9 +271,10 @@ export class RealtimeBriefService {
 		const timestampB = this.extractTimestamp(jobIdB);
 
 		// If either doesn't have a timestamp, consider the one with timestamp as newer
-		if (timestampA && !timestampB) return true;
-		if (!timestampA && timestampB) return false;
-		if (!timestampA && !timestampB) return false;
+		if (timestampA === null || timestampB === null) {
+			if (timestampA !== null && timestampB === null) return true;
+			return false;
+		}
 
 		return timestampA > timestampB;
 	}
@@ -278,7 +285,11 @@ export class RealtimeBriefService {
 	private static extractTimestamp(jobId: string): number | null {
 		const parts = jobId.split('-');
 		if (parts.length >= 4) {
-			const timestamp = parseInt(parts[parts.length - 1], 10);
+			const lastPart = parts[parts.length - 1];
+			if (!lastPart) {
+				return null;
+			}
+			const timestamp = parseInt(lastPart, 10);
 			return isNaN(timestamp) ? null : timestamp;
 		}
 		return null;

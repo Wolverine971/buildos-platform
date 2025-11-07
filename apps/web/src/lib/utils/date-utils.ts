@@ -815,8 +815,13 @@ export function parseNaturalLanguageDate(
 		// Handle "in X days/weeks/months"
 		const inTimeMatch = expr.match(/in\s+(\d+)\s+(days?|weeks?|months?)/);
 		if (inTimeMatch) {
-			const amount = parseInt(inTimeMatch[1]);
+			const amountStr = inTimeMatch[1];
 			const unit = inTimeMatch[2];
+			if (!amountStr || !unit) {
+				return null;
+			}
+
+			const amount = parseInt(amountStr, 10);
 			const futureDate = new Date(today);
 
 			if (unit.startsWith('day')) {
@@ -833,8 +838,13 @@ export function parseNaturalLanguageDate(
 		// Handle "X days/weeks/months" (without "in")
 		const timeAmountMatch = expr.match(/^(\d+)\s+(days?|weeks?|months?)$/);
 		if (timeAmountMatch) {
-			const amount = parseInt(timeAmountMatch[1]);
+			const amountStr = timeAmountMatch[1];
 			const unit = timeAmountMatch[2];
+			if (!amountStr || !unit) {
+				return null;
+			}
+
+			const amount = parseInt(amountStr, 10);
 			const futureDate = new Date(today);
 
 			if (unit.startsWith('day')) {
@@ -910,7 +920,10 @@ export function parseNaturalLanguageDate(
 		if (expr.includes('starting')) {
 			const startingMatch = expr.match(/starting\s+(.+)/);
 			if (startingMatch) {
-				return parseNaturalLanguageDate(startingMatch[1], referenceDate);
+				const [, startingExpr] = startingMatch;
+				if (startingExpr) {
+					return parseNaturalLanguageDate(startingExpr, referenceDate);
+				}
 			}
 		}
 

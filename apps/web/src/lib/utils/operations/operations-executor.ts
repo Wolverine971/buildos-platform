@@ -699,17 +699,19 @@ export class OperationsExecutor {
 			}));
 
 			// Store questions in database
-			const { data: insertedQuestions, error } = await this.supabase
-				.from('project_questions')
-				.insert(questionsToStore)
-				.select();
+			if (questionsToStore && questionsToStore.length > 0) {
+				const { data: insertedQuestions, error } = await this.supabase
+					.from('project_questions')
+					.insert(questionsToStore)
+					.select();
 
-			if (error) {
-				console.error('Failed to insert generated questions:', error);
-			} else {
-				console.log(
-					`Stored ${insertedQuestions?.length || 0} new questions for project ${projectId}`
-				);
+				if (error) {
+					console.error('Failed to insert generated questions:', error);
+				} else {
+					console.log(
+						`Stored ${insertedQuestions?.length || 0} new questions for project ${projectId}`
+					);
+				}
 			}
 		} catch (error) {
 			console.error('Error storing generated questions:', error);

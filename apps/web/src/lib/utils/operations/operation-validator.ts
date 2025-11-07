@@ -97,6 +97,10 @@ export class OperationValidator {
 				continue;
 			}
 
+			if (!validation) {
+				continue;
+			}
+
 			const fieldResult = this.validateField(field, value, validation);
 			if (!fieldResult.isValid) {
 				errors.push(fieldResult.error!);

@@ -272,7 +272,7 @@ export const DELETE: RequestHandler = async ({ url, locals: { safeGetSession, su
 	const { user } = await safeGetSession();
 
 	if (!user) {
-		throw error(401, 'Unauthorized');
+		return ApiResponse.unauthorized('Unauthorized');
 	}
 
 	const templateId = url.searchParams.get('id');

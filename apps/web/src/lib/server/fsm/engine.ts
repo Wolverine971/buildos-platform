@@ -17,6 +17,7 @@ import { executeCreateDocFromTemplateAction } from './actions/create-doc-from-te
 import { executeEmailAdminAction } from './actions/email-admin';
 import { executeCreateResearchDocAction } from './actions/create-research-doc';
 import { executeRunLlmCritiqueAction } from './actions/run-llm-critique';
+import type { Database, Json } from '@buildos/shared-types';
 
 // ============================================
 // TYPES
@@ -31,11 +32,24 @@ type TransitionResult =
 	| { ok: true; state_after: string; actions_run: string[] }
 	| { ok: false; error: string; guard_failures?: string[] };
 
+type OntoTable = 'onto_tasks' | 'onto_outputs' | 'onto_plans' | 'onto_projects' | 'onto_documents';
+
+type JsonObject = Record<string, Json | undefined>;
+
+type RawEntityRow = {
+	id: string;
+	type_key: string;
+	state_key: string;
+	props: Json | null;
+	project_id?: string | null;
+	[key: string]: unknown;
+};
+
 type EntityRow = {
 	id: string;
 	type_key: string;
 	state_key: string;
-	props: Record<string, unknown>;
+	props: JsonObject;
 	project_id: string;
 	[key: string]: unknown;
 };
@@ -62,21 +76,22 @@ export async function runTransition(
 		.from(table)
 		.select(selectClause)
 		.eq('id', request.object_id)
-		.limit(1);
+		.limit(1)
+		.returns<RawEntityRow[]>();
 
-	if (error || !rows?.length) {
+	if (error || !rows || rows.length === 0) {
 		return {
 			ok: false,
 			error: `Object not found: ${request.object_kind}/${request.object_id}`
 		};
 	}
 
-	const entity = rows[0] as EntityRow;
-
-	// For projects, set project_id to their own id
-	if (request.object_kind === 'project') {
-		entity.project_id = entity.id;
-	}
+	const rawEntity = rows[0]!;
+	const entity: EntityRow = {
+		...rawEntity,
+		project_id: (rawEntity.project_id ?? rawEntity.id) as string,
+		props: toJsonObject(rawEntity.props)
+	};
 
 	// 2) Load template FSM
 	const { data: template, error: templateError } = await client
@@ -184,7 +199,7 @@ async function evaluateGuards(
 					failures.push(`has_facet guard missing "key" or "value"`);
 					continue;
 				}
-				const facets = (entity.props?.facets as Record<string, string>) || {};
+				const facets = getFacets(entity);
 				passed = facets[guard.key] === guard.value;
 				break;
 			}
@@ -195,8 +210,9 @@ async function evaluateGuards(
 					failures.push(`facet_in guard missing "key" or "values"`);
 					continue;
 				}
-				const facets = (entity.props?.facets as Record<string, string>) || {};
-				passed = guard.values.includes(facets[guard.key]);
+				const facets = getFacets(entity);
+				const candidate = facets[guard.key];
+				passed = typeof candidate === 'string' && guard.values.includes(candidate);
 				break;
 			}
 
@@ -206,10 +222,8 @@ async function evaluateGuards(
 					failures.push(`all_facets_set guard missing "keys" array`);
 					continue;
 				}
-				const facets = (entity.props?.facets as Record<string, string>) || {};
-				passed = guard.keys.every(
-					(key) => facets[key] !== undefined && facets[key] !== null
-				);
+				const facets = getFacets(entity);
+				passed = guard.keys.every((key) => typeof facets[key] === 'string');
 				break;
 			}
 
@@ -261,15 +275,21 @@ async function executeActions(
 					}
 
 					const table = getTableForEntity(entity);
-					const updatedProps = {
-						...entity.props,
-						facets: {
-							...((entity.props?.facets as Record<string, unknown>) || {}),
-							...action.facets
-						}
+					const propsObject = toJsonObject(entity.props);
+					const updatedFacets = {
+						...getFacets(entity),
+						...sanitizeFacets(action.facets)
+					};
+					const updatedProps: JsonObject = {
+						...propsObject,
+						facets: updatedFacets
 					};
 
-					await client.from(table).update({ props: updatedProps }).eq('id', entity.id);
+					await client
+						.from(table)
+						.update({ props: updatedProps as Json })
+						.eq('id', entity.id);
+					entity.props = updatedProps;
 
 					executed.push(`update_facets(${JSON.stringify(action.facets)})`);
 					break;
@@ -282,13 +302,17 @@ async function executeActions(
 						break;
 					}
 
-					const taskInserts = action.titles.map((title) => ({
-						project_id: entity.project_id,
-						plan_id: action.plan_id || null,
+					const projectId = entity.project_id ?? entity.id;
+					const createdBy = ctx.actor_id ?? 'fsm_engine';
+					const propsTemplate = (action.props_template ?? {}) as Json;
+					type OntoTaskInsert = Database['public']['Tables']['onto_tasks']['Insert'];
+					const taskInserts: OntoTaskInsert[] = action.titles.map((title) => ({
+						project_id: projectId,
+						plan_id: action.plan_id ?? null,
 						title,
 						state_key: 'todo',
-						props: action.props_template || {},
-						created_by: ctx.actor_id || null
+						props: propsTemplate,
+						created_by: createdBy
 					}));
 
 					await client.from('onto_tasks').insert(taskInserts);
@@ -395,13 +419,49 @@ async function logTransition(
 // HELPERS
 // ============================================
 
+function isJsonObject(value: Json | JsonObject | null | undefined): value is JsonObject {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function toJsonObject(value: Json | JsonObject | null | undefined): JsonObject {
+	return isJsonObject(value) ? (value as JsonObject) : {};
+}
+
+function getFacets(entity: EntityRow): Record<string, string> {
+	const props = toJsonObject(entity.props);
+	const rawFacets = props.facets;
+
+	if (isJsonObject(rawFacets as Json | null | undefined)) {
+		const result: Record<string, string> = {};
+		for (const [key, value] of Object.entries(rawFacets as JsonObject)) {
+			if (typeof value === 'string') {
+				result[key] = value;
+			}
+		}
+		return result;
+	}
+
+	return {};
+}
+
+function sanitizeFacets(input: FSMAction['facets']): Record<string, string> {
+	const result: Record<string, string> = {};
+	if (!input) return result;
+
+	for (const [key, value] of Object.entries(input)) {
+		if (typeof value === 'string') {
+			result[key] = value;
+		}
+	}
+
+	return result;
+}
+
 function getNestedValue(obj: Record<string, unknown>, path: string): unknown {
 	return path.split('.').reduce((acc: any, part) => acc?.[part], obj);
 }
 
-function kindToTable(
-	kind: string
-): 'onto_tasks' | 'onto_outputs' | 'onto_plans' | 'onto_projects' | 'onto_documents' {
+function kindToTable(kind: string): OntoTable {
 	switch (kind) {
 		case 'task':
 			return 'onto_tasks';
@@ -434,7 +494,7 @@ function selectClauseForKind(kind: string): string {
 	}
 }
 
-function getTableForEntity(entity: EntityRow): string {
+function getTableForEntity(entity: EntityRow): OntoTable {
 	// Infer table from entity structure (could be passed explicitly)
 	if ('plan_id' in entity && 'title' in entity) return 'onto_tasks';
 	if ('name' in entity && entity.type_key?.startsWith('output.')) return 'onto_outputs';

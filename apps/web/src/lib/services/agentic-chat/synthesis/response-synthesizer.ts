@@ -226,7 +226,9 @@ export class ResponseSynthesizer implements BaseService {
 			await callback({ type: 'text', content: response.text });
 			yield {
 				type: 'done',
-				usage: this.mapUsageToStreamUsage(response.usage) ?? { total_tokens: response.text.length }
+				usage: this.mapUsageToStreamUsage(response.usage) ?? {
+					total_tokens: response.text.length
+				}
 			};
 			return;
 		}
@@ -268,9 +270,7 @@ export class ResponseSynthesizer implements BaseService {
 		}
 	}
 
-	private mapUsageToStreamUsage(
-		usage?: SynthesisUsage
-	): { total_tokens: number } | undefined {
+	private mapUsageToStreamUsage(usage?: SynthesisUsage): { total_tokens: number } | undefined {
 		if (!usage || typeof usage.totalTokens !== 'number') {
 			return undefined;
 		}

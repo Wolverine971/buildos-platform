@@ -125,7 +125,7 @@
 
 		refreshingJobs = true;
 		try {
-			await briefPreferencesStore.refreshJobs();
+			await briefPreferencesStore.loadJobs();
 		} catch (error) {
 			dispatch('error', { message: 'Failed to refresh brief jobs' });
 		} finally {

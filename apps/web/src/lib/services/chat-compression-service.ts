@@ -299,7 +299,7 @@ Compressed summary:`;
 			role: m.role as any,
 			content: m.content,
 			tool_calls: m.tool_calls as any,
-			tool_call_id: m.tool_call_id
+			tool_call_id: m.tool_call_id ?? undefined
 		}));
 
 		// Compress regular messages if needed

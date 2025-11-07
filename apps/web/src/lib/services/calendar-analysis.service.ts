@@ -405,7 +405,7 @@ export class CalendarAnalysisService extends ApiService {
 			return [];
 		}
 
-		const today = new Date().toISOString().split('T')[0];
+		const todayString = new Date().toISOString().slice(0, 10);
 
 		// Create lightweight event format for pattern analysis
 		const lightweightEvents: LightweightCalendarEvent[] = events.map((e) => ({
@@ -424,7 +424,7 @@ export class CalendarAnalysisService extends ApiService {
 
 		const userPrompt = `You are analyzing calendar events to identify patterns and group related events that might represent projects.
 
-**Today's date**: ${today}
+**Today's date**: ${todayString}
 
 ## Your Task
 
@@ -630,7 +630,7 @@ Return JSON with this structure:
 			return [];
 		}
 
-		const today = new Date().toISOString().split('T')[0];
+		const todayString = new Date().toISOString().slice(0, 10);
 		const now = new Date();
 
 		// Fetch existing projects for deduplication
@@ -734,7 +734,7 @@ ${JSON.stringify(
 
 		const userPrompt = `You are creating BuildOS projects from calendar event groups with proper deduplication.
 
-**Today's date**: ${today}
+**Today's date**: ${todayString}
 
 ## User's Existing Projects
 
@@ -851,7 +851,7 @@ Return JSON:
 - **Strategy**: Convert key upcoming events to tasks + add inferred preparation/follow-up tasks
 
 **Task Dates**:
-- **ALL tasks must have start_date >= ${today}**
+- **ALL tasks must have start_date >= ${todayString}**
 - No past-dated tasks allowed
 
 ### 2. Recurring Event Handling (CRITICAL)
@@ -976,7 +976,7 @@ When an event has a "recurrence" field with RRULE:
 			}
 
 			// Validate suggestions
-			this.validateProjectSuggestions(suggestions, today);
+			this.validateProjectSuggestions(suggestions, todayString);
 
 			return suggestions;
 		} catch (error) {
@@ -1065,7 +1065,7 @@ When an event has a "recurrence" field with RRULE:
 			return [];
 		}
 
-		const today = new Date().toISOString().split('T')[0];
+		const today = new Date().toISOString().slice(0, 10);
 		const now = new Date();
 
 		// Fetch existing projects for deduplication
@@ -1235,7 +1235,7 @@ For each project, create tasks using ONE or BOTH of these approaches:
 
 Example 1 - Project with upcoming events:
 - Past events: "Sprint Planning" (weekly, last 8 weeks)
-- Upcoming events: "Sprint Planning" on ${new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
+- Upcoming events: "Sprint Planning" on ${new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)}
 - Tasks to create:
   1. "Attend Sprint Planning" - from upcoming event
   2. "Review sprint backlog" - inferred preparation task (2 days before)
@@ -1246,8 +1246,8 @@ Example 2 - Project with only past events:
 - No upcoming events
 - Tasks to create:
   1. "Schedule next product review" - starting ${today}
-  2. "Gather product metrics" - starting ${new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
-  3. "Prepare review presentation" - starting ${new Date(now.getTime() + 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
+  2. "Gather product metrics" - starting ${new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)}
+  3. "Prepare review presentation" - starting ${new Date(now.getTime() + 5 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)}
 
 ## Output Requirements - JSON schema
 
@@ -1462,6 +1462,9 @@ IMPORTANT:
 			const tags = eventPatterns?.tags || [];
 			const addToExisting = eventPatterns?.add_to_existing;
 			const existingProjectId = eventPatterns?.existing_project_id;
+			const normalizedToday = new Date();
+			normalizedToday.setHours(0, 0, 0, 0);
+			const todayDateString = normalizedToday.toISOString().slice(0, 10);
 
 			// Check if this should add tasks to an existing project instead of creating new
 			if (addToExisting && existingProjectId) {
@@ -1477,70 +1480,66 @@ IMPORTANT:
 				if (modifications?.includeTasks !== false && suggestion.suggested_tasks) {
 					const tasksData = suggestion.suggested_tasks;
 					const tasks = tasksData && Array.isArray(tasksData) ? tasksData : [];
-					const today = new Date();
-					today.setHours(0, 0, 0, 0);
 
-					operations.push(
-						...tasks
-							.map((task: any, index: number) => {
-								// Check if task is selected
-								const taskKey = `${suggestionId}-${index}`;
-								if (
-									modifications?.taskSelections &&
-									modifications.taskSelections[taskKey] === false
-								) {
-									return null;
-								}
+					const taskOperations: ParsedOperation[] = [];
 
-								// Apply task modifications
-								const modifiedTask = modifications?.taskModifications?.[index]
-									? { ...task, ...modifications.taskModifications[index] }
-									: task;
+					tasks.forEach((task: any, index: number) => {
+						const taskKey = `${suggestionId}-${index}`;
+						if (
+							modifications?.taskSelections &&
+							modifications.taskSelections[taskKey] === false
+						) {
+							return;
+						}
 
-								// Validate and reschedule past tasks
-								let rescheduledFromPast = false;
-								if (modifiedTask.start_date) {
-									const taskDate = new Date(modifiedTask.start_date);
-									if (taskDate < today) {
-										const originalDate = modifiedTask.start_date;
-										modifiedTask.start_date =
-											today.toISOString().split('T')[0] +
-											'T' +
-											(modifiedTask.start_date.includes('T')
-												? modifiedTask.start_date.split('T')[1]
-												: '09:00:00');
-										rescheduledFromPast = true;
-									}
-								}
+						const modifiedTask = modifications?.taskModifications?.[index]
+							? { ...task, ...modifications.taskModifications[index] }
+							: task;
 
-								return {
-									id: `calendar-task-${suggestionId}-${index}`,
-									operation: 'create' as const,
-									table: 'tasks' as const,
-									data: {
-										title: modifiedTask.title || 'Untitled Task',
-										description: modifiedTask.description || '',
-										details: rescheduledFromPast
-											? `${modifiedTask.details || ''}\n\n⚠️ Note: This task was originally scheduled for ${task.start_date} but was rescheduled because it was in the past.`
-											: modifiedTask.details || '',
-										status: modifiedTask.status || 'backlog',
-										priority: modifiedTask.priority || 'medium',
-										task_type: modifiedTask.task_type || 'one_off',
-										duration_minutes: modifiedTask.duration_minutes,
-										start_date: modifiedTask.start_date,
-										recurrence_pattern: modifiedTask.recurrence_pattern,
-										recurrence_ends: modifiedTask.recurrence_ends,
-										recurrence_rrule: modifiedTask.recurrence_rrule || null, // Preserve exact RRULE from Google Calendar
-										project_id: existingProjectId, // Use existing project ID
-										source: 'calendar_analysis',
-										source_calendar_event_id: modifiedTask.event_id,
-										tags: modifiedTask.tags
-									},
-									enabled: true
-								};
-							})
-							.filter((op): op is ParsedOperation => op !== null)
-					);
+						let rescheduledFromPast = false;
+						if (modifiedTask.start_date) {
+							const taskDate = new Date(modifiedTask.start_date);
+							if (taskDate < normalizedToday) {
+								const taskTime = modifiedTask.start_date.includes('T')
+									? modifiedTask.start_date.split('T')[1]
+									: '09:00:00';
+								modifiedTask.start_date = `${todayDateString}T${taskTime}`;
+								rescheduledFromPast = true;
+							}
+						}
+
+						const newOperation: ParsedOperation = {
+							id: `calendar-task-${suggestionId}-${index}`,
+							operation: 'create',
+							table: 'tasks',
+							data: {
+								title: modifiedTask.title || 'Untitled Task',
+								description: modifiedTask.description || '',
+								details: rescheduledFromPast
+									? `${modifiedTask.details || ''}\n\n⚠️ Note: This task was originally scheduled for ${task.start_date} but was rescheduled because it was in the past.`
+									: modifiedTask.details || '',
+								status: modifiedTask.status || 'backlog',
+								priority: modifiedTask.priority || 'medium',
+								task_type: modifiedTask.task_type || 'one_off',
+								duration_minutes: modifiedTask.duration_minutes,
+								start_date: modifiedTask.start_date,
+								recurrence_pattern: modifiedTask.recurrence_pattern,
+								recurrence_ends: modifiedTask.recurrence_ends,
+								recurrence_rrule: modifiedTask.recurrence_rrule || null,
+								project_id: existingProjectId,
+								source: 'calendar_analysis',
+								source_calendar_event_id: modifiedTask.event_id,
+								tags: modifiedTask.tags
+							},
+							enabled: true
+						};
+
+						taskOperations.push(newOperation);
+					});
+
+					if (taskOperations.length > 0) {
+						operations.push(...taskOperations);
+					}
 				}
 
 				// Execute operations for adding tasks to existing project
@@ -1587,7 +1586,7 @@ IMPORTANT:
 						context: suggestion.suggested_context,
 						executive_summary: executiveSummary,
 						status: 'active',
-						start_date: startDate || new Date().toISOString().split('T')[0],
+						start_date: startDate || new Date().toISOString().slice(0, 10),
 						end_date: endDate,
 						tags: tags,
 						source: 'calendar_analysis',
@@ -1608,95 +1607,88 @@ IMPORTANT:
 				// Safely handle suggested_tasks which might be JSON or null
 				const tasksData = suggestion.suggested_tasks;
 				const tasks = tasksData && Array.isArray(tasksData) ? tasksData : [];
-				const today = new Date();
-				today.setHours(0, 0, 0, 0);
 
-				operations.push(
-					...tasks
-						.map<ParsedOperation | null>((task: any, index: number) => {
-							// Check if task is selected
-							const taskKey = `${suggestionId}-${index}`;
-							if (
-								modifications?.taskSelections &&
-								modifications.taskSelections[taskKey] === false
-							) {
-								return null; // Skip unselected tasks
-							}
+				const taskOperations: ParsedOperation[] = [];
 
-							// Apply task modifications if provided
-							const modifiedTask = modifications?.taskModifications?.[index]
-								? { ...task, ...modifications.taskModifications[index] }
-								: task;
+				tasks.forEach((task: any, index: number) => {
+					// Check if task is selected
+					const taskKey = `${suggestionId}-${index}`;
+					if (
+						modifications?.taskSelections &&
+						modifications.taskSelections[taskKey] === false
+					) {
+						return;
+					}
 
-							// Validate and reschedule tasks with past dates
-							// Note: LLM should NOT generate past tasks, but this is a safety net
-							let rescheduledFromPast = false;
-							if (modifiedTask.start_date) {
-								const taskDate = new Date(modifiedTask.start_date);
-								if (taskDate < today) {
-									const originalDate = modifiedTask.start_date;
+					// Apply task modifications if provided
+					const modifiedTask = modifications?.taskModifications?.[index]
+						? { ...task, ...modifications.taskModifications[index] }
+						: task;
 
-									if (modifiedTask.task_type === 'one_off') {
-										// Reschedule one-off tasks to today
-										modifiedTask.start_date =
-											today.toISOString().split('T')[0] +
-											'T' +
-											(modifiedTask.start_date.includes('T')
-												? modifiedTask.start_date.split('T')[1]
-												: '09:00:00');
-										rescheduledFromPast = true;
+					// Validate and reschedule tasks with past dates
+					// Note: LLM should NOT generate past tasks, but this is a safety net
+					let rescheduledFromPast = false;
+					if (modifiedTask.start_date) {
+						const taskDate = new Date(modifiedTask.start_date);
+						if (taskDate < normalizedToday) {
+							const originalDate = modifiedTask.start_date;
+							const taskTime = modifiedTask.start_date.includes('T')
+								? modifiedTask.start_date.split('T')[1]
+								: '09:00:00';
 
-										if (DEBUG_LOGGING) {
-											console.log(
-												`[Calendar Analysis] Rescheduled one-off task "${modifiedTask.title}" from ${originalDate} to ${modifiedTask.start_date}`
-											);
-										}
-									} else if (modifiedTask.task_type === 'recurring') {
-										// For recurring tasks, move to today and keep the recurrence pattern
-										modifiedTask.start_date =
-											today.toISOString().split('T')[0] +
-											'T' +
-											(modifiedTask.start_date.includes('T')
-												? modifiedTask.start_date.split('T')[1]
-												: '09:00:00');
-										rescheduledFromPast = true;
+							if (modifiedTask.task_type === 'one_off') {
+								// Reschedule one-off tasks to today
+								modifiedTask.start_date = `${todayDateString}T${taskTime}`;
+								rescheduledFromPast = true;
 
-										if (DEBUG_LOGGING) {
-											console.log(
-												`[Calendar Analysis] Rescheduled recurring task "${modifiedTask.title}" from ${originalDate} to ${modifiedTask.start_date}`
-											);
-										}
-									}
+								if (DEBUG_LOGGING) {
+									console.log(
+										`[Calendar Analysis] Rescheduled one-off task "${modifiedTask.title}" from ${originalDate} to ${modifiedTask.start_date}`
+									);
+								}
+							} else if (modifiedTask.task_type === 'recurring') {
+								// For recurring tasks, move to today and keep the recurrence pattern
+								modifiedTask.start_date = `${todayDateString}T${taskTime}`;
+								rescheduledFromPast = true;
+
+								if (DEBUG_LOGGING) {
+									console.log(
+										`[Calendar Analysis] Rescheduled recurring task "${modifiedTask.title}" from ${originalDate} to ${modifiedTask.start_date}`
+									);
 								}
 							}
+						}
+					}
 
-							return {
-								id: `calendar-task-${suggestionId}-${index}`,
-								operation: 'create' as const,
-								table: 'tasks' as const,
-								data: {
-									title: modifiedTask.title || 'Untitled Task',
-									description: modifiedTask.description || '',
-									details: rescheduledFromPast
-										? `${modifiedTask.details || ''}\n\n⚠️ Note: This task was originally scheduled for ${task.start_date} but was rescheduled because it was in the past.`
-										: modifiedTask.details || '',
-									status: modifiedTask.status || 'backlog',
-									priority: modifiedTask.priority || 'medium',
-									task_type: modifiedTask.task_type || 'one_off',
-									duration_minutes: modifiedTask.duration_minutes || null,
-									start_date: modifiedTask.start_date || null,
-									recurrence_pattern: modifiedTask.recurrence_pattern || null,
-									recurrence_ends: modifiedTask.recurrence_ends || null,
-									recurrence_rrule: modifiedTask.recurrence_rrule || null, // Preserve exact RRULE from Google Calendar
-									project_ref: 'project-0', // Reference to the project created above
-									source: 'calendar_event',
-									source_calendar_event_id: modifiedTask.event_id || null
-								},
-								enabled: true
-							};
-						})
-						.filter((op): op is ParsedOperation => op !== null) // Remove null entries for unselected tasks
-				);
+					taskOperations.push({
+						id: `calendar-task-${suggestionId}-${index}`,
+						operation: 'create' as const,
+						table: 'tasks' as const,
+						data: {
+							title: modifiedTask.title || 'Untitled Task',
+							description: modifiedTask.description || '',
+							details: rescheduledFromPast
+								? `${modifiedTask.details || ''}\n\n⚠️ Note: This task was originally scheduled for ${task.start_date} but was rescheduled because it was in the past.`
+								: modifiedTask.details || '',
+							status: modifiedTask.status || 'backlog',
+							priority: modifiedTask.priority || 'medium',
+							task_type: modifiedTask.task_type || 'one_off',
+							duration_minutes: modifiedTask.duration_minutes || null,
+							start_date: modifiedTask.start_date || null,
+							recurrence_pattern: modifiedTask.recurrence_pattern || null,
+							recurrence_ends: modifiedTask.recurrence_ends || null,
+							recurrence_rrule: modifiedTask.recurrence_rrule || null, // Preserve exact RRULE from Google Calendar
+							project_ref: 'project-0', // Reference to the project created above
+							source: 'calendar_event',
+							source_calendar_event_id: modifiedTask.event_id || null
+						},
+						enabled: true
+					});
+				});
+
+				if (taskOperations.length > 0) {
+					operations.push(...taskOperations);
+				}
 			}
 
 			// Execute operations using existing executor

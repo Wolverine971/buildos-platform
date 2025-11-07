@@ -103,6 +103,10 @@ export interface ExecutorResponse {
 	toolCall?: any;
 }
 
+type ExecutorResponseData = {
+	toolResults?: Array<{ tool: string; result?: unknown; error?: string }>;
+};
+
 // ============================================
 // SERVICE
 // ============================================
@@ -181,11 +185,11 @@ export class AgentConversationService {
 				planner_agent_id: plannerAgentId,
 				executor_agent_id: executorAgentId,
 				session_type: 'planner_executor',
-				initial_context: {
+				initial_context: this.toJson({
 					task,
 					tools: tools.map((t) => t.function.name),
 					timestamp: new Date().toISOString()
-				},
+				}),
 				context_type: contextType,
 				entity_id: entityId,
 				user_id: userId,
@@ -237,7 +241,7 @@ export class AgentConversationService {
 			const initialMessage: ConversationMessage = {
 				type: 'task_assignment',
 				content: this.formatTaskAssignment(session.task),
-				data: { task: session.task },
+				data: this.toJson({ task: session.task }),
 				timestamp: new Date()
 			};
 
@@ -292,7 +296,7 @@ export class AgentConversationService {
 				const executorMessage: ConversationMessage = {
 					type: executorResponse.messageType,
 					content: executorResponse.content,
-					data: executorResponse.data,
+					data: executorResponse.data ? this.toJson(executorResponse.data) : undefined,
 					toolCalls: executorResponse.toolCalls,
 					timestamp: new Date()
 				};
@@ -350,7 +354,7 @@ export class AgentConversationService {
 					const plannerMessage: ConversationMessage = {
 						type: 'clarification',
 						content: plannerResponse.content,
-						data: plannerResponse.data,
+						data: plannerResponse.data ? this.toJson(plannerResponse.data) : undefined,
 						timestamp: new Date()
 					};
 
@@ -462,7 +466,7 @@ export class AgentConversationService {
 		let responseContent = '';
 		let toolCalls: ChatToolCall[] = [];
 		let tokensUsed = 0;
-		let responseData: Json | null = null;
+		let responseData: ExecutorResponseData | null = null;
 
 		// Stream from executor LLM
 		for await (const event of this.smartLLM.streamText({
@@ -924,7 +928,7 @@ Conversation turn: ${session.turnCount}/${session.maxTurns}`;
 			sender_agent_id: senderAgentId,
 			role: senderType === 'planner' ? 'user' : 'assistant',
 			content: message.content,
-			tool_calls: message.toolCalls || undefined,
+			tool_calls: message.toolCalls ? this.toJson(message.toolCalls) : undefined,
 			parent_user_session_id: session.parentSessionId,
 			user_id: userId
 		});
@@ -966,5 +970,9 @@ Conversation turn: ${session.turnCount}/${session.maxTurns}`;
 		if (updateError) {
 			console.error('Failed to update conversation session:', updateError);
 		}
+	}
+
+	private toJson(value: unknown): Json {
+		return JSON.parse(JSON.stringify(value)) as Json;
 	}
 }

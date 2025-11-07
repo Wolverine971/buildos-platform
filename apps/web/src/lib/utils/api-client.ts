@@ -22,7 +22,7 @@ export class ApiError extends Error {
 
 export abstract class ApiClient {
 	protected async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-		if (!browser && !options.headers?.['x-server-request']) {
+		if (!browser && !this.hasHeader(options.headers, 'x-server-request')) {
 			throw new Error('API calls from server-side code must include x-server-request header');
 		}
 
@@ -116,6 +116,21 @@ export abstract class ApiClient {
 			method: 'DELETE',
 			body: data ? JSON.stringify(data) : undefined
 		});
+	}
+
+	private hasHeader(headers: HeadersInit | undefined, key: string): boolean {
+		if (!headers) return false;
+		const normalizedKey = key.toLowerCase();
+
+		if (headers instanceof Headers) {
+			return headers.has(key);
+		}
+
+		if (Array.isArray(headers)) {
+			return headers.some(([name]) => name.toLowerCase() === normalizedKey);
+		}
+
+		return Object.keys(headers).some((name) => name.toLowerCase() === normalizedKey);
 	}
 }
 

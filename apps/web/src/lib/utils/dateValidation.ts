@@ -323,7 +323,9 @@ export function checkPhaseOverlap(
 export function formatDateForInput(date: Date | string | null): string {
 	if (!date) return '';
 	const d = new Date(date);
-	return d.toISOString().split('T')[0];
+	const isoString = d.toISOString();
+	const [datePart] = isoString.split('T');
+	return datePart ?? isoString;
 }
 
 /**

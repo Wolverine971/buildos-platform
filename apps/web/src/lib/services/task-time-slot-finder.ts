@@ -301,7 +301,12 @@ export class TaskTimeSlotFinder {
 
 		// Sort tasks within each day by their original time to maintain relative order
 		Object.keys(grouped).forEach((dayKey) => {
-			grouped[dayKey].sort((a, b) => {
+			const dayTasks = grouped[dayKey];
+			if (!dayTasks) {
+				return;
+			}
+
+			dayTasks.sort((a, b) => {
 				const timeA = a.start_date ? new Date(a.start_date).getTime() : 0;
 				const timeB = b.start_date ? new Date(b.start_date).getTime() : 0;
 				return timeA - timeB;
@@ -367,9 +372,13 @@ export class TaskTimeSlotFinder {
 		if (dates.length === 0) return new Map();
 
 		// Get the full date range to query
-		const sortedDates = dates.sort((a, b) => a.getTime() - b.getTime());
+		const sortedDates = [...dates].sort((a, b) => a.getTime() - b.getTime());
 		const minDate = sortedDates[0];
 		const maxDate = sortedDates[sortedDates.length - 1];
+
+		if (!minDate || !maxDate) {
+			return new Map();
+		}
 
 		const rangeStart = startOfDay(minDate);
 		const rangeEnd = addDays(startOfDay(maxDate), 1);
@@ -399,7 +408,9 @@ export class TaskTimeSlotFinder {
 			tasksByDay.set(dateKey, []);
 		});
 
-		(data || []).forEach((task) => {
+		const taskRows = data ?? [];
+
+		taskRows.forEach((task: Task) => {
 			if (task.start_date) {
 				const taskDate = toZonedTime(new Date(task.start_date), timezone);
 				const dateKey = format(taskDate, 'yyyy-MM-dd');
@@ -469,9 +480,13 @@ export class TaskTimeSlotFinder {
 	 * Create a DateTime from date and time string
 	 */
 	private createDateTime(date: Date, timeString: string, timezone: string): Date {
-		const [hours, minutes] = timeString.split(':').map(Number);
+		const [hoursRaw = '0', minutesRaw = '0'] = timeString.split(':');
+		const hours = Number(hoursRaw);
+		const minutes = Number(minutesRaw);
+		const safeHours = Number.isFinite(hours) ? hours : 0;
+		const safeMinutes = Number.isFinite(minutes) ? minutes : 0;
 		const dateInZone = toZonedTime(date, timezone);
-		const dateTime = setMinutes(setHours(dateInZone, hours), minutes);
+		const dateTime = setMinutes(setHours(dateInZone, safeHours), safeMinutes);
 		return dateTime;
 	}
 
@@ -505,10 +520,8 @@ export class TaskTimeSlotFinder {
 		);
 
 		// Check if we can fit at the beginning of the day
-		if (
-			sortedSlots.length === 0 ||
-			isAfter(sortedSlots[0].start, addMinutes(workDayStart, durationMinutes))
-		) {
+		const firstSlot = sortedSlots[0];
+		if (!firstSlot || isAfter(firstSlot.start, addMinutes(workDayStart, durationMinutes))) {
 			const potentialEnd = addMinutes(workDayStart, durationMinutes);
 			if (isBefore(potentialEnd, workDayEnd) || isEqual(potentialEnd, workDayEnd)) {
 				return { start: workDayStart, end: potentialEnd };
@@ -517,8 +530,14 @@ export class TaskTimeSlotFinder {
 
 		// Check gaps between occupied slots
 		for (let i = 0; i < sortedSlots.length - 1; i++) {
-			const gapStart = sortedSlots[i].end;
-			const gapEnd = sortedSlots[i + 1].start;
+			const currentSlot = sortedSlots[i];
+			const nextSlot = sortedSlots[i + 1];
+			if (!currentSlot || !nextSlot) {
+				continue;
+			}
+
+			const gapStart = currentSlot.end;
+			const gapEnd = nextSlot.start;
 			const gapDuration = (gapEnd.getTime() - gapStart.getTime()) / (1000 * 60); // in minutes
 
 			if (gapDuration >= durationMinutes) {
@@ -531,11 +550,14 @@ export class TaskTimeSlotFinder {
 
 		// Check if we can fit after the last task
 		if (sortedSlots.length > 0) {
-			const lastEnd = sortedSlots[sortedSlots.length - 1].end;
-			const potentialEnd = addMinutes(lastEnd, durationMinutes);
+			const lastSlot = sortedSlots[sortedSlots.length - 1];
+			if (lastSlot) {
+				const lastEnd = lastSlot.end;
+				const potentialEnd = addMinutes(lastEnd, durationMinutes);
 
-			if (isBefore(potentialEnd, workDayEnd) || isEqual(potentialEnd, workDayEnd)) {
-				return { start: lastEnd, end: potentialEnd };
+				if (isBefore(potentialEnd, workDayEnd) || isEqual(potentialEnd, workDayEnd)) {
+					return { start: lastEnd, end: potentialEnd };
+				}
 			}
 		}
 
@@ -592,9 +614,12 @@ export class TaskTimeSlotFinder {
 				);
 
 				if (dayScheduled.length > 0) {
-					rescheduled.push(dayScheduled[0]);
-					scheduled = true;
-					break;
+					const scheduledTask = dayScheduled[0];
+					if (scheduledTask) {
+						rescheduled.push(scheduledTask);
+						scheduled = true;
+						break;
+					}
 				}
 			}
 

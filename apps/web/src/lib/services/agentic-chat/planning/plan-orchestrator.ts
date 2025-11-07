@@ -624,7 +624,10 @@ Generate an execution plan to fulfill this request.`;
 			});
 
 			if (!result.success) {
-				const errorMessage = result.error instanceof Error ? result.error.message : String(result.error || 'Executor failed');
+				const errorMessage =
+					result.error instanceof Error
+						? result.error.message
+						: String(result.error || 'Executor failed');
 				throw new Error(errorMessage);
 			}
 
@@ -687,7 +690,8 @@ Generate an execution plan to fulfill this request.`;
 			}
 
 			// Return combined results (preserve original shape for downstream steps)
-			const resultPayload = aggregatedResults.length === 1 ? aggregatedResults[0] : aggregatedResults;
+			const resultPayload =
+				aggregatedResults.length === 1 ? aggregatedResults[0] : aggregatedResults;
 			return { result: resultPayload, events: emittedEvents };
 		} else {
 			// No execution needed

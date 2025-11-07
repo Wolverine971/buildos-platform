@@ -140,10 +140,7 @@ export function getToolsForContext(
 	return getToolsForContextType(contextType, rest);
 }
 
-function resolveToolNames(
-	contextType: PlannerContextType,
-	options: GetToolsOptions
-): string[] {
+function resolveToolNames(contextType: PlannerContextType, options: GetToolsOptions): string[] {
 	const groups = CONTEXT_TO_TOOL_GROUPS[contextType] ?? DEFAULT_GROUPS;
 	const includeBase = options.includeBase ?? true;
 	const includeWriteTools = options.includeWriteTools ?? true;

@@ -61,16 +61,6 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 
 		let userTimezone = user?.timezone;
 
-		// Fallback to preferences table if users.timezone is not set
-		if (!userTimezone) {
-			const { data: preferences } = await supabase
-				.from('user_brief_preferences')
-				.select('timezone')
-				.eq('user_id', userId)
-				.single();
-			userTimezone = preferences?.timezone;
-		}
-
 		userTimezone = getSafeTimezone(userTimezone, userId);
 		targetDate = getCurrentDateInTimezone(userTimezone);
 

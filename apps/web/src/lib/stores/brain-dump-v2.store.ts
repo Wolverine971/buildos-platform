@@ -1299,7 +1299,7 @@ function createBrainDumpV2Store(): BrainDumpV2Store {
 
 		// ===== LEGACY ACTIONS (for backward compatibility) =====
 		// ===== UI Actions =====
-		openModal: (options) =>
+		openModal: (options?: { resetSelection?: boolean; project?: any }) =>
 			update((state) => {
 				let nextSelectedProject = state.core.selectedProject;
 

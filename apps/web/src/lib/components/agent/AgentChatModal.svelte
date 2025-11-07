@@ -714,8 +714,9 @@
 			case 'clarifying_questions': {
 				addClarifyingQuestionsMessage(data.questions);
 				const questionCount = Array.isArray(data.questions)
-					? data.questions.filter((question: unknown) => typeof question === 'string' && question.trim())
-							.length
+					? data.questions.filter(
+							(question: unknown) => typeof question === 'string' && question.trim()
+						).length
 					: 0;
 				if (questionCount > 0) {
 					addActivityMessage(`Clarifying questions requested (${questionCount})`);
@@ -732,7 +733,7 @@
 			case 'analysis':
 				// Planner is analyzing the request
 				currentActivity = 'Planner analyzing request...';
-				debugger
+				debugger;
 				addActivityMessage(
 					`Strategy: ${data.analysis?.primary_strategy || 'unknown'} - ${data.analysis?.reasoning || ''}`
 				);
@@ -1073,7 +1074,9 @@
 					<div
 						class="rounded-2xl border border-dashed border-slate-200 bg-white px-5 py-6 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
 					>
-						<p class="font-semibold text-slate-900 dark:text-white">You're set to chat.</p>
+						<p class="font-semibold text-slate-900 dark:text-white">
+							You're set to chat.
+						</p>
 						<p class="mt-2">
 							Ask the agent to plan, explain, or take the next step for
 							{displayContextLabel.toLowerCase()}.
@@ -1172,15 +1175,23 @@
 								<div
 									class="max-w-[70%] rounded-xl border border-slate-200 bg-white/80 px-3 py-2 text-[12px] leading-snug text-slate-700 shadow-sm dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-100"
 								>
-									<p class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+									<p
+										class="text-[11px] font-semibold uppercase tracking-wide text-slate-500"
+									>
 										Plan
 									</p>
-									<p class="mt-1 text-slate-800 dark:text-slate-50">{message.content}</p>
+									<p class="mt-1 text-slate-800 dark:text-slate-50">
+										{message.content}
+									</p>
 									{#if message.data?.steps}
-										<ol class="mt-2 space-y-0.5 text-[12px] text-slate-600 dark:text-slate-300">
+										<ol
+											class="mt-2 space-y-0.5 text-[12px] text-slate-600 dark:text-slate-300"
+										>
 											{#each message.data.steps as step}
 												<li class="flex gap-2 leading-snug">
-													<span class="w-4 text-right font-semibold text-slate-400">
+													<span
+														class="w-4 text-right font-semibold text-slate-400"
+													>
 														{step.stepNumber}.
 													</span>
 													<span class="flex-1">
@@ -1215,7 +1226,8 @@
 					class="border-t border-slate-200 bg-slate-50 px-4 py-2 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900/40 dark:text-slate-300 sm:px-6"
 				>
 					<span class="inline-flex items-center gap-2">
-						<span class="inline-flex h-2 w-2 animate-pulse rounded-full bg-emerald-500"></span>
+						<span class="inline-flex h-2 w-2 animate-pulse rounded-full bg-emerald-500"
+						></span>
 						{currentActivity}
 					</span>
 				</div>
@@ -1239,7 +1251,9 @@
 					}}
 					class="space-y-3"
 				>
-					<div class="relative rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
+					<div
+						class="relative rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900"
+					>
 						<Textarea
 							bind:value={inputValue}
 							class="border-none bg-transparent px-4 py-3 pr-32 text-[15px] leading-relaxed text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-0 dark:text-slate-100 dark:placeholder:text-slate-500"
@@ -1301,15 +1315,23 @@
 					>
 						<div class="flex flex-wrap items-center gap-3">
 							{#if isCurrentlyRecording}
-								<span class="flex items-center gap-2 text-rose-500 dark:text-rose-400">
-									<span class="relative flex h-2.5 w-2.5 items-center justify-center">
+								<span
+									class="flex items-center gap-2 text-rose-500 dark:text-rose-400"
+								>
+									<span
+										class="relative flex h-2.5 w-2.5 items-center justify-center"
+									>
 										<span
 											class="absolute inline-flex h-full w-full animate-ping rounded-full bg-rose-400/70"
 										></span>
-										<span class="relative inline-flex h-2 w-2 rounded-full bg-rose-500"></span>
+										<span
+											class="relative inline-flex h-2 w-2 rounded-full bg-rose-500"
+										></span>
 									</span>
 									Listening
-									<span class="font-semibold">{formatDuration(recordingDuration)}</span>
+									<span class="font-semibold"
+										>{formatDuration(recordingDuration)}</span
+									>
 								</span>
 							{:else if isTranscribing}
 								<span class="flex items-center gap-2">
@@ -1317,7 +1339,9 @@
 									Transcribing...
 								</span>
 							{:else}
-								<span class="hidden sm:inline">Enter to send · Shift + Enter for new line</span>
+								<span class="hidden sm:inline"
+									>Enter to send · Shift + Enter for new line</span
+								>
 								<span class="sm:hidden">Enter to send</span>
 							{/if}
 
@@ -1344,7 +1368,9 @@
 								<div
 									class="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-600 dark:border-slate-700 dark:bg-slate-800/40 dark:text-slate-200"
 								>
-									<div class="h-2 w-2 animate-pulse rounded-full bg-emerald-500"></div>
+									<div
+										class="h-2 w-2 animate-pulse rounded-full bg-emerald-500"
+									></div>
 									<span class="text-xs font-semibold">Agents working</span>
 								</div>
 							{/if}
@@ -1354,7 +1380,6 @@
 			</div>
 		{/if}
 	</div>
-
 </Modal>
 
 <style>

@@ -439,7 +439,8 @@ export class ToolExecutionService implements BaseService {
 				const result = await this.executeTool(toolCall, context, availableTools, options);
 
 				// If successful or validation error, return immediately
-				const errorStr = typeof result.error === 'string' ? result.error : String(result.error);
+				const errorStr =
+					typeof result.error === 'string' ? result.error : String(result.error);
 				if (result.success || errorStr?.includes('Missing required')) {
 					return result;
 				}

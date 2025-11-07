@@ -461,9 +461,7 @@ export class AgentChatOrchestrator {
 		}
 	}
 
-	private toStreamUsage(
-		usage?: SynthesisUsage
-	): { total_tokens: number } | undefined {
+	private toStreamUsage(usage?: SynthesisUsage): { total_tokens: number } | undefined {
 		if (!usage || typeof usage.totalTokens !== 'number') {
 			return undefined;
 		}

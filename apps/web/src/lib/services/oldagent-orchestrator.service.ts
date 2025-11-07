@@ -13,7 +13,8 @@ import type {
 	ChatOperation,
 	AgentChatType,
 	Database,
-	SystemPromptMetadata
+	SystemPromptMetadata,
+	Json
 } from '@buildos/shared-types';
 import {
 	DIMENSION_QUESTIONS,
@@ -140,7 +141,7 @@ export class AgentOrchestrator {
 
 			// Stream the acknowledgment
 			for await (const chunk of stream) {
-				if (chunk.type === 'text') {
+				if (chunk.type === 'text' && typeof chunk.content === 'string') {
 					yield { type: 'text', content: chunk.content };
 				}
 			}
@@ -574,7 +575,7 @@ export class AgentOrchestrator {
 		});
 
 		for await (const chunk of stream) {
-			if (chunk.type === 'text') {
+			if (chunk.type === 'text' && typeof chunk.content === 'string') {
 				yield { type: 'text', content: chunk.content };
 			}
 		}
@@ -621,7 +622,7 @@ export class AgentOrchestrator {
 		});
 
 		for await (const chunk of stream) {
-			if (chunk.type === 'text') {
+			if (chunk.type === 'text' && typeof chunk.content === 'string') {
 				yield { type: 'text', content: chunk.content };
 			}
 		}
@@ -665,7 +666,7 @@ export class AgentOrchestrator {
 		});
 
 		for await (const chunk of stream) {
-			if (chunk.type === 'text') {
+			if (chunk.type === 'text' && typeof chunk.content === 'string') {
 				yield { type: 'text', content: chunk.content };
 			}
 		}
@@ -763,7 +764,9 @@ export class AgentOrchestrator {
 				if (questions && questions.length > 0) {
 					// Pick a random question from the options
 					const question = questions[Math.floor(Math.random() * questions.length)];
-					return question;
+					if (question) {
+						return question;
+					}
 				}
 			}
 		}
@@ -778,8 +781,8 @@ export class AgentOrchestrator {
 		const dimensionCount = draft.dimensions_covered?.length || 0;
 		const hasMultipleTasks = (draft.draft_tasks?.length || 0) > 5;
 		const hasLongTimeline =
-			draft.start_date &&
-			draft.end_date &&
+			typeof draft.start_date === 'string' &&
+			typeof draft.end_date === 'string' &&
 			new Date(draft.end_date).getTime() - new Date(draft.start_date).getTime() >
 				90 * 24 * 60 * 60 * 1000;
 
@@ -926,18 +929,23 @@ export class AgentOrchestrator {
 		const queuedOps: ChatOperation[] = [];
 
 		for (let i = 0; i < operations.length; i++) {
+			const operation = operations[i];
+			if (!operation) {
+				continue;
+			}
+
 			const { data: op } = await this.supabase
 				.from('chat_operations')
 				.insert({
 					chat_session_id: sessionId,
 					user_id: userId,
-					table_name: operations[i].table,
-					operation_type: operations[i].operation,
-					data: operations[i].data,
-					ref: operations[i].ref,
+					table_name: operation.table,
+					operation_type: operation.operation,
+					data: operation.data,
+					ref: operation.ref,
 					status: 'queued',
-					enabled: operations[i].enabled,
-					reasoning: operations[i].reasoning,
+					enabled: operation.enabled,
+					reasoning: operation.reasoning,
 					sequence_number: i
 				})
 				.select()
@@ -966,13 +974,17 @@ export class AgentOrchestrator {
 			brainDumpId: sessionId
 		});
 
-		if (result.successful.length > 0) {
-			return this.convertToOperation(result.successful[0], sessionId);
-		} else if (result.failed.length > 0) {
+		const successfulOp = result.successful[0];
+		if (successfulOp) {
+			return this.convertToOperation(successfulOp, sessionId);
+		}
+
+		const failedOp = result.failed[0];
+		if (failedOp) {
 			return {
-				...this.convertToOperation(result.failed[0], sessionId),
+				...this.convertToOperation(failedOp, sessionId),
 				status: 'failed',
-				error: result.failed[0].error
+				error: failedOp.error
 			};
 		}
 
@@ -999,7 +1011,7 @@ export class AgentOrchestrator {
 		await this.supabase
 			.from('chat_sessions')
 			.update({
-				agent_metadata: metadata
+				agent_metadata: metadata as Json
 			})
 			.eq('id', sessionId);
 	}

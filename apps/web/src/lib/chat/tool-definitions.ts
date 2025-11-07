@@ -1151,7 +1151,10 @@ export interface ToolMetadata {
 export const TOOL_METADATA: Record<string, ToolMetadata> = {
 	list_onto_tasks: {
 		summary: 'Browse recent ontology tasks with status and owning project context.',
-		capabilities: ['Filter by project or state', 'Returns abbreviated summaries for fast scans'],
+		capabilities: [
+			'Filter by project or state',
+			'Returns abbreviated summaries for fast scans'
+		],
 		contexts: ['global', 'project', 'project_audit', 'project_forecast'],
 		category: 'search'
 	},
@@ -1266,7 +1269,14 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 	get_field_info: {
 		summary: 'Schema helper that explains entity fields, enums, and valid values.',
 		capabilities: ['Provides enum values & examples', 'Great for structured updates'],
-		contexts: ['base', 'global', 'project_create', 'project', 'project_audit', 'project_forecast'],
+		contexts: [
+			'base',
+			'global',
+			'project_create',
+			'project',
+			'project_audit',
+			'project_forecast'
+		],
 		category: 'utility'
 	}
 };

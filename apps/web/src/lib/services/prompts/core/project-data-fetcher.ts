@@ -153,11 +153,17 @@ export class ProjectDataFetcher {
 				};
 			}
 
+			const tasksData = (tasksResult?.data ?? []) as ProjectWithRelations['tasks'];
+			const notesData = (notesResult?.data ?? []) as ProjectWithRelations['notes'];
+			const phasesData = (phasesResult?.data ?? []) as ProjectWithRelations['phases'];
+
+			const projectBase = projectResult.data as ProjectWithRelations;
+
 			const fullProjectWithRelations: ProjectWithRelations = {
-				...projectResult.data,
-				tasks: tasksResult?.data || [],
-				notes: notesResult?.data || [],
-				phases: phasesResult?.data || []
+				...projectBase,
+				tasks: tasksData,
+				notes: notesData,
+				phases: phasesData
 			};
 
 			const result: FullProjectDataWithQuestions = {
@@ -168,7 +174,7 @@ export class ProjectDataFetcher {
 
 			// Add questions if they were requested
 			if (includeQuestions && questionsResult) {
-				result.questions = questionsResult.data || [];
+				result.questions = (questionsResult.data ?? []) as ProjectQuestion[];
 			}
 
 			return result;
@@ -259,10 +265,13 @@ export class ProjectDataFetcher {
 		userId: string,
 		options?: {
 			limit?: number;
-			includeStatus?: string[];
+			includeStatus?: Database['public']['Enums']['project_status'][];
 		}
 	): Promise<ProjectSummary[]> {
-		const { limit = 50, includeStatus = ['active'] } = options || {};
+		const {
+			limit = 50,
+			includeStatus = ['active'] as Database['public']['Enums']['project_status'][]
+		} = options || {};
 
 		try {
 			const { data, error } = await this.supabase

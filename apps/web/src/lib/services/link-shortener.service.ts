@@ -133,7 +133,7 @@ class LinkShortenerService {
 	}> {
 		try {
 			const { data, error } = await this.supabase.rpc('get_link_click_stats', {
-				p_delivery_id: deliveryId || null,
+				p_delivery_id: deliveryId ?? undefined,
 				p_days_back: daysBack
 			});
 
@@ -142,7 +142,8 @@ class LinkShortenerService {
 				throw error;
 			}
 
-			if (!data || data.length === 0) {
+			const stats = data?.[0];
+			if (!stats) {
 				return {
 					totalLinks: 0,
 					totalClicks: 0,
@@ -151,7 +152,6 @@ class LinkShortenerService {
 				};
 			}
 
-			const stats = data[0];
 			return {
 				totalLinks: Number(stats.total_links || 0),
 				totalClicks: Number(stats.total_clicks || 0),

@@ -13,7 +13,7 @@
 	import Footer from '$lib/components/layout/Footer.svelte';
 	import IOSSplashScreens from '$lib/components/layout/IOSSplashScreens.svelte';
 	import { initializePWAEnhancements, setupInstallPrompt } from '$lib/utils/pwa-enhancements';
-import type { LayoutData } from './$types';
+	import type { LayoutData } from './$types';
 
 	// Notification system integration
 	import NotificationStackManager from '$lib/components/notifications/NotificationStackManager.svelte';
@@ -87,134 +87,136 @@ import type { LayoutData } from './$types';
 	}
 
 	// PERFORMANCE: Reactive data with memoization - converted to $derived runes
-let user = $derived(data.user);
-let completedOnboarding = $derived(data.completedOnboarding);
-type BillingContext = {
-	subscription: any | null;
-	trialStatus: any | null;
-	paymentWarnings: any[];
-	isReadOnly: boolean;
-	loading: boolean;
-};
+	let user = $derived(data.user);
+	let completedOnboarding = $derived(data.completedOnboarding);
+	type BillingContext = {
+		subscription: any | null;
+		trialStatus: any | null;
+		paymentWarnings: any[];
+		isReadOnly: boolean;
+		loading: boolean;
+	};
 
-const createBillingContextPlaceholder = (loading: boolean): BillingContext => ({
-	subscription: null,
-	trialStatus: null,
-	paymentWarnings: [],
-	isReadOnly: false,
-	loading
-});
+	const createBillingContextPlaceholder = (loading: boolean): BillingContext => ({
+		subscription: null,
+		trialStatus: null,
+		paymentWarnings: [],
+		isReadOnly: false,
+		loading
+	});
 
-const clampProgress = (value: number | null | undefined) => {
-	const numeric = typeof value === 'number' && Number.isFinite(value) ? value : 0;
-	return Math.max(0, Math.min(100, numeric));
-};
+	const clampProgress = (value: number | null | undefined) => {
+		const numeric = typeof value === 'number' && Number.isFinite(value) ? value : 0;
+		return Math.max(0, Math.min(100, numeric));
+	};
 
-const isPromiseLike = <T>(value: unknown): value is Promise<T> =>
-	typeof value === 'object' && value !== null && typeof (value as Promise<T>).then === 'function';
+	const isPromiseLike = <T,>(value: unknown): value is Promise<T> =>
+		typeof value === 'object' &&
+		value !== null &&
+		typeof (value as Promise<T>).then === 'function';
 
-let billingContext = $state<BillingContext>(
-	createBillingContextPlaceholder(Boolean(data.user && data.stripeEnabled))
-);
-let onboardingProgress = $state<number>(
-	typeof data.onboardingProgress === 'number'
-		? clampProgress(data.onboardingProgress)
-		: completedOnboarding
-			? 100
-			: 0
-);
-let trialStatus = $derived(billingContext.trialStatus);
-let paymentWarnings = $derived(billingContext.paymentWarnings);
-let isReadOnly = $derived(billingContext.isReadOnly);
-let billingLoading = $derived(billingContext.loading);
+	let billingContext = $state<BillingContext>(
+		createBillingContextPlaceholder(Boolean(data.user && data.stripeEnabled))
+	);
+	let onboardingProgress = $derived(
+		typeof data.onboardingProgress === 'number'
+			? clampProgress(data.onboardingProgress)
+			: completedOnboarding
+				? 100
+				: 0
+	);
+	let trialStatus = $derived(billingContext.trialStatus);
+	let paymentWarnings = $derived(billingContext.paymentWarnings);
+	let isReadOnly = $derived(billingContext.isReadOnly);
+	let billingLoading = $derived(billingContext.loading);
 
-let onboardingResolveToken = 0;
-let billingResolveToken = 0;
+	let onboardingResolveToken = 0;
+	let billingResolveToken = 0;
 
-$effect(() => {
-	const source = data.onboardingProgress;
-	const token = ++onboardingResolveToken;
-	const fallback = completedOnboarding ? 100 : 0;
+	$effect(() => {
+		const source = data.onboardingProgress;
+		const token = ++onboardingResolveToken;
+		const fallback = completedOnboarding ? 100 : 0;
 
-	if (isPromiseLike<number>(source)) {
-		untrack(() => {
-			onboardingProgress = fallback;
-		});
-
-		source
-			.then((value) => {
-				if (token !== onboardingResolveToken) return;
-				untrack(() => {
-					onboardingProgress = completedOnboarding ? 100 : clampProgress(value ?? 0);
-				});
-			})
-			.catch((error) => {
-				console.error('Deferred onboarding progress failed:', error);
-				if (token !== onboardingResolveToken) return;
-				untrack(() => {
-					onboardingProgress = fallback;
-				});
+		if (isPromiseLike<number>(source)) {
+			untrack(() => {
+				onboardingProgress = fallback;
 			});
-	} else {
-		untrack(() => {
-			onboardingProgress = typeof source === 'number' ? clampProgress(source) : fallback;
-		});
-	}
-});
 
-$effect(() => {
-	const source = data.billingContext;
-	const token = ++billingResolveToken;
-
-	if (!user || !data.stripeEnabled) {
-		untrack(() => {
-			billingContext = createBillingContextPlaceholder(false);
-		});
-		return;
-	}
-
-	if (isPromiseLike<BillingContext>(source)) {
-		untrack(() => {
-			billingContext = {
-				...billingContext,
-				loading: true
-			};
-		});
-
-		source
-			.then((payload) => {
-				if (token !== billingResolveToken) return;
-				untrack(() => {
-					billingContext = {
-						subscription: payload?.subscription ?? null,
-						trialStatus: payload?.trialStatus ?? null,
-						paymentWarnings: payload?.paymentWarnings ?? [],
-						isReadOnly: Boolean(payload?.isReadOnly),
-						loading: false
-					};
+			source
+				.then((value) => {
+					if (token !== onboardingResolveToken) return;
+					untrack(() => {
+						onboardingProgress = completedOnboarding ? 100 : clampProgress(value ?? 0);
+					});
+				})
+				.catch((error) => {
+					console.error('Deferred onboarding progress failed:', error);
+					if (token !== onboardingResolveToken) return;
+					untrack(() => {
+						onboardingProgress = fallback;
+					});
 				});
-			})
-			.catch((error) => {
-				console.error('Deferred billing context failed:', error);
-				if (token !== billingResolveToken) return;
-				untrack(() => {
-					billingContext = createBillingContextPlaceholder(false);
-				});
+		} else {
+			untrack(() => {
+				onboardingProgress = typeof source === 'number' ? clampProgress(source) : fallback;
 			});
-	} else {
-		untrack(() => {
-			billingContext = source
-				? {
-						subscription: source.subscription ?? null,
-						trialStatus: source.trialStatus ?? null,
-						paymentWarnings: source.paymentWarnings ?? [],
-						isReadOnly: Boolean(source.isReadOnly),
-						loading: Boolean(source.loading)
-				  }
-				: createBillingContextPlaceholder(Boolean(user && data.stripeEnabled));
-		});
-	}
-});
+		}
+	});
+
+	$effect(() => {
+		const source = data.billingContext;
+		const token = ++billingResolveToken;
+
+		if (!user || !data.stripeEnabled) {
+			untrack(() => {
+				billingContext = createBillingContextPlaceholder(false);
+			});
+			return;
+		}
+
+		if (isPromiseLike<BillingContext>(source)) {
+			untrack(() => {
+				billingContext = {
+					...billingContext,
+					loading: true
+				};
+			});
+
+			source
+				.then((payload) => {
+					if (token !== billingResolveToken) return;
+					untrack(() => {
+						billingContext = {
+							subscription: payload?.subscription ?? null,
+							trialStatus: payload?.trialStatus ?? null,
+							paymentWarnings: payload?.paymentWarnings ?? [],
+							isReadOnly: Boolean(payload?.isReadOnly),
+							loading: false
+						};
+					});
+				})
+				.catch((error) => {
+					console.error('Deferred billing context failed:', error);
+					if (token !== billingResolveToken) return;
+					untrack(() => {
+						billingContext = createBillingContextPlaceholder(false);
+					});
+				});
+		} else {
+			untrack(() => {
+				billingContext = source
+					? {
+							subscription: source.subscription ?? null,
+							trialStatus: source.trialStatus ?? null,
+							paymentWarnings: source.paymentWarnings ?? [],
+							isReadOnly: Boolean(source.isReadOnly),
+							loading: Boolean(source.loading)
+						}
+					: createBillingContextPlaceholder(Boolean(user && data.stripeEnabled));
+			});
+		}
+	});
 
 	$effect(() => {
 		if ($page.route?.id !== currentRouteId && browser) {

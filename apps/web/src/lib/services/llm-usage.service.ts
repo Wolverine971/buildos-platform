@@ -51,16 +51,33 @@ export class LLMUsageService {
 			});
 
 			if (error) throw error;
-			if (!data || data.length === 0) return null;
 
-			const result = data[0];
+			const result = data?.[0];
+			if (!result) {
+				return null;
+			}
+
+			const byOperation =
+				typeof result.by_operation === 'object' &&
+				result.by_operation !== null &&
+				!Array.isArray(result.by_operation)
+					? (result.by_operation as UsageSummary['byOperation'])
+					: {};
+
+			const byModel =
+				typeof result.by_model === 'object' &&
+				result.by_model !== null &&
+				!Array.isArray(result.by_model)
+					? (result.by_model as UsageSummary['byModel'])
+					: {};
+
 			return {
 				totalRequests: Number(result.total_requests) || 0,
 				totalCost: Number(result.total_cost) || 0,
 				totalTokens: Number(result.total_tokens) || 0,
 				avgResponseTime: Number(result.avg_response_time) || 0,
-				byOperation: result.by_operation || {},
-				byModel: result.by_model || {}
+				byOperation,
+				byModel
 			};
 		} catch (error) {
 			console.error('Error fetching user LLM usage:', error);

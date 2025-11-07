@@ -189,7 +189,7 @@ class BackgroundBrainDumpService {
 
 				// Create a SaveOperationsResponse from the executionResult if it exists
 				let saveResult: SaveOperationsResponse | undefined;
-				if (combinedResult.executionResult) {
+				if (combinedResult.executionResult && combinedResult.brainDumpId) {
 					const exec = combinedResult.executionResult;
 					saveResult = {
 						totalOperations: exec.successful.length + exec.failed.length,
@@ -419,7 +419,7 @@ class BackgroundBrainDumpService {
 	}
 
 	// Session storage persistence with size limits
-	private saveToSessionStorage() {
+	private saveToSessionStorage(): void {
 		if (!browser) return;
 
 		try {

@@ -22,7 +22,8 @@ import type {
 	AbbreviatedNote,
 	AbbreviatedBrainDump,
 	AbbreviatedCalendarEvent,
-	ChatSession
+	ChatSession,
+	Json
 } from '@buildos/shared-types';
 
 export class ChatContextService {
@@ -1031,9 +1032,15 @@ Use search tools to explore projects, tasks, notes, and calendar events.`;
 				content += '\n### Recent Notes\n';
 				content += notes
 					.map((n) => {
+						const limit = this.PREVIEW_LIMITS.NOTE_CONTENT;
+						const fullLength = n.content?.length ?? 0;
 						const preview =
-							n.content?.substring(0, this.PREVIEW_LIMITS.NOTE_CONTENT) || '';
-						return `- ${n.title || 'Untitled'}: ${preview}${n.content?.length > this.PREVIEW_LIMITS.NOTE_CONTENT ? '...' : ''}`;
+							n.content && typeof limit === 'number' && limit > 0
+								? n.content.substring(0, limit)
+								: (n.content ?? '');
+						const needsEllipsis =
+							typeof limit === 'number' && limit > 0 && fullLength > limit;
+						return `- ${n.title || 'Untitled'}: ${preview}${needsEllipsis ? '...' : ''}`;
 					})
 					.join('\n');
 			}
@@ -1168,21 +1175,26 @@ Use search tools to explore projects, tasks, notes, and calendar events.`;
 
 		if (!tasks) return [];
 
-		return tasks.map((t) => ({
-			id: t.id,
-			title: t.title,
-			status: t.status,
-			priority: t.priority,
-			start_date: t.start_date,
-			duration_minutes: t.duration_minutes,
-			description_preview:
-				t.description?.substring(0, this.PREVIEW_LIMITS.TASK_DESCRIPTION) || '',
-			details_preview: t.details?.substring(0, this.PREVIEW_LIMITS.TASK_DETAILS) || null,
-			has_subtasks: t.subtasks?.length > 0,
-			has_dependencies: t.dependencies?.length > 0,
-			is_recurring: !!t.recurrence_pattern,
-			is_overdue: this.isOverdue(t.start_date, t.status)
-		}));
+		return tasks.map((t) => {
+			const subtasks = Array.isArray(t.subtasks) ? t.subtasks : [];
+			const dependencies = Array.isArray(t.dependencies) ? t.dependencies : [];
+
+			return {
+				id: t.id,
+				title: t.title,
+				status: t.status,
+				priority: t.priority,
+				start_date: t.start_date,
+				duration_minutes: t.duration_minutes,
+				description_preview:
+					t.description?.substring(0, this.PREVIEW_LIMITS.TASK_DESCRIPTION) || '',
+				details_preview: t.details?.substring(0, this.PREVIEW_LIMITS.TASK_DETAILS) || null,
+				has_subtasks: subtasks.length > 0,
+				has_dependencies: dependencies.length > 0,
+				is_recurring: !!t.recurrence_pattern,
+				is_overdue: this.isOverdue(t.start_date, t.status)
+			};
+		});
 	}
 
 	/**
@@ -1231,24 +1243,31 @@ Use search tools to explore projects, tasks, notes, and calendar events.`;
 			content += `### Full Context\n${project.context}\n\n`;
 		}
 
-		if (project.core_problem) {
-			content += `### Core Problem\n${project.core_problem}\n\n`;
+		const projectRecord = project as Record<string, unknown>;
+		const coreProblem = this.getOptionalStringField(projectRecord, 'core_problem');
+		if (coreProblem) {
+			content += `### Core Problem\n${coreProblem}\n\n`;
 		}
 
-		if (project.target_audience) {
-			content += `### Target Audience\n${project.target_audience}\n\n`;
+		const targetAudience = this.getOptionalStringField(projectRecord, 'target_audience');
+		if (targetAudience) {
+			content += `### Target Audience\n${targetAudience}\n\n`;
 		}
 
-		if (project.success_metrics) {
-			content += `### Success Metrics\n${project.success_metrics}\n\n`;
+		const successMetrics = this.getOptionalStringField(projectRecord, 'success_metrics');
+		if (successMetrics) {
+			content += `### Success Metrics\n${successMetrics}\n\n`;
 		}
 
 		// Include phases
 		if (project.phases && project.phases.length > 0) {
 			content += `### Phases\n`;
 			project.phases.forEach((phase) => {
+				const phaseRecord = phase as Record<string, unknown>;
+				const phaseStatus =
+					this.getOptionalStringField(phaseRecord, 'status') ?? 'unspecified';
 				content += `\n#### ${phase.name}\n`;
-				content += `- Status: ${phase.status}\n`;
+				content += `- Status: ${phaseStatus}\n`;
 				content += `- Period: ${phase.start_date || 'TBD'} to ${phase.end_date || 'TBD'}\n`;
 				if (phase.description) content += `- ${phase.description}\n`;
 			});
@@ -1324,21 +1343,28 @@ Use search tools to explore projects, tasks, notes, and calendar events.`;
 			content += `### Details\n${task.details}\n\n`;
 		}
 
-		if (task.acceptance_criteria) {
-			content += `### Acceptance Criteria\n${task.acceptance_criteria}\n\n`;
+		const taskRecord = task as Record<string, unknown>;
+		const acceptanceCriteria = this.getOptionalStringField(taskRecord, 'acceptance_criteria');
+		if (acceptanceCriteria) {
+			content += `### Acceptance Criteria\n${acceptanceCriteria}\n\n`;
 		}
 
-		if (task.technical_notes) {
-			content += `### Technical Notes\n${task.technical_notes}\n\n`;
+		const technicalNotes = this.getOptionalStringField(taskRecord, 'technical_notes');
+		if (technicalNotes) {
+			content += `### Technical Notes\n${technicalNotes}\n\n`;
 		}
 
 		// Include subtasks
-		if (task.subtasks && task.subtasks.length > 0) {
-			content += `### Subtasks (${task.subtasks.length})\n`;
-			task.subtasks.forEach((st: any) => {
+		const subtasks = Array.isArray(task.subtasks) ? task.subtasks : [];
+		if (subtasks.length > 0) {
+			content += `### Subtasks (${subtasks.length})\n`;
+			subtasks.forEach((st: any) => {
 				content += `- [${st.status}] ${st.title}\n`;
-				if (st.description)
-					content += `  ${st.description.substring(0, 100)}${st.description.length > 100 ? '...' : ''}\n`;
+				if (typeof st.description === 'string') {
+					const preview = st.description.substring(0, 100);
+					const truncated = st.description.length > 100 ? '...' : '';
+					content += `  ${preview}${truncated}\n`;
+				}
 			});
 			content += '\n';
 		}
@@ -1349,7 +1375,7 @@ Use search tools to explore projects, tasks, notes, and calendar events.`;
 			metadata: {
 				contextType: sourceContextType ?? 'task',
 				taskId,
-				projectId: task.project_id,
+				projectId: task.project_id ?? undefined,
 				taskTitle: task.title,
 				abbreviated: false
 			}
@@ -1445,6 +1471,15 @@ Use search tools to explore projects, tasks, notes, and calendar events.`;
 		return taskDate < today && status !== 'done';
 	}
 
+	private getOptionalStringField(source: Record<string, unknown>, key: string): string | null {
+		const value = source[key];
+		return typeof value === 'string' && value.trim().length > 0 ? value : null;
+	}
+
+	private serializeForCache(value: unknown): Json {
+		return JSON.parse(JSON.stringify(value)) as Json;
+	}
+
 	/**
 	 * Estimate token count for text
 	 * Conservative estimate: ~4 characters per token
@@ -1464,21 +1499,23 @@ Use search tools to explore projects, tasks, notes, and calendar events.`;
 	): Promise<void> {
 		const cacheKey = `${contextType}:${entityId || 'null'}`;
 
-		const cacheData = {
+		const serializedContext = this.serializeForCache({
+			layers: context.layers,
+			metadata: {
+				totalTokens: context.totalTokens,
+				utilization: context.utilization
+			}
+		});
+
+		const cacheData: Database['public']['Tables']['chat_context_cache']['Insert'] = {
 			user_id: userId,
 			cache_key: cacheKey,
 			context_type: contextType,
-			entity_id: entityId,
-			abbreviated_context: {
-				layers: context.layers,
-				metadata: {
-					totalTokens: context.totalTokens,
-					utilization: context.utilization
-				}
-			},
+			entity_id: entityId ?? null,
+			abbreviated_context: serializedContext,
 			abbreviated_tokens: context.totalTokens,
 			full_context_available: true,
-			expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString() // 1 hour
+			expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString()
 		};
 
 		await this.supabase.from('chat_context_cache').upsert(cacheData, {
@@ -1511,7 +1548,7 @@ Use search tools to explore projects, tasks, notes, and calendar events.`;
 			.from('chat_context_cache')
 			.update({
 				accessed_at: new Date().toISOString(),
-				access_count: data.access_count + 1
+				access_count: (data.access_count ?? 0) + 1
 			})
 			.eq('id', data.id);
 

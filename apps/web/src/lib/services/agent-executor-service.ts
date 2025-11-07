@@ -20,8 +20,8 @@ import type {
 	AgentInsert,
 	AgentChatSessionInsert,
 	AgentChatMessageInsert,
-	AgentExecutionInsert,
-	Json
+	Json,
+	ExecutorTaskDefinition
 } from '@buildos/shared-types';
 import {
 	AgentContextService,
@@ -617,7 +617,12 @@ export class AgentExecutorService {
 		handles: ExecutorPersistenceHandles | undefined,
 		result: ExecutorResult
 	): Promise<void> {
-		if (!handles?.agentSessionId || !handles.parentSessionId || !handles.userId || !handles.executorAgentId) {
+		if (
+			!handles?.agentSessionId ||
+			!handles.parentSessionId ||
+			!handles.userId ||
+			!handles.executorAgentId
+		) {
 			return;
 		}
 
@@ -788,16 +793,16 @@ export class AgentExecutorService {
 			entity_id?: string | null;
 		} = {
 			parent_session_id: parentSessionId,
-			plan_id: planId || undefined,
-			step_number: stepNumber || undefined,
+			plan_id: planId ?? undefined,
+			step_number: stepNumber ?? undefined,
 			planner_agent_id: plannerAgentId,
 			executor_agent_id: executorAgentId,
 			session_type: 'planner_executor',
-			initial_context: {
+			initial_context: this.toJson({
 				type: 'executor_task',
-				task: task || {},
+				task: task ?? {},
 				timestamp: new Date().toISOString()
-			} as Json,
+			}),
 			user_id: userId,
 			status: 'active',
 			context_type: contextType || null,
@@ -832,26 +837,14 @@ export class AgentExecutorService {
 		toolCallId?: string,
 		tokensUsed?: number
 	): Promise<void> {
-		const message: {
-			agent_session_id: string;
-			sender_type: string;
-			sender_agent_id: string;
-			role: string;
-			content: string;
-			tool_calls?: Json;
-			tool_call_id?: string;
-			tokens_used: number;
-			model_used: string;
-			parent_user_session_id: string;
-			user_id: string;
-		} = {
+		const message: AgentChatMessageInsert = {
 			agent_session_id: agentSessionId,
 			sender_type: 'executor',
 			sender_agent_id: executorAgentId,
 			role,
 			content,
-			tool_calls: toolCalls || undefined,
-			tool_call_id: toolCallId || undefined,
+			tool_calls: toolCalls ?? undefined,
+			tool_call_id: toolCallId ?? undefined,
 			tokens_used: tokensUsed || 0,
 			model_used: 'deepseek/deepseek-coder',
 			parent_user_session_id: parentSessionId,
@@ -913,27 +906,15 @@ export class AgentExecutorService {
 		toolsAvailable: string[],
 		userId: string
 	): Promise<string> {
-		const execution: {
-			plan_id: string;
-			step_number: number;
-			executor_agent_id: string;
-			agent_session_id: string;
-			task: Json;
-			tools_available: Json;
-			success: boolean;
-			status: string;
-			tokens_used: number;
-			duration_ms: number;
-			tool_calls_made: number;
-			message_count: number;
-			user_id: string;
-		} = {
+		const normalizedTask = this.normalizeExecutorTask(task);
+
+		const execution: Database['public']['Tables']['agent_executions']['Insert'] = {
 			plan_id: planId,
 			step_number: stepNumber,
 			executor_agent_id: executorAgentId,
 			agent_session_id: agentSessionId,
-			task: task as unknown as Json,
-			tools_available: toolsAvailable as unknown as Json,
+			task: this.toJson(normalizedTask),
+			tools_available: this.toJson(toolsAvailable ?? []),
 			success: false,
 			status: 'pending',
 			tokens_used: 0,
@@ -977,7 +958,7 @@ export class AgentExecutorService {
 			duration_ms: number;
 			tool_calls_made: number;
 			message_count: number;
-			status: string;
+			status: 'pending' | 'executing' | 'completed' | 'failed';
 			completed_at: string;
 			error?: string | null;
 		} = {
@@ -989,7 +970,7 @@ export class AgentExecutorService {
 			message_count: messageCount,
 			status: success ? 'completed' : 'failed',
 			completed_at: new Date().toISOString(),
-			error: error || undefined
+			error: error || null
 		};
 
 		const { error: updateError } = await this.supabase
@@ -1055,5 +1036,19 @@ export class AgentExecutorService {
 		});
 
 		return total;
+	}
+
+	private toJson(value: unknown): Json {
+		return JSON.parse(JSON.stringify(value)) as Json;
+	}
+
+	private normalizeExecutorTask(task: ExecutorTask): ExecutorTaskDefinition {
+		return {
+			id: task.id,
+			description: task.description,
+			goal: task.goal,
+			constraints: task.constraints,
+			contextData: task.contextData
+		};
 	}
 }
