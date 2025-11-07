@@ -113,9 +113,9 @@ describe('AgentChatOrchestrator', () => {
 			data: { tasks: [] }
 		});
 
-		(deps.responseSynthesizer.synthesizeSimpleResponse as Mock).mockResolvedValue(
-			'Here are your tasks.'
-		);
+		(deps.responseSynthesizer.synthesizeSimpleResponse as Mock).mockResolvedValue({
+			text: 'Here are your tasks.'
+		});
 
 		const events: StreamEvent[] = [];
 		const callback = async (event: StreamEvent) => {
@@ -163,9 +163,9 @@ describe('AgentChatOrchestrator', () => {
 			can_complete_directly: false
 		});
 
-		(deps.responseSynthesizer.synthesizeClarifyingQuestions as Mock).mockResolvedValue(
-			'I need more information.'
-		);
+		(deps.responseSynthesizer.synthesizeClarifyingQuestions as Mock).mockResolvedValue({
+			text: 'I need more information.'
+		});
 
 		const events: StreamEvent[] = [];
 		const callback = async (event: StreamEvent) => {
@@ -228,9 +228,10 @@ describe('AgentChatOrchestrator', () => {
 		};
 
 		(deps.planOrchestrator.executePlan as Mock).mockReturnValue(executionEvents());
-		(deps.responseSynthesizer.synthesizeComplexResponse as Mock).mockResolvedValue(
-			'Here is the synthesized response.'
-		);
+		(deps.responseSynthesizer.synthesizeComplexResponse as Mock).mockResolvedValue({
+			text: 'Here is the synthesized response.',
+			usage: { totalTokens: 120 }
+		});
 
 		const events: StreamEvent[] = [];
 		const callback = async (event: StreamEvent) => {

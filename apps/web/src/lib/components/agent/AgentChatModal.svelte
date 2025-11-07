@@ -12,23 +12,10 @@
 <script lang="ts">
 	import { tick, onMount, onDestroy } from 'svelte';
 	import { dev } from '$app/environment';
-	import {
-		X,
-		Send,
-		Loader,
-		MessageSquare,
-		Zap,
-		BrainCircuit,
-		Sparkles,
-		CircleCheck,
-		Mic,
-		MicOff,
-		LoaderCircle
-	} from 'lucide-svelte';
+	import { X, Send, Loader, Mic, MicOff, LoaderCircle } from 'lucide-svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Textarea from '$lib/components/ui/Textarea.svelte';
-	import Badge from '$lib/components/ui/Badge.svelte';
 	import ContextSelectionScreen from '../chat/ContextSelectionScreen.svelte';
 	import { SSEProcessor, type StreamCallbacks } from '$lib/utils/sse-processor';
 	import type { ChatSession, ChatContextType } from '@buildos/shared-types';
@@ -313,15 +300,15 @@
 	const voiceButtonClasses = $derived.by(() => {
 		switch (voiceButtonState.variant) {
 			case 'recording':
-				return 'gradient-btn-recording';
+				return 'border border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100 dark:border-rose-500/40 dark:bg-rose-500/10 dark:text-rose-200';
 			case 'loading':
-				return 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-300';
+				return 'border border-slate-200 bg-white text-slate-400 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300';
 			case 'prompt':
-				return 'border border-blue-400/40 bg-blue-50/80 text-blue-600 dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-300';
+				return 'border border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100 dark:border-blue-500/50 dark:bg-blue-500/10 dark:text-blue-200';
 			case 'muted':
-				return 'bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500';
+				return 'border border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-500';
 			default:
-				return 'gradient-btn-primary';
+				return 'border border-transparent bg-slate-900 text-white hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200';
 		}
 	});
 
@@ -867,12 +854,48 @@
 		messages = [...messages, planMessage];
 	}
 
-	function addOrUpdateAssistantMessage(content: string) {
+	function normalizeMessageContent(value: unknown): string {
+		if (typeof value === 'string') {
+			return value;
+		}
+
+		if (value == null) {
+			return '';
+		}
+
+		if (Array.isArray(value)) {
+			return value.map((segment) => normalizeMessageContent(segment)).join('');
+		}
+
+		if (typeof value === 'object') {
+			const maybeText = (value as { text?: unknown }).text;
+			if (typeof maybeText === 'string') {
+				return maybeText;
+			}
+
+			const maybeContent = (value as { content?: unknown }).content;
+			if (typeof maybeContent === 'string') {
+				return maybeContent;
+			}
+
+			try {
+				return JSON.stringify(value, null, 2);
+			} catch {
+				return String(value);
+			}
+		}
+
+		return String(value);
+	}
+
+	function addOrUpdateAssistantMessage(content: unknown) {
+		const normalizedContent = normalizeMessageContent(content);
+
 		if (currentAssistantMessageId) {
 			// Update existing message
 			messages = messages.map((m) => {
 				if (m.id === currentAssistantMessageId) {
-					return { ...m, content: m.content + content };
+					return { ...m, content: m.content + normalizedContent };
 				}
 				return m;
 			});
@@ -882,7 +905,7 @@
 			const assistantMessage: AgentMessage = {
 				id: currentAssistantMessageId,
 				type: 'assistant',
-				content,
+				content: normalizedContent,
 				timestamp: new Date()
 			};
 			messages = [...messages, assistantMessage];
@@ -930,96 +953,81 @@
 >
 	<div
 		slot="header"
-		class="relative z-50 border-b border-slate-200/60 bg-white/90 px-6 py-5 backdrop-blur-md dark:border-slate-700/60 dark:bg-slate-900/85"
+		class="border-b border-slate-200 bg-white px-5 py-4 dark:border-slate-800 dark:bg-slate-900"
 	>
-		<div class="flex flex-col gap-4">
-			<div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-				<div class="flex items-start gap-4">
-					<div
-						class="flex h-12 w-12 items-center justify-center rounded-2xl gradient-icon-brand"
-					>
-						<Sparkles class="h-5 w-5 text-purple-600 dark:text-purple-300" />
-					</div>
-					<div class="flex flex-col gap-1">
-						<h2 class="text-lg font-semibold text-gray-900 dark:text-white">
-							Multi-Agent Assistant
-						</h2>
-						<div
-							class="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400"
-						>
-							<Badge
-								size="sm"
-								class="!rounded-full border border-slate-200/60 bg-white/90 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-gray-700 shadow-sm backdrop-blur-md dark:border-slate-700/60 dark:bg-slate-900/80 dark:text-gray-200"
-							>
-								<BrainCircuit class="mr-1.5 h-3 w-3" />
-								Planner + Executor
-							</Badge>
-							<span>Adaptive orchestration across BuildOS</span>
-						</div>
-					</div>
-				</div>
-				<div class="flex items-center gap-2">
-					{#if selectedContextType}
-						<Button
-							variant="ghost"
-							size="sm"
-							class="rounded-full border border-slate-200/60 bg-white/70 px-3 py-2 text-sm font-medium text-slate-600 shadow-sm backdrop-blur transition hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-70 dark:border-slate-700/60 dark:bg-slate-900/70 dark:text-slate-200 dark:hover:bg-slate-900/90"
-							disabled={isStreaming}
-							onclick={changeContext}
-						>
-							{isStreaming ? 'Focus locked while running...' : 'Change focus'}
-						</Button>
-					{/if}
-					<Button
-						variant="ghost"
-						size="sm"
-						icon={X}
-						class="rounded-full border border-slate-200/60 bg-white/70 px-3 py-2 text-sm font-medium text-gray-700 shadow-sm backdrop-blur hover:bg-white/90 dark:border-slate-700/60 dark:bg-slate-900/70 dark:text-gray-200 dark:hover:bg-slate-900/90"
-						aria-label="Close chat"
-						onclick={handleClose}
-					/>
-				</div>
-			</div>
-			<div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+		<div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+			<div class="space-y-2">
+				<p
+					class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+				>
+					Agent chat
+				</p>
 				<div class="flex flex-wrap items-center gap-2">
-					<span
-						class={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold ${contextBadgeClass}`}
-					>
-						<Sparkles class="h-3.5 w-3.5" />
-						{displayContextLabel}
-					</span>
-					{#if displayContextSubtitle}
-						<span class="text-xs text-slate-600 dark:text-slate-400">
-							{displayContextSubtitle}
+					<h2 class="text-lg font-semibold text-slate-900 dark:text-white">
+						BuildOS Assistant
+					</h2>
+					{#if selectedContextType}
+						<span
+							class={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${contextBadgeClass}`}
+						>
+							{displayContextLabel}
 						</span>
 					{/if}
 				</div>
-				<div class="flex flex-wrap items-center gap-2">
-					{#if ontologyLoaded}
-						<Badge
-							size="sm"
-							class="!rounded-full border border-emerald-200/60 bg-emerald-50/90 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:border-emerald-700/60 dark:bg-emerald-900/40 dark:text-emerald-300"
-						>
-							📊 Ontology
-						</Badge>
-					{/if}
-					{#if currentStrategy}
-						<Badge
-							size="sm"
-							class="!rounded-full border border-blue-200/60 bg-blue-50/90 px-2 py-0.5 text-[10px] font-semibold text-blue-700 dark:border-blue-700/60 dark:bg-blue-900/40 dark:text-blue-300"
-						>
-							🎯 {currentStrategy.replace(/_/g, ' ')}
-						</Badge>
-					{/if}
-					{#if currentActivity}
-						<div
-							class="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400"
-						>
-							<div class="h-2 w-2 animate-pulse rounded-full bg-blue-500"></div>
-							<span>{currentActivity}</span>
-						</div>
-					{/if}
-				</div>
+				{#if displayContextSubtitle}
+					<p class="text-sm text-slate-500 dark:text-slate-400">
+						{displayContextSubtitle}
+					</p>
+				{/if}
+				{#if ontologyLoaded || currentStrategy || currentActivity}
+					<div
+						class="flex flex-wrap items-center gap-3 text-xs text-slate-500 dark:text-slate-400"
+					>
+						{#if ontologyLoaded}
+							<span
+								class="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium uppercase tracking-wide dark:bg-slate-800 dark:text-slate-200"
+							>
+								Ontology ready
+							</span>
+						{/if}
+						{#if currentStrategy}
+							<span
+								class="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium uppercase tracking-wide dark:bg-slate-800 dark:text-slate-200"
+							>
+								Strategy · {currentStrategy.replace(/_/g, ' ')}
+							</span>
+						{/if}
+						{#if currentActivity}
+							<span class="flex items-center gap-2">
+								<span
+									class="inline-flex h-2 w-2 animate-pulse rounded-full bg-emerald-500"
+								></span>
+								{currentActivity}
+							</span>
+						{/if}
+					</div>
+				{/if}
+			</div>
+			<div class="flex items-center gap-2">
+				{#if selectedContextType}
+					<Button
+						variant="ghost"
+						size="sm"
+						class="rounded-full border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-70 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+						disabled={isStreaming}
+						onclick={changeContext}
+					>
+						{isStreaming ? 'Running...' : 'Change focus'}
+					</Button>
+				{/if}
+				<Button
+					variant="ghost"
+					size="sm"
+					icon={X}
+					class="rounded-full px-2 py-2 text-sm font-medium text-slate-500 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+					aria-label="Close chat"
+					onclick={handleClose}
+				/>
 			</div>
 		</div>
 	</div>
@@ -1032,224 +1040,134 @@
 				<ContextSelectionScreen inModal on:select={handleContextSelect} />
 			</div>
 		{:else}
-			<!-- Messages Container -->
 			<div
 				bind:this={messagesContainer}
 				onscroll={handleScroll}
-				class="agent-chat-scroll flex-1 space-y-3 overflow-y-auto bg-gradient-to-b from-slate-50/50 to-white/80 px-4 py-6 backdrop-blur-sm dark:from-slate-900/50 dark:to-slate-900/80 sm:px-6"
+				class="agent-chat-scroll flex-1 min-h-0 space-y-4 overflow-y-auto bg-slate-50/70 px-4 py-6 dark:bg-slate-900/40 sm:px-6"
 			>
 				{#if messages.length === 0}
-					<div class="space-y-5">
-						<div
-							class="rounded-3xl border border-slate-200/60 bg-white/85 p-6 shadow-sm backdrop-blur dark:border-slate-700/60 dark:bg-slate-900/70"
-						>
-							<div class="flex items-start gap-3">
-								<div
-									class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl gradient-chip-blue"
-								>
-									<BrainCircuit class="h-5 w-5" />
-								</div>
-								<div class="flex-1">
-									<h3
-										class="mb-1 text-sm font-semibold text-slate-900 dark:text-white"
-									>
-										Context aligned
-									</h3>
-									<p class="text-sm text-slate-600 dark:text-slate-400">
-										{displayContextSubtitle}
-									</p>
-								</div>
-							</div>
-						</div>
-						<div
-							class="rounded-3xl border border-slate-200/60 bg-white/85 p-6 shadow-sm backdrop-blur dark:border-slate-700/60 dark:bg-slate-900/70"
-						>
-							<p
-								class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400"
-							>
-								Try asking
-							</p>
-							<div class="mt-4 space-y-2.5">
-								<div class="flex items-start gap-3">
-									<div
-										class="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full gradient-badge-blue"
-									>
-										1
-									</div>
-									<p class="text-sm text-slate-700 dark:text-slate-300">
-										"Outline the next steps for this focus."
-									</p>
-								</div>
-								<div class="flex items-start gap-3">
-									<div
-										class="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full gradient-badge-purple"
-									>
-										2
-									</div>
-									<p class="text-sm text-slate-700 dark:text-slate-300">
-										"What should we prepare before moving forward?"
-									</p>
-								</div>
-							</div>
-						</div>
+					<div
+						class="rounded-2xl border border-dashed border-slate-200 bg-white px-5 py-6 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
+					>
+						<p class="font-semibold text-slate-900 dark:text-white">You're set to chat.</p>
+						<p class="mt-2">
+							Ask the agent to plan, explain, or take the next step for
+							{displayContextLabel.toLowerCase()}.
+						</p>
+						<ul class="mt-4 space-y-1 text-slate-500 dark:text-slate-400">
+							<li>- Summarize where this stands</li>
+							<li>- Draft the next update</li>
+							<li>- What should we do next?</li>
+						</ul>
 					</div>
 				{:else}
 					{#each messages as message (message.id)}
-						<div
-							class="flex gap-3"
-							class:justify-end={message.type === 'user'}
-							class:justify-start={message.type !== 'user'}
-						>
-							{#if message.type === 'user'}
-								<!-- User Message -->
+						{#if message.type === 'user'}
+							<div class="flex justify-end">
 								<div
-									class="group max-w-[85%] rounded-2xl gradient-message-assistant px-4 py-3 sm:max-w-[75%]"
+									class="max-w-[80%] rounded-2xl bg-slate-900 px-4 py-3 text-sm text-white shadow-sm dark:bg-slate-100 dark:text-slate-900"
 								>
-									<div
-										class="whitespace-pre-wrap break-words text-[15px] leading-relaxed text-white"
-									>
+									<div class="whitespace-pre-wrap break-words leading-relaxed">
 										{message.content}
 									</div>
-									<div class="mt-1.5 text-xs text-blue-100/75">
+									<div class="mt-1 text-xs text-white/70 dark:text-slate-500">
 										{formatTime(message.timestamp)}
 									</div>
 								</div>
-							{:else if message.type === 'assistant'}
-								<!-- Assistant Message -->
-								<div class="flex max-w-[85%] gap-3 sm:max-w-[75%]">
-									<div class="flex-shrink-0">
-										<div
-											class="flex h-9 w-9 items-center justify-center rounded-full gradient-avatar-purple"
-										>
-											<MessageSquare
-												class="h-4 w-4 text-purple-600 dark:text-purple-400"
-											/>
-										</div>
-									</div>
-									<div
-										class="rounded-2xl border border-slate-200/60 bg-white/90 px-4 py-3 shadow-sm backdrop-blur-sm dark:border-slate-700/60 dark:bg-slate-900/80"
-									>
-										{#if shouldRenderAsMarkdown(message.content)}
-											<!-- Markdown content -->
-											<div class={proseClasses}>
-												{@html renderMarkdown(message.content)}
-											</div>
-										{:else}
-											<!-- Plain text content -->
-											<div
-												class="whitespace-pre-wrap break-words text-[15px] leading-relaxed text-gray-900 dark:text-gray-100"
-											>
-												{message.content}
-											</div>
-										{/if}
-										<div
-											class="mt-1.5 text-xs text-gray-500 dark:text-gray-400"
-										>
-											{formatTime(message.timestamp)}
-										</div>
-									</div>
-								</div>
-							{:else if message.type === 'activity'}
-								<!-- Activity Message -->
-								<div class="flex w-full justify-center">
-									<div
-										class="flex items-center gap-2.5 rounded-full border border-slate-200/60 bg-white/80 px-4 py-2 shadow-sm backdrop-blur-sm dark:border-slate-700/60 dark:bg-slate-900/70"
-									>
-										<div class="relative flex h-3.5 w-3.5">
-											<span
-												class="absolute inline-flex h-full w-full animate-ping rounded-full bg-blue-400 opacity-75"
-											></span>
-											<span
-												class="relative inline-flex h-3.5 w-3.5 rounded-full bg-blue-500"
-											></span>
-										</div>
-										<span
-											class="text-xs font-medium text-gray-700 dark:text-gray-300"
-											>{message.content}</span
-										>
-									</div>
-								</div>
-							{:else if message.type === 'plan'}
-								<!-- Plan Created -->
+							</div>
+						{:else if message.type === 'assistant'}
+							<div class="flex gap-3">
 								<div
-									class="w-full rounded-2xl border border-purple-200/60 gradient-card-purple p-4 shadow-sm backdrop-blur-sm dark:border-purple-800/60"
+									class="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-xs font-semibold uppercase text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
 								>
-									<div class="mb-3 flex items-center gap-2.5">
-										<div
-											class="flex h-8 w-8 items-center justify-center rounded-full bg-purple-500/15 shadow-sm dark:bg-purple-400/20"
-										>
-											<BrainCircuit
-												class="h-4 w-4 text-purple-700 dark:text-purple-300"
-											/>
+									AI
+								</div>
+								<div
+									class="max-w-[85%] rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-relaxed text-slate-900 shadow-sm dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-100"
+								>
+									{#if shouldRenderAsMarkdown(message.content)}
+										<div class={proseClasses}>
+											{@html renderMarkdown(message.content)}
 										</div>
-										<span
-											class="text-sm font-semibold text-purple-900 dark:text-purple-100"
-											>Plan Created</span
-										>
-									</div>
-									{#if message.data?.steps}
-										<div class="space-y-2">
-											{#each message.data.steps as step}
-												<div
-													class="flex items-center gap-3 rounded-xl border border-purple-200/40 bg-white/60 px-3 py-2 backdrop-blur-sm transition-colors dark:border-purple-700/40 dark:bg-purple-900/20"
-												>
-													<div
-														class="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full {step.status ===
-														'completed'
-															? 'bg-emerald-500/15 text-emerald-700 dark:bg-emerald-400/20 dark:text-emerald-300'
-															: 'bg-purple-500/15 text-purple-700 dark:bg-purple-400/20 dark:text-purple-300'}"
-													>
-														{#if step.status === 'completed'}
-															<CircleCheck class="h-3.5 w-3.5" />
-														{:else}
-															<span class="text-xs font-bold"
-																>{step.stepNumber}</span
-															>
-														{/if}
-													</div>
-													<span
-														class="text-sm font-medium text-gray-800 dark:text-gray-200"
-														>{step.description}</span
-													>
-												</div>
-											{/each}
+									{:else}
+										<div class="whitespace-pre-wrap break-words">
+											{message.content}
 										</div>
 									{/if}
+									<div class="mt-1 text-xs text-slate-500 dark:text-slate-400">
+										{formatTime(message.timestamp)}
+									</div>
 								</div>
-							{/if}
-						</div>
+							</div>
+						{:else if message.type === 'plan'}
+							<div class="flex gap-2 text-xs text-slate-500 dark:text-slate-400">
+								<div
+									class="w-14 shrink-0 pt-[2px] text-[10px] font-mono text-slate-400 dark:text-slate-500"
+								>
+									{formatTime(message.timestamp)}
+								</div>
+								<div
+									class="max-w-[70%] rounded-xl border border-slate-200 bg-white/80 px-3 py-2 text-[12px] leading-snug text-slate-700 shadow-sm dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-100"
+								>
+									<p class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+										Plan
+									</p>
+									<p class="mt-1 text-slate-800 dark:text-slate-50">{message.content}</p>
+									{#if message.data?.steps}
+										<ol class="mt-2 space-y-0.5 text-[12px] text-slate-600 dark:text-slate-300">
+											{#each message.data.steps as step}
+												<li class="flex gap-2 leading-snug">
+													<span class="w-4 text-right font-semibold text-slate-400">
+														{step.stepNumber}.
+													</span>
+													<span class="flex-1">
+														{step.description}
+													</span>
+												</li>
+											{/each}
+										</ol>
+									{/if}
+								</div>
+							</div>
+						{:else}
+							<div class="flex gap-2 text-[11px] text-slate-500 dark:text-slate-400">
+								<div
+									class="w-14 shrink-0 pt-[2px] font-mono text-slate-400 dark:text-slate-500"
+								>
+									{formatTime(message.timestamp)}
+								</div>
+								<div
+									class="max-w-[60%] rounded-md border border-slate-200/70 bg-slate-50/70 px-3 py-1.5 text-[12px] font-medium italic leading-snug text-slate-600 shadow-sm dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-300"
+								>
+									<p class="leading-relaxed">{message.content}</p>
+								</div>
+							</div>
+						{/if}
 					{/each}
-				{/if}
-
-				<!-- Current Activity Indicator -->
-				{#if isStreaming && currentActivity}
-					<div class="flex w-full justify-center">
-						<div
-							class="flex items-center gap-2.5 rounded-full border border-blue-200/60 bg-gradient-to-r from-blue-50/90 to-indigo-50/90 px-5 py-2.5 shadow-sm backdrop-blur-sm dark:border-blue-800/60 dark:from-blue-950/40 dark:to-indigo-950/40"
-						>
-							<Zap
-								class="h-4 w-4 animate-pulse text-blue-600 drop-shadow-sm dark:text-blue-400"
-							/>
-							<span class="text-sm font-semibold text-blue-900 dark:text-blue-100"
-								>{currentActivity}</span
-							>
-						</div>
-					</div>
 				{/if}
 			</div>
 
-			<!-- Error Message -->
-			{#if error}
+			{#if isStreaming && currentActivity}
 				<div
-					class="border-t border-rose-200/60 bg-gradient-to-r from-rose-50/90 to-red-50/90 px-4 py-3 backdrop-blur-sm dark:border-rose-800/50 dark:from-rose-900/20 dark:to-red-900/20"
+					class="border-t border-slate-200 bg-slate-50 px-4 py-2 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900/40 dark:text-slate-300 sm:px-6"
 				>
-					<p class="text-sm font-medium text-rose-800 dark:text-rose-300">{error}</p>
+					<span class="inline-flex items-center gap-2">
+						<span class="inline-flex h-2 w-2 animate-pulse rounded-full bg-emerald-500"></span>
+						{currentActivity}
+					</span>
 				</div>
 			{/if}
 
-			<!-- Input Area -->
+			{#if error}
+				<div
+					class="border-t border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:border-rose-900/40 dark:bg-rose-950/20 dark:text-rose-300 sm:px-6"
+				>
+					{error}
+				</div>
+			{/if}
+
 			<div
-				class="border-t border-slate-200/60 bg-white/85 px-4 py-5 backdrop-blur-xl dark:border-slate-700/60 dark:bg-slate-900/85 sm:px-6"
+				class="border-t border-slate-200 bg-white px-4 py-4 dark:border-slate-800 dark:bg-slate-900 sm:px-6"
 			>
 				<form
 					onsubmit={(e) => {
@@ -1258,108 +1176,91 @@
 					}}
 					class="space-y-3"
 				>
-					<div class="relative space-y-2">
-						<div
-							class="relative rounded-[28px] border border-slate-200/60 bg-white/90 shadow-[0_12px_32px_-20px_rgba(15,23,42,0.4)] transition duration-200 ease-out focus-within:border-purple-300 focus-within:shadow-[0_20px_48px_-24px_rgba(168,85,247,0.45)] focus-within:ring-1 focus-within:ring-purple-200/40 dark:border-slate-700/60 dark:bg-slate-900/80 dark:shadow-[0_20px_40px_-24px_rgba(15,23,42,0.6)] dark:focus-within:border-purple-500/40 dark:focus-within:ring-purple-500/20"
-						>
-							<Textarea
-								bind:value={inputValue}
-								class="border-none bg-transparent px-6 py-4 pr-36 text-[15px] leading-relaxed text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-0 dark:text-gray-100 dark:placeholder:text-gray-500"
-								placeholder={`Share the next thing about ${displayContextLabel.toLowerCase()}...`}
-								autoResize
-								rows={1}
-								maxRows={6}
-								disabled={isStreaming}
-								onkeydown={handleKeyDown}
-							/>
+					<div class="relative rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
+						<Textarea
+							bind:value={inputValue}
+							class="border-none bg-transparent px-4 py-3 pr-32 text-[15px] leading-relaxed text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-0 dark:text-slate-100 dark:placeholder:text-slate-500"
+							placeholder={`Share the next thing about ${displayContextLabel.toLowerCase()}...`}
+							autoResize
+							rows={1}
+							maxRows={6}
+							disabled={isStreaming}
+							onkeydown={handleKeyDown}
+						/>
 
-							<div class="absolute inset-y-1 right-2 flex items-center gap-2">
-								<button
-									type="button"
-									class={`flex h-11 w-11 items-center justify-center rounded-full border border-transparent transition-all duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-400 disabled:cursor-not-allowed disabled:opacity-60 sm:h-12 sm:w-12 ${voiceButtonClasses}`}
-									onclick={handleVoiceToggle}
-									aria-label={voiceButtonState.label}
-									title={voiceButtonState.label}
-									aria-pressed={isCurrentlyRecording}
-									disabled={voiceButtonState.disabled}
-								>
-									{#if voiceButtonState.isLoading}
-										<LoaderCircle class="h-5 w-5 animate-spin" />
-									{:else}
-										{@const VoiceIcon = voiceButtonState.icon}
-										<VoiceIcon class="h-5 w-5" />
-									{/if}
-								</button>
+						<div class="absolute bottom-2 right-2 flex items-center gap-2">
+							<button
+								type="button"
+								class={`flex h-10 w-10 items-center justify-center rounded-full transition ${voiceButtonClasses}`}
+								onclick={handleVoiceToggle}
+								aria-label={voiceButtonState.label}
+								title={voiceButtonState.label}
+								aria-pressed={isCurrentlyRecording}
+								disabled={voiceButtonState.disabled}
+							>
+								{#if voiceButtonState.isLoading}
+									<LoaderCircle class="h-5 w-5 animate-spin" />
+								{:else}
+									{@const VoiceIcon = voiceButtonState.icon}
+									<VoiceIcon class="h-5 w-5" />
+								{/if}
+							</button>
 
-								<button
-									type="submit"
-									class="flex h-12 w-12 items-center justify-center rounded-full gradient-fab-purple"
-									aria-label="Send message"
-									disabled={isSendDisabled}
-								>
-									{#if isStreaming}
-										<Loader class="h-5 w-5 animate-spin" />
-									{:else}
-										<Send class="h-5 w-5" />
-									{/if}
-								</button>
-							</div>
-
-							{#if isLiveTranscribing && canUseLiveTranscript}
-								<div class="pointer-events-none absolute bottom-4 left-6 right-28">
-									<div
-										class="pointer-events-auto max-h-24 overflow-y-auto rounded-xl border border-purple-300/60 bg-gradient-to-r from-purple-50/80 to-pink-50/80 px-4 py-2 text-sm text-purple-700 shadow-[0_8px_24px_-18px_rgba(168,85,247,0.45)] backdrop-blur dark:border-purple-500/40 dark:from-purple-950/40 dark:to-pink-950/40 dark:text-purple-200"
-									>
-										<p class="m-0 whitespace-pre-wrap leading-relaxed">
-											{liveTranscriptPreview}
-										</p>
-									</div>
-								</div>
-							{/if}
+							<button
+								type="submit"
+								class="flex h-11 w-11 items-center justify-center rounded-full bg-slate-900 text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
+								aria-label="Send message"
+								disabled={isSendDisabled}
+							>
+								{#if isStreaming}
+									<Loader class="h-5 w-5 animate-spin" />
+								{:else}
+									<Send class="h-5 w-5" />
+								{/if}
+							</button>
 						</div>
+
+						{#if isLiveTranscribing && canUseLiveTranscript}
+							<div class="pointer-events-none absolute bottom-3 left-4 right-28">
+								<div
+									class="pointer-events-auto max-h-24 overflow-y-auto rounded-xl border border-slate-200 bg-white/90 px-3 py-2 text-sm text-slate-600 shadow-sm dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-200"
+								>
+									<p class="m-0 whitespace-pre-wrap leading-relaxed">
+										{liveTranscriptPreview}
+									</p>
+								</div>
+							</div>
+						{/if}
 					</div>
 
 					<div
-						class="flex flex-wrap items-center justify-between gap-3 text-xs font-medium text-gray-500 dark:text-gray-400"
+						class="flex flex-wrap items-center justify-between gap-3 text-xs font-medium text-slate-500 dark:text-slate-400"
 					>
 						<div class="flex flex-wrap items-center gap-3">
 							{#if isCurrentlyRecording}
-								<span
-									class="flex items-center gap-2 text-rose-500 dark:text-rose-400"
-								>
-									<span
-										class="relative flex h-2.5 w-2.5 items-center justify-center"
-									>
+								<span class="flex items-center gap-2 text-rose-500 dark:text-rose-400">
+									<span class="relative flex h-2.5 w-2.5 items-center justify-center">
 										<span
 											class="absolute inline-flex h-full w-full animate-ping rounded-full bg-rose-400/70"
 										></span>
-										<span
-											class="relative inline-flex h-2 w-2 rounded-full bg-rose-500"
-										></span>
+										<span class="relative inline-flex h-2 w-2 rounded-full bg-rose-500"></span>
 									</span>
-									<span class="flex items-center gap-1">
-										Listening
-										<span class="font-semibold tracking-wide"
-											>{formatDuration(recordingDuration)}</span
-										>
-									</span>
+									Listening
+									<span class="font-semibold">{formatDuration(recordingDuration)}</span>
 								</span>
 							{:else if isTranscribing}
 								<span class="flex items-center gap-2">
 									<LoaderCircle class="h-4 w-4 animate-spin" />
-									<span>Transcribing your voice note...</span>
+									Transcribing...
 								</span>
 							{:else}
-								<span class="hidden sm:inline"
-									>Press Enter to send · Shift + Enter for new line</span
-								>
-								<span class="sm:hidden">Enter to send · Shift + Enter for line</span
-								>
+								<span class="hidden sm:inline">Enter to send · Shift + Enter for new line</span>
+								<span class="sm:hidden">Enter to send</span>
 							{/if}
 
 							{#if canUseLiveTranscript && isCurrentlyRecording}
 								<span
-									class="hidden rounded-full border border-blue-200/40 bg-blue-50/60 px-3 py-0.5 text-[11px] font-semibold uppercase tracking-[0.24em] text-blue-500 dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-300 sm:inline"
+									class="hidden rounded-full border border-blue-200 bg-blue-50 px-3 py-0.5 text-[11px] font-semibold uppercase tracking-[0.24em] text-blue-600 dark:border-blue-500/40 dark:bg-blue-500/10 dark:text-blue-300 sm:inline"
 								>
 									Live transcript
 								</span>
@@ -1370,7 +1271,7 @@
 							{#if voiceError}
 								<span
 									role="alert"
-									class="flex items-center gap-2 rounded-full bg-rose-50/80 px-3 py-1 text-rose-500 dark:bg-rose-900/20 dark:text-rose-300"
+									class="flex items-center gap-2 rounded-full bg-rose-50 px-3 py-1 text-rose-600 dark:bg-rose-900/20 dark:text-rose-300"
 								>
 									{voiceError}
 								</span>
@@ -1378,12 +1279,10 @@
 
 							{#if isStreaming}
 								<div
-									class="flex items-center gap-2 rounded-full border border-emerald-200/40 bg-emerald-50/60 px-3 py-1 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300"
+									class="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-600 dark:border-slate-700 dark:bg-slate-800/40 dark:text-slate-200"
 								>
-									<div
-										class="h-2 w-2 animate-pulse rounded-full bg-emerald-500"
-									></div>
-									<span class="text-xs font-semibold">Agents working...</span>
+									<div class="h-2 w-2 animate-pulse rounded-full bg-emerald-500"></div>
+									<span class="text-xs font-semibold">Agents working</span>
 								</div>
 							{/if}
 						</div>

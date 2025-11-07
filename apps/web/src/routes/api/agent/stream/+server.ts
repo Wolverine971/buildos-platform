@@ -447,8 +447,10 @@ export const POST: RequestHandler = async ({
 				const result = (event as any).result;
 				toolResults.push(result);
 
-				if (result?.context_shift) {
-					const contextShift = result.context_shift;
+				const contextShift =
+					result?.context_shift ?? result?.data?.context_shift ?? result?.result?.context_shift;
+
+				if (contextShift) {
 					console.log('[API] Context shift detected:', contextShift);
 
 					await agentStream.sendMessage({
@@ -612,8 +614,9 @@ export const POST: RequestHandler = async ({
 							(r) => r.tool_call_id === toolCall.id || r.toolCallId === toolCall.id
 						);
 
-						if (result) {
-							const normalizedResult = result.tool_result ?? result.result ?? result;
+					if (result) {
+						const normalizedResult =
+							result.tool_result ?? result.result ?? result.data ?? result;
 
 							const { error: toolError } = await supabase
 								.from('chat_messages')

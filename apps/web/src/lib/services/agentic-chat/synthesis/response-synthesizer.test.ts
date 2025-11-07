@@ -69,7 +69,7 @@ describe('ResponseSynthesizer', () => {
 				mockContext
 			);
 
-			expect(response).toContain('Task 1');
+			expect(response.text).toContain('Task 1');
 			expect(mockLLMService.generateText).toHaveBeenCalledWith(
 				expect.objectContaining({
 					prompt: expect.stringContaining('Show me my tasks')
@@ -97,7 +97,7 @@ describe('ResponseSynthesizer', () => {
 				mockContext
 			);
 
-			expect(response).toContain('error');
+			expect(response.text).toContain('error');
 			expect(mockLLMService.generateText).toHaveBeenCalledWith(
 				expect.objectContaining({
 					prompt: expect.stringContaining('Database connection failed')
@@ -131,8 +131,8 @@ describe('ResponseSynthesizer', () => {
 				mockContext
 			);
 
-			expect(response).toBeDefined();
-			expect(response.length).toBeGreaterThan(0);
+			expect(response.text).toBeDefined();
+			expect(response.text.length).toBeGreaterThan(0);
 		});
 
 		it('should handle empty tool results', async () => {
@@ -140,7 +140,7 @@ describe('ResponseSynthesizer', () => {
 
 			const response = await synthesizer.synthesizeSimpleResponse('Hello', [], mockContext);
 
-			expect(response).toBeDefined();
+			expect(response.text).toBeDefined();
 			expect(mockLLMService.generateText).toHaveBeenCalled();
 		});
 	});
@@ -196,7 +196,7 @@ describe('ResponseSynthesizer', () => {
 				mockContext
 			);
 
-			expect(response).toContain('85');
+			expect(response.text).toContain('85');
 			expect(mockLLMService.generateText).toHaveBeenCalledWith(
 				expect.objectContaining({
 					prompt: expect.stringContaining('Analyze project health')
@@ -250,7 +250,7 @@ describe('ResponseSynthesizer', () => {
 
 			const response = await synthesizer.synthesizeComplexResponse(plan, [], mockContext);
 
-			expect(response).toBeDefined();
+			expect(response.text).toBeDefined();
 			expect(mockLLMService.generateText).toHaveBeenCalledWith(
 				expect.objectContaining({
 					prompt: expect.stringContaining('failed')
@@ -287,7 +287,7 @@ describe('ResponseSynthesizer', () => {
 
 			const response = await synthesizer.synthesizeComplexResponse(plan, [], mockContext);
 
-			expect(response).toContain('unable');
+			expect(response.text).toContain('unable');
 		});
 	});
 
@@ -299,32 +299,40 @@ describe('ResponseSynthesizer', () => {
 				'Do you want a detailed or summary report?'
 			];
 
+			mockLLMService.generateText.mockResolvedValueOnce(
+				'I need to clarify a few things:\n1. Which project are you referring to?\n2. What time period should I analyze?\n3. Do you want a detailed or summary report?'
+			);
+
 			const response = await synthesizer.synthesizeClarifyingQuestions(
 				questions,
 				mockContext
 			);
 
-			expect(response).toContain('clarify');
+			expect(response.text).toContain('clarify');
 			questions.forEach((q) => {
-				expect(response).toContain(q);
+				expect(response.text).toContain(q);
 			});
 		});
 
 		it('should handle single question', async () => {
 			const questions = ['Which project do you mean?'];
 
+			mockLLMService.generateText.mockResolvedValueOnce(
+				'Please clarify which project you mean so I can continue.'
+			);
+
 			const response = await synthesizer.synthesizeClarifyingQuestions(
 				questions,
 				mockContext
 			);
 
-			expect(response).toContain('Which project');
+			expect(response.text).toContain('Which project');
 		});
 
 		it('should handle empty questions array', async () => {
 			const response = await synthesizer.synthesizeClarifyingQuestions([], mockContext);
 
-			expect(response).toContain('provide more details');
+			expect(response.text).toContain('provide more details');
 		});
 	});
 

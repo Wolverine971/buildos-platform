@@ -30,6 +30,17 @@ import type {
 } from '../shared/types';
 import { ChatStrategy } from '$lib/types/agent-chat-enhancement';
 
+export interface SynthesisUsage {
+	promptTokens?: number;
+	completionTokens?: number;
+	totalTokens?: number;
+}
+
+export interface SynthesisResult {
+	text: string;
+	usage?: SynthesisUsage;
+}
+
 /**
  * Interface for LLM service (subset of SmartLLMService)
  */
@@ -43,6 +54,15 @@ interface LLMService {
 		operationType?: string;
 	}): Promise<string>;
 
+	generateTextDetailed?(params: {
+		systemPrompt: string;
+		prompt: string;
+		temperature?: number;
+		maxTokens?: number;
+		userId?: string;
+		operationType?: string;
+	}): Promise<{ text: string; usage?: SynthesisUsage }>;
+
 	generateStream?(params: {
 		systemPrompt: string;
 		prompt: string;
@@ -51,6 +71,14 @@ interface LLMService {
 		userId?: string;
 		operationType?: string;
 	}): Promise<AsyncGenerator<string, void, unknown>>;
+}
+
+interface LLMRequestConfig {
+	systemPrompt: string;
+	prompt: string;
+	temperature: number;
+	maxTokens: number;
+	operationType: string;
 }
 
 /**
@@ -66,7 +94,7 @@ export class ResponseSynthesizer implements BaseService {
 		userMessage: string,
 		toolResults: ToolExecutionResult[],
 		context: ServiceContext
-	): Promise<string> {
+	): Promise<SynthesisResult> {
 		console.log('[ResponseSynthesizer] Synthesizing simple response', {
 			userMessage: userMessage.substring(0, 100),
 			toolCount: toolResults.length,
@@ -77,19 +105,21 @@ export class ResponseSynthesizer implements BaseService {
 		const prompt = this.buildSimplePrompt(userMessage, toolResults);
 
 		try {
-			const response = await this.llmService.generateText({
-				systemPrompt,
-				prompt,
-				temperature: 0.7,
-				maxTokens: 1000,
-				userId: context.userId,
-				operationType: 'simple_response_synthesis'
-			});
-
-			return response;
+			return await this.callLLMWithUsage(
+				{
+					systemPrompt,
+					prompt,
+					temperature: 0.7,
+					maxTokens: 1000,
+					operationType: 'simple_response_synthesis'
+				},
+				context
+			);
 		} catch (error) {
 			console.error('[ResponseSynthesizer] Failed to generate simple response:', error);
-			return this.generateFallbackResponse(userMessage, toolResults);
+			return {
+				text: this.generateFallbackResponse(userMessage, toolResults)
+			};
 		}
 	}
 
@@ -100,7 +130,7 @@ export class ResponseSynthesizer implements BaseService {
 		plan: AgentPlan,
 		executorResults: ExecutionResult[],
 		context: ServiceContext
-	): Promise<string> {
+	): Promise<SynthesisResult> {
 		console.log('[ResponseSynthesizer] Synthesizing complex response', {
 			planId: plan.id,
 			strategy: plan.strategy,
@@ -113,19 +143,21 @@ export class ResponseSynthesizer implements BaseService {
 		const prompt = this.buildComplexPrompt(plan, executorResults);
 
 		try {
-			const response = await this.llmService.generateText({
-				systemPrompt,
-				prompt,
-				temperature: 0.7,
-				maxTokens: 2000,
-				userId: context.userId,
-				operationType: 'complex_response_synthesis'
-			});
-
-			return response;
+			return await this.callLLMWithUsage(
+				{
+					systemPrompt,
+					prompt,
+					temperature: 0.7,
+					maxTokens: 2000,
+					operationType: 'complex_response_synthesis'
+				},
+				context
+			);
 		} catch (error) {
 			console.error('[ResponseSynthesizer] Failed to generate complex response:', error);
-			return this.generateComplexFallbackResponse(plan, executorResults);
+			return {
+				text: this.generateComplexFallbackResponse(plan, executorResults)
+			};
 		}
 	}
 
@@ -135,24 +167,43 @@ export class ResponseSynthesizer implements BaseService {
 	async synthesizeClarifyingQuestions(
 		questions: string[],
 		context: ServiceContext
-	): Promise<string> {
+	): Promise<SynthesisResult> {
 		console.log('[ResponseSynthesizer] Formatting clarifying questions', {
 			questionCount: questions.length
 		});
 
 		if (questions.length === 0) {
-			return "I need more information to help you. Could you please provide more details about what you're looking for?";
+			return {
+				text: "I need more information to help you. Could you please provide more details about what you're looking for?"
+			};
 		}
 
-		let response = 'I need to clarify a few things to provide the best assistance:\n\n';
+		const prompt = this.buildClarifyingPrompt(questions);
 
-		questions.forEach((question, index) => {
-			response += `${index + 1}. ${question}\n`;
-		});
+		try {
+			return await this.callLLMWithUsage(
+				{
+					systemPrompt:
+						'You are a helpful assistant asking clarifying questions so you can complete the user request.',
+					prompt,
+					temperature: 0.4,
+					maxTokens: 600,
+					operationType: 'clarifying_questions'
+				},
+				context
+			);
+		} catch (error) {
+			console.error('[ResponseSynthesizer] Failed to format clarifying questions:', error);
+			let response = 'I need to clarify a few things to provide the best assistance:\n\n';
 
-		response += '\nPlease provide answers to help me understand your request better.';
+			questions.forEach((question, index) => {
+				response += `${index + 1}. ${question}\n`;
+			});
 
-		return response;
+			response += '\nPlease provide answers to help me understand your request better.';
+
+			return { text: response };
+		}
 	}
 
 	/**
@@ -171,9 +222,12 @@ export class ResponseSynthesizer implements BaseService {
 			// Fallback to non-streaming
 			const response = await this.synthesizeSimpleResponse(userMessage, toolResults, context);
 
-			yield { type: 'text', content: response };
-			await callback({ type: 'text', content: response });
-			yield { type: 'done', usage: { total_tokens: response.length } };
+			yield { type: 'text', content: response.text };
+			await callback({ type: 'text', content: response.text });
+			yield {
+				type: 'done',
+				usage: this.mapUsageToStreamUsage(response.usage) ?? { total_tokens: response.text.length }
+			};
 			return;
 		}
 
@@ -212,6 +266,48 @@ export class ResponseSynthesizer implements BaseService {
 			yield errorEvent;
 			await callback(errorEvent);
 		}
+	}
+
+	private mapUsageToStreamUsage(
+		usage?: SynthesisUsage
+	): { total_tokens: number } | undefined {
+		if (!usage || typeof usage.totalTokens !== 'number') {
+			return undefined;
+		}
+
+		return { total_tokens: usage.totalTokens };
+	}
+
+	private async callLLMWithUsage(
+		config: LLMRequestConfig,
+		context: ServiceContext
+	): Promise<SynthesisResult> {
+		if (typeof this.llmService.generateTextDetailed === 'function') {
+			const result = await this.llmService.generateTextDetailed({
+				systemPrompt: config.systemPrompt,
+				prompt: config.prompt,
+				temperature: config.temperature,
+				maxTokens: config.maxTokens,
+				userId: context.userId,
+				operationType: config.operationType
+			});
+
+			return {
+				text: result.text,
+				usage: result.usage
+			};
+		}
+
+		const text = await this.llmService.generateText({
+			systemPrompt: config.systemPrompt,
+			prompt: config.prompt,
+			temperature: config.temperature,
+			maxTokens: config.maxTokens,
+			userId: context.userId,
+			operationType: config.operationType
+		});
+
+		return { text };
 	}
 
 	/**
@@ -401,6 +497,22 @@ Be clear about the overall outcome and any next steps needed.`;
 		prompt += '\nSynthesize these results into a comprehensive, helpful response.';
 
 		return prompt;
+	}
+
+	/**
+	 * Build prompt for clarifying questions response
+	 */
+	private buildClarifyingPrompt(questions: string[]): string {
+		const formatted = questions
+			.map((question, index) => `${index + 1}. ${question}`)
+			.join('\n');
+
+		return `The assistant needs additional information before proceeding. Present the following clarifying questions in a friendly tone and encourage the user to respond to each one individually.
+
+Clarifying questions:
+${formatted}
+
+Format the response as a short introduction followed by a numbered list of the questions.`;
 	}
 
 	/**

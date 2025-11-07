@@ -84,11 +84,14 @@ export class StrategyAnalyzer {
 		context: ServiceContext,
 		lastTurnContext?: LastTurnContext
 	): Promise<StrategyAnalysis> {
+		const availableToolNames = this.getAvailableToolNames(plannerContext.availableTools);
+
 		console.log('[StrategyAnalyzer] Analyzing user intent', {
 			message: message.substring(0, 100),
 			contextType: context.contextType,
 			hasOntology: plannerContext.metadata?.hasOntology,
-			hasLastTurn: !!lastTurnContext
+			hasLastTurn: !!lastTurnContext,
+			toolCount: availableToolNames.length
 		});
 
 		// Handle empty message
@@ -128,12 +131,26 @@ export class StrategyAnalyzer {
 			);
 
 			// Validate and normalize the analysis
-			return this.validateStrategy(analysis);
+			const validated = this.validateStrategy(analysis);
+
+			// Ensure simple strategy has concrete tool suggestions so downstream execution can proceed
+			if (
+				validated.primary_strategy === ChatStrategy.SIMPLE_RESEARCH &&
+				(!validated.required_tools || validated.required_tools.length === 0) &&
+				availableToolNames.length > 0
+			) {
+				const heuristicTools = this.estimateRequiredTools(message, availableToolNames);
+				if (heuristicTools.length > 0) {
+					validated.required_tools = heuristicTools;
+				}
+			}
+
+			return validated;
 		} catch (error) {
 			console.error('[StrategyAnalyzer] Failed to analyze intent:', error);
 
 			// Fallback to heuristic-based analysis
-			return this.fallbackAnalysis(message, plannerContext.availableTools);
+			return this.fallbackAnalysis(message, availableToolNames);
 		}
 	}
 
@@ -184,7 +201,8 @@ export class StrategyAnalyzer {
 		context: ServiceContext
 	): string {
 		const hasOntology = plannerContext.metadata?.hasOntology || false;
-		const toolList = plannerContext.availableTools.map((t) => t.name).join(', ');
+		const toolNames = this.getAvailableToolNames(plannerContext.availableTools);
+		const toolList = toolNames.length > 0 ? toolNames.join(', ') : 'None available';
 
 		return `You are a strategy analyzer for BuildOS chat.
 
@@ -261,11 +279,11 @@ Return a JSON object with:
 	 */
 	private fallbackAnalysis(
 		message: string,
-		availableTools: { name: string }[]
+		availableToolNames: string[]
 	): StrategyAnalysis {
 		const complexity = this.estimateComplexity(
 			message,
-			availableTools.map((t) => t.name)
+			availableToolNames
 		);
 
 		// Determine strategy based on complexity
@@ -289,7 +307,7 @@ Return a JSON object with:
 			estimated_steps: complexity,
 			required_tools: this.estimateRequiredTools(
 				message,
-				availableTools.map((t) => t.name)
+				availableToolNames
 			),
 			can_complete_directly: complexity <= 2
 		};
@@ -485,5 +503,32 @@ Return a JSON object with:
 		];
 
 		return vaguePatterns.some((pattern) => pattern.test(message.trim()));
+	}
+
+	/**
+	 * Extract tool names from planner context definitions
+	 */
+	private getAvailableToolNames(availableTools: PlannerContext['availableTools']): string[] {
+		const names = new Set<string>();
+
+		for (const tool of availableTools ?? []) {
+			if (!tool) continue;
+			const directName =
+				typeof (tool as any).name === 'string' && (tool as any).name.trim().length > 0
+					? (tool as any).name.trim()
+					: undefined;
+			const functionName =
+				typeof (tool as any)?.function?.name === 'string' &&
+				(tool as any).function.name.trim().length > 0
+					? (tool as any).function.name.trim()
+					: undefined;
+
+			const resolved = directName ?? functionName;
+			if (resolved) {
+				names.add(resolved);
+			}
+		}
+
+		return [...names];
 	}
 }

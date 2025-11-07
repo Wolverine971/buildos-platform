@@ -48,6 +48,8 @@ export interface ExecuteTaskParams {
 	task: ExecutorTask;
 	tools: ChatToolDefinition[];
 	planId?: string;
+	stepNumber?: number;
+	plannerAgentId?: string;
 	contextType?: string;
 	entityId?: string;
 }
@@ -63,6 +65,15 @@ export interface ExecutorResult {
 	toolCallsMade: number;
 	tokensUsed: number;
 	durationMs: number;
+}
+
+interface ExecutorPersistenceHandles {
+	agentSessionId?: string;
+	executionId?: string;
+	parentSessionId?: string;
+	userId?: string;
+	executorAgentId?: string;
+	messagesLogged: number;
 }
 
 /**
@@ -127,6 +138,8 @@ export class AgentExecutorService {
 		const startTime = Date.now();
 		const { executorId, sessionId, userId, task, tools, planId } = params;
 
+		let persistenceHandles: ExecutorPersistenceHandles | undefined;
+
 		try {
 			// 1. Build executor context (minimal)
 			const context = await this.contextService.buildExecutorContext({
@@ -138,11 +151,12 @@ export class AgentExecutorService {
 				planId
 			});
 
+			persistenceHandles = await this.initializeExecutorPersistence(params, context);
+
 			// 2. Execute task with LLM + tools
 			const result = await this.executeWithContext(context, userId);
 
-			// 3. Return structured result
-			return {
+			const successResult: ExecutorResult = {
 				executorId,
 				success: true,
 				data: result.data,
@@ -150,10 +164,15 @@ export class AgentExecutorService {
 				tokensUsed: result.tokensUsed,
 				durationMs: Date.now() - startTime
 			};
+
+			await this.finalizeExecutorPersistence(persistenceHandles, successResult);
+
+			// 3. Return structured result
+			return successResult;
 		} catch (error) {
 			console.error('Executor error:', error);
 
-			return {
+			const failureResult: ExecutorResult = {
 				executorId,
 				success: false,
 				error: error instanceof Error ? error.message : 'Unknown error',
@@ -161,6 +180,10 @@ export class AgentExecutorService {
 				tokensUsed: 0,
 				durationMs: Date.now() - startTime
 			};
+
+			await this.finalizeExecutorPersistence(persistenceHandles, failureResult);
+
+			return failureResult;
 		}
 	}
 
@@ -524,24 +547,134 @@ export class AgentExecutorService {
 	// PERSISTENCE & LOGGING
 	// ============================================
 
-	/**
-	 * Persist execution record to database (for tracking and analytics)
-	 */
-	private async persistExecution(
-		context: ExecutorContext,
-		result: {
-			data: any;
-			toolCallsMade: number;
-			tokensUsed: number;
+	private async initializeExecutorPersistence(
+		params: ExecuteTaskParams,
+		context: ExecutorContext
+	): Promise<ExecutorPersistenceHandles> {
+		const handles: ExecutorPersistenceHandles = {
+			parentSessionId: params.sessionId,
+			userId: params.userId,
+			executorAgentId: params.executorId,
+			messagesLogged: 0
+		};
+
+		if (!params.plannerAgentId) {
+			return handles;
 		}
+
+		try {
+			const agentSessionId = await this.createAgentChatSession(
+				params.sessionId,
+				params.userId,
+				params.plannerAgentId,
+				params.executorId,
+				params.planId,
+				params.stepNumber,
+				context.task,
+				params.contextType,
+				params.entityId
+			);
+
+			handles.agentSessionId = agentSessionId;
+
+			await this.saveAgentChatMessage(
+				agentSessionId,
+				params.sessionId,
+				params.userId,
+				params.executorId,
+				'system',
+				`Executor task started:\n${context.task.description}\nGoal: ${context.task.goal || 'n/a'}`,
+				undefined,
+				undefined,
+				0
+			);
+
+			handles.messagesLogged += 1;
+
+			if (params.planId && typeof params.stepNumber === 'number') {
+				const toolNames = context.tools.map((tool) => {
+					const fnName = tool.function?.name;
+					return fnName || (tool as any)?.name || 'unknown_tool';
+				});
+				handles.executionId = await this.createAgentExecution(
+					params.planId,
+					params.stepNumber,
+					params.executorId,
+					agentSessionId,
+					context.task,
+					toolNames,
+					params.userId
+				);
+			}
+		} catch (error) {
+			console.error('[AgentExecutorService] Failed to initialize persistence', error);
+		}
+
+		return handles;
+	}
+
+	private async finalizeExecutorPersistence(
+		handles: ExecutorPersistenceHandles | undefined,
+		result: ExecutorResult
 	): Promise<void> {
-		// This will be called with full execution details when integrated into the flow
-		console.log('Executor completed:', {
-			executorId: context.metadata.executorId,
-			task: context.task.description,
-			toolsUsed: result.toolCallsMade,
-			tokensUsed: result.tokensUsed
-		});
+		if (!handles?.agentSessionId || !handles.parentSessionId || !handles.userId || !handles.executorAgentId) {
+			return;
+		}
+
+		const messageContent = this.formatExecutorResultSummary(result);
+
+		try {
+			await this.saveAgentChatMessage(
+				handles.agentSessionId,
+				handles.parentSessionId,
+				handles.userId,
+				handles.executorAgentId,
+				result.success ? 'assistant' : 'system',
+				messageContent,
+				undefined,
+				undefined,
+				result.tokensUsed
+			);
+
+			const totalMessages = handles.messagesLogged + 1;
+
+			await this.updateAgentChatSession(
+				handles.agentSessionId,
+				result.success ? 'completed' : 'failed',
+				totalMessages
+			);
+
+			if (handles.executionId) {
+				await this.updateAgentExecution(
+					handles.executionId,
+					(result.data ?? { message: messageContent }) as Json,
+					result.success,
+					result.tokensUsed,
+					result.durationMs,
+					result.toolCallsMade,
+					totalMessages,
+					result.success ? undefined : result.error
+				);
+			}
+		} catch (error) {
+			console.error('[AgentExecutorService] Failed to finalize persistence', error);
+		}
+	}
+
+	private formatExecutorResultSummary(result: ExecutorResult): string {
+		if (!result.success) {
+			return `Executor failed: ${result.error || 'Unknown error encountered.'}`;
+		}
+
+		if (!result.data) {
+			return 'Executor completed the task successfully.';
+		}
+
+		if (typeof result.data === 'string') {
+			return result.data;
+		}
+
+		return `Executor completed the task successfully. Result:\n${JSON.stringify(result.data, null, 2).substring(0, 2000)}`;
 	}
 
 	// ============================================
@@ -637,7 +770,9 @@ export class AgentExecutorService {
 		executorAgentId: string,
 		planId?: string,
 		stepNumber?: number,
-		task?: ExecutorTask
+		task?: ExecutorTask,
+		contextType?: string,
+		entityId?: string
 	): Promise<string> {
 		const session: {
 			parent_session_id: string;
@@ -649,6 +784,8 @@ export class AgentExecutorService {
 			initial_context: Json;
 			user_id: string;
 			status: string;
+			context_type?: string | null;
+			entity_id?: string | null;
 		} = {
 			parent_session_id: parentSessionId,
 			plan_id: planId || undefined,
@@ -662,7 +799,9 @@ export class AgentExecutorService {
 				timestamp: new Date().toISOString()
 			} as Json,
 			user_id: userId,
-			status: 'active'
+			status: 'active',
+			context_type: contextType || null,
+			entity_id: entityId || null
 		};
 
 		const { data, error } = await this.supabase
@@ -732,14 +871,20 @@ export class AgentExecutorService {
 	 */
 	async updateAgentChatSession(
 		sessionId: string,
-		status: 'active' | 'completed' | 'failed'
+		status: 'active' | 'completed' | 'failed',
+		messageCount?: number
 	): Promise<void> {
 		const updates: {
 			status: 'active' | 'completed' | 'failed';
 			completed_at?: string;
+			message_count?: number;
 		} = {
 			status
 		};
+
+		if (typeof messageCount === 'number') {
+			updates.message_count = messageCount;
+		}
 
 		if (status === 'completed' || status === 'failed') {
 			updates.completed_at = new Date().toISOString();

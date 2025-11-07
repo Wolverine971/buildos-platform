@@ -172,22 +172,47 @@ export class ToolExecutionService implements BaseService {
 
 	/**
 	 * Validate a tool call
+	 * Overloaded to accept either ChatToolCall or toolName + args
 	 */
 	validateToolCall(
-		toolName: string,
-		args: Record<string, any>,
-		availableTools: ChatToolDefinition[]
+		toolCallOrName: ChatToolCall | string,
+		availableToolsOrArgs?: ChatToolDefinition[] | undefined | Record<string, any>,
+		availableTools?: ChatToolDefinition[] | undefined
 	): ToolValidation {
+		// Handle overloaded signatures
+		let toolName: string;
+		let args: Record<string, any>;
+		let toolDefs: ChatToolDefinition[] | undefined;
+
+		if (typeof toolCallOrName === 'string') {
+			// Called as validateToolCall(toolName, args, availableTools)
+			toolName = toolCallOrName;
+			args = (availableToolsOrArgs as Record<string, any>) || {};
+			toolDefs = availableTools;
+		} else {
+			// Called as validateToolCall(toolCall, availableTools)
+			const toolCall = toolCallOrName as ChatToolCall;
+			const { name, rawArguments } = this.resolveToolCall(toolCall);
+			toolName = name;
+			toolDefs = availableToolsOrArgs as ChatToolDefinition[] | undefined;
+			try {
+				args = this.normalizeArguments(rawArguments, toolName);
+			} catch {
+				args = {};
+			}
+		}
+
 		const errors: string[] = [];
 
 		// Check if tool exists
-		const toolDef = this.getToolDefinition(toolName, availableTools);
+		const toolDef = this.getToolDefinition(toolName, toolDefs);
 		if (!toolDef) {
 			errors.push(`Unknown tool: ${toolName}`);
 			return { isValid: false, errors };
 		}
 
-		const paramSchema = toolDef.function?.parameters;
+		// Get parameter schema - handle both formats
+		const paramSchema = (toolDef as any).function?.parameters || (toolDef as any).parameters;
 		if (paramSchema && typeof paramSchema === 'object') {
 			const requiredParams = Array.isArray(paramSchema.required) ? paramSchema.required : [];
 
@@ -206,7 +231,7 @@ export class ToolExecutionService implements BaseService {
 				const paramDef = properties[key];
 				if (!paramDef || typeof paramDef !== 'object') continue;
 
-				const expectedType = paramDef.type;
+				const expectedType = (paramDef as any).type;
 				const actualType = Array.isArray(value) ? 'array' : typeof value;
 
 				// Basic type checking
@@ -238,12 +263,45 @@ export class ToolExecutionService implements BaseService {
 
 	/**
 	 * Get tool definition by name
+	 * Handles both { name, parameters } and { function: { name, parameters } } formats
 	 */
 	getToolDefinition(
 		toolName: string,
-		availableTools: ChatToolDefinition[]
+		availableTools: ChatToolDefinition[] | undefined
 	): ChatToolDefinition | undefined {
-		return availableTools.find((t) => t.function?.name === toolName);
+		if (!Array.isArray(availableTools) || availableTools.length === 0) {
+			return undefined;
+		}
+
+		const match = availableTools.find((tool) => {
+			const toolAny = tool as any;
+			// Check both formats: direct name and function.name
+			const directName = toolAny?.name;
+			const functionName = toolAny?.function?.name;
+			return directName === toolName || functionName === toolName;
+		});
+
+		if (!match) {
+			return undefined;
+		}
+
+		// Normalize the tool definition to ensure it has both direct properties and function properties
+		const normalized = match as any;
+
+		// Copy from function object to root level if needed
+		if (!normalized.name && normalized.function?.name) {
+			normalized.name = normalized.function.name;
+		}
+
+		if (!normalized.description && normalized.function?.description) {
+			normalized.description = normalized.function.description;
+		}
+
+		if (!normalized.parameters && normalized.function?.parameters) {
+			normalized.parameters = normalized.function.parameters;
+		}
+
+		return match;
 	}
 
 	/**
@@ -381,12 +439,13 @@ export class ToolExecutionService implements BaseService {
 				const result = await this.executeTool(toolCall, context, availableTools, options);
 
 				// If successful or validation error, return immediately
-				if (result.success || result.error?.includes('Missing required')) {
+				const errorStr = typeof result.error === 'string' ? result.error : String(result.error);
+				if (result.success || errorStr?.includes('Missing required')) {
 					return result;
 				}
 
 				// Store error for potential retry
-				lastError = new Error(result.error || 'Unknown error');
+				lastError = new Error(errorStr || 'Unknown error');
 
 				// Wait before retry
 				if (attempt < retryCount) {

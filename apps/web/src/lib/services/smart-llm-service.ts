@@ -70,6 +70,17 @@ export interface TextGenerationOptions {
 	briefId?: string;
 }
 
+export interface TextGenerationUsage {
+	promptTokens: number;
+	completionTokens: number;
+	totalTokens: number;
+}
+
+export interface TextGenerationResult {
+	text: string;
+	usage?: TextGenerationUsage;
+}
+
 interface OpenRouterResponse {
 	id: string;
 	provider?: string;
@@ -843,14 +854,16 @@ export class SmartLLMService {
 		}
 	}
 
-	// ============================================
-	// TEXT GENERATION METHOD
-	// ============================================
+// ============================================
+// TEXT GENERATION METHOD
+// ============================================
 
-	async generateText(options: TextGenerationOptions): Promise<string> {
-		const requestStartedAt = new Date();
-		const startTime = performance.now();
-		const profile = options.profile || 'balanced';
+private async performTextGeneration(
+	options: TextGenerationOptions
+): Promise<TextGenerationResult> {
+	const requestStartedAt = new Date();
+	const startTime = performance.now();
+	const profile = options.profile || 'balanced';
 
 		// Estimate response length
 		const estimatedLength = this.estimateResponseLength(options.prompt);
@@ -957,10 +970,21 @@ export class SmartLLMService {
 						response.usage?.completion_tokens_details?.reasoning_tokens || 0,
 					systemFingerprint: response.system_fingerprint
 				}
-			}).catch((err) => console.error('Failed to log usage:', err));
+		}).catch((err) => console.error('Failed to log usage:', err));
 
-			return content;
-		} catch (error) {
+		const usage: TextGenerationUsage | undefined = response.usage
+			? {
+					promptTokens: response.usage.prompt_tokens || 0,
+					completionTokens: response.usage.completion_tokens || 0,
+					totalTokens: response.usage.total_tokens || 0
+				}
+			: undefined;
+
+		return {
+			text: content,
+			usage
+		};
+	} catch (error) {
 			const duration = performance.now() - startTime;
 			const requestCompletedAt = new Date();
 
@@ -1114,9 +1138,18 @@ export class SmartLLMService {
 				}
 				throw new Error(`Request timeout for model ${params.model}`);
 			}
-			throw error;
-		}
+		throw error;
 	}
+}
+
+async generateText(options: TextGenerationOptions): Promise<string> {
+	const result = await this.performTextGeneration(options);
+	return result.text;
+}
+
+async generateTextDetailed(options: TextGenerationOptions): Promise<TextGenerationResult> {
+	return this.performTextGeneration(options);
+}
 
 	// ============================================
 	// PROVIDER ROUTING PREFERENCES

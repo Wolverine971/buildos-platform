@@ -240,14 +240,18 @@ export class PlanOrchestrator implements BaseService {
 
 				try {
 					// Execute step
-					const result = await this.executeStep(
+					const { result, events: internalEvents } = await this.executeStep(
 						step,
 						plan,
 						plannerContext,
 						context,
-						stepResults,
-						callback
+						stepResults
 					);
+
+					for (const internalEvent of internalEvents) {
+						yield internalEvent;
+						await callback(internalEvent);
+					}
 
 					// Update step status
 					step.status = 'completed';
@@ -382,6 +386,8 @@ export class PlanOrchestrator implements BaseService {
 		// Update step metadata with parallel group info
 		for (let groupIndex = 0; groupIndex < groups.length; groupIndex++) {
 			const group = groups[groupIndex];
+			if (!group || !Array.isArray(group)) continue;
+
 			for (const stepNumber of group) {
 				const step = plan.steps.find((s) => s.stepNumber === stepNumber);
 				if (step) {
@@ -489,7 +495,9 @@ export class PlanOrchestrator implements BaseService {
 		plannerContext: PlannerContext,
 		context: ServiceContext
 	): string {
-		const toolList = plannerContext.availableTools.map((t) => t.name).join(', ');
+		const toolList = plannerContext.availableTools
+			.map((t) => (t as any).name || (t as any).function?.name || 'unknown')
+			.join(', ');
 
 		return `You are a plan generator for BuildOS chat.
 Strategy: ${strategy}
@@ -563,15 +571,16 @@ Generate an execution plan to fulfill this request.`;
 		plan: AgentPlan,
 		plannerContext: PlannerContext,
 		context: ServiceContext,
-		stepResults: Map<number, any>,
-		callback: StreamCallback
-	): Promise<any> {
+		stepResults: Map<number, any>
+	): Promise<{ result: any; events: StreamEvent[] }> {
 		console.log('[PlanOrchestrator] Executing step', {
 			stepNumber: step.stepNumber,
 			type: step.type,
 			executorRequired: step.executorRequired,
 			tools: step.tools
 		});
+
+		const emittedEvents: StreamEvent[] = [];
 
 		if (step.executorRequired) {
 			// Spawn executor agent with structured parameters
@@ -592,7 +601,7 @@ Generate an execution plan to fulfill this request.`;
 			};
 
 			// Emit executor spawned event
-			await callback({
+			emittedEvents.push({
 				type: 'executor_spawned',
 				executorId,
 				task: taskSummary
@@ -602,32 +611,81 @@ Generate an execution plan to fulfill this request.`;
 			const result = await this.executorCoordinator.waitForExecutor(executorId);
 
 			// Emit executor result event
-			await callback({
+			emittedEvents.push({
 				type: 'executor_result',
 				executorId,
 				result
 			});
 
 			if (!result.success) {
-				throw new Error(result.error || 'Executor failed');
+				const errorMessage = result.error instanceof Error ? result.error.message : String(result.error || 'Executor failed');
+				throw new Error(errorMessage);
 			}
 
-			return result.data;
+			return { result: result.data, events: emittedEvents };
 		} else if (step.tools.length > 0) {
-			// Execute tools directly
-			const toolResults: any[] = [];
+			// Execute tools directly with streaming events
+			const aggregatedResults: any[] = [];
 
 			for (const toolName of step.tools) {
 				const args = this.buildToolArgs(toolName, step, stepResults, context);
-				const result = await this.toolExecutor(toolName, args, context);
-				toolResults.push(result);
+
+				const toolCall: ChatToolCall = {
+					id: uuidv4(),
+					type: 'function',
+					function: {
+						name: toolName,
+						arguments: JSON.stringify(args ?? {})
+					}
+				};
+
+				const callEvent: StreamEvent = {
+					type: 'tool_call',
+					toolCall
+				};
+				emittedEvents.push(callEvent);
+
+				try {
+					const result = await this.toolExecutor(toolName, args, context);
+					const toolResult: ToolExecutionResult = {
+						success: true,
+						data: result,
+						toolName,
+						toolCallId: toolCall.id
+					};
+
+					const resultEvent: StreamEvent = {
+						type: 'tool_result',
+						result: toolResult
+					};
+					emittedEvents.push(resultEvent);
+
+					aggregatedResults.push(result);
+				} catch (error) {
+					const message = error instanceof Error ? error.message : String(error);
+					const toolResult: ToolExecutionResult = {
+						success: false,
+						error: message,
+						toolName,
+						toolCallId: toolCall.id
+					};
+
+					const resultEvent: StreamEvent = {
+						type: 'tool_result',
+						result: toolResult
+					};
+					emittedEvents.push(resultEvent);
+
+					throw error;
+				}
 			}
 
-			// Return combined results
-			return toolResults.length === 1 ? toolResults[0] : toolResults;
+			// Return combined results (preserve original shape for downstream steps)
+			const resultPayload = aggregatedResults.length === 1 ? aggregatedResults[0] : aggregatedResults;
+			return { result: resultPayload, events: emittedEvents };
 		} else {
 			// No execution needed
-			return { completed: true };
+			return { result: { completed: true }, events: emittedEvents };
 		}
 	}
 

@@ -300,6 +300,32 @@ describe('PlanOrchestrator', () => {
 			expect(mockPersistence.updatePlan).toHaveBeenCalled();
 		});
 
+		it('should emit tool events for direct tool steps', async () => {
+			const events: StreamEvent[] = [];
+			mockToolExecutor
+				.mockResolvedValueOnce({ tasks: [] })
+				.mockResolvedValueOnce({ task_id: 'task_new' });
+
+			const generator = orchestrator.executePlan(
+				mockPlan,
+				mockPlannerContext,
+				mockContext,
+				async (event) => events.push(event)
+			);
+
+			const yielded: StreamEvent[] = [];
+			for await (const event of generator) {
+				yielded.push(event);
+			}
+
+			const allEvents = [...events, ...yielded];
+			const toolCallEvents = allEvents.filter((event) => event.type === 'tool_call');
+			const toolResultEvents = allEvents.filter((event) => event.type === 'tool_result');
+
+			expect(toolCallEvents.length).toBeGreaterThan(0);
+			expect(toolResultEvents.length).toBeGreaterThan(0);
+		});
+
 		it('should handle executor-required steps', async () => {
 			mockPlan.steps[0].executorRequired = true;
 

@@ -25,7 +25,7 @@ import type {
 import type { StrategyAnalyzer } from '../analysis/strategy-analyzer';
 import type { PlanOrchestrator } from '../planning/plan-orchestrator';
 import type { ToolExecutionService } from '../execution/tool-execution-service';
-import type { ResponseSynthesizer } from '../synthesis/response-synthesizer';
+import type { ResponseSynthesizer, SynthesisUsage } from '../synthesis/response-synthesizer';
 import type { ExecutorCoordinator } from '../execution/executor-coordinator';
 import type { AgentContextService } from '../../agent-context-service';
 import type { ChatToolCall, ChatToolDefinition } from '@buildos/shared-types';
@@ -230,16 +230,17 @@ export class AgentChatOrchestrator {
 			toolResults.push(result);
 		}
 
-		const responseText = await responseSynthesizer.synthesizeSimpleResponse(
+		const response = await responseSynthesizer.synthesizeSimpleResponse(
 			request.userMessage,
 			toolResults,
 			serviceContext
 		);
 
-		const textEvent: StreamEvent = { type: 'text', content: responseText };
+		const textEvent: StreamEvent = { type: 'text', content: response.text };
 		yield textEvent;
 
-		const doneEvent: StreamEvent = { type: 'done' };
+		const usage = this.toStreamUsage(response.usage);
+		const doneEvent: StreamEvent = usage ? { type: 'done', usage } : { type: 'done' };
 		yield doneEvent;
 	}
 
@@ -266,6 +267,8 @@ export class AgentChatOrchestrator {
 		const planEvent: StreamEvent = { type: 'plan_created', plan };
 		yield planEvent;
 
+		let planUsage: { total_tokens: number } | undefined;
+
 		for await (const event of planOrchestrator.executePlan(
 			plan,
 			plannerContext,
@@ -274,6 +277,9 @@ export class AgentChatOrchestrator {
 		)) {
 			// Skip internal done event - orchestrator will emit final done
 			if (event.type === 'done') {
+				if (event.usage) {
+					planUsage = event.usage;
+				}
 				continue;
 			}
 
@@ -289,16 +295,17 @@ export class AgentChatOrchestrator {
 			}
 		}
 
-		const responseText = await responseSynthesizer.synthesizeComplexResponse(
+		const response = await responseSynthesizer.synthesizeComplexResponse(
 			plan,
 			executorResults.length > 0 ? executorResults : collectedToolResults,
 			serviceContext
 		);
 
-		const textEvent: StreamEvent = { type: 'text', content: responseText };
+		const textEvent: StreamEvent = { type: 'text', content: response.text };
 		yield textEvent;
 
-		const doneEvent: StreamEvent = { type: 'done' };
+		const usage = planUsage ?? this.toStreamUsage(response.usage);
+		const doneEvent: StreamEvent = usage ? { type: 'done', usage } : { type: 'done' };
 		yield doneEvent;
 	}
 
@@ -318,15 +325,16 @@ export class AgentChatOrchestrator {
 		const clarifyingEvent: StreamEvent = { type: 'clarifying_questions', questions };
 		yield clarifyingEvent;
 
-		const responseText = await responseSynthesizer.synthesizeClarifyingQuestions(
+		const response = await responseSynthesizer.synthesizeClarifyingQuestions(
 			questions,
 			serviceContext
 		);
 
-		const textEvent: StreamEvent = { type: 'text', content: responseText };
+		const textEvent: StreamEvent = { type: 'text', content: response.text };
 		yield textEvent;
 
-		const doneEvent: StreamEvent = { type: 'done' };
+		const usage = this.toStreamUsage(response.usage);
+		const doneEvent: StreamEvent = usage ? { type: 'done', usage } : { type: 'done' };
 		yield doneEvent;
 	}
 
@@ -451,5 +459,14 @@ export class AgentChatOrchestrator {
 				error
 			});
 		}
+	}
+
+	private toStreamUsage(
+		usage?: SynthesisUsage
+	): { total_tokens: number } | undefined {
+		if (!usage || typeof usage.totalTokens !== 'number') {
+			return undefined;
+		}
+		return { total_tokens: usage.totalTokens };
 	}
 }

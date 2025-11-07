@@ -102,6 +102,8 @@ export class ExecutorCoordinator {
 				task: executorTask,
 				tools,
 				planId: params.plan.id,
+				stepNumber: params.step.stepNumber,
+				plannerAgentId: context.plannerAgentId,
 				contextType: context.contextType,
 				entityId: context.entityId
 			},
