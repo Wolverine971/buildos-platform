@@ -139,7 +139,7 @@
 
 			<a
 				href="/admin/notifications/test-bed"
-				class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg transition-shadow"
+				class="admin-panel p-6 hover:shadow-lg transition-shadow"
 			>
 				<div class="flex items-center">
 					<Send class="h-8 w-8 text-green-600 mr-3" />
@@ -156,7 +156,7 @@
 
 			<a
 				href="/admin/notifications/sms-scheduler"
-				class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg transition-shadow"
+				class="admin-panel p-6 hover:shadow-lg transition-shadow"
 			>
 				<div class="flex items-center">
 					<Calendar class="h-8 w-8 text-orange-600 mr-3" />
@@ -173,7 +173,7 @@
 
 			<a
 				href="/admin/notifications/nlogs"
-				class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg transition-shadow"
+				class="admin-panel p-6 hover:shadow-lg transition-shadow"
 			>
 				<div class="flex items-center">
 					<Eye class="h-8 w-8 text-purple-600 mr-3" />

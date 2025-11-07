@@ -253,7 +253,7 @@
 		<div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
 			<a
 				href="/admin/notifications"
-				class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg transition-shadow"
+				class="admin-panel p-6 hover:shadow-lg transition-shadow"
 			>
 				<div class="flex items-center">
 					<Bell class="h-8 w-8 text-blue-600 mr-3" />
@@ -268,7 +268,7 @@
 
 			<a
 				href="/admin/notifications/test-bed"
-				class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg transition-shadow"
+				class="admin-panel p-6 hover:shadow-lg transition-shadow"
 			>
 				<div class="flex items-center">
 					<Send class="h-8 w-8 text-green-600 mr-3" />
@@ -323,7 +323,7 @@
 		</div>
 
 		<!-- Tabs -->
-		<div class="bg-white dark:bg-gray-800 rounded-lg shadow">
+		<div class="admin-panel">
 			<div class="border-b border-gray-200 dark:border-gray-700">
 				<nav class="flex space-x-8 px-6" aria-label="Tabs">
 					<button

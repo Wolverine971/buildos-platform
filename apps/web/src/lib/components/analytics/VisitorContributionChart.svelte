@@ -2,8 +2,6 @@
 <script lang="ts">
 	import { format, parseISO, startOfWeek, addDays, subDays, startOfDay } from 'date-fns';
 	import Button from '$lib/components/ui/Button.svelte';
-	import Card from '$lib/components/ui/Card.svelte';
-	import CardBody from '$lib/components/ui/CardBody.svelte';
 
 	// Using $props() for Svelte 5 runes mode
 	let {
@@ -282,8 +280,7 @@
 	let maxValue = $derived(Math.max(maxVisitors, maxSignups, 1));
 </script>
 
-<Card variant="default" bind:this={chartContainer}>
-	<CardBody padding="md" class="relative">
+<section class="admin-panel p-4 sm:p-6 relative" bind:this={chartContainer}>
 		{#if isLoading}
 			<div class="flex items-center justify-center py-8 sm:py-12">
 				<div class="animate-pulse flex space-x-1">
@@ -681,5 +678,4 @@
 				</div>
 			</div>
 		{/if}
-	</CardBody>
-</Card>
+	</section>

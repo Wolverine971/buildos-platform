@@ -330,7 +330,7 @@
 		<!-- Summary Cards -->
 		<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-4 sm:mb-6">
 			{#each summary as item}
-				<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
+				<div class="admin-panel p-4 sm:p-6">
 					<h3 class="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">
 						{item.error_type}
 					</h3>
@@ -351,7 +351,7 @@
 		</div>
 
 		<!-- Filters -->
-		<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6 mb-6">
+		<div class="admin-panel p-4 sm:p-6 mb-6">
 			<div class="flex items-center mb-4">
 				<Filter class="h-5 w-5 text-gray-400 mr-2" />
 				<h2 class="text-lg font-semibold text-gray-900 dark:text-white">Filters</h2>
@@ -439,7 +439,7 @@
 		</div>
 
 		<!-- Error List -->
-		<div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+		<div class="admin-panel overflow-hidden">
 			<div class="overflow-x-auto">
 				<table class="w-full">
 					<thead
@@ -587,7 +587,7 @@
 
 		<!-- Pagination -->
 		{#if errors.length > 0 || currentPage > 1}
-			<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 mt-6">
+			<div class="admin-panel p-4 mt-6">
 				<div
 					class="flex flex-col sm:flex-row justify-between items-center space-y-4 sm:space-y-0"
 				>

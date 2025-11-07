@@ -261,7 +261,7 @@
 		<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
 			<a
 				href="/admin/chat/sessions"
-				class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg transition-shadow"
+				class="admin-panel p-6 hover:shadow-lg transition-shadow"
 			>
 				<div class="flex items-center">
 					<MessageSquare class="h-8 w-8 text-blue-600 mr-3" />
@@ -276,7 +276,7 @@
 
 			<a
 				href="/admin/chat/agents"
-				class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg transition-shadow"
+				class="admin-panel p-6 hover:shadow-lg transition-shadow"
 			>
 				<div class="flex items-center">
 					<Bot class="h-8 w-8 text-purple-600 mr-3" />
@@ -289,7 +289,7 @@
 
 			<a
 				href="/admin/chat/costs"
-				class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg transition-shadow"
+				class="admin-panel p-6 hover:shadow-lg transition-shadow"
 			>
 				<div class="flex items-center">
 					<DollarSign class="h-8 w-8 text-green-600 mr-3" />
@@ -302,7 +302,7 @@
 
 			<a
 				href="/admin/chat/tools"
-				class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg transition-shadow"
+				class="admin-panel p-6 hover:shadow-lg transition-shadow"
 			>
 				<div class="flex items-center">
 					<Zap class="h-8 w-8 text-yellow-600 mr-3" />
@@ -328,7 +328,7 @@
 		{#if isLoading}
 			<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6">
 				{#each Array(8) as _}
-					<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 animate-pulse">
+					<div class="admin-panel p-6 animate-pulse">
 						<div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-2"></div>
 						<div class="h-8 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
 					</div>
@@ -338,7 +338,7 @@
 			<!-- Key Metrics Grid -->
 			<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6">
 				<!-- Total Sessions -->
-				<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+				<div class="admin-panel p-6">
 					<div class="flex items-center justify-between">
 						<div class="flex-1">
 							<p class="text-sm font-medium text-gray-600 dark:text-gray-400">
@@ -356,7 +356,7 @@
 				</div>
 
 				<!-- Total Messages -->
-				<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+				<div class="admin-panel p-6">
 					<div class="flex items-center justify-between">
 						<div class="flex-1">
 							<p class="text-sm font-medium text-gray-600 dark:text-gray-400">
@@ -374,7 +374,7 @@
 				</div>
 
 				<!-- Token Usage -->
-				<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+				<div class="admin-panel p-6">
 					<div class="flex items-center justify-between">
 						<div class="flex-1">
 							<p class="text-sm font-medium text-gray-600 dark:text-gray-400">
@@ -398,7 +398,7 @@
 				</div>
 
 				<!-- Estimated Cost -->
-				<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+				<div class="admin-panel p-6">
 					<div class="flex items-center justify-between">
 						<div class="flex-1">
 							<p class="text-sm font-medium text-gray-600 dark:text-gray-400">
@@ -418,7 +418,7 @@
 				</div>
 
 				<!-- Agent Success Rate -->
-				<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+				<div class="admin-panel p-6">
 					<div class="flex items-center justify-between">
 						<div class="flex-1">
 							<p class="text-sm font-medium text-gray-600 dark:text-gray-400">
@@ -436,7 +436,7 @@
 				</div>
 
 				<!-- Tool Success Rate -->
-				<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+				<div class="admin-panel p-6">
 					<div class="flex items-center justify-between">
 						<div class="flex-1">
 							<p class="text-sm font-medium text-gray-600 dark:text-gray-400">
@@ -454,7 +454,7 @@
 				</div>
 
 				<!-- Avg Response Time -->
-				<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+				<div class="admin-panel p-6">
 					<div class="flex items-center justify-between">
 						<div class="flex-1">
 							<p class="text-sm font-medium text-gray-600 dark:text-gray-400">
@@ -470,7 +470,7 @@
 				</div>
 
 				<!-- Compression Effectiveness -->
-				<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+				<div class="admin-panel p-6">
 					<div class="flex items-center justify-between">
 						<div class="flex-1">
 							<p class="text-sm font-medium text-gray-600 dark:text-gray-400">
@@ -489,7 +489,7 @@
 			<!-- Strategy Distribution & Activity Feed -->
 			<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
 				<!-- Strategy Distribution -->
-				<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+				<div class="admin-panel p-6">
 					<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
 						Planning Strategies
 					</h3>
@@ -536,7 +536,7 @@
 				</div>
 
 				<!-- Top Users -->
-				<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+				<div class="admin-panel p-6">
 					<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
 						Top Users
 					</h3>
@@ -567,7 +567,7 @@
 			</div>
 
 			<!-- Real-time Activity Feed -->
-			<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+			<div class="admin-panel p-6">
 				<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
 					Recent Activity
 				</h3>

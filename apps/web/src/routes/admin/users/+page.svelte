@@ -325,7 +325,7 @@
 	</AdminPageHeader>
 
 	<!-- Filters and Search -->
-	<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 mb-6">
+	<div class="admin-panel p-4 mb-6">
 		<div class="grid grid-cols-1 md:grid-cols-5 gap-4">
 			<!-- Search -->
 			<div class="md:col-span-2">
@@ -382,7 +382,7 @@
 	{/if}
 
 	<!-- Users Table -->
-	<div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+	<div class="admin-panel overflow-hidden">
 		{#if isLoading}
 			<div class="p-8 text-center">
 				<RefreshCw class="h-8 w-8 animate-spin text-gray-400 mx-auto mb-4" />
@@ -871,7 +871,7 @@
 <!-- Basic User Details Modal -->
 {#if showUserModal && selectedUser}
 	<div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-		<div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4">
+		<div class="admin-panel-xl max-w-md w-full mx-4">
 			<div class="p-6">
 				<div class="flex items-center justify-between mb-4">
 					<h3 class="text-lg font-semibold text-gray-900 dark:text-white">

@@ -410,7 +410,7 @@
 		{#if activeTab === 'trigger'}
 			<div class="space-y-6">
 				<!-- User Selection -->
-				<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+				<div class="admin-panel p-6">
 					<h3
 						class="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center"
 					>
@@ -505,7 +505,7 @@
 				</div>
 
 				<!-- Trigger Options -->
-				<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+				<div class="admin-panel p-6">
 					<h3
 						class="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center"
 					>
@@ -612,7 +612,7 @@
 
 				<!-- Calendar Preview Results -->
 				{#if showCalendarPreview && calendarPreviewResults.length > 0}
-					<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+					<div class="admin-panel p-6">
 						<div class="flex items-center justify-between mb-4">
 							<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
 								Calendar Preview Results
@@ -880,7 +880,7 @@
 		{:else if activeTab === 'results'}
 			<!-- Results Tab -->
 			{#if lastTriggerResult}
-				<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+				<div class="admin-panel p-6">
 					<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
 						Trigger Results
 					</h3>
@@ -999,7 +999,7 @@
 			{#if jobStatuses.size > 0}
 				<div class="space-y-4">
 					{#each Array.from(jobStatuses.entries()) as [userId, status]}
-						<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+						<div class="admin-panel p-4">
 							<div class="flex items-start justify-between mb-3">
 								<div>
 									<div class="font-mono text-xs text-gray-500 dark:text-gray-400">

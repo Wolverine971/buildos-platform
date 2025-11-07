@@ -4,7 +4,12 @@
  * Central type definitions for ontology-aware chat system
  */
 
-import type { ChatContextType, ChatMessage, LLMMessage } from '@buildos/shared-types';
+import type {
+	ChatContextType,
+	ChatMessage,
+	LLMMessage,
+	ChatToolDefinition
+} from '@buildos/shared-types';
 
 // ============================================
 // LAST TURN CONTEXT
@@ -185,13 +190,14 @@ export interface EnhancedPlannerContext {
 	ontologyContext?: OntologyContext;
 	lastTurnContext?: LastTurnContext;
 	userProfile?: string;
-	availableTools: any[];
+	availableTools: ChatToolDefinition[];
 	metadata: {
 		sessionId: string;
 		contextType: ChatContextType;
 		entityId?: string;
 		totalTokens: number;
 		hasOntology: boolean;
+		plannerAgentId?: string;
 	};
 }
 

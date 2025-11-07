@@ -11,7 +11,7 @@
  */
 
 import { v4 as uuidv4 } from 'uuid';
-import { ChatStrategy } from '../../../types/agent-chat-enhancement';
+import { ChatStrategy, EnhancedPlannerContext } from '../../../types/agent-chat-enhancement';
 import type {
 	AgentChatRequest,
 	ServiceContext,
@@ -60,7 +60,7 @@ export class AgentChatOrchestrator {
 		} = this.deps;
 
 		const conversationHistory = request.conversationHistory ?? [];
-		let plannerContext: PlannerContext;
+		let plannerContext: PlannerContext | EnhancedPlannerContext;
 		let plannerAgentId: string | undefined;
 
 		try {

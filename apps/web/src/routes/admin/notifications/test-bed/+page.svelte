@@ -166,7 +166,7 @@
 		<div class="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-4">
 			<a
 				href="/admin/notifications"
-				class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg transition-shadow"
+				class="admin-panel p-6 hover:shadow-lg transition-shadow"
 			>
 				<div class="flex items-center">
 					<Bell class="h-8 w-8 text-blue-600 mr-3" />
@@ -196,7 +196,7 @@
 
 			<a
 				href="/admin/notifications/sms-scheduler"
-				class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg transition-shadow"
+				class="admin-panel p-6 hover:shadow-lg transition-shadow"
 			>
 				<div class="flex items-center">
 					<Calendar class="h-8 w-8 text-orange-600 mr-3" />
@@ -211,7 +211,7 @@
 
 			<a
 				href="/admin/notifications/nlogs"
-				class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg transition-shadow"
+				class="admin-panel p-6 hover:shadow-lg transition-shadow"
 			>
 				<div class="flex items-center">
 					<Eye class="h-8 w-8 text-purple-600 mr-3" />
@@ -243,7 +243,7 @@
 
 		<div class="space-y-6">
 			<!-- Step 1: User Search & Selection -->
-			<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+			<div class="admin-panel p-6">
 				<h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">
 					Step 1: Select User
 				</h2>
@@ -319,7 +319,7 @@
 			<!-- User Notification Context (shown after user is selected) -->
 			{#if selectedUser}
 				{#if contextLoading}
-					<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-8 text-center">
+					<div class="admin-panel p-8 text-center">
 						<Loader2 class="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
 						<p class="text-gray-600 dark:text-gray-400">
 							Loading user notification context...
@@ -330,7 +330,7 @@
 				{/if}
 
 				<!-- Step 2: Select Notification Type -->
-				<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+				<div class="admin-panel p-6">
 					<h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">
 						Step 2: Select Notification Type
 					</h2>
@@ -342,7 +342,7 @@
 				</div>
 
 				<!-- Step 3: Select Channels -->
-				<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+				<div class="admin-panel p-6">
 					<h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">
 						Step 3: Select Channels
 					</h2>
@@ -391,7 +391,7 @@
 				</div>
 
 				<!-- Step 4: Configure Payload -->
-				<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+				<div class="admin-panel p-6">
 					<h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">
 						Step 4: Configure Channel Payloads
 					</h2>

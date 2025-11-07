@@ -169,7 +169,7 @@
 		/>
 
 		<!-- Controls -->
-		<div class="bg-white dark:bg-gray-800 rounded-lg shadow mb-4 p-4">
+		<div class="admin-panel mb-4 p-4">
 			<div class="flex flex-col sm:flex-row gap-4">
 				<Select
 					bind:value={selectedPeriod}
@@ -249,7 +249,7 @@
 			<!-- Key Metrics -->
 			<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
 				<!-- Recognized Revenue -->
-				<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+				<div class="admin-panel p-6">
 					<div class="flex items-center justify-between mb-4">
 						<div class="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
 							<DollarSign class="h-6 w-6 text-green-600 dark:text-green-400" />
@@ -282,7 +282,7 @@
 				</div>
 
 				<!-- Deferred Revenue -->
-				<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+				<div class="admin-panel p-6">
 					<div class="flex items-center justify-between mb-4">
 						<div class="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
 							<Calendar class="h-6 w-6 text-blue-600 dark:text-blue-400" />
@@ -299,7 +299,7 @@
 				</div>
 
 				<!-- Refunds -->
-				<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+				<div class="admin-panel p-6">
 					<div class="flex items-center justify-between mb-4">
 						<div class="p-2 bg-red-100 dark:bg-red-900/30 rounded-lg">
 							<TrendingDown class="h-6 w-6 text-red-600 dark:text-red-400" />
@@ -316,7 +316,7 @@
 				</div>
 
 				<!-- Net Revenue -->
-				<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+				<div class="admin-panel p-6">
 					<div class="flex items-center justify-between mb-4">
 						<div class="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
 							<BarChart class="h-6 w-6 text-purple-600 dark:text-purple-400" />
@@ -340,7 +340,7 @@
 			<!-- Detailed Sections -->
 			<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 				<!-- Prorations & Adjustments -->
-				<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+				<div class="admin-panel p-6">
 					<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
 						Prorations & Adjustments
 					</h3>
@@ -394,7 +394,7 @@
 				</div>
 
 				<!-- Key Metrics -->
-				<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+				<div class="admin-panel p-6">
 					<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
 						Financial Metrics
 					</h3>
@@ -448,7 +448,7 @@
 
 				<!-- Deferred Revenue Breakdown -->
 				{#if revenueData.deferred.breakdown.length > 0}
-					<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 lg:col-span-2">
+					<div class="admin-panel p-6 lg:col-span-2">
 						<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
 							Deferred Revenue Schedule
 						</h3>

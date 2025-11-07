@@ -13,60 +13,47 @@
 </script>
 
 <div
-	class="relative overflow-hidden rounded-3xl border border-slate-200/60 bg-white/85 px-6 py-7 shadow-sm transition-colors duration-300 dark:border-slate-800/70 dark:bg-slate-900/70 sm:px-8 sm:py-9"
+	class="relative rounded-2xl border border-slate-200/60 bg-white/80 px-5 py-4 shadow-sm transition-colors duration-300 dark:border-slate-800/70 dark:bg-slate-900/70 sm:px-6 sm:py-5"
 >
-	<div
-		class="pointer-events-none absolute inset-0 bg-gradient-to-br from-blue-500/7 via-purple-500/7 to-cyan-400/7 opacity-80 blur-xl dark:from-blue-500/15 dark:via-purple-500/15 dark:to-cyan-500/15"
-	/>
-
-	<div class="relative flex flex-col gap-5">
-		{#if showBack}
-			<a
-				href={backHref}
-				class="w-max rounded-full border border-slate-200/60 bg-white/60 px-3 py-1 text-xs font-semibold uppercase tracking-[0.28em] text-slate-500 transition-colors duration-200 hover:border-blue-400/60 hover:text-blue-600 dark:border-slate-700/70 dark:bg-slate-900/60 dark:text-slate-400 dark:hover:border-blue-400/60 dark:hover:text-blue-200"
-			>
-				<span class="inline-flex items-center gap-2">
-					<ArrowLeft class="h-3.5 w-3.5" />
-					<span>Back · {backLabel}</span>
-				</span>
-			</a>
-		{/if}
-
-		<div class="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-			<div class="flex-1">
-				<h1
-					class="flex items-center gap-4 text-2xl font-semibold text-slate-900 dark:text-slate-50 sm:text-3xl"
-				>
+	<div class="relative flex flex-col gap-4">
+		<div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+			<div class="flex flex-1 flex-col gap-2">
+				<div class="flex items-center gap-3">
+					{#if showBack}
+						<a
+							href={backHref}
+							class="inline-flex items-center gap-2 rounded-full border border-slate-200/60 px-2.5 py-1 text-[0.6rem] font-semibold uppercase tracking-[0.25em] text-slate-500 transition-colors duration-200 hover:border-blue-400/60 hover:text-blue-600 dark:border-slate-700/70 dark:text-slate-400 dark:hover:border-blue-400/60 dark:hover:text-blue-200"
+						>
+							<ArrowLeft class="h-3 w-3" />
+							<span>Back</span>
+						</a>
+					{/if}
 					{#if icon}
 						{@const Icon = icon}
 						<span
-							class="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500/20 via-purple-500/20 to-cyan-400/20 text-blue-600 dark:text-blue-200"
+							class="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500/15 via-purple-500/15 to-cyan-400/15 text-blue-600 dark:text-blue-200"
 						>
-							<Icon class="h-6 w-6 sm:h-7 sm:w-7" />
+							<Icon class="h-5 w-5" />
 						</span>
 					{/if}
-					<span class="tracking-tight">{title}</span>
-				</h1>
+					<h1 class="text-xl font-semibold text-slate-900 dark:text-slate-50 sm:text-2xl">
+						{title}
+					</h1>
+				</div>
 				{#if description}
-					<p
-						class="mt-2 max-w-3xl text-sm text-slate-600 dark:text-slate-300 sm:text-base"
-					>
-						{description}
-					</p>
+					<p class="text-sm text-slate-600 dark:text-slate-300">{description}</p>
 				{/if}
 			</div>
 
 			{#if $$slots.actions}
-				<div class="flex shrink-0 flex-wrap items-center gap-4">
+				<div class="flex w-full flex-wrap items-center gap-3 md:w-auto md:justify-end">
 					<slot name="actions" />
 				</div>
 			{/if}
 		</div>
 
 		{#if $$slots.controls}
-			<div
-				class="mt-3 flex flex-wrap items-center gap-4 border-t border-slate-200/60 pt-5 dark:border-slate-800/70"
-			>
+			<div class="flex flex-wrap items-center gap-3 border-t border-slate-200/60 pt-3 dark:border-slate-800/70">
 				<slot name="controls" />
 			</div>
 		{/if}

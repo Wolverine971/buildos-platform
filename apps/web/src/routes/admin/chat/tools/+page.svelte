@@ -156,7 +156,7 @@
 		{#if isLoading}
 			<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6">
 				{#each Array(8) as _}
-					<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 animate-pulse">
+					<div class="admin-panel p-6 animate-pulse">
 						<div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-2"></div>
 						<div class="h-8 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
 					</div>
@@ -166,7 +166,7 @@
 			<!-- Overview Metrics -->
 			<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6">
 				<!-- Total Executions -->
-				<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+				<div class="admin-panel p-6">
 					<div class="flex items-center justify-between">
 						<div class="flex-1">
 							<p class="text-sm font-medium text-gray-600 dark:text-gray-400">
@@ -184,7 +184,7 @@
 				</div>
 
 				<!-- Success Rate -->
-				<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+				<div class="admin-panel p-6">
 					<div class="flex items-center justify-between">
 						<div class="flex-1">
 							<p class="text-sm font-medium text-gray-600 dark:text-gray-400">
@@ -203,7 +203,7 @@
 				</div>
 
 				<!-- Total Tokens -->
-				<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+				<div class="admin-panel p-6">
 					<div class="flex items-center justify-between">
 						<div class="flex-1">
 							<p class="text-sm font-medium text-gray-600 dark:text-gray-400">
@@ -222,7 +222,7 @@
 				</div>
 
 				<!-- Unique Sessions -->
-				<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+				<div class="admin-panel p-6">
 					<div class="flex items-center justify-between">
 						<div class="flex-1">
 							<p class="text-sm font-medium text-gray-600 dark:text-gray-400">
@@ -242,7 +242,7 @@
 
 			<!-- Tool Categories -->
 			{#if dashboardData.by_category && dashboardData.by_category.length > 0}
-				<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
+				<div class="admin-panel p-6 mb-6">
 					<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
 						Usage by Category
 					</h3>
@@ -294,7 +294,7 @@
 
 			<!-- Top Tools by Usage -->
 			{#if dashboardData.top_tools && dashboardData.top_tools.length > 0}
-				<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
+				<div class="admin-panel p-6 mb-6">
 					<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
 						Top 10 Tools by Usage
 					</h3>
@@ -345,7 +345,7 @@
 			<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
 				<!-- Most Problematic Tools -->
 				{#if dashboardData.most_problematic_tools && dashboardData.most_problematic_tools.length > 0}
-					<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+					<div class="admin-panel p-6">
 						<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
 							Most Problematic Tools
 						</h3>
@@ -378,7 +378,7 @@
 
 				<!-- Slowest Tools -->
 				{#if dashboardData.slowest_tools && dashboardData.slowest_tools.length > 0}
-					<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+					<div class="admin-panel p-6">
 						<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
 							Slowest Tools
 						</h3>
@@ -412,7 +412,7 @@
 
 			<!-- Top Errors -->
 			{#if dashboardData.errors && dashboardData.errors.top_errors && dashboardData.errors.top_errors.length > 0}
-				<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
+				<div class="admin-panel p-6 mb-6">
 					<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
 						Top Errors ({formatNumber(dashboardData.errors.total_errors)} total)
 					</h3>
@@ -448,7 +448,7 @@
 
 			<!-- All Tools Breakdown -->
 			{#if dashboardData.by_tool && dashboardData.by_tool.length > 0}
-				<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+				<div class="admin-panel p-6">
 					<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
 						All Tools ({dashboardData.by_tool.length})
 					</h3>

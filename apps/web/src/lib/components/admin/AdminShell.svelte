@@ -207,10 +207,11 @@
 
 	const avatarClasses =
 		'flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 via-purple-500 to-cyan-500 text-sm font-semibold uppercase text-white shadow-lg shadow-blue-500/25';
+
 </script>
 
 <div
-	class="relative flex min-h-screen bg-slate-50/70 text-slate-900 transition-colors dark:bg-slate-950 dark:text-slate-100"
+	class="admin-shell relative flex min-h-screen bg-slate-50/70 text-slate-900 transition-colors dark:bg-slate-950 dark:text-slate-100"
 >
 	<!-- Desktop sidebar -->
 	<aside
@@ -254,46 +255,44 @@
 	<!-- Main content -->
 	<div class="flex min-h-screen flex-1 flex-col">
 		<header
-			class="sticky top-0 z-30 border-b border-slate-200/70 bg-white/85 backdrop-blur-xl transition-all duration-300 dark:border-slate-800/70 dark:bg-slate-950/85"
+			class="sticky top-0 z-30 border-b border-slate-200/70 bg-white/80 backdrop-blur-xl transition-all duration-300 dark:border-slate-800/70 dark:bg-slate-950/85"
 		>
 			<div
-				class="mx-auto flex w-full max-w-[1400px] items-center justify-between px-6 py-6 sm:px-10 lg:px-16"
+				class="mx-auto flex w-full max-w-[1400px] items-center justify-between px-5 py-4 sm:px-8 lg:px-12"
 			>
-				<div class="flex items-center space-x-4">
+				<div class="flex items-center space-x-3">
 					<Button
 						variant="ghost"
 						size="sm"
 						class="lg:hidden"
 						icon={mobileOpen ? X : Menu}
 						iconPosition="left"
+						aria-controls="admin-mobile-nav"
+						aria-expanded={mobileOpen}
 						on:click={() => (mobileOpen = !mobileOpen)}
 					>
 						Menu
 					</Button>
-					<div class="flex items-center space-x-4 lg:hidden">
+					<div class="flex items-center space-x-3 lg:hidden">
 						<div
-							class="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 via-purple-500 to-cyan-500 text-white shadow-md shadow-blue-500/40"
+							class="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 via-purple-500 to-cyan-500 text-white shadow-md shadow-blue-500/40"
 						>
 							<Layers class="h-4 w-4" />
 						</div>
 						<div>
-							<p
-								class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400"
-							>
+							<p class="text-[0.55rem] font-semibold uppercase tracking-[0.18em] text-slate-400">
 								BuildOS
 							</p>
-							<p class="text-base font-semibold text-slate-900 dark:text-white">
+							<p class="text-sm font-semibold text-slate-900 dark:text-white">
 								Admin Control
 							</p>
 						</div>
 					</div>
 				</div>
 
-				<div class="flex items-center space-x-4">
+				<div class="flex items-center space-x-3">
 					<div class="hidden flex-col text-right sm:flex">
-						<p
-							class="text-xs uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500"
-						>
+						<p class="text-[0.6rem] uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">
 							Active Admin
 						</p>
 						<p class="text-sm font-semibold text-slate-900 dark:text-white">
@@ -305,15 +304,20 @@
 			</div>
 		</header>
 
-		<main class="relative flex-1 pb-16">
+		<main class="relative flex-1 pb-12">
 			<div
 				class="pointer-events-none absolute inset-x-0 top-0 h-48 bg-gradient-to-br from-blue-500/15 via-purple-500/10 to-cyan-400/10 blur-2xl dark:from-blue-600/10 dark:via-purple-500/15 dark:to-cyan-500/10"
 			/>
 
 			<div
-				class="relative z-10 mx-auto w-full max-w-[1400px] px-6 pb-12 pt-12 sm:px-10 lg:px-16"
+				class="relative z-10 mx-auto w-full max-w-[1400px] px-5 pb-10 pt-6 sm:px-8 lg:px-12"
 			>
-				<div class="space-y-12">
+				{#if $$slots.hero}
+					<div class="mb-6 sm:mb-8">
+						<slot name="hero" />
+					</div>
+				{/if}
+				<div class="space-y-9 sm:space-y-12">
 					<slot />
 				</div>
 			</div>
@@ -322,7 +326,7 @@
 
 	<!-- Mobile drawer -->
 	{#if mobileOpen}
-		<div class="fixed inset-0 z-40 flex lg:hidden">
+		<div id="admin-mobile-nav" class="fixed inset-0 z-50 flex lg:hidden">
 			<button
 				class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm"
 				on:click={() => (mobileOpen = false)}
@@ -372,3 +376,52 @@
 		</div>
 	{/if}
 </div>
+
+<style>
+	:global(.admin-shell) {
+		--admin-surface-bg: rgba(255, 255, 255, 0.92);
+		--admin-surface-border: rgba(148, 163, 184, 0.35);
+		--admin-surface-shadow: 0 25px 45px rgba(15, 23, 42, 0.08);
+		--admin-panel-backdrop: blur(8px);
+	}
+
+	:global(.dark .admin-shell) {
+		--admin-surface-bg: rgba(15, 23, 42, 0.88);
+		--admin-surface-border: rgba(71, 85, 105, 0.65);
+		--admin-surface-shadow: 0 30px 55px rgba(2, 6, 23, 0.65);
+	}
+
+	:global(.admin-shell .admin-panel) {
+		border-radius: 1.5rem;
+		background: var(--admin-surface-bg);
+		border: 1px solid var(--admin-surface-border);
+		box-shadow: var(--admin-surface-shadow);
+		backdrop-filter: var(--admin-panel-backdrop);
+	}
+
+	:global(.admin-shell .admin-panel) {
+		position: relative;
+	}
+
+	:global(.admin-shell .admin-panel--tinted) {
+		overflow: hidden;
+	}
+
+	:global(.admin-shell .admin-panel--tinted::after) {
+		content: '';
+		position: absolute;
+		inset: 0;
+		background: linear-gradient(135deg, rgba(59, 130, 246, 0.08), rgba(236, 72, 153, 0.06));
+		opacity: 0.6;
+		pointer-events: none;
+	}
+
+	:global(.dark .admin-shell .admin-panel--tinted::after) {
+		opacity: 0.3;
+	}
+
+	:global(.admin-shell .admin-panel > *) {
+		position: relative;
+		z-index: 1;
+	}
+</style>

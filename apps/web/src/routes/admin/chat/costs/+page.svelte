@@ -162,7 +162,7 @@
 		{#if isLoading}
 			<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6">
 				{#each Array(8) as _}
-					<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 animate-pulse">
+					<div class="admin-panel p-6 animate-pulse">
 						<div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-2"></div>
 						<div class="h-8 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
 					</div>
@@ -172,7 +172,7 @@
 			<!-- Cost Overview Metrics -->
 			<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6">
 				<!-- Total Cost -->
-				<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+				<div class="admin-panel p-6">
 					<div class="flex items-center justify-between">
 						<div class="flex-1">
 							<p class="text-sm font-medium text-gray-600 dark:text-gray-400">
@@ -200,7 +200,7 @@
 				</div>
 
 				<!-- Total Tokens -->
-				<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+				<div class="admin-panel p-6">
 					<div class="flex items-center justify-between">
 						<div class="flex-1">
 							<p class="text-sm font-medium text-gray-600 dark:text-gray-400">
@@ -219,7 +219,7 @@
 				</div>
 
 				<!-- Chat Cost -->
-				<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+				<div class="admin-panel p-6">
 					<div class="flex items-center justify-between">
 						<div class="flex-1">
 							<p class="text-sm font-medium text-gray-600 dark:text-gray-400">
@@ -237,7 +237,7 @@
 				</div>
 
 				<!-- Agent Cost -->
-				<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+				<div class="admin-panel p-6">
 					<div class="flex items-center justify-between">
 						<div class="flex-1">
 							<p class="text-sm font-medium text-gray-600 dark:text-gray-400">
@@ -258,7 +258,7 @@
 			<!-- Input vs Output Costs -->
 			<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
 				<!-- Cost Breakdown -->
-				<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+				<div class="admin-panel p-6">
 					<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
 						Input vs Output Costs
 					</h3>
@@ -325,7 +325,7 @@
 				</div>
 
 				<!-- Compression Savings -->
-				<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+				<div class="admin-panel p-6">
 					<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
 						Compression Savings
 					</h3>
@@ -349,7 +349,7 @@
 
 			<!-- Cost by Model -->
 			{#if dashboardData.by_model && dashboardData.by_model.length > 0}
-				<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
+				<div class="admin-panel p-6 mb-6">
 					<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
 						Cost by Model
 					</h3>
@@ -374,7 +374,7 @@
 			{/if}
 
 			<!-- Top Sessions by Cost -->
-			<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
+			<div class="admin-panel p-6 mb-6">
 				<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
 					Top Sessions by Cost
 				</h3>
@@ -411,7 +411,7 @@
 			</div>
 
 			<!-- Top Users by Cost -->
-			<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+			<div class="admin-panel p-6">
 				<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
 					Top Users by Cost
 				</h3>

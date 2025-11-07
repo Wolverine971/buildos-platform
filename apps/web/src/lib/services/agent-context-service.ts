@@ -55,6 +55,8 @@ export interface PlannerContext {
 		contextType: ChatContextType;
 		entityId?: string;
 		totalTokens: number;
+		hasOntology: boolean;
+		plannerAgentId?: string;
 	};
 }
 

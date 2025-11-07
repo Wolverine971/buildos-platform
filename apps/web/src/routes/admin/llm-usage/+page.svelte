@@ -2,11 +2,16 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { format } from 'date-fns';
+	import { Zap, RefreshCw } from 'lucide-svelte';
+	import AdminPageHeader from '$lib/components/admin/AdminPageHeader.svelte';
+	import AdminCard from '$lib/components/admin/AdminCard.svelte';
+	import Select from '$lib/components/ui/Select.svelte';
+	import Button from '$lib/components/ui/Button.svelte';
 
 	// State
 	let loading = $state(true);
 	let error = $state<string | null>(null);
-	let days = $state(30);
+	let days = $state('30');
 	let stats = $state<any>(null);
 
 	// Fetch stats
@@ -72,42 +77,40 @@
 
 <div class="space-y-12">
 	<div class="space-y-10">
-		<!-- Header -->
-		<div class="mb-4 sm:mb-6">
-			<h1 class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
-				LLM Usage Dashboard
-			</h1>
-			<p class="mt-2 text-sm sm:text-base text-gray-600 dark:text-gray-400">
-				Monitor AI API usage, costs, and performance across the platform
-			</p>
-		</div>
+		<AdminPageHeader
+			title="LLM Usage"
+			description="Monitor AI API usage, costs, and performance across the platform"
+			icon={Zap}
+			backHref="/admin"
+			backLabel="Dashboard"
+		/>
 
-		<!-- Filters -->
-		<div
-			class="mb-4 sm:mb-6 flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4"
+		<AdminCard
+			padding="md"
+			class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"
 		>
-			<label class="flex items-center gap-2 w-full sm:w-auto">
-				<span class="text-sm font-medium text-gray-700 dark:text-gray-300">Time Range:</span
-				>
-				<select
-					bind:value={days}
-					onchange={() => fetchStats()}
-					class="flex-1 sm:flex-initial rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:border-purple-500 dark:focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400"
-				>
-					<option value={7}>Last 7 days</option>
-					<option value={30}>Last 30 days</option>
-					<option value={90}>Last 90 days</option>
-					<option value={365}>Last year</option>
-				</select>
-			</label>
+			<div class="flex-1 space-y-2">
+				<p class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">
+					Time Range
+				</p>
+				<Select bind:value={days} size="md" onchange={() => fetchStats()}>
+					<option value="7">Last 7 days</option>
+					<option value="30">Last 30 days</option>
+					<option value="90">Last 90 days</option>
+					<option value="365">Last year</option>
+				</Select>
+			</div>
 
-			<button
-				onclick={() => fetchStats()}
-				class="w-full sm:w-auto rounded-lg bg-purple-600 dark:bg-purple-500 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700 dark:hover:bg-purple-600 transition-colors"
+			<Button
+				variant="primary"
+				size="md"
+				class="w-full sm:w-auto"
+				icon={RefreshCw}
+				onclick={fetchStats}
 			>
 				Refresh
-			</button>
-		</div>
+			</Button>
+		</AdminCard>
 
 		{#if loading}
 			<div class="flex items-center justify-center py-12">
@@ -116,18 +119,16 @@
 				></div>
 			</div>
 		{:else if error}
-			<div
-				class="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-4 text-red-800 dark:text-red-200"
-			>
-				<p class="font-medium">Error loading stats</p>
-				<p class="text-sm">{error}</p>
-			</div>
+			<AdminCard tone="danger" padding="md" class="text-sm text-rose-900 dark:text-rose-100">
+				<p class="font-semibold text-base">Error loading stats</p>
+				<p class="mt-1">{error}</p>
+			</AdminCard>
 		{:else if stats}
 			<!-- Overview Cards -->
 			<div
-				class="mb-4 sm:mb-6 grid grid-cols-1 gap-4 sm:gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6"
+				class="admin-stat-grid mb-4 sm:mb-6 grid grid-cols-1 gap-4 sm:gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6"
 			>
-				<div class="rounded-lg bg-white dark:bg-gray-800 p-4 sm:p-6 shadow">
+				<div class="admin-panel p-4 sm:p-6 shadow">
 					<p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total Cost</p>
 					<p
 						class="mt-2 text-2xl sm:text-3xl font-bold text-purple-600 dark:text-purple-400"
@@ -136,7 +137,7 @@
 					</p>
 				</div>
 
-				<div class="rounded-lg bg-white dark:bg-gray-800 p-4 sm:p-6 shadow">
+				<div class="admin-panel p-4 sm:p-6 shadow">
 					<p class="text-sm font-medium text-gray-600 dark:text-gray-400">
 						Total Requests
 					</p>
@@ -145,14 +146,14 @@
 					</p>
 				</div>
 
-				<div class="rounded-lg bg-white dark:bg-gray-800 p-4 sm:p-6 shadow">
+				<div class="admin-panel p-4 sm:p-6 shadow">
 					<p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total Tokens</p>
 					<p class="mt-2 text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
 						{formatNumber(stats.overview.totalTokens)}
 					</p>
 				</div>
 
-				<div class="rounded-lg bg-white dark:bg-gray-800 p-4 sm:p-6 shadow">
+				<div class="admin-panel p-4 sm:p-6 shadow">
 					<p class="text-sm font-medium text-gray-600 dark:text-gray-400">
 						Avg Cost/Request
 					</p>
@@ -161,7 +162,7 @@
 					</p>
 				</div>
 
-				<div class="rounded-lg bg-white dark:bg-gray-800 p-4 sm:p-6 shadow">
+				<div class="admin-panel p-4 sm:p-6 shadow">
 					<p class="text-sm font-medium text-gray-600 dark:text-gray-400">Success Rate</p>
 					<p
 						class="mt-2 text-2xl sm:text-3xl font-bold text-green-600 dark:text-green-400"
@@ -170,7 +171,7 @@
 					</p>
 				</div>
 
-				<div class="rounded-lg bg-white dark:bg-gray-800 p-4 sm:p-6 shadow">
+				<div class="admin-panel p-4 sm:p-6 shadow">
 					<p class="text-sm font-medium text-gray-600 dark:text-gray-400">
 						Avg Response Time
 					</p>
@@ -183,7 +184,7 @@
 			<!-- Charts Row -->
 			<div class="mb-4 sm:mb-6 grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2">
 				<!-- Cost Over Time -->
-				<div class="rounded-lg bg-white dark:bg-gray-800 p-4 sm:p-6 shadow">
+				<div class="admin-panel p-4 sm:p-6 shadow">
 					<h3
 						class="mb-4 text-base sm:text-lg font-semibold text-gray-900 dark:text-white"
 					>
@@ -227,7 +228,7 @@
 				</div>
 
 				<!-- Requests Over Time -->
-				<div class="rounded-lg bg-white dark:bg-gray-800 p-4 sm:p-6 shadow">
+				<div class="admin-panel p-4 sm:p-6 shadow">
 					<h3
 						class="mb-4 text-base sm:text-lg font-semibold text-gray-900 dark:text-white"
 					>
@@ -272,7 +273,7 @@
 			</div>
 
 			<!-- Model Breakdown -->
-			<div class="mb-4 sm:mb-6 rounded-lg bg-white dark:bg-gray-800 p-4 sm:p-6 shadow">
+			<div class="mb-4 sm:mb-6 admin-panel p-4 sm:p-6 shadow">
 				<h3 class="mb-4 text-base sm:text-lg font-semibold text-gray-900 dark:text-white">
 					Model Breakdown
 				</h3>
@@ -355,7 +356,7 @@
 			</div>
 
 			<!-- Operation Breakdown -->
-			<div class="mb-4 sm:mb-6 rounded-lg bg-white dark:bg-gray-800 p-4 sm:p-6 shadow">
+			<div class="mb-4 sm:mb-6 admin-panel p-4 sm:p-6 shadow">
 				<h3 class="mb-4 text-base sm:text-lg font-semibold text-gray-900 dark:text-white">
 					Operation Breakdown
 				</h3>
@@ -438,7 +439,7 @@
 			</div>
 
 			<!-- Top Users -->
-			<div class="mb-4 sm:mb-6 rounded-lg bg-white dark:bg-gray-800 p-4 sm:p-6 shadow">
+			<div class="mb-4 sm:mb-6 admin-panel p-4 sm:p-6 shadow">
 				<h3 class="mb-4 text-base sm:text-lg font-semibold text-gray-900 dark:text-white">
 					Top Users by Cost
 				</h3>
@@ -526,7 +527,7 @@
 			</div>
 
 			<!-- Recent Activity -->
-			<div class="rounded-lg bg-white dark:bg-gray-800 p-4 sm:p-6 shadow">
+			<div class="admin-panel p-4 sm:p-6 shadow">
 				<h3 class="mb-4 text-base sm:text-lg font-semibold text-gray-900 dark:text-white">
 					Recent Activity
 				</h3>

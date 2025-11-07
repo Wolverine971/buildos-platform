@@ -27,9 +27,13 @@
 		Workflow
 	} from 'lucide-svelte';
 	import AdminPageHeader from '$lib/components/admin/AdminPageHeader.svelte';
+	import AdminCard from '$lib/components/admin/AdminCard.svelte';
+	import AdminStatCard from '$lib/components/admin/AdminStatCard.svelte';
+	import AdminNavCard from '$lib/components/admin/AdminNavCard.svelte';
 	import VisitorContributionChart from '$lib/components/analytics/VisitorContributionChart.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
+	import type { ComponentType } from 'svelte';
 
 	import { browser } from '$app/environment';
 	import type { DashboardAnalyticsPayload } from '$lib/services/admin/dashboard-analytics.service';
@@ -42,11 +46,10 @@
 
 	let isLoading = $state(initialDashboard ? false : true);
 	let error = $state<string | null>(loadErrorFromServer ?? null);
-	let selectedTimeframe = $state<'7d' | '30d' | '90d'>(defaultTimeframe);
-	let autoRefresh = $state(false);
+	type Timeframe = '7d' | '30d' | '90d';
 
-	const navCardBaseClasses =
-		'group relative flex min-h-[180px] flex-col justify-between rounded-2xl border border-slate-200/70 bg-white/85 p-6 sm:p-7 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl dark:border-slate-800/70 dark:bg-slate-900/70';
+	let selectedTimeframe = $state<Timeframe>(defaultTimeframe);
+	let autoRefresh = $state(false);
 
 	let refreshTimer: ReturnType<typeof setInterval> | null = null;
 	let currentRequest: AbortController | null = null;
@@ -197,8 +200,305 @@
 		unique_visitors_today: 0
 	});
 
-	let dailyVisitors = $state<Array<{ date: string; visitor_count: number }>>([]);
-	let dailySignups = $state<Array<{ date: string; signup_count: number }>>([]);
+let dailyVisitors = $state<Array<{ date: string; visitor_count: number }>>([]);
+let dailySignups = $state<Array<{ date: string; signup_count: number }>>([]);
+
+const timeframeDisplayMap: Record<Timeframe, string> = {
+	'7d': 'Last 7 Days',
+	'30d': 'Last 30 Days',
+	'90d': 'Last 90 Days'
+};
+
+const timeframeRelativeMap: Record<Timeframe, string> = {
+	'7d': 'Past 7 days',
+	'30d': 'Past 30 days',
+	'90d': 'Past 90 days'
+};
+
+const timeframeRangeLabel = $derived(timeframeDisplayMap[selectedTimeframe]);
+const timeframeRelativeLabel = $derived(timeframeRelativeMap[selectedTimeframe]);
+
+	const navCards = $derived(() => {
+		const cards = [
+			{
+				title: 'Users',
+				description: 'Manage user accounts',
+				href: '/admin/users',
+				icon: Users,
+				stat:
+					comprehensiveAnalytics.userMetrics.totalUsers > 0
+						? formatNumber(comprehensiveAnalytics.userMetrics.totalUsers)
+						: null,
+				badge:
+					comprehensiveAnalytics.userMetrics.newUsersLast24h > 0
+						? `+${comprehensiveAnalytics.userMetrics.newUsersLast24h} new`
+						: null
+			},
+			{
+				title: 'Notifications',
+				description: 'Analytics & testing',
+				href: '/admin/notifications',
+				icon: Bell
+			},
+			{
+				title: 'Ontology Graph',
+				description: 'Visualize relationships',
+				href: '/admin/ontology/graph',
+				icon: Workflow
+			},
+			{
+				title: 'Chat Monitoring',
+				description: 'AI chat analytics',
+				href: '/admin/chat',
+				icon: MessageSquare
+			},
+			{
+				title: 'Beta Program',
+				description: 'Manage beta members',
+				href: '/admin/beta',
+				icon: UserCheck,
+				stat:
+					comprehensiveAnalytics.userMetrics.totalBetaUsers > 0
+						? formatNumber(comprehensiveAnalytics.userMetrics.totalBetaUsers)
+						: null,
+				badge:
+					comprehensiveAnalytics.userMetrics.newBetaSignupsLast24h > 0
+						? `+${comprehensiveAnalytics.userMetrics.newBetaSignupsLast24h} new`
+						: null
+			},
+			{
+				title: 'Feedback',
+				description: 'Review user feedback',
+				href: '/admin/feedback',
+				icon: MessageSquare,
+				badge:
+					feedbackOverview.overview.recent_24h > 0
+						? `+${feedbackOverview.overview.recent_24h} new`
+						: null
+			},
+			{
+				title: 'LLM Usage',
+				description: 'AI costs & performance',
+				href: '/admin/llm-usage',
+				icon: Zap
+			},
+			{
+				title: 'Errors',
+				description: 'System error logs',
+				href: '/admin/errors',
+				icon: XCircle,
+				stat:
+					errorsData.unresolved_errors > 0
+						? formatNumber(errorsData.unresolved_errors)
+						: null
+			}
+		];
+
+		if (subscriptionData.stripeEnabled) {
+			cards.push(
+				{
+					title: 'Subscriptions',
+					description: 'Manage billing',
+					href: '/admin/subscriptions',
+					icon: CreditCard,
+					stat:
+						subscriptionData.overview.active_subscriptions > 0
+							? formatNumber(subscriptionData.overview.active_subscriptions)
+							: null
+				},
+				{
+					title: 'Revenue',
+					description: 'Financial metrics',
+					href: '/admin/revenue',
+					icon: DollarSign
+				}
+			);
+		}
+
+		return cards;
+	});
+
+	const primaryMetrics = $derived(() => [
+		{
+			label: 'Active Users · 7d',
+			value: systemOverview.active_users_7d,
+			icon: Activity,
+			tone: 'success',
+			footnote:
+				systemOverview.total_users > 0
+					? `${formatPercentage(
+							(systemOverview.active_users_7d / systemOverview.total_users) * 100
+					  )} of total`
+					: '0% of total'
+		},
+		{
+			label: `Brain Dumps · ${timeframeRangeLabel}`,
+			value: comprehensiveAnalytics.brainDumpMetrics.total,
+			icon: FileText,
+			tone: 'info',
+			footnote: `Avg ${formatNumber(
+				comprehensiveAnalytics.brainDumpMetrics.averageLength
+			)} chars`
+		},
+		{
+			label: `New Projects · ${timeframeRangeLabel}`,
+			value: comprehensiveAnalytics.projectMetrics.newProjects,
+			icon: TrendingUp,
+			tone: 'brand',
+			footnote: `${formatNumber(comprehensiveAnalytics.projectMetrics.updatedProjects)} updated`
+		},
+		{
+			label: 'Total Briefs',
+			value: systemOverview.total_briefs,
+			icon: BarChart3,
+			tone: 'muted',
+			footnote: 'All time'
+		},
+		{
+			label: 'Calendar Connections',
+			value: comprehensiveAnalytics.calendarConnections,
+			icon: Globe,
+			tone: 'warning',
+			footnote: 'Connected users'
+		}
+	]);
+
+	const brainDumpCards = $derived(() => [
+		{
+			label: `Brain Dumps · ${timeframeRangeLabel}`,
+			value: comprehensiveAnalytics.brainDumpMetrics.total,
+			icon: FileText,
+			tone: 'info',
+			footnote: timeframeRelativeLabel
+		},
+		{
+			label: `Avg Length · ${timeframeRangeLabel}`,
+			value: comprehensiveAnalytics.brainDumpMetrics.averageLength,
+			icon: Eye,
+			tone: 'muted',
+			footnote: 'Characters'
+		},
+		{
+			label: `New Projects · ${timeframeRangeLabel}`,
+			value: comprehensiveAnalytics.projectMetrics.newProjects,
+			icon: TrendingUp,
+			tone: 'success',
+			footnote: timeframeRelativeLabel
+		},
+		{
+			label: `Project Updates · ${timeframeRangeLabel}`,
+			value: comprehensiveAnalytics.projectMetrics.updatedProjects,
+			icon: RefreshCw,
+			tone: 'brand',
+			footnote: timeframeRelativeLabel
+		},
+		{
+			label: 'Calendar Connections',
+			value: comprehensiveAnalytics.calendarConnections,
+			icon: Globe,
+			tone: 'warning',
+			footnote: 'Users with calendar'
+		}
+	]);
+
+	type LeaderboardKey =
+		| 'brainDumps'
+		| 'projectUpdates'
+		| 'tasksCreated'
+		| 'tasksScheduled'
+		| 'phasesCreated';
+
+	const leaderboardConfigs: Array<{
+		key: LeaderboardKey;
+		title: string;
+		icon: ComponentType;
+		accent: string;
+	}> = [
+		{ key: 'brainDumps', title: 'Top Brain Dumpers', icon: FileText, accent: 'text-indigo-600' },
+		{
+			key: 'projectUpdates',
+			title: 'Top Project Updaters',
+			icon: RefreshCw,
+			accent: 'text-blue-600'
+		},
+		{ key: 'tasksCreated', title: 'Top Task Creators', icon: Activity, accent: 'text-green-600' },
+		{
+			key: 'tasksScheduled',
+			title: 'Top Task Schedulers',
+			icon: Globe,
+			accent: 'text-orange-600'
+		},
+		{
+			key: 'phasesCreated',
+			title: 'Top Phase Creators',
+			icon: TrendingUp,
+			accent: 'text-purple-600'
+		}
+	];
+
+	const subscriptionMetricCards = $derived(() => [
+		{
+			label: 'Monthly Recurring Revenue',
+			value: formatCurrency(subscriptionData.revenue.current_mrr),
+			icon: DollarSign,
+			tone: 'success',
+			change: Math.abs(subscriptionData.revenue.mrr_growth),
+			changeDirection:
+				subscriptionData.revenue.mrr_growth > 0
+					? 'up'
+					: subscriptionData.revenue.mrr_growth < 0
+						? 'down'
+						: 'neutral',
+			changeLabel: 'vs last month'
+		},
+		{
+			label: 'Active Subscriptions',
+			value: subscriptionData.overview.active_subscriptions,
+			icon: CreditCard,
+			tone: 'brand',
+			footnote: `${formatNumber(subscriptionData.overview.trial_subscriptions)} in trial`
+		},
+		{
+			label: 'Churn Rate',
+			value: Number(subscriptionData.revenue.churn_rate.toFixed(1)),
+			icon: TrendingDown,
+			tone: 'warning',
+			suffix: '%',
+			footnote: 'Last 30 days'
+		},
+		{
+			label: 'Average Revenue / User',
+			value: formatCurrency(subscriptionData.revenue.average_revenue_per_user),
+			icon: DollarSign,
+			tone: 'muted',
+			footnote: 'Trailing 30 days'
+		}
+	]);
+
+	const feedbackMetricCards = $derived(() => [
+		{
+			label: 'Total Feedback',
+			value: feedbackOverview.overview.total_feedback,
+			icon: MessageSquare,
+			tone: 'info',
+			footnote: `${feedbackOverview.overview.recent_24h} in last 24h`
+		},
+		{
+			label: 'Unresolved Feedback',
+			value: feedbackOverview.overview.unresolved_count,
+			icon: AlertCircle,
+			tone: 'danger',
+			footnote: 'Need attention'
+		},
+		{
+			label: 'Average Rating',
+			value: feedbackOverview.overview.average_rating,
+			icon: Star,
+			tone: 'warning',
+			suffix: ' /5',
+			footnote: 'User satisfaction'
+		}
+	]);
 
 	function applyDashboardPayload(payload: DashboardAnalyticsPayload) {
 		systemOverview = payload.systemOverview;
@@ -331,6 +631,14 @@
 		return new Intl.NumberFormat().format(num);
 	}
 
+	function formatCurrency(value: number): string {
+		return new Intl.NumberFormat('en-US', {
+			style: 'currency',
+			currency: 'USD',
+			maximumFractionDigits: 2
+		}).format(value);
+	}
+
 	function formatPercentage(num: number): string {
 		return `${Math.round(num)}%`;
 	}
@@ -439,414 +747,101 @@
 	<meta name="robots" content="noindex, nofollow" />
 </svelte:head>
 
-<div class="space-y-12">
-	<div class="space-y-10">
-		<!-- Header without Back Button (this is the main admin page) -->
-		<AdminPageHeader
-			title="Admin Dashboard"
-			description="System overview and user analytics"
-			icon={BarChart3}
-			showBack={false}
-		>
-			<div slot="actions" class="flex items-center space-x-4">
-				<!-- Auto Refresh -->
-				<label class="flex items-center space-x-2">
-					<input
-						type="checkbox"
-						bind:checked={autoRefresh}
-						class="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 cursor-pointer dark:bg-gray-700 dark:checked:bg-blue-600"
-					/>
-					<span class="text-sm text-gray-600 dark:text-gray-400">Auto Refresh</span>
-				</label>
+<div class="space-y-10 sm:space-y-12">
+	<AdminPageHeader
+		title="Admin Dashboard"
+		description="System overview and user analytics"
+		icon={BarChart3}
+		showBack={false}
+	>
+		<div slot="actions" class="flex w-full flex-wrap items-center gap-3 sm:gap-4 sm:justify-end">
+			<label class="flex items-center gap-2 text-xs font-medium text-slate-600 dark:text-slate-400">
+				<input
+					type="checkbox"
+					bind:checked={autoRefresh}
+					class="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 cursor-pointer dark:bg-gray-700 dark:checked:bg-blue-600"
+				/>
+				<span>Auto Refresh</span>
+			</label>
 
-				<!-- Timeframe -->
-				<Select bind:value={selectedTimeframe} size="md" placeholder="Last 30 Days">
-					<option value="7d">Last 7 Days</option>
-					<option value="30d">Last 30 Days</option>
-					<option value="90d">Last 90 Days</option>
-				</Select>
+			<Select
+				bind:value={selectedTimeframe}
+				size="md"
+				placeholder="Last 30 Days"
+				class="w-full sm:w-44"
+			>
+				<option value="7d">Last 7 Days</option>
+				<option value="30d">Last 30 Days</option>
+				<option value="90d">Last 90 Days</option>
+			</Select>
 
-				<!-- Export -->
-				<Button onclick={exportAnalytics} variant="primary" size="sm" icon={Download}>
-					Export
-				</Button>
+			<Button
+				onclick={exportAnalytics}
+				variant="primary"
+				size="sm"
+				icon={Download}
+				class="w-full sm:w-auto"
+			>
+				Export
+			</Button>
 
-				<!-- Refresh -->
-				<Button
-					onclick={loadAnalytics}
-					disabled={isLoading}
-					variant="secondary"
-					size="sm"
-					icon={RefreshCw}
-					loading={isLoading}
-				>
-					Refresh
-				</Button>
-			</div>
-		</AdminPageHeader>
+			<Button
+				onclick={loadAnalytics}
+				disabled={isLoading}
+				variant="secondary"
+				size="sm"
+				icon={RefreshCw}
+				loading={isLoading}
+				class="w-full sm:w-auto"
+			>
+				Refresh
+			</Button>
+		</div>
+	</AdminPageHeader>
 
+	<div class="space-y-8 sm:space-y-10">
 		<!-- Navigation Cards -->
-		<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 mb-10">
-			<a href="/admin/users" class={navCardBaseClasses}>
-				{#if comprehensiveAnalytics.userMetrics.newUsersLast24h > 0}
-					<div class="absolute right-5 top-5">
-						<span
-							class="inline-flex items-center rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-800 shadow-sm dark:bg-green-900/40 dark:text-green-200"
-						>
-							+{comprehensiveAnalytics.userMetrics.newUsersLast24h} new
-						</span>
-					</div>
-				{/if}
-				<div class="flex flex-1 flex-col gap-6">
-					<div class="flex items-start justify-between gap-4">
-						<div class="flex flex-1 items-start gap-4">
-							<span
-								class="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500/20 via-indigo-500/15 to-blue-400/20 text-blue-600 dark:text-blue-200"
-							>
-								<Users class="h-6 w-6" />
-							</span>
-							<div class="space-y-1">
-								<h3 class="text-lg font-semibold text-slate-900 dark:text-slate-50">
-									Users
-								</h3>
-								<p class="text-sm text-slate-600 dark:text-slate-400">
-									Manage user accounts
-								</p>
-							</div>
-						</div>
-						{#if comprehensiveAnalytics.userMetrics.totalUsers > 0}
-							<span
-								class="rounded-xl bg-blue-50 px-3 py-1 text-xl font-semibold text-blue-600 dark:bg-blue-500/10 dark:text-blue-200"
-							>
-								{comprehensiveAnalytics.userMetrics.totalUsers}
-							</span>
-						{/if}
-					</div>
-					<span
-						class="mt-auto text-xs font-semibold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500"
-					>
-						View module
-					</span>
-				</div>
-			</a>
-
-			<a href="/admin/notifications" class={navCardBaseClasses}>
-				<div class="flex flex-1 flex-col gap-6">
-					<div class="flex items-start justify-between gap-4">
-						<div class="flex flex-1 items-start gap-4">
-							<span
-								class="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500/20 via-blue-500/15 to-indigo-400/20 text-indigo-600 dark:text-indigo-200"
-							>
-								<Bell class="h-6 w-6" />
-							</span>
-							<div class="space-y-1">
-								<h3 class="text-lg font-semibold text-slate-900 dark:text-slate-50">
-									Notifications
-								</h3>
-								<p class="text-sm text-slate-600 dark:text-slate-400">
-									Analytics &amp; testing
-								</p>
-							</div>
-						</div>
-					</div>
-					<span
-						class="mt-auto text-xs font-semibold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500"
-					>
-						View module
-					</span>
-				</div>
-			</a>
-
-			<a href="/admin/ontology/graph" class={navCardBaseClasses}>
-				<div class="flex flex-1 flex-col gap-6">
-					<div class="flex items-start justify-between gap-4">
-						<div class="flex flex-1 items-start gap-4">
-							<span
-								class="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-500/20 via-cyan-500/15 to-blue-400/20 text-sky-600 dark:text-sky-200"
-							>
-								<Workflow class="h-6 w-6" />
-							</span>
-							<div class="space-y-1">
-								<h3 class="text-lg font-semibold text-slate-900 dark:text-slate-50">
-									Ontology Graph
-								</h3>
-								<p class="text-sm text-slate-600 dark:text-slate-400">
-									Visualize ontology relationships
-								</p>
-							</div>
-						</div>
-					</div>
-					<span
-						class="mt-auto text-xs font-semibold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500"
-					>
-						View module
-					</span>
-				</div>
-			</a>
-
-			<a href="/admin/chat" class={navCardBaseClasses}>
-				<div class="flex flex-1 flex-col gap-6">
-					<div class="flex items-start justify-between gap-4">
-						<div class="flex flex-1 items-start gap-4">
-							<span
-								class="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-500/20 via-teal-500/15 to-blue-400/20 text-cyan-600 dark:text-cyan-200"
-							>
-								<MessageSquare class="h-6 w-6" />
-							</span>
-							<div class="space-y-1">
-								<h3 class="text-lg font-semibold text-slate-900 dark:text-slate-50">
-									Chat Monitoring
-								</h3>
-								<p class="text-sm text-slate-600 dark:text-slate-400">
-									AI chat analytics
-								</p>
-							</div>
-						</div>
-					</div>
-					<span
-						class="mt-auto text-xs font-semibold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500"
-					>
-						View module
-					</span>
-				</div>
-			</a>
-
-			<a href="/admin/beta" class={navCardBaseClasses}>
-				{#if comprehensiveAnalytics.userMetrics.newBetaSignupsLast24h > 0}
-					<div class="absolute right-5 top-5">
-						<span
-							class="inline-flex items-center rounded-full bg-purple-100 px-3 py-1 text-xs font-semibold text-purple-800 shadow-sm dark:bg-purple-900/40 dark:text-purple-200"
-						>
-							+{comprehensiveAnalytics.userMetrics.newBetaSignupsLast24h} new
-						</span>
-					</div>
-				{/if}
-				<div class="flex flex-1 flex-col gap-6">
-					<div class="flex items-start justify-between gap-4">
-						<div class="flex flex-1 items-start gap-4">
-							<span
-								class="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-purple-500/20 via-fuchsia-500/15 to-indigo-400/20 text-purple-600 dark:text-purple-200"
-							>
-								<UserCheck class="h-6 w-6" />
-							</span>
-							<div class="space-y-1">
-								<h3 class="text-lg font-semibold text-slate-900 dark:text-slate-50">
-									Beta Program
-								</h3>
-								<p class="text-sm text-slate-600 dark:text-slate-400">
-									Manage beta members
-								</p>
-							</div>
-						</div>
-						{#if comprehensiveAnalytics.userMetrics.totalBetaUsers > 0}
-							<span
-								class="rounded-xl bg-purple-50 px-3 py-1 text-xl font-semibold text-purple-600 dark:bg-purple-500/10 dark:text-purple-200"
-							>
-								{comprehensiveAnalytics.userMetrics.totalBetaUsers}
-							</span>
-						{/if}
-					</div>
-					<span
-						class="mt-auto text-xs font-semibold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500"
-					>
-						View module
-					</span>
-				</div>
-			</a>
-
-			<a href="/admin/feedback" class={navCardBaseClasses}>
-				{#if feedbackOverview.overview.recent_24h > 0}
-					<div class="absolute right-5 top-5">
-						<span
-							class="inline-flex items-center rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800 shadow-sm dark:bg-amber-900/40 dark:text-amber-200"
-						>
-							+{feedbackOverview.overview.recent_24h} new
-						</span>
-					</div>
-				{/if}
-				<div class="flex flex-1 flex-col gap-6">
-					<div class="flex items-start justify-between gap-4">
-						<div class="flex flex-1 items-start gap-4">
-							<span
-								class="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500/20 via-lime-500/15 to-teal-400/20 text-emerald-600 dark:text-emerald-200"
-							>
-								<MessageSquare class="h-6 w-6" />
-							</span>
-							<div class="space-y-1">
-								<h3 class="text-lg font-semibold text-slate-900 dark:text-slate-50">
-									Feedback
-								</h3>
-								<p class="text-sm text-slate-600 dark:text-slate-400">
-									Review user feedback
-								</p>
-							</div>
-						</div>
-					</div>
-					<span
-						class="mt-auto text-xs font-semibold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500"
-					>
-						View module
-					</span>
-				</div>
-			</a>
-
-			<a href="/admin/llm-usage" class={navCardBaseClasses}>
-				<div class="flex flex-1 flex-col gap-6">
-					<div class="flex items-start justify-between gap-4">
-						<div class="flex flex-1 items-start gap-4">
-							<span
-								class="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-500/20 via-orange-500/15 to-yellow-400/20 text-amber-600 dark:text-amber-200"
-							>
-								<Zap class="h-6 w-6" />
-							</span>
-							<div class="space-y-1">
-								<h3 class="text-lg font-semibold text-slate-900 dark:text-slate-50">
-									LLM Usage
-								</h3>
-								<p class="text-sm text-slate-600 dark:text-slate-400">
-									AI costs &amp; performance
-								</p>
-							</div>
-						</div>
-					</div>
-					<span
-						class="mt-auto text-xs font-semibold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500"
-					>
-						View module
-					</span>
-				</div>
-			</a>
-
-			<a href="/admin/errors" class={navCardBaseClasses}>
-				<div class="flex flex-1 flex-col gap-6">
-					<div class="flex items-start justify-between gap-4">
-						<div class="flex flex-1 items-start gap-4">
-							<span
-								class="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500/20 via-red-500/15 to-rose-400/20 text-rose-600 dark:text-rose-200"
-							>
-								<XCircle class="h-6 w-6" />
-							</span>
-							<div class="space-y-1">
-								<h3 class="text-lg font-semibold text-slate-900 dark:text-slate-50">
-									Errors
-								</h3>
-								<p class="text-sm text-slate-600 dark:text-slate-400">
-									System error logs
-								</p>
-							</div>
-						</div>
-						{#if errorsData.unresolved_errors > 0}
-							<span
-								class="rounded-xl bg-rose-50 px-3 py-1 text-xl font-semibold text-rose-600 dark:bg-rose-500/10 dark:text-rose-200"
-							>
-								{errorsData.unresolved_errors}
-							</span>
-						{/if}
-					</div>
-					<span
-						class="mt-auto text-xs font-semibold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500"
-					>
-						View module
-					</span>
-				</div>
-			</a>
-
-			{#if subscriptionData.stripeEnabled}
-				<a href="/admin/subscriptions" class={navCardBaseClasses}>
-					<div class="flex flex-1 flex-col gap-6">
-						<div class="flex items-start justify-between gap-4">
-							<div class="flex flex-1 items-start gap-4">
-								<span
-									class="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-500/20 via-amber-500/15 to-yellow-400/20 text-orange-600 dark:text-orange-200"
-								>
-									<CreditCard class="h-6 w-6" />
-								</span>
-								<div class="space-y-1">
-									<h3
-										class="text-lg font-semibold text-slate-900 dark:text-slate-50"
-									>
-										Subscriptions
-									</h3>
-									<p class="text-sm text-slate-600 dark:text-slate-400">
-										Manage billing
-									</p>
-								</div>
-							</div>
-						</div>
-						<span
-							class="mt-auto text-xs font-semibold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500"
-						>
-							View module
-						</span>
-					</div>
-				</a>
-
-				<a href="/admin/revenue" class={navCardBaseClasses}>
-					<div class="flex flex-1 flex-col gap-6">
-						<div class="flex items-start justify-between gap-4">
-							<div class="flex flex-1 items-start gap-4">
-								<span
-									class="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500/20 via-green-500/15 to-teal-400/20 text-emerald-600 dark:text-emerald-200"
-								>
-									<DollarSign class="h-6 w-6" />
-								</span>
-								<div class="space-y-1">
-									<h3
-										class="text-lg font-semibold text-slate-900 dark:text-slate-50"
-									>
-										Revenue
-									</h3>
-									<p class="text-sm text-slate-600 dark:text-slate-400">
-										Financial metrics
-									</p>
-								</div>
-							</div>
-						</div>
-						<span
-							class="mt-auto text-xs font-semibold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500"
-						>
-							View module
-						</span>
-					</div>
-				</a>
-			{/if}
+		<div
+			class="grid auto-rows-fr grid-cols-1 gap-6 sm:gap-7 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 mb-8"
+		>
+			{#each navCards as card (card.href)}
+				<AdminNavCard {...card} meta="View module" compact />
+			{/each}
 		</div>
 
 		{#if error}
-			<div
-				class="bg-red-50 border border-red-200 rounded-lg p-4 mb-4 dark:bg-red-900/20 dark:border-red-800"
-			>
-				<div class="flex items-center">
-					<AlertCircle class="h-5 w-5 text-red-600 mr-2" />
-					<p class="text-red-800 dark:text-red-200">{error}</p>
+			<AdminCard tone="danger" padding="md" class="mb-4">
+				<div class="flex items-center gap-3 text-sm">
+					<AlertCircle class="h-5 w-5" />
+					<p class="text-red-900 dark:text-red-100">{error}</p>
 				</div>
-			</div>
+			</AdminCard>
 		{/if}
 
 		{#if isLoading}
 			<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-4 sm:mb-6">
-				{#each Array(12) as _}
-					<div
-						class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6 animate-pulse"
-					>
-						<div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-2"></div>
-						<div class="h-6 sm:h-8 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
-					</div>
+				{#each Array(12) as _, index}
+					<AdminCard padding="lg" class="animate-pulse space-y-3" aria-hidden="true">
+						<div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4" />
+						<div class="h-6 sm:h-8 bg-gray-200 dark:bg-gray-700 rounded w-1/2" />
+					</AdminCard>
 				{/each}
 			</div>
 		{:else}
 			<!-- Errors Alert (if there are critical/unresolved errors) -->
 			{#if errorsData.critical_errors > 0 || errorsData.unresolved_errors > 10}
-				<div
-					class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-4"
-				>
-					<div class="flex items-start">
-						<AlertTriangle class="h-5 w-5 text-red-600 mr-3 mt-0.5 flex-shrink-0" />
+				<AdminCard tone="danger" padding="md" class="mb-4">
+					<div class="flex items-start gap-4">
+						<span
+							class="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/40 text-rose-600 dark:bg-slate-900/30 dark:text-rose-200"
+						>
+							<AlertTriangle class="h-5 w-5" />
+						</span>
 						<div class="flex-1">
-							<h3 class="text-sm font-medium text-red-800 dark:text-red-200">
+							<h3 class="text-base font-semibold text-rose-900 dark:text-rose-100">
 								System Errors Need Attention
 							</h3>
-							<div class="text-sm text-red-700 dark:text-red-300 mt-1 space-y-1">
+							<div class="mt-2 text-sm text-rose-800 dark:text-rose-200 space-y-1">
 								{#if errorsData.critical_errors > 0}
 									<p>
 										{errorsData.critical_errors} critical error{errorsData.critical_errors >
@@ -867,122 +862,31 @@
 							</div>
 							<a
 								href="/admin/errors"
-								class="inline-flex items-center text-sm text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 mt-2"
+								class="mt-3 inline-flex items-center text-sm font-semibold text-rose-800 underline-offset-4 hover:underline dark:text-rose-200"
 							>
 								View error logs
-								<ExternalLink class="w-3 h-3 ml-1" />
+								<ExternalLink class="w-3.5 h-3.5 ml-1" />
 							</a>
 						</div>
 					</div>
-				</div>
+				</AdminCard>
 			{/if}
 
 			<!-- Key Metrics Cards - Mobile Responsive -->
 
-			<!-- Row 2: System Metrics -->
-			<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-6 mb-4 sm:mb-6">
-				<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
-					<div class="flex items-center justify-between">
-						<div class="flex-1">
-							<p class="text-sm font-medium text-gray-600 dark:text-gray-400">
-								Active Users (7d)
-							</p>
-							<p
-								class="text-xl sm:text-2xl lg:text-3xl font-bold text-green-600 mt-1"
-							>
-								{formatNumber(systemOverview.active_users_7d)}
-							</p>
-						</div>
-						<Activity class="h-6 w-6 sm:h-8 sm:w-8 text-green-600 flex-shrink-0 ml-3" />
-					</div>
-					<div class="mt-2 text-xs sm:text-sm text-gray-600 dark:text-gray-400">
-						{systemOverview.total_users > 0
-							? formatPercentage(
-									(systemOverview.active_users_7d / systemOverview.total_users) *
-										100
-								)
-							: '0%'} of total users
-					</div>
-				</div>
-				<!-- Brain Dumps -->
-				<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
-					<div class="flex items-center justify-between">
-						<div class="flex-1">
-							<p class="text-sm font-medium text-gray-600 dark:text-gray-400">
-								Brain Dumps ({selectedTimeframe})
-							</p>
-							<p
-								class="text-xl sm:text-2xl lg:text-3xl font-bold text-indigo-600 mt-1"
-							>
-								{formatNumber(comprehensiveAnalytics.brainDumpMetrics.total)}
-							</p>
-						</div>
-						<FileText
-							class="h-6 w-6 sm:h-8 sm:w-8 text-indigo-600 flex-shrink-0 ml-3"
-						/>
-					</div>
-					<div class="mt-2 text-xs sm:text-sm text-gray-600 dark:text-gray-400">
-						Avg {formatNumber(comprehensiveAnalytics.brainDumpMetrics.averageLength)} chars
-					</div>
-				</div>
-				<!-- New Projects -->
-				<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
-					<div class="flex items-center justify-between">
-						<div class="flex-1">
-							<p class="text-sm font-medium text-gray-600 dark:text-gray-400">
-								New Projects ({selectedTimeframe})
-							</p>
-							<p
-								class="text-xl sm:text-2xl lg:text-3xl font-bold text-orange-600 mt-1"
-							>
-								{formatNumber(comprehensiveAnalytics.projectMetrics.newProjects)}
-							</p>
-						</div>
-						<TrendingUp
-							class="h-6 w-6 sm:h-8 sm:w-8 text-orange-600 flex-shrink-0 ml-3"
-						/>
-					</div>
-					<div class="mt-2 text-xs sm:text-sm text-gray-600 dark:text-gray-400">
-						{formatNumber(comprehensiveAnalytics.projectMetrics.updatedProjects)} updated
-					</div>
-				</div>
-				<!-- Total Briefs -->
-				<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
-					<div class="flex items-center justify-between">
-						<div class="flex-1">
-							<p class="text-sm font-medium text-gray-600 dark:text-gray-400">
-								Total Briefs
-							</p>
-							<p class="text-xl sm:text-2xl lg:text-3xl font-bold text-cyan-600 mt-1">
-								{formatNumber(systemOverview.total_briefs)}
-							</p>
-						</div>
-						<BarChart3 class="h-6 w-6 sm:h-8 sm:w-8 text-cyan-600 flex-shrink-0 ml-3" />
-					</div>
-					<div class="mt-2 text-xs sm:text-sm text-gray-600 dark:text-gray-400">
-						All time
-					</div>
-				</div>
-				<!-- Calendar Connections -->
-				<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
-					<div class="flex items-center justify-between">
-						<div class="flex-1">
-							<p class="text-sm font-medium text-gray-600 dark:text-gray-400">
-								Calendar Connections
-							</p>
-							<p
-								class="text-xl sm:text-2xl lg:text-3xl font-bold text-amber-600 mt-1"
-							>
-								{formatNumber(comprehensiveAnalytics.calendarConnections)}
-							</p>
-						</div>
-						<Globe class="h-6 w-6 sm:h-8 sm:w-8 text-amber-600 flex-shrink-0 ml-3" />
-					</div>
-					<div class="mt-2 text-xs sm:text-sm text-gray-600 dark:text-gray-400">
-						Users with calendar
-					</div>
-				</div>
-			</div>
+		<!-- Row 2: System Metrics -->
+		<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-5 mb-4 sm:mb-5">
+			{#each primaryMetrics as metric (metric.label)}
+				<AdminStatCard
+					label={metric.label}
+					value={metric.value}
+					icon={metric.icon}
+					tone={metric.tone}
+					footnote={metric.footnote}
+					compact
+				/>
+			{/each}
+		</div>
 
 			<!-- Daily Visitors Chart -->
 			<div class="mb-4 sm:mb-6">
@@ -996,627 +900,177 @@
 			<!-- Brain Dump Analytics Section -->
 			<div class="mb-4 sm:mb-6">
 				<h2 class="text-lg sm:text-xl font-bold text-gray-900 dark:text-white mb-4">
-					Brain Dump Analytics <span
-						class="text-sm font-normal text-gray-600 dark:text-gray-400"
-						>({selectedTimeframe === '7d'
-							? 'Last 7 Days'
-							: selectedTimeframe === '30d'
-								? 'Last 30 Days'
-								: 'Last 90 Days'})</span
-					>
+					Brain Dump Analytics
+					<span class="text-sm font-normal text-gray-600 dark:text-gray-400">
+						({timeframeRangeLabel})
+					</span>
 				</h2>
-				<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-6">
-					<!-- Total Brain Dumps -->
-					<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
-						<div class="flex items-center justify-between">
-							<div class="flex-1">
-								<p class="text-sm font-medium text-gray-600 dark:text-gray-400">
-									Brain Dumps ({selectedTimeframe})
-								</p>
-								<p
-									class="text-xl sm:text-2xl lg:text-3xl font-bold text-indigo-600 mt-1"
-								>
-									{formatNumber(comprehensiveAnalytics.brainDumpMetrics.total)}
-								</p>
-							</div>
-							<FileText
-								class="h-6 w-6 sm:h-8 sm:w-8 text-indigo-600 flex-shrink-0 ml-3"
-							/>
-						</div>
-						<div class="mt-2 text-xs sm:text-sm text-gray-600 dark:text-gray-400">
-							{selectedTimeframe === '7d'
-								? 'Past week'
-								: selectedTimeframe === '30d'
-									? 'Past month'
-									: 'Past 90 days'}
-						</div>
-					</div>
-
-					<!-- Average Length -->
-					<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
-						<div class="flex items-center justify-between">
-							<div class="flex-1">
-								<p class="text-sm font-medium text-gray-600 dark:text-gray-400">
-									Avg Length ({selectedTimeframe})
-								</p>
-								<p
-									class="text-xl sm:text-2xl lg:text-3xl font-bold text-cyan-600 mt-1"
-								>
-									{formatNumber(
-										comprehensiveAnalytics.brainDumpMetrics.averageLength
-									)}
-								</p>
-							</div>
-							<Eye class="h-6 w-6 sm:h-8 sm:w-8 text-cyan-600 flex-shrink-0 ml-3" />
-						</div>
-						<div class="mt-2 text-xs sm:text-sm text-gray-600 dark:text-gray-400">
-							Characters
-						</div>
-					</div>
-
-					<!-- New Projects -->
-					<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
-						<div class="flex items-center justify-between">
-							<div class="flex-1">
-								<p class="text-sm font-medium text-gray-600 dark:text-gray-400">
-									New Projects ({selectedTimeframe})
-								</p>
-								<p
-									class="text-xl sm:text-2xl lg:text-3xl font-bold text-green-600 mt-1"
-								>
-									{formatNumber(
-										comprehensiveAnalytics.projectMetrics.newProjects
-									)}
-								</p>
-							</div>
-							<TrendingUp
-								class="h-6 w-6 sm:h-8 sm:w-8 text-green-600 flex-shrink-0 ml-3"
-							/>
-						</div>
-						<div class="mt-2 text-xs sm:text-sm text-gray-600 dark:text-gray-400">
-							{selectedTimeframe === '7d'
-								? 'Past 7 days'
-								: selectedTimeframe === '30d'
-									? 'Past 30 days'
-									: 'Past 90 days'}
-						</div>
-					</div>
-
-					<!-- Project Updates -->
-					<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
-						<div class="flex items-center justify-between">
-							<div class="flex-1">
-								<p class="text-sm font-medium text-gray-600 dark:text-gray-400">
-									Project Updates ({selectedTimeframe})
-								</p>
-								<p
-									class="text-xl sm:text-2xl lg:text-3xl font-bold text-blue-600 mt-1"
-								>
-									{formatNumber(
-										comprehensiveAnalytics.projectMetrics.updatedProjects
-									)}
-								</p>
-							</div>
-							<RefreshCw
-								class="h-6 w-6 sm:h-8 sm:w-8 text-blue-600 flex-shrink-0 ml-3"
-							/>
-						</div>
-						<div class="mt-2 text-xs sm:text-sm text-gray-600 dark:text-gray-400">
-							{selectedTimeframe === '7d'
-								? 'Past 7 days'
-								: selectedTimeframe === '30d'
-									? 'Past 30 days'
-									: 'Past 90 days'}
-						</div>
-					</div>
-
-					<!-- Calendar Connections -->
-					<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
-						<div class="flex items-center justify-between">
-							<div class="flex-1">
-								<p class="text-sm font-medium text-gray-600 dark:text-gray-400">
-									Calendar Connected
-								</p>
-								<p
-									class="text-xl sm:text-2xl lg:text-3xl font-bold text-orange-600 mt-1"
-								>
-									{formatNumber(comprehensiveAnalytics.calendarConnections)}
-								</p>
-							</div>
-							<Globe
-								class="h-6 w-6 sm:h-8 sm:w-8 text-orange-600 flex-shrink-0 ml-3"
-							/>
-						</div>
-						<div class="mt-2 text-xs sm:text-sm text-gray-600 dark:text-gray-400">
-							Users
-						</div>
-					</div>
+				<div class="admin-stat-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-5">
+					{#each brainDumpCards as card (card.label)}
+						<AdminStatCard {...card} compact />
+					{/each}
 				</div>
 			</div>
 
 			<!-- User Leaderboards -->
 			<div class="mb-4 sm:mb-6">
 				<h2 class="text-lg sm:text-xl font-bold text-gray-900 dark:text-white mb-4">
-					User Activity Leaderboards <span
-						class="text-sm font-normal text-gray-600 dark:text-gray-400"
-						>({selectedTimeframe === '7d'
-							? 'Last 7 Days'
-							: selectedTimeframe === '30d'
-								? 'Last 30 Days'
-								: 'Last 90 Days'})</span
-					>
+					User Activity Leaderboards
+					<span class="text-sm font-normal text-gray-600 dark:text-gray-400">
+						({timeframeRangeLabel})
+					</span>
 				</h2>
 
 				<div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-					<!-- Brain Dumps Leaderboard -->
-					<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
-						<div class="flex items-center justify-between mb-4">
-							<h3 class="text-base font-semibold text-gray-900 dark:text-white">
-								Top Brain Dumpers
-							</h3>
-							<FileText class="h-5 w-5 text-indigo-600" />
-						</div>
-						{#if comprehensiveAnalytics.leaderboards.brainDumps.length > 0}
-							<div class="space-y-2">
-								{#each comprehensiveAnalytics.leaderboards.brainDumps as user, index}
-									<div
-										class="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-700 last:border-0"
-									>
-										<div class="flex items-center space-x-3">
-											<span class="text-xs font-semibold text-gray-500 w-6">
-												#{index + 1}
-											</span>
-											<span
-												class="text-sm text-gray-900 dark:text-white truncate max-w-[150px]"
-											>
-												{user.email}
-											</span>
-										</div>
-										<span class="text-sm font-bold text-indigo-600">
-											{user.count}
-										</span>
-									</div>
-								{/each}
+					{#each leaderboardConfigs as board (board.key)}
+						{@const rows = comprehensiveAnalytics.leaderboards[board.key] ?? []}
+						{@const Icon = board.icon}
+						<AdminCard padding="lg" class="space-y-4">
+							<div class="flex items-center justify-between">
+								<h3 class="text-base font-semibold text-gray-900 dark:text-white">
+									{board.title}
+								</h3>
+								<Icon class={`h-5 w-5 ${board.accent}`} />
 							</div>
-						{:else}
-							<p class="text-gray-500 text-center py-4 text-sm">No data available</p>
-						{/if}
-					</div>
 
-					<!-- Project Updates Leaderboard -->
-					<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
-						<div class="flex items-center justify-between mb-4">
-							<h3 class="text-base font-semibold text-gray-900 dark:text-white">
-								Top Project Updaters
-							</h3>
-							<RefreshCw class="h-5 w-5 text-blue-600" />
-						</div>
-						{#if comprehensiveAnalytics.leaderboards.projectUpdates.length > 0}
-							<div class="space-y-2">
-								{#each comprehensiveAnalytics.leaderboards.projectUpdates as user, index}
-									<div
-										class="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-700 last:border-0"
-									>
-										<div class="flex items-center space-x-3">
-											<span class="text-xs font-semibold text-gray-500 w-6">
-												#{index + 1}
-											</span>
-											<span
-												class="text-sm text-gray-900 dark:text-white truncate max-w-[150px]"
-											>
-												{user.email}
+							{#if rows.length > 0}
+								<div class="space-y-2">
+									{#each rows as user, index}
+										<div
+											class="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-700 last:border-0"
+										>
+											<div class="flex items-center space-x-3">
+												<span class="text-xs font-semibold text-gray-500 w-6">
+													#{index + 1}
+												</span>
+												<span
+													class="text-sm text-gray-900 dark:text-white truncate max-w-[150px]"
+												>
+													{user.email}
+												</span>
+											</div>
+											<span class={`text-sm font-bold ${board.accent}`}>
+												{user.count}
 											</span>
 										</div>
-										<span class="text-sm font-bold text-blue-600">
-											{user.count}
-										</span>
-									</div>
-								{/each}
-							</div>
-						{:else}
-							<p class="text-gray-500 text-center py-4 text-sm">No data available</p>
-						{/if}
-					</div>
-
-					<!-- Tasks Created Leaderboard -->
-					<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
-						<div class="flex items-center justify-between mb-4">
-							<h3 class="text-base font-semibold text-gray-900 dark:text-white">
-								Top Task Creators
-							</h3>
-							<Activity class="h-5 w-5 text-green-600" />
-						</div>
-						{#if comprehensiveAnalytics.leaderboards.tasksCreated.length > 0}
-							<div class="space-y-2">
-								{#each comprehensiveAnalytics.leaderboards.tasksCreated as user, index}
-									<div
-										class="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-700 last:border-0"
-									>
-										<div class="flex items-center space-x-3">
-											<span class="text-xs font-semibold text-gray-500 w-6">
-												#{index + 1}
-											</span>
-											<span
-												class="text-sm text-gray-900 dark:text-white truncate max-w-[150px]"
-											>
-												{user.email}
-											</span>
-										</div>
-										<span class="text-sm font-bold text-green-600">
-											{user.count}
-										</span>
-									</div>
-								{/each}
-							</div>
-						{:else}
-							<p class="text-gray-500 text-center py-4 text-sm">No data available</p>
-						{/if}
-					</div>
-
-					<!-- Tasks Scheduled Leaderboard -->
-					<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
-						<div class="flex items-center justify-between mb-4">
-							<h3 class="text-base font-semibold text-gray-900 dark:text-white">
-								Top Task Schedulers
-							</h3>
-							<Globe class="h-5 w-5 text-orange-600" />
-						</div>
-						{#if comprehensiveAnalytics.leaderboards.tasksScheduled.length > 0}
-							<div class="space-y-2">
-								{#each comprehensiveAnalytics.leaderboards.tasksScheduled as user, index}
-									<div
-										class="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-700 last:border-0"
-									>
-										<div class="flex items-center space-x-3">
-											<span class="text-xs font-semibold text-gray-500 w-6">
-												#{index + 1}
-											</span>
-											<span
-												class="text-sm text-gray-900 dark:text-white truncate max-w-[150px]"
-											>
-												{user.email}
-											</span>
-										</div>
-										<span class="text-sm font-bold text-orange-600">
-											{user.count}
-										</span>
-									</div>
-								{/each}
-							</div>
-						{:else}
-							<p class="text-gray-500 text-center py-4 text-sm">No data available</p>
-						{/if}
-					</div>
-
-					<!-- Phases Created Leaderboard -->
-					<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
-						<div class="flex items-center justify-between mb-4">
-							<h3 class="text-base font-semibold text-gray-900 dark:text-white">
-								Top Phase Creators
-							</h3>
-							<TrendingUp class="h-5 w-5 text-purple-600" />
-						</div>
-						{#if comprehensiveAnalytics.leaderboards.phasesCreated.length > 0}
-							<div class="space-y-2">
-								{#each comprehensiveAnalytics.leaderboards.phasesCreated as user, index}
-									<div
-										class="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-700 last:border-0"
-									>
-										<div class="flex items-center space-x-3">
-											<span class="text-xs font-semibold text-gray-500 w-6">
-												#{index + 1}
-											</span>
-											<span
-												class="text-sm text-gray-900 dark:text-white truncate max-w-[150px]"
-											>
-												{user.email}
-											</span>
-										</div>
-										<span class="text-sm font-bold text-purple-600">
-											{user.count}
-										</span>
-									</div>
-								{/each}
-							</div>
-						{:else}
-							<p class="text-gray-500 text-center py-4 text-sm">No data available</p>
-						{/if}
-					</div>
+									{/each}
+								</div>
+							{:else}
+								<p class="text-gray-500 text-center py-4 text-sm">No data available</p>
+							{/if}
+						</AdminCard>
+					{/each}
 				</div>
 			</div>
 
 			<!-- Subscription Overview (if Stripe is enabled) -->
 			{#if subscriptionData.stripeEnabled}
-				<div class="mb-4 sm:mb-6">
-					<h2 class="text-lg sm:text-xl font-bold text-gray-900 dark:text-white mb-4">
+				<div class="mb-4 sm:mb-6 space-y-4 sm:space-y-6">
+					<h2 class="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">
 						Subscription Analytics
 					</h2>
 
-					<!-- Revenue Metrics -->
-					<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6">
-						<!-- MRR -->
-						<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
-							<div class="flex items-center justify-between">
-								<div class="flex-1">
-									<p class="text-sm font-medium text-gray-600 dark:text-gray-400">
-										Monthly Recurring Revenue
-									</p>
-									<p
-										class="text-xl sm:text-2xl lg:text-3xl font-bold text-green-600 mt-1"
-									>
-										${subscriptionData.revenue.current_mrr.toFixed(2)}
-									</p>
-								</div>
-								<DollarSign
-									class="h-6 w-6 sm:h-8 sm:w-8 text-green-600 flex-shrink-0 ml-3"
-								/>
-							</div>
-							<div class="mt-2 flex items-center text-xs sm:text-sm">
-								{#if subscriptionData.revenue.mrr_growth > 0}
-									<TrendingUp class="w-4 h-4 text-green-500 mr-1" />
-									<span class="text-green-600"
-										>+{subscriptionData.revenue.mrr_growth.toFixed(1)}%</span
-									>
-								{:else if subscriptionData.revenue.mrr_growth < 0}
-									<TrendingDown class="w-4 h-4 text-red-500 mr-1" />
-									<span class="text-red-600"
-										>{subscriptionData.revenue.mrr_growth.toFixed(1)}%</span
-									>
-								{:else}
-									<span class="text-gray-500">No change</span>
-								{/if}
-								<span class="text-gray-500 ml-2">vs last month</span>
-							</div>
-						</div>
-
-						<!-- Active Subscriptions -->
-						<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
-							<div class="flex items-center justify-between">
-								<div class="flex-1">
-									<p class="text-sm font-medium text-gray-600 dark:text-gray-400">
-										Active Subscriptions
-									</p>
-									<p
-										class="text-xl sm:text-2xl lg:text-3xl font-bold text-blue-600 mt-1"
-									>
-										{formatNumber(
-											subscriptionData.overview.active_subscriptions
-										)}
-									</p>
-								</div>
-								<CreditCard
-									class="h-6 w-6 sm:h-8 sm:w-8 text-blue-600 flex-shrink-0 ml-3"
-								/>
-							</div>
-							<div class="mt-2 text-xs sm:text-sm text-gray-600 dark:text-gray-400">
-								{subscriptionData.overview.trial_subscriptions} in trial
-							</div>
-						</div>
-
-						<!-- Churn Rate -->
-						<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
-							<div class="flex items-center justify-between">
-								<div class="flex-1">
-									<p class="text-sm font-medium text-gray-600 dark:text-gray-400">
-										Churn Rate
-									</p>
-									<p
-										class="text-xl sm:text-2xl lg:text-3xl font-bold text-orange-600 mt-1"
-									>
-										{subscriptionData.revenue.churn_rate.toFixed(1)}%
-									</p>
-								</div>
-								<TrendingDown
-									class="h-6 w-6 sm:h-8 sm:w-8 text-orange-600 flex-shrink-0 ml-3"
-								/>
-							</div>
-							<div class="mt-2 text-xs sm:text-sm text-gray-600 dark:text-gray-400">
-								Last 30 days
-							</div>
-						</div>
-
-						<!-- ARPU -->
-						<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
-							<div class="flex items-center justify-between">
-								<div class="flex-1">
-									<p class="text-sm font-medium text-gray-600 dark:text-gray-400">
-										Avg Revenue Per User
-									</p>
-									<p
-										class="text-xl sm:text-2xl lg:text-3xl font-bold text-purple-600 mt-1"
-									>
-										${subscriptionData.revenue.average_revenue_per_user.toFixed(
-											2
-										)}
-									</p>
-								</div>
-								<Users
-									class="h-6 w-6 sm:h-8 sm:w-8 text-purple-600 flex-shrink-0 ml-3"
-								/>
-							</div>
-							<div class="mt-2 text-xs sm:text-sm text-gray-600 dark:text-gray-400">
-								Per month
-							</div>
-						</div>
+					<div class="admin-stat-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+						{#each subscriptionMetricCards as card (card.label)}
+							<AdminStatCard {...card} compact />
+						{/each}
 					</div>
 
-					<!-- Failed Payments Alert -->
 					{#if subscriptionData.failedPayments.length > 0}
-						<div
-							class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-4"
-						>
-							<div class="flex items-start">
-								<AlertTriangle
-									class="h-5 w-5 text-red-600 mr-3 mt-0.5 flex-shrink-0"
-								/>
-								<div class="flex-1">
-									<h3 class="text-sm font-medium text-red-800 dark:text-red-200">
+						<AdminCard tone="danger" padding="md">
+							<div class="flex items-start gap-3">
+								<AlertTriangle class="h-5 w-5 flex-shrink-0" />
+								<div>
+									<h3 class="text-sm font-semibold text-red-900 dark:text-red-100">
 										Failed Payments Require Attention
 									</h3>
-									<p class="text-sm text-red-700 dark:text-red-300 mt-1">
-										{subscriptionData.failedPayments.length} payment{subscriptionData
-											.failedPayments.length > 1
-											? 's'
-											: ''} failed in the last 30 days
+									<p class="text-sm text-red-800 dark:text-red-200 mt-1">
+										{subscriptionData.failedPayments.length} payment{subscriptionData.failedPayments.length > 1 ? 's' : ''} failed in the last 30 days
 									</p>
 									<a
-										href="/admin/subscriptions"
-										class="inline-flex items-center text-sm text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 mt-2"
+										 href="/admin/subscriptions"
+										 class="inline-flex items-center text-sm font-medium text-red-800 hover:text-red-600 dark:text-red-200 mt-2"
 									>
 										View details
 										<ExternalLink class="w-3 h-3 ml-1" />
 									</a>
 								</div>
 							</div>
-						</div>
+						</AdminCard>
 					{/if}
 
-					<!-- Recent Subscription Changes -->
 					{#if subscriptionData.recentChanges.length > 0}
-						<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
+						<AdminCard padding="lg">
 							<h3 class="text-base font-semibold text-gray-900 dark:text-white mb-4">
 								Recent Subscription Activity
 							</h3>
 							<div class="space-y-3">
 								{#each subscriptionData.recentChanges.slice(0, 5) as change}
 									<div
-										class="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-700 last:border-0"
+									 class="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-700 last:border-0"
 									>
-										<div class="flex items-center space-x-3">
-											<div class="flex-shrink-0">
-												{#if change.status === 'active'}
-													<div
-														class="w-2 h-2 bg-green-500 rounded-full"
-													></div>
-												{:else if change.status === 'canceled'}
-													<div
-														class="w-2 h-2 bg-red-500 rounded-full"
-													></div>
-												{:else if change.status === 'trialing'}
-													<div
-														class="w-2 h-2 bg-blue-500 rounded-full"
-													></div>
-												{:else}
-													<div
-														class="w-2 h-2 bg-gray-500 rounded-full"
-													></div>
-												{/if}
-											</div>
-											<div>
-												<p
-													class="text-sm font-medium text-gray-900 dark:text-white"
-												>
-													{change.users?.email || 'Unknown User'}
-												</p>
-												<p class="text-xs text-gray-500 dark:text-gray-400">
-													{change.subscription_plans?.name} - {change.status}
-												</p>
-											</div>
+									<div class="flex items-center space-x-3">
+										<div class="flex-shrink-0">
+											{#if change.status === 'active'}
+												<div class="w-2 h-2 bg-green-500 rounded-full" />
+											{:else if change.status === 'canceled'}
+												<div class="w-2 h-2 bg-red-500 rounded-full" />
+											{:else if change.status === 'trialing'}
+												<div class="w-2 h-2 bg-blue-500 rounded-full" />
+											{:else}
+												<div class="w-2 h-2 bg-gray-500 rounded-full" />
+											{/if}
 										</div>
-										<div class="text-right">
-											<p class="text-sm text-gray-600 dark:text-gray-400">
-												${(change.subscription_plans?.price / 100).toFixed(
-													2
-												)}/{change.subscription_plans?.interval}
+										<div>
+											<p class="text-sm font-medium text-gray-900 dark:text-white">
+												{change.users?.email || 'Unknown User'}
 											</p>
 											<p class="text-xs text-gray-500 dark:text-gray-400">
-												{new Date(change.updated_at).toLocaleDateString()}
+												{change.subscription_plans?.name} · {change.status}
 											</p>
 										</div>
 									</div>
+									<div class="text-right">
+										<p class="text-sm text-gray-600 dark:text-gray-400">
+											${(change.subscription_plans?.price / 100).toFixed(2)}/{change.subscription_plans?.interval}
+										</p>
+										<p class="text-xs text-gray-500 dark:text-gray-400">
+											{new Date(change.updated_at).toLocaleDateString()}
+										</p>
+									</div>
+								</div>
 								{/each}
 							</div>
 							<div class="mt-4">
 								<a
-									href="/admin/subscriptions"
-									class="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+								 href="/admin/subscriptions"
+								 class="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
 								>
 									View all subscription activity →
 								</a>
 							</div>
-						</div>
+						</AdminCard>
 					{/if}
 				</div>
 			{/if}
-
 			<!-- Feedback Overview -->
-			<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-4 sm:mb-6">
-				<!-- Total Feedback -->
-				<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
-					<div class="flex items-center justify-between">
-						<div class="flex-1">
-							<p class="text-sm font-medium text-gray-600 dark:text-gray-400">
-								Total Feedback
-							</p>
-							<p class="text-xl sm:text-2xl lg:text-3xl font-bold text-blue-600 mt-1">
-								{formatNumber(feedbackOverview.overview.total_feedback)}
-							</p>
-						</div>
-						<MessageSquare
-							class="h-6 w-6 sm:h-8 sm:w-8 text-blue-600 flex-shrink-0 ml-3"
-						/>
-					</div>
-					<div class="mt-2 text-xs sm:text-sm text-gray-600 dark:text-gray-400">
-						{feedbackOverview.overview.recent_24h} in last 24h
-					</div>
-				</div>
-
-				<!-- Unresolved Feedback -->
-				<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
-					<div class="flex items-center justify-between">
-						<div class="flex-1">
-							<p class="text-sm font-medium text-gray-600 dark:text-gray-400">
-								Unresolved
-							</p>
-							<p class="text-xl sm:text-2xl lg:text-3xl font-bold text-red-600 mt-1">
-								{formatNumber(feedbackOverview.overview.unresolved_count)}
-							</p>
-						</div>
-						<AlertCircle
-							class="h-6 w-6 sm:h-8 sm:w-8 text-red-600 flex-shrink-0 ml-3"
-						/>
-					</div>
-					<div class="mt-2 text-xs sm:text-sm text-gray-600 dark:text-gray-400">
-						Need attention
-					</div>
-				</div>
-
-				<!-- Average Rating -->
-				<div
-					class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6 sm:col-span-2 lg:col-span-1"
-				>
-					<div class="flex items-center justify-between">
-						<div class="flex-1">
-							<p class="text-sm font-medium text-gray-600 dark:text-gray-400">
-								Avg Rating
-							</p>
-							<p
-								class="text-xl sm:text-2xl lg:text-3xl font-bold text-yellow-600 mt-1"
-							>
-								{feedbackOverview.overview.average_rating}/5
-							</p>
-						</div>
-						<Star class="h-6 w-6 sm:h-8 sm:w-8 text-yellow-600 flex-shrink-0 ml-3" />
-					</div>
-					<div class="mt-2 text-xs sm:text-sm text-gray-600 dark:text-gray-400">
-						User satisfaction
-					</div>
+			<div class="mb-4 sm:mb-6">
+				<div class="admin-stat-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+					{#each feedbackMetricCards as card (card.label)}
+						<AdminStatCard {...card} compact />
+					{/each}
 				</div>
 			</div>
 
 			<!-- Charts and Analytics - Mobile Responsive -->
 			<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 mb-4 sm:mb-6">
 				<!-- Daily Active Users Chart -->
-				<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
+				<div class="admin-panel p-4 sm:p-6">
 					<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-						Daily Active Users <span
-							class="text-sm font-normal text-gray-600 dark:text-gray-400"
-							>({selectedTimeframe === '7d'
-								? 'Last 7 Days'
-								: selectedTimeframe === '30d'
-									? 'Last 30 Days'
-									: 'Last 90 Days'})</span
-						>
+						Daily Active Users
+						<span class="text-sm font-normal text-gray-600 dark:text-gray-400">
+							({timeframeRangeLabel})
+						</span>
 					</h3>
 					{#if dailyActiveUsers.length > 0}
 						<div class="space-y-2">
@@ -1660,7 +1114,7 @@
 				</div>
 
 				<!-- Feedback Category Breakdown -->
-				<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
+				<div class="admin-panel p-4 sm:p-6">
 					<div class="flex items-center justify-between mb-4">
 						<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
 							Feedback Categories
@@ -1720,7 +1174,7 @@
 			<!-- Recent Content - Mobile Responsive -->
 			<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 mb-4 sm:mb-6">
 				<!-- Recent Feedback -->
-				<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
+				<div class="admin-panel p-4 sm:p-6">
 					<div class="flex items-center justify-between mb-4">
 						<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
 							Recent Feedback
@@ -1776,7 +1230,7 @@
 				</div>
 
 				<!-- Beta Program Activity -->
-				<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
+				<div class="admin-panel p-4 sm:p-6">
 					<div class="flex items-center justify-between mb-4">
 						<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
 							Beta Program Activity
@@ -1841,7 +1295,7 @@
 			<!-- System Health and Template Usage -->
 			<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 mb-4 sm:mb-6">
 				<!-- System Health Metrics -->
-				<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
+				<div class="admin-panel p-4 sm:p-6">
 					<h3
 						class="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center"
 					>
@@ -1889,7 +1343,7 @@
 				</div>
 
 				<!-- Template Usage -->
-				<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
+				<div class="admin-panel p-4 sm:p-6">
 					<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
 						Template Usage
 					</h3>
@@ -1943,17 +1397,13 @@
 			<!-- Top Active Users and Recent Activity -->
 			<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
 				<!-- Top Active Users -->
-				<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
+				<div class="admin-panel p-4 sm:p-6">
 					<div class="flex items-center justify-between mb-4">
 						<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-							Top Active Users <span
-								class="text-sm font-normal text-gray-600 dark:text-gray-400"
-								>({selectedTimeframe === '7d'
-									? 'Last 7 Days'
-									: selectedTimeframe === '30d'
-										? 'Last 30 Days'
-										: 'Last 90 Days'})</span
-							>
+							Top Active Users
+							<span class="text-sm font-normal text-gray-600 dark:text-gray-400">
+								({timeframeRangeLabel})
+							</span>
 						</h3>
 						<a
 							href="/admin/users"
@@ -1991,7 +1441,7 @@
 				</div>
 
 				<!-- Recent Activity -->
-				<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
+				<div class="admin-panel p-4 sm:p-6">
 					<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
 						Recent Activity
 					</h3>

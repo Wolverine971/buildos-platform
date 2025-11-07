@@ -606,7 +606,7 @@
 
 			<!-- Data View Tab Content -->
 			<!-- Filters for Data View -->
-			<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6 mb-4">
+			<div class="admin-panel p-4 sm:p-6 mb-4">
 				<div class="flex items-center justify-between mb-4">
 					<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
 						Comprehensive Signup Data
@@ -676,7 +676,7 @@
 			{/if}
 
 			<!-- Enhanced Data View Table -->
-			<div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+			<div class="admin-panel overflow-hidden">
 				{#if isLoading}
 					<div class="p-6 sm:p-8 text-center">
 						<RefreshCw class="h-8 w-8 animate-spin text-gray-400 mx-auto mb-4" />
@@ -1310,7 +1310,7 @@
 		{:else}
 			<!-- Existing Signups/Members Content -->
 			<!-- Filters and Search -->
-			<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6 mb-4">
+			<div class="admin-panel p-4 sm:p-6 mb-4">
 				<!-- Mobile Filter Toggle -->
 				<div class="sm:hidden mb-4">
 					<Button
@@ -1494,7 +1494,7 @@
 			{/if}
 
 			<!-- Data Content -->
-			<div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+			<div class="admin-panel overflow-hidden">
 				{#if isLoading}
 					<div class="p-6 sm:p-8 text-center">
 						<RefreshCw class="h-8 w-8 animate-spin text-gray-400 mx-auto mb-4" />
@@ -2311,7 +2311,7 @@
 {#if showModal && selectedItem}
 	<div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
 		<div
-			class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto"
+			class="admin-panel-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto"
 		>
 			<div class="p-4 sm:p-6">
 				<div class="flex items-center justify-between mb-4">

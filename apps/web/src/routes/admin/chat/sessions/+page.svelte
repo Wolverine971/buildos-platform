@@ -213,7 +213,7 @@
 		</AdminPageHeader>
 
 		<!-- Search and Filters -->
-		<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 mb-6">
+		<div class="admin-panel p-4 mb-6">
 			<!-- Search Bar -->
 			<form onsubmit={handleSearch} class="mb-4">
 				<div class="flex items-center space-x-2">
@@ -312,14 +312,14 @@
 		{#if isLoading}
 			<div class="space-y-4">
 				{#each Array(5) as _}
-					<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 animate-pulse">
+					<div class="admin-panel p-6 animate-pulse">
 						<div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-4"></div>
 						<div class="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
 					</div>
 				{/each}
 			</div>
 		{:else if sessions.length === 0}
-			<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-12 text-center">
+			<div class="admin-panel p-12 text-center">
 				<MessageSquare class="h-12 w-12 text-gray-400 mx-auto mb-4" />
 				<h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">
 					No sessions found
@@ -334,7 +334,7 @@
 					{@const StatusIcon = getStatusIcon(session.status)}
 					<Button
 						onclick={() => viewSession(session.id)}
-						class="w-full bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg transition-shadow text-left"
+						class="w-full admin-panel p-6 hover:shadow-lg transition-shadow text-left"
 					>
 						<!-- Header -->
 						<div class="flex items-start justify-between mb-4">

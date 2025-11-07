@@ -191,7 +191,7 @@
 		/>
 
 		<!-- Filters and Search -->
-		<div class="bg-white dark:bg-gray-800 rounded-lg shadow mb-6 p-4">
+		<div class="admin-panel mb-6 p-4">
 			<div class="flex flex-col sm:flex-row gap-4">
 				<!-- Search -->
 				<div class="flex-1">
@@ -254,7 +254,7 @@
 		{/if}
 
 		<!-- Users Table -->
-		<div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+		<div class="admin-panel overflow-hidden">
 			{#if isLoading}
 				<div class="p-8 text-center">
 					<RefreshCw class="h-8 w-8 animate-spin text-blue-600 mx-auto mb-4" />
