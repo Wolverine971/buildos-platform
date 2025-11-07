@@ -153,14 +153,12 @@
 	let lastTurnContext = $state<LastTurnContext | null>(null);
 	let currentStrategy = $state<string | null>(null);
 	let strategyConfidence = $state<number>(0);
-	let clarifyingQuestions = $state<string[]>([]);
-	let showClarifyingDialog = $state(false);
 	let ontologyLoaded = $state(false);
 	let ontologySummary = $state<string | null>(null);
 
 	interface AgentMessage {
 		id: string;
-		type: 'user' | 'assistant' | 'activity' | 'plan' | 'step' | 'executor';
+		type: 'user' | 'assistant' | 'activity' | 'plan' | 'step' | 'executor' | 'clarification';
 		content: string;
 		data?: any;
 		timestamp: Date;
@@ -446,8 +444,6 @@
 		lastTurnContext = null;
 		currentStrategy = null;
 		strategyConfidence = 0;
-		clarifyingQuestions = [];
-		showClarifyingDialog = false;
 		ontologyLoaded = false;
 		ontologySummary = null;
 		voiceError = '';
@@ -715,16 +711,18 @@
 				);
 				break;
 
-			case 'clarifying_questions':
-				// Agent needs clarification
-				clarifyingQuestions = data.questions || [];
-				if (clarifyingQuestions.length > 0) {
-					showClarifyingDialog = true;
-					addActivityMessage(
-						`Clarifying questions requested (${clarifyingQuestions.length})`
-					);
+			case 'clarifying_questions': {
+				addClarifyingQuestionsMessage(data.questions);
+				const questionCount = Array.isArray(data.questions)
+					? data.questions.filter((question: unknown) => typeof question === 'string' && question.trim())
+							.length
+					: 0;
+				if (questionCount > 0) {
+					addActivityMessage(`Clarifying questions requested (${questionCount})`);
+					currentActivity = 'Waiting on your clarifications to continue...';
 				}
 				break;
+			}
 
 			case 'executor_instructions':
 				// Executor instructions generated
@@ -734,8 +732,9 @@
 			case 'analysis':
 				// Planner is analyzing the request
 				currentActivity = 'Planner analyzing request...';
+				debugger
 				addActivityMessage(
-					`Strategy: ${data.analysis?.strategy || 'unknown'} - ${data.analysis?.reasoning || ''}`
+					`Strategy: ${data.analysis?.primary_strategy || 'unknown'} - ${data.analysis?.reasoning || ''}`
 				);
 				break;
 
@@ -852,6 +851,31 @@
 			timestamp: new Date()
 		};
 		messages = [...messages, planMessage];
+	}
+
+	function addClarifyingQuestionsMessage(questions: unknown) {
+		const normalizedQuestions = Array.isArray(questions)
+			? questions
+					.map((question) => (typeof question === 'string' ? question.trim() : ''))
+					.filter((question) => question.length > 0)
+			: [];
+
+		if (normalizedQuestions.length === 0) {
+			return;
+		}
+
+		const clarificationMessage: AgentMessage = {
+			id: crypto.randomUUID(),
+			type: 'clarification',
+			content:
+				normalizedQuestions.length === 1
+					? 'I need one quick clarification before I continue:'
+					: 'I have a few clarifying questions before I continue:',
+			data: { questions: normalizedQuestions },
+			timestamp: new Date()
+		};
+
+		messages = [...messages, clarificationMessage];
 	}
 
 	function normalizeMessageContent(value: unknown): string {
@@ -1099,6 +1123,45 @@
 									</div>
 								</div>
 							</div>
+						{:else if message.type === 'clarification'}
+							<div class="flex gap-3">
+								<div
+									class="flex h-9 w-9 items-center justify-center rounded-full border border-blue-200 bg-white text-xs font-semibold uppercase text-blue-600 dark:border-blue-500/40 dark:bg-slate-800 dark:text-blue-300"
+								>
+									AI
+								</div>
+								<div
+									class="max-w-[85%] rounded-2xl border border-blue-200 bg-blue-50/80 px-4 py-4 text-sm leading-relaxed text-slate-900 shadow-sm dark:border-blue-500/40 dark:bg-blue-500/5 dark:text-slate-100"
+								>
+									<p class="text-sm font-semibold text-slate-900 dark:text-white">
+										{message.content}
+									</p>
+
+									{#if message.data?.questions?.length}
+										<ol
+											class="mt-3 space-y-2 text-[15px] text-slate-700 dark:text-slate-200"
+										>
+											{#each message.data.questions as question, i}
+												<li class="flex gap-3 font-medium leading-snug">
+													<span
+														class="flex h-6 w-6 items-center justify-center rounded-full bg-white text-xs font-semibold text-blue-600 shadow dark:bg-slate-900 dark:text-blue-300"
+													>
+														{i + 1}
+													</span>
+													<span class="flex-1">{question}</span>
+												</li>
+											{/each}
+										</ol>
+									{/if}
+
+									<p class="mt-3 text-xs text-slate-600 dark:text-slate-400">
+										Share the answers in your next message so I can keep going.
+									</p>
+									<div class="mt-2 text-xs text-slate-500 dark:text-slate-400">
+										{formatTime(message.timestamp)}
+									</div>
+								</div>
+							</div>
 						{:else if message.type === 'plan'}
 							<div class="flex gap-2 text-xs text-slate-500 dark:text-slate-400">
 								<div
@@ -1292,83 +1355,6 @@
 		{/if}
 	</div>
 
-	<!-- Clarifying Questions Dialog -->
-	{#if showClarifyingDialog}
-		<!-- svelte-ignore a11y_no_static_element_interactions -->
-		<div
-			class="absolute inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
-			onclick={() => (showClarifyingDialog = false)}
-			onkeydown={(e) => {
-				if (e.key === 'Escape') {
-					showClarifyingDialog = false;
-				}
-			}}
-			role="dialog"
-			aria-modal="true"
-			aria-labelledby="clarifying-dialog-title"
-			tabindex="-1"
-		>
-			<!-- svelte-ignore a11y_no_static_element_interactions -->
-			<div
-				class="relative mx-4 w-full max-w-lg rounded-2xl border border-slate-200/60 bg-white/95 p-6 shadow-2xl backdrop-blur-xl dark:border-slate-700/60 dark:bg-slate-900/95"
-				onclick={(e) => e.stopPropagation()}
-				onkeydown={(e) => e.stopPropagation()}
-			>
-				<div class="mb-4 flex items-start justify-between">
-					<div>
-						<h3
-							id="clarifying-dialog-title"
-							class="text-lg font-semibold text-gray-900 dark:text-white"
-						>
-							Clarifying Questions
-						</h3>
-						<p class="mt-1 text-sm text-slate-600 dark:text-slate-400">
-							The assistant needs more information to help you better
-						</p>
-					</div>
-					<button
-						onclick={() => (showClarifyingDialog = false)}
-						class="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-300"
-					>
-						<X class="h-5 w-5" />
-					</button>
-				</div>
-
-				<div class="space-y-3">
-					{#each clarifyingQuestions as question, i}
-						<div
-							class="rounded-lg border border-slate-200 bg-slate-50/50 p-4 dark:border-slate-700 dark:bg-slate-800/50"
-						>
-							<div class="flex items-start gap-3">
-								<span
-									class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-500/10 text-xs font-semibold text-blue-600 dark:bg-blue-500/20 dark:text-blue-400"
-								>
-									{i + 1}
-								</span>
-								<p class="flex-1 text-sm text-gray-700 dark:text-gray-200">
-									{question}
-								</p>
-							</div>
-						</div>
-					{/each}
-				</div>
-
-				<div class="mt-6 flex flex-col gap-2">
-					<p class="text-xs text-slate-500 dark:text-slate-400">
-						Answer these questions in your next message to get a more helpful response.
-					</p>
-					<Button
-						variant="primary"
-						size="md"
-						class="w-full"
-						onclick={() => (showClarifyingDialog = false)}
-					>
-						Got it, I'll provide more details
-					</Button>
-				</div>
-			</div>
-		</div>
-	{/if}
 </Modal>
 
 <style>

@@ -36,6 +36,7 @@ import { PlanExecutionError } from '../shared/types';
 import { ChatStrategy } from '$lib/types/agent-chat-enhancement';
 import type { ChatToolCall } from '@buildos/shared-types';
 import { v4 as uuidv4, validate as uuidValidate } from 'uuid';
+import { formatToolSummaries } from '$lib/chat/tools.config';
 
 /**
  * Tool executor function type
@@ -498,11 +499,16 @@ export class PlanOrchestrator implements BaseService {
 		const toolList = plannerContext.availableTools
 			.map((t) => (t as any).name || (t as any).function?.name || 'unknown')
 			.join(', ');
+		const toolSummaries = plannerContext.availableTools.length
+			? formatToolSummaries(plannerContext.availableTools)
+			: 'No tools available.';
 
 		return `You are a plan generator for BuildOS chat.
 Strategy: ${strategy}
 Context type: ${context.contextType}
 Available tools: ${toolList}
+Tool summaries:
+${toolSummaries}
 
 Create a step-by-step execution plan.
 

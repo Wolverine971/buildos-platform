@@ -129,7 +129,7 @@ async function loadOntologyContext(
 		}
 
 		// Otherwise, load global context
-		if (contextType === 'global' || contextType === 'general') {
+		if (contextType === 'global') {
 			console.log('[API] Loading global ontology context');
 			return await loader.loadGlobalContext();
 		}

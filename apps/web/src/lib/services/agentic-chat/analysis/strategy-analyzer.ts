@@ -26,6 +26,7 @@ import type {
 } from '$lib/types/agent-chat-enhancement';
 import type { ServiceContext, PlannerContext, StreamCallback } from '../shared/types';
 import { StrategyError } from '../shared/types';
+import { formatToolSummaries } from '$lib/chat/tools.config';
 
 /**
  * Interface for LLM service (subset of SmartLLMService)
@@ -203,6 +204,9 @@ export class StrategyAnalyzer {
 		const hasOntology = plannerContext.metadata?.hasOntology || false;
 		const toolNames = this.getAvailableToolNames(plannerContext.availableTools);
 		const toolList = toolNames.length > 0 ? toolNames.join(', ') : 'None available';
+		const toolSummaries = plannerContext.availableTools.length
+			? formatToolSummaries(plannerContext.availableTools)
+			: 'No tools available.';
 
 		return `You are a strategy analyzer for BuildOS chat.
 
@@ -228,6 +232,8 @@ Context available:
 - Type: ${context.contextType}
 - Has ontology: ${hasOntology}
 - Available tools: ${plannerContext.availableTools.length} (${toolList})
+- Tool summaries:
+${toolSummaries}
 - Entity ID: ${context.entityId || 'none'}
 
 IMPORTANT:

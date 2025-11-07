@@ -21,7 +21,7 @@ import type {
 	SystemPromptMetadata,
 	LocationContext
 } from '@buildos/shared-types';
-import { CHAT_TOOLS, getToolsForContext } from '$lib/chat/tools.config';
+import { CHAT_TOOLS, getToolsForContextType } from '$lib/chat/tools.config';
 import { getToolsForAgent } from '@buildos/shared-types';
 import { ChatCompressionService } from './chat-compression-service';
 import { ChatContextService } from './chat-context-service';
@@ -162,6 +162,7 @@ export class AgentContextService {
 	): Promise<EnhancedPlannerContext | PlannerContext> {
 		const { sessionId, userId, conversationHistory, userMessage, contextType, entityId } =
 			params;
+		const normalizedContext = this.normalizeContextType(contextType);
 
 		// Check if we have enhanced params with ontology
 		const lastTurnContext = 'lastTurnContext' in params ? params.lastTurnContext : undefined;
@@ -176,7 +177,7 @@ export class AgentContextService {
 
 		// Step 1: Build system prompt with ontology awareness
 		const systemPrompt = await this.buildEnhancedSystemPrompt(
-			contextType,
+			normalizedContext,
 			ontologyContext,
 			lastTurnContext,
 			entityId
@@ -214,7 +215,7 @@ export class AgentContextService {
 			// Standard path: Load context using legacy chat context service
 			// Fallback for contexts without ontology support
 			const standardContext = await this.chatContextService.loadLocationContext(
-				contextType,
+				normalizedContext,
 				entityId,
 				true, // abbreviated
 				userId
@@ -227,7 +228,7 @@ export class AgentContextService {
 		}
 
 		// Step 4: Get tools appropriate for context
-		const availableTools = await this.getContextTools(contextType, ontologyContext);
+		const availableTools = await this.getContextTools(normalizedContext, ontologyContext);
 
 		// Step 5: Calculate token usage
 		const totalTokens = this.calculateTokens([
@@ -263,7 +264,7 @@ export class AgentContextService {
 			availableTools,
 			metadata: {
 				sessionId,
-				contextType,
+				contextType: normalizedContext,
 				entityId,
 				totalTokens,
 				hasOntology: !!ontologyContext
@@ -689,26 +690,8 @@ ${
 		contextType: ChatContextType,
 		_ontologyContext?: OntologyContext
 	): Promise<ChatToolDefinition[]> {
-		// Special handling for project_create context
-		if (contextType === 'project_create') {
-			// For project creation, provide ONLY project-creation-specific tools
-			const { extractTools } = await import('$lib/chat/tools.config');
-			return extractTools([
-				// Template discovery
-				'list_onto_templates',
-				// Project creation
-				'create_onto_project',
-				// Utility (if needed)
-				'get_field_info'
-			]);
-		}
-
-		// Always provide ontology-first tools for the new agentic flow
-		const tools = getToolsForContext({
-			includeUtility: true
-		});
-
-		// Filter to read-write permissions for planner
+		const normalized = this.normalizeContextType(contextType);
+		const tools = getToolsForContextType(normalized as Exclude<ChatContextType, 'general'>);
 		return getToolsForAgent(tools, 'read_write');
 	}
 
@@ -1143,13 +1126,14 @@ You have access to:
 		contextType: ChatContextType,
 		entityId?: string
 	): LocationContext {
-		const content = this.getFallbackContext(contextType, entityId);
+		const normalized = this.normalizeContextType(contextType);
+		const content = this.getFallbackContext(normalized, entityId);
 		const fallbackMetadata: LocationContext['metadata'] = {
-			contextType,
+			contextType: normalized,
 			abbreviated: true
 		};
 
-		const baseType = this.resolveDataContextType(contextType);
+		const baseType = this.resolveDataContextType(normalized);
 
 		if (baseType === 'project' && entityId) {
 			fallbackMetadata.projectId = entityId;
@@ -1173,8 +1157,6 @@ You have access to:
 				return 'project';
 			case 'task_update':
 				return 'task';
-			case 'general':
-				return 'global';
 			default:
 				return contextType;
 		}
@@ -1220,7 +1202,7 @@ You have access to:
 			case 'daily_brief_update':
 				return `## Daily Brief Settings\nHelp user configure their daily brief preferences.`;
 
-			case 'general':
+			case 'global':
 			default:
 				return `## BuildOS Assistant\nGeneral conversation mode. Use tools as needed to help the user with their productivity workflows.`;
 		}
@@ -1417,8 +1399,13 @@ When complete, your final message should clearly indicate:
 		return total;
 	}
 
-	private normalizeContextType(contextType: ChatContextType): ChatContextType {
-		return contextType === 'general' ? 'global' : contextType;
+	private normalizeContextType(
+		contextType: ChatContextType
+	): Exclude<ChatContextType, 'general'> {
+		return (contextType === 'general' ? 'global' : contextType) as Exclude<
+			ChatContextType,
+			'general'
+		>;
 	}
 
 	// ============================================

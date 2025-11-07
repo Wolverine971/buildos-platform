@@ -18,6 +18,13 @@ interface ListOntoTasksArgs {
 	limit?: number;
 }
 
+interface SearchOntoTasksArgs {
+	search: string;
+	project_id?: string;
+	state_key?: string;
+	limit?: number;
+}
+
 interface ListOntoGoalsArgs {
 	project_id?: string;
 	limit?: number;
@@ -29,6 +36,13 @@ interface ListOntoPlansArgs {
 }
 
 interface ListOntoProjectsArgs {
+	state_key?: string;
+	type_key?: string;
+	limit?: number;
+}
+
+interface SearchOntoProjectsArgs {
+	search: string;
 	state_key?: string;
 	type_key?: string;
 	limit?: number;
@@ -271,8 +285,16 @@ export class ChatToolExecutor {
 					result = await this.listOntoProjects(args as ListOntoProjectsArgs);
 					break;
 
+				case 'search_onto_projects':
+					result = await this.searchOntoProjects(args as SearchOntoProjectsArgs);
+					break;
+
 				case 'list_onto_tasks':
 					result = await this.listOntoTasks(args as ListOntoTasksArgs);
+					break;
+
+				case 'search_onto_tasks':
+					result = await this.searchOntoTasks(args as SearchOntoTasksArgs);
 					break;
 
 				case 'list_onto_plans':
@@ -464,6 +486,61 @@ export class ChatToolExecutor {
 		};
 	}
 
+	private async searchOntoProjects(args: SearchOntoProjectsArgs): Promise<{
+		projects: any[];
+		total: number;
+		message: string;
+	}> {
+		const searchTerm = this.prepareSearchTerm(args.search);
+		if (!searchTerm) {
+			throw new Error('Search term is required for search_onto_projects');
+		}
+
+		const actorId = await this.getActorId();
+		const likePattern = `%${searchTerm}%`;
+
+		let query = this.supabase
+			.from('onto_projects')
+			.select(
+				`
+					id,
+					name,
+					description,
+					type_key,
+					state_key,
+					facet_context,
+					facet_scale,
+					facet_stage,
+					created_at,
+					updated_at
+				`,
+				{ count: 'exact' }
+			)
+			.eq('created_by', actorId)
+			.order('updated_at', { ascending: false })
+			.or(`name.ilike.${likePattern},description.ilike.${likePattern}`);
+
+		if (args.state_key) {
+			query = query.eq('state_key', args.state_key);
+		}
+
+		if (args.type_key) {
+			query = query.eq('type_key', args.type_key);
+		}
+
+		const limit = Math.min(args.limit ?? 10, 30);
+		query = query.limit(limit);
+
+		const { data, count, error } = await query;
+		if (error) throw error;
+
+		return {
+			projects: data ?? [],
+			total: count ?? data?.length ?? 0,
+			message: `Found ${data?.length ?? 0} projects matching "${args.search}".`
+		};
+	}
+
 	private async listOntoTasks(args: ListOntoTasksArgs): Promise<{
 		tasks: any[];
 		total: number;
@@ -519,6 +596,70 @@ export class ChatToolExecutor {
 			tasks: normalized,
 			total: count ?? normalized.length,
 			message: `Found ${normalized.length} ontology tasks. Use get_onto_task_details for full information.`
+		};
+	}
+
+	private async searchOntoTasks(args: SearchOntoTasksArgs): Promise<{
+		tasks: any[];
+		total: number;
+		message: string;
+	}> {
+		const searchTerm = this.prepareSearchTerm(args.search);
+		if (!searchTerm) {
+			throw new Error('Search term is required for search_onto_tasks');
+		}
+
+		const actorId = await this.getActorId();
+		let query = this.supabase
+			.from('onto_tasks')
+			.select(
+				`
+					id,
+					project_id,
+					plan_id,
+					title,
+					state_key,
+					priority,
+					due_at,
+					props,
+					project:onto_projects(name)
+				`,
+				{ count: 'exact' }
+			)
+			.eq('created_by', actorId)
+			.order('updated_at', { ascending: false })
+			.ilike('title', `%${searchTerm}%`);
+
+		if (args.project_id) {
+			await this.assertProjectOwnership(args.project_id, actorId);
+			query = query.eq('project_id', args.project_id);
+		}
+
+		if (args.state_key) {
+			query = query.eq('state_key', args.state_key);
+		}
+
+		const limit = Math.min(args.limit ?? 20, 50);
+		query = query.limit(limit);
+
+		const { data, count, error } = await query;
+		if (error) throw error;
+
+		const normalized = (data ?? []).map((task: any) => {
+			const projectName = Array.isArray(task.project)
+				? task.project[0]?.name
+				: task.project?.name;
+			const { project, ...rest } = task;
+			return {
+				...rest,
+				project_name: projectName ?? null
+			};
+		});
+
+		return {
+			tasks: normalized,
+			total: count ?? normalized.length,
+			message: `Found ${normalized.length} tasks matching "${args.search}".`
 		};
 	}
 
@@ -908,6 +1049,11 @@ export class ChatToolExecutor {
 			success: true,
 			message: data.message ?? 'Ontology plan deleted successfully'
 		};
+	}
+
+	private prepareSearchTerm(term?: string): string {
+		if (!term) return '';
+		return term.replace(/[%]/g, '').replace(/,/g, ' ').trim();
 	}
 
 	private async logToolExecution(
