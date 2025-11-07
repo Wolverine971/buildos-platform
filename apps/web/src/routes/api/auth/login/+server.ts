@@ -1,13 +1,18 @@
 // apps/web/src/routes/api/auth/login/+server.ts
-import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+import { ApiResponse, ErrorCode, HttpStatus } from '$lib/utils/api-response';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	const { supabase, safeGetSession } = locals;
 	const { email, password } = await request.json();
 
 	if (!email || !password) {
-		return json({ error: 'Email and password are required' }, { status: 400 });
+		return ApiResponse.error(
+			'Email and password are required',
+			HttpStatus.BAD_REQUEST,
+			ErrorCode.MISSING_FIELD,
+			{ fields: ['email', 'password'] }
+		);
 	}
 
 	try {
@@ -18,11 +23,15 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		});
 
 		if (error) {
-			return json({ error: error.message }, { status: 401 });
+			return ApiResponse.unauthorized(error.message);
 		}
 
 		if (!data.session) {
-			return json({ error: 'Login failed - no session created' }, { status: 401 });
+			return ApiResponse.error(
+				'Login failed - no session created',
+				HttpStatus.UNAUTHORIZED,
+				ErrorCode.OPERATION_FAILED
+			);
 		}
 
 		// Update locals immediately for this request
@@ -33,12 +42,14 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		const { user } = await safeGetSession();
 
 		// Return success with user data
-		return json({
-			success: true,
-			user: user || data.user
-		});
+		return ApiResponse.success(
+			{
+				user: user || data.user
+			},
+			'Logged in successfully'
+		);
 	} catch (err: any) {
 		console.error('Server login error:', err);
-		return json({ error: 'Login failed' }, { status: 500 });
+		return ApiResponse.internalError(err, 'Login failed');
 	}
 };

@@ -1,11 +1,11 @@
 // apps/web/src/routes/api/brief-jobs/[id]/+server.ts
-import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+import { ApiResponse } from '$lib/utils/api-response';
 
 export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetSession } }) => {
 	const { user } = await safeGetSession();
 	if (!user) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
+		return ApiResponse.unauthorized();
 	}
 
 	try {
@@ -18,7 +18,7 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 			.single();
 
 		if (!idError && jobById) {
-			return json(jobById);
+			return ApiResponse.success({ job: jobById });
 		}
 
 		// If not found by ID, try queue_job_id
@@ -31,13 +31,13 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 			.single();
 
 		if (!queueIdError && jobByQueueId) {
-			return json(jobByQueueId);
+			return ApiResponse.success({ job: jobByQueueId });
 		}
 
 		// If still not found, return 404
-		return json({ error: 'Job not found' }, { status: 404 });
+		return ApiResponse.notFound('Job');
 	} catch (error) {
 		console.error('Error fetching queue job:', error);
-		return json({ error: 'Failed to fetch job' }, { status: 500 });
+		return ApiResponse.internalError(error, 'Failed to fetch job');
 	}
 };

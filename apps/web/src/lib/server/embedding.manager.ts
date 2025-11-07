@@ -22,6 +22,8 @@ interface CRUDResult {
 	error?: string;
 }
 
+type GenericRecord = { id: string } & Record<string, any>;
+
 /**
  * Manages embeddings and CRUD operations for BuildOS data
  * Handles semantic search, deduplication, and intelligent data operations
@@ -107,8 +109,15 @@ export class EmbeddingManager {
 				return;
 			}
 
+			const typedRecords = Array.isArray(records)
+				? (records as unknown as GenericRecord[])
+				: [];
+			if (!typedRecords.length) {
+				return;
+			}
+
 			// Generate embedding texts
-			const embeddingTexts = records.map((record) =>
+			const embeddingTexts = typedRecords.map((record) =>
 				this.generateEmbeddingText(table, record)
 			);
 
@@ -116,10 +125,16 @@ export class EmbeddingManager {
 			const embeddings = await this.generateEmbeddings(embeddingTexts);
 
 			// Update records with embeddings
-			const updates = records.map((record, index) => ({
-				id: record.id,
-				embedding: toVectorLiteral(embeddings[index])
-			}));
+			const updates = typedRecords
+				.map((record, index) => {
+					const vector = embeddings[index];
+					if (!vector) return null;
+					return {
+						id: record.id,
+						embedding: toVectorLiteral(vector)
+					};
+				})
+				.filter(Boolean) as Array<{ id: string; embedding: string }>;
 
 			// Batch update
 			for (const update of updates) {
@@ -330,7 +345,16 @@ export class EmbeddingManager {
 				return { operation: 'error', table, error: error.message };
 			}
 
-			return { operation: 'created', table, id: keyValue, record: created };
+			if (!created) {
+				return { operation: 'error', table, error: 'Failed to create record' };
+			}
+
+			return {
+				operation: 'created',
+				table,
+				id: keyValue,
+				record: created as unknown as GenericRecord
+			};
 		}
 	}
 
@@ -345,7 +369,12 @@ export class EmbeddingManager {
 			return { operation: 'error', table, error: error.message };
 		}
 
-		return { operation: 'created', table, id: record.id, record };
+		if (!record) {
+			return { operation: 'error', table, error: 'Failed to create record' };
+		}
+
+		const createdRecord = record as unknown as GenericRecord;
+		return { operation: 'created', table, id: createdRecord.id, record: createdRecord };
 	}
 
 	private async handleUpdate(table: string, data: any): Promise<CRUDResult> {

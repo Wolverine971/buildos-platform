@@ -6,7 +6,7 @@
 
 import type { PageServerLoad } from './$types';
 import { error } from '@sveltejs/kit';
-import type { Template } from '$lib/types/onto';
+import type { ResolvedTemplate } from '$lib/services/ontology/template-resolver.service';
 import type { TypedSupabaseClient } from '@buildos/supabase-client';
 import { fetchTemplateCatalog } from '$lib/services/ontology/ontology-template-catalog.service';
 
@@ -69,17 +69,17 @@ async function getFacetValues(supabase: TypedSupabaseClient): Promise<FacetValue
 	return (data as FacetValue[]) ?? [];
 }
 
-function groupTemplatesByRealm(templates: Template[]): Record<string, Template[]> {
+function groupTemplatesByRealm(templates: ResolvedTemplate[]): Record<string, ResolvedTemplate[]> {
 	return templates.reduce(
 		(acc, template) => {
-			const realm = template.metadata?.realm ?? 'other';
+			const realm = (template.metadata?.realm as string | undefined) ?? 'other';
 			if (!acc[realm]) {
 				acc[realm] = [];
 			}
 			acc[realm].push(template);
 			return acc;
 		},
-		{} as Record<string, Template[]>
+		{} as Record<string, ResolvedTemplate[]>
 	);
 }
 

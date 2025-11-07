@@ -144,26 +144,35 @@
 			const result = await response.json();
 
 			if (!response.ok) {
+				const errorMessage = result?.error || result?.message || 'Registration failed';
+
 				// Handle specific error codes
-				if (result.code === 'USER_EXISTS') {
+				if (result?.code === 'USER_EXISTS') {
 					// Offer to redirect to login
-					error = result.error;
+					error = errorMessage;
 					setTimeout(() => {
 						if (confirm('Would you like to sign in instead?')) {
 							goto('/auth/login');
 						}
 					}, 100);
 				} else {
-					error = result.error || 'Registration failed';
+					error = errorMessage;
 				}
 				return;
 			}
 
+			const requiresEmailConfirmation =
+				result?.data?.requiresEmailConfirmation ??
+				result?.requiresEmailConfirmation ??
+				false;
+
 			// Handle successful registration
-			if (result.requiresEmailConfirmation) {
+			if (requiresEmailConfirmation) {
 				// Show success message for email confirmation
 				success = true;
-				successMessage = result.message;
+				successMessage =
+					result?.message ??
+					'Registration successful! Please check your email to confirm your account before signing in.';
 
 				// Clear form
 				email = '';
@@ -178,7 +187,8 @@
 
 				// Show welcome message after navigation
 				toastService.success(
-					'Welcome to BuildOS! Your account has been created successfully.'
+					result?.message ||
+						'Welcome to BuildOS! Your account has been created successfully.'
 				);
 			}
 		} catch (err: any) {

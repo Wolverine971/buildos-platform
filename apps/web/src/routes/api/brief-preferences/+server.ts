@@ -1,6 +1,6 @@
 // apps/web/src/routes/api/brief-preferences/+server.ts
-import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+import { ApiResponse, ErrorCode, HttpStatus } from '$lib/utils/api-response';
 
 // Default preferences
 // NOTE: Brief preferences control WHEN briefs are generated.
@@ -16,7 +16,7 @@ const DEFAULT_PREFERENCES = {
 export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession } }) => {
 	const { user } = await safeGetSession();
 	if (!user) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
+		return ApiResponse.unauthorized();
 	}
 
 	try {
@@ -52,7 +52,7 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
 				throw createError;
 			}
 
-			return json({
+			return ApiResponse.success({
 				preferences: {
 					...newPreferences,
 					timezone: userData?.timezone || 'UTC'
@@ -61,7 +61,7 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
 		}
 
 		// Merge timezone from users table (centralized source of truth)
-		return json({
+		return ApiResponse.success({
 			preferences: {
 				...preferences,
 				timezone: userData?.timezone || 'UTC'
@@ -69,14 +69,14 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
 		});
 	} catch (error) {
 		console.error('Error fetching brief preferences:', error);
-		return json({ error: 'Failed to fetch preferences' }, { status: 500 });
+		return ApiResponse.internalError(error, 'Failed to fetch preferences');
 	}
 };
 
 export const POST: RequestHandler = async ({ request, locals: { supabase, safeGetSession } }) => {
 	const { user } = await safeGetSession();
 	if (!user) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
+		return ApiResponse.unauthorized();
 	}
 
 	try {
@@ -85,7 +85,12 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 
 		// Validate input
 		if (!frequency || !['daily', 'weekly'].includes(frequency)) {
-			return json({ error: 'Invalid frequency. Must be daily or weekly' }, { status: 400 });
+			return ApiResponse.error(
+				'Invalid frequency. Must be daily or weekly',
+				HttpStatus.BAD_REQUEST,
+				ErrorCode.INVALID_FIELD,
+				{ field: 'frequency' }
+			);
 		}
 
 		if (
@@ -95,18 +100,30 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 				day_of_week < 0 ||
 				day_of_week > 6)
 		) {
-			return json(
-				{ error: 'Invalid day_of_week. Must be 0-6 for weekly frequency' },
-				{ status: 400 }
+			return ApiResponse.error(
+				'Invalid day_of_week. Must be 0-6 for weekly frequency',
+				HttpStatus.BAD_REQUEST,
+				ErrorCode.INVALID_FIELD,
+				{ field: 'day_of_week' }
 			);
 		}
 
 		if (!time_of_day || !/^([01]?[0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$/.test(time_of_day)) {
-			return json({ error: 'Invalid time_of_day format. Use HH:MM:SS' }, { status: 400 });
+			return ApiResponse.error(
+				'Invalid time_of_day format. Use HH:MM:SS',
+				HttpStatus.BAD_REQUEST,
+				ErrorCode.INVALID_FIELD,
+				{ field: 'time_of_day' }
+			);
 		}
 
 		if (!timezone) {
-			return json({ error: 'Timezone is required' }, { status: 400 });
+			return ApiResponse.error(
+				'Timezone is required',
+				HttpStatus.BAD_REQUEST,
+				ErrorCode.MISSING_FIELD,
+				{ field: 'timezone' }
+			);
 		}
 
 		// Check if preferences exist
@@ -182,14 +199,20 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 				.in('status', ['pending', 'processing']);
 		}
 
-		return json({
-			preferences,
-			message:
-				'Preferences updated successfully. New briefs will be scheduled according to your updated preferences.'
-		});
+		const responsePreferences = {
+			...preferences,
+			timezone
+		};
+
+		return ApiResponse.success(
+			{
+				preferences: responsePreferences
+			},
+			'Preferences updated successfully. New briefs will be scheduled according to your updated preferences.'
+		);
 	} catch (error) {
 		console.error('Error updating brief preferences:', error);
-		return json({ error: 'Failed to update preferences' }, { status: 500 });
+		return ApiResponse.internalError(error, 'Failed to update preferences');
 	}
 };
 

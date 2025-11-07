@@ -6,12 +6,13 @@ import { RailwayWorkerService } from '$lib/services/railwayWorker.service';
 import type { UserContext } from '$lib/types/user-context';
 
 type SupabaseClientType = SupabaseClient<Database>;
+type OnboardingInputKey = 'input_projects' | 'input_work_style' | 'input_challenges' | 'input_help_focus';
 
 export class OnboardingServerService {
 	private supabase: SupabaseClientType;
 
 	// Input column mapping (where raw input is stored)
-	private readonly CATEGORY_INPUT_MAPPING: Record<string, keyof UserContext> = {
+	private readonly CATEGORY_INPUT_MAPPING: Record<string, OnboardingInputKey> = {
 		projects: 'input_projects',
 		work_style: 'input_work_style',
 		challenges: 'input_challenges',
@@ -29,7 +30,7 @@ export class OnboardingServerService {
 		updates: Record<string, string | null | undefined>,
 		userId: string
 	): Promise<UserContext | null> {
-		const sanitizedUpdates: Partial<UserContext> = {};
+		const sanitizedUpdates: Partial<Record<OnboardingInputKey, string>> = {};
 
 		for (const [category, value] of Object.entries(updates)) {
 			const inputColumn = this.CATEGORY_INPUT_MAPPING[category];
@@ -72,7 +73,7 @@ export class OnboardingServerService {
 			const { data, error } = await this.supabase
 				.from('user_context')
 				.update({
-					...sanitizedUpdates,
+					...(sanitizedUpdates as Partial<UserContext>),
 					updated_at: timestamp
 				})
 				.eq('user_id', userId)
@@ -91,7 +92,7 @@ export class OnboardingServerService {
 			.from('user_context')
 			.insert({
 				user_id: userId,
-				...sanitizedUpdates,
+				...(sanitizedUpdates as Partial<UserContext>),
 				created_at: timestamp,
 				updated_at: timestamp
 			})

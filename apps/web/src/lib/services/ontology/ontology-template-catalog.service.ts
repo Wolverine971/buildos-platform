@@ -9,6 +9,7 @@ import {
 	getTextDocumentTemplates,
 	getAvailableTemplates
 } from '$lib/services/ontology/template-resolver.service';
+import type { ResolvedTemplate } from '$lib/services/ontology/template-resolver.service';
 
 export type TemplateCatalogDirection = 'asc' | 'desc';
 
@@ -25,9 +26,12 @@ export interface TemplateCatalogParams {
 }
 
 export interface TemplateCatalogResult {
-	templates: Template[];
-	groupedByRealm: Record<string, Template[]>;
+	templates: ResolvedTemplate[];
+	groupedByRealm: Record<string, ResolvedTemplate[]>;
 }
+
+const getMetadataString = (template: ResolvedTemplate, key: string): string | undefined =>
+	template.metadata?.[key] as string | undefined;
 
 export async function fetchTemplateCatalog(
 	client: TypedSupabaseClient,
@@ -43,7 +47,7 @@ export async function fetchTemplateCatalog(
 		direction = 'asc'
 	}: TemplateCatalogParams
 ): Promise<TemplateCatalogResult> {
-	let templates: Template[] = [];
+	let templates: ResolvedTemplate[] = [];
 	const normalizedDirection: TemplateCatalogDirection =
 		(direction ?? 'asc').toLowerCase() === 'desc' ? 'desc' : 'asc';
 
@@ -53,7 +57,7 @@ export async function fetchTemplateCatalog(
 		templates = await getAvailableTemplates(client, scope, false);
 
 		if (realm) {
-			templates = templates.filter((t) => t.metadata?.realm === realm);
+			templates = templates.filter((t) => getMetadataString(t, 'realm') === realm);
 		}
 
 		if (contexts.length) {
@@ -78,18 +82,23 @@ export async function fetchTemplateCatalog(
 		}
 
 		if (primitive) {
-			templates = templates.filter((t) => t.metadata?.primitive === primitive);
+			templates = templates.filter((t) => getMetadataString(t, 'primitive') === primitive);
 		}
 
 		if (search) {
 			const searchLower = search.toLowerCase();
-			templates = templates.filter(
-				(t) =>
+			templates = templates.filter((t) => {
+				const description = getMetadataString(t, 'description');
+				const matchesDescription =
+					typeof description === 'string' &&
+					description.toLowerCase().includes(searchLower);
+
+				return (
 					t.name.toLowerCase().includes(searchLower) ||
 					t.type_key.toLowerCase().includes(searchLower) ||
-					(t.metadata?.description &&
-						t.metadata.description.toLowerCase().includes(searchLower))
-			);
+					matchesDescription
+				);
+			});
 		}
 	} else {
 		const { data, error } = await client.rpc('get_template_catalog', {
@@ -102,20 +111,26 @@ export async function fetchTemplateCatalog(
 			throw new Error(error.message);
 		}
 
-		templates = (data ?? []) as Template[];
+		templates = ((data ?? []) as Template[]).map(
+			(template) =>
+				({
+					...template,
+					inheritance_chain: []
+				}) as unknown as ResolvedTemplate
+		);
 	}
 
 	const sorted = sortTemplates(templates, sort ?? 'name', normalizedDirection);
 	const groupedByRealm = sorted.reduce(
 		(acc, template) => {
-			const templateRealm = template.metadata?.realm ?? 'other';
+			const templateRealm = getMetadataString(template, 'realm') ?? 'other';
 			if (!acc[templateRealm]) {
 				acc[templateRealm] = [];
 			}
 			acc[templateRealm].push(template);
 			return acc;
 		},
-		{} as Record<string, Template[]>
+		{} as Record<string, ResolvedTemplate[]>
 	);
 
 	return {
@@ -125,19 +140,19 @@ export async function fetchTemplateCatalog(
 }
 
 export function sortTemplates(
-	templates: Template[],
+	templates: ResolvedTemplate[],
 	sort: string,
 	direction: TemplateCatalogDirection
-): Template[] {
+): ResolvedTemplate[] {
 	const sorted = [...templates];
 	const factor = direction === 'desc' ? -1 : 1;
 
-	const getValue = (template: Template) => {
+	const getValue = (template: ResolvedTemplate) => {
 		switch (sort) {
 			case 'type_key':
 				return template.type_key ?? '';
 			case 'realm':
-				return template.metadata?.realm ?? '';
+				return getMetadataString(template, 'realm') ?? '';
 			case 'scope':
 				return template.scope ?? '';
 			case 'status':

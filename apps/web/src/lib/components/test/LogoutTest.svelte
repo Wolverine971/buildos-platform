@@ -1,6 +1,6 @@
 <!-- apps/web/src/lib/components/test/LogoutTest.svelte -->
 <script lang="ts">
-	import { logout, forceLogout, forceAuthRefresh } from '$lib/utils/auth';
+	import { logout, forceAuthRefresh } from '$lib/utils/auth';
 	import { createSupabaseBrowser } from '$lib/supabase';
 	import Button from '$lib/components/ui/Button.svelte';
 
@@ -23,17 +23,6 @@
 		} catch (error) {
 			testResults = [...testResults, `Error: ${error.message}`];
 			isLoggingOut = false;
-		}
-	}
-
-	async function testForceLogout() {
-		isLoggingOut = true;
-		testResults = ['Starting force logout...'];
-
-		try {
-			await forceLogout('/auth/login?message=Force logged out');
-		} catch (error) {
-			testResults = [...testResults, `Error: ${error.message}`];
 		}
 	}
 
@@ -85,7 +74,7 @@
 		const pageDataLoggedIn = !!user;
 
 		if (clientLoggedIn !== serverLoggedIn || serverLoggedIn !== pageDataLoggedIn) {
-			testResults = [...testResults, '⚠️ AUTH STATE MISMATCH DETECTED!'];
+			testResults = [...testResults, 'WARNING: AUTH STATE MISMATCH DETECTED!'];
 		}
 
 		testResults = [...testResults, '=== End Auth Check ==='];
@@ -155,7 +144,7 @@
 </script>
 
 <div class="p-4 bg-yellow-100 dark:bg-yellow-900 rounded-lg max-w-4xl mx-auto my-4">
-	<h3 class="font-bold mb-4 text-lg">🔧 Logout Debug Panel</h3>
+	<h3 class="font-bold mb-4 text-lg">Logout Debug Panel</h3>
 
 	<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
 		<div class="bg-white dark:bg-gray-800 p-3 rounded">
@@ -201,16 +190,6 @@
 		</Button>
 
 		<Button
-			onclick={testForceLogout}
-			disabled={isLoggingOut}
-			size="sm"
-			variant="ghost"
-			class="px-3 py-2 bg-red-500 text-white text-sm hover:bg-red-600 disabled:opacity-50"
-		>
-			Force Logout
-		</Button>
-
-		<Button
 			onclick={checkAuthState}
 			disabled={isLoggingOut}
 			size="sm"
@@ -246,7 +225,9 @@
 			class="bg-gray-900 text-green-400 p-3 rounded text-xs font-mono overflow-x-auto max-h-96 overflow-y-auto"
 		>
 			{#each testResults as result}
-				<div class={result.includes('⚠️') ? 'text-yellow-400 font-bold' : ''}>{result}</div>
+				<div class={result.includes('WARNING:') ? 'text-yellow-400 font-bold' : ''}>
+					{result}
+				</div>
 			{/each}
 		</div>
 	{/if}

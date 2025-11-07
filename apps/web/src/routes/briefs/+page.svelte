@@ -130,18 +130,16 @@
 		try {
 			const response = await fetch('/api/brief-jobs/next-scheduled');
 
+			const payload = await response.json();
+
 			if (!response.ok) {
-				throw new Error('Failed to fetch next scheduled brief');
+				throw new Error(
+					payload?.error || payload?.message || 'Failed to fetch next scheduled brief'
+				);
 			}
 
-			const result = await response.json();
-
-			if (result.success) {
-				nextScheduledBrief = result.nextScheduledBrief;
-			} else {
-				console.error('Error from API:', result.error);
-				nextScheduledBrief = null;
-			}
+			nextScheduledBrief =
+				payload?.data?.nextScheduledBrief ?? payload?.nextScheduledBrief ?? null;
 		} catch (err) {
 			console.error('Error fetching next scheduled brief:', err);
 			nextScheduledBrief = null;

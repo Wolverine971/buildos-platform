@@ -1,6 +1,6 @@
 // apps/web/src/routes/api/notification-preferences/+server.ts
-import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+import { ApiResponse, ErrorCode, HttpStatus } from '$lib/utils/api-response';
 
 /**
  * GET: Get user notification preferences
@@ -13,7 +13,7 @@ import type { RequestHandler } from './$types';
 export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSession } }) => {
 	const { user } = await safeGetSession();
 	if (!user) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
+		return ApiResponse.unauthorized();
 	}
 
 	try {
@@ -32,7 +32,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 
 		// Return defaults if no preferences set yet
 		if (!data && dailyBrief) {
-			return json({
+			return ApiResponse.success({
 				preferences: {
 					should_email_daily_brief: false,
 					should_sms_daily_brief: false
@@ -40,10 +40,10 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 			});
 		}
 
-		return json({ preferences: data });
+		return ApiResponse.success({ preferences: data });
 	} catch (error) {
 		console.error('Error fetching notification preferences:', error);
-		return json({ error: 'Failed to fetch preferences' }, { status: 500 });
+		return ApiResponse.internalError(error, 'Failed to fetch preferences');
 	}
 };
 
@@ -58,7 +58,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 export const PUT: RequestHandler = async ({ request, locals: { supabase, safeGetSession } }) => {
 	const { user } = await safeGetSession();
 	if (!user) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
+		return ApiResponse.unauthorized();
 	}
 
 	try {
@@ -78,23 +78,29 @@ export const PUT: RequestHandler = async ({ request, locals: { supabase, safeGet
 			}
 
 			if (!smsPrefs?.phone_number) {
-				return json(
-					{ error: 'Phone number required', requiresPhoneSetup: true },
-					{ status: 400 }
+				return ApiResponse.error(
+					'Phone number required',
+					HttpStatus.BAD_REQUEST,
+					ErrorCode.MISSING_FIELD,
+					{ requiresPhoneSetup: true }
 				);
 			}
 
 			if (!smsPrefs?.phone_verified) {
-				return json(
-					{ error: 'Phone number not verified', requiresPhoneVerification: true },
-					{ status: 400 }
+				return ApiResponse.error(
+					'Phone number not verified',
+					HttpStatus.BAD_REQUEST,
+					ErrorCode.INVALID_FIELD,
+					{ requiresPhoneVerification: true }
 				);
 			}
 
 			if (smsPrefs?.opted_out) {
-				return json(
-					{ error: 'You have opted out of SMS notifications', requiresOptIn: true },
-					{ status: 400 }
+				return ApiResponse.error(
+					'You have opted out of SMS notifications',
+					HttpStatus.BAD_REQUEST,
+					ErrorCode.FORBIDDEN,
+					{ requiresOptIn: true }
 				);
 			}
 		}
@@ -112,12 +118,11 @@ export const PUT: RequestHandler = async ({ request, locals: { supabase, safeGet
 			}
 
 			if (!briefPrefs?.is_active) {
-				return json(
-					{
-						error: 'Daily brief generation is not active. Enable brief generation in Brief Preferences first.',
-						requiresBriefActivation: true
-					},
-					{ status: 400 }
+				return ApiResponse.error(
+					'Daily brief generation is not active. Enable brief generation in Brief Preferences first.',
+					HttpStatus.BAD_REQUEST,
+					ErrorCode.INVALID_FIELD,
+					{ requiresBriefActivation: true }
 				);
 			}
 		}
@@ -148,9 +153,12 @@ export const PUT: RequestHandler = async ({ request, locals: { supabase, safeGet
 
 		if (error) throw error;
 
-		return json({ success: true, preference: data });
+		return ApiResponse.success(
+			{ preference: data },
+			'Notification preferences updated successfully'
+		);
 	} catch (error) {
 		console.error('Error updating notification preferences:', error);
-		return json({ error: 'Failed to update preferences' }, { status: 500 });
+		return ApiResponse.internalError(error, 'Failed to update preferences');
 	}
 };

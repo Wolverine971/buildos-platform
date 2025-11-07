@@ -50,6 +50,20 @@ const DEFAULT_FEEDBACK_OVERVIEW = {
 	}>
 };
 
+type BetaRecentActivity =
+	| {
+			type: 'signup';
+			user?: string | null;
+			status?: string | null;
+			created_at: string;
+	  }
+	| {
+			type: 'feedback';
+			feedback_type?: string | null;
+			status?: string | null;
+			created_at: string | null;
+	  };
+
 const DEFAULT_BETA_OVERVIEW = {
 	signups: {
 		total: 0,
@@ -65,13 +79,7 @@ const DEFAULT_BETA_OVERVIEW = {
 		tier_breakdown: {} as Record<string, number>,
 		total_feedback: 0
 	},
-	recent_activity: [] as Array<{
-		type: string;
-		user?: string;
-		status?: string;
-		feedback_type?: string;
-		created_at: string;
-	}>
+	recent_activity: [] as BetaRecentActivity[]
 };
 
 const DEFAULT_COMPREHENSIVE_ANALYTICS = {
@@ -139,7 +147,7 @@ const clone = <T>(value: T): T =>
 		? structuredClone(value)
 		: JSON.parse(JSON.stringify(value));
 
-const coerceNumber = (value: unknown, fallback: number): number => {
+const coerceNumber = (value: unknown, fallback: number = 0): number => {
 	if (typeof value === 'number' && Number.isFinite(value)) {
 		return value;
 	}
@@ -167,9 +175,10 @@ const normalizeNumericRecord = <T extends Record<string, number>>(
 
 	for (const key of Object.keys(result)) {
 		const typedKey = key as keyof T;
+		const fallback = defaults[typedKey] ?? 0;
 		result[typedKey] = coerceNumber(
 			(source as Record<string, unknown>)[key],
-			defaults[typedKey]
+			fallback
 		) as T[keyof T];
 	}
 
@@ -181,7 +190,7 @@ function resolveDateRange(timeframe: AnalyticsTimeframe): DateRange {
 	const endDate = new Date();
 	const startDate = new Date(endDate.getTime() - days * 24 * 60 * 60 * 1000);
 
-	const toIsoDate = (date: Date) => date.toISOString().split('T')[0];
+	const toIsoDate = (date: Date) => date.toISOString().slice(0, 10);
 
 	return {
 		startDate: toIsoDate(startDate),
@@ -213,10 +222,10 @@ export async function getVisitorOverview(
 	const overview = data?.[0] ?? DEFAULT_VISITOR_OVERVIEW;
 
 	return {
-		total_visitors: parseInt(overview.total_visitors, 10) || 0,
-		visitors_7d: parseInt(overview.visitors_7d, 10) || 0,
-		visitors_30d: parseInt(overview.visitors_30d, 10) || 0,
-		unique_visitors_today: parseInt(overview.unique_visitors_today, 10) || 0
+		total_visitors: coerceNumber(overview.total_visitors),
+		visitors_7d: coerceNumber(overview.visitors_7d),
+		visitors_30d: coerceNumber(overview.visitors_30d),
+		unique_visitors_today: coerceNumber(overview.unique_visitors_today)
 	};
 }
 
@@ -233,7 +242,7 @@ export async function getDailyVisitors(client: TypedSupabaseClient, timeframe: A
 
 	return (data || []).map((row: any) => ({
 		date: row.date,
-		visitor_count: parseInt(row.visitor_count, 10) || 0
+		visitor_count: coerceNumber(row.visitor_count)
 	}));
 }
 
@@ -255,13 +264,13 @@ export async function getDailySignups(client: TypedSupabaseClient, timeframe: An
 	const end = new Date(endDate);
 
 	while (cursor <= end) {
-		const dateStr = cursor.toISOString().split('T')[0];
+		const dateStr = cursor.toISOString().slice(0, 10);
 		signupsByDay[dateStr] = 0;
 		cursor.setDate(cursor.getDate() + 1);
 	}
 
 	(data || []).forEach((user) => {
-		const date = new Date(user.created_at).toISOString().split('T')[0];
+		const date = new Date(user.created_at).toISOString().slice(0, 10);
 		if (signupsByDay[date] !== undefined) {
 			signupsByDay[date]++;
 		}
@@ -393,7 +402,9 @@ export async function getTemplateUsageStats(client: TypedSupabaseClient) {
 		.sort((a, b) => b.usage_count - a.usage_count);
 }
 
-export async function getFeedbackOverview(client: TypedSupabaseClient) {
+export async function getFeedbackOverview(
+	client: TypedSupabaseClient
+): Promise<typeof DEFAULT_FEEDBACK_OVERVIEW> {
 	const { data: overviewData, error: overviewError } = await client
 		.from('feedback')
 		.select('category, status, rating, created_at')
@@ -452,11 +463,14 @@ export async function getFeedbackOverview(client: TypedSupabaseClient) {
 		},
 		category_breakdown: categoryBreakdown,
 		status_breakdown: statusBreakdown,
-		recent_feedback: recentFeedback || []
+		recent_feedback: (recentFeedback ||
+			[]) as (typeof DEFAULT_FEEDBACK_OVERVIEW)['recent_feedback']
 	};
 }
 
-export async function getBetaOverview(client: TypedSupabaseClient) {
+export async function getBetaOverview(
+	client: TypedSupabaseClient
+): Promise<typeof DEFAULT_BETA_OVERVIEW> {
 	const { data: signups, error: signupsError } = await client
 		.from('beta_signups')
 		.select('id, signup_status, created_at, full_name, email');
@@ -491,7 +505,8 @@ export async function getBetaOverview(client: TypedSupabaseClient) {
 	const signupStats =
 		signups?.reduce(
 			(acc, signup) => {
-				acc[signup.signup_status] = (acc[signup.signup_status] || 0) + 1;
+				const status = signup.signup_status ?? 'unknown';
+				acc[status] = (acc[status] || 0) + 1;
 				return acc;
 			},
 			{} as Record<string, number>
@@ -514,14 +529,15 @@ export async function getBetaOverview(client: TypedSupabaseClient) {
 		members?.reduce(
 			(acc, member) => {
 				if (member.is_active) {
-					acc[member.beta_tier] = (acc[member.beta_tier] || 0) + 1;
+					const tier = member.beta_tier ?? 'unassigned';
+					acc[tier] = (acc[tier] || 0) + 1;
 				}
 				return acc;
 			},
 			{} as Record<string, number>
 		) || {};
 
-	const recentActivity = [
+	const recentActivity: BetaRecentActivity[] = [
 		...(signups?.slice(0, 3).map((signup) => ({
 			type: 'signup' as const,
 			user: signup.full_name || signup.email,
@@ -535,7 +551,11 @@ export async function getBetaOverview(client: TypedSupabaseClient) {
 			created_at: feedback.created_at
 		})) || [])
 	]
-		.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+		.sort((a, b) => {
+			const bTime = b.created_at ? new Date(b.created_at).getTime() : 0;
+			const aTime = a.created_at ? new Date(a.created_at).getTime() : 0;
+			return bTime - aTime;
+		})
 		.slice(0, 5);
 
 	return {

@@ -1,12 +1,11 @@
 // apps/web/src/routes/api/daily-briefs/cancel/+server.ts
-import { error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 
 export const POST: RequestHandler = async ({ request, locals: { supabase, safeGetSession } }) => {
 	const { user } = await safeGetSession();
 	if (!user) {
-		throw error(401, 'Unauthorized');
+		return ApiResponse.unauthorized();
 	}
 
 	const { briefDate } = await request.json();
@@ -53,6 +52,6 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 		);
 	} catch (err) {
 		console.error('Error cancelling brief generation:', err);
-		throw error(500, 'Failed to cancel brief generation');
+		return ApiResponse.internalError(err, 'Failed to cancel brief generation');
 	}
 };

@@ -1,11 +1,11 @@
 // apps/web/src/routes/api/brief-jobs/+server.ts
-import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+import { ApiResponse } from '$lib/utils/api-response';
 
 export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSession } }) => {
 	const { user } = await safeGetSession();
 	if (!user) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
+		return ApiResponse.unauthorized();
 	}
 
 	try {
@@ -38,7 +38,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 			throw error;
 		}
 
-		return json({
+		return ApiResponse.success({
 			jobs: jobs || [],
 			total: count || 0,
 			limit,
@@ -47,6 +47,6 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 		});
 	} catch (error) {
 		console.error('Error fetching brief jobs:', error);
-		return json({ error: 'Failed to fetch jobs' }, { status: 500 });
+		return ApiResponse.internalError(error, 'Failed to fetch jobs');
 	}
 };

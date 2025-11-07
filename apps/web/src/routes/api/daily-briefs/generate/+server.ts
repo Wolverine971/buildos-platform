@@ -1,6 +1,5 @@
 // apps/web/src/routes/api/daily-briefs/generate/+server.ts
 import type { RequestHandler } from './$types';
-import { error } from '@sveltejs/kit';
 import { DailyBriefGenerator } from '$lib/services/dailyBrief/generator';
 import { DailyBriefRepository } from '$lib/services/dailyBrief/repository';
 import { BriefStreamHandler } from '$lib/services/dailyBrief/streamHandler';
@@ -140,7 +139,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSession } }) => {
 	const { user } = await safeGetSession();
 	if (!user) {
-		throw error(401, 'Unauthorized');
+		return ApiResponse.unauthorized();
 	}
 
 	const userId = user.id;
@@ -149,7 +148,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 	const streaming = url.searchParams.get('streaming') === 'true';
 
 	if (!streaming) {
-		throw error(400, 'This endpoint is for streaming only');
+		return ApiResponse.badRequest('This endpoint is for streaming only');
 	}
 
 	// Calculate target date in user's timezone (avoid DB call if briefDate provided)
@@ -221,7 +220,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 		return streamHandler.createStreamResponse(userId, briefDate, validation.briefId!);
 	} catch (err) {
 		console.error('Error in streaming endpoint:', err);
-		throw error(500, 'Failed to start streaming');
+		return ApiResponse.internalError(err, 'Failed to start streaming');
 	}
 };
 

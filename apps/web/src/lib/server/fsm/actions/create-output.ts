@@ -3,6 +3,7 @@ import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import type { FSMAction, Facets } from '$lib/types/onto';
 import type { TypedSupabaseClient } from '@buildos/supabase-client';
 import type { TransitionContext } from '../engine';
+import type { Json } from '@buildos/shared-types';
 
 type EntityContext = {
 	id: string;
@@ -61,7 +62,7 @@ export async function executeCreateOutputAction(
 			name: action.name,
 			type_key: action.type_key,
 			state_key: stateKey,
-			props: mergedProps,
+			props: mergedProps as Json,
 			created_by: ctx.actor_id
 		})
 		.select('id')

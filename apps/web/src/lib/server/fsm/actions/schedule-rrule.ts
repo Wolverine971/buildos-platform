@@ -1,10 +1,12 @@
 // apps/web/src/lib/server/fsm/actions/schedule-rrule.ts
 import rrule from 'rrule';
+import type { RRule as RRuleClass } from 'rrule';
 const { RRule } = rrule;
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import type { FSMAction } from '$lib/types/onto';
 import type { TransitionContext } from '../engine';
 import type { TypedSupabaseClient } from '@buildos/supabase-client';
+import type { Json } from '@buildos/shared-types';
 
 type EntityContext = {
 	id: string;
@@ -43,7 +45,7 @@ export async function executeScheduleRruleAction(
 	const taskTemplate = normaliseTaskTemplate(action.task_template as Record<string, unknown>);
 	const rule = parseRule(action.rrule);
 
-	const occurrences = rule.all((_, index) => index < MAX_OCCURRENCES);
+	const occurrences = rule.all((_: Date, index: number) => index < MAX_OCCURRENCES);
 
 	if (occurrences.length === 0) {
 		return 'schedule_rrule(0 tasks)';
@@ -68,7 +70,7 @@ export async function executeScheduleRruleAction(
 	return `schedule_rrule(${tasks.length} tasks)`;
 }
 
-function parseRule(rrule: string): RRule {
+function parseRule(rrule: string): RRuleClass {
 	try {
 		return RRule.fromString(rrule);
 	} catch (err) {
@@ -126,7 +128,7 @@ function buildTaskRows(params: {
 				date: occurrenceISO,
 				source_entity_id: entity.id,
 				source_type_key: entity.type_key
-			}),
+			}) as Json,
 			created_by: actorId
 		};
 	});
@@ -152,7 +154,7 @@ function buildTaskProps(
 		source_type_key: recurrence.source_type_key
 	};
 
-	return baseProps;
+	return baseProps as Json;
 }
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {

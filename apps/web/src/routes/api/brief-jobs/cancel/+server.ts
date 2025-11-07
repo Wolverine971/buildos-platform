@@ -1,18 +1,23 @@
 // apps/web/src/routes/api/brief-jobs/cancel/+server.ts
-import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+import { ApiResponse, ErrorCode, HttpStatus } from '$lib/utils/api-response';
 
 export const POST: RequestHandler = async ({ request, locals: { supabase, safeGetSession } }) => {
 	const { user } = await safeGetSession();
 	if (!user) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
+		return ApiResponse.unauthorized();
 	}
 
 	try {
 		const { briefDate, jobType = 'generate_daily_brief' } = await request.json();
 
 		if (!briefDate) {
-			return json({ error: 'briefDate is required' }, { status: 400 });
+			return ApiResponse.error(
+				'briefDate is required',
+				HttpStatus.BAD_REQUEST,
+				ErrorCode.MISSING_FIELD,
+				{ field: 'briefDate' }
+			);
 		}
 
 		// Parse the date and create proper date boundaries
@@ -20,7 +25,12 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 
 		// Validate the date
 		if (isNaN(date.getTime())) {
-			return json({ error: 'Invalid date format' }, { status: 400 });
+			return ApiResponse.error(
+				'Invalid date format',
+				HttpStatus.BAD_REQUEST,
+				ErrorCode.INVALID_FIELD,
+				{ field: 'briefDate' }
+			);
 		}
 
 		// Create start of day and start of next day in UTC
@@ -56,12 +66,14 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 
 		console.log(`Cancelled ${data?.length || 0} jobs`);
 
-		return json({
-			success: true,
-			cancelledCount: data?.length || 0
-		});
+		return ApiResponse.success(
+			{
+				cancelledCount: data?.length || 0
+			},
+			'Cancelled scheduled brief jobs'
+		);
 	} catch (error) {
 		console.error('Error cancelling scheduled jobs:', error);
-		return json({ error: 'Failed to cancel jobs' }, { status: 500 });
+		return ApiResponse.internalError(error, 'Failed to cancel jobs');
 	}
 };

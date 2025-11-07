@@ -165,11 +165,11 @@ describe('DashboardDataService - Race Condition Fixes', () => {
 
 			// Mock successful API response
 			mockSupabase.single.mockResolvedValue({
-				data: { ...mockTask, status: 'completed' },
+				data: { ...mockTask, status: 'done' },
 				error: null
 			});
 
-			const updates = { status: 'completed' as const };
+			const updates = { status: 'done' as const };
 			const result = await service.updateTask('task-123', updates);
 
 			// Should succeed because task was found in todayTasks
@@ -213,7 +213,7 @@ describe('DashboardDataService - Race Condition Fixes', () => {
 				id: 'task-789',
 				project_id: 'project-123',
 				name: 'Weekly Task',
-				status: 'completed' as const
+				status: 'done' as const
 			};
 
 			const mockState = {
@@ -266,7 +266,7 @@ describe('DashboardDataService - Race Condition Fixes', () => {
 				error: { message: 'Database error' }
 			});
 
-			const updates = { status: 'completed' as const };
+			const updates = { status: 'done' as const };
 			const result = await service.updateTask('task-123', updates);
 
 			// Verify optimistic update was applied first

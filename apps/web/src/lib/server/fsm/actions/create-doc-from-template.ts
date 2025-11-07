@@ -4,6 +4,7 @@ import type { FSMAction } from '$lib/types/onto';
 import type { TransitionContext } from '../engine';
 import { inferEntityKindFromType, mergeDeep, renderTemplate } from './utils';
 import type { TypedSupabaseClient } from '@buildos/supabase-client';
+import type { Json } from '@buildos/shared-types';
 
 type EntityRow = {
 	id: string;
@@ -76,7 +77,7 @@ export async function executeCreateDocFromTemplateAction(
 		project_id: entity.project_id,
 		title,
 		type_key: action.template_key,
-		props,
+		props: props as Json,
 		created_by: ctx.actor_id
 	});
 
@@ -86,12 +87,12 @@ export async function executeCreateDocFromTemplateAction(
 		document_id: document.id,
 		number: 1,
 		storage_uri: `generated/${document.id}/v1.md`,
-		props: {
-			content,
-			format: 'markdown',
-			generated_at: new Date().toISOString(),
-			template_key: action.template_key
-		},
+			props: {
+				content,
+				format: 'markdown',
+				generated_at: new Date().toISOString(),
+				template_key: action.template_key
+			} as Json,
 		created_by: ctx.actor_id
 	});
 
@@ -104,7 +105,7 @@ export async function executeCreateDocFromTemplateAction(
 		props: {
 			origin: 'fsm_action',
 			template_key: action.template_key
-		}
+		} as Json
 	});
 
 	return `create_doc_from_template(${document.title})`;
@@ -134,7 +135,7 @@ async function createDocument(
 		project_id: string;
 		title: string;
 		type_key: string;
-		props: Record<string, unknown>;
+		props: Json;
 		created_by: string;
 	}
 ): Promise<DocumentInsertResponse> {

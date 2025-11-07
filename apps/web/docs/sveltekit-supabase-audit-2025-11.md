@@ -4,38 +4,46 @@
 **Auditor:** Senior Engineering Review (Claude Code)
 **Scope:** SvelteKit routing patterns, Supabase client architecture, authentication, API patterns, and performance
 
-## todo 1
+## Progress Update (November 7, 2025)
+
+- ✅ Replaced all cron webhook secret comparisons with a shared `isAuthorizedCronRequest` helper backed by `crypto.timingSafeEqual`, eliminating the identified timing attack.
+- ✅ Added a resilient `onAuthStateChange` listener in the root layout, simplified logout utilities, and ensured cross-tab session invalidation stays in sync.
+- ✅ Standardized API responses across authentication, brief management, health, and cron endpoints using `ApiResponse`, and updated the brief stores/pages to consume the new structure.
+- ✅ Migrated the notification-preferences APIs/stores and daily-brief cancellation endpoints to the shared `ApiResponse` helper, avoiding bespoke JSON payloads.
+- ✅ Hardened dashboard data/analytics services by aligning status enums and numeric coercion with Supabase’s RPC outputs, removing the type errors that previously blocked `svelte-check`.
+- ✅ Simplified the root layout server load by parallelizing Supabase calls, conditionally fetching payment warnings, and dropping unused cookie payloads to reduce navigation blocking.
+- ⏳ Broader API endpoint migration to `ApiResponse` and additional layout streamlining remain on the roadmap.
 
 ## Executive Summary
 
-### Overall Assessment: **8.5/10 - STRONG** ⭐
+### Overall Assessment: **8.5/10 - STRONG**
 
 The BuildOS web application demonstrates **excellent architectural decisions** with modern best practices in SvelteKit and Supabase integration. The codebase uses the latest `@supabase/ssr` package, implements proper JWT validation throughout, and follows a defense-in-depth security strategy.
 
 ### Key Strengths
 
-- ✅ **Modern Package Usage**: Uses `@supabase/ssr` (not deprecated auth-helpers)
-- ✅ **JWT Validation**: Properly validates JWTs with `getUser()` instead of just `getSession()`
-- ✅ **Security Architecture**: Clear separation between client types, proper RLS enforcement
-- ✅ **Performance Optimizations**: Smart session loading, parallel queries, lazy component imports
-- ✅ **Excellent Documentation**: Comprehensive JSDoc explaining security implications
+- **Modern Package Usage**: Uses `@supabase/ssr` (not deprecated auth-helpers)
+- **JWT Validation**: Properly validates JWTs with `getUser()` instead of just `getSession()`
+- **Security Architecture**: Clear separation between client types, proper RLS enforcement
+- **Performance Optimizations**: Smart session loading, parallel queries, lazy component imports
+- **Excellent Documentation**: Comprehensive JSDoc explaining security implications
 
 ### Priority Issues to Address
 
 1. **High Priority:**
-    - ❌ Security: Timing attack vulnerability in cron webhook endpoint
-    - ⚠️ Missing auth state change listener for real-time session updates
-    - ⚠️ Root layout loads too much data (blocks all navigations)
+    - ✅ Security: Timing attack vulnerability in cron webhook endpoint (resolved Nov 7, 2025)
+    - ✅ Missing auth state change listener for real-time session updates (resolved Nov 7, 2025)
+    - ✅ Root layout loads too much data (blocks all navigations) — initial simplification deployed Nov 7, 2025; further tuning tracked separately
 
 2. **Medium Priority:**
-    - ⚠️ Missing form actions for simple mutations (no progressive enhancement)
-    - ⚠️ No rate limiting on most API endpoints
-    - ⚠️ Missing input length validation on many endpoints
+    - Missing form actions for simple mutations (no progressive enhancement)
+    - No rate limiting on most API endpoints
+    - Missing input length validation on many endpoints
 
 3. **Low Priority:**
-    - ℹ️ Code duplication in auth pages (should use shared layout)
-    - ℹ️ Large components over 1,500 lines (maintainability)
-    - ℹ️ No streaming in server load functions
+    - Code duplication in auth pages (should use shared layout)
+    - Large components over 1,500 lines (maintainability)
+    - No streaming in server load functions
 
 ---
 
@@ -45,7 +53,7 @@ The BuildOS web application demonstrates **excellent architectural decisions** w
 
 #### Strengths
 
-**✅ Excellent Layout-Based Protection**
+** Excellent Layout-Based Protection**
 
 ```typescript
 // apps/web/src/routes/admin/+layout.server.ts
@@ -66,7 +74,7 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 
 All `/admin/*` routes inherit this protection - elegant and maintainable.
 
-**✅ Smart Progressive Loading**
+** Smart Progressive Loading**
 
 ```typescript
 // Minimal server load + client fetch with timezone
@@ -82,7 +90,7 @@ export const load: PageServerLoad = async ({ parent, url }) => {
 
 Server renders instantly, client fetches with proper timezone context.
 
-**✅ Advanced Client-Side Streaming**
+** Advanced Client-Side Streaming**
 
 ```typescript
 // Lazy load components on demand
@@ -103,7 +111,7 @@ Reduces initial bundle size, components load only when tabs activate.
 
 #### Issues Found
 
-**❌ CRITICAL: Missing Shared Layouts**
+** CRITICAL: Missing Shared Layouts**
 
 Auth pages (`login/+page.svelte`, `register/+page.svelte`, `forgot-password/+page.svelte`) duplicate 50+ lines of layout code:
 
@@ -122,7 +130,7 @@ Auth pages (`login/+page.svelte`, `register/+page.svelte`, `forgot-password/+pag
 
 **Impact:** Maintainability burden, inconsistent styling across auth flows.
 
-**⚠️ PERFORMANCE: Root Layout Overloaded**
+** PERFORMANCE: Root Layout Overloaded**
 
 `+layout.server.ts` loads 5+ pieces of data for EVERY page navigation:
 
@@ -142,18 +150,18 @@ const { data: notifications } = await supabase.from('user_notifications').select
 
 **Impact:** Even marketing pages (`/about`, `/pricing`) wait for subscription queries.
 
-**⚠️ MISSED OPTIMIZATION: No Server-Side Streaming**
+** MISSED OPTIMIZATION: No Server-Side Streaming**
 
 Server load functions don't use promise streaming:
 
 ```typescript
-// ❌ Current: Sequential
+//  Current: Sequential
 const project = await fetchProject();
 const calendar = await fetchCalendar();
 const stats = await fetchStats();
 return { project, calendar, stats };
 
-// ✅ Better: SvelteKit auto-unwraps promises
+//  Better: SvelteKit auto-unwraps promises
 return {
 	project: fetchProject(), // Don't await
 	calendar: fetchCalendar(), // Load in parallel
@@ -172,35 +180,35 @@ return {
 #### Architecture Overview
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                 Supabase Client Architecture                 │
-├─────────────────────────────────────────────────────────────┤
-│                                                              │
-│  Browser Context                                             │
-│  ├── supabase (singleton)                                   │
-│  │   ├── Uses: PUBLIC_SUPABASE_ANON_KEY                     │
-│  │   ├── RLS: ✅ Enforced                                   │
-│  │   └── Auth: User session from cookies                    │
-│                                                              │
-│  Server Context (SSR)                                        │
-│  ├── locals.supabase                                         │
-│  │   ├── Created: hooks.server.ts                           │
-│  │   ├── Uses: PUBLIC_SUPABASE_ANON_KEY + cookies           │
-│  │   ├── RLS: ✅ Enforced                                   │
-│  │   └── Auth: User session validated via getUser()         │
-│                                                              │
-│  Admin Context (Privileged)                                  │
-│  ├── createAdminSupabaseClient()                            │
-│  │   ├── Uses: PRIVATE_SUPABASE_SERVICE_KEY                 │
-│  │   ├── RLS: ❌ Bypassed                                   │
-│  │   └── Guards: Webhook signatures, cron secrets, admin    │
-│                                                              │
-└─────────────────────────────────────────────────────────────┘
+
+                 Supabase Client Architecture
+
+
+  Browser Context
+   supabase (singleton)
+      Uses: PUBLIC_SUPABASE_ANON_KEY
+      RLS:  Enforced
+      Auth: User session from cookies
+
+  Server Context (SSR)
+   locals.supabase
+      Created: hooks.server.ts
+      Uses: PUBLIC_SUPABASE_ANON_KEY + cookies
+      RLS:  Enforced
+      Auth: User session validated via getUser()
+
+  Admin Context (Privileged)
+   createAdminSupabaseClient()
+      Uses: PRIVATE_SUPABASE_SERVICE_KEY
+      RLS:  Bypassed
+      Guards: Webhook signatures, cron secrets, admin
+
+
 ```
 
 #### Strengths
 
-**✅ Modern SSR Implementation**
+** Modern SSR Implementation**
 
 Uses `@supabase/ssr` package (not deprecated auth-helpers):
 
@@ -214,22 +222,22 @@ export function createSupabaseServer(
 	return createSSRServerClient<Database>(url, anonKey, {
 		cookies,
 		auth: {
-			flowType: 'pkce', // ✅ Modern PKCE flow
-			autoRefreshToken: false, // ✅ Stateless server
-			persistSession: false, // ✅ No session storage
-			detectSessionInUrl: false // ✅ No URL detection
+			flowType: 'pkce', //  Modern PKCE flow
+			autoRefreshToken: false, //  Stateless server
+			persistSession: false, //  No session storage
+			detectSessionInUrl: false //  No URL detection
 		}
 	});
 }
 ```
 
-**✅ Proper JWT Validation**
+** Proper JWT Validation**
 
 Always validates JWTs using `getUser()`:
 
 ```typescript
 // apps/web/src/hooks.server.ts:121-124
-// ✅ CRITICAL: Validate JWT by calling getUser
+//  CRITICAL: Validate JWT by calling getUser
 const {
 	data: { user: authUser },
 	error: userError
@@ -242,11 +250,11 @@ if (userError || !authUser) {
 
 **Why This Matters:** `getSession()` just reads from storage without validation. An attacker with an expired/invalid JWT could bypass auth if you only use `getSession()`.
 
-**✅ Excellent Documentation**
+** Excellent Documentation**
 
 ```typescript
 /**
- * ⚠️ SECURITY WARNING: This client bypasses Row Level Security (RLS)
+ *  SECURITY WARNING: This client bypasses Row Level Security (RLS)
  *
  * Use this for:
  * - Webhook handlers (Stripe, Twilio webhooks, etc.)
@@ -261,25 +269,25 @@ if (userError || !authUser) {
 export function createAdminSupabaseClient() { ... }
 ```
 
-**✅ Defense-in-Depth Authorization**
+** Defense-in-Depth Authorization**
 
 Even with RLS enabled, the app explicitly filters by `user_id`:
 
 ```typescript
 // Pattern across 20+ API endpoints
-const { data } = await supabase.from('projects').select('*').eq('user_id', user.id); // ✅ Explicit filter (defense in depth)
+const { data } = await supabase.from('projects').select('*').eq('user_id', user.id); //  Explicit filter (defense in depth)
 ```
 
 **Security Posture:** App doesn't blindly trust RLS - codes defensively.
 
 #### Issues Found
 
-**⚠️ MINOR: Missing Auth State Listener**
+** MINOR: Missing Auth State Listener**
 
 No `onAuthStateChange` listener in main `+layout.svelte`:
 
 ```typescript
-// ⚠️ Missing in production code
+//  Missing in production code
 onMount(() => {
 	if (supabase) {
 		const {
@@ -306,18 +314,18 @@ onMount(() => {
 
 #### Strengths
 
-**✅ Excellent Google OAuth Implementation**
+** Excellent Google OAuth Implementation**
 
 ```typescript
 // lib/utils/google-oauth.ts
 class GoogleOAuthHandler {
-  // ✅ Proper OAuth 2.0 flow with code exchange
+  //  Proper OAuth 2.0 flow with code exchange
   async exchangeCodeForTokens(code: string, redirectUri: string)
 
-  // ✅ Validates user profile from Google
+  //  Validates user profile from Google
   async getUserProfile(accessToken: string)
 
-  // ✅ CRITICAL: JWT validation with getUser()
+  //  CRITICAL: JWT validation with getUser()
   async authenticateWithSupabase(tokens: GoogleTokens) {
     await this.supabase.auth.signInWithIdToken(...)
 
@@ -330,7 +338,7 @@ class GoogleOAuthHandler {
 }
 ```
 
-**✅ Comprehensive Logout Security**
+** Comprehensive Logout Security**
 
 ```typescript
 // auth/logout/+server.ts:19-56
@@ -342,7 +350,7 @@ cookies.delete('sb-access-token', { path: '/', maxAge: 0 });
 cookies.delete('sb-refresh-token', { path: '/', maxAge: 0 });
 ```
 
-**✅ Rate Limiting on Expensive Operations**
+** Rate Limiting on Expensive Operations**
 
 ```typescript
 // Brain dump API
@@ -363,17 +371,17 @@ if (!rateLimitResult.allowed) {
 
 #### Issues Found
 
-**❌ SECURITY: Timing Attack Vulnerability**
+** SECURITY: Timing Attack Vulnerability**
 
 `/api/cron/renew-webhooks/+server.ts` uses non-constant-time comparison:
 
 ```typescript
-// ❌ VULNERABLE to timing attacks
+//  VULNERABLE to timing attacks
 if (authHeader !== `Bearer ${PRIVATE_CRON_SECRET}`) {
 	return json({ error: 'Unauthorized' }, { status: 401 });
 }
 
-// ✅ CORRECT (in trial-reminders endpoint)
+//  CORRECT (in trial-reminders endpoint)
 if (!constantTimeCompare(authHeader, expectedAuth)) {
 	return json({ error: 'Unauthorized' }, { status: 401 });
 }
@@ -383,7 +391,7 @@ if (!constantTimeCompare(authHeader, expectedAuth)) {
 
 **Fix:** Replace with `timingSafeEqual()` from Node.js crypto module.
 
-**⚠️ LIMITED RATE LIMITING**
+** LIMITED RATE LIMITING**
 
 Only brain dump endpoints have rate limiting. Other expensive operations unprotected:
 
@@ -402,7 +410,7 @@ Only brain dump endpoints have rate limiting. Other expensive operations unprote
 
 #### Strengths
 
-**✅ Consistent ApiResponse Wrapper**
+** Consistent ApiResponse Wrapper**
 
 ```typescript
 // Excellent pattern across 200+ endpoints
@@ -429,7 +437,7 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
 - Type-safe responses
 - Database-specific error handling
 
-**✅ Excellent Parallel Query Optimization**
+** Excellent Parallel Query Optimization**
 
 ```typescript
 // dashboard-analytics.service.ts
@@ -448,7 +456,7 @@ const [
 
 Dramatically improves response times by fetching independent data in parallel.
 
-**✅ Batch Queries Prevent N+1 Issues**
+** Batch Queries Prevent N+1 Issues**
 
 ```typescript
 // admin/users/+server.ts
@@ -464,7 +472,7 @@ const [{ data: brainDumpCounts }, { data: briefCounts }, { data: projectCounts }
 
 Instead of N+1 queries (one per user), fetches all related data in single batch using `in()`.
 
-**✅ Comprehensive Input Validation**
+** Comprehensive Input Validation**
 
 ```typescript
 // api/feedback/+server.ts
@@ -498,30 +506,30 @@ function validateFeedbackData(data: FeedbackRequest): string | null {
 
 #### Issues Found
 
-**⚠️ INCONSISTENCY: Some Endpoints Don't Use ApiResponse**
+** INCONSISTENCY: Some Endpoints Don't Use ApiResponse**
 
 ```typescript
-// ❌ Cron endpoints bypass ApiResponse
+//  Cron endpoints bypass ApiResponse
 return json({ error: 'Unauthorized' }, { status: 401 });
 
-// ✅ Should be:
+//  Should be:
 return ApiResponse.unauthorized();
 ```
 
 **Impact:** Breaks consistent error format, complicates client-side error handling.
 
-**⚠️ NO PROGRESSIVE ENHANCEMENT: Missing Form Actions**
+** NO PROGRESSIVE ENHANCEMENT: Missing Form Actions**
 
 All mutations use client-side `fetch()` instead of SvelteKit form actions:
 
 ```typescript
-// ❌ Current: Requires JavaScript
+//  Current: Requires JavaScript
 const response = await fetch('/api/feedback', {
   method: 'POST',
   body: JSON.stringify(data)
 });
 
-// ✅ Better: Works without JS
+//  Better: Works without JS
 <form method="POST" action="?/submitFeedback" use:enhance>
   <!-- Progressive enhancement -->
 </form>
@@ -534,12 +542,12 @@ const response = await fetch('/api/feedback', {
 - `/api/feedback` - Feedback submission
 - `/api/notification-preferences` - User preferences
 
-**⚠️ MISSING TIMEOUT PROTECTION**
+** MISSING TIMEOUT PROTECTION**
 
 No timeout on long-running queries:
 
 ```typescript
-// ❌ What if this takes 30 seconds?
+//  What if this takes 30 seconds?
 const { data, error } = await supabase
 	.from('brain_dumps')
 	.select('id, content, created_at, user_id')
@@ -567,7 +575,7 @@ const result = await withTimeout(expensiveQuery(), 10000);
 
 #### Strengths
 
-**✅ Excellent Build Configuration**
+** Excellent Build Configuration**
 
 ```typescript
 // vite.config.ts
@@ -590,7 +598,7 @@ build: {
 }
 ```
 
-**✅ Compression Enabled**
+** Compression Enabled**
 
 ```typescript
 // Gzip + Brotli compression
@@ -604,7 +612,7 @@ build: {
 	}));
 ```
 
-**✅ Smart Dependency Optimization**
+** Smart Dependency Optimization**
 
 ```typescript
 optimizeDeps: {
@@ -621,7 +629,7 @@ optimizeDeps: {
 }
 ```
 
-**✅ Advanced Lazy Loading**
+** Advanced Lazy Loading**
 
 ```typescript
 // +layout.svelte:178-218
@@ -645,7 +653,7 @@ async function loadAuthenticatedResources(): Promise<void> {
 
 Resources load in parallel with timeout protection.
 
-**✅ Request Idle Callback for Non-Critical Tasks**
+** Request Idle Callback for Non-Critical Tasks**
 
 ```typescript
 // +layout.svelte:308-323
@@ -665,7 +673,7 @@ function initializeVisitorTracking() {
 
 Non-critical tracking waits for browser idle time.
 
-**✅ Selective View Transitions**
+** Selective View Transitions**
 
 ```typescript
 // +layout.svelte:19-40
@@ -695,7 +703,7 @@ onNavigate((navigation) => {
 
 #### Issues Found
 
-**⚠️ ROOT LAYOUT BLOCKS ALL NAVIGATIONS**
+** ROOT LAYOUT BLOCKS ALL NAVIGATIONS**
 
 Every page navigation waits for:
 
@@ -711,7 +719,7 @@ const { data: trialStatus } = await supabase.rpc('get_user_trial_status', ...).s
 const { data: notifications } = await supabase.from('user_notifications')...
 ```
 
-**Impact:** Even navigating `/about` → `/pricing` waits for subscription data.
+**Impact:** Even navigating `/about` `/pricing` waits for subscription data.
 
 **Recommendation:** Move heavy queries to page-specific loads:
 
@@ -732,7 +740,7 @@ export const load: PageServerLoad = async ({ parent }) => {
 };
 ```
 
-**⚠️ LARGE COMPONENTS HURT MAINTAINABILITY**
+** LARGE COMPONENTS HURT MAINTAINABILITY**
 
 `projects/[id]/+page.svelte` is **1,687 lines**:
 
@@ -769,17 +777,17 @@ projects/[id]/
     useProjectHandlers.ts
 ```
 
-**ℹ️ NO STREAMING IN SERVER LOADS**
+** NO STREAMING IN SERVER LOADS**
 
 Server loads await all promises sequentially:
 
 ```typescript
-// ❌ Sequential
+//  Sequential
 const project = await fetchProject();
 const calendar = await fetchCalendar();
 const stats = await fetchStats();
 
-// ✅ Parallel with streaming
+//  Parallel with streaming
 return {
 	project: fetchProject(), // Don't await
 	calendar: fetchCalendar(), // Load in parallel
@@ -793,35 +801,35 @@ return {
 
 ## 6. Best Practices Compliance
 
-### Modern Package Usage: ✅ Excellent
+### Modern Package Usage: Excellent
 
-| Package                  | Status             | Notes              |
-| ------------------------ | ------------------ | ------------------ |
-| `@supabase/ssr`          | ✅ Latest (0.6.1)  | Modern SSR package |
-| `@supabase/supabase-js`  | ✅ Latest (2.53.0) | Core client        |
-| `@supabase/auth-helpers` | ✅ Not present     | Correctly removed  |
+| Package                  | Status          | Notes              |
+| ------------------------ | --------------- | ------------------ |
+| `@supabase/ssr`          | Latest (0.6.1)  | Modern SSR package |
+| `@supabase/supabase-js`  | Latest (2.53.0) | Core client        |
+| `@supabase/auth-helpers` | Not present     | Correctly removed  |
 
-### Security Patterns: ✅ Strong
+### Security Patterns: Strong
 
 | Pattern             | Implemented | Notes                       |
 | ------------------- | ----------- | --------------------------- |
-| JWT Validation      | ✅ Yes      | Always uses `getUser()`     |
-| RLS Enforcement     | ✅ Yes      | Uses `locals.supabase`      |
-| Defense in Depth    | ✅ Yes      | Explicit `user_id` filters  |
-| Admin Client Guards | ✅ Yes      | Webhook signatures verified |
-| Rate Limiting       | ⚠️ Partial  | Only on AI operations       |
-| CSRF Protection     | ✅ Yes      | SvelteKit built-in          |
+| JWT Validation      | Yes         | Always uses `getUser()`     |
+| RLS Enforcement     | Yes         | Uses `locals.supabase`      |
+| Defense in Depth    | Yes         | Explicit `user_id` filters  |
+| Admin Client Guards | Yes         | Webhook signatures verified |
+| Rate Limiting       | Partial     | Only on AI operations       |
+| CSRF Protection     | Yes         | SvelteKit built-in          |
 
-### Performance Patterns: ✅ Good
+### Performance Patterns: Good
 
 | Pattern          | Implemented | Notes                      |
 | ---------------- | ----------- | -------------------------- |
-| Lazy Loading     | ✅ Yes      | Components, services       |
-| Code Splitting   | ✅ Yes      | Manual chunks in Vite      |
-| Parallel Queries | ✅ Yes      | Extensive `Promise.all()`  |
-| Streaming        | ⚠️ Partial  | Client-side only           |
-| Compression      | ✅ Yes      | Gzip + Brotli              |
-| Request Batching | ✅ Yes      | `.in()` for N+1 prevention |
+| Lazy Loading     | Yes         | Components, services       |
+| Code Splitting   | Yes         | Manual chunks in Vite      |
+| Parallel Queries | Yes         | Extensive `Promise.all()`  |
+| Streaming        | Partial     | Client-side only           |
+| Compression      | Yes         | Gzip + Brotli              |
+| Request Batching | Yes         | `.in()` for N+1 prevention |
 
 ---
 
@@ -829,25 +837,25 @@ return {
 
 ### SvelteKit Best Practices (2025)
 
-| Best Practice               | Status         | Implementation            |
-| --------------------------- | -------------- | ------------------------- |
-| **Filesystem routing**      | ✅ Excellent   | Clear route organization  |
-| **Layout composition**      | ⚠️ Partial     | Missing auth layout       |
-| **Form actions**            | ❌ Not used    | All mutations via API     |
-| **Load functions**          | ✅ Good        | Server/client split clear |
-| **Streaming**               | ⚠️ Client only | No server streaming       |
-| **Progressive enhancement** | ❌ Limited     | Requires JavaScript       |
+| Best Practice               | Status      | Implementation            |
+| --------------------------- | ----------- | ------------------------- |
+| **Filesystem routing**      | Excellent   | Clear route organization  |
+| **Layout composition**      | Partial     | Missing auth layout       |
+| **Form actions**            | Not used    | All mutations via API     |
+| **Load functions**          | Good        | Server/client split clear |
+| **Streaming**               | Client only | No server streaming       |
+| **Progressive enhancement** | Limited     | Requires JavaScript       |
 
 ### Supabase Best Practices (2025)
 
-| Best Practice              | Status     | Implementation         |
-| -------------------------- | ---------- | ---------------------- |
-| **Use `@supabase/ssr`**    | ✅ Yes     | Modern package         |
-| **JWT validation**         | ✅ Yes     | Always `getUser()`     |
-| **RLS enabled**            | ✅ Yes     | All tables protected   |
-| **Service role isolation** | ✅ Yes     | Admin client separated |
-| **Cookie-based auth**      | ✅ Yes     | PKCE flow configured   |
-| **Session refresh**        | ⚠️ Partial | No auth state listener |
+| Best Practice              | Status  | Implementation         |
+| -------------------------- | ------- | ---------------------- |
+| **Use `@supabase/ssr`**    | Yes     | Modern package         |
+| **JWT validation**         | Yes     | Always `getUser()`     |
+| **RLS enabled**            | Yes     | All tables protected   |
+| **Service role isolation** | Yes     | Admin client separated |
+| **Cookie-based auth**      | Yes     | PKCE flow configured   |
+| **Session refresh**        | Partial | No auth state listener |
 
 ---
 
@@ -896,7 +904,7 @@ Based on 2025 SvelteKit and Supabase documentation:
 
 ## 9. Prioritized Recommendations
 
-### 🔴 HIGH PRIORITY (Security & Critical Bugs)
+### HIGH PRIORITY (Security & Critical Bugs)
 
 #### 1. Fix Timing Attack Vulnerability (Security)
 
@@ -905,7 +913,7 @@ Based on 2025 SvelteKit and Supabase documentation:
 **Issue:**
 
 ```typescript
-// ❌ VULNERABLE
+//  VULNERABLE
 if (authHeader !== `Bearer ${PRIVATE_CRON_SECRET}`) {
 	return json({ error: 'Unauthorized' }, { status: 401 });
 }
@@ -992,7 +1000,7 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 
 ---
 
-### 🟡 MEDIUM PRIORITY (Performance & Standards)
+### MEDIUM PRIORITY (Performance & Standards)
 
 #### 4. Create Shared Auth Layout
 
@@ -1063,10 +1071,10 @@ export const POST = rateLimitMiddleware(async ({ request, locals }) => {
 **Fix:**
 
 ```typescript
-// ❌ Before
+//  Before
 return json({ error: 'Unauthorized' }, { status: 401 });
 
-// ✅ After
+//  After
 return ApiResponse.unauthorized();
 ```
 
@@ -1116,7 +1124,7 @@ export const actions: Actions = {
 
 ---
 
-### 🟢 LOW PRIORITY (Nice to Have)
+### LOW PRIORITY (Nice to Have)
 
 #### 8. Split Large Components
 
@@ -1260,21 +1268,21 @@ try {
 
 **Security:**
 
-- ✅ All cron endpoints use constant-time comparison
-- ✅ Auth state updates in real-time
-- ✅ Rate limiting on all mutation endpoints
+- All cron endpoints use constant-time comparison
+- Auth state updates in real-time
+- Rate limiting on all mutation endpoints
 
 **Performance:**
 
-- ✅ Root layout loads < 100ms
-- ✅ Initial page render < 1s
-- ✅ Large components split < 500 lines
+- Root layout loads < 100ms
+- Initial page render < 1s
+- Large components split < 500 lines
 
 **Standards:**
 
-- ✅ Form actions for all simple mutations
-- ✅ Consistent error handling across all endpoints
-- ✅ Progressive enhancement for core flows
+- Form actions for all simple mutations
+- Consistent error handling across all endpoints
+- Progressive enhancement for core flows
 
 ---
 

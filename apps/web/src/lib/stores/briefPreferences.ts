@@ -120,9 +120,11 @@ function createBriefPreferencesStore() {
 					throw new Error('Failed to load jobs');
 				}
 
-				const { preferences } = await preferencesRes.json();
-				const jobsResult = await jobsRes.json();
-				const jobs = jobsResult.jobs || []; // ✅ Changed from jobsResult.data to jobsResult.jobs
+				const preferencesPayload = await preferencesRes.json();
+				const preferences =
+					preferencesPayload?.data?.preferences ?? preferencesPayload?.preferences;
+				const jobsPayload = await jobsRes.json();
+				const jobs = jobsPayload?.data?.jobs ?? jobsPayload?.jobs ?? []; // Support legacy response shape
 
 				const nextScheduledBrief = calculateNextScheduledBrief(preferences);
 
@@ -155,12 +157,18 @@ function createBriefPreferencesStore() {
 					body: JSON.stringify(preferences)
 				});
 
+				const responsePayload = await response.json();
+
 				if (!response.ok) {
-					const errorData = await response.json();
-					throw new Error(errorData.error || 'Failed to save preferences');
+					throw new Error(
+						responsePayload?.error ||
+							responsePayload?.message ||
+							'Failed to save preferences'
+					);
 				}
 
-				const { preferences: updatedPreferences } = await response.json();
+				const updatedPreferences =
+					responsePayload?.data?.preferences ?? responsePayload?.preferences;
 				const nextScheduledBrief = calculateNextScheduledBrief(updatedPreferences);
 
 				update((state) => ({
@@ -186,12 +194,13 @@ function createBriefPreferencesStore() {
 		async loadJobs() {
 			try {
 				const response = await fetch('/api/brief-jobs?limit=10');
+				const payload = await response.json();
+
 				if (!response.ok) {
-					throw new Error('Failed to load jobs');
+					throw new Error(payload?.error || payload?.message || 'Failed to load jobs');
 				}
 
-				const result = await response.json();
-				const jobs = result.jobs || []; // ✅ Changed from result.data to result.jobs
+				const jobs = payload?.data?.jobs ?? payload?.jobs ?? [];
 				update((state) => ({ ...state, jobs }));
 			} catch (error) {
 				update((state) => ({
@@ -213,7 +222,8 @@ function createBriefPreferencesStore() {
 				});
 
 				if (!response.ok) {
-					throw new Error('Failed to cancel job');
+					const payload = await response.json().catch(() => null);
+					throw new Error(payload?.error || payload?.message || 'Failed to cancel job');
 				}
 
 				// Reload jobs to get updated status

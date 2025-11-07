@@ -3,7 +3,7 @@
 **Created:** November 6, 2025
 **Audit Reference:** [sveltekit-supabase-audit-2025-11.md](./sveltekit-supabase-audit-2025-11.md)
 
-## todo 2
+## Progress Update: November 7, 2025
 
 ## Overview
 
@@ -17,30 +17,32 @@ This document provides an actionable remediation plan for implementing best prac
 
 ```
                 HIGH IMPACT
-                    │
-    QUICK WINS      │      MAJOR PROJECTS
-    ─────────────────┼─────────────────────
-    • Timing attack │  • Root layout refactor
-    • Auth listener │  • Form actions
-    • API responses │  • Component splitting
-    ─────────────────┼─────────────────────
-                    │
-    LOW PRIORITY    │      NICE TO HAVE
-    • Docs          │  • Server streaming
-                    │  • Timeout protection
-                    │
-                LOW EFFORT → HIGH EFFORT
+
+    QUICK WINS            MAJOR PROJECTS
+
+     Timing attack    Root layout refactor
+     Auth listener    Form actions
+     API responses    Component splitting
+
+
+    LOW PRIORITY          NICE TO HAVE
+     Docs             Server streaming
+                       Timeout protection
+
+                LOW EFFORT  HIGH EFFORT
 ```
 
 ---
 
-## 🔴 CRITICAL PRIORITY (Week 1)
+## CRITICAL PRIORITY (Week 1)
 
 ### 1. Fix Timing Attack Vulnerability
 
-**Priority:** 🔴 Critical
+**Priority:** Critical
 **Effort:** 30 minutes
 **Impact:** Security - Prevents timing attacks on cron secret
+
+**Status:** ✅ Completed November 7, 2025 — Added a shared `isAuthorizedCronRequest` helper built on `crypto.timingSafeEqual` and updated every cron endpoint to use constant-time Bearer checks.
 
 **Issue:**
 `/api/cron/renew-webhooks/+server.ts` uses non-constant-time string comparison, vulnerable to timing attacks.
@@ -66,7 +68,7 @@ export const GET: RequestHandler = async ({ request }) => {
 	const authHeader = request.headers.get('authorization');
 	const expectedAuth = `Bearer ${PRIVATE_CRON_SECRET}`;
 
-	// ✅ Use constant-time comparison
+	//  Use constant-time comparison
 	if (!authHeader || !constantTimeCompare(authHeader, expectedAuth)) {
 		return ApiResponse.unauthorized();
 	}
@@ -95,9 +97,11 @@ curl -H "Authorization: Bearer wrong" http://localhost:5173/api/cron/renew-webho
 
 ### 2. Add Auth State Change Listener
 
-**Priority:** 🔴 High
+**Priority:** High
 **Effort:** 1 hour
 **Impact:** UX - Real-time session updates, immediate logout propagation
+
+**Status:** ✅ Completed November 7, 2025 — Added a resilient `supabase.auth.onAuthStateChange` listener in the root layout, simplified client logout utilities, and ensured cross-tab session updates invalidate layout data and redirect appropriately.
 
 **Issue:**
 No `onAuthStateChange` listener in main layout. Session refresh events don't trigger UI updates.
@@ -175,9 +179,11 @@ onMount(() => {
 
 ### 3. Standardize API Responses
 
-**Priority:** 🔴 High
+**Priority:** High
 **Effort:** 1 hour
 **Impact:** Consistency - Uniform error handling across all endpoints
+
+**Status:** ? Completed November 7, 2025 � Migrated authentication, brief management, health, cron, notification preference, and daily-brief cancellation/generation endpoints to the shared `ApiResponse` helper, added the `ClientResponse` shape in `api-client-helpers`, and updated the dependent stores/pages. Remaining API routes will inherit the same pattern incrementally.
 
 **Issue:**
 Some cron endpoints use `json()` instead of `ApiResponse`, breaking consistent error format.
@@ -209,9 +215,9 @@ return ApiResponse.success({ sent });
 grep -r "return json(" apps/web/src/routes/api/cron/
 
 # Replace pattern:
-# json({ error: 'X' }, { status: 401 }) → ApiResponse.unauthorized()
-# json({ error: 'X' }, { status: 403 }) → ApiResponse.forbidden()
-# json({ success: true, ... }) → ApiResponse.success({ ... })
+# json({ error: 'X' }, { status: 401 })  ApiResponse.unauthorized()
+# json({ error: 'X' }, { status: 403 })  ApiResponse.forbidden()
+# json({ success: true, ... })  ApiResponse.success({ ... })
 ```
 
 **Testing:**
@@ -232,9 +238,11 @@ pnpm run test src/routes/api/cron/
 
 ### 4. Reduce Root Layout Data Loading
 
-**Priority:** 🔴 High
+**Priority:** High
 **Effort:** 3 hours
 **Impact:** Performance - Faster navigation, especially for public pages
+
+**Status:** ? Completed November 7, 2025 � Streamlined the root server layout to parallelize auth-related queries, skip subscription lookups entirely when Stripe is disabled, and removed unused onboarding payloads so navigation payloads stay minimal.
 
 **Issue:**
 Root layout loads subscription, trial, and payment data for EVERY page, even public pages.
@@ -299,19 +307,19 @@ export const load: LayoutServerLoad = async ({ parent, locals: { supabase } }) =
 ```bash
 # Restructure routes
 apps/web/src/routes/
-├── (authenticated)/          # NEW: Authenticated routes group
-│   ├── +layout.server.ts    # Loads subscription/trial data
-│   ├── +layout.svelte       # Shows trial banner, payment warnings
-│   ├── projects/
-│   ├── briefs/
-│   ├── ontology/
-│   └── admin/
-├── auth/                    # Public auth pages
-├── (marketing)/             # NEW: Public pages group
-│   ├── about/
-│   ├── pricing/
-│   └── terms/
-└── +layout.server.ts        # Minimal - just user session
+ (authenticated)/          # NEW: Authenticated routes group
+    +layout.server.ts    # Loads subscription/trial data
+    +layout.svelte       # Shows trial banner, payment warnings
+    projects/
+    briefs/
+    ontology/
+    admin/
+ auth/                    # Public auth pages
+ (marketing)/             # NEW: Public pages group
+    about/
+    pricing/
+    terms/
+ +layout.server.ts        # Minimal - just user session
 ```
 
 **Step 4: Update components**
@@ -365,11 +373,11 @@ curl http://localhost:5173/projects
 
 ---
 
-## 🟡 HIGH PRIORITY (Week 2)
+## HIGH PRIORITY (Week 2)
 
 ### 5. Create Shared Auth Layout
 
-**Priority:** 🟡 Medium-High
+**Priority:** Medium-High
 **Effort:** 1 hour
 **Impact:** Maintainability - DRY, consistent auth page styling
 
@@ -472,7 +480,7 @@ Login, register, and forgot-password pages duplicate 50+ lines of layout code.
 
 ### 6. Add Rate Limiting Middleware
 
-**Priority:** 🟡 Medium-High
+**Priority:** Medium-High
 **Effort:** 4 hours
 **Impact:** Security - Prevents API abuse
 
@@ -613,7 +621,7 @@ export const GET = rateLimitMiddleware(
 **Endpoints to Update (Priority Order):**
 
 1. **AI Operations** (Heavy)
-    - ✅ Already done: `/api/braindumps/stream`
+    - Already done: `/api/braindumps/stream`
     - `/api/chat/stream`
     - `/api/phases/generate`
 
@@ -709,7 +717,7 @@ pnpm run test src/lib/middleware/rate-limit.test.ts
 
 ### 7. Implement Form Actions for Auth
 
-**Priority:** 🟡 Medium
+**Priority:** Medium
 **Effort:** 6 hours
 **Impact:** Standards - Progressive enhancement, works without JS
 
@@ -962,11 +970,11 @@ export const actions: Actions = {
 
 ---
 
-## 🟢 MEDIUM PRIORITY (Week 3)
+## MEDIUM PRIORITY (Week 3)
 
 ### 8. Split Large Components
 
-**Priority:** 🟢 Medium
+**Priority:** Medium
 **Effort:** 12 hours
 **Impact:** Maintainability - Easier to test, understand, and optimize
 
@@ -1244,7 +1252,7 @@ pnpm run analyze  # Should see smaller chunks
 
 ### 9. Add Request Timeout Protection
 
-**Priority:** 🟢 Medium
+**Priority:** Medium
 **Effort:** 3 hours
 **Impact:** Reliability - Better error handling, prevents hanging requests
 
@@ -1404,7 +1412,7 @@ describe('withTimeout', () => {
 
 ### 10. Implement Server-Side Streaming
 
-**Priority:** 🟢 Low-Medium
+**Priority:** Low-Medium
 **Effort:** 6 hours
 **Impact:** Performance - Better perceived performance, faster time-to-interactive
 
@@ -1424,7 +1432,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 
 	const projectId = params.id;
 
-	// ✅ Return unwrapped promises - SvelteKit streams them
+	//  Return unwrapped promises - SvelteKit streams them
 	return {
 		// Critical data - await this
 		project: await fetchProject(projectId, user.id),
@@ -1538,9 +1546,9 @@ it('renders project immediately and streams other data', async () => {
 
 ### Week 1: Security & Critical Fixes (12 hours)
 
-- [ ] Day 1 (4h): Tasks #1-2 (Timing attack, Auth listener)
-- [ ] Day 2 (4h): Task #3 (Standardize API responses)
-- [ ] Day 3 (4h): Task #4 (Reduce root layout loading)
+- [x] Day 1 (4h): Tasks #1-2 (Timing attack, Auth listener)
+- [x] Day 2 (4h): Task #3 (Standardize API responses)
+- [x] Day 3 (4h): Task #4 (Reduce root layout loading)
 
 ### Week 2: Standards & Performance (14 hours)
 

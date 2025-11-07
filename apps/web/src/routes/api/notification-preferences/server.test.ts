@@ -84,10 +84,11 @@ describe('GET /api/notification-preferences', () => {
 
 		const response = await GET(event);
 		const json = await response.json();
+		const preferences = json.data?.preferences ?? json.preferences;
 
 		expect(supabase.from).toHaveBeenCalledWith('user_notification_preferences');
-		expect(json.preferences.should_email_daily_brief).toBe(true);
-		expect(json.preferences.should_sms_daily_brief).toBe(false);
+		expect(preferences.should_email_daily_brief).toBe(true);
+		expect(preferences.should_sms_daily_brief).toBe(false);
 	});
 
 	it('should return defaults when no daily brief preferences exist', async () => {
@@ -104,9 +105,10 @@ describe('GET /api/notification-preferences', () => {
 
 		const response = await GET(event);
 		const json = await response.json();
+		const preferences = json.data?.preferences ?? json.preferences;
 
-		expect(json.preferences.should_email_daily_brief).toBe(false);
-		expect(json.preferences.should_sms_daily_brief).toBe(false);
+		expect(preferences.should_email_daily_brief).toBe(false);
+		expect(preferences.should_sms_daily_brief).toBe(false);
 	});
 
 	it('should fetch global preferences without ?daily_brief parameter', async () => {
@@ -132,8 +134,9 @@ describe('GET /api/notification-preferences', () => {
 		const response = await GET(event);
 		const json = await response.json();
 
-		expect(json.preferences).toBeDefined();
-		expect(json.preferences.push_enabled).toBe(true);
+		const preferences = json.data?.preferences ?? json.preferences;
+		expect(preferences).toBeDefined();
+		expect(preferences?.push_enabled).toBe(true);
 	});
 
 	it('should return 401 when not authenticated', async () => {
@@ -238,7 +241,7 @@ describe('PUT /api/notification-preferences', () => {
 		const json = await response.json();
 
 		expect(response.status).toBe(400);
-		expect(json.requiresPhoneVerification).toBe(true);
+		expect(json.details?.requiresPhoneVerification).toBe(true);
 		expect(json.error).toContain('not verified');
 	});
 
@@ -325,7 +328,7 @@ describe('PUT /api/notification-preferences', () => {
 		const json = await response.json();
 
 		expect(response.status).toBe(400);
-		expect(json.requiresPhoneSetup).toBe(true);
+		expect(json.details?.requiresPhoneSetup).toBe(true);
 		expect(json.error).toContain('required');
 	});
 

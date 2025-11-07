@@ -36,6 +36,11 @@ export interface QueueOnboardingResponse {
 	analyzingFields: string[];
 }
 
+type ProjectMetadata = { projectId: string };
+
+const hasProjectMetadata = (metadata: unknown): metadata is ProjectMetadata =>
+	typeof (metadata as ProjectMetadata | null | undefined)?.projectId === 'string';
+
 export interface UserQuestion {
 	id: string;
 	user_id: string;
@@ -323,13 +328,14 @@ export class RailwayWorkerService {
 		try {
 			const pendingJobs = await this.getUserPendingJobs(userId, 'generate_phases');
 
-			const activeJob = pendingJobs.find((job) => {
+			const activeJob = pendingJobs.find((job): job is PhasesGenerationJob => {
 				return (
 					job.job_type === 'generate_phases' &&
-					job.metadata?.projectId === projectId &&
-					job.status === 'processing'
+					job.status === 'processing' &&
+					hasProjectMetadata(job.metadata) &&
+					job.metadata.projectId === projectId
 				);
-			}) as PhasesGenerationJob | undefined;
+			});
 
 			return {
 				isGenerating: !!activeJob,

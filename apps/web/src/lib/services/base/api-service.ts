@@ -56,7 +56,7 @@ export abstract class ApiService {
 
 			return {
 				success: false,
-				errors: result?.errors || ['Request failed']
+				errors: result?.errors ?? (result?.error ? [result.error] : ['Request failed'])
 			};
 		} catch (error) {
 			return this.handleError(error, endpoint, 'GET');
@@ -94,7 +94,7 @@ export abstract class ApiService {
 
 			return {
 				success: false,
-				errors: result?.errors || ['Request failed']
+				errors: result?.errors ?? (result?.error ? [result.error] : ['Request failed'])
 			};
 		} catch (error) {
 			return this.handleError(error, endpoint, 'POST');
@@ -132,7 +132,7 @@ export abstract class ApiService {
 
 			return {
 				success: false,
-				errors: result?.errors || ['Request failed']
+				errors: result?.errors ?? (result?.error ? [result.error] : ['Request failed'])
 			};
 		} catch (error) {
 			return this.handleError(error, endpoint, 'PUT');
@@ -170,7 +170,7 @@ export abstract class ApiService {
 
 			return {
 				success: false,
-				errors: result?.errors || ['Request failed']
+				errors: result?.errors ?? (result?.error ? [result.error] : ['Request failed'])
 			};
 		} catch (error) {
 			return this.handleError(error, endpoint, 'PATCH');
@@ -203,7 +203,7 @@ export abstract class ApiService {
 
 			return {
 				success: false,
-				errors: result?.errors || ['Request failed']
+				errors: result?.errors ?? (result?.error ? [result.error] : ['Request failed'])
 			};
 		} catch (error) {
 			return this.handleError(error, endpoint, 'DELETE');

@@ -5,7 +5,7 @@
 
 import type { PageServerLoad } from './$types';
 import { redirect, error } from '@sveltejs/kit';
-import type { Template } from '$lib/types/onto';
+import type { ResolvedTemplate } from '$lib/services/ontology/template-resolver.service';
 import type { TypedSupabaseClient } from '@buildos/supabase-client';
 import { fetchTemplateCatalog } from '$lib/services/ontology/ontology-template-catalog.service';
 
@@ -36,8 +36,8 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 	const direction = directionParam && directionParam.toLowerCase() === 'desc' ? 'desc' : 'asc';
 	const detailParam = url.searchParams.get('detail');
 
-	let templates: Template[];
-	let groupedByRealm: Record<string, Template[]>;
+	let templates: ResolvedTemplate[];
+	let groupedByRealm: Record<string, ResolvedTemplate[]>;
 
 	try {
 		const result = await fetchTemplateCatalog(locals.supabase, {
@@ -68,11 +68,13 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 			acc[template.scope]!.push(template);
 			return acc;
 		},
-		{} as Record<string, Template[]>
+		{} as Record<string, ResolvedTemplate[]>
 	);
 
 	// Get unique realms and scopes for filter options
-	const uniqueRealms = Array.from(new Set(templates.map((t) => t.metadata?.realm ?? 'other')));
+	const uniqueRealms = Array.from(
+		new Set(templates.map((t) => (t.metadata?.realm as string | undefined) ?? 'other'))
+	);
 	const uniqueScopes = Array.from(new Set(templates.map((t) => t.scope)));
 
 	const facets = await getFacetValues(locals.supabase);

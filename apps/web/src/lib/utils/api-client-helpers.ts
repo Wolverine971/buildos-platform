@@ -5,6 +5,9 @@ export interface ClientResponse<T = any> {
 	success: boolean;
 	data?: T;
 	error?: string;
+	errors?: string[];
+	warnings?: string[];
+	message?: string;
 	code?: string;
 	details?: any;
 }
@@ -22,12 +25,17 @@ export async function parseApiResponse<T = any>(response: Response): Promise<Cli
 			if (result.success) {
 				return {
 					success: true,
-					data: result.data
+					data: result.data,
+					message: result.message,
+					warnings: result.warnings
 				};
 			} else {
 				return {
 					success: false,
 					error: result.error || 'Request failed',
+					errors: result.errors,
+					warnings: result.warnings,
+					message: result.message,
 					code: result.code,
 					details: result.details
 				};
@@ -46,6 +54,7 @@ export async function parseApiResponse<T = any>(response: Response): Promise<Cli
 			return {
 				success: false,
 				error: result.error || `Request failed with status ${response.status}`,
+				errors: result.errors,
 				code: result.code,
 				details: result.details
 			};

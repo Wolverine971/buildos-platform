@@ -1,34 +1,15 @@
 // apps/web/src/routes/api/cron/trial-reminders/+server.ts
-import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { PRIVATE_CRON_SECRET } from '$env/static/private';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { TRIAL_CONFIG } from '$lib/config/trial';
-import { timingSafeEqual } from 'crypto';
-
-/**
- * Constant-time string comparison to prevent timing attacks
- */
-function constantTimeCompare(a: string, b: string): boolean {
-	try {
-		// First check lengths - if different, fail fast but still in constant time
-		if (a.length !== b.length) {
-			return false;
-		}
-		// Use crypto.timingSafeEqual for constant-time comparison
-		return timingSafeEqual(Buffer.from(a, 'utf8'), Buffer.from(b, 'utf8'));
-	} catch {
-		return false;
-	}
-}
+import { isAuthorizedCronRequest } from '$lib/utils/security';
+import { ApiResponse } from '$lib/utils/api-response';
 
 export const GET: RequestHandler = async ({ request }) => {
 	// Verify cron secret
-	const authHeader = request.headers.get('authorization');
-	const expectedAuth = `Bearer ${PRIVATE_CRON_SECRET}`;
-
-	if (!authHeader || !constantTimeCompare(authHeader, expectedAuth)) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
+	if (!isAuthorizedCronRequest(request, PRIVATE_CRON_SECRET)) {
+		return ApiResponse.unauthorized();
 	}
 
 	const supabase = createAdminSupabaseClient();
@@ -110,7 +91,7 @@ export const GET: RequestHandler = async ({ request }) => {
 			executed_at: new Date().toISOString()
 		});
 
-		return json({ success: true, sent });
+		return ApiResponse.success({ sent });
 	} catch (error) {
 		console.error('Trial reminders cron error:', error);
 
@@ -121,7 +102,7 @@ export const GET: RequestHandler = async ({ request }) => {
 			executed_at: new Date().toISOString()
 		});
 
-		return json({ error: 'Failed to send trial reminders' }, { status: 500 });
+		return ApiResponse.internalError(error, 'Failed to send trial reminders');
 	}
 };
 

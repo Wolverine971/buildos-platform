@@ -1,11 +1,11 @@
 // apps/web/src/routes/api/brief-jobs/next-scheduled/+server.ts
-import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+import { ApiResponse } from '$lib/utils/api-response';
 
 export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession } }) => {
 	const { user } = await safeGetSession();
 	if (!user) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
+		return ApiResponse.unauthorized();
 	}
 
 	try {
@@ -26,8 +26,7 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
 			throw error;
 		}
 
-		return json({
-			success: true,
+		return ApiResponse.success({
 			nextScheduledBrief: nextJob
 				? {
 						scheduledFor: nextJob.scheduled_for,
@@ -39,13 +38,6 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
 		});
 	} catch (error) {
 		console.error('Error fetching next scheduled brief:', error);
-		return json(
-			{
-				success: false,
-				error: 'Failed to fetch next scheduled brief',
-				nextScheduledBrief: null
-			},
-			{ status: 500 }
-		);
+		return ApiResponse.internalError(error, 'Failed to fetch next scheduled brief');
 	}
 };

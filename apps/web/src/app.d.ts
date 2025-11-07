@@ -27,17 +27,8 @@ declare global {
 		interface PageData {
 			user: User | null;
 			url?: string;
-			cookies?: Array<{ name: string; value: string }>;
 			completedOnboarding?: boolean;
 			onboardingProgress?: number;
-			onboardingProgressData?: {
-				completed: boolean;
-				progress: number;
-				missingFields: string[];
-				completedFields: string[];
-				missingRequiredFields: string[];
-				categoryProgress: Record<string, number>;
-			};
 			subscription?: any;
 			paymentWarnings?: any[];
 			stripeEnabled?: boolean;

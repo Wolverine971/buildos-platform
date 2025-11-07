@@ -41,15 +41,18 @@ function createNotificationPreferencesStore() {
 			try {
 				const response = await fetch('/api/notification-preferences?daily_brief=true');
 
+				const result = await response.json();
+
 				if (!response.ok) {
-					throw new Error('Failed to load notification preferences');
+					throw new Error(result.error || 'Failed to load notification preferences');
 				}
 
-				const { preferences } = await response.json();
+				const preferences =
+					result?.data?.preferences ?? result?.preferences ?? DEFAULT_PREFERENCES;
 
 				update((state) => ({
 					...state,
-					preferences: preferences || DEFAULT_PREFERENCES,
+					preferences,
 					isLoading: false
 				}));
 			} catch (error) {
@@ -74,38 +77,40 @@ function createNotificationPreferencesStore() {
 					body: JSON.stringify(preferences)
 				});
 
+				const result = await response.json();
+
 				if (!response.ok) {
-					const errorData = await response.json();
+					const details = result.details || {};
 
 					// Check for specific error types that need user action
-					if (errorData.requiresPhoneSetup) {
+					if (details.requiresPhoneSetup) {
 						throw new Error(
 							'Phone number required. Please set up your phone number in Settings first.'
 						);
 					}
 
-					if (errorData.requiresPhoneVerification) {
+					if (details.requiresPhoneVerification) {
 						throw new Error(
 							'Phone number not verified. Please verify your phone number in Settings first.'
 						);
 					}
 
-					if (errorData.requiresOptIn) {
+					if (details.requiresOptIn) {
 						throw new Error(
 							'You have opted out of SMS notifications. Please opt back in via Settings to enable SMS.'
 						);
 					}
 
-					if (errorData.requiresBriefActivation) {
+					if (details.requiresBriefActivation) {
 						throw new Error(
 							'Daily brief generation is not active. Please enable brief generation in Brief Preferences first.'
 						);
 					}
 
-					throw new Error(errorData.error || 'Failed to save preferences');
+					throw new Error(result.error || 'Failed to save preferences');
 				}
 
-				const { preference } = await response.json();
+				const preference = result?.data?.preference ?? result?.preference;
 
 				update((state) => ({
 					...state,

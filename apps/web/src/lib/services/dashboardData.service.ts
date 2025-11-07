@@ -222,7 +222,8 @@ export class DashboardDataService extends ApiService {
 			// Confirm the optimistic update
 			dashboardStore.confirmOptimisticUpdate(optimisticUpdateId);
 			// Update the task in the store with server response
-			dashboardStore.updateTask(taskId, result.data?.task || result.data);
+			const updatedTask = (result.data as any)?.task ?? result.data;
+			dashboardStore.updateTask(taskId, updatedTask);
 			// Invalidate cache
 			this.cache.invalidatePattern(/^dashboard:/);
 		} else {
@@ -278,7 +279,7 @@ export class DashboardDataService extends ApiService {
 	 */
 	public async completeTask(taskId: string): Promise<TaskResponse> {
 		const updates = {
-			status: 'completed' as const,
+			status: 'done' as const,
 			completed_at: new Date().toISOString()
 		};
 
@@ -328,7 +329,8 @@ export class DashboardDataService extends ApiService {
 
 		if (result.success && result.data) {
 			// Update task in store
-			dashboardStore.updateTask(taskId, result.data?.task || result.data);
+			const updatedTask = (result.data as any)?.task ?? result.data;
+			dashboardStore.updateTask(taskId, updatedTask);
 		}
 
 		return result;

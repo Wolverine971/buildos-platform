@@ -362,11 +362,19 @@ export class BriefClientService {
 	private static async pollJobStatus(jobId: string) {
 		try {
 			const response = await fetch(`/api/brief-jobs/${jobId}`);
+			const payload = await response.json().catch(() => null);
+
 			if (!response.ok) {
 				if (response.status === 404) return null;
-				throw new Error(`Failed to fetch job status: ${response.statusText}`);
+				const message =
+					payload?.error || payload?.message || response.statusText || 'Unknown error';
+				throw new Error(`Failed to fetch job status: ${message}`);
 			}
-			const job = await response.json();
+
+			const job = payload?.data?.job ?? payload?.job ?? null;
+			if (!job) {
+				return null;
+			}
 
 			// If job was cancelled due to a newer request, don't treat as error
 			if (

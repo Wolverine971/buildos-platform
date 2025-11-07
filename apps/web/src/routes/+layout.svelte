@@ -6,7 +6,7 @@
 	import { setContext, onMount, onDestroy } from 'svelte';
 	import { page } from '$app/stores';
 	import { browser, dev } from '$app/environment';
-	import { goto, replaceState, onNavigate } from '$app/navigation';
+	import { goto, replaceState, onNavigate, invalidate, invalidateAll } from '$app/navigation';
 	import { createSupabaseBrowser } from '$lib/supabase';
 	import { navigationStore } from '$lib/stores/navigation.store';
 	import Navigation from '$lib/components/layout/Navigation.svelte';
@@ -43,6 +43,8 @@
 	// Vercel Analytics & Speed Insights
 	import { injectSpeedInsights } from '@vercel/speed-insights/sveltekit';
 	import type { Snippet } from 'svelte';
+	import type { AuthChangeEvent } from '@supabase/supabase-js';
+	import { LOGOUT_REDIRECT_STORAGE_KEY } from '$lib/utils/auth';
 
 	// Initialize Speed Insights in production
 	if (browser && !dev) {
@@ -143,6 +145,8 @@
 	// PERFORMANCE: Load authenticated resources with better caching
 	let resourcesLoadPromise = $state<Promise<void> | undefined>(undefined);
 	let resourcesLoaded = $state(false);
+	let authSyncInProgress = $state(false);
+	let authSubscriptionCleanup = $state<(() => void) | null>(null);
 
 	// Convert to $effect - load resources when user becomes available
 	$effect(() => {
@@ -190,6 +194,84 @@
 		} catch (error) {
 			console.error('Failed to load authenticated resources:', error);
 			resourcesLoadPromise = undefined; // Reset to allow retry
+		}
+	}
+
+	function resetResourceLoaders() {
+		resourcesLoadPromise = undefined;
+		resourcesLoaded = false;
+	}
+
+	function consumeLogoutRedirect(): string | null {
+		if (!browser) return null;
+		try {
+			const target = sessionStorage.getItem(LOGOUT_REDIRECT_STORAGE_KEY);
+			if (target) {
+				sessionStorage.removeItem(LOGOUT_REDIRECT_STORAGE_KEY);
+				return target;
+			}
+		} catch (error) {
+			console.warn('Unable to read logout redirect target', error);
+		}
+		return null;
+	}
+
+	async function synchronizeAuthState() {
+		if (!browser || authSyncInProgress) return;
+		authSyncInProgress = true;
+
+		try {
+			await invalidate('supabase:auth');
+			await invalidate('app:auth');
+			await invalidateAll();
+		} catch (error) {
+			console.error('Failed to synchronize auth state:', error);
+		} finally {
+			authSyncInProgress = false;
+		}
+	}
+
+	async function handleAuthSignedIn() {
+		resetResourceLoaders();
+		await synchronizeAuthState();
+	}
+
+	async function handleAuthSignedOut() {
+		resetResourceLoaders();
+		routeBasedState = {
+			...routeBasedState,
+			needsOnboarding: false,
+			showOnboardingModal: false
+		};
+
+		await synchronizeAuthState();
+
+		if (!browser) return;
+
+		const currentRouteId = $page.route?.id ?? '';
+		const redirectTarget =
+			consumeLogoutRedirect() ||
+			(currentRouteId.startsWith('/auth') ? $page.url.pathname : '/auth/login');
+
+		if (!currentRouteId.startsWith('/auth')) {
+			await goto(redirectTarget || '/auth/login', { replaceState: true });
+		}
+	}
+
+	async function handleAuthStateChange(event: AuthChangeEvent) {
+		switch (event) {
+			case 'INITIAL_SESSION':
+				return;
+			case 'SIGNED_IN':
+			case 'USER_UPDATED':
+				await handleAuthSignedIn();
+				break;
+			case 'SIGNED_OUT':
+			case 'USER_DELETED':
+				await handleAuthSignedOut();
+				break;
+			default:
+				break;
 		}
 	}
 
@@ -301,6 +383,20 @@
 	onMount(() => {
 		if (!browser) return;
 
+		if (supabase) {
+			const {
+				data: { subscription }
+			} = supabase.auth.onAuthStateChange(async (event) => {
+				try {
+					await handleAuthStateChange(event);
+				} catch (error) {
+					console.error('Auth state change listener error:', error);
+				}
+			});
+
+			authSubscriptionCleanup = () => subscription.unsubscribe();
+		}
+
 		// FIXED: Store cleanup functions to prevent memory leaks
 		pwaCleanup = initializePWAEnhancements();
 		installPromptCleanup = setupInstallPrompt();
@@ -372,12 +468,22 @@
 			// FIXED: Call PWA cleanup functions
 			if (typeof pwaCleanup === 'function') pwaCleanup();
 			if (typeof installPromptCleanup === 'function') installPromptCleanup();
+
+			if (authSubscriptionCleanup) {
+				authSubscriptionCleanup();
+				authSubscriptionCleanup = null;
+			}
 		};
 	});
 
 	onDestroy(() => {
 		// FIXED: Comprehensive cleanup to prevent memory leaks
 		if (browser) {
+			if (authSubscriptionCleanup) {
+				authSubscriptionCleanup();
+				authSubscriptionCleanup = null;
+			}
+
 			// FIXED: Destroy stores to prevent subscription leaks
 			backgroundJobs.destroy();
 			destroyTimeBlockNotificationBridge();

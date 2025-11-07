@@ -1,7 +1,7 @@
 // apps/web/src/routes/api/auth/register/+server.ts
-import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { validateEmail } from '$lib/utils/email-validation';
+import { ApiResponse, ErrorCode, HttpStatus } from '$lib/utils/api-response';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	const { email, password, name } = await request.json();
@@ -9,21 +9,33 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 	// Validation
 	if (!email || !password) {
-		return json({ error: 'Email and password are required' }, { status: 400 });
+		return ApiResponse.error(
+			'Email and password are required',
+			HttpStatus.BAD_REQUEST,
+			ErrorCode.MISSING_FIELD,
+			{ fields: ['email', 'password'] }
+		);
 	}
 
 	// Email format validation (enhanced security)
 	const emailValidation = validateEmail(email);
 	if (!emailValidation.success) {
-		return json(
-			{ error: emailValidation.error || 'Please enter a valid email address' },
-			{ status: 400 }
+		return ApiResponse.error(
+			emailValidation.error || 'Please enter a valid email address',
+			HttpStatus.BAD_REQUEST,
+			ErrorCode.INVALID_FIELD,
+			{ field: 'email' }
 		);
 	}
 
 	// Password validation
 	if (password.length < 8) {
-		return json({ error: 'Password must be at least 8 characters long' }, { status: 400 });
+		return ApiResponse.error(
+			'Password must be at least 8 characters long',
+			HttpStatus.BAD_REQUEST,
+			ErrorCode.INVALID_FIELD,
+			{ field: 'password', reason: 'too_short' }
+		);
 	}
 
 	// Password strength validation
@@ -32,11 +44,11 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	const hasNumbers = /\d/.test(password);
 
 	if (!hasUpperCase || !hasLowerCase || !hasNumbers) {
-		return json(
-			{
-				error: 'Password must contain at least one uppercase letter, one lowercase letter, and one number'
-			},
-			{ status: 400 }
+		return ApiResponse.error(
+			'Password must contain at least one uppercase letter, one lowercase letter, and one number',
+			HttpStatus.BAD_REQUEST,
+			ErrorCode.INVALID_FIELD,
+			{ field: 'password', reason: 'weak_password' }
 		);
 	}
 
@@ -69,14 +81,13 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				});
 
 				// Return a user-friendly error while we investigate
-				return json(
-					{
-						error: 'Registration service is temporarily unavailable. Our team has been notified.',
-						code: 'AUTH_SERVICE_ERROR',
-						debug:
-							process.env.NODE_ENV === 'development' ? signUpError.message : undefined
-					},
-					{ status: 503 }
+				return ApiResponse.error(
+					'Registration service is temporarily unavailable. Our team has been notified.',
+					HttpStatus.SERVICE_UNAVAILABLE,
+					ErrorCode.SERVICE_UNAVAILABLE,
+					process.env.NODE_ENV === 'development'
+						? { debug: signUpError.message }
+						: undefined
 				);
 			}
 
@@ -86,16 +97,18 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				signUpError.message.includes('already exists') ||
 				signUpError.message.includes('User already registered')
 			) {
-				return json(
-					{
-						error: 'An account with this email already exists. Please sign in instead.',
-						code: 'USER_EXISTS'
-					},
-					{ status: 400 }
+				return ApiResponse.error(
+					'An account with this email already exists. Please sign in instead.',
+					HttpStatus.CONFLICT,
+					ErrorCode.ALREADY_EXISTS
 				);
 			}
 
-			return json({ error: signUpError.message }, { status: 400 });
+			return ApiResponse.error(
+				signUpError.message,
+				HttpStatus.BAD_REQUEST,
+				ErrorCode.OPERATION_FAILED
+			);
 		}
 
 		// IMPORTANT: Create public.users entry since we can't use triggers on auth.users in Supabase
@@ -142,12 +155,12 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		// Check if email confirmation is required
 		if (data.user && !data.session) {
-			return json({
-				success: true,
-				requiresEmailConfirmation: true,
-				message:
-					'Registration successful! Please check your email to confirm your account before signing in.'
-			});
+			return ApiResponse.success(
+				{
+					requiresEmailConfirmation: true
+				},
+				'Registration successful! Please check your email to confirm your account before signing in.'
+			);
 		}
 
 		// If we have a session (auto-login successful)
@@ -159,27 +172,32 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			// Force load user data
 			const { user } = await safeGetSession();
 
-			return json({
-				success: true,
-				user: user || data.user,
-				requiresEmailConfirmation: false
-			});
+			return ApiResponse.success(
+				{
+					user: user || data.user,
+					requiresEmailConfirmation: false
+				},
+				'Registration successful'
+			);
 		}
 
-		return json({ error: 'Registration failed. Please try again.' }, { status: 500 });
+		return ApiResponse.error(
+			'Registration failed. Please try again.',
+			HttpStatus.INTERNAL_SERVER_ERROR,
+			ErrorCode.OPERATION_FAILED
+		);
 	} catch (err: any) {
 		console.error('Unexpected registration error:', err);
 
 		// Network error handling
 		if (err instanceof TypeError && err.message.includes('fetch')) {
-			return json(
-				{
-					error: 'Network error. Please check your connection and try again.'
-				},
-				{ status: 503 }
+			return ApiResponse.error(
+				'Network error. Please check your connection and try again.',
+				HttpStatus.SERVICE_UNAVAILABLE,
+				ErrorCode.SERVICE_UNAVAILABLE
 			);
 		}
 
-		return json({ error: 'An unexpected error occurred. Please try again.' }, { status: 500 });
+		return ApiResponse.internalError(err, 'An unexpected error occurred. Please try again.');
 	}
 };
