@@ -6,9 +6,9 @@
 
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
-import { resolveTemplate } from '$lib/services/ontology/template-resolver.service';
+import { resolveTemplateWithClient } from '$lib/services/ontology/template-resolver.service';
 
-export const load: PageServerLoad = async ({ params, fetch }) => {
+export const load: PageServerLoad = async ({ params, fetch, locals }) => {
 	const { id, outputId } = params;
 
 	if (!id || !outputId) {
@@ -44,7 +44,11 @@ export const load: PageServerLoad = async ({ params, fetch }) => {
 	const projectData = await projectResponse.json();
 
 	// Resolve template with inheritance
-	const resolvedTemplate = await resolveTemplate(output.type_key, 'output');
+	const resolvedTemplate = await resolveTemplateWithClient(
+		locals.supabase,
+		output.type_key,
+		'output'
+	);
 
 	return {
 		output,

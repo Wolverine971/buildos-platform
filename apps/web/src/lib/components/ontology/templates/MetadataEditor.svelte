@@ -7,6 +7,7 @@
 	import TextInput from '$lib/components/ui/TextInput.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
 	import { X } from 'lucide-svelte';
+	import type { TemplateMetadata } from '$lib/types/onto';
 
 	interface Props {
 		metadata?: TemplateMetadata;
@@ -21,9 +22,22 @@
 	let keywords = $state<string[]>(metadata.keywords || []);
 	let outputType = $state(metadata.output_type || '');
 	let typicalScale = $state(metadata.typical_scale || '');
-	let customFields = $state<Array<{ key: string; value: string }>>(
-		Object.entries(metadata.custom || {}).map(([key, value]) => ({ key, value: String(value) }))
-	);
+	let customFields = $state<Array<{ key: string; value: string }>>([]);
+
+	function hydrateCustomFields(source?: Record<string, unknown>) {
+		if (!source) {
+			customFields = [];
+			return;
+		}
+		customFields = Object.entries(source).map(([key, value]) => ({
+			key,
+			value: String(value ?? '')
+		}));
+	}
+
+	$effect(() => {
+		hydrateCustomFields((metadata as any)?.custom);
+	});
 
 	// Keyword input state
 	let keywordInput = $state('');
@@ -41,7 +55,7 @@
 		// Add custom fields
 		const custom: Record<string, string> = {};
 		for (const field of customFields) {
-			if (field.key.trim() && field.value.trim()) {
+			if (field.key.trim()) {
 				custom[field.key.trim()] = field.value.trim();
 			}
 		}
@@ -50,6 +64,19 @@
 		}
 
 		return result;
+	}
+
+	export function setMetadata(
+		newMetadata: TemplateMetadata & { custom?: Record<string, unknown> } = {}
+	) {
+		metadata = newMetadata || {};
+		description = metadata.description || '';
+		realm = metadata.realm || 'personal';
+		keywords = Array.isArray(metadata.keywords) ? [...metadata.keywords] : [];
+		outputType = metadata.output_type || '';
+		typicalScale = metadata.typical_scale || '';
+		hydrateCustomFields(newMetadata.custom as Record<string, unknown> | undefined);
+		keywordInput = '';
 	}
 
 	const realms = [

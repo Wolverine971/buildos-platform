@@ -43,7 +43,7 @@ BuildOS turns any free‑form brain‑dump into a **structured, auditable projec
     - Is human-readable and memorable
     - Should be specific enough to be useful but general enough to be reusable
 
-- **type_key Conventions:**
+- **type_key Conventions:** (See [Type Key Taxonomy](./TYPE_KEY_TAXONOMY.md) for complete architectural framework)
     - **Domain** = the role/actor perspective (writer, coach, developer, founder, student, personal)
     - **Deliverable** = the primary output or relationship (book, client, app, startup, goal, routine)
     - **Variant** (optional) = specialization (writer.book.fiction, coach.client.executive)

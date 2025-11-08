@@ -498,148 +498,840 @@
 </svelte:head>
 
 <div class="admin-page">
-		<!-- Header with Back Button -->
-		<AdminPageHeader
-			title="Beta Program Management"
-			description="Manage beta signups, members, and email communications"
-			icon={UserCheck}
-			backHref="/admin"
-			backLabel="Dashboard"
-		>
-			<div slot="actions" class="flex items-center space-x-4">
-				<div class="text-sm text-gray-600 dark:text-gray-400">
-					{totalItems} total {activeTab === 'emails'
-						? 'emails'
-						: activeTab === 'dataview'
-							? 'signups'
-							: activeTab}
-				</div>
-				{#if activeTab === 'dataview'}
-					<Button
-						onclick={exportToCSV}
-						variant="primary"
-						size="md"
-						icon={Download}
-						iconPosition="left"
-						class="bg-green-600 hover:bg-green-700"
-						title="Export to CSV"
-					>
-						<span class="hidden lg:inline">Export CSV</span>
-					</Button>
-				{/if}
-				{#if activeTab !== 'emails'}
-					<Button
-						onclick={loadData}
-						disabled={isLoading}
-						variant="primary"
-						size="md"
-						loading={isLoading}
-						icon={RefreshCw}
-						iconPosition="left"
-					>
-						<span class="hidden lg:inline">Refresh</span>
-					</Button>
-				{/if}
+	<!-- Header with Back Button -->
+	<AdminPageHeader
+		title="Beta Program Management"
+		description="Manage beta signups, members, and email communications"
+		icon={UserCheck}
+		backHref="/admin"
+		backLabel="Dashboard"
+	>
+		<div slot="actions" class="flex items-center space-x-4">
+			<div class="text-sm text-gray-600 dark:text-gray-400">
+				{totalItems} total {activeTab === 'emails'
+					? 'emails'
+					: activeTab === 'dataview'
+						? 'signups'
+						: activeTab}
 			</div>
-		</AdminPageHeader>
+			{#if activeTab === 'dataview'}
+				<Button
+					onclick={exportToCSV}
+					variant="primary"
+					size="md"
+					icon={Download}
+					iconPosition="left"
+					class="bg-green-600 hover:bg-green-700"
+					title="Export to CSV"
+				>
+					<span class="hidden lg:inline">Export CSV</span>
+				</Button>
+			{/if}
+			{#if activeTab !== 'emails'}
+				<Button
+					onclick={loadData}
+					disabled={isLoading}
+					variant="primary"
+					size="md"
+					loading={isLoading}
+					icon={RefreshCw}
+					iconPosition="left"
+				>
+					<span class="hidden lg:inline">Refresh</span>
+				</Button>
+			{/if}
+		</div>
+	</AdminPageHeader>
 
-		<!-- Tabs - Mobile Responsive -->
-		<div class="border-b border-gray-200 dark:border-gray-700 mb-4">
-			<nav class="-mb-px flex overflow-x-auto">
-				<Button
-					onclick={() => (activeTab = 'signups')}
-					variant="ghost"
-					size="md"
-					class="flex-shrink-0 py-2 px-3 sm:px-4 border-b-2 font-medium text-sm rounded-none {activeTab ===
-					'signups'
-						? 'border-blue-500 text-blue-600'
-						: 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}"
-					icon={UserPlus}
-				>
-					<span class="hidden xs:inline">Signups</span>
-				</Button>
-				<Button
-					onclick={() => (activeTab = 'dataview')}
-					variant="ghost"
-					size="md"
-					class="flex-shrink-0 py-2 px-3 sm:px-4 border-b-2 font-medium text-sm rounded-none {activeTab ===
-					'dataview'
-						? 'border-blue-500 text-blue-600'
-						: 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}"
-					icon={Table}
-				>
-					<span class="hidden xs:inline">Data View</span>
-				</Button>
-				<Button
-					onclick={() => (activeTab = 'members')}
-					variant="ghost"
-					size="md"
-					class="flex-shrink-0 py-2 px-3 sm:px-4 border-b-2 font-medium text-sm rounded-none {activeTab ===
-					'members'
-						? 'border-blue-500 text-blue-600'
-						: 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}"
-					icon={Users}
-				>
-					<span class="hidden xs:inline">Members</span>
-				</Button>
-				<Button
-					onclick={() => (activeTab = 'emails')}
-					variant="ghost"
-					size="md"
-					class="flex-shrink-0 py-2 px-3 sm:px-4 border-b-2 font-medium text-sm rounded-none {activeTab ===
-					'emails'
-						? 'border-blue-500 text-blue-600'
-						: 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}"
-					icon={Mail}
-				>
-					<span class="hidden xs:inline">Emails</span>
-				</Button>
-			</nav>
+	<!-- Tabs - Mobile Responsive -->
+	<div class="border-b border-gray-200 dark:border-gray-700 mb-4">
+		<nav class="-mb-px flex overflow-x-auto">
+			<Button
+				onclick={() => (activeTab = 'signups')}
+				variant="ghost"
+				size="md"
+				class="flex-shrink-0 py-2 px-3 sm:px-4 border-b-2 font-medium text-sm rounded-none {activeTab ===
+				'signups'
+					? 'border-blue-500 text-blue-600'
+					: 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}"
+				icon={UserPlus}
+			>
+				<span class="hidden xs:inline">Signups</span>
+			</Button>
+			<Button
+				onclick={() => (activeTab = 'dataview')}
+				variant="ghost"
+				size="md"
+				class="flex-shrink-0 py-2 px-3 sm:px-4 border-b-2 font-medium text-sm rounded-none {activeTab ===
+				'dataview'
+					? 'border-blue-500 text-blue-600'
+					: 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}"
+				icon={Table}
+			>
+				<span class="hidden xs:inline">Data View</span>
+			</Button>
+			<Button
+				onclick={() => (activeTab = 'members')}
+				variant="ghost"
+				size="md"
+				class="flex-shrink-0 py-2 px-3 sm:px-4 border-b-2 font-medium text-sm rounded-none {activeTab ===
+				'members'
+					? 'border-blue-500 text-blue-600'
+					: 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}"
+				icon={Users}
+			>
+				<span class="hidden xs:inline">Members</span>
+			</Button>
+			<Button
+				onclick={() => (activeTab = 'emails')}
+				variant="ghost"
+				size="md"
+				class="flex-shrink-0 py-2 px-3 sm:px-4 border-b-2 font-medium text-sm rounded-none {activeTab ===
+				'emails'
+					? 'border-blue-500 text-blue-600'
+					: 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}"
+				icon={Mail}
+			>
+				<span class="hidden xs:inline">Emails</span>
+			</Button>
+		</nav>
+	</div>
+
+	<!-- Content Based on Active Tab -->
+	{#if activeTab === 'emails'}
+		<!-- Email Management Component -->
+		<EmailManager />
+	{:else if activeTab === 'dataview'}
+		<!-- Enhanced Data View Table Section - Replace the existing data view table in your component -->
+
+		<!-- Data View Tab Content -->
+		<!-- Filters for Data View -->
+		<div class="admin-panel p-4 sm:p-6">
+			<div class="flex items-center justify-between mb-4">
+				<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+					Comprehensive Signup Data
+				</h3>
+				<div class="flex items-center space-x-2">
+					<div class="flex items-center text-sm text-gray-600 dark:text-gray-400">
+						<input
+							type="checkbox"
+							bind:checked={dataViewFilters.showAllColumns}
+							class="mr-2 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+						/>
+						Show all columns
+					</div>
+				</div>
+			</div>
+
+			<!-- Data View Filters -->
+			<div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+				<!-- Search -->
+				<div class="md:col-span-2">
+					<TextInput
+						type="text"
+						bind:value={searchQuery}
+						placeholder="Search by name, email, or company..."
+						size="md"
+					/>
+				</div>
+
+				<!-- Status Filter -->
+				<div>
+					<Select
+						bind:value={dataViewFilters.status}
+						onchange={(e) => (dataViewFilters.status = e.detail)}
+						size="md"
+					>
+						<option value="all">All Status</option>
+						<option value="pending">Pending</option>
+						<option value="approved">Approved</option>
+						<option value="declined">Declined</option>
+						<option value="waitlist">Waitlist</option>
+					</Select>
+				</div>
+
+				<!-- Quick Sort (in addition to clickable headers) -->
+				<div>
+					<Select
+						bind:value={dataViewFilters.sortBy}
+						onchange={(e) => (dataViewFilters.sortBy = e.detail)}
+						size="md"
+					>
+						<option value="created_at">Date Applied</option>
+						<option value="full_name">Name</option>
+						<option value="company_name">Company</option>
+						<option value="signup_status">Status</option>
+						<option value="referral_source">Referral Source</option>
+					</Select>
+				</div>
+			</div>
 		</div>
 
-		<!-- Content Based on Active Tab -->
-		{#if activeTab === 'emails'}
-			<!-- Email Management Component -->
-			<EmailManager />
-		{:else if activeTab === 'dataview'}
-			<!-- Enhanced Data View Table Section - Replace the existing data view table in your component -->
+		{#if error}
+			<AdminCard
+				tone="danger"
+				padding="sm"
+				class="text-sm font-medium text-rose-900 dark:text-rose-100"
+			>
+				{error}
+			</AdminCard>
+		{/if}
 
-			<!-- Data View Tab Content -->
-			<!-- Filters for Data View -->
-			<div class="admin-panel p-4 sm:p-6">
-				<div class="flex items-center justify-between mb-4">
-					<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-						Comprehensive Signup Data
+		<!-- Enhanced Data View Table -->
+		<div class="admin-panel overflow-hidden">
+			{#if isLoading}
+				<div class="p-6 sm:p-8 text-center">
+					<RefreshCw class="h-8 w-8 animate-spin text-gray-400 mx-auto mb-4" />
+					<p class="text-gray-600 dark:text-gray-400">Loading signup data...</p>
+				</div>
+			{:else if signups.length === 0}
+				<div class="p-6 sm:p-8 text-center">
+					<Table class="h-12 w-12 sm:h-16 sm:w-16 text-gray-400 mx-auto mb-4" />
+					<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+						No Signup Data Found
 					</h3>
-					<div class="flex items-center space-x-2">
-						<div class="flex items-center text-sm text-gray-600 dark:text-gray-400">
-							<input
-								type="checkbox"
-								bind:checked={dataViewFilters.showAllColumns}
-								class="mr-2 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-							/>
-							Show all columns
-						</div>
-					</div>
+					<p class="text-gray-600 dark:text-gray-400">
+						{searchQuery
+							? 'Try adjusting your search criteria.'
+							: 'No beta signups yet.'}
+					</p>
+				</div>
+			{:else}
+				<!-- Responsive Data Table with Clickable Headers -->
+				<div class="overflow-x-auto">
+					<table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+						<thead class="bg-gray-50 dark:bg-gray-900">
+							<tr>
+								<!-- Contact Info - Sticky Column (Non-sortable for UX) -->
+								<th
+									class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider sticky left-0 bg-gray-50 dark:bg-gray-900 z-10"
+								>
+									Contact Info
+								</th>
+
+								<!-- Sortable Status Header -->
+								<th
+									class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
+									onclick={() => handleSort('signup_status')}
+									title="Click to sort by status"
+								>
+									<div class="flex items-center space-x-1">
+										<span>Status</span>
+										{#if dataViewFilters.sortBy === 'signup_status'}
+											{#if dataViewFilters.sortOrder === 'asc'}
+												<ChevronUp class="h-4 w-4" />
+											{:else}
+												<ChevronDown class="h-4 w-4" />
+											{/if}
+										{:else}
+											<span
+												class="h-4 w-4 flex items-center justify-center text-gray-300"
+											>
+												<svg
+													class="h-3 w-3"
+													fill="currentColor"
+													viewBox="0 0 20 20"
+												>
+													<path d="M5 8l5-5 5 5H5z" />
+													<path d="M5 12l5 5 5-5H5z" />
+												</svg>
+											</span>
+										{/if}
+									</div>
+								</th>
+
+								<!-- Sortable Referral Source Header -->
+								<th
+									class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
+									onclick={() => handleSort('referral_source')}
+									title="Click to sort by referral source"
+								>
+									<div class="flex items-center space-x-1">
+										<span>Source</span>
+										{#if dataViewFilters.sortBy === 'referral_source'}
+											{#if dataViewFilters.sortOrder === 'asc'}
+												<ChevronUp class="h-4 w-4" />
+											{:else}
+												<ChevronDown class="h-4 w-4" />
+											{/if}
+										{:else}
+											<span
+												class="h-4 w-4 flex items-center justify-center text-gray-300"
+											>
+												<svg
+													class="h-3 w-3"
+													fill="currentColor"
+													viewBox="0 0 20 20"
+												>
+													<path d="M5 8l5-5 5 5H5z" />
+													<path d="M5 12l5 5 5-5H5z" />
+												</svg>
+											</span>
+										{/if}
+									</div>
+								</th>
+
+								<!-- Why Interested (Non-sortable due to text length) -->
+								<th
+									class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+								>
+									Why Interested
+								</th>
+
+								<!-- Biggest Challenge (Non-sortable due to text length) -->
+								<th
+									class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+								>
+									Biggest Challenge
+								</th>
+
+								<!-- Tools Used (Non-sortable due to array type) -->
+								<th
+									class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+								>
+									Tools Used
+								</th>
+
+								{#if dataViewFilters.showAllColumns}
+									<!-- Sortable Job Title -->
+									<th
+										class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
+										onclick={() => handleSort('job_title')}
+										title="Click to sort by job title"
+									>
+										<div class="flex items-center space-x-1">
+											<span>Job Title</span>
+											{#if dataViewFilters.sortBy === 'job_title'}
+												{#if dataViewFilters.sortOrder === 'asc'}
+													<ChevronUp class="h-4 w-4" />
+												{:else}
+													<ChevronDown class="h-4 w-4" />
+												{/if}
+											{:else}
+												<span
+													class="h-4 w-4 flex items-center justify-center text-gray-300"
+												>
+													<svg
+														class="h-3 w-3"
+														fill="currentColor"
+														viewBox="0 0 20 20"
+													>
+														<path d="M5 8l5-5 5 5H5z" />
+														<path d="M5 12l5 5 5-5H5z" />
+													</svg>
+												</span>
+											{/if}
+										</div>
+									</th>
+
+									<!-- Sortable Company -->
+									<th
+										class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
+										onclick={() => handleSort('company_name')}
+										title="Click to sort by company"
+									>
+										<div class="flex items-center space-x-1">
+											<span>Company</span>
+											{#if dataViewFilters.sortBy === 'company_name'}
+												{#if dataViewFilters.sortOrder === 'asc'}
+													<ChevronUp class="h-4 w-4" />
+												{:else}
+													<ChevronDown class="h-4 w-4" />
+												{/if}
+											{:else}
+												<span
+													class="h-4 w-4 flex items-center justify-center text-gray-300"
+												>
+													<svg
+														class="h-3 w-3"
+														fill="currentColor"
+														viewBox="0 0 20 20"
+													>
+														<path d="M5 8l5-5 5 5H5z" />
+														<path d="M5 12l5 5 5-5H5z" />
+													</svg>
+												</span>
+											{/if}
+										</div>
+									</th>
+
+									<!-- Preferences (Non-sortable) -->
+									<th
+										class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+									>
+										Preferences
+									</th>
+
+									<!-- Sortable Timezone -->
+									<th
+										class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
+										onclick={() => handleSort('user_timezone')}
+										title="Click to sort by timezone"
+									>
+										<div class="flex items-center space-x-1">
+											<span>Timezone</span>
+											{#if dataViewFilters.sortBy === 'user_timezone'}
+												{#if dataViewFilters.sortOrder === 'asc'}
+													<ChevronUp class="h-4 w-4" />
+												{:else}
+													<ChevronDown class="h-4 w-4" />
+												{/if}
+											{:else}
+												<span
+													class="h-4 w-4 flex items-center justify-center text-gray-300"
+												>
+													<svg
+														class="h-3 w-3"
+														fill="currentColor"
+														viewBox="0 0 20 20"
+													>
+														<path d="M5 8l5-5 5 5H5z" />
+														<path d="M5 12l5 5 5-5H5z" />
+													</svg>
+												</span>
+											{/if}
+										</div>
+									</th>
+								{/if}
+
+								<!-- Sortable Applied Date -->
+								<th
+									class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
+									onclick={() => handleSort('created_at')}
+									title="Click to sort by application date"
+								>
+									<div class="flex items-center space-x-1">
+										<span>Applied</span>
+										{#if dataViewFilters.sortBy === 'created_at'}
+											{#if dataViewFilters.sortOrder === 'asc'}
+												<ChevronUp class="h-4 w-4" />
+											{:else}
+												<ChevronDown class="h-4 w-4" />
+											{/if}
+										{:else}
+											<span
+												class="h-4 w-4 flex items-center justify-center text-gray-300"
+											>
+												<svg
+													class="h-3 w-3"
+													fill="currentColor"
+													viewBox="0 0 20 20"
+												>
+													<path d="M5 8l5-5 5 5H5z" />
+													<path d="M5 12l5 5 5-5H5z" />
+												</svg>
+											</span>
+										{/if}
+									</div>
+								</th>
+
+								<!-- Actions (Non-sortable) -->
+								<th
+									class="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+								>
+									Actions
+								</th>
+							</tr>
+						</thead>
+						<tbody
+							class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700"
+						>
+							{#each signups as signup}
+								<tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+									<!-- Contact Info - Sticky Column -->
+									<td
+										class="px-4 py-4 text-sm sticky left-0 bg-white dark:bg-gray-800 z-10 border-r border-gray-200 dark:border-gray-700"
+									>
+										<div class="min-w-48">
+											<div class="font-medium text-gray-900 dark:text-white">
+												{signup.full_name}
+											</div>
+											<div class="text-gray-500 dark:text-gray-400 break-all">
+												{signup.email}
+											</div>
+										</div>
+									</td>
+
+									<!-- Status -->
+									<td class="px-4 py-4 whitespace-nowrap">
+										<span
+											class="inline-flex px-2 py-1 text-xs font-semibold rounded-full {getStatusColor(
+												signup.signup_status
+											)}"
+										>
+											{signup.signup_status}
+										</span>
+									</td>
+
+									<!-- Referral Source -->
+									<td class="px-4 py-4 text-sm text-gray-900 dark:text-white">
+										<div class="max-w-32">
+											{#if signup.referral_source}
+												<span
+													class="inline-flex px-2 py-1 text-xs bg-indigo-100 text-indigo-800 rounded dark:bg-indigo-900 dark:text-indigo-300"
+												>
+													{signup.referral_source}
+												</span>
+											{:else}
+												<span
+													class="text-gray-500 dark:text-gray-400 text-xs"
+													>Not specified</span
+												>
+											{/if}
+										</div>
+									</td>
+
+									<!-- Why Interested -->
+									<td class="px-4 py-4 text-sm text-gray-900 dark:text-white">
+										<div class="max-w-md">
+											<div
+												class="text-sm leading-relaxed {signup.why_interested &&
+												signup.why_interested.length > 100
+													? 'cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 p-2 rounded'
+													: ''}"
+												title={signup.why_interested || 'Not provided'}
+												role={signup.why_interested &&
+												signup.why_interested.length > 100
+													? 'button'
+													: undefined}
+												aria-label={signup.why_interested &&
+												signup.why_interested.length > 100
+													? 'Click to view full text'
+													: undefined}
+												tabindex={signup.why_interested &&
+												signup.why_interested.length > 100
+													? 0
+													: undefined}
+												onclick={() => {
+													if (
+														signup.why_interested &&
+														signup.why_interested.length > 100
+													) {
+														selectedItem = signup;
+														showModal = true;
+													}
+												}}
+												onkeydown={(e) => {
+													if (
+														signup.why_interested &&
+														signup.why_interested.length > 100 &&
+														(e.key === 'Enter' || e.key === ' ')
+													) {
+														e.preventDefault();
+														selectedItem = signup;
+														showModal = true;
+													}
+												}}
+											>
+												{signup.why_interested
+													? truncateText(signup.why_interested, 100)
+													: 'Not provided'}
+											</div>
+										</div>
+									</td>
+
+									<!-- Biggest Challenge -->
+									<td class="px-4 py-4 text-sm text-gray-900 dark:text-white">
+										<div class="max-w-md">
+											<div
+												class="text-sm leading-relaxed {signup.biggest_challenge &&
+												signup.biggest_challenge.length > 100
+													? 'cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 p-2 rounded'
+													: ''}"
+												title={signup.biggest_challenge || 'Not provided'}
+												role={signup.biggest_challenge &&
+												signup.biggest_challenge.length > 100
+													? 'button'
+													: undefined}
+												aria-label={signup.biggest_challenge &&
+												signup.biggest_challenge.length > 100
+													? 'Click to view full text'
+													: undefined}
+												tabindex={signup.biggest_challenge &&
+												signup.biggest_challenge.length > 100
+													? 0
+													: undefined}
+												onclick={() => {
+													if (
+														signup.biggest_challenge &&
+														signup.biggest_challenge.length > 100
+													) {
+														selectedItem = signup;
+														showModal = true;
+													}
+												}}
+												onkeydown={(e) => {
+													if (
+														signup.biggest_challenge &&
+														signup.biggest_challenge.length > 100 &&
+														(e.key === 'Enter' || e.key === ' ')
+													) {
+														e.preventDefault();
+														selectedItem = signup;
+														showModal = true;
+													}
+												}}
+											>
+												{signup.biggest_challenge
+													? truncateText(signup.biggest_challenge, 100)
+													: 'Not provided'}
+											</div>
+										</div>
+									</td>
+
+									<!-- Tools Used -->
+									<td class="px-4 py-4 text-sm">
+										<div class="max-w-48">
+											{#if signup.productivity_tools && signup.productivity_tools.length > 0}
+												<div class="flex flex-wrap gap-1">
+													{#each signup.productivity_tools.slice(0, 3) as tool}
+														<span
+															class="inline-flex px-2 py-1 text-xs bg-gray-100 text-gray-800 rounded dark:bg-gray-700 dark:text-gray-300"
+														>
+															{tool}
+														</span>
+													{/each}
+													{#if signup.productivity_tools.length > 3}
+														<span
+															class="inline-flex px-2 py-1 text-xs bg-gray-200 text-gray-600 rounded dark:bg-gray-600 dark:text-gray-400"
+														>
+															+{signup.productivity_tools.length - 3} more
+														</span>
+													{/if}
+												</div>
+											{:else}
+												<span class="text-gray-500 dark:text-gray-400"
+													>None specified</span
+												>
+											{/if}
+										</div>
+									</td>
+
+									{#if dataViewFilters.showAllColumns}
+										<!-- Job Title -->
+										<td class="px-4 py-4 text-sm text-gray-900 dark:text-white">
+											{signup.job_title || 'Not provided'}
+										</td>
+
+										<!-- Company -->
+										<td class="px-4 py-4 text-sm text-gray-900 dark:text-white">
+											{signup.company_name || 'Not provided'}
+										</td>
+
+										<!-- Preferences -->
+										<td class="px-4 py-4 text-sm">
+											<div class="space-y-1">
+												{#if signup.wants_weekly_calls}
+													<div
+														class="text-green-600 dark:text-green-400 text-xs"
+													>
+														✓ Weekly calls
+													</div>
+												{/if}
+												{#if signup.wants_community_access}
+													<div
+														class="text-blue-600 dark:text-blue-400 text-xs"
+													>
+														✓ Community
+													</div>
+												{/if}
+												{#if !signup.wants_weekly_calls && !signup.wants_community_access}
+													<div
+														class="text-gray-500 dark:text-gray-400 text-xs"
+													>
+														No preferences
+													</div>
+												{/if}
+											</div>
+										</td>
+
+										<!-- Timezone -->
+										<td class="px-4 py-4 text-sm text-gray-900 dark:text-white">
+											{signup.user_timezone || 'Not provided'}
+										</td>
+									{/if}
+
+									<!-- Applied Date -->
+									<td
+										class="px-4 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400"
+									>
+										{formatDate(signup.created_at)}
+									</td>
+
+									<!-- Actions -->
+									<td
+										class="px-4 py-4 whitespace-nowrap text-right text-sm font-medium"
+									>
+										<div class="flex items-center justify-end space-x-2">
+											<!-- View Details -->
+											<Button
+												onclick={() => {
+													selectedItem = signup;
+													showModal = true;
+												}}
+												variant="ghost"
+												size="sm"
+												icon={Eye}
+												class="p-2 text-gray-400 hover:text-blue-600"
+												title="View full details"
+											></Button>
+
+											<!-- Send Email -->
+											<Button
+												onclick={() => {
+													emailUserId = signup.user_id || '';
+													emailUserName = signup.full_name;
+													emailUserEmail = signup.email;
+													showEmailModal = true;
+												}}
+												variant="ghost"
+												size="sm"
+												icon={Mail}
+												class="p-2 text-gray-400 hover:text-indigo-600"
+												title="Send email"
+											></Button>
+
+											<!-- Quick Actions for Pending -->
+											{#if signup.signup_status === 'pending'}
+												<Button
+													onclick={() =>
+														updateSignupStatus(
+															signup.id,
+															'approved',
+															true
+														)}
+													disabled={isUpdating}
+													variant="ghost"
+													size="sm"
+													icon={CheckCircle}
+													class="p-2 text-gray-400 hover:text-green-600"
+													title="Approve and create member"
+												></Button>
+												<Button
+													onclick={() =>
+														updateSignupStatus(signup.id, 'declined')}
+													disabled={isUpdating}
+													variant="ghost"
+													size="sm"
+													icon={XCircle}
+													class="p-2 text-gray-400 hover:text-red-600"
+													title="Decline"
+												></Button>
+											{/if}
+										</div>
+									</td>
+								</tr>
+							{/each}
+						</tbody>
+					</table>
 				</div>
 
-				<!-- Data View Filters -->
-				<div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-					<!-- Search -->
-					<div class="md:col-span-2">
-						<TextInput
-							type="text"
-							bind:value={searchQuery}
-							placeholder="Search by name, email, or company..."
-							size="md"
-						/>
+				<!-- Pagination for Data View -->
+				{#if totalPages > 1}
+					<div
+						class="bg-white dark:bg-gray-800 px-4 py-3 flex items-center justify-between border-t border-gray-200 dark:border-gray-700"
+					>
+						<div class="flex-1 flex justify-between sm:hidden">
+							<Button
+								onclick={prevPage}
+								disabled={currentPage === 1}
+								variant="outline"
+								size="md"
+							>
+								Previous
+							</Button>
+							<span
+								class="flex items-center text-sm text-gray-700 dark:text-gray-300"
+							>
+								{currentPage} of {totalPages}
+							</span>
+							<Button
+								onclick={nextPage}
+								disabled={currentPage === totalPages}
+								variant="outline"
+								size="md"
+							>
+								Next
+							</Button>
+						</div>
+						<div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+							<div>
+								<p class="text-sm text-gray-700 dark:text-gray-300">
+									Showing page <span class="font-medium">{currentPage}</span>
+									of <span class="font-medium">{totalPages}</span>
+									({totalItems} total signups)
+								</p>
+							</div>
+							<div>
+								<nav
+									class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px"
+								>
+									<Button
+										onclick={prevPage}
+										disabled={currentPage === 1}
+										variant="outline"
+										size="sm"
+										icon={ChevronLeft}
+										class="rounded-l-md rounded-r-none"
+									></Button>
+									<Button
+										onclick={nextPage}
+										disabled={currentPage === totalPages}
+										variant="outline"
+										size="sm"
+										icon={ChevronRight}
+										class="rounded-r-md rounded-l-none -ml-px"
+									></Button>
+								</nav>
+							</div>
+						</div>
 					</div>
+				{/if}
+			{/if}
+		</div>
+	{:else}
+		<!-- Existing Signups/Members Content -->
+		<!-- Filters and Search -->
+		<div class="admin-panel p-4 sm:p-6">
+			<!-- Mobile Filter Toggle -->
+			<div class="sm:hidden mb-4">
+				<Button
+					onclick={() => (showMobileFilters = !showMobileFilters)}
+					variant="secondary"
+					size="md"
+					fullWidth={true}
+					icon={Filter}
+					iconPosition="right"
+					class="justify-between"
+				>
+					<span class="text-sm font-medium"> Filters & Search </span>
+				</Button>
+			</div>
 
-					<!-- Status Filter -->
+			<!-- Mobile Filters Collapsible -->
+			<div class="sm:hidden {showMobileFilters ? 'block' : 'hidden'} space-y-4 mb-4">
+				<!-- Search -->
+				<FormField label="Search" labelFor="search" size="md">
+					<TextInput
+						id="search"
+						type="text"
+						bind:value={searchQuery}
+						placeholder="Search by name, email..."
+						size="md"
+					/>
+				</FormField>
+
+				{#if activeTab === 'signups'}
+					<!-- Signup Status Filter -->
 					<div>
+						<div
+							class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+						>
+							Status
+						</div>
 						<Select
-							bind:value={dataViewFilters.status}
-							onchange={(e) => (dataViewFilters.status = e.detail)}
+							bind:value={signupFilters.status}
+							onchange={(e) => (signupFilters.status = e.detail)}
 							size="md"
 						>
 							<option value="all">All Status</option>
@@ -650,75 +1342,416 @@
 						</Select>
 					</div>
 
-					<!-- Quick Sort (in addition to clickable headers) -->
+					<!-- Sort -->
 					<div>
+						<div
+							class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+						>
+							Sort By
+						</div>
 						<Select
-							bind:value={dataViewFilters.sortBy}
-							onchange={(e) => (dataViewFilters.sortBy = e.detail)}
+							bind:value={signupFilters.sortBy}
+							onchange={(e) => (signupFilters.sortBy = e.detail)}
 							size="md"
 						>
 							<option value="created_at">Date Applied</option>
 							<option value="full_name">Name</option>
 							<option value="company_name">Company</option>
-							<option value="signup_status">Status</option>
-							<option value="referral_source">Referral Source</option>
 						</Select>
 					</div>
-				</div>
+				{:else}
+					<!-- Member Tier Filter -->
+					<div>
+						<div
+							class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+						>
+							Tier
+						</div>
+						<Select
+							bind:value={memberFilters.tier}
+							onchange={(e) => (memberFilters.tier = e)}
+							size="md"
+						>
+							<option value="all">All Tiers</option>
+							<option value="founder">Founder</option>
+							<option value="early">Early</option>
+							<option value="standard">Standard</option>
+						</Select>
+					</div>
+
+					<!-- Active Only Toggle -->
+					<div>
+						<div class="flex items-center space-x-2">
+							<input
+								type="checkbox"
+								bind:checked={memberFilters.activeOnly}
+								class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+							/>
+							<span class="text-sm text-gray-700 dark:text-gray-300">Active Only</span
+							>
+						</div>
+					</div>
+				{/if}
 			</div>
 
-			{#if error}
-				<AdminCard
-					tone="danger"
-					padding="sm"
-					class="text-sm font-medium text-rose-900 dark:text-rose-100"
-				>
-					{error}
-				</AdminCard>
-			{/if}
+			<!-- Desktop Filters Grid -->
+			<div class="hidden sm:grid sm:grid-cols-1 md:grid-cols-4 gap-4">
+				<!-- Search -->
+				<div class="md:col-span-2">
+					<TextInput
+						type="text"
+						bind:value={searchQuery}
+						placeholder="Search by name, email, or company..."
+						size="md"
+					/>
+				</div>
 
-			<!-- Enhanced Data View Table -->
-			<div class="admin-panel overflow-hidden">
-				{#if isLoading}
-					<div class="p-6 sm:p-8 text-center">
-						<RefreshCw class="h-8 w-8 animate-spin text-gray-400 mx-auto mb-4" />
-						<p class="text-gray-600 dark:text-gray-400">Loading signup data...</p>
+				{#if activeTab === 'signups'}
+					<!-- Signup Status Filter -->
+					<div>
+						<Select
+							bind:value={signupFilters.status}
+							onchange={(e) => (signupFilters.status = e.detail)}
+							size="md"
+						>
+							<option value="all">All Status</option>
+							<option value="pending">Pending</option>
+							<option value="approved">Approved</option>
+							<option value="declined">Declined</option>
+							<option value="waitlist">Waitlist</option>
+						</Select>
 					</div>
-				{:else if signups.length === 0}
-					<div class="p-6 sm:p-8 text-center">
-						<Table class="h-12 w-12 sm:h-16 sm:w-16 text-gray-400 mx-auto mb-4" />
-						<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-							No Signup Data Found
-						</h3>
-						<p class="text-gray-600 dark:text-gray-400">
-							{searchQuery
-								? 'Try adjusting your search criteria.'
-								: 'No beta signups yet.'}
-						</p>
+
+					<!-- Sort -->
+					<div>
+						<Select
+							bind:value={signupFilters.sortBy}
+							onchange={(e) => (signupFilters.sortBy = e.detail)}
+							size="md"
+						>
+							<option value="created_at">Date Applied</option>
+							<option value="full_name">Name</option>
+							<option value="company_name">Company</option>
+						</Select>
 					</div>
 				{:else}
-					<!-- Responsive Data Table with Clickable Headers -->
-					<div class="overflow-x-auto">
-						<table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-							<thead class="bg-gray-50 dark:bg-gray-900">
-								<tr>
-									<!-- Contact Info - Sticky Column (Non-sortable for UX) -->
-									<th
-										class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider sticky left-0 bg-gray-50 dark:bg-gray-900 z-10"
-									>
-										Contact Info
-									</th>
+					<!-- Member Tier Filter -->
+					<div>
+						<Select
+							bind:value={memberFilters.tier}
+							onchange={(e) => (memberFilters.tier = e.detail)}
+							size="md"
+						>
+							<option value="all">All Tiers</option>
+							<option value="founder">Founder</option>
+							<option value="early">Early</option>
+							<option value="standard">Standard</option>
+						</Select>
+					</div>
 
-									<!-- Sortable Status Header -->
+					<!-- Active Only Toggle -->
+					<div class="flex items-center">
+						<div class="flex items-center space-x-2">
+							<input
+								type="checkbox"
+								bind:checked={memberFilters.activeOnly}
+								class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+							/>
+							<span class="text-sm text-gray-600 dark:text-gray-400">Active Only</span
+							>
+						</div>
+					</div>
+				{/if}
+			</div>
+		</div>
+
+		{#if error}
+			<div
+				class="bg-red-50 border border-red-200 rounded-lg p-4 mb-4 dark:bg-red-900/20 dark:border-red-800"
+			>
+				<p class="text-red-800 dark:text-red-200">{error}</p>
+			</div>
+		{/if}
+
+		<!-- Data Content -->
+		<div class="admin-panel overflow-hidden">
+			{#if isLoading}
+				<div class="p-6 sm:p-8 text-center">
+					<RefreshCw class="h-8 w-8 animate-spin text-gray-400 mx-auto mb-4" />
+					<p class="text-gray-600 dark:text-gray-400">Loading {activeTab}...</p>
+				</div>
+			{:else if (activeTab === 'signups' && signups.length === 0) || (activeTab === 'members' && members.length === 0)}
+				<div class="p-6 sm:p-8 text-center">
+					<UserCheck class="h-12 w-12 sm:h-16 sm:w-16 text-gray-400 mx-auto mb-4" />
+					<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+						No {activeTab === 'signups' ? 'Signups' : 'Members'} Found
+					</h3>
+					<p class="text-gray-600 dark:text-gray-400">
+						{searchQuery
+							? 'Try adjusting your search criteria.'
+							: activeTab === 'signups'
+								? 'No beta signups yet.'
+								: 'No beta members yet.'}
+					</p>
+				</div>
+			{:else}
+				<!-- Mobile Cards View -->
+				<div class="sm:hidden">
+					{#if activeTab === 'signups'}
+						{#each signups as signup}
+							<div class="p-4 border-b border-gray-200 dark:border-gray-700">
+								<div class="flex items-start justify-between mb-2">
+									<div class="flex items-center flex-1 min-w-0">
+										<div class="flex-shrink-0 h-8 w-8">
+											<div
+												class="h-8 w-8 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center"
+											>
+												<span
+													class="text-xs font-medium text-blue-800 dark:text-blue-200"
+												>
+													{signup.full_name.charAt(0).toUpperCase()}
+												</span>
+											</div>
+										</div>
+										<div class="ml-3 flex-1 min-w-0">
+											<p
+												class="text-sm font-medium text-gray-900 dark:text-white truncate"
+											>
+												{signup.full_name}
+											</p>
+											<p
+												class="text-xs text-gray-500 dark:text-gray-400 truncate"
+											>
+												{signup.email}
+											</p>
+										</div>
+									</div>
+									<Button
+										onclick={() => {
+											selectedItem = signup;
+											showModal = true;
+										}}
+										variant="ghost"
+										size="sm"
+										icon={Eye}
+										class="ml-2 p-2 text-gray-400 hover:text-blue-600"
+										title="View details"
+									></Button>
+								</div>
+
+								<div class="flex items-center justify-between text-xs mb-3">
+									<span
+										class="inline-flex px-2 py-1 text-xs font-semibold rounded-full {getStatusColor(
+											signup.signup_status
+										)}"
+									>
+										{signup.signup_status}
+									</span>
+									<span class="text-gray-500">
+										{formatDate(signup.created_at)}
+									</span>
+								</div>
+
+								{#if signup.company_name}
+									<p class="text-xs text-gray-600 dark:text-gray-400 mb-3">
+										{signup.company_name}
+									</p>
+								{/if}
+
+								<!-- Quick Actions -->
+								{#if signup.signup_status === 'pending'}
+									<div class="flex space-x-2">
+										<Button
+											onclick={() => showApprovalConfirmation(signup)}
+											disabled={isUpdating}
+											variant="primary"
+											size="sm"
+											fullWidth={true}
+											class="bg-green-100 text-green-800 hover:bg-green-200"
+										>
+											Approve & Email
+										</Button>
+										<Button
+											onclick={() =>
+												updateSignupStatus(signup.id, 'declined')}
+											disabled={isUpdating}
+											variant="danger"
+											size="sm"
+											fullWidth={true}
+											class="bg-red-100 text-red-800 hover:bg-red-200"
+										>
+											Decline
+										</Button>
+									</div>
+								{/if}
+							</div>
+						{/each}
+					{:else}
+						{#each members as member}
+							<div class="p-4 border-b border-gray-200 dark:border-gray-700">
+								<div class="flex items-start justify-between mb-2">
+									<div class="flex items-center flex-1 min-w-0">
+										<div class="flex-shrink-0 h-8 w-8">
+											<div
+												class="h-8 w-8 rounded-full bg-purple-100 dark:bg-purple-900 flex items-center justify-center"
+											>
+												<span
+													class="text-xs font-medium text-purple-800 dark:text-purple-200"
+												>
+													{member.full_name.charAt(0).toUpperCase()}
+												</span>
+											</div>
+										</div>
+										<div class="ml-3 flex-1 min-w-0">
+											<div class="flex items-center">
+												<p
+													class="text-sm font-medium text-gray-900 dark:text-white truncate"
+												>
+													{member.full_name}
+												</p>
+												{#if !member.is_active}
+													<span class="ml-2 text-red-500 text-xs"
+														>(Inactive)</span
+													>
+												{/if}
+											</div>
+											<p
+												class="text-xs text-gray-500 dark:text-gray-400 truncate"
+											>
+												{member.email}
+											</p>
+										</div>
+									</div>
+									<Button
+										onclick={() => {
+											selectedItem = member;
+											showModal = true;
+										}}
+										variant="ghost"
+										size="sm"
+										icon={Eye}
+										iconPosition="left"
+										class="ml-2 p-2 text-gray-400 hover:text-blue-600"
+										title="View details"
+									/>
+								</div>
+
+								<div class="flex items-center justify-between text-xs mb-3">
+									<span
+										class="inline-flex px-2 py-1 text-xs font-semibold rounded-full {getTierColor(
+											member.beta_tier
+										)}"
+									>
+										{member.beta_tier}
+									</span>
+									<span class="text-gray-500">
+										{formatDate(member.joined_at)}
+									</span>
+								</div>
+
+								{#if member.company_name}
+									<p class="text-xs text-gray-600 dark:text-gray-400 mb-3">
+										{member.company_name}
+									</p>
+								{/if}
+
+								<!-- Quick Actions -->
+								<div class="flex space-x-2">
+									<Button
+										onclick={() =>
+											updateMember(member.id, {
+												is_active: !member.is_active
+											})}
+										disabled={isUpdating}
+										variant="secondary"
+										size="sm"
+										fullWidth={true}
+										class={member.is_active
+											? 'bg-red-100 text-red-800 hover:bg-red-200'
+											: 'bg-green-100 text-green-800 hover:bg-green-200'}
+									>
+										{member.is_active ? 'Deactivate' : 'Activate'}
+									</Button>
+								</div>
+							</div>
+						{/each}
+					{/if}
+				</div>
+
+				<!-- Desktop Table View -->
+				<div class="hidden sm:block overflow-x-auto">
+					<table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+						<thead class="bg-gray-50 dark:bg-gray-900">
+							<tr>
+								{#if activeTab === 'signups'}
+									<!-- Signups table headers -->
 									<th
-										class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
-										onclick={() => handleSort('signup_status')}
+										class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
+										onclick={() => handleSignupSort('full_name')}
+										title="Click to sort by name"
+									>
+										<div class="flex items-center space-x-1">
+											<span>Applicant</span>
+											{#if signupFilters.sortBy === 'full_name'}
+												{#if signupFilters.sortOrder === 'asc'}
+													<ChevronUp class="h-4 w-4" />
+												{:else}
+													<ChevronDown class="h-4 w-4" />
+												{/if}
+											{:else}
+												<span
+													class="h-4 w-4 flex items-center justify-center text-gray-300"
+												>
+													<svg
+														class="h-3 w-3"
+														fill="currentColor"
+														viewBox="0 0 20 20"
+													>
+														<path d="M5 8l5-5 5 5H5z" />
+														<path d="M5 12l5 5 5-5H5z" />
+													</svg>
+												</span>
+											{/if}
+										</div>
+									</th>
+									<th
+										class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
+										onclick={() => handleSignupSort('company_name')}
+										title="Click to sort by company"
+									>
+										<div class="flex items-center space-x-1">
+											<span>Company</span>
+											{#if signupFilters.sortBy === 'company_name'}
+												{#if signupFilters.sortOrder === 'asc'}
+													<ChevronUp class="h-4 w-4" />
+												{:else}
+													<ChevronDown class="h-4 w-4" />
+												{/if}
+											{:else}
+												<span
+													class="h-4 w-4 flex items-center justify-center text-gray-300"
+												>
+													<svg
+														class="h-3 w-3"
+														fill="currentColor"
+														viewBox="0 0 20 20"
+													>
+														<path d="M5 8l5-5 5 5H5z" />
+														<path d="M5 12l5 5 5-5H5z" />
+													</svg>
+												</span>
+											{/if}
+										</div>
+									</th>
+									<th
+										class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
+										onclick={() => handleSignupSort('signup_status')}
 										title="Click to sort by status"
 									>
 										<div class="flex items-center space-x-1">
 											<span>Status</span>
-											{#if dataViewFilters.sortBy === 'signup_status'}
-												{#if dataViewFilters.sortOrder === 'asc'}
+											{#if signupFilters.sortBy === 'signup_status'}
+												{#if signupFilters.sortOrder === 'asc'}
 													<ChevronUp class="h-4 w-4" />
 												{:else}
 													<ChevronDown class="h-4 w-4" />
@@ -739,171 +1772,15 @@
 											{/if}
 										</div>
 									</th>
-
-									<!-- Sortable Referral Source Header -->
 									<th
-										class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
-										onclick={() => handleSort('referral_source')}
-										title="Click to sort by referral source"
-									>
-										<div class="flex items-center space-x-1">
-											<span>Source</span>
-											{#if dataViewFilters.sortBy === 'referral_source'}
-												{#if dataViewFilters.sortOrder === 'asc'}
-													<ChevronUp class="h-4 w-4" />
-												{:else}
-													<ChevronDown class="h-4 w-4" />
-												{/if}
-											{:else}
-												<span
-													class="h-4 w-4 flex items-center justify-center text-gray-300"
-												>
-													<svg
-														class="h-3 w-3"
-														fill="currentColor"
-														viewBox="0 0 20 20"
-													>
-														<path d="M5 8l5-5 5 5H5z" />
-														<path d="M5 12l5 5 5-5H5z" />
-													</svg>
-												</span>
-											{/if}
-										</div>
-									</th>
-
-									<!-- Why Interested (Non-sortable due to text length) -->
-									<th
-										class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
-									>
-										Why Interested
-									</th>
-
-									<!-- Biggest Challenge (Non-sortable due to text length) -->
-									<th
-										class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
-									>
-										Biggest Challenge
-									</th>
-
-									<!-- Tools Used (Non-sortable due to array type) -->
-									<th
-										class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
-									>
-										Tools Used
-									</th>
-
-									{#if dataViewFilters.showAllColumns}
-										<!-- Sortable Job Title -->
-										<th
-											class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
-											onclick={() => handleSort('job_title')}
-											title="Click to sort by job title"
-										>
-											<div class="flex items-center space-x-1">
-												<span>Job Title</span>
-												{#if dataViewFilters.sortBy === 'job_title'}
-													{#if dataViewFilters.sortOrder === 'asc'}
-														<ChevronUp class="h-4 w-4" />
-													{:else}
-														<ChevronDown class="h-4 w-4" />
-													{/if}
-												{:else}
-													<span
-														class="h-4 w-4 flex items-center justify-center text-gray-300"
-													>
-														<svg
-															class="h-3 w-3"
-															fill="currentColor"
-															viewBox="0 0 20 20"
-														>
-															<path d="M5 8l5-5 5 5H5z" />
-															<path d="M5 12l5 5 5-5H5z" />
-														</svg>
-													</span>
-												{/if}
-											</div>
-										</th>
-
-										<!-- Sortable Company -->
-										<th
-											class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
-											onclick={() => handleSort('company_name')}
-											title="Click to sort by company"
-										>
-											<div class="flex items-center space-x-1">
-												<span>Company</span>
-												{#if dataViewFilters.sortBy === 'company_name'}
-													{#if dataViewFilters.sortOrder === 'asc'}
-														<ChevronUp class="h-4 w-4" />
-													{:else}
-														<ChevronDown class="h-4 w-4" />
-													{/if}
-												{:else}
-													<span
-														class="h-4 w-4 flex items-center justify-center text-gray-300"
-													>
-														<svg
-															class="h-3 w-3"
-															fill="currentColor"
-															viewBox="0 0 20 20"
-														>
-															<path d="M5 8l5-5 5 5H5z" />
-															<path d="M5 12l5 5 5-5H5z" />
-														</svg>
-													</span>
-												{/if}
-											</div>
-										</th>
-
-										<!-- Preferences (Non-sortable) -->
-										<th
-											class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
-										>
-											Preferences
-										</th>
-
-										<!-- Sortable Timezone -->
-										<th
-											class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
-											onclick={() => handleSort('user_timezone')}
-											title="Click to sort by timezone"
-										>
-											<div class="flex items-center space-x-1">
-												<span>Timezone</span>
-												{#if dataViewFilters.sortBy === 'user_timezone'}
-													{#if dataViewFilters.sortOrder === 'asc'}
-														<ChevronUp class="h-4 w-4" />
-													{:else}
-														<ChevronDown class="h-4 w-4" />
-													{/if}
-												{:else}
-													<span
-														class="h-4 w-4 flex items-center justify-center text-gray-300"
-													>
-														<svg
-															class="h-3 w-3"
-															fill="currentColor"
-															viewBox="0 0 20 20"
-														>
-															<path d="M5 8l5-5 5 5H5z" />
-															<path d="M5 12l5 5 5-5H5z" />
-														</svg>
-													</span>
-												{/if}
-											</div>
-										</th>
-									{/if}
-
-									<!-- Sortable Applied Date -->
-									<th
-										class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
-										onclick={() => handleSort('created_at')}
-										title="Click to sort by application date"
+										class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
+										onclick={() => handleSignupSort('created_at')}
+										title="Click to sort by date"
 									>
 										<div class="flex items-center space-x-1">
 											<span>Applied</span>
-											{#if dataViewFilters.sortBy === 'created_at'}
-												{#if dataViewFilters.sortOrder === 'asc'}
+											{#if signupFilters.sortBy === 'created_at'}
+												{#if signupFilters.sortOrder === 'asc'}
 													<ChevronUp class="h-4 w-4" />
 												{:else}
 													<ChevronDown class="h-4 w-4" />
@@ -924,40 +1801,178 @@
 											{/if}
 										</div>
 									</th>
-
-									<!-- Actions (Non-sortable) -->
+								{:else}
+									<!-- Members table headers -->
 									<th
-										class="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+										class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
+										onclick={() => handleMemberSort('full_name')}
+										title="Click to sort by name"
 									>
-										Actions
+										<div class="flex items-center space-x-1">
+											<span>Member</span>
+											{#if memberFilters.sortBy === 'full_name'}
+												{#if memberFilters.sortOrder === 'asc'}
+													<ChevronUp class="h-4 w-4" />
+												{:else}
+													<ChevronDown class="h-4 w-4" />
+												{/if}
+											{:else}
+												<span
+													class="h-4 w-4 flex items-center justify-center text-gray-300"
+												>
+													<svg
+														class="h-3 w-3"
+														fill="currentColor"
+														viewBox="0 0 20 20"
+													>
+														<path d="M5 8l5-5 5 5H5z" />
+														<path d="M5 12l5 5 5-5H5z" />
+													</svg>
+												</span>
+											{/if}
+										</div>
 									</th>
-								</tr>
-							</thead>
-							<tbody
-								class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700"
-							>
+									<th
+										class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
+										onclick={() => handleMemberSort('company_name')}
+										title="Click to sort by company"
+									>
+										<div class="flex items-center space-x-1">
+											<span>Company</span>
+											{#if memberFilters.sortBy === 'company_name'}
+												{#if memberFilters.sortOrder === 'asc'}
+													<ChevronUp class="h-4 w-4" />
+												{:else}
+													<ChevronDown class="h-4 w-4" />
+												{/if}
+											{:else}
+												<span
+													class="h-4 w-4 flex items-center justify-center text-gray-300"
+												>
+													<svg
+														class="h-3 w-3"
+														fill="currentColor"
+														viewBox="0 0 20 20"
+													>
+														<path d="M5 8l5-5 5 5H5z" />
+														<path d="M5 12l5 5 5-5H5z" />
+													</svg>
+												</span>
+											{/if}
+										</div>
+									</th>
+									<th
+										class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
+										onclick={() => handleMemberSort('beta_tier')}
+										title="Click to sort by tier"
+									>
+										<div class="flex items-center space-x-1">
+											<span>Tier</span>
+											{#if memberFilters.sortBy === 'beta_tier'}
+												{#if memberFilters.sortOrder === 'asc'}
+													<ChevronUp class="h-4 w-4" />
+												{:else}
+													<ChevronDown class="h-4 w-4" />
+												{/if}
+											{:else}
+												<span
+													class="h-4 w-4 flex items-center justify-center text-gray-300"
+												>
+													<svg
+														class="h-3 w-3"
+														fill="currentColor"
+														viewBox="0 0 20 20"
+													>
+														<path d="M5 8l5-5 5 5H5z" />
+														<path d="M5 12l5 5 5-5H5z" />
+													</svg>
+												</span>
+											{/if}
+										</div>
+									</th>
+									<th
+										class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
+										onclick={() => handleMemberSort('joined_at')}
+										title="Click to sort by date"
+									>
+										<div class="flex items-center space-x-1">
+											<span>Joined</span>
+											{#if memberFilters.sortBy === 'joined_at'}
+												{#if memberFilters.sortOrder === 'asc'}
+													<ChevronUp class="h-4 w-4" />
+												{:else}
+													<ChevronDown class="h-4 w-4" />
+												{/if}
+											{:else}
+												<span
+													class="h-4 w-4 flex items-center justify-center text-gray-300"
+												>
+													<svg
+														class="h-3 w-3"
+														fill="currentColor"
+														viewBox="0 0 20 20"
+													>
+														<path d="M5 8l5-5 5 5H5z" />
+														<path d="M5 12l5 5 5-5H5z" />
+													</svg>
+												</span>
+											{/if}
+										</div>
+									</th>
+								{/if}
+								<th
+									class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+								>
+									Actions
+								</th>
+							</tr>
+						</thead>
+						<tbody
+							class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700"
+						>
+							{#if activeTab === 'signups'}
 								{#each signups as signup}
 									<tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
-										<!-- Contact Info - Sticky Column -->
-										<td
-											class="px-4 py-4 text-sm sticky left-0 bg-white dark:bg-gray-800 z-10 border-r border-gray-200 dark:border-gray-700"
-										>
-											<div class="min-w-48">
-												<div
-													class="font-medium text-gray-900 dark:text-white"
-												>
-													{signup.full_name}
+										<td class="px-6 py-4 whitespace-nowrap">
+											<div class="flex items-center">
+												<div class="flex-shrink-0 h-10 w-10">
+													<div
+														class="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center"
+													>
+														<span
+															class="text-sm font-medium text-blue-800 dark:text-blue-200"
+														>
+															{signup.full_name
+																.charAt(0)
+																.toUpperCase()}
+														</span>
+													</div>
 												</div>
-												<div
-													class="text-gray-500 dark:text-gray-400 break-all"
-												>
-													{signup.email}
+												<div class="ml-4">
+													<div
+														class="text-sm font-medium text-gray-900 dark:text-white"
+													>
+														{signup.full_name}
+													</div>
+													<div
+														class="text-sm text-gray-500 dark:text-gray-400"
+													>
+														{signup.email}
+													</div>
+													{#if signup.job_title}
+														<div class="text-xs text-gray-400">
+															{signup.job_title}
+														</div>
+													{/if}
 												</div>
 											</div>
 										</td>
-
-										<!-- Status -->
-										<td class="px-4 py-4 whitespace-nowrap">
+										<td
+											class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white"
+										>
+											{signup.company_name || 'Not specified'}
+										</td>
+										<td class="px-6 py-4 whitespace-nowrap">
 											<span
 												class="inline-flex px-2 py-1 text-xs font-semibold rounded-full {getStatusColor(
 													signup.signup_status
@@ -966,216 +1981,13 @@
 												{signup.signup_status}
 											</span>
 										</td>
-
-										<!-- Referral Source -->
-										<td class="px-4 py-4 text-sm text-gray-900 dark:text-white">
-											<div class="max-w-32">
-												{#if signup.referral_source}
-													<span
-														class="inline-flex px-2 py-1 text-xs bg-indigo-100 text-indigo-800 rounded dark:bg-indigo-900 dark:text-indigo-300"
-													>
-														{signup.referral_source}
-													</span>
-												{:else}
-													<span
-														class="text-gray-500 dark:text-gray-400 text-xs"
-														>Not specified</span
-													>
-												{/if}
-											</div>
-										</td>
-
-										<!-- Why Interested -->
-										<td class="px-4 py-4 text-sm text-gray-900 dark:text-white">
-											<div class="max-w-md">
-												<div
-													class="text-sm leading-relaxed {signup.why_interested &&
-													signup.why_interested.length > 100
-														? 'cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 p-2 rounded'
-														: ''}"
-													title={signup.why_interested || 'Not provided'}
-													role={signup.why_interested &&
-													signup.why_interested.length > 100
-														? 'button'
-														: undefined}
-													aria-label={signup.why_interested &&
-													signup.why_interested.length > 100
-														? 'Click to view full text'
-														: undefined}
-													tabindex={signup.why_interested &&
-													signup.why_interested.length > 100
-														? 0
-														: undefined}
-													onclick={() => {
-														if (
-															signup.why_interested &&
-															signup.why_interested.length > 100
-														) {
-															selectedItem = signup;
-															showModal = true;
-														}
-													}}
-													onkeydown={(e) => {
-														if (
-															signup.why_interested &&
-															signup.why_interested.length > 100 &&
-															(e.key === 'Enter' || e.key === ' ')
-														) {
-															e.preventDefault();
-															selectedItem = signup;
-															showModal = true;
-														}
-													}}
-												>
-													{signup.why_interested
-														? truncateText(signup.why_interested, 100)
-														: 'Not provided'}
-												</div>
-											</div>
-										</td>
-
-										<!-- Biggest Challenge -->
-										<td class="px-4 py-4 text-sm text-gray-900 dark:text-white">
-											<div class="max-w-md">
-												<div
-													class="text-sm leading-relaxed {signup.biggest_challenge &&
-													signup.biggest_challenge.length > 100
-														? 'cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 p-2 rounded'
-														: ''}"
-													title={signup.biggest_challenge ||
-														'Not provided'}
-													role={signup.biggest_challenge &&
-													signup.biggest_challenge.length > 100
-														? 'button'
-														: undefined}
-													aria-label={signup.biggest_challenge &&
-													signup.biggest_challenge.length > 100
-														? 'Click to view full text'
-														: undefined}
-													tabindex={signup.biggest_challenge &&
-													signup.biggest_challenge.length > 100
-														? 0
-														: undefined}
-													onclick={() => {
-														if (
-															signup.biggest_challenge &&
-															signup.biggest_challenge.length > 100
-														) {
-															selectedItem = signup;
-															showModal = true;
-														}
-													}}
-													onkeydown={(e) => {
-														if (
-															signup.biggest_challenge &&
-															signup.biggest_challenge.length > 100 &&
-															(e.key === 'Enter' || e.key === ' ')
-														) {
-															e.preventDefault();
-															selectedItem = signup;
-															showModal = true;
-														}
-													}}
-												>
-													{signup.biggest_challenge
-														? truncateText(
-																signup.biggest_challenge,
-																100
-															)
-														: 'Not provided'}
-												</div>
-											</div>
-										</td>
-
-										<!-- Tools Used -->
-										<td class="px-4 py-4 text-sm">
-											<div class="max-w-48">
-												{#if signup.productivity_tools && signup.productivity_tools.length > 0}
-													<div class="flex flex-wrap gap-1">
-														{#each signup.productivity_tools.slice(0, 3) as tool}
-															<span
-																class="inline-flex px-2 py-1 text-xs bg-gray-100 text-gray-800 rounded dark:bg-gray-700 dark:text-gray-300"
-															>
-																{tool}
-															</span>
-														{/each}
-														{#if signup.productivity_tools.length > 3}
-															<span
-																class="inline-flex px-2 py-1 text-xs bg-gray-200 text-gray-600 rounded dark:bg-gray-600 dark:text-gray-400"
-															>
-																+{signup.productivity_tools.length -
-																	3} more
-															</span>
-														{/if}
-													</div>
-												{:else}
-													<span class="text-gray-500 dark:text-gray-400"
-														>None specified</span
-													>
-												{/if}
-											</div>
-										</td>
-
-										{#if dataViewFilters.showAllColumns}
-											<!-- Job Title -->
-											<td
-												class="px-4 py-4 text-sm text-gray-900 dark:text-white"
-											>
-												{signup.job_title || 'Not provided'}
-											</td>
-
-											<!-- Company -->
-											<td
-												class="px-4 py-4 text-sm text-gray-900 dark:text-white"
-											>
-												{signup.company_name || 'Not provided'}
-											</td>
-
-											<!-- Preferences -->
-											<td class="px-4 py-4 text-sm">
-												<div class="space-y-1">
-													{#if signup.wants_weekly_calls}
-														<div
-															class="text-green-600 dark:text-green-400 text-xs"
-														>
-															✓ Weekly calls
-														</div>
-													{/if}
-													{#if signup.wants_community_access}
-														<div
-															class="text-blue-600 dark:text-blue-400 text-xs"
-														>
-															✓ Community
-														</div>
-													{/if}
-													{#if !signup.wants_weekly_calls && !signup.wants_community_access}
-														<div
-															class="text-gray-500 dark:text-gray-400 text-xs"
-														>
-															No preferences
-														</div>
-													{/if}
-												</div>
-											</td>
-
-											<!-- Timezone -->
-											<td
-												class="px-4 py-4 text-sm text-gray-900 dark:text-white"
-											>
-												{signup.user_timezone || 'Not provided'}
-											</td>
-										{/if}
-
-										<!-- Applied Date -->
 										<td
-											class="px-4 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400"
+											class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400"
 										>
 											{formatDate(signup.created_at)}
 										</td>
-
-										<!-- Actions -->
 										<td
-											class="px-4 py-4 whitespace-nowrap text-right text-sm font-medium"
+											class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium"
 										>
 											<div class="flex items-center justify-end space-x-2">
 												<!-- View Details -->
@@ -1187,9 +1999,10 @@
 													variant="ghost"
 													size="sm"
 													icon={Eye}
-													class="p-2 text-gray-400 hover:text-blue-600"
-													title="View full details"
-												></Button>
+													iconPosition="left"
+													class="p-2 text-gray-400 hover:text-blue-600 transition-colors"
+													title="View details"
+												/>
 
 												<!-- Send Email -->
 												<Button
@@ -1202,26 +2015,24 @@
 													variant="ghost"
 													size="sm"
 													icon={Mail}
-													class="p-2 text-gray-400 hover:text-indigo-600"
+													iconPosition="left"
+													class="p-2 text-gray-400 hover:text-indigo-600 transition-colors"
 													title="Send email"
-												></Button>
+												/>
 
-												<!-- Quick Actions for Pending -->
+												<!-- Quick Actions -->
 												{#if signup.signup_status === 'pending'}
 													<Button
 														onclick={() =>
-															updateSignupStatus(
-																signup.id,
-																'approved',
-																true
-															)}
+															showApprovalConfirmation(signup)}
 														disabled={isUpdating}
 														variant="ghost"
 														size="sm"
 														icon={CheckCircle}
-														class="p-2 text-gray-400 hover:text-green-600"
-														title="Approve and create member"
-													></Button>
+														iconPosition="left"
+														class="p-2 text-gray-400 hover:text-green-600 transition-colors"
+														title="Approve and send email"
+													/>
 													<Button
 														onclick={() =>
 															updateSignupStatus(
@@ -1232,1040 +2043,199 @@
 														variant="ghost"
 														size="sm"
 														icon={XCircle}
-														class="p-2 text-gray-400 hover:text-red-600"
+														iconPosition="left"
+														class="p-2 text-gray-400 hover:text-red-600 transition-colors"
 														title="Decline"
-													></Button>
+													/>
 												{/if}
 											</div>
 										</td>
 									</tr>
 								{/each}
-							</tbody>
-						</table>
-					</div>
-
-					<!-- Pagination for Data View -->
-					{#if totalPages > 1}
-						<div
-							class="bg-white dark:bg-gray-800 px-4 py-3 flex items-center justify-between border-t border-gray-200 dark:border-gray-700"
-						>
-							<div class="flex-1 flex justify-between sm:hidden">
-								<Button
-									onclick={prevPage}
-									disabled={currentPage === 1}
-									variant="outline"
-									size="md"
-								>
-									Previous
-								</Button>
-								<span
-									class="flex items-center text-sm text-gray-700 dark:text-gray-300"
-								>
-									{currentPage} of {totalPages}
-								</span>
-								<Button
-									onclick={nextPage}
-									disabled={currentPage === totalPages}
-									variant="outline"
-									size="md"
-								>
-									Next
-								</Button>
-							</div>
-							<div
-								class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between"
-							>
-								<div>
-									<p class="text-sm text-gray-700 dark:text-gray-300">
-										Showing page <span class="font-medium">{currentPage}</span>
-										of <span class="font-medium">{totalPages}</span>
-										({totalItems} total signups)
-									</p>
-								</div>
-								<div>
-									<nav
-										class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px"
-									>
-										<Button
-											onclick={prevPage}
-											disabled={currentPage === 1}
-											variant="outline"
-											size="sm"
-											icon={ChevronLeft}
-											class="rounded-l-md rounded-r-none"
-										></Button>
-										<Button
-											onclick={nextPage}
-											disabled={currentPage === totalPages}
-											variant="outline"
-											size="sm"
-											icon={ChevronRight}
-											class="rounded-r-md rounded-l-none -ml-px"
-										></Button>
-									</nav>
-								</div>
-							</div>
-						</div>
-					{/if}
-				{/if}
-			</div>
-		{:else}
-			<!-- Existing Signups/Members Content -->
-			<!-- Filters and Search -->
-			<div class="admin-panel p-4 sm:p-6">
-				<!-- Mobile Filter Toggle -->
-				<div class="sm:hidden mb-4">
-					<Button
-						onclick={() => (showMobileFilters = !showMobileFilters)}
-						variant="secondary"
-						size="md"
-						fullWidth={true}
-						icon={Filter}
-						iconPosition="right"
-						class="justify-between"
-					>
-						<span class="text-sm font-medium"> Filters & Search </span>
-					</Button>
-				</div>
-
-				<!-- Mobile Filters Collapsible -->
-				<div class="sm:hidden {showMobileFilters ? 'block' : 'hidden'} space-y-4 mb-4">
-					<!-- Search -->
-					<FormField label="Search" labelFor="search" size="md">
-						<TextInput
-							id="search"
-							type="text"
-							bind:value={searchQuery}
-							placeholder="Search by name, email..."
-							size="md"
-						/>
-					</FormField>
-
-					{#if activeTab === 'signups'}
-						<!-- Signup Status Filter -->
-						<div>
-							<div
-								class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-							>
-								Status
-							</div>
-							<Select
-								bind:value={signupFilters.status}
-								onchange={(e) => (signupFilters.status = e.detail)}
-								size="md"
-							>
-								<option value="all">All Status</option>
-								<option value="pending">Pending</option>
-								<option value="approved">Approved</option>
-								<option value="declined">Declined</option>
-								<option value="waitlist">Waitlist</option>
-							</Select>
-						</div>
-
-						<!-- Sort -->
-						<div>
-							<div
-								class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-							>
-								Sort By
-							</div>
-							<Select
-								bind:value={signupFilters.sortBy}
-								onchange={(e) => (signupFilters.sortBy = e.detail)}
-								size="md"
-							>
-								<option value="created_at">Date Applied</option>
-								<option value="full_name">Name</option>
-								<option value="company_name">Company</option>
-							</Select>
-						</div>
-					{:else}
-						<!-- Member Tier Filter -->
-						<div>
-							<div
-								class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-							>
-								Tier
-							</div>
-							<Select
-								bind:value={memberFilters.tier}
-								onchange={(e) => (memberFilters.tier = e)}
-								size="md"
-							>
-								<option value="all">All Tiers</option>
-								<option value="founder">Founder</option>
-								<option value="early">Early</option>
-								<option value="standard">Standard</option>
-							</Select>
-						</div>
-
-						<!-- Active Only Toggle -->
-						<div>
-							<div class="flex items-center space-x-2">
-								<input
-									type="checkbox"
-									bind:checked={memberFilters.activeOnly}
-									class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-								/>
-								<span class="text-sm text-gray-700 dark:text-gray-300"
-									>Active Only</span
-								>
-							</div>
-						</div>
-					{/if}
-				</div>
-
-				<!-- Desktop Filters Grid -->
-				<div class="hidden sm:grid sm:grid-cols-1 md:grid-cols-4 gap-4">
-					<!-- Search -->
-					<div class="md:col-span-2">
-						<TextInput
-							type="text"
-							bind:value={searchQuery}
-							placeholder="Search by name, email, or company..."
-							size="md"
-						/>
-					</div>
-
-					{#if activeTab === 'signups'}
-						<!-- Signup Status Filter -->
-						<div>
-							<Select
-								bind:value={signupFilters.status}
-								onchange={(e) => (signupFilters.status = e.detail)}
-								size="md"
-							>
-								<option value="all">All Status</option>
-								<option value="pending">Pending</option>
-								<option value="approved">Approved</option>
-								<option value="declined">Declined</option>
-								<option value="waitlist">Waitlist</option>
-							</Select>
-						</div>
-
-						<!-- Sort -->
-						<div>
-							<Select
-								bind:value={signupFilters.sortBy}
-								onchange={(e) => (signupFilters.sortBy = e.detail)}
-								size="md"
-							>
-								<option value="created_at">Date Applied</option>
-								<option value="full_name">Name</option>
-								<option value="company_name">Company</option>
-							</Select>
-						</div>
-					{:else}
-						<!-- Member Tier Filter -->
-						<div>
-							<Select
-								bind:value={memberFilters.tier}
-								onchange={(e) => (memberFilters.tier = e.detail)}
-								size="md"
-							>
-								<option value="all">All Tiers</option>
-								<option value="founder">Founder</option>
-								<option value="early">Early</option>
-								<option value="standard">Standard</option>
-							</Select>
-						</div>
-
-						<!-- Active Only Toggle -->
-						<div class="flex items-center">
-							<div class="flex items-center space-x-2">
-								<input
-									type="checkbox"
-									bind:checked={memberFilters.activeOnly}
-									class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-								/>
-								<span class="text-sm text-gray-600 dark:text-gray-400"
-									>Active Only</span
-								>
-							</div>
-						</div>
-					{/if}
-				</div>
-			</div>
-
-			{#if error}
-				<div
-					class="bg-red-50 border border-red-200 rounded-lg p-4 mb-4 dark:bg-red-900/20 dark:border-red-800"
-				>
-					<p class="text-red-800 dark:text-red-200">{error}</p>
-				</div>
-			{/if}
-
-			<!-- Data Content -->
-			<div class="admin-panel overflow-hidden">
-				{#if isLoading}
-					<div class="p-6 sm:p-8 text-center">
-						<RefreshCw class="h-8 w-8 animate-spin text-gray-400 mx-auto mb-4" />
-						<p class="text-gray-600 dark:text-gray-400">Loading {activeTab}...</p>
-					</div>
-				{:else if (activeTab === 'signups' && signups.length === 0) || (activeTab === 'members' && members.length === 0)}
-					<div class="p-6 sm:p-8 text-center">
-						<UserCheck class="h-12 w-12 sm:h-16 sm:w-16 text-gray-400 mx-auto mb-4" />
-						<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-							No {activeTab === 'signups' ? 'Signups' : 'Members'} Found
-						</h3>
-						<p class="text-gray-600 dark:text-gray-400">
-							{searchQuery
-								? 'Try adjusting your search criteria.'
-								: activeTab === 'signups'
-									? 'No beta signups yet.'
-									: 'No beta members yet.'}
-						</p>
-					</div>
-				{:else}
-					<!-- Mobile Cards View -->
-					<div class="sm:hidden">
-						{#if activeTab === 'signups'}
-							{#each signups as signup}
-								<div class="p-4 border-b border-gray-200 dark:border-gray-700">
-									<div class="flex items-start justify-between mb-2">
-										<div class="flex items-center flex-1 min-w-0">
-											<div class="flex-shrink-0 h-8 w-8">
-												<div
-													class="h-8 w-8 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center"
-												>
-													<span
-														class="text-xs font-medium text-blue-800 dark:text-blue-200"
+							{:else}
+								{#each members as member}
+									<tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+										<td class="px-6 py-4 whitespace-nowrap">
+											<div class="flex items-center">
+												<div class="flex-shrink-0 h-10 w-10">
+													<div
+														class="h-10 w-10 rounded-full bg-purple-100 dark:bg-purple-900 flex items-center justify-center"
 													>
-														{signup.full_name.charAt(0).toUpperCase()}
-													</span>
+														<span
+															class="text-sm font-medium text-purple-800 dark:text-purple-200"
+														>
+															{member.full_name
+																.charAt(0)
+																.toUpperCase()}
+														</span>
+													</div>
 												</div>
-											</div>
-											<div class="ml-3 flex-1 min-w-0">
-												<p
-													class="text-sm font-medium text-gray-900 dark:text-white truncate"
-												>
-													{signup.full_name}
-												</p>
-												<p
-													class="text-xs text-gray-500 dark:text-gray-400 truncate"
-												>
-													{signup.email}
-												</p>
-											</div>
-										</div>
-										<Button
-											onclick={() => {
-												selectedItem = signup;
-												showModal = true;
-											}}
-											variant="ghost"
-											size="sm"
-											icon={Eye}
-											class="ml-2 p-2 text-gray-400 hover:text-blue-600"
-											title="View details"
-										></Button>
-									</div>
-
-									<div class="flex items-center justify-between text-xs mb-3">
-										<span
-											class="inline-flex px-2 py-1 text-xs font-semibold rounded-full {getStatusColor(
-												signup.signup_status
-											)}"
-										>
-											{signup.signup_status}
-										</span>
-										<span class="text-gray-500">
-											{formatDate(signup.created_at)}
-										</span>
-									</div>
-
-									{#if signup.company_name}
-										<p class="text-xs text-gray-600 dark:text-gray-400 mb-3">
-											{signup.company_name}
-										</p>
-									{/if}
-
-									<!-- Quick Actions -->
-									{#if signup.signup_status === 'pending'}
-										<div class="flex space-x-2">
-											<Button
-												onclick={() => showApprovalConfirmation(signup)}
-												disabled={isUpdating}
-												variant="primary"
-												size="sm"
-												fullWidth={true}
-												class="bg-green-100 text-green-800 hover:bg-green-200"
-											>
-												Approve & Email
-											</Button>
-											<Button
-												onclick={() =>
-													updateSignupStatus(signup.id, 'declined')}
-												disabled={isUpdating}
-												variant="danger"
-												size="sm"
-												fullWidth={true}
-												class="bg-red-100 text-red-800 hover:bg-red-200"
-											>
-												Decline
-											</Button>
-										</div>
-									{/if}
-								</div>
-							{/each}
-						{:else}
-							{#each members as member}
-								<div class="p-4 border-b border-gray-200 dark:border-gray-700">
-									<div class="flex items-start justify-between mb-2">
-										<div class="flex items-center flex-1 min-w-0">
-											<div class="flex-shrink-0 h-8 w-8">
-												<div
-													class="h-8 w-8 rounded-full bg-purple-100 dark:bg-purple-900 flex items-center justify-center"
-												>
-													<span
-														class="text-xs font-medium text-purple-800 dark:text-purple-200"
-													>
-														{member.full_name.charAt(0).toUpperCase()}
-													</span>
-												</div>
-											</div>
-											<div class="ml-3 flex-1 min-w-0">
-												<div class="flex items-center">
-													<p
-														class="text-sm font-medium text-gray-900 dark:text-white truncate"
+												<div class="ml-4">
+													<div
+														class="text-sm font-medium text-gray-900 dark:text-white flex items-center"
 													>
 														{member.full_name}
-													</p>
-													{#if !member.is_active}
-														<span class="ml-2 text-red-500 text-xs"
-															>(Inactive)</span
-														>
+														{#if !member.is_active}
+															<span class="ml-2 text-red-500 text-xs"
+																>(Inactive)</span
+															>
+														{/if}
+													</div>
+													<div
+														class="text-sm text-gray-500 dark:text-gray-400"
+													>
+														{member.email}
+													</div>
+													{#if member.job_title}
+														<div class="text-xs text-gray-400">
+															{member.job_title}
+														</div>
 													{/if}
 												</div>
-												<p
-													class="text-xs text-gray-500 dark:text-gray-400 truncate"
-												>
-													{member.email}
-												</p>
 											</div>
-										</div>
-										<Button
-											onclick={() => {
-												selectedItem = member;
-												showModal = true;
-											}}
-											variant="ghost"
-											size="sm"
-											icon={Eye}
-											iconPosition="left"
-											class="ml-2 p-2 text-gray-400 hover:text-blue-600"
-											title="View details"
-										/>
-									</div>
-
-									<div class="flex items-center justify-between text-xs mb-3">
-										<span
-											class="inline-flex px-2 py-1 text-xs font-semibold rounded-full {getTierColor(
-												member.beta_tier
-											)}"
+										</td>
+										<td
+											class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white"
 										>
-											{member.beta_tier}
-										</span>
-										<span class="text-gray-500">
+											{member.company_name || 'Not specified'}
+										</td>
+										<td class="px-6 py-4 whitespace-nowrap">
+											<span
+												class="inline-flex px-2 py-1 text-xs font-semibold rounded-full {getTierColor(
+													member.beta_tier
+												)}"
+											>
+												{member.beta_tier}
+											</span>
+										</td>
+										<td
+											class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400"
+										>
 											{formatDate(member.joined_at)}
-										</span>
-									</div>
+										</td>
+										<td
+											class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium"
+										>
+											<div class="flex items-center justify-end space-x-2">
+												<!-- Send Email -->
+												<Button
+													onclick={() => {
+														emailUserId = member.user_id || '';
+														emailUserName = member.full_name;
+														emailUserEmail = member.email;
+														showEmailModal = true;
+													}}
+													variant="ghost"
+													size="sm"
+													icon={Mail}
+													iconPosition="left"
+													class="p-2 text-gray-400 hover:text-indigo-600 transition-colors"
+													title="Send email"
+												/>
+												<!-- View Details -->
+												<Button
+													onclick={() => {
+														selectedItem = member;
+														showModal = true;
+													}}
+													variant="ghost"
+													size="sm"
+													icon={Eye}
+													iconPosition="left"
+													class="p-2 text-gray-400 hover:text-blue-600 transition-colors"
+													title="View details"
+												/>
 
-									{#if member.company_name}
-										<p class="text-xs text-gray-600 dark:text-gray-400 mb-3">
-											{member.company_name}
-										</p>
-									{/if}
+												<!-- Toggle Active Status -->
+												<Button
+													onclick={() =>
+														updateMember(member.id, {
+															is_active: !member.is_active
+														})}
+													disabled={isUpdating}
+													variant="ghost"
+													size="sm"
+													icon={member.is_active ? ShieldOff : Shield}
+													iconPosition="left"
+													class="p-2 text-gray-400 hover:text-yellow-600 transition-colors"
+													title={member.is_active
+														? 'Deactivate'
+														: 'Activate'}
+												/>
+											</div>
+										</td>
+									</tr>
+								{/each}
+							{/if}
+						</tbody>
+					</table>
+				</div>
 
-									<!-- Quick Actions -->
-									<div class="flex space-x-2">
-										<Button
-											onclick={() =>
-												updateMember(member.id, {
-													is_active: !member.is_active
-												})}
-											disabled={isUpdating}
-											variant="secondary"
-											size="sm"
-											fullWidth={true}
-											class={member.is_active
-												? 'bg-red-100 text-red-800 hover:bg-red-200'
-												: 'bg-green-100 text-green-800 hover:bg-green-200'}
-										>
-											{member.is_active ? 'Deactivate' : 'Activate'}
-										</Button>
-									</div>
-								</div>
-							{/each}
-						{/if}
-					</div>
-
-					<!-- Desktop Table View -->
-					<div class="hidden sm:block overflow-x-auto">
-						<table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-							<thead class="bg-gray-50 dark:bg-gray-900">
-								<tr>
-									{#if activeTab === 'signups'}
-										<!-- Signups table headers -->
-										<th
-											class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
-											onclick={() => handleSignupSort('full_name')}
-											title="Click to sort by name"
-										>
-											<div class="flex items-center space-x-1">
-												<span>Applicant</span>
-												{#if signupFilters.sortBy === 'full_name'}
-													{#if signupFilters.sortOrder === 'asc'}
-														<ChevronUp class="h-4 w-4" />
-													{:else}
-														<ChevronDown class="h-4 w-4" />
-													{/if}
-												{:else}
-													<span
-														class="h-4 w-4 flex items-center justify-center text-gray-300"
-													>
-														<svg
-															class="h-3 w-3"
-															fill="currentColor"
-															viewBox="0 0 20 20"
-														>
-															<path d="M5 8l5-5 5 5H5z" />
-															<path d="M5 12l5 5 5-5H5z" />
-														</svg>
-													</span>
-												{/if}
-											</div>
-										</th>
-										<th
-											class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
-											onclick={() => handleSignupSort('company_name')}
-											title="Click to sort by company"
-										>
-											<div class="flex items-center space-x-1">
-												<span>Company</span>
-												{#if signupFilters.sortBy === 'company_name'}
-													{#if signupFilters.sortOrder === 'asc'}
-														<ChevronUp class="h-4 w-4" />
-													{:else}
-														<ChevronDown class="h-4 w-4" />
-													{/if}
-												{:else}
-													<span
-														class="h-4 w-4 flex items-center justify-center text-gray-300"
-													>
-														<svg
-															class="h-3 w-3"
-															fill="currentColor"
-															viewBox="0 0 20 20"
-														>
-															<path d="M5 8l5-5 5 5H5z" />
-															<path d="M5 12l5 5 5-5H5z" />
-														</svg>
-													</span>
-												{/if}
-											</div>
-										</th>
-										<th
-											class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
-											onclick={() => handleSignupSort('signup_status')}
-											title="Click to sort by status"
-										>
-											<div class="flex items-center space-x-1">
-												<span>Status</span>
-												{#if signupFilters.sortBy === 'signup_status'}
-													{#if signupFilters.sortOrder === 'asc'}
-														<ChevronUp class="h-4 w-4" />
-													{:else}
-														<ChevronDown class="h-4 w-4" />
-													{/if}
-												{:else}
-													<span
-														class="h-4 w-4 flex items-center justify-center text-gray-300"
-													>
-														<svg
-															class="h-3 w-3"
-															fill="currentColor"
-															viewBox="0 0 20 20"
-														>
-															<path d="M5 8l5-5 5 5H5z" />
-															<path d="M5 12l5 5 5-5H5z" />
-														</svg>
-													</span>
-												{/if}
-											</div>
-										</th>
-										<th
-											class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
-											onclick={() => handleSignupSort('created_at')}
-											title="Click to sort by date"
-										>
-											<div class="flex items-center space-x-1">
-												<span>Applied</span>
-												{#if signupFilters.sortBy === 'created_at'}
-													{#if signupFilters.sortOrder === 'asc'}
-														<ChevronUp class="h-4 w-4" />
-													{:else}
-														<ChevronDown class="h-4 w-4" />
-													{/if}
-												{:else}
-													<span
-														class="h-4 w-4 flex items-center justify-center text-gray-300"
-													>
-														<svg
-															class="h-3 w-3"
-															fill="currentColor"
-															viewBox="0 0 20 20"
-														>
-															<path d="M5 8l5-5 5 5H5z" />
-															<path d="M5 12l5 5 5-5H5z" />
-														</svg>
-													</span>
-												{/if}
-											</div>
-										</th>
-									{:else}
-										<!-- Members table headers -->
-										<th
-											class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
-											onclick={() => handleMemberSort('full_name')}
-											title="Click to sort by name"
-										>
-											<div class="flex items-center space-x-1">
-												<span>Member</span>
-												{#if memberFilters.sortBy === 'full_name'}
-													{#if memberFilters.sortOrder === 'asc'}
-														<ChevronUp class="h-4 w-4" />
-													{:else}
-														<ChevronDown class="h-4 w-4" />
-													{/if}
-												{:else}
-													<span
-														class="h-4 w-4 flex items-center justify-center text-gray-300"
-													>
-														<svg
-															class="h-3 w-3"
-															fill="currentColor"
-															viewBox="0 0 20 20"
-														>
-															<path d="M5 8l5-5 5 5H5z" />
-															<path d="M5 12l5 5 5-5H5z" />
-														</svg>
-													</span>
-												{/if}
-											</div>
-										</th>
-										<th
-											class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
-											onclick={() => handleMemberSort('company_name')}
-											title="Click to sort by company"
-										>
-											<div class="flex items-center space-x-1">
-												<span>Company</span>
-												{#if memberFilters.sortBy === 'company_name'}
-													{#if memberFilters.sortOrder === 'asc'}
-														<ChevronUp class="h-4 w-4" />
-													{:else}
-														<ChevronDown class="h-4 w-4" />
-													{/if}
-												{:else}
-													<span
-														class="h-4 w-4 flex items-center justify-center text-gray-300"
-													>
-														<svg
-															class="h-3 w-3"
-															fill="currentColor"
-															viewBox="0 0 20 20"
-														>
-															<path d="M5 8l5-5 5 5H5z" />
-															<path d="M5 12l5 5 5-5H5z" />
-														</svg>
-													</span>
-												{/if}
-											</div>
-										</th>
-										<th
-											class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
-											onclick={() => handleMemberSort('beta_tier')}
-											title="Click to sort by tier"
-										>
-											<div class="flex items-center space-x-1">
-												<span>Tier</span>
-												{#if memberFilters.sortBy === 'beta_tier'}
-													{#if memberFilters.sortOrder === 'asc'}
-														<ChevronUp class="h-4 w-4" />
-													{:else}
-														<ChevronDown class="h-4 w-4" />
-													{/if}
-												{:else}
-													<span
-														class="h-4 w-4 flex items-center justify-center text-gray-300"
-													>
-														<svg
-															class="h-3 w-3"
-															fill="currentColor"
-															viewBox="0 0 20 20"
-														>
-															<path d="M5 8l5-5 5 5H5z" />
-															<path d="M5 12l5 5 5-5H5z" />
-														</svg>
-													</span>
-												{/if}
-											</div>
-										</th>
-										<th
-											class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
-											onclick={() => handleMemberSort('joined_at')}
-											title="Click to sort by date"
-										>
-											<div class="flex items-center space-x-1">
-												<span>Joined</span>
-												{#if memberFilters.sortBy === 'joined_at'}
-													{#if memberFilters.sortOrder === 'asc'}
-														<ChevronUp class="h-4 w-4" />
-													{:else}
-														<ChevronDown class="h-4 w-4" />
-													{/if}
-												{:else}
-													<span
-														class="h-4 w-4 flex items-center justify-center text-gray-300"
-													>
-														<svg
-															class="h-3 w-3"
-															fill="currentColor"
-															viewBox="0 0 20 20"
-														>
-															<path d="M5 8l5-5 5 5H5z" />
-															<path d="M5 12l5 5 5-5H5z" />
-														</svg>
-													</span>
-												{/if}
-											</div>
-										</th>
-									{/if}
-									<th
-										class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
-									>
-										Actions
-									</th>
-								</tr>
-							</thead>
-							<tbody
-								class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700"
+				<!-- Pagination - Mobile Responsive -->
+				{#if totalPages > 1}
+					<div
+						class="bg-white dark:bg-gray-800 px-4 py-3 flex items-center justify-between border-t border-gray-200 dark:border-gray-700"
+					>
+						<div class="flex-1 flex justify-between sm:hidden">
+							<Button
+								onclick={prevPage}
+								disabled={currentPage === 1}
+								variant="outline"
+								size="md"
 							>
-								{#if activeTab === 'signups'}
-									{#each signups as signup}
-										<tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
-											<td class="px-6 py-4 whitespace-nowrap">
-												<div class="flex items-center">
-													<div class="flex-shrink-0 h-10 w-10">
-														<div
-															class="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center"
-														>
-															<span
-																class="text-sm font-medium text-blue-800 dark:text-blue-200"
-															>
-																{signup.full_name
-																	.charAt(0)
-																	.toUpperCase()}
-															</span>
-														</div>
-													</div>
-													<div class="ml-4">
-														<div
-															class="text-sm font-medium text-gray-900 dark:text-white"
-														>
-															{signup.full_name}
-														</div>
-														<div
-															class="text-sm text-gray-500 dark:text-gray-400"
-														>
-															{signup.email}
-														</div>
-														{#if signup.job_title}
-															<div class="text-xs text-gray-400">
-																{signup.job_title}
-															</div>
-														{/if}
-													</div>
-												</div>
-											</td>
-											<td
-												class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white"
-											>
-												{signup.company_name || 'Not specified'}
-											</td>
-											<td class="px-6 py-4 whitespace-nowrap">
-												<span
-													class="inline-flex px-2 py-1 text-xs font-semibold rounded-full {getStatusColor(
-														signup.signup_status
-													)}"
-												>
-													{signup.signup_status}
-												</span>
-											</td>
-											<td
-												class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400"
-											>
-												{formatDate(signup.created_at)}
-											</td>
-											<td
-												class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium"
-											>
-												<div
-													class="flex items-center justify-end space-x-2"
-												>
-													<!-- View Details -->
-													<Button
-														onclick={() => {
-															selectedItem = signup;
-															showModal = true;
-														}}
-														variant="ghost"
-														size="sm"
-														icon={Eye}
-														iconPosition="left"
-														class="p-2 text-gray-400 hover:text-blue-600 transition-colors"
-														title="View details"
-													/>
-
-													<!-- Send Email -->
-													<Button
-														onclick={() => {
-															emailUserId = signup.user_id || '';
-															emailUserName = signup.full_name;
-															emailUserEmail = signup.email;
-															showEmailModal = true;
-														}}
-														variant="ghost"
-														size="sm"
-														icon={Mail}
-														iconPosition="left"
-														class="p-2 text-gray-400 hover:text-indigo-600 transition-colors"
-														title="Send email"
-													/>
-
-													<!-- Quick Actions -->
-													{#if signup.signup_status === 'pending'}
-														<Button
-															onclick={() =>
-																showApprovalConfirmation(signup)}
-															disabled={isUpdating}
-															variant="ghost"
-															size="sm"
-															icon={CheckCircle}
-															iconPosition="left"
-															class="p-2 text-gray-400 hover:text-green-600 transition-colors"
-															title="Approve and send email"
-														/>
-														<Button
-															onclick={() =>
-																updateSignupStatus(
-																	signup.id,
-																	'declined'
-																)}
-															disabled={isUpdating}
-															variant="ghost"
-															size="sm"
-															icon={XCircle}
-															iconPosition="left"
-															class="p-2 text-gray-400 hover:text-red-600 transition-colors"
-															title="Decline"
-														/>
-													{/if}
-												</div>
-											</td>
-										</tr>
-									{/each}
-								{:else}
-									{#each members as member}
-										<tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
-											<td class="px-6 py-4 whitespace-nowrap">
-												<div class="flex items-center">
-													<div class="flex-shrink-0 h-10 w-10">
-														<div
-															class="h-10 w-10 rounded-full bg-purple-100 dark:bg-purple-900 flex items-center justify-center"
-														>
-															<span
-																class="text-sm font-medium text-purple-800 dark:text-purple-200"
-															>
-																{member.full_name
-																	.charAt(0)
-																	.toUpperCase()}
-															</span>
-														</div>
-													</div>
-													<div class="ml-4">
-														<div
-															class="text-sm font-medium text-gray-900 dark:text-white flex items-center"
-														>
-															{member.full_name}
-															{#if !member.is_active}
-																<span
-																	class="ml-2 text-red-500 text-xs"
-																	>(Inactive)</span
-																>
-															{/if}
-														</div>
-														<div
-															class="text-sm text-gray-500 dark:text-gray-400"
-														>
-															{member.email}
-														</div>
-														{#if member.job_title}
-															<div class="text-xs text-gray-400">
-																{member.job_title}
-															</div>
-														{/if}
-													</div>
-												</div>
-											</td>
-											<td
-												class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white"
-											>
-												{member.company_name || 'Not specified'}
-											</td>
-											<td class="px-6 py-4 whitespace-nowrap">
-												<span
-													class="inline-flex px-2 py-1 text-xs font-semibold rounded-full {getTierColor(
-														member.beta_tier
-													)}"
-												>
-													{member.beta_tier}
-												</span>
-											</td>
-											<td
-												class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400"
-											>
-												{formatDate(member.joined_at)}
-											</td>
-											<td
-												class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium"
-											>
-												<div
-													class="flex items-center justify-end space-x-2"
-												>
-													<!-- Send Email -->
-													<Button
-														onclick={() => {
-															emailUserId = member.user_id || '';
-															emailUserName = member.full_name;
-															emailUserEmail = member.email;
-															showEmailModal = true;
-														}}
-														variant="ghost"
-														size="sm"
-														icon={Mail}
-														iconPosition="left"
-														class="p-2 text-gray-400 hover:text-indigo-600 transition-colors"
-														title="Send email"
-													/>
-													<!-- View Details -->
-													<Button
-														onclick={() => {
-															selectedItem = member;
-															showModal = true;
-														}}
-														variant="ghost"
-														size="sm"
-														icon={Eye}
-														iconPosition="left"
-														class="p-2 text-gray-400 hover:text-blue-600 transition-colors"
-														title="View details"
-													/>
-
-													<!-- Toggle Active Status -->
-													<Button
-														onclick={() =>
-															updateMember(member.id, {
-																is_active: !member.is_active
-															})}
-														disabled={isUpdating}
-														variant="ghost"
-														size="sm"
-														icon={member.is_active ? ShieldOff : Shield}
-														iconPosition="left"
-														class="p-2 text-gray-400 hover:text-yellow-600 transition-colors"
-														title={member.is_active
-															? 'Deactivate'
-															: 'Activate'}
-													/>
-												</div>
-											</td>
-										</tr>
-									{/each}
-								{/if}
-							</tbody>
-						</table>
-					</div>
-
-					<!-- Pagination - Mobile Responsive -->
-					{#if totalPages > 1}
-						<div
-							class="bg-white dark:bg-gray-800 px-4 py-3 flex items-center justify-between border-t border-gray-200 dark:border-gray-700"
-						>
-							<div class="flex-1 flex justify-between sm:hidden">
-								<Button
-									onclick={prevPage}
-									disabled={currentPage === 1}
-									variant="outline"
-									size="md"
-								>
-									Previous
-								</Button>
-								<span
-									class="flex items-center text-sm text-gray-700 dark:text-gray-300"
-								>
-									{currentPage} of {totalPages}
-								</span>
-								<Button
-									onclick={nextPage}
-									disabled={currentPage === totalPages}
-									variant="outline"
-									size="md"
-								>
-									Next
-								</Button>
+								Previous
+							</Button>
+							<span
+								class="flex items-center text-sm text-gray-700 dark:text-gray-300"
+							>
+								{currentPage} of {totalPages}
+							</span>
+							<Button
+								onclick={nextPage}
+								disabled={currentPage === totalPages}
+								variant="outline"
+								size="md"
+							>
+								Next
+							</Button>
+						</div>
+						<div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+							<div>
+								<p class="text-sm text-gray-700 dark:text-gray-300">
+									Showing page <span class="font-medium">{currentPage}</span>
+									of
+									<span class="font-medium">{totalPages}</span>
+								</p>
 							</div>
-							<div
-								class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between"
-							>
-								<div>
-									<p class="text-sm text-gray-700 dark:text-gray-300">
-										Showing page <span class="font-medium">{currentPage}</span>
-										of
-										<span class="font-medium">{totalPages}</span>
-									</p>
-								</div>
-								<div>
-									<nav
-										class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px"
-									>
-										<Button
-											onclick={prevPage}
-											disabled={currentPage === 1}
-											variant="outline"
-											size="sm"
-											icon={ChevronLeft}
-											class="rounded-l-md rounded-r-none"
-										></Button>
-										<Button
-											onclick={nextPage}
-											disabled={currentPage === totalPages}
-											variant="outline"
-											size="sm"
-											icon={ChevronRight}
-											class="rounded-r-md rounded-l-none -ml-px"
-										></Button>
-									</nav>
-								</div>
+							<div>
+								<nav
+									class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px"
+								>
+									<Button
+										onclick={prevPage}
+										disabled={currentPage === 1}
+										variant="outline"
+										size="sm"
+										icon={ChevronLeft}
+										class="rounded-l-md rounded-r-none"
+									></Button>
+									<Button
+										onclick={nextPage}
+										disabled={currentPage === totalPages}
+										variant="outline"
+										size="sm"
+										icon={ChevronRight}
+										class="rounded-r-md rounded-l-none -ml-px"
+									></Button>
+								</nav>
 							</div>
 						</div>
-					{/if}
+					</div>
 				{/if}
-			</div>
-		{/if}
-	</div>
-
+			{/if}
+		</div>
+	{/if}
+</div>
 
 <!-- Approval Confirmation Modal -->
 <ConfirmationModal

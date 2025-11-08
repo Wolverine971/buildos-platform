@@ -341,7 +341,7 @@
 					name: projectName.trim(),
 					description: projectDescription.trim() || undefined,
 					type_key: selectedTemplate.type_key,
-					state_key: selectedTemplate.fsm?.states?.[0] ?? 'draft',
+					state_key: selectedTemplate.fsm?.initial ?? 'draft',
 					props: {
 						facets: {
 							context: facetContext || undefined,

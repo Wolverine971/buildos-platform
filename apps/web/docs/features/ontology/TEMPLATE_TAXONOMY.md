@@ -3,6 +3,7 @@
 **Last Updated**: November 4, 2025
 **Status**: Reference Document
 **Original**: `/thoughts/shared/ideas/ontology/buildos-outputs.md`
+**See Also**: [Type Key Taxonomy](./TYPE_KEY_TAXONOMY.md) for complete naming conventions
 
 > A comprehensive taxonomy of project deliverables, their primitives, inheritance strategy, and recommended tools for creation.
 
@@ -12,7 +13,7 @@
 
 In BuildOS, **deliverables** are versioned, tangible outputs that represent concrete progress. Each deliverable has:
 
-- A `type_key` (e.g., `deliverable.chapter`, `deliverable.research_doc.icp`)
+- A `type_key` (e.g., `deliverable.chapter`, `deliverable.research_doc.icp`) - See [Type Key Taxonomy](./TYPE_KEY_TAXONOMY.md)
 - A `state_key` tracked by FSM (draft → review → approved → published)
 - Multiple `versions` with `storage_uri` pointing to the actual artifact
 - Props specific to that deliverable type (validated by JSON Schema)

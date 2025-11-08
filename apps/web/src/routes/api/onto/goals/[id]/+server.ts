@@ -47,17 +47,14 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 
 	try {
 		// Get user's actor ID
-		const { data: actor } = await supabase
-			.rpc('ensure_actor_for_user', {
-				p_user_id: session.user.id
-			})
-			.single();
+		const { data: actorId, error: actorError } = await supabase.rpc('ensure_actor_for_user', {
+			p_user_id: session.user.id
+		});
 
-		if (!actor) {
+		if (actorError || !actorId) {
+			console.error('[Goal GET] Failed to resolve actor:', actorError);
 			return ApiResponse.error('Failed to get user actor', 500);
 		}
-
-		const actorId = (actor as any).actor_id;
 
 		// Get goal with project to verify ownership
 		const { data: goal, error } = await supabase
@@ -108,17 +105,14 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			body;
 
 		// Get user's actor ID
-		const { data: actor } = await supabase
-			.rpc('ensure_actor_for_user', {
-				p_user_id: session.user.id
-			})
-			.single();
+		const { data: actorId, error: actorError } = await supabase.rpc('ensure_actor_for_user', {
+			p_user_id: session.user.id
+		});
 
-		if (!actor) {
+		if (actorError || !actorId) {
+			console.error('[Goal PATCH] Failed to resolve actor:', actorError);
 			return ApiResponse.error('Failed to get user actor', 500);
 		}
-
-		const actorId = (actor as any).actor_id;
 
 		// Get goal with project to verify ownership
 		const { data: existingGoal, error: fetchError } = await supabase
@@ -229,17 +223,14 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 
 	try {
 		// Get user's actor ID
-		const { data: actor } = await supabase
-			.rpc('ensure_actor_for_user', {
-				p_user_id: session.user.id
-			})
-			.single();
+		const { data: actorId, error: actorError } = await supabase.rpc('ensure_actor_for_user', {
+			p_user_id: session.user.id
+		});
 
-		if (!actor) {
+		if (actorError || !actorId) {
+			console.error('[Goal DELETE] Failed to resolve actor:', actorError);
 			return ApiResponse.error('Failed to get user actor', 500);
 		}
-
-		const actorId = (actor as any).actor_id;
 
 		// Get goal with project to verify ownership
 		const { data: goal, error: fetchError } = await supabase

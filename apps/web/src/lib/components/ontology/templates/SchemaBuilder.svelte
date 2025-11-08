@@ -43,6 +43,20 @@
 		return structuredClone(workingSchema);
 	}
 
+	export function setSchema(newSchema?: JsonSchemaDefinition | null) {
+		workingSchema = structuredClone(
+			newSchema ?? {
+				type: 'object',
+				properties: {},
+				required: []
+			}
+		);
+		selectedProperty = null;
+		editingProperty = null;
+		enumValues = [];
+		newEnumValue = '';
+	}
+
 	// Property type options
 	const typeOptions: Array<{ value: JsonSchemaType; label: string; description: string }> = [
 		{ value: 'string', label: 'String', description: 'Text value' },
@@ -54,9 +68,9 @@
 	];
 
 	// Computed
-	let propertyCount = $derived(Object.keys(workingSchema.properties || {}).length);
-	let requiredCount = $derived((workingSchema.required || []).length);
-	let schemaJson = $derived(JSON.stringify(workingSchema, null, 2));
+	const propertyCount = $derived(Object.keys(workingSchema.properties || {}).length);
+	const requiredCount = $derived((workingSchema.required || []).length);
+	const schemaJson = $derived(JSON.stringify(workingSchema, null, 2));
 
 	function handleAddProperty() {
 		if (!newPropertyName.trim()) {
@@ -93,14 +107,14 @@
 			[newPropertyName]: newProp
 		};
 
+		// Select the new property for editing before clearing the form
+		selectedProperty = newPropertyName;
+		editingProperty = { ...newProp };
+
 		// Reset form
 		newPropertyName = '';
 		newPropertyType = 'string';
 		showAddProperty = false;
-
-		// Select the new property for editing
-		selectedProperty = newPropertyName;
-		editingProperty = { ...newProp };
 	}
 
 	function handleSelectProperty(propName: string) {

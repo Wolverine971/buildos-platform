@@ -15,9 +15,7 @@ import type { Template, Facets } from './onto';
 /**
  * Response from ensure_actor_for_user RPC call
  */
-export interface EnsureActorResponse {
-	actor_id: string;
-}
+export type EnsureActorResponse = string;
 
 /**
  * Response from get_allowed_transitions RPC call
@@ -298,7 +296,7 @@ export interface TemplateListResponse {
  * Type guard to check if response has actor_id
  */
 export function isEnsureActorResponse(value: any): value is EnsureActorResponse {
-	return value && typeof value.actor_id === 'string';
+	return typeof value === 'string' && value.length > 0;
 }
 
 /**

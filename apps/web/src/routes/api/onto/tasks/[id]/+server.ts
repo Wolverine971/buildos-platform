@@ -47,17 +47,14 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 
 	try {
 		// Get user's actor ID
-		const { data: actor } = await supabase
-			.rpc('ensure_actor_for_user', {
-				p_user_id: session.user.id
-			})
-			.single();
+		const { data: actorId, error: actorError } = await supabase.rpc('ensure_actor_for_user', {
+			p_user_id: session.user.id
+		});
 
-		if (!actor) {
+		if (actorError || !actorId) {
+			console.error('[Task GET] Failed to resolve actor:', actorError);
 			return ApiResponse.error('Failed to get user actor', 500);
 		}
-
-		const actorId = (actor as any).actor_id;
 
 		// Get task with project to verify ownership
 		const { data: task, error } = await supabase
@@ -112,17 +109,14 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		const { title, description, priority, state_key, plan_id, props } = body;
 
 		// Get user's actor ID
-		const { data: actor } = await supabase
-			.rpc('ensure_actor_for_user', {
-				p_user_id: session.user.id
-			})
-			.single();
+		const { data: actorId, error: actorError } = await supabase.rpc('ensure_actor_for_user', {
+			p_user_id: session.user.id
+		});
 
-		if (!actor) {
+		if (actorError || !actorId) {
+			console.error('[Task PATCH] Failed to resolve actor:', actorError);
 			return ApiResponse.error('Failed to get user actor', 500);
 		}
-
-		const actorId = (actor as any).actor_id;
 
 		// Get task with project to verify ownership
 		const { data: existingTask, error: fetchError } = await supabase
@@ -207,17 +201,14 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 
 	try {
 		// Get user's actor ID
-		const { data: actor } = await supabase
-			.rpc('ensure_actor_for_user', {
-				p_user_id: session.user.id
-			})
-			.single();
+		const { data: actorId, error: actorError } = await supabase.rpc('ensure_actor_for_user', {
+			p_user_id: session.user.id
+		});
 
-		if (!actor) {
+		if (actorError || !actorId) {
+			console.error('[Task DELETE] Failed to resolve actor:', actorError);
 			return ApiResponse.error('Failed to get user actor', 500);
 		}
-
-		const actorId = (actor as any).actor_id;
 
 		// Get task with project to verify ownership
 		const { data: task, error: fetchError } = await supabase

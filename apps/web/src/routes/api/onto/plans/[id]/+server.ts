@@ -47,17 +47,14 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 
 	try {
 		// Get user's actor ID
-		const { data: actor } = await supabase
-			.rpc('ensure_actor_for_user', {
-				p_user_id: session.user.id
-			})
-			.single();
+		const { data: actorId, error: actorError } = await supabase.rpc('ensure_actor_for_user', {
+			p_user_id: session.user.id
+		});
 
-		if (!actor) {
+		if (actorError || !actorId) {
+			console.error('[Plan GET] Failed to resolve actor:', actorError);
 			return ApiResponse.error('Failed to get user actor', 500);
 		}
-
-		const actorId = (actor as any).actor_id;
 
 		// Get plan with project to verify ownership
 		const { data: plan, error } = await supabase
@@ -107,17 +104,14 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		const { name, description, start_date, end_date, state_key, props } = body;
 
 		// Get user's actor ID
-		const { data: actor } = await supabase
-			.rpc('ensure_actor_for_user', {
-				p_user_id: session.user.id
-			})
-			.single();
+		const { data: actorId, error: actorError } = await supabase.rpc('ensure_actor_for_user', {
+			p_user_id: session.user.id
+		});
 
-		if (!actor) {
+		if (actorError || !actorId) {
+			console.error('[Plan PATCH] Failed to resolve actor:', actorError);
 			return ApiResponse.error('Failed to get user actor', 500);
 		}
-
-		const actorId = (actor as any).actor_id;
 
 		// Get plan with project to verify ownership
 		const { data: existingPlan, error: fetchError } = await supabase
@@ -221,17 +215,14 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 
 	try {
 		// Get user's actor ID
-		const { data: actor } = await supabase
-			.rpc('ensure_actor_for_user', {
-				p_user_id: session.user.id
-			})
-			.single();
+		const { data: actorId, error: actorError } = await supabase.rpc('ensure_actor_for_user', {
+			p_user_id: session.user.id
+		});
 
-		if (!actor) {
+		if (actorError || !actorId) {
+			console.error('[Plan DELETE] Failed to resolve actor:', actorError);
 			return ApiResponse.error('Failed to get user actor', 500);
 		}
-
-		const actorId = (actor as any).actor_id;
 
 		// Get plan with project to verify ownership
 		const { data: plan, error: fetchError } = await supabase

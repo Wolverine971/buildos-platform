@@ -583,4 +583,14 @@ For Task Templating Strategy- it should inherit the schema and FSM from the temp
 
 For Conditional Content, no conditionals for V1
 
-I previously tried to extend the onto_tasks table to support recurring tasks but I am not sure what happened to those plans
+I recently redesigned how the recurring tasks are structured so this is updated now.
+
+For relationship to Existing onto_templates as I said this scaffolding should properly inherit from the onto_templates that are for projects. We should always be reference existing templates however there should be standard generic base templates for each type. I think there are not sure. With this you should be able to inherit the base templates to go and build out a unique scaffolding for a project.
+
+For the Scope of Scaffolding lets extend to all relevant entities.
+
+Not sure about the variable types.
+
+For the Admin Creation vs. Programmatic
+
+Yes I want a form flow to create templates this is already sortof done here apps/web/src/routes/ontology/templates

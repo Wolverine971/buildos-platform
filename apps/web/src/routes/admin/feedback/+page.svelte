@@ -207,163 +207,163 @@
 </svelte:head>
 
 <div class="admin-page">
-		<!-- Header with Back Button -->
-		<AdminPageHeader
-			title="Feedback Management"
-			description="Review and manage user feedback submissions"
-			icon={MessageSquare}
-			backHref="/admin"
-			backLabel="Dashboard"
-		>
-			<div slot="actions" class="flex items-center space-x-4">
-				<div class="text-sm text-gray-600 dark:text-gray-400">
-					{totalItems} total submissions
-				</div>
-				<Button
-					onclick={loadFeedback}
-					disabled={isLoading}
-					variant="primary"
-					size="sm"
-					icon={RefreshCw}
-					loading={isLoading}
-				>
-					<span class="hidden lg:inline">Refresh</span>
-				</Button>
+	<!-- Header with Back Button -->
+	<AdminPageHeader
+		title="Feedback Management"
+		description="Review and manage user feedback submissions"
+		icon={MessageSquare}
+		backHref="/admin"
+		backLabel="Dashboard"
+	>
+		<div slot="actions" class="flex items-center space-x-4">
+			<div class="text-sm text-gray-600 dark:text-gray-400">
+				{totalItems} total submissions
 			</div>
-		</AdminPageHeader>
+			<Button
+				onclick={loadFeedback}
+				disabled={isLoading}
+				variant="primary"
+				size="sm"
+				icon={RefreshCw}
+				loading={isLoading}
+			>
+				<span class="hidden lg:inline">Refresh</span>
+			</Button>
+		</div>
+	</AdminPageHeader>
 
-		<!-- Filters and Search -->
-		<div class="admin-panel p-4 sm:p-6">
-			<!-- Mobile Filter Toggle -->
-			<div class="sm:hidden mb-4">
-				<Button
-					onclick={() => (showMobileFilters = !showMobileFilters)}
-					variant="ghost"
+	<!-- Filters and Search -->
+	<div class="admin-panel p-4 sm:p-6">
+		<!-- Mobile Filter Toggle -->
+		<div class="sm:hidden mb-4">
+			<Button
+				onclick={() => (showMobileFilters = !showMobileFilters)}
+				variant="ghost"
+				size="md"
+				class="w-full justify-between bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
+				icon={Filter}
+				iconPosition={'right'}
+			>
+				Filters & Search
+			</Button>
+		</div>
+
+		<!-- Mobile Filters Collapsible -->
+		<div class="sm:hidden {showMobileFilters ? 'block' : 'hidden'} space-y-4 mb-4">
+			<!-- Search -->
+			<FormField label="Search" labelFor="search">
+				<TextInput
+					id="search"
+					type="text"
+					bind:value={searchQuery}
+					placeholder="Search feedback..."
 					size="md"
-					class="w-full justify-between bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
-					icon={Filter}
-					iconPosition={'right'}
+				/>
+			</FormField>
+
+			<!-- Status Filter -->
+			<FormField label="Status" labelFor="mobile-status">
+				<Select
+					id="mobile-status"
+					bind:value={filterByStatus}
+					onchange={(e) => (filterByStatus = e.detail)}
+					size="md"
 				>
-					Filters & Search
-				</Button>
+					<option value="all">All Status</option>
+					<option value="new">New</option>
+					<option value="reviewed">Reviewed</option>
+					<option value="in_progress">In Progress</option>
+					<option value="resolved">Resolved</option>
+					<option value="closed">Closed</option>
+				</Select>
+			</FormField>
+
+			<!-- Category Filter -->
+			<FormField label="Category" labelFor="mobile-category">
+				<Select
+					id="mobile-category"
+					bind:value={filterByCategory}
+					onchange={(e) => (filterByCategory = e.detail)}
+					size="md"
+				>
+					<option value="all">All Categories</option>
+					<option value="feature">Feature Request</option>
+					<option value="bug">Bug Report</option>
+					<option value="improvement">Improvement</option>
+					<option value="general">General</option>
+				</Select>
+			</FormField>
+
+			<!-- Sort -->
+			<FormField label="Sort By" labelFor="mobile-sort">
+				<Select
+					id="mobile-sort"
+					bind:value={sortBy}
+					onchange={(e) => (sortBy = e.detail)}
+					size="md"
+				>
+					<option value="created_at">Date Created</option>
+					<option value="rating">Rating</option>
+					<option value="status">Status</option>
+					<option value="category">Category</option>
+				</Select>
+			</FormField>
+		</div>
+
+		<!-- Desktop Filters Grid -->
+		<div class="hidden sm:grid sm:grid-cols-1 md:grid-cols-5 gap-4">
+			<!-- Search -->
+			<div class="md:col-span-2 py-2">
+				<TextInput
+					type="text"
+					bind:value={searchQuery}
+					placeholder="Search feedback text or user email..."
+					size="md"
+				/>
 			</div>
 
-			<!-- Mobile Filters Collapsible -->
-			<div class="sm:hidden {showMobileFilters ? 'block' : 'hidden'} space-y-4 mb-4">
-				<!-- Search -->
-				<FormField label="Search" labelFor="search">
-					<TextInput
-						id="search"
-						type="text"
-						bind:value={searchQuery}
-						placeholder="Search feedback..."
-						size="md"
-					/>
-				</FormField>
-
-				<!-- Status Filter -->
-				<FormField label="Status" labelFor="mobile-status">
-					<Select
-						id="mobile-status"
-						bind:value={filterByStatus}
-						onchange={(e) => (filterByStatus = e.detail)}
-						size="md"
-					>
-						<option value="all">All Status</option>
-						<option value="new">New</option>
-						<option value="reviewed">Reviewed</option>
-						<option value="in_progress">In Progress</option>
-						<option value="resolved">Resolved</option>
-						<option value="closed">Closed</option>
-					</Select>
-				</FormField>
-
-				<!-- Category Filter -->
-				<FormField label="Category" labelFor="mobile-category">
-					<Select
-						id="mobile-category"
-						bind:value={filterByCategory}
-						onchange={(e) => (filterByCategory = e.detail)}
-						size="md"
-					>
-						<option value="all">All Categories</option>
-						<option value="feature">Feature Request</option>
-						<option value="bug">Bug Report</option>
-						<option value="improvement">Improvement</option>
-						<option value="general">General</option>
-					</Select>
-				</FormField>
-
-				<!-- Sort -->
-				<FormField label="Sort By" labelFor="mobile-sort">
-					<Select
-						id="mobile-sort"
-						bind:value={sortBy}
-						onchange={(e) => (sortBy = e.detail)}
-						size="md"
-					>
-						<option value="created_at">Date Created</option>
-						<option value="rating">Rating</option>
-						<option value="status">Status</option>
-						<option value="category">Category</option>
-					</Select>
-				</FormField>
+			<!-- Status Filter -->
+			<div class="py-2">
+				<Select
+					bind:value={filterByStatus}
+					onchange={(e) => (filterByStatus = e.detail)}
+					size="md"
+				>
+					<option value="all">All Status</option>
+					<option value="new">New</option>
+					<option value="reviewed">Reviewed</option>
+					<option value="in_progress">In Progress</option>
+					<option value="resolved">Resolved</option>
+					<option value="closed">Closed</option>
+				</Select>
 			</div>
 
-			<!-- Desktop Filters Grid -->
-			<div class="hidden sm:grid sm:grid-cols-1 md:grid-cols-5 gap-4">
-				<!-- Search -->
-				<div class="md:col-span-2 py-2">
-					<TextInput
-						type="text"
-						bind:value={searchQuery}
-						placeholder="Search feedback text or user email..."
-						size="md"
-					/>
-				</div>
+			<!-- Category Filter -->
+			<div class="py-2">
+				<Select
+					bind:value={filterByCategory}
+					onchange={(e) => (filterByCategory = e.detail)}
+					size="md"
+				>
+					<option value="all">All Categories</option>
+					<option value="feature">Feature Request</option>
+					<option value="bug">Bug Report</option>
+					<option value="improvement">Improvement</option>
+					<option value="general">General</option>
+				</Select>
+			</div>
 
-				<!-- Status Filter -->
-				<div class="py-2">
-					<Select
-						bind:value={filterByStatus}
-						onchange={(e) => (filterByStatus = e.detail)}
-						size="md"
-					>
-						<option value="all">All Status</option>
-						<option value="new">New</option>
-						<option value="reviewed">Reviewed</option>
-						<option value="in_progress">In Progress</option>
-						<option value="resolved">Resolved</option>
-						<option value="closed">Closed</option>
-					</Select>
-				</div>
-
-				<!-- Category Filter -->
-				<div class="py-2">
-					<Select
-						bind:value={filterByCategory}
-						onchange={(e) => (filterByCategory = e.detail)}
-						size="md"
-					>
-						<option value="all">All Categories</option>
-						<option value="feature">Feature Request</option>
-						<option value="bug">Bug Report</option>
-						<option value="improvement">Improvement</option>
-						<option value="general">General</option>
-					</Select>
-				</div>
-
-				<!-- Sort -->
-				<div class="py-2">
-					<Select bind:value={sortBy} onchange={(e) => (sortBy = e.detail)} size="md">
-						<option value="created_at">Date Created</option>
-						<option value="rating">Rating</option>
-						<option value="status">Status</option>
-						<option value="category">Category</option>
-					</Select>
-				</div>
+			<!-- Sort -->
+			<div class="py-2">
+				<Select bind:value={sortBy} onchange={(e) => (sortBy = e.detail)} size="md">
+					<option value="created_at">Date Created</option>
+					<option value="rating">Rating</option>
+					<option value="status">Status</option>
+					<option value="category">Category</option>
+				</Select>
 			</div>
 		</div>
+	</div>
 
 	{#if error}
 		<AdminCard

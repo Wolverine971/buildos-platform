@@ -4,6 +4,7 @@
  */
 
 import type { TypedSupabaseClient } from '@buildos/supabase-client';
+import type { ScopeCatalogMeta, CatalogCascade } from '$lib/types/template-builder';
 
 type RawTemplateRow = {
 	id: string;
@@ -14,40 +15,6 @@ type RawTemplateRow = {
 	is_abstract: boolean;
 	metadata: Record<string, unknown> | null;
 	facet_defaults?: Record<string, unknown> | null;
-};
-
-export type ScopeCatalogMeta = {
-	scope: string;
-	summary: {
-		total_templates: number;
-		abstract_templates: number;
-		concrete_templates: number;
-	};
-	realms: Array<{
-		realm: string;
-		template_count: number;
-		exemplar_names: string[];
-	}>;
-};
-
-export type CatalogCascade = {
-	scope: string;
-	realm: string;
-	domains: Array<{ slug: string; label: string; template_count: number }>;
-	deliverables: Array<{ slug: string; label: string; domains: string[] }>;
-	variants: Array<{ slug: string; label: string; parent: string }>;
-	templates: Array<{
-		id: string;
-		name: string;
-		type_key: string;
-		domain: string;
-		deliverable: string;
-		variant?: string;
-		status: 'draft' | 'active' | 'deprecated';
-		is_abstract: boolean;
-		summary?: string;
-		facet_defaults?: Record<string, unknown> | null;
-	}>;
 };
 
 const SCOPE_SELECT_FIELDS =
@@ -145,7 +112,7 @@ export async function getCatalogCascade(
 
 	const domainMap = new Map<string, { label: string; count: number }>();
 	const deliverableMap = new Map<string, { label: string; domains: Set<string> }>();
-	const variantEntries: Array<{ slug: string; label: string; parent: string }> = [];
+	const variantEntries: CatalogCascade['variants'] = [];
 	const templates: CatalogCascade['templates'] = [];
 
 	for (const row of rows) {

@@ -62,17 +62,14 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		}
 
 		// Get user's actor ID
-		const { data: actor } = await supabase
-			.rpc('ensure_actor_for_user', {
-				p_user_id: user.id
-			})
-			.single();
+		const { data: actorId, error: actorError } = await supabase.rpc('ensure_actor_for_user', {
+			p_user_id: user.id
+		});
 
-		if (!actor) {
+		if (actorError || !actorId) {
+			console.error('Error resolving actor for plan creation:', actorError);
 			return ApiResponse.internalError(new Error('Failed to get user actor'));
 		}
-
-		const actorId = (actor as any).actor_id;
 
 		// Verify user owns the project
 		const { data: project, error: projectError } = await supabase

@@ -13,6 +13,7 @@
 
 ### Essential Documentation
 
+- **[Type Key Taxonomy](./TYPE_KEY_TAXONOMY.md)** ✨ **NEW** - Naming conventions and entity autonomy framework
 - **[Implementation Roadmap](./ontology-implementation-roadmap.md)** - Detailed implementation plan and progress tracking
 - **[Data Models](./DATA_MODELS.md)** - Complete database schema (25 tables, 2783 lines)
 - **[Implementation Summary](./IMPLEMENTATION_SUMMARY.md)** - Recent CRUD implementation details
@@ -225,6 +226,8 @@ writer.book → writer.base → project.base
 'personal.morning_routine';
 ```
 
+**📚 See [Type Key Taxonomy](./TYPE_KEY_TAXONOMY.md) for complete naming conventions and entity autonomy framework**
+
 ### 3. Facet System
 
 ```typescript
@@ -383,9 +386,14 @@ POST /api/onto/projects/instantiate
 
 ## 📚 Related Documentation
 
+### Ontology Architecture
+
+- [Type Key Taxonomy](./TYPE_KEY_TAXONOMY.md) - Entity naming conventions and autonomy framework
+- [BuildOS Master Plan](./buildos-ontology-master-plan.md) - Complete vision
+- [Template Taxonomy](./TEMPLATE_TAXONOMY.md) - Deliverables and outputs catalog
+
 ### System Architecture
 
-- [BuildOS Master Plan](./buildos-ontology-master-plan.md) - Complete vision
 - [Web-Worker Architecture](/docs/architecture/diagrams/WEB-WORKER-ARCHITECTURE.md)
 - [Database Schema](/apps/web/docs/technical/database/schema.md)
 

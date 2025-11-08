@@ -50,9 +50,23 @@
 		return structuredClone(workingFsm);
 	}
 
+	export function setFsm(newFsm?: FsmDefinition | null) {
+		const nextFsm = newFsm ? structuredClone(newFsm) : { states: {}, transitions: [] };
+		workingFsm = nextFsm;
+		selectedElement = null;
+		editorMode = 'view';
+		editingState = null;
+		editingTransition = null;
+		actionInput = '';
+
+		if (container) {
+			initializeGraph();
+		}
+	}
+
 	// Stats
-	let stateCount = $derived(Object.keys(workingFsm.states).length);
-	let transitionCount = $derived(workingFsm.transitions.length);
+	const stateCount = $derived(Object.keys(workingFsm.states).length);
+	const transitionCount = $derived(workingFsm.transitions.length);
 
 	// Validation
 	$effect(() => {

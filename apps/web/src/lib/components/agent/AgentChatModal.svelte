@@ -10,23 +10,19 @@
 -->
 
 <script lang="ts">
-	import { tick, onMount, onDestroy } from 'svelte';
+	import { tick, onDestroy } from 'svelte';
 	import { dev } from '$app/environment';
-	import { X, Send, Loader, Mic, MicOff, LoaderCircle } from 'lucide-svelte';
+	import { X, Send, Loader } from 'lucide-svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
-	import Textarea from '$lib/components/ui/Textarea.svelte';
+	import TextareaWithVoice from '$lib/components/ui/TextareaWithVoice.svelte';
 	import ContextSelectionScreen from '../chat/ContextSelectionScreen.svelte';
 	import { SSEProcessor, type StreamCallbacks } from '$lib/utils/sse-processor';
 	import type { ChatSession, ChatContextType } from '@buildos/shared-types';
 	import { renderMarkdown, getProseClasses, hasMarkdownFormatting } from '$lib/utils/markdown';
 	// Add ontology integration imports
 	import type { LastTurnContext } from '$lib/types/agent-chat-enhancement';
-	import {
-		voiceRecordingService,
-		type TranscriptionService
-	} from '$lib/services/voiceRecording.service';
-	import { liveTranscript } from '$lib/utils/voice';
+	import type TextareaWithVoiceComponent from '$lib/components/ui/TextareaWithVoice.svelte';
 
 	interface Props {
 		isOpen?: boolean;
@@ -164,151 +160,22 @@
 		timestamp: Date;
 	}
 
-	const agentTranscriptionService: TranscriptionService = {
-		async transcribeAudio(audioFile: File) {
-			const formData = new FormData();
-			formData.append('audio', audioFile);
-
-			const response = await fetch('/api/transcribe', {
-				method: 'POST',
-				body: formData
-			});
-
-			if (!response.ok) {
-				let errorMessage = `Transcription failed: ${response.status}`;
-				try {
-					const errorPayload = await response.json();
-					if (errorPayload?.error) {
-						errorMessage = errorPayload.error;
-					}
-				} catch {
-					// Ignore JSON parse errors and use default message
-				}
-				throw new Error(errorMessage);
-			}
-
-			const result = await response.json();
-			if (result?.success && result?.data?.transcript) {
-				return { transcript: result.data.transcript };
-			}
-
-			if (result?.transcript) {
-				return { transcript: result.transcript };
-			}
-
-			throw new Error('No transcript returned from transcription service');
-		}
-	};
-
-	// Voice recording state
-	let isVoiceSupported = $state(false);
-	let isCurrentlyRecording = $state(false);
-	let isInitializingRecording = $state(false);
-	let isTranscribing = $state(false);
-	let voiceError = $state('');
-	let microphonePermissionGranted = $state(false);
-	let canUseLiveTranscript = $state(false);
-	let recordingDuration = $state(0);
-	let hasAttemptedVoice = $state(false);
-	let liveTranscriptPreview = $state('');
-
-	const isLiveTranscribing = $derived(
-		isCurrentlyRecording && liveTranscriptPreview.trim().length > 0
-	);
+	let voiceInputRef: TextareaWithVoiceComponent | null = null;
+	let isVoiceRecording = $state(false);
+	let isVoiceInitializing = $state(false);
+	let isVoiceTranscribing = $state(false);
+	let voiceErrorMessage = $state('');
+	let voiceSupportsLiveTranscript = $state(false);
+	let voiceRecordingDuration = $state(0);
 
 	const isSendDisabled = $derived(
 		!selectedContextType ||
 			!inputValue.trim() ||
 			isStreaming ||
-			isCurrentlyRecording ||
-			isInitializingRecording ||
-			isTranscribing
+			isVoiceRecording ||
+			isVoiceInitializing ||
+			isVoiceTranscribing
 	);
-
-	const voiceButtonState = $derived.by(() => {
-		if (!isVoiceSupported) {
-			return {
-				icon: MicOff,
-				label: 'Voice capture unavailable',
-				disabled: true,
-				isLoading: false,
-				variant: 'muted' as const
-			};
-		}
-
-		if (isCurrentlyRecording) {
-			return {
-				icon: MicOff,
-				label: 'Stop recording',
-				disabled: false,
-				isLoading: false,
-				variant: 'recording' as const
-			};
-		}
-
-		if (isInitializingRecording) {
-			return {
-				icon: LoaderCircle,
-				label: 'Preparing microphone...',
-				disabled: true,
-				isLoading: true,
-				variant: 'loading' as const
-			};
-		}
-
-		if (isTranscribing) {
-			return {
-				icon: LoaderCircle,
-				label: 'Transcribing...',
-				disabled: true,
-				isLoading: true,
-				variant: 'loading' as const
-			};
-		}
-
-		if (!microphonePermissionGranted && (hasAttemptedVoice || voiceError)) {
-			return {
-				icon: Mic,
-				label: 'Enable microphone',
-				disabled: false,
-				isLoading: false,
-				variant: 'prompt' as const
-			};
-		}
-
-		if (isStreaming) {
-			return {
-				icon: Mic,
-				label: 'Wait for agents...',
-				disabled: true,
-				isLoading: false,
-				variant: 'muted' as const
-			};
-		}
-
-		return {
-			icon: Mic,
-			label: 'Record voice note',
-			disabled: false,
-			isLoading: false,
-			variant: 'ready' as const
-		};
-	});
-
-	const voiceButtonClasses = $derived.by(() => {
-		switch (voiceButtonState.variant) {
-			case 'recording':
-				return 'border border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100 dark:border-rose-500/40 dark:bg-rose-500/10 dark:text-rose-200';
-			case 'loading':
-				return 'border border-slate-200 bg-white text-slate-400 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300';
-			case 'prompt':
-				return 'border border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100 dark:border-blue-500/50 dark:bg-blue-500/10 dark:text-blue-200';
-			case 'muted':
-				return 'border border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-500';
-			default:
-				return 'border border-transparent bg-slate-900 text-white hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200';
-		}
-	});
 
 	function formatDuration(seconds: number): string {
 		const mins = Math.floor(seconds / 60);
@@ -316,120 +183,26 @@
 		return `${mins}:${secs.toString().padStart(2, '0')}`;
 	}
 
-	onMount(() => {
-		isVoiceSupported = voiceRecordingService.isVoiceSupported();
-		canUseLiveTranscript = voiceRecordingService.isLiveTranscriptSupported();
-
-		voiceRecordingService.initialize(
-			{
-				onTextUpdate: (text: string) => {
-					inputValue = text;
-					voiceError = '';
-				},
-				onError: (error: string) => {
-					voiceError = error;
-					isCurrentlyRecording = false;
-					isInitializingRecording = false;
-				},
-				onPhaseChange: (phase: 'idle' | 'transcribing') => {
-					isTranscribing = phase === 'transcribing';
-				},
-				onPermissionGranted: () => {
-					microphonePermissionGranted = true;
-					voiceError = '';
-				},
-				onCapabilityUpdate: (update: { canUseLiveTranscript: boolean }) => {
-					canUseLiveTranscript = update.canUseLiveTranscript;
-				}
-			},
-			agentTranscriptionService
-		);
-
-		const durationStore = voiceRecordingService.getRecordingDuration();
-		const unsubscribeDuration = durationStore.subscribe((value) => {
-			recordingDuration = value;
-		});
-
-		const unsubscribeTranscript = liveTranscript.subscribe((value) => {
-			liveTranscriptPreview = value;
-		});
-
-		return () => {
-			unsubscribeDuration();
-			unsubscribeTranscript();
-			voiceRecordingService.cleanup();
-			isCurrentlyRecording = false;
-			isInitializingRecording = false;
-			isTranscribing = false;
-			liveTranscriptPreview = '';
-		};
-	});
-
-	async function startVoiceRecording() {
-		if (
-			!isVoiceSupported ||
-			isStreaming ||
-			isInitializingRecording ||
-			isCurrentlyRecording ||
-			isTranscribing
-		) {
-			return;
-		}
-
-		hasAttemptedVoice = true;
-		voiceError = '';
-		liveTranscriptPreview = '';
-		isInitializingRecording = true;
-
+	async function stopVoiceInput() {
 		try {
-			await voiceRecordingService.startRecording(inputValue);
-			isInitializingRecording = false;
-			isCurrentlyRecording = true;
-			microphonePermissionGranted = true;
+			await voiceInputRef?.stopRecording?.();
 		} catch (error) {
-			console.error('Failed to start voice recording:', error);
-			const message =
-				error instanceof Error
-					? error.message
-					: 'Unable to access microphone. Please check permissions.';
-			voiceError = message;
-			microphonePermissionGranted = false;
-			isInitializingRecording = false;
-			isCurrentlyRecording = false;
+			console.error('Failed to stop voice input', error);
 		}
 	}
 
-	async function stopVoiceRecording() {
-		if (!isCurrentlyRecording && !isInitializingRecording) {
-			return;
-		}
-
+	async function cleanupVoiceInput() {
 		try {
-			await voiceRecordingService.stopRecording(inputValue);
+			await voiceInputRef?.cleanup?.();
 		} catch (error) {
-			console.error('Failed to stop voice recording:', error);
-			const message =
-				error instanceof Error ? error.message : 'Failed to stop recording. Try again.';
-			voiceError = message;
-		} finally {
-			liveTranscriptPreview = '';
-			isCurrentlyRecording = false;
-			isInitializingRecording = false;
-		}
-	}
-
-	async function handleVoiceToggle() {
-		if (!isVoiceSupported) return;
-
-		if (isCurrentlyRecording || isInitializingRecording) {
-			await stopVoiceRecording();
-		} else {
-			await startVoiceRecording();
+			console.error('Failed to cleanup voice input', error);
 		}
 	}
 
 	function resetConversation(options: { preserveContext?: boolean } = {}) {
 		const { preserveContext = true } = options;
+
+		stopVoiceInput();
 
 		messages = [];
 		currentSession = null;
@@ -446,8 +219,7 @@
 		strategyConfidence = 0;
 		ontologyLoaded = false;
 		ontologySummary = null;
-		voiceError = '';
-		hasAttemptedVoice = false;
+		voiceErrorMessage = '';
 
 		if (!preserveContext) {
 			selectedContextType = null;
@@ -468,9 +240,7 @@
 
 	function changeContext() {
 		if (isStreaming) return;
-		if (isCurrentlyRecording || isInitializingRecording) {
-			stopVoiceRecording();
-		}
+		stopVoiceInput();
 		resetConversation({ preserveContext: false });
 	}
 
@@ -516,14 +286,12 @@
 	});
 
 	function handleClose() {
-		if (isCurrentlyRecording || isInitializingRecording) {
-			stopVoiceRecording();
-		}
+		stopVoiceInput();
 		if (currentStreamController) {
 			currentStreamController.abort();
 			currentStreamController = null;
 		}
-		voiceRecordingService.cleanup();
+		cleanupVoiceInput();
 		if (onClose) onClose();
 	}
 
@@ -956,16 +724,12 @@
 	// Get prose classes for markdown rendering
 	const proseClasses = getProseClasses('sm');
 	onDestroy(() => {
-		if (isCurrentlyRecording || isInitializingRecording) {
-			stopVoiceRecording().catch((err) =>
-				console.error('[AgentChat] Failed to stop recording during cleanup', err)
-			);
-		}
+		stopVoiceInput();
 		if (currentStreamController) {
 			currentStreamController.abort();
 			currentStreamController = null;
 		}
-		voiceRecordingService.cleanup();
+		cleanupVoiceInput();
 	});
 </script>
 
@@ -1251,70 +1015,51 @@
 					}}
 					class="space-y-3"
 				>
-					<div
-						class="relative rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900"
-					>
-						<Textarea
+					<div class="relative">
+						<TextareaWithVoice
+							bind:this={voiceInputRef}
 							bind:value={inputValue}
-							class="border-none bg-transparent px-4 py-3 pr-32 text-[15px] leading-relaxed text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-0 dark:text-slate-100 dark:placeholder:text-slate-500"
+							bind:isRecording={isVoiceRecording}
+							bind:isInitializing={isVoiceInitializing}
+							bind:isTranscribing={isVoiceTranscribing}
+							bind:voiceError={voiceErrorMessage}
+							bind:recordingDuration={voiceRecordingDuration}
+							bind:canUseLiveTranscript={voiceSupportsLiveTranscript}
+							class="w-full"
+							containerClass="space-y-0 rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900"
+							textareaClass="border-none bg-transparent px-4 py-3 pr-32 text-[15px] leading-relaxed text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-0 dark:text-slate-100 dark:placeholder:text-slate-500"
 							placeholder={`Share the next thing about ${displayContextLabel.toLowerCase()}...`}
 							autoResize
 							rows={1}
 							maxRows={6}
 							disabled={isStreaming}
+							voiceBlocked={isStreaming}
+							voiceBlockedLabel="Wait for agents..."
+							idleHint="Use the mic to add detail before you send."
+							voiceButtonLabel="Record voice note"
+							showStatusRow={false}
 							onkeydown={handleKeyDown}
 						/>
 
-						<div class="absolute bottom-2 right-2 flex items-center gap-2">
-							<button
-								type="button"
-								class={`flex h-10 w-10 items-center justify-center rounded-full transition ${voiceButtonClasses}`}
-								onclick={handleVoiceToggle}
-								aria-label={voiceButtonState.label}
-								title={voiceButtonState.label}
-								aria-pressed={isCurrentlyRecording}
-								disabled={voiceButtonState.disabled}
-							>
-								{#if voiceButtonState.isLoading}
-									<LoaderCircle class="h-5 w-5 animate-spin" />
-								{:else}
-									{@const VoiceIcon = voiceButtonState.icon}
-									<VoiceIcon class="h-5 w-5" />
-								{/if}
-							</button>
-
-							<button
-								type="submit"
-								class="flex h-11 w-11 items-center justify-center rounded-full bg-slate-900 text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
-								aria-label="Send message"
-								disabled={isSendDisabled}
-							>
-								{#if isStreaming}
-									<Loader class="h-5 w-5 animate-spin" />
-								{:else}
-									<Send class="h-5 w-5" />
-								{/if}
-							</button>
-						</div>
-
-						{#if isLiveTranscribing && canUseLiveTranscript}
-							<div class="pointer-events-none absolute bottom-3 left-4 right-28">
-								<div
-									class="pointer-events-auto max-h-24 overflow-y-auto rounded-xl border border-slate-200 bg-white/90 px-3 py-2 text-sm text-slate-600 shadow-sm dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-200"
-								>
-									<p class="m-0 whitespace-pre-wrap leading-relaxed">
-										{liveTranscriptPreview}
-									</p>
-								</div>
-							</div>
-						{/if}
+						<button
+							type="submit"
+							class="absolute bottom-2 right-2 flex h-11 w-11 items-center justify-center rounded-full bg-slate-900 text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
+							aria-label="Send message"
+							disabled={isSendDisabled}
+						>
+							{#if isStreaming}
+								<Loader class="h-5 w-5 animate-spin" />
+							{:else}
+								<Send class="h-5 w-5" />
+							{/if}
+						</button>
 					</div>
 
 					<div
 						class="flex flex-wrap items-center justify-between gap-3 text-xs font-medium text-slate-500 dark:text-slate-400"
 					>
 						<div class="flex flex-wrap items-center gap-3">
-							{#if isCurrentlyRecording}
+							{#if isVoiceRecording}
 								<span
 									class="flex items-center gap-2 text-rose-500 dark:text-rose-400"
 								>
@@ -1330,12 +1075,17 @@
 									</span>
 									Listening
 									<span class="font-semibold"
-										>{formatDuration(recordingDuration)}</span
+										>{formatDuration(voiceRecordingDuration)}</span
 									>
 								</span>
-							{:else if isTranscribing}
+							{:else if isVoiceInitializing}
 								<span class="flex items-center gap-2">
-									<LoaderCircle class="h-4 w-4 animate-spin" />
+									<Loader class="h-4 w-4 animate-spin" />
+									Preparing microphone…
+								</span>
+							{:else if isVoiceTranscribing}
+								<span class="flex items-center gap-2">
+									<Loader class="h-4 w-4 animate-spin" />
 									Transcribing...
 								</span>
 							{:else}
@@ -1345,7 +1095,7 @@
 								<span class="sm:hidden">Enter to send</span>
 							{/if}
 
-							{#if canUseLiveTranscript && isCurrentlyRecording}
+							{#if voiceSupportsLiveTranscript && isVoiceRecording}
 								<span
 									class="hidden rounded-full border border-blue-200 bg-blue-50 px-3 py-0.5 text-[11px] font-semibold uppercase tracking-[0.24em] text-blue-600 dark:border-blue-500/40 dark:bg-blue-500/10 dark:text-blue-300 sm:inline"
 								>
@@ -1355,12 +1105,12 @@
 						</div>
 
 						<div class="flex flex-wrap items-center gap-3">
-							{#if voiceError}
+							{#if voiceErrorMessage}
 								<span
 									role="alert"
 									class="flex items-center gap-2 rounded-full bg-rose-50 px-3 py-1 text-rose-600 dark:bg-rose-900/20 dark:text-rose-300"
 								>
-									{voiceError}
+									{voiceErrorMessage}
 								</span>
 							{/if}
 

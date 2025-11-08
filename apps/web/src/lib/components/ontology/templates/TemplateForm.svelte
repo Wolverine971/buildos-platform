@@ -25,6 +25,12 @@
 		loading?: boolean;
 		onsubmit?: (data: TemplateFormData) => void;
 		oncancel?: () => void;
+		lockTypeKey?: boolean;
+		showParentField?: boolean;
+		showScopeField?: boolean;
+		disableScopeSelect?: boolean;
+		typeKeyHelperText?: string;
+		hideHeader?: boolean;
 	}
 
 	let {
@@ -33,7 +39,13 @@
 		availableParents = [],
 		loading = false,
 		onsubmit,
-		oncancel
+		oncancel,
+		lockTypeKey = mode === 'edit',
+		showParentField = true,
+		showScopeField = true,
+		disableScopeSelect = false,
+		typeKeyHelperText,
+		hideHeader = false
 	}: Props = $props();
 
 	// Form state using Svelte 5 runes
@@ -49,21 +61,24 @@
 	let touched = $state<Record<string, boolean>>({});
 
 	// Derived validation
-	const isValid = $derived(() => {
-		return (
-			name.trim().length > 0 &&
+	const isValid = $derived(
+		name.trim().length > 0 &&
 			typeKey.trim().length > 0 &&
 			scope.length > 0 &&
 			Object.keys(errors).length === 0
-		);
-	});
+	);
 
 	const scopes = [
 		{ value: 'project', label: 'Project' },
 		{ value: 'plan', label: 'Plan' },
 		{ value: 'task', label: 'Task' },
 		{ value: 'output', label: 'Output' },
-		{ value: 'document', label: 'Document' }
+		{ value: 'document', label: 'Document' },
+		{ value: 'goal', label: 'Goal' },
+		{ value: 'requirement', label: 'Requirement' },
+		{ value: 'risk', label: 'Risk' },
+		{ value: 'milestone', label: 'Milestone' },
+		{ value: 'metric', label: 'Metric' }
 	];
 
 	const statuses = [
@@ -103,7 +118,7 @@
 		validateName();
 		validateTypeKey();
 
-		if (!isValid()) {
+		if (!isValid) {
 			return;
 		}
 
@@ -140,16 +155,18 @@
 </script>
 
 <Card variant="elevated">
-	<CardHeader variant="gradient">
-		<h2 class="text-xl font-bold text-white">
-			{mode === 'create' ? 'Create New Template' : 'Edit Template'}
-		</h2>
-		<p class="text-sm text-white/80 mt-1">
-			{mode === 'create'
-				? 'Define the basic information for your template'
-				: 'Update template information'}
-		</p>
-	</CardHeader>
+	{#if !hideHeader}
+		<CardHeader variant="gradient">
+			<h2 class="text-xl font-bold text-white">
+				{mode === 'create' ? 'Create New Template' : 'Edit Template'}
+			</h2>
+			<p class="text-sm text-white/80 mt-1">
+				{mode === 'create'
+					? 'Define the basic information for your template'
+					: 'Update template information'}
+			</p>
+		</CardHeader>
+	{/if}
 
 	<CardBody padding="lg">
 		<form onsubmit={handleSubmit} class="space-y-6">
@@ -189,41 +206,56 @@
 					onblur={validateTypeKey}
 					placeholder="e.g., creative.writing.novel"
 					class="w-full font-mono text-sm"
-					disabled={loading || mode === 'edit'}
+					disabled={loading || lockTypeKey}
 				/>
 				<p class="text-xs text-gray-600 dark:text-gray-400 mt-1">
-					Unique identifier in dot notation (lowercase). {mode === 'edit'
-						? 'Cannot be changed.'
-						: 'Auto-generated from name.'}
+					{typeKeyHelperText ??
+						`Unique identifier in dot notation (lowercase). ${
+							lockTypeKey ? 'Locked by builder.' : 'Auto-generated from name.'
+						}`}
 				</p>
 			</FormField>
 
 			<!-- Scope -->
-			<FormField label="Scope" labelFor="scope" required>
-				<Select id="scope" bind:value={scope} class="w-full" disabled={loading}>
-					{#each scopes as scopeOption}
-						<option value={scopeOption.value}>{scopeOption.label}</option>
-					{/each}
-				</Select>
-				<p class="text-xs text-gray-600 dark:text-gray-400 mt-1">
-					What type of entity does this template represent?
-				</p>
-			</FormField>
+			{#if showScopeField}
+				<FormField label="Scope" labelFor="scope" required>
+					<Select
+						id="scope"
+						bind:value={scope}
+						class="w-full"
+						disabled={loading || disableScopeSelect}
+					>
+						{#each scopes as scopeOption}
+							<option value={scopeOption.value}>{scopeOption.label}</option>
+						{/each}
+					</Select>
+					<p class="text-xs text-gray-600 dark:text-gray-400 mt-1">
+						What type of entity does this template represent?
+					</p>
+				</FormField>
+			{/if}
 
 			<!-- Parent Template -->
-			<FormField label="Parent Template" labelFor="parent">
-				<Select id="parent" bind:value={parentTemplateId} class="w-full" disabled={loading}>
-					<option value={null}>None (Base Template)</option>
-					{#each availableParents as parent}
-						<option value={parent.id}>
-							{parent.name} ({parent.type_key})
-						</option>
-					{/each}
-				</Select>
-				<p class="text-xs text-gray-600 dark:text-gray-400 mt-1">
-					Inherit properties from another template (optional)
-				</p>
-			</FormField>
+			{#if showParentField && availableParents.length > 0}
+				<FormField label="Parent Template" labelFor="parent">
+					<Select
+						id="parent"
+						bind:value={parentTemplateId}
+						class="w-full"
+						disabled={loading}
+					>
+						<option value={null}>None (Base Template)</option>
+						{#each availableParents as parent}
+							<option value={parent.id}>
+								{parent.name} ({parent.type_key})
+							</option>
+						{/each}
+					</Select>
+					<p class="text-xs text-gray-600 dark:text-gray-400 mt-1">
+						Inherit properties from another template (optional)
+					</p>
+				</FormField>
+			{/if}
 
 			<!-- Status -->
 			<FormField label="Status" labelFor="status" required>
@@ -265,7 +297,7 @@
 					variant="primary"
 					size="md"
 					fullWidth={true}
-					disabled={loading || !isValid()}
+					disabled={loading || !isValid}
 					class="sm:flex-1"
 				>
 					{loading

@@ -49,6 +49,138 @@
 	const currentFilters = $derived((data.currentFilters || {}) as CurrentFilters);
 	const isAdmin = $derived((data.isAdmin as boolean) || false);
 
+	type ScopeCategory = 'autonomous' | 'project_derived' | 'reference';
+	type ScopeTaxonomyEntry = {
+		label: string;
+		category: ScopeCategory;
+		summary: string;
+		typeKeyPattern?: string;
+		facetUsage?: string;
+		notes?: string;
+	};
+
+	const scopeTaxonomy: Record<string, ScopeTaxonomyEntry> = {
+		project: {
+			label: 'Projects',
+			category: 'autonomous',
+			summary:
+				'Top-level work definitions that declare the domain, deliverable, and optional variant.',
+			typeKeyPattern: '{domain}.{deliverable}[.{variant}]',
+			facetUsage: 'context / scale / stage',
+			notes: 'Always independently discoverable; facets describe how a specific project instance shows up.'
+		},
+		plan: {
+			label: 'Plans',
+			category: 'autonomous',
+			summary: 'Reusable orchestration playbooks with their own FSM.',
+			typeKeyPattern: 'plan.{type}[.{variant}]',
+			facetUsage: 'context / scale / stage',
+			notes: 'Can be used across projects, so they keep independent type keys.'
+		},
+		output: {
+			label: 'Outputs',
+			category: 'autonomous',
+			summary: 'Deliverables that exit the system (chapters, briefs, docs).',
+			typeKeyPattern: 'deliverable.{type}[.{variant}]',
+			facetUsage: 'context / stage',
+			notes: 'Often filtered by deliverable type across projects.'
+		},
+		document: {
+			label: 'Documents',
+			category: 'autonomous',
+			summary: 'Internal knowledge artifacts shared across work.',
+			typeKeyPattern: 'document.{type}',
+			facetUsage: 'context / stage',
+			notes: 'Use when the document structure matters outside a single project.'
+		},
+		goal: {
+			label: 'Goals',
+			category: 'autonomous',
+			summary: 'Objectives and outcomes that can be tracked independently.',
+			typeKeyPattern: 'goal.{type}',
+			facetUsage: 'context / scale',
+			notes: 'Keeps goal templates reusable across domains.'
+		},
+		task: {
+			label: 'Tasks',
+			category: 'autonomous',
+			summary: 'Hybrid entities – may inherit from project but can opt into task.{type}.',
+			typeKeyPattern: 'task.{type} (optional)',
+			facetUsage: 'context / scale',
+			notes: 'Only add a task type key if it should be templatized outside a project.'
+		},
+		requirement: {
+			label: 'Requirements',
+			category: 'project_derived',
+			summary: 'Needs that typically inherit meaning from the parent project.',
+			facetUsage: 'context',
+			notes: 'Skip type keys unless you truly need global requirement templates.'
+		},
+		metric: {
+			label: 'Metrics',
+			category: 'project_derived',
+			summary: 'Measurements scoped to a project, usually inheriting domain context.',
+			facetUsage: 'scale',
+			notes: 'Use project metadata to explain what is being measured.'
+		},
+		risk: {
+			label: 'Risks',
+			category: 'project_derived',
+			summary: 'Risk entries that might optionally use risk.{type} if schema diverges.',
+			typeKeyPattern: 'risk.{type} (optional)',
+			facetUsage: 'context',
+			notes: 'Keep simple unless you need risk-specific templates.'
+		},
+		milestone: {
+			label: 'Milestones',
+			category: 'project_derived',
+			summary: 'Temporal markers that rely on the project lifecycle.',
+			facetUsage: 'stage',
+			notes: 'No independent type key – inherits project semantics.'
+		}
+	};
+
+	const scopeGroups: Array<{
+		key: ScopeCategory;
+		title: string;
+		description: string;
+		scopes: string[];
+		notes?: string;
+	}> = [
+		{
+			key: 'autonomous',
+			title: 'Autonomous Entities',
+			description:
+				'Need their own taxonomy because they can be templated, filtered, and orchestrated outside a single project.',
+			scopes: ['project', 'plan', 'output', 'document', 'goal', 'task']
+		},
+		{
+			key: 'project_derived',
+			title: 'Project-Derived Entities',
+			description:
+				'Inherit most meaning from the parent project. Create templates sparingly.',
+			scopes: ['requirement', 'metric', 'milestone', 'risk']
+		},
+		{
+			key: 'reference',
+			title: 'Reference + System',
+			description:
+				'Structural records (facet definitions, permissions, etc.). They rarely appear in this list but help explain the taxonomy.',
+			scopes: [],
+			notes: 'Facet definitions, edges, assignments, and permissions live here.'
+		}
+	];
+
+	const facetDescriptions = {
+		context: 'Who the work is for or the perspective driving the effort.',
+		scale: 'How big or complex the work is.',
+		stage: 'Where the work sits in its lifecycle.'
+	};
+
+	const selectedScopeDetails = $derived(
+		selectedScope ? (scopeTaxonomy[selectedScope] ?? null) : null
+	);
+
 	let viewMode = $state<'realm' | 'scope'>('realm');
 	let selectedScope = $state('');
 	let selectedRealm = $state('');
@@ -79,6 +211,21 @@
 	let searchDebounce: ReturnType<typeof setTimeout> | null = null;
 
 	const facetOptions = $derived(filterOptions.facets || {});
+	const facetLabelMap = $derived.by(() => {
+		const map: Record<string, Record<string, string>> = {};
+		for (const [key, values] of Object.entries(facetOptions)) {
+			map[key] = (values ?? []).reduce(
+				(acc, option) => {
+					if (option?.value) {
+						acc[option.value] = option.label || capitalize(option.value);
+					}
+					return acc;
+				},
+				{} as Record<string, string>
+			);
+		}
+		return map;
+	});
 	const hasActiveFilters = $derived(
 		Boolean(
 			selectedScope ||
@@ -90,6 +237,19 @@
 				sortBy !== 'name' ||
 				sortDirection !== 'asc'
 		)
+	);
+	const activeFacetCount = $derived(
+		selectedContexts.length + selectedScales.length + selectedStages.length
+	);
+	const totalFilterCount = $derived(
+		(selectedScope ? 1 : 0) +
+			(selectedRealm ? 1 : 0) +
+			(searchQuery.trim() ? 1 : 0) +
+			(selectedContexts.length ? 1 : 0) +
+			(selectedScales.length ? 1 : 0) +
+			(selectedStages.length ? 1 : 0) +
+			(sortBy !== 'name' ? 1 : 0) +
+			(sortDirection !== 'asc' ? 1 : 0)
 	);
 
 	function handleSearchInput(event: Event) {
@@ -152,7 +312,7 @@
 			const params = new URLSearchParams();
 			if (scope) params.set('scope', scope);
 			const response = await fetch(
-				`/api/onto/templates/${encodeURIComponent(typeKey)}${params.toString() ? '?' + params.toString() : ''}`
+				`/api/onto/templates/by-type/${encodeURIComponent(typeKey)}${params.toString() ? '?' + params.toString() : ''}`
 			);
 			if (!response.ok) {
 				const body = await response.json().catch(() => ({}));
@@ -211,6 +371,11 @@
 	function capitalize(str: string): string {
 		return str.charAt(0).toUpperCase() + str.slice(1);
 	}
+
+	function formatRealm(value?: string | null): string {
+		if (!value) return '';
+		return value.replace(/[_-]+/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
+	}
 </script>
 
 <svelte:head>
@@ -255,6 +420,48 @@
 		</div>
 	</header>
 
+	<div
+		class="mb-6 rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 flex flex-wrap gap-6 text-sm text-gray-600 dark:text-gray-300"
+	>
+		<div class="min-w-[200px] flex-1">
+			<p
+				class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 font-semibold"
+			>
+				Type Keys
+			</p>
+			<p>
+				Autonomous scopes use <code class="font-mono">domain.deliverable[.variant]</code> so
+				schema + FSM stay reusable.
+			</p>
+		</div>
+		<div class="min-w-[200px] flex-1">
+			<p
+				class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 font-semibold"
+			>
+				Facets
+			</p>
+			<p>
+				Context · scale · stage layer perspective onto the instance without renaming the
+				entity.
+			</p>
+		</div>
+		<div class="min-w-[200px] flex-1">
+			<p
+				class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 font-semibold"
+			>
+				Entity Categories
+			</p>
+			<div class="flex flex-wrap gap-2 text-xs mt-1">
+				{#each scopeGroups as group}
+					<span
+						class="inline-flex items-center rounded-full border border-gray-200 dark:border-gray-700 px-3 py-1 text-gray-700 dark:text-gray-200"
+					>
+						{group.title}: {group.scopes.length}
+					</span>
+				{/each}
+			</div>
+		</div>
+	</div>
 	<!-- Filters -->
 	<Card variant="elevated" padding="none">
 		<CardBody padding="lg" class="space-y-5">
@@ -296,107 +503,183 @@
 					</FormField>
 				</div>
 
-				{#if hasActiveFilters}
-					<div class="flex items-end">
-						<Button
-							variant="outline"
-							size="md"
-							onclick={clearFilters}
-							class="w-full lg:w-auto"
+				<div
+					class="rounded-2xl border border-gray-100 dark:border-gray-800 bg-gray-50/70 dark:bg-gray-900/40 p-3 sm:p-4 flex flex-wrap items-center justify-between gap-3 text-sm"
+				>
+					<div class="flex items-center gap-2 text-gray-600 dark:text-gray-300">
+						<svg
+							class="w-4 h-4 text-gray-400 dark:text-gray-500"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
 						>
-							Clear Filters
-						</Button>
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M4 5h16l-5.5 7v5l-5 2v-7L4 5z"
+							/>
+						</svg>
+						<span>
+							{hasActiveFilters
+								? `${totalFilterCount} filter${totalFilterCount === 1 ? '' : 's'} applied`
+								: 'No filters applied'}
+						</span>
+						{#if activeFacetCount}
+							<span
+								class="inline-flex items-center rounded-full bg-white/80 dark:bg-gray-800/70 px-2 py-0.5 text-xs font-semibold text-gray-700 dark:text-gray-200"
+							>
+								{activeFacetCount} facet{activeFacetCount === 1 ? '' : 's'}
+							</span>
+						{/if}
 					</div>
-				{/if}
+					{#if hasActiveFilters}
+						<Button variant="ghost" size="sm" onclick={clearFilters} class="shrink-0">
+							Reset filters
+						</Button>
+					{/if}
+				</div>
 			</div>
 
 			<!-- Facet Filters -->
-			<div class="grid gap-4 md:grid-cols-3">
-				<div class="space-y-2">
-					<h3
-						class="text-sm font-semibold text-gray-800 dark:text-gray-200 uppercase tracking-wide"
+			<div class="grid gap-3 md:grid-cols-3">
+				<details
+					class={`rounded-2xl border bg-white dark:bg-gray-900 px-4 py-3 ${selectedContexts.length ? 'border-blue-200 dark:border-blue-500/40' : 'border-gray-200 dark:border-gray-800'}`}
+					open={selectedContexts.length > 0}
+				>
+					<summary
+						class="flex items-center justify-between gap-2 cursor-pointer text-xs font-semibold text-gray-800 dark:text-gray-200 uppercase tracking-wide"
 					>
-						Context
-					</h3>
-					<div class="flex flex-wrap gap-2">
-						{#if facetOptions.context && facetOptions.context.length}
-							{#each facetOptions.context as option}
-								<label
-									class="inline-flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700/70 px-3 py-1.5 rounded-lg"
-								>
-									<input
-										type="checkbox"
-										value={option.value}
-										bind:group={selectedContexts}
-										onchange={updateFilters}
-										class="rounded border-gray-300 dark:border-gray-500 text-blue-600 focus:ring-blue-500"
-									/>
-									<span>{option.label || capitalize(option.value)}</span>
-								</label>
-							{/each}
-						{:else}
-							<p class="text-xs text-gray-500 dark:text-gray-500">
-								No context facets.
-							</p>
-						{/if}
+						<span>Context</span>
+						<span class="text-[11px] text-gray-500 dark:text-gray-400">
+							{selectedContexts.length}/{facetOptions.context?.length ?? 0}
+						</span>
+					</summary>
+					<div class="mt-2 space-y-2">
+						<p class="text-xs text-gray-500 dark:text-gray-400">
+							{facetDescriptions.context}
+						</p>
+						<div class="flex flex-wrap gap-2">
+							{#if facetOptions.context && facetOptions.context.length}
+								{#each facetOptions.context as option}
+									{@const isSelected = selectedContexts.includes(option.value)}
+									<label
+										class={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition ${
+											isSelected
+												? 'bg-blue-50 border-blue-200 text-blue-700 dark:bg-blue-900/30 dark:border-blue-500/40 dark:text-blue-100'
+												: 'bg-transparent border-gray-200 text-gray-600 dark:border-gray-700 dark:text-gray-400 hover:border-blue-200'
+										}`}
+									>
+										<input
+											type="checkbox"
+											value={option.value}
+											bind:group={selectedContexts}
+											onchange={updateFilters}
+											class="sr-only"
+										/>
+										<span>{option.label || capitalize(option.value)}</span>
+									</label>
+								{/each}
+							{:else}
+								<p class="text-xs text-gray-500 dark:text-gray-500">
+									No context facets.
+								</p>
+							{/if}
+						</div>
 					</div>
-				</div>
+				</details>
 
-				<div class="space-y-2">
-					<h3
-						class="text-sm font-semibold text-gray-800 dark:text-gray-200 uppercase tracking-wide"
+				<details
+					class={`rounded-2xl border bg-white dark:bg-gray-900 px-4 py-3 ${selectedScales.length ? 'border-emerald-200 dark:border-emerald-500/40' : 'border-gray-200 dark:border-gray-800'}`}
+					open={selectedScales.length > 0}
+				>
+					<summary
+						class="flex items-center justify-between gap-2 cursor-pointer text-xs font-semibold text-gray-800 dark:text-gray-200 uppercase tracking-wide"
 					>
-						Scale
-					</h3>
-					<div class="flex flex-wrap gap-2">
-						{#if facetOptions.scale && facetOptions.scale.length}
-							{#each facetOptions.scale as option}
-								<label
-									class="inline-flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700/70 px-3 py-1.5 rounded-lg"
-								>
-									<input
-										type="checkbox"
-										value={option.value}
-										bind:group={selectedScales}
-										onchange={updateFilters}
-										class="rounded border-gray-300 dark:border-gray-500 text-blue-600 focus:ring-blue-500"
-									/>
-									<span>{option.label || capitalize(option.value)}</span>
-								</label>
-							{/each}
-						{:else}
-							<p class="text-xs text-gray-500 dark:text-gray-500">No scale facets.</p>
-						{/if}
+						<span>Scale</span>
+						<span class="text-[11px] text-gray-500 dark:text-gray-400">
+							{selectedScales.length}/{facetOptions.scale?.length ?? 0}
+						</span>
+					</summary>
+					<div class="mt-2 space-y-2">
+						<p class="text-xs text-gray-500 dark:text-gray-400">
+							{facetDescriptions.scale}
+						</p>
+						<div class="flex flex-wrap gap-2">
+							{#if facetOptions.scale && facetOptions.scale.length}
+								{#each facetOptions.scale as option}
+									{@const isScaleSelected = selectedScales.includes(option.value)}
+									<label
+										class={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition ${
+											isScaleSelected
+												? 'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-900/30 dark:border-emerald-500/40 dark:text-emerald-100'
+												: 'bg-transparent border-gray-200 text-gray-600 dark:border-gray-700 dark:text-gray-400 hover:border-emerald-200'
+										}`}
+									>
+										<input
+											type="checkbox"
+											value={option.value}
+											bind:group={selectedScales}
+											onchange={updateFilters}
+											class="sr-only"
+										/>
+										<span>{option.label || capitalize(option.value)}</span>
+									</label>
+								{/each}
+							{:else}
+								<p class="text-xs text-gray-500 dark:text-gray-500">
+									No scale facets.
+								</p>
+							{/if}
+						</div>
 					</div>
-				</div>
+				</details>
 
-				<div class="space-y-2">
-					<h3
-						class="text-sm font-semibold text-gray-800 dark:text-gray-200 uppercase tracking-wide"
+				<details
+					class={`rounded-2xl border bg-white dark:bg-gray-900 px-4 py-3 ${selectedStages.length ? 'border-purple-200 dark:border-purple-500/40' : 'border-gray-200 dark:border-gray-800'}`}
+					open={selectedStages.length > 0}
+				>
+					<summary
+						class="flex items-center justify-between gap-2 cursor-pointer text-xs font-semibold text-gray-800 dark:text-gray-200 uppercase tracking-wide"
 					>
-						Stage
-					</h3>
-					<div class="flex flex-wrap gap-2">
-						{#if facetOptions.stage && facetOptions.stage.length}
-							{#each facetOptions.stage as option}
-								<label
-									class="inline-flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700/70 px-3 py-1.5 rounded-lg"
-								>
-									<input
-										type="checkbox"
-										value={option.value}
-										bind:group={selectedStages}
-										onchange={updateFilters}
-										class="rounded border-gray-300 dark:border-gray-500 text-blue-600 focus:ring-blue-500"
-									/>
-									<span>{option.label || capitalize(option.value)}</span>
-								</label>
-							{/each}
-						{:else}
-							<p class="text-xs text-gray-500 dark:text-gray-500">No stage facets.</p>
-						{/if}
+						<span>Stage</span>
+						<span class="text-[11px] text-gray-500 dark:text-gray-400">
+							{selectedStages.length}/{facetOptions.stage?.length ?? 0}
+						</span>
+					</summary>
+					<div class="mt-2 space-y-2">
+						<p class="text-xs text-gray-500 dark:text-gray-400">
+							{facetDescriptions.stage}
+						</p>
+						<div class="flex flex-wrap gap-2">
+							{#if facetOptions.stage && facetOptions.stage.length}
+								{#each facetOptions.stage as option}
+									{@const isStageSelected = selectedStages.includes(option.value)}
+									<label
+										class={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition ${
+											isStageSelected
+												? 'bg-purple-50 border-purple-200 text-purple-700 dark:bg-purple-900/30 dark:border-purple-500/40 dark:text-purple-100'
+												: 'bg-transparent border-gray-200 text-gray-600 dark:border-gray-700 dark:text-gray-400 hover:border-purple-200'
+										}`}
+									>
+										<input
+											type="checkbox"
+											value={option.value}
+											bind:group={selectedStages}
+											onchange={updateFilters}
+											class="sr-only"
+										/>
+										<span>{option.label || capitalize(option.value)}</span>
+									</label>
+								{/each}
+							{:else}
+								<p class="text-xs text-gray-500 dark:text-gray-500">
+									No stage facets.
+								</p>
+							{/if}
+						</div>
 					</div>
-				</div>
+				</details>
 			</div>
 
 			<div
@@ -444,6 +727,138 @@
 					</div>
 				</div>
 			</div>
+
+			{#if selectedScopeDetails || selectedRealm || activeFacetCount}
+				<div
+					class="grid gap-4 pt-5 border-t border-gray-100 dark:border-gray-800 md:grid-cols-2"
+				>
+					{#if selectedScopeDetails}
+						<div
+							class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-gradient-to-br from-white to-gray-50 dark:from-gray-900 dark:to-gray-900/40 p-4 space-y-2"
+						>
+							<p
+								class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400"
+							>
+								Scope Insight
+							</p>
+							<h4 class="text-lg font-semibold text-gray-900 dark:text-gray-50">
+								{selectedScopeDetails.label}
+							</h4>
+							<p class="text-sm text-gray-600 dark:text-gray-300">
+								{selectedScopeDetails.summary}
+							</p>
+							{#if selectedScopeDetails.typeKeyPattern}
+								<p class="text-xs font-mono text-gray-500 dark:text-gray-400">
+									Type Key pattern: {selectedScopeDetails.typeKeyPattern}
+								</p>
+							{/if}
+							{#if selectedScopeDetails.facetUsage}
+								<p class="text-xs text-gray-500 dark:text-gray-400">
+									Facet focus: {selectedScopeDetails.facetUsage}
+								</p>
+							{/if}
+							{#if selectedScopeDetails.notes}
+								<p class="text-xs text-gray-500 dark:text-gray-400">
+									{selectedScopeDetails.notes}
+								</p>
+							{/if}
+						</div>
+					{/if}
+
+					{#if selectedRealm || activeFacetCount}
+						<div
+							class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 space-y-3"
+						>
+							{#if selectedRealm}
+								<div>
+									<p
+										class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400"
+									>
+										Realm
+									</p>
+									<p
+										class="text-base font-semibold text-gray-900 dark:text-gray-50"
+									>
+										{formatRealm(selectedRealm)}
+									</p>
+									<p class="text-xs text-gray-500 dark:text-gray-400">
+										Use realms to cluster templates by practitioner perspective.
+									</p>
+								</div>
+							{/if}
+
+							{#if activeFacetCount}
+								<div class="space-y-2">
+									<p
+										class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400"
+									>
+										Facet Lenses
+									</p>
+									<div class="space-y-3">
+										{#if selectedContexts.length}
+											<div class="space-y-1">
+												<p
+													class="text-xs font-semibold text-gray-600 dark:text-gray-300"
+												>
+													Context
+												</p>
+												<div class="flex flex-wrap gap-2">
+													{#each selectedContexts as value}
+														<span
+															class="inline-flex items-center rounded-full bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-100 border border-blue-100 dark:border-blue-500/40 px-3 py-1 text-xs"
+														>
+															{facetLabelMap.context?.[value] ??
+																capitalize(value)}
+														</span>
+													{/each}
+												</div>
+											</div>
+										{/if}
+										{#if selectedScales.length}
+											<div class="space-y-1">
+												<p
+													class="text-xs font-semibold text-gray-600 dark:text-gray-300"
+												>
+													Scale
+												</p>
+												<div class="flex flex-wrap gap-2">
+													{#each selectedScales as value}
+														<span
+															class="inline-flex items-center rounded-full bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-100 border border-emerald-100 dark:border-emerald-500/40 px-3 py-1 text-xs"
+														>
+															{facetLabelMap.scale?.[value] ??
+																capitalize(value)}
+														</span>
+													{/each}
+												</div>
+											</div>
+										{/if}
+										{#if selectedStages.length}
+											<div class="space-y-1">
+												<p
+													class="text-xs font-semibold text-gray-600 dark:text-gray-300"
+												>
+													Stage
+												</p>
+												<div class="flex flex-wrap gap-2">
+													{#each selectedStages as value}
+														<span
+															class="inline-flex items-center rounded-full bg-purple-50 dark:bg-purple-500/10 text-purple-700 dark:text-purple-100 border border-purple-100 dark:border-purple-500/40 px-3 py-1 text-xs"
+														>
+															{facetLabelMap.stage?.[value] ??
+																capitalize(value)}
+														</span>
+													{/each}
+												</div>
+											</div>
+										{/if}
+									</div>
+								</div>
+							{/if}
+						</div>
+					{/if}
+				</div>
+			{/if}
 		</CardBody>
 	</Card>
 

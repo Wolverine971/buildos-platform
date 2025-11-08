@@ -7,7 +7,20 @@
 import type { PageServerLoad } from './$types';
 import { redirect } from '@sveltejs/kit';
 
-export const load: PageServerLoad = async ({ locals: { safeGetSession, supabase } }) => {
+const TEMPLATE_SCOPES = [
+	'project',
+	'plan',
+	'task',
+	'output',
+	'document',
+	'goal',
+	'requirement',
+	'risk',
+	'milestone',
+	'metric'
+] as const;
+
+export const load: PageServerLoad = async ({ locals: { safeGetSession } }) => {
 	// Check authentication and admin status
 	const { user } = await safeGetSession();
 
@@ -20,18 +33,9 @@ export const load: PageServerLoad = async ({ locals: { safeGetSession, supabase 
 		throw redirect(302, '/ontology/templates');
 	}
 
-	const { data: templates, error } = await supabase
-		.from('onto_templates')
-		.select('id, name, type_key, scope')
-		.eq('status', 'active')
-		.order('name');
-
-	if (error) {
-		console.error('[Template Creation] Error loading templates:', error);
-	}
-
 	return {
 		user,
-		availableParents: templates || []
+		availableParents: [],
+		builderScopes: TEMPLATE_SCOPES
 	};
 };

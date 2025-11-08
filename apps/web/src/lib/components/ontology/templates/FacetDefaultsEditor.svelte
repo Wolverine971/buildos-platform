@@ -45,6 +45,13 @@
 		return defaults;
 	}
 
+	export function setFacetDefaults(newDefaults?: Record<string, string>) {
+		const defaults = newDefaults ?? {};
+		selectedContext = defaults.context || '';
+		selectedScale = defaults.scale || '';
+		selectedStage = defaults.stage || '';
+	}
+
 	onMount(async () => {
 		await loadFacetOptions();
 	});

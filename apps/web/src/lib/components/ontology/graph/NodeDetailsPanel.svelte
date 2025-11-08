@@ -35,18 +35,54 @@
 			}));
 	}
 
-	function navigateToDetail() {
-		const routes: Record<string, string> = {
-			project: '/ontology/projects',
-			template: '/ontology/templates',
-			output: '/ontology/projects',
-			task: '/ontology/projects',
-			document: '/ontology/projects'
-		};
+	function readString(
+		metadata: Record<string, unknown> | undefined,
+		...keys: string[]
+	): string | null {
+		if (!metadata) return null;
+		for (const key of keys) {
+			const value = metadata[key];
+			if (typeof value === 'string' && value.length > 0) {
+				return value;
+			}
+		}
+		return null;
+	}
 
-		const base = routes[node?.type];
-		if (base) {
-			window.location.href = `${base}/${node?.id}`;
+	function getDetailUrl(current: GraphNode | null): string | null {
+		if (!current) return null;
+		const meta = current.metadata;
+		switch (current.type) {
+			case 'project':
+				return `/ontology/projects/${current.id}`;
+			case 'task': {
+				const projectId = readString(meta, 'projectId', 'project_id');
+				return projectId ? `/ontology/projects/${projectId}` : null;
+			}
+			case 'output': {
+				const projectId = readString(meta, 'projectId', 'project_id');
+				return projectId
+					? `/ontology/projects/${projectId}/outputs/${current.id}/edit`
+					: null;
+			}
+			case 'document': {
+				const projectId = readString(meta, 'projectId', 'project_id');
+				return projectId ? `/ontology/projects/${projectId}` : null;
+			}
+			case 'template': {
+				const typeKey = readString(meta, 'typeKey', 'type_key');
+				return typeKey ? `/ontology/templates?detail=${encodeURIComponent(typeKey)}` : null;
+			}
+			default:
+				return null;
+		}
+	}
+
+	const detailUrl = $derived(getDetailUrl(node));
+
+	function navigateToDetail() {
+		if (detailUrl) {
+			window.location.href = detailUrl;
 		}
 	}
 </script>
@@ -148,7 +184,13 @@
 	<CardFooter
 		class="flex-col items-stretch justify-start gap-2 px-4 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50"
 	>
-		<Button variant="primary" size="sm" fullWidth={true} onclick={navigateToDetail}>
+		<Button
+			variant="primary"
+			size="sm"
+			fullWidth={true}
+			onclick={navigateToDetail}
+			disabled={!detailUrl}
+		>
 			<ExternalLink class="w-4 h-4 mr-2" />
 			View Detail Page
 		</Button>
