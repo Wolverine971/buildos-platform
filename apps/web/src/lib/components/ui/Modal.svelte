@@ -234,7 +234,7 @@
 					<slot name="header">
 						{#if title || showCloseButton}
 							<div
-								class="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 flex-shrink-0"
+								class="flex items-center justify-between px-4 sm:px-6 py-1 sm:py-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 flex-shrink-0"
 							>
 								{#if title}
 									<h2
@@ -258,7 +258,7 @@
 										variant="ghost"
 										size="sm"
 										icon={X}
-										class="!p-2 flex-shrink-0"
+										class="flex-shrink-0"
 										aria-label="Close dialog"
 									/>
 								{/if}

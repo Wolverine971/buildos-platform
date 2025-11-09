@@ -1067,11 +1067,10 @@
 	<title>New Template | Ontology | BuildOS</title>
 </svelte:head>
 
-<div class="min-h-screen bg-gray-50 dark:bg-gray-900">
-	<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
-		<!-- Header -->
-		<header class="mb-8">
-			<Button variant="ghost" size="sm" onclick={handleCancel} class="mb-4">
+<div class="max-w-6xl mx-auto">
+	<!-- Header -->
+	<header class="mb-3">
+			<Button variant="ghost" size="sm" onclick={handleCancel} class="mb-3">
 				<svg
 					class="w-4 h-4 mr-2"
 					xmlns="http://www.w3.org/2000/svg"
@@ -1098,8 +1097,8 @@
 			</p>
 		</header>
 
-		<!-- Progress Indicator -->
-		<div class="mb-8">
+	<!-- Progress Indicator -->
+	<div class="mb-3">
 			<div class="flex items-center justify-between">
 				{#each steps as step}
 					<button
@@ -1162,44 +1161,44 @@
 			</div>
 		</div>
 
-		<!-- Error Display -->
-		{#if error}
-			<div
-				class="mb-6 px-4 py-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg"
-			>
-				<p class="text-sm text-red-800 dark:text-red-300 font-medium">{error}</p>
-			</div>
-		{/if}
+	<!-- Error Display -->
+	{#if error}
+		<div
+			class="mb-4 px-4 py-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg"
+		>
+			<p class="text-sm text-red-800 dark:text-red-300 font-medium">{error}</p>
+		</div>
+	{/if}
 
-		{#if validationErrors.length > 0}
-			<div
-				class="mb-6 px-4 py-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg"
-			>
-				<p class="text-sm text-amber-800 dark:text-amber-300 font-medium mb-2">
-					Validation Errors:
-				</p>
-				<ul class="list-disc list-inside space-y-1">
-					{#each validationErrors as valError}
-						<li class="text-sm text-amber-700 dark:text-amber-400">
-							<strong>{valError.field}:</strong>
-							{valError.message}
-						</li>
-					{/each}
-				</ul>
-			</div>
-		{/if}
+	{#if validationErrors.length > 0}
+		<div
+			class="mb-4 px-4 py-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg"
+		>
+			<p class="text-sm text-amber-800 dark:text-amber-300 font-medium mb-2">
+				Validation Errors:
+			</p>
+			<ul class="list-disc list-inside space-y-1">
+				{#each validationErrors as valError}
+					<li class="text-sm text-amber-700 dark:text-amber-400">
+						<strong>{valError.field}:</strong>
+						{valError.message}
+					</li>
+				{/each}
+			</ul>
+		</div>
+	{/if}
 
-		<!-- Step Content -->
-		<div class="space-y-6">
+	<!-- Step Content -->
+	<div class="space-y-3">
 			{#if currentStep === 1}
 				{@const scopePanelOpen = builderFocus === 'scope'}
 				{@const realmPanelEnabled = Boolean(selectedScope)}
 				{@const realmPanelOpen = realmPanelEnabled && builderFocus === 'realm'}
 				{@const typePanelEnabled = Boolean(selectedScope && selectedRealm)}
 				{@const typePanelOpen = typePanelEnabled && builderFocus === 'type'}
-				<div class="space-y-6">
+				<div class="space-y-3">
 					<section
-						class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5 space-y-4"
+						class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 space-y-3"
 					>
 						<header class="flex flex-wrap items-center justify-between gap-3">
 							<div>
@@ -1322,7 +1321,7 @@
 						{/if}
 					</section>
 					<section
-						class={`rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5 space-y-4 ${selectedScope ? '' : 'opacity-60 pointer-events-none'}`}
+						class={`rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 space-y-3 ${selectedScope ? '' : 'opacity-60 pointer-events-none'}`}
 					>
 						<header class="flex flex-wrap items-center justify-between gap-3">
 							<div>
@@ -1407,7 +1406,7 @@
 						{/if}
 					</section>
 					<section
-						class={`rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5 space-y-4 ${selectedScope && selectedRealm ? '' : 'opacity-60 pointer-events-none'}`}
+						class={`rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 space-y-3 ${selectedScope && selectedRealm ? '' : 'opacity-60 pointer-events-none'}`}
 					>
 						<header class="flex flex-wrap items-center justify-between gap-3">
 							<div>
@@ -1686,7 +1685,15 @@
 					</section>
 				</div>
 			{:else if currentStep === 2}
-				<MetadataEditor loading={saving} bind:this={metadataEditorRef} />
+				<MetadataEditor
+					loading={saving}
+					bind:this={metadataEditorRef}
+					lockedRealm={selectedRealm}
+					scopeLabel={selectedScopeDefinition?.label ?? (selectedScope ? slugToLabel(selectedScope) : null)}
+					scopeDescription={selectedScopeDefinition?.description ?? null}
+					scopeFacetUsage={selectedScopeDefinition?.facetUsage ?? null}
+					scopeTypeKeyPattern={selectedScopeDefinition?.typeKeyPattern ?? null}
+				/>
 				<div class="flex flex-col sm:flex-row gap-3">
 					<Button
 						variant="secondary"
@@ -1817,7 +1824,6 @@
 					</Button>
 				</div>
 			{/if}
-		</div>
 	</div>
 </div>
 

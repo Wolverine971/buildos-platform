@@ -388,9 +388,9 @@
 	<title>Create Project | Ontology</title>
 </svelte:head>
 
-<div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
-	<header class="mb-8 sm:mb-12">
-		<h1 class="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-2">
+<div class="max-w-6xl mx-auto">
+	<header class="mb-3">
+		<h1 class="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-1">
 			Create New Project
 		</h1>
 		<p class="text-base sm:text-lg text-gray-600 dark:text-gray-400">
@@ -399,15 +399,15 @@
 	</header>
 
 	{#if !selectedTemplate}
-		<div class="space-y-8">
+		<div class="space-y-3">
 			<h2 class="text-2xl font-semibold text-gray-900 dark:text-white">Choose a Template</h2>
 
 			{#each Object.entries(grouped) as [realm, templates]}
-				<div class="space-y-4">
+				<div class="space-y-3">
 					<h3 class="text-lg font-semibold text-gray-700 dark:text-gray-300 capitalize">
 						{realm}
 					</h3>
-					<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+					<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
 						{#each templates as template}
 							<Card
 								variant="interactive"
@@ -478,7 +478,7 @@
 
 			<CardBody padding="lg">
 				<form
-					class="space-y-8"
+					class="space-y-4"
 					onsubmit={(event) => {
 						event.preventDefault();
 						void createProject();
@@ -494,7 +494,7 @@
 						</Alert>
 					{/if}
 
-					<div class="space-y-6">
+					<div class="space-y-4">
 						<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
 							Basic Information
 						</h3>
@@ -518,12 +518,12 @@
 						</FormField>
 					</div>
 
-					<div class="space-y-6">
+					<div class="space-y-4">
 						<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
 							Facet Overrides
 						</h3>
 
-						<div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+						<div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
 							<FormField label="Context" labelFor="facet-context">
 								<Select
 									id="facet-context"

@@ -168,7 +168,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 		const initialContext = await contextService.buildInitialContext(
 			chatSession.id,
 			chatSession.context_type as any,
-			chatSession.entity_id
+			chatSession.entity_id ?? undefined
 		);
 
 		// Get conversation history
@@ -250,7 +250,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 					role: msg.role as any,
 					content: msg.content,
 					tool_calls: msg.tool_calls as any,
-					tool_call_id: msg.tool_call_id
+					tool_call_id: msg.tool_call_id ?? undefined
 				});
 			}
 		}

@@ -132,11 +132,10 @@
 	<title>Edit Template: {data.template.name} | Ontology | BuildOS</title>
 </svelte:head>
 
-<div class="min-h-screen bg-gray-50 dark:bg-gray-900">
-	<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
-		<!-- Header -->
-		<header class="mb-8">
-			<Button variant="ghost" size="sm" onclick={handleCancel} class="mb-4">
+<div class="max-w-6xl mx-auto">
+	<!-- Header -->
+	<header class="mb-3">
+			<Button variant="ghost" size="sm" onclick={handleCancel} class="mb-3">
 				<svg
 					class="w-4 h-4 mr-2"
 					xmlns="http://www.w3.org/2000/svg"
@@ -170,7 +169,7 @@
 		</header>
 
 		<!-- Progress Indicator -->
-		<div class="mb-8">
+		<div class="mb-3">
 			<div class="flex items-center justify-between">
 				{#each steps as step}
 					<button
@@ -236,7 +235,7 @@
 		<!-- Error Display -->
 		{#if error}
 			<div
-				class="mb-6 px-4 py-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg"
+				class="mb-3 px-4 py-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg"
 			>
 				<p class="text-sm text-red-800 dark:text-red-300 font-medium">{error}</p>
 			</div>
@@ -244,7 +243,7 @@
 
 		{#if validationErrors.length > 0}
 			<div
-				class="mb-6 px-4 py-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg"
+				class="mb-3 px-4 py-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg"
 			>
 				<p class="text-sm text-amber-800 dark:text-amber-300 font-medium mb-2">
 					Validation Errors:
@@ -261,7 +260,7 @@
 		{/if}
 
 		<!-- Step Content -->
-		<div class="space-y-6">
+		<div class="space-y-3">
 			{#if currentStep === 1}
 				<TemplateForm
 					mode="edit"

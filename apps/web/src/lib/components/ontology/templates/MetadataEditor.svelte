@@ -5,23 +5,33 @@
 	import CardBody from '$lib/components/ui/CardBody.svelte';
 	import FormField from '$lib/components/ui/FormField.svelte';
 	import TextInput from '$lib/components/ui/TextInput.svelte';
-	import Select from '$lib/components/ui/Select.svelte';
 	import { X } from 'lucide-svelte';
 	import type { TemplateMetadata } from '$lib/types/onto';
 
 	interface Props {
 		metadata?: TemplateMetadata;
 		loading?: boolean;
+		scopeLabel?: string | null;
+		scopeDescription?: string | null;
+		scopeFacetUsage?: string | null;
+		scopeTypeKeyPattern?: string | null;
+		lockedRealm?: string | null;
 	}
 
-	let { metadata = {}, loading = false }: Props = $props();
+	let {
+		metadata = {},
+		loading = false,
+		scopeLabel = null,
+		scopeDescription = null,
+		scopeFacetUsage = null,
+		scopeTypeKeyPattern = null,
+		lockedRealm = null
+	}: Props = $props();
 
 	// Metadata fields using Svelte 5 runes
 	let description = $state(metadata.description || '');
-	let realm = $state(metadata.realm || 'personal');
+	let realm = $state(metadata.realm || 'realm:unset');
 	let keywords = $state<string[]>(metadata.keywords || []);
-	let outputType = $state(metadata.output_type || '');
-	let typicalScale = $state(metadata.typical_scale || '');
 	let customFields = $state<Array<{ key: string; value: string }>>([]);
 
 	function hydrateCustomFields(source?: Record<string, unknown>) {
@@ -46,10 +56,8 @@
 	export function getMetadata(): TemplateMetadata {
 		const result: TemplateMetadata = {
 			description: description.trim() || undefined,
-			realm,
-			keywords: keywords.length > 0 ? keywords : undefined,
-			output_type: outputType.trim() || undefined,
-			typical_scale: typicalScale || undefined
+			realm: (lockedRealm ?? realm) || undefined,
+			keywords: keywords.length > 0 ? keywords : undefined
 		};
 
 		// Add custom fields
@@ -71,32 +79,11 @@
 	) {
 		metadata = newMetadata || {};
 		description = metadata.description || '';
-		realm = metadata.realm || 'personal';
+		realm = lockedRealm ?? metadata.realm ?? 'realm:unset';
 		keywords = Array.isArray(metadata.keywords) ? [...metadata.keywords] : [];
-		outputType = metadata.output_type || '';
-		typicalScale = metadata.typical_scale || '';
 		hydrateCustomFields(newMetadata.custom as Record<string, unknown> | undefined);
 		keywordInput = '';
 	}
-
-	const realms = [
-		{ value: 'personal', label: 'Personal' },
-		{ value: 'creative', label: 'Creative' },
-		{ value: 'professional', label: 'Professional' },
-		{ value: 'learning', label: 'Learning' },
-		{ value: 'health', label: 'Health' },
-		{ value: 'finance', label: 'Finance' },
-		{ value: 'social', label: 'Social' },
-		{ value: 'other', label: 'Other' }
-	];
-
-	const scales = [
-		{ value: 'micro', label: 'Micro (< 1 hour)' },
-		{ value: 'small', label: 'Small (1-8 hours)' },
-		{ value: 'medium', label: 'Medium (1-5 days)' },
-		{ value: 'large', label: 'Large (1-4 weeks)' },
-		{ value: 'epic', label: 'Epic (1+ months)' }
-	];
 
 	function addKeyword() {
 		const keyword = keywordInput.trim().toLowerCase();
@@ -124,6 +111,12 @@
 	function removeCustomField(index: number) {
 		customFields = customFields.filter((_, i) => i !== index);
 	}
+
+	$effect(() => {
+		if (lockedRealm && lockedRealm !== realm) {
+			realm = lockedRealm;
+		}
+	});
 </script>
 
 <Card variant="elevated">
@@ -135,6 +128,32 @@
 	</CardHeader>
 
 	<CardBody padding="lg" class="space-y-6">
+		{#if scopeLabel || lockedRealm}
+			<div class="rounded-2xl border border-blue-100 dark:border-blue-500/30 bg-blue-50/70 dark:bg-blue-500/10 p-4 space-y-2 text-sm text-blue-900 dark:text-blue-50">
+				<p class="text-xs uppercase tracking-wide text-blue-700 dark:text-blue-200 font-semibold">
+					{scopeLabel ?? 'Template'} Context
+				</p>
+				{#if scopeDescription}
+					<p>{scopeDescription}</p>
+				{/if}
+				{#if scopeTypeKeyPattern}
+					<p class="text-xs font-mono text-blue-900/80 dark:text-blue-200">
+						Type key: {scopeTypeKeyPattern}
+					</p>
+				{/if}
+				{#if scopeFacetUsage}
+					<p class="text-xs text-blue-900/70 dark:text-blue-200">
+						Facet focus: {scopeFacetUsage}
+					</p>
+				{/if}
+				{#if lockedRealm}
+					<p class="text-xs text-blue-900/70 dark:text-blue-200">
+						Realm locked to <strong>{lockedRealm.replace(/_/g, ' ')}</strong>. Adjust earlier in the flow if needed.
+					</p>
+				{/if}
+			</div>
+		{/if}
+
 		<!-- Description -->
 		<FormField label="Description" labelFor="description">
 			<textarea
@@ -147,18 +166,6 @@
 			></textarea>
 			<p class="text-xs text-gray-600 dark:text-gray-400 mt-1">
 				Appears in template cards and detail views
-			</p>
-		</FormField>
-
-		<!-- Realm -->
-		<FormField label="Realm" labelFor="realm">
-			<Select id="realm" bind:value={realm} class="w-full" disabled={loading}>
-				{#each realms as realmOption}
-					<option value={realmOption.value}>{realmOption.label}</option>
-				{/each}
-			</Select>
-			<p class="text-xs text-gray-600 dark:text-gray-400 mt-1">
-				Category for organizing templates
 			</p>
 		</FormField>
 
@@ -209,34 +216,6 @@
 				Tags for searching and filtering
 			</p>
 		</FormField>
-
-		<!-- Output Type (for output scope) -->
-		<FormField label="Output Type" labelFor="output_type">
-			<TextInput
-				id="output_type"
-				bind:value={outputType}
-				placeholder="e.g., TEXT_DOCUMENT, PRESENTATION, etc."
-				class="w-full font-mono text-sm"
-				disabled={loading}
-			/>
-			<p class="text-xs text-gray-600 dark:text-gray-400 mt-1">
-				Relevant for output-scope templates
-			</p>
-		</FormField>
-
-		<!-- Typical Scale -->
-		<FormField label="Typical Scale" labelFor="typical_scale">
-			<Select id="typical_scale" bind:value={typicalScale} class="w-full" disabled={loading}>
-				<option value="">Not specified</option>
-				{#each scales as scaleOption}
-					<option value={scaleOption.value}>{scaleOption.label}</option>
-				{/each}
-			</Select>
-			<p class="text-xs text-gray-600 dark:text-gray-400 mt-1">
-				Expected time investment for this type of project
-			</p>
-		</FormField>
-
 		<!-- Custom Fields -->
 		<div>
 			<div class="flex items-center justify-between mb-3">

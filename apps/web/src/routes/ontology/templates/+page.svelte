@@ -382,10 +382,10 @@
 	<title>Templates | Ontology | BuildOS</title>
 </svelte:head>
 
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+<div class="max-w-6xl mx-auto">
 	<!-- Header -->
-	<header class="mb-6 sm:mb-8">
-		<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+	<header class="mb-3">
+		<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
 			<div>
 				<h1 class="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-2">
 					Ontology Templates
@@ -421,7 +421,7 @@
 	</header>
 
 	<div
-		class="mb-6 rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 flex flex-wrap gap-6 text-sm text-gray-600 dark:text-gray-300"
+		class="mb-4 rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-3 flex flex-wrap gap-4 text-sm text-gray-600 dark:text-gray-300"
 	>
 		<div class="min-w-[200px] flex-1">
 			<p
@@ -863,7 +863,7 @@
 	</Card>
 
 	<!-- Templates Display -->
-	<div class="mt-8">
+	<div class="mt-3">
 		{#if templates.length === 0}
 			<!-- Empty State -->
 			<div
@@ -897,7 +897,7 @@
 				</Button>
 			</div>
 		{:else if viewMode === 'realm'}
-			<div class="space-y-12">
+			<div class="space-y-8">
 				{#each Object.entries(grouped) as [realm, realmTemplates]}
 					<div class="space-y-6">
 						<div class="flex items-center justify-between">
@@ -925,7 +925,7 @@
 				{/each}
 			</div>
 		{:else}
-			<div class="space-y-12">
+			<div class="space-y-8">
 				{#each Object.entries(byScope) as [scopeKey, scopeTemplates]}
 					<div class="space-y-6">
 						<div class="flex items-center justify-between">

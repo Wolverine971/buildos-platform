@@ -266,7 +266,7 @@
 	<title>Ontology Projects | BuildOS</title>
 </svelte:head>
 
-<div class="mx-auto w-full max-w-6xl space-y-6 sm:space-y-8">
+<div class="mx-auto w-full max-w-6xl space-y-4">
 	<header class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 		<div class="space-y-1">
 			<h1 class="text-2xl font-semibold text-slate-900 dark:text-slate-50 sm:text-3xl">
@@ -366,7 +366,7 @@
 	</div>
 
 	{#if activeTab === 'overview'}
-		<section class="space-y-5 sm:space-y-6">
+		<section class="space-y-4">
 			{#if projectsLoading}
 				<div class="space-y-6">
 					<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">

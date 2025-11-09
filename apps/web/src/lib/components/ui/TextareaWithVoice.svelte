@@ -19,36 +19,67 @@
 		variant: VoiceButtonVariant;
 	};
 
+	interface Props {
+		value?: string;
+		placeholder?: string;
+		rows?: number;
+		maxRows?: number;
+		autoResize?: boolean;
+		disabled?: boolean;
+		textareaClass?: string;
+		containerClass?: string;
+		helperText?: string;
+		error?: boolean;
+		errorMessage?: string;
+		enableVoice?: boolean;
+		showStatusRow?: boolean;
+		showLiveTranscriptPreview?: boolean;
+		idleHint?: string;
+		voiceBlocked?: boolean;
+		voiceBlockedLabel?: string;
+		transcriptionEndpoint?: string;
+		liveTranscriptLabel?: string;
+		voiceButtonLabel?: string;
+		listeningLabel?: string;
+		transcribingLabel?: string;
+		preparingLabel?: string;
+		class?: string;
+		[key: string]: any; // Allow rest props
+	}
+
 	const dispatch = createEventDispatcher<{
 		input: { value: string };
 	}>();
 
-	export let value = '';
-	export let placeholder = '';
-	export let rows = 4;
-	export let maxRows = 6;
-	export let autoResize = false;
-	export let disabled = false;
-	export let textareaClass = '';
-	export let containerClass = '';
-	export let helperText: string | undefined = undefined;
-	export let error = false;
-	export let errorMessage: string | undefined = undefined;
-	export let enableVoice = true;
-	export let showStatusRow = true;
-	export let showLiveTranscriptPreview = true;
-	export let idleHint = 'Use the mic to dictate your update.';
-	export let voiceBlocked = false;
-	export let voiceBlockedLabel = 'Recording unavailable right now';
-	export let transcriptionEndpoint = '/api/transcribe';
-	export let liveTranscriptLabel = 'Live transcript';
-	export let voiceButtonLabel = 'Record voice note';
-	export let listeningLabel = 'Listening';
-	export let transcribingLabel = 'Transcribing…';
-	export let preparingLabel = 'Preparing microphone…';
-
-	let className = '';
-	export { className as class };
+	// Svelte 5 runes mode: use $props() with rest capture for proper prop forwarding
+	// Keep value in props to support two-way binding with bind:value
+	let {
+		value = $bindable(''),
+		placeholder = '',
+		rows = 4,
+		maxRows = 6,
+		autoResize = false,
+		disabled = false,
+		textareaClass = '',
+		containerClass = '',
+		helperText = undefined,
+		error = false,
+		errorMessage = undefined,
+		enableVoice = true,
+		showStatusRow = true,
+		showLiveTranscriptPreview = true,
+		idleHint = 'Use the mic to dictate your update.',
+		voiceBlocked = false,
+		voiceBlockedLabel = 'Recording unavailable right now',
+		transcriptionEndpoint = '/api/transcribe',
+		liveTranscriptLabel = 'Live transcript',
+		voiceButtonLabel = 'Record voice note',
+		listeningLabel = 'Listening',
+		transcribingLabel = 'Transcribing…',
+		preparingLabel = 'Preparing microphone…',
+		class: className = '',
+		...restProps
+	}: Props = $props();
 
 	// Voice state bindings exposed to parent components (using Svelte 5 $state)
 	let isVoiceSupported = $state(false);
@@ -461,7 +492,7 @@
 			{errorMessage}
 			class={`pr-16 ${textareaClass}`.trim()}
 			on:input={handleTextareaInput}
-			{...$$restProps}
+			{...restProps}
 		/>
 
 		{#if enableVoice}

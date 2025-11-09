@@ -7,6 +7,7 @@ import {
 	TEMPLATE_BRAINDUMP_OUTPUT_CONTRACT,
 	TEMPLATE_TAXONOMY_SUMMARY
 } from '$lib/constants/template-braindump';
+import { getTemplateScopeDefinition } from '$lib/constants/template-scope';
 import type {
 	TemplateAnalyzerResponse,
 	TemplateAnalyzerSuggestion,
@@ -119,11 +120,20 @@ export class TemplateAnalyzerService {
 		const targetIntent = this.describeTargetIntent(targetLevel, realmLabel, domain);
 		const taxonomyPrimer = TEMPLATE_TAXONOMY_SUMMARY;
 		const structuredPlanContract = TEMPLATE_BRAINDUMP_OUTPUT_CONTRACT;
+		const scopeDefinition = getTemplateScopeDefinition(scope);
+		const scopeFocus = scopeDefinition
+			? `Scope focus — ${scopeDefinition.label} (${scopeDefinition.category}):
+- Definition: ${scopeDefinition.description}
+- Type key pattern: ${scopeDefinition.typeKeyPattern}
+${scopeDefinition.facetUsage ? `- Facet emphasis: ${scopeDefinition.facetUsage}` : ''}
+- Guidance: ${scopeDefinition.llmCue}`
+			: '';
 
 		const systemPrompt = `
 You are the Ontology Template Analyzer for BuildOS. Your job is to classify a user's template idea into our existing catalog when possible, or suggest a well-structured new type_key that follows the format {domain}.{deliverable}[.{variant}].
 
 ${taxonomyPrimer}
+${scopeFocus}
 
 Additional Rules:
 - Domains represent the actor (writer, coach, founder, designer, etc.) and must be lowercase snake_case.
@@ -147,6 +157,7 @@ ${structuredPlanContract}
 Scope: ${scope}
 Realm: ${realmLabel}
 Domain focus: ${domain ?? 'unspecified'}
+${scopeDefinition ? `Scope guidance: ${scopeDefinition.llmCue}` : ''}
 ${priorSummary}
 
 User Brain Dump:

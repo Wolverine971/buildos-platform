@@ -59,16 +59,18 @@
 		title: string;
 		state_key: string;
 		plan_id?: string;
+		priority?: number | null;
 		props?: {
 			description?: string;
-			priority?: 'low' | 'medium' | 'high' | 'urgent';
 			[key: string]: unknown;
 		};
 	}
 
 	interface Output {
 		id: string;
-		title: string;
+		name: string;
+		type_key: string;
+		state_key: string;
 		props?: {
 			word_count?: number;
 			[key: string]: unknown;
@@ -78,25 +80,52 @@
 	interface Plan {
 		id: string;
 		name: string;
+		type_key: string;
 		state_key: string;
+		props?: {
+			start_date?: string;
+			end_date?: string;
+			[key: string]: unknown;
+		};
 	}
 
 	interface Goal {
 		id: string;
 		name: string;
+		type_key?: string | null;
 		state_key: string;
 		props?: {
-			measurement?: string;
+			measurement_criteria?: string;
 			priority?: 'low' | 'medium' | 'high' | 'urgent';
 			[key: string]: unknown;
 		};
 	}
 
+	type Guard = Record<string, unknown>;
+	type TransitionAction = Record<string, unknown>;
+
 	interface TransitionDetail {
 		event: string;
 		to: string;
-		guards?: string[];
-		actions?: string[];
+		guards?: Guard[];
+		actions?: TransitionAction[];
+	}
+
+	interface Requirement {
+		text: string;
+		[key: string]: unknown;
+	}
+
+	interface Milestone {
+		title: string;
+		due_at: string;
+		[key: string]: unknown;
+	}
+
+	interface Risk {
+		title: string;
+		impact: string;
+		[key: string]: unknown;
 	}
 
 	let { data } = $props();
@@ -107,9 +136,9 @@
 	const documents = $derived((data.documents || []) as Output[]);
 	const plans = $derived((data.plans || []) as Plan[]);
 	const goals = $derived((data.goals || []) as Goal[]);
-	const requirements = $derived((data.requirements || []) as unknown[]);
-	const milestones = $derived((data.milestones || []) as unknown[]);
-	const risks = $derived((data.risks || []) as unknown[]);
+	const requirements = $derived((data.requirements || []) as Requirement[]);
+	const milestones = $derived((data.milestones || []) as Milestone[]);
+	const risks = $derived((data.risks || []) as Risk[]);
 	const allowedTransitions = $derived((data.allowed_transitions || []) as TransitionDetail[]);
 	const initialTransitionDetails = $derived<TransitionDetail[]>(
 		allowedTransitions.map((transition) => ({
@@ -181,12 +210,12 @@
 	<title>{project.name} | Ontology</title>
 </svelte:head>
 
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+<div class="max-w-6xl mx-auto">
 	<!-- Header -->
-	<Card variant="elevated" padding="none" class="mb-6">
+	<Card variant="elevated" padding="none" class="mb-3">
 		<CardBody padding="md">
 			<!-- Back button and transitions -->
-			<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+			<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
 				<Button variant="ghost" size="sm" onclick={() => goto('/ontology')}>
 					<svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
 						<path
@@ -201,11 +230,11 @@
 			</div>
 
 			<!-- Project title and metadata -->
-			<div class="mb-6">
-				<h1 class="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-4">
+			<div class="mb-3">
+				<h1 class="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-3">
 					{project.name}
 				</h1>
-				<div class="flex flex-wrap items-center gap-3 mb-4">
+				<div class="flex flex-wrap items-center gap-3 mb-3">
 					<span class="text-sm font-mono text-gray-500 dark:text-gray-400">
 						{project.type_key}
 					</span>
@@ -260,7 +289,7 @@
 				entityName={project.name}
 				currentState={project.state_key}
 				initialTransitions={initialTransitionDetails}
-				on:stateChange={handleStateChange}
+				onstatechange={handleStateChange}
 			/>
 		</CardBody>
 	</Card>
@@ -490,7 +519,7 @@
 										<h3
 											class="font-semibold text-gray-900 dark:text-white mb-1"
 										>
-											{doc.title}
+											{doc.name}
 										</h3>
 										<p class="text-sm text-gray-600 dark:text-gray-400">
 											Type: {doc.type_key}

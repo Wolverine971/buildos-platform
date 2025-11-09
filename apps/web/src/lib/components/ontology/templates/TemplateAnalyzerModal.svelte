@@ -5,6 +5,7 @@
 	import TextareaWithVoice from '$lib/components/ui/TextareaWithVoice.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Badge from '$lib/components/ui/Badge.svelte';
+	import { getTemplateScopeDefinition } from '$lib/constants/template-scope';
 	import type {
 		TemplateAnalyzerResponse,
 		TemplateAnalyzerSuggestion,
@@ -32,7 +33,7 @@
 	}>();
 
 	let {
-		isOpen = false,
+		isOpen = $bindable(false),
 		scope = null,
 		realm = null,
 		domain = null,
@@ -48,6 +49,26 @@
 	let priorSuggestionKeys = $state<string[]>([]);
 	const primarySuggestion = $derived(responseData?.primary ?? null);
 	const structuredPlan = $derived(responseData?.structured_plan ?? null);
+	const scopeDefinition = $derived(scope ? getTemplateScopeDefinition(scope) : null);
+	const scopedLabel = $derived(scopeDefinition?.label ?? 'Template');
+	const scopedLabelLower = $derived(scopedLabel.toLowerCase());
+	const scopeInstruction = $derived(
+		scopeDefinition
+			? `Describe this ${scopedLabelLower} template. ${scopeDefinition.llmCue}`
+			: 'Describe the template idea. Include who it serves, desired output, scale, and constraints.'
+	);
+	const scopePlaceholder = $derived(
+		scopeDefinition?.exampleBrainDump ??
+			'Example: Marketing campaign plan for our AI writing tool targeting startup founders...'
+	);
+	const voiceButtonCopy = $derived(
+		scopeDefinition ? `Record ${scopedLabelLower} braindump` : 'Record voice braindump'
+	);
+	const voiceIdleHint = $derived(
+		scopeDefinition
+			? `Use the mic to dictate your ${scopedLabelLower} idea.`
+			: 'Use the mic to dictate your template idea.'
+	);
 
 	const unknownScopeMessage =
 		'Select a scope and realm first before using the analyzer. They help constrain suggestions.';
@@ -119,7 +140,7 @@
 		}
 
 		if (!brainDump.trim()) {
-			error = 'Tell us about the project or template idea first.';
+			error = `Tell us about the ${scopedLabelLower} idea first.`;
 			return;
 		}
 
@@ -188,6 +209,7 @@
 		isOpen = false;
 	}
 
+	// Badge styling by match level (static)
 	const badgeClassByMatchLevel: Record<string, string> = {
 		variant: 'bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-300',
 		deliverable: 'bg-blue-500/10 text-blue-600 dark:bg-blue-500/15 dark:text-blue-300',
@@ -195,33 +217,32 @@
 		new: 'bg-rose-500/10 text-rose-600 dark:bg-rose-500/15 dark:text-rose-300'
 	};
 
-	function formatLabel(part?: string | null) {
+	// Utility functions for formatting display values
+	function formatLabel(part?: string | null): string {
 		if (!part) return '';
 		return part.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 	}
 
-	function getMatchLabel(level: TemplateAnalyzerSuggestion['match_level']) {
-		switch (level) {
-			case 'variant':
-				return 'Variant Match';
-			case 'deliverable':
-				return 'Deliverable Match';
-			case 'domain':
-				return 'Domain Match';
-			default:
-				return 'Net New';
-		}
+	function getMatchLabel(level: TemplateAnalyzerSuggestion['match_level']): string {
+		const labelMap: Record<string, string> = {
+			variant: 'Variant Match',
+			deliverable: 'Deliverable Match',
+			domain: 'Domain Match'
+		};
+		return labelMap[level] ?? 'Net New';
 	}
 
-	function formatFacetValues(values?: string[]) {
-		if (!values || !values.length) return '—';
+	function formatFacetValues(values?: string[]): string {
+		if (!values?.length) return '—';
 		return values.join(', ');
 	}
 
-	function formatEntityCategory(category?: string) {
-		if (category === 'project_derived') return 'Project-Derived';
-		if (category === 'reference') return 'Reference/System';
-		return 'Autonomous';
+	function formatEntityCategory(category?: string): string {
+		const categoryMap: Record<string, string> = {
+			project_derived: 'Project-Derived',
+			reference: 'Reference/System'
+		};
+		return category ? (categoryMap[category] ?? 'Autonomous') : 'Autonomous';
 	}
 </script>
 
@@ -232,9 +253,9 @@
 	size="lg"
 	customClasses="sm:max-h-[85vh]"
 >
-	<div class="px-4 py-5 sm:px-6 sm:py-6 space-y-6 text-sm">
+	<div class="px-4 py-3 sm:px-6 sm:py-4 space-y-4 text-sm">
 		<section
-			class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-gray-50/80 dark:bg-gray-900/60 p-4 sm:p-5 space-y-3"
+			class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-gray-50/80 dark:bg-gray-900/60 p-2 sm:p-3 space-y-2"
 		>
 			<div class="flex flex-wrap items-center justify-between gap-3">
 				<div>
@@ -285,6 +306,26 @@
 					Target: {targetLevelLabel}
 				</span>
 			</div>
+			{#if scopeDefinition}
+				<div
+					class="rounded-2xl border border-dashed border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-900/60 p-4 space-y-2"
+				>
+					<p class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
+						{scopeDefinition.label} Pattern
+					</p>
+					<p class="font-mono text-sm text-gray-900 dark:text-gray-50">
+						{scopeDefinition.typeKeyPattern}
+					</p>
+					{#if scopeDefinition.facetUsage}
+						<p class="text-xs text-gray-500 dark:text-gray-400">
+							Facet focus: {scopeDefinition.facetUsage}
+						</p>
+					{/if}
+					<p class="text-xs text-gray-600 dark:text-gray-300">
+						{scopeDefinition.llmCue}
+					</p>
+				</div>
+			{/if}
 		</section>
 
 		{#if !responseData}
@@ -292,19 +333,20 @@
 				class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 sm:p-5 space-y-4"
 			>
 				<p class="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
-					Describe the project or template idea. Include who it's for, desired output,
-					scale, and any constraints.
+					{scopeInstruction}
 				</p>
 				<TextareaWithVoice
 					rows={6}
 					bind:value={brainDump}
-					placeholder="Example: Marketing campaign plan for our AI writing tool targeting startup founders..."
+					placeholder={scopePlaceholder}
 					disabled={loading}
 					voiceBlocked={loading}
 					voiceBlockedLabel="Analyzing request…"
-					idleHint="Use the mic to dictate your template idea."
-					voiceButtonLabel="Record voice braindump"
+					idleHint={voiceIdleHint}
+					voiceButtonLabel={voiceButtonCopy}
 					textareaClass="min-h-[168px]"
+					helperText={undefined}
+					errorMessage={undefined}
 				/>
 
 				{#if error}

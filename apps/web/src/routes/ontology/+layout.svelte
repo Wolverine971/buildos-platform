@@ -134,7 +134,183 @@
 	{/if}
 
 	<!-- Main content -->
-	<main class="relative flex-1 overflow-y-auto px-3 py-5 sm:px-5 lg:px-8 lg:py-6">
+	<main
+		class="ontology-dense relative flex-1 overflow-y-auto px-3 py-2 sm:px-4 sm:py-3 lg:px-5 lg:py-3"
+	>
 		{@render children()}
 	</main>
 </div>
+
+<style>
+	:global(main.ontology-dense) {
+		scrollbar-gutter: stable both-edges;
+	}
+
+	:global(.ontology-dense .max-w-7xl) {
+		max-width: 64rem;
+	}
+
+	:global(.ontology-dense .space-y-12 > :not([hidden]) ~ :not([hidden])) {
+		--tw-space-y-reverse: 0;
+		margin-top: calc(1.75rem * calc(1 - var(--tw-space-y-reverse)));
+		margin-bottom: calc(1.75rem * var(--tw-space-y-reverse));
+	}
+
+	:global(.ontology-dense .space-y-8 > :not([hidden]) ~ :not([hidden])) {
+		--tw-space-y-reverse: 0;
+		margin-top: calc(1.25rem * calc(1 - var(--tw-space-y-reverse)));
+		margin-bottom: calc(1.25rem * var(--tw-space-y-reverse));
+	}
+
+	:global(.ontology-dense .space-y-6 > :not([hidden]) ~ :not([hidden])) {
+		--tw-space-y-reverse: 0;
+		margin-top: calc(1rem * calc(1 - var(--tw-space-y-reverse)));
+		margin-bottom: calc(1rem * var(--tw-space-y-reverse));
+	}
+
+	:global(.ontology-dense .space-y-5 > :not([hidden]) ~ :not([hidden])) {
+		--tw-space-y-reverse: 0;
+		margin-top: calc(0.875rem * calc(1 - var(--tw-space-y-reverse)));
+		margin-bottom: calc(0.875rem * var(--tw-space-y-reverse));
+	}
+
+	:global(.ontology-dense .space-y-4 > :not([hidden]) ~ :not([hidden])) {
+		--tw-space-y-reverse: 0;
+		margin-top: calc(0.5rem * calc(1 - var(--tw-space-y-reverse)));
+		margin-bottom: calc(0.5rem * var(--tw-space-y-reverse));
+	}
+
+	:global(.ontology-dense .gap-6) {
+		gap: 0.875rem;
+	}
+
+	:global(.ontology-dense .gap-5) {
+		gap: 0.75rem;
+	}
+
+	:global(.ontology-dense .gap-4) {
+		gap: 0.625rem;
+	}
+
+	:global(.ontology-dense .gap-3) {
+		gap: 0.5rem;
+	}
+
+	:global(.ontology-dense .p-6) {
+		padding: 0.875rem;
+	}
+
+	:global(.ontology-dense .p-5) {
+		padding: 0.75rem;
+	}
+
+	:global(.ontology-dense .px-6) {
+		padding-left: 0.875rem;
+		padding-right: 0.875rem;
+	}
+
+	:global(.ontology-dense .px-8) {
+		padding-left: 1rem;
+		padding-right: 1rem;
+	}
+
+	:global(.ontology-dense .py-6) {
+		padding-top: 0.875rem;
+		padding-bottom: 0.875rem;
+	}
+
+	:global(.ontology-dense .py-8) {
+		padding-top: 1rem;
+		padding-bottom: 1rem;
+	}
+
+	:global(.ontology-dense .py-12) {
+		padding-top: 1.75rem;
+		padding-bottom: 1.75rem;
+	}
+
+	:global(.ontology-dense .py-14) {
+		padding-top: 2rem;
+		padding-bottom: 2rem;
+	}
+
+	:global(.ontology-dense .py-16) {
+		padding-top: 2.25rem;
+		padding-bottom: 2.25rem;
+	}
+
+	:global(.ontology-dense .py-20) {
+		padding-top: 2.5rem;
+		padding-bottom: 2.5rem;
+	}
+
+	:global(.ontology-dense .mb-12) {
+		margin-bottom: 1.5rem;
+	}
+
+	:global(.ontology-dense .mb-8) {
+		margin-bottom: 1rem;
+	}
+
+	:global(.ontology-dense .mb-6) {
+		margin-bottom: 0.75rem;
+	}
+
+	:global(.ontology-dense .mb-5) {
+		margin-bottom: 0.625rem;
+	}
+
+	:global(.ontology-dense .mb-4) {
+		margin-bottom: 0.5rem;
+	}
+
+	@media (min-width: 640px) {
+		:global(.ontology-dense .sm\:px-6) {
+			padding-left: 1.1rem;
+			padding-right: 1.1rem;
+		}
+
+		:global(.ontology-dense .sm\:py-12) {
+			padding-top: 1.75rem;
+			padding-bottom: 1.75rem;
+		}
+
+		:global(.ontology-dense .sm\:py-16) {
+			padding-top: 2.25rem;
+			padding-bottom: 2.25rem;
+		}
+
+		:global(.ontology-dense .sm\:py-20) {
+			padding-top: 2.5rem;
+			padding-bottom: 2.5rem;
+		}
+
+		:global(.ontology-dense .sm\:space-y-8 > :not([hidden]) ~ :not([hidden])) {
+			--tw-space-y-reverse: 0;
+			margin-top: calc(1.25rem * calc(1 - var(--tw-space-y-reverse)));
+			margin-bottom: calc(1.25rem * var(--tw-space-y-reverse));
+		}
+
+		:global(.ontology-dense .sm\:space-y-6 > :not([hidden]) ~ :not([hidden])) {
+			--tw-space-y-reverse: 0;
+			margin-top: calc(1rem * calc(1 - var(--tw-space-y-reverse)));
+			margin-bottom: calc(1rem * var(--tw-space-y-reverse));
+		}
+	}
+
+	@media (min-width: 1024px) {
+		:global(.ontology-dense .lg\:px-8) {
+			padding-left: 1.3rem;
+			padding-right: 1.3rem;
+		}
+
+		:global(.ontology-dense .lg\:py-6) {
+			padding-top: 1.1rem;
+			padding-bottom: 1.1rem;
+		}
+
+		:global(.ontology-dense .lg\:gap-6) {
+			gap: 1.1rem;
+		}
+	}
+</style>
