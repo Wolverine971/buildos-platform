@@ -270,7 +270,7 @@
 		{:else if currentStep === 2}
 			<MetadataEditor
 				loading={saving}
-				initialMetadata={data.template.metadata}
+				metadata={data.template.metadata ?? {}}
 				bind:this={metadataEditorRef}
 			/>
 			<div class="flex flex-col sm:flex-row gap-3">
@@ -298,7 +298,7 @@
 		{:else if currentStep === 3}
 			<FacetDefaultsEditor
 				loading={saving}
-				initialFacets={data.template.facet_defaults}
+				facetDefaults={data.template.facet_defaults ?? {}}
 				bind:this={facetEditorRef}
 			/>
 			<div class="flex flex-col sm:flex-row gap-3">
@@ -324,7 +324,7 @@
 				</Button>
 			</div>
 		{:else if currentStep === 4}
-			<FsmEditor loading={saving} initialFsm={data.template.fsm} bind:this={fsmEditorRef} />
+			<FsmEditor loading={saving} fsm={data.template.fsm} bind:this={fsmEditorRef} />
 			<div class="flex flex-col sm:flex-row gap-3">
 				<Button
 					variant="secondary"
@@ -350,7 +350,7 @@
 		{:else if currentStep === 5}
 			<SchemaBuilder
 				loading={saving}
-				initialSchema={data.template.schema}
+				schema={data.template.schema}
 				bind:this={schemaBuilderRef}
 			/>
 			<div class="flex flex-col sm:flex-row gap-3">

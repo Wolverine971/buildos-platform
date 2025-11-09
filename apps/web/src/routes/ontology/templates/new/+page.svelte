@@ -1210,15 +1210,6 @@
 								Choose the entity family
 							</h3>
 						</div>
-						{#if selectedScope && !scopePanelOpen}
-							<Button
-								variant="ghost"
-								size="sm"
-								onclick={() => focusBuilderSection('scope')}
-							>
-								Edit scope
-							</Button>
-						{/if}
 					</header>
 					{#if scopePanelOpen}
 						<p class="text-sm text-gray-600 dark:text-gray-400">
@@ -1292,29 +1283,24 @@
 							</div>
 						</details>
 					{:else if selectedScope}
-						<div
-							class="rounded-xl border border-dashed border-gray-300 dark:border-gray-700 p-4 text-sm text-gray-600 dark:text-gray-300 space-y-2"
+						<button
+							type="button"
+							class="w-full rounded-xl border border-dashed border-gray-300 dark:border-gray-700 px-4 py-3 flex items-center justify-between text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition"
+							title={selectedScopeDefinition?.description ?? ''}
+							onclick={() => focusBuilderSection('scope')}
 						>
-							<p>
-								Scope locked to
-								<strong
-									>{scopeCopy[selectedScope]?.label ??
-										slugToLabel(selectedScope)}</strong
-								>. Expand to explore a different category.
-							</p>
-							{#if selectedScopeDefinition}
-								<p class="text-xs text-gray-500 dark:text-gray-400">
-									{selectedScopeDefinition.description}
+							<div class="text-left">
+								<p class="text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400">
+									Scope
 								</p>
-							{/if}
-							<Button
-								variant="ghost"
-								size="sm"
-								onclick={() => focusBuilderSection('scope')}
-							>
-								Edit scope
-							</Button>
-						</div>
+								<p class="text-base font-semibold text-gray-900 dark:text-gray-50">
+									{scopeCopy[selectedScope]?.label ?? slugToLabel(selectedScope)}
+								</p>
+							</div>
+							<span class="text-xs font-semibold text-blue-600 dark:text-blue-400">
+								Change
+							</span>
+						</button>
 					{/if}
 				</section>
 				<section
@@ -1331,15 +1317,6 @@
 								Set the sector / perspective
 							</h3>
 						</div>
-						{#if selectedRealm && !realmPanelOpen}
-							<Button
-								variant="ghost"
-								size="sm"
-								onclick={() => focusBuilderSection('realm')}
-							>
-								Edit realm
-							</Button>
-						{/if}
 					</header>
 					{#if !realmPanelEnabled}
 						<p class="text-sm text-gray-500 dark:text-gray-400">
@@ -1380,24 +1357,24 @@
 							</div>
 						{/if}
 					{:else}
-						<div
-							class="rounded-xl border border-dashed border-gray-300 dark:border-gray-700 p-4 text-sm text-gray-600 dark:text-gray-300 space-y-1"
+						<button
+							type="button"
+							class="w-full rounded-xl border border-dashed border-gray-300 dark:border-gray-700 px-4 py-3 flex items-center justify-between text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition"
+							onclick={() => focusBuilderSection('realm')}
+							title={`Realm: ${slugToLabel(selectedRealm ?? '')}`}
 						>
-							<p>
-								Realm locked to <strong>{slugToLabel(selectedRealm ?? '')}</strong>.
-								Expand to swap perspectives.
-							</p>
-							<p class="text-xs text-gray-500 dark:text-gray-400">
-								{scopeMeta?.summary?.total_templates ?? 0} total templates in this scope.
-							</p>
-							<Button
-								variant="ghost"
-								size="sm"
-								onclick={() => focusBuilderSection('realm')}
-							>
-								Edit realm
-							</Button>
-						</div>
+							<div class="text-left">
+								<p class="text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400">
+									Realm
+								</p>
+								<p class="text-base font-semibold text-gray-900 dark:text-gray-50">
+									{slugToLabel(selectedRealm ?? '')}
+								</p>
+							</div>
+							<span class="text-xs font-semibold text-blue-600 dark:text-blue-400">
+								Change
+							</span>
+						</button>
 					{/if}
 				</section>
 				<section
@@ -1414,15 +1391,6 @@
 								Lock the domain · deliverable · variant
 							</h3>
 						</div>
-						{#if builderReady && !typePanelOpen}
-							<Button
-								variant="ghost"
-								size="sm"
-								onclick={() => focusBuilderSection('type')}
-							>
-								Edit type key
-							</Button>
-						{/if}
 					</header>
 					{#if !typePanelEnabled}
 						<p class="text-sm text-gray-500 dark:text-gray-400">
@@ -1465,166 +1433,34 @@
 							</p>
 						{/if}
 						{#if builderReady && templateFormInitialData}
-							<div class="space-y-4">
-								{#if isEditingExisting && (builderTemplateSummary || resolvedParentTemplate)}
-									<div
-										class="rounded-2xl border border-blue-100 dark:border-blue-500/30 bg-blue-50/70 dark:bg-blue-500/10 p-4 text-sm text-blue-900 dark:text-blue-100 space-y-2"
-									>
-										<p class="font-semibold">
-											Editing predefined template
-											{builderTemplateSummary?.name ??
-												resolvedParentTemplate?.name ??
-												computedTypeKey}
-										</p>
-										<div class="flex flex-wrap gap-2">
-											<Button
-												variant="ghost"
-												size="sm"
-												onclick={() => handleTemplatePick(null)}
-											>
-												Convert to new template
-											</Button>
-											<Button
-												variant="ghost"
-												size="sm"
-												onclick={() => focusBuilderSection('type')}
-											>
-												Pick another template
-											</Button>
-										</div>
-									</div>
-								{/if}
-
+							{#if isEditingExisting && (builderTemplateSummary || resolvedParentTemplate)}
 								<div
-									class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 space-y-4"
+									class="rounded-2xl border border-blue-100 dark:border-blue-500/30 bg-blue-50/70 dark:bg-blue-500/10 p-4 text-sm text-blue-900 dark:text-blue-100 space-y-2"
 								>
-									<div class="flex flex-wrap items-start justify-between gap-3">
-										<div>
-											<p
-												class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400"
-											>
-												{isEditingExisting
-													? 'Edit Template'
-													: 'Create Template'}
-											</p>
-											<h4
-												class="text-lg font-semibold text-gray-900 dark:text-gray-50"
-											>
-												{builderTemplateSummary?.name ??
-													templateFormInitialData.name ??
-													'Untitled template'}
-											</h4>
-											<p
-												class="font-mono text-xs text-gray-500 dark:text-gray-400"
-											>
-												{computedTypeKey ||
-													templateFormInitialData.type_key}
-											</p>
-										</div>
+									<p class="font-semibold">
+										Editing predefined template
+										{builderTemplateSummary?.name ??
+											resolvedParentTemplate?.name ??
+											computedTypeKey}
+									</p>
+									<div class="flex flex-wrap gap-2">
+										<Button
+											variant="ghost"
+											size="sm"
+											onclick={() => handleTemplatePick(null)}
+										>
+											Convert to new template
+										</Button>
 										<Button
 											variant="ghost"
 											size="sm"
 											onclick={() => focusBuilderSection('type')}
 										>
-											Adjust selections
+											Pick another template
 										</Button>
 									</div>
-									<div class="grid gap-3 sm:grid-cols-2">
-										<div class="space-y-1">
-											<p
-												class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase"
-											>
-												Scope
-											</p>
-											<p class="text-sm text-gray-900 dark:text-gray-100">
-												{scopeCopy[selectedScope ?? '']?.label ??
-													slugToLabel(selectedScope ?? '')}
-											</p>
-										</div>
-										<div class="space-y-1">
-											<p
-												class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase"
-											>
-												Realm
-											</p>
-											<p class="text-sm text-gray-900 dark:text-gray-100">
-												{slugToLabel(selectedRealm ?? '')}
-											</p>
-										</div>
-										{#if builderSelection?.domain}
-											<div class="space-y-1">
-												<p
-													class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase"
-												>
-													Domain
-												</p>
-												<p class="text-sm text-gray-900 dark:text-gray-100">
-													{builderSelection.domain.label ??
-														slugToLabel(builderSelection.domain.slug)}
-												</p>
-											</div>
-										{/if}
-										{#if builderSelection?.deliverable}
-											<div class="space-y-1">
-												<p
-													class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase"
-												>
-													Deliverable
-												</p>
-												<p class="text-sm text-gray-900 dark:text-gray-100">
-													{builderSelection.deliverable.label ??
-														slugToLabel(
-															builderSelection.deliverable.slug
-														)}
-												</p>
-											</div>
-										{/if}
-										{#if builderSelection?.variant}
-											<div class="space-y-1">
-												<p
-													class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase"
-												>
-													Variant
-												</p>
-												<p class="text-sm text-gray-900 dark:text-gray-100">
-													{builderSelection.variant.label ??
-														slugToLabel(builderSelection.variant.slug)}
-												</p>
-											</div>
-										{/if}
-										{#if builderTemplateSummary}
-											<div class="space-y-1">
-												<p
-													class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase"
-												>
-													Parent Template
-												</p>
-												<p class="text-sm text-gray-900 dark:text-gray-100">
-													{builderTemplateSummary.name}
-												</p>
-											</div>
-										{/if}
-									</div>
 								</div>
-
-								{#key templateFormKey}
-									<TemplateForm
-										mode={isEditingExisting ? 'edit' : 'create'}
-										availableParents={[]}
-										initialData={templateFormInitialData}
-										loading={saving}
-										lockTypeKey={true}
-										disableScopeSelect={true}
-										showParentField={false}
-										hideHeader={true}
-										typeKeyHelperText={isEditingExisting
-											? 'Type key follows the selected template. Expand the builder above to switch.'
-											: 'Managed via the Type Key Builder above.'}
-										onsubmit={handleBasicFormSubmit}
-										on:cancel={handleCancel}
-									/>
-								{/key}
-							</div>
+							{/if}
 						{:else}
 							<div
 								class="rounded-lg border border-dashed border-gray-300 dark:border-gray-700 p-4 text-sm text-gray-500 dark:text-gray-400"
@@ -1634,34 +1470,74 @@
 							</div>
 						{/if}
 					{:else}
-						<div
-							class="rounded-xl border border-dashed border-gray-300 dark:border-gray-700 p-4 text-sm text-gray-600 dark:text-gray-300 space-y-1"
+						<button
+							type="button"
+							class="w-full rounded-xl border border-dashed border-gray-300 dark:border-gray-700 px-4 py-3 flex items-center justify-between text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition"
+							onclick={() => focusBuilderSection('type')}
 						>
-							{#if builderReady && computedTypeKey}
-								<p class="font-semibold">
-									Type key ready: <span class="font-mono">{computedTypeKey}</span>
+							<div class="text-left">
+								<p class="text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400">
+									Computed type key
 								</p>
-								<p class="text-xs text-gray-500 dark:text-gray-400">
-									Expand to tweak the domain, deliverable, or variant.
+								<p
+									class={`font-mono text-sm ${
+										builderReady ? 'text-gray-900 dark:text-gray-50' : 'text-gray-500 dark:text-gray-400'
+									}`}
+								>
+									{#if builderReady && (computedTypeKey || templateFormInitialData?.type_key)}
+										{computedTypeKey || templateFormInitialData?.type_key}
+									{:else}
+										Select domain · deliverable
+									{/if}
 								</p>
-							{:else}
-								<p class="font-semibold">
-									Continue picking a domain + deliverable.
-								</p>
-								<p class="text-xs text-gray-500 dark:text-gray-400">
-									Expand to resume the type key builder.
-								</p>
-							{/if}
-							<Button
-								variant="ghost"
-								size="sm"
-								onclick={() => focusBuilderSection('type')}
-							>
-								Resume builder
-							</Button>
-						</div>
+							</div>
+							<span class="text-xs font-semibold text-blue-600 dark:text-blue-400">
+								{builderReady ? 'Adjust' : 'Resume'}
+							</span>
+						</button>
 					{/if}
 				</section>
+
+				{#if builderReady && templateFormInitialData}
+					<section
+						class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 space-y-4"
+					>
+						<div class="flex flex-wrap items-center justify-between gap-3">
+							<div>
+								<p class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
+									Type key ready
+								</p>
+								<p class="font-mono text-base text-gray-900 dark:text-gray-50">
+									{computedTypeKey || templateFormInitialData.type_key}
+								</p>
+								<p class="text-xs text-gray-500 dark:text-gray-400">
+									{scopeCopy[selectedScope ?? '']?.label ?? slugToLabel(selectedScope ?? '')}
+									{#if selectedRealm}
+										· {slugToLabel(selectedRealm)}
+									{/if}
+								</p>
+							</div>
+							<Button variant="ghost" size="sm" onclick={() => focusBuilderSection('type')}>
+								Adjust type key
+							</Button>
+						</div>
+						{#key templateFormKey}
+							<TemplateForm
+								mode={isEditingExisting ? 'edit' : 'create'}
+								availableParents={[]}
+								initialData={templateFormInitialData}
+								loading={saving}
+								lockTypeKey={true}
+								showParentField={false}
+								showScopeField={false}
+								showTypeKeyField={false}
+								hideHeader={true}
+								onsubmit={handleBasicFormSubmit}
+								on:cancel={handleCancel}
+							/>
+						{/key}
+					</section>
+				{/if}
 			</div>
 		{:else if currentStep === 2}
 			<MetadataEditor

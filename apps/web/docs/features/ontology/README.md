@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/ontology/README.md -->
+
 # Ontology System Documentation
 
 **Last Updated**: November 8, 2025

@@ -177,10 +177,7 @@
 		stage: 'Where the work sits in its lifecycle.'
 	};
 
-	const selectedScopeDetails = $derived(
-		selectedScope ? (scopeTaxonomy[selectedScope] ?? null) : null
-	);
-
+	// State declarations - must come before $derived that uses them
 	let viewMode = $state<'realm' | 'scope'>('realm');
 	let selectedScope = $state('');
 	let selectedRealm = $state('');
@@ -190,6 +187,11 @@
 	let selectedStages = $state<string[]>([]);
 	let sortBy = $state('name');
 	let sortDirection = $state<'asc' | 'desc'>('asc');
+
+	// Derived state - depends on selectedScope above
+	const selectedScopeDetails = $derived(
+		selectedScope ? (scopeTaxonomy[selectedScope] ?? null) : null
+	);
 
 	// Sync filter state with URL/server data
 	$effect(() => {

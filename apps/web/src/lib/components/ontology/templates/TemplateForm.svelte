@@ -1,5 +1,6 @@
 <!-- apps/web/src/lib/components/ontology/templates/TemplateForm.svelte -->
 <script lang="ts">
+	import { createEventDispatcher } from 'svelte';
 	import Card from '$lib/components/ui/Card.svelte';
 	import CardHeader from '$lib/components/ui/CardHeader.svelte';
 	import CardBody from '$lib/components/ui/CardBody.svelte';
@@ -28,6 +29,7 @@
 		lockTypeKey?: boolean;
 		showParentField?: boolean;
 		showScopeField?: boolean;
+		showTypeKeyField?: boolean;
 		disableScopeSelect?: boolean;
 		typeKeyHelperText?: string;
 		hideHeader?: boolean;
@@ -43,10 +45,16 @@
 		lockTypeKey = mode === 'edit',
 		showParentField = true,
 		showScopeField = true,
+		showTypeKeyField = true,
 		disableScopeSelect = false,
 		typeKeyHelperText,
 		hideHeader = false
 	}: Props = $props();
+
+	const dispatch = createEventDispatcher<{
+		submit: TemplateFormData;
+		cancel: void;
+	}>();
 
 	// Form state using Svelte 5 runes
 	let name = $state(initialData.name || '');
@@ -132,10 +140,12 @@
 		};
 
 		onsubmit?.(formData);
+		dispatch('submit', formData);
 	}
 
 	function handleCancel() {
 		oncancel?.();
+		dispatch('cancel');
 	}
 
 	// Auto-generate type_key from name
@@ -194,27 +204,29 @@
 			</FormField>
 
 			<!-- Type Key -->
-			<FormField
-				label="Type Key"
-				labelFor="type_key"
-				required
-				error={touched.type_key ? errors.type_key : undefined}
-			>
-				<TextInput
-					id="type_key"
-					bind:value={typeKey}
-					onblur={validateTypeKey}
-					placeholder="e.g., creative.writing.novel"
-					class="w-full font-mono text-sm"
-					disabled={loading || lockTypeKey}
-				/>
-				<p class="text-xs text-gray-600 dark:text-gray-400 mt-1">
-					{typeKeyHelperText ??
-						`Unique identifier in dot notation (lowercase). ${
-							lockTypeKey ? 'Locked by builder.' : 'Auto-generated from name.'
-						}`}
-				</p>
-			</FormField>
+			{#if showTypeKeyField}
+				<FormField
+					label="Type Key"
+					labelFor="type_key"
+					required
+					error={touched.type_key ? errors.type_key : undefined}
+				>
+					<TextInput
+						id="type_key"
+						bind:value={typeKey}
+						onblur={validateTypeKey}
+						placeholder="e.g., creative.writing.novel"
+						class="w-full font-mono text-sm"
+						disabled={loading || lockTypeKey}
+					/>
+					<p class="text-xs text-gray-600 dark:text-gray-400 mt-1">
+						{typeKeyHelperText ??
+							`Unique identifier in dot notation (lowercase). ${
+								lockTypeKey ? 'Locked by builder.' : 'Auto-generated from name.'
+							}`}
+					</p>
+				</FormField>
+			{/if}
 
 			<!-- Scope -->
 			{#if showScopeField}
