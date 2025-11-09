@@ -135,254 +135,246 @@
 <div class="max-w-6xl mx-auto">
 	<!-- Header -->
 	<header class="mb-3">
-			<Button variant="ghost" size="sm" onclick={handleCancel} class="mb-3">
-				<svg
-					class="w-4 h-4 mr-2"
-					xmlns="http://www.w3.org/2000/svg"
-					fill="none"
-					viewBox="0 0 24 24"
-					stroke="currentColor"
-				>
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						stroke-width="2"
-						d="M15 19l-7-7 7-7"
-					/>
-				</svg>
-				Back to Templates
-			</Button>
+		<Button variant="ghost" size="sm" onclick={handleCancel} class="mb-3">
+			<svg
+				class="w-4 h-4 mr-2"
+				xmlns="http://www.w3.org/2000/svg"
+				fill="none"
+				viewBox="0 0 24 24"
+				stroke="currentColor"
+			>
+				<path
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					stroke-width="2"
+					d="M15 19l-7-7 7-7"
+				/>
+			</svg>
+			Back to Templates
+		</Button>
 
-			<h1 class="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-2">
-				Edit Template
-			</h1>
-			<p class="text-base sm:text-lg text-gray-600 dark:text-gray-400 mb-2">
-				{data.template.name}
-				<span class="text-sm text-gray-500 dark:text-gray-500"
-					>({data.template.type_key})</span
-				>
-			</p>
-			<p class="text-sm text-gray-600 dark:text-gray-400">
-				Step {currentStep} of {totalSteps}: {steps.find((s) => s.number === currentStep)
-					?.name}
-			</p>
-		</header>
+		<h1 class="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-2">
+			Edit Template
+		</h1>
+		<p class="text-base sm:text-lg text-gray-600 dark:text-gray-400 mb-2">
+			{data.template.name}
+			<span class="text-sm text-gray-500 dark:text-gray-500">({data.template.type_key})</span>
+		</p>
+		<p class="text-sm text-gray-600 dark:text-gray-400">
+			Step {currentStep} of {totalSteps}: {steps.find((s) => s.number === currentStep)?.name}
+		</p>
+	</header>
 
-		<!-- Progress Indicator -->
-		<div class="mb-3">
-			<div class="flex items-center justify-between">
-				{#each steps as step}
-					<button
-						type="button"
-						onclick={() => goToStep(step.number)}
-						disabled={step.number > currentStep}
-						class="flex flex-col items-center gap-2 flex-1 {step.number > currentStep
-							? 'opacity-50 cursor-not-allowed'
-							: 'cursor-pointer hover:opacity-80'}"
+	<!-- Progress Indicator -->
+	<div class="mb-3">
+		<div class="flex items-center justify-between">
+			{#each steps as step}
+				<button
+					type="button"
+					onclick={() => goToStep(step.number)}
+					disabled={step.number > currentStep}
+					class="flex flex-col items-center gap-2 flex-1 {step.number > currentStep
+						? 'opacity-50 cursor-not-allowed'
+						: 'cursor-pointer hover:opacity-80'}"
+				>
+					<div
+						class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-colors {step.number ===
+						currentStep
+							? 'bg-blue-600 dark:bg-blue-500 text-white'
+							: step.number < currentStep
+								? 'bg-green-600 dark:bg-green-500 text-white'
+								: 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400'}"
 					>
-						<div
-							class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-colors {step.number ===
-							currentStep
-								? 'bg-blue-600 dark:bg-blue-500 text-white'
-								: step.number < currentStep
-									? 'bg-green-600 dark:bg-green-500 text-white'
-									: 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400'}"
-						>
-							{#if step.number < currentStep}
-								<svg
-									class="w-5 h-5"
-									fill="none"
-									stroke="currentColor"
-									viewBox="0 0 24 24"
-								>
-									<path
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										stroke-width="2"
-										d="M5 13l4 4L19 7"
-									/>
-								</svg>
-							{:else}
-								{step.number}
-							{/if}
-						</div>
-						<div class="text-center hidden sm:block">
-							<div
-								class="text-xs font-semibold {step.number === currentStep
-									? 'text-blue-600 dark:text-blue-400'
-									: step.number < currentStep
-										? 'text-green-600 dark:text-green-400'
-										: 'text-gray-500 dark:text-gray-500'}"
+						{#if step.number < currentStep}
+							<svg
+								class="w-5 h-5"
+								fill="none"
+								stroke="currentColor"
+								viewBox="0 0 24 24"
 							>
-								{step.name}
-							</div>
-							<div class="text-xs text-gray-500 dark:text-gray-400">
-								{step.description}
-							</div>
-						</div>
-					</button>
-					{#if step.number < totalSteps}
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="2"
+									d="M5 13l4 4L19 7"
+								/>
+							</svg>
+						{:else}
+							{step.number}
+						{/if}
+					</div>
+					<div class="text-center hidden sm:block">
 						<div
-							class="flex-1 h-0.5 mx-2 {step.number < currentStep
-								? 'bg-green-600 dark:bg-green-500'
-								: 'bg-gray-200 dark:bg-gray-700'}"
-						></div>
-					{/if}
+							class="text-xs font-semibold {step.number === currentStep
+								? 'text-blue-600 dark:text-blue-400'
+								: step.number < currentStep
+									? 'text-green-600 dark:text-green-400'
+									: 'text-gray-500 dark:text-gray-500'}"
+						>
+							{step.name}
+						</div>
+						<div class="text-xs text-gray-500 dark:text-gray-400">
+							{step.description}
+						</div>
+					</div>
+				</button>
+				{#if step.number < totalSteps}
+					<div
+						class="flex-1 h-0.5 mx-2 {step.number < currentStep
+							? 'bg-green-600 dark:bg-green-500'
+							: 'bg-gray-200 dark:bg-gray-700'}"
+					></div>
+				{/if}
+			{/each}
+		</div>
+	</div>
+
+	<!-- Error Display -->
+	{#if error}
+		<div
+			class="mb-3 px-4 py-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg"
+		>
+			<p class="text-sm text-red-800 dark:text-red-300 font-medium">{error}</p>
+		</div>
+	{/if}
+
+	{#if validationErrors.length > 0}
+		<div
+			class="mb-3 px-4 py-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg"
+		>
+			<p class="text-sm text-amber-800 dark:text-amber-300 font-medium mb-2">
+				Validation Errors:
+			</p>
+			<ul class="list-disc list-inside space-y-1">
+				{#each validationErrors as valError}
+					<li class="text-sm text-amber-700 dark:text-amber-400">
+						<strong>{valError.field}:</strong>
+						{valError.message}
+					</li>
 				{/each}
-			</div>
+			</ul>
 		</div>
+	{/if}
 
-		<!-- Error Display -->
-		{#if error}
-			<div
-				class="mb-3 px-4 py-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg"
-			>
-				<p class="text-sm text-red-800 dark:text-red-300 font-medium">{error}</p>
+	<!-- Step Content -->
+	<div class="space-y-3">
+		{#if currentStep === 1}
+			<TemplateForm
+				mode="edit"
+				initialData={basicFormData}
+				availableParents={data.availableParents}
+				loading={saving}
+				onsubmit={handleBasicFormSubmit}
+				on:cancel={handleCancel}
+			/>
+		{:else if currentStep === 2}
+			<MetadataEditor
+				loading={saving}
+				initialMetadata={data.template.metadata}
+				bind:this={metadataEditorRef}
+			/>
+			<div class="flex flex-col sm:flex-row gap-3">
+				<Button
+					variant="secondary"
+					size="md"
+					fullWidth={true}
+					onclick={() => (currentStep = 1)}
+					disabled={saving}
+					class="sm:flex-1"
+				>
+					Back
+				</Button>
+				<Button
+					variant="primary"
+					size="md"
+					fullWidth={true}
+					onclick={handleMetadataNext}
+					disabled={saving}
+					class="sm:flex-1"
+				>
+					Next
+				</Button>
+			</div>
+		{:else if currentStep === 3}
+			<FacetDefaultsEditor
+				loading={saving}
+				initialFacets={data.template.facet_defaults}
+				bind:this={facetEditorRef}
+			/>
+			<div class="flex flex-col sm:flex-row gap-3">
+				<Button
+					variant="secondary"
+					size="md"
+					fullWidth={true}
+					onclick={() => (currentStep = 2)}
+					disabled={saving}
+					class="sm:flex-1"
+				>
+					Back
+				</Button>
+				<Button
+					variant="primary"
+					size="md"
+					fullWidth={true}
+					onclick={handleFacetNext}
+					disabled={saving}
+					class="sm:flex-1"
+				>
+					Next
+				</Button>
+			</div>
+		{:else if currentStep === 4}
+			<FsmEditor loading={saving} initialFsm={data.template.fsm} bind:this={fsmEditorRef} />
+			<div class="flex flex-col sm:flex-row gap-3">
+				<Button
+					variant="secondary"
+					size="md"
+					fullWidth={true}
+					onclick={() => (currentStep = 3)}
+					disabled={saving}
+					class="sm:flex-1"
+				>
+					Back
+				</Button>
+				<Button
+					variant="primary"
+					size="md"
+					fullWidth={true}
+					onclick={handleFsmNext}
+					disabled={saving}
+					class="sm:flex-1"
+				>
+					Next
+				</Button>
+			</div>
+		{:else if currentStep === 5}
+			<SchemaBuilder
+				loading={saving}
+				initialSchema={data.template.schema}
+				bind:this={schemaBuilderRef}
+			/>
+			<div class="flex flex-col sm:flex-row gap-3">
+				<Button
+					variant="secondary"
+					size="md"
+					fullWidth={true}
+					onclick={() => (currentStep = 4)}
+					disabled={saving}
+					class="sm:flex-1"
+				>
+					Back
+				</Button>
+				<Button
+					variant="primary"
+					size="md"
+					fullWidth={true}
+					onclick={handleFinalSubmit}
+					disabled={saving}
+					class="sm:flex-1"
+				>
+					{saving ? 'Updating Template...' : 'Update Template'}
+				</Button>
 			</div>
 		{/if}
-
-		{#if validationErrors.length > 0}
-			<div
-				class="mb-3 px-4 py-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg"
-			>
-				<p class="text-sm text-amber-800 dark:text-amber-300 font-medium mb-2">
-					Validation Errors:
-				</p>
-				<ul class="list-disc list-inside space-y-1">
-					{#each validationErrors as valError}
-						<li class="text-sm text-amber-700 dark:text-amber-400">
-							<strong>{valError.field}:</strong>
-							{valError.message}
-						</li>
-					{/each}
-				</ul>
-			</div>
-		{/if}
-
-		<!-- Step Content -->
-		<div class="space-y-3">
-			{#if currentStep === 1}
-				<TemplateForm
-					mode="edit"
-					initialData={basicFormData}
-					availableParents={data.availableParents}
-					loading={saving}
-					onsubmit={handleBasicFormSubmit}
-					on:cancel={handleCancel}
-				/>
-			{:else if currentStep === 2}
-				<MetadataEditor
-					loading={saving}
-					initialMetadata={data.template.metadata}
-					bind:this={metadataEditorRef}
-				/>
-				<div class="flex flex-col sm:flex-row gap-3">
-					<Button
-						variant="secondary"
-						size="md"
-						fullWidth={true}
-						onclick={() => (currentStep = 1)}
-						disabled={saving}
-						class="sm:flex-1"
-					>
-						Back
-					</Button>
-					<Button
-						variant="primary"
-						size="md"
-						fullWidth={true}
-						onclick={handleMetadataNext}
-						disabled={saving}
-						class="sm:flex-1"
-					>
-						Next
-					</Button>
-				</div>
-			{:else if currentStep === 3}
-				<FacetDefaultsEditor
-					loading={saving}
-					initialFacets={data.template.facet_defaults}
-					bind:this={facetEditorRef}
-				/>
-				<div class="flex flex-col sm:flex-row gap-3">
-					<Button
-						variant="secondary"
-						size="md"
-						fullWidth={true}
-						onclick={() => (currentStep = 2)}
-						disabled={saving}
-						class="sm:flex-1"
-					>
-						Back
-					</Button>
-					<Button
-						variant="primary"
-						size="md"
-						fullWidth={true}
-						onclick={handleFacetNext}
-						disabled={saving}
-						class="sm:flex-1"
-					>
-						Next
-					</Button>
-				</div>
-			{:else if currentStep === 4}
-				<FsmEditor
-					loading={saving}
-					initialFsm={data.template.fsm}
-					bind:this={fsmEditorRef}
-				/>
-				<div class="flex flex-col sm:flex-row gap-3">
-					<Button
-						variant="secondary"
-						size="md"
-						fullWidth={true}
-						onclick={() => (currentStep = 3)}
-						disabled={saving}
-						class="sm:flex-1"
-					>
-						Back
-					</Button>
-					<Button
-						variant="primary"
-						size="md"
-						fullWidth={true}
-						onclick={handleFsmNext}
-						disabled={saving}
-						class="sm:flex-1"
-					>
-						Next
-					</Button>
-				</div>
-			{:else if currentStep === 5}
-				<SchemaBuilder
-					loading={saving}
-					initialSchema={data.template.schema}
-					bind:this={schemaBuilderRef}
-				/>
-				<div class="flex flex-col sm:flex-row gap-3">
-					<Button
-						variant="secondary"
-						size="md"
-						fullWidth={true}
-						onclick={() => (currentStep = 4)}
-						disabled={saving}
-						class="sm:flex-1"
-					>
-						Back
-					</Button>
-					<Button
-						variant="primary"
-						size="md"
-						fullWidth={true}
-						onclick={handleFinalSubmit}
-						disabled={saving}
-						class="sm:flex-1"
-					>
-						{saving ? 'Updating Template...' : 'Update Template'}
-					</Button>
-				</div>
-			{/if}
-		</div>
 	</div>
 </div>

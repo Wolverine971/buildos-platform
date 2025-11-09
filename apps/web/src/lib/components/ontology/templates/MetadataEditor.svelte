@@ -129,8 +129,12 @@
 
 	<CardBody padding="lg" class="space-y-6">
 		{#if scopeLabel || lockedRealm}
-			<div class="rounded-2xl border border-blue-100 dark:border-blue-500/30 bg-blue-50/70 dark:bg-blue-500/10 p-4 space-y-2 text-sm text-blue-900 dark:text-blue-50">
-				<p class="text-xs uppercase tracking-wide text-blue-700 dark:text-blue-200 font-semibold">
+			<div
+				class="rounded-2xl border border-blue-100 dark:border-blue-500/30 bg-blue-50/70 dark:bg-blue-500/10 p-4 space-y-2 text-sm text-blue-900 dark:text-blue-50"
+			>
+				<p
+					class="text-xs uppercase tracking-wide text-blue-700 dark:text-blue-200 font-semibold"
+				>
 					{scopeLabel ?? 'Template'} Context
 				</p>
 				{#if scopeDescription}
@@ -148,7 +152,8 @@
 				{/if}
 				{#if lockedRealm}
 					<p class="text-xs text-blue-900/70 dark:text-blue-200">
-						Realm locked to <strong>{lockedRealm.replace(/_/g, ' ')}</strong>. Adjust earlier in the flow if needed.
+						Realm locked to <strong>{lockedRealm.replace(/_/g, ' ')}</strong>. Adjust
+						earlier in the flow if needed.
 					</p>
 				{/if}
 			</div>
