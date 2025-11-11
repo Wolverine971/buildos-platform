@@ -6,6 +6,12 @@ type TypedSupabaseClient = SupabaseClient<Database>;
 
 const ROW_NOT_FOUND = 'PGRST116';
 
+export const FEATURE_KEYS = {
+	timeBlocks: 'time_play' as FeatureName,
+	futureFeature: 'future_feature' as FeatureName,
+	migrationDualWriteProjects: 'migration.dualwrite.projects' as FeatureName
+} as const;
+
 /**
  * Check if a feature flag is enabled for a given user.
  */
@@ -15,7 +21,6 @@ export async function isFeatureEnabled(
 	featureName: FeatureName
 ): Promise<boolean> {
 	try {
-		return true;
 		const { data, error } = await supabase
 			.from('feature_flags')
 			.select('enabled')
@@ -89,6 +94,40 @@ export async function disableFeature(
 	if (error) {
 		throw error;
 	}
+}
+
+/**
+ * Convenience helper for checking the migration dual-write flag for a single user/org owner.
+ */
+export async function isMigrationDualWriteEnabledForUser(
+	supabase: TypedSupabaseClient,
+	userId: string
+): Promise<boolean> {
+	return isFeatureEnabled(supabase, userId, FEATURE_KEYS.migrationDualWriteProjects);
+}
+
+/**
+ * Placeholder org-level helper — currently falls back to the provided user flag until
+ * dedicated org_feature_flags storage ships.
+ */
+export async function isMigrationDualWriteEnabledForOrg(
+	supabase: TypedSupabaseClient,
+	orgId: string | null,
+	options: { fallbackUserId?: string } = {}
+): Promise<boolean> {
+	if (!orgId) {
+		if (options.fallbackUserId) {
+			return isMigrationDualWriteEnabledForUser(supabase, options.fallbackUserId);
+		}
+		return false;
+	}
+
+	// TODO: replace with org-scoped flag lookup once org metadata tables land.
+	if (options.fallbackUserId) {
+		return isMigrationDualWriteEnabledForUser(supabase, options.fallbackUserId);
+	}
+
+	return false;
 }
 
 /**

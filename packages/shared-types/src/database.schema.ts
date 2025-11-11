@@ -1,5 +1,5 @@
-// Lightweight database schema - auto-generated from database.types.ts
-// Generated on: 2025-11-09T06:14:16.167Z
+// packages/shared-types/src/database.schema.ts
+// Generated on: 2025-11-11T05:42:31.754Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -745,6 +745,16 @@ export type DatabaseSchema = {
 		subscription_id: string | null;
 		user_id: string;
 	};
+	legacy_entity_mappings: {
+		checksum: string | null;
+		id: number;
+		legacy_id: string;
+		legacy_table: string;
+		metadata: Json;
+		migrated_at: string;
+		onto_id: string;
+		onto_table: string;
+	};
 	llm_prompts: {
 		id: string;
 		last_used: string | null;
@@ -803,6 +813,23 @@ export type DatabaseSchema = {
 		total_tokens: number;
 		updated_at: string;
 		user_id: string;
+	};
+	migration_log: {
+		batch_id: string | null;
+		created_at: string;
+		entity_type: string;
+		error_message: string | null;
+		id: number;
+		legacy_id: string | null;
+		legacy_table: string | null;
+		metadata: Json;
+		onto_id: string | null;
+		onto_table: string | null;
+		operation: string;
+		org_id: string | null;
+		run_id: string;
+		status: string;
+		updated_at: string;
 	};
 	notes: {
 		category: string | null;
@@ -943,6 +970,50 @@ export type DatabaseSchema = {
 		rel: string;
 		src_id: string;
 		src_kind: string;
+	};
+	onto_event_sync: {
+		calendar_id: string;
+		created_at: string;
+		event_id: string;
+		external_event_id: string;
+		id: string;
+		last_synced_at: string | null;
+		provider: string;
+		sync_error: string | null;
+		sync_status: string;
+		sync_token: string | null;
+		updated_at: string;
+	};
+	onto_events: {
+		all_day: boolean;
+		created_at: string;
+		created_by: string;
+		deleted_at: string | null;
+		description: string | null;
+		end_at: string | null;
+		external_link: string | null;
+		facet_context: string | null;
+		facet_scale: string | null;
+		facet_stage: string | null;
+		id: string;
+		last_synced_at: string | null;
+		location: string | null;
+		org_id: string | null;
+		owner_entity_id: string | null;
+		owner_entity_type: string;
+		project_id: string | null;
+		props: Json;
+		recurrence: Json;
+		start_at: string;
+		state_key: string;
+		sync_error: string | null;
+		sync_status: string;
+		template_id: string | null;
+		template_snapshot: Json;
+		timezone: string | null;
+		title: string;
+		type_key: string;
+		updated_at: string;
 	};
 	onto_facet_definitions: {
 		allowed_values: Json;
@@ -1212,6 +1283,7 @@ export type DatabaseSchema = {
 		id: string;
 		is_primary: boolean | null;
 		last_synced_at: string | null;
+		onto_project_id: string | null;
 		project_id: string;
 		sync_enabled: boolean | null;
 		sync_error: string | null;
@@ -1909,9 +1981,11 @@ export const tableNames = [
 	'feedback',
 	'feedback_rate_limit',
 	'invoices',
+	'legacy_entity_mappings',
 	'llm_prompts',
 	'llm_usage_logs',
 	'llm_usage_summary',
+	'migration_log',
 	'notes',
 	'notification_deliveries',
 	'notification_events',
@@ -1924,6 +1998,8 @@ export const tableNames = [
 	'onto_document_versions',
 	'onto_documents',
 	'onto_edges',
+	'onto_event_sync',
+	'onto_events',
 	'onto_facet_definitions',
 	'onto_facet_values',
 	'onto_goals',

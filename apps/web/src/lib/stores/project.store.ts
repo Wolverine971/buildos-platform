@@ -10,6 +10,11 @@ import type {
 import { eventBus, PROJECT_EVENTS, type LocalUpdatePayload } from '$lib/utils/event-bus';
 import { performanceMonitor } from '$lib/utils/performance-monitor';
 import { requireApiData } from '$lib/utils/api-client-helpers';
+import type { Database } from '@buildos/shared-types';
+
+type OntoEventWithSync = Database['public']['Tables']['onto_events']['Row'] & {
+	onto_event_sync?: Database['public']['Tables']['onto_event_sync']['Row'][];
+};
 
 // Loading states for granular control
 export type LoadingState = 'idle' | 'loading' | 'success' | 'error' | 'refreshing';
@@ -45,6 +50,7 @@ interface ProjectStoreV2State {
 	briefs: any[];
 	synthesis: any | null;
 	braindumps: any[] | null;
+	ontologyEvents: OntoEventWithSync[];
 
 	// Metadata
 	stats: TaskStats;
@@ -61,6 +67,7 @@ interface ProjectStoreV2State {
 		stats: LoadingState;
 		calendar: LoadingState;
 		braindumps: LoadingState;
+		ontoEvents: LoadingState;
 	};
 
 	// Error states
@@ -74,6 +81,7 @@ interface ProjectStoreV2State {
 		stats: string | null;
 		calendar: string | null;
 		braindumps: string | null;
+		ontoEvents: string | null;
 	};
 
 	// UI State
@@ -108,6 +116,8 @@ class ProjectStoreV2 {
 			briefs: [],
 			synthesis: null,
 			braindumps: null,
+			ontologyEvents: [],
+			ontologyEvents: [],
 			stats: {
 				total: 0,
 				completed: 0,
@@ -128,7 +138,8 @@ class ProjectStoreV2 {
 				synthesis: 'idle',
 				stats: 'idle',
 				calendar: 'idle',
-				braindumps: 'idle'
+				braindumps: 'idle',
+				ontoEvents: 'idle'
 			},
 			errors: {
 				project: null,
@@ -139,7 +150,8 @@ class ProjectStoreV2 {
 				synthesis: null,
 				stats: null,
 				calendar: null,
-				braindumps: null
+				braindumps: null,
+				ontoEvents: null
 			},
 			activeTab: 'overview',
 			selectedFilters: [],
@@ -511,6 +523,43 @@ class ProjectStoreV2 {
 			}
 		} catch (error) {
 			this.setError('stats', error instanceof Error ? error.message : 'Failed to load stats');
+		}
+	}
+
+	async loadOntologyEvents(projectId: string, force = false): Promise<void> {
+		const state = get(this.store);
+
+		if (!force && this.isCacheValid('ontologyEvents', 60000)) return; // 1 minute cache
+		if (state.loadingStates.ontoEvents === 'loading') return;
+
+		this.updateLoadingState('ontoEvents', 'loading');
+
+		try {
+			const response = await fetch(`/api/projects/${projectId}/onto-events`);
+			if (!response.ok) throw new Error('Failed to fetch ontology events');
+
+			const result = await response.json();
+			if (result.success) {
+				const events = result.data?.events || result.events || [];
+
+				this.store.update((state) => ({
+					...state,
+					ontologyEvents: events,
+					loadingStates: { ...state.loadingStates, ontoEvents: 'success' },
+					errors: { ...state.errors, ontoEvents: null },
+					lastFetch: { ...state.lastFetch, ontologyEvents: Date.now() }
+				}));
+
+				this.updateStats();
+			} else {
+				throw new Error(result.error || 'Failed to load ontology events');
+			}
+		} catch (error) {
+			console.error('[Store] Error loading ontology events:', error);
+			this.setError(
+				'ontoEvents',
+				error instanceof Error ? error.message : 'Failed to load ontology events'
+			);
 		}
 	}
 
@@ -1238,6 +1287,15 @@ class ProjectStoreV2 {
 	private calculateAndSetStats() {
 		const state = get(this.store);
 		const tasks = state.tasks;
+		const ontologyEvents = state.ontologyEvents || [];
+		const ontologyEventTaskIds = new Set(
+			ontologyEvents
+				.map((event) => {
+					const props = (event.props || {}) as Record<string, any>;
+					return props?.legacy_task_id;
+				})
+				.filter((id): id is string => typeof id === 'string')
+		);
 
 		// PERFORMANCE OPTIMIZATION: Single-pass calculation instead of multiple filters
 		// Pre-calculate phased task IDs once
@@ -1277,7 +1335,12 @@ class ProjectStoreV2 {
 
 			// Scheduled tasks (have synced or pending calendar events)
 			const events = task.task_calendar_events || [];
-			if (events.some((e) => e.sync_status === 'synced' || e.sync_status === 'pending')) {
+			const hasLegacyEvent = events.some(
+				(e) => e.sync_status === 'synced' || e.sync_status === 'pending'
+			);
+			const hasOntologyEvent = ontologyEventTaskIds.has(task.id);
+
+			if (hasLegacyEvent || hasOntologyEvent) {
 				scheduledCount++;
 			}
 
@@ -1343,7 +1406,8 @@ class ProjectStoreV2 {
 				synthesis: 'idle',
 				stats: 'idle',
 				calendar: 'idle',
-				braindumps: 'idle'
+				braindumps: 'idle',
+				ontoEvents: 'idle'
 			},
 			errors: {
 				project: null,
@@ -1354,7 +1418,8 @@ class ProjectStoreV2 {
 				synthesis: null,
 				stats: null,
 				calendar: null,
-				braindumps: null
+				braindumps: null,
+				ontoEvents: null
 			},
 			globalTaskFilters: ['active', 'scheduled', 'overdue', 'recurring'],
 			phaseTaskFilters: {},
@@ -1657,15 +1722,25 @@ class ProjectStoreV2 {
 	}
 
 	get scheduledTasks() {
-		return derived(this.store, ($store) =>
-			$store.tasks.filter((t) => {
+		return derived(this.store, ($store) => {
+			const ontologyEventTaskIds = new Set(
+				($store.ontologyEvents || [])
+					.map((event) => {
+						const props = (event.props || {}) as Record<string, any>;
+						return props?.legacy_task_id;
+					})
+					.filter((id): id is string => typeof id === 'string')
+			);
+
+			return $store.tasks.filter((t) => {
 				if (t.deleted_at || t.status === 'done') return false;
 				const events = t.task_calendar_events || [];
-				return events.some(
+				const hasLegacyEvent = events.some(
 					(e) => e.sync_status === 'synced' || e.sync_status === 'pending'
 				);
-			})
-		);
+				return hasLegacyEvent || ontologyEventTaskIds.has(t.id);
+			});
+		});
 	}
 
 	get isAnyLoading() {

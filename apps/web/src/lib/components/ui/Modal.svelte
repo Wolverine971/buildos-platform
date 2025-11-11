@@ -89,7 +89,6 @@
 	let contentId = `${modalId}-content`;
 
 	function handleBackdropClick(event: MouseEvent | TouchEvent) {
-		console.log('want to close on backdrop');
 		if (event.target === event.currentTarget && closeOnBackdrop && !persistent) {
 			// Try callback first (preferred), then fallback to direct mutation
 			onClose?.();
@@ -182,6 +181,7 @@
 	}
 
 	$effect(() => {
+		console.log('[Modal] isOpen changed to:', isOpen, 'title:', title);
 		if (isOpen) {
 			handleModalOpen();
 		} else {
@@ -203,14 +203,14 @@
 	<div use:portal class="modal-root" transition:fade={{ duration: 150 }} role="presentation">
 		<!-- Backdrop -->
 		<div
-			class="fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-70 backdrop-blur-sm z-[100]"
+			class="fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-70 backdrop-blur-sm z-[9998]"
 			onclick={handleBackdropClick}
 			ontouchend={handleBackdropClick}
 			aria-hidden="true"
 		></div>
 
 		<!-- Modal Container -->
-		<div class="fixed inset-0 z-[100] overflow-y-auto">
+		<div class="fixed inset-0 z-[9999] overflow-y-auto">
 			<div
 				class="flex min-h-full items-end sm:items-center justify-center p-0 sm:p-4"
 				role="presentation"
@@ -250,7 +250,6 @@
 								{#if showCloseButton && !persistent}
 									<Button
 										onclick={() => {
-											console.log('want to close');
 											// Try callback first, then direct mutation
 											onClose?.();
 											isOpen = false;
@@ -327,9 +326,10 @@
 		background: rgb(75 85 99);
 	}
 
-	/* Ensure smooth rendering */
+	/* Ensure smooth rendering and highest z-index */
 	.modal-root {
 		will-change: opacity;
-		z-index: 100;
+		z-index: 9999;
+		position: relative;
 	}
 </style>

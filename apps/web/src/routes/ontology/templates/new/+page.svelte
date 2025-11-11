@@ -1290,7 +1290,9 @@
 							onclick={() => focusBuilderSection('scope')}
 						>
 							<div class="text-left">
-								<p class="text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400">
+								<p
+									class="text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400"
+								>
 									Scope
 								</p>
 								<p class="text-base font-semibold text-gray-900 dark:text-gray-50">
@@ -1364,7 +1366,9 @@
 							title={`Realm: ${slugToLabel(selectedRealm ?? '')}`}
 						>
 							<div class="text-left">
-								<p class="text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400">
+								<p
+									class="text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400"
+								>
 									Realm
 								</p>
 								<p class="text-base font-semibold text-gray-900 dark:text-gray-50">
@@ -1476,12 +1480,16 @@
 							onclick={() => focusBuilderSection('type')}
 						>
 							<div class="text-left">
-								<p class="text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400">
+								<p
+									class="text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400"
+								>
 									Computed type key
 								</p>
 								<p
 									class={`font-mono text-sm ${
-										builderReady ? 'text-gray-900 dark:text-gray-50' : 'text-gray-500 dark:text-gray-400'
+										builderReady
+											? 'text-gray-900 dark:text-gray-50'
+											: 'text-gray-500 dark:text-gray-400'
 									}`}
 								>
 									{#if builderReady && (computedTypeKey || templateFormInitialData?.type_key)}
@@ -1504,20 +1512,27 @@
 					>
 						<div class="flex flex-wrap items-center justify-between gap-3">
 							<div>
-								<p class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
+								<p
+									class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400"
+								>
 									Type key ready
 								</p>
 								<p class="font-mono text-base text-gray-900 dark:text-gray-50">
 									{computedTypeKey || templateFormInitialData.type_key}
 								</p>
 								<p class="text-xs text-gray-500 dark:text-gray-400">
-									{scopeCopy[selectedScope ?? '']?.label ?? slugToLabel(selectedScope ?? '')}
+									{scopeCopy[selectedScope ?? '']?.label ??
+										slugToLabel(selectedScope ?? '')}
 									{#if selectedRealm}
 										· {slugToLabel(selectedRealm)}
 									{/if}
 								</p>
 							</div>
-							<Button variant="ghost" size="sm" onclick={() => focusBuilderSection('type')}>
+							<Button
+								variant="ghost"
+								size="sm"
+								onclick={() => focusBuilderSection('type')}
+							>
 								Adjust type key
 							</Button>
 						</div>

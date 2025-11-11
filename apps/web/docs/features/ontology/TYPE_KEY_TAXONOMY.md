@@ -6,19 +6,19 @@
 
 ## 📋 Quick Reference
 
-| Entity                | Has Type Key? | Format                               | Example                                               |
-| --------------------- | ------------- | ------------------------------------ | ----------------------------------------------------- |
-| **onto_projects**     | ✅ Yes        | `{domain}.{deliverable}[.{variant}]` | `writer.book`, `coach.client.executive`               |
-| **onto_outputs**      | ✅ Yes        | `deliverable.{type}[.{variant}]`     | `deliverable.chapter`, `deliverable.research_doc.icp` |
-| **onto_plans**        | ✅ Yes        | `plan.{type}[.{context}]`            | `plan.content_calendar`, `plan.onboarding.client`     |
-| **onto_documents**    | ✅ Yes        | `document.{type}`                    | `document.research`, `document.specification`         |
-| **onto_goals**        | ✅ Yes        | `goal.{type}`                        | `goal.outcome`, `goal.learning`, `goal.metric`        |
-| **onto_tasks**        | ⚠️ Optional   | `task.{type}`                        | `task.deep_work`, `task.review`                       |
-| **onto_risks**        | ⚠️ Optional   | `risk.{type}`                        | `risk.technical`, `risk.market`                       |
-| **onto_metrics**      | ❌ No         | Inherited from project               | N/A                                                   |
-| **onto_requirements** | ❌ No         | Inherited from project               | N/A                                                   |
-| **onto_milestones**   | ❌ No         | Inherited from project               | N/A                                                   |
-| **onto_decisions**    | ❌ No         | Inherited from project               | N/A                                                   |
+| Entity                | Has Type Key? | Format                               | Example                                                                   |
+| --------------------- | ------------- | ------------------------------------ | ------------------------------------------------------------------------- |
+| **onto_projects**     | ✅ Yes        | `{domain}.{deliverable}[.{variant}]` | `writer.book`, `coach.client.executive`                                   |
+| **onto_outputs**      | ✅ Yes        | `deliverable.{type}[.{variant}]`     | `deliverable.chapter`, `deliverable.research_doc.icp`                     |
+| **onto_plans**        | ✅ Yes        | `plan.{type}[.{context}]`            | `plan.content_calendar`, `plan.onboarding.client`                         |
+| **onto_documents**    | ✅ Yes        | `document.{type}`                    | `document.project.context`, `document.research`, `document.specification` |
+| **onto_goals**        | ✅ Yes        | `goal.{type}`                        | `goal.outcome`, `goal.learning`, `goal.metric`                            |
+| **onto_tasks**        | ⚠️ Optional   | `task.{type}`                        | `task.deep_work`, `task.review`                                           |
+| **onto_risks**        | ⚠️ Optional   | `risk.{type}`                        | `risk.technical`, `risk.market`                                           |
+| **onto_metrics**      | ❌ No         | Inherited from project               | N/A                                                                       |
+| **onto_requirements** | ❌ No         | Inherited from project               | N/A                                                                       |
+| **onto_milestones**   | ❌ No         | Inherited from project               | N/A                                                                       |
+| **onto_decisions**    | ❌ No         | Inherited from project               | N/A                                                                       |
 
 ---
 
@@ -86,12 +86,20 @@ These entities have independent lifecycles, can be discovered independently, and
 
 - **Format**: `document.{type}`
 - **Examples**:
-    - `document.context` - Project background
+- `document.project.context` - Canonical project narrative + core values (auto-linked via `context_document_id`)
+- `document.context` - Legacy alias (deprecated in favor of `document.project.context`)
     - `document.research`
     - `document.meeting_minutes`
     - `document.specification`
     - `document.requirements`
+- **Context Docs**: Legacy migrations now always emit a `document.project.context` row and populate `onto_projects.context_document_id`. The props copy is maintained only for transitional compatibility.
 - **Why**: Documents have different purposes and schemas, can be versioned independently
+
+#### onto_projects
+
+- **Format**: `{domain}.{deliverable}[.{variant}]`
+- **LLM Inference**: Migration jobs now run the template analyzer loop (realm → domain/deliverable/variant). If no template fits, a new concrete template is created automatically (JSON schema, FSM, facet defaults) before any ontology rows are written.
+- **Props Mapping**: The same run maps legacy context into the template’s schema via `props.template_fields`, so downstream UI/agents can trust that project props adhere to the selected template.
 
 #### onto_goals
 
@@ -126,6 +134,7 @@ These entities can either inherit from their parent or have their own type for s
     }
     ```
 - **Why**: Tasks can be simple work items or have specific behavioral patterns
+- **Edges**: Calendar events cloned from `task_calendar_events` add a `task (src)` → `event (dst)` edge with `rel: has_event`, so scheduling surfaces can ask “show me the work sessions for this ontology task” without bespoke joins.
 
 #### onto_risks
 

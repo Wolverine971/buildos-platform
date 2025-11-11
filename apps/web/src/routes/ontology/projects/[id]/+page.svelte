@@ -28,6 +28,9 @@
 	- Goal API: /apps/web/src/routes/api/onto/goals/
 -->
 <script lang="ts">
+	// ============================================================
+	// IMPORTS
+	// ============================================================
 	import { goto, invalidateAll } from '$app/navigation';
 	import Button from '$lib/components/ui/Button.svelte';
 	import TabNav, { type Tab } from '$lib/components/ui/TabNav.svelte';
@@ -40,7 +43,32 @@
 	import PlanCreateModal from '$lib/components/ontology/PlanCreateModal.svelte';
 	import GoalCreateModal from '$lib/components/ontology/GoalCreateModal.svelte';
 	import FSMStateVisualizer from '$lib/components/ontology/FSMStateVisualizer.svelte';
-	import { Plus, FileEdit, Edit2, ChevronRight, Calendar, Target, FileText } from 'lucide-svelte';
+	import GoalReverseEngineerModal from '$lib/components/ontology/GoalReverseEngineerModal.svelte';
+	import { toastService } from '$lib/stores/toast.store';
+	import {
+		Plus,
+		FileEdit,
+		Edit2,
+		ChevronRight,
+		ChevronDown,
+		Calendar,
+		Target,
+		FileText,
+		Sparkles
+	} from 'lucide-svelte';
+	import type { GoalReverseEngineeringResult } from '$lib/services/ontology/goal-reverse-engineering.service';
+	import {
+		getProjectStateBadgeClass,
+		getTaskStateBadgeClass,
+		getOutputStateBadgeClass,
+		getPlanStateBadgeClass,
+		getGoalStateBadgeClass,
+		getPriorityBadgeClass
+	} from '$lib/utils/ontology-badge-styles';
+
+	// ============================================================
+	// TYPES
+	// ============================================================
 
 	interface Project {
 		id: string;
@@ -62,6 +90,7 @@
 		priority?: number | null;
 		props?: {
 			description?: string;
+			supporting_milestone_id?: string;
 			[key: string]: unknown;
 		};
 	}
@@ -117,9 +146,14 @@
 	}
 
 	interface Milestone {
+		id: string;
 		title: string;
 		due_at: string;
-		[key: string]: unknown;
+		props?: {
+			goal_id?: string;
+			summary?: string;
+			[key: string]: unknown;
+		} | null;
 	}
 
 	interface Risk {
@@ -128,8 +162,28 @@
 		[key: string]: unknown;
 	}
 
+	type ReverseEngineerMilestonePayload = {
+		title: string;
+		due_at: string | null;
+		summary: string | null;
+		type_key?: string | null;
+		confidence?: number | null;
+		tasks: Array<{
+			title: string;
+			description: string | null;
+			state_key: string;
+			priority: number | null;
+		}>;
+	};
+
+	// ============================================================
+	// PROPS & DATA
+	// ============================================================
 	let { data } = $props();
 
+	// ============================================================
+	// DERIVED STATE
+	// ============================================================
 	const project = $derived(data.project as Project);
 	const tasks = $derived((data.tasks || []) as Task[]);
 	const outputs = $derived((data.outputs || []) as Output[]);
@@ -149,12 +203,28 @@
 		}))
 	);
 
+	// ============================================================
+	// COMPONENT STATE
+	// ============================================================
 	let activeTab = $state('tasks');
 	let showOutputCreateModal = $state(false);
 	let showTaskCreateModal = $state(false);
 	let showPlanCreateModal = $state(false);
 	let showGoalCreateModal = $state(false);
 	let editingTaskId = $state<string | null>(null);
+	let expandedGoalId = $state<string | null>(null);
+	let reverseEngineeringGoalId = $state<string | null>(null);
+	let reverseEngineerModalOpen = $state(false);
+	let reverseEngineerPreview = $state<GoalReverseEngineeringResult | null>(null);
+	let reverseEngineerGoalMeta = $state<{ id: string; name: string } | null>(null);
+	let approvingReverseEngineer = $state(false);
+
+	// ✅ Debug effect to track modal state changes
+	$effect(() => {
+		if (showGoalCreateModal) {
+			console.log('[GoalCreateModal] Modal opened');
+		}
+	});
 
 	const tabs = $derived<Tab[]>([
 		{ id: 'tasks', label: 'Tasks', count: tasks.length },
@@ -169,13 +239,250 @@
 		}
 	]);
 
+	// ✅ Fixed $derived syntax - remove arrow functions, use IIFE pattern for complex logic
+	const milestonesByGoal = $derived(
+		(() => {
+			const map = new Map<string, Milestone[]>();
+			for (const milestone of milestones) {
+				const goalId = getGoalIdFromMilestone(milestone);
+				if (!goalId) continue;
+				const existing = map.get(goalId);
+				if (existing) {
+					existing.push(milestone);
+				} else {
+					map.set(goalId, [milestone]);
+				}
+			}
+			return map;
+		})()
+	);
+
+	const tasksByMilestone = $derived(
+		(() => {
+			const map = new Map<string, Task[]>();
+			for (const task of tasks) {
+				const milestoneId = getMilestoneIdFromTask(task);
+				if (!milestoneId) continue;
+				const existing = map.get(milestoneId);
+				if (existing) {
+					existing.push(task);
+				} else {
+					map.set(milestoneId, [task]);
+				}
+			}
+			return map;
+		})()
+	);
+
+	const goalStats = $derived(
+		(() => {
+			const stats = new Map<
+				string,
+				{ milestoneCount: number; taskCount: number; completedTaskCount: number }
+			>();
+
+			for (const goal of goals) {
+				const goalMilestones = milestonesByGoal.get(goal.id) ?? [];
+				let totalTasks = 0;
+				let completedTasks = 0;
+
+				for (const milestone of goalMilestones) {
+					const milestoneTasks = tasksByMilestone.get(milestone.id) ?? [];
+					totalTasks += milestoneTasks.length;
+					completedTasks += milestoneTasks.filter((task) => isTaskComplete(task)).length;
+				}
+
+				stats.set(goal.id, {
+					milestoneCount: goalMilestones.length,
+					taskCount: totalTasks,
+					completedTaskCount: completedTasks
+				});
+			}
+
+			return stats;
+		})()
+	);
+
+	// ============================================================
+	// EVENT HANDLERS
+	// ============================================================
 	function handleTabChange(tabId: string) {
 		activeTab = tabId;
 	}
 
-	async function handleStateChange() {
+	async function handleStateChange(): Promise<void> {
 		await invalidateAll();
 	}
+
+	// ============================================================
+	// HELPER FUNCTIONS
+	// ============================================================
+	function getGoalIdFromMilestone(milestone: Milestone): string | null {
+		const goalId = milestone.props?.goal_id;
+		return typeof goalId === 'string' ? goalId : null;
+	}
+
+	function getMilestoneIdFromTask(task: Task): string | null {
+		const milestoneId = task.props?.supporting_milestone_id;
+		return typeof milestoneId === 'string' ? milestoneId : null;
+	}
+
+	function isTaskComplete(task: Task): boolean {
+		const normalized = task.state_key?.toLowerCase?.() ?? '';
+		return normalized === 'done' || normalized === 'completed' || normalized === 'complete';
+	}
+
+	function getGoalMilestones(goalId: string): Milestone[] {
+		return milestonesByGoal.get(goalId) ?? [];
+	}
+
+	function getMilestoneTasks(milestoneId: string): Task[] {
+		return tasksByMilestone.get(milestoneId) ?? [];
+	}
+
+	function handleReverseEngineerModalClose() {
+		reverseEngineerModalOpen = false;
+		reverseEngineerPreview = null;
+		reverseEngineerGoalMeta = null;
+		approvingReverseEngineer = false;
+	}
+
+function convertDateToISO(dateString: string | null): string | null {
+	if (!dateString) return null;
+	const parsed = new Date(`${dateString}T00:00:00Z`);
+	if (Number.isNaN(parsed.getTime())) {
+		return null;
+	}
+	return parsed.toISOString();
+}
+
+// Event handler removed - now using direct prop callback
+
+	function getGoalStatsForDisplay(goalId: string) {
+		return (
+			goalStats.get(goalId) ?? {
+				milestoneCount: 0,
+				taskCount: 0,
+				completedTaskCount: 0
+			}
+		);
+	}
+
+	function getMilestoneTaskStats(milestoneId: string) {
+		const milestoneTasks = getMilestoneTasks(milestoneId);
+		return {
+			total: milestoneTasks.length,
+			completed: milestoneTasks.filter((task) => isTaskComplete(task)).length
+		};
+	}
+
+	function formatDueDate(dateString: string) {
+		const date = new Date(dateString);
+		if (Number.isNaN(date.getTime())) {
+			return 'No due date';
+		}
+		return date.toLocaleDateString(undefined, {
+			month: 'short',
+			day: 'numeric',
+			year: 'numeric'
+		});
+	}
+
+	function toggleGoalExpansion(goalId: string) {
+		expandedGoalId = expandedGoalId === goalId ? null : goalId;
+	}
+
+async function handleReverseEngineerGoal(goalId: string) {
+	if (reverseEngineeringGoalId) return;
+
+	try {
+		reverseEngineeringGoalId = goalId;
+		const response = await fetch(`/api/onto/goals/${goalId}/reverse`, {
+			method: 'POST'
+		});
+
+		const payload = await response.json().catch(() => null);
+
+		if (!response.ok) {
+			throw new Error(payload?.error ?? 'Failed to generate plan preview');
+		}
+
+		const preview = payload?.data?.preview as GoalReverseEngineeringResult | undefined;
+		if (!preview || !preview.milestones?.length) {
+			throw new Error('Model did not return any milestones. Try again.');
+		}
+
+		const goalMeta =
+			(payload?.data?.goal as { id: string; name: string } | undefined) ??
+			goals.find((goal) => goal.id === goalId) ?? {
+				id: goalId,
+				name: 'Goal'
+			};
+
+		reverseEngineerPreview = preview;
+		reverseEngineerGoalMeta = {
+			id: goalMeta.id,
+			name: goalMeta.name
+		};
+		reverseEngineerModalOpen = true;
+	} catch (error) {
+		console.error('[Goal Reverse] Failed', error);
+		const message =
+			error instanceof Error && error.message
+				? error.message
+				: 'Failed to generate plan preview';
+		toastService.error(message);
+	} finally {
+		reverseEngineeringGoalId = null;
+	}
+}
+
+async function handleReverseEngineerApproval(milestones: ReverseEngineerMilestonePayload[]) {
+	if (!reverseEngineerGoalMeta) return;
+
+	try {
+		approvingReverseEngineer = true;
+		const response = await fetch(
+			`/api/onto/goals/${reverseEngineerGoalMeta.id}/reverse/apply`,
+			{
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({
+					milestones: milestones.map((milestone) => ({
+						...milestone,
+						due_at: convertDateToISO(milestone.due_at)
+					}))
+				})
+			}
+		);
+
+		const payload = await response.json().catch(() => null);
+
+		if (!response.ok) {
+			throw new Error(payload?.error ?? 'Failed to create milestones');
+		}
+
+		const createdMilestones = Number(payload?.data?.milestones_created ?? milestones.length);
+		const createdTasks = Number(payload?.data?.tasks_created ?? 0);
+
+		toastService.success(
+			`Created ${createdMilestones} milestone${createdMilestones === 1 ? '' : 's'} and ${createdTasks} task${createdTasks === 1 ? '' : 's'}.`
+		);
+
+		await invalidateAll();
+		expandedGoalId = reverseEngineerGoalMeta.id;
+		handleReverseEngineerModalClose();
+	} catch (error) {
+		console.error('[Goal Reverse] Apply failed', error);
+		const message =
+			error instanceof Error && error.message ? error.message : 'Failed to create milestones';
+		toastService.error(message);
+	} finally {
+		approvingReverseEngineer = false;
+	}
+}
 
 	function editOutput(outputId: string) {
 		goto(`/ontology/projects/${project.id}/outputs/${outputId}/edit`);
@@ -238,19 +545,11 @@
 					<span class="text-sm font-mono text-gray-500 dark:text-gray-400">
 						{project.type_key}
 					</span>
+					<!-- ✅ Replaced ternary logic with utility function -->
 					<span
-						class="px-3 py-1 rounded-full text-xs font-semibold capitalize {project.state_key ===
-						'draft'
-							? 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
-							: project.state_key === 'todo' || project.state_key === 'planning'
-								? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
-								: project.state_key === 'active' ||
-									  project.state_key === 'in_progress'
-									? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-									: project.state_key === 'completed' ||
-										  project.state_key === 'done'
-										? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400'
-										: 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'}"
+						class="px-3 py-1 rounded-full text-xs font-semibold capitalize {getProjectStateBadgeClass(
+							project.state_key
+						)}"
 					>
 						{project.state_key}
 					</span>
@@ -377,17 +676,11 @@
 										</div>
 									</div>
 									<div class="flex items-center gap-2 flex-shrink-0">
+										<!-- ✅ Replaced ternary logic with utility function -->
 										<span
-											class="px-3 py-1 rounded-full text-xs font-semibold capitalize {task.state_key ===
-											'todo'
-												? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
-												: task.state_key === 'in_progress'
-													? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-													: task.state_key === 'done'
-														? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400'
-														: task.state_key === 'blocked'
-															? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
-															: 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'}"
+											class="px-3 py-1 rounded-full text-xs font-semibold capitalize {getTaskStateBadgeClass(
+												task.state_key
+											)}"
 										>
 											{task.state_key}
 										</span>
@@ -470,17 +763,11 @@
 											</div>
 										</div>
 									</div>
+									<!-- ✅ Replaced ternary logic with utility function -->
 									<span
-										class="px-3 py-1 rounded-full text-xs font-semibold capitalize self-start sm:self-center {output.state_key ===
-										'draft'
-											? 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
-											: output.state_key === 'review'
-												? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400'
-												: output.state_key === 'approved'
-													? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-													: output.state_key === 'published'
-														? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400'
-														: 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'}"
+										class="px-3 py-1 rounded-full text-xs font-semibold capitalize self-start sm:self-center {getOutputStateBadgeClass(
+											output.state_key
+										)}"
 									>
 										{output.state_key}
 									</span>
@@ -660,69 +947,231 @@
 					{:else}
 						<div class="space-y-3">
 							{#each goals as goal}
+								{@const stats = getGoalStatsForDisplay(goal.id)}
+								{@const goalMilestones = getGoalMilestones(goal.id)}
 								<div
-									class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-gray-300 dark:hover:border-gray-600 transition-colors"
+									class="p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-gray-300 dark:hover:border-gray-600 transition-colors"
 								>
-									<div class="flex-1 min-w-0 flex items-start gap-3">
-										<Target
-											class="w-5 h-5 text-gray-400 flex-shrink-0 mt-0.5"
-										/>
-										<div class="flex-1">
-											<h3
-												class="font-semibold text-gray-900 dark:text-white mb-1"
+									<div class="flex flex-col gap-3">
+										<div
+											class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
+										>
+											<div class="flex flex-1 gap-3">
+												<Target
+													class="w-5 h-5 text-gray-400 flex-shrink-0 mt-0.5"
+												/>
+												<div class="flex-1 min-w-0 space-y-1">
+													<div class="flex flex-wrap items-center gap-2">
+														<h3
+															class="font-semibold text-gray-900 dark:text-white"
+														>
+															{goal.name}
+														</h3>
+														{#if goal.type_key}
+															<span
+																class="text-xs text-gray-500 dark:text-gray-400 font-mono"
+															>
+																{goal.type_key}
+															</span>
+														{/if}
+														{#if goal.state_key}
+															<span
+																class="px-3 py-1 rounded-full text-xs font-semibold capitalize {goal.state_key ===
+																'draft'
+																	? 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+																	: goal.state_key === 'active'
+																		? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
+																		: goal.state_key ===
+																			  'on_track'
+																			? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+																			: goal.state_key ===
+																				  'at_risk'
+																				? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400'
+																				: goal.state_key ===
+																					  'achieved'
+																					? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400'
+																					: goal.state_key ===
+																						  'missed'
+																						? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
+																						: 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'}"
+															>
+																{goal.state_key}
+															</span>
+														{/if}
+														{#if goal.props?.priority}
+															<span
+																class="text-xs px-2 py-0.5 rounded {goal
+																	.props.priority === 'high'
+																	? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
+																	: goal.props.priority ===
+																		  'medium'
+																		? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400'
+																		: 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'}"
+															>
+																{goal.props.priority} priority
+															</span>
+														{/if}
+													</div>
+													{#if goal.props?.measurement_criteria}
+														<p
+															class="text-sm text-gray-600 dark:text-gray-400"
+														>
+															{goal.props.measurement_criteria}
+														</p>
+													{/if}
+													<div
+														class="flex flex-wrap items-center gap-3 text-sm text-gray-500 dark:text-gray-400"
+													>
+														<span>
+															{stats.milestoneCount} milestone{stats.milestoneCount ===
+															1
+																? ''
+																: 's'}
+														</span>
+														<span>
+															{stats.completedTaskCount}/{stats.taskCount ||
+																0} tasks complete
+														</span>
+													</div>
+												</div>
+											</div>
+											<div
+												class="flex items-center gap-2 self-stretch sm:self-auto"
 											>
-												{goal.name}
-											</h3>
-											{#if goal.props?.measurement_criteria}
-												<p
-													class="text-sm text-gray-600 dark:text-gray-400 line-clamp-1"
+												<Button
+													variant="secondary"
+													size="sm"
+													icon={Sparkles}
+													loading={reverseEngineeringGoalId === goal.id}
+													onclick={() =>
+														handleReverseEngineerGoal(goal.id)}
 												>
-													{goal.props.measurement_criteria}
-												</p>
-											{/if}
-											<div class="flex items-center gap-2 mt-1">
-												{#if goal.type_key}
-													<span
-														class="text-xs text-gray-500 dark:text-gray-500"
-													>
-														{goal.type_key}
-													</span>
-												{/if}
-												{#if goal.props?.priority}
-													<span
-														class="text-xs px-2 py-0.5 rounded {goal
-															.props.priority === 'high'
-															? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
-															: goal.props.priority === 'medium'
-																? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400'
-																: 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'}"
-													>
-														{goal.props.priority} priority
-													</span>
-												{/if}
+													Reverse Engineer
+												</Button>
+												<button
+													type="button"
+													class="p-2 rounded-md border border-gray-200 dark:border-gray-700 text-gray-500 hover:text-gray-900 hover:border-gray-400 dark:hover:border-gray-500 transition-colors"
+													onclick={() => toggleGoalExpansion(goal.id)}
+													aria-label="Toggle goal details"
+													aria-expanded={expandedGoalId === goal.id}
+												>
+													<ChevronDown
+														class="w-5 h-5 transition-transform {expandedGoalId ===
+														goal.id
+															? 'rotate-180'
+															: ''}"
+													/>
+												</button>
 											</div>
 										</div>
+										{#if expandedGoalId === goal.id}
+											<div
+												class="border-t border-gray-200 dark:border-gray-700 pt-4 space-y-4"
+											>
+												{#if goalMilestones.length === 0}
+													<p
+														class="text-sm text-gray-500 dark:text-gray-400"
+													>
+														No milestones yet. Use reverse engineering
+														to generate a plan.
+													</p>
+												{:else}
+													{#each goalMilestones as milestone}
+														{@const milestoneStats =
+															getMilestoneTaskStats(milestone.id)}
+														{@const milestoneTasks = getMilestoneTasks(
+															milestone.id
+														)}
+														<div
+															class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 space-y-3"
+														>
+															<div
+																class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3"
+															>
+																<div class="min-w-0">
+																	<p
+																		class="font-semibold text-gray-900 dark:text-white"
+																	>
+																		{milestone.title}
+																	</p>
+																	<p
+																		class="text-sm text-gray-600 dark:text-gray-400 mt-0.5"
+																	>
+																		Due {formatDueDate(
+																			milestone.due_at
+																		)}
+																	</p>
+																	{#if milestone.props?.summary}
+																		<p
+																			class="text-sm text-gray-600 dark:text-gray-400 mt-1"
+																		>
+																			{milestone.props
+																				.summary}
+																		</p>
+																	{/if}
+																</div>
+																<span
+																	class="text-sm font-medium text-gray-600 dark:text-gray-300 whitespace-nowrap"
+																>
+																	{milestoneStats.completed}/{milestoneStats.total}
+																	tasks complete
+																</span>
+															</div>
+															<div class="space-y-2">
+																{#if milestoneTasks.length === 0}
+																	<p
+																		class="text-sm text-gray-500 dark:text-gray-400"
+																	>
+																		No tasks yet for this
+																		milestone.
+																	</p>
+																{:else}
+																	{#each milestoneTasks as task}
+																		<div
+																			class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-3 rounded-lg bg-gray-50 dark:bg-gray-800/40"
+																		>
+																			<div class="min-w-0">
+																				<p
+																					class="font-medium text-gray-900 dark:text-gray-100"
+																				>
+																					{task.title}
+																				</p>
+																				{#if task.props?.description}
+																					<p
+																						class="text-sm text-gray-600 dark:text-gray-400"
+																					>
+																						{task.props
+																							.description}
+																					</p>
+																				{/if}
+																			</div>
+																			<span
+																				class="px-3 py-1 rounded-full text-xs font-semibold capitalize {task.state_key ===
+																				'todo'
+																					? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
+																					: task.state_key ===
+																						  'in_progress'
+																						? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+																						: task.state_key ===
+																							  'done'
+																							? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400'
+																							: task.state_key ===
+																								  'blocked'
+																								? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
+																								: 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'}"
+																			>
+																				{task.state_key}
+																			</span>
+																		</div>
+																	{/each}
+																{/if}
+															</div>
+														</div>
+													{/each}
+												{/if}
+											</div>
+										{/if}
 									</div>
-									{#if goal.state_key}
-										<span
-											class="px-3 py-1 rounded-full text-xs font-semibold capitalize self-start {goal.state_key ===
-											'draft'
-												? 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
-												: goal.state_key === 'active'
-													? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
-													: goal.state_key === 'on_track'
-														? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-														: goal.state_key === 'at_risk'
-															? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400'
-															: goal.state_key === 'achieved'
-																? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400'
-																: goal.state_key === 'missed'
-																	? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
-																	: 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'}"
-										>
-											{goal.state_key}
-										</span>
-									{/if}
 								</div>
 							{/each}
 						</div>
@@ -840,5 +1289,16 @@
 			await invalidateAll();
 			showGoalCreateModal = false;
 		}}
+	/>
+{/if}
+
+{#if reverseEngineerPreview}
+	<GoalReverseEngineerModal
+		bind:open={reverseEngineerModalOpen}
+		goalName={reverseEngineerGoalMeta?.name ?? 'Goal'}
+		preview={reverseEngineerPreview}
+		loading={approvingReverseEngineer}
+		onApprove={(payload) => handleReverseEngineerApproval(payload.milestones)}
+		onCancel={handleReverseEngineerModalClose}
 	/>
 {/if}

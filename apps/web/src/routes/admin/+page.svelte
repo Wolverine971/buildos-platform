@@ -24,7 +24,8 @@
 		AlertTriangle,
 		XCircle,
 		Bell,
-		Workflow
+		Workflow,
+		GitBranch
 	} from 'lucide-svelte';
 	import AdminPageHeader from '$lib/components/admin/AdminPageHeader.svelte';
 	import AdminCard from '$lib/components/admin/AdminCard.svelte';
@@ -245,6 +246,12 @@
 				description: 'Visualize relationships',
 				href: '/admin/ontology/graph',
 				icon: Workflow
+			},
+			{
+				title: 'Ontology Migration',
+				description: 'Project/task migrations',
+				href: '/admin/migration',
+				icon: GitBranch
 			},
 			{
 				title: 'Chat Monitoring',

@@ -68,10 +68,10 @@ export class OntologyContextLoader {
 			throw new Error(`Project ${projectId} not found`);
 		}
 
-		// Extract facets and context_document_id from props
+		// Extract facets and context document reference (column takes precedence, props kept for back-compat)
 		const props = (project.props as any) || {};
 		const facets = props.facets || null;
-		const contextDocumentId = props.context_document_id || null;
+		const contextDocumentId = project.context_document_id || props.context_document_id || null;
 
 		// Load relationships
 		const relationships = await this.loadProjectRelationships(projectId);

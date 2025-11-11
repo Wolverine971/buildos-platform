@@ -15,10 +15,12 @@
 	Related Files:
 	- API Endpoint: /apps/web/src/routes/api/onto/tasks/create/+server.ts
 	- Edit Modal: /apps/web/src/lib/components/ontology/TaskEditModal.svelte
-	- Base Modal: /apps/web/src/lib/components/ui/FormModal.svelte
+	- Base Modal: /apps/web/src/lib/components/ui/Modal.svelte
+	- Form Modal: /apps/web/src/lib/components/ui/FormModal.svelte
 -->
 <script lang="ts">
 	import { ChevronRight, Loader } from 'lucide-svelte';
+	import Modal from '$lib/components/ui/Modal.svelte';
 	import FormModal from '$lib/components/ui/FormModal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import type { FormConfig } from '$lib/types/form';
@@ -161,30 +163,16 @@
 		}
 	}
 
-	function handleCancel() {
-		if (selectedTemplate && showTemplateSelection === false) {
-			// Go back to template selection
-			showTemplateSelection = true;
-			selectedTemplate = null;
-		} else {
-			// Close the modal
-			onClose();
-		}
+	function handleBack() {
+		showTemplateSelection = true;
+		selectedTemplate = null;
 	}
 </script>
 
-<FormModal
-	title={showTemplateSelection ? 'Select Task Template' : 'Create New Task'}
-	config={showTemplateSelection ? {} : formConfig}
-	onSubmit={handleSubmit}
-	onCancel={handleCancel}
-	submitLabel="Create Task"
-	cancelLabel={selectedTemplate && !showTemplateSelection ? 'Back' : 'Cancel'}
-	hideForm={showTemplateSelection}
->
-	<svelte:fragment slot="before-form">
-		{#if showTemplateSelection}
-			<!-- Template Selection -->
+{#if showTemplateSelection}
+	<!-- Template Selection View -->
+	<Modal isOpen={true} title="Select Task Template" {onClose} size="lg">
+		<div class="p-6">
 			{#if isLoadingTemplates}
 				<div class="flex items-center justify-center py-12">
 					<Loader class="w-8 h-8 animate-spin text-gray-400" />
@@ -250,34 +238,43 @@
 					{/if}
 				</div>
 			{/if}
-		{:else if selectedTemplate}
-			<!-- Show selected template info -->
-			<div
-				class="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800 mb-6"
-			>
-				<div class="flex items-start gap-3">
-					<div class="flex-1">
-						<h4 class="font-semibold text-blue-900 dark:text-blue-100 mb-1">
-							{selectedTemplate.name}
-						</h4>
-						{#if selectedTemplate.metadata?.description}
-							<p class="text-sm text-blue-700 dark:text-blue-300">
-								{selectedTemplate.metadata.description}
-							</p>
-						{/if}
+		</div>
+	</Modal>
+{:else}
+	<!-- Task Creation Form -->
+	<FormModal
+		isOpen={true}
+		title="Create New Task"
+		{formConfig}
+		submitText="Create Task"
+		loadingText="Creating..."
+		onSubmit={handleSubmit}
+		onClose={handleBack}
+		size="lg"
+	>
+		<svelte:fragment slot="before-form">
+			{#if selectedTemplate}
+				<!-- Show selected template info -->
+				<div
+					class="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800 mb-6"
+				>
+					<div class="flex items-start gap-3">
+						<div class="flex-1">
+							<h4 class="font-semibold text-blue-900 dark:text-blue-100 mb-1">
+								{selectedTemplate.name}
+							</h4>
+							{#if selectedTemplate.metadata?.description}
+								<p class="text-sm text-blue-700 dark:text-blue-300">
+									{selectedTemplate.metadata.description}
+								</p>
+							{/if}
+						</div>
+						<Button variant="ghost" size="sm" onclick={handleBack}
+							>Change Template</Button
+						>
 					</div>
-					<button
-						type="button"
-						onclick={() => {
-							showTemplateSelection = true;
-							selectedTemplate = null;
-						}}
-						class="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium"
-					>
-						Change
-					</button>
 				</div>
-			</div>
-		{/if}
-	</svelte:fragment>
-</FormModal>
+			{/if}
+		</svelte:fragment>
+	</FormModal>
+{/if}

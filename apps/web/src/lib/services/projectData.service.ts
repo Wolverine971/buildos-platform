@@ -19,6 +19,7 @@ interface BatchFetchOptions {
 	briefs?: boolean;
 	synthesis?: boolean;
 	calendarStatus?: boolean;
+	ontologyEvents?: boolean;
 }
 
 export class ProjectDataService {
@@ -78,6 +79,7 @@ export class ProjectDataService {
 		// Always load stats for header and calendar status for UI
 		loads.push(this.loadStats());
 		loads.push(this.loadCalendarStatus());
+		loads.push(this.loadOntologyEvents());
 
 		return loads;
 	}
@@ -294,6 +296,10 @@ export class ProjectDataService {
 		}
 	}
 
+	async loadOntologyEvents(options: FetchOptions = {}): Promise<void> {
+		await projectStoreV2.loadOntologyEvents(this.projectId, options.force);
+	}
+
 	// Batch loading for initial page load
 	async batchLoad(options: BatchFetchOptions): Promise<void> {
 		const loads: Promise<void>[] = [];
@@ -305,6 +311,7 @@ export class ProjectDataService {
 		if (options.briefs) loads.push(this.loadBriefs());
 		if (options.synthesis) loads.push(this.loadSynthesis());
 		if (options.calendarStatus) loads.push(this.loadCalendarStatus());
+		if (options.ontologyEvents) loads.push(this.loadOntologyEvents());
 
 		await Promise.all(loads);
 	}
@@ -318,7 +325,8 @@ export class ProjectDataService {
 			this.loadStats({ force: true }),
 			this.loadBriefs({ force: true }),
 			this.loadSynthesis({ force: true }),
-			this.loadCalendarStatus({ force: true })
+			this.loadCalendarStatus({ force: true }),
+			this.loadOntologyEvents({ force: true })
 		];
 
 		await Promise.all(loads);

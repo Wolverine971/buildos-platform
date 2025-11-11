@@ -11,7 +11,21 @@
 	let { data }: { data: PageData } = $props();
 
 	let pendingUserId = $state<string | null>(null);
+	let pendingFeature = $state<FeatureName | null>(null);
 	let errorMessage = $state<string | null>(null);
+
+	const featureColumns: Array<{ label: string; feature: FeatureName; description: string }> = [
+		{
+			label: 'Time Blocks',
+			feature: 'time_play',
+			description: 'Unlocks the time-blocking beta experience.'
+		},
+		{
+			label: 'Dual-write (Projects)',
+			feature: 'migration.dualwrite.projects',
+			description: 'Gates ontology dual-write + migration orchestration per org.'
+		}
+	];
 
 	function getFlag(user: PageData['users'][number], feature: FeatureName) {
 		return user.feature_flags?.find((flag) => flag.feature_name === feature) ?? null;
@@ -28,6 +42,7 @@
 		formData.set('enable', String(!currentlyEnabled));
 
 		pendingUserId = userId;
+		pendingFeature = featureName;
 		errorMessage = null;
 
 		try {
@@ -55,6 +70,7 @@
 			errorMessage = 'Unexpected error while updating feature flag';
 		} finally {
 			pendingUserId = null;
+			pendingFeature = null;
 		}
 	}
 </script>
@@ -92,14 +108,13 @@
 					>
 						<th class="px-5 py-3">User</th>
 						<th class="px-5 py-3">Email</th>
-						<th class="px-5 py-3">Time Blocks</th>
-						<th class="px-5 py-3">Last Updated</th>
-						<th class="px-5 py-3 text-right">Actions</th>
+						{#each featureColumns as column}
+							<th class="px-5 py-3">{column.label}</th>
+						{/each}
 					</tr>
 				</thead>
 				<tbody class="divide-y divide-slate-200/60 dark:divide-slate-800/60">
 					{#each data.users as user}
-						{@const timePlayFlag = getFlag(user, 'time_play')}
 						<tr
 							class="transition-colors hover:bg-slate-50/80 dark:hover:bg-slate-800/50"
 						>
@@ -120,43 +135,56 @@
 							<td class="px-5 py-4 text-sm text-slate-600 dark:text-slate-300">
 								{user.email}
 							</td>
-							<td class="px-5 py-4">
-								{#if timePlayFlag?.enabled}
-									<Badge size="sm" variant="success">Enabled</Badge>
-								{:else}
-									<Badge
-										size="sm"
-										variant="info"
-										class="bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700"
-									>
-										Disabled
-									</Badge>
-								{/if}
-							</td>
-							<td class="px-5 py-4 text-sm text-slate-600 dark:text-slate-300">
-								{#if timePlayFlag?.updated_at}
-									<time datetime={timePlayFlag.updated_at}>
-										{new Date(timePlayFlag.updated_at).toLocaleString()}
-									</time>
-								{:else}
-									<span class="text-slate-400 dark:text-slate-500">Not set</span>
-								{/if}
-							</td>
-							<td class="px-5 py-4 text-right">
-								<Button
-									size="sm"
-									variant={timePlayFlag?.enabled ? 'secondary' : 'primary'}
-									loading={pendingUserId === user.id}
-									onclick={() =>
-										toggleFeature(
-											user.id,
-											'time_play',
-											timePlayFlag?.enabled ?? false
-										)}
-								>
-									{timePlayFlag?.enabled ? 'Disable' : 'Enable'}
-								</Button>
-							</td>
+							{#each featureColumns as column}
+								{@const flag = getFlag(user, column.feature)}
+								<td class="px-5 py-4 align-top">
+									<div class="flex flex-col gap-3">
+										<div class="flex items-center gap-2">
+											{#if flag?.enabled}
+												<Badge size="sm" variant="success">Enabled</Badge>
+											{:else}
+												<Badge
+													size="sm"
+													variant="info"
+													class="bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700"
+												>
+													Disabled
+												</Badge>
+											{/if}
+										</div>
+										<p
+											class="text-xs text-slate-500 dark:text-slate-400 leading-snug"
+										>
+											{column.description}
+										</p>
+										<div class="text-xs text-slate-500 dark:text-slate-400">
+											{#if flag?.updated_at}
+												<time datetime={flag.updated_at}>
+													Last updated {new Date(
+														flag.updated_at
+													).toLocaleString()}
+												</time>
+											{:else}
+												<span>Not set</span>
+											{/if}
+										</div>
+										<Button
+											size="sm"
+											variant={flag?.enabled ? 'secondary' : 'primary'}
+											loading={pendingUserId === user.id &&
+												pendingFeature === column.feature}
+											onclick={() =>
+												toggleFeature(
+													user.id,
+													column.feature,
+													flag?.enabled ?? false
+												)}
+										>
+											{flag?.enabled ? 'Disable' : 'Enable'}
+										</Button>
+									</div>
+								</td>
+							{/each}
 						</tr>
 					{/each}
 				</tbody>

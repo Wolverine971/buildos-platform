@@ -58,6 +58,33 @@ The system uses a **type_key** convention (e.g., `writer.book`, `coach.client`) 
 - **Scale**: size/duration (micro to epic)
 - **Stage**: lifecycle phase (discovery to complete)
 
+### 📄 Project Context Documents
+
+Every ontology project now carries an explicit context document with type key `document.project.context`:
+
+- Generated automatically during instantiation or migration.
+- Stores the canonical Markdown narrative from the legacy `projects.context` column (plus extracted core values).
+- Linked via `onto_projects.context_document_id`, so UI pipelines and agents can reliably fetch the story without mining `props`. The FK column is now the source of truth; `props.context_document_id` only remains for back-compat.
+- Document `props` capture the raw Markdown (`body_markdown`), `legacy_project_id`, migration metadata, and the nine core dimension summaries.
+- Dry-run migrations surface the exact context payload inside the preview modal so reviewers can inspect what will be written without touching the DB.
+
+### 🧱 Task + Calendar Migration Preview
+
+- `/admin/migration` now exposes a **Migrate Tasks** action per project. It calls the `TaskMigrationService` in dry-run mode, renders the proposed ontology tasks (state, type, phase/plan mapping, calendar counts), and lets admins approve before writing anything.
+- Confirming writes uses the new `/api/admin/migration/tasks/run` endpoint, which reuses the same services but only touches tasks + calendars for the selected project.
+- `task_calendar_events` are cloned into `onto_events` during task migration, and each event now emits a `task → event` edge (`rel: has_event`) so planners/agents can traverse work sessions from the ontology graph.
+
+### 🧠 Template Inference + Project Mapping
+
+- Legacy project migrations now run a multi-step LLM workflow to classify the correct `project` template:
+    1. Choose the best realm from the existing catalog (or propose a new realm) using aggregated template metadata.
+    2. Call the existing Template Analyzer service to pick domain/deliverable/variant combinations with confidence + rationale.
+    3. If no concrete template exists, automatically materialize a new one (JSON schema, FSM, facet defaults) that inherits from the suggested parent.
+- Once the template is locked, a second LLM pass maps the legacy context into the template schema, producing structured `onto_projects.props` that match the template’s JSON schema and suggested facets.
+- Dry runs surface the full classification + creation plan (realm, domain/deliverable, parent template) without mutating Supabase so humans can review before committing the new template/project.
+
+> **Why?** Treating the context as a first-class document keeps the project narrative queryable, diffable, and renderable across surfaces (agent chat, planner, UI) while legacy migrations remain lossless.
+
 ---
 
 ## ✅ Implementation Status

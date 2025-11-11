@@ -2958,6 +2958,39 @@ export type Database = {
           },
         ]
       }
+      legacy_entity_mappings: {
+        Row: {
+          checksum: string | null
+          id: number
+          legacy_id: string
+          legacy_table: string
+          metadata: Json
+          migrated_at: string
+          onto_id: string
+          onto_table: string
+        }
+        Insert: {
+          checksum?: string | null
+          id?: number
+          legacy_id: string
+          legacy_table: string
+          metadata?: Json
+          migrated_at?: string
+          onto_id: string
+          onto_table: string
+        }
+        Update: {
+          checksum?: string | null
+          id?: number
+          legacy_id?: string
+          legacy_table?: string
+          metadata?: Json
+          migrated_at?: string
+          onto_id?: string
+          onto_table?: string
+        }
+        Relationships: []
+      }
       llm_prompts: {
         Row: {
           id: string
@@ -3177,6 +3210,60 @@ export type Database = {
           total_tokens?: number
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      migration_log: {
+        Row: {
+          batch_id: string | null
+          created_at: string
+          entity_type: string
+          error_message: string | null
+          id: number
+          legacy_id: string | null
+          legacy_table: string | null
+          metadata: Json
+          onto_id: string | null
+          onto_table: string | null
+          operation: string
+          org_id: string | null
+          run_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          batch_id?: string | null
+          created_at?: string
+          entity_type: string
+          error_message?: string | null
+          id?: number
+          legacy_id?: string | null
+          legacy_table?: string | null
+          metadata?: Json
+          onto_id?: string | null
+          onto_table?: string | null
+          operation?: string
+          org_id?: string | null
+          run_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          batch_id?: string | null
+          created_at?: string
+          entity_type?: string
+          error_message?: string | null
+          id?: number
+          legacy_id?: string | null
+          legacy_table?: string | null
+          metadata?: Json
+          onto_id?: string | null
+          onto_table?: string | null
+          operation?: string
+          org_id?: string | null
+          run_id?: string
+          status?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -3772,6 +3859,174 @@ export type Database = {
           src_kind?: string
         }
         Relationships: []
+      }
+      onto_event_sync: {
+        Row: {
+          calendar_id: string
+          created_at: string
+          event_id: string
+          external_event_id: string
+          id: string
+          last_synced_at: string | null
+          provider: string
+          sync_error: string | null
+          sync_status: string
+          sync_token: string | null
+          updated_at: string
+        }
+        Insert: {
+          calendar_id: string
+          created_at?: string
+          event_id: string
+          external_event_id: string
+          id?: string
+          last_synced_at?: string | null
+          provider?: string
+          sync_error?: string | null
+          sync_status?: string
+          sync_token?: string | null
+          updated_at?: string
+        }
+        Update: {
+          calendar_id?: string
+          created_at?: string
+          event_id?: string
+          external_event_id?: string
+          id?: string
+          last_synced_at?: string | null
+          provider?: string
+          sync_error?: string | null
+          sync_status?: string
+          sync_token?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onto_event_sync_calendar_id_fkey"
+            columns: ["calendar_id"]
+            isOneToOne: false
+            referencedRelation: "project_calendars"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onto_event_sync_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "onto_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      onto_events: {
+        Row: {
+          all_day: boolean
+          created_at: string
+          created_by: string
+          deleted_at: string | null
+          description: string | null
+          end_at: string | null
+          external_link: string | null
+          facet_context: string | null
+          facet_scale: string | null
+          facet_stage: string | null
+          id: string
+          last_synced_at: string | null
+          location: string | null
+          org_id: string | null
+          owner_entity_id: string | null
+          owner_entity_type: string
+          project_id: string | null
+          props: Json
+          recurrence: Json
+          start_at: string
+          state_key: string
+          sync_error: string | null
+          sync_status: string
+          template_id: string | null
+          template_snapshot: Json
+          timezone: string | null
+          title: string
+          type_key: string
+          updated_at: string
+        }
+        Insert: {
+          all_day?: boolean
+          created_at?: string
+          created_by: string
+          deleted_at?: string | null
+          description?: string | null
+          end_at?: string | null
+          external_link?: string | null
+          facet_context?: string | null
+          facet_scale?: string | null
+          facet_stage?: string | null
+          id?: string
+          last_synced_at?: string | null
+          location?: string | null
+          org_id?: string | null
+          owner_entity_id?: string | null
+          owner_entity_type: string
+          project_id?: string | null
+          props?: Json
+          recurrence?: Json
+          start_at: string
+          state_key?: string
+          sync_error?: string | null
+          sync_status?: string
+          template_id?: string | null
+          template_snapshot?: Json
+          timezone?: string | null
+          title: string
+          type_key: string
+          updated_at?: string
+        }
+        Update: {
+          all_day?: boolean
+          created_at?: string
+          created_by?: string
+          deleted_at?: string | null
+          description?: string | null
+          end_at?: string | null
+          external_link?: string | null
+          facet_context?: string | null
+          facet_scale?: string | null
+          facet_stage?: string | null
+          id?: string
+          last_synced_at?: string | null
+          location?: string | null
+          org_id?: string | null
+          owner_entity_id?: string | null
+          owner_entity_type?: string
+          project_id?: string | null
+          props?: Json
+          recurrence?: Json
+          start_at?: string
+          state_key?: string
+          sync_error?: string | null
+          sync_status?: string
+          template_id?: string | null
+          template_snapshot?: Json
+          timezone?: string | null
+          title?: string
+          type_key?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onto_events_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onto_events_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "onto_templates"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       onto_facet_definitions: {
         Row: {
@@ -4838,6 +5093,7 @@ export type Database = {
           id: string
           is_primary: boolean | null
           last_synced_at: string | null
+          onto_project_id: string | null
           project_id: string
           sync_enabled: boolean | null
           sync_error: string | null
@@ -4857,6 +5113,7 @@ export type Database = {
           id?: string
           is_primary?: boolean | null
           last_synced_at?: string | null
+          onto_project_id?: string | null
           project_id: string
           sync_enabled?: boolean | null
           sync_error?: string | null
@@ -4876,6 +5133,7 @@ export type Database = {
           id?: string
           is_primary?: boolean | null
           last_synced_at?: string | null
+          onto_project_id?: string | null
           project_id?: string
           sync_enabled?: boolean | null
           sync_error?: string | null
@@ -4887,6 +5145,13 @@ export type Database = {
           visibility?: Database["public"]["Enums"]["calendar_visibility"] | null
         }
         Relationships: [
+          {
+            foreignKeyName: "project_calendars_onto_project_id_fkey"
+            columns: ["onto_project_id"]
+            isOneToOne: false
+            referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "project_calendars_project_id_fkey"
             columns: ["project_id"]
@@ -8385,6 +8650,16 @@ export type Database = {
           p_sms_enabled?: boolean
           p_timezone?: string
           p_user_id: string
+        }
+        Returns: undefined
+      }
+      upsert_legacy_entity_mapping: {
+        Args: {
+          p_legacy_id: string
+          p_legacy_table: string
+          p_metadata?: Json
+          p_onto_id: string
+          p_onto_table: string
         }
         Returns: undefined
       }
