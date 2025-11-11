@@ -1,22 +1,21 @@
 <!-- apps/web/src/lib/components/ontology/TaskSeriesModal.svelte -->
 <script lang="ts">
-	import { createEventDispatcher } from 'svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import TextInput from '$lib/components/ui/TextInput.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
 
-	interface Props {
+	let {
+		task,
+		isOpen = $bindable(false),
+		onClose,
+		onSuccess
+	}: {
 		task: Record<string, any> | null;
 		isOpen?: boolean;
 		onClose?: () => void;
-	}
-
-	let { task, isOpen = $bindable(false), onClose }: Props = $props();
-
-	const dispatch = createEventDispatcher<{
-		success: { series_id: string };
-	}>();
+		onSuccess?: (data: { series_id: string }) => void;
+	} = $props();
 
 	const COMMON_TIMEZONES = [
 		'UTC',
@@ -125,7 +124,7 @@
 				throw new Error(result?.error || 'Failed to make task recurring');
 			}
 
-			dispatch('success', { series_id: result?.data?.series_id });
+			onSuccess?.({ series_id: result?.data?.series_id });
 			onClose?.();
 			isOpen = false;
 		} catch (err) {

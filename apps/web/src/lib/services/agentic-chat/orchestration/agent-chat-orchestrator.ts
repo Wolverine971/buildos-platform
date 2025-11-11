@@ -133,25 +133,32 @@ export class AgentChatOrchestrator {
 				request.lastTurnContext
 			);
 
+			const shouldForceProjectCreation =
+				request.contextType === 'project_create' && !request.entityId;
+
+			const normalizedAnalysis = shouldForceProjectCreation
+				? this.overrideProjectCreationStrategy(analysis, plannerContext)
+				: analysis;
+
 			const analysisEvent: StreamEvent = {
 				type: 'analysis',
-				analysis
+				analysis: normalizedAnalysis
 			};
 			yield analysisEvent;
 			await callback(analysisEvent);
 
 			const strategyEvent: StreamEvent = {
 				type: 'strategy_selected',
-				strategy: analysis.primary_strategy,
-				confidence: analysis.confidence
+				strategy: normalizedAnalysis.primary_strategy,
+				confidence: normalizedAnalysis.confidence
 			};
 			yield strategyEvent;
 			await callback(strategyEvent);
 
-			switch (analysis.primary_strategy) {
+			switch (normalizedAnalysis.primary_strategy) {
 				case ChatStrategy.SIMPLE_RESEARCH:
 					for await (const event of this.handleSimpleStrategy(
-						analysis,
+						normalizedAnalysis,
 						request,
 						serviceContext,
 						plannerContext
@@ -163,7 +170,19 @@ export class AgentChatOrchestrator {
 
 				case ChatStrategy.COMPLEX_RESEARCH:
 					for await (const event of this.handleComplexStrategy(
-						analysis,
+						normalizedAnalysis,
+						request,
+						serviceContext,
+						plannerContext
+					)) {
+						yield event;
+						await callback(event);
+					}
+					break;
+
+				case ChatStrategy.PROJECT_CREATION:
+					for await (const event of this.handleProjectCreationStrategy(
+						normalizedAnalysis,
 						request,
 						serviceContext,
 						plannerContext
@@ -226,6 +245,12 @@ export class AgentChatOrchestrator {
 
 			const resultEvent: StreamEvent = { type: 'tool_result', result };
 			yield resultEvent;
+
+			if (result.streamEvents) {
+				for (const event of result.streamEvents) {
+					yield event;
+				}
+			}
 
 			toolResults.push(result);
 		}
@@ -307,6 +332,30 @@ export class AgentChatOrchestrator {
 		const usage = planUsage ?? this.toStreamUsage(response.usage);
 		const doneEvent: StreamEvent = usage ? { type: 'done', usage } : { type: 'done' };
 		yield doneEvent;
+	}
+
+	/**
+	 * Handle dedicated project creation workflow (template → project instantiation)
+	 */
+	private async *handleProjectCreationStrategy(
+		analysis: Awaited<ReturnType<StrategyAnalyzer['analyzeUserIntent']>>,
+		request: AgentChatRequest,
+		serviceContext: ServiceContext,
+		plannerContext: PlannerContext
+	): AsyncGenerator<StreamEvent, void, unknown> {
+		const creationAnalysis = {
+			...analysis,
+			primary_strategy: ChatStrategy.PROJECT_CREATION
+		};
+
+		for await (const event of this.handleComplexStrategy(
+			creationAnalysis,
+			request,
+			serviceContext,
+			plannerContext
+		)) {
+			yield event;
+		}
 	}
 
 	/**
@@ -448,6 +497,45 @@ export class AgentChatOrchestrator {
 			return (tool as any).function.name;
 		}
 		return (tool as any).name;
+	}
+
+	private overrideProjectCreationStrategy(
+		analysis: Awaited<ReturnType<StrategyAnalyzer['analyzeUserIntent']>>,
+		plannerContext: PlannerContext
+	): Awaited<ReturnType<StrategyAnalyzer['analyzeUserIntent']>> {
+		const toolOrder = [
+			'list_onto_templates',
+			'request_template_creation',
+			'create_onto_project'
+		];
+		const available = plannerContext.availableTools.map((tool) => this.getToolName(tool));
+		const prioritized = toolOrder.filter((tool) => available.includes(tool));
+
+		const mergedTools: string[] = [];
+		if (prioritized.length > 0) {
+			mergedTools.push(...prioritized);
+		}
+		if (analysis.required_tools?.length) {
+			for (const tool of analysis.required_tools) {
+				if (!mergedTools.includes(tool)) {
+					mergedTools.push(tool);
+				}
+			}
+		}
+		if (mergedTools.length === 0) {
+			mergedTools.push('create_onto_project');
+		}
+
+		return {
+			...analysis,
+			primary_strategy: ChatStrategy.PROJECT_CREATION,
+			required_tools: mergedTools,
+			confidence: Math.max(analysis.confidence ?? 0.9, 0.9),
+			can_complete_directly: true,
+			reasoning: analysis.reasoning?.includes('project')
+				? analysis.reasoning
+				: `${analysis.reasoning || ''} Project creation context requires instantiating the workspace before other work.`
+		};
 	}
 
 	private async safeUpdatePlannerStatus(plannerAgentId: string): Promise<void> {

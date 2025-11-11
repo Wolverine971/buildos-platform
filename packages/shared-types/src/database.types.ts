@@ -416,6 +416,78 @@ export type Database = {
           },
         ]
       }
+      agent_template_creation_requests: {
+        Row: {
+          braindump: string | null
+          created_at: string
+          deliverables: Json | null
+          error: string | null
+          facets: Json | null
+          id: string
+          missing_information: Json | null
+          realm: string
+          request_id: string
+          result_template_id: string | null
+          session_id: string | null
+          status: string
+          template_hints: Json | null
+          template_summary: Json | null
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          braindump?: string | null
+          created_at?: string
+          deliverables?: Json | null
+          error?: string | null
+          facets?: Json | null
+          id?: string
+          missing_information?: Json | null
+          realm: string
+          request_id: string
+          result_template_id?: string | null
+          session_id?: string | null
+          status?: string
+          template_hints?: Json | null
+          template_summary?: Json | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          braindump?: string | null
+          created_at?: string
+          deliverables?: Json | null
+          error?: string | null
+          facets?: Json | null
+          id?: string
+          missing_information?: Json | null
+          realm?: string
+          request_id?: string
+          result_template_id?: string | null
+          session_id?: string | null
+          status?: string
+          template_hints?: Json | null
+          template_summary?: Json | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_template_creation_requests_result_template_id_fkey"
+            columns: ["result_template_id"]
+            isOneToOne: false
+            referencedRelation: "onto_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_template_creation_requests_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "chat_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agents: {
         Row: {
           available_tools: Json | null
@@ -8942,6 +9014,7 @@ export const Constants = {
         "simple_research",
         "complex_research",
         "ask_clarifying_questions",
+        "project_creation",
       ],
       priority_level: ["low", "medium", "high"],
       project_status: ["active", "paused", "completed", "archived"],

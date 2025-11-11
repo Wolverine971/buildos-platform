@@ -139,7 +139,8 @@
 	let currentStreamController: AbortController | null = null;
 	let inputValue = $state('');
 	let error = $state<string | null>(null);
-	let currentPlan = $state<any>(null);
+	// Used for tracking plan state, may be displayed in future (prefixed with _ to indicate intentionally unused)
+	let _currentPlan = $state<any>(null);
 	let currentActivity = $state<string>('');
 	let userHasScrolled = $state(false);
 	let currentAssistantMessageId = $state<string | null>(null);
@@ -148,7 +149,8 @@
 	// Ontology integration state
 	let lastTurnContext = $state<LastTurnContext | null>(null);
 	let currentStrategy = $state<string | null>(null);
-	let strategyConfidence = $state<number>(0);
+	// Used for tracking strategy confidence, may be displayed in future (prefixed with _ to indicate intentionally unused)
+	let _strategyConfidence = $state<number>(0);
 	let ontologyLoaded = $state(false);
 	let ontologySummary = $state<string | null>(null);
 
@@ -160,7 +162,7 @@
 		timestamp: Date;
 	}
 
-	let voiceInputRef: TextareaWithVoiceComponent | null = null;
+	let voiceInputRef = $state<TextareaWithVoiceComponent | null>(null);
 	let isVoiceRecording = $state(false);
 	let isVoiceInitializing = $state(false);
 	let isVoiceTranscribing = $state(false);
@@ -206,7 +208,7 @@
 
 		messages = [];
 		currentSession = null;
-		currentPlan = null;
+		_currentPlan = null;
 		currentActivity = '';
 		inputValue = '';
 		error = null;
@@ -216,7 +218,7 @@
 		// Reset ontology state
 		lastTurnContext = null;
 		currentStrategy = null;
-		strategyConfidence = 0;
+		_strategyConfidence = 0;
 		ontologyLoaded = false;
 		ontologySummary = null;
 		voiceErrorMessage = '';
@@ -309,9 +311,9 @@
 		if (
 			!trimmed ||
 			isStreaming ||
-			isCurrentlyRecording ||
-			isInitializingRecording ||
-			isTranscribing
+			isVoiceRecording ||
+			isVoiceInitializing ||
+			isVoiceTranscribing
 		)
 			return;
 		if (!selectedContextType) {
@@ -342,11 +344,10 @@
 
 		messages = [...messages, userMessage];
 		inputValue = '';
-		liveTranscriptPreview = '';
 		error = null;
 		isStreaming = true;
 		currentActivity = 'Analyzing request...';
-		currentPlan = null;
+		_currentPlan = null;
 
 		// Reset scroll flag so we always scroll to show new user message
 		userHasScrolled = false;
@@ -471,7 +472,7 @@
 			case 'strategy_selected':
 				// Strategy was selected by planner
 				currentStrategy = data.strategy;
-				strategyConfidence = data.confidence || 0;
+				_strategyConfidence = data.confidence || 0;
 				const strategyName = data.strategy?.replace(/_/g, ' ') || 'unknown';
 				const confidencePercent = Math.round((data.confidence || 0) * 100);
 				addActivityMessage(
@@ -501,7 +502,7 @@
 			case 'analysis':
 				// Planner is analyzing the request
 				currentActivity = 'Planner analyzing request...';
-				debugger;
+				
 				addActivityMessage(
 					`Strategy: ${data.analysis?.primary_strategy || 'unknown'} - ${data.analysis?.reasoning || ''}`
 				);
@@ -509,7 +510,7 @@
 
 			case 'plan_created':
 				// Plan created with steps
-				currentPlan = data.plan;
+				_currentPlan = data.plan;
 				currentActivity = `Executing plan with ${data.plan?.steps?.length || 0} steps...`;
 				addPlanMessage(data.plan);
 				break;
@@ -542,6 +543,30 @@
 			case 'tool_result':
 				// Tool result received
 				addActivityMessage('Tool execution completed');
+				break;
+			case 'template_creation_request': {
+				const request = data.request;
+				const realmLabel = request?.realm_suggestion || 'new realm';
+				addActivityMessage(`Escalating template creation (${realmLabel})...`);
+				break;
+			}
+			case 'template_creation_status':
+				addActivityMessage(
+					`Template creation status: ${data.status.replace(/_/g, ' ')}${
+						data.message ? ` · ${data.message}` : ''
+					}`
+				);
+				break;
+			case 'template_created': {
+				const template = data.template;
+				addActivityMessage(
+					`Template ready: ${template?.name || 'Untitled'} (${template?.type_key})`
+				);
+				break;
+			}
+			case 'template_creation_failed':
+				addActivityMessage(`Template creation failed: ${data.error || 'Unknown error'}`);
+				error = data.error || 'Template creation failed. Please adjust the request.';
 				break;
 
 			case 'context_shift': {
@@ -822,7 +847,7 @@
 	</div>
 
 	<div
-		class="relative z-10 flex h-[min(82vh,820px)] flex-col overflow-hidden rounded-3xl border border-slate-200/60 bg-white/95 shadow-[0_28px_70px_-40px_rgba(15,23,42,0.5)] backdrop-blur-xl dark:border-slate-700/60 dark:bg-slate-900/90"
+		class="relative z-10 flex h-full flex-col overflow-hidden rounded-3xl border border-slate-200/60 bg-white/95 shadow-[0_28px_70px_-40px_rgba(15,23,42,0.5)] backdrop-blur-xl dark:border-slate-700/60 dark:bg-slate-900/90"
 	>
 		{#if !selectedContextType}
 			<div class="flex h-full flex-col overflow-hidden">
@@ -1015,45 +1040,45 @@
 					}}
 					class="space-y-3"
 				>
-					<div class="relative">
-						<TextareaWithVoice
-							bind:this={voiceInputRef}
-							bind:value={inputValue}
-							bind:isRecording={isVoiceRecording}
-							bind:isInitializing={isVoiceInitializing}
-							bind:isTranscribing={isVoiceTranscribing}
-							bind:voiceError={voiceErrorMessage}
-							bind:recordingDuration={voiceRecordingDuration}
-							bind:canUseLiveTranscript={voiceSupportsLiveTranscript}
-							class="w-full"
-							containerClass="space-y-0 rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900"
-							textareaClass="border-none bg-transparent px-4 py-3 pr-32 text-[15px] leading-relaxed text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-0 dark:text-slate-100 dark:placeholder:text-slate-500"
-							placeholder={`Share the next thing about ${displayContextLabel.toLowerCase()}...`}
-							autoResize
-							rows={1}
-							maxRows={6}
-							disabled={isStreaming}
-							voiceBlocked={isStreaming}
-							voiceBlockedLabel="Wait for agents..."
-							idleHint="Use the mic to add detail before you send."
-							voiceButtonLabel="Record voice note"
-							showStatusRow={false}
-							onkeydown={handleKeyDown}
-						/>
-
-						<button
-							type="submit"
-							class="absolute bottom-2 right-2 flex h-11 w-11 items-center justify-center rounded-full bg-slate-900 text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
-							aria-label="Send message"
-							disabled={isSendDisabled}
-						>
-							{#if isStreaming}
-								<Loader class="h-5 w-5 animate-spin" />
-							{:else}
-								<Send class="h-5 w-5" />
-							{/if}
-						</button>
-					</div>
+					<TextareaWithVoice
+						bind:this={voiceInputRef}
+						bind:value={inputValue}
+						bind:isRecording={isVoiceRecording}
+						bind:isInitializing={isVoiceInitializing}
+						bind:isTranscribing={isVoiceTranscribing}
+						bind:voiceError={voiceErrorMessage}
+						bind:recordingDuration={voiceRecordingDuration}
+						bind:canUseLiveTranscript={voiceSupportsLiveTranscript}
+						class="w-full"
+						containerClass="space-y-0 rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900"
+						textareaClass="border-none bg-transparent px-4 py-3 text-[15px] leading-relaxed text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-0 dark:text-slate-100 dark:placeholder:text-slate-500"
+						placeholder={`Share the next thing about ${displayContextLabel.toLowerCase()}...`}
+						autoResize
+						rows={1}
+						maxRows={6}
+						disabled={isStreaming}
+						voiceBlocked={isStreaming}
+						voiceBlockedLabel="Wait for agents..."
+						idleHint="Use the mic to add detail before you send."
+						voiceButtonLabel="Record voice note"
+						showStatusRow={false}
+						onkeydown={handleKeyDown}
+					>
+						{#snippet actions()}
+							<button
+								type="submit"
+								class="flex h-10 w-10 items-center justify-center rounded-full bg-slate-900 text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
+								aria-label="Send message"
+								disabled={isSendDisabled}
+							>
+								{#if isStreaming}
+									<Loader class="h-5 w-5 animate-spin" />
+								{:else}
+									<Send class="h-5 w-5" />
+								{/if}
+							</button>
+						{/snippet}
+					</TextareaWithVoice>
 
 					<div
 						class="flex flex-wrap items-center justify-between gap-3 text-xs font-medium text-slate-500 dark:text-slate-400"

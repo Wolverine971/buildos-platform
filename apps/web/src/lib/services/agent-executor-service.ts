@@ -299,9 +299,8 @@ export class AgentExecutorService {
 			});
 		}
 
-		// Create tool executor with READ-ONLY permission
-		// Filter tools to only READ-ONLY
-		const readOnlyTools = getToolsForAgent(context.tools, 'read_only');
+		// Determine tool permissions (executor agents now need write capabilities)
+		const writeEnabledTools = getToolsForAgent(context.tools, 'read_write');
 		const toolExecutor = new ChatToolExecutor(
 			this.supabase,
 			userId,
@@ -319,7 +318,7 @@ export class AgentExecutorService {
 				sessionId: context.metadata.sessionId,
 				taskDescription: context.task.description,
 				taskGoal: context.task.goal,
-				availableTools: readOnlyTools.map((t) => t.function.name),
+				availableTools: writeEnabledTools.map((t) => t.function.name),
 				hasRelevantData: !!context.relevantData,
 				userId
 			}
@@ -332,9 +331,9 @@ export class AgentExecutorService {
 		// Stream from LLM with READ-ONLY tools
 		for await (const event of this.smartLLM.streamText({
 			messages,
-			tools: readOnlyTools,
+			tools: writeEnabledTools,
 			tool_choice: 'auto',
-			userId: context.metadata.sessionId,
+			userId,
 			profile: 'speed', // Use fast model for executor
 			temperature: 0.3,
 			maxTokens: 1500,
@@ -348,7 +347,7 @@ export class AgentExecutorService {
 					break;
 
 				case 'tool_call':
-					// Execute READ-ONLY tool
+					// Execute tool with read/write capabilities
 					toolCallsMade++;
 					try {
 						const result = await toolExecutor.execute(event.tool_call!);
@@ -680,6 +679,45 @@ export class AgentExecutorService {
 		}
 
 		return `Executor completed the task successfully. Result:\n${JSON.stringify(result.data, null, 2).substring(0, 2000)}`;
+	}
+
+	private async persistExecution(
+		context: ExecutorContext,
+		result: { data: any; toolCallsMade: number; tokensUsed: number }
+	): Promise<void> {
+		try {
+			const summaryHeader = [
+				`Executor ID: ${context.metadata.executorId}`,
+				`Plan ID: ${context.metadata.planId ?? 'n/a'}`,
+				`Session ID: ${context.metadata.sessionId}`
+			].join('\n');
+
+			await savePromptForAudit({
+				systemPrompt: `Executor Result Summary\n${summaryHeader}`,
+				userPrompt: JSON.stringify(
+					{
+						task: context.task,
+						result: result.data,
+						toolCallsMade: result.toolCallsMade,
+						tokensUsed: result.tokensUsed
+					},
+					null,
+					2
+				),
+				scenarioType: 'agent-executor-result',
+				metadata: {
+					executorId: context.metadata.executorId,
+					planId: context.metadata.planId,
+					sessionId: context.metadata.sessionId,
+					taskId: context.task.id,
+					toolCalls: result.toolCallsMade,
+					tokensUsed: result.tokensUsed,
+					timestamp: new Date().toISOString()
+				}
+			});
+		} catch (error) {
+			console.warn('[AgentExecutorService] Failed to persist executor result', error);
+		}
 	}
 
 	// ============================================

@@ -11,6 +11,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { ChatToolCall, ChatToolResult } from '@buildos/shared-types';
 import { getToolCategory, ENTITY_FIELD_INFO } from './tools.config';
 import { ensureActorId } from '$lib/services/ontology/ontology-projects.service';
+import { TemplateCreationService } from '$lib/services/agentic-chat/template-creation/template-creation-service';
 
 interface ListOntoTasksArgs {
 	project_id?: string;
@@ -195,10 +196,26 @@ interface CreateOntoProjectArgs {
 	meta?: Record<string, unknown>;
 }
 
+interface RequestTemplateCreationArgs {
+	braindump: string;
+	realm: string;
+	template_hints?: string[];
+	deliverables?: string[];
+	template_suggestions?: string[];
+	missing_information?: string[];
+	facets?: {
+		context?: string;
+		scale?: string;
+		stage?: string;
+	};
+	source_message_id?: string;
+}
+
 export class ChatToolExecutor {
 	private sessionId?: string;
 	private fetchFn: typeof fetch;
 	private actorId?: string;
+	private templateCreationService?: TemplateCreationService;
 
 	constructor(
 		private supabase: SupabaseClient,
@@ -324,6 +341,11 @@ export class ChatToolExecutor {
 				case 'create_onto_project':
 					result = await this.createOntoProject(args as CreateOntoProjectArgs);
 					break;
+				case 'request_template_creation':
+					result = await this.requestTemplateCreation(
+						args as RequestTemplateCreationArgs
+					);
+					break;
 
 				case 'create_onto_task':
 					result = await this.createOntoTask(args as CreateOntoTaskArgs);
@@ -362,13 +384,15 @@ export class ChatToolExecutor {
 			}
 
 			const duration = Date.now() - startTime;
-			await this.logToolExecution(toolCall, result, duration, true);
+			const { payload, streamEvents } = this.extractStreamEvents(result);
+			await this.logToolExecution(toolCall, payload, duration, true);
 
 			return {
 				tool_call_id: toolCall.id,
-				result,
+				result: payload,
 				success: true,
-				duration_ms: duration
+				duration_ms: duration,
+				stream_events: streamEvents
 			};
 		} catch (error: any) {
 			const duration = Date.now() - startTime;
@@ -402,12 +426,112 @@ export class ChatToolExecutor {
 		}
 	}
 
+	private extractStreamEvents(result: any): { payload: any; streamEvents?: any[] } {
+		if (!result || typeof result !== 'object') {
+			return { payload: result };
+		}
+
+		const maybe = result as Record<string, any>;
+		if (!('_stream_events' in maybe)) {
+			return { payload: result };
+		}
+
+		const events = Array.isArray(maybe._stream_events) ? maybe._stream_events : undefined;
+		const payload = Array.isArray(result) ? [...(result as any[])] : { ...maybe };
+		if (!Array.isArray(payload)) {
+			delete (payload as Record<string, any>)._stream_events;
+		}
+		return { payload, streamEvents: events };
+	}
+
+	private getTemplateCreationService(): TemplateCreationService {
+		if (!this.templateCreationService) {
+			this.templateCreationService = new TemplateCreationService(this.supabase as any);
+		}
+		return this.templateCreationService;
+	}
+
+	private async requestTemplateCreation(args: RequestTemplateCreationArgs) {
+		const braindump = args.braindump?.trim();
+		const realm = args.realm?.trim();
+
+		if (!braindump) {
+			throw new Error('braindump is required for template creation');
+		}
+		if (!realm) {
+			throw new Error('realm is required for template creation');
+		}
+
+		const creation = await this.getTemplateCreationService().requestTemplateCreation({
+			userId: this.userId,
+			sessionId: this.sessionId,
+			braindump,
+			realm,
+			templateHints: args.template_hints,
+			deliverables: args.deliverables,
+			templateSuggestions: args.template_suggestions,
+			missingInformation: args.missing_information,
+			facets: args.facets
+		});
+
+		const events: any[] = [
+			{
+				type: 'template_creation_request',
+				request: {
+					request_id: creation.requestId,
+					session_id: this.sessionId,
+					user_id: this.userId,
+					braindump,
+					realm_suggestion: realm,
+					template_hints: creation.templateHints ?? args.template_hints ?? [],
+					missing_information: args.missing_information ?? [],
+					source_message_id: args.source_message_id,
+					created_at: new Date().toISOString()
+				}
+			}
+		];
+
+		if (creation.status === 'completed' && creation.templateResponse) {
+			events.push({
+				type: 'template_created',
+				request_id: creation.requestId,
+				template: creation.templateResponse
+			});
+		} else {
+			events.push({
+				type: 'template_creation_failed',
+				request_id: creation.requestId,
+				error: creation.error || 'Template creation failed',
+				actionable: creation.actionable
+			});
+		}
+
+		return {
+			status: creation.status,
+			request_id: creation.requestId,
+			template: creation.templateResponse ?? null,
+			message:
+				creation.status === 'completed' && creation.templateResponse
+					? `Created template "${creation.templateResponse.name}" (${creation.templateResponse.type_key}).`
+					: `Template creation failed: ${creation.error ?? 'unknown error'}`,
+			_stream_events: events
+		};
+	}
+
 	private async getFieldInfo(args: { entity_type: string; field_name?: string }): Promise<{
 		entity_type: string;
 		fields: Record<string, unknown>;
 		message: string;
 	}> {
 		const { entity_type, field_name } = args;
+
+		// Validate entity_type is provided
+		if (!entity_type || entity_type === 'undefined' || entity_type === 'null') {
+			const validTypes = Object.keys(ENTITY_FIELD_INFO).join(', ');
+			throw new Error(
+				`The 'entity_type' parameter is required for get_field_info. Valid types: ${validTypes}. Example: get_field_info({ entity_type: "ontology_project" })`
+			);
+		}
 
 		const schema = ENTITY_FIELD_INFO[entity_type];
 		if (!schema) {

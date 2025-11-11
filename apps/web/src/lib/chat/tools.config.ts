@@ -53,7 +53,8 @@ export const TOOL_CATEGORIES = {
 			'update_onto_project',
 			'delete_onto_task',
 			'delete_onto_goal',
-			'delete_onto_plan'
+			'delete_onto_plan',
+			'request_template_creation'
 		],
 		averageTokens: 400,
 		costTier: 'medium'
@@ -80,7 +81,7 @@ const TOOL_GROUPS: Record<ToolContextScope, string[]> = {
 		'list_onto_plans',
 		'list_onto_templates'
 	],
-	project_create: ['list_onto_templates', 'create_onto_project'],
+	project_create: ['list_onto_templates', 'request_template_creation', 'create_onto_project'],
 	project: [
 		'list_onto_projects',
 		'search_onto_projects',

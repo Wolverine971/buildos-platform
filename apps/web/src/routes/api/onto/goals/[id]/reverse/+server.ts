@@ -3,10 +3,7 @@ import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { SmartLLMService } from '$lib/services/smart-llm-service';
 import { GoalReverseEngineeringService } from '$lib/services/ontology/goal-reverse-engineering.service';
-import {
-	GoalReverseContextError,
-	loadGoalReverseContext
-} from './context';
+import { GoalReverseContextError, loadGoalReverseContext } from './context';
 
 export const POST: RequestHandler = async ({ params, locals }) => {
 	const { user } = await locals.safeGetSession();
@@ -70,7 +67,10 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 				case 'FORBIDDEN':
 					return ApiResponse.forbidden('You do not have access to this goal');
 				default:
-					return ApiResponse.internalError(error, 'Failed to load reverse engineering context');
+					return ApiResponse.internalError(
+						error,
+						'Failed to load reverse engineering context'
+					);
 			}
 		}
 		return ApiResponse.internalError(error, 'Failed to generate goal preview');

@@ -2,10 +2,7 @@
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import type { Json } from '@buildos/shared-types';
-import {
-	GoalReverseContextError,
-	loadGoalReverseContext
-} from '../context';
+import { GoalReverseContextError, loadGoalReverseContext } from '../context';
 
 const SOURCE_TAG = 'goal_reverse_engineering_v1';
 const DEFAULT_TASK_PRIORITY = 3;
@@ -103,7 +100,12 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 					priority: normalizePriority(task.priority),
 					plan_id: null,
 					due_at: null,
-					props: buildTaskProps(task.description, task.priority, goalId, insertedMilestone.id),
+					props: buildTaskProps(
+						task.description,
+						task.priority,
+						goalId,
+						insertedMilestone.id
+					),
 					created_by: context.actorId
 				});
 			}
@@ -136,7 +138,13 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 
 		for (const milestone of insertedMilestones) {
 			edgePayloads.push(
-				buildEdgePayload('project', context.project.id, 'contains', 'milestone', milestone.id),
+				buildEdgePayload(
+					'project',
+					context.project.id,
+					'contains',
+					'milestone',
+					milestone.id
+				),
 				buildEdgePayload('goal', goalId, 'supports_goal', 'milestone', milestone.id)
 			);
 		}
@@ -150,7 +158,13 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 			);
 			if (supportingMilestoneId) {
 				edgePayloads.push(
-					buildEdgePayload('milestone', supportingMilestoneId, 'contains', 'task', task.id)
+					buildEdgePayload(
+						'milestone',
+						supportingMilestoneId,
+						'contains',
+						'task',
+						task.id
+					)
 				);
 			}
 		}
@@ -177,7 +191,10 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 				case 'FORBIDDEN':
 					return ApiResponse.forbidden('You do not have access to this goal');
 				default:
-					return ApiResponse.internalError(error, 'Failed to load reverse engineering context');
+					return ApiResponse.internalError(
+						error,
+						'Failed to load reverse engineering context'
+					);
 			}
 		}
 		return ApiResponse.internalError(error, 'Failed to apply goal reverse engineering plan');
@@ -194,7 +211,9 @@ function sanitizeMilestones(inputs: ApplyMilestoneInput[]) {
 							description: (task.description ?? '')?.trim() || null,
 							state_key: task.state_key ?? DEFAULT_TASK_STATE,
 							priority:
-								typeof task.priority === 'number' ? task.priority : DEFAULT_TASK_PRIORITY
+								typeof task.priority === 'number'
+									? task.priority
+									: DEFAULT_TASK_PRIORITY
 						}))
 						.filter((task) => task.title.length > 0)
 				: [];
@@ -251,7 +270,11 @@ function normalizePriority(priority?: number | null): number | null {
 	return Math.min(5, Math.max(1, value));
 }
 
-function buildMilestoneProps(summary: string | null, confidence: number | undefined, goalId: string) {
+function buildMilestoneProps(
+	summary: string | null,
+	confidence: number | undefined,
+	goalId: string
+) {
 	const props: Record<string, unknown> = {
 		source: SOURCE_TAG,
 		goal_id: goalId

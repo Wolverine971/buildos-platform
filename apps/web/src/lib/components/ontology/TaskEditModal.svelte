@@ -698,6 +698,6 @@
 		{task}
 		bind:isOpen={showSeriesModal}
 		onClose={() => (showSeriesModal = false)}
-		on:success={handleSeriesCreated}
+		onSuccess={handleSeriesCreated}
 	/>
 {/if}

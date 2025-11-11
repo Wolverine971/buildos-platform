@@ -20,6 +20,7 @@ import type {
 } from '../shared/types';
 import { PlanExecutionError } from '../shared/types';
 import type { ChatToolDefinition } from '@buildos/shared-types';
+import { getToolsForAgent } from '@buildos/shared-types';
 import type {
 	AgentExecutorService,
 	ExecuteTaskParams,
@@ -68,7 +69,14 @@ export class ExecutorCoordinator {
 	 * Spawn a new executor agent for the provided plan step
 	 */
 	async spawnExecutor(params: ExecutorSpawnParams, context: ServiceContext): Promise<string> {
-		const tools = this.resolveTools(params.step.tools, params.plannerContext.availableTools);
+		const resolvedReadWriteTools = this.resolveTools(
+			params.step.tools,
+			params.plannerContext.availableTools
+		);
+		const tools =
+			resolvedReadWriteTools.length > 0
+				? getToolsForAgent(resolvedReadWriteTools, 'read_write')
+				: [];
 
 		if (tools.length === 0) {
 			console.warn(
@@ -170,7 +178,7 @@ export class ExecutorCoordinator {
 			name: executorName,
 			model_preference: this.options.defaultExecutorModel ?? DEFAULT_EXECUTOR_MODEL,
 			available_tools: tools.map((tool) => this.getToolName(tool)),
-			permissions: 'read_only' as const,
+			permissions: 'read_write' as const,
 			system_prompt: systemPrompt,
 			created_for_session: context.sessionId,
 			created_for_plan: params.plan.id,

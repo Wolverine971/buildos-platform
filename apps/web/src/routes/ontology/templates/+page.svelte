@@ -964,7 +964,7 @@
 	error={detailError}
 	template={detailTemplate}
 	children={detailChildren}
-	on:close={() => closeDetail()}
-	on:createProject={handleCreateFromDetail}
-	on:selectTemplate={handleSelectChild}
+	onclose={() => closeDetail()}
+	oncreateproject={handleCreateFromDetail}
+	onselecttemplate={handleSelectChild}
 />

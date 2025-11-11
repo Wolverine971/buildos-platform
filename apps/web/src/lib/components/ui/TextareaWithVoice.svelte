@@ -44,6 +44,26 @@
 		transcribingLabel?: string;
 		preparingLabel?: string;
 		class?: string;
+		// Bindable voice state props for parent components
+		isRecording?: boolean;
+		isInitializing?: boolean;
+		isTranscribing?: boolean;
+		voiceError?: string;
+		recordingDuration?: number;
+		canUseLiveTranscript?: boolean;
+		// Snippet for action buttons
+		actions?: import('svelte').Snippet;
+		// Snippet for status row
+		status?: import('svelte').Snippet<
+			[
+				{
+					isCurrentlyRecording: boolean;
+					isTranscribing: boolean;
+					recordingDuration: number;
+					voiceError: string;
+				}
+			]
+		>;
 		[key: string]: any; // Allow rest props
 	}
 
@@ -78,24 +98,60 @@
 		transcribingLabel = 'Transcribing…',
 		preparingLabel = 'Preparing microphone…',
 		class: className = '',
+		// Bindable voice state props
+		isRecording = $bindable(false),
+		isInitializing = $bindable(false),
+		isTranscribing = $bindable(false),
+		voiceError = $bindable(''),
+		recordingDuration = $bindable(0),
+		canUseLiveTranscript = $bindable(false),
+		// Snippet for action buttons
+		actions,
+		// Snippet for status row (legacy support)
+		status,
 		...restProps
 	}: Props = $props();
 
-	// Voice state bindings exposed to parent components (using Svelte 5 $state)
+	// Internal voice state (using Svelte 5 $state)
 	let isVoiceSupported = $state(false);
 	let isCurrentlyRecording = $state(false);
 	let isInitializingRecording = $state(false);
-	let isTranscribing = $state(false);
-	let voiceError = $state('');
-	let canUseLiveTranscript = $state(false);
+	let _isTranscribing = $state(false);
+	let _voiceError = $state('');
+	let _canUseLiveTranscript = $state(false);
 	let liveTranscriptPreview = $state('');
-	let recordingDuration = $state(0);
+	let _recordingDuration = $state(0);
 
 	let microphonePermissionGranted = $state(false);
 	let hasAttemptedVoice = $state(false);
 	let durationUnsubscribe: (() => void) | null = null;
 	let transcriptUnsubscribe: (() => void) | null = null;
 	let voiceInitialized = $state(false);
+
+	// Sync internal state with bindable props for parent component access
+	$effect(() => {
+		isRecording = isCurrentlyRecording;
+	});
+
+	$effect(() => {
+		isInitializing = isInitializingRecording;
+	});
+
+	$effect(() => {
+		isTranscribing = _isTranscribing;
+	});
+
+	$effect(() => {
+		voiceError = _voiceError;
+	});
+
+	$effect(() => {
+		recordingDuration = _recordingDuration;
+	});
+
+	$effect(() => {
+		canUseLiveTranscript = _canUseLiveTranscript;
+	});
 
 	const transcriptionService: TranscriptionService = {
 		async transcribeAudio(audioFile: File) {
@@ -134,7 +190,7 @@
 	};
 
 	const isLiveTranscribing = $derived(
-		isCurrentlyRecording && liveTranscriptPreview.trim().length > 0 && canUseLiveTranscript
+		isCurrentlyRecording && liveTranscriptPreview.trim().length > 0 && _canUseLiveTranscript
 	);
 
 	const voiceButtonState = $derived.by(() =>
@@ -143,10 +199,10 @@
 			isVoiceSupported,
 			isCurrentlyRecording,
 			isInitializingRecording,
-			isTranscribing,
+			isTranscribing: _isTranscribing,
 			voiceBlocked,
 			hasAttemptedVoice,
-			voiceError,
+			voiceError: _voiceError,
 			microphonePermissionGranted,
 			disabled,
 			voiceBlockedLabel,
@@ -271,7 +327,7 @@
 			};
 		}
 
-		if (isTranscribing) {
+		if (_isTranscribing) {
 			return {
 				icon: LoaderCircle,
 				label: transcribingLabel,
@@ -281,7 +337,7 @@
 			};
 		}
 
-		if (!microphonePermissionGranted && (hasAttemptedVoice || voiceError)) {
+		if (!microphonePermissionGranted && (hasAttemptedVoice || _voiceError)) {
 			return {
 				icon: Mic,
 				label: 'Enable microphone',
@@ -319,10 +375,10 @@
 		if (voiceInitialized) return;
 
 		isVoiceSupported = voiceRecordingService.isVoiceSupported();
-		canUseLiveTranscript = voiceRecordingService.isLiveTranscriptSupported();
+		_canUseLiveTranscript = voiceRecordingService.isLiveTranscriptSupported();
 		microphonePermissionGranted = false;
 		hasAttemptedVoice = false;
-		voiceError = '';
+		_voiceError = '';
 
 		if (!isVoiceSupported) {
 			voiceInitialized = true;
@@ -333,23 +389,23 @@
 			{
 				onTextUpdate: (text: string) => {
 					value = text;
-					voiceError = '';
+					_voiceError = '';
 					dispatch('input', { value });
 				},
 				onError: (errorMessage: string) => {
-					voiceError = errorMessage;
+					_voiceError = errorMessage;
 					isCurrentlyRecording = false;
 					isInitializingRecording = false;
 				},
 				onPhaseChange: (phase: 'idle' | 'transcribing') => {
-					isTranscribing = phase === 'transcribing';
+					_isTranscribing = phase === 'transcribing';
 				},
 				onPermissionGranted: () => {
 					microphonePermissionGranted = true;
-					voiceError = '';
+					_voiceError = '';
 				},
 				onCapabilityUpdate: (update: { canUseLiveTranscript: boolean }) => {
-					canUseLiveTranscript = update.canUseLiveTranscript;
+					_canUseLiveTranscript = update.canUseLiveTranscript;
 				}
 			},
 			transcriptionService
@@ -357,7 +413,7 @@
 
 		const durationStore = voiceRecordingService.getRecordingDuration();
 		durationUnsubscribe = durationStore.subscribe((newDuration) => {
-			recordingDuration = newDuration;
+			_recordingDuration = newDuration;
 		});
 
 		transcriptUnsubscribe = liveTranscript.subscribe((text) => {
@@ -374,14 +430,14 @@
 			voiceBlocked ||
 			isInitializingRecording ||
 			isCurrentlyRecording ||
-			isTranscribing ||
+			_isTranscribing ||
 			disabled
 		) {
 			return;
 		}
 
 		hasAttemptedVoice = true;
-		voiceError = '';
+		_voiceError = '';
 		isInitializingRecording = true;
 
 		try {
@@ -395,7 +451,7 @@
 				error instanceof Error
 					? error.message
 					: 'Unable to access microphone. Please check permissions.';
-			voiceError = message;
+			_voiceError = message;
 			microphonePermissionGranted = false;
 			isInitializingRecording = false;
 			isCurrentlyRecording = false;
@@ -413,7 +469,7 @@
 			console.error('Failed to stop voice recording:', error);
 			const message =
 				error instanceof Error ? error.message : 'Failed to stop recording. Try again.';
-			voiceError = message;
+			_voiceError = message;
 		} finally {
 			liveTranscriptPreview = '';
 			isCurrentlyRecording = false;
@@ -449,8 +505,8 @@
 
 		isCurrentlyRecording = false;
 		isInitializingRecording = false;
-		isTranscribing = false;
-		recordingDuration = 0;
+		_isTranscribing = false;
+		_recordingDuration = 0;
 		liveTranscriptPreview = '';
 		hasAttemptedVoice = false;
 		microphonePermissionGranted = false;
@@ -490,32 +546,41 @@
 			{helperText}
 			{error}
 			{errorMessage}
-			class={`pr-16 ${textareaClass}`.trim()}
+			class={`${actions ? 'pr-28' : 'pr-16'} ${textareaClass}`.trim()}
 			on:input={handleTextareaInput}
 			{...restProps}
 		/>
 
-		{#if enableVoice}
-			<button
-				type="button"
-				class={`absolute top-3 right-3 flex h-10 w-10 items-center justify-center rounded-full transition ${voiceButtonClasses}`}
-				onclick={toggleVoiceRecording}
-				aria-label={voiceButtonState.label}
-				title={voiceButtonState.label}
-				aria-pressed={isCurrentlyRecording}
-				disabled={voiceButtonState.disabled}
-			>
-				{#if voiceButtonState.isLoading}
-					<LoaderCircle class="h-5 w-5 animate-spin" />
-				{:else}
-					{@const VoiceIcon = voiceButtonState.icon}
-					<VoiceIcon class="h-5 w-5" />
-				{/if}
-			</button>
-		{/if}
+		<!-- Action buttons container - fixed position on the right side -->
+		<div class="absolute right-2 top-2 flex items-center gap-2">
+			<!-- Snippet for custom action buttons (e.g., send button) -->
+			{#if actions}
+				{@render actions()}
+			{/if}
+
+			<!-- Voice recording button -->
+			{#if enableVoice}
+				<button
+					type="button"
+					class={`flex h-10 w-10 items-center justify-center rounded-full transition ${voiceButtonClasses}`}
+					onclick={toggleVoiceRecording}
+					aria-label={voiceButtonState.label}
+					title={voiceButtonState.label}
+					aria-pressed={isCurrentlyRecording}
+					disabled={voiceButtonState.disabled}
+				>
+					{#if voiceButtonState.isLoading}
+						<LoaderCircle class="h-5 w-5 animate-spin" />
+					{:else}
+						{@const VoiceIcon = voiceButtonState.icon}
+						<VoiceIcon class="h-5 w-5" />
+					{/if}
+				</button>
+			{/if}
+		</div>
 
 		{#if enableVoice && showLiveTranscriptPreview && isLiveTranscribing}
-			<div class="pointer-events-none absolute bottom-3 left-3 right-14">
+			<div class="pointer-events-none absolute bottom-3 left-3 right-28">
 				<div
 					class="pointer-events-auto rounded-xl border border-gray-200 bg-white/90 px-3 py-2 text-sm text-gray-600 shadow-sm dark:border-gray-700 dark:bg-gray-900/80 dark:text-gray-100"
 				>
@@ -542,14 +607,14 @@
 							></span>
 						</span>
 						{listeningLabel}
-						<span class="font-semibold">{formatDuration(recordingDuration)}</span>
+						<span class="font-semibold">{formatDuration(_recordingDuration)}</span>
 					</span>
 				{:else if isInitializingRecording}
 					<span class="flex items-center gap-2 text-gray-600 dark:text-gray-300">
 						<LoaderCircle class="h-4 w-4 animate-spin" />
 						{preparingLabel}
 					</span>
-				{:else if isTranscribing}
+				{:else if _isTranscribing}
 					<span class="flex items-center gap-2">
 						<LoaderCircle class="h-4 w-4 animate-spin" />
 						{transcribingLabel}
@@ -562,7 +627,7 @@
 					<span>{idleHint}</span>
 				{/if}
 
-				{#if canUseLiveTranscript && isCurrentlyRecording}
+				{#if _canUseLiveTranscript && isCurrentlyRecording}
 					<span
 						class="hidden rounded-full border border-blue-200 bg-blue-50 px-3 py-0.5 text-[11px] font-semibold uppercase tracking-[0.24em] text-blue-600 dark:border-blue-500/40 dark:bg-blue-500/10 dark:text-blue-300 sm:inline"
 					>
@@ -572,22 +637,23 @@
 			</div>
 
 			<div class="flex flex-wrap items-center gap-2">
-				{#if voiceError}
+				{#if _voiceError}
 					<span
 						role="alert"
 						class="flex items-center gap-2 rounded-full bg-rose-50 px-3 py-1 text-rose-600 dark:bg-rose-900/20 dark:text-rose-300"
 					>
-						{voiceError}
+						{_voiceError}
 					</span>
 				{/if}
 
-				<slot
-					name="status"
-					{isCurrentlyRecording}
-					{isTranscribing}
-					{recordingDuration}
-					{voiceError}
-				/>
+				{#if status}
+					{@render status({
+						isCurrentlyRecording,
+						isTranscribing: _isTranscribing,
+						recordingDuration: _recordingDuration,
+						voiceError: _voiceError
+					})}
+				{/if}
 			</div>
 		</div>
 	{/if}

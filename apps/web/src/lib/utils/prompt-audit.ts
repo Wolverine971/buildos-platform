@@ -103,6 +103,7 @@ export async function savePromptForAudit({
 
 			// Agent executor service
 			'agent-executor-task-execution': 'agent/executor/task-execution-prompt.md',
+			'agent-executor-result': 'agent/executor/task-result-summary.md',
 
 			// Agent planner service
 			'agent-planner-complexity-analysis': 'agent/planner/complexity-analysis-prompt.md',

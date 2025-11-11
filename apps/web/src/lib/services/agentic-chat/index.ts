@@ -16,16 +16,14 @@ import { AgentExecutorService } from '$lib/services/agent-executor-service';
 import { ChatToolExecutor } from '$lib/chat/tool-executor';
 
 import { AgentPersistenceService } from './persistence/agent-persistence-service';
-import {
-	ToolExecutionService,
-	type ToolExecutorFunction
-} from './execution/tool-execution-service';
+import { ToolExecutionService } from './execution/tool-execution-service';
 import { ExecutorCoordinator } from './execution/executor-coordinator';
 import { StrategyAnalyzer } from './analysis/strategy-analyzer';
 import { PlanOrchestrator } from './planning/plan-orchestrator';
 import { ResponseSynthesizer } from './synthesis/response-synthesizer';
 import { AgentChatOrchestrator } from './orchestration/agent-chat-orchestrator';
 import type { AgentChatOrchestratorDependencies } from './orchestration/agent-chat-orchestrator';
+import type { ToolExecutorFunction, StreamEvent } from './shared/types';
 
 export interface AgenticChatFactoryOptions {
 	httpReferer?: string;
@@ -50,7 +48,6 @@ export function createAgentChatOrchestrator(
 
 	const compressionService = new ChatCompressionService(supabase);
 	const contextService = new AgentContextService(supabase, compressionService);
-
 	const persistenceService = new AgentPersistenceService(supabase);
 
 	const sharedToolExecutor = createToolExecutor(supabase, fetchFn);
@@ -112,7 +109,12 @@ function createToolExecutor(
 			throw new Error(result.error || `Tool ${toolName} execution failed`);
 		}
 
-		return result.result ?? null;
+		return {
+			data: result.result ?? null,
+			streamEvents: Array.isArray(result.stream_events)
+				? (result.stream_events as StreamEvent[])
+				: undefined
+		};
 	};
 }
 

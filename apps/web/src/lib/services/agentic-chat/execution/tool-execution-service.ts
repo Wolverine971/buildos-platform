@@ -20,17 +20,14 @@
  */
 
 import { ToolExecutionError } from '../shared/types';
-import type { ServiceContext, ToolExecutionResult, BaseService } from '../shared/types';
+import type {
+	ServiceContext,
+	ToolExecutionResult,
+	BaseService,
+	ToolExecutorFunction,
+	StreamEvent
+} from '../shared/types';
 import type { ChatToolCall, ChatToolDefinition } from '@buildos/shared-types';
-
-/**
- * Tool executor function type
- */
-export type ToolExecutorFunction = (
-	toolName: string,
-	args: Record<string, any>,
-	context: ServiceContext
-) => Promise<any>;
 
 /**
  * Tool execution options
@@ -113,10 +110,13 @@ export class ToolExecutionService implements BaseService {
 		try {
 			// Execute with timeout if specified
 			const timeout = options.timeout ?? ToolExecutionService.DEFAULT_TIMEOUT;
-			const result = await this.executeWithTimeout(
+			const execution = await this.executeWithTimeout(
 				() => this.toolExecutor(toolName, args, context),
 				timeout
 			);
+
+			const streamEvents = execution?.streamEvents;
+			const result = execution?.data;
 
 			// Extract entities if present
 			const entitiesAccessed = this.extractEntitiesFromResult(result);
@@ -129,7 +129,10 @@ export class ToolExecutionService implements BaseService {
 				data: cleanedResult,
 				toolName,
 				toolCallId: toolCall.id,
-				entitiesAccessed: entitiesAccessed.length > 0 ? entitiesAccessed : undefined
+				entitiesAccessed: entitiesAccessed.length > 0 ? entitiesAccessed : undefined,
+				streamEvents: Array.isArray(streamEvents)
+					? (streamEvents as StreamEvent[])
+					: undefined
 			};
 		} catch (error) {
 			console.error('[ToolExecutionService] Tool execution failed', {
@@ -415,6 +418,7 @@ export class ToolExecutionService implements BaseService {
 		delete cleaned._entities_accessed;
 		delete cleaned._metadata;
 		delete cleaned._internal;
+		delete cleaned._stream_events;
 
 		return cleaned;
 	}

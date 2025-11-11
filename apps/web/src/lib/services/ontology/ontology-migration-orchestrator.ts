@@ -137,7 +137,7 @@ export class OntologyMigrationOrchestrator {
 					options,
 					initiatedBy: options.initiatedBy,
 					dryRun
-				}
+				} as Json
 			})
 		]);
 
@@ -187,7 +187,7 @@ export class OntologyMigrationOrchestrator {
 				phaseBatch.total += phaseResult.phases.length;
 				for (const phasePlan of phaseResult.phases) {
 					this.applyBatchDetail(phaseBatch, phasePlan.status, {
-						legacyId: phasePlan.legacyPhaseId,
+						legacyId: phasePlan.legacyPhaseId ?? `generated-${phasePlan.name}`,
 						ontoId: phasePlan.existingOntoPlanId,
 						error: phasePlan.notes,
 						status: phasePlan.status
@@ -239,7 +239,7 @@ export class OntologyMigrationOrchestrator {
 								recommendedTypeKey: taskRecord.recommendedTypeKey,
 								phaseId: taskRecord.phaseId,
 								suggestedOntoPlanId: taskRecord.suggestedOntoPlanId
-							}
+							} as Json
 						})
 					);
 				}
@@ -293,7 +293,7 @@ export class OntologyMigrationOrchestrator {
 							analysis: projectResult.analysis,
 							template: projectResult.template,
 							templateProps: projectResult.templateProps
-						}
+						} as Json
 					})
 				);
 				this.applyBatchDetail(projectBatch, projectResult.status, {
@@ -333,7 +333,26 @@ export class OntologyMigrationOrchestrator {
 							contextDocumentId: projectResult.contextDocumentId,
 							contextMarkdown: projectResult.contextMarkdown,
 							coreValues: projectResult.coreValues,
-							planPreview: phaseResult.preview,
+							planPreview: phaseResult.preview
+								? {
+										plans: phaseResult.preview.plans.map((plan) => ({
+											legacyPhaseId: plan.legacy_phase_id,
+											name: plan.name,
+											summary: plan.summary,
+											typeKey: plan.type_key,
+											stateKey: plan.state_key,
+											startDate: plan.start_date,
+											endDate: plan.end_date,
+											order: plan.order,
+											confidence: plan.confidence
+										})),
+										reasoning: phaseResult.preview.reasoning,
+										confidence: phaseResult.preview.confidence,
+										prompt: phaseResult.preview.prompt,
+										contextPreview: phaseResult.preview.contextPreview,
+										phasesPreview: phaseResult.preview.phasesPreview
+									}
+								: undefined,
 							taskPreview: taskResult.preview,
 							calendarPreview: calendarResult.preview,
 							templatePreview
@@ -377,7 +396,7 @@ export class OntologyMigrationOrchestrator {
 		}
 
 		await this.markRunStatus(runId, hasFailures ? 'failed' : 'completed', {
-			summary: summaries
+			summary: summaries as unknown as Json
 		});
 
 		return {
@@ -500,7 +519,26 @@ export class OntologyMigrationOrchestrator {
 					contextDocumentId: projectResult.contextDocumentId,
 					contextMarkdown: projectResult.contextMarkdown,
 					coreValues: projectResult.coreValues,
-					planPreview: phaseResult.preview,
+					planPreview: phaseResult.preview
+						? {
+								plans: phaseResult.preview.plans.map((plan) => ({
+									legacyPhaseId: plan.legacy_phase_id,
+									name: plan.name,
+									summary: plan.summary,
+									typeKey: plan.type_key,
+									stateKey: plan.state_key,
+									startDate: plan.start_date,
+									endDate: plan.end_date,
+									order: plan.order,
+									confidence: plan.confidence
+								})),
+								reasoning: phaseResult.preview.reasoning,
+								confidence: phaseResult.preview.confidence,
+								prompt: phaseResult.preview.prompt,
+								contextPreview: phaseResult.preview.contextPreview,
+								phasesPreview: phaseResult.preview.phasesPreview
+							}
+						: undefined,
 					taskPreview: taskResult.preview,
 					calendarPreview: calendarResult.preview,
 					templatePreview
@@ -552,14 +590,17 @@ export class OntologyMigrationOrchestrator {
 		fromDate?: string,
 		initiatedBy?: string
 	): Promise<{ runId: string; updated: number }> {
-		const filter = this.client
+		let query = this.client
 			.from('migration_log')
-			.update({ status: 'rolled_back' })
+			.update({ status: 'rolled_back' }, { count: 'exact' })
 			.eq('run_id', runId)
 			.neq('entity_type', 'run');
 
-		const query = fromDate ? filter.gte('created_at', fromDate) : filter;
-		const { count, error } = await query.select('id', { count: 'exact' });
+		if (fromDate) {
+			query = query.gte('created_at', fromDate);
+		}
+
+		const { count, error } = await query;
 
 		if (error) {
 			throw new Error(`[MigrationOrchestrator] Failed to mark rollback: ${error.message}`);
@@ -704,8 +745,8 @@ export class OntologyMigrationOrchestrator {
 				runId,
 				status: runEntry?.status ?? 'pending',
 				scopeCounts,
-				startedAt: runEntry?.created_at ?? records[0].created_at,
-				updatedAt: records[records.length - 1].updated_at,
+				startedAt: runEntry?.created_at ?? records[0]!.created_at,
+				updatedAt: records[records.length - 1]!.updated_at,
 				options: {
 					...(metadata.options ?? {}),
 					initiatedBy: metadata.initiatedBy ?? 'unknown'
@@ -742,8 +783,8 @@ export class OntologyMigrationOrchestrator {
 				? null
 				: (params.entityType as Exclude<MigrationScope, 'run'>);
 		const metadata: Json = {
-			...(params.metadata ?? {})
-		};
+			...((params.metadata ?? {}) as Record<string, unknown>)
+		} as Json;
 
 		return {
 			run_id: params.runId,
@@ -798,9 +839,9 @@ export class OntologyMigrationOrchestrator {
 
 		if (metadata) {
 			payload.metadata = {
-				...(existing?.metadata ?? {}),
-				...metadata
-			};
+				...((existing?.metadata ?? {}) as Record<string, unknown>),
+				...(metadata as Record<string, unknown>)
+			} as Json;
 		}
 
 		const { data: updatedRows, error } = await this.client

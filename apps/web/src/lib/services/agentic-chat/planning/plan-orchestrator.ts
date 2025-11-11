@@ -30,22 +30,14 @@ import type {
 	StreamEvent,
 	ToolExecutionResult,
 	ExecutorResult,
-	ExecutorSpawnParams
+	ExecutorSpawnParams,
+	ToolExecutorFunction
 } from '../shared/types';
 import { PlanExecutionError } from '../shared/types';
 import { ChatStrategy } from '$lib/types/agent-chat-enhancement';
 import type { ChatToolCall } from '@buildos/shared-types';
 import { v4 as uuidv4, validate as uuidValidate } from 'uuid';
 import { formatToolSummaries } from '$lib/chat/tools.config';
-
-/**
- * Tool executor function type
- */
-export type ToolExecutorFunction = (
-	toolName: string,
-	args: Record<string, any>,
-	context: ServiceContext
-) => Promise<any>;
 
 /**
  * Interface for LLM service (subset of SmartLLMService)
@@ -452,6 +444,8 @@ export class PlanOrchestrator implements BaseService {
 	/**
 	 * Generate plan using LLM
 	 */
+	private static readonly PLAN_GENERATION_ATTEMPTS = 2;
+
 	private async generatePlanWithLLM(
 		userMessage: string,
 		strategy: ChatStrategy,
@@ -459,33 +453,37 @@ export class PlanOrchestrator implements BaseService {
 		context: ServiceContext
 	): Promise<{ steps: any[]; reasoning?: string }> {
 		const systemPrompt = this.buildPlanSystemPrompt(strategy, plannerContext, context);
-		const prompt = this.buildPlanPrompt(userMessage, plannerContext);
+		const basePrompt = this.buildPlanPrompt(userMessage, plannerContext);
+		let lastError: Error | null = null;
 
-		const response = await this.llmService.generateText({
-			systemPrompt,
-			prompt,
-			temperature: 0.4,
-			maxTokens: 1500,
-			userId: context.userId,
-			operationType: 'plan_generation'
-		});
+		for (let attempt = 1; attempt <= PlanOrchestrator.PLAN_GENERATION_ATTEMPTS; attempt++) {
+			const attemptPrompt =
+				attempt === 1
+					? basePrompt
+					: `${basePrompt}\n\nIMPORTANT: Return ONLY valid JSON shaped like {"steps":[...],"reasoning":"..."} with at most 5 steps. Do not include markdown fences or commentary.`;
 
-		try {
-			// Extract JSON from markdown code blocks if present
-			let jsonString = response.trim();
-			if (jsonString.startsWith('```json')) {
-				// Remove opening ```json and closing ```
-				jsonString = jsonString.replace(/^```json\s*/, '').replace(/\s*```$/, '');
-			} else if (jsonString.startsWith('```')) {
-				// Remove opening ``` and closing ```
-				jsonString = jsonString.replace(/^```\s*/, '').replace(/\s*```$/, '');
+			const response = await this.llmService.generateText({
+				systemPrompt,
+				prompt: attemptPrompt,
+				temperature: 0.35,
+				maxTokens: 1200,
+				userId: context.userId,
+				operationType: 'plan_generation'
+			});
+
+			const parsed = this.tryParsePlanResponse(response);
+			if (parsed) {
+				return parsed;
 			}
-			return JSON.parse(jsonString);
-		} catch (error) {
-			console.error('[PlanOrchestrator] Failed to parse plan response:', error);
-			console.error('[PlanOrchestrator] Raw response:', response);
-			throw new Error('Invalid plan format from LLM');
+
+			lastError = new Error('Invalid plan format from LLM');
+			console.warn('[PlanOrchestrator] Plan response parsing failed', {
+				attempt,
+				responsePreview: response.slice(0, 200)
+			});
 		}
+
+		throw lastError ?? new Error('Invalid plan format from LLM');
 	}
 
 	/**
@@ -503,12 +501,24 @@ export class PlanOrchestrator implements BaseService {
 			? formatToolSummaries(plannerContext.availableTools)
 			: 'No tools available.';
 
+		const strategyGuidance =
+			strategy === ChatStrategy.PROJECT_CREATION
+				? `
+PROJECT CREATION REQUIREMENTS (CRITICAL):
+- Step 1 MUST discover/select an appropriate template (use list_onto_templates or acknowledge existing template context).
+- If no template fits, include a step that calls request_template_creation ONCE before proceeding.
+- A step MUST call create_onto_project with a complete spec (name, description, type_key, facets, starter goals/tasks) before any other creative work.
+- Only after create_onto_project succeeds may later steps expand on additional artifacts.
+- Do NOT skip project creation; the user must leave this flow with a real ontology project.`
+				: '';
+
 		return `You are a plan generator for BuildOS chat.
 Strategy: ${strategy}
 Context type: ${context.contextType}
 Available tools: ${toolList}
 Tool summaries:
 ${toolSummaries}
+${strategyGuidance}
 
 Create a step-by-step execution plan.
 
@@ -526,6 +536,8 @@ Guidelines:
 - Use dependencies to ensure proper execution order
 - For simple_research strategy, keep to 1-2 steps
 - For complex_research, can have multiple coordinated steps
+- Keep each description under 200 characters and focus on actions, not final creative output
+- The response must be strict JSON without prose or markdown fences
 
 Return JSON: { steps: [...], reasoning: "Brief explanation" }`;
 	}
@@ -534,10 +546,16 @@ Return JSON: { steps: [...], reasoning: "Brief explanation" }`;
 	 * Build prompt for plan generation
 	 */
 	private buildPlanPrompt(userMessage: string, plannerContext: PlannerContext): string {
+		const projectCreationHint =
+			plannerContext.metadata?.contextType === 'project_create'
+				? `\nREMINDER: The plan must instantiate a new ontology project (create_onto_project) before tackling downstream tasks.`
+				: '';
+
 		return `User request: "${userMessage}"
 
 Context: ${plannerContext.locationContext}
 ${plannerContext.ontologyContext ? `Ontology available: ${JSON.stringify(plannerContext.ontologyContext.metadata)}` : ''}
+${projectCreationHint}
 
 Generate an execution plan to fulfill this request.`;
 	}
@@ -655,12 +673,13 @@ Generate an execution plan to fulfill this request.`;
 				emittedEvents.push(callEvent);
 
 				try {
-					const result = await this.toolExecutor(toolName, args, context);
+					const execution = await this.toolExecutor(toolName, args, context);
 					const toolResult: ToolExecutionResult = {
 						success: true,
-						data: result,
+						data: execution.data,
 						toolName,
-						toolCallId: toolCall.id
+						toolCallId: toolCall.id,
+						streamEvents: execution.streamEvents
 					};
 
 					const resultEvent: StreamEvent = {
@@ -669,7 +688,13 @@ Generate an execution plan to fulfill this request.`;
 					};
 					emittedEvents.push(resultEvent);
 
-					aggregatedResults.push(result);
+					if (execution.streamEvents) {
+						for (const event of execution.streamEvents) {
+							emittedEvents.push(event);
+						}
+					}
+
+					aggregatedResults.push(execution.data);
 				} catch (error) {
 					const message = error instanceof Error ? error.message : String(error);
 					const toolResult: ToolExecutionResult = {
@@ -697,6 +722,123 @@ Generate an execution plan to fulfill this request.`;
 			// No execution needed
 			return { result: { completed: true }, events: emittedEvents };
 		}
+	}
+
+	private tryParsePlanResponse(response: string): { steps: any[]; reasoning?: string } | null {
+		const candidates = this.buildPlanResponseCandidates(response);
+
+		for (const candidate of candidates) {
+			try {
+				const parsed = JSON.parse(candidate);
+				const normalized = this.normalizePlanResponse(parsed);
+				if (normalized) {
+					return normalized;
+				}
+			} catch {
+				continue;
+			}
+		}
+
+		return null;
+	}
+
+	private buildPlanResponseCandidates(raw: string): string[] {
+		const candidates = new Set<string>();
+		const trimmed = raw.trim();
+		if (!trimmed) return [];
+
+		const withoutFences = this.stripCodeFences(trimmed);
+		if (withoutFences) {
+			candidates.add(withoutFences);
+		}
+
+		const objectBlock = this.extractBalancedBlock(withoutFences, '{', '}');
+		if (objectBlock) {
+			candidates.add(objectBlock);
+		}
+
+		const arrayBlock = this.extractBalancedBlock(withoutFences, '[', ']');
+		if (arrayBlock) {
+			candidates.add(arrayBlock);
+			candidates.add(`{"steps": ${arrayBlock}}`);
+		}
+
+		return Array.from(candidates).filter(Boolean);
+	}
+
+	private stripCodeFences(text: string): string {
+		let cleaned = text;
+		if (cleaned.startsWith('```')) {
+			cleaned = cleaned.replace(/^```json\s*/i, '');
+			cleaned = cleaned.replace(/^```\s*/i, '');
+			cleaned = cleaned.replace(/\s*```$/i, '');
+		}
+		return cleaned.trim();
+	}
+
+	private extractBalancedBlock(text: string, openChar: '{' | '[', closeChar: '}' | ']'): string | null {
+		if (!text) return null;
+		const start = text.indexOf(openChar);
+		if (start === -1) return null;
+
+		let depth = 0;
+		let inString = false;
+		let isEscaped = false;
+
+		for (let i = start; i < text.length; i++) {
+			const char = text[i];
+
+			if (inString) {
+				if (isEscaped) {
+					isEscaped = false;
+					continue;
+				}
+				if (char === '\\') {
+					isEscaped = true;
+					continue;
+				}
+				if (char === '"') {
+					inString = false;
+					continue;
+				}
+			} else if (char === '"') {
+				inString = true;
+				continue;
+			} else if (char === openChar) {
+				depth++;
+			} else if (char === closeChar) {
+				depth--;
+				if (depth === 0) {
+					return text.slice(start, i + 1);
+				}
+			}
+		}
+
+		return null;
+	}
+
+	private normalizePlanResponse(data: any): { steps: any[]; reasoning?: string } | null {
+		if (!data) return null;
+
+		if (Array.isArray(data)) {
+			return { steps: data };
+		}
+
+		if (Array.isArray(data.steps)) {
+			let reasoning: string | undefined;
+			if (typeof data.reasoning === 'string') {
+				reasoning = data.reasoning;
+			} else if (data.reasoning) {
+				reasoning = JSON.stringify(data.reasoning);
+			}
+
+			return {
+				steps: data.steps,
+				reasoning
+			};
+		}
+
+		return null;
 	}
 
 	/**
@@ -763,6 +905,10 @@ Generate an execution plan to fulfill this request.`;
 			throw new Error(
 				`Missing project context for tool ${toolName}. Provide project_id in plan metadata or ensure dependencies return a project id.`
 			);
+		}
+
+		if (toolName === 'get_field_info' && !args.entity_type) {
+			args.entity_type = this.inferFieldInfoEntityType(context);
 		}
 
 		return args;
@@ -940,5 +1086,22 @@ Generate an execution plan to fulfill this request.`;
 			status,
 			completed_at: completedAt?.toISOString()
 		});
+	}
+
+	private inferFieldInfoEntityType(context: ServiceContext): string {
+		switch (context.contextType) {
+			case 'task':
+			case 'task_update':
+				return 'ontology_task';
+			case 'project':
+			case 'project_create':
+			case 'project_audit':
+			case 'project_forecast':
+				return 'ontology_project';
+			case 'calendar':
+				return 'ontology_plan';
+			default:
+				return 'ontology_project';
+		}
 	}
 }

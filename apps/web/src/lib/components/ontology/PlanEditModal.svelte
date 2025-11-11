@@ -176,7 +176,7 @@
 	}
 
 	async function handleStateChange(data: { state: string; actions: string[]; event: string }) {
-		debugger;
+		
 		stateKey = data.state;
 		await handleSave();
 		await loadTransitions();

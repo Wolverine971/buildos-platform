@@ -69,26 +69,48 @@ export class SSEProcessor {
 			signal.addEventListener('abort', abortHandler);
 		}
 
-		// Set up timeout
-		const timeoutPromise = new Promise<never>((_, reject) => {
+		// Helper to schedule/reset timeout (treat as inactivity timer)
+		let timeoutReject: ((reason?: any) => void) | null = null;
+		const scheduleTimeout = () => {
+			if (!timeoutReject || timeout <= 0) return;
+			if (timeoutId) {
+				clearTimeout(timeoutId);
+			}
 			timeoutId = setTimeout(() => {
-				reject(new Error(`SSE stream timeout after ${timeout}ms`));
+				timeoutReject?.(
+					new Error(`SSE stream timeout after ${timeout}ms of inactivity`)
+				);
 			}, timeout);
-		});
+		};
+
+		// Set up timeout promise if enabled
+		const timeoutPromise =
+			timeout > 0
+				? new Promise<never>((_, reject) => {
+						timeoutReject = reject;
+						scheduleTimeout();
+				  })
+				: null;
 
 		try {
-			// Process stream with timeout
-			await Promise.race([
-				this.processStreamChunks(
-					reader,
-					decoder,
-					buffer,
-					callbacks,
-					parseJSON,
-					onParseError
-				),
-				timeoutPromise
-			]);
+			const streamPromise = this.processStreamChunks(
+				reader,
+				decoder,
+				buffer,
+				callbacks,
+				parseJSON,
+				onParseError,
+				() => {
+					scheduleTimeout();
+				}
+			);
+
+			if (timeoutPromise) {
+				// Process stream with timeout enforced by inactivity
+				await Promise.race([streamPromise, timeoutPromise]);
+			} else {
+				await streamPromise;
+			}
 		} finally {
 			// Clean up
 			if (timeoutId) {
@@ -110,7 +132,8 @@ export class SSEProcessor {
 		initialBuffer: string,
 		callbacks: StreamCallbacks,
 		parseJSON: boolean,
-		onParseError?: (error: Error, chunk: string) => void
+		onParseError?: (error: Error, chunk: string) => void,
+		onActivity?: () => void
 	): Promise<void> {
 		let buffer = initialBuffer;
 		let isDone = false;
@@ -120,6 +143,7 @@ export class SSEProcessor {
 			isDone = done;
 
 			if (value) {
+				onActivity?.();
 				const chunk = decoder.decode(value, { stream: true });
 				buffer += chunk;
 

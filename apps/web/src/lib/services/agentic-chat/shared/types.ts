@@ -31,7 +31,8 @@ import type {
 	OntologyContext,
 	ChatStrategy,
 	StrategyAnalysis,
-	ResearchResult
+	ResearchResult,
+	TemplateCreationEvent
 } from '$lib/types/agent-chat-enhancement';
 
 // ============================================
@@ -84,6 +85,7 @@ export interface ToolExecutionResult extends ExecutionResult {
 	toolCallId: string;
 	entitiesAccessed?: string[];
 	tokensUsed?: number;
+	streamEvents?: StreamEvent[];
 }
 
 /**
@@ -207,7 +209,19 @@ export type StreamEvent =
 	| { type: 'tool_call'; toolCall: ChatToolCall }
 	| { type: 'tool_result'; result: ToolExecutionResult }
 	| { type: 'done'; usage?: { total_tokens: number } }
-	| { type: 'error'; error: string };
+	| { type: 'error'; error: string }
+	| TemplateCreationEvent;
+
+export interface ToolExecutorResponse {
+	data: any;
+	streamEvents?: StreamEvent[];
+}
+
+export type ToolExecutorFunction = (
+	toolName: string,
+	args: Record<string, any>,
+	context: ServiceContext
+) => Promise<ToolExecutorResponse>;
 
 /**
  * Stream callback function type

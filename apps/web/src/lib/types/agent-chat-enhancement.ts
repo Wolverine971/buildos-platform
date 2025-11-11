@@ -96,7 +96,8 @@ export interface OntologyContext {
 export enum ChatStrategy {
 	SIMPLE_RESEARCH = 'simple_research', // 1-2 tool calls
 	COMPLEX_RESEARCH = 'complex_research', // Multi-step with executors
-	ASK_CLARIFYING = 'ask_clarifying_questions' // Need more info
+	ASK_CLARIFYING = 'ask_clarifying_questions', // Need more info
+	PROJECT_CREATION = 'project_creation' // Deterministic project instantiation flow
 }
 
 /**
@@ -148,6 +149,77 @@ export interface EnhancedAgentStreamRequest {
 }
 
 /**
+ * Template creation workflow events shared between backend + UI
+ */
+export interface TemplateCreationRequestDetail {
+	request_id: string;
+	session_id?: string;
+	user_id?: string;
+	braindump: string;
+	realm_suggestion: string;
+	template_hints?: string[];
+	missing_information?: string[];
+	source_message_id?: string;
+	confidence?: number;
+	created_at: string;
+}
+
+export interface TemplateSchemaSummary {
+	required_properties: string[];
+	fsm_states: string[];
+	facet_defaults?: {
+		context?: string;
+		scale?: string;
+		stage?: string;
+	};
+	custom_fields?: string[];
+}
+
+export interface TemplateRecommendationSet {
+	goals?: Array<{ name: string; description?: string }>;
+	tasks?: Array<{ title: string; description?: string }>;
+	outputs?: Array<{ name: string; description?: string }>;
+}
+
+export type TemplateCreationStatus =
+	| 'queued'
+	| 'generating_schema'
+	| 'validating'
+	| 'persisting'
+	| 'completed'
+	| 'failed';
+
+export type TemplateCreationEvent =
+	| {
+			type: 'template_creation_request';
+			request: TemplateCreationRequestDetail;
+	  }
+	| {
+			type: 'template_creation_status';
+			request_id: string;
+			status: TemplateCreationStatus;
+			message?: string;
+	  }
+	| {
+			type: 'template_created';
+			request_id: string;
+			template: {
+				id: string;
+				type_key: string;
+				realm: string;
+				name: string;
+				schema_summary: TemplateSchemaSummary;
+				recommended_entities?: TemplateRecommendationSet;
+			};
+	  }
+	| {
+			type: 'template_creation_failed';
+			request_id: string;
+			error: string;
+			actionable?: boolean;
+	  };
+
+/**
  * SSE events sent during streaming
  */
 export type AgentSSEEvent =
@@ -172,6 +244,7 @@ export type AgentSSEEvent =
 				message: string;
 			};
 	  }
+	| TemplateCreationEvent
 	| { type: 'done' }
 	| { type: 'error'; error: string };
 

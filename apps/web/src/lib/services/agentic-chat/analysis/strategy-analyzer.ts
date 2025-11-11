@@ -228,6 +228,11 @@ Available strategies:
    - Missing required parameters
    - ONLY after attempting research first
 
+4. project_creation: ONLY when context_type = project_create and no project exists yet
+   - Select the best template, infer missing details, then call create_onto_project immediately
+   - Optionally call request_template_creation ONCE if the catalog lacks a suitable template
+   - Do not perform additional planning/research until the project is instantiated
+
 Context available:
 - Type: ${context.contextType}
 - Has ontology: ${hasOntology}
@@ -482,6 +487,9 @@ Return a JSON object with:
 
 			case ChatStrategy.ASK_CLARIFYING:
 				return "I need to ask clarifying questions to better understand what you're looking for";
+
+			case ChatStrategy.PROJECT_CREATION:
+				return 'This is a project creation request. Select a template, infer details, then create the project immediately.';
 
 			default:
 				return 'Unknown strategy';

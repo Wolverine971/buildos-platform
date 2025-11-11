@@ -1926,7 +1926,7 @@ Return a JSON object with:
 			});
 
 			// Execute with executors
-			return await this.executeWithExecutors(plan, context, userMessage, streamCallback);
+			return await this.executeWithExecutors(plan, context, userMessage, streamCallback, userId);
 		}
 
 		// Execute sequentially without executors
@@ -2207,7 +2207,8 @@ Generate a helpful response that:
 		plan: any,
 		context: EnhancedPlannerContext | PlannerContext,
 		userMessage: string,
-		streamCallback: (event: any) => void
+		streamCallback: (event: any) => void,
+		userId: string
 	): Promise<ResearchResult> {
 		// This is where we would spawn actual executor agents
 		// For now, we'll simulate the execution
@@ -2242,7 +2243,7 @@ Generate a helpful response that:
 				const result = await executorService.executeTask({
 					executorId: task.id,
 					sessionId: context.metadata.sessionId,
-					userId: context.metadata.sessionId, // Using sessionId as userId fallback
+					userId,
 					task: task,
 					tools: await this.getToolsForStep({
 						...step,

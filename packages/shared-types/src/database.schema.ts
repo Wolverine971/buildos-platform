@@ -1,5 +1,5 @@
-// packages/shared-types/src/database.schema.ts
-// Generated on: 2025-11-11T05:42:31.754Z
+// Lightweight database schema - auto-generated from database.types.ts
+// Generated on: 2025-11-11T21:07:19.086Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -83,6 +83,24 @@ export type DatabaseSchema = {
 		updated_at: string;
 		user_id: string;
 		user_message: string;
+	};
+	agent_template_creation_requests: {
+		braindump: string | null;
+		created_at: string;
+		deliverables: Json | null;
+		error: string | null;
+		facets: Json | null;
+		id: string;
+		missing_information: Json | null;
+		realm: string;
+		request_id: string;
+		result_template_id: string | null;
+		session_id: string | null;
+		status: string;
+		template_hints: Json | null;
+		template_summary: Json | null;
+		updated_at: string;
+		user_id: string | null;
 	};
 	agents: {
 		available_tools: Json | null;
@@ -1940,6 +1958,7 @@ export const tableNames = [
 	'agent_chat_sessions',
 	'agent_executions',
 	'agent_plans',
+	'agent_template_creation_requests',
 	'agents',
 	'api_keys',
 	'beta_event_attendance',

@@ -30,6 +30,7 @@
 - **[CRUD Tools Implementation](./CRUD_TOOLS_IMPLEMENTATION.md)** ✨ - CREATE/UPDATE/DELETE tools for AI agent (Complete)
 - **[Ontology First Refactoring](./ONTOLOGY_FIRST_REFACTORING.md)** - Tool separation and context-aware selection
 - **[Agent Chat Integration Status](./AGENT_CHAT_ONTOLOGY_INTEGRATION_STATUS.md)** - Complete integration status
+- **[Dynamic Template Creation Contract](./DYNAMIC_TEMPLATE_CREATION_CONTRACT.md)** ✨ **NEW** - Planner ↔ template workflow handoff spec
 
 ### Development Resources
 
@@ -84,6 +85,59 @@ Every ontology project now carries an explicit context document with type key `d
 - Dry runs surface the full classification + creation plan (realm, domain/deliverable, parent template) without mutating Supabase so humans can review before committing the new template/project.
 
 > **Why?** Treating the context as a first-class document keeps the project narrative queryable, diffable, and renderable across surfaces (agent chat, planner, UI) while legacy migrations remain lossless.
+
+---
+
+## 🆕 Dynamic Template Creation Escalation Plan
+
+When the project-create agent (`context_type: project_create`) cannot locate a suitable template, it should escalate instead of stalling. This plan defines the inter-agent contract.
+
+### 1. Detection & Request Packaging
+
+- Planner reviews the embedded template catalog (and makes at most one `list_onto_templates` call).
+- If no template satisfies the brief, emit a `template_creation_request` event that contains:
+    - The raw braindump / user prompt.
+    - Any structured signals inferred so far (facets, deliverables, must-have fields).
+    - Recommended realm + rationale (even if low confidence).
+    - Suggested schema notes or example tasks pulled from the conversation.
+- Log why each existing template failed (missing realm, schema mismatch, etc.) for debugging.
+
+### 2. Clarification Guardrail
+
+- If the braindump is too vague to suggest even a realm, the planner asks exactly one clarifying question that narrows template scope (audience, deliverable, cadence, etc.).
+- After clarification, retry detection. Only escalate once it can provide a realm suggestion and at least one differentiating attribute.
+- If still ambiguous, surface a human fallback notice rather than forcing template creation.
+
+### 3. Template Creation Workflow
+
+- Dedicated template-creation agent/service receives `{braindump, suggested realm, schema hints, conversation summary}`.
+- Responsibilities:
+    - Validate/derive realm + parent template (inheritance chain).
+    - Produce a concrete template draft with:
+        - `type_key`, metadata, description, tags.
+        - JSON schema (fields, types, defaults, required flags).
+        - FSM definition (states + transitions) compliant with BuildOS conventions.
+        - Facet defaults (`context`, `scale`, `stage`) and recommended starter entities.
+    - Persist via template CRUD services (respecting validation + promotion workflow).
+    - Return full template payload + summary back to requester.
+
+### 4. Returning to Project Creation
+
+- Planner waits for `template_created` signal that includes the new `type_key`, realm, schema summary, starter entities, and any validation warnings.
+- Planner resumes the original project flow by:
+    1. Treating the returned template as the selected option.
+    2. Re-running inference over the braindump to fill project fields.
+    3. Calling `create_onto_project` with the new template and recommended tasks/goals/outputs.
+- After success, notify the user that both a template and project were created, and emit analytics events for traceability.
+
+### 5. Observability & Safeguards
+
+- Record every escalation with timestamps, user/session IDs, and reason codes.
+- Track metrics: % escalations, average clarification rounds, template creation failure rate.
+- Add circuit breakers: repeated template-creation failures should route to a human queue instead of retry loops.
+- Cache freshly created templates in the planner context so follow-up messages can immediately reuse them.
+
+> **Next steps:** define SSE contracts (`template_creation_request`, `template_created`), extend the agent orchestrator to buffer braindumps for hand-off, and add a template-creation service endpoint that enforces schema/FSM defaults.
 
 ---
 

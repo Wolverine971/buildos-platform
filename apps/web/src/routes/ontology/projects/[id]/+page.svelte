@@ -194,12 +194,12 @@
 	const milestones = $derived((data.milestones || []) as Milestone[]);
 	const risks = $derived((data.risks || []) as Risk[]);
 	const allowedTransitions = $derived((data.allowed_transitions || []) as TransitionDetail[]);
-	const initialTransitionDetails = $derived<TransitionDetail[]>(
+	const initialTransitionDetails = $derived(
 		allowedTransitions.map((transition) => ({
 			event: transition.event,
 			to: transition.to,
-			guards: transition.guards ?? [],
-			actions: transition.actions ?? []
+			guards: (transition.guards ?? []) as Guard[],
+			actions: (transition.actions ?? []) as TransitionAction[]
 		}))
 	);
 
@@ -347,16 +347,16 @@
 		approvingReverseEngineer = false;
 	}
 
-function convertDateToISO(dateString: string | null): string | null {
-	if (!dateString) return null;
-	const parsed = new Date(`${dateString}T00:00:00Z`);
-	if (Number.isNaN(parsed.getTime())) {
-		return null;
+	function convertDateToISO(dateString: string | null): string | null {
+		if (!dateString) return null;
+		const parsed = new Date(`${dateString}T00:00:00Z`);
+		if (Number.isNaN(parsed.getTime())) {
+			return null;
+		}
+		return parsed.toISOString();
 	}
-	return parsed.toISOString();
-}
 
-// Event handler removed - now using direct prop callback
+	// Event handler removed - now using direct prop callback
 
 	function getGoalStatsForDisplay(goalId: string) {
 		return (
@@ -392,97 +392,100 @@ function convertDateToISO(dateString: string | null): string | null {
 		expandedGoalId = expandedGoalId === goalId ? null : goalId;
 	}
 
-async function handleReverseEngineerGoal(goalId: string) {
-	if (reverseEngineeringGoalId) return;
+	async function handleReverseEngineerGoal(goalId: string) {
+		if (reverseEngineeringGoalId) return;
 
-	try {
-		reverseEngineeringGoalId = goalId;
-		const response = await fetch(`/api/onto/goals/${goalId}/reverse`, {
-			method: 'POST'
-		});
+		try {
+			reverseEngineeringGoalId = goalId;
+			const response = await fetch(`/api/onto/goals/${goalId}/reverse`, {
+				method: 'POST'
+			});
 
-		const payload = await response.json().catch(() => null);
+			const payload = await response.json().catch(() => null);
 
-		if (!response.ok) {
-			throw new Error(payload?.error ?? 'Failed to generate plan preview');
-		}
-
-		const preview = payload?.data?.preview as GoalReverseEngineeringResult | undefined;
-		if (!preview || !preview.milestones?.length) {
-			throw new Error('Model did not return any milestones. Try again.');
-		}
-
-		const goalMeta =
-			(payload?.data?.goal as { id: string; name: string } | undefined) ??
-			goals.find((goal) => goal.id === goalId) ?? {
-				id: goalId,
-				name: 'Goal'
-			};
-
-		reverseEngineerPreview = preview;
-		reverseEngineerGoalMeta = {
-			id: goalMeta.id,
-			name: goalMeta.name
-		};
-		reverseEngineerModalOpen = true;
-	} catch (error) {
-		console.error('[Goal Reverse] Failed', error);
-		const message =
-			error instanceof Error && error.message
-				? error.message
-				: 'Failed to generate plan preview';
-		toastService.error(message);
-	} finally {
-		reverseEngineeringGoalId = null;
-	}
-}
-
-async function handleReverseEngineerApproval(milestones: ReverseEngineerMilestonePayload[]) {
-	if (!reverseEngineerGoalMeta) return;
-
-	try {
-		approvingReverseEngineer = true;
-		const response = await fetch(
-			`/api/onto/goals/${reverseEngineerGoalMeta.id}/reverse/apply`,
-			{
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify({
-					milestones: milestones.map((milestone) => ({
-						...milestone,
-						due_at: convertDateToISO(milestone.due_at)
-					}))
-				})
+			if (!response.ok) {
+				throw new Error(payload?.error ?? 'Failed to generate plan preview');
 			}
-		);
 
-		const payload = await response.json().catch(() => null);
+			const preview = payload?.data?.preview as GoalReverseEngineeringResult | undefined;
+			if (!preview || !preview.milestones?.length) {
+				throw new Error('Model did not return any milestones. Try again.');
+			}
 
-		if (!response.ok) {
-			throw new Error(payload?.error ?? 'Failed to create milestones');
+			const goalMeta = (payload?.data?.goal as { id: string; name: string } | undefined) ??
+				goals.find((goal) => goal.id === goalId) ?? {
+					id: goalId,
+					name: 'Goal'
+				};
+
+			reverseEngineerPreview = preview;
+			reverseEngineerGoalMeta = {
+				id: goalMeta.id,
+				name: goalMeta.name
+			};
+			reverseEngineerModalOpen = true;
+		} catch (error) {
+			console.error('[Goal Reverse] Failed', error);
+			const message =
+				error instanceof Error && error.message
+					? error.message
+					: 'Failed to generate plan preview';
+			toastService.error(message);
+		} finally {
+			reverseEngineeringGoalId = null;
 		}
-
-		const createdMilestones = Number(payload?.data?.milestones_created ?? milestones.length);
-		const createdTasks = Number(payload?.data?.tasks_created ?? 0);
-
-		toastService.success(
-			`Created ${createdMilestones} milestone${createdMilestones === 1 ? '' : 's'} and ${createdTasks} task${createdTasks === 1 ? '' : 's'}.`
-		);
-
-		await invalidateAll();
-		expandedGoalId = reverseEngineerGoalMeta.id;
-		handleReverseEngineerModalClose();
-	} catch (error) {
-		console.error('[Goal Reverse] Apply failed', error);
-		const message =
-			error instanceof Error && error.message ? error.message : 'Failed to create milestones';
-		toastService.error(message);
-	} finally {
-		approvingReverseEngineer = false;
 	}
-}
+
+	async function handleReverseEngineerApproval(milestones: ReverseEngineerMilestonePayload[]) {
+		if (!reverseEngineerGoalMeta) return;
+
+		try {
+			approvingReverseEngineer = true;
+			const response = await fetch(
+				`/api/onto/goals/${reverseEngineerGoalMeta.id}/reverse/apply`,
+				{
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json'
+					},
+					body: JSON.stringify({
+						milestones: milestones.map((milestone) => ({
+							...milestone,
+							due_at: convertDateToISO(milestone.due_at)
+						}))
+					})
+				}
+			);
+
+			const payload = await response.json().catch(() => null);
+
+			if (!response.ok) {
+				throw new Error(payload?.error ?? 'Failed to create milestones');
+			}
+
+			const createdMilestones = Number(
+				payload?.data?.milestones_created ?? milestones.length
+			);
+			const createdTasks = Number(payload?.data?.tasks_created ?? 0);
+
+			toastService.success(
+				`Created ${createdMilestones} milestone${createdMilestones === 1 ? '' : 's'} and ${createdTasks} task${createdTasks === 1 ? '' : 's'}.`
+			);
+
+			await invalidateAll();
+			expandedGoalId = reverseEngineerGoalMeta.id;
+			handleReverseEngineerModalClose();
+		} catch (error) {
+			console.error('[Goal Reverse] Apply failed', error);
+			const message =
+				error instanceof Error && error.message
+					? error.message
+					: 'Failed to create milestones';
+			toastService.error(message);
+		} finally {
+			approvingReverseEngineer = false;
+		}
+	}
 
 	function editOutput(outputId: string) {
 		goto(`/ontology/projects/${project.id}/outputs/${outputId}/edit`);

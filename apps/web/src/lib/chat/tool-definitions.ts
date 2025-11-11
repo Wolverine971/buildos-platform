@@ -827,6 +827,79 @@ Examples:
 			}
 		}
 	},
+	{
+		type: 'function',
+		function: {
+			name: 'request_template_creation',
+			description: `Escalate when no suitable project template exists. Use this AFTER exhausting template search.
+
+Provide the full braindump, your realm recommendation, and any structured hints (deliverables, facets, required data fields).
+Only call this once per user request. If critical information is missing (e.g., audience, deliverable), ask a clarifying question before escalating.`,
+			parameters: {
+				type: 'object',
+				properties: {
+					braindump: {
+						type: 'string',
+						description:
+							'Original user request / braindump describing the desired project (required)'
+					},
+					realm: {
+						type: 'string',
+						description:
+							'Suggested realm slug (e.g., "writer", "developer.saas", "retreats.personal")'
+					},
+					template_hints: {
+						type: 'array',
+						items: {
+							type: 'string'
+						},
+						description:
+							'List of short hints about required data fields, deliverables, or constraints'
+					},
+					deliverables: {
+						type: 'array',
+						items: { type: 'string' },
+						description: 'Specific deliverables or outputs mentioned by the user'
+					},
+					facets: {
+						type: 'object',
+						properties: {
+							context: {
+								type: 'string',
+								description: 'Facet context suggestion (personal, client, etc.)'
+							},
+							scale: {
+								type: 'string',
+								description:
+									'Facet scale suggestion (micro, small, medium, large, epic)'
+							},
+							stage: {
+								type: 'string',
+								description: 'Facet stage suggestion (discovery, planning, etc.)'
+							}
+						}
+					},
+					template_suggestions: {
+						type: 'array',
+						items: { type: 'string' },
+						description:
+							'Optional template name ideas (e.g., "Storytelling Retreat Project")'
+					},
+					missing_information: {
+						type: 'array',
+						items: { type: 'string' },
+						description:
+							'List the critical details you could not infer (e.g., "audience not specified")'
+					},
+					source_message_id: {
+						type: 'string',
+						description: 'Optional message ID that triggered this escalation'
+					}
+				},
+				required: ['braindump', 'realm']
+			}
+		}
+	},
 
 	{
 		type: 'function',

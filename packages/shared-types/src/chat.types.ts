@@ -171,6 +171,7 @@ export interface ChatToolResult {
   duration_ms?: number;
   error?: string;
   requires_user_action?: boolean;
+  stream_events?: any[];
 }
 
 export interface ChatToolDefinition {
