@@ -27,6 +27,7 @@ import { ChatCompressionService } from './chat-compression-service';
 import { ChatContextService } from './chat-context-service';
 // Add after line 27 (after existing imports)
 import { OntologyContextLoader } from './ontology-context-loader';
+import { generateProjectContextFramework } from './prompts/core/prompt-components';
 import type {
 	LastTurnContext,
 	OntologyContext,
@@ -34,6 +35,8 @@ import type {
 	EnhancedBuildPlannerContextParams
 } from '$lib/types/agent-chat-enhancement';
 import { getAvailableTemplates } from './ontology/template-resolver.service';
+
+const PROJECT_CONTEXT_DOC_GUIDANCE = generateProjectContextFramework('condensed');
 
 // ============================================
 // TYPES
@@ -435,7 +438,12 @@ CRITICAL INSTRUCTIONS:
 - Do NOT stop after reviewing templates - continue to creation
 - Do NOT ask for confirmation unless critical info is missing
 - Be decisive and proactive
-- IMPORTANT: Do not get stuck searching for templates - make a decision and create the project`;
+- IMPORTANT: Do not get stuck searching for templates - make a decision and create the project
+
+### Context Document Requirements (MANDATORY)
+${PROJECT_CONTEXT_DOC_GUIDANCE}
+
+Use this guidance to write the \`context_document.body_markdown\` when calling \`create_onto_project\`. This document is the canonical strategic brief for the project, so weave the user's braindump into that structure before submitting the tool call.`;
 		}
 
 		if (lastTurnContext) {
@@ -1297,7 +1305,7 @@ You have access to:
 			: undefined;
 
 		// 1. Build system prompt for executor
-		const systemPrompt = this.getExecutorSystemPrompt(task);
+		const systemPrompt = this.getExecutorSystemPrompt(task, normalizedContextType);
 
 		// 2. Extract relevant data for the task (if available)
 		const relevantData = await this.extractRelevantDataForExecutor(
@@ -1333,8 +1341,8 @@ You have access to:
 	 * Get system prompt for Executor Agent
 	 * Task-specific instructions for focused execution
 	 */
-	private getExecutorSystemPrompt(task: ExecutorTask): string {
-		return `You are a Task Executor Agent in BuildOS.
+	private getExecutorSystemPrompt(task: ExecutorTask, contextType?: ChatContextType): string {
+		let prompt = `You are a Task Executor Agent in BuildOS.
 
 ## Your Role: Focused Task Execution
 
@@ -1365,6 +1373,17 @@ When complete, your final message should clearly indicate:
 - What you found/did
 - Any relevant IDs or data
 - Any errors or issues encountered`;
+
+		if (contextType === 'project_create') {
+			prompt += `
+
+## Project Context Document Requirements
+${PROJECT_CONTEXT_DOC_GUIDANCE}
+
+Apply this structure when generating the \`context_document.body_markdown\` in \`create_onto_project\`. The agent or human should be able to read it and immediately grasp the project's vision, strategy, and next strategic moves.`;
+		}
+
+		return prompt;
 	}
 
 	/**

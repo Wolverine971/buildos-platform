@@ -7980,6 +7980,10 @@ export type Database = {
         Args: { p_order_threshold: number; p_project_id: string }
         Returns: undefined
       }
+      delete_onto_project: {
+        Args: { p_project_id: string }
+        Returns: undefined
+      }
       emit_notification_event: {
         Args: {
           p_actor_user_id?: string
@@ -8259,6 +8263,7 @@ export type Database = {
       get_project_with_template: {
         Args: { p_project_id: string }
         Returns: {
+          context_document: Json
           project: Json
           template: Json
         }[]
@@ -8794,6 +8799,7 @@ export type Database = {
         | "simple_research"
         | "complex_research"
         | "ask_clarifying_questions"
+        | "project_creation"
       priority_level: "low" | "medium" | "high"
       project_status: "active" | "paused" | "completed" | "archived"
       queue_status:

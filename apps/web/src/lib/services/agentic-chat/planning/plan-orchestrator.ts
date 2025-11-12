@@ -508,6 +508,7 @@ PROJECT CREATION REQUIREMENTS (CRITICAL):
 - Step 1 MUST discover/select an appropriate template (use list_onto_templates or acknowledge existing template context).
 - If no template fits, include a step that calls request_template_creation ONCE before proceeding.
 - A step MUST call create_onto_project with a complete spec (name, description, type_key, facets, starter goals/tasks) before any other creative work.
+- Include a context_document payload summarizing the braindump and plan so the project has a linked narrative.
 - Only after create_onto_project succeeds may later steps expand on additional artifacts.
 - Do NOT skip project creation; the user must leave this flow with a real ontology project.`
 				: '';
@@ -776,7 +777,11 @@ Generate an execution plan to fulfill this request.`;
 		return cleaned.trim();
 	}
 
-	private extractBalancedBlock(text: string, openChar: '{' | '[', closeChar: '}' | ']'): string | null {
+	private extractBalancedBlock(
+		text: string,
+		openChar: '{' | '[',
+		closeChar: '}' | ']'
+	): string | null {
 		if (!text) return null;
 		const start = text.indexOf(openChar);
 		if (start === -1) return null;

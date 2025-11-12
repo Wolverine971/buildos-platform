@@ -19,7 +19,7 @@ import type {
 	TemplateSchemaSummary,
 	TemplateRecommendationSet,
 	TemplateCreationStatus
-} from '$lib/types/agent-chat-enhancement';
+} from '@buildos/shared-types';
 
 interface TemplateCreationRequestParams {
 	userId: string;

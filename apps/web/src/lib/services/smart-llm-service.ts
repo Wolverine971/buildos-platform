@@ -28,7 +28,7 @@ export interface ModelProfile {
 export interface JSONRequestOptions {
 	systemPrompt: string;
 	userPrompt: string;
-	userId: string;
+	userId?: string; // Made optional to match LLMService interface expectations
 	profile?: JSONProfile;
 	temperature?: number;
 	validation?: {
@@ -51,7 +51,7 @@ export interface JSONRequestOptions {
 
 export interface TextGenerationOptions {
 	prompt: string;
-	userId: string;
+	userId?: string; // Made optional to match LLMService interface expectations
 	profile?: TextProfile;
 	systemPrompt?: string;
 	temperature?: number;
@@ -454,7 +454,7 @@ export class SmartLLMService {
 	// ============================================
 
 	private async logUsageToDatabase(params: {
-		userId: string;
+		userId?: string; // Made optional to match TextGenerationOptions
 		operationType: string;
 		modelRequested: string;
 		modelUsed: string;
@@ -1142,7 +1142,41 @@ export class SmartLLMService {
 		}
 	}
 
-	async generateText(options: TextGenerationOptions): Promise<string> {
+	// Overload signatures for compatibility with LLMService interface
+	async generateText(params: {
+		systemPrompt: string;
+		prompt: string;
+		temperature?: number;
+		maxTokens?: number;
+		userId?: string;
+		operationType?: string;
+	}): Promise<string>;
+	async generateText(options: TextGenerationOptions): Promise<string>;
+	async generateText(
+		optionsOrParams:
+			| TextGenerationOptions
+			| {
+					systemPrompt: string;
+					prompt: string;
+					temperature?: number;
+					maxTokens?: number;
+					userId?: string;
+					operationType?: string;
+			  }
+	): Promise<string> {
+		// Normalize parameters to TextGenerationOptions format
+		const options: TextGenerationOptions =
+			'systemPrompt' in optionsOrParams
+				? {
+						prompt: optionsOrParams.prompt,
+						userId: optionsOrParams.userId,
+						systemPrompt: optionsOrParams.systemPrompt,
+						temperature: optionsOrParams.temperature,
+						maxTokens: optionsOrParams.maxTokens,
+						operationType: optionsOrParams.operationType
+					}
+				: optionsOrParams;
+
 		const result = await this.performTextGeneration(options);
 		return result.text;
 	}

@@ -77,9 +77,7 @@ export class SSEProcessor {
 				clearTimeout(timeoutId);
 			}
 			timeoutId = setTimeout(() => {
-				timeoutReject?.(
-					new Error(`SSE stream timeout after ${timeout}ms of inactivity`)
-				);
+				timeoutReject?.(new Error(`SSE stream timeout after ${timeout}ms of inactivity`));
 			}, timeout);
 		};
 
@@ -89,7 +87,7 @@ export class SSEProcessor {
 				? new Promise<never>((_, reject) => {
 						timeoutReject = reject;
 						scheduleTimeout();
-				  })
+					})
 				: null;
 
 		try {

@@ -1926,7 +1926,13 @@ Return a JSON object with:
 			});
 
 			// Execute with executors
-			return await this.executeWithExecutors(plan, context, userMessage, streamCallback, userId);
+			return await this.executeWithExecutors(
+				plan,
+				context,
+				userMessage,
+				streamCallback,
+				userId
+			);
 		}
 
 		// Execute sequentially without executors

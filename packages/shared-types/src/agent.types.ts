@@ -3,6 +3,8 @@
  * Type definitions for the Conversational Project Agent
  */
 
+import type { ChatContextType, ChatSession, ChatToolCall } from './chat.types';
+
 // ============================================================================
 // Base Operation Types (shared with brain-dump system)
 // ============================================================================
@@ -199,19 +201,110 @@ export type AgentSessionPhase =
 // SSE Message Types
 // ============================================================================
 
-export type AgentSSEMessage =
-  | { type: 'session'; sessionId: string }
-  | { type: 'text'; content: string }
-  | { type: 'tool_call'; tool_call: any }
-  | { type: 'tool_result'; tool_result: any }
-  | { type: 'error'; error: string }
-  | { type: 'done' }
-  // Agent-specific messages
+export interface TemplateCreationRequestDetail {
+  request_id: string;
+  session_id?: string;
+  user_id?: string;
+  braindump: string;
+  realm_suggestion: string;
+  template_hints?: string[];
+  missing_information?: string[];
+  source_message_id?: string;
+  confidence?: number;
+  created_at: string;
+}
+
+export interface TemplateSchemaSummary {
+  required_properties: string[];
+  fsm_states: string[];
+  facet_defaults?: {
+    context?: string;
+    scale?: string;
+    stage?: string;
+  };
+  custom_fields?: string[];
+}
+
+export interface TemplateRecommendationSet {
+  goals?: Array<{ name: string; description?: string }>;
+  tasks?: Array<{ title: string; description?: string }>;
+  outputs?: Array<{ name: string; description?: string }>;
+}
+
+export type TemplateCreationStatus =
+  | 'queued'
+  | 'generating_schema'
+  | 'validating'
+  | 'persisting'
+  | 'completed'
+  | 'failed';
+
+export type TemplateCreationEvent =
+  | {
+      type: 'template_creation_request';
+      request: TemplateCreationRequestDetail;
+    }
+  | {
+      type: 'template_creation_status';
+      request_id: string;
+      status: TemplateCreationStatus;
+      message?: string;
+    }
+  | {
+      type: 'template_created';
+      request_id: string;
+      template: {
+        id: string;
+        type_key: string;
+        realm: string;
+        name: string;
+        schema_summary: TemplateSchemaSummary;
+        recommended_entities?: TemplateRecommendationSet;
+      };
+    }
+  | {
+      type: 'template_creation_failed';
+      request_id: string;
+      error: string;
+      actionable?: boolean;
+    };
+
+export interface ContextShiftPayload {
+  new_context: ChatContextType;
+  entity_id: string;
+  entity_name: string;
+  entity_type: 'project' | 'task' | 'plan' | 'goal';
+  message: string;
+}
+
+type LegacyAgentSSEMessage =
   | { type: 'operation'; operation: ChatOperation }
   | { type: 'draft_update'; draft: Partial<ProjectDraft> }
   | { type: 'dimension_update'; dimension: string; content: string }
   | { type: 'phase_update'; phase: AgentSessionPhase; message?: string }
-  | { type: 'queue_update'; operations: ChatOperation[] };
+  | { type: 'queue_update'; operations: ChatOperation[] }
+  | { type: 'executor_instructions'; instructions: string };
+
+export type AgentSSEMessage =
+  | { type: 'session'; session?: ChatSession; sessionId?: string }
+  | { type: 'ontology_loaded'; summary: string }
+  | { type: 'last_turn_context'; context: Record<string, any> }
+  | { type: 'strategy_selected'; strategy: string; confidence?: number }
+  | { type: 'clarifying_questions'; questions: string[] }
+  | { type: 'analysis'; analysis: Record<string, any> }
+  | { type: 'plan_created'; plan: AgentPlan }
+  | { type: 'step_start'; step: AgentPlanStep }
+  | { type: 'step_complete'; step: AgentPlanStep }
+  | { type: 'executor_spawned'; executorId: string; task: Record<string, any> }
+  | { type: 'executor_result'; executorId: string; result: Record<string, any> }
+  | { type: 'text'; content: string }
+  | { type: 'tool_call'; tool_call: ChatToolCall }
+  | { type: 'tool_result'; result: Record<string, any> }
+  | { type: 'context_shift'; context_shift: ContextShiftPayload }
+  | TemplateCreationEvent
+  | { type: 'error'; error: string }
+  | { type: 'done'; usage?: { total_tokens: number } }
+  | LegacyAgentSSEMessage;
 
 // ============================================================================
 // Dimension Questions

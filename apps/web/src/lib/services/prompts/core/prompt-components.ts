@@ -51,185 +51,88 @@ export function generateRecurringTaskRules(): string {
  */
 export function generateProjectContextFramework(mode: 'full' | 'condensed' = 'condensed'): string {
 	if (mode === 'condensed') {
-		return `**Context Generation (Living Project Narrative):**
+		return `**Project Context Doc (Vision + Strategy Narrative):**
 
-The context field is a flexible, evolving narrative that captures the project's story in the user's own voice.
+Write a markdown document that orients any human or agent to the project's vision, stakes, and strategic plan.
 
-**MARKDOWN FORMATTING REQUIREMENT**
-The context field AND all 9 core dimensions MUST be formatted as markdown (not plain text). Let the structure evolve naturally based on the content and as the project grows.
+**Purpose**
+- Explain why the project exists and what must be true for success
+- Capture the strategic approach, major bets, and how the story is evolving
+- Provide enough context for decision-making without digging into task lists
 
-**What the context field IS (Strategic Overview)**:
-- A living document that brings anyone up to speed on the project
-- The project's ongoing story in markdown format - high-level view
-- Captures WHY the project matters, WHAT we're doing, and HOW we're approaching it
-- Flexible structure that evolves naturally from the project's direction
-- A master context doc: someone unfamiliar with the project can read it and understand the full picture
+**Include**
+- Mission/vision and the promise being made (who benefits, why now)
+- Definition of success and non-negotiables (metrics, deadlines, quality bars)
+- Strategy and approach (phases, leverage points, sequencing of big rocks)
+- Scope and boundaries (what is in/out, constraints, assumptions, guardrails)
+- Operating context (timeline, resources, dependencies, stakeholders)
+- Decisions, insights, pivots, and the reasoning behind them
+- Risks, open questions, and signals being monitored
+- Next strategic moves or hypotheses (not granular tasks)
 
-**What the context field is NOT (Execution Details)**:
-- NOT a task list or execution log
-- NOT specific step-by-step actions (those are tasks)
-- NOT individual assignment details or implementation specifics
-- NOT a braindump transcript or comprehensive information dump
-- Tasks table handles execution details; context handles strategy
+**Avoid**
+- Task lists, status checklists, or implementation minutiae
+- Raw braindump transcripts or disconnected bullet soup
+- Step-by-step directives that belong inside the task model
 
-**Key Distinction**:
-- **Context**: "We're preparing for AP exams in 6 weeks, with weak areas in Calc BC series convergence and Bio lab practicals. Timeline is tight and focus is on weak areas."
-- **NOT Context**: "Study series convergence 1 hour daily", "Review all 12 required Bio labs", "Take SAT practice test Saturday"
-- **Those belong in**: Tasks table with specific execution details
-
-**The 9 Core Meta Dimensions of a Project (extracted into separate fields - all formatted as markdown):**
-1. **Integrity & Ideals** ("core_integrity_ideals") — Ideal end-state, quality bars, definitions of “done/right.”
-2. **People & Bonds** ("core_people_bonds") — Who’s involved, roles, dynamics, power/comms patterns.
-3. **Goals & Momentum** ("core_goals_momentum") — Milestones, deliverables, metrics, cadence.
-4. **Meaning & Identity** ("core_meaning_identity") — Purpose, differentiation, brand/mission coherence.
-5. **Reality & Understanding** ("core_reality_understanding") — Current state, data, diagnosis/model.
-6. **Trust & Safeguards** ("core_trust_safeguards") — Risks, mitigations, contingencies, reliability.
-7. **Opportunity & Freedom** ("core_opportunity_freedom") — Options, experiments, pivots, optionality.
-8. **Power & Resources** ("core_power_resources") — Budget, headcount, tools, infra, permissions.
-9. **Harmony & Integration** ("core_harmony_integration") — Feedback loops, integration points, iteration.
-
-
-**Context writing principles:**
-- Start with the user's own words and framing
-- Let structure emerge naturally from the project's needs
-- Add timestamps for significant updates: **[2025-10-17]**
-- Preserve the narrative arc - how the project unfolds over time
-- Include insights, pivots, decisions, and "aha" moments
-- Don't force categorization - let ideas flow naturally
-
-**Remember:** Core dimensions are systematically extracted when present. The context tells the human story.`;
+**Formatting**
+- Always use markdown headings, bullets, emphasis, tables when helpful
+- Integrate updates into the narrative and add timestamps like **[2025-10-17]** for major shifts
+- Maintain the user's voice so the doc reads like a coherent story, not a log`;
 	}
 
 	// Full version
-	return `**Context Field: Living Project Narrative**
+	return `**Project Context Doc: Vision + Strategy Narrative**
 
-## MARKDOWN FORMATTING FOR ALL FIELDS
+## Markdown-First Living Artifact
+- This is the canonical brief that orients any collaborator or agent in seconds.
+- Always use markdown headings, bullets, and tables when helpful.
+- Update the story as the project evolves; integrate new facts instead of dumping raw transcripts.
 
-Both the context field AND all 9 core dimensions MUST be formatted as markdown, not plain text. Let the structure evolve naturally as the project grows and more information is added.
+## Narrative Objectives
+1. **Orientation:** Explain what we are building, for whom, and why it matters now.
+2. **Strategy:** Describe the approach, leverage points, phases, and success criteria.
+3. **Boundaries:** Clarify scope, constraints, guardrails, and what is intentionally out of bounds.
+4. **Coordination:** Highlight dependencies, stakeholders, resources, and decision owners.
+5. **Memory:** Record key decisions, pivots, insights, and open questions with timestamps.
 
-## Philosophy: Context as Strategic Master Document
+## Suggested Sections (adapt freely)
+### Mission & Stakes
+- Vision, user promise, business value, urgency.
+- What happens if we succeed or fail.
 
-The context field is a **strategic overview** that brings anyone unfamiliar with the project up to speed. It captures:
-- **Why** the project matters and what the vision is
-- **What** we're doing and what success looks like
-- **How** we're approaching the project
-- **Evolution** of thinking, key decisions, pivots, learnings
-- **Current state** and key constraints/challenges
+### Strategy & Leverage
+- Pillars, phases, sequencing, leverage points, differentiators.
+- Where we are placing bets versus hedging.
 
-The context is NOT:
-- A task list or execution log
-- Specific step-by-step actions (those go in tasks)
-- A braindump transcript
-- A comprehensive information dump
+### Operating Context
+- Timeline horizons, cadences, major milestones, budget or resource posture.
+- Critical dependencies, systems touched, environments involved.
 
-**Key Rule**: Task-level execution details belong in the tasks table. Strategic information, high-level approach, and understanding belong in context.
+### Scope & Boundaries
+- What is explicitly in scope right now and what is intentionally excluded.
+- Constraints, assumptions, success metrics, quality bars.
 
-Example of what belongs:
-- "Preparing for AP exams in 6 weeks with focus on weak areas in Calc BC and Bio lab practicals"
-- NOT: "Study Calc BC series convergence 1 hour daily", "Review all 12 required labs"
+### People & Interfaces
+- Stakeholders, decision makers, teams, external partners, approvals.
+- Communication patterns, integration touchpoints, responsibilities.
 
-## The 9 Core Meta Dimensions of a Project (Extracted Automatically - All as Markdown)
+### Decisions, Risks & Open Questions
+- Recent choices, rationale, competing options considered.
+- Risks, mitigations, unknowns to watch, signals that trigger change.
 
-These dimensions are extracted into dedicated fields when present in braindumps. Format each as markdown. Each dimension captures strategic-level information, not execution details. The structure will become richer over time as the project evolves.
+### Next Strategic Moves
+- Upcoming thrusts or hypotheses (no granular step lists).
+- How progress or learning will be validated.
 
-### 1) Integrity & Ideals (**column:** "core_integrity_ideals")
+## Writing Guidance
+- Use concise paragraphs plus connective sentences so it reads like a narrative, not a dump.
+- Quote the user sparingly when voice matters; otherwise paraphrase for clarity.
+- Add timestamps like **[2025-10-17]** when logging pivots or inflection points.
+- Keep implementation detail out of the context doc; push execution specifics into tasks or plans.
+- Remember the reader is an AI agent or new teammate who must act confidently after reading only this document.
 
-* **Capture:** The ideal end-state, quality bars, non-negotiables, definitions of “done/right.”
-* **Look for:** Goals, acceptance criteria, standards, constraints of acceptability.
-* **Phrases:** “Success looks like…”, “Quality means…”, “Must meet…”, “Non-negotiable…”
-* **Why:** Sets the north star and judgment criteria.
-
-### 2) People & Bonds (**column:** "core_people_bonds")
-
-* **Capture:** Who’s involved, roles/authority, dynamics, empathy needs, comms patterns.
-* **Look for:** Team/client/user lists, reporting lines, consensus needs, partner dependencies.
-* **Phrases:** “Working with…”, “The team includes…”, “Users need…”, “Decision maker is…”
-* **Why:** Execution rides on relationships and power structures.
-
-### 3) Goals & Momentum (**column:** "core_goals_momentum")
-
-* **Capture:** Milestones, deliverables, metrics, cadence, execution plan.
-* **Look for:** Dates/deadlines, KPIs/OKRs, phases, critical path, operating rhythm.
-* **Phrases:** “By <date>…”, “We’ll deliver…”, “Metric is…”, “Cadence is…”
-* **Why:** Converts intent into velocity and measurables.
-
-### 4) Meaning & Identity (**column:** "core_meaning_identity")
-
-* **Capture:** Why this matters, differentiation, mission, brand/identity coherence.
-* **Look for:** Purpose, value propositions, impact statements, narrative/positioning.
-* **Phrases:** “This matters because…”, “Unique because…”, “Enables…”, “We stand for…”
-* **Why:** Sustains motivation and strategic coherence.
-
-### 5) Reality & Understanding (**column:** "core_reality_understanding")
-
-* **Capture:** Current state, constraints, observations, data, diagnosis/model.
-* **Look for:** “Currently…”, problems/root causes, baselines, environment/market context.
-* **Phrases:** “The situation is…”, “We’re seeing…”, “Baseline is…”, “Root cause…”
-* **Why:** Ground truth prevents fantasy planning.
-
-### 6) Trust & Safeguards (**column:** "core_trust_safeguards")
-
-* **Capture:** Risks, uncertainties, mitigations, contingencies, reliability and trust.
-* **Look for:** “Risk of…”, failure modes, SLAs/uptime, backups, legal/security concerns.
-* **Phrases:** “Could fail if…”, “Mitigate by…”, “Backup plan…”, “We need a fallback…”
-* **Why:** Preserves continuity under uncertainty.
-
-### 7) Opportunity & Freedom (**column:** "core_opportunity_freedom")
-
-* **Capture:** Options, pivots, experiments, explorations, optionality levers.
-* **Look for:** Alternative approaches, trials/pilots, “we could also…”, innovation threads.
-* **Phrases:** “Another option…”, “Might explore…”, “Opportunity to…”, “A/B test…”
-* **Why:** Maintains adaptability and upside.
-
-### 8) Power & Resources (**column:** "core_power_resources")
-
-* **Capture:** Budget, headcount, tools, infrastructure, permissions, constraints.
-* **Look for:** “Budget is…”, “We have access to…”, “Using tools like…”, “Authority to…”
-* **Phrases:** “Capacity…”, “Runway…”, “Licenses…”, “Vendors…”, “Scope limits…”
-* **Why:** Determines feasibility and speed.
-
-### 9) Harmony & Integration (**column:** "core_harmony_integration")
-
-* **Capture:** Feedback loops, review cadence, cross-system integration, change incorporation.
-* **Look for:** User feedback, QA/retros, integration points, learning/adaptation mechanisms.
-* **Phrases:** “Feedback from…”, “Integrates with…”, “We learned…”, “Next iteration…”
-* **Why:** Ensures the system evolves and coheres as a whole.
-
-**General extraction rules:**
-
-* Prefer **specifics over platitudes**; summarize in 1–4 tight sentences per dimension found.
-* If a dimension isn't present, **leave its field null** (don't infer).
-* Quote briefly when helpful (≤1 short clause), otherwise paraphrase.
-* De-duplicate across dimensions; place content in the **single best-fit** field.
-
-**FORMATTING REQUIREMENT - MARKDOWN:**
-ALL fields (context AND all 9 core dimensions) MUST be formatted as markdown, not plain text.
-Let the markdown structure evolve naturally based on the content. Use headers, bullets, emphasis, lists, and formatting as the information naturally calls for it. The formatting will become richer as the project grows.
-
----
----
-
-Want me to also:
-
-* generate **TypeScript types** for the updated columns,
-* add **pgvector embedding** triggers for these nine fields,
-* or create a **Svelte form** snippet that binds to the new names?
-
-
-## Writing Good Context
-
-**Core Principle:** The context is a living narrative that captures your project's journey in your own voice. Let structure emerge naturally - some projects flow chronologically, others cluster around themes, some follow problem→solution arcs.
-
-**What to Include:**
-Capture the origin story, key decisions and their reasoning, pivots and breakthroughs, research insights, open questions, and the evolving understanding of the project. Include timestamps for major shifts: **[2025-10-17]** Major pivot...
-
-**How It Works with Dimensions:**
-The context field tells the human story - capturing nuance, emotion, and narrative flow. The 9 dimensions provide systematic analysis. Together they create complete understanding: the story and the structure, the journey and the data.
-
-**Evolution Tips:**
-Start with the user's initial framing and let it develop. When updating, weave new information into the narrative rather than just appending. Show how thinking has evolved. A good context reads like a coherent story where someone new can quickly understand not just what you're doing, but why it matters and how you got here.
-
-**Remember:** The context is the living story. The dimensions are the extracted insights. Both are essential for complete project understanding.`;
+The context doc should feel like the definitive strategic brief: vision, approach, constraints, people, and next moves captured cleanly in markdown.`;
 }
 
 /**

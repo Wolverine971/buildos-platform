@@ -68,6 +68,7 @@ Every ontology project now carries an explicit context document with type key `d
 - Linked via `onto_projects.context_document_id`, so UI pipelines and agents can reliably fetch the story without mining `props`. The FK column is now the source of truth; `props.context_document_id` only remains for back-compat.
 - Document `props` capture the raw Markdown (`body_markdown`), `legacy_project_id`, migration metadata, and the nine core dimension summaries.
 - Dry-run migrations surface the exact context payload inside the preview modal so reviewers can inspect what will be written without touching the DB.
+- Agentic project creation (`create_onto_project`) now auto-generates this markdown doc when the planner/executor does not provide one, guaranteeing every new project ships with a linked narrative.
 
 ### 🧱 Task + Calendar Migration Preview
 

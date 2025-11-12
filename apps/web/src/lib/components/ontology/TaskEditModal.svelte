@@ -64,21 +64,21 @@
 	// FSM related
 	let allowedTransitions = $state<any[]>([]);
 
-	const seriesMeta = $derived(() => {
+	const seriesMeta = $derived.by(() => {
 		if (!task?.props || typeof task.props !== 'object') return null;
 		const meta = (task.props as Record<string, any>).series;
 		return meta && typeof meta === 'object' ? meta : null;
 	});
 
-	const seriesId = $derived(() => {
+	const seriesId = $derived.by(() => {
 		if (!task?.props || typeof task.props !== 'object') {
 			return null;
 		}
 		return (task.props as Record<string, any>).series_id ?? null;
 	});
 
-	const isSeriesMaster = $derived(() => seriesMeta?.role === 'master');
-	const isSeriesInstance = $derived(() => seriesMeta?.role === 'instance');
+	const isSeriesMaster = $derived(seriesMeta?.role === 'master');
+	const isSeriesInstance = $derived(seriesMeta?.role === 'instance');
 
 	// Load task data when modal opens
 	$effect(() => {
@@ -269,7 +269,7 @@
 	transition:fade={{ duration: 200 }}
 >
 	<Card variant="elevated" class="shadow-2xl">
-		<CardHeader variant="gradient" class="p-6">
+		<CardHeader variant="gradient" class="px-6 py-5">
 			<div class="flex items-center justify-between">
 				<h2 class="text-2xl font-bold text-white">Edit Task</h2>
 				<button
@@ -283,7 +283,7 @@
 			</div>
 		</CardHeader>
 
-		<CardBody class="max-h-[calc(90vh-120px)] overflow-y-auto p-6">
+		<CardBody class="max-h-[calc(90vh-160px)] overflow-y-auto px-6 py-6">
 			{#if isLoading}
 				<div class="flex items-center justify-center py-12">
 					<Loader class="w-8 h-8 animate-spin text-gray-400" />
@@ -301,7 +301,7 @@
 								e.preventDefault();
 								handleSave();
 							}}
-							class="space-y-6"
+							class="space-y-5"
 						>
 							<div>
 								<label
@@ -429,9 +429,9 @@
 					</div>
 
 					<!-- Sidebar (Right column) -->
-					<div class="space-y-4">
+					<div class="space-y-5">
 						<!-- Task Metadata -->
-						<div class="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 space-y-3">
+						<div class="bg-gray-50 dark:bg-gray-800 rounded-lg p-5 space-y-3">
 							<h3
 								class="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide"
 							>
@@ -479,7 +479,7 @@
 
 						<!-- Recurrence -->
 						<div
-							class="bg-indigo-50 dark:bg-indigo-900/20 rounded-lg p-4 space-y-3 border border-indigo-200 dark:border-indigo-800/70"
+							class="bg-indigo-50 dark:bg-indigo-900/20 rounded-lg p-5 space-y-3 border border-indigo-200 dark:border-indigo-800/70"
 						>
 							<h3
 								class="text-sm font-semibold text-indigo-900 dark:text-indigo-100 uppercase tracking-wide"
@@ -606,9 +606,9 @@
 						</div>
 
 						<!-- Danger Zone -->
-						<div class="border border-red-200 dark:border-red-800 rounded-lg p-4">
+						<div class="border border-red-200 dark:border-red-800 rounded-lg p-5">
 							<h3
-								class="text-sm font-semibold text-red-700 dark:text-red-400 mb-3 uppercase tracking-wide"
+								class="text-sm font-semibold text-red-700 dark:text-red-400 mb-4 uppercase tracking-wide"
 							>
 								Danger Zone
 							</h3>

@@ -176,7 +176,6 @@
 	}
 
 	async function handleStateChange(data: { state: string; actions: string[]; event: string }) {
-		
 		stateKey = data.state;
 		await handleSave();
 		await loadTransitions();

@@ -54,6 +54,50 @@ const INITIAL_COUNTS: InstantiationCounts = {
 	edges: 0
 };
 
+type DocumentInsertSpec = {
+	title: string;
+	type_key: string;
+	state_key?: string;
+	props?: Record<string, unknown>;
+	body_markdown?: string;
+};
+
+async function insertDocument(
+	client: TypedSupabaseClient,
+	projectId: string,
+	actorId: string,
+	spec: DocumentInsertSpec
+): Promise<string> {
+	const props: Record<string, unknown> = {
+		...(spec.props ?? {})
+	};
+
+	if (spec.body_markdown) {
+		props.body_markdown = spec.body_markdown;
+	}
+
+	const { data, error } = await client
+		.from('onto_documents')
+		.insert({
+			project_id: projectId,
+			title: spec.title,
+			type_key: spec.type_key,
+			state_key: spec.state_key ?? 'active',
+			props: props as Json,
+			created_by: actorId
+		})
+		.select('id')
+		.single();
+
+	if (error || !data) {
+		throw new OntologyInstantiationError(
+			`Failed to insert document "${spec.title}": ${error?.message ?? 'Unknown error'}`
+		);
+	}
+
+	return data.id;
+}
+
 export class OntologyInstantiationError extends Error {
 	constructor(message: string) {
 		super(message);
@@ -128,6 +172,7 @@ export async function instantiateProject(
 	const documentIdByTitle = new Map<string, string>();
 
 	let projectId: string | undefined;
+	let contextDocumentId: string | null = null;
 
 	try {
 		// Insert project first
@@ -164,6 +209,33 @@ export async function instantiateProject(
 				dst_kind: 'template',
 				dst_id: projectTemplate.id
 			});
+		}
+
+		if (parsed.context_document) {
+			const contextDocId = await insertDocument(client, projectId, actorId, {
+				title: parsed.context_document.title,
+				type_key: parsed.context_document.type_key ?? 'document.project.context',
+				state_key: parsed.context_document.state_key ?? 'active',
+				body_markdown: parsed.context_document.body_markdown,
+				props: parsed.context_document.props ?? {}
+			});
+
+			contextDocumentId = contextDocId;
+			inserted.documents.push(contextDocId);
+			documentIdByTitle.set(parsed.context_document.title, contextDocId);
+
+			edgesToInsert.push({
+				src_kind: 'project',
+				src_id: projectId,
+				rel: 'has_document',
+				dst_kind: 'document',
+				dst_id: contextDocId
+			});
+
+			await client
+				.from('onto_projects')
+				.update({ context_document_id: contextDocId })
+				.eq('id', projectId);
 		}
 
 		// Goals
@@ -239,49 +311,43 @@ export async function instantiateProject(
 		// Documents (sequential so we can capture context doc)
 		if (parsed.documents?.length) {
 			for (const doc of parsed.documents) {
-				const { data: docRow, error: docError } = await client
-					.from('onto_documents')
-					.insert({
-						project_id: projectId,
-						title: doc.title,
-						type_key: doc.type_key,
-						props: (doc.props ?? {}) as Json,
-						created_by: actorId
-					})
-					.select('id')
-					.single();
+				const docId = await insertDocument(client, projectId, actorId, {
+					title: doc.title,
+					type_key: doc.type_key,
+					state_key: doc.state_key,
+					body_markdown: doc.body_markdown,
+					props: doc.props ?? {}
+				});
 
-				if (docError || !docRow) {
-					throw new OntologyInstantiationError(
-						`Failed to insert document "${doc.title}": ${docError?.message ?? 'Unknown error'}`
-					);
-				}
-
-				inserted.documents.push(docRow.id);
-				documentIdByTitle.set(doc.title, docRow.id);
+				inserted.documents.push(docId);
+				documentIdByTitle.set(doc.title, docId);
 
 				edgesToInsert.push({
 					src_kind: 'project',
 					src_id: projectId,
 					rel: 'has_document',
 					dst_kind: 'document',
-					dst_id: docRow.id
+					dst_id: docId
 				});
 			}
 
 			counts.documents = inserted.documents.length;
 
-			// Link first intake/brief doc as project context when applicable
-			const firstDoc = parsed.documents[0];
-			if (firstDoc) {
-				const contextDocId = documentIdByTitle.get(firstDoc.title);
-				if (contextDocId) {
-					await client
-						.from('onto_projects')
-						.update({ context_document_id: contextDocId })
-						.eq('id', projectId);
+			// Link first intake/brief doc as project context when applicable (only if not already set)
+			if (!contextDocumentId) {
+				const firstDoc = parsed.documents[0];
+				if (firstDoc) {
+					const fallbackContextDocId = documentIdByTitle.get(firstDoc.title);
+					if (fallbackContextDocId) {
+						await client
+							.from('onto_projects')
+							.update({ context_document_id: fallbackContextDocId })
+							.eq('id', projectId);
+					}
 				}
 			}
+		} else if (contextDocumentId) {
+			counts.documents = inserted.documents.length;
 		}
 
 		// Plans

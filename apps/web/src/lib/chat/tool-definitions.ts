@@ -912,6 +912,7 @@ This is the PRIMARY tool for creating projects. It supports creating a complete 
 - Outputs, documents, sources
 - Metrics, milestones, risks, decisions
 - Custom entity relationships
+- Context document linkage (document.project.context)
 
 **IMPORTANT**: You should INFER as much as possible from the user's message:
 - Project name from context
@@ -948,7 +949,8 @@ For example:
   plans?: [{ name, type_key, state_key?, props? }],
   tasks?: [{ title, plan_name?, state_key?, priority?, due_at?, props? }],
   outputs?: [{ name, type_key, state_key?, props? }],
-  documents?: [{ title, type_key, state_key?, props? }],
+  documents?: [{ title, type_key, state_key?, body_markdown?, props? }],
+  context_document?: { title: string, body_markdown: string, props? },
   clarifications?: [{ key, question, required, choices?, help_text? }],
   meta?: { model, confidence, suggested_facets } (NOT sent to API)
 }`,
@@ -1113,10 +1115,39 @@ For example:
 								title: { type: 'string' },
 								type_key: { type: 'string' },
 								state_key: { type: 'string' },
+								body_markdown: {
+									type: 'string',
+									description: 'Optional markdown body stored on the document'
+								},
 								props: { type: 'object' }
 							},
 							required: ['title', 'type_key']
 						}
+					},
+					context_document: {
+						type: 'object',
+						description:
+							'Canonical context document (document.project.context) that will be linked to the project.',
+						properties: {
+							title: { type: 'string' },
+							body_markdown: {
+								type: 'string',
+								description: 'Markdown body with the user braindump/overview'
+							},
+							type_key: {
+								type: 'string',
+								description: 'Defaults to document.project.context'
+							},
+							state_key: {
+								type: 'string',
+								description: 'Document state (defaults to active)'
+							},
+							props: {
+								type: 'object',
+								description: 'Additional metadata (e.g., spark notes, tags)'
+							}
+						},
+						required: ['title', 'body_markdown']
 					},
 					clarifications: {
 						type: 'array',

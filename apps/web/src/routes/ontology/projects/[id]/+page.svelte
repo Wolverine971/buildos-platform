@@ -35,8 +35,8 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import TabNav, { type Tab } from '$lib/components/ui/TabNav.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
-	import CardHeader from '$lib/components/ui/CardHeader.svelte';
 	import CardBody from '$lib/components/ui/CardBody.svelte';
+	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
 	import OutputCreateModal from '$lib/components/ontology/OutputCreateModal.svelte';
 	import TaskCreateModal from '$lib/components/ontology/TaskCreateModal.svelte';
 	import TaskEditModal from '$lib/components/ontology/TaskEditModal.svelte';
@@ -44,6 +44,9 @@
 	import GoalCreateModal from '$lib/components/ontology/GoalCreateModal.svelte';
 	import FSMStateVisualizer from '$lib/components/ontology/FSMStateVisualizer.svelte';
 	import GoalReverseEngineerModal from '$lib/components/ontology/GoalReverseEngineerModal.svelte';
+	import OntologyProjectHeader from '$lib/components/ontology/OntologyProjectHeader.svelte';
+	import OntologyProjectEditModal from '$lib/components/ontology/OntologyProjectEditModal.svelte';
+	import OntologyContextDocModal from '$lib/components/ontology/OntologyContextDocModal.svelte';
 	import { toastService } from '$lib/stores/toast.store';
 	import {
 		Plus,
@@ -58,7 +61,6 @@
 	} from 'lucide-svelte';
 	import type { GoalReverseEngineeringResult } from '$lib/services/ontology/goal-reverse-engineering.service';
 	import {
-		getProjectStateBadgeClass,
 		getTaskStateBadgeClass,
 		getOutputStateBadgeClass,
 		getPlanStateBadgeClass,
@@ -104,6 +106,26 @@
 			word_count?: number;
 			[key: string]: unknown;
 		};
+	}
+
+	interface Document {
+		id: string;
+		project_id: string;
+		title: string;
+		name?: string;
+		type_key: string;
+		state_key: string;
+		props?: Record<string, unknown> | null;
+		created_by: string;
+		created_at: string;
+		updated_at: string;
+	}
+
+	interface TemplateMeta {
+		id?: string;
+		name: string;
+		type_key: string;
+		scope?: string;
 	}
 
 	interface Plan {
@@ -184,15 +206,17 @@
 	// ============================================================
 	// DERIVED STATE
 	// ============================================================
-	const project = $derived(data.project as Project);
+	let project = $state(data.project as Project);
 	const tasks = $derived((data.tasks || []) as Task[]);
 	const outputs = $derived((data.outputs || []) as Output[]);
-	const documents = $derived((data.documents || []) as Output[]);
+	const documents = $derived((data.documents || []) as Document[]);
 	const plans = $derived((data.plans || []) as Plan[]);
 	const goals = $derived((data.goals || []) as Goal[]);
 	const requirements = $derived((data.requirements || []) as Requirement[]);
 	const milestones = $derived((data.milestones || []) as Milestone[]);
 	const risks = $derived((data.risks || []) as Risk[]);
+	const template = $derived((data.template || null) as TemplateMeta | null);
+	const contextDocument = $derived((data.context_document || null) as Document | null);
 	const allowedTransitions = $derived((data.allowed_transitions || []) as TransitionDetail[]);
 	const initialTransitionDetails = $derived(
 		allowedTransitions.map((transition) => ({
@@ -203,6 +227,18 @@
 		}))
 	);
 
+	const projectStats = $derived({
+		tasks: tasks.length,
+		goals: goals.length,
+		plans: plans.length,
+		outputs: outputs.length,
+		documents: documents.length
+	});
+
+	$effect(() => {
+		project = data.project as Project;
+	});
+
 	// ============================================================
 	// COMPONENT STATE
 	// ============================================================
@@ -211,6 +247,11 @@
 	let showTaskCreateModal = $state(false);
 	let showPlanCreateModal = $state(false);
 	let showGoalCreateModal = $state(false);
+	let showProjectEditModal = $state(false);
+	let showContextDocModal = $state(false);
+	let showDeleteProjectModal = $state(false);
+	let isDeletingProject = $state(false);
+	let deleteProjectError = $state<string | null>(null);
 	let editingTaskId = $state<string | null>(null);
 	let expandedGoalId = $state<string | null>(null);
 	let reverseEngineeringGoalId = $state<string | null>(null);
@@ -312,6 +353,50 @@
 
 	async function handleStateChange(): Promise<void> {
 		await invalidateAll();
+	}
+
+	function handleProjectSaved(updatedProject: Project): void {
+		project = updatedProject;
+	}
+
+	function openDeleteModal(): void {
+		deleteProjectError = null;
+		showDeleteProjectModal = true;
+	}
+
+	function closeDeleteModal(): void {
+		if (isDeletingProject) return;
+		showDeleteProjectModal = false;
+	}
+
+	async function handleProjectDeleteConfirm(): Promise<void> {
+		if (!project?.id) return;
+
+		isDeletingProject = true;
+		deleteProjectError = null;
+
+		try {
+			const response = await fetch(`/api/onto/projects/${project.id}`, {
+				method: 'DELETE'
+			});
+
+			const payload = await response.json().catch(() => null);
+
+			if (!response.ok) {
+				throw new Error(payload?.error || 'Failed to delete project');
+			}
+
+			toastService.success('Project deleted');
+			showDeleteProjectModal = false;
+			await invalidateAll();
+			goto('/ontology');
+		} catch (error) {
+			const message = error instanceof Error ? error.message : 'Failed to delete project';
+			deleteProjectError = message;
+			toastService.error(message);
+		} finally {
+			isDeletingProject = false;
+		}
 	}
 
 	// ============================================================
@@ -523,9 +608,8 @@
 <div class="max-w-6xl mx-auto">
 	<!-- Header -->
 	<Card variant="elevated" padding="none" class="mb-3">
-		<CardBody padding="md">
-			<!-- Back button and transitions -->
-			<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
+		<CardBody padding="lg" class="space-y-6">
+			<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
 				<Button variant="ghost" size="sm" onclick={() => goto('/ontology')}>
 					<svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
 						<path
@@ -539,51 +623,15 @@
 				</Button>
 			</div>
 
-			<!-- Project title and metadata -->
-			<div class="mb-3">
-				<h1 class="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-3">
-					{project.name}
-				</h1>
-				<div class="flex flex-wrap items-center gap-3 mb-3">
-					<span class="text-sm font-mono text-gray-500 dark:text-gray-400">
-						{project.type_key}
-					</span>
-					<!-- ✅ Replaced ternary logic with utility function -->
-					<span
-						class="px-3 py-1 rounded-full text-xs font-semibold capitalize {getProjectStateBadgeClass(
-							project.state_key
-						)}"
-					>
-						{project.state_key}
-					</span>
-					{#if project.facet_context}
-						<span
-							class="px-2.5 py-1 rounded-md text-xs font-medium bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 capitalize"
-						>
-							{project.facet_context}
-						</span>
-					{/if}
-					{#if project.facet_scale}
-						<span
-							class="px-2.5 py-1 rounded-md text-xs font-medium bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-400 capitalize"
-						>
-							{project.facet_scale}
-						</span>
-					{/if}
-					{#if project.facet_stage}
-						<span
-							class="px-2.5 py-1 rounded-md text-xs font-medium bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 capitalize"
-						>
-							{project.facet_stage}
-						</span>
-					{/if}
-				</div>
-				{#if project.description}
-					<p class="text-gray-600 dark:text-gray-400 leading-relaxed">
-						{project.description}
-					</p>
-				{/if}
-			</div>
+			<OntologyProjectHeader
+				{project}
+				{template}
+				stats={projectStats}
+				{contextDocument}
+				onEdit={() => (showProjectEditModal = true)}
+				onOpenContextDoc={() => (showContextDocModal = true)}
+				onDelete={openDeleteModal}
+			/>
 
 			<FSMStateVisualizer
 				entityId={project.id}
@@ -802,6 +850,7 @@
 						<div class="space-y-3">
 							{#each documents as doc}
 								<div
+									id={'document-' + doc.id}
 									class="flex items-start gap-3 p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-gray-300 dark:hover:border-gray-600 transition-colors"
 								>
 									<FileText class="w-5 h-5 text-gray-400 flex-shrink-0 mt-0.5" />
@@ -809,10 +858,14 @@
 										<h3
 											class="font-semibold text-gray-900 dark:text-white mb-1"
 										>
-											{doc.name}
+											{doc.title ?? doc.name ?? 'Untitled document'}
 										</h3>
 										<p class="text-sm text-gray-600 dark:text-gray-400">
 											Type: {doc.type_key}
+											{#if doc.state_key}
+												<span class="text-gray-400">•</span>
+												<span class="capitalize">{doc.state_key}</span>
+											{/if}
 										</p>
 									</div>
 								</div>
@@ -896,16 +949,9 @@
 										</div>
 									</div>
 									<span
-										class="px-3 py-1 rounded-full text-xs font-semibold capitalize self-start sm:self-center {plan.state_key ===
-										'draft'
-											? 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
-											: plan.state_key === 'planning'
-												? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400'
-												: plan.state_key === 'active'
-													? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-													: plan.state_key === 'completed'
-														? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400'
-														: 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'}"
+										class="px-3 py-1 rounded-full text-xs font-semibold capitalize self-start sm:self-center {getPlanStateBadgeClass(
+											plan.state_key
+										)}"
 									>
 										{plan.state_key}
 									</span>
@@ -979,37 +1025,18 @@
 														{/if}
 														{#if goal.state_key}
 															<span
-																class="px-3 py-1 rounded-full text-xs font-semibold capitalize {goal.state_key ===
-																'draft'
-																	? 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
-																	: goal.state_key === 'active'
-																		? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
-																		: goal.state_key ===
-																			  'on_track'
-																			? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-																			: goal.state_key ===
-																				  'at_risk'
-																				? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400'
-																				: goal.state_key ===
-																					  'achieved'
-																					? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400'
-																					: goal.state_key ===
-																						  'missed'
-																						? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
-																						: 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'}"
+																class="px-3 py-1 rounded-full text-xs font-semibold capitalize {getGoalStateBadgeClass(
+																	goal.state_key
+																)}"
 															>
 																{goal.state_key}
 															</span>
 														{/if}
 														{#if goal.props?.priority}
 															<span
-																class="text-xs px-2 py-0.5 rounded {goal
-																	.props.priority === 'high'
-																	? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
-																	: goal.props.priority ===
-																		  'medium'
-																		? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400'
-																		: 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'}"
+																class="text-xs px-2 py-0.5 rounded {getPriorityBadgeClass(
+																	goal.props.priority
+																)}"
 															>
 																{goal.props.priority} priority
 															</span>
@@ -1149,19 +1176,9 @@
 																				{/if}
 																			</div>
 																			<span
-																				class="px-3 py-1 rounded-full text-xs font-semibold capitalize {task.state_key ===
-																				'todo'
-																					? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
-																					: task.state_key ===
-																						  'in_progress'
-																						? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-																						: task.state_key ===
-																							  'done'
-																							? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400'
-																							: task.state_key ===
-																								  'blocked'
-																								? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
-																								: 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'}"
+																				class="px-3 py-1 rounded-full text-xs font-semibold capitalize {getTaskStateBadgeClass(
+																					task.state_key
+																				)}"
 																			>
 																				{task.state_key}
 																			</span>
@@ -1239,6 +1256,49 @@
 		</CardBody>
 	</Card>
 </div>
+
+<ConfirmationModal
+	isOpen={showDeleteProjectModal}
+	title="Delete ontology project"
+	confirmText="Delete project"
+	confirmVariant="danger"
+	loading={isDeletingProject}
+	loadingText="Deleting..."
+	icon="danger"
+	on:confirm={handleProjectDeleteConfirm}
+	on:cancel={closeDeleteModal}
+>
+	<div slot="content">
+		<p class="text-sm text-gray-600 dark:text-gray-300">
+			This will permanently delete <span class="font-semibold">{project.name}</span> and all related
+			ontology data (tasks, plans, goals, documents, etc.). This action cannot be undone.
+		</p>
+	</div>
+
+	<div slot="details">
+		{#if deleteProjectError}
+			<p class="mt-2 text-sm text-red-600 dark:text-red-400">
+				{deleteProjectError}
+			</p>
+		{/if}
+	</div>
+</ConfirmationModal>
+
+<!-- Project Edit Modal -->
+<OntologyProjectEditModal
+	bind:isOpen={showProjectEditModal}
+	{project}
+	onClose={() => (showProjectEditModal = false)}
+	onSaved={handleProjectSaved}
+/>
+
+<!-- Context Document Modal -->
+<OntologyContextDocModal
+	bind:isOpen={showContextDocModal}
+	document={contextDocument}
+	projectName={project.name}
+	onClose={() => (showContextDocModal = false)}
+/>
 
 <!-- Output Create Modal -->
 {#if showOutputCreateModal}

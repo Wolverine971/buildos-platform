@@ -23,7 +23,8 @@ import type {
 	AgentChatSessionInsert,
 	AgentChatMessageInsert,
 	ChatSession,
-	Json
+	Json,
+	TemplateCreationEvent
 } from '@buildos/shared-types';
 
 import type {
@@ -31,8 +32,7 @@ import type {
 	OntologyContext,
 	ChatStrategy,
 	StrategyAnalysis,
-	ResearchResult,
-	TemplateCreationEvent
+	ResearchResult
 } from '$lib/types/agent-chat-enhancement';
 
 // ============================================

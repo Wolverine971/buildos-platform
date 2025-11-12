@@ -184,8 +184,16 @@ interface CreateOntoProjectArgs {
 		title: string;
 		type_key: string;
 		state_key?: string;
+		body_markdown?: string;
 		props?: Record<string, unknown>;
 	}>;
+	context_document?: {
+		title: string;
+		body_markdown: string;
+		type_key?: string;
+		state_key?: string;
+		props?: Record<string, unknown>;
+	};
 	clarifications?: Array<{
 		key: string;
 		question: string;
@@ -209,6 +217,73 @@ interface RequestTemplateCreationArgs {
 		stage?: string;
 	};
 	source_message_id?: string;
+}
+
+function extractMetaString(
+	meta: Record<string, unknown> | undefined,
+	key: string
+): string | undefined {
+	if (!meta) return undefined;
+	const value = meta[key];
+	if (typeof value !== 'string') return undefined;
+	const trimmed = value.trim();
+	return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function buildContextDocumentSpec(
+	args: CreateOntoProjectArgs
+): CreateOntoProjectArgs['context_document'] {
+	const provided = args.context_document;
+	if (provided?.title?.trim() && provided?.body_markdown?.trim()) {
+		return {
+			...provided,
+			type_key: provided.type_key ?? 'document.project.context',
+			state_key: provided.state_key ?? 'active'
+		};
+	}
+
+	const meta = (args.meta ?? {}) as Record<string, unknown>;
+	const braindump = extractMetaString(meta, 'braindump');
+	const summary =
+		extractMetaString(meta, 'summary') ??
+		(args.project.description ? args.project.description.trim() : '');
+
+	const goalsSection = (args.goals ?? [])
+		.map((goal) => `- ${goal.name}${goal.description ? ` — ${goal.description}` : ''}`)
+		.join('\n');
+
+	const tasksSection = (args.tasks ?? [])
+		.map(
+			(task) =>
+				`- ${task.title}${task.plan_name ? ` (Plan: ${task.plan_name})` : ''}${
+					task.state_key ? ` · ${task.state_key}` : ''
+				}`
+		)
+		.join('\n');
+
+	const body = [
+		`# ${args.project.name} Context Document`,
+		'## Vision & Summary',
+		summary || 'Not provided yet.',
+		'## Braindump / Spark',
+		braindump || 'Not provided yet.',
+		'## Initial Goals',
+		goalsSection || 'No goals captured yet.',
+		'## Initial Tasks / Threads',
+		tasksSection || 'No starter tasks captured yet.'
+	].join('\n\n');
+
+	return {
+		title: `${args.project.name} Context Document`,
+		body_markdown: body,
+		type_key: 'document.project.context',
+		state_key: 'active',
+		props: {
+			source: 'agent_project_creation',
+			generated_at: new Date().toISOString(),
+			braindump: braindump || undefined
+		}
+	};
 }
 
 export class ChatToolExecutor {
@@ -966,6 +1041,11 @@ export class ChatToolExecutor {
 			};
 		}
 
+		const contextDocument = buildContextDocumentSpec(args);
+
+		const additionalDocuments =
+			args.documents?.filter((doc) => doc.type_key !== 'document.project.context') ?? [];
+
 		const spec = {
 			project: args.project,
 			...(args.goals?.length ? { goals: args.goals } : {}),
@@ -973,7 +1053,8 @@ export class ChatToolExecutor {
 			...(args.plans?.length ? { plans: args.plans } : {}),
 			...(args.tasks?.length ? { tasks: args.tasks } : {}),
 			...(args.outputs?.length ? { outputs: args.outputs } : {}),
-			...(args.documents?.length ? { documents: args.documents } : {})
+			...(additionalDocuments.length ? { documents: additionalDocuments } : {}),
+			context_document: contextDocument
 		};
 
 		const data = await this.apiRequest('/api/onto/projects/instantiate', {

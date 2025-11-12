@@ -13,12 +13,7 @@
  * Phase: Phase 3 - API Integration
  */
 
-import { env } from '$env/dynamic/private';
 import type { RequestHandler } from './$types';
-import { AgentPlannerService } from '$lib/services/agent-planner-service';
-import { AgentExecutorService } from '$lib/services/agent-executor-service';
-import { SmartLLMService } from '$lib/services/smart-llm-service';
-import { ChatCompressionService } from '$lib/services/chat-compression-service';
 import { SSEResponse } from '$lib/utils/sse-response';
 import { ApiResponse } from '$lib/utils/api-response';
 import type {
@@ -26,8 +21,11 @@ import type {
 	ChatSession,
 	ChatSessionInsert,
 	ChatContextType,
-	ChatMessage
+	ChatMessage,
+	Database,
+	AgentSSEMessage
 } from '@buildos/shared-types';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { OntologyContextLoader } from '$lib/services/ontology-context-loader';
 import type {
 	LastTurnContext,
@@ -37,6 +35,8 @@ import type {
 import { createAgentChatOrchestrator } from '$lib/services/agentic-chat';
 import type { StreamEvent } from '$lib/services/agentic-chat/shared/types';
 
+type SupabaseClientWithDb = SupabaseClient<Database>;
+
 // ============================================
 // RATE LIMITING
 // ============================================
@@ -45,6 +45,8 @@ const RATE_LIMIT = {
 	MAX_REQUESTS_PER_MINUTE: 20, // Lower for agent system (more expensive)
 	MAX_TOKENS_PER_MINUTE: 30000
 };
+
+const RECENT_MESSAGE_LIMIT = 50;
 
 // Track user request rates
 const rateLimiter = new Map<
@@ -65,44 +67,112 @@ interface AgentStreamRequest extends ChatStreamRequest {
 	conversationHistory?: ChatMessage[]; // Previous messages for context (properly typed)
 }
 
-interface AgentSSEMessage {
-	type:
-		| 'session'
-		| 'ontology_loaded'
-		| 'last_turn_context'
-		| 'strategy_selected'
-		| 'clarifying_questions'
-		| 'analysis'
-		| 'plan_created'
-		| 'step_start'
-		| 'step_complete'
-		| 'executor_spawned'
-		| 'executor_result'
-		| 'text'
-		| 'tool_call'
-		| 'tool_result'
-		| 'context_shift'
-		| 'done'
-		| 'error';
-	[key: string]: any;
-	context_shift?: {
-		new_context: ChatContextType;
-		entity_id: string;
-		entity_name: string;
-		entity_type: 'project' | 'task' | 'plan' | 'goal';
-		message: string;
-	};
+interface ChatMessageInsertPayload {
+	session_id: string;
+	user_id: string;
+	role: ChatMessage['role'];
+	content: string;
+	tool_calls?: any;
+	tool_call_id?: string;
+	tool_name?: string;
+	tool_result?: any;
 }
 
 // ============================================
 // HELPER FUNCTIONS
 // ============================================
 
+function normalizeContextType(contextType?: ChatContextType | string): ChatContextType {
+	const normalized = (contextType ?? 'global') as ChatContextType;
+	return normalized === 'general' ? 'global' : normalized;
+}
+
+async function fetchChatSession(
+	supabase: SupabaseClientWithDb,
+	sessionId: string,
+	userId: string
+): Promise<ChatSession | null> {
+	const { data, error } = await supabase
+		.from('chat_sessions')
+		.select('*')
+		.eq('id', sessionId)
+		.eq('user_id', userId)
+		.single();
+
+	if (error) {
+		if (error.code === 'PGRST116') {
+			return null;
+		}
+		console.error('[API] Failed to load chat session:', error);
+		throw error;
+	}
+
+	return data ?? null;
+}
+
+async function createChatSession(
+	supabase: SupabaseClientWithDb,
+	params: { userId: string; contextType: ChatContextType; entityId?: string }
+): Promise<ChatSession> {
+	const sessionData: ChatSessionInsert = {
+		user_id: params.userId,
+		context_type: params.contextType,
+		entity_id: params.entityId,
+		status: 'active',
+		message_count: 0,
+		total_tokens_used: 0,
+		tool_call_count: 0,
+		title: 'Agent Session'
+	};
+
+	const { data, error } = await supabase
+		.from('chat_sessions')
+		.insert(sessionData)
+		.select()
+		.single();
+
+	if (error || !data) {
+		throw error ?? new Error('Failed to create agent chat session');
+	}
+
+	return data;
+}
+
+async function loadRecentMessages(
+	supabase: SupabaseClientWithDb,
+	sessionId: string,
+	limit: number = RECENT_MESSAGE_LIMIT
+): Promise<ChatMessage[]> {
+	const { data, error } = await supabase
+		.from('chat_messages')
+		.select('*')
+		.eq('session_id', sessionId)
+		.order('created_at', { ascending: false })
+		.limit(limit);
+
+	if (error) {
+		console.error('[API] Failed to load chat history:', error);
+		return [];
+	}
+
+	return (data ?? []).reverse();
+}
+
+async function persistChatMessage(
+	supabase: SupabaseClientWithDb,
+	message: ChatMessageInsertPayload
+): Promise<void> {
+	const { error } = await supabase.from('chat_messages').insert(message);
+	if (error) {
+		console.error('[API] Failed to save chat message:', error);
+	}
+}
+
 /**
  * Load ontology context based on context type and optional entity type
  */
 async function loadOntologyContext(
-	supabase: any,
+	supabase: SupabaseClientWithDb,
 	contextType: ChatContextType,
 	entityId?: string,
 	ontologyEntityType?: 'task' | 'plan' | 'goal' | 'document' | 'output'
@@ -302,85 +372,55 @@ export const POST: RequestHandler = async ({
 			conversationHistory = []
 		} = body;
 
-		const rawContextType = context_type as ChatContextType;
-		const normalizedContextType = (
-			rawContextType === 'general' ? 'global' : rawContextType
-		) as ChatContextType;
+		const normalizedContextType = normalizeContextType(context_type);
 
 		if (!message?.trim()) {
 			return ApiResponse.badRequest('Message is required');
 		}
 
-		// Get or create session
-		let chatSession: ChatSession;
-		let loadedConversationHistory: ChatMessage[] = [];
+		// const supabaseClient = supabase as SupabaseClientWithDb;
+
+		// Get or create session + conversation history
+		let chatSession: ChatSession | null = null;
+		let storedConversationHistory: ChatMessage[] = [];
+		const providedHistory = Array.isArray(conversationHistory) ? conversationHistory : [];
 
 		if (session_id) {
-			// Get existing session
-			const { data: existingSession } = await supabase
-				.from('chat_sessions')
-				.select('*')
-				.eq('id', session_id)
-				.eq('user_id', userId)
-				.single();
+			chatSession = await fetchChatSession(supabase, session_id, userId);
 
-			if (!existingSession) {
+			if (!chatSession) {
 				return ApiResponse.notFound('Session');
 			}
 
-			chatSession = existingSession;
-
-			// Load conversation history from database for existing session
-			const { data: messages, error: messagesError } = await supabase
-				.from('chat_messages')
-				.select('*')
-				.eq('session_id', session_id)
-				.order('created_at', { ascending: false })
-				.limit(50); // Limit to recent 50 messages to prevent memory bloat
-
-			if (!messagesError && messages) {
-				// Reverse to get chronological order (oldest first)
-				loadedConversationHistory = messages.reverse();
+			if (providedHistory.length === 0) {
+				storedConversationHistory = await loadRecentMessages(
+					supabase,
+					session_id,
+					RECENT_MESSAGE_LIMIT
+				);
 			}
 		} else {
-			// Create new agent chat session
-			const sessionData: ChatSessionInsert = {
-				user_id: userId,
-				context_type: normalizedContextType,
-				entity_id,
-				status: 'active',
-				message_count: 0,
-				total_tokens_used: 0,
-				tool_call_count: 0,
-				title: 'Agent Session'
-			};
+			chatSession = await createChatSession(supabase, {
+				userId,
+				contextType: normalizedContextType,
+				entityId: entity_id
+			});
+		}
 
-			const { data: newSession, error: sessionError } = await supabase
-				.from('chat_sessions')
-				.insert(sessionData)
-				.select()
-				.single();
-
-			if (sessionError) {
-				console.error('Failed to create session:', sessionError);
-				return ApiResponse.internalError(sessionError, 'Failed to create chat session');
-			}
-
-			chatSession = newSession;
+		if (!chatSession) {
+			return ApiResponse.internalError(
+				new Error('Failed to resolve chat session'),
+				'Failed to resolve chat session'
+			);
 		}
 
 		// Save user message to chat_messages
-		const { error: userMessageError } = await supabase.from('chat_messages').insert({
+		await persistChatMessage(supabase, {
 			session_id: chatSession.id,
 			user_id: userId,
 			role: 'user',
 			content: message
 		});
-
-		if (userMessageError) {
-			console.error('Failed to save user message:', userMessageError);
-			// Don't fail the request, just log
-		}
 
 		// === ONTOLOGY INTEGRATION ===
 
@@ -408,23 +448,21 @@ export const POST: RequestHandler = async ({
 		});
 
 		// Generate last turn context if not provided
-		if (!lastTurnContext && loadedConversationHistory.length > 0) {
+		const resolvedHistory =
+			storedConversationHistory.length > 0 ? storedConversationHistory : providedHistory;
+
+		if (!lastTurnContext && resolvedHistory.length > 0) {
 			lastTurnContext =
-				generateLastTurnContext(loadedConversationHistory, normalizedContextType) ??
-				undefined;
+				generateLastTurnContext(resolvedHistory, normalizedContextType) ?? undefined;
 			console.log('[API] Generated last turn context:', {
 				hasContext: !!lastTurnContext,
 				summary: lastTurnContext?.summary,
 				entitiesCount: Object.keys(lastTurnContext?.entities || {}).length
 			});
 		}
-
-		const historyToUse =
-			loadedConversationHistory.length > 0 ? loadedConversationHistory : conversationHistory;
+		const historyToUse = resolvedHistory;
 
 		const agentStream = SSEResponse.createChatStream();
-
-		const useNewArchitecture = true;
 
 		let totalTokens = 0;
 		let assistantResponse = '';
@@ -485,16 +523,12 @@ export const POST: RequestHandler = async ({
 						});
 					}
 
-					const { error: sysMessageError } = await supabase.from('chat_messages').insert({
+					await persistChatMessage(supabase, {
 						session_id: chatSession.id,
 						user_id: userId,
 						role: 'system',
 						content: `Context shifted to ${contextShift.new_context} for "${contextShift.entity_name}" (ID: ${contextShift.entity_id})`
 					});
-
-					if (sysMessageError) {
-						console.error('[API] Failed to insert system message:', sysMessageError);
-					}
 				}
 			}
 
@@ -513,82 +547,35 @@ export const POST: RequestHandler = async ({
 
 		(async () => {
 			try {
-				if (useNewArchitecture) {
-					const orchestrator = createAgentChatOrchestrator(supabase, {
-						fetchFn: fetch,
-						httpReferer: request.headers.get('referer') ?? undefined,
-						appName: 'BuildOS Agentic Chat'
-					});
+				const orchestrator = createAgentChatOrchestrator(supabase, {
+					fetchFn: fetch,
+					httpReferer: request.headers.get('referer') ?? undefined,
+					appName: 'BuildOS Agentic Chat'
+				});
 
-					const orchestratorRequest = {
-						userId,
-						sessionId: chatSession.id,
-						userMessage: message,
-						contextType: normalizedContextType,
-						entityId: entity_id,
-						conversationHistory: historyToUse,
-						chatSession,
-						ontologyContext: ontologyContext || undefined,
-						lastTurnContext: lastTurnContext || undefined
-					};
+				const orchestratorRequest = {
+					userId,
+					sessionId: chatSession.id,
+					userMessage: message,
+					contextType: normalizedContextType,
+					entityId: entity_id,
+					conversationHistory: historyToUse,
+					chatSession,
+					ontologyContext: ontologyContext || undefined,
+					lastTurnContext: lastTurnContext || undefined
+				};
 
-					for await (const _ of orchestrator.streamConversation(
-						orchestratorRequest,
-						sendEvent
-					)) {
-						// Events are handled via the provided callback
-					}
-				} else {
-					const smartLLM = new SmartLLMService({ supabase });
-					const executorService = new AgentExecutorService(supabase, smartLLM, fetch);
-					const compressionService = new ChatCompressionService(supabase);
-					const plannerService = new AgentPlannerService(
-						supabase,
-						executorService,
-						smartLLM,
-						compressionService,
-						fetch
-					);
-
-					await sendEvent({
-						type: 'session',
-						session: chatSession
-					} as StreamEvent);
-
-					if (ontologyContext) {
-						await sendEvent({
-							type: 'ontology_loaded',
-							summary: `Loaded ${ontologyContext.type} ontology context with ${
-								Object.keys(ontologyContext.metadata?.entity_count || {}).length
-							} entity types`
-						} as StreamEvent);
-					}
-
-					if (lastTurnContext) {
-						await sendEvent({
-							type: 'last_turn_context',
-							context: lastTurnContext
-						} as StreamEvent);
-					}
-
-					for await (const event of plannerService.processUserMessage({
-						sessionId: chatSession.id,
-						userId,
-						message,
-						contextType: normalizedContextType,
-						entityId: entity_id,
-						conversationHistory: historyToUse,
-						ontologyContext: ontologyContext || undefined,
-						lastTurnContext: lastTurnContext || undefined
-					})) {
-						await sendEvent(event);
-					}
+				for await (const _ of orchestrator.streamConversation(
+					orchestratorRequest,
+					sendEvent
+				)) {
+					// Events are handled via the provided callback
 				}
 
 				// Save assistant response to database (with tool calls if any)
 				// Important: Save even if no text content, as long as there are tool calls
 				if (assistantResponse.trim() || toolCalls.length > 0) {
-					const assistantMessageData: any = {
+					const assistantMessageData: ChatMessageInsertPayload = {
 						session_id: chatSession.id,
 						user_id: userId,
 						role: 'assistant',
@@ -600,13 +587,7 @@ export const POST: RequestHandler = async ({
 						assistantMessageData.tool_calls = toolCalls;
 					}
 
-					const { error: assistantError } = await supabase
-						.from('chat_messages')
-						.insert(assistantMessageData);
-
-					if (assistantError) {
-						console.error('Failed to save assistant message:', assistantError);
-					}
+					await persistChatMessage(supabase, assistantMessageData);
 
 					// Save tool result messages (one per tool call)
 					// These are separate messages with role='tool' linked to their tool_call_id
@@ -620,21 +601,15 @@ export const POST: RequestHandler = async ({
 							const normalizedResult =
 								result.tool_result ?? result.result ?? result.data ?? result;
 
-							const { error: toolError } = await supabase
-								.from('chat_messages')
-								.insert({
-									session_id: chatSession.id,
-									user_id: userId,
-									role: 'tool',
-									content: JSON.stringify(normalizedResult),
-									tool_call_id: toolCall.id,
-									tool_name: toolCall.function?.name || 'unknown',
-									tool_result: normalizedResult
-								});
-
-							if (toolError) {
-								console.error('Failed to save tool result message:', toolError);
-							}
+							await persistChatMessage(supabase, {
+								session_id: chatSession.id,
+								user_id: userId,
+								role: 'tool',
+								content: JSON.stringify(normalizedResult),
+								tool_call_id: toolCall.id,
+								tool_name: toolCall.function?.name || 'unknown',
+								tool_result: normalizedResult
+							});
 						} else {
 							console.warn(
 								`No result found for tool call ${toolCall.id} (${toolCall.function?.name})`
@@ -713,6 +688,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 
 	const userId = user.id;
 	const sessionId = url.searchParams.get('session_id');
+	// const supabaseClient = supabase as SupabaseClientWithDb;
 
 	if (!sessionId) {
 		// Get user's active agent sessions
@@ -814,7 +790,7 @@ function mapPlannerEventToSSE(
 		case 'tool_result':
 			return {
 				type: 'tool_result',
-				tool_result: (event as any).result ?? (event as any).tool_result
+				result: (event as any).result ?? (event as any).tool_result
 			};
 		case 'template_creation_request':
 			return {
@@ -842,7 +818,7 @@ function mapPlannerEventToSSE(
 				actionable: (event as any).actionable
 			};
 		case 'done':
-			return { type: 'done', plan: (event as any).plan, usage: (event as any).usage };
+			return { type: 'done', usage: (event as any).usage };
 		case 'error':
 			return { type: 'error', error: (event as any).error ?? 'Unknown error' };
 		default:

@@ -181,6 +181,22 @@ const ProjectSpecProjectSchema = z.object({
 	end_at: z.string().datetime().optional()
 });
 
+const ProjectSpecDocumentSchema = z.object({
+	title: z.string(),
+	type_key: z.string(),
+	state_key: z.string().optional(),
+	body_markdown: z.string().optional(),
+	props: z.record(z.unknown()).optional()
+});
+
+const ContextDocumentSchema = z.object({
+	title: z.string().min(1),
+	body_markdown: z.string().min(1),
+	type_key: z.string().optional(),
+	state_key: z.string().optional(),
+	props: z.record(z.unknown()).optional()
+});
+
 export const ProjectSpecSchema = z.object({
 	project: ProjectSpecProjectSchema,
 	goals: z
@@ -267,15 +283,8 @@ export const ProjectSpecSchema = z.object({
 			})
 		)
 		.optional(),
-	documents: z
-		.array(
-			z.object({
-				title: z.string(),
-				type_key: z.string(),
-				props: z.record(z.unknown()).optional()
-			})
-		)
-		.optional(),
+	documents: z.array(ProjectSpecDocumentSchema).optional(),
+	context_document: ContextDocumentSchema.optional(),
 	sources: z
 		.array(
 			z.object({

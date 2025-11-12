@@ -18,7 +18,7 @@
 	import TextareaWithVoice from '$lib/components/ui/TextareaWithVoice.svelte';
 	import ContextSelectionScreen from '../chat/ContextSelectionScreen.svelte';
 	import { SSEProcessor, type StreamCallbacks } from '$lib/utils/sse-processor';
-	import type { ChatSession, ChatContextType } from '@buildos/shared-types';
+	import type { ChatSession, ChatContextType, AgentSSEMessage } from '@buildos/shared-types';
 	import { renderMarkdown, getProseClasses, hasMarkdownFormatting } from '$lib/utils/markdown';
 	// Add ontology integration imports
 	import type { LastTurnContext } from '$lib/types/agent-chat-enhancement';
@@ -390,7 +390,7 @@
 
 			const callbacks: StreamCallbacks = {
 				onProgress: (data: any) => {
-					handleSSEMessage(data);
+					handleSSEMessage(data as AgentSSEMessage);
 				},
 				onError: (err) => {
 					console.error('SSE error:', err);
@@ -408,7 +408,7 @@
 			};
 
 			await SSEProcessor.processStream(response, callbacks, {
-				timeout: 120000, // 2 minutes for agent conversations
+				timeout: 240000, // 4 minutes for complex agent conversations
 				parseJSON: true,
 				signal: streamController.signal
 			});
@@ -434,19 +434,19 @@
 		}
 	}
 
-	function handleSSEMessage(data: any) {
-		switch (data.type) {
+	function handleSSEMessage(event: AgentSSEMessage) {
+		switch (event.type) {
 			case 'session':
 				// Session hydration
-				if (data.session) {
-					currentSession = data.session;
+				if (event.session) {
+					currentSession = event.session;
 					const sessionContextType =
-						(data.session.context_type as ChatContextType) ?? 'global';
+						(event.session.context_type as ChatContextType) ?? 'global';
 					const normalizedSessionContext =
 						sessionContextType === 'general' ? 'global' : sessionContextType;
 					if (!selectedContextType) {
 						selectedContextType = normalizedSessionContext;
-						selectedEntityId = data.session.entity_id ?? undefined;
+						selectedEntityId = event.session.entity_id ?? undefined;
 						selectedContextLabel =
 							CONTEXT_DESCRIPTORS[normalizedSessionContext]?.title ??
 							selectedContextLabel;
@@ -457,13 +457,13 @@
 			case 'ontology_loaded':
 				// Ontology context was loaded
 				ontologyLoaded = true;
-				ontologySummary = data.summary || 'Ontology context loaded';
+				ontologySummary = event.summary || 'Ontology context loaded';
 				addActivityMessage(`Ontology context: ${ontologySummary}`);
 				break;
 
 			case 'last_turn_context':
 				// Store last turn context for next message
-				lastTurnContext = data.context;
+				lastTurnContext = event.context;
 				if (dev) {
 					console.debug('[AgentChat] Stored last turn context:', lastTurnContext);
 				}
@@ -471,19 +471,19 @@
 
 			case 'strategy_selected':
 				// Strategy was selected by planner
-				currentStrategy = data.strategy;
-				_strategyConfidence = data.confidence || 0;
-				const strategyName = data.strategy?.replace(/_/g, ' ') || 'unknown';
-				const confidencePercent = Math.round((data.confidence || 0) * 100);
+				currentStrategy = event.strategy;
+				_strategyConfidence = event.confidence || 0;
+				const strategyName = event.strategy?.replace(/_/g, ' ') || 'unknown';
+				const confidencePercent = Math.round((event.confidence || 0) * 100);
 				addActivityMessage(
 					`Strategy selected: ${strategyName} (${confidencePercent}% confidence)`
 				);
 				break;
 
 			case 'clarifying_questions': {
-				addClarifyingQuestionsMessage(data.questions);
-				const questionCount = Array.isArray(data.questions)
-					? data.questions.filter(
+				addClarifyingQuestionsMessage(event.questions);
+				const questionCount = Array.isArray(event.questions)
+					? event.questions.filter(
 							(question: unknown) => typeof question === 'string' && question.trim()
 						).length
 					: 0;
@@ -502,41 +502,41 @@
 			case 'analysis':
 				// Planner is analyzing the request
 				currentActivity = 'Planner analyzing request...';
-				
+
 				addActivityMessage(
-					`Strategy: ${data.analysis?.primary_strategy || 'unknown'} - ${data.analysis?.reasoning || ''}`
+					`Strategy: ${event.analysis?.primary_strategy || 'unknown'} - ${event.analysis?.reasoning || ''}`
 				);
 				break;
 
 			case 'plan_created':
 				// Plan created with steps
-				_currentPlan = data.plan;
-				currentActivity = `Executing plan with ${data.plan?.steps?.length || 0} steps...`;
-				addPlanMessage(data.plan);
+				_currentPlan = event.plan;
+				currentActivity = `Executing plan with ${event.plan?.steps?.length || 0} steps...`;
+				addPlanMessage(event.plan);
 				break;
 
 			case 'step_start':
 				// Starting a plan step
-				currentActivity = `Step ${data.step?.stepNumber}: ${data.step?.description}`;
-				addActivityMessage(`Starting: ${data.step?.description}`);
+				currentActivity = `Step ${event.step?.stepNumber}: ${event.step?.description}`;
+				addActivityMessage(`Starting: ${event.step?.description}`);
 				break;
 
 			case 'executor_spawned':
 				// Executor agent spawned
 				currentActivity = `Executor working on task...`;
-				addActivityMessage(`Executor started for: ${data.task?.description}`);
+				addActivityMessage(`Executor started for: ${event.task?.description}`);
 				break;
 
 			case 'text':
 				// Streaming text (could be from planner or executor)
-				if (data.content) {
-					addOrUpdateAssistantMessage(data.content);
+				if (event.content) {
+					addOrUpdateAssistantMessage(event.content);
 				}
 				break;
 
 			case 'tool_call':
 				// Tool being called
-				const toolName = data.tool_call?.function?.name || 'unknown';
+				const toolName = event.tool_call?.function?.name || 'unknown';
 				addActivityMessage(`Using tool: ${toolName}`);
 				break;
 
@@ -545,32 +545,32 @@
 				addActivityMessage('Tool execution completed');
 				break;
 			case 'template_creation_request': {
-				const request = data.request;
+				const request = event.request;
 				const realmLabel = request?.realm_suggestion || 'new realm';
 				addActivityMessage(`Escalating template creation (${realmLabel})...`);
 				break;
 			}
 			case 'template_creation_status':
 				addActivityMessage(
-					`Template creation status: ${data.status.replace(/_/g, ' ')}${
-						data.message ? ` · ${data.message}` : ''
+					`Template creation status: ${event.status.replace(/_/g, ' ')}${
+						event.message ? ` · ${event.message}` : ''
 					}`
 				);
 				break;
 			case 'template_created': {
-				const template = data.template;
+				const template = event.template;
 				addActivityMessage(
 					`Template ready: ${template?.name || 'Untitled'} (${template?.type_key})`
 				);
 				break;
 			}
 			case 'template_creation_failed':
-				addActivityMessage(`Template creation failed: ${data.error || 'Unknown error'}`);
-				error = data.error || 'Template creation failed. Please adjust the request.';
+				addActivityMessage(`Template creation failed: ${event.error || 'Unknown error'}`);
+				error = event.error || 'Template creation failed. Please adjust the request.';
 				break;
 
 			case 'context_shift': {
-				const shift = data.context_shift;
+				const shift = event.context_shift;
 				if (shift) {
 					const normalizedContext = (
 						shift.new_context === 'general' ? 'global' : shift.new_context
@@ -601,13 +601,13 @@
 			case 'executor_result':
 				// Executor finished
 				addActivityMessage(
-					data.result?.success ? 'Executor completed successfully' : 'Executor failed'
+					event.result?.success ? 'Executor completed successfully' : 'Executor failed'
 				);
 				break;
 
 			case 'step_complete':
 				// Step completed
-				addActivityMessage(`Step ${data.step?.stepNumber} complete`);
+				addActivityMessage(`Step ${event.step?.stepNumber} complete`);
 				break;
 			case 'done':
 				// All done - clear activity and re-enable input
@@ -619,7 +619,7 @@
 				break;
 
 			case 'error':
-				error = data.error || 'An error occurred';
+				error = event.error || 'An error occurred';
 				isStreaming = false;
 				currentActivity = '';
 				break;
