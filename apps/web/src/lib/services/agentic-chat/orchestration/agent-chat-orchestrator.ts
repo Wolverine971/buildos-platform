@@ -1,66 +1,103 @@
 // apps/web/src/lib/services/agentic-chat/orchestration/agent-chat-orchestrator.ts
-/**
- * Agent Chat Orchestrator
- *
- * Coordinates the refactored agentic chat services end-to-end, including:
- * - Context initialization and planner agent provisioning
- * - Strategy analysis and streaming of intermediate events
- * - Tool execution for simple strategies
- * - Plan orchestration and executor coordination for complex strategies
- * - Response synthesis and final streaming output
- */
-
 import { v4 as uuidv4 } from 'uuid';
-import { ChatStrategy, EnhancedPlannerContext } from '../../../types/agent-chat-enhancement';
 import type {
 	AgentChatRequest,
 	ServiceContext,
 	StreamCallback,
 	StreamEvent,
 	PlannerContext,
+	AgentPlan,
 	ToolExecutionResult,
-	ExecutorResult,
-	PersistenceOperations
+	PersistenceOperations,
+	PlanExecutionMode,
+	ExecutorResult
 } from '../shared/types';
-import type { StrategyAnalyzer } from '../analysis/strategy-analyzer';
-import type { PlanOrchestrator } from '../planning/plan-orchestrator';
-import type { ToolExecutionService } from '../execution/tool-execution-service';
+import type { PlanOrchestrator, PlanIntent } from '../planning/plan-orchestrator';
+import type { ToolExecutionService, VirtualToolHandler } from '../execution/tool-execution-service';
 import type { ResponseSynthesizer, SynthesisUsage } from '../synthesis/response-synthesizer';
-import type { ExecutorCoordinator } from '../execution/executor-coordinator';
 import type { AgentContextService } from '../../agent-context-service';
-import type { ChatToolCall, ChatToolDefinition } from '@buildos/shared-types';
+import type {
+	ChatToolCall,
+	ChatToolDefinition,
+	LLMMessage,
+	ChatContextType,
+	ChatToolResult
+} from '@buildos/shared-types';
+import type { TextProfile } from '../../smart-llm-service';
+import { SmartLLMService } from '../../smart-llm-service';
+// import type { ErrorLoggerService } from '$lib/services/errorLogger.service';
+import { ErrorLoggerService } from '$lib/services/errorLogger.service';
+import type { LastTurnContext } from '$lib/types/agent-chat-enhancement';
+
+const PLAN_TOOL_DEFINITION: ChatToolDefinition = {
+	type: 'function',
+	function: {
+		name: 'agent_create_plan',
+		description:
+			'Generate a BuildOS execution plan for multi-step objectives. Can auto-execute, draft for review, or request an internal reviewer before execution.',
+		parameters: {
+			type: 'object',
+			properties: {
+				objective: {
+					type: 'string',
+					description: 'What you want to accomplish end-to-end.'
+				},
+				execution_mode: {
+					type: 'string',
+					enum: ['auto_execute', 'draft_only', 'agent_review'],
+					description:
+						'Default is auto_execute. Use draft_only to return the plan for approval, or agent_review to have a reviewer critique before execution.'
+				},
+				auto_execute: {
+					type: 'boolean',
+					description: 'Deprecated alias for execution_mode === auto_execute.'
+				},
+				requested_outputs: {
+					type: 'array',
+					items: { type: 'string' },
+					description: 'Specific deliverables the user expects.'
+				},
+				priority_entities: {
+					type: 'array',
+					items: { type: 'string' },
+					description: 'IDs or slugs the plan must focus on.'
+				}
+			},
+			required: ['objective']
+		}
+	}
+};
+
+const MAX_TOOL_CALLS_PER_TURN = 8;
+const MAX_SESSION_DURATION_MS = 90_000;
+
+type LLMStreamEvent =
+	| { type: 'text'; content?: string }
+	| { type: 'tool_call'; tool_call?: ChatToolCall }
+	| { type: 'done'; usage?: { total_tokens?: number } }
+	| { type: 'error'; error?: string };
 
 export interface AgentChatOrchestratorDependencies {
-	strategyAnalyzer: StrategyAnalyzer;
 	planOrchestrator: PlanOrchestrator;
 	toolExecutionService: ToolExecutionService;
 	responseSynthesizer: ResponseSynthesizer;
-	executorCoordinator: ExecutorCoordinator;
 	persistenceService: PersistenceOperations;
 	contextService: AgentContextService;
+	llmService: SmartLLMService;
+	errorLogger?: ErrorLoggerService;
 }
 
 export class AgentChatOrchestrator {
 	constructor(private deps: AgentChatOrchestratorDependencies) {}
 
-	/**
-	 * Execute the chat flow and stream events back to the caller
-	 */
 	async *streamConversation(
 		request: AgentChatRequest,
 		callback: StreamCallback
 	): AsyncGenerator<StreamEvent, void, unknown> {
-		const {
-			strategyAnalyzer,
-			planOrchestrator,
-			toolExecutionService,
-			responseSynthesizer,
-			persistenceService,
-			contextService
-		} = this.deps;
-
+		const { contextService, persistenceService } = this.deps;
 		const conversationHistory = request.conversationHistory ?? [];
-		let plannerContext: PlannerContext | EnhancedPlannerContext;
+
+		let plannerContext: PlannerContext;
 		let plannerAgentId: string | undefined;
 
 		try {
@@ -81,7 +118,6 @@ export class AgentChatOrchestrator {
 				request
 			);
 
-			// Attach planner agent metadata for downstream consumers
 			plannerContext.metadata = {
 				...plannerContext.metadata,
 				plannerAgentId
@@ -98,7 +134,6 @@ export class AgentChatOrchestrator {
 				lastTurnContext: request.lastTurnContext
 			};
 
-			// Emit session event if present
 			if (request.chatSession) {
 				const sessionEvent: StreamEvent = {
 					type: 'session',
@@ -126,86 +161,39 @@ export class AgentChatOrchestrator {
 				await callback(lastTurnEvent);
 			}
 
-			const analysis = await strategyAnalyzer.analyzeUserIntent(
-				request.userMessage,
+			const messages = this.buildPlannerMessages(plannerContext, request.userMessage);
+
+			const tools = this.appendVirtualTools(plannerContext.availableTools);
+			const virtualHandlers = this.createVirtualToolHandlers({
+				request,
+				plannerContext,
+				serviceContext
+			});
+
+			for await (const event of this.runPlannerLoop({
+				request,
+				messages,
+				tools,
 				plannerContext,
 				serviceContext,
-				request.lastTurnContext
-			);
-
-			const shouldForceProjectCreation =
-				request.contextType === 'project_create' && !request.entityId;
-
-			const normalizedAnalysis = shouldForceProjectCreation
-				? this.overrideProjectCreationStrategy(analysis, plannerContext)
-				: analysis;
-
-			const analysisEvent: StreamEvent = {
-				type: 'analysis',
-				analysis: normalizedAnalysis
-			};
-			yield analysisEvent;
-			await callback(analysisEvent);
-
-			const strategyEvent: StreamEvent = {
-				type: 'strategy_selected',
-				strategy: normalizedAnalysis.primary_strategy,
-				confidence: normalizedAnalysis.confidence
-			};
-			yield strategyEvent;
-			await callback(strategyEvent);
-
-			switch (normalizedAnalysis.primary_strategy) {
-				case ChatStrategy.SIMPLE_RESEARCH:
-					for await (const event of this.handleSimpleStrategy(
-						normalizedAnalysis,
-						request,
-						serviceContext,
-						plannerContext
-					)) {
-						yield event;
-						await callback(event);
-					}
-					break;
-
-				case ChatStrategy.COMPLEX_RESEARCH:
-					for await (const event of this.handleComplexStrategy(
-						normalizedAnalysis,
-						request,
-						serviceContext,
-						plannerContext
-					)) {
-						yield event;
-						await callback(event);
-					}
-					break;
-
-				case ChatStrategy.PROJECT_CREATION:
-					for await (const event of this.handleProjectCreationStrategy(
-						normalizedAnalysis,
-						request,
-						serviceContext,
-						plannerContext
-					)) {
-						yield event;
-						await callback(event);
-					}
-					break;
-
-				case ChatStrategy.ASK_CLARIFYING:
-				default:
-					for await (const event of this.handleClarifyingStrategy(
-						analysis,
-						request,
-						serviceContext
-					)) {
-						yield event;
-						await callback(event);
-					}
-					break;
+				virtualHandlers
+			})) {
+				yield event;
+				await callback(event);
 			}
 		} catch (error) {
 			console.error('[AgentChatOrchestrator] Error during orchestration', error);
+			if (this.deps.errorLogger) {
+				await this.deps.errorLogger.logError(error, {
+					userId: request.userId,
+					operationType: 'agent_chat_orchestration',
+					metadata: {
+						sessionId: request.sessionId,
+						contextType: request.contextType
+					}
+				});
+			}
+
 			const message =
 				error instanceof Error ? error.message : 'Unknown error during agent orchestration';
 			const errorEvent: StreamEvent = { type: 'error', error: message };
@@ -218,89 +206,441 @@ export class AgentChatOrchestrator {
 		}
 	}
 
-	/**
-	 * Handle simple research strategy by executing tools directly
-	 */
-	private async *handleSimpleStrategy(
-		analysis: Awaited<ReturnType<StrategyAnalyzer['analyzeUserIntent']>>,
-		request: AgentChatRequest,
-		serviceContext: ServiceContext,
-		plannerContext: PlannerContext
-	): AsyncGenerator<StreamEvent, void, unknown> {
-		const { toolExecutionService, responseSynthesizer } = this.deps;
-		const toolDefinitions = this.resolveTools(analysis.required_tools, plannerContext);
+	private buildPlannerMessages(
+		plannerContext: PlannerContext,
+		userMessage: string
+	): LLMMessage[] {
+		const messages: LLMMessage[] = [
+			{ role: 'system', content: plannerContext.systemPrompt },
+			{
+				role: 'system',
+				content: `## Context Snapshot\n${plannerContext.locationContext}`
+			},
+			...plannerContext.conversationHistory,
+			{ role: 'user', content: userMessage }
+		];
 
-		const toolCalls = this.buildToolCalls(toolDefinitions, serviceContext, request.userMessage);
-		const toolResults: ToolExecutionResult[] = [];
+		if (plannerContext.userProfile) {
+			messages.splice(1, 0, {
+				role: 'system',
+				content: `## User Preferences\n${plannerContext.userProfile}`
+			});
+		}
 
-		for (const toolCall of toolCalls) {
-			const callEvent: StreamEvent = { type: 'tool_call', toolCall };
-			yield callEvent;
+		return messages;
+	}
 
-			const result = await toolExecutionService.executeTool(
-				toolCall,
-				serviceContext,
-				plannerContext.availableTools
-			);
+	private appendVirtualTools(tools: ChatToolDefinition[]): ChatToolDefinition[] {
+		const existingPlanTool = tools.find(
+			(tool) => (tool as any)?.function?.name === PLAN_TOOL_DEFINITION.function.name
+		);
+		if (existingPlanTool) {
+			return tools;
+		}
+		return [...tools, PLAN_TOOL_DEFINITION];
+	}
 
-			const resultEvent: StreamEvent = { type: 'tool_result', result };
-			yield resultEvent;
+	private createVirtualToolHandlers(params: {
+		request: AgentChatRequest;
+		plannerContext: PlannerContext;
+		serviceContext: ServiceContext;
+	}): Record<string, VirtualToolHandler> {
+		const { request, plannerContext, serviceContext } = params;
+		return {
+			agent_create_plan: async ({ args }) =>
+				this.handlePlanToolCall({
+					rawArgs: args,
+					plannerContext,
+					serviceContext,
+					request
+				})
+		};
+	}
 
-			if (result.streamEvents) {
-				for (const event of result.streamEvents) {
-					yield event;
+	private async *runPlannerLoop(params: {
+		request: AgentChatRequest;
+		messages: LLMMessage[];
+		tools: ChatToolDefinition[];
+		plannerContext: PlannerContext;
+		serviceContext: ServiceContext;
+		virtualHandlers: Record<string, VirtualToolHandler>;
+	}): AsyncGenerator<StreamEvent, void, unknown> {
+		const { llmService, toolExecutionService } = this.deps;
+		const { request, messages, tools, serviceContext, plannerContext, virtualHandlers } =
+			params;
+
+		const startTime = Date.now();
+		let toolCallCount = 0;
+		let lastUsage: { total_tokens: number } | undefined;
+		let continueLoop = true;
+
+		yield this.buildAgentStateEvent(
+			'thinking',
+			serviceContext.contextType,
+			'Analyzing request...'
+		);
+
+		while (continueLoop) {
+			this.ensureWithinLimits(startTime, toolCallCount);
+			let assistantBuffer = '';
+			const pendingToolCalls: ChatToolCall[] = [];
+
+			const profile = this.resolvePlannerProfile(serviceContext.contextType);
+
+			for await (const chunk of llmService.streamText({
+				messages,
+				tools,
+				tool_choice: 'auto',
+				userId: serviceContext.userId,
+				profile,
+				temperature: 0.4,
+				maxTokens: 1800,
+				sessionId: serviceContext.sessionId,
+				operationType: 'planner_stream'
+			}) as AsyncGenerator<LLMStreamEvent>) {
+				if (chunk.type === 'text' && chunk.content) {
+					assistantBuffer += chunk.content;
+					yield { type: 'text', content: chunk.content };
+				} else if (chunk.type === 'tool_call' && chunk.tool_call) {
+					pendingToolCalls.push(chunk.tool_call);
+					yield { type: 'tool_call', toolCall: chunk.tool_call };
+				} else if (chunk.type === 'done') {
+					if (chunk.usage?.total_tokens) {
+						lastUsage = { total_tokens: chunk.usage.total_tokens };
+					}
+				} else if (chunk.type === 'error') {
+					throw new Error(chunk.error || 'LLM streaming error');
 				}
 			}
 
-			toolResults.push(result);
+			if (pendingToolCalls.length === 0) {
+				if (assistantBuffer.trim().length === 0) {
+					yield { type: 'done', usage: lastUsage };
+					return;
+				}
+
+				messages.push({
+					role: 'assistant',
+					content: assistantBuffer
+				});
+
+				yield this.buildAgentStateEvent(
+					'waiting_on_user',
+					serviceContext.contextType,
+					'Ready for your response.'
+				);
+				yield { type: 'done', usage: lastUsage };
+				return;
+			}
+
+			messages.push({
+				role: 'assistant',
+				content: assistantBuffer,
+				tool_calls: pendingToolCalls
+			});
+
+			for (const toolCall of pendingToolCalls) {
+				toolCallCount++;
+				this.ensureWithinLimits(startTime, toolCallCount);
+
+				const result = await toolExecutionService.executeTool(
+					toolCall,
+					serviceContext,
+					tools,
+					{
+						virtualHandlers
+					}
+				);
+
+				yield { type: 'tool_result', result };
+				const contextShift =
+					(result as any)?.context_shift ??
+					result?.data?.context_shift ??
+					result?.result?.context_shift;
+				if (contextShift) {
+					const normalizedShiftContext = this.normalizeChatContextType(
+						(contextShift.new_context as ChatContextType) ?? serviceContext.contextType
+					);
+					serviceContext.contextType = normalizedShiftContext;
+					if (contextShift.entity_id) {
+						serviceContext.entityId = contextShift.entity_id;
+					}
+					serviceContext.lastTurnContext = this.buildContextShiftSnapshot(
+						contextShift,
+						normalizedShiftContext
+					);
+				}
+
+				if (result.streamEvents) {
+					for (const event of result.streamEvents) {
+						yield event;
+					}
+				}
+
+				const toolMessage: LLMMessage = {
+					role: 'tool',
+					content: JSON.stringify(this.normalizeToolResultForLLM(result)),
+					tool_call_id: toolCall.id
+				};
+				messages.push(toolMessage);
+			}
 		}
-
-		const response = await responseSynthesizer.synthesizeSimpleResponse(
-			request.userMessage,
-			toolResults,
-			serviceContext
-		);
-
-		const textEvent: StreamEvent = { type: 'text', content: response.text };
-		yield textEvent;
-
-		const usage = this.toStreamUsage(response.usage);
-		const doneEvent: StreamEvent = usage ? { type: 'done', usage } : { type: 'done' };
-		yield doneEvent;
 	}
 
-	/**
-	 * Handle complex research strategy via plan orchestration and executors
-	 */
-	private async *handleComplexStrategy(
-		analysis: Awaited<ReturnType<StrategyAnalyzer['analyzeUserIntent']>>,
-		request: AgentChatRequest,
-		serviceContext: ServiceContext,
-		plannerContext: PlannerContext
-	): AsyncGenerator<StreamEvent, void, unknown> {
-		const { planOrchestrator, responseSynthesizer } = this.deps;
-		const executorResults: ExecutorResult[] = [];
-		const collectedToolResults: ToolExecutionResult[] = [];
+	private ensureWithinLimits(startTime: number, toolCallCount: number): void {
+		if (Date.now() - startTime > MAX_SESSION_DURATION_MS) {
+			throw new Error('Planner session exceeded time limit. Please try again.');
+		}
+		if (toolCallCount > MAX_TOOL_CALLS_PER_TURN) {
+			throw new Error('Planner hit tool usage limit. Please refine your request.');
+		}
+	}
 
-		const plan = await planOrchestrator.createPlan(
-			request.userMessage,
-			analysis.primary_strategy,
-			plannerContext,
-			serviceContext
+	private async handlePlanToolCall(params: {
+		rawArgs: Record<string, any>;
+		plannerContext: PlannerContext;
+		serviceContext: ServiceContext;
+		request: AgentChatRequest;
+	}): Promise<ToolExecutionResult> {
+		const { rawArgs, plannerContext, serviceContext, request } = params;
+		const streamEvents: StreamEvent[] = [];
+
+		const executionMode = this.normalizeExecutionMode(
+			rawArgs.execution_mode,
+			rawArgs.auto_execute
+		);
+		const objective =
+			typeof rawArgs.objective === 'string' && rawArgs.objective.trim().length > 0
+				? rawArgs.objective
+				: request.userMessage;
+
+		const intent: PlanIntent = {
+			objective,
+			contextType: serviceContext.contextType,
+			sessionId: serviceContext.sessionId,
+			userId: serviceContext.userId,
+			entityId: serviceContext.entityId,
+			plannerAgentId: plannerContext.metadata.plannerAgentId || request.sessionId,
+			executionMode,
+			requestedOutputs: this.normalizeStringArray(rawArgs.requested_outputs),
+			priorityEntities: this.normalizeStringArray(rawArgs.priority_entities)
+		};
+
+		try {
+			const plan = await this.deps.planOrchestrator.createPlanFromIntent(
+				intent,
+				plannerContext,
+				serviceContext
+			);
+
+			streamEvents.push({ type: 'plan_created', plan });
+
+			switch (executionMode) {
+				case 'draft_only':
+					return await this.handleDraftOnlyPlan({
+						plan,
+						streamEvents,
+						serviceContext
+					});
+
+				case 'agent_review':
+					return await this.handleAgentReviewPlan({
+						plan,
+						intent,
+						streamEvents,
+						plannerContext,
+						serviceContext
+					});
+
+				case 'auto_execute':
+				default:
+					return await this.handleAutoExecutePlan({
+						plan,
+						streamEvents,
+						plannerContext,
+						serviceContext
+					});
+			}
+		} catch (error) {
+			console.error('[AgentChatOrchestrator] Plan tool execution failed', error);
+			streamEvents.push(
+				this.buildAgentStateEvent(
+					'waiting_on_user',
+					serviceContext.contextType,
+					'Plan creation failed. Try rephrasing your request.'
+				)
+			);
+
+			return {
+				success: false,
+				error: error instanceof Error ? error.message : 'Plan tool failed',
+				streamEvents
+			};
+		}
+	}
+
+	private async handleAutoExecutePlan(params: {
+		plan: AgentPlan;
+		streamEvents: StreamEvent[];
+		plannerContext: PlannerContext;
+		serviceContext: ServiceContext;
+	}): Promise<ToolExecutionResult> {
+		const { plan, streamEvents, plannerContext, serviceContext } = params;
+
+		streamEvents.push(
+			this.buildAgentStateEvent(
+				'executing_plan',
+				serviceContext.contextType,
+				'Executing plan...'
+			)
 		);
 
-		const planEvent: StreamEvent = { type: 'plan_created', plan };
-		yield planEvent;
+		const execution = await this.executePlan(plan, plannerContext, serviceContext);
+		streamEvents.push(...execution.events);
+		streamEvents.push(
+			this.buildAgentStateEvent(
+				'waiting_on_user',
+				serviceContext.contextType,
+				'Plan complete. Ready for the next instruction.'
+			)
+		);
 
+		return {
+			success: true,
+			data: {
+				status: 'executed',
+				plan_id: plan.id,
+				summary: execution.summary
+			},
+			streamEvents
+		};
+	}
+
+	private async handleDraftOnlyPlan(params: {
+		plan: AgentPlan;
+		streamEvents: StreamEvent[];
+		serviceContext: ServiceContext;
+	}): Promise<ToolExecutionResult> {
+		const { plan, streamEvents, serviceContext } = params;
+		const summary = this.summarizePlan(plan);
+
+		await this.deps.planOrchestrator.persistDraft(plan);
+		streamEvents.push({
+			type: 'plan_ready_for_review',
+			plan,
+			summary
+		});
+		streamEvents.push(
+			this.buildAgentStateEvent(
+				'waiting_on_user',
+				serviceContext.contextType,
+				'Plan drafted. Share feedback or say “run it” to execute.'
+			)
+		);
+
+		return {
+			success: true,
+			data: {
+				status: 'pending_review',
+				plan_id: plan.id,
+				summary
+			},
+			streamEvents
+		};
+	}
+
+	private async handleAgentReviewPlan(params: {
+		plan: AgentPlan;
+		intent: PlanIntent;
+		streamEvents: StreamEvent[];
+		plannerContext: PlannerContext;
+		serviceContext: ServiceContext;
+	}): Promise<ToolExecutionResult> {
+		const { plan, intent, streamEvents, plannerContext, serviceContext } = params;
+
+		const review = await this.deps.planOrchestrator.reviewPlan(plan, intent, serviceContext);
+		streamEvents.push({
+			type: 'plan_review',
+			plan,
+			verdict: review.verdict,
+			notes: review.notes,
+			reviewer: review.reviewer
+		});
+
+		if (review.verdict === 'approved') {
+			streamEvents.push(
+				this.buildAgentStateEvent(
+					'executing_plan',
+					serviceContext.contextType,
+					'Reviewer approved the plan. Executing now...'
+				)
+			);
+			const execution = await this.executePlan(plan, plannerContext, serviceContext);
+			streamEvents.push(...execution.events);
+			streamEvents.push(
+				this.buildAgentStateEvent(
+					'waiting_on_user',
+					serviceContext.contextType,
+					'Plan complete. Ready for the next instruction.'
+				)
+			);
+
+			return {
+				success: true,
+				data: {
+					status: 'executed',
+					plan_id: plan.id,
+					summary: execution.summary,
+					review
+				},
+				streamEvents
+			};
+		}
+
+		await this.deps.planOrchestrator.persistDraft(plan);
+		const summary = this.summarizePlan(plan);
+		streamEvents.push({
+			type: 'plan_ready_for_review',
+			plan,
+			summary,
+			recommendations: intent.requestedOutputs
+		});
+		streamEvents.push(
+			this.buildAgentStateEvent(
+				'waiting_on_user',
+				serviceContext.contextType,
+				'Reviewer requested changes. Adjust the plan and try again.'
+			)
+		);
+
+		return {
+			success: true,
+			data: {
+				status: 'changes_requested',
+				plan_id: plan.id,
+				summary,
+				review
+			},
+			streamEvents
+		};
+	}
+
+	private async executePlan(
+		plan: AgentPlan,
+		plannerContext: PlannerContext,
+		serviceContext: ServiceContext
+	): Promise<{ events: StreamEvent[]; summary: string; usage?: { total_tokens: number } }> {
+		const events: StreamEvent[] = [];
+		const executorResults: ExecutorResult[] = [];
+		const collectedToolResults: ToolExecutionResult[] = [];
 		let planUsage: { total_tokens: number } | undefined;
 
-		for await (const event of planOrchestrator.executePlan(
+		for await (const event of this.deps.planOrchestrator.executePlan(
 			plan,
 			plannerContext,
 			serviceContext,
 			async () => {}
 		)) {
-			// Skip internal done event - orchestrator will emit final done
 			if (event.type === 'done') {
 				if (event.usage) {
 					planUsage = event.usage;
@@ -308,7 +648,7 @@ export class AgentChatOrchestrator {
 				continue;
 			}
 
-			yield event;
+			events.push(event);
 
 			switch (event.type) {
 				case 'executor_result':
@@ -320,76 +660,155 @@ export class AgentChatOrchestrator {
 			}
 		}
 
-		const response = await responseSynthesizer.synthesizeComplexResponse(
+		const response = await this.deps.responseSynthesizer.synthesizeComplexResponse(
 			plan,
 			executorResults.length > 0 ? executorResults : collectedToolResults,
 			serviceContext
 		);
 
-		const textEvent: StreamEvent = { type: 'text', content: response.text };
-		yield textEvent;
-
-		const usage = planUsage ?? this.toStreamUsage(response.usage);
-		const doneEvent: StreamEvent = usage ? { type: 'done', usage } : { type: 'done' };
-		yield doneEvent;
+		return {
+			events,
+			summary: response.text,
+			usage: planUsage ?? this.toStreamUsage(response.usage)
+		};
 	}
 
-	/**
-	 * Handle dedicated project creation workflow (template → project instantiation)
-	 */
-	private async *handleProjectCreationStrategy(
-		analysis: Awaited<ReturnType<StrategyAnalyzer['analyzeUserIntent']>>,
-		request: AgentChatRequest,
-		serviceContext: ServiceContext,
-		plannerContext: PlannerContext
-	): AsyncGenerator<StreamEvent, void, unknown> {
-		const creationAnalysis = {
-			...analysis,
-			primary_strategy: ChatStrategy.PROJECT_CREATION
+	private normalizeExecutionMode(
+		mode?: PlanExecutionMode | string,
+		autoExecute?: boolean
+	): PlanExecutionMode {
+		if (mode === 'draft_only' || mode === 'agent_review' || mode === 'auto_execute') {
+			return mode;
+		}
+		if (autoExecute === false) {
+			return 'draft_only';
+		}
+		return 'auto_execute';
+	}
+
+	private normalizeStringArray(value: unknown): string[] | undefined {
+		if (!Array.isArray(value)) {
+			return undefined;
+		}
+		const normalized = value
+			.map((entry) => (typeof entry === 'string' ? entry.trim() : ''))
+			.filter(Boolean);
+		return normalized.length > 0 ? normalized : undefined;
+	}
+
+	private summarizePlan(plan: AgentPlan): string {
+		return plan.steps
+			.map(
+				(step: any) =>
+					`${step.stepNumber}. ${step.description}${
+						step.executorRequired ? ' (executor)' : ''
+					}`
+			)
+			.join('\n');
+	}
+
+	private normalizeChatContextType(contextType?: ChatContextType | string): ChatContextType {
+		if (!contextType) return 'global';
+		return (contextType as ChatContextType) === 'general'
+			? 'global'
+			: (contextType as ChatContextType);
+	}
+
+	private buildContextShiftSnapshot(
+		contextShift: {
+			new_context?: ChatContextType | string;
+			entity_id?: string;
+			entity_name?: string;
+			entity_type?: 'project' | 'task' | 'plan' | 'goal' | 'document' | 'output';
+			message?: string;
+		},
+		defaultContext: ChatContextType
+	): LastTurnContext {
+		const entities: LastTurnContext['entities'] = {};
+
+		const assignEntity = (slot: keyof LastTurnContext['entities'], id?: string) => {
+			if (!id) return;
+			if (slot === 'task_ids' || slot === 'goal_ids') {
+				if (!entities[slot]) entities[slot] = [];
+				if (!entities[slot]!.includes(id)) {
+					entities[slot]!.push(id);
+				}
+				return;
+			}
+			if (!(entities as any)[slot]) {
+				(entities as any)[slot] = id;
+			}
 		};
 
-		for await (const event of this.handleComplexStrategy(
-			creationAnalysis,
-			request,
-			serviceContext,
-			plannerContext
-		)) {
-			yield event;
+		switch (contextShift.entity_type) {
+			case 'project':
+				assignEntity('project_id', contextShift.entity_id);
+				break;
+			case 'task':
+				assignEntity('task_ids', contextShift.entity_id);
+				break;
+			case 'plan':
+				assignEntity('plan_id', contextShift.entity_id);
+				break;
+			case 'goal':
+				assignEntity('goal_ids', contextShift.entity_id);
+				break;
+			case 'document':
+				assignEntity('document_id', contextShift.entity_id);
+				break;
+			case 'output':
+				assignEntity('output_id', contextShift.entity_id);
+				break;
+		}
+
+		const summary =
+			contextShift.message ??
+			`Context shifted to ${contextShift.entity_name ?? contextShift.entity_type ?? defaultContext}.`;
+
+		return {
+			summary,
+			entities,
+			context_type: this.normalizeChatContextType(contextShift.new_context ?? defaultContext),
+			data_accessed: ['context_shift'],
+			timestamp: new Date().toISOString()
+		};
+	}
+
+	private buildAgentStateEvent(
+		state: 'thinking' | 'executing_plan' | 'waiting_on_user',
+		contextType: ChatContextType,
+		details: string
+	): StreamEvent {
+		return {
+			type: 'agent_state',
+			state,
+			contextType,
+			details
+		};
+	}
+
+	private resolvePlannerProfile(contextType: ChatContextType): TextProfile {
+		switch (contextType) {
+			case 'project_audit':
+			case 'project_forecast':
+				return 'quality';
+			case 'task_update':
+			case 'calendar':
+				return 'speed';
+			default:
+				return 'balanced';
 		}
 	}
 
-	/**
-	 * Handle clarifying questions strategy
-	 */
-	private async *handleClarifyingStrategy(
-		analysis: Awaited<ReturnType<StrategyAnalyzer['analyzeUserIntent']>>,
-		request: AgentChatRequest,
-		serviceContext: ServiceContext
-	): AsyncGenerator<StreamEvent, void, unknown> {
-		const { responseSynthesizer } = this.deps;
-		const questions = analysis.clarifying_questions ?? [
-			'Could you clarify what you would like me to look up?'
-		];
-
-		const clarifyingEvent: StreamEvent = { type: 'clarifying_questions', questions };
-		yield clarifyingEvent;
-
-		const response = await responseSynthesizer.synthesizeClarifyingQuestions(
-			questions,
-			serviceContext
-		);
-
-		const textEvent: StreamEvent = { type: 'text', content: response.text };
-		yield textEvent;
-
-		const usage = this.toStreamUsage(response.usage);
-		const doneEvent: StreamEvent = usage ? { type: 'done', usage } : { type: 'done' };
-		yield doneEvent;
+	private normalizeToolResultForLLM(result: ToolExecutionResult): ChatToolResult {
+		return {
+			tool_call_id: result.toolCallId,
+			result: result.data ?? null,
+			success: result.success,
+			error: result.error
+		};
 	}
 
-	/**
-	 * Persist planner agent record
-	 */
 	private async createPlannerAgentRecord(
 		persistence: PersistenceOperations,
 		plannerContext: PlannerContext,
@@ -410,132 +829,11 @@ export class AgentChatOrchestrator {
 		return persistence.createAgent(agentData);
 	}
 
-	/**
-	 * Resolve tool definitions from planner context
-	 */
-	private resolveTools(
-		requiredTools: string[] | undefined,
-		plannerContext: PlannerContext
-	): ChatToolDefinition[] {
-		if (!requiredTools || requiredTools.length === 0) {
-			return [];
-		}
-
-		return requiredTools
-			.map((toolName) =>
-				plannerContext.availableTools.find(
-					(tool) =>
-						this.getToolName(tool) === toolName ||
-						(tool as any)?.function?.name === toolName
-				)
-			)
-			.filter((tool): tool is ChatToolDefinition => !!tool);
-	}
-
-	/**
-	 * Build tool calls for the strategy
-	 */
-	private buildToolCalls(
-		tools: ChatToolDefinition[],
-		context: ServiceContext,
-		userMessage: string
-	): ChatToolCall[] {
-		return tools.map((tool) => {
-			const args = this.buildToolArguments(tool, context, userMessage);
-
-			return {
-				id: uuidv4(),
-				type: 'function',
-				function: {
-					name: this.getToolName(tool),
-					arguments: JSON.stringify(args ?? {})
-				}
-			};
-		});
-	}
-
-	/**
-	 * Build tool arguments heuristically from context
-	 */
-	private buildToolArguments(
-		tool: ChatToolDefinition,
-		context: ServiceContext,
-		userMessage: string
-	): Record<string, unknown> {
-		const params = (tool.function?.parameters?.properties ?? {}) as Record<string, unknown>;
-		const args: Record<string, unknown> = {};
-
-		if ('session_id' in params) {
-			args.session_id = context.sessionId;
-		}
-
-		if ('context_type' in params) {
-			args.context_type = context.contextType;
-		}
-
-		if (context.entityId) {
-			if ('project_id' in params && context.contextType === 'project') {
-				args.project_id = context.entityId;
-			}
-			if ('task_id' in params && context.contextType === 'task') {
-				args.task_id = context.entityId;
-			}
-			if ('entity_id' in params && !args.project_id && !args.task_id) {
-				args.entity_id = context.entityId;
-			}
-		}
-
-		if ('query' in params && userMessage.length > 0) {
-			args.query = userMessage;
-		}
-
-		return args;
-	}
-
 	private getToolName(tool: ChatToolDefinition): string {
 		if ((tool as any)?.function?.name) {
 			return (tool as any).function.name;
 		}
 		return (tool as any).name;
-	}
-
-	private overrideProjectCreationStrategy(
-		analysis: Awaited<ReturnType<StrategyAnalyzer['analyzeUserIntent']>>,
-		plannerContext: PlannerContext
-	): Awaited<ReturnType<StrategyAnalyzer['analyzeUserIntent']>> {
-		const toolOrder = [
-			'list_onto_templates',
-			'request_template_creation',
-			'create_onto_project'
-		];
-		const available = plannerContext.availableTools.map((tool) => this.getToolName(tool));
-		const prioritized = toolOrder.filter((tool) => available.includes(tool));
-
-		const mergedTools: string[] = [];
-		if (prioritized.length > 0) {
-			mergedTools.push(...prioritized);
-		}
-		if (analysis.required_tools?.length) {
-			for (const tool of analysis.required_tools) {
-				if (!mergedTools.includes(tool)) {
-					mergedTools.push(tool);
-				}
-			}
-		}
-		if (mergedTools.length === 0) {
-			mergedTools.push('create_onto_project');
-		}
-
-		return {
-			...analysis,
-			primary_strategy: ChatStrategy.PROJECT_CREATION,
-			required_tools: mergedTools,
-			confidence: Math.max(analysis.confidence ?? 0.9, 0.9),
-			can_complete_directly: true,
-			reasoning: analysis.reasoning?.includes('project')
-				? analysis.reasoning
-				: `${analysis.reasoning || ''} Project creation context requires instantiating the workspace before other work.`
-		};
 	}
 
 	private async safeUpdatePlannerStatus(plannerAgentId: string): Promise<void> {

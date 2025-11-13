@@ -21,6 +21,7 @@
 	import CardBody from '$lib/components/ui/CardBody.svelte';
 	import type { BriefAnalytics } from '$lib/types/daily-brief';
 	import { requireApiData } from '$lib/utils/api-client-helpers';
+	import { browser } from '$app/environment';
 
 	let analytics = $state<BriefAnalytics | null>(null);
 	let isLoading = $state(true);
@@ -29,6 +30,7 @@
 
 	// $effect runs on mount AND when selectedTimeframe changes - perfect for our needs
 	$effect(() => {
+		if (!browser) return;
 		selectedTimeframe; // Track this dependency
 		loadAnalytics();
 	});

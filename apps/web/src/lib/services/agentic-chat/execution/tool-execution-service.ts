@@ -36,6 +36,7 @@ export interface ToolExecutionOptions {
 	timeout?: number;
 	retryCount?: number;
 	retryDelay?: number;
+	virtualHandlers?: Record<string, VirtualToolHandler>;
 }
 
 /**
@@ -46,6 +47,25 @@ export interface ToolValidation {
 	errors: string[];
 }
 
+export interface ToolExecutionTelemetry {
+	toolName: string;
+	durationMs: number;
+	virtual: boolean;
+}
+
+export type ToolExecutionTelemetryHook = (
+	result: ToolExecutionResult,
+	telemetry: ToolExecutionTelemetry
+) => void | Promise<void>;
+
+export type VirtualToolHandler = (params: {
+	toolCall: ChatToolCall;
+	toolName: string;
+	args: Record<string, any>;
+	context: ServiceContext;
+	availableTools: ChatToolDefinition[];
+}) => Promise<ToolExecutionResult>;
+
 /**
  * Service for executing tools
  */
@@ -55,7 +75,10 @@ export class ToolExecutionService implements BaseService {
 	private static readonly DEFAULT_RETRY_DELAY = 1000;
 	private static readonly MAX_FORMATTED_LENGTH = 4000;
 
-	constructor(private toolExecutor: ToolExecutorFunction) {}
+	constructor(
+		private toolExecutor: ToolExecutorFunction,
+		private telemetryHook?: ToolExecutionTelemetryHook
+	) {}
 
 	/**
 	 * Execute a single tool
@@ -66,7 +89,28 @@ export class ToolExecutionService implements BaseService {
 		availableTools: ChatToolDefinition[],
 		options: ToolExecutionOptions = {}
 	): Promise<ToolExecutionResult> {
-		const { name: toolName, rawArguments } = this.resolveToolCall(toolCall);
+		const { name, rawArguments } = this.resolveToolCall(toolCall);
+		const toolName = name ?? 'unknown';
+		const startTime = typeof performance !== 'undefined' ? performance.now() : Date.now();
+		const virtualHandler =
+			name && options.virtualHandlers ? options.virtualHandlers[name] : undefined;
+
+		const finalizeResult = (
+			result: ToolExecutionResult,
+			overrideTelemetry?: Partial<ToolExecutionTelemetry>
+		): ToolExecutionResult => {
+			const durationMs =
+				(typeof performance !== 'undefined' ? performance.now() : Date.now()) - startTime;
+			if (this.telemetryHook) {
+				void this.telemetryHook(result, {
+					toolName,
+					durationMs,
+					virtual: Boolean(virtualHandler),
+					...overrideTelemetry
+				});
+			}
+			return result;
+		};
 
 		console.log('[ToolExecutionService] Executing tool', {
 			toolName,
@@ -75,12 +119,12 @@ export class ToolExecutionService implements BaseService {
 		});
 
 		if (!toolName) {
-			return {
+			return finalizeResult({
 				success: false,
 				error: 'Tool call did not include a function name',
 				toolName: 'unknown',
 				toolCallId: toolCall.id
-			};
+			});
 		}
 
 		let args: Record<string, any>;
@@ -88,23 +132,52 @@ export class ToolExecutionService implements BaseService {
 			args = this.normalizeArguments(rawArguments, toolName);
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
-			return {
+			return finalizeResult({
 				success: false,
 				error: message,
 				toolName,
 				toolCallId: toolCall.id
-			};
+			});
+		}
+
+		if (virtualHandler) {
+			try {
+				const result = await virtualHandler({
+					toolCall,
+					toolName,
+					args,
+					context,
+					availableTools
+				});
+
+				return finalizeResult({
+					...result,
+					toolName,
+					toolCallId: toolCall.id
+				});
+			} catch (error) {
+				console.error('[ToolExecutionService] Virtual tool execution failed', {
+					toolName,
+					error
+				});
+				return finalizeResult({
+					success: false,
+					error: error instanceof Error ? error.message : String(error),
+					toolName,
+					toolCallId: toolCall.id
+				});
+			}
 		}
 
 		// Validate the tool call
 		const validation = this.validateToolCall(toolName, args, availableTools);
 		if (!validation.isValid) {
-			return {
+			return finalizeResult({
 				success: false,
 				error: validation.errors.join('; '),
 				toolName,
 				toolCallId: toolCall.id
-			};
+			});
 		}
 
 		try {
@@ -124,7 +197,7 @@ export class ToolExecutionService implements BaseService {
 			// Clean up internal properties
 			const cleanedResult = this.cleanResult(result);
 
-			return {
+			return finalizeResult({
 				success: true,
 				data: cleanedResult,
 				toolName,
@@ -133,19 +206,21 @@ export class ToolExecutionService implements BaseService {
 				streamEvents: Array.isArray(streamEvents)
 					? (streamEvents as StreamEvent[])
 					: undefined
-			};
+			});
 		} catch (error) {
 			console.error('[ToolExecutionService] Tool execution failed', {
 				toolName,
 				error: error instanceof Error ? error.message : error
 			});
 
-			return {
+			const normalizedError = this.normalizeExecutionError(error, toolName, args);
+
+			return finalizeResult({
 				success: false,
-				error: error instanceof Error ? error.message : String(error),
+				error: normalizedError,
 				toolName,
 				toolCallId: toolCall.id
-			};
+			});
 		}
 	}
 
@@ -544,5 +619,22 @@ export class ToolExecutionService implements BaseService {
 		const name = toolCall.function?.name ?? (toolCall as any)?.name ?? '';
 		const rawArguments = toolCall.function?.arguments ?? (toolCall as any)?.arguments;
 		return { name, rawArguments };
+	}
+
+	private normalizeExecutionError(
+		error: unknown,
+		toolName: string,
+		args: Record<string, any>
+	): string {
+		const message = error instanceof Error ? error.message : String(error);
+		if (
+			toolName === 'create_onto_project' &&
+			typeof message === 'string' &&
+			message.includes('Active project template not found')
+		) {
+			const typeKey = typeof args?.type_key === 'string' ? args.type_key : 'unknown';
+			return `Template "${typeKey}" is not active. Call request_template_creation to generate it before running create_onto_project again. Original error: ${message}`;
+		}
+		return message;
 	}
 }

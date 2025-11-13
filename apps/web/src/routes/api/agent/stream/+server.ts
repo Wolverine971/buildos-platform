@@ -219,7 +219,8 @@ async function loadOntologyContext(
  */
 function generateLastTurnContext(
 	recentMessages: ChatMessage[],
-	contextType: ChatContextType
+	contextType: ChatContextType,
+	options: { toolResults?: any[] } = {}
 ): LastTurnContext | null {
 	if (!recentMessages || recentMessages.length < 2) {
 		// Need at least user + assistant message pair
@@ -287,6 +288,26 @@ function generateLastTurnContext(
 		}
 	}
 
+	const recentToolResults = options.toolResults ?? [];
+	if (recentToolResults.length > 0) {
+		recentToolResults.forEach((toolResult: any) => {
+			if (!toolResult) return;
+			const accessed =
+				toolResult.entities_accessed ?? toolResult.entitiesAccessed ?? undefined;
+			if (Array.isArray(accessed)) {
+				accessed.forEach((entityId) => {
+					if (typeof entityId === 'string') {
+						recordEntityById(entities, entityId);
+					}
+				});
+			}
+
+			const normalizedPayload =
+				toolResult.tool_result ?? toolResult.result ?? toolResult.data ?? toolResult;
+			collectEntitiesFromPayload(entities, normalizedPayload);
+		});
+	}
+
 	// Generate a brief summary (10-20 words) of the interaction
 	const userMessagePreview = lastUserMsg.content.substring(0, 100).trim();
 	const summary = `${userMessagePreview.substring(0, 60)}...`;
@@ -299,6 +320,168 @@ function generateLastTurnContext(
 		strategy_used: undefined, // Will be filled by planner if available
 		timestamp: lastAssistantMsg.created_at || new Date().toISOString()
 	};
+}
+
+function buildContextShiftLastTurnContext(
+	contextShift: {
+		new_context: ChatContextType | string;
+		entity_id?: string;
+		entity_name?: string;
+		entity_type?: 'project' | 'task' | 'plan' | 'goal' | 'document' | 'output';
+		message?: string;
+	},
+	defaultContextType: ChatContextType
+): LastTurnContext {
+	const normalized = normalizeContextType(
+		(contextShift.new_context ?? defaultContextType) as ChatContextType
+	);
+
+	const summary =
+		contextShift.message ??
+		`Context shifted to ${contextShift.entity_name ?? contextShift.entity_type ?? normalized}.`;
+
+	const entities: LastTurnContext['entities'] = {};
+	switch (contextShift.entity_type) {
+		case 'project':
+			if (contextShift.entity_id) entities.project_id = contextShift.entity_id;
+			break;
+		case 'task':
+			if (contextShift.entity_id) entities.task_ids = [contextShift.entity_id];
+			break;
+		case 'plan':
+			if (contextShift.entity_id) entities.plan_id = contextShift.entity_id;
+			break;
+		case 'goal':
+			if (contextShift.entity_id) entities.goal_ids = [contextShift.entity_id];
+			break;
+		case 'document':
+			if (contextShift.entity_id) entities.document_id = contextShift.entity_id;
+			break;
+		case 'output':
+			if (contextShift.entity_id) entities.output_id = contextShift.entity_id;
+			break;
+		default:
+			break;
+	}
+
+	return {
+		summary,
+		entities,
+		context_type: normalized,
+		data_accessed: ['context_shift'],
+		strategy_used: undefined,
+		timestamp: new Date().toISOString()
+	};
+}
+
+type LastTurnEntities = LastTurnContext['entities'];
+
+function assignEntityValue(
+	entities: LastTurnEntities,
+	slot: keyof LastTurnEntities,
+	id: string
+): void {
+	if (!id) return;
+	if (slot === 'task_ids' || slot === 'goal_ids') {
+		if (!entities[slot]) {
+			entities[slot] = [];
+		}
+		if (!entities[slot]!.includes(id)) {
+			entities[slot]!.push(id);
+		}
+		return;
+	}
+	if (!(entities as any)[slot]) {
+		(entities as any)[slot] = id;
+	}
+}
+
+function recordEntityById(
+	entities: LastTurnEntities,
+	entityId: string,
+	fallbackSlot?: keyof LastTurnEntities | null
+): void {
+	if (!entityId) return;
+	const slot = inferEntitySlotFromId(entityId) ?? fallbackSlot;
+	if (!slot) return;
+	assignEntityValue(entities, slot, entityId);
+}
+
+function inferEntitySlotFromId(entityId: string): keyof LastTurnEntities | null {
+	if (entityId.startsWith('proj_')) return 'project_id';
+	if (entityId.startsWith('task_')) return 'task_ids';
+	if (entityId.startsWith('plan_')) return 'plan_id';
+	if (entityId.startsWith('goal_')) return 'goal_ids';
+	if (entityId.startsWith('doc_')) return 'document_id';
+	if (entityId.startsWith('out_')) return 'output_id';
+	return null;
+}
+
+function collectEntitiesFromPayload(entities: LastTurnEntities, payload: any, depth = 0): void {
+	if (!payload || depth > 6) return;
+
+	if (Array.isArray(payload)) {
+		payload.forEach((item) => collectEntitiesFromPayload(entities, item, depth + 1));
+		return;
+	}
+
+	if (typeof payload !== 'object') {
+		return;
+	}
+
+	const possibleId = typeof payload.id === 'string' ? payload.id : null;
+	if (possibleId) {
+		const slot = inferEntitySlotFromStructure(payload);
+		if (slot) {
+			recordEntityById(entities, possibleId, slot);
+		}
+	}
+
+	for (const [key, value] of Object.entries(payload)) {
+		if (typeof value === 'string') {
+			recordEntityByKey(entities, key, value);
+		} else if (Array.isArray(value) || (value && typeof value === 'object')) {
+			collectEntitiesFromPayload(entities, value, depth + 1);
+		}
+	}
+}
+
+function inferEntitySlotFromStructure(obj: Record<string, any>): keyof LastTurnEntities | null {
+	const kind = (obj.type_key || obj.kind || obj.entity_type || '').toString().toLowerCase();
+	if (kind.includes('task')) return 'task_ids';
+	if (kind.includes('plan')) return 'plan_id';
+	if (kind.includes('goal')) return 'goal_ids';
+	if (kind.includes('doc')) return 'document_id';
+	if (kind.includes('output')) return 'output_id';
+	if (kind.includes('project')) return 'project_id';
+	return null;
+}
+
+function recordEntityByKey(entities: LastTurnEntities, key: string, value: string): void {
+	const normalized = key.toLowerCase();
+	if (normalized.includes('project') && normalized.endsWith('id')) {
+		assignEntityValue(entities, 'project_id', value);
+		return;
+	}
+	if (normalized.includes('task') && normalized.endsWith('id')) {
+		assignEntityValue(entities, 'task_ids', value);
+		return;
+	}
+	if (normalized.includes('goal') && normalized.endsWith('id')) {
+		assignEntityValue(entities, 'goal_ids', value);
+		return;
+	}
+	if (normalized.includes('plan') && normalized.endsWith('id')) {
+		assignEntityValue(entities, 'plan_id', value);
+		return;
+	}
+	if (normalized.includes('doc') && normalized.endsWith('id')) {
+		assignEntityValue(entities, 'document_id', value);
+		return;
+	}
+	if (normalized.includes('output') && normalized.endsWith('id')) {
+		assignEntityValue(entities, 'output_id', value);
+	}
 }
 
 // ============================================
@@ -415,6 +598,7 @@ export const POST: RequestHandler = async ({
 		}
 
 		// Save user message to chat_messages
+		const userMessageTimestamp = new Date().toISOString();
 		await persistChatMessage(supabase, {
 			session_id: chatSession.id,
 			user_id: userId,
@@ -427,7 +611,7 @@ export const POST: RequestHandler = async ({
 		// Parse enhanced request fields
 		const enhancedBody = body as EnhancedAgentStreamRequest;
 		const ontologyEntityType = enhancedBody.ontologyEntityType;
-		let lastTurnContext = enhancedBody.lastTurnContext ?? undefined;
+		const providedLastTurnContext = enhancedBody.lastTurnContext ?? undefined;
 
 		// Load ontology context if applicable
 		// Skip for project_create as it uses template overview instead
@@ -451,16 +635,20 @@ export const POST: RequestHandler = async ({
 		const resolvedHistory =
 			storedConversationHistory.length > 0 ? storedConversationHistory : providedHistory;
 
-		if (!lastTurnContext && resolvedHistory.length > 0) {
-			lastTurnContext =
-				generateLastTurnContext(resolvedHistory, normalizedContextType) ?? undefined;
-			console.log('[API] Generated last turn context:', {
-				hasContext: !!lastTurnContext,
-				summary: lastTurnContext?.summary,
-				entitiesCount: Object.keys(lastTurnContext?.entities || {}).length
-			});
+		let lastTurnContextForPlanner =
+			generateLastTurnContext(resolvedHistory, normalizedContextType) ?? undefined;
+		if (!lastTurnContextForPlanner && providedLastTurnContext) {
+			lastTurnContextForPlanner = providedLastTurnContext;
 		}
+
+		console.log('[API] Resolved last turn context:', {
+			hasContext: !!lastTurnContextForPlanner,
+			summary: lastTurnContextForPlanner?.summary,
+			entitiesCount: Object.keys(lastTurnContextForPlanner?.entities || {}).length
+		});
+
 		const historyToUse = resolvedHistory;
+		let effectiveContextType = normalizedContextType;
 
 		const agentStream = SSEResponse.createChatStream();
 
@@ -492,22 +680,44 @@ export const POST: RequestHandler = async ({
 
 				if (contextShift) {
 					console.log('[API] Context shift detected:', contextShift);
+					const normalizedShiftContext = normalizeContextType(
+						(contextShift.new_context as ChatContextType) ?? effectiveContextType
+					);
+					effectiveContextType = normalizedShiftContext;
+					const shiftMessage =
+						contextShift.message ??
+						`✓ Context switched to ${contextShift.entity_name || normalizedShiftContext}.`;
 
 					await agentStream.sendMessage({
 						type: 'context_shift',
 						context_shift: {
-							new_context: contextShift.new_context,
+							new_context: normalizedShiftContext,
 							entity_id: contextShift.entity_id,
 							entity_name: contextShift.entity_name,
 							entity_type: contextShift.entity_type,
-							message: `✓ Project created successfully. I'm now helping you manage "${contextShift.entity_name}". What would you like to add?`
+							message: shiftMessage
 						}
 					});
+
+					const shiftTurnContext = buildContextShiftLastTurnContext(
+						{
+							...contextShift,
+							new_context: normalizedShiftContext,
+							message: shiftMessage
+						},
+						normalizedShiftContext
+					);
+
+					await agentStream.sendMessage({
+						type: 'last_turn_context',
+						context: shiftTurnContext
+					});
+					lastTurnContextForPlanner = shiftTurnContext;
 
 					const { error: updateError } = await supabase
 						.from('chat_sessions')
 						.update({
-							context_type: contextShift.new_context,
+							context_type: normalizedShiftContext,
 							entity_id: contextShift.entity_id,
 							updated_at: new Date().toISOString()
 						})
@@ -518,7 +728,7 @@ export const POST: RequestHandler = async ({
 					} else {
 						console.log('[API] Chat session context updated:', {
 							session_id: chatSession.id,
-							new_context: contextShift.new_context,
+							new_context: normalizedShiftContext,
 							entity_id: contextShift.entity_id
 						});
 					}
@@ -527,7 +737,7 @@ export const POST: RequestHandler = async ({
 						session_id: chatSession.id,
 						user_id: userId,
 						role: 'system',
-						content: `Context shifted to ${contextShift.new_context} for "${contextShift.entity_name}" (ID: ${contextShift.entity_id})`
+						content: `Context shifted to ${normalizedShiftContext} for "${contextShift.entity_name}" (ID: ${contextShift.entity_id})`
 					});
 				}
 			}
@@ -562,7 +772,7 @@ export const POST: RequestHandler = async ({
 					conversationHistory: historyToUse,
 					chatSession,
 					ontologyContext: ontologyContext || undefined,
-					lastTurnContext: lastTurnContext || undefined
+					lastTurnContext: lastTurnContextForPlanner || undefined
 				};
 
 				for await (const _ of orchestrator.streamConversation(
@@ -575,6 +785,7 @@ export const POST: RequestHandler = async ({
 				// Save assistant response to database (with tool calls if any)
 				// Important: Save even if no text content, as long as there are tool calls
 				if (assistantResponse.trim() || toolCalls.length > 0) {
+					const assistantMessageTimestamp = new Date().toISOString();
 					const assistantMessageData: ChatMessageInsertPayload = {
 						session_id: chatSession.id,
 						user_id: userId,
@@ -615,6 +826,37 @@ export const POST: RequestHandler = async ({
 								`No result found for tool call ${toolCall.id} (${toolCall.function?.name})`
 							);
 						}
+					}
+
+					const historyAfterTurn: ChatMessage[] = [
+						...historyToUse,
+						{
+							session_id: chatSession.id,
+							user_id: userId,
+							role: 'user',
+							content: message,
+							created_at: userMessageTimestamp
+						} as ChatMessage,
+						{
+							session_id: chatSession.id,
+							user_id: userId,
+							role: 'assistant',
+							content: assistantResponse || '',
+							created_at: assistantMessageTimestamp,
+							tool_calls: toolCalls.length > 0 ? toolCalls : undefined
+						} as ChatMessage
+					];
+
+					const refreshedLastTurnContext =
+						generateLastTurnContext(historyAfterTurn, effectiveContextType, {
+							toolResults
+						}) ?? undefined;
+
+					if (refreshedLastTurnContext) {
+						await agentStream.sendMessage({
+							type: 'last_turn_context',
+							context: refreshedLastTurnContext
+						});
 					}
 				}
 
@@ -749,21 +991,27 @@ function mapPlannerEventToSSE(
 			return { type: 'ontology_loaded', summary: (event as any).summary };
 		case 'last_turn_context':
 			return { type: 'last_turn_context', context: (event as any).context };
-		case 'strategy_selected':
+		case 'agent_state':
 			return {
-				type: 'strategy_selected',
-				strategy: (event as any).strategy,
-				confidence: (event as any).confidence ?? 0
+				type: 'agent_state',
+				state: (event as any).state,
+				contextType: normalizeContextType((event as any).contextType),
+				details: (event as any).details
 			};
 		case 'clarifying_questions':
 			return {
 				type: 'clarifying_questions',
 				questions: (event as any).questions ?? []
 			};
-		case 'analysis':
-			return { type: 'analysis', analysis: (event as any).analysis };
 		case 'plan_created':
 			return { type: 'plan_created', plan: (event as any).plan };
+		case 'plan_ready_for_review':
+			return {
+				type: 'plan_ready_for_review',
+				plan: (event as any).plan,
+				summary: (event as any).summary,
+				recommendations: (event as any).recommendations
+			};
 		case 'step_start':
 			return { type: 'step_start', step: (event as any).step };
 		case 'step_complete':
@@ -779,6 +1027,14 @@ function mapPlannerEventToSSE(
 				type: 'executor_result',
 				executorId: (event as any).executorId,
 				result: (event as any).result
+			};
+		case 'plan_review':
+			return {
+				type: 'plan_review',
+				plan: (event as any).plan,
+				verdict: (event as any).verdict,
+				notes: (event as any).notes,
+				reviewer: (event as any).reviewer
 			};
 		case 'text':
 			return { type: 'text', content: (event as any).content };

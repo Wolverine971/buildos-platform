@@ -98,10 +98,10 @@ async function generateLastTurnContext(
 		context_type: contextType,
 		data_accessed: toolsUsed,
 		strategy_used:
-			strategyUsed === ChatStrategy.SIMPLE_RESEARCH
-				? 'simple_research'
-				: strategyUsed === ChatStrategy.COMPLEX_RESEARCH
-					? 'complex_research'
+			strategyUsed === ChatStrategy.PLANNER_STREAM
+				? 'planner_stream'
+				: strategyUsed === ChatStrategy.PLANNER_STREAM
+					? 'planner_stream'
 					: strategyUsed === ChatStrategy.ASK_CLARIFYING
 						? 'clarifying'
 						: undefined,
@@ -147,7 +147,7 @@ function generateSimpleSummary(
 
 	// Build summary
 	const strategyText =
-		strategy === ChatStrategy.COMPLEX_RESEARCH
+		strategy === ChatStrategy.PLANNER_STREAM
 			? ' (complex analysis)'
 			: strategy === ChatStrategy.ASK_CLARIFYING
 				? ' (needed clarification)'
@@ -1005,7 +1005,7 @@ Add these UI components in the template section:
 {#if currentStrategy}
 	<Badge
 		size="xs"
-		class="ml-2 animate-in fade-in duration-300 {currentStrategy === 'complex_research'
+		class="ml-2 animate-in fade-in duration-300 {currentStrategy === 'planner_stream'
 			? 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300'
 			: currentStrategy === 'ask_clarifying_questions'
 				? 'bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300'
@@ -1292,7 +1292,7 @@ describe('Agent Context Service', () => {
 				},
 				context_type: 'project',
 				data_accessed: ['list_tasks'],
-				strategy_used: 'simple_research',
+				strategy_used: 'planner_stream',
 				timestamp: new Date().toISOString()
 			};
 
@@ -1350,7 +1350,7 @@ describe('Agent Planner Service', () => {
 	});
 
 	describe('analyzeUserIntent', () => {
-		it('should select simple_research for direct queries', async () => {
+		it('should select planner_stream for direct queries', async () => {
 			const mockContext = {
 				metadata: {
 					contextType: 'project',
@@ -1364,7 +1364,7 @@ describe('Agent Planner Service', () => {
 				generateText: vi.fn(() =>
 					Promise.resolve(
 						JSON.stringify({
-							primary_strategy: 'simple_research',
+							primary_strategy: 'planner_stream',
 							confidence: 0.9,
 							reasoning: 'Direct lookup query',
 							needs_clarification: false,
@@ -1382,12 +1382,12 @@ describe('Agent Planner Service', () => {
 				undefined
 			);
 
-			expect(analysis.primary_strategy).toBe(ChatStrategy.SIMPLE_RESEARCH);
+			expect(analysis.primary_strategy).toBe(ChatStrategy.PLANNER_STREAM);
 			expect(analysis.confidence).toBeGreaterThan(0.5);
 			expect(analysis.estimated_steps).toBe(1);
 		});
 
-		it('should select complex_research for multi-step queries', async () => {
+		it('should select planner_stream for multi-step queries', async () => {
 			const mockContext = {
 				metadata: {
 					contextType: 'project',
@@ -1400,7 +1400,7 @@ describe('Agent Planner Service', () => {
 				generateText: vi.fn(() =>
 					Promise.resolve(
 						JSON.stringify({
-							primary_strategy: 'complex_research',
+							primary_strategy: 'planner_stream',
 							confidence: 0.8,
 							reasoning: 'Requires multiple steps and analysis',
 							needs_clarification: false,
@@ -1418,7 +1418,7 @@ describe('Agent Planner Service', () => {
 				undefined
 			);
 
-			expect(analysis.primary_strategy).toBe(ChatStrategy.COMPLEX_RESEARCH);
+			expect(analysis.primary_strategy).toBe(ChatStrategy.PLANNER_STREAM);
 			expect(analysis.estimated_steps).toBeGreaterThan(1);
 		});
 
@@ -1466,7 +1466,7 @@ describe('Agent Planner Service', () => {
 	describe('executeStrategy', () => {
 		it('should execute simple research successfully', async () => {
 			const analysis: StrategyAnalysis = {
-				primary_strategy: ChatStrategy.SIMPLE_RESEARCH,
+				primary_strategy: ChatStrategy.PLANNER_STREAM,
 				confidence: 0.9,
 				reasoning: 'Direct query',
 				needs_clarification: false,
@@ -1501,7 +1501,7 @@ describe('Agent Planner Service', () => {
 			);
 
 			expect(result.success).toBe(true);
-			expect(result.strategy_used).toBe(ChatStrategy.SIMPLE_RESEARCH);
+			expect(result.strategy_used).toBe(ChatStrategy.PLANNER_STREAM);
 			expect(streamCallback).toHaveBeenCalledWith(
 				expect.objectContaining({ type: 'strategy_selected' })
 			);
@@ -1641,7 +1641,7 @@ describe('Agent Chat Ontology Integration Flow', () => {
 
 			const strategyEvent = events.find((e) => e.type === 'strategy_selected');
 			expect(strategyEvent).toBeDefined();
-			expect(strategyEvent.strategy).toBe('simple_research');
+			expect(strategyEvent.strategy).toBe('planner_stream');
 
 			const lastTurnEvent = events.find((e) => e.type === 'last_turn_context');
 			expect(lastTurnEvent).toBeDefined();

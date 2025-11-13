@@ -109,6 +109,7 @@
 
 	// Load users on mount and when filters change
 	$effect(() => {
+		if (!browser) return;
 		// Track all filter dependencies
 		searchQuery;
 		filterByAdmin;

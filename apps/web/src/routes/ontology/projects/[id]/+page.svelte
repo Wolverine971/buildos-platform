@@ -1288,6 +1288,7 @@
 <OntologyProjectEditModal
 	bind:isOpen={showProjectEditModal}
 	{project}
+	{contextDocument}
 	onClose={() => (showProjectEditModal = false)}
 	onSaved={handleProjectSaved}
 />

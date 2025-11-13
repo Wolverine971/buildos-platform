@@ -8,7 +8,7 @@
 
 ## 1. Purpose
 
-The current planner → strategy analyzer → execution split hard-codes two primary strategies (`simple_research` vs `complex_research`) and a project-specific override. This makes the agent brittle, adds latency, and prevents the LLM from flexibly deciding which tools (or plan) to run based on the request context. This document proposes a context-type-driven orchestration loop where the planner LLM runs a single dynamic tool-calling session, and the execution-plan workflow becomes a meta tool the LLM invokes when needed.
+The current planner → strategy analyzer → execution split hard-codes two primary strategies (`planner_stream` vs `planner_stream`) and a project-specific override. This makes the agent brittle, adds latency, and prevents the LLM from flexibly deciding which tools (or plan) to run based on the request context. This document proposes a context-type-driven orchestration loop where the planner LLM runs a single dynamic tool-calling session, and the execution-plan workflow becomes a meta tool the LLM invokes when needed.
 
 ---
 

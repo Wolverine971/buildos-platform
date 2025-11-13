@@ -14,11 +14,11 @@ import { ChatCompressionService } from '$lib/services/chat-compression-service';
 import { AgentContextService } from '$lib/services/agent-context-service';
 import { AgentExecutorService } from '$lib/services/agent-executor-service';
 import { ChatToolExecutor } from '$lib/chat/tool-executor';
+import { ErrorLoggerService } from '$lib/services/errorLogger.service';
 
 import { AgentPersistenceService } from './persistence/agent-persistence-service';
 import { ToolExecutionService } from './execution/tool-execution-service';
 import { ExecutorCoordinator } from './execution/executor-coordinator';
-import { StrategyAnalyzer } from './analysis/strategy-analyzer';
 import { PlanOrchestrator } from './planning/plan-orchestrator';
 import { ResponseSynthesizer } from './synthesis/response-synthesizer';
 import { AgentChatOrchestrator } from './orchestration/agent-chat-orchestrator';
@@ -64,16 +64,16 @@ export function createAgentChatOrchestrator(
 	);
 
 	const responseSynthesizer = new ResponseSynthesizer(llmService);
-	const strategyAnalyzer = new StrategyAnalyzer(llmService);
+	const errorLogger = ErrorLoggerService.getInstance(supabase);
 
 	const dependencies: AgentChatOrchestratorDependencies = {
-		strategyAnalyzer,
 		planOrchestrator,
 		toolExecutionService,
 		responseSynthesizer,
-		executorCoordinator,
 		persistenceService,
-		contextService
+		contextService,
+		llmService,
+		errorLogger
 	};
 
 	return new AgentChatOrchestrator(dependencies);
@@ -123,7 +123,6 @@ export {
 	AgentPersistenceService,
 	ToolExecutionService,
 	ExecutorCoordinator,
-	StrategyAnalyzer,
 	PlanOrchestrator,
 	ResponseSynthesizer
 };

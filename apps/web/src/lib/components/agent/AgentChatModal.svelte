@@ -148,11 +148,21 @@
 
 	// Ontology integration state
 	let lastTurnContext = $state<LastTurnContext | null>(null);
-	let currentStrategy = $state<string | null>(null);
-	// Used for tracking strategy confidence, may be displayed in future (prefixed with _ to indicate intentionally unused)
-	let _strategyConfidence = $state<number>(0);
 	let ontologyLoaded = $state(false);
 	let ontologySummary = $state<string | null>(null);
+
+	type AgentLoopState = 'thinking' | 'executing_plan' | 'waiting_on_user';
+	const AGENT_STATE_MESSAGES: Record<AgentLoopState, string> = {
+		thinking: 'Agent is thinking...',
+		executing_plan: 'Agent is executing...',
+		waiting_on_user: 'Waiting on your direction...'
+	};
+	let agentState = $state<AgentLoopState | null>(null);
+	let agentStateDetails = $state<string | null>(null);
+	const agentStateLabel = $derived.by(() => {
+		if (!agentState) return null;
+		return agentStateDetails ?? AGENT_STATE_MESSAGES[agentState];
+	});
 
 	interface AgentMessage {
 		id: string;
@@ -217,8 +227,8 @@
 		isStreaming = false;
 		// Reset ontology state
 		lastTurnContext = null;
-		currentStrategy = null;
-		_strategyConfidence = 0;
+		agentState = null;
+		agentStateDetails = null;
 		ontologyLoaded = false;
 		ontologySummary = null;
 		voiceErrorMessage = '';
@@ -347,7 +357,10 @@
 		error = null;
 		isStreaming = true;
 		currentActivity = 'Analyzing request...';
+		agentState = 'thinking';
+		agentStateDetails = 'Agent is processing your request...';
 		_currentPlan = null;
+		lastTurnContext = null;
 
 		// Reset scroll flag so we always scroll to show new user message
 		userHasScrolled = false;
@@ -379,7 +392,6 @@
 					context_type: selectedContextType,
 					entity_id: selectedEntityId,
 					conversation_history: conversationHistory, // Pass conversation history for compression
-					lastTurnContext: lastTurnContext, // Pass last turn context for continuity
 					ontologyEntityType: ontologyEntityType // Pass entity type for ontology loading
 				})
 			});
@@ -469,16 +481,27 @@
 				}
 				break;
 
-			case 'strategy_selected':
-				// Strategy was selected by planner
-				currentStrategy = event.strategy;
-				_strategyConfidence = event.confidence || 0;
-				const strategyName = event.strategy?.replace(/_/g, ' ') || 'unknown';
-				const confidencePercent = Math.round((event.confidence || 0) * 100);
-				addActivityMessage(
-					`Strategy selected: ${strategyName} (${confidencePercent}% confidence)`
-				);
+			case 'agent_state': {
+				const state = event.state as AgentLoopState;
+				agentState = state;
+				agentStateDetails = event.details ?? null;
+				if (event.details) {
+					addActivityMessage(event.details);
+				}
+				switch (state) {
+					case 'waiting_on_user':
+						currentActivity = 'Waiting on your direction...';
+						break;
+					case 'executing_plan':
+						currentActivity = event.details ?? 'Executing plan...';
+						break;
+					case 'thinking':
+					default:
+						currentActivity = event.details ?? 'Analyzing request...';
+						break;
+				}
 				break;
+			}
 
 			case 'clarifying_questions': {
 				addClarifyingQuestionsMessage(event.questions);
@@ -490,6 +513,8 @@
 				if (questionCount > 0) {
 					addActivityMessage(`Clarifying questions requested (${questionCount})`);
 					currentActivity = 'Waiting on your clarifications to continue...';
+					agentState = 'waiting_on_user';
+					agentStateDetails = 'Waiting on your clarifications to continue...';
 				}
 				break;
 			}
@@ -499,21 +524,26 @@
 				addActivityMessage('Executor instructions generated');
 				break;
 
-			case 'analysis':
-				// Planner is analyzing the request
-				currentActivity = 'Planner analyzing request...';
-
-				addActivityMessage(
-					`Strategy: ${event.analysis?.primary_strategy || 'unknown'} - ${event.analysis?.reasoning || ''}`
-				);
-				break;
-
 			case 'plan_created':
 				// Plan created with steps
 				_currentPlan = event.plan;
 				currentActivity = `Executing plan with ${event.plan?.steps?.length || 0} steps...`;
+				agentState = 'executing_plan';
+				agentStateDetails = currentActivity;
 				addPlanMessage(event.plan);
 				break;
+			case 'plan_ready_for_review': {
+				_currentPlan = event.plan;
+				addPlanMessage(event.plan);
+				const summary =
+					event.summary ||
+					'Plan drafted and waiting for your approval. Reply with any changes or say “run it”.';
+				addActivityMessage(summary);
+				currentActivity = 'Waiting on your feedback about the plan...';
+				agentState = 'waiting_on_user';
+				agentStateDetails = summary;
+				break;
+			}
 
 			case 'step_start':
 				// Starting a plan step
@@ -524,8 +554,32 @@
 			case 'executor_spawned':
 				// Executor agent spawned
 				currentActivity = `Executor working on task...`;
+				agentState = 'executing_plan';
+				agentStateDetails = currentActivity;
 				addActivityMessage(`Executor started for: ${event.task?.description}`);
 				break;
+			case 'plan_review': {
+				const verdictCopy =
+					event.verdict === 'approved'
+						? 'Plan approved'
+						: event.verdict === 'changes_requested'
+							? 'Plan needs changes'
+							: 'Plan rejected';
+				const noteCopy = event.notes ? ` · ${event.notes}` : '';
+				addActivityMessage(`${verdictCopy}${noteCopy}`);
+				currentActivity =
+					event.verdict === 'approved'
+						? 'Executing approved plan...'
+						: 'Waiting on plan revisions...';
+				if (event.verdict === 'approved') {
+					agentState = 'executing_plan';
+					agentStateDetails = currentActivity;
+				} else {
+					agentState = 'waiting_on_user';
+					agentStateDetails = currentActivity;
+				}
+				break;
+			}
 
 			case 'text':
 				// Streaming text (could be from planner or executor)
@@ -612,6 +666,8 @@
 			case 'done':
 				// All done - clear activity and re-enable input
 				currentActivity = '';
+				agentState = null;
+				agentStateDetails = null;
 				finalizeAssistantMessage();
 				// Note: isStreaming will be set to false by onComplete callback
 				// But we can also set it here for immediate UI response
@@ -622,6 +678,8 @@
 				error = event.error || 'An error occurred';
 				isStreaming = false;
 				currentActivity = '';
+				agentState = null;
+				agentStateDetails = null;
 				break;
 		}
 	}
@@ -793,7 +851,7 @@
 						{displayContextSubtitle}
 					</p>
 				{/if}
-				{#if ontologyLoaded || currentStrategy || currentActivity}
+				{#if ontologyLoaded || agentStateLabel || currentActivity}
 					<div
 						class="flex flex-wrap items-center gap-3 text-xs text-slate-500 dark:text-slate-400"
 					>
@@ -804,11 +862,11 @@
 								Ontology ready
 							</span>
 						{/if}
-						{#if currentStrategy}
+						{#if agentStateLabel}
 							<span
 								class="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium uppercase tracking-wide dark:bg-slate-800 dark:text-slate-200"
 							>
-								Strategy · {currentStrategy.replace(/_/g, ' ')}
+								{agentStateLabel}
 							</span>
 						{/if}
 						{#if currentActivity}

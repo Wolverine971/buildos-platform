@@ -31,11 +31,12 @@ import type {
 	ToolExecutionResult,
 	ExecutorResult,
 	ExecutorSpawnParams,
-	ToolExecutorFunction
+	ToolExecutorFunction,
+	PlanExecutionMode
 } from '../shared/types';
 import { PlanExecutionError } from '../shared/types';
 import { ChatStrategy } from '$lib/types/agent-chat-enhancement';
-import type { ChatToolCall } from '@buildos/shared-types';
+import type { ChatToolCall, ChatContextType } from '@buildos/shared-types';
 import { v4 as uuidv4, validate as uuidValidate } from 'uuid';
 import { formatToolSummaries } from '$lib/chat/tools.config';
 
@@ -83,6 +84,27 @@ export interface PlanValidation {
 	errors: string[];
 }
 
+export type PlanReviewVerdict = 'approved' | 'changes_requested' | 'rejected';
+
+export interface PlanReviewResult {
+	verdict: PlanReviewVerdict;
+	notes?: string;
+	reviewer?: string;
+}
+
+export interface PlanIntent {
+	objective: string;
+	contextType: ChatContextType;
+	sessionId: string;
+	userId: string;
+	plannerAgentId: string;
+	entityId?: string;
+	requestedOutputs?: string[];
+	priorityEntities?: string[];
+	executionMode?: PlanExecutionMode;
+	autoExecute?: boolean; // legacy alias for executionMode === 'auto_execute'
+}
+
 /**
  * Service for creating and orchestrating plans
  */
@@ -114,13 +136,39 @@ export class PlanOrchestrator implements BaseService {
 		plannerContext: PlannerContext,
 		context: ServiceContext
 	): Promise<AgentPlan> {
+		const intent: PlanIntent = {
+			objective: userMessage,
+			contextType: context.contextType,
+			sessionId: context.sessionId,
+			userId: context.userId,
+			entityId: context.entityId,
+			plannerAgentId: context.plannerAgentId ?? plannerContext.metadata?.plannerAgentId ?? '',
+			executionMode: 'auto_execute'
+		};
+
+		return this.createPlanFromIntent(intent, plannerContext, context, strategy);
+	}
+
+	async createPlanFromIntent(
+		intent: PlanIntent,
+		plannerContext: PlannerContext,
+		context: ServiceContext,
+		strategyOverride?: ChatStrategy
+	): Promise<AgentPlan> {
+		const strategy = strategyOverride ?? this.determineStrategyFromIntent(intent);
+		const executionMode = this.resolveExecutionMode(intent);
+
 		console.log('[PlanOrchestrator] Creating plan', {
 			strategy,
-			contextType: context.contextType,
+			contextType: intent.contextType,
+			executionMode,
 			toolCount: plannerContext.availableTools.length
 		});
 
-		const plannerAgentId = context.plannerAgentId ?? plannerContext.metadata?.plannerAgentId;
+		const plannerAgentId =
+			intent.plannerAgentId ??
+			context.plannerAgentId ??
+			plannerContext.metadata?.plannerAgentId;
 
 		if (!plannerAgentId) {
 			throw new PlanExecutionError('Missing planner agent identifier for plan creation', {
@@ -130,32 +178,33 @@ export class PlanOrchestrator implements BaseService {
 		}
 
 		try {
-			// Generate plan using LLM
 			const planData = await this.generatePlanWithLLM(
-				userMessage,
+				intent,
 				strategy,
 				plannerContext,
 				context
 			);
 
-			// Create plan structure
 			const plan: AgentPlan = {
 				id: uuidv4(),
-				sessionId: context.sessionId,
-				userId: context.userId,
+				sessionId: intent.sessionId,
+				userId: intent.userId,
 				plannerAgentId,
-				userMessage,
+				userMessage: intent.objective,
 				strategy,
 				status: 'pending',
 				steps: this.normalizeSteps(planData.steps),
 				createdAt: new Date(),
 				metadata: {
 					estimatedDuration: this.estimateDuration(planData.steps),
-					totalTokensUsed: 0
+					totalTokensUsed: 0,
+					executionMode,
+					contextType: intent.contextType,
+					requestedOutputs: intent.requestedOutputs,
+					priorityEntities: intent.priorityEntities
 				}
 			};
 
-			// Validate plan
 			const validation = this.validatePlan(plan);
 			if (!validation.isValid) {
 				throw new PlanExecutionError(
@@ -164,7 +213,6 @@ export class PlanOrchestrator implements BaseService {
 				);
 			}
 
-			// Save to database
 			await this.persistenceService.createPlan({
 				id: plan.id,
 				session_id: plan.sessionId,
@@ -178,13 +226,60 @@ export class PlanOrchestrator implements BaseService {
 				created_at: plan.createdAt.toISOString()
 			});
 
+			if (intent.contextType === 'project_create') {
+				this.enforceProjectCreationPlan(plan, plannerContext);
+			}
+
 			return plan;
 		} catch (error) {
 			console.error('[PlanOrchestrator] Failed to create plan:', error);
 			throw new PlanExecutionError(
 				`Failed to create plan: ${error instanceof Error ? error.message : 'Unknown error'}`,
-				{ userMessage, strategy, error }
+				{ objective: intent.objective, strategy, error }
 			);
+		}
+	}
+
+	async persistDraft(plan: AgentPlan): Promise<void> {
+		const metadata = {
+			...(plan.metadata ?? {}),
+			draftSavedAt: new Date().toISOString()
+		};
+		plan.status = 'pending_review';
+		plan.metadata = metadata;
+		await this.persistenceService.updatePlan(plan.id, {
+			status: plan.status,
+			metadata
+		});
+	}
+
+	async reviewPlan(
+		plan: AgentPlan,
+		intent: PlanIntent,
+		context: ServiceContext
+	): Promise<PlanReviewResult> {
+		const systemPrompt =
+			'You are a meticulous project reviewer ensuring generated execution plans are safe, ordered correctly, and satisfy the BuildOS ontology workflows.';
+		const prompt = this.buildPlanReviewPrompt(plan, intent);
+
+		try {
+			const response = await this.llmService.generateText({
+				systemPrompt,
+				prompt,
+				temperature: 0.2,
+				maxTokens: 600,
+				userId: context.userId,
+				operationType: 'plan_review'
+			});
+
+			return this.parsePlanReviewResponse(response);
+		} catch (error) {
+			console.error('[PlanOrchestrator] Plan review failed', error);
+			return {
+				verdict: 'approved',
+				notes: 'Reviewer unavailable; defaulting to approval.',
+				reviewer: 'plan_reviewer'
+			};
 		}
 	}
 
@@ -447,13 +542,13 @@ export class PlanOrchestrator implements BaseService {
 	private static readonly PLAN_GENERATION_ATTEMPTS = 2;
 
 	private async generatePlanWithLLM(
-		userMessage: string,
+		intent: PlanIntent,
 		strategy: ChatStrategy,
 		plannerContext: PlannerContext,
 		context: ServiceContext
 	): Promise<{ steps: any[]; reasoning?: string }> {
-		const systemPrompt = this.buildPlanSystemPrompt(strategy, plannerContext, context);
-		const basePrompt = this.buildPlanPrompt(userMessage, plannerContext);
+		const systemPrompt = this.buildPlanSystemPrompt(strategy, plannerContext, context, intent);
+		const basePrompt = this.buildPlanPrompt(intent, plannerContext);
 		let lastError: Error | null = null;
 
 		for (let attempt = 1; attempt <= PlanOrchestrator.PLAN_GENERATION_ATTEMPTS; attempt++) {
@@ -492,7 +587,8 @@ export class PlanOrchestrator implements BaseService {
 	private buildPlanSystemPrompt(
 		strategy: ChatStrategy,
 		plannerContext: PlannerContext,
-		context: ServiceContext
+		context: ServiceContext,
+		intent?: PlanIntent
 	): string {
 		const toolList = plannerContext.availableTools
 			.map((t) => (t as any).name || (t as any).function?.name || 'unknown')
@@ -502,7 +598,7 @@ export class PlanOrchestrator implements BaseService {
 			: 'No tools available.';
 
 		const strategyGuidance =
-			strategy === ChatStrategy.PROJECT_CREATION
+			strategy === ChatStrategy.PROJECT_CREATION || intent?.contextType === 'project_create'
 				? `
 PROJECT CREATION REQUIREMENTS (CRITICAL):
 - Step 1 MUST discover/select an appropriate template (use list_onto_templates or acknowledge existing template context).
@@ -515,7 +611,7 @@ PROJECT CREATION REQUIREMENTS (CRITICAL):
 
 		return `You are a plan generator for BuildOS chat.
 Strategy: ${strategy}
-Context type: ${context.contextType}
+Context type: ${intent?.contextType ?? context.contextType}
 Available tools: ${toolList}
 Tool summaries:
 ${toolSummaries}
@@ -535,8 +631,7 @@ Guidelines:
 - Keep plans minimal and focused
 - Mark steps as executorRequired only for complex analysis
 - Use dependencies to ensure proper execution order
-- For simple_research strategy, keep to 1-2 steps
-- For complex_research, can have multiple coordinated steps
+- For planner_stream, target 3-5 steps and mark executorRequired only when parallel execution is needed
 - Keep each description under 200 characters and focus on actions, not final creative output
 - The response must be strict JSON without prose or markdown fences
 
@@ -546,17 +641,23 @@ Return JSON: { steps: [...], reasoning: "Brief explanation" }`;
 	/**
 	 * Build prompt for plan generation
 	 */
-	private buildPlanPrompt(userMessage: string, plannerContext: PlannerContext): string {
+	private buildPlanPrompt(intent: PlanIntent, plannerContext: PlannerContext): string {
 		const projectCreationHint =
-			plannerContext.metadata?.contextType === 'project_create'
+			intent.contextType === 'project_create'
 				? `\nREMINDER: The plan must instantiate a new ontology project (create_onto_project) before tackling downstream tasks.`
 				: '';
 
-		return `User request: "${userMessage}"
+		const priorityEntities = intent.priorityEntities?.length
+			? `\nPriority entities: ${intent.priorityEntities.join(', ')}`
+			: '';
+		const requestedOutputs = intent.requestedOutputs?.length
+			? `\nRequested outputs: ${intent.requestedOutputs.join(', ')}`
+			: '';
+
+		return `User request: "${intent.objective}"
 
 Context: ${plannerContext.locationContext}
-${plannerContext.ontologyContext ? `Ontology available: ${JSON.stringify(plannerContext.ontologyContext.metadata)}` : ''}
-${projectCreationHint}
+${plannerContext.ontologyContext ? `Ontology available: ${JSON.stringify(plannerContext.ontologyContext.metadata)}` : ''}${priorityEntities}${requestedOutputs}${projectCreationHint}
 
 Generate an execution plan to fulfill this request.`;
 	}
@@ -575,6 +676,113 @@ Generate an execution plan to fulfill this request.`;
 			status: 'pending',
 			metadata: step.metadata
 		}));
+	}
+
+	private enforceProjectCreationPlan(plan: AgentPlan, plannerContext: PlannerContext): void {
+		const steps = plan.steps || [];
+		const templateTools = new Set(['list_onto_templates', 'request_template_creation']);
+		const createProjectTools = new Set(['create_onto_project']);
+
+		const templateStepIndex = steps.findIndex((step) => this.stepUsesTool(step, templateTools));
+		const createProjectIndex = steps.findIndex((step) =>
+			this.stepUsesTool(step, createProjectTools)
+		);
+
+		if (createProjectIndex === -1) {
+			throw new PlanExecutionError('Project creation plan must call create_onto_project', {
+				planId: plan.id,
+				availableTools: plannerContext.availableTools.map((tool) => tool.name || '')
+			});
+		}
+
+		if (templateStepIndex === -1 || templateStepIndex > createProjectIndex) {
+			throw new PlanExecutionError(
+				'Project creation plan must select or create a template before calling create_onto_project',
+				{ planId: plan.id }
+			);
+		}
+	}
+
+	private stepUsesTool(step: PlanStep, toolNames: Set<string>): boolean {
+		if (!step.tools || step.tools.length === 0) {
+			return false;
+		}
+		return step.tools.some((tool) => toolNames.has(tool));
+	}
+
+	private buildPlanReviewPrompt(plan: AgentPlan, intent: PlanIntent): string {
+		const stepsSummary = plan.steps
+			.map((step) => {
+				const tools = step.tools?.length ? step.tools.join(', ') : 'none';
+				return `Step ${step.stepNumber}: ${step.description}\n  Tools: ${tools}\n  Executor required: ${step.executorRequired}\n`;
+			})
+			.join('\n');
+
+		const requestedOutputs = intent.requestedOutputs?.length
+			? intent.requestedOutputs.join(', ')
+			: 'none noted';
+
+		return `Review the following BuildOS execution plan.
+
+Objective: ${intent.objective}
+Context type: ${intent.contextType}
+Execution mode: ${plan.metadata?.executionMode ?? 'auto_execute'}
+Requested outputs: ${requestedOutputs}
+
+Plan steps:
+${stepsSummary}
+
+Return JSON: {"verdict":"approved|changes_requested|rejected","notes":"short explanation"}`;
+	}
+
+	private parsePlanReviewResponse(response: string): PlanReviewResult {
+		try {
+			let payload = response.trim();
+			if (payload.startsWith('```')) {
+				payload = payload
+					.replace(/```json?/i, '')
+					.replace(/```$/, '')
+					.trim();
+			}
+			const parsed = JSON.parse(payload);
+			const verdict: PlanReviewVerdict =
+				parsed.verdict &&
+				['approved', 'changes_requested', 'rejected'].includes(parsed.verdict)
+					? parsed.verdict
+					: 'changes_requested';
+
+			return {
+				verdict,
+				notes: typeof parsed.notes === 'string' ? parsed.notes : undefined,
+				reviewer: 'plan_reviewer'
+			};
+		} catch (error) {
+			console.warn('[PlanOrchestrator] Failed to parse plan review response', {
+				response
+			});
+			return {
+				verdict: 'approved',
+				notes: 'Reviewer output invalid; approving by default.',
+				reviewer: 'plan_reviewer'
+			};
+		}
+	}
+
+	private determineStrategyFromIntent(intent: PlanIntent): ChatStrategy {
+		if (intent.contextType === 'project_create') {
+			return ChatStrategy.PROJECT_CREATION;
+		}
+		return ChatStrategy.PLANNER_STREAM;
+	}
+
+	private resolveExecutionMode(intent: PlanIntent): PlanExecutionMode {
+		if (intent.executionMode) {
+			return intent.executionMode;
+		}
+		if (intent.autoExecute === false) {
+			return 'draft_only';
+		}
+		return 'auto_execute';
 	}
 
 	/**

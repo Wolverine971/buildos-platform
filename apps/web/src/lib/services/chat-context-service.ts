@@ -241,15 +241,14 @@ Create, update, and delete ontology entities:
 ### Strategy Selection (IMPORTANT)
 Based on query complexity, choose your approach:
 
-1. **simple_research**: 1-2 tool calls for direct queries
-   - "Show me the marketing project" → list_onto_projects + get_onto_project_details
-   - "List my active tasks" → list_onto_tasks with state_key filter
-   - "What goals are in project X?" → list_onto_goals with project_id
+1. **planner_stream**: Default autonomous loop for research + execution
+   - Handles quick lookups (1-2 tools) and deeper investigations
+   - Call the \`agent_create_plan\` meta tool when the user needs a multi-step plan or automation
+   - Examples: "Show me the marketing project", "Analyze all my active projects", "Generate a status recap"
 
-2. **complex_research**: Multi-step investigation, may spawn executors
-   - "Analyze all my projects and tell me which are at risk" → Multiple queries + analysis
-   - "Generate a comprehensive status report" → Cross-entity aggregation
-   - "Find all tasks blocking project completion" → Relationship graph traversal
+2. **project_creation**: Only when the user explicitly wants a new project
+   - Inspect templates, gather requirements, then invoke \`create_onto_project\`
+   - Provide a context document so the new project has a strategic brief
 
 3. **ask_clarifying_questions**: When ambiguity remains AFTER research
    - Multiple entities match the query
@@ -314,11 +313,11 @@ Use create_onto_project for creating complete projects. This tool supports intel
 
 **User: "Create a book writing project"**
 1. list_onto_templates(scope="project", realm="writer", search="book")
-2. Pick "project.writer.book" (type_key from results)
+2. Pick "writer.book" (type_key from results)
 3. create_onto_project({
      project: {
        name: "Book Writing Project",
-       type_key: "project.writer.book",
+       type_key: "writer.book",
        description: "Writing project for book creation",
        props: { facets: { context: "personal", scale: "large", stage: "discovery" } },
        start_at: "2025-11-04T00:00:00Z"

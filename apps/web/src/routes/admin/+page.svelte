@@ -549,6 +549,7 @@
 
 	// Load data on mount and when timeframe changes
 	$effect(() => {
+		if (!browser) return;
 		selectedTimeframe; // Track this dependency
 		if (skipNextLoad) {
 			skipNextLoad = false;
@@ -559,6 +560,7 @@
 
 	// Set up auto-refresh interval when enabled
 	$effect(() => {
+		if (!browser) return;
 		if (autoRefresh) {
 			if (refreshTimer) {
 				clearInterval(refreshTimer);

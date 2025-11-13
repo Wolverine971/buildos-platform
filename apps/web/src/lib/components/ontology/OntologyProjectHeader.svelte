@@ -78,17 +78,21 @@
 	<div class="flex flex-col gap-4">
 		<div class="flex flex-col gap-3">
 			<div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-				<div class="space-y-2">
-					<p class="text-xs font-semibold tracking-wide uppercase text-gray-500">
+				<div class="space-y-2 flex-1 min-w-0">
+					<p
+						class="text-xs font-semibold tracking-wide uppercase text-gray-500 dark:text-gray-400"
+					>
 						Ontology Project
 					</p>
-					<h1 class="text-3xl font-bold text-gray-900 dark:text-white leading-tight">
+					<h1
+						class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white leading-tight"
+					>
 						{project.name}
 					</h1>
 					<div
 						class="flex flex-wrap items-center gap-2 text-sm text-gray-500 dark:text-gray-400"
 					>
-						<span class="font-mono">{project.type_key}</span>
+						<span class="font-mono text-xs sm:text-sm">{project.type_key}</span>
 						<span
 							class="px-3 py-1 rounded-full text-xs font-semibold capitalize {getProjectStateBadgeClass(
 								project.state_key
@@ -101,20 +105,23 @@
 								class="inline-flex items-center gap-1 text-xs font-medium text-gray-600 dark:text-gray-300"
 							>
 								<Info class="w-3.5 h-3.5" aria-hidden="true" />
-								Template: {template.name}
+								<span class="hidden sm:inline">Template:</span>
+								{template.name}
 							</span>
 						{/if}
 					</div>
 				</div>
-				<div class="flex flex-wrap items-center gap-2">
+				<div class="flex flex-wrap items-center gap-2 sm:flex-shrink-0">
 					<Button
 						variant="secondary"
 						size="sm"
 						onclick={handleEdit}
 						aria-label="Edit project"
+						class="touch-manipulation"
 					>
 						<Edit2 class="w-4 h-4" aria-hidden="true" />
-						<span>Edit Project</span>
+						<span class="hidden sm:inline">Edit Project</span>
+						<span class="sm:hidden">Edit</span>
 					</Button>
 					{#if contextDocument}
 						<Button
@@ -122,13 +129,15 @@
 							size="sm"
 							onclick={handleContextDoc}
 							aria-label="Open context document"
+							class="touch-manipulation border border-gray-200 dark:border-gray-700"
 						>
 							<FileText class="w-4 h-4" aria-hidden="true" />
-							<span>Context Doc</span>
+							<span class="hidden sm:inline">Context Doc</span>
+							<span class="sm:hidden">Context</span>
 						</Button>
 					{:else}
 						<div
-							class="px-3 py-2 rounded-md text-xs font-medium bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400"
+							class="px-3 py-2 rounded-md text-xs font-medium bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hidden sm:block"
 						>
 							No context document
 						</div>
@@ -139,15 +148,16 @@
 							size="sm"
 							onclick={handleDelete}
 							aria-label="Delete project"
+							class="touch-manipulation"
 						>
 							<Trash2 class="w-4 h-4" aria-hidden="true" />
-							<span>Delete</span>
+							<span class="hidden sm:inline">Delete</span>
 						</Button>
 					{/if}
 				</div>
 			</div>
 			{#if project.description}
-				<p class="text-gray-600 dark:text-gray-300 leading-relaxed">
+				<p class="text-sm sm:text-base text-gray-600 dark:text-gray-300 leading-relaxed">
 					{project.description}
 				</p>
 			{/if}
@@ -157,54 +167,63 @@
 			<div class="flex flex-wrap gap-2">
 				{#each facetChips as chip}
 					<span
-						class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300"
+						class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-gray-100 to-gray-50 dark:from-gray-800 dark:to-gray-800/80 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700"
 					>
-						{chip.label}: {formatLabel(chip.value as string)}
+						<span class="font-semibold">{chip.label}:</span>
+						<span class="ml-1">{formatLabel(chip.value as string)}</span>
 					</span>
 				{/each}
 			</div>
 		{/if}
 	</div>
 
-	<div class="grid gap-4 md:grid-cols-2">
+	<div class="grid gap-4 grid-cols-1 sm:grid-cols-2">
 		<div
-			class="p-4 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-100 dark:border-blue-900/30"
+			class="p-4 sm:p-5 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-900/30 shadow-sm hover:shadow-md transition-shadow"
 		>
 			<div class="flex items-start gap-3">
-				<div class="flex-shrink-0 rounded-full p-2 bg-white dark:bg-white/10">
+				<div class="flex-shrink-0 rounded-full p-2 bg-white dark:bg-white/10 shadow-sm">
 					<FileText class="w-5 h-5 text-blue-600 dark:text-blue-300" aria-hidden="true" />
 				</div>
 				<div class="flex-1 min-w-0">
 					<p
-						class="text-xs uppercase font-semibold text-blue-800 dark:text-blue-200 tracking-wide"
+						class="text-xs uppercase font-semibold text-blue-800 dark:text-blue-200 tracking-wide mb-1"
 					>
 						Context Document
 					</p>
-					<p class="text-sm font-medium text-gray-900 dark:text-white truncate">
+					<p class="text-sm font-medium text-gray-900 dark:text-white truncate mb-1">
 						{contextDocTitle}
 					</p>
 					{#if !contextDocument}
-						<p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-							Create a document with type <code>document.project.context</code> to link
-							it here.
+						<p class="text-xs text-gray-600 dark:text-gray-400 mt-1 leading-relaxed">
+							Create a document with type <code
+								class="px-1 py-0.5 bg-white dark:bg-gray-800 rounded text-xs"
+								>document.project.context</code
+							> to link it here.
 						</p>
 					{/if}
 				</div>
 			</div>
 		</div>
 		<div
-			class="p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-sm"
+			class="p-4 sm:p-5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-sm hover:shadow-md transition-shadow"
 		>
-			<p class="text-xs uppercase font-semibold text-gray-500 tracking-wide mb-3">
+			<p
+				class="text-xs uppercase font-semibold text-gray-500 dark:text-gray-400 tracking-wide mb-3"
+			>
 				Project Entities
 			</p>
-			<div class="grid grid-cols-3 gap-3 text-center">
+			<div class="grid grid-cols-3 sm:grid-cols-5 gap-2 sm:gap-3 text-center">
 				{#each statBlocks as stat}
-					<div class="rounded-lg bg-gray-50 dark:bg-gray-800/50 py-2 px-2">
-						<p class="text-lg font-semibold text-gray-900 dark:text-white">
+					<div
+						class="rounded-lg bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800/50 dark:to-gray-800/30 py-2 px-2 border border-gray-200 dark:border-gray-700"
+					>
+						<p class="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">
 							{stat.value}
 						</p>
-						<p class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
+						<p
+							class="text-xs uppercase tracking-wide text-gray-600 dark:text-gray-400 font-medium"
+						>
 							{stat.label}
 						</p>
 					</div>

@@ -9,7 +9,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi, type Mock } from 'vitest';
-import { PlanOrchestrator } from './plan-orchestrator';
+import { PlanOrchestrator, type PlanIntent } from './plan-orchestrator';
 import { ChatStrategy } from '$lib/types/agent-chat-enhancement';
 import type {
 	ServiceContext,
@@ -86,7 +86,9 @@ describe('PlanOrchestrator', () => {
 			locationContext: 'Project: Test Project',
 			availableTools: [
 				{ name: 'list_onto_tasks', description: 'List tasks', parameters: {} },
-				{ name: 'create_onto_task', description: 'Create task', parameters: {} }
+				{ name: 'create_onto_task', description: 'Create task', parameters: {} },
+				{ name: 'list_onto_templates', description: 'List templates', parameters: {} },
+				{ name: 'create_onto_project', description: 'Create project', parameters: {} }
 			],
 			metadata: {
 				sessionId: 'session_123',
@@ -119,18 +121,18 @@ describe('PlanOrchestrator', () => {
 
 			const plan = await orchestrator.createPlan(
 				'Show me all tasks',
-				ChatStrategy.SIMPLE_RESEARCH,
+				ChatStrategy.PLANNER_STREAM,
 				mockPlannerContext,
 				mockContext
 			);
 
 			expect(plan).toBeDefined();
-			expect(plan.strategy).toBe(ChatStrategy.SIMPLE_RESEARCH);
+			expect(plan.strategy).toBe(ChatStrategy.PLANNER_STREAM);
 			expect(plan.steps).toHaveLength(1);
 			expect(plan.steps[0].tools).toContain('list_onto_tasks');
 			expect(mockPersistence.createPlan).toHaveBeenCalled();
 			expect(mockPersistence.createPlan).toHaveBeenCalledWith(
-				expect.objectContaining({ strategy: 'simple_research' })
+				expect.objectContaining({ strategy: 'planner_stream' })
 			);
 		});
 
@@ -170,17 +172,17 @@ describe('PlanOrchestrator', () => {
 
 			const plan = await orchestrator.createPlan(
 				'Analyze project health and generate report',
-				ChatStrategy.COMPLEX_RESEARCH,
+				ChatStrategy.PLANNER_STREAM,
 				mockPlannerContext,
 				mockContext
 			);
 
-			expect(plan.strategy).toBe(ChatStrategy.COMPLEX_RESEARCH);
+			expect(plan.strategy).toBe(ChatStrategy.PLANNER_STREAM);
 			expect(plan.steps).toHaveLength(3);
 			expect(plan.steps[1].executorRequired).toBe(true);
 			expect(plan.steps[2].dependsOn).toContain(2);
 			expect(mockPersistence.createPlan).toHaveBeenCalledWith(
-				expect.objectContaining({ strategy: 'complex_research' })
+				expect.objectContaining({ strategy: 'planner_stream' })
 			);
 		});
 
@@ -190,7 +192,7 @@ describe('PlanOrchestrator', () => {
 			await expect(
 				orchestrator.createPlan(
 					'Test message',
-					ChatStrategy.SIMPLE_RESEARCH,
+					ChatStrategy.PLANNER_STREAM,
 					mockPlannerContext,
 					mockContext
 				)
@@ -212,7 +214,7 @@ describe('PlanOrchestrator', () => {
 
 			const plan = await orchestrator.createPlan(
 				'Test',
-				ChatStrategy.SIMPLE_RESEARCH,
+				ChatStrategy.PLANNER_STREAM,
 				mockPlannerContext,
 				mockContext
 			);
@@ -222,6 +224,81 @@ describe('PlanOrchestrator', () => {
 			expect(plan.steps[0].tools).toBeDefined();
 			expect(plan.steps[0].executorRequired).toBeDefined();
 			expect(plan.steps[0].status).toBe('pending');
+		});
+	});
+
+	describe('createPlanFromIntent', () => {
+		it('applies execution metadata from intent', async () => {
+			const mockPlanResponse = {
+				steps: [
+					{
+						stepNumber: 1,
+						type: 'research',
+						description: 'List templates',
+						tools: ['list_onto_templates'],
+						executorRequired: false
+					},
+					{
+						stepNumber: 2,
+						type: 'action',
+						description: 'Create project',
+						tools: ['create_onto_project'],
+						executorRequired: true
+					}
+				],
+				reasoning: 'Plan with template selection and creation'
+			};
+
+			mockLLMService.generateText.mockResolvedValueOnce(JSON.stringify(mockPlanResponse));
+
+			const intent: PlanIntent = {
+				objective: 'Launch a new project',
+				contextType: 'project',
+				sessionId: mockContext.sessionId,
+				userId: mockContext.userId,
+				plannerAgentId: 'planner_123',
+				executionMode: 'draft_only',
+				requestedOutputs: ['context doc'],
+				priorityEntities: ['proj_alpha']
+			};
+
+			const plan = await orchestrator.createPlanFromIntent(
+				intent,
+				mockPlannerContext,
+				mockContext
+			);
+
+			expect(plan.metadata?.executionMode).toBe('draft_only');
+			expect(plan.metadata?.requestedOutputs).toContain('context doc');
+			expect(plan.steps).toHaveLength(2);
+		});
+
+		it('enforces project_create requirements', async () => {
+			const invalidPlan = {
+				steps: [
+					{
+						stepNumber: 1,
+						type: 'research',
+						description: 'Only list templates',
+						tools: ['list_onto_templates'],
+						executorRequired: false
+					}
+				]
+			};
+
+			mockLLMService.generateText.mockResolvedValueOnce(JSON.stringify(invalidPlan));
+
+			const intent: PlanIntent = {
+				objective: 'Start a new project',
+				contextType: 'project_create',
+				sessionId: mockContext.sessionId,
+				userId: mockContext.userId,
+				plannerAgentId: 'planner_123'
+			};
+
+			await expect(
+				orchestrator.createPlanFromIntent(intent, mockPlannerContext, mockContext)
+			).rejects.toThrow('create_onto_project');
 		});
 	});
 
@@ -235,7 +312,7 @@ describe('PlanOrchestrator', () => {
 				userId: 'user_123',
 				plannerAgentId: 'planner_123',
 				userMessage: 'Test message',
-				strategy: ChatStrategy.SIMPLE_RESEARCH,
+				strategy: ChatStrategy.PLANNER_STREAM,
 				status: 'pending',
 				steps: [
 					{
@@ -434,6 +511,97 @@ describe('PlanOrchestrator', () => {
 		});
 	});
 
+	describe('persistDraft', () => {
+		it('marks plan as pending review and persists metadata', async () => {
+			const plan: AgentPlan = {
+				id: 'plan_pending',
+				sessionId: mockContext.sessionId,
+				userId: mockContext.userId,
+				plannerAgentId: 'planner_123',
+				userMessage: 'Test',
+				strategy: ChatStrategy.PLANNER_STREAM,
+				status: 'pending',
+				steps: [],
+				createdAt: new Date()
+			};
+
+			await orchestrator.persistDraft(plan);
+
+			expect(plan.status).toBe('pending_review');
+			expect(plan.metadata?.draftSavedAt).toBeDefined();
+			expect(mockPersistence.updatePlan).toHaveBeenCalledWith(
+				plan.id,
+				expect.objectContaining({
+					status: 'pending_review',
+					metadata: expect.objectContaining({
+						draftSavedAt: expect.any(String)
+					})
+				})
+			);
+		});
+	});
+
+	describe('reviewPlan', () => {
+		it('returns reviewer verdict from LLM output', async () => {
+			mockLLMService.generateText.mockResolvedValueOnce(
+				JSON.stringify({ verdict: 'approved', notes: 'Looks solid.' })
+			);
+
+			const plan: AgentPlan = {
+				id: 'plan_review',
+				sessionId: mockContext.sessionId,
+				userId: mockContext.userId,
+				plannerAgentId: 'planner_123',
+				userMessage: 'Test',
+				strategy: ChatStrategy.PLANNER_STREAM,
+				status: 'pending',
+				steps: [],
+				createdAt: new Date()
+			};
+
+			const intent: PlanIntent = {
+				objective: 'Review me',
+				contextType: 'project',
+				sessionId: mockContext.sessionId,
+				userId: mockContext.userId,
+				plannerAgentId: 'planner_123'
+			};
+
+			const verdict = await orchestrator.reviewPlan(plan, intent, mockContext);
+
+			expect(verdict.verdict).toBe('approved');
+			expect(verdict.notes).toContain('Looks solid');
+		});
+
+		it('falls back to approval when reviewer fails', async () => {
+			mockLLMService.generateText.mockRejectedValueOnce(new Error('LLM offline'));
+
+			const plan: AgentPlan = {
+				id: 'plan_review_error',
+				sessionId: mockContext.sessionId,
+				userId: mockContext.userId,
+				plannerAgentId: 'planner_123',
+				userMessage: 'Test',
+				strategy: ChatStrategy.PLANNER_STREAM,
+				status: 'pending',
+				steps: [],
+				createdAt: new Date()
+			};
+
+			const intent: PlanIntent = {
+				objective: 'Review me',
+				contextType: 'project',
+				sessionId: mockContext.sessionId,
+				userId: mockContext.userId,
+				plannerAgentId: 'planner_123'
+			};
+
+			const verdict = await orchestrator.reviewPlan(plan, intent, mockContext);
+			expect(verdict.verdict).toBe('approved');
+			expect(verdict.notes).toContain('approving');
+		});
+	});
+
 	describe('validatePlan', () => {
 		it('should validate a correct plan', () => {
 			const plan: AgentPlan = {
@@ -442,7 +610,7 @@ describe('PlanOrchestrator', () => {
 				userId: 'user_123',
 				plannerAgentId: 'planner_123',
 				userMessage: 'Test',
-				strategy: ChatStrategy.SIMPLE_RESEARCH,
+				strategy: ChatStrategy.PLANNER_STREAM,
 				status: 'pending',
 				steps: [
 					{
@@ -470,7 +638,7 @@ describe('PlanOrchestrator', () => {
 				userId: 'user_123',
 				plannerAgentId: 'planner_123',
 				userMessage: 'Test',
-				strategy: ChatStrategy.SIMPLE_RESEARCH,
+				strategy: ChatStrategy.PLANNER_STREAM,
 				status: 'pending',
 				steps: [],
 				createdAt: new Date()
@@ -489,7 +657,7 @@ describe('PlanOrchestrator', () => {
 				userId: 'user_123',
 				plannerAgentId: 'planner_123',
 				userMessage: 'Test',
-				strategy: ChatStrategy.COMPLEX_RESEARCH,
+				strategy: ChatStrategy.PLANNER_STREAM,
 				status: 'pending',
 				steps: [
 					{
@@ -525,7 +693,7 @@ describe('PlanOrchestrator', () => {
 				userId: 'user_123',
 				plannerAgentId: 'planner_123',
 				userMessage: 'Test',
-				strategy: ChatStrategy.COMPLEX_RESEARCH,
+				strategy: ChatStrategy.PLANNER_STREAM,
 				status: 'pending',
 				steps: [
 					{
@@ -562,7 +730,7 @@ describe('PlanOrchestrator', () => {
 				userId: 'user_123',
 				plannerAgentId: 'planner_123',
 				userMessage: 'Test',
-				strategy: ChatStrategy.COMPLEX_RESEARCH,
+				strategy: ChatStrategy.PLANNER_STREAM,
 				status: 'pending',
 				steps: [
 					{
@@ -601,7 +769,7 @@ describe('PlanOrchestrator', () => {
 				userId: 'user_123',
 				plannerAgentId: 'planner_123',
 				userMessage: 'Test',
-				strategy: ChatStrategy.COMPLEX_RESEARCH,
+				strategy: ChatStrategy.PLANNER_STREAM,
 				status: 'pending',
 				steps: [
 					{
@@ -650,7 +818,7 @@ describe('PlanOrchestrator', () => {
 				userId: 'user_123',
 				plannerAgentId: 'planner_123',
 				userMessage: 'Test',
-				strategy: ChatStrategy.COMPLEX_RESEARCH,
+				strategy: ChatStrategy.PLANNER_STREAM,
 				status: 'pending',
 				steps: [
 					{
@@ -702,7 +870,7 @@ describe('PlanOrchestrator', () => {
 				userId: 'user_123',
 				plannerAgentId: 'planner_123',
 				userMessage: 'Test',
-				strategy: ChatStrategy.COMPLEX_RESEARCH,
+				strategy: ChatStrategy.PLANNER_STREAM,
 				status: 'pending',
 				steps: [
 					{

@@ -63,10 +63,10 @@ describe('StrategyAnalyzer', () => {
 	});
 
 	describe('analyzeUserIntent', () => {
-		it('should select simple_research for straightforward queries', async () => {
+		it('should select planner_stream for straightforward queries', async () => {
 			mockLLMService.generateText.mockResolvedValueOnce(
 				JSON.stringify({
-					primary_strategy: 'simple_research',
+					primary_strategy: 'planner_stream',
 					confidence: 0.9,
 					reasoning: 'Direct lookup query that can be answered with list_onto_tasks',
 					needs_clarification: false,
@@ -82,17 +82,17 @@ describe('StrategyAnalyzer', () => {
 				mockContext
 			);
 
-			expect(result.primary_strategy).toBe(ChatStrategy.SIMPLE_RESEARCH);
+			expect(result.primary_strategy).toBe(ChatStrategy.PLANNER_STREAM);
 			expect(result.confidence).toBeGreaterThanOrEqual(0.9);
 			expect(result.estimated_steps).toBe(1);
 			expect(result.required_tools).toContain('list_onto_tasks');
 			expect(result.can_complete_directly).toBe(true);
 		});
 
-		it('should select complex_research for multi-step queries', async () => {
+		it('should select planner_stream for multi-step queries', async () => {
 			mockLLMService.generateText.mockResolvedValueOnce(
 				JSON.stringify({
-					primary_strategy: 'complex_research',
+					primary_strategy: 'planner_stream',
 					confidence: 0.85,
 					reasoning: 'Requires analysis across multiple data sources and aggregation',
 					needs_clarification: false,
@@ -113,7 +113,7 @@ describe('StrategyAnalyzer', () => {
 				mockContext
 			);
 
-			expect(result.primary_strategy).toBe(ChatStrategy.COMPLEX_RESEARCH);
+			expect(result.primary_strategy).toBe(ChatStrategy.PLANNER_STREAM);
 			expect(result.confidence).toBeGreaterThanOrEqual(0.8);
 			expect(result.estimated_steps).toBeGreaterThan(1);
 			expect(result.required_tools.length).toBeGreaterThan(2);
@@ -149,6 +149,17 @@ describe('StrategyAnalyzer', () => {
 			expect(result.clarifying_questions?.length).toBeGreaterThan(0);
 		});
 
+		it('should force project_creation strategy when context type is project_create', async () => {
+			const result = await analyzer.analyzeUserIntent(
+				'Create a new project for my podcast',
+				mockPlannerContext,
+				{ ...mockContext, contextType: 'project_create' }
+			);
+
+			expect(result.primary_strategy).toBe(ChatStrategy.PROJECT_CREATION);
+			expect(result.required_tools).toContain('create_onto_project');
+		});
+
 		it('should handle LLM parsing errors gracefully', async () => {
 			mockLLMService.generateText.mockResolvedValueOnce('Invalid JSON response');
 
@@ -158,8 +169,8 @@ describe('StrategyAnalyzer', () => {
 				mockContext
 			);
 
-			// Should fall back to simple_research
-			expect(result.primary_strategy).toBe(ChatStrategy.SIMPLE_RESEARCH);
+			// Should fall back to planner_stream
+			expect(result.primary_strategy).toBe(ChatStrategy.PLANNER_STREAM);
 			expect(result.confidence).toBeLessThan(0.7); // Lower confidence for fallback
 		});
 
@@ -173,7 +184,7 @@ describe('StrategyAnalyzer', () => {
 			);
 
 			// Should return fallback strategy
-			expect(result.primary_strategy).toBe(ChatStrategy.SIMPLE_RESEARCH);
+			expect(result.primary_strategy).toBe(ChatStrategy.PLANNER_STREAM);
 			expect(result.reasoning).toContain('fallback');
 		});
 	});
@@ -222,7 +233,7 @@ describe('StrategyAnalyzer', () => {
 	describe('validateStrategy', () => {
 		it('should validate a correct strategy analysis', () => {
 			const analysis = {
-				primary_strategy: ChatStrategy.SIMPLE_RESEARCH,
+				primary_strategy: ChatStrategy.PLANNER_STREAM,
 				confidence: 0.9,
 				reasoning: 'Valid reasoning',
 				needs_clarification: false,
@@ -238,7 +249,7 @@ describe('StrategyAnalyzer', () => {
 
 		it('should normalize invalid confidence values', () => {
 			const analysis = {
-				primary_strategy: ChatStrategy.SIMPLE_RESEARCH,
+				primary_strategy: ChatStrategy.PLANNER_STREAM,
 				confidence: 1.5, // Invalid: > 1
 				reasoning: 'Test',
 				needs_clarification: false,
@@ -255,7 +266,7 @@ describe('StrategyAnalyzer', () => {
 
 		it('should provide default values for missing fields', () => {
 			const analysis = {
-				primary_strategy: ChatStrategy.COMPLEX_RESEARCH
+				primary_strategy: ChatStrategy.PLANNER_STREAM
 				// Missing all other fields
 			} as any;
 
@@ -305,7 +316,7 @@ describe('StrategyAnalyzer', () => {
 
 			mockLLMService.generateText.mockResolvedValueOnce(
 				JSON.stringify({
-					primary_strategy: 'simple_research',
+					primary_strategy: 'planner_stream',
 					confidence: 0.95,
 					reasoning: 'Following up on previous task view with specific query',
 					needs_clarification: false,
@@ -347,7 +358,7 @@ describe('StrategyAnalyzer', () => {
 
 			mockLLMService.generateText.mockResolvedValueOnce(
 				JSON.stringify({
-					primary_strategy: 'simple_research',
+					primary_strategy: 'planner_stream',
 					confidence: 0.92,
 					reasoning: 'Can use ontology data for efficient lookup',
 					needs_clarification: false,
@@ -370,7 +381,7 @@ describe('StrategyAnalyzer', () => {
 	describe('suggestAlternativeStrategies', () => {
 		it('should suggest alternatives for low confidence primary strategy', async () => {
 			const analysis = {
-				primary_strategy: ChatStrategy.SIMPLE_RESEARCH,
+				primary_strategy: ChatStrategy.PLANNER_STREAM,
 				confidence: 0.55, // Low confidence
 				reasoning: 'Uncertain about intent',
 				needs_clarification: false,
@@ -381,14 +392,12 @@ describe('StrategyAnalyzer', () => {
 
 			const alternatives = await analyzer.suggestAlternativeStrategies(analysis);
 
-			expect(alternatives).toBeDefined();
-			expect(alternatives.length).toBeGreaterThan(0);
-			expect(alternatives[0]).not.toBe(analysis.primary_strategy);
+			expect(alternatives).toEqual([ChatStrategy.ASK_CLARIFYING]);
 		});
 
 		it('should not suggest alternatives for high confidence strategy', async () => {
 			const analysis = {
-				primary_strategy: ChatStrategy.SIMPLE_RESEARCH,
+				primary_strategy: ChatStrategy.PLANNER_STREAM,
 				confidence: 0.95,
 				reasoning: 'Very clear intent',
 				needs_clarification: false,
@@ -404,18 +413,18 @@ describe('StrategyAnalyzer', () => {
 	});
 
 	describe('explainStrategy', () => {
-		it('should provide human-readable explanation for simple_research', () => {
-			const explanation = analyzer.explainStrategy(ChatStrategy.SIMPLE_RESEARCH);
+		it('should provide human-readable explanation for planner_stream', () => {
+			const explanation = analyzer.explainStrategy(ChatStrategy.PLANNER_STREAM);
 
-			expect(explanation).toContain('simple');
+			expect(explanation.toLowerCase()).toContain('planner');
 			expect(explanation.toLowerCase()).toContain('tool');
 		});
 
-		it('should provide human-readable explanation for complex_research', () => {
-			const explanation = analyzer.explainStrategy(ChatStrategy.COMPLEX_RESEARCH);
+		it('should provide human-readable explanation for project_creation', () => {
+			const explanation = analyzer.explainStrategy(ChatStrategy.PROJECT_CREATION);
 
-			expect(explanation).toContain('complex');
-			expect(explanation.toLowerCase()).toContain('multiple');
+			expect(explanation.toLowerCase()).toContain('project');
+			expect(explanation.toLowerCase()).toContain('template');
 		});
 
 		it('should provide human-readable explanation for ask_clarifying', () => {
@@ -456,7 +465,7 @@ describe('StrategyAnalyzer', () => {
 
 			mockLLMService.generateText.mockResolvedValueOnce(
 				JSON.stringify({
-					primary_strategy: 'simple_research',
+					primary_strategy: 'planner_stream',
 					confidence: 0.5,
 					reasoning: 'No tools available',
 					needs_clarification: false,

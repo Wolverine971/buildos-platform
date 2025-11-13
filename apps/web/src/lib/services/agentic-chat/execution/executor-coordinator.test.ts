@@ -86,7 +86,7 @@ describe('ExecutorCoordinator', () => {
 			userId: 'user_123',
 			plannerAgentId: 'planner_123',
 			userMessage: 'Analyze the project health',
-			strategy: 'complex_research',
+			strategy: 'planner_stream',
 			status: 'pending',
 			steps: [],
 			createdAt: new Date(),

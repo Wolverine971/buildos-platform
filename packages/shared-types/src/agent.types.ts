@@ -6,6 +6,41 @@
 import type { ChatContextType, ChatSession, ChatToolCall } from './chat.types';
 
 // ============================================================================
+// Last Turn Context
+// ============================================================================
+
+/**
+ * Persistent context that passes between conversation turns
+ * Contains lightweight pointers to entities and summary of last interaction
+ */
+export interface LastTurnContext {
+	// Brief 10-20 word summary of the last interaction
+	summary: string;
+
+	// Entity IDs mentioned or accessed in last turn
+	entities: {
+		project_id?: string;
+		task_ids?: string[];
+		plan_id?: string;
+		goal_ids?: string[];
+		document_id?: string;
+		output_id?: string;
+	};
+
+	// Context type from last interaction
+	context_type: ChatContextType;
+
+	// Tools/data accessed in last turn
+	data_accessed: string[];
+
+	// Strategy used in last turn
+	strategy_used?: 'planner_stream' | 'ask_clarifying_questions' | 'project_creation';
+
+	// ISO timestamp of last turn
+	timestamp: string;
+}
+
+// ============================================================================
 // Base Operation Types (shared with brain-dump system)
 // ============================================================================
 
@@ -288,15 +323,32 @@ type LegacyAgentSSEMessage =
 export type AgentSSEMessage =
   | { type: 'session'; session?: ChatSession; sessionId?: string }
   | { type: 'ontology_loaded'; summary: string }
-  | { type: 'last_turn_context'; context: Record<string, any> }
-  | { type: 'strategy_selected'; strategy: string; confidence?: number }
+  | { type: 'last_turn_context'; context: LastTurnContext }
+  | {
+      type: 'agent_state';
+      state: 'thinking' | 'executing_plan' | 'waiting_on_user';
+      contextType: ChatContextType;
+      details?: string;
+    }
   | { type: 'clarifying_questions'; questions: string[] }
-  | { type: 'analysis'; analysis: Record<string, any> }
   | { type: 'plan_created'; plan: AgentPlan }
+  | {
+      type: 'plan_ready_for_review';
+      plan: AgentPlan;
+      summary?: string;
+      recommendations?: string[];
+    }
   | { type: 'step_start'; step: AgentPlanStep }
   | { type: 'step_complete'; step: AgentPlanStep }
   | { type: 'executor_spawned'; executorId: string; task: Record<string, any> }
   | { type: 'executor_result'; executorId: string; result: Record<string, any> }
+  | {
+      type: 'plan_review';
+      plan: AgentPlan;
+      verdict: 'approved' | 'changes_requested' | 'rejected';
+      notes?: string;
+      reviewer?: string;
+    }
   | { type: 'text'; content: string }
   | { type: 'tool_call'; tool_call: ChatToolCall }
   | { type: 'tool_result'; result: Record<string, any> }
@@ -539,12 +591,12 @@ export interface Agent {
 /**
  * Planning Strategy
  * Mirrors the ChatStrategy enum returned by the planner LLM so we can
- * persist the full intent (not just direct/complex shorthands).
+ * persist the full intent (planner stream, clarifying questions, or project creation).
  */
 export type PlanningStrategy =
-  | 'simple_research'
-  | 'complex_research'
-  | 'ask_clarifying_questions';
+  | 'planner_stream'
+  | 'ask_clarifying_questions'
+  | 'project_creation';
 
 /**
  * Structured metadata captured for each plan

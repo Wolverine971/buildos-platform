@@ -31,9 +31,9 @@ export const ENTITY_FIELD_INFO: Record<string, Record<string, FieldInfo>> = {
 		},
 		type_key: {
 			type: 'string',
-			description: 'Template classification such as project.writer.book',
+			description: 'Template classification such as writer.book',
 			required: true,
-			example: 'project.writer.book'
+			example: 'writer.book'
 		},
 		state_key: {
 			type: 'enum',
@@ -214,9 +214,9 @@ export const ENTITY_FIELD_INFO: Record<string, Record<string, FieldInfo>> = {
 		},
 		type_key: {
 			type: 'string',
-			description: 'Unique template key (project.writer.book, plan.growth.launch, etc.)',
+			description: 'Unique template key (writer.book, plan.growth.launch, etc.)',
 			required: true,
-			example: 'project.writer.book'
+			example: 'writer.book'
 		},
 		description: {
 			type: 'string',
@@ -968,7 +968,7 @@ For example:
 							type_key: {
 								type: 'string',
 								description:
-									'Template type key like "project.writer.book" (REQUIRED - get from list_onto_templates)'
+									'Template type key like "writer.book" (REQUIRED - get from list_onto_templates)'
 							},
 							description: {
 								type: 'string',

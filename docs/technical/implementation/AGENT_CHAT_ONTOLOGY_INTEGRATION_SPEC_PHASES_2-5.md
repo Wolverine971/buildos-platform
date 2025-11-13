@@ -155,11 +155,11 @@ You operate with progressive disclosure:
 ## Available Strategies
 Analyze each request and choose the appropriate strategy:
 
-1. **simple_research**: For straightforward queries needing 1-2 tool calls
+1. **planner_stream**: For straightforward queries needing 1-2 tool calls
    - Examples: "Show me the marketing project", "List active tasks"
    - Direct tool execution without spawning executors
 
-2. **complex_research**: For multi-step investigations
+2. **planner_stream**: For multi-step investigations
    - Examples: "Analyze project health", "Generate comprehensive report"
    - May spawn executor agents for parallel processing
    - You'll receive just-in-time instructions if executors are needed
@@ -588,12 +588,12 @@ Tools:
 ### Strategy Selection (IMPORTANT)
 Based on query complexity, choose your approach:
 
-1. **simple_research**: 1-2 tool calls for direct queries
+1. **planner_stream**: 1-2 tool calls for direct queries
    - "Show me the marketing project"
    - "List my active tasks"
    - "What's on my calendar today?"
 
-2. **complex_research**: Multi-step investigation, may spawn executors
+2. **planner_stream**: Multi-step investigation, may spawn executors
    - "Analyze project health across all dimensions"
    - "Generate a comprehensive status report"
    - "Find patterns in task completion"
@@ -653,12 +653,12 @@ async analyzeUserIntent(
   const systemPrompt = `You are a strategy analyzer for BuildOS chat.
 
 Available strategies:
-1. simple_research: Can be completed with 1-2 tool calls
+1. planner_stream: Can be completed with 1-2 tool calls
    - Direct lookups, lists, simple searches
    - No coordination needed
    - Examples: "Show me X project", "List Y tasks"
 
-2. complex_research: Requires multiple steps or coordination
+2. planner_stream: Requires multiple steps or coordination
    - Multi-entity analysis
    - Aggregation across data sources
    - May need executor agents
@@ -696,7 +696,7 @@ Consider:
 
 Return a JSON object with:
 {
-  "primary_strategy": "simple_research" | "complex_research" | "ask_clarifying_questions",
+  "primary_strategy": "planner_stream" | "project_creation" | "ask_clarifying_questions",
   "confidence": 0.0-1.0,
   "reasoning": "Brief explanation of why this strategy was chosen",
   "needs_clarification": boolean,
@@ -725,7 +725,7 @@ Return a JSON object with:
 
     // Fallback to simple research
     return {
-      primary_strategy: ChatStrategy.SIMPLE_RESEARCH,
+      primary_strategy: ChatStrategy.PLANNER_STREAM,
       confidence: 0.5,
       reasoning: 'Defaulting to simple research due to analysis error',
       needs_clarification: false,
@@ -759,10 +759,10 @@ async executeStrategy(
   });
 
   switch (analysis.primary_strategy) {
-    case ChatStrategy.SIMPLE_RESEARCH:
+    case ChatStrategy.PLANNER_STREAM:
       return await this.executeSimpleResearch(analysis, context, userMessage, streamCallback);
 
-    case ChatStrategy.COMPLEX_RESEARCH:
+    case ChatStrategy.PLANNER_STREAM:
       return await this.executeComplexResearch(analysis, context, userMessage, streamCallback);
 
     case ChatStrategy.ASK_CLARIFYING:
@@ -845,7 +845,7 @@ private async executeSimpleResearch(
   if (analysis.needs_clarification && !this.hasEnoughInfo(results)) {
     console.log('[Planner] Research incomplete, need clarification');
     return {
-      strategy_used: ChatStrategy.SIMPLE_RESEARCH,
+      strategy_used: ChatStrategy.PLANNER_STREAM,
       data_found: results,
       entities_accessed: entitiesAccessed,
       tools_used: toolsUsed,
@@ -856,7 +856,7 @@ private async executeSimpleResearch(
   }
 
   return {
-    strategy_used: ChatStrategy.SIMPLE_RESEARCH,
+    strategy_used: ChatStrategy.PLANNER_STREAM,
     data_found: results,
     entities_accessed: entitiesAccessed,
     tools_used: toolsUsed,
@@ -947,7 +947,7 @@ private async executeComplexResearch(
   }
 
   return {
-    strategy_used: ChatStrategy.COMPLEX_RESEARCH,
+    strategy_used: ChatStrategy.PLANNER_STREAM,
     data_found: results,
     entities_accessed: entitiesAccessed,
     tools_used: toolsUsed,
@@ -1034,14 +1034,14 @@ Generate a helpful response that:
 private validateStrategyAnalysis(analysis: any): StrategyAnalysis {
   // Map string strategies to enum
   let strategy: ChatStrategy;
-  if (analysis.primary_strategy === 'simple_research') {
-    strategy = ChatStrategy.SIMPLE_RESEARCH;
-  } else if (analysis.primary_strategy === 'complex_research') {
-    strategy = ChatStrategy.COMPLEX_RESEARCH;
+  if (analysis.primary_strategy === 'planner_stream') {
+    strategy = ChatStrategy.PLANNER_STREAM;
+  } else if (analysis.primary_strategy === 'planner_stream') {
+    strategy = ChatStrategy.PLANNER_STREAM;
   } else if (analysis.primary_strategy === 'ask_clarifying_questions' || analysis.primary_strategy === 'clarifying') {
     strategy = ChatStrategy.ASK_CLARIFYING;
   } else {
-    strategy = ChatStrategy.SIMPLE_RESEARCH; // Default
+    strategy = ChatStrategy.PLANNER_STREAM; // Default
   }
 
   return {
@@ -1235,7 +1235,7 @@ private async executeWithExecutors(
   }
 
   return {
-    strategy_used: ChatStrategy.COMPLEX_RESEARCH,
+    strategy_used: ChatStrategy.PLANNER_STREAM,
     data_found: results,
     entities_accessed: entitiesAccessed,
     tools_used: toolsUsed,

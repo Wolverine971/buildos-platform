@@ -13,7 +13,8 @@ import type {
 	TemplateCreationRequestDetail,
 	TemplateCreationStatus,
 	TemplateRecommendationSet,
-	TemplateSchemaSummary
+	TemplateSchemaSummary,
+	LastTurnContext
 } from '@buildos/shared-types';
 
 export type {
@@ -21,43 +22,9 @@ export type {
 	TemplateCreationRequestDetail,
 	TemplateCreationStatus,
 	TemplateRecommendationSet,
-	TemplateSchemaSummary
+	TemplateSchemaSummary,
+	LastTurnContext
 } from '@buildos/shared-types';
-
-// ============================================
-// LAST TURN CONTEXT
-// ============================================
-
-/**
- * Persistent context that passes between conversation turns
- * Contains lightweight pointers to entities and summary of last interaction
- */
-export interface LastTurnContext {
-	// Brief 10-20 word summary of the last interaction
-	summary: string;
-
-	// Entity IDs mentioned or accessed in last turn
-	entities: {
-		project_id?: string;
-		task_ids?: string[];
-		plan_id?: string;
-		goal_ids?: string[];
-		document_id?: string;
-		output_id?: string;
-	};
-
-	// Context type from last interaction
-	context_type: ChatContextType;
-
-	// Tools/data accessed in last turn
-	data_accessed: string[];
-
-	// Strategy used in last turn
-	strategy_used?: 'simple_research' | 'complex_research' | 'clarifying';
-
-	// ISO timestamp of last turn
-	timestamp: string;
-}
 
 // ============================================
 // ONTOLOGY CONTEXT
@@ -107,9 +74,8 @@ export interface OntologyContext {
  * Available chat strategies
  */
 export enum ChatStrategy {
-	SIMPLE_RESEARCH = 'simple_research', // 1-2 tool calls
-	COMPLEX_RESEARCH = 'complex_research', // Multi-step with executors
-	ASK_CLARIFYING = 'ask_clarifying_questions', // Need more info
+	PLANNER_STREAM = 'planner_stream', // Autonomous planner loop (tools + plan meta tool)
+	ASK_CLARIFYING = 'ask_clarifying_questions', // Need more info before proceeding
 	PROJECT_CREATION = 'project_creation' // Deterministic project instantiation flow
 }
 
@@ -170,12 +136,24 @@ export interface EnhancedAgentStreamRequest {
 export type AgentSSEEvent =
 	| { type: 'session'; session: any }
 	| { type: 'last_turn_context'; context: LastTurnContext }
-	| { type: 'strategy_selected'; strategy: ChatStrategy; confidence: number }
+	| {
+			type: 'agent_state';
+			state: 'thinking' | 'executing_plan' | 'waiting_on_user';
+			contextType: ChatContextType;
+			details?: string;
+	  }
 	| { type: 'clarifying_questions'; questions: string[] }
 	| { type: 'executor_instructions'; instructions: string }
 	| { type: 'ontology_loaded'; summary: string }
-	| { type: 'analysis'; analysis: any }
 	| { type: 'plan_created'; plan: any }
+	| { type: 'plan_ready_for_review'; plan: any; summary?: string; recommendations?: string[] }
+	| {
+			type: 'plan_review';
+			plan: any;
+			verdict: 'approved' | 'changes_requested' | 'rejected';
+			notes?: string;
+			reviewer?: string;
+	  }
 	| { type: 'text'; content: string }
 	| { type: 'tool_call'; tool_call: any }
 	| { type: 'tool_result'; result: any }

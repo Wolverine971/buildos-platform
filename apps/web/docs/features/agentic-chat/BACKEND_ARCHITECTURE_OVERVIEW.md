@@ -153,8 +153,8 @@ Creates PlannerAgent record in DB
 StrategyAnalyzer.analyzeUserIntent()
   ↓
 Determines one of three strategies:
-  1. SIMPLE_RESEARCH    → Direct tool calls (1-2 tools)
-  2. COMPLEX_RESEARCH   → Multi-step plan with executors
+  1. PLANNER_STREAM     → Autonomous planner loop (tools + plan meta tool)
+  2. PROJECT_CREATION   → Template selection + create_onto_project
   3. ASK_CLARIFYING     → Ambiguity resolution needed
   ↓
 Emits: strategy_selected event

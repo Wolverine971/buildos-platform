@@ -89,12 +89,14 @@
 
 	// Load data on mount and when timeframe changes
 	$effect(() => {
+		if (!browser) return;
 		selectedTimeframe;
 		loadDashboard();
 	});
 
 	// Auto-refresh
 	$effect(() => {
+		if (!browser) return;
 		if (autoRefresh) {
 			const interval = setInterval(loadDashboard, 30000); // 30 seconds
 			return () => clearInterval(interval);

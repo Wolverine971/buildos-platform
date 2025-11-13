@@ -118,6 +118,8 @@ export interface PlanStep {
 	metadata?: Record<string, any>;
 }
 
+export type PlanExecutionMode = 'auto_execute' | 'draft_only' | 'agent_review';
+
 /**
  * Agent Plan structure
  */
@@ -129,13 +131,18 @@ export interface AgentPlan {
 	userMessage: string;
 	strategy: ChatStrategy;
 	steps: PlanStep[];
-	status: 'pending' | 'executing' | 'completed' | 'failed';
+	status: 'pending' | 'pending_review' | 'executing' | 'completed' | 'failed';
 	createdAt: Date;
 	completedAt?: Date;
 	metadata?: {
 		estimatedDuration?: number;
 		actualDuration?: number;
 		totalTokensUsed?: number;
+		executionMode?: PlanExecutionMode;
+		contextType?: ChatContextType;
+		requestedOutputs?: string[];
+		priorityEntities?: string[];
+		draftSavedAt?: string;
 	};
 }
 
@@ -197,14 +204,31 @@ export type StreamEvent =
 	| { type: 'session'; session: ChatSession }
 	| { type: 'ontology_loaded'; summary: string }
 	| { type: 'last_turn_context'; context: LastTurnContext }
-	| { type: 'strategy_selected'; strategy: ChatStrategy; confidence: number }
+	| {
+			type: 'agent_state';
+			state: 'thinking' | 'executing_plan' | 'waiting_on_user';
+			contextType: ChatContextType;
+			details?: string;
+	  }
 	| { type: 'clarifying_questions'; questions: string[] }
-	| { type: 'analysis'; analysis: StrategyAnalysis }
 	| { type: 'plan_created'; plan: AgentPlan }
+	| {
+			type: 'plan_ready_for_review';
+			plan: AgentPlan;
+			summary?: string;
+			recommendations?: string[];
+	  }
 	| { type: 'step_start'; step: PlanStep }
 	| { type: 'step_complete'; step: PlanStep }
 	| { type: 'executor_spawned'; executorId: string; task: any }
 	| { type: 'executor_result'; executorId: string; result: ExecutorResult }
+	| {
+			type: 'plan_review';
+			plan: AgentPlan;
+			verdict: 'approved' | 'changes_requested' | 'rejected';
+			notes?: string;
+			reviewer?: string;
+	  }
 	| { type: 'text'; content: string }
 	| { type: 'tool_call'; toolCall: ChatToolCall }
 	| { type: 'tool_result'; result: ToolExecutionResult }

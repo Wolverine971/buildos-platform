@@ -117,7 +117,6 @@ class ProjectStoreV2 {
 			synthesis: null,
 			braindumps: null,
 			ontologyEvents: [],
-			ontologyEvents: [],
 			stats: {
 				total: 0,
 				completed: 0,

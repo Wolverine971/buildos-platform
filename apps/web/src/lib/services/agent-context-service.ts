@@ -189,10 +189,12 @@ export class AgentContextService {
 		);
 
 		// Step 2: Process conversation history with compression if needed
-		const processedHistory = await this.processConversationHistory(
-			conversationHistory,
-			lastTurnContext
-		);
+		const processedHistory = await this.processConversationHistory(conversationHistory, {
+			lastTurnContext,
+			sessionId,
+			contextType: normalizedContext,
+			userId
+		});
 
 		// Step 3: Format location context (priority order: project_create → ontology → standard)
 		let locationContext: string;
@@ -303,19 +305,18 @@ You operate with progressive disclosure:
 ## Available Strategies
 Analyze each request and choose the appropriate strategy:
 
-1. **simple_research**: For straightforward queries needing 1-2 tool calls
-   - Examples: "Show me the marketing project", "List active tasks"
-   - Direct tool execution without spawning executors
+1. **planner_stream**: Default autonomous planner loop
+   - Handles quick lookups *and* multi-step investigations inside a single session
+   - Call the \`agent_create_plan\` meta tool when you need structured execution or executor fan-out
+   - Examples: "Analyze project health", "List active tasks and flag blockers"
 
-2. **complex_research**: For multi-step investigations
-   - Examples: "Analyze project health", "Generate comprehensive report"
-   - May spawn executor agents for parallel processing
-   - You'll receive just-in-time instructions if executors are needed
+2. **project_creation**: Only when the user is starting a new project (context_type === project_create)
+   - Select a template (or escalate for template creation), gather missing details, and call \`create_onto_project\`
+   - Populate the context document so the new project has a narrative summary
 
 3. **ask_clarifying_questions**: When ambiguity remains AFTER attempting research
-   - Always try to find information first
-   - Only ask questions if research doesn't resolve ambiguity
-   - Be specific about what clarification is needed
+   - Try to resolve confusion with tools first
+   - Only ask questions if research doesn't resolve ambiguity, and be specific about what you need
 
 ## Important Guidelines
 - ALWAYS attempt research before asking for clarification
@@ -367,7 +368,7 @@ Review the templates below, select the best match, infer project details, and im
 - Match user's request to the most appropriate template
 - ONLY if you cannot find ANY suitable template in the overview AND you have specific search criteria, call list_onto_templates() ONCE with specific parameters
 - After calling list_onto_templates(), DO NOT call it again - proceed immediately to Step 2
-- Extract the type_key (e.g., "project.writer.book") from the best matching template
+- Extract the type_key (e.g., "writer.book") from the best matching template
 
 **Step 2: Infer All Project Details**
 From the user's message and selected template, infer as much as possible:
@@ -409,18 +410,18 @@ User: "Create a book writing project"
 Response: "I'll create a book writing project for you."
 
 Then IMMEDIATELY:
-1. Select template: "project.writer.book" from context
+1. Select template: "writer.book" from context
 2. Infer details:
    - name: "Book Writing Project"
    - description: "A writing project focused on creating a book"
-   - type_key: "project.writer.book"
+   - type_key: "writer.book"
    - facets: { context: "personal", scale: "large", stage: "discovery" }
    - start_at: "${new Date().toISOString()}"
 3. Call create_onto_project({
      project: {
        name: "Book Writing Project",
        description: "A writing project focused on creating a book",
-       type_key: "project.writer.book",
+       type_key: "writer.book",
        props: { facets: { context: "personal", scale: "large", stage: "discovery" } },
        start_at: "${new Date().toISOString()}"
      },
@@ -546,8 +547,14 @@ ${Object.entries(ontologyContext.metadata.entity_count)
 	 */
 	private async processConversationHistory(
 		history: ChatMessage[],
-		lastTurnContext?: LastTurnContext
+		options: {
+			lastTurnContext?: LastTurnContext;
+			sessionId?: string;
+			contextType?: ChatContextType;
+			userId?: string;
+		} = {}
 	): Promise<LLMMessage[]> {
+		const { lastTurnContext, sessionId, contextType, userId } = options;
 		const messages: LLMMessage[] = [];
 
 		// Add last turn context as a system message if available
@@ -567,16 +574,61 @@ ${Object.entries(ontologyContext.metadata.entity_count)
 			(sum, msg) => sum + Math.ceil(msg.content.length / 4),
 			0
 		);
+		const conversationBudget = this.TOKEN_BUDGETS.PLANNER.CONVERSATION;
+		const needsCompression = estimatedTokens > conversationBudget;
 
-		// Compress if needed
-		if (estimatedTokens > this.TOKEN_BUDGETS.PLANNER.CONVERSATION) {
-			console.log('[AgentContext] Compressing conversation history', {
+		if (needsCompression && this.compressionService && sessionId) {
+			try {
+				console.log('[AgentContext] Compressing conversation history', {
+					originalTokens: estimatedTokens,
+					targetTokens: conversationBudget,
+					messageCount: history.length,
+					sessionId,
+					contextType
+				});
+
+				if (this.compressionService.smartCompress) {
+					const smartResult = await this.compressionService.smartCompress(
+						sessionId,
+						history,
+						contextType ?? 'global',
+						userId
+					);
+
+					if (smartResult?.compressedMessages?.length) {
+						messages.push(...smartResult.compressedMessages);
+						return messages;
+					}
+				}
+
+				const compressionResult = await this.compressionService.compressConversation(
+					sessionId,
+					history,
+					conversationBudget,
+					userId
+				);
+
+				if (compressionResult.compressedMessages.length > 0) {
+					messages.push(...compressionResult.compressedMessages);
+					return messages;
+				}
+			} catch (error) {
+				console.error('[AgentContext] Failed to compress history, falling back:', error);
+			}
+		}
+
+		if (needsCompression) {
+			console.warn('[AgentContext] Falling back to recent conversation slice', {
 				originalTokens: estimatedTokens,
-				targetTokens: this.TOKEN_BUDGETS.PLANNER.CONVERSATION,
+				targetTokens: conversationBudget,
 				messageCount: history.length
 			});
 
-			// Fallback: take recent messages only (compression service may not have smartCompress method)
+			messages.push({
+				role: 'system',
+				content: `Previous conversation trimmed to the most recent messages to stay within the ${conversationBudget} token budget.`
+			});
+
 			const recentMessages = history.slice(-10);
 			messages.push(
 				...recentMessages.map((m) => ({
@@ -585,16 +637,17 @@ ${Object.entries(ontologyContext.metadata.entity_count)
 					tool_calls: m.tool_calls as any
 				}))
 			);
-		} else {
-			// Use full history
-			messages.push(
-				...history.map((m) => ({
-					role: m.role as any,
-					content: m.content,
-					tool_calls: m.tool_calls as any
-				}))
-			);
+			return messages;
 		}
+
+		// Use full history
+		messages.push(
+			...history.map((m) => ({
+				role: m.role as any,
+				content: m.content,
+				tool_calls: m.tool_calls as any
+			}))
+		);
 
 		return messages;
 	}

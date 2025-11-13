@@ -57,6 +57,7 @@
 
 	// Load data on mount and when filters change
 	$effect(() => {
+		if (!browser) return;
 		selectedTimeframe;
 		selectedStatus;
 		selectedContextType;

@@ -34,6 +34,7 @@
 
 	// Load data on mount and when timeframe changes
 	$effect(() => {
+		if (!browser) return;
 		selectedTimeframe;
 		loadDashboard();
 	});

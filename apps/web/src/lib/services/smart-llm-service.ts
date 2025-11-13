@@ -207,8 +207,8 @@ const JSON_MODELS: Record<string, ModelProfile> = {
 	},
 
 	// Balanced tier (3-4s)
-	'anthropic/claude-3-haiku': {
-		id: 'anthropic/claude-3-haiku',
+	'anthropic/claude-3-haiku-20240307': {
+		id: 'anthropic/claude-3-haiku-20240307',
 		name: 'Claude 3 Haiku',
 		speed: 3,
 		smartness: 3.5,
@@ -217,8 +217,8 @@ const JSON_MODELS: Record<string, ModelProfile> = {
 		provider: 'anthropic',
 		bestFor: ['fast-analysis', 'simple-json']
 	},
-	'google/gemini-flash-1.5': {
-		id: 'google/gemini-flash-1.5',
+	'google/gemini-1.5-flash': {
+		id: 'google/gemini-1.5-flash',
 		name: 'Gemini 1.5 Flash',
 		speed: 3,
 		smartness: 4,
@@ -230,8 +230,8 @@ const JSON_MODELS: Record<string, ModelProfile> = {
 	},
 
 	// Powerful tier (4-5s)
-	'anthropic/claude-3.5-sonnet': {
-		id: 'anthropic/claude-3.5-sonnet',
+	'anthropic/claude-3-5-sonnet-20241022': {
+		id: 'anthropic/claude-3-5-sonnet-20241022',
 		name: 'Claude 3.5 Sonnet',
 		speed: 2,
 		smartness: 4.7,
@@ -243,8 +243,8 @@ const JSON_MODELS: Record<string, ModelProfile> = {
 	},
 
 	// Maximum tier (5-7s)
-	'anthropic/claude-3-opus': {
-		id: 'anthropic/claude-3-opus',
+	'anthropic/claude-3-opus-20240229': {
+		id: 'anthropic/claude-3-opus-20240229',
 		name: 'Claude 3 Opus',
 		speed: 1,
 		smartness: 5,
@@ -282,13 +282,13 @@ const TEXT_MODELS: Record<string, ModelProfile> = {
 	// Speed tier (<1s)
 	'x-ai/grok-4-fast': {
 		id: 'x-ai/grok-4-fast',
-		name: 'Llama 3.1 8B Groq',
+		name: 'Grok 4 Fast',
 		speed: 5,
 		smartness: 3,
 		creativity: 3,
 		cost: 0.05,
 		outputCost: 0.08,
-		provider: 'groq',
+		provider: 'x-ai',
 		bestFor: ['chat', 'quick-responses', 'simple-content']
 	},
 	'google/gemini-flash-1.5-8b': {
@@ -359,8 +359,8 @@ const TEXT_MODELS: Record<string, ModelProfile> = {
 		provider: 'z-ai',
 		bestFor: ['coding', 'long-content', 'reasoning', 'refined-writing', 'technical-docs']
 	},
-	'anthropic/claude-3-haiku': {
-		id: 'anthropic/claude-3-haiku',
+	'anthropic/claude-3-haiku-20240307': {
+		id: 'anthropic/claude-3-haiku-20240307',
 		name: 'Claude 3 Haiku',
 		speed: 3.5,
 		smartness: 3.5,
@@ -372,8 +372,8 @@ const TEXT_MODELS: Record<string, ModelProfile> = {
 	},
 
 	// Quality tier (3-5s)
-	'anthropic/claude-3.5-sonnet': {
-		id: 'anthropic/claude-3.5-sonnet',
+	'anthropic/claude-3-5-sonnet-20241022': {
+		id: 'anthropic/claude-3-5-sonnet-20241022',
 		name: 'Claude 3.5 Sonnet',
 		speed: 2,
 		smartness: 4.7,
@@ -385,8 +385,8 @@ const TEXT_MODELS: Record<string, ModelProfile> = {
 	},
 
 	// Creative tier
-	'anthropic/claude-3-opus': {
-		id: 'anthropic/claude-3-opus',
+	'anthropic/claude-3-opus-20240229': {
+		id: 'anthropic/claude-3-opus-20240229',
 		name: 'Claude 3 Opus',
 		speed: 1,
 		smartness: 5,
@@ -398,6 +398,18 @@ const TEXT_MODELS: Record<string, ModelProfile> = {
 	}
 };
 
+// Models that have reliable tool-calling support when routed through OpenRouter.
+// The order doubles as our fallback priority list whenever we must guarantee tool support.
+const TOOL_CALLING_MODEL_ORDER = [
+	'openai/gpt-4o-mini',
+	'openai/gpt-4o',
+	'deepseek/deepseek-chat',
+	'x-ai/grok-code-fast-1',
+	'z-ai/glm-4.6',
+	'google/gemini-2.0-flash-001'
+] as const;
+const TOOL_CALLING_MODEL_SET = new Set<string>(TOOL_CALLING_MODEL_ORDER);
+
 // ============================================
 // PROFILE MAPPINGS
 // ============================================
@@ -405,16 +417,24 @@ const TEXT_MODELS: Record<string, ModelProfile> = {
 const JSON_PROFILE_MODELS: Record<JSONProfile, string[]> = {
 	fast: ['x-ai/grok-4-fast:free', 'google/gemini-2.5-flash-lite', 'openai/gpt-4o-mini'],
 	balanced: ['openai/gpt-4o-mini', 'deepseek/deepseek-chat', 'x-ai/grok-code-fast-1'],
-	powerful: ['anthropic/claude-3.5-sonnet', 'x-ai/grok-code-fast-1', 'openai/gpt-4o'],
-	maximum: ['anthropic/claude-3-opus', 'openai/gpt-4o', 'anthropic/claude-3.5-sonnet'],
+	powerful: ['anthropic/claude-3-5-sonnet-20241022', 'x-ai/grok-code-fast-1', 'openai/gpt-4o'],
+	maximum: [
+		'anthropic/claude-3-opus-20240229',
+		'openai/gpt-4o',
+		'anthropic/claude-3-5-sonnet-20241022'
+	],
 	custom: [] // Will be determined by requirements
 };
 
 const TEXT_PROFILE_MODELS: Record<TextProfile, string[]> = {
 	speed: ['x-ai/grok-4-fast:free', 'google/gemini-2.5-flash-lite', 'x-ai/grok-4-fast'],
 	balanced: ['openai/gpt-4o-mini', 'google/gemini-2.0-flash-001', 'deepseek/deepseek-chat'],
-	quality: ['anthropic/claude-3.5-sonnet', 'openai/gpt-4o', 'deepseek/deepseek-chat'],
-	creative: ['anthropic/claude-3-opus', 'anthropic/claude-3.5-sonnet', 'openai/gpt-4o'],
+	quality: ['anthropic/claude-3-5-sonnet-20241022', 'openai/gpt-4o', 'deepseek/deepseek-chat'],
+	creative: [
+		'anthropic/claude-3-opus-20240229',
+		'anthropic/claude-3-5-sonnet-20241022',
+		'openai/gpt-4o'
+	],
 	custom: []
 };
 
@@ -587,15 +607,12 @@ export class SmartLLMService {
 		let retryCount = 0;
 		const maxRetries = options.validation?.maxRetries || 2;
 
-		// Get provider preferences based on profile
-		const providerPrefs = this.getProviderPreferences(profile);
-
 		// Make the OpenRouter API call with model routing
-		// We send all preferred models at once and let OpenRouter handle routing
+		// Primary model is first in preferredModels, others are fallbacks
 		try {
 			const response = await this.callOpenRouter({
 				model: preferredModels[0] || 'openai/gpt-4o-mini', // Primary model with fallback
-				models: preferredModels, // All models for fallback routing
+				models: preferredModels, // All models for fallback routing (via extra_body)
 				messages: [
 					{ role: 'system', content: enhancedSystemPrompt },
 					{ role: 'user', content: options.userPrompt }
@@ -604,9 +621,7 @@ export class SmartLLMService {
 				response_format: this.supportsJsonMode(preferredModels[0] || 'openai/gpt-4o-mini')
 					? { type: 'json_object' }
 					: undefined,
-				max_tokens: 8192,
-				route: 'fallback', // Use fallback routing strategy
-				provider: providerPrefs
+				max_tokens: 8192
 			});
 
 			// Guard against malformed response
@@ -661,16 +676,15 @@ export class SmartLLMService {
 					try {
 						// Try again with powerful profile
 						const retryResponse = await this.callOpenRouter({
-							model: 'anthropic/claude-3.5-sonnet',
-							models: ['anthropic/claude-3.5-sonnet', 'openai/gpt-4o'],
+							model: 'anthropic/claude-3-5-sonnet-20241022',
+							models: ['anthropic/claude-3-5-sonnet-20241022', 'openai/gpt-4o'],
 							messages: [
 								{ role: 'system', content: enhancedSystemPrompt },
 								{ role: 'user', content: options.userPrompt }
 							],
 							temperature: 0.1, // Lower temperature for retry
 							response_format: { type: 'json_object' },
-							max_tokens: 8192,
-							route: 'fallback'
+							max_tokens: 8192
 						});
 
 						// Guard against malformed retry response
@@ -702,7 +716,7 @@ export class SmartLLMService {
 									operation: 'getJSONResponse_retry_parse_failure',
 									errorType: 'llm_json_parse_failure_after_retry',
 									modelRequested: preferredModels[0] || 'openai/gpt-4o-mini',
-									retryModel: 'anthropic/claude-3.5-sonnet',
+									retryModel: 'anthropic/claude-3-5-sonnet-20241022',
 									retryAttempt: retryCount,
 									maxRetries,
 									responseLength: cleanedRetry.length || 0
@@ -875,14 +889,11 @@ export class SmartLLMService {
 			options.requirements
 		);
 
-		// Get provider preferences based on profile
-		const providerPrefs = this.getProviderPreferences(profile);
-
 		// Make the OpenRouter API call with model routing
 		try {
 			const response = await this.callOpenRouter({
 				model: preferredModels[0] || 'openai/gpt-4o-mini', // Primary model with fallback
-				models: preferredModels, // All models for fallback routing
+				models: preferredModels, // All models for fallback routing (via extra_body)
 				messages: [
 					{
 						role: 'system',
@@ -894,9 +905,7 @@ export class SmartLLMService {
 				],
 				temperature: options.temperature || 0.7,
 				max_tokens: options.maxTokens || 4096,
-				stream: options.streaming || false,
-				route: 'fallback', // Use fallback routing strategy
-				provider: providerPrefs
+				stream: options.streaming || false
 			});
 
 			// Guard against malformed response
@@ -1046,14 +1055,14 @@ export class SmartLLMService {
 
 	private async callOpenRouter(params: {
 		model: string;
-		models?: string[]; // Additional models for routing
+		models?: string[]; // Additional models for fallback (OpenRouter extension)
 		messages: Array<{ role: string; content: string }>;
 		temperature?: number;
 		max_tokens?: number;
 		response_format?: { type: string };
 		stream?: boolean;
-		route?: 'fallback'; // Routing strategy
-		provider?: any; // Provider preferences
+		route?: 'fallback'; // NOTE: Not used - kept for backwards compatibility
+		provider?: any; // NOTE: Not used - kept for backwards compatibility
 	}): Promise<OpenRouterResponse> {
 		const headers = {
 			Authorization: `Bearer ${this.apiKey}`,
@@ -1062,31 +1071,27 @@ export class SmartLLMService {
 			'X-Title': this.appName
 		};
 
-		// Build request body with routing support
+		// Build request body following OpenRouter API v1 spec
+		// See: https://openrouter.ai/docs/api-reference/chat/send-chat-completion-request
 		const body: any = {
 			model: params.model,
 			messages: params.messages,
 			temperature: params.temperature,
 			max_tokens: params.max_tokens,
-			stream: params.stream || false,
-			// OpenRouter specific options
-			transforms: ['middle-out'] // Compression for cost reduction
+			stream: params.stream || false
 		};
 
-		// Add response format if supported
+		// Add response format if supported (e.g., json_object for compatible models)
 		if (params.response_format) {
 			body.response_format = params.response_format;
 		}
 
-		// Add model routing if multiple models provided
+		// Add fallback models using extra_body (OpenRouter convention)
+		// The primary model is in 'model', fallbacks go in extra_body.models
 		if (params.models && params.models.length > 1) {
-			body.models = params.models;
-			body.route = params.route || 'fallback';
-		}
-
-		// Add provider routing preferences
-		if (params.provider) {
-			body.provider = params.provider;
+			body.extra_body = {
+				models: params.models.slice(1) // All models except the first (primary)
+			};
 		}
 
 		try {
@@ -1188,30 +1193,47 @@ export class SmartLLMService {
 	// ============================================
 	// PROVIDER ROUTING PREFERENCES
 	// ============================================
+	// NOTE: These methods are deprecated as OpenRouter does not support
+	// the provider parameter with order/allow_fallbacks/require_parameters/data_collection fields.
+	// Kept for backwards compatibility but not used in API calls.
+	// See: https://openrouter.ai/docs/api-reference/chat/send-chat-completion-request
 
-	private getProviderPreferences(profile: JSONProfile | TextProfile): any {
+	/**
+	 * @deprecated OpenRouter API does not support provider routing preferences.
+	 * This method is kept for backwards compatibility but is not used.
+	 */
+	private getProviderPreferences(
+		profile: JSONProfile | TextProfile,
+		options?: { requireToolSupport?: boolean }
+	): any {
+		const requireToolSupport = options?.requireToolSupport ?? false;
+
 		// Provider routing configuration based on profile
+		let baseConfig: any;
+
 		switch (profile) {
 			case 'fast':
 			case 'speed':
-				return {
+				baseConfig = {
 					order: ['x-ai', 'google', 'openai', 'groq', 'deepseek'],
 					allow_fallbacks: true,
 					data_collection: 'allow' // Allow for faster routing
 					// Note: quantization field removed - not supported by OpenRouter API
 				};
+				break;
 
 			case 'balanced':
-				return {
+				baseConfig = {
 					order: ['openai', 'google', 'deepseek', 'x-ai', 'anthropic'],
 					allow_fallbacks: true,
 					require_parameters: true, // Require providers to support our parameters
 					data_collection: 'deny' // Privacy focused
 				};
+				break;
 
 			case 'powerful':
 			case 'quality':
-				return {
+				baseConfig = {
 					order: ['anthropic', 'openai', 'x-ai', 'google', 'deepseek'],
 					allow_fallbacks: true,
 					require_parameters: true,
@@ -1219,22 +1241,72 @@ export class SmartLLMService {
 					// Exclude certain providers for quality
 					// exclude: ['groq', 'together']
 				};
+				break;
 
 			case 'maximum':
 			case 'creative':
-				return {
+				baseConfig = {
 					order: ['anthropic', 'openai'],
 					allow_fallbacks: false, // Only use premium providers
 					require_parameters: true,
 					data_collection: 'deny'
 				};
+				break;
 
 			default:
-				return {
+				baseConfig = {
 					allow_fallbacks: true,
 					data_collection: 'deny'
 				};
 		}
+
+		return requireToolSupport ? this.enforceToolSafeProviderPrefs(baseConfig) : baseConfig;
+	}
+
+	/**
+	 * @deprecated OpenRouter API does not support provider routing preferences.
+	 * This method is kept for backwards compatibility but is not used.
+	 */
+	private enforceToolSafeProviderPrefs(config: any): any {
+		const enriched = { ...config };
+
+		enriched.require_parameters = true;
+		enriched.allow_fallbacks = enriched.allow_fallbacks ?? true;
+
+		const priorityOrder = ['openai', 'deepseek', 'google', 'anthropic', 'x-ai'];
+		const existingOrder: string[] = Array.isArray(enriched.order) ? enriched.order : [];
+
+		const reordered = [
+			...priorityOrder.filter((provider) => existingOrder.includes(provider)),
+			...existingOrder.filter((provider) => !priorityOrder.includes(provider))
+		];
+
+		enriched.order = reordered.length > 0 ? reordered : priorityOrder;
+
+		enriched.data_collection = enriched.data_collection ?? 'deny';
+
+		return enriched;
+	}
+
+	private ensureToolCompatibleModels(models: string[]): string[] {
+		const toolReadyModels = models.filter((model) => TOOL_CALLING_MODEL_SET.has(model));
+
+		if (toolReadyModels.length > 0) {
+			return toolReadyModels;
+		}
+
+		console.warn(
+			'No tool-capable models found in preferred list. Falling back to default tool-calling models.',
+			{ requestedModels: models }
+		);
+
+		// Use fallback order while keeping values unique
+		return Array.from(
+			new Set<string>([
+				...models.filter((model) => TOOL_CALLING_MODEL_SET.has(model)),
+				...TOOL_CALLING_MODEL_ORDER
+			])
+		);
 	}
 
 	// ============================================
@@ -1354,14 +1426,15 @@ export class SmartLLMService {
 	}
 
 	private supportsJsonMode(modelId: string): boolean {
-		// Models that support native JSON mode
+		// Models that support native JSON mode (response_format: { type: 'json_object' })
 		const jsonModeModels = [
 			'openai/gpt-4o',
 			'openai/gpt-4o-mini',
 			'deepseek/deepseek-chat',
 			'qwen/qwen-2.5-72b-instruct',
-			'google/gemini-flash-1.5',
+			'google/gemini-1.5-flash', // Updated from gemini-flash-1.5
 			'google/gemini-flash-1.5-8b',
+			'google/gemini-2.0-flash-001',
 			'google/gemini-2.5-flash-lite',
 			'x-ai/grok-4-fast',
 			'x-ai/grok-4-fast:free',
@@ -1634,6 +1707,8 @@ You must respond with valid JSON only. Follow these rules:
 		const startTime = performance.now();
 		const profile = options.profile || 'speed'; // Default to speed for chat
 
+		const needsToolSupport = Array.isArray(options.tools) && options.tools.length > 0;
+
 		// Estimate total input length from all messages
 		const totalInputLength = options.messages.reduce(
 			(sum, msg) => sum + (msg.content?.length || 0),
@@ -1644,14 +1719,18 @@ You must respond with valid JSON only. Follow these rules:
 		);
 
 		// Select models optimized for chat streaming
-		const preferredModels = this.selectTextModels(
+		let preferredModels = this.selectTextModels(
 			profile,
 			estimatedLength,
 			{ maxLatency: 2000 } // Fast response for chat
 		);
 
+		if (needsToolSupport) {
+			preferredModels = this.ensureToolCompatibleModels(preferredModels);
+		}
+
 		try {
-			// Build request with streaming enabled
+			// Build request with streaming enabled following OpenRouter API v1 spec
 			const headers = {
 				Authorization: `Bearer ${this.apiKey}`,
 				'Content-Type': 'application/json',
@@ -1661,17 +1740,21 @@ You must respond with valid JSON only. Follow these rules:
 
 			const body: any = {
 				model: preferredModels[0],
-				models: preferredModels,
 				messages: options.messages,
 				temperature: options.temperature ?? 0.7,
 				max_tokens: options.maxTokens ?? 2000,
-				stream: true,
-				transforms: ['middle-out'],
-				route: 'fallback'
+				stream: true
 			};
 
+			// Add fallback models using extra_body if we have multiple models
+			if (preferredModels.length > 1) {
+				body.extra_body = {
+					models: preferredModels.slice(1)
+				};
+			}
+
 			// Add tools if provided
-			if (options.tools && options.tools.length > 0) {
+			if (needsToolSupport) {
 				body.tools = options.tools;
 				body.tool_choice = options.tool_choice || 'auto';
 			}

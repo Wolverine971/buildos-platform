@@ -153,7 +153,7 @@ describe('ResponseSynthesizer', () => {
 				userId: 'user_123',
 				plannerAgentId: 'planner_123',
 				userMessage: 'Analyze project health',
-				strategy: ChatStrategy.COMPLEX_RESEARCH,
+				strategy: ChatStrategy.PLANNER_STREAM,
 				status: 'completed',
 				steps: [
 					{
@@ -211,7 +211,7 @@ describe('ResponseSynthesizer', () => {
 				userId: 'user_123',
 				plannerAgentId: 'planner_123',
 				userMessage: 'Generate report',
-				strategy: ChatStrategy.COMPLEX_RESEARCH,
+				strategy: ChatStrategy.PLANNER_STREAM,
 				status: 'executing',
 				steps: [
 					{
@@ -265,7 +265,7 @@ describe('ResponseSynthesizer', () => {
 				userId: 'user_123',
 				plannerAgentId: 'planner_123',
 				userMessage: 'Do something complex',
-				strategy: ChatStrategy.COMPLEX_RESEARCH,
+				strategy: ChatStrategy.PLANNER_STREAM,
 				status: 'failed',
 				steps: [
 					{
@@ -439,7 +439,7 @@ describe('ResponseSynthesizer', () => {
 				userId: 'user_123',
 				plannerAgentId: 'planner_123',
 				userMessage: 'Test plan',
-				strategy: ChatStrategy.COMPLEX_RESEARCH,
+				strategy: ChatStrategy.PLANNER_STREAM,
 				status: 'executing',
 				steps: [
 					{ stepNumber: 1, status: 'completed' } as PlanStep,
@@ -465,7 +465,7 @@ describe('ResponseSynthesizer', () => {
 				userId: 'user_123',
 				plannerAgentId: 'planner_123',
 				userMessage: 'Test plan',
-				strategy: ChatStrategy.COMPLEX_RESEARCH,
+				strategy: ChatStrategy.PLANNER_STREAM,
 				status: 'completed',
 				steps: [
 					{ stepNumber: 1, status: 'completed' } as PlanStep,
@@ -489,7 +489,7 @@ describe('ResponseSynthesizer', () => {
 				userId: 'user_123',
 				plannerAgentId: 'planner_123',
 				userMessage: 'Test plan',
-				strategy: ChatStrategy.COMPLEX_RESEARCH,
+				strategy: ChatStrategy.PLANNER_STREAM,
 				status: 'failed',
 				steps: [
 					{ stepNumber: 1, status: 'completed' } as PlanStep,

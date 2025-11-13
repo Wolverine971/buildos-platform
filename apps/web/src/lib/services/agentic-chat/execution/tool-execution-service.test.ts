@@ -19,10 +19,12 @@ describe('ToolExecutionService', () => {
 	let mockToolExecutor: Mock;
 	let mockContext: ServiceContext;
 	let mockToolDefinitions: ChatToolDefinition[];
+	let telemetryHook: Mock;
 
 	beforeEach(() => {
 		// Setup mock tool executor
 		mockToolExecutor = vi.fn();
+		telemetryHook = vi.fn();
 
 		// Setup mock context
 		mockContext = {
@@ -70,7 +72,7 @@ describe('ToolExecutionService', () => {
 			}
 		];
 
-		service = new ToolExecutionService(mockToolExecutor);
+		service = new ToolExecutionService(mockToolExecutor, telemetryHook);
 	});
 
 	describe('executeTool', () => {
@@ -180,6 +182,55 @@ describe('ToolExecutionService', () => {
 
 			expect(result.success).toBe(true);
 			expect(mockToolExecutor).toHaveBeenCalledWith('list_onto_projects', {}, mockContext);
+		});
+
+		it('should route virtual tools through provided handler', async () => {
+			const toolCall: ChatToolCall = {
+				id: 'call_virtual',
+				name: 'agent_create_plan',
+				arguments: { objective: 'Do something' }
+			};
+
+			const virtualHandler = vi.fn().mockResolvedValue({
+				success: true,
+				data: { status: 'drafted' }
+			} satisfies Partial<ToolExecutionResult>);
+
+			const result = await service.executeTool(toolCall, mockContext, mockToolDefinitions, {
+				virtualHandlers: {
+					agent_create_plan: virtualHandler
+				}
+			});
+
+			expect(result.success).toBe(true);
+			expect(result.toolName).toBe('agent_create_plan');
+			expect(mockToolExecutor).not.toHaveBeenCalled();
+			expect(virtualHandler).toHaveBeenCalledWith({
+				toolCall,
+				toolName: 'agent_create_plan',
+				args: { objective: 'Do something' },
+				context: mockContext,
+				availableTools: mockToolDefinitions
+			});
+		});
+
+		it('should emit telemetry data for each execution', async () => {
+			const toolCall: ChatToolCall = {
+				id: 'call_telemetry',
+				name: 'list_onto_tasks',
+				arguments: { project_id: 'proj_123' }
+			};
+
+			mockToolExecutor.mockResolvedValueOnce({ tasks: [] });
+
+			await service.executeTool(toolCall, mockContext, mockToolDefinitions);
+
+			expect(telemetryHook).toHaveBeenCalledTimes(1);
+			const [resultArg, telemetryArg] = telemetryHook.mock.calls[0];
+			expect(resultArg.toolName).toBe('list_onto_tasks');
+			expect(telemetryArg.toolName).toBe('list_onto_tasks');
+			expect(typeof telemetryArg.durationMs).toBe('number');
+			expect(telemetryArg.virtual).toBe(false);
 		});
 	});
 

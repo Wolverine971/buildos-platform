@@ -11,7 +11,7 @@
  *
  * Key responsibilities:
  * - Analyze message complexity and user intent
- * - Select between simple_research, complex_research, or ask_clarifying strategies
+ * - Select between planner_stream, project_creation, or ask_clarifying strategies
  * - Estimate resource requirements and execution steps
  * - Validate and normalize strategy selections
  *
@@ -109,10 +109,24 @@ export class StrategyAnalyzer {
 			};
 		}
 
+		// Force project creation strategy when context already scoped to creation
+		if (context.contextType === 'project_create') {
+			return {
+				primary_strategy: ChatStrategy.PROJECT_CREATION,
+				confidence: 0.95,
+				reasoning:
+					'Project creation context requires template selection and create_onto_project',
+				needs_clarification: false,
+				estimated_steps: 3,
+				required_tools: ['list_onto_templates', 'create_onto_project'],
+				can_complete_directly: false
+			};
+		}
+
 		// Check if we have no tools available
 		if (!plannerContext.availableTools || plannerContext.availableTools.length === 0) {
 			return {
-				primary_strategy: ChatStrategy.SIMPLE_RESEARCH,
+				primary_strategy: ChatStrategy.PLANNER_STREAM,
 				confidence: 0.5,
 				reasoning: 'No tools available for execution',
 				needs_clarification: false,
@@ -136,7 +150,7 @@ export class StrategyAnalyzer {
 
 			// Ensure simple strategy has concrete tool suggestions so downstream execution can proceed
 			if (
-				validated.primary_strategy === ChatStrategy.SIMPLE_RESEARCH &&
+				validated.primary_strategy === ChatStrategy.PLANNER_STREAM &&
 				(!validated.required_tools || validated.required_tools.length === 0) &&
 				availableToolNames.length > 0
 			) {
@@ -211,24 +225,15 @@ export class StrategyAnalyzer {
 		return `You are a strategy analyzer for BuildOS chat.
 
 Available strategies:
-1. simple_research: Can be completed with 1-2 tool calls
-   - Direct lookups, lists, simple searches
-   - No coordination needed
-   - Examples: "Show me X project", "List Y tasks"
+1. planner_stream: Default autonomous planner loop
+   - Handles research, tool usage, and plan meta-tool calls inside the streaming session
+   - Provide estimated steps and required tools so downstream components can budget tokens
 
-2. complex_research: Requires multiple steps or coordination
-   - Multi-entity analysis
-   - Aggregation across data sources
-   - May need executor agents
-   - Examples: "Analyze project health", "Generate comprehensive report"
+2. ask_clarifying_questions: Ambiguity that research can't resolve
+   - Multiple entity matches, missing parameters, unclear scope/time range
+   - ONLY after attempting reasoning/research first, and include concrete questions
 
-3. ask_clarifying_questions: Ambiguity that research can't resolve
-   - Multiple matches for entity names
-   - Unclear time ranges or scopes
-   - Missing required parameters
-   - ONLY after attempting research first
-
-4. project_creation: ONLY when context_type = project_create and no project exists yet
+3. project_creation: ONLY when context_type === project_create (or the user explicitly asks to start a new project)
    - Select the best template, infer missing details, then call create_onto_project immediately
    - Optionally call request_template_creation ONCE if the catalog lacks a suitable template
    - Do not perform additional planning/research until the project is instantiated
@@ -274,7 +279,7 @@ Consider:
 
 Return a JSON object with:
 {
-  "primary_strategy": "simple_research" | "complex_research" | "ask_clarifying_questions",
+  "primary_strategy": "planner_stream" | "ask_clarifying_questions" | "project_creation",
   "confidence": 0.0-1.0,
   "reasoning": "Brief explanation of why this strategy was chosen",
   "needs_clarification": boolean,
@@ -292,17 +297,11 @@ Return a JSON object with:
 		const complexity = this.estimateComplexity(message, availableToolNames);
 
 		// Determine strategy based on complexity
-		let strategy: ChatStrategy;
-		let reasoning: string;
-
-		if (complexity <= 2) {
-			strategy = ChatStrategy.SIMPLE_RESEARCH;
-			reasoning =
-				'Simple query that can be handled with direct tool calls (fallback analysis)';
-		} else {
-			strategy = ChatStrategy.COMPLEX_RESEARCH;
-			reasoning = 'Complex query requiring multiple steps (fallback analysis)';
-		}
+		const strategy = ChatStrategy.PLANNER_STREAM;
+		const reasoning =
+			complexity <= 2
+				? 'Planner stream can handle this with a couple of tool calls (fallback analysis)'
+				: 'Planner stream should orchestrate multiple steps to resolve this (fallback analysis)';
 
 		return {
 			primary_strategy: strategy,
@@ -448,26 +447,20 @@ Return a JSON object with:
 
 		// Suggest alternatives based on primary strategy
 		switch (analysis.primary_strategy) {
-			case ChatStrategy.SIMPLE_RESEARCH:
-				if (analysis.estimated_steps > 2) {
-					alternatives.push(ChatStrategy.COMPLEX_RESEARCH);
-				}
+			case ChatStrategy.PLANNER_STREAM:
 				if (analysis.confidence < 0.6) {
 					alternatives.push(ChatStrategy.ASK_CLARIFYING);
 				}
 				break;
 
-			case ChatStrategy.COMPLEX_RESEARCH:
-				if (analysis.estimated_steps <= 2) {
-					alternatives.push(ChatStrategy.SIMPLE_RESEARCH);
-				}
-				if (analysis.confidence < 0.6) {
-					alternatives.push(ChatStrategy.ASK_CLARIFYING);
+			case ChatStrategy.PROJECT_CREATION:
+				if (analysis.confidence < 0.7) {
+					alternatives.push(ChatStrategy.PLANNER_STREAM);
 				}
 				break;
 
 			case ChatStrategy.ASK_CLARIFYING:
-				alternatives.push(ChatStrategy.SIMPLE_RESEARCH);
+				alternatives.push(ChatStrategy.PLANNER_STREAM);
 				break;
 		}
 
@@ -479,11 +472,8 @@ Return a JSON object with:
 	 */
 	explainStrategy(strategy: ChatStrategy): string {
 		switch (strategy) {
-			case ChatStrategy.SIMPLE_RESEARCH:
-				return 'This is a straightforward query that can be answered with 1-2 simple tool calls';
-
-			case ChatStrategy.COMPLEX_RESEARCH:
-				return 'This requires complex analysis across multiple data sources and may need several coordinated steps';
+			case ChatStrategy.PLANNER_STREAM:
+				return 'Run the autonomous planner stream: research, call tools, and invoke the plan meta tool as needed.';
 
 			case ChatStrategy.ASK_CLARIFYING:
 				return "I need to ask clarifying questions to better understand what you're looking for";

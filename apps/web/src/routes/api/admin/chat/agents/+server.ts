@@ -193,7 +193,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 				duration_ms,
 				tool_calls_made,
 				created_at,
-				agents!agent_executions_executor_agent_id_fkey(id, type, name),
+				agents!fk_agent_executions_executor(id, type, name),
 				agent_plans!inner(user_message)
 			`
 			)

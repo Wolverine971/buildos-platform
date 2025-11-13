@@ -157,6 +157,7 @@
 
 	// Load signups when on signups tab and filters change
 	$effect(() => {
+		if (!browser) return;
 		if (activeTab === 'signups') {
 			searchQuery;
 			signupFilters.status;
@@ -170,6 +171,7 @@
 
 	// Load signups when on dataview tab and filters change
 	$effect(() => {
+		if (!browser) return;
 		if (activeTab === 'dataview') {
 			searchQuery;
 			dataViewFilters.status;
@@ -183,6 +185,7 @@
 
 	// Load members when on members tab and filters change
 	$effect(() => {
+		if (!browser) return;
 		if (activeTab === 'members') {
 			searchQuery;
 			memberFilters.tier;
@@ -197,6 +200,7 @@
 
 	// Load data when tab changes
 	$effect(() => {
+		if (!browser) return;
 		activeTab; // Track tab changes
 		currentPage = 1;
 		loadData();

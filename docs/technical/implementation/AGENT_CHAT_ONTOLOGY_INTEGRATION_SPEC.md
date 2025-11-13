@@ -30,7 +30,7 @@ You are tasked with enhancing the BuildOS agent chat system to integrate with th
 ### Your Success Criteria
 
 - [x] Chat loads ontology data (projects, tasks, etc.) into context ✅
-- [x] Three strategies work: simple_research, complex_research, ask_clarifying_questions ✅
+- [x] Three strategies work: planner_stream, planner_stream, ask_clarifying_questions ✅
 - [x] Last turn context passes between frontend and backend ✅
 - [x] Frontend displays strategy indicators and clarifying questions ✅
 - [ ] Token compression verified working under 10K limit (NEEDS MANUAL TESTING)
@@ -153,7 +153,7 @@ export interface LastTurnContext {
 	data_accessed: string[];
 
 	// Strategy used in last turn
-	strategy_used?: 'simple_research' | 'complex_research' | 'clarifying';
+	strategy_used?: 'planner_stream' | 'ask_clarifying_questions' | 'project_creation';
 
 	// ISO timestamp of last turn
 	timestamp: string;
@@ -207,9 +207,9 @@ export interface OntologyContext {
  * Available chat strategies
  */
 export enum ChatStrategy {
-	SIMPLE_RESEARCH = 'simple_research', // 1-2 tool calls
-	COMPLEX_RESEARCH = 'complex_research', // Multi-step with executors
-	ASK_CLARIFYING = 'ask_clarifying_questions' // Need more info
+	PLANNER_STREAM = 'planner_stream', // Autonomous planner loop
+	ASK_CLARIFYING = 'ask_clarifying_questions', // Need more info
+	PROJECT_CREATION = 'project_creation' // Deterministic project instantiation flow
 }
 
 /**

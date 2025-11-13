@@ -19,7 +19,7 @@
 - `LastTurnContext` - Lightweight context passed between conversation turns
 - `OntologyContext` - Loaded ontology data from onto\_\* tables
 - `EntityRelationships` - Graph data from onto_edges
-- `ChatStrategy` enum - Strategy types (simple_research, complex_research, ask_clarifying_questions)
+- `ChatStrategy` enum - Strategy types (planner_stream, planner_stream, ask_clarifying_questions)
 - `StrategyAnalysis` - Planner's strategy decision with confidence
 - `ResearchResult` - Results from executing a strategy
 - `EnhancedPlannerContext` - Extended planner context with ontology
@@ -354,8 +354,8 @@ const strategyPrompt = `
 You are analyzing a user query to determine the best strategy.
 
 Available strategies:
-1. simple_research: 1-2 tool calls for direct queries
-2. complex_research: Multi-step investigation requiring executors
+1. planner_stream: 1-2 tool calls for direct queries
+2. planner_stream: Multi-step investigation requiring executors
 3. ask_clarifying_questions: Ambiguity remains after attempted research
 
 Context:
@@ -411,7 +411,7 @@ if (args.project_id) {
   },
   context_type: "project",
   data_accessed: ["list_onto_tasks", "get_onto_project_details"],
-  strategy_used: "simple_research",
+  strategy_used: "planner_stream",
   timestamp: "2025-11-04T..."
 }
 ```
@@ -454,7 +454,7 @@ if (args.project_id) {
 User: "Show me the marketing project"
 Expected:
 - ontology_loaded event
-- strategy_selected: simple_research, high confidence
+- strategy_selected: planner_stream, high confidence
 - list_onto_projects tool call
 - Response with project summary
 ```
@@ -464,7 +464,7 @@ Expected:
 ```
 User: "Analyze all my projects and tell me which ones are at risk"
 Expected:
-- strategy_selected: complex_research
+- strategy_selected: planner_stream
 - Multiple tool calls (list_onto_projects, get_onto_project_details for each)
 - Executor spawned for analysis
 - Comprehensive report

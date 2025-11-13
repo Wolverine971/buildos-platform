@@ -69,6 +69,7 @@
 
 	// Fetch brief when briefDate changes
 	$effect(() => {
+		if (!browser) return;
 		if (isOpen && briefDate && !brief) {
 			loadBriefByDate(briefDate);
 		}
