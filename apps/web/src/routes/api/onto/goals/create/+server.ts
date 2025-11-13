@@ -15,7 +15,6 @@
  * - type_key: string (default: 'goal.basic') - Template type key
  * - name: string (required) - Goal name
  * - description?: string - Goal description
- * - state_key?: string - Initial state (draft, active, achieved, etc.)
  * - target_date?: string - Target date ISO string
  * - measurement_criteria?: string - How success is measured
  * - priority?: 'high' | 'medium' | 'low' - Goal priority
@@ -52,7 +51,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			type_key = 'goal.basic',
 			name,
 			description,
-			state_key = 'draft',
 			props = {}
 		} = body;
 
@@ -90,7 +88,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			project_id,
 			type_key,
 			name,
-			state_key,
 			created_by: actorId,
 			props: {
 				...props,

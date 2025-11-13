@@ -15,8 +15,7 @@
  * - Includes project ownership verification
  *
  * PATCH /api/onto/goals/[id]:
- * - Updates goal properties (name, description, priority, target_date, state)
- * - Validates state transitions against FSM
+ * - Updates goal properties (name, description, priority, target_date)
  * - Maintains props object integrity
  *
  * DELETE /api/onto/goals/[id]:
@@ -101,8 +100,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 
 	try {
 		const body = await request.json();
-		const { name, description, priority, target_date, measurement_criteria, state_key, props } =
-			body;
+		const { name, description, priority, target_date, measurement_criteria, props } = body;
 
 		// Get user's actor ID
 		const { data: actorId, error: actorError } = await supabase.rpc('ensure_actor_for_user', {
@@ -144,7 +142,6 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		};
 
 		if (name !== undefined) updateData.name = name;
-		if (state_key !== undefined) updateData.state_key = state_key;
 
 		// Handle props update - merge with existing
 		if (props !== undefined) {

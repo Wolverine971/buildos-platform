@@ -12,12 +12,11 @@
  *
  * Request Body:
  * - project_id: string (required) - Project UUID
- * - type_key: string (default: 'task.basic') - Template type key
  * - title: string (required) - Task title
  * - description?: string - Task description
  * - priority?: number (1-5) - Task priority
  * - plan_id?: string - Associated plan UUID
- * - state_key?: string - Initial state
+ * - state_key?: string (default: 'todo') - Initial state
  * - due_at?: string - Due date ISO string
  * - props?: object - Additional properties
  *
@@ -49,7 +48,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		const body = await request.json();
 		const {
 			project_id,
-			type_key = 'task.basic',
 			title,
 			description,
 			priority = 3,
@@ -104,7 +102,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		// Create the task
 		const taskData = {
 			project_id,
-			type_key,
 			title,
 			state_key,
 			priority,
