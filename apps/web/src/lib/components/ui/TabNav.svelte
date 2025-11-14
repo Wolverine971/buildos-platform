@@ -60,18 +60,58 @@
 </div>
 
 <style>
-	/* Apple-quality tab container with Tailwind colors */
+	/* CSS custom properties for consistent color management */
+	:global(:root) {
+		--tab-border: rgb(229 231 235);
+		--tab-border-dark: rgb(55 65 81);
+		--tab-active-color: rgb(37 99 235);
+		--tab-active-color-dark: rgb(96 165 250);
+		--tab-active-border: rgb(59 130 246);
+		--tab-active-border-dark: rgb(96 165 250);
+		--tab-inactive-color: rgb(107 114 128);
+		--tab-inactive-color-dark: rgb(156 163 175);
+		--tab-hover-color: rgb(55 65 81);
+		--tab-hover-border: rgb(209 213 219);
+		--tab-hover-color-dark: rgb(229 231 235);
+		--tab-hover-border-dark: rgb(75 85 99);
+		--tab-focus-color: rgb(59 130 246);
+		--tab-focus-color-dark: rgb(96 165 250);
+		--badge-active-bg: rgb(219 234 254);
+		--badge-active-color: rgb(29 78 216);
+		--badge-active-bg-dark: rgba(30, 64, 175, 0.3);
+		--badge-active-color-dark: rgb(147 197 253);
+		--badge-inactive-bg: rgb(243 244 246);
+		--badge-inactive-color: rgb(107 114 128);
+		--badge-inactive-bg-dark: rgb(55 65 81);
+		--badge-inactive-color-dark: rgb(156 163 175);
+		--badge-hover-bg: rgb(229 231 235);
+		--badge-hover-color: rgb(75 85 99);
+		--badge-hover-bg-dark: rgb(75 85 99);
+		--badge-hover-color-dark: rgb(209 213 219);
+	}
+
+	/* Apple-quality tab container */
 	.tab-container {
-		@apply border-b border-gray-200 dark:border-gray-700 relative;
+		border-bottom: 1px solid var(--tab-border);
+		position: relative;
+	}
+
+	:global(.dark) .tab-container {
+		border-bottom-color: var(--tab-border-dark);
 	}
 
 	/* Tab navigation with smooth scrolling */
 	.tab-nav {
-		@apply flex gap-1 overflow-x-auto overflow-y-hidden px-2 mb-[-1px];
+		display: flex;
+		gap: 0.25rem;
+		overflow-x: auto;
+		overflow-y: hidden;
 		-webkit-overflow-scrolling: touch;
 		scroll-behavior: smooth;
 		scrollbar-width: none;
 		-ms-overflow-style: none;
+		padding: 0 0.5rem;
+		margin-bottom: -1px;
 	}
 
 	.tab-nav::-webkit-scrollbar {
@@ -80,49 +120,90 @@
 
 	@media (min-width: 640px) {
 		.tab-nav {
-			@apply px-0 gap-2;
+			padding: 0;
+			gap: 0.5rem;
 		}
 	}
 
-	/* Tab button - Apple-refined with Tailwind colors */
+	/* Tab button - Apple-refined touch targets and spacing */
 	.tab-button {
-		@apply inline-flex items-center justify-center gap-2 py-3 px-4 border-b-2 border-transparent bg-transparent text-sm font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap cursor-pointer transition-all duration-200 relative outline-none min-h-[44px] flex-shrink-0;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		gap: 0.5rem;
+		padding: 0.75rem 1rem;
+		border: none;
+		border-bottom: 2px solid transparent;
+		background: transparent;
+		font-size: 0.875rem;
+		font-weight: 500;
+		line-height: 1.25rem;
+		white-space: nowrap;
+		cursor: pointer;
+		transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+		outline: none;
+		min-height: 44px; /* Apple touch target minimum */
+		flex-shrink: 0;
 	}
 
 	@media (min-width: 640px) {
 		.tab-button {
-			@apply py-3.5 px-5 gap-2.5;
+			padding: 0.875rem 1.25rem;
+			gap: 0.625rem;
 		}
 	}
 
-	/* Active tab - refined with Tailwind */
+	/* Active tab - refined Apple aesthetic */
 	.tab-active {
-		@apply border-b-2 border-blue-500 dark:border-blue-400 text-blue-600 dark:text-blue-400 font-semibold;
-		background: linear-gradient(to bottom, rgb(59 130 246 / 0.05), rgb(59 130 246 / 0.08));
+		border-bottom-color: var(--tab-active-border);
+		color: var(--tab-active-color);
+		background: linear-gradient(to bottom, rgba(59, 130, 246, 0.05), rgba(59, 130, 246, 0.08));
+		font-weight: 600;
+		letter-spacing: -0.01em;
 	}
 
 	:global(.dark) .tab-active {
-		background: linear-gradient(to bottom, rgb(96 165 250 / 0.08), rgb(96 165 250 / 0.12));
+		border-bottom-color: var(--tab-active-border-dark);
+		color: var(--tab-active-color-dark);
+		background: linear-gradient(to bottom, rgba(96, 165, 250, 0.08), rgba(96, 165, 250, 0.12));
 	}
 
-	/* Inactive tab - subtle */
+	/* Inactive tab - subtle and refined */
 	.tab-inactive {
-		@apply border-b-2 border-transparent text-gray-600 dark:text-gray-400;
+		border-bottom-color: transparent;
+		color: var(--tab-inactive-color);
 	}
 
-	/* Hover state */
+	:global(.dark) .tab-inactive {
+		color: var(--tab-inactive-color-dark);
+	}
+
+	/* Hover state - preview active state */
 	.tab-inactive:hover {
-		@apply text-gray-900 dark:text-gray-100 border-b-2 border-gray-300 dark:border-gray-600;
-		background: linear-gradient(to bottom, rgb(0 0 0 / 0.02), rgb(0 0 0 / 0.03));
+		color: var(--tab-hover-color);
+		border-bottom-color: var(--tab-hover-border);
+		background: linear-gradient(to bottom, rgba(0, 0, 0, 0.02), rgba(0, 0, 0, 0.03));
 	}
 
 	:global(.dark) .tab-inactive:hover {
-		background: linear-gradient(to bottom, rgb(255 255 255 / 0.03), rgb(255 255 255 / 0.05));
+		color: var(--tab-hover-color-dark);
+		border-bottom-color: var(--tab-hover-border-dark);
+		background: linear-gradient(
+			to bottom,
+			rgba(255, 255, 255, 0.03),
+			rgba(255, 255, 255, 0.05)
+		);
 	}
 
 	/* Focus state for keyboard navigation */
 	.tab-button:focus-visible {
-		@apply outline-blue-500 dark:outline-blue-400 outline-offset-[-2px] outline-2 rounded-sm;
+		outline: 2px solid var(--tab-focus-color);
+		outline-offset: -2px;
+		border-radius: 0.375rem;
+	}
+
+	:global(.dark) .tab-button:focus-visible {
+		outline-color: var(--tab-focus-color-dark);
 	}
 
 	/* Active state on press */
@@ -130,14 +211,18 @@
 		transform: scale(0.98);
 	}
 
-	/* Tab icon - Apple-refined sizing */
+	/* Tab icon - perfectly sized and aligned */
 	.tab-icon {
-		@apply w-4 h-4 flex-shrink-0 transition-transform duration-200;
+		width: 1rem;
+		height: 1rem;
+		flex-shrink: 0;
+		transition: transform 200ms cubic-bezier(0.4, 0, 0.2, 1);
 	}
 
 	@media (min-width: 640px) {
 		.tab-icon {
-			@apply w-5 h-5;
+			width: 1.125rem;
+			height: 1.125rem;
 		}
 	}
 
@@ -152,22 +237,49 @@
 		-moz-osx-font-smoothing: grayscale;
 	}
 
-	/* Count badge - elegant with Tailwind colors */
+	/* Count badge - subtle and elegant */
 	.tab-badge {
-		@apply inline-flex items-center justify-center px-2 py-0.5 text-xs font-semibold rounded-full transition-all duration-200 min-w-[1.5rem];
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		padding: 0.125rem 0.5rem;
+		font-size: 0.75rem;
+		font-weight: 600;
+		line-height: 1rem;
+		border-radius: 9999px;
+		transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+		min-width: 1.5rem;
 		font-variant-numeric: tabular-nums;
 	}
 
 	.badge-active {
-		@apply bg-blue-100 dark:bg-blue-950/30 text-blue-700 dark:text-blue-200;
+		background: var(--badge-active-bg);
+		color: var(--badge-active-color);
+	}
+
+	:global(.dark) .badge-active {
+		background: var(--badge-active-bg-dark);
+		color: var(--badge-active-color-dark);
 	}
 
 	.badge-inactive {
-		@apply bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400;
+		background: var(--badge-inactive-bg);
+		color: var(--badge-inactive-color);
+	}
+
+	:global(.dark) .badge-inactive {
+		background: var(--badge-inactive-bg-dark);
+		color: var(--badge-inactive-color-dark);
 	}
 
 	.tab-inactive:hover .badge-inactive {
-		@apply bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300;
+		background: var(--badge-hover-bg);
+		color: var(--badge-hover-color);
+	}
+
+	:global(.dark) .tab-inactive:hover .badge-inactive {
+		background: var(--badge-hover-bg-dark);
+		color: var(--badge-hover-color-dark);
 	}
 
 	/* Reduce motion for accessibility */

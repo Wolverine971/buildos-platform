@@ -22,6 +22,7 @@ import { ExecutorCoordinator } from './execution/executor-coordinator';
 import { PlanOrchestrator } from './planning/plan-orchestrator';
 import { ResponseSynthesizer } from './synthesis/response-synthesizer';
 import { AgentChatOrchestrator } from './orchestration/agent-chat-orchestrator';
+import { ChatSessionService } from './session/chat-session-service';
 import type { AgentChatOrchestratorDependencies } from './orchestration/agent-chat-orchestrator';
 import type { ToolExecutorFunction, StreamEvent } from './shared/types';
 
@@ -73,7 +74,7 @@ export function createAgentChatOrchestrator(
 		persistenceService,
 		contextService,
 		llmService,
-		errorLogger
+		errorLogger // Now required, not optional
 	};
 
 	return new AgentChatOrchestrator(dependencies);
@@ -124,5 +125,6 @@ export {
 	ToolExecutionService,
 	ExecutorCoordinator,
 	PlanOrchestrator,
-	ResponseSynthesizer
+	ResponseSynthesizer,
+	ChatSessionService
 };

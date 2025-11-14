@@ -255,8 +255,11 @@ export async function startRecording(): Promise<void> {
 		throw new Error('Voice recording is not supported in this browser');
 	}
 
-	// Initialize speech recognition once
-	if (!isInitialized && capabilities.liveTranscriptSupported) {
+	// Initialize speech recognition the first time, and rehydrate it if it was cleaned up
+	const needsSpeechRecognitionInit =
+		capabilities.liveTranscriptSupported && (!isInitialized || !recognition);
+
+	if (needsSpeechRecognitionInit) {
 		initializeSpeechRecognition();
 		isInitialized = true;
 	}

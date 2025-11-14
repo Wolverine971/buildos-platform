@@ -22,8 +22,10 @@ import type {
 	ChatSessionInsert,
 	ChatContextType,
 	ChatMessage,
+	ChatMessageInsert,
 	Database,
-	AgentSSEMessage
+	AgentSSEMessage,
+	ChatRole
 } from '@buildos/shared-types';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { OntologyContextLoader } from '$lib/services/ontology-context-loader';
@@ -34,8 +36,6 @@ import type {
 } from '$lib/types/agent-chat-enhancement';
 import { createAgentChatOrchestrator } from '$lib/services/agentic-chat';
 import type { StreamEvent } from '$lib/services/agentic-chat/shared/types';
-
-type SupabaseClientWithDb = SupabaseClient<Database>;
 
 // ============================================
 // RATE LIMITING
@@ -62,33 +62,51 @@ const rateLimiter = new Map<
 // TYPES
 // ============================================
 
-interface AgentStreamRequest extends ChatStreamRequest {
-	// Inherits: message, session_id, context_type, entity_id
-	conversationHistory?: ChatMessage[]; // Previous messages for context (properly typed)
-}
-
-interface ChatMessageInsertPayload {
-	session_id: string;
-	user_id: string;
-	role: ChatMessage['role'];
-	content: string;
-	tool_calls?: any;
-	tool_call_id?: string;
-	tool_name?: string;
-	tool_result?: any;
-}
+// Use EnhancedAgentStreamRequest from agent-chat-enhancement types
+// which properly extends ChatStreamRequest with additional fields
 
 // ============================================
 // HELPER FUNCTIONS
 // ============================================
 
+/**
+ * Normalizes context type to ensure consistency
+ * Maps legacy 'general' to 'global'
+ */
 function normalizeContextType(contextType?: ChatContextType | string): ChatContextType {
-	const normalized = (contextType ?? 'global') as ChatContextType;
-	return normalized === 'general' ? 'global' : normalized;
+	// Default to 'global' if not provided
+	if (!contextType) {
+		return 'global';
+	}
+
+	// Map 'general' to 'global' for backwards compatibility
+	if (contextType === 'general') {
+		return 'global';
+	}
+
+	// Validate it's a valid ChatContextType
+	const validTypes: ChatContextType[] = [
+		'global',
+		'project',
+		'task',
+		'calendar',
+		'project_create',
+		'project_audit',
+		'project_forecast',
+		'task_update',
+		'daily_brief_update'
+	];
+
+	if (validTypes.includes(contextType as ChatContextType)) {
+		return contextType as ChatContextType;
+	}
+
+	console.warn(`[API] Invalid context type '${contextType}', defaulting to 'global'`);
+	return 'global';
 }
 
 async function fetchChatSession(
-	supabase: SupabaseClientWithDb,
+	supabase: SupabaseClient<Database>,
 	sessionId: string,
 	userId: string
 ): Promise<ChatSession | null> {
@@ -111,7 +129,7 @@ async function fetchChatSession(
 }
 
 async function createChatSession(
-	supabase: SupabaseClientWithDb,
+	supabase: SupabaseClient<Database>,
 	params: { userId: string; contextType: ChatContextType; entityId?: string }
 ): Promise<ChatSession> {
 	const sessionData: ChatSessionInsert = {
@@ -139,7 +157,7 @@ async function createChatSession(
 }
 
 async function loadRecentMessages(
-	supabase: SupabaseClientWithDb,
+	supabase: SupabaseClient<Database>,
 	sessionId: string,
 	limit: number = RECENT_MESSAGE_LIMIT
 ): Promise<ChatMessage[]> {
@@ -159,12 +177,14 @@ async function loadRecentMessages(
 }
 
 async function persistChatMessage(
-	supabase: SupabaseClientWithDb,
-	message: ChatMessageInsertPayload
+	supabase: SupabaseClient<Database>,
+	message: ChatMessageInsert
 ): Promise<void> {
 	const { error } = await supabase.from('chat_messages').insert(message);
 	if (error) {
 		console.error('[API] Failed to save chat message:', error);
+		// Don't throw here to avoid breaking the stream, but log the error details
+		console.error('[API] Message payload that failed:', message);
 	}
 }
 
@@ -172,7 +192,7 @@ async function persistChatMessage(
  * Load ontology context based on context type and optional entity type
  */
 async function loadOntologyContext(
-	supabase: SupabaseClientWithDb,
+	supabase: SupabaseClient<Database>,
 	contextType: ChatContextType,
 	entityId?: string,
 	ontologyEntityType?: 'task' | 'plan' | 'goal' | 'document' | 'output'
@@ -546,13 +566,15 @@ export const POST: RequestHandler = async ({
 	}
 
 	try {
-		const body = (await request.json()) as AgentStreamRequest;
+		const body = (await request.json()) as EnhancedAgentStreamRequest;
 		const {
 			message,
 			session_id,
 			context_type = 'global',
 			entity_id,
-			conversationHistory = []
+			conversation_history: conversationHistory = [],
+			ontologyEntityType,
+			lastTurnContext: providedLastTurnContext
 		} = body;
 
 		const normalizedContextType = normalizeContextType(context_type);
@@ -599,19 +621,30 @@ export const POST: RequestHandler = async ({
 
 		// Save user message to chat_messages
 		const userMessageTimestamp = new Date().toISOString();
-		await persistChatMessage(supabase, {
+		const userMessageData: ChatMessageInsert = {
 			session_id: chatSession.id,
 			user_id: userId,
 			role: 'user',
-			content: message
-		});
+			content: message,
+			created_at: userMessageTimestamp
+		};
+		await persistChatMessage(supabase, userMessageData);
 
 		// === ONTOLOGY INTEGRATION ===
 
-		// Parse enhanced request fields
-		const enhancedBody = body as EnhancedAgentStreamRequest;
-		const ontologyEntityType = enhancedBody.ontologyEntityType;
-		const providedLastTurnContext = enhancedBody.lastTurnContext ?? undefined;
+		// Validate ontologyEntityType if provided
+		const validOntologyTypes = ['task', 'plan', 'goal', 'document', 'output'] as const;
+		let validatedOntologyEntityType: (typeof validOntologyTypes)[number] | undefined;
+
+		if (ontologyEntityType) {
+			if (validOntologyTypes.includes(ontologyEntityType as any)) {
+				validatedOntologyEntityType = ontologyEntityType;
+			} else {
+				console.warn(
+					`[API] Invalid ontologyEntityType provided: ${ontologyEntityType}. Valid types: ${validOntologyTypes.join(', ')}`
+				);
+			}
+		}
 
 		// Load ontology context if applicable
 		// Skip for project_create as it uses template overview instead
@@ -622,7 +655,7 @@ export const POST: RequestHandler = async ({
 						supabase,
 						normalizedContextType,
 						entity_id,
-						ontologyEntityType
+						validatedOntologyEntityType
 					);
 
 		console.log('[API] Ontology context loaded:', {
@@ -733,12 +766,14 @@ export const POST: RequestHandler = async ({
 						});
 					}
 
-					await persistChatMessage(supabase, {
+					const contextShiftMessage: ChatMessageInsert = {
 						session_id: chatSession.id,
 						user_id: userId,
 						role: 'system',
-						content: `Context shifted to ${normalizedShiftContext} for "${contextShift.entity_name}" (ID: ${contextShift.entity_id})`
-					});
+						content: `Context shifted to ${normalizedShiftContext} for "${contextShift.entity_name}" (ID: ${contextShift.entity_id})`,
+						created_at: new Date().toISOString()
+					};
+					await persistChatMessage(supabase, contextShiftMessage);
 				}
 			}
 
@@ -786,17 +821,14 @@ export const POST: RequestHandler = async ({
 				// Important: Save even if no text content, as long as there are tool calls
 				if (assistantResponse.trim() || toolCalls.length > 0) {
 					const assistantMessageTimestamp = new Date().toISOString();
-					const assistantMessageData: ChatMessageInsertPayload = {
+					const assistantMessageData: ChatMessageInsert = {
 						session_id: chatSession.id,
 						user_id: userId,
 						role: 'assistant',
-						content: assistantResponse || '' // Can be empty if only tool calls
+						content: assistantResponse || '', // Can be empty if only tool calls
+						tool_calls: toolCalls.length > 0 ? toolCalls : undefined,
+						created_at: assistantMessageTimestamp
 					};
-
-					// Include tool calls if any (OpenAI format)
-					if (toolCalls.length > 0) {
-						assistantMessageData.tool_calls = toolCalls;
-					}
 
 					await persistChatMessage(supabase, assistantMessageData);
 
@@ -812,15 +844,16 @@ export const POST: RequestHandler = async ({
 							const normalizedResult =
 								result.tool_result ?? result.result ?? result.data ?? result;
 
-							await persistChatMessage(supabase, {
+							const toolResultMessage: ChatMessageInsert = {
 								session_id: chatSession.id,
 								user_id: userId,
 								role: 'tool',
 								content: JSON.stringify(normalizedResult),
 								tool_call_id: toolCall.id,
-								tool_name: toolCall.function?.name || 'unknown',
-								tool_result: normalizedResult
-							});
+								created_at: new Date().toISOString()
+							};
+
+							await persistChatMessage(supabase, toolResultMessage);
 						} else {
 							console.warn(
 								`No result found for tool call ${toolCall.id} (${toolCall.function?.name})`
@@ -882,7 +915,17 @@ export const POST: RequestHandler = async ({
 					});
 				}
 			} catch (streamError) {
-				console.error('Agent streaming error:', streamError);
+				console.error('[API] Agent streaming error:', streamError);
+				console.error('[API] Error details:', {
+					sessionId: chatSession.id,
+					userId,
+					contextType: effectiveContextType,
+					entityId: entity_id,
+					hasOntology: !!ontologyContext,
+					messageLength: message.length,
+					errorName: streamError instanceof Error ? streamError.name : 'Unknown',
+					errorStack: streamError instanceof Error ? streamError.stack : undefined
+				});
 
 				await agentStream.sendMessage({
 					type: 'error',

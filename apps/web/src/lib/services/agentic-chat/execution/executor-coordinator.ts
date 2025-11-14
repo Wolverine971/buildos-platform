@@ -283,7 +283,7 @@ export class ExecutorCoordinator {
 	): Promise<void> {
 		try {
 			await this.persistenceService.updateAgent(executorId, {
-				status: result.success ? 'completed' : 'error',
+				status: result.success ? 'completed' : 'failed',
 				completed_at: hasFinalStatus ? new Date().toISOString() : undefined
 			});
 		} catch (error) {

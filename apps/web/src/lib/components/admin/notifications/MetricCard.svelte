@@ -19,7 +19,7 @@
 		value,
 		trend = null,
 		loading = false,
-		icon: Icon = null,
+		icon = null,
 		color = 'blue',
 		suffix = ''
 	}: Props = $props();
@@ -57,8 +57,8 @@
 						{formattedValue}{suffix}
 					</p>
 				</div>
-				{#if Icon}
-					{@const Icon = Icon}
+				{#if icon}
+					{@const Icon = icon}
 					<Icon class="h-8 w-8 {colorClasses} flex-shrink-0 ml-3" />
 				{/if}
 			</div>

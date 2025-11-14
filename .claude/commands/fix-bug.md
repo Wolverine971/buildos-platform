@@ -38,6 +38,7 @@ Based on the bug type, check specific locations:
 - Verify Svelte 5 runes usage ($state, $derived, $effect)
 - Check dark mode support with `dark:` prefixes
 - Verify responsive design
+- Make sure there is proper margin and padding
 
 **API/Backend Issues:**
 

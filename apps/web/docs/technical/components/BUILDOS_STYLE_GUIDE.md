@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/components/BUILDOS_STYLE_GUIDE.md -->
+
 # BuildOS Style Guide
 
 > A comprehensive design system for BuildOS - High-end Apple-inspired design with ADHD-optimized UX

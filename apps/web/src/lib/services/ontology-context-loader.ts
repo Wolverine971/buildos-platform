@@ -9,7 +9,47 @@ import type { Database } from '@buildos/shared-types';
 import type { OntologyContext, EntityRelationships } from '$lib/types/agent-chat-enhancement';
 
 export class OntologyContextLoader {
+	// Simple in-memory cache with TTL
+	private cache = new Map<string, { data: any; timestamp: number }>();
+	private readonly CACHE_TTL = 60000; // 1 minute cache
+
 	constructor(private supabase: SupabaseClient<Database>) {}
+
+	/**
+	 * Get cached data if still valid
+	 */
+	private getCached<T>(key: string): T | null {
+		const cached = this.cache.get(key);
+		if (!cached) return null;
+
+		const now = Date.now();
+		if (now - cached.timestamp > this.CACHE_TTL) {
+			this.cache.delete(key);
+			return null;
+		}
+
+		return cached.data as T;
+	}
+
+	/**
+	 * Set cache with current timestamp
+	 */
+	private setCache(key: string, data: any): void {
+		this.cache.set(key, {
+			data,
+			timestamp: Date.now()
+		});
+
+		// Cleanup old cache entries periodically
+		if (this.cache.size > 100) {
+			const now = Date.now();
+			for (const [k, v] of this.cache.entries()) {
+				if (now - v.timestamp > this.CACHE_TTL) {
+					this.cache.delete(k);
+				}
+			}
+		}
+	}
 
 	/**
 	 * Load global context - overview of all projects
@@ -56,6 +96,14 @@ export class OntologyContextLoader {
 	async loadProjectContext(projectId: string): Promise<OntologyContext> {
 		console.log('[OntologyLoader] Loading project context for:', projectId);
 
+		// Check cache first
+		const cacheKey = `project:${projectId}`;
+		const cached = this.getCached<OntologyContext>(cacheKey);
+		if (cached) {
+			console.log('[OntologyLoader] Using cached project context');
+			return cached;
+		}
+
 		// Load project with props
 		const { data: project, error } = await this.supabase
 			.from('onto_projects')
@@ -79,7 +127,7 @@ export class OntologyContextLoader {
 		// Get entity counts
 		const entityCounts = await this.getProjectEntityCounts(projectId);
 
-		return {
+		const context: OntologyContext = {
 			type: 'project',
 			data: {
 				id: project.id,
@@ -98,6 +146,11 @@ export class OntologyContextLoader {
 				last_updated: new Date().toISOString()
 			}
 		};
+
+		// Cache the result
+		this.setCache(cacheKey, context);
+
+		return context;
 	}
 
 	/**
@@ -146,9 +199,19 @@ export class OntologyContextLoader {
 	/**
 	 * Load a specific element from its table
 	 */
-	private async loadElement(type: string, id: string): Promise<any> {
-		// Map type to table name (pluralize)
-		const tableMap: Record<string, string> = {
+	private async loadElement(
+		type: 'task' | 'plan' | 'goal' | 'document' | 'output',
+		id: string
+	): Promise<any> {
+		// Type-safe table mapping
+		type TableName =
+			| 'onto_tasks'
+			| 'onto_plans'
+			| 'onto_goals'
+			| 'onto_documents'
+			| 'onto_outputs';
+
+		const tableMap: Record<typeof type, TableName> = {
 			task: 'onto_tasks',
 			plan: 'onto_plans',
 			goal: 'onto_goals',
@@ -161,18 +224,26 @@ export class OntologyContextLoader {
 			throw new Error(`Unknown element type: ${type}`);
 		}
 
-		const { data, error } = await this.supabase
-			.from(table as any)
-			.select('*')
-			.eq('id', id)
-			.single();
+		try {
+			// Load from the appropriate table
+			const query = this.supabase
+				.from(table as 'onto_tasks')
+				.select('*')
+				.eq('id', id)
+				.single();
 
-		if (error) {
-			console.error(`[OntologyLoader] Failed to load ${type}:`, error);
+			const { data, error } = await query;
+
+			if (error) {
+				console.error(`[OntologyLoader] Failed to load ${type}:`, error);
+				return null;
+			}
+
+			return data;
+		} catch (error) {
+			console.error(`[OntologyLoader] Error loading ${type} ${id}:`, error);
 			return null;
 		}
-
-		return data;
 	}
 
 	/**
@@ -237,51 +308,92 @@ export class OntologyContextLoader {
 	 * Find parent project for an element
 	 */
 	private async findParentProject(elementId: string): Promise<any> {
-		// Direct check - is there a project->element edge?
-		const { data: directEdge } = await this.supabase
-			.from('onto_edges')
-			.select('src_id, src_kind')
-			.eq('dst_id', elementId)
-			.eq('src_kind', 'project')
-			.single();
-
-		if (directEdge) {
-			const { data: project } = await this.supabase
-				.from('onto_projects')
-				.select('id, name, state_key')
-				.eq('id', directEdge.src_id)
+		try {
+			// Direct check - is there a project->element edge?
+			const { data: directEdge, error: edgeError } = await this.supabase
+				.from('onto_edges')
+				.select('src_id, src_kind')
+				.eq('dst_id', elementId)
+				.eq('src_kind', 'project')
 				.single();
-			return project;
-		}
 
-		// Traverse up through intermediate nodes (max 3 levels)
-		return this.traverseToProject(elementId, 3);
+			if (!edgeError && directEdge) {
+				const { data: project, error: projectError } = await this.supabase
+					.from('onto_projects')
+					.select('id, name, state_key')
+					.eq('id', directEdge.src_id)
+					.single();
+
+				if (!projectError && project) {
+					return project;
+				}
+			}
+
+			// Traverse up through intermediate nodes (max 3 levels)
+			return this.traverseToProject(elementId, 3);
+		} catch (error) {
+			console.error('[OntologyLoader] Error finding parent project:', error);
+			return null;
+		}
 	}
 
 	/**
 	 * Traverse up the hierarchy to find a project
+	 * Optimized to avoid N+1 queries
 	 */
 	private async traverseToProject(elementId: string, maxDepth: number): Promise<any> {
 		if (maxDepth <= 0) return null;
 
-		const { data: edges } = await this.supabase
-			.from('onto_edges')
-			.select('src_id, src_kind')
-			.eq('dst_id', elementId);
+		const visited = new Set<string>();
+		let currentLevelIds = [elementId];
 
-		for (const edge of edges || []) {
-			if (edge.src_kind === 'project') {
-				const { data: project } = await this.supabase
-					.from('onto_projects')
-					.select('id, name, state_key')
-					.eq('id', edge.src_id)
-					.single();
-				return project;
+		// Breadth-first search to avoid deep recursion
+		for (let depth = 0; depth < maxDepth && currentLevelIds.length > 0; depth++) {
+			try {
+				// Batch load all edges for current level
+				const { data: edges, error } = await this.supabase
+					.from('onto_edges')
+					.select('src_id, src_kind, dst_id')
+					.in('dst_id', currentLevelIds);
+
+				if (error) {
+					console.error('[OntologyLoader] Error traversing to project:', error);
+					return null;
+				}
+
+				const nextLevelIds: string[] = [];
+				const projectIds: string[] = [];
+
+				for (const edge of edges || []) {
+					// Skip if we've already visited this node (avoid cycles)
+					if (visited.has(edge.src_id)) continue;
+					visited.add(edge.src_id);
+
+					if (edge.src_kind === 'project') {
+						projectIds.push(edge.src_id);
+					} else {
+						nextLevelIds.push(edge.src_id);
+					}
+				}
+
+				// If we found any projects, load and return the first one
+				if (projectIds.length > 0) {
+					const { data: project, error: projectError } = await this.supabase
+						.from('onto_projects')
+						.select('id, name, state_key')
+						.eq('id', projectIds[0])
+						.single();
+
+					if (!projectError && project) {
+						return project;
+					}
+				}
+
+				currentLevelIds = nextLevelIds;
+			} catch (error) {
+				console.error('[OntologyLoader] Error in traverseToProject:', error);
+				return null;
 			}
-
-			// Recurse
-			const parent = await this.traverseToProject(edge.src_id, maxDepth - 1);
-			if (parent) return parent;
 		}
 
 		return null;
@@ -291,14 +403,21 @@ export class OntologyContextLoader {
 	 * Get entity counts for a project
 	 */
 	private async getProjectEntityCounts(projectId: string): Promise<Record<string, number>> {
-		const { data: edges } = await this.supabase
+		const { data: edges, error } = await this.supabase
 			.from('onto_edges')
 			.select('dst_kind')
 			.eq('src_id', projectId);
 
+		if (error) {
+			console.error('[OntologyLoader] Error getting project entity counts:', error);
+			return {};
+		}
+
 		const counts: Record<string, number> = {};
 		(edges || []).forEach((edge) => {
-			counts[edge.dst_kind] = (counts[edge.dst_kind] || 0) + 1;
+			if (edge.dst_kind) {
+				counts[edge.dst_kind] = (counts[edge.dst_kind] || 0) + 1;
+			}
 		});
 
 		return counts;

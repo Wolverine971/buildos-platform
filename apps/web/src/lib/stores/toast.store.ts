@@ -1,12 +1,18 @@
 // apps/web/src/lib/stores/toast.store.ts
 import { writable } from 'svelte/store';
 
+export interface ToastAction {
+	label: string;
+	onClick: () => void;
+}
+
 export interface Toast {
 	id: string;
 	message: string;
 	type: 'success' | 'error' | 'warning' | 'info';
 	duration?: number; // in milliseconds, default 5000
 	dismissible?: boolean;
+	action?: ToastAction; // Optional action button
 }
 
 export const toasts = writable<Toast[]>([]);

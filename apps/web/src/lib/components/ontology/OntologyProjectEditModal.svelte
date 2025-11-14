@@ -59,8 +59,11 @@
 	let isSaving = $state(false);
 	let error = $state<string | null>(null);
 
-	// Context document state
-	const contextBody = $derived.by(() => {
+	// Context document state - now editable
+	let contextDocumentBody = $state('');
+
+	// Initialize context document from props
+	const initialContextBody = $derived.by(() => {
 		if (!contextDocument) return '';
 		const props = contextDocument.props ?? {};
 		if (typeof props.body_markdown === 'string') {
@@ -71,8 +74,6 @@
 		}
 		return '';
 	});
-
-	const renderedContext = $derived(contextBody ? renderMarkdown(contextBody) : '');
 
 	const modalTitle = $derived(project ? `Edit ${project.name}` : 'Edit Ontology Project');
 
@@ -86,6 +87,7 @@
 		facetStage = project.facet_stage ?? '';
 		startDate = toDateInput(project.start_at);
 		endDate = toDateInput(project.end_at);
+		contextDocumentBody = initialContextBody;
 		error = null;
 	});
 
@@ -112,7 +114,7 @@
 
 	// Copy context to clipboard
 	async function copyContext() {
-		if (!contextBody) {
+		if (!contextDocumentBody) {
 			toastService.add({
 				type: 'info',
 				message: 'No context to copy'
@@ -121,7 +123,7 @@
 		}
 
 		try {
-			await navigator.clipboard.writeText(contextBody);
+			await navigator.clipboard.writeText(contextDocumentBody);
 			toastService.add({
 				type: 'success',
 				message: 'Context copied to clipboard'
@@ -173,28 +175,80 @@
 			payload.end_at = parsedEnd;
 		}
 
-		if (Object.keys(payload).length === 0) {
+		// Check if context document changed
+		const hasContextDocChanges = contextDocument && contextDocumentBody !== initialContextBody;
+		const hasProjectChanges = Object.keys(payload).length > 0;
+
+		if (!hasProjectChanges && !hasContextDocChanges) {
 			toastService.info('No changes to save');
 			return;
 		}
 
 		try {
 			isSaving = true;
-			const response = await fetch(`/api/onto/projects/${project.id}`, {
-				method: 'PATCH',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(payload)
+			console.log('[OntologyProjectEditModal] Starting save...', {
+				hasProjectChanges,
+				hasContextDocChanges
 			});
 
-			const result = await response.json().catch(() => ({}));
+			let updatedProject = project;
 
-			if (!response.ok) {
-				throw new Error(result.error ?? 'Failed to update project');
+			// Update project if there are changes
+			if (hasProjectChanges) {
+				console.log('[OntologyProjectEditModal] Updating project with payload:', payload);
+				const response = await fetch(`/api/onto/projects/${project.id}`, {
+					method: 'PATCH',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify(payload)
+				});
+
+				const result = await response.json().catch(() => ({}));
+				console.log('[OntologyProjectEditModal] Project update response:', {
+					ok: response.ok,
+					status: response.status,
+					result
+				});
+
+				if (!response.ok) {
+					throw new Error(result.error ?? 'Failed to update project');
+				}
+
+				if (result.project) {
+					updatedProject = result.project as Project;
+				}
 			}
 
-			const updated = result.project as Project;
+			// Update context document if it exists and changed
+			if (hasContextDocChanges && contextDocument) {
+				console.log(
+					'[OntologyProjectEditModal] Updating context document:',
+					contextDocument.id
+				);
+				const docResponse = await fetch(`/api/onto/documents/${contextDocument.id}`, {
+					method: 'PATCH',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						props: {
+							body_markdown: contextDocumentBody
+						}
+					})
+				});
+
+				const docResult = await docResponse.json().catch(() => ({}));
+				console.log('[OntologyProjectEditModal] Document update response:', {
+					ok: docResponse.ok,
+					status: docResponse.status,
+					result: docResult
+				});
+
+				if (!docResponse.ok) {
+					throw new Error(docResult.error ?? 'Failed to update context document');
+				}
+			}
+
+			console.log('[OntologyProjectEditModal] Save completed successfully');
 			toastService.success('Project updated');
-			onSaved?.(updated);
+			onSaved?.(updatedProject);
 			onClose?.();
 		} catch (err) {
 			const message = err instanceof Error ? err.message : 'Failed to update project';
@@ -284,13 +338,13 @@
 					>
 						<!-- Project Name Header -->
 						<div
-							class="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/10 dark:to-indigo-900/10 p-4 sm:p-5 rounded-t-xl border-b border-gray-200 dark:border-gray-700"
+							class="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/10 dark:to-indigo-900/10 p-3 sm:p-4 rounded-t-xl border-b border-gray-200 dark:border-gray-700"
 						>
 							<label
 								for="project-name"
-								class="block text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-2"
+								class="block text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-1.5"
 							>
-								Project Name <span class="text-red-500">*</span>
+								Project Name <span class="text-red-500 ml-0.5">*</span>
 							</label>
 							<TextInput
 								id="project-name"
@@ -299,7 +353,7 @@
 								size="lg"
 								required
 								disabled={isSaving}
-								class="font-semibold bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+								class="font-semibold text-lg bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
 							/>
 						</div>
 
@@ -311,7 +365,7 @@
 							<div>
 								<label
 									for="project-description"
-									class="block text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-2"
+									class="block text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-1.5"
 								>
 									Description
 								</label>
@@ -320,21 +374,22 @@
 									onUpdate={(newValue) => (description = newValue)}
 									placeholder="One-line summary of what this project achieves"
 									rows={3}
-									class="bg-gray-50 dark:bg-gray-900/50 border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+									class="text-sm bg-gray-50 dark:bg-gray-900/50 border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
 								/>
 							</div>
 
 							<!-- Context Document - Main Focus -->
-							{#if contextDocument && contextBody}
+							{#if contextDocument}
 								<div
-									class="flex-1 flex flex-col pt-4 border-t border-gray-200 dark:border-gray-700"
+									class="flex-1 flex flex-col pt-3 border-t border-gray-200 dark:border-gray-700"
 								>
-									<div class="flex items-center justify-between mb-2">
+									<div class="flex items-center justify-between mb-1.5">
 										<div class="flex items-center gap-2">
 											<FileText
 												class="w-4 h-4 text-green-600 dark:text-green-400"
 											/>
 											<label
+												for="context-document"
 												class="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider"
 											>
 												Context Document
@@ -345,38 +400,51 @@
 											onclick={copyContext}
 											variant="ghost"
 											size="sm"
-											class="flex items-center gap-1.5 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
+											class="flex items-center gap-1.5 text-gray-600 hover:text-gray-900 hover:bg-green-50 dark:text-gray-400 dark:hover:text-gray-100 dark:hover:bg-green-900/20 transition-colors"
 										>
 											<Copy class="w-3.5 h-3.5" />
 											<span class="hidden sm:inline">Copy</span>
 										</Button>
 									</div>
-									<div
-										class="flex-1 p-4 rounded-lg bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/10 dark:to-emerald-900/10 border border-green-200 dark:border-green-800 overflow-y-auto"
-									>
-										<div
-											class="prose prose-sm dark:prose-invert max-w-none leading-relaxed"
-										>
-											{@html renderedContext}
-										</div>
+									<div class="flex-1 flex flex-col">
+										<MarkdownToggleField
+											value={contextDocumentBody}
+											onUpdate={(newValue) =>
+												(contextDocumentBody = newValue)}
+											placeholder="## Background\nWhy this project exists and its importance\n\n## Key Decisions\nImportant technical and business decisions\n\n## Resources\nTools, documentation, and dependencies\n\n## Challenges\nCurrent blockers or areas needing attention"
+											rows={10}
+											maxRows={20}
+											class="flex-1 leading-relaxed bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/10 dark:to-emerald-900/10 border-green-200 dark:border-green-800 focus:ring-2 focus:ring-green-500 dark:focus:ring-green-400"
+										/>
 									</div>
 								</div>
 							{/if}
 
 							<!-- Character Counts -->
 							<div
-								class="flex flex-wrap gap-4 text-xs text-gray-500 dark:text-gray-400 pt-3 border-t border-gray-200 dark:border-gray-700"
+								class="flex flex-wrap gap-3 sm:gap-4 text-xs text-gray-500 dark:text-gray-400 pt-2.5 border-t border-gray-200 dark:border-gray-700"
 							>
 								{#if description.length > 0}
-									<span class="flex items-center gap-1">
-										<span class="w-2 h-2 bg-blue-500 rounded-full"></span>
-										{description.length.toLocaleString()} description
+									<span class="flex items-center gap-1.5">
+										<span class="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+										<span class="font-medium"
+											>{description.length.toLocaleString()}</span
+										> description
 									</span>
 								{/if}
-								{#if contextBody.length > 0}
-									<span class="flex items-center gap-1">
-										<span class="w-2 h-2 bg-green-500 rounded-full"></span>
-										{contextBody.length.toLocaleString()} context
+								{#if contextDocumentBody.length > 0}
+									<span class="flex items-center gap-1.5">
+										<span class="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
+										<span class="font-medium"
+											>{contextDocumentBody.length.toLocaleString()}</span
+										> context
+									</span>
+								{/if}
+								{#if !description && !contextDocumentBody}
+									<span
+										class="text-gray-400 dark:text-gray-500 italic text-center flex-1"
+									>
+										Add project details to enable better organization
 									</span>
 								{/if}
 							</div>
@@ -388,18 +456,18 @@
 						class="lg:col-span-1 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all duration-200 lg:max-h-full lg:overflow-y-auto"
 					>
 						<div
-							class="bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-900/10 dark:to-blue-900/10 p-3 sm:p-4 rounded-t-xl border-b border-gray-200 dark:border-gray-700"
+							class="bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-900/10 dark:to-blue-900/10 p-3 sm:p-3.5 rounded-t-xl border-b border-gray-200 dark:border-gray-700"
 						>
 							<h3
-								class="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider flex items-center"
+								class="text-xs font-semibold text-gray-900 dark:text-white uppercase tracking-wider flex items-center gap-2"
 							>
-								<span class="w-2 h-2 bg-indigo-500 rounded-full mr-2 animate-pulse"
+								<span class="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-pulse"
 								></span>
 								Project Details
 							</h3>
 						</div>
 
-						<div class="p-3 sm:p-4 space-y-4">
+						<div class="p-3 sm:p-3.5 space-y-3.5">
 							<!-- Facet Context -->
 							<div>
 								<label

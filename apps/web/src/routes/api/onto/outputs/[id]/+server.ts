@@ -169,3 +169,81 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		return ApiResponse.internalError(err, 'An unexpected error occurred');
 	}
 };
+
+export const DELETE: RequestHandler = async ({ params, locals }) => {
+	try {
+		const session = await locals.safeGetSession();
+		if (!session?.user) {
+			return ApiResponse.unauthorized('Authentication required');
+		}
+
+		const { id } = params;
+		if (!id) {
+			return ApiResponse.badRequest('Output ID required');
+		}
+
+		const supabase = locals.supabase;
+
+		const { data: output, error: fetchError } = await supabase
+			.from('onto_outputs')
+			.select('id, project_id')
+			.eq('id', id)
+			.maybeSingle();
+
+		if (fetchError) {
+			console.error('[Output API] Failed to fetch output for delete:', fetchError);
+			return ApiResponse.databaseError(fetchError);
+		}
+
+		if (!output) {
+			return ApiResponse.notFound('Output');
+		}
+
+		const { data: project, error: projectError } = await supabase
+			.from('onto_projects')
+			.select('id, created_by')
+			.eq('id', output.project_id)
+			.maybeSingle();
+
+		if (projectError) {
+			console.error('[Output API] Failed to fetch project for delete:', projectError);
+			return ApiResponse.databaseError(projectError);
+		}
+
+		if (!project) {
+			return ApiResponse.notFound('Project');
+		}
+
+		const { data: actorId, error: actorError } = await supabase.rpc('ensure_actor_for_user', {
+			p_user_id: session.user.id
+		});
+
+		if (actorError || !actorId) {
+			console.error('[Output API] Failed to resolve actor for delete:', actorError);
+			return ApiResponse.internalError(
+				actorError || new Error('Failed to resolve user actor'),
+				'Failed to resolve user identity'
+			);
+		}
+
+		if (project.created_by !== actorId) {
+			return ApiResponse.forbidden('You do not have permission to delete this output');
+		}
+
+		// Delete related edges FIRST (both where output is source and destination)
+		await supabase.from('onto_edges').delete().or(`src_id.eq.${id},dst_id.eq.${id}`);
+
+		// Then delete the output
+		const { error: deleteError } = await supabase.from('onto_outputs').delete().eq('id', id);
+
+		if (deleteError) {
+			console.error('[Output API] Failed to delete output:', deleteError);
+			return ApiResponse.databaseError(deleteError);
+		}
+
+		return ApiResponse.success({ deleted: true });
+	} catch (error) {
+		console.error('[Output API] Unexpected DELETE error:', error);
+		return ApiResponse.internalError(error, 'Failed to delete output');
+	}
+};

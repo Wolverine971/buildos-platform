@@ -61,6 +61,7 @@
 	let isDark = $state(false);
 	let showChatModal = $state(false);
 	let showBrainDumpModal = $state(false);
+	let canUseAgenticChat = $state(false);
 
 	const currentPath = $derived($page.url.pathname);
 	const storeProject = $derived($brainDumpV2Store?.core?.selectedProject ?? null);
@@ -123,6 +124,10 @@
 	// Sync showBrainDumpModal with the store
 	$effect(() => {
 		showBrainDumpModal = $brainDumpModalIsOpen;
+	});
+
+	$effect(() => {
+		canUseAgenticChat = dev || user?.email === 'djwayne35@gmail.com';
 	});
 
 	async function handleSignOut() {
@@ -272,10 +277,10 @@
 <nav
 	data-fixed-element
 	bind:this={element}
-	class="sticky top-0 z-10 bg-white/90 dark:bg-gray-900/85 border-b border-gray-200/80 dark:border-gray-800/70 backdrop-blur supports-[backdrop-filter]:backdrop-blur-md shadow-sm transition-colors"
+	class="sticky top-0 z-10 bg-white/90 dark:bg-gray-900/85 border-b border-gray-200/80 dark:border-gray-800/70 backdrop-blur supports-[backdrop-filter]:backdrop-blur-md shadow-sm transition-all duration-200"
 >
 	<div class="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 xl:px-8">
-		<div class="flex justify-between items-center h-16 gap-2">
+		<div class="flex justify-between items-center h-16 gap-2.5">
 			<!-- Left side - Logo and Navigation -->
 			<div class="flex items-center min-w-0 flex-1">
 				<!-- Logo -->
@@ -341,7 +346,7 @@
 						variant="outline"
 						size="sm"
 						onclick={handleOpenBrainDump}
-						class={`relative flex items-center gap-2 px-3 h-9 rounded-lg font-medium text-xs md:text-sm transition-all duration-200 group border-transparent dark:border-transparent bg-white/85 dark:bg-gray-900/45 shadow-[0_1px_3px_rgba(15,23,42,0.08)] hover:bg-purple-50/40 dark:hover:bg-purple-900/35 hover:text-purple-700 dark:hover:text-purple-200 hover:shadow-[0_4px_14px_rgba(99,102,241,0.12)] ${showBrainDumpModal ? 'text-purple-700 dark:text-purple-300' : 'text-gray-700 dark:text-gray-200'}`}
+						class={`relative flex items-center gap-2 px-3 h-9 rounded-lg font-semibold text-xs md:text-sm transition-all duration-200 group border-transparent dark:border-transparent bg-white/85 dark:bg-gray-900/45 shadow-[0_1px_3px_rgba(15,23,42,0.08)] hover:bg-purple-50/40 dark:hover:bg-purple-900/35 hover:text-purple-700 dark:hover:text-purple-200 hover:shadow-[0_4px_14px_rgba(99,102,241,0.12)] ${showBrainDumpModal ? 'text-purple-700 dark:text-purple-300 bg-purple-50/40 dark:bg-purple-900/35' : 'text-gray-700 dark:text-gray-200'}`}
 						aria-label="Open Brain Dump"
 						title="Brain Dump"
 						btnType="container"
@@ -376,13 +381,13 @@
 						<span class="hidden xl:inline-block leading-none">Brain Dump</span>
 					</Button>
 
-					{#if dev}
+					{#if canUseAgenticChat}
 						<!-- Multi-Agent Chat Button -->
 						<Button
 							variant="outline"
 							size="sm"
 							onclick={handleOpenChat}
-							class={`relative flex items-center gap-2 px-3 h-9 rounded-lg font-medium text-xs md:text-sm transition-all duration-200 group border-transparent dark:border-transparent bg-white/85 dark:bg-gray-900/45 shadow-[0_1px_3px_rgba(15,23,42,0.08)] hover:bg-blue-50/40 dark:hover:bg-blue-900/35 hover:text-blue-700 dark:hover:text-blue-200 hover:shadow-[0_4px_14px_rgba(59,130,246,0.12)] ${showChatModal ? 'text-blue-700 dark:text-blue-300 bg-blue-50/40 dark:bg-blue-900/35' : 'text-gray-700 dark:text-gray-200'}`}
+							class={`relative flex items-center gap-2 px-3 h-9 rounded-lg font-semibold text-xs md:text-sm transition-all duration-200 group border-transparent dark:border-transparent bg-white/85 dark:bg-gray-900/45 shadow-[0_1px_3px_rgba(15,23,42,0.08)] hover:bg-blue-50/40 dark:hover:bg-blue-900/35 hover:text-blue-700 dark:hover:text-blue-200 hover:shadow-[0_4px_14px_rgba(59,130,246,0.12)] ${showChatModal ? 'text-blue-700 dark:text-blue-300 bg-blue-50/40 dark:bg-blue-900/35' : 'text-gray-700 dark:text-gray-200'}`}
 							aria-label="Open Multi-Agent Chat"
 							title="Multi-Agent System - Planner + Executor Agents"
 							btnType="container"
@@ -454,7 +459,7 @@
 							variant="outline"
 							size="sm"
 							btnType="container"
-							class="flex items-center gap-1.5 px-3 h-9 text-xs md:text-sm rounded-lg text-gray-700 dark:text-gray-200 border border-purple-300/50 dark:border-purple-500/60 bg-white/85 dark:bg-gray-900/45 shadow-[0_1px_3px_rgba(15,23,42,0.08)] hover:bg-purple-50/40 dark:hover:bg-purple-900/35 hover:text-purple-700 dark:hover:text-purple-200 hover:shadow-[0_4px_14px_rgba(99,102,241,0.12)]"
+							class="flex items-center gap-1.5 px-3 h-9 text-xs md:text-sm rounded-lg font-semibold text-gray-700 dark:text-gray-200 border border-purple-300/50 dark:border-purple-500/60 bg-white/85 dark:bg-gray-900/45 shadow-[0_1px_3px_rgba(15,23,42,0.08)] hover:bg-purple-50/40 dark:hover:bg-purple-900/35 hover:text-purple-700 dark:hover:text-purple-200 hover:shadow-[0_4px_14px_rgba(99,102,241,0.12)] transition-all duration-200"
 							aria-expanded={showUserMenu}
 							aria-haspopup="true"
 							aria-label="User menu"
@@ -862,7 +867,7 @@
 />
 
 <!-- Multi-Agent Chat Modal -->
-{#if showChatModal && dev}
+{#if showChatModal && canUseAgenticChat}
 	<AgentChatModal
 		isOpen={showChatModal}
 		contextType={chatContextType}

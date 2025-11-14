@@ -20,8 +20,8 @@
 	} & HTMLAttributes<HTMLDivElement> = $props();
 
 	const toneClasses: Record<Tone, string> = {
-		default: 'border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900',
-		muted: 'border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900/60',
+		default: 'border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900',
+		muted: 'border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-900/60',
 		brand: 'border-blue-200 bg-blue-50 dark:border-blue-500/40 dark:bg-blue-500/10',
 		success:
 			'border-emerald-200 bg-emerald-50 dark:border-emerald-500/40 dark:bg-emerald-500/10',
@@ -32,9 +32,9 @@
 
 	const paddingClasses: Record<Padding, string> = {
 		none: '',
-		sm: 'px-4 py-3 sm:px-5 sm:py-4',
-		md: 'px-5 py-4 sm:px-6 sm:py-5',
-		lg: 'px-6 py-5 sm:px-7 sm:py-6'
+		sm: 'px-4 py-3 sm:px-4 sm:py-4',
+		md: 'px-4 py-4 sm:px-6 sm:py-5',
+		lg: 'px-6 py-5 sm:px-6 sm:py-6'
 	};
 
 	let cardClasses = $derived(

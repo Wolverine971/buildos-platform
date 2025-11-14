@@ -40,6 +40,55 @@
 	import type { DashboardAnalyticsPayload } from '$lib/services/admin/dashboard-analytics.service';
 	import { onDestroy } from 'svelte';
 
+	// Type definitions for better type safety
+	type Tone = 'success' | 'info' | 'brand' | 'muted' | 'warning' | 'danger' | 'default';
+	type MetricCard = {
+		label: string;
+		value: number | string;
+		icon: ComponentType;
+		tone: Tone;
+		footnote?: string;
+		suffix?: string;
+		change?: number;
+		changeDirection?: string;
+		changeLabel?: string;
+	};
+	type NavCard = {
+		title: string;
+		description: string;
+		href: string;
+		icon: ComponentType;
+		stat?: string | null;
+		badge?: string | null;
+		meta?: string;
+		compact?: boolean;
+	};
+	type LeaderboardEntry = { email: string; count: number };
+	type BetaActivityItem = {
+		type: 'signup' | 'feedback';
+		user?: string | null;
+		status?: string | null;
+		created_at: string | null;
+		feedback_type?: string | null;
+	};
+	type FeedbackItem = {
+		id: string;
+		category: string;
+		feedback_text: string | null;
+		rating: number | null;
+		status: string | null;
+		user_email: string | null;
+		created_at: string;
+	};
+	type SubscriptionChange = {
+		id: string;
+		status: string;
+		users?: { email: string } | null;
+		subscription_plans?: { name: string; price: number; interval: string } | null;
+		updated_at: string;
+	};
+	type TopActiveUser = { email: string; last_brief?: string | null; brief_count: number };
+
 	let { data } = $props();
 	const initialDashboard = (data?.initialDashboard ?? null) as DashboardAnalyticsPayload | null;
 	const defaultTimeframe = (data?.defaultTimeframe ?? '30d') as '7d' | '30d' | '90d';
@@ -66,7 +115,24 @@
 	});
 
 	// Comprehensive analytics data
-	let comprehensiveAnalytics = $state({
+	let comprehensiveAnalytics = $state<{
+		userMetrics: {
+			totalUsers: number;
+			totalBetaUsers: number;
+			newUsersLast24h: number;
+			newBetaSignupsLast24h: number;
+		};
+		brainDumpMetrics: { total: number; averageLength: number; uniqueUsers: number };
+		projectMetrics: { newProjects: number; updatedProjects: number; uniqueUsers: number };
+		calendarConnections: number;
+		leaderboards: {
+			brainDumps: LeaderboardEntry[];
+			projectUpdates: LeaderboardEntry[];
+			tasksCreated: LeaderboardEntry[];
+			tasksScheduled: LeaderboardEntry[];
+			phasesCreated: LeaderboardEntry[];
+		};
+	}>({
 		userMetrics: {
 			totalUsers: 0,
 			totalBetaUsers: 0,
@@ -106,9 +172,9 @@
 		Array<{
 			metric_name: string;
 			metric_value: number;
-			metric_unit: string;
-			metric_description: string;
-			recorded_at: string;
+			metric_unit: string | null;
+			metric_description: string | null;
+			recorded_at: string | null;
 		}>
 	>([]);
 	let recentActivity = $state<
@@ -116,7 +182,7 @@
 			activity_type: string;
 			user_email: string;
 			created_at: string;
-			activity_data: any;
+			activity_data: unknown;
 		}>
 	>([]);
 	let templateUsageStats = $state<
@@ -128,7 +194,17 @@
 	>([]);
 
 	// Feedback data
-	let feedbackOverview = $state({
+	let feedbackOverview = $state<{
+		overview: {
+			total_feedback: number;
+			recent_24h: number;
+			unresolved_count: number;
+			average_rating: number;
+		};
+		category_breakdown: Record<string, number>;
+		status_breakdown: Record<string, number>;
+		recent_feedback: FeedbackItem[];
+	}>({
 		overview: {
 			total_feedback: 0,
 			recent_24h: 0,
@@ -141,7 +217,23 @@
 	});
 
 	// Beta program data
-	let betaOverview = $state({
+	let betaOverview = $state<{
+		signups: {
+			total: number;
+			pending: number;
+			approved: number;
+			declined: number;
+			waitlist: number;
+			recent_24h: number;
+		};
+		members: {
+			total: number;
+			active_30d: number;
+			tier_breakdown: Record<string, number>;
+			total_feedback: number;
+		};
+		recent_activity: BetaActivityItem[];
+	}>({
 		signups: {
 			total: 0,
 			pending: 0,
@@ -169,7 +261,30 @@
 	});
 
 	// Subscription data
-	let subscriptionData = $state({
+	let subscriptionData = $state<{
+		overview: {
+			total_subscribers: number;
+			active_subscriptions: number;
+			trial_subscriptions: number;
+			canceled_subscriptions: number;
+			paused_subscriptions: number;
+			mrr: number;
+			arr: number;
+		};
+		revenue: {
+			current_mrr: number;
+			previous_mrr: number;
+			mrr_growth: number;
+			total_revenue: number;
+			average_revenue_per_user: number;
+			churn_rate: number;
+			lifetime_value: number;
+		};
+		recentChanges: SubscriptionChange[];
+		failedPayments: unknown[];
+		discountUsage: unknown[];
+		stripeEnabled: boolean;
+	}>({
 		overview: {
 			total_subscribers: 0,
 			active_subscriptions: 0,
@@ -219,7 +334,7 @@
 	const timeframeRangeLabel = $derived(timeframeDisplayMap[selectedTimeframe]);
 	const timeframeRelativeLabel = $derived(timeframeRelativeMap[selectedTimeframe]);
 
-	const navCards = $derived(() => {
+	const navCards = $derived.by(() => {
 		const cards = [
 			{
 				title: 'Users',
@@ -325,88 +440,94 @@
 		return cards;
 	});
 
-	const primaryMetrics = $derived(() => [
-		{
-			label: 'Active Users · 7d',
-			value: systemOverview.active_users_7d,
-			icon: Activity,
-			tone: 'success',
-			footnote:
-				systemOverview.total_users > 0
-					? `${formatPercentage(
-							(systemOverview.active_users_7d / systemOverview.total_users) * 100
-						)} of total`
-					: '0% of total'
-		},
-		{
-			label: `Brain Dumps · ${timeframeRangeLabel}`,
-			value: comprehensiveAnalytics.brainDumpMetrics.total,
-			icon: FileText,
-			tone: 'info',
-			footnote: `Avg ${formatNumber(
-				comprehensiveAnalytics.brainDumpMetrics.averageLength
-			)} chars`
-		},
-		{
-			label: `New Projects · ${timeframeRangeLabel}`,
-			value: comprehensiveAnalytics.projectMetrics.newProjects,
-			icon: TrendingUp,
-			tone: 'brand',
-			footnote: `${formatNumber(comprehensiveAnalytics.projectMetrics.updatedProjects)} updated`
-		},
-		{
-			label: 'Total Briefs',
-			value: systemOverview.total_briefs,
-			icon: BarChart3,
-			tone: 'muted',
-			footnote: 'All time'
-		},
-		{
-			label: 'Calendar Connections',
-			value: comprehensiveAnalytics.calendarConnections,
-			icon: Globe,
-			tone: 'warning',
-			footnote: 'Connected users'
-		}
-	]);
+	const primaryMetrics = $derived.by(() => {
+		const cards: any[] = [
+			{
+				label: 'Active Users · 7d',
+				value: systemOverview.active_users_7d,
+				icon: Activity,
+				tone: 'success' as const,
+				footnote:
+					systemOverview.total_users > 0
+						? `${formatPercentage(
+								(systemOverview.active_users_7d / systemOverview.total_users) * 100
+							)} of total`
+						: '0% of total'
+			},
+			{
+				label: `Brain Dumps · ${timeframeRangeLabel}`,
+				value: comprehensiveAnalytics.brainDumpMetrics.total,
+				icon: FileText,
+				tone: 'info' as const,
+				footnote: `Avg ${formatNumber(
+					comprehensiveAnalytics.brainDumpMetrics.averageLength
+				)} chars`
+			},
+			{
+				label: `New Projects · ${timeframeRangeLabel}`,
+				value: comprehensiveAnalytics.projectMetrics.newProjects,
+				icon: TrendingUp,
+				tone: 'brand' as const,
+				footnote: `${formatNumber(comprehensiveAnalytics.projectMetrics.updatedProjects)} updated`
+			},
+			{
+				label: 'Total Briefs',
+				value: systemOverview.total_briefs,
+				icon: BarChart3,
+				tone: 'muted' as const,
+				footnote: 'All time'
+			},
+			{
+				label: 'Calendar Connections',
+				value: comprehensiveAnalytics.calendarConnections,
+				icon: Globe,
+				tone: 'warning' as const,
+				footnote: 'Connected users'
+			}
+		];
+		return cards;
+	});
 
-	const brainDumpCards = $derived(() => [
-		{
-			label: `Brain Dumps · ${timeframeRangeLabel}`,
-			value: comprehensiveAnalytics.brainDumpMetrics.total,
-			icon: FileText,
-			tone: 'info',
-			footnote: timeframeRelativeLabel
-		},
-		{
-			label: `Avg Length · ${timeframeRangeLabel}`,
-			value: comprehensiveAnalytics.brainDumpMetrics.averageLength,
-			icon: Eye,
-			tone: 'muted',
-			footnote: 'Characters'
-		},
-		{
-			label: `New Projects · ${timeframeRangeLabel}`,
-			value: comprehensiveAnalytics.projectMetrics.newProjects,
-			icon: TrendingUp,
-			tone: 'success',
-			footnote: timeframeRelativeLabel
-		},
-		{
-			label: `Project Updates · ${timeframeRangeLabel}`,
-			value: comprehensiveAnalytics.projectMetrics.updatedProjects,
-			icon: RefreshCw,
-			tone: 'brand',
-			footnote: timeframeRelativeLabel
-		},
-		{
-			label: 'Calendar Connections',
-			value: comprehensiveAnalytics.calendarConnections,
-			icon: Globe,
-			tone: 'warning',
-			footnote: 'Users with calendar'
-		}
-	]);
+	const brainDumpCards = $derived.by(() => {
+		const cards: any[] = [
+			{
+				label: `Brain Dumps · ${timeframeRangeLabel}`,
+				value: comprehensiveAnalytics.brainDumpMetrics.total,
+				icon: FileText,
+				tone: 'info' as const,
+				footnote: timeframeRelativeLabel
+			},
+			{
+				label: `Avg Length · ${timeframeRangeLabel}`,
+				value: comprehensiveAnalytics.brainDumpMetrics.averageLength,
+				icon: Eye,
+				tone: 'muted' as const,
+				footnote: 'Characters'
+			},
+			{
+				label: `New Projects · ${timeframeRangeLabel}`,
+				value: comprehensiveAnalytics.projectMetrics.newProjects,
+				icon: TrendingUp,
+				tone: 'success' as const,
+				footnote: timeframeRelativeLabel
+			},
+			{
+				label: `Project Updates · ${timeframeRangeLabel}`,
+				value: comprehensiveAnalytics.projectMetrics.updatedProjects,
+				icon: RefreshCw,
+				tone: 'brand' as const,
+				footnote: timeframeRelativeLabel
+			},
+			{
+				label: 'Calendar Connections',
+				value: comprehensiveAnalytics.calendarConnections,
+				icon: Globe,
+				tone: 'warning' as const,
+				footnote: 'Users with calendar'
+			}
+		];
+		return cards;
+	});
 
 	type LeaderboardKey =
 		| 'brainDumps'
@@ -453,69 +574,75 @@
 		}
 	];
 
-	const subscriptionMetricCards = $derived(() => [
-		{
-			label: 'Monthly Recurring Revenue',
-			value: formatCurrency(subscriptionData.revenue.current_mrr),
-			icon: DollarSign,
-			tone: 'success',
-			change: Math.abs(subscriptionData.revenue.mrr_growth),
-			changeDirection:
-				subscriptionData.revenue.mrr_growth > 0
-					? 'up'
-					: subscriptionData.revenue.mrr_growth < 0
-						? 'down'
-						: 'neutral',
-			changeLabel: 'vs last month'
-		},
-		{
-			label: 'Active Subscriptions',
-			value: subscriptionData.overview.active_subscriptions,
-			icon: CreditCard,
-			tone: 'brand',
-			footnote: `${formatNumber(subscriptionData.overview.trial_subscriptions)} in trial`
-		},
-		{
-			label: 'Churn Rate',
-			value: Number(subscriptionData.revenue.churn_rate.toFixed(1)),
-			icon: TrendingDown,
-			tone: 'warning',
-			suffix: '%',
-			footnote: 'Last 30 days'
-		},
-		{
-			label: 'Average Revenue / User',
-			value: formatCurrency(subscriptionData.revenue.average_revenue_per_user),
-			icon: DollarSign,
-			tone: 'muted',
-			footnote: 'Trailing 30 days'
-		}
-	]);
+	const subscriptionMetricCards = $derived.by(() => {
+		const cards: any[] = [
+			{
+				label: 'Monthly Recurring Revenue',
+				value: formatCurrency(subscriptionData.revenue.current_mrr),
+				icon: DollarSign,
+				tone: 'success' as const,
+				change: Math.abs(subscriptionData.revenue.mrr_growth),
+				changeDirection:
+					subscriptionData.revenue.mrr_growth > 0
+						? 'up'
+						: subscriptionData.revenue.mrr_growth < 0
+							? 'down'
+							: 'neutral',
+				changeLabel: 'vs last month'
+			},
+			{
+				label: 'Active Subscriptions',
+				value: subscriptionData.overview.active_subscriptions,
+				icon: CreditCard,
+				tone: 'brand' as const,
+				footnote: `${formatNumber(subscriptionData.overview.trial_subscriptions)} in trial`
+			},
+			{
+				label: 'Churn Rate',
+				value: Number(subscriptionData.revenue.churn_rate.toFixed(1)),
+				icon: TrendingDown,
+				tone: 'warning' as const,
+				suffix: '%',
+				footnote: 'Last 30 days'
+			},
+			{
+				label: 'Average Revenue / User',
+				value: formatCurrency(subscriptionData.revenue.average_revenue_per_user),
+				icon: DollarSign,
+				tone: 'muted' as const,
+				footnote: 'Trailing 30 days'
+			}
+		];
+		return cards;
+	});
 
-	const feedbackMetricCards = $derived(() => [
-		{
-			label: 'Total Feedback',
-			value: feedbackOverview.overview.total_feedback,
-			icon: MessageSquare,
-			tone: 'info',
-			footnote: `${feedbackOverview.overview.recent_24h} in last 24h`
-		},
-		{
-			label: 'Unresolved Feedback',
-			value: feedbackOverview.overview.unresolved_count,
-			icon: AlertCircle,
-			tone: 'danger',
-			footnote: 'Need attention'
-		},
-		{
-			label: 'Average Rating',
-			value: feedbackOverview.overview.average_rating,
-			icon: Star,
-			tone: 'warning',
-			suffix: ' /5',
-			footnote: 'User satisfaction'
-		}
-	]);
+	const feedbackMetricCards = $derived.by(() => {
+		const cards: any[] = [
+			{
+				label: 'Total Feedback',
+				value: feedbackOverview.overview.total_feedback,
+				icon: MessageSquare,
+				tone: 'info' as const,
+				footnote: `${feedbackOverview.overview.recent_24h} in last 24h`
+			},
+			{
+				label: 'Unresolved Feedback',
+				value: feedbackOverview.overview.unresolved_count,
+				icon: AlertCircle,
+				tone: 'danger' as const,
+				footnote: 'Need attention'
+			},
+			{
+				label: 'Average Rating',
+				value: feedbackOverview.overview.average_rating,
+				icon: Star,
+				tone: 'warning' as const,
+				suffix: ' /5',
+				footnote: 'User satisfaction'
+			}
+		];
+		return cards;
+	});
 
 	function applyDashboardPayload(payload: DashboardAnalyticsPayload) {
 		systemOverview = payload.systemOverview;
@@ -634,18 +761,6 @@
 		}
 	});
 
-	function getTimeframeDays(): number {
-		switch (selectedTimeframe) {
-			case '7d':
-				return 7;
-			case '90d':
-				return 90;
-			case '30d':
-			default:
-				return 30;
-		}
-	}
-
 	function formatNumber(num: number): string {
 		return new Intl.NumberFormat().format(num);
 	}
@@ -726,17 +841,6 @@
 		return colors[category as keyof typeof colors] || 'text-gray-600';
 	}
 
-	function getStatusColor(status: string): string {
-		const colors = {
-			new: 'text-red-600',
-			reviewed: 'text-yellow-600',
-			in_progress: 'text-blue-600',
-			resolved: 'text-green-600',
-			closed: 'text-gray-600'
-		};
-		return colors[status as keyof typeof colors] || 'text-gray-600';
-	}
-
 	async function exportAnalytics() {
 		if (!browser) return;
 		try {
@@ -810,7 +914,7 @@
 			</Button>
 
 			<Button
-				onclick={loadAnalytics}
+				onclick={() => loadAnalytics()}
 				disabled={isLoading}
 				variant="secondary"
 				size="sm"
@@ -844,10 +948,10 @@
 
 		{#if isLoading}
 			<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-4 sm:mb-6">
-				{#each Array(12) as _, index}
+				{#each Array(12) as _}
 					<AdminCard padding="lg" class="animate-pulse space-y-3" aria-hidden="true">
-						<div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4" />
-						<div class="h-6 sm:h-8 bg-gray-200 dark:bg-gray-700 rounded w-1/2" />
+						<div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
+						<div class="h-6 sm:h-8 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
 					</AdminCard>
 				{/each}
 			</div>
@@ -949,7 +1053,8 @@
 
 				<div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
 					{#each leaderboardConfigs as board (board.key)}
-						{@const rows = comprehensiveAnalytics.leaderboards[board.key] ?? []}
+						{@const rows = (comprehensiveAnalytics.leaderboards[board.key] ??
+							[]) as LeaderboardEntry[]}
 						{@const Icon = board.icon}
 						<AdminCard padding="lg" class="space-y-4">
 							<div class="flex items-center justify-between">
@@ -1042,43 +1147,53 @@
 								Recent Subscription Activity
 							</h3>
 							<div class="space-y-3">
-								{#each subscriptionData.recentChanges.slice(0, 5) as change}
+								{#each subscriptionData.recentChanges.slice(0, 5) as change, idx (idx)}
+									{@const typedChange = change as any}
 									<div
 										class="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-700 last:border-0"
 									>
 										<div class="flex items-center space-x-3">
 											<div class="flex-shrink-0">
-												{#if change.status === 'active'}
+												{#if typedChange.status === 'active'}
 													<div
 														class="w-2 h-2 bg-green-500 rounded-full"
-													/>
-												{:else if change.status === 'canceled'}
-													<div class="w-2 h-2 bg-red-500 rounded-full" />
-												{:else if change.status === 'trialing'}
-													<div class="w-2 h-2 bg-blue-500 rounded-full" />
+													></div>
+												{:else if typedChange.status === 'canceled'}
+													<div
+														class="w-2 h-2 bg-red-500 rounded-full"
+													></div>
+												{:else if typedChange.status === 'trialing'}
+													<div
+														class="w-2 h-2 bg-blue-500 rounded-full"
+													></div>
 												{:else}
-													<div class="w-2 h-2 bg-gray-500 rounded-full" />
+													<div
+														class="w-2 h-2 bg-gray-500 rounded-full"
+													></div>
 												{/if}
 											</div>
 											<div>
 												<p
 													class="text-sm font-medium text-gray-900 dark:text-white"
 												>
-													{change.users?.email || 'Unknown User'}
+													{typedChange.users?.email || 'Unknown User'}
 												</p>
 												<p class="text-xs text-gray-500 dark:text-gray-400">
-													{change.subscription_plans?.name} · {change.status}
+													{typedChange.subscription_plans?.name} · {typedChange.status}
 												</p>
 											</div>
 										</div>
 										<div class="text-right">
 											<p class="text-sm text-gray-600 dark:text-gray-400">
-												${(change.subscription_plans?.price / 100).toFixed(
-													2
-												)}/{change.subscription_plans?.interval}
+												${(
+													typedChange.subscription_plans?.price / 100
+												).toFixed(2)}/{typedChange.subscription_plans
+													?.interval}
 											</p>
 											<p class="text-xs text-gray-500 dark:text-gray-400">
-												{new Date(change.updated_at).toLocaleDateString()}
+												{new Date(
+													typedChange.updated_at
+												).toLocaleDateString()}
 											</p>
 										</div>
 									</div>
@@ -1175,6 +1290,7 @@
 					{#if Object.keys(feedbackOverview.category_breakdown).length > 0}
 						<div class="space-y-3">
 							{#each Object.entries(feedbackOverview.category_breakdown) as [category, count]}
+								{@const typedCount = Number(count)}
 								<div class="flex items-center justify-between">
 									<div class="flex items-center flex-1 min-w-0">
 										<span
@@ -1190,7 +1306,7 @@
 											<div
 												class="bg-blue-600 h-2 rounded-full transition-all duration-300"
 												style="width: {Math.min(
-													(count /
+													(typedCount /
 														Math.max(
 															...Object.values(
 																feedbackOverview.category_breakdown
@@ -1204,7 +1320,7 @@
 										<span
 											class="text-xs sm:text-sm font-medium text-gray-900 dark:text-white w-6 sm:w-8 text-right"
 										>
-											{count}
+											{typedCount}
 										</span>
 									</div>
 								</div>
@@ -1234,34 +1350,37 @@
 					</div>
 					{#if feedbackOverview.recent_feedback.length > 0}
 						<div class="space-y-3">
-							{#each feedbackOverview.recent_feedback as feedback}
+							{#each feedbackOverview.recent_feedback as feedback, idx (idx)}
+								{@const typedFeedback = feedback as any}
 								<div class="border-l-4 border-blue-200 pl-3 sm:pl-4 py-2">
 									<div class="flex items-center justify-between mb-1">
 										<span
 											class="text-xs sm:text-sm font-medium {getCategoryColor(
-												feedback.category
+												typedFeedback.category
 											)} capitalize"
 										>
-											{feedback.category}
+											{typedFeedback.category}
 										</span>
 										<span class="text-xs text-gray-500">
-											{new Date(feedback.created_at).toLocaleDateString()}
+											{new Date(
+												typedFeedback.created_at
+											).toLocaleDateString()}
 										</span>
 									</div>
 									<p
 										class="text-xs sm:text-sm text-gray-900 dark:text-white line-clamp-2"
 									>
-										{feedback.feedback_text.substring(0, 100)}...
+										{typedFeedback.feedback_text.substring(0, 100)}...
 									</p>
 									<div class="flex items-center justify-between mt-1">
 										<span class="text-xs text-gray-500 truncate">
-											{feedback.user_email || 'Anonymous'}
+											{typedFeedback.user_email || 'Anonymous'}
 										</span>
-										{#if feedback.rating}
+										{#if typedFeedback.rating}
 											<div class="flex items-center ml-2">
 												<Star class="h-3 w-3 text-yellow-500 mr-1" />
 												<span class="text-xs text-gray-600"
-													>{feedback.rating}/5</span
+													>{typedFeedback.rating}/5</span
 												>
 											</div>
 										{/if}
@@ -1290,9 +1409,10 @@
 					</div>
 					{#if betaOverview.recent_activity.length > 0}
 						<div class="space-y-3">
-							{#each betaOverview.recent_activity as activity}
+							{#each betaOverview.recent_activity as activity, idx (idx)}
+								{@const typedActivity = activity as any}
 								<div class="flex items-start space-x-3">
-									{#if activity.type === 'signup'}
+									{#if typedActivity.type === 'signup'}
 										<UserPlus
 											class="h-4 w-4 text-blue-500 flex-shrink-0 mt-1"
 										/>
@@ -1302,31 +1422,31 @@
 										/>
 									{/if}
 									<div class="flex-1 min-w-0">
-										{#if activity.type === 'signup'}
+										{#if typedActivity.type === 'signup'}
 											<div
 												class="text-xs sm:text-sm text-gray-900 dark:text-white"
 											>
 												<span class="font-medium truncate"
-													>{activity.user}</span
+													>{typedActivity.user}</span
 												>
 												signed up for beta
 											</div>
 											<div class="text-xs text-gray-500 capitalize">
-												Status: {activity.status}
+												Status: {typedActivity.status}
 											</div>
 										{:else}
 											<div
 												class="text-xs sm:text-sm text-gray-900 dark:text-white"
 											>
-												New {activity.feedback_type} feedback
+												New {typedActivity.feedback_type} feedback
 											</div>
 											<div class="text-xs text-gray-500 capitalize">
-												Status: {activity.status}
+												Status: {typedActivity.status}
 											</div>
 										{/if}
 									</div>
 									<div class="text-xs text-gray-500 flex-shrink-0">
-										{new Date(activity.created_at).toLocaleDateString()}
+										{new Date(typedActivity.created_at).toLocaleDateString()}
 									</div>
 								</div>
 							{/each}
@@ -1460,22 +1580,25 @@
 					</div>
 					{#if systemOverview.top_active_users && systemOverview.top_active_users.length > 0}
 						<div class="space-y-3">
-							{#each systemOverview.top_active_users.slice(0, 8) as user}
+							{#each systemOverview.top_active_users.slice(0, 8) as user, idx (idx)}
+								{@const typedUser = user as any}
 								<div class="flex items-center justify-between">
 									<div class="flex-1 min-w-0">
 										<div
 											class="text-xs sm:text-sm font-medium text-gray-900 dark:text-white truncate"
 										>
-											{user.email}
+											{typedUser.email}
 										</div>
 										<div class="text-xs text-gray-500">
-											Last brief: {user.last_brief
-												? new Date(user.last_brief).toLocaleDateString()
+											Last brief: {typedUser.last_brief
+												? new Date(
+														typedUser.last_brief
+													).toLocaleDateString()
 												: 'Never'}
 										</div>
 									</div>
 									<div class="text-xs sm:text-sm font-medium text-blue-600 ml-2">
-										{user.brief_count} briefs
+										{typedUser.brief_count} briefs
 									</div>
 								</div>
 							{/each}

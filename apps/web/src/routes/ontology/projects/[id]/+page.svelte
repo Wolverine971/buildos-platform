@@ -38,20 +38,23 @@
 	import CardBody from '$lib/components/ui/CardBody.svelte';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
 	import OutputCreateModal from '$lib/components/ontology/OutputCreateModal.svelte';
+	import OutputEditModal from '$lib/components/ontology/OutputEditModal.svelte';
+	import DocumentModal from '$lib/components/ontology/DocumentModal.svelte';
 	import TaskCreateModal from '$lib/components/ontology/TaskCreateModal.svelte';
 	import TaskEditModal from '$lib/components/ontology/TaskEditModal.svelte';
 	import PlanCreateModal from '$lib/components/ontology/PlanCreateModal.svelte';
+	import PlanEditModal from '$lib/components/ontology/PlanEditModal.svelte';
 	import GoalCreateModal from '$lib/components/ontology/GoalCreateModal.svelte';
+	import GoalEditModal from '$lib/components/ontology/GoalEditModal.svelte';
 	import FSMStateVisualizer from '$lib/components/ontology/FSMStateVisualizer.svelte';
 	import GoalReverseEngineerModal from '$lib/components/ontology/GoalReverseEngineerModal.svelte';
 	import OntologyProjectHeader from '$lib/components/ontology/OntologyProjectHeader.svelte';
 	import OntologyProjectEditModal from '$lib/components/ontology/OntologyProjectEditModal.svelte';
-	import OntologyContextDocModal from '$lib/components/ontology/OntologyContextDocModal.svelte';
 	import { toastService } from '$lib/stores/toast.store';
+	import { renderMarkdown, getMarkdownPreview, getProseClasses } from '$lib/utils/markdown';
 	import {
 		Plus,
-		FileEdit,
-		Edit2,
+		Pencil,
 		ChevronRight,
 		ChevronDown,
 		Calendar,
@@ -60,6 +63,14 @@
 		Sparkles
 	} from 'lucide-svelte';
 	import type { GoalReverseEngineeringResult } from '$lib/services/ontology/goal-reverse-engineering.service';
+	import type {
+		Project,
+		Task,
+		Output,
+		Document,
+		Plan,
+		Template as OntoTemplate
+	} from '$lib/types/onto';
 	import {
 		getTaskStateBadgeClass,
 		getOutputStateBadgeClass,
@@ -72,73 +83,10 @@
 	// TYPES
 	// ============================================================
 
-	interface Project {
-		id: string;
-		name: string;
-		description?: string;
-		type_key: string;
-		state_key: string;
-		facet_context?: string;
-		facet_scale?: string;
-		facet_stage?: string;
-		props?: Record<string, unknown>;
-	}
-
-	interface Task {
-		id: string;
-		title: string;
-		state_key: string;
-		plan_id?: string;
-		priority?: number | null;
-		props?: {
-			description?: string;
-			supporting_milestone_id?: string;
-			[key: string]: unknown;
-		};
-	}
-
-	interface Output {
-		id: string;
-		name: string;
-		type_key: string;
-		state_key: string;
-		props?: {
-			word_count?: number;
-			[key: string]: unknown;
-		};
-	}
-
-	interface Document {
-		id: string;
-		project_id: string;
-		title: string;
-		name?: string;
-		type_key: string;
-		state_key: string;
-		props?: Record<string, unknown> | null;
-		created_by: string;
-		created_at: string;
-		updated_at: string;
-	}
-
-	interface TemplateMeta {
-		id?: string;
-		name: string;
-		type_key: string;
-		scope?: string;
-	}
-
-	interface Plan {
-		id: string;
-		name: string;
-		type_key: string;
-		state_key: string;
-		props?: {
-			start_date?: string;
-			end_date?: string;
-			[key: string]: unknown;
-		};
-	}
+	/**
+	 * Page-specific types for entities not yet formalized in onto.ts
+	 * These represent raw database rows from Supabase tables
+	 */
 
 	interface Goal {
 		id: string;
@@ -152,19 +100,12 @@
 		};
 	}
 
-	type Guard = Record<string, unknown>;
-	type TransitionAction = Record<string, unknown>;
-
-	interface TransitionDetail {
-		event: string;
-		to: string;
-		guards?: Guard[];
-		actions?: TransitionAction[];
-	}
-
 	interface Requirement {
+		id?: string;
 		text: string;
-		[key: string]: unknown;
+		project_id?: string;
+		created_at?: string;
+		props?: Record<string, unknown>;
 	}
 
 	interface Milestone {
@@ -179,9 +120,22 @@
 	}
 
 	interface Risk {
+		id?: string;
 		title: string;
 		impact: string;
-		[key: string]: unknown;
+		project_id?: string;
+		created_at?: string;
+		props?: Record<string, unknown>;
+	}
+
+	type Guard = Record<string, unknown>;
+	type TransitionAction = Record<string, unknown>;
+
+	interface TransitionDetail {
+		event: string;
+		to: string;
+		guards?: Guard[];
+		actions?: TransitionAction[];
 	}
 
 	type ReverseEngineerMilestonePayload = {
@@ -197,6 +151,10 @@
 			priority: number | null;
 		}>;
 	};
+
+	// ============================================================
+	// COMPONENT STATE & INITIALIZATION
+	// ============================================================
 
 	// ============================================================
 	// PROPS & DATA
@@ -215,7 +173,7 @@
 	const requirements = $derived((data.requirements || []) as Requirement[]);
 	const milestones = $derived((data.milestones || []) as Milestone[]);
 	const risks = $derived((data.risks || []) as Risk[]);
-	const template = $derived((data.template || null) as TemplateMeta | null);
+	const template = $derived((data.template || null) as OntoTemplate | null);
 	const contextDocument = $derived((data.context_document || null) as Document | null);
 	const allowedTransitions = $derived((data.allowed_transitions || []) as TransitionDetail[]);
 	const initialTransitionDetails = $derived(
@@ -248,24 +206,22 @@
 	let showPlanCreateModal = $state(false);
 	let showGoalCreateModal = $state(false);
 	let showProjectEditModal = $state(false);
-	let showContextDocModal = $state(false);
 	let showDeleteProjectModal = $state(false);
 	let isDeletingProject = $state(false);
 	let deleteProjectError = $state<string | null>(null);
 	let editingTaskId = $state<string | null>(null);
+	let editingOutputId = $state<string | null>(null);
+	let showDocumentModal = $state(false);
+	let activeDocumentId = $state<string | null>(null);
+	let expandedDocumentId = $state<string | null>(null);
+	let editingPlanId = $state<string | null>(null);
+	let editingGoalId = $state<string | null>(null);
 	let expandedGoalId = $state<string | null>(null);
 	let reverseEngineeringGoalId = $state<string | null>(null);
 	let reverseEngineerModalOpen = $state(false);
 	let reverseEngineerPreview = $state<GoalReverseEngineeringResult | null>(null);
 	let reverseEngineerGoalMeta = $state<{ id: string; name: string } | null>(null);
 	let approvingReverseEngineer = $state(false);
-
-	// ✅ Debug effect to track modal state changes
-	$effect(() => {
-		if (showGoalCreateModal) {
-			console.log('[GoalCreateModal] Modal opened');
-		}
-	});
 
 	const tabs = $derived<Tab[]>([
 		{ id: 'tasks', label: 'Tasks', count: tasks.length },
@@ -343,6 +299,16 @@
 			return stats;
 		})()
 	);
+
+	const documentTypeOptions = $derived.by(() => {
+		const types = new Set<string>();
+		for (const doc of documents) {
+			if (doc.type_key) {
+				types.add(doc.type_key);
+			}
+		}
+		return Array.from(types);
+	});
 
 	// ============================================================
 	// EVENT HANDLERS
@@ -473,6 +439,31 @@
 		});
 	}
 
+	function formatUpdatedTimestamp(dateString?: string | null) {
+		if (!dateString) return null;
+		const date = new Date(dateString);
+		if (Number.isNaN(date.getTime())) {
+			return null;
+		}
+		return date.toLocaleDateString(undefined, {
+			month: 'short',
+			day: 'numeric',
+			year: 'numeric'
+		});
+	}
+
+	function formatPlanDate(value: unknown): string {
+		if (typeof value !== 'string' || !value) {
+			return '';
+		}
+		try {
+			const date = new Date(value);
+			return isNaN(date.getTime()) ? '' : date.toLocaleDateString();
+		} catch {
+			return '';
+		}
+	}
+
 	function toggleGoalExpansion(goalId: string) {
 		expandedGoalId = expandedGoalId === goalId ? null : goalId;
 	}
@@ -573,14 +564,23 @@
 	}
 
 	function editOutput(outputId: string) {
-		goto(`/ontology/projects/${project.id}/outputs/${outputId}/edit`);
+		editingOutputId = outputId;
 	}
 
 	async function handleOutputCreated(outputId: string) {
 		// Reload data to show new output
 		await invalidateAll();
-		// Navigate to edit the new output
-		goto(`/ontology/projects/${project.id}/outputs/${outputId}/edit`);
+		// Open the edit modal for the new output
+		editingOutputId = outputId;
+	}
+
+	async function handleOutputUpdated() {
+		await invalidateAll();
+	}
+
+	async function handleOutputDeleted() {
+		await invalidateAll();
+		editingOutputId = null;
 	}
 
 	async function handleTaskCreated(taskId: string) {
@@ -599,6 +599,68 @@
 		// Reload data to remove deleted task
 		await invalidateAll();
 	}
+
+	function openDocumentModal(documentId: string | null = null) {
+		activeDocumentId = documentId;
+		showDocumentModal = true;
+	}
+
+	async function handleDocumentSaved() {
+		await invalidateAll();
+		showDocumentModal = false;
+	}
+
+	async function handleDocumentDeleted() {
+		await invalidateAll();
+		showDocumentModal = false;
+	}
+
+	function toggleDocumentExpansion(documentId: string) {
+		expandedDocumentId = expandedDocumentId === documentId ? null : documentId;
+	}
+
+	function getDocumentBody(doc: Document): string {
+		const props = (doc.props ?? {}) as Record<string, unknown>;
+		const candidateKeys = [
+			'body_markdown',
+			'body',
+			'content',
+			'summary_markdown',
+			'description'
+		];
+
+		for (const key of candidateKeys) {
+			const value = props[key];
+			if (typeof value === 'string' && value.trim().length > 0) {
+				return value;
+			}
+		}
+
+		return '';
+	}
+
+	function getDocumentPreview(doc: Document): string {
+		const body = getDocumentBody(doc);
+		return body ? getMarkdownPreview(body, 160) : '';
+	}
+
+	async function handlePlanUpdated() {
+		await invalidateAll();
+	}
+
+	async function handlePlanDeleted() {
+		await invalidateAll();
+		editingPlanId = null;
+	}
+
+	async function handleGoalUpdated() {
+		await invalidateAll();
+	}
+
+	async function handleGoalDeleted() {
+		await invalidateAll();
+		editingGoalId = null;
+	}
 </script>
 
 <svelte:head>
@@ -607,11 +669,16 @@
 
 <div class="max-w-6xl mx-auto">
 	<!-- Header -->
-	<Card variant="elevated" padding="none" class="mb-3">
-		<CardBody padding="lg" class="space-y-6">
+	<Card variant="elevated" padding="none" class="mb-4">
+		<CardBody padding="lg" class="space-y-5">
 			<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-				<Button variant="ghost" size="sm" onclick={() => goto('/ontology')}>
-					<svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+				<Button
+					variant="ghost"
+					size="sm"
+					onclick={() => goto('/ontology')}
+					class="self-start hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+				>
+					<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
 						<path
 							stroke-linecap="round"
 							stroke-linejoin="round"
@@ -629,7 +696,6 @@
 				stats={projectStats}
 				{contextDocument}
 				onEdit={() => (showProjectEditModal = true)}
-				onOpenContextDoc={() => (showContextDocModal = true)}
 				onDelete={openDeleteModal}
 			/>
 
@@ -656,7 +722,7 @@
 
 	<!-- Content -->
 	<Card variant="elevated" padding="none" class="rounded-t-none border-t-0">
-		<CardBody padding="lg">
+		<CardBody padding="md" class="sm:p-6">
 			{#if activeTab === 'tasks'}
 				<div class="space-y-4">
 					<!-- Create button -->
@@ -677,7 +743,7 @@
 						<div
 							class="text-center py-12 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg"
 						>
-							<Edit2 class="w-12 h-12 text-gray-400 mx-auto mb-4" />
+							<Pencil class="w-12 h-12 text-gray-400 mx-auto mb-4" />
 							<p class="text-gray-600 dark:text-gray-400 mb-4">
 								No tasks yet. Create your first task to get started.
 							</p>
@@ -691,14 +757,14 @@
 							</Button>
 						</div>
 					{:else}
-						<div class="space-y-3">
+						<div class="space-y-2.5">
 							{#each tasks as task}
 								<button
 									onclick={() => (editingTaskId = task.id)}
-									class="w-full flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-blue-500 dark:hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/10 transition-all text-left group"
+									class="w-full flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3.5 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-blue-500 dark:hover:border-blue-400 hover:bg-blue-50/70 dark:hover:bg-blue-900/10 transition-all duration-200 text-left group"
 								>
 									<div class="flex-1 min-w-0 flex items-start gap-3">
-										<Edit2
+										<Pencil
 											class="w-5 h-5 text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 flex-shrink-0 mt-0.5"
 										/>
 										<div class="flex-1 min-w-0">
@@ -773,7 +839,7 @@
 						<div
 							class="text-center py-12 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg"
 						>
-							<FileEdit class="w-12 h-12 text-gray-400 mx-auto mb-4" />
+							<Pencil class="w-12 h-12 text-gray-400 mx-auto mb-4" />
 							<p class="text-gray-600 dark:text-gray-400 mb-4">
 								No documents yet. Create your first document to get started.
 							</p>
@@ -787,14 +853,14 @@
 							</Button>
 						</div>
 					{:else}
-						<div class="space-y-3">
+						<div class="space-y-2.5">
 							{#each outputs as output}
 								<button
 									onclick={() => editOutput(output.id)}
-									class="w-full flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-blue-500 dark:hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/10 transition-all text-left group"
+									class="w-full flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3.5 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-blue-500 dark:hover:border-blue-400 hover:bg-blue-50/70 dark:hover:bg-blue-900/10 transition-all duration-200 text-left group"
 								>
 									<div class="flex-1 min-w-0 flex items-start gap-3">
-										<FileEdit
+										<Pencil
 											class="w-5 h-5 text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 flex-shrink-0 mt-0.5"
 										/>
 										<div class="flex-1 min-w-0">
@@ -829,11 +895,22 @@
 				</div>
 			{:else if activeTab === 'documents'}
 				<div class="space-y-4">
-					<!-- Header -->
-					<div class="flex justify-between items-center">
-						<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-							Documents
-						</h3>
+					<!-- Header with gradient accent -->
+					<div
+						class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-gray-200 dark:border-gray-700"
+					>
+						<div>
+							<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+								Documents
+							</h3>
+							<p class="text-sm text-gray-600 dark:text-gray-400 mt-0.5">
+								Project documentation and artifacts
+							</p>
+						</div>
+						<Button variant="primary" size="sm" onclick={() => openDocumentModal(null)}>
+							<Plus class="w-4 h-4" />
+							New Document
+						</Button>
 					</div>
 
 					{#if documents.length === 0}
@@ -841,33 +918,179 @@
 							class="text-center py-12 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg"
 						>
 							<FileText class="w-12 h-12 text-gray-400 mx-auto mb-4" />
-							<p class="text-gray-600 dark:text-gray-400">
+							<p class="text-gray-600 dark:text-gray-400 mb-4">
 								No documents yet. Documents track project documentation and
 								artifacts.
 							</p>
+							<Button
+								variant="primary"
+								size="sm"
+								onclick={() => openDocumentModal(null)}
+							>
+								<Plus class="w-4 h-4" />
+								Create Document
+							</Button>
 						</div>
 					{:else}
 						<div class="space-y-3">
-							{#each documents as doc}
+							{#each documents as doc (doc.id)}
+								{@const panelId = `document-panel-${doc.id}`}
+								{@const isExpanded = expandedDocumentId === doc.id}
+								{@const body = getDocumentBody(doc)}
+								{@const preview = getDocumentPreview(doc)}
+								{@const createdAtLabel = formatUpdatedTimestamp(doc.created_at)}
+								{@const updatedAtLabel = formatUpdatedTimestamp(doc.updated_at)}
+								{@const hasTemporalMeta = Boolean(createdAtLabel || updatedAtLabel)}
+								{@const state = doc.state_key || 'draft'}
+								{@const stateClasses =
+									state === 'published'
+										? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300'
+										: state === 'approved'
+											? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+											: state === 'review'
+												? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300'
+												: state === 'archived'
+													? 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'
+													: 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300'}
 								<div
-									id={'document-' + doc.id}
-									class="flex items-start gap-3 p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-gray-300 dark:hover:border-gray-600 transition-colors"
+									class="group/card rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900/60 hover:border-blue-300 dark:hover:border-blue-700 hover:shadow-md transition-all duration-200"
+									data-testid="ontology-document-card"
 								>
-									<FileText class="w-5 h-5 text-gray-400 flex-shrink-0 mt-0.5" />
-									<div class="flex-1 min-w-0">
-										<h3
-											class="font-semibold text-gray-900 dark:text-white mb-1"
+									<div class="p-4 sm:p-5 space-y-3">
+										<div
+											class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
 										>
-											{doc.title ?? doc.name ?? 'Untitled document'}
-										</h3>
-										<p class="text-sm text-gray-600 dark:text-gray-400">
-											Type: {doc.type_key}
-											{#if doc.state_key}
-												<span class="text-gray-400">•</span>
-												<span class="capitalize">{doc.state_key}</span>
-											{/if}
-										</p>
+											<button
+												type="button"
+												class="flex items-start gap-3 text-left flex-1 group/expand"
+												onclick={() => toggleDocumentExpansion(doc.id)}
+												aria-expanded={isExpanded}
+												aria-controls={panelId}
+											>
+												<div
+													class="flex items-center justify-center w-10 h-10 rounded-lg bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 flex-shrink-0 group-hover/expand:from-blue-100 group-hover/expand:to-purple-100 dark:group-hover/expand:from-blue-800/30 dark:group-hover/expand:to-purple-800/30 transition-all"
+												>
+													<FileText
+														class="w-5 h-5 text-blue-600 dark:text-blue-400"
+													/>
+												</div>
+												<div class="flex-1 min-w-0 space-y-1.5">
+													<div class="flex items-start gap-2">
+														<h3
+															class="font-semibold text-base text-gray-900 dark:text-white group-hover/expand:text-blue-700 dark:group-hover/expand:text-blue-300 transition-colors"
+														>
+															{doc.title ?? 'Untitled document'}
+														</h3>
+													</div>
+													<p
+														class="text-sm text-gray-600 dark:text-gray-400 line-clamp-2"
+													>
+														{preview ||
+															'No body content yet. Expand to add context.'}
+													</p>
+													<div
+														class="flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400"
+													>
+														<span
+															class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 font-medium"
+														>
+															{doc.type_key}
+														</span>
+														{#if updatedAtLabel}
+															<span
+																class="text-gray-300 dark:text-gray-600"
+																>•</span
+															>
+															<span>Updated {updatedAtLabel}</span>
+														{/if}
+													</div>
+												</div>
+												<ChevronDown
+													class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform duration-200 group-hover/expand:text-blue-600 dark:group-hover/expand:text-blue-400 {isExpanded
+														? 'rotate-180'
+														: ''}"
+												/>
+											</button>
+											<div
+												class="flex items-center gap-2 self-start sm:self-center"
+											>
+												<span
+													class="px-3 py-1 rounded-full text-xs font-semibold capitalize {stateClasses}"
+												>
+													{state}
+												</span>
+												<Button
+													type="button"
+													variant="secondary"
+													size="sm"
+													onclick={(e) => {
+														e.stopPropagation();
+														openDocumentModal(doc.id);
+													}}
+												>
+													<Pencil class="w-4 h-4 mr-1" />
+													Edit
+												</Button>
+											</div>
+										</div>
 									</div>
+									{#if isExpanded}
+										<div
+											id={panelId}
+											class="border-t border-gray-200 dark:border-gray-700 px-4 sm:px-5 py-4 bg-gradient-to-br from-gray-50 to-blue-50/30 dark:from-gray-900/30 dark:to-blue-900/10 rounded-b-lg"
+										>
+											{#if body}
+												<div class={`pt-3 ${getProseClasses('sm')}`}>
+													{@html renderMarkdown(body)}
+												</div>
+											{:else}
+												<p
+													class="pt-3 text-sm italic text-gray-500 dark:text-gray-400"
+												>
+													This document does not have any content yet. Use
+													the editor to start writing.
+												</p>
+											{/if}
+											<div
+												class="flex flex-wrap items-center justify-between gap-3 mt-4 text-xs text-gray-500 dark:text-gray-400"
+											>
+												<div class="flex flex-wrap items-center gap-2">
+													{#if createdAtLabel}
+														<span>Created {createdAtLabel}</span>
+													{/if}
+													{#if updatedAtLabel}
+														<span
+															class="text-gray-300 dark:text-gray-600"
+															>•</span
+														>
+														<span>Updated {updatedAtLabel}</span>
+													{/if}
+													{#if hasTemporalMeta}
+														<span
+															class="text-gray-300 dark:text-gray-600"
+															>•</span
+														>
+													{/if}
+													<span
+														class="font-mono text-[11px] text-gray-500 dark:text-gray-400"
+														>#{doc.id}</span
+													>
+												</div>
+												<Button
+													type="button"
+													variant="primary"
+													size="sm"
+													onclick={(e) => {
+														e.stopPropagation();
+														openDocumentModal(doc.id);
+													}}
+												>
+													<Pencil class="w-4 h-4 mr-1" />
+													Open Editor
+												</Button>
+											</div>
+										</div>
+									{/if}
 								</div>
 							{/each}
 						</div>
@@ -907,10 +1130,12 @@
 							</Button>
 						</div>
 					{:else}
-						<div class="space-y-3">
+						<div class="space-y-2.5">
 							{#each plans as plan}
-								<div
-									class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-gray-300 dark:hover:border-gray-600 transition-colors"
+								<button
+									type="button"
+									onclick={() => (editingPlanId = plan.id)}
+									class="w-full flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3.5 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-blue-500 dark:hover:border-blue-400 hover:bg-blue-50/70 dark:hover:bg-blue-900/10 transition-all duration-200 text-left"
 								>
 									<div class="flex-1 min-w-0 flex items-start gap-3">
 										<Calendar
@@ -927,22 +1152,19 @@
 											>
 												<span>{plan.type_key}</span>
 												{#if plan.props?.start_date || plan.props?.end_date}
+													{@const startFormatted = formatPlanDate(
+														plan.props?.start_date
+													)}
+													{@const endFormatted = formatPlanDate(
+														plan.props?.end_date
+													)}
 													<span class="text-gray-400">•</span>
 													<span>
-														{plan.props.start_date
-															? new Date(
-																	plan.props.start_date
-																).toLocaleDateString()
-															: ''}
-														{plan.props.start_date &&
-														plan.props.end_date
+														{startFormatted}
+														{startFormatted && endFormatted
 															? ' - '
 															: ''}
-														{plan.props.end_date
-															? new Date(
-																	plan.props.end_date
-																).toLocaleDateString()
-															: ''}
+														{endFormatted}
 													</span>
 												{/if}
 											</div>
@@ -955,7 +1177,7 @@
 									>
 										{plan.state_key}
 									</span>
-								</div>
+								</button>
 							{/each}
 						</div>
 					{/if}
@@ -994,12 +1216,12 @@
 							</Button>
 						</div>
 					{:else}
-						<div class="space-y-3">
+						<div class="space-y-2.5">
 							{#each goals as goal}
 								{@const stats = getGoalStatsForDisplay(goal.id)}
 								{@const goalMilestones = getGoalMilestones(goal.id)}
 								<div
-									class="p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-gray-300 dark:hover:border-gray-600 transition-colors"
+									class="p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-gray-300 dark:hover:border-gray-600 transition-all duration-200"
 								>
 									<div class="flex flex-col gap-3">
 										<div
@@ -1068,6 +1290,14 @@
 											<div
 												class="flex items-center gap-2 self-stretch sm:self-auto"
 											>
+												<Button
+													variant="ghost"
+													size="sm"
+													onclick={() => (editingGoalId = goal.id)}
+												>
+													<Pencil class="w-4 h-4 mr-1" />
+													Edit
+												</Button>
 												<Button
 													variant="secondary"
 													size="sm"
@@ -1293,14 +1523,6 @@
 	onSaved={handleProjectSaved}
 />
 
-<!-- Context Document Modal -->
-<OntologyContextDocModal
-	bind:isOpen={showContextDocModal}
-	document={contextDocument}
-	projectName={project.name}
-	onClose={() => (showContextDocModal = false)}
-/>
-
 <!-- Output Create Modal -->
 {#if showOutputCreateModal}
 	<OutputCreateModal
@@ -1309,6 +1531,26 @@
 		onCreated={handleOutputCreated}
 	/>
 {/if}
+
+{#if editingOutputId}
+	<OutputEditModal
+		outputId={editingOutputId}
+		projectId={project.id}
+		onClose={() => (editingOutputId = null)}
+		onUpdated={handleOutputUpdated}
+		onDeleted={handleOutputDeleted}
+	/>
+{/if}
+
+<DocumentModal
+	bind:isOpen={showDocumentModal}
+	projectId={project.id}
+	documentId={activeDocumentId}
+	typeOptions={documentTypeOptions}
+	onClose={() => (showDocumentModal = false)}
+	onSaved={handleDocumentSaved}
+	onDeleted={handleDocumentDeleted}
+/>
 
 <!-- Task Create Modal -->
 {#if showTaskCreateModal}
@@ -1344,6 +1586,16 @@
 	/>
 {/if}
 
+{#if editingPlanId}
+	<PlanEditModal
+		planId={editingPlanId}
+		projectId={project.id}
+		onClose={() => (editingPlanId = null)}
+		onUpdated={handlePlanUpdated}
+		onDeleted={handlePlanDeleted}
+	/>
+{/if}
+
 <!-- Goal Create Modal -->
 {#if showGoalCreateModal}
 	<GoalCreateModal
@@ -1353,6 +1605,16 @@
 			await invalidateAll();
 			showGoalCreateModal = false;
 		}}
+	/>
+{/if}
+
+{#if editingGoalId}
+	<GoalEditModal
+		goalId={editingGoalId}
+		projectId={project.id}
+		onClose={() => (editingGoalId = null)}
+		onUpdated={handleGoalUpdated}
+		onDeleted={handleGoalDeleted}
 	/>
 {/if}
 

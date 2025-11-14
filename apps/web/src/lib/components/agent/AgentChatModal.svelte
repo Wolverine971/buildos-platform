@@ -18,7 +18,13 @@
 	import TextareaWithVoice from '$lib/components/ui/TextareaWithVoice.svelte';
 	import ContextSelectionScreen from '../chat/ContextSelectionScreen.svelte';
 	import { SSEProcessor, type StreamCallbacks } from '$lib/utils/sse-processor';
-	import type { ChatSession, ChatContextType, AgentSSEMessage } from '@buildos/shared-types';
+	import type {
+		ChatSession,
+		ChatContextType,
+		ChatMessage,
+		ChatRole,
+		AgentSSEMessage
+	} from '@buildos/shared-types';
 	import { renderMarkdown, getProseClasses, hasMarkdownFormatting } from '$lib/utils/markdown';
 	// Add ontology integration imports
 	import type { LastTurnContext } from '$lib/types/agent-chat-enhancement';
@@ -132,15 +138,33 @@
 		return contextDescriptor?.subtitle ?? '';
 	});
 
+	// Enhanced message type for UI with optional ChatMessage fields
+	interface UIMessage {
+		id: string;
+		session_id?: string;
+		user_id?: string;
+		role?: ChatRole;
+		content: string;
+		created_at?: string;
+		updated_at?: string;
+		// UI-specific fields
+		type: 'user' | 'assistant' | 'activity' | 'plan' | 'step' | 'executor' | 'clarification';
+		data?: any;
+		timestamp: Date;
+		// Optional ChatMessage fields
+		tool_calls?: any;
+		tool_call_id?: string;
+	}
+
 	// Conversation state
-	let messages = $state<AgentMessage[]>([]);
+	let messages = $state<UIMessage[]>([]);
 	let currentSession = $state<ChatSession | null>(null);
 	let isStreaming = $state(false);
 	let currentStreamController: AbortController | null = null;
 	let inputValue = $state('');
 	let error = $state<string | null>(null);
-	// Used for tracking plan state, may be displayed in future (prefixed with _ to indicate intentionally unused)
-	let _currentPlan = $state<any>(null);
+	// Track current plan for potential future UI enhancements
+	let currentPlan = $state<any>(null);
 	let currentActivity = $state<string>('');
 	let userHasScrolled = $state(false);
 	let currentAssistantMessageId = $state<string | null>(null);
@@ -163,14 +187,6 @@
 		if (!agentState) return null;
 		return agentStateDetails ?? AGENT_STATE_MESSAGES[agentState];
 	});
-
-	interface AgentMessage {
-		id: string;
-		type: 'user' | 'assistant' | 'activity' | 'plan' | 'step' | 'executor' | 'clarification';
-		content: string;
-		data?: any;
-		timestamp: Date;
-	}
 
 	let voiceInputRef = $state<TextareaWithVoiceComponent | null>(null);
 	let isVoiceRecording = $state(false);
@@ -218,7 +234,7 @@
 
 		messages = [];
 		currentSession = null;
-		_currentPlan = null;
+		currentPlan = null;
 		currentActivity = '';
 		inputValue = '';
 		error = null;
@@ -334,22 +350,28 @@
 		const now = new Date();
 
 		// Add user message
-		const userMessage: AgentMessage = {
+		const userMessage: UIMessage = {
 			id: crypto.randomUUID(),
+			session_id: currentSession?.id,
+			user_id: undefined, // Will be set by backend
 			type: 'user',
+			role: 'user' as ChatRole,
 			content: trimmed,
-			timestamp: now
+			timestamp: now,
+			created_at: now.toISOString()
 		};
 
 		// Convert existing messages to conversation history format (only user/assistant messages)
-		const conversationHistory = messages
+		const conversationHistory: Partial<ChatMessage>[] = messages
 			.filter((msg) => msg.type === 'user' || msg.type === 'assistant')
 			.map((msg) => ({
 				id: msg.id,
-				chat_session_id: currentSession?.id || 'pending',
-				role: msg.type === 'user' ? 'user' : 'assistant',
+				session_id: currentSession?.id || 'pending',
+				role: msg.role as ChatRole,
 				content: msg.content,
-				created_at: msg.timestamp.toISOString()
+				created_at: msg.created_at || msg.timestamp.toISOString(),
+				tool_calls: msg.tool_calls,
+				tool_call_id: msg.tool_call_id
 			}));
 
 		messages = [...messages, userMessage];
@@ -359,7 +381,7 @@
 		currentActivity = 'Analyzing request...';
 		agentState = 'thinking';
 		agentStateDetails = 'Agent is processing your request...';
-		_currentPlan = null;
+		currentPlan = null;
 		lastTurnContext = null;
 
 		// Reset scroll flag so we always scroll to show new user message
@@ -377,8 +399,15 @@
 			let ontologyEntityType: 'task' | 'plan' | 'goal' | 'document' | 'output' | undefined;
 			if (selectedContextType === 'task' || selectedContextType === 'task_update') {
 				ontologyEntityType = 'task';
+			} else if (
+				selectedContextType === 'project' ||
+				selectedContextType === 'project_audit' ||
+				selectedContextType === 'project_forecast'
+			) {
+				// For project contexts, don't set a specific entity type - let the backend determine
+				ontologyEntityType = undefined;
 			}
-			// Could add more mappings here for other entity types
+			// Additional mappings can be added as needed
 
 			const response = await fetch('/api/agent/stream', {
 				method: 'POST',
@@ -526,14 +555,14 @@
 
 			case 'plan_created':
 				// Plan created with steps
-				_currentPlan = event.plan;
+				currentPlan = event.plan;
 				currentActivity = `Executing plan with ${event.plan?.steps?.length || 0} steps...`;
 				agentState = 'executing_plan';
 				agentStateDetails = currentActivity;
 				addPlanMessage(event.plan);
 				break;
 			case 'plan_ready_for_review': {
-				_currentPlan = event.plan;
+				currentPlan = event.plan;
 				addPlanMessage(event.plan);
 				const summary =
 					event.summary ||
@@ -685,7 +714,7 @@
 	}
 
 	function addActivityMessage(content: string) {
-		const activityMessage: AgentMessage = {
+		const activityMessage: UIMessage = {
 			id: crypto.randomUUID(),
 			type: 'activity',
 			content,
@@ -695,7 +724,7 @@
 	}
 
 	function addPlanMessage(plan: any) {
-		const planMessage: AgentMessage = {
+		const planMessage: UIMessage = {
 			id: crypto.randomUUID(),
 			type: 'plan',
 			content: `Plan created with ${plan.steps?.length || 0} steps`,
@@ -716,7 +745,7 @@
 			return;
 		}
 
-		const clarificationMessage: AgentMessage = {
+		const clarificationMessage: UIMessage = {
 			id: crypto.randomUUID(),
 			type: 'clarification',
 			content:
@@ -778,11 +807,13 @@
 		} else {
 			// Create new assistant message
 			currentAssistantMessageId = crypto.randomUUID();
-			const assistantMessage: AgentMessage = {
+			const assistantMessage: UIMessage = {
 				id: currentAssistantMessageId,
 				type: 'assistant',
+				role: 'assistant' as ChatRole,
 				content: normalizedContent,
-				timestamp: new Date()
+				timestamp: new Date(),
+				created_at: new Date().toISOString()
 			};
 			messages = [...messages, assistantMessage];
 		}

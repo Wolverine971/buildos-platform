@@ -691,7 +691,9 @@ Generate an execution plan to fulfill this request.`;
 		if (createProjectIndex === -1) {
 			throw new PlanExecutionError('Project creation plan must call create_onto_project', {
 				planId: plan.id,
-				availableTools: plannerContext.availableTools.map((tool) => tool.name || '')
+				availableTools: plannerContext.availableTools.map(
+					(tool) => tool.function.name || ''
+				)
 			});
 		}
 

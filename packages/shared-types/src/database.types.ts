@@ -8796,8 +8796,7 @@ export type Database = {
       onto_actor_kind: "human" | "agent"
       onto_template_status: "draft" | "active" | "deprecated"
       planning_strategy:
-        | "simple_research"
-        | "complex_research"
+        | "planner_stream"
         | "ask_clarifying_questions"
         | "project_creation"
       priority_level: "low" | "medium" | "high"
@@ -9017,8 +9016,7 @@ export const Constants = {
       onto_actor_kind: ["human", "agent"],
       onto_template_status: ["draft", "active", "deprecated"],
       planning_strategy: [
-        "simple_research",
-        "complex_research",
+        "planner_stream",
         "ask_clarifying_questions",
         "project_creation",
       ],

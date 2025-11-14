@@ -93,9 +93,7 @@
 
 	async function loadTransitions() {
 		try {
-			const response = await fetch(
-				`/api/onto/fsm/transitions?entity_id=${goalId}&entity_kind=goal`
-			);
+			const response = await fetch(`/api/onto/fsm/transitions?kind=goal&id=${goalId}`);
 			if (response.ok) {
 				const data = await response.json();
 				allowedTransitions = data.data?.transitions || [];
@@ -223,7 +221,7 @@
 			</div>
 		</CardHeader>
 
-		<CardBody class="max-h-[calc(90vh-120px)] overflow-y-auto p-6">
+		<CardBody class="max-h-[calc(90vh-120px)] overflow-y-auto p-4 sm:p-6">
 			{#if isLoading}
 				<div class="flex items-center justify-center py-12">
 					<Loader class="w-8 h-8 animate-spin text-gray-400" />
@@ -233,7 +231,7 @@
 					<p class="text-red-600 dark:text-red-400">Goal not found</p>
 				</div>
 			{:else}
-				<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+				<div class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
 					<!-- Main Form (Left 2 columns) -->
 					<div class="lg:col-span-2">
 						<form
@@ -241,12 +239,12 @@
 								e.preventDefault();
 								handleSave();
 							}}
-							class="space-y-6"
+							class="space-y-5"
 						>
 							<div>
 								<label
 									for="name"
-									class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+									class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5"
 								>
 									Goal Name
 								</label>
@@ -264,7 +262,7 @@
 							<div>
 								<label
 									for="description"
-									class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+									class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5"
 								>
 									Description
 								</label>
@@ -282,7 +280,7 @@
 								<div>
 									<label
 										for="priority"
-										class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+										class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5"
 									>
 										Priority
 									</label>
@@ -301,7 +299,7 @@
 								<div>
 									<label
 										for="target-date"
-										class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+										class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5"
 									>
 										Target Date
 									</label>
@@ -318,7 +316,7 @@
 							<div>
 								<label
 									for="measurement-criteria"
-									class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+									class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5"
 								>
 									Success Criteria
 								</label>
@@ -348,7 +346,7 @@
 								<div>
 									<label
 										for="state"
-										class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+										class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5"
 									>
 										State
 									</label>
@@ -382,10 +380,14 @@
 					<!-- Sidebar (Right column) -->
 					<div class="space-y-4">
 						<!-- Goal Metadata -->
-						<div class="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 space-y-3">
+						<div
+							class="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 rounded-lg p-4 space-y-3 border border-gray-200 dark:border-gray-700 shadow-sm"
+						>
 							<h3
-								class="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide"
+								class="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide flex items-center gap-2"
 							>
+								<span class="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse"
+								></span>
 								Goal Information
 							</h3>
 
@@ -429,10 +431,13 @@
 						</div>
 
 						<!-- Danger Zone -->
-						<div class="border border-red-200 dark:border-red-800 rounded-lg p-4">
+						<div
+							class="border-2 border-red-200 dark:border-red-800 bg-red-50/50 dark:bg-red-900/10 rounded-lg p-4"
+						>
 							<h3
-								class="text-sm font-semibold text-red-700 dark:text-red-400 mb-3 uppercase tracking-wide"
+								class="text-xs font-semibold text-red-700 dark:text-red-400 mb-3 uppercase tracking-wide flex items-center gap-2"
 							>
+								<span class="text-base">⚠️</span>
 								Danger Zone
 							</h3>
 
@@ -486,7 +491,7 @@
 
 				<!-- Action Buttons -->
 				<div
-					class="flex items-center justify-end gap-3 mt-8 pt-6 border-t border-gray-200 dark:border-gray-700"
+					class="flex items-center justify-end gap-2.5 mt-6 pt-5 border-t border-gray-200 dark:border-gray-700"
 				>
 					<Button
 						type="button"

@@ -46,13 +46,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	try {
 		// Parse request body
 		const body = await request.json();
-		const {
-			project_id,
-			type_key = 'goal.basic',
-			name,
-			description,
-			props = {}
-		} = body;
+		const { project_id, type_key = 'goal.basic', name, description, props = {} } = body;
 
 		// Validate required fields
 		if (!project_id || !name) {

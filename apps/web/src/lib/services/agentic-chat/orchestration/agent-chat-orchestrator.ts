@@ -28,6 +28,7 @@ import { SmartLLMService } from '../../smart-llm-service';
 // import type { ErrorLoggerService } from '$lib/services/errorLogger.service';
 import { ErrorLoggerService } from '$lib/services/errorLogger.service';
 import type { LastTurnContext } from '$lib/types/agent-chat-enhancement';
+import { createEnhancedLLMWrapper, type EnhancedLLMWrapper } from '../config/enhanced-llm-wrapper';
 
 const PLAN_TOOL_DEFINITION: ChatToolDefinition = {
 	type: 'function',
@@ -84,11 +85,16 @@ export interface AgentChatOrchestratorDependencies {
 	persistenceService: PersistenceOperations;
 	contextService: AgentContextService;
 	llmService: SmartLLMService;
-	errorLogger?: ErrorLoggerService;
+	errorLogger: ErrorLoggerService;
 }
 
 export class AgentChatOrchestrator {
-	constructor(private deps: AgentChatOrchestratorDependencies) {}
+	private enhancedLLM: EnhancedLLMWrapper;
+
+	constructor(private deps: AgentChatOrchestratorDependencies) {
+		// Create enhanced wrapper for intelligent model selection
+		this.enhancedLLM = createEnhancedLLMWrapper(deps.llmService);
+	}
 
 	async *streamConversation(
 		request: AgentChatRequest,
@@ -183,16 +189,14 @@ export class AgentChatOrchestrator {
 			}
 		} catch (error) {
 			console.error('[AgentChatOrchestrator] Error during orchestration', error);
-			if (this.deps.errorLogger) {
-				await this.deps.errorLogger.logError(error, {
-					userId: request.userId,
-					operationType: 'agent_chat_orchestration',
-					metadata: {
-						sessionId: request.sessionId,
-						contextType: request.contextType
-					}
-				});
-			}
+			await this.deps.errorLogger.logError(error, {
+				userId: request.userId,
+				operationType: 'agent_chat_orchestration',
+				metadata: {
+					sessionId: request.sessionId,
+					contextType: request.contextType
+				}
+			});
 
 			const message =
 				error instanceof Error ? error.message : 'Unknown error during agent orchestration';
@@ -285,17 +289,20 @@ export class AgentChatOrchestrator {
 			let assistantBuffer = '';
 			const pendingToolCalls: ChatToolCall[] = [];
 
-			const profile = this.resolvePlannerProfile(serviceContext.contextType);
-
-			for await (const chunk of llmService.streamText({
+			// Use enhanced wrapper for intelligent model selection
+			// The wrapper will automatically select the best profile based on context
+			for await (const chunk of this.enhancedLLM.streamText({
 				messages,
 				tools,
 				tool_choice: 'auto',
 				userId: serviceContext.userId,
-				profile,
-				temperature: 0.4,
-				maxTokens: 1800,
+				// Let the wrapper decide the optimal profile unless explicitly set
+				profile: undefined, // Will be auto-selected based on context
+				temperature: 0.4, // Can be overridden by wrapper if needed
+				maxTokens: 1800, // Can be overridden by wrapper if needed
 				sessionId: serviceContext.sessionId,
+				// Pass context for optimization
+				contextType: serviceContext.contextType,
 				operationType: 'planner_stream'
 			}) as AsyncGenerator<LLMStreamEvent>) {
 				if (chunk.type === 'text' && chunk.content) {
@@ -356,7 +363,7 @@ export class AgentChatOrchestrator {
 				const contextShift =
 					(result as any)?.context_shift ??
 					result?.data?.context_shift ??
-					result?.result?.context_shift;
+					(result?.data as any)?.context_shift;
 				if (contextShift) {
 					const normalizedShiftContext = this.normalizeChatContextType(
 						(contextShift.new_context as ChatContextType) ?? serviceContext.contextType
@@ -474,7 +481,9 @@ export class AgentChatOrchestrator {
 			return {
 				success: false,
 				error: error instanceof Error ? error.message : 'Plan tool failed',
-				streamEvents
+				streamEvents,
+				toolName: 'agent_create_plan',
+				toolCallId: 'virtual-' + Date.now()
 			};
 		}
 	}
@@ -512,7 +521,9 @@ export class AgentChatOrchestrator {
 				plan_id: plan.id,
 				summary: execution.summary
 			},
-			streamEvents
+			streamEvents,
+			toolName: 'agent_create_plan',
+			toolCallId: 'virtual-' + Date.now()
 		};
 	}
 
@@ -545,7 +556,9 @@ export class AgentChatOrchestrator {
 				plan_id: plan.id,
 				summary
 			},
-			streamEvents
+			streamEvents,
+			toolName: 'agent_create_plan',
+			toolCallId: 'virtual-' + Date.now()
 		};
 	}
 
@@ -593,7 +606,9 @@ export class AgentChatOrchestrator {
 					summary: execution.summary,
 					review
 				},
-				streamEvents
+				streamEvents,
+				toolName: 'agent_create_plan',
+				toolCallId: 'virtual-' + Date.now()
 			};
 		}
 
@@ -621,7 +636,9 @@ export class AgentChatOrchestrator {
 				summary,
 				review
 			},
-			streamEvents
+			streamEvents,
+			toolName: 'agent_create_plan',
+			toolCallId: 'virtual-' + Date.now()
 		};
 	}
 
@@ -787,25 +804,14 @@ export class AgentChatOrchestrator {
 		};
 	}
 
-	private resolvePlannerProfile(contextType: ChatContextType): TextProfile {
-		switch (contextType) {
-			case 'project_audit':
-			case 'project_forecast':
-				return 'quality';
-			case 'task_update':
-			case 'calendar':
-				return 'speed';
-			default:
-				return 'balanced';
-		}
-	}
+	// Removed unused resolvePlannerProfile method - profile selection is now handled by EnhancedLLMWrapper
 
 	private normalizeToolResultForLLM(result: ToolExecutionResult): ChatToolResult {
 		return {
 			tool_call_id: result.toolCallId,
 			result: result.data ?? null,
 			success: result.success,
-			error: result.error
+			error: typeof result.error === 'string' ? result.error : result.error?.message
 		};
 	}
 

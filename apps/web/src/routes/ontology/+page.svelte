@@ -266,8 +266,8 @@
 	<title>Ontology Projects | BuildOS</title>
 </svelte:head>
 
-<div class="mx-auto w-full max-w-6xl space-y-4">
-	<header class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+<div class="mx-auto w-full max-w-6xl space-y-4 sm:space-y-5">
+	<header class="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
 		<div class="space-y-1">
 			<h1 class="text-2xl font-semibold text-slate-900 dark:text-slate-50 sm:text-3xl">
 				Ontology Projects
@@ -727,11 +727,11 @@
 				</div>
 			</div>
 		{:else}
-			<div class="grid grid-cols-1 gap-4 sm:gap-5 md:grid-cols-2 xl:grid-cols-3">
+			<div class="grid grid-cols-1 gap-3.5 sm:gap-4 md:grid-cols-2 xl:grid-cols-3">
 				{#each filteredProjects as project (project.id)}
 					<a
 						href="/ontology/projects/{project.id}"
-						class="group relative flex h-full flex-col rounded-2xl border border-slate-200/80 bg-white/90 p-4 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:border-blue-500/50 hover:shadow-xl dark:border-slate-800 dark:bg-slate-900/70"
+						class="group relative flex h-full flex-col rounded-2xl border border-slate-200/80 bg-white/90 p-4 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-blue-500/50 hover:shadow-xl dark:border-slate-800 dark:bg-slate-900/70"
 					>
 						<div class="mb-4 flex items-start justify-between gap-3">
 							<div class="min-w-0 space-y-1">

@@ -42,7 +42,11 @@
       "Bash(rm:*)",
       "WebFetch(domain:supabase.com)",
       "WebFetch(domain:openrouter.ai)",
-      "mcp__perplexity__search"
+      "mcp__perplexity__search",
+      "Bash(/tmp/taskmodal_top.txt)",
+      "Bash(/tmp/taskmodal_bottom.txt)",
+      "Bash(git reset:*)",
+      "mcp__perplexity__deep_research"
     ],
     "deny": [],
     "ask": []

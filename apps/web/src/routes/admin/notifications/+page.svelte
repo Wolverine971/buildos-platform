@@ -103,164 +103,93 @@
 </svelte:head>
 
 <div class="admin-page">
-	<div class="admin-page">
-		<!-- Header -->
-		<AdminPageHeader
-			title="Notification Analytics"
-			description="Monitor notification delivery, engagement, and performance across all channels"
-			icon={Bell}
-			showBack={true}
+	<!-- Header -->
+	<AdminPageHeader
+		title="Notification Analytics"
+		description="Monitor notification delivery, engagement, and performance across all channels"
+		icon={Bell}
+		showBack={true}
+	>
+		<div slot="actions">
+			<TimeframeSelector
+				bind:value={timeframe}
+				bind:autoRefresh
+				loading={isLoading}
+				onRefresh={loadAnalytics}
+				onTimeframeChange={loadAnalytics}
+			/>
+		</div>
+	</AdminPageHeader>
+
+	{#if error}
+		<div
+			class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6 dark:bg-red-900/20 dark:border-red-800"
 		>
-			<div slot="actions">
-				<TimeframeSelector
-					bind:value={timeframe}
-					bind:autoRefresh
-					loading={isLoading}
-					onRefresh={loadAnalytics}
-					onTimeframeChange={loadAnalytics}
-				/>
-			</div>
-		</AdminPageHeader>
-
-		<!-- Navigation Cards -->
-		<div class="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-4">
-			<a
-				href="/admin/notifications"
-				class="bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-200 dark:border-blue-800 rounded-lg p-6 hover:shadow-lg transition-shadow"
-			>
-				<div class="flex items-center">
-					<Bell class="h-8 w-8 text-blue-600 mr-3" />
-					<div>
-						<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-							Analytics
-						</h3>
-						<p class="text-sm text-gray-600 dark:text-gray-400">Current page</p>
-					</div>
-				</div>
-			</a>
-
-			<a
-				href="/admin/notifications/test-bed"
-				class="admin-panel p-6 hover:shadow-lg transition-shadow"
-			>
-				<div class="flex items-center">
-					<Send class="h-8 w-8 text-green-600 mr-3" />
-					<div>
-						<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-							Test Bed
-						</h3>
-						<p class="text-sm text-gray-600 dark:text-gray-400">
-							Send test notifications
-						</p>
-					</div>
-				</div>
-			</a>
-
-			<a
-				href="/admin/notifications/sms-scheduler"
-				class="admin-panel p-6 hover:shadow-lg transition-shadow"
-			>
-				<div class="flex items-center">
-					<Calendar class="h-8 w-8 text-orange-600 mr-3" />
-					<div>
-						<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-							SMS Scheduler
-						</h3>
-						<p class="text-sm text-gray-600 dark:text-gray-400">
-							Manual trigger & monitoring
-						</p>
-					</div>
-				</div>
-			</a>
-
-			<a
-				href="/admin/notifications/nlogs"
-				class="admin-panel p-6 hover:shadow-lg transition-shadow"
-			>
-				<div class="flex items-center">
-					<Eye class="h-8 w-8 text-purple-600 mr-3" />
-					<div>
-						<h3 class="text-lg font-semibold text-gray-900 dark:text-white">Logs</h3>
-						<p class="text-sm text-gray-600 dark:text-gray-400">
-							Event & delivery logs
-						</p>
-					</div>
-				</div>
-			</a>
+			<p class="text-red-800 dark:text-red-200">{error}</p>
 		</div>
+	{/if}
 
-		{#if error}
-			<div
-				class="bg-red-50 border border-red-200 rounded-lg p-4 mb-4 dark:bg-red-900/20 dark:border-red-800"
-			>
-				<p class="text-red-800 dark:text-red-200">{error}</p>
-			</div>
-		{/if}
-
-		<!-- Overview Metrics -->
-		<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-			<MetricCard
-				title="Total Sent (24h)"
-				value={overview?.total_sent || 0}
-				trend={overview?.trend_vs_previous_period.sent}
-				loading={isLoading}
-				icon={Send}
-				color="blue"
-			/>
-			<MetricCard
-				title="Delivery Success Rate"
-				value={overview?.delivery_success_rate || 0}
-				suffix="%"
-				trend={overview?.trend_vs_previous_period.success_rate}
-				loading={isLoading}
-				icon={TrendingUp}
-				color="green"
-			/>
-			<MetricCard
-				title="Avg Open Rate"
-				value={overview?.avg_open_rate || 0}
-				suffix="%"
-				trend={overview?.trend_vs_previous_period.open_rate}
-				loading={isLoading}
-				icon={Eye}
-				color="purple"
-			/>
-			<MetricCard
-				title="Avg Click Rate"
-				value={overview?.avg_click_rate || 0}
-				suffix="%"
-				trend={overview?.trend_vs_previous_period.click_rate}
-				loading={isLoading}
-				icon={MousePointerClick}
-				color="orange"
-			/>
-		</div>
-
-		<!-- Failed Deliveries Alert -->
-		{#if failures.length > 0}
-			<div class="mb-4">
-				<FailedDeliveriesTable
-					data={failures}
-					loading={isLoading}
-					onRetry={handleRetry}
-					onResend={handleResend}
-				/>
-			</div>
-		{/if}
-
-		<!-- Channel Performance -->
-		<div class="mb-4">
-			<ChannelPerformanceTable data={channelMetrics} loading={isLoading} />
-		</div>
-
-		<!-- SMS Insights -->
-		<div class="mb-4">
-			<SMSInsightsCard data={smsStats} loading={isLoading} />
-		</div>
-
-		<!-- Event Type Breakdown -->
-		<div class="mb-4">
-			<EventBreakdownTable data={eventMetrics} loading={isLoading} />
-		</div>
+	<!-- Overview Metrics -->
+	<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6">
+		<MetricCard
+			title="Total Sent (24h)"
+			value={overview?.total_sent || 0}
+			trend={overview?.trend_vs_previous_period.sent}
+			loading={isLoading}
+			icon={Send}
+			color="blue"
+		/>
+		<MetricCard
+			title="Delivery Success Rate"
+			value={overview?.delivery_success_rate || 0}
+			suffix="%"
+			trend={overview?.trend_vs_previous_period.success_rate}
+			loading={isLoading}
+			icon={TrendingUp}
+			color="green"
+		/>
+		<MetricCard
+			title="Avg Open Rate"
+			value={overview?.avg_open_rate || 0}
+			suffix="%"
+			trend={overview?.trend_vs_previous_period.open_rate}
+			loading={isLoading}
+			icon={Eye}
+			color="purple"
+		/>
+		<MetricCard
+			title="Avg Click Rate"
+			value={overview?.avg_click_rate || 0}
+			suffix="%"
+			trend={overview?.trend_vs_previous_period.click_rate}
+			loading={isLoading}
+			icon={MousePointerClick}
+			color="orange"
+		/>
 	</div>
+
+	<!-- Failed Deliveries Alert -->
+	{#if failures.length > 0}
+		<div class="mb-6">
+			<FailedDeliveriesTable
+				data={failures}
+				loading={isLoading}
+				onRetry={handleRetry}
+				onResend={handleResend}
+			/>
+		</div>
+	{/if}
+
+	<!-- Channel Performance -->
+	<div class="mb-6">
+		<ChannelPerformanceTable data={channelMetrics} loading={isLoading} />
+	</div>
+
+	<!-- SMS Insights -->
+	<div class="mb-6">
+		<SMSInsightsCard data={smsStats} loading={isLoading} />
+	</div>
+
+	<!-- Event Type Breakdown -->
+	<EventBreakdownTable data={eventMetrics} loading={isLoading} />
 </div>

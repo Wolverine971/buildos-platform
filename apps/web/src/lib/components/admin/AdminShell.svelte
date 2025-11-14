@@ -256,7 +256,7 @@
 	<!-- Main content -->
 	<div class="flex min-h-screen min-w-0 flex-1 flex-col">
 		<header
-			class="sticky top-0 z-30 border-b border-slate-200/80 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/85 transition-all duration-300 dark:border-slate-800/70 dark:bg-slate-950/90"
+			class="sticky top-0 z-0 border-b border-slate-200/80 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/85 transition-all duration-300 dark:border-slate-800/70 dark:bg-slate-950/90"
 		>
 			<div
 				class="mx-auto flex w-full max-w-[1600px] items-center justify-between px-4 py-3 sm:px-6 lg:px-10"
