@@ -221,13 +221,13 @@
 </script>
 
 <div
-	class="flex h-full flex-col overflow-hidden bg-gradient-to-br from-slate-50/50 to-slate-100/30 dark:from-slate-900/50 dark:to-slate-800/30 {inModal
+	class="flex h-full min-h-0 flex-col overflow-hidden bg-gradient-to-br from-slate-50/50 to-slate-100/30 dark:from-slate-900/50 dark:to-slate-800/30 {inModal
 		? 'max-h-[70vh] min-h-[500px] bg-white dark:bg-slate-800'
 		: ''}"
 >
 	<!-- PRIMARY SELECTION VIEW -->
 	{#if selectedView === 'primary'}
-		<div class="mx-auto w-full max-w-5xl flex-1 overflow-y-auto p-4 sm:p-6">
+		<div class="mx-auto w-full max-w-5xl flex-1 min-h-0 overflow-y-auto p-4 sm:p-6">
 			<!-- Header -->
 			<div class="mb-10 text-center">
 				<h2
@@ -380,7 +380,7 @@
 
 	<!-- PROJECT HUB VIEW -->
 	{#if selectedView === 'projectHub'}
-		<div class="flex h-full flex-col">
+		<div class="flex h-full min-h-0 flex-col">
 			<div
 				class="border-b border-slate-200/60 bg-white/85 px-4 py-4 backdrop-blur-md dark:border-slate-700/60 dark:bg-slate-900/80"
 			>
@@ -396,7 +396,7 @@
 					Choose whether you’re starting fresh or advancing an existing project.
 				</p>
 			</div>
-			<div class="mx-auto w-full max-w-4xl flex-1 overflow-y-auto p-5 sm:p-8">
+			<div class="mx-auto w-full max-w-4xl flex-1 min-h-0 overflow-y-auto p-5 sm:p-8">
 				<div class="grid gap-5 sm:grid-cols-2">
 					<button
 						onclick={selectProjectCreate}
@@ -479,7 +479,7 @@
 
 	<!-- PROJECT SELECTION VIEW -->
 	{#if selectedView === 'project-selection'}
-		<div class="flex h-full flex-col">
+		<div class="flex h-full min-h-0 flex-col">
 			<!-- Header with Back Button -->
 			<div
 				class="border-b border-slate-200/60 bg-white/80 px-4 py-3 backdrop-blur-sm dark:border-slate-700/60 dark:bg-slate-900/80"
@@ -500,7 +500,7 @@
 			</div>
 
 			<!-- Projects List -->
-			<div class="mx-auto w-full max-w-4xl flex-1 overflow-y-auto p-4">
+			<div class="mx-auto w-full max-w-4xl flex-1 min-h-0 overflow-y-auto p-4">
 				{#if isLoadingProjects}
 					<div class="flex items-center justify-center py-16">
 						<Loader2 class="h-8 w-8 animate-spin text-slate-400" />
@@ -608,7 +608,7 @@
 
 	<!-- MODE SELECTION VIEW -->
 	{#if selectedView === 'mode-selection' && selectedProject}
-		<div class="flex h-full flex-col">
+		<div class="flex h-full min-h-0 flex-col">
 			<!-- Header with Back Button -->
 			<div
 				class="border-b border-slate-200/60 bg-white/80 px-4 py-3 backdrop-blur-sm dark:border-slate-700/60 dark:bg-slate-900/80"
@@ -629,7 +629,7 @@
 			</div>
 
 			<!-- Mode Options -->
-			<div class="mx-auto w-full max-w-3xl flex-1 overflow-y-auto p-6">
+			<div class="mx-auto w-full max-w-3xl flex-1 min-h-0 overflow-y-auto p-6">
 				<div class="grid gap-4 sm:grid-cols-3">
 					<!-- Project Workspace -->
 					<button

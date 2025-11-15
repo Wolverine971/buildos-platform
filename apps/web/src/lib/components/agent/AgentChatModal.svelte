@@ -1414,7 +1414,7 @@
 		class="relative z-10 flex h-full flex-col overflow-hidden rounded-3xl border border-slate-200/60 bg-white/95 shadow-[0_28px_70px_-40px_rgba(15,23,42,0.5)] backdrop-blur-xl dark:border-slate-700/60 dark:bg-slate-900/90"
 	>
 		{#if !selectedContextType}
-			<div class="flex h-full flex-col overflow-hidden">
+			<div class="flex h-full min-h-0 flex-col overflow-hidden">
 				<ContextSelectionScreen inModal on:select={handleContextSelect} />
 			</div>
 		{:else}

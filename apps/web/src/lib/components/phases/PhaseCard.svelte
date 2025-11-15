@@ -1841,19 +1841,6 @@
 
 	/* Progress bar animation on mobile */
 
-	/* Edit form mobile optimization */
-	.phase-header form input,
-	.phase-header form textarea {
-		font-size: 16px; /* Prevent zoom on iOS */
-	}
-
-	@media (min-width: 640px) {
-		.phase-header form input,
-		.phase-header form textarea {
-			font-size: 14px;
-		}
-	}
-
 	/* GPU acceleration for smooth animations */
 	@supports (transform: translateZ(0)) {
 		.task-item,

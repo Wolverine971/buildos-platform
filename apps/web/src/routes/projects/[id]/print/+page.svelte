@@ -336,31 +336,6 @@
 		flex-wrap: wrap;
 	}
 
-	.badge {
-		padding: 4px 12px;
-		border-radius: 6px;
-		font-size: 14px;
-		font-weight: 500;
-		color: white;
-		display: inline-block;
-	}
-
-	.status-active {
-		background: #10b981;
-	}
-	.status-planning {
-		background: #f59e0b;
-	}
-	.status-completed {
-		background: #6366f1;
-	}
-	.status-paused {
-		background: #f59e0b;
-	}
-	.status-archived {
-		background: #6b7280;
-	}
-
 	.date {
 		font-size: 14px;
 		color: #6b7280;
@@ -559,13 +534,6 @@
 		.empty,
 		.preparing-print {
 			display: none !important;
-		}
-
-		/* Remove shadows for print */
-		.header,
-		.content,
-		.footer {
-			box-shadow: none !important;
 		}
 	}
 </style>

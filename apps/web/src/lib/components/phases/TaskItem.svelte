@@ -884,11 +884,11 @@
 	}
 
 	/* Drag handle cursor */
-	.drag-handle {
+	:global(.drag-handle) {
 		cursor: grab;
 	}
 
-	.drag-handle:active {
+	:global(.drag-handle:active) {
 		cursor: grabbing;
 	}
 

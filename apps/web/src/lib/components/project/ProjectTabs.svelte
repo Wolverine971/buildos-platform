@@ -270,7 +270,7 @@
 	}
 
 	/* Tab icon - perfectly sized and aligned */
-	.tab-icon {
+	:global(.tab-icon) {
 		width: 1rem;
 		height: 1rem;
 		flex-shrink: 0;
@@ -278,13 +278,13 @@
 	}
 
 	@media (min-width: 640px) {
-		.tab-icon {
+		:global(.tab-icon) {
 			width: 1.125rem;
 			height: 1.125rem;
 		}
 	}
 
-	.tab-active .tab-icon {
+	.tab-active :global(.tab-icon) {
 		transform: scale(1.05);
 	}
 
@@ -343,7 +343,7 @@
 	/* Reduce motion for accessibility */
 	@media (prefers-reduced-motion: reduce) {
 		.tab-button,
-		.tab-icon,
+		:global(.tab-icon),
 		.tab-badge {
 			transition: none;
 		}
@@ -352,7 +352,7 @@
 			transform: none;
 		}
 
-		.tab-active .tab-icon {
+		.tab-active :global(.tab-icon) {
 			transform: none;
 		}
 	}

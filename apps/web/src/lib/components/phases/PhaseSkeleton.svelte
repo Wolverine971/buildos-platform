@@ -105,9 +105,6 @@
 </div>
 
 <style>
-	/* Import the phase transitions CSS */
-	@import './phase-transitions.css';
-
 	/* Additional skeleton-specific styles */
 	.phases-skeleton {
 		animation: fadeIn 0.3s ease-out;

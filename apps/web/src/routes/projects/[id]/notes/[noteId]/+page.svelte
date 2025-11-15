@@ -605,9 +605,4 @@ This area will auto-save when you click away or switch focus."
 	:global(.group:hover input, .group:hover textarea, .group:hover select) {
 		border-color: rgb(156 163 175);
 	}
-
-	/* Enhanced textarea styling */
-	textarea::placeholder {
-		line-height: 1.6;
-	}
 </style>
