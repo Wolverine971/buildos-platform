@@ -18,6 +18,8 @@
 	import TextareaWithVoice from '$lib/components/ui/TextareaWithVoice.svelte';
 	import ContextSelectionScreen from '../chat/ContextSelectionScreen.svelte';
 	import ThinkingBlock from './ThinkingBlock.svelte';
+	import ProjectFocusIndicator from './ProjectFocusIndicator.svelte';
+	import ProjectFocusSelector from './ProjectFocusSelector.svelte';
 	import { SSEProcessor, type StreamCallbacks } from '$lib/utils/sse-processor';
 	import type {
 		ChatSession,
@@ -28,7 +30,7 @@
 	} from '@buildos/shared-types';
 	import { renderMarkdown, getProseClasses, hasMarkdownFormatting } from '$lib/utils/markdown';
 	// Add ontology integration imports
-	import type { LastTurnContext } from '$lib/types/agent-chat-enhancement';
+	import type { LastTurnContext, ProjectFocus } from '$lib/types/agent-chat-enhancement';
 	import type TextareaWithVoiceComponent from '$lib/components/ui/TextareaWithVoice.svelte';
 
 	interface Props {
@@ -55,6 +57,8 @@
 	let selectedContextType = $state<ChatContextType | null>(null);
 	let selectedEntityId = $state<string | undefined>(undefined);
 	let selectedContextLabel = $state<string | null>(null);
+	let projectFocus = $state<ProjectFocus | null>(null);
+	let showFocusSelector = $state(false);
 
 	const CONTEXT_DESCRIPTORS: Record<ChatContextType, { title: string; subtitle: string }> = {
 		global: {
@@ -139,6 +143,30 @@
 		return contextDescriptor?.subtitle ?? '';
 	});
 
+	function buildProjectWideFocus(projectId: string, projectName?: string | null): ProjectFocus {
+		return {
+			focusType: 'project-wide',
+			focusEntityId: null,
+			focusEntityName: null,
+			projectId,
+			projectName: projectName ?? 'Project'
+		};
+	}
+
+	const defaultProjectFocus = $derived.by<ProjectFocus | null>(() => {
+		if (selectedContextType === 'project' && selectedEntityId) {
+			return buildProjectWideFocus(selectedEntityId, selectedContextLabel);
+		}
+		return null;
+	});
+
+	const resolvedProjectFocus = $derived.by<ProjectFocus | null>(() => {
+		if (selectedContextType !== 'project') {
+			return null;
+		}
+		return projectFocus ?? defaultProjectFocus;
+	});
+
 	// Activity types for thinking block log entries
 	type ActivityType =
 		| 'tool_call' // Tool being invoked
@@ -201,6 +229,21 @@
 		status: 'active' | 'completed';
 		agentState?: AgentLoopState;
 		isCollapsed?: boolean;
+	}
+
+	function isThinkingBlockMessage(message: UIMessage): message is ThinkingBlockMessage {
+		return message.type === 'thinking_block';
+	}
+
+	function findThinkingBlockById(
+		id: string | null,
+		sourceMessages: UIMessage[]
+	): ThinkingBlockMessage | undefined {
+		if (!id) return undefined;
+		return sourceMessages.find(
+			(message): message is ThinkingBlockMessage =>
+				message.id === id && isThinkingBlockMessage(message)
+		);
 	}
 
 	// Conversation state
@@ -297,11 +340,13 @@
 		ontologyLoaded = false;
 		ontologySummary = null;
 		voiceErrorMessage = '';
+		showFocusSelector = false;
 
 		if (!preserveContext) {
 			selectedContextType = null;
 			selectedEntityId = undefined;
 			selectedContextLabel = null;
+			projectFocus = null;
 		}
 	}
 
@@ -313,12 +358,35 @@
 		selectedEntityId = detail.entityId;
 		selectedContextLabel =
 			detail.label ?? CONTEXT_DESCRIPTORS[detail.contextType]?.title ?? null;
+
+		if (detail.contextType === 'project' && detail.entityId) {
+			projectFocus = buildProjectWideFocus(detail.entityId, detail.label);
+		} else {
+			projectFocus = null;
+			showFocusSelector = false;
+		}
 	}
 
 	function changeContext() {
 		if (isStreaming) return;
 		stopVoiceInput();
 		resetConversation({ preserveContext: false });
+	}
+
+	function openFocusSelector() {
+		if (selectedContextType !== 'project' || !selectedEntityId) return;
+		showFocusSelector = true;
+	}
+
+	function handleFocusSelection(newFocus: ProjectFocus) {
+		projectFocus = newFocus;
+		addActivityMessage(`Focus updated: ${describeFocus(newFocus)}`);
+	}
+
+	function handleFocusClear() {
+		if (!defaultProjectFocus) return;
+		projectFocus = defaultProjectFocus;
+		addActivityMessage(`Focus reset to ${describeFocus(defaultProjectFocus)}.`);
 	}
 
 	// Helper: Check if user is scrolled to bottom (within threshold)
@@ -355,7 +423,8 @@
 		}
 	}
 
-	// Sticky scroll behavior: only scroll if user is at bottom
+	// Sticky scroll behavior: Only auto-scroll on new messages, not on scroll position changes
+	// This effect tracks messages.length, so it only triggers when new messages arrive
 	$effect(() => {
 		if (messages.length > 0) {
 			scrollToBottomIfNeeded();
@@ -617,18 +686,17 @@
 		});
 
 		if (dev && !matchFound) {
+			const thinkingBlock = findThinkingBlockById(currentThinkingBlockId, messages);
 			console.warn(
 				`[AgentChat] No matching tool_call found for tool_call_id: ${toolCallId}`,
 				{
 					currentThinkingBlockId,
 					status,
-					activitiesInBlock: messages
-						.find((m) => m.id === currentThinkingBlockId)
-						?.['activities']?.map((a: any) => ({
-							id: a.id,
-							toolCallId: a.toolCallId,
-							type: a.activityType
-						}))
+					activitiesInBlock: thinkingBlock?.activities.map((a) => ({
+						id: a.id,
+						toolCallId: a.toolCallId,
+						type: a.activityType
+					}))
 				}
 			);
 		}
@@ -748,7 +816,8 @@
 					context_type: selectedContextType,
 					entity_id: selectedEntityId,
 					conversation_history: conversationHistory, // Pass conversation history for compression
-					ontologyEntityType: ontologyEntityType // Pass entity type for ontology loading
+					ontologyEntityType: ontologyEntityType, // Pass entity type for ontology loading
+					projectFocus: resolvedProjectFocus
 				})
 			});
 
@@ -819,6 +888,24 @@
 							CONTEXT_DESCRIPTORS[normalizedSessionContext]?.title ??
 							selectedContextLabel;
 					}
+
+					if (
+						normalizedSessionContext === 'project' &&
+						event.session.entity_id &&
+						!projectFocus
+					) {
+						projectFocus = buildProjectWideFocus(
+							event.session.entity_id,
+							event.session.title ?? selectedContextLabel
+						);
+					}
+
+					const metadataFocus = (
+						(event.session.agent_metadata as { focus?: ProjectFocus | null }) ?? null
+					)?.focus;
+					if (metadataFocus) {
+						projectFocus = metadataFocus;
+					}
 				}
 				break;
 
@@ -841,6 +928,15 @@
 				if (dev) {
 					console.debug('[AgentChat] Stored last turn context:', lastTurnContext);
 				}
+				break;
+
+			case 'focus_active':
+				projectFocus = event.focus;
+				break;
+
+			case 'focus_changed':
+				projectFocus = event.focus;
+				addActivityMessage(`Focus changed: ${describeFocus(event.focus)}`);
 				break;
 
 			case 'agent_state': {
@@ -1042,16 +1138,18 @@
 				});
 				break;
 
-			case 'tool_result':
+			case 'tool_result': {
 				// Tool result received - update matching tool call activity
-				const resultToolCallId = event.tool_call_id;
-				const success = !event.error;
+				const toolResult = event.result;
+				const resultToolCallId = toolResult?.toolCallId;
+				const success = toolResult?.success ?? true;
+				const toolError = toolResult?.error;
 
 				if (dev) {
 					console.log('[AgentChat] Tool result:', {
 						resultToolCallId,
 						success,
-						hasError: !!event.error
+						hasError: !!toolError
 					});
 				}
 
@@ -1068,6 +1166,7 @@
 					}
 				}
 				break;
+			}
 			case 'template_creation_request': {
 				const request = event.request;
 				const realmLabel = request?.realm_suggestion || 'new realm';
@@ -1126,6 +1225,16 @@
 						shift.entity_name ??
 						CONTEXT_DESCRIPTORS[normalizedContext]?.title ??
 						selectedContextLabel;
+
+					if (normalizedContext === 'project' && shift.entity_id) {
+						projectFocus = buildProjectWideFocus(
+							shift.entity_id,
+							shift.entity_name ?? selectedContextLabel
+						);
+					} else {
+						projectFocus = null;
+						showFocusSelector = false;
+					}
 
 					if (currentSession) {
 						currentSession = {
@@ -1196,6 +1305,15 @@
 			timestamp: new Date()
 		};
 		messages = [...messages, activityMessage];
+	}
+
+	function describeFocus(focus: ProjectFocus | null): string {
+		if (!focus) return 'project workspace';
+		if (focus.focusType === 'project-wide') {
+			return `${focus.projectName} (project-wide)`;
+		}
+		const entityName = focus.focusEntityName ?? 'Selected entity';
+		return `${entityName} (${focus.focusType})`;
 	}
 
 	function addPlanMessage(plan: any) {
@@ -1331,17 +1449,17 @@
 >
 	<div
 		slot="header"
-		class="border-b border-slate-200 bg-white px-5 py-4 dark:border-slate-800 dark:bg-slate-900"
+		class="border-b border-slate-200 bg-white px-4 py-4 dark:border-slate-800 dark:bg-slate-900 sm:px-6 sm:py-5"
 	>
-		<div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-			<div class="space-y-2">
+		<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+			<div class="min-w-0 flex-1 space-y-2">
 				<p
 					class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
 				>
 					Agent chat
 				</p>
 				<div class="flex flex-wrap items-center gap-2">
-					<h2 class="text-lg font-semibold text-slate-900 dark:text-white">
+					<h2 class="text-lg font-semibold text-slate-900 dark:text-white sm:text-xl">
 						BuildOS Assistant
 					</h2>
 					{#if selectedContextType}
@@ -1357,20 +1475,27 @@
 						{displayContextSubtitle}
 					</p>
 				{/if}
+				{#if resolvedProjectFocus}
+					<ProjectFocusIndicator
+						focus={resolvedProjectFocus}
+						onChangeFocus={openFocusSelector}
+						onClearFocus={handleFocusClear}
+					/>
+				{/if}
 				{#if ontologyLoaded || agentStateLabel || currentActivity}
 					<div
-						class="flex flex-wrap items-center gap-3 text-xs text-slate-500 dark:text-slate-400"
+						class="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400 sm:gap-3"
 					>
 						{#if ontologyLoaded}
 							<span
-								class="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium uppercase tracking-wide dark:bg-slate-800 dark:text-slate-200"
+								class="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium uppercase tracking-wide dark:bg-slate-800 dark:text-slate-200"
 							>
 								Ontology ready
 							</span>
 						{/if}
 						{#if agentStateLabel}
 							<span
-								class="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium uppercase tracking-wide dark:bg-slate-800 dark:text-slate-200"
+								class="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium uppercase tracking-wide dark:bg-slate-800 dark:text-slate-200"
 							>
 								{agentStateLabel}
 							</span>
@@ -1380,18 +1505,18 @@
 								<span
 									class="inline-flex h-2 w-2 animate-pulse rounded-full bg-emerald-500"
 								></span>
-								{currentActivity}
+								<span class="truncate">{currentActivity}</span>
 							</span>
 						{/if}
 					</div>
 				{/if}
 			</div>
-			<div class="flex items-center gap-2">
+			<div class="flex shrink-0 items-center gap-2">
 				{#if selectedContextType}
 					<Button
 						variant="ghost"
 						size="sm"
-						class="rounded-full border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-70 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+						class="whitespace-nowrap rounded-full border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-70 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
 						disabled={isStreaming}
 						onclick={changeContext}
 					>
@@ -1402,7 +1527,7 @@
 					variant="ghost"
 					size="sm"
 					icon={X}
-					class="rounded-full px-2 py-2 text-sm font-medium text-slate-500 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+					class="rounded-full px-2 py-2 text-sm font-medium text-slate-500 transition-colors hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
 					aria-label="Close chat"
 					onclick={handleClose}
 				/>
@@ -1425,19 +1550,28 @@
 			>
 				{#if messages.length === 0}
 					<div
-						class="rounded-2xl border border-dashed border-slate-200 bg-white px-5 py-6 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
+						class="rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-5 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 sm:px-6 sm:py-6"
 					>
 						<p class="font-semibold text-slate-900 dark:text-white">
 							You're set to chat.
 						</p>
-						<p class="mt-2">
+						<p class="mt-2 leading-relaxed">
 							Ask the agent to plan, explain, or take the next step for
 							{displayContextLabel.toLowerCase()}.
 						</p>
-						<ul class="mt-4 space-y-1 text-slate-500 dark:text-slate-400">
-							<li>- Summarize where this stands</li>
-							<li>- Draft the next update</li>
-							<li>- What should we do next?</li>
+						<ul class="mt-4 space-y-1.5 text-slate-500 dark:text-slate-400">
+							<li class="flex items-start gap-2">
+								<span class="mt-0.5 text-slate-400">•</span>
+								<span>Summarize where this stands</span>
+							</li>
+							<li class="flex items-start gap-2">
+								<span class="mt-0.5 text-slate-400">•</span>
+								<span>Draft the next update</span>
+							</li>
+							<li class="flex items-start gap-2">
+								<span class="mt-0.5 text-slate-400">•</span>
+								<span>What should we do next?</span>
+							</li>
 						</ul>
 					</div>
 				{:else}
@@ -1445,25 +1579,25 @@
 						{#if message.type === 'user'}
 							<div class="flex justify-end">
 								<div
-									class="max-w-[80%] rounded-2xl bg-slate-900 px-4 py-3 text-sm text-white shadow-sm dark:bg-slate-100 dark:text-slate-900"
+									class="max-w-[85%] rounded-2xl bg-slate-900 px-4 py-3 text-sm text-white shadow-sm dark:bg-slate-100 dark:text-slate-900 sm:max-w-[80%]"
 								>
 									<div class="whitespace-pre-wrap break-words leading-relaxed">
 										{message.content}
 									</div>
-									<div class="mt-1 text-xs text-white/70 dark:text-slate-500">
+									<div class="mt-1.5 text-xs text-white/70 dark:text-slate-500">
 										{formatTime(message.timestamp)}
 									</div>
 								</div>
 							</div>
 						{:else if message.type === 'assistant'}
-							<div class="flex gap-3">
+							<div class="flex gap-2 sm:gap-3">
 								<div
-									class="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-xs font-semibold uppercase text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+									class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-xs font-semibold uppercase text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 sm:h-9 sm:w-9"
 								>
 									AI
 								</div>
 								<div
-									class="max-w-[85%] rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-relaxed text-slate-900 shadow-sm dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-100"
+									class="max-w-[85%] rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-relaxed text-slate-900 shadow-sm dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-100 sm:max-w-[85%]"
 								>
 									{#if shouldRenderAsMarkdown(message.content)}
 										<div class={proseClasses}>
@@ -1474,7 +1608,7 @@
 											{message.content}
 										</div>
 									{/if}
-									<div class="mt-1 text-xs text-slate-500 dark:text-slate-400">
+									<div class="mt-1.5 text-xs text-slate-500 dark:text-slate-400">
 										{formatTime(message.timestamp)}
 									</div>
 								</div>
@@ -1486,14 +1620,14 @@
 								onToggleCollapse={toggleThinkingBlockCollapse}
 							/>
 						{:else if message.type === 'clarification'}
-							<div class="flex gap-3">
+							<div class="flex gap-2 sm:gap-3">
 								<div
-									class="flex h-9 w-9 items-center justify-center rounded-full border border-blue-200 bg-white text-xs font-semibold uppercase text-blue-600 dark:border-blue-500/40 dark:bg-slate-800 dark:text-blue-300"
+									class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-blue-200 bg-white text-xs font-semibold uppercase text-blue-600 dark:border-blue-500/40 dark:bg-slate-800 dark:text-blue-300 sm:h-9 sm:w-9"
 								>
 									AI
 								</div>
 								<div
-									class="max-w-[85%] rounded-2xl border border-blue-200 bg-blue-50/80 px-4 py-4 text-sm leading-relaxed text-slate-900 shadow-sm dark:border-blue-500/40 dark:bg-blue-500/5 dark:text-slate-100"
+									class="max-w-[90%] rounded-2xl border border-blue-200 bg-blue-50/80 px-4 py-4 text-sm leading-relaxed text-slate-900 shadow-sm dark:border-blue-500/40 dark:bg-blue-500/5 dark:text-slate-100 sm:max-w-[85%]"
 								>
 									<p class="text-sm font-semibold text-slate-900 dark:text-white">
 										{message.content}
@@ -1501,16 +1635,16 @@
 
 									{#if message.data?.questions?.length}
 										<ol
-											class="mt-3 space-y-2 text-[15px] text-slate-700 dark:text-slate-200"
+											class="mt-3 space-y-2.5 text-[15px] text-slate-700 dark:text-slate-200"
 										>
 											{#each message.data.questions as question, i}
-												<li class="flex gap-3 font-medium leading-snug">
+												<li class="flex gap-2.5 font-medium leading-snug sm:gap-3">
 													<span
-														class="flex h-6 w-6 items-center justify-center rounded-full bg-white text-xs font-semibold text-blue-600 shadow dark:bg-slate-900 dark:text-blue-300"
+														class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white text-xs font-semibold text-blue-600 shadow dark:bg-slate-900 dark:text-blue-300"
 													>
 														{i + 1}
 													</span>
-													<span class="flex-1">{question}</span>
+													<span class="min-w-0 flex-1">{question}</span>
 												</li>
 											{/each}
 										</ol>
@@ -1758,6 +1892,17 @@
 		{/if}
 	</div>
 </Modal>
+
+{#if selectedContextType === 'project' && selectedEntityId && resolvedProjectFocus}
+	<ProjectFocusSelector
+		isOpen={showFocusSelector}
+		projectId={selectedEntityId}
+		projectName={resolvedProjectFocus.projectName}
+		currentFocus={resolvedProjectFocus}
+		onSelect={handleFocusSelection}
+		onClose={() => (showFocusSelector = false)}
+	/>
+{/if}
 
 <style>
 	/* Scrollbar Styling */

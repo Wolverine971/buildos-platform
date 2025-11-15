@@ -25,14 +25,15 @@ import { CHAT_TOOLS, getToolsForContextType } from '$lib/chat/tools.config';
 import { getToolsForAgent } from '@buildos/shared-types';
 import { ChatCompressionService } from './chat-compression-service';
 import { ChatContextService } from './chat-context-service';
-// Add after line 27 (after existing imports)
-import { OntologyContextLoader } from './ontology-context-loader';
 import { generateProjectContextFramework } from './prompts/core/prompt-components';
 import type {
 	LastTurnContext,
 	OntologyContext,
 	EnhancedPlannerContext,
-	EnhancedBuildPlannerContextParams
+	EnhancedBuildPlannerContextParams,
+	ProjectFocus,
+	OntologyEntityType,
+	OntologyContextScope
 } from '$lib/types/agent-chat-enhancement';
 import { getAvailableTemplates } from './ontology/template-resolver.service';
 
@@ -60,6 +61,8 @@ export interface PlannerContext {
 		totalTokens: number;
 		hasOntology: boolean;
 		plannerAgentId?: string;
+		focus?: ProjectFocus | null;
+		scope?: OntologyContextScope;
 	};
 }
 
@@ -172,12 +175,14 @@ export class AgentContextService {
 		// Check if we have enhanced params with ontology
 		const lastTurnContext = 'lastTurnContext' in params ? params.lastTurnContext : undefined;
 		const ontologyContext = 'ontologyContext' in params ? params.ontologyContext : undefined;
+		const projectFocus = 'projectFocus' in params ? (params.projectFocus ?? null) : null;
 
 		console.log('[AgentContext] Building enhanced planner context', {
 			contextType,
 			hasOntology: !!ontologyContext,
 			hasLastTurn: !!lastTurnContext,
-			historyLength: conversationHistory.length
+			historyLength: conversationHistory.length,
+			hasFocus: !!projectFocus
 		});
 
 		// Step 1: Build system prompt with ontology awareness
@@ -209,6 +214,14 @@ export class AgentContextService {
 			console.log('[AgentContext] Using template overview for project_create', {
 				template_count: locationMetadata.template_count
 			});
+		} else if (ontologyContext?.type === 'combined' && projectFocus) {
+			const formatted = this.formatCombinedContext(ontologyContext, projectFocus);
+			locationContext = formatted.content;
+			locationMetadata = formatted.metadata;
+			console.log('[AgentContext] Using combined focus context', {
+				focusType: projectFocus.focusType,
+				entityId: projectFocus.focusEntityId
+			});
 		} else if (ontologyContext) {
 			// Ontology path: Format pre-loaded ontology context
 			// Used when entity-specific or project-specific context is available
@@ -235,7 +248,8 @@ export class AgentContextService {
 		}
 
 		// Step 4: Get tools appropriate for context
-		const availableTools = await this.getContextTools(normalizedContext, ontologyContext);
+		const rawTools = await this.getContextTools(normalizedContext, ontologyContext);
+		const availableTools = this.filterToolsForFocus(rawTools, projectFocus);
 
 		// Step 5: Calculate token usage
 		const totalTokens = this.calculateTokens([
@@ -259,6 +273,8 @@ export class AgentContextService {
 		// Load user profile
 		const userProfileData = await this.loadUserProfile(userId);
 		const userProfileStr = userProfileData?.summary;
+		const contextScope =
+			ontologyContext?.scope ?? (entityId ? { projectId: entityId } : undefined);
 
 		return {
 			systemPrompt,
@@ -274,7 +290,9 @@ export class AgentContextService {
 				contextType: normalizedContext,
 				entityId,
 				totalTokens,
-				hasOntology: !!ontologyContext
+				hasOntology: !!ontologyContext,
+				focus: projectFocus ?? null,
+				scope: contextScope
 			}
 		};
 	}
@@ -328,8 +346,14 @@ Analyze each request and choose the appropriate strategy:
 		// Special handling for project context workspace
 		if (contextType === 'project' || ontologyContext?.type === 'project') {
 			const projectName =
-				(ontologyContext?.data?.name as string | undefined) ?? 'current project';
-			const projectIdentifier = ontologyContext?.data?.id || entityId || 'not provided';
+				ontologyContext?.entities.project?.name ??
+				ontologyContext?.scope?.projectName ??
+				'current project';
+			const projectIdentifier =
+				ontologyContext?.entities.project?.id ||
+				ontologyContext?.scope?.projectId ||
+				entityId ||
+				'not provided';
 			prompt += `
 
 ## Project Workspace Operating Guide
@@ -461,13 +485,14 @@ ${entityHighlights.length > 0 ? entityHighlights.map((line) => `- ${line}`).join
 
 		// Add ontology-specific context for projects
 		if (ontologyContext?.type === 'project') {
+			const project = ontologyContext.entities.project;
 			prompt += `
 
 ## Project Ontology Context
-- Project ID: ${ontologyContext.data.id}
-- Project Name: ${ontologyContext.data.name}
-- State: ${ontologyContext.data.state_key || 'active'}
-- Type: ${ontologyContext.data.type_key || 'standard'}`;
+- Project ID: ${project?.id ?? 'unknown'}
+- Project Name: ${project?.name ?? 'Unnamed project'}
+- State: ${project?.state_key || 'active'}
+- Type: ${project?.type_key || 'standard'}`;
 
 			if (ontologyContext.metadata?.facets) {
 				prompt += `
@@ -499,17 +524,22 @@ ${entityHighlights.length > 0 ? entityHighlights.map((line) => `- ${line}`).join
 
 		// Add ontology-specific context for elements
 		if (ontologyContext?.type === 'element') {
+			const elementType =
+				ontologyContext.scope?.focus?.type ?? this.detectElementType(ontologyContext);
+			const element = this.getScopedEntity(ontologyContext, elementType);
+			const parentProject = ontologyContext.entities.project;
+
 			prompt += `
 
 ## Element Ontology Context
-- Element Type: ${ontologyContext.data.element_type}
-- Element ID: ${ontologyContext.data.element?.id}
-- Element Name: ${ontologyContext.data.element?.name || 'Unnamed'}`;
+- Element Type: ${elementType || 'element'}
+- Element ID: ${element?.id ?? 'unknown'}
+- Element Name: ${this.getEntityName(element)}`;
 
-			if (ontologyContext.data.parent_project) {
+			if (parentProject) {
 				prompt += `
-- Parent Project: ${ontologyContext.data.parent_project.name} (${ontologyContext.data.parent_project.id})
-- Project State: ${ontologyContext.data.parent_project.state}`;
+- Parent Project: ${parentProject.name} (${parentProject.id})
+- Project State: ${parentProject.state_key ?? 'unknown'}`;
 			}
 
 			prompt += `
@@ -523,12 +553,28 @@ ${entityHighlights.length > 0 ? entityHighlights.map((line) => `- ${line}`).join
 
 		// Add global context
 		if (ontologyContext?.type === 'global') {
+			const totalProjects =
+				ontologyContext.metadata?.total_projects ??
+				ontologyContext.entities.projects?.length ??
+				0;
+			const recent = ontologyContext.entities.projects ?? [];
+			const entityTypes = ontologyContext.metadata?.available_entity_types ?? [];
+
 			prompt += `
 
 ## Global Ontology Context
-- Total Projects: ${ontologyContext.data.total_projects}
-- Recent Projects: ${ontologyContext.data.recent_projects?.length || 0} loaded
-- Available Entity Types: ${ontologyContext.data.available_types.join(', ')}`;
+- Total Projects: ${totalProjects}
+- Recent Projects: ${recent.length} loaded
+- Available Entity Types: ${entityTypes.join(', ') || 'project'}`;
+
+			if (recent.length > 0) {
+				prompt += `
+- Recent Projects:
+${recent
+	.map((project) => `  - ${project.name} (${project.state_key}) · ${project.type_key}`)
+	.slice(0, 5)
+	.join('\n')}`;
+			}
 
 			if (ontologyContext.metadata?.entity_count) {
 				prompt += `
@@ -662,13 +708,14 @@ ${Object.entries(ontologyContext.metadata.entity_count)
 		let content = `## Ontology Context (${ontology.type})\n\n`;
 
 		if (ontology.type === 'project') {
+			const project = ontology.entities.project;
 			content += `### Project Information
-- ID: ${ontology.data.id}
-- Name: ${ontology.data.name}
-- Description: ${ontology.data.description || 'No description'}
-- State: ${ontology.data.state_key}
-- Type: ${ontology.data.type_key}
-- Created: ${ontology.data.created_at || 'Unknown'}
+- ID: ${project?.id ?? 'unknown'}
+- Name: ${project?.name ?? 'No name'}
+- Description: ${project?.description || 'No description'}
+- State: ${project?.state_key ?? 'n/a'}
+- Type: ${project?.type_key ?? 'n/a'}
+- Created: ${project?.created_at || 'Unknown'}
 
 ### Entity Summary
 ${
@@ -692,22 +739,24 @@ ${(ontology?.relationships?.edges?.length ?? 0) > 5 ? `... and ${(ontology?.rela
 - Use get_entity_relationships for full graph
 - Use get_onto_project_details for complete information`;
 		} else if (ontology.type === 'element') {
-			const elem = ontology.data.element;
+			const elementType = ontology.scope?.focus?.type ?? this.detectElementType(ontology);
+			const elem = this.getScopedEntity(ontology, elementType);
+			const parentProject = ontology.entities.project;
 			content += `### Element Information
-- Type: ${ontology.data.element_type}
-- ID: ${elem?.id}
-- Name: ${elem?.name || 'Unnamed'}
+- Type: ${elementType || 'element'}
+- ID: ${elem?.id ?? 'unknown'}
+- Name: ${this.getEntityName(elem)}
 - Status: ${elem?.status || elem?.state_key || 'Unknown'}
 
 ### Element Details
-${elem?.description ? `Description: ${elem.description.substring(0, 200)}...` : 'No description'}
+${elem?.description ? `Description: ${(elem.description as string).substring(0, 200)}...` : 'No description'}
 ${elem?.props ? `Properties: ${Object.keys(elem.props).join(', ')}` : ''}
 
 ### Parent Project
 ${
-	ontology.data.parent_project
-		? `- ${ontology.data.parent_project.name} (${ontology.data.parent_project.id})
-- Project State: ${ontology.data.parent_project.state}`
+	parentProject
+		? `- ${parentProject.name} (${parentProject.id})
+- Project State: ${parentProject.state_key}`
 		: '- No parent project found (orphaned element)'
 }
 
@@ -726,14 +775,18 @@ ${
 - Use get_onto_project_details for full project context
 - Use get_entity_relationships for connected items`;
 		} else if (ontology.type === 'global') {
+			const totalProjects =
+				ontology.metadata?.total_projects ?? ontology.entities.projects?.length ?? 0;
+			const availableTypes = ontology.metadata?.available_entity_types ?? [];
+			const recentProjects = ontology.entities.projects ?? [];
 			content += `### Global Overview
-- Total Projects: ${ontology.data.total_projects}
-- Available Entity Types: ${ontology.data.available_types.join(', ')}
+- Total Projects: ${totalProjects}
+- Available Entity Types: ${availableTypes.join(', ') || 'project'}
 
 ### Recent Projects
 ${
-	ontology.data.recent_projects
-		?.slice(0, 5)
+	recentProjects
+		.slice(0, 5)
 		.map((p: any) => `- ${p.name} (${p.state_key}) - ${p.type_key}`)
 		.join('\n') || 'No recent projects'
 }
@@ -757,6 +810,93 @@ ${
 		};
 	}
 
+	private formatCombinedContext(
+		ontology: OntologyContext,
+		focus: ProjectFocus
+	): {
+		content: string;
+		metadata: any;
+	} {
+		const project = ontology.entities.project;
+		const element =
+			focus.focusType === 'project-wide'
+				? undefined
+				: this.getScopedEntity(ontology, focus.focusType);
+		const relationships = ontology.relationships?.edges ?? [];
+		const elementName =
+			focus.focusEntityName ?? this.getEntityName(element) ?? 'Focused entity';
+		const elementState =
+			(element as Record<string, any> | undefined)?.state_key ??
+			(element as Record<string, any> | undefined)?.status ??
+			(element as Record<string, any> | undefined)?.type_key ??
+			'n/a';
+		const elementDue =
+			(element as Record<string, any> | undefined)?.due_at ??
+			(element as Record<string, any> | undefined)?.target_date ??
+			null;
+		const projectName = project?.name ?? focus.projectName;
+		const projectState = project?.state_key ?? 'n/a';
+		const projectType = project?.type_key ?? 'n/a';
+		const relationshipSummary = relationships
+			.slice(0, 8)
+			.map(
+				(edge) =>
+					`- ${edge.relation} → ${edge.target_kind} (${edge.target_id}${edge.target_name ? ` · ${edge.target_name}` : ''})`
+			)
+			.join('\n');
+
+		const sections: string[] = [];
+		sections.push(`## Project Workspace: ${projectName}
+- ID: ${project?.id ?? focus.projectId}
+- State: ${projectState}
+- Type: ${projectType}`);
+
+		let focusSection = `## Current Focus (${focus.focusType})
+- Name: ${elementName}
+- ID: ${focus.focusEntityId ?? 'n/a'}
+- State: ${elementState}`;
+		if (elementDue) {
+			focusSection += `\n- Due: ${elementDue}`;
+		}
+		if (element && element.description) {
+			focusSection += `\n\n${String(element.description).slice(0, 400)}`;
+		}
+
+		sections.push(focusSection);
+
+		const elementProps = (element as Record<string, any> | undefined)?.props as
+			| Record<string, any>
+			| undefined;
+		if (elementProps && Object.keys(elementProps).length > 0) {
+			const propKeys = Object.keys(elementProps).slice(0, 5);
+			sections.push(
+				`### Focus Metadata
+${propKeys.map((key) => `- ${key}: ${JSON.stringify(elementProps[key])}`).join('\n')}`
+			);
+		}
+
+		if (relationshipSummary) {
+			sections.push(`### Relationships\n${relationshipSummary}`);
+		}
+
+		sections.push(
+			'---\nFocus is scoped to this entity. Keep project awareness while prioritizing actions for the focus target.'
+		);
+
+		return {
+			content: sections.filter(Boolean).join('\n\n'),
+			metadata: {
+				...(ontology.metadata ?? {}),
+				focus_summary: {
+					type: focus.focusType,
+					entityId: focus.focusEntityId,
+					entityName: elementName,
+					projectId: focus.projectId
+				}
+			}
+		};
+	}
+
 	/**
 	 * Get tools appropriate for the context
 	 * Now ontology-first: uses onto_* tools when ontology context is available
@@ -768,6 +908,29 @@ ${
 		const normalized = this.normalizeContextType(contextType);
 		const tools = getToolsForContextType(normalized as Exclude<ChatContextType, 'general'>);
 		return getToolsForAgent(tools, 'read_write');
+	}
+
+	private filterToolsForFocus(
+		tools: ChatToolDefinition[],
+		focus: ProjectFocus | null
+	): ChatToolDefinition[] {
+		if (!focus || focus.focusType === 'project-wide') {
+			return tools;
+		}
+
+		const focusType = focus.focusType;
+		const otherTypes = ['task', 'goal', 'plan', 'document', 'output', 'milestone'].filter(
+			(type) => type !== focusType
+		);
+
+		return tools.filter((tool) => {
+			const toolName = tool.function?.name ? tool.function.name.toLowerCase() : '';
+			if (!toolName) return true;
+			if (toolName.startsWith('list_') || toolName.startsWith('get_')) return true;
+			if (toolName.includes('project')) return true;
+			if (toolName.includes(`_${focusType}`)) return true;
+			return !otherTypes.some((type) => toolName.includes(`_${type}`));
+		});
 	}
 
 	/**
@@ -1483,6 +1646,50 @@ Apply this structure when generating the \`context_document.body_markdown\` in \
 		if (relevantData) total += this.estimateTokens(JSON.stringify(relevantData));
 
 		return total;
+	}
+
+	private detectElementType(
+		ontology: OntologyContext
+	): Exclude<OntologyEntityType, 'project'> | undefined {
+		if (ontology.scope?.focus?.type) {
+			return ontology.scope.focus.type;
+		}
+
+		const candidates: Exclude<OntologyEntityType, 'project'>[] = [
+			'task',
+			'goal',
+			'plan',
+			'document',
+			'output',
+			'milestone'
+		];
+
+		return candidates.find((type) => !!this.getScopedEntity(ontology, type));
+	}
+
+	private getScopedEntity(
+		ontology: OntologyContext,
+		type?: OntologyEntityType | ProjectFocus['focusType']
+	): Record<string, any> | undefined {
+		if (!type || type === 'project-wide') {
+			return undefined;
+		}
+		return (ontology.entities as Record<string, any>)[type];
+	}
+
+	private getEntityName(entity?: Record<string, any> | null): string {
+		if (!entity) {
+			return 'Unnamed';
+		}
+
+		return (
+			entity.name ||
+			entity.title ||
+			entity.summary ||
+			entity.display_name ||
+			entity.id ||
+			'Unnamed'
+		);
 	}
 
 	private normalizeContextType(

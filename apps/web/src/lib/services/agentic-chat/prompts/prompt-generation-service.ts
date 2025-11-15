@@ -102,9 +102,9 @@ Analyze each request and choose the appropriate strategy:
 		ontologyContext?: OntologyContext,
 		entityId?: string
 	): string {
-		const projectName =
-			(ontologyContext?.data?.name as string | undefined) ?? 'current project';
-		const projectIdentifier = ontologyContext?.data?.id || entityId || 'not provided';
+		const project = ontologyContext?.entities?.project;
+		const projectName = (project?.name as string | undefined) ?? 'current project';
+		const projectIdentifier = project?.id || entityId || 'not provided';
 
 		return `
 
@@ -196,13 +196,14 @@ ${entityHighlights.length > 0 ? entityHighlights.map((line) => `- ${line}`).join
 
 		// Project context
 		if (ontologyContext.type === 'project') {
+			const project = ontologyContext.entities.project;
 			prompt += `
 
 ## Project Ontology Context
-- Project ID: ${ontologyContext.data.id}
-- Project Name: ${ontologyContext.data.name}
-- State: ${ontologyContext.data.state_key || 'active'}
-- Type: ${ontologyContext.data.type_key || 'standard'}`;
+- Project ID: ${project?.id ?? 'unknown'}
+- Project Name: ${project?.name ?? 'Unnamed project'}
+- State: ${project?.state_key || 'active'}
+- Type: ${project?.type_key || 'standard'}`;
 
 			if (ontologyContext.metadata?.facets) {
 				prompt += `
@@ -220,27 +221,36 @@ ${entityHighlights.length > 0 ? entityHighlights.map((line) => `- ${line}`).join
 
 		// Element context
 		if (ontologyContext.type === 'element') {
+			const elementType = this.detectElementType(ontologyContext);
+			const element = this.getScopedEntity(ontologyContext, elementType);
+			const parentProject = ontologyContext.entities.project;
 			prompt += `
 
 ## Element Ontology Context
-- Element Type: ${ontologyContext.data.element_type}
-- Element ID: ${ontologyContext.data.element?.id}
-- Element Name: ${ontologyContext.data.element?.name || 'Unnamed'}`;
+- Element Type: ${elementType || 'element'}
+- Element ID: ${element?.id ?? 'unknown'}
+- Element Name: ${this.getEntityName(element)}`;
 
-			if (ontologyContext.data.parent_project) {
+			if (parentProject) {
 				prompt += `
-- Parent Project: ${ontologyContext.data.parent_project.name} (${ontologyContext.data.parent_project.id})`;
+- Parent Project: ${parentProject.name} (${parentProject.id})`;
 			}
 		}
 
 		// Global context
 		if (ontologyContext.type === 'global') {
+			const totalProjects =
+				ontologyContext.metadata?.total_projects ??
+				ontologyContext.entities.projects?.length ??
+				0;
+			const recentProjects = ontologyContext.entities.projects ?? [];
+			const entityTypes = ontologyContext.metadata?.available_entity_types ?? [];
 			prompt += `
 
 ## Global Ontology Context
-- Total Projects: ${ontologyContext.data.total_projects}
-- Recent Projects: ${ontologyContext.data.recent_projects?.length || 0} loaded
-- Available Entity Types: ${ontologyContext.data.available_types.join(', ')}`;
+- Total Projects: ${totalProjects}
+- Recent Projects: ${recentProjects.length} loaded
+- Available Entity Types: ${entityTypes.join(', ') || 'project'}`;
 		}
 
 		return prompt;
@@ -272,6 +282,36 @@ ${entityHighlights.length > 0 ? entityHighlights.map((line) => `- ${line}`).join
 		}
 
 		return lines;
+	}
+
+	private detectElementType(ontology?: OntologyContext): string | undefined {
+		if (!ontology) return undefined;
+		if (ontology.scope?.focus?.type) {
+			return ontology.scope.focus.type;
+		}
+
+		const candidates = ['task', 'goal', 'plan', 'document', 'output', 'milestone'];
+		return candidates.find((type) => !!this.getScopedEntity(ontology, type));
+	}
+
+	private getScopedEntity(
+		ontology: OntologyContext,
+		type?: string
+	): Record<string, any> | undefined {
+		if (!type) return undefined;
+		return (ontology.entities as Record<string, any>)[type];
+	}
+
+	private getEntityName(entity?: Record<string, any> | null): string {
+		if (!entity) return 'Unnamed';
+		return (
+			entity.name ||
+			entity.title ||
+			entity.summary ||
+			entity.display_name ||
+			entity.id ||
+			'Unnamed'
+		);
 	}
 
 	/**

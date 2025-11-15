@@ -6,19 +6,64 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@buildos/shared-types';
-import type { OntologyContext, EntityRelationships } from '$lib/types/agent-chat-enhancement';
+import type {
+	OntologyContext,
+	EntityRelationships,
+	OntologyEntityType
+} from '$lib/types/agent-chat-enhancement';
+
+type ProjectRow = Database['public']['Tables']['onto_projects']['Row'];
+type ElementType = Exclude<OntologyEntityType, 'project'>;
+
+type ElementRowMap = {
+	task: Database['public']['Tables']['onto_tasks']['Row'];
+	plan: Database['public']['Tables']['onto_plans']['Row'];
+	goal: Database['public']['Tables']['onto_goals']['Row'];
+	document: Database['public']['Tables']['onto_documents']['Row'];
+	output: Database['public']['Tables']['onto_outputs']['Row'];
+	milestone: Database['public']['Tables']['onto_milestones']['Row'];
+};
+
+type ElementTableNameMap = {
+	[K in ElementType]: `onto_${K extends 'document'
+		? 'documents'
+		: K extends 'goal'
+			? 'goals'
+			: K extends 'plan'
+				? 'plans'
+				: K extends 'task'
+					? 'tasks'
+					: K extends 'output'
+						? 'outputs'
+						: 'milestones'}`;
+};
+
+type ContextEntityMap = Partial<Record<ElementType, ElementRowMap[ElementType]>> & {
+	project?: ProjectRow;
+};
+
+type OntologyEntityRow = ProjectRow | ElementRowMap[ElementType];
 
 export class OntologyContextLoader {
 	// Simple in-memory cache with TTL
-	private cache = new Map<string, { data: any; timestamp: number }>();
+	private cache = new Map<string, { data: OntologyContext; timestamp: number }>();
 	private readonly CACHE_TTL = 60000; // 1 minute cache
 
 	constructor(private supabase: SupabaseClient<Database>) {}
 
+	private static readonly ELEMENT_TABLE_MAP: ElementTableNameMap = {
+		task: 'onto_tasks',
+		plan: 'onto_plans',
+		goal: 'onto_goals',
+		document: 'onto_documents',
+		output: 'onto_outputs',
+		milestone: 'onto_milestones'
+	} as const;
+
 	/**
 	 * Get cached data if still valid
 	 */
-	private getCached<T>(key: string): T | null {
+	private getCached<T extends OntologyContext>(key: string): T | null {
 		const cached = this.cache.get(key);
 		if (!cached) return null;
 
@@ -34,7 +79,7 @@ export class OntologyContextLoader {
 	/**
 	 * Set cache with current timestamp
 	 */
-	private setCache(key: string, data: any): void {
+	private setCache(key: string, data: OntologyContext): void {
 		this.cache.set(key, {
 			data,
 			timestamp: Date.now()
@@ -60,7 +105,7 @@ export class OntologyContextLoader {
 		// Get recent projects
 		const { data: projects, error: projectError } = await this.supabase
 			.from('onto_projects')
-			.select('id, name, description, state_key, type_key')
+			.select('*')
 			.limit(10)
 			.order('created_at', { ascending: false });
 
@@ -78,14 +123,15 @@ export class OntologyContextLoader {
 
 		return {
 			type: 'global',
-			data: {
-				recent_projects: projects || [],
-				total_projects: totalProjects || 0,
-				available_types: ['project', 'task', 'plan', 'goal', 'document', 'output']
+			entities: {
+				projects: projects || []
 			},
 			metadata: {
 				entity_count: entityCounts,
-				last_updated: new Date().toISOString()
+				last_updated: new Date().toISOString(),
+				total_projects: totalProjects || 0,
+				available_entity_types: ['project', 'task', 'plan', 'goal', 'document', 'output'],
+				recent_project_ids: (projects || []).map((project) => project.id)
 			}
 		};
 	}
@@ -129,14 +175,8 @@ export class OntologyContextLoader {
 
 		const context: OntologyContext = {
 			type: 'project',
-			data: {
-				id: project.id,
-				name: project.name,
-				description: project.description,
-				state_key: project.state_key,
-				type_key: project.type_key,
-				props: project.props,
-				created_at: project.created_at
+			entities: {
+				project
 			},
 			relationships,
 			metadata: {
@@ -144,6 +184,10 @@ export class OntologyContextLoader {
 				context_document_id: contextDocumentId,
 				facets: facets,
 				last_updated: new Date().toISOString()
+			},
+			scope: {
+				projectId: project.id,
+				projectName: project.name
 			}
 		};
 
@@ -157,7 +201,7 @@ export class OntologyContextLoader {
 	 * Load element-specific context (task, goal, plan, etc.)
 	 */
 	async loadElementContext(
-		elementType: 'task' | 'plan' | 'goal' | 'document' | 'output',
+		elementType: ElementType,
 		elementId: string
 	): Promise<OntologyContext> {
 		console.log('[OntologyLoader] Loading element context:', elementType, elementId);
@@ -175,23 +219,106 @@ export class OntologyContextLoader {
 		// Load element relationships
 		const relationships = await this.loadElementRelationships(elementId);
 
+		const entities: OntologyContext['entities'] = {};
+		const singularEntities = this.asContextEntityMap(entities);
+		singularEntities[elementType] = element;
+
+		if (parentProject) {
+			singularEntities.project = parentProject;
+		}
+
 		return {
 			type: 'element',
-			data: {
-				element_type: elementType,
-				element: element,
-				parent_project: parentProject
-					? {
-							id: parentProject.id,
-							name: parentProject.name,
-							state: parentProject.state_key
-						}
-					: null
-			},
+			entities,
 			relationships,
 			metadata: {
 				hierarchy_level: await this.getHierarchyLevel(elementId),
 				last_updated: new Date().toISOString()
+			},
+			scope: {
+				projectId: parentProject?.id,
+				projectName: parentProject?.name,
+				focus: {
+					type: elementType,
+					id: element.id,
+					name: this.getEntityDisplayName(element, elementType)
+				}
+			}
+		};
+	}
+
+	/**
+	 * Load combined project + element context for focus mode
+	 */
+	async loadCombinedProjectElementContext(
+		projectId: string,
+		elementType: 'task' | 'goal' | 'plan' | 'document' | 'output' | 'milestone',
+		elementId: string
+	): Promise<OntologyContext> {
+		console.log('[OntologyLoader] Loading combined context', {
+			projectId,
+			elementType,
+			elementId
+		});
+
+		const [projectContext, elementContext] = await Promise.all([
+			this.loadProjectContext(projectId),
+			this.loadElementContext(elementType, elementId)
+		]);
+
+		if (
+			elementContext.data?.parent_project?.id &&
+			elementContext.data.parent_project.id !== projectId
+		) {
+			console.warn(
+				'[OntologyLoader] Focus element parent mismatch. Expected project',
+				projectId,
+				'but found',
+				elementContext.data.parent_project.id
+			);
+		}
+
+		const combinedEdges = [
+			...(projectContext.relationships?.edges ?? []),
+			...(elementContext.relationships?.edges ?? [])
+		];
+
+		const combinedEntities: OntologyContext['entities'] = {
+			...(projectContext.entities || {}),
+			...(elementContext.entities || {})
+		};
+
+		const focusType: ElementType = elementContext.scope?.focus?.type ?? elementType;
+		const elementEntityMap = this.asContextEntityMap(elementContext.entities);
+		const focusEntity = elementEntityMap[focusType];
+
+		if (focusEntity) {
+			const combinedEntityMap = this.asContextEntityMap(combinedEntities);
+			combinedEntityMap[focusType] = focusEntity;
+		}
+
+		return {
+			type: 'combined',
+			entities: combinedEntities,
+			relationships: {
+				edges: combinedEdges,
+				hierarchy_level: Math.max(
+					projectContext.relationships?.hierarchy_level ?? 0,
+					elementContext.relationships?.hierarchy_level ?? 1
+				)
+			},
+			metadata: {
+				...projectContext.metadata,
+				...elementContext.metadata
+			},
+			scope: {
+				projectId: projectContext.scope?.projectId ?? projectId,
+				projectName: projectContext.scope?.projectName,
+				focus: elementContext.scope?.focus ?? {
+					type: focusType,
+					id: focusEntity?.id ?? elementId,
+					name: this.getEntityDisplayName(focusEntity, focusType)
+				}
 			}
 		};
 	}
@@ -199,47 +326,25 @@ export class OntologyContextLoader {
 	/**
 	 * Load a specific element from its table
 	 */
-	private async loadElement(
-		type: 'task' | 'plan' | 'goal' | 'document' | 'output',
+	private async loadElement<T extends ElementType>(
+		type: T,
 		id: string
-	): Promise<any> {
-		// Type-safe table mapping
-		type TableName =
-			| 'onto_tasks'
-			| 'onto_plans'
-			| 'onto_goals'
-			| 'onto_documents'
-			| 'onto_outputs';
-
-		const tableMap: Record<typeof type, TableName> = {
-			task: 'onto_tasks',
-			plan: 'onto_plans',
-			goal: 'onto_goals',
-			document: 'onto_documents',
-			output: 'onto_outputs'
-		};
-
-		const table = tableMap[type];
-		if (!table) {
-			throw new Error(`Unknown element type: ${type}`);
-		}
+	): Promise<ElementRowMap[T] | null> {
+		const table = OntologyContextLoader.ELEMENT_TABLE_MAP[type];
 
 		try {
-			// Load from the appropriate table
-			const query = this.supabase
-				.from(table as 'onto_tasks')
+			const { data, error } = await this.supabase
+				.from(table)
 				.select('*')
 				.eq('id', id)
 				.single();
-
-			const { data, error } = await query;
 
 			if (error) {
 				console.error(`[OntologyLoader] Failed to load ${type}:`, error);
 				return null;
 			}
 
-			return data;
+			return data as ElementRowMap[T];
 		} catch (error) {
 			console.error(`[OntologyLoader] Error loading ${type} ${id}:`, error);
 			return null;
@@ -307,7 +412,9 @@ export class OntologyContextLoader {
 	/**
 	 * Find parent project for an element
 	 */
-	private async findParentProject(elementId: string): Promise<any> {
+	private async findParentProject(
+		elementId: string
+	): Promise<Database['public']['Tables']['onto_projects']['Row'] | null> {
 		try {
 			// Direct check - is there a project->element edge?
 			const { data: directEdge, error: edgeError } = await this.supabase
@@ -320,7 +427,7 @@ export class OntologyContextLoader {
 			if (!edgeError && directEdge) {
 				const { data: project, error: projectError } = await this.supabase
 					.from('onto_projects')
-					.select('id, name, state_key')
+					.select('*')
 					.eq('id', directEdge.src_id)
 					.single();
 
@@ -341,7 +448,10 @@ export class OntologyContextLoader {
 	 * Traverse up the hierarchy to find a project
 	 * Optimized to avoid N+1 queries
 	 */
-	private async traverseToProject(elementId: string, maxDepth: number): Promise<any> {
+	private async traverseToProject(
+		elementId: string,
+		maxDepth: number
+	): Promise<Database['public']['Tables']['onto_projects']['Row'] | null> {
 		if (maxDepth <= 0) return null;
 
 		const visited = new Set<string>();
@@ -380,7 +490,7 @@ export class OntologyContextLoader {
 				if (projectIds.length > 0) {
 					const { data: project, error: projectError } = await this.supabase
 						.from('onto_projects')
-						.select('id, name, state_key')
+						.select('*')
 						.eq('id', projectIds[0])
 						.single();
 
@@ -429,23 +539,21 @@ export class OntologyContextLoader {
 	private async getGlobalEntityCounts(): Promise<Record<string, number>> {
 		const counts: Record<string, number> = {};
 
-		// Count each entity type
-		const tables = [
-			'onto_projects',
-			'onto_tasks',
-			'onto_goals',
-			'onto_plans',
-			'onto_documents',
-			'onto_outputs'
+		const tableMappings: Array<{ table: keyof Database['public']['Tables']; key: string }> = [
+			{ table: 'onto_projects', key: 'project' },
+			{ table: 'onto_tasks', key: 'task' },
+			{ table: 'onto_goals', key: 'goal' },
+			{ table: 'onto_plans', key: 'plan' },
+			{ table: 'onto_documents', key: 'document' },
+			{ table: 'onto_outputs', key: 'output' },
+			{ table: 'onto_milestones', key: 'milestone' }
 		];
 
-		for (const table of tables) {
+		for (const { table, key } of tableMappings) {
 			const { count } = await this.supabase
-				.from(table as any)
+				.from(table)
 				.select('*', { count: 'exact', head: true });
-
-			const entityType = table.replace('onto_', '').replace(/s$/, '');
-			counts[entityType] = count || 0;
+			counts[key] = count || 0;
 		}
 
 		return counts;
@@ -467,5 +575,40 @@ export class OntologyContextLoader {
 		if (edge.src_kind === 'project') return currentLevel + 1;
 
 		return this.getHierarchyLevel(edge.src_id, currentLevel + 1);
+	}
+
+	private asContextEntityMap(entities: OntologyContext['entities']): ContextEntityMap {
+		return entities as ContextEntityMap;
+	}
+
+	private getEntityDisplayName(
+		entity: OntologyEntityRow | null | undefined,
+		type: OntologyEntityType
+	): string | undefined {
+		if (!entity) {
+			return undefined;
+		}
+
+		if ('name' in entity && entity.name) {
+			return entity.name;
+		}
+
+		if ('title' in entity && entity.title) {
+			return entity.title;
+		}
+
+		if ('summary' in entity && entity.summary) {
+			return entity.summary;
+		}
+
+		if ('display_name' in entity && entity.display_name) {
+			return entity.display_name;
+		}
+
+		if ('id' in entity && entity.id) {
+			return `${type}:${entity.id}`;
+		}
+
+		return undefined;
 	}
 }

@@ -32,7 +32,9 @@ import type {
 	OntologyContext,
 	ChatStrategy,
 	StrategyAnalysis,
-	ResearchResult
+	ResearchResult,
+	ProjectFocus,
+	OntologyContextScope
 } from '$lib/types/agent-chat-enhancement';
 
 // ============================================
@@ -52,6 +54,8 @@ export interface ServiceContext {
 	ontologyContext?: OntologyContext;
 	lastTurnContext?: LastTurnContext;
 	conversationHistory: ChatMessage[];
+	projectFocus?: ProjectFocus | null;
+	contextScope?: OntologyContextScope;
 }
 
 /**
@@ -169,6 +173,7 @@ export interface AgentChatRequest {
 	chatSession?: ChatSession;
 	ontologyContext?: OntologyContext;
 	lastTurnContext?: LastTurnContext;
+	projectFocus?: ProjectFocus | null;
 }
 
 /**
@@ -190,6 +195,7 @@ export interface PlannerContext {
 		totalTokens: number;
 		hasOntology: boolean;
 		plannerAgentId?: string;
+		scope?: OntologyContextScope;
 	};
 }
 

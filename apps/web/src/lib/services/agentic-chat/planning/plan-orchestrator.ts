@@ -1143,6 +1143,11 @@ Return JSON: {"verdict":"approved|changes_requested|rejected","notes":"short exp
 			return metaProjectId;
 		}
 
+		const scopedProjectId = this.normalizeProjectId(context.contextScope?.projectId);
+		if (scopedProjectId) {
+			return scopedProjectId;
+		}
+
 		if (context.contextType === 'project' && context.entityId) {
 			const contextProjectId = this.normalizeProjectId(context.entityId);
 			if (contextProjectId) {

@@ -29,6 +29,7 @@ import type {
 	StreamEvent
 } from '../shared/types';
 import { ChatStrategy } from '$lib/types/agent-chat-enhancement';
+import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
 
 export interface SynthesisUsage {
 	promptTokens?: number;
@@ -105,7 +106,7 @@ export class ResponseSynthesizer implements BaseService {
 		const prompt = this.buildSimplePrompt(userMessage, toolResults);
 
 		try {
-			return await this.callLLMWithUsage(
+			const result = await this.callLLMWithUsage(
 				{
 					systemPrompt,
 					prompt,
@@ -115,10 +116,17 @@ export class ResponseSynthesizer implements BaseService {
 				},
 				context
 			);
+			return {
+				...result,
+				text: this.applyFocusPrefix(result.text, context.projectFocus)
+			};
 		} catch (error) {
 			console.error('[ResponseSynthesizer] Failed to generate simple response:', error);
 			return {
-				text: this.generateFallbackResponse(userMessage, toolResults)
+				text: this.applyFocusPrefix(
+					this.generateFallbackResponse(userMessage, toolResults),
+					context.projectFocus
+				)
 			};
 		}
 	}
@@ -143,7 +151,7 @@ export class ResponseSynthesizer implements BaseService {
 		const prompt = this.buildComplexPrompt(plan, executorResults);
 
 		try {
-			return await this.callLLMWithUsage(
+			const result = await this.callLLMWithUsage(
 				{
 					systemPrompt,
 					prompt,
@@ -153,10 +161,17 @@ export class ResponseSynthesizer implements BaseService {
 				},
 				context
 			);
+			return {
+				...result,
+				text: this.applyFocusPrefix(result.text, context.projectFocus)
+			};
 		} catch (error) {
 			console.error('[ResponseSynthesizer] Failed to generate complex response:', error);
 			return {
-				text: this.generateComplexFallbackResponse(plan, executorResults)
+				text: this.applyFocusPrefix(
+					this.generateComplexFallbackResponse(plan, executorResults),
+					context.projectFocus
+				)
 			};
 		}
 	}
@@ -572,5 +587,13 @@ Format the response as a short introduction followed by a numbered list of the q
 		}
 
 		return response;
+	}
+
+	private applyFocusPrefix(text: string, focus?: ProjectFocus | null): string {
+		if (!text || !focus || focus.focusType === 'project-wide') {
+			return text;
+		}
+		const entityName = focus.focusEntityName ?? 'focused entity';
+		return `**Focus: ${entityName} (${focus.focusType})**\n\n${text}`;
 	}
 }

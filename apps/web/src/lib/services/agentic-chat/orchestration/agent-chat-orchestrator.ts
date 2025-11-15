@@ -69,7 +69,7 @@ const PLAN_TOOL_DEFINITION: ChatToolDefinition = {
 	}
 };
 
-const MAX_TOOL_CALLS_PER_TURN = 8;
+const MAX_TOOL_CALLS_PER_TURN = 15;
 const MAX_SESSION_DURATION_MS = 90_000;
 
 type LLMStreamEvent =
@@ -115,7 +115,8 @@ export class AgentChatOrchestrator {
 				contextType: request.contextType,
 				entityId: request.entityId,
 				...(request.ontologyContext ? { ontologyContext: request.ontologyContext } : {}),
-				...(request.lastTurnContext ? { lastTurnContext: request.lastTurnContext } : {})
+				...(request.lastTurnContext ? { lastTurnContext: request.lastTurnContext } : {}),
+				projectFocus: request.projectFocus ?? null
 			});
 
 			plannerAgentId = await this.createPlannerAgentRecord(
@@ -129,6 +130,10 @@ export class AgentChatOrchestrator {
 				plannerAgentId
 			};
 
+			const contextScope =
+				request.ontologyContext?.scope ??
+				(request.entityId ? { projectId: request.entityId } : undefined);
+
 			const serviceContext: ServiceContext = {
 				sessionId: request.sessionId,
 				userId: request.userId,
@@ -137,7 +142,9 @@ export class AgentChatOrchestrator {
 				entityId: request.entityId,
 				conversationHistory,
 				ontologyContext: request.ontologyContext,
-				lastTurnContext: request.lastTurnContext
+				lastTurnContext: request.lastTurnContext,
+				projectFocus: request.projectFocus ?? null,
+				contextScope
 			};
 
 			if (request.chatSession) {

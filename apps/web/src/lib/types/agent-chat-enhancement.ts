@@ -14,7 +14,10 @@ import type {
 	TemplateCreationStatus,
 	TemplateRecommendationSet,
 	TemplateSchemaSummary,
-	LastTurnContext
+	LastTurnContext,
+	ProjectFocus,
+	FocusEntitySummary,
+	Database
 } from '@buildos/shared-types';
 
 export type {
@@ -23,7 +26,9 @@ export type {
 	TemplateCreationStatus,
 	TemplateRecommendationSet,
 	TemplateSchemaSummary,
-	LastTurnContext
+	LastTurnContext,
+	ProjectFocus,
+	FocusEntitySummary
 } from '@buildos/shared-types';
 
 // ============================================
@@ -43,15 +48,58 @@ export interface EntityRelationships {
 	hierarchy_level: number; // Depth in hierarchy
 }
 
+export type OntologyEntityType =
+	| 'project'
+	| 'task'
+	| 'goal'
+	| 'plan'
+	| 'document'
+	| 'output'
+	| 'milestone';
+
+type OntologyEntityRecordMap = {
+	project: Database['public']['Tables']['onto_projects']['Row'];
+	task: Database['public']['Tables']['onto_tasks']['Row'];
+	goal: Database['public']['Tables']['onto_goals']['Row'];
+	plan: Database['public']['Tables']['onto_plans']['Row'];
+	document: Database['public']['Tables']['onto_documents']['Row'];
+	output: Database['public']['Tables']['onto_outputs']['Row'];
+	milestone: Database['public']['Tables']['onto_milestones']['Row'];
+};
+
+type OntologyEntityCollectionMap = {
+	projects: OntologyEntityRecordMap['project'][];
+	tasks: OntologyEntityRecordMap['task'][];
+	goals: OntologyEntityRecordMap['goal'][];
+	plans: OntologyEntityRecordMap['plan'][];
+	documents: OntologyEntityRecordMap['document'][];
+	outputs: OntologyEntityRecordMap['output'][];
+	milestones: OntologyEntityRecordMap['milestone'][];
+};
+
+export type OntologyContextEntities = Partial<
+	OntologyEntityRecordMap & OntologyEntityCollectionMap
+>;
+
+export interface OntologyContextScope {
+	projectId?: string;
+	projectName?: string;
+	focus?: {
+		type: Exclude<OntologyEntityType, 'project'>;
+		id: string;
+		name?: string;
+	};
+}
+
 /**
  * Ontology context loaded from onto_* tables
  */
 export interface OntologyContext {
 	// Context level
-	type: 'global' | 'project' | 'element';
+	type: 'global' | 'project' | 'element' | 'combined';
 
-	// Main data payload
-	data: any;
+	// Entity payloads grouped by concrete ontology tables
+	entities: OntologyContextEntities;
 
 	// Relationships via edges
 	relationships?: EntityRelationships;
@@ -63,7 +111,13 @@ export interface OntologyContext {
 		context_document_id?: string; // From props->context_document_id
 		facets?: Record<string, any>; // From props->facets
 		hierarchy_level?: number;
+		available_entity_types?: string[];
+		total_projects?: number;
+		recent_project_ids?: string[];
 	};
+
+	// Current scope/focus for this context (project + optional focused entity)
+	scope?: OntologyContextScope;
 }
 
 // ============================================
@@ -124,6 +178,7 @@ export interface EnhancedAgentStreamRequest {
 	entity_id?: string;
 	ontologyEntityType?: 'task' | 'plan' | 'goal' | 'document' | 'output';
 	lastTurnContext?: LastTurnContext;
+	projectFocus?: ProjectFocus | null;
 	conversation_history?: ChatMessage[];
 }
 
@@ -136,6 +191,8 @@ export interface EnhancedAgentStreamRequest {
 export type AgentSSEEvent =
 	| { type: 'session'; session: any }
 	| { type: 'last_turn_context'; context: LastTurnContext }
+	| { type: 'focus_active'; focus: ProjectFocus }
+	| { type: 'focus_changed'; focus: ProjectFocus }
 	| {
 			type: 'agent_state';
 			state: 'thinking' | 'executing_plan' | 'waiting_on_user';
@@ -194,6 +251,8 @@ export interface EnhancedPlannerContext {
 		totalTokens: number;
 		hasOntology: boolean;
 		plannerAgentId?: string;
+		focus?: ProjectFocus | null;
+		scope?: OntologyContextScope;
 	};
 }
 
@@ -206,4 +265,5 @@ export interface EnhancedBuildPlannerContextParams {
 	entityId?: string;
 	lastTurnContext?: LastTurnContext;
 	ontologyContext?: OntologyContext;
+	projectFocus?: ProjectFocus | null;
 }

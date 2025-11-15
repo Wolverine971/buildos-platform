@@ -304,6 +304,26 @@ export type TemplateCreationEvent =
       actionable?: boolean;
     };
 
+export interface ProjectFocus {
+  focusType: 'project-wide' | 'task' | 'goal' | 'plan' | 'document' | 'output' | 'milestone';
+  focusEntityId: string | null;
+  focusEntityName: string | null;
+  projectId: string;
+  projectName: string;
+}
+
+export interface FocusEntitySummary {
+  id: string;
+  name: string;
+  type: 'task' | 'goal' | 'plan' | 'document' | 'output' | 'milestone';
+  metadata?: {
+    state_key?: string | null;
+    priority?: number | null;
+    due_at?: string | null;
+    [key: string]: any;
+  };
+}
+
 export interface ContextShiftPayload {
   new_context: ChatContextType;
   entity_id: string;
@@ -324,6 +344,8 @@ export type AgentSSEMessage =
   | { type: 'session'; session?: ChatSession; sessionId?: string }
   | { type: 'ontology_loaded'; summary: string }
   | { type: 'last_turn_context'; context: LastTurnContext }
+  | { type: 'focus_active'; focus: ProjectFocus }
+  | { type: 'focus_changed'; focus: ProjectFocus }
   | {
       type: 'agent_state';
       state: 'thinking' | 'executing_plan' | 'waiting_on_user';

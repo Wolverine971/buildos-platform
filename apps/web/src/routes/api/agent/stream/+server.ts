@@ -25,7 +25,8 @@ import type {
 	ChatMessageInsert,
 	Database,
 	AgentSSEMessage,
-	ChatRole
+	ChatRole,
+	ProjectFocus
 } from '@buildos/shared-types';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { OntologyContextLoader } from '$lib/services/ontology-context-loader';
@@ -57,6 +58,23 @@ const rateLimiter = new Map<
 		resetAt: number;
 	}
 >();
+
+type AgentSessionMetadata = {
+	focus?: ProjectFocus | null;
+	[key: string]: any;
+};
+
+function normalizeProjectFocus(focus?: ProjectFocus | null): ProjectFocus | null {
+	if (!focus) return null;
+	if (!focus.projectId) return null;
+	return {
+		focusType: focus.focusType ?? 'project-wide',
+		focusEntityId: focus.focusEntityId ?? null,
+		focusEntityName: focus.focusEntityName ?? null,
+		projectId: focus.projectId,
+		projectName: focus.projectName ?? 'Project'
+	};
+}
 
 // ============================================
 // TYPES
@@ -574,7 +592,8 @@ export const POST: RequestHandler = async ({
 			entity_id,
 			conversation_history: conversationHistory = [],
 			ontologyEntityType,
-			lastTurnContext: providedLastTurnContext
+			lastTurnContext: providedLastTurnContext,
+			projectFocus
 		} = body;
 
 		const normalizedContextType = normalizeContextType(context_type);
@@ -619,6 +638,40 @@ export const POST: RequestHandler = async ({
 			);
 		}
 
+		const focusProvided = Object.prototype.hasOwnProperty.call(body, 'projectFocus');
+		const existingMetadataRaw = ((chatSession.agent_metadata as AgentSessionMetadata) ??
+			{}) as AgentSessionMetadata;
+		const sessionMetadata: AgentSessionMetadata = { ...existingMetadataRaw };
+		const storedFocus = normalizeProjectFocus(existingMetadataRaw.focus);
+		const incomingFocus = focusProvided
+			? normalizeProjectFocus(projectFocus ?? null)
+			: undefined;
+		let resolvedProjectFocus: ProjectFocus | null = storedFocus;
+
+		if (focusProvided) {
+			sessionMetadata.focus = incomingFocus ?? null;
+			const storedSerialized = JSON.stringify(storedFocus ?? null);
+			const incomingSerialized = JSON.stringify(incomingFocus ?? null);
+			if (storedSerialized !== incomingSerialized) {
+				const { error: metadataError } = await supabase
+					.from('chat_sessions')
+					.update({
+						agent_metadata: sessionMetadata
+					})
+					.eq('id', chatSession.id);
+
+				if (metadataError) {
+					console.error('[API] Failed to persist focus metadata:', metadataError);
+				} else {
+					chatSession.agent_metadata = sessionMetadata as any;
+				}
+			}
+
+			resolvedProjectFocus = incomingFocus ?? null;
+		} else {
+			resolvedProjectFocus = storedFocus;
+		}
+
 		// Save user message to chat_messages
 		const userMessageTimestamp = new Date().toISOString();
 		const userMessageData: ChatMessageInsert = {
@@ -631,6 +684,8 @@ export const POST: RequestHandler = async ({
 		await persistChatMessage(supabase, userMessageData);
 
 		// === ONTOLOGY INTEGRATION ===
+
+		const ontologyLoader = new OntologyContextLoader(supabase);
 
 		// Validate ontologyEntityType if provided
 		const validOntologyTypes = ['task', 'plan', 'goal', 'document', 'output'] as const;
@@ -646,17 +701,37 @@ export const POST: RequestHandler = async ({
 			}
 		}
 
-		// Load ontology context if applicable
-		// Skip for project_create as it uses template overview instead
-		const ontologyContext =
-			normalizedContextType === 'project_create'
-				? null
-				: await loadOntologyContext(
-						supabase,
-						normalizedContextType,
-						entity_id,
-						validatedOntologyEntityType
+		let ontologyContext: OntologyContext | null = null;
+		if (resolvedProjectFocus?.projectId && normalizedContextType === 'project') {
+			try {
+				if (
+					resolvedProjectFocus.focusType !== 'project-wide' &&
+					resolvedProjectFocus.focusEntityId
+				) {
+					ontologyContext = await ontologyLoader.loadCombinedProjectElementContext(
+						resolvedProjectFocus.projectId,
+						resolvedProjectFocus.focusType,
+						resolvedProjectFocus.focusEntityId
 					);
+				} else {
+					ontologyContext = await ontologyLoader.loadProjectContext(
+						resolvedProjectFocus.projectId
+					);
+				}
+			} catch (focusLoadError) {
+				console.error('[API] Failed to load focus-aware context:', focusLoadError);
+			}
+		} else {
+			ontologyContext =
+				normalizedContextType === 'project_create'
+					? null
+					: await loadOntologyContext(
+							supabase,
+							normalizedContextType,
+							entity_id,
+							validatedOntologyEntityType
+						);
+		}
 
 		console.log('[API] Ontology context loaded:', {
 			hasOntology: !!ontologyContext,
@@ -792,6 +867,13 @@ export const POST: RequestHandler = async ({
 
 		(async () => {
 			try {
+				if (resolvedProjectFocus) {
+					await agentStream.sendMessage({
+						type: 'focus_active',
+						focus: resolvedProjectFocus
+					});
+				}
+
 				const orchestrator = createAgentChatOrchestrator(supabase, {
 					fetchFn: fetch,
 					httpReferer: request.headers.get('referer') ?? undefined,
@@ -807,7 +889,8 @@ export const POST: RequestHandler = async ({
 					conversationHistory: historyToUse,
 					chatSession,
 					ontologyContext: ontologyContext || undefined,
-					lastTurnContext: lastTurnContextForPlanner || undefined
+					lastTurnContext: lastTurnContextForPlanner || undefined,
+					projectFocus: resolvedProjectFocus || undefined
 				};
 
 				for await (const _ of orchestrator.streamConversation(
@@ -1116,6 +1199,10 @@ function mapPlannerEventToSSE(
 				error: (event as any).error,
 				actionable: (event as any).actionable
 			};
+		case 'focus_active':
+			return { type: 'focus_active', focus: (event as any).focus };
+		case 'focus_changed':
+			return { type: 'focus_changed', focus: (event as any).focus };
 		case 'done':
 			return { type: 'done', usage: (event as any).usage };
 		case 'error':
