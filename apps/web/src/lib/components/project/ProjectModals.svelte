@@ -525,8 +525,8 @@
 		message={getLoadingMessage('brief')}
 	/>
 	{#if componentCache.brief && !loadingStates.brief}
-		<svelte:component
-			this={componentCache.brief}
+		{@const BriefComponent = componentCache.brief}
+		<BriefComponent
 			isOpen={true}
 			brief={briefData}
 			on:close={() => handleCloseModal('brief')}

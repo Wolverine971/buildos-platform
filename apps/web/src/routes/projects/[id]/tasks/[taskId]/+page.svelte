@@ -10,12 +10,9 @@
 		AlertTriangle,
 		ExternalLink,
 		Save,
-		Edit3,
 		Sparkles,
 		Trash2,
 		AlertCircle,
-		Info,
-		RefreshCw,
 		MessageCircle,
 		Calendar,
 		Timer,
@@ -31,10 +28,6 @@
 	import type { PageData } from './$types';
 	import RecentActivityIndicator from '$lib/components/ui/RecentActivityIndicator.svelte';
 
-	import FormField from '$lib/components/ui/FormField.svelte';
-	import TextInput from '$lib/components/ui/TextInput.svelte';
-	import Textarea from '$lib/components/ui/Textarea.svelte';
-	import Select from '$lib/components/ui/Select.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import {
 		formatDateForDisplay,
@@ -45,42 +38,41 @@
 	} from '$lib/utils/date-utils';
 	import { format } from 'date-fns';
 
-	export let data: PageData;
+	let { data }: { data: PageData } = $props();
 
 	// Get project service instance
 	const projectService = ProjectService.getInstance();
 
 	// Modal state
-	let showProjectContextModal = false;
-	let showDeleteConfirmation = false;
-	let showChatModal = false;
-	let expandedSections = { steps: false };
+	let showProjectContextModal = $state(false);
+	let showDeleteConfirmation = $state(false);
+	let showChatModal = $state(false);
+	let expandedSections = $state({ steps: false });
 
-	// Reactive values
-	$: project = data.project;
-	$: task = data.task;
-	$: projectId = data.project?.id;
-	$: calendarConnected = data.calendarStatus?.isConnected ?? false;
-	$: isDeleted = !!task?.deleted_at;
+	// Derived values from data prop
+	let project = $derived(data.project);
+	let task = $derived(data.task);
+	let projectId = $derived(data.project?.id);
+	let calendarConnected = $derived(data.calendarStatus?.isConnected ?? false);
+	let isDeleted = $derived(!!task?.deleted_at);
 
 	// Editable fields state
-	let titleValue = '';
-	let descriptionValue = '';
-	let detailsValue = '';
-	let statusValue = 'backlog';
-	let priorityValue = 'medium';
-	let taskTypeValue = 'one_off';
-	let startDateValue = '';
-	let durationMinutesValue = 60;
-	let recurrencePatternValue = '';
-	let recurrenceEndsValue = '';
-	let recurrenceEndOption = 'never';
-	let taskStepsValue = '';
-	let recurrenceEndMessage: string | null = null;
+	let titleValue = $state('');
+	let descriptionValue = $state('');
+	let detailsValue = $state('');
+	let statusValue = $state('backlog');
+	let priorityValue = $state('medium');
+	let taskTypeValue = $state('one_off');
+	let startDateValue = $state('');
+	let durationMinutesValue = $state(60);
+	let recurrencePatternValue = $state('');
+	let recurrenceEndsValue = $state('');
+	let recurrenceEndOption = $state('never');
+	let taskStepsValue = $state('');
 
 	// UI state
-	let savingField: string | null = null;
-	let isDeleting = false;
+	let savingField = $state<string | null>(null);
+	let isDeleting = $state(false);
 
 	// Options for select fields
 	const statusOptions = [
@@ -113,28 +105,24 @@
 		{ value: 'custom', label: 'Custom...' }
 	];
 
-	const recurrenceEndOptions = [
-		{ value: 'never', label: 'Never' },
-		{ value: 'date', label: 'On date' },
-		{ value: 'count', label: 'After occurrences' }
-	];
-
 	// Initialize values when task changes
-	$: if (task) {
-		titleValue = task.title || '';
-		descriptionValue = task.description || '';
-		detailsValue = task.details || '';
-		statusValue = task.status || 'backlog';
-		priorityValue = task.priority || 'medium';
-		taskTypeValue = task.task_type || 'one_off';
-		startDateValue = convertUTCToDatetimeLocal(task.start_date || '');
-		durationMinutesValue = task.duration_minutes || 60;
-		recurrencePatternValue = task.recurrence_pattern || '';
-		recurrenceEndsValue = convertUTCToDateOnly(task.recurrence_ends || '');
-		// Determine recurrence end option from existing data
-		recurrenceEndOption = task.recurrence_ends ? 'date' : 'never';
-		taskStepsValue = task.task_steps || '';
-	}
+	$effect(() => {
+		if (task) {
+			titleValue = task.title || '';
+			descriptionValue = task.description || '';
+			detailsValue = task.details || '';
+			statusValue = task.status || 'backlog';
+			priorityValue = task.priority || 'medium';
+			taskTypeValue = task.task_type || 'one_off';
+			startDateValue = convertUTCToDatetimeLocal(task.start_date || '');
+			durationMinutesValue = task.duration_minutes || 60;
+			recurrencePatternValue = task.recurrence_pattern || '';
+			recurrenceEndsValue = convertUTCToDateOnly(task.recurrence_ends || '');
+			// Determine recurrence end option from existing data
+			recurrenceEndOption = task.recurrence_ends ? 'date' : 'never';
+			taskStepsValue = task.task_steps || '';
+		}
+	});
 
 	// Granular invalidation
 	async function invalidateTaskData() {
@@ -218,7 +206,12 @@ What would you like help with?`;
 	}
 
 	// Get status display info
-	function getStatusDisplay(status: string) {
+	function getStatusDisplay(status: string): {
+		label: string;
+		color: string;
+		bgColor: string;
+		icon: typeof Clock;
+	} {
 		const configs: Record<
 			string,
 			{ label: string; color: string; bgColor: string; icon: typeof Clock }
@@ -251,10 +244,19 @@ What would you like help with?`;
 				icon: AlertTriangle
 			}
 		};
-		return configs[status] || configs.backlog;
+		return (configs[status] || configs.backlog) as {
+			label: string;
+			color: string;
+			bgColor: string;
+			icon: typeof Clock;
+		};
 	}
 
-	function getPriorityDisplay(priority: string) {
+	function getPriorityDisplay(priority: string): {
+		label: string;
+		color: string;
+		dotColor: string;
+	} {
 		const configs: Record<string, { label: string; color: string; dotColor: string }> = {
 			low: {
 				label: 'Low',
@@ -272,18 +274,24 @@ What would you like help with?`;
 				dotColor: 'bg-rose-500'
 			}
 		};
-		return configs[priority] || configs.medium;
+		return (configs[priority] || configs.medium) as {
+			label: string;
+			color: string;
+			dotColor: string;
+		};
 	}
 
-	$: statusDisplay = getStatusDisplay(statusValue);
-	$: priorityDisplay = getPriorityDisplay(priorityValue);
-	$: calendarEvents = (task?.task_calendar_events || []).filter(
-		(event) => event.sync_status !== ('deleted' as any)
+	let statusDisplay = $derived(getStatusDisplay(statusValue));
+	let priorityDisplay = $derived(getPriorityDisplay(priorityValue));
+	let calendarEvents = $derived(
+		(task?.task_calendar_events || []).filter(
+			(event) => event.sync_status !== ('deleted' as any)
+		)
 	);
-	$: isTaskScheduled = calendarEvents.length > 0;
+	let isTaskScheduled = $derived(calendarEvents.length > 0);
 
 	// Compute recurrence end date message
-	$: recurrenceEndMessage = (() => {
+	let recurrenceEndMessage = $derived.by(() => {
 		if (taskTypeValue !== 'recurring') return null;
 
 		if (recurrenceEndsValue) {
@@ -296,7 +304,7 @@ What would you like help with?`;
 		}
 
 		return 'Recurs indefinitely';
-	})();
+	});
 
 	// Use centralized date formatter for calendar events
 	function formatEventDate(dateString: string) {
@@ -436,7 +444,13 @@ What would you like help with?`;
 						class="flex items-center justify-between px-4 py-2 {statusDisplay.bgColor} border-b border-gray-200 dark:border-gray-700"
 					>
 						<div class="flex items-center gap-3">
-							<StatusIcon class="w-4 h-4 {statusDisplay.color}" />
+							{#if statusValue === 'done'}
+								<CheckCircle2 class="w-4 h-4 {statusDisplay.color}" />
+							{:else if statusValue === 'blocked'}
+								<AlertTriangle class="w-4 h-4 {statusDisplay.color}" />
+							{:else}
+								<Clock class="w-4 h-4 {statusDisplay.color}" />
+							{/if}
 							<span class="text-sm font-medium {statusDisplay.color}"
 								>{statusDisplay.label}</span
 							>
@@ -549,7 +563,7 @@ What would you like help with?`;
 								bind:value={detailsValue}
 								onblur={() =>
 									!isDeleted && quickUpdateField('details', detailsValue)}
-								oninput={(e) => autoResize(e.target)}
+								oninput={(e) => e.currentTarget && autoResize(e.currentTarget)}
 								placeholder="Add detailed information, requirements, or notes..."
 								rows={6}
 								class="w-full mt-2 text-sm text-gray-700 dark:text-gray-300 bg-transparent border-0 p-0 resize-none focus:outline-none focus:ring-0 placeholder-gray-400 dark:placeholder-gray-600"
@@ -601,7 +615,8 @@ What would you like help with?`;
 										onblur={() =>
 											!isDeleted &&
 											quickUpdateField('task_steps', taskStepsValue)}
-										oninput={(e) => autoResize(e.target)}
+										oninput={(e) =>
+											e.currentTarget && autoResize(e.currentTarget)}
 										placeholder="1. First step&#10;2. Second step&#10;3. Third step..."
 										rows={6}
 										class="w-full text-sm text-gray-700 dark:text-gray-300 bg-transparent border-0 p-0 resize-none focus:outline-none focus:ring-0 placeholder-gray-400 dark:placeholder-gray-600 font-mono"
@@ -632,7 +647,9 @@ What would you like help with?`;
 							{#each calendarEvents.slice(0, 3) as event}
 								<div class="flex items-center justify-between">
 									<span class="text-xs text-emerald-700 dark:text-emerald-300">
-										{formatEventDate(event.event_start)}
+										{event.event_start
+											? formatEventDate(event.event_start)
+											: 'No date'}
 									</span>
 									{#if event.event_link && event.sync_status === 'synced'}
 										<a
@@ -860,10 +877,10 @@ What would you like help with?`;
 </div>
 
 <!-- Project Context Modal -->
-{#if showProjectContextModal}
+{#if showProjectContextModal && project}
 	<ProjectContextModal
 		isOpen={showProjectContextModal}
-		{project}
+		project={project as any}
 		on:close={closeProjectContextModal}
 	/>
 {/if}

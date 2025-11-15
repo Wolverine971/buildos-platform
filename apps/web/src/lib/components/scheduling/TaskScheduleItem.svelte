@@ -25,6 +25,7 @@
 	export let schedule: ProposedTaskSchedule;
 	export let isEditing = false;
 	export let isHighlighted = false;
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	export let compact = false;
 
 	const dispatch = createEventDispatcher();

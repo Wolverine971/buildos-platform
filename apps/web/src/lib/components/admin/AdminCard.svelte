@@ -52,7 +52,7 @@
 	<div
 		class="pointer-events-none absolute inset-0 opacity-40 blur-xl"
 		class:opacity-0={tone === 'default' || tone === 'muted'}
-	/>
+	></div>
 	<div class="relative">
 		<slot />
 	</div>

@@ -73,7 +73,7 @@
 	let currentToolCalls = $state<ChatToolCall[]>([]);
 	let currentToolResults = $state<ChatToolResult[]>([]);
 	let error = $state<string | null>(null);
-	let messagesContainer: HTMLElement;
+	let messagesContainer = $state<HTMLElement | undefined>(undefined);
 	let activeSessionId = $state<string | null>(sessionId ?? null);
 	let hasRequestedTitle = $state(false);
 	let recentSessions = $state<ChatSession[]>([]);

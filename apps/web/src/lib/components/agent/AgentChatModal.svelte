@@ -17,6 +17,7 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import TextareaWithVoice from '$lib/components/ui/TextareaWithVoice.svelte';
 	import ContextSelectionScreen from '../chat/ContextSelectionScreen.svelte';
+	import ThinkingBlock from './ThinkingBlock.svelte';
 	import { SSEProcessor, type StreamCallbacks } from '$lib/utils/sse-processor';
 	import type {
 		ChatSession,
@@ -138,6 +139,35 @@
 		return contextDescriptor?.subtitle ?? '';
 	});
 
+	// Activity types for thinking block log entries
+	type ActivityType =
+		| 'tool_call' // Tool being invoked
+		| 'tool_result' // Tool execution completed
+		| 'plan_created' // Plan generation
+		| 'plan_review' // Plan approval/rejection
+		| 'state_change' // Agent state transitions
+		| 'step_start' // Plan step starting
+		| 'step_complete' // Plan step finished
+		| 'executor_spawned' // Executor agent created
+		| 'executor_result' // Executor completed
+		| 'context_shift' // Context/focus changed
+		| 'template_request' // Template creation request
+		| 'template_status' // Template creation status
+		| 'ontology_loaded' // Ontology context loaded
+		| 'clarification' // Clarifying questions
+		| 'general'; // Generic activity
+
+	// Individual activity entry in thinking block
+	interface ActivityEntry {
+		id: string;
+		content: string;
+		timestamp: Date;
+		activityType: ActivityType;
+		status?: 'pending' | 'completed' | 'failed'; // For tracking tool call progress
+		toolCallId?: string; // For matching tool calls to their results
+		metadata?: Record<string, any>;
+	}
+
 	// Enhanced message type for UI with optional ChatMessage fields
 	interface UIMessage {
 		id: string;
@@ -148,12 +178,29 @@
 		created_at?: string;
 		updated_at?: string;
 		// UI-specific fields
-		type: 'user' | 'assistant' | 'activity' | 'plan' | 'step' | 'executor' | 'clarification';
+		type:
+			| 'user'
+			| 'assistant'
+			| 'activity' // DEPRECATED - legacy activity messages
+			| 'thinking_block' // NEW - consolidated thinking/activity block
+			| 'plan' // DEPRECATED - now integrated into thinking_block
+			| 'step'
+			| 'executor'
+			| 'clarification';
 		data?: any;
 		timestamp: Date;
 		// Optional ChatMessage fields
 		tool_calls?: any;
 		tool_call_id?: string;
+	}
+
+	// Thinking block message containing agent activity log
+	interface ThinkingBlockMessage extends UIMessage {
+		type: 'thinking_block';
+		activities: ActivityEntry[];
+		status: 'active' | 'completed';
+		agentState?: AgentLoopState;
+		isCollapsed?: boolean;
 	}
 
 	// Conversation state
@@ -168,6 +215,7 @@
 	let currentActivity = $state<string>('');
 	let userHasScrolled = $state(false);
 	let currentAssistantMessageId = $state<string | null>(null);
+	let currentThinkingBlockId = $state<string | null>(null); // NEW: Track current thinking block
 	let messagesContainer = $state<HTMLElement | undefined>(undefined);
 
 	// Ontology integration state
@@ -240,6 +288,7 @@
 		error = null;
 		userHasScrolled = false;
 		currentAssistantMessageId = null;
+		currentThinkingBlockId = null; // NEW: Reset thinking block tracking
 		isStreaming = false;
 		// Reset ontology state
 		lastTurnContext = null;
@@ -313,6 +362,278 @@
 		}
 	});
 
+	// ========================================================================
+	// Tool Display Formatters
+	// ========================================================================
+
+	/**
+	 * Formats tool messages with meaningful context from arguments
+	 */
+	const TOOL_DISPLAY_FORMATTERS: Record<
+		string,
+		(args: any) => { action: string; target?: string }
+	> = {
+		create_onto_task: (args) => ({
+			action: 'Creating task',
+			target: args.name || args.task_name
+		}),
+		update_onto_task: (args) => ({
+			action: 'Updating task',
+			target: args.name || args.task_name
+		}),
+		delete_onto_task: (args) => ({
+			action: 'Deleting task',
+			target: args.name || args.task_name
+		}),
+		create_onto_plan: (args) => ({
+			action: 'Creating plan',
+			target: args.name
+		}),
+		update_onto_plan: (args) => ({
+			action: 'Updating plan',
+			target: args.name
+		}),
+		create_onto_goal: (args) => ({
+			action: 'Creating goal',
+			target: args.name
+		}),
+		fetch_project_data: (args) => ({
+			action: 'Fetching project',
+			target: args.project_name || args.project_id
+		}),
+		search_tasks: (args) => ({
+			action: 'Searching tasks',
+			target: args.query
+		}),
+		get_calendar_events: (args) => ({
+			action: 'Loading calendar',
+			target: args.date
+		})
+	};
+
+	/**
+	 * Formats a tool message based on tool name, arguments, and status
+	 */
+	function formatToolMessage(
+		toolName: string,
+		argsJson: string | Record<string, any>,
+		status: 'pending' | 'completed' | 'failed'
+	): string {
+		const formatter = TOOL_DISPLAY_FORMATTERS[toolName];
+
+		if (!formatter) {
+			// Fallback for unknown tools
+			if (status === 'pending') return `Using tool: ${toolName}`;
+			if (status === 'completed') return `Tool ${toolName} completed`;
+			return `Tool ${toolName} failed`;
+		}
+
+		try {
+			const args = typeof argsJson === 'string' ? JSON.parse(argsJson) : argsJson;
+			const { action, target } = formatter(args);
+
+			// If no target name, use simplified format
+			if (!target) {
+				if (status === 'pending') {
+					return `${action}...`;
+				} else if (status === 'completed') {
+					// Convert "Creating task" → "Task created"
+					const noun = action.split(' ').slice(1).join(' '); // "Creating task" → "task"
+					return `${noun.charAt(0).toUpperCase() + noun.slice(1)} created`;
+				} else {
+					return `Failed to ${action.toLowerCase()}`;
+				}
+			}
+
+			// With target name, use detailed format
+			if (status === 'pending') {
+				return `${action}: "${target}"`;
+			} else if (status === 'completed') {
+				// Convert "Creating" → "Created", "Updating" → "Updated"
+				const pastTense = action.replace(/ing$/, 'ed').replace(/ching$/, 'ched');
+				return `${pastTense}: "${target}"`;
+			} else {
+				return `Failed to ${action.toLowerCase()}: "${target}"`;
+			}
+		} catch (e) {
+			if (dev) {
+				console.error('[AgentChat] Error parsing tool arguments:', e);
+			}
+			return `Using tool: ${toolName}`;
+		}
+	}
+
+	// ========================================================================
+	// Thinking Block Management Functions
+	// ========================================================================
+
+	/**
+	 * Creates a new thinking block when user sends a message
+	 */
+	function createThinkingBlock(): string {
+		const blockId = crypto.randomUUID();
+		const thinkingBlock: ThinkingBlockMessage = {
+			id: blockId,
+			type: 'thinking_block',
+			activities: [],
+			status: 'active',
+			agentState: 'thinking',
+			isCollapsed: false,
+			content: 'Agent thinking...',
+			timestamp: new Date()
+		};
+		messages = [...messages, thinkingBlock];
+		currentThinkingBlockId = blockId;
+		return blockId;
+	}
+
+	/**
+	 * Adds an activity entry to the current thinking block
+	 */
+	function addActivityToThinkingBlock(
+		content: string,
+		activityType: ActivityType,
+		metadata?: Record<string, any>
+	) {
+		if (!currentThinkingBlockId) {
+			// Fallback: create thinking block if none exists
+			createThinkingBlock();
+		}
+
+		const activity: ActivityEntry = {
+			id: crypto.randomUUID(),
+			content,
+			timestamp: new Date(),
+			activityType,
+			metadata
+		};
+
+		messages = messages.map((msg) => {
+			if (msg.id === currentThinkingBlockId && msg.type === 'thinking_block') {
+				const block = msg as ThinkingBlockMessage;
+				return {
+					...block,
+					activities: [...block.activities, activity]
+				};
+			}
+			return msg;
+		});
+	}
+
+	/**
+	 * Updates the agent state displayed in the thinking block header
+	 */
+	function updateThinkingBlockState(state: AgentLoopState, details?: string) {
+		if (!currentThinkingBlockId) return;
+
+		messages = messages.map((msg) => {
+			if (msg.id === currentThinkingBlockId && msg.type === 'thinking_block') {
+				return {
+					...msg,
+					agentState: state,
+					content: details || AGENT_STATE_MESSAGES[state]
+				};
+			}
+			return msg;
+		});
+	}
+
+	/**
+	 * Marks the thinking block as completed
+	 */
+	function finalizeThinkingBlock() {
+		if (!currentThinkingBlockId) return;
+
+		messages = messages.map((msg) => {
+			if (msg.id === currentThinkingBlockId && msg.type === 'thinking_block') {
+				return {
+					...msg,
+					status: 'completed',
+					content: 'Complete'
+				};
+			}
+			return msg;
+		});
+
+		currentThinkingBlockId = null;
+	}
+
+	/**
+	 * Toggles collapse state of a thinking block
+	 */
+	function toggleThinkingBlockCollapse(blockId: string) {
+		messages = messages.map((msg) => {
+			if (msg.id === blockId && msg.type === 'thinking_block') {
+				const block = msg as ThinkingBlockMessage;
+				return {
+					...block,
+					isCollapsed: !block.isCollapsed
+				};
+			}
+			return msg;
+		});
+	}
+
+	/**
+	 * Updates the status of an activity by tool call ID
+	 * Also updates the content to show completion (Creating → Created)
+	 */
+	function updateActivityStatus(toolCallId: string, status: 'completed' | 'failed') {
+		if (!currentThinkingBlockId) return;
+
+		let matchFound = false;
+
+		messages = messages.map((msg) => {
+			if (msg.id === currentThinkingBlockId && msg.type === 'thinking_block') {
+				const block = msg as ThinkingBlockMessage;
+				return {
+					...block,
+					activities: block.activities.map((activity) => {
+						if (
+							activity.toolCallId === toolCallId &&
+							activity.activityType === 'tool_call'
+						) {
+							matchFound = true;
+							// Update content from "Creating task: X" to "Created task: X"
+							const toolName = activity.metadata?.toolName || 'unknown';
+							const args = activity.metadata?.arguments || '';
+							const newContent = formatToolMessage(toolName, args, status);
+
+							return {
+								...activity,
+								content: newContent,
+								status,
+								metadata: {
+									...activity.metadata,
+									status
+								}
+							};
+						}
+						return activity;
+					})
+				};
+			}
+			return msg;
+		});
+
+		if (dev && !matchFound) {
+			console.warn(
+				`[AgentChat] No matching tool_call found for tool_call_id: ${toolCallId}`,
+				{
+					currentThinkingBlockId,
+					status,
+					activitiesInBlock: messages
+						.find((m) => m.id === currentThinkingBlockId)
+						?.['activities']?.map((a: any) => ({
+							id: a.id,
+							toolCallId: a.toolCallId,
+							type: a.activityType
+						}))
+				}
+			);
+		}
+	}
+
 	function handleClose() {
 		stopVoiceInput();
 		if (currentStreamController) {
@@ -378,9 +699,15 @@
 		inputValue = '';
 		error = null;
 		isStreaming = true;
+
+		// NEW: Create thinking block for agent activity
+		createThinkingBlock();
+
 		currentActivity = 'Analyzing request...';
 		agentState = 'thinking';
 		agentStateDetails = 'Agent is processing your request...';
+		updateThinkingBlockState('thinking', 'Agent is processing your request...');
+
 		currentPlan = null;
 		lastTurnContext = null;
 
@@ -499,7 +826,13 @@
 				// Ontology context was loaded
 				ontologyLoaded = true;
 				ontologySummary = event.summary || 'Ontology context loaded';
-				addActivityMessage(`Ontology context: ${ontologySummary}`);
+				addActivityToThinkingBlock(
+					`Ontology context: ${ontologySummary}`,
+					'ontology_loaded',
+					{
+						summary: ontologySummary
+					}
+				);
 				break;
 
 			case 'last_turn_context':
@@ -514,8 +847,12 @@
 				const state = event.state as AgentLoopState;
 				agentState = state;
 				agentStateDetails = event.details ?? null;
+				updateThinkingBlockState(state, event.details);
 				if (event.details) {
-					addActivityMessage(event.details);
+					addActivityToThinkingBlock(event.details, 'state_change', {
+						state,
+						details: event.details
+					});
 				}
 				switch (state) {
 					case 'waiting_on_user':
@@ -540,17 +877,28 @@
 						).length
 					: 0;
 				if (questionCount > 0) {
-					addActivityMessage(`Clarifying questions requested (${questionCount})`);
+					addActivityToThinkingBlock(
+						`Clarifying questions requested (${questionCount})`,
+						'clarification',
+						{
+							questionCount,
+							questions: event.questions
+						}
+					);
 					currentActivity = 'Waiting on your clarifications to continue...';
 					agentState = 'waiting_on_user';
 					agentStateDetails = 'Waiting on your clarifications to continue...';
+					updateThinkingBlockState(
+						'waiting_on_user',
+						'Waiting on your clarifications to continue...'
+					);
 				}
 				break;
 			}
 
 			case 'executor_instructions':
 				// Executor instructions generated
-				addActivityMessage('Executor instructions generated');
+				addActivityToThinkingBlock('Executor instructions generated', 'general');
 				break;
 
 			case 'plan_created':
@@ -559,25 +907,45 @@
 				currentActivity = `Executing plan with ${event.plan?.steps?.length || 0} steps...`;
 				agentState = 'executing_plan';
 				agentStateDetails = currentActivity;
-				addPlanMessage(event.plan);
+				updateThinkingBlockState('executing_plan', currentActivity);
+				addActivityToThinkingBlock(
+					`Plan created with ${event.plan?.steps?.length || 0} steps`,
+					'plan_created',
+					{
+						plan: event.plan,
+						stepCount: event.plan?.steps?.length || 0
+					}
+				);
 				break;
 			case 'plan_ready_for_review': {
 				currentPlan = event.plan;
-				addPlanMessage(event.plan);
 				const summary =
 					event.summary ||
-					'Plan drafted and waiting for your approval. Reply with any changes or say “run it”.';
-				addActivityMessage(summary);
+					'Plan drafted and waiting for your approval. Reply with any changes or say "run it".';
+				addActivityToThinkingBlock(
+					`Plan ready for review: ${event.plan?.steps?.length || 0} steps`,
+					'plan_created',
+					{
+						plan: event.plan,
+						stepCount: event.plan?.steps?.length || 0,
+						summary
+					}
+				);
+				addActivityToThinkingBlock(summary, 'general');
 				currentActivity = 'Waiting on your feedback about the plan...';
 				agentState = 'waiting_on_user';
 				agentStateDetails = summary;
+				updateThinkingBlockState('waiting_on_user', summary);
 				break;
 			}
 
 			case 'step_start':
 				// Starting a plan step
 				currentActivity = `Step ${event.step?.stepNumber}: ${event.step?.description}`;
-				addActivityMessage(`Starting: ${event.step?.description}`);
+				addActivityToThinkingBlock(`Starting: ${event.step?.description}`, 'step_start', {
+					stepNumber: event.step?.stepNumber,
+					description: event.step?.description
+				});
 				break;
 
 			case 'executor_spawned':
@@ -585,7 +953,14 @@
 				currentActivity = `Executor working on task...`;
 				agentState = 'executing_plan';
 				agentStateDetails = currentActivity;
-				addActivityMessage(`Executor started for: ${event.task?.description}`);
+				updateThinkingBlockState('executing_plan', currentActivity);
+				addActivityToThinkingBlock(
+					`Executor started for: ${event.task?.description}`,
+					'executor_spawned',
+					{
+						task: event.task
+					}
+				);
 				break;
 			case 'plan_review': {
 				const verdictCopy =
@@ -595,7 +970,10 @@
 							? 'Plan needs changes'
 							: 'Plan rejected';
 				const noteCopy = event.notes ? ` · ${event.notes}` : '';
-				addActivityMessage(`${verdictCopy}${noteCopy}`);
+				addActivityToThinkingBlock(`${verdictCopy}${noteCopy}`, 'plan_review', {
+					verdict: event.verdict,
+					notes: event.notes
+				});
 				currentActivity =
 					event.verdict === 'approved'
 						? 'Executing approved plan...'
@@ -603,9 +981,11 @@
 				if (event.verdict === 'approved') {
 					agentState = 'executing_plan';
 					agentStateDetails = currentActivity;
+					updateThinkingBlockState('executing_plan', currentActivity);
 				} else {
 					agentState = 'waiting_on_user';
 					agentStateDetails = currentActivity;
+					updateThinkingBlockState('waiting_on_user', currentActivity);
 				}
 				break;
 			}
@@ -618,37 +998,119 @@
 				break;
 
 			case 'tool_call':
-				// Tool being called
+				// Tool being called - parse arguments for meaningful display
 				const toolName = event.tool_call?.function?.name || 'unknown';
-				addActivityMessage(`Using tool: ${toolName}`);
+				const toolCallId = event.tool_call?.id;
+				const args = event.tool_call?.function?.arguments || '';
+
+				if (dev) {
+					console.log('[AgentChat] Tool call:', {
+						toolName,
+						toolCallId,
+						args: args.substring(0, 100) // Log first 100 chars of args
+					});
+				}
+
+				// Format message with parsed arguments
+				const displayMessage = formatToolMessage(toolName, args, 'pending');
+
+				const activity: ActivityEntry = {
+					id: crypto.randomUUID(),
+					content: displayMessage,
+					timestamp: new Date(),
+					activityType: 'tool_call',
+					status: 'pending',
+					toolCallId,
+					metadata: {
+						toolName,
+						toolCallId,
+						arguments: args,
+						status: 'pending',
+						toolCall: event.tool_call
+					}
+				};
+
+				messages = messages.map((msg) => {
+					if (msg.id === currentThinkingBlockId && msg.type === 'thinking_block') {
+						const block = msg as ThinkingBlockMessage;
+						return {
+							...block,
+							activities: [...block.activities, activity]
+						};
+					}
+					return msg;
+				});
 				break;
 
 			case 'tool_result':
-				// Tool result received
-				addActivityMessage('Tool execution completed');
+				// Tool result received - update matching tool call activity
+				const resultToolCallId = event.tool_call_id;
+				const success = !event.error;
+
+				if (dev) {
+					console.log('[AgentChat] Tool result:', {
+						resultToolCallId,
+						success,
+						hasError: !!event.error
+					});
+				}
+
+				if (resultToolCallId) {
+					// Update the matching activity status
+					updateActivityStatus(resultToolCallId, success ? 'completed' : 'failed');
+				} else {
+					// No matching tool call ID - log warning but don't add duplicate message
+					if (dev) {
+						console.warn(
+							'[AgentChat] Tool result without matching tool_call_id:',
+							event
+						);
+					}
+				}
 				break;
 			case 'template_creation_request': {
 				const request = event.request;
 				const realmLabel = request?.realm_suggestion || 'new realm';
-				addActivityMessage(`Escalating template creation (${realmLabel})...`);
+				addActivityToThinkingBlock(
+					`Escalating template creation (${realmLabel})...`,
+					'template_request',
+					{
+						request
+					}
+				);
 				break;
 			}
 			case 'template_creation_status':
-				addActivityMessage(
+				addActivityToThinkingBlock(
 					`Template creation status: ${event.status.replace(/_/g, ' ')}${
 						event.message ? ` · ${event.message}` : ''
-					}`
+					}`,
+					'template_status',
+					{
+						status: event.status,
+						message: event.message
+					}
 				);
 				break;
 			case 'template_created': {
 				const template = event.template;
-				addActivityMessage(
-					`Template ready: ${template?.name || 'Untitled'} (${template?.type_key})`
+				addActivityToThinkingBlock(
+					`Template ready: ${template?.name || 'Untitled'} (${template?.type_key})`,
+					'template_status',
+					{
+						template
+					}
 				);
 				break;
 			}
 			case 'template_creation_failed':
-				addActivityMessage(`Template creation failed: ${event.error || 'Unknown error'}`);
+				addActivityToThinkingBlock(
+					`Template creation failed: ${event.error || 'Unknown error'}`,
+					'template_status',
+					{
+						error: event.error
+					}
+				);
 				error = event.error || 'Template creation failed. Please adjust the request.';
 				break;
 
@@ -676,21 +1138,33 @@
 					const activityMessage =
 						shift.message ??
 						`Context updated to ${selectedContextLabel ?? normalizedContext}`;
-					addActivityMessage(activityMessage);
+					addActivityToThinkingBlock(activityMessage, 'context_shift', {
+						contextShift: shift
+					});
 				}
 				break;
 			}
 
 			case 'executor_result':
 				// Executor finished
-				addActivityMessage(
-					event.result?.success ? 'Executor completed successfully' : 'Executor failed'
+				addActivityToThinkingBlock(
+					event.result?.success ? 'Executor completed successfully' : 'Executor failed',
+					'executor_result',
+					{
+						result: event.result
+					}
 				);
 				break;
 
 			case 'step_complete':
 				// Step completed
-				addActivityMessage(`Step ${event.step?.stepNumber} complete`);
+				addActivityToThinkingBlock(
+					`Step ${event.step?.stepNumber} complete`,
+					'step_complete',
+					{
+						stepNumber: event.step?.stepNumber
+					}
+				);
 				break;
 			case 'done':
 				// All done - clear activity and re-enable input
@@ -698,6 +1172,7 @@
 				agentState = null;
 				agentStateDetails = null;
 				finalizeAssistantMessage();
+				finalizeThinkingBlock(); // NEW: Close thinking block
 				// Note: isStreaming will be set to false by onComplete callback
 				// But we can also set it here for immediate UI response
 				isStreaming = false;
@@ -1004,6 +1479,12 @@
 									</div>
 								</div>
 							</div>
+						{:else if message.type === 'thinking_block'}
+							<!-- NEW: Thinking block log -->
+							<ThinkingBlock
+								block={message as ThinkingBlockMessage}
+								onToggleCollapse={toggleThinkingBlockCollapse}
+							/>
 						{:else if message.type === 'clarification'}
 							<div class="flex gap-3">
 								<div
@@ -1044,6 +1525,15 @@
 								</div>
 							</div>
 						{:else if message.type === 'plan'}
+							<!-- DEPRECATED: Plan messages now integrated into thinking blocks -->
+							{#if dev}
+								<div
+									class="rounded-md bg-amber-100 px-3 py-2 text-xs text-amber-800 dark:bg-amber-900/20 dark:text-amber-300"
+								>
+									⚠️ Dev Warning: Legacy plan message (should be in thinking
+									block)
+								</div>
+							{/if}
 							<div class="flex gap-2 text-xs text-slate-500 dark:text-slate-400">
 								<div
 									class="w-14 shrink-0 pt-[2px] text-[10px] font-mono text-slate-400 dark:text-slate-500"
@@ -1081,7 +1571,30 @@
 									{/if}
 								</div>
 							</div>
+						{:else if message.type === 'activity'}
+							<!-- DEPRECATED: Activity messages now integrated into thinking blocks -->
+							{#if dev}
+								<div
+									class="rounded-md bg-amber-100 px-3 py-2 text-xs text-amber-800 dark:bg-amber-900/20 dark:text-amber-300"
+								>
+									⚠️ Dev Warning: Legacy activity message (should be in thinking
+									block)
+								</div>
+							{/if}
+							<div class="flex gap-2 text-[11px] text-slate-500 dark:text-slate-400">
+								<div
+									class="w-14 shrink-0 pt-[2px] font-mono text-slate-400 dark:text-slate-500"
+								>
+									{formatTime(message.timestamp)}
+								</div>
+								<div
+									class="max-w-[60%] rounded-md border border-slate-200/70 bg-slate-50/70 px-3 py-1.5 text-[12px] font-medium italic leading-snug text-slate-600 shadow-sm dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-300"
+								>
+									<p class="leading-relaxed">{message.content}</p>
+								</div>
+							</div>
 						{:else}
+							<!-- Other message types (step, executor, etc.) -->
 							<div class="flex gap-2 text-[11px] text-slate-500 dark:text-slate-400">
 								<div
 									class="w-14 shrink-0 pt-[2px] font-mono text-slate-400 dark:text-slate-500"

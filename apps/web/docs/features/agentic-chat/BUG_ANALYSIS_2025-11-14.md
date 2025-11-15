@@ -1,4 +1,5 @@
 # Agentic Chat Service - Bug Analysis Report
+
 **Analysis Date:** 2025-11-14
 **Scope:** `/apps/web/src/lib/services/agentic-chat/`
 
@@ -7,27 +8,31 @@
 ## Executive Summary
 
 Found **13 significant potential issues** across the agentic-chat service including:
+
 - Race conditions in concurrent execution
-- Missing error handling for background operations  
+- Missing error handling for background operations
 - Incomplete cleanup of resources
 - Missing null checks in critical paths
 - Non-atomic database operations
 - Unhandled promise rejections
 
 **Severity Breakdown:**
+
 - Critical: 3
-- High: 5  
+- High: 5
 - Medium: 5
 
 ---
 
 ## Critical Issues
 
-### 1. **RACE CONDITION: activeExecutors Map Not Cleaned on Error** 
+### 1. **RACE CONDITION: activeExecutors Map Not Cleaned on Error**
+
 **File:** `execution/executor-coordinator.ts` (lines 60-140)  
 **Severity:** Critical
 
 **Problem:**
+
 ```typescript
 async waitForExecutor(executorId: string): Promise<ExecutorResult> {
   const execution = this.activeExecutors.get(executorId);
@@ -52,12 +57,14 @@ return executorAgentId;
 
 **If `runExecutor()` throws an uncaught error that propagates,** the Map entry is never cleaned up, causing **memory leak** and stale promise references.
 
-**Impact:** 
+**Impact:**
+
 - Memory leak with long-running sessions
 - Potential executor hang if IDs are reused
 - Race condition if caller tries to wait for executor again
 
 **Fix:** Add error handler to execution promise before storing in Map:
+
 ```typescript
 const executionPromise = this.runExecutor({...}, params)
   .catch(error => {
@@ -70,10 +77,12 @@ const executionPromise = this.runExecutor({...}, params)
 ---
 
 ### 2. **MISSING AWAIT: Fire-and-Forget Operations in Orchestrator**
+
 **File:** `orchestration/agent-chat-orchestrator.ts` (line 659)  
 **Severity:** Critical
 
 **Problem:**
+
 ```typescript
 private async executePlan(...) {
   for await (const event of this.deps.planOrchestrator.executePlan(
@@ -89,16 +98,18 @@ private async executePlan(...) {
 While this specific case works (the stream is being awaited in `for await`), there's a pattern throughout the code where async operations are launched without proper error handling:
 
 **Line 188:** `await callback(event);` - calls callback and awaits it
-**Line 527:** Telemetry hook: `void this.telemetryHook(result, {...});` 
+**Line 527:** Telemetry hook: `void this.telemetryHook(result, {...});`
 
 The `void` operator here is intentional but signals fire-and-forget. If the telemetry hook throws, it's silently swallowed.
 
-**Impact:** 
+**Impact:**
+
 - Errors in telemetry/callback don't propagate
 - Silent failures make debugging difficult
 - Could miss critical logging
 
 **Fix:**
+
 ```typescript
 if (this.telemetryHook) {
   this.telemetryHook(result, {...}).catch(error => {
@@ -110,10 +121,12 @@ if (this.telemetryHook) {
 ---
 
 ### 3. **INCOMPLETE CLEANUP IN BATCH EXECUTION - Promise Not Rejected on Error**
+
 **File:** `execution/tool-execution-service.ts` (lines 556-589)  
 **Severity:** Critical
 
 **Problem:**
+
 ```typescript
 async batchExecuteTools(
   toolCalls: ChatToolCall[],
@@ -150,40 +163,44 @@ async batchExecuteTools(
 ```
 
 **Issues:**
+
 1. **.then() without .catch()** - if `executeTool()` throws, the promise rejection is unhandled
 2. **Promise not removed from Set on error** - executing set has stale promise references
 3. **Line 588 non-null assertion (!)** - assumes all toolCalls have matching results, but errors could cause missing entries
 
 **Scenario that breaks:**
+
 - Tool 1 executes successfully → removed from Set
 - Tool 2 throws error → stays in Set with unhandled rejection
 - `Promise.all(executing)` throws
 - Line 588 tries to find result for tool 2, gets `undefined`, crashes with non-null assertion
 
 **Impact:**
+
 - Unhandled promise rejection errors
 - Incomplete results array
 - Runtime crash on line 588 with "Cannot read property of undefined"
 
 **Fix:**
+
 ```typescript
 const promise = this.executeTool(toolCall, context, availableTools, options)
-  .then((result) => {
-    executing.delete(promise);
-    results.push(result);
-    return result;
-  })
-  .catch((error) => {
-    executing.delete(promise);  // Clean up even on error
-    const errorResult: ToolExecutionResult = {
-      success: false,
-      error: error instanceof Error ? error.message : String(error),
-      toolName: this.resolveToolCall(toolCall).name,
-      toolCallId: toolCall.id
-    };
-    results.push(errorResult);
-    return errorResult;
-  });
+	.then((result) => {
+		executing.delete(promise);
+		results.push(result);
+		return result;
+	})
+	.catch((error) => {
+		executing.delete(promise); // Clean up even on error
+		const errorResult: ToolExecutionResult = {
+			success: false,
+			error: error instanceof Error ? error.message : String(error),
+			toolName: this.resolveToolCall(toolCall).name,
+			toolCallId: toolCall.id
+		};
+		results.push(errorResult);
+		return errorResult;
+	});
 ```
 
 ---
@@ -191,32 +208,36 @@ const promise = this.executeTool(toolCall, context, availableTools, options)
 ## High-Severity Issues
 
 ### 4. **NULL CHECK MISSING: context_shift Processing Without Validation**
+
 **File:** `orchestration/agent-chat-orchestrator.ts` (lines 363-379)  
 **Severity:** High
 
 **Problem:**
+
 ```typescript
 const contextShift =
-  (result as any)?.context_shift ??
-  result?.data?.context_shift ??
-  (result?.data as any)?.context_shift;
+	(result as any)?.context_shift ??
+	result?.data?.context_shift ??
+	(result?.data as any)?.context_shift;
 
 if (contextShift) {
-  const normalizedShiftContext = this.normalizeChatContextType(
-    (contextShift.new_context as ChatContextType) ?? serviceContext.contextType
-  );
-  serviceContext.contextType = normalizedShiftContext;  // ← Unsafe mutation
-  if (contextShift.entity_id) {  // ← Only checks entity_id, not other properties
-    serviceContext.entityId = contextShift.entity_id;
-  }
-  serviceContext.lastTurnContext = this.buildContextShiftSnapshot(
-    contextShift,  // ← contextShift properties not validated
-    normalizedShiftContext
-  );
+	const normalizedShiftContext = this.normalizeChatContextType(
+		(contextShift.new_context as ChatContextType) ?? serviceContext.contextType
+	);
+	serviceContext.contextType = normalizedShiftContext; // ← Unsafe mutation
+	if (contextShift.entity_id) {
+		// ← Only checks entity_id, not other properties
+		serviceContext.entityId = contextShift.entity_id;
+	}
+	serviceContext.lastTurnContext = this.buildContextShiftSnapshot(
+		contextShift, // ← contextShift properties not validated
+		normalizedShiftContext
+	);
 }
 ```
 
 In `buildContextShiftSnapshot()` (line 734-792), no null checks on contextShift properties:
+
 ```typescript
 switch (contextShift.entity_type) {  // ← Could be undefined
   case 'project':
@@ -224,32 +245,42 @@ switch (contextShift.entity_type) {  // ← Could be undefined
 ```
 
 **Impact:**
+
 - If tool result has malformed `context_shift` object, crashes occur
 - Type casting `as ChatContextType` is dangerous without validation
 - `entity_type` could be undefined, causing switch to do nothing silently
 
 **Fix:**
+
 ```typescript
 if (contextShift && typeof contextShift === 'object') {
-  if (contextShift.new_context && typeof contextShift.new_context === 'string') {
-    serviceContext.contextType = this.normalizeChatContextType(contextShift.new_context);
-  }
-  if (typeof contextShift.entity_id === 'string') {
-    serviceContext.entityId = contextShift.entity_id;
-  }
-  if (contextShift.entity_type && ['project', 'task', 'plan', 'goal', 'document', 'output'].includes(contextShift.entity_type)) {
-    serviceContext.lastTurnContext = this.buildContextShiftSnapshot(contextShift, serviceContext.contextType);
-  }
+	if (contextShift.new_context && typeof contextShift.new_context === 'string') {
+		serviceContext.contextType = this.normalizeChatContextType(contextShift.new_context);
+	}
+	if (typeof contextShift.entity_id === 'string') {
+		serviceContext.entityId = contextShift.entity_id;
+	}
+	if (
+		contextShift.entity_type &&
+		['project', 'task', 'plan', 'goal', 'document', 'output'].includes(contextShift.entity_type)
+	) {
+		serviceContext.lastTurnContext = this.buildContextShiftSnapshot(
+			contextShift,
+			serviceContext.contextType
+		);
+	}
 }
 ```
 
 ---
 
 ### 5. **NON-ATOMIC DATABASE OPERATIONS: Metric Updates Race Condition**
+
 **File:** `session/chat-session-service.ts` (lines 323-363)  
 **Severity:** High
 
 **Problem:**
+
 ```typescript
 async updateSessionMetrics(
   sessionId: string,
@@ -295,73 +326,83 @@ async updateSessionMetrics(
 ```
 
 **Issues:**
+
 1. **READ-MODIFY-WRITE RACE CONDITION**: Between the SELECT and UPDATE, another process could modify metrics
 2. **SILENT FAILURE**: `return;` on line 341 silently fails without throwing
 3. **NO TRANSACTIONS**: Not wrapped in a database transaction
 
 **Scenario:**
+
 - Thread A: Reads message_count = 5
-- Thread B: Reads message_count = 5  
+- Thread B: Reads message_count = 5
 - Thread A: Updates to message_count = 6 (5+1)
 - Thread B: Updates to message_count = 6 (5+1)
 - Final result: 6 instead of correct 7 (lost update)
 
 **Impact:**
+
 - Incorrect token count tracking over time
 - Metrics gradually become inaccurate in high-concurrency scenarios
 - Silent failures make debugging difficult
 
 **Fix:** Use atomic PostgreSQL operations:
+
 ```typescript
 const { error } = await this.supabase.rpc('increment_session_metrics', {
-  p_session_id: sessionId,
-  p_messages: metrics.incrementMessages ?? 0,
-  p_tokens: metrics.incrementTokens ?? 0,
-  p_tool_calls: metrics.incrementToolCalls ?? 0
+	p_session_id: sessionId,
+	p_messages: metrics.incrementMessages ?? 0,
+	p_tokens: metrics.incrementTokens ?? 0,
+	p_tool_calls: metrics.incrementToolCalls ?? 0
 });
 ```
 
 ---
 
 ### 6. **UNCAUGHT PROMISE: Telemetry Hook Not Error-Handled**
+
 **File:** `execution/tool-execution-service.ts` (lines 104-111)  
 **Severity:** High
 
 **Problem:**
+
 ```typescript
 const finalizeResult = (
-  result: ToolExecutionResult,
-  overrideTelemetry?: Partial<ToolExecutionTelemetry>
+	result: ToolExecutionResult,
+	overrideTelemetry?: Partial<ToolExecutionTelemetry>
 ): ToolExecutionResult => {
-  const durationMs = (typeof performance !== 'undefined' ? performance.now() : Date.now()) - startTime;
-  if (this.telemetryHook) {
-    void this.telemetryHook(result, {
-      toolName,
-      durationMs,
-      virtual: Boolean(virtualHandler),
-      ...overrideTelemetry
-    });  // ← void swallows promise rejection
-  }
-  return result;
+	const durationMs =
+		(typeof performance !== 'undefined' ? performance.now() : Date.now()) - startTime;
+	if (this.telemetryHook) {
+		void this.telemetryHook(result, {
+			toolName,
+			durationMs,
+			virtual: Boolean(virtualHandler),
+			...overrideTelemetry
+		}); // ← void swallows promise rejection
+	}
+	return result;
 };
 ```
 
 The `void` operator silently discards the promise. If `telemetryHook` throws:
+
 ```typescript
 export type ToolExecutionTelemetryHook = (
-  result: ToolExecutionResult,
-  telemetry: ToolExecutionTelemetry
+	result: ToolExecutionResult,
+	telemetry: ToolExecutionTelemetry
 ) => void | Promise<void>;
 ```
 
 If it returns a Promise that rejects, the rejection is unhandled.
 
 **Impact:**
+
 - Telemetry errors silently fail
 - Could lose critical performance metrics
 - Makes debugging telemetry issues impossible
 
 **Fix:**
+
 ```typescript
 if (this.telemetryHook) {
   Promise.resolve(this.telemetryHook(result, {...}))
@@ -374,10 +415,12 @@ if (this.telemetryHook) {
 ---
 
 ### 7. **MEMORY LEAK: Session Message Loading Default Returns Empty Array on Error**
+
 **File:** `session/chat-session-service.ts` (lines 138-161)  
 **Severity:** High
 
 **Problem:**
+
 ```typescript
 async loadRecentMessages(
   sessionId: string,
@@ -406,17 +449,20 @@ async loadRecentMessages(
 ```
 
 **Issues:**
+
 1. **SILENT FAILURE**: Catches all errors and returns empty array
 2. **CONTEXT LOSS**: Chat history is lost silently - user gets empty conversation
 3. **CASCADING ERRORS**: Downstream code doesn't know history is missing
 4. **NO ERROR PROPAGATION**: Caller can't distinguish between "no messages" and "failed to load"
 
 **Impact:**
+
 - Users see empty chat history instead of their actual messages
 - Conversation context is lost
 - No way for caller to detect and handle the failure
 
 **Fix:**
+
 ```typescript
 async loadRecentMessages(
   sessionId: string,
@@ -443,10 +489,12 @@ async loadRecentMessages(
 ## Medium-Severity Issues
 
 ### 8. **UNHANDLED REJECTION: Plan Status Update Failure Not Caught**
+
 **File:** `orchestration/agent-chat-orchestrator.ts` (line 208, 847-854)  
 **Severity:** Medium
 
 **Problem:**
+
 ```typescript
 finally {
   if (plannerAgentId) {
@@ -475,6 +523,7 @@ private async updateExecutorStatus(
 ```
 
 In `runExecutor()` (line 250-274):
+
 ```typescript
 async runExecutor(
   params: ExecuteTaskParams,
@@ -493,6 +542,7 @@ async runExecutor(
 ```
 
 **Issues:**
+
 1. Status updates silently fail without blocking execution
 2. Inconsistent error handling between success and failure paths
 3. No telemetry on update failures
@@ -502,10 +552,12 @@ async runExecutor(
 ---
 
 ### 9. **MISSING TYPE SAFETY: Union Type Not Narrowed**
+
 **File:** `execution/tool-execution-service.ts` (lines 618-622)  
 **Severity:** Medium
 
 **Problem:**
+
 ```typescript
 private resolveToolCall(toolCall: ChatToolCall): { name: string; rawArguments: unknown } {
   const name = toolCall.function?.name ?? (toolCall as any)?.name ?? '';
@@ -517,10 +569,11 @@ private resolveToolCall(toolCall: ChatToolCall): { name: string; rawArguments: u
 Uses `as any` for type narrowing. Better approach exists:
 
 ```typescript
-const name = (toolCall.function?.name) || ((toolCall as any).name) || '';
+const name = toolCall.function?.name || (toolCall as any).name || '';
 ```
 
 **Issues:**
+
 1. Using `as any` suppresses type safety
 2. Empty string default for `name` could hide issues
 
@@ -529,10 +582,12 @@ const name = (toolCall.function?.name) || ((toolCall as any).name) || '';
 ---
 
 ### 10. **INCOMPLETE ERROR HANDLING: Response Synthesizer Fallback**
+
 **File:** `synthesis/response-synthesizer.ts` (lines 107-124)  
 **Severity:** Medium
 
 **Problem:**
+
 ```typescript
 async synthesizeSimpleResponse(
   userMessage: string,
@@ -551,6 +606,7 @@ async synthesizeSimpleResponse(
 ```
 
 The fallback response doesn't include usage metrics. This causes:
+
 1. Token counts to be missing
 2. Inconsistent response structure
 3. Billing issues if tokens aren't tracked
@@ -560,10 +616,12 @@ The fallback response doesn't include usage metrics. This causes:
 ---
 
 ### 11. **STREAMING TIMEOUT NOT CANCELLED: Promise.race Allows Dangling Timeout**
+
 **File:** `execution/tool-execution-service.ts` (lines 471-481)  
 **Severity:** Medium
 
 **Problem:**
+
 ```typescript
 private async executeWithTimeout<T>(fn: () => Promise<T>, timeout: number): Promise<T> {
   return Promise.race([
@@ -579,6 +637,7 @@ private async executeWithTimeout<T>(fn: () => Promise<T>, timeout: number): Prom
 ```
 
 **Issue:** The setTimeout is never cancelled. If `fn()` completes first:
+
 1. The timeout continues to run in background
 2. Memory leak if thousands of tools are executed
 3. Callbacks for rejected timeout may still fire
@@ -586,6 +645,7 @@ private async executeWithTimeout<T>(fn: () => Promise<T>, timeout: number): Prom
 **Impact:** Memory leak, background timeouts continue running
 
 **Fix:**
+
 ```typescript
 private async executeWithTimeout<T>(fn: () => Promise<T>, timeout: number): Promise<T> {
   let timeoutId: NodeJS.Timeout | undefined;
@@ -612,6 +672,7 @@ private async executeWithTimeout<T>(fn: () => Promise<T>, timeout: number): Prom
 ## Minor/Observation Issues
 
 ### 12. **UNSAFE NON-NULL ASSERTION: Results Finding**
+
 **File:** `execution/tool-execution-service.ts` (line 588)  
 **Severity:** Medium
 
@@ -624,6 +685,7 @@ Non-null assertion (!) assumes all tool calls have results. But if a tool throws
 ---
 
 ### 13. **PERSISTENCE OPERATION NOT AWAITED IN CATCH**
+
 **File:** `execution/executor-coordinator.ts` (line 255-273)  
 **Severity:** Low
 
@@ -647,42 +709,46 @@ This is actually correct (await is present), but the pattern is error-prone.
 
 ## Summary Table
 
-| # | Issue | Severity | File | Lines | Type |
-|---|-------|----------|------|-------|------|
-| 1 | activeExecutors memory leak on error | Critical | executor-coordinator.ts | 60-140 | Race Condition |
-| 2 | Fire-and-forget telemetry not error-handled | Critical | agent-chat-orchestrator.ts | 659 | Unhandled Promise |
-| 3 | Batch execution missing .catch() on tools | Critical | tool-execution-service.ts | 556-589 | Resource Leak |
-| 4 | context_shift validation missing | High | agent-chat-orchestrator.ts | 363-379 | Null Check |
-| 5 | Session metrics non-atomic race condition | High | chat-session-service.ts | 323-363 | Race Condition |
-| 6 | Telemetry hook void operator swallows errors | High | tool-execution-service.ts | 104-111 | Unhandled Promise |
-| 7 | Message loading silent failure | High | chat-session-service.ts | 138-161 | Error Handling |
-| 8 | Plan status update failures not propagated | Medium | executor-coordinator.ts | 250-274 | Error Handling |
-| 9 | Type safety: Union not narrowed properly | Medium | tool-execution-service.ts | 618-622 | Type Safety |
-| 10 | Response synthesizer fallback missing usage | Medium | response-synthesizer.ts | 107-124 | Incomplete Handling |
-| 11 | Timeout.race timer not cancelled | Medium | tool-execution-service.ts | 471-481 | Memory Leak |
-| 12 | Non-null assertion on results.find | Medium | tool-execution-service.ts | 588 | Type Safety |
-| 13 | Empty callback in plan orchestrator | Low | agent-chat-orchestrator.ts | 659 | Code Quality |
+| #   | Issue                                        | Severity | File                       | Lines   | Type                |
+| --- | -------------------------------------------- | -------- | -------------------------- | ------- | ------------------- |
+| 1   | activeExecutors memory leak on error         | Critical | executor-coordinator.ts    | 60-140  | Race Condition      |
+| 2   | Fire-and-forget telemetry not error-handled  | Critical | agent-chat-orchestrator.ts | 659     | Unhandled Promise   |
+| 3   | Batch execution missing .catch() on tools    | Critical | tool-execution-service.ts  | 556-589 | Resource Leak       |
+| 4   | context_shift validation missing             | High     | agent-chat-orchestrator.ts | 363-379 | Null Check          |
+| 5   | Session metrics non-atomic race condition    | High     | chat-session-service.ts    | 323-363 | Race Condition      |
+| 6   | Telemetry hook void operator swallows errors | High     | tool-execution-service.ts  | 104-111 | Unhandled Promise   |
+| 7   | Message loading silent failure               | High     | chat-session-service.ts    | 138-161 | Error Handling      |
+| 8   | Plan status update failures not propagated   | Medium   | executor-coordinator.ts    | 250-274 | Error Handling      |
+| 9   | Type safety: Union not narrowed properly     | Medium   | tool-execution-service.ts  | 618-622 | Type Safety         |
+| 10  | Response synthesizer fallback missing usage  | Medium   | response-synthesizer.ts    | 107-124 | Incomplete Handling |
+| 11  | Timeout.race timer not cancelled             | Medium   | tool-execution-service.ts  | 471-481 | Memory Leak         |
+| 12  | Non-null assertion on results.find           | Medium   | tool-execution-service.ts  | 588     | Type Safety         |
+| 13  | Empty callback in plan orchestrator          | Low      | agent-chat-orchestrator.ts | 659     | Code Quality        |
 
 ---
 
 ## Recommendations
 
 ### Immediate Actions (Critical)
+
 1. **Fix batch execution error handling** (Issue #3) - high risk of crashes
 2. **Fix executor coordinator cleanup** (Issue #1) - memory leak
 3. **Add telemetry error handling** (Issue #2, #6) - prevent silent failures
 
 ### High Priority (Next Sprint)
+
 1. Add validation for context_shift (Issue #4)
 2. Implement atomic session metric updates (Issue #5)
 3. Fix message loading error handling (Issue #7)
 
 ### Medium Priority
+
 1. Implement timeout cancellation (Issue #11)
 2. Add comprehensive error handling for status updates
 3. Improve type safety by removing `as any` casts
 
 ### Testing Strategy
+
 1. Add concurrent execution tests for batch tools
 2. Add race condition tests for session metrics
 3. Add timeout cancellation verification tests

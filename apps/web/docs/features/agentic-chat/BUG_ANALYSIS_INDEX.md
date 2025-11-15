@@ -8,14 +8,18 @@ This directory contains comprehensive bug analysis reports for the agentic-chat 
 ## Quick Navigation
 
 ### For Decision Makers
+
 Start with **[BUG_ANALYSIS_QUICK_REFERENCE.md](./BUG_ANALYSIS_QUICK_REFERENCE.md)**
+
 - 13 issues summary
 - Critical issues overview
 - Effort estimates for planning
 - Performance impact assessment
 
 ### For Developers Fixing Issues
-Use **[BUG_ANALYSIS_2025-11-14.md](./BUG_ANALYSIS_2025-11-14.md)** 
+
+Use **[BUG_ANALYSIS_2025-11-14.md](./BUG_ANALYSIS_2025-11-14.md)**
+
 - Detailed code examples for each issue
 - Root cause analysis
 - Specific fix recommendations
@@ -23,26 +27,26 @@ Use **[BUG_ANALYSIS_2025-11-14.md](./BUG_ANALYSIS_2025-11-14.md)**
 
 ## Issues Summary
 
-| Category | Count | Priority |
-|----------|-------|----------|
-| Critical | 3 | Immediate |
-| High | 5 | Next Sprint |
-| Medium | 5 | Planned |
-| **Total** | **13** | - |
+| Category  | Count  | Priority    |
+| --------- | ------ | ----------- |
+| Critical  | 3      | Immediate   |
+| High      | 5      | Next Sprint |
+| Medium    | 5      | Planned     |
+| **Total** | **13** | -           |
 
 ## Critical Issues (Fix First)
 
 1. **Memory Leak in ExecutorCoordinator** - executor-coordinator.ts:60-140
-   - activeExecutors Map not cleaned on error
-   - Risk: Memory leak in long-running sessions
+    - activeExecutors Map not cleaned on error
+    - Risk: Memory leak in long-running sessions
 
 2. **Batch Tool Execution Incomplete Cleanup** - tool-execution-service.ts:556-589
-   - Promise.then() without .catch()
-   - Risk: Unhandled promise rejections, crashes
+    - Promise.then() without .catch()
+    - Risk: Unhandled promise rejections, crashes
 
 3. **Telemetry Hook Errors Swallowed** - tool-execution-service.ts:104-111
-   - `void` operator discards promise errors
-   - Risk: Silent telemetry failures
+    - `void` operator discards promise errors
+    - Risk: Silent telemetry failures
 
 See detailed analysis in [BUG_ANALYSIS_2025-11-14.md](./BUG_ANALYSIS_2025-11-14.md#critical-issues)
 
@@ -59,25 +63,30 @@ response-synthesizer.ts         █░░░░ (1 issue)
 ## Key Findings by Category
 
 ### Async/Promise Issues
+
 - Missing `.catch()` handlers (2 issues)
 - Fire-and-forget operations not error-handled (2 issues)
 - Unhandled promise rejections (2 issues)
 
 ### Memory Leaks
+
 - activeExecutors Map cleanup (1 issue)
 - Timeout timers not cancelled (1 issue)
 - Incomplete cleanup in concurrent operations (1 issue)
 
 ### Race Conditions
+
 - Non-atomic database operations (1 issue)
 - Context updates without validation (1 issue)
 
 ### Error Handling
+
 - Silent failures returning empty arrays (1 issue)
 - Status updates not propagated (1 issue)
 - Fallback responses incomplete (1 issue)
 
 ### Type Safety
+
 - Type narrowing with `as any` (1 issue)
 - Non-null assertions without validation (1 issue)
 
@@ -99,16 +108,19 @@ response-synthesizer.ts         █░░░░ (1 issue)
 ## Testing Strategy
 
 ### Priority 1 Tests (Do First)
+
 - Concurrent batch tool execution with errors
 - Executor cleanup on promise rejection
 - Telemetry hook error handling
 
 ### Priority 2 Tests (Next)
+
 - Race conditions in session metrics
 - Message loading error scenarios
 - Context validation with malformed data
 
 ### Priority 3 Tests (Ongoing)
+
 - Timeout cancellation verification
 - Error propagation through status updates
 - Type safety validation
@@ -116,6 +128,7 @@ response-synthesizer.ts         █░░░░ (1 issue)
 ## Code Quality Patterns to Fix
 
 ### Dangerous Patterns Found
+
 - `Promise.then()` without `.catch()`
 - `void this.asyncFn()` fire-and-forget
 - Silent `.catch()` blocks returning empty arrays
@@ -123,6 +136,7 @@ response-synthesizer.ts         █░░░░ (1 issue)
 - Read-modify-write without transactions
 
 ### Safe Patterns to Implement
+
 - Always handle promise rejections
 - Use explicit error logging for fire-and-forget
 - Throw errors to let callers decide handling
@@ -132,13 +146,13 @@ response-synthesizer.ts         █░░░░ (1 issue)
 
 ## Report Metadata
 
-| Item | Value |
-|------|-------|
-| Analysis Date | 2025-11-14 |
-| Scope | agentic-chat service (all files) |
-| Issues Found | 13 |
-| Code Review Method | Static analysis + pattern matching |
-| Focus Areas | Async/await, null checks, race conditions, error handling, memory leaks |
+| Item               | Value                                                                   |
+| ------------------ | ----------------------------------------------------------------------- |
+| Analysis Date      | 2025-11-14                                                              |
+| Scope              | agentic-chat service (all files)                                        |
+| Issues Found       | 13                                                                      |
+| Code Review Method | Static analysis + pattern matching                                      |
+| Focus Areas        | Async/await, null checks, race conditions, error handling, memory leaks |
 
 ## Related Documentation
 

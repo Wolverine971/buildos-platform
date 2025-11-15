@@ -7,6 +7,7 @@
 	export let description: string = '';
 	export let icon: ComponentType | null = null;
 	export let backHref: string = '/admin';
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	export let backLabel: string = 'Admin Dashboard';
 	export let showBack: boolean = true;
 </script>

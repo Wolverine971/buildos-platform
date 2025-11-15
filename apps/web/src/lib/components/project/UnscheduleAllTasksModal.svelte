@@ -12,6 +12,7 @@
 	export let isOpen = false;
 	export let phases: PhaseWithTasks[] = [];
 	export let scheduledTaskCount: number = 0;
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	export let scheduledTaskCountInPhases: number = 0;
 	export let totalTasksInPhases: number = 0;
 	export let projectId: string = '';

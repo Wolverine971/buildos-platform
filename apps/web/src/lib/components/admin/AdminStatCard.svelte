@@ -110,7 +110,7 @@
 			{:else if resolvedDirection === 'down'}
 				<TrendingDown class="h-4 w-4 text-rose-500" />
 			{:else}
-				<span class="h-2 w-2 rounded-full bg-gray-400" />
+				<span class="h-2 w-2 rounded-full bg-gray-400"></span>
 			{/if}
 			<div class="flex items-baseline gap-2">
 				<span class={changeClasses}>

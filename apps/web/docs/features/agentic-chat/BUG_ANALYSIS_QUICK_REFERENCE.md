@@ -3,6 +3,7 @@
 ## Quick Reference
 
 **Total Issues Found:** 13
+
 - **Critical:** 3 issues (immediate action required)
 - **High:** 5 issues (next sprint priority)
 - **Medium:** 5 issues (planned work)
@@ -10,18 +11,21 @@
 ## Critical Issues at a Glance
 
 ### Issue #1: Memory Leak in ExecutorCoordinator
+
 - **Location:** `execution/executor-coordinator.ts:60-140`
 - **Problem:** activeExecutors Map not cleaned when executor promises fail
 - **Risk:** Memory leak in long-running sessions, stale promise references
 - **Quick Fix:** Add `.catch()` error handler before storing promise in Map
 
 ### Issue #3: Batch Tool Execution Incomplete Cleanup
+
 - **Location:** `execution/tool-execution-service.ts:556-589`
 - **Problem:** Promise.then() without .catch(), executes not removed on error
 - **Risk:** Unhandled promise rejections, runtime crashes on non-null assertion
 - **Quick Fix:** Add .catch() handler that removes promise from set and returns error result
 
 ### Issue #6: Telemetry Hook Errors Swallowed
+
 - **Location:** `execution/tool-execution-service.ts:104-111`
 - **Problem:** `void` operator discards promise, hiding errors
 - **Risk:** Silent telemetry failures, lost metrics
@@ -38,16 +42,19 @@
 ## Testing Recommendations
 
 **Priority 1 - Add these tests immediately:**
+
 - Concurrent batch tool execution with errors
 - Executor cleanup on promise rejection
 - Telemetry hook error handling
 
 **Priority 2 - Add these tests next:**
+
 - Race condition in session metric updates
 - Message loading error scenarios
 - Context shift validation with malformed data
 
 **Priority 3 - Ongoing:**
+
 - Timeout cancellation verification
 - Status update error propagation
 - Type safety validation for tool call unions
@@ -55,6 +62,7 @@
 ## Code Patterns to Watch For
 
 ### Dangerous Patterns Found:
+
 1. `Promise.then()` without `.catch()` - Missing error handling
 2. `void this.asyncFn()` - Fire-and-forget without error handling
 3. `.catch(error) { console.log(); return []; }` - Silent failures returning empty
@@ -63,6 +71,7 @@
 6. Read-modify-write without transactions - Race conditions in metrics
 
 ### Safe Patterns to Implement:
+
 1. Always pair `.then()` with `.catch()` or use `async/await` with try-catch
 2. Use `Promise.resolve().catch()` for fire-and-forget with error logging
 3. Throw errors from service methods to let callers handle them
@@ -73,33 +82,37 @@
 ## Performance Impact
 
 **Memory Issues:**
+
 - Issue #1, #11: Memory leaks from uncleaned timeouts and promise references
 - Issue #3: Incomplete cleanup in concurrent operations
 
 **Concurrency Issues:**
+
 - Issue #5: Race condition causes lost metric updates over time
 - Issues #1, #3: Potential for cascading failures in long-running sessions
 
 **User Impact:**
+
 - Issue #7: Users see empty chat history instead of actual messages
 - Issue #4: Context shifts fail silently, wrong entity context
 
 ## Estimated Effort to Fix
 
-| Issue | Effort | Risk | Notes |
-|-------|--------|------|-------|
-| #1 | 30 min | High | Memory leak, should fix first |
-| #3 | 45 min | High | Impacts batch operations |
-| #6 | 15 min | Medium | Telemetry fix |
-| #4 | 1 hour | Medium | Validation needed |
-| #5 | 2 hours | High | Requires DB schema changes |
-| #7 | 30 min | High | Error propagation change |
-| #11 | 30 min | Low | Cleanup improvement |
-| #2, #8, #9, #10, #12, #13 | 2 hours | Low-Medium | Minor fixes |
+| Issue                     | Effort  | Risk       | Notes                         |
+| ------------------------- | ------- | ---------- | ----------------------------- |
+| #1                        | 30 min  | High       | Memory leak, should fix first |
+| #3                        | 45 min  | High       | Impacts batch operations      |
+| #6                        | 15 min  | Medium     | Telemetry fix                 |
+| #4                        | 1 hour  | Medium     | Validation needed             |
+| #5                        | 2 hours | High       | Requires DB schema changes    |
+| #7                        | 30 min  | High       | Error propagation change      |
+| #11                       | 30 min  | Low        | Cleanup improvement           |
+| #2, #8, #9, #10, #12, #13 | 2 hours | Low-Medium | Minor fixes                   |
 
 **Total Estimated Time: 6-7 hours for all fixes**
 
 ## Documentation Reference
 
 Full detailed analysis with code samples and fixes available in:
+
 - `/apps/web/docs/features/agentic-chat/BUG_ANALYSIS_2025-11-14.md`

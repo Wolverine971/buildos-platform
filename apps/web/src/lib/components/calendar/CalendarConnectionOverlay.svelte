@@ -60,7 +60,7 @@
 	<div
 		class="fixed inset-0 bg-white/60 dark:bg-black/60 backdrop-blur-xl z-[100]"
 		aria-hidden="true"
-	/>
+	></div>
 
 	<!-- Content Container -->
 	<div class="fixed inset-0 z-[100] flex items-center justify-center p-4">

@@ -41,9 +41,9 @@
 	const dispatch = createEventDispatcher();
 
 	let dropdownOpen = $state(false);
-	let dropdownElement: HTMLDivElement;
+	let dropdownElement = $state<HTMLDivElement | undefined>(undefined);
 	let phaseActionsDropdownOpen = $state(false);
-	let phaseActionsDropdownElement: HTMLDivElement;
+	let phaseActionsDropdownElement = $state<HTMLDivElement | undefined>(undefined);
 
 	function toggleDropdown() {
 		dropdownOpen = !dropdownOpen;

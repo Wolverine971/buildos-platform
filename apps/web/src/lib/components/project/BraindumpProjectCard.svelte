@@ -213,7 +213,8 @@
 					class="inline-flex items-center px-2 py-1 rounded text-xs font-medium {statusInfo.color}"
 				>
 					{#if statusInfo.icon}
-						<svelte:component this={statusInfo.icon} class="w-3 h-3 mr-1" />
+						{@const StatusIcon = statusInfo.icon}
+						<StatusIcon class="w-3 h-3 mr-1" />
 					{/if}
 					<span>{statusInfo.label}</span>
 				</div>

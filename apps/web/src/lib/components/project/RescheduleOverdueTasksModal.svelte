@@ -12,6 +12,7 @@
 	export let isOpen = false;
 	export let projectId: string;
 	export let overdueTasks: TaskWithCalendarEvents[] = [];
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	export let phases: PhaseWithTasks[] = [];
 	export let calendarConnected = false;
 
