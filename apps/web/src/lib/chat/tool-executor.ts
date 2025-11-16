@@ -12,6 +12,10 @@ import type { ChatToolCall, ChatToolResult } from '@buildos/shared-types';
 import { getToolCategory, ENTITY_FIELD_INFO } from './tools.config';
 import { ensureActorId } from '$lib/services/ontology/ontology-projects.service';
 import { TemplateCreationService } from '$lib/services/agentic-chat/template-creation/template-creation-service';
+import {
+	getBuildosOverviewDocument,
+	getBuildosUsageGuide
+} from '$lib/services/agentic-chat/tools/buildos';
 
 interface ListOntoTasksArgs {
 	project_id?: string;
@@ -371,6 +375,12 @@ export class ChatToolExecutor {
 					result = await this.getFieldInfo(
 						args as { entity_type: string; field_name?: string }
 					);
+					break;
+				case 'get_buildos_overview':
+					result = getBuildosOverviewDocument();
+					break;
+				case 'get_buildos_usage_guide':
+					result = getBuildosUsageGuide();
 					break;
 
 				case 'list_onto_projects':

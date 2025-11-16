@@ -63,6 +63,11 @@ export const TOOL_CATEGORIES = {
 		tools: ['get_field_info'],
 		averageTokens: 80,
 		costTier: 'low'
+	},
+	buildos_docs: {
+		tools: ['get_buildos_overview', 'get_buildos_usage_guide'],
+		averageTokens: 900,
+		costTier: 'medium'
 	}
 };
 
@@ -71,7 +76,7 @@ export const TOOL_CATEGORIES = {
  * project_audit & project_forecast intentionally mirror project tools for now.
  */
 const TOOL_GROUPS: Record<ToolContextScope, string[]> = {
-	base: ['get_field_info', 'get_entity_relationships'],
+	base: ['get_field_info', 'get_entity_relationships', 'get_buildos_overview', 'get_buildos_usage_guide'],
 	global: [
 		'list_onto_projects',
 		'search_onto_projects',
@@ -193,7 +198,11 @@ export const ONTOLOGY_TOOLS = extractTools([
 	'delete_onto_plan'
 ]);
 
-export const UTILITY_TOOLS = extractTools(['get_field_info']);
+export const UTILITY_TOOLS = extractTools([
+	'get_field_info',
+	'get_buildos_overview',
+	'get_buildos_usage_guide'
+]);
 
 export const DEFAULT_TOOLS = getToolsForContextType('global');
 
