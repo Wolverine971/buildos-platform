@@ -380,13 +380,13 @@
 
 	function handleFocusSelection(newFocus: ProjectFocus) {
 		projectFocus = newFocus;
-		addActivityMessage(`Focus updated: ${describeFocus(newFocus)}`);
+		logFocusActivity('Focus updated', newFocus);
 	}
 
 	function handleFocusClear() {
 		if (!defaultProjectFocus) return;
 		projectFocus = defaultProjectFocus;
-		addActivityMessage(`Focus reset to ${describeFocus(defaultProjectFocus)}.`);
+		logFocusActivity('Focus reset', defaultProjectFocus);
 	}
 
 	// Helper: Check if user is scrolled to bottom (within threshold)
@@ -936,7 +936,7 @@
 
 			case 'focus_changed':
 				projectFocus = event.focus;
-				addActivityMessage(`Focus changed: ${describeFocus(event.focus)}`);
+				logFocusActivity('Focus changed', event.focus);
 				break;
 
 			case 'agent_state': {
@@ -1297,16 +1297,6 @@
 		}
 	}
 
-	function addActivityMessage(content: string) {
-		const activityMessage: UIMessage = {
-			id: crypto.randomUUID(),
-			type: 'activity',
-			content,
-			timestamp: new Date()
-		};
-		messages = [...messages, activityMessage];
-	}
-
 	function describeFocus(focus: ProjectFocus | null): string {
 		if (!focus) return 'project workspace';
 		if (focus.focusType === 'project-wide') {
@@ -1314,6 +1304,13 @@
 		}
 		const entityName = focus.focusEntityName ?? 'Selected entity';
 		return `${entityName} (${focus.focusType})`;
+	}
+
+	function logFocusActivity(action: string, focus: ProjectFocus | null) {
+		const details = focus ? describeFocus(focus) : 'project workspace';
+		addActivityToThinkingBlock(`${action}: ${details}`, 'context_shift', {
+			focus
+		});
 	}
 
 	function addPlanMessage(plan: any) {

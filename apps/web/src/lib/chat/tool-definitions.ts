@@ -1234,6 +1234,37 @@ Use this when users ask questions like:
 				required: ['entity_type']
 			}
 		}
+	},
+	{
+		type: 'function',
+		function: {
+			name: 'get_buildos_overview',
+			description: `Return the canonical BuildOS overview reference.
+Use this whenever the user asks broad questions such as:
+- "What is BuildOS?"
+- "What workflows does BuildOS support?"
+- "Point me to the docs about BuildOS."
+The tool responds with a structured document that summarizes the mission, architecture, major features, and documentation entry points.`,
+			parameters: {
+				type: 'object',
+				properties: {},
+				additionalProperties: false
+			}
+		}
+	},
+	{
+		type: 'function',
+		function: {
+			name: 'get_buildos_usage_guide',
+			description: `Return the hands-on BuildOS usage playbook.
+Use this when the user needs step-by-step instructions for capturing brain dumps, creating ontology projects, connecting calendar integrations, or collaborating with the agentic chat system.
+It responds with a structured guide that walks through onboarding, planning, automation, and template workflows.`,
+			parameters: {
+				type: 'object',
+				properties: {},
+				additionalProperties: false
+			}
+		}
 	}
 ];
 
@@ -1381,6 +1412,26 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 			'project_audit',
 			'project_forecast'
 		],
+		category: 'utility'
+	},
+	get_buildos_overview: {
+		summary: 'High-level BuildOS overview covering mission, architecture, and documentation map.',
+		capabilities: [
+			'Explains platform pillars',
+			'Lists doc entry points',
+			'Clarifies architecture responsibilities'
+		],
+		contexts: ['base', 'global', 'project_create', 'project', 'project_audit', 'project_forecast'],
+		category: 'utility'
+	},
+	get_buildos_usage_guide: {
+		summary: 'Step-by-step BuildOS usage playbook for onboarding, planning, and automation.',
+		capabilities: [
+			'Describes workflows (brain dumps → ontology → scheduling)',
+			'Highlights template + calendar actions',
+			'Suggests follow-up tool calls'
+		],
+		contexts: ['base', 'global', 'project_create', 'project', 'project_audit', 'project_forecast'],
 		category: 'utility'
 	}
 };
