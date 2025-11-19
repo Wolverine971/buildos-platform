@@ -1,5 +1,5 @@
 // Lightweight database schema - auto-generated from database.types.ts
-// Generated on: 2025-11-15T20:08:30.557Z
+// Generated on: 2025-11-19T02:49:46.689Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -1514,6 +1514,15 @@ export type DatabaseSchema = {
 		updated_at: string | null;
 		user_id: string;
 	};
+	research_artifact_refs: {
+		created_at: string;
+		id: string;
+		importance: number | null;
+		ref: Json;
+		ref_type: string;
+		session_id: string;
+		snippet: string | null;
+	};
 	scheduled_sms_messages: {
 		calendar_event_id: string | null;
 		cancelled_at: string | null;
@@ -2055,6 +2064,7 @@ export const tableNames = [
 	'queue_jobs',
 	'recurring_task_instances',
 	'recurring_task_migration_log',
+	'research_artifact_refs',
 	'scheduled_sms_messages',
 	'security_logs',
 	'sms_alert_history',

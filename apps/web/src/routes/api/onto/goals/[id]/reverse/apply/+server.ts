@@ -299,6 +299,7 @@ function buildTaskProps(
 ): Json {
 	const props: Record<string, unknown> = {
 		source: SOURCE_TAG,
+		goal_id: goalId,
 		source_goal_id: goalId,
 		supporting_milestone_id: milestoneId
 	};

@@ -4,6 +4,7 @@ import {
 	AGENTIC_WORKFLOW_REFERENCE,
 	CALENDAR_FEATURE_REFERENCE,
 	CHAT_ARCHITECTURE_REFERENCE,
+	CHAT_CONVERSATION_MODES_REFERENCE,
 	FEATURES_INDEX_REFERENCE,
 	ONBOARDING_REFERENCE,
 	ONTOLOGY_REFERENCE,
@@ -49,11 +50,13 @@ const OVERVIEW_SECTIONS: BuildosDocSection[] = [
 	{
 		title: 'Ontology & Template System',
 		summary:
-			'Work management is modeled as an ontology with templates, graph edges, and canonical context documents.',
+			'Work management is modeled as an ontology—a knowledge graph where projects, tasks, plans, goals, and documents form interconnected webs of meaning instead of flat lists.',
 		highlights: [
-			'Every project uses a `type_key` taxonomy plus three orthogonal facets (context, scale, stage) to keep instances lightweight yet expressive.',
-			'Context documents (`document.project.context`) store the narrative story and are linked via `onto_projects.context_document_id` for reliable retrieval.',
-			'Template inheritance merges `default_props` and facet defaults at instantiation time while schema definitions stay as validation documents.'
+			'Every project uses a template (type_key like "writer.book" or "dev.app") plus three facets (context, scale, stage) to classify work without rigid hierarchies.',
+			'Context documents capture the narrative "why" of a project—the story from brain dumps that persists as work evolves, giving AI agents rich background when planning.',
+			'The graph structure creates relationships: tasks belong to plans, plans support goals, everything ties to project context. This web lets agents understand dependencies, priorities, and the bigger picture.',
+			'Templates define default properties and suggestions, but projects remain flexible. Users can add custom fields, change states, and adapt the structure to their workflow.',
+			'Template inheritance merges defaults at creation time, but the schema stays loose—projects evolve beyond their templates as needs change.'
 		],
 		references: [ONTOLOGY_REFERENCE, TEMPLATE_INHERITANCE_REFERENCE]
 	},
@@ -67,6 +70,21 @@ const OVERVIEW_SECTIONS: BuildosDocSection[] = [
 			'SSE stream handlers process incremental model chunks, enabling quick UI feedback while tools execute.'
 		],
 		references: [CHAT_ARCHITECTURE_REFERENCE]
+	},
+	{
+		title: 'Conversation Modes & Project Focus',
+		summary:
+			'BuildOS chat adapts to what users want to work on—from global brainstorming to deep dives on individual tasks.',
+		highlights: [
+			'Global mode lets users work across all projects and calendar, perfect for high-level planning and cross-project coordination.',
+			'Project mode focuses conversation within one project. Users can ask questions, create tasks, update plans, or request summaries—all scoped to that project context.',
+			'Within project mode, the ProjectFocusSelector lets users narrow to a specific task, goal, plan, document, or output for deep, focused conversations about that one thing.',
+			'Specialized flows exist for structured workflows: project_create guides turning ideas into projects, project_audit stress-tests for gaps, project_forecast explores timelines.',
+			'Task-focused mode provides a spotlight on individual tasks—perfect for breaking down work, clarifying requirements, or updating status.',
+			'Each mode changes what tools are available and how context loads. Project mode loads project context documents and related entities; task mode loads task details and dependencies.',
+			'The focus system prevents context overload: instead of loading an entire project graph, the agent loads only what is relevant to the current conversation scope.'
+		],
+		references: [CHAT_CONVERSATION_MODES_REFERENCE, CHAT_ARCHITECTURE_REFERENCE]
 	},
 	{
 		title: 'Experience & Design System',

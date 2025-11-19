@@ -29,6 +29,10 @@
 		AgentSSEMessage
 	} from '@buildos/shared-types';
 	import { renderMarkdown, getProseClasses, hasMarkdownFormatting } from '$lib/utils/markdown';
+	import {
+		requestAgentToAgentMessage,
+		type AgentToAgentMessageHistory
+	} from '$lib/services/agentic-chat/agent-to-agent-service';
 	// Add ontology integration imports
 	import type { LastTurnContext, ProjectFocus } from '$lib/types/agent-chat-enhancement';
 	import type TextareaWithVoiceComponent from '$lib/components/ui/TextareaWithVoice.svelte';
@@ -40,8 +44,10 @@
 		onClose?: () => void;
 	}
 
+	type ContextSelectionType = ChatContextType | 'agent_to_agent';
+
 	interface ContextSelectionDetail {
-		contextType: ChatContextType;
+		contextType: ContextSelectionType;
 		entityId?: string;
 		label?: string;
 	}
@@ -214,7 +220,8 @@
 			| 'plan' // DEPRECATED - now integrated into thinking_block
 			| 'step'
 			| 'executor'
-			| 'clarification';
+			| 'clarification'
+			| 'agent_peer';
 		data?: any;
 		timestamp: Date;
 		// Optional ChatMessage fields
@@ -272,6 +279,30 @@
 		executing_plan: 'Agent is executing...',
 		waiting_on_user: 'Waiting on your direction...'
 	};
+
+	// Actionable Insight agent identifier (used for agent-to-agent bridge)
+	const RESEARCH_AGENT_ID = 'actionable_insight_agent';
+
+	type AgentToAgentStep = 'agent' | 'project' | 'goal' | 'chat';
+
+	interface AgentProjectSummary {
+		id: string;
+		name: string;
+		description: string | null;
+	}
+
+	let agentToAgentMode = $state(false);
+	let agentToAgentStep = $state<AgentToAgentStep | null>(null);
+	let agentGoal = $state('');
+	let selectedAgentId = $state<string | null>(null);
+	let agentLoopActive = $state(false);
+	let agentMessageLoading = $state(false);
+	let agentTurnBudget = $state(5);
+	let agentTurnsRemaining = $state(5);
+	let agentProjects = $state<AgentProjectSummary[]>([]);
+	let agentProjectsError = $state<string | null>(null);
+	let agentProjectsLoading = $state(false);
+
 	let agentState = $state<AgentLoopState | null>(null);
 	let agentStateDetails = $state<string | null>(null);
 	const agentStateLabel = $derived.by(() => {
@@ -288,7 +319,8 @@
 	let voiceRecordingDuration = $state(0);
 
 	const isSendDisabled = $derived(
-		!selectedContextType ||
+		agentToAgentMode ||
+			!selectedContextType ||
 			!inputValue.trim() ||
 			isStreaming ||
 			isVoiceRecording ||
@@ -341,12 +373,23 @@
 		ontologySummary = null;
 		voiceErrorMessage = '';
 		showFocusSelector = false;
+		agentLoopActive = false;
+		agentMessageLoading = false;
+		agentTurnBudget = 5;
+		agentTurnsRemaining = 5;
 
 		if (!preserveContext) {
 			selectedContextType = null;
 			selectedEntityId = undefined;
 			selectedContextLabel = null;
 			projectFocus = null;
+			agentToAgentMode = false;
+			agentToAgentStep = null;
+			selectedAgentId = null;
+			agentGoal = '';
+			agentProjects = [];
+			agentProjectsError = null;
+			agentProjectsLoading = false;
 		}
 	}
 
@@ -354,6 +397,22 @@
 		resetConversation();
 
 		const detail = event.detail;
+		if (detail.contextType === 'agent_to_agent') {
+			agentToAgentMode = true;
+			agentToAgentStep = 'agent';
+			selectedAgentId = null;
+			selectedContextType = null;
+			selectedContextLabel = detail.label ?? 'Agent to agent chat';
+			projectFocus = null;
+			return;
+		}
+
+		agentToAgentMode = false;
+		agentToAgentStep = null;
+		selectedAgentId = null;
+		agentGoal = '';
+		agentLoopActive = false;
+		agentMessageLoading = false;
 		selectedContextType = detail.contextType;
 		selectedEntityId = detail.entityId;
 		selectedContextLabel =
@@ -387,6 +446,160 @@
 		if (!defaultProjectFocus) return;
 		projectFocus = defaultProjectFocus;
 		logFocusActivity('Focus reset', defaultProjectFocus);
+	}
+
+	const selectedAgentLabel = $derived(
+		selectedAgentId ? 'Actionable Insight Agent' : 'Select an agent'
+	);
+
+	async function loadAgentProjects(force = false) {
+		if (agentProjectsLoading || (!force && agentProjects.length > 0)) return;
+		agentProjectsLoading = true;
+		agentProjectsError = null;
+		try {
+			const response = await fetch('/api/onto/projects', {
+				method: 'GET',
+				credentials: 'same-origin',
+				cache: 'no-store',
+				headers: { Accept: 'application/json' }
+			});
+			const payload = await response.json();
+			if (!response.ok || payload?.success === false) {
+				agentProjectsError = payload?.error || 'Failed to load projects';
+				agentProjects = [];
+				return;
+			}
+			const fetched = payload?.data?.projects ?? payload?.projects ?? [];
+			agentProjects = fetched.map((project: any) => ({
+				id: project.id,
+				name: project.name ?? 'Untitled project',
+				description: project.description ?? null
+			}));
+		} catch (err) {
+			console.error('[AgentChat] Failed to load projects for agent bridge', err);
+			agentProjectsError = 'Failed to load projects';
+		} finally {
+			agentProjectsLoading = false;
+		}
+	}
+
+	function selectAgentForBridge(agentId: string) {
+		selectedAgentId = agentId;
+		agentToAgentStep = 'project';
+		loadAgentProjects(true);
+	}
+
+	function selectAgentProject(project: AgentProjectSummary) {
+		selectedContextType = 'project';
+		selectedEntityId = project.id;
+		selectedContextLabel = project.name;
+		projectFocus = buildProjectWideFocus(project.id, project.name);
+		agentToAgentStep = 'goal';
+	}
+
+	function backToAgentSelection() {
+		agentToAgentStep = 'agent';
+		agentLoopActive = false;
+	}
+
+	function backToAgentProjectSelection() {
+		agentToAgentStep = 'project';
+		agentLoopActive = false;
+	}
+
+	function updateAgentTurnBudget(value: number) {
+		const sanitized = Math.max(1, Math.min(50, Math.round(value)));
+		agentTurnBudget = sanitized;
+		if (!agentLoopActive && !agentMessageLoading && !isStreaming) {
+			agentTurnsRemaining = sanitized;
+		}
+	}
+
+	function buildAgentToAgentHistory(): AgentToAgentMessageHistory[] {
+		return messages
+			.filter((message) => message.type === 'agent_peer' || message.type === 'assistant')
+			.map((message) => ({
+				role: message.type === 'assistant' ? ('buildos' as const) : ('agent' as const),
+				content: message.content
+			}))
+			.filter((item) => item.content?.trim());
+	}
+
+	async function runAgentToAgentTurn() {
+		if (!agentToAgentMode || !agentLoopActive || agentMessageLoading) return;
+		if (!selectedAgentId) {
+			error = 'Select an agent to continue.';
+			return;
+		}
+		if (!selectedEntityId || selectedContextType !== 'project') {
+			error = 'Select a project for the agent-to-agent chat.';
+			return;
+		}
+		if (!agentGoal.trim()) {
+			error = 'Provide a goal for the agent-to-agent chat.';
+			return;
+		}
+		if (agentTurnsRemaining <= 0) {
+			agentLoopActive = false;
+			return;
+		}
+		if (isStreaming) return;
+
+		agentMessageLoading = true;
+		try {
+			const history = buildAgentToAgentHistory();
+			const response = await requestAgentToAgentMessage({
+				agentId: selectedAgentId,
+				projectId: selectedEntityId,
+				goal: agentGoal.trim(),
+				history
+			});
+			const agentMessage = response?.message?.trim();
+			if (!agentMessage) {
+				error = 'The selected agent did not return a message.';
+				agentLoopActive = false;
+				return;
+			}
+			await sendMessage(agentMessage, { senderType: 'agent_peer', suppressInputClear: true });
+		} catch (err) {
+			console.error('[AgentChat] Failed to run agent-to-agent turn', err);
+			error = 'Failed to fetch the agent message.';
+			agentLoopActive = false;
+		} finally {
+			agentMessageLoading = false;
+		}
+	}
+
+	async function startAgentToAgentChat() {
+		if (isStreaming || agentMessageLoading) return;
+		if (!selectedAgentId) {
+			error = 'Select an agent to start.';
+			return;
+		}
+		if (!selectedEntityId || selectedContextType !== 'project') {
+			error = 'Select a project to start.';
+			return;
+		}
+		if (!agentGoal.trim()) {
+			error = 'Add a goal for the AI agent.';
+			return;
+		}
+		if (agentTurnBudget <= 0) {
+			error = 'Set at least 1 turn before starting.';
+			return;
+		}
+
+		resetConversation({ preserveContext: true });
+		agentLoopActive = true;
+		agentToAgentMode = true;
+		agentToAgentStep = 'chat';
+		agentTurnsRemaining = agentTurnBudget;
+		error = null;
+		await runAgentToAgentTurn();
+	}
+
+	function stopAgentLoop() {
+		agentLoopActive = false;
 	}
 
 	// Helper: Check if user is scrolled to bottom (within threshold)
@@ -428,6 +641,25 @@
 	$effect(() => {
 		if (messages.length > 0) {
 			scrollToBottomIfNeeded();
+		}
+	});
+
+	$effect(() => {
+		if (agentToAgentMode && agentToAgentStep === 'project') {
+			loadAgentProjects();
+		}
+	});
+
+	$effect(() => {
+		// Auto-run the next turn when the loop is active and idle
+		if (
+			agentToAgentMode &&
+			agentLoopActive &&
+			!agentMessageLoading &&
+			!isStreaming &&
+			agentTurnsRemaining > 0
+		) {
+			runAgentToAgentTurn();
 		}
 	});
 
@@ -721,8 +953,12 @@
 		}
 	}
 
-	async function sendMessage() {
-		const trimmed = inputValue.trim();
+	async function sendMessage(
+		contentOverride?: string,
+		options: { senderType?: 'user' | 'agent_peer'; suppressInputClear?: boolean } = {}
+	) {
+		const { senderType = 'user', suppressInputClear = false } = options;
+		const trimmed = (contentOverride ?? inputValue).trim();
 		if (
 			!trimmed ||
 			isStreaming ||
@@ -743,7 +979,7 @@
 			id: crypto.randomUUID(),
 			session_id: currentSession?.id,
 			user_id: undefined, // Will be set by backend
-			type: 'user',
+			type: senderType as UIMessage['type'],
 			role: 'user' as ChatRole,
 			content: trimmed,
 			timestamp: now,
@@ -752,7 +988,7 @@
 
 		// Convert existing messages to conversation history format (only user/assistant messages)
 		const conversationHistory: Partial<ChatMessage>[] = messages
-			.filter((msg) => msg.type === 'user' || msg.type === 'assistant')
+			.filter((msg) => msg.role === 'user' || msg.role === 'assistant')
 			.map((msg) => ({
 				id: msg.id,
 				session_id: currentSession?.id || 'pending',
@@ -764,7 +1000,9 @@
 			}));
 
 		messages = [...messages, userMessage];
-		inputValue = '';
+		if (!suppressInputClear) {
+			inputValue = '';
+		}
 		error = null;
 		isStreaming = true;
 
@@ -909,18 +1147,18 @@
 				}
 				break;
 
-			case 'ontology_loaded':
-				// Ontology context was loaded
-				ontologyLoaded = true;
-				ontologySummary = event.summary || 'Ontology context loaded';
-				addActivityToThinkingBlock(
-					`Ontology context: ${ontologySummary}`,
-					'ontology_loaded',
-					{
-						summary: ontologySummary
-					}
-				);
-				break;
+			// case 'ontology_loaded':
+			// 	// Ontology context was loaded
+			// 	ontologyLoaded = true;
+			// 	ontologySummary = event.summary || 'Ontology context loaded';
+			// 	addActivityToThinkingBlock(
+			// 		`Ontology context: ${ontologySummary}`,
+			// 		'ontology_loaded',
+			// 		{
+			// 			summary: ontologySummary
+			// 		}
+			// 	);
+			// 	break;
 
 			case 'last_turn_context':
 				// Store last turn context for next message
@@ -1285,6 +1523,17 @@
 				// Note: isStreaming will be set to false by onComplete callback
 				// But we can also set it here for immediate UI response
 				isStreaming = false;
+				if (agentToAgentMode && agentLoopActive) {
+					if (agentTurnsRemaining > 0) {
+						agentTurnsRemaining = Math.max(0, agentTurnsRemaining - 1);
+					}
+					if (agentTurnsRemaining <= 0) {
+						agentLoopActive = false;
+						currentActivity = 'Turn limit reached';
+						break;
+					}
+					runAgentToAgentTurn();
+				}
 				break;
 
 			case 'error':
@@ -1535,7 +1784,191 @@
 	<div
 		class="relative z-10 flex h-full flex-col overflow-hidden rounded-3xl border border-slate-200/60 bg-white/95 shadow-[0_28px_70px_-40px_rgba(15,23,42,0.5)] backdrop-blur-xl dark:border-slate-700/60 dark:bg-slate-900/90"
 	>
-		{#if !selectedContextType}
+		{#if agentToAgentMode && agentToAgentStep !== 'chat'}
+			<div
+				class="flex h-full min-h-0 flex-col gap-6 overflow-hidden bg-slate-50/70 p-6 dark:bg-slate-900/40"
+			>
+				<div class="flex items-center justify-between">
+					<div>
+						<p
+							class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+						>
+							Agent to agent chat
+						</p>
+						<h3 class="text-xl font-semibold text-slate-900 dark:text-white">
+							{#if agentToAgentStep === 'agent'}
+								Choose your agent
+							{:else if agentToAgentStep === 'project'}
+								Choose a project
+							{:else}
+								Set an agent goal
+							{/if}
+						</h3>
+						<p class="mt-1 text-sm text-slate-600 dark:text-slate-400">
+							Guide the Actionable Insight Agent so it can drive the BuildOS chat.
+						</p>
+					</div>
+					<button
+						type="button"
+						class="text-sm font-medium text-slate-500 hover:text-slate-700 dark:text-slate-300 dark:hover:text-white"
+						onclick={() => {
+							agentToAgentMode = false;
+							agentToAgentStep = null;
+							changeContext();
+						}}
+					>
+						Exit
+					</button>
+				</div>
+				{#if agentToAgentStep === 'agent'}
+					<div
+						class="flex flex-1 flex-col justify-center gap-4 rounded-2xl border border-slate-200 bg-white px-6 py-10 shadow-sm dark:border-slate-700 dark:bg-slate-900"
+					>
+						<h4 class="text-lg font-semibold text-slate-900 dark:text-white">
+							Actionable Insight Agent
+						</h4>
+						<p class="max-w-2xl text-sm text-slate-600 dark:text-slate-400">
+							This agent will craft concise, actionable prompts and send them into the
+							BuildOS agentic chat to move your project forward.
+						</p>
+						<div class="flex flex-wrap items-center gap-3">
+							<button
+								type="button"
+								class="inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
+								onclick={() => selectAgentForBridge(RESEARCH_AGENT_ID)}
+							>
+								Use this agent
+							</button>
+							<span
+								class="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400"
+							>
+								Single option available
+							</span>
+						</div>
+					</div>
+				{:else if agentToAgentStep === 'project'}
+					<div class="flex flex-1 flex-col gap-4">
+						<div class="flex items-center justify-between">
+							<h4 class="text-base font-semibold text-slate-900 dark:text-white">
+								Select the project to work in
+							</h4>
+							<button
+								type="button"
+								class="text-sm font-medium text-slate-500 hover:text-slate-700 dark:text-slate-300 dark:hover:text-white"
+								onclick={backToAgentSelection}
+							>
+								Back
+							</button>
+						</div>
+						{#if agentProjectsLoading}
+							<div
+								class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
+							>
+								Loading projects...
+							</div>
+						{:else if agentProjectsError}
+							<div
+								class="rounded-xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:border-rose-900/40 dark:bg-rose-950/20 dark:text-rose-300"
+							>
+								{agentProjectsError}
+							</div>
+						{:else}
+							<div class="grid gap-4 md:grid-cols-2">
+								{#each agentProjects as project}
+									<button
+										type="button"
+										class="group flex h-full flex-col gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-4 text-left shadow-sm transition hover:-translate-y-[2px] hover:border-slate-300 hover:shadow-md dark:border-slate-700 dark:bg-slate-900 dark:hover:border-slate-600"
+										onclick={() => selectAgentProject(project)}
+									>
+										<div class="flex items-center justify-between gap-3">
+											<h5
+												class="text-base font-semibold text-slate-900 dark:text-white"
+											>
+												{project.name}
+											</h5>
+											<span
+												class="text-xs font-semibold uppercase tracking-wide text-slate-400"
+											>
+												Select
+											</span>
+										</div>
+										<p class="text-sm text-slate-600 dark:text-slate-400">
+											{project.description || 'No description provided.'}
+										</p>
+									</button>
+								{/each}
+							</div>
+							{#if agentProjects.length === 0 && !agentProjectsLoading}
+								<p class="text-sm text-slate-500 dark:text-slate-400">
+									No projects found. Create one first.
+								</p>
+							{/if}
+						{/if}
+					</div>
+				{:else}
+					<div class="flex flex-1 flex-col gap-4">
+						<div class="flex items-center justify-between">
+							<h4 class="text-base font-semibold text-slate-900 dark:text-white">
+								What should the AI agent accomplish?
+							</h4>
+							<button
+								type="button"
+								class="text-sm font-medium text-slate-500 hover:text-slate-700 dark:text-slate-300 dark:hover:text-white"
+								onclick={backToAgentProjectSelection}
+							>
+								Back
+							</button>
+						</div>
+						<div
+							class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900"
+						>
+							<div
+								class="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+							>
+								<span
+									class="rounded-full bg-indigo-100 px-3 py-1 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-200"
+								>
+									Agent: {selectedAgentLabel}
+								</span>
+								{#if selectedContextLabel}
+									<span
+										class="rounded-full bg-emerald-100 px-3 py-1 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-200"
+									>
+										Project: {selectedContextLabel}
+									</span>
+								{/if}
+							</div>
+							<div class="mt-4 space-y-3">
+								<label
+									class="text-sm font-medium text-slate-800 dark:text-slate-200"
+								>
+									Goal for the AI agent
+								</label>
+								<textarea
+									class="w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-slate-600 dark:focus:ring-slate-700"
+									rows="3"
+									bind:value={agentGoal}
+									placeholder="Describe what the agent should try to achieve..."
+								></textarea>
+								<div class="flex flex-wrap items-center gap-3">
+									<button
+										type="button"
+										class="inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
+										onclick={startAgentToAgentChat}
+										disabled={agentGoal.trim().length === 0}
+									>
+										Start agent chat
+									</button>
+									<span class="text-xs text-slate-500 dark:text-slate-400">
+										The agent will alternate turns with BuildOS automatically.
+									</span>
+								</div>
+							</div>
+						</div>
+					</div>
+				{/if}
+			</div>
+		{:else if !selectedContextType}
 			<div class="flex h-full min-h-0 flex-col overflow-hidden">
 				<ContextSelectionScreen inModal on:select={handleContextSelect} />
 			</div>
@@ -1594,7 +2027,7 @@
 									AI
 								</div>
 								<div
-									class="max-w-[85%] rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-relaxed text-slate-900 shadow-sm dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-100 sm:max-w-[85%]"
+									class="agent-resp-div max-w-[85%] rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-relaxed text-slate-900 shadow-sm dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-100 sm:max-w-[85%]"
 								>
 									{#if shouldRenderAsMarkdown(message.content)}
 										<div class={proseClasses}>
@@ -1610,8 +2043,33 @@
 									</div>
 								</div>
 							</div>
+						{:else if message.type === 'agent_peer'}
+							<div class="flex gap-2 sm:gap-3">
+								<div
+									class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-indigo-200 bg-white text-[11px] font-semibold uppercase text-indigo-600 dark:border-indigo-500/50 dark:bg-slate-800 dark:text-indigo-300 sm:h-9 sm:w-9"
+								>
+									AI↔
+								</div>
+								<div
+									class="max-w-[85%] rounded-2xl border border-indigo-200 bg-indigo-50/70 px-4 py-3 text-sm leading-relaxed text-slate-900 shadow-sm dark:border-indigo-500/40 dark:bg-indigo-500/5 dark:text-slate-100 sm:max-w-[85%]"
+								>
+									{#if shouldRenderAsMarkdown(message.content)}
+										<div class={proseClasses}>
+											{@html renderMarkdown(message.content)}
+										</div>
+									{:else}
+										<div class="whitespace-pre-wrap break-words">
+											{message.content}
+										</div>
+									{/if}
+									<div
+										class="mt-1.5 text-xs text-indigo-700/70 dark:text-indigo-200/80"
+									>
+										{formatTime(message.timestamp)}
+									</div>
+								</div>
+							</div>
 						{:else if message.type === 'thinking_block'}
-							<!-- NEW: Thinking block log -->
 							<ThinkingBlock
 								block={message as ThinkingBlockMessage}
 								onToggleCollapse={toggleThinkingBlockCollapse}
@@ -1635,7 +2093,9 @@
 											class="mt-3 space-y-2.5 text-[15px] text-slate-700 dark:text-slate-200"
 										>
 											{#each message.data.questions as question, i}
-												<li class="flex gap-2.5 font-medium leading-snug sm:gap-3">
+												<li
+													class="flex gap-2.5 font-medium leading-snug sm:gap-3"
+												>
 													<span
 														class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white text-xs font-semibold text-blue-600 shadow dark:bg-slate-900 dark:text-blue-300"
 													>
@@ -1656,7 +2116,6 @@
 								</div>
 							</div>
 						{:else if message.type === 'plan'}
-							<!-- DEPRECATED: Plan messages now integrated into thinking blocks -->
 							{#if dev}
 								<div
 									class="rounded-md bg-amber-100 px-3 py-2 text-xs text-amber-800 dark:bg-amber-900/20 dark:text-amber-300"
@@ -1703,7 +2162,6 @@
 								</div>
 							</div>
 						{:else if message.type === 'activity'}
-							<!-- DEPRECATED: Activity messages now integrated into thinking blocks -->
 							{#if dev}
 								<div
 									class="rounded-md bg-amber-100 px-3 py-2 text-xs text-amber-800 dark:bg-amber-900/20 dark:text-amber-300"
@@ -1725,7 +2183,6 @@
 								</div>
 							</div>
 						{:else}
-							<!-- Other message types (step, executor, etc.) -->
 							<div class="flex gap-2 text-[11px] text-slate-500 dark:text-slate-400">
 								<div
 									class="w-14 shrink-0 pt-[2px] font-mono text-slate-400 dark:text-slate-500"
@@ -1763,129 +2220,203 @@
 				</div>
 			{/if}
 
-			<div
-				class="border-t border-slate-200 bg-white px-4 py-4 dark:border-slate-800 dark:bg-slate-900 sm:px-6"
-			>
-				<form
-					onsubmit={(e) => {
-						e.preventDefault();
-						sendMessage();
-					}}
-					class="space-y-3"
+			{#if agentToAgentMode}
+				<div
+					class="border-t border-slate-200 bg-white px-4 py-4 dark:border-slate-800 dark:bg-slate-900 sm:px-6"
 				>
-					<TextareaWithVoice
-						bind:this={voiceInputRef}
-						bind:value={inputValue}
-						bind:isRecording={isVoiceRecording}
-						bind:isInitializing={isVoiceInitializing}
-						bind:isTranscribing={isVoiceTranscribing}
-						bind:voiceError={voiceErrorMessage}
-						bind:recordingDuration={voiceRecordingDuration}
-						bind:canUseLiveTranscript={voiceSupportsLiveTranscript}
-						class="w-full"
-						containerClass="space-y-0 rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900"
-						textareaClass="border-none bg-transparent px-4 py-3 text-[15px] leading-relaxed text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-0 dark:text-slate-100 dark:placeholder:text-slate-500"
-						placeholder={`Share the next thing about ${displayContextLabel.toLowerCase()}...`}
-						autoResize
-						rows={1}
-						maxRows={6}
-						disabled={isStreaming}
-						voiceBlocked={isStreaming}
-						voiceBlockedLabel="Wait for agents..."
-						idleHint="Use the mic to add detail before you send."
-						voiceButtonLabel="Record voice note"
-						showStatusRow={false}
-						onkeydown={handleKeyDown}
-					>
-						{#snippet actions()}
-							<button
-								type="submit"
-								class="flex h-10 w-10 items-center justify-center rounded-full bg-slate-900 text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
-								aria-label="Send message"
-								disabled={isSendDisabled}
-							>
-								{#if isStreaming}
-									<Loader class="h-5 w-5 animate-spin" />
-								{:else}
-									<Send class="h-5 w-5" />
-								{/if}
-							</button>
-						{/snippet}
-					</TextareaWithVoice>
-
-					<div
-						class="flex flex-wrap items-center justify-between gap-3 text-xs font-medium text-slate-500 dark:text-slate-400"
-					>
-						<div class="flex flex-wrap items-center gap-3">
-							{#if isVoiceRecording}
-								<span
-									class="flex items-center gap-2 text-rose-500 dark:text-rose-400"
-								>
-									<span
-										class="relative flex h-2.5 w-2.5 items-center justify-center"
-									>
-										<span
-											class="absolute inline-flex h-full w-full animate-ping rounded-full bg-rose-400/70"
-										></span>
-										<span
-											class="relative inline-flex h-2 w-2 rounded-full bg-rose-500"
-										></span>
-									</span>
-									Listening
-									<span class="font-semibold"
-										>{formatDuration(voiceRecordingDuration)}</span
-									>
-								</span>
-							{:else if isVoiceInitializing}
-								<span class="flex items-center gap-2">
-									<Loader class="h-4 w-4 animate-spin" />
-									Preparing microphone…
-								</span>
-							{:else if isVoiceTranscribing}
-								<span class="flex items-center gap-2">
-									<Loader class="h-4 w-4 animate-spin" />
-									Transcribing...
-								</span>
-							{:else}
-								<span class="hidden sm:inline"
-									>Enter to send · Shift + Enter for new line</span
-								>
-								<span class="sm:hidden">Enter to send</span>
-							{/if}
-
-							{#if voiceSupportsLiveTranscript && isVoiceRecording}
-								<span
-									class="hidden rounded-full border border-blue-200 bg-blue-50 px-3 py-0.5 text-[11px] font-semibold uppercase tracking-[0.24em] text-blue-600 dark:border-blue-500/40 dark:bg-blue-500/10 dark:text-blue-300 sm:inline"
-								>
-									Live transcript
-								</span>
-							{/if}
+					<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+						<div class="space-y-1">
+							<p class="text-sm font-semibold text-slate-900 dark:text-white">
+								Agent to agent chat is {agentLoopActive ? 'active' : 'paused'}.
+							</p>
+							<p class="text-xs text-slate-600 dark:text-slate-400">
+								Agent: {selectedAgentLabel} • Project: {selectedContextLabel ??
+									'Select a project'} • Goal: {agentGoal || 'Add a goal'}
+							</p>
+							<p class="text-xs text-slate-600 dark:text-slate-400">
+								Turns remaining: {agentTurnsRemaining} / {agentTurnBudget}
+							</p>
 						</div>
-
-						<div class="flex flex-wrap items-center gap-3">
-							{#if voiceErrorMessage}
-								<span
-									role="alert"
-									class="flex items-center gap-2 rounded-full bg-rose-50 px-3 py-1 text-rose-600 dark:bg-rose-900/20 dark:text-rose-300"
-								>
-									{voiceErrorMessage}
-								</span>
-							{/if}
-
-							{#if isStreaming}
-								<div
-									class="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-600 dark:border-slate-700 dark:bg-slate-800/40 dark:text-slate-200"
-								>
-									<div
-										class="h-2 w-2 animate-pulse rounded-full bg-emerald-500"
-									></div>
-									<span class="text-xs font-semibold">Agents working</span>
-								</div>
-							{/if}
+						<div class="flex flex-wrap items-center gap-2">
+							<button
+								type="button"
+								class="inline-flex items-center justify-center rounded-full bg-slate-900 px-3 py-2 text-xs font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
+								disabled={isStreaming ||
+									agentMessageLoading ||
+									agentTurnsRemaining <= 0}
+								onclick={() => {
+									agentLoopActive = true;
+									runAgentToAgentTurn();
+								}}
+							>
+								{agentLoopActive ? 'Run next turn' : 'Resume loop'}
+							</button>
+							<button
+								type="button"
+								class="inline-flex items-center justify-center rounded-full border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+								onclick={stopAgentLoop}
+							>
+								Stop
+							</button>
 						</div>
 					</div>
-				</form>
-			</div>
+					<div
+						class="mt-2 flex flex-wrap items-center gap-3 text-xs text-slate-600 dark:text-slate-400"
+					>
+						<label class="flex items-center gap-2">
+							<span class="font-semibold">Turn limit</span>
+							<input
+								type="number"
+								min="1"
+								max="50"
+								class="w-20 rounded border border-slate-200 bg-white px-2 py-1 text-xs text-slate-900 focus:border-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-slate-500 dark:focus:ring-slate-700"
+								value={agentTurnBudget}
+								disabled={agentLoopActive || agentMessageLoading || isStreaming}
+								oninput={(e) =>
+									updateAgentTurnBudget(
+										Number((e.target as HTMLInputElement).value)
+									)}
+							/>
+						</label>
+						{#if agentTurnsRemaining <= 0}
+							<span
+								class="rounded-full bg-amber-100 px-2 py-1 text-[11px] font-semibold text-amber-800 dark:bg-amber-900/30 dark:text-amber-200"
+							>
+								Turn limit reached — adjust and resume to continue.
+							</span>
+						{/if}
+					</div>
+					{#if agentMessageLoading}
+						<p class="mt-2 text-xs text-slate-500 dark:text-slate-400">
+							Fetching the next agent message...
+						</p>
+					{/if}
+				</div>
+			{:else}
+				<div
+					class="border-t border-slate-200 bg-white px-4 py-4 dark:border-slate-800 dark:bg-slate-900 sm:px-6"
+				>
+					<form
+						onsubmit={(e) => {
+							e.preventDefault();
+							sendMessage();
+						}}
+						class="space-y-3"
+					>
+						<TextareaWithVoice
+							bind:this={voiceInputRef}
+							bind:value={inputValue}
+							bind:isRecording={isVoiceRecording}
+							bind:isInitializing={isVoiceInitializing}
+							bind:isTranscribing={isVoiceTranscribing}
+							bind:voiceError={voiceErrorMessage}
+							bind:recordingDuration={voiceRecordingDuration}
+							bind:canUseLiveTranscript={voiceSupportsLiveTranscript}
+							class="w-full"
+							containerClass="space-y-0 rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900"
+							textareaClass="border-none bg-transparent px-4 py-3 text-[15px] leading-relaxed text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-0 dark:text-slate-100 dark:placeholder:text-slate-500"
+							placeholder={`Share the next thing about ${displayContextLabel.toLowerCase()}...`}
+							autoResize
+							rows={1}
+							maxRows={6}
+							disabled={isStreaming}
+							voiceBlocked={isStreaming}
+							voiceBlockedLabel="Wait for agents..."
+							idleHint="Use the mic to add detail before you send."
+							voiceButtonLabel="Record voice note"
+							showStatusRow={false}
+							onkeydown={handleKeyDown}
+						>
+							{#snippet actions()}
+								<button
+									type="submit"
+									class="flex h-10 w-10 items-center justify-center rounded-full bg-slate-900 text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
+									aria-label="Send message"
+									disabled={isSendDisabled}
+								>
+									{#if isStreaming}
+										<Loader class="h-5 w-5 animate-spin" />
+									{:else}
+										<Send class="h-5 w-5" />
+									{/if}
+								</button>
+							{/snippet}
+						</TextareaWithVoice>
+
+						<div
+							class="flex flex-wrap items-center justify-between gap-3 text-xs font-medium text-slate-500 dark:text-slate-400"
+						>
+							<div class="flex flex-wrap items-center gap-3">
+								{#if isVoiceRecording}
+									<span
+										class="flex items-center gap-2 text-rose-500 dark:text-rose-400"
+									>
+										<span
+											class="relative flex h-2.5 w-2.5 items-center justify-center"
+										>
+											<span
+												class="absolute inline-flex h-full w-full animate-ping rounded-full bg-rose-400/70"
+											></span>
+											<span
+												class="relative inline-flex h-2 w-2 rounded-full bg-rose-500"
+											></span>
+										</span>
+										Listening
+										<span class="font-semibold"
+											>{formatDuration(voiceRecordingDuration)}</span
+										>
+									</span>
+								{:else if isVoiceInitializing}
+									<span class="flex items-center gap-2">
+										<Loader class="h-4 w-4 animate-spin" />
+										Preparing microphone…
+									</span>
+								{:else if isVoiceTranscribing}
+									<span class="flex items-center gap-2">
+										<Loader class="h-4 w-4 animate-spin" />
+										Transcribing...
+									</span>
+								{:else}
+									<span class="hidden sm:inline"
+										>Enter to send · Shift + Enter for new line</span
+									>
+									<span class="sm:hidden">Enter to send</span>
+								{/if}
+
+								{#if voiceSupportsLiveTranscript && isVoiceRecording}
+									<span
+										class="hidden rounded-full border border-blue-200 bg-blue-50 px-3 py-0.5 text-[11px] font-semibold uppercase tracking-[0.24em] text-blue-600 dark:border-blue-500/40 dark:bg-blue-500/10 dark:text-blue-300 sm:inline"
+									>
+										Live transcript
+									</span>
+								{/if}
+							</div>
+
+							<div class="flex flex-wrap items-center gap-3">
+								{#if voiceErrorMessage}
+									<span
+										role="alert"
+										class="flex items-center gap-2 rounded-full bg-rose-50 px-3 py-1 text-rose-600 dark:bg-rose-900/20 dark:text-rose-300"
+									>
+										{voiceErrorMessage}
+									</span>
+								{/if}
+
+								{#if isStreaming}
+									<div
+										class="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-600 dark:border-slate-700 dark:bg-slate-800/40 dark:text-slate-200"
+									>
+										<div
+											class="h-2 w-2 animate-pulse rounded-full bg-emerald-500"
+										></div>
+										<span class="text-xs font-semibold">Agents working</span>
+									</div>
+								{/if}
+							</div>
+						</div>
+					</form>
+				</div>
+			{/if}
 		{/if}
 	</div>
 </Modal>
@@ -1902,6 +2433,9 @@
 {/if}
 
 <style>
+	.agent-resp-div p {
+		margin-bottom: 0.2rem;
+	}
 	/* Scrollbar Styling */
 	.agent-chat-scroll {
 		scrollbar-gutter: stable;

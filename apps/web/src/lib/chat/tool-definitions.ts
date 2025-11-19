@@ -1415,13 +1415,21 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 		category: 'utility'
 	},
 	get_buildos_overview: {
-		summary: 'High-level BuildOS overview covering mission, architecture, and documentation map.',
+		summary:
+			'High-level BuildOS overview covering mission, architecture, and documentation map.',
 		capabilities: [
 			'Explains platform pillars',
 			'Lists doc entry points',
 			'Clarifies architecture responsibilities'
 		],
-		contexts: ['base', 'global', 'project_create', 'project', 'project_audit', 'project_forecast'],
+		contexts: [
+			'base',
+			'global',
+			'project_create',
+			'project',
+			'project_audit',
+			'project_forecast'
+		],
 		category: 'utility'
 	},
 	get_buildos_usage_guide: {
@@ -1431,7 +1439,14 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 			'Highlights template + calendar actions',
 			'Suggests follow-up tool calls'
 		],
-		contexts: ['base', 'global', 'project_create', 'project', 'project_audit', 'project_forecast'],
+		contexts: [
+			'base',
+			'global',
+			'project_create',
+			'project',
+			'project_audit',
+			'project_forecast'
+		],
 		category: 'utility'
 	}
 };

@@ -106,7 +106,16 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 
 	try {
 		const body = await request.json();
-		const { title, description, priority, state_key, plan_id, props } = body;
+		const {
+			title,
+			description,
+			priority,
+			state_key,
+			plan_id,
+			props,
+			goal_id,
+			supporting_milestone_id
+		} = body;
 
 		// Get user's actor ID
 		const { data: actorId, error: actorError } = await supabase.rpc('ensure_actor_for_user', {
@@ -117,6 +126,15 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			console.error('[Task PATCH] Failed to resolve actor:', actorError);
 			return ApiResponse.error('Failed to get user actor', 500);
 		}
+
+		const hasGoalInput = Object.prototype.hasOwnProperty.call(body, 'goal_id');
+		const hasMilestoneInput = Object.prototype.hasOwnProperty.call(
+			body,
+			'supporting_milestone_id'
+		);
+
+		let validatedGoalId: string | null | undefined = undefined;
+		let validatedMilestoneId: string | null | undefined = undefined;
 
 		// Get task with project to verify ownership
 		const { data: existingTask, error: fetchError } = await supabase
@@ -142,6 +160,50 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			return ApiResponse.error('Access denied', 403);
 		}
 
+		// Validate optional goal and milestone updates against the project
+		if (hasGoalInput) {
+			const targetGoalId =
+				typeof goal_id === 'string' && goal_id.trim().length > 0 ? goal_id : null;
+			if (targetGoalId) {
+				const { data: goal, error: goalError } = await supabase
+					.from('onto_goals')
+					.select('id')
+					.eq('id', targetGoalId)
+					.eq('project_id', existingTask.project_id)
+					.single();
+
+				if (goalError || !goal) {
+					return ApiResponse.notFound('Goal');
+				}
+				validatedGoalId = goal.id;
+			} else {
+				validatedGoalId = null;
+			}
+		}
+
+		if (hasMilestoneInput) {
+			const targetMilestoneId =
+				typeof supporting_milestone_id === 'string' &&
+				supporting_milestone_id.trim().length > 0
+					? supporting_milestone_id
+					: null;
+			if (targetMilestoneId) {
+				const { data: milestone, error: milestoneError } = await supabase
+					.from('onto_milestones')
+					.select('id')
+					.eq('id', targetMilestoneId)
+					.eq('project_id', existingTask.project_id)
+					.single();
+
+				if (milestoneError || !milestone) {
+					return ApiResponse.notFound('Milestone');
+				}
+				validatedMilestoneId = milestone.id;
+			} else {
+				validatedMilestoneId = null;
+			}
+		}
+
 		// Build update object
 		const updateData: any = {
 			updated_at: new Date().toISOString()
@@ -153,21 +215,39 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		if (plan_id !== undefined) updateData.plan_id = plan_id;
 
 		// Handle props update - merge with existing
+		const currentProps = (existingTask.props as Record<string, unknown> | null) ?? {};
+		const nextProps = { ...currentProps, ...(props || {}) };
+		let includeProps = false;
+
 		if (props !== undefined) {
-			updateData.props = {
-				...existingTask.props,
-				...props
-			};
-			// Handle description in props
-			if (description !== undefined) {
-				updateData.props.description = description || null;
+			includeProps = true;
+		}
+
+		if (description !== undefined) {
+			nextProps.description = description || null;
+			includeProps = true;
+		}
+
+		if (hasGoalInput) {
+			if (validatedGoalId) {
+				nextProps.goal_id = validatedGoalId;
+			} else {
+				nextProps.goal_id = null;
 			}
-		} else if (description !== undefined) {
-			// Update description in props even if props wasn't passed
-			updateData.props = {
-				...existingTask.props,
-				description: description || null
-			};
+			includeProps = true;
+		}
+
+		if (hasMilestoneInput) {
+			if (validatedMilestoneId) {
+				nextProps.supporting_milestone_id = validatedMilestoneId;
+			} else {
+				nextProps.supporting_milestone_id = null;
+			}
+			includeProps = true;
+		}
+
+		if (includeProps) {
+			updateData.props = nextProps;
 		}
 
 		// Update the task
@@ -181,6 +261,47 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		if (updateError) {
 			console.error('Error updating task:', updateError);
 			return ApiResponse.error('Failed to update task', 500);
+		}
+
+		// Maintain relationship edges when goal/milestone updates are provided
+		if (hasGoalInput) {
+			// Remove existing goal relationships for this task
+			await supabase
+				.from('onto_edges')
+				.delete()
+				.eq('rel', 'supports_goal')
+				.eq('dst_kind', 'task')
+				.eq('dst_id', params.id);
+
+			if (validatedGoalId) {
+				await supabase.from('onto_edges').insert({
+					src_id: validatedGoalId,
+					src_kind: 'goal',
+					dst_id: params.id,
+					dst_kind: 'task',
+					rel: 'supports_goal'
+				});
+			}
+		}
+
+		if (hasMilestoneInput) {
+			await supabase
+				.from('onto_edges')
+				.delete()
+				.eq('rel', 'contains')
+				.eq('src_kind', 'milestone')
+				.eq('dst_kind', 'task')
+				.eq('dst_id', params.id);
+
+			if (validatedMilestoneId) {
+				await supabase.from('onto_edges').insert({
+					src_id: validatedMilestoneId,
+					src_kind: 'milestone',
+					dst_id: params.id,
+					dst_kind: 'task',
+					rel: 'contains'
+				});
+			}
 		}
 
 		return ApiResponse.success({ task: updatedTask });

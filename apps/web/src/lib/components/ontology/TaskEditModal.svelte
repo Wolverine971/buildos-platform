@@ -45,12 +45,23 @@
 		taskId: string;
 		projectId: string;
 		plans?: Array<{ id: string; name: string }>;
+		goals?: Array<{ id: string; name: string }>;
+		milestones?: Array<{ id: string; title: string; due_at?: string }>;
 		onClose: () => void;
 		onUpdated?: () => void;
 		onDeleted?: () => void;
 	}
 
-	let { taskId, projectId, plans = [], onClose, onUpdated, onDeleted }: Props = $props();
+	let {
+		taskId,
+		projectId,
+		plans = [],
+		goals = [],
+		milestones = [],
+		onClose,
+		onUpdated,
+		onDeleted
+	}: Props = $props();
 
 	let modalOpen = $state(true);
 	let task = $state<any>(null);
@@ -65,6 +76,8 @@
 	let description = $state('');
 	let priority = $state<number>(3);
 	let planId = $state('');
+	let goalId = $state('');
+	let milestoneId = $state('');
 	let stateKey = $state('todo');
 	let showSeriesModal = $state(false);
 	let showSeriesDeleteConfirm = $state(false);
@@ -142,6 +155,27 @@
 		// Cleanup
 	});
 
+	function extractGoalIdFromProps(props: Record<string, unknown> | null | undefined): string {
+		if (!props || typeof props !== 'object') return '';
+		const goalIdProp = (props as Record<string, unknown>).goal_id;
+		if (typeof goalIdProp === 'string' && goalIdProp.trim().length > 0) {
+			return goalIdProp;
+		}
+		const sourceGoalId = (props as Record<string, unknown>).source_goal_id;
+		if (typeof sourceGoalId === 'string' && sourceGoalId.trim().length > 0) {
+			return sourceGoalId;
+		}
+		return '';
+	}
+
+	function extractMilestoneIdFromProps(
+		props: Record<string, unknown> | null | undefined
+	): string {
+		if (!props || typeof props !== 'object') return '';
+		const milestoneId = (props as Record<string, unknown>).supporting_milestone_id;
+		return typeof milestoneId === 'string' && milestoneId.trim().length > 0 ? milestoneId : '';
+	}
+
 	async function loadTask() {
 		try {
 			isLoading = true;
@@ -161,6 +195,8 @@
 				description = task.props?.description || '';
 				priority = task.priority || 3;
 				planId = task.plan_id || '';
+				goalId = extractGoalIdFromProps(task.props || null);
+				milestoneId = extractMilestoneIdFromProps(task.props || null);
 				stateKey = task.state_key || 'todo';
 				seriesActionError = '';
 				showSeriesDeleteConfirm = false;
@@ -332,7 +368,9 @@
 				description: description.trim() || null,
 				priority,
 				plan_id: planId || null,
-				state_key: stateKey
+				state_key: stateKey,
+				goal_id: goalId?.trim() || null,
+				supporting_milestone_id: milestoneId?.trim() || null
 			};
 
 			const response = await fetch(`/api/onto/tasks/${taskId}`, {
@@ -579,6 +617,57 @@
 													<option value="">No plan</option>
 													{#each plans as plan}
 														<option value={plan.id}>{plan.name}</option>
+													{/each}
+												</select>
+											</div>
+										{/if}
+
+										{#if goals.length > 0}
+											<div>
+												<label
+													for="goal"
+													class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+												>
+													Goal
+												</label>
+												<select
+													id="goal"
+													bind:value={goalId}
+													disabled={isSaving}
+													class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+												>
+													<option value="">No goal</option>
+													{#each goals as goal}
+														<option value={goal.id}>{goal.name}</option>
+													{/each}
+												</select>
+											</div>
+										{/if}
+
+										{#if milestones.length > 0}
+											<div>
+												<label
+													for="milestone"
+													class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+												>
+													Supporting Milestone
+												</label>
+												<select
+													id="milestone"
+													bind:value={milestoneId}
+													disabled={isSaving}
+													class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+												>
+													<option value="">No milestone</option>
+													{#each milestones as milestone}
+														<option value={milestone.id}>
+															{milestone.title}
+															{#if milestone.due_at}
+																( {new Date(
+																	milestone.due_at
+																).toLocaleDateString()} )
+															{/if}
+														</option>
 													{/each}
 												</select>
 											</div>

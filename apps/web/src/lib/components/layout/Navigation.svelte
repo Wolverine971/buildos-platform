@@ -18,7 +18,8 @@
 		Zap,
 		Clock,
 		Sun,
-		Moon
+		Moon,
+		GitBranch
 	} from 'lucide-svelte';
 	import { toggleMode } from 'mode-watcher';
 	import BriefStatusIndicator from './BriefStatusIndicator.svelte';
@@ -104,6 +105,10 @@
 		{ href: '/time-blocks', label: 'Time Blocks', icon: Clock },
 		{ href: '/history', label: 'History', icon: StickyNote }
 	];
+	const ONTOLOGY_NAV_ITEM = { href: '/ontology', label: 'Ontology', icon: GitBranch };
+	const navItems = $derived.by(() =>
+		dev || user?.email === 'djwayne35@gmail.com' ? [...NAV_ITEMS, ONTOLOGY_NAV_ITEM] : NAV_ITEMS
+	);
 
 	const loadingAccentClass =
 		'animate-pulse-accent ring-1 ring-blue-300/60 dark:ring-indigo-500/40 shadow-[0_12px_32px_-18px_rgba(59,130,246,0.45)]';
@@ -307,7 +312,7 @@
 					<div
 						class="hidden md:ml-3 lg:ml-4 xl:ml-6 2xl:ml-8 md:flex md:gap-0.5 lg:gap-0.5 xl:gap-1"
 					>
-						{#each NAV_ITEMS as item}
+						{#each navItems as item}
 							{@const Icon = item.icon}
 
 							<a
@@ -694,7 +699,7 @@
 						</a>
 					{/if}
 
-					{#each NAV_ITEMS as item}
+					{#each navItems as item}
 						{@const Icon = item.icon}
 						<a
 							href={item.href}

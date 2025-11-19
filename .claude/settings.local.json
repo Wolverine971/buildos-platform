@@ -46,7 +46,8 @@
       "Bash(/tmp/taskmodal_top.txt)",
       "Bash(/tmp/taskmodal_bottom.txt)",
       "Bash(git reset:*)",
-      "mcp__perplexity__deep_research"
+      "mcp__perplexity__deep_research",
+      "Bash(\"/Users/annawayne/buildos-platform/apps/web/docs/features/agentic-chat/FRONTEND_QUICK_REFERENCE.md\")"
     ],
     "deny": [],
     "ask": []

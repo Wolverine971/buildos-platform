@@ -6023,6 +6023,36 @@ export type Database = {
           },
         ]
       }
+      research_artifact_refs: {
+        Row: {
+          created_at: string
+          id: string
+          importance: number | null
+          ref: Json
+          ref_type: string
+          session_id: string
+          snippet: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          importance?: number | null
+          ref: Json
+          ref_type: string
+          session_id: string
+          snippet?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          importance?: number | null
+          ref?: Json
+          ref_type?: string
+          session_id?: string
+          snippet?: string | null
+        }
+        Relationships: []
+      }
       scheduled_sms_messages: {
         Row: {
           calendar_event_id: string | null

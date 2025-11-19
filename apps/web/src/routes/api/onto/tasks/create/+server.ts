@@ -53,7 +53,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			priority = 3,
 			plan_id,
 			state_key = 'todo',
-			props = {}
+			props = {},
+			goal_id,
+			supporting_milestone_id
 		} = body;
 
 		// Validate required fields
@@ -99,6 +101,38 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			}
 		}
 
+		// Validate optional goal and milestone relationships
+		let validatedGoalId: string | null = null;
+		let validatedMilestoneId: string | null = null;
+
+		if (goal_id) {
+			const { data: goal, error: goalError } = await supabase
+				.from('onto_goals')
+				.select('id')
+				.eq('id', goal_id)
+				.eq('project_id', project_id)
+				.single();
+
+			if (goalError || !goal) {
+				return ApiResponse.notFound('Goal');
+			}
+			validatedGoalId = goal.id;
+		}
+
+		if (supporting_milestone_id) {
+			const { data: milestone, error: milestoneError } = await supabase
+				.from('onto_milestones')
+				.select('id')
+				.eq('id', supporting_milestone_id)
+				.eq('project_id', project_id)
+				.single();
+
+			if (milestoneError || !milestone) {
+				return ApiResponse.notFound('Milestone');
+			}
+			validatedMilestoneId = milestone.id;
+		}
+
 		// Create the task
 		const taskData = {
 			project_id,
@@ -109,7 +143,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			created_by: actorId,
 			props: {
 				...props,
-				description: description || null
+				description: description || null,
+				...(validatedGoalId ? { goal_id: validatedGoalId } : {}),
+				...(validatedMilestoneId ? { supporting_milestone_id: validatedMilestoneId } : {})
 			}
 		};
 
@@ -124,14 +160,38 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			return ApiResponse.databaseError(createError);
 		}
 
-		// Create an edge linking the task to the project
-		await supabase.from('onto_edges').insert({
-			src_id: project_id,
-			src_kind: 'project',
-			dst_id: task.id,
-			dst_kind: 'task',
-			rel: 'contains'
-		});
+		// Create edges linking the task to the project (and optional goal/milestone)
+		const edges = [
+			{
+				src_id: project_id,
+				src_kind: 'project',
+				dst_id: task.id,
+				dst_kind: 'task',
+				rel: 'contains'
+			}
+		];
+
+		if (validatedGoalId) {
+			edges.push({
+				src_id: validatedGoalId,
+				src_kind: 'goal',
+				dst_id: task.id,
+				dst_kind: 'task',
+				rel: 'supports_goal'
+			});
+		}
+
+		if (validatedMilestoneId) {
+			edges.push({
+				src_id: validatedMilestoneId,
+				src_kind: 'milestone',
+				dst_id: task.id,
+				dst_kind: 'task',
+				rel: 'contains'
+			});
+		}
+
+		await supabase.from('onto_edges').insert(edges);
 
 		return ApiResponse.created({ task });
 	} catch (error) {

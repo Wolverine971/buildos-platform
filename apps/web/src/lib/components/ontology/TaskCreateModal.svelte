@@ -28,11 +28,20 @@
 	interface Props {
 		projectId: string;
 		plans?: Array<{ id: string; name: string }>;
+		goals?: Array<{ id: string; name: string }>;
+		milestones?: Array<{ id: string; title: string; due_at?: string }>;
 		onClose: () => void;
 		onCreated?: (taskId: string) => void;
 	}
 
-	let { projectId, plans = [], onClose, onCreated }: Props = $props();
+	let {
+		projectId,
+		plans = [],
+		goals = [],
+		milestones = [],
+		onClose,
+		onCreated
+	}: Props = $props();
 
 	let selectedTemplate = $state<any>(null);
 	let templates = $state<any[]>([]);
@@ -87,6 +96,31 @@
 				]
 			}
 		}),
+		...(goals.length > 0 && {
+			goal_id: {
+				type: 'select',
+				label: 'Goal (optional)',
+				options: [
+					{ value: '', label: 'No goal' },
+					...goals.map((goal) => ({ value: goal.id, label: goal.name }))
+				]
+			}
+		}),
+		...(milestones.length > 0 && {
+			supporting_milestone_id: {
+				type: 'select',
+				label: 'Milestone (optional)',
+				options: [
+					{ value: '', label: 'No milestone' },
+					...milestones.map((milestone) => ({
+						value: milestone.id,
+						label: milestone.due_at
+							? `${milestone.title} (${new Date(milestone.due_at).toLocaleDateString()})`
+							: milestone.title
+					}))
+				]
+			}
+		}),
 		state_key: {
 			type: 'select',
 			label: 'Initial State',
@@ -129,6 +163,9 @@
 	}
 
 	async function handleSubmit(formData: Record<string, any>): Promise<void> {
+		const goalId = formData.goal_id?.trim?.() || null;
+		const milestoneId = formData.supporting_milestone_id?.trim?.() || null;
+
 		const requestBody = {
 			project_id: projectId,
 			type_key: selectedTemplate?.type_key || 'task.basic',
@@ -137,6 +174,8 @@
 			priority: formData.priority || 3,
 			plan_id: formData.plan_id || null,
 			state_key: formData.state_key || 'todo',
+			goal_id: goalId,
+			supporting_milestone_id: milestoneId,
 			props: {
 				description: formData.description?.trim() || null,
 				...(selectedTemplate?.default_props || {})

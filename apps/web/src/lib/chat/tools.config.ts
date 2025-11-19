@@ -76,7 +76,12 @@ export const TOOL_CATEGORIES = {
  * project_audit & project_forecast intentionally mirror project tools for now.
  */
 const TOOL_GROUPS: Record<ToolContextScope, string[]> = {
-	base: ['get_field_info', 'get_entity_relationships', 'get_buildos_overview', 'get_buildos_usage_guide'],
+	base: [
+		'get_field_info',
+		'get_entity_relationships',
+		'get_buildos_overview',
+		'get_buildos_usage_guide'
+	],
 	global: [
 		'list_onto_projects',
 		'search_onto_projects',

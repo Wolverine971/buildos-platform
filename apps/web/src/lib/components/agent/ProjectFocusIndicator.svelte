@@ -60,7 +60,10 @@
 					{resolvedLabel}
 				</p>
 				{#if focus.focusType !== 'project-wide'}
-					<p class="truncate text-xs text-slate-600 dark:text-slate-300" title={focus.projectName}>
+					<p
+						class="truncate text-xs text-slate-600 dark:text-slate-300"
+						title={focus.projectName}
+					>
 						In {focus.projectName}
 					</p>
 				{/if}

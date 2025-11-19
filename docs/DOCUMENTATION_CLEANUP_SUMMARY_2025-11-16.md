@@ -171,6 +171,7 @@ Successfully completed comprehensive documentation cleanup, removing **8 outdate
 ```
 
 Each README explains:
+
 - What's archived and why
 - Current status
 - Where to find current documentation
@@ -182,6 +183,7 @@ Each README explains:
 ### Before Cleanup
 
 **Issues:**
+
 - ❌ 8 outdated migration docs cluttering root
 - ❌ 4 empty placeholder files (79-102 bytes)
 - ❌ 33 iterative/status docs scattered across features
@@ -192,6 +194,7 @@ Each README explains:
 ### After Cleanup
 
 **Improvements:**
+
 - ✅ Clean documentation structure
 - ✅ Clear separation of current vs historical docs
 - ✅ Organized archives with explanatory READMEs
@@ -201,13 +204,13 @@ Each README explains:
 
 ### Metrics
 
-| Metric | Before | After | Change |
-|--------|--------|-------|--------|
-| Total .md files | ~450 | ~409 | -41 (-9%) |
-| Root /apps/web/ docs | 7 | 3 | -4 |
-| Empty placeholders | 4 | 0 | -4 |
-| Archive directories | 1 | 9 | +8 |
-| Archive README files | 0 | 7 | +7 |
+| Metric               | Before | After | Change    |
+| -------------------- | ------ | ----- | --------- |
+| Total .md files      | ~450   | ~409  | -41 (-9%) |
+| Root /apps/web/ docs | 7      | 3     | -4        |
+| Empty placeholders   | 4      | 0     | -4        |
+| Archive directories  | 1      | 9     | +8        |
+| Archive README files | 0      | 7     | +7        |
 
 ---
 
@@ -216,18 +219,21 @@ Each README explains:
 ### Core Documentation (Unchanged)
 
 **Root Documentation:**
+
 - `/docs/README.md` - Documentation hub
 - `/docs/TASK_INDEX.md` - Task-based navigation
 - `/docs/DEPLOYMENT_TOPOLOGY.md` - System architecture
 - `/docs/DOCUMENTATION_GUIDELINES.md` - Guidelines
 
 **Web App Documentation:**
+
 - `/apps/web/CLAUDE.md` - AI agent instructions
 - `/apps/web/docs/README.md` - Web docs index
 - `/apps/web/docs/NAVIGATION_INDEX.md` - Complete navigation
 - `/apps/web/docs/START-HERE.md` - Quick start
 
 **Feature Documentation:**
+
 - `/apps/web/docs/features/ontology/CURRENT_STATUS.md` - Latest status (Nov 4, 2025)
 - `/apps/web/docs/features/ontology/README.md` - Feature overview
 - `/apps/web/docs/features/ontology/DATA_MODELS.md` - Schema reference

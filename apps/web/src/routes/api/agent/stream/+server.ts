@@ -37,6 +37,13 @@ import type {
 } from '$lib/types/agent-chat-enhancement';
 import { createAgentChatOrchestrator } from '$lib/services/agentic-chat';
 import type { StreamEvent } from '$lib/services/agentic-chat/shared/types';
+import { createLogger } from '$lib/utils/logger';
+
+// ============================================
+// LOGGING
+// ============================================
+
+const logger = createLogger('API:AgentStream');
 
 // ============================================
 // RATE LIMITING
@@ -59,8 +66,15 @@ const rateLimiter = new Map<
 	}
 >();
 
+type OntologyCache = {
+	context: OntologyContext;
+	loadedAt: number; // timestamp
+	cacheKey: string; // projectId-focusType-entityId or contextType
+};
+
 type AgentSessionMetadata = {
 	focus?: ProjectFocus | null;
+	ontologyCache?: OntologyCache;
 	[key: string]: any;
 };
 
@@ -74,6 +88,24 @@ function normalizeProjectFocus(focus?: ProjectFocus | null): ProjectFocus | null
 		projectId: focus.projectId,
 		projectName: focus.projectName ?? 'Project'
 	};
+}
+
+/**
+ * Generate cache key for ontology context
+ */
+function generateOntologyCacheKey(
+	projectFocus: ProjectFocus | null,
+	contextType: ChatContextType,
+	entityId?: string
+): string {
+	if (projectFocus?.projectId) {
+		const parts = [projectFocus.projectId, projectFocus.focusType];
+		if (projectFocus.focusEntityId) {
+			parts.push(projectFocus.focusEntityId);
+		}
+		return parts.join(':');
+	}
+	return entityId ? `${contextType}:${entityId}` : contextType;
 }
 
 // ============================================
@@ -119,7 +151,7 @@ function normalizeContextType(contextType?: ChatContextType | string): ChatConte
 		return contextType as ChatContextType;
 	}
 
-	console.warn(`[API] Invalid context type '${contextType}', defaulting to 'global'`);
+	logger.warn(`Invalid context type '${contextType}', defaulting to 'global'`, { contextType });
 	return 'global';
 }
 
@@ -139,7 +171,7 @@ async function fetchChatSession(
 		if (error.code === 'PGRST116') {
 			return null;
 		}
-		console.error('[API] Failed to load chat session:', error);
+		logger.error(error as Error, { operation: 'load_chat_session', sessionId });
 		throw error;
 	}
 
@@ -187,7 +219,7 @@ async function loadRecentMessages(
 		.limit(limit);
 
 	if (error) {
-		console.error('[API] Failed to load chat history:', error);
+		logger.error('Failed to load chat history', { sessionId, error });
 		return [];
 	}
 
@@ -200,9 +232,12 @@ async function persistChatMessage(
 ): Promise<void> {
 	const { error } = await supabase.from('chat_messages').insert(message);
 	if (error) {
-		console.error('[API] Failed to save chat message:', error);
-		// Don't throw here to avoid breaking the stream, but log the error details
-		console.error('[API] Message payload that failed:', message);
+		logger.error('Failed to save chat message', {
+			error,
+			sessionId: message.session_id,
+			role: message.role,
+			hasToolCalls: !!message.tool_calls
+		});
 	}
 }
 
@@ -215,7 +250,7 @@ async function loadOntologyContext(
 	entityId?: string,
 	ontologyEntityType?: 'task' | 'plan' | 'goal' | 'document' | 'output'
 ): Promise<OntologyContext | null> {
-	console.log('[API] Loading ontology context', {
+	logger.debug('Loading ontology context', {
 		contextType,
 		entityId,
 		ontologyEntityType
@@ -226,27 +261,27 @@ async function loadOntologyContext(
 	try {
 		// If entity type is specified, load element context
 		if (ontologyEntityType && entityId) {
-			console.log('[API] Loading element-level ontology context');
+			logger.debug('Loading element-level ontology context');
 			return await loader.loadElementContext(ontologyEntityType, entityId);
 		}
 
 		// If project context, load project-level ontology
 		if ((contextType === 'project' || contextType === 'project_audit') && entityId) {
-			console.log('[API] Loading project-level ontology context');
+			logger.debug('Loading project-level ontology context');
 			return await loader.loadProjectContext(entityId);
 		}
 
 		// Otherwise, load global context
 		if (contextType === 'global') {
-			console.log('[API] Loading global ontology context');
+			logger.debug('Loading global ontology context');
 			return await loader.loadGlobalContext();
 		}
 
 		// No ontology context applicable
-		console.log('[API] No ontology context applicable for context type:', contextType);
+		logger.debug('No ontology context applicable for context type', { contextType });
 		return null;
 	} catch (error) {
-		console.error('[API] Failed to load ontology context:', error);
+		logger.error('Failed to load ontology context', { error, contextType, entityId });
 		return null; // Don't fail the request, just proceed without ontology
 	}
 }
@@ -254,6 +289,9 @@ async function loadOntologyContext(
 /**
  * Generate last turn context from recent messages
  * Provides conversation continuity between turns
+ *
+ * SIMPLIFIED: Uses pre-extracted entities from ToolExecutionService
+ * instead of redundant recursive payload parsing.
  */
 function generateLastTurnContext(
 	recentMessages: ChatMessage[],
@@ -261,30 +299,23 @@ function generateLastTurnContext(
 	options: { toolResults?: any[] } = {}
 ): LastTurnContext | null {
 	if (!recentMessages || recentMessages.length < 2) {
-		// Need at least user + assistant message pair
 		return null;
 	}
 
-	// Get the last assistant message (most recent response)
 	const lastAssistantMsg = recentMessages.filter((m) => m.role === 'assistant').pop();
-
-	// Get the last user message
 	const lastUserMsg = recentMessages.filter((m) => m.role === 'user').pop();
 
 	if (!lastAssistantMsg || !lastUserMsg) {
 		return null;
 	}
 
-	console.log('[API] Generating last turn context from messages', {
+	logger.debug('Generating last turn context', {
 		lastUserContent: lastUserMsg.content.substring(0, 50),
 		lastAssistantContent: lastAssistantMsg.content.substring(0, 50)
 	});
 
-	// Extract entity IDs from tool calls
-	const entities: LastTurnContext['entities'] = {};
+	// Extract tool names from last assistant message
 	const toolsUsed: string[] = [];
-
-	// Check if last assistant message had tool calls
 	if (lastAssistantMsg.tool_calls) {
 		try {
 			const toolCalls = Array.isArray(lastAssistantMsg.tool_calls)
@@ -293,69 +324,39 @@ function generateLastTurnContext(
 
 			toolCalls.forEach((tc: any) => {
 				const toolName = tc.function?.name || tc.name;
-				if (toolName) {
-					toolsUsed.push(toolName);
-
-					// Extract entity IDs from tool arguments
-					const argsStr = tc.function?.arguments || tc.arguments;
-					if (argsStr) {
-						try {
-							const args =
-								typeof argsStr === 'string' ? JSON.parse(argsStr) : argsStr;
-
-							if (args.project_id) entities.project_id = args.project_id;
-							if (args.task_id) {
-								entities.task_ids = entities.task_ids || [];
-								entities.task_ids.push(args.task_id);
-							}
-							if (args.goal_id) {
-								entities.goal_ids = entities.goal_ids || [];
-								entities.goal_ids.push(args.goal_id);
-							}
-							if (args.plan_id) entities.plan_id = args.plan_id;
-							if (args.document_id) entities.document_id = args.document_id;
-							if (args.output_id) entities.output_id = args.output_id;
-						} catch (e) {
-							console.warn('[API] Failed to parse tool arguments:', e);
-						}
-					}
-				}
+				if (toolName) toolsUsed.push(toolName);
 			});
 		} catch (e) {
-			console.warn('[API] Failed to extract tool calls:', e);
+			logger.warn('Failed to extract tool calls', { error: e });
 		}
 	}
 
-	const recentToolResults = options.toolResults ?? [];
-	if (recentToolResults.length > 0) {
-		recentToolResults.forEach((toolResult: any) => {
-			if (!toolResult) return;
-			const accessed =
-				toolResult.entities_accessed ?? toolResult.entitiesAccessed ?? undefined;
-			if (Array.isArray(accessed)) {
-				accessed.forEach((entityId) => {
-					if (typeof entityId === 'string') {
-						recordEntityById(entities, entityId);
-					}
-				});
-			}
+	// Use pre-extracted entities from ToolExecutionService
+	// This service already extracts entities during tool execution
+	const entities: LastTurnContext['entities'] = {};
+	const toolResults = options.toolResults ?? [];
 
-			const normalizedPayload =
-				toolResult.tool_result ?? toolResult.result ?? toolResult.data ?? toolResult;
-			collectEntitiesFromPayload(entities, normalizedPayload);
-		});
+	for (const result of toolResults) {
+		if (!result) continue;
+
+		// ToolExecutionService already extracted these entities
+		const accessed = result.entities_accessed ?? result.entitiesAccessed;
+		if (Array.isArray(accessed)) {
+			accessed.forEach((entityId: string) => {
+				assignEntityByPrefix(entities, entityId);
+			});
+		}
 	}
 
-	// Generate a brief summary (10-20 words) of the interaction
-	const userMessagePreview = lastUserMsg.content.substring(0, 100).trim();
-	const summary = `${userMessagePreview.substring(0, 60)}...`;
+	// Generate summary
+	const summary = lastUserMsg.content.substring(0, 60).trim() + '...';
 
 	return {
 		summary,
 		entities,
 		context_type: contextType,
 		data_accessed: toolsUsed,
-		strategy_used: undefined, // Will be filled by planner if available
+		strategy_used: undefined,
 		timestamp: lastAssistantMsg.created_at || new Date().toISOString()
 	};
 }
@@ -412,113 +413,32 @@ function buildContextShiftLastTurnContext(
 	};
 }
 
-type LastTurnEntities = LastTurnContext['entities'];
-
-function assignEntityValue(
-	entities: LastTurnEntities,
-	slot: keyof LastTurnEntities,
-	id: string
-): void {
-	if (!id) return;
-	if (slot === 'task_ids' || slot === 'goal_ids') {
-		if (!entities[slot]) {
-			entities[slot] = [];
-		}
-		if (!entities[slot]!.includes(id)) {
-			entities[slot]!.push(id);
-		}
-		return;
-	}
-	if (!(entities as any)[slot]) {
-		(entities as any)[slot] = id;
-	}
-}
-
-function recordEntityById(
-	entities: LastTurnEntities,
-	entityId: string,
-	fallbackSlot?: keyof LastTurnEntities | null
-): void {
+/**
+ * Simplified helper: Assign entity by ID prefix
+ * Replaces 6 complex helper functions with one simple function
+ */
+function assignEntityByPrefix(entities: LastTurnContext['entities'], entityId: string): void {
 	if (!entityId) return;
-	const slot = inferEntitySlotFromId(entityId) ?? fallbackSlot;
-	if (!slot) return;
-	assignEntityValue(entities, slot, entityId);
-}
 
-function inferEntitySlotFromId(entityId: string): keyof LastTurnEntities | null {
-	if (entityId.startsWith('proj_')) return 'project_id';
-	if (entityId.startsWith('task_')) return 'task_ids';
-	if (entityId.startsWith('plan_')) return 'plan_id';
-	if (entityId.startsWith('goal_')) return 'goal_ids';
-	if (entityId.startsWith('doc_')) return 'document_id';
-	if (entityId.startsWith('out_')) return 'output_id';
-	return null;
-}
-
-function collectEntitiesFromPayload(entities: LastTurnEntities, payload: any, depth = 0): void {
-	if (!payload || depth > 6) return;
-
-	if (Array.isArray(payload)) {
-		payload.forEach((item) => collectEntitiesFromPayload(entities, item, depth + 1));
-		return;
-	}
-
-	if (typeof payload !== 'object') {
-		return;
-	}
-
-	const possibleId = typeof payload.id === 'string' ? payload.id : null;
-	if (possibleId) {
-		const slot = inferEntitySlotFromStructure(payload);
-		if (slot) {
-			recordEntityById(entities, possibleId, slot);
+	// Assign to correct slot based on ID prefix
+	if (entityId.startsWith('proj_')) {
+		entities.project_id = entityId;
+	} else if (entityId.startsWith('task_')) {
+		entities.task_ids = entities.task_ids || [];
+		if (!entities.task_ids.includes(entityId)) {
+			entities.task_ids.push(entityId);
 		}
-	}
-
-	for (const [key, value] of Object.entries(payload)) {
-		if (typeof value === 'string') {
-			recordEntityByKey(entities, key, value);
-		} else if (Array.isArray(value) || (value && typeof value === 'object')) {
-			collectEntitiesFromPayload(entities, value, depth + 1);
+	} else if (entityId.startsWith('plan_')) {
+		entities.plan_id = entityId;
+	} else if (entityId.startsWith('goal_')) {
+		entities.goal_ids = entities.goal_ids || [];
+		if (!entities.goal_ids.includes(entityId)) {
+			entities.goal_ids.push(entityId);
 		}
-	}
-}
-
-function inferEntitySlotFromStructure(obj: Record<string, any>): keyof LastTurnEntities | null {
-	const kind = (obj.type_key || obj.kind || obj.entity_type || '').toString().toLowerCase();
-	if (kind.includes('task')) return 'task_ids';
-	if (kind.includes('plan')) return 'plan_id';
-	if (kind.includes('goal')) return 'goal_ids';
-	if (kind.includes('doc')) return 'document_id';
-	if (kind.includes('output')) return 'output_id';
-	if (kind.includes('project')) return 'project_id';
-	return null;
-}
-
-function recordEntityByKey(entities: LastTurnEntities, key: string, value: string): void {
-	const normalized = key.toLowerCase();
-	if (normalized.includes('project') && normalized.endsWith('id')) {
-		assignEntityValue(entities, 'project_id', value);
-		return;
-	}
-	if (normalized.includes('task') && normalized.endsWith('id')) {
-		assignEntityValue(entities, 'task_ids', value);
-		return;
-	}
-	if (normalized.includes('goal') && normalized.endsWith('id')) {
-		assignEntityValue(entities, 'goal_ids', value);
-		return;
-	}
-	if (normalized.includes('plan') && normalized.endsWith('id')) {
-		assignEntityValue(entities, 'plan_id', value);
-		return;
-	}
-	if (normalized.includes('doc') && normalized.endsWith('id')) {
-		assignEntityValue(entities, 'document_id', value);
-		return;
-	}
-	if (normalized.includes('output') && normalized.endsWith('id')) {
-		assignEntityValue(entities, 'output_id', value);
+	} else if (entityId.startsWith('doc_')) {
+		entities.document_id = entityId;
+	} else if (entityId.startsWith('out_')) {
+		entities.output_id = entityId;
 	}
 }
 
@@ -661,7 +581,10 @@ export const POST: RequestHandler = async ({
 					.eq('id', chatSession.id);
 
 				if (metadataError) {
-					console.error('[API] Failed to persist focus metadata:', metadataError);
+					logger.error('Failed to persist focus metadata', {
+						error: metadataError,
+						sessionId: chatSession.id
+					});
 				} else {
 					chatSession.agent_metadata = sessionMetadata as any;
 				}
@@ -695,45 +618,102 @@ export const POST: RequestHandler = async ({
 			if (validOntologyTypes.includes(ontologyEntityType as any)) {
 				validatedOntologyEntityType = ontologyEntityType;
 			} else {
-				console.warn(
-					`[API] Invalid ontologyEntityType provided: ${ontologyEntityType}. Valid types: ${validOntologyTypes.join(', ')}`
-				);
+				logger.warn('Invalid ontologyEntityType provided', {
+					provided: ontologyEntityType,
+					validTypes: validOntologyTypes
+				});
 			}
 		}
+
+		// === ONTOLOGY CACHING ===
+		const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+		const cacheKey = generateOntologyCacheKey(
+			resolvedProjectFocus,
+			normalizedContextType,
+			entity_id
+		);
+		const cached = sessionMetadata.ontologyCache;
+		const cacheAge = cached ? Date.now() - cached.loadedAt : Infinity;
+		const isCacheValid = cached && cached.cacheKey === cacheKey && cacheAge < CACHE_TTL_MS;
 
 		let ontologyContext: OntologyContext | null = null;
-		if (resolvedProjectFocus?.projectId && normalizedContextType === 'project') {
-			try {
-				if (
-					resolvedProjectFocus.focusType !== 'project-wide' &&
-					resolvedProjectFocus.focusEntityId
-				) {
-					ontologyContext = await ontologyLoader.loadCombinedProjectElementContext(
-						resolvedProjectFocus.projectId,
-						resolvedProjectFocus.focusType,
-						resolvedProjectFocus.focusEntityId
-					);
-				} else {
-					ontologyContext = await ontologyLoader.loadProjectContext(
-						resolvedProjectFocus.projectId
-					);
-				}
-			} catch (focusLoadError) {
-				console.error('[API] Failed to load focus-aware context:', focusLoadError);
-			}
+
+		if (isCacheValid) {
+			// Use cached ontology context
+			ontologyContext = cached.context;
+			logger.debug('Using cached ontology context', {
+				cacheKey,
+				cacheAgeMs: cacheAge,
+				cacheAgeSec: Math.round(cacheAge / 1000)
+			});
 		} else {
-			ontologyContext =
-				normalizedContextType === 'project_create'
-					? null
-					: await loadOntologyContext(
-							supabase,
-							normalizedContextType,
-							entity_id,
-							validatedOntologyEntityType
+			// Load fresh ontology context
+			if (resolvedProjectFocus?.projectId && normalizedContextType === 'project') {
+				try {
+					if (
+						resolvedProjectFocus.focusType !== 'project-wide' &&
+						resolvedProjectFocus.focusEntityId
+					) {
+						ontologyContext = await ontologyLoader.loadCombinedProjectElementContext(
+							resolvedProjectFocus.projectId,
+							resolvedProjectFocus.focusType,
+							resolvedProjectFocus.focusEntityId
 						);
+					} else {
+						ontologyContext = await ontologyLoader.loadProjectContext(
+							resolvedProjectFocus.projectId
+						);
+					}
+				} catch (focusLoadError) {
+					logger.error('Failed to load focus-aware context', {
+						error: focusLoadError,
+						projectFocus: resolvedProjectFocus
+					});
+				}
+			} else {
+				ontologyContext =
+					normalizedContextType === 'project_create'
+						? null
+						: await loadOntologyContext(
+								supabase,
+								normalizedContextType,
+								entity_id,
+								validatedOntologyEntityType
+							);
+			}
+
+			// Update cache if we loaded context
+			if (ontologyContext) {
+				sessionMetadata.ontologyCache = {
+					context: ontologyContext,
+					loadedAt: Date.now(),
+					cacheKey
+				};
+
+				// Persist cache to session (fire-and-forget to not block stream)
+				supabase
+					.from('chat_sessions')
+					.update({
+						agent_metadata: sessionMetadata
+					})
+					.eq('id', chatSession.id)
+					.then(({ error }) => {
+						if (error) {
+							logger.warn('Failed to persist ontology cache', {
+								error,
+								sessionId: chatSession.id
+							});
+						} else {
+							logger.debug('Ontology cache persisted', {
+								cacheKey,
+								sessionId: chatSession.id
+							});
+						}
+					});
+			}
 		}
 
-		console.log('[API] Ontology context loaded:', {
+		logger.debug('Ontology context loaded', {
 			hasOntology: !!ontologyContext,
 			type: ontologyContext?.type,
 			entityCount: ontologyContext?.metadata?.entity_count
@@ -749,7 +729,7 @@ export const POST: RequestHandler = async ({
 			lastTurnContextForPlanner = providedLastTurnContext;
 		}
 
-		console.log('[API] Resolved last turn context:', {
+		logger.debug('Resolved last turn context', {
 			hasContext: !!lastTurnContextForPlanner,
 			summary: lastTurnContextForPlanner?.summary,
 			entitiesCount: Object.keys(lastTurnContextForPlanner?.entities || {}).length
@@ -787,7 +767,7 @@ export const POST: RequestHandler = async ({
 					result?.result?.context_shift;
 
 				if (contextShift) {
-					console.log('[API] Context shift detected:', contextShift);
+					logger.info('Context shift detected', { contextShift });
 					const normalizedShiftContext = normalizeContextType(
 						(contextShift.new_context as ChatContextType) ?? effectiveContextType
 					);
@@ -832,12 +812,15 @@ export const POST: RequestHandler = async ({
 						.eq('id', chatSession.id);
 
 					if (updateError) {
-						console.error('[API] Failed to update chat session context:', updateError);
+						logger.error('Failed to update chat session context', {
+							error: updateError,
+							sessionId: chatSession.id
+						});
 					} else {
-						console.log('[API] Chat session context updated:', {
-							session_id: chatSession.id,
-							new_context: normalizedShiftContext,
-							entity_id: contextShift.entity_id
+						logger.info('Chat session context updated', {
+							sessionId: chatSession.id,
+							newContext: normalizedShiftContext,
+							entityId: contextShift.entity_id
 						});
 					}
 
@@ -938,9 +921,10 @@ export const POST: RequestHandler = async ({
 
 							await persistChatMessage(supabase, toolResultMessage);
 						} else {
-							console.warn(
-								`No result found for tool call ${toolCall.id} (${toolCall.function?.name})`
-							);
+							logger.warn('No result found for tool call', {
+								toolCallId: toolCall.id,
+								toolName: toolCall.function?.name
+							});
 						}
 					}
 
@@ -998,16 +982,14 @@ export const POST: RequestHandler = async ({
 					});
 				}
 			} catch (streamError) {
-				console.error('[API] Agent streaming error:', streamError);
-				console.error('[API] Error details:', {
+				logger.error('Agent streaming error', {
+					error: streamError,
 					sessionId: chatSession.id,
 					userId,
 					contextType: effectiveContextType,
 					entityId: entity_id,
 					hasOntology: !!ontologyContext,
-					messageLength: message.length,
-					errorName: streamError instanceof Error ? streamError.name : 'Unknown',
-					errorStack: streamError instanceof Error ? streamError.stack : undefined
+					messageLength: message.length
 				});
 
 				await agentStream.sendMessage({
@@ -1022,7 +1004,7 @@ export const POST: RequestHandler = async ({
 			}
 		})().catch((uncaughtError) => {
 			// Safety net for errors in error handling or finally block
-			console.error('Uncaught error in agent stream:', uncaughtError);
+			logger.error('Uncaught error in agent stream', { error: uncaughtError });
 			// Attempt to close stream if possible
 			try {
 				agentStream.close();
@@ -1034,7 +1016,7 @@ export const POST: RequestHandler = async ({
 		// Return SSE response
 		return agentStream.response;
 	} catch (err) {
-		console.error('Agent API error:', err);
+		logger.error('Agent API error', { error: err });
 		return ApiResponse.internalError(err, 'Internal server error');
 	}
 };
@@ -1069,7 +1051,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 			.limit(10);
 
 		if (sessionsError) {
-			console.error('Failed to get sessions:', sessionsError);
+			logger.error('Failed to get sessions', { error: sessionsError, userId });
 			return ApiResponse.internalError(sessionsError, 'Failed to get agent sessions');
 		}
 

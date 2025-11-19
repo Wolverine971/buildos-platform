@@ -156,14 +156,14 @@ export class AgentChatOrchestrator {
 				await callback(sessionEvent);
 			}
 
-			if (request.ontologyContext) {
-				const ontologyEvent: StreamEvent = {
-					type: 'ontology_loaded',
-					summary: `Ontology context loaded for ${request.ontologyContext.type}`
-				};
-				yield ontologyEvent;
-				await callback(ontologyEvent);
-			}
+			// if (request.ontologyContext) {
+			// 	const ontologyEvent: StreamEvent = {
+			// 		type: 'ontology_loaded',
+			// 		summary: `Ontology context loaded for ${request.ontologyContext.type}`
+			// 	};
+			// 	yield ontologyEvent;
+			// 	await callback(ontologyEvent);
+			// }
 
 			if (request.lastTurnContext) {
 				const lastTurnEvent: StreamEvent = {

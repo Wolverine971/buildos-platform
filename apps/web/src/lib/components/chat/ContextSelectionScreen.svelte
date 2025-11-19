@@ -39,7 +39,7 @@
 	}
 
 	interface ContextSelection {
-		contextType: ChatContextType;
+		contextType: ChatContextType | 'agent_to_agent';
 		entityId?: string;
 		label?: string;
 	}
@@ -134,6 +134,10 @@
 	// Primary actions
 	function selectGlobal() {
 		dispatch('select', { contextType: 'global', label: 'Global conversation' });
+	}
+
+	function selectAgentToAgent() {
+		dispatch('select', { contextType: 'agent_to_agent', label: 'Agent to agent chat' });
 	}
 
 	function goToProjectHub() {
@@ -240,7 +244,7 @@
 				</p>
 			</div>
 
-			<div class="grid gap-5 sm:grid-cols-2">
+			<div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
 				<!-- Global conversation -->
 				<button
 					onclick={selectGlobal}
@@ -265,6 +269,36 @@
 						class="flex items-center justify-between text-sm font-medium text-blue-600 dark:text-blue-400"
 					>
 						<span>Open conversation</span>
+						<ChevronRight
+							class="h-5 w-5 transition-transform group-hover:translate-x-1"
+						/>
+					</div>
+				</button>
+
+				<!-- Agent to agent chat -->
+				<button
+					onclick={selectAgentToAgent}
+					class="group flex h-full flex-col justify-between gap-6 rounded-2xl border border-slate-200/60 bg-gradient-to-br from-indigo-50/70 via-purple-50/40 to-white/80 p-7 text-left shadow-[0_20px_60px_-42px_rgba(99,102,241,0.7)] transition-all duration-200 hover:-translate-y-1 hover:border-indigo-300/60 hover:shadow-[0_35px_85px_-52px_rgba(76,81,191,0.65)] active:translate-y-0 dark:border-slate-700/60 dark:from-slate-900/80 dark:via-slate-900/50 dark:to-slate-900/70 dark:hover:border-indigo-500/60"
+				>
+					<div class="flex items-center gap-4">
+						<div
+							class="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500/10 via-violet-400/10 to-fuchsia-500/10 text-indigo-600 backdrop-blur-sm transition-transform duration-200 group-hover:scale-105 dark:text-indigo-300"
+						>
+							<Sparkles class="h-7 w-7" />
+						</div>
+						<div>
+							<h3 class="text-lg font-semibold text-slate-900 dark:text-white">
+								Agent to agent chat
+							</h3>
+							<p class="mt-1 text-sm text-slate-600 dark:text-slate-400">
+								Hand the BuildOS chat to another AI agent with a clear goal.
+							</p>
+						</div>
+					</div>
+					<div
+						class="flex items-center justify-between text-sm font-medium text-indigo-600 dark:text-indigo-400"
+					>
+						<span>Agent-to-agent</span>
 						<ChevronRight
 							class="h-5 w-5 transition-transform group-hover:translate-x-1"
 						/>
@@ -296,6 +330,38 @@
 						class="flex items-center justify-between text-sm font-medium text-emerald-600 dark:text-emerald-400"
 					>
 						<span>Project flows</span>
+						<ChevronRight
+							class="h-5 w-5 transition-transform group-hover:translate-x-1"
+						/>
+					</div>
+				</button>
+			</div>
+
+			<div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+				<!-- Agent to agent chat -->
+				<button
+					onclick={selectAgentToAgent}
+					class="group flex h-full flex-col justify-between gap-6 rounded-2xl border border-slate-200/60 bg-gradient-to-br from-indigo-50/70 via-purple-50/40 to-white/80 p-7 text-left shadow-[0_20px_60px_-42px_rgba(99,102,241,0.7)] transition-all duration-200 hover:-translate-y-1 hover:border-indigo-300/60 hover:shadow-[0_35px_85px_-52px_rgba(76,81,191,0.65)] active:translate-y-0 dark:border-slate-700/60 dark:from-slate-900/80 dark:via-slate-900/50 dark:to-slate-900/70 dark:hover:border-indigo-500/60"
+				>
+					<div class="flex items-center gap-4">
+						<div
+							class="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500/10 via-violet-400/10 to-fuchsia-500/10 text-indigo-600 backdrop-blur-sm transition-transform duration-200 group-hover:scale-105 dark:text-indigo-300"
+						>
+							<Sparkles class="h-7 w-7" />
+						</div>
+						<div>
+							<h3 class="text-lg font-semibold text-slate-900 dark:text-white">
+								Agent to agent chat
+							</h3>
+							<p class="mt-1 text-sm text-slate-600 dark:text-slate-400">
+								Hand the BuildOS chat to another AI agent with a clear goal.
+							</p>
+						</div>
+					</div>
+					<div
+						class="flex items-center justify-between text-sm font-medium text-indigo-600 dark:text-indigo-400"
+					>
+						<span>Agent-to-agent</span>
 						<ChevronRight
 							class="h-5 w-5 transition-transform group-hover:translate-x-1"
 						/>

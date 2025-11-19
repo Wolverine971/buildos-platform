@@ -4,6 +4,7 @@ import {
 	AGENTIC_WORKFLOW_REFERENCE,
 	CALENDAR_FEATURE_REFERENCE,
 	CHAT_ARCHITECTURE_REFERENCE,
+	CHAT_CONVERSATION_MODES_REFERENCE,
 	FEATURES_INDEX_REFERENCE,
 	ONBOARDING_REFERENCE,
 	ONTOLOGY_REFERENCE,
@@ -34,29 +35,48 @@ const USAGE_SECTIONS: BuildosDocSection[] = [
 		references: [AGENTIC_WORKFLOW_REFERENCE, FEATURES_INDEX_REFERENCE]
 	},
 	{
-		title: '3. Use Agentic Chat to Reason & Plan',
+		title: '3. Choose the Right Conversation Mode',
 		summary:
-			'Once information exists, guide the user back into the chat modal to plan with progressive disclosure and tool-assisted reasoning.',
+			'Help users select the appropriate chat mode based on what they want to accomplish—global brainstorming, project work, or task deep-dives.',
+		highlights: [
+			'For exploring ideas across multiple projects or planning the week ahead, suggest global mode. This gives access to all projects, calendar, and cross-project tools.',
+			'When working within a single project—asking "what is next?", creating tasks, or updating plans—recommend project mode. The agent loads that project context document and can reason about its specific needs.',
+			'Within project mode, users can narrow focus further: users can say "Let me talk about the deployment task" or "Show me the API documentation document." The ProjectFocusSelector lets them choose tasks, goals, plans, documents, or outputs.',
+			'For turning a spark of an idea into a structured project, use project_create mode. This guides through template selection, facet classification, and initial task planning.',
+			'Task-focused mode is perfect for detailed work on one task: breaking it down, clarifying requirements, checking dependencies, or updating status.',
+			'Explain that each mode loads different context: project mode loads the project narrative story from context documents; task mode loads task details, blockers, and related work.',
+			'Remind users they can change modes mid-conversation if the scope shifts: users can say "let me switch to project mode so I can see related tasks."'
+		],
+		references: [CHAT_CONVERSATION_MODES_REFERENCE, CHAT_ARCHITECTURE_REFERENCE]
+	},
+	{
+		title: '4. Use Agentic Chat to Reason & Plan',
+		summary:
+			'Once the right mode is selected, guide productive conversations using progressive disclosure and tool-assisted reasoning.',
 		highlights: [
 			'The chat system loads abbreviated data first (~400 tokens) and only fetches detailed records when the user drills deeper, so mention this when promising responsiveness.',
 			'Tool groups cover list/search/detail/action operations—pick the smallest tool that answers the question (e.g., `list_onto_projects` before `get_onto_project_details`).',
-			'Streaming responses keep the user informed while long-running tools execute, so set expectations about partial updates.'
+			'Streaming responses keep the user informed while long-running tools execute, so set expectations about partial updates.',
+			'In project mode, reference the project context document narrative when planning—it captures why the project matters and what success looks like.',
+			'When focused on a specific entity (task, goal, etc.), use that focus to provide targeted answers without loading unrelated data.'
 		],
-		references: [CHAT_ARCHITECTURE_REFERENCE]
+		references: [CHAT_ARCHITECTURE_REFERENCE, CHAT_CONVERSATION_MODES_REFERENCE]
 	},
 	{
-		title: '4. Structure Work with the Ontology',
+		title: '5. Structure Work with the Ontology',
 		summary:
-			'Move accepted ideas into the ontology so plans, tasks, goals, and documents stay linked and queryable.',
+			'Move accepted ideas into the ontology so plans, tasks, goals, and documents stay linked and queryable in the knowledge graph.',
 		highlights: [
-			'When creating a project, always set the `type_key` (e.g., `writer.book`) and infer the three facets (context, scale, stage) to keep the graph queryable.',
-			'Context documents are generated if missing, but it is better to capture the user’s braindump narrative explicitly so downstream planners have richer text.',
-			'Template defaults inject `default_props` and facet hints automatically; schema definitions describe what you _can_ store but only defaults get merged automatically.'
+			'When creating a project, always set the type_key (e.g., writer.book or dev.app) and infer the three facets (context, scale, stage) to keep the graph queryable.',
+			'Context documents capture the narrative story of a project—why it matters, what success looks like, and the history of decisions. These come from brain dumps and persist as the project evolves.',
+			'The ontology creates relationships: tasks belong to plans, plans support goals, everything connects to project context. This web of connections helps agents understand dependencies and the bigger picture.',
+			'Template defaults inject default properties and suggestions automatically, but projects stay flexible—users can add custom fields and adapt the structure as needs change.',
+			'When the agent references context documents during planning, it has access to the full narrative story, not just task lists. This produces better, more aligned suggestions.'
 		],
 		references: [ONTOLOGY_REFERENCE, TEMPLATE_INHERITANCE_REFERENCE]
 	},
 	{
-		title: '5. Automate Scheduling & Reviews',
+		title: '6. Automate Scheduling & Reviews',
 		summary:
 			'Keep calendars, daily briefs, and notifications in sync so BuildOS feels like an always-on chief of staff.',
 		highlights: [
@@ -67,7 +87,7 @@ const USAGE_SECTIONS: BuildosDocSection[] = [
 		references: [CALENDAR_FEATURE_REFERENCE, FEATURES_INDEX_REFERENCE]
 	},
 	{
-		title: '6. Iterate with Templates & AI Agents',
+		title: '7. Iterate with Templates & AI Agents',
 		summary:
 			'Teach power users how to evolve templates and leverage agent escalations when existing blueprints fall short.',
 		highlights: [

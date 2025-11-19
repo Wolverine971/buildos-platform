@@ -213,39 +213,43 @@
 						<Card
 							class={`cursor-pointer transition-all duration-200 hover:border-blue-400 hover:shadow-md dark:hover:border-blue-500 ${isActive(entity) ? 'border-blue-500 bg-gradient-to-br from-blue-50/90 to-indigo-50/70 shadow-md ring-2 ring-blue-200 dark:border-blue-400 dark:from-blue-900/30 dark:to-indigo-900/20 dark:ring-blue-800/40' : ''}`}
 						>
-						<CardBody padding="sm">
-							<button
-								type="button"
-								class="w-full text-left transition-opacity hover:opacity-80"
-								onclick={() => handleSelect(entity)}
-								aria-pressed={isActive(entity)}
-							>
-								<p
-									class="truncate text-sm font-semibold text-slate-900 dark:text-white"
-									title={entity.name}
+							<CardBody padding="sm">
+								<button
+									type="button"
+									class="w-full text-left transition-opacity hover:opacity-80"
+									onclick={() => handleSelect(entity)}
+									aria-pressed={isActive(entity)}
 								>
-									{entity.name}
-								</p>
-								<div class="mt-1 flex flex-wrap items-center gap-2">
-									{#if entity.metadata?.state_key}
-										<span
-											class="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium uppercase tracking-wide text-slate-600 dark:bg-slate-800 dark:text-slate-300"
-										>
-											{entity.metadata.state_key}
-										</span>
-									{/if}
-									{#if entity.metadata?.due_at}
-										<span class="text-xs text-slate-500 dark:text-slate-400">
-											Due {new Date(entity.metadata.due_at).toLocaleDateString()}
-										</span>
-									{/if}
-								</div>
-							</button>
-						</CardBody>
-					</Card>
-				{/each}
+									<p
+										class="truncate text-sm font-semibold text-slate-900 dark:text-white"
+										title={entity.name}
+									>
+										{entity.name}
+									</p>
+									<div class="mt-1 flex flex-wrap items-center gap-2">
+										{#if entity.metadata?.state_key}
+											<span
+												class="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium uppercase tracking-wide text-slate-600 dark:bg-slate-800 dark:text-slate-300"
+											>
+												{entity.metadata.state_key}
+											</span>
+										{/if}
+										{#if entity.metadata?.due_at}
+											<span
+												class="text-xs text-slate-500 dark:text-slate-400"
+											>
+												Due {new Date(
+													entity.metadata.due_at
+												).toLocaleDateString()}
+											</span>
+										{/if}
+									</div>
+								</button>
+							</CardBody>
+						</Card>
+					{/each}
+				</div>
 			</div>
-		</div>
 		{/if}
 	</div>
 </Modal>

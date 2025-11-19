@@ -271,6 +271,24 @@
 		})()
 	);
 
+	const tasksByGoal = $derived(
+		(() => {
+			const map = new Map<string, Task[]>();
+			for (const task of tasks) {
+				const goalIds = getGoalIdsFromTask(task);
+				for (const goalId of goalIds) {
+					const existing = map.get(goalId);
+					if (existing) {
+						existing.push(task);
+					} else {
+						map.set(goalId, [task]);
+					}
+				}
+			}
+			return map;
+		})()
+	);
+
 	const goalStats = $derived(
 		(() => {
 			const stats = new Map<
@@ -280,13 +298,25 @@
 
 			for (const goal of goals) {
 				const goalMilestones = milestonesByGoal.get(goal.id) ?? [];
+				const milestoneTasks: Task[] = [];
+				for (const milestone of goalMilestones) {
+					milestoneTasks.push(...(tasksByMilestone.get(milestone.id) ?? []));
+				}
+
+				// Prefer dedicated goal links and avoid double-counting milestone-linked tasks
+				const directGoalTasks = getDirectGoalTasks(goal.id);
+				const allTasks = [...milestoneTasks, ...directGoalTasks];
+				const seenTaskIds = new Set<string>();
 				let totalTasks = 0;
 				let completedTasks = 0;
 
-				for (const milestone of goalMilestones) {
-					const milestoneTasks = tasksByMilestone.get(milestone.id) ?? [];
-					totalTasks += milestoneTasks.length;
-					completedTasks += milestoneTasks.filter((task) => isTaskComplete(task)).length;
+				for (const task of allTasks) {
+					if (seenTaskIds.has(task.id)) continue;
+					seenTaskIds.add(task.id);
+					totalTasks += 1;
+					if (isTaskComplete(task)) {
+						completedTasks += 1;
+					}
 				}
 
 				stats.set(goal.id, {
@@ -373,6 +403,39 @@
 		return typeof goalId === 'string' ? goalId : null;
 	}
 
+	function getGoalIdsFromTask(task: Task): string[] {
+		const ids = new Set<string>();
+		const props = (task.props as Record<string, unknown> | null) ?? null;
+
+		if (props && typeof props === 'object') {
+			const goalId = (props as Record<string, unknown>).goal_id;
+			if (typeof goalId === 'string' && goalId.trim().length > 0) {
+				ids.add(goalId);
+			}
+
+			const sourceGoalId = (props as Record<string, unknown>).source_goal_id;
+			if (typeof sourceGoalId === 'string' && sourceGoalId.trim().length > 0) {
+				ids.add(sourceGoalId);
+			}
+
+			const goalIds = (props as Record<string, unknown>).goal_ids;
+			if (Array.isArray(goalIds)) {
+				for (const value of goalIds) {
+					if (typeof value === 'string' && value.trim().length > 0) {
+						ids.add(value);
+					}
+				}
+			}
+		}
+
+		const topLevelGoalId = (task as Record<string, unknown>).goal_id;
+		if (typeof topLevelGoalId === 'string' && topLevelGoalId.trim().length > 0) {
+			ids.add(topLevelGoalId);
+		}
+
+		return Array.from(ids);
+	}
+
 	function getMilestoneIdFromTask(task: Task): string | null {
 		const milestoneId = task.props?.supporting_milestone_id;
 		return typeof milestoneId === 'string' ? milestoneId : null;
@@ -389,6 +452,21 @@
 
 	function getMilestoneTasks(milestoneId: string): Task[] {
 		return tasksByMilestone.get(milestoneId) ?? [];
+	}
+
+	function getDirectGoalTasks(goalId: string): Task[] {
+		const linkedTasks = tasksByGoal.get(goalId) ?? [];
+		const milestonesForGoal = new Set(
+			(milestonesByGoal.get(goalId) ?? []).map((milestone) => milestone.id)
+		);
+		return linkedTasks.filter((task) => {
+			const milestoneId = getMilestoneIdFromTask(task);
+			// If the task is tied to a milestone that already rolls up to this goal, skip to avoid duplication
+			if (milestoneId && milestonesForGoal.has(milestoneId)) {
+				return false;
+			}
+			return true;
+		});
 	}
 
 	function handleReverseEngineerModalClose() {
@@ -1220,6 +1298,7 @@
 							{#each goals as goal}
 								{@const stats = getGoalStatsForDisplay(goal.id)}
 								{@const goalMilestones = getGoalMilestones(goal.id)}
+								{@const directGoalTasks = getDirectGoalTasks(goal.id)}
 								<div
 									class="p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-gray-300 dark:hover:border-gray-600 transition-all duration-200"
 								>
@@ -1328,97 +1407,155 @@
 											<div
 												class="border-t border-gray-200 dark:border-gray-700 pt-4 space-y-4"
 											>
-												{#if goalMilestones.length === 0}
-													<p
-														class="text-sm text-gray-500 dark:text-gray-400"
-													>
-														No milestones yet. Use reverse engineering
-														to generate a plan.
-													</p>
-												{:else}
-													{#each goalMilestones as milestone}
-														{@const milestoneStats =
-															getMilestoneTaskStats(milestone.id)}
-														{@const milestoneTasks = getMilestoneTasks(
-															milestone.id
-														)}
+												{#if directGoalTasks.length > 0}
+													<div class="space-y-2">
 														<div
-															class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 space-y-3"
+															class="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400"
 														>
+															<span
+																class="font-semibold text-gray-800 dark:text-gray-200"
+																>Direct tasks</span
+															>
+															<span
+																>{directGoalTasks.length} linked</span
+															>
+														</div>
+														{#each directGoalTasks as task}
 															<div
-																class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3"
+																class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-3 rounded-lg bg-gray-50 dark:bg-gray-800/40"
 															>
 																<div class="min-w-0">
 																	<p
-																		class="font-semibold text-gray-900 dark:text-white"
+																		class="font-medium text-gray-900 dark:text-gray-100"
 																	>
-																		{milestone.title}
+																		{task.title}
 																	</p>
-																	<p
-																		class="text-sm text-gray-600 dark:text-gray-400 mt-0.5"
-																	>
-																		Due {formatDueDate(
-																			milestone.due_at
-																		)}
-																	</p>
-																	{#if milestone.props?.summary}
+																	{#if task.props?.description}
 																		<p
-																			class="text-sm text-gray-600 dark:text-gray-400 mt-1"
+																			class="text-sm text-gray-600 dark:text-gray-400"
 																		>
-																			{milestone.props
-																				.summary}
+																			{task.props.description}
 																		</p>
 																	{/if}
 																</div>
 																<span
-																	class="text-sm font-medium text-gray-600 dark:text-gray-300 whitespace-nowrap"
+																	class="px-3 py-1 rounded-full text-xs font-semibold capitalize {getTaskStateBadgeClass(
+																		task.state_key
+																	)}"
 																>
-																	{milestoneStats.completed}/{milestoneStats.total}
-																	tasks complete
+																	{task.state_key}
 																</span>
 															</div>
-															<div class="space-y-2">
-																{#if milestoneTasks.length === 0}
-																	<p
-																		class="text-sm text-gray-500 dark:text-gray-400"
-																	>
-																		No tasks yet for this
-																		milestone.
-																	</p>
-																{:else}
-																	{#each milestoneTasks as task}
-																		<div
-																			class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-3 rounded-lg bg-gray-50 dark:bg-gray-800/40"
-																		>
-																			<div class="min-w-0">
-																				<p
-																					class="font-medium text-gray-900 dark:text-gray-100"
-																				>
-																					{task.title}
-																				</p>
-																				{#if task.props?.description}
-																					<p
-																						class="text-sm text-gray-600 dark:text-gray-400"
-																					>
-																						{task.props
-																							.description}
-																					</p>
-																				{/if}
-																			</div>
-																			<span
-																				class="px-3 py-1 rounded-full text-xs font-semibold capitalize {getTaskStateBadgeClass(
-																					task.state_key
-																				)}"
-																			>
-																				{task.state_key}
-																			</span>
-																		</div>
-																	{/each}
-																{/if}
-															</div>
-														</div>
-													{/each}
+														{/each}
+													</div>
 												{/if}
+
+												<div class="space-y-3">
+													<div
+														class="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400"
+													>
+														<span
+															class="font-semibold text-gray-800 dark:text-gray-200"
+															>Milestones</span
+														>
+														<span>{goalMilestones.length} linked</span>
+													</div>
+
+													{#if goalMilestones.length === 0}
+														<p
+															class="text-sm text-gray-500 dark:text-gray-400"
+														>
+															No milestones linked yet. Use reverse
+															engineering or edit tasks to connect
+															one.
+														</p>
+													{:else}
+														{#each goalMilestones as milestone}
+															{@const milestoneStats =
+																getMilestoneTaskStats(milestone.id)}
+															{@const milestoneTasks =
+																getMilestoneTasks(milestone.id)}
+															<div
+																class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 space-y-3"
+															>
+																<div
+																	class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3"
+																>
+																	<div class="min-w-0">
+																		<p
+																			class="font-semibold text-gray-900 dark:text-white"
+																		>
+																			{milestone.title}
+																		</p>
+																		<p
+																			class="text-sm text-gray-600 dark:text-gray-400 mt-0.5"
+																		>
+																			Due {formatDueDate(
+																				milestone.due_at
+																			)}
+																		</p>
+																		{#if milestone.props?.summary}
+																			<p
+																				class="text-sm text-gray-600 dark:text-gray-400 mt-1"
+																			>
+																				{milestone.props
+																					.summary}
+																			</p>
+																		{/if}
+																	</div>
+																	<span
+																		class="text-sm font-medium text-gray-600 dark:text-gray-300 whitespace-nowrap"
+																	>
+																		{milestoneStats.completed}/{milestoneStats.total}
+																		tasks complete
+																	</span>
+																</div>
+																<div class="space-y-2">
+																	{#if milestoneTasks.length === 0}
+																		<p
+																			class="text-sm text-gray-500 dark:text-gray-400"
+																		>
+																			No tasks yet for this
+																			milestone.
+																		</p>
+																	{:else}
+																		{#each milestoneTasks as task}
+																			<div
+																				class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-3 rounded-lg bg-gray-50 dark:bg-gray-800/40"
+																			>
+																				<div
+																					class="min-w-0"
+																				>
+																					<p
+																						class="font-medium text-gray-900 dark:text-gray-100"
+																					>
+																						{task.title}
+																					</p>
+																					{#if task.props?.description}
+																						<p
+																							class="text-sm text-gray-600 dark:text-gray-400"
+																						>
+																							{task
+																								.props
+																								.description}
+																						</p>
+																					{/if}
+																				</div>
+																				<span
+																					class="px-3 py-1 rounded-full text-xs font-semibold capitalize {getTaskStateBadgeClass(
+																						task.state_key
+																					)}"
+																				>
+																					{task.state_key}
+																				</span>
+																			</div>
+																		{/each}
+																	{/if}
+																</div>
+															</div>
+														{/each}
+													{/if}
+												</div>
 											</div>
 										{/if}
 									</div>
@@ -1557,6 +1694,8 @@
 	<TaskCreateModal
 		projectId={project.id}
 		{plans}
+		{goals}
+		{milestones}
 		onClose={() => (showTaskCreateModal = false)}
 		onCreated={handleTaskCreated}
 	/>
@@ -1568,6 +1707,8 @@
 		taskId={editingTaskId}
 		projectId={project.id}
 		{plans}
+		{goals}
+		{milestones}
 		onClose={() => (editingTaskId = null)}
 		onUpdated={handleTaskUpdated}
 		onDeleted={handleTaskDeleted}
