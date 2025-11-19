@@ -127,6 +127,75 @@ interface DeleteOntoPlanArgs {
 	plan_id: string;
 }
 
+interface UpdateOntoGoalArgs {
+	goal_id: string;
+	name?: string;
+	description?: string;
+	priority?: number;
+	target_date?: string;
+	measurement_criteria?: string;
+	props?: Record<string, unknown>;
+}
+
+interface UpdateOntoPlanArgs {
+	plan_id: string;
+	name?: string;
+	description?: string;
+	start_date?: string;
+	end_date?: string;
+	state_key?: string;
+	props?: Record<string, unknown>;
+}
+
+interface ListOntoDocumentsArgs {
+	project_id?: string;
+	type_key?: string;
+	state_key?: string;
+	limit?: number;
+}
+
+interface SearchOntoDocumentsArgs {
+	search: string;
+	project_id?: string;
+	type_key?: string;
+	state_key?: string;
+	limit?: number;
+}
+
+interface GetOntoDocumentDetailsArgs {
+	document_id: string;
+}
+
+interface GetOntoGoalDetailsArgs {
+	goal_id: string;
+}
+
+interface GetOntoPlanDetailsArgs {
+	plan_id: string;
+}
+
+interface CreateOntoDocumentArgs {
+	project_id: string;
+	title: string;
+	type_key: string;
+	state_key?: string;
+	body_markdown?: string;
+	props?: Record<string, unknown>;
+}
+
+interface UpdateOntoDocumentArgs {
+	document_id: string;
+	title?: string;
+	type_key?: string;
+	state_key?: string;
+	body_markdown?: string;
+	props?: Record<string, unknown>;
+}
+
+interface DeleteOntoDocumentArgs {
+	document_id: string;
+}
+
 interface ListOntoTemplatesArgs {
 	scope?: 'project' | 'plan' | 'task' | 'output' | 'document' | 'goal' | 'requirement';
 	realm?: string;
@@ -411,12 +480,31 @@ export class ChatToolExecutor {
 					result = await this.listOntoGoals(args as ListOntoGoalsArgs);
 					break;
 
+				case 'list_onto_documents':
+					result = await this.listOntoDocuments(args as ListOntoDocumentsArgs);
+					break;
+				case 'search_onto_documents':
+					result = await this.searchOntoDocuments(args as SearchOntoDocumentsArgs);
+					break;
+
 				case 'get_onto_project_details':
 					result = await this.getOntoProjectDetails(args as GetOntoProjectDetailsArgs);
 					break;
 
 				case 'get_onto_task_details':
 					result = await this.getOntoTaskDetails(args as GetOntoTaskDetailsArgs);
+					break;
+
+				case 'get_onto_goal_details':
+					result = await this.getOntoGoalDetails(args as GetOntoGoalDetailsArgs);
+					break;
+
+				case 'get_onto_plan_details':
+					result = await this.getOntoPlanDetails(args as GetOntoPlanDetailsArgs);
+					break;
+
+				case 'get_onto_document_details':
+					result = await this.getOntoDocumentDetails(args as GetOntoDocumentDetailsArgs);
 					break;
 
 				case 'get_entity_relationships':
@@ -447,6 +535,9 @@ export class ChatToolExecutor {
 				case 'create_onto_plan':
 					result = await this.createOntoPlan(args as CreateOntoPlanArgs);
 					break;
+				case 'create_onto_document':
+					result = await this.createOntoDocument(args as CreateOntoDocumentArgs);
+					break;
 
 				case 'update_onto_project':
 					result = await this.updateOntoProject(args as UpdateOntoProjectArgs);
@@ -454,6 +545,18 @@ export class ChatToolExecutor {
 
 				case 'update_onto_task':
 					result = await this.updateOntoTask(args as UpdateOntoTaskArgs);
+					break;
+
+				case 'update_onto_goal':
+					result = await this.updateOntoGoal(args as UpdateOntoGoalArgs);
+					break;
+
+				case 'update_onto_plan':
+					result = await this.updateOntoPlan(args as UpdateOntoPlanArgs);
+					break;
+
+				case 'update_onto_document':
+					result = await this.updateOntoDocument(args as UpdateOntoDocumentArgs);
 					break;
 
 				case 'delete_onto_task':
@@ -466,6 +569,10 @@ export class ChatToolExecutor {
 
 				case 'delete_onto_plan':
 					result = await this.deleteOntoPlan(args as DeleteOntoPlanArgs);
+					break;
+
+				case 'delete_onto_document':
+					result = await this.deleteOntoDocument(args as DeleteOntoDocumentArgs);
 					break;
 
 				default:
@@ -938,6 +1045,94 @@ export class ChatToolExecutor {
 		};
 	}
 
+	private async listOntoDocuments(args: ListOntoDocumentsArgs): Promise<{
+		documents: any[];
+		total: number;
+		message: string;
+	}> {
+		const actorId = await this.getActorId();
+		let query = this.supabase
+			.from('onto_documents')
+			.select('id, project_id, title, type_key, state_key, props, created_at, updated_at', {
+				count: 'exact'
+			})
+			.eq('created_by', actorId)
+			.order('updated_at', { ascending: false });
+
+		if (args.project_id) {
+			await this.assertProjectOwnership(args.project_id, actorId);
+			query = query.eq('project_id', args.project_id);
+		}
+
+		if (args.type_key) {
+			query = query.eq('type_key', args.type_key);
+		}
+
+		if (args.state_key) {
+			query = query.eq('state_key', args.state_key);
+		}
+
+		const limit = Math.min(args.limit ?? 20, 50);
+		query = query.limit(limit);
+
+		const { data, count, error } = await query;
+		if (error) throw error;
+
+		return {
+			documents: data ?? [],
+			total: count ?? data?.length ?? 0,
+			message: `Found ${data?.length ?? 0} ontology documents.`
+		};
+	}
+
+	private async searchOntoDocuments(args: SearchOntoDocumentsArgs): Promise<{
+		documents: any[];
+		total: number;
+		message: string;
+	}> {
+		const searchTerm = this.prepareSearchTerm(args.search);
+		if (!searchTerm) {
+			throw new Error('Search term is required for search_onto_documents');
+		}
+
+		const actorId = await this.getActorId();
+		const likePattern = `%${searchTerm}%`;
+
+		let query = this.supabase
+			.from('onto_documents')
+			.select('id, project_id, title, type_key, state_key, props, created_at, updated_at', {
+				count: 'exact'
+			})
+			.eq('created_by', actorId)
+			.order('updated_at', { ascending: false })
+			.ilike('title', likePattern);
+
+		if (args.project_id) {
+			await this.assertProjectOwnership(args.project_id, actorId);
+			query = query.eq('project_id', args.project_id);
+		}
+
+		if (args.type_key) {
+			query = query.eq('type_key', args.type_key);
+		}
+
+		if (args.state_key) {
+			query = query.eq('state_key', args.state_key);
+		}
+
+		const limit = Math.min(args.limit ?? 20, 50);
+		query = query.limit(limit);
+
+		const { data, count, error } = await query;
+		if (error) throw error;
+
+		return {
+			documents: data ?? [],
+			total: count ?? data?.length ?? 0,
+			message: `Found ${data?.length ?? 0} documents matching "${args.search}".`
+		};
+	}
+
 	private async getOntoProjectDetails(args: GetOntoProjectDetailsArgs): Promise<any> {
 		const details = await this.apiRequest(`/api/onto/projects/${args.project_id}`);
 		if (!details?.project) {
@@ -959,6 +1154,42 @@ export class ChatToolExecutor {
 		return {
 			...details,
 			message: 'Complete ontology task details loaded.'
+		};
+	}
+
+	private async getOntoGoalDetails(args: GetOntoGoalDetailsArgs): Promise<any> {
+		const details = await this.apiRequest(`/api/onto/goals/${args.goal_id}`);
+		if (!details?.goal) {
+			throw new Error('Ontology goal not found');
+		}
+
+		return {
+			...details,
+			message: 'Complete ontology goal details loaded.'
+		};
+	}
+
+	private async getOntoPlanDetails(args: GetOntoPlanDetailsArgs): Promise<any> {
+		const details = await this.apiRequest(`/api/onto/plans/${args.plan_id}`);
+		if (!details?.plan) {
+			throw new Error('Ontology plan not found');
+		}
+
+		return {
+			...details,
+			message: 'Complete ontology plan details loaded.'
+		};
+	}
+
+	private async getOntoDocumentDetails(args: GetOntoDocumentDetailsArgs): Promise<any> {
+		const details = await this.apiRequest(`/api/onto/documents/${args.document_id}`);
+		if (!details?.document) {
+			throw new Error('Ontology document not found');
+		}
+
+		return {
+			...details,
+			message: 'Complete ontology document details loaded.'
 		};
 	}
 
@@ -1173,6 +1404,30 @@ export class ChatToolExecutor {
 		};
 	}
 
+	private async createOntoDocument(args: CreateOntoDocumentArgs): Promise<{
+		document: any;
+		message: string;
+	}> {
+		const payload = {
+			project_id: args.project_id,
+			title: args.title,
+			type_key: args.type_key,
+			state_key: args.state_key ?? 'draft',
+			body_markdown: args.body_markdown ?? '',
+			props: args.props ?? {}
+		};
+
+		const data = await this.apiRequest('/api/onto/documents/create', {
+			method: 'POST',
+			body: JSON.stringify(payload)
+		});
+
+		return {
+			document: data.document,
+			message: `Created ontology document "${data.document?.title ?? 'Document'}"`
+		};
+	}
+
 	private async updateOntoTask(args: UpdateOntoTaskArgs): Promise<{
 		task: any;
 		message: string;
@@ -1228,6 +1483,90 @@ export class ChatToolExecutor {
 		};
 	}
 
+	private async updateOntoGoal(args: UpdateOntoGoalArgs): Promise<{
+		goal: any;
+		message: string;
+	}> {
+		const updateData: Record<string, unknown> = {};
+
+		if (args.name !== undefined) updateData.name = args.name;
+		if (args.description !== undefined) updateData.description = args.description;
+		if (args.priority !== undefined) updateData.priority = args.priority;
+		if (args.target_date !== undefined) updateData.target_date = args.target_date;
+		if (args.measurement_criteria !== undefined)
+			updateData.measurement_criteria = args.measurement_criteria;
+		if (args.props !== undefined) updateData.props = args.props;
+
+		if (Object.keys(updateData).length === 0) {
+			throw new Error('No updates provided for ontology goal');
+		}
+
+		const data = await this.apiRequest(`/api/onto/goals/${args.goal_id}`, {
+			method: 'PATCH',
+			body: JSON.stringify(updateData)
+		});
+
+		return {
+			goal: data.goal,
+			message: `Updated ontology goal "${data.goal?.name ?? args.goal_id}"`
+		};
+	}
+
+	private async updateOntoPlan(args: UpdateOntoPlanArgs): Promise<{
+		plan: any;
+		message: string;
+	}> {
+		const updateData: Record<string, unknown> = {};
+
+		if (args.name !== undefined) updateData.name = args.name;
+		if (args.description !== undefined) updateData.description = args.description;
+		if (args.start_date !== undefined) updateData.start_date = args.start_date;
+		if (args.end_date !== undefined) updateData.end_date = args.end_date;
+		if (args.state_key !== undefined) updateData.state_key = args.state_key;
+		if (args.props !== undefined) updateData.props = args.props;
+
+		if (Object.keys(updateData).length === 0) {
+			throw new Error('No updates provided for ontology plan');
+		}
+
+		const data = await this.apiRequest(`/api/onto/plans/${args.plan_id}`, {
+			method: 'PATCH',
+			body: JSON.stringify(updateData)
+		});
+
+		return {
+			plan: data.plan,
+			message: `Updated ontology plan "${data.plan?.name ?? args.plan_id}"`
+		};
+	}
+
+	private async updateOntoDocument(args: UpdateOntoDocumentArgs): Promise<{
+		document: any;
+		message: string;
+	}> {
+		const updateData: Record<string, unknown> = {};
+
+		if (args.title !== undefined) updateData.title = args.title;
+		if (args.type_key !== undefined) updateData.type_key = args.type_key;
+		if (args.state_key !== undefined) updateData.state_key = args.state_key;
+		if (args.body_markdown !== undefined) updateData.body_markdown = args.body_markdown;
+		if (args.props !== undefined) updateData.props = args.props;
+
+		if (Object.keys(updateData).length === 0) {
+			throw new Error('No updates provided for ontology document');
+		}
+
+		const data = await this.apiRequest(`/api/onto/documents/${args.document_id}`, {
+			method: 'PATCH',
+			body: JSON.stringify(updateData)
+		});
+
+		return {
+			document: data.document,
+			message: `Updated ontology document "${data.document?.title ?? args.document_id}"`
+		};
+	}
+
 	private async deleteOntoTask(args: DeleteOntoTaskArgs): Promise<{
 		success: boolean;
 		message: string;
@@ -1267,6 +1606,20 @@ export class ChatToolExecutor {
 		return {
 			success: true,
 			message: data.message ?? 'Ontology plan deleted successfully'
+		};
+	}
+
+	private async deleteOntoDocument(args: DeleteOntoDocumentArgs): Promise<{
+		success: boolean;
+		message: string;
+	}> {
+		const data = await this.apiRequest(`/api/onto/documents/${args.document_id}`, {
+			method: 'DELETE'
+		});
+
+		return {
+			success: true,
+			message: data.message ?? 'Ontology document deleted successfully'
 		};
 	}
 

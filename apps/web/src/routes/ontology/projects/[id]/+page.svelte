@@ -213,6 +213,7 @@
 		(data.graphMetadata ?? null) as { generatedAt?: string | null } | null
 	);
 	let graphError = $state<string | null>((data.graphError ?? null) as string | null);
+	const TASK_DOCUMENT_REL = 'task_has_document';
 
 	const projectStats = $derived({
 		tasks: tasks.length,
@@ -301,6 +302,37 @@
 					map.set(goalId, [milestone]);
 				}
 			}
+			return map;
+		})()
+	);
+
+	const taskDocuments = $derived(
+		(() => {
+			const map = new Map<string, Document[]>();
+			const docsById = new Map<string, Document>();
+			for (const doc of documents) {
+				if (doc?.id) docsById.set(doc.id, doc);
+			}
+
+			const edges = projectGraphSource?.edges ?? [];
+			for (const edge of edges) {
+				if (
+					edge?.rel !== TASK_DOCUMENT_REL ||
+					edge.src_kind !== 'task' ||
+					edge.dst_kind !== 'document'
+				) {
+					continue;
+				}
+				const doc = docsById.get(edge.dst_id);
+				if (!doc) continue;
+				const existing = map.get(edge.src_id);
+				if (existing) {
+					existing.push(doc);
+				} else {
+					map.set(edge.src_id, [doc]);
+				}
+			}
+
 			return map;
 		})()
 	);
@@ -924,6 +956,7 @@
 					{:else}
 						<div class="space-y-3">
 							{#each tasks as task}
+								{@const linkedDocs = taskDocuments.get(task.id) ?? []}
 								<button
 									onclick={() => (editingTaskId = task.id)}
 									class="w-full flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-blue-500 dark:hover:border-blue-400 hover:bg-blue-50/70 dark:hover:bg-blue-900/10 transition-all duration-200 text-left group"
@@ -937,7 +970,7 @@
 												class="font-semibold text-gray-900 dark:text-white group-hover:text-blue-700 dark:group-hover:text-blue-300 mb-1"
 											>
 												{task.title}
-											</h3>
+												</h3>
 											<div
 												class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400"
 											>
@@ -953,6 +986,15 @@
 															(p) => p.id === task.plan_id
 														)?.name || 'Unknown'}</span
 													>
+												{/if}
+												{#if linkedDocs.length}
+													<span class="text-gray-400">•</span>
+													<span class="inline-flex items-center gap-1 text-xs">
+														<FileText class="w-4 h-4 text-gray-400" />
+														{linkedDocs.length} document{linkedDocs.length === 1
+															? ''
+															: 's'}
+													</span>
 												{/if}
 											</div>
 										</div>

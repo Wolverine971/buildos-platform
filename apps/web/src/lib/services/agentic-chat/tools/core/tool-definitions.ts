@@ -319,6 +319,37 @@ Use for queries about project goals or strategic objectives.`,
 			}
 		}
 	},
+	{
+		type: 'function',
+		function: {
+			name: 'list_onto_documents',
+			description: `List documents from the ontology system (onto_documents table). Returns document summaries.
+Use for queries about project documentation, briefs, specs, or research artifacts.`,
+			parameters: {
+				type: 'object',
+				properties: {
+					project_id: {
+						type: 'string',
+						description: 'Filter documents by project ID'
+					},
+					type_key: {
+						type: 'string',
+						description: 'Filter by document type key (e.g., document.project.context)'
+					},
+					state_key: {
+						type: 'string',
+						description: 'Filter by document state'
+					},
+					limit: {
+						type: 'number',
+						default: 20,
+						maximum: 50,
+						description: 'Maximum number of documents to return'
+					}
+				}
+			}
+		}
+	},
 
 	{
 		type: 'function',
@@ -401,6 +432,42 @@ Use for discovering available projects or getting project overviews.`,
 			}
 		}
 	},
+	{
+		type: 'function',
+		function: {
+			name: 'search_onto_documents',
+			description: `Search ontology documents by title. Returns concise matches with project_id and type/state.
+Use when the user references a doc name or needs to find a brief/spec quickly.`,
+			parameters: {
+				type: 'object',
+				properties: {
+					search: {
+						type: 'string',
+						description: 'Keyword to search for (required)'
+					},
+					project_id: {
+						type: 'string',
+						description: 'Optional project filter to limit matches'
+					},
+					type_key: {
+						type: 'string',
+						description: 'Filter by document type key'
+					},
+					state_key: {
+						type: 'string',
+						description: 'Filter by document state'
+					},
+					limit: {
+						type: 'number',
+						default: 20,
+						maximum: 50,
+						description: 'Maximum number of search results'
+					}
+				},
+				required: ['search']
+			}
+		}
+	},
 
 	{
 		type: 'function',
@@ -436,6 +503,60 @@ Use after identifying a task with list_onto_tasks.`,
 					}
 				},
 				required: ['task_id']
+			}
+		}
+	},
+	{
+		type: 'function',
+		function: {
+			name: 'get_onto_goal_details',
+			description: `Get complete details for a specific ontology goal including properties and metadata.
+Use after listing goals to retrieve the full record for editing or auditing.`,
+			parameters: {
+				type: 'object',
+				properties: {
+					goal_id: {
+						type: 'string',
+						description: 'Goal ID to retrieve'
+					}
+				},
+				required: ['goal_id']
+			}
+		}
+	},
+	{
+		type: 'function',
+		function: {
+			name: 'get_onto_plan_details',
+			description: `Get complete details for a specific ontology plan including properties and metadata.
+Use after listing plans to retrieve the full record for editing or auditing.`,
+			parameters: {
+				type: 'object',
+				properties: {
+					plan_id: {
+						type: 'string',
+						description: 'Plan ID to retrieve'
+					}
+				},
+				required: ['plan_id']
+			}
+		}
+	},
+	{
+		type: 'function',
+		function: {
+			name: 'get_onto_document_details',
+			description: `Get complete details for a specific ontology document including props/body markdown.
+Use when you need the full document before editing or linking it.`,
+			parameters: {
+				type: 'object',
+				properties: {
+					document_id: {
+						type: 'string',
+						description: 'Document ID to retrieve'
+					}
+				},
+				required: ['document_id']
 			}
 		}
 	},
@@ -602,6 +723,46 @@ Plans are logical groupings of tasks within a project.`,
 		}
 	},
 
+	{
+		type: 'function',
+		function: {
+			name: 'create_onto_document',
+			description: `Create a new document in the ontology system.
+Use for briefs, specs, context docs, or research artifacts linked to a project.`,
+			parameters: {
+				type: 'object',
+				properties: {
+					project_id: {
+						type: 'string',
+						description: 'Project UUID (required)'
+					},
+					title: {
+						type: 'string',
+						description: 'Document title (required)'
+					},
+					type_key: {
+						type: 'string',
+						description: 'Document type key (required)'
+					},
+					state_key: {
+						type: 'string',
+						description: 'Document state (draft, active, complete)',
+						default: 'draft'
+					},
+					body_markdown: {
+						type: 'string',
+						description: 'Optional markdown body content'
+					},
+					props: {
+						type: 'object',
+						description: 'Additional properties/metadata'
+					}
+				},
+				required: ['project_id', 'title', 'type_key']
+			}
+		}
+	},
+
 	// UPDATE TOOLS
 	{
 		type: 'function',
@@ -686,6 +847,128 @@ Only updates fields that are provided.`,
 			}
 		}
 	},
+	{
+		type: 'function',
+		function: {
+			name: 'update_onto_goal',
+			description: `Update an existing ontology goal.
+Use for edits to goal names, descriptions, priorities, target dates, or metadata.`,
+			parameters: {
+				type: 'object',
+				properties: {
+					goal_id: {
+						type: 'string',
+						description: 'Goal UUID (required)'
+					},
+					name: {
+						type: 'string',
+						description: 'New goal name'
+					},
+					description: {
+						type: 'string',
+						description: 'Goal description'
+					},
+					priority: {
+						type: 'number',
+						description: 'Priority value for the goal'
+					},
+					target_date: {
+						type: 'string',
+						description: 'Target date (ISO timestamp)'
+					},
+					measurement_criteria: {
+						type: 'string',
+						description: 'How success is measured'
+					},
+					props: {
+						type: 'object',
+						description: 'Metadata fields to merge into goal props'
+					}
+				},
+				required: ['goal_id']
+			}
+		}
+	},
+	{
+		type: 'function',
+		function: {
+			name: 'update_onto_plan',
+			description: `Update an existing ontology plan.
+Use for edits to plan names, dates, status, or metadata.`,
+			parameters: {
+				type: 'object',
+				properties: {
+					plan_id: {
+						type: 'string',
+						description: 'Plan UUID (required)'
+					},
+					name: {
+						type: 'string',
+						description: 'New plan name'
+					},
+					description: {
+						type: 'string',
+						description: 'Plan description'
+					},
+					start_date: {
+						type: 'string',
+						description: 'Planned start date (ISO timestamp)'
+					},
+					end_date: {
+						type: 'string',
+						description: 'Planned end date (ISO timestamp)'
+					},
+					state_key: {
+						type: 'string',
+						description: 'Plan state (draft, active, blocked, complete)'
+					},
+					props: {
+						type: 'object',
+						description: 'Metadata fields to merge into plan props'
+					}
+				},
+				required: ['plan_id']
+			}
+		}
+	},
+	{
+		type: 'function',
+		function: {
+			name: 'update_onto_document',
+			description: `Update an existing ontology document.
+Use for edits to titles, states, body markdown, or metadata.`,
+			parameters: {
+				type: 'object',
+				properties: {
+					document_id: {
+						type: 'string',
+						description: 'Document UUID (required)'
+					},
+					title: {
+						type: 'string',
+						description: 'New document title'
+					},
+					type_key: {
+						type: 'string',
+						description: 'New document type key'
+					},
+					state_key: {
+						type: 'string',
+						description: 'Document state'
+					},
+					body_markdown: {
+						type: 'string',
+						description: 'Markdown content to store'
+					},
+					props: {
+						type: 'object',
+						description: 'Metadata fields to merge into document props'
+					}
+				},
+				required: ['document_id']
+			}
+		}
+	},
 
 	// DELETE TOOLS
 	{
@@ -705,6 +988,25 @@ Verifies ownership before deletion.`,
 					}
 				},
 				required: ['task_id']
+			}
+		}
+	},
+
+	{
+		type: 'function',
+		function: {
+			name: 'delete_onto_document',
+			description: `Delete a document from the ontology system.
+Removes the document and associated edges. This action is permanent.`,
+			parameters: {
+				type: 'object',
+				properties: {
+					document_id: {
+						type: 'string',
+						description: 'Document UUID (required)'
+					}
+				},
+				required: ['document_id']
 			}
 		}
 	},
@@ -1358,6 +1660,12 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 		contexts: ['global', 'project', 'project_audit', 'project_forecast'],
 		category: 'search'
 	},
+	list_onto_documents: {
+		summary: 'List project documents (briefs, specs, context, research).',
+		capabilities: ['Filter by project/type/state', 'Returns concise summaries'],
+		contexts: ['global', 'project', 'project_audit', 'project_forecast'],
+		category: 'search'
+	},
 	list_onto_projects: {
 		summary: 'List ontology projects grouped by recent activity.',
 		capabilities: ['Filter by type or state', 'Highlights facet metadata'],
@@ -1370,6 +1678,12 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 		contexts: ['global', 'project', 'project_audit', 'project_forecast'],
 		category: 'search'
 	},
+	search_onto_documents: {
+		summary: 'Keyword search for documents by title.',
+		capabilities: ['Supports project/type/state filters', 'Fast doc discovery'],
+		contexts: ['global', 'project', 'project_audit', 'project_forecast'],
+		category: 'search'
+	},
 	get_onto_project_details: {
 		summary: 'Load the complete ontology project graph and metadata.',
 		capabilities: ['Returns nested entities', 'Use after identifying a project'],
@@ -1379,6 +1693,24 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 	get_onto_task_details: {
 		summary: 'Load full task details including props and relationships.',
 		capabilities: ['Validates ownership', 'Great for deep task updates'],
+		contexts: ['project', 'project_audit', 'project_forecast'],
+		category: 'read'
+	},
+	get_onto_goal_details: {
+		summary: 'Load full goal details including props.',
+		capabilities: ['Validates ownership', 'Great before editing KPIs'],
+		contexts: ['project', 'project_audit', 'project_forecast'],
+		category: 'read'
+	},
+	get_onto_plan_details: {
+		summary: 'Load full plan details including props.',
+		capabilities: ['Validates ownership', 'Great before editing timelines'],
+		contexts: ['project', 'project_audit', 'project_forecast'],
+		category: 'read'
+	},
+	get_onto_document_details: {
+		summary: 'Load full document details including body markdown/props.',
+		capabilities: ['Validates ownership', 'Use before edits or linking'],
 		contexts: ['project', 'project_audit', 'project_forecast'],
 		category: 'read'
 	},
@@ -1412,6 +1744,12 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 		contexts: ['project', 'project_audit', 'project_forecast'],
 		category: 'write'
 	},
+	create_onto_document: {
+		summary: 'Create a document linked to a project (brief/spec/context).',
+		capabilities: ['Validates ownership', 'Stores body markdown/props'],
+		contexts: ['project', 'project_audit', 'project_forecast'],
+		category: 'write'
+	},
 	update_onto_task: {
 		summary: 'Modify task status, assignment, or metadata.',
 		capabilities: ['Supports partial updates', 'Validates ownership'],
@@ -1424,8 +1762,32 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 		contexts: ['project', 'project_audit', 'project_forecast'],
 		category: 'write'
 	},
+	update_onto_goal: {
+		summary: 'Modify goal details (priority, target date, KPIs).',
+		capabilities: ['Supports partial updates', 'Validates ownership'],
+		contexts: ['project', 'project_audit', 'project_forecast'],
+		category: 'write'
+	},
+	update_onto_plan: {
+		summary: 'Modify plan details (state, dates, metadata).',
+		capabilities: ['Supports partial updates', 'Validates ownership'],
+		contexts: ['project', 'project_audit', 'project_forecast'],
+		category: 'write'
+	},
+	update_onto_document: {
+		summary: 'Modify document title/type/state/body/metadata.',
+		capabilities: ['Supports partial updates', 'Validates ownership'],
+		contexts: ['project', 'project_audit', 'project_forecast'],
+		category: 'write'
+	},
 	delete_onto_task: {
 		summary: 'Remove a task and associated edges.',
+		capabilities: ['Validates ownership', 'Irreversible delete'],
+		contexts: ['project', 'project_audit', 'project_forecast'],
+		category: 'write'
+	},
+	delete_onto_document: {
+		summary: 'Remove a document and associated edges.',
 		capabilities: ['Validates ownership', 'Irreversible delete'],
 		contexts: ['project', 'project_audit', 'project_forecast'],
 		category: 'write'
