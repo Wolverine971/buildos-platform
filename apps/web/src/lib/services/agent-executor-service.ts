@@ -29,7 +29,7 @@ import {
 	type ExecutorContext
 } from './agent-context-service';
 import { SmartLLMService } from './smart-llm-service';
-import { ChatToolExecutor } from '$lib/chat/tool-executor';
+import { ChatToolExecutor } from '$lib/services/agentic-chat/tools/core/tool-executor';
 import { getToolsForAgent } from '@buildos/shared-types';
 import { v4 as uuidv4 } from 'uuid';
 import { savePromptForAudit } from '$lib/utils/prompt-audit';

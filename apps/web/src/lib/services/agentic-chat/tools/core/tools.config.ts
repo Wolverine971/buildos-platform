@@ -1,4 +1,4 @@
-// apps/web/src/lib/chat/tools.config.ts
+// apps/web/src/lib/services/agentic-chat/tools/core/tools.config.ts
 /**
  * Chat Tool Registry & Context Configuration
  *
@@ -64,6 +64,11 @@ export const TOOL_CATEGORIES = {
 		averageTokens: 80,
 		costTier: 'low'
 	},
+	web_research: {
+		tools: ['web_search'],
+		averageTokens: 700,
+		costTier: 'medium'
+	},
 	buildos_docs: {
 		tools: ['get_buildos_overview', 'get_buildos_usage_guide'],
 		averageTokens: 900,
@@ -79,6 +84,7 @@ const TOOL_GROUPS: Record<ToolContextScope, string[]> = {
 	base: [
 		'get_field_info',
 		'get_entity_relationships',
+		'web_search',
 		'get_buildos_overview',
 		'get_buildos_usage_guide'
 	],
@@ -208,6 +214,8 @@ export const UTILITY_TOOLS = extractTools([
 	'get_buildos_overview',
 	'get_buildos_usage_guide'
 ]);
+
+export const WEB_TOOLS = extractTools(['web_search']);
 
 export const DEFAULT_TOOLS = getToolsForContextType('global');
 

@@ -1,4 +1,4 @@
-// apps/web/src/lib/chat/tool-definitions.ts
+// apps/web/src/lib/services/agentic-chat/tools/core/tool-definitions.ts
 /**
  * Chat Tool Definitions
  *
@@ -1238,6 +1238,53 @@ Use this when users ask questions like:
 	{
 		type: 'function',
 		function: {
+			name: 'web_search',
+			description: `Perform a live web search using the Tavily API for current or external information not present in BuildOS.
+Use when the user asks for recent facts, market research, competitive intel, or requests citations.
+Return the concise answer plus the most relevant sources so the assistant can cite URLs in its reply.`,
+			parameters: {
+				type: 'object',
+				properties: {
+					query: {
+						type: 'string',
+						description: 'The search query to send to Tavily (required)'
+					},
+					search_depth: {
+						type: 'string',
+						enum: ['basic', 'advanced'],
+						description:
+							'Search depth. Use "basic" for fast lookups; "advanced" for more thorough research.'
+					},
+					max_results: {
+						type: 'number',
+						default: 5,
+						maximum: 10,
+						description: 'Maximum number of results to return (1-10)'
+					},
+					include_answer: {
+						type: 'boolean',
+						description:
+							'Whether to request Tavily to synthesize an answer. Defaults to true.'
+					},
+					include_domains: {
+						type: 'array',
+						items: { type: 'string' },
+						description: 'Restrict results to these domains.'
+					},
+					exclude_domains: {
+						type: 'array',
+						items: { type: 'string' },
+						description: 'Exclude results from these domains.'
+					}
+				},
+				required: ['query'],
+				additionalProperties: false
+			}
+		}
+	},
+	{
+		type: 'function',
+		function: {
 			name: 'get_buildos_overview',
 			description: `Return the canonical BuildOS overview reference.
 Use this whenever the user asks broad questions such as:
@@ -1413,6 +1460,23 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 			'project_forecast'
 		],
 		category: 'utility'
+	},
+	web_search: {
+		summary: 'Live web research via Tavily with synthesized answer and cited sources.',
+		capabilities: [
+			'Searches current web content',
+			'Optional domain allow/deny lists',
+			'Returns ranked sources plus Tavily short answer'
+		],
+		contexts: [
+			'base',
+			'global',
+			'project_create',
+			'project',
+			'project_audit',
+			'project_forecast'
+		],
+		category: 'search'
 	},
 	get_buildos_overview: {
 		summary:

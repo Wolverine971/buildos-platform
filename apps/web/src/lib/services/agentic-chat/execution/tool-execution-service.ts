@@ -7,7 +7,7 @@
  * providing a clean abstraction over the actual tool implementations.
  *
  * @see {@link /apps/web/docs/features/agentic-chat/REFACTORING_SPEC.md} - Refactoring specification
- * @see {@link ../../../tool-executor.ts} - Actual tool implementations
+ * @see {@link ../../tools/core/tool-executor.ts} - Actual tool implementations
  *
  * Key responsibilities:
  * - Validate tool calls against available definitions

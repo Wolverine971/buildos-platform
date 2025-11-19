@@ -38,7 +38,7 @@ import { PlanExecutionError } from '../shared/types';
 import { ChatStrategy } from '$lib/types/agent-chat-enhancement';
 import type { ChatToolCall, ChatContextType } from '@buildos/shared-types';
 import { v4 as uuidv4, validate as uuidValidate } from 'uuid';
-import { formatToolSummaries } from '$lib/chat/tools.config';
+import { formatToolSummaries } from '$lib/services/agentic-chat/tools/core/tools.config';
 
 /**
  * Interface for LLM service (subset of SmartLLMService)

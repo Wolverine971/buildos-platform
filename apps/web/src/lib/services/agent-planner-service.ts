@@ -35,7 +35,7 @@ import { AgentExecutorService, type ExecutorResult } from './agent-executor-serv
 import { AgentConversationService } from './agent-conversation-service';
 import { SmartLLMService } from './smart-llm-service';
 import { ChatCompressionService } from './chat-compression-service';
-import { ChatToolExecutor } from '$lib/chat/tool-executor';
+import { ChatToolExecutor } from '$lib/services/agentic-chat/tools/core/tool-executor';
 import { v4 as uuidv4 } from 'uuid';
 import { savePromptForAudit } from '$lib/utils/prompt-audit';
 // Add after existing imports
@@ -1331,7 +1331,7 @@ Synthesized response:`;
 	 */
 	private async getToolsForStep(step: PlanStep): Promise<ChatToolDefinition[]> {
 		// Import CHAT_TOOLS dynamically
-		const { CHAT_TOOLS } = await import('$lib/chat/tools.config');
+		const { CHAT_TOOLS } = await import('$lib/services/agentic-chat/tools/core/tools.config');
 
 		// Filter tools that match the step's tool list
 		return CHAT_TOOLS.filter((tool) => step.tools.includes(tool.function.name));

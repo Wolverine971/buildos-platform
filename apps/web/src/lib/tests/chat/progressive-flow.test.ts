@@ -7,8 +7,8 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { ChatToolExecutor } from '$lib/chat/tool-executor';
-import { CHAT_TOOLS } from '$lib/chat/tools.config';
+import { ChatToolExecutor } from '$lib/services/agentic-chat/tools/core/tool-executor';
+import { CHAT_TOOLS } from '$lib/services/agentic-chat/tools/core/tools.config';
 import type { ChatToolCall, ChatToolResult } from '@buildos/shared-types';
 
 describe('Progressive Disclosure Flow', () => {

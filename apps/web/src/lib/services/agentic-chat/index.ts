@@ -13,7 +13,7 @@ import { SmartLLMService } from '$lib/services/smart-llm-service';
 import { ChatCompressionService } from '$lib/services/chat-compression-service';
 import { AgentContextService } from '$lib/services/agent-context-service';
 import { AgentExecutorService } from '$lib/services/agent-executor-service';
-import { ChatToolExecutor } from '$lib/chat/tool-executor';
+import { ChatToolExecutor } from '$lib/services/agentic-chat/tools/core/tool-executor';
 import { ErrorLoggerService } from '$lib/services/errorLogger.service';
 
 import { AgentPersistenceService } from './persistence/agent-persistence-service';

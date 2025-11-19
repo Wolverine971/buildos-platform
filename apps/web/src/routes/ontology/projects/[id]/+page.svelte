@@ -36,6 +36,9 @@
 	import TabNav, { type Tab } from '$lib/components/ui/TabNav.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
 	import CardBody from '$lib/components/ui/CardBody.svelte';
+	import GraphControls from '$lib/components/ontology/graph/GraphControls.svelte';
+	import OntologyGraph from '$lib/components/ontology/graph/OntologyGraph.svelte';
+	import NodeDetailsPanel from '$lib/components/ontology/graph/NodeDetailsPanel.svelte';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
 	import OutputCreateModal from '$lib/components/ontology/OutputCreateModal.svelte';
 	import OutputEditModal from '$lib/components/ontology/OutputEditModal.svelte';
@@ -60,7 +63,9 @@
 		Calendar,
 		Target,
 		FileText,
-		Sparkles
+		Sparkles,
+		GitBranch,
+		RefreshCw
 	} from 'lucide-svelte';
 	import type { GoalReverseEngineeringResult } from '$lib/services/ontology/goal-reverse-engineering.service';
 	import type {
@@ -78,6 +83,13 @@
 		getGoalStateBadgeClass,
 		getPriorityBadgeClass
 	} from '$lib/utils/ontology-badge-styles';
+	import type {
+		GraphNode,
+		GraphSourceData,
+		GraphStats,
+		OntologyGraphInstance,
+		ViewMode
+	} from '$lib/components/ontology/graph/lib/graph.types';
 
 	// ============================================================
 	// TYPES
@@ -185,6 +197,23 @@
 		}))
 	);
 
+	const emptyGraphStats: GraphStats = {
+		totalTemplates: 0,
+		totalProjects: 0,
+		activeProjects: 0,
+		totalEdges: 0,
+		totalTasks: 0,
+		totalOutputs: 0,
+		totalDocuments: 0
+	};
+
+	let projectGraphSource = $state((data.graphSource ?? null) as GraphSourceData | null);
+	let projectGraphStats = $state((data.graphStats ?? null) as GraphStats | null);
+	let graphMetadata = $state(
+		(data.graphMetadata ?? null) as { generatedAt?: string | null } | null
+	);
+	let graphError = $state<string | null>((data.graphError ?? null) as string | null);
+
 	const projectStats = $derived({
 		tasks: tasks.length,
 		goals: goals.length,
@@ -193,8 +222,19 @@
 		documents: documents.length
 	});
 
+	const graphLastUpdated = $derived.by(() => {
+		const timestamp = graphMetadata?.generatedAt;
+		if (!timestamp) return null;
+		const parsed = new Date(timestamp);
+		return Number.isNaN(parsed.getTime()) ? null : parsed.toLocaleString();
+	});
+
 	$effect(() => {
 		project = data.project as Project;
+		projectGraphSource = (data.graphSource ?? null) as GraphSourceData | null;
+		projectGraphStats = (data.graphStats ?? null) as GraphStats | null;
+		graphMetadata = (data.graphMetadata ?? null) as { generatedAt?: string | null } | null;
+		graphError = (data.graphError ?? null) as string | null;
 	});
 
 	// ============================================================
@@ -222,9 +262,20 @@
 	let reverseEngineerPreview = $state<GoalReverseEngineeringResult | null>(null);
 	let reverseEngineerGoalMeta = $state<{ id: string; name: string } | null>(null);
 	let approvingReverseEngineer = $state(false);
+	let graphViewMode = $state<ViewMode>('projects');
+	let graphInstance = $state<OntologyGraphInstance | null>(null);
+	let selectedGraphNode = $state<GraphNode | null>(null);
+	let graphLoading = $state(false);
+	let graphReloadError = $state<string | null>(null);
 
 	const tabs = $derived<Tab[]>([
 		{ id: 'tasks', label: 'Tasks', count: tasks.length },
+		{
+			id: 'graph',
+			label: 'Graph',
+			icon: GitBranch,
+			count: projectGraphStats?.totalEdges
+		},
 		{ id: 'outputs', label: 'Outputs', count: outputs.length },
 		{ id: 'documents', label: 'Documents', count: documents.length },
 		{ id: 'plans', label: 'Plans', count: plans.length },
@@ -345,6 +396,9 @@
 	// ============================================================
 	function handleTabChange(tabId: string) {
 		activeTab = tabId;
+		if (tabId === 'graph' && !projectGraphSource && !graphLoading) {
+			refreshProjectGraph();
+		}
 	}
 
 	async function handleStateChange(): Promise<void> {
@@ -353,6 +407,39 @@
 
 	function handleProjectSaved(updatedProject: Project): void {
 		project = updatedProject;
+	}
+
+	async function refreshProjectGraph() {
+		if (!project?.id) return;
+
+		try {
+			graphLoading = true;
+			graphReloadError = null;
+			const response = await fetch(`/api/onto/projects/${project.id}/graph?viewMode=full`);
+			const payload = await response.json().catch(() => null);
+
+			if (!response.ok) {
+				throw new Error(payload?.error ?? 'Failed to load project graph');
+			}
+
+			projectGraphSource = (payload?.data?.source ?? null) as GraphSourceData | null;
+			projectGraphStats = (payload?.data?.stats ?? null) as GraphStats | null;
+			graphMetadata = (payload?.data?.metadata ?? null) as {
+				generatedAt?: string | null;
+			} | null;
+			graphError = null;
+			selectedGraphNode = null;
+		} catch (error) {
+			console.error('[Project Graph] Failed to refresh', error);
+			const message =
+				error instanceof Error && error.message
+					? error.message
+					: 'Failed to load project graph';
+			graphReloadError = message;
+			graphError = message;
+		} finally {
+			graphLoading = false;
+		}
 	}
 
 	function openDeleteModal(): void {
@@ -835,11 +922,11 @@
 							</Button>
 						</div>
 					{:else}
-						<div class="space-y-2.5">
+						<div class="space-y-3">
 							{#each tasks as task}
 								<button
 									onclick={() => (editingTaskId = task.id)}
-									class="w-full flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3.5 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-blue-500 dark:hover:border-blue-400 hover:bg-blue-50/70 dark:hover:bg-blue-900/10 transition-all duration-200 text-left group"
+									class="w-full flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-blue-500 dark:hover:border-blue-400 hover:bg-blue-50/70 dark:hover:bg-blue-900/10 transition-all duration-200 text-left group"
 								>
 									<div class="flex-1 min-w-0 flex items-start gap-3">
 										<Pencil
@@ -895,6 +982,140 @@
 						</div>
 					{/if}
 				</div>
+			{:else if activeTab === 'graph'}
+				<div class="space-y-5">
+					<div
+						class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between lg:gap-4"
+					>
+						<div class="space-y-1">
+							<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+								Project graph
+							</h3>
+							<p class="text-sm text-gray-600 dark:text-gray-400 max-w-2xl">
+								Explore how this project's tasks, outputs, documents, and templates
+								connect at a glance.
+							</p>
+							{#if graphLastUpdated}
+								<p class="text-xs text-gray-500 dark:text-gray-400">
+									Updated {graphLastUpdated}
+								</p>
+							{/if}
+						</div>
+						<div class="flex items-center gap-2">
+							<Button
+								variant="ghost"
+								size="sm"
+								onclick={() => graphInstance?.fitToView()}
+								disabled={!graphInstance}
+							>
+								Fit to view
+							</Button>
+							<Button
+								variant="primary"
+								size="sm"
+								onclick={refreshProjectGraph}
+								loading={graphLoading}
+							>
+								<RefreshCw class="w-4 h-4 mr-1" />
+								Refresh graph
+							</Button>
+						</div>
+					</div>
+
+					{#if graphError || graphReloadError}
+						<div
+							class="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-800/50 dark:bg-red-900/30 dark:text-red-200"
+						>
+							<div class="flex items-start gap-3">
+								<div class="flex-1 space-y-1">
+									<p class="font-semibold">Unable to load project graph</p>
+									<p>{graphReloadError || graphError}</p>
+								</div>
+								<Button
+									variant="outline"
+									size="sm"
+									onclick={refreshProjectGraph}
+									loading={graphLoading}
+								>
+									Try again
+								</Button>
+							</div>
+						</div>
+					{/if}
+
+					{#if projectGraphSource}
+						<div class="grid gap-4 lg:grid-cols-3">
+							<div class="lg:col-span-2">
+								<div
+									class="relative h-[520px] sm:h-[620px] overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800"
+								>
+									<OntologyGraph
+										data={projectGraphSource}
+										viewMode={graphViewMode}
+										bind:selectedNode={selectedGraphNode}
+										bind:graphInstance
+									/>
+									{#if graphLoading}
+										<div
+											class="absolute inset-0 flex items-center justify-center bg-white/70 dark:bg-gray-900/70"
+										>
+											<div
+												class="h-10 w-10 animate-spin rounded-full border-4 border-blue-200 border-t-blue-500 dark:border-blue-900/60 dark:border-t-indigo-400"
+											></div>
+										</div>
+									{/if}
+								</div>
+							</div>
+							<div class="lg:col-span-1">
+								<GraphControls
+									bind:viewMode={graphViewMode}
+									{graphInstance}
+									stats={projectGraphStats ?? emptyGraphStats}
+								/>
+							</div>
+						</div>
+
+						<section
+							class="mt-4 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800"
+						>
+							{#if selectedGraphNode}
+								<NodeDetailsPanel
+									node={selectedGraphNode}
+									onClose={() => (selectedGraphNode = null)}
+								/>
+							{:else}
+								<div
+									class="flex min-h-[180px] items-center justify-center px-6 py-10 text-sm text-gray-500 dark:text-gray-400"
+								>
+									Select a node to view its details.
+								</div>
+							{/if}
+						</section>
+					{:else if graphLoading}
+						<div
+							class="flex flex-col items-center justify-center gap-3 py-16 text-center"
+						>
+							<div
+								class="h-12 w-12 animate-spin rounded-full border-4 border-blue-200 border-t-blue-500 dark:border-blue-900/40 dark:border-t-indigo-400"
+							></div>
+							<p class="text-sm text-gray-600 dark:text-gray-400">Loading graph...</p>
+						</div>
+					{:else}
+						<div
+							class="flex flex-col items-center justify-center gap-3 py-14 text-center"
+						>
+							<GitBranch class="h-10 w-10 text-gray-400" />
+							<p class="text-sm text-gray-600 dark:text-gray-400">
+								No relationships yet. Create tasks, outputs, and documents to
+								visualize this project.
+							</p>
+							<Button variant="primary" size="sm" onclick={refreshProjectGraph}>
+								<RefreshCw class="w-4 h-4 mr-1" />
+								Build graph
+							</Button>
+						</div>
+					{/if}
+				</div>
 			{:else if activeTab === 'outputs'}
 				<div class="space-y-4">
 					<!-- Create button -->
@@ -931,11 +1152,11 @@
 							</Button>
 						</div>
 					{:else}
-						<div class="space-y-2.5">
+						<div class="space-y-3">
 							{#each outputs as output}
 								<button
 									onclick={() => editOutput(output.id)}
-									class="w-full flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3.5 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-blue-500 dark:hover:border-blue-400 hover:bg-blue-50/70 dark:hover:bg-blue-900/10 transition-all duration-200 text-left group"
+									class="w-full flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-blue-500 dark:hover:border-blue-400 hover:bg-blue-50/70 dark:hover:bg-blue-900/10 transition-all duration-200 text-left group"
 								>
 									<div class="flex-1 min-w-0 flex items-start gap-3">
 										<Pencil
@@ -1208,12 +1429,12 @@
 							</Button>
 						</div>
 					{:else}
-						<div class="space-y-2.5">
+						<div class="space-y-3">
 							{#each plans as plan}
 								<button
 									type="button"
 									onclick={() => (editingPlanId = plan.id)}
-									class="w-full flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3.5 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-blue-500 dark:hover:border-blue-400 hover:bg-blue-50/70 dark:hover:bg-blue-900/10 transition-all duration-200 text-left"
+									class="w-full flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-blue-500 dark:hover:border-blue-400 hover:bg-blue-50/70 dark:hover:bg-blue-900/10 transition-all duration-200 text-left"
 								>
 									<div class="flex-1 min-w-0 flex items-start gap-3">
 										<Calendar
@@ -1294,7 +1515,7 @@
 							</Button>
 						</div>
 					{:else}
-						<div class="space-y-2.5">
+						<div class="space-y-3">
 							{#each goals as goal}
 								{@const stats = getGoalStatsForDisplay(goal.id)}
 								{@const goalMilestones = getGoalMilestones(goal.id)}

@@ -26,7 +26,7 @@ import type {
 } from '$lib/types/agent-chat-enhancement';
 import type { ServiceContext, PlannerContext, StreamCallback } from '../shared/types';
 import { StrategyError } from '../shared/types';
-import { formatToolSummaries } from '$lib/chat/tools.config';
+import { formatToolSummaries } from '$lib/services/agentic-chat/tools/core/tools.config';
 
 /**
  * Interface for LLM service (subset of SmartLLMService)

@@ -1,3 +1,4 @@
+// apps/web/src/lib/utils/logger.ts
 /**
  * Structured Logger Service
  *

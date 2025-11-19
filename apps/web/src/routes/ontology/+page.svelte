@@ -6,6 +6,7 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
 	import CardBody from '$lib/components/ui/CardBody.svelte';
+	import LoadingSkeleton from '$lib/components/ui/LoadingSkeleton.svelte';
 	import GraphControls from '$lib/components/ontology/graph/GraphControls.svelte';
 	import OntologyGraph from '$lib/components/ontology/graph/OntologyGraph.svelte';
 	import NodeDetailsPanel from '$lib/components/ontology/graph/NodeDetailsPanel.svelte';
@@ -17,6 +18,7 @@
 	} from '$lib/components/ontology/graph/lib/graph.types';
 	import type { OntologyProjectSummary } from '$lib/services/ontology/ontology-projects.service';
 	import { ontologyGraphStore } from '$lib/stores/ontology-graph.store';
+	import { getProjectStateBadgeClass } from '$lib/utils/ontology-badge-styles';
 
 	let { data } = $props();
 
@@ -231,7 +233,7 @@
 		const query = params.toString();
 		await goto(`${$page.url.pathname}${query ? `?${query}` : ''}`, {
 			replaceState: true,
-			keepfocus: true,
+			keepFocus: true,
 			noScroll: tab === 'graph'
 		});
 	}
@@ -266,8 +268,8 @@
 	<title>Ontology Projects | BuildOS</title>
 </svelte:head>
 
-<div class="mx-auto w-full max-w-6xl space-y-4 sm:space-y-5">
-	<header class="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
+<div class="mx-auto w-full max-w-6xl space-y-4 sm:space-y-6">
+	<header class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 		<div class="space-y-1">
 			<h1 class="text-2xl font-semibold text-slate-900 dark:text-slate-50 sm:text-3xl">
 				Ontology Projects
@@ -306,7 +308,7 @@
 		class="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200/70 bg-white/90 p-2 shadow-sm dark:border-slate-800 dark:bg-slate-900/70"
 	>
 		<nav
-			class="inline-flex rounded-xl bg-slate-100/70 p-1 text-sm font-medium dark:bg-slate-800/60"
+			class="inline-flex rounded-xl bg-slate-100/70 p-1 text-sm font-medium dark:bg-slate-800/60 overflow-x-auto scrollbar-hide"
 			aria-label="Ontology view mode"
 		>
 			<button
@@ -727,7 +729,7 @@
 				</div>
 			</div>
 		{:else}
-			<div class="grid grid-cols-1 gap-3.5 sm:gap-4 md:grid-cols-2 xl:grid-cols-3">
+			<div class="grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-2 xl:grid-cols-3">
 				{#each filteredProjects as project (project.id)}
 					<a
 						href="/ontology/projects/{project.id}"
@@ -747,20 +749,9 @@
 								</p>
 							</div>
 							<span
-								class={`flex-shrink-0 rounded-full px-3 py-1 text-xs font-semibold capitalize ${
-									project.state_key === 'draft'
-										? 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200'
-										: project.state_key === 'planning' ||
-											  project.state_key === 'intake'
-											? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300'
-											: project.state_key === 'active' ||
-												  project.state_key === 'execution'
-												? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'
-												: project.state_key === 'completed' ||
-													  project.state_key === 'published'
-													? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300'
-													: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200'
-								}`}
+								class="flex-shrink-0 rounded-full px-3 py-1 text-xs font-semibold capitalize {getProjectStateBadgeClass(
+									project.state_key
+								)}"
 							>
 								{project.state_key}
 							</span>
@@ -905,14 +896,7 @@
 			>
 				<div class="relative h-[70vh] lg:h-[calc(100vh-18rem)]">
 					{#if $graphStore.status === 'loading'}
-						<div class="flex h-full flex-col items-center justify-center gap-3 p-6">
-							<div
-								class="h-12 w-12 animate-spin rounded-full border-4 border-blue-200 border-t-blue-500 dark:border-blue-900/40 dark:border-t-indigo-400"
-							></div>
-							<p class="text-sm font-medium text-slate-500 dark:text-slate-400">
-								Preparing ontology graph...
-							</p>
-						</div>
+						<LoadingSkeleton message="Preparing ontology graph..." height="100%" />
 					{:else if $graphStore.status === 'error'}
 						<div
 							class="flex h-full flex-col items-center justify-center gap-3 p-6 text-center"

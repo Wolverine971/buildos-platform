@@ -22,7 +22,7 @@ import type {
 	ChatToolCall
 } from '@buildos/shared-types';
 import { SmartLLMService } from './smart-llm-service';
-import { ChatToolExecutor } from '$lib/chat/tool-executor';
+import { ChatToolExecutor } from '$lib/services/agentic-chat/tools/core/tool-executor';
 import { getToolsForAgent } from '@buildos/shared-types';
 import type { ExecutorTask } from './agent-context-service';
 import { savePromptForAudit } from '$lib/utils/prompt-audit';

@@ -9,7 +9,7 @@
 import type { RequestHandler } from './$types';
 import { SmartLLMService } from '$lib/services/smart-llm-service';
 import { ChatContextService } from '$lib/services/chat-context-service';
-import { ChatToolExecutor } from '$lib/chat/tool-executor';
+import { ChatToolExecutor } from '$lib/services/agentic-chat/tools/core/tool-executor';
 import { ChatCompressionService } from '$lib/services/chat-compression-service';
 import { SSEResponse } from '$lib/utils/sse-response';
 import { ApiResponse } from '$lib/utils/api-response';

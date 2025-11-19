@@ -21,7 +21,10 @@ import type {
 	SystemPromptMetadata,
 	LocationContext
 } from '@buildos/shared-types';
-import { CHAT_TOOLS, getToolsForContextType } from '$lib/chat/tools.config';
+import {
+	CHAT_TOOLS,
+	getToolsForContextType
+} from '$lib/services/agentic-chat/tools/core/tools.config';
 import { getToolsForAgent } from '@buildos/shared-types';
 import { ChatCompressionService } from './chat-compression-service';
 import { ChatContextService } from './chat-context-service';

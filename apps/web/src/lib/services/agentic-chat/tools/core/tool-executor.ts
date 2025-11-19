@@ -1,4 +1,4 @@
-// apps/web/src/lib/chat/tool-executor.ts
+// apps/web/src/lib/services/agentic-chat/tools/core/tool-executor.ts
 /**
  * Chat Tool Executor - Ontology-First Implementation
  *
@@ -16,6 +16,7 @@ import {
 	getBuildosOverviewDocument,
 	getBuildosUsageGuide
 } from '$lib/services/agentic-chat/tools/buildos';
+import { performWebSearch, type WebSearchArgs } from '$lib/services/agentic-chat/tools/websearch';
 
 interface ListOntoTasksArgs {
 	project_id?: string;
@@ -381,6 +382,9 @@ export class ChatToolExecutor {
 					break;
 				case 'get_buildos_usage_guide':
 					result = getBuildosUsageGuide();
+					break;
+				case 'web_search':
+					result = await performWebSearch(args as WebSearchArgs, this.fetchFn);
 					break;
 
 				case 'list_onto_projects':
