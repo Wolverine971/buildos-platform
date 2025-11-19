@@ -96,11 +96,10 @@
 		});
 	}
 
-	$: userContext = user.user_context || {};
-	$: projects = user.projects || [];
-	$: brainDumps = user.brain_dumps || [];
-	$: recentActivity = user.recent_activity || [];
-	$: activityStats = user.activity_stats || {};
+	let projects = $derived(user.projects || []);
+	let brainDumps = $derived(user.brain_dumps || []);
+	let recentActivity = $derived(user.recent_activity || []);
+	let activityStats = $derived(user.activity_stats || {});
 </script>
 
 <Modal {isOpen} onClose={handleClose} size="xl" customClasses="max-h-[95vh] overflow-y-auto">

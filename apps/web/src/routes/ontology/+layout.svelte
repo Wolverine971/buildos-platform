@@ -57,7 +57,7 @@
 	{/if}
 </button>
 
-<div class=" flex min-h-screen min-h-[100dvh] bg-gray-50 dark:bg-gray-900/90">
+<div class="flex min-h-screen min-h-[100dvh] bg-gray-50 dark:bg-gray-900/90">
 	<!-- Sidebar -->
 	<aside
 		id="ontology-sidebar"
