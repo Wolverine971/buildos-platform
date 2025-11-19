@@ -560,6 +560,24 @@ Use when you need the full document before editing or linking it.`,
 			}
 		}
 	},
+	{
+		type: 'function',
+		function: {
+			name: 'list_task_documents',
+			description: `List documents linked to a specific task via task_has_document edges.
+Use when you need to see the work artifacts, drafts, or scratch docs associated with a task.`,
+			parameters: {
+				type: 'object',
+				properties: {
+					task_id: {
+						type: 'string',
+						description: 'Task ID to retrieve documents for'
+					}
+				},
+				required: ['task_id']
+			}
+		}
+	},
 
 	{
 		type: 'function',
@@ -759,6 +777,53 @@ Use for briefs, specs, context docs, or research artifacts linked to a project.`
 					}
 				},
 				required: ['project_id', 'title', 'type_key']
+			}
+		}
+	},
+	{
+		type: 'function',
+		function: {
+			name: 'create_task_document',
+			description: `Create or attach a document to a task workspace.
+Also ensures the project has_document edge exists for discovery.`,
+			parameters: {
+				type: 'object',
+				properties: {
+					task_id: {
+						type: 'string',
+						description: 'Task ID to link the document to'
+					},
+					document_id: {
+						type: 'string',
+						description: 'Existing document ID to attach instead of creating new'
+					},
+					title: {
+						type: 'string',
+						description: 'Document title (required if creating new)'
+					},
+					type_key: {
+						type: 'string',
+						description: 'Document type key (required if creating new)'
+					},
+					state_key: {
+						type: 'string',
+						description: 'Document state (e.g., draft, active)',
+						default: 'draft'
+					},
+					role: {
+						type: 'string',
+						description: 'Edge role (e.g., deliverable, scratch)'
+					},
+					body_markdown: {
+						type: 'string',
+						description: 'Optional markdown body content'
+					},
+					props: {
+						type: 'object',
+						description: 'Additional properties/metadata'
+					}
+				},
+				required: ['task_id']
 			}
 		}
 	},
@@ -1779,6 +1844,22 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 		capabilities: ['Supports partial updates', 'Validates ownership'],
 		contexts: ['project', 'project_audit', 'project_forecast'],
 		category: 'write'
+	},
+	create_task_document: {
+		summary: 'Create or attach a document to a specific task workspace.',
+		capabilities: [
+			'Creates task_has_document edge',
+			'Can attach existing docs',
+			'Keeps project has_document for discovery'
+		],
+		contexts: ['project', 'project_audit', 'project_forecast'],
+		category: 'write'
+	},
+	list_task_documents: {
+		summary: 'List documents linked to a task via task_has_document edges.',
+		capabilities: ['Returns documents plus edge metadata', 'Highlights scratch vs deliverable'],
+		contexts: ['project', 'project_audit', 'project_forecast'],
+		category: 'search'
 	},
 	delete_onto_task: {
 		summary: 'Remove a task and associated edges.',

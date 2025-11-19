@@ -196,6 +196,21 @@ interface DeleteOntoDocumentArgs {
 	document_id: string;
 }
 
+interface ListTaskDocumentsArgs {
+	task_id: string;
+}
+
+interface CreateTaskDocumentArgs {
+	task_id: string;
+	document_id?: string;
+	title?: string;
+	type_key?: string;
+	state_key?: string;
+	role?: string;
+	body_markdown?: string;
+	props?: Record<string, unknown>;
+}
+
 interface ListOntoTemplatesArgs {
 	scope?: 'project' | 'plan' | 'task' | 'output' | 'document' | 'goal' | 'requirement';
 	realm?: string;
@@ -503,13 +518,21 @@ export class ChatToolExecutor {
 					result = await this.getOntoPlanDetails(args as GetOntoPlanDetailsArgs);
 					break;
 
-				case 'get_onto_document_details':
-					result = await this.getOntoDocumentDetails(args as GetOntoDocumentDetailsArgs);
-					break;
+		case 'get_onto_document_details':
+			result = await this.getOntoDocumentDetails(args as GetOntoDocumentDetailsArgs);
+			break;
 
-				case 'get_entity_relationships':
-					result = await this.getEntityRelationships(args as GetEntityRelationshipsArgs);
-					break;
+		case 'list_task_documents':
+			result = await this.listTaskDocuments(args as ListTaskDocumentsArgs);
+			break;
+
+		case 'create_task_document':
+			result = await this.createTaskDocument(args as CreateTaskDocumentArgs);
+			break;
+
+		case 'get_entity_relationships':
+			result = await this.getEntityRelationships(args as GetEntityRelationshipsArgs);
+			break;
 
 				case 'list_onto_templates':
 					result = await this.listOntoTemplates(args as ListOntoTemplatesArgs);
@@ -1564,6 +1587,57 @@ export class ChatToolExecutor {
 		return {
 			document: data.document,
 			message: `Updated ontology document "${data.document?.title ?? args.document_id}"`
+		};
+	}
+
+	private async listTaskDocuments(args: ListTaskDocumentsArgs): Promise<{
+		documents: Array<{ document: any; edge: any }>;
+		scratch_pad: { document: any; edge: any } | null;
+		message: string;
+	}> {
+		if (!args.task_id) {
+			throw new Error('task_id is required for list_task_documents');
+		}
+
+		const data = await this.apiRequest(`/api/onto/tasks/${args.task_id}/documents`, {
+			method: 'GET'
+		});
+
+		return {
+			documents: data.documents ?? [],
+			scratch_pad: data.scratch_pad ?? null,
+			message: `Found ${data.documents?.length ?? 0} documents linked to this task.`
+		};
+	}
+
+	private async createTaskDocument(args: CreateTaskDocumentArgs): Promise<{
+		document: any;
+		edge: any;
+		message: string;
+	}> {
+		if (!args.task_id) {
+			throw new Error('task_id is required for create_task_document');
+		}
+
+		const payload: Record<string, unknown> = {
+			document_id: args.document_id,
+			title: args.title,
+			type_key: args.type_key,
+			state_key: args.state_key,
+			role: args.role,
+			body_markdown: args.body_markdown,
+			props: args.props
+		};
+
+		const data = await this.apiRequest(`/api/onto/tasks/${args.task_id}/documents`, {
+			method: 'POST',
+			body: JSON.stringify(payload)
+		});
+
+		return {
+			document: data.document,
+			edge: data.edge,
+			message: `Linked document "${data.document?.title ?? 'Document'}" to task.`
 		};
 	}
 
