@@ -119,6 +119,7 @@ export type FSMTransition = z.infer<typeof FSMTransitionSchema>;
 
 export const FSMDefSchema = z.object({
 	type_key: z.string().regex(/^[a-z_]+\.[a-z_]+(\.[a-z_]+)?$/),
+	initial: z.string().optional(),
 	states: z.array(z.string()).min(3).max(6),
 	transitions: z.array(FSMTransitionSchema)
 });

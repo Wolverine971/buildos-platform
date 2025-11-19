@@ -8081,6 +8081,7 @@ export type Database = {
         Args: { p_object_id: string; p_object_kind: string }
         Returns: {
           actions: Json
+          can_run: boolean
           event: string
           guards: Json
           to_state: string

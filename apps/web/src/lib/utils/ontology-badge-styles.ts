@@ -12,7 +12,7 @@
  * Get Tailwind CSS classes for project state badges
  */
 export function getProjectStateBadgeClass(stateKey: string): string {
-	const normalized = stateKey.toLowerCase();
+	const normalized = stateKey?.toLowerCase();
 
 	switch (normalized) {
 		case 'draft':
@@ -35,7 +35,7 @@ export function getProjectStateBadgeClass(stateKey: string): string {
  * Get Tailwind CSS classes for task state badges
  */
 export function getTaskStateBadgeClass(stateKey: string): string {
-	const normalized = stateKey.toLowerCase();
+	const normalized = stateKey?.toLowerCase();
 
 	switch (normalized) {
 		case 'todo':
@@ -56,7 +56,7 @@ export function getTaskStateBadgeClass(stateKey: string): string {
  * Get Tailwind CSS classes for output/document state badges
  */
 export function getOutputStateBadgeClass(stateKey: string): string {
-	const normalized = stateKey.toLowerCase();
+	const normalized = stateKey?.toLowerCase();
 
 	switch (normalized) {
 		case 'draft':
@@ -76,7 +76,7 @@ export function getOutputStateBadgeClass(stateKey: string): string {
  * Get Tailwind CSS classes for plan state badges
  */
 export function getPlanStateBadgeClass(stateKey: string): string {
-	const normalized = stateKey.toLowerCase();
+	const normalized = stateKey?.toLowerCase();
 
 	switch (normalized) {
 		case 'draft':
@@ -96,7 +96,7 @@ export function getPlanStateBadgeClass(stateKey: string): string {
  * Get Tailwind CSS classes for goal state badges
  */
 export function getGoalStateBadgeClass(stateKey: string): string {
-	const normalized = stateKey.toLowerCase();
+	const normalized = stateKey?.toLowerCase();
 
 	switch (normalized) {
 		case 'draft':
@@ -120,7 +120,7 @@ export function getGoalStateBadgeClass(stateKey: string): string {
  * Get Tailwind CSS classes for priority badges
  */
 export function getPriorityBadgeClass(priority: string): string {
-	const normalized = priority.toLowerCase();
+	const normalized = priority?.toLowerCase();
 
 	switch (normalized) {
 		case 'urgent':

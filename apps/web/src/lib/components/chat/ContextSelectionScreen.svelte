@@ -18,7 +18,6 @@
 		ChevronRight,
 		ChevronLeft,
 		Sparkles,
-		CheckSquare,
 		Loader2
 	} from 'lucide-svelte';
 	import type { ChatContextType } from '@buildos/shared-types';
@@ -183,15 +182,6 @@
 		});
 	}
 
-	// Special contexts
-	function selectTaskUpdate() {
-		dispatch('select', { contextType: 'task_update', label: 'Task spotlight' });
-	}
-
-	function selectDailyBrief() {
-		dispatch('select', { contextType: 'daily_brief_update', label: 'Daily brief tuning' });
-	}
-
 	function formatKeyLabel(value?: string | null) {
 		if (!value) return '';
 		return value
@@ -330,100 +320,6 @@
 						class="flex items-center justify-between text-sm font-medium text-emerald-600 dark:text-emerald-400"
 					>
 						<span>Project flows</span>
-						<ChevronRight
-							class="h-5 w-5 transition-transform group-hover:translate-x-1"
-						/>
-					</div>
-				</button>
-			</div>
-
-			<div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-				<!-- Agent to agent chat -->
-				<button
-					onclick={selectAgentToAgent}
-					class="group flex h-full flex-col justify-between gap-6 rounded-2xl border border-slate-200/60 bg-gradient-to-br from-indigo-50/70 via-purple-50/40 to-white/80 p-7 text-left shadow-[0_20px_60px_-42px_rgba(99,102,241,0.7)] transition-all duration-200 hover:-translate-y-1 hover:border-indigo-300/60 hover:shadow-[0_35px_85px_-52px_rgba(76,81,191,0.65)] active:translate-y-0 dark:border-slate-700/60 dark:from-slate-900/80 dark:via-slate-900/50 dark:to-slate-900/70 dark:hover:border-indigo-500/60"
-				>
-					<div class="flex items-center gap-4">
-						<div
-							class="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500/10 via-violet-400/10 to-fuchsia-500/10 text-indigo-600 backdrop-blur-sm transition-transform duration-200 group-hover:scale-105 dark:text-indigo-300"
-						>
-							<Sparkles class="h-7 w-7" />
-						</div>
-						<div>
-							<h3 class="text-lg font-semibold text-slate-900 dark:text-white">
-								Agent to agent chat
-							</h3>
-							<p class="mt-1 text-sm text-slate-600 dark:text-slate-400">
-								Hand the BuildOS chat to another AI agent with a clear goal.
-							</p>
-						</div>
-					</div>
-					<div
-						class="flex items-center justify-between text-sm font-medium text-indigo-600 dark:text-indigo-400"
-					>
-						<span>Agent-to-agent</span>
-						<ChevronRight
-							class="h-5 w-5 transition-transform group-hover:translate-x-1"
-						/>
-					</div>
-				</button>
-			</div>
-
-			<div class="mt-8 grid gap-5 sm:grid-cols-2">
-				<!-- Task-focused session -->
-				<button
-					onclick={selectTaskUpdate}
-					class="group flex h-full flex-col justify-between gap-5 rounded-2xl border border-slate-200/60 bg-gradient-to-br from-amber-50/70 via-orange-50/40 to-white/80 p-6 text-left shadow-[0_18px_55px_-42px_rgba(251,191,36,0.65)] transition-all duration-200 hover:-translate-y-1 hover:border-amber-300/60 hover:shadow-[0_30px_75px_-52px_rgba(217,119,6,0.5)] active:translate-y-0 dark:border-slate-700/60 dark:from-slate-900/80 dark:via-slate-900/50 dark:to-slate-900/70 dark:hover:border-amber-500/60"
-				>
-					<div class="flex items-center gap-4">
-						<div
-							class="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500/15 via-orange-400/10 to-yellow-500/15 text-amber-600 backdrop-blur-sm transition-transform duration-200 group-hover:scale-105 dark:text-amber-300"
-						>
-							<CheckSquare class="h-6 w-6" />
-						</div>
-						<div>
-							<h4 class="text-base font-semibold text-slate-900 dark:text-white">
-								Task spotlight
-							</h4>
-							<p class="mt-1 text-sm text-slate-600 dark:text-slate-400">
-								Quick updates, triage, and clarifying questions about tasks.
-							</p>
-						</div>
-					</div>
-					<div
-						class="flex items-center justify-between text-sm font-medium text-amber-600 dark:text-amber-400"
-					>
-						<span>Focused workflow</span>
-						<ChevronRight
-							class="h-5 w-5 transition-transform group-hover:translate-x-1"
-						/>
-					</div>
-				</button>
-
-				<!-- Daily brief tuning -->
-				<button
-					onclick={selectDailyBrief}
-					class="group flex h-full flex-col justify-between gap-5 rounded-2xl border border-slate-200/60 bg-gradient-to-br from-rose-50/70 via-pink-50/40 to-white/80 p-6 text-left shadow-[0_18px_55px_-42px_rgba(244,114,182,0.55)] transition-all duration-200 hover:-translate-y-1 hover:border-rose-300/60 hover:shadow-[0_30px_75px_-52px_rgba(219,39,119,0.45)] active:translate-y-0 dark:border-slate-700/60 dark:from-slate-900/80 dark:via-slate-900/50 dark:to-slate-900/70 dark:hover:border-rose-500/60"
-				>
-					<div class="flex items-center gap-4">
-						<div
-							class="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-rose-500/15 via-pink-400/10 to-purple-500/15 text-rose-600 backdrop-blur-sm transition-transform duration-200 group-hover:scale-105 dark:text-rose-300"
-						>
-							<Sparkles class="h-6 w-6" />
-						</div>
-						<div>
-							<h4 class="text-base font-semibold text-slate-900 dark:text-white">
-								Daily brief tuning
-							</h4>
-							<p class="mt-1 text-sm text-slate-600 dark:text-slate-400">
-								Adjust what shows up in your daily brief and notifications.
-							</p>
-						</div>
-					</div>
-					<div
-						class="flex items-center justify-between text-sm font-medium text-rose-600 dark:text-rose-400"
-					>
-						<span>Personalized routines</span>
 						<ChevronRight
 							class="h-5 w-5 transition-transform group-hover:translate-x-1"
 						/>

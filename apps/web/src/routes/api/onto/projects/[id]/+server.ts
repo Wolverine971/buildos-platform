@@ -125,7 +125,9 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 				.replace(/_/g, ' ')
 				.replace(/\b\w/g, (l: string) => l.toUpperCase()),
 			guards: Array.isArray(transition.guards) ? transition.guards : [],
-			actions: Array.isArray(transition.actions) ? transition.actions : []
+			actions: Array.isArray(transition.actions) ? transition.actions : [],
+			can_run: typeof transition.can_run === 'boolean' ? transition.can_run : true,
+			failed_guards: Array.isArray(transition.failed_guards) ? transition.failed_guards : []
 		}));
 
 		return ApiResponse.success({

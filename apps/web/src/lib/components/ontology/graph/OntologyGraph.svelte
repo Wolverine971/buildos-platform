@@ -303,9 +303,17 @@
 	});
 </script>
 
-<div bind:this={container} class="w-full h-full bg-gray-50 dark:bg-gray-900"></div>
+<div bind:this={container} class="graph-container w-full h-full bg-gray-50 dark:bg-gray-900"></div>
 
 <style>
+	.graph-container {
+		touch-action: pan-x pan-y pinch-zoom;
+		-webkit-user-select: none;
+		user-select: none;
+		-webkit-overflow-scrolling: touch;
+		overscroll-behavior: contain;
+	}
+
 	:global(.highlight) {
 		background-color: #fbbf24 !important;
 	}

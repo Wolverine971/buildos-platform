@@ -133,7 +133,7 @@
 				<label class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
 					Event Type
 				</label>
-				<Select bind:value={eventTypeFilter} size="md" on:change={applyFilters}>
+				<Select bind:value={eventTypeFilter} size="md" onchange={applyFilters}>
 					<option value="all">All Events</option>
 					<option value="prompt_injection_blocked">Blocked</option>
 					<option value="prompt_injection_detected">Detected</option>
@@ -146,7 +146,7 @@
 				<label class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
 					Status
 				</label>
-				<Select bind:value={wasBlockedFilter} size="md" on:change={applyFilters}>
+				<Select bind:value={wasBlockedFilter} size="md" onchange={applyFilters}>
 					<option value="all">All</option>
 					<option value="true">Blocked</option>
 					<option value="false">Allowed</option>
@@ -157,7 +157,7 @@
 				<label class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
 					Time Period
 				</label>
-				<Select bind:value={dateFilter} size="md" on:change={applyFilters}>
+				<Select bind:value={dateFilter} size="md" onchange={applyFilters}>
 					<option value="24hours">Last 24 Hours</option>
 					<option value="7days">Last 7 Days</option>
 					<option value="30days">Last 30 Days</option>
@@ -166,7 +166,7 @@
 			</div>
 
 			<div class="flex items-end">
-				<Button variant="secondary" size="sm" icon={RefreshCw} on:click={applyFilters}>
+				<Button variant="secondary" size="sm" icon={RefreshCw} onclick={applyFilters}>
 					Refresh
 				</Button>
 			</div>
@@ -267,7 +267,7 @@
 									<Button
 										variant="ghost"
 										size="sm"
-										on:click={() => viewDetails(log)}
+										onclick={() => viewDetails(log)}
 									>
 										View
 									</Button>
@@ -298,7 +298,7 @@
 							{formatEventType(selectedLog.event_type)}
 						</h3>
 					</div>
-					<Button variant="ghost" size="sm" on:click={closeDetails}>Close</Button>
+					<Button variant="ghost" size="sm" onclick={closeDetails}>Close</Button>
 				</div>
 
 				<div class="mt-6 space-y-5 text-sm">

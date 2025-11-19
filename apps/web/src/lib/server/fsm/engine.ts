@@ -18,6 +18,7 @@ import { executeEmailAdminAction } from './actions/email-admin';
 import { executeCreateResearchDocAction } from './actions/create-research-doc';
 import { executeRunLlmCritiqueAction } from './actions/run-llm-critique';
 import type { Database, Json } from '@buildos/shared-types';
+import { resolveTemplateWithClient } from '$lib/services/ontology/template-resolver.service';
 
 // ============================================
 // TYPES
@@ -93,24 +94,30 @@ export async function runTransition(
 		props: toJsonObject(rawEntity.props)
 	};
 
-	// 2) Load template FSM
-	const { data: template, error: templateError } = await client
-		.from('onto_templates')
-		.select('fsm')
-		.eq('type_key', entity.type_key)
-		.limit(1)
-		.maybeSingle();
-
-	if (templateError || !template) {
+	// 2) Load template FSM with inheritance resolution
+	let resolvedTemplate: { fsm: FSMDef | null };
+	try {
+		const scope = kindToScope(request.object_kind);
+		const template = await resolveTemplateWithClient(client, entity.type_key, scope);
+		resolvedTemplate = { fsm: template.fsm as FSMDef | null };
+	} catch (err) {
+		const message = err instanceof Error ? err.message : 'Unknown error';
 		return {
 			ok: false,
-			error: `FSM template not found for type_key: ${entity.type_key}`
+			error: `FSM template not found for type_key: ${entity.type_key} (${message})`
 		};
 	}
 
-	const fsm = template.fsm as FSMDef;
+	const fsm = resolvedTemplate.fsm;
 
 	// 3) Find transition
+	if (!fsm) {
+		return {
+			ok: false,
+			error: `FSM definition missing for type_key: ${entity.type_key}`
+		};
+	}
+
 	const transition = fsm.transitions.find(
 		(t) => t.from === entity.state_key && t.event === request.event
 	);
@@ -474,6 +481,22 @@ function kindToTable(kind: string): OntoTable {
 		case 'project':
 		default:
 			return 'onto_projects';
+	}
+}
+
+function kindToScope(kind: string): string {
+	switch (kind) {
+		case 'task':
+			return 'task';
+		case 'output':
+			return 'output';
+		case 'plan':
+			return 'plan';
+		case 'document':
+			return 'document';
+		case 'project':
+		default:
+			return 'project';
 	}
 }
 

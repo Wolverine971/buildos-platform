@@ -1026,7 +1026,7 @@
 
 <!-- User Activity Modal -->
 {#if showActivityModal && selectedUser}
-	<UserActivityModal user={selectedUser} on:close={() => (showActivityModal = false)} />
+	<UserActivityModal user={selectedUser} onclose={() => (showActivityModal = false)} />
 {/if}
 
 <!-- Email Composer Modal -->

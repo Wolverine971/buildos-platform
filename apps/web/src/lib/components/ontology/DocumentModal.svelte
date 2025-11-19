@@ -4,6 +4,7 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import TextInput from '$lib/components/ui/TextInput.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
+	import FormField from '$lib/components/ui/FormField.svelte';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
 	import RichMarkdownEditor from '$lib/components/ui/RichMarkdownEditor.svelte';
 	import Badge from '$lib/components/ui/Badge.svelte';
@@ -52,6 +53,21 @@
 		{ value: 'published', label: 'Published' },
 		{ value: 'archived', label: 'Archived' }
 	];
+
+	const isEditing = $derived(Boolean(documentId));
+	const documentFormId = $derived(`document-modal-${documentId ?? 'new'}`);
+	const contextBadgeVariant = $derived(taskId ? 'info' : 'success');
+	const contextBadgeLabel = $derived(taskId ? 'Task workspace' : 'Project document');
+	const lastUpdatedLabel = $derived(formatDate(updatedAt ?? createdAt));
+	const titleFieldError = $derived(formError === 'Title is required' ? formError : '');
+	const typeFieldError = $derived(formError === 'Type key is required' ? formError : '');
+	const globalFormError = $derived.by(() => {
+		if (!formError) return null;
+		if (formError === 'Title is required' || formError === 'Type key is required') {
+			return null;
+		}
+		return formError;
+	});
 
 	let lastLoadedId = $state<string | null>(null);
 	const datalistId = `document-type-${Math.random().toString(36).slice(2, 9)}`;
@@ -147,8 +163,8 @@
 		return true;
 	}
 
-	async function handleSave(event: SubmitEvent) {
-		event.preventDefault();
+	async function handleSave(event?: SubmitEvent) {
+		event?.preventDefault();
 		if (!validateForm()) return;
 
 		try {
@@ -264,105 +280,173 @@
 	closeOnEscape={!saving}
 	title={documentId ? 'Edit Document' : 'New Document'}
 >
-	{#if loading}
-		<div class="flex items-center justify-center py-12">
-			<Loader class="w-6 h-6 animate-spin text-gray-400" />
-		</div>
-	{:else}
-		<div class="space-y-4 px-4 sm:px-6 py-4">
-			<!-- Condensed metadata grid -->
-			<div class="grid grid-cols-1 md:grid-cols-3 gap-2.5 sm:gap-3">
-				<div class="md:col-span-2 space-y-1.5">
-					<label
-						class="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide"
-					>
-						Title <span class="text-red-500 ml-0.5">*</span>
-					</label>
-					<TextInput
-						bind:value={title}
-						required
-						placeholder="Document title"
-						aria-label="Document title"
-						class="text-sm font-medium"
-					/>
-				</div>
-				<div class="space-y-1.5">
-					<label
-						class="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide"
-					>
-						State
-					</label>
-					<div class="flex items-center gap-2">
-						<Select bind:value={stateKey} size="sm" class="flex-1">
-							{#each stateOptions as option}
-								<option value={option.value}>{option.label}</option>
-							{/each}
-						</Select>
-						{#if documentId}
-							<Badge
-								variant={getStateVariant(stateKey)}
-								size="sm"
-								class="capitalize shrink-0"
+	<div class="overflow-y-auto" style="max-height: 70vh;">
+		{#if loading}
+			<div class="flex items-center justify-center py-12">
+				<Loader class="w-6 h-6 animate-spin text-gray-400" />
+			</div>
+		{:else}
+			<form id={documentFormId} class="space-y-6 px-4 sm:px-6 py-6" onsubmit={handleSave}>
+				<section
+					class="rounded-2xl border border-gray-200 dark:border-gray-700 bg-gradient-to-r from-white to-slate-50 dark:from-gray-900 dark:to-gray-800 p-4 sm:p-5 shadow-sm space-y-2"
+				>
+					<div class="flex flex-wrap items-center gap-2">
+						<Badge variant={getStateVariant(stateKey)} size="sm" class="capitalize">
+							{stateKey.replace('_', ' ')}
+						</Badge>
+						<Badge variant={contextBadgeVariant} size="sm">{contextBadgeLabel}</Badge>
+						{#if typeKey}
+							<span class="text-xs text-gray-500 dark:text-gray-400"
+								>Type • {typeKey}</span
 							>
-								{stateKey.replace('_', ' ')}
-							</Badge>
 						{/if}
 					</div>
+					<div class="text-xs text-gray-500 dark:text-gray-400 flex flex-wrap gap-4">
+						{#if createdAt}
+							<span>Created {formatDate(createdAt)}</span>
+						{/if}
+						{#if lastUpdatedLabel}
+							<span>Last updated {lastUpdatedLabel}</span>
+						{/if}
+					</div>
+				</section>
+
+				{#if isEditing}
+					<div
+						class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm text-gray-600 dark:text-gray-300"
+					>
+						<div>
+							<p class="font-semibold text-gray-900 dark:text-gray-100">
+								Document ID
+							</p>
+							<p
+								class="font-mono text-xs text-gray-500 dark:text-gray-400 break-all mt-1"
+							>
+								{documentId}
+							</p>
+						</div>
+						<div>
+							<p class="font-semibold text-gray-900 dark:text-gray-100">Created</p>
+							<p class="mt-1 text-gray-700 dark:text-gray-200">
+								{formatDate(createdAt) ?? '—'}
+							</p>
+						</div>
+						<div>
+							<p class="font-semibold text-gray-900 dark:text-gray-100">Updated</p>
+							<p class="mt-1 text-gray-700 dark:text-gray-200">
+								{lastUpdatedLabel ?? '—'}
+							</p>
+						</div>
+					</div>
+				{/if}
+
+				<div class="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
+					<div class="md:col-span-2">
+						<FormField
+							label="Document title"
+							labelFor="document-title"
+							required={true}
+							error={titleFieldError}
+							uppercase={false}
+						>
+							<TextInput
+								id="document-title"
+								bind:value={title}
+								required
+								placeholder="Document title"
+								aria-label="Document title"
+								class="text-sm font-medium"
+								disabled={saving}
+							/>
+						</FormField>
+					</div>
+					<div>
+						<FormField label="State" labelFor="document-state" uppercase={false}>
+							<div class="flex items-center gap-2">
+								<Select
+									id="document-state"
+									bind:value={stateKey}
+									size="sm"
+									class="flex-1"
+								>
+									{#each stateOptions as option}
+										<option value={option.value}>{option.label}</option>
+									{/each}
+								</Select>
+								<Badge
+									variant={getStateVariant(stateKey)}
+									size="sm"
+									class="capitalize shrink-0"
+								>
+									{stateKey.replace('_', ' ')}
+								</Badge>
+							</div>
+						</FormField>
+					</div>
 				</div>
-			</div>
 
-			<div class="space-y-1.5">
-				<label
-					for="document-type-input"
-					class="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide flex items-center gap-1.5"
+				<FormField
+					label="Document type"
+					labelFor="document-type-input"
+					uppercase={false}
+					error={typeFieldError}
+					hint="Use dot notation so agents can understand the document role."
 				>
-					<span class="text-purple-500 dark:text-purple-400">📋</span>
-					Document Type
-				</label>
-				<input
-					id="document-type-input"
-					list={datalistId}
-					class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 font-mono focus:outline-none focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400 focus:border-purple-500 dark:focus:border-purple-400 transition-all"
-					bind:value={typeKey}
-					placeholder="doc.project.context"
-				/>
-				<datalist id={datalistId}>
-					{#each docTypeOptions as option}
-						<option value={option}></option>
-					{/each}
-				</datalist>
-				<p class="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
-					Type to reuse existing keys or create new ones (e.g., <code
-						class="text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/20 px-1.5 py-0.5 rounded font-mono"
-						>doc.project.context</code
-					>,
-					<code
-						class="text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/20 px-1.5 py-0.5 rounded font-mono"
-						>doc.task.spec</code
-					>)
-				</p>
-			</div>
+					<input
+						id="document-type-input"
+						list={datalistId}
+						class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 font-mono focus:outline-none focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400 focus:border-purple-500 dark:focus:border-purple-400 transition-all"
+						bind:value={typeKey}
+						placeholder="doc.project.context"
+					/>
+					<datalist id={datalistId}>
+						{#each docTypeOptions as option}
+							<option value={option}></option>
+						{/each}
+					</datalist>
+					<div class="flex flex-wrap gap-2 mt-2 text-[11px] font-mono">
+						<span
+							class="px-2 py-0.5 rounded bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-200"
+						>
+							doc.project.context
+						</span>
+						<span
+							class="px-2 py-0.5 rounded bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-200"
+						>
+							doc.task.spec
+						</span>
+					</div>
+				</FormField>
 
-			<!-- Content editor with reduced vertical spacing -->
-			<div class="pt-3 border-t border-gray-100 dark:border-gray-800">
-				<RichMarkdownEditor
-					bind:value={body}
-					label="Content"
-					rows={14}
-					maxLength={12000}
-					helpText="Full GitHub-flavored markdown support. Use toolbar for formatting shortcuts."
-				/>
-			</div>
+				<section class="pt-4 border-t border-gray-100 dark:border-gray-800 space-y-3">
+					<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+						<h4 class="text-sm font-semibold text-gray-900 dark:text-gray-100">
+							Content
+						</h4>
+						<p class="text-xs text-gray-500 dark:text-gray-400">
+							Full GitHub-flavored markdown support. Use the toolbar for shortcuts.
+						</p>
+					</div>
+					<RichMarkdownEditor
+						bind:value={body}
+						label="Document content"
+						rows={14}
+						maxLength={12000}
+						helpText="Supports AI summarization, tables, and embeds."
+					/>
+				</section>
 
-			{#if formError}
-				<div
-					class="flex items-center gap-2 px-3 py-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg"
-				>
-					<span class="text-sm text-red-600 dark:text-red-400">{formError}</span>
-				</div>
-			{/if}
-		</div>
-	{/if}
+				{#if globalFormError}
+					<div
+						class="flex items-center gap-2 px-3 py-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg"
+					>
+						<span class="text-sm text-red-600 dark:text-red-400">{globalFormError}</span
+						>
+					</div>
+				{/if}
+			</form>
+		{/if}
+	</div>
 
 	<svelte:fragment slot="footer">
 		<div
@@ -382,7 +466,7 @@
 			{:else}
 				<div></div>
 			{/if}
-			<div class="flex items-center gap-2.5">
+			<div class="flex items-center gap-3">
 				<Button
 					type="button"
 					variant="secondary"
@@ -393,14 +477,19 @@
 					Cancel
 				</Button>
 				<Button
-					type="button"
+					type="submit"
+					form={documentFormId}
 					variant="primary"
 					size="sm"
 					loading={saving}
-					onclick={handleSave}
+					disabled={saving || !title.trim() || !typeKey.trim()}
 				>
-					<Save class="w-4 h-4 mr-1.5" />
-					{documentId ? 'Save Changes' : 'Create Document'}
+					{#if saving}
+						Saving...
+					{:else}
+						<Save class="w-4 h-4 mr-1.5" />
+						{documentId ? 'Save Changes' : 'Create Document'}
+					{/if}
 				</Button>
 			</div>
 		</div>

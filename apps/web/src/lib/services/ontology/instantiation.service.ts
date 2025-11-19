@@ -4,10 +4,12 @@ import {
 	validateProjectSpec as validateProjectSpecStruct,
 	type FacetDefaults,
 	type Facets,
+	type FSMDef,
 	type ProjectSpec
 } from '$lib/types/onto';
 import { Json } from '@buildos/shared-types';
 import type { TypedSupabaseClient } from '@buildos/supabase-client';
+import { resolveTemplateWithClient } from '$lib/services/ontology/template-resolver.service';
 
 type InstantiationCounts = {
 	goals: number;
@@ -149,6 +151,8 @@ export async function instantiateProject(
 		);
 	}
 
+	const templateInitialState = getTemplateInitialState(projectTemplate.fsm, 'draft');
+
 	const resolvedProjectFacets = resolveFacets(
 		projectTemplate.facet_defaults as FacetDefaults | undefined,
 		(parsed.project.props?.facets as Facets | undefined) ?? undefined
@@ -183,7 +187,7 @@ export async function instantiateProject(
 				description: parsed.project.description ?? null,
 				type_key: parsed.project.type_key,
 				also_types: parsed.project.also_types ?? [],
-				state_key: parsed.project.state_key ?? 'draft',
+				state_key: parsed.project.state_key ?? templateInitialState,
 				props: mergedProjectProps as Json,
 				start_at: parsed.project.start_at ?? null,
 				end_at: parsed.project.end_at ?? null,
@@ -787,31 +791,23 @@ async function getProjectTemplate(
 	id: string;
 	default_props: Record<string, unknown>;
 	facet_defaults: FacetDefaults | null;
+	fsm: FSMDef | null;
 } | null> {
-	const { data, error } = await client
-		.from('onto_templates')
-		.select('id, default_props, facet_defaults')
-		.eq('scope', 'project')
-		.eq('type_key', typeKey)
-		.eq('status', 'active')
-		.eq('is_abstract', false)
-		.maybeSingle();
+	try {
+		const resolved = await resolveTemplateWithClient(client, typeKey, 'project');
 
-	if (error) {
+		return {
+			id: resolved.id,
+			default_props: (resolved.default_props as Record<string, unknown>) ?? {},
+			facet_defaults: (resolved.facet_defaults as FacetDefaults | null) ?? null,
+			fsm: (resolved.fsm as FSMDef | null) ?? null
+		};
+	} catch (err) {
+		const message = err instanceof Error ? err.message : 'Unknown error';
 		throw new OntologyInstantiationError(
-			`Failed to fetch template for type_key "${typeKey}": ${error.message}`
+			`Failed to fetch template for type_key "${typeKey}": ${message}`
 		);
 	}
-
-	if (!data) {
-		return null;
-	}
-
-	return {
-		id: data.id,
-		default_props: (data.default_props as Record<string, unknown>) ?? {},
-		facet_defaults: (data.facet_defaults as FacetDefaults | null) ?? null
-	};
 }
 
 async function assertValidFacets(
@@ -875,6 +871,19 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 function hasFacetValues(facets: Facets | undefined): facets is Facets {
 	if (!facets) return false;
 	return Boolean(facets.context || facets.scale || facets.stage);
+}
+
+function getTemplateInitialState(fsm: FSMDef | null, fallback: string): string {
+	if (!fsm) return fallback;
+
+	if (typeof fsm.initial === 'string' && fsm.initial.length > 0) {
+		return fsm.initial;
+	}
+
+	const states = Array.isArray(fsm.states) ? fsm.states : [];
+	return states.length > 0 && typeof states[0] === 'string' && states[0].length > 0
+		? states[0]
+		: fallback;
 }
 
 async function cleanupPartialInstantiation(

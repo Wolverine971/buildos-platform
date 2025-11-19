@@ -1,44 +1,46 @@
 <!-- apps/web/src/lib/components/ontology/PlanEditModal.svelte -->
 <!--
-	Plan Edit Modal Component
+	Plan Edit Modal Component (2025 refresh)
 
-	Provides full CRUD operations for plans within the BuildOS ontology system:
-	- Edit plan details (name, description, dates, state, etc.)
-	- Visualize FSM state transitions
-	- Delete plans with confirmation
-
-	Documentation:
-	- Ontology System Overview: /apps/web/docs/features/ontology/README.md
-	- Data Models & Schema: /apps/web/docs/features/ontology/DATA_MODELS.md
-	- Implementation Guide: /apps/web/docs/features/ontology/IMPLEMENTATION_SUMMARY.md
-	- Modal Design Patterns: /apps/web/docs/technical/components/modals/TECHNICAL_ANALYSIS.md
+	High-fidelity plan workspace inspired by TaskEditModal. Provides:
+	- Rich hero header with plan metadata + live timeline metrics
+	- Dual-column layout: form + insights
+	- FSM state visualizer or manual state selection
+	- Linked task snapshot and safe danger zone
 
 	Related Files:
 	- API Endpoints: /apps/web/src/routes/api/onto/plans/[id]/+server.ts
 	- Create Modal: /apps/web/src/lib/components/ontology/PlanCreateModal.svelte
 	- FSM Visualizer: /apps/web/src/lib/components/ontology/FSMStateVisualizer.svelte
-
-	Note: This modal uses custom layout instead of FormModal for advanced features
-	like sidebar metadata and FSM visualization.
 -->
 <script lang="ts">
-	import { X, Save, Loader, Trash2 } from 'lucide-svelte';
+	import { Calendar, Clock, ListChecks, Loader, Save, Trash2, X } from 'lucide-svelte';
+	import { fade } from 'svelte/transition';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
-	import CardBody from '$lib/components/ui/CardBody.svelte';
 	import CardHeader from '$lib/components/ui/CardHeader.svelte';
-	import { fade } from 'svelte/transition';
+	import CardBody from '$lib/components/ui/CardBody.svelte';
+	import FormField from '$lib/components/ui/FormField.svelte';
+	import TextInput from '$lib/components/ui/TextInput.svelte';
+	import Textarea from '$lib/components/ui/Textarea.svelte';
+	import Select from '$lib/components/ui/Select.svelte';
 	import FSMStateVisualizer from './FSMStateVisualizer.svelte';
+	import {
+		getPlanStateBadgeClass,
+		getTaskStateBadgeClass
+	} from '$lib/utils/ontology-badge-styles';
+	import type { Task } from '$lib/types/onto';
 
 	interface Props {
 		planId: string;
 		projectId: string;
+		tasks?: Task[];
 		onClose: () => void;
 		onUpdated?: () => void;
 		onDeleted?: () => void;
 	}
 
-	let { planId, projectId, onClose, onUpdated, onDeleted }: Props = $props();
+	let { planId, projectId, tasks = [], onClose, onUpdated, onDeleted }: Props = $props();
 
 	let plan = $state<any>(null);
 	let isLoading = $state(true);
@@ -54,10 +56,57 @@
 	let endDate = $state('');
 	let stateKey = $state('draft');
 
+	const stateOptions = [
+		{ value: 'draft', label: 'Draft' },
+		{ value: 'planning', label: 'Planning' },
+		{ value: 'active', label: 'Active' },
+		{ value: 'on_hold', label: 'On Hold' },
+		{ value: 'completed', label: 'Completed' },
+		{ value: 'cancelled', label: 'Cancelled' }
+	];
+
 	// FSM related
 	let allowedTransitions = $state<any[]>([]);
 
-	// Load plan data when modal opens
+	const planTasks = $derived(() => (tasks || []).filter((task) => task.plan_id === planId));
+	const completedTasks = $derived(
+		() => planTasks.filter((task) => ['done', 'completed'].includes(task.state_key)).length
+	);
+	const completionPercent = $derived(() =>
+		planTasks.length ? Math.round((completedTasks / planTasks.length) * 100) : null
+	);
+	const highlightedTasks = $derived(() =>
+		[...planTasks]
+			.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
+			.slice(0, 3)
+	);
+	const stateBadgeClasses = $derived(
+		`px-3 py-1 rounded-full text-xs font-semibold capitalize ${getPlanStateBadgeClass(stateKey)}`
+	);
+	const dateError = $derived(() => {
+		if (startDate && endDate) {
+			const start = new Date(startDate);
+			const end = new Date(endDate);
+			if (!Number.isNaN(start.getTime()) && !Number.isNaN(end.getTime()) && start > end) {
+				return 'End date must be after start date';
+			}
+		}
+		return '';
+	});
+
+	const startLabel = $derived(() => formatDateOnly(startDate) ?? 'Not scheduled');
+	const endLabel = $derived(() => formatDateOnly(endDate) ?? 'Not scheduled');
+	const durationLabel = $derived(() => {
+		const days = computeDurationDays(startDate, endDate);
+		return days > 0 ? `${days} day${days === 1 ? '' : 's'}` : 'Flexible timeline';
+	});
+	const lastUpdatedLabel = $derived(() =>
+		formatRelativeTime(plan?.updated_at || plan?.created_at)
+	);
+	const planTypeLabel = $derived(() => plan?.type_key || 'plan.basic');
+	const planIdLabel = $derived(() => plan?.id?.slice(0, 8) || planId.slice(0, 8));
+	const formDisabled = $derived(isSaving || isDeleting);
+
 	$effect(() => {
 		loadPlan();
 	});
@@ -79,7 +128,6 @@
 				stateKey = plan.state_key || 'draft';
 			}
 
-			// Load FSM transitions if available
 			await loadTransitions();
 		} catch (err) {
 			console.error('Error loading plan:', err);
@@ -94,7 +142,17 @@
 			const response = await fetch(`/api/onto/fsm/transitions?kind=plan&id=${planId}`);
 			if (response.ok) {
 				const data = await response.json();
-				allowedTransitions = data.data?.transitions || [];
+				allowedTransitions =
+					(data.data?.transitions || []).map((transition: any) => ({
+						...transition,
+						can_run:
+							typeof transition?.can_run === 'boolean'
+								? (transition.can_run as boolean)
+								: true,
+						failed_guards: Array.isArray(transition?.failed_guards)
+							? transition.failed_guards
+							: []
+					})) ?? [];
 			}
 		} catch (err) {
 			console.error('Error loading transitions:', err);
@@ -104,6 +162,11 @@
 	async function handleSave() {
 		if (!name.trim()) {
 			error = 'Plan name is required';
+			return;
+		}
+
+		if (dateError) {
+			error = dateError;
 			return;
 		}
 
@@ -133,7 +196,6 @@
 				throw new Error(result.error || 'Failed to update plan');
 			}
 
-			// Success! Call the callback and close
 			if (onUpdated) {
 				onUpdated();
 			}
@@ -160,7 +222,6 @@
 				throw new Error(result.error || 'Failed to delete plan');
 			}
 
-			// Success! Call the callback and close
 			if (onDeleted) {
 				onDeleted();
 			}
@@ -173,8 +234,8 @@
 		}
 	}
 
-	async function handleStateChange(data: { state: string; actions: string[]; event: string }) {
-		stateKey = data.state;
+	async function handleStateChange(event: { state: string; actions: string[]; event: string }) {
+		stateKey = event.state;
 		await handleSave();
 		await loadTransitions();
 	}
@@ -183,6 +244,48 @@
 		if (event.key === 'Escape' && !isSaving && !isDeleting) {
 			onClose();
 		}
+	}
+
+	function formatDateOnly(value: string | null | undefined): string | null {
+		if (!value) return null;
+		const parsed = new Date(value);
+		if (Number.isNaN(parsed.getTime())) return null;
+		return parsed.toLocaleDateString(undefined, {
+			month: 'short',
+			day: 'numeric',
+			year: 'numeric'
+		});
+	}
+
+	function formatRelativeTime(value: string | null | undefined): string | null {
+		if (!value) return null;
+		const date = new Date(value);
+		if (Number.isNaN(date.getTime())) return null;
+		const diffMs = Date.now() - date.getTime();
+		const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+		if (diffDays === 0) return 'Today';
+		if (diffDays === 1) return 'Yesterday';
+		if (diffDays < 7) return `${diffDays}d ago`;
+		return date.toLocaleDateString();
+	}
+
+	function computeDurationDays(start: string, end: string): number {
+		if (!start || !end) return 0;
+		const startDateObj = new Date(start);
+		const endDateObj = new Date(end);
+		if (Number.isNaN(startDateObj.getTime()) || Number.isNaN(endDateObj.getTime())) return 0;
+		const diff = endDateObj.getTime() - startDateObj.getTime();
+		return diff > 0 ? Math.round(diff / (1000 * 60 * 60 * 24)) : 0;
+	}
+
+	function formatTaskMeta(task: Task): string {
+		if (task.due_at) {
+			const dueLabel = formatDateOnly(task.due_at);
+			return dueLabel ? `Due ${dueLabel}` : 'Due date pending';
+		}
+		return formatRelativeTime(task.updated_at)
+			? `Updated ${formatRelativeTime(task.updated_at)}`
+			: 'No recent activity';
 	}
 </script>
 
@@ -199,299 +302,357 @@
 
 <!-- Modal Content -->
 <div
-	class="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-3xl max-h-[90vh] overflow-hidden z-50"
+	class="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-5xl max-h-[92vh] overflow-hidden z-50"
 	transition:fade={{ duration: 200 }}
 >
-	<Card variant="elevated" class="shadow-2xl">
-		<CardHeader variant="gradient" class="p-6">
-			<div class="flex items-center justify-between">
-				<h2 class="text-2xl font-bold text-white">Edit Plan</h2>
-				<button
+	<Card variant="elevated" class="shadow-2xl rounded-3xl overflow-hidden flex flex-col h-full">
+		<div
+			class="bg-gradient-to-r from-blue-600/90 via-indigo-600/90 to-purple-600/90 text-white px-6 py-6 flex flex-col gap-5"
+		>
+			<div class="flex items-start justify-between gap-4">
+				<div class="space-y-2">
+					<p class="text-xs font-semibold uppercase tracking-[0.4em] text-white/70">
+						Plan overview
+					</p>
+					<h2 class="text-2xl font-bold leading-tight">
+						{name || plan?.name || 'Plan details'}
+					</h2>
+					<div class="flex flex-wrap items-center gap-3 text-sm">
+						<span class={stateBadgeClasses}>{stateKey}</span>
+						<span class="font-mono text-xs tracking-wide">{planTypeLabel}</span>
+						<span class="text-white/80">ID #{planIdLabel}</span>
+					</div>
+					{#if lastUpdatedLabel}
+						<p class="text-sm text-white/80">Updated {lastUpdatedLabel}</p>
+					{/if}
+				</div>
+				<Button
+					variant="ghost"
 					onclick={onClose}
+					class="text-white/80 hover:text-white"
 					disabled={isSaving || isDeleting}
-					class="p-2 hover:bg-white/10 rounded-lg transition-colors disabled:opacity-50"
-					aria-label="Close"
 				>
-					<X class="w-5 h-5 text-white" />
-				</button>
+					<X class="w-5 h-5" />
+				</Button>
 			</div>
-		</CardHeader>
 
-		<CardBody class="max-h-[calc(90vh-120px)] overflow-y-auto p-4 sm:p-6">
+			<div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+				<div class="rounded-2xl bg-white/10 backdrop-blur p-3">
+					<p class="text-xs uppercase tracking-[0.3em] text-white/70">Duration</p>
+					<p class="text-lg font-semibold">{durationLabel}</p>
+				</div>
+				<div class="rounded-2xl bg-white/10 backdrop-blur p-3">
+					<p class="text-xs uppercase tracking-[0.3em] text-white/70">Start</p>
+					<p class="text-lg font-semibold">{startLabel}</p>
+				</div>
+				<div class="rounded-2xl bg-white/10 backdrop-blur p-3">
+					<p class="text-xs uppercase tracking-[0.3em] text-white/70">End</p>
+					<p class="text-lg font-semibold">{endLabel}</p>
+				</div>
+				<div class="rounded-2xl bg-white/10 backdrop-blur p-3">
+					<p class="text-xs uppercase tracking-[0.3em] text-white/70">Tasks Linked</p>
+					<p class="text-lg font-semibold">
+						{planTasks.length}
+						{#if completionPercent !== null}
+							<span class="text-sm font-medium text-white/80">
+								({completionPercent}% done)</span
+							>
+						{/if}
+					</p>
+				</div>
+			</div>
+		</div>
+
+		<div class="flex-1 overflow-y-auto px-6 py-6 bg-white dark:bg-gray-900">
 			{#if isLoading}
-				<div class="flex items-center justify-center py-12">
+				<div class="flex items-center justify-center py-16">
 					<Loader class="w-8 h-8 animate-spin text-gray-400" />
 				</div>
 			{:else if !plan}
-				<div class="text-center py-8">
+				<div class="text-center py-16">
 					<p class="text-red-600 dark:text-red-400">Plan not found</p>
 				</div>
 			{:else}
-				<div class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-					<!-- Main Form (Left 2 columns) -->
-					<div class="lg:col-span-2">
-						<form
-							onsubmit={(e) => {
-								e.preventDefault();
-								handleSave();
-							}}
-							class="space-y-5"
-						>
-							<div>
-								<label
-									for="name"
-									class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5"
-								>
-									Plan Name
-								</label>
-								<input
-									type="text"
-									id="name"
-									bind:value={name}
-									placeholder="Enter plan name..."
-									required
-									disabled={isSaving}
-									class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
-								/>
-							</div>
-
-							<div>
-								<label
-									for="description"
-									class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5"
-								>
-									Description
-								</label>
-								<textarea
-									id="description"
-									bind:value={description}
-									placeholder="Describe the plan..."
-									rows={4}
-									disabled={isSaving}
-									class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed resize-none"
-								></textarea>
-							</div>
-
-							<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+				<div class="grid gap-6 lg:grid-cols-3">
+					<section class="space-y-6 lg:col-span-2">
+						<Card class="shadow-lg">
+							<CardHeader
+								variant="gradient"
+								class="flex items-center justify-between"
+							>
 								<div>
-									<label
-										for="start-date"
-										class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5"
+									<p
+										class="text-xs font-semibold uppercase tracking-[0.3em] text-gray-600 dark:text-gray-300"
 									>
-										Start Date
-									</label>
-									<input
-										type="date"
-										id="start-date"
-										bind:value={startDate}
-										disabled={isSaving}
-										class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
-									/>
+										Plan details
+									</p>
+									<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+										Structure the execution blueprint
+									</h3>
 								</div>
-
-								<div>
-									<label
-										for="end-date"
-										class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5"
-									>
-										End Date
-									</label>
-									<input
-										type="date"
-										id="end-date"
-										bind:value={endDate}
-										disabled={isSaving}
-										class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
-									/>
-								</div>
-							</div>
-
-							<!-- FSM State Visualizer -->
-							{#if plan.type_key && allowedTransitions.length > 0}
-								<div class="pt-4 border-t border-gray-200 dark:border-gray-700">
-									<FSMStateVisualizer
-										entityId={planId}
-										entityKind="plan"
-										entityName={name}
-										currentState={stateKey}
-										initialTransitions={allowedTransitions}
-										onstatechange={handleStateChange}
-									/>
-								</div>
-							{:else}
-								<div>
-									<label
-										for="state"
-										class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5"
-									>
-										State
-									</label>
-									<select
-										id="state"
-										bind:value={stateKey}
-										disabled={isSaving}
-										class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
-									>
-										<option value="draft">Draft</option>
-										<option value="planning">Planning</option>
-										<option value="active">Active</option>
-										<option value="paused">Paused</option>
-										<option value="complete">Complete</option>
-										<option value="archived">Archived</option>
-									</select>
-								</div>
-							{/if}
-
-							{#if error}
-								<div
-									class="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg"
+							</CardHeader>
+							<CardBody class="space-y-5">
+								<form
+									onsubmit={(event) => {
+										event.preventDefault();
+										handleSave();
+									}}
+									class="space-y-5"
 								>
-									<p class="text-sm text-red-700 dark:text-red-300">{error}</p>
-								</div>
-							{/if}
-						</form>
-					</div>
+									<FormField label="Plan name" labelFor="plan-name" required>
+										<TextInput
+											id="plan-name"
+											bind:value={name}
+											placeholder="e.g., Foundation sprint, GTM launch"
+											required
+											disabled={formDisabled}
+										/>
+									</FormField>
 
-					<!-- Sidebar (Right column) -->
+									<FormField
+										label="Description"
+										labelFor="plan-description"
+										showOptional={false}
+									>
+										<Textarea
+											id="plan-description"
+											bind:value={description}
+											rows={4}
+											placeholder="Summarize objectives, target outcomes, and cross-team dependencies."
+											disabled={formDisabled}
+										/>
+									</FormField>
+
+									<div class="grid gap-4 sm:grid-cols-2">
+										<FormField
+											label="Start date"
+											labelFor="plan-start"
+											showOptional={false}
+										>
+											<TextInput
+												id="plan-start"
+												bind:value={startDate}
+												type="date"
+												disabled={formDisabled}
+											/>
+										</FormField>
+										<FormField
+											label="End date"
+											labelFor="plan-end"
+											error={dateError}
+											showOptional={false}
+										>
+											<TextInput
+												id="plan-end"
+												bind:value={endDate}
+												type="date"
+												disabled={formDisabled}
+											/>
+										</FormField>
+									</div>
+
+									{#if allowedTransitions.length > 0}
+										<div
+											class="pt-4 border-t border-gray-200 dark:border-gray-700"
+										>
+											<FSMStateVisualizer
+												entityId={planId}
+												entityKind="plan"
+												entityName={name}
+												currentState={stateKey}
+												initialTransitions={allowedTransitions}
+												onstatechange={handleStateChange}
+											/>
+										</div>
+									{:else}
+										<FormField
+											label="State"
+											labelFor="plan-state"
+											showOptional={false}
+										>
+											<Select
+												id="plan-state"
+												bind:value={stateKey}
+												disabled={formDisabled}
+											>
+												{#each stateOptions as option}
+													<option value={option.value}
+														>{option.label}</option
+													>
+												{/each}
+											</Select>
+										</FormField>
+									{/if}
+
+									{#if error}
+										<div
+											class="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700 dark:border-red-800/60 dark:bg-red-900/20 dark:text-red-200"
+										>
+											{error}
+										</div>
+									{/if}
+								</form>
+							</CardBody>
+						</Card>
+					</section>
+
 					<div class="space-y-4">
-						<!-- Plan Metadata -->
-						<div
-							class="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 rounded-lg p-4 space-y-3 border border-gray-200 dark:border-gray-700 shadow-sm"
-						>
-							<h3
-								class="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide flex items-center gap-2"
-							>
-								<span class="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse"
-								></span>
-								Plan Information
-							</h3>
-
-							<div class="space-y-2 text-sm">
-								<div class="flex justify-between">
-									<span class="text-gray-600 dark:text-gray-400">Type:</span>
-									<span class="font-mono text-gray-900 dark:text-white"
-										>{plan.type_key || 'plan.basic'}</span
-									>
-								</div>
-
-								<div class="flex justify-between">
-									<span class="text-gray-600 dark:text-gray-400">ID:</span>
-									<span class="font-mono text-xs text-gray-500 dark:text-gray-500"
-										>{plan.id.slice(0, 8)}...</span
-									>
-								</div>
-
-								{#if plan.created_at}
-									<div class="flex justify-between">
-										<span class="text-gray-600 dark:text-gray-400"
-											>Created:</span
-										>
-										<span class="text-gray-900 dark:text-white">
-											{new Date(plan.created_at).toLocaleDateString()}
-										</span>
-									</div>
-								{/if}
-
-								{#if plan.updated_at}
-									<div class="flex justify-between">
-										<span class="text-gray-600 dark:text-gray-400"
-											>Updated:</span
-										>
-										<span class="text-gray-900 dark:text-white">
-											{new Date(plan.updated_at).toLocaleDateString()}
-										</span>
-									</div>
-								{/if}
-							</div>
-						</div>
-
-						<!-- Danger Zone -->
-						<div
-							class="border-2 border-red-200 dark:border-red-800 bg-red-50/50 dark:bg-red-900/10 rounded-lg p-4"
-						>
-							<h3
-								class="text-xs font-semibold text-red-700 dark:text-red-400 mb-3 uppercase tracking-wide flex items-center gap-2"
-							>
-								<span class="text-base">⚠️</span>
-								Danger Zone
-							</h3>
-
-							{#if !showDeleteConfirm}
-								<Button
-									variant="danger"
-									size="sm"
-									onclick={() => (showDeleteConfirm = true)}
-									disabled={isDeleting}
-									class="w-full"
+						<Card class="shadow-lg">
+							<CardHeader class="flex items-center gap-2">
+								<Clock class="w-4 h-4 text-blue-500" />
+								<h4
+									class="text-sm font-semibold uppercase tracking-[0.3em] text-gray-600 dark:text-gray-300"
 								>
-									<Trash2 class="w-4 h-4" />
-									Delete Plan
-								</Button>
-							{:else}
-								<div class="space-y-3">
+									Timeline insight
+								</h4>
+							</CardHeader>
+							<CardBody class="space-y-3">
+								<div class="grid grid-cols-2 gap-3 text-sm">
+									<div
+										class="rounded-lg bg-gray-50 dark:bg-gray-800 p-3 border border-gray-200 dark:border-gray-700"
+									>
+										<p class="text-xs uppercase tracking-[0.3em] text-gray-500">
+											Start
+										</p>
+										<p class="font-semibold text-gray-900 dark:text-white">
+											{startLabel}
+										</p>
+									</div>
+									<div
+										class="rounded-lg bg-gray-50 dark:bg-gray-800 p-3 border border-gray-200 dark:border-gray-700"
+									>
+										<p class="text-xs uppercase tracking-[0.3em] text-gray-500">
+											End
+										</p>
+										<p class="font-semibold text-gray-900 dark:text-white">
+											{endLabel}
+										</p>
+									</div>
+								</div>
+								<div
+									class="rounded-lg bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border border-green-200 dark:border-green-800/40 px-3 py-2 text-xs text-green-900 dark:text-green-200"
+								>
+									Align plan duration with sprint cadence. If work exceeds six
+									weeks, consider splitting into phases.
+								</div>
+							</CardBody>
+						</Card>
+
+						<Card class="shadow-lg">
+							<CardHeader class="flex items-center gap-2">
+								<ListChecks class="w-4 h-4 text-indigo-500" />
+								<h4
+									class="text-sm font-semibold uppercase tracking-[0.3em] text-gray-600 dark:text-gray-300"
+								>
+									Linked tasks
+								</h4>
+							</CardHeader>
+							<CardBody class="space-y-3">
+								{#if planTasks.length === 0}
+									<div class="text-sm text-gray-600 dark:text-gray-400">
+										No tasks linked yet. Assign tasks to this plan from the
+										Tasks tab to visualize progress.
+									</div>
+								{:else}
+									{#each highlightedTasks as task}
+										<div
+											class="p-3 border border-gray-200 dark:border-gray-700 rounded-lg flex items-start justify-between gap-3"
+										>
+											<div>
+												<p
+													class="font-semibold text-gray-900 dark:text-white"
+												>
+													{task.title}
+												</p>
+												<p class="text-xs text-gray-500 dark:text-gray-400">
+													{formatTaskMeta(task)}
+												</p>
+											</div>
+											<span
+												class={`text-xs font-semibold px-3 py-1 rounded-full ${getTaskStateBadgeClass(task.state_key)}`}
+											>
+												{task.state_key}
+											</span>
+										</div>
+									{/each}
+									{#if planTasks.length > highlightedTasks.length}
+										<p class="text-xs text-gray-500 dark:text-gray-400">
+											+{planTasks.length - highlightedTasks.length} more tasks
+											linked
+										</p>
+									{/if}
+								{/if}
+							</CardBody>
+						</Card>
+
+						<Card class="shadow-lg">
+							<CardHeader class="flex items-center gap-2">
+								<Trash2 class="w-4 h-4 text-red-500" />
+								<h4
+									class="text-sm font-semibold uppercase tracking-[0.3em] text-red-600 dark:text-red-300"
+								>
+									Danger zone
+								</h4>
+							</CardHeader>
+							<CardBody class="space-y-3">
+								{#if !showDeleteConfirm}
+									<Button
+										variant="danger"
+										size="sm"
+										fullWidth={true}
+										onclick={() => (showDeleteConfirm = true)}
+										disabled={isDeleting}
+									>
+										Delete plan
+									</Button>
+								{:else}
 									<p class="text-sm text-red-700 dark:text-red-300">
-										Are you sure you want to delete this plan? This action
-										cannot be undone.
+										This will permanently remove the plan and disconnect linked
+										tasks.
 									</p>
 									<div class="flex gap-2">
 										<Button
 											variant="danger"
 											size="sm"
+											fullWidth={true}
 											onclick={handleDelete}
-											disabled={isDeleting}
-											class="flex-1"
+											loading={isDeleting}
 										>
-											{#if isDeleting}
-												<Loader class="w-4 h-4 animate-spin" />
-												Deleting...
-											{:else}
-												Yes, Delete
-											{/if}
+											Confirm delete
 										</Button>
 										<Button
 											variant="ghost"
 											size="sm"
+											fullWidth={true}
 											onclick={() => (showDeleteConfirm = false)}
 											disabled={isDeleting}
-											class="flex-1"
 										>
 											Cancel
 										</Button>
 									</div>
-								</div>
-							{/if}
-						</div>
+								{/if}
+							</CardBody>
+						</Card>
 					</div>
 				</div>
-
-				<!-- Action Buttons -->
-				<div
-					class="flex items-center justify-end gap-2.5 mt-6 pt-5 border-t border-gray-200 dark:border-gray-700"
-				>
-					<Button
-						type="button"
-						variant="ghost"
-						onclick={onClose}
-						disabled={isSaving || isDeleting}
-					>
-						Cancel
-					</Button>
-					<Button
-						type="button"
-						variant="primary"
-						onclick={handleSave}
-						disabled={isSaving || isDeleting || !name.trim()}
-					>
-						{#if isSaving}
-							<Loader class="w-4 h-4 animate-spin" />
-							Saving...
-						{:else}
-							<Save class="w-4 h-4" />
-							Save Changes
-						{/if}
-					</Button>
-				</div>
 			{/if}
-		</CardBody>
+		</div>
+
+		<div
+			class="flex items-center justify-end gap-3 border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-6 py-4"
+		>
+			<Button variant="ghost" onclick={onClose} disabled={isSaving || isDeleting}>
+				Cancel
+			</Button>
+			<Button
+				variant="primary"
+				onclick={handleSave}
+				loading={isSaving}
+				disabled={formDisabled || !name.trim()}
+			>
+				<Save class="w-4 h-4" />
+				Save changes
+			</Button>
+		</div>
 	</Card>
 </div>

@@ -96,7 +96,17 @@
 			const response = await fetch(`/api/onto/fsm/transitions?kind=goal&id=${goalId}`);
 			if (response.ok) {
 				const data = await response.json();
-				allowedTransitions = data.data?.transitions || [];
+				allowedTransitions =
+					(data.data?.transitions || []).map((transition: any) => ({
+						...transition,
+						can_run:
+							typeof transition?.can_run === 'boolean'
+								? (transition.can_run as boolean)
+								: true,
+						failed_guards: Array.isArray(transition?.failed_guards)
+							? transition.failed_guards
+							: []
+					})) ?? [];
 			}
 		} catch (err) {
 			console.error('Error loading transitions:', err);

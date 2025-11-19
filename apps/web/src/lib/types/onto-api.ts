@@ -25,6 +25,8 @@ export interface AllowedTransitionResponse {
 	to_state: string;
 	guards?: any[];
 	actions?: any[];
+	failed_guards?: any[];
+	can_run?: boolean;
 }
 
 /**

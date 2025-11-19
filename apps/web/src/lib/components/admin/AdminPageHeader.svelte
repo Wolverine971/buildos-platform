@@ -1,15 +1,27 @@
 <!-- apps/web/src/lib/components/admin/AdminPageHeader.svelte -->
 <script lang="ts">
 	import { ArrowLeft } from 'lucide-svelte';
-	import type { ComponentType } from 'svelte';
+	import type { ComponentType, Snippet } from 'svelte';
 
-	export let title: string;
-	export let description: string = '';
-	export let icon: ComponentType | null = null;
-	export let backHref: string = '/admin';
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	export let backLabel: string = 'Admin Dashboard';
-	export let showBack: boolean = true;
+	let {
+		title,
+		description = '',
+		icon = null,
+		backHref = '/admin',
+		backLabel = 'Admin Dashboard',
+		showBack = true,
+		actions,
+		controls
+	}: {
+		title: string;
+		description?: string;
+		icon?: ComponentType | null;
+		backHref?: string;
+		backLabel?: string;
+		showBack?: boolean;
+		actions?: Snippet;
+		controls?: Snippet;
+	} = $props();
 </script>
 
 <div class="admin-panel px-4 py-5 sm:px-6 sm:py-6">
@@ -45,18 +57,18 @@
 				{/if}
 			</div>
 
-			{#if $$slots.actions}
+			{#if actions}
 				<div class="flex w-full flex-wrap items-center gap-2 md:w-auto md:justify-end">
-					<slot name="actions" />
+					{@render actions()}
 				</div>
 			{/if}
 		</div>
 
-		{#if $$slots.controls}
+		{#if controls}
 			<div
 				class="flex flex-wrap items-center gap-3 border-t border-gray-200 pt-4 dark:border-gray-800/70"
 			>
-				<slot name="controls" />
+				{@render controls()}
 			</div>
 		{/if}
 	</div>

@@ -31,7 +31,7 @@
 	// ============================================================
 	// IMPORTS
 	// ============================================================
-	import { goto, invalidateAll } from '$app/navigation';
+	import { goto } from '$app/navigation';
 	import Button from '$lib/components/ui/Button.svelte';
 	import TabNav, { type Tab } from '$lib/components/ui/TabNav.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
@@ -83,6 +83,7 @@
 		getGoalStateBadgeClass,
 		getPriorityBadgeClass
 	} from '$lib/utils/ontology-badge-styles';
+	import type { PageData } from './$types';
 	import type {
 		GraphNode,
 		GraphSourceData,
@@ -148,6 +149,8 @@
 		to: string;
 		guards?: Guard[];
 		actions?: TransitionAction[];
+		can_run?: boolean;
+		failed_guards?: Guard[];
 	}
 
 	type ReverseEngineerMilestonePayload = {
@@ -171,29 +174,31 @@
 	// ============================================================
 	// PROPS & DATA
 	// ============================================================
-	let { data } = $props();
+	let { data }: { data: PageData } = $props();
 
 	// ============================================================
 	// DERIVED STATE
 	// ============================================================
 	let project = $state(data.project as Project);
-	const tasks = $derived((data.tasks || []) as Task[]);
-	const outputs = $derived((data.outputs || []) as Output[]);
-	const documents = $derived((data.documents || []) as Document[]);
-	const plans = $derived((data.plans || []) as Plan[]);
-	const goals = $derived((data.goals || []) as Goal[]);
-	const requirements = $derived((data.requirements || []) as Requirement[]);
-	const milestones = $derived((data.milestones || []) as Milestone[]);
-	const risks = $derived((data.risks || []) as Risk[]);
-	const template = $derived((data.template || null) as OntoTemplate | null);
-	const contextDocument = $derived((data.context_document || null) as Document | null);
-	const allowedTransitions = $derived((data.allowed_transitions || []) as TransitionDetail[]);
+	let tasks = $state((data.tasks || []) as Task[]);
+	let outputs = $state((data.outputs || []) as Output[]);
+	let documents = $state((data.documents || []) as Document[]);
+	let plans = $state((data.plans || []) as Plan[]);
+	let goals = $state((data.goals || []) as Goal[]);
+	let requirements = $state((data.requirements || []) as Requirement[]);
+	let milestones = $state((data.milestones || []) as Milestone[]);
+	let risks = $state((data.risks || []) as Risk[]);
+	let template = $state((data.template || null) as OntoTemplate | null);
+	let contextDocument = $state((data.context_document || null) as Document | null);
+	let allowedTransitions = $state((data.allowed_transitions || []) as TransitionDetail[]);
 	const initialTransitionDetails = $derived(
 		allowedTransitions.map((transition) => ({
 			event: transition.event,
 			to: transition.to,
 			guards: (transition.guards ?? []) as Guard[],
-			actions: (transition.actions ?? []) as TransitionAction[]
+			actions: (transition.actions ?? []) as TransitionAction[],
+			can_run: transition.can_run ?? true,
+			failedGuards: (transition.failed_guards ?? []) as Guard[]
 		}))
 	);
 
@@ -232,10 +237,23 @@
 
 	$effect(() => {
 		project = data.project as Project;
+		tasks = (data.tasks || []) as Task[];
+		outputs = (data.outputs || []) as Output[];
+		documents = (data.documents || []) as Document[];
+		plans = (data.plans || []) as Plan[];
+		goals = (data.goals || []) as Goal[];
+		requirements = (data.requirements || []) as Requirement[];
+		milestones = (data.milestones || []) as Milestone[];
+		risks = (data.risks || []) as Risk[];
+		template = (data.template || null) as OntoTemplate | null;
+		contextDocument = (data.context_document || null) as Document | null;
+		allowedTransitions = (data.allowed_transitions || []) as TransitionDetail[];
 		projectGraphSource = (data.graphSource ?? null) as GraphSourceData | null;
 		projectGraphStats = (data.graphStats ?? null) as GraphStats | null;
 		graphMetadata = (data.graphMetadata ?? null) as { generatedAt?: string | null } | null;
 		graphError = (data.graphError ?? null) as string | null;
+		lastDataRefreshAt = Date.now();
+		dataRefreshError = null;
 	});
 
 	// ============================================================
@@ -268,6 +286,10 @@
 	let selectedGraphNode = $state<GraphNode | null>(null);
 	let graphLoading = $state(false);
 	let graphReloadError = $state<string | null>(null);
+	let dataRefreshing = $state(false);
+	let dataRefreshError = $state<string | null>(null);
+	let lastDataRefreshAt = $state<number>(Date.now());
+	let activeRefreshController: AbortController | null = null;
 
 	const tabs = $derived<Tab[]>([
 		{ id: 'tasks', label: 'Tasks', count: tasks.length },
@@ -304,6 +326,10 @@
 			}
 			return map;
 		})()
+	);
+
+	const lastDataRefreshLabel = $derived.by(() =>
+		lastDataRefreshAt ? new Date(lastDataRefreshAt).toLocaleTimeString() : ''
 	);
 
 	const taskDocuments = $derived(
@@ -423,6 +449,127 @@
 		return Array.from(types);
 	});
 
+	type ProjectSnapshot = Partial<
+		Pick<
+			PageData,
+			| 'project'
+			| 'tasks'
+			| 'outputs'
+			| 'documents'
+			| 'plans'
+			| 'goals'
+			| 'requirements'
+			| 'milestones'
+			| 'risks'
+			| 'template'
+			| 'context_document'
+			| 'allowed_transitions'
+		>
+	>;
+
+	function applyProjectSnapshot(snapshot: ProjectSnapshot | null | undefined, markFresh = false) {
+		if (!snapshot) return;
+
+		if (snapshot.project) {
+			project = snapshot.project as Project;
+		}
+		if (snapshot.tasks !== undefined) {
+			tasks = (snapshot.tasks || []) as Task[];
+		}
+		if (snapshot.outputs !== undefined) {
+			outputs = (snapshot.outputs || []) as Output[];
+		}
+		if (snapshot.documents !== undefined) {
+			documents = (snapshot.documents || []) as Document[];
+		}
+		if (snapshot.plans !== undefined) {
+			plans = (snapshot.plans || []) as Plan[];
+		}
+		if (snapshot.goals !== undefined) {
+			goals = (snapshot.goals || []) as Goal[];
+		}
+		if (snapshot.requirements !== undefined) {
+			requirements = (snapshot.requirements || []) as Requirement[];
+		}
+		if (snapshot.milestones !== undefined) {
+			milestones = (snapshot.milestones || []) as Milestone[];
+		}
+		if (snapshot.risks !== undefined) {
+			risks = (snapshot.risks || []) as Risk[];
+		}
+		if (snapshot.template !== undefined) {
+			template = (snapshot.template || null) as OntoTemplate | null;
+		}
+		if (snapshot.context_document !== undefined) {
+			contextDocument = (snapshot.context_document || null) as Document | null;
+		}
+		if (snapshot.allowed_transitions !== undefined) {
+			allowedTransitions = (snapshot.allowed_transitions || []) as TransitionDetail[];
+		}
+
+		if (markFresh) {
+			lastDataRefreshAt = Date.now();
+			dataRefreshError = null;
+		}
+	}
+
+	type RefreshOptions = {
+		refreshGraph?: boolean;
+		silent?: boolean;
+	};
+
+	async function refreshProjectData(options: RefreshOptions = {}) {
+		if (!project?.id) return;
+		const { refreshGraph = false, silent = true } = options;
+
+		// Abort any in-flight refresh since this data is newer
+		if (activeRefreshController) {
+			activeRefreshController.abort();
+		}
+		const controller = new AbortController();
+		activeRefreshController = controller;
+
+		dataRefreshing = true;
+		dataRefreshError = null;
+
+		try {
+			const response = await fetch(`/api/onto/projects/${project.id}`, {
+				signal: controller.signal
+			});
+			const payload = await response.json().catch(() => null);
+
+			if (!response.ok) {
+				throw new Error(payload?.error ?? 'Failed to refresh project data');
+			}
+
+			applyProjectSnapshot(payload?.data ?? null, true);
+
+			if (refreshGraph) {
+				queueMicrotask(() => {
+					if (!controller.signal.aborted) {
+						refreshProjectGraph();
+					}
+				});
+			}
+		} catch (error) {
+			if (controller.signal.aborted) return;
+			console.error('[Project] Failed to refresh', error);
+			const message =
+				error instanceof Error && error.message
+					? error.message
+					: 'Failed to refresh project data';
+			dataRefreshError = message;
+			if (!silent) {
+				toastService.error(message);
+			}
+		} finally {
+			if (activeRefreshController === controller) {
+				activeRefreshController = null;
+			}
+			dataRefreshing = false;
+		}
+	}
+
 	// ============================================================
 	// EVENT HANDLERS
 	// ============================================================
@@ -434,11 +581,11 @@
 	}
 
 	async function handleStateChange(): Promise<void> {
-		await invalidateAll();
+		await refreshProjectData({ refreshGraph: true, silent: false });
 	}
 
 	function handleProjectSaved(updatedProject: Project): void {
-		project = updatedProject;
+		applyProjectSnapshot({ project: updatedProject }, true);
 	}
 
 	async function refreshProjectGraph() {
@@ -503,7 +650,6 @@
 
 			toastService.success('Project deleted');
 			showDeleteProjectModal = false;
-			await invalidateAll();
 			goto('/ontology');
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Failed to delete project';
@@ -745,7 +891,7 @@
 				`Created ${createdMilestones} milestone${createdMilestones === 1 ? '' : 's'} and ${createdTasks} task${createdTasks === 1 ? '' : 's'}.`
 			);
 
-			await invalidateAll();
+			await refreshProjectData({ refreshGraph: true });
 			expandedGoalId = reverseEngineerGoalMeta.id;
 			handleReverseEngineerModalClose();
 		} catch (error) {
@@ -766,35 +912,35 @@
 
 	async function handleOutputCreated(outputId: string) {
 		// Reload data to show new output
-		await invalidateAll();
+		await refreshProjectData({ refreshGraph: true });
 		// Open the edit modal for the new output
 		editingOutputId = outputId;
 	}
 
 	async function handleOutputUpdated() {
-		await invalidateAll();
+		await refreshProjectData({ refreshGraph: true });
 	}
 
 	async function handleOutputDeleted() {
-		await invalidateAll();
+		await refreshProjectData({ refreshGraph: true });
 		editingOutputId = null;
 	}
 
 	async function handleTaskCreated(taskId: string) {
 		// Reload data to show new task
-		await invalidateAll();
+		await refreshProjectData({ refreshGraph: true });
 		// Optionally open the edit modal for the new task
 		editingTaskId = taskId;
 	}
 
 	async function handleTaskUpdated() {
 		// Reload data to show updated task
-		await invalidateAll();
+		await refreshProjectData({ refreshGraph: true });
 	}
 
 	async function handleTaskDeleted() {
 		// Reload data to remove deleted task
-		await invalidateAll();
+		await refreshProjectData({ refreshGraph: true });
 	}
 
 	function openDocumentModal(documentId: string | null = null) {
@@ -803,12 +949,12 @@
 	}
 
 	async function handleDocumentSaved() {
-		await invalidateAll();
+		await refreshProjectData({ refreshGraph: true });
 		showDocumentModal = false;
 	}
 
 	async function handleDocumentDeleted() {
-		await invalidateAll();
+		await refreshProjectData({ refreshGraph: true });
 		showDocumentModal = false;
 	}
 
@@ -842,20 +988,20 @@
 	}
 
 	async function handlePlanUpdated() {
-		await invalidateAll();
+		await refreshProjectData({ refreshGraph: true });
 	}
 
 	async function handlePlanDeleted() {
-		await invalidateAll();
+		await refreshProjectData({ refreshGraph: true });
 		editingPlanId = null;
 	}
 
 	async function handleGoalUpdated() {
-		await invalidateAll();
+		await refreshProjectData({ refreshGraph: true });
 	}
 
 	async function handleGoalDeleted() {
-		await invalidateAll();
+		await refreshProjectData({ refreshGraph: true });
 		editingGoalId = null;
 	}
 </script>
@@ -866,26 +1012,25 @@
 
 <div class="max-w-6xl mx-auto">
 	<!-- Header -->
-	<Card variant="elevated" padding="none" class="mb-4">
-		<CardBody padding="lg" class="space-y-5">
-			<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-				<Button
-					variant="ghost"
-					size="sm"
-					onclick={() => goto('/ontology')}
-					class="self-start hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-				>
-					<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M10 19l-7-7m0 0l7-7m-7 7h18"
-						/>
-					</svg>
-					<span class="font-medium">Back to Projects</span>
-				</Button>
-			</div>
+	<Button
+		variant="ghost"
+		size="sm"
+		onclick={() => goto('/ontology')}
+		class="self-start hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors mb-2 mt-0"
+	>
+		<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+			<path
+				stroke-linecap="round"
+				stroke-linejoin="round"
+				stroke-width="2"
+				d="M10 19l-7-7m0 0l7-7m-7 7h18"
+			/>
+		</svg>
+		<span class="font-medium">Back to Projects</span>
+	</Button>
+	<Card variant="elevated" padding="none" class="mb-dense-4">
+		<CardBody padding="lg" class="space-y-dense-5">
+			<!-- <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-dense-3"></div> -->
 
 			<OntologyProjectHeader
 				{project}
@@ -903,6 +1048,8 @@
 				currentState={project.state_key}
 				initialTransitions={initialTransitionDetails}
 				onstatechange={handleStateChange}
+				showGuardEditCTA={true}
+				on:requestedit={() => (showProjectEditModal = true)}
 			/>
 		</CardBody>
 	</Card>
@@ -917,11 +1064,39 @@
 		/>
 	</Card>
 
+	<div
+		class="mt-3 mb-dense-4 flex flex-col gap-2 text-xs text-gray-500 dark:text-gray-400 sm:flex-row sm:items-center sm:justify-between"
+	>
+		<div class="flex flex-wrap items-center gap-2">
+			{#if dataRefreshing}
+				<RefreshCw class="h-3 w-3 animate-spin text-blue-500 dark:text-blue-300" />
+				<span>Syncing latest project data…</span>
+			{:else}
+				<span>Last synced {lastDataRefreshLabel || 'just now'}</span>
+				{#if dataRefreshError}
+					<span class="text-red-600 dark:text-red-400"
+						>Sync issue: {dataRefreshError}</span
+					>
+				{/if}
+			{/if}
+		</div>
+		<Button
+			variant="ghost"
+			size="sm"
+			disabled={dataRefreshing}
+			onclick={() =>
+				refreshProjectData({ refreshGraph: activeTab === 'graph', silent: false })}
+		>
+			<RefreshCw class={`mr-1 h-3 w-3 ${dataRefreshing ? 'animate-spin' : ''}`} />
+			<span>{dataRefreshing ? 'Refreshing…' : 'Refresh data'}</span>
+		</Button>
+	</div>
+
 	<!-- Content -->
 	<Card variant="elevated" padding="none" class="rounded-t-none border-t-0">
-		<CardBody padding="md" class="sm:p-6">
+		<CardBody padding="md" class="sm:p-dense-6">
 			{#if activeTab === 'tasks'}
-				<div class="space-y-4">
+				<div class="space-y-dense-4">
 					<!-- Create button -->
 					<div class="flex justify-between items-center">
 						<h3 class="text-lg font-semibold text-gray-900 dark:text-white">Tasks</h3>
@@ -940,8 +1115,8 @@
 						<div
 							class="text-center py-12 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg"
 						>
-							<Pencil class="w-12 h-12 text-gray-400 mx-auto mb-4" />
-							<p class="text-gray-600 dark:text-gray-400 mb-4">
+							<Pencil class="w-12 h-12 text-gray-400 mx-auto mb-dense-4" />
+							<p class="text-gray-600 dark:text-gray-400 mb-dense-4">
 								No tasks yet. Create your first task to get started.
 							</p>
 							<Button
@@ -959,9 +1134,9 @@
 								{@const linkedDocs = taskDocuments.get(task.id) ?? []}
 								<button
 									onclick={() => (editingTaskId = task.id)}
-									class="w-full flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-blue-500 dark:hover:border-blue-400 hover:bg-blue-50/70 dark:hover:bg-blue-900/10 transition-all duration-200 text-left group"
+									class="w-full flex flex-col sm:flex-row sm:items-center sm:justify-between gap-dense-3 p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-blue-500 dark:hover:border-blue-400 hover:bg-blue-50/70 dark:hover:bg-blue-900/10 transition-all duration-200 text-left group"
 								>
-									<div class="flex-1 min-w-0 flex items-start gap-3">
+									<div class="flex-1 min-w-0 flex items-start gap-dense-3">
 										<Pencil
 											class="w-5 h-5 text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 flex-shrink-0 mt-0.5"
 										/>
@@ -970,7 +1145,7 @@
 												class="font-semibold text-gray-900 dark:text-white group-hover:text-blue-700 dark:group-hover:text-blue-300 mb-1"
 											>
 												{task.title}
-												</h3>
+											</h3>
 											<div
 												class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400"
 											>
@@ -989,9 +1164,12 @@
 												{/if}
 												{#if linkedDocs.length}
 													<span class="text-gray-400">•</span>
-													<span class="inline-flex items-center gap-1 text-xs">
+													<span
+														class="inline-flex items-center gap-1 text-xs"
+													>
 														<FileText class="w-4 h-4 text-gray-400" />
-														{linkedDocs.length} document{linkedDocs.length === 1
+														{linkedDocs.length} document{linkedDocs.length ===
+														1
 															? ''
 															: 's'}
 													</span>
@@ -1025,9 +1203,9 @@
 					{/if}
 				</div>
 			{:else if activeTab === 'graph'}
-				<div class="space-y-5">
+				<div class="space-y-dense-5">
 					<div
-						class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between lg:gap-4"
+						class="flex flex-col gap-dense-3 lg:flex-row lg:items-center lg:justify-between lg:gap-dense-4"
 					>
 						<div class="space-y-1">
 							<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
@@ -1068,7 +1246,7 @@
 						<div
 							class="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-800/50 dark:bg-red-900/30 dark:text-red-200"
 						>
-							<div class="flex items-start gap-3">
+							<div class="flex items-start gap-dense-3">
 								<div class="flex-1 space-y-1">
 									<p class="font-semibold">Unable to load project graph</p>
 									<p>{graphReloadError || graphError}</p>
@@ -1086,7 +1264,7 @@
 					{/if}
 
 					{#if projectGraphSource}
-						<div class="grid gap-4 lg:grid-cols-3">
+						<div class="grid gap-dense-4 lg:grid-cols-3">
 							<div class="lg:col-span-2">
 								<div
 									class="relative h-[520px] sm:h-[620px] overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800"
@@ -1135,7 +1313,7 @@
 						</section>
 					{:else if graphLoading}
 						<div
-							class="flex flex-col items-center justify-center gap-3 py-16 text-center"
+							class="flex flex-col items-center justify-center gap-dense-3 py-dense-16 text-center"
 						>
 							<div
 								class="h-12 w-12 animate-spin rounded-full border-4 border-blue-200 border-t-blue-500 dark:border-blue-900/40 dark:border-t-indigo-400"
@@ -1144,7 +1322,7 @@
 						</div>
 					{:else}
 						<div
-							class="flex flex-col items-center justify-center gap-3 py-14 text-center"
+							class="flex flex-col items-center justify-center gap-dense-3 py-dense-14 text-center"
 						>
 							<GitBranch class="h-10 w-10 text-gray-400" />
 							<p class="text-sm text-gray-600 dark:text-gray-400">
@@ -1159,7 +1337,7 @@
 					{/if}
 				</div>
 			{:else if activeTab === 'outputs'}
-				<div class="space-y-4">
+				<div class="space-y-dense-4">
 					<!-- Create button -->
 					<div class="flex justify-between items-center">
 						<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
@@ -1180,8 +1358,8 @@
 						<div
 							class="text-center py-12 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg"
 						>
-							<Pencil class="w-12 h-12 text-gray-400 mx-auto mb-4" />
-							<p class="text-gray-600 dark:text-gray-400 mb-4">
+							<Pencil class="w-12 h-12 text-gray-400 mx-auto mb-dense-4" />
+							<p class="text-gray-600 dark:text-gray-400 mb-dense-4">
 								No documents yet. Create your first document to get started.
 							</p>
 							<Button
@@ -1198,9 +1376,9 @@
 							{#each outputs as output}
 								<button
 									onclick={() => editOutput(output.id)}
-									class="w-full flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-blue-500 dark:hover:border-blue-400 hover:bg-blue-50/70 dark:hover:bg-blue-900/10 transition-all duration-200 text-left group"
+									class="w-full flex flex-col sm:flex-row sm:items-center sm:justify-between gap-dense-3 p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-blue-500 dark:hover:border-blue-400 hover:bg-blue-50/70 dark:hover:bg-blue-900/10 transition-all duration-200 text-left group"
 								>
-									<div class="flex-1 min-w-0 flex items-start gap-3">
+									<div class="flex-1 min-w-0 flex items-start gap-dense-3">
 										<Pencil
 											class="w-5 h-5 text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 flex-shrink-0 mt-0.5"
 										/>
@@ -1235,10 +1413,10 @@
 					{/if}
 				</div>
 			{:else if activeTab === 'documents'}
-				<div class="space-y-4">
+				<div class="space-y-dense-4">
 					<!-- Header with gradient accent -->
 					<div
-						class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-gray-200 dark:border-gray-700"
+						class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-dense-3 pb-3 border-b border-gray-200 dark:border-gray-700"
 					>
 						<div>
 							<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
@@ -1258,8 +1436,8 @@
 						<div
 							class="text-center py-12 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg"
 						>
-							<FileText class="w-12 h-12 text-gray-400 mx-auto mb-4" />
-							<p class="text-gray-600 dark:text-gray-400 mb-4">
+							<FileText class="w-12 h-12 text-gray-400 mx-auto mb-dense-4" />
+							<p class="text-gray-600 dark:text-gray-400 mb-dense-4">
 								No documents yet. Documents track project documentation and
 								artifacts.
 							</p>
@@ -1299,11 +1477,11 @@
 								>
 									<div class="p-4 sm:p-5 space-y-3">
 										<div
-											class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
+											class="flex flex-col gap-dense-3 sm:flex-row sm:items-start sm:justify-between"
 										>
 											<button
 												type="button"
-												class="flex items-start gap-3 text-left flex-1 group/expand"
+												class="flex items-start gap-dense-3 text-left flex-1 group/expand"
 												onclick={() => toggleDocumentExpansion(doc.id)}
 												aria-expanded={isExpanded}
 												aria-controls={panelId}
@@ -1393,7 +1571,7 @@
 												</p>
 											{/if}
 											<div
-												class="flex flex-wrap items-center justify-between gap-3 mt-4 text-xs text-gray-500 dark:text-gray-400"
+												class="flex flex-wrap items-center justify-between gap-dense-3 mt-4 text-xs text-gray-500 dark:text-gray-400"
 											>
 												<div class="flex flex-wrap items-center gap-2">
 													{#if createdAtLabel}
@@ -1438,7 +1616,7 @@
 					{/if}
 				</div>
 			{:else if activeTab === 'plans'}
-				<div class="space-y-4">
+				<div class="space-y-dense-4">
 					<!-- Create button -->
 					<div class="flex justify-between items-center">
 						<h3 class="text-lg font-semibold text-gray-900 dark:text-white">Plans</h3>
@@ -1457,8 +1635,8 @@
 						<div
 							class="text-center py-12 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg"
 						>
-							<Calendar class="w-12 h-12 text-gray-400 mx-auto mb-4" />
-							<p class="text-gray-600 dark:text-gray-400 mb-4">
+							<Calendar class="w-12 h-12 text-gray-400 mx-auto mb-dense-4" />
+							<p class="text-gray-600 dark:text-gray-400 mb-dense-4">
 								No plans yet. Create your first plan to organize tasks.
 							</p>
 							<Button
@@ -1476,9 +1654,9 @@
 								<button
 									type="button"
 									onclick={() => (editingPlanId = plan.id)}
-									class="w-full flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-blue-500 dark:hover:border-blue-400 hover:bg-blue-50/70 dark:hover:bg-blue-900/10 transition-all duration-200 text-left"
+									class="w-full flex flex-col sm:flex-row sm:items-center sm:justify-between gap-dense-3 p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-blue-500 dark:hover:border-blue-400 hover:bg-blue-50/70 dark:hover:bg-blue-900/10 transition-all duration-200 text-left"
 								>
-									<div class="flex-1 min-w-0 flex items-start gap-3">
+									<div class="flex-1 min-w-0 flex items-start gap-dense-3">
 										<Calendar
 											class="w-5 h-5 text-gray-400 flex-shrink-0 mt-0.5"
 										/>
@@ -1524,7 +1702,7 @@
 					{/if}
 				</div>
 			{:else if activeTab === 'goals'}
-				<div class="space-y-4">
+				<div class="space-y-dense-4">
 					<!-- Create button -->
 					<div class="flex justify-between items-center">
 						<h3 class="text-lg font-semibold text-gray-900 dark:text-white">Goals</h3>
@@ -1543,8 +1721,8 @@
 						<div
 							class="text-center py-12 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg"
 						>
-							<Target class="w-12 h-12 text-gray-400 mx-auto mb-4" />
-							<p class="text-gray-600 dark:text-gray-400 mb-4">
+							<Target class="w-12 h-12 text-gray-400 mx-auto mb-dense-4" />
+							<p class="text-gray-600 dark:text-gray-400 mb-dense-4">
 								No goals yet. Define what you want to achieve.
 							</p>
 							<Button
@@ -1565,11 +1743,11 @@
 								<div
 									class="p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-gray-300 dark:hover:border-gray-600 transition-all duration-200"
 								>
-									<div class="flex flex-col gap-3">
+									<div class="flex flex-col gap-dense-3">
 										<div
-											class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
+											class="flex flex-col gap-dense-3 sm:flex-row sm:items-start sm:justify-between"
 										>
-											<div class="flex flex-1 gap-3">
+											<div class="flex flex-1 gap-dense-3">
 												<Target
 													class="w-5 h-5 text-gray-400 flex-shrink-0 mt-0.5"
 												/>
@@ -1614,7 +1792,7 @@
 														</p>
 													{/if}
 													<div
-														class="flex flex-wrap items-center gap-3 text-sm text-gray-500 dark:text-gray-400"
+														class="flex flex-wrap items-center gap-dense-3 text-sm text-gray-500 dark:text-gray-400"
 													>
 														<span>
 															{stats.milestoneCount} milestone{stats.milestoneCount ===
@@ -1668,7 +1846,7 @@
 										</div>
 										{#if expandedGoalId === goal.id}
 											<div
-												class="border-t border-gray-200 dark:border-gray-700 pt-4 space-y-4"
+												class="border-t border-gray-200 dark:border-gray-700 pt-4 space-y-dense-4"
 											>
 												{#if directGoalTasks.length > 0}
 													<div class="space-y-2">
@@ -1742,7 +1920,7 @@
 																class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 space-y-3"
 															>
 																<div
-																	class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3"
+																	class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-dense-3"
 																>
 																	<div class="min-w-0">
 																		<p
@@ -1919,6 +2097,7 @@
 	bind:isOpen={showProjectEditModal}
 	{project}
 	{contextDocument}
+	{template}
 	onClose={() => (showProjectEditModal = false)}
 	onSaved={handleProjectSaved}
 />
@@ -1984,7 +2163,7 @@
 		projectId={project.id}
 		onClose={() => (showPlanCreateModal = false)}
 		onCreated={async () => {
-			await invalidateAll();
+			await refreshProjectData({ refreshGraph: true });
 			showPlanCreateModal = false;
 		}}
 	/>
@@ -1994,6 +2173,7 @@
 	<PlanEditModal
 		planId={editingPlanId}
 		projectId={project.id}
+		{tasks}
 		onClose={() => (editingPlanId = null)}
 		onUpdated={handlePlanUpdated}
 		onDeleted={handlePlanDeleted}
@@ -2006,7 +2186,7 @@
 		projectId={project.id}
 		onClose={() => (showGoalCreateModal = false)}
 		onCreated={async () => {
-			await invalidateAll();
+			await refreshProjectData({ refreshGraph: true });
 			showGoalCreateModal = false;
 		}}
 	/>

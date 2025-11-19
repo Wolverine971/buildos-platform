@@ -1,6 +1,5 @@
 <!-- apps/web/src/lib/components/admin/UserActivityModal.svelte -->
 <script lang="ts">
-	import { createEventDispatcher } from 'svelte';
 	import {
 		User,
 		Calendar,
@@ -28,24 +27,23 @@
 	import UserContextPanel from './UserContextPanel.svelte';
 	import { onMount } from 'svelte';
 
-	export let user: any;
+	let { user, onclose }: { user: any; onclose?: () => void } = $props();
+
 	let timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-	let userContext: any = null;
-	let contextLoading = true;
-	let contextError: string | null = null;
+	let userContext = $state<any>(null);
+	let contextLoading = $state(true);
+	let contextError = $state<string | null>(null);
 
 	onMount(() => {
 		timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 		loadUserContext();
 	});
 
-	const dispatch = createEventDispatcher();
-
-	let isOpen = true;
+	let isOpen = $state(true);
 
 	function handleClose() {
 		isOpen = false;
-		dispatch('close');
+		onclose?.();
 	}
 
 	async function loadUserContext() {

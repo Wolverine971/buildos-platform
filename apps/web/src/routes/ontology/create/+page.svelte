@@ -83,6 +83,24 @@
 	let showGoals = $state(false);
 	let showTasks = $state(false);
 
+	function templateInitialState(template: Template | null): string {
+		if (!template?.fsm) return 'draft';
+
+		const explicitInitial =
+			typeof template.fsm.initial === 'string' && template.fsm.initial.length > 0
+				? template.fsm.initial
+				: null;
+
+		if (explicitInitial) return explicitInitial;
+
+		const firstState =
+			Array.isArray(template.fsm.states) && template.fsm.states.length > 0
+				? template.fsm.states[0]
+				: null;
+
+		return typeof firstState === 'string' && firstState.length > 0 ? firstState : 'draft';
+	}
+
 	function resetForm() {
 		projectName = '';
 		projectDescription = '';
@@ -335,13 +353,14 @@
 			const normalizedProps = normalizeProps();
 			const goalPayload = sanitizedGoals();
 			const taskPayload = sanitizedTasks();
+			const initialState = templateInitialState(selectedTemplate);
 
 			const spec: ProjectSpec = {
 				project: {
 					name: projectName.trim(),
 					description: projectDescription.trim() || undefined,
 					type_key: selectedTemplate.type_key,
-					state_key: selectedTemplate.fsm?.initial ?? 'draft',
+					state_key: initialState,
 					props: {
 						facets: {
 							context: facetContext || undefined,
@@ -407,7 +426,7 @@
 					<h3 class="text-lg font-semibold text-gray-700 dark:text-gray-300 capitalize">
 						{realm}
 					</h3>
-					<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+					<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-dense-4">
 						{#each templates as template}
 							<Card
 								variant="interactive"
@@ -454,7 +473,9 @@
 	{:else}
 		<Card variant="elevated" padding="none">
 			<CardHeader variant="default">
-				<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+				<div
+					class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-dense-4"
+				>
 					<div>
 						<h2 class="text-2xl font-semibold text-gray-900 dark:text-white mb-1">
 							Configure Project
@@ -478,7 +499,7 @@
 
 			<CardBody padding="lg">
 				<form
-					class="space-y-4"
+					class="space-y-dense-4"
 					onsubmit={(event) => {
 						event.preventDefault();
 						void createProject();
@@ -494,7 +515,7 @@
 						</Alert>
 					{/if}
 
-					<div class="space-y-4">
+					<div class="space-y-dense-4">
 						<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
 							Basic Information
 						</h3>
@@ -518,12 +539,12 @@
 						</FormField>
 					</div>
 
-					<div class="space-y-4">
+					<div class="space-y-dense-4">
 						<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
 							Facet Overrides
 						</h3>
 
-						<div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+						<div class="grid grid-cols-1 sm:grid-cols-3 gap-dense-3">
 							<FormField label="Context" labelFor="facet-context">
 								<Select
 									id="facet-context"
@@ -571,12 +592,12 @@
 					</div>
 
 					{#if schemaProperties.length > 0}
-						<div class="space-y-6">
+						<div class="space-y-dense-6">
 							<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
 								Template Properties
 							</h3>
 
-							<div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+							<div class="grid grid-cols-1 sm:grid-cols-2 gap-dense-6">
 								{#each schemaProperties as field (field.key)}
 									<FormField
 										label={field.schema.title ?? field.key.replace(/_/g, ' ')}
@@ -693,7 +714,7 @@
 					{/if}
 
 					<!-- Optional Goals -->
-					<div class="space-y-4">
+					<div class="space-y-dense-4">
 						<div class="flex items-center justify-between">
 							<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
 								Initial Goals
@@ -714,7 +735,7 @@
 								</p>
 							{/if}
 
-							<div class="space-y-4">
+							<div class="space-y-dense-4">
 								{#each goals as goal, index}
 									<Card variant="default" padding="md">
 										<CardBody padding="none">
@@ -779,7 +800,7 @@
 					</div>
 
 					<!-- Optional Tasks -->
-					<div class="space-y-4">
+					<div class="space-y-dense-4">
 						<div class="flex items-center justify-between">
 							<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
 								Initial Tasks
@@ -799,7 +820,7 @@
 								</p>
 							{/if}
 
-							<div class="space-y-4">
+							<div class="space-y-dense-4">
 								{#each tasks as task, index}
 									<Card variant="default" padding="md">
 										<CardBody padding="none">
@@ -837,7 +858,9 @@
 														placeholder="Task title"
 													/>
 												</FormField>
-												<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+												<div
+													class="grid grid-cols-1 sm:grid-cols-2 gap-dense-3"
+												>
 													<FormField
 														label="Plan Name (optional)"
 														labelFor={`task-${index}-plan`}
@@ -886,7 +909,7 @@
 			</CardBody>
 
 			<CardFooter>
-				<div class="flex items-center justify-end gap-4">
+				<div class="flex items-center justify-end gap-dense-4">
 					{#if error && !formErrors.length}
 						<p class="text-sm text-red-600 dark:text-red-400 flex items-center gap-2">
 							<AlertCircle class="w-4 h-4" />

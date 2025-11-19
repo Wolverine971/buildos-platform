@@ -1,8 +1,9 @@
 <!-- apps/web/src/lib/components/ontology/FSMStateVisualizer.svelte -->
 <script lang="ts">
-	import { onMount } from 'svelte';
-	import { RefreshCw, AlertTriangle, ShieldCheck } from 'lucide-svelte';
+	import { onMount, createEventDispatcher } from 'svelte';
+	import { RefreshCw, AlertTriangle, ShieldCheck, Loader } from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
+	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
 
 	type Guard = Record<string, unknown>;
 	type TransitionAction = Record<string, unknown>;
@@ -12,6 +13,8 @@
 		to: string;
 		guards: Guard[];
 		actions: TransitionAction[];
+		failedGuards: Guard[];
+		can_run: boolean;
 	};
 
 	interface Props {
@@ -23,7 +26,10 @@
 		confirmBeforeRun?: boolean;
 		onstatechange?: (data: { state: string; actions: string[]; event: string }) => void;
 		onrefresh?: (data: { transitions: FSMTransitionDisplay[] }) => void;
+		showGuardEditCTA?: boolean;
 	}
+
+	const dispatch = createEventDispatcher<{ requestedit: void }>();
 
 	const {
 		entityId,
@@ -33,10 +39,32 @@
 		initialTransitions = [],
 		confirmBeforeRun = true,
 		onstatechange,
-		onrefresh
+		onrefresh,
+		showGuardEditCTA = false
 	}: Props = $props();
 
-	let transitions = $state<FSMTransitionDisplay[]>(initialTransitions);
+	const normalizeTransition = (
+		transition: Partial<FSMTransitionDisplay> & { failed_guards?: Guard[] }
+	): FSMTransitionDisplay => ({
+		event: transition.event ?? '',
+		to: transition.to ?? '',
+		guards: Array.isArray(transition.guards) ? (transition.guards as Guard[]) : [],
+		actions: Array.isArray(transition.actions)
+			? (transition.actions as TransitionAction[])
+			: [],
+		failedGuards: Array.isArray(transition.failedGuards)
+			? (transition.failedGuards as Guard[])
+			: Array.isArray(transition.failed_guards)
+				? ((transition.failed_guards as Guard[]) ?? [])
+				: [],
+		can_run: typeof transition.can_run === 'boolean' ? transition.can_run : true
+	});
+
+	const normalizedInitial = Array.isArray(initialTransitions)
+		? initialTransitions.map((transition) => normalizeTransition(transition))
+		: [];
+
+	let transitions = $state<FSMTransitionDisplay[]>(normalizedInitial);
 	let loading = $state(false);
 	let executingEvent = $state<string | null>(null);
 	let fetchError = $state<string | null>(null);
@@ -44,6 +72,10 @@
 	let successInfo = $state<{ event: string; to: string; actions: string[] } | null>(null);
 	let localState = $state(currentState);
 	let lastFetchedState = currentState;
+
+	// Confirmation modal state
+	let showConfirmModal = $state(false);
+	let pendingTransition = $state<{ event: string; to: string } | null>(null);
 
 	onMount(() => {
 		if (transitions.length === 0) {
@@ -82,8 +114,11 @@
 			}
 
 			const payload = await response.json();
-			// ✅ FIX: Extract from ApiResponse.data wrapper
-			transitions = (payload.data?.transitions ?? []) as FSMTransitionDisplay[];
+			const normalized =
+				(payload.data?.transitions ?? []).map((transition: Partial<FSMTransitionDisplay>) =>
+					normalizeTransition(transition)
+				) ?? [];
+			transitions = normalized;
 			lastFetchedState = currentState;
 			onrefresh?.({ transitions });
 		} catch (err) {
@@ -94,18 +129,31 @@
 		}
 	}
 
+	function initiateTransition(event: string, to: string) {
+		if (confirmBeforeRun) {
+			pendingTransition = { event, to };
+			showConfirmModal = true;
+		} else {
+			void executeTransition(event, to);
+		}
+	}
+
+	function handleConfirmTransition() {
+		if (pendingTransition) {
+			void executeTransition(pendingTransition.event, pendingTransition.to);
+		}
+		showConfirmModal = false;
+		pendingTransition = null;
+	}
+
+	function handleCancelTransition() {
+		showConfirmModal = false;
+		pendingTransition = null;
+	}
+
 	async function executeTransition(event: string, to: string) {
 		transitionError = null;
 		successInfo = null;
-
-		if (confirmBeforeRun) {
-			const name = entityName || entityKind;
-			const proceed = confirm(
-				`Trigger "${event}" to move ${name} from "${localState}" to "${to}"?`
-			);
-			if (!proceed) return;
-		}
-
 		executingEvent = event;
 
 		try {
@@ -200,28 +248,19 @@
 </script>
 
 <div
-	class="fsm-visualizer bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 sm:p-5 space-y-4"
+	class="fsm-visualizer bg-gradient-to-br from-white to-gray-50/50 dark:from-gray-800 dark:to-gray-900/50 border border-gray-200 dark:border-gray-700 rounded-lg p-3 sm:p-4 space-y-3 shadow-sm hover:shadow-md transition-shadow duration-200"
 >
-	<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-		<div>
+	<div class="flex items-center justify-between gap-3">
+		<div class="min-w-0 flex-1">
 			<p
-				class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 font-semibold"
+				class="text-[10px] uppercase tracking-wider text-gray-500 dark:text-gray-400 font-semibold mb-1.5"
 			>
-				Current State
+				Current State: <span
+					class="px-3 py-1 rounded-full bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/40 dark:to-indigo-950/40 text-blue-700 dark:text-blue-300 font-semibold capitalize text-xs sm:text-sm border border-blue-200 dark:border-blue-800/50"
+				>
+					{localState}
+				</span>
 			</p>
-			<div
-				class="inline-flex items-center gap-2 px-3 py-1.5 mt-1 rounded-full bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-semibold capitalize"
-			>
-				{localState}
-			</div>
-			{#if successInfo}
-				<p class="mt-2 text-xs text-emerald-600 dark:text-emerald-300">
-					Transition "{successInfo.event}" succeeded → <strong>{successInfo.to}</strong>
-					{#if successInfo.actions.length}
-						· actions: {successInfo.actions.join(', ')}
-					{/if}
-				</p>
-			{/if}
 		</div>
 
 		<Button
@@ -230,78 +269,127 @@
 			onclick={() => refreshTransitions()}
 			disabled={loading}
 			{loading}
+			icon={RefreshCw}
+			class="shrink-0 border-gray-300 dark:border-gray-600 hover:border-blue-400 dark:hover:border-blue-500 transition-colors"
 		>
-			<RefreshCw class="w-4 h-4" />
-			<span>{loading ? 'Refreshing…' : 'Refresh Transitions'}</span>
+			<span class="hidden sm:inline text-xs">{loading ? 'Refreshing…' : 'Refresh'}</span>
 		</Button>
 	</div>
 
+	{#if successInfo}
+		<div
+			class="flex items-start gap-2 p-2 rounded-lg bg-gradient-to-br from-emerald-50 to-green-50 dark:from-emerald-900/20 dark:to-green-900/20 border border-emerald-200 dark:border-emerald-800/50"
+		>
+			<ShieldCheck
+				class="w-4 h-4 text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-0.5"
+			/>
+			<div class="flex-1 min-w-0">
+				<p class="text-xs font-medium text-emerald-700 dark:text-emerald-300 truncate">
+					"{successInfo.event}" → {successInfo.to}
+				</p>
+				{#if successInfo.actions.length}
+					<p class="text-[10px] text-emerald-600 dark:text-emerald-400 truncate">
+						{successInfo.actions.join(', ')}
+					</p>
+				{/if}
+			</div>
+		</div>
+	{/if}
+
 	{#if fetchError}
 		<div
-			class="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-sm text-red-700 dark:text-red-300"
+			class="flex items-start gap-2 p-2 rounded-lg bg-gradient-to-br from-rose-50 to-red-50 dark:from-rose-900/20 dark:to-red-900/20 border border-rose-200 dark:border-rose-800"
 		>
-			{fetchError}
+			<AlertTriangle class="w-4 h-4 text-rose-600 dark:text-rose-400 flex-shrink-0 mt-0.5" />
+			<div class="flex-1 min-w-0">
+				<p class="text-xs font-medium text-rose-700 dark:text-rose-300 truncate">
+					{fetchError}
+				</p>
+			</div>
 		</div>
 	{/if}
 
 	{#if transitionError}
 		<div
-			class="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-sm text-red-700 dark:text-red-300"
+			class="flex items-start gap-2 p-2 rounded-lg bg-gradient-to-br from-rose-50 to-red-50 dark:from-rose-900/20 dark:to-red-900/20 border border-rose-200 dark:border-rose-800"
 		>
-			{transitionError}
+			<AlertTriangle class="w-4 h-4 text-rose-600 dark:text-rose-400 flex-shrink-0 mt-0.5" />
+			<div class="flex-1 min-w-0">
+				<p class="text-xs font-medium text-rose-700 dark:text-rose-300 truncate">
+					{transitionError}
+				</p>
+			</div>
 		</div>
 	{/if}
 
 	{#if loading && transitions.length === 0}
-		<div class="text-sm text-gray-600 dark:text-gray-400">Loading available transitions…</div>
+		<div
+			class="flex items-center justify-center py-6 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900/40 dark:to-gray-800/40 rounded-lg border border-gray-200 dark:border-gray-700"
+		>
+			<div class="flex items-center gap-2">
+				<Loader class="w-4 h-4 text-blue-600 dark:text-blue-400 animate-spin" />
+				<p class="text-xs font-medium text-gray-700 dark:text-gray-300">
+					Loading transitions...
+				</p>
+			</div>
+		</div>
 	{:else if transitions.length === 0}
-		<div class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-			<ShieldCheck class="w-4 h-4" />
-			<span>No transitions available from this state.</span>
+		<div
+			class="flex items-center gap-2 p-2 rounded-lg bg-gradient-to-br from-gray-50 to-slate-50 dark:from-gray-900/40 dark:to-slate-900/40 border border-gray-200 dark:border-gray-700"
+		>
+			<ShieldCheck class="w-4 h-4 text-gray-500 dark:text-gray-400 flex-shrink-0" />
+			<p class="text-xs text-gray-600 dark:text-gray-400">No transitions available</p>
 		</div>
 	{:else}
-		<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+		<div class="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
 			{#each transitions as transition (transition.event)}
 				<div
-					class="flex flex-col gap-3 border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gray-50/60 dark:bg-gray-900/40"
+					class="flex flex-col gap-2 border border-gray-200 dark:border-gray-700 rounded-lg p-2.5 sm:p-3 bg-gradient-to-br from-gray-50/80 to-white dark:from-gray-900/40 dark:to-gray-800/40 hover:shadow-md hover:border-blue-300 dark:hover:border-blue-700 transition-all duration-200"
 				>
-					<div class="flex items-start justify-between gap-3">
-						<div>
-							<p
-								class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 font-semibold"
-							>
-								Event
-							</p>
-							<p class="text-base font-semibold text-gray-900 dark:text-white">
-								{transition.event}
-							</p>
-							<p class="text-xs text-gray-500 dark:text-gray-400">
-								→ <span class="font-medium">{transition.to}</span>
-							</p>
+					<div class="flex items-start justify-between gap-2">
+						<div class="min-w-0 flex-1 space-y-1">
+							<div class="flex items-center gap-1.5">
+								<p
+									class="text-xs sm:text-sm font-semibold text-gray-900 dark:text-white truncate"
+								>
+									{transition.event}
+								</p>
+								<span class="text-gray-400 dark:text-gray-500 text-xs">→</span>
+								<span
+									class="text-xs font-medium text-blue-600 dark:text-blue-400 truncate capitalize"
+								>
+									{transition.to}
+								</span>
+							</div>
 						</div>
 						<Button
 							variant="primary"
 							size="sm"
-							onclick={() => executeTransition(transition.event, transition.to)}
-							disabled={Boolean(executingEvent) || loading}
+							onclick={() => initiateTransition(transition.event, transition.to)}
+							disabled={Boolean(executingEvent) || loading || !transition.can_run}
 							loading={executingEvent === transition.event}
+							class="shrink-0 text-xs px-2 py-1"
 						>
-							{executingEvent === transition.event ? 'Running…' : 'Run'}
+							{!transition.can_run
+								? 'Blocked'
+								: executingEvent === transition.event
+									? 'Running…'
+									: 'Execute'}
 						</Button>
 					</div>
 
-					{#if transition.guards?.length}
-						<div class="space-y-1.5">
+					{#if !transition.can_run && transition.failedGuards?.length}
+						<div class="space-y-1.5 pt-2 border-t border-gray-200 dark:border-gray-700">
 							<p
-								class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400"
+								class="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400"
 							>
-								<AlertTriangle class="w-3.5 h-3.5" />
-								Guards
+								<AlertTriangle class="w-3 h-3" />
+								Blocked
 							</p>
-							<div class="flex flex-wrap gap-1.5">
-								{#each transition.guards as guard, index (index)}
+							<div class="flex flex-wrap gap-1">
+								{#each transition.failedGuards as guard, index (index)}
 									<span
-										class="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300"
+										class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-gradient-to-br from-amber-50 to-yellow-50 dark:from-amber-900/30 dark:to-yellow-900/30 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800/50"
 										title={JSON.stringify(guard, null, 2)}
 									>
 										{guardLabel(guard)}
@@ -311,22 +399,74 @@
 						</div>
 					{/if}
 
-					{#if transition.actions?.length}
-						<div class="space-y-1">
-							<p
-								class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400"
-							>
-								Actions ({transition.actions.length})
-							</p>
-							<ul class="text-xs text-gray-600 dark:text-gray-300 space-y-0.5">
-								{#each transition.actions as action, index (index)}
-									<li>{actionLabel(action)}</li>
-								{/each}
-							</ul>
-						</div>
+					{#if !transition.can_run && showGuardEditCTA}
+						<Button
+							variant="outline"
+							size="sm"
+							class="w-full text-xs py-1"
+							onclick={() => dispatch('requestedit')}
+						>
+							Update Details
+						</Button>
 					{/if}
 				</div>
 			{/each}
 		</div>
 	{/if}
 </div>
+
+<!-- Confirmation Modal -->
+<ConfirmationModal
+	bind:isOpen={showConfirmModal}
+	title="Confirm Transition"
+	confirmText="Execute"
+	cancelText="Cancel"
+	confirmVariant="primary"
+	icon="info"
+	on:confirm={handleConfirmTransition}
+	on:cancel={handleCancelTransition}
+>
+	<div slot="content" class="space-y-2">
+		{#if pendingTransition}
+			<div
+				class="p-2 rounded-lg bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 border border-blue-200 dark:border-blue-800/50 space-y-1.5"
+			>
+				<div class="flex items-center justify-between">
+					<span
+						class="text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400"
+						>Event</span
+					>
+					<span class="text-xs font-semibold text-blue-700 dark:text-blue-300"
+						>{pendingTransition.event}</span
+					>
+				</div>
+
+				<div class="flex items-center justify-between">
+					<span
+						class="text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400"
+						>Entity</span
+					>
+					<span class="text-xs text-gray-700 dark:text-gray-300 truncate"
+						>{entityName || entityKind}</span
+					>
+				</div>
+
+				<div class="pt-1.5 border-t border-blue-200 dark:border-blue-800/50">
+					<div class="flex items-center gap-2 text-xs">
+						<span class="font-medium text-gray-700 dark:text-gray-300 capitalize"
+							>{localState}</span
+						>
+						<span class="text-gray-400 dark:text-gray-500">→</span>
+						<span class="font-semibold text-blue-700 dark:text-blue-300 capitalize"
+							>{pendingTransition.to}</span
+						>
+					</div>
+				</div>
+			</div>
+		{/if}
+
+		<p class="text-xs text-gray-600 dark:text-gray-400">
+			This will execute the transition and any associated actions.
+		</p>
+	</div>
+</ConfirmationModal>

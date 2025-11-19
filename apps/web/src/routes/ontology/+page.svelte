@@ -268,8 +268,8 @@
 	<title>Ontology Projects | BuildOS</title>
 </svelte:head>
 
-<div class="mx-auto w-full max-w-6xl space-y-4 sm:space-y-6">
-	<header class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+<div class="mx-auto w-full max-w-6xl space-y-dense-4 sm:space-y-dense-6">
+	<header class="flex flex-col gap-dense-3 sm:flex-row sm:items-center sm:justify-between">
 		<div class="space-y-1">
 			<h1 class="text-2xl font-semibold text-slate-900 dark:text-slate-50 sm:text-3xl">
 				Ontology Projects
@@ -305,7 +305,7 @@
 	</header>
 
 	<div
-		class="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200/70 bg-white/90 p-2 shadow-sm dark:border-slate-800 dark:bg-slate-900/70"
+		class="flex flex-wrap items-center justify-between gap-dense-3 rounded-2xl border border-slate-200/70 bg-white/90 p-2 shadow-sm dark:border-slate-800 dark:bg-slate-900/70"
 	>
 		<nav
 			class="inline-flex rounded-xl bg-slate-100/70 p-1 text-sm font-medium dark:bg-slate-800/60 overflow-x-auto scrollbar-hide"
@@ -339,7 +339,7 @@
 
 		{#if activeTab === 'graph'}
 			<div
-				class="flex flex-1 items-center justify-end gap-3 text-xs text-slate-500 dark:text-slate-400"
+				class="flex flex-1 items-center justify-end gap-dense-3 text-xs text-slate-500 dark:text-slate-400"
 			>
 				{#if $graphStore.status === 'ready' && graphLastUpdated}
 					<span class="hidden sm:inline">Last synced {graphLastUpdated}</span>
@@ -368,10 +368,10 @@
 	</div>
 
 	{#if activeTab === 'overview'}
-		<section class="space-y-4">
+		<section class="space-y-dense-4">
 			{#if projectsLoading}
-				<div class="space-y-6">
-					<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+				<div class="space-y-dense-6">
+					<div class="grid gap-dense-3 sm:grid-cols-2 lg:grid-cols-3">
 						{#each Array.from({ length: 3 }) as _}
 							<div
 								class="rounded-2xl border border-slate-200/70 bg-white/80 p-4 shadow-sm animate-pulse dark:border-slate-800/70 dark:bg-slate-900/70"
@@ -387,10 +387,10 @@
 						{/each}
 					</div>
 					<div
-						class="rounded-2xl border border-slate-200/70 bg-white/80 p-6 shadow-sm animate-pulse dark:border-slate-800/70 dark:bg-slate-900/70"
+						class="rounded-2xl border border-slate-200/70 bg-white/80 p-dense-6 shadow-sm animate-pulse dark:border-slate-800/70 dark:bg-slate-900/70"
 					>
 						<div class="h-5 w-1/4 rounded bg-slate-200 dark:bg-slate-800"></div>
-						<div class="mt-4 grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+						<div class="mt-4 grid gap-dense-3 md:grid-cols-2 lg:grid-cols-3">
 							{#each Array.from({ length: 6 }) as _}
 								<div
 									class="h-24 rounded-xl bg-slate-100 dark:bg-slate-800/80"
@@ -401,7 +401,7 @@
 				</div>
 			{:else if projectsError}
 				<div
-					class="rounded-2xl border border-slate-200/80 bg-white/90 p-6 text-center shadow-sm dark:border-slate-800/80 dark:bg-slate-900/80"
+					class="rounded-2xl border border-slate-200/80 bg-white/90 p-dense-6 text-center shadow-sm dark:border-slate-800/80 dark:bg-slate-900/80"
 				>
 					<h2 class="text-base font-semibold text-slate-900 dark:text-slate-100">
 						Unable to load ontology projects
@@ -423,10 +423,10 @@
 				<Card variant="elevated" padding="none">
 					<CardBody
 						padding="md"
-						class="space-y-4 lg:flex lg:items-start lg:justify-between lg:gap-6 lg:space-y-0"
+						class="space-y-dense-4 lg:flex lg:items-start lg:justify-between lg:gap-dense-6 lg:space-y-0"
 					>
 						<div
-							class="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4 lg:flex-1"
+							class="flex flex-col gap-dense-3 sm:flex-row sm:items-center sm:gap-dense-4 lg:flex-1"
 						>
 							<div class="relative flex-1">
 								<input
@@ -510,58 +510,66 @@
 					</CardBody>
 				</Card>
 
-				<div class="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
-					<div
-						class="rounded-xl border border-slate-200 bg-white/70 px-3 py-2.5 shadow-sm dark:border-slate-800 dark:bg-slate-900/60"
-					>
-						<p
-							class="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
-						>
-							Projects
-						</p>
-						<p class="text-xl font-semibold text-slate-900 dark:text-slate-50">
-							{stats.totalProjects}
-						</p>
-					</div>
-					<div
-						class="rounded-xl border border-slate-200 bg-white/70 px-3 py-2.5 shadow-sm dark:border-slate-800 dark:bg-slate-900/60"
-					>
-						<p
-							class="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
-						>
-							Tasks
-						</p>
-						<p class="text-xl font-semibold text-slate-900 dark:text-slate-50">
-							{stats.totalTasks}
-						</p>
-					</div>
-					<div
-						class="rounded-xl border border-slate-200 bg-white/70 px-3 py-2.5 shadow-sm dark:border-slate-800 dark:bg-slate-900/60"
-					>
-						<p
-							class="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
-						>
-							Outputs
-						</p>
-						<p class="text-xl font-semibold text-slate-900 dark:text-slate-50">
-							{stats.totalOutputs}
-						</p>
-					</div>
-					<div
-						class="rounded-xl border border-slate-200 bg-white/70 px-3 py-2.5 shadow-sm dark:border-slate-800 dark:bg-slate-900/60"
-					>
-						<p
-							class="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
-						>
-							Active
-						</p>
-						<p class="text-xl font-semibold text-slate-900 dark:text-slate-50">
-							{stats.activeProjects}
-						</p>
-					</div>
+				<div class="grid grid-cols-2 gap-dense-3 sm:grid-cols-4 sm:gap-dense-4">
+					<Card variant="elevated" padding="sm">
+						<CardBody padding="sm" class="min-h-[80px] flex flex-col justify-between">
+							<p
+								class="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+							>
+								Projects
+							</p>
+							<p
+								class="text-xl sm:text-2xl font-semibold text-slate-900 dark:text-slate-50 mt-1"
+							>
+								{stats.totalProjects}
+							</p>
+						</CardBody>
+					</Card>
+					<Card variant="elevated" padding="sm">
+						<CardBody padding="sm" class="min-h-[80px] flex flex-col justify-between">
+							<p
+								class="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+							>
+								Tasks
+							</p>
+							<p
+								class="text-xl sm:text-2xl font-semibold text-slate-900 dark:text-slate-50 mt-1"
+							>
+								{stats.totalTasks}
+							</p>
+						</CardBody>
+					</Card>
+					<Card variant="elevated" padding="sm">
+						<CardBody padding="sm" class="min-h-[80px] flex flex-col justify-between">
+							<p
+								class="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+							>
+								Outputs
+							</p>
+							<p
+								class="text-xl sm:text-2xl font-semibold text-slate-900 dark:text-slate-50 mt-1"
+							>
+								{stats.totalOutputs}
+							</p>
+						</CardBody>
+					</Card>
+					<Card variant="elevated" padding="sm">
+						<CardBody padding="sm" class="min-h-[80px] flex flex-col justify-between">
+							<p
+								class="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+							>
+								Active
+							</p>
+							<p
+								class="text-xl sm:text-2xl font-semibold text-emerald-600 dark:text-emerald-400 mt-1"
+							>
+								{stats.activeProjects}
+							</p>
+						</CardBody>
+					</Card>
 				</div>
 
-				<div class="space-y-4">
+				<div class="space-y-dense-4">
 					{#if availableStates.length}
 						<div class="flex flex-col gap-2">
 							<p
@@ -588,7 +596,7 @@
 						</div>
 					{/if}
 
-					<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+					<div class="grid grid-cols-1 gap-dense-4 md:grid-cols-3">
 						{#if availableContexts.length}
 							<div class="flex flex-col gap-2">
 								<p
@@ -682,10 +690,10 @@
 
 		{#if filteredProjects.length === 0}
 			<div
-				class="rounded-2xl border-2 border-dashed border-slate-300/80 bg-white/80 px-4 py-14 text-center shadow-sm dark:border-slate-700 dark:bg-slate-900/70 sm:px-6 sm:py-16"
+				class="rounded-2xl border-2 border-dashed border-slate-300/80 bg-white/80 px-4 py-dense-14 text-center shadow-sm dark:border-slate-700 dark:bg-slate-900/70 sm:px-6 sm:py-dense-16"
 			>
 				<div
-					class="mx-auto mb-6 flex h-12 w-12 items-center justify-center rounded-full bg-blue-50 text-blue-500 dark:bg-blue-950/40 dark:text-blue-300 sm:h-14 sm:w-14"
+					class="mx-auto mb-dense-6 flex h-12 w-12 items-center justify-center rounded-full bg-blue-50 text-blue-500 dark:bg-blue-950/40 dark:text-blue-300 sm:h-14 sm:w-14"
 				>
 					<svg
 						xmlns="http://www.w3.org/2000/svg"
@@ -702,7 +710,7 @@
 						/>
 					</svg>
 				</div>
-				<h2 class="text-lg font-semibold text-slate-900 dark:text-slate-50 sm:text-xl">
+				<h2 class="text-xl font-semibold text-slate-900 dark:text-slate-50">
 					No projects yet
 				</h2>
 				<p
@@ -712,7 +720,7 @@
 						? 'Create your first ontology project using typed templates and FSM workflows.'
 						: 'No projects match the current filters. Adjust your search or clear filters to explore more.'}
 				</p>
-				<div class="mt-6 flex justify-center gap-3">
+				<div class="mt-6 flex justify-center gap-dense-3">
 					{#if projects.length === 0}
 						<Button
 							variant="primary"
@@ -729,13 +737,13 @@
 				</div>
 			</div>
 		{:else}
-			<div class="grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-2 xl:grid-cols-3">
+			<div class="grid grid-cols-1 gap-dense-4 sm:gap-dense-6 md:grid-cols-2 xl:grid-cols-3">
 				{#each filteredProjects as project (project.id)}
 					<a
 						href="/ontology/projects/{project.id}"
 						class="group relative flex h-full flex-col rounded-2xl border border-slate-200/80 bg-white/90 p-4 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-blue-500/50 hover:shadow-xl dark:border-slate-800 dark:bg-slate-900/70"
 					>
-						<div class="mb-4 flex items-start justify-between gap-3">
+						<div class="mb-4 flex items-start justify-between gap-dense-3">
 							<div class="min-w-0 space-y-1">
 								<h3
 									class="truncate text-lg font-semibold text-slate-900 transition-colors group-hover:text-blue-600 dark:text-slate-50 dark:group-hover:text-indigo-300"
@@ -792,7 +800,7 @@
 						<div
 							class="mt-auto flex items-center justify-between border-t border-slate-100 pt-4 text-sm text-slate-600 dark:border-slate-800 dark:text-slate-400"
 						>
-							<div class="flex items-center gap-4">
+							<div class="flex items-center gap-dense-4">
 								<span class="flex items-center gap-1.5" aria-label="Task count">
 									<svg
 										class="h-4 w-4"
@@ -837,7 +845,7 @@
 			</div>
 		{/if}
 	{:else}
-		<section class="space-y-4">
+		<section class="space-y-dense-4">
 			{#if $graphStore.stats}
 				<div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
 					<div
@@ -892,14 +900,14 @@
 			{/if}
 
 			<div
-				class="rounded-2xl border border-slate-200/80 bg-white/90 shadow-sm dark:border-slate-800 dark:bg-slate-900/80 overflow-hidden"
+				class="rounded-2xl border border-slate-200/80 bg-white/90 shadow-sm dark:border-slate-800 dark:bg-slate-900/80 overflow-hidden touch-none"
 			>
-				<div class="relative h-[70vh] lg:h-[calc(100vh-18rem)]">
+				<div class="relative h-[60vh] sm:h-[70vh] lg:h-[calc(100vh-18rem)]">
 					{#if $graphStore.status === 'loading'}
 						<LoadingSkeleton message="Preparing ontology graph..." height="100%" />
 					{:else if $graphStore.status === 'error'}
 						<div
-							class="flex h-full flex-col items-center justify-center gap-3 p-6 text-center"
+							class="flex h-full flex-col items-center justify-center gap-dense-3 p-dense-6 text-center"
 						>
 							<h3 class="text-base font-semibold text-slate-800 dark:text-slate-100">
 								Unable to load graph
@@ -921,7 +929,7 @@
 						/>
 					{:else}
 						<div
-							class="flex h-full flex-col items-center justify-center gap-3 p-6 text-center"
+							class="flex h-full flex-col items-center justify-center gap-dense-3 p-dense-6 text-center"
 						>
 							<h3 class="text-base font-semibold text-slate-800 dark:text-slate-100">
 								No ontology data yet
@@ -942,7 +950,7 @@
 				</div>
 			</div>
 
-			<div class="grid gap-4 lg:grid-cols-2">
+			<div class="grid gap-dense-4 lg:grid-cols-2">
 				<section
 					class="rounded-2xl border border-slate-200 bg-white/90 shadow-sm dark:border-slate-800 dark:bg-slate-900/80 overflow-hidden"
 				>
@@ -963,7 +971,7 @@
 						></NodeDetailsPanel>
 					{:else}
 						<div
-							class="flex h-full items-center justify-center p-6 text-sm text-slate-500 dark:text-slate-400"
+							class="flex h-full items-center justify-center p-dense-6 text-sm text-slate-500 dark:text-slate-400"
 						>
 							{#if $graphStore.status === 'ready'}
 								Select a node to view details.

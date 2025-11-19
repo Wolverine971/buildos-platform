@@ -72,12 +72,6 @@
 		<div class="flex flex-col gap-2.5 sm:gap-3">
 			<div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
 				<div class="space-y-1.5 sm:space-y-2 flex-1 min-w-0">
-					<p
-						class="text-xs font-semibold tracking-wide uppercase text-gray-500 dark:text-gray-400 flex items-center gap-2"
-					>
-						<span class="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
-						Ontology Project
-					</p>
 					<h1
 						class="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 dark:text-white leading-tight"
 					>

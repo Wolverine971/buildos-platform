@@ -331,10 +331,10 @@
 		'90d': 'Past 90 days'
 	};
 
-	const timeframeRangeLabel = $derived(timeframeDisplayMap[selectedTimeframe]);
-	const timeframeRelativeLabel = $derived(timeframeRelativeMap[selectedTimeframe]);
+	let timeframeRangeLabel = $derived(timeframeDisplayMap[selectedTimeframe]);
+	let timeframeRelativeLabel = $derived(timeframeRelativeMap[selectedTimeframe]);
 
-	const navCards = $derived.by(() => {
+	let navCards = $derived.by(() => {
 		const cards = [
 			{
 				title: 'Users',
@@ -440,7 +440,7 @@
 		return cards;
 	});
 
-	const primaryMetrics = $derived.by(() => {
+	let primaryMetrics = $derived.by(() => {
 		const cards: any[] = [
 			{
 				label: 'Active Users · 7d',
@@ -488,7 +488,7 @@
 		return cards;
 	});
 
-	const brainDumpCards = $derived.by(() => {
+	let brainDumpCards = $derived.by(() => {
 		const cards: any[] = [
 			{
 				label: `Brain Dumps · ${timeframeRangeLabel}`,
@@ -574,7 +574,7 @@
 		}
 	];
 
-	const subscriptionMetricCards = $derived.by(() => {
+	let subscriptionMetricCards = $derived.by(() => {
 		const cards: any[] = [
 			{
 				label: 'Monthly Recurring Revenue',
@@ -616,7 +616,7 @@
 		return cards;
 	});
 
-	const feedbackMetricCards = $derived.by(() => {
+	let feedbackMetricCards = $derived.by(() => {
 		const cards: any[] = [
 			{
 				label: 'Total Feedback',
@@ -930,7 +930,7 @@
 	<div class="admin-page">
 		<!-- Navigation Cards -->
 		<div
-			class="grid auto-rows-fr grid-cols-1 gap-6 sm:gap-7 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 mb-8"
+			class="grid auto-rows-fr grid-cols-1 gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 mb-6"
 		>
 			{#each navCards as card (card.href)}
 				<AdminNavCard {...card} meta="View module" compact />
@@ -1003,7 +1003,7 @@
 			<!-- Key Metrics Cards - Mobile Responsive -->
 
 			<!-- Row 2: System Metrics -->
-			<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-5 mb-4 sm:mb-5">
+			<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 mb-4 sm:mb-5">
 				{#each primaryMetrics as metric (metric.label)}
 					<AdminStatCard
 						label={metric.label}
@@ -1034,7 +1034,7 @@
 					</span>
 				</h2>
 				<div
-					class="admin-stat-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-5"
+					class="admin-stat-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4"
 				>
 					{#each brainDumpCards as card (card.label)}
 						<AdminStatCard {...card} compact />
@@ -1106,7 +1106,7 @@
 					</h2>
 
 					<div
-						class="admin-stat-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6"
+						class="admin-stat-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4"
 					>
 						{#each subscriptionMetricCards as card (card.label)}
 							<AdminStatCard {...card} compact />
@@ -1214,7 +1214,7 @@
 			<!-- Feedback Overview -->
 			<div class="mb-4 sm:mb-6">
 				<div
-					class="admin-stat-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6"
+					class="admin-stat-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4"
 				>
 					{#each feedbackMetricCards as card (card.label)}
 						<AdminStatCard {...card} compact />

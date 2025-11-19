@@ -135,7 +135,21 @@ export default {
 			spacing: {
 				18: '4.5rem',
 				88: '22rem',
-				120: '30rem'
+				120: '30rem',
+				// Dense spacing scale for ontology section (high information density)
+				'dense-3': '0.5rem', // 8px  - replaces gap-3
+				'dense-4': '0.625rem', // 10px - replaces gap-4, p-4, mb-4
+				'dense-5': '0.75rem', // 12px - replaces gap-5, p-5, mb-5
+				'dense-6': '0.875rem', // 14px - replaces gap-6, p-6, mb-6
+				'dense-8': '1rem', // 16px - replaces mb-8, py-8
+				'dense-12': '1.5rem', // 24px - replaces mb-12, py-12
+				'dense-14': '2rem', // 32px - replaces py-14
+				'dense-16': '2.25rem', // 36px - replaces py-16
+				'dense-20': '2.5rem' // 40px - replaces py-20
+			},
+			// Max width override for dense layouts
+			maxWidth: {
+				'dense-7xl': '64rem' // Tighter than default 80rem for max-w-7xl
 			},
 			// Font family extensions
 			fontFamily: {

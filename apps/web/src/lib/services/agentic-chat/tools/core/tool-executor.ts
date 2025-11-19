@@ -518,21 +518,21 @@ export class ChatToolExecutor {
 					result = await this.getOntoPlanDetails(args as GetOntoPlanDetailsArgs);
 					break;
 
-		case 'get_onto_document_details':
-			result = await this.getOntoDocumentDetails(args as GetOntoDocumentDetailsArgs);
-			break;
+				case 'get_onto_document_details':
+					result = await this.getOntoDocumentDetails(args as GetOntoDocumentDetailsArgs);
+					break;
 
-		case 'list_task_documents':
-			result = await this.listTaskDocuments(args as ListTaskDocumentsArgs);
-			break;
+				case 'list_task_documents':
+					result = await this.listTaskDocuments(args as ListTaskDocumentsArgs);
+					break;
 
-		case 'create_task_document':
-			result = await this.createTaskDocument(args as CreateTaskDocumentArgs);
-			break;
+				case 'create_task_document':
+					result = await this.createTaskDocument(args as CreateTaskDocumentArgs);
+					break;
 
-		case 'get_entity_relationships':
-			result = await this.getEntityRelationships(args as GetEntityRelationshipsArgs);
-			break;
+				case 'get_entity_relationships':
+					result = await this.getEntityRelationships(args as GetEntityRelationshipsArgs);
+					break;
 
 				case 'list_onto_templates':
 					result = await this.listOntoTemplates(args as ListOntoTemplatesArgs);

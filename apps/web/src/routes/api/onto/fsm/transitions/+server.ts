@@ -16,6 +16,8 @@ type RawTransitionRow = {
 	to_state: string;
 	guards: unknown[] | null;
 	actions: unknown[] | null;
+	can_run: boolean | null;
+	failed_guards: unknown[] | null;
 };
 
 export const GET: RequestHandler = async ({ url, locals }) => {
@@ -126,7 +128,9 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 				event: row.event,
 				to: row.to_state,
 				guards: (row.guards ?? []) as unknown[],
-				actions: (row.actions ?? []) as unknown[]
+				actions: (row.actions ?? []) as unknown[],
+				can_run: row.can_run ?? true,
+				failed_guards: (row.failed_guards ?? []) as unknown[]
 			})) ?? [];
 
 		return ApiResponse.success({

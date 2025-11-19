@@ -20,39 +20,44 @@
 		ChevronRight
 	} from 'lucide-svelte';
 
-	export let data: PageData;
+	let { data }: { data: PageData } = $props();
 
-	let errors: ErrorLogEntry[] = data.errors || [];
-	let summary = data.summary || [];
-	let loading = false;
-	let selectedError: ErrorLogEntry | null = null;
-	let selectedErrorIds: Set<string> = new Set();
-	let selectAll = false;
-	let bulkProcessing = false;
+	let errors = $state<ErrorLogEntry[]>(data.errors || []);
+	let summary = $state(data.summary || []);
+	let loading = $state(false);
+	let selectedError = $state<ErrorLogEntry | null>(null);
+	let selectedErrorIds = $state<Set<string>>(new Set());
+	let selectAll = $state(false);
+	let bulkProcessing = $state(false);
 
 	// Modal state
-	let infoModal = {
+	let infoModal = $state({
 		isOpen: false,
 		title: '',
 		message: ''
-	};
-	let resolutionNotes = '';
-	let resolveModalOpen = false;
-	let currentErrorToResolve: string | null = null;
-	let bulkResolveModalOpen = false;
+	});
+	let resolutionNotes = $state('');
+	let resolveModalOpen = $state(false);
+	let currentErrorToResolve = $state<string | null>(null);
+	let bulkResolveModalOpen = $state(false);
 
 	// Filters - Default to showing only unresolved errors
-	let filterSeverity: ErrorSeverity | '' = '';
-	let filterType: ErrorType | '' = '';
-	let filterResolved: boolean | null = false; // Default to unresolved only
-	let filterUserId = '';
-	let filterProjectId = '';
+	let filterSeverity = $state<ErrorSeverity | ''>('');
+	let filterType = $state<ErrorType | ''>('');
+	let filterResolvedRaw = $state<string>('false'); // String for select component
+	let filterUserId = $state('');
+	let filterProjectId = $state('');
+
+	// Derived computed value for actual filter
+	let filterResolved = $derived<boolean | null>(
+		filterResolvedRaw === 'true' ? true : filterResolvedRaw === 'false' ? false : null
+	);
 
 	// Pagination
-	let currentPage = 1;
-	let itemsPerPage = 50;
-	let hasMore = false;
-	let totalErrors = 0;
+	let currentPage = $state(1);
+	let itemsPerPage = $state(50);
+	let hasMore = $state(false);
+	let totalErrors = $state(0);
 
 	async function loadErrors() {
 		loading = true;
@@ -210,7 +215,7 @@
 		loadErrors();
 	}
 
-	function getSeverityColor(severity: ErrorSeverity) {
+	function getSeverityColor(severity: ErrorSeverity | undefined) {
 		switch (severity) {
 			case 'critical':
 				return 'text-red-600 bg-red-50 dark:text-red-400 dark:bg-red-900/20';
@@ -244,21 +249,24 @@
 		return dateObj.toLocaleString(undefined, options);
 	}
 
-	function truncate(str: string, length: number) {
-		if (str && str?.length <= length) return str;
-		return str ? str.substring(0, length) + '...' : '';
+	function truncate(str: string | undefined, length: number) {
+		if (!str) return '';
+		if (str.length <= length) return str;
+		return str.substring(0, length) + '...';
 	}
 
 	// Reset page when filters change
-	$: if (
-		filterSeverity ||
-		filterType ||
-		filterResolved !== null ||
-		filterUserId ||
-		filterProjectId
-	) {
-		currentPage = 1;
-	}
+	$effect(() => {
+		if (
+			filterSeverity ||
+			filterType ||
+			filterResolved !== null ||
+			filterUserId ||
+			filterProjectId
+		) {
+			currentPage = 1;
+		}
+	});
 
 	// Load initial data if empty
 	onMount(() => {
@@ -306,7 +314,7 @@
 				{/if}
 				<Button
 					onclick={() => {
-						filterResolved = filterResolved === false ? null : false;
+						filterResolvedRaw = filterResolved === false ? 'null' : 'false';
 						loadErrors();
 					}}
 					variant="secondary"
@@ -399,14 +407,14 @@
 						Status
 					</div>
 					<Select
-						bind:value={filterResolved}
+						bind:value={filterResolvedRaw}
 						onchange={loadErrors}
 						size="md"
 						placeholder="Unresolved"
 					>
-						<option value={false}>Unresolved</option>
-						<option value={true}>Resolved</option>
-						<option value={null}>All</option>
+						<option value="false">Unresolved</option>
+						<option value="true">Resolved</option>
+						<option value="null">All</option>
 					</Select>
 				</div>
 

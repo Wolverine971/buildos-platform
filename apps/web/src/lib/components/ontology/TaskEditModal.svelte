@@ -26,6 +26,12 @@
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
 	import Badge from '$lib/components/ui/Badge.svelte';
+	import FormField from '$lib/components/ui/FormField.svelte';
+	import TextInput from '$lib/components/ui/TextInput.svelte';
+	import Textarea from '$lib/components/ui/Textarea.svelte';
+	import Card from '$lib/components/ui/Card.svelte';
+	import CardHeader from '$lib/components/ui/CardHeader.svelte';
+	import CardBody from '$lib/components/ui/CardBody.svelte';
 	import { fly } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
 	import FSMStateVisualizer from './FSMStateVisualizer.svelte';
@@ -34,6 +40,10 @@
 	import RichMarkdownEditor from '$lib/components/ui/RichMarkdownEditor.svelte';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
 	import { toastService } from '$lib/stores/toast.store';
+	import {
+		getTaskStateBadgeClass,
+		getPriorityBadgeClass
+	} from '$lib/utils/ontology-badge-styles';
 	import {
 		createTaskDocument,
 		fetchTaskDocuments,
@@ -111,6 +121,72 @@
 		return workspaceDocuments.find((doc) => doc.document.id === selectedWorkspaceDocId);
 	});
 
+	const priorityLevels = [
+		{
+			value: 1,
+			label: 'P1 • Critical',
+			badgeIntent: 'urgent' as const,
+			description: 'Requires immediate attention'
+		},
+		{
+			value: 2,
+			label: 'P2 • High',
+			badgeIntent: 'high' as const,
+			description: 'High impact deliverable'
+		},
+		{
+			value: 3,
+			label: 'P3 • Medium',
+			badgeIntent: 'medium' as const,
+			description: 'Balanced workload'
+		},
+		{
+			value: 4,
+			label: 'P4 • Low',
+			badgeIntent: 'low' as const,
+			description: 'Can be scheduled later'
+		},
+		{
+			value: 5,
+			label: 'P5 • Nice to have',
+			badgeIntent: 'low' as const,
+			description: 'Quality-of-life improvement'
+		}
+	];
+
+	const defaultPriorityLevel = priorityLevels[2];
+
+	const priorityDisplay = $derived.by(() => {
+		const numericPriority = Number(priority);
+		return (
+			priorityLevels.find((level) => level.value === numericPriority) ?? defaultPriorityLevel
+		);
+	});
+
+	const stateBadgeClasses = $derived(
+		`px-3 py-1 rounded-full text-xs font-semibold capitalize ${getTaskStateBadgeClass(stateKey)}`
+	);
+
+	const priorityBadgeClasses = $derived(
+		`px-3 py-1 rounded-full text-xs font-semibold ${getPriorityBadgeClass(priorityDisplay.badgeIntent)}`
+	);
+
+	const selectedPlan = $derived.by(() => plans.find((plan) => plan.id === planId) ?? null);
+	const selectedGoal = $derived.by(() => goals.find((goal) => goal.id === goalId) ?? null);
+	const selectedMilestone = $derived.by(
+		() => milestones.find((milestone) => milestone.id === milestoneId) ?? null
+	);
+
+	const milestoneDueLabel = $derived.by(() =>
+		selectedMilestone?.due_at ? formatDateOnly(selectedMilestone.due_at) : null
+	);
+
+	const detailsFormId = $derived(`task-edit-${taskId}-details`);
+	const formattedStateLabel = $derived(formatStateLabel(stateKey));
+	const lastUpdatedLabel = $derived(
+		formatTimestamp(task?.updated_at ?? task?.created_at ?? null)
+	);
+
 	// FSM related
 	let allowedTransitions = $state<any[]>([]);
 
@@ -132,7 +208,9 @@
 
 	// Load task data when modal opens
 	$effect(() => {
-		loadTask();
+		if (taskId) {
+			loadTask();
+		}
 	});
 
 	$effect(() => {
@@ -174,6 +252,28 @@
 		if (!props || typeof props !== 'object') return '';
 		const milestoneId = (props as Record<string, unknown>).supporting_milestone_id;
 		return typeof milestoneId === 'string' && milestoneId.trim().length > 0 ? milestoneId : '';
+	}
+
+	function formatStateLabel(value: string): string {
+		return value
+			.split('_')
+			.filter(Boolean)
+			.map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
+			.join(' ');
+	}
+
+	function formatTimestamp(value: string | null | undefined): string | null {
+		if (!value) return null;
+		const date = new Date(value);
+		if (Number.isNaN(date.getTime())) return null;
+		return date.toLocaleString();
+	}
+
+	function formatDateOnly(value: string | null | undefined): string | null {
+		if (!value) return null;
+		const date = new Date(value);
+		if (Number.isNaN(date.getTime())) return null;
+		return date.toLocaleDateString();
 	}
 
 	async function loadTask() {
@@ -218,7 +318,17 @@
 			const response = await fetch(`/api/onto/fsm/transitions?kind=task&id=${taskId}`);
 			if (response.ok) {
 				const data = await response.json();
-				allowedTransitions = data.data?.transitions || [];
+				allowedTransitions =
+					(data.data?.transitions || []).map((transition: any) => ({
+						...transition,
+						can_run:
+							typeof transition?.can_run === 'boolean'
+								? (transition.can_run as boolean)
+								: true,
+						failed_guards: Array.isArray(transition?.failed_guards)
+							? transition.failed_guards
+							: []
+					})) ?? [];
 			}
 		} catch (err) {
 			console.error('Error loading transitions:', err);
@@ -366,7 +476,7 @@
 			const requestBody = {
 				title: title.trim(),
 				description: description.trim() || null,
-				priority,
+				priority: Number(priority),
 				plan_id: planId || null,
 				state_key: stateKey,
 				goal_id: goalId?.trim() || null,
@@ -494,19 +604,19 @@
 			<p class="text-red-600 dark:text-red-400">Task not found</p>
 		</div>
 	{:else}
-		<div class="px-4 sm:px-6 py-4">
+		<div class="px-4 sm:px-6 py-6">
 			<!-- Tab Navigation -->
 			<div
-				class="flex items-center gap-2 mb-6 p-1 bg-gray-100 dark:bg-gray-800 rounded-lg"
+				class="flex items-center gap-1 mb-6 p-1 bg-gradient-to-r from-gray-50 to-slate-50 dark:from-gray-800 dark:to-gray-900 rounded-lg border border-gray-200 dark:border-gray-700"
 				role="tablist"
 				aria-label="Task views"
 			>
 				<button
 					type="button"
-					class={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
+					class={`flex-1 px-4 py-2.5 rounded-md text-sm font-semibold transition-all duration-300 ${
 						activeView === 'details'
-							? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm'
-							: 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+							? 'bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/50 dark:to-purple-950/50 text-blue-700 dark:text-blue-300 shadow-md border-2 border-blue-600 dark:border-blue-500'
+							: 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-white/50 dark:hover:bg-gray-800/50'
 					}`}
 					aria-pressed={activeView === 'details'}
 					onclick={() => setActiveView('details')}
@@ -515,10 +625,10 @@
 				</button>
 				<button
 					type="button"
-					class={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
+					class={`flex-1 px-4 py-2.5 rounded-md text-sm font-semibold transition-all duration-300 ${
 						activeView === 'workspace'
-							? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm'
-							: 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+							? 'bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/50 dark:to-purple-950/50 text-blue-700 dark:text-blue-300 shadow-md border-2 border-blue-600 dark:border-blue-500'
+							: 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-white/50 dark:hover:bg-gray-800/50'
 					}`}
 					aria-pressed={activeView === 'workspace'}
 					onclick={() => setActiveView('workspace')}
@@ -528,149 +638,199 @@
 			</div>
 
 			<!-- Tab Content with Horizontal Slide Animation -->
-			<div class="relative overflow-hidden min-h-[500px]">
+			<div class="relative overflow-hidden" style="min-height: 500px; max-height: 70vh;">
 				{#key activeView}
 					<div
 						in:fly={{ x: slideDirection * 100, duration: 300, easing: cubicOut }}
 						out:fly={{ x: slideDirection * -100, duration: 300, easing: cubicOut }}
-						class="absolute inset-0"
+						class="absolute inset-0 overflow-y-auto"
 					>
 						{#if activeView === 'details'}
 							<!-- DETAILS TAB -->
-							<div class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 h-full">
-								<!-- Main Form (Left 2 columns) -->
-								<div class="lg:col-span-2 space-y-5">
-									<!-- Task Title -->
-									<div>
-										<label
-											for="title"
-											class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+							<form
+								class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 h-full"
+								id={detailsFormId}
+								onsubmit={handleSave}
+							>
+								<section
+									class="lg:col-span-3 rounded-2xl border border-gray-200 dark:border-gray-700 bg-gradient-to-r from-white to-slate-50 dark:from-gray-900 dark:to-gray-800 p-4 sm:p-5 shadow-sm space-y-3"
+								>
+									<div class="flex flex-wrap items-center gap-2">
+										<span class={stateBadgeClasses}>{formattedStateLabel}</span>
+										<span class={priorityBadgeClasses}
+											>{priorityDisplay.label}</span
 										>
-											Task Title
-										</label>
-										<input
-											type="text"
+										<span class="text-xs text-gray-500 dark:text-gray-400">
+											{priorityDisplay.description}
+										</span>
+									</div>
+									<div
+										class="flex flex-wrap gap-2 text-xs text-gray-600 dark:text-gray-300"
+									>
+										{#if selectedPlan}
+											<span
+												class="px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-200"
+											>
+												Plan • {selectedPlan.name}
+											</span>
+										{/if}
+										{#if selectedGoal}
+											<span
+												class="px-3 py-1 rounded-full bg-purple-50 dark:bg-purple-900/30 text-purple-800 dark:text-purple-200"
+											>
+												Goal • {selectedGoal.name}
+											</span>
+										{/if}
+										{#if selectedMilestone}
+											<span
+												class="px-3 py-1 rounded-full bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-200"
+											>
+												Milestone • {selectedMilestone.title}
+												{#if milestoneDueLabel}
+													({milestoneDueLabel})
+												{/if}
+											</span>
+										{/if}
+									</div>
+									<div
+										class="text-xs text-gray-500 dark:text-gray-400 flex flex-wrap gap-4"
+									>
+										<span>
+											Last updated {lastUpdatedLabel ?? 'Not available'}
+										</span>
+										<span>Type • {task.type_key || 'task.basic'}</span>
+									</div>
+								</section>
+
+								<!-- Main Form (Left 2 columns) -->
+								<div class="lg:col-span-2 space-y-6">
+									<!-- Task Title -->
+									<FormField
+										label="Task Title"
+										labelFor="title"
+										required={true}
+										error={!title.trim() && error
+											? 'Task title is required'
+											: ''}
+									>
+										<TextInput
 											id="title"
 											bind:value={title}
 											placeholder="Enter task title..."
-											required
+											required={true}
 											disabled={isSaving}
-											class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
+											error={!title.trim() && error ? true : false}
+											size="md"
 										/>
-									</div>
+									</FormField>
 
 									<!-- Description -->
-									<div>
-										<label
-											for="description"
-											class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-										>
-											Description
-										</label>
-										<textarea
+									<FormField
+										label="Description"
+										labelFor="description"
+										hint="Provide additional context about this task"
+									>
+										<Textarea
 											id="description"
 											bind:value={description}
 											placeholder="Describe the task..."
 											rows={4}
 											disabled={isSaving}
-											class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 resize-none"
-										></textarea>
-									</div>
+											size="md"
+										/>
+									</FormField>
 
 									<!-- Priority & Plan Grid -->
 									<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-										<div>
-											<label
-												for="priority"
-												class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-											>
-												Priority
-											</label>
-											<select
+										<FormField
+											label="Priority"
+											labelFor="priority"
+											required={true}
+										>
+											<Select
 												id="priority"
-												bind:value={priority}
+												value={priority}
 												disabled={isSaving}
-												class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+												size="md"
+												placeholder="Select priority"
+												onchange={(val) => (priority = Number(val))}
 											>
 												<option value={1}>P1 - Critical</option>
 												<option value={2}>P2 - High</option>
 												<option value={3}>P3 - Medium</option>
 												<option value={4}>P4 - Low</option>
 												<option value={5}>P5 - Nice to have</option>
-											</select>
-										</div>
+											</Select>
+										</FormField>
 
 										{#if plans.length > 0}
-											<div>
-												<label
-													for="plan"
-													class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-												>
-													Plan
-												</label>
-												<select
+											<FormField
+												label="Plan"
+												labelFor="plan"
+												hint="Optional project plan"
+											>
+												<Select
 													id="plan"
 													bind:value={planId}
 													disabled={isSaving}
-													class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+													size="md"
+													placeholder="No plan"
 												>
 													<option value="">No plan</option>
 													{#each plans as plan}
 														<option value={plan.id}>{plan.name}</option>
 													{/each}
-												</select>
-											</div>
+												</Select>
+											</FormField>
 										{/if}
 
 										{#if goals.length > 0}
-											<div>
-												<label
-													for="goal"
-													class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-												>
-													Goal
-												</label>
-												<select
+											<FormField
+												label="Goal"
+												labelFor="goal"
+												hint="Link to a project goal"
+											>
+												<Select
 													id="goal"
 													bind:value={goalId}
 													disabled={isSaving}
-													class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+													size="md"
+													placeholder="No goal"
 												>
 													<option value="">No goal</option>
 													{#each goals as goal}
 														<option value={goal.id}>{goal.name}</option>
 													{/each}
-												</select>
-											</div>
+												</Select>
+											</FormField>
 										{/if}
 
 										{#if milestones.length > 0}
-											<div>
-												<label
-													for="milestone"
-													class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-												>
-													Supporting Milestone
-												</label>
-												<select
+											<FormField
+												label="Supporting Milestone"
+												labelFor="milestone"
+												hint="Connect to a milestone"
+											>
+												<Select
 													id="milestone"
 													bind:value={milestoneId}
 													disabled={isSaving}
-													class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+													size="md"
+													placeholder="No milestone"
 												>
 													<option value="">No milestone</option>
 													{#each milestones as milestone}
 														<option value={milestone.id}>
 															{milestone.title}
 															{#if milestone.due_at}
-																( {new Date(
+																({new Date(
 																	milestone.due_at
-																).toLocaleDateString()} )
+																).toLocaleDateString()})
 															{/if}
 														</option>
 													{/each}
-												</select>
-											</div>
+												</Select>
+											</FormField>
 										{/if}
 									</div>
 
@@ -689,62 +849,72 @@
 											/>
 										</div>
 									{:else}
-										<div>
-											<label
-												for="state"
-												class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-											>
-												State
-											</label>
-											<select
+										<FormField label="State" labelFor="state" required={true}>
+											<Select
 												id="state"
 												bind:value={stateKey}
 												disabled={isSaving}
-												class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+												size="md"
+												placeholder="Select state"
 											>
 												<option value="todo">To Do</option>
 												<option value="in_progress">In Progress</option>
 												<option value="blocked">Blocked</option>
 												<option value="done">Done</option>
 												<option value="archived">Archived</option>
-											</select>
-										</div>
+											</Select>
+										</FormField>
 									{/if}
 
 									<!-- Connected Documents List -->
-									{#if deliverableDocuments.length > 0}
-										<div
-											class="pt-4 border-t border-gray-200 dark:border-gray-700"
-										>
+									<div class="pt-6 border-t border-gray-200 dark:border-gray-700">
+										{#if deliverableDocuments.length > 0}
 											<h3
-												class="text-sm font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2"
+												class="text-sm font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2"
 											>
 												<FileText class="w-4 h-4 text-blue-500" />
-												Connected Documents ({deliverableDocuments.length})
+												Connected Documents
+												<Badge variant="info" size="sm">
+													{deliverableDocuments.length}
+												</Badge>
 											</h3>
-											<div class="space-y-2 max-h-48 overflow-y-auto">
+											<div
+												class="space-y-2 max-h-64 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent"
+											>
 												{#each deliverableDocuments as doc}
+													{@const timestamp = formatTimestamp(
+														doc.document.updated_at ??
+															doc.document.created_at ??
+															null
+													)}
 													<button
 														type="button"
 														onclick={() =>
 															handleDocumentClick(doc.document.id)}
-														class="w-full text-left p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-blue-400 dark:hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/10 transition-all group"
+														class="w-full text-left p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-blue-500 dark:hover:border-blue-400 bg-white dark:bg-gray-800 hover:bg-gradient-to-br hover:from-blue-50 hover:to-indigo-50 dark:hover:from-blue-950/20 dark:hover:to-indigo-950/20 transition-all duration-300 group shadow-sm hover:shadow-md"
 													>
 														<div
-															class="flex items-center justify-between gap-2"
+															class="flex items-center justify-between gap-3"
 														>
 															<div class="flex-1 min-w-0">
 																<p
-																	class="font-medium text-gray-900 dark:text-white truncate"
+																	class="font-semibold text-gray-900 dark:text-white truncate group-hover:text-blue-700 dark:group-hover:text-blue-300 transition-colors"
 																>
 																	{doc.document.title ||
-																		'Untitled'}
+																		'Untitled Document'}
 																</p>
 																<p
-																	class="text-xs text-gray-500 dark:text-gray-400 truncate"
+																	class="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5"
 																>
 																	{doc.document.type_key}
 																</p>
+																{#if timestamp}
+																	<p
+																		class="text-xs text-gray-400 dark:text-gray-500 mt-1"
+																	>
+																		Updated {timestamp}
+																	</p>
+																{/if}
 															</div>
 															<div
 																class="flex items-center gap-2 shrink-0"
@@ -754,15 +924,50 @@
 																		'draft'}
 																</Badge>
 																<ExternalLink
-																	class="w-4 h-4 text-gray-400 group-hover:text-blue-500 transition-colors"
+																	class="w-4 h-4 text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors"
 																/>
 															</div>
 														</div>
 													</button>
 												{/each}
 											</div>
-										</div>
-									{/if}
+										{:else}
+											<div
+												class="rounded-xl border border-dashed border-gray-300 dark:border-gray-700 p-6 text-center bg-gray-50/70 dark:bg-gray-800/40"
+											>
+												<FileText
+													class="w-8 h-8 text-gray-400 mx-auto mb-3"
+												/>
+												<p
+													class="text-sm text-gray-600 dark:text-gray-400 mb-4"
+												>
+													Keep critical briefs and notes attached to this
+													task so the workspace stays in sync.
+												</p>
+												<div
+													class="flex flex-col sm:flex-row gap-2 justify-center"
+												>
+													<Button
+														type="button"
+														variant="secondary"
+														size="sm"
+														onclick={() => setActiveView('workspace')}
+													>
+														Open workspace
+													</Button>
+													<Button
+														type="button"
+														variant="primary"
+														size="sm"
+														onclick={() =>
+															openWorkspaceDocumentModal(null)}
+													>
+														Create document
+													</Button>
+												</div>
+											</div>
+										{/if}
+									</div>
 
 									{#if error}
 										<div
@@ -778,301 +983,269 @@
 								<!-- Sidebar (Right column) -->
 								<div class="space-y-4">
 									<!-- Task Metadata -->
-									<div
-										class="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 rounded-lg p-4 space-y-3 border border-gray-200 dark:border-gray-700 shadow-sm"
-									>
-										<h3
-											class="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide flex items-center gap-2"
-										>
-											<span class="w-1.5 h-1.5 bg-blue-500 rounded-full"
-											></span>
-											Task Information
-										</h3>
+									<Card variant="elevated">
+										<CardHeader variant="default">
+											<h3
+												class="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide flex items-center gap-2"
+											>
+												<span class="w-1.5 h-1.5 bg-blue-500 rounded-full"
+												></span>
+												Task Information
+											</h3>
+										</CardHeader>
+										<CardBody padding="sm">
+											<div class="space-y-2 text-sm">
+												<div class="flex justify-between items-center">
+													<span class="text-gray-600 dark:text-gray-400"
+														>Type:</span
+													>
+													<Badge variant="info" size="sm">
+														{task.type_key || 'task.basic'}
+													</Badge>
+												</div>
 
-										<div class="space-y-2 text-sm">
-											<div class="flex justify-between">
-												<span class="text-gray-600 dark:text-gray-400"
-													>Type:</span
-												>
-												<span
-													class="font-mono text-gray-900 dark:text-white"
-													>{task.type_key || 'task.basic'}</span
-												>
-											</div>
-
-											<div class="flex justify-between">
-												<span class="text-gray-600 dark:text-gray-400"
-													>ID:</span
-												>
-												<span class="font-mono text-xs text-gray-500"
-													>{task.id.slice(0, 8)}...</span
-												>
-											</div>
-
-											{#if task.created_at}
 												<div class="flex justify-between">
 													<span class="text-gray-600 dark:text-gray-400"
-														>Created:</span
+														>ID:</span
 													>
-													<span class="text-gray-900 dark:text-white">
-														{new Date(
-															task.created_at
-														).toLocaleDateString()}
-													</span>
+													<span class="font-mono text-xs text-gray-500"
+														>{task.id.slice(0, 8)}...</span
+													>
 												</div>
-											{/if}
 
-											{#if task.updated_at}
-												<div class="flex justify-between">
-													<span class="text-gray-600 dark:text-gray-400"
-														>Updated:</span
-													>
-													<span class="text-gray-900 dark:text-white">
-														{new Date(
-															task.updated_at
-														).toLocaleDateString()}
-													</span>
-												</div>
-											{/if}
-										</div>
-									</div>
+												{#if task.created_at}
+													<div class="flex justify-between">
+														<span
+															class="text-gray-600 dark:text-gray-400"
+															>Created:</span
+														>
+														<span class="text-gray-900 dark:text-white">
+															{new Date(
+																task.created_at
+															).toLocaleDateString()}
+														</span>
+													</div>
+												{/if}
+
+												{#if task.updated_at}
+													<div class="flex justify-between">
+														<span
+															class="text-gray-600 dark:text-gray-400"
+															>Updated:</span
+														>
+														<span class="text-gray-900 dark:text-white">
+															{new Date(
+																task.updated_at
+															).toLocaleDateString()}
+														</span>
+													</div>
+												{/if}
+											</div>
+										</CardBody>
+									</Card>
 
 									<!-- Recurrence -->
-									<div
-										class="bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 rounded-lg p-4 space-y-3 border border-indigo-200 dark:border-indigo-800/70 shadow-sm"
-									>
-										<h3
-											class="text-xs font-semibold text-indigo-900 dark:text-indigo-100 uppercase tracking-wide flex items-center gap-2"
-										>
-											<span class="text-base">🔄</span>
-											Recurrence
-										</h3>
+									<Card variant="elevated">
+										<CardHeader variant="accent">
+											<h3
+												class="text-xs font-semibold uppercase tracking-wide flex items-center gap-2"
+											>
+												<span class="text-base">🔄</span>
+												Recurrence
+											</h3>
+										</CardHeader>
+										<CardBody padding="sm">
+											{#if isSeriesMaster && seriesMeta}
+												<div class="space-y-2 text-sm">
+													<p class="text-indigo-900 dark:text-indigo-100">
+														This task controls a recurring series.
+													</p>
+													<ul
+														class="text-indigo-800 dark:text-indigo-100 space-y-1"
+													>
+														{#if seriesId}
+															<li>
+																<span class="font-medium"
+																	>Series ID:</span
+																>
+																<span
+																	class="font-mono text-xs break-all"
+																	>{seriesId}</span
+																>
+															</li>
+														{/if}
+														<li>
+															<span class="font-medium"
+																>Timezone:</span
+															>
+															{seriesMeta.timezone}
+														</li>
+														{#if seriesMeta.rrule}
+															<li class="break-all">
+																<span class="font-medium"
+																	>RRULE:</span
+																>
+																{seriesMeta.rrule}
+															</li>
+														{/if}
+														{#if seriesMeta.instance_count}
+															<li>
+																<span class="font-medium"
+																	>Instances:</span
+																>
+																{seriesMeta.instance_count}
+															</li>
+														{/if}
+													</ul>
+												</div>
 
-										{#if isSeriesMaster && seriesMeta}
-											<div class="space-y-2 text-sm">
-												<p class="text-indigo-900 dark:text-indigo-100">
-													This task controls a recurring series.
-												</p>
-												<ul
-													class="text-indigo-800 dark:text-indigo-100 space-y-1"
+												{#if seriesActionError}
+													<p
+														class="text-sm text-red-600 dark:text-red-400"
+													>
+														{seriesActionError}
+													</p>
+												{/if}
+
+												{#if !showSeriesDeleteConfirm}
+													<Button
+														size="sm"
+														variant="danger"
+														class="w-full"
+														onclick={() =>
+															(showSeriesDeleteConfirm = true)}
+													>
+														Delete Series
+													</Button>
+												{:else}
+													<div class="space-y-2">
+														<p
+															class="text-sm text-indigo-900 dark:text-indigo-100"
+														>
+															Delete this series? Completed instances
+															remain unless you force delete.
+														</p>
+														<div class="flex flex-col gap-2">
+															<Button
+																variant="danger"
+																size="sm"
+																disabled={isDeletingSeries}
+																onclick={() =>
+																	handleDeleteSeries(false)}
+															>
+																{#if isDeletingSeries}
+																	<Loader
+																		class="w-4 h-4 animate-spin"
+																	/>
+																	Removing…
+																{:else}
+																	Delete Upcoming Only
+																{/if}
+															</Button>
+															<Button
+																variant="danger"
+																size="sm"
+																disabled={isDeletingSeries}
+																onclick={() =>
+																	handleDeleteSeries(true)}
+															>
+																{#if isDeletingSeries}
+																	<Loader
+																		class="w-4 h-4 animate-spin"
+																	/>
+																	Removing…
+																{:else}
+																	Force Delete All
+																{/if}
+															</Button>
+															<Button
+																variant="ghost"
+																size="sm"
+																onclick={() => {
+																	showSeriesDeleteConfirm = false;
+																	seriesActionError = '';
+																}}
+																disabled={isDeletingSeries}
+															>
+																Cancel
+															</Button>
+														</div>
+													</div>
+												{/if}
+											{:else if isSeriesInstance && seriesMeta}
+												<p
+													class="text-sm text-indigo-900 dark:text-indigo-100"
 												>
-													{#if seriesId}
-														<li>
-															<span class="font-medium"
-																>Series ID:</span
-															>
-															<span
-																class="font-mono text-xs break-all"
-																>{seriesId}</span
-															>
-														</li>
+													This task is part of a recurring series
+													{#if seriesMeta.master_task_id}
+														(master task: {seriesMeta.master_task_id})
 													{/if}
-													<li>
-														<span class="font-medium">Timezone:</span>
-														{seriesMeta.timezone}
-													</li>
-													{#if seriesMeta.rrule}
-														<li class="break-all">
-															<span class="font-medium">RRULE:</span>
-															{seriesMeta.rrule}
-														</li>
-													{/if}
-													{#if seriesMeta.instance_count}
-														<li>
-															<span class="font-medium"
-																>Instances:</span
-															>
-															{seriesMeta.instance_count}
-														</li>
-													{/if}
-												</ul>
-											</div>
-
-											{#if seriesActionError}
-												<p class="text-sm text-red-600 dark:text-red-400">
-													{seriesActionError}
+													. Manage recurrence from the series master.
 												</p>
-											{/if}
-
-											{#if !showSeriesDeleteConfirm}
+											{:else}
+												<p
+													class="text-sm text-indigo-900 dark:text-indigo-100"
+												>
+													Automatically create future instances on a
+													schedule.
+												</p>
 												<Button
 													size="sm"
-													variant="danger"
+													variant="secondary"
 													class="w-full"
-													onclick={() => (showSeriesDeleteConfirm = true)}
+													onclick={() => (showSeriesModal = true)}
 												>
-													Delete Series
+													Make Recurring
 												</Button>
-											{:else}
-												<div class="space-y-2">
-													<p
-														class="text-sm text-indigo-900 dark:text-indigo-100"
-													>
-														Delete this series? Completed instances
-														remain unless you force delete.
-													</p>
-													<div class="flex flex-col gap-2">
-														<Button
-															variant="danger"
-															size="sm"
-															disabled={isDeletingSeries}
-															onclick={() =>
-																handleDeleteSeries(false)}
-														>
-															{#if isDeletingSeries}
-																<Loader
-																	class="w-4 h-4 animate-spin"
-																/>
-																Removing…
-															{:else}
-																Delete Upcoming Only
-															{/if}
-														</Button>
-														<Button
-															variant="danger"
-															size="sm"
-															disabled={isDeletingSeries}
-															onclick={() => handleDeleteSeries(true)}
-														>
-															{#if isDeletingSeries}
-																<Loader
-																	class="w-4 h-4 animate-spin"
-																/>
-																Removing…
-															{:else}
-																Force Delete All
-															{/if}
-														</Button>
-														<Button
-															variant="ghost"
-															size="sm"
-															onclick={() => {
-																showSeriesDeleteConfirm = false;
-																seriesActionError = '';
-															}}
-															disabled={isDeletingSeries}
-														>
-															Cancel
-														</Button>
-													</div>
-												</div>
 											{/if}
-										{:else if isSeriesInstance && seriesMeta}
-											<p class="text-sm text-indigo-900 dark:text-indigo-100">
-												This task is part of a recurring series
-												{#if seriesMeta.master_task_id}
-													(master task: {seriesMeta.master_task_id})
-												{/if}
-												. Manage recurrence from the series master.
-											</p>
-										{:else}
-											<p class="text-sm text-indigo-900 dark:text-indigo-100">
-												Automatically create future instances on a schedule.
-											</p>
-											<Button
-												size="sm"
-												variant="secondary"
-												class="w-full"
-												onclick={() => (showSeriesModal = true)}
-											>
-												Make Recurring
-											</Button>
-										{/if}
-									</div>
-
-									<!-- Danger Zone -->
-									<div
-										class="border-2 border-red-200 dark:border-red-800 bg-red-50/50 dark:bg-red-900/10 rounded-lg p-4"
-									>
-										<h3
-											class="text-xs font-semibold text-red-700 dark:text-red-400 mb-3 uppercase tracking-wide flex items-center gap-2"
-										>
-											<span class="text-base">⚠️</span>
-											Danger Zone
-										</h3>
-
-										{#if !showDeleteConfirm}
-											<Button
-												variant="danger"
-												size="sm"
-												onclick={() => (showDeleteConfirm = true)}
-												disabled={isDeleting}
-												class="w-full"
-											>
-												<Trash2 class="w-3.5 h-3.5" />
-												Delete Task
-											</Button>
-										{:else}
-											<div class="space-y-3">
-												<p class="text-sm text-red-700 dark:text-red-300">
-													Are you sure? This cannot be undone.
-												</p>
-												<div class="flex gap-2">
-													<Button
-														variant="danger"
-														size="sm"
-														onclick={handleDelete}
-														disabled={isDeleting}
-														class="flex-1"
-													>
-														{#if isDeleting}
-															<Loader class="w-4 h-4 animate-spin" />
-														{:else}
-															Yes, Delete
-														{/if}
-													</Button>
-													<Button
-														variant="ghost"
-														size="sm"
-														onclick={() => (showDeleteConfirm = false)}
-														disabled={isDeleting}
-														class="flex-1"
-													>
-														Cancel
-													</Button>
-												</div>
-											</div>
-										{/if}
-									</div>
+										</CardBody>
+									</Card>
 								</div>
-							</div>
+							</form>
 						{:else}
 							<!-- WORKSPACE TAB -->
-							<div class="h-full flex flex-col space-y-4">
+							<div class="h-full flex flex-col space-y-4 overflow-y-auto pr-2">
 								<!-- Document Selector -->
 								<div
-									class="flex items-center gap-3 pb-3 border-b border-gray-200 dark:border-gray-700"
+									class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pb-4 border-b border-gray-200 dark:border-gray-700"
 								>
-									<FileText class="w-5 h-5 text-blue-500 shrink-0" />
-									<Select
-										value={selectedWorkspaceDocId || ''}
-										onchange={(val) => selectWorkspaceDocument(String(val))}
-										size="sm"
-										class="flex-1"
-									>
-										{#if deliverableDocuments.length === 0}
-											<option value="">No documents yet</option>
-										{:else}
-											{#each deliverableDocuments as doc}
-												<option value={doc.document.id}>
-													{doc.document.title || 'Untitled'} ({doc
-														.document.state_key})
-												</option>
-											{/each}
-										{/if}
-									</Select>
+									<div class="flex items-center gap-3 flex-1 min-w-0">
+										<FileText
+											class="w-5 h-5 text-blue-500 shrink-0 hidden sm:block"
+										/>
+										<div class="flex-1 min-w-0">
+											<Select
+												value={selectedWorkspaceDocId || ''}
+												onchange={(val) =>
+													selectWorkspaceDocument(String(val))}
+												size={{ base: 'sm', md: 'md' }}
+											>
+												{#if deliverableDocuments.length === 0}
+													<option value="">No documents yet</option>
+												{:else}
+													{#each deliverableDocuments as doc}
+														<option value={doc.document.id}>
+															{doc.document.title || 'Untitled'} ({doc
+																.document.state_key})
+														</option>
+													{/each}
+												{/if}
+											</Select>
+										</div>
+									</div>
 									<Button
 										size="sm"
 										variant="secondary"
 										onclick={() => openWorkspaceDocumentModal(null)}
+										class="w-full sm:w-auto"
 									>
-										+ New
+										+ New Document
 									</Button>
 								</div>
 
 								<!-- RichMarkdownEditor -->
 								{#if selectedWorkspaceDoc}
-									<div class="flex-1 min-h-0">
+									<div class="flex-1 min-h-0 overflow-y-auto">
 										<RichMarkdownEditor
 											bind:value={workspaceDocContent}
 											rows={18}
@@ -1114,52 +1287,80 @@
 	<!-- Footer Actions -->
 	<svelte:fragment slot="footer">
 		<div
-			class="flex items-center justify-between gap-3 px-4 sm:px-6 py-3 sm:py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50"
+			class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 px-4 sm:px-6 py-3 sm:py-4 border-t border-gray-200 dark:border-gray-700 bg-gradient-to-r from-gray-50 to-slate-50 dark:from-gray-900/50 dark:to-gray-800/50"
 		>
 			{#if activeView === 'details'}
+				<!-- Delete button on the left -->
 				<Button
 					type="button"
-					variant="ghost"
+					variant="danger"
 					size="sm"
-					onclick={handleClose}
-					disabled={isSaving || isDeleting}
+					onclick={() => (showDeleteConfirm = true)}
+					disabled={isDeleting || isSaving}
+					class="w-full sm:w-auto"
 				>
-					Cancel
-				</Button>
-				<Button
-					type="button"
-					variant="primary"
-					size="sm"
-					onclick={handleSave}
-					disabled={isSaving || isDeleting || !title.trim()}
-				>
-					{#if isSaving}
+					{#if isDeleting}
 						<Loader class="w-4 h-4 animate-spin" />
-						Saving...
+						Deleting...
 					{:else}
-						<Save class="w-4 h-4" />
-						Save Changes
+						<Trash2 class="w-4 h-4" />
+						Delete Task
 					{/if}
 				</Button>
+
+				<!-- Cancel and Save buttons on the right -->
+				<div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+					<Button
+						type="button"
+						variant="ghost"
+						size="sm"
+						onclick={handleClose}
+						disabled={isSaving || isDeleting}
+						class="w-full sm:w-auto"
+					>
+						Cancel
+					</Button>
+					<Button
+						type="submit"
+						form={detailsFormId}
+						variant="primary"
+						size="sm"
+						disabled={isSaving || isDeleting || !title.trim()}
+						class="w-full sm:w-auto"
+					>
+						{#if isSaving}
+							<Loader class="w-4 h-4 animate-spin" />
+							Saving...
+						{:else}
+							<Save class="w-4 h-4" />
+							Save Changes
+						{/if}
+					</Button>
+				</div>
 			{:else}
 				<Button
 					type="button"
 					variant="ghost"
 					size="sm"
 					onclick={() => setActiveView('details')}
+					class="w-full sm:w-auto"
 				>
 					← Back to Details
 				</Button>
-				<div class="flex items-center gap-2">
+				<div
+					class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto"
+				>
 					{#if selectedWorkspaceDoc && !selectedWorkspaceDoc.edge?.props?.handed_off}
 						<Button
 							type="button"
 							variant="secondary"
 							size="sm"
 							onclick={() => handlePromoteWorkspaceDocument(selectedWorkspaceDocId!)}
+							class="w-full sm:w-auto"
 						>
 							<CheckCircle2 class="w-4 h-4" />
-							Promote to Project
+							<span class="hidden sm:inline">Promote to Project</span>
+							<span class="sm:hidden">Promote</span>
 						</Button>
 					{/if}
 					<Button
@@ -1168,6 +1369,7 @@
 						size="sm"
 						onclick={saveWorkspaceDocument}
 						disabled={workspaceDocSaving || !selectedWorkspaceDocId}
+						class="w-full sm:w-auto"
 					>
 						{#if workspaceDocSaving}
 							<Loader class="w-4 h-4 animate-spin" />
