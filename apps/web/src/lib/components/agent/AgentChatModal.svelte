@@ -2,8 +2,8 @@
 <!--
   AgentChatModal Component
 
-  Multi-agent chat interface showing planner-executor conversations.
-  Displays agent activity, plan steps, and iterative conversations.
+  BuildOS chat interface showing planner-executor conversations.
+  Displays BuildOS activity, plan steps, and iterative conversations.
 
   Design: High-end Apple-inspired UI with responsive layout, dark mode,
   and high information density following BuildOS Style Guide.
@@ -30,7 +30,8 @@
 		ChatContextType,
 		ChatMessage,
 		ChatRole,
-		AgentSSEMessage
+		AgentSSEMessage,
+		ContextUsageSnapshot
 	} from '@buildos/shared-types';
 	import { renderMarkdown, getProseClasses, hasMarkdownFormatting } from '$lib/utils/markdown';
 	import {
@@ -271,6 +272,14 @@
 	let currentAssistantMessageId = $state<string | null>(null);
 	let currentThinkingBlockId = $state<string | null>(null); // NEW: Track current thinking block
 	let messagesContainer = $state<HTMLElement | undefined>(undefined);
+	let contextUsage = $state<ContextUsageSnapshot | null>(null);
+	const contextUsagePercent = $derived.by(() => Math.min(contextUsage?.usagePercent ?? 0, 120));
+	const contextUsageBarClass = $derived.by(() => {
+		if (!contextUsage) return 'bg-slate-300 dark:bg-slate-700';
+		if (contextUsage.status === 'over_budget') return 'bg-rose-500';
+		if (contextUsage.status === 'near_limit') return 'bg-amber-500';
+		return 'bg-emerald-500';
+	});
 
 	// Ontology integration state
 	let lastTurnContext = $state<LastTurnContext | null>(null);
@@ -279,8 +288,8 @@
 
 	type AgentLoopState = 'thinking' | 'executing_plan' | 'waiting_on_user';
 	const AGENT_STATE_MESSAGES: Record<AgentLoopState, string> = {
-		thinking: 'Agent is thinking...',
-		executing_plan: 'Agent is executing...',
+		thinking: 'BuildOS is thinking...',
+		executing_plan: 'BuildOS is executing...',
 		waiting_on_user: 'Waiting on your direction...'
 	};
 
@@ -369,6 +378,7 @@
 		agentStateDetails = null;
 		ontologyLoaded = false;
 		ontologySummary = null;
+		contextUsage = null;
 		voiceErrorMessage = '';
 		showFocusSelector = false;
 		agentLoopActive = false;
@@ -400,7 +410,7 @@
 			agentToAgentStep = 'agent';
 			selectedAgentId = null;
 			selectedContextType = null;
-			selectedContextLabel = detail.label ?? 'Agent to agent chat';
+			selectedContextLabel = detail.label ?? 'BuildOS automation';
 			projectFocus = null;
 			return;
 		}
@@ -446,9 +456,7 @@
 		logFocusActivity('Focus reset', defaultProjectFocus);
 	}
 
-	const selectedAgentLabel = $derived(
-		selectedAgentId ? 'Actionable Insight Agent' : 'Select an agent'
-	);
+	const selectedAgentLabel = $derived(selectedAgentId ? 'Actionable Insight' : 'Select a helper');
 
 	async function loadAgentProjects(force = false) {
 		if (agentProjectsLoading || (!force && agentProjects.length > 0)) return;
@@ -526,15 +534,15 @@
 	async function runAgentToAgentTurn() {
 		if (!agentToAgentMode || !agentLoopActive || agentMessageLoading) return;
 		if (!selectedAgentId) {
-			error = 'Select an agent to continue.';
+			error = 'Select a helper to continue.';
 			return;
 		}
 		if (!selectedEntityId || selectedContextType !== 'project') {
-			error = 'Select a project for the agent-to-agent chat.';
+			error = 'Select a project for the automation loop.';
 			return;
 		}
 		if (!agentGoal.trim()) {
-			error = 'Provide a goal for the agent-to-agent chat.';
+			error = 'Provide a goal for this automation.';
 			return;
 		}
 		if (agentTurnsRemaining <= 0) {
@@ -554,14 +562,14 @@
 			});
 			const agentMessage = response?.message?.trim();
 			if (!agentMessage) {
-				error = 'The selected agent did not return a message.';
+				error = 'BuildOS did not receive an update from the helper.';
 				agentLoopActive = false;
 				return;
 			}
 			await sendMessage(agentMessage, { senderType: 'agent_peer', suppressInputClear: true });
 		} catch (err) {
 			console.error('[AgentChat] Failed to run agent-to-agent turn', err);
-			error = 'Failed to fetch the agent message.';
+			error = 'Failed to fetch the helper update.';
 			agentLoopActive = false;
 		} finally {
 			agentMessageLoading = false;
@@ -571,7 +579,7 @@
 	async function startAgentToAgentChat() {
 		if (isStreaming || agentMessageLoading) return;
 		if (!selectedAgentId) {
-			error = 'Select an agent to start.';
+			error = 'Select a helper to start.';
 			return;
 		}
 		if (!selectedEntityId || selectedContextType !== 'project') {
@@ -579,7 +587,7 @@
 			return;
 		}
 		if (!agentGoal.trim()) {
-			error = 'Add a goal for the AI agent.';
+			error = 'Add a goal for BuildOS to pursue.';
 			return;
 		}
 		if (agentTurnBudget <= 0) {
@@ -1009,8 +1017,8 @@
 
 		currentActivity = 'Analyzing request...';
 		agentState = 'thinking';
-		agentStateDetails = 'Agent is processing your request...';
-		updateThinkingBlockState('thinking', 'Agent is processing your request...');
+		agentStateDetails = 'BuildOS is processing your request...';
+		updateThinkingBlockState('thinking', 'BuildOS is processing your request...');
 
 		currentPlan = null;
 		lastTurnContext = null;
@@ -1164,6 +1172,10 @@
 				if (dev) {
 					console.debug('[AgentChat] Stored last turn context:', lastTurnContext);
 				}
+				break;
+
+			case 'context_usage':
+				contextUsage = event.usage ?? null;
 				break;
 
 			case 'focus_active':
@@ -1667,6 +1679,27 @@
 		});
 	}
 
+	function formatTokensEstimate(value?: number | null): string {
+		if (value === undefined || value === null || Number.isNaN(value)) return '0';
+		if (value >= 10000) return `${Math.round(value / 1000)}k`;
+		if (value >= 1000) return `${(value / 1000).toFixed(1)}k`;
+		return Math.round(value).toLocaleString();
+	}
+
+	function formatCompressionTimestamp(timestamp?: string | null): string {
+		if (!timestamp) return 'Not yet compressed';
+		const parsed = new Date(timestamp);
+		if (Number.isNaN(parsed.getTime())) return 'Unknown';
+		const diffMs = Date.now() - parsed.getTime();
+		const minutes = Math.floor(diffMs / 60000);
+		if (minutes < 1) return 'Just now';
+		if (minutes < 60) return `${minutes}m ago`;
+		const hours = Math.floor(minutes / 60);
+		if (hours < 48) return `${hours}h ago`;
+		const days = Math.floor(hours / 24);
+		return `${days}d ago`;
+	}
+
 	// Check if content should be rendered as markdown
 	function shouldRenderAsMarkdown(content: string): boolean {
 		return hasMarkdownFormatting(content);
@@ -1689,7 +1722,7 @@
 	onClose={handleClose}
 	size="xl"
 	showCloseButton={false}
-	ariaLabel="Multi-agent chat assistant dialog"
+	ariaLabel="BuildOS chat assistant dialog"
 >
 	<div
 		slot="header"
@@ -1700,7 +1733,7 @@
 				<p
 					class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
 				>
-					Agent chat
+					BuildOS chat
 				</p>
 				<div class="flex flex-wrap items-center gap-2">
 					<h2 class="text-lg font-semibold text-slate-900 dark:text-white sm:text-xl">
@@ -1754,6 +1787,61 @@
 						{/if}
 					</div>
 				{/if}
+				{#if contextUsage}
+					<div
+						class="mt-2 rounded-2xl border border-slate-200/70 bg-white/70 p-3 text-xs text-slate-600 shadow-sm dark:border-slate-700/60 dark:bg-slate-800/70 dark:text-slate-200"
+					>
+						<div class="flex flex-wrap items-center justify-between gap-2">
+							<div class="flex items-center gap-2">
+								<span
+									class="font-semibold uppercase tracking-wide text-[10px] text-slate-500 dark:text-slate-400"
+								>
+									Context usage (est.)
+								</span>
+								<span class="text-[11px] text-slate-600 dark:text-slate-300">
+									{formatTokensEstimate(contextUsage.estimatedTokens)} /
+									{formatTokensEstimate(contextUsage.tokenBudget)} tokens
+								</span>
+							</div>
+							<span
+								class={`text-[11px] font-semibold ${
+									contextUsage.status === 'over_budget'
+										? 'text-rose-600 dark:text-rose-400'
+										: contextUsage.status === 'near_limit'
+											? 'text-amber-600 dark:text-amber-400'
+											: 'text-emerald-600 dark:text-emerald-400'
+								}`}
+							>
+								{contextUsage.status === 'over_budget'
+									? 'Over budget'
+									: contextUsage.status === 'near_limit'
+										? 'Near limit'
+										: 'Healthy'}
+							</span>
+						</div>
+						<div
+							class="mt-2 h-2 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700"
+						>
+							<div
+								class={`h-full rounded-full transition-all duration-300 ${contextUsageBarClass}`}
+								style={`width: ${contextUsagePercent}%;`}
+							></div>
+						</div>
+						<div
+							class="mt-2 flex flex-wrap justify-between gap-2 text-[11px] text-slate-500 dark:text-slate-400"
+						>
+							<span>
+								≈{formatTokensEstimate(contextUsage.tokensRemaining)} tokens left in
+								budget
+							</span>
+							<span>
+								Last compressed: {formatCompressionTimestamp(
+									contextUsage.lastCompressedAt
+								)}
+							</span>
+						</div>
+					</div>
+				{/if}
 			</div>
 			<div class="flex shrink-0 items-center gap-2">
 				{#if selectedContextType}
@@ -1791,19 +1879,19 @@
 						<p
 							class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
 						>
-							Agent to agent chat
+							Automation loop
 						</p>
 						<h3 class="text-lg font-semibold text-slate-900 dark:text-white">
 							{#if agentToAgentStep === 'agent'}
-								Choose your agent
+								Choose a BuildOS helper
 							{:else if agentToAgentStep === 'project'}
 								Choose a project
 							{:else}
-								Set an agent goal
+								Set the automation goal
 							{/if}
 						</h3>
 						<p class="mt-1 text-sm text-slate-600 dark:text-slate-400">
-							Guide the Actionable Insight Agent so it can drive the BuildOS chat.
+							BuildOS will coordinate with Actionable Insight to keep work moving.
 						</p>
 					</div>
 					<button
@@ -1823,11 +1911,11 @@
 						<CardBody padding="md">
 							<div class="space-y-3">
 								<h4 class="text-base font-semibold text-slate-900 dark:text-white">
-									Actionable Insight Agent
+									Actionable Insight
 								</h4>
 								<p class="max-w-2xl text-sm text-slate-600 dark:text-slate-400">
-									This agent will craft concise, actionable prompts and send them
-									into the BuildOS agentic chat to move your project forward.
+									BuildOS will tap Actionable Insight to craft concise, actionable
+									prompts and push the work forward in chat.
 								</p>
 								<div class="flex flex-wrap items-center gap-3">
 									<Button
@@ -1835,7 +1923,7 @@
 										size="sm"
 										onclick={() => selectAgentForBridge(RESEARCH_AGENT_ID)}
 									>
-										Use this agent
+										Use Actionable Insight
 									</Button>
 									<span
 										class="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400"
@@ -1932,7 +2020,7 @@
 					<div class="flex flex-1 flex-col gap-3 overflow-hidden">
 						<div class="flex items-center justify-between">
 							<h4 class="text-base font-semibold text-slate-900 dark:text-white">
-								What should the AI agent accomplish?
+								What should BuildOS handle automatically?
 							</h4>
 							<Button variant="ghost" size="sm" onclick={backToAgentProjectSelection}>
 								Back
@@ -1948,7 +2036,7 @@
 											<span
 												class="rounded-full bg-indigo-100 px-2.5 py-1 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-200"
 											>
-												Agent: {selectedAgentLabel}
+												Helper: {selectedAgentLabel}
 											</span>
 											{#if selectedContextLabel}
 												<span
@@ -1963,14 +2051,14 @@
 												for="agent-goal-input"
 												class="block text-sm font-medium text-slate-800 dark:text-slate-200"
 											>
-												Goal for the AI agent
+												Goal for BuildOS automation
 											</label>
 											<textarea
 												id="agent-goal-input"
 												class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-purple-600 dark:focus:ring-purple-600"
 												rows="3"
 												bind:value={agentGoal}
-												placeholder="Describe what the agent should try to achieve..."
+												placeholder="Describe what BuildOS should try to achieve..."
 											></textarea>
 											<div
 												class="flex flex-col sm:flex-row sm:items-center gap-2"
@@ -1981,13 +2069,12 @@
 													onclick={startAgentToAgentChat}
 													disabled={agentGoal.trim().length === 0}
 												>
-													Start agent chat
+													Start automation
 												</Button>
 												<span
 													class="text-xs text-slate-500 dark:text-slate-400"
 												>
-													The agent will alternate turns with BuildOS
-													automatically.
+													BuildOS will coordinate turns automatically.
 												</span>
 											</div>
 										</div>
@@ -2018,7 +2105,7 @@
 								<p
 									class="text-sm leading-relaxed text-slate-600 dark:text-slate-300"
 								>
-									Ask the agent to plan, explain, or take the next step for
+									Ask BuildOS to plan, explain, or take the next step for
 									{displayContextLabel.toLowerCase()}.
 								</p>
 								<ul class="space-y-1.5 text-sm text-slate-500 dark:text-slate-400">
@@ -2049,12 +2136,12 @@
 						{#if message.type === 'user'}
 							<div class="flex justify-end">
 								<div
-									class="max-w-[85%] rounded-2xl bg-slate-900 px-4 py-3 text-sm text-white shadow-sm dark:bg-slate-100 dark:text-slate-900 sm:max-w-[80%]"
+									class="max-w-[85%] rounded-2xl border border-blue-200/50 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm dark:border-blue-500/40 dark:bg-slate-800/70 dark:text-slate-100 sm:max-w-[80%]"
 								>
 									<div class="whitespace-pre-wrap break-words leading-relaxed">
 										{message.content}
 									</div>
-									<div class="mt-1.5 text-xs text-white/70 dark:text-slate-500">
+									<div class="mt-1.5 text-xs text-slate-500 dark:text-slate-400">
 										{formatTime(message.timestamp)}
 									</div>
 								</div>
@@ -2271,10 +2358,10 @@
 					<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 						<div class="space-y-1">
 							<p class="text-sm font-semibold text-slate-900 dark:text-white">
-								Agent to agent chat is {agentLoopActive ? 'active' : 'paused'}.
+								Automation loop is {agentLoopActive ? 'active' : 'paused'}.
 							</p>
 							<p class="text-xs text-slate-600 dark:text-slate-400">
-								Agent: {selectedAgentLabel} • Project: {selectedContextLabel ??
+								Helper: {selectedAgentLabel} • Project: {selectedContextLabel ??
 									'Select a project'} • Goal: {agentGoal || 'Add a goal'}
 							</p>
 							<p class="text-xs text-slate-600 dark:text-slate-400">
@@ -2332,7 +2419,7 @@
 					</div>
 					{#if agentMessageLoading}
 						<p class="mt-2 text-xs text-slate-500 dark:text-slate-400">
-							Fetching the next agent message...
+							Fetching the next update...
 						</p>
 					{/if}
 				</div>
@@ -2365,7 +2452,7 @@
 							maxRows={6}
 							disabled={isStreaming}
 							voiceBlocked={isStreaming}
-							voiceBlockedLabel="Wait for agents..."
+							voiceBlockedLabel="Wait for BuildOS..."
 							idleHint="Enter to send · Shift + Enter for new line"
 							voiceButtonLabel="Record voice note"
 							listeningLabel="Listening"
@@ -2414,8 +2501,7 @@
 											<div
 												class="h-2 w-2 animate-pulse rounded-full bg-emerald-600 dark:bg-emerald-400"
 											></div>
-											<span class="text-xs font-semibold">Agents working</span
-											>
+											<span class="text-xs font-semibold">Working...</span>
 										</div>
 									{/if}
 								</div>

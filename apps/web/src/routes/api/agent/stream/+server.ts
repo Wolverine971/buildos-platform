@@ -38,6 +38,7 @@ import type {
 import { createAgentChatOrchestrator } from '$lib/services/agentic-chat';
 import type { StreamEvent } from '$lib/services/agentic-chat/shared/types';
 import { createLogger } from '$lib/utils/logger';
+import { ChatCompressionService } from '$lib/services/chat-compression-service';
 
 // ============================================
 // LOGGING
@@ -55,6 +56,7 @@ const RATE_LIMIT = {
 };
 
 const RECENT_MESSAGE_LIMIT = 50;
+const CONTEXT_USAGE_TOKEN_BUDGET = 2500; // Roughly matches planner conversation budget
 
 // Track user request rates
 const rateLimiter = new Map<
@@ -739,6 +741,26 @@ export const POST: RequestHandler = async ({
 		let effectiveContextType = normalizedContextType;
 
 		const agentStream = SSEResponse.createChatStream();
+		const compressionService = new ChatCompressionService(supabase);
+
+		try {
+			const historyForUsage = [...historyToUse, { content: message }];
+			const usageSnapshot = await compressionService.getContextUsageSnapshot(
+				chatSession.id,
+				historyForUsage,
+				CONTEXT_USAGE_TOKEN_BUDGET
+			);
+
+			await agentStream.sendMessage({
+				type: 'context_usage',
+				usage: usageSnapshot
+			});
+		} catch (usageError) {
+			logger.warn('Failed to send context usage snapshot', {
+				error: usageError,
+				sessionId: chatSession.id
+			});
+		}
 
 		let totalTokens = 0;
 		let assistantResponse = '';

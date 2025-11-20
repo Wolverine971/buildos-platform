@@ -31,6 +31,7 @@ export const TOOL_CATEGORIES = {
 		tools: [
 			'list_onto_tasks',
 			'search_onto_tasks',
+			'search_ontology',
 			'list_onto_goals',
 			'list_onto_plans',
 			'list_onto_documents',
@@ -102,6 +103,7 @@ const TOOL_GROUPS: Record<ToolContextScope, string[]> = {
 	],
 	global: [
 		'list_onto_projects',
+		'search_ontology',
 		'search_onto_projects',
 		'list_onto_tasks',
 		'search_onto_tasks',
@@ -114,6 +116,7 @@ const TOOL_GROUPS: Record<ToolContextScope, string[]> = {
 	project_create: ['list_onto_templates', 'request_template_creation', 'create_onto_project'],
 	project: [
 		'list_onto_projects',
+		'search_ontology',
 		'search_onto_projects',
 		'list_onto_tasks',
 		'search_onto_tasks',
@@ -219,6 +222,7 @@ export const ONTOLOGY_TOOLS = extractTools([
 	'list_onto_templates',
 	'list_onto_projects',
 	'search_onto_projects',
+	'search_ontology',
 	'get_onto_project_details',
 	'list_onto_tasks',
 	'search_onto_tasks',

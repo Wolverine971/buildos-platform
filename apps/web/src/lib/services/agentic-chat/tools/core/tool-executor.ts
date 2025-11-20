@@ -162,6 +162,13 @@ interface SearchOntoDocumentsArgs {
 	limit?: number;
 }
 
+interface SearchOntologyArgs {
+	query: string;
+	project_id?: string;
+	types?: string[];
+	limit?: number;
+}
+
 interface GetOntoDocumentDetailsArgs {
 	document_id: string;
 }
@@ -500,6 +507,9 @@ export class ChatToolExecutor {
 					break;
 				case 'search_onto_documents':
 					result = await this.searchOntoDocuments(args as SearchOntoDocumentsArgs);
+					break;
+				case 'search_ontology':
+					result = await this.searchOntology(args as SearchOntologyArgs);
 					break;
 
 				case 'get_onto_project_details':
@@ -1153,6 +1163,45 @@ export class ChatToolExecutor {
 			documents: data ?? [],
 			total: count ?? data?.length ?? 0,
 			message: `Found ${data?.length ?? 0} documents matching "${args.search}".`
+		};
+	}
+
+	private async searchOntology(args: SearchOntologyArgs): Promise<{
+		results: any[];
+		total: number;
+		message: string;
+	}> {
+		const query = this.prepareSearchTerm(args.query);
+		if (!query) {
+			throw new Error('Query is required for search_ontology');
+		}
+
+		const limit = Math.min(args.limit ?? 50, 50);
+
+		const data = await this.apiRequest('/api/onto/search', {
+			method: 'POST',
+			body: JSON.stringify({
+				query,
+				project_id: args.project_id,
+				types: args.types,
+				limit
+			})
+		});
+
+		const results = Array.isArray((data as any)?.results)
+			? (data as any).results
+			: Array.isArray(data)
+				? (data as any[])
+				: [];
+
+		const total = (data as any)?.total ?? results.length ?? 0;
+
+		return {
+			results,
+			total,
+			message:
+				(data as any)?.message ??
+				`Found ${results.length} ontology matches. Use get_onto_*_details to load full records.`
 		};
 	}
 

@@ -3862,6 +3862,7 @@ export type Database = {
           id: string
           project_id: string
           props: Json
+          search_vector: unknown
           state_key: string
           title: string
           type_key: string
@@ -3873,6 +3874,7 @@ export type Database = {
           id?: string
           project_id: string
           props?: Json
+          search_vector?: unknown
           state_key?: string
           title: string
           type_key: string
@@ -3884,6 +3886,7 @@ export type Database = {
           id?: string
           project_id?: string
           props?: Json
+          search_vector?: unknown
           state_key?: string
           title?: string
           type_key?: string
@@ -4195,6 +4198,7 @@ export type Database = {
           name: string
           project_id: string
           props: Json
+          search_vector: unknown
           type_key: string | null
         }
         Insert: {
@@ -4204,6 +4208,7 @@ export type Database = {
           name: string
           project_id: string
           props?: Json
+          search_vector?: unknown
           type_key?: string | null
         }
         Update: {
@@ -4213,6 +4218,7 @@ export type Database = {
           name?: string
           project_id?: string
           props?: Json
+          search_vector?: unknown
           type_key?: string | null
         }
         Relationships: [
@@ -4354,6 +4360,7 @@ export type Database = {
           id: string
           project_id: string
           props: Json
+          search_vector: unknown
           title: string
           type_key: string | null
         }
@@ -4364,6 +4371,7 @@ export type Database = {
           id?: string
           project_id: string
           props?: Json
+          search_vector?: unknown
           title: string
           type_key?: string | null
         }
@@ -4374,6 +4382,7 @@ export type Database = {
           id?: string
           project_id?: string
           props?: Json
+          search_vector?: unknown
           title?: string
           type_key?: string | null
         }
@@ -4434,6 +4443,7 @@ export type Database = {
           name: string
           project_id: string
           props: Json
+          search_vector: unknown
           state_key: string
           type_key: string
           updated_at: string
@@ -4446,6 +4456,7 @@ export type Database = {
           name: string
           project_id: string
           props?: Json
+          search_vector?: unknown
           state_key?: string
           type_key: string
           updated_at?: string
@@ -4458,6 +4469,7 @@ export type Database = {
           name?: string
           project_id?: string
           props?: Json
+          search_vector?: unknown
           state_key?: string
           type_key?: string
           updated_at?: string
@@ -4513,6 +4525,7 @@ export type Database = {
           name: string
           project_id: string
           props: Json
+          search_vector: unknown
           state_key: string
           type_key: string
           updated_at: string
@@ -4527,6 +4540,7 @@ export type Database = {
           name: string
           project_id: string
           props?: Json
+          search_vector?: unknown
           state_key?: string
           type_key: string
           updated_at?: string
@@ -4541,6 +4555,7 @@ export type Database = {
           name?: string
           project_id?: string
           props?: Json
+          search_vector?: unknown
           state_key?: string
           type_key?: string
           updated_at?: string
@@ -4630,6 +4645,7 @@ export type Database = {
           id: string
           project_id: string
           props: Json
+          search_vector: unknown
           text: string
           type_key: string
         }
@@ -4639,6 +4655,7 @@ export type Database = {
           id?: string
           project_id: string
           props?: Json
+          search_vector?: unknown
           text: string
           type_key?: string
         }
@@ -4648,6 +4665,7 @@ export type Database = {
           id?: string
           project_id?: string
           props?: Json
+          search_vector?: unknown
           text?: string
           type_key?: string
         }
@@ -4795,6 +4813,7 @@ export type Database = {
           priority: number | null
           project_id: string
           props: Json
+          search_vector: unknown
           state_key: string
           title: string
           updated_at: string
@@ -4809,6 +4828,7 @@ export type Database = {
           priority?: number | null
           project_id: string
           props?: Json
+          search_vector?: unknown
           state_key?: string
           title: string
           updated_at?: string
@@ -4823,6 +4843,7 @@ export type Database = {
           priority?: number | null
           project_id?: string
           props?: Json
+          search_vector?: unknown
           state_key?: string
           title?: string
           updated_at?: string
@@ -8559,6 +8580,24 @@ export type Database = {
       onto_jsonb_has_value: {
         Args: { p_json: Json; p_path: string }
         Returns: boolean
+      }
+      onto_search_entities: {
+        Args: {
+          p_actor_id: string
+          p_limit?: number
+          p_project_id?: string
+          p_query: string
+          p_types?: string[]
+        }
+        Returns: {
+          id: string
+          project_id: string
+          project_name: string
+          score: number
+          snippet: string
+          title: string
+          type: string
+        }[]
       }
       queue_sms_message: {
         Args: {

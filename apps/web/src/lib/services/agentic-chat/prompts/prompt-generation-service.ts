@@ -92,7 +92,8 @@ Analyze each request and choose the appropriate strategy:
 - Reference entities by their IDs when found (store in last_turn_context)
 - Maintain conversation continuity using the last_turn_context
 - Respect token limits through progressive disclosure
-- Start with LIST/SEARCH tools before using DETAIL tools`;
+- Start with LIST/SEARCH tools before using DETAIL tools
+- When the user mentions a fuzzy entity name (e.g., “marketing plan”, “email brief”, “launch milestone”) or the type is unclear, call \`search_ontology\` first (pass project_id if known) and then follow with the appropriate get_onto_*_details tool for the chosen ID`;
 	}
 
 	/**
@@ -114,6 +115,7 @@ Analyze each request and choose the appropriate strategy:
 - Default workflow:
   1. Identify whether the request is informational (answer with existing data) or operational (requires write tools).
   2. Start with ontology list/detail tools (e.g., list_onto_projects, list_onto_tasks, get_onto_project_details, get_onto_task_details) to ground your answer before suggesting edits.
+  2a. If the user references an item by name but the type is unclear, use \`search_ontology\` with the project_id to locate it, then follow up with the relevant get_onto_*_details tool.
   3. If the user clearly asks to change data, call the corresponding create/update tool and describe the result.
   4. Proactively surface related insights (risks, blockers, next steps) when helpful—even if the user asked a simple question.
 - Always mention when additional detail is available via tools and ask if you'd like to dive deeper before modifying data.`;

@@ -7,7 +7,12 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { ChatMessage, ChatSession, ChatCompression, LLMMessage } from '@buildos/shared-types';
+import type {
+	ChatMessage,
+	ChatCompression,
+	ContextUsageSnapshot,
+	LLMMessage
+} from '@buildos/shared-types';
 import { SmartLLMService } from './smart-llm-service';
 import { savePromptForAudit } from '$lib/utils/prompt-audit';
 
@@ -102,12 +107,15 @@ Title:`;
 		compressedMessages: LLMMessage[];
 		compressionId: string;
 		tokensSaved: number;
+		usage?: ContextUsageSnapshot;
 	}> {
 		try {
-			// Estimate current token usage (rough: 1 token ≈ 4 chars)
-			const currentTokens = messages.reduce(
-				(sum, msg) => sum + Math.ceil(msg.content.length / 4),
-				0
+			const currentTokens = this.estimateTokens(messages);
+			const baseUsage = await this.getContextUsageSnapshot(
+				sessionId,
+				messages,
+				targetTokens,
+				{ estimatedTokens: currentTokens }
 			);
 
 			// Skip compression if already under target
@@ -119,7 +127,8 @@ Title:`;
 						tool_calls: m.tool_calls as any
 					})),
 					compressionId: '',
-					tokensSaved: 0
+					tokensSaved: 0,
+					usage: baseUsage
 				};
 			}
 
@@ -136,7 +145,8 @@ Title:`;
 						tool_calls: m.tool_calls as any
 					})),
 					compressionId: '',
-					tokensSaved: 0
+					tokensSaved: 0,
+					usage: baseUsage
 				};
 			}
 
@@ -183,27 +193,6 @@ Compressed summary:`;
 
 			const compressedSummary = compressionResponse;
 
-			// Save compression record
-			const { data: compression, error: compressionError } = await this.supabase
-				.from('chat_compressions')
-				.insert({
-					session_id: sessionId,
-					original_messages: toCompress,
-					compressed_summary: compressedSummary,
-					compression_ratio: toCompress.length / 1,
-					tokens_before: currentTokens,
-					tokens_after:
-						Math.ceil(compressedSummary.length / 4) +
-						toKeep.reduce((sum, msg) => sum + Math.ceil(msg.content.length / 4), 0)
-				})
-				.select()
-				.single();
-
-			if (compressionError) {
-				console.error('Failed to save compression:', compressionError);
-				throw compressionError;
-			}
-
 			// Create compressed message list
 			const compressedMessages: LLMMessage[] = [
 				{
@@ -217,15 +206,66 @@ Compressed summary:`;
 				}))
 			];
 
-			const newTokens = compressedMessages.reduce(
-				(sum, msg) => sum + Math.ceil(msg.content.length / 4),
-				0
+			const newTokens = this.estimateTokens(
+				compressedMessages.map((msg) => ({ content: msg.content }))
 			);
+
+			// Save compression record
+			const { data: compression, error: compressionError } = await this.supabase
+				.from('chat_compressions')
+				.insert({
+					session_id: sessionId,
+					summary: compressedSummary,
+					original_message_count: toCompress.length,
+					compressed_message_count: compressedMessages.length,
+					original_tokens: currentTokens,
+					compressed_tokens: newTokens,
+					compression_ratio: newTokens > 0 ? currentTokens / newTokens : null,
+					first_message_id: toCompress[0]?.id ?? null,
+					last_message_id: toCompress[toCompress.length - 1]?.id ?? null
+				})
+				.select()
+				.single();
+
+			if (compressionError) {
+				console.error('Failed to save compression:', compressionError);
+				throw compressionError;
+			}
+
+			const compressedAt = new Date().toISOString();
+			try {
+				await this.supabase
+					.from('chat_sessions')
+					.update({
+						compressed_at: compressedAt,
+						updated_at: compressedAt
+					})
+					.eq('id', sessionId);
+			} catch (updateError) {
+				console.error('Failed to update chat session compression timestamp:', updateError);
+			}
 
 			return {
 				compressedMessages,
-				compressionId: compression.id,
-				tokensSaved: currentTokens - newTokens
+				compressionId: compression?.id ?? '',
+				tokensSaved: Math.max(currentTokens - newTokens, 0),
+				usage: await this.getContextUsageSnapshot(
+					sessionId,
+					compressedMessages.map((msg) => ({ content: msg.content })),
+					targetTokens,
+					{
+						estimatedTokens: newTokens,
+						lastCompressedAt: compressedAt,
+						lastCompression: compression
+							? {
+									id: compression.id,
+									compressionRatio: compression.compression_ratio,
+									originalTokens: compression.original_tokens,
+									compressedTokens: compression.compressed_tokens
+								}
+							: undefined
+					}
+				)
 			};
 		} catch (error) {
 			console.error('Failed to compress conversation:', error);
@@ -237,7 +277,10 @@ Compressed summary:`;
 					tool_calls: m.tool_calls as any
 				})),
 				compressionId: '',
-				tokensSaved: 0
+				tokensSaved: 0,
+				usage: await this.getContextUsageSnapshot(sessionId, messages, targetTokens).catch(
+					() => undefined
+				)
 			};
 		}
 	}
@@ -246,12 +289,92 @@ Compressed summary:`;
 	 * Determine if compression is needed based on token count
 	 */
 	async shouldCompress(messages: ChatMessage[], maxTokens: number = 4000): Promise<boolean> {
-		const estimatedTokens = messages.reduce(
-			(sum, msg) => sum + Math.ceil(msg.content.length / 4),
-			0
-		);
+		const estimatedTokens = this.estimateTokens(messages);
 
 		return estimatedTokens > maxTokens;
+	}
+
+	/**
+	 * Provide a lightweight snapshot of context usage for UI + telemetry
+	 */
+	async getContextUsageSnapshot(
+		sessionId: string,
+		messages: { content: string }[],
+		tokenBudget: number = 4000,
+		options: {
+			estimatedTokens?: number;
+			lastCompression?: ContextUsageSnapshot['lastCompression'];
+			lastCompressedAt?: string | null;
+		} = {}
+	): Promise<ContextUsageSnapshot> {
+		const estimatedTokens =
+			options.estimatedTokens !== undefined
+				? options.estimatedTokens
+				: this.estimateTokens(messages);
+
+		const usagePercent = Math.min(Math.round((estimatedTokens / tokenBudget) * 100), 999);
+		const tokensRemaining = Math.max(tokenBudget - estimatedTokens, 0);
+
+		let lastCompressedAt = options.lastCompressedAt ?? null;
+		let lastCompression = options.lastCompression ?? null;
+
+		if (!lastCompression) {
+			try {
+				const { data: compressionRow } = await this.supabase
+					.from('chat_compressions')
+					.select('id, created_at, compression_ratio, original_tokens, compressed_tokens')
+					.eq('session_id', sessionId)
+					.order('created_at', { ascending: false })
+					.limit(1)
+					.maybeSingle();
+
+				if (compressionRow) {
+					lastCompression = {
+						id: compressionRow.id,
+						compressionRatio: compressionRow.compression_ratio,
+						originalTokens: compressionRow.original_tokens,
+						compressedTokens: compressionRow.compressed_tokens
+					};
+					lastCompressedAt = compressionRow.created_at ?? lastCompressedAt;
+				}
+			} catch (error) {
+				console.error('Failed to fetch last compression', error);
+			}
+		}
+
+		if (!lastCompressedAt) {
+			try {
+				const { data: sessionRow } = await this.supabase
+					.from('chat_sessions')
+					.select('compressed_at')
+					.eq('id', sessionId)
+					.limit(1)
+					.maybeSingle();
+
+				if (sessionRow?.compressed_at) {
+					lastCompressedAt = sessionRow.compressed_at;
+				}
+			} catch (error) {
+				console.error('Failed to fetch compression timestamp', error);
+			}
+		}
+
+		const status: ContextUsageSnapshot['status'] =
+			estimatedTokens > tokenBudget
+				? 'over_budget'
+				: usagePercent >= 85
+					? 'near_limit'
+					: 'ok';
+
+		return {
+			estimatedTokens,
+			tokenBudget,
+			usagePercent,
+			tokensRemaining,
+			status,
+			lastCompressedAt,
+			lastCompression
+		};
 	}
 
 	/**
@@ -272,6 +395,10 @@ Compressed summary:`;
 		return data || [];
 	}
 
+	private estimateTokens(messages: { content: string }[]): number {
+		return messages.reduce((sum, msg) => sum + Math.ceil((msg?.content?.length ?? 0) / 4), 0);
+	}
+
 	/**
 	 * Smart compression that preserves tool calls and important context
 	 */
@@ -288,11 +415,14 @@ Compressed summary:`;
 			compressionRatio: number;
 			preservedToolCalls: number;
 			estimatedTokens: number;
+			originalTokens: number;
+			compressedTokens: number;
 		};
 	}> {
 		// Separate tool calls and regular messages
 		const toolMessages = messages.filter((m) => m.tool_calls || m.tool_call_id);
 		const regularMessages = messages.filter((m) => !m.tool_calls && !m.tool_call_id);
+		const originalTokens = this.estimateTokens(messages);
 
 		// Always preserve tool interactions
 		const preservedTools = toolMessages.map((m) => ({
@@ -342,10 +472,43 @@ Compressed summary:`;
 		);
 
 		// Calculate metrics
-		const estimatedTokens = finalMessages.reduce(
-			(sum, msg) => sum + Math.ceil(msg.content.length / 4),
-			0
+		const estimatedTokens = this.estimateTokens(
+			finalMessages.map((msg) => ({ content: msg.content }))
 		);
+		const compressionApplied = finalMessages.length < messages.length;
+
+		if (compressionApplied) {
+			const compressedAt = new Date().toISOString();
+
+			try {
+				await this.supabase
+					.from('chat_compressions')
+					.insert({
+						session_id: sessionId,
+						summary: 'Smart compression applied to conversation history.',
+						original_message_count: messages.length,
+						compressed_message_count: finalMessages.length,
+						original_tokens: originalTokens,
+						compressed_tokens: estimatedTokens,
+						compression_ratio:
+							estimatedTokens > 0 ? originalTokens / estimatedTokens : null,
+						first_message_id: messages[0]?.id ?? null,
+						last_message_id: messages[messages.length - 1]?.id ?? null
+					})
+					.select()
+					.single();
+
+				await this.supabase
+					.from('chat_sessions')
+					.update({
+						compressed_at: compressedAt,
+						updated_at: compressedAt
+					})
+					.eq('id', sessionId);
+			} catch (error) {
+				console.error('Failed to persist smart compression metadata:', error);
+			}
+		}
 
 		return {
 			compressedMessages: finalMessages,
@@ -354,7 +517,9 @@ Compressed summary:`;
 				compressedCount: finalMessages.length,
 				compressionRatio: messages.length / finalMessages.length,
 				preservedToolCalls: toolMessages.length,
-				estimatedTokens
+				estimatedTokens,
+				originalTokens,
+				compressedTokens: estimatedTokens
 			}
 		};
 	}

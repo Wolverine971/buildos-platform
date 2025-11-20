@@ -1,5 +1,5 @@
 // Lightweight database schema - auto-generated from database.types.ts
-// Generated on: 2025-11-19T23:52:46.614Z
+// Generated on: 2025-11-20T05:04:17.740Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -974,6 +974,7 @@ export type DatabaseSchema = {
 		id: string;
 		project_id: string;
 		props: Json;
+		search_vector: unknown;
 		state_key: string;
 		title: string;
 		type_key: string;
@@ -1062,6 +1063,7 @@ export type DatabaseSchema = {
 		name: string;
 		project_id: string;
 		props: Json;
+		search_vector: unknown;
 		type_key: string | null;
 	};
 	onto_insights: {
@@ -1098,6 +1100,7 @@ export type DatabaseSchema = {
 		id: string;
 		project_id: string;
 		props: Json;
+		search_vector: unknown;
 		title: string;
 		type_key: string | null;
 	};
@@ -1118,6 +1121,7 @@ export type DatabaseSchema = {
 		name: string;
 		project_id: string;
 		props: Json;
+		search_vector: unknown;
 		state_key: string;
 		type_key: string;
 		updated_at: string;
@@ -1141,6 +1145,7 @@ export type DatabaseSchema = {
 		name: string;
 		project_id: string;
 		props: Json;
+		search_vector: unknown;
 		state_key: string;
 		type_key: string;
 		updated_at: string;
@@ -1170,6 +1175,7 @@ export type DatabaseSchema = {
 		id: string;
 		project_id: string;
 		props: Json;
+		search_vector: unknown;
 		text: string;
 		type_key: string;
 	};
@@ -1213,6 +1219,7 @@ export type DatabaseSchema = {
 		priority: number | null;
 		project_id: string;
 		props: Json;
+		search_vector: unknown;
 		state_key: string;
 		title: string;
 		updated_at: string;

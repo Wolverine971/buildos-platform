@@ -468,6 +468,49 @@ Use when the user references a doc name or needs to find a brief/spec quickly.`,
 			}
 		}
 	},
+	{
+		type: 'function',
+		function: {
+			name: 'search_ontology',
+			description: `Fuzzy search across ontology entities (tasks, plans, goals, milestones, documents, outputs, requirements). Returns typed matches with snippets so you can load details with get_onto_* tools.`,
+			parameters: {
+				type: 'object',
+				properties: {
+					query: {
+						type: 'string',
+						description: 'Search text to match across ontology entities (required)'
+					},
+					project_id: {
+						type: 'string',
+						description: 'Optional project scope to limit results'
+					},
+					types: {
+						type: 'array',
+						description: 'Optional entity type filters',
+						items: {
+							type: 'string',
+							enum: [
+								'task',
+								'plan',
+								'goal',
+								'milestone',
+								'document',
+								'output',
+								'requirement'
+							]
+						}
+					},
+					limit: {
+						type: 'number',
+						default: 20,
+						maximum: 50,
+						description: 'Maximum number of results (capped at 50)'
+					}
+				},
+				required: ['query']
+			}
+		}
+	},
 
 	{
 		type: 'function',
@@ -1746,6 +1789,15 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 	search_onto_documents: {
 		summary: 'Keyword search for documents by title.',
 		capabilities: ['Supports project/type/state filters', 'Fast doc discovery'],
+		contexts: ['global', 'project', 'project_audit', 'project_forecast'],
+		category: 'search'
+	},
+	search_ontology: {
+		summary: 'Fuzzy search across all ontology entities with snippets.',
+		capabilities: [
+			'Scans tasks/plans/goals/milestones/documents/outputs/requirements',
+			'Accepts project scope and type filters'
+		],
 		contexts: ['global', 'project', 'project_audit', 'project_forecast'],
 		category: 'search'
 	},

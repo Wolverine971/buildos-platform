@@ -139,7 +139,7 @@
 	}
 
 	function selectAgentToAgent() {
-		dispatch('select', { contextType: 'agent_to_agent', label: 'Agent to agent chat' });
+		dispatch('select', { contextType: 'agent_to_agent', label: 'Agent to BuildOS chat' });
 	}
 
 	function goToProjectHub() {
@@ -268,7 +268,7 @@
 					</div>
 				</button>
 
-				<!-- Agent to agent chat -->
+				<!-- Agent to BuildOS chat -->
 				<button
 					onclick={selectAgentToAgent}
 					class="group flex h-full flex-col justify-between gap-4 rounded-xl border border-slate-200/60 bg-gradient-to-br from-indigo-50/70 via-purple-50/40 to-white/80 p-5 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-indigo-300/60 hover:shadow-md active:translate-y-0 dark:border-slate-700/60 dark:from-slate-900/80 dark:via-slate-900/50 dark:to-slate-900/70 dark:hover:border-indigo-500/60"
@@ -281,7 +281,7 @@
 						</div>
 						<div class="min-w-0 flex-1">
 							<h3 class="text-base font-semibold text-slate-900 dark:text-white">
-								Agent to agent chat
+								Agent to BuildOS chat
 							</h3>
 							<p class="mt-1 text-xs text-slate-600 dark:text-slate-400 leading-snug">
 								Hand the BuildOS chat to another AI agent with a clear goal.
@@ -291,7 +291,7 @@
 					<div
 						class="flex items-center justify-between text-xs font-medium text-indigo-600 dark:text-indigo-400"
 					>
-						<span>Agent-to-agent</span>
+						<span>Agent-to-BuildOS</span>
 						<ChevronRight
 							class="h-4 w-4 transition-transform group-hover:translate-x-1"
 						/>

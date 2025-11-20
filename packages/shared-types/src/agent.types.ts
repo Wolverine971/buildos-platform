@@ -332,6 +332,22 @@ export interface ContextShiftPayload {
   message: string;
 }
 
+// Lightweight context usage snapshot for UI + telemetry
+export interface ContextUsageSnapshot {
+  estimatedTokens: number;
+  tokenBudget: number;
+  usagePercent: number;
+  tokensRemaining: number;
+  status: 'ok' | 'near_limit' | 'over_budget';
+  lastCompressedAt?: string | null;
+  lastCompression?: {
+    id: string;
+    compressionRatio?: number | null;
+    originalTokens?: number;
+    compressedTokens?: number;
+  } | null;
+}
+
 type LegacyAgentSSEMessage =
   | { type: 'operation'; operation: ChatOperation }
   | { type: 'draft_update'; draft: Partial<ProjectDraft> }
@@ -341,6 +357,7 @@ type LegacyAgentSSEMessage =
   | { type: 'executor_instructions'; instructions: string };
 
 export type AgentSSEMessage =
+  | { type: 'context_usage'; usage: ContextUsageSnapshot }
   | { type: 'session'; session?: ChatSession; sessionId?: string }
   | { type: 'ontology_loaded'; summary: string }
   | { type: 'last_turn_context'; context: LastTurnContext }

@@ -141,37 +141,37 @@
 
 <Card
 	variant="elevated"
-	class="thinking-block border-slate-300 bg-slate-100/95 dark:border-slate-700/60 dark:bg-slate-900/95 shadow-lg"
+	class="!p-0 thinking-block border-slate-300 bg-slate-100/95 dark:border-slate-700/60 dark:bg-slate-900/95 shadow-sm"
 >
 	<!-- Header -->
 	<button
 		type="button"
 		onclick={() => onToggleCollapse(block.id)}
-		class="flex w-full items-center justify-between gap-2 border-b border-slate-300 bg-slate-200/80 p-4 sm:p-6 transition-colors hover:bg-slate-200 dark:border-slate-700/60 dark:bg-slate-800/80 dark:hover:bg-slate-800 sm:gap-3 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 rounded-t-xl"
+		class="flex w-full items-center justify-between gap-1.5 border-b border-slate-300 bg-slate-200/80 px-2.5 py-1.5 transition-colors hover:bg-slate-200 dark:border-slate-700/60 dark:bg-slate-800/80 dark:hover:bg-slate-800 sm:gap-2 sm:px-3 sm:py-2 focus:outline-none focus:ring-1 focus:ring-purple-500 rounded-t-lg"
 		aria-expanded={!block.isCollapsed}
 		aria-label={block.isCollapsed
 			? 'Expand BuildOS thinking log'
 			: 'Collapse BuildOS thinking log'}
 	>
-		<div class="flex min-w-0 items-center gap-2 sm:gap-3">
+		<div class="flex min-w-0 items-center gap-1.5">
 			{#if block.isCollapsed}
 				<ChevronRight
-					class="h-4 w-4 shrink-0 text-slate-500 dark:text-slate-400"
+					class="h-3 w-3 shrink-0 text-slate-500 dark:text-slate-400"
 					aria-hidden="true"
 				/>
 			{:else}
 				<ChevronDown
-					class="h-4 w-4 shrink-0 text-slate-500 dark:text-slate-400"
+					class="h-3 w-3 shrink-0 text-slate-500 dark:text-slate-400"
 					aria-hidden="true"
 				/>
 			{/if}
 			<span
-				class="truncate font-mono text-sm font-semibold text-slate-800 dark:text-slate-200 sm:text-base"
+				class="truncate font-mono text-[11px] font-medium text-slate-700 dark:text-slate-300 sm:text-xs"
 			>
 				BuildOS Thinking
 			</span>
 		</div>
-		<div class="flex shrink-0 items-center gap-2 text-xs sm:gap-4">
+		<div class="flex shrink-0 items-center gap-1.5 text-[10px] sm:gap-2 sm:text-xs">
 			<span
 				class="hidden font-mono font-medium sm:inline {block.status === 'active'
 					? 'text-emerald-600 dark:text-emerald-400'
@@ -192,20 +192,20 @@
 
 	<!-- Activity Log -->
 	{#if !block.isCollapsed}
-		<CardBody padding="md">
+		<CardBody padding="sm">
 			<div
-				class="thinking-log max-h-64 space-y-1 overflow-y-auto bg-white/60 rounded-lg font-mono text-xs dark:bg-slate-950/60 sm:max-h-96 sm:space-y-1.5"
+				class="thinking-log max-h-48 space-y-0.5 overflow-y-auto bg-white/60 rounded-md font-mono text-[10px] dark:bg-slate-950/60 sm:max-h-64 sm:text-[11px] p-1.5"
 				role="log"
-				aria-label="Agent thinking log"
+				aria-label="BuildOS thinking log"
 			>
 				{#if block.activities.length === 0}
 					<div
-						class="flex items-center gap-2 py-2 text-slate-600 dark:text-slate-500"
+						class="flex items-center gap-1.5 py-1.5 text-slate-600 dark:text-slate-500"
 						role="status"
 						aria-live="polite"
 					>
 						<span
-							class="inline-flex h-2 w-2 animate-pulse rounded-full bg-emerald-500"
+							class="inline-flex h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500"
 							aria-hidden="true"
 						></span>
 						<span>Waiting for BuildOS activity...</span>
@@ -215,10 +215,10 @@
 						{@const style = getActivityStyle(activity.activityType)}
 						{@const planSteps = getPlanSteps(activity)}
 						<div class="py-0.5">
-							<div class="flex items-start gap-2 leading-tight sm:items-center">
+							<div class="flex items-start gap-1.5 leading-tight sm:items-center">
 								<!-- Icon -->
 								<span
-									class="shrink-0 pt-0.5 {style.color} sm:pt-0"
+									class="shrink-0 pt-0.5 text-[10px] {style.color} sm:pt-0"
 									aria-hidden="true">{style.icon}</span
 								>
 
@@ -231,17 +231,17 @@
 								<!-- Status indicator (for tool calls) -->
 								{#if activity.status === 'pending'}
 									<Loader
-										class="h-3 w-3 shrink-0 animate-spin text-slate-500 dark:text-slate-400"
+										class="h-2.5 w-2.5 shrink-0 animate-spin text-slate-500 dark:text-slate-400"
 										aria-label="Loading"
 									/>
 								{:else if activity.status === 'completed'}
 									<Check
-										class="h-3 w-3 shrink-0 text-green-600 dark:text-green-400"
+										class="h-2.5 w-2.5 shrink-0 text-green-600 dark:text-green-400"
 										aria-label="Completed"
 									/>
 								{:else if activity.status === 'failed'}
 									<X
-										class="h-3 w-3 shrink-0 text-red-600 dark:text-red-400"
+										class="h-2.5 w-2.5 shrink-0 text-red-600 dark:text-red-400"
 										aria-label="Failed"
 									/>
 								{/if}
@@ -250,12 +250,12 @@
 							<!-- Plan steps expansion -->
 							{#if planSteps && planSteps.length > 0}
 								<div
-									class="ml-5 mt-1 space-y-0.5 text-slate-600 dark:text-slate-400 sm:ml-6 sm:mt-1.5"
+									class="ml-4 mt-0.5 space-y-0.5 text-slate-600 dark:text-slate-400"
 								>
 									{#each planSteps as step, i}
-										<div class="flex gap-2 text-[11px] leading-snug">
+										<div class="flex gap-1.5 text-[10px] leading-tight">
 											<span
-												class="w-5 shrink-0 text-right text-slate-500 dark:text-slate-500 sm:w-6"
+												class="w-4 shrink-0 text-right text-slate-500 dark:text-slate-500"
 												>{i + 1}.</span
 											>
 											<span class="min-w-0 flex-1"
@@ -283,7 +283,7 @@
 	}
 
 	.thinking-log::-webkit-scrollbar {
-		width: 6px;
+		width: 4px;
 	}
 
 	.thinking-log::-webkit-scrollbar-track {
@@ -292,7 +292,7 @@
 
 	.thinking-log::-webkit-scrollbar-thumb {
 		background: rgb(203 213 225); /* slate-300 */
-		border-radius: 3px;
+		border-radius: 2px;
 	}
 
 	.thinking-log::-webkit-scrollbar-thumb:hover {
