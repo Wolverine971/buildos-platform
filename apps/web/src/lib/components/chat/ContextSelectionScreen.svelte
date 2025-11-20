@@ -20,6 +20,9 @@
 		Sparkles,
 		Loader2
 	} from 'lucide-svelte';
+	import Card from '$lib/components/ui/Card.svelte';
+	import CardBody from '$lib/components/ui/CardBody.svelte';
+	import Button from '$lib/components/ui/Button.svelte';
 	import type { ChatContextType } from '@buildos/shared-types';
 
 	interface OntologyProjectSummary {
@@ -215,52 +218,52 @@
 </script>
 
 <div
-	class="flex h-full min-h-0 flex-col overflow-hidden bg-gradient-to-br from-slate-50/50 to-slate-100/30 dark:from-slate-900/50 dark:to-slate-800/30 {inModal
-		? 'max-h-[70vh] min-h-[500px] bg-white dark:bg-slate-800'
+	class="flex h-full min-h-0 flex-col overflow-hidden bg-slate-50/70 dark:bg-slate-900/40 {inModal
+		? 'max-h-[70vh] min-h-[500px]'
 		: ''}"
 >
 	<!-- PRIMARY SELECTION VIEW -->
 	{#if selectedView === 'primary'}
-		<div class="mx-auto w-full max-w-5xl flex-1 min-h-0 overflow-y-auto p-4 sm:p-6">
+		<div class="mx-auto w-full max-w-5xl flex-1 min-h-0 overflow-y-auto p-4 sm:p-5">
 			<!-- Header -->
-			<div class="mb-10 text-center">
+			<div class="mb-6 text-center">
 				<h2
-					class="mb-2 text-3xl font-semibold tracking-tight text-slate-900 dark:text-white"
+					class="mb-1.5 text-2xl font-semibold tracking-tight text-slate-900 dark:text-white"
 				>
 					How would you like to work today?
 				</h2>
 				<p class="text-sm text-slate-600 dark:text-slate-400">
-					Pick a focus and we’ll tailor the assistant around it.
+					Pick a focus and we'll tailor the assistant around it.
 				</p>
 			</div>
 
-			<div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+			<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
 				<!-- Global conversation -->
 				<button
 					onclick={selectGlobal}
-					class="group flex h-full flex-col justify-between gap-6 rounded-2xl border border-slate-200/60 bg-gradient-to-br from-blue-50/70 via-slate-50/40 to-white/80 p-7 text-left shadow-[0_20px_60px_-40px_rgba(59,130,246,0.75)] transition-all duration-200 hover:-translate-y-1 hover:border-blue-300/60 hover:shadow-[0_35px_80px_-50px_rgba(37,99,235,0.65)] active:translate-y-0 dark:border-slate-700/60 dark:from-slate-900/80 dark:via-slate-900/50 dark:to-slate-900/70 dark:hover:border-blue-500/60"
+					class="group flex h-full flex-col justify-between gap-4 rounded-xl border border-slate-200/60 bg-gradient-to-br from-blue-50/70 via-slate-50/40 to-white/80 p-5 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-blue-300/60 hover:shadow-md active:translate-y-0 dark:border-slate-700/60 dark:from-slate-900/80 dark:via-slate-900/50 dark:to-slate-900/70 dark:hover:border-blue-500/60"
 				>
-					<div class="flex items-center gap-4">
+					<div class="flex items-start gap-3">
 						<div
-							class="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500/10 via-sky-400/10 to-indigo-500/10 text-blue-600 backdrop-blur-sm transition-transform duration-200 group-hover:scale-105 dark:text-blue-300"
+							class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500/10 via-sky-400/10 to-indigo-500/10 text-blue-600 transition-transform duration-200 group-hover:scale-105 dark:text-blue-300"
 						>
-							<Globe class="h-7 w-7" />
+							<Globe class="h-5 w-5" />
 						</div>
-						<div>
-							<h3 class="text-lg font-semibold text-slate-900 dark:text-white">
+						<div class="min-w-0 flex-1">
+							<h3 class="text-base font-semibold text-slate-900 dark:text-white">
 								Global conversation
 							</h3>
-							<p class="mt-1 text-sm text-slate-600 dark:text-slate-400">
+							<p class="mt-1 text-xs text-slate-600 dark:text-slate-400 leading-snug">
 								Talk across projects, calendar, and knowledge with no preset scope.
 							</p>
 						</div>
 					</div>
 					<div
-						class="flex items-center justify-between text-sm font-medium text-blue-600 dark:text-blue-400"
+						class="flex items-center justify-between text-xs font-medium text-blue-600 dark:text-blue-400"
 					>
 						<span>Open conversation</span>
 						<ChevronRight
-							class="h-5 w-5 transition-transform group-hover:translate-x-1"
+							class="h-4 w-4 transition-transform group-hover:translate-x-1"
 						/>
 					</div>
 				</button>
@@ -268,29 +271,29 @@
 				<!-- Agent to agent chat -->
 				<button
 					onclick={selectAgentToAgent}
-					class="group flex h-full flex-col justify-between gap-6 rounded-2xl border border-slate-200/60 bg-gradient-to-br from-indigo-50/70 via-purple-50/40 to-white/80 p-7 text-left shadow-[0_20px_60px_-42px_rgba(99,102,241,0.7)] transition-all duration-200 hover:-translate-y-1 hover:border-indigo-300/60 hover:shadow-[0_35px_85px_-52px_rgba(76,81,191,0.65)] active:translate-y-0 dark:border-slate-700/60 dark:from-slate-900/80 dark:via-slate-900/50 dark:to-slate-900/70 dark:hover:border-indigo-500/60"
+					class="group flex h-full flex-col justify-between gap-4 rounded-xl border border-slate-200/60 bg-gradient-to-br from-indigo-50/70 via-purple-50/40 to-white/80 p-5 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-indigo-300/60 hover:shadow-md active:translate-y-0 dark:border-slate-700/60 dark:from-slate-900/80 dark:via-slate-900/50 dark:to-slate-900/70 dark:hover:border-indigo-500/60"
 				>
-					<div class="flex items-center gap-4">
+					<div class="flex items-start gap-3">
 						<div
-							class="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500/10 via-violet-400/10 to-fuchsia-500/10 text-indigo-600 backdrop-blur-sm transition-transform duration-200 group-hover:scale-105 dark:text-indigo-300"
+							class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500/10 via-violet-400/10 to-fuchsia-500/10 text-indigo-600 transition-transform duration-200 group-hover:scale-105 dark:text-indigo-300"
 						>
-							<Sparkles class="h-7 w-7" />
+							<Sparkles class="h-5 w-5" />
 						</div>
-						<div>
-							<h3 class="text-lg font-semibold text-slate-900 dark:text-white">
+						<div class="min-w-0 flex-1">
+							<h3 class="text-base font-semibold text-slate-900 dark:text-white">
 								Agent to agent chat
 							</h3>
-							<p class="mt-1 text-sm text-slate-600 dark:text-slate-400">
+							<p class="mt-1 text-xs text-slate-600 dark:text-slate-400 leading-snug">
 								Hand the BuildOS chat to another AI agent with a clear goal.
 							</p>
 						</div>
 					</div>
 					<div
-						class="flex items-center justify-between text-sm font-medium text-indigo-600 dark:text-indigo-400"
+						class="flex items-center justify-between text-xs font-medium text-indigo-600 dark:text-indigo-400"
 					>
 						<span>Agent-to-agent</span>
 						<ChevronRight
-							class="h-5 w-5 transition-transform group-hover:translate-x-1"
+							class="h-4 w-4 transition-transform group-hover:translate-x-1"
 						/>
 					</div>
 				</button>
@@ -298,30 +301,30 @@
 				<!-- Projects workspace -->
 				<button
 					onclick={goToProjectHub}
-					class="group flex h-full flex-col justify-between gap-6 rounded-2xl border border-slate-200/60 bg-gradient-to-br from-emerald-50/70 via-teal-50/40 to-white/80 p-7 text-left shadow-[0_20px_60px_-40px_rgba(16,185,129,0.75)] transition-all duration-200 hover:-translate-y-1 hover:border-emerald-300/60 hover:shadow-[0_35px_80px_-50px_rgba(5,150,105,0.55)] active:translate-y-0 dark:border-slate-700/60 dark:from-slate-900/80 dark:via-slate-900/50 dark:to-slate-900/70 dark:hover:border-emerald-500/60"
+					class="group flex h-full flex-col justify-between gap-4 rounded-xl border border-slate-200/60 bg-gradient-to-br from-emerald-50/70 via-teal-50/40 to-white/80 p-5 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-300/60 hover:shadow-md active:translate-y-0 dark:border-slate-700/60 dark:from-slate-900/80 dark:via-slate-900/50 dark:to-slate-900/70 dark:hover:border-emerald-500/60"
 				>
-					<div class="flex items-center gap-4">
+					<div class="flex items-start gap-3">
 						<div
-							class="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500/10 via-teal-400/10 to-lime-500/10 text-emerald-600 backdrop-blur-sm transition-transform duration-200 group-hover:scale-105 dark:text-emerald-300"
+							class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500/10 via-teal-400/10 to-lime-500/10 text-emerald-600 transition-transform duration-200 group-hover:scale-105 dark:text-emerald-300"
 						>
-							<FolderOpen class="h-7 w-7" />
+							<FolderOpen class="h-5 w-5" />
 						</div>
-						<div>
-							<h3 class="text-lg font-semibold text-slate-900 dark:text-white">
+						<div class="min-w-0 flex-1">
+							<h3 class="text-base font-semibold text-slate-900 dark:text-white">
 								Projects workspace
 							</h3>
-							<p class="mt-1 text-sm text-slate-600 dark:text-slate-400">
+							<p class="mt-1 text-xs text-slate-600 dark:text-slate-400 leading-snug">
 								Start something new or dive into an existing project with focused
 								tools.
 							</p>
 						</div>
 					</div>
 					<div
-						class="flex items-center justify-between text-sm font-medium text-emerald-600 dark:text-emerald-400"
+						class="flex items-center justify-between text-xs font-medium text-emerald-600 dark:text-emerald-400"
 					>
 						<span>Project flows</span>
 						<ChevronRight
-							class="h-5 w-5 transition-transform group-hover:translate-x-1"
+							class="h-4 w-4 transition-transform group-hover:translate-x-1"
 						/>
 					</div>
 				</button>
@@ -329,10 +332,10 @@
 
 			{#if hasProjects}
 				<div
-					class="mt-10 flex items-center justify-center gap-6 text-xs text-slate-500 dark:text-slate-400"
+					class="mt-6 flex items-center justify-center gap-4 text-xs text-slate-500 dark:text-slate-400"
 				>
 					<div class="flex items-center gap-2">
-						<div class="h-2 w-2 rounded-full bg-emerald-500"></div>
+						<div class="h-1.5 w-1.5 rounded-full bg-emerald-500"></div>
 						<span>{activeProjects.length} projects ready for deep work</span>
 					</div>
 				</div>
@@ -344,47 +347,50 @@
 	{#if selectedView === 'projectHub'}
 		<div class="flex h-full min-h-0 flex-col">
 			<div
-				class="border-b border-slate-200/60 bg-white/85 px-4 py-4 backdrop-blur-md dark:border-slate-700/60 dark:bg-slate-900/80"
+				class="flex gap-2 border-b border-slate-200/60 bg-white/85 p-4 sm:p-5 backdrop-blur-md dark:border-slate-700/60 dark:bg-slate-900/80"
 			>
-				<button
-					onclick={backToPrimary}
-					class="mb-3 inline-flex items-center gap-2 text-sm text-slate-600 transition-colors hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
-				>
+				<Button variant="ghost" size="sm" onclick={backToPrimary} class="mb-2">
 					<ChevronLeft class="h-4 w-4" />
-					<span>Back</span>
-				</button>
-				<h2 class="text-xl font-semibold text-slate-900 dark:text-white">Project flow</h2>
-				<p class="text-xs text-slate-600 dark:text-slate-400">
-					Choose whether you’re starting fresh or advancing an existing project.
-				</p>
+					Back
+				</Button>
+				<div>
+					<h2 class="text-lg font-semibold text-slate-900 dark:text-white">
+						Project flow
+					</h2>
+					<p class="text-xs text-slate-600 dark:text-slate-400">
+						Choose whether you're starting fresh or advancing an existing project.
+					</p>
+				</div>
 			</div>
-			<div class="mx-auto w-full max-w-4xl flex-1 min-h-0 overflow-y-auto p-5 sm:p-8">
-				<div class="grid gap-5 sm:grid-cols-2">
+			<div class="mx-auto w-full max-w-4xl flex-1 min-h-0 overflow-y-auto p-4 sm:p-5">
+				<div class="grid gap-4 sm:grid-cols-2">
 					<button
 						onclick={selectProjectCreate}
-						class="group flex h-full flex-col justify-between gap-6 rounded-2xl border border-slate-200/60 bg-gradient-to-br from-purple-50/70 via-fuchsia-50/40 to-white/85 p-7 text-left shadow-[0_24px_70px_-48px_rgba(147,51,234,0.6)] transition-all duration-200 hover:-translate-y-1 hover:border-purple-300/60 hover:shadow-[0_36px_90px_-56px_rgba(126,34,206,0.55)] active:translate-y-0 dark:border-slate-700/60 dark:from-slate-900/85 dark:via-slate-900/55 dark:to-slate-900/75 dark:hover:border-purple-500/60"
+						class="group flex h-full flex-col justify-between gap-4 rounded-xl border border-slate-200/60 bg-gradient-to-br from-purple-50/70 via-fuchsia-50/40 to-white/85 p-5 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-purple-300/60 hover:shadow-md active:translate-y-0 dark:border-slate-700/60 dark:from-slate-900/85 dark:via-slate-900/55 dark:to-slate-900/75 dark:hover:border-purple-500/60"
 					>
-						<div class="flex items-center gap-4">
+						<div class="flex items-start gap-3">
 							<div
-								class="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-purple-500/15 via-pink-400/10 to-violet-500/15 text-purple-600 backdrop-blur-sm transition-transform duration-200 group-hover:scale-105 dark:text-purple-300"
+								class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-purple-500/15 via-pink-400/10 to-violet-500/15 text-purple-600 transition-transform duration-200 group-hover:scale-105 dark:text-purple-300"
 							>
-								<Plus class="h-6 w-6" />
+								<Plus class="h-5 w-5" />
 							</div>
-							<div>
-								<h3 class="text-lg font-semibold text-slate-900 dark:text-white">
+							<div class="min-w-0 flex-1">
+								<h3 class="text-base font-semibold text-slate-900 dark:text-white">
 									Create a new project
 								</h3>
-								<p class="mt-1 text-sm text-slate-600 dark:text-slate-400">
+								<p
+									class="mt-1 text-xs text-slate-600 dark:text-slate-400 leading-snug"
+								>
 									Guided discovery to capture goals, milestones, and structure.
 								</p>
 							</div>
 						</div>
 						<div
-							class="flex items-center justify-between text-sm font-medium text-purple-600 dark:text-purple-400"
+							class="flex items-center justify-between text-xs font-medium text-purple-600 dark:text-purple-400"
 						>
 							<span>10-minute setup</span>
 							<ChevronRight
-								class="h-5 w-5 transition-transform group-hover:translate-x-1"
+								class="h-4 w-4 transition-transform group-hover:translate-x-1"
 							/>
 						</div>
 					</button>
@@ -392,48 +398,55 @@
 					<button
 						onclick={showProjectSelection}
 						disabled={isLoadingProjects || !hasProjects}
-						class="group flex h-full flex-col justify-between gap-6 rounded-2xl border border-slate-200/60 bg-gradient-to-br from-slate-50/80 via-slate-50/40 to-white/85 p-7 text-left shadow-[0_24px_70px_-48px_rgba(15,23,42,0.45)] transition-all duration-200 hover:-translate-y-1 hover:border-emerald-300/60 hover:shadow-[0_36px_90px_-56px_rgba(20,83,45,0.45)] active:translate-y-0 disabled:translate-y-0 disabled:opacity-60 disabled:shadow-none dark:border-slate-700/60 dark:from-slate-900/85 dark:via-slate-900/55 dark:to-slate-900/75 dark:hover:border-emerald-500/60"
+						class="group flex h-full flex-col justify-between gap-4 rounded-xl border border-slate-200/60 bg-gradient-to-br from-slate-50/80 via-slate-50/40 to-white/85 p-5 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-300/60 hover:shadow-md active:translate-y-0 disabled:translate-y-0 disabled:opacity-60 disabled:shadow-none dark:border-slate-700/60 dark:from-slate-900/85 dark:via-slate-900/55 dark:to-slate-900/75 dark:hover:border-emerald-500/60"
 					>
-						<div class="flex items-center gap-4">
+						<div class="flex items-start gap-3">
 							<div
-								class="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500/15 via-teal-400/10 to-lime-500/15 text-emerald-600 backdrop-blur-sm transition-transform duration-200 group-hover:scale-105 dark:text-emerald-300"
+								class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500/15 via-teal-400/10 to-lime-500/15 text-emerald-600 transition-transform duration-200 group-hover:scale-105 dark:text-emerald-300"
 							>
 								{#if isLoadingProjects}
-									<Loader2 class="h-6 w-6 animate-spin" />
+									<Loader2 class="h-5 w-5 animate-spin" />
 								{:else}
-									<FolderOpen class="h-6 w-6" />
+									<FolderOpen class="h-5 w-5" />
 								{/if}
 							</div>
-							<div>
-								<h3 class="text-lg font-semibold text-slate-900 dark:text-white">
+							<div class="min-w-0 flex-1">
+								<h3 class="text-base font-semibold text-slate-900 dark:text-white">
 									Work with an existing project
 								</h3>
-								<p class="mt-1 text-sm text-slate-600 dark:text-slate-400">
+								<p
+									class="mt-1 text-xs text-slate-600 dark:text-slate-400 leading-snug"
+								>
 									Select a project, then choose whether to update, audit, or
 									forecast it.
 								</p>
 							</div>
 						</div>
 						<div
-							class="flex items-center justify-between text-sm font-medium text-emerald-600 dark:text-emerald-400"
+							class="flex items-center justify-between text-xs font-medium text-emerald-600 dark:text-emerald-400"
 						>
 							<span
 								>{#if hasProjects}{activeProjects.length} ready projects{:else}No
 									ontology projects yet{/if}</span
 							>
 							<ChevronRight
-								class="h-5 w-5 transition-transform group-hover:translate-x-1"
+								class="h-4 w-4 transition-transform group-hover:translate-x-1"
 							/>
 						</div>
 					</button>
 				</div>
 
 				{#if projectsError}
-					<p
-						class="mt-6 rounded-xl border border-rose-200/60 bg-rose-50/70 p-4 text-sm text-rose-600 dark:border-rose-500/40 dark:bg-rose-500/10 dark:text-rose-300"
+					<Card
+						variant="elevated"
+						class="mt-6 border-rose-200 dark:border-rose-900/40 bg-rose-50/50 dark:bg-rose-950/20"
 					>
-						{projectsError}
-					</p>
+						<CardBody padding="md">
+							<p class="text-sm text-rose-700 dark:text-rose-300" role="alert">
+								{projectsError}
+							</p>
+						</CardBody>
+					</Card>
 				{/if}
 			</div>
 		</div>
@@ -444,21 +457,20 @@
 		<div class="flex h-full min-h-0 flex-col">
 			<!-- Header with Back Button -->
 			<div
-				class="border-b border-slate-200/60 bg-white/80 px-4 py-3 backdrop-blur-sm dark:border-slate-700/60 dark:bg-slate-900/80"
+				class="flex gap-2 border-b border-slate-200/60 bg-white/80 p-4 sm:p-6 backdrop-blur-sm dark:border-slate-700/60 dark:bg-slate-900/80"
 			>
-				<button
-					onclick={backToProjectHub}
-					class="mb-2 flex items-center gap-2 text-sm text-slate-600 transition-colors hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
-				>
+				<Button variant="ghost" size="sm" onclick={backToProjectHub} class="mb-2">
 					<ChevronLeft class="h-4 w-4" />
-					<span>Back</span>
-				</button>
-				<h2 class="text-lg font-semibold text-slate-900 dark:text-white">
-					Select a Project
-				</h2>
-				<p class="text-xs text-slate-600 dark:text-slate-400">
-					Choose which project to work with
-				</p>
+					Back
+				</Button>
+				<div>
+					<h2 class="text-lg font-semibold text-slate-900 dark:text-white">
+						Select a Project
+					</h2>
+					<p class="text-xs text-slate-600 dark:text-slate-400">
+						Choose which project to work with
+					</p>
+				</div>
 			</div>
 
 			<!-- Projects List -->
@@ -573,21 +585,20 @@
 		<div class="flex h-full min-h-0 flex-col">
 			<!-- Header with Back Button -->
 			<div
-				class="border-b border-slate-200/60 bg-white/80 px-4 py-3 backdrop-blur-sm dark:border-slate-700/60 dark:bg-slate-900/80"
+				class="flex gap-2 border-b border-slate-200/60 bg-white/80 p-4 sm:p-6 backdrop-blur-sm dark:border-slate-700/60 dark:bg-slate-900/80"
 			>
-				<button
-					onclick={backToProjectSelection}
-					class="mb-2 flex items-center gap-2 text-sm text-slate-600 transition-colors hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
-				>
+				<Button variant="ghost" size="sm" onclick={backToProjectSelection} class="mb-2">
 					<ChevronLeft class="h-4 w-4" />
-					<span>Back to Projects</span>
-				</button>
-				<h2 class="text-lg font-semibold text-slate-900 dark:text-white">
-					{selectedProject.name}
-				</h2>
-				<p class="text-xs text-slate-600 dark:text-slate-400">
-					Choose what you'd like to do
-				</p>
+					Back
+				</Button>
+				<div>
+					<h2 class="text-lg font-semibold text-slate-900 dark:text-white">
+						{selectedProject.name}
+					</h2>
+					<p class="text-xs text-slate-600 dark:text-slate-400">
+						Choose what you'd like to do
+					</p>
+				</div>
 			</div>
 
 			<!-- Mode Options -->

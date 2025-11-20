@@ -22,12 +22,18 @@
 	like sidebar metadata and FSM visualization.
 -->
 <script lang="ts">
-	import { X, Save, Loader, Trash2 } from 'lucide-svelte';
+	import { Save, Loader, Trash2 } from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
+	import Modal from '$lib/components/ui/Modal.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
 	import CardBody from '$lib/components/ui/CardBody.svelte';
 	import CardHeader from '$lib/components/ui/CardHeader.svelte';
-	import { fade } from 'svelte/transition';
+	import FormField from '$lib/components/ui/FormField.svelte';
+	import TextInput from '$lib/components/ui/TextInput.svelte';
+	import Textarea from '$lib/components/ui/Textarea.svelte';
+	import Select from '$lib/components/ui/Select.svelte';
+	import Badge from '$lib/components/ui/Badge.svelte';
+	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
 	import FSMStateVisualizer from './FSMStateVisualizer.svelte';
 
 	interface Props {
@@ -40,6 +46,7 @@
 
 	let { goalId, projectId, onClose, onUpdated, onDeleted }: Props = $props();
 
+	let modalOpen = $state(true);
 	let goal = $state<any>(null);
 	let isLoading = $state(true);
 	let isSaving = $state(false);
@@ -193,225 +200,190 @@
 		await loadTransitions();
 	}
 
-	function handleKeydown(event: KeyboardEvent) {
-		if (event.key === 'Escape' && !isSaving && !isDeleting) {
-			onClose();
-		}
+	function handleClose() {
+		modalOpen = false;
+		onClose?.();
 	}
 </script>
 
-<svelte:window onkeydown={handleKeydown} />
-
-<!-- Modal Backdrop -->
-<button
-	class="fixed inset-0 bg-black/50 dark:bg-black/70 z-40 cursor-default"
-	onclick={onClose}
-	disabled={isSaving || isDeleting}
-	aria-label="Close dialog"
-	transition:fade={{ duration: 200 }}
-></button>
-
-<!-- Modal Content -->
-<div
-	class="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-3xl max-h-[90vh] overflow-hidden z-50"
-	transition:fade={{ duration: 200 }}
+<Modal
+	bind:isOpen={modalOpen}
+	size="lg"
+	onClose={handleClose}
+	closeOnEscape={!isSaving && !isDeleting}
+	title="Edit Goal: {name || 'Loading...'}"
 >
-	<Card variant="elevated" class="shadow-2xl">
-		<CardHeader variant="gradient" class="p-6">
-			<div class="flex items-center justify-between">
-				<h2 class="text-2xl font-bold text-white">Edit Goal</h2>
-				<button
-					onclick={onClose}
-					disabled={isSaving || isDeleting}
-					class="p-2 hover:bg-white/10 rounded-lg transition-colors disabled:opacity-50"
-					aria-label="Close"
-				>
-					<X class="w-5 h-5 text-white" />
-				</button>
+	<div class="p-4 sm:p-6">
+		{#if isLoading}
+			<div class="flex items-center justify-center py-12">
+				<Loader class="w-8 h-8 animate-spin text-gray-400" />
 			</div>
-		</CardHeader>
-
-		<CardBody class="max-h-[calc(90vh-120px)] overflow-y-auto p-4 sm:p-6">
-			{#if isLoading}
-				<div class="flex items-center justify-center py-12">
-					<Loader class="w-8 h-8 animate-spin text-gray-400" />
-				</div>
-			{:else if !goal}
-				<div class="text-center py-8">
-					<p class="text-red-600 dark:text-red-400">Goal not found</p>
-				</div>
-			{:else}
-				<div class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-					<!-- Main Form (Left 2 columns) -->
-					<div class="lg:col-span-2">
-						<form
-							onsubmit={(e) => {
-								e.preventDefault();
-								handleSave();
-							}}
-							class="space-y-5"
+		{:else if !goal}
+			<div class="text-center py-8">
+				<p class="text-red-600 dark:text-red-400">Goal not found</p>
+			</div>
+		{:else}
+			<div class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+				<!-- Main Form (Left 2 columns) -->
+				<div class="lg:col-span-2">
+					<form
+						onsubmit={(e) => {
+							e.preventDefault();
+							handleSave();
+						}}
+						class="space-y-6"
+					>
+						<FormField
+							label="Goal Name"
+							labelFor="name"
+							required={true}
+							error={!name.trim() && error ? 'Goal name is required' : ''}
 						>
-							<div>
-								<label
-									for="name"
-									class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5"
-								>
-									Goal Name
-								</label>
-								<input
-									type="text"
-									id="name"
-									bind:value={name}
-									placeholder="Enter goal name..."
-									required
+							<TextInput
+								id="name"
+								bind:value={name}
+								placeholder="Enter goal name..."
+								required={true}
+								disabled={isSaving}
+								error={!name.trim() && error ? true : false}
+							/>
+						</FormField>
+
+						<FormField
+							label="Description"
+							labelFor="description"
+							hint="Describe what you want to achieve"
+						>
+							<Textarea
+								id="description"
+								bind:value={description}
+								placeholder="Describe the goal..."
+								rows={3}
+								disabled={isSaving}
+								size="md"
+							/>
+						</FormField>
+
+						<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+							<FormField
+								label="Priority"
+								labelFor="priority"
+								required={true}
+								hint="Set goal importance level"
+							>
+								<Select
+									id="priority"
+									bind:value={priority}
 									disabled={isSaving}
-									class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
+									size="md"
+									placeholder="Select priority"
+								>
+									<option value="high">High</option>
+									<option value="medium">Medium</option>
+									<option value="low">Low</option>
+								</Select>
+							</FormField>
+
+							<FormField
+								label="Target Date"
+								labelFor="target-date"
+								hint="When do you want to achieve this?"
+							>
+								<TextInput
+									type="date"
+									id="target-date"
+									bind:value={targetDate}
+									disabled={isSaving}
+								/>
+							</FormField>
+						</div>
+
+						<FormField
+							label="Success Criteria"
+							labelFor="measurement-criteria"
+							hint="How will you measure success?"
+						>
+							<Textarea
+								id="measurement-criteria"
+								bind:value={measurementCriteria}
+								placeholder="How will you measure success..."
+								rows={3}
+								disabled={isSaving}
+								size="md"
+							/>
+						</FormField>
+
+						<!-- FSM State Visualizer -->
+						{#if goal.type_key && allowedTransitions.length > 0}
+							<div class="pt-4 border-t border-gray-200 dark:border-gray-700">
+								<FSMStateVisualizer
+									entityId={goalId}
+									entityKind="goal"
+									entityName={name}
+									currentState={stateKey}
+									initialTransitions={allowedTransitions}
+									on:stateChange={handleStateChange}
 								/>
 							</div>
-
-							<div>
-								<label
-									for="description"
-									class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5"
-								>
-									Description
-								</label>
-								<textarea
-									id="description"
-									bind:value={description}
-									placeholder="Describe the goal..."
-									rows={3}
+						{:else}
+							<FormField
+								label="State"
+								labelFor="state"
+								required={true}
+								hint="Current goal status"
+							>
+								<Select
+									id="state"
+									bind:value={stateKey}
 									disabled={isSaving}
-									class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed resize-none"
-								></textarea>
-							</div>
-
-							<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-								<div>
-									<label
-										for="priority"
-										class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5"
-									>
-										Priority
-									</label>
-									<select
-										id="priority"
-										bind:value={priority}
-										disabled={isSaving}
-										class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
-									>
-										<option value="high">High</option>
-										<option value="medium">Medium</option>
-										<option value="low">Low</option>
-									</select>
-								</div>
-
-								<div>
-									<label
-										for="target-date"
-										class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5"
-									>
-										Target Date
-									</label>
-									<input
-										type="date"
-										id="target-date"
-										bind:value={targetDate}
-										disabled={isSaving}
-										class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
-									/>
-								</div>
-							</div>
-
-							<div>
-								<label
-									for="measurement-criteria"
-									class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5"
+									size="md"
+									placeholder="Select state"
 								>
-									Success Criteria
-								</label>
-								<textarea
-									id="measurement-criteria"
-									bind:value={measurementCriteria}
-									placeholder="How will you measure success..."
-									rows={3}
-									disabled={isSaving}
-									class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed resize-none"
-								></textarea>
+									<option value="draft">Draft</option>
+									<option value="active">Active</option>
+									<option value="on_track">On Track</option>
+									<option value="at_risk">At Risk</option>
+									<option value="achieved">Achieved</option>
+									<option value="missed">Missed</option>
+									<option value="archived">Archived</option>
+								</Select>
+							</FormField>
+						{/if}
+
+						{#if error}
+							<div
+								class="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg"
+							>
+								<p class="text-sm text-red-700 dark:text-red-300">{error}</p>
 							</div>
+						{/if}
+					</form>
+				</div>
 
-							<!-- FSM State Visualizer -->
-							{#if goal.type_key && allowedTransitions.length > 0}
-								<div class="pt-4 border-t border-gray-200 dark:border-gray-700">
-									<FSMStateVisualizer
-										entityId={goalId}
-										entityKind="goal"
-										entityName={name}
-										currentState={stateKey}
-										initialTransitions={allowedTransitions}
-										on:stateChange={handleStateChange}
-									/>
-								</div>
-							{:else}
-								<div>
-									<label
-										for="state"
-										class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5"
-									>
-										State
-									</label>
-									<select
-										id="state"
-										bind:value={stateKey}
-										disabled={isSaving}
-										class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
-									>
-										<option value="draft">Draft</option>
-										<option value="active">Active</option>
-										<option value="on_track">On Track</option>
-										<option value="at_risk">At Risk</option>
-										<option value="achieved">Achieved</option>
-										<option value="missed">Missed</option>
-										<option value="archived">Archived</option>
-									</select>
-								</div>
-							{/if}
-
-							{#if error}
-								<div
-									class="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg"
-								>
-									<p class="text-sm text-red-700 dark:text-red-300">{error}</p>
-								</div>
-							{/if}
-						</form>
-					</div>
-
-					<!-- Sidebar (Right column) -->
-					<div class="space-y-4">
-						<!-- Goal Metadata -->
-						<div
-							class="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 rounded-lg p-4 space-y-3 border border-gray-200 dark:border-gray-700 shadow-sm"
-						>
+				<!-- Sidebar (Right column) -->
+				<div class="space-y-4">
+					<!-- Goal Metadata -->
+					<Card variant="elevated">
+						<CardHeader variant="default">
 							<h3
 								class="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide flex items-center gap-2"
 							>
-								<span class="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse"
-								></span>
+								<span class="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
 								Goal Information
 							</h3>
-
+						</CardHeader>
+						<CardBody padding="sm">
 							<div class="space-y-2 text-sm">
-								<div class="flex justify-between">
+								<div class="flex justify-between items-center">
 									<span class="text-gray-600 dark:text-gray-400">Type:</span>
-									<span class="font-mono text-gray-900 dark:text-white"
-										>{goal.type_key || 'goal.basic'}</span
-									>
+									<Badge variant="info" size="sm">
+										{goal.type_key || 'goal.basic'}
+									</Badge>
 								</div>
 
 								<div class="flex justify-between">
 									<span class="text-gray-600 dark:text-gray-400">ID:</span>
-									<span class="font-mono text-xs text-gray-500 dark:text-gray-500"
+									<span class="font-mono text-xs text-gray-500"
 										>{goal.id.slice(0, 8)}...</span
 									>
 								</div>
@@ -438,95 +410,121 @@
 									</div>
 								{/if}
 							</div>
-						</div>
+						</CardBody>
+					</Card>
 
-						<!-- Danger Zone -->
-						<div
-							class="border-2 border-red-200 dark:border-red-800 bg-red-50/50 dark:bg-red-900/10 rounded-lg p-4"
+					<!-- Danger Zone -->
+					<div
+						class="border-2 border-red-200 dark:border-red-800 bg-red-50/50 dark:bg-red-900/10 rounded-lg p-4"
+					>
+						<h3
+							class="text-xs font-semibold text-red-700 dark:text-red-400 mb-3 uppercase tracking-wide flex items-center gap-2"
 						>
-							<h3
-								class="text-xs font-semibold text-red-700 dark:text-red-400 mb-3 uppercase tracking-wide flex items-center gap-2"
-							>
-								<span class="text-base">⚠️</span>
-								Danger Zone
-							</h3>
+							<span class="text-base">⚠️</span>
+							Danger Zone
+						</h3>
 
-							{#if !showDeleteConfirm}
-								<Button
-									variant="danger"
-									size="sm"
-									onclick={() => (showDeleteConfirm = true)}
-									disabled={isDeleting}
-									class="w-full"
-								>
-									<Trash2 class="w-4 h-4" />
-									Delete Goal
-								</Button>
-							{:else}
-								<div class="space-y-3">
-									<p class="text-sm text-red-700 dark:text-red-300">
-										Are you sure you want to delete this goal? This action
-										cannot be undone.
-									</p>
-									<div class="flex gap-2">
-										<Button
-											variant="danger"
-											size="sm"
-											onclick={handleDelete}
-											disabled={isDeleting}
-											class="flex-1"
-										>
-											{#if isDeleting}
-												<Loader class="w-4 h-4 animate-spin" />
-												Deleting...
-											{:else}
-												Yes, Delete
-											{/if}
-										</Button>
-										<Button
-											variant="ghost"
-											size="sm"
-											onclick={() => (showDeleteConfirm = false)}
-											disabled={isDeleting}
-											class="flex-1"
-										>
-											Cancel
-										</Button>
-									</div>
+						{#if !showDeleteConfirm}
+							<Button
+								variant="danger"
+								size="sm"
+								onclick={() => (showDeleteConfirm = true)}
+								disabled={isDeleting}
+								class="w-full"
+							>
+								<Trash2 class="w-4 h-4" />
+								Delete Goal
+							</Button>
+						{:else}
+							<div class="space-y-3">
+								<p class="text-sm text-red-700 dark:text-red-300">
+									Are you sure you want to delete this goal? This action cannot be
+									undone.
+								</p>
+								<div class="flex gap-2">
+									<Button
+										variant="danger"
+										size="sm"
+										onclick={handleDelete}
+										disabled={isDeleting}
+										class="flex-1"
+									>
+										{#if isDeleting}
+											<Loader class="w-4 h-4 animate-spin" />
+											Deleting...
+										{:else}
+											Yes, Delete
+										{/if}
+									</Button>
+									<Button
+										variant="ghost"
+										size="sm"
+										onclick={() => (showDeleteConfirm = false)}
+										disabled={isDeleting}
+										class="flex-1"
+									>
+										Cancel
+									</Button>
 								</div>
-							{/if}
-						</div>
+							</div>
+						{/if}
 					</div>
 				</div>
+			</div>
+		{/if}
+	</div>
 
-				<!-- Action Buttons -->
-				<div
-					class="flex items-center justify-end gap-2.5 mt-6 pt-5 border-t border-gray-200 dark:border-gray-700"
+	<!-- Footer Actions -->
+	<svelte:fragment slot="footer">
+		{#if !isLoading && goal}
+			<div
+				class="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-3 p-4 sm:p-6 border-t border-gray-200 dark:border-gray-700 bg-gradient-to-r from-gray-50 to-slate-50 dark:from-gray-900/50 dark:to-gray-800/50"
+			>
+				<Button
+					type="button"
+					variant="ghost"
+					size="sm"
+					onclick={handleClose}
+					disabled={isSaving || isDeleting}
+					class="w-full sm:w-auto"
 				>
-					<Button
-						type="button"
-						variant="ghost"
-						onclick={onClose}
-						disabled={isSaving || isDeleting}
-					>
-						Cancel
-					</Button>
-					<Button
-						type="button"
-						variant="primary"
-						onclick={handleSave}
-						disabled={isSaving || isDeleting || !name.trim()}
-					>
-						{#if isSaving}
-							<Loader class="w-4 h-4 animate-spin" />
-							Saving...
-						{:else}
-							<Save class="w-4 h-4" />
-							Save Changes
-						{/if}
-					</Button>
-				</div>
-			{/if}
-		</CardBody>
-	</Card>
-</div>
+					Cancel
+				</Button>
+				<Button
+					type="button"
+					variant="primary"
+					size="sm"
+					onclick={handleSave}
+					disabled={isSaving || isDeleting || !name.trim()}
+					class="w-full sm:w-auto"
+				>
+					{#if isSaving}
+						<Loader class="w-4 h-4 animate-spin" />
+						Saving...
+					{:else}
+						<Save class="w-4 h-4" />
+						Save Changes
+					{/if}
+				</Button>
+			</div>
+		{/if}
+	</svelte:fragment>
+</Modal>
+
+{#if showDeleteConfirm}
+	<ConfirmationModal
+		isOpen={showDeleteConfirm}
+		title="Delete Goal"
+		confirmText="Delete Goal"
+		confirmVariant="danger"
+		loading={isDeleting}
+		loadingText="Deleting..."
+		icon="danger"
+		on:confirm={handleDelete}
+		on:cancel={() => (showDeleteConfirm = false)}
+	>
+		<p class="text-sm text-gray-600 dark:text-gray-300" slot="content">
+			This action cannot be undone. The goal and all its data will be permanently deleted.
+		</p>
+	</ConfirmationModal>
+{/if}

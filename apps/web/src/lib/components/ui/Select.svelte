@@ -262,7 +262,7 @@
 		{...restProps}
 	>
 		{#if placeholder}
-			<option value="" disabled selected hidden aria-hidden="true">
+			<option value="" disabled selected hidden>
 				{placeholder}
 			</option>
 		{/if}

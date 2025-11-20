@@ -119,7 +119,7 @@ export function getGoalStateBadgeClass(stateKey: string): string {
 /**
  * Get Tailwind CSS classes for priority badges
  */
-export function getPriorityBadgeClass(priority: string): string {
+export function getPriorityBadgeClass(priority?: string): string {
 	const normalized = priority?.toLowerCase();
 
 	switch (normalized) {

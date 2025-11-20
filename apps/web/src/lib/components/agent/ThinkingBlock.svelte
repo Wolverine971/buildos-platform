@@ -1,6 +1,8 @@
 <!-- apps/web/src/lib/components/agent/ThinkingBlock.svelte -->
 <script lang="ts">
 	import { ChevronDown, ChevronRight, Loader, Check, X } from 'lucide-svelte';
+	import Card from '$lib/components/ui/Card.svelte';
+	import CardBody from '$lib/components/ui/CardBody.svelte';
 
 	// Type definitions (should match parent component)
 	type ActivityType =
@@ -137,27 +139,36 @@
 	}
 </script>
 
-<div
-	class="thinking-block rounded-xl border border-slate-300 bg-slate-100/95 shadow-lg dark:border-slate-700/60 dark:bg-slate-900/95"
+<Card
+	variant="elevated"
+	class="thinking-block border-slate-300 bg-slate-100/95 dark:border-slate-700/60 dark:bg-slate-900/95 shadow-lg"
 >
 	<!-- Header -->
 	<button
 		type="button"
 		onclick={() => onToggleCollapse(block.id)}
-		class="flex w-full items-center justify-between gap-2 border-b border-slate-300 bg-slate-200/80 px-3 py-3 transition-colors hover:bg-slate-200 dark:border-slate-700/60 dark:bg-slate-800/80 dark:hover:bg-slate-800 sm:gap-3 sm:px-4"
+		class="flex w-full items-center justify-between gap-2 border-b border-slate-300 bg-slate-200/80 p-4 sm:p-6 transition-colors hover:bg-slate-200 dark:border-slate-700/60 dark:bg-slate-800/80 dark:hover:bg-slate-800 sm:gap-3 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 rounded-t-xl"
 		aria-expanded={!block.isCollapsed}
-		aria-label={block.isCollapsed ? 'Expand agent thinking log' : 'Collapse agent thinking log'}
+		aria-label={block.isCollapsed
+			? 'Expand BuildOS thinking log'
+			: 'Collapse BuildOS thinking log'}
 	>
 		<div class="flex min-w-0 items-center gap-2 sm:gap-3">
 			{#if block.isCollapsed}
-				<ChevronRight class="h-4 w-4 shrink-0 text-slate-500 dark:text-slate-400" />
+				<ChevronRight
+					class="h-4 w-4 shrink-0 text-slate-500 dark:text-slate-400"
+					aria-hidden="true"
+				/>
 			{:else}
-				<ChevronDown class="h-4 w-4 shrink-0 text-slate-500 dark:text-slate-400" />
+				<ChevronDown
+					class="h-4 w-4 shrink-0 text-slate-500 dark:text-slate-400"
+					aria-hidden="true"
+				/>
 			{/if}
 			<span
 				class="truncate font-mono text-sm font-semibold text-slate-800 dark:text-slate-200 sm:text-base"
 			>
-				Agent Thinking
+				BuildOS Thinking
 			</span>
 		</div>
 		<div class="flex shrink-0 items-center gap-2 text-xs sm:gap-4">
@@ -165,6 +176,8 @@
 				class="hidden font-mono font-medium sm:inline {block.status === 'active'
 					? 'text-emerald-600 dark:text-emerald-400'
 					: 'text-slate-500 dark:text-slate-400'}"
+				role="status"
+				aria-live="polite"
 			>
 				{statusLabel}
 			</span>
@@ -179,81 +192,88 @@
 
 	<!-- Activity Log -->
 	{#if !block.isCollapsed}
-		<div
-			class="thinking-log max-h-64 space-y-1 overflow-y-auto bg-white/60 p-3 font-mono text-xs dark:bg-slate-950/60 sm:max-h-96 sm:space-y-1.5 sm:p-4"
-		>
-			{#if block.activities.length === 0}
-				<div
-					class="flex items-center gap-2 py-2 text-slate-600 dark:text-slate-500"
-					role="status"
-					aria-live="polite"
-				>
-					<span
-						class="inline-flex h-2 w-2 animate-pulse rounded-full bg-emerald-500"
-						aria-hidden="true"
-					></span>
-					<span>Waiting for agent activity...</span>
-				</div>
-			{:else}
-				{#each block.activities as activity (activity.id)}
-					{@const style = getActivityStyle(activity.activityType)}
-					{@const planSteps = getPlanSteps(activity)}
-					<div class="py-0.5">
-						<div class="flex items-start gap-2 leading-tight sm:items-center">
-							<!-- Icon -->
-							<span class="shrink-0 pt-0.5 {style.color} sm:pt-0" aria-hidden="true"
-								>{style.icon}</span
-							>
+		<CardBody padding="md">
+			<div
+				class="thinking-log max-h-64 space-y-1 overflow-y-auto bg-white/60 rounded-lg font-mono text-xs dark:bg-slate-950/60 sm:max-h-96 sm:space-y-1.5"
+				role="log"
+				aria-label="Agent thinking log"
+			>
+				{#if block.activities.length === 0}
+					<div
+						class="flex items-center gap-2 py-2 text-slate-600 dark:text-slate-500"
+						role="status"
+						aria-live="polite"
+					>
+						<span
+							class="inline-flex h-2 w-2 animate-pulse rounded-full bg-emerald-500"
+							aria-hidden="true"
+						></span>
+						<span>Waiting for BuildOS activity...</span>
+					</div>
+				{:else}
+					{#each block.activities as activity (activity.id)}
+						{@const style = getActivityStyle(activity.activityType)}
+						{@const planSteps = getPlanSteps(activity)}
+						<div class="py-0.5">
+							<div class="flex items-start gap-2 leading-tight sm:items-center">
+								<!-- Icon -->
+								<span
+									class="shrink-0 pt-0.5 {style.color} sm:pt-0"
+									aria-hidden="true">{style.icon}</span
+								>
 
-							<!-- Content -->
-							<span
-								class="min-w-0 flex-1 break-words text-slate-700 dark:text-slate-300"
-								>{activity.content}</span
-							>
+								<!-- Content -->
+								<span
+									class="min-w-0 flex-1 break-words text-slate-700 dark:text-slate-300"
+									>{activity.content}</span
+								>
 
-							<!-- Status indicator (for tool calls) -->
-							{#if activity.status === 'pending'}
-								<Loader
-									class="h-3 w-3 shrink-0 animate-spin text-slate-500 dark:text-slate-400"
-									aria-label="Loading"
-								/>
-							{:else if activity.status === 'completed'}
-								<Check
-									class="h-3 w-3 shrink-0 text-green-600 dark:text-green-400"
-									aria-label="Completed"
-								/>
-							{:else if activity.status === 'failed'}
-								<X
-									class="h-3 w-3 shrink-0 text-red-600 dark:text-red-400"
-									aria-label="Failed"
-								/>
+								<!-- Status indicator (for tool calls) -->
+								{#if activity.status === 'pending'}
+									<Loader
+										class="h-3 w-3 shrink-0 animate-spin text-slate-500 dark:text-slate-400"
+										aria-label="Loading"
+									/>
+								{:else if activity.status === 'completed'}
+									<Check
+										class="h-3 w-3 shrink-0 text-green-600 dark:text-green-400"
+										aria-label="Completed"
+									/>
+								{:else if activity.status === 'failed'}
+									<X
+										class="h-3 w-3 shrink-0 text-red-600 dark:text-red-400"
+										aria-label="Failed"
+									/>
+								{/if}
+							</div>
+
+							<!-- Plan steps expansion -->
+							{#if planSteps && planSteps.length > 0}
+								<div
+									class="ml-5 mt-1 space-y-0.5 text-slate-600 dark:text-slate-400 sm:ml-6 sm:mt-1.5"
+								>
+									{#each planSteps as step, i}
+										<div class="flex gap-2 text-[11px] leading-snug">
+											<span
+												class="w-5 shrink-0 text-right text-slate-500 dark:text-slate-500 sm:w-6"
+												>{i + 1}.</span
+											>
+											<span class="min-w-0 flex-1"
+												>{step.description ||
+													step.name ||
+													'Unnamed step'}</span
+											>
+										</div>
+									{/each}
+								</div>
 							{/if}
 						</div>
-
-						<!-- Plan steps expansion -->
-						{#if planSteps && planSteps.length > 0}
-							<div
-								class="ml-5 mt-1 space-y-0.5 text-slate-600 dark:text-slate-400 sm:ml-6 sm:mt-1.5"
-							>
-								{#each planSteps as step, i}
-									<div class="flex gap-2 text-[11px] leading-snug">
-										<span
-											class="w-5 shrink-0 text-right text-slate-500 dark:text-slate-500 sm:w-6"
-											>{i + 1}.</span
-										>
-										<span class="min-w-0 flex-1"
-											>{step.description || step.name || 'Unnamed step'}</span
-										>
-									</div>
-								{/each}
-							</div>
-						{/if}
-					</div>
-				{/each}
-			{/if}
-		</div>
+					{/each}
+				{/if}
+			</div>
+		</CardBody>
 	{/if}
-</div>
+</Card>
 
 <style>
 	/* Terminal-style scrollbar - Light Mode */

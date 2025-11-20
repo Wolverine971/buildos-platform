@@ -15,6 +15,10 @@
 	import { X, Send, Loader } from 'lucide-svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
+	import Card from '$lib/components/ui/Card.svelte';
+	import CardHeader from '$lib/components/ui/CardHeader.svelte';
+	import CardBody from '$lib/components/ui/CardBody.svelte';
+	import CardFooter from '$lib/components/ui/CardFooter.svelte';
 	import TextareaWithVoice from '$lib/components/ui/TextareaWithVoice.svelte';
 	import ContextSelectionScreen from '../chat/ContextSelectionScreen.svelte';
 	import ThinkingBlock from './ThinkingBlock.svelte';
@@ -327,12 +331,6 @@
 			isVoiceInitializing ||
 			isVoiceTranscribing
 	);
-
-	function formatDuration(seconds: number): string {
-		const mins = Math.floor(seconds / 60);
-		const secs = seconds % 60;
-		return `${mins}:${secs.toString().padStart(2, '0')}`;
-	}
 
 	async function stopVoiceInput() {
 		try {
@@ -780,7 +778,7 @@
 			status: 'active',
 			agentState: 'thinking',
 			isCollapsed: false,
-			content: 'Agent thinking...',
+			content: 'BuildOS thinking...',
 			timestamp: new Date()
 		};
 		messages = [...messages, thinkingBlock];
@@ -1786,16 +1784,16 @@
 	>
 		{#if agentToAgentMode && agentToAgentStep !== 'chat'}
 			<div
-				class="flex h-full min-h-0 flex-col gap-6 overflow-hidden bg-slate-50/70 p-6 dark:bg-slate-900/40"
+				class="flex h-full min-h-0 flex-col gap-4 overflow-hidden bg-slate-50/70 p-4 sm:p-5 dark:bg-slate-900/40"
 			>
-				<div class="flex items-center justify-between">
-					<div>
+				<div class="flex items-start justify-between gap-4">
+					<div class="min-w-0 flex-1">
 						<p
 							class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
 						>
 							Agent to agent chat
 						</p>
-						<h3 class="text-xl font-semibold text-slate-900 dark:text-white">
+						<h3 class="text-lg font-semibold text-slate-900 dark:text-white">
 							{#if agentToAgentStep === 'agent'}
 								Choose your agent
 							{:else if agentToAgentStep === 'project'}
@@ -1810,7 +1808,7 @@
 					</div>
 					<button
 						type="button"
-						class="text-sm font-medium text-slate-500 hover:text-slate-700 dark:text-slate-300 dark:hover:text-white"
+						class="text-sm font-medium text-slate-500 hover:text-slate-700 dark:text-slate-300 dark:hover:text-white shrink-0"
 						onclick={() => {
 							agentToAgentMode = false;
 							agentToAgentStep = null;
@@ -1821,149 +1819,181 @@
 					</button>
 				</div>
 				{#if agentToAgentStep === 'agent'}
-					<div
-						class="flex flex-1 flex-col justify-center gap-4 rounded-2xl border border-slate-200 bg-white px-6 py-10 shadow-sm dark:border-slate-700 dark:bg-slate-900"
-					>
-						<h4 class="text-lg font-semibold text-slate-900 dark:text-white">
-							Actionable Insight Agent
-						</h4>
-						<p class="max-w-2xl text-sm text-slate-600 dark:text-slate-400">
-							This agent will craft concise, actionable prompts and send them into the
-							BuildOS agentic chat to move your project forward.
-						</p>
-						<div class="flex flex-wrap items-center gap-3">
-							<button
-								type="button"
-								class="inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
-								onclick={() => selectAgentForBridge(RESEARCH_AGENT_ID)}
-							>
-								Use this agent
-							</button>
-							<span
-								class="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400"
-							>
-								Single option available
-							</span>
-						</div>
-					</div>
+					<Card variant="elevated" class="flex-1 flex flex-col justify-center">
+						<CardBody padding="md">
+							<div class="space-y-3">
+								<h4 class="text-base font-semibold text-slate-900 dark:text-white">
+									Actionable Insight Agent
+								</h4>
+								<p class="max-w-2xl text-sm text-slate-600 dark:text-slate-400">
+									This agent will craft concise, actionable prompts and send them
+									into the BuildOS agentic chat to move your project forward.
+								</p>
+								<div class="flex flex-wrap items-center gap-3">
+									<Button
+										variant="primary"
+										size="sm"
+										onclick={() => selectAgentForBridge(RESEARCH_AGENT_ID)}
+									>
+										Use this agent
+									</Button>
+									<span
+										class="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400"
+									>
+										Single option available
+									</span>
+								</div>
+							</div>
+						</CardBody>
+					</Card>
 				{:else if agentToAgentStep === 'project'}
-					<div class="flex flex-1 flex-col gap-4">
+					<div class="flex flex-1 flex-col gap-3 overflow-hidden">
 						<div class="flex items-center justify-between">
 							<h4 class="text-base font-semibold text-slate-900 dark:text-white">
 								Select the project to work in
 							</h4>
-							<button
-								type="button"
-								class="text-sm font-medium text-slate-500 hover:text-slate-700 dark:text-slate-300 dark:hover:text-white"
-								onclick={backToAgentSelection}
-							>
+							<Button variant="ghost" size="sm" onclick={backToAgentSelection}>
 								Back
-							</button>
+							</Button>
 						</div>
-						{#if agentProjectsLoading}
-							<div
-								class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
-							>
-								Loading projects...
-							</div>
-						{:else if agentProjectsError}
-							<div
-								class="rounded-xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:border-rose-900/40 dark:bg-rose-950/20 dark:text-rose-300"
-							>
-								{agentProjectsError}
-							</div>
-						{:else}
-							<div class="grid gap-4 md:grid-cols-2">
-								{#each agentProjects as project}
-									<button
-										type="button"
-										class="group flex h-full flex-col gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-4 text-left shadow-sm transition hover:-translate-y-[2px] hover:border-slate-300 hover:shadow-md dark:border-slate-700 dark:bg-slate-900 dark:hover:border-slate-600"
-										onclick={() => selectAgentProject(project)}
-									>
-										<div class="flex items-center justify-between gap-3">
-											<h5
-												class="text-base font-semibold text-slate-900 dark:text-white"
-											>
-												{project.name}
-											</h5>
-											<span
-												class="text-xs font-semibold uppercase tracking-wide text-slate-400"
-											>
-												Select
-											</span>
-										</div>
-										<p class="text-sm text-slate-600 dark:text-slate-400">
-											{project.description || 'No description provided.'}
+						<div class="flex-1 min-h-0 overflow-y-auto">
+							{#if agentProjectsLoading}
+								<Card variant="elevated">
+									<CardBody padding="md">
+										<p class="text-sm text-slate-600 dark:text-slate-300">
+											Loading projects...
 										</p>
-									</button>
-								{/each}
-							</div>
-							{#if agentProjects.length === 0 && !agentProjectsLoading}
-								<p class="text-sm text-slate-500 dark:text-slate-400">
-									No projects found. Create one first.
-								</p>
+									</CardBody>
+								</Card>
+							{:else if agentProjectsError}
+								<Card
+									variant="elevated"
+									class="border-rose-200 dark:border-rose-900/40 bg-rose-50/50 dark:bg-rose-950/20"
+								>
+									<CardBody padding="sm">
+										<p class="text-sm text-rose-700 dark:text-rose-300">
+											{agentProjectsError}
+										</p>
+									</CardBody>
+								</Card>
+							{:else}
+								<div class="grid gap-3 sm:grid-cols-2">
+									{#each agentProjects as project}
+										<Card variant="interactive" class="group h-full">
+											<button
+												type="button"
+												class="w-full text-left focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 rounded-xl"
+												onclick={() => selectAgentProject(project)}
+												aria-label="Select {project.name} project"
+											>
+												<CardBody padding="sm">
+													<div class="space-y-1.5">
+														<div
+															class="flex items-center justify-between gap-3"
+														>
+															<h5
+																class="text-sm font-semibold text-slate-900 dark:text-white"
+															>
+																{project.name}
+															</h5>
+															<span
+																class="text-xs font-semibold uppercase tracking-wide text-slate-400 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors"
+															>
+																Select
+															</span>
+														</div>
+														<p
+															class="text-xs text-slate-600 dark:text-slate-400 line-clamp-2"
+														>
+															{project.description ||
+																'No description provided.'}
+														</p>
+													</div>
+												</CardBody>
+											</button>
+										</Card>
+									{/each}
+								</div>
+								{#if agentProjects.length === 0 && !agentProjectsLoading}
+									<Card variant="outline" class="border-dashed">
+										<CardBody padding="sm">
+											<p
+												class="text-sm text-center text-slate-500 dark:text-slate-400"
+											>
+												No projects found. Create one first.
+											</p>
+										</CardBody>
+									</Card>
+								{/if}
 							{/if}
-						{/if}
+						</div>
 					</div>
 				{:else}
-					<div class="flex flex-1 flex-col gap-4">
+					<div class="flex flex-1 flex-col gap-3 overflow-hidden">
 						<div class="flex items-center justify-between">
 							<h4 class="text-base font-semibold text-slate-900 dark:text-white">
 								What should the AI agent accomplish?
 							</h4>
-							<button
-								type="button"
-								class="text-sm font-medium text-slate-500 hover:text-slate-700 dark:text-slate-300 dark:hover:text-white"
-								onclick={backToAgentProjectSelection}
-							>
+							<Button variant="ghost" size="sm" onclick={backToAgentProjectSelection}>
 								Back
-							</button>
+							</Button>
 						</div>
-						<div
-							class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900"
-						>
-							<div
-								class="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
-							>
-								<span
-									class="rounded-full bg-indigo-100 px-3 py-1 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-200"
-								>
-									Agent: {selectedAgentLabel}
-								</span>
-								{#if selectedContextLabel}
-									<span
-										class="rounded-full bg-emerald-100 px-3 py-1 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-200"
-									>
-										Project: {selectedContextLabel}
-									</span>
-								{/if}
-							</div>
-							<div class="mt-4 space-y-3">
-								<label
-									class="text-sm font-medium text-slate-800 dark:text-slate-200"
-								>
-									Goal for the AI agent
-								</label>
-								<textarea
-									class="w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-slate-600 dark:focus:ring-slate-700"
-									rows="3"
-									bind:value={agentGoal}
-									placeholder="Describe what the agent should try to achieve..."
-								></textarea>
-								<div class="flex flex-wrap items-center gap-3">
-									<button
-										type="button"
-										class="inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
-										onclick={startAgentToAgentChat}
-										disabled={agentGoal.trim().length === 0}
-									>
-										Start agent chat
-									</button>
-									<span class="text-xs text-slate-500 dark:text-slate-400">
-										The agent will alternate turns with BuildOS automatically.
-									</span>
-								</div>
-							</div>
+						<div class="flex-1 min-h-0 overflow-y-auto">
+							<Card variant="elevated">
+								<CardBody padding="md">
+									<div class="space-y-3">
+										<div
+											class="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+										>
+											<span
+												class="rounded-full bg-indigo-100 px-2.5 py-1 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-200"
+											>
+												Agent: {selectedAgentLabel}
+											</span>
+											{#if selectedContextLabel}
+												<span
+													class="rounded-full bg-emerald-100 px-2.5 py-1 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-200"
+												>
+													Project: {selectedContextLabel}
+												</span>
+											{/if}
+										</div>
+										<div class="space-y-2">
+											<label
+												for="agent-goal-input"
+												class="block text-sm font-medium text-slate-800 dark:text-slate-200"
+											>
+												Goal for the AI agent
+											</label>
+											<textarea
+												id="agent-goal-input"
+												class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-purple-600 dark:focus:ring-purple-600"
+												rows="3"
+												bind:value={agentGoal}
+												placeholder="Describe what the agent should try to achieve..."
+											></textarea>
+											<div
+												class="flex flex-col sm:flex-row sm:items-center gap-2"
+											>
+												<Button
+													variant="primary"
+													size="sm"
+													onclick={startAgentToAgentChat}
+													disabled={agentGoal.trim().length === 0}
+												>
+													Start agent chat
+												</Button>
+												<span
+													class="text-xs text-slate-500 dark:text-slate-400"
+												>
+													The agent will alternate turns with BuildOS
+													automatically.
+												</span>
+											</div>
+										</div>
+									</div>
+								</CardBody>
+							</Card>
 						</div>
 					</div>
 				{/if}
@@ -1976,34 +2006,44 @@
 			<div
 				bind:this={messagesContainer}
 				onscroll={handleScroll}
-				class="agent-chat-scroll flex-1 min-h-0 space-y-4 overflow-y-auto bg-slate-50/70 px-4 py-6 dark:bg-slate-900/40 sm:px-6"
+				class="agent-chat-scroll flex-1 min-h-0 space-y-3 overflow-y-auto bg-slate-50/70 px-4 py-4 dark:bg-slate-900/40 sm:px-5 sm:py-5"
 			>
 				{#if messages.length === 0}
-					<div
-						class="rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-5 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 sm:px-6 sm:py-6"
-					>
-						<p class="font-semibold text-slate-900 dark:text-white">
-							You're set to chat.
-						</p>
-						<p class="mt-2 leading-relaxed">
-							Ask the agent to plan, explain, or take the next step for
-							{displayContextLabel.toLowerCase()}.
-						</p>
-						<ul class="mt-4 space-y-1.5 text-slate-500 dark:text-slate-400">
-							<li class="flex items-start gap-2">
-								<span class="mt-0.5 text-slate-400">•</span>
-								<span>Summarize where this stands</span>
-							</li>
-							<li class="flex items-start gap-2">
-								<span class="mt-0.5 text-slate-400">•</span>
-								<span>Draft the next update</span>
-							</li>
-							<li class="flex items-start gap-2">
-								<span class="mt-0.5 text-slate-400">•</span>
-								<span>What should we do next?</span>
-							</li>
-						</ul>
-					</div>
+					<Card variant="outline" class="border-dashed">
+						<CardBody padding="sm">
+							<div class="space-y-3">
+								<p class="font-semibold text-slate-900 dark:text-white text-sm">
+									You're set to chat.
+								</p>
+								<p
+									class="text-sm leading-relaxed text-slate-600 dark:text-slate-300"
+								>
+									Ask the agent to plan, explain, or take the next step for
+									{displayContextLabel.toLowerCase()}.
+								</p>
+								<ul class="space-y-1.5 text-sm text-slate-500 dark:text-slate-400">
+									<li class="flex items-start gap-2">
+										<span class="mt-0.5 text-slate-400 dark:text-slate-500"
+											>•</span
+										>
+										<span>Summarize where this stands</span>
+									</li>
+									<li class="flex items-start gap-2">
+										<span class="mt-0.5 text-slate-400 dark:text-slate-500"
+											>•</span
+										>
+										<span>Draft the next update</span>
+									</li>
+									<li class="flex items-start gap-2">
+										<span class="mt-0.5 text-slate-400 dark:text-slate-500"
+											>•</span
+										>
+										<span>What should we do next?</span>
+									</li>
+								</ul>
+							</div>
+						</CardBody>
+					</Card>
 				{:else}
 					{#each messages as message (message.id)}
 						{#if message.type === 'user'}
@@ -2024,7 +2064,7 @@
 								<div
 									class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-xs font-semibold uppercase text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 sm:h-9 sm:w-9"
 								>
-									AI
+									OS
 								</div>
 								<div
 									class="agent-resp-div max-w-[85%] rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-relaxed text-slate-900 shadow-sm dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-100 sm:max-w-[85%]"
@@ -2202,19 +2242,23 @@
 
 			{#if isStreaming && currentActivity}
 				<div
-					class="border-t border-slate-200 bg-slate-50 px-4 py-2 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900/40 dark:text-slate-300 sm:px-6"
+					class="border-t border-slate-200 bg-slate-50 p-4 sm:p-6 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900/40 dark:text-slate-300"
 				>
 					<span class="inline-flex items-center gap-2">
-						<span class="inline-flex h-2 w-2 animate-pulse rounded-full bg-emerald-500"
+						<span
+							class="inline-flex h-2 w-2 animate-pulse rounded-full bg-emerald-500"
+							aria-hidden="true"
 						></span>
-						{currentActivity}
+						<span role="status" aria-live="polite">{currentActivity}</span>
 					</span>
 				</div>
 			{/if}
 
 			{#if error}
 				<div
-					class="border-t border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:border-rose-900/40 dark:bg-rose-950/20 dark:text-rose-300 sm:px-6"
+					class="border-t border-rose-100 bg-rose-50 p-4 sm:p-6 text-sm text-rose-700 dark:border-rose-900/40 dark:bg-rose-950/20 dark:text-rose-300"
+					role="alert"
+					aria-live="assertive"
 				>
 					{error}
 				</div>
@@ -2222,7 +2266,7 @@
 
 			{#if agentToAgentMode}
 				<div
-					class="border-t border-slate-200 bg-white px-4 py-4 dark:border-slate-800 dark:bg-slate-900 sm:px-6"
+					class="border-t border-slate-200 bg-white p-4 sm:p-6 dark:border-slate-800 dark:bg-slate-900"
 				>
 					<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 						<div class="space-y-1">
@@ -2294,14 +2338,14 @@
 				</div>
 			{:else}
 				<div
-					class="border-t border-slate-200 bg-white px-4 py-4 dark:border-slate-800 dark:bg-slate-900 sm:px-6"
+					class="border-t border-slate-200 bg-white p-4 sm:p-6 dark:border-slate-800 dark:bg-slate-900"
 				>
 					<form
 						onsubmit={(e) => {
 							e.preventDefault();
 							sendMessage();
 						}}
-						class="space-y-3"
+						class="space-y-2"
 					>
 						<TextareaWithVoice
 							bind:this={voiceInputRef}
@@ -2313,7 +2357,7 @@
 							bind:recordingDuration={voiceRecordingDuration}
 							bind:canUseLiveTranscript={voiceSupportsLiveTranscript}
 							class="w-full"
-							containerClass="space-y-0 rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900"
+							containerClass="rounded-xl border border-slate-200/80 bg-white shadow-sm dark:border-slate-700/80 dark:bg-slate-900"
 							textareaClass="border-none bg-transparent px-4 py-3 text-[15px] leading-relaxed text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-0 dark:text-slate-100 dark:placeholder:text-slate-500"
 							placeholder={`Share the next thing about ${displayContextLabel.toLowerCase()}...`}
 							autoResize
@@ -2322,15 +2366,20 @@
 							disabled={isStreaming}
 							voiceBlocked={isStreaming}
 							voiceBlockedLabel="Wait for agents..."
-							idleHint="Use the mic to add detail before you send."
+							idleHint="Enter to send · Shift + Enter for new line"
 							voiceButtonLabel="Record voice note"
-							showStatusRow={false}
+							listeningLabel="Listening"
+							transcribingLabel="Transcribing..."
+							preparingLabel="Preparing microphone…"
+							liveTranscriptLabel="Live transcript"
+							showStatusRow={true}
+							showLiveTranscriptPreview={true}
 							onkeydown={handleKeyDown}
 						>
 							{#snippet actions()}
 								<button
 									type="submit"
-									class="flex h-10 w-10 items-center justify-center rounded-full bg-slate-900 text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
+									class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-slate-900/80 bg-slate-900 text-white shadow-sm transition-all duration-200 hover:bg-slate-800 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-100/80 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200 dark:focus:ring-offset-slate-900"
 									aria-label="Send message"
 									disabled={isSendDisabled}
 								>
@@ -2343,77 +2392,35 @@
 							{/snippet}
 						</TextareaWithVoice>
 
-						<div
-							class="flex flex-wrap items-center justify-between gap-3 text-xs font-medium text-slate-500 dark:text-slate-400"
-						>
-							<div class="flex flex-wrap items-center gap-3">
-								{#if isVoiceRecording}
-									<span
-										class="flex items-center gap-2 text-rose-500 dark:text-rose-400"
-									>
+						<!-- Additional status indicators -->
+						{#if voiceErrorMessage || isStreaming}
+							<div
+								class="flex flex-wrap items-center justify-between gap-2 px-1 text-xs font-medium"
+							>
+								<div class="flex flex-wrap items-center gap-2">
+									{#if voiceErrorMessage}
 										<span
-											class="relative flex h-2.5 w-2.5 items-center justify-center"
+											role="alert"
+											class="flex items-center gap-2 rounded-md bg-gradient-to-r from-rose-50 to-red-50 px-2.5 py-1 text-[11px] font-medium text-rose-700 dark:from-rose-900/30 dark:to-red-900/20 dark:text-rose-300"
 										>
-											<span
-												class="absolute inline-flex h-full w-full animate-ping rounded-full bg-rose-400/70"
-											></span>
-											<span
-												class="relative inline-flex h-2 w-2 rounded-full bg-rose-500"
-											></span>
+											{voiceErrorMessage}
 										</span>
-										Listening
-										<span class="font-semibold"
-											>{formatDuration(voiceRecordingDuration)}</span
-										>
-									</span>
-								{:else if isVoiceInitializing}
-									<span class="flex items-center gap-2">
-										<Loader class="h-4 w-4 animate-spin" />
-										Preparing microphone…
-									</span>
-								{:else if isVoiceTranscribing}
-									<span class="flex items-center gap-2">
-										<Loader class="h-4 w-4 animate-spin" />
-										Transcribing...
-									</span>
-								{:else}
-									<span class="hidden sm:inline"
-										>Enter to send · Shift + Enter for new line</span
-									>
-									<span class="sm:hidden">Enter to send</span>
-								{/if}
+									{/if}
 
-								{#if voiceSupportsLiveTranscript && isVoiceRecording}
-									<span
-										class="hidden rounded-full border border-blue-200 bg-blue-50 px-3 py-0.5 text-[11px] font-semibold uppercase tracking-[0.24em] text-blue-600 dark:border-blue-500/40 dark:bg-blue-500/10 dark:text-blue-300 sm:inline"
-									>
-										Live transcript
-									</span>
-								{/if}
-							</div>
-
-							<div class="flex flex-wrap items-center gap-3">
-								{#if voiceErrorMessage}
-									<span
-										role="alert"
-										class="flex items-center gap-2 rounded-full bg-rose-50 px-3 py-1 text-rose-600 dark:bg-rose-900/20 dark:text-rose-300"
-									>
-										{voiceErrorMessage}
-									</span>
-								{/if}
-
-								{#if isStreaming}
-									<div
-										class="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-600 dark:border-slate-700 dark:bg-slate-800/40 dark:text-slate-200"
-									>
+									{#if isStreaming}
 										<div
-											class="h-2 w-2 animate-pulse rounded-full bg-emerald-500"
-										></div>
-										<span class="text-xs font-semibold">Agents working</span>
-									</div>
-								{/if}
+											class="flex items-center gap-2 rounded-md border border-emerald-200/60 bg-gradient-to-r from-emerald-50 to-green-50 px-2.5 py-1 text-emerald-700 dark:border-emerald-500/40 dark:from-emerald-900/30 dark:to-green-900/20 dark:text-emerald-300"
+										>
+											<div
+												class="h-2 w-2 animate-pulse rounded-full bg-emerald-600 dark:bg-emerald-400"
+											></div>
+											<span class="text-xs font-semibold">Agents working</span
+											>
+										</div>
+									{/if}
+								</div>
 							</div>
-						</div>
+						{/if}
 					</form>
 				</div>
 			{/if}

@@ -168,7 +168,7 @@
 	);
 
 	const priorityBadgeClasses = $derived(
-		`px-3 py-1 rounded-full text-xs font-semibold ${getPriorityBadgeClass(priorityDisplay.badgeIntent)}`
+		`px-3 py-1 rounded-full text-xs font-semibold ${getPriorityBadgeClass(priorityDisplay?.badgeIntent)}`
 	);
 
 	const selectedPlan = $derived.by(() => plans.find((plan) => plan.id === planId) ?? null);
@@ -593,7 +593,7 @@
 	size="xl"
 	onClose={handleClose}
 	closeOnEscape={!isSaving}
-	title="Edit Task"
+	title={title ? `Edit Task: ${title}` : 'Edit Task'}
 >
 	{#if isLoading}
 		<div class="flex items-center justify-center py-16 px-6">
@@ -604,7 +604,7 @@
 			<p class="text-red-600 dark:text-red-400">Task not found</p>
 		</div>
 	{:else}
-		<div class="px-4 sm:px-6 py-6">
+		<div class="p-4 sm:p-6">
 			<!-- Tab Navigation -->
 			<div
 				class="flex items-center gap-1 mb-6 p-1 bg-gradient-to-r from-gray-50 to-slate-50 dark:from-gray-800 dark:to-gray-900 rounded-lg border border-gray-200 dark:border-gray-700"
@@ -613,24 +613,30 @@
 			>
 				<button
 					type="button"
-					class={`flex-1 px-4 py-2.5 rounded-md text-sm font-semibold transition-all duration-300 ${
+					role="tab"
+					aria-selected={activeView === 'details'}
+					aria-controls="details-panel"
+					tabindex={activeView === 'details' ? 0 : -1}
+					class={`flex-1 px-4 py-2.5 rounded-md text-sm font-semibold transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 ${
 						activeView === 'details'
-							? 'bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/50 dark:to-purple-950/50 text-blue-700 dark:text-blue-300 shadow-md border-2 border-blue-600 dark:border-blue-500'
-							: 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-white/50 dark:hover:bg-gray-800/50'
+							? 'bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/50 dark:to-purple-950/50 text-blue-700 dark:text-blue-300 shadow-md border border-blue-600 dark:border-blue-500'
+							: 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-white/50 dark:hover:bg-gray-800/50 border border-transparent'
 					}`}
-					aria-pressed={activeView === 'details'}
 					onclick={() => setActiveView('details')}
 				>
 					Details
 				</button>
 				<button
 					type="button"
-					class={`flex-1 px-4 py-2.5 rounded-md text-sm font-semibold transition-all duration-300 ${
+					role="tab"
+					aria-selected={activeView === 'workspace'}
+					aria-controls="workspace-panel"
+					tabindex={activeView === 'workspace' ? 0 : -1}
+					class={`flex-1 px-4 py-2.5 rounded-md text-sm font-semibold transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 ${
 						activeView === 'workspace'
-							? 'bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/50 dark:to-purple-950/50 text-blue-700 dark:text-blue-300 shadow-md border-2 border-blue-600 dark:border-blue-500'
-							: 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-white/50 dark:hover:bg-gray-800/50'
+							? 'bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/50 dark:to-purple-950/50 text-blue-700 dark:text-blue-300 shadow-md border border-blue-600 dark:border-blue-500'
+							: 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-white/50 dark:hover:bg-gray-800/50 border border-transparent'
 					}`}
-					aria-pressed={activeView === 'workspace'}
 					onclick={() => setActiveView('workspace')}
 				>
 					Workspace
@@ -644,6 +650,9 @@
 						in:fly={{ x: slideDirection * 100, duration: 300, easing: cubicOut }}
 						out:fly={{ x: slideDirection * -100, duration: 300, easing: cubicOut }}
 						class="absolute inset-0 overflow-y-auto"
+						role="tabpanel"
+						id={activeView === 'details' ? 'details-panel' : 'workspace-panel'}
+						aria-labelledby={activeView === 'details' ? 'details-tab' : 'workspace-tab'}
 					>
 						{#if activeView === 'details'}
 							<!-- DETAILS TAB -->
@@ -652,55 +661,70 @@
 								id={detailsFormId}
 								onsubmit={handleSave}
 							>
-								<section
-									class="lg:col-span-3 rounded-2xl border border-gray-200 dark:border-gray-700 bg-gradient-to-r from-white to-slate-50 dark:from-gray-900 dark:to-gray-800 p-4 sm:p-5 shadow-sm space-y-3"
-								>
-									<div class="flex flex-wrap items-center gap-2">
-										<span class={stateBadgeClasses}>{formattedStateLabel}</span>
-										<span class={priorityBadgeClasses}
-											>{priorityDisplay.label}</span
-										>
-										<span class="text-xs text-gray-500 dark:text-gray-400">
-											{priorityDisplay.description}
-										</span>
-									</div>
-									<div
-										class="flex flex-wrap gap-2 text-xs text-gray-600 dark:text-gray-300"
-									>
-										{#if selectedPlan}
-											<span
-												class="px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-200"
+								<!-- Status Overview Card -->
+								<Card variant="elevated" class="lg:col-span-3">
+									<CardBody padding="md">
+										<div class="space-y-3">
+											<!-- Badges Row -->
+											<div class="flex flex-wrap items-center gap-2">
+												<span class={stateBadgeClasses}
+													>{formattedStateLabel}</span
+												>
+												<span class={priorityBadgeClasses}
+													>{priorityDisplay?.label}</span
+												>
+												<span
+													class="text-xs sm:text-sm text-gray-500 dark:text-gray-400"
+												>
+													{priorityDisplay?.description}
+												</span>
+											</div>
+
+											<!-- Associations Row -->
+											{#if selectedPlan || selectedGoal || selectedMilestone}
+												<div
+													class="flex flex-wrap gap-2 text-xs text-gray-600 dark:text-gray-300"
+												>
+													{#if selectedPlan}
+														<span
+															class="px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-200 whitespace-nowrap"
+														>
+															Plan • {selectedPlan.name}
+														</span>
+													{/if}
+													{#if selectedGoal}
+														<span
+															class="px-3 py-1 rounded-full bg-purple-50 dark:bg-purple-900/30 text-purple-800 dark:text-purple-200 whitespace-nowrap"
+														>
+															Goal • {selectedGoal.name}
+														</span>
+													{/if}
+													{#if selectedMilestone}
+														<span
+															class="px-3 py-1 rounded-full bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-200 whitespace-nowrap"
+														>
+															Milestone • {selectedMilestone.title}
+															{#if milestoneDueLabel}
+																({milestoneDueLabel})
+															{/if}
+														</span>
+													{/if}
+												</div>
+											{/if}
+
+											<!-- Metadata Row -->
+											<div
+												class="text-xs text-gray-500 dark:text-gray-400 flex flex-wrap gap-3 sm:gap-4"
 											>
-												Plan • {selectedPlan.name}
-											</span>
-										{/if}
-										{#if selectedGoal}
-											<span
-												class="px-3 py-1 rounded-full bg-purple-50 dark:bg-purple-900/30 text-purple-800 dark:text-purple-200"
-											>
-												Goal • {selectedGoal.name}
-											</span>
-										{/if}
-										{#if selectedMilestone}
-											<span
-												class="px-3 py-1 rounded-full bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-200"
-											>
-												Milestone • {selectedMilestone.title}
-												{#if milestoneDueLabel}
-													({milestoneDueLabel})
-												{/if}
-											</span>
-										{/if}
-									</div>
-									<div
-										class="text-xs text-gray-500 dark:text-gray-400 flex flex-wrap gap-4"
-									>
-										<span>
-											Last updated {lastUpdatedLabel ?? 'Not available'}
-										</span>
-										<span>Type • {task.type_key || 'task.basic'}</span>
-									</div>
-								</section>
+												<span>
+													Last updated {lastUpdatedLabel ??
+														'Not available'}
+												</span>
+												<span>Type • {task.type_key || 'task.basic'}</span>
+											</div>
+										</div>
+									</CardBody>
+								</Card>
 
 								<!-- Main Form (Left 2 columns) -->
 								<div class="lg:col-span-2 space-y-6">
@@ -879,7 +903,9 @@
 												</Badge>
 											</h3>
 											<div
-												class="space-y-2 max-h-64 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent"
+												class="space-y-2 max-h-64 overflow-y-auto"
+												role="list"
+												aria-label="Connected documents"
 											>
 												{#each deliverableDocuments as doc}
 													{@const timestamp = formatTimestamp(
@@ -887,85 +913,109 @@
 															doc.document.created_at ??
 															null
 													)}
-													<button
-														type="button"
-														onclick={() =>
-															handleDocumentClick(doc.document.id)}
-														class="w-full text-left p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-blue-500 dark:hover:border-blue-400 bg-white dark:bg-gray-800 hover:bg-gradient-to-br hover:from-blue-50 hover:to-indigo-50 dark:hover:from-blue-950/20 dark:hover:to-indigo-950/20 transition-all duration-300 group shadow-sm hover:shadow-md"
+													<Card
+														variant="interactive"
+														class="group"
+														role="listitem"
 													>
-														<div
-															class="flex items-center justify-between gap-3"
+														<button
+															type="button"
+															onclick={() =>
+																handleDocumentClick(
+																	doc.document.id
+																)}
+															class="w-full text-left focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 rounded-lg"
+															aria-label="Open {doc.document.title ||
+																'Untitled Document'} in workspace"
 														>
-															<div class="flex-1 min-w-0">
-																<p
-																	class="font-semibold text-gray-900 dark:text-white truncate group-hover:text-blue-700 dark:group-hover:text-blue-300 transition-colors"
+															<CardBody padding="sm">
+																<div
+																	class="flex items-start sm:items-center justify-between gap-3 flex-col sm:flex-row"
 																>
-																	{doc.document.title ||
-																		'Untitled Document'}
-																</p>
-																<p
-																	class="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5"
-																>
-																	{doc.document.type_key}
-																</p>
-																{#if timestamp}
-																	<p
-																		class="text-xs text-gray-400 dark:text-gray-500 mt-1"
+																	<div class="flex-1 min-w-0">
+																		<p
+																			class="font-semibold text-sm sm:text-base text-gray-900 dark:text-white truncate group-hover:text-blue-700 dark:group-hover:text-blue-300 transition-colors"
+																		>
+																			{doc.document.title ||
+																				'Untitled Document'}
+																		</p>
+																		<p
+																			class="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5"
+																		>
+																			{doc.document.type_key}
+																		</p>
+																		{#if timestamp}
+																			<p
+																				class="text-xs text-gray-400 dark:text-gray-500 mt-1"
+																			>
+																				Updated {timestamp}
+																			</p>
+																		{/if}
+																	</div>
+																	<div
+																		class="flex items-center gap-2 shrink-0"
 																	>
-																		Updated {timestamp}
-																	</p>
-																{/if}
-															</div>
-															<div
-																class="flex items-center gap-2 shrink-0"
-															>
-																<Badge variant="info" size="sm">
-																	{doc.document.state_key ||
-																		'draft'}
-																</Badge>
-																<ExternalLink
-																	class="w-4 h-4 text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors"
-																/>
-															</div>
-														</div>
-													</button>
+																		<Badge
+																			variant="info"
+																			size="sm"
+																		>
+																			{doc.document
+																				.state_key ||
+																				'draft'}
+																		</Badge>
+																		<ExternalLink
+																			class="w-4 h-4 text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors"
+																			aria-hidden="true"
+																		/>
+																	</div>
+																</div>
+															</CardBody>
+														</button>
+													</Card>
 												{/each}
 											</div>
 										{:else}
-											<div
-												class="rounded-xl border border-dashed border-gray-300 dark:border-gray-700 p-6 text-center bg-gray-50/70 dark:bg-gray-800/40"
-											>
-												<FileText
-													class="w-8 h-8 text-gray-400 mx-auto mb-3"
-												/>
-												<p
-													class="text-sm text-gray-600 dark:text-gray-400 mb-4"
-												>
-													Keep critical briefs and notes attached to this
-													task so the workspace stays in sync.
-												</p>
-												<div
-													class="flex flex-col sm:flex-row gap-2 justify-center"
-												>
-													<Button
-														type="button"
-														variant="secondary"
-														size="sm"
-														onclick={() => setActiveView('workspace')}
-													>
-														Open workspace
-													</Button>
-													<Button
-														type="button"
-														variant="primary"
-														size="sm"
-														onclick={() =>
-															openWorkspaceDocumentModal(null)}
-													>
-														Create document
-													</Button>
-												</div>
-											</div>
+											<Card variant="outline" class="border-dashed">
+												<CardBody padding="lg">
+													<div class="text-center">
+														<FileText
+															class="w-8 h-8 text-gray-400 mx-auto mb-3"
+															aria-hidden="true"
+														/>
+														<p
+															class="text-sm text-gray-600 dark:text-gray-400 mb-4"
+														>
+															Keep critical briefs and notes attached
+															to this task so the workspace stays in
+															sync.
+														</p>
+														<div
+															class="flex flex-col sm:flex-row gap-2 justify-center"
+														>
+															<Button
+																type="button"
+																variant="secondary"
+																size="sm"
+																onclick={() =>
+																	setActiveView('workspace')}
+															>
+																Open workspace
+															</Button>
+															<Button
+																type="button"
+																variant="primary"
+																size="sm"
+																onclick={() =>
+																	openWorkspaceDocumentModal(
+																		null
+																	)}
+															>
+																Create document
+															</Button>
+														</div>
+													</div>
+												</CardBody>
+											</Card>
 										{/if}
 									</div>
 
@@ -1204,77 +1254,95 @@
 							</form>
 						{:else}
 							<!-- WORKSPACE TAB -->
-							<div class="h-full flex flex-col space-y-4 overflow-y-auto pr-2">
+							<div class="h-full flex flex-col space-y-4 overflow-y-auto">
 								<!-- Document Selector -->
-								<div
-									class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pb-4 border-b border-gray-200 dark:border-gray-700"
-								>
-									<div class="flex items-center gap-3 flex-1 min-w-0">
-										<FileText
-											class="w-5 h-5 text-blue-500 shrink-0 hidden sm:block"
-										/>
-										<div class="flex-1 min-w-0">
-											<Select
-												value={selectedWorkspaceDocId || ''}
-												onchange={(val) =>
-													selectWorkspaceDocument(String(val))}
-												size={{ base: 'sm', md: 'md' }}
+								<Card variant="elevated">
+									<CardBody padding="md">
+										<div
+											class="flex flex-col sm:flex-row items-stretch sm:items-center gap-4"
+										>
+											<div class="flex items-center gap-3 flex-1 min-w-0">
+												<FileText
+													class="w-5 h-5 text-blue-500 shrink-0 hidden sm:block"
+													aria-hidden="true"
+												/>
+												<div class="flex-1 min-w-0">
+													<label
+														for="workspace-doc-selector"
+														class="sr-only"
+													>
+														Select document
+													</label>
+													<Select
+														id="workspace-doc-selector"
+														value={selectedWorkspaceDocId || ''}
+														onchange={(val) =>
+															selectWorkspaceDocument(String(val))}
+														size={{ base: 'sm', md: 'md' }}
+													>
+														{#if deliverableDocuments.length === 0}
+															<option value=""
+																>No documents yet</option
+															>
+														{:else}
+															{#each deliverableDocuments as doc}
+																<option value={doc.document.id}>
+																	{doc.document.title ||
+																		'Untitled'} ({doc.document
+																		.state_key})
+																</option>
+															{/each}
+														{/if}
+													</Select>
+												</div>
+											</div>
+											<Button
+												size="sm"
+												variant="secondary"
+												onclick={() => openWorkspaceDocumentModal(null)}
+												class="w-full sm:w-auto"
 											>
-												{#if deliverableDocuments.length === 0}
-													<option value="">No documents yet</option>
-												{:else}
-													{#each deliverableDocuments as doc}
-														<option value={doc.document.id}>
-															{doc.document.title || 'Untitled'} ({doc
-																.document.state_key})
-														</option>
-													{/each}
-												{/if}
-											</Select>
+												+ New Document
+											</Button>
 										</div>
-									</div>
-									<Button
-										size="sm"
-										variant="secondary"
-										onclick={() => openWorkspaceDocumentModal(null)}
-										class="w-full sm:w-auto"
-									>
-										+ New Document
-									</Button>
-								</div>
+									</CardBody>
+								</Card>
 
 								<!-- RichMarkdownEditor -->
 								{#if selectedWorkspaceDoc}
-									<div class="flex-1 min-h-0 overflow-y-auto">
-										<RichMarkdownEditor
-											bind:value={workspaceDocContent}
-											rows={18}
-											maxLength={20000}
-											size="base"
-											label="Document Content"
-											helpText="Full markdown support with live preview"
-										/>
-									</div>
-								{:else}
-									<div
-										class="flex-1 flex items-center justify-center border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg"
-									>
-										<div class="text-center p-8">
-											<FileText
-												class="w-12 h-12 text-gray-400 mx-auto mb-3"
+									<Card variant="elevated">
+										<CardBody padding="md">
+											<RichMarkdownEditor
+												bind:value={workspaceDocContent}
+												rows={18}
+												maxLength={20000}
+												size="base"
+												label="Document Content"
+												helpText="Full markdown support with live preview"
 											/>
-											<p class="text-gray-600 dark:text-gray-400 mb-4">
-												No document selected. Create one to get started.
-											</p>
-											<Button
-												size="sm"
-												variant="primary"
-												onclick={() => openWorkspaceDocumentModal(null)}
-											>
-												Create Document
-											</Button>
-										</div>
-									</div>
+										</CardBody>
+									</Card>
+								{:else}
+									<Card variant="outline" class="border-dashed">
+										<CardBody padding="lg">
+											<div class="text-center">
+												<FileText
+													class="w-12 h-12 text-gray-400 mx-auto mb-3"
+													aria-hidden="true"
+												/>
+												<p class="text-gray-600 dark:text-gray-400 mb-4">
+													No document selected. Create one to get started.
+												</p>
+												<Button
+													size="sm"
+													variant="primary"
+													onclick={() => openWorkspaceDocumentModal(null)}
+												>
+													Create Document
+												</Button>
+											</div>
+										</CardBody>
+									</Card>
 								{/if}
 							</div>
 						{/if}
@@ -1287,7 +1355,7 @@
 	<!-- Footer Actions -->
 	<svelte:fragment slot="footer">
 		<div
-			class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 px-4 sm:px-6 py-3 sm:py-4 border-t border-gray-200 dark:border-gray-700 bg-gradient-to-r from-gray-50 to-slate-50 dark:from-gray-900/50 dark:to-gray-800/50"
+			class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 p-4 sm:p-6 border-t border-gray-200 dark:border-gray-700 bg-gradient-to-r from-gray-50 to-slate-50 dark:from-gray-900/50 dark:to-gray-800/50"
 		>
 			{#if activeView === 'details'}
 				<!-- Delete button on the left -->
@@ -1418,7 +1486,7 @@
 		on:confirm={handleDelete}
 		on:cancel={() => (showDeleteConfirm = false)}
 	>
-		<p class="text-sm text-gray-600 dark:text-gray-300">
+		<p class="text-sm text-gray-600 dark:text-gray-300" slot="content">
 			This action cannot be undone. The task and all its data will be permanently deleted.
 		</p>
 	</ConfirmationModal>

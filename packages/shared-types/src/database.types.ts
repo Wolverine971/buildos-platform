@@ -8083,6 +8083,7 @@ export type Database = {
           actions: Json
           can_run: boolean
           event: string
+          failed_guards: Json
           guards: Json
           to_state: string
         }[]

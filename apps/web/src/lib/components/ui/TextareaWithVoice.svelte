@@ -359,15 +359,15 @@
 	function getVoiceButtonClasses(variant: VoiceButtonVariant): string {
 		switch (variant) {
 			case 'recording':
-				return 'border border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100 dark:border-rose-500/40 dark:bg-rose-500/10 dark:text-rose-200';
+				return 'border-2 border-rose-500/60 bg-gradient-to-br from-rose-50 to-red-50 text-rose-600 shadow-sm hover:shadow-md hover:border-rose-600/70 dark:border-rose-500/50 dark:from-rose-900/30 dark:to-red-900/20 dark:text-rose-300';
 			case 'loading':
-				return 'border border-slate-200 bg-white text-slate-400 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300';
+				return 'border border-slate-200/60 bg-white/80 text-slate-400 backdrop-blur-sm dark:border-slate-600/60 dark:bg-slate-800/80 dark:text-slate-400';
 			case 'prompt':
-				return 'border border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100 dark:border-blue-500/50 dark:bg-blue-500/10 dark:text-blue-200';
+				return 'border-2 border-blue-500/60 bg-gradient-to-br from-blue-50 to-indigo-50 text-blue-600 shadow-sm hover:shadow-md hover:border-blue-600/70 dark:border-blue-500/50 dark:from-blue-900/30 dark:to-indigo-900/20 dark:text-blue-300';
 			case 'muted':
-				return 'border border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-500';
+				return 'border border-slate-200/60 bg-slate-50/80 text-slate-400 cursor-not-allowed dark:border-slate-700/60 dark:bg-slate-800/50 dark:text-slate-500';
 			default:
-				return 'border border-transparent bg-slate-900 text-white hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200';
+				return 'border border-slate-900/80 bg-slate-900 text-white shadow-sm hover:bg-slate-800 hover:shadow-md dark:border-slate-100/80 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200';
 		}
 	}
 
@@ -534,7 +534,7 @@
 	}
 </script>
 
-<div class={`space-y-3 ${containerClass} ${className}`.trim()}>
+<div class={`space-y-2 ${containerClass} ${className}`.trim()}>
 	<div class="relative">
 		<Textarea
 			bind:value
@@ -546,7 +546,7 @@
 			{helperText}
 			{error}
 			{errorMessage}
-			class={`${actions ? 'pr-28' : 'pr-16'} ${textareaClass}`.trim()}
+			class={`${actions ? 'pr-28 sm:pr-32' : 'pr-14 sm:pr-16'} ${textareaClass}`.trim()}
 			on:input={handleTextareaInput}
 			{...restProps}
 		/>
@@ -562,7 +562,7 @@
 			{#if enableVoice}
 				<button
 					type="button"
-					class={`flex h-10 w-10 items-center justify-center rounded-full transition ${voiceButtonClasses}`}
+					class={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900 ${voiceButtonClasses}`}
 					onclick={toggleVoiceRecording}
 					aria-label={voiceButtonState.label}
 					title={voiceButtonState.label}
@@ -579,10 +579,13 @@
 			{/if}
 		</div>
 
+		<!-- Live transcript preview overlay -->
 		{#if enableVoice && showLiveTranscriptPreview && isLiveTranscribing}
-			<div class="pointer-events-none absolute bottom-3 left-3 right-28">
+			<div
+				class="pointer-events-none absolute bottom-2 left-2 right-14 sm:bottom-3 sm:left-3 sm:right-28"
+			>
 				<div
-					class="pointer-events-auto rounded-xl border border-gray-200 bg-white/90 px-3 py-2 text-sm text-gray-600 shadow-sm dark:border-gray-700 dark:bg-gray-900/80 dark:text-gray-100"
+					class="pointer-events-auto rounded-lg border border-blue-200/60 bg-gradient-to-br from-blue-50/95 to-indigo-50/90 px-3 py-2 text-sm text-blue-900 shadow-md backdrop-blur-sm dark:border-blue-500/30 dark:from-blue-900/80 dark:to-indigo-900/70 dark:text-blue-100"
 				>
 					<p class="m-0 whitespace-pre-wrap leading-relaxed">
 						{liveTranscriptPreview}
@@ -594,42 +597,47 @@
 
 	{#if enableVoice && showStatusRow}
 		<div
-			class="flex flex-wrap items-center justify-between gap-3 text-xs font-medium text-gray-500 dark:text-gray-400"
+			class="flex flex-wrap items-center justify-between gap-2 text-xs font-medium text-slate-500 dark:text-slate-400"
 		>
 			<div class="flex items-center gap-2">
 				{#if isCurrentlyRecording}
-					<span class="flex items-center gap-2 text-rose-500 dark:text-rose-400">
+					<span class="flex items-center gap-2 text-rose-600 dark:text-rose-400">
 						<span class="relative flex h-2.5 w-2.5 items-center justify-center">
 							<span
-								class="absolute inline-flex h-full w-full animate-ping rounded-full bg-rose-400/70"
+								class="absolute inline-flex h-full w-full animate-ping rounded-full bg-rose-500/70 dark:bg-rose-400/70"
 							></span>
-							<span class="relative inline-flex h-2 w-2 rounded-full bg-rose-500"
+							<span
+								class="relative inline-flex h-2 w-2 rounded-full bg-rose-600 dark:bg-rose-500"
 							></span>
 						</span>
-						{listeningLabel}
-						<span class="font-semibold">{formatDuration(_recordingDuration)}</span>
+						<span class="font-medium">{listeningLabel}</span>
+						<span class="font-semibold tabular-nums"
+							>{formatDuration(_recordingDuration)}</span
+						>
 					</span>
 				{:else if isInitializingRecording}
-					<span class="flex items-center gap-2 text-gray-600 dark:text-gray-300">
-						<LoaderCircle class="h-4 w-4 animate-spin" />
-						{preparingLabel}
+					<span class="flex items-center gap-2 text-slate-600 dark:text-slate-300">
+						<LoaderCircle class="h-3.5 w-3.5 animate-spin" />
+						<span class="font-medium">{preparingLabel}</span>
 					</span>
 				{:else if _isTranscribing}
-					<span class="flex items-center gap-2">
-						<LoaderCircle class="h-4 w-4 animate-spin" />
-						{transcribingLabel}
+					<span class="flex items-center gap-2 text-blue-600 dark:text-blue-400">
+						<LoaderCircle class="h-3.5 w-3.5 animate-spin" />
+						<span class="font-medium">{transcribingLabel}</span>
 					</span>
 				{:else if !isVoiceSupported}
-					<span>Voice capture unavailable in this browser.</span>
+					<span class="text-slate-500 dark:text-slate-400"
+						>Voice capture unavailable in this browser.</span
+					>
 				{:else if voiceBlocked}
-					<span>{voiceBlockedLabel}</span>
+					<span class="text-amber-600 dark:text-amber-400">{voiceBlockedLabel}</span>
 				{:else}
-					<span>{idleHint}</span>
+					<span class="text-slate-500 dark:text-slate-400">{idleHint}</span>
 				{/if}
 
 				{#if _canUseLiveTranscript && isCurrentlyRecording}
 					<span
-						class="hidden rounded-full border border-blue-200 bg-blue-50 px-3 py-0.5 text-[11px] font-semibold uppercase tracking-[0.24em] text-blue-600 dark:border-blue-500/40 dark:bg-blue-500/10 dark:text-blue-300 sm:inline"
+						class="hidden rounded-md border border-blue-200/60 bg-gradient-to-r from-blue-50 to-indigo-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-blue-700 dark:border-blue-500/40 dark:from-blue-900/30 dark:to-indigo-900/20 dark:text-blue-300 sm:inline"
 					>
 						{liveTranscriptLabel}
 					</span>
@@ -640,7 +648,7 @@
 				{#if _voiceError}
 					<span
 						role="alert"
-						class="flex items-center gap-2 rounded-full bg-rose-50 px-3 py-1 text-rose-600 dark:bg-rose-900/20 dark:text-rose-300"
+						class="flex items-center gap-1.5 rounded-md bg-gradient-to-r from-rose-50 to-red-50 px-2.5 py-1 text-[11px] font-medium text-rose-700 dark:from-rose-900/30 dark:to-red-900/20 dark:text-rose-300"
 					>
 						{_voiceError}
 					</span>
