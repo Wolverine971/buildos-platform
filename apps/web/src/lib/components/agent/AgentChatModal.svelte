@@ -83,12 +83,6 @@
 		selectedContextType ? CONTEXT_DESCRIPTORS[selectedContextType] : null
 	);
 
-	const contextBadgeClass = $derived(
-		selectedContextType
-			? (CONTEXT_BADGE_CLASSES[selectedContextType] ?? DEFAULT_CONTEXT_BADGE_CLASS)
-			: DEFAULT_CONTEXT_BADGE_CLASS
-	);
-
 	const displayContextLabel = $derived.by(() => {
 		if (!selectedContextType) {
 			return 'Select a focus to begin';
@@ -192,6 +186,8 @@
 	let voiceErrorMessage = $state('');
 	let voiceSupportsLiveTranscript = $state(false);
 	let voiceRecordingDuration = $state(0);
+	// Controls whether the context selection screen is visible (keeps state alive for back nav)
+	let showContextSelection = $state(true);
 
 	// ✅ Svelte 5: Use $derived for computed values
 	const isSendDisabled = $derived(
@@ -275,6 +271,7 @@
 			selectedContextType = null;
 			selectedContextLabel = detail.label ?? 'BuildOS automation';
 			projectFocus = null;
+			showContextSelection = false;
 			return;
 		}
 
@@ -288,6 +285,7 @@
 		selectedEntityId = detail.entityId;
 		selectedContextLabel =
 			detail.label ?? CONTEXT_DESCRIPTORS[detail.contextType]?.title ?? null;
+		showContextSelection = false;
 
 		if (detail.contextType === 'project' && detail.entityId) {
 			projectFocus = buildProjectWideFocus(detail.entityId, detail.label);
@@ -300,7 +298,10 @@
 	function changeContext() {
 		if (isStreaming) return;
 		stopVoiceInput();
+		// Clear the conversation but keep user in context selection mode
+		// This allows them to navigate back through the selection screens
 		resetConversation({ preserveContext: false });
+		showContextSelection = true;
 	}
 
 	function openFocusSelector() {
@@ -998,6 +999,7 @@
 						selectedContextLabel =
 							CONTEXT_DESCRIPTORS[normalizedSessionContext]?.title ??
 							selectedContextLabel;
+						showContextSelection = false;
 					}
 
 					if (
@@ -1552,19 +1554,19 @@
 	showCloseButton={false}
 	ariaLabel="BuildOS chat assistant dialog"
 >
-	<!-- ✅ Ultra-tight header: px-2 py-2 (8px) → px-3 py-2.5 on desktop -->
+	<!-- Ultra-compact header with no extra padding -->
 	<div
 		slot="header"
-		class="border-b border-slate-200 bg-white px-2 py-2 dark:border-slate-800 dark:bg-slate-900 sm:px-3 sm:py-2.5"
+		class="border-b border-slate-200/60 bg-white/90 backdrop-blur-xl dark:border-slate-700/60 dark:bg-slate-900/90"
 	>
 		<AgentChatHeader
 			{selectedContextType}
 			{displayContextLabel}
 			{displayContextSubtitle}
-			{contextBadgeClass}
 			{isStreaming}
 			onChangeContext={changeContext}
 			onClose={handleClose}
+			projectId={selectedEntityId}
 			{resolvedProjectFocus}
 			onChangeFocus={openFocusSelector}
 			onClearFocus={handleFocusClear}
@@ -1575,171 +1577,180 @@
 		/>
 	</div>
 
+	<!-- Fixed height container to prevent size changes -->
 	<div
-		class="relative z-10 flex h-full flex-col overflow-hidden rounded-3xl border border-slate-200/60 bg-white/95 shadow-[0_28px_70px_-40px_rgba(15,23,42,0.5)] backdrop-blur-xl dark:border-slate-700/60 dark:bg-slate-900/90"
+		class="relative z-10 flex h-[70vh] min-h-[500px] flex-col overflow-hidden rounded-3xl border border-slate-200/60 bg-white/95 shadow-[0_28px_70px_-40px_rgba(15,23,42,0.5)] backdrop-blur-xl dark:border-slate-700/60 dark:bg-slate-900/90"
 	>
-		{#if agentToAgentMode && agentToAgentStep !== 'chat'}
-			<AgentAutomationWizard
-				step={agentToAgentStep ?? 'agent'}
-				{agentProjects}
-				{agentProjectsLoading}
-				{agentProjectsError}
-				{agentGoal}
-				{agentTurnBudget}
-				{selectedAgentLabel}
-				{selectedContextLabel}
-				onUseActionableInsight={() => selectAgentForBridge(RESEARCH_AGENT_ID)}
-				onProjectSelect={(project) => selectAgentProject(project)}
-				onBackAgent={backToAgentSelection}
-				onBackProject={backToAgentProjectSelection}
-				onStartChat={startAgentToAgentChat}
-				onExit={() => {
-					agentToAgentMode = false;
-					agentToAgentStep = null;
-					changeContext();
-				}}
-				onGoalChange={(value) => (agentGoal = value)}
-				onTurnBudgetChange={updateAgentTurnBudget}
-			/>
-		{:else if !selectedContextType}
-			<div class="flex h-full min-h-0 flex-col overflow-hidden">
-				<ContextSelectionScreen inModal on:select={handleContextSelect} />
-			</div>
-		{:else}
-			<AgentMessageList
-				{messages}
-				{displayContextLabel}
-				onToggleThinkingBlock={toggleThinkingBlockCollapse}
-				bind:container={messagesContainer}
-				onScroll={handleScroll}
-			/>
-		{/if}
-		{#if isStreaming && currentActivity}
-			<!-- ✅ Compact activity indicator: p-2, h-1.5 w-1.5 dot, text-[11px] -->
-			<div
-				class="border-t border-slate-200 bg-slate-50 p-2 text-[11px] text-slate-600 dark:border-slate-800 dark:bg-slate-900/40 dark:text-slate-300 sm:p-2.5"
-			>
-				<span class="inline-flex items-center gap-1">
-					<span
-						class="inline-flex h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500"
-						aria-hidden="true"
-					></span>
-					<span role="status" aria-live="polite">{currentActivity}</span>
-				</span>
-			</div>
-		{/if}
+		<!-- Keep context selection mounted so Back returns to prior step -->
+		<div
+			class={`flex h-full min-h-0 flex-col ${showContextSelection ? '' : 'hidden'}`}
+			aria-hidden={!showContextSelection}
+		>
+			<ContextSelectionScreen inModal on:select={handleContextSelect} />
+		</div>
 
-		{#if error}
-			<!-- ✅ Compact error message: p-2, text-xs -->
-			<div
-				class="border-t border-rose-100 bg-rose-50 p-2 text-xs text-rose-700 dark:border-rose-900/40 dark:bg-rose-950/20 dark:text-rose-300 sm:p-2.5"
-				role="alert"
-				aria-live="assertive"
-			>
-				{error}
-			</div>
-		{/if}
+		<!-- Chat / wizard view - Same height constraint as selection -->
+		<div class={`${showContextSelection ? 'hidden' : 'flex'} h-full min-h-0 flex-col`}>
+			{#if agentToAgentMode && agentToAgentStep !== 'chat'}
+				<AgentAutomationWizard
+					step={agentToAgentStep ?? 'agent'}
+					{agentProjects}
+					{agentProjectsLoading}
+					{agentProjectsError}
+					{agentGoal}
+					{agentTurnBudget}
+					{selectedAgentLabel}
+					{selectedContextLabel}
+					onUseActionableInsight={() => selectAgentForBridge(RESEARCH_AGENT_ID)}
+					onProjectSelect={(project) => selectAgentProject(project)}
+					onBackAgent={backToAgentSelection}
+					onBackProject={backToAgentProjectSelection}
+					onStartChat={startAgentToAgentChat}
+					onExit={() => {
+						agentToAgentMode = false;
+						agentToAgentStep = null;
+						changeContext();
+					}}
+					onGoalChange={(value) => (agentGoal = value)}
+					onTurnBudgetChange={updateAgentTurnBudget}
+				/>
+			{:else}
+				<AgentMessageList
+					{messages}
+					{displayContextLabel}
+					onToggleThinkingBlock={toggleThinkingBlockCollapse}
+					bind:container={messagesContainer}
+					onScroll={handleScroll}
+				/>
+			{/if}
 
-		{#if agentToAgentMode}
-			<!-- ✅ Compact automation footer: p-2 sm:p-2.5 -->
-			<div
-				class="border-t border-slate-200 bg-white p-2 dark:border-slate-800 dark:bg-slate-900 sm:p-2.5"
-			>
+			{#if !showContextSelection && isStreaming && currentActivity}
+				<!-- ✅ Compact activity indicator: p-2, h-1.5 w-1.5 dot, text-[11px] -->
 				<div
-					class="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between sm:gap-2"
+					class="border-t border-slate-200 bg-slate-50 p-2 text-[11px] text-slate-600 dark:border-slate-800 dark:bg-slate-900/40 dark:text-slate-300 sm:p-2.5"
 				>
-					<div class="space-y-0.5">
-						<!-- ✅ Compact text: text-xs -->
-						<p class="text-xs font-semibold text-slate-900 dark:text-white">
-							Automation loop is {agentLoopActive ? 'active' : 'paused'}.
-						</p>
-						<p class="text-[11px] text-slate-600 dark:text-slate-400">
-							Helper: {selectedAgentLabel} • Project: {selectedContextLabel ??
-								'Select a project'} • Goal: {agentGoal || 'Add a goal'}
-						</p>
-						<p class="text-[11px] text-slate-600 dark:text-slate-400">
-							Turns remaining: {agentTurnsRemaining} / {agentTurnBudget}
-						</p>
-					</div>
-					<!-- ✅ Compact buttons: gap-1, px-2 py-1, text-[11px] -->
-					<div class="flex flex-wrap items-center gap-1">
-						<button
-							type="button"
-							class="inline-flex items-center justify-center rounded-full bg-slate-900 px-2 py-1 text-[11px] font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
-							disabled={isStreaming ||
-								agentMessageLoading ||
-								agentTurnsRemaining <= 0}
-							onclick={() => {
-								agentLoopActive = true;
-								runAgentToAgentTurn();
-							}}
-						>
-							{agentLoopActive ? 'Run next turn' : 'Resume loop'}
-						</button>
-						<button
-							type="button"
-							class="inline-flex items-center justify-center rounded-full border border-slate-200 px-2 py-1 text-[11px] font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
-							onclick={stopAgentLoop}
-						>
-							Stop
-						</button>
-					</div>
-				</div>
-				<!-- ✅ Compact controls: mt-1.5, gap-2, text-[11px] -->
-				<div
-					class="mt-1.5 flex flex-wrap items-center gap-2 text-[11px] text-slate-600 dark:text-slate-400"
-				>
-					<label class="flex items-center gap-1.5">
-						<span class="font-semibold">Turn limit</span>
-						<input
-							type="number"
-							min="1"
-							max="50"
-							class="w-16 rounded border border-slate-200 bg-white px-1.5 py-0.5 text-[11px] text-slate-900 focus:border-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-slate-500 dark:focus:ring-slate-700"
-							value={agentTurnBudget}
-							disabled={agentLoopActive || agentMessageLoading || isStreaming}
-							oninput={(e) =>
-								updateAgentTurnBudget(Number((e.target as HTMLInputElement).value))}
-						/>
-					</label>
-					{#if agentTurnsRemaining <= 0}
-						<!-- ✅ Compact warning badge: px-1.5 py-0.5, text-[10px] -->
+					<span class="inline-flex items-center gap-1">
 						<span
-							class="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800 dark:bg-amber-900/30 dark:text-amber-200"
-						>
-							Turn limit reached — adjust and resume.
-						</span>
+							class="inline-flex h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500"
+							aria-hidden="true"
+						></span>
+						<span role="status" aria-live="polite">{currentActivity}</span>
+					</span>
+				</div>
+			{/if}
+
+			{#if !showContextSelection && error}
+				<!-- ✅ Compact error message: p-2, text-xs -->
+				<div
+					class="border-t border-rose-100 bg-rose-50 p-2 text-xs text-rose-700 dark:border-rose-900/40 dark:bg-rose-950/20 dark:text-rose-300 sm:p-2.5"
+					role="alert"
+					aria-live="assertive"
+				>
+					{error}
+				</div>
+			{/if}
+
+			{#if !showContextSelection && agentToAgentMode}
+				<!-- ✅ Compact automation footer: p-2 sm:p-2.5 -->
+				<div
+					class="border-t border-slate-200 bg-white p-2 dark:border-slate-800 dark:bg-slate-900 sm:p-2.5"
+				>
+					<div
+						class="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between sm:gap-2"
+					>
+						<div class="space-y-0.5">
+							<!-- ✅ Compact text: text-xs -->
+							<p class="text-xs font-semibold text-slate-900 dark:text-white">
+								Automation loop is {agentLoopActive ? 'active' : 'paused'}.
+							</p>
+							<p class="text-[11px] text-slate-600 dark:text-slate-400">
+								Helper: {selectedAgentLabel} • Project: {selectedContextLabel ??
+									'Select a project'} • Goal: {agentGoal || 'Add a goal'}
+							</p>
+							<p class="text-[11px] text-slate-600 dark:text-slate-400">
+								Turns remaining: {agentTurnsRemaining} / {agentTurnBudget}
+							</p>
+						</div>
+						<!-- ✅ Compact buttons: gap-1, px-2 py-1, text-[11px] -->
+						<div class="flex flex-wrap items-center gap-1">
+							<button
+								type="button"
+								class="inline-flex items-center justify-center rounded-full bg-slate-900 px-2 py-1 text-[11px] font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
+								disabled={isStreaming ||
+									agentMessageLoading ||
+									agentTurnsRemaining <= 0}
+								onclick={() => {
+									agentLoopActive = true;
+									runAgentToAgentTurn();
+								}}
+							>
+								{agentLoopActive ? 'Run next turn' : 'Resume loop'}
+							</button>
+							<button
+								type="button"
+								class="inline-flex items-center justify-center rounded-full border border-slate-200 px-2 py-1 text-[11px] font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+								onclick={stopAgentLoop}
+							>
+								Stop
+							</button>
+						</div>
+					</div>
+					<!-- ✅ Compact controls: mt-1.5, gap-2, text-[11px] -->
+					<div
+						class="mt-1.5 flex flex-wrap items-center gap-2 text-[11px] text-slate-600 dark:text-slate-400"
+					>
+						<label class="flex items-center gap-1.5">
+							<span class="font-semibold">Turn limit</span>
+							<input
+								type="number"
+								min="1"
+								max="50"
+								class="w-16 rounded border border-slate-200 bg-white px-1.5 py-0.5 text-[11px] text-slate-900 focus:border-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-slate-500 dark:focus:ring-slate-700"
+								value={agentTurnBudget}
+								disabled={agentLoopActive || agentMessageLoading || isStreaming}
+								oninput={(e) =>
+									updateAgentTurnBudget(Number((e.target as HTMLInputElement).value))}
+							/>
+						</label>
+						{#if agentTurnsRemaining <= 0}
+							<!-- ✅ Compact warning badge: px-1.5 py-0.5, text-[10px] -->
+							<span
+								class="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800 dark:bg-amber-900/30 dark:text-amber-200"
+							>
+								Turn limit reached — adjust and resume.
+							</span>
+						{/if}
+					</div>
+					{#if agentMessageLoading}
+						<!-- ✅ Compact loading message: mt-1, text-[11px] -->
+						<p class="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
+							Fetching the next update...
+						</p>
 					{/if}
 				</div>
-				{#if agentMessageLoading}
-					<!-- ✅ Compact loading message: mt-1, text-[11px] -->
-					<p class="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
-						Fetching the next update...
-					</p>
-				{/if}
-			</div>
-		{:else}
-			<!-- ✅ Compact composer footer: p-2 sm:p-2.5 -->
-			<div
-				class="border-t border-slate-200 bg-white p-2 dark:border-slate-800 dark:bg-slate-900 sm:p-2.5"
-			>
-				<AgentComposer
-					bind:voiceInputRef
-					bind:inputValue
-					bind:isVoiceRecording
-					bind:isVoiceInitializing
-					bind:isVoiceTranscribing
-					bind:voiceErrorMessage
-					bind:voiceRecordingDuration
-					bind:voiceSupportsLiveTranscript
-					{isStreaming}
-					{isSendDisabled}
-					{displayContextLabel}
-					onKeyDownHandler={handleKeyDown}
-					onSend={handleSendMessage}
-				/>
-			</div>
-		{/if}
+			{:else if !showContextSelection}
+				<!-- ✅ Compact composer footer: p-2 sm:p-2.5 -->
+				<div
+					class="border-t border-slate-200 bg-white p-2 dark:border-slate-800 dark:bg-slate-900 sm:p-2.5"
+				>
+					<AgentComposer
+						bind:voiceInputRef
+						bind:inputValue
+						bind:isVoiceRecording
+						bind:isVoiceInitializing
+						bind:isVoiceTranscribing
+						bind:voiceErrorMessage
+						bind:voiceRecordingDuration
+						bind:voiceSupportsLiveTranscript
+						{isStreaming}
+						{isSendDisabled}
+						{displayContextLabel}
+						onKeyDownHandler={handleKeyDown}
+						onSend={handleSendMessage}
+					/>
+				</div>
+			{/if}
+		</div>
 	</div>
 </Modal>
 

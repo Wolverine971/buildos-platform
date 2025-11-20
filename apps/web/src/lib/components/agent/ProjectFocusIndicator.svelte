@@ -39,51 +39,38 @@
 </script>
 
 {#if focus}
-	<!-- ✅ Compact inline focus indicator matching header style -->
-	<div
-		class="inline-flex items-center gap-1.5 rounded-full border border-blue-200/50 bg-gradient-to-r from-blue-50/80 to-indigo-50/60 px-2.5 py-1 text-xs shadow-sm dark:border-blue-800/40 dark:from-blue-900/20 dark:to-indigo-900/15"
-	>
-		<!-- ✅ Compact icon -->
-		<span class="text-sm" aria-hidden="true">
+	<!-- Ultra-compact inline focus indicator - seamlessly integrated -->
+	<span class="inline-flex items-center gap-1 text-xs">
+		<!-- Focus type emoji -->
+		<span class="text-xs" aria-hidden="true">
 			{focusIcons[focus.focusType] || '🔍'}
 		</span>
 
-		<!-- ✅ Focus label -->
-		<span
-			class="truncate font-medium text-slate-900 dark:text-white max-w-[200px]"
+		<!-- Focus label with interactive actions -->
+		<button
+			type="button"
+			onclick={() => onChangeFocus?.()}
+			class="inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-xs font-medium text-blue-700 transition-all hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-950/50"
 			title={resolvedLabel}
 		>
-			{resolvedLabel}
-		</span>
+			<span class="max-w-[120px] truncate sm:max-w-[200px]">
+				{resolvedLabel}
+			</span>
+			{#if focus.focusType !== 'project-wide'}
+				<Target class="h-3 w-3" />
+			{/if}
+		</button>
 
-		<!-- ✅ Divider -->
-		{#if onChangeFocus || (onClearFocus && focus.focusType !== 'project-wide')}
-			<span class="h-3 w-px bg-blue-200 dark:bg-blue-700" aria-hidden="true"></span>
+		<!-- Clear button for non-project-wide focus -->
+		{#if onClearFocus && focus.focusType !== 'project-wide'}
+			<button
+				type="button"
+				class="ml-0.5 rounded px-1 py-0.5 text-[10px] font-medium text-slate-500 transition-all hover:bg-slate-100 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+				onclick={() => onClearFocus?.()}
+				aria-label="Clear focus"
+			>
+				×
+			</button>
 		{/if}
-
-		<!-- ✅ Compact action buttons -->
-		<div class="flex shrink-0 items-center gap-1">
-			{#if onChangeFocus}
-				<button
-					type="button"
-					class="inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-[11px] font-medium text-blue-700 transition-colors hover:bg-white/70 dark:text-blue-300 dark:hover:bg-blue-900/40"
-					onclick={() => onChangeFocus?.()}
-					aria-label="Change project focus"
-				>
-					<Target class="h-3 w-3" />
-					<span>Focus</span>
-				</button>
-			{/if}
-			{#if onClearFocus && focus.focusType !== 'project-wide'}
-				<button
-					type="button"
-					class="rounded-full px-2 py-0.5 text-[11px] font-medium text-slate-600 transition-colors hover:bg-white/70 dark:text-slate-400 dark:hover:bg-blue-900/40"
-					onclick={() => onClearFocus?.()}
-					aria-label="Clear focus and return to project-wide view"
-				>
-					Clear
-				</button>
-			{/if}
-		</div>
-	</div>
+	</span>
 {/if}
