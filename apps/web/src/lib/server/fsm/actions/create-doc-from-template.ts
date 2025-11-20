@@ -4,7 +4,7 @@ import type { FSMAction } from '$lib/types/onto';
 import type { TransitionContext } from '../engine';
 import { inferEntityKindFromType, mergeDeep, renderTemplate } from './utils';
 import type { TypedSupabaseClient } from '@buildos/supabase-client';
-import type { Json } from '@buildos/shared-types';
+import type { Json, Database } from '@buildos/shared-types';
 
 type EntityRow = {
 	id: string;
@@ -27,6 +27,7 @@ type DocumentInsertResponse = {
 	id: string;
 	title: string;
 };
+type OntoEdgeInsert = Database['public']['Tables']['onto_edges']['Insert'];
 
 export type { EntityRow as CreateDocEntityRow };
 
@@ -73,42 +74,74 @@ export async function executeCreateDocFromTemplateAction(
 		}
 	});
 
-	const document = await createDocument(client, {
-		project_id: entity.project_id,
-		title,
-		type_key: action.template_key,
-		props: props as Json,
-		created_by: ctx.actor_id
-	});
+	// Idempotency: reuse an existing document with the same title/type in the project
+	const { data: existingDoc, error: existingDocError } = await client
+		.from('onto_documents')
+		.select('id')
+		.eq('project_id', entity.project_id)
+		.eq('title', title)
+		.eq('type_key', action.template_key)
+		.limit(1)
+		.maybeSingle();
 
-	const content = await generateDocumentContent(action.template_key, entity, context);
+	if (existingDocError) {
+		throw new Error(`Failed to check existing document: ${existingDocError.message}`);
+	}
 
-	await client.from('onto_document_versions').insert({
-		document_id: document.id,
-		number: 1,
-		storage_uri: `generated/${document.id}/v1.md`,
-		props: {
-			content,
-			format: 'markdown',
-			generated_at: new Date().toISOString(),
-			template_key: action.template_key
-		} as Json,
-		created_by: ctx.actor_id
-	});
+	let documentId = existingDoc?.id as string | undefined;
 
-	await client.from('onto_edges').insert({
-		src_kind: inferEntityKindFromType(entity.type_key),
-		src_id: entity.id,
-		rel: 'produces',
+	if (!documentId) {
+		const document = await createDocument(client, {
+			project_id: entity.project_id,
+			title,
+			type_key: action.template_key,
+			props: props as Json,
+			created_by: ctx.actor_id
+		});
+
+		documentId = document.id;
+
+		const content = await generateDocumentContent(action.template_key, entity, context);
+
+		await client.from('onto_document_versions').insert({
+			document_id: document.id,
+			number: 1,
+			storage_uri: `generated/${document.id}/v1.md`,
+			props: {
+				content,
+				format: 'markdown',
+				generated_at: new Date().toISOString(),
+				template_key: action.template_key
+			} as Json,
+			created_by: ctx.actor_id
+		});
+	}
+
+	await ensureEdge(client, {
+		src_kind: 'project',
+		src_id: entity.project_id,
 		dst_kind: 'document',
-		dst_id: document.id,
+		dst_id: documentId,
+		rel: 'has_document',
 		props: {
 			origin: 'fsm_action',
 			template_key: action.template_key
 		} as Json
 	});
 
-	return `create_doc_from_template(${document.title})`;
+	await ensureEdge(client, {
+		src_kind: inferEntityKindFromType(entity.type_key),
+		src_id: entity.id,
+		dst_kind: 'document',
+		dst_id: documentId,
+		rel: 'produces',
+		props: {
+			origin: 'fsm_action',
+			template_key: action.template_key
+		} as Json
+	});
+
+	return `create_doc_from_template(${title})`;
 }
 
 async function fetchTemplate(
@@ -317,4 +350,28 @@ function renderResearchNotes(entity: EntityRow, context: Record<string, unknown>
 		`---`,
 		`_Generated on ${new Date().toISOString()}_`
 	].join('\n');
+}
+
+async function ensureEdge(client: TypedSupabaseClient, edge: OntoEdgeInsert): Promise<void> {
+	const { data: existing, error: existingError } = await client
+		.from('onto_edges')
+		.select('id')
+		.eq('src_kind', edge.src_kind)
+		.eq('src_id', edge.src_id)
+		.eq('dst_kind', edge.dst_kind)
+		.eq('dst_id', edge.dst_id)
+		.eq('rel', edge.rel)
+		.limit(1)
+		.maybeSingle();
+
+	if (existingError) {
+		throw new Error(`Failed to check existing edge (${edge.rel}): ${existingError.message}`);
+	}
+
+	if (existing) return;
+
+	const { error: insertError } = await client.from('onto_edges').insert(edge);
+	if (insertError) {
+		throw new Error(`Failed to create edge (${edge.rel}): ${insertError.message}`);
+	}
 }

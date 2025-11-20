@@ -313,16 +313,174 @@ async function executeActions(
 					const createdBy = ctx.actor_id ?? 'fsm_engine';
 					const propsTemplate = (action.props_template ?? {}) as Json;
 					type OntoTaskInsert = Database['public']['Tables']['onto_tasks']['Insert'];
-					const taskInserts: OntoTaskInsert[] = action.titles.map((title) => ({
-						project_id: projectId,
-						plan_id: action.plan_id ?? null,
-						title,
-						state_key: 'todo',
-						props: propsTemplate,
-						created_by: createdBy
-					}));
+					type OntoEdgeInsert = Database['public']['Tables']['onto_edges']['Insert'];
 
-					await client.from('onto_tasks').insert(taskInserts);
+					// If a plan_id was provided, make sure it belongs to the same project to avoid
+					// wiring tasks to the wrong project graph.
+					let validatedPlanId: string | null = null;
+					if (action.plan_id) {
+						const { data: plan, error: planError } = await client
+							.from('onto_plans')
+							.select('id, project_id')
+							.eq('id', action.plan_id)
+							.maybeSingle();
+
+						if (planError) {
+							throw new Error(
+								`Failed to validate plan for spawn_tasks: ${planError.message}`
+							);
+						}
+
+						if (!plan || plan.project_id !== projectId) {
+							throw new Error(
+								`Plan ${action.plan_id} does not belong to project ${projectId}; aborting spawn_tasks`
+							);
+						}
+
+						validatedPlanId = plan.id;
+					}
+
+					// Idempotency: reuse existing tasks with the same title + plan within the project
+					const { data: existingTasks, error: existingTaskError } = await client
+						.from('onto_tasks')
+						.select('id, title, plan_id')
+						.eq('project_id', projectId)
+						.in('title', action.titles)
+						.returns<{ id: string; title: string; plan_id: string | null }[]>();
+
+					if (existingTaskError) {
+						throw new Error(
+							`Failed to check existing tasks: ${existingTaskError.message}`
+						);
+					}
+
+					const existingByKey = new Map<string, { id: string }>();
+					for (const task of existingTasks ?? []) {
+						const key = `${task.title}::${task.plan_id ?? ''}`;
+						existingByKey.set(key, { id: task.id });
+					}
+
+					const taskInserts: OntoTaskInsert[] = [];
+					for (const title of action.titles) {
+						const key = `${title}::${validatedPlanId ?? ''}`;
+						if (existingByKey.has(key)) continue;
+
+						taskInserts.push({
+							project_id: projectId,
+							plan_id: validatedPlanId,
+							title,
+							state_key: 'todo',
+							props: propsTemplate,
+							created_by: createdBy
+						});
+					}
+
+					const newTaskIds: string[] = [];
+					if (taskInserts.length > 0) {
+						const { data: tasks, error: taskInsertError } = await client
+							.from('onto_tasks')
+							.insert(taskInserts)
+							.select('id')
+							.returns<{ id: string }[]>();
+
+						if (taskInsertError || !tasks) {
+							throw new Error(
+								`Failed to spawn tasks: ${taskInsertError?.message ?? 'unknown error'}`
+							);
+						}
+
+						for (const task of tasks) {
+							newTaskIds.push(task.id);
+						}
+					}
+
+					const allTaskIds = [
+						...newTaskIds,
+						...Array.from(existingByKey.values()).map((t) => t.id)
+					];
+
+					const edges: OntoEdgeInsert[] = [];
+
+					// Project -> Task edges
+					if (allTaskIds.length > 0) {
+						const { data: existingProjectEdges, error: edgeQueryError } = await client
+							.from('onto_edges')
+							.select('dst_id')
+							.eq('src_id', projectId)
+							.eq('src_kind', 'project')
+							.eq('dst_kind', 'task')
+							.eq('rel', 'contains')
+							.in('dst_id', allTaskIds)
+							.returns<{ dst_id: string }[]>();
+
+						if (edgeQueryError) {
+							throw new Error(
+								`Failed to check existing project edges: ${edgeQueryError.message}`
+							);
+						}
+
+						const existingProjectEdgeIds = new Set(
+							(existingProjectEdges ?? []).map((edge) => edge.dst_id)
+						);
+
+						for (const taskId of allTaskIds) {
+							if (existingProjectEdgeIds.has(taskId)) continue;
+							edges.push({
+								src_id: projectId,
+								src_kind: 'project',
+								dst_id: taskId,
+								dst_kind: 'task',
+								rel: 'contains',
+								props: { origin: 'fsm_action' } as Json
+							});
+						}
+					}
+
+					// Plan -> Task edges
+					if (validatedPlanId && allTaskIds.length > 0) {
+						const { data: existingPlanEdges, error: planEdgeQueryError } = await client
+							.from('onto_edges')
+							.select('dst_id')
+							.eq('src_id', validatedPlanId)
+							.eq('src_kind', 'plan')
+							.eq('dst_kind', 'task')
+							.eq('rel', 'contains')
+							.in('dst_id', allTaskIds)
+							.returns<{ dst_id: string }[]>();
+
+						if (planEdgeQueryError) {
+							throw new Error(
+								`Failed to check existing plan edges: ${planEdgeQueryError.message}`
+							);
+						}
+
+						const existingPlanEdgeIds = new Set(
+							(existingPlanEdges ?? []).map((edge) => edge.dst_id)
+						);
+
+						for (const taskId of allTaskIds) {
+							if (existingPlanEdgeIds.has(taskId)) continue;
+							edges.push({
+								src_id: validatedPlanId,
+								src_kind: 'plan',
+								dst_id: taskId,
+								dst_kind: 'task',
+								rel: 'contains',
+								props: { origin: 'fsm_action', via: 'spawn_tasks' } as Json
+							});
+						}
+					}
+
+					if (edges.length > 0) {
+						const { error: edgeError } = await client.from('onto_edges').insert(edges);
+
+						if (edgeError) {
+							throw new Error(
+								`Failed to link tasks to project: ${edgeError.message}`
+							);
+						}
+					}
+
 					executed.push(`spawn_tasks(${action.titles.length} tasks)`);
 					break;
 				}

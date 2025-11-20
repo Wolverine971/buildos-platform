@@ -51,6 +51,16 @@ export class SSEProcessor {
 			throw new Error('Response body is empty');
 		}
 
+		// Track completion so we can emit onComplete when the stream naturally ends
+		let hasCompleted = false;
+		const safeCallbacks: StreamCallbacks = {
+			...callbacks,
+			onComplete: (result: any) => {
+				hasCompleted = true;
+				callbacks.onComplete?.(result);
+			}
+		};
+
 		const reader = response.body.getReader();
 		const decoder = new TextDecoder();
 		let buffer = '';
@@ -95,7 +105,7 @@ export class SSEProcessor {
 				reader,
 				decoder,
 				buffer,
-				callbacks,
+				safeCallbacks,
 				parseJSON,
 				onParseError,
 				() => {
@@ -108,6 +118,11 @@ export class SSEProcessor {
 				await Promise.race([streamPromise, timeoutPromise]);
 			} else {
 				await streamPromise;
+			}
+
+			// If the stream closed without emitting a completion event, emit one here
+			if (!hasCompleted) {
+				safeCallbacks.onComplete?.(undefined);
 			}
 		} finally {
 			// Clean up

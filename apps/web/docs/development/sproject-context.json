@@ -685,6 +685,33 @@
 			"exports": ["userContextStore"]
 		},
 		{
+			"file": "src/lib/components/agent/agent-chat-formatters.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"formatTime",
+				"formatTokensEstimate",
+				"formatCompressionTimestamp",
+				"shouldRenderAsMarkdown"
+			]
+		},
+		{
+			"file": "src/lib/components/agent/agent-chat.constants.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"CONTEXT_DESCRIPTORS",
+				"CONTEXT_BADGE_CLASSES",
+				"DEFAULT_CONTEXT_BADGE_CLASS"
+			]
+		},
+		{
+			"file": "src/lib/components/agent/agent-chat.types.ts",
+			"type": "component",
+			"components": [],
+			"exports": ["isThinkingBlockMessage", "findThinkingBlockById"]
+		},
+		{
 			"file": "src/lib/components/ontology/graph/lib/graph.service.ts",
 			"type": "component",
 			"components": [],
@@ -707,6 +734,9 @@
 		"src/lib/components/notifications/NotificationModal.svelte",
 		"src/lib/components/project/ProjectHeaderMinimal.svelte",
 		"src/lib/components/project/ProjectModals.svelte",
+		"src/lib/components/agent/agent-chat-formatters.ts",
+		"src/lib/components/agent/agent-chat.constants.ts",
+		"src/lib/components/agent/agent-chat.types.ts",
 		"src/lib/components/ontology/graph/lib/graph.service.ts"
 	]
 }

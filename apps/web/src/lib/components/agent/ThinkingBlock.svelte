@@ -3,47 +3,12 @@
 	import { ChevronDown, ChevronRight, Loader, Check, X } from 'lucide-svelte';
 	import Card from '$lib/components/ui/Card.svelte';
 	import CardBody from '$lib/components/ui/CardBody.svelte';
-
-	// Type definitions (should match parent component)
-	type ActivityType =
-		| 'tool_call'
-		| 'tool_result'
-		| 'plan_created'
-		| 'plan_review'
-		| 'state_change'
-		| 'step_start'
-		| 'step_complete'
-		| 'executor_spawned'
-		| 'executor_result'
-		| 'context_shift'
-		| 'template_request'
-		| 'template_status'
-		| 'ontology_loaded'
-		| 'clarification'
-		| 'general';
-
-	interface ActivityEntry {
-		id: string;
-		content: string;
-		timestamp: Date;
-		activityType: ActivityType;
-		status?: 'pending' | 'completed' | 'failed';
-		toolCallId?: string;
-		metadata?: Record<string, any>;
-	}
-
-	type AgentLoopState = 'thinking' | 'executing_plan' | 'waiting_on_user';
-
-	interface ThinkingBlockMessage {
-		id: string;
-		type: 'thinking_block';
-		activities: ActivityEntry[];
-		status: 'active' | 'completed';
-		agentState?: AgentLoopState;
-		isCollapsed?: boolean;
-		content: string;
-		timestamp: Date;
-	}
+	import type {
+		ActivityEntry,
+		ActivityType,
+		AgentLoopState,
+		ThinkingBlockMessage
+	} from './agent-chat.types';
 
 	interface Props {
 		block: ThinkingBlockMessage;

@@ -26,7 +26,8 @@ import type {
 	Database,
 	AgentSSEMessage,
 	ChatRole,
-	ProjectFocus
+	ProjectFocus,
+	ContextUsageSnapshot
 } from '@buildos/shared-types';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { OntologyContextLoader } from '$lib/services/ontology-context-loader';
@@ -155,6 +156,34 @@ function normalizeContextType(contextType?: ChatContextType | string): ChatConte
 
 	logger.warn(`Invalid context type '${contextType}', defaulting to 'global'`, { contextType });
 	return 'global';
+}
+
+/**
+ * Lightweight usage snapshot calculation that does not hit the database.
+ * Used to avoid blocking the stream if compression metadata lookups stall.
+ */
+function buildQuickUsageSnapshot(
+	messages: { content: string }[],
+	tokenBudget: number
+): ContextUsageSnapshot {
+	const estimatedTokens = messages.reduce(
+		(sum, msg) => sum + Math.ceil((msg?.content ?? '').length / 4),
+		0
+	);
+	const usagePercent = Math.min(Math.round((estimatedTokens / tokenBudget) * 100), 999);
+	const tokensRemaining = Math.max(tokenBudget - estimatedTokens, 0);
+	const status: ContextUsageSnapshot['status'] =
+		estimatedTokens > tokenBudget ? 'over_budget' : usagePercent >= 85 ? 'near_limit' : 'ok';
+
+	return {
+		estimatedTokens,
+		tokenBudget,
+		usagePercent,
+		tokensRemaining,
+		status,
+		lastCompressedAt: null,
+		lastCompression: null
+	};
 }
 
 async function fetchChatSession(
@@ -742,25 +771,38 @@ export const POST: RequestHandler = async ({
 
 		const agentStream = SSEResponse.createChatStream();
 		const compressionService = new ChatCompressionService(supabase);
+		const historyForUsage = [...historyToUse, { content: message }];
 
-		try {
-			const historyForUsage = [...historyToUse, { content: message }];
-			const usageSnapshot = await compressionService.getContextUsageSnapshot(
-				chatSession.id,
-				historyForUsage,
-				CONTEXT_USAGE_TOKEN_BUDGET
-			);
+		// Send a fast estimate immediately without blocking the stream
+		const quickUsageSnapshot = buildQuickUsageSnapshot(
+			historyForUsage,
+			CONTEXT_USAGE_TOKEN_BUDGET
+		);
+		void agentStream.sendMessage({
+			type: 'context_usage',
+			usage: quickUsageSnapshot
+		});
 
-			await agentStream.sendMessage({
-				type: 'context_usage',
-				usage: usageSnapshot
-			});
-		} catch (usageError) {
-			logger.warn('Failed to send context usage snapshot', {
-				error: usageError,
-				sessionId: chatSession.id
-			});
-		}
+		// Fetch richer usage stats in the background without blocking the main flow
+		void (async () => {
+			try {
+				const usageSnapshot = await compressionService.getContextUsageSnapshot(
+					chatSession.id,
+					historyForUsage,
+					CONTEXT_USAGE_TOKEN_BUDGET
+				);
+
+				void agentStream.sendMessage({
+					type: 'context_usage',
+					usage: usageSnapshot
+				});
+			} catch (usageError) {
+				logger.warn('Failed to send context usage snapshot', {
+					error: usageError,
+					sessionId: chatSession.id
+				});
+			}
+		})();
 
 		let totalTokens = 0;
 		let assistantResponse = '';
@@ -1207,6 +1249,8 @@ function mapPlannerEventToSSE(
 			return { type: 'focus_active', focus: (event as any).focus };
 		case 'focus_changed':
 			return { type: 'focus_changed', focus: (event as any).focus };
+		case 'context_usage':
+			return { type: 'context_usage', usage: (event as any).usage };
 		case 'done':
 			return { type: 'done', usage: (event as any).usage };
 		case 'error':

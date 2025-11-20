@@ -3,7 +3,7 @@ import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import type { FSMAction, Facets } from '$lib/types/onto';
 import type { TypedSupabaseClient } from '@buildos/supabase-client';
 import type { TransitionContext } from '../engine';
-import type { Json } from '@buildos/shared-types';
+import type { Json, Database } from '@buildos/shared-types';
 
 type EntityContext = {
 	id: string;
@@ -16,6 +16,7 @@ type TemplateRow = {
 	default_props: Record<string, unknown> | null;
 	facet_defaults: Facets | null;
 };
+type OntoEdgeInsert = Database['public']['Tables']['onto_edges']['Insert'];
 
 /**
  * Execute the create_output action by materialising an onto_outputs row and linking it to the source entity.
@@ -55,34 +56,59 @@ export async function executeCreateOutputAction(
 		delete mergedProps.facets;
 	}
 
-	const { data: output, error: insertError } = await client
+	// Idempotency: reuse an existing output with the same name/type in the project
+	const { data: existingOutput, error: existingOutputError } = await client
 		.from('onto_outputs')
-		.insert({
-			project_id: entity.project_id,
-			name: action.name,
-			type_key: action.type_key,
-			state_key: stateKey,
-			props: mergedProps as Json,
-			created_by: ctx.actor_id
-		})
 		.select('id')
-		.single();
+		.eq('project_id', entity.project_id)
+		.eq('name', action.name)
+		.eq('type_key', action.type_key)
+		.limit(1)
+		.maybeSingle();
 
-	if (insertError || !output) {
-		throw new Error(`Failed to create output: ${insertError?.message ?? 'Unknown error'}`);
+	if (existingOutputError) {
+		throw new Error(`Failed to check existing output: ${existingOutputError.message}`);
 	}
 
-	const { error: edgeError } = await client.from('onto_edges').insert({
-		src_kind: inferEntityKind(entity),
-		src_id: entity.id,
-		rel: 'produces',
+	let outputId = existingOutput?.id as string | undefined;
+
+	if (!outputId) {
+		const { data: output, error: insertError } = await client
+			.from('onto_outputs')
+			.insert({
+				project_id: entity.project_id,
+				name: action.name,
+				type_key: action.type_key,
+				state_key: stateKey,
+				props: mergedProps as Json,
+				created_by: ctx.actor_id
+			})
+			.select('id')
+			.single();
+
+		if (insertError || !output) {
+			throw new Error(`Failed to create output: ${insertError?.message ?? 'Unknown error'}`);
+		}
+
+		outputId = output.id;
+	}
+
+	await ensureEdge(client, {
+		src_kind: 'project',
+		src_id: entity.project_id,
 		dst_kind: 'output',
-		dst_id: output.id
+		dst_id: outputId,
+		rel: 'has_output',
+		props: { origin: 'fsm_action' } as Json
 	});
 
-	if (edgeError) {
-		throw new Error(`Failed to create produces edge: ${edgeError.message}`);
-	}
+	await ensureEdge(client, {
+		src_kind: inferEntityKind(entity),
+		src_id: entity.id,
+		dst_kind: 'output',
+		dst_id: outputId,
+		rel: 'produces'
+	});
 
 	return `create_output(${action.name})`;
 }
@@ -156,6 +182,30 @@ function mergeFacets(templateFacets: Facets | null, actionFacets: Facets | undef
 	if (actionFacets?.scale) merged.scale = actionFacets.scale;
 	if (actionFacets?.stage) merged.stage = actionFacets.stage;
 	return merged;
+}
+
+async function ensureEdge(client: TypedSupabaseClient, edge: OntoEdgeInsert): Promise<void> {
+	const { data: existing, error: existingError } = await client
+		.from('onto_edges')
+		.select('id')
+		.eq('src_kind', edge.src_kind)
+		.eq('src_id', edge.src_id)
+		.eq('dst_kind', edge.dst_kind)
+		.eq('dst_id', edge.dst_id)
+		.eq('rel', edge.rel)
+		.limit(1)
+		.maybeSingle();
+
+	if (existingError) {
+		throw new Error(`Failed to check existing edge (${edge.rel}): ${existingError.message}`);
+	}
+
+	if (existing) return;
+
+	const { error: insertError } = await client.from('onto_edges').insert(edge);
+	if (insertError) {
+		throw new Error(`Failed to create edge (${edge.rel}): ${insertError.message}`);
+	}
 }
 
 function hasFacetValues(facets: Facets): boolean {

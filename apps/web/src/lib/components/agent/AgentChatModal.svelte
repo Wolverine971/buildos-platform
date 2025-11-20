@@ -16,9 +16,7 @@
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
-	import CardHeader from '$lib/components/ui/CardHeader.svelte';
 	import CardBody from '$lib/components/ui/CardBody.svelte';
-	import CardFooter from '$lib/components/ui/CardFooter.svelte';
 	import TextareaWithVoice from '$lib/components/ui/TextareaWithVoice.svelte';
 	import ContextSelectionScreen from '../chat/ContextSelectionScreen.svelte';
 	import ThinkingBlock from './ThinkingBlock.svelte';
@@ -33,7 +31,7 @@
 		AgentSSEMessage,
 		ContextUsageSnapshot
 	} from '@buildos/shared-types';
-	import { renderMarkdown, getProseClasses, hasMarkdownFormatting } from '$lib/utils/markdown';
+	import { renderMarkdown, getProseClasses } from '$lib/utils/markdown';
 	import {
 		requestAgentToAgentMessage,
 		type AgentToAgentMessageHistory
@@ -41,6 +39,24 @@
 	// Add ontology integration imports
 	import type { LastTurnContext, ProjectFocus } from '$lib/types/agent-chat-enhancement';
 	import type TextareaWithVoiceComponent from '$lib/components/ui/TextareaWithVoice.svelte';
+	import {
+		CONTEXT_BADGE_CLASSES,
+		CONTEXT_DESCRIPTORS,
+		DEFAULT_CONTEXT_BADGE_CLASS
+	} from './agent-chat.constants';
+	import {
+		findThinkingBlockById,
+		type ActivityEntry,
+		type ActivityType,
+		type AgentLoopState,
+		type ThinkingBlockMessage,
+		type UIMessage
+	} from './agent-chat.types';
+	import {
+		formatTime,
+		formatTokensEstimate,
+		shouldRenderAsMarkdown
+	} from './agent-chat-formatters';
 
 	interface Props {
 		isOpen?: boolean;
@@ -71,73 +87,14 @@
 	let projectFocus = $state<ProjectFocus | null>(null);
 	let showFocusSelector = $state(false);
 
-	const CONTEXT_DESCRIPTORS: Record<ChatContextType, { title: string; subtitle: string }> = {
-		global: {
-			title: 'Global conversation',
-			subtitle: 'Work across projects, tasks, and the calendar without constraints.'
-		},
-		project: {
-			title: 'Project workspace',
-			subtitle: 'Answer questions, explore insights, or update a selected project.'
-		},
-		task: {
-			title: 'Task focus',
-			subtitle: 'Dig into an individual task and its related work.'
-		},
-		calendar: {
-			title: 'Calendar planning',
-			subtitle: 'Coordinate schedules, availability, and time blocks.'
-		},
-		general: {
-			title: 'Global conversation',
-			subtitle: 'Legacy mode - use global instead.'
-		},
-		project_create: {
-			title: 'New project flow',
-			subtitle: 'Guide creation of a structured project from a spark of an idea.'
-		},
-		project_audit: {
-			title: 'Project audit',
-			subtitle: 'Stress-test the project for gaps, risks, and clarity.'
-		},
-		project_forecast: {
-			title: 'Project forecast',
-			subtitle: 'Explore timelines, what-ifs, and scenario planning.'
-		},
-		task_update: {
-			title: 'Task spotlight',
-			subtitle: 'Quick tune-ups, triage, and clarifications for tasks.'
-		},
-		daily_brief_update: {
-			title: 'Daily brief tuning',
-			subtitle: 'Adjust what surfaces in your daily brief and notifications.'
-		}
-	};
-
-	const CONTEXT_BADGE_CLASSES: Partial<Record<ChatContextType, string>> = {
-		global: 'bg-blue-500/10 text-blue-600 dark:bg-blue-500/15 dark:text-blue-300',
-		project: 'bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-300',
-		project_create:
-			'bg-purple-500/10 text-purple-600 dark:bg-purple-500/15 dark:text-purple-300',
-		project_audit: 'bg-amber-500/10 text-amber-600 dark:bg-amber-500/15 dark:text-amber-300',
-		project_forecast: 'bg-teal-500/10 text-teal-600 dark:bg-teal-500/15 dark:text-teal-300',
-		task_update: 'bg-orange-500/10 text-orange-600 dark:bg-orange-500/15 dark:text-orange-300',
-		task: 'bg-orange-500/10 text-orange-600 dark:bg-orange-500/15 dark:text-orange-300',
-		daily_brief_update: 'bg-rose-500/10 text-rose-600 dark:bg-rose-500/15 dark:text-rose-300',
-		calendar: 'bg-sky-500/10 text-sky-600 dark:bg-sky-500/15 dark:text-sky-300'
-	};
-
-	const defaultBadgeClass =
-		'bg-slate-500/10 text-slate-700 dark:bg-slate-500/20 dark:text-slate-200';
-
 	const contextDescriptor = $derived(
 		selectedContextType ? CONTEXT_DESCRIPTORS[selectedContextType] : null
 	);
 
 	const contextBadgeClass = $derived(
 		selectedContextType
-			? (CONTEXT_BADGE_CLASSES[selectedContextType] ?? defaultBadgeClass)
-			: defaultBadgeClass
+			? (CONTEXT_BADGE_CLASSES[selectedContextType] ?? DEFAULT_CONTEXT_BADGE_CLASS)
+			: DEFAULT_CONTEXT_BADGE_CLASS
 	);
 
 	const displayContextLabel = $derived.by(() => {
@@ -178,86 +135,6 @@
 		return projectFocus ?? defaultProjectFocus;
 	});
 
-	// Activity types for thinking block log entries
-	type ActivityType =
-		| 'tool_call' // Tool being invoked
-		| 'tool_result' // Tool execution completed
-		| 'plan_created' // Plan generation
-		| 'plan_review' // Plan approval/rejection
-		| 'state_change' // Agent state transitions
-		| 'step_start' // Plan step starting
-		| 'step_complete' // Plan step finished
-		| 'executor_spawned' // Executor agent created
-		| 'executor_result' // Executor completed
-		| 'context_shift' // Context/focus changed
-		| 'template_request' // Template creation request
-		| 'template_status' // Template creation status
-		| 'ontology_loaded' // Ontology context loaded
-		| 'clarification' // Clarifying questions
-		| 'general'; // Generic activity
-
-	// Individual activity entry in thinking block
-	interface ActivityEntry {
-		id: string;
-		content: string;
-		timestamp: Date;
-		activityType: ActivityType;
-		status?: 'pending' | 'completed' | 'failed'; // For tracking tool call progress
-		toolCallId?: string; // For matching tool calls to their results
-		metadata?: Record<string, any>;
-	}
-
-	// Enhanced message type for UI with optional ChatMessage fields
-	interface UIMessage {
-		id: string;
-		session_id?: string;
-		user_id?: string;
-		role?: ChatRole;
-		content: string;
-		created_at?: string;
-		updated_at?: string;
-		// UI-specific fields
-		type:
-			| 'user'
-			| 'assistant'
-			| 'activity' // DEPRECATED - legacy activity messages
-			| 'thinking_block' // NEW - consolidated thinking/activity block
-			| 'plan' // DEPRECATED - now integrated into thinking_block
-			| 'step'
-			| 'executor'
-			| 'clarification'
-			| 'agent_peer';
-		data?: any;
-		timestamp: Date;
-		// Optional ChatMessage fields
-		tool_calls?: any;
-		tool_call_id?: string;
-	}
-
-	// Thinking block message containing agent activity log
-	interface ThinkingBlockMessage extends UIMessage {
-		type: 'thinking_block';
-		activities: ActivityEntry[];
-		status: 'active' | 'completed';
-		agentState?: AgentLoopState;
-		isCollapsed?: boolean;
-	}
-
-	function isThinkingBlockMessage(message: UIMessage): message is ThinkingBlockMessage {
-		return message.type === 'thinking_block';
-	}
-
-	function findThinkingBlockById(
-		id: string | null,
-		sourceMessages: UIMessage[]
-	): ThinkingBlockMessage | undefined {
-		if (!id) return undefined;
-		return sourceMessages.find(
-			(message): message is ThinkingBlockMessage =>
-				message.id === id && isThinkingBlockMessage(message)
-		);
-	}
-
 	// Conversation state
 	let messages = $state<UIMessage[]>([]);
 	let currentSession = $state<ChatSession | null>(null);
@@ -273,12 +150,23 @@
 	let currentThinkingBlockId = $state<string | null>(null); // NEW: Track current thinking block
 	let messagesContainer = $state<HTMLElement | undefined>(undefined);
 	let contextUsage = $state<ContextUsageSnapshot | null>(null);
-	const contextUsagePercent = $derived.by(() => Math.min(contextUsage?.usagePercent ?? 0, 120));
-	const contextUsageBarClass = $derived.by(() => {
-		if (!contextUsage) return 'bg-slate-300 dark:bg-slate-700';
+	const contextUsageStatusLabel = $derived.by(() => {
+		if (!contextUsage) return null;
+		if (contextUsage.status === 'over_budget') return 'Over budget';
+		if (contextUsage.status === 'near_limit') return 'Near limit';
+		return 'Healthy';
+	});
+	const contextUsageDotClass = $derived.by(() => {
+		if (!contextUsage) return 'bg-slate-400';
 		if (contextUsage.status === 'over_budget') return 'bg-rose-500';
 		if (contextUsage.status === 'near_limit') return 'bg-amber-500';
 		return 'bg-emerald-500';
+	});
+	const contextUsageTextClass = $derived.by(() => {
+		if (!contextUsage) return 'text-slate-600 dark:text-slate-300';
+		if (contextUsage.status === 'over_budget') return 'text-rose-600 dark:text-rose-400';
+		if (contextUsage.status === 'near_limit') return 'text-amber-600 dark:text-amber-400';
+		return 'text-emerald-600 dark:text-emerald-400';
 	});
 
 	// Ontology integration state
@@ -774,9 +662,6 @@
 	// Thinking Block Management Functions
 	// ========================================================================
 
-	/**
-	 * Creates a new thinking block when user sends a message
-	 */
 	function createThinkingBlock(): string {
 		const blockId = crypto.randomUUID();
 		const thinkingBlock: ThinkingBlockMessage = {
@@ -794,19 +679,36 @@
 		return blockId;
 	}
 
-	/**
-	 * Adds an activity entry to the current thinking block
-	 */
+	function ensureThinkingBlock(): string {
+		if (currentThinkingBlockId) return currentThinkingBlockId;
+		return createThinkingBlock();
+	}
+
+	function updateThinkingBlock(
+		blockId: string | null,
+		updater: (block: ThinkingBlockMessage) => ThinkingBlockMessage | null | undefined
+	) {
+		if (!blockId) return;
+		const index = messages.findIndex(
+			(msg) => msg.id === blockId && msg.type === 'thinking_block'
+		);
+		if (index === -1) return;
+
+		const block = messages[index] as ThinkingBlockMessage;
+		const nextBlock = updater(block);
+		if (!nextBlock || nextBlock === block) return;
+
+		const nextMessages = [...messages];
+		nextMessages[index] = nextBlock;
+		messages = nextMessages;
+	}
+
 	function addActivityToThinkingBlock(
 		content: string,
 		activityType: ActivityType,
 		metadata?: Record<string, any>
 	) {
-		if (!currentThinkingBlockId) {
-			// Fallback: create thinking block if none exists
-			createThinkingBlock();
-		}
-
+		const blockId = ensureThinkingBlock();
 		const activity: ActivityEntry = {
 			id: crypto.randomUUID(),
 			content,
@@ -815,112 +717,77 @@
 			metadata
 		};
 
-		messages = messages.map((msg) => {
-			if (msg.id === currentThinkingBlockId && msg.type === 'thinking_block') {
-				const block = msg as ThinkingBlockMessage;
-				return {
-					...block,
-					activities: [...block.activities, activity]
-				};
-			}
-			return msg;
-		});
+		updateThinkingBlock(blockId, (block) => ({
+			...block,
+			activities: [...block.activities, activity]
+		}));
 	}
 
-	/**
-	 * Updates the agent state displayed in the thinking block header
-	 */
 	function updateThinkingBlockState(state: AgentLoopState, details?: string) {
-		if (!currentThinkingBlockId) return;
-
-		messages = messages.map((msg) => {
-			if (msg.id === currentThinkingBlockId && msg.type === 'thinking_block') {
-				return {
-					...msg,
-					agentState: state,
-					content: details || AGENT_STATE_MESSAGES[state]
-				};
-			}
-			return msg;
-		});
+		updateThinkingBlock(currentThinkingBlockId, (block) => ({
+			...block,
+			agentState: state,
+			content: details || AGENT_STATE_MESSAGES[state]
+		}));
 	}
 
-	/**
-	 * Marks the thinking block as completed
-	 */
 	function finalizeThinkingBlock() {
 		if (!currentThinkingBlockId) return;
 
-		messages = messages.map((msg) => {
-			if (msg.id === currentThinkingBlockId && msg.type === 'thinking_block') {
-				return {
-					...msg,
-					status: 'completed',
-					content: 'Complete'
-				};
-			}
-			return msg;
-		});
+		updateThinkingBlock(currentThinkingBlockId, (block) => ({
+			...block,
+			status: 'completed',
+			content: 'Complete'
+		}));
 
 		currentThinkingBlockId = null;
 	}
 
-	/**
-	 * Toggles collapse state of a thinking block
-	 */
 	function toggleThinkingBlockCollapse(blockId: string) {
-		messages = messages.map((msg) => {
-			if (msg.id === blockId && msg.type === 'thinking_block') {
-				const block = msg as ThinkingBlockMessage;
-				return {
-					...block,
-					isCollapsed: !block.isCollapsed
-				};
-			}
-			return msg;
-		});
+		updateThinkingBlock(blockId, (block) => ({
+			...block,
+			isCollapsed: !block.isCollapsed
+		}));
 	}
 
-	/**
-	 * Updates the status of an activity by tool call ID
-	 * Also updates the content to show completion (Creating → Created)
-	 */
 	function updateActivityStatus(toolCallId: string, status: 'completed' | 'failed') {
 		if (!currentThinkingBlockId) return;
 
 		let matchFound = false;
 
-		messages = messages.map((msg) => {
-			if (msg.id === currentThinkingBlockId && msg.type === 'thinking_block') {
-				const block = msg as ThinkingBlockMessage;
-				return {
-					...block,
-					activities: block.activities.map((activity) => {
-						if (
-							activity.toolCallId === toolCallId &&
-							activity.activityType === 'tool_call'
-						) {
-							matchFound = true;
-							// Update content from "Creating task: X" to "Created task: X"
-							const toolName = activity.metadata?.toolName || 'unknown';
-							const args = activity.metadata?.arguments || '';
-							const newContent = formatToolMessage(toolName, args, status);
+		updateThinkingBlock(currentThinkingBlockId, (block) => {
+			const activityIndex = block.activities.findIndex(
+				(activity) =>
+					activity.toolCallId === toolCallId && activity.activityType === 'tool_call'
+			);
 
-							return {
-								...activity,
-								content: newContent,
-								status,
-								metadata: {
-									...activity.metadata,
-									status
-								}
-							};
-						}
-						return activity;
-					})
-				};
+			if (activityIndex === -1) {
+				return block;
 			}
-			return msg;
+
+			matchFound = true;
+			const activity = block.activities[activityIndex];
+			const toolName = activity.metadata?.toolName || 'unknown';
+			const args = activity.metadata?.arguments || '';
+			const newContent = formatToolMessage(toolName, args, status);
+
+			const updatedActivity: ActivityEntry = {
+				...activity,
+				content: newContent,
+				status,
+				metadata: {
+					...activity.metadata,
+					status
+				}
+			};
+
+			const nextActivities = [...block.activities];
+			nextActivities[activityIndex] = updatedActivity;
+
+			return {
+				...block,
+				activities: nextActivities
+			};
 		});
 
 		if (dev && !matchFound) {
@@ -1026,12 +893,15 @@
 		// Reset scroll flag so we always scroll to show new user message
 		userHasScrolled = false;
 
+		let streamController: AbortController | null = null;
+		let receivedStreamEvent = false;
+
 		try {
 			if (currentStreamController) {
 				currentStreamController.abort();
 				currentStreamController = null;
 			}
-			const streamController = new AbortController();
+			streamController = new AbortController();
 			currentStreamController = streamController;
 
 			// Determine ontology entity type from context
@@ -1071,6 +941,7 @@
 
 			const callbacks: StreamCallbacks = {
 				onProgress: (data: any) => {
+					receivedStreamEvent = true;
 					handleSSEMessage(data as AgentSSEMessage);
 				},
 				onError: (err) => {
@@ -1080,11 +951,22 @@
 					isStreaming = false;
 					currentActivity = '';
 					currentStreamController = null;
+					agentState = null;
+					agentStateDetails = null;
+					finalizeThinkingBlock();
+					finalizeAssistantMessage();
 				},
 				onComplete: () => {
 					isStreaming = false;
 					currentActivity = '';
 					currentStreamController = null;
+					agentState = null;
+					agentStateDetails = null;
+					if (!receivedStreamEvent && !error) {
+						error = 'BuildOS did not return a response. Please try again.';
+					}
+					finalizeThinkingBlock();
+					finalizeAssistantMessage();
 				}
 			};
 
@@ -1112,6 +994,10 @@
 			// Remove user message on error
 			messages = messages.filter((m) => m.id !== userMessage.id);
 			inputValue = trimmed;
+		} finally {
+			if (currentStreamController === streamController) {
+				currentStreamController = null;
+			}
 		}
 	}
 
@@ -1374,16 +1260,11 @@
 					}
 				};
 
-				messages = messages.map((msg) => {
-					if (msg.id === currentThinkingBlockId && msg.type === 'thinking_block') {
-						const block = msg as ThinkingBlockMessage;
-						return {
-							...block,
-							activities: [...block.activities, activity]
-						};
-					}
-					return msg;
-				});
+				const blockId = ensureThinkingBlock();
+				updateThinkingBlock(blockId, (block) => ({
+					...block,
+					activities: [...block.activities, activity]
+				}));
 				break;
 
 			case 'tool_result': {
@@ -1672,39 +1553,6 @@
 		currentAssistantMessageId = null;
 	}
 
-	function formatTime(date: Date): string {
-		return date.toLocaleTimeString('en-US', {
-			hour: 'numeric',
-			minute: '2-digit'
-		});
-	}
-
-	function formatTokensEstimate(value?: number | null): string {
-		if (value === undefined || value === null || Number.isNaN(value)) return '0';
-		if (value >= 10000) return `${Math.round(value / 1000)}k`;
-		if (value >= 1000) return `${(value / 1000).toFixed(1)}k`;
-		return Math.round(value).toLocaleString();
-	}
-
-	function formatCompressionTimestamp(timestamp?: string | null): string {
-		if (!timestamp) return 'Not yet compressed';
-		const parsed = new Date(timestamp);
-		if (Number.isNaN(parsed.getTime())) return 'Unknown';
-		const diffMs = Date.now() - parsed.getTime();
-		const minutes = Math.floor(diffMs / 60000);
-		if (minutes < 1) return 'Just now';
-		if (minutes < 60) return `${minutes}m ago`;
-		const hours = Math.floor(minutes / 60);
-		if (hours < 48) return `${hours}h ago`;
-		const days = Math.floor(hours / 24);
-		return `${days}d ago`;
-	}
-
-	// Check if content should be rendered as markdown
-	function shouldRenderAsMarkdown(content: string): boolean {
-		return hasMarkdownFormatting(content);
-	}
-
 	// Get prose classes for markdown rendering
 	const proseClasses = getProseClasses('sm');
 	onDestroy(() => {
@@ -1759,7 +1607,7 @@
 						onClearFocus={handleFocusClear}
 					/>
 				{/if}
-				{#if ontologyLoaded || agentStateLabel || currentActivity}
+				{#if ontologyLoaded || agentStateLabel || currentActivity || contextUsage}
 					<div
 						class="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400 sm:gap-3"
 					>
@@ -1777,6 +1625,25 @@
 								{agentStateLabel}
 							</span>
 						{/if}
+						{#if contextUsage}
+							<span
+								class={`inline-flex items-center gap-1 rounded-full border border-slate-200/70 px-2 py-1 text-[11px] font-semibold leading-none dark:border-slate-700/60 ${contextUsageTextClass}`}
+								title={`Context usage ${formatTokensEstimate(contextUsage.estimatedTokens)} / ${formatTokensEstimate(contextUsage.tokenBudget)}`}
+							>
+								<span class={`h-2 w-2 rounded-full ${contextUsageDotClass}`}></span>
+								<span class="font-mono text-[11px]">
+									{formatTokensEstimate(contextUsage.estimatedTokens)} /
+									{formatTokensEstimate(contextUsage.tokenBudget)}
+								</span>
+								{#if contextUsageStatusLabel}
+									<span
+										class="hidden sm:inline text-[10px] font-semibold uppercase tracking-wide"
+									>
+										{contextUsageStatusLabel}
+									</span>
+								{/if}
+							</span>
+						{/if}
 						{#if currentActivity}
 							<span class="flex items-center gap-2">
 								<span
@@ -1785,61 +1652,6 @@
 								<span class="truncate">{currentActivity}</span>
 							</span>
 						{/if}
-					</div>
-				{/if}
-				{#if contextUsage}
-					<div
-						class="mt-2 rounded-2xl border border-slate-200/70 bg-white/70 p-3 text-xs text-slate-600 shadow-sm dark:border-slate-700/60 dark:bg-slate-800/70 dark:text-slate-200"
-					>
-						<div class="flex flex-wrap items-center justify-between gap-2">
-							<div class="flex items-center gap-2">
-								<span
-									class="font-semibold uppercase tracking-wide text-[10px] text-slate-500 dark:text-slate-400"
-								>
-									Context usage (est.)
-								</span>
-								<span class="text-[11px] text-slate-600 dark:text-slate-300">
-									{formatTokensEstimate(contextUsage.estimatedTokens)} /
-									{formatTokensEstimate(contextUsage.tokenBudget)} tokens
-								</span>
-							</div>
-							<span
-								class={`text-[11px] font-semibold ${
-									contextUsage.status === 'over_budget'
-										? 'text-rose-600 dark:text-rose-400'
-										: contextUsage.status === 'near_limit'
-											? 'text-amber-600 dark:text-amber-400'
-											: 'text-emerald-600 dark:text-emerald-400'
-								}`}
-							>
-								{contextUsage.status === 'over_budget'
-									? 'Over budget'
-									: contextUsage.status === 'near_limit'
-										? 'Near limit'
-										: 'Healthy'}
-							</span>
-						</div>
-						<div
-							class="mt-2 h-2 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700"
-						>
-							<div
-								class={`h-full rounded-full transition-all duration-300 ${contextUsageBarClass}`}
-								style={`width: ${contextUsagePercent}%;`}
-							></div>
-						</div>
-						<div
-							class="mt-2 flex flex-wrap justify-between gap-2 text-[11px] text-slate-500 dark:text-slate-400"
-						>
-							<span>
-								≈{formatTokensEstimate(contextUsage.tokensRemaining)} tokens left in
-								budget
-							</span>
-							<span>
-								Last compressed: {formatCompressionTimestamp(
-									contextUsage.lastCompressedAt
-								)}
-							</span>
-						</div>
 					</div>
 				{/if}
 			</div>

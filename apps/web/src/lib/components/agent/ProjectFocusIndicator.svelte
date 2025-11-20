@@ -39,20 +39,16 @@
 
 {#if focus}
 	<div
-		class="mt-3 rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50/90 to-indigo-50/70 px-3 py-3 text-sm shadow-sm transition-all duration-300 hover:shadow-md dark:border-blue-900/40 dark:from-blue-900/20 dark:to-indigo-900/10 sm:px-4"
+		class="mt-3 rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50/90 to-indigo-50/70 p-1 text-sm shadow-sm transition-all duration-300 hover:shadow-md dark:border-blue-900/40 dark:from-blue-900/20 dark:to-indigo-900/10 sm:px-4"
 	>
 		<div class="flex flex-wrap items-center gap-2 sm:gap-3">
 			<div
-				class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-lg shadow-sm ring-1 ring-blue-100 dark:bg-blue-950/50 dark:ring-blue-800/40 sm:h-10 sm:w-10 sm:text-xl"
+				class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-lg shadow-sm ring-1 ring-blue-100 dark:bg-blue-950/50 dark:ring-blue-800/40 sm:h-8 sm:w-8 sm:text-xl"
 			>
 				{focusIcons[focus.focusType] || '🔍'}
 			</div>
 			<div class="min-w-0 flex-1">
-				<p
-					class="text-[11px] font-semibold uppercase tracking-wide text-blue-800 dark:text-blue-200"
-				>
-					{focusLabelMap[focus.focusType]}
-				</p>
+				
 				<p
 					class="truncate text-sm font-medium text-slate-900 dark:text-white sm:text-base"
 					title={resolvedLabel}
