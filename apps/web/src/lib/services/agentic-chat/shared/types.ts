@@ -24,6 +24,7 @@ import type {
 	AgentChatMessageInsert,
 	ChatSession,
 	Json,
+	ContextUsageSnapshot,
 	TemplateCreationEvent
 } from '@buildos/shared-types';
 
@@ -196,6 +197,7 @@ export interface PlannerContext {
 		hasOntology: boolean;
 		plannerAgentId?: string;
 		scope?: OntologyContextScope;
+		compressionUsage?: ContextUsageSnapshot;
 	};
 }
 
@@ -210,6 +212,7 @@ export type StreamEvent =
 	| { type: 'session'; session: ChatSession }
 	| { type: 'ontology_loaded'; summary: string }
 	| { type: 'last_turn_context'; context: LastTurnContext }
+	| { type: 'context_usage'; usage: ContextUsageSnapshot }
 	| {
 			type: 'agent_state';
 			state: 'thinking' | 'executing_plan' | 'waiting_on_user';

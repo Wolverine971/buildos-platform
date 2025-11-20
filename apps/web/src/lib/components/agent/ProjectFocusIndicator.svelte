@@ -1,5 +1,6 @@
 <!-- apps/web/src/lib/components/agent/ProjectFocusIndicator.svelte -->
 <script lang="ts">
+	import { Target } from 'lucide-svelte';
 	import type { ProjectFocus } from '@buildos/shared-types';
 
 	interface Props {
@@ -38,52 +39,51 @@
 </script>
 
 {#if focus}
+	<!-- ✅ Compact inline focus indicator matching header style -->
 	<div
-		class="mt-3 rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50/90 to-indigo-50/70 p-1 text-sm shadow-sm transition-all duration-300 hover:shadow-md dark:border-blue-900/40 dark:from-blue-900/20 dark:to-indigo-900/10 sm:px-4"
+		class="inline-flex items-center gap-1.5 rounded-full border border-blue-200/50 bg-gradient-to-r from-blue-50/80 to-indigo-50/60 px-2.5 py-1 text-xs shadow-sm dark:border-blue-800/40 dark:from-blue-900/20 dark:to-indigo-900/15"
 	>
-		<div class="flex flex-wrap items-center gap-2 sm:gap-3">
-			<div
-				class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-lg shadow-sm ring-1 ring-blue-100 dark:bg-blue-950/50 dark:ring-blue-800/40 sm:h-8 sm:w-8 sm:text-xl"
-			>
-				{focusIcons[focus.focusType] || '🔍'}
-			</div>
-			<div class="min-w-0 flex-1">
-				
-				<p
-					class="truncate text-sm font-medium text-slate-900 dark:text-white sm:text-base"
-					title={resolvedLabel}
+		<!-- ✅ Compact icon -->
+		<span class="text-sm" aria-hidden="true">
+			{focusIcons[focus.focusType] || '🔍'}
+		</span>
+
+		<!-- ✅ Focus label -->
+		<span
+			class="truncate font-medium text-slate-900 dark:text-white max-w-[200px]"
+			title={resolvedLabel}
+		>
+			{resolvedLabel}
+		</span>
+
+		<!-- ✅ Divider -->
+		{#if onChangeFocus || (onClearFocus && focus.focusType !== 'project-wide')}
+			<span class="h-3 w-px bg-blue-200 dark:bg-blue-700" aria-hidden="true"></span>
+		{/if}
+
+		<!-- ✅ Compact action buttons -->
+		<div class="flex shrink-0 items-center gap-1">
+			{#if onChangeFocus}
+				<button
+					type="button"
+					class="inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-[11px] font-medium text-blue-700 transition-colors hover:bg-white/70 dark:text-blue-300 dark:hover:bg-blue-900/40"
+					onclick={() => onChangeFocus?.()}
+					aria-label="Change project focus"
 				>
-					{resolvedLabel}
-				</p>
-				{#if focus.focusType !== 'project-wide'}
-					<p
-						class="truncate text-xs text-slate-600 dark:text-slate-300"
-						title={focus.projectName}
-					>
-						In {focus.projectName}
-					</p>
-				{/if}
-			</div>
-			<div class="flex shrink-0 items-center gap-1.5 text-xs font-medium sm:gap-2">
-				{#if onChangeFocus}
-					<button
-						type="button"
-						class="rounded-full bg-white/90 px-3 py-1.5 text-blue-700 shadow-sm ring-1 ring-blue-100 transition-all duration-200 hover:bg-white hover:shadow dark:bg-blue-900/60 dark:text-blue-200 dark:ring-blue-800/40 dark:hover:bg-blue-900/80"
-						onclick={() => onChangeFocus?.()}
-					>
-						Change
-					</button>
-				{/if}
-				{#if onClearFocus && focus.focusType !== 'project-wide'}
-					<button
-						type="button"
-						class="rounded-full px-3 py-1.5 text-slate-600 transition-all duration-200 hover:bg-white/70 dark:text-slate-300 dark:hover:bg-blue-900/40"
-						onclick={() => onClearFocus?.()}
-					>
-						Clear
-					</button>
-				{/if}
-			</div>
+					<Target class="h-3 w-3" />
+					<span>Focus</span>
+				</button>
+			{/if}
+			{#if onClearFocus && focus.focusType !== 'project-wide'}
+				<button
+					type="button"
+					class="rounded-full px-2 py-0.5 text-[11px] font-medium text-slate-600 transition-colors hover:bg-white/70 dark:text-slate-400 dark:hover:bg-blue-900/40"
+					onclick={() => onClearFocus?.()}
+					aria-label="Clear focus and return to project-wide view"
+				>
+					Clear
+				</button>
+			{/if}
 		</div>
 	</div>
 {/if}

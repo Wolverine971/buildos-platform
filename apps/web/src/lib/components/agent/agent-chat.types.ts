@@ -1,3 +1,4 @@
+// apps/web/src/lib/components/agent/agent-chat.types.ts
 import type { ChatRole } from '@buildos/shared-types';
 
 export type ActivityType =

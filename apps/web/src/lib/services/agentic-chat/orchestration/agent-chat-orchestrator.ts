@@ -174,6 +174,15 @@ export class AgentChatOrchestrator {
 				await callback(lastTurnEvent);
 			}
 
+			if (plannerContext.metadata.compressionUsage) {
+				const usageEvent: StreamEvent = {
+					type: 'context_usage',
+					usage: plannerContext.metadata.compressionUsage
+				};
+				yield usageEvent;
+				await callback(usageEvent);
+			}
+
 			const messages = this.buildPlannerMessages(plannerContext, request.userMessage);
 
 			const tools = this.appendVirtualTools(plannerContext.availableTools);

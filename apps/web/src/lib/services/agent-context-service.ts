@@ -19,7 +19,8 @@ import type {
 	LLMMessage,
 	AgentPermission,
 	SystemPromptMetadata,
-	LocationContext
+	LocationContext,
+	ContextUsageSnapshot
 } from '@buildos/shared-types';
 import {
 	CHAT_TOOLS,
@@ -66,6 +67,7 @@ export interface PlannerContext {
 		plannerAgentId?: string;
 		focus?: ProjectFocus | null;
 		scope?: OntologyContextScope;
+		compressionUsage?: ContextUsageSnapshot;
 	};
 }
 
@@ -197,12 +199,13 @@ export class AgentContextService {
 		);
 
 		// Step 2: Process conversation history with compression if needed
-		const processedHistory = await this.processConversationHistory(conversationHistory, {
-			lastTurnContext,
-			sessionId,
-			contextType: normalizedContext,
-			userId
-		});
+		const { messages: processedHistory, usageSnapshot: compressionUsage } =
+			await this.processConversationHistory(conversationHistory, {
+				lastTurnContext,
+				sessionId,
+				contextType: normalizedContext,
+				userId
+			});
 
 		// Step 3: Format location context (priority order: project_create → ontology → standard)
 		let locationContext: string;
@@ -295,7 +298,8 @@ export class AgentContextService {
 				totalTokens,
 				hasOntology: !!ontologyContext,
 				focus: projectFocus ?? null,
-				scope: contextScope
+				scope: contextScope,
+				compressionUsage
 			}
 		};
 	}
@@ -602,9 +606,10 @@ ${Object.entries(ontologyContext.metadata.entity_count)
 			contextType?: ChatContextType;
 			userId?: string;
 		} = {}
-	): Promise<LLMMessage[]> {
+	): Promise<{ messages: LLMMessage[]; usageSnapshot?: ContextUsageSnapshot }> {
 		const { lastTurnContext, sessionId, contextType, userId } = options;
 		const messages: LLMMessage[] = [];
+		let usageSnapshot: ContextUsageSnapshot | undefined;
 
 		// Add last turn context as a system message if available
 		if (lastTurnContext) {
@@ -646,7 +651,14 @@ ${Object.entries(ontologyContext.metadata.entity_count)
 
 					if (smartResult?.compressedMessages?.length) {
 						messages.push(...smartResult.compressedMessages);
-						return messages;
+						if (this.compressionService) {
+							usageSnapshot = await this.compressionService.getContextUsageSnapshot(
+								sessionId,
+								smartResult.compressedMessages.map((m) => ({ content: m.content })),
+								conversationBudget
+							);
+						}
+						return { messages, usageSnapshot };
 					}
 				}
 
@@ -659,7 +671,8 @@ ${Object.entries(ontologyContext.metadata.entity_count)
 
 				if (compressionResult.compressedMessages.length > 0) {
 					messages.push(...compressionResult.compressedMessages);
-					return messages;
+					usageSnapshot = compressionResult.usage;
+					return { messages, usageSnapshot };
 				}
 			} catch (error) {
 				console.error('[AgentContext] Failed to compress history, falling back:', error);
@@ -686,7 +699,18 @@ ${Object.entries(ontologyContext.metadata.entity_count)
 					tool_calls: m.tool_calls as any
 				}))
 			);
-			return messages;
+			if (this.compressionService && sessionId) {
+				try {
+					usageSnapshot = await this.compressionService.getContextUsageSnapshot(
+						sessionId,
+						recentMessages.map((m) => ({ content: m.content })),
+						conversationBudget
+					);
+				} catch (error) {
+					console.error('Failed to compute usage snapshot for fallback slice', error);
+				}
+			}
+			return { messages, usageSnapshot };
 		}
 
 		// Use full history
@@ -698,7 +722,19 @@ ${Object.entries(ontologyContext.metadata.entity_count)
 			}))
 		);
 
-		return messages;
+		if (this.compressionService && sessionId) {
+			try {
+				usageSnapshot = await this.compressionService.getContextUsageSnapshot(
+					sessionId,
+					history.map((m) => ({ content: m.content })),
+					conversationBudget
+				);
+			} catch (error) {
+				console.error('Failed to compute usage snapshot for full history', error);
+			}
+		}
+
+		return { messages, usageSnapshot };
 	}
 
 	/**

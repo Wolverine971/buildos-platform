@@ -347,7 +347,7 @@
 	{#if selectedView === 'projectHub'}
 		<div class="flex h-full min-h-0 flex-col">
 			<div
-				class="flex gap-2 border-b border-slate-200/60 bg-white/85 p-4 sm:p-5 backdrop-blur-md dark:border-slate-700/60 dark:bg-slate-900/80"
+				class="flex gap-2 border-b border-slate-200/60 bg-white/80 p-4 sm:p-5 backdrop-blur-sm dark:border-slate-700/60 dark:bg-slate-900/80"
 			>
 				<Button variant="ghost" size="sm" onclick={backToPrimary} class="mb-2">
 					<ChevronLeft class="h-4 w-4" />
@@ -457,7 +457,7 @@
 		<div class="flex h-full min-h-0 flex-col">
 			<!-- Header with Back Button -->
 			<div
-				class="flex gap-2 border-b border-slate-200/60 bg-white/80 p-4 sm:p-6 backdrop-blur-sm dark:border-slate-700/60 dark:bg-slate-900/80"
+				class="flex gap-2 border-b border-slate-200/60 bg-white/80 p-4 sm:p-5 backdrop-blur-sm dark:border-slate-700/60 dark:bg-slate-900/80"
 			>
 				<Button variant="ghost" size="sm" onclick={backToProjectHub} class="mb-2">
 					<ChevronLeft class="h-4 w-4" />
@@ -585,7 +585,7 @@
 		<div class="flex h-full min-h-0 flex-col">
 			<!-- Header with Back Button -->
 			<div
-				class="flex gap-2 border-b border-slate-200/60 bg-white/80 p-4 sm:p-6 backdrop-blur-sm dark:border-slate-700/60 dark:bg-slate-900/80"
+				class="flex gap-2 border-b border-slate-200/60 bg-white/80 p-4 sm:p-5 backdrop-blur-sm dark:border-slate-700/60 dark:bg-slate-900/80"
 			>
 				<Button variant="ghost" size="sm" onclick={backToProjectSelection} class="mb-2">
 					<ChevronLeft class="h-4 w-4" />

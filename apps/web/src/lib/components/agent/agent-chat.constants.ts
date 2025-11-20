@@ -1,3 +1,4 @@
+// apps/web/src/lib/components/agent/agent-chat.constants.ts
 import type { ChatContextType } from '@buildos/shared-types';
 
 export const CONTEXT_DESCRIPTORS: Record<ChatContextType, { title: string; subtitle: string }> = {

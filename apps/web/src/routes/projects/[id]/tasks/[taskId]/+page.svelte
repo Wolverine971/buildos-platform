@@ -23,10 +23,10 @@
 	import { toastService } from '$lib/stores/toast.store';
 	import ProjectContextModal from '$lib/components/project/ProjectContextModal.svelte';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
-	import ChatModal from '$lib/components/chat/ChatModal.svelte';
 	import { ProjectService } from '$lib/services/projectService';
 	import type { PageData } from './$types';
 	import RecentActivityIndicator from '$lib/components/ui/RecentActivityIndicator.svelte';
+	import AgentChatModal from '$lib/components/agent/AgentChatModal.svelte';
 
 	import Button from '$lib/components/ui/Button.svelte';
 	import {
@@ -168,32 +168,6 @@
 
 	function closeChatModal() {
 		showChatModal = false;
-	}
-
-	// Get initial chat message based on task context
-	function getInitialChatMessage() {
-		if (!task) return '';
-
-		// Create a context-aware greeting
-		const taskStatus =
-			statusValue === 'done'
-				? 'completed'
-				: statusValue === 'in_progress'
-					? 'currently working on'
-					: statusValue === 'blocked'
-						? 'blocked on'
-						: 'planned';
-
-		return `I can help you with "${task.title}" which you're ${taskStatus}. You can ask me to:
-
-• Break down this task into smaller steps
-• Suggest implementation approaches
-• Help with technical challenges
-• Schedule time for this task
-• Find related tasks or documentation
-• Update task details or status
-
-What would you like help with?`;
 	}
 
 	// Keyboard shortcut handler
@@ -906,13 +880,12 @@ What would you like help with?`;
 	</div>
 </ConfirmationModal>
 
-<!-- Chat Modal -->
+<!-- Agent Chat Modal -->
 {#if task}
-	<ChatModal
+	<AgentChatModal
 		isOpen={showChatModal}
 		contextType="task"
 		entityId={task.id}
-		initialMessage={getInitialChatMessage()}
 		onClose={closeChatModal}
 	/>
 {/if}

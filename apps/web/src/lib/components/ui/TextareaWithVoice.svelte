@@ -536,6 +536,7 @@
 
 <div class={`space-y-2 ${containerClass} ${className}`.trim()}>
 	<div class="relative">
+		<!-- ✅ Textarea with compact right padding: 2 buttons (36px each) + gap (6px) + margin (6px) = 84px -->
 		<Textarea
 			bind:value
 			{placeholder}
@@ -546,23 +547,23 @@
 			{helperText}
 			{error}
 			{errorMessage}
-			class={`${actions ? 'pr-28 sm:pr-32' : 'pr-14 sm:pr-16'} ${textareaClass}`.trim()}
+			class={`${actions ? 'pr-[84px]' : 'pr-[48px]'} ${textareaClass}`.trim()}
 			on:input={handleTextareaInput}
 			{...restProps}
 		/>
 
-		<!-- Action buttons container - fixed position on the right side -->
-		<div class="absolute right-2 top-2 flex items-center gap-2">
+		<!-- ✅ Action buttons container: positioned inside textarea, vertically centered -->
+		<div class="absolute right-1.5 top-1.5 bottom-1.5 flex items-start gap-1.5">
 			<!-- Snippet for custom action buttons (e.g., send button) -->
 			{#if actions}
 				{@render actions()}
 			{/if}
 
-			<!-- Voice recording button -->
+			<!-- ✅ Voice recording button: compact 36px (h-9 w-9), 16px icons (h-4 w-4) -->
 			{#if enableVoice}
 				<button
 					type="button"
-					class={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900 ${voiceButtonClasses}`}
+					class={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900 ${voiceButtonClasses}`}
 					onclick={toggleVoiceRecording}
 					aria-label={voiceButtonState.label}
 					title={voiceButtonState.label}
@@ -570,24 +571,24 @@
 					disabled={voiceButtonState.disabled}
 				>
 					{#if voiceButtonState.isLoading}
-						<LoaderCircle class="h-5 w-5 animate-spin" />
+						<LoaderCircle class="h-4 w-4 animate-spin" />
 					{:else}
 						{@const VoiceIcon = voiceButtonState.icon}
-						<VoiceIcon class="h-5 w-5" />
+						<VoiceIcon class="h-4 w-4" />
 					{/if}
 				</button>
 			{/if}
 		</div>
 
-		<!-- Live transcript preview overlay -->
+		<!-- ✅ Live transcript preview overlay: positioned to avoid buttons -->
 		{#if enableVoice && showLiveTranscriptPreview && isLiveTranscribing}
 			<div
-				class="pointer-events-none absolute bottom-2 left-2 right-14 sm:bottom-3 sm:left-3 sm:right-28"
+				class={`pointer-events-none absolute bottom-2 left-2 ${actions ? 'right-[88px]' : 'right-[52px]'}`}
 			>
 				<div
-					class="pointer-events-auto rounded-lg border border-blue-200/60 bg-gradient-to-br from-blue-50/95 to-indigo-50/90 px-3 py-2 text-sm text-blue-900 shadow-md backdrop-blur-sm dark:border-blue-500/30 dark:from-blue-900/80 dark:to-indigo-900/70 dark:text-blue-100"
+					class="pointer-events-auto rounded-lg border border-blue-200/60 bg-gradient-to-br from-blue-50/95 to-indigo-50/90 px-2.5 py-1.5 text-[13px] text-blue-900 shadow-md backdrop-blur-sm dark:border-blue-500/30 dark:from-blue-900/80 dark:to-indigo-900/70 dark:text-blue-100"
 				>
-					<p class="m-0 whitespace-pre-wrap leading-relaxed">
+					<p class="m-0 whitespace-pre-wrap leading-snug">
 						{liveTranscriptPreview}
 					</p>
 				</div>
@@ -596,59 +597,74 @@
 	</div>
 
 	{#if enableVoice && showStatusRow}
-		<div
-			class="flex flex-wrap items-center justify-between gap-2 text-xs font-medium text-slate-500 dark:text-slate-400"
-		>
-			<div class="flex items-center gap-2">
+		<!-- ✅ Ultra-tight status row: gap-1.5 (6px), text-[11px] for consistency -->
+		<div class="flex flex-wrap items-center justify-between gap-2 px-1">
+			<!-- Left side: Primary status indicator -->
+			<div class="flex flex-wrap items-center gap-1.5">
 				{#if isCurrentlyRecording}
-					<span class="flex items-center gap-2 text-rose-600 dark:text-rose-400">
-						<span class="relative flex h-2.5 w-2.5 items-center justify-center">
+					<!-- ✅ Recording indicator: tight spacing, semantic color -->
+					<span class="flex items-center gap-1.5 text-rose-600 dark:text-rose-400">
+						<span class="relative flex h-2 w-2 items-center justify-center">
 							<span
 								class="absolute inline-flex h-full w-full animate-ping rounded-full bg-rose-500/70 dark:bg-rose-400/70"
 							></span>
 							<span
-								class="relative inline-flex h-2 w-2 rounded-full bg-rose-600 dark:bg-rose-500"
+								class="relative inline-flex h-1.5 w-1.5 rounded-full bg-rose-600 dark:bg-rose-500"
 							></span>
 						</span>
-						<span class="font-medium">{listeningLabel}</span>
-						<span class="font-semibold tabular-nums"
+						<span class="text-[11px] font-semibold">{listeningLabel}</span>
+						<span class="text-[11px] font-bold tabular-nums"
 							>{formatDuration(_recordingDuration)}</span
 						>
 					</span>
 				{:else if isInitializingRecording}
-					<span class="flex items-center gap-2 text-slate-600 dark:text-slate-300">
-						<LoaderCircle class="h-3.5 w-3.5 animate-spin" />
-						<span class="font-medium">{preparingLabel}</span>
+					<!-- ✅ Initializing state: compact loader -->
+					<span class="flex items-center gap-1.5 text-slate-600 dark:text-slate-300">
+						<LoaderCircle class="h-3 w-3 animate-spin" />
+						<span class="text-[11px] font-medium">{preparingLabel}</span>
 					</span>
 				{:else if _isTranscribing}
-					<span class="flex items-center gap-2 text-blue-600 dark:text-blue-400">
-						<LoaderCircle class="h-3.5 w-3.5 animate-spin" />
-						<span class="font-medium">{transcribingLabel}</span>
+					<!-- ✅ Transcribing state: compact loader -->
+					<span class="flex items-center gap-1.5 text-blue-600 dark:text-blue-400">
+						<LoaderCircle class="h-3 w-3 animate-spin" />
+						<span class="text-[11px] font-semibold">{transcribingLabel}</span>
 					</span>
 				{:else if !isVoiceSupported}
-					<span class="text-slate-500 dark:text-slate-400"
-						>Voice capture unavailable in this browser.</span
+					<!-- ✅ Unsupported: muted text -->
+					<span class="text-[11px] font-medium text-slate-500 dark:text-slate-400"
+						>Voice unavailable</span
 					>
 				{:else if voiceBlocked}
-					<span class="text-amber-600 dark:text-amber-400">{voiceBlockedLabel}</span>
+					<!-- ✅ Blocked: warning color -->
+					<span class="text-[11px] font-medium text-amber-600 dark:text-amber-400"
+						>{voiceBlockedLabel}</span
+					>
 				{:else}
-					<span class="text-slate-500 dark:text-slate-400">{idleHint}</span>
+					<!-- ✅ Idle hint: muted, compact badge style -->
+					<span
+						class="inline-flex items-center gap-1 text-[11px] font-medium text-slate-500 dark:text-slate-400"
+					>
+						{idleHint}
+					</span>
 				{/if}
 
+				<!-- ✅ Live transcript badge: ultra-compact -->
 				{#if _canUseLiveTranscript && isCurrentlyRecording}
 					<span
-						class="hidden rounded-md border border-blue-200/60 bg-gradient-to-r from-blue-50 to-indigo-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-blue-700 dark:border-blue-500/40 dark:from-blue-900/30 dark:to-indigo-900/20 dark:text-blue-300 sm:inline"
+						class="hidden rounded-md border border-blue-200/60 bg-gradient-to-r from-blue-50 to-indigo-50 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-blue-700 dark:border-blue-500/40 dark:from-blue-900/30 dark:to-indigo-900/20 dark:text-blue-300 sm:inline-flex"
 					>
 						{liveTranscriptLabel}
 					</span>
 				{/if}
 			</div>
 
-			<div class="flex flex-wrap items-center gap-2">
+			<!-- Right side: Errors and custom status snippet -->
+			<div class="flex flex-wrap items-center gap-1.5">
 				{#if _voiceError}
+					<!-- ✅ Error badge: compact, semantic gradient -->
 					<span
 						role="alert"
-						class="flex items-center gap-1.5 rounded-md bg-gradient-to-r from-rose-50 to-red-50 px-2.5 py-1 text-[11px] font-medium text-rose-700 dark:from-rose-900/30 dark:to-red-900/20 dark:text-rose-300"
+						class="flex items-center gap-1 rounded-md bg-gradient-to-r from-rose-50 to-red-50 px-2 py-0.5 text-[11px] font-semibold text-rose-700 dark:from-rose-900/30 dark:to-red-900/20 dark:text-rose-300"
 					>
 						{_voiceError}
 					</span>

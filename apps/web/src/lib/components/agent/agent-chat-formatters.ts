@@ -1,3 +1,4 @@
+// apps/web/src/lib/components/agent/agent-chat-formatters.ts
 import { hasMarkdownFormatting } from '$lib/utils/markdown';
 
 export function formatTime(date: Date): string {

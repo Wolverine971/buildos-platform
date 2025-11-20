@@ -430,37 +430,6 @@ export interface TokenUsage {
 }
 
 // =====================================================
-// SSE Message Types
-// =====================================================
-
-export type ChatSSEMessage =
-  | {
-      type: 'session';
-      session: ChatSession;
-    }
-  | {
-      type: 'text';
-      content: string;
-    }
-  | {
-      type: 'tool_call';
-      tool_call: ChatToolCall;
-    }
-  | {
-      type: 'tool_result';
-      tool_result: ChatToolResult;
-    }
-  | {
-      type: 'error';
-      error: string;
-    }
-  | {
-      type: 'done';
-      usage?: TokenUsage;
-      finished_reason?: string;
-    };
-
-// =====================================================
 // API Request/Response Types
 // =====================================================
 
@@ -469,23 +438,6 @@ export interface ChatStreamRequest {
   session_id?: string;
   context_type?: ChatContextType;
   entity_id?: string;
-}
-
-export interface ChatStreamResponse {
-  session_id: string;
-  message_id: string;
-  stream_url: string;
-}
-
-export interface CreateChatSessionRequest {
-  context_type: ChatContextType;
-  entity_id?: string;
-  title?: string;
-}
-
-export interface CreateChatSessionResponse {
-  session: ChatSession;
-  initial_context: AssembledContext;
 }
 
 // =====================================================
@@ -507,30 +459,6 @@ export interface LLMMessage {
   content: string;
   tool_calls?: ChatToolCall[];
   tool_call_id?: string;
-}
-
-// =====================================================
-// UI Component Types
-// =====================================================
-
-export interface ChatModalProps {
-  open: boolean;
-  context_type?: ChatContextType;
-  entity_id?: string;
-  initial_message?: string;
-  session_id?: string;
-}
-
-export interface ChatMessageProps {
-  message: ChatMessage;
-  isStreaming?: boolean;
-  onRetry?: () => void;
-}
-
-export interface ToolVisualizationProps {
-  tool_call: ChatToolCall;
-  tool_result?: ChatToolResult;
-  isExecuting?: boolean;
 }
 
 // =====================================================
