@@ -1,3 +1,4 @@
+<!-- apps/web/src/lib/components/agent/AgentMessageList.svelte -->
 <script lang="ts">
 	import ThinkingBlock from './ThinkingBlock.svelte';
 	import { renderMarkdown, getProseClasses } from '$lib/utils/markdown';
@@ -14,8 +15,13 @@
 		container?: HTMLElement;
 	}
 
-	let { messages, onToggleThinkingBlock, onScroll, displayContextLabel, container = $bindable() }: Props =
-		$props();
+	let {
+		messages,
+		onToggleThinkingBlock,
+		onScroll,
+		displayContextLabel,
+		container = $bindable()
+	}: Props = $props();
 
 	const proseClasses = getProseClasses('sm');
 </script>
@@ -64,13 +70,13 @@
 				<!-- ✅ User message: max-w-[88%], rounded-xl, px-2.5 py-2, text-xs -->
 				<div class="flex justify-end">
 					<div
-						class="max-w-[88%] rounded-xl border border-blue-200/50 bg-white px-2.5 py-2 text-xs text-slate-900 shadow-sm dark:border-blue-500/40 dark:bg-slate-800/70 dark:text-slate-100 sm:max-w-[85%] sm:px-3 sm:py-2.5"
+						class="max-w-[88%] rounded-xl border border-blue-200/50 bg-white px-2.5 py-2 text-xs text-blue-700 shadow-sm dark:border-blue-500/40 dark:bg-slate-800/70 dark:text-blue-300 sm:max-w-[85%] sm:px-3 sm:py-2.5"
 					>
 						<div class="whitespace-pre-wrap break-words leading-snug">
 							{message.content}
 						</div>
 						<!-- ✅ Compact timestamp: mt-1, text-[11px] -->
-						<div class="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
+						<div class="mt-1 text-[11px] text-blue-600/60 dark:text-blue-400/60">
 							{formatTime(message.timestamp)}
 						</div>
 					</div>
@@ -145,15 +151,15 @@
 						class="max-w-[90%] rounded-xl border border-blue-200 bg-blue-50/80 px-2.5 py-2.5 text-xs leading-snug text-slate-900 shadow-sm dark:border-blue-500/40 dark:bg-blue-500/5 dark:text-slate-100 sm:max-w-[88%] sm:px-3 sm:py-3"
 					>
 						<!-- ✅ Compact heading: text-xs font-semibold -->
-						<p class="text-xs font-semibold text-slate-900 dark:text-white leading-tight">
+						<p
+							class="text-xs font-semibold text-slate-900 dark:text-white leading-tight"
+						>
 							{message.content}
 						</p>
 
 						{#if message.data?.questions?.length}
 							<!-- ✅ Compact questions: mt-2, space-y-1.5, text-xs -->
-							<ol
-								class="mt-2 space-y-1.5 text-xs text-slate-700 dark:text-slate-200"
-							>
+							<ol class="mt-2 space-y-1.5 text-xs text-slate-700 dark:text-slate-200">
 								{#each message.data.questions as question, i}
 									<li class="flex gap-1.5 font-medium leading-snug sm:gap-2">
 										<!-- ✅ Compact number badge: h-5 w-5, text-[10px] -->
@@ -169,7 +175,9 @@
 						{/if}
 
 						<!-- ✅ Compact hint: mt-2, text-[11px] -->
-						<p class="mt-2 text-[11px] text-slate-600 dark:text-slate-400 leading-tight">
+						<p
+							class="mt-2 text-[11px] text-slate-600 dark:text-slate-400 leading-tight"
+						>
 							Share the answers in your next message so I can keep going.
 						</p>
 						<div class="mt-1 text-[11px] text-slate-500 dark:text-slate-400">

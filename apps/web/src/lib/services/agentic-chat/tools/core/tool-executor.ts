@@ -8,10 +8,15 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
+import type { TypedSupabaseClient } from '@buildos/supabase-client';
 import type { ChatToolCall, ChatToolResult } from '@buildos/shared-types';
 import { getToolCategory, ENTITY_FIELD_INFO } from './tools.config';
 import { ensureActorId } from '$lib/services/ontology/ontology-projects.service';
 import { TemplateCreationService } from '$lib/services/agentic-chat/template-creation/template-creation-service';
+import { TemplateCrudService } from '$lib/services/ontology/template-crud.service';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
+import { SmartLLMService } from '$lib/services/smart-llm-service';
+import { EnhancedTemplateGenerator } from './template-generator-enhanced';
 import {
 	getBuildosOverviewDocument,
 	getBuildosUsageGuide
@@ -100,6 +105,8 @@ interface UpdateOntoTaskArgs {
 	task_id: string;
 	title?: string;
 	description?: string;
+	update_strategy?: 'replace' | 'append' | 'merge_llm';
+	merge_instructions?: string;
 	state_key?: string;
 	priority?: number;
 	plan_id?: string;
@@ -131,6 +138,8 @@ interface UpdateOntoGoalArgs {
 	goal_id: string;
 	name?: string;
 	description?: string;
+	update_strategy?: 'replace' | 'append' | 'merge_llm';
+	merge_instructions?: string;
 	priority?: number;
 	target_date?: string;
 	measurement_criteria?: string;
@@ -141,6 +150,8 @@ interface UpdateOntoPlanArgs {
 	plan_id: string;
 	name?: string;
 	description?: string;
+	update_strategy?: 'replace' | 'append' | 'merge_llm';
+	merge_instructions?: string;
 	start_date?: string;
 	end_date?: string;
 	state_key?: string;
@@ -196,6 +207,8 @@ interface UpdateOntoDocumentArgs {
 	type_key?: string;
 	state_key?: string;
 	body_markdown?: string;
+	update_strategy?: 'replace' | 'append' | 'merge_llm';
+	merge_instructions?: string;
 	props?: Record<string, unknown>;
 }
 
@@ -264,6 +277,7 @@ interface CreateOntoProjectArgs {
 	}>;
 	tasks?: Array<{
 		title: string;
+		type_key?: string;
 		plan_name?: string;
 		state_key?: string;
 		priority?: number;
@@ -387,19 +401,43 @@ export class ChatToolExecutor {
 	private fetchFn: typeof fetch;
 	private actorId?: string;
 	private templateCreationService?: TemplateCreationService;
+	private adminSupabase?: TypedSupabaseClient;
+	private llmService?: SmartLLMService;
+	private templateGenerator?: EnhancedTemplateGenerator;
 
 	constructor(
 		private supabase: SupabaseClient,
 		private userId: string,
 		sessionId?: string,
-		fetchFn?: typeof fetch
+		fetchFn?: typeof fetch,
+		llmService?: SmartLLMService
 	) {
 		this.sessionId = sessionId;
 		this.fetchFn = fetchFn || fetch;
+		this.llmService = llmService;
 	}
 
 	setSessionId(sessionId: string): void {
 		this.sessionId = sessionId;
+	}
+
+	private getAdminSupabase(): TypedSupabaseClient {
+		if (!this.adminSupabase) {
+			this.adminSupabase = createAdminSupabaseClient();
+		}
+		return this.adminSupabase;
+	}
+
+	private getTemplateGenerator(): EnhancedTemplateGenerator {
+		if (!this.templateGenerator) {
+			this.templateGenerator = new EnhancedTemplateGenerator(
+				this.getAdminSupabase(),
+				this.llmService,
+				this.userId,
+				this.sessionId
+			);
+		}
+		return this.templateGenerator;
 	}
 
 	private async getActorId(): Promise<string> {
@@ -452,6 +490,98 @@ export class ChatToolExecutor {
 
 		const payload = await response.json();
 		return payload?.data ?? payload;
+	}
+
+	private async ensureTemplateForScope(params: {
+		scope: 'project' | 'plan' | 'task' | 'output' | 'document';
+		typeKey?: string;
+		props?: Record<string, unknown>;
+		nameHint?: string;
+		metadata?: Record<string, unknown>;
+	}): Promise<string | undefined> {
+		// Use the enhanced template generator for intelligent template creation
+		return this.getTemplateGenerator().ensureTemplate({
+			scope: params.scope as any,
+			typeKey: params.typeKey,
+			props: params.props,
+			nameHint: params.nameHint,
+			metadata: params.metadata
+		});
+	}
+
+	private async ensureTemplatesForProjectSpec(args: CreateOntoProjectArgs): Promise<void> {
+		const tasks: Array<Promise<string | undefined>> = [];
+
+		tasks.push(
+			this.ensureTemplateForScope({
+				scope: 'project',
+				typeKey: args.project.type_key,
+				props: args.project.props ?? {},
+				nameHint: args.project.name
+			})
+		);
+
+		for (const plan of args.plans ?? []) {
+			if (!plan.type_key) continue;
+			tasks.push(
+				this.ensureTemplateForScope({
+					scope: 'plan',
+					typeKey: plan.type_key,
+					props: plan.props ?? {},
+					nameHint: plan.name
+				})
+			);
+		}
+
+		for (const task of args.tasks ?? []) {
+			if (!task.type_key) continue;
+			tasks.push(
+				this.ensureTemplateForScope({
+					scope: 'task',
+					typeKey: task.type_key,
+					props: task.props ?? {},
+					nameHint: task.title
+				})
+			);
+		}
+
+		for (const output of args.outputs ?? []) {
+			if (!output.type_key) continue;
+			tasks.push(
+				this.ensureTemplateForScope({
+					scope: 'output',
+					typeKey: output.type_key,
+					props: output.props ?? {},
+					nameHint: output.name
+				})
+			);
+		}
+
+		for (const doc of args.documents ?? []) {
+			if (!doc.type_key) continue;
+			tasks.push(
+				this.ensureTemplateForScope({
+					scope: 'document',
+					typeKey: doc.type_key,
+					props: doc.props ?? {},
+					nameHint: doc.title
+				})
+			);
+		}
+
+		const contextTypeKey = args.context_document?.type_key ?? 'document.project.context';
+		tasks.push(
+			this.ensureTemplateForScope({
+				scope: 'document',
+				typeKey: contextTypeKey,
+				props: args.context_document?.props ?? {},
+				nameHint: args.context_document?.title ?? 'Project Context'
+			})
+		);
+
+		if (tasks.length > 0) {
+			await Promise.all(tasks);
+		}
 	}
 
 	async execute(toolCall: ChatToolCall): Promise<ChatToolResult> {
@@ -1358,6 +1488,8 @@ export class ChatToolExecutor {
 			};
 		}
 
+		await this.ensureTemplatesForProjectSpec(args);
+
 		const contextDocument = buildContextDocumentSpec(args);
 
 		const additionalDocuments =
@@ -1406,6 +1538,13 @@ export class ChatToolExecutor {
 		task: any;
 		message: string;
 	}> {
+		await this.ensureTemplateForScope({
+			scope: 'task',
+			typeKey: args.type_key ?? 'task.basic',
+			props: args.props ?? {},
+			nameHint: args.title
+		});
+
 		const payload = {
 			project_id: args.project_id,
 			title: args.title,
@@ -1456,6 +1595,13 @@ export class ChatToolExecutor {
 		plan: any;
 		message: string;
 	}> {
+		await this.ensureTemplateForScope({
+			scope: 'plan',
+			typeKey: args.type_key ?? 'plan.basic',
+			props: args.props ?? {},
+			nameHint: args.name
+		});
+
 		const payload = {
 			project_id: args.project_id,
 			name: args.name,
@@ -1480,6 +1626,13 @@ export class ChatToolExecutor {
 		document: any;
 		message: string;
 	}> {
+		await this.ensureTemplateForScope({
+			scope: 'document',
+			typeKey: args.type_key,
+			props: args.props ?? {},
+			nameHint: args.title
+		});
+
 		const payload = {
 			project_id: args.project_id,
 			title: args.title,
@@ -1505,9 +1658,23 @@ export class ChatToolExecutor {
 		message: string;
 	}> {
 		const updateData: Record<string, unknown> = {};
+		const strategy = args.update_strategy ?? 'replace';
 
 		if (args.title !== undefined) updateData.title = args.title;
-		if (args.description !== undefined) updateData.description = args.description;
+		if (args.description !== undefined) {
+			updateData.description = await this.resolveTextWithStrategy({
+				strategy,
+				newContent: args.description ?? '',
+				instructions: args.merge_instructions,
+				entityLabel: `task:${args.task_id}`,
+				existingLoader: async () => {
+					const details = await this.getOntoTaskDetails({ task_id: args.task_id });
+					const props = (details?.task?.props as Record<string, unknown>) || {};
+					const raw = props.description;
+					return typeof raw === 'string' ? raw : '';
+				}
+			});
+		}
 		if (args.state_key !== undefined) updateData.state_key = args.state_key;
 		if (args.priority !== undefined) updateData.priority = args.priority;
 		if (args.plan_id !== undefined) updateData.plan_id = args.plan_id;
@@ -1560,9 +1727,23 @@ export class ChatToolExecutor {
 		message: string;
 	}> {
 		const updateData: Record<string, unknown> = {};
+		const strategy = args.update_strategy ?? 'replace';
 
 		if (args.name !== undefined) updateData.name = args.name;
-		if (args.description !== undefined) updateData.description = args.description;
+		if (args.description !== undefined) {
+			updateData.description = await this.resolveTextWithStrategy({
+				strategy,
+				newContent: args.description ?? '',
+				instructions: args.merge_instructions,
+				entityLabel: `goal:${args.goal_id}`,
+				existingLoader: async () => {
+					const details = await this.getOntoGoalDetails({ goal_id: args.goal_id });
+					const props = (details?.goal?.props as Record<string, unknown>) || {};
+					const raw = props.description;
+					return typeof raw === 'string' ? raw : '';
+				}
+			});
+		}
 		if (args.priority !== undefined) updateData.priority = args.priority;
 		if (args.target_date !== undefined) updateData.target_date = args.target_date;
 		if (args.measurement_criteria !== undefined)
@@ -1589,9 +1770,23 @@ export class ChatToolExecutor {
 		message: string;
 	}> {
 		const updateData: Record<string, unknown> = {};
+		const strategy = args.update_strategy ?? 'replace';
 
 		if (args.name !== undefined) updateData.name = args.name;
-		if (args.description !== undefined) updateData.description = args.description;
+		if (args.description !== undefined) {
+			updateData.description = await this.resolveTextWithStrategy({
+				strategy,
+				newContent: args.description ?? '',
+				instructions: args.merge_instructions,
+				entityLabel: `plan:${args.plan_id}`,
+				existingLoader: async () => {
+					const details = await this.getOntoPlanDetails({ plan_id: args.plan_id });
+					const props = (details?.plan?.props as Record<string, unknown>) || {};
+					const raw = props.description;
+					return typeof raw === 'string' ? raw : '';
+				}
+			});
+		}
 		if (args.start_date !== undefined) updateData.start_date = args.start_date;
 		if (args.end_date !== undefined) updateData.end_date = args.end_date;
 		if (args.state_key !== undefined) updateData.state_key = args.state_key;
@@ -1621,7 +1816,15 @@ export class ChatToolExecutor {
 		if (args.title !== undefined) updateData.title = args.title;
 		if (args.type_key !== undefined) updateData.type_key = args.type_key;
 		if (args.state_key !== undefined) updateData.state_key = args.state_key;
-		if (args.body_markdown !== undefined) updateData.body_markdown = args.body_markdown;
+		if (args.body_markdown !== undefined) {
+			const strategy = args.update_strategy ?? 'replace';
+			updateData.body_markdown = await this.resolveDocumentBodyContent({
+				documentId: args.document_id,
+				newContent: args.body_markdown ?? '',
+				strategy,
+				instructions: args.merge_instructions
+			});
+		}
 		if (args.props !== undefined) updateData.props = args.props;
 
 		if (Object.keys(updateData).length === 0) {
@@ -1637,6 +1840,129 @@ export class ChatToolExecutor {
 			document: data.document,
 			message: `Updated ontology document "${data.document?.title ?? args.document_id}"`
 		};
+	}
+
+	private async resolveDocumentBodyContent(params: {
+		documentId: string;
+		newContent: string;
+		strategy: 'replace' | 'append' | 'merge_llm';
+		instructions?: string;
+	}): Promise<string> {
+		const { documentId, newContent, strategy, instructions } = params;
+		return this.resolveTextWithStrategy({
+			strategy,
+			newContent,
+			instructions,
+			entityLabel: `document:${documentId}`,
+			existingLoader: async () => {
+				const existing = await this.getOntoDocumentDetails({ document_id: documentId });
+				return (
+					(existing?.document?.props?.body_markdown as string) ||
+					(existing?.document?.body_markdown as string) ||
+					''
+				);
+			}
+		});
+	}
+
+	private async composeContentUpdateWithLLM(params: {
+		existingContent: string;
+		newContent: string;
+		instructions?: string;
+	}): Promise<string> {
+		if (!this.llmService) {
+			throw new Error('LLM service unavailable for merge');
+		}
+
+		const systemPrompt =
+			'You are a careful editor. Merge new content into existing markdown, preserving structure, headers, tables, and important details. Do not drop existing material unless it conflicts with explicit instructions.';
+
+		const instructions =
+			params.instructions?.trim() ||
+			'Preserve existing sections and weave in new content naturally. Keep markdown clean and concise.';
+
+		const prompt = [
+			'## Goal',
+			'Produce the final markdown after applying the new content.',
+			'## Instructions',
+			instructions,
+			'## Existing content',
+			params.existingContent || '(none)',
+			'## New content to apply',
+			params.newContent || '(none)',
+			'## Output requirements',
+			'- Return only the merged markdown (no explanations).',
+			'- Keep existing structure when possible.',
+			'- Integrate new details; avoid duplicating sections.'
+		].join('\n\n');
+
+		const result = await this.llmService.generateTextDetailed({
+			prompt,
+			systemPrompt,
+			userId: this.userId,
+			profile: 'balanced',
+			maxTokens: 2000,
+			temperature: 0.4,
+			operationType: 'agentic_chat_content_merge'
+		});
+
+		return result.text.trim();
+	}
+
+	private async resolveTextWithStrategy(params: {
+		strategy: 'replace' | 'append' | 'merge_llm';
+		newContent: string;
+		instructions?: string;
+		entityLabel?: string;
+		existingLoader: () => Promise<string>;
+	}): Promise<string> {
+		const { strategy, newContent, instructions, entityLabel, existingLoader } = params;
+		const sanitizedNew = newContent ?? '';
+
+		if (strategy === 'replace') {
+			return sanitizedNew;
+		}
+
+		let existingText = '';
+		try {
+			existingText = (await existingLoader()) || '';
+		} catch (error) {
+			console.warn(
+				`[ChatToolExecutor] Failed to load existing content for ${entityLabel || 'entity'}, using provided content`,
+				error
+			);
+			return sanitizedNew;
+		}
+
+		const hasNewContent = sanitizedNew.trim().length > 0;
+		if (!hasNewContent) {
+			return existingText;
+		}
+
+		if (strategy === 'append') {
+			return existingText ? `${existingText}\n\n${sanitizedNew}` : sanitizedNew;
+		}
+
+		if (this.llmService) {
+			try {
+				return await this.composeContentUpdateWithLLM({
+					existingContent: existingText,
+					newContent: sanitizedNew,
+					instructions
+				});
+			} catch (error) {
+				console.warn(
+					`[ChatToolExecutor] LLM merge failed for ${entityLabel || 'entity'}, falling back to append`,
+					error
+				);
+			}
+		} else {
+			console.warn(
+				`[ChatToolExecutor] LLM service not available for ${entityLabel || 'entity'}, falling back to append`
+			);
+		}
+
+		return existingText ? `${existingText}\n\n${sanitizedNew}` : sanitizedNew;
 	}
 
 	private async listTaskDocuments(args: ListTaskDocumentsArgs): Promise<{
@@ -1666,6 +1992,15 @@ export class ChatToolExecutor {
 	}> {
 		if (!args.task_id) {
 			throw new Error('task_id is required for create_task_document');
+		}
+
+		if (args.type_key) {
+			await this.ensureTemplateForScope({
+				scope: 'document',
+				typeKey: args.type_key,
+				props: args.props ?? {},
+				nameHint: args.title
+			});
 		}
 
 		const payload: Record<string, unknown> = {

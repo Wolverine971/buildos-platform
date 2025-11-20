@@ -51,7 +51,7 @@ export function createAgentChatOrchestrator(
 	const contextService = new AgentContextService(supabase, compressionService);
 	const persistenceService = new AgentPersistenceService(supabase);
 
-	const sharedToolExecutor = createToolExecutor(supabase, fetchFn);
+	const sharedToolExecutor = createToolExecutor(supabase, fetchFn, llmService);
 	const toolExecutionService = new ToolExecutionService(sharedToolExecutor);
 
 	const executorService = new AgentExecutorService(supabase, llmService, fetchFn);
@@ -85,14 +85,16 @@ export function createAgentChatOrchestrator(
  */
 function createToolExecutor(
 	supabase: SupabaseClient<Database>,
-	fetchFn: typeof fetch
+	fetchFn: typeof fetch,
+	llmService: SmartLLMService
 ): ToolExecutorFunction {
 	return async (toolName, args, context) => {
 		const toolExecutor = new ChatToolExecutor(
 			supabase,
 			context.userId,
 			context.sessionId,
-			fetchFn
+			fetchFn,
+			llmService
 		);
 
 		const call: ChatToolCall = {

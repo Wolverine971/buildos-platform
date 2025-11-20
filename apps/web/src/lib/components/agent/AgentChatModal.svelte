@@ -15,6 +15,7 @@
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import ContextSelectionScreen from '../chat/ContextSelectionScreen.svelte';
 	import ProjectFocusSelector from './ProjectFocusSelector.svelte';
+	import ProjectActionSelector from './ProjectActionSelector.svelte';
 	import AgentChatHeader from './AgentChatHeader.svelte';
 	import AgentComposer from './AgentComposer.svelte';
 	import AgentAutomationWizard from './AgentAutomationWizard.svelte';
@@ -50,11 +51,21 @@
 	} from './agent-chat.types';
 	import { formatTime, shouldRenderAsMarkdown } from './agent-chat-formatters';
 
+	type ProjectAction = 'workspace' | 'audit' | 'forecast';
+
+	interface AutoInitProjectConfig {
+		projectId: string;
+		projectName: string;
+		showActionSelector?: boolean;
+		initialAction?: ProjectAction;
+	}
+
 	interface Props {
 		isOpen?: boolean;
 		contextType?: ChatContextType;
 		entityId?: string;
 		onClose?: () => void;
+		autoInitProject?: AutoInitProjectConfig | null;
 	}
 
 	type ContextSelectionType = ChatContextType | 'agent_to_agent';
@@ -69,7 +80,8 @@
 		isOpen = false,
 		contextType: _initialContextType = 'global',
 		entityId: _initialEntityId,
-		onClose
+		onClose,
+		autoInitProject = null
 	}: Props = $props();
 
 	// Context selection state
@@ -78,6 +90,10 @@
 	let selectedContextLabel = $state<string | null>(null);
 	let projectFocus = $state<ProjectFocus | null>(null);
 	let showFocusSelector = $state(false);
+	let showProjectActionSelector = $state(false);
+	let autoInitDismissed = $state(false);
+	let lastAutoInitProjectId = $state<string | null>(null);
+	let wasOpen = $state(false);
 
 	const contextDescriptor = $derived(
 		selectedContextType ? CONTEXT_DESCRIPTORS[selectedContextType] : null
@@ -97,6 +113,9 @@
 		return contextDescriptor?.subtitle ?? '';
 	});
 
+	const isProjectContext = (context: ChatContextType | null | undefined) =>
+		context === 'project' || context === 'project_audit' || context === 'project_forecast';
+
 	function buildProjectWideFocus(projectId: string, projectName?: string | null): ProjectFocus {
 		return {
 			focusType: 'project-wide',
@@ -108,14 +127,14 @@
 	}
 
 	const defaultProjectFocus = $derived.by<ProjectFocus | null>(() => {
-		if (selectedContextType === 'project' && selectedEntityId) {
+		if (isProjectContext(selectedContextType) && selectedEntityId) {
 			return buildProjectWideFocus(selectedEntityId, selectedContextLabel);
 		}
 		return null;
 	});
 
 	const resolvedProjectFocus = $derived.by<ProjectFocus | null>(() => {
-		if (selectedContextType !== 'project') {
+		if (!isProjectContext(selectedContextType)) {
 			return null;
 		}
 		return projectFocus ?? defaultProjectFocus;
@@ -240,6 +259,7 @@
 		contextUsage = null;
 		voiceErrorMessage = '';
 		showFocusSelector = false;
+		showProjectActionSelector = false;
 		agentLoopActive = false;
 		agentMessageLoading = false;
 		agentTurnBudget = 5;
@@ -262,6 +282,7 @@
 
 	function handleContextSelect(event: CustomEvent<ContextSelectionDetail>) {
 		resetConversation();
+		autoInitDismissed = true;
 
 		const detail = event.detail;
 		if (detail.contextType === 'agent_to_agent') {
@@ -287,37 +308,132 @@
 			detail.label ?? CONTEXT_DESCRIPTORS[detail.contextType]?.title ?? null;
 		showContextSelection = false;
 
-		if (detail.contextType === 'project' && detail.entityId) {
+		if (isProjectContext(detail.contextType) && detail.entityId) {
 			projectFocus = buildProjectWideFocus(detail.entityId, detail.label);
 		} else {
 			projectFocus = null;
 			showFocusSelector = false;
 		}
+
+		// If user picked a project from the generic flow, funnel them through the shared action selector
+		showProjectActionSelector = detail.contextType === 'project';
 	}
 
 	function changeContext() {
 		if (isStreaming) return;
 		stopVoiceInput();
+		autoInitDismissed = true;
 		// Clear the conversation but keep user in context selection mode
 		// This allows them to navigate back through the selection screens
 		resetConversation({ preserveContext: false });
 		showContextSelection = true;
+		showProjectActionSelector = false;
 	}
 
 	function openFocusSelector() {
-		if (selectedContextType !== 'project' || !selectedEntityId) return;
+		if (!isProjectContext(selectedContextType) || !selectedEntityId) return;
 		showFocusSelector = true;
 	}
 
 	function handleFocusSelection(newFocus: ProjectFocus) {
 		projectFocus = newFocus;
 		logFocusActivity('Focus updated', newFocus);
+		// Move into project workspace chat with the chosen focus
+		selectedContextType = 'project';
+		selectedContextLabel = buildContextLabelForAction('workspace', newFocus.projectName);
+		showProjectActionSelector = false;
+		showFocusSelector = false;
+		showContextSelection = false;
 	}
 
 	function handleFocusClear() {
 		if (!defaultProjectFocus) return;
 		projectFocus = defaultProjectFocus;
 		logFocusActivity('Focus reset', defaultProjectFocus);
+	}
+
+	function mapActionToContextType(action: ProjectAction): ChatContextType {
+		switch (action) {
+			case 'audit':
+				return 'project_audit';
+			case 'forecast':
+				return 'project_forecast';
+			default:
+				return 'project';
+		}
+	}
+
+	function buildContextLabelForAction(
+		action: ProjectAction,
+		projectName?: string | null
+	): string {
+		const name = projectName?.trim() || 'Project';
+		if (action === 'audit') return `${name} (Audit)`;
+		if (action === 'forecast') return `${name} (Forecast)`;
+		return name;
+	}
+
+	function applyProjectAction(
+		action: ProjectAction,
+		projectId: string,
+		projectName?: string | null,
+		options: { skipReset?: boolean } = {}
+	) {
+		if (!projectId) return;
+		if (!options.skipReset) {
+			resetConversation({ preserveContext: false });
+		}
+
+		const contextType = mapActionToContextType(action);
+		const label = buildContextLabelForAction(action, projectName);
+
+		selectedContextType = contextType;
+		selectedEntityId = projectId;
+		selectedContextLabel = label;
+		projectFocus = buildProjectWideFocus(projectId, projectName ?? label);
+		showContextSelection = false;
+		showProjectActionSelector = false;
+		showFocusSelector = false;
+		agentToAgentMode = false;
+		agentToAgentStep = null;
+	}
+
+	function primeProjectContext(projectId: string, projectName: string | null | undefined) {
+		if (!projectId) return;
+		resetConversation({ preserveContext: false });
+		selectedContextType = 'project';
+		selectedEntityId = projectId;
+		selectedContextLabel = buildContextLabelForAction('workspace', projectName);
+		projectFocus = buildProjectWideFocus(projectId, projectName);
+		showContextSelection = false;
+		showProjectActionSelector = true;
+		showFocusSelector = false;
+		agentToAgentMode = false;
+		agentToAgentStep = null;
+	}
+
+	function handleProjectActionSelect(action: ProjectAction) {
+		if (!selectedEntityId) return;
+		const projectName = projectFocus?.projectName ?? selectedContextLabel;
+		applyProjectAction(action, selectedEntityId, projectName, { skipReset: false });
+	}
+
+	function initializeFromAutoInit(config: AutoInitProjectConfig) {
+		if (!config?.projectId) return;
+
+		const showSelector = config.showActionSelector ?? true;
+		const action = config.initialAction ?? 'workspace';
+
+		lastAutoInitProjectId = config.projectId;
+		autoInitDismissed = false;
+
+		if (showSelector && !config.initialAction) {
+			primeProjectContext(config.projectId, config.projectName);
+			return;
+		}
+
+		resetConversation({ preserveContext: false });
+		applyProjectAction(action, config.projectId, config.projectName, { skipReset: true });
 	}
 
 	const selectedAgentLabel = $derived(selectedAgentId ? 'Actionable Insight' : 'Select a helper');
@@ -471,6 +587,50 @@
 	function stopAgentLoop() {
 		agentLoopActive = false;
 	}
+
+	// Auto-initialize the modal when launched with a project preset
+	$effect(() => {
+		if (!isOpen) {
+			if (wasOpen) {
+				wasOpen = false;
+				autoInitDismissed = false;
+				lastAutoInitProjectId = null;
+				showProjectActionSelector = false;
+			}
+			return;
+		}
+
+		if (!wasOpen) {
+			wasOpen = true;
+		}
+
+		if (!autoInitProject) {
+			return;
+		}
+
+		const projectId = autoInitProject.projectId;
+		if (!projectId) return;
+
+		if (autoInitDismissed && projectId === lastAutoInitProjectId) {
+			return;
+		}
+
+		const selectorActiveForProject =
+			showProjectActionSelector && selectedEntityId === projectId && !showContextSelection;
+		const contextMatchesProject =
+			isProjectContext(selectedContextType) &&
+			selectedEntityId === projectId &&
+			!showContextSelection;
+
+		if (
+			lastAutoInitProjectId === projectId &&
+			(selectorActiveForProject || contextMatchesProject)
+		) {
+			return;
+		}
+
+		initializeFromAutoInit(autoInitProject);
+	});
 
 	// Helper: Check if user is scrolled to bottom (within threshold)
 	function isScrolledToBottom(container: HTMLElement, threshold = 100): boolean {
@@ -890,11 +1050,7 @@
 			let ontologyEntityType: 'task' | 'plan' | 'goal' | 'document' | 'output' | undefined;
 			if (selectedContextType === 'task' || selectedContextType === 'task_update') {
 				ontologyEntityType = 'task';
-			} else if (
-				selectedContextType === 'project' ||
-				selectedContextType === 'project_audit' ||
-				selectedContextType === 'project_forecast'
-			) {
+			} else if (isProjectContext(selectedContextType)) {
 				// For project contexts, don't set a specific entity type - let the backend determine
 				ontologyEntityType = undefined;
 			}
@@ -1338,7 +1494,7 @@
 						CONTEXT_DESCRIPTORS[normalizedContext]?.title ??
 						selectedContextLabel;
 
-					if (normalizedContext === 'project' && shift.entity_id) {
+					if (isProjectContext(normalizedContext) && shift.entity_id) {
 						projectFocus = buildProjectWideFocus(
 							shift.entity_id,
 							shift.entity_name ?? selectedContextLabel
@@ -1347,6 +1503,7 @@
 						projectFocus = null;
 						showFocusSelector = false;
 					}
+					showProjectActionSelector = false;
 
 					if (currentSession) {
 						currentSession = {
@@ -1591,7 +1748,20 @@
 
 		<!-- Chat / wizard view - Same height constraint as selection -->
 		<div class={`${showContextSelection ? 'hidden' : 'flex'} h-full min-h-0 flex-col`}>
-			{#if agentToAgentMode && agentToAgentStep !== 'chat'}
+			{#if showProjectActionSelector}
+				<ProjectActionSelector
+					projectId={selectedEntityId || ''}
+					projectName={projectFocus?.projectName ?? selectedContextLabel ?? 'Project'}
+					onSelectAction={(action) => handleProjectActionSelect(action)}
+					onBack={() => {
+						autoInitDismissed = true;
+						showProjectActionSelector = false;
+						resetConversation({ preserveContext: false });
+						showContextSelection = true;
+					}}
+					onOpenFocusSelector={openFocusSelector}
+				/>
+			{:else if agentToAgentMode && agentToAgentStep !== 'chat'}
 				<AgentAutomationWizard
 					step={agentToAgentStep ?? 'agent'}
 					{agentProjects}
@@ -1624,7 +1794,7 @@
 				/>
 			{/if}
 
-			{#if !showContextSelection && isStreaming && currentActivity}
+			{#if !showContextSelection && !showProjectActionSelector && isStreaming && currentActivity}
 				<!-- ✅ Compact activity indicator: p-2, h-1.5 w-1.5 dot, text-[11px] -->
 				<div
 					class="border-t border-slate-200 bg-slate-50 p-2 text-[11px] text-slate-600 dark:border-slate-800 dark:bg-slate-900/40 dark:text-slate-300 sm:p-2.5"
@@ -1639,7 +1809,7 @@
 				</div>
 			{/if}
 
-			{#if !showContextSelection && error}
+			{#if !showContextSelection && !showProjectActionSelector && error}
 				<!-- ✅ Compact error message: p-2, text-xs -->
 				<div
 					class="border-t border-rose-100 bg-rose-50 p-2 text-xs text-rose-700 dark:border-rose-900/40 dark:bg-rose-950/20 dark:text-rose-300 sm:p-2.5"
@@ -1650,7 +1820,7 @@
 				</div>
 			{/if}
 
-			{#if !showContextSelection && agentToAgentMode}
+			{#if !showContextSelection && !showProjectActionSelector && agentToAgentMode}
 				<!-- ✅ Compact automation footer: p-2 sm:p-2.5 -->
 				<div
 					class="border-t border-slate-200 bg-white p-2 dark:border-slate-800 dark:bg-slate-900 sm:p-2.5"
@@ -1709,7 +1879,9 @@
 								value={agentTurnBudget}
 								disabled={agentLoopActive || agentMessageLoading || isStreaming}
 								oninput={(e) =>
-									updateAgentTurnBudget(Number((e.target as HTMLInputElement).value))}
+									updateAgentTurnBudget(
+										Number((e.target as HTMLInputElement).value)
+									)}
 							/>
 						</label>
 						{#if agentTurnsRemaining <= 0}
@@ -1728,7 +1900,7 @@
 						</p>
 					{/if}
 				</div>
-			{:else if !showContextSelection}
+			{:else if !showContextSelection && !showProjectActionSelector}
 				<!-- ✅ Compact composer footer: p-2 sm:p-2.5 -->
 				<div
 					class="border-t border-slate-200 bg-white p-2 dark:border-slate-800 dark:bg-slate-900 sm:p-2.5"
@@ -1754,7 +1926,7 @@
 	</div>
 </Modal>
 
-{#if selectedContextType === 'project' && selectedEntityId && resolvedProjectFocus}
+{#if isProjectContext(selectedContextType) && selectedEntityId && resolvedProjectFocus}
 	<ProjectFocusSelector
 		isOpen={showFocusSelector}
 		projectId={selectedEntityId}

@@ -6,6 +6,7 @@
 
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
+import { resolveAndMergeTemplateProps } from '$lib/services/ontology/template-props-merger.service';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	try {
@@ -88,8 +89,21 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		const propsObject =
 			typeof props === 'object' && props !== null ? (props as Record<string, unknown>) : {};
 
+		// Resolve template and merge props if type_key is provided
+		let mergedProps = propsObject;
+		if (type_key) {
+			const templateMerge = await resolveAndMergeTemplateProps(
+				supabase,
+				type_key as string,
+				'document',
+				propsObject,
+				true // Skip if no template found
+			);
+			mergedProps = templateMerge.mergedProps;
+		}
+
 		const documentProps = {
-			...propsObject,
+			...mergedProps,
 			body_markdown: normalizedBody
 		};
 

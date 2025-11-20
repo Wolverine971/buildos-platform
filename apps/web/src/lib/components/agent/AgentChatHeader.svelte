@@ -1,6 +1,6 @@
 <!-- apps/web/src/lib/components/agent/AgentChatHeader.svelte -->
 <script lang="ts">
-	import { ChevronLeft, X, ExternalLink } from 'lucide-svelte';
+	import { X, ExternalLink, ArrowLeft } from 'lucide-svelte';
 	import ProjectFocusIndicator from './ProjectFocusIndicator.svelte';
 	import type { ChatContextType, ContextUsageSnapshot } from '@buildos/shared-types';
 	import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
@@ -54,11 +54,21 @@
 		return 'text-emerald-600 dark:text-emerald-400';
 	});
 
+	const isProjectContext = $derived.by(
+		() =>
+			selectedContextType === 'project' ||
+			selectedContextType === 'project_audit' ||
+			selectedContextType === 'project_forecast'
+	);
+
 	// Determine project URL based on context
 	const projectUrl = $derived.by(() => {
 		if (!projectId) return null;
 		// Use ontology URL for ontology-focused contexts
-		if (resolvedProjectFocus && ['task', 'goal', 'plan', 'document', 'output'].includes(resolvedProjectFocus.focusType)) {
+		if (
+			resolvedProjectFocus &&
+			['task', 'goal', 'plan', 'document', 'output'].includes(resolvedProjectFocus.focusType)
+		) {
 			return `/ontology/projects/${projectId}`;
 		}
 		// Default to regular project URL
@@ -70,15 +80,15 @@
 <div class="flex h-12 items-center gap-2 px-3 sm:px-4">
 	<!-- Back button: Compact, only shown when context selected -->
 	{#if selectedContextType}
+		
 		<button
 			type="button"
+			class="inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 text-slate-600 transition hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
 			onclick={onChangeContext}
 			disabled={isStreaming}
-			class="flex h-7 items-center gap-1 rounded-md px-2 text-xs font-medium text-slate-600 transition-all hover:bg-slate-100 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-50 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
 			aria-label="Change context"
 		>
-			<ChevronLeft class="h-3.5 w-3.5" />
-			<span class="hidden sm:inline">Back</span>
+			<ArrowLeft class="h-4 w-4" />
 		</button>
 	{/if}
 
@@ -99,10 +109,14 @@
 			<!-- BuildOS with gradient OS -->
 			<h2 class="inline-flex items-baseline gap-[0.05em] text-sm font-bold tracking-tight">
 				<span class="text-slate-900 dark:text-white">Build</span>
-				<span class="bg-gradient-to-br from-blue-600 via-indigo-500 to-purple-500 bg-clip-text text-transparent">
+				<span
+					class="bg-gradient-to-br from-blue-600 via-indigo-500 to-purple-500 bg-clip-text text-transparent"
+				>
 					OS
 				</span>
-				<span class="ml-1 text-sm font-semibold text-slate-900 dark:text-white">Assistant</span>
+				<span class="ml-1 text-sm font-semibold text-slate-900 dark:text-white"
+					>Assistant</span
+				>
 			</h2>
 		{/if}
 
@@ -134,18 +148,26 @@
 		{#if ontologyLoaded || contextUsage || (currentActivity && !agentStateLabel)}
 			<div class="flex items-center gap-1.5">
 				{#if ontologyLoaded}
-					<span class="rounded-full bg-purple-100 px-2 py-0.5 text-[10px] font-medium text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
+					<span
+						class="rounded-full bg-purple-100 px-2 py-0.5 text-[10px] font-medium text-purple-700 dark:bg-purple-900/30 dark:text-purple-300"
+					>
 						ONTO
 					</span>
 				{/if}
 
 				{#if contextUsage}
-					<span class={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-mono ${contextStatusClass}`}>
-						<span class={`h-1 w-1 rounded-full ${
-							contextUsage.status === 'over_budget' ? 'bg-rose-500' :
-							contextUsage.status === 'near_limit' ? 'bg-amber-500' :
-							'bg-emerald-500'
-						}`}></span>
+					<span
+						class={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-mono ${contextStatusClass}`}
+					>
+						<span
+							class={`h-1 w-1 rounded-full ${
+								contextUsage.status === 'over_budget'
+									? 'bg-rose-500'
+									: contextUsage.status === 'near_limit'
+										? 'bg-amber-500'
+										: 'bg-emerald-500'
+							}`}
+						></span>
 						<span class="hidden sm:inline">
 							{formatTokensEstimate(contextUsage.estimatedTokens)}/
 						</span>
@@ -157,13 +179,16 @@
 				{/if}
 
 				{#if currentActivity && !agentStateLabel}
-					<span class="inline-flex h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" title={currentActivity}></span>
+					<span
+						class="inline-flex h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500"
+						title={currentActivity}
+					></span>
 				{/if}
 			</div>
 		{/if}
 
 		<!-- Project link -->
-		{#if selectedContextType === 'project' && projectUrl}
+		{#if isProjectContext && projectUrl}
 			<a
 				href={projectUrl}
 				target="_blank"

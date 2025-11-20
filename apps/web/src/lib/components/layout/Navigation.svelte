@@ -69,13 +69,22 @@
 	const routeProject = $derived(
 		currentPath.startsWith('/projects/') && $page.data?.project ? $page.data.project : null
 	);
-	const modalProject = $derived(storeProject ?? routeProject ?? null);
+	const routeOntologyProject = $derived(
+		currentPath.startsWith('/ontology/projects/') && $page.data?.project
+			? $page.data.project
+			: null
+	);
+	const modalProject = $derived(storeProject ?? routeOntologyProject ?? routeProject ?? null);
 
 	// Context-aware chat configuration based on current page
 	const chatContextType = $derived.by((): ChatContextType => {
 		// Task page: /projects/[id]/tasks/[taskId]
 		if (currentPath.match(/^\/projects\/[^/]+\/tasks\/[^/]+/)) {
 			return 'task';
+		}
+		// Ontology project page: /ontology/projects/[id]
+		if (currentPath.match(/^\/ontology\/projects\/[^/]+$/) && $page.data?.project) {
+			return 'project';
 		}
 		// Project page: /projects/[id]
 		if (currentPath.match(/^\/projects\/[^/]+$/) && $page.data?.project) {
@@ -91,12 +100,27 @@
 		if (taskMatch) {
 			return taskMatch[1];
 		}
+		// Ontology project page: return project ID
+		if (currentPath.match(/^\/ontology\/projects\/([^/]+)$/) && $page.data?.project) {
+			return $page.data.project.id;
+		}
 		// Project page: return project ID
 		if (currentPath.match(/^\/projects\/([^/]+)$/) && $page.data?.project) {
 			return $page.data.project.id;
 		}
 		// No entity
 		return undefined;
+	});
+
+	const chatAutoInitProject = $derived.by(() => {
+		if (currentPath.match(/^\/ontology\/projects\/[^/]+$/) && $page.data?.project) {
+			return {
+				projectId: $page.data.project.id,
+				projectName: $page.data.project.name ?? 'Project',
+				showActionSelector: true
+			};
+		}
+		return null;
 	});
 
 	const NAV_ITEMS = [
@@ -877,6 +901,7 @@
 		isOpen={showChatModal}
 		contextType={chatContextType}
 		entityId={chatEntityId}
+		autoInitProject={chatAutoInitProject}
 		onClose={handleChatClose}
 	/>
 {/if}

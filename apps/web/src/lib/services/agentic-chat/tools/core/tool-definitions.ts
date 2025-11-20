@@ -894,6 +894,17 @@ Only updates fields that are provided - omitted fields remain unchanged.`,
 						type: 'string',
 						description: 'New description'
 					},
+					update_strategy: {
+						type: 'string',
+						enum: ['replace', 'append', 'merge_llm'],
+						description:
+							"How to apply description updates: 'replace' (default), 'append', or 'merge_llm' to intelligently merge with existing description."
+					},
+					merge_instructions: {
+						type: 'string',
+						description:
+							'Optional guidance when merging description text (e.g., keep bullets, integrate notes). Used with append/merge_llm.'
+					},
 					state_key: {
 						type: 'string',
 						description: 'New state (todo, in_progress, done, blocked, etc.)'
@@ -942,6 +953,17 @@ Only updates fields that are provided.`,
 						type: 'string',
 						description: 'New description'
 					},
+					update_strategy: {
+						type: 'string',
+						enum: ['replace', 'append', 'merge_llm'],
+						description:
+							"How to apply description updates: 'replace' (default), 'append', or 'merge_llm' to intelligently merge with existing description."
+					},
+					merge_instructions: {
+						type: 'string',
+						description:
+							'Optional guidance when merging description text (e.g., keep metrics, integrate new notes). Used with append/merge_llm.'
+					},
 					state_key: {
 						type: 'string',
 						description: 'New state (draft, active, complete, archived)'
@@ -975,6 +997,17 @@ Use for edits to goal names, descriptions, priorities, target dates, or metadata
 					description: {
 						type: 'string',
 						description: 'Goal description'
+					},
+					update_strategy: {
+						type: 'string',
+						enum: ['replace', 'append', 'merge_llm'],
+						description:
+							"How to apply description updates: 'replace' (default), 'append', or 'merge_llm' to intelligently merge with existing description."
+					},
+					merge_instructions: {
+						type: 'string',
+						description:
+							'Optional guidance when merging description text (e.g., preserve KPIs, integrate new targets). Used with append/merge_llm.'
 					},
 					priority: {
 						type: 'number',
@@ -1017,6 +1050,17 @@ Use for edits to plan names, dates, status, or metadata.`,
 					description: {
 						type: 'string',
 						description: 'Plan description'
+					},
+					update_strategy: {
+						type: 'string',
+						enum: ['replace', 'append', 'merge_llm'],
+						description:
+							"How to apply description updates: 'replace' (default), 'append', or 'merge_llm' to intelligently merge with existing description."
+					},
+					merge_instructions: {
+						type: 'string',
+						description:
+							'Optional guidance when merging description text (e.g., preserve milestones, weave in new scope). Used with append/merge_llm.'
 					},
 					start_date: {
 						type: 'string',
@@ -1067,6 +1111,18 @@ Use for edits to titles, states, body markdown, or metadata.`,
 					body_markdown: {
 						type: 'string',
 						description: 'Markdown content to store'
+					},
+					update_strategy: {
+						type: 'string',
+						description:
+							"How to apply body_markdown: 'replace' (default), 'append', or 'merge_llm' to intelligently merge with existing content.",
+						enum: ['replace', 'append', 'merge_llm'],
+						default: 'replace'
+					},
+					merge_instructions: {
+						type: 'string',
+						description:
+							'Optional guidance when merging content (e.g., keep headers, preserve tables, integrate research notes). Used with append/merge_llm.'
 					},
 					props: {
 						type: 'object',
@@ -1869,7 +1925,11 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 	},
 	update_onto_task: {
 		summary: 'Modify task status, assignment, or metadata.',
-		capabilities: ['Supports partial updates', 'Validates ownership'],
+		capabilities: [
+			'Supports partial updates',
+			'Validates ownership',
+			'Append or LLM-merge description updates safely'
+		],
 		contexts: ['project', 'project_audit', 'project_forecast'],
 		category: 'write'
 	},
@@ -1881,19 +1941,31 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 	},
 	update_onto_goal: {
 		summary: 'Modify goal details (priority, target date, KPIs).',
-		capabilities: ['Supports partial updates', 'Validates ownership'],
+		capabilities: [
+			'Supports partial updates',
+			'Validates ownership',
+			'Append or LLM-merge description updates safely'
+		],
 		contexts: ['project', 'project_audit', 'project_forecast'],
 		category: 'write'
 	},
 	update_onto_plan: {
 		summary: 'Modify plan details (state, dates, metadata).',
-		capabilities: ['Supports partial updates', 'Validates ownership'],
+		capabilities: [
+			'Supports partial updates',
+			'Validates ownership',
+			'Append or LLM-merge description updates safely'
+		],
 		contexts: ['project', 'project_audit', 'project_forecast'],
 		category: 'write'
 	},
 	update_onto_document: {
 		summary: 'Modify document title/type/state/body/metadata.',
-		capabilities: ['Supports partial updates', 'Validates ownership'],
+		capabilities: [
+			'Supports partial updates',
+			'Validates ownership',
+			'Append or LLM-merge body content safely'
+		],
 		contexts: ['project', 'project_audit', 'project_forecast'],
 		category: 'write'
 	},

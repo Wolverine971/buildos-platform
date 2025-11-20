@@ -13,8 +13,6 @@
 		Globe,
 		Plus,
 		FolderOpen,
-		Search,
-		TrendingUp,
 		ChevronRight,
 		ChevronLeft,
 		Sparkles,
@@ -54,9 +52,7 @@
 	let { inModal = true }: Props = $props();
 
 	// State
-	let selectedView: 'primary' | 'projectHub' | 'project-selection' | 'mode-selection' =
-		$state('primary');
-	let selectedProject: OntologyProjectSummary | null = $state(null);
+	let selectedView: 'primary' | 'projectHub' | 'project-selection' = $state('primary');
 	let projects = $state<OntologyProjectSummary[]>([]);
 	let isLoadingProjects = $state(false);
 	let projectsError = $state<string | null>(null);
@@ -156,33 +152,19 @@
 
 	// Project selection
 	function selectProject(project: OntologyProjectSummary) {
-		selectedProject = project;
-		selectedView = 'mode-selection';
+		dispatch('select', {
+			contextType: 'project',
+			entityId: project.id,
+			label: project.name
+		});
 	}
 
 	function backToPrimary() {
 		selectedView = 'primary';
-		selectedProject = null;
 	}
 
 	function backToProjectHub() {
 		selectedView = 'projectHub';
-		selectedProject = null;
-	}
-
-	function backToProjectSelection() {
-		selectedView = 'project-selection';
-		selectedProject = null;
-	}
-
-	// Mode selection
-	function selectMode(mode: 'project' | 'project_audit' | 'project_forecast') {
-		if (!selectedProject) return;
-		dispatch('select', {
-			contextType: mode,
-			entityId: selectedProject.id,
-			label: `${selectedProject.name} • ${projectModeLabels[mode]}`
-		});
 	}
 
 	function formatKeyLabel(value?: string | null) {
@@ -200,13 +182,6 @@
 			.map((value) => formatKeyLabel(value))
 			.join(' • ');
 	}
-
-	// Computed
-	const projectModeLabels = {
-		project: 'Project workspace',
-		project_audit: 'Project audit',
-		project_forecast: 'Project forecast'
-	} as const;
 
 	const activeProjects = $derived(
 		projects.filter((project) => {
@@ -576,133 +551,6 @@
 						</p>
 					</div>
 				{/if}
-			</div>
-		</div>
-	{/if}
-
-	<!-- MODE SELECTION VIEW -->
-	{#if selectedView === 'mode-selection' && selectedProject}
-		<div class="flex h-full min-h-0 flex-col">
-			<!-- Header with Back Button -->
-			<div
-				class="flex gap-2 border-b border-slate-200/60 bg-white/80 p-4 sm:p-5 backdrop-blur-sm dark:border-slate-700/60 dark:bg-slate-900/80"
-			>
-				<Button variant="ghost" size="sm" onclick={backToProjectSelection} class="mb-2">
-					<ChevronLeft class="h-4 w-4" />
-					Back
-				</Button>
-				<div>
-					<h2 class="text-lg font-semibold text-slate-900 dark:text-white">
-						{selectedProject.name}
-					</h2>
-					<p class="text-xs text-slate-600 dark:text-slate-400">
-						Choose what you'd like to do
-					</p>
-				</div>
-			</div>
-
-			<!-- Mode Options -->
-			<div class="mx-auto w-full max-w-3xl flex-1 min-h-0 overflow-y-auto p-6">
-				<div class="grid gap-4 sm:grid-cols-3">
-					<!-- Project Workspace -->
-					<button
-						onclick={() => selectMode('project')}
-						class="group flex flex-col items-center gap-4 rounded-xl border-2 border-blue-200/50 bg-gradient-to-br from-blue-50/50 to-indigo-50/50 p-6 text-center transition-all duration-200 hover:scale-[1.02] hover:border-blue-300 hover:shadow-lg active:scale-[0.99] dark:border-blue-800/50 dark:from-blue-900/20 dark:to-indigo-900/20 dark:hover:border-blue-700"
-					>
-						<div
-							class="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-blue-100 to-indigo-100 shadow-sm transition-transform duration-200 group-hover:scale-105 dark:from-blue-800/40 dark:to-indigo-800/40"
-						>
-							<Sparkles class="h-7 w-7 text-blue-600 dark:text-blue-400" />
-						</div>
-						<div>
-							<h3 class="mb-1 text-sm font-semibold text-slate-900 dark:text-white">
-								Project workspace
-							</h3>
-							<p class="text-xs text-slate-600 dark:text-slate-400">
-								Ask questions, explore, or make updates
-							</p>
-						</div>
-					</button>
-
-					<!-- Project Audit -->
-					<button
-						onclick={() => selectMode('project_audit')}
-						class="group flex flex-col items-center gap-4 rounded-xl border-2 border-amber-200/50 bg-gradient-to-br from-amber-50/50 to-orange-50/50 p-6 text-center transition-all duration-200 hover:scale-[1.02] hover:border-amber-300 hover:shadow-lg active:scale-[0.99] dark:border-amber-800/50 dark:from-amber-900/20 dark:to-orange-900/20 dark:hover:border-amber-700"
-					>
-						<div
-							class="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-amber-100 to-orange-100 shadow-sm transition-transform duration-200 group-hover:scale-105 dark:from-amber-800/40 dark:to-orange-800/40"
-						>
-							<Search class="h-7 w-7 text-amber-600 dark:text-amber-400" />
-						</div>
-						<div>
-							<h3 class="mb-1 text-sm font-semibold text-slate-900 dark:text-white">
-								Audit Project
-							</h3>
-							<p class="text-xs text-slate-600 dark:text-slate-400">
-								Critical review across dimensions
-							</p>
-						</div>
-					</button>
-
-					<!-- Project Forecast -->
-					<button
-						onclick={() => selectMode('project_forecast')}
-						class="group flex flex-col items-center gap-4 rounded-xl border-2 border-emerald-200/50 bg-gradient-to-br from-emerald-50/50 to-teal-50/50 p-6 text-center transition-all duration-200 hover:scale-[1.02] hover:border-emerald-300 hover:shadow-lg active:scale-[0.99] dark:border-emerald-800/50 dark:from-emerald-900/20 dark:to-teal-900/20 dark:hover:border-emerald-700"
-					>
-						<div
-							class="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-100 to-teal-100 shadow-sm transition-transform duration-200 group-hover:scale-105 dark:from-emerald-800/40 dark:to-teal-800/40"
-						>
-							<TrendingUp class="h-7 w-7 text-emerald-600 dark:text-emerald-400" />
-						</div>
-						<div>
-							<h3 class="mb-1 text-sm font-semibold text-slate-900 dark:text-white">
-								Forecast Project
-							</h3>
-							<p class="text-xs text-slate-600 dark:text-slate-400">
-								Scenario planning and outcomes
-							</p>
-						</div>
-					</button>
-				</div>
-
-				<!-- Mode Descriptions -->
-				<div class="mt-6 space-y-3 rounded-xl bg-white/50 p-4 dark:bg-slate-800/50">
-					<div class="flex gap-3 text-xs">
-						<Sparkles
-							class="h-4 w-4 flex-shrink-0 text-slate-400 dark:text-slate-500"
-						/>
-						<div>
-							<span class="font-semibold text-slate-900 dark:text-white"
-								>Workspace</span
-							>
-							<span class="text-slate-600 dark:text-slate-400">
-								- Ask questions, explore data, or make updates
-							</span>
-						</div>
-					</div>
-					<div class="flex gap-3 text-xs">
-						<Search class="h-4 w-4 flex-shrink-0 text-slate-400 dark:text-slate-500" />
-						<div>
-							<span class="font-semibold text-slate-900 dark:text-white">Audit</span>
-							<span class="text-slate-600 dark:text-slate-400">
-								- Identify gaps, risks, and improvement opportunities
-							</span>
-						</div>
-					</div>
-					<div class="flex gap-3 text-xs">
-						<TrendingUp
-							class="h-4 w-4 flex-shrink-0 text-slate-400 dark:text-slate-500"
-						/>
-						<div>
-							<span class="font-semibold text-slate-900 dark:text-white"
-								>Forecast</span
-							>
-							<span class="text-slate-600 dark:text-slate-400">
-								- Explore scenarios and predict outcomes
-							</span>
-						</div>
-					</div>
-				</div>
 			</div>
 		</div>
 	{/if}

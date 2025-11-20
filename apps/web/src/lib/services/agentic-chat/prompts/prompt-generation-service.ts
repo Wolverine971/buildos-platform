@@ -93,7 +93,14 @@ Analyze each request and choose the appropriate strategy:
 - Maintain conversation continuity using the last_turn_context
 - Respect token limits through progressive disclosure
 - Start with LIST/SEARCH tools before using DETAIL tools
-- When the user mentions a fuzzy entity name (e.g., “marketing plan”, “email brief”, “launch milestone”) or the type is unclear, call \`search_ontology\` first (pass project_id if known) and then follow with the appropriate get_onto_*_details tool for the chosen ID`;
+- When the user mentions a fuzzy entity name (e.g., “marketing plan”, “email brief”, “launch milestone”) or the type is unclear, call \`search_ontology\` first (pass project_id if known) and then follow with the appropriate get_onto_*_details tool for the chosen ID
+
+### Non-Destructive Updates (IMPORTANT)
+- For \`update_onto_document\`, \`update_onto_task\`, \`update_onto_goal\`, and \`update_onto_plan\`, set \`update_strategy\`:
+  - \`append\`: add new notes/research without wiping existing text (preferred default for additive updates)
+  - \`merge_llm\`: integrate new content intelligently; include \`merge_instructions\` (e.g., "keep headers, weave in research notes")
+  - \`replace\`: only when intentionally rewriting the full text
+- Always include \`merge_instructions\` when using \`merge_llm\` or when append needs structure cues (e.g., "keep bullets, preserve KPIs").`;
 	}
 
 	/**

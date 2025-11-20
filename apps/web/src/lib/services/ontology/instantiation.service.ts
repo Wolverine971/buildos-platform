@@ -9,6 +9,7 @@ import {
 } from '$lib/types/onto';
 import { Json } from '@buildos/shared-types';
 import type { TypedSupabaseClient } from '@buildos/supabase-client';
+import { resolveAndMergeTemplateProps } from './template-props-merger.service';
 import { resolveTemplateWithClient } from '$lib/services/ontology/template-resolver.service';
 
 type InstantiationCounts = {
@@ -70,8 +71,17 @@ async function insertDocument(
 	actorId: string,
 	spec: DocumentInsertSpec
 ): Promise<string> {
+	// Resolve template and merge props
+	const { mergedProps: templateMergedProps } = await resolveAndMergeTemplateProps(
+		client,
+		spec.type_key,
+		'document',
+		spec.props ?? {},
+		true // Skip if no template found
+	);
+
 	const props: Record<string, unknown> = {
-		...(spec.props ?? {})
+		...templateMergedProps
 	};
 
 	if (spec.body_markdown) {
@@ -244,13 +254,30 @@ export async function instantiateProject(
 
 		// Goals
 		if (parsed.goals?.length) {
-			const goalInserts = parsed.goals.map((goal) => ({
-				project_id: projectId,
-				name: goal.name,
-				type_key: goal.type_key ?? null,
-				props: (goal.props ?? {}) as Json,
-				created_by: actorId
-			}));
+			const goalInserts = await Promise.all(
+				parsed.goals.map(async (goal) => {
+					// Resolve template and merge props if type_key is provided
+					let finalProps = goal.props ?? {};
+					if (goal.type_key) {
+						const { mergedProps } = await resolveAndMergeTemplateProps(
+							client,
+							goal.type_key,
+							'goal',
+							goal.props ?? {},
+							true // Skip if no template found
+						);
+						finalProps = mergedProps;
+					}
+
+					return {
+						project_id: projectId,
+						name: goal.name,
+						type_key: goal.type_key ?? null,
+						props: finalProps as Json,
+						created_by: actorId
+					};
+				})
+			);
 
 			const { data: goalRows, error: goalsError } = await client
 				.from('onto_goals')
@@ -357,10 +384,22 @@ export async function instantiateProject(
 		// Plans
 		if (parsed.plans?.length) {
 			for (const plan of parsed.plans) {
-				const resolvedPlanFacets = resolveFacets(undefined, plan.props?.facets as Facets);
+				// Resolve template and merge props
+				const { mergedProps: templateMergedProps } = await resolveAndMergeTemplateProps(
+					client,
+					plan.type_key,
+					'plan',
+					plan.props ?? {},
+					true // Skip if no template found
+				);
+
+				const resolvedPlanFacets = resolveFacets(
+					undefined,
+					templateMergedProps.facets as Facets
+				);
 				await assertValidFacets(client, resolvedPlanFacets, 'plan', `plan "${plan.name}"`);
 
-				const mergedPlanProps = mergeProps(plan.props ?? {});
+				const mergedPlanProps = mergeProps(templateMergedProps);
 				if (hasFacetValues(resolvedPlanFacets)) {
 					mergedPlanProps.facets = resolvedPlanFacets;
 				} else {
@@ -415,10 +454,26 @@ export async function instantiateProject(
 					plan_id = mappedPlanId;
 				}
 
-				const resolvedTaskFacets = resolveFacets(undefined, task.props?.facets as Facets);
+				// Resolve template and merge props if type_key is provided
+				let templateMergedProps = task.props ?? {};
+				if (task.type_key) {
+					const { mergedProps } = await resolveAndMergeTemplateProps(
+						client,
+						task.type_key,
+						'task',
+						task.props ?? {},
+						true // Skip if no template found
+					);
+					templateMergedProps = mergedProps;
+				}
+
+				const resolvedTaskFacets = resolveFacets(
+					undefined,
+					templateMergedProps.facets as Facets
+				);
 				await assertValidFacets(client, resolvedTaskFacets, 'task', `task "${task.title}"`);
 
-				const mergedTaskProps = mergeProps(task.props ?? {});
+				const mergedTaskProps = mergeProps(templateMergedProps);
 				if (hasFacetValues(resolvedTaskFacets)) {
 					mergedTaskProps.facets = resolvedTaskFacets;
 				} else {
@@ -473,9 +528,18 @@ export async function instantiateProject(
 		// Outputs
 		if (parsed.outputs?.length) {
 			for (const output of parsed.outputs) {
+				// Resolve template and merge props
+				const { mergedProps: templateMergedProps } = await resolveAndMergeTemplateProps(
+					client,
+					output.type_key,
+					'output',
+					output.props ?? {},
+					true // Skip if no template found
+				);
+
 				const resolvedOutputFacets = resolveFacets(
 					undefined,
-					output.props?.facets as Facets
+					templateMergedProps.facets as Facets
 				);
 				await assertValidFacets(
 					client,
@@ -484,7 +548,7 @@ export async function instantiateProject(
 					`output "${output.name}"`
 				);
 
-				const mergedOutputProps = mergeProps(output.props ?? {});
+				const mergedOutputProps = mergeProps(templateMergedProps);
 				if (hasFacetValues(resolvedOutputFacets)) {
 					mergedOutputProps.facets = resolvedOutputFacets;
 				} else {

@@ -93,7 +93,9 @@
 
 	{#if voiceErrorMessage || isStreaming}
 		<!-- ✅ Ultra-compact status indicators: gap-1, px-0.5 -->
-		<div class="flex flex-wrap items-center justify-between gap-1 px-0.5 text-[10px] font-medium">
+		<div
+			class="flex flex-wrap items-center justify-between gap-1 px-0.5 text-[10px] font-medium"
+		>
 			<div class="flex flex-wrap items-center gap-1">
 				{#if voiceErrorMessage}
 					<!-- ✅ Compact error badge: px-2 py-0.5, text-[10px] -->
