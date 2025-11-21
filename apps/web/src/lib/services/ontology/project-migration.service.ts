@@ -12,6 +12,8 @@ import { getLegacyMapping, upsertLegacyMapping } from './legacy-mapping.service'
 import { SmartLLMService } from '$lib/services/smart-llm-service';
 import { ProjectTemplateInferenceService } from './project-template-inference.service';
 import { ProjectPropsGenerationService } from './project-props-generation.service';
+import { EnhancedProjectMigrator } from './migration/enhanced-project-migrator';
+import type { MigrationContext } from './migration/enhanced-migration.types';
 
 export type LegacyProjectRow = Database['public']['Tables']['projects']['Row'];
 
@@ -66,6 +68,7 @@ const CONTEXT_DOCUMENT_TYPE = 'document.project.context';
 export class ProjectMigrationService {
 	private readonly templateInference: ProjectTemplateInferenceService;
 	private readonly propsGenerator: ProjectPropsGenerationService;
+	private readonly enhancedMigrator: EnhancedProjectMigrator;
 
 	constructor(
 		private readonly client: TypedSupabaseClient,
@@ -73,6 +76,7 @@ export class ProjectMigrationService {
 	) {
 		this.templateInference = new ProjectTemplateInferenceService(client, llmService);
 		this.propsGenerator = new ProjectPropsGenerationService(llmService);
+		this.enhancedMigrator = new EnhancedProjectMigrator(client, llmService);
 	}
 
 	async fetchCandidates(options: {
@@ -125,6 +129,15 @@ export class ProjectMigrationService {
 		project: LegacyProjectRow,
 		context: MigrationServiceContext
 	): Promise<ProjectMigrationResult> {
+		// Check if enhanced mode is enabled via environment variable
+		const enhancedMode = process.env.MIGRATION_ENHANCED_MODE === 'true';
+
+		// Use enhanced migrator if enabled
+		if (enhancedMode) {
+			return await this.migrateProjectEnhanced(project, context);
+		}
+
+		// Otherwise use legacy migration flow
 		const actorId = await ensureActorId(this.client, project.user_id);
 		const analysis = await this.buildAnalysis(project);
 		const existingMapping = await getLegacyMapping(this.client, 'projects', project.id);
@@ -540,6 +553,80 @@ export class ProjectMigrationService {
 				return 'planning';
 			default:
 				return 'discovery';
+		}
+	}
+
+	/**
+	 * Enhanced migration flow using new engines
+	 * Bridges between EnhancedProjectMigrationResult and ProjectMigrationResult
+	 */
+	private async migrateProjectEnhanced(
+		project: LegacyProjectRow,
+		context: MigrationServiceContext
+	): Promise<ProjectMigrationResult> {
+		// Build migration context for enhanced migrator
+		const migrationContext: MigrationContext = {
+			...context,
+			enhancedMode: true,
+			templateConfidenceThreshold: 0.7,
+			propsConfidenceThreshold: 0.6,
+			cacheEnabled: true
+		};
+
+		// Run enhanced migration
+		const enhancedResult = await this.enhancedMigrator.migrate(project, migrationContext);
+
+		// Build analysis for result
+		const analysis = await this.buildAnalysis(project);
+		const actorId = enhancedResult.ontoProjectId
+			? await ensureActorId(this.client, project.user_id)
+			: '';
+		const coreValues = this.extractCoreValues(project);
+
+		// Map enhanced result to legacy result format
+		return {
+			legacyProjectId: project.id,
+			ontoProjectId: enhancedResult.ontoProjectId ?? null,
+			actorId,
+			status: this.mapEnhancedStatus(enhancedResult.status),
+			analysis,
+			message: enhancedResult.message,
+			projectFacets: this.deriveProjectFacets(project, analysis),
+			contextDocumentId: null, // Enhanced mode doesn't create context docs yet
+			contextMarkdown: project.context?.trim() || null,
+			coreValues,
+			template: enhancedResult.templateUsed
+				? {
+						typeKey: enhancedResult.templateUsed,
+						templateId: null,
+						realm: null,
+						domain: null,
+						deliverable: null,
+						variant: null,
+						confidence: enhancedResult.propsConfidence ?? null,
+						created: enhancedResult.templateCreated ?? false
+					}
+				: null,
+			templateProps: enhancedResult.propsExtracted
+				? {
+						props: enhancedResult.propsExtracted,
+						confidence: enhancedResult.propsConfidence ?? null
+					}
+				: null
+		};
+	}
+
+	private mapEnhancedStatus(enhancedStatus: string): MigrationStatus {
+		switch (enhancedStatus) {
+			case 'completed':
+				return 'completed';
+			case 'pending_review':
+				return 'pending';
+			case 'validation_failed':
+			case 'failed':
+				return 'failed';
+			default:
+				return 'pending';
 		}
 	}
 }

@@ -11,11 +11,24 @@ import type {
 	TaskMigrationPreviewSummary
 } from './migration.types';
 import { getLegacyMapping, upsertLegacyMapping } from './legacy-mapping.service';
+import { EnhancedTaskMigrator } from './migration/enhanced-task-migrator';
+import { SmartLLMService } from '$lib/services/smart-llm-service';
+import type { MigrationContext } from './migration/enhanced-migration.types';
 
 export type LegacyTaskRow = Database['public']['Tables']['tasks']['Row'];
 
 export class TaskMigrationService {
-	constructor(private readonly client: TypedSupabaseClient) {}
+	private readonly enhancedMigrator: EnhancedTaskMigrator;
+
+	constructor(
+		private readonly client: TypedSupabaseClient,
+		llmService?: SmartLLMService
+	) {
+		// Initialize enhanced migrator if LLM service provided
+		if (llmService) {
+			this.enhancedMigrator = new EnhancedTaskMigrator(client, llmService);
+		}
+	}
 
 	async migrateTasks(
 		projectId: string,
@@ -109,9 +122,13 @@ export class TaskMigrationService {
 		}
 
 		for (const task of tasks) {
+			// Check if enhanced mode is enabled
+			const enhancedMode =
+				process.env.MIGRATION_ENHANCED_TASKS === 'true' && this.enhancedMigrator;
+
 			const classification = this.classifyTask(task);
 			const phaseId = phaseMap[task.id] ?? null;
-			const suggestedPlanId = phaseId ? (phasePlanMapping[phaseId] ?? null) : null;
+			const suggestedPlanId = phaseId ? (resolvedPhasePlanMapping[phaseId] ?? null) : null;
 			const existingMapping = await getLegacyMapping(this.client, 'tasks', task.id);
 
 			if (existingMapping?.onto_id) {
@@ -126,6 +143,47 @@ export class TaskMigrationService {
 					classification
 				});
 				mappings[task.id] = existingMapping.onto_id;
+				summary.alreadyMigrated += 1;
+				continue;
+			}
+
+			// Use enhanced migrator if enabled
+			if (enhancedMode && ontoProjectId) {
+				const enhancedResult = await this.migrateTaskEnhanced(task, context, {
+					ontoProjectId,
+					ontoPlanId: suggestedPlanId,
+					actorId
+				});
+
+				// Convert to legacy result format
+				results.push({
+					legacyTaskId: task.id,
+					title: task.title,
+					legacyStatus: task.status,
+					ontoTaskId: enhancedResult.ontoTaskId ?? null,
+					phaseId,
+					phaseName: phaseId ? (phaseMetadata.get(phaseId) ?? null) : null,
+					suggestedOntoPlanId: suggestedPlanId,
+					recommendedTypeKey: enhancedResult.templateUsed ?? classification.typeKey,
+					recommendedStateKey: this.mapTaskState(task.status),
+					dueAt: this.resolveDueAt(task),
+					priority: this.mapPriority(task.priority),
+					facetScale: classification.requiresDeepWork ? 'medium' : 'small',
+					calendarEventCount: eventCounts.get(task.id) ?? 0,
+					status: this.mapEnhancedStatus(enhancedResult.status),
+					notes: enhancedResult.message,
+					classification,
+					proposedPayload: {} as Json
+				});
+
+				mappings[task.id] = enhancedResult.ontoTaskId ?? null;
+
+				if (enhancedResult.status === 'completed') {
+					summary.readyToMigrate += 1;
+				} else if (enhancedResult.status === 'failed') {
+					summary.blocked += 1;
+				}
+
 				continue;
 			}
 
@@ -497,6 +555,62 @@ export class TaskMigrationService {
 				return 2;
 			default:
 				return 1;
+		}
+	}
+
+	/**
+	 * Enhanced task migration using new engines
+	 * Bridges between EnhancedTaskMigrationResult and TaskMigrationRecord
+	 */
+	private async migrateTaskEnhanced(
+		task: LegacyTaskRow,
+		context: MigrationServiceContext,
+		projectContext: {
+			ontoProjectId: string;
+			ontoPlanId?: string | null;
+			actorId: string;
+		}
+	): Promise<{
+		status: string;
+		ontoTaskId?: string | null;
+		templateUsed?: string;
+		message: string;
+	}> {
+		// Build migration context for enhanced migrator
+		const migrationContext: MigrationContext = {
+			...context,
+			enhancedMode: true,
+			templateConfidenceThreshold: 0.7,
+			propsConfidenceThreshold: 0.6,
+			cacheEnabled: true
+		};
+
+		// Run enhanced migration
+		const enhancedResult = await this.enhancedMigrator.migrate(
+			task,
+			migrationContext,
+			projectContext
+		);
+
+		return {
+			status: enhancedResult.status,
+			ontoTaskId: enhancedResult.ontoTaskId ?? null,
+			templateUsed: enhancedResult.templateUsed,
+			message: enhancedResult.message
+		};
+	}
+
+	private mapEnhancedStatus(enhancedStatus: string): MigrationStatus {
+		switch (enhancedStatus) {
+			case 'completed':
+				return 'completed';
+			case 'pending_review':
+				return 'pending';
+			case 'validation_failed':
+			case 'failed':
+				return 'failed';
+			default:
+				return 'pending';
 		}
 	}
 }

@@ -1,4 +1,4 @@
-<!-- Test page for PlanVisualization component -->
+<!-- apps/web/src/routes/test-plan-viz/+page.svelte -->
 <script lang="ts">
 	import PlanVisualization from '$lib/components/agent/PlanVisualization.svelte';
 	import {

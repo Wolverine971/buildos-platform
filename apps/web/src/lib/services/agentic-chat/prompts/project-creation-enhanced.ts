@@ -1,4 +1,4 @@
-// Enhanced project creation prompt for dynamic template suggestion and creation
+// apps/web/src/lib/services/agentic-chat/prompts/project-creation-enhanced.ts
 export const getEnhancedProjectCreationPrompt = (): string => {
 	return `
 ## PROJECT CREATION CONTEXT - ENHANCED TEMPLATE INTELLIGENCE

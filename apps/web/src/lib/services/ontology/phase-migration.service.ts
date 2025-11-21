@@ -15,6 +15,9 @@ import {
 	ProjectNarrativeBundle,
 	PlanGenerationPreview
 } from './plan-generation.service';
+import { EnhancedPlanMigrator } from './migration/enhanced-plan-migrator';
+import { SmartLLMService } from '$lib/services/smart-llm-service';
+import type { MigrationContext } from './migration/enhanced-migration.types';
 
 export type LegacyPhaseRow = Database['public']['Tables']['phases']['Row'];
 
@@ -39,10 +42,18 @@ export interface PhaseMigrationBatchResult {
 const PLAN_TYPE_KEY = 'plan.project_phase';
 
 export class PhaseMigrationService {
+	private readonly enhancedMigrator: EnhancedPlanMigrator;
+
 	constructor(
 		private readonly client: TypedSupabaseClient,
-		private readonly planGenerator: PlanGenerationService
-	) {}
+		private readonly planGenerator: PlanGenerationService,
+		llmService?: SmartLLMService
+	) {
+		// Initialize enhanced migrator if LLM service provided
+		if (llmService) {
+			this.enhancedMigrator = new EnhancedPlanMigrator(client, llmService);
+		}
+	}
 
 	async migratePhases(
 		projectId: string,
@@ -419,6 +430,43 @@ export class PhaseMigrationService {
 		metadata?: Record<string, unknown>;
 		context: MigrationServiceContext;
 	}): Promise<string> {
+		// Check if enhanced mode is enabled and we have a phase to migrate
+		const enhancedMode =
+			process.env.MIGRATION_ENHANCED_PLANS === 'true' &&
+			this.enhancedMigrator &&
+			params.phase;
+
+		// Use enhanced migrator if enabled
+		if (enhancedMode && params.phase) {
+			const migrationContext: MigrationContext = {
+				...params.context,
+				enhancedMode: true,
+				templateConfidenceThreshold: 0.7,
+				propsConfidenceThreshold: 0.6,
+				cacheEnabled: true
+			};
+
+			const enhancedResult = await this.enhancedMigrator.migrate(
+				params.phase,
+				migrationContext,
+				{
+					ontoProjectId: params.ontoProjectId,
+					actorId: params.actorId,
+					projectFacets: params.projectFacets
+				}
+			);
+
+			if (enhancedResult.status === 'completed' && enhancedResult.ontoPlanId) {
+				return enhancedResult.ontoPlanId;
+			}
+
+			// Fall back to legacy if enhanced failed
+			console.warn(
+				`[PhaseMigration] Enhanced mode failed for phase ${params.phase.id}, falling back to legacy: ${enhancedResult.message}`
+			);
+		}
+
+		// Legacy migration flow
 		const { data, error } = await this.client
 			.from('onto_plans')
 			.insert({

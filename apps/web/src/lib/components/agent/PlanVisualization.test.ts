@@ -1,4 +1,4 @@
-// Test file for PlanVisualization component
+// apps/web/src/lib/components/agent/PlanVisualization.test.ts
 import type { AgentPlan } from '@buildos/shared-types';
 
 // Sample test plan for visualization
