@@ -3,6 +3,7 @@
 	import { ChevronDown, ChevronRight, Loader, Check, X } from 'lucide-svelte';
 	import Card from '$lib/components/ui/Card.svelte';
 	import CardBody from '$lib/components/ui/CardBody.svelte';
+	import PlanVisualization from './PlanVisualization.svelte';
 	import type {
 		ActivityEntry,
 		ActivityType,
@@ -16,6 +17,17 @@
 	}
 
 	let { block, onToggleCollapse }: Props = $props();
+
+	// Track collapse state for individual plans
+	let planCollapseStates = $state<Map<string, boolean>>(new Map());
+
+	// Function to toggle individual plan collapse
+	function togglePlanCollapse(activityId: string) {
+		const current = planCollapseStates.get(activityId) ?? false;
+		planCollapseStates.set(activityId, !current);
+		// Force reactivity with new Map
+		planCollapseStates = new Map(planCollapseStates);
+	}
 
 	// Derive status label
 	const statusLabel = $derived(
@@ -94,14 +106,6 @@
 	function getActivityStyle(type: ActivityType) {
 		return ACTIVITY_STYLES[type] || ACTIVITY_STYLES.general;
 	}
-
-	// Display plan steps if available in metadata
-	function getPlanSteps(activity: ActivityEntry): any[] | null {
-		if (activity.activityType === 'plan_created' && activity.metadata?.plan?.steps) {
-			return activity.metadata.plan.steps;
-		}
-		return null;
-	}
 </script>
 
 <Card
@@ -177,62 +181,52 @@
 					</div>
 				{:else}
 					{#each block.activities as activity (activity.id)}
-						{@const style = getActivityStyle(activity.activityType)}
-						{@const planSteps = getPlanSteps(activity)}
-						<div class="py-0.5">
-							<div class="flex items-start gap-1.5 leading-tight sm:items-center">
-								<!-- Icon -->
-								<span
-									class="shrink-0 pt-0.5 text-[10px] {style.color} sm:pt-0"
-									aria-hidden="true">{style.icon}</span
-								>
-
-								<!-- Content -->
-								<span
-									class="min-w-0 flex-1 break-words text-slate-700 dark:text-slate-300"
-									>{activity.content}</span
-								>
-
-								<!-- Status indicator (for tool calls) -->
-								{#if activity.status === 'pending'}
-									<Loader
-										class="h-2.5 w-2.5 shrink-0 animate-spin text-slate-500 dark:text-slate-400"
-										aria-label="Loading"
-									/>
-								{:else if activity.status === 'completed'}
-									<Check
-										class="h-2.5 w-2.5 shrink-0 text-green-600 dark:text-green-400"
-										aria-label="Completed"
-									/>
-								{:else if activity.status === 'failed'}
-									<X
-										class="h-2.5 w-2.5 shrink-0 text-red-600 dark:text-red-400"
-										aria-label="Failed"
-									/>
-								{/if}
+						{#if activity.activityType === 'plan_created' && activity.metadata?.plan}
+							<!-- Use dedicated plan visualization for plan activities -->
+							<div class="py-1">
+								<PlanVisualization
+									plan={activity.metadata.plan}
+									currentStep={activity.metadata.currentStep}
+									isCollapsed={planCollapseStates.get(activity.id) ?? false}
+									onToggle={() => togglePlanCollapse(activity.id)}
+								/>
 							</div>
+						{:else}
+							{@const style = getActivityStyle(activity.activityType)}
+							<div class="py-0.5">
+								<div class="flex items-start gap-1.5 leading-tight sm:items-center">
+									<!-- Icon -->
+									<span
+										class="shrink-0 pt-0.5 text-[10px] {style.color} sm:pt-0"
+										aria-hidden="true">{style.icon}</span
+									>
 
-							<!-- Plan steps expansion -->
-							{#if planSteps && planSteps.length > 0}
-								<div
-									class="ml-4 mt-0.5 space-y-0.5 text-slate-600 dark:text-slate-400"
-								>
-									{#each planSteps as step, i}
-										<div class="flex gap-1.5 text-[10px] leading-tight">
-											<span
-												class="w-4 shrink-0 text-right text-slate-500 dark:text-slate-500"
-												>{i + 1}.</span
-											>
-											<span class="min-w-0 flex-1"
-												>{step.description ||
-													step.name ||
-													'Unnamed step'}</span
-											>
-										</div>
-									{/each}
+									<!-- Content -->
+									<span
+										class="min-w-0 flex-1 break-words text-slate-700 dark:text-slate-300"
+										>{activity.content}</span
+									>
+
+									<!-- Status indicator (for tool calls) -->
+									{#if activity.status === 'pending'}
+										<Loader
+											class="h-2.5 w-2.5 shrink-0 animate-spin text-slate-500 dark:text-slate-400"
+											aria-label="Loading"
+										/>
+									{:else if activity.status === 'completed'}
+										<Check
+											class="h-2.5 w-2.5 shrink-0 text-green-600 dark:text-green-400"
+											aria-label="Completed"
+										/>
+									{:else if activity.status === 'failed'}
+										<X
+											class="h-2.5 w-2.5 shrink-0 text-red-600 dark:text-red-400"
+											aria-label="Failed"
+										/>
+									{/if}
 								</div>
-							{/if}
-						</div>
+							</div>
+						{/if}
 					{/each}
 				{/if}
 			</div>

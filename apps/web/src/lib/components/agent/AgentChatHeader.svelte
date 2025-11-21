@@ -80,7 +80,6 @@
 <div class="flex h-12 items-center gap-2 px-3 sm:px-4">
 	<!-- Back button: Compact, only shown when context selected -->
 	{#if selectedContextType}
-		
 		<button
 			type="button"
 			class="inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 text-slate-600 transition hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"

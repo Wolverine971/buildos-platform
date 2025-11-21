@@ -3853,6 +3853,13 @@ export type Database = {
             referencedRelation: "onto_documents"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "onto_document_versions_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "task_documents"
+            referencedColumns: ["document_id"]
+          },
         ]
       }
       onto_documents: {
@@ -4635,6 +4642,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "onto_documents"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_context_document"
+            columns: ["context_document_id"]
+            isOneToOne: false
+            referencedRelation: "task_documents"
+            referencedColumns: ["document_id"]
           },
         ]
       }
@@ -7830,6 +7844,30 @@ export type Database = {
         }
         Relationships: []
       }
+      task_documents: {
+        Row: {
+          content: string | null
+          doc_type: string | null
+          document_id: string | null
+          document_state: string | null
+          document_title: string | null
+          document_type: string | null
+          edge_props: Json | null
+          linked_at: string | null
+          project_id: string | null
+          task_id: string | null
+          task_title: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onto_tasks_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       trial_statistics: {
         Row: {
           active_subscriptions: number | null
@@ -8538,6 +8576,14 @@ export type Database = {
       is_admin:
         | { Args: never; Returns: boolean }
         | { Args: { user_id: string }; Returns: boolean }
+      link_document_to_task: {
+        Args: {
+          p_document_id: string
+          p_relationship_type?: string
+          p_task_id: string
+        }
+        Returns: string
+      }
       log_notification_event: {
         Args: {
           p_context?: Json

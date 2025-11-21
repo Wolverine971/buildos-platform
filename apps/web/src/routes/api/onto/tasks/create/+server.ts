@@ -57,7 +57,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			type_key,
 			props = {},
 			goal_id,
-			supporting_milestone_id
+			supporting_milestone_id,
+			due_at
 		} = body;
 
 		// Validate required fields
@@ -155,6 +156,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			state_key,
 			priority,
 			plan_id: plan_id || null,
+			due_at: due_at || null,
 			created_by: actorId,
 			props: {
 				...mergedProps,

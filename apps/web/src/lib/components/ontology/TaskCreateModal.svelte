@@ -31,6 +31,8 @@
 	import CardBody from '$lib/components/ui/CardBody.svelte';
 	import { fly } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
+	import { toastService } from '$lib/stores/toast.store';
+	import { format } from 'date-fns';
 
 	interface Props {
 		projectId: string;
@@ -67,6 +69,7 @@
 	let goalId = $state('');
 	let milestoneId = $state('');
 	let stateKey = $state('todo');
+	let dueAt = $state('');
 
 	// Template categories for better organization
 	const templateCategories = $derived(
@@ -109,6 +112,33 @@
 		showTemplateSelection = false;
 	}
 
+	function formatDateTimeForInput(date: Date | string | null): string {
+		if (!date) return '';
+		try {
+			const dateObj = typeof date === 'string' ? new Date(date) : date;
+			if (isNaN(dateObj.getTime())) return '';
+			// Format for HTML datetime-local input
+			return format(dateObj, "yyyy-MM-dd'T'HH:mm");
+		} catch (error) {
+			console.warn('Failed to format datetime for input:', date, error);
+			return '';
+		}
+	}
+
+	function parseDateTimeFromInput(value: string): string | null {
+		if (!value) return null;
+		try {
+			// The datetime-local input gives us a value in local time
+			const date = new Date(value);
+			if (isNaN(date.getTime())) return null;
+			// Convert to ISO string for storage (UTC)
+			return date.toISOString();
+		} catch (error) {
+			console.warn('Failed to parse datetime from input:', value, error);
+			return null;
+		}
+	}
+
 	async function handleSubmit(e: Event): Promise<void> {
 		e.preventDefault();
 
@@ -131,6 +161,7 @@
 				state_key: stateKey || 'todo',
 				goal_id: goalId?.trim() || null,
 				supporting_milestone_id: milestoneId?.trim() || null,
+				due_at: parseDateTimeFromInput(dueAt),
 				props: {
 					description: description.trim() || null,
 					...(selectedTemplate?.default_props || {})
@@ -488,6 +519,43 @@
 											{/each}
 										</Select>
 									</FormField>
+								{/if}
+							</div>
+
+							<!-- Scheduled Section -->
+							<div
+								class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-800/50"
+							>
+								<div class="flex items-center gap-2 mb-3">
+									<span class="text-base">📅</span>
+									<h3 class="text-sm font-semibold text-gray-900 dark:text-white">
+										Scheduled
+									</h3>
+								</div>
+								<FormField
+									label="Due Date"
+									labelFor="dueAt"
+									hint="Optional deadline for this task"
+								>
+									<TextInput
+										id="dueAt"
+										type="datetime-local"
+										bind:value={dueAt}
+										disabled={isSaving}
+										size="md"
+										class="border-gray-200/60 bg-white/85 dark:border-gray-600/60 dark:bg-gray-900/60"
+									/>
+								</FormField>
+								{#if dueAt}
+									<p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+										Due: {new Date(dueAt).toLocaleString('en-US', {
+											weekday: 'short',
+											month: 'short',
+											day: 'numeric',
+											hour: 'numeric',
+											minute: '2-digit'
+										})}
+									</p>
 								{/if}
 							</div>
 

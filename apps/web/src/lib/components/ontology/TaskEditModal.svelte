@@ -50,6 +50,7 @@
 		promoteTaskDocument,
 		type TaskWorkspaceDocument
 	} from '$lib/services/ontology/task-document.service';
+	import { format } from 'date-fns';
 
 	interface Props {
 		taskId: string;
@@ -89,6 +90,7 @@
 	let goalId = $state('');
 	let milestoneId = $state('');
 	let stateKey = $state('todo');
+	let dueAt = $state('');
 	let showSeriesModal = $state(false);
 	let showSeriesDeleteConfirm = $state(false);
 	let isDeletingSeries = $state(false);
@@ -276,6 +278,33 @@
 		return date.toLocaleDateString();
 	}
 
+	function formatDateTimeForInput(date: Date | string | null): string {
+		if (!date) return '';
+		try {
+			const dateObj = typeof date === 'string' ? new Date(date) : date;
+			if (isNaN(dateObj.getTime())) return '';
+			// Format for HTML datetime-local input
+			return format(dateObj, "yyyy-MM-dd'T'HH:mm");
+		} catch (error) {
+			console.warn('Failed to format datetime for input:', date, error);
+			return '';
+		}
+	}
+
+	function parseDateTimeFromInput(value: string): string | null {
+		if (!value) return null;
+		try {
+			// The datetime-local input gives us a value in local time
+			const date = new Date(value);
+			if (isNaN(date.getTime())) return null;
+			// Convert to ISO string for storage (UTC)
+			return date.toISOString();
+		} catch (error) {
+			console.warn('Failed to parse datetime from input:', value, error);
+			return null;
+		}
+	}
+
 	async function loadTask() {
 		try {
 			isLoading = true;
@@ -298,6 +327,7 @@
 				goalId = extractGoalIdFromProps(task.props || null);
 				milestoneId = extractMilestoneIdFromProps(task.props || null);
 				stateKey = task.state_key || 'todo';
+				dueAt = task.due_at ? formatDateTimeForInput(task.due_at) : '';
 				seriesActionError = '';
 				showSeriesDeleteConfirm = false;
 			}
@@ -479,6 +509,7 @@
 				priority: Number(priority),
 				plan_id: planId || null,
 				state_key: stateKey,
+				due_at: parseDateTimeFromInput(dueAt),
 				goal_id: goalId?.trim() || null,
 				supporting_milestone_id: milestoneId?.trim() || null
 			};
@@ -1090,6 +1121,60 @@
 														</span>
 													</div>
 												{/if}
+											</div>
+										</CardBody>
+									</Card>
+
+									<!-- Scheduled -->
+									<Card variant="elevated">
+										<CardHeader variant="accent">
+											<h3
+												class="text-xs font-semibold uppercase tracking-wide flex items-center gap-2"
+											>
+												<span class="text-base">📅</span>
+												Scheduled
+											</h3>
+										</CardHeader>
+										<CardBody padding="sm">
+											<div class="space-y-3">
+												<div>
+													<label
+														for="sidebar-due-date"
+														class="block text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-400 mb-1.5"
+													>
+														Due Date
+													</label>
+													<TextInput
+														id="sidebar-due-date"
+														type="datetime-local"
+														bind:value={dueAt}
+														disabled={isSaving}
+														size="sm"
+														class="border-gray-200/60 bg-white/85 dark:border-gray-600/60 dark:bg-gray-900/60 w-full"
+													/>
+													{#if dueAt}
+														<p
+															class="mt-1.5 text-xs text-gray-500 dark:text-gray-400"
+														>
+															{new Date(dueAt).toLocaleString(
+																'en-US',
+																{
+																	weekday: 'short',
+																	month: 'short',
+																	day: 'numeric',
+																	hour: 'numeric',
+																	minute: '2-digit'
+																}
+															)}
+														</p>
+													{:else}
+														<p
+															class="mt-1.5 text-xs text-gray-500 dark:text-gray-400 italic"
+														>
+															No deadline set
+														</p>
+													{/if}
+												</div>
 											</div>
 										</CardBody>
 									</Card>

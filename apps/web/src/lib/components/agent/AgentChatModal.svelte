@@ -887,6 +887,45 @@
 		}));
 	}
 
+	// Update plan step status in thinking block
+	function updatePlanStepStatus(stepNumber: number | undefined, status: string) {
+		if (!stepNumber || !currentPlan || !currentThinkingBlockId) return;
+
+		updateThinkingBlock(currentThinkingBlockId, (block) => {
+			// Find the plan activity
+			const updatedActivities = block.activities.map((activity) => {
+				if (
+					activity.activityType === 'plan_created' &&
+					activity.metadata?.plan?.id === currentPlan?.id
+				) {
+					// Update the plan steps with new status
+					const updatedPlan = {
+						...activity.metadata.plan,
+						steps: activity.metadata.plan.steps.map((step: any) =>
+							step.stepNumber === stepNumber ? { ...step, status } : step
+						)
+					};
+
+					return {
+						...activity,
+						metadata: {
+							...activity.metadata,
+							plan: updatedPlan,
+							currentStep:
+								status === 'executing' ? stepNumber : activity.metadata.currentStep
+						}
+					};
+				}
+				return activity;
+			});
+
+			return {
+				...block,
+				activities: updatedActivities
+			};
+		});
+	}
+
 	function updateActivityStatus(toolCallId: string, status: 'completed' | 'failed') {
 		if (!currentThinkingBlockId) return;
 
@@ -1271,19 +1310,32 @@
 				break;
 
 			case 'plan_created':
-				// Plan created with steps
+				// Plan created with steps - enrich metadata for visualization
 				currentPlan = event.plan;
 				currentActivity = `Executing plan with ${event.plan?.steps?.length || 0} steps...`;
 				agentState = 'executing_plan';
 				agentStateDetails = currentActivity;
 				updateThinkingBlockState('executing_plan', currentActivity);
+
+				// Extract rich metadata for enhanced visualization
+				const enrichedMetadata = {
+					plan: event.plan,
+					stepCount: event.plan?.steps?.length || 0,
+					totalTools: event.plan?.steps
+						? [...new Set(event.plan.steps.flatMap((s) => s.tools || []))].length
+						: 0,
+					hasExecutors: event.plan?.steps?.some((s) => s.executorRequired),
+					estimatedDuration: event.plan?.metadata?.estimatedDuration,
+					hasDependencies: event.plan?.steps?.some(
+						(s) => s.dependsOn && s.dependsOn.length > 0
+					),
+					currentStep: null // Will be updated as steps execute
+				};
+
 				addActivityToThinkingBlock(
 					`Plan created with ${event.plan?.steps?.length || 0} steps`,
 					'plan_created',
-					{
-						plan: event.plan,
-						stepCount: event.plan?.steps?.length || 0
-					}
+					enrichedMetadata
 				);
 				break;
 			case 'plan_ready_for_review': {
@@ -1291,14 +1343,27 @@
 				const summary =
 					event.summary ||
 					'Plan drafted and waiting for your approval. Reply with any changes or say "run it".';
+
+				// Extract rich metadata for enhanced visualization
+				const reviewMetadata = {
+					plan: event.plan,
+					stepCount: event.plan?.steps?.length || 0,
+					totalTools: event.plan?.steps
+						? [...new Set(event.plan.steps.flatMap((s) => s.tools || []))].length
+						: 0,
+					hasExecutors: event.plan?.steps?.some((s) => s.executorRequired),
+					estimatedDuration: event.plan?.metadata?.estimatedDuration,
+					hasDependencies: event.plan?.steps?.some(
+						(s) => s.dependsOn && s.dependsOn.length > 0
+					),
+					summary,
+					currentStep: null
+				};
+
 				addActivityToThinkingBlock(
 					`Plan ready for review: ${event.plan?.steps?.length || 0} steps`,
 					'plan_created',
-					{
-						plan: event.plan,
-						stepCount: event.plan?.steps?.length || 0,
-						summary
-					}
+					reviewMetadata
 				);
 				addActivityToThinkingBlock(summary, 'general');
 				currentActivity = 'Waiting on your feedback about the plan...';
@@ -1309,11 +1374,13 @@
 			}
 
 			case 'step_start':
-				// Starting a plan step
+				// Starting a plan step - update visualization
 				currentActivity = `Step ${event.step?.stepNumber}: ${event.step?.description}`;
+				updatePlanStepStatus(event.step?.stepNumber, 'executing');
 				addActivityToThinkingBlock(`Starting: ${event.step?.description}`, 'step_start', {
 					stepNumber: event.step?.stepNumber,
-					description: event.step?.description
+					description: event.step?.description,
+					planId: currentPlan?.id
 				});
 				break;
 
@@ -1524,23 +1591,30 @@
 			}
 
 			case 'executor_result':
-				// Executor finished
+				// Executor finished - update step status if failed
+				if (event.result && !event.result.success && event.result.stepNumber) {
+					updatePlanStepStatus(event.result.stepNumber, 'failed');
+				}
 				addActivityToThinkingBlock(
 					event.result?.success ? 'Executor completed successfully' : 'Executor failed',
 					'executor_result',
 					{
-						result: event.result
+						result: event.result,
+						planId: currentPlan?.id
 					}
 				);
 				break;
 
 			case 'step_complete':
-				// Step completed
+				// Step completed - update visualization
+				updatePlanStepStatus(event.step?.stepNumber, 'completed');
 				addActivityToThinkingBlock(
 					`Step ${event.step?.stepNumber} complete`,
 					'step_complete',
 					{
-						stepNumber: event.step?.stepNumber
+						stepNumber: event.step?.stepNumber,
+						result: event.step?.result,
+						planId: currentPlan?.id
 					}
 				);
 				break;

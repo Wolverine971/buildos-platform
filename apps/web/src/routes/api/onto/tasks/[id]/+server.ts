@@ -114,7 +114,8 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			plan_id,
 			props,
 			goal_id,
-			supporting_milestone_id
+			supporting_milestone_id,
+			due_at
 		} = body;
 
 		// Get user's actor ID
@@ -213,6 +214,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		if (priority !== undefined) updateData.priority = priority;
 		if (state_key !== undefined) updateData.state_key = state_key;
 		if (plan_id !== undefined) updateData.plan_id = plan_id;
+		if (due_at !== undefined) updateData.due_at = due_at;
 
 		// Handle props update - merge with existing
 		const currentProps = (existingTask.props as Record<string, unknown> | null) ?? {};

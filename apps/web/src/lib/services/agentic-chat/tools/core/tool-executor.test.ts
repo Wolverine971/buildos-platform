@@ -6,7 +6,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { ChatToolExecutor } from './tool-executor';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Database } from '@buildos/shared-types';
+import type { Database, ChatToolCall } from '@buildos/shared-types';
 import type { SmartLLMService } from '$lib/services/smart-llm-service';
 
 // Mock modules
@@ -22,14 +22,19 @@ describe('ChatToolExecutor - Update Strategies', () => {
 	const sessionId = 'test-session-456';
 
 	beforeEach(() => {
-		// Setup mock Supabase client
-		mockSupabase = {
-			from: vi.fn().mockReturnThis(),
+		// Setup mock Supabase client with chaining support
+		const mockChain = {
 			select: vi.fn().mockReturnThis(),
 			eq: vi.fn().mockReturnThis(),
 			single: vi.fn().mockReturnThis(),
-			insert: vi.fn().mockReturnThis(),
+			maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+			insert: vi.fn().mockResolvedValue({ data: null, error: null }),
 			update: vi.fn().mockReturnThis()
+		};
+
+		mockSupabase = {
+			from: vi.fn(() => mockChain),
+			...mockChain
 		} as unknown as SupabaseClient<Database>;
 
 		// Setup mock LLM service
@@ -49,31 +54,33 @@ describe('ChatToolExecutor - Update Strategies', () => {
 				if (options?.method === 'GET') {
 					return Promise.resolve({
 						ok: true,
-						json: () => Promise.resolve({
-							success: true,
-							document: {
-								id: 'doc-123',
-								title: 'Test Document',
-								props: {
-									body_markdown: 'Existing document content'
+						json: () =>
+							Promise.resolve({
+								success: true,
+								document: {
+									id: 'doc-123',
+									title: 'Test Document',
+									props: {
+										body_markdown: 'Existing document content'
+									}
 								}
-							}
-						})
+							})
 					});
 				}
 				if (options?.method === 'PATCH') {
 					return Promise.resolve({
 						ok: true,
-						json: () => Promise.resolve({
-							success: true,
-							document: {
-								id: 'doc-123',
-								title: body.title || 'Test Document',
-								props: {
-									body_markdown: body.body_markdown
+						json: () =>
+							Promise.resolve({
+								success: true,
+								document: {
+									id: 'doc-123',
+									title: body.title || 'Test Document',
+									props: {
+										body_markdown: body.body_markdown
+									}
 								}
-							}
-						})
+							})
 					});
 				}
 			}
@@ -82,29 +89,31 @@ describe('ChatToolExecutor - Update Strategies', () => {
 				if (options?.method === 'GET') {
 					return Promise.resolve({
 						ok: true,
-						json: () => Promise.resolve({
-							success: true,
-							task: {
-								id: 'task-123',
-								title: 'Test Task',
-								props: {
-									description: 'Existing task description'
+						json: () =>
+							Promise.resolve({
+								success: true,
+								task: {
+									id: 'task-123',
+									title: 'Test Task',
+									props: {
+										description: 'Existing task description'
+									}
 								}
-							}
-						})
+							})
 					});
 				}
 				if (options?.method === 'PATCH') {
 					return Promise.resolve({
 						ok: true,
-						json: () => Promise.resolve({
-							success: true,
-							task: {
-								id: 'task-123',
-								title: body.title || 'Test Task',
-								description: body.description
-							}
-						})
+						json: () =>
+							Promise.resolve({
+								success: true,
+								task: {
+									id: 'task-123',
+									title: body.title || 'Test Task',
+									description: body.description
+								}
+							})
 					});
 				}
 			}
@@ -130,7 +139,7 @@ describe('ChatToolExecutor - Update Strategies', () => {
 
 	describe('Document Update Strategies', () => {
 		it('should use replace strategy by default', async () => {
-			const result = await toolExecutor.execute({
+			const toolCall: ChatToolCall = {
 				id: 'call-1',
 				type: 'function',
 				function: {
@@ -140,9 +149,19 @@ describe('ChatToolExecutor - Update Strategies', () => {
 						body_markdown: 'New content replacing everything'
 					})
 				}
-			});
+			} as ChatToolCall;
+
+			const result = await toolExecutor.execute(toolCall);
+
+			// Debug the result
+			if (!result.success) {
+				console.log('Test failed with error:', result.error);
+				console.log('Full result:', JSON.stringify(result, null, 2));
+			}
 
 			expect(result.success).toBe(true);
+			expect(result.tool_call_id).toBe('call-1');
+			expect(result.result).toBeDefined();
 			expect(mockFetch).toHaveBeenCalledWith(
 				expect.stringContaining('/api/onto/documents/doc-123'),
 				expect.objectContaining({
@@ -155,7 +174,7 @@ describe('ChatToolExecutor - Update Strategies', () => {
 		});
 
 		it('should append content when strategy is append', async () => {
-			const result = await toolExecutor.execute({
+			const toolCall: ChatToolCall = {
 				id: 'call-2',
 				type: 'function',
 				function: {
@@ -166,7 +185,9 @@ describe('ChatToolExecutor - Update Strategies', () => {
 						update_strategy: 'append'
 					})
 				}
-			});
+			} as ChatToolCall;
+
+			const result = await toolExecutor.execute(toolCall);
 
 			expect(result.success).toBe(true);
 			// Should fetch existing content first
@@ -179,13 +200,15 @@ describe('ChatToolExecutor - Update Strategies', () => {
 				expect.stringContaining('/api/onto/documents/doc-123'),
 				expect.objectContaining({
 					method: 'PATCH',
-					body: expect.stringContaining('Existing document content\\n\\nAdditional content')
+					body: expect.stringContaining(
+						'Existing document content\\n\\nAdditional content'
+					)
 				})
 			);
 		});
 
 		it('should use LLM merge when strategy is merge_llm', async () => {
-			const result = await toolExecutor.execute({
+			const toolCall: ChatToolCall = {
 				id: 'call-3',
 				type: 'function',
 				function: {
@@ -194,10 +217,13 @@ describe('ChatToolExecutor - Update Strategies', () => {
 						document_id: 'doc-123',
 						body_markdown: 'New insights to integrate',
 						update_strategy: 'merge_llm',
-						merge_instructions: 'Integrate the new insights while preserving the structure'
+						merge_instructions:
+							'Integrate the new insights while preserving the structure'
 					})
 				}
-			});
+			} as ChatToolCall;
+
+			const result = await toolExecutor.execute(toolCall);
 
 			expect(result.success).toBe(true);
 			// Should fetch existing content
@@ -225,11 +251,13 @@ describe('ChatToolExecutor - Update Strategies', () => {
 
 		it('should fall back to append when LLM service fails', async () => {
 			// Make LLM service throw an error
-			mockLLMService.generateTextDetailed = vi.fn().mockRejectedValue(new Error('LLM service error'));
+			mockLLMService.generateTextDetailed = vi
+				.fn()
+				.mockRejectedValue(new Error('LLM service error'));
 
 			const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
-			const result = await toolExecutor.execute({
+			const toolCall: ChatToolCall = {
 				id: 'call-4',
 				type: 'function',
 				function: {
@@ -240,7 +268,9 @@ describe('ChatToolExecutor - Update Strategies', () => {
 						update_strategy: 'merge_llm'
 					})
 				}
-			});
+			} as ChatToolCall;
+
+			const result = await toolExecutor.execute(toolCall);
 
 			expect(result.success).toBe(true);
 			expect(consoleSpy).toHaveBeenCalledWith(
@@ -265,23 +295,25 @@ describe('ChatToolExecutor - Update Strategies', () => {
 				if (url.includes('/api/onto/documents/') && options?.method === 'GET') {
 					return Promise.resolve({
 						ok: true,
-						json: () => Promise.resolve({
-							success: true,
-							document: {
-								id: 'doc-123',
-								title: 'Test Document',
-								props: {}  // No body_markdown
-							}
-						})
+						json: () =>
+							Promise.resolve({
+								success: true,
+								document: {
+									id: 'doc-123',
+									title: 'Test Document',
+									props: {} // No body_markdown
+								}
+							})
 					});
 				}
 				if (url.includes('/api/onto/documents/') && options?.method === 'PATCH') {
 					return Promise.resolve({
 						ok: true,
-						json: () => Promise.resolve({
-							success: true,
-							document: { id: 'doc-123' }
-						})
+						json: () =>
+							Promise.resolve({
+								success: true,
+								document: { id: 'doc-123' }
+							})
 					});
 				}
 				return Promise.resolve({ ok: false });
@@ -295,7 +327,7 @@ describe('ChatToolExecutor - Update Strategies', () => {
 				mockLLMService
 			);
 
-			const result = await executor.execute({
+			const toolCall: ChatToolCall = {
 				id: 'call-5',
 				type: 'function',
 				function: {
@@ -306,7 +338,9 @@ describe('ChatToolExecutor - Update Strategies', () => {
 						update_strategy: 'append'
 					})
 				}
-			});
+			} as ChatToolCall;
+
+			const result = await executor.execute(toolCall);
 
 			expect(result.success).toBe(true);
 			// Should just use the new content when existing is empty
@@ -322,7 +356,7 @@ describe('ChatToolExecutor - Update Strategies', () => {
 
 	describe('Task Update Strategies', () => {
 		it('should apply append strategy to task descriptions', async () => {
-			const result = await toolExecutor.execute({
+			const toolCall: ChatToolCall = {
 				id: 'call-6',
 				type: 'function',
 				function: {
@@ -333,7 +367,9 @@ describe('ChatToolExecutor - Update Strategies', () => {
 						update_strategy: 'append'
 					})
 				}
-			});
+			} as ChatToolCall;
+
+			const result = await toolExecutor.execute(toolCall);
 
 			expect(result.success).toBe(true);
 			// Should fetch existing task
@@ -346,7 +382,9 @@ describe('ChatToolExecutor - Update Strategies', () => {
 				expect.stringContaining('/api/onto/tasks/task-123'),
 				expect.objectContaining({
 					method: 'PATCH',
-					body: expect.stringContaining('Existing task description\\n\\nAdditional requirements')
+					body: expect.stringContaining(
+						'Existing task description\\n\\nAdditional requirements'
+					)
 				})
 			);
 		});
@@ -357,23 +395,25 @@ describe('ChatToolExecutor - Update Strategies', () => {
 				if (url.includes('/api/onto/tasks/') && options?.method === 'GET') {
 					return Promise.resolve({
 						ok: true,
-						json: () => Promise.resolve({
-							success: true,
-							task: {
-								id: 'task-123',
-								title: 'Test Task',
-								props: {} // No description
-							}
-						})
+						json: () =>
+							Promise.resolve({
+								success: true,
+								task: {
+									id: 'task-123',
+									title: 'Test Task',
+									props: {} // No description
+								}
+							})
 					});
 				}
 				if (url.includes('/api/onto/tasks/') && options?.method === 'PATCH') {
 					return Promise.resolve({
 						ok: true,
-						json: () => Promise.resolve({
-							success: true,
-							task: { id: 'task-123' }
-						})
+						json: () =>
+							Promise.resolve({
+								success: true,
+								task: { id: 'task-123' }
+							})
 					});
 				}
 				return Promise.resolve({ ok: false });
@@ -387,7 +427,7 @@ describe('ChatToolExecutor - Update Strategies', () => {
 				mockLLMService
 			);
 
-			const result = await executor.execute({
+			const toolCall: ChatToolCall = {
 				id: 'call-7',
 				type: 'function',
 				function: {
@@ -398,7 +438,9 @@ describe('ChatToolExecutor - Update Strategies', () => {
 						update_strategy: 'append'
 					})
 				}
-			});
+			} as ChatToolCall;
+
+			const result = await executor.execute(toolCall);
 
 			expect(result.success).toBe(true);
 			// Should use the new description when existing is missing
@@ -414,7 +456,7 @@ describe('ChatToolExecutor - Update Strategies', () => {
 
 	describe('Edge Cases and Error Handling', () => {
 		it('should not update if no new content is provided', async () => {
-			const result = await toolExecutor.execute({
+			const toolCall: ChatToolCall = {
 				id: 'call-8',
 				type: 'function',
 				function: {
@@ -425,7 +467,9 @@ describe('ChatToolExecutor - Update Strategies', () => {
 						update_strategy: 'append'
 					})
 				}
-			});
+			} as ChatToolCall;
+
+			const result = await toolExecutor.execute(toolCall);
 
 			expect(result.success).toBe(true);
 			// Should fetch existing content
@@ -471,7 +515,7 @@ describe('ChatToolExecutor - Update Strategies', () => {
 
 			const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
-			const result = await executor.execute({
+			const toolCall: ChatToolCall = {
 				id: 'call-9',
 				type: 'function',
 				function: {
@@ -482,7 +526,9 @@ describe('ChatToolExecutor - Update Strategies', () => {
 						update_strategy: 'append'
 					})
 				}
-			});
+			} as ChatToolCall;
+
+			const result = await executor.execute(toolCall);
 
 			expect(result.success).toBe(true);
 			expect(consoleSpy).toHaveBeenCalledWith(
@@ -511,7 +557,7 @@ describe('ChatToolExecutor - Update Strategies', () => {
 				undefined // No LLM service
 			);
 
-			const result = await executorNoLLM.execute({
+			const toolCall: ChatToolCall = {
 				id: 'call-10',
 				type: 'function',
 				function: {
@@ -522,7 +568,9 @@ describe('ChatToolExecutor - Update Strategies', () => {
 						update_strategy: 'append'
 					})
 				}
-			});
+			} as ChatToolCall;
+
+			const result = await executorNoLLM.execute(toolCall);
 
 			expect(result.success).toBe(true);
 			// Should work fine with append strategy
@@ -547,7 +595,7 @@ describe('ChatToolExecutor - Update Strategies', () => {
 
 			const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
-			const result = await executorNoLLM.execute({
+			const toolCall: ChatToolCall = {
 				id: 'call-11',
 				type: 'function',
 				function: {
@@ -558,7 +606,9 @@ describe('ChatToolExecutor - Update Strategies', () => {
 						update_strategy: 'merge_llm'
 					})
 				}
-			});
+			} as ChatToolCall;
+
+			const result = await executorNoLLM.execute(toolCall);
 
 			expect(result.success).toBe(true);
 			expect(consoleSpy).toHaveBeenCalledWith(
@@ -585,25 +635,27 @@ describe('ChatToolExecutor - Update Strategies', () => {
 				if (url.includes('/api/onto/goals/') && options?.method === 'GET') {
 					return Promise.resolve({
 						ok: true,
-						json: () => Promise.resolve({
-							success: true,
-							goal: {
-								id: 'goal-123',
-								name: 'Test Goal',
-								props: {
-									description: 'Original goal description'
+						json: () =>
+							Promise.resolve({
+								success: true,
+								goal: {
+									id: 'goal-123',
+									name: 'Test Goal',
+									props: {
+										description: 'Original goal description'
+									}
 								}
-							}
-						})
+							})
 					});
 				}
 				if (url.includes('/api/onto/goals/') && options?.method === 'PATCH') {
 					return Promise.resolve({
 						ok: true,
-						json: () => Promise.resolve({
-							success: true,
-							goal: { id: 'goal-123', name: 'Test Goal' }
-						})
+						json: () =>
+							Promise.resolve({
+								success: true,
+								goal: { id: 'goal-123', name: 'Test Goal' }
+							})
 					});
 				}
 				return Promise.resolve({ ok: false });
@@ -617,7 +669,7 @@ describe('ChatToolExecutor - Update Strategies', () => {
 				mockLLMService
 			);
 
-			const result = await executor.execute({
+			const toolCall: ChatToolCall = {
 				id: 'call-12',
 				type: 'function',
 				function: {
@@ -628,14 +680,18 @@ describe('ChatToolExecutor - Update Strategies', () => {
 						update_strategy: 'append'
 					})
 				}
-			});
+			} as ChatToolCall;
+
+			const result = await executor.execute(toolCall);
 
 			expect(result.success).toBe(true);
 			expect(mockFetch).toHaveBeenCalledWith(
 				expect.stringContaining('/api/onto/goals/goal-123'),
 				expect.objectContaining({
 					method: 'PATCH',
-					body: expect.stringContaining('Original goal description\\n\\nAdditional success criteria')
+					body: expect.stringContaining(
+						'Original goal description\\n\\nAdditional success criteria'
+					)
 				})
 			);
 		});
@@ -646,25 +702,27 @@ describe('ChatToolExecutor - Update Strategies', () => {
 				if (url.includes('/api/onto/plans/') && options?.method === 'GET') {
 					return Promise.resolve({
 						ok: true,
-						json: () => Promise.resolve({
-							success: true,
-							plan: {
-								id: 'plan-123',
-								name: 'Test Plan',
-								props: {
-									description: 'Original plan outline'
+						json: () =>
+							Promise.resolve({
+								success: true,
+								plan: {
+									id: 'plan-123',
+									name: 'Test Plan',
+									props: {
+										description: 'Original plan outline'
+									}
 								}
-							}
-						})
+							})
 					});
 				}
 				if (url.includes('/api/onto/plans/') && options?.method === 'PATCH') {
 					return Promise.resolve({
 						ok: true,
-						json: () => Promise.resolve({
-							success: true,
-							plan: { id: 'plan-123', name: 'Test Plan' }
-						})
+						json: () =>
+							Promise.resolve({
+								success: true,
+								plan: { id: 'plan-123', name: 'Test Plan' }
+							})
 					});
 				}
 				return Promise.resolve({ ok: false });
@@ -678,7 +736,7 @@ describe('ChatToolExecutor - Update Strategies', () => {
 				mockLLMService
 			);
 
-			const result = await executor.execute({
+			const toolCall: ChatToolCall = {
 				id: 'call-13',
 				type: 'function',
 				function: {
@@ -690,7 +748,9 @@ describe('ChatToolExecutor - Update Strategies', () => {
 						merge_instructions: 'Add the new milestones to the existing plan structure'
 					})
 				}
-			});
+			} as ChatToolCall;
+
+			const result = await executor.execute(toolCall);
 
 			expect(result.success).toBe(true);
 			expect(mockLLMService.generateTextDetailed).toHaveBeenCalledWith(
