@@ -1,7 +1,12 @@
 <!-- apps/web/src/routes/(public)/integrations/+page.svelte -->
 <script lang="ts">
 	import Button from '$lib/components/ui/Button.svelte';
-	import { Card, CardBody, CardHeader, CardFooter } from '$lib/components/ui';
+	import Card from '$lib/components/ui/Card.svelte';
+	import CardBody from '$lib/components/ui/CardBody.svelte';
+
+	import CardHeader from '$lib/components/ui/CardHeader.svelte';
+	import CardFooter from '$lib/components/ui/CardFooter.svelte';
+
 	import Badge from '$lib/components/ui/Badge.svelte';
 	import Alert from '$lib/components/ui/Alert.svelte';
 	import {

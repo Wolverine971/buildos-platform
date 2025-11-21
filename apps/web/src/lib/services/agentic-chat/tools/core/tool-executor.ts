@@ -314,6 +314,31 @@ interface CreateOntoProjectArgs {
 	meta?: Record<string, unknown>;
 }
 
+interface SuggestTemplateArgs {
+	type_key: string;
+	name: string;
+	description: string;
+	parent_type_key?: string;
+	match_score: number;
+	rationale: string;
+	properties: Record<
+		string,
+		{
+			type: 'string' | 'number' | 'boolean' | 'array' | 'object' | 'date';
+			description?: string;
+			default?: any;
+			required?: boolean;
+		}
+	>;
+	workflow_states: Array<{
+		state: string;
+		description?: string;
+		transitions_to?: string[];
+	}>;
+	example_props?: Record<string, unknown>;
+	benefits?: string[];
+}
+
 interface RequestTemplateCreationArgs {
 	braindump: string;
 	realm: string;
@@ -404,6 +429,7 @@ export class ChatToolExecutor {
 	private adminSupabase?: TypedSupabaseClient;
 	private llmService?: SmartLLMService;
 	private templateGenerator?: EnhancedTemplateGenerator;
+	private templateSuggestions?: Map<string, any>;
 
 	constructor(
 		private supabase: SupabaseClient,
@@ -499,6 +525,37 @@ export class ChatToolExecutor {
 		nameHint?: string;
 		metadata?: Record<string, unknown>;
 	}): Promise<string | undefined> {
+		// Check if we have a suggested template for this type_key
+		if (params.typeKey && this.templateSuggestions?.has(params.typeKey)) {
+			const suggestion = this.templateSuggestions.get(params.typeKey);
+
+			// Pass the suggestion metadata to the template generator
+			// This will help create a more intelligent template
+			const enhancedMetadata = {
+				...params.metadata,
+				suggested_template: {
+					name: suggestion.name,
+					description: suggestion.description,
+					schema: suggestion.schema,
+					default_props: suggestion.default_props,
+					fsm_spec: suggestion.fsm_spec,
+					parent_type_key: suggestion.parent_type_key
+				}
+			};
+
+			// Clear the suggestion after using it
+			this.templateSuggestions.delete(params.typeKey);
+
+			// Use the enhanced metadata for template creation
+			return this.getTemplateGenerator().ensureTemplate({
+				scope: params.scope as any,
+				typeKey: params.typeKey,
+				props: { ...suggestion.default_props, ...params.props },
+				nameHint: suggestion.name || params.nameHint,
+				metadata: enhancedMetadata
+			});
+		}
+
 		// Use the enhanced template generator for intelligent template creation
 		return this.getTemplateGenerator().ensureTemplate({
 			scope: params.scope as any,
@@ -681,6 +738,9 @@ export class ChatToolExecutor {
 				case 'create_onto_project':
 					result = await this.createOntoProject(args as CreateOntoProjectArgs);
 					break;
+				case 'suggest_template':
+					result = await this.suggestTemplate(args as SuggestTemplateArgs);
+					break;
 				case 'request_template_creation':
 					result = await this.requestTemplateCreation(
 						args as RequestTemplateCreationArgs
@@ -808,6 +868,102 @@ export class ChatToolExecutor {
 			this.templateCreationService = new TemplateCreationService(this.supabase as any);
 		}
 		return this.templateCreationService;
+	}
+
+	private async suggestTemplate(args: SuggestTemplateArgs) {
+		// Validate required fields
+		if (!args.type_key || !args.name || !args.description) {
+			throw new Error('type_key, name, and description are required for template suggestion');
+		}
+
+		// Build FSM spec from workflow states
+		const fsmSpec = {
+			initial: args.workflow_states[0]?.state || 'draft',
+			states: args.workflow_states.map((s) => s.state),
+			transitions: args.workflow_states.reduce(
+				(acc, state) => {
+					if (state.transitions_to && state.transitions_to.length > 0) {
+						state.transitions_to.forEach((target) => {
+							acc.push({
+								from: state.state,
+								to: target,
+								event: `${state.state}_to_${target}`
+							});
+						});
+					}
+					return acc;
+				},
+				[] as Array<{ from: string; to: string; event: string }>
+			)
+		};
+
+		// Convert properties to JSON schema format
+		const schema = {
+			type: 'object',
+			properties: Object.entries(args.properties).reduce(
+				(acc, [key, prop]) => {
+					acc[key] = {
+						type: prop.type === 'date' ? 'string' : prop.type,
+						...(prop.type === 'date' && { format: 'date-time' }),
+						...(prop.description && { description: prop.description })
+					};
+					return acc;
+				},
+				{} as Record<string, any>
+			),
+			required: Object.entries(args.properties)
+				.filter(([_, prop]) => prop.required)
+				.map(([key]) => key)
+		};
+
+		// Build default props
+		const defaultProps = Object.entries(args.properties).reduce(
+			(acc, [key, prop]) => {
+				if (prop.default !== undefined) {
+					acc[key] = prop.default;
+				}
+				return acc;
+			},
+			{} as Record<string, any>
+		);
+
+		// Store the suggestion for use by create_onto_project
+		// This will be used when the AI creates the project with this type_key
+		const suggestion = {
+			type_key: args.type_key,
+			name: args.name,
+			description: args.description,
+			parent_type_key: args.parent_type_key,
+			schema,
+			default_props: defaultProps,
+			fsm_spec: fsmSpec,
+			match_score: args.match_score,
+			rationale: args.rationale,
+			benefits: args.benefits,
+			example_props: args.example_props,
+			suggested_at: new Date().toISOString()
+		};
+
+		// Store in session context for later use
+		if (!this.templateSuggestions) {
+			this.templateSuggestions = new Map();
+		}
+		this.templateSuggestions.set(args.type_key, suggestion);
+
+		return {
+			success: true,
+			result: {
+				message: `Template suggestion registered: ${args.name}`,
+				type_key: args.type_key,
+				description: args.description,
+				properties_count: Object.keys(args.properties).length,
+				workflow_states: args.workflow_states.map((s) => s.state),
+				match_score: args.match_score,
+				rationale: args.rationale,
+				benefits: args.benefits,
+				note: 'This template will be automatically created when you use create_onto_project with this type_key'
+			}
+		};
 	}
 
 	private async requestTemplateCreation(args: RequestTemplateCreationArgs) {

@@ -238,6 +238,7 @@ export const ProjectSpecSchema = z.object({
 			z.object({
 				title: z.string(),
 				plan_name: z.string().optional(),
+				// Note: tasks don't have type_key in the database schema (only entity without it)
 				state_key: z.string().optional(),
 				priority: z.number().int().min(1).max(5).optional(),
 				due_at: z.string().datetime().optional(),

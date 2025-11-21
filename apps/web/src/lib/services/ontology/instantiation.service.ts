@@ -215,6 +215,14 @@ export async function instantiateProject(
 		projectId = projectRows.id;
 		inserted.projectId = projectId;
 
+		// Type guard: Ensure projectId is string for all subsequent operations
+		if (!projectId) {
+			throw new OntologyInstantiationError('Project ID is required but was not set');
+		}
+
+		// Create typed constant for type-safe operations (TypeScript narrowing doesn't flow into closures)
+		const typedProjectId: string = projectId;
+
 		if (projectTemplate?.id) {
 			edgesToInsert.push({
 				src_kind: 'project',
@@ -226,7 +234,7 @@ export async function instantiateProject(
 		}
 
 		if (parsed.context_document) {
-			const contextDocId = await insertDocument(client, projectId, actorId, {
+			const contextDocId = await insertDocument(client, typedProjectId, actorId, {
 				title: parsed.context_document.title,
 				type_key: parsed.context_document.type_key ?? 'document.project.context',
 				state_key: parsed.context_document.state_key ?? 'active',
@@ -270,7 +278,7 @@ export async function instantiateProject(
 					}
 
 					return {
-						project_id: projectId,
+						project_id: typedProjectId,
 						name: goal.name,
 						type_key: goal.type_key ?? null,
 						props: finalProps as Json,
@@ -307,7 +315,7 @@ export async function instantiateProject(
 		// Requirements
 		if (parsed.requirements?.length) {
 			const requirementInserts = parsed.requirements.map((req) => ({
-				project_id: projectId,
+				project_id: typedProjectId,
 				text: req.text,
 				type_key: req.type_key ?? 'requirement.general',
 				props: (req.props ?? {}) as Json,
@@ -342,7 +350,7 @@ export async function instantiateProject(
 		// Documents (sequential so we can capture context doc)
 		if (parsed.documents?.length) {
 			for (const doc of parsed.documents) {
-				const docId = await insertDocument(client, projectId, actorId, {
+				const docId = await insertDocument(client, typedProjectId, actorId, {
 					title: doc.title,
 					type_key: doc.type_key,
 					state_key: doc.state_key,
@@ -409,7 +417,7 @@ export async function instantiateProject(
 				const { data: planRow, error: planError } = await client
 					.from('onto_plans')
 					.insert({
-						project_id: projectId,
+						project_id: typedProjectId,
 						name: plan.name,
 						type_key: plan.type_key,
 						state_key: plan.state_key ?? 'draft',
@@ -440,7 +448,7 @@ export async function instantiateProject(
 			counts.plans = inserted.plans.length;
 		}
 
-		// Tasks
+		// Tasks (Note: tasks don't have type_key in the schema, unlike other entities)
 		if (parsed.tasks?.length) {
 			for (const task of parsed.tasks) {
 				let plan_id: string | null = null;
@@ -454,26 +462,14 @@ export async function instantiateProject(
 					plan_id = mappedPlanId;
 				}
 
-				// Resolve template and merge props if type_key is provided
-				let templateMergedProps = task.props ?? {};
-				if (task.type_key) {
-					const { mergedProps } = await resolveAndMergeTemplateProps(
-						client,
-						task.type_key,
-						'task',
-						task.props ?? {},
-						true // Skip if no template found
-					);
-					templateMergedProps = mergedProps;
-				}
-
+				// Tasks don't use templates (no type_key column), just merge props directly
 				const resolvedTaskFacets = resolveFacets(
 					undefined,
-					templateMergedProps.facets as Facets
+					(task.props?.facets as Facets) ?? undefined
 				);
 				await assertValidFacets(client, resolvedTaskFacets, 'task', `task "${task.title}"`);
 
-				const mergedTaskProps = mergeProps(templateMergedProps);
+				const mergedTaskProps = mergeProps(task.props ?? {});
 				if (hasFacetValues(resolvedTaskFacets)) {
 					mergedTaskProps.facets = resolvedTaskFacets;
 				} else {
@@ -483,7 +479,7 @@ export async function instantiateProject(
 				const { data: taskRow, error: taskError } = await client
 					.from('onto_tasks')
 					.insert({
-						project_id: projectId,
+						project_id: typedProjectId,
 						plan_id,
 						title: task.title,
 						state_key: task.state_key ?? 'todo',
@@ -558,7 +554,7 @@ export async function instantiateProject(
 				const { data: outputRow, error: outputError } = await client
 					.from('onto_outputs')
 					.insert({
-						project_id: projectId,
+						project_id: typedProjectId,
 						name: output.name,
 						type_key: output.type_key,
 						state_key: output.state_key ?? 'draft',
@@ -590,7 +586,7 @@ export async function instantiateProject(
 		// Sources
 		if (parsed.sources?.length) {
 			const sourceInserts = parsed.sources.map((source) => ({
-				project_id: projectId,
+				project_id: typedProjectId,
 				uri: source.uri,
 				snapshot_uri: source.snapshot_uri ?? null,
 				props: (source.props ?? {}) as Json,
@@ -623,7 +619,7 @@ export async function instantiateProject(
 		// Metrics
 		if (parsed.metrics?.length) {
 			const metricInserts = parsed.metrics.map((metric) => ({
-				project_id: projectId,
+				project_id: typedProjectId,
 				name: metric.name,
 				type_key: metric.type_key ?? null,
 				unit: metric.unit,
@@ -658,7 +654,7 @@ export async function instantiateProject(
 		// Milestones
 		if (parsed.milestones?.length) {
 			const milestoneInserts = parsed.milestones.map((milestone) => ({
-				project_id: projectId,
+				project_id: typedProjectId,
 				title: milestone.title,
 				type_key: milestone.type_key ?? null,
 				due_at: milestone.due_at,
@@ -692,7 +688,7 @@ export async function instantiateProject(
 		// Risks
 		if (parsed.risks?.length) {
 			const riskInserts = parsed.risks.map((risk) => ({
-				project_id: projectId,
+				project_id: typedProjectId,
 				title: risk.title,
 				type_key: risk.type_key ?? null,
 				probability: risk.probability ?? null,
@@ -728,7 +724,7 @@ export async function instantiateProject(
 		// Decisions
 		if (parsed.decisions?.length) {
 			const decisionInserts = parsed.decisions.map((decision) => ({
-				project_id: projectId,
+				project_id: typedProjectId,
 				title: decision.title,
 				decision_at: decision.decision_at,
 				rationale: decision.rationale ?? null,

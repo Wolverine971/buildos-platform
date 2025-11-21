@@ -14,6 +14,7 @@ export type ActivityType =
 	| 'context_shift'
 	| 'template_request'
 	| 'template_status'
+	| 'template_suggestion'
 	| 'ontology_loaded'
 	| 'clarification'
 	| 'general';

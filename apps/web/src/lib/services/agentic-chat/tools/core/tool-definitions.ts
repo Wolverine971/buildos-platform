@@ -1296,6 +1296,108 @@ Examples:
 	{
 		type: 'function',
 		function: {
+			name: 'suggest_template',
+			description: `Suggest a new template based on user requirements when no existing template fits well.
+
+This tool helps you propose custom templates that perfectly match the user's needs. The system will automatically create the template when the project is created.
+
+Use this when:
+- No existing template scores >70% match
+- User needs combine multiple domains
+- Project has unique workflow requirements
+- You want to specialize an existing template`,
+			parameters: {
+				type: 'object',
+				properties: {
+					type_key: {
+						type: 'string',
+						description:
+							'Suggested template type_key following pattern: [scope].[domain].[specialization]. Examples: project.research.ai_climate, project.event.wedding, project.software.mobile_mvp'
+					},
+					name: {
+						type: 'string',
+						description:
+							'Human-readable template name (e.g., "AI Climate Research Project", "Mobile App MVP")'
+					},
+					description: {
+						type: 'string',
+						description:
+							'Clear description of what this template is for and when to use it'
+					},
+					parent_type_key: {
+						type: 'string',
+						description:
+							'Optional parent template to inherit from (e.g., project.research for project.research.ai_climate)'
+					},
+					match_score: {
+						type: 'number',
+						description:
+							'How well existing templates match (0-100). Use <70 to justify new template'
+					},
+					rationale: {
+						type: 'string',
+						description: 'Why a new template is needed instead of existing ones'
+					},
+					properties: {
+						type: 'object',
+						description:
+							'Suggested template properties with descriptions. Each key is a property name, value is an object with type, description, default value, and whether required'
+					},
+					workflow_states: {
+						type: 'array',
+						description: 'FSM states for the project workflow',
+						items: {
+							type: 'object',
+							properties: {
+								state: {
+									type: 'string',
+									description: 'State name (e.g., planning, execution, review)'
+								},
+								description: {
+									type: 'string',
+									description: 'What happens in this state'
+								},
+								transitions_to: {
+									type: 'array',
+									items: { type: 'string' },
+									description: 'Valid next states'
+								}
+							},
+							required: ['state']
+						}
+					},
+					example_props: {
+						type: 'object',
+						description: `Example property values for this specific project instance extracted from the user's message.
+
+This should contain actual values from the conversation that will be used when creating the project.
+
+Example: If user mentions "200 guests, $80k budget", set:
+{ guest_count: 200, budget: 80000, venue_details: { status: "searching" } }
+
+These values will be passed to create_onto_project as the initial props.`
+					},
+					benefits: {
+						type: 'array',
+						items: { type: 'string' },
+						description: 'Key benefits of using this specialized template'
+					}
+				},
+				required: [
+					'type_key',
+					'name',
+					'description',
+					'match_score',
+					'rationale',
+					'properties',
+					'workflow_states'
+				]
+			}
+		}
+	},
+	{
+		type: 'function',
+		function: {
 			name: 'request_template_creation',
 			description: `Escalate when no suitable project template exists. Use this AFTER exhausting template search.
 
@@ -1386,6 +1488,18 @@ This is the PRIMARY tool for creating projects. It supports creating a complete 
 - Start date (default to today if not specified)
 - Facets (context, scale, stage) from user intent
 - Basic goals and tasks from user description
+- ⚠️ **Template-specific props extracted from user's message** - CRITICAL!
+
+**Props Extraction (CRITICAL)**:
+After selecting a template, you MUST:
+1. Review the template's property schema
+2. Extract ALL relevant values from the user's message
+3. Populate project.props with template-specific properties
+4. Include facets plus all template properties with extracted values
+
+Example: User says "wedding for 150 guests at Grand Hall"
+Template has: venue_details, guest_count, budget
+→ props: { facets: {...}, venue_details: { name: "Grand Hall" }, guest_count: 150, budget: null }
 
 **When to use clarifications array**:
 Only add clarification questions if CRITICAL information is missing that you cannot reasonably infer.
@@ -1395,9 +1509,10 @@ For example:
 
 **Workflow**:
 1. Search templates with list_onto_templates to find appropriate type_key
-2. Fill in ProjectSpec with inferred data
-3. Add clarifications[] only if essential info is missing
-4. Call this tool with the spec
+2. Extract template-specific property values from user's message
+3. Fill in ProjectSpec with inferred data AND extracted props
+4. Add clarifications[] only if essential info is missing
+5. Call this tool with the complete spec
 
 **ProjectSpec Structure**:
 {
@@ -1452,10 +1567,33 @@ For example:
 							},
 							props: {
 								type: 'object',
-								description: 'Project properties including facets',
+								description: `⚠️ CRITICAL: Template-specific properties extracted from user's message.
+
+This object MUST contain:
+1. facets (context, scale, stage) - Standard project facets
+2. ALL template-specific properties with values from the user's message
+
+**Extraction Process**:
+- Review the template schema (from suggest_template or list_onto_templates)
+- For EACH property in the schema, extract relevant info from user's message
+- Populate with specific values the user mentioned
+- Use intelligent defaults for properties inferable from context
+
+**Examples**:
+- Wedding template (venue_details, guest_count, budget):
+  User says "200 guests, $80k budget" → props: { guest_count: 200, budget: 80000, venue_details: { status: "searching" } }
+
+- Software template (tech_stack, deployment_target):
+  User says "Next.js app on Vercel" → props: { tech_stack: ["Next.js"], deployment_target: "Vercel" }
+
+- Research template (hypothesis, methodology):
+  User says "testing if meditation reduces stress" → props: { hypothesis: "meditation reduces stress", methodology: "experimental" }
+
+DO NOT leave template properties empty if information is available in the conversation!`,
 								properties: {
 									facets: {
 										type: 'object',
+										description: 'Standard facets (always include)',
 										properties: {
 											context: {
 												type: 'string',

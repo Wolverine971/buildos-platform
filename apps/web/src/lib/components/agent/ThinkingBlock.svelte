@@ -81,6 +81,11 @@
 			color: 'text-pink-400 dark:text-pink-300',
 			prefix: 'TEMPLATE'
 		},
+		template_suggestion: {
+			icon: '✨',
+			color: 'text-purple-400 dark:text-purple-300',
+			prefix: 'SUGGEST'
+		},
 		ontology_loaded: {
 			icon: '📚',
 			color: 'text-indigo-400 dark:text-indigo-300',

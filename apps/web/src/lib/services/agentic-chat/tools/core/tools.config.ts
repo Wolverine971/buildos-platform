@@ -67,6 +67,7 @@ export const TOOL_CATEGORIES = {
 			'delete_onto_goal',
 			'delete_onto_plan',
 			'delete_onto_document',
+			'suggest_template',
 			'request_template_creation'
 		],
 		averageTokens: 400,
@@ -113,7 +114,12 @@ const TOOL_GROUPS: Record<ToolContextScope, string[]> = {
 		'list_onto_templates',
 		'search_onto_documents'
 	],
-	project_create: ['list_onto_templates', 'request_template_creation', 'create_onto_project'],
+	project_create: [
+		'list_onto_templates',
+		'suggest_template',
+		'request_template_creation',
+		'create_onto_project'
+	],
 	project: [
 		'list_onto_projects',
 		'search_ontology',
@@ -130,6 +136,7 @@ const TOOL_GROUPS: Record<ToolContextScope, string[]> = {
 		'get_onto_plan_details',
 		'get_onto_document_details',
 		'search_onto_documents',
+		'suggest_template',
 		'request_template_creation',
 		'list_task_documents',
 		'create_onto_task',
