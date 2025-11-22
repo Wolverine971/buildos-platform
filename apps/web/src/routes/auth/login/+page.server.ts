@@ -9,3 +9,6 @@ export const load: PageServerLoad = async ({ locals: { safeGetSession } }) => {
 		throw redirect(303, '/');
 	}
 };
+
+// Disable prerendering for this page since it requires session data at runtime
+export const prerender = false;
