@@ -740,17 +740,17 @@ if (project.state_key === 'blocked') {
 							class="flex flex-col items-center justify-center gap-4 sm:flex-row sm:gap-6 text-sm"
 						>
 							<a
-								href="mailto:integrations@buildos.dev"
+								href="mailto:dj@build-os.com"
 								class="flex items-center gap-2 font-medium text-blue-600 dark:text-blue-400 hover:text-purple-600 dark:hover:text-purple-400 transition-colors duration-200"
 							>
-								integrations@buildos.dev
+								dj@build-os.com
 							</a>
-							<a
+							<!-- <a
 								href="/discord"
 								class="flex items-center gap-2 font-medium text-blue-600 dark:text-blue-400 hover:text-purple-600 dark:hover:text-purple-400 transition-colors duration-200"
 							>
 								Join our Discord
-							</a>
+							</a> -->
 							<a
 								href="/docs"
 								class="flex items-center gap-2 font-medium text-blue-600 dark:text-blue-400 hover:text-purple-600 dark:hover:text-purple-400 transition-colors duration-200"
