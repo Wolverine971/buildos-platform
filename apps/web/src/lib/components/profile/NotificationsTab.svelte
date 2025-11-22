@@ -47,7 +47,7 @@
 	<!-- Header -->
 	<div class="flex items-start gap-3 sm:gap-4">
 		<div
-			class="flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-gradient-to-br from-purple-500 to-purple-600 dark:from-purple-600 dark:to-purple-700 shadow-lg flex-shrink-0"
+			class="flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-lg dither-gradient shadow-lg flex-shrink-0"
 		>
 			<Bell class="w-5 h-5 sm:w-6 sm:h-6 text-white" />
 		</div>

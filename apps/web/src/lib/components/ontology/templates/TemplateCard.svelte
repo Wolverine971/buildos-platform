@@ -170,7 +170,7 @@
 		<!-- Abstract Template Warning -->
 		{#if template.is_abstract}
 			<div
-				class="mb-4 px-3 py-2 bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-900/20 dark:to-yellow-900/20 border border-amber-200 dark:border-amber-800 rounded-lg"
+				class="mb-4 px-3 py-2 bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-900/20 dark:to-yellow-900/20 border border-amber-200 dark:border-amber-800 rounded-lg dither-subtle"
 			>
 				<p class="text-xs text-amber-700 dark:text-amber-400 flex items-center gap-2">
 					<svg

@@ -168,8 +168,8 @@
 					</div>
 					<div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1">
 						<div
-							class="bg-primary-600 dark:bg-primary-500 h-1 rounded-full transition-all duration-300"
-							style="width: {completionRate}%"
+							class="bg-primary-600 dark:bg-primary-500 h-1 rounded-full"
+							style="width: {completionRate}%; transition: width 300ms cubic-bezier(0.4, 0, 0.2, 1);"
 						/>
 					</div>
 				</div>

@@ -63,9 +63,10 @@
 							name="password"
 							type="password"
 							autocomplete="new-password"
+							enterkeyhint="next"
 							required
 							placeholder="Enter your new password"
-							size="md"
+							size="lg"
 						/>
 					</FormField>
 
@@ -75,9 +76,10 @@
 							name="confirmPassword"
 							type="password"
 							autocomplete="new-password"
+							enterkeyhint="done"
 							required
 							placeholder="Confirm your new password"
-							size="md"
+							size="lg"
 						/>
 					</FormField>
 				</div>

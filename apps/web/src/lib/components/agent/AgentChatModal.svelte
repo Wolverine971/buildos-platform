@@ -207,6 +207,61 @@
 	let voiceRecordingDuration = $state(0);
 	// Controls whether the context selection screen is visible (keeps state alive for back nav)
 	let showContextSelection = $state(true);
+	let contextSelectionView = $state<'primary' | 'projectHub' | 'project-selection'>('primary');
+	let contextSelectionRef = $state<any>(null);
+
+	// Unified back navigation logic
+	const shouldShowBackButton = $derived.by(() => {
+		// Show back button when in context selection sub-views (not primary)
+		if (showContextSelection && contextSelectionView !== 'primary') {
+			return true;
+		}
+		// Show back button in all other views except the initial context selection primary view
+		if (showContextSelection && contextSelectionView === 'primary') {
+			return false;
+		}
+		return true;
+	});
+
+	function handleBackNavigation() {
+		if (isStreaming) return;
+		stopVoiceInput();
+
+		// Handle back based on current view state
+		if (showContextSelection && contextSelectionView !== 'primary') {
+			// Delegate to ContextSelectionScreen's internal navigation
+			contextSelectionRef?.handleBackNavigation?.();
+		} else if (showProjectActionSelector) {
+			// From project action selector → back to context selection
+			autoInitDismissed = true;
+			showProjectActionSelector = false;
+			resetConversation({ preserveContext: false });
+			showContextSelection = true;
+		} else if (agentToAgentMode && agentToAgentStep === 'goal') {
+			// From goal step → back to project selection
+			backToAgentProjectSelection();
+		} else if (agentToAgentMode && agentToAgentStep === 'project') {
+			// From project step → back to agent selection
+			backToAgentSelection();
+		} else if (agentToAgentMode && agentToAgentStep === 'agent') {
+			// From agent selection → back to context selection
+			agentToAgentMode = false;
+			agentToAgentStep = null;
+			changeContext();
+		} else if (agentToAgentMode && agentToAgentStep === 'chat') {
+			// From chat with automation → back to context selection
+			changeContext();
+		} else {
+			// From regular chat view → back to context selection
+			changeContext();
+		}
+	}
+
+	function handleContextSelectionNavChange(
+		view: 'primary' | 'projectHub' | 'project-selection'
+	) {
+		contextSelectionView = view;
+	}
 
 	// ✅ Svelte 5: Use $derived for computed values
 	const isSendDisabled = $derived(
@@ -1782,6 +1837,8 @@
 	{isOpen}
 	onClose={handleClose}
 	size="xl"
+	variant="bottom-sheet"
+	enableGestures={true}
 	showCloseButton={false}
 	ariaLabel="BuildOS chat assistant dialog"
 >
@@ -1795,7 +1852,8 @@
 			{displayContextLabel}
 			{displayContextSubtitle}
 			{isStreaming}
-			onChangeContext={changeContext}
+			showBackButton={shouldShowBackButton}
+			onBack={handleBackNavigation}
 			onClose={handleClose}
 			projectId={selectedEntityId}
 			{resolvedProjectFocus}
@@ -1808,16 +1866,21 @@
 		/>
 	</div>
 
-	<!-- Fixed height container to prevent size changes -->
+	<!-- Optimized height container - more space on mobile -->
 	<div
-		class="relative z-10 flex h-[70vh] min-h-[500px] flex-col overflow-hidden rounded-3xl border border-slate-200/60 bg-white/95 shadow-[0_28px_70px_-40px_rgba(15,23,42,0.5)] backdrop-blur-xl dark:border-slate-700/60 dark:bg-slate-900/90"
+		class="relative z-10 flex h-[calc(100vh-8rem)] flex-col overflow-hidden rounded-xl border border-slate-200/60 bg-white/95 shadow-[0_28px_70px_-40px_rgba(15,23,42,0.5)] backdrop-blur-xl dark:border-slate-700/60 dark:bg-slate-900/90 sm:h-[75vh] sm:min-h-[500px]"
 	>
 		<!-- Keep context selection mounted so Back returns to prior step -->
 		<div
 			class={`flex h-full min-h-0 flex-col ${showContextSelection ? '' : 'hidden'}`}
 			aria-hidden={!showContextSelection}
 		>
-			<ContextSelectionScreen inModal on:select={handleContextSelect} />
+			<ContextSelectionScreen
+				bind:this={contextSelectionRef}
+				inModal
+				on:select={handleContextSelect}
+				onNavigationChange={handleContextSelectionNavChange}
+			/>
 		</div>
 
 		<!-- Chat / wizard view - Same height constraint as selection -->
@@ -1827,12 +1890,6 @@
 					projectId={selectedEntityId || ''}
 					projectName={projectFocus?.projectName ?? selectedContextLabel ?? 'Project'}
 					onSelectAction={(action) => handleProjectActionSelect(action)}
-					onBack={() => {
-						autoInitDismissed = true;
-						showProjectActionSelector = false;
-						resetConversation({ preserveContext: false });
-						showContextSelection = true;
-					}}
 					onOpenFocusSelector={openFocusSelector}
 				/>
 			{:else if agentToAgentMode && agentToAgentStep !== 'chat'}

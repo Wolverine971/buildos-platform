@@ -141,7 +141,7 @@
 	<div class="mb-8 text-center">
 		<div class="flex justify-center mb-6">
 			<div
-				class="w-16 h-16 bg-gradient-to-br from-green-100 to-blue-100 dark:from-green-900/30 dark:to-blue-900/30 rounded-2xl flex items-center justify-center shadow-lg"
+				class="w-16 h-16 dither-soft rounded-2xl flex items-center justify-center shadow-lg"
 			>
 				<CheckCircle2 class="w-8 h-8 text-green-600 dark:text-green-400" />
 			</div>
@@ -164,11 +164,11 @@
 	<!-- BuildOS Way Reminder -->
 	<div class="mb-8">
 		<div
-			class="bg-gradient-to-br from-green-50 to-blue-50 dark:from-green-950/30 dark:to-blue-950/30 rounded-xl border-2 border-green-200 dark:border-green-800 p-6"
+			class="dither-soft rounded-xl border-2 border-green-200 dark:border-green-800 p-6"
 		>
 			<div class="flex items-start gap-4">
 				<div
-					class="flex-shrink-0 w-10 h-10 bg-gradient-to-br from-green-500 to-green-600 rounded-full flex items-center justify-center text-white font-bold shadow-md"
+					class="flex-shrink-0 w-10 h-10 dither-gradient rounded-full flex items-center justify-center text-white font-bold shadow-md"
 				>
 					2
 				</div>
@@ -189,11 +189,11 @@
 	<div class="space-y-6">
 		<!-- Daily Brief Email Section -->
 		<div
-			class="bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-950/30 dark:to-blue-950/30 rounded-xl border-2 border-purple-200 dark:border-purple-800 p-6 shadow-sm"
+			class="dither-soft rounded-xl border-2 border-purple-200 dark:border-purple-800 p-6 shadow-sm"
 		>
 			<div class="flex items-start gap-4 mb-4">
 				<div
-					class="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-purple-100 to-pink-100 dark:from-purple-900/40 dark:to-pink-900/40 rounded-lg flex items-center justify-center"
+					class="flex-shrink-0 w-12 h-12 dither-subtle rounded-lg flex items-center justify-center"
 				>
 					<Mail class="w-6 h-6 text-purple-600 dark:text-purple-400" />
 				</div>
@@ -259,11 +259,11 @@
 
 		<!-- SMS Notifications Section -->
 		<div
-			class="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/30 dark:to-emerald-950/30 rounded-xl border-2 border-green-200 dark:border-green-800 p-6 shadow-sm"
+			class="dither-soft rounded-xl border-2 border-green-200 dark:border-green-800 p-6 shadow-sm"
 		>
 			<div class="flex items-start gap-4 mb-4">
 				<div
-					class="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-green-100 to-emerald-100 dark:from-green-900/40 dark:to-emerald-900/40 rounded-lg flex items-center justify-center"
+					class="flex-shrink-0 w-12 h-12 dither-subtle rounded-lg flex items-center justify-center"
 				>
 					<Bell class="w-6 h-6 text-green-600 dark:text-green-400" />
 				</div>

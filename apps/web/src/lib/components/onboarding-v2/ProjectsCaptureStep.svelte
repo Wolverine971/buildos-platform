@@ -470,7 +470,7 @@
 	<div class="mb-8 text-center">
 		<div class="flex justify-center mb-6">
 			<div
-				class="w-16 h-16 bg-gradient-to-br from-purple-100 to-blue-100 dark:from-purple-900/30 dark:to-blue-900/30 rounded-2xl flex items-center justify-center shadow-lg"
+				class="w-16 h-16 dither-soft rounded-2xl flex items-center justify-center shadow-lg"
 			>
 				<Rocket class="w-8 h-8 text-purple-600 dark:text-purple-400" />
 			</div>
@@ -492,7 +492,7 @@
 
 	<!-- Philosophy Reinforcement + Examples -->
 	<div
-		class="mb-6 p-6 bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-950/30 dark:to-purple-950/30 rounded-xl border-2 border-blue-200 dark:border-blue-800"
+		class="mb-6 p-6 dither-soft rounded-xl border-2 border-blue-200 dark:border-blue-800"
 	>
 		<div
 			class="mb-4 bg-white dark:bg-gray-800 rounded-lg p-8 text-center border-2 border-dashed border-gray-300 dark:border-gray-600"
@@ -616,7 +616,7 @@
 		{:else if !hasCalendarConnected && !isCheckingConnection}
 			<!-- Calendar Not Connected - Value Proposition CTA -->
 			<div
-				class="mb-8 p-6 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 rounded-xl border-2 border-blue-200 dark:border-blue-800 shadow-sm"
+				class="mb-8 p-6 dither-soft rounded-xl border-2 border-blue-200 dark:border-blue-800 shadow-sm"
 			>
 				<!-- Header -->
 				<div class="flex items-start gap-4 mb-4">

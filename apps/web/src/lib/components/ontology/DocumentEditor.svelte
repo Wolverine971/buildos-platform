@@ -277,6 +277,8 @@
 				<FileText class="w-5 h-5 text-gray-500 dark:text-gray-400 flex-shrink-0" />
 				<input
 					type="text"
+					inputmode="text"
+					enterkeyhint="done"
 					bind:value={title}
 					placeholder="Document title..."
 					class="flex-1 text-xl sm:text-2xl font-bold border-none focus:outline-none focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400 rounded px-2 py-1 -ml-2 bg-transparent text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
@@ -319,7 +321,7 @@
 		<!-- Errors with proper ARIA and dark mode -->
 		{#if saveError}
 			<div
-				class="text-sm text-rose-700 dark:text-rose-400 bg-gradient-to-r from-rose-50 to-red-50 dark:from-rose-900/20 dark:to-red-900/20 border border-rose-200 dark:border-rose-800 p-3 rounded-lg"
+				class="text-sm text-rose-700 dark:text-rose-400 bg-gradient-to-r from-rose-50 to-red-50 dark:from-rose-900/20 dark:to-red-900/20 border border-rose-200 dark:border-rose-800 p-3 rounded-lg dither-soft"
 				role="alert"
 				aria-live="assertive"
 			>
@@ -489,7 +491,7 @@
 		<!-- AI Generate button with gradient on hover -->
 		<button
 			onclick={() => (showAIPanel = !showAIPanel)}
-			class="toolbar-btn p-1.5 px-3 rounded transition-all duration-200 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 dark:hover:from-blue-900/30 dark:hover:to-indigo-900/30 text-blue-600 dark:text-blue-400 flex items-center gap-1 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400"
+			class="toolbar-btn p-1.5 px-3 rounded transition-all duration-200 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 dark:hover:from-blue-900/30 dark:hover:to-indigo-900/30 text-blue-600 dark:text-blue-400 flex items-center gap-1 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400 dither-fade-hover"
 			title="AI Generate"
 			aria-label="AI generate content"
 			aria-expanded={showAIPanel}
@@ -503,7 +505,7 @@
 	<!-- AI Generation Panel - Responsive with dark mode -->
 	{#if showAIPanel}
 		<div
-			class="ai-panel border-b border-gray-200 dark:border-gray-700 p-4 sm:p-6 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20"
+			class="ai-panel border-b border-gray-200 dark:border-gray-700 p-4 sm:p-6 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 dither-soft"
 			role="region"
 			aria-label="AI content generation"
 		>
@@ -517,6 +519,7 @@
 					</label>
 					<textarea
 						id="ai-instructions"
+						enterkeyhint="done"
 						bind:value={aiInstructions}
 						placeholder="E.g., 'Write an opening paragraph about the importance of user experience in web design'"
 						class="w-full border border-gray-300 dark:border-gray-600 rounded-lg p-3 text-sm resize-none bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400"

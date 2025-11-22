@@ -22,7 +22,7 @@
 	<div class="p-6 space-y-4">
 		<div class="flex items-start gap-3 mb-4">
 			<div
-				class="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-green-100 to-emerald-100 dark:from-green-900/30 dark:to-emerald-900/30 rounded-lg flex items-center justify-center"
+				class="flex-shrink-0 w-12 h-12 dither-subtle rounded-lg flex items-center justify-center"
 			>
 				<Smartphone class="w-6 h-6 text-green-600 dark:text-green-400" />
 			</div>

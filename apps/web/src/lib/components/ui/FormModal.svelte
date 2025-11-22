@@ -436,7 +436,7 @@
 
 				<!-- Card-style container for each field with contextual gradients -->
 				<div
-					class="{bgGradient} rounded-xl border p-5 shadow-sm hover:shadow-md transition-all duration-200"
+					class="{bgGradient} rounded-xl border p-5 shadow-sm hover:shadow-md transition-shadow-gpu"
 				>
 					<!-- Custom label with icon -->
 					<div class="flex items-center justify-between mb-3">

@@ -772,6 +772,8 @@
 							id="from-name"
 							bind:value={emailData.from_name}
 							disabled={isEmailSent}
+							inputmode="text"
+							enterkeyhint="next"
 							size="md"
 						/>
 					</FormField>
@@ -783,6 +785,8 @@
 						id="subject"
 						bind:value={emailData.subject}
 						disabled={isEmailSent}
+						inputmode="text"
+						enterkeyhint="next"
 						placeholder="Email subject..."
 						size="md"
 					/>
@@ -851,6 +855,8 @@
 								<TextInput
 									id="schedule-date"
 									type="date"
+									inputmode="numeric"
+									enterkeyhint="next"
 									bind:value={scheduleDate}
 									disabled={isEmailSent}
 									size="md"
@@ -860,6 +866,8 @@
 								<TextInput
 									id="schedule-time"
 									type="time"
+									inputmode="numeric"
+									enterkeyhint="done"
 									bind:value={scheduleTime}
 									disabled={isEmailSent}
 									size="md"
@@ -917,6 +925,7 @@
 								<textarea
 									id="ai-instructions"
 									bind:value={generationInstructions}
+									enterkeyhint="done"
 									placeholder="Describe what you want the email to say... (e.g., 'Thank them for signing up for the beta program and highlight the key features they can explore')"
 									rows="3"
 									class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white resize-none"

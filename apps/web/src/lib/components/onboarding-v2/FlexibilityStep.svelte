@@ -26,7 +26,7 @@
 	<div class="mb-8 text-center">
 		<div class="flex justify-center mb-6">
 			<div
-				class="w-16 h-16 bg-gradient-to-br from-orange-100 to-amber-100 dark:from-orange-900/30 dark:to-amber-900/30 rounded-2xl flex items-center justify-center shadow-lg"
+				class="w-16 h-16 dither-soft rounded-2xl flex items-center justify-center shadow-lg"
 			>
 				<RefreshCw class="w-8 h-8 text-orange-600 dark:text-orange-400" />
 			</div>
@@ -46,7 +46,7 @@
 			onclick={() => (activeSection = 'braindump')}
 			class="px-5 py-3 rounded-lg font-medium transition-all duration-200 {activeSection ===
 			'braindump'
-				? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-lg'
+				? 'dither-gradient text-white shadow-lg'
 				: 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:border-purple-300 dark:hover:border-purple-700'}"
 		>
 			<MessageSquare class="w-4 h-4 inline mr-2" />
@@ -56,7 +56,7 @@
 			onclick={() => (activeSection = 'phases')}
 			class="px-5 py-3 rounded-lg font-medium transition-all duration-200 {activeSection ===
 			'phases'
-				? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg'
+				? 'dither-gradient text-white shadow-lg'
 				: 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-700'}"
 		>
 			<Layout class="w-4 h-4 inline mr-2" />
@@ -66,7 +66,7 @@
 			onclick={() => (activeSection = 'calendar')}
 			class="px-5 py-3 rounded-lg font-medium transition-all duration-200 {activeSection ===
 			'calendar'
-				? 'bg-gradient-to-r from-green-500 to-green-600 text-white shadow-lg'
+				? 'dither-gradient text-white shadow-lg'
 				: 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:border-green-300 dark:hover:border-green-700'}"
 		>
 			<Calendar class="w-4 h-4 inline mr-2" />

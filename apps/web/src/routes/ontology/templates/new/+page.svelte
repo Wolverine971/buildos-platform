@@ -1068,25 +1068,27 @@
 </svelte:head>
 
 <div class="max-w-6xl mx-auto">
-	<!-- Header -->
-	<header class="mb-3">
-		<Button variant="ghost" size="sm" onclick={handleCancel} class="mb-3">
-			<svg
-				class="w-4 h-4 mr-2"
-				xmlns="http://www.w3.org/2000/svg"
-				fill="none"
-				viewBox="0 0 24 24"
-				stroke="currentColor"
-			>
+	<!-- Mobile Back Button - Only visible on mobile -->
+	<div class="lg:hidden mb-3">
+		<button
+			type="button"
+			onclick={handleCancel}
+			class="inline-flex items-center gap-2 rounded-xl border border-slate-200/70 bg-white/90 px-3 py-2 text-sm font-semibold text-slate-600 transition hover:border-blue-400 hover:text-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-300 dark:hover:border-indigo-500 dark:hover:text-indigo-200"
+		>
+			<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
 				<path
 					stroke-linecap="round"
 					stroke-linejoin="round"
 					stroke-width="2"
-					d="M15 19l-7-7 7-7"
+					d="M10 19l-7-7m0 0l7-7m-7 7h18"
 				/>
 			</svg>
-			Back to Templates
-		</Button>
+			<span>Back to Templates</span>
+		</button>
+	</div>
+
+	<!-- Header -->
+	<header class="mb-3">
 
 		<h1 class="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-2">
 			Create New Template

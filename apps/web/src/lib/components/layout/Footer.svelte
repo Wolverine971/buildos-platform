@@ -313,7 +313,7 @@
 							<a
 								href="/auth/register"
 								class="flex-1 inline-flex items-center justify-center px-6 py-3 text-sm font-medium
-									text-white bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700
+									text-white dither-gradient bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700
 									hover:to-purple-700 rounded-lg transition-all transform hover:scale-105 shadow-md"
 							>
 								<Brain class="w-4 h-4 mr-2" />

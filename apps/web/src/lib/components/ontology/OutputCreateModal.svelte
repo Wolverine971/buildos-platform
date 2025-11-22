@@ -237,7 +237,7 @@
 				<div class="space-y-4">
 					<!-- Selected template indicator -->
 					<div
-						class="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg border border-blue-200 dark:border-blue-800"
+						class="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg border dither-soft border-blue-200 dark:border-blue-800"
 					>
 						<p
 							class="text-sm text-blue-800 dark:text-blue-300 flex items-center gap-2 font-medium"
@@ -269,7 +269,7 @@
 					<!-- Error display -->
 					{#if error}
 						<div
-							class="p-3 bg-gradient-to-r from-red-50 to-rose-50 dark:from-red-900/20 dark:to-rose-900/20 border border-red-200 dark:border-red-800 rounded-lg"
+							class="p-3 bg-gradient-to-r from-red-50 to-rose-50 dark:from-red-900/20 dark:to-rose-900/20 border dither-soft border-red-200 dark:border-red-800 rounded-lg"
 							role="alert"
 						>
 							<p class="text-sm text-red-800 dark:text-red-300 font-medium">

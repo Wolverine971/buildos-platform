@@ -15,12 +15,12 @@
 	<div class="mb-10 relative">
 		<!-- Animated glow effect -->
 		<div
-			class="absolute inset-0 bg-gradient-to-br from-purple-500/30 to-blue-600/30 dark:from-purple-400/20 dark:to-blue-500/20 blur-3xl opacity-60 animate-pulse"
+			class="absolute inset-0 dither-gradient blur-3xl opacity-60 animate-pulse"
 			style="animation-duration: 3s;"
 		></div>
 		<!-- Video container with glass effect -->
 		<div
-			class="relative rounded-2xl bg-gradient-to-br from-white/40 to-gray-50/40 dark:from-gray-800/40 dark:to-gray-900/40 p-4 backdrop-blur-sm border border-purple-200/50 dark:border-purple-700/50 shadow-2xl"
+			class="relative rounded-2xl dither-soft p-4 backdrop-blur-sm border border-purple-200/50 dark:border-purple-700/50 shadow-2xl"
 		>
 			<video
 				autoplay
@@ -36,7 +36,7 @@
 				/>
 				<!-- Fallback for browsers that don't support video -->
 				<div
-					class="w-40 h-40 sm:w-48 sm:h-48 lg:w-56 lg:h-56 bg-gradient-to-br from-purple-500 to-blue-600 rounded-full p-12 shadow-2xl flex items-center justify-center mx-auto"
+					class="w-40 h-40 sm:w-48 sm:h-48 lg:w-56 lg:h-56 dither-gradient rounded-full p-12 shadow-2xl flex items-center justify-center mx-auto"
 				>
 					<Brain class="w-20 h-20 text-white" />
 				</div>
@@ -61,7 +61,7 @@
 	<!-- Philosophy Section - The BuildOS Way with enhanced glass effect -->
 	<div class="mb-12 max-w-2xl w-full">
 		<div
-			class="bg-gradient-to-br from-purple-50/80 to-blue-50/80 dark:from-purple-950/40 dark:to-blue-950/40 rounded-2xl p-8 lg:p-10 border border-purple-200/60 dark:border-purple-700/40 shadow-lg backdrop-blur-sm hover:shadow-xl transition-shadow duration-300"
+			class="dither-soft rounded-2xl p-8 lg:p-10 border border-purple-200/60 dark:border-purple-700/40 shadow-lg backdrop-blur-sm dither-fade-hover transition-shadow duration-300"
 		>
 			<h3
 				class="text-2xl lg:text-3xl font-bold mb-8 text-gray-900 dark:text-white text-center flex items-center justify-center gap-3"
@@ -74,7 +74,7 @@
 				<!-- Step 1: Clarity -->
 				<div class="flex gap-5 items-start group">
 					<div
-						class="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 dark:from-purple-600 dark:to-purple-700 rounded-2xl flex items-center justify-center text-white font-bold text-lg shadow-lg group-hover:scale-105 transition-transform duration-200"
+						class="flex-shrink-0 w-12 h-12 dither-gradient rounded-2xl flex items-center justify-center text-white font-bold text-lg shadow-lg group-hover:scale-105 transition-transform duration-200"
 					>
 						1
 					</div>
@@ -94,7 +94,7 @@
 				<!-- Step 2: Projects -->
 				<div class="flex gap-5 items-start group">
 					<div
-						class="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 dark:from-blue-600 dark:to-blue-700 rounded-2xl flex items-center justify-center text-white font-bold text-lg shadow-lg group-hover:scale-105 transition-transform duration-200"
+						class="flex-shrink-0 w-12 h-12 dither-gradient rounded-2xl flex items-center justify-center text-white font-bold text-lg shadow-lg group-hover:scale-105 transition-transform duration-200"
 					>
 						2
 					</div>
@@ -122,7 +122,7 @@
 				<!-- Step 3: Focus -->
 				<div class="flex gap-5 items-start group">
 					<div
-						class="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-emerald-500 to-green-600 dark:from-emerald-600 dark:to-green-700 rounded-2xl flex items-center justify-center text-white font-bold text-lg shadow-lg group-hover:scale-105 transition-transform duration-200"
+						class="flex-shrink-0 w-12 h-12 dither-gradient rounded-2xl flex items-center justify-center text-white font-bold text-lg shadow-lg group-hover:scale-105 transition-transform duration-200"
 					>
 						3
 					</div>
@@ -142,7 +142,7 @@
 				<!-- Step 4: Flexibility -->
 				<div class="flex gap-5 items-start group">
 					<div
-						class="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-orange-500 to-amber-600 dark:from-orange-600 dark:to-amber-700 rounded-2xl flex items-center justify-center text-white font-bold text-lg shadow-lg group-hover:scale-105 transition-transform duration-200"
+						class="flex-shrink-0 w-12 h-12 dither-gradient rounded-2xl flex items-center justify-center text-white font-bold text-lg shadow-lg group-hover:scale-105 transition-transform duration-200"
 					>
 						4
 					</div>
@@ -167,7 +167,7 @@
 		variant="primary"
 		size="lg"
 		onclick={onStart}
-		class="px-10 py-4 text-lg font-semibold shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 bg-gradient-to-r from-purple-600 via-blue-600 to-indigo-600 hover:from-purple-700 hover:via-blue-700 hover:to-indigo-700 border-none"
+		class="px-10 py-4 text-lg font-semibold shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 dither-gradient hover:dither-gradient-hover border-none"
 	>
 		<span class="flex items-center gap-3">
 			Start Setting Up

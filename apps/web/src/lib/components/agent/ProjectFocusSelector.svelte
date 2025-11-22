@@ -149,7 +149,7 @@
 	<div class="flex h-full min-h-[500px] max-h-[70vh] flex-col">
 		<!-- Compact Filter Bar -->
 		<div
-			class="border-b border-slate-200/60 bg-gradient-to-r from-slate-50/50 to-white/50 px-4 py-3 dark:border-slate-700/60 dark:from-slate-900/50 dark:to-slate-800/50"
+			class="border-b border-slate-200/60 bg-gradient-to-r from-slate-50/50 to-white/50 dither-surface px-4 py-3 dark:border-slate-700/60 dark:from-slate-900/50 dark:to-slate-800/50"
 		>
 			<div class="mb-2 flex items-center justify-between">
 				<div class="flex flex-wrap gap-1.5">
@@ -209,6 +209,8 @@
 					/>
 					<input
 						type="text"
+						inputmode="search"
+						enterkeyhint="search"
 						placeholder={`Search ${selectedType}s...`}
 						class="w-full rounded-md border border-slate-200 bg-white py-1.5 pl-8 pr-3 text-xs transition-colors placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-white dark:placeholder:text-slate-500 dark:focus:border-blue-400"
 						bind:value={searchTerm}
@@ -231,7 +233,7 @@
 			{:else if errorMessage}
 				<!-- Error State -->
 				<div
-					class="mx-auto max-w-md rounded-lg border border-red-200 bg-gradient-to-br from-red-50/50 to-rose-50/30 px-4 py-3 dark:border-red-900/40 dark:from-red-900/20 dark:to-rose-900/10"
+					class="mx-auto max-w-md rounded-lg border border-red-200 bg-gradient-to-br from-red-50/50 to-rose-50/30 dither-soft px-4 py-3 dark:border-red-900/40 dark:from-red-900/20 dark:to-rose-900/10"
 					role="alert"
 				>
 					<p class="text-xs font-semibold text-red-700 dark:text-red-300">Error</p>
@@ -269,8 +271,8 @@
 								group w-full rounded-lg border px-3 py-2 text-left transition-all duration-200
 								${
 									isActive(entity)
-										? 'border-blue-500 bg-gradient-to-r from-blue-50/80 to-indigo-50/60 shadow-sm ring-1 ring-blue-200 dark:border-blue-400 dark:from-blue-900/30 dark:to-indigo-900/20 dark:ring-blue-800/40'
-										: 'border-slate-200/50 bg-white/50 hover:border-slate-300 hover:bg-slate-50/80 hover:shadow-sm dark:border-slate-700/50 dark:bg-slate-800/30 dark:hover:border-slate-600 dark:hover:bg-slate-700/50'
+										? 'border-blue-500 bg-gradient-to-r from-blue-50/80 to-indigo-50/60 dither-soft shadow-sm ring-1 ring-blue-200 dark:border-blue-400 dark:from-blue-900/30 dark:to-indigo-900/20 dark:ring-blue-800/40'
+										: 'border-slate-200/50 bg-gradient-to-br from-white/70 via-slate-50/30 to-white/60 dither-subtle dither-fade-hover hover:border-slate-300 hover:shadow-sm dark:border-slate-700/50 dark:from-slate-900/70 dark:via-slate-900/40 dark:to-slate-900/60 dark:hover:border-slate-600'
 								}
 							`}
 						>

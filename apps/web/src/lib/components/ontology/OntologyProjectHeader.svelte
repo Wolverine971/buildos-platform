@@ -135,7 +135,7 @@
 			<div class="flex flex-wrap gap-2 sm:gap-2.5">
 				{#each facetChips as chip}
 					<span
-						class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium bg-gradient-to-r from-gray-100 to-gray-50 dark:from-gray-800 dark:to-gray-800/80 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 shadow-sm"
+						class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium bg-gradient-to-r from-gray-100 to-gray-50 dark:from-gray-800 dark:to-gray-800/80 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 shadow-sm dither-subtle"
 					>
 						<span class="font-semibold">{chip.label}:</span>
 						<span class="ml-1.5">{formatLabel(chip.value as string)}</span>
@@ -147,7 +147,7 @@
 
 	<div class="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2">
 		<div
-			class="p-3 sm:p-4 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-900/30 shadow-sm hover:shadow-md transition-all duration-200"
+			class="p-3 sm:p-4 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-900/30 shadow-sm hover:shadow-md transition-all duration-200 dither-soft"
 		>
 			<div class="flex items-start gap-2.5 sm:gap-3">
 				<div class="flex-shrink-0 rounded-full p-2 bg-white dark:bg-white/10 shadow-sm">
@@ -186,7 +186,7 @@
 			<div class="grid grid-cols-3 sm:grid-cols-5 gap-2 sm:gap-2.5 text-center">
 				{#each statBlocks as stat}
 					<div
-						class="rounded-lg bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800/50 dark:to-gray-800/30 py-2 px-1.5 sm:px-2 border border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-700 transition-colors"
+						class="rounded-lg bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800/50 dark:to-gray-800/30 py-2 px-1.5 sm:px-2 border border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-700 transition-colors dither-subtle dither-fade-hover"
 					>
 						<p class="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">
 							{stat.value}

@@ -301,6 +301,8 @@
 								id="name"
 								bind:value={profileForm.name}
 								type="text"
+								inputmode="text"
+								enterkeyhint="next"
 								placeholder="Enter your full name"
 								disabled={loading}
 								size="md"
@@ -316,6 +318,8 @@
 								id="email"
 								bind:value={profileForm.email}
 								type="email"
+								inputmode="email"
+								enterkeyhint="done"
 								placeholder="Enter your email address"
 								disabled={loading}
 								size="md"
@@ -364,6 +368,8 @@
 									id="currentPassword"
 									bind:value={passwordForm.currentPassword}
 									type={showCurrentPassword ? 'text' : 'password'}
+									autocomplete="current-password"
+									enterkeyhint="next"
 									placeholder="Enter current password"
 									disabled={loading}
 									size="md"
@@ -393,6 +399,8 @@
 									id="newPassword"
 									bind:value={passwordForm.newPassword}
 									type={showNewPassword ? 'text' : 'password'}
+									autocomplete="new-password"
+									enterkeyhint="next"
 									placeholder="Enter new password"
 									disabled={loading}
 									size="md"
@@ -421,6 +429,8 @@
 									id="confirmPassword"
 									bind:value={passwordForm.confirmPassword}
 									type={showConfirmPassword ? 'text' : 'password'}
+									autocomplete="new-password"
+									enterkeyhint="done"
 									placeholder="Confirm new password"
 									disabled={loading}
 									size="md"

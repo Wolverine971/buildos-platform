@@ -276,7 +276,7 @@
 					</Button>
 					<div class="flex items-center space-x-3 lg:hidden">
 						<div
-							class="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 via-purple-500 to-cyan-500 text-white shadow-md shadow-blue-500/40"
+							class="flex h-9 w-9 items-center justify-center rounded-xl dither-gradient bg-gradient-to-br from-blue-500 via-purple-500 to-cyan-500 text-white shadow-md shadow-blue-500/40"
 						>
 							<Layers class="h-4 w-4" />
 						</div>
@@ -411,6 +411,7 @@
 		background: linear-gradient(135deg, rgba(59, 130, 246, 0.07), rgba(14, 165, 233, 0.05));
 		opacity: 0.45;
 		pointer-events: none;
+		/* Note: This is a background tint overlay, not a standalone gradient - no dithering needed */
 	}
 
 	:global(.dark .admin-shell .admin-panel--tinted::after) {

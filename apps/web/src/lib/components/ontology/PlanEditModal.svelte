@@ -298,7 +298,7 @@
 	<!-- Custom gradient header -->
 	<div
 		slot="header"
-		class="bg-gradient-to-r from-blue-600/90 via-indigo-600/90 to-purple-600/90 text-white px-6 py-6 flex flex-col gap-5"
+		class="bg-gradient-to-r from-blue-600/90 via-indigo-600/90 to-purple-600/90 text-white px-6 py-6 flex flex-col gap-5 dither-gradient"
 	>
 		<div class="flex items-start justify-between gap-4">
 			<div class="space-y-2">
@@ -399,6 +399,8 @@
 									<TextInput
 										id="plan-name"
 										bind:value={name}
+										inputmode="text"
+										enterkeyhint="next"
 										placeholder="e.g., Foundation sprint, GTM launch"
 										required
 										disabled={formDisabled}
@@ -413,6 +415,7 @@
 									<Textarea
 										id="plan-description"
 										bind:value={description}
+										enterkeyhint="next"
 										rows={4}
 										placeholder="Summarize objectives, target outcomes, and cross-team dependencies."
 										disabled={formDisabled}
@@ -429,6 +432,8 @@
 											id="plan-start"
 											bind:value={startDate}
 											type="date"
+											inputmode="numeric"
+											enterkeyhint="next"
 											disabled={formDisabled}
 										/>
 									</FormField>
@@ -442,6 +447,8 @@
 											id="plan-end"
 											bind:value={endDate}
 											type="date"
+											inputmode="numeric"
+											enterkeyhint="done"
 											disabled={formDisabled}
 										/>
 									</FormField>
@@ -522,7 +529,7 @@
 								</div>
 							</div>
 							<div
-								class="rounded-lg bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border border-green-200 dark:border-green-800/40 px-3 py-2 text-xs text-green-900 dark:text-green-200"
+								class="rounded-lg bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border border-green-200 dark:border-green-800/40 px-3 py-2 text-xs text-green-900 dark:text-green-200 dither-soft"
 							>
 								Align plan duration with sprint cadence. If work exceeds six weeks,
 								consider splitting into phases.
@@ -631,7 +638,7 @@
 	<svelte:fragment slot="footer">
 		{#if !isLoading && plan}
 			<div
-				class="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-4 p-4 sm:p-6 border-t border-gray-200 dark:border-gray-700 bg-gradient-to-r from-gray-50 to-slate-50 dark:from-gray-900/50 dark:to-gray-800/50"
+				class="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-4 p-4 sm:p-6 border-t border-gray-200 dark:border-gray-700 bg-gradient-to-r from-gray-50 to-slate-50 dark:from-gray-900/50 dark:to-gray-800/50 dither-surface"
 			>
 				<Button
 					variant="ghost"

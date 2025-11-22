@@ -51,7 +51,7 @@
 			<!-- Step 1: Brain Dump -->
 			<div class="relative {mounted ? 'fade-in' : 'opacity-0'}">
 				<div
-					class="bg-gradient-to-br from-primary-50 to-purple-50 dark:from-primary-900/20 dark:to-purple-900/20 rounded-xl sm:rounded-2xl p-4 sm:p-6 lg:p-8 border border-primary-200 dark:border-primary-700"
+					class="dither-soft bg-gradient-to-br from-primary-50 to-purple-50 dark:from-primary-900/20 dark:to-purple-900/20 rounded-xl sm:rounded-2xl p-4 sm:p-6 lg:p-8 border border-primary-200 dark:border-primary-700"
 				>
 					<!-- Step Header - Stack on mobile -->
 					<div class="mb-4 sm:mb-6">
@@ -114,7 +114,7 @@
 			<!-- Step 2: AI Creates/Updates Project -->
 			<div class="relative {mounted ? 'fade-in delay-200' : 'opacity-0'}">
 				<div
-					class="bg-gradient-to-br from-purple-50 to-primary-50 dark:from-purple-900/20 dark:to-primary-900/20 rounded-xl sm:rounded-2xl p-4 sm:p-6 lg:p-8 border border-purple-200 dark:border-purple-700"
+					class="dither-soft bg-gradient-to-br from-purple-50 to-primary-50 dark:from-purple-900/20 dark:to-primary-900/20 rounded-xl sm:rounded-2xl p-4 sm:p-6 lg:p-8 border border-purple-200 dark:border-purple-700"
 				>
 					<!-- Step Header -->
 					<div class="mb-4 sm:mb-6">
@@ -137,7 +137,7 @@
 					<!-- New Project Created -->
 					<div class="max-w-4xl mx-auto">
 						<div
-							class="bg-gradient-to-r from-green-500 to-emerald-500 text-white text-xs sm:text-sm px-3 sm:px-4 py-2 rounded-t-lg sm:rounded-t-xl flex items-center gap-2"
+							class="dither-gradient bg-gradient-to-r from-green-500 to-emerald-500 text-white text-xs sm:text-sm px-3 sm:px-4 py-2 rounded-t-lg sm:rounded-t-xl flex items-center gap-2"
 						>
 							<Plus class="w-3 h-3 sm:w-4 sm:h-4" />
 							<span class="font-medium">New Project Created</span>
@@ -170,7 +170,7 @@
 							<div class="space-y-4 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-6">
 								<!-- Left: Context Document -->
 								<div
-									class="bg-gradient-to-br from-primary-50 to-purple-50 dark:from-primary-900/20 dark:to-purple-900/20 rounded-lg p-3 sm:p-4"
+									class="dither-soft bg-gradient-to-br from-primary-50 to-purple-50 dark:from-primary-900/20 dark:to-purple-900/20 rounded-lg p-3 sm:p-4"
 								>
 									<div class="flex items-center gap-2 mb-3">
 										<FileBarChart
@@ -340,7 +340,7 @@
 			<!-- Step 3: Calendar Scheduling -->
 			<div class="relative {mounted ? 'fade-in delay-400' : 'opacity-0'}">
 				<div
-					class="bg-gradient-to-r from-orange-50 to-pink-50 dark:from-orange-900/20 dark:to-pink-900/20 rounded-xl sm:rounded-2xl p-4 sm:p-6 lg:p-8 border border-orange-200 dark:border-orange-700"
+					class="dither-soft bg-gradient-to-r from-orange-50 to-pink-50 dark:from-orange-900/20 dark:to-pink-900/20 rounded-xl sm:rounded-2xl p-4 sm:p-6 lg:p-8 border border-orange-200 dark:border-orange-700"
 				>
 					<!-- Step Header -->
 					<div class="mb-4 sm:mb-6">
@@ -690,7 +690,7 @@
 			<!-- Step 4: Daily Brief -->
 			<div class="relative {mounted ? 'fade-in delay-600' : 'opacity-0'}">
 				<div
-					class="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-xl sm:rounded-2xl p-4 sm:p-6 lg:p-8 border border-green-200 dark:border-green-700"
+					class="dither-soft bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-xl sm:rounded-2xl p-4 sm:p-6 lg:p-8 border border-green-200 dark:border-green-700"
 				>
 					<!-- Step Header -->
 					<div class="mb-4 sm:mb-6">
@@ -841,7 +841,7 @@
 			<!-- Continuous Loop -->
 			<div class="relative {mounted ? 'fade-in delay-800' : 'opacity-0'} mt-8 sm:mt-12">
 				<div
-					class="bg-gradient-to-r from-primary-100 to-purple-100 dark:from-primary-900/20 dark:to-purple-900/20 rounded-xl sm:rounded-2xl p-4 sm:p-6 border-2 border-dashed border-primary-300 dark:border-primary-700"
+					class="dither-soft bg-gradient-to-r from-primary-100 to-purple-100 dark:from-primary-900/20 dark:to-purple-900/20 rounded-xl sm:rounded-2xl p-4 sm:p-6 border-2 border-dashed border-primary-300 dark:border-primary-700"
 				>
 					<div class="text-center">
 						<p

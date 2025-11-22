@@ -1,0 +1,278 @@
+/* apps/web/src/lib/styles/containment.css */
+/* CSS Containment for Rendering Performance */
+
+/*
+   CSS Containment isolates elements from the rest of the DOM,
+   allowing the browser to optimize rendering by skipping unnecessary work.
+
+   contain: layout - Element's layout is independent
+   contain: style - Element's styles don't affect others
+   contain: paint - Element's rendering is isolated
+   contain: size - Element's size doesn't depend on descendants
+*/
+
+/* ==================== Repeating Components ==================== */
+
+@layer components {
+	/* Card components (project cards, task cards, etc.) */
+	:global(.card),
+	:global([class*='card-']),
+	:global(.project-card),
+	:global(.task-card),
+	:global(.phase-card),
+	:global(.brain-dump-card),
+	:global(.note-card) {
+		/* Isolate layout, style, and paint */
+		contain: layout style paint;
+
+		/* GPU acceleration */
+		transform: translateZ(0);
+	}
+
+	/* List items */
+	:global(.list-item),
+	:global([role='listitem']),
+	:global(.task-item),
+	:global(.note-item),
+	:global(.project-item) {
+		contain: layout style;
+		transform: translateZ(0);
+	}
+}
+
+/* ==================== Layout Containers ==================== */
+
+@layer components {
+	/* Grid layouts */
+	:global(.grid-container),
+	:global([class*='grid-cols-']),
+	:global(.project-grid),
+	:global(.task-grid),
+	:global(.phase-grid) {
+		/* Only isolate layout (allows children to paint freely) */
+		contain: layout;
+	}
+
+	/* Flex layouts */
+	:global(.flex-container),
+	:global([class*='flex-']):not([class*='flex-1']):not([class*='flex-grow']) {
+		contain: layout;
+	}
+}
+
+/* ==================== Scrollable Regions ==================== */
+
+@layer components {
+	/* Scrollable areas */
+	:global(.scrollable-area),
+	:global(.overflow-auto),
+	:global(.overflow-y-auto),
+	:global(.overflow-x-auto),
+	:global([class*='overflow-']) {
+		/* Isolate layout and style */
+		contain: layout style;
+
+		/* Prevent scroll chaining */
+		overscroll-behavior: contain;
+
+		/* Smooth scrolling on iOS */
+		-webkit-overflow-scrolling: touch;
+	}
+
+	/* Modal and dialog content areas */
+	:global([role='dialog'] .modal-content),
+	:global(.modal-body),
+	:global(.dialog-content) {
+		contain: layout style;
+		overscroll-behavior: contain;
+	}
+}
+
+/* ==================== Independent UI Elements ==================== */
+
+@layer components {
+	/* Buttons (fully independent) */
+	:global(button:not(.no-contain)),
+	:global([role='button']:not(.no-contain)) {
+		contain: layout style;
+		transform: translateZ(0);
+	}
+
+	/* Badges and chips */
+	:global(.badge),
+	:global(.chip),
+	:global([class*='badge-']),
+	:global([class*='chip-']) {
+		contain: layout style paint;
+	}
+
+	/* Avatars */
+	:global(.avatar),
+	:global([class*='avatar-']) {
+		contain: layout style paint;
+		transform: translateZ(0);
+	}
+
+	/* Icons */
+	:global(.icon),
+	:global([class*='icon-']),
+	:global(svg.lucide) {
+		contain: layout style paint;
+	}
+}
+
+/* ==================== Dashboard & Data Views ==================== */
+
+@layer components {
+	/* Calendar cells */
+	:global(.calendar-cell),
+	:global(.calendar-day),
+	:global([class*='calendar-']) {
+		contain: layout style paint;
+	}
+
+	/* Timeline items */
+	:global(.timeline-item),
+	:global([class*='timeline-']) {
+		contain: layout style;
+	}
+
+	/* Table cells (data-heavy views) */
+	:global(td),
+	:global(th) {
+		contain: layout style;
+	}
+}
+
+/* ==================== Phase & Project Components ==================== */
+
+@layer components {
+	/* Phase sections */
+	:global(.phase-section),
+	:global(.phase-container),
+	:global([class*='phase-']) {
+		contain: layout style;
+	}
+
+	/* Task items in phases */
+	:global(.phase-task-item) {
+		contain: layout style paint;
+		transform: translateZ(0);
+	}
+
+	/* Project headers */
+	:global(.project-header) {
+		contain: layout style;
+	}
+}
+
+/* ==================== Brain Dump Components ==================== */
+
+@layer components {
+	/* Brain dump list items */
+	:global(.brain-dump-item),
+	:global([class*='brain-dump-']) {
+		contain: layout style paint;
+		transform: translateZ(0);
+	}
+
+	/* Brain dump processing indicators */
+	:global(.brain-dump-processing) {
+		contain: layout style;
+	}
+}
+
+/* ==================== Notifications & Toasts ==================== */
+
+@layer components {
+	/* Toast notifications */
+	:global(.toast),
+	:global([class*='toast-']),
+	:global([role='alert']) {
+		contain: layout style paint;
+		transform: translateZ(0);
+
+		/* Important: Toasts should be isolated */
+		isolation: isolate;
+	}
+
+	/* Notification badges */
+	:global(.notification-badge),
+	:global([class*='notification-']) {
+		contain: layout style paint;
+	}
+}
+
+/* ==================== Image & Media Optimization ==================== */
+
+@layer components {
+	/* Images */
+	:global(img),
+	:global(.image),
+	:global([class*='image-']) {
+		contain: layout style paint;
+
+		/* Prevent layout shift */
+		aspect-ratio: attr(width) / attr(height);
+
+		/* Optimize decoding */
+		decoding: async;
+	}
+
+	/* Video elements */
+	:global(video) {
+		contain: layout style paint;
+	}
+}
+
+/* ==================== Opt-Out Class ==================== */
+
+@layer utilities {
+	/* Allow components to opt out of containment if needed */
+	.no-contain {
+		contain: none !important;
+	}
+
+	/* Force strict containment */
+	.contain-strict {
+		contain: strict !important;
+	}
+
+	/* Custom containment levels */
+	.contain-layout {
+		contain: layout !important;
+	}
+
+	.contain-style {
+		contain: style !important;
+	}
+
+	.contain-paint {
+		contain: paint !important;
+	}
+
+	.contain-size {
+		contain: size !important;
+	}
+}
+
+/* ==================== Performance Notes ==================== */
+
+/*
+   Benefits of CSS Containment:
+   1. Faster rendering - Browser skips re-layout/repaint of contained elements
+   2. Better scrolling - Contained elements don't trigger layout recalculation
+   3. Improved paint performance - Isolated paint areas
+   4. Better memory usage - Browser can optimize contained regions
+
+   When to avoid containment:
+   - Elements that need to size based on children (use contain: layout style instead)
+   - Elements with absolutely positioned children that need to escape
+   - Dynamic height elements (grids, flexbox with auto-sizing)
+
+   Best practices:
+   - Use layout + style for most components
+   - Add paint for truly independent components (cards, list items)
+   - Avoid size unless the element has explicit dimensions
+   - Test on actual devices after adding containment
+*/

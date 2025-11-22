@@ -98,19 +98,19 @@
 		>
 			<div class="flex flex-wrap items-center gap-1">
 				{#if voiceErrorMessage}
-					<!-- ✅ Compact error badge: px-2 py-0.5, text-[10px] -->
+					<!-- ✅ Compact error badge: px-2 py-0.5, text-[10px] + dithering -->
 					<span
 						role="alert"
-						class="flex items-center gap-1 rounded-md bg-gradient-to-r from-rose-50 to-red-50 px-2 py-0.5 text-[10px] font-medium text-rose-700 dark:from-rose-900/30 dark:to-red-900/20 dark:text-rose-300"
+						class="flex items-center gap-1 rounded-md bg-gradient-to-r from-rose-50 to-red-50 px-2 py-0.5 text-[10px] font-medium text-rose-700 dark:from-rose-900/30 dark:to-red-900/20 dark:text-rose-300 dither-soft"
 					>
 						{voiceErrorMessage}
 					</span>
 				{/if}
 
 				{#if isStreaming}
-					<!-- ✅ Compact working badge: px-2 py-0.5, h-1.5 w-1.5 dot, text-[10px] -->
+					<!-- ✅ Compact working badge: px-2 py-0.5, h-1.5 w-1.5 dot, text-[10px] + dithering -->
 					<div
-						class="flex items-center gap-1 rounded-md border border-emerald-200/60 bg-gradient-to-r from-emerald-50 to-green-50 px-2 py-0.5 text-emerald-700 dark:border-emerald-500/40 dark:from-emerald-900/30 dark:to-green-900/20 dark:text-emerald-300"
+						class="flex items-center gap-1 rounded-md border border-emerald-200/60 bg-gradient-to-r from-emerald-50 to-green-50 px-2 py-0.5 text-emerald-700 dark:border-emerald-500/40 dark:from-emerald-900/30 dark:to-green-900/20 dark:text-emerald-300 dither-soft"
 					>
 						<div
 							class="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-600 dark:bg-emerald-400"

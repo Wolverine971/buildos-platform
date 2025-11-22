@@ -150,7 +150,7 @@
 		onclick={handleClick}
 		variant="ghost"
 		btnType="container"
-		class="relative flex items-center space-x-2 px-2 py-1 rounded-lg transition-all duration-200 transform hover:scale-105 min-h-0 bg-blue-100 dark:bg-blue-900/30 hover:bg-blue-200 dark:hover:bg-blue-900/50"
+		class="relative flex items-center space-x-2 px-2 py-1 rounded-lg transition-all duration-200 transform hover:scale-105 min-h-0 dither-subtle hover:bg-blue-200 dark:hover:bg-blue-900/50"
 		title={getTooltip()}
 	>
 		<!-- Icon -->
@@ -183,7 +183,7 @@
 				class="absolute bottom-0 left-0 right-0 h-1 bg-blue-200 dark:bg-blue-800 rounded-b-lg overflow-hidden"
 			>
 				<div
-					class="h-full bg-gradient-to-r from-blue-500 to-blue-600 transition-all duration-500 ease-out"
+					class="h-full dither-subtle bg-gradient-to-r from-blue-500 to-blue-600 transition-all duration-500 ease-out"
 					style="width: {progress}%"
 				></div>
 			</div>

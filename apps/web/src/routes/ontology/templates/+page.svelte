@@ -384,15 +384,34 @@
 	<title>Templates | Ontology | BuildOS</title>
 </svelte:head>
 
-<div class="max-w-6xl mx-auto">
+<div class="space-y-4 sm:space-y-6">
+	<!-- Mobile Back Button - Only visible on mobile -->
+	<div class="lg:hidden">
+		<button
+			type="button"
+			onclick={() => goto('/ontology')}
+			class="inline-flex items-center gap-2 rounded-xl border border-slate-200/70 bg-white/90 px-3 py-2 text-sm font-semibold text-slate-600 transition hover:border-blue-400 hover:text-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-300 dark:hover:border-indigo-500 dark:hover:text-indigo-200"
+		>
+			<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+				<path
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					stroke-width="2"
+					d="M10 19l-7-7m0 0l7-7m-7 7h18"
+				/>
+			</svg>
+			<span>Back to Projects</span>
+		</button>
+	</div>
+
 	<!-- Header -->
-	<header class="mb-3">
-		<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+	<header>
+		<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
 			<div>
-				<h1 class="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-2">
+				<h1 class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-2">
 					Ontology Templates
 				</h1>
-				<p class="text-base sm:text-lg text-gray-600 dark:text-gray-400">
+				<p class="text-sm sm:text-base text-gray-600 dark:text-gray-400">
 					Browse and discover {templates.length} template{templates.length !== 1
 						? 's'
 						: ''} across all domains
@@ -423,7 +442,7 @@
 	</header>
 
 	<div
-		class="mb-4 rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-3 flex flex-wrap gap-4 text-sm text-gray-600 dark:text-gray-300"
+		class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 sm:p-6 flex flex-wrap gap-4 text-sm text-gray-600 dark:text-gray-300"
 	>
 		<div class="min-w-[200px] flex-1">
 			<p
@@ -865,7 +884,7 @@
 	</Card>
 
 	<!-- Templates Display -->
-	<div class="mt-3">
+	<div>
 		{#if templates.length === 0}
 			<!-- Empty State -->
 			<div

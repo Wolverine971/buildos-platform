@@ -87,6 +87,8 @@
 							name="email"
 							type="email"
 							autocomplete="email"
+							inputmode="email"
+							enterkeyhint="send"
 							required
 							bind:value={email}
 							placeholder="Enter your email"

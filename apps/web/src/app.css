@@ -1,5 +1,8 @@
 /* apps/web/src/app.css */
 @import './lib/styles/performance-optimizations.css';
+@import './lib/styles/dithering.css';
+@import './lib/styles/animation-utils.css';
+@import './lib/styles/containment.css';
 
 @tailwind base;
 @tailwind components;
@@ -47,6 +50,7 @@
 		font-size: max(16px, 1rem);
 		-webkit-appearance: none;
 		appearance: none;
+		touch-action: manipulation;
 	}
 
 	button {
@@ -161,16 +165,38 @@
 }
 
 @layer components {
+	/* ==================== GPU-Optimized Gradient Components ==================== */
+
+	/* Base class for animated gradient elements (buttons, icons, etc.) */
+	.gradient-animated-base {
+		/* GPU acceleration */
+		transform: translateZ(0);
+		backface-visibility: hidden;
+
+		/* Only animate GPU-friendly properties (transform, box-shadow, opacity) */
+		transition-property: transform, box-shadow, opacity;
+		transition-duration: 200ms;
+		transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+
+		/* Pre-warm GPU for interactions */
+		will-change: transform;
+	}
+
+	/* Cleanup will-change when not interacting (critical for performance) */
+	.gradient-animated-base:not(:hover):not(:focus-visible):not(:active) {
+		will-change: auto;
+	}
+
 	.gradient-btn-primary {
-		@apply bg-gradient-to-br from-blue-500 to-indigo-500 text-white shadow-[0_12px_32px_-20px_rgba(59,130,246,0.55)] transition-all duration-200 hover:scale-105 hover:shadow-[0_20px_40px_-18px_rgba(99,102,241,0.6)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100 dark:from-blue-500 dark:to-indigo-500;
+		@apply gradient-animated-base bg-gradient-to-br from-blue-500 to-indigo-500 text-white shadow-[0_12px_32px_-20px_rgba(59,130,246,0.55)] hover:scale-105 hover:shadow-[0_20px_40px_-18px_rgba(99,102,241,0.6)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100 dark:from-blue-500 dark:to-indigo-500;
 	}
 
 	.gradient-btn-recording {
-		@apply bg-gradient-to-br from-rose-500 to-orange-500 text-white shadow-[0_16px_32px_-20px_rgba(244,63,94,0.6)] animate-pulse;
+		@apply gradient-animated-base bg-gradient-to-br from-rose-500 to-orange-500 text-white shadow-[0_16px_32px_-20px_rgba(244,63,94,0.6)] animate-pulse;
 	}
 
 	.gradient-icon-primary {
-		@apply bg-gradient-to-br from-blue-500/20 via-indigo-500/10 to-purple-500/20 shadow-[0_28px_50px_-32px_rgba(59,130,246,0.65)] dark:from-blue-400/20 dark:via-indigo-400/25 dark:to-purple-400/20;
+		@apply gradient-animated-base bg-gradient-to-br from-blue-500/20 via-indigo-500/10 to-purple-500/20 shadow-[0_28px_50px_-32px_rgba(59,130,246,0.65)] dark:from-blue-400/20 dark:via-indigo-400/25 dark:to-purple-400/20;
 	}
 
 	.gradient-glow-primary {
@@ -178,7 +204,7 @@
 	}
 
 	.gradient-icon-brand {
-		@apply bg-gradient-to-br from-purple-500/20 via-pink-500/10 to-indigo-500/20 shadow-[0_12px_30px_-18px_rgba(168,85,247,0.55)] dark:from-purple-400/20 dark:via-pink-400/20 dark:to-indigo-400/20;
+		@apply gradient-animated-base bg-gradient-to-br from-purple-500/20 via-pink-500/10 to-indigo-500/20 shadow-[0_12px_30px_-18px_rgba(168,85,247,0.55)] dark:from-purple-400/20 dark:via-pink-400/20 dark:to-indigo-400/20;
 	}
 
 	.gradient-badge-blue {
@@ -190,7 +216,7 @@
 	}
 
 	.gradient-message-assistant {
-		@apply bg-gradient-to-br from-blue-600 to-indigo-600 shadow-[0_8px_24px_-12px_rgba(59,130,246,0.4)] transition-all duration-200 hover:shadow-[0_12px_32px_-10px_rgba(79,70,229,0.5)];
+		@apply gradient-animated-base bg-gradient-to-br from-blue-600 to-indigo-600 shadow-[0_8px_24px_-12px_rgba(59,130,246,0.4)] hover:shadow-[0_12px_32px_-10px_rgba(79,70,229,0.5)];
 	}
 
 	.gradient-avatar-purple {
@@ -206,7 +232,7 @@
 	}
 
 	.gradient-fab-purple {
-		@apply bg-gradient-to-br from-purple-500 to-pink-500 text-white shadow-[0_16px_32px_-20px_rgba(168,85,247,0.55)] transition-all duration-200 hover:scale-105 hover:shadow-[0_20px_40px_-18px_rgba(236,72,153,0.6)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-400 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100 dark:from-purple-400 dark:to-pink-400;
+		@apply gradient-animated-base bg-gradient-to-br from-purple-500 to-pink-500 text-white shadow-[0_16px_32px_-20px_rgba(168,85,247,0.55)] hover:scale-105 hover:shadow-[0_20px_40px_-18px_rgba(236,72,153,0.6)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-400 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100 dark:from-purple-400 dark:to-pink-400;
 	}
 
 	.gradient-chip-blue {

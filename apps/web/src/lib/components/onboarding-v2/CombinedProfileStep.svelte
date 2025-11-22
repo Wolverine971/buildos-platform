@@ -88,7 +88,7 @@
 	<div class="mb-12 text-center">
 		<div class="flex justify-center mb-6">
 			<div
-				class="w-16 h-16 bg-gradient-to-br from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30 rounded-2xl flex items-center justify-center shadow-lg"
+				class="w-16 h-16 dither-soft rounded-2xl flex items-center justify-center shadow-lg"
 			>
 				<Sparkles class="w-8 h-8 text-purple-600 dark:text-purple-400" />
 			</div>
@@ -119,7 +119,7 @@
 				<button
 					onclick={() => selectArchetype(archetype.id)}
 					class="group relative p-6 rounded-2xl border-2 transition-all duration-200 text-left {isSelected
-						? 'border-purple-500 bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-950/30 dark:to-blue-950/30 shadow-lg scale-105'
+						? 'border-purple-500 dither-soft shadow-lg scale-105'
 						: 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-purple-300 hover:shadow-md'}"
 				>
 					<!-- Selection indicator -->
@@ -139,7 +139,7 @@
 
 					<!-- Icon -->
 					<div
-						class="mb-4 w-14 h-14 rounded-xl bg-gradient-to-br from-purple-100 to-blue-100 dark:from-purple-900/50 dark:to-blue-900/50 flex items-center justify-center {isSelected
+						class="mb-4 w-14 h-14 rounded-xl dither-subtle flex items-center justify-center {isSelected
 							? 'scale-110'
 							: 'group-hover:scale-105'} transition-transform duration-200"
 					>
@@ -204,7 +204,7 @@
 				<button
 					onclick={() => toggleChallenge(challenge.id)}
 					class="w-full p-4 rounded-xl border-2 transition-all duration-200 text-left flex items-start gap-4 {isSelected
-						? 'border-amber-500 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30 shadow-md'
+						? 'border-amber-500 dither-soft shadow-md'
 						: 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-amber-300 hover:shadow-sm'}"
 				>
 					<!-- Checkbox -->

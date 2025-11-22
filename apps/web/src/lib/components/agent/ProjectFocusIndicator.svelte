@@ -39,33 +39,35 @@
 </script>
 
 {#if focus}
-	<!-- Ultra-compact inline focus indicator - seamlessly integrated -->
-	<span class="inline-flex items-center gap-1 text-xs">
-		<!-- Focus type emoji -->
-		<span class="text-xs" aria-hidden="true">
+	<!-- Ultra-compact inline focus indicator - mobile optimized -->
+	<span class="inline-flex items-center gap-0.5 text-xs sm:gap-1">
+		<!-- Focus type emoji: Smaller on mobile -->
+		<span class="text-[11px] sm:text-xs" aria-hidden="true">
 			{focusIcons[focus.focusType] || '🔍'}
 		</span>
 
-		<!-- Focus label with interactive actions -->
+		<!-- Focus label with interactive actions: More compact on mobile -->
 		<button
 			type="button"
 			onclick={() => onChangeFocus?.()}
-			class="inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-xs font-medium text-blue-700 transition-all hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-950/50"
+			class="inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-xs font-medium text-blue-700 transition-all hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-950/50 sm:px-1.5"
 			title={resolvedLabel}
 		>
-			<span class="max-w-[120px] truncate sm:max-w-[200px]">
+			<!-- Narrower max-width on mobile for high density -->
+			<span class="max-w-[60px] truncate sm:max-w-[140px] md:max-w-[200px]">
 				{resolvedLabel}
 			</span>
+			<!-- Hide Target icon on mobile to save space -->
 			{#if focus.focusType !== 'project-wide'}
-				<Target class="h-3 w-3" />
+				<Target class="hidden h-3 w-3 sm:inline-block" />
 			{/if}
 		</button>
 
-		<!-- Clear button for non-project-wide focus -->
+		<!-- Clear button: More compact on mobile -->
 		{#if onClearFocus && focus.focusType !== 'project-wide'}
 			<button
 				type="button"
-				class="ml-0.5 rounded px-1 py-0.5 text-[10px] font-medium text-slate-500 transition-all hover:bg-slate-100 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+				class="ml-0 rounded px-0.5 py-0.5 text-[10px] font-medium text-slate-500 transition-all hover:bg-slate-100 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200 sm:ml-0.5 sm:px-1"
 				onclick={() => onClearFocus?.()}
 				aria-label="Clear focus"
 			>

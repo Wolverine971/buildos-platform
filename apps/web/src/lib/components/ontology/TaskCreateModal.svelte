@@ -238,7 +238,7 @@
 								class="flex items-center gap-3 pb-4 border-b border-gray-200 dark:border-gray-700"
 							>
 								<div
-									class="p-2 rounded-lg bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-950/50 dark:to-purple-950/50"
+									class="p-2 rounded-lg bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-950/50 dark:to-purple-950/50 dither-soft"
 								>
 									<Sparkles class="w-5 h-5 text-blue-600 dark:text-blue-400" />
 								</div>
@@ -281,7 +281,7 @@
 													<button
 														type="button"
 														onclick={() => selectTemplate(template)}
-														class="p-4 rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-blue-500 dark:hover:border-blue-400 hover:bg-gradient-to-br hover:from-blue-50 hover:to-indigo-50 dark:hover:from-blue-950/20 dark:hover:to-indigo-950/20 transition-all duration-300 text-left group shadow-sm hover:shadow-md"
+														class="p-4 rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-blue-500 dark:hover:border-blue-400 hover:bg-gradient-to-br hover:from-blue-50 hover:to-indigo-50 dark:hover:from-blue-950/20 dark:hover:to-indigo-950/20 transition-all duration-300 text-left group shadow-sm hover:shadow-md dither-fade-hover"
 													>
 														<div
 															class="flex items-start justify-between mb-2"
@@ -341,7 +341,7 @@
 							<!-- Selected Template Badge -->
 							{#if selectedTemplate}
 								<div
-									class="rounded-xl border border-blue-200 dark:border-blue-800 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 p-4"
+									class="rounded-xl border border-blue-200 dark:border-blue-800 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 p-4 dither-soft"
 								>
 									<div class="flex items-center justify-between gap-3">
 										<div class="flex items-center gap-3 flex-1 min-w-0">
@@ -391,6 +391,8 @@
 									id="title"
 									bind:value={title}
 									placeholder="Enter task title..."
+									inputmode="text"
+									enterkeyhint="next"
 									required={true}
 									disabled={isSaving}
 									error={!title.trim() && error ? true : false}
@@ -408,6 +410,7 @@
 									id="description"
 									bind:value={description}
 									placeholder="Describe the task..."
+									enterkeyhint="next"
 									rows={4}
 									disabled={isSaving}
 									size="md"
@@ -578,7 +581,7 @@
 	<!-- Footer Actions -->
 	<svelte:fragment slot="footer">
 		<div
-			class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 px-4 sm:px-6 py-3 sm:py-4 border-t border-gray-200 dark:border-gray-700 bg-gradient-to-r from-gray-50 to-slate-50 dark:from-gray-900/50 dark:to-gray-800/50"
+			class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 px-4 sm:px-6 py-3 sm:py-4 border-t border-gray-200 dark:border-gray-700 bg-gradient-to-r from-gray-50 to-slate-50 dark:from-gray-900/50 dark:to-gray-800/50 dither-surface"
 		>
 			{#if showTemplateSelection}
 				<div class="flex-1"></div>

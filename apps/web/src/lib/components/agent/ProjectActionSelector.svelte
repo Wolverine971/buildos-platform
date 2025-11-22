@@ -5,8 +5,7 @@
 		Search,
 		TrendingUp,
 		Target,
-		ChevronRight,
-		ArrowRight
+		ChevronRight
 	} from 'lucide-svelte';
 
 	type ProjectAction = 'workspace' | 'audit' | 'forecast';
@@ -57,36 +56,35 @@
 
 <div class="flex h-full flex-col bg-slate-50/60 dark:bg-slate-900/40">
 	<div class="flex-1 overflow-auto p-4 sm:p-5">
-		<div class="grid gap-3 sm:grid-cols-3">
+		<div class="grid gap-4 sm:grid-cols-3">
 			{#each actions as action (action.id)}
 				{@const Icon = action.Icon}
 				<button
 					type="button"
 					onclick={() => onSelectAction(action.id)}
-					class={`group flex h-full flex-col items-start gap-3 rounded-xl border bg-gradient-to-br p-5 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg focus-visible:ring-2 focus-visible:ring-blue-500/60 dark:border-slate-800 ${action.className}`}
+					class={`group flex h-full flex-col gap-3 rounded-xl border bg-gradient-to-br dither-soft dither-fade-hover p-5 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md active:translate-y-0 focus-visible:ring-2 focus-visible:ring-blue-500/60 dark:border-slate-700/60 ${action.className}`}
 				>
 					<div
-						class="flex h-12 w-12 items-center justify-center rounded-lg bg-white/70 shadow-sm transition-transform duration-200 group-hover:scale-105 dark:bg-slate-900/60"
+						class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-white/70 shadow-sm transition-transform duration-200 group-hover:scale-105 dark:bg-slate-900/60"
 					>
-						<Icon class="h-6 w-6 text-slate-800 dark:text-slate-200" />
+						<Icon class="h-5 w-5 text-slate-800 dark:text-slate-200" />
 					</div>
-					<div class="space-y-1">
-						<p class="text-sm font-semibold text-slate-900 dark:text-white">
+					<div class="flex-1 space-y-1">
+						<h3 class="text-sm font-semibold text-slate-900 dark:text-white">
 							{action.title}
-						</p>
+						</h3>
 						<p class="text-xs leading-snug text-slate-600 dark:text-slate-400">
 							{action.subtitle}
 						</p>
 					</div>
-					<span
-						class="inline-flex items-center gap-1.5 text-[11px] font-semibold text-blue-600 dark:text-blue-400"
+					<div
+						class="flex items-center justify-between text-xs font-medium text-blue-600 dark:text-blue-400"
 					>
-						Start
-
-						<ArrowRight
-							class="h-3 w-3 text-gray-400 dark:text-gray-500 transition-transform duration-200 group-hover:translate-x-0.5"
+						<span>Start</span>
+						<ChevronRight
+							class="h-4 w-4 transition-transform group-hover:translate-x-1"
 						/>
-					</span>
+					</div>
 				</button>
 			{/each}
 		</div>

@@ -353,7 +353,7 @@
 			<div class="modal-grab-handle"></div>
 		</div>
 		<div
-			class="relative bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-800 dark:via-gray-800/95 dark:to-gray-800 px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 dark:border-gray-700"
+			class="relative bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-800 dark:via-gray-800/95 dark:to-gray-800 px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 dark:border-gray-700 dither-gradient"
 		>
 			<!-- Mobile Layout -->
 			<div class="sm:hidden">
@@ -418,7 +418,7 @@
 					>
 						<!-- Project Name Header -->
 						<div
-							class="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/10 dark:to-indigo-900/10 p-3 sm:p-4 rounded-t-xl border-b border-gray-200 dark:border-gray-700"
+							class="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/10 dark:to-indigo-900/10 p-3 sm:p-4 rounded-t-xl border-b border-gray-200 dark:border-gray-700 dither-soft"
 						>
 							<label
 								for="project-name"
@@ -494,7 +494,7 @@
 											placeholder="## Background\nWhy this project exists and its importance\n\n## Key Decisions\nImportant technical and business decisions\n\n## Resources\nTools, documentation, and dependencies\n\n## Challenges\nCurrent blockers or areas needing attention"
 											rows={10}
 											maxRows={20}
-											class="flex-1 leading-relaxed bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/10 dark:to-emerald-900/10 border-green-200 dark:border-green-800 focus:ring-2 focus:ring-green-500 dark:focus:ring-green-400"
+											class="flex-1 leading-relaxed bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/10 dark:to-emerald-900/10 border-green-200 dark:border-green-800 focus:ring-2 focus:ring-green-500 dark:focus:ring-green-400 dither-soft"
 										/>
 									</div>
 								</div>
@@ -533,10 +533,10 @@
 
 					<!-- Metadata Sidebar -->
 					<div
-						class="lg:col-span-1 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all duration-200 lg:max-h-full lg:overflow-y-auto"
+						class="lg:col-span-1 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all duration-200 lg:max-h-full lg:overflow-y-auto dither-surface"
 					>
 						<div
-							class="bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-900/10 dark:to-blue-900/10 p-3 sm:p-3.5 rounded-t-xl border-b border-gray-200 dark:border-gray-700"
+							class="bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-900/10 dark:to-blue-900/10 p-3 sm:p-3.5 rounded-t-xl border-b border-gray-200 dark:border-gray-700 dither-soft"
 						>
 							<h3
 								class="text-xs font-semibold text-gray-900 dark:text-white uppercase tracking-wider flex items-center gap-2"

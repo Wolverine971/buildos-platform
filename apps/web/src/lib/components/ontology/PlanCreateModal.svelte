@@ -298,7 +298,7 @@
 >
 	<div class="px-4 sm:px-6 py-6 space-y-6">
 		<div
-			class="rounded-2xl border border-blue-200 dark:border-blue-900/40 bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 dark:from-blue-900/20 dark:via-indigo-900/30 dark:to-purple-900/30 px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
+			class="rounded-2xl border border-blue-200 dark:border-blue-900/40 bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 dark:from-blue-900/20 dark:via-indigo-900/30 dark:to-purple-900/30 px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 dither-gradient"
 		>
 			<div>
 				<p
@@ -384,6 +384,8 @@
 												bind:value={templateSearch}
 												placeholder="Search by name, metric, scope..."
 												type="search"
+												inputmode="search"
+												enterkeyhint="search"
 												size="sm"
 												icon={Search}
 											/>
@@ -532,6 +534,8 @@
 												id="plan-name"
 												bind:value={name}
 												placeholder="e.g., Foundation Sprint, Q2 GTM Rollout"
+												inputmode="text"
+												enterkeyhint="next"
 												required
 											/>
 										</FormField>
@@ -545,6 +549,7 @@
 												id="plan-description"
 												bind:value={description}
 												rows={4}
+												enterkeyhint="next"
 												placeholder="Summarize the scope, success criteria, and how this plan ladders up to goals."
 											/>
 										</FormField>
@@ -652,7 +657,7 @@
 												</div>
 											</div>
 											<div
-												class="rounded-lg bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border border-green-200 dark:border-green-800/40 px-3 py-2 flex items-start gap-2"
+												class="rounded-lg bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border border-green-200 dark:border-green-800/40 px-3 py-2 flex items-start gap-2 dither-soft"
 											>
 												<CheckCircle2
 													class="w-4 h-4 text-green-600 mt-0.5"

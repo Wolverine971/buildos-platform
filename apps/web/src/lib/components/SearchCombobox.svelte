@@ -184,6 +184,8 @@
 		<input
 			bind:this={searchInput}
 			type="text"
+			inputmode="search"
+			enterkeyhint="search"
 			placeholder="Search brain dumps, projects, and tasks..."
 			class="w-full pl-10 pr-10 py-2.5 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800
 			       border-2 border-gray-300 dark:border-gray-600 rounded-lg
@@ -241,19 +243,21 @@
 						<div
 							class="px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase
 							       bg-gradient-to-r from-gray-50 to-gray-50/50
-							       dark:from-gray-800 dark:to-gray-800/50"
+							       dark:from-gray-800 dark:to-gray-800/50
+							       dither-surface relative overflow-hidden"
 						>
 							Brain Dumps
 						</div>
 						{#each results.braindumps as result, index}
 							<button
 								onclick={() => navigateToItem(result)}
-								class="w-full px-4 py-3 text-left transition-all duration-200
+								class="w-full px-4 py-3 text-left transition-all duration-200 relative overflow-hidden
 								       hover:bg-gradient-to-r hover:from-blue-50/50 hover:to-purple-50/50
 								       dark:hover:from-blue-900/20 dark:hover:to-purple-900/20
 								       focus:bg-gradient-to-r focus:from-blue-50/50 focus:to-purple-50/50
 								       dark:focus:from-blue-900/20 dark:focus:to-purple-900/20
 								       focus:outline-none
+								       dither-soft dither-fade-hover
 								       {selectedIndex === index
 									? 'bg-gradient-to-r from-blue-50/50 to-purple-50/50 dark:from-blue-900/20 dark:to-purple-900/20'
 									: ''}"
@@ -313,10 +317,11 @@
 						{#if hasMore.braindumps}
 							<button
 								onclick={() => loadMore('braindump')}
-								class="w-full px-4 py-2 text-sm font-medium text-primary-600 dark:text-primary-400
+								class="w-full px-4 py-2 text-sm font-medium text-primary-600 dark:text-primary-400 relative overflow-hidden
 								       hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50
 								       dark:hover:from-blue-900/20 dark:hover:to-purple-900/20
-								       focus:outline-none transition-all duration-200"
+								       focus:outline-none transition-all duration-200
+								       dither-soft dither-fade-hover"
 							>
 								View all brain dump results →
 							</button>
@@ -330,19 +335,21 @@
 						<div
 							class="px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase
 							       bg-gradient-to-r from-gray-50 to-gray-50/50
-							       dark:from-gray-800 dark:to-gray-800/50"
+							       dark:from-gray-800 dark:to-gray-800/50
+							       dither-surface relative overflow-hidden"
 						>
 							Projects
 						</div>
 						{#each results.projects as result, index}
 							<button
 								onclick={() => navigateToItem(result)}
-								class="w-full px-4 py-3 text-left transition-all duration-200
+								class="w-full px-4 py-3 text-left transition-all duration-200 relative overflow-hidden
 								       hover:bg-gradient-to-r hover:from-blue-50/50 hover:to-purple-50/50
 								       dark:hover:from-blue-900/20 dark:hover:to-purple-900/20
 								       focus:bg-gradient-to-r focus:from-blue-50/50 focus:to-purple-50/50
 								       dark:focus:from-blue-900/20 dark:focus:to-purple-900/20
 								       focus:outline-none
+								       dither-soft dither-fade-hover
 								       {selectedIndex === results.braindumps.length + index
 									? 'bg-gradient-to-r from-blue-50/50 to-purple-50/50 dark:from-blue-900/20 dark:to-purple-900/20'
 									: ''}"
@@ -399,10 +406,11 @@
 						{#if hasMore.projects}
 							<button
 								onclick={() => loadMore('project')}
-								class="w-full px-4 py-2 text-sm font-medium text-primary-600 dark:text-primary-400
+								class="w-full px-4 py-2 text-sm font-medium text-primary-600 dark:text-primary-400 relative overflow-hidden
 								       hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50
 								       dark:hover:from-blue-900/20 dark:hover:to-purple-900/20
-								       focus:outline-none transition-all duration-200"
+								       focus:outline-none transition-all duration-200
+								       dither-soft dither-fade-hover"
 							>
 								View all project results →
 							</button>
@@ -416,19 +424,21 @@
 						<div
 							class="px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase
 							       bg-gradient-to-r from-gray-50 to-gray-50/50
-							       dark:from-gray-800 dark:to-gray-800/50"
+							       dark:from-gray-800 dark:to-gray-800/50
+							       dither-surface relative overflow-hidden"
 						>
 							Tasks
 						</div>
 						{#each results.tasks as result, index}
 							<button
 								onclick={() => navigateToItem(result)}
-								class="w-full px-4 py-3 text-left transition-all duration-200
+								class="w-full px-4 py-3 text-left transition-all duration-200 relative overflow-hidden
 								       hover:bg-gradient-to-r hover:from-blue-50/50 hover:to-purple-50/50
 								       dark:hover:from-blue-900/20 dark:hover:to-purple-900/20
 								       focus:bg-gradient-to-r focus:from-blue-50/50 focus:to-purple-50/50
 								       dark:focus:from-blue-900/20 dark:focus:to-purple-900/20
 								       focus:outline-none
+								       dither-soft dither-fade-hover
 								       {selectedIndex === results.braindumps.length + results.projects.length + index
 									? 'bg-gradient-to-r from-blue-50/50 to-purple-50/50 dark:from-blue-900/20 dark:to-purple-900/20'
 									: ''}"
@@ -476,10 +486,11 @@
 						{#if hasMore.tasks}
 							<button
 								onclick={() => loadMore('task')}
-								class="w-full px-4 py-2 text-sm font-medium text-primary-600 dark:text-primary-400
+								class="w-full px-4 py-2 text-sm font-medium text-primary-600 dark:text-primary-400 relative overflow-hidden
 								       hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50
 								       dark:hover:from-blue-900/20 dark:hover:to-purple-900/20
-								       focus:outline-none transition-all duration-200"
+								       focus:outline-none transition-all duration-200
+								       dither-soft dither-fade-hover"
 							>
 								View all task results →
 							</button>
@@ -500,6 +511,8 @@
 	}
 
 	:global(mark) {
+		position: relative;
+		overflow: hidden;
 		background: linear-gradient(to right, #fef3c7, #fde68a);
 		color: inherit;
 		font-weight: 600;
@@ -507,7 +520,24 @@
 		border-radius: 2px;
 	}
 
+	:global(mark::before) {
+		content: '';
+		position: absolute;
+		inset: 0;
+		background-image: url("data:image/svg+xml,%3Csvg width='4' height='4' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='4' height='4' fill='rgba(0,0,0,0)'/%3E%3Ccircle cx='0' cy='0' r='0.5' fill='rgb(0,0,0)'/%3E%3Ccircle cx='2' cy='1' r='0.5' fill='rgb(0,0,0)'/%3E%3Ccircle cx='1' cy='2' r='0.5' fill='rgb(0,0,0)'/%3E%3Ccircle cx='3' cy='3' r='0.5' fill='rgb(0,0,0)'/%3E%3C/svg%3E");
+		background-size: 4px 4px;
+		mix-blend-mode: overlay;
+		opacity: 0.15;
+		pointer-events: none;
+	}
+
 	:global(.dark mark) {
 		background: linear-gradient(to right, rgba(251, 191, 36, 0.3), rgba(245, 158, 11, 0.3));
+	}
+
+	:global(.dark mark::before) {
+		background-image: url("data:image/svg+xml,%3Csvg width='4' height='4' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='4' height='4' fill='rgba(0,0,0,0)'/%3E%3Ccircle cx='0' cy='0' r='0.5' fill='rgb(255,255,255)'/%3E%3Ccircle cx='2' cy='1' r='0.5' fill='rgb(255,255,255)'/%3E%3Ccircle cx='1' cy='2' r='0.5' fill='rgb(255,255,255)'/%3E%3Ccircle cx='3' cy='3' r='0.5' fill='rgb(255,255,255)'/%3E%3C/svg%3E");
+		mix-blend-mode: soft-light;
+		opacity: 0.2;
 	}
 </style>

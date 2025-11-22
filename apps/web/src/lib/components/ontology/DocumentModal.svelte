@@ -288,7 +288,7 @@
 		{:else}
 			<form id={documentFormId} class="space-y-6 px-4 sm:px-6 py-6" onsubmit={handleSave}>
 				<section
-					class="rounded-2xl border border-gray-200 dark:border-gray-700 bg-gradient-to-r from-white to-slate-50 dark:from-gray-900 dark:to-gray-800 p-4 sm:p-5 shadow-sm space-y-2"
+					class="rounded-2xl border border-gray-200 dark:border-gray-700 bg-gradient-to-r from-white to-slate-50 dark:from-gray-900 dark:to-gray-800 p-4 sm:p-5 shadow-sm space-y-2 dither-surface"
 				>
 					<div class="flex flex-wrap items-center gap-2">
 						<Badge variant={getStateVariant(stateKey)} size="sm" class="capitalize">

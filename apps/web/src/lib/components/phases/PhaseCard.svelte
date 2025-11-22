@@ -608,7 +608,7 @@
 
 <article
 	id="phase-card-{phase.id}"
-	class="phase-card bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden hover:shadow-md transition-all
+	class="phase-card bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden hover:shadow-md
 	{isDragOver ? 'ring-2 ring-purple-500 ring-opacity-50 shadow-lg' : ''}
 	{isComplete && viewMode === 'timeline' ? 'bg-green-50/50 dark:bg-green-900/10' : ''}"
 	role="region"
@@ -904,7 +904,7 @@
 				</div>
 				<div class="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2">
 					<div
-						class="bg-blue-600 dark:bg-blue-500 h-2 rounded-full transition-all duration-300"
+						class="bg-blue-600 dark:bg-blue-500 h-2 rounded-full"
 						style="width: {progress}%"
 						role="progressbar"
 						aria-valuenow={progress}
@@ -1204,7 +1204,7 @@
 										variant="ghost"
 										size="sm"
 										onclick={handleResetPhaseFilters}
-										class="!text-xs !px-2 !py-1 transition-all duration-200 hover:scale-105"
+										class="!text-xs !px-2 !py-1 hover-scale-sm"
 									>
 										Reset to global
 									</Button>
@@ -1264,7 +1264,7 @@
 									new Date(b.start_date || 0).getTime()
 							)}
 							<div
-								class="space-y-1 min-h-[40px] p-2 rounded border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 transition-all duration-300 {isDragOver
+								class="space-y-1 min-h-[40px] p-2 rounded border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 {isDragOver
 									? 'border-blue-400 dark:border-blue-500 bg-blue-50 dark:bg-blue-900/20 shadow-lg transform scale-[1.01]'
 									: ''}"
 								ondragover={handleTaskDragOver}
@@ -1341,7 +1341,7 @@
 						{:else}
 							<!-- Empty state with drop zone -->
 							<div
-								class="empty-state p-3 sm:p-4 rounded border-2 border-dashed text-center transition-all duration-300 {isDragOver
+								class="empty-state p-3 sm:p-4 rounded border-2 border-dashed text-center {isDragOver
 									? 'border-blue-400 dark:border-blue-500 bg-blue-50 dark:bg-blue-900/20 border-solid transform scale-[1.01] shadow-lg'
 									: 'border-gray-300 dark:border-gray-600'}"
 								ondragover={handleTaskDragOver}
@@ -1571,7 +1571,7 @@
 
 				<!-- Task List (Kanban View Only) -->
 				<div
-					class="phase-tasks p-3 sm:p-4 border-t border-gray-200 dark:border-gray-700 transition-all duration-300 ease-in-out"
+					class="phase-tasks p-3 sm:p-4 border-t border-gray-200 dark:border-gray-700"
 					class:has-custom-filters={hasCustomFilters}
 					class:filter-transitioning={isFilterTransition}
 					style="max-height: 16rem; overflow-y: auto;"
@@ -1613,7 +1613,7 @@
 										variant="ghost"
 										size="sm"
 										onclick={handleResetPhaseFilters}
-										class="!text-xs !px-1.5 !py-0.5 transition-all duration-200 hover:scale-105"
+										class="!text-xs !px-1.5 !py-0.5 hover-scale-sm"
 									>
 										Reset
 									</Button>
@@ -1696,11 +1696,17 @@
 </article>
 
 <style>
-	/* Mobile-first phase card styling */
+	/* Mobile-first phase card styling (GPU-optimized) */
 	.phase-card {
-		transition: all 0.2s ease;
+		/* GPU acceleration */
+		transform: translateZ(0);
+		backface-visibility: hidden;
 		contain: layout style;
-		transform: translateZ(0); /* Hardware acceleration */
+
+		/* Only animate GPU-friendly properties */
+		transition-property: box-shadow, border-color;
+		transition-duration: 200ms;
+		transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
 	}
 
 	@media (max-width: 640px) {
@@ -1716,14 +1722,21 @@
 		position: relative;
 	}
 
-	/* Task list scrolling */
+	/* Task list scrolling (GPU-optimized) */
 	.phase-tasks {
 		min-height: 60px;
-		transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 		-webkit-overflow-scrolling: touch;
 		scroll-behavior: smooth;
 		scrollbar-width: thin;
+
+		/* GPU acceleration */
 		transform: translateZ(0);
+		backface-visibility: hidden;
+
+		/* Only animate GPU-friendly properties */
+		transition-property: opacity, max-height;
+		transition-duration: 300ms;
+		transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
 	}
 
 	.phase-tasks::-webkit-scrollbar {
@@ -1822,8 +1835,19 @@
 
 	/* Ensure empty state doesn't cause layout shift */
 	.empty-state {
-		will-change: opacity;
-		transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+		/* GPU acceleration */
+		transform: translateZ(0);
+		will-change: transform, opacity;
+
+		/* Only animate GPU-friendly properties */
+		transition-property: transform, opacity, border-color, background-color, box-shadow;
+		transition-duration: 300ms;
+		transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+	}
+
+	/* Cleanup will-change when not drag target */
+	.empty-state:not(.border-blue-400) {
+		will-change: auto;
 	}
 
 	/* Enhanced drag feedback */

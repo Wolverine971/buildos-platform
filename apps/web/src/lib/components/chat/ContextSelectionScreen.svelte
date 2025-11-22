@@ -14,13 +14,11 @@
 		Plus,
 		FolderOpen,
 		ChevronRight,
-		ChevronLeft,
 		Sparkles,
 		Loader2
 	} from 'lucide-svelte';
 	import Card from '$lib/components/ui/Card.svelte';
 	import CardBody from '$lib/components/ui/CardBody.svelte';
-	import Button from '$lib/components/ui/Button.svelte';
 	import type { ChatContextType } from '@buildos/shared-types';
 
 	interface OntologyProjectSummary {
@@ -46,10 +44,11 @@
 
 	interface Props {
 		inModal?: boolean;
+		onNavigationChange?: (view: 'primary' | 'projectHub' | 'project-selection') => void;
 	}
 
 	// Props
-	let { inModal = true }: Props = $props();
+	let { inModal = true, onNavigationChange }: Props = $props();
 
 	// State
 	let selectedView: 'primary' | 'projectHub' | 'project-selection' = $state('primary');
@@ -129,6 +128,11 @@
 		}
 	});
 
+	// Notify parent of navigation changes for header back button
+	$effect(() => {
+		onNavigationChange?.(selectedView);
+	});
+
 	// Primary actions
 	function selectGlobal() {
 		dispatch('select', { contextType: 'global', label: 'Global conversation' });
@@ -165,6 +169,15 @@
 
 	function backToProjectHub() {
 		selectedView = 'projectHub';
+	}
+
+	// Public function for parent to trigger back navigation
+	export function handleBackNavigation() {
+		if (selectedView === 'project-selection') {
+			backToProjectHub();
+		} else if (selectedView === 'projectHub') {
+			backToPrimary();
+		}
 	}
 
 	function formatKeyLabel(value?: string | null) {
@@ -216,22 +229,20 @@
 				<!-- Global conversation -->
 				<button
 					onclick={selectGlobal}
-					class="group flex h-full flex-col justify-between gap-4 rounded-xl border border-slate-200/60 bg-gradient-to-br from-blue-50/70 via-slate-50/40 to-white/80 p-5 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-blue-300/60 hover:shadow-md active:translate-y-0 dark:border-slate-700/60 dark:from-slate-900/80 dark:via-slate-900/50 dark:to-slate-900/70 dark:hover:border-blue-500/60"
+					class="group flex h-full flex-col gap-3 rounded-xl border border-slate-200/60 bg-gradient-to-br from-blue-50/70 via-slate-50/40 to-white/80 dither-soft dither-fade-hover p-5 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-blue-300/60 hover:shadow-md active:translate-y-0 dark:border-slate-700/60 dark:from-slate-900/80 dark:via-slate-900/50 dark:to-slate-900/70 dark:hover:border-blue-500/60"
 				>
-					<div class="flex items-start gap-3">
-						<div
-							class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500/10 via-sky-400/10 to-indigo-500/10 text-blue-600 transition-transform duration-200 group-hover:scale-105 dark:text-blue-300"
-						>
-							<Globe class="h-5 w-5" />
-						</div>
-						<div class="min-w-0 flex-1">
-							<h3 class="text-base font-semibold text-slate-900 dark:text-white">
-								Global conversation
-							</h3>
-							<p class="mt-1 text-xs text-slate-600 dark:text-slate-400 leading-snug">
-								Talk across projects, calendar, and knowledge with no preset scope.
-							</p>
-						</div>
+					<div
+						class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500/10 via-sky-400/10 to-indigo-500/10 dither-subtle text-blue-600 transition-transform duration-200 group-hover:scale-105 dark:text-blue-300"
+					>
+						<Globe class="h-5 w-5" />
+					</div>
+					<div class="flex-1 space-y-1">
+						<h3 class="text-sm font-semibold text-slate-900 dark:text-white">
+							Global conversation
+						</h3>
+						<p class="text-xs text-slate-600 dark:text-slate-400 leading-snug">
+							Talk across projects, calendar, and knowledge with no preset scope.
+						</p>
 					</div>
 					<div
 						class="flex items-center justify-between text-xs font-medium text-blue-600 dark:text-blue-400"
@@ -246,22 +257,20 @@
 				<!-- Agent to BuildOS chat -->
 				<button
 					onclick={selectAgentToAgent}
-					class="group flex h-full flex-col justify-between gap-4 rounded-xl border border-slate-200/60 bg-gradient-to-br from-indigo-50/70 via-purple-50/40 to-white/80 p-5 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-indigo-300/60 hover:shadow-md active:translate-y-0 dark:border-slate-700/60 dark:from-slate-900/80 dark:via-slate-900/50 dark:to-slate-900/70 dark:hover:border-indigo-500/60"
+					class="group flex h-full flex-col gap-3 rounded-xl border border-slate-200/60 bg-gradient-to-br from-indigo-50/70 via-purple-50/40 to-white/80 dither-soft dither-fade-hover p-5 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-indigo-300/60 hover:shadow-md active:translate-y-0 dark:border-slate-700/60 dark:from-slate-900/80 dark:via-slate-900/50 dark:to-slate-900/70 dark:hover:border-indigo-500/60"
 				>
-					<div class="flex items-start gap-3">
-						<div
-							class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500/10 via-violet-400/10 to-fuchsia-500/10 text-indigo-600 transition-transform duration-200 group-hover:scale-105 dark:text-indigo-300"
-						>
-							<Sparkles class="h-5 w-5" />
-						</div>
-						<div class="min-w-0 flex-1">
-							<h3 class="text-base font-semibold text-slate-900 dark:text-white">
-								Agent to BuildOS chat
-							</h3>
-							<p class="mt-1 text-xs text-slate-600 dark:text-slate-400 leading-snug">
-								Hand the BuildOS chat to another AI agent with a clear goal.
-							</p>
-						</div>
+					<div
+						class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500/10 via-violet-400/10 to-fuchsia-500/10 dither-subtle text-indigo-600 transition-transform duration-200 group-hover:scale-105 dark:text-indigo-300"
+					>
+						<Sparkles class="h-5 w-5" />
+					</div>
+					<div class="flex-1 space-y-1">
+						<h3 class="text-sm font-semibold text-slate-900 dark:text-white">
+							Agent to BuildOS chat
+						</h3>
+						<p class="text-xs text-slate-600 dark:text-slate-400 leading-snug">
+							Hand the BuildOS chat to another AI agent with a clear goal.
+						</p>
 					</div>
 					<div
 						class="flex items-center justify-between text-xs font-medium text-indigo-600 dark:text-indigo-400"
@@ -276,23 +285,21 @@
 				<!-- Projects workspace -->
 				<button
 					onclick={goToProjectHub}
-					class="group flex h-full flex-col justify-between gap-4 rounded-xl border border-slate-200/60 bg-gradient-to-br from-emerald-50/70 via-teal-50/40 to-white/80 p-5 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-300/60 hover:shadow-md active:translate-y-0 dark:border-slate-700/60 dark:from-slate-900/80 dark:via-slate-900/50 dark:to-slate-900/70 dark:hover:border-emerald-500/60"
+					class="group flex h-full flex-col gap-3 rounded-xl border border-slate-200/60 bg-gradient-to-br from-emerald-50/70 via-teal-50/40 to-white/80 dither-soft dither-fade-hover p-5 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-300/60 hover:shadow-md active:translate-y-0 dark:border-slate-700/60 dark:from-slate-900/80 dark:via-slate-900/50 dark:to-slate-900/70 dark:hover:border-emerald-500/60"
 				>
-					<div class="flex items-start gap-3">
-						<div
-							class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500/10 via-teal-400/10 to-lime-500/10 text-emerald-600 transition-transform duration-200 group-hover:scale-105 dark:text-emerald-300"
-						>
-							<FolderOpen class="h-5 w-5" />
-						</div>
-						<div class="min-w-0 flex-1">
-							<h3 class="text-base font-semibold text-slate-900 dark:text-white">
-								Projects workspace
-							</h3>
-							<p class="mt-1 text-xs text-slate-600 dark:text-slate-400 leading-snug">
-								Start something new or dive into an existing project with focused
-								tools.
-							</p>
-						</div>
+					<div
+						class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500/10 via-teal-400/10 to-lime-500/10 dither-subtle text-emerald-600 transition-transform duration-200 group-hover:scale-105 dark:text-emerald-300"
+					>
+						<FolderOpen class="h-5 w-5" />
+					</div>
+					<div class="flex-1 space-y-1">
+						<h3 class="text-sm font-semibold text-slate-900 dark:text-white">
+							Projects workspace
+						</h3>
+						<p class="text-xs text-slate-600 dark:text-slate-400 leading-snug">
+							Start something new or dive into an existing project with focused
+							tools.
+						</p>
 					</div>
 					<div
 						class="flex items-center justify-between text-xs font-medium text-emerald-600 dark:text-emerald-400"
@@ -322,43 +329,33 @@
 	{#if selectedView === 'projectHub'}
 		<div class="flex h-full min-h-0 flex-col">
 			<div
-				class="flex gap-2 border-b border-slate-200/60 bg-white/80 p-4 sm:p-5 backdrop-blur-sm dark:border-slate-700/60 dark:bg-slate-900/80"
+				class="border-b border-slate-200/60 bg-white/80 p-4 sm:p-5 backdrop-blur-sm dark:border-slate-700/60 dark:bg-slate-900/80"
 			>
-				<Button variant="ghost" size="sm" onclick={backToPrimary} class="mb-2">
-					<ChevronLeft class="h-4 w-4" />
-					Back
-				</Button>
-				<div>
-					<h2 class="text-lg font-semibold text-slate-900 dark:text-white">
-						Project flow
-					</h2>
-					<p class="text-xs text-slate-600 dark:text-slate-400">
-						Choose whether you're starting fresh or advancing an existing project.
-					</p>
-				</div>
+				<h2 class="text-lg font-semibold text-slate-900 dark:text-white">
+					Project flow
+				</h2>
+				<p class="text-xs text-slate-600 dark:text-slate-400">
+					Choose whether you're starting fresh or advancing an existing project.
+				</p>
 			</div>
 			<div class="mx-auto w-full max-w-4xl flex-1 min-h-0 overflow-y-auto p-4 sm:p-5">
 				<div class="grid gap-4 sm:grid-cols-2">
 					<button
 						onclick={selectProjectCreate}
-						class="group flex h-full flex-col justify-between gap-4 rounded-xl border border-slate-200/60 bg-gradient-to-br from-purple-50/70 via-fuchsia-50/40 to-white/85 p-5 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-purple-300/60 hover:shadow-md active:translate-y-0 dark:border-slate-700/60 dark:from-slate-900/85 dark:via-slate-900/55 dark:to-slate-900/75 dark:hover:border-purple-500/60"
+						class="group flex h-full flex-col gap-3 rounded-xl border border-slate-200/60 bg-gradient-to-br from-purple-50/70 via-fuchsia-50/40 to-white/85 dither-soft dither-fade-hover p-5 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-purple-300/60 hover:shadow-md active:translate-y-0 dark:border-slate-700/60 dark:from-slate-900/85 dark:via-slate-900/55 dark:to-slate-900/75 dark:hover:border-purple-500/60"
 					>
-						<div class="flex items-start gap-3">
-							<div
-								class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-purple-500/15 via-pink-400/10 to-violet-500/15 text-purple-600 transition-transform duration-200 group-hover:scale-105 dark:text-purple-300"
-							>
-								<Plus class="h-5 w-5" />
-							</div>
-							<div class="min-w-0 flex-1">
-								<h3 class="text-base font-semibold text-slate-900 dark:text-white">
-									Create a new project
-								</h3>
-								<p
-									class="mt-1 text-xs text-slate-600 dark:text-slate-400 leading-snug"
-								>
-									Guided discovery to capture goals, milestones, and structure.
-								</p>
-							</div>
+						<div
+							class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-purple-500/15 via-pink-400/10 to-violet-500/15 dither-subtle text-purple-600 transition-transform duration-200 group-hover:scale-105 dark:text-purple-300"
+						>
+							<Plus class="h-5 w-5" />
+						</div>
+						<div class="flex-1 space-y-1">
+							<h3 class="text-sm font-semibold text-slate-900 dark:text-white">
+								Create a new project
+							</h3>
+							<p class="text-xs text-slate-600 dark:text-slate-400 leading-snug">
+								Guided discovery to capture goals, milestones, and structure.
+							</p>
 						</div>
 						<div
 							class="flex items-center justify-between text-xs font-medium text-purple-600 dark:text-purple-400"
@@ -373,29 +370,25 @@
 					<button
 						onclick={showProjectSelection}
 						disabled={isLoadingProjects || !hasProjects}
-						class="group flex h-full flex-col justify-between gap-4 rounded-xl border border-slate-200/60 bg-gradient-to-br from-slate-50/80 via-slate-50/40 to-white/85 p-5 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-300/60 hover:shadow-md active:translate-y-0 disabled:translate-y-0 disabled:opacity-60 disabled:shadow-none dark:border-slate-700/60 dark:from-slate-900/85 dark:via-slate-900/55 dark:to-slate-900/75 dark:hover:border-emerald-500/60"
+						class="group flex h-full flex-col gap-3 rounded-xl border border-slate-200/60 bg-gradient-to-br from-slate-50/80 via-slate-50/40 to-white/85 dither-soft dither-fade-hover p-5 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-300/60 hover:shadow-md active:translate-y-0 disabled:translate-y-0 disabled:opacity-60 disabled:shadow-none dark:border-slate-700/60 dark:from-slate-900/85 dark:via-slate-900/55 dark:to-slate-900/75 dark:hover:border-emerald-500/60"
 					>
-						<div class="flex items-start gap-3">
-							<div
-								class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500/15 via-teal-400/10 to-lime-500/15 text-emerald-600 transition-transform duration-200 group-hover:scale-105 dark:text-emerald-300"
-							>
-								{#if isLoadingProjects}
-									<Loader2 class="h-5 w-5 animate-spin" />
-								{:else}
-									<FolderOpen class="h-5 w-5" />
-								{/if}
-							</div>
-							<div class="min-w-0 flex-1">
-								<h3 class="text-base font-semibold text-slate-900 dark:text-white">
-									Work with an existing project
-								</h3>
-								<p
-									class="mt-1 text-xs text-slate-600 dark:text-slate-400 leading-snug"
-								>
-									Select a project, then choose whether to update, audit, or
-									forecast it.
-								</p>
-							</div>
+						<div
+							class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500/15 via-teal-400/10 to-lime-500/15 dither-subtle text-emerald-600 transition-transform duration-200 group-hover:scale-105 dark:text-emerald-300"
+						>
+							{#if isLoadingProjects}
+								<Loader2 class="h-5 w-5 animate-spin" />
+							{:else}
+								<FolderOpen class="h-5 w-5" />
+							{/if}
+						</div>
+						<div class="flex-1 space-y-1">
+							<h3 class="text-sm font-semibold text-slate-900 dark:text-white">
+								Work with an existing project
+							</h3>
+							<p class="text-xs text-slate-600 dark:text-slate-400 leading-snug">
+								Select a project, then choose whether to update, audit, or
+								forecast it.
+							</p>
 						</div>
 						<div
 							class="flex items-center justify-between text-xs font-medium text-emerald-600 dark:text-emerald-400"
@@ -430,22 +423,16 @@
 	<!-- PROJECT SELECTION VIEW -->
 	{#if selectedView === 'project-selection'}
 		<div class="flex h-full min-h-0 flex-col">
-			<!-- Header with Back Button -->
+			<!-- Header -->
 			<div
-				class="flex gap-2 border-b border-slate-200/60 bg-white/80 p-4 sm:p-5 backdrop-blur-sm dark:border-slate-700/60 dark:bg-slate-900/80"
+				class="border-b border-slate-200/60 bg-white/80 p-4 sm:p-5 backdrop-blur-sm dark:border-slate-700/60 dark:bg-slate-900/80"
 			>
-				<Button variant="ghost" size="sm" onclick={backToProjectHub} class="mb-2">
-					<ChevronLeft class="h-4 w-4" />
-					Back
-				</Button>
-				<div>
-					<h2 class="text-lg font-semibold text-slate-900 dark:text-white">
-						Select a Project
-					</h2>
-					<p class="text-xs text-slate-600 dark:text-slate-400">
-						Choose which project to work with
-					</p>
-				</div>
+				<h2 class="text-lg font-semibold text-slate-900 dark:text-white">
+					Select a Project
+				</h2>
+				<p class="text-xs text-slate-600 dark:text-slate-400">
+					Choose which project to work with
+				</p>
 			</div>
 
 			<!-- Projects List -->
@@ -470,7 +457,7 @@
 							{@const facetSummary = getFacetSummary(project)}
 							<button
 								onclick={() => selectProject(project)}
-								class="group flex flex-col rounded-xl border border-slate-200/50 bg-white/70 p-4 text-left backdrop-blur-sm transition-all duration-200 hover:scale-[1.02] hover:border-slate-300/70 hover:shadow-lg active:scale-[0.99] dark:border-slate-700/50 dark:bg-slate-800/70 dark:hover:border-slate-600/70"
+								class="group flex flex-col rounded-xl border border-slate-200/60 bg-gradient-to-br from-white/80 via-slate-50/40 to-white/70 dither-soft dither-fade-hover p-4 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-300/70 hover:shadow-lg active:translate-y-0 dark:border-slate-700/60 dark:from-slate-900/80 dark:via-slate-900/50 dark:to-slate-900/70 dark:hover:border-slate-600/70"
 							>
 								<div class="mb-3 flex items-start justify-between">
 									<h3

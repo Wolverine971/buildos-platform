@@ -47,7 +47,11 @@
       "Bash(/tmp/taskmodal_bottom.txt)",
       "Bash(git reset:*)",
       "mcp__perplexity__deep_research",
-      "Bash(\"/Users/annawayne/buildos-platform/apps/web/docs/features/agentic-chat/FRONTEND_QUICK_REFERENCE.md\")"
+      "Bash(\"/Users/annawayne/buildos-platform/apps/web/docs/features/agentic-chat/FRONTEND_QUICK_REFERENCE.md\")",
+      "WebFetch(domain:blog.maximeheckel.com)",
+      "WebFetch(domain:web.dev)",
+      "WebFetch(domain:developer.chrome.com)",
+      "mcp__perplexity__reason"
     ],
     "deny": [],
     "ask": []

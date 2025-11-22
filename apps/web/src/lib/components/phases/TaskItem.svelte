@@ -409,7 +409,7 @@
 	draggable="true"
 	ondragstart={handleDragStart}
 	ondragend={handleDragEnd}
-	class="task-item group bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg cursor-move hover:shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-200 {isDragging
+	class="task-item group bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg cursor-move hover:shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 {isDragging
 		? 'dragging opacity-50'
 		: ''}"
 	role="listitem"
@@ -865,22 +865,38 @@
 </div>
 
 <style>
-	/* Task item transitions */
+	/* ==================== GPU-Optimized Task Item Transitions ==================== */
+
 	.task-item {
-		transition: all 0.2s ease;
+		/* GPU acceleration */
+		transform: translateZ(0);
+		backface-visibility: hidden;
 		transform-origin: center;
-		will-change: transform, opacity;
+
+		/* Only animate GPU-friendly properties */
+		transition-property: transform, opacity, box-shadow, background-color;
+		transition-duration: 200ms;
+		transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+
+		/* Pre-warm GPU */
+		will-change: transform;
+	}
+
+	/* Cleanup will-change when not hovering/dragging */
+	.task-item:not(:hover):not(.dragging) {
+		will-change: auto;
 	}
 
 	.task-item:hover {
-		transform: translateY(-1px);
+		transform: translateY(-1px) translateZ(0);
 	}
 
 	/* Dragging state */
 	.task-item.dragging {
 		opacity: 0.5;
-		transform: scale(0.95);
+		transform: scale(0.95) translateZ(0);
 		cursor: grabbing;
+		will-change: transform, opacity;
 	}
 
 	/* Drag handle cursor */
@@ -892,10 +908,14 @@
 		cursor: grabbing;
 	}
 
+	/* Moving state (reordering) */
 	:global(.task-item[data-moving='true']) {
-		transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+		transition-property: transform, opacity;
+		transition-duration: 300ms;
+		transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
 		opacity: 0.6;
-		transform: scale(0.99);
+		transform: scale(0.99) translateZ(0);
+		will-change: transform, opacity;
 	}
 
 	/* Mobile touch feedback */

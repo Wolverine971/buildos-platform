@@ -244,6 +244,8 @@
 							bind:value={email}
 							type="email"
 							autocomplete="email"
+							inputmode="email"
+							enterkeyhint="next"
 							required
 							disabled={loading || googleLoading}
 							placeholder="Enter your email"
@@ -261,6 +263,7 @@
 							bind:value={password}
 							type="password"
 							autocomplete="current-password"
+							enterkeyhint="go"
 							required
 							disabled={loading || googleLoading}
 							onkeydown={handleKeydown}

@@ -1,80 +1,93 @@
 <!-- apps/web/src/lib/components/ui/Textarea.svelte -->
 <script lang="ts">
 	import type { HTMLTextareaAttributes } from 'svelte/elements';
-	import { createEventDispatcher } from 'svelte';
 	import { twMerge } from 'tailwind-merge';
 
 	type TextareaSize = 'sm' | 'md' | 'lg';
 
-	interface $$Props extends HTMLTextareaAttributes {
+	// Svelte 5 runes: Use $props() with rest syntax
+	let {
+		value = $bindable(''),
+		size = 'md',
+		error = false,
+		required = false,
+		disabled = false,
+		autoResize = false,
+		rows = 4,
+		maxRows = 10,
+		errorMessage = undefined,
+		helperText = undefined,
+		enterkeyhint = undefined,
+		class: className = '',
+		oninput,
+		...restProps
+	}: {
+		value?: string;
 		size?: TextareaSize;
 		error?: boolean;
 		required?: boolean;
+		disabled?: boolean;
 		autoResize?: boolean;
+		rows?: number;
 		maxRows?: number;
 		errorMessage?: string;
 		helperText?: string;
+		enterkeyhint?: 'enter' | 'done' | 'go' | 'next' | 'previous' | 'search' | 'send';
 		class?: string;
-	}
+		oninput?: (event: Event) => void;
+	} & HTMLTextareaAttributes = $props();
 
-	export let value = '';
-	export let size: TextareaSize = 'md';
-	export let error = false;
-	export let required = false;
-	export let disabled = false;
-	export let autoResize = false;
-	export let rows = 4;
-	export let maxRows = 10;
-	export let errorMessage: string | undefined = undefined;
-	export let helperText: string | undefined = undefined;
+	// Default enterkeyhint to 'enter' for textareas (can be overridden)
+	let computedEnterkeyhint = $derived(enterkeyhint || 'enter');
 
-	// Allow class prop to be passed through
-	let className = '';
-	export { className as class };
+	let textareaElement = $state<HTMLTextAreaElement>();
 
-	const dispatch = createEventDispatcher();
-	let textareaElement: HTMLTextAreaElement;
-
-	// Size classes with consistent padding
+	// Size classes with consistent padding and minimum 16px font for mobile
 	const sizeClasses = {
-		sm: 'px-3 py-2 text-sm',
-		md: 'px-4 py-2.5 text-base',
-		lg: 'px-4 py-3 text-lg'
+		sm: 'px-3 py-2 text-sm min-h-[44px]',
+		md: 'px-4 py-2.5 text-base min-h-[44px]',
+		lg: 'px-4 py-3 text-lg min-h-[48px]'
 	};
 
-	$: textareaClasses = twMerge(
-		// Base classes
-		'w-full rounded-lg resize-y',
-		'border transition-colors duration-200',
-		'focus:outline-none focus:ring-2 focus:ring-offset-2',
-		'disabled:cursor-not-allowed disabled:opacity-50 disabled:resize-none',
-		'placeholder:text-gray-400 dark:placeholder:text-gray-500',
+	let textareaClasses = $derived(
+		twMerge(
+			// Base classes
+			'w-full rounded-lg resize-y',
+			'border transition-colors duration-200',
+			'focus:outline-none focus:ring-2 focus:ring-offset-2',
+			'disabled:cursor-not-allowed disabled:opacity-50 disabled:resize-none',
+			'placeholder:text-gray-400 dark:placeholder:text-gray-500',
 
-		// Size classes
-		sizeClasses[size],
+			// Size classes
+			sizeClasses[size],
 
-		// Auto resize
-		autoResize && 'resize-none overflow-hidden',
+			// Auto resize
+			autoResize && 'resize-none overflow-hidden',
 
-		// State classes
-		error
-			? 'border-red-500 focus:ring-red-500 dark:border-red-400'
-			: 'border-gray-300 focus:ring-blue-500 dark:border-gray-600',
+			// State classes
+			error
+				? 'border-red-500 focus:ring-red-500 dark:border-red-400'
+				: 'border-gray-300 focus:ring-blue-500 dark:border-gray-600',
 
-		// Background
-		'bg-white dark:bg-gray-800',
+			// Background
+			'bg-white dark:bg-gray-800',
 
-		// Text color
-		'text-gray-900 dark:text-gray-100',
+			// Text color
+			'text-gray-900 dark:text-gray-100',
 
-		// Custom classes (these will override conflicts)
-		className
+			// Custom classes (these will override conflicts)
+			className
+		)
 	);
 
 	function handleInput(event: Event) {
 		const target = event.target as HTMLTextAreaElement;
 		value = target.value;
-		dispatch('input', value);
+
+		// Call custom oninput handler if provided
+		if (oninput) {
+			oninput(event);
+		}
 
 		if (autoResize) {
 			adjustHeight();
@@ -102,17 +115,20 @@
 		}
 	}
 
-	// Adjust height on mount if autoResize is enabled
-	$: if (autoResize && textareaElement && value) {
-		adjustHeight();
-	}
+	// Adjust height on mount if autoResize is enabled (Svelte 5 effect)
+	$effect(() => {
+		if (autoResize && textareaElement && value) {
+			adjustHeight();
+		}
+	});
 </script>
 
 <textarea
 	bind:this={textareaElement}
-	{value}
+	bind:value
 	{disabled}
 	{rows}
+	enterkeyhint={computedEnterkeyhint}
 	aria-invalid={error}
 	aria-required={required}
 	aria-describedby={error && errorMessage
@@ -122,7 +138,7 @@
 			: undefined}
 	class={textareaClasses}
 	oninput={handleInput}
-	{...$$restProps}
+	{...restProps}
 ></textarea>
 {#if error && errorMessage}
 	<p

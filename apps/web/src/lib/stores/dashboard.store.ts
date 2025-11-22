@@ -15,6 +15,10 @@ export interface DashboardStats {
 	activeTasks: number;
 	completedToday: number;
 	upcomingDeadlines: number;
+	weeklyProgress?: {
+		completed: number;
+		total: number;
+	};
 }
 
 export interface CalendarStatus {

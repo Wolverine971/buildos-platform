@@ -149,7 +149,7 @@
 <Modal bind:isOpen {title} size="xl" onClose={handleClose}>
 	{#if !document}
 		<div
-			class="text-center py-12 px-4 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600"
+			class="text-center py-12 px-4 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 rounded-lg dither-surface border-2 border-dashed border-gray-300 dark:border-gray-600"
 		>
 			<FileText class="w-16 h-16 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
 			<p class="text-gray-600 dark:text-gray-300 text-lg font-medium mb-2">
@@ -163,7 +163,7 @@
 		<div class="space-y-4">
 			<!-- Document Header -->
 			<div
-				class="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/10 dark:to-emerald-900/10 border border-green-200 dark:border-green-800 rounded-lg p-3 sm:p-4"
+				class="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/10 dark:to-emerald-900/10 border border-green-200 dark:border-green-800 rounded-lg dither-soft p-3 sm:p-4"
 			>
 				<div class="flex items-start justify-between gap-3 mb-2.5">
 					<div class="flex-1 min-w-0">

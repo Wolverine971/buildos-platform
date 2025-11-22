@@ -46,9 +46,9 @@
 						class="relative z-0 w-8 h-8 rounded-full transition-all duration-300 flex items-center justify-center cursor-pointer
               hover:scale-110 focus:outline-none focus:ring-2 focus:ring-purple-500/50
               {isCompleted
-							? 'bg-gradient-to-r from-green-500 to-green-600 shadow-lg shadow-green-500/30 hover:shadow-green-500/50'
+							? 'dither-gradient shadow-lg shadow-green-500/30 hover:shadow-green-500/50'
 							: isCurrent
-								? 'bg-gradient-to-r from-purple-500 to-blue-500 shadow-lg shadow-purple-500/30 animate-pulse scale-110'
+								? 'dither-gradient shadow-lg shadow-purple-500/30 animate-pulse scale-110'
 								: 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600'}"
 						onclick={() => onStepClick(index)}
 						aria-label="Go to step {index + 1}: {step.title}"

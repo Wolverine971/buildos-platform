@@ -175,7 +175,7 @@
 	let loadingDailyBriefModal = $state(false);
 
 	// Performance optimization states
-	let lazyLoadTrigger: HTMLElement;
+	let lazyLoadTrigger = $state<HTMLElement>();
 	let intersectionObserver: IntersectionObserver | null = null;
 	let invalidationTimeout: number | null = null;
 
@@ -346,10 +346,7 @@
 			(entries) => {
 				entries.forEach((entry) => {
 					if (entry.isIntersecting && !bottomSectionsLoaded && !loadingBottomSections) {
-						// Double-check we should load these sections
-						if (displayMode !== 'first-time') {
-							loadBottomSections();
-						}
+						loadBottomSections();
 					}
 				});
 			},
@@ -643,7 +640,7 @@
 			const result = await dashboardDataService.deleteTask(taskId);
 
 			if (!result.success) {
-				throw new Error(result.error || 'Failed to delete task');
+				throw new Error(result.errors?.[0] || 'Failed to delete task');
 			}
 
 			dispatch('taskDeleted', taskId);
@@ -709,9 +706,9 @@
 </script>
 
 <main
-	class="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 transition-colors"
+	class="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 transition-colors rounded-lg"
 >
-	<div class="container mx-auto px-2 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-10 max-w-7xl">
+	<div class="container mx-auto px-2 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-10 max-w-7xl ">
 		<!-- Header Section with Apple-style typography -->
 		<header class="mb-4 sm:mb-6">
 			<h1
@@ -933,7 +930,7 @@
 								<div
 									class="bg-gradient-to-r from-blue-500 to-indigo-600 h-3 rounded-full transition-all duration-700 ease-out shadow-sm"
 									style="width: {productivityScore}%"
-								/>
+								></div>
 							</div>
 						</div>
 					</div>

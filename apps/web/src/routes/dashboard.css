@@ -21,11 +21,15 @@
 	min-width: 44px;
 }
 
-/* Animation utilities */
+/* ==================== GPU-Optimized Animation Utilities ==================== */
+
 .animate-pulse-slow {
 	position: relative; /* z-index only works on positioned elements */
 	z-index: 0;
 	animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+
+	/* GPU acceleration for infinite animations */
+	will-change: opacity;
 }
 
 @keyframes pulse {
@@ -40,10 +44,18 @@
 
 .animate-pulse {
 	animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+
+	/* GPU acceleration */
+	will-change: opacity;
 }
 
 .float-animation {
 	animation: float 3s ease-in-out infinite;
+
+	/* GPU acceleration - critical for smooth floating */
+	will-change: transform;
+	transform: translateZ(0);
+	backface-visibility: hidden;
 }
 
 .float-animation.delay-2000 {
@@ -54,19 +66,25 @@
 	animation-delay: 1s;
 }
 
+/* GPU-optimized float animation */
 @keyframes float {
 	0%,
 	100% {
-		transform: translateY(0px);
+		transform: translateY(0px) translateZ(0);
 	}
 	50% {
-		transform: translateY(-10px);
+		transform: translateY(-10px) translateZ(0);
 	}
 }
 
-/* Fade in animation for dashboard sections */
+/* Fade in animation for dashboard sections (GPU-optimized) */
 .fade-in {
 	animation: fadeIn 0.5s ease-out;
+
+	/* Pre-warm GPU */
+	will-change: transform, opacity;
+	transform: translateZ(0);
+	backface-visibility: hidden;
 }
 
 .fade-in.delay-200 {
@@ -81,14 +99,20 @@
 	animation-fill-mode: forwards;
 }
 
+/* Cleanup will-change after animation completes */
+.fade-in.animation-complete {
+	will-change: auto;
+}
+
+/* GPU-accelerated fade-in */
 @keyframes fadeIn {
 	from {
 		opacity: 0;
-		transform: translateY(10px);
+		transform: translateY(10px) translateZ(0);
 	}
 	to {
 		opacity: 1;
-		transform: translateY(0);
+		transform: translateY(0) translateZ(0);
 	}
 }
 
@@ -173,7 +197,7 @@
 
 /* Phase calendar specific styles */
 
-/* Skeleton loading animation */
+/* Skeleton loading animation (GPU-optimized) */
 @keyframes skeleton {
 	0% {
 		background-position: -200px 0;
@@ -187,6 +211,10 @@
 	background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
 	background-size: 200px 100%;
 	animation: skeleton 1.5s infinite;
+
+	/* GPU acceleration for infinite animations */
+	will-change: background-position;
+	transform: translateZ(0);
 }
 
 /* Improved scrollbar styles for task lists */

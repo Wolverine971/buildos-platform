@@ -19,6 +19,9 @@ export default {
 	],
 	theme: {
 		extend: {
+			screens: {
+				xs: '480px' // Extra small devices (large phones landscape)
+			},
 			colors: {
 				background: withOpacity('--background'),
 				foreground: withOpacity('--foreground'),

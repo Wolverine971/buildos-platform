@@ -72,7 +72,7 @@
 </script>
 
 <div
-	class="flex h-full flex-col overflow-hidden bg-gradient-to-br from-gray-50/50 to-gray-100/30 dark:from-gray-900/50 dark:to-gray-800/30 {inModal
+	class="flex h-full flex-col overflow-hidden bg-gradient-to-br from-gray-50/50 to-gray-100/30 dither-surface dark:from-gray-900/50 dark:to-gray-800/30 {inModal
 		? 'max-h-[70vh] min-h-[400px] bg-white dark:bg-gray-800'
 		: ''}"
 >
@@ -94,10 +94,10 @@
 				<!-- Option 1: Chat Globally -->
 				<button
 					onclick={selectGlobal}
-					class="group flex flex-col items-center justify-center gap-4 rounded-xl border-2 border-dashed border-gray-300/50 bg-gradient-to-br from-blue-50/30 to-indigo-50/30 p-6 text-center transition-all duration-200 hover:scale-[1.02] hover:border-blue-300/50 hover:shadow-lg active:scale-[0.99] dark:border-gray-600/50 dark:from-blue-900/10 dark:to-indigo-900/10 dark:hover:border-blue-600/50"
+					class="group flex flex-col items-center justify-center gap-4 rounded-xl border-2 border-dashed border-gray-300/50 bg-gradient-to-br from-blue-50/30 to-indigo-50/30 dither-soft dither-fade-hover p-6 text-center transition-all duration-200 hover:scale-[1.02] hover:border-blue-300/50 hover:shadow-lg active:scale-[0.99] dark:border-gray-600/50 dark:from-blue-900/10 dark:to-indigo-900/10 dark:hover:border-blue-600/50"
 				>
 					<div
-						class="flex h-16 w-16 items-center justify-center rounded-xl bg-gradient-to-br from-blue-100 to-indigo-100 shadow-sm transition-transform duration-200 group-hover:scale-105 dark:from-blue-800/40 dark:to-indigo-800/40"
+						class="flex h-16 w-16 items-center justify-center rounded-xl bg-gradient-to-br from-blue-100 to-indigo-100 dither-subtle shadow-sm transition-transform duration-200 group-hover:scale-105 dark:from-blue-800/40 dark:to-indigo-800/40"
 					>
 						<Globe class="h-8 w-8 text-blue-600 dark:text-blue-400" />
 					</div>
@@ -115,10 +115,10 @@
 				<!-- Option 2: Create New Project -->
 				<button
 					onclick={selectProjectCreate}
-					class="group flex flex-col items-center justify-center gap-4 rounded-xl border-2 border-dashed border-purple-300/50 bg-gradient-to-br from-purple-50/30 to-pink-50/30 p-6 text-center transition-all duration-200 hover:scale-[1.02] hover:border-purple-400/50 hover:shadow-lg active:scale-[0.99] dark:border-purple-600/50 dark:from-purple-900/10 dark:to-pink-900/10 dark:hover:border-purple-500/50"
+					class="group flex flex-col items-center justify-center gap-4 rounded-xl border-2 border-dashed border-purple-300/50 bg-gradient-to-br from-purple-50/30 to-pink-50/30 dither-soft dither-fade-hover p-6 text-center transition-all duration-200 hover:scale-[1.02] hover:border-purple-400/50 hover:shadow-lg active:scale-[0.99] dark:border-purple-600/50 dark:from-purple-900/10 dark:to-pink-900/10 dark:hover:border-purple-500/50"
 				>
 					<div
-						class="flex h-16 w-16 items-center justify-center rounded-xl bg-gradient-to-br from-purple-100 to-pink-100 shadow-sm transition-transform duration-200 group-hover:scale-105 dark:from-purple-800/40 dark:to-pink-800/40"
+						class="flex h-16 w-16 items-center justify-center rounded-xl bg-gradient-to-br from-purple-100 to-pink-100 dither-subtle shadow-sm transition-transform duration-200 group-hover:scale-105 dark:from-purple-800/40 dark:to-pink-800/40"
 					>
 						<Plus class="h-8 w-8 text-purple-600 dark:text-purple-400" />
 					</div>
@@ -137,10 +137,10 @@
 				<button
 					onclick={showProjectSelection}
 					disabled={projects.length === 0}
-					class="group flex flex-col items-center justify-center gap-4 rounded-xl border-2 border-dashed border-emerald-300/50 bg-gradient-to-br from-emerald-50/30 to-teal-50/30 p-6 text-center transition-all duration-200 hover:scale-[1.02] hover:border-emerald-400/50 hover:shadow-lg active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100 dark:border-emerald-600/50 dark:from-emerald-900/10 dark:to-teal-900/10 dark:hover:border-emerald-500/50"
+					class="group flex flex-col items-center justify-center gap-4 rounded-xl border-2 border-dashed border-emerald-300/50 bg-gradient-to-br from-emerald-50/30 to-teal-50/30 dither-soft dither-fade-hover p-6 text-center transition-all duration-200 hover:scale-[1.02] hover:border-emerald-400/50 hover:shadow-lg active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100 dark:border-emerald-600/50 dark:from-emerald-900/10 dark:to-teal-900/10 dark:hover:border-emerald-500/50"
 				>
 					<div
-						class="flex h-16 w-16 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-100 to-teal-100 shadow-sm transition-transform duration-200 group-hover:scale-105 dark:from-emerald-800/40 dark:to-teal-800/40"
+						class="flex h-16 w-16 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-100 to-teal-100 dither-subtle shadow-sm transition-transform duration-200 group-hover:scale-105 dark:from-emerald-800/40 dark:to-teal-800/40"
 					>
 						<FolderOpen class="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
 					</div>
@@ -278,10 +278,10 @@
 					<!-- Project Workspace -->
 					<Button
 						onclick={() => selectMode('project')}
-						class="group flex flex-col items-center gap-4 rounded-xl border-2 border-blue-200/50 bg-gradient-to-br from-blue-50/50 to-indigo-50/50 p-6 text-center transition-all duration-200 hover:scale-[1.02] hover:border-blue-300 hover:shadow-lg active:scale-[0.99] dark:border-blue-800/50 dark:from-blue-900/20 dark:to-indigo-900/20 dark:hover:border-blue-700"
+						class="group flex flex-col items-center gap-4 rounded-xl border-2 border-blue-200/50 bg-gradient-to-br from-blue-50/50 to-indigo-50/50 dither-soft dither-fade-hover p-6 text-center transition-all duration-200 hover:scale-[1.02] hover:border-blue-300 hover:shadow-lg active:scale-[0.99] dark:border-blue-800/50 dark:from-blue-900/20 dark:to-indigo-900/20 dark:hover:border-blue-700"
 					>
 						<div
-							class="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-blue-100 to-indigo-100 shadow-sm transition-transform duration-200 group-hover:scale-105 dark:from-blue-800/40 dark:to-indigo-800/40"
+							class="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-blue-100 to-indigo-100 dither-subtle shadow-sm transition-transform duration-200 group-hover:scale-105 dark:from-blue-800/40 dark:to-indigo-800/40"
 						>
 							<Sparkles class="h-7 w-7 text-blue-600 dark:text-blue-400" />
 						</div>
@@ -298,10 +298,10 @@
 					<!-- Project Audit -->
 					<Button
 						onclick={() => selectMode('project_audit')}
-						class="group flex flex-col items-center gap-4 rounded-xl border-2 border-amber-200/50 bg-gradient-to-br from-amber-50/50 to-orange-50/50 p-6 text-center transition-all duration-200 hover:scale-[1.02] hover:border-amber-300 hover:shadow-lg active:scale-[0.99] dark:border-amber-800/50 dark:from-amber-900/20 dark:to-orange-900/20 dark:hover:border-amber-700"
+						class="group flex flex-col items-center gap-4 rounded-xl border-2 border-amber-200/50 bg-gradient-to-br from-amber-50/50 to-orange-50/50 dither-soft dither-fade-hover p-6 text-center transition-all duration-200 hover:scale-[1.02] hover:border-amber-300 hover:shadow-lg active:scale-[0.99] dark:border-amber-800/50 dark:from-amber-900/20 dark:to-orange-900/20 dark:hover:border-amber-700"
 					>
 						<div
-							class="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-amber-100 to-orange-100 shadow-sm transition-transform duration-200 group-hover:scale-105 dark:from-amber-800/40 dark:to-orange-800/40"
+							class="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-amber-100 to-orange-100 dither-subtle shadow-sm transition-transform duration-200 group-hover:scale-105 dark:from-amber-800/40 dark:to-orange-800/40"
 						>
 							<Search class="h-7 w-7 text-amber-600 dark:text-amber-400" />
 						</div>
@@ -318,10 +318,10 @@
 					<!-- Project Forecast -->
 					<Button
 						onclick={() => selectMode('project_forecast')}
-						class="group flex flex-col items-center gap-4 rounded-xl border-2 border-emerald-200/50 bg-gradient-to-br from-emerald-50/50 to-teal-50/50 p-6 text-center transition-all duration-200 hover:scale-[1.02] hover:border-emerald-300 hover:shadow-lg active:scale-[0.99] dark:border-emerald-800/50 dark:from-emerald-900/20 dark:to-teal-900/20 dark:hover:border-emerald-700"
+						class="group flex flex-col items-center gap-4 rounded-xl border-2 border-emerald-200/50 bg-gradient-to-br from-emerald-50/50 to-teal-50/50 dither-soft dither-fade-hover p-6 text-center transition-all duration-200 hover:scale-[1.02] hover:border-emerald-300 hover:shadow-lg active:scale-[0.99] dark:border-emerald-800/50 dark:from-emerald-900/20 dark:to-teal-900/20 dark:hover:border-emerald-700"
 					>
 						<div
-							class="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-100 to-teal-100 shadow-sm transition-transform duration-200 group-hover:scale-105 dark:from-emerald-800/40 dark:to-teal-800/40"
+							class="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-100 to-teal-100 dither-subtle shadow-sm transition-transform duration-200 group-hover:scale-105 dark:from-emerald-800/40 dark:to-teal-800/40"
 						>
 							<TrendingUp class="h-7 w-7 text-emerald-600 dark:text-emerald-400" />
 						</div>

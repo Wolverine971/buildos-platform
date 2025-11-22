@@ -638,7 +638,7 @@
 		<div class="p-4 sm:p-6">
 			<!-- Tab Navigation -->
 			<div
-				class="flex items-center gap-1 mb-6 p-1 bg-gradient-to-r from-gray-50 to-slate-50 dark:from-gray-800 dark:to-gray-900 rounded-lg border border-gray-200 dark:border-gray-700"
+				class="flex items-center gap-1 mb-6 p-1 bg-gradient-to-r from-gray-50 to-slate-50 dark:from-gray-800 dark:to-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 dither-surface"
 				role="tablist"
 				aria-label="Task views"
 			>
@@ -650,7 +650,7 @@
 					tabindex={activeView === 'details' ? 0 : -1}
 					class={`flex-1 px-4 py-2.5 rounded-md text-sm font-semibold transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 ${
 						activeView === 'details'
-							? 'bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/50 dark:to-purple-950/50 text-blue-700 dark:text-blue-300 shadow-md border border-blue-600 dark:border-blue-500'
+							? 'bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/50 dark:to-purple-950/50 text-blue-700 dark:text-blue-300 shadow-md border border-blue-600 dark:border-blue-500 dither-accent'
 							: 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-white/50 dark:hover:bg-gray-800/50 border border-transparent'
 					}`}
 					onclick={() => setActiveView('details')}
@@ -665,7 +665,7 @@
 					tabindex={activeView === 'workspace' ? 0 : -1}
 					class={`flex-1 px-4 py-2.5 rounded-md text-sm font-semibold transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 ${
 						activeView === 'workspace'
-							? 'bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/50 dark:to-purple-950/50 text-blue-700 dark:text-blue-300 shadow-md border border-blue-600 dark:border-blue-500'
+							? 'bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/50 dark:to-purple-950/50 text-blue-700 dark:text-blue-300 shadow-md border border-blue-600 dark:border-blue-500 dither-accent'
 							: 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-white/50 dark:hover:bg-gray-800/50 border border-transparent'
 					}`}
 					onclick={() => setActiveView('workspace')}
@@ -675,12 +675,12 @@
 			</div>
 
 			<!-- Tab Content with Horizontal Slide Animation -->
-			<div class="relative overflow-hidden" style="min-height: 500px; max-height: 70vh;">
+			<div class="relative" style="min-height: 400px;">
 				{#key activeView}
 					<div
 						in:fly={{ x: slideDirection * 100, duration: 300, easing: cubicOut }}
 						out:fly={{ x: slideDirection * -100, duration: 300, easing: cubicOut }}
-						class="absolute inset-0 overflow-y-auto"
+						class="w-full"
 						role="tabpanel"
 						id={activeView === 'details' ? 'details-panel' : 'workspace-panel'}
 						aria-labelledby={activeView === 'details' ? 'details-tab' : 'workspace-tab'}
@@ -688,12 +688,12 @@
 						{#if activeView === 'details'}
 							<!-- DETAILS TAB -->
 							<form
-								class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 h-full"
+								class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 p-2"
 								id={detailsFormId}
 								onsubmit={handleSave}
 							>
 								<!-- Status Overview Card -->
-								<Card variant="elevated" class="lg:col-span-3">
+								<Card variant="elevated" padding="sm" class="lg:col-span-3">
 									<CardBody padding="md">
 										<div class="space-y-3">
 											<!-- Badges Row -->
@@ -771,6 +771,8 @@
 										<TextInput
 											id="title"
 											bind:value={title}
+											inputmode="text"
+											enterkeyhint="next"
 											placeholder="Enter task title..."
 											required={true}
 											disabled={isSaving}
@@ -788,6 +790,7 @@
 										<Textarea
 											id="description"
 											bind:value={description}
+											enterkeyhint="next"
 											placeholder="Describe the task..."
 											rows={4}
 											disabled={isSaving}
@@ -1125,14 +1128,16 @@
 										</CardBody>
 									</Card>
 
-									<!-- Scheduled -->
+									<!-- Schedule -->
 									<Card variant="elevated">
 										<CardHeader variant="accent">
 											<h3
 												class="text-xs font-semibold uppercase tracking-wide flex items-center gap-2"
 											>
 												<span class="text-base">📅</span>
-												Scheduled
+												{#if !dueAt }Schedule?
+												{:else}Scheduled
+												{/if}
 											</h3>
 										</CardHeader>
 										<CardBody padding="sm">
@@ -1147,6 +1152,8 @@
 													<TextInput
 														id="sidebar-due-date"
 														type="datetime-local"
+														inputmode="numeric"
+														enterkeyhint="done"
 														bind:value={dueAt}
 														disabled={isSaving}
 														size="sm"
@@ -1440,7 +1447,7 @@
 	<!-- Footer Actions -->
 	<svelte:fragment slot="footer">
 		<div
-			class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 p-4 sm:p-6 border-t border-gray-200 dark:border-gray-700 bg-gradient-to-r from-gray-50 to-slate-50 dark:from-gray-900/50 dark:to-gray-800/50"
+			class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 p-2 sm:p-4 border-t border-gray-200 dark:border-gray-700 bg-gradient-to-r from-gray-50 to-slate-50 dark:from-gray-900/50 dark:to-gray-800/50 dither-surface"
 		>
 			{#if activeView === 'details'}
 				<!-- Delete button on the left -->

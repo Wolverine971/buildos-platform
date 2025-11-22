@@ -195,7 +195,7 @@
 >
 	<div class="flex items-start gap-4">
 		<div
-			class="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-green-100 to-emerald-100 dark:from-green-900/30 dark:to-emerald-900/30 rounded-lg flex items-center justify-center"
+			class="flex-shrink-0 w-12 h-12 dither-subtle rounded-lg flex items-center justify-center"
 		>
 			<Phone class="w-6 h-6 text-green-600 dark:text-green-400" />
 		</div>
@@ -248,6 +248,8 @@
 							oninput={(e) => handlePhoneInput(e.detail)}
 							onkeypress={(e) => handleKeyPress(e.detail)}
 							type="tel"
+							inputmode="tel"
+							enterkeyhint="send"
 							placeholder="(555) 123-4567"
 							disabled={isSending}
 							class="w-full"
@@ -317,6 +319,7 @@
 							onkeypress={(e) => handleKeyPress(e.detail)}
 							type="text"
 							inputmode="numeric"
+							enterkeyhint="done"
 							pattern="[0-9]*"
 							placeholder="123456"
 							maxlength={6}

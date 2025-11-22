@@ -241,7 +241,7 @@
 			<div class="modal-grab-handle"></div>
 		</div>
 		<div
-			class="bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-800 dark:via-gray-800/95 dark:to-gray-800 px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 dark:border-gray-700"
+			class="dither-soft px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 dark:border-gray-700"
 		>
 			<div class="flex items-start justify-between">
 				<div class="flex items-center space-x-3">

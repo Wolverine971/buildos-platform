@@ -11,7 +11,8 @@
 		displayContextLabel: string;
 		displayContextSubtitle: string;
 		isStreaming: boolean;
-		onChangeContext: () => void;
+		showBackButton: boolean;
+		onBack: () => void;
 		onClose?: () => void;
 		projectId?: string;
 		resolvedProjectFocus: ProjectFocus | null;
@@ -28,7 +29,8 @@
 		displayContextLabel,
 		displayContextSubtitle,
 		isStreaming,
-		onChangeContext,
+		showBackButton,
+		onBack,
 		onClose,
 		projectId,
 		resolvedProjectFocus,
@@ -78,14 +80,14 @@
 
 <!-- Ultra-compact single-line header: fixed 48px height -->
 <div class="flex h-12 items-center gap-2 px-3 sm:px-4">
-	<!-- Back button: Compact, only shown when context selected -->
-	{#if selectedContextType}
+	<!-- Back button: Compact, always in header when navigation is available -->
+	{#if showBackButton}
 		<button
 			type="button"
 			class="inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 text-slate-600 transition hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-			onclick={onChangeContext}
+			onclick={onBack}
 			disabled={isStreaming}
-			aria-label="Change context"
+			aria-label="Go back"
 		>
 			<ArrowLeft class="h-4 w-4" />
 		</button>
@@ -98,8 +100,8 @@
 		class="h-7 w-7 shrink-0 rounded-md object-cover"
 	/>
 
-	<!-- Title & Focus Section - Always single line -->
-	<div class="flex min-w-0 flex-1 items-center gap-2">
+	<!-- Title & Focus Section - Optimized for mobile density -->
+	<div class="flex min-w-0 flex-1 items-center gap-1.5 sm:gap-2">
 		{#if selectedContextType}
 			<h2 class="truncate text-sm font-semibold text-slate-900 dark:text-white">
 				{displayContextLabel}
@@ -120,7 +122,8 @@
 		{/if}
 
 		{#if selectedContextType}
-			<span class="text-slate-400 dark:text-slate-600">•</span>
+			<!-- Separator: Hidden on small screens to save space -->
+			<span class="hidden text-slate-400 dark:text-slate-600 sm:inline">•</span>
 
 			{#if resolvedProjectFocus}
 				<ProjectFocusIndicator
@@ -129,13 +132,15 @@
 					{onClearFocus}
 				/>
 			{:else}
-				<span class="truncate text-xs text-slate-600 dark:text-slate-400">
+				<!-- Subtitle: Hidden on mobile, shown on desktop -->
+				<span class="hidden truncate text-xs text-slate-600 dark:text-slate-400 sm:inline">
 					{displayContextSubtitle || 'Ready to assist'}
 				</span>
 			{/if}
 		{:else}
-			<span class="text-slate-400 dark:text-slate-600">•</span>
-			<span class="truncate text-xs text-slate-600 dark:text-slate-400">
+			<!-- No context selected: Hide subtitle on mobile -->
+			<span class="hidden text-slate-400 dark:text-slate-600 sm:inline">•</span>
+			<span class="hidden truncate text-xs text-slate-600 dark:text-slate-400 sm:inline">
 				{displayContextSubtitle}
 			</span>
 		{/if}

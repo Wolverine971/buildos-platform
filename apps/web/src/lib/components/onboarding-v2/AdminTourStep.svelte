@@ -40,7 +40,7 @@
 
 		<div class="flex justify-center mb-6">
 			<div
-				class="w-16 h-16 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700 rounded-2xl flex items-center justify-center shadow-lg"
+				class="w-16 h-16 dither-subtle rounded-2xl flex items-center justify-center shadow-lg"
 			>
 				<Info class="w-8 h-8 text-gray-600 dark:text-gray-400" />
 			</div>

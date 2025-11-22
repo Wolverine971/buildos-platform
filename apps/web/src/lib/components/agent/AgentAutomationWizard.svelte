@@ -1,6 +1,6 @@
 <!-- apps/web/src/lib/components/agent/AgentAutomationWizard.svelte -->
 <script lang="ts">
-	import Button from '$lib/components/ui/Button.svelte';
+	import { Sparkles, ChevronRight } from 'lucide-svelte';
 	import Card from '$lib/components/ui/Card.svelte';
 	import CardBody from '$lib/components/ui/CardBody.svelte';
 
@@ -84,37 +84,37 @@
 	</div>
 
 	{#if step === 'agent'}
-		<Card variant="elevated" class="flex-1 flex flex-col justify-center">
-			<CardBody padding="md">
-				<div class="space-y-2 sm:space-y-3">
-					<h4 class="text-base font-semibold text-slate-900 dark:text-white">
+		<div class="flex-1 flex flex-col justify-center px-4">
+			<button
+				type="button"
+				onclick={onUseActionableInsight}
+				class="group flex flex-col gap-3 rounded-xl border border-slate-200/60 bg-gradient-to-br from-indigo-50/70 via-purple-50/40 to-white/80 dither-soft dither-fade-hover p-5 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-indigo-300/60 hover:shadow-md active:translate-y-0 dark:border-slate-700/60 dark:from-slate-900/80 dark:via-slate-900/50 dark:to-slate-900/70 dark:hover:border-indigo-500/60"
+			>
+				<div
+					class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500/10 via-violet-400/10 to-fuchsia-500/10 dither-subtle text-indigo-600 transition-transform duration-200 group-hover:scale-105 dark:text-indigo-300"
+				>
+					<Sparkles class="h-5 w-5" />
+				</div>
+				<div class="flex-1 space-y-1">
+					<h3 class="text-sm font-semibold text-slate-900 dark:text-white">
 						Actionable Insight
-					</h4>
-					<p class="max-w-2xl text-sm text-slate-600 dark:text-slate-400">
+					</h3>
+					<p class="text-xs text-slate-600 dark:text-slate-400 leading-snug">
 						BuildOS will tap Actionable Insight to craft concise, actionable prompts and
 						push the work forward in chat.
 					</p>
-					<div class="flex flex-wrap items-center gap-2 sm:gap-3">
-						<Button variant="primary" size="sm" onclick={onUseActionableInsight}>
-							Use Actionable Insight
-						</Button>
-						<span
-							class="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400"
-						>
-							Single option available
-						</span>
-					</div>
 				</div>
-			</CardBody>
-		</Card>
+				<div class="flex items-center justify-between text-xs font-medium text-indigo-600 dark:text-indigo-400">
+					<span>Use this helper</span>
+					<ChevronRight class="h-4 w-4 transition-transform group-hover:translate-x-1" />
+				</div>
+			</button>
+		</div>
 	{:else if step === 'project'}
 		<div class="flex flex-1 flex-col gap-3 overflow-hidden">
-			<div class="flex items-center justify-between">
-				<h4 class="text-base font-semibold text-slate-900 dark:text-white">
-					Select the project to work in
-				</h4>
-				<Button variant="ghost" size="sm" onclick={onBackAgent}>Back</Button>
-			</div>
+			<h4 class="text-base font-semibold text-slate-900 dark:text-white">
+				Select the project to work in
+			</h4>
 			<div class="flex-1 min-h-0 overflow-y-auto">
 				{#if agentProjectsLoading}
 					<Card variant="elevated">
@@ -138,36 +138,32 @@
 				{:else}
 					<div class="grid gap-2 sm:gap-3 sm:grid-cols-2">
 						{#each agentProjects as project}
-							<Card variant="interactive" class="group h-full">
-								<button
-									type="button"
-									class="w-full text-left focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 rounded-xl"
-									onclick={() => onProjectSelect(project)}
-									aria-label={`Select ${project.name} project`}
-								>
-									<CardBody padding="sm">
-										<div class="space-y-1 sm:space-y-1.5">
-											<div class="flex items-center justify-between gap-3">
-												<h5
-													class="text-sm font-semibold text-slate-900 dark:text-white"
-												>
-													{project.name}
-												</h5>
-												<span
-													class="text-xs font-semibold uppercase tracking-wide text-slate-400 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors"
-												>
-													Select
-												</span>
-											</div>
-											<p
-												class="text-xs text-slate-600 dark:text-slate-400 line-clamp-2"
-											>
-												{project.description || 'No description provided.'}
-											</p>
-										</div>
-									</CardBody>
-								</button>
-							</Card>
+							<button
+								type="button"
+								class="group h-full rounded-xl border border-slate-200/60 bg-gradient-to-br from-white/80 via-slate-50/40 to-white/70 dither-soft dither-fade-hover p-3 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-300/70 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 active:translate-y-0 dark:border-slate-700/60 dark:from-slate-900/80 dark:via-slate-900/50 dark:to-slate-900/70 dark:hover:border-emerald-500/60"
+								onclick={() => onProjectSelect(project)}
+								aria-label={`Select ${project.name} project`}
+							>
+								<div class="space-y-1.5">
+									<div class="flex items-center justify-between gap-3">
+										<h5
+											class="text-sm font-semibold text-slate-900 dark:text-white"
+										>
+											{project.name}
+										</h5>
+										<span
+											class="text-xs font-semibold text-emerald-600 dark:text-emerald-400 transition-colors"
+										>
+											Select
+										</span>
+									</div>
+									<p
+										class="text-xs text-slate-600 dark:text-slate-400 line-clamp-2"
+									>
+										{project.description || 'No description provided.'}
+									</p>
+								</div>
+							</button>
 						{/each}
 					</div>
 					{#if agentProjects.length === 0 && !agentProjectsLoading}
@@ -184,12 +180,9 @@
 		</div>
 	{:else}
 		<div class="flex flex-1 flex-col gap-3 overflow-hidden">
-			<div class="flex items-center justify-between">
-				<h4 class="text-base font-semibold text-slate-900 dark:text-white">
-					What should BuildOS handle automatically?
-				</h4>
-				<Button variant="ghost" size="sm" onclick={onBackProject}>Back</Button>
-			</div>
+			<h4 class="text-base font-semibold text-slate-900 dark:text-white">
+				What should BuildOS handle automatically?
+			</h4>
 			<div class="flex-1 min-h-0 overflow-y-auto">
 				<Card variant="elevated">
 					<CardBody padding="md">

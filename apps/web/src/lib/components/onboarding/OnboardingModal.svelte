@@ -33,12 +33,12 @@
 		<div class="relative">
 			<!-- Animated glow effect -->
 			<div
-				class="absolute inset-0 bg-gradient-to-br from-purple-500/30 to-blue-600/30 rounded-2xl blur-2xl opacity-60 animate-pulse"
+				class="absolute inset-0 dither-gradient rounded-2xl blur-2xl opacity-60 animate-pulse"
 				style="animation-duration: 3s;"
 			></div>
 			<!-- Brain-bolt video with glass effect -->
 			<div
-				class="relative rounded-2xl bg-gradient-to-br from-white/40 to-gray-50/40 dark:from-gray-800/40 dark:to-gray-900/40 p-3 backdrop-blur-sm border border-purple-200/50 dark:border-purple-700/50 shadow-xl"
+				class="relative rounded-2xl dither-soft p-3 backdrop-blur-sm border border-purple-200/50 dark:border-purple-700/50 shadow-xl"
 			>
 				<video
 					autoplay
@@ -54,7 +54,7 @@
 					/>
 					<!-- Fallback -->
 					<div
-						class="w-20 h-20 bg-gradient-to-br from-purple-500 to-blue-600 rounded-full p-4 flex items-center justify-center"
+						class="w-20 h-20 dither-gradient rounded-full p-4 flex items-center justify-center"
 					>
 						<Sparkles class="w-10 h-10 text-white" />
 					</div>
@@ -122,7 +122,7 @@
 			fullWidth
 			icon={User}
 			iconPosition="left"
-			class="bg-gradient-to-r from-purple-600 via-blue-600 to-indigo-600 hover:from-purple-700 hover:via-blue-700 hover:to-indigo-700 shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 border-none font-semibold"
+			class="dither-gradient hover:dither-gradient-hover shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 border-none font-semibold"
 		>
 			Start Personalization
 			<ChevronRight class="w-4 h-4 ml-1" />

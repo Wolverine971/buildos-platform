@@ -1,99 +1,167 @@
 <!-- apps/web/src/lib/components/ui/Modal.svelte -->
 <!--
-	Base Modal Component
+	Enhanced Base Modal Component v2.0
 
-	Provides foundational modal functionality for BuildOS:
-	- Focus trap with Tab/Shift+Tab cycling
-	- Keyboard handling (Escape to close)
-	- Responsive animations (mobile slide-up, desktop scale)
-	- Accessibility features (ARIA attributes)
-	- Portal-based rendering (outside DOM tree)
+	Mobile-first, gesture-enabled modal with high information density.
+
+	Key Features:
+	- Touch gestures (swipe-to-dismiss)
+	- GPU-optimized animations (60fps)
+	- Enhanced responsive breakpoints (4-tier)
+	- Compact, high-density layout
+	- Bottom sheet variant for mobile
+	- iOS safe area support
+	- Scroll lock and overscroll prevention
 
 	Documentation:
 	- 📖 Modal Documentation Hub: /apps/web/docs/technical/components/modals/README.md
-	- 🚀 Quick Reference Guide: /apps/web/docs/technical/components/modals/QUICK_REFERENCE.md
-	- 🎨 Visual Diagrams: /apps/web/docs/technical/components/modals/VISUAL_GUIDE.md
-	- 🔬 Technical Analysis: /apps/web/docs/technical/components/modals/TECHNICAL_ANALYSIS.md
-	- 🎯 BuildOS Style Guide: /apps/web/docs/technical/components/BUILDOS_STYLE_GUIDE.md
+	- 🚀 Enhancement Spec: /apps/web/docs/technical/components/modals/MODAL_ENHANCEMENT_SPEC.md
+	- 🎯 Best Practices: /apps/web/docs/technical/MOBILE_RESPONSIVE_BEST_PRACTICES.md
 
 	Props:
-	- isOpen: boolean - Controls visibility
+	- isOpen: boolean - Controls visibility (bindable)
 	- onClose: () => void - Close callback
 	- title?: string - Header title
 	- size?: 'sm' | 'md' | 'lg' | 'xl' - Modal width
-	- showCloseButton?: boolean - Show X button
-	- closeOnBackdrop?: boolean - Click outside to close
-	- closeOnEscape?: boolean - Escape key to close
-	- persistent?: boolean - Disable auto-close behaviors
+	- variant?: 'center' | 'bottom-sheet' - Layout variant
+	- showCloseButton?: boolean - Show X button (default: true)
+	- closeOnBackdrop?: boolean - Click outside to close (default: true)
+	- closeOnEscape?: boolean - Escape key to close (default: true)
+	- persistent?: boolean - Disable auto-close behaviors (default: false)
+	- enableGestures?: boolean - Enable swipe-to-dismiss (default: auto-detect)
+	- showDragHandle?: boolean - Show drag handle (default: auto on mobile)
+	- dismissThreshold?: number - Pixels to drag before dismiss (default: 120)
 	- customClasses?: string - Additional CSS classes
 	- ariaLabel?: string - Accessibility label
 	- ariaDescribedBy?: string - Accessibility description
 
+	Callbacks:
+	- onOpen?: () => void - Called when modal opens
+	- onBeforeClose?: () => boolean - Can prevent close (return false)
+	- onGestureStart?: () => void - Touch gesture started
+	- onGestureEnd?: (dismissed: boolean) => void - Gesture completed
+
 	Slots:
 	- header - Custom header content
-	- default - Main content
+	- default - Main content (scrollable)
 	- footer - Footer actions
-
-	Related Components:
-	- FormModal: /apps/web/src/lib/components/ui/FormModal.svelte
-	- Usage Examples: /apps/web/src/lib/components/ontology/*Modal.svelte
 -->
 <script lang="ts">
 	import { X } from 'lucide-svelte';
-	import { fade, scale } from 'svelte/transition';
+	import { fade } from 'svelte/transition';
 	import { onDestroy, tick } from 'svelte';
+	import { browser } from '$app/environment';
 	import Button from './Button.svelte';
 	import { portal } from '$lib/actions/portal';
 
-	// Modal can work in two modes:
-	// 1. Controlled via onClose callback (isOpen is one-way prop)
-	// 2. Two-way binding via bind:isOpen (isOpen is bindable)
+	// Props - Svelte 5 runes
 	let {
 		isOpen = $bindable(false),
 		onClose,
 		title = '',
 		size = 'md',
+		variant = 'center',
 		showCloseButton = true,
 		closeOnBackdrop = true,
 		closeOnEscape = true,
 		persistent = false,
+		enableGestures = $bindable(undefined),
+		showDragHandle = $bindable(undefined),
+		dismissThreshold = 120,
 		customClasses = '',
 		ariaLabel = '',
-		ariaDescribedBy = ''
+		ariaDescribedBy = '',
+		onOpen,
+		onBeforeClose,
+		onGestureStart,
+		onGestureEnd
 	}: {
 		isOpen?: boolean;
 		onClose?: () => void;
 		title?: string;
 		size?: 'sm' | 'md' | 'lg' | 'xl';
+		variant?: 'center' | 'bottom-sheet';
 		showCloseButton?: boolean;
 		closeOnBackdrop?: boolean;
 		closeOnEscape?: boolean;
 		persistent?: boolean;
+		enableGestures?: boolean;
+		showDragHandle?: boolean;
+		dismissThreshold?: number;
 		customClasses?: string;
 		ariaLabel?: string;
 		ariaDescribedBy?: string;
+		onOpen?: () => void;
+		onBeforeClose?: () => boolean;
+		onGestureStart?: () => void;
+		onGestureEnd?: (dismissed: boolean) => void;
 	} = $props();
 
+	// Enhanced size classes with 4-tier breakpoint system
 	const sizeClasses = {
-		sm: 'max-w-md',
-		md: 'max-w-2xl',
-		lg: 'max-w-4xl',
-		xl: 'max-w-6xl'
+		sm: 'w-full max-w-md xs:max-w-md sm:max-w-md',
+		md: 'w-full max-w-full xs:max-w-xl sm:max-w-2xl md:max-w-2xl',
+		lg: 'w-full max-w-full xs:max-w-2xl sm:max-w-3xl md:max-w-4xl',
+		xl: 'w-full max-w-full xs:max-w-3xl sm:max-w-4xl md:max-w-6xl'
 	};
 
+	// Variant-specific classes
+	const variantClasses = $derived.by(() => {
+		if (variant === 'bottom-sheet') {
+			return {
+				container: 'items-end sm:items-center',
+				modal: 'rounded-t-2xl sm:rounded-2xl mb-0 sm:mb-4',
+				animation: 'animate-modal-slide-up sm:animate-modal-scale'
+			};
+		}
+		// Default: center variant
+		return {
+			container: 'items-center',
+			modal: 'rounded-2xl',
+			animation: 'animate-modal-scale'
+		};
+	});
+
+	// Auto-detect touch device
+	const isTouchDevice = $derived(
+		browser &&
+			('ontouchstart' in window ||
+				navigator.maxTouchPoints > 0 ||
+				(navigator as any).msMaxTouchPoints > 0)
+	);
+
+	// Auto-enable gestures on touch devices (unless explicitly disabled)
+	const gesturesEnabled = $derived(enableGestures ?? isTouchDevice);
+
+	// Auto-show drag handle on mobile touch devices for bottom-sheet variant
+	const shouldShowDragHandle = $derived(
+		showDragHandle ?? (isTouchDevice && variant === 'bottom-sheet')
+	);
+
+	// State
 	let modalElement = $state<HTMLDivElement | undefined>(undefined);
 	let previousFocusElement = $state<HTMLElement | null>(null);
 	let focusTrapCleanup = $state<(() => void) | null>(null);
-	let modalId = `modal-${Math.random().toString(36).slice(2, 11)}`;
-	let titleId = `${modalId}-title`;
-	let contentId = `${modalId}-content`;
+	let animationComplete = $state(false);
+	let scrollY = $state(0);
+
+	// Touch gesture state
+	let isDragging = $state(false);
+	let dragStartY = $state(0);
+	let dragCurrentY = $state(0);
+	let dragTranslateY = $state(0);
+	let touchStartTarget = $state<EventTarget | null>(null);
+
+	// IDs for accessibility
+	const modalId = `modal-${Math.random().toString(36).slice(2, 11)}`;
+	const titleId = `${modalId}-title`;
+	const contentId = `${modalId}-content`;
+
+	// ==================== Event Handlers ====================
 
 	function handleBackdropClick(event: MouseEvent | TouchEvent) {
 		if (event.target === event.currentTarget && closeOnBackdrop && !persistent) {
-			// Try callback first (preferred), then fallback to direct mutation
-			onClose?.();
-			// Also set isOpen = false as fallback for bind:isOpen scenarios
-			isOpen = false;
+			attemptClose();
 		}
 	}
 
@@ -102,8 +170,6 @@
 	}
 
 	function handleModalContentKeydown(event: KeyboardEvent) {
-		// Prevent event propagation on keyboard events to modal content
-		// This keeps focus within the modal while allowing keyboard navigation
 		if (event.key !== 'Escape') {
 			event.stopPropagation();
 		}
@@ -112,12 +178,103 @@
 	function handleKeydown(event: KeyboardEvent) {
 		if (event.key === 'Escape' && closeOnEscape && !persistent) {
 			event.preventDefault();
-			// Try callback first (preferred), then fallback to direct mutation
-			onClose?.();
-			// Also set isOpen = false as fallback for bind:isOpen scenarios
-			isOpen = false;
+			attemptClose();
 		}
 	}
+
+	function attemptClose() {
+		// Call onBeforeClose if provided - can prevent closing
+		if (onBeforeClose && !onBeforeClose()) {
+			return;
+		}
+
+		onClose?.();
+		isOpen = false;
+	}
+
+	// ==================== Touch Gesture Handlers ====================
+
+	function handleTouchStart(e: TouchEvent) {
+		if (!gesturesEnabled) return;
+
+		// Check if touch started on scrollable content
+		touchStartTarget = e.target;
+		const target = e.target as HTMLElement;
+		const scrollableParent = target.closest('.modal-content');
+
+		// If scrollable content is at the top, allow gesture
+		if (scrollableParent && scrollableParent.scrollTop > 0) {
+			return; // Let scroll happen naturally
+		}
+
+		isDragging = true;
+		dragStartY = e.touches[0].clientY;
+		dragCurrentY = dragStartY;
+		dragTranslateY = 0;
+
+		onGestureStart?.();
+	}
+
+	function handleTouchMove(e: TouchEvent) {
+		if (!isDragging || !gesturesEnabled) return;
+
+		const currentY = e?.touches?.[0]?.clientY;
+		if (currentY === undefined) return;
+
+		const deltaY = currentY - dragStartY;
+
+		// Only allow downward dragging (dismiss gesture)
+		if (deltaY > 0) {
+			// Prevent default to stop scroll while dragging modal
+			e.preventDefault();
+			dragTranslateY = deltaY;
+			dragCurrentY = currentY;
+		}
+	}
+
+	function handleTouchEnd() {
+		if (!isDragging || !gesturesEnabled) return;
+
+		const dismissed = dragTranslateY > dismissThreshold;
+
+		onGestureEnd?.(dismissed);
+
+		if (dismissed) {
+			attemptClose();
+		} else {
+			// Snap back with animation
+			dragTranslateY = 0;
+		}
+
+		isDragging = false;
+		dragStartY = 0;
+		dragCurrentY = 0;
+		touchStartTarget = null;
+	}
+
+	// Svelte action to attach non-passive touch listeners
+	function touchGesture(node: HTMLElement) {
+		if (!gesturesEnabled) return;
+
+		const touchStartHandler = (e: TouchEvent) => handleTouchStart(e);
+		const touchMoveHandler = (e: TouchEvent) => handleTouchMove(e);
+		const touchEndHandler = (e: TouchEvent) => handleTouchEnd();
+
+		// Attach with { passive: false } to allow preventDefault
+		node.addEventListener('touchstart', touchStartHandler, { passive: false });
+		node.addEventListener('touchmove', touchMoveHandler, { passive: false });
+		node.addEventListener('touchend', touchEndHandler, { passive: false });
+
+		return {
+			destroy() {
+				node.removeEventListener('touchstart', touchStartHandler);
+				node.removeEventListener('touchmove', touchMoveHandler);
+				node.removeEventListener('touchend', touchEndHandler);
+			}
+		};
+	}
+
+	// ==================== Focus Management ====================
 
 	async function trapFocus() {
 		if (!modalElement) return;
@@ -167,33 +324,78 @@
 		}
 	}
 
+	// ==================== Lifecycle Management ====================
+
 	async function handleModalOpen() {
+		if (import.meta.env.DEV) {
+			console.log('[Modal] Opening:', { title, variant, size });
+		}
+
 		await tick();
+
+		// Lock body scroll
+		if (browser) {
+			scrollY = window.scrollY;
+			document.body.style.position = 'fixed';
+			document.body.style.top = `-${scrollY}px`;
+			document.body.style.width = '100%';
+			document.body.style.overflow = 'hidden';
+		}
+
 		trapFocus();
+		onOpen?.();
+
+		// Set animation complete flag after animation duration
+		animationComplete = false;
+		setTimeout(() => {
+			animationComplete = true;
+		}, 350);
 	}
 
 	function handleModalClose() {
+		if (import.meta.env.DEV) {
+			console.log('[Modal] Closing:', { title });
+		}
+
 		if (focusTrapCleanup) {
 			focusTrapCleanup();
 			focusTrapCleanup = null;
 		}
+
+		// Restore scroll position
+		if (browser) {
+			document.body.style.position = '';
+			document.body.style.top = '';
+			document.body.style.width = '';
+			document.body.style.overflow = '';
+			window.scrollTo(0, scrollY);
+		}
+
 		restoreFocus();
 	}
 
 	$effect(() => {
-		console.log('[Modal] isOpen changed to:', isOpen, 'title:', title);
 		if (isOpen) {
 			handleModalOpen();
 		} else {
 			handleModalClose();
 		}
+
+		return () => {
+			// Cleanup on unmount
+			if (isOpen) {
+				handleModalClose();
+			}
+		};
 	});
 
 	onDestroy(() => {
 		if (focusTrapCleanup) {
 			focusTrapCleanup();
 		}
-		restoreFocus();
+		if (browser && document.body.style.position === 'fixed') {
+			handleModalClose();
+		}
 	});
 </script>
 
@@ -201,26 +403,42 @@
 
 {#if isOpen}
 	<div use:portal class="modal-root" transition:fade={{ duration: 150 }} role="presentation">
-		<!-- Backdrop -->
+		<!-- Backdrop with touch optimization -->
 		<div
-			class="fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-70 backdrop-blur-sm z-[9998]"
+			class="fixed inset-0 bg-black/50 dark:bg-black/70 backdrop-blur-sm z-[9998]"
+			style="touch-action: none;"
 			onclick={handleBackdropClick}
 			ontouchend={handleBackdropClick}
 			aria-hidden="true"
 		></div>
 
 		<!-- Modal Container -->
-		<div class="fixed inset-0 z-[9999] overflow-y-auto">
+		<div class="fixed inset-0 z-[9999] overflow-y-auto" style="touch-action: none;">
 			<div
-				class="flex min-h-full items-end sm:items-center justify-center p-0 sm:p-4"
+				class="flex min-h-full {variantClasses.container} justify-center p-0 sm:p-3"
 				role="presentation"
 			>
+				<!-- Modal Content -->
 				<div
 					bind:this={modalElement}
-					class="relative w-full {sizeClasses[
-						size
-					]} bg-white dark:bg-gray-800 rounded-t-lg sm:rounded-lg shadow-xl max-h-[90vh] sm:max-h-[85vh] overflow-hidden {customClasses} flex flex-col animate-modal-slide-up sm:animate-modal-scale mt-6"
-					transition:scale={{ duration: 150, start: 0.95 }}
+					use:touchGesture
+					class="relative {sizeClasses[size]}
+						bg-white dark:bg-gray-800
+						{variantClasses.modal}
+						shadow-2xl
+						max-h-[calc(100vh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-1rem)]
+						sm:max-h-[85vh]
+						overflow-hidden
+						{customClasses}
+						flex flex-col
+						{variantClasses.animation}
+						{animationComplete ? 'animation-complete' : ''}
+						modal-container"
+					style="
+						transform: translateY({dragTranslateY}px) translateZ(0);
+						transition: {isDragging ? 'none' : 'transform 200ms cubic-bezier(0.4, 0, 0.2, 1)'};
+						touch-action: pan-y;
+					"
 					role="dialog"
 					aria-modal="true"
 					aria-labelledby={title ? titleId : undefined}
@@ -230,16 +448,30 @@
 					onclick={handleModalContentClick}
 					onkeydown={handleModalContentKeydown}
 				>
-					<!-- Header -->
+					<!-- Drag Handle (compact, high-density design) -->
+					{#if shouldShowDragHandle}
+						<div
+							class="drag-handle-wrapper"
+							style="touch-action: none; cursor: grab;"
+						>
+							<div class="drag-handle"></div>
+						</div>
+					{/if}
+
+					<!-- Header (compact spacing) -->
 					<slot name="header">
 						{#if title || showCloseButton}
 							<div
-								class="flex items-center justify-between px-4 sm:px-6 py-1 sm:py-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 flex-shrink-0"
+								class="flex items-center justify-between
+									px-3 sm:px-4 py-1.5 sm:py-2
+									border-b border-gray-200 dark:border-gray-700
+									bg-gray-50 dark:bg-gray-900/50
+									flex-shrink-0"
 							>
 								{#if title}
 									<h2
 										id={titleId}
-										class="text-lg font-semibold text-gray-900 dark:text-white truncate pr-2"
+										class="text-base sm:text-lg font-semibold text-gray-900 dark:text-white truncate pr-2"
 									>
 										{title}
 									</h2>
@@ -249,15 +481,11 @@
 
 								{#if showCloseButton && !persistent}
 									<Button
-										onclick={() => {
-											// Try callback first, then direct mutation
-											onClose?.();
-											isOpen = false;
-										}}
+										onclick={attemptClose}
 										variant="ghost"
 										size="sm"
 										icon={X}
-										class="flex-shrink-0"
+										class="flex-shrink-0 !p-1"
 										aria-label="Close dialog"
 									/>
 								{/if}
@@ -265,13 +493,24 @@
 						{/if}
 					</slot>
 
-					<!-- Content -->
-					<div id={contentId} class="overflow-y-auto flex-1 min-h-0">
+					<!-- Content (scrollable, compact spacing) -->
+					<div
+						id={contentId}
+						class="modal-content overflow-y-auto flex-1 min-h-0 overscroll-contain"
+						style="touch-action: pan-y;"
+					>
 						<slot />
 					</div>
 
-					<!-- Footer -->
-					<slot name="footer" />
+					<!-- Footer (compact spacing with safe area) -->
+					{#if $$slots.footer}
+						<div
+							class="modal-footer flex-shrink-0"
+							style="padding-bottom: max(0.5rem, env(safe-area-inset-bottom, 0px));"
+						>
+							<slot name="footer" />
+						</div>
+					{/if}
 				</div>
 			</div>
 		</div>
@@ -279,57 +518,199 @@
 {/if}
 
 <style>
+	/* ==================== GPU-Optimized Animations ==================== */
+
+	/* Mobile: Slide up from bottom */
 	@keyframes modal-slide-up {
 		from {
-			transform: translateY(100%);
-		}
-		to {
-			transform: translateY(0);
-		}
-	}
-
-	@keyframes modal-scale {
-		from {
-			transform: scale(0.95);
+			transform: translateY(100%) translateZ(0);
 			opacity: 0;
 		}
 		to {
-			transform: scale(1);
+			transform: translateY(0) translateZ(0);
 			opacity: 1;
 		}
 	}
 
-	:global(.animate-modal-slide-up) {
-		animation: modal-slide-up 0.3s ease-out;
+	/* Desktop: Scale from center */
+	@keyframes modal-scale {
+		from {
+			transform: scale(0.95) translateZ(0);
+			opacity: 0;
+		}
+		to {
+			transform: scale(1) translateZ(0);
+			opacity: 1;
+		}
 	}
 
+	/* Apply animations with GPU acceleration */
+	:global(.animate-modal-slide-up) {
+		animation: modal-slide-up 300ms cubic-bezier(0.4, 0, 0.2, 1);
+	}
+
+	:global(.animate-modal-scale) {
+		animation: modal-scale 200ms cubic-bezier(0.4, 0, 0.2, 1);
+	}
+
+	/* Desktop switches to scale animation */
 	@media (min-width: 640px) {
 		:global(.animate-modal-slide-up) {
-			animation: none;
-		}
-
-		:global(.animate-modal-scale) {
-			animation: modal-scale 0.15s ease-out;
+			animation: modal-scale 200ms cubic-bezier(0.4, 0, 0.2, 1);
 		}
 	}
 
-	/* Optional grab handle for mobile */
-	:global(.modal-grab-handle) {
-		width: 36px;
-		height: 4px;
-		background: rgb(209 213 219);
-		border-radius: 2px;
-		margin: 0.5rem auto 1rem;
+	/* ==================== GPU Acceleration & Performance ==================== */
+
+	.modal-container {
+		/* Force GPU layer */
+		transform: translateZ(0);
+		backface-visibility: hidden;
+
+		/* Hint browser about transform/opacity changes */
+		will-change: transform, opacity;
 	}
 
-	:global(.dark .modal-grab-handle) {
-		background: rgb(75 85 99);
+	/* Remove will-change after animation completes */
+	.modal-container.animation-complete {
+		will-change: auto;
 	}
 
-	/* Ensure smooth rendering and highest z-index */
+	/* ==================== Compact Drag Handle (High Density) ==================== */
+
+	.drag-handle-wrapper {
+		/* Minimal touch target: 36px (compact but functional) */
+		width: 100%;
+		padding: 0.375rem 0; /* 6px top/bottom = 6 + 3 + 6 = ~15px + handle */
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		flex-shrink: 0;
+	}
+
+	.drag-handle-wrapper:active {
+		cursor: grabbing;
+	}
+
+	.drag-handle {
+		/* Compact visual indicator */
+		width: 32px;
+		height: 3px;
+		background: rgb(156 163 175); /* gray-400 */
+		border-radius: 9999px;
+		transition: background-color 150ms, width 150ms;
+	}
+
+	.drag-handle-wrapper:hover .drag-handle {
+		background: rgb(107 114 128); /* gray-500 */
+		width: 40px;
+	}
+
+	.drag-handle-wrapper:active .drag-handle {
+		background: rgb(75 85 99); /* gray-600 */
+	}
+
+	.dark .drag-handle {
+		background: rgb(75 85 99); /* gray-600 */
+	}
+
+	.dark .drag-handle-wrapper:hover .drag-handle {
+		background: rgb(107 114 128); /* gray-500 */
+	}
+
+	.dark .drag-handle-wrapper:active .drag-handle {
+		background: rgb(156 163 175); /* gray-400 */
+	}
+
+	/* ==================== Scroll & Overscroll Behavior ==================== */
+
 	.modal-root {
-		will-change: opacity;
+		/* Prevent scroll chaining to body */
+		overscroll-behavior: contain;
 		z-index: 9999;
 		position: relative;
+	}
+
+	.modal-content {
+		/* Contain scroll within modal content */
+		overscroll-behavior: contain;
+	}
+
+	/* Lock body scroll when modal is open */
+	:global(body:has(.modal-root)) {
+		overflow: hidden;
+	}
+
+	/* ==================== Touch Target Optimization ==================== */
+
+	/* Disable tap highlight on all modal elements */
+	.modal-container,
+	.modal-container * {
+		-webkit-tap-highlight-color: transparent;
+		-webkit-touch-callout: none;
+	}
+
+	/* Touch manipulation (disable double-tap zoom) */
+	.modal-container {
+		touch-action: manipulation;
+	}
+
+	/* ==================== Enhanced Breakpoints (xs: 480px) ==================== */
+
+	/* Extra small devices (landscape phones) */
+	@media (min-width: 480px) {
+		.modal-container {
+			/* Add slight margin on landscape phones */
+			margin-left: 0.5rem;
+			margin-right: 0.5rem;
+		}
+	}
+
+	/* Small devices (tablets) */
+	@media (min-width: 640px) {
+		.modal-container {
+			margin-left: 1rem;
+			margin-right: 1rem;
+		}
+	}
+
+	/* ==================== iOS Safe Area Support ==================== */
+
+	@supports (-webkit-touch-callout: none) {
+		/* iOS-specific fixes */
+		.modal-container {
+			/* Account for notch and home indicator */
+			max-height: calc(
+				100vh - env(safe-area-inset-top, 0px) - max(env(safe-area-inset-bottom, 0px), 1rem) - 1rem
+			);
+		}
+
+		.modal-footer {
+			/* Ensure footer clears home indicator */
+			padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
+		}
+	}
+
+	/* ==================== Compact Layout Utilities ==================== */
+
+	/* Reduce spacing in modal content for high density */
+	.modal-content :global(> *:first-child) {
+		margin-top: 0;
+	}
+
+	.modal-content :global(> *:last-child) {
+		margin-bottom: 0;
+	}
+
+	/* ==================== Dark Mode Optimizations ==================== */
+
+	.dark .modal-container {
+		/* True black for OLED screens */
+		background-color: rgb(0 0 0);
+	}
+
+	/* Reduce shadow intensity in dark mode */
+	.dark .modal-container {
+		box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
 	}
 </style>

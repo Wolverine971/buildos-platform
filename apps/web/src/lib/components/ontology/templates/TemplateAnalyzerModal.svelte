@@ -443,7 +443,7 @@
 				{#if responseData.primary}
 					{@const primarySuggestion = responseData.primary}
 					<div
-						class="rounded-2xl border border-blue-200 dark:border-blue-500/40 bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-100 dark:from-blue-500/10 dark:via-indigo-500/10 dark:to-blue-500/5 p-5 space-y-4 shadow-sm"
+						class="rounded-2xl border border-blue-200 dark:border-blue-500/40 bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-100 dark:from-blue-500/10 dark:via-indigo-500/10 dark:to-blue-500/5 p-5 space-y-4 shadow-sm dither-soft"
 					>
 						<div class="flex flex-wrap items-start justify-between gap-3">
 							<div class="space-y-1">

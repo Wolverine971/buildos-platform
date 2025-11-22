@@ -268,13 +268,77 @@
 	<title>Ontology Projects | BuildOS</title>
 </svelte:head>
 
-<div class="mx-auto w-full max-w-6xl space-y-dense-4 sm:space-y-dense-6">
-	<header class="flex flex-col gap-dense-3 sm:flex-row sm:items-center sm:justify-between">
+<div class="space-y-4 sm:space-y-6">
+	<!-- Mobile Navigation - Only visible on mobile -->
+	<nav
+		class="lg:hidden flex flex-wrap items-center gap-2 rounded-xl border border-slate-200/70 bg-white/90 p-2 shadow-sm dark:border-slate-800 dark:bg-slate-900/70"
+		aria-label="Ontology navigation"
+	>
+		<a
+			href="/ontology"
+			class="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50/80 px-3 py-1.5 text-xs font-semibold text-blue-700 transition hover:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-blue-800/50 dark:bg-blue-950/40 dark:text-blue-300 dark:hover:bg-blue-900/50"
+			aria-current="page"
+		>
+			<svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+				<path
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					stroke-width="2"
+					d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+				/>
+			</svg>
+			<span>Projects</span>
+		</a>
+		<a
+			href="/ontology/create"
+			class="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:border-blue-400 hover:text-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-slate-700 dark:text-slate-300 dark:hover:border-indigo-500 dark:hover:text-indigo-200"
+		>
+			<svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+				<path
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					stroke-width="2"
+					d="M12 4v16m8-8H4"
+				/>
+			</svg>
+			<span>Create</span>
+		</a>
+		<a
+			href="/ontology/templates"
+			class="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:border-blue-400 hover:text-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-slate-700 dark:text-slate-300 dark:hover:border-indigo-500 dark:hover:text-indigo-200"
+		>
+			<svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+				<path
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					stroke-width="2"
+					d="M4 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 16a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1H5a1 1 0 01-1-1v-3zM14 16a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1h-4a1 1 0 01-1-1v-3z"
+				/>
+			</svg>
+			<span>Templates</span>
+		</a>
+		<a
+			href="/"
+			class="ml-auto inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:border-blue-400 hover:text-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-slate-700 dark:text-slate-300 dark:hover:border-indigo-500 dark:hover:text-indigo-200"
+		>
+			<svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+				<path
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					stroke-width="2"
+					d="M10 19l-7-7m0 0l7-7m-7 7h18"
+				/>
+			</svg>
+			<span>Back</span>
+		</a>
+	</nav>
+
+	<header class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 		<div class="space-y-1">
-			<h1 class="text-2xl font-semibold text-slate-900 dark:text-slate-50 sm:text-3xl">
+			<h1 class="text-2xl font-bold text-gray-900 dark:text-white sm:text-3xl">
 				Ontology Projects
 			</h1>
-			<p class="text-sm text-slate-600 dark:text-slate-400 sm:text-base">
+			<p class="text-sm text-gray-600 dark:text-gray-400 sm:text-base">
 				Track high-trust knowledge flows, typed templates, and FSM-driven execution.
 			</p>
 		</div>
@@ -282,11 +346,10 @@
 		<Button
 			variant="primary"
 			size="sm"
-			class="px-4 py-2"
 			onclick={() => goto('/ontology/create')}
 		>
 			<svg
-				class="h-4 w-4"
+				class="h-4 w-4 mr-2"
 				xmlns="http://www.w3.org/2000/svg"
 				fill="none"
 				viewBox="0 0 24 24"
@@ -305,18 +368,18 @@
 	</header>
 
 	<div
-		class="flex flex-wrap items-center justify-between gap-dense-3 rounded-2xl border border-slate-200/70 bg-white/90 p-2 shadow-sm dark:border-slate-800 dark:bg-slate-900/70"
+		class="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-gray-200 bg-white p-3 shadow-sm dark:border-gray-700 dark:bg-gray-900"
 	>
 		<nav
-			class="inline-flex rounded-xl bg-slate-100/70 p-1 text-sm font-medium dark:bg-slate-800/60 overflow-x-auto scrollbar-hide"
+			class="inline-flex rounded-xl bg-gray-100 p-1 text-sm font-medium dark:bg-gray-800 overflow-x-auto scrollbar-hide"
 			aria-label="Ontology view mode"
 		>
 			<button
 				type="button"
 				class={`relative rounded-lg px-4 py-2 transition ${
 					activeTab === 'overview'
-						? 'bg-white text-blue-600 shadow-sm dark:bg-slate-900 dark:text-indigo-300'
-						: 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-slate-100'
+						? 'bg-white text-blue-600 shadow-sm dark:bg-gray-900 dark:text-blue-300'
+						: 'text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white'
 				}`}
 				aria-pressed={activeTab === 'overview'}
 				onclick={() => setActiveTab('overview')}
@@ -327,8 +390,8 @@
 				type="button"
 				class={`relative rounded-lg px-4 py-2 transition ${
 					activeTab === 'graph'
-						? 'bg-white text-blue-600 shadow-sm dark:bg-slate-900 dark:text-indigo-300'
-						: 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-slate-100'
+						? 'bg-white text-blue-600 shadow-sm dark:bg-gray-900 dark:text-blue-300'
+						: 'text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white'
 				}`}
 				aria-pressed={activeTab === 'graph'}
 				onclick={() => setActiveTab('graph')}
@@ -339,14 +402,14 @@
 
 		{#if activeTab === 'graph'}
 			<div
-				class="flex flex-1 items-center justify-end gap-dense-3 text-xs text-slate-500 dark:text-slate-400"
+				class="flex flex-1 items-center justify-end gap-3 text-xs text-gray-500 dark:text-gray-400"
 			>
 				{#if $graphStore.status === 'ready' && graphLastUpdated}
 					<span class="hidden sm:inline">Last synced {graphLastUpdated}</span>
 				{/if}
 				<button
 					type="button"
-					class="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-1.5 font-semibold text-slate-600 transition hover:border-blue-400 hover:text-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-slate-700 dark:text-slate-300 dark:hover:border-indigo-500 dark:hover:text-indigo-200"
+					class="inline-flex items-center gap-1 rounded-lg border border-gray-200 px-3 py-1.5 font-semibold text-gray-600 transition hover:border-blue-400 hover:text-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-gray-700 dark:text-gray-300 dark:hover:border-blue-500 dark:hover:text-blue-300"
 					onclick={refreshGraph}
 					aria-label="Refresh ontology graph"
 				>

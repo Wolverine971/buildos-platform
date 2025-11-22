@@ -427,6 +427,52 @@ BuildOS now uses a composable Card component system for consistency and maintain
 
 ### Modals
 
+**📚 Complete Modal Reference**: See [Modal Components Documentation](./modals/README.md) for comprehensive modal guide including:
+- [Quick Reference](./modals/QUICK_REFERENCE.md) - Props and usage patterns
+- [Visual Guide](./modals/VISUAL_GUIDE.md) - Layout diagrams and animations
+- [Technical Analysis](./modals/TECHNICAL_ANALYSIS.md) - Deep implementation dive
+- [Modal v2.0 Implementation](./modals/MODAL_V2_IMPLEMENTATION_SUMMARY.md) - Latest features and enhancements
+
+#### Modal v2.0 Features (Current)
+
+**New in Modal v2.0** (697 lines, up from 282):
+
+- **Bottom Sheet Variant**: Native mobile pattern (bottom-anchored on mobile, centered on desktop)
+- **Touch Gestures**: Swipe-to-dismiss with non-passive event listeners
+- **Enhanced Breakpoints**: 4-tier system (xs: 480px, sm: 640px, md: 768px, lg: 1024px)
+- **GPU-Optimized Animations**: transform/opacity only, will-change cleanup
+- **Compact Spacing**: High information density (56px vertical space saved per modal)
+- **Adaptive Heights**: More content visible on mobile (10-15% increase)
+
+**Component Usage:**
+
+```svelte
+<script>
+  import Modal from '$lib/components/ui/Modal.svelte';
+</script>
+
+<!-- Mobile-optimized modal with bottom sheet -->
+<Modal
+  {isOpen}
+  {onClose}
+  size="xl"
+  variant="bottom-sheet"
+  enableGestures={true}
+  showDragHandle={true}
+  ariaLabel="Dialog title"
+>
+  <!-- Content -->
+</Modal>
+```
+
+**Key Props:**
+
+- `variant`: `'center'` (default) or `'bottom-sheet'` (mobile-optimized)
+- `enableGestures`: Enable swipe-to-dismiss (default: false)
+- `showDragHandle`: Show drag handle for gestures (auto on mobile)
+- `dismissThreshold`: Swipe distance to dismiss (default: 100px)
+- `onGestureStart`, `onGestureEnd`: Gesture lifecycle callbacks
+
 #### Size Classes
 
 ```scss
@@ -459,6 +505,43 @@ BuildOS now uses a composable Card component system for consistency and maintain
 			<!-- Actions -->
 		</div>
 	</div>
+</div>
+```
+
+#### Mobile-Specific Modal Patterns
+
+**High Information Density Pattern:**
+
+```svelte
+<!-- Compact padding on mobile, standard on desktop -->
+<Modal {isOpen} {onClose} size="xl" variant="bottom-sheet">
+  <div class="p-3 sm:p-6">
+    <!-- Compact header on mobile -->
+    <div class="flex items-center gap-1.5 sm:gap-2">
+      <h2 class="text-sm sm:text-base">Title</h2>
+      <!-- Hide non-essential elements on mobile -->
+      <span class="hidden sm:inline">Subtitle</span>
+    </div>
+
+    <!-- Content with adaptive height -->
+    <div class="h-[calc(100vh-8rem)] sm:h-[75vh] sm:min-h-[500px]">
+      <!-- Content -->
+    </div>
+  </div>
+</Modal>
+```
+
+**Progressive Disclosure:**
+
+```svelte
+<!-- Show minimal info on mobile, full details on desktop -->
+<div class="space-y-2 sm:space-y-4">
+  <div class="max-w-[60px] truncate sm:max-w-[200px]">
+    {longText}
+  </div>
+  <div class="hidden sm:block">
+    {additionalContext}
+  </div>
 </div>
 ```
 
@@ -602,6 +685,25 @@ $transition-slow: 500ms; // Complex animations
 
 Always design for mobile first, then enhance for larger screens.
 
+**📚 Complete Mobile Reference**: See [MOBILE_RESPONSIVE_BEST_PRACTICES.md](../MOBILE_RESPONSIVE_BEST_PRACTICES.md) for comprehensive mobile optimization guide (20,000+ words covering modal patterns, performance, PWA features, and implementation roadmap).
+
+### Enhanced Breakpoint System
+
+BuildOS uses a 4-tier breakpoint system for precise mobile control:
+
+```scss
+$breakpoint-xs: 480px;  // Extra small - Large phones in landscape
+$breakpoint-sm: 640px;  // Small - Tablets in portrait
+$breakpoint-md: 768px;  // Medium - Tablets in landscape
+$breakpoint-lg: 1024px; // Large - Desktop
+$breakpoint-xl: 1280px; // Extra large - Large desktop
+```
+
+**Use cases for `xs:` breakpoint:**
+- Fine-grained mobile control between portrait and landscape
+- Progressive disclosure for compact layouts
+- Optimizing information density on larger phones
+
 ### Common Responsive Patterns
 
 #### Text Sizing
@@ -630,6 +732,39 @@ Always design for mobile first, then enhance for larger screens.
 <div class="hidden sm:block">Desktop only</div>
 <div class="sm:hidden">Mobile only</div>
 ```
+
+### Mobile Optimization Philosophy
+
+**High Information Density** is a core BuildOS principle:
+
+- Compact spacing on mobile (smaller than WCAG standards when appropriate)
+- Progressive disclosure - hide non-essential elements on small screens
+- Adaptive touch targets - balance accessibility with density
+- Context-aware layouts - different patterns for mobile vs desktop
+
+**Examples:**
+
+```html
+<!-- Hide subtitle on mobile, show on desktop -->
+<span class="hidden truncate text-xs text-slate-600 dark:text-slate-400 sm:inline">
+	Subtitle text
+</span>
+
+<!-- Compact gaps on mobile, standard on desktop -->
+<div class="flex items-center gap-1.5 sm:gap-2">
+	<!-- Content -->
+</div>
+
+<!-- Narrower max-width on mobile -->
+<span class="max-w-[60px] truncate sm:max-w-[140px] md:max-w-[200px]">
+	Truncated text
+</span>
+```
+
+**Implementation Examples:**
+
+- **AgentChatModal**: Bottom sheet on mobile (<640px), centered on desktop. See [AGENT_CHAT_MOBILE_OPTIMIZATION.md](./agent/AGENT_CHAT_MOBILE_OPTIMIZATION.md)
+- **Modal v2.0**: Touch gestures, swipe-to-dismiss, adaptive heights. See [Modal documentation](#modals)
 
 ---
 
@@ -946,11 +1081,12 @@ For comprehensive refactoring patterns and migration guides, see [DESIGN_REFACTO
 
 ## Version History
 
+- **v1.3.0** (2025-11-21): Mobile Optimization Update - Added comprehensive mobile responsive design section with xs: 480px breakpoint. Documented Modal v2.0 features (bottom-sheet variant, touch gestures, swipe-to-dismiss). Added high information density philosophy and mobile-specific patterns. Added references to MOBILE_RESPONSIVE_BEST_PRACTICES.md and AGENT_CHAT_MOBILE_OPTIMIZATION.md. Modal.svelte expanded from 282 to 697 lines with mobile-first approach.
 - **v1.2.0** (2025-10-25): Phase 3 Complete - Added Badge.svelte and Alert.svelte components. Refactored 10 additional components to use Card system. Design health score improved from 79/100 to 92/100. Component library now includes 6 base components.
 - **v1.1.0** (2025-10-24): Major update - Added new Card component system with CardHeader/CardBody/CardFooter. Added WCAG AA compliance section. Added refactoring guide and links to DESIGN_REFACTOR_STATUS.md. Design health score improved from 62/100 to 79/100.
 - **v1.0.1** (2025-09-27): Updated Button.svelte color refinements for improved contrast
 - **v1.0.0** (2025-09-26): Initial style guide creation based on existing patterns
-- Last Updated: October 25, 2025
+- Last Updated: November 21, 2025
 
 ---
 

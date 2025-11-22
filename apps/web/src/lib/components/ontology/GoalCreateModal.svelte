@@ -191,7 +191,7 @@
 								class="flex items-center gap-3 pb-4 border-b border-gray-200 dark:border-gray-700"
 							>
 								<div
-									class="p-2 rounded-lg bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950/50 dark:to-pink-950/50"
+									class="p-2 rounded-lg bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950/50 dark:to-pink-950/50 dither-soft"
 								>
 									<Target class="w-5 h-5 text-purple-600 dark:text-purple-400" />
 								</div>
@@ -234,7 +234,7 @@
 													<button
 														type="button"
 														onclick={() => selectTemplate(template)}
-														class="p-4 rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-purple-500 dark:hover:border-purple-400 hover:bg-gradient-to-br hover:from-purple-50 hover:to-pink-50 dark:hover:from-purple-950/20 dark:hover:to-pink-950/20 transition-all duration-300 text-left group shadow-sm hover:shadow-md"
+														class="p-4 rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-purple-500 dark:hover:border-purple-400 hover:bg-gradient-to-br hover:from-purple-50 hover:to-pink-50 dark:hover:from-purple-950/20 dark:to-pink-950/20 dither-fade-hover transition-all duration-300 text-left group shadow-sm hover:shadow-md"
 													>
 														<div
 															class="flex items-start justify-between mb-2"
@@ -295,7 +295,7 @@
 							<!-- Selected Template Badge -->
 							{#if selectedTemplate}
 								<div
-									class="rounded-xl border border-purple-200 dark:border-purple-800 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/30 dark:to-pink-950/30 p-4"
+									class="rounded-xl border border-purple-200 dark:border-purple-800 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/30 dark:to-pink-950/30 p-4 dither-soft"
 								>
 									<div class="flex items-center justify-between gap-3">
 										<div class="flex items-center gap-3 flex-1 min-w-0">
@@ -345,6 +345,8 @@
 									id="name"
 									bind:value={name}
 									placeholder="Enter goal name..."
+									inputmode="text"
+									enterkeyhint="next"
 									required={true}
 									disabled={isSaving}
 									error={!name.trim() && error ? true : false}
@@ -362,6 +364,7 @@
 									id="description"
 									bind:value={description}
 									placeholder="Describe what you want to achieve..."
+									enterkeyhint="next"
 									rows={3}
 									disabled={isSaving}
 									size="md"
@@ -378,6 +381,7 @@
 									id="measurement_criteria"
 									bind:value={measurementCriteria}
 									placeholder="e.g., 'Complete 5 tasks per week', 'Increase revenue by 20%'"
+									enterkeyhint="next"
 									rows={2}
 									disabled={isSaving}
 									size="md"
@@ -452,7 +456,7 @@
 	<!-- Footer Actions -->
 	<svelte:fragment slot="footer">
 		<div
-			class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 px-4 sm:px-6 py-3 sm:py-4 border-t border-gray-200 dark:border-gray-700 bg-gradient-to-r from-gray-50 to-slate-50 dark:from-gray-900/50 dark:to-gray-800/50"
+			class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 px-4 sm:px-6 py-3 sm:py-4 border-t border-gray-200 dark:border-gray-700 bg-gradient-to-r from-gray-50 to-slate-50 dark:from-gray-900/50 dark:to-gray-800/50 dither-surface"
 		>
 			{#if showTemplateSelection}
 				<div class="flex-1"></div>

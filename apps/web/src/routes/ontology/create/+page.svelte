@@ -407,26 +407,45 @@
 	<title>Create Project | Ontology</title>
 </svelte:head>
 
-<div class="max-w-6xl mx-auto">
-	<header class="mb-3">
-		<h1 class="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-1">
+<div class="space-y-4 sm:space-y-6">
+	<!-- Mobile Back Button - Only visible on mobile -->
+	<div class="lg:hidden">
+		<button
+			type="button"
+			onclick={() => goto('/ontology')}
+			class="inline-flex items-center gap-2 rounded-xl border border-slate-200/70 bg-white/90 px-3 py-2 text-sm font-semibold text-slate-600 transition hover:border-blue-400 hover:text-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-300 dark:hover:border-indigo-500 dark:hover:text-indigo-200"
+		>
+			<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+				<path
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					stroke-width="2"
+					d="M10 19l-7-7m0 0l7-7m-7 7h18"
+				/>
+			</svg>
+			<span>Back to Projects</span>
+		</button>
+	</div>
+
+	<header>
+		<h1 class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-2">
 			Create New Project
 		</h1>
-		<p class="text-base sm:text-lg text-gray-600 dark:text-gray-400">
+		<p class="text-sm sm:text-base text-gray-600 dark:text-gray-400">
 			Select a template and configure your project
 		</p>
 	</header>
 
 	{#if !selectedTemplate}
-		<div class="space-y-3">
-			<h2 class="text-2xl font-semibold text-gray-900 dark:text-white">Choose a Template</h2>
+		<div class="space-y-6">
+			<h2 class="text-xl font-semibold text-gray-900 dark:text-white">Choose a Template</h2>
 
 			{#each Object.entries(grouped) as [realm, templates]}
-				<div class="space-y-3">
+				<div class="space-y-4">
 					<h3 class="text-lg font-semibold text-gray-700 dark:text-gray-300 capitalize">
 						{realm}
 					</h3>
-					<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-dense-4">
+					<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
 						{#each templates as template}
 							<Card
 								variant="interactive"

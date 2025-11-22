@@ -57,8 +57,10 @@ Let me begin by examining the current implementation...
 
 ### Responsive Design (Non-negotiable)
 
+**📱 Complete Mobile Guide**: See `/apps/web/docs/technical/MOBILE_RESPONSIVE_BEST_PRACTICES.md` for comprehensive mobile optimization (20,000+ words covering patterns, performance, PWA features).
+
 ```svelte
-<!-- Mobile-first with proper breakpoints -->
+<!-- Mobile-first with proper breakpoints (4-tier system) -->
 <div class="
   p-4 sm:p-6 lg:p-8
   grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3
@@ -66,6 +68,15 @@ Let me begin by examining the current implementation...
 ">
   <!-- Content scales gracefully -->
 </div>
+```
+
+**Enhanced Breakpoint System:**
+```scss
+$breakpoint-xs: 480px;  // Extra small - Large phones in landscape
+$breakpoint-sm: 640px;  // Small - Tablets in portrait
+$breakpoint-md: 768px;  // Medium - Tablets in landscape
+$breakpoint-lg: 1024px; // Large - Desktop
+$breakpoint-xl: 1280px; // Extra large - Large desktop
 ```
 
 ### Dark Mode Support (Required)
@@ -89,6 +100,82 @@ Let me begin by examining the current implementation...
 | **Status** | Alert | `success/warning/error` | Operation feedback |
 | **Labels** | Badge | Semantic colors | Status indicators |
 | **Actions** | Button | `primary/secondary/ghost` | CTAs, forms |
+| **Mobile Dialogs** | Modal | `bottom-sheet` variant | Mobile-optimized modals |
+
+## Mobile Optimization Guidelines
+
+### High Information Density Philosophy
+
+BuildOS prioritizes **high information density** on mobile - we favor compact, efficient layouts over excessive whitespace:
+
+- **Compact Touch Targets**: 36-40px acceptable (vs WCAG 44-48px) when it improves density
+- **Progressive Disclosure**: Hide non-essential elements on mobile (`hidden sm:inline`)
+- **Adaptive Spacing**: Tighter gaps on mobile (`gap-1.5 sm:gap-2`)
+- **Context-Aware Layouts**: Different patterns for mobile vs desktop
+
+### Mobile-First Patterns
+
+```svelte
+<!-- Hide subtitle on mobile, show on desktop -->
+<span class="hidden truncate text-xs text-slate-600 dark:text-slate-400 sm:inline">
+  {subtitle}
+</span>
+
+<!-- Compact gaps on mobile, standard on desktop -->
+<div class="flex items-center gap-1.5 sm:gap-2">
+  <Icon />
+  <span>{label}</span>
+</div>
+
+<!-- Narrower max-width on mobile for truncation -->
+<span class="max-w-[60px] truncate sm:max-w-[140px] md:max-w-[200px]">
+  {longText}
+</span>
+
+<!-- Adaptive container heights -->
+<div class="h-[calc(100vh-8rem)] sm:h-[75vh] sm:min-h-[500px]">
+  <!-- Content -->
+</div>
+```
+
+### Modal Mobile Optimization
+
+**Use Bottom Sheet Pattern for Mobile:**
+
+```svelte
+<Modal
+  {isOpen}
+  {onClose}
+  variant="bottom-sheet"
+  enableGestures={true}
+  showDragHandle={true}
+  size="xl"
+>
+  <!-- Compact padding on mobile -->
+  <div class="p-3 sm:p-6">
+    <!-- Content -->
+  </div>
+</Modal>
+```
+
+**Modal v2.0 Features:**
+- Bottom-anchored on mobile (<640px), centered on desktop
+- Swipe-to-dismiss gesture support
+- 56px vertical space saved per modal
+- 10-15% more content visible on mobile
+
+**Complete Guide**: `/apps/web/docs/technical/components/modals/MODAL_V2_IMPLEMENTATION_SUMMARY.md`
+
+### Mobile Testing Checklist
+
+- [ ] Test on iPhone SE (375px) - smallest modern phone
+- [ ] Test on iPhone 14 (430px) - standard phone
+- [ ] Test landscape mode (triggers `xs:` breakpoint at 480px)
+- [ ] Verify title/important text never truncates
+- [ ] Check touch targets are adequate (36px minimum)
+- [ ] Ensure content fills viewport efficiently
+
+**Example Implementation**: See `/apps/web/docs/technical/components/agent/AGENT_CHAT_MOBILE_OPTIMIZATION.md` for real-world mobile optimization (224px horizontal space saved).
 
 ## Spacing System (8px Grid)
 

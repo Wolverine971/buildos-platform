@@ -344,7 +344,7 @@
 								onclick={() => handleMenuItemClick(item.href)}
 								class="inline-flex items-center px-1.5 md:px-2 lg:px-2 xl:px-2.5 2xl:px-3 py-1.5 md:py-2 text-xs md:text-sm font-medium rounded-md transition-colors duration-200 whitespace-nowrap
 								{currentPath === item.href
-									? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20'
+									? 'text-blue-600 dark:text-blue-400 dither-accent'
 									: 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700'}
 								{loggingOut ? 'opacity-50 pointer-events-none' : ''}
 								{loadingLink === item.href ? loadingAccentClass : ''}"
@@ -437,8 +437,8 @@
 								onclick={() => handleMenuItemClick('/onboarding')}
 								class="inline-flex items-center px-2 md:px-3 lg:px-3.5 xl:px-4 py-1.5 md:py-2 lg:py-2.5 text-xs md:text-sm lg:text-sm font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 whitespace-nowrap
 								{onboardingUrgent
-									? 'bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 hover:from-amber-600 hover:via-orange-600 hover:to-red-600 text-white animate-pulse border-none'
-									: 'bg-gradient-to-r from-purple-600 via-blue-600 to-indigo-600 hover:from-purple-700 hover:via-blue-700 hover:to-indigo-700 text-white border-none'}
+									? 'dither-gradient bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 hover:from-amber-600 hover:via-orange-600 hover:to-red-600 text-white animate-pulse border-none'
+									: 'dither-gradient bg-gradient-to-r from-purple-600 via-blue-600 to-indigo-600 hover:from-purple-700 hover:via-blue-700 hover:to-indigo-700 text-white border-none'}
 								{loggingOut ? 'opacity-50 pointer-events-none' : ''}
 								{loadingLink === '/onboarding' ? loadingAccentClass : ''}"
 							>
@@ -547,8 +547,8 @@
 											onclick={() => handleMenuItemClick('/onboarding')}
 											class="flex items-center w-full px-4 py-2.5 text-sm font-medium rounded-lg mx-2 mb-2 transition-all duration-200
 												{onboardingUrgent
-												? 'bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 hover:from-amber-600 hover:via-orange-600 hover:to-red-600 text-white shadow-md'
-												: 'bg-gradient-to-r from-purple-600 via-blue-600 to-indigo-600 hover:from-purple-700 hover:via-blue-700 hover:to-indigo-700 text-white shadow-md'}
+												? 'dither-gradient bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 hover:from-amber-600 hover:via-orange-600 hover:to-red-600 text-white shadow-md'
+												: 'dither-gradient bg-gradient-to-r from-purple-600 via-blue-600 to-indigo-600 hover:from-purple-700 hover:via-blue-700 hover:to-indigo-700 text-white shadow-md'}
 												{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
 										>
 											{#if onboardingUrgent}
@@ -707,8 +707,8 @@
 							onclick={() => handleMenuItemClick('/onboarding')}
 							class="flex items-center px-3 py-2.5 text-base font-semibold text-white rounded-xl shadow-lg transition-all duration-300 hover:scale-[1.02]
 							{onboardingUrgent
-								? 'bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 hover:from-amber-600 hover:via-orange-600 hover:to-red-600 animate-pulse'
-								: 'bg-gradient-to-r from-purple-600 via-blue-600 to-indigo-600 hover:from-purple-700 hover:via-blue-700 hover:to-indigo-700'}
+								? 'dither-gradient bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 hover:from-amber-600 hover:via-orange-600 hover:to-red-600 animate-pulse'
+								: 'dither-gradient bg-gradient-to-r from-purple-600 via-blue-600 to-indigo-600 hover:from-purple-700 hover:via-blue-700 hover:to-indigo-700'}
 							{loggingOut ? 'opacity-50 pointer-events-none' : ''}
 							{loadingLink === '/onboarding' ? loadingAccentClass : ''}"
 						>
@@ -730,7 +730,7 @@
 							onclick={() => handleMenuItemClick(item.href)}
 							class="flex items-center px-3 py-1.5 text-base font-medium rounded-md transition-colors
 							{currentPath === item.href
-								? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20'
+								? 'text-blue-600 dark:text-blue-400 dither-accent'
 								: 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700'}
 							{loggingOut ? 'opacity-50 pointer-events-none' : ''}
 							{loadingLink === item.href ? loadingAccentClass : ''}"

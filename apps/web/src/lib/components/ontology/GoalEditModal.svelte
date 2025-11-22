@@ -242,6 +242,8 @@
 							<TextInput
 								id="name"
 								bind:value={name}
+								inputmode="text"
+								enterkeyhint="next"
 								placeholder="Enter goal name..."
 								required={true}
 								disabled={isSaving}
@@ -257,6 +259,7 @@
 							<Textarea
 								id="description"
 								bind:value={description}
+								enterkeyhint="next"
 								placeholder="Describe the goal..."
 								rows={3}
 								disabled={isSaving}
@@ -291,6 +294,8 @@
 							>
 								<TextInput
 									type="date"
+									inputmode="numeric"
+									enterkeyhint="next"
 									id="target-date"
 									bind:value={targetDate}
 									disabled={isSaving}
@@ -306,6 +311,7 @@
 							<Textarea
 								id="measurement-criteria"
 								bind:value={measurementCriteria}
+								enterkeyhint="done"
 								placeholder="How will you measure success..."
 								rows={3}
 								disabled={isSaving}
@@ -478,7 +484,7 @@
 	<svelte:fragment slot="footer">
 		{#if !isLoading && goal}
 			<div
-				class="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-3 p-4 sm:p-6 border-t border-gray-200 dark:border-gray-700 bg-gradient-to-r from-gray-50 to-slate-50 dark:from-gray-900/50 dark:to-gray-800/50"
+				class="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-3 p-4 sm:p-6 border-t border-gray-200 dark:border-gray-700 bg-gradient-to-r from-gray-50 to-slate-50 dark:from-gray-900/50 dark:to-gray-800/50 dither-surface"
 			>
 				<Button
 					type="button"

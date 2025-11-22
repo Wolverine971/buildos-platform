@@ -513,8 +513,9 @@
 		voiceInitialized = false;
 	}
 
-	function handleTextareaInput(event: CustomEvent<string>) {
-		value = event.detail;
+	function handleTextareaInput(event: Event) {
+		let target = event?.target as HTMLTextAreaElement
+		value = target.value
 		dispatch('input', { value });
 	}
 
@@ -534,7 +535,7 @@
 	}
 </script>
 
-<div class={`space-y-2 ${containerClass} ${className}`.trim()}>
+<div class={`${containerClass} ${className}`.trim()}>
 	<div class="relative">
 		<!-- ✅ Textarea with compact right padding: 2 buttons (36px each) + gap (6px) + margin (6px) = 84px -->
 		<Textarea
@@ -548,7 +549,7 @@
 			{error}
 			{errorMessage}
 			class={`${actions ? 'pr-[84px]' : 'pr-[48px]'} ${textareaClass}`.trim()}
-			on:input={handleTextareaInput}
+			oninput={handleTextareaInput}
 			{...restProps}
 		/>
 

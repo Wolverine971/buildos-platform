@@ -371,6 +371,7 @@
 								bind:value={feedbackText}
 								rows={6}
 								size="md"
+								enterkeyhint="next"
 								placeholder="Share your thoughts, ideas, or describe any issues you've encountered. The more detail, the better we can help! (Minimum 10 characters)"
 								required
 							/>
@@ -385,6 +386,8 @@
 							<TextInput
 								id="email"
 								type="email"
+								inputmode="email"
+								enterkeyhint="send"
 								bind:value={userEmail}
 								placeholder="your@email.com"
 								size="md"

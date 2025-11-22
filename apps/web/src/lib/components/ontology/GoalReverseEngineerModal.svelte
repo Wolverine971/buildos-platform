@@ -318,7 +318,7 @@
 			{#if reasoning}
 				<div class="border-t border-gray-100 px-4 pb-4 sm:px-5 dark:border-gray-800">
 					<div
-						class="rounded-xl border border-blue-100 bg-gradient-to-r from-blue-50/90 to-indigo-50/90 p-3.5 text-sm text-blue-900 dark:border-blue-900/40 dark:from-blue-950/30 dark:to-indigo-950/30 dark:text-blue-100"
+						class="rounded-xl border border-blue-100 bg-gradient-to-r from-blue-50/90 to-indigo-50/90 p-3.5 dither-soft text-sm text-blue-900 dark:border-blue-900/40 dark:from-blue-950/30 dark:to-indigo-950/30 dark:text-blue-100"
 					>
 						<p
 							class="text-xs font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-200 flex items-center gap-2"
@@ -392,7 +392,7 @@
 
 						{#if isMilestoneExpanded(milestone.tempId)}
 							<div
-								class="rounded-b-2xl border-t border-gray-100 bg-gradient-to-b from-gray-50 to-white px-4 pb-5 pt-4 dark:border-gray-800 dark:from-gray-950/40 dark:to-gray-900/60 sm:px-6"
+								class="rounded-b-2xl border-t border-gray-100 bg-gradient-to-b from-gray-50 to-white px-4 pb-5 pt-4 dither-surface dark:border-gray-800 dark:from-gray-950/40 dark:to-gray-900/60 sm:px-6"
 							>
 								<div class="grid gap-3 md:grid-cols-3">
 									<label

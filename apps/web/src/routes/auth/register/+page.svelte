@@ -337,6 +337,7 @@
 								bind:value={name}
 								type="text"
 								autocomplete="name"
+								enterkeyhint="next"
 								disabled={loading || googleLoading}
 								placeholder="Enter your full name"
 								size="lg"
@@ -349,6 +350,8 @@
 								bind:value={email}
 								type="email"
 								autocomplete="email"
+								inputmode="email"
+								enterkeyhint="next"
 								required
 								disabled={loading || googleLoading}
 								placeholder="Enter your email"
@@ -368,6 +371,7 @@
 								bind:value={password}
 								type="password"
 								autocomplete="new-password"
+								enterkeyhint="next"
 								required
 								disabled={loading || googleLoading}
 								placeholder="Enter your password"
@@ -445,6 +449,7 @@
 								bind:value={confirmPassword}
 								type="password"
 								autocomplete="new-password"
+								enterkeyhint="done"
 								required
 								disabled={loading || googleLoading}
 								onkeydown={handleKeydown}

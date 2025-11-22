@@ -5,6 +5,23 @@
 
 	type InputSize = 'sm' | 'md' | 'lg';
 
+	interface TextInputProps {
+		value?: string | number | null;
+		size?: InputSize;
+		error?: boolean;
+		required?: boolean;
+		disabled?: boolean;
+		icon?: any;
+		iconPosition?: 'left' | 'right';
+		errorMessage?: string;
+		helperText?: string;
+		inputmode?: 'text' | 'email' | 'tel' | 'url' | 'numeric' | 'decimal' | 'search' | 'none';
+		enterkeyhint?: 'enter' | 'done' | 'go' | 'next' | 'previous' | 'search' | 'send';
+		type?: string;
+		class?: string;
+		oninput?: (event: Event) => void;
+	}
+
 	// Svelte 5 runes: Use $props() with rest syntax, callback props instead of dispatcher
 	let {
 		value = $bindable(''),
@@ -16,22 +33,30 @@
 		iconPosition = 'left',
 		errorMessage = undefined,
 		helperText = undefined,
+		inputmode = undefined,
+		enterkeyhint = undefined,
+		type = 'text',
 		class: className = '',
 		oninput,
 		...restProps
-	}: {
-		value?: string | number | null;
-		size?: InputSize;
-		error?: boolean;
-		required?: boolean;
-		disabled?: boolean;
-		icon?: any;
-		iconPosition?: 'left' | 'right';
-		errorMessage?: string;
-		helperText?: string;
-		class?: string;
-		oninput?: (event: Event) => void;
-	} & HTMLInputAttributes = $props();
+	}: TextInputProps & Omit<HTMLInputAttributes, 'size'> = $props();
+
+	// Smart inputmode detection based on type if not explicitly provided
+	let computedInputmode = $derived(
+		inputmode ||
+			(type === 'email'
+				? 'email'
+				: type === 'tel'
+					? 'tel'
+					: type === 'url'
+						? 'url'
+						: type === 'number'
+							? 'numeric'
+							: undefined)
+	);
+
+	// Default enterkeyhint to 'next' for better form flow (can be overridden)
+	let computedEnterkeyhint = $derived(enterkeyhint || 'next');
 
 	// Size classes with minimum touch target of 44x44px per WCAG AA standards
 	const sizeClasses = {
@@ -114,7 +139,10 @@
 
 	<input
 		bind:value
+		{type}
 		{disabled}
+		inputmode={computedInputmode}
+		enterkeyhint={computedEnterkeyhint}
 		aria-invalid={error}
 		aria-required={required}
 		aria-describedby={error && errorMessage
@@ -159,6 +187,7 @@
 
 	input[type='number'] {
 		-moz-appearance: textfield;
+		appearance: textfield;
 	}
 
 	/* Dark mode focus ring offset */

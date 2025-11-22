@@ -149,7 +149,7 @@
 </script>
 
 <div
-	class="plan-visualization rounded-lg border border-purple-200/60 bg-gradient-to-br from-purple-50/50 to-blue-50/50 p-3 shadow-sm dark:border-purple-800/40 dark:from-purple-950/20 dark:to-blue-950/20"
+	class="plan-visualization rounded-lg border border-purple-200/60 bg-gradient-to-br from-purple-50/50 to-blue-50/50 dither-gradient p-3 shadow-sm dark:border-purple-800/40 dark:from-purple-950/20 dark:to-blue-950/20"
 >
 	<!-- Collapsible Header -->
 	<button
@@ -190,7 +190,7 @@
 					class="h-2 w-full overflow-hidden rounded-full bg-slate-200/80 dark:bg-slate-700/50"
 				>
 					<div
-						class="h-full rounded-full bg-gradient-to-r from-purple-500 to-blue-500 transition-all duration-500 ease-out"
+						class="h-full rounded-full bg-gradient-to-r from-purple-500 to-blue-500 dither-soft transition-all duration-500 ease-out"
 						style="width: {progressPercent}%"
 						role="progressbar"
 						aria-valuenow={progressPercent}
@@ -264,8 +264,8 @@
 							class="absolute left-3 top-0 -mt-2 h-2 w-0.5 {step.dependsOn?.includes(
 								plan.steps[i - 1].stepNumber
 							)
-								? 'bg-gradient-to-b from-orange-400 to-purple-400 dark:from-orange-600 dark:to-purple-600'
-								: 'bg-gradient-to-b from-purple-300 to-blue-300 dark:from-purple-700 dark:to-blue-700'}"
+								? 'bg-gradient-to-b from-orange-400 to-purple-400 dither-subtle dark:from-orange-600 dark:to-purple-600'
+								: 'bg-gradient-to-b from-purple-300 to-blue-300 dither-subtle dark:from-purple-700 dark:to-blue-700'}"
 							aria-hidden="true"
 						></div>
 					{/if}

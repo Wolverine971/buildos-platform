@@ -107,7 +107,7 @@
 		>
 			<!-- Header -->
 			<div
-				class="px-6 sm:px-8 py-5 border-b border-gray-200 dark:border-gray-800 bg-gradient-to-r from-blue-50 via-purple-50 to-blue-50 dark:from-blue-950/40 dark:via-purple-950/40 dark:to-blue-950/40"
+				class="px-6 sm:px-8 py-5 border-b border-gray-200 dark:border-gray-800 bg-gradient-to-r from-blue-50 via-purple-50 to-blue-50 dark:from-blue-950/40 dark:via-purple-950/40 dark:to-blue-950/40 dither-gradient"
 			>
 				<div class="flex items-start justify-between gap-4">
 					<div class="space-y-1">
@@ -535,7 +535,7 @@
 					{#if template && template.scope === 'project' && !template.is_abstract}
 						<button
 							type="button"
-							class="px-4 py-2 rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 text-white text-sm font-semibold shadow-sm hover:from-blue-500 hover:to-purple-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-400 dark:focus:ring-offset-gray-900 transition-all"
+							class="px-4 py-2 rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 text-white text-sm font-semibold shadow-sm hover:from-blue-500 hover:to-purple-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-400 dark:focus:ring-offset-gray-900 transition-all dither-accent"
 							onclick={() => oncreateproject?.({ template })}
 						>
 							Create Project

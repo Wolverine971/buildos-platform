@@ -280,7 +280,7 @@
 	<div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
 		{#if consolidations.length > 0}
 			<div
-				class="group relative overflow-hidden rounded-xl bg-gradient-to-br from-indigo-50 to-indigo-100 dark:from-indigo-900/20 dark:to-indigo-800/20 border border-indigo-200 dark:border-indigo-800 p-3 hover:shadow-lg transition-all duration-300"
+				class="group relative overflow-hidden rounded-xl bg-gradient-to-br from-indigo-50 to-indigo-100 dark:from-indigo-900/20 dark:to-indigo-800/20 border border-indigo-200 dark:border-indigo-800 p-3 hover:shadow-lg transition-all duration-300 dither-soft"
 			>
 				<div class="relative z-10">
 					<div class="flex items-center justify-between mb-1">
@@ -298,7 +298,7 @@
 
 		{#if updates.length > 0}
 			<div
-				class="group relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 border border-blue-200 dark:border-blue-800 p-3 hover:shadow-lg transition-all duration-300"
+				class="group relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 border border-blue-200 dark:border-blue-800 p-3 hover:shadow-lg transition-all duration-300 dither-soft"
 			>
 				<div class="relative z-10">
 					<div class="flex items-center justify-between mb-1">
@@ -314,7 +314,7 @@
 
 		{#if creations.length > 0}
 			<div
-				class="group relative overflow-hidden rounded-xl bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-900/20 dark:to-emerald-800/20 border border-emerald-200 dark:border-emerald-800 p-3 hover:shadow-lg transition-all duration-300"
+				class="group relative overflow-hidden rounded-xl bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-900/20 dark:to-emerald-800/20 border border-emerald-200 dark:border-emerald-800 p-3 hover:shadow-lg transition-all duration-300 dither-soft"
 			>
 				<div class="relative z-10">
 					<div class="flex items-center justify-between mb-1">
@@ -332,7 +332,7 @@
 
 		{#if deletedOps.length > 0}
 			<div
-				class="group relative overflow-hidden rounded-xl bg-gradient-to-br from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-800/20 border border-red-200 dark:border-red-800 p-3 hover:shadow-lg transition-all duration-300"
+				class="group relative overflow-hidden rounded-xl bg-gradient-to-br from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-800/20 border border-red-200 dark:border-red-800 p-3 hover:shadow-lg transition-all duration-300 dither-soft"
 			>
 				<div class="relative z-10">
 					<div class="flex items-center justify-between mb-1">
@@ -364,7 +364,7 @@
 				>
 					<!-- Compact Operation Header -->
 					<div
-						class="px-4 py-3 border-b border-gray-100 dark:border-gray-700 bg-gradient-to-r from-indigo-50/50 to-purple-50/50 dark:from-indigo-900/10 dark:to-purple-900/10 rounded-t-xl"
+						class="px-4 py-3 border-b border-gray-100 dark:border-gray-700 bg-gradient-to-r from-indigo-50/50 to-purple-50/50 dark:from-indigo-900/10 dark:to-purple-900/10 rounded-t-xl relative overflow-hidden dither-soft"
 					>
 						<div class="flex items-center justify-between">
 							<div class="flex items-center gap-2 flex-1 min-w-0">
@@ -448,7 +448,7 @@
 								<!-- Arrow -->
 								<div class="flex-shrink-0 self-center">
 									<div
-										class="p-1.5 bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-800/30 dark:to-purple-800/30 rounded-lg"
+										class="p-1.5 bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-800/30 dark:to-purple-800/30 rounded-lg relative overflow-hidden dither-subtle"
 									>
 										<ArrowRight
 											class="w-4 h-4 text-indigo-600 dark:text-indigo-400"
@@ -459,7 +459,7 @@
 								<!-- Target Task -->
 								<div class="flex-1 w-full">
 									<div
-										class="p-2.5 bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 rounded-lg border border-indigo-200 dark:border-indigo-700"
+										class="p-2.5 bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 rounded-lg border border-indigo-200 dark:border-indigo-700 relative overflow-hidden dither-soft"
 									>
 										<h5
 											class="text-sm font-medium text-gray-900 dark:text-white truncate"
@@ -544,7 +544,7 @@
 				>
 					<!-- Compact Operation Header -->
 					<div
-						class="px-4 py-3 border-b border-gray-100 dark:border-gray-700 bg-gradient-to-r from-blue-50/50 to-sky-50/50 dark:from-blue-900/10 dark:to-sky-900/10 rounded-t-xl"
+						class="px-4 py-3 border-b border-gray-100 dark:border-gray-700 bg-gradient-to-r from-blue-50/50 to-sky-50/50 dark:from-blue-900/10 dark:to-sky-900/10 rounded-t-xl relative overflow-hidden dither-soft"
 					>
 						<div class="flex items-center justify-between">
 							<div class="flex items-center gap-2 flex-1 min-w-0">
@@ -630,7 +630,7 @@
 								<!-- Arrow -->
 								<div class="flex-shrink-0 self-center">
 									<div
-										class="p-1.5 bg-gradient-to-br from-blue-100 to-sky-100 dark:from-blue-800/30 dark:to-sky-800/30 rounded-lg"
+										class="p-1.5 bg-gradient-to-br from-blue-100 to-sky-100 dark:from-blue-800/30 dark:to-sky-800/30 rounded-lg relative overflow-hidden dither-subtle"
 									>
 										<ArrowRight
 											class="w-4 h-4 text-blue-600 dark:text-blue-400"
@@ -641,7 +641,7 @@
 								<!-- Updated Task -->
 								<div class="flex-1 w-full">
 									<div
-										class="p-2.5 bg-gradient-to-br from-blue-50 to-sky-50 dark:from-blue-900/20 dark:to-sky-900/20 rounded-lg border border-blue-200 dark:border-blue-700"
+										class="p-2.5 bg-gradient-to-br from-blue-50 to-sky-50 dark:from-blue-900/20 dark:to-sky-900/20 rounded-lg border border-blue-200 dark:border-blue-700 relative overflow-hidden dither-soft"
 									>
 										<h5
 											class="text-sm font-medium text-gray-900 dark:text-white truncate"
@@ -717,7 +717,7 @@
 					in:fly={{ y: 20, duration: 300, delay: i * 50, easing: cubicOut }}
 				>
 					<div
-						class="px-6 py-4 border-b border-gray-100 dark:border-gray-700 bg-gradient-to-r from-emerald-50/50 to-green-50/50 dark:from-emerald-900/10 dark:to-green-900/10 rounded-t-2xl"
+						class="px-6 py-4 border-b border-gray-100 dark:border-gray-700 bg-gradient-to-r from-emerald-50/50 to-green-50/50 dark:from-emerald-900/10 dark:to-green-900/10 rounded-t-2xl relative overflow-hidden dither-soft"
 					>
 						<div class="flex items-center justify-between">
 							<div class="flex items-center gap-3">
@@ -752,7 +752,7 @@
 
 					<div class="p-6">
 						<div
-							class="p-4 bg-gradient-to-br from-emerald-50 to-green-50 dark:from-emerald-900/20 dark:to-green-900/20 rounded-xl border border-emerald-200 dark:border-emerald-700"
+							class="p-4 bg-gradient-to-br from-emerald-50 to-green-50 dark:from-emerald-900/20 dark:to-green-900/20 rounded-xl border border-emerald-200 dark:border-emerald-700 relative overflow-hidden dither-soft"
 						>
 							<h5 class="font-medium text-gray-900 dark:text-white mb-2">
 								{creation.data.title}
@@ -799,7 +799,7 @@
 					in:fly={{ y: 20, duration: 300, delay: i * 50, easing: cubicOut }}
 				>
 					<div
-						class="px-4 py-3 border-b border-gray-100 dark:border-gray-700 bg-gradient-to-r from-red-50/50 to-red-100/50 dark:from-red-900/10 dark:to-red-900/10 rounded-t-xl"
+						class="px-4 py-3 border-b border-gray-100 dark:border-gray-700 bg-gradient-to-r from-red-50/50 to-red-100/50 dark:from-red-900/10 dark:to-red-900/10 rounded-t-xl relative overflow-hidden dither-soft"
 					>
 						<div class="flex items-center justify-between">
 							<div class="flex items-center gap-2 flex-1 min-w-0">

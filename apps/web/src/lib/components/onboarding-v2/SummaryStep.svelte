@@ -75,10 +75,10 @@
 		<div class="flex justify-center mb-6">
 			<div class="relative">
 				<div
-					class="absolute inset-0 bg-gradient-to-br from-green-400 to-emerald-600 blur-2xl opacity-30 animate-pulse"
+					class="absolute inset-0 dither-gradient blur-2xl opacity-30 animate-pulse"
 				></div>
 				<div
-					class="relative w-20 h-20 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center shadow-xl"
+					class="relative w-20 h-20 dither-gradient rounded-full flex items-center justify-center shadow-xl"
 				>
 					<CheckCircle class="w-10 h-10 text-white" />
 				</div>

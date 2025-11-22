@@ -1,0 +1,298 @@
+/* apps/web/src/lib/styles/animation-utils.css */
+/* GPU-Optimized Animation Utilities for BuildOS */
+
+/* ==================== GPU Acceleration Base ==================== */
+
+@layer utilities {
+	/* Force GPU layer creation */
+	.gpu-accelerate {
+		transform: translateZ(0);
+		backface-visibility: hidden;
+	}
+
+	.gpu-accelerate-3d {
+		transform: translate3d(0, 0, 0);
+		backface-visibility: hidden;
+		perspective: 1000px;
+	}
+}
+
+/* ==================== Smart will-change Utilities ==================== */
+
+@layer utilities {
+	/* Pre-warm GPU for transform animations */
+	.will-change-transform {
+		will-change: transform;
+		transform: translateZ(0);
+	}
+
+	/* Pre-warm GPU for opacity animations */
+	.will-change-opacity {
+		will-change: opacity;
+	}
+
+	/* Pre-warm GPU for combined animations */
+	.will-change-transform-opacity {
+		will-change: transform, opacity;
+		transform: translateZ(0);
+	}
+
+	/* Auto-cleanup when not animating (critical for performance!) */
+	.will-change-transform:not(:hover):not(:focus):not(.animating),
+	.will-change-opacity:not(.animating),
+	.will-change-transform-opacity:not(:hover):not(:focus):not(.animating) {
+		will-change: auto;
+	}
+}
+
+/* ==================== GPU-Optimized Transitions ==================== */
+
+@layer utilities {
+	/* Transform transitions (scale, translate, rotate) */
+	.transition-transform-gpu {
+		transition-property: transform;
+		transition-duration: 200ms;
+		transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+		transform: translateZ(0);
+		backface-visibility: hidden;
+		will-change: transform;
+	}
+
+	.transition-transform-gpu:not(:hover):not(:focus):not(.animating) {
+		will-change: auto;
+	}
+
+	/* Opacity transitions */
+	.transition-opacity-gpu {
+		transition-property: opacity;
+		transition-duration: 200ms;
+		transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+		will-change: opacity;
+	}
+
+	.transition-opacity-gpu:not(.animating) {
+		will-change: auto;
+	}
+
+	/* Combined transform + opacity */
+	.transition-transform-opacity-gpu {
+		transition-property: transform, opacity;
+		transition-duration: 200ms;
+		transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+		transform: translateZ(0);
+		backface-visibility: hidden;
+		will-change: transform, opacity;
+	}
+
+	.transition-transform-opacity-gpu:not(:hover):not(:focus):not(.animating) {
+		will-change: auto;
+	}
+
+	/* Box-shadow transitions (common for cards, buttons) */
+	.transition-shadow-gpu {
+		transition-property: box-shadow;
+		transition-duration: 200ms;
+		transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+		will-change: box-shadow;
+	}
+
+	.transition-shadow-gpu:not(:hover):not(:focus) {
+		will-change: auto;
+	}
+}
+
+/* ==================== Common Animation Patterns ==================== */
+
+@layer utilities {
+	/* Scale on hover (buttons, cards, interactive elements) */
+	.hover-scale-sm {
+		@apply transition-transform-gpu;
+	}
+
+	.hover-scale-sm:hover:not(:disabled) {
+		transform: scale(1.02) translateZ(0);
+	}
+
+	.hover-scale {
+		@apply transition-transform-gpu;
+	}
+
+	.hover-scale:hover:not(:disabled) {
+		transform: scale(1.05) translateZ(0);
+	}
+
+	.hover-scale-lg {
+		@apply transition-transform-gpu;
+	}
+
+	.hover-scale-lg:hover:not(:disabled) {
+		transform: scale(1.08) translateZ(0);
+	}
+
+	/* Fade transitions */
+	.fade-transition {
+		@apply transition-opacity-gpu;
+	}
+
+	/* Slide up animation (modals, toasts) */
+	.slide-up-transition {
+		@apply transition-transform-gpu;
+	}
+
+	/* Active state scale (tactile feedback) */
+	.active-scale {
+		@apply transition-transform-gpu;
+	}
+
+	.active-scale:active:not(:disabled) {
+		transform: scale(0.97) translateZ(0);
+	}
+}
+
+/* ==================== Animation State Classes ==================== */
+
+@layer utilities {
+	/* Mark element as currently animating */
+	.animating {
+		will-change: transform, opacity;
+	}
+
+	/* Mark animation as complete (cleanup) */
+	.animation-complete {
+		will-change: auto;
+	}
+
+	/* Prevent pointer events during animation */
+	.animating-no-pointer {
+		pointer-events: none;
+		will-change: transform, opacity;
+	}
+}
+
+/* ==================== Timing Function Utilities ==================== */
+
+@layer utilities {
+	/* Smooth ease-out (best for UI) */
+	.ease-smooth {
+		transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+	}
+
+	/* Snappy ease-out */
+	.ease-snappy {
+		transition-timing-function: cubic-bezier(0.4, 0, 0.1, 1);
+	}
+
+	/* Bounce effect */
+	.ease-bounce {
+		transition-timing-function: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+	}
+
+	/* Natural spring */
+	.ease-spring {
+		transition-timing-function: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+	}
+}
+
+/* ==================== Duration Utilities ==================== */
+
+@layer utilities {
+	.duration-fast {
+		transition-duration: 150ms;
+	}
+
+	.duration-normal {
+		transition-duration: 200ms;
+	}
+
+	.duration-slow {
+		transition-duration: 300ms;
+	}
+
+	.duration-slower {
+		transition-duration: 500ms;
+	}
+}
+
+/* ==================== Loading & Skeleton States ==================== */
+
+@keyframes skeleton-pulse {
+	0%,
+	100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0.5;
+	}
+}
+
+@layer utilities {
+	.skeleton-pulse {
+		animation: skeleton-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+		will-change: opacity;
+	}
+}
+
+/* ==================== Mobile-Specific Optimizations ==================== */
+
+@media (max-width: 768px) {
+	@layer utilities {
+		/* Reduce animation duration on mobile for battery life */
+		.hover-scale,
+		.hover-scale-sm,
+		.hover-scale-lg,
+		.fade-transition,
+		.slide-up-transition,
+		.transition-transform-gpu,
+		.transition-opacity-gpu,
+		.transition-transform-opacity-gpu {
+			transition-duration: 150ms;
+		}
+
+		/* Disable scale effects on mobile (often janky) */
+		.mobile-no-scale:hover {
+			transform: translateZ(0) !important;
+		}
+	}
+}
+
+/* ==================== Reduced Motion Support ==================== */
+
+@media (prefers-reduced-motion: reduce) {
+	@layer utilities {
+		.hover-scale,
+		.hover-scale-sm,
+		.hover-scale-lg,
+		.fade-transition,
+		.slide-up-transition,
+		.active-scale,
+		.transition-transform-gpu,
+		.transition-opacity-gpu,
+		.transition-transform-opacity-gpu,
+		.transition-shadow-gpu {
+			transition: none !important;
+			animation: none !important;
+			will-change: auto !important;
+		}
+
+		/* Still apply transforms without transitions */
+		.hover-scale:hover,
+		.hover-scale-sm:hover,
+		.hover-scale-lg:hover {
+			transform: none !important;
+		}
+	}
+}
+
+/* ==================== Debug Utilities (Dev Only) ==================== */
+
+@layer utilities {
+	/* Visualize elements with will-change */
+	.debug-will-change[style*='will-change'] {
+		outline: 2px dashed lime;
+	}
+
+	/* Visualize elements being animated */
+	.debug-animating.animating {
+		outline: 2px dashed orange;
+	}
+}

@@ -72,11 +72,18 @@
 	<header
 		class="page-header border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 sm:px-6 py-3 flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4"
 	>
-		<!-- Back button with proper hover states and accessibility -->
-		<Button variant="ghost" size="sm" onclick={goBack} aria-label="Back to project">
-			<ArrowLeft class="w-4 h-4" aria-hidden="true" />
-			<span class="text-sm sm:text-base">Back to Project</span>
-		</Button>
+		<!-- Back button - Mobile only -->
+		<div class="lg:hidden">
+			<button
+				type="button"
+				onclick={goBack}
+				class="inline-flex items-center gap-2 rounded-xl border border-slate-200/70 bg-white/90 px-3 py-2 text-sm font-semibold text-slate-600 transition hover:border-blue-400 hover:text-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-300 dark:hover:border-indigo-500 dark:hover:text-indigo-200"
+				aria-label="Back to project"
+			>
+				<ArrowLeft class="h-4 w-4" aria-hidden="true" />
+				<span>Back to Project</span>
+			</button>
+		</div>
 
 		<!-- Project name with responsive text and truncation -->
 		<div class="flex-1 min-w-0">
