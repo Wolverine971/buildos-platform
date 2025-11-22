@@ -10,7 +10,7 @@
 	import TextInput from '$lib/components/ui/TextInput.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
 	import TemplateCard from '$lib/components/ontology/templates/TemplateCard.svelte';
-	import TemplateDetailModal from '$lib/components/ontology/templates/TemplateDetailModal.svelte';
+	// Lazy loaded modal
 	import type { ResolvedTemplate } from '$lib/services/ontology/template-resolver.service';
 
 	interface TemplateChild {
@@ -977,13 +977,17 @@
 	</div>
 </div>
 
-<TemplateDetailModal
-	open={detailOpen}
-	loading={detailLoading}
-	error={detailError}
-	template={detailTemplate}
-	children={detailChildren}
-	onclose={() => closeDetail()}
-	oncreateproject={handleCreateFromDetail}
-	onselecttemplate={handleSelectChild}
-/>
+{#if detailOpen}
+	{#await import('$lib/components/ontology/templates/TemplateDetailModal.svelte') then { default: TemplateDetailModal }}
+		<TemplateDetailModal
+			open={detailOpen}
+			loading={detailLoading}
+			error={detailError}
+			template={detailTemplate}
+			children={detailChildren}
+			onclose={() => closeDetail()}
+			oncreateproject={handleCreateFromDetail}
+			onselecttemplate={handleSelectChild}
+		/>
+	{/await}
+{/if}

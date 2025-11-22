@@ -55,8 +55,8 @@
 			// Hoverable (uses GPU-optimized utility from animation-utils.css)
 			hoverable && 'hover-scale cursor-pointer',
 
-			// Dithered effect
-			dithered && 'card-dithered',
+			// Dithered effect - CRITICAL: must include 'relative' for ::before positioning
+			dithered && 'card-dithered relative',
 
 			// Custom classes
 			className

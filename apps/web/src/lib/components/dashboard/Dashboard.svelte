@@ -28,8 +28,6 @@
 	// Components
 	import DailyBriefCard from '$lib/components/dashboard/DailyBriefCard.svelte';
 	import TimeBlocksCard from '$lib/components/dashboard/TimeBlocksCard.svelte';
-	import MobileTaskTabs from '$lib/components/dashboard/MobileTaskTabs.svelte';
-	import WeeklyTaskCalendar from '$lib/components/dashboard/WeeklyTaskCalendar.svelte';
 	import FirstTimeBrainDumpCard from '$lib/components/dashboard/FirstTimeBrainDumpCard.svelte';
 	import {
 		brainDumpV2Store,
@@ -769,7 +767,7 @@
 			{#if showWelcomeMessages && primaryCTA && displayMode !== 'first-time'}
 				{@const Icon = primaryCTA.primaryAction.icon}
 				<div
-					class="mb-4 sm:mb-6 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-2xl p-5 sm:p-6 border border-blue-200/50 dark:border-blue-800/50 shadow-sm backdrop-blur-sm"
+					class="mb-4 sm:mb-6 dither-soft bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-2xl p-5 sm:p-6 border border-blue-200/50 dark:border-blue-800/50 shadow-sm backdrop-blur-sm"
 				>
 					<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
 						<div class="flex-1">
@@ -781,7 +779,7 @@
 							</p>
 							<a
 								href={primaryCTA.primaryAction.href}
-								class="inline-flex items-center px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl shadow-md hover:shadow-lg transition-all text-sm font-semibold"
+								class="inline-flex items-center px-5 py-2.5 dither-gradient bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl shadow-md hover:shadow-lg transition-all text-sm font-semibold"
 							>
 								<Icon class="h-4 w-4 mr-2" />
 								{primaryCTA.primaryAction.text}
@@ -832,18 +830,39 @@
 
 			<!-- Task Cards - Mobile Tabs / Desktop Grid -->
 			{#if showTaskCards}
-				<!-- Mobile: Tab view with Time Blocks -->
+				<!-- Mobile: Tab view with Time Blocks (LAZY LOADED - desktop never downloads this!) -->
 				<section class="sm:hidden mb-6">
-					<MobileTaskTabs
-						{pastDueTasks}
-						{todaysTasks}
-						{tomorrowsTasks}
-						{timeBlocks}
-						{calendarStatus}
-						onTaskClick={handleTaskClick}
-						onTimeBlockClick={handleTimeBlockClick}
-						onNewTimeBlock={handleNewTimeBlock}
-					/>
+					{#await import('$lib/components/dashboard/MobileTaskTabs.svelte')}
+						<!-- Loading skeleton matching mobile tabs layout -->
+						<div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-4 animate-pulse">
+							<div class="flex space-x-2 mb-4">
+								<div class="h-10 w-24 bg-gray-200 dark:bg-gray-700 rounded-lg"></div>
+								<div class="h-10 w-24 bg-gray-200 dark:bg-gray-700 rounded-lg"></div>
+								<div class="h-10 w-24 bg-gray-200 dark:bg-gray-700 rounded-lg"></div>
+							</div>
+							<div class="space-y-2">
+								<div class="h-16 bg-gray-100 dark:bg-gray-700/50 rounded-lg"></div>
+								<div class="h-16 bg-gray-100 dark:bg-gray-700/50 rounded-lg"></div>
+								<div class="h-16 bg-gray-100 dark:bg-gray-700/50 rounded-lg"></div>
+							</div>
+						</div>
+					{:then MobileTaskTabsModule}
+						<MobileTaskTabsModule.default
+							{pastDueTasks}
+							{todaysTasks}
+							{tomorrowsTasks}
+							{timeBlocks}
+							{calendarStatus}
+							onTaskClick={handleTaskClick}
+							onTimeBlockClick={handleTimeBlockClick}
+							onNewTimeBlock={handleNewTimeBlock}
+						/>
+					{:catch error}
+						<div class="bg-red-50 dark:bg-red-900/20 rounded-xl p-4 text-center">
+							<p class="text-red-700 dark:text-red-400 font-semibold">Failed to load mobile view</p>
+							<p class="text-sm text-red-600 dark:text-red-500 mt-1">Please refresh the page</p>
+						</div>
+					{/await}
 				</section>
 
 				<!-- Desktop: Grid view -->
@@ -883,16 +902,42 @@
 				</section>
 			{/if}
 
-			<!-- Weekly Calendar -->
+			<!-- Weekly Calendar (LAZY LOADED - loads on demand for better initial performance) -->
 			{#if showWeeklyCalendar && weeklyTasks && weeklyTasks.length > 0}
 				<section class="mb-4 sm:mb-6">
-					<WeeklyTaskCalendar
-						tasksByDate={weeklyTasksByDate}
-						{timeBlocks}
-						{calendarStatus}
-						onTaskClick={handleTaskClick}
-						onTimeBlockClick={handleTimeBlockClick}
-					/>
+					{#await import('$lib/components/dashboard/WeeklyTaskCalendar.svelte')}
+						<!-- Loading skeleton matching calendar layout -->
+						<div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 animate-pulse">
+							<div class="flex items-center justify-between mb-6">
+								<div class="h-8 w-48 bg-gray-200 dark:bg-gray-700 rounded-lg"></div>
+								<div class="flex space-x-2">
+									<div class="h-9 w-9 bg-gray-200 dark:bg-gray-700 rounded-lg"></div>
+									<div class="h-9 w-9 bg-gray-200 dark:bg-gray-700 rounded-lg"></div>
+								</div>
+							</div>
+							<div class="grid grid-cols-7 gap-2">
+								{#each Array(7) as _, i}
+									<div class="space-y-2">
+										<div class="h-6 bg-gray-200 dark:bg-gray-700 rounded"></div>
+										<div class="h-24 bg-gray-100 dark:bg-gray-700/50 rounded-lg"></div>
+									</div>
+								{/each}
+							</div>
+						</div>
+					{:then WeeklyTaskCalendarModule}
+						<WeeklyTaskCalendarModule.default
+							tasksByDate={weeklyTasksByDate}
+							{timeBlocks}
+							{calendarStatus}
+							onTaskClick={handleTaskClick}
+							onTimeBlockClick={handleTimeBlockClick}
+						/>
+					{:catch error}
+						<div class="bg-red-50 dark:bg-red-900/20 rounded-xl p-4 text-center">
+							<p class="text-red-700 dark:text-red-400 font-semibold">Failed to load weekly calendar</p>
+							<p class="text-sm text-red-600 dark:text-red-500 mt-1">Please refresh the page</p>
+						</div>
+					{/await}
 				</section>
 			{/if}
 
@@ -901,7 +946,7 @@
 				<section class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-6">
 					<!-- Weekly Progress with glass effect -->
 					<div
-						class="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/10 dark:to-indigo-900/10 rounded-2xl p-5 sm:p-6 border border-blue-200/50 dark:border-blue-800/50 shadow-sm backdrop-blur-sm"
+						class="dither-soft bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/10 dark:to-indigo-900/10 rounded-2xl p-5 sm:p-6 border border-blue-200/50 dark:border-blue-800/50 shadow-sm backdrop-blur-sm"
 					>
 						<div class="flex items-center justify-between mb-5">
 							<div class="flex items-center">

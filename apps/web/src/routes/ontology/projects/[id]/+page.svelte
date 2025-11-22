@@ -36,23 +36,8 @@
 	import TabNav, { type Tab } from '$lib/components/ui/TabNav.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
 	import CardBody from '$lib/components/ui/CardBody.svelte';
-	import GraphControls from '$lib/components/ontology/graph/GraphControls.svelte';
-	import OntologyGraph from '$lib/components/ontology/graph/OntologyGraph.svelte';
-	import NodeDetailsPanel from '$lib/components/ontology/graph/NodeDetailsPanel.svelte';
-	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
-	import OutputCreateModal from '$lib/components/ontology/OutputCreateModal.svelte';
-	import OutputEditModal from '$lib/components/ontology/OutputEditModal.svelte';
-	import DocumentModal from '$lib/components/ontology/DocumentModal.svelte';
-	import TaskCreateModal from '$lib/components/ontology/TaskCreateModal.svelte';
-	import TaskEditModal from '$lib/components/ontology/TaskEditModal.svelte';
-	import PlanCreateModal from '$lib/components/ontology/PlanCreateModal.svelte';
-	import PlanEditModal from '$lib/components/ontology/PlanEditModal.svelte';
-	import GoalCreateModal from '$lib/components/ontology/GoalCreateModal.svelte';
-	import GoalEditModal from '$lib/components/ontology/GoalEditModal.svelte';
 	import FSMStateVisualizer from '$lib/components/ontology/FSMStateVisualizer.svelte';
-	import GoalReverseEngineerModal from '$lib/components/ontology/GoalReverseEngineerModal.svelte';
 	import OntologyProjectHeader from '$lib/components/ontology/OntologyProjectHeader.svelte';
-	import OntologyProjectEditModal from '$lib/components/ontology/OntologyProjectEditModal.svelte';
 	import { toastService } from '$lib/stores/toast.store';
 	import { renderMarkdown, getMarkdownPreview, getProseClasses } from '$lib/utils/markdown';
 	import {
@@ -1266,45 +1251,81 @@
 					{/if}
 
 					{#if projectGraphSource}
-						<div class="grid gap-dense-4 lg:grid-cols-3">
-							<div class="lg:col-span-2">
-								<div
-									class="relative h-[520px] sm:h-[620px] overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800"
-								>
-									<OntologyGraph
-										data={projectGraphSource}
-										viewMode={graphViewMode}
-										bind:selectedNode={selectedGraphNode}
-										bind:graphInstance
-									/>
-									{#if graphLoading}
+						{#await Promise.all([
+							import('$lib/components/ontology/graph/OntologyGraph.svelte'),
+							import('$lib/components/ontology/graph/GraphControls.svelte'),
+							import('$lib/components/ontology/graph/NodeDetailsPanel.svelte')
+						])}
+							<!-- Loading skeleton while graph components load -->
+							<div class="grid gap-dense-4 lg:grid-cols-3 animate-pulse">
+								<div class="lg:col-span-2">
+									<div
+										class="h-[520px] sm:h-[620px] rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center"
+									>
 										<div
-											class="absolute inset-0 flex items-center justify-center bg-white/70 dark:bg-gray-900/70"
-										>
-											<div
-												class="h-10 w-10 animate-spin rounded-full border-4 border-blue-200 border-t-blue-500 dark:border-blue-900/60 dark:border-t-indigo-400"
-											></div>
-										</div>
-									{/if}
+											class="h-10 w-10 animate-spin rounded-full border-4 border-blue-200 border-t-blue-500 dark:border-blue-900/60 dark:border-t-indigo-400"
+										></div>
+									</div>
+								</div>
+								<div class="lg:col-span-1">
+									<div class="h-[520px] sm:h-[620px] rounded-xl bg-gray-100 dark:bg-gray-800"></div>
 								</div>
 							</div>
-							<div class="lg:col-span-1">
-								<GraphControls
-									bind:viewMode={graphViewMode}
-									{graphInstance}
-									stats={projectGraphStats ?? emptyGraphStats}
-								/>
+						{:then [OntologyGraphMod, GraphControlsMod, NodeDetailsMod]}
+							<div class="grid gap-dense-4 lg:grid-cols-3">
+								<div class="lg:col-span-2">
+									<div
+										class="relative h-[520px] sm:h-[620px] overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800"
+									>
+										<svelte:component
+											this={OntologyGraphMod.default}
+											data={projectGraphSource}
+											viewMode={graphViewMode}
+											bind:selectedNode={selectedGraphNode}
+											bind:graphInstance
+										/>
+										{#if graphLoading}
+											<div
+												class="absolute inset-0 flex items-center justify-center bg-white/70 dark:bg-gray-900/70"
+											>
+												<div
+													class="h-10 w-10 animate-spin rounded-full border-4 border-blue-200 border-t-blue-500 dark:border-blue-900/60 dark:border-t-indigo-400"
+												></div>
+											</div>
+										{/if}
+									</div>
+								</div>
+								<div class="lg:col-span-1">
+									<svelte:component
+										this={GraphControlsMod.default}
+										bind:viewMode={graphViewMode}
+										{graphInstance}
+										stats={projectGraphStats ?? emptyGraphStats}
+									/>
+								</div>
 							</div>
-						</div>
+						{:catch error}
+							<div
+								class="rounded-lg border border-red-200 bg-red-50 p-6 text-center dark:border-red-800/50 dark:bg-red-900/30"
+							>
+								<p class="text-red-700 dark:text-red-200 font-semibold mb-2">
+									Failed to load graph visualization
+								</p>
+								<p class="text-red-600 dark:text-red-300 text-sm">{error.message}</p>
+							</div>
+						{/await}
 
 						<section
 							class="mt-4 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800"
 						>
 							{#if selectedGraphNode}
-								<NodeDetailsPanel
-									node={selectedGraphNode}
-									onClose={() => (selectedGraphNode = null)}
-								/>
+								{#await import('$lib/components/ontology/graph/NodeDetailsPanel.svelte') then { default: NodeDetailPanel }}
+									<svelte:component
+										this={NodeDetailPanel}
+										node={selectedGraphNode}
+										onClose={() => (selectedGraphNode = null)}
+									/>
+								{/await}
 							{:else}
 								<div
 									class="flex min-h-[180px] items-center justify-center px-6 py-10 text-sm text-gray-500 dark:text-gray-400"
@@ -2067,150 +2088,181 @@
 	</Card>
 </div>
 
-<ConfirmationModal
-	isOpen={showDeleteProjectModal}
-	title="Delete ontology project"
-	confirmText="Delete project"
-	confirmVariant="danger"
-	loading={isDeletingProject}
-	loadingText="Deleting..."
-	icon="danger"
-	on:confirm={handleProjectDeleteConfirm}
-	on:cancel={closeDeleteModal}
->
-	<div slot="content">
-		<p class="text-sm text-gray-600 dark:text-gray-300">
-			This will permanently delete <span class="font-semibold">{project.name}</span> and all related
-			ontology data (tasks, plans, goals, documents, etc.). This action cannot be undone.
-		</p>
-	</div>
+{#if showDeleteProjectModal}
+	{#await import('$lib/components/ui/ConfirmationModal.svelte') then { default: ConfirmationModal }}
+		<ConfirmationModal
+			isOpen={showDeleteProjectModal}
+			title="Delete ontology project"
+			confirmText="Delete project"
+			confirmVariant="danger"
+			loading={isDeletingProject}
+			loadingText="Deleting..."
+			icon="danger"
+			on:confirm={handleProjectDeleteConfirm}
+			on:cancel={closeDeleteModal}
+		>
+			<div slot="content">
+				<p class="text-sm text-gray-600 dark:text-gray-300">
+					This will permanently delete <span class="font-semibold">{project.name}</span> and all
+					related ontology data (tasks, plans, goals, documents, etc.). This action cannot be
+					undone.
+				</p>
+			</div>
 
-	<div slot="details">
-		{#if deleteProjectError}
-			<p class="mt-2 text-sm text-red-600 dark:text-red-400">
-				{deleteProjectError}
-			</p>
-		{/if}
-	</div>
-</ConfirmationModal>
+			<div slot="details">
+				{#if deleteProjectError}
+					<p class="mt-2 text-sm text-red-600 dark:text-red-400">
+						{deleteProjectError}
+					</p>
+				{/if}
+			</div>
+		</ConfirmationModal>
+	{/await}
+{/if}
 
 <!-- Project Edit Modal -->
-<OntologyProjectEditModal
-	bind:isOpen={showProjectEditModal}
-	{project}
-	{contextDocument}
-	{template}
-	onClose={() => (showProjectEditModal = false)}
-	onSaved={handleProjectSaved}
-/>
+{#if showProjectEditModal}
+	{#await import('$lib/components/ontology/OntologyProjectEditModal.svelte') then { default: OntologyProjectEditModal }}
+		<OntologyProjectEditModal
+			bind:isOpen={showProjectEditModal}
+			{project}
+			{contextDocument}
+			{template}
+			onClose={() => (showProjectEditModal = false)}
+			onSaved={handleProjectSaved}
+		/>
+	{/await}
+{/if}
 
 <!-- Output Create Modal -->
 {#if showOutputCreateModal}
-	<OutputCreateModal
-		projectId={project.id}
-		onClose={() => (showOutputCreateModal = false)}
-		onCreated={handleOutputCreated}
-	/>
+	{#await import('$lib/components/ontology/OutputCreateModal.svelte') then { default: OutputCreateModal }}
+		<OutputCreateModal
+			projectId={project.id}
+			onClose={() => (showOutputCreateModal = false)}
+			onCreated={handleOutputCreated}
+		/>
+	{/await}
 {/if}
 
 {#if editingOutputId}
-	<OutputEditModal
-		outputId={editingOutputId}
-		projectId={project.id}
-		onClose={() => (editingOutputId = null)}
-		onUpdated={handleOutputUpdated}
-		onDeleted={handleOutputDeleted}
-	/>
+	{#await import('$lib/components/ontology/OutputEditModal.svelte') then { default: OutputEditModal }}
+		<OutputEditModal
+			outputId={editingOutputId}
+			projectId={project.id}
+			onClose={() => (editingOutputId = null)}
+			onUpdated={handleOutputUpdated}
+			onDeleted={handleOutputDeleted}
+		/>
+	{/await}
 {/if}
 
-<DocumentModal
-	bind:isOpen={showDocumentModal}
-	projectId={project.id}
-	documentId={activeDocumentId}
-	typeOptions={documentTypeOptions}
-	onClose={() => (showDocumentModal = false)}
-	onSaved={handleDocumentSaved}
-	onDeleted={handleDocumentDeleted}
-/>
+{#if showDocumentModal}
+	{#await import('$lib/components/ontology/DocumentModal.svelte') then { default: DocumentModal }}
+		<DocumentModal
+			bind:isOpen={showDocumentModal}
+			projectId={project.id}
+			documentId={activeDocumentId}
+			typeOptions={documentTypeOptions}
+			onClose={() => (showDocumentModal = false)}
+			onSaved={handleDocumentSaved}
+			onDeleted={handleDocumentDeleted}
+		/>
+	{/await}
+{/if}
 
 <!-- Task Create Modal -->
 {#if showTaskCreateModal}
-	<TaskCreateModal
-		projectId={project.id}
-		{plans}
-		{goals}
-		{milestones}
-		onClose={() => (showTaskCreateModal = false)}
-		onCreated={handleTaskCreated}
-	/>
+	{#await import('$lib/components/ontology/TaskCreateModal.svelte') then { default: TaskCreateModal }}
+		<TaskCreateModal
+			projectId={project.id}
+			{plans}
+			{goals}
+			{milestones}
+			onClose={() => (showTaskCreateModal = false)}
+			onCreated={handleTaskCreated}
+		/>
+	{/await}
 {/if}
 
 <!-- Task Edit Modal -->
 {#if editingTaskId}
-	<TaskEditModal
-		taskId={editingTaskId}
-		projectId={project.id}
-		{plans}
-		{goals}
-		{milestones}
-		onClose={() => (editingTaskId = null)}
-		onUpdated={handleTaskUpdated}
-		onDeleted={handleTaskDeleted}
-	/>
+	{#await import('$lib/components/ontology/TaskEditModal.svelte') then { default: TaskEditModal }}
+		<TaskEditModal
+			taskId={editingTaskId}
+			projectId={project.id}
+			{plans}
+			{goals}
+			{milestones}
+			onClose={() => (editingTaskId = null)}
+			onUpdated={handleTaskUpdated}
+			onDeleted={handleTaskDeleted}
+		/>
+	{/await}
 {/if}
 
 <!-- Plan Create Modal -->
 {#if showPlanCreateModal}
-	<PlanCreateModal
-		projectId={project.id}
-		onClose={() => (showPlanCreateModal = false)}
-		onCreated={async () => {
-			await refreshProjectData({ refreshGraph: true });
-			showPlanCreateModal = false;
-		}}
-	/>
+	{#await import('$lib/components/ontology/PlanCreateModal.svelte') then { default: PlanCreateModal }}
+		<PlanCreateModal
+			projectId={project.id}
+			onClose={() => (showPlanCreateModal = false)}
+			onCreated={async () => {
+				await refreshProjectData({ refreshGraph: true });
+				showPlanCreateModal = false;
+			}}
+		/>
+	{/await}
 {/if}
 
 {#if editingPlanId}
-	<PlanEditModal
-		planId={editingPlanId}
-		projectId={project.id}
-		{tasks}
-		onClose={() => (editingPlanId = null)}
-		onUpdated={handlePlanUpdated}
-		onDeleted={handlePlanDeleted}
-	/>
+	{#await import('$lib/components/ontology/PlanEditModal.svelte') then { default: PlanEditModal }}
+		<PlanEditModal
+			planId={editingPlanId}
+			projectId={project.id}
+			{tasks}
+			onClose={() => (editingPlanId = null)}
+			onUpdated={handlePlanUpdated}
+			onDeleted={handlePlanDeleted}
+		/>
+	{/await}
 {/if}
 
 <!-- Goal Create Modal -->
 {#if showGoalCreateModal}
-	<GoalCreateModal
-		projectId={project.id}
-		onClose={() => (showGoalCreateModal = false)}
-		onCreated={async () => {
-			await refreshProjectData({ refreshGraph: true });
-			showGoalCreateModal = false;
-		}}
-	/>
+	{#await import('$lib/components/ontology/GoalCreateModal.svelte') then { default: GoalCreateModal }}
+		<GoalCreateModal
+			projectId={project.id}
+			onClose={() => (showGoalCreateModal = false)}
+			onCreated={async () => {
+				await refreshProjectData({ refreshGraph: true });
+				showGoalCreateModal = false;
+			}}
+		/>
+	{/await}
 {/if}
 
 {#if editingGoalId}
-	<GoalEditModal
-		goalId={editingGoalId}
-		projectId={project.id}
-		onClose={() => (editingGoalId = null)}
-		onUpdated={handleGoalUpdated}
-		onDeleted={handleGoalDeleted}
-	/>
+	{#await import('$lib/components/ontology/GoalEditModal.svelte') then { default: GoalEditModal }}
+		<GoalEditModal
+			goalId={editingGoalId}
+			projectId={project.id}
+			onClose={() => (editingGoalId = null)}
+			onUpdated={handleGoalUpdated}
+			onDeleted={handleGoalDeleted}
+		/>
+	{/await}
 {/if}
 
 {#if reverseEngineerPreview}
-	<GoalReverseEngineerModal
-		bind:open={reverseEngineerModalOpen}
-		goalName={reverseEngineerGoalMeta?.name ?? 'Goal'}
-		preview={reverseEngineerPreview}
-		loading={approvingReverseEngineer}
-		onApprove={(payload) => handleReverseEngineerApproval(payload.milestones)}
-		onCancel={handleReverseEngineerModalClose}
-	/>
+	{#await import('$lib/components/ontology/GoalReverseEngineerModal.svelte') then { default: GoalReverseEngineerModal }}
+		<GoalReverseEngineerModal
+			bind:open={reverseEngineerModalOpen}
+			goalName={reverseEngineerGoalMeta?.name ?? 'Goal'}
+			preview={reverseEngineerPreview}
+			loading={approvingReverseEngineer}
+			onApprove={(payload) => handleReverseEngineerApproval(payload.milestones)}
+			onCancel={handleReverseEngineerModalClose}
+		/>
+	{/await}
 {/if}

@@ -15,8 +15,8 @@
 
 @layer components {
 	/* Card components (project cards, task cards, etc.) */
-	:global(.card),
-	:global([class*='card-']),
+	/* NOTE: Exclude dithering classes to prevent stacking context conflicts */
+	:global(.card):not(.card-dithered):not(.card-body-dithered):not(.card-footer-dithered),
 	:global(.project-card),
 	:global(.task-card),
 	:global(.phase-card),

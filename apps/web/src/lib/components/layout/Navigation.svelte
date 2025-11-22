@@ -24,8 +24,6 @@
 	import { toggleMode } from 'mode-watcher';
 	import BriefStatusIndicator from './BriefStatusIndicator.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
-	import BrainDumpModal from '$lib/components/brain-dump/BrainDumpModal.svelte';
-	import AgentChatModal from '$lib/components/agent/AgentChatModal.svelte';
 	import {
 		brainDumpV2Store,
 		isModalOpen as brainDumpModalIsOpen
@@ -887,21 +885,27 @@
 </nav>
 
 <!-- Brain Dump Modal -->
-<BrainDumpModal
-	isOpen={showBrainDumpModal}
-	project={modalProject}
-	showNavigationOnSuccess={true}
-	onClose={handleBrainDumpClose}
-	onOpenAgent={handleOpenChat}
-/>
+{#if showBrainDumpModal}
+	{#await import('$lib/components/brain-dump/BrainDumpModal.svelte') then { default: BrainDumpModal }}
+		<BrainDumpModal
+			isOpen={showBrainDumpModal}
+			project={modalProject}
+			showNavigationOnSuccess={true}
+			onClose={handleBrainDumpClose}
+			onOpenAgent={handleOpenChat}
+		/>
+	{/await}
+{/if}
 
 <!-- Multi-Agent Chat Modal -->
 {#if showChatModal && canUseAgenticChat}
-	<AgentChatModal
-		isOpen={showChatModal}
-		contextType={chatContextType}
-		entityId={chatEntityId}
-		autoInitProject={chatAutoInitProject}
-		onClose={handleChatClose}
-	/>
+	{#await import('$lib/components/agent/AgentChatModal.svelte') then { default: AgentChatModal }}
+		<AgentChatModal
+			isOpen={showChatModal}
+			contextType={chatContextType}
+			entityId={chatEntityId}
+			autoInitProject={chatAutoInitProject}
+			onClose={handleChatClose}
+		/>
+	{/await}
 {/if}
