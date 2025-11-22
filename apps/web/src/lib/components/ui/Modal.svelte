@@ -450,10 +450,7 @@
 				>
 					<!-- Drag Handle (compact, high-density design) -->
 					{#if shouldShowDragHandle}
-						<div
-							class="drag-handle-wrapper"
-							style="touch-action: none; cursor: grab;"
-						>
+						<div class="drag-handle-wrapper" style="touch-action: none; cursor: grab;">
 							<div class="drag-handle"></div>
 						</div>
 					{/if}
@@ -598,7 +595,9 @@
 		height: 3px;
 		background: rgb(156 163 175); /* gray-400 */
 		border-radius: 9999px;
-		transition: background-color 150ms, width 150ms;
+		transition:
+			background-color 150ms,
+			width 150ms;
 	}
 
 	.drag-handle-wrapper:hover .drag-handle {
@@ -681,7 +680,8 @@
 		.modal-container {
 			/* Account for notch and home indicator */
 			max-height: calc(
-				100vh - env(safe-area-inset-top, 0px) - max(env(safe-area-inset-bottom, 0px), 1rem) - 1rem
+				100vh - env(safe-area-inset-top, 0px) -
+					max(env(safe-area-inset-bottom, 0px), 1rem) - 1rem
 			);
 		}
 

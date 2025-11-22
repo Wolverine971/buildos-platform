@@ -706,7 +706,7 @@
 <main
 	class="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 transition-colors rounded-lg"
 >
-	<div class="container mx-auto px-2 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-10 max-w-7xl ">
+	<div class="container mx-auto px-2 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-10 max-w-7xl">
 		<!-- Header Section with Apple-style typography -->
 		<header class="mb-4 sm:mb-6">
 			<h1
@@ -834,11 +834,19 @@
 				<section class="sm:hidden mb-6">
 					{#await import('$lib/components/dashboard/MobileTaskTabs.svelte')}
 						<!-- Loading skeleton matching mobile tabs layout -->
-						<div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-4 animate-pulse">
+						<div
+							class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-4 animate-pulse"
+						>
 							<div class="flex space-x-2 mb-4">
-								<div class="h-10 w-24 bg-gray-200 dark:bg-gray-700 rounded-lg"></div>
-								<div class="h-10 w-24 bg-gray-200 dark:bg-gray-700 rounded-lg"></div>
-								<div class="h-10 w-24 bg-gray-200 dark:bg-gray-700 rounded-lg"></div>
+								<div
+									class="h-10 w-24 bg-gray-200 dark:bg-gray-700 rounded-lg"
+								></div>
+								<div
+									class="h-10 w-24 bg-gray-200 dark:bg-gray-700 rounded-lg"
+								></div>
+								<div
+									class="h-10 w-24 bg-gray-200 dark:bg-gray-700 rounded-lg"
+								></div>
 							</div>
 							<div class="space-y-2">
 								<div class="h-16 bg-gray-100 dark:bg-gray-700/50 rounded-lg"></div>
@@ -859,8 +867,12 @@
 						/>
 					{:catch error}
 						<div class="bg-red-50 dark:bg-red-900/20 rounded-xl p-4 text-center">
-							<p class="text-red-700 dark:text-red-400 font-semibold">Failed to load mobile view</p>
-							<p class="text-sm text-red-600 dark:text-red-500 mt-1">Please refresh the page</p>
+							<p class="text-red-700 dark:text-red-400 font-semibold">
+								Failed to load mobile view
+							</p>
+							<p class="text-sm text-red-600 dark:text-red-500 mt-1">
+								Please refresh the page
+							</p>
 						</div>
 					{/await}
 				</section>
@@ -907,19 +919,27 @@
 				<section class="mb-4 sm:mb-6">
 					{#await import('$lib/components/dashboard/WeeklyTaskCalendar.svelte')}
 						<!-- Loading skeleton matching calendar layout -->
-						<div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 animate-pulse">
+						<div
+							class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 animate-pulse"
+						>
 							<div class="flex items-center justify-between mb-6">
 								<div class="h-8 w-48 bg-gray-200 dark:bg-gray-700 rounded-lg"></div>
 								<div class="flex space-x-2">
-									<div class="h-9 w-9 bg-gray-200 dark:bg-gray-700 rounded-lg"></div>
-									<div class="h-9 w-9 bg-gray-200 dark:bg-gray-700 rounded-lg"></div>
+									<div
+										class="h-9 w-9 bg-gray-200 dark:bg-gray-700 rounded-lg"
+									></div>
+									<div
+										class="h-9 w-9 bg-gray-200 dark:bg-gray-700 rounded-lg"
+									></div>
 								</div>
 							</div>
 							<div class="grid grid-cols-7 gap-2">
 								{#each Array(7) as _, i}
 									<div class="space-y-2">
 										<div class="h-6 bg-gray-200 dark:bg-gray-700 rounded"></div>
-										<div class="h-24 bg-gray-100 dark:bg-gray-700/50 rounded-lg"></div>
+										<div
+											class="h-24 bg-gray-100 dark:bg-gray-700/50 rounded-lg"
+										></div>
 									</div>
 								{/each}
 							</div>
@@ -934,8 +954,12 @@
 						/>
 					{:catch error}
 						<div class="bg-red-50 dark:bg-red-900/20 rounded-xl p-4 text-center">
-							<p class="text-red-700 dark:text-red-400 font-semibold">Failed to load weekly calendar</p>
-							<p class="text-sm text-red-600 dark:text-red-500 mt-1">Please refresh the page</p>
+							<p class="text-red-700 dark:text-red-400 font-semibold">
+								Failed to load weekly calendar
+							</p>
+							<p class="text-sm text-red-600 dark:text-red-500 mt-1">
+								Please refresh the page
+							</p>
 						</div>
 					{/await}
 				</section>

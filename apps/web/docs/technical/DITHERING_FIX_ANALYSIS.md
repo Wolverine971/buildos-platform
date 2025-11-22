@@ -19,16 +19,17 @@ The current dithering system uses `::before` pseudo-elements with inline SVG bac
 
 ```css
 .dither-gradient::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background-image: url("data:image/svg+xml,...");
-  pointer-events: none;
-  z-index: 1;
+	content: '';
+	position: absolute;
+	inset: 0;
+	background-image: url('data:image/svg+xml,...');
+	pointer-events: none;
+	z-index: 1;
 }
 ```
 
 **Problems:**
+
 - ❌ Fragile with GPU-accelerated transforms
 - ❌ Requires careful z-index management
 - ❌ Doesn't work reliably with `transform`, `filter`, or `will-change`
@@ -43,15 +44,18 @@ Use `background-blend-mode` to blend the dithering pattern directly with the gra
 
 ```css
 .dither-gradient {
-  background-image:
-    url("data:image/svg+xml,%3Csvg...dither pattern...%3C/svg%3E"),
-    linear-gradient(to right, var(--gradient-from), var(--gradient-to));
-  background-blend-mode: overlay;
-  background-size: 4px 4px, 100% 100%;
+	background-image:
+		url('data:image/svg+xml,%3Csvg...dither pattern...%3C/svg%3E'),
+		linear-gradient(to right, var(--gradient-from), var(--gradient-to));
+	background-blend-mode: overlay;
+	background-size:
+		4px 4px,
+		100% 100%;
 }
 ```
 
 **Pros:**
+
 - ✅ No z-index issues
 - ✅ Works with any transform/filter/GPU acceleration
 - ✅ Simpler implementation
@@ -59,6 +63,7 @@ Use `background-blend-mode` to blend the dithering pattern directly with the gra
 - ✅ More reliable across browsers
 
 **Cons:**
+
 - ⚠️ Requires restructuring gradient classes
 - ⚠️ Need to define gradients as CSS variables or inline
 
@@ -83,10 +88,12 @@ Apply dithering as a CSS filter instead of background:
 ```
 
 **Pros:**
+
 - ✅ No z-index or stacking context issues
 - ✅ Can be applied to any element
 
 **Cons:**
+
 - ⚠️ More complex to fine-tune
 - ⚠️ Different appearance than current SVG dots
 
@@ -96,25 +103,27 @@ Continue using `::before` but add defensive CSS:
 
 ```css
 .dither-gradient {
-  position: relative;
-  isolation: isolate;  /* Create isolated stacking context */
+	position: relative;
+	isolation: isolate; /* Create isolated stacking context */
 }
 
 .dither-gradient::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background-image: url("data:image/svg+xml,...");
-  pointer-events: none;
-  z-index: 1;
+	content: '';
+	position: absolute;
+	inset: 0;
+	background-image: url('data:image/svg+xml,...');
+	pointer-events: none;
+	z-index: 1;
 }
 ```
 
 **Pros:**
+
 - ✅ Minimal changes to existing code
 - ✅ Keeps current visual appearance
 
 **Cons:**
+
 - ⚠️ Still fragile with transforms
 - ⚠️ Requires `isolation: isolate` on EVERY dithered element
 - ⚠️ More CSS overhead
@@ -124,10 +133,12 @@ Continue using `::before` but add defensive CSS:
 **Applied Fix:** Option 3 (defensive CSS with `isolation: isolate`)
 
 **Files Modified:**
+
 - `Card.svelte` - Added `position: relative` and proper z-index stacking
 - `dithering.css` - Added `isolation: isolate` to all 11+ dithering classes
 
 **Testing Needed:**
+
 1. Check CardHeader with `variant="gradient"`
 2. Check elements using `.dither-gradient`, `.dither-soft`, `.dither-accent`
 3. Check BuildOSFlow.svelte gradient sections

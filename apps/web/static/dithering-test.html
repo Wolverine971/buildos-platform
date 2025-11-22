@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Dithering Test</title>
+		<style>
+			body {
+				font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+				padding: 40px;
+				background: #f5f5f5;
+			}
+
+			.test-container {
+				max-width: 1200px;
+				margin: 0 auto;
+			}
+
+			h1 {
+				margin-bottom: 30px;
+			}
+
+			.test-grid {
+				display: grid;
+				grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+				gap: 20px;
+				margin-bottom: 40px;
+			}
+
+			.test-box {
+				height: 200px;
+				border-radius: 16px;
+				padding: 20px;
+				color: #333;
+				font-weight: 600;
+			}
+
+			/* Test 1: Basic dithering with high opacity for visibility */
+			.dither-test-visible {
+				position: relative !important;
+				overflow: hidden !important;
+			}
+
+			.dither-test-visible::before {
+				content: '';
+				position: absolute;
+				inset: 0;
+				background-image: url("data:image/svg+xml,%3Csvg width='4' height='4' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='4' height='4' fill='rgba(0,0,0,0)'/%3E%3Ccircle cx='0' cy='0' r='0.5' fill='rgb(0,0,0)'/%3E%3Ccircle cx='2' cy='1' r='0.5' fill='rgb(0,0,0)'/%3E%3Ccircle cx='1' cy='2' r='0.5' fill='rgb(0,0,0)'/%3E%3Ccircle cx='3' cy='3' r='0.5' fill='rgb(0,0,0)'/%3E%3C/svg%3E");
+				background-size: 4px 4px;
+				mix-blend-mode: overlay;
+				opacity: 0.5; /* High opacity - should be very visible */
+				pointer-events: none;
+			}
+
+			/* Test 2: Subtle dithering (production level) */
+			.dither-test-subtle {
+				position: relative !important;
+				overflow: hidden !important;
+			}
+
+			.dither-test-subtle::before {
+				content: '';
+				position: absolute;
+				inset: 0;
+				background-image: url("data:image/svg+xml,%3Csvg width='4' height='4' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='4' height='4' fill='rgba(0,0,0,0)'/%3E%3Ccircle cx='0' cy='0' r='0.5' fill='rgb(0,0,0)'/%3E%3Ccircle cx='2' cy='1' r='0.5' fill='rgb(0,0,0)'/%3E%3Ccircle cx='1' cy='2' r='0.5' fill='rgb(0,0,0)'/%3E%3Ccircle cx='3' cy='3' r='0.5' fill='rgb(0,0,0)'/%3E%3C/svg%3E");
+				background-size: 4px 4px;
+				mix-blend-mode: overlay;
+				opacity: 0.12; /* Production opacity */
+				pointer-events: none;
+			}
+
+			/* Test 3: Medium dithering */
+			.dither-test-medium {
+				position: relative !important;
+				overflow: hidden !important;
+			}
+
+			.dither-test-medium::before {
+				content: '';
+				position: absolute;
+				inset: 0;
+				background-image: url("data:image/svg+xml,%3Csvg width='4' height='4' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='4' height='4' fill='rgba(0,0,0,0)'/%3E%3Ccircle cx='0' cy='0' r='0.5' fill='rgb(0,0,0)'/%3E%3Ccircle cx='2' cy='1' r='0.5' fill='rgb(0,0,0)'/%3E%3Ccircle cx='1' cy='2' r='0.5' fill='rgb(0,0,0)'/%3E%3Ccircle cx='3' cy='3' r='0.5' fill='rgb(0,0,0)'/%3E%3C/svg%3E");
+				background-size: 4px 4px;
+				mix-blend-mode: overlay;
+				opacity: 0.25; /* Medium opacity */
+				pointer-events: none;
+			}
+
+			/* Test 4: Without mix-blend-mode (for comparison) */
+			.dither-test-no-blend {
+				position: relative !important;
+				overflow: hidden !important;
+			}
+
+			.dither-test-no-blend::before {
+				content: '';
+				position: absolute;
+				inset: 0;
+				background-image: url("data:image/svg+xml,%3Csvg width='4' height='4' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='4' height='4' fill='rgba(0,0,0,0)'/%3E%3Ccircle cx='0' cy='0' r='0.5' fill='rgb(0,0,0)'/%3E%3Ccircle cx='2' cy='1' r='0.5' fill='rgb(0,0,0)'/%3E%3Ccircle cx='1' cy='2' r='0.5' fill='rgb(0,0,0)'/%3E%3Ccircle cx='3' cy='3' r='0.5' fill='rgb(0,0,0)'/%3E%3C/svg%3E");
+				background-size: 4px 4px;
+				/* NO mix-blend-mode */
+				opacity: 0.5;
+				pointer-events: none;
+			}
+
+			.gradient-blue {
+				background: linear-gradient(to bottom right, #dbeafe, #e0e7ff);
+			}
+
+			.gradient-purple {
+				background: linear-gradient(to bottom right, #f3e8ff, #fce7f3);
+			}
+
+			.gradient-green {
+				background: linear-gradient(to bottom right, #d1fae5, #d1fae5);
+			}
+
+			.gradient-orange {
+				background: linear-gradient(to bottom right, #ffedd5, #fecdd3);
+			}
+
+			.info {
+				background: white;
+				padding: 20px;
+				border-radius: 8px;
+				margin-bottom: 20px;
+			}
+
+			.info h2 {
+				margin-top: 0;
+			}
+
+			.info ul {
+				margin: 10px 0;
+				padding-left: 20px;
+			}
+		</style>
+	</head>
+	<body>
+		<div class="test-container">
+			<h1>🔬 Dithering System Test</h1>
+
+			<div class="info">
+				<h2>What to look for:</h2>
+				<ul>
+					<li>
+						<strong>Test 1 (Very Visible):</strong> You should see OBVIOUS black dots in
+						a pattern - opacity 50%
+					</li>
+					<li>
+						<strong>Test 2 (Subtle Production):</strong> Very subtle texture - opacity
+						12% (production default)
+					</li>
+					<li><strong>Test 3 (Medium):</strong> Noticeable texture - opacity 25%</li>
+					<li>
+						<strong>Test 4 (No Blend Mode):</strong> Regular dots without blending - for
+						comparison
+					</li>
+				</ul>
+				<p>
+					<strong
+						>If you can't see any dots in Test 1, the dithering system is
+						broken.</strong
+					>
+				</p>
+				<p>
+					<strong
+						>If you can see dots in Test 1 but not Test 2, the production opacity is too
+						low.</strong
+					>
+				</p>
+			</div>
+
+			<h2>Test 1: Very Visible Dithering (50% opacity)</h2>
+			<div class="test-grid">
+				<div class="test-box dither-test-visible gradient-blue">
+					High Opacity<br />Should be VERY visible
+				</div>
+				<div class="test-box dither-test-visible gradient-purple">
+					High Opacity<br />Should be VERY visible
+				</div>
+				<div class="test-box dither-test-visible gradient-green">
+					High Opacity<br />Should be VERY visible
+				</div>
+			</div>
+
+			<h2>Test 2: Subtle Production Level (12% opacity)</h2>
+			<div class="test-grid">
+				<div class="test-box dither-test-subtle gradient-blue">
+					Production Subtle<br />Very subtle texture
+				</div>
+				<div class="test-box dither-test-subtle gradient-purple">
+					Production Subtle<br />Very subtle texture
+				</div>
+				<div class="test-box dither-test-subtle gradient-green">
+					Production Subtle<br />Very subtle texture
+				</div>
+			</div>
+
+			<h2>Test 3: Medium Visibility (25% opacity)</h2>
+			<div class="test-grid">
+				<div class="test-box dither-test-medium gradient-blue">
+					Medium<br />Noticeable texture
+				</div>
+				<div class="test-box dither-test-medium gradient-purple">
+					Medium<br />Noticeable texture
+				</div>
+				<div class="test-box dither-test-medium gradient-green">
+					Medium<br />Noticeable texture
+				</div>
+			</div>
+
+			<h2>Test 4: No Blend Mode (50% opacity, no mixing)</h2>
+			<div class="test-grid">
+				<div class="test-box dither-test-no-blend gradient-orange">
+					No Blend Mode<br />Direct overlay
+				</div>
+			</div>
+
+			<div class="info">
+				<h2>Debugging in DevTools:</h2>
+				<ol>
+					<li>Right-click on any test box</li>
+					<li>Select "Inspect Element"</li>
+					<li>Look for the <code>::before</code> pseudo-element in the Elements panel</li>
+					<li>
+						Check that it has:
+						<ul>
+							<li><code>position: absolute</code></li>
+							<li><code>inset: 0</code></li>
+							<li><code>background-image: url("data:image/svg+xml...")</code></li>
+							<li><code>mix-blend-mode: overlay</code></li>
+							<li><code>opacity: [value]</code></li>
+						</ul>
+					</li>
+				</ol>
+			</div>
+		</div>
+	</body>
+</html>

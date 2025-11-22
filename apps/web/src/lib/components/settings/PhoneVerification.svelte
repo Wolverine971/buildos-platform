@@ -115,9 +115,7 @@
 
 <div class="space-y-6">
 	{#if !verificationSent}
-		<div
-			class="dither-soft rounded-lg p-6 border border-blue-200 dark:border-blue-800"
-		>
+		<div class="dither-soft rounded-lg p-6 border border-blue-200 dark:border-blue-800">
 			<FormField
 				label="Phone Number"
 				labelFor="phone"
@@ -161,9 +159,7 @@
 			</FormField>
 		</div>
 	{:else}
-		<div
-			class="dither-soft rounded-lg p-6 border border-green-200 dark:border-green-800"
-		>
+		<div class="dither-soft rounded-lg p-6 border border-green-200 dark:border-green-800">
 			<div class="mb-4">
 				<div class="flex items-center gap-2 text-green-700 dark:text-green-300 mb-2">
 					<Check class="w-5 h-5" />

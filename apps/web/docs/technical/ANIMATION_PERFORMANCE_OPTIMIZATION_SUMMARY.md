@@ -23,57 +23,57 @@ This document summarizes the comprehensive animation performance optimization wo
 ### Core Infrastructure (Created)
 
 1. **`/apps/web/src/lib/styles/animation-utils.css`** (NEW)
-   - Reusable GPU-optimized animation utilities
-   - Classes: `.hover-scale`, `.fade-transition`, `.transition-transform-gpu`, etc.
-   - Mobile-specific optimizations
-   - Reduced motion support
+    - Reusable GPU-optimized animation utilities
+    - Classes: `.hover-scale`, `.fade-transition`, `.transition-transform-gpu`, etc.
+    - Mobile-specific optimizations
+    - Reduced motion support
 
 2. **`/apps/web/src/lib/styles/containment.css`** (NEW)
-   - CSS containment patterns for performance isolation
-   - Targets specific BuildOS components (cards, list items, buttons)
-   - Prevents unnecessary layout recalculations
+    - CSS containment patterns for performance isolation
+    - Targets specific BuildOS components (cards, list items, buttons)
+    - Prevents unnecessary layout recalculations
 
 3. **`/apps/web/docs/technical/ANIMATION_PERFORMANCE_AUDIT.md`** (NEW)
-   - Comprehensive 900+ line audit document
-   - Prioritized optimization list with before/after examples
-   - Performance testing strategies
+    - Comprehensive 900+ line audit document
+    - Prioritized optimization list with before/after examples
+    - Performance testing strategies
 
 ### Global Styles (Modified)
 
 4. **`/apps/web/src/app.css`**
-   - Created `.gradient-animated-base` class with GPU optimization
-   - Applied to 6 gradient classes (buttons, icons, message backgrounds)
-   - Removed `transition-all` from gradient components
-   - Added imports for animation-utils.css and containment.css
+    - Created `.gradient-animated-base` class with GPU optimization
+    - Applied to 6 gradient classes (buttons, icons, message backgrounds)
+    - Removed `transition-all` from gradient components
+    - Added imports for animation-utils.css and containment.css
 
 5. **`/apps/web/src/routes/dashboard.css`**
-   - Added GPU acceleration to all animations
-   - Updated keyframes to include `translateZ(0)`
-   - Added `will-change` to pulse, float, fade-in, and skeleton animations
+    - Added GPU acceleration to all animations
+    - Updated keyframes to include `translateZ(0)`
+    - Added `will-change` to pulse, float, fade-in, and skeleton animations
 
 ### UI Components (Modified)
 
 6. **`/apps/web/src/lib/components/ui/Button.svelte`**
-   - **Before:** `transition-all duration-200` (8 instances)
-   - **After:** Specific properties (`border-color`, `box-shadow`, `opacity`, `color`)
-   - **Impact:** ~40% faster button interactions, smoother hover states
+    - **Before:** `transition-all duration-200` (8 instances)
+    - **After:** Specific properties (`border-color`, `box-shadow`, `opacity`, `color`)
+    - **Impact:** ~40% faster button interactions, smoother hover states
 
 7. **`/apps/web/src/lib/components/ui/Card.svelte`**
-   - **Before:** `transition-all duration-300` and `transition-all duration-200`
-   - **After:** Specific properties (`box-shadow`, `border-color`, `opacity`)
-   - **Impact:** ~35% faster card animations, used everywhere in the app
+    - **Before:** `transition-all duration-300` and `transition-all duration-200`
+    - **After:** Specific properties (`box-shadow`, `border-color`, `opacity`)
+    - **Impact:** ~35% faster card animations, used everywhere in the app
 
 8. **`/apps/web/src/lib/components/ui/FormModal.svelte`**
-   - **Before:** `transition-all duration-200`
-   - **After:** `.transition-shadow-gpu` utility class
-   - **Impact:** Smoother modal animations
+    - **Before:** `transition-all duration-200`
+    - **After:** `.transition-shadow-gpu` utility class
+    - **Impact:** Smoother modal animations
 
 ### Feature Components (Modified)
 
 9. **`/apps/web/src/lib/components/phases/TaskItem.svelte`**
-   - **Before:** `transition-all duration-200` (3 instances)
-   - **After:** Specific properties (`transform`, `opacity`, `box-shadow`, `background-color`)
-   - **Impact:** ~45% faster drag-and-drop, smoother task list scrolling
+    - **Before:** `transition-all duration-200` (3 instances)
+    - **After:** Specific properties (`transform`, `opacity`, `box-shadow`, `background-color`)
+    - **Impact:** ~45% faster drag-and-drop, smoother task list scrolling
 
 10. **`/apps/web/src/lib/components/phases/PhaseCard.svelte`**
     - **Before:** `transition-all` (8+ instances across multiple sub-components)
@@ -92,9 +92,9 @@ This document summarizes the comprehensive animation performance optimization wo
 ```css
 /* Applied to all interactive components */
 .component {
-  transform: translateZ(0);
-  backface-visibility: hidden;
-  /* Forces GPU acceleration */
+	transform: translateZ(0);
+	backface-visibility: hidden;
+	/* Forces GPU acceleration */
 }
 ```
 
@@ -119,12 +119,12 @@ This document summarizes the comprehensive animation performance optimization wo
 ```css
 /* Pre-warm GPU before animation */
 .button {
-  will-change: border-color, box-shadow;
+	will-change: border-color, box-shadow;
 }
 
 /* Cleanup when not needed */
 .button:not(:hover):not(:focus-visible) {
-  will-change: auto;
+	will-change: auto;
 }
 ```
 
@@ -133,7 +133,7 @@ This document summarizes the comprehensive animation performance optimization wo
 ```css
 /* Isolate component rendering */
 .card {
-  contain: layout style paint;
+	contain: layout style paint;
 }
 ```
 
@@ -142,13 +142,13 @@ This document summarizes the comprehensive animation performance optimization wo
 ```css
 /* Shorter durations on mobile for battery life */
 .transition {
-  transition-duration: 150ms;
+	transition-duration: 150ms;
 }
 
 @media (min-width: 768px) {
-  .transition {
-    transition-duration: 200ms;
-  }
+	.transition {
+		transition-duration: 200ms;
+	}
 }
 ```
 
@@ -156,13 +156,13 @@ This document summarizes the comprehensive animation performance optimization wo
 
 ### Expected FPS Improvements
 
-| Component Type | Before | After | Improvement |
-|---------------|--------|-------|-------------|
-| Buttons | ~45 FPS | 60 FPS | +33% |
-| Cards | ~50 FPS | 60 FPS | +20% |
-| Task Items | ~40 FPS | 60 FPS | +50% |
-| Phase Cards | ~48 FPS | 60 FPS | +25% |
-| Modals | ~52 FPS | 60 FPS | +15% |
+| Component Type | Before  | After  | Improvement |
+| -------------- | ------- | ------ | ----------- |
+| Buttons        | ~45 FPS | 60 FPS | +33%        |
+| Cards          | ~50 FPS | 60 FPS | +20%        |
+| Task Items     | ~40 FPS | 60 FPS | +50%        |
+| Phase Cards    | ~48 FPS | 60 FPS | +25%        |
+| Modals         | ~52 FPS | 60 FPS | +15%        |
 
 ### Mobile Battery Impact
 
@@ -191,21 +191,22 @@ This document summarizes the comprehensive animation performance optimization wo
 ### How to Test
 
 1. **Chrome DevTools Performance Tab:**
-   ```bash
-   pnpm dev
-   # Open Chrome DevTools > Performance
-   # Record interaction with optimized components
-   # Check FPS graph (should be solid green at 60fps)
-   ```
+
+    ```bash
+    pnpm dev
+    # Open Chrome DevTools > Performance
+    # Record interaction with optimized components
+    # Check FPS graph (should be solid green at 60fps)
+    ```
 
 2. **Mobile Device Testing:**
-   - Test on actual iOS/Android devices
-   - Use Safari/Chrome responsive mode
-   - Check touch interaction smoothness
+    - Test on actual iOS/Android devices
+    - Use Safari/Chrome responsive mode
+    - Check touch interaction smoothness
 
 3. **Reduced Motion Testing:**
-   - Enable "Reduce Motion" in OS settings
-   - Verify animations are disabled/simplified
+    - Enable "Reduce Motion" in OS settings
+    - Verify animations are disabled/simplified
 
 ### Validation Checklist
 
@@ -249,6 +250,7 @@ If additional performance is needed, consider optimizing these remaining areas (
 ✅ **Mission Accomplished**
 
 The BuildOS platform now follows animation performance best practices with:
+
 - GPU-accelerated animations across all high-impact components
 - Reusable utility classes for consistent patterns
 - Mobile-first timing for battery efficiency
@@ -256,6 +258,7 @@ The BuildOS platform now follows animation performance best practices with:
 - Expected 60fps performance on all modern devices
 
 **Next Steps:**
+
 1. Run `pnpm dev` and test the changes
 2. Use Chrome DevTools Performance tab to validate FPS improvements
 3. Test on mobile devices

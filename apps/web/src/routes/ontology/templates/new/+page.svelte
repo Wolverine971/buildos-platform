@@ -1089,7 +1089,6 @@
 
 	<!-- Header -->
 	<header class="mb-3">
-
 		<h1 class="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-2">
 			Create New Template
 		</h1>

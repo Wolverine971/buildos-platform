@@ -104,7 +104,9 @@
 						push the work forward in chat.
 					</p>
 				</div>
-				<div class="flex items-center justify-between text-xs font-medium text-indigo-600 dark:text-indigo-400">
+				<div
+					class="flex items-center justify-between text-xs font-medium text-indigo-600 dark:text-indigo-400"
+				>
 					<span>Use this helper</span>
 					<ChevronRight class="h-4 w-4 transition-transform group-hover:translate-x-1" />
 				</div>

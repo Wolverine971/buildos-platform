@@ -257,9 +257,7 @@
 		}
 	}
 
-	function handleContextSelectionNavChange(
-		view: 'primary' | 'projectHub' | 'project-selection'
-	) {
+	function handleContextSelectionNavChange(view: 'primary' | 'projectHub' | 'project-selection') {
 		contextSelectionView = view;
 	}
 

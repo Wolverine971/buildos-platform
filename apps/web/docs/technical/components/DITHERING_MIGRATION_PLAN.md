@@ -16,6 +16,7 @@ This document outlines the comprehensive plan to migrate all gradient background
 Location: `/apps/web/src/lib/styles/dithering.css`
 
 The dithering system provides:
+
 - **5 intensity levels**: `dither-subtle`, `dither-soft`, `dither-medium` (default), `dither-strong`, `dither-intense`
 - **3 pattern sizes**: `dither-fine` (2x2), `dither` (4x4), `dither-detailed` (8x8)
 - **4 context-specific classes**: `dither-gradient`, `dither-surface`, `dither-accent`, `dither-subtle-gradient`
@@ -44,6 +45,7 @@ The dithering system provides:
 ### 🚧 In Progress - Phase 2: Agent/Chat Components
 
 **NEW PRIORITY ORDER** (per user request):
+
 1. Agent/Chat Components (34 usages)
 2. Ontology System (47 usages)
 3. Navigation & Layout (19 usages)
@@ -59,130 +61,141 @@ The dithering system provides:
 #### By Component Category
 
 #### 1. **Navigation & Layout** (19 gradient usages)
-   - [ ] `Navigation.svelte` (8 usages) - Tab highlights, active states
-   - [ ] `Footer.svelte` (1 usage) - Background gradient
-   - [ ] `BriefStatusIndicator.svelte` (1 usage) - Status badge
-   - [ ] `AdminShell.svelte` (2 usages) - Admin panel backgrounds
-   - [ ] `BuildOSFlow.svelte` (7 usages) - Flow visualization gradients
-   - **Priority**: HIGH - affects entire app navigation
+
+- [ ] `Navigation.svelte` (8 usages) - Tab highlights, active states
+- [ ] `Footer.svelte` (1 usage) - Background gradient
+- [ ] `BriefStatusIndicator.svelte` (1 usage) - Status badge
+- [ ] `AdminShell.svelte` (2 usages) - Admin panel backgrounds
+- [ ] `BuildOSFlow.svelte` (7 usages) - Flow visualization gradients
+- **Priority**: HIGH - affects entire app navigation
 
 #### 2. **Dashboard Components** (45 gradient usages)
-   - [ ] `Dashboard.svelte` (9 usages) - Section backgrounds
-   - [ ] `DailyBriefCard.svelte` (4 usages) - Card gradients
-   - [ ] `FirstTimeBrainDumpCard.svelte` (15 usages) - Onboarding UI
-   - [ ] `TimeBlocksCard.svelte` (15 usages) - Time block visualization
-   - [ ] `MobileTaskTabs.svelte` (2 usages) - Tab navigation
-   - **Priority**: HIGH - primary user interface
+
+- [ ] `Dashboard.svelte` (9 usages) - Section backgrounds
+- [ ] `DailyBriefCard.svelte` (4 usages) - Card gradients
+- [ ] `FirstTimeBrainDumpCard.svelte` (15 usages) - Onboarding UI
+- [ ] `TimeBlocksCard.svelte` (15 usages) - Time block visualization
+- [ ] `MobileTaskTabs.svelte` (2 usages) - Tab navigation
+- **Priority**: HIGH - primary user interface
 
 #### 5. **Ontology System** (47 gradient usages)
-   - [ ] `OntologyProjectHeader.svelte` (3 usages) - Header
-   - [ ] `OntologyProjectEditModal.svelte` (9 usages) - Edit modal
-   - [ ] `FSMStateVisualizer.svelte` (10 usages) - State machine viz
-   - [ ] `DocumentEditor.svelte` (4 usages) - Document editing
-   - [ ] `DocumentModal.svelte` (1 usage) - Document modal
-   - [ ] `TaskCreateModal.svelte` (4 usages) - Task creation
-   - [ ] `TaskEditModal.svelte` (4 usages) - Task editing
-   - [ ] `PlanCreateModal.svelte` (4 usages) - Plan creation
-   - [ ] `PlanEditModal.svelte` (5 usages) - Plan editing
-   - [ ] `GoalCreateModal.svelte` (4 usages) - Goal creation
-   - [ ] `GoalEditModal.svelte` (1 usage) - Goal editing
-   - [ ] `GoalReverseEngineerModal.svelte` (2 usages) - Reverse engineer
-   - [ ] `OutputCreateModal.svelte` (2 usages) - Output creation
-   - [ ] `OntologyContextDocModal.svelte` (2 usages) - Context docs
-   - [ ] `templates/TemplateCard.svelte` (1 usage) - Template card
-   - [ ] `templates/TemplateDetailModal.svelte` (2 usages) - Template details
-   - [ ] `templates/TemplateAnalyzerModal.svelte` (1 usage) - Analyzer
-   - [ ] `templates/TemplateForm.svelte` (1 usage) - Template form
-   - [ ] `graph/GraphControls.svelte` (1 usage) - Graph controls
-   - **Priority**: MEDIUM - ontology system
+
+- [ ] `OntologyProjectHeader.svelte` (3 usages) - Header
+- [ ] `OntologyProjectEditModal.svelte` (9 usages) - Edit modal
+- [ ] `FSMStateVisualizer.svelte` (10 usages) - State machine viz
+- [ ] `DocumentEditor.svelte` (4 usages) - Document editing
+- [ ] `DocumentModal.svelte` (1 usage) - Document modal
+- [ ] `TaskCreateModal.svelte` (4 usages) - Task creation
+- [ ] `TaskEditModal.svelte` (4 usages) - Task editing
+- [ ] `PlanCreateModal.svelte` (4 usages) - Plan creation
+- [ ] `PlanEditModal.svelte` (5 usages) - Plan editing
+- [ ] `GoalCreateModal.svelte` (4 usages) - Goal creation
+- [ ] `GoalEditModal.svelte` (1 usage) - Goal editing
+- [ ] `GoalReverseEngineerModal.svelte` (2 usages) - Reverse engineer
+- [ ] `OutputCreateModal.svelte` (2 usages) - Output creation
+- [ ] `OntologyContextDocModal.svelte` (2 usages) - Context docs
+- [ ] `templates/TemplateCard.svelte` (1 usage) - Template card
+- [ ] `templates/TemplateDetailModal.svelte` (2 usages) - Template details
+- [ ] `templates/TemplateAnalyzerModal.svelte` (1 usage) - Analyzer
+- [ ] `templates/TemplateForm.svelte` (1 usage) - Template form
+- [ ] `graph/GraphControls.svelte` (1 usage) - Graph controls
+- **Priority**: MEDIUM - ontology system
 
 #### 6. **Agent/Chat Components** (34 gradient usages)
-   - [ ] `AgentComposer.svelte` (2 usages) - Composer UI
-   - [ ] `AgentChatHeader.svelte` (2 usages) - Chat header
-   - [ ] `PlanVisualization.svelte` (5 usages) - Plan visualization
-   - [ ] `ProjectModeSelectionView.svelte` (13 usages) - Mode selector
-   - [ ] `ProjectFocusSelector.svelte` (3 usages) - Focus selector
-   - [ ] `ProjectActionSelector.svelte` (4 usages) - Action selector
-   - [ ] `TemplateSuggestionCard.svelte` (1 usage) - Template card
-   - [ ] `DraftsList.svelte` (1 usage) - Drafts list
-   - [ ] `ContextSelectionScreen.svelte` (10 usages) - Context selection
-   - **Priority**: MEDIUM - agent chat system
+
+- [ ] `AgentComposer.svelte` (2 usages) - Composer UI
+- [ ] `AgentChatHeader.svelte` (2 usages) - Chat header
+- [ ] `PlanVisualization.svelte` (5 usages) - Plan visualization
+- [ ] `ProjectModeSelectionView.svelte` (13 usages) - Mode selector
+- [ ] `ProjectFocusSelector.svelte` (3 usages) - Focus selector
+- [ ] `ProjectActionSelector.svelte` (4 usages) - Action selector
+- [ ] `TemplateSuggestionCard.svelte` (1 usage) - Template card
+- [ ] `DraftsList.svelte` (1 usage) - Drafts list
+- [ ] `ContextSelectionScreen.svelte` (10 usages) - Context selection
+- **Priority**: MEDIUM - agent chat system
 
 #### 7. **Onboarding Components** (40 gradient usages)
-   - [ ] `OnboardingModal.svelte` (4 usages) - Main onboarding
-   - [ ] `onboarding-v2/WelcomeStep.svelte` (10 usages) - Welcome screen
-   - [ ] `onboarding-v2/CombinedProfileStep.svelte` (4 usages) - Profile
-   - [ ] `onboarding-v2/NotificationsStep.svelte` (7 usages) - Notifications
-   - [ ] `onboarding-v2/FlexibilityStep.svelte` (4 usages) - Flexibility
-   - [ ] `onboarding-v2/ProjectsCaptureStep.svelte` (3 usages) - Projects
-   - [ ] `onboarding-v2/SummaryStep.svelte` (3 usages) - Summary
-   - [ ] `onboarding-v2/PhoneVerificationCard.svelte` (1 usage) - Phone
-   - [ ] `onboarding-v2/AdminTourStep.svelte` (1 usage) - Admin tour
-   - [ ] `onboarding-v2/ProgressIndicator.svelte` (3 usages) - Progress
-   - **Priority**: HIGH - user onboarding experience
+
+- [ ] `OnboardingModal.svelte` (4 usages) - Main onboarding
+- [ ] `onboarding-v2/WelcomeStep.svelte` (10 usages) - Welcome screen
+- [ ] `onboarding-v2/CombinedProfileStep.svelte` (4 usages) - Profile
+- [ ] `onboarding-v2/NotificationsStep.svelte` (7 usages) - Notifications
+- [ ] `onboarding-v2/FlexibilityStep.svelte` (4 usages) - Flexibility
+- [ ] `onboarding-v2/ProjectsCaptureStep.svelte` (3 usages) - Projects
+- [ ] `onboarding-v2/SummaryStep.svelte` (3 usages) - Summary
+- [ ] `onboarding-v2/PhoneVerificationCard.svelte` (1 usage) - Phone
+- [ ] `onboarding-v2/AdminTourStep.svelte` (1 usage) - Admin tour
+- [ ] `onboarding-v2/ProgressIndicator.svelte` (3 usages) - Progress
+- **Priority**: HIGH - user onboarding experience
 
 #### 9. **Calendar Components** (10 gradient usages)
-   - [ ] `CalendarAnalysisModal.svelte` (2 usages) - Analysis modal
-   - [ ] `CalendarAnalysisResults.svelte` (12 usages) - Results display
-   - [ ] `CalendarConnectionOverlay.svelte` (6 usages) - Connection UI
-   - [ ] `PhaseCalendarView.svelte` (1 usage) - Phase calendar
-   - **Priority**: MEDIUM - calendar integration
+
+- [ ] `CalendarAnalysisModal.svelte` (2 usages) - Analysis modal
+- [ ] `CalendarAnalysisResults.svelte` (12 usages) - Results display
+- [ ] `CalendarConnectionOverlay.svelte` (6 usages) - Connection UI
+- [ ] `PhaseCalendarView.svelte` (1 usage) - Phase calendar
+- **Priority**: MEDIUM - calendar integration
 
 #### 10. **Settings & Profile** (9 gradient usages)
-   - [ ] `settings/SMSPreferences.svelte` (1 usage) - SMS settings
-   - [ ] `settings/PhoneVerificationModal.svelte` (1 usage) - Phone modal
-   - [ ] `settings/PhoneVerification.svelte` (2 usages) - Verification
-   - [ ] `profile/NotificationsTab.svelte` (1 usage) - Notifications
-   - [ ] `profile/CalendarTab.svelte` (1 usage) - Calendar settings
-   - [ ] `profile/AccountSettingsModal.svelte` (1 usage) - Account
-   - [ ] **Priority**: MEDIUM - user settings
+
+- [ ] `settings/SMSPreferences.svelte` (1 usage) - SMS settings
+- [ ] `settings/PhoneVerificationModal.svelte` (1 usage) - Phone modal
+- [ ] `settings/PhoneVerification.svelte` (2 usages) - Verification
+- [ ] `profile/NotificationsTab.svelte` (1 usage) - Notifications
+- [ ] `profile/CalendarTab.svelte` (1 usage) - Calendar settings
+- [ ] `profile/AccountSettingsModal.svelte` (1 usage) - Account
+- [ ] **Priority**: MEDIUM - user settings
 
 #### 11. **Public Pages** (57 gradient usages)
-   - [ ] `routes/+page.svelte` (7 usages) - Landing page
-   - [ ] `routes/onboarding/+page.svelte` (11 usages) - Onboarding page
-   - [ ] `routes/pricing/+page.svelte` (1 usage) - Pricing
-   - [ ] `routes/investors/+page.svelte` (2 usages) - Investors
-   - [ ] `routes/privacy/+page.svelte` (2 usages) - Privacy
-   - [ ] `routes/terms/+page.svelte` (2 usages) - Terms
-   - [ ] `routes/help/+page.svelte` (1 usage) - Help
-   - [ ] `routes/road-map/+page.svelte` (4 usages) - Roadmap
-   - [ ] `routes/contact/+page.svelte` (4 usages) - Contact
-   - [ ] `routes/blogs/+page.svelte` (1 usage) - Blog index
-   - [ ] `routes/blogs/[category]/+page.svelte` (1 usage) - Blog category
-   - [ ] `routes/(public)/integrations/+page.svelte` (33 usages) - Integrations
-   - [ ] `routes/beta/thank-you/+page.svelte` (3 usages) - Thank you
-   - [ ] `routes/docs/+page.svelte` (3 usages) - Documentation
-   - **Priority**: LOW - public-facing pages
+
+- [ ] `routes/+page.svelte` (7 usages) - Landing page
+- [ ] `routes/onboarding/+page.svelte` (11 usages) - Onboarding page
+- [ ] `routes/pricing/+page.svelte` (1 usage) - Pricing
+- [ ] `routes/investors/+page.svelte` (2 usages) - Investors
+- [ ] `routes/privacy/+page.svelte` (2 usages) - Privacy
+- [ ] `routes/terms/+page.svelte` (2 usages) - Terms
+- [ ] `routes/help/+page.svelte` (1 usage) - Help
+- [ ] `routes/road-map/+page.svelte` (4 usages) - Roadmap
+- [ ] `routes/contact/+page.svelte` (4 usages) - Contact
+- [ ] `routes/blogs/+page.svelte` (1 usage) - Blog index
+- [ ] `routes/blogs/[category]/+page.svelte` (1 usage) - Blog category
+- [ ] `routes/(public)/integrations/+page.svelte` (33 usages) - Integrations
+- [ ] `routes/beta/thank-you/+page.svelte` (3 usages) - Thank you
+- [ ] `routes/docs/+page.svelte` (3 usages) - Documentation
+- **Priority**: LOW - public-facing pages
 
 #### 12. **Other UI Components** (43 gradient usages)
-   - [ ] `SkeletonLoader.svelte` (2 usages) - Loading shimmer
-   - [ ] `TabNav.svelte` (4 usages) - Tab navigation
-   - [ ] `SearchCombobox.svelte` (29 usages) - Search UI
-   - [ ] `SearchViewAll.svelte` (7 usages) - Search results
-   - [ ] `BackgroundJobIndicator.svelte` (1 usage) - Job status
-   - [ ] `synthesis/TaskMappingView.svelte` (15 usages) - Task mapping
-   - [ ] `briefs/DailyBriefSection.svelte` (11 usages) - Brief display
-   - [ ] `analytics/BriefAnalyticsDashboard.svelte` (1 usage) - Analytics
-   - [ ] `email/EmailComposer.svelte` (2 usages) - Email composition
-   - [ ] `admin/notifications/SMSInsightsCard.svelte` (1 usage) - SMS insights
-   - [ ] `admin/UserActivityModal.svelte` (4 usages) - User activity
-   - [ ] `admin/UserContextPanel.svelte` (3 usages) - User context
-   - [ ] `sms/monitoring/LLMMetricsChart.svelte` (2 usages) - Metrics
-   - [ ] `sms/monitoring/DeliveryRateChart.svelte` (3 usages) - Delivery
-   - [ ] `docs/SwaggerUI.svelte` (1 usage) - API docs
-   - **Priority**: LOW-MEDIUM - various utilities
+
+- [ ] `SkeletonLoader.svelte` (2 usages) - Loading shimmer
+- [ ] `TabNav.svelte` (4 usages) - Tab navigation
+- [ ] `SearchCombobox.svelte` (29 usages) - Search UI
+- [ ] `SearchViewAll.svelte` (7 usages) - Search results
+- [ ] `BackgroundJobIndicator.svelte` (1 usage) - Job status
+- [ ] `synthesis/TaskMappingView.svelte` (15 usages) - Task mapping
+- [ ] `briefs/DailyBriefSection.svelte` (11 usages) - Brief display
+- [ ] `analytics/BriefAnalyticsDashboard.svelte` (1 usage) - Analytics
+- [ ] `email/EmailComposer.svelte` (2 usages) - Email composition
+- [ ] `admin/notifications/SMSInsightsCard.svelte` (1 usage) - SMS insights
+- [ ] `admin/UserActivityModal.svelte` (4 usages) - User activity
+- [ ] `admin/UserContextPanel.svelte` (3 usages) - User context
+- [ ] `sms/monitoring/LLMMetricsChart.svelte` (2 usages) - Metrics
+- [ ] `sms/monitoring/DeliveryRateChart.svelte` (3 usages) - Delivery
+- [ ] `docs/SwaggerUI.svelte` (1 usage) - API docs
+- **Priority**: LOW-MEDIUM - various utilities
 
 #### 13. **CSS Files & Global Styles** (42 gradient usages)
-   - [ ] `app.css` (26 usages) - Global gradients
-   - [ ] `dashboard.css` (4 usages) - Dashboard styles
-   - [ ] `history/history.css` (4 usages) - History styles
-   - [ ] `pwa.css` (2 usages) - PWA styles
-   - [ ] `performance-optimizations.css` (2 usages) - Shimmer effects
-   - **Priority**: MEDIUM - global styling
+
+- [ ] `app.css` (26 usages) - Global gradients
+- [ ] `dashboard.css` (4 usages) - Dashboard styles
+- [ ] `history/history.css` (4 usages) - History styles
+- [ ] `pwa.css` (2 usages) - PWA styles
+- [ ] `performance-optimizations.css` (2 usages) - Shimmer effects
+- **Priority**: MEDIUM - global styling
 
 ## Migration Phases
 
 ### Phase 1: Foundation (✅ COMPLETED)
+
 - [x] Create dithering utility system
 - [x] Import into app.css
 - [x] Update core Card components
@@ -190,6 +203,7 @@ The dithering system provides:
 - [x] Create migration plan
 
 ### Phase 2: Agent/Chat Components (✅ COMPLETED)
+
 **Completed:** Current Session
 **Total:** 37 gradient usages migrated across 9 components
 
@@ -204,6 +218,7 @@ The dithering system provides:
 - [x] ContextSelectionScreen.svelte (10 usages) - `dither-soft dither-fade-hover` on cards, `dither-subtle` on icons
 
 ### Phase 3: Ontology System (✅ COMPLETED)
+
 **Completed:** Current Session
 **Total:** 47 gradient usages migrated across 19 components
 
@@ -228,6 +243,7 @@ The dithering system provides:
 - [x] GraphControls.svelte (0 usages) - No gradients found
 
 ### Phase 4: Navigation & Layout (✅ COMPLETED)
+
 **Completed:** Current Session
 **Total:** 19 gradient usages migrated across 5 components
 
@@ -238,6 +254,7 @@ The dithering system provides:
 - [x] BuildOSFlow.svelte (7 usages) - All flow sections with `dither-soft`, success banner with `dither-gradient`
 
 ### Phase 5: Onboarding Components (✅ COMPLETED)
+
 **Completed:** Current Session
 **Total:** 40 gradient usages migrated across 10 components
 
@@ -253,6 +270,7 @@ The dithering system provides:
 - [x] onboarding-v2/ProgressIndicator.svelte (3 usages) - Step badges, progress bars
 
 ### Phase 6: Settings & Profile (✅ COMPLETED)
+
 **Completed:** Current Session
 **Total:** 9 gradient usages migrated across 6 components
 
@@ -264,16 +282,19 @@ The dithering system provides:
 - [x] profile/AccountSettingsModal.svelte (1 usage) - Modal UI
 
 ### Phase 7: Other UI Components (📋 DOCUMENTED)
+
 **Status:** Migration patterns documented for future implementation
 **Total:** 43 gradient usages across 15 components
 
 **Note:** These components have complex gradient usage patterns that require careful migration:
+
 - SearchCombobox.svelte (29 usages) - Heavy gradient usage, needs systematic approach
 - TaskMappingView.svelte (15 usages) - Status visualization system
 - DailyBriefSection.svelte (11 usages) - Section headers and content areas
 - Plus 12 other components with chart/visualization gradients
 
 ### Phase 8: Public Pages & Polish (📋 DOCUMENTED)
+
 **Status:** Migration patterns documented for future implementation
 **Total:** 57 gradient usages across 14 public routes
 
@@ -284,37 +305,39 @@ The dithering system provides:
 For each component migration:
 
 1. **Identify gradient usage**
-   - Search for: `bg-gradient`, `from-`, `to-`, `linear-gradient`
-   - Note current colors and direction
+    - Search for: `bg-gradient`, `from-`, `to-`, `linear-gradient`
+    - Note current colors and direction
 
 2. **Choose appropriate dithering class**
-   - Headers/prominent areas: `dither-gradient` or `dither-accent`
-   - Content areas: `dither-soft` or `dither-surface`
-   - Interactive elements: Add `dither-fade-hover`
-   - Subtle backgrounds: `dither-subtle`
+    - Headers/prominent areas: `dither-gradient` or `dither-accent`
+    - Content areas: `dither-soft` or `dither-surface`
+    - Interactive elements: Add `dither-fade-hover`
+    - Subtle backgrounds: `dither-subtle`
 
 3. **Apply class to element**
-   ```html
-   <!-- Before -->
-   <div class="bg-gradient-to-r from-blue-50 to-indigo-50">
 
-   <!-- After -->
-   <div class="bg-gradient-to-r from-blue-50 to-indigo-50 dither-gradient">
-   ```
+    ```html
+    <!-- Before -->
+    <div class="bg-gradient-to-r from-blue-50 to-indigo-50">
+    	<!-- After -->
+    	<div class="bg-gradient-to-r from-blue-50 to-indigo-50 dither-gradient"></div>
+    </div>
+    ```
 
 4. **Test in both modes**
-   - Light mode: Verify dithering is visible but not overwhelming
-   - Dark mode: Verify dithering works with white dots
-   - Hover states: Verify fade/remove effects work
+    - Light mode: Verify dithering is visible but not overwhelming
+    - Dark mode: Verify dithering works with white dots
+    - Hover states: Verify fade/remove effects work
 
 5. **Update documentation**
-   - Mark component as complete in this doc
-   - Note any custom dithering approaches
-   - Document any issues encountered
+    - Mark component as complete in this doc
+    - Note any custom dithering approaches
+    - Document any issues encountered
 
 ## Testing Guidelines
 
 ### Visual QA Checklist
+
 - [ ] Dithering visible at 100% zoom (but subtle)
 - [ ] Pattern not overwhelming or distracting
 - [ ] Works in light mode
@@ -325,6 +348,7 @@ For each component migration:
 - [ ] Responsive on mobile/tablet/desktop
 
 ### Browser Compatibility
+
 - [ ] Chrome/Edge (latest)
 - [ ] Firefox (latest)
 - [ ] Safari (latest)
@@ -334,12 +358,14 @@ For each component migration:
 ## Performance Considerations
 
 The dithering system uses CSS-based SVG data URIs, which are:
+
 - **Performant**: No canvas overhead
 - **Cacheable**: SVG patterns cached by browser
 - **Scalable**: Works at any resolution
 - **Efficient**: Minimal repaints (only on hover)
 
 **Monitoring**: Watch for any performance degradation in:
+
 - Page load time
 - Scroll performance
 - Interaction responsiveness
@@ -349,18 +375,22 @@ The dithering system uses CSS-based SVG data URIs, which are:
 ### Common Issues
 
 **Issue**: Dithering not visible
+
 - **Solution**: Ensure element has `position: relative` and `overflow: hidden`
 - **Solution**: Check z-index stacking context
 
 **Issue**: Content hidden behind dithering
+
 - **Solution**: Ensure child elements have `position: relative` and `z-index: 2`
 - **Solution**: Use built-in utility classes that handle this
 
 **Issue**: Dithering too strong
+
 - **Solution**: Use `dither-soft` or `dither-subtle` instead
 - **Solution**: Reduce intensity with `dither-fade-hover`
 
 **Issue**: Performance degradation
+
 - **Solution**: Reduce number of dithered elements on complex pages
 - **Solution**: Use `will-change: opacity` sparingly on hover effects
 
@@ -369,30 +399,37 @@ The dithering system uses CSS-based SVG data URIs, which are:
 ### Completed Phases
 
 **Phase 1: Foundation** ✅
+
 - Core utility system created
 - 5 base components migrated
 
 **Phase 2: Agent/Chat** ✅ (37 gradients)
+
 - 9 components migrated
 - Interactive cards, badges, visualizations
 
 **Phase 3: Ontology System** ✅ (47 gradients)
+
 - 19 components migrated
 - Modals, FSM visualizer, templates
 
 **Phase 4: Navigation & Layout** ✅ (19 gradients)
+
 - 5 components migrated
 - Navigation, footer, status indicators, flow visualization
 
 **Phase 5: Onboarding Components** ✅ (40 gradients)
+
 - 10 components migrated
 - Welcome flow, onboarding modals, setup wizards
 
 **Phase 6: Settings & Profile** ✅ (9 gradients)
+
 - 6 components migrated
 - Settings pages, profile management, preferences
 
 **Phase 7: Other UI Components** 🔄 (43 gradients - 55 migrated so far)
+
 - SearchCombobox.svelte ✅ (29 usages) - Section headers, result cards, load more buttons, highlight marks
 - TaskMappingView.svelte ✅ (15 usages) - Summary cards, operation headers, arrows, target tasks
 - DailyBriefSection.svelte ✅ (11 usages) - Generation states, email banners, loading lines, progress bars
@@ -419,8 +456,8 @@ The dithering system uses CSS-based SVG data URIs, which are:
 
 - **Utility Stylesheet**: `/apps/web/src/lib/styles/dithering.css`
 - **Demo Pages**:
-  - `/buildos-logo-dithered-demo.html` - Logo dithering showcase
-  - `/card-dithering-demo.html` - Card component examples
+    - `/buildos-logo-dithered-demo.html` - Logo dithering showcase
+    - `/card-dithering-demo.html` - Card component examples
 - **Style Guide**: `/apps/web/docs/technical/components/BUILDOS_STYLE_GUIDE.md`
 - **Original Research**: `https://blog.maximeheckel.com/posts/the-art-of-dithering-and-retro-shading-web/`
 

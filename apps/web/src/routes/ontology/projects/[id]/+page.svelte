@@ -1268,7 +1268,9 @@
 									</div>
 								</div>
 								<div class="lg:col-span-1">
-									<div class="h-[520px] sm:h-[620px] rounded-xl bg-gray-100 dark:bg-gray-800"></div>
+									<div
+										class="h-[520px] sm:h-[620px] rounded-xl bg-gray-100 dark:bg-gray-800"
+									></div>
 								</div>
 							</div>
 						{:then [OntologyGraphMod, GraphControlsMod, NodeDetailsMod]}
@@ -1311,7 +1313,9 @@
 								<p class="text-red-700 dark:text-red-200 font-semibold mb-2">
 									Failed to load graph visualization
 								</p>
-								<p class="text-red-600 dark:text-red-300 text-sm">{error.message}</p>
+								<p class="text-red-600 dark:text-red-300 text-sm">
+									{error.message}
+								</p>
 							</div>
 						{/await}
 
@@ -2103,9 +2107,9 @@
 		>
 			<div slot="content">
 				<p class="text-sm text-gray-600 dark:text-gray-300">
-					This will permanently delete <span class="font-semibold">{project.name}</span> and all
-					related ontology data (tasks, plans, goals, documents, etc.). This action cannot be
-					undone.
+					This will permanently delete <span class="font-semibold">{project.name}</span> and
+					all related ontology data (tasks, plans, goals, documents, etc.). This action cannot
+					be undone.
 				</p>
 			</div>
 

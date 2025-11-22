@@ -9,14 +9,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { createEventDispatcher } from 'svelte';
-	import {
-		Globe,
-		Plus,
-		FolderOpen,
-		ChevronRight,
-		Sparkles,
-		Loader2
-	} from 'lucide-svelte';
+	import { Globe, Plus, FolderOpen, ChevronRight, Sparkles, Loader2 } from 'lucide-svelte';
 	import Card from '$lib/components/ui/Card.svelte';
 	import CardBody from '$lib/components/ui/CardBody.svelte';
 	import type { ChatContextType } from '@buildos/shared-types';
@@ -297,8 +290,7 @@
 							Projects workspace
 						</h3>
 						<p class="text-xs text-slate-600 dark:text-slate-400 leading-snug">
-							Start something new or dive into an existing project with focused
-							tools.
+							Start something new or dive into an existing project with focused tools.
 						</p>
 					</div>
 					<div
@@ -331,9 +323,7 @@
 			<div
 				class="border-b border-slate-200/60 bg-white/80 p-4 sm:p-5 backdrop-blur-sm dark:border-slate-700/60 dark:bg-slate-900/80"
 			>
-				<h2 class="text-lg font-semibold text-slate-900 dark:text-white">
-					Project flow
-				</h2>
+				<h2 class="text-lg font-semibold text-slate-900 dark:text-white">Project flow</h2>
 				<p class="text-xs text-slate-600 dark:text-slate-400">
 					Choose whether you're starting fresh or advancing an existing project.
 				</p>
@@ -386,8 +376,8 @@
 								Work with an existing project
 							</h3>
 							<p class="text-xs text-slate-600 dark:text-slate-400 leading-snug">
-								Select a project, then choose whether to update, audit, or
-								forecast it.
+								Select a project, then choose whether to update, audit, or forecast
+								it.
 							</p>
 						</div>
 						<div

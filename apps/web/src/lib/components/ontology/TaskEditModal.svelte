@@ -1135,7 +1135,7 @@
 												class="text-xs font-semibold uppercase tracking-wide flex items-center gap-2"
 											>
 												<span class="text-base">📅</span>
-												{#if !dueAt }Schedule?
+												{#if !dueAt}Schedule?
 												{:else}Scheduled
 												{/if}
 											</h3>

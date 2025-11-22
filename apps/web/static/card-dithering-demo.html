@@ -1,368 +1,432 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BuildOS Card Dithering Demo</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>BuildOS Card Dithering Demo</title>
+		<style>
+			* {
+				margin: 0;
+				padding: 0;
+				box-sizing: border-box;
+			}
 
-        body {
-            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            padding: 2rem;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-        }
+			body {
+				font-family:
+					system-ui,
+					-apple-system,
+					BlinkMacSystemFont,
+					'Segoe UI',
+					sans-serif;
+				padding: 2rem;
+				background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+				min-height: 100vh;
+			}
 
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-        }
+			.container {
+				max-width: 1400px;
+				margin: 0 auto;
+			}
 
-        h1 {
-            font-size: 2.5rem;
-            font-weight: 800;
-            margin-bottom: 0.5rem;
-            color: white;
-            text-shadow: 0 2px 10px rgba(0,0,0,0.2);
-        }
+			h1 {
+				font-size: 2.5rem;
+				font-weight: 800;
+				margin-bottom: 0.5rem;
+				color: white;
+				text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+			}
 
-        .subtitle {
-            color: rgba(255,255,255,0.9);
-            margin-bottom: 2rem;
-            font-size: 1.1rem;
-        }
+			.subtitle {
+				color: rgba(255, 255, 255, 0.9);
+				margin-bottom: 2rem;
+				font-size: 1.1rem;
+			}
 
-        .grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-            gap: 2rem;
-            margin-bottom: 2rem;
-        }
+			.grid {
+				display: grid;
+				grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+				gap: 2rem;
+				margin-bottom: 2rem;
+			}
 
-        /* Card Base Styles */
-        .card {
-            background: white;
-            border-radius: 12px;
-            border: 1px solid #e5e7eb;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            overflow: hidden;
-            position: relative;
-        }
+			/* Card Base Styles */
+			.card {
+				background: white;
+				border-radius: 12px;
+				border: 1px solid #e5e7eb;
+				box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+				overflow: hidden;
+				position: relative;
+			}
 
-        .card-elevated {
-            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
-        }
+			.card-elevated {
+				box-shadow:
+					0 4px 6px -1px rgba(0, 0, 0, 0.1),
+					0 2px 4px -1px rgba(0, 0, 0, 0.06);
+			}
 
-        .card-header {
-            padding: 1rem 1.5rem;
-            border-bottom: 1px solid #e5e7eb;
-            position: relative;
-            overflow: hidden;
-        }
+			.card-header {
+				padding: 1rem 1.5rem;
+				border-bottom: 1px solid #e5e7eb;
+				position: relative;
+				overflow: hidden;
+			}
 
-        .card-header-gradient {
-            background: linear-gradient(to right, #eff6ff, #eef2ff);
-        }
+			.card-header-gradient {
+				background: linear-gradient(to right, #eff6ff, #eef2ff);
+			}
 
-        .card-header-accent {
-            background: linear-gradient(to right, #faf5ff, #fdf4ff);
-        }
+			.card-header-accent {
+				background: linear-gradient(to right, #faf5ff, #fdf4ff);
+			}
 
-        .card-body {
-            padding: 1.5rem;
-            position: relative;
-            overflow: hidden;
-        }
+			.card-body {
+				padding: 1.5rem;
+				position: relative;
+				overflow: hidden;
+			}
 
-        .card-footer {
-            padding: 1rem 1.5rem;
-            border-top: 1px solid #e5e7eb;
-            background: #f9fafb;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            position: relative;
-            overflow: hidden;
-        }
+			.card-footer {
+				padding: 1rem 1.5rem;
+				border-top: 1px solid #e5e7eb;
+				background: #f9fafb;
+				display: flex;
+				justify-content: space-between;
+				align-items: center;
+				position: relative;
+				overflow: hidden;
+			}
 
-        .card-title {
-            font-size: 1.25rem;
-            font-weight: 700;
-            color: #111827;
-            margin-bottom: 0.5rem;
-        }
+			.card-title {
+				font-size: 1.25rem;
+				font-weight: 700;
+				color: #111827;
+				margin-bottom: 0.5rem;
+			}
 
-        .card-description {
-            color: #6b7280;
-            font-size: 0.875rem;
-            line-height: 1.5;
-        }
+			.card-description {
+				color: #6b7280;
+				font-size: 0.875rem;
+				line-height: 1.5;
+			}
 
-        /* Dithering Effects */
-        .card-dithered::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background: url("data:image/svg+xml,%3Csvg width='4' height='4' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='4' height='4' fill='rgba(0,0,0,0)'/%3E%3Ccircle cx='0' cy='0' r='0.4' fill='rgba(0,0,0,0.015)'/%3E%3Ccircle cx='2' cy='1' r='0.4' fill='rgba(0,0,0,0.01)'/%3E%3Ccircle cx='1' cy='2' r='0.4' fill='rgba(0,0,0,0.012)'/%3E%3Ccircle cx='3' cy='3' r='0.4' fill='rgba(0,0,0,0.008)'/%3E%3C/svg%3E");
-            pointer-events: none;
-            border-radius: inherit;
-            z-index: 1;
-        }
+			/* Dithering Effects */
+			.card-dithered::before {
+				content: '';
+				position: absolute;
+				inset: 0;
+				background: url("data:image/svg+xml,%3Csvg width='4' height='4' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='4' height='4' fill='rgba(0,0,0,0)'/%3E%3Ccircle cx='0' cy='0' r='0.4' fill='rgba(0,0,0,0.015)'/%3E%3Ccircle cx='2' cy='1' r='0.4' fill='rgba(0,0,0,0.01)'/%3E%3Ccircle cx='1' cy='2' r='0.4' fill='rgba(0,0,0,0.012)'/%3E%3Ccircle cx='3' cy='3' r='0.4' fill='rgba(0,0,0,0.008)'/%3E%3C/svg%3E");
+				pointer-events: none;
+				border-radius: inherit;
+				z-index: 1;
+			}
 
-        .card-header-dithered::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background: url("data:image/svg+xml,%3Csvg width='4' height='4' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='4' height='4' fill='rgba(0,0,0,0)'/%3E%3Ccircle cx='0' cy='0' r='0.5' fill='rgba(0,0,0,0.025)'/%3E%3Ccircle cx='2' cy='1' r='0.5' fill='rgba(0,0,0,0.02)'/%3E%3Ccircle cx='1' cy='2' r='0.5' fill='rgba(0,0,0,0.022)'/%3E%3Ccircle cx='3' cy='3' r='0.5' fill='rgba(0,0,0,0.018)'/%3E%3C/svg%3E");
-            pointer-events: none;
-            z-index: 1;
-        }
+			.card-header-dithered::before {
+				content: '';
+				position: absolute;
+				inset: 0;
+				background: url("data:image/svg+xml,%3Csvg width='4' height='4' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='4' height='4' fill='rgba(0,0,0,0)'/%3E%3Ccircle cx='0' cy='0' r='0.5' fill='rgba(0,0,0,0.025)'/%3E%3Ccircle cx='2' cy='1' r='0.5' fill='rgba(0,0,0,0.02)'/%3E%3Ccircle cx='1' cy='2' r='0.5' fill='rgba(0,0,0,0.022)'/%3E%3Ccircle cx='3' cy='3' r='0.5' fill='rgba(0,0,0,0.018)'/%3E%3C/svg%3E");
+				pointer-events: none;
+				z-index: 1;
+			}
 
-        .card-body-dithered::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background: url("data:image/svg+xml,%3Csvg width='4' height='4' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='4' height='4' fill='rgba(0,0,0,0)'/%3E%3Ccircle cx='0' cy='0' r='0.35' fill='rgba(0,0,0,0.008)'/%3E%3Ccircle cx='2' cy='1' r='0.35' fill='rgba(0,0,0,0.006)'/%3E%3Ccircle cx='1' cy='2' r='0.35' fill='rgba(0,0,0,0.007)'/%3E%3Ccircle cx='3' cy='3' r='0.35' fill='rgba(0,0,0,0.005)'/%3E%3C/svg%3E");
-            pointer-events: none;
-            z-index: 0;
-        }
+			.card-body-dithered::before {
+				content: '';
+				position: absolute;
+				inset: 0;
+				background: url("data:image/svg+xml,%3Csvg width='4' height='4' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='4' height='4' fill='rgba(0,0,0,0)'/%3E%3Ccircle cx='0' cy='0' r='0.35' fill='rgba(0,0,0,0.008)'/%3E%3Ccircle cx='2' cy='1' r='0.35' fill='rgba(0,0,0,0.006)'/%3E%3Ccircle cx='1' cy='2' r='0.35' fill='rgba(0,0,0,0.007)'/%3E%3Ccircle cx='3' cy='3' r='0.35' fill='rgba(0,0,0,0.005)'/%3E%3C/svg%3E");
+				pointer-events: none;
+				z-index: 0;
+			}
 
-        .card-footer-dithered::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background: url("data:image/svg+xml,%3Csvg width='4' height='4' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='4' height='4' fill='rgba(0,0,0,0)'/%3E%3Ccircle cx='0' cy='0' r='0.4' fill='rgba(0,0,0,0.018)'/%3E%3Ccircle cx='2' cy='1' r='0.4' fill='rgba(0,0,0,0.015)'/%3E%3Ccircle cx='1' cy='2' r='0.4' fill='rgba(0,0,0,0.016)'/%3E%3Ccircle cx='3' cy='3' r='0.4' fill='rgba(0,0,0,0.012)'/%3E%3C/svg%3E");
-            pointer-events: none;
-            z-index: 0;
-        }
+			.card-footer-dithered::before {
+				content: '';
+				position: absolute;
+				inset: 0;
+				background: url("data:image/svg+xml,%3Csvg width='4' height='4' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='4' height='4' fill='rgba(0,0,0,0)'/%3E%3Ccircle cx='0' cy='0' r='0.4' fill='rgba(0,0,0,0.018)'/%3E%3Ccircle cx='2' cy='1' r='0.4' fill='rgba(0,0,0,0.015)'/%3E%3Ccircle cx='1' cy='2' r='0.4' fill='rgba(0,0,0,0.016)'/%3E%3Ccircle cx='3' cy='3' r='0.4' fill='rgba(0,0,0,0.012)'/%3E%3C/svg%3E");
+				pointer-events: none;
+				z-index: 0;
+			}
 
-        /* Ensure content stays above dithering */
-        .card-header-dithered > *,
-        .card-body-dithered > *,
-        .card-footer-dithered > * {
-            position: relative;
-            z-index: 2;
-        }
+			/* Ensure content stays above dithering */
+			.card-header-dithered > *,
+			.card-body-dithered > *,
+			.card-footer-dithered > * {
+				position: relative;
+				z-index: 2;
+			}
 
-        .btn {
-            padding: 0.5rem 1rem;
-            border-radius: 6px;
-            border: none;
-            font-weight: 600;
-            cursor: pointer;
-            font-size: 0.875rem;
-            transition: all 0.2s;
-        }
+			.btn {
+				padding: 0.5rem 1rem;
+				border-radius: 6px;
+				border: none;
+				font-weight: 600;
+				cursor: pointer;
+				font-size: 0.875rem;
+				transition: all 0.2s;
+			}
 
-        .btn-primary {
-            background: linear-gradient(135deg, #9333ea 0%, #2563eb 100%);
-            color: white;
-        }
+			.btn-primary {
+				background: linear-gradient(135deg, #9333ea 0%, #2563eb 100%);
+				color: white;
+			}
 
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(147, 51, 234, 0.4);
-        }
+			.btn-primary:hover {
+				transform: translateY(-2px);
+				box-shadow: 0 4px 12px rgba(147, 51, 234, 0.4);
+			}
 
-        .btn-secondary {
-            background: #f3f4f6;
-            color: #374151;
-        }
+			.btn-secondary {
+				background: #f3f4f6;
+				color: #374151;
+			}
 
-        .btn-secondary:hover {
-            background: #e5e7eb;
-        }
+			.btn-secondary:hover {
+				background: #e5e7eb;
+			}
 
-        .info-box {
-            background: white;
-            border-radius: 12px;
-            padding: 1.5rem;
-            margin-bottom: 2rem;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-        }
+			.info-box {
+				background: white;
+				border-radius: 12px;
+				padding: 1.5rem;
+				margin-bottom: 2rem;
+				box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+			}
 
-        .info-box h2 {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: #111827;
-            margin-bottom: 1rem;
-        }
+			.info-box h2 {
+				font-size: 1.5rem;
+				font-weight: 700;
+				color: #111827;
+				margin-bottom: 1rem;
+			}
 
-        .info-box p {
-            color: #6b7280;
-            line-height: 1.6;
-            margin-bottom: 0.5rem;
-        }
+			.info-box p {
+				color: #6b7280;
+				line-height: 1.6;
+				margin-bottom: 0.5rem;
+			}
 
-        .info-box code {
-            background: #f3f4f6;
-            padding: 0.125rem 0.375rem;
-            border-radius: 3px;
-            font-size: 0.875rem;
-            color: #9333ea;
-        }
+			.info-box code {
+				background: #f3f4f6;
+				padding: 0.125rem 0.375rem;
+				border-radius: 3px;
+				font-size: 0.875rem;
+				color: #9333ea;
+			}
 
-        .comparison-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 1.5rem;
-        }
+			.comparison-grid {
+				display: grid;
+				grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+				gap: 1.5rem;
+			}
 
-        .zoom-notice {
-            background: #fef3c7;
-            border: 1px solid #fbbf24;
-            border-radius: 8px;
-            padding: 1rem;
-            margin-bottom: 1rem;
-            color: #92400e;
-            font-size: 0.875rem;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>BuildOS Card Dithering Effects</h1>
-        <p class="subtitle">Subtle retro texture using ordered Bayer dithering patterns</p>
+			.zoom-notice {
+				background: #fef3c7;
+				border: 1px solid #fbbf24;
+				border-radius: 8px;
+				padding: 1rem;
+				margin-bottom: 1rem;
+				color: #92400e;
+				font-size: 0.875rem;
+			}
+		</style>
+	</head>
+	<body>
+		<div class="container">
+			<h1>BuildOS Card Dithering Effects</h1>
+			<p class="subtitle">Subtle retro texture using ordered Bayer dithering patterns</p>
 
-        <div class="info-box">
-            <h2>About the Dithering Effect</h2>
-            <p>The cards below demonstrate a <strong>subtle ordered dithering pattern</strong> inspired by retro graphics. The effect uses a 4×4 Bayer matrix implemented as an SVG pattern overlay.</p>
-            <p><strong>Key Features:</strong></p>
-            <ul style="margin-left: 1.5rem; color: #6b7280; line-height: 1.8;">
-                <li>Ultra-subtle texture that adds depth without being distracting</li>
-                <li>Different opacity levels for card body, header, and footer</li>
-                <li>Fully responsive and performant (CSS-based, not canvas)</li>
-                <li>Works in both light and dark modes</li>
-            </ul>
-            <div class="zoom-notice">
-                <strong>👁 Zoom in to see the effect!</strong> The dithering pattern is intentionally very subtle. Zoom to 150-200% to clearly see the retro texture pattern.
-            </div>
-        </div>
+			<div class="info-box">
+				<h2>About the Dithering Effect</h2>
+				<p>
+					The cards below demonstrate a
+					<strong>subtle ordered dithering pattern</strong> inspired by retro graphics.
+					The effect uses a 4×4 Bayer matrix implemented as an SVG pattern overlay.
+				</p>
+				<p><strong>Key Features:</strong></p>
+				<ul style="margin-left: 1.5rem; color: #6b7280; line-height: 1.8">
+					<li>Ultra-subtle texture that adds depth without being distracting</li>
+					<li>Different opacity levels for card body, header, and footer</li>
+					<li>Fully responsive and performant (CSS-based, not canvas)</li>
+					<li>Works in both light and dark modes</li>
+				</ul>
+				<div class="zoom-notice">
+					<strong>👁 Zoom in to see the effect!</strong> The dithering pattern is
+					intentionally very subtle. Zoom to 150-200% to clearly see the retro texture
+					pattern.
+				</div>
+			</div>
 
-        <h2 style="color: white; font-size: 1.5rem; margin-bottom: 1rem; text-shadow: 0 2px 10px rgba(0,0,0,0.2);">Standard vs Dithered Cards</h2>
+			<h2
+				style="
+					color: white;
+					font-size: 1.5rem;
+					margin-bottom: 1rem;
+					text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+				"
+			>
+				Standard vs Dithered Cards
+			</h2>
 
-        <div class="grid">
-            <!-- Standard Card -->
-            <div class="card">
-                <div class="card-header card-header-gradient">
-                    <h3 class="card-title">Standard Card (No Dithering)</h3>
-                </div>
-                <div class="card-body">
-                    <p class="card-description">
-                        This is a standard card without any dithering effect. It has clean, smooth gradients and solid backgrounds.
-                    </p>
-                    <p class="card-description" style="margin-top: 0.75rem;">
-                        Notice the flat, uniform appearance of the header gradient and body background.
-                    </p>
-                </div>
-                <div class="card-footer">
-                    <button class="btn btn-secondary">Cancel</button>
-                    <button class="btn btn-primary">Continue</button>
-                </div>
-            </div>
+			<div class="grid">
+				<!-- Standard Card -->
+				<div class="card">
+					<div class="card-header card-header-gradient">
+						<h3 class="card-title">Standard Card (No Dithering)</h3>
+					</div>
+					<div class="card-body">
+						<p class="card-description">
+							This is a standard card without any dithering effect. It has clean,
+							smooth gradients and solid backgrounds.
+						</p>
+						<p class="card-description" style="margin-top: 0.75rem">
+							Notice the flat, uniform appearance of the header gradient and body
+							background.
+						</p>
+					</div>
+					<div class="card-footer">
+						<button class="btn btn-secondary">Cancel</button>
+						<button class="btn btn-primary">Continue</button>
+					</div>
+				</div>
 
-            <!-- Dithered Card -->
-            <div class="card card-dithered">
-                <div class="card-header card-header-gradient card-header-dithered">
-                    <h3 class="card-title">Dithered Card (Full Effect)</h3>
-                </div>
-                <div class="card-body card-body-dithered">
-                    <p class="card-description">
-                        This card uses the <strong>dithered</strong> prop on all components. The subtle texture adds a retro, tactile quality.
-                    </p>
-                    <p class="card-description" style="margin-top: 0.75rem;">
-                        Zoom in to 150-200% to clearly see the ordered Bayer dithering pattern creating a subtle noise texture.
-                    </p>
-                </div>
-                <div class="card-footer card-footer-dithered">
-                    <button class="btn btn-secondary">Cancel</button>
-                    <button class="btn btn-primary">Continue</button>
-                </div>
-            </div>
-        </div>
+				<!-- Dithered Card -->
+				<div class="card card-dithered">
+					<div class="card-header card-header-gradient card-header-dithered">
+						<h3 class="card-title">Dithered Card (Full Effect)</h3>
+					</div>
+					<div class="card-body card-body-dithered">
+						<p class="card-description">
+							This card uses the <strong>dithered</strong> prop on all components. The
+							subtle texture adds a retro, tactile quality.
+						</p>
+						<p class="card-description" style="margin-top: 0.75rem">
+							Zoom in to 150-200% to clearly see the ordered Bayer dithering pattern
+							creating a subtle noise texture.
+						</p>
+					</div>
+					<div class="card-footer card-footer-dithered">
+						<button class="btn btn-secondary">Cancel</button>
+						<button class="btn btn-primary">Continue</button>
+					</div>
+				</div>
+			</div>
 
-        <h2 style="color: white; font-size: 1.5rem; margin-bottom: 1rem; margin-top: 2rem; text-shadow: 0 2px 10px rgba(0,0,0,0.2);">Component-Specific Dithering</h2>
+			<h2
+				style="
+					color: white;
+					font-size: 1.5rem;
+					margin-bottom: 1rem;
+					margin-top: 2rem;
+					text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+				"
+			>
+				Component-Specific Dithering
+			</h2>
 
-        <div class="comparison-grid">
-            <!-- Header Only -->
-            <div class="card">
-                <div class="card-header card-header-accent card-header-dithered">
-                    <h3 class="card-title" style="font-size: 1rem;">Header Only</h3>
-                </div>
-                <div class="card-body">
-                    <p class="card-description">Dithering on header only - great for emphasizing gradient backgrounds.</p>
-                </div>
-            </div>
+			<div class="comparison-grid">
+				<!-- Header Only -->
+				<div class="card">
+					<div class="card-header card-header-accent card-header-dithered">
+						<h3 class="card-title" style="font-size: 1rem">Header Only</h3>
+					</div>
+					<div class="card-body">
+						<p class="card-description">
+							Dithering on header only - great for emphasizing gradient backgrounds.
+						</p>
+					</div>
+				</div>
 
-            <!-- Body Only -->
-            <div class="card">
-                <div class="card-header">
-                    <h3 class="card-title" style="font-size: 1rem;">Body Only</h3>
-                </div>
-                <div class="card-body card-body-dithered">
-                    <p class="card-description">Subtle texture in the content area creates a paper-like feel.</p>
-                </div>
-            </div>
+				<!-- Body Only -->
+				<div class="card">
+					<div class="card-header">
+						<h3 class="card-title" style="font-size: 1rem">Body Only</h3>
+					</div>
+					<div class="card-body card-body-dithered">
+						<p class="card-description">
+							Subtle texture in the content area creates a paper-like feel.
+						</p>
+					</div>
+				</div>
 
-            <!-- Footer Only -->
-            <div class="card">
-                <div class="card-header">
-                    <h3 class="card-title" style="font-size: 1rem;">Footer Only</h3>
-                </div>
-                <div class="card-body">
-                    <p class="card-description">Clean body with textured footer for action areas.</p>
-                </div>
-                <div class="card-footer card-footer-dithered">
-                    <button class="btn btn-secondary">Action</button>
-                </div>
-            </div>
-        </div>
+				<!-- Footer Only -->
+				<div class="card">
+					<div class="card-header">
+						<h3 class="card-title" style="font-size: 1rem">Footer Only</h3>
+					</div>
+					<div class="card-body">
+						<p class="card-description">
+							Clean body with textured footer for action areas.
+						</p>
+					</div>
+					<div class="card-footer card-footer-dithered">
+						<button class="btn btn-secondary">Action</button>
+					</div>
+				</div>
+			</div>
 
-        <h2 style="color: white; font-size: 1.5rem; margin-bottom: 1rem; margin-top: 2rem; text-shadow: 0 2px 10px rgba(0,0,0,0.2);">Different Card Variants</h2>
+			<h2
+				style="
+					color: white;
+					font-size: 1.5rem;
+					margin-bottom: 1rem;
+					margin-top: 2rem;
+					text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+				"
+			>
+				Different Card Variants
+			</h2>
 
-        <div class="grid">
-            <!-- Elevated Dithered -->
-            <div class="card card-elevated card-dithered">
-                <div class="card-header card-header-dithered">
-                    <h3 class="card-title">Elevated + Dithered</h3>
-                </div>
-                <div class="card-body card-body-dithered">
-                    <p class="card-description">
-                        Combines the elevated shadow variant with dithering for a sophisticated, layered appearance.
-                    </p>
-                </div>
-                <div class="card-footer card-footer-dithered">
-                    <span style="color: #6b7280; font-size: 0.875rem;">Status: Active</span>
-                    <button class="btn btn-primary">View Details</button>
-                </div>
-            </div>
+			<div class="grid">
+				<!-- Elevated Dithered -->
+				<div class="card card-elevated card-dithered">
+					<div class="card-header card-header-dithered">
+						<h3 class="card-title">Elevated + Dithered</h3>
+					</div>
+					<div class="card-body card-body-dithered">
+						<p class="card-description">
+							Combines the elevated shadow variant with dithering for a sophisticated,
+							layered appearance.
+						</p>
+					</div>
+					<div class="card-footer card-footer-dithered">
+						<span style="color: #6b7280; font-size: 0.875rem">Status: Active</span>
+						<button class="btn btn-primary">View Details</button>
+					</div>
+				</div>
 
-            <!-- Accent Header -->
-            <div class="card card-dithered">
-                <div class="card-header card-header-accent card-header-dithered">
-                    <h3 class="card-title">Accent Header + Dithered</h3>
-                </div>
-                <div class="card-body card-body-dithered">
-                    <p class="card-description">
-                        The accent gradient with dithering creates a premium, high-quality feel perfect for important content.
-                    </p>
-                </div>
-                <div class="card-footer card-footer-dithered">
-                    <span style="color: #6b7280; font-size: 0.875rem;">Updated 2m ago</span>
-                    <button class="btn btn-primary">Save</button>
-                </div>
-            </div>
-        </div>
+				<!-- Accent Header -->
+				<div class="card card-dithered">
+					<div class="card-header card-header-accent card-header-dithered">
+						<h3 class="card-title">Accent Header + Dithered</h3>
+					</div>
+					<div class="card-body card-body-dithered">
+						<p class="card-description">
+							The accent gradient with dithering creates a premium, high-quality feel
+							perfect for important content.
+						</p>
+					</div>
+					<div class="card-footer card-footer-dithered">
+						<span style="color: #6b7280; font-size: 0.875rem">Updated 2m ago</span>
+						<button class="btn btn-primary">Save</button>
+					</div>
+				</div>
+			</div>
 
-        <div class="info-box" style="margin-top: 2rem;">
-            <h2>Usage in Svelte Components</h2>
-            <p>To enable dithering on your cards, use the <code>dithered</code> prop:</p>
-            <pre style="background: #1f2937; color: #f9fafb; padding: 1rem; border-radius: 6px; overflow-x: auto; margin-top: 1rem; font-size: 0.875rem;"><code>&lt;Card dithered&gt;
+			<div class="info-box" style="margin-top: 2rem">
+				<h2>Usage in Svelte Components</h2>
+				<p>To enable dithering on your cards, use the <code>dithered</code> prop:</p>
+				<pre
+					style="
+						background: #1f2937;
+						color: #f9fafb;
+						padding: 1rem;
+						border-radius: 6px;
+						overflow-x: auto;
+						margin-top: 1rem;
+						font-size: 0.875rem;
+					"
+				><code>&lt;Card dithered&gt;
   &lt;CardHeader dithered variant="gradient"&gt;
     &lt;h2&gt;My Card Title&lt;/h2&gt;
   &lt;/CardHeader&gt;
@@ -376,15 +440,15 @@
   &lt;/CardFooter&gt;
 &lt;/Card&gt;</code></pre>
 
-            <p style="margin-top: 1rem;"><strong>Pro Tips:</strong></p>
-            <ul style="margin-left: 1.5rem; color: #6b7280; line-height: 1.8;">
-                <li>Use <code>dithered</code> on headers with gradients for the best effect</li>
-                <li>Body dithering is very subtle - perfect for content areas</li>
-                <li>Footer dithering adds subtle texture to action areas</li>
-                <li>Mix and match: not all components need to be dithered</li>
-                <li>The effect is automatically adjusted for dark mode</li>
-            </ul>
-        </div>
-    </div>
-</body>
+				<p style="margin-top: 1rem"><strong>Pro Tips:</strong></p>
+				<ul style="margin-left: 1.5rem; color: #6b7280; line-height: 1.8">
+					<li>Use <code>dithered</code> on headers with gradients for the best effect</li>
+					<li>Body dithering is very subtle - perfect for content areas</li>
+					<li>Footer dithering adds subtle texture to action areas</li>
+					<li>Mix and match: not all components need to be dithered</li>
+					<li>The effect is automatically adjusted for dark mode</li>
+				</ul>
+			</div>
+		</div>
+	</body>
 </html>

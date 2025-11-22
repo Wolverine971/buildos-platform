@@ -25,20 +25,21 @@ Transform Modal.svelte from a functional but basic modal component into a **mobi
 
 ### Key Improvements
 
-| Enhancement | Impact | Priority |
-|-------------|--------|----------|
-| **Touch Gestures** | Swipe-to-dismiss, better mobile UX | 🔴 High |
-| **Enhanced Breakpoints** | 4-tier responsive system | 🔴 High |
-| **GPU-Optimized Animations** | 60fps on all devices | 🔴 High |
-| **Drag Handle** | Visual affordance for mobile | 🟡 Medium |
-| **Bottom Sheet Variant** | Native mobile pattern | 🟡 Medium |
-| **Haptic Feedback** | Optional tactile feedback | 🟢 Low |
-| **iOS Safe Area** | Enhanced iPhone support | 🟡 Medium |
-| **Touch-Action CSS** | Prevent scroll conflicts | 🔴 High |
+| Enhancement                  | Impact                             | Priority  |
+| ---------------------------- | ---------------------------------- | --------- |
+| **Touch Gestures**           | Swipe-to-dismiss, better mobile UX | 🔴 High   |
+| **Enhanced Breakpoints**     | 4-tier responsive system           | 🔴 High   |
+| **GPU-Optimized Animations** | 60fps on all devices               | 🔴 High   |
+| **Drag Handle**              | Visual affordance for mobile       | 🟡 Medium |
+| **Bottom Sheet Variant**     | Native mobile pattern              | 🟡 Medium |
+| **Haptic Feedback**          | Optional tactile feedback          | 🟢 Low    |
+| **iOS Safe Area**            | Enhanced iPhone support            | 🟡 Medium |
+| **Touch-Action CSS**         | Prevent scroll conflicts           | 🔴 High   |
 
 ### Backward Compatibility
 
 ✅ **100% Backward Compatible** - All changes are additive or opt-in
+
 - Existing props remain unchanged
 - New props have sensible defaults
 - No breaking changes to API
@@ -50,40 +51,41 @@ Transform Modal.svelte from a functional but basic modal component into a **mobi
 ### ✅ What's Working Well
 
 1. **Focus Management**
-   - Excellent focus trap implementation
-   - Proper focus restoration on close
-   - Tab/Shift+Tab cycling works correctly
+    - Excellent focus trap implementation
+    - Proper focus restoration on close
+    - Tab/Shift+Tab cycling works correctly
 
 2. **Keyboard Handling**
-   - Escape key closes modal
-   - Event propagation properly managed
-   - Window-level listener for global Escape
+    - Escape key closes modal
+    - Event propagation properly managed
+    - Window-level listener for global Escape
 
 3. **Accessibility**
-   - Proper ARIA attributes (role, aria-modal, aria-labelledby)
-   - Unique IDs generated for labels
-   - Semantic HTML structure
+    - Proper ARIA attributes (role, aria-modal, aria-labelledby)
+    - Unique IDs generated for labels
+    - Semantic HTML structure
 
 4. **Basic Responsiveness**
-   - Mobile slide-up, desktop scale animations
-   - Touch events on backdrop
-   - Basic safe area consideration
+    - Mobile slide-up, desktop scale animations
+    - Touch events on backdrop
+    - Basic safe area consideration
 
 5. **Developer Experience**
-   - Bindable `isOpen` prop
-   - Flexible slot system (header, content, footer)
-   - Good documentation comments
+    - Bindable `isOpen` prop
+    - Flexible slot system (header, content, footer)
+    - Good documentation comments
 
 ### ❌ Areas for Improvement
 
 #### 1. **Limited Responsiveness**
+
 ```typescript
 // Current: Only one breakpoint
 const sizeClasses = {
-  sm: 'max-w-md',    // 448px
-  md: 'max-w-2xl',   // 672px
-  lg: 'max-w-4xl',   // 896px
-  xl: 'max-w-6xl'    // 1152px
+	sm: 'max-w-md', // 448px
+	md: 'max-w-2xl', // 672px
+	lg: 'max-w-4xl', // 896px
+	xl: 'max-w-6xl' // 1152px
 };
 
 // Issue: All sizes use same responsive behavior at 640px breakpoint
@@ -91,10 +93,12 @@ const sizeClasses = {
 ```
 
 **Problem:**
+
 - iPhone SE (375px) and iPad (768px) get the same treatment
 - No optimization for different device classes
 
 #### 2. **No Touch Gestures**
+
 ```svelte
 <!-- Current: Only backdrop click to close -->
 <div onclick={handleBackdropClick} ontouchend={handleBackdropClick} />
@@ -106,6 +110,7 @@ const sizeClasses = {
 ```
 
 **Problem:**
+
 - Users expect to swipe modals down on mobile (iOS/Android pattern)
 - No visual affordance that modal is dismissible
 - Relies only on X button or backdrop tap
@@ -115,17 +120,17 @@ const sizeClasses = {
 ```css
 /* Current animation */
 @keyframes modal-slide-up {
-  from {
-    transform: translateY(100%);  /* ✅ Good - uses transform */
-  }
-  to {
-    transform: translateY(0);
-  }
+	from {
+		transform: translateY(100%); /* ✅ Good - uses transform */
+	}
+	to {
+		transform: translateY(0);
+	}
 }
 
 /* But: */
 .modal-root {
-  will-change: opacity;  /* ⚠️ Set but never removed */
+	will-change: opacity; /* ⚠️ Set but never removed */
 }
 
 /* Missing: */
@@ -135,6 +140,7 @@ const sizeClasses = {
 ```
 
 **Problem:**
+
 - `will-change` left active indefinitely (memory/performance cost)
 - No explicit GPU layer promotion for complex modals
 - Animation timing could be smoother
@@ -150,6 +156,7 @@ const sizeClasses = {
 ```
 
 **Problem:**
+
 - Browser must wait to determine scroll intent (scroll jank)
 - Potential conflicts with swipe gestures
 - No control over double-tap zoom
@@ -158,12 +165,13 @@ const sizeClasses = {
 
 ```typescript
 $effect(() => {
-  console.log('[Modal] isOpen changed to:', isOpen, 'title:', title);  // ❌ Debug code
-  // ...
+	console.log('[Modal] isOpen changed to:', isOpen, 'title:', title); // ❌ Debug code
+	// ...
 });
 ```
 
 **Problem:**
+
 - Pollutes production console
 - Performance overhead (small but exists)
 - Not guarded by DEV check
@@ -179,6 +187,7 @@ max-h-[calc(100vh-env(safe-area-inset-top)-env(safe-area-inset-bottom))]
 ```
 
 **Problem:**
+
 - Content may be hidden behind iPhone notch or home indicator
 - No padding for safe zones
 
@@ -195,6 +204,7 @@ max-h-[calc(100vh-env(safe-area-inset-top)-env(safe-area-inset-bottom))]
 ```
 
 **Problem:**
+
 - Can't easily switch between modal patterns
 - No mobile-optimized bottom sheet option
 
@@ -207,6 +217,7 @@ max-h-[calc(100vh-env(safe-area-inset-top)-env(safe-area-inset-bottom))]
 #### **Feature: Swipe-to-Dismiss**
 
 **Rationale:**
+
 - Native iOS/Android pattern users expect
 - 47% faster dismissal than reaching for X button on large phones
 - Better one-handed usability
@@ -216,11 +227,11 @@ max-h-[calc(100vh-env(safe-area-inset-top)-env(safe-area-inset-bottom))]
 ```typescript
 // New props
 interface ModalProps {
-  // ... existing props
-  enableGestures?: boolean;           // Default: true on touch devices
-  dismissThreshold?: number;          // Default: 150 (pixels)
-  onGestureStart?: () => void;        // Optional callback
-  onGestureEnd?: (dismissed: boolean) => void;
+	// ... existing props
+	enableGestures?: boolean; // Default: true on touch devices
+	dismissThreshold?: number; // Default: 150 (pixels)
+	onGestureStart?: () => void; // Optional callback
+	onGestureEnd?: (dismissed: boolean) => void;
 }
 
 // New state
@@ -231,38 +242,38 @@ let dragTranslateY = $state(0);
 
 // Touch handlers
 function handleTouchStart(e: TouchEvent) {
-  if (!enableGestures) return;
-  isDragging = true;
-  dragStartY = e.touches[0].clientY;
-  onGestureStart?.();
+	if (!enableGestures) return;
+	isDragging = true;
+	dragStartY = e.touches[0].clientY;
+	onGestureStart?.();
 }
 
 function handleTouchMove(e: TouchEvent) {
-  if (!isDragging) return;
-  const deltaY = e.touches[0].clientY - dragStartY;
+	if (!isDragging) return;
+	const deltaY = e.touches[0].clientY - dragStartY;
 
-  // Only allow downward dragging (closing)
-  if (deltaY > 0) {
-    dragTranslateY = deltaY;
-    dragCurrentY = e.touches[0].clientY;
-  }
+	// Only allow downward dragging (closing)
+	if (deltaY > 0) {
+		dragTranslateY = deltaY;
+		dragCurrentY = e.touches[0].clientY;
+	}
 }
 
 function handleTouchEnd() {
-  if (!isDragging) return;
-  const dismissed = dragTranslateY > dismissThreshold;
+	if (!isDragging) return;
+	const dismissed = dragTranslateY > dismissThreshold;
 
-  onGestureEnd?.(dismissed);
+	onGestureEnd?.(dismissed);
 
-  if (dismissed) {
-    onClose?.();
-    isOpen = false;
-  } else {
-    // Snap back
-    dragTranslateY = 0;
-  }
+	if (dismissed) {
+		onClose?.();
+		isOpen = false;
+	} else {
+		// Snap back
+		dragTranslateY = 0;
+	}
 
-  isDragging = false;
+	isDragging = false;
 }
 ```
 
@@ -270,17 +281,20 @@ function handleTouchEnd() {
 
 ```svelte
 <div
-  class="modal-container"
-  style="transform: translateY({dragTranslateY}px); transition: {isDragging ? 'none' : 'transform 200ms ease-out'}"
-  ontouchstart={handleTouchStart}
-  ontouchmove={handleTouchMove}
-  ontouchend={handleTouchEnd}
+	class="modal-container"
+	style="transform: translateY({dragTranslateY}px); transition: {isDragging
+		? 'none'
+		: 'transform 200ms ease-out'}"
+	ontouchstart={handleTouchStart}
+	ontouchmove={handleTouchMove}
+	ontouchend={handleTouchEnd}
 >
-  <!-- Modal content -->
+	<!-- Modal content -->
 </div>
 ```
 
 **Edge Cases:**
+
 - ✅ Prevent dragging when scrolling content
 - ✅ Detect if touch started on scrollable content
 - ✅ Only enable on touch devices (not desktop with touchscreen)
@@ -292,6 +306,7 @@ function handleTouchEnd() {
 #### **Feature: Visual Affordance for Gestures**
 
 **Rationale:**
+
 - Communicates that modal is dismissible
 - Standard iOS/Android pattern
 - Improves discoverability
@@ -301,33 +316,30 @@ function handleTouchEnd() {
 ```typescript
 // New prop
 interface ModalProps {
-  // ... existing props
-  showDragHandle?: boolean;  // Default: true on mobile, false on desktop
+	// ... existing props
+	showDragHandle?: boolean; // Default: true on mobile, false on desktop
 }
 
 // Auto-detect touch device
 const isTouchDevice = $derived(
-  typeof window !== 'undefined' &&
-  ('ontouchstart' in window || navigator.maxTouchPoints > 0)
+	typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0)
 );
 
-const shouldShowHandle = $derived(
-  showDragHandle ?? (isTouchDevice && size !== 'xl')
-);
+const shouldShowHandle = $derived(showDragHandle ?? (isTouchDevice && size !== 'xl'));
 ```
 
 **Markup:**
 
 ```svelte
 {#if shouldShowHandle}
-  <div
-    class="drag-handle-container"
-    ontouchstart={handleTouchStart}
-    ontouchmove={handleTouchMove}
-    ontouchend={handleTouchEnd}
-  >
-    <div class="drag-handle" />
-  </div>
+	<div
+		class="drag-handle-container"
+		ontouchstart={handleTouchStart}
+		ontouchmove={handleTouchMove}
+		ontouchend={handleTouchEnd}
+	>
+		<div class="drag-handle" />
+	</div>
 {/if}
 ```
 
@@ -335,32 +347,32 @@ const shouldShowHandle = $derived(
 
 ```css
 .drag-handle-container {
-  /* 48px touch target for accessibility */
-  width: 100%;
-  padding: 0.75rem 0;
-  cursor: grab;
-  touch-action: none;  /* Disable browser scroll */
+	/* 48px touch target for accessibility */
+	width: 100%;
+	padding: 0.75rem 0;
+	cursor: grab;
+	touch-action: none; /* Disable browser scroll */
 }
 
 .drag-handle-container:active {
-  cursor: grabbing;
+	cursor: grabbing;
 }
 
 .drag-handle {
-  width: 40px;
-  height: 5px;
-  background: rgb(156 163 175);  /* gray-400 */
-  border-radius: 9999px;
-  margin: 0 auto;
-  transition: background-color 150ms;
+	width: 40px;
+	height: 5px;
+	background: rgb(156 163 175); /* gray-400 */
+	border-radius: 9999px;
+	margin: 0 auto;
+	transition: background-color 150ms;
 }
 
 .dark .drag-handle {
-  background: rgb(75 85 99);  /* gray-600 */
+	background: rgb(75 85 99); /* gray-600 */
 }
 
 .drag-handle-container:hover .drag-handle {
-  background: rgb(107 114 128);  /* gray-500 */
+	background: rgb(107 114 128); /* gray-500 */
 }
 ```
 
@@ -371,17 +383,22 @@ const shouldShowHandle = $derived(
 #### **Feature: 4-Tier Responsive Strategy**
 
 **Rationale:**
+
 - Current 640px breakpoint too coarse
 - Need phone, tablet, laptop, desktop distinctions
 - Better layout control at each size
 
 **Current:**
+
 ```css
 /* Only 2 states: mobile (<640px) and desktop (≥640px) */
-@media (min-width: 640px) { /* ... */ }
+@media (min-width: 640px) {
+	/* ... */
+}
 ```
 
 **Proposed:**
+
 ```css
 /* 4 breakpoints for precise control */
 /* xs: 480px   - Large phones landscape */
@@ -394,24 +411,24 @@ const shouldShowHandle = $derived(
 
 ```typescript
 const sizeClasses = {
-  sm: `
+	sm: `
     w-full max-w-md
     xs:max-w-md xs:mx-4
     sm:max-w-md
   `,
-  md: `
+	md: `
     w-full max-w-full
     xs:max-w-xl xs:mx-4
     sm:max-w-2xl
     md:max-w-2xl
   `,
-  lg: `
+	lg: `
     w-full max-w-full
     xs:max-w-2xl xs:mx-4
     sm:max-w-3xl
     md:max-w-4xl
   `,
-  xl: `
+	xl: `
     w-full max-w-full
     xs:max-w-3xl xs:mx-4
     sm:max-w-4xl
@@ -437,13 +454,13 @@ const heightClasses = `
 
 **Visual Comparison:**
 
-| Viewport | Current Behavior | Proposed Behavior |
-|----------|------------------|-------------------|
-| **iPhone SE (375px)** | Full-width, bottom-anchored | Same (optimized) |
-| **iPhone 14 (430px)** | Full-width, bottom-anchored | Same with better spacing |
-| **iPhone Landscape (844px)** | ❌ Too wide, awkward | ✅ Constrained width, centered |
-| **iPad (768px)** | ❌ Uses desktop layout | ✅ Tablet-optimized layout |
-| **Laptop (1440px)** | Desktop centered | Desktop centered (same) |
+| Viewport                     | Current Behavior            | Proposed Behavior              |
+| ---------------------------- | --------------------------- | ------------------------------ |
+| **iPhone SE (375px)**        | Full-width, bottom-anchored | Same (optimized)               |
+| **iPhone 14 (430px)**        | Full-width, bottom-anchored | Same with better spacing       |
+| **iPhone Landscape (844px)** | ❌ Too wide, awkward        | ✅ Constrained width, centered |
+| **iPad (768px)**             | ❌ Uses desktop layout      | ✅ Tablet-optimized layout     |
+| **Laptop (1440px)**          | Desktop centered            | Desktop centered (same)        |
 
 ---
 
@@ -452,6 +469,7 @@ const heightClasses = `
 #### **Feature: 60fps Modal Animations**
 
 **Rationale:**
+
 - Animations feel sluggish on mid-range devices
 - `will-change` cleanup improves performance
 - Proper timing functions feel more natural
@@ -461,17 +479,17 @@ const heightClasses = `
 ```css
 /* Issue 1: will-change never removed */
 .modal-root {
-  will-change: opacity;  /* ❌ Active forever */
+	will-change: opacity; /* ❌ Active forever */
 }
 
 /* Issue 2: Missing GPU hints */
 .modal-container {
-  /* No transform: translateZ(0) */
-  /* No backface-visibility */
+	/* No transform: translateZ(0) */
+	/* No backface-visibility */
 }
 
 /* Issue 3: Generic timing */
-animation: modal-slide-up 0.3s ease-out;  /* ⚠️ ease-out is okay but not optimal */
+animation: modal-slide-up 0.3s ease-out; /* ⚠️ ease-out is okay but not optimal */
 ```
 
 **Proposed:**
@@ -479,31 +497,31 @@ animation: modal-slide-up 0.3s ease-out;  /* ⚠️ ease-out is okay but not opt
 ```css
 /* GPU acceleration hints */
 .modal-container {
-  transform: translateZ(0);
-  backface-visibility: hidden;
-  will-change: transform, opacity;
+	transform: translateZ(0);
+	backface-visibility: hidden;
+	will-change: transform, opacity;
 }
 
 /* Remove will-change after animation */
 .modal-container.animation-complete {
-  will-change: auto;
+	will-change: auto;
 }
 
 /* Optimized timing functions */
 @keyframes modal-slide-up {
-  from {
-    transform: translateY(100%) translateZ(0);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0) translateZ(0);
-    opacity: 1;
-  }
+	from {
+		transform: translateY(100%) translateZ(0);
+		opacity: 0;
+	}
+	to {
+		transform: translateY(0) translateZ(0);
+		opacity: 1;
+	}
 }
 
 /* More natural easing curve */
 .modal-container {
-  animation: modal-slide-up 300ms cubic-bezier(0.4, 0, 0.2, 1);
+	animation: modal-slide-up 300ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 ```
 
@@ -513,20 +531,21 @@ animation: modal-slide-up 0.3s ease-out;  /* ⚠️ ease-out is okay but not opt
 let animationComplete = $state(false);
 
 $effect(() => {
-  if (isOpen) {
-    animationComplete = false;
+	if (isOpen) {
+		animationComplete = false;
 
-    // Remove will-change after animation
-    const timer = setTimeout(() => {
-      animationComplete = true;
-    }, 350); // Animation duration + buffer
+		// Remove will-change after animation
+		const timer = setTimeout(() => {
+			animationComplete = true;
+		}, 350); // Animation duration + buffer
 
-    return () => clearTimeout(timer);
-  }
+		return () => clearTimeout(timer);
+	}
 });
 ```
 
 **Performance Impact:**
+
 - Before: 45-55fps on Pixel 6
 - After: 58-60fps on Pixel 6
 - Battery impact: ~5% improvement on long sessions
@@ -538,11 +557,13 @@ $effect(() => {
 #### **Feature: Declare Touch Behaviors**
 
 **Rationale:**
+
 - Eliminates scroll jank (browser doesn't wait to determine intent)
 - Prevents double-tap zoom conflicts
 - Better control over gesture interactions
 
 **Current:**
+
 ```svelte
 <!-- No touch behavior declared -->
 <div class="modal-backdrop" onclick={handleBackdropClick} />
@@ -553,51 +574,36 @@ $effect(() => {
 
 ```svelte
 <!-- Backdrop: No touch interaction (backdrop clicks handled) -->
-<div
-  class="modal-backdrop"
-  style="touch-action: none"
-  onclick={handleBackdropClick}
-/>
+<div class="modal-backdrop" style="touch-action: none" onclick={handleBackdropClick} />
 
 <!-- Container: Allow vertical pan only (for swipe-to-dismiss) -->
-<div
-  class="modal-container"
-  style="touch-action: pan-y"
-  ...
-/>
+<div class="modal-container" style="touch-action: pan-y" ... />
 
 <!-- Header with drag handle: No scrolling -->
-<div
-  class="drag-handle-container"
-  style="touch-action: none"
-  ...
-/>
+<div class="drag-handle-container" style="touch-action: none" ... />
 
 <!-- Scrollable content: Allow normal scrolling -->
-<div
-  class="modal-content"
-  style="touch-action: pan-y"
-  ...
-/>
+<div class="modal-content" style="touch-action: pan-y" ... />
 ```
 
 **CSS Utilities:**
 
 ```css
 .touch-none {
-  touch-action: none;
+	touch-action: none;
 }
 
 .touch-pan-y {
-  touch-action: pan-y;
+	touch-action: pan-y;
 }
 
 .touch-manipulation {
-  touch-action: manipulation;  /* Disables double-tap zoom */
+	touch-action: manipulation; /* Disables double-tap zoom */
 }
 ```
 
 **Impact:**
+
 - Scroll jank: Eliminated
 - Touch response time: 100ms → 16ms (instant)
 - Gesture conflicts: Prevented
@@ -609,6 +615,7 @@ $effect(() => {
 #### **Feature: Mobile-Optimized Modal Pattern**
 
 **Rationale:**
+
 - Native iOS/Android pattern
 - Better for forms and selections on mobile
 - Maintains background context
@@ -617,9 +624,9 @@ $effect(() => {
 
 ```typescript
 interface ModalProps {
-  // ... existing props
-  variant?: 'center' | 'bottom-sheet' | 'drawer-left' | 'drawer-right';
-  // Default: 'center'
+	// ... existing props
+	variant?: 'center' | 'bottom-sheet' | 'drawer-left' | 'drawer-right';
+	// Default: 'center'
 }
 ```
 
@@ -627,44 +634,44 @@ interface ModalProps {
 
 ```svelte
 <script lang="ts">
-  const variantClasses = $derived.by(() => {
-    switch (variant) {
-      case 'bottom-sheet':
-        return {
-          container: 'items-end',
-          modal: 'rounded-t-2xl sm:rounded-2xl w-full mb-0 sm:mb-4',
-          animation: 'animate-modal-slide-up sm:animate-modal-scale'
-        };
+	const variantClasses = $derived.by(() => {
+		switch (variant) {
+			case 'bottom-sheet':
+				return {
+					container: 'items-end',
+					modal: 'rounded-t-2xl sm:rounded-2xl w-full mb-0 sm:mb-4',
+					animation: 'animate-modal-slide-up sm:animate-modal-scale'
+				};
 
-      case 'drawer-left':
-        return {
-          container: 'items-start',
-          modal: 'rounded-r-2xl h-full max-h-full',
-          animation: 'animate-drawer-slide-right'
-        };
+			case 'drawer-left':
+				return {
+					container: 'items-start',
+					modal: 'rounded-r-2xl h-full max-h-full',
+					animation: 'animate-drawer-slide-right'
+				};
 
-      case 'drawer-right':
-        return {
-          container: 'items-end',
-          modal: 'rounded-l-2xl h-full max-h-full',
-          animation: 'animate-drawer-slide-left'
-        };
+			case 'drawer-right':
+				return {
+					container: 'items-end',
+					modal: 'rounded-l-2xl h-full max-h-full',
+					animation: 'animate-drawer-slide-left'
+				};
 
-      case 'center':
-      default:
-        return {
-          container: 'items-center',
-          modal: 'rounded-2xl',
-          animation: 'animate-modal-scale'
-        };
-    }
-  });
+			case 'center':
+			default:
+				return {
+					container: 'items-center',
+					modal: 'rounded-2xl',
+					animation: 'animate-modal-scale'
+				};
+		}
+	});
 </script>
 
 <div class="flex min-h-full {variantClasses.container} justify-center">
-  <div class="modal-container {variantClasses.modal} {variantClasses.animation}">
-    <!-- Content -->
-  </div>
+	<div class="modal-container {variantClasses.modal} {variantClasses.animation}">
+		<!-- Content -->
+	</div>
 </div>
 ```
 
@@ -673,23 +680,23 @@ interface ModalProps {
 ```css
 /* Bottom sheet at mobile, center modal at desktop */
 @media (max-width: 640px) {
-  .variant-bottom-sheet {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    max-height: 90vh;
-    border-radius: 1rem 1rem 0 0;
-  }
+	.variant-bottom-sheet {
+		position: fixed;
+		bottom: 0;
+		left: 0;
+		right: 0;
+		max-height: 90vh;
+		border-radius: 1rem 1rem 0 0;
+	}
 }
 
 @media (min-width: 641px) {
-  .variant-bottom-sheet {
-    /* Transition to centered modal on desktop */
-    position: relative;
-    border-radius: 1rem;
-    max-width: 672px;  /* max-w-2xl */
-  }
+	.variant-bottom-sheet {
+		/* Transition to centered modal on desktop */
+		position: relative;
+		border-radius: 1rem;
+		max-width: 672px; /* max-w-2xl */
+	}
 }
 ```
 
@@ -700,11 +707,13 @@ interface ModalProps {
 #### **Feature: Full Safe Area Compliance**
 
 **Rationale:**
+
 - Content hidden behind notch/home indicator on iPhones
 - Inconsistent spacing on iOS devices
 - Better PWA experience
 
 **Current:**
+
 ```css
 max-h-[90vh]  /* Doesn't account for safe areas */
 ```
@@ -714,33 +723,29 @@ max-h-[90vh]  /* Doesn't account for safe areas */
 ```css
 /* Full safe area support */
 .modal-container {
-  max-height: calc(
-    100vh -
-    env(safe-area-inset-top, 0px) -
-    env(safe-area-inset-bottom, 0px) -
-    2rem  /* Additional padding */
-  );
+	max-height: calc(
+		100vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 2rem
+			/* Additional padding */
+	);
 
-  /* iOS standalone mode detection */
-  @supports (-webkit-touch-callout: none) {
-    max-height: calc(
-      100vh -
-      env(safe-area-inset-top, 0px) -
-      max(env(safe-area-inset-bottom, 0px), 1rem) -
-      2rem
-    );
-  }
+	/* iOS standalone mode detection */
+	@supports (-webkit-touch-callout: none) {
+		max-height: calc(
+			100vh - env(safe-area-inset-top, 0px) - max(env(safe-area-inset-bottom, 0px), 1rem) -
+				2rem
+		);
+	}
 }
 
 /* Footer safe padding */
 .modal-footer {
-  padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px));
+	padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px));
 }
 
 /* Content safe padding */
 .modal-content {
-  padding-left: max(1rem, env(safe-area-inset-left, 0px));
-  padding-right: max(1rem, env(safe-area-inset-right, 0px));
+	padding-left: max(1rem, env(safe-area-inset-left, 0px));
+	padding-right: max(1rem, env(safe-area-inset-right, 0px));
 }
 ```
 
@@ -770,6 +775,7 @@ theme: {
 #### **Feature: Optional Tactile Feedback**
 
 **Rationale:**
+
 - Increases perceived responsiveness by 23%
 - Native app parity
 - Better feedback on touchscreens
@@ -779,36 +785,36 @@ theme: {
 ```typescript
 // New prop
 interface ModalProps {
-  // ... existing props
-  enableHaptics?: boolean;  // Default: false (opt-in)
+	// ... existing props
+	enableHaptics?: boolean; // Default: false (opt-in)
 }
 
 // Haptic helper
 function triggerHaptic(type: 'light' | 'medium' | 'heavy' = 'light') {
-  if (!enableHaptics) return;
-  if (!('vibrate' in navigator)) return;
+	if (!enableHaptics) return;
+	if (!('vibrate' in navigator)) return;
 
-  const patterns = {
-    light: 10,
-    medium: 20,
-    heavy: [30, 10, 30]
-  };
+	const patterns = {
+		light: 10,
+		medium: 20,
+		heavy: [30, 10, 30]
+	};
 
-  navigator.vibrate(patterns[type]);
+	navigator.vibrate(patterns[type]);
 }
 
 // Usage
 function handleClose() {
-  triggerHaptic('light');
-  onClose?.();
-  isOpen = false;
+	triggerHaptic('light');
+	onClose?.();
+	isOpen = false;
 }
 
 function handleGestureEnd(dismissed: boolean) {
-  if (dismissed) {
-    triggerHaptic('medium');
-  }
-  // ...
+	if (dismissed) {
+		triggerHaptic('medium');
+	}
+	// ...
 }
 ```
 
@@ -819,11 +825,13 @@ function handleGestureEnd(dismissed: boolean) {
 #### **Feature: Prevent Background Scroll**
 
 **Rationale:**
+
 - Modal content scrolls, but background shouldn't
 - iOS Safari scroll bounce can dismiss modal accidentally
 - Better UX control
 
 **Current:**
+
 ```css
 /* No scroll lock mechanism */
 ```
@@ -832,23 +840,23 @@ function handleGestureEnd(dismissed: boolean) {
 
 ```svelte
 <script>
-  $effect(() => {
-    if (isOpen) {
-      // Lock body scroll
-      const scrollY = window.scrollY;
-      document.body.style.position = 'fixed';
-      document.body.style.top = `-${scrollY}px`;
-      document.body.style.width = '100%';
+	$effect(() => {
+		if (isOpen) {
+			// Lock body scroll
+			const scrollY = window.scrollY;
+			document.body.style.position = 'fixed';
+			document.body.style.top = `-${scrollY}px`;
+			document.body.style.width = '100%';
 
-      return () => {
-        // Restore scroll position
-        document.body.style.position = '';
-        document.body.style.top = '';
-        document.body.style.width = '';
-        window.scrollTo(0, scrollY);
-      };
-    }
-  });
+			return () => {
+				// Restore scroll position
+				document.body.style.position = '';
+				document.body.style.top = '';
+				document.body.style.width = '';
+				window.scrollTo(0, scrollY);
+			};
+		}
+	});
 </script>
 ```
 
@@ -856,16 +864,16 @@ function handleGestureEnd(dismissed: boolean) {
 
 ```css
 .modal-container {
-  overscroll-behavior: contain;  /* Prevent scroll chaining */
+	overscroll-behavior: contain; /* Prevent scroll chaining */
 }
 
 .modal-content {
-  overscroll-behavior: contain;  /* Contain scroll within modal */
+	overscroll-behavior: contain; /* Contain scroll within modal */
 }
 
 body:has(.modal-open) {
-  overflow: hidden;  /* Prevent body scroll */
-  touch-action: none;  /* Disable touch scrolling on body */
+	overflow: hidden; /* Prevent body scroll */
+	touch-action: none; /* Disable touch scrolling on body */
 }
 ```
 
@@ -882,16 +890,16 @@ body:has(.modal-open) {
 ```typescript
 // Current
 $effect(() => {
-  console.log('[Modal] isOpen changed to:', isOpen, 'title:', title);
-  // ...
+	console.log('[Modal] isOpen changed to:', isOpen, 'title:', title);
+	// ...
 });
 
 // Proposed
 $effect(() => {
-  if (import.meta.env.DEV) {
-    console.log('[Modal] isOpen changed to:', isOpen, 'title:', title);
-  }
-  // ...
+	if (import.meta.env.DEV) {
+		console.log('[Modal] isOpen changed to:', isOpen, 'title:', title);
+	}
+	// ...
 });
 ```
 
@@ -900,31 +908,31 @@ $effect(() => {
 ```typescript
 // Stricter prop types
 interface ModalProps {
-  isOpen?: boolean;
-  onClose?: () => void;
-  title?: string;
-  size?: 'sm' | 'md' | 'lg' | 'xl';
-  variant?: 'center' | 'bottom-sheet' | 'drawer-left' | 'drawer-right';
-  showCloseButton?: boolean;
-  closeOnBackdrop?: boolean;
-  closeOnEscape?: boolean;
-  persistent?: boolean;
-  customClasses?: string;
-  ariaLabel?: string;
-  ariaDescribedBy?: string;
+	isOpen?: boolean;
+	onClose?: () => void;
+	title?: string;
+	size?: 'sm' | 'md' | 'lg' | 'xl';
+	variant?: 'center' | 'bottom-sheet' | 'drawer-left' | 'drawer-right';
+	showCloseButton?: boolean;
+	closeOnBackdrop?: boolean;
+	closeOnEscape?: boolean;
+	persistent?: boolean;
+	customClasses?: string;
+	ariaLabel?: string;
+	ariaDescribedBy?: string;
 
-  // New gesture props
-  enableGestures?: boolean;
-  dismissThreshold?: number;
-  showDragHandle?: boolean;
+	// New gesture props
+	enableGestures?: boolean;
+	dismissThreshold?: number;
+	showDragHandle?: boolean;
 
-  // New callbacks
-  onGestureStart?: () => void;
-  onGestureEnd?: (dismissed: boolean) => void;
-  onOpen?: () => void;
+	// New callbacks
+	onGestureStart?: () => void;
+	onGestureEnd?: (dismissed: boolean) => void;
+	onOpen?: () => void;
 
-  // New features
-  enableHaptics?: boolean;
+	// New features
+	enableHaptics?: boolean;
 }
 ```
 
@@ -963,18 +971,18 @@ interface ModalProps {
 
 All proposed changes are **additive** or **opt-in**:
 
-| Change | Default Behavior | Impact |
-|--------|------------------|--------|
-| Touch gestures | Enabled on touch devices | ✅ Enhancement, no breaking change |
-| Drag handle | Auto-shown on mobile | ✅ Visual addition, not breaking |
-| Enhanced breakpoints | Applied automatically | ✅ Better responsive, maintains layout |
-| GPU animations | Automatic optimization | ✅ Performance win, no API change |
-| Touch-action CSS | Applied automatically | ✅ Better performance, invisible |
-| Bottom sheet variant | Opt-in via `variant` prop | ✅ New feature, default unchanged |
-| Haptics | Disabled by default (opt-in) | ✅ Optional feature |
-| Safe area support | Applied automatically | ✅ Better iOS support, graceful fallback |
-| Scroll lock | Applied automatically | ✅ UX improvement, expected behavior |
-| New callbacks | All optional | ✅ Additive only |
+| Change               | Default Behavior             | Impact                                   |
+| -------------------- | ---------------------------- | ---------------------------------------- |
+| Touch gestures       | Enabled on touch devices     | ✅ Enhancement, no breaking change       |
+| Drag handle          | Auto-shown on mobile         | ✅ Visual addition, not breaking         |
+| Enhanced breakpoints | Applied automatically        | ✅ Better responsive, maintains layout   |
+| GPU animations       | Automatic optimization       | ✅ Performance win, no API change        |
+| Touch-action CSS     | Applied automatically        | ✅ Better performance, invisible         |
+| Bottom sheet variant | Opt-in via `variant` prop    | ✅ New feature, default unchanged        |
+| Haptics              | Disabled by default (opt-in) | ✅ Optional feature                      |
+| Safe area support    | Applied automatically        | ✅ Better iOS support, graceful fallback |
+| Scroll lock          | Applied automatically        | ✅ UX improvement, expected behavior     |
+| New callbacks        | All optional                 | ✅ Additive only                         |
 
 ### Migration Effort
 
@@ -982,25 +990,20 @@ All proposed changes are **additive** or **opt-in**:
 
 ```svelte
 <!-- This code will continue to work exactly as before -->
-<Modal
-  isOpen={showModal}
-  onClose={() => showModal = false}
-  title="My Modal"
-  size="md"
->
-  <p>Content here</p>
+<Modal isOpen={showModal} onClose={() => (showModal = false)} title="My Modal" size="md">
+	<p>Content here</p>
 </Modal>
 
 <!-- But you CAN opt-in to new features -->
 <Modal
-  isOpen={showModal}
-  onClose={() => showModal = false}
-  title="Enhanced Modal"
-  variant="bottom-sheet"
-  enableGestures={true}
-  enableHaptics={true}
+	isOpen={showModal}
+	onClose={() => (showModal = false)}
+	title="Enhanced Modal"
+	variant="bottom-sheet"
+	enableGestures={true}
+	enableHaptics={true}
 >
-  <p>Now with gestures and haptics!</p>
+	<p>Now with gestures and haptics!</p>
 </Modal>
 ```
 
@@ -1012,17 +1015,17 @@ All proposed changes are **additive** or **opt-in**:
 
 ```typescript
 interface ModalPropsV1 {
-  isOpen?: boolean;              // Controls visibility (bindable)
-  onClose?: () => void;          // Close callback
-  title?: string;                // Header title
-  size?: 'sm' | 'md' | 'lg' | 'xl';  // Modal width
-  showCloseButton?: boolean;     // Show X button (default: true)
-  closeOnBackdrop?: boolean;     // Click outside to close (default: true)
-  closeOnEscape?: boolean;       // Escape key closes (default: true)
-  persistent?: boolean;          // Disable auto-close (default: false)
-  customClasses?: string;        // Additional CSS classes
-  ariaLabel?: string;            // Accessibility label
-  ariaDescribedBy?: string;      // Accessibility description
+	isOpen?: boolean; // Controls visibility (bindable)
+	onClose?: () => void; // Close callback
+	title?: string; // Header title
+	size?: 'sm' | 'md' | 'lg' | 'xl'; // Modal width
+	showCloseButton?: boolean; // Show X button (default: true)
+	closeOnBackdrop?: boolean; // Click outside to close (default: true)
+	closeOnEscape?: boolean; // Escape key closes (default: true)
+	persistent?: boolean; // Disable auto-close (default: false)
+	customClasses?: string; // Additional CSS classes
+	ariaLabel?: string; // Accessibility label
+	ariaDescribedBy?: string; // Accessibility description
 }
 ```
 
@@ -1030,36 +1033,36 @@ interface ModalPropsV1 {
 
 ```typescript
 interface ModalPropsV2 extends ModalPropsV1 {
-  // Variant system
-  variant?: 'center' | 'bottom-sheet' | 'drawer-left' | 'drawer-right';
-  // Default: 'center'
+	// Variant system
+	variant?: 'center' | 'bottom-sheet' | 'drawer-left' | 'drawer-right';
+	// Default: 'center'
 
-  // Touch gestures
-  enableGestures?: boolean;
-  // Default: true on touch devices, false on desktop
+	// Touch gestures
+	enableGestures?: boolean;
+	// Default: true on touch devices, false on desktop
 
-  dismissThreshold?: number;
-  // Default: 150 (pixels to drag before dismissing)
+	dismissThreshold?: number;
+	// Default: 150 (pixels to drag before dismissing)
 
-  showDragHandle?: boolean;
-  // Default: true on mobile, false on desktop
+	showDragHandle?: boolean;
+	// Default: true on mobile, false on desktop
 
-  // Haptic feedback
-  enableHaptics?: boolean;
-  // Default: false (opt-in for now)
+	// Haptic feedback
+	enableHaptics?: boolean;
+	// Default: false (opt-in for now)
 
-  // Callbacks
-  onOpen?: () => void;
-  // Called when modal opens
+	// Callbacks
+	onOpen?: () => void;
+	// Called when modal opens
 
-  onBeforeClose?: () => boolean;
-  // Called before close, can prevent if returns false
+	onBeforeClose?: () => boolean;
+	// Called before close, can prevent if returns false
 
-  onGestureStart?: () => void;
-  // Called when touch gesture starts
+	onGestureStart?: () => void;
+	// Called when touch gesture starts
 
-  onGestureEnd?: (dismissed: boolean) => void;
-  // Called when gesture ends (dismissed = true if closed via gesture)
+	onGestureEnd?: (dismissed: boolean) => void;
+	// Called when gesture ends (dismissed = true if closed via gesture)
 }
 ```
 
@@ -1067,14 +1070,14 @@ interface ModalPropsV2 extends ModalPropsV1 {
 
 ```svelte
 <Modal>
-  <div slot="header">Custom header</div>
+	<div slot="header">Custom header</div>
 
-  <!-- Default slot: Main content -->
-  <p>Modal body content</p>
+	<!-- Default slot: Main content -->
+	<p>Modal body content</p>
 
-  <div slot="footer">
-    <Button>Action</Button>
-  </div>
+	<div slot="footer">
+		<Button>Action</Button>
+	</div>
 </Modal>
 ```
 
@@ -1099,15 +1102,18 @@ interface ModalPropsV2 extends ModalPropsV1 {
 ### Bundle Impact Analysis
 
 **Per-modal overhead:**
+
 - Current: 1.8 KB gzipped
 - Proposed: 2.9 KB gzipped
 - Increase: +1.1 KB per modal
 
 **70 modals (worst case):**
+
 - If all 70 modals were imported: +77 KB
 - With lazy loading: +2.9 KB (only loaded modal)
 
 **Recommendation:** This size increase is acceptable given:
+
 1. Modal is a base component (high reuse)
 2. Lazy loading eliminates bundle bloat
 3. Features provide significant UX value
@@ -1119,28 +1125,28 @@ interface ModalPropsV2 extends ModalPropsV1 {
 
 ### Animation Performance
 
-| Device | Current (FPS) | Proposed (FPS) | Improvement |
-|--------|---------------|----------------|-------------|
-| iPhone 14 Pro | 55-60 | 60 | Consistently 60fps |
-| iPhone 12 | 48-55 | 58-60 | +10-12 fps |
-| Pixel 6 | 45-52 | 58-60 | +13-15 fps |
-| Budget Android | 35-45 | 50-58 | +15-18 fps |
+| Device         | Current (FPS) | Proposed (FPS) | Improvement        |
+| -------------- | ------------- | -------------- | ------------------ |
+| iPhone 14 Pro  | 55-60         | 60             | Consistently 60fps |
+| iPhone 12      | 48-55         | 58-60          | +10-12 fps         |
+| Pixel 6        | 45-52         | 58-60          | +13-15 fps         |
+| Budget Android | 35-45         | 50-58          | +15-18 fps         |
 
 ### Touch Response Time
 
-| Action | Current | Proposed | Improvement |
-|--------|---------|----------|-------------|
-| Backdrop tap | ~100ms | ~100ms | Same |
-| Swipe gesture | N/A | ~16ms | New feature |
-| Scroll start | ~100ms | ~16ms | 84ms faster |
+| Action        | Current | Proposed | Improvement |
+| ------------- | ------- | -------- | ----------- |
+| Backdrop tap  | ~100ms  | ~100ms   | Same        |
+| Swipe gesture | N/A     | ~16ms    | New feature |
+| Scroll start  | ~100ms  | ~16ms    | 84ms faster |
 
 ### Core Web Vitals Impact
 
-| Metric | Current | Proposed | Change |
-|--------|---------|----------|--------|
-| **LCP** | No change | No change | Modal doesn't affect LCP |
-| **INP** | ~180ms | ~120ms | -60ms (gestures are instant) |
-| **CLS** | 0.05 | 0.05 | No change |
+| Metric  | Current   | Proposed  | Change                       |
+| ------- | --------- | --------- | ---------------------------- |
+| **LCP** | No change | No change | Modal doesn't affect LCP     |
+| **INP** | ~180ms    | ~120ms    | -60ms (gestures are instant) |
+| **CLS** | 0.05      | 0.05      | No change                    |
 
 ---
 
@@ -1151,33 +1157,33 @@ interface ModalPropsV2 extends ModalPropsV1 {
 ```typescript
 // tests/Modal.test.ts
 describe('Modal.svelte', () => {
-  describe('Existing functionality (regression tests)', () => {
-    it('opens and closes via isOpen prop', () => {});
-    it('calls onClose when backdrop clicked', () => {});
-    it('calls onClose when Escape pressed', () => {});
-    it('traps focus within modal', () => {});
-    it('restores focus on close', () => {});
-    it('respects persistent prop', () => {});
-  });
+	describe('Existing functionality (regression tests)', () => {
+		it('opens and closes via isOpen prop', () => {});
+		it('calls onClose when backdrop clicked', () => {});
+		it('calls onClose when Escape pressed', () => {});
+		it('traps focus within modal', () => {});
+		it('restores focus on close', () => {});
+		it('respects persistent prop', () => {});
+	});
 
-  describe('Touch gestures (new)', () => {
-    it('dismisses on swipe down beyond threshold', () => {});
-    it('snaps back on small swipe', () => {});
-    it('calls onGestureStart callback', () => {});
-    it('calls onGestureEnd with dismissed=true', () => {});
-    it('disables gestures when enableGestures=false', () => {});
-  });
+	describe('Touch gestures (new)', () => {
+		it('dismisses on swipe down beyond threshold', () => {});
+		it('snaps back on small swipe', () => {});
+		it('calls onGestureStart callback', () => {});
+		it('calls onGestureEnd with dismissed=true', () => {});
+		it('disables gestures when enableGestures=false', () => {});
+	});
 
-  describe('Variants (new)', () => {
-    it('renders bottom-sheet variant correctly', () => {});
-    it('renders drawer-left variant correctly', () => {});
-    it('renders center variant by default', () => {});
-  });
+	describe('Variants (new)', () => {
+		it('renders bottom-sheet variant correctly', () => {});
+		it('renders drawer-left variant correctly', () => {});
+		it('renders center variant by default', () => {});
+	});
 
-  describe('Callbacks (new)', () => {
-    it('calls onOpen when modal opens', () => {});
-    it('prevents close when onBeforeClose returns false', () => {});
-  });
+	describe('Callbacks (new)', () => {
+		it('calls onOpen when modal opens', () => {});
+		it('prevents close when onBeforeClose returns false', () => {});
+	});
 });
 ```
 
@@ -1188,43 +1194,43 @@ describe('Modal.svelte', () => {
 import { test, expect } from '@playwright/test';
 
 test.describe('Modal on mobile viewport', () => {
-  test.use({ viewport: { width: 375, height: 667 } });
+	test.use({ viewport: { width: 375, height: 667 } });
 
-  test('swipe to dismiss works', async ({ page }) => {
-    await page.goto('/modal-demo');
-    await page.click('[data-testid="open-modal"]');
+	test('swipe to dismiss works', async ({ page }) => {
+		await page.goto('/modal-demo');
+		await page.click('[data-testid="open-modal"]');
 
-    const modal = page.locator('[role="dialog"]');
-    await expect(modal).toBeVisible();
+		const modal = page.locator('[role="dialog"]');
+		await expect(modal).toBeVisible();
 
-    // Simulate swipe down gesture
-    const bbox = await modal.boundingBox();
-    await page.touchscreen.tap(bbox.x + bbox.width / 2, bbox.y + 50);
-    await page.touchscreen.move(bbox.x + bbox.width / 2, bbox.y + 200);
-    await page.touchscreen.release();
+		// Simulate swipe down gesture
+		const bbox = await modal.boundingBox();
+		await page.touchscreen.tap(bbox.x + bbox.width / 2, bbox.y + 50);
+		await page.touchscreen.move(bbox.x + bbox.width / 2, bbox.y + 200);
+		await page.touchscreen.release();
 
-    await expect(modal).not.toBeVisible();
-  });
+		await expect(modal).not.toBeVisible();
+	});
 
-  test('drag handle is visible', async ({ page }) => {
-    await page.goto('/modal-demo');
-    await page.click('[data-testid="open-modal"]');
+	test('drag handle is visible', async ({ page }) => {
+		await page.goto('/modal-demo');
+		await page.click('[data-testid="open-modal"]');
 
-    const handle = page.locator('.drag-handle');
-    await expect(handle).toBeVisible();
-  });
+		const handle = page.locator('.drag-handle');
+		await expect(handle).toBeVisible();
+	});
 });
 
 test.describe('Modal on desktop viewport', () => {
-  test.use({ viewport: { width: 1440, height: 900 } });
+	test.use({ viewport: { width: 1440, height: 900 } });
 
-  test('drag handle is hidden', async ({ page }) => {
-    await page.goto('/modal-demo');
-    await page.click('[data-testid="open-modal"]');
+	test('drag handle is hidden', async ({ page }) => {
+		await page.goto('/modal-demo');
+		await page.click('[data-testid="open-modal"]');
 
-    const handle = page.locator('.drag-handle');
-    await expect(handle).not.toBeVisible();
-  });
+		const handle = page.locator('.drag-handle');
+		await expect(handle).not.toBeVisible();
+	});
 });
 ```
 
@@ -1233,62 +1239,62 @@ test.describe('Modal on desktop viewport', () => {
 #### Mobile Testing (Real Devices)
 
 - [ ] iPhone 14 Pro (iOS 17+)
-  - [ ] Swipe-to-dismiss gesture works smoothly
-  - [ ] Drag handle visible and responsive
-  - [ ] Safe area insets respected (no content behind notch)
-  - [ ] Haptics feel appropriate (if enabled)
-  - [ ] Animations are 60fps
+    - [ ] Swipe-to-dismiss gesture works smoothly
+    - [ ] Drag handle visible and responsive
+    - [ ] Safe area insets respected (no content behind notch)
+    - [ ] Haptics feel appropriate (if enabled)
+    - [ ] Animations are 60fps
 
 - [ ] iPhone SE (small screen)
-  - [ ] Bottom sheet doesn't overflow
-  - [ ] Touch targets are 44px minimum
-  - [ ] Text is readable (no zoom required)
+    - [ ] Bottom sheet doesn't overflow
+    - [ ] Touch targets are 44px minimum
+    - [ ] Text is readable (no zoom required)
 
 - [ ] Pixel 6 (Android)
-  - [ ] Gestures work with Android back gesture
-  - [ ] Haptics work (vibration API)
-  - [ ] Chrome browser behavior correct
+    - [ ] Gestures work with Android back gesture
+    - [ ] Haptics work (vibration API)
+    - [ ] Chrome browser behavior correct
 
 - [ ] Samsung Galaxy S21 (mid-range)
-  - [ ] Animations are smooth (60fps target)
-  - [ ] No jank during scroll
+    - [ ] Animations are smooth (60fps target)
+    - [ ] No jank during scroll
 
 #### Tablet Testing
 
 - [ ] iPad Air (768px x 1024px)
-  - [ ] Layout is tablet-optimized (not phone, not desktop)
-  - [ ] Modal is centered with appropriate width
-  - [ ] Touch gestures work
+    - [ ] Layout is tablet-optimized (not phone, not desktop)
+    - [ ] Modal is centered with appropriate width
+    - [ ] Touch gestures work
 
 #### Desktop Testing
 
 - [ ] Chrome (Windows/Mac)
-  - [ ] Center variant renders correctly
-  - [ ] No drag handle shown
-  - [ ] Keyboard navigation works
+    - [ ] Center variant renders correctly
+    - [ ] No drag handle shown
+    - [ ] Keyboard navigation works
 
 - [ ] Safari (Mac)
-  - [ ] All animations smooth
-  - [ ] No layout issues
+    - [ ] All animations smooth
+    - [ ] No layout issues
 
 - [ ] Firefox (Windows/Mac)
-  - [ ] Feature parity with Chrome
+    - [ ] Feature parity with Chrome
 
 #### Accessibility Testing
 
 - [ ] Screen reader (NVDA/VoiceOver)
-  - [ ] Modal is announced correctly
-  - [ ] Focus trap works
-  - [ ] All interactive elements are accessible
+    - [ ] Modal is announced correctly
+    - [ ] Focus trap works
+    - [ ] All interactive elements are accessible
 
 - [ ] Keyboard only
-  - [ ] Can open, interact, and close modal
-  - [ ] Tab/Shift+Tab cycle correctly
-  - [ ] Escape closes modal
+    - [ ] Can open, interact, and close modal
+    - [ ] Tab/Shift+Tab cycle correctly
+    - [ ] Escape closes modal
 
 - [ ] High contrast mode
-  - [ ] Drag handle is visible
-  - [ ] Boundaries are clear
+    - [ ] Drag handle is visible
+    - [ ] Boundaries are clear
 
 ---
 
@@ -1297,18 +1303,21 @@ test.describe('Modal on desktop viewport', () => {
 ### Phase 1: Development & Testing (Week 1)
 
 **Days 1-2: Core Implementation**
+
 - [ ] Implement touch gesture handling
 - [ ] Add drag handle component
 - [ ] Update animations for GPU optimization
 - [ ] Add touch-action CSS
 
 **Days 3-4: Variants & Enhancements**
+
 - [ ] Implement variant system (bottom-sheet, drawers)
 - [ ] Add enhanced breakpoints
 - [ ] Implement iOS safe area support
 - [ ] Add scroll lock mechanism
 
 **Day 5: Polish & Optimization**
+
 - [ ] Remove console.log guards
 - [ ] Add TypeScript improvements
 - [ ] Implement haptic feedback (opt-in)
@@ -1317,12 +1326,14 @@ test.describe('Modal on desktop viewport', () => {
 ### Phase 2: Testing (Week 2)
 
 **Days 1-2: Automated Testing**
+
 - [ ] Write comprehensive unit tests
 - [ ] Add integration tests (Playwright)
 - [ ] Test on multiple viewports
 - [ ] Accessibility testing
 
 **Days 3-5: Device Testing**
+
 - [ ] Test on real iOS devices (iPhone SE, 14 Pro)
 - [ ] Test on real Android devices (Pixel, Samsung)
 - [ ] Test on tablets (iPad)
@@ -1331,20 +1342,21 @@ test.describe('Modal on desktop viewport', () => {
 ### Phase 3: Gradual Rollout (Week 3)
 
 **Day 1-2: Feature Flag**
+
 ```typescript
 // Enable enhanced modal for specific users
-const useEnhancedModal =
-  import.meta.env.DEV ||
-  user?.beta_features?.includes('enhanced-modal');
+const useEnhancedModal = import.meta.env.DEV || user?.beta_features?.includes('enhanced-modal');
 ```
 
 **Day 3-4: Beta Testing**
+
 - Deploy to staging
 - Enable for internal team
 - Collect feedback
 - Fix any issues
 
 **Day 5: Production Release**
+
 - Deploy to production with default enabled
 - Monitor error rates
 - Track performance metrics
@@ -1353,6 +1365,7 @@ const useEnhancedModal =
 ### Phase 4: Monitoring & Iteration (Ongoing)
 
 **Metrics to Track:**
+
 - Modal open/close rates
 - Gesture dismissal rate
 - Animation performance (FPS)
@@ -1360,6 +1373,7 @@ const useEnhancedModal =
 - User feedback
 
 **Success Criteria:**
+
 - [ ] No increase in error rates
 - [ ] ≥ 58fps animation performance on mid-range devices
 - [ ] ≥ 30% gesture dismissal rate on mobile
@@ -1385,12 +1399,12 @@ Which features should we implement first?
 Should gestures be enabled by default?
 
 - **Option A:** Yes, on touch devices (recommended)
-  - Pro: Better mobile UX out of the box
-  - Con: Behavior change for existing modals
+    - Pro: Better mobile UX out of the box
+    - Con: Behavior change for existing modals
 
 - **Option B:** No, opt-in only
-  - Pro: Zero behavior change
-  - Con: Requires manual enablement
+    - Pro: Zero behavior change
+    - Con: Requires manual enablement
 
 **Recommendation:** Option A (enabled by default on touch devices)
 
@@ -1428,6 +1442,7 @@ Are minor visual changes acceptable?
 Is +1.1 KB gzipped acceptable for these features?
 
 **Context:**
+
 - Current: 1.8 KB
 - Proposed: 2.9 KB
 - Increase: +61%
@@ -1441,11 +1456,13 @@ Is +1.1 KB gzipped acceptable for these features?
 ### Alternative 1: Create Separate BottomSheetModal Component
 
 **Pros:**
+
 - No changes to existing Modal
 - Cleaner separation of concerns
 - Easier to maintain
 
 **Cons:**
+
 - Code duplication
 - Two components to maintain
 - Fragments ecosystem (Modal vs BottomSheet)
@@ -1455,11 +1472,13 @@ Is +1.1 KB gzipped acceptable for these features?
 ### Alternative 2: Use Shadcn-Svelte Drawer
 
 **Pros:**
+
 - Battle-tested component
 - Active community support
 - Regular updates
 
 **Cons:**
+
 - External dependency
 - May not match BuildOS style
 - Less control over implementation
@@ -1469,16 +1488,19 @@ Is +1.1 KB gzipped acceptable for these features?
 ### Alternative 3: Minimal Changes Only
 
 Only implement:
+
 - Touch-action CSS
 - GPU animation optimization
 - Remove console.log
 
 **Pros:**
+
 - Minimal risk
 - Small bundle impact
 - Easy to review
 
 **Cons:**
+
 - Misses major UX improvements
 - Doesn't address gesture expectations
 - Limited mobile optimization
@@ -1528,6 +1550,7 @@ Before moving to implementation:
 **Version:** 1.0.0
 **Status:** 📋 Awaiting Approval
 **Related:**
+
 - Research: `/apps/web/docs/technical/MOBILE_RESPONSIVE_BEST_PRACTICES.md`
 - Current Modal: `/apps/web/src/lib/components/ui/Modal.svelte`
 - Modal Docs: `/apps/web/docs/technical/components/modals/README.md`
@@ -1536,7 +1559,7 @@ Before moving to implementation:
 
 ## Approval Sign-Off
 
-**Approved by:** _________________
-**Date:** _________________
+**Approved by:** ********\_********
+**Date:** ********\_********
 **Priority:** [ ] Phase 1 only [ ] Phase 1 + 2 [ ] All phases
-**Notes:** _________________
+**Notes:** ********\_********

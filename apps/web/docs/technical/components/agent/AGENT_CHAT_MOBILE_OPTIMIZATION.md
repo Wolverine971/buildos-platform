@@ -16,22 +16,26 @@ Optimized AgentChatModal, AgentChatHeader, and ProjectFocusIndicator for mobile 
 ## Problems Identified
 
 ### 1. **Title Getting Cut Off on Mobile**
+
 - Header had too many elements competing for space
 - Subtitle taking up valuable real estate
 - Separator bullets adding unnecessary width
 - ProjectFocusIndicator too wide (120px)
 
 ### 2. **Subtitle Showing on Mobile**
+
 - `displayContextSubtitle` always visible
 - Not needed on small screens
 - Users primarily care about the title/context
 
 ### 3. **ProjectFocusIndicator Too Large**
+
 - 120px max-width on mobile too wide
 - Target icon taking up space
 - Extra padding not optimized for mobile
 
 ### 4. **Modal Layout Not Mobile-Optimized**
+
 - Using default center variant instead of bottom-sheet
 - Container height too restrictive on small screens
 - No gesture support enabled
@@ -47,12 +51,12 @@ Optimized AgentChatModal, AgentChatHeader, and ProjectFocusIndicator for mobile 
 ```svelte
 <!-- BEFORE: Always showing subtitle -->
 <span class="truncate text-xs text-slate-600 dark:text-slate-400">
-  {displayContextSubtitle}
+	{displayContextSubtitle}
 </span>
 
 <!-- AFTER: Hidden on mobile, shown on desktop -->
 <span class="hidden truncate text-xs text-slate-600 dark:text-slate-400 sm:inline">
-  {displayContextSubtitle}
+	{displayContextSubtitle}
 </span>
 ```
 
@@ -103,12 +107,12 @@ Optimized AgentChatModal, AgentChatHeader, and ProjectFocusIndicator for mobile 
 ```svelte
 <!-- BEFORE: Always showing icon -->
 {#if focus.focusType !== 'project-wide'}
-  <Target class="h-3 w-3" />
+	<Target class="h-3 w-3" />
 {/if}
 
 <!-- AFTER: Hidden on mobile -->
 {#if focus.focusType !== 'project-wide'}
-  <Target class="hidden h-3 w-3 sm:inline-block" />
+	<Target class="hidden h-3 w-3 sm:inline-block" />
 {/if}
 ```
 
@@ -160,25 +164,21 @@ Optimized AgentChatModal, AgentChatHeader, and ProjectFocusIndicator for mobile 
 
 ```svelte
 <!-- BEFORE: Center variant on all devices -->
-<Modal
-  {isOpen}
-  onClose={handleClose}
-  size="xl"
-  showCloseButton={false}
-/>
+<Modal {isOpen} onClose={handleClose} size="xl" showCloseButton={false} />
 
 <!-- AFTER: Bottom sheet on mobile, center on desktop -->
 <Modal
-  {isOpen}
-  onClose={handleClose}
-  size="xl"
-  variant="bottom-sheet"
-  enableGestures={true}
-  showCloseButton={false}
+	{isOpen}
+	onClose={handleClose}
+	size="xl"
+	variant="bottom-sheet"
+	enableGestures={true}
+	showCloseButton={false}
 />
 ```
 
 **Benefits:**
+
 - ✅ Native mobile pattern (bottom-anchored on phone)
 - ✅ Swipe-to-dismiss gesture enabled
 - ✅ Auto-transitions to centered modal on desktop
@@ -196,11 +196,11 @@ Optimized AgentChatModal, AgentChatHeader, and ProjectFocusIndicator for mobile 
 
 **Mobile Height Comparison:**
 
-| Device | Viewport | Before | After | Gain |
-|--------|----------|--------|-------|------|
-| iPhone SE | 667px | 467px (70vh) | 539px | **+72px** |
-| iPhone 14 | 844px | 591px (70vh) | 716px | **+125px** |
-| Pixel 6 | 915px | 641px (70vh) | 787px | **+146px** |
+| Device    | Viewport | Before       | After | Gain       |
+| --------- | -------- | ------------ | ----- | ---------- |
+| iPhone SE | 667px    | 467px (70vh) | 539px | **+72px**  |
+| iPhone 14 | 844px    | 591px (70vh) | 716px | **+125px** |
+| Pixel 6   | 915px    | 641px (70vh) | 787px | **+146px** |
 
 **Impact:** **15-20% more content visible** on mobile
 
@@ -210,25 +210,25 @@ Optimized AgentChatModal, AgentChatHeader, and ProjectFocusIndicator for mobile 
 
 ### Horizontal Space Reclaimed
 
-| Optimization | Space Saved |
-|--------------|-------------|
-| Hide subtitle | ~100px |
-| ProjectFocusIndicator narrower | 60px |
-| Hide separator bullets (×2) | 32px |
-| Reduced gaps | 10px |
-| Hide Target icon | 12px |
-| Compact padding | 10px |
-| **TOTAL** | **~224px** |
+| Optimization                   | Space Saved |
+| ------------------------------ | ----------- |
+| Hide subtitle                  | ~100px      |
+| ProjectFocusIndicator narrower | 60px        |
+| Hide separator bullets (×2)    | 32px        |
+| Reduced gaps                   | 10px        |
+| Hide Target icon               | 12px        |
+| Compact padding                | 10px        |
+| **TOTAL**                      | **~224px**  |
 
 **Result:** Title now has **224px more space** on mobile = **No more truncation!**
 
 ### Vertical Space Reclaimed
 
-| Optimization | Space Saved |
-|--------------|-------------|
-| Adaptive container height (iPhone SE) | +72px |
-| Adaptive container height (iPhone 14) | +125px |
-| **Result** | **10-15% more content visible** |
+| Optimization                          | Space Saved                     |
+| ------------------------------------- | ------------------------------- |
+| Adaptive container height (iPhone SE) | +72px                           |
+| Adaptive container height (iPhone 14) | +125px                          |
+| **Result**                            | **10-15% more content visible** |
 
 ---
 
@@ -237,11 +237,13 @@ Optimized AgentChatModal, AgentChatHeader, and ProjectFocusIndicator for mobile 
 ### Desktop (≥640px)
 
 **Before:**
+
 ```
 [Icon] [Title] • [Subtitle] [ProjectFocus 📝 Task name → ×] [Pills] [Link] [×]
 ```
 
 **After:** (Same - No change on desktop)
+
 ```
 [Icon] [Title] • [Subtitle] [ProjectFocus 📝 Task name → ×] [Pills] [Link] [×]
 ```
@@ -249,16 +251,19 @@ Optimized AgentChatModal, AgentChatHeader, and ProjectFocusIndicator for mobile 
 ### Mobile (<640px)
 
 **Before:** (Title truncated)
+
 ```
 [Icon] [Title gets cut off...] • [Subtitle taking up sp...] [Focus 📝 Ta... → ×] [×]
 ```
 
 **After:** (Title fully visible)
+
 ```
 [Icon] [Full Title Visible] [Focus 📝 Name] [×]
 ```
 
 **Key Differences:**
+
 - ❌ Subtitle hidden (unnecessary on mobile)
 - ❌ Separators hidden (visual noise)
 - ✅ Focus indicator 50% narrower (60px vs 120px)
@@ -272,20 +277,20 @@ Optimized AgentChatModal, AgentChatHeader, and ProjectFocusIndicator for mobile 
 
 ### ProjectFocusIndicator
 
-| Element | Before | After | Change |
-|---------|--------|-------|--------|
-| **Max-width** | 120px | 60px | **-50%** |
-| **Emoji size** | 12px | 11px | -8% |
-| **Gap** | 4px (gap-1) | 2px (gap-0.5) | -50% |
-| **Padding** | px-1.5 | px-1 | -33% |
-| **Total width** | ~150px | ~75px | **-50%** |
+| Element         | Before      | After         | Change   |
+| --------------- | ----------- | ------------- | -------- |
+| **Max-width**   | 120px       | 60px          | **-50%** |
+| **Emoji size**  | 12px        | 11px          | -8%      |
+| **Gap**         | 4px (gap-1) | 2px (gap-0.5) | -50%     |
+| **Padding**     | px-1.5      | px-1          | -33%     |
+| **Total width** | ~150px      | ~75px         | **-50%** |
 
 ### Header Layout
 
-| Element | Before | After | Change |
-|---------|--------|-------|--------|
-| **Gap** | 8px (gap-2) | 6px (gap-1.5) | -25% |
-| **Subtitle** | Always shown | Hidden on mobile | **100% saving** |
+| Element        | Before       | After            | Change          |
+| -------------- | ------------ | ---------------- | --------------- |
+| **Gap**        | 8px (gap-2)  | 6px (gap-1.5)    | -25%            |
+| **Subtitle**   | Always shown | Hidden on mobile | **100% saving** |
 | **Separators** | Always shown | Hidden on mobile | **100% saving** |
 
 ---
@@ -295,6 +300,7 @@ Optimized AgentChatModal, AgentChatHeader, and ProjectFocusIndicator for mobile 
 ### 1. **Gesture Support**
 
 Now with `variant="bottom-sheet"` and `enableGestures={true}`:
+
 - ✅ Swipe down to dismiss
 - ✅ Drag handle visible on mobile
 - ✅ Native iOS/Android feel
@@ -310,6 +316,7 @@ Now with `variant="bottom-sheet"` and `enableGestures={true}`:
 ### 3. **Better Touch Targets**
 
 All interactive elements maintain adequate touch targets:
+
 - Back button: 32px × 32px (h-8 w-8)
 - Focus indicator button: adequate height with px-1 py-0.5
 - Clear button: adequate with px-0.5 py-0.5
@@ -360,20 +367,20 @@ All interactive elements maintain adequate touch targets:
 ## Files Modified
 
 1. **`/apps/web/src/lib/components/agent/AgentChatHeader.svelte`**
-   - Hide subtitle on mobile
-   - Hide separator bullets on mobile
-   - Reduce gaps (gap-1.5 on mobile, gap-2 on desktop)
+    - Hide subtitle on mobile
+    - Hide separator bullets on mobile
+    - Reduce gaps (gap-1.5 on mobile, gap-2 on desktop)
 
 2. **`/apps/web/src/lib/components/agent/ProjectFocusIndicator.svelte`**
-   - Reduce max-width from 120px to 60px on mobile
-   - Hide Target icon on mobile
-   - Reduce emoji size (11px on mobile, 12px on desktop)
-   - Compact padding and gaps
+    - Reduce max-width from 120px to 60px on mobile
+    - Hide Target icon on mobile
+    - Reduce emoji size (11px on mobile, 12px on desktop)
+    - Compact padding and gaps
 
 3. **`/apps/web/src/lib/components/agent/AgentChatModal.svelte`**
-   - Add `variant="bottom-sheet"` for mobile optimization
-   - Add `enableGestures={true}` for swipe-to-dismiss
-   - Change height from `h-[70vh] min-h-[500px]` to `h-[calc(100vh-8rem)] sm:h-[75vh] sm:min-h-[500px]`
+    - Add `variant="bottom-sheet"` for mobile optimization
+    - Add `enableGestures={true}` for swipe-to-dismiss
+    - Change height from `h-[70vh] min-h-[500px]` to `h-[calc(100vh-8rem)] sm:h-[75vh] sm:min-h-[500px]`
 
 ---
 
@@ -382,39 +389,39 @@ All interactive elements maintain adequate touch targets:
 ### Mobile Devices (Required)
 
 - [ ] **iPhone SE (375px)** - Smallest phone
-  - [ ] Title visible (not truncated)
-  - [ ] Subtitle hidden
-  - [ ] ProjectFocusIndicator compact (60px)
-  - [ ] Swipe-to-dismiss works
-  - [ ] Content fills most of screen
+    - [ ] Title visible (not truncated)
+    - [ ] Subtitle hidden
+    - [ ] ProjectFocusIndicator compact (60px)
+    - [ ] Swipe-to-dismiss works
+    - [ ] Content fills most of screen
 
 - [ ] **iPhone 14 (430px)** - Standard phone
-  - [ ] Title visible
-  - [ ] Layout looks balanced
-  - [ ] Gestures smooth
+    - [ ] Title visible
+    - [ ] Layout looks balanced
+    - [ ] Gestures smooth
 
 - [ ] **iPhone 14 Landscape (844px)** - Landscape mode
-  - [ ] Transitions to desktop layout at 640px
-  - [ ] Subtitle appears
-  - [ ] ProjectFocusIndicator expands
+    - [ ] Transitions to desktop layout at 640px
+    - [ ] Subtitle appears
+    - [ ] ProjectFocusIndicator expands
 
 - [ ] **Pixel 6 (412px)** - Android phone
-  - [ ] Same behavior as iPhone
-  - [ ] Gestures work
+    - [ ] Same behavior as iPhone
+    - [ ] Gestures work
 
 ### Tablet Devices
 
 - [ ] **iPad (768px)** - Tablet
-  - [ ] Desktop layout (subtitle visible, centered modal)
-  - [ ] No bottom sheet
-  - [ ] Proper spacing
+    - [ ] Desktop layout (subtitle visible, centered modal)
+    - [ ] No bottom sheet
+    - [ ] Proper spacing
 
 ### Desktop
 
 - [ ] **Laptop (1440px)**
-  - [ ] No changes from before
-  - [ ] All elements visible
-  - [ ] Centered modal
+    - [ ] No changes from before
+    - [ ] All elements visible
+    - [ ] Centered modal
 
 ---
 
@@ -444,6 +451,7 @@ All interactive elements maintain adequate touch targets:
 ### ✅ 100% Compatible
 
 All changes are **visual/layout only** - no API changes:
+
 - No prop changes
 - No event changes
 - No function signature changes
@@ -466,16 +474,16 @@ All optimizations tested and working as expected.
 ## Future Enhancements (Optional)
 
 1. **Adaptive Font Sizes**
-   - Could make title font size fluid (13-14px) on very small devices
-   - Currently using text-sm (14px) everywhere
+    - Could make title font size fluid (13-14px) on very small devices
+    - Currently using text-sm (14px) everywhere
 
 2. **Collapsible Status Pills**
-   - Could hide ONTO/token pills on very small devices (<375px)
-   - Currently keeping them visible
+    - Could hide ONTO/token pills on very small devices (<375px)
+    - Currently keeping them visible
 
 3. **Dynamic ProjectFocusIndicator**
-   - Could further reduce max-width on extra small devices (<375px)
-   - Currently 60px minimum
+    - Could further reduce max-width on extra small devices (<375px)
+    - Currently 60px minimum
 
 ---
 
@@ -483,15 +491,15 @@ All optimizations tested and working as expected.
 
 ### ✅ Achieved
 
-| Metric | Target | Result | Status |
-|--------|--------|--------|--------|
-| **Title truncation on iPhone SE** | None | ✅ No truncation | ✅ Pass |
-| **Horizontal space saved** | >150px | ~224px | ✅ Pass |
-| **Vertical content increase** | >10% | 10-15% | ✅ Pass |
-| **Subtitle hidden on mobile** | Yes | ✅ Hidden <640px | ✅ Pass |
-| **Gesture support** | Yes | ✅ Swipe-to-dismiss | ✅ Pass |
-| **High information density** | Yes | ✅ Compact layout | ✅ Pass |
-| **Desktop unchanged** | Yes | ✅ No changes | ✅ Pass |
+| Metric                            | Target | Result              | Status  |
+| --------------------------------- | ------ | ------------------- | ------- |
+| **Title truncation on iPhone SE** | None   | ✅ No truncation    | ✅ Pass |
+| **Horizontal space saved**        | >150px | ~224px              | ✅ Pass |
+| **Vertical content increase**     | >10%   | 10-15%              | ✅ Pass |
+| **Subtitle hidden on mobile**     | Yes    | ✅ Hidden <640px    | ✅ Pass |
+| **Gesture support**               | Yes    | ✅ Swipe-to-dismiss | ✅ Pass |
+| **High information density**      | Yes    | ✅ Compact layout   | ✅ Pass |
+| **Desktop unchanged**             | Yes    | ✅ No changes       | ✅ Pass |
 
 ---
 
@@ -517,5 +525,6 @@ Successfully optimized AgentChatModal for mobile devices with **high information
 **UX impact:** Significant improvement on mobile
 
 **Related Documentation:**
+
 - Enhanced Modal: `/apps/web/docs/technical/components/modals/MODAL_V2_IMPLEMENTATION_SUMMARY.md`
 - Mobile Best Practices: `/apps/web/docs/technical/MOBILE_RESPONSIVE_BEST_PRACTICES.md`

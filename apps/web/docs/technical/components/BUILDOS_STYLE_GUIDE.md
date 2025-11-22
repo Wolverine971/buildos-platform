@@ -428,6 +428,7 @@ BuildOS now uses a composable Card component system for consistency and maintain
 ### Modals
 
 **📚 Complete Modal Reference**: See [Modal Components Documentation](./modals/README.md) for comprehensive modal guide including:
+
 - [Quick Reference](./modals/QUICK_REFERENCE.md) - Props and usage patterns
 - [Visual Guide](./modals/VISUAL_GUIDE.md) - Layout diagrams and animations
 - [Technical Analysis](./modals/TECHNICAL_ANALYSIS.md) - Deep implementation dive
@@ -448,20 +449,20 @@ BuildOS now uses a composable Card component system for consistency and maintain
 
 ```svelte
 <script>
-  import Modal from '$lib/components/ui/Modal.svelte';
+	import Modal from '$lib/components/ui/Modal.svelte';
 </script>
 
 <!-- Mobile-optimized modal with bottom sheet -->
 <Modal
-  {isOpen}
-  {onClose}
-  size="xl"
-  variant="bottom-sheet"
-  enableGestures={true}
-  showDragHandle={true}
-  ariaLabel="Dialog title"
+	{isOpen}
+	{onClose}
+	size="xl"
+	variant="bottom-sheet"
+	enableGestures={true}
+	showDragHandle={true}
+	ariaLabel="Dialog title"
 >
-  <!-- Content -->
+	<!-- Content -->
 </Modal>
 ```
 
@@ -515,19 +516,19 @@ BuildOS now uses a composable Card component system for consistency and maintain
 ```svelte
 <!-- Compact padding on mobile, standard on desktop -->
 <Modal {isOpen} {onClose} size="xl" variant="bottom-sheet">
-  <div class="p-3 sm:p-6">
-    <!-- Compact header on mobile -->
-    <div class="flex items-center gap-1.5 sm:gap-2">
-      <h2 class="text-sm sm:text-base">Title</h2>
-      <!-- Hide non-essential elements on mobile -->
-      <span class="hidden sm:inline">Subtitle</span>
-    </div>
+	<div class="p-3 sm:p-6">
+		<!-- Compact header on mobile -->
+		<div class="flex items-center gap-1.5 sm:gap-2">
+			<h2 class="text-sm sm:text-base">Title</h2>
+			<!-- Hide non-essential elements on mobile -->
+			<span class="hidden sm:inline">Subtitle</span>
+		</div>
 
-    <!-- Content with adaptive height -->
-    <div class="h-[calc(100vh-8rem)] sm:h-[75vh] sm:min-h-[500px]">
-      <!-- Content -->
-    </div>
-  </div>
+		<!-- Content with adaptive height -->
+		<div class="h-[calc(100vh-8rem)] sm:h-[75vh] sm:min-h-[500px]">
+			<!-- Content -->
+		</div>
+	</div>
 </Modal>
 ```
 
@@ -536,12 +537,12 @@ BuildOS now uses a composable Card component system for consistency and maintain
 ```svelte
 <!-- Show minimal info on mobile, full details on desktop -->
 <div class="space-y-2 sm:space-y-4">
-  <div class="max-w-[60px] truncate sm:max-w-[200px]">
-    {longText}
-  </div>
-  <div class="hidden sm:block">
-    {additionalContext}
-  </div>
+	<div class="max-w-[60px] truncate sm:max-w-[200px]">
+		{longText}
+	</div>
+	<div class="hidden sm:block">
+		{additionalContext}
+	</div>
 </div>
 ```
 
@@ -692,14 +693,15 @@ Always design for mobile first, then enhance for larger screens.
 BuildOS uses a 4-tier breakpoint system for precise mobile control:
 
 ```scss
-$breakpoint-xs: 480px;  // Extra small - Large phones in landscape
-$breakpoint-sm: 640px;  // Small - Tablets in portrait
-$breakpoint-md: 768px;  // Medium - Tablets in landscape
+$breakpoint-xs: 480px; // Extra small - Large phones in landscape
+$breakpoint-sm: 640px; // Small - Tablets in portrait
+$breakpoint-md: 768px; // Medium - Tablets in landscape
 $breakpoint-lg: 1024px; // Large - Desktop
 $breakpoint-xl: 1280px; // Extra large - Large desktop
 ```
 
 **Use cases for `xs:` breakpoint:**
+
 - Fine-grained mobile control between portrait and landscape
 - Progressive disclosure for compact layouts
 - Optimizing information density on larger phones
@@ -756,9 +758,7 @@ $breakpoint-xl: 1280px; // Extra large - Large desktop
 </div>
 
 <!-- Narrower max-width on mobile -->
-<span class="max-w-[60px] truncate sm:max-w-[140px] md:max-w-[200px]">
-	Truncated text
-</span>
+<span class="max-w-[60px] truncate sm:max-w-[140px] md:max-w-[200px]"> Truncated text </span>
 ```
 
 **Implementation Examples:**

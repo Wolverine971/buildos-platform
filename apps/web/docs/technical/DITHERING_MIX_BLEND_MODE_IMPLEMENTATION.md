@@ -11,6 +11,7 @@ Successfully migrated the entire dithering system from the fragile `z-index` sta
 ## What Changed
 
 ### Old Approach (Fragile) ❌
+
 - Used `::before` pseudo-elements with inline SVG patterns
 - Required careful z-index management (`z-index: 1`, `z-index: 2` for children)
 - Needed `isolation: isolate` on every dithered element
@@ -18,6 +19,7 @@ Successfully migrated the entire dithering system from the fragile `z-index` sta
 - Opacity embedded in SVG (`rgba(0,0,0,0.04)`)
 
 ### New Approach (Robust) ✅
+
 - Uses `::before` pseudo-elements with **`mix-blend-mode`**
 - No z-index management needed
 - No `isolation: isolate` required
@@ -36,14 +38,14 @@ Successfully migrated the entire dithering system from the fragile `z-index` sta
 ```css
 /* Before - Could be overridden by Tailwind */
 .dither {
-  position: relative;
-  overflow: hidden;
+	position: relative;
+	overflow: hidden;
 }
 
 /* After - Protected from override */
 .dither {
-  position: relative !important;
-  overflow: hidden !important;
+	position: relative !important;
+	overflow: hidden !important;
 }
 ```
 
@@ -52,11 +54,13 @@ Successfully migrated the entire dithering system from the fragile `z-index` sta
 ### 1. Pure Colors in SVG
 
 **Before:**
+
 ```svg
 <circle fill='rgba(0,0,0,0.04)'/>  <!-- Opacity in SVG -->
 ```
 
 **After:**
+
 ```svg
 <circle fill='rgb(0,0,0)'/>  <!-- Pure black -->
 ```
@@ -64,37 +68,39 @@ Successfully migrated the entire dithering system from the fragile `z-index` sta
 ### 2. Mix-Blend-Mode Instead of Z-Index
 
 **Before:**
+
 ```css
 .dither::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background-image: url("data:image/svg+xml,...");
-  z-index: 1;  /* Requires stacking context management */
+	content: '';
+	position: absolute;
+	inset: 0;
+	background-image: url('data:image/svg+xml,...');
+	z-index: 1; /* Requires stacking context management */
 }
 
 .dither > * {
-  position: relative;
-  z-index: 2;  /* Content must be above texture */
+	position: relative;
+	z-index: 2; /* Content must be above texture */
 }
 ```
 
 **After:**
+
 ```css
 .dither {
-  position: relative !important;  /* !important prevents Tailwind override */
-  overflow: hidden !important;
+	position: relative !important; /* !important prevents Tailwind override */
+	overflow: hidden !important;
 }
 
 .dither::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background-image: url("data:image/svg+xml,...");
-  background-size: 4px 4px;
-  mix-blend-mode: overlay;  /* Blends with background automatically */
-  opacity: 0.15;  /* Control intensity here */
-  pointer-events: none;
+	content: '';
+	position: absolute;
+	inset: 0;
+	background-image: url('data:image/svg+xml,...');
+	background-size: 4px 4px;
+	mix-blend-mode: overlay; /* Blends with background automatically */
+	opacity: 0.15; /* Control intensity here */
+	pointer-events: none;
 }
 ```
 
@@ -107,13 +113,15 @@ Successfully migrated the entire dithering system from the fragile `z-index` sta
 ## Files Modified (18 total)
 
 ### Core Utility CSS (1 file)
+
 1. **`/lib/styles/dithering.css`** - Complete rewrite with mix-blend-mode
-   - Updated all 11 intensity/pattern classes
-   - Updated all 5 gradient combination classes
-   - Removed all `isolation: isolate` and `z-index` rules
-   - Added proper `background-size` for all patterns
+    - Updated all 11 intensity/pattern classes
+    - Updated all 5 gradient combination classes
+    - Removed all `isolation: isolate` and `z-index` rules
+    - Added proper `background-size` for all patterns
 
 ### Component Files (3 files)
+
 2. **`Card.svelte`** - Updated `.card-dithered::before` to use mix-blend-mode
 3. **`CardBody.svelte`** - Updated `.card-body-dithered::before` to use mix-blend-mode
 4. **`CardFooter.svelte`** - Updated `.card-footer-dithered::before` to use mix-blend-mode
@@ -121,6 +129,7 @@ Successfully migrated the entire dithering system from the fragile `z-index` sta
 ## Dithering Classes Available
 
 ### Intensity Variants
+
 - `.dither` or `.dither-medium` - Balanced (15-20% opacity)
 - `.dither-subtle` - Ultra-fine (8-12% opacity)
 - `.dither-soft` - Gentle (12-18% opacity)
@@ -128,15 +137,18 @@ Successfully migrated the entire dithering system from the fragile `z-index` sta
 - `.dither-intense` - Very visible (35-40% opacity)
 
 ### Context-Specific
+
 - `.dither-gradient` - Optimized for gradient backgrounds (18-25% opacity)
 - `.dither-surface` - For card/panel surfaces (14-20% opacity)
 - `.dither-accent` - For emphasis areas (20-27% opacity)
 
 ### Pattern Sizes
+
 - `.dither-fine` - 2x2 Bayer matrix, coarser pattern
 - `.dither-detailed` - 8x8 Bayer matrix, finer pattern
 
 ### Pre-Built Gradient Combinations
+
 - `.gradient-dithered-primary` - Blue to purple brand gradient with dithering
 - `.gradient-dithered-accent` - Purple to pink accent gradient
 - `.gradient-dithered-success` - Emerald to green success gradient
@@ -144,108 +156,109 @@ Successfully migrated the entire dithering system from the fragile `z-index` sta
 - `.gradient-dithered-warning` - Amber to yellow warning gradient
 
 ### Component-Specific
+
 - `.card-dithered` - For Card component
 - `.card-body-dithered` - For CardBody component
 - `.card-footer-dithered` - For CardFooter component
 
 ## Blend Mode Reference
 
-| Blend Mode | Use Case | Effect |
-|------------|----------|--------|
-| `overlay` | Light mode, general use | Darkens darks, lightens lights - balanced |
-| `soft-light` | Dark mode, subtle effect | Gentle brightening/darkening |
-| `multiply` | Intense darkening | Multiplies colors (darker) |
-| `screen` | Intense lightening | Inverse multiply (lighter) |
+| Blend Mode   | Use Case                 | Effect                                    |
+| ------------ | ------------------------ | ----------------------------------------- |
+| `overlay`    | Light mode, general use  | Darkens darks, lightens lights - balanced |
+| `soft-light` | Dark mode, subtle effect | Gentle brightening/darkening              |
+| `multiply`   | Intense darkening        | Multiplies colors (darker)                |
+| `screen`     | Intense lightening       | Inverse multiply (lighter)                |
 
 ## Opacity Guidelines
 
 | Intensity | Light Mode (overlay) | Dark Mode (soft-light) |
-|-----------|---------------------|------------------------|
-| Subtle | 0.08 | 0.12 |
-| Soft | 0.12 | 0.18 |
-| Medium | 0.15 | 0.20 |
-| Gradient | 0.18 | 0.25 |
-| Strong | 0.22 | 0.28 |
-| Intense | 0.35 | 0.40 |
+| --------- | -------------------- | ---------------------- |
+| Subtle    | 0.08                 | 0.12                   |
+| Soft      | 0.12                 | 0.18                   |
+| Medium    | 0.15                 | 0.20                   |
+| Gradient  | 0.18                 | 0.25                   |
+| Strong    | 0.22                 | 0.28                   |
+| Intense   | 0.35                 | 0.40                   |
 
 ## Usage Examples
 
 ### Simple Dithering on Element
+
 ```html
-<div class="bg-gradient-to-r from-blue-50 to-indigo-50 dither-gradient">
-  Content here
-</div>
+<div class="bg-gradient-to-r from-blue-50 to-indigo-50 dither-gradient">Content here</div>
 ```
 
 ### Card with Dithering
+
 ```html
-<Card dithered={true}>
-  <CardHeader variant="gradient">
-    Header with built-in dithering
-  </CardHeader>
-  <CardBody dithered={true}>
-    Body with dithering
-  </CardBody>
+<Card dithered="{true}">
+	<CardHeader variant="gradient"> Header with built-in dithering </CardHeader>
+	<CardBody dithered="{true}"> Body with dithering </CardBody>
 </Card>
 ```
 
 ### Pre-Built Gradient
+
 ```html
-<div class="gradient-dithered-primary p-6">
-  Automatic gradient + dithering
-</div>
+<div class="gradient-dithered-primary p-6">Automatic gradient + dithering</div>
 ```
 
 ## Benefits of Mix-Blend-Mode Approach
 
 ### 1. **No Z-Index Management** ✅
+
 - Blend mode works at rendering level, not stacking level
 - No need to manage `z-index` on pseudo-element or children
 - No `isolation: isolate` required
 
 ### 2. **Works with GPU Acceleration** ✅
+
 - Compatible with `transform: translateZ(0)`
 - Compatible with `backface-visibility: hidden`
 - No stacking context conflicts
 
 ### 3. **Simpler CSS** ✅
+
 ```css
 /* Before: 20+ lines with z-index management and isolation */
 .dither {
-  position: relative;
-  isolation: isolate;
-  overflow: hidden;
+	position: relative;
+	isolation: isolate;
+	overflow: hidden;
 }
 .dither::before {
-  z-index: 1;
-  background-image: url("data:image/svg+xml,...rgba(0,0,0,0.04)...");
+	z-index: 1;
+	background-image: url('data:image/svg+xml,...rgba(0,0,0,0.04)...');
 }
 .dither > * {
-  position: relative;
-  z-index: 2;
+	position: relative;
+	z-index: 2;
 }
 
 /* After: Mix-blend-mode with !important for Tailwind protection */
 .dither {
-  position: relative !important;
-  overflow: hidden !important;
+	position: relative !important;
+	overflow: hidden !important;
 }
 .dither::before {
-  background-image: url("data:image/svg+xml,...rgb(0,0,0)...");
-  background-size: 4px 4px;
-  mix-blend-mode: overlay;
-  opacity: 0.15;
-  pointer-events: none;
+	background-image: url('data:image/svg+xml,...rgb(0,0,0)...');
+	background-size: 4px 4px;
+	mix-blend-mode: overlay;
+	opacity: 0.15;
+	pointer-events: none;
 }
 /* No z-index needed - content naturally appears above! */
 ```
 
 ### 4. **Universal Compatibility** ✅
+
 - Works with any background (solid, gradient, image)
 - Works with any border, shadow, or decoration
 - Works in modals, overlays, fixed/sticky elements
 
 ### 5. **Better Performance** ✅
+
 - Browser handles blending at compositing stage
 - No JavaScript or complex stacking calculations
 - GPU-accelerated by default in modern browsers
@@ -253,6 +266,7 @@ Successfully migrated the entire dithering system from the fragile `z-index` sta
 ## Browser Support
 
 **Excellent**: `mix-blend-mode` is supported in all modern browsers:
+
 - Chrome 41+ (2015)
 - Firefox 32+ (2014)
 - Safari 8+ (2014)
@@ -271,12 +285,13 @@ Successfully migrated the entire dithering system from the fragile `z-index` sta
 ```css
 /* ✅ All dithering classes now use !important */
 .dither-soft {
-  position: relative !important;  /* Won't be overridden */
-  overflow: hidden !important;
+	position: relative !important; /* Won't be overridden */
+	overflow: hidden !important;
 }
 ```
 
 **If still not working:**
+
 1. Check browser DevTools to verify the `::before` pseudo-element exists
 2. Verify `position: relative` and `overflow: hidden` are applied
 3. Check if any inline styles are overriding with `!important`
@@ -285,6 +300,7 @@ Successfully migrated the entire dithering system from the fragile `z-index` sta
 ### Dithering Too Subtle or Too Strong
 
 **Solution:** Use intensity variants:
+
 - Too subtle → Try `.dither-strong` or `.dither-intense`
 - Too strong → Try `.dither-subtle` or `.dither-soft`
 - On gradients → Use `.dither-gradient` specifically
@@ -300,11 +316,11 @@ Successfully migrated the entire dithering system from the fragile `z-index` sta
 ```html
 <!-- ✅ Correct -->
 <html class="dark">
-  <body>
-    <div class="dither-soft bg-gradient-to-r from-blue-50 to-indigo-50">
-      Dithering works in both modes
-    </div>
-  </body>
+	<body>
+		<div class="dither-soft bg-gradient-to-r from-blue-50 to-indigo-50">
+			Dithering works in both modes
+		</div>
+	</body>
 </html>
 ```
 
@@ -331,6 +347,7 @@ Successfully migrated the entire dithering system from the fragile `z-index` sta
 **After:** GPU-accelerated compositing, better performance
 
 **Metrics:**
+
 - Paint time: ~5% faster (less layout recalculation)
 - Composite time: Same (blending happens at composite stage)
 - Memory: Identical (same SVG patterns)
@@ -338,12 +355,15 @@ Successfully migrated the entire dithering system from the fragile `z-index` sta
 ## Migration Notes
 
 ### No Breaking Changes
+
 All existing class names work identically:
+
 - `.dither`, `.dither-gradient`, `.dither-soft`, etc. - Same API
 - `<Card dithered={true}>` - Same API
 - `<CardHeader variant="gradient">` - Same API
 
 ### Visual Differences (Improvements)
+
 - **More visible** - Mix-blend-mode is slightly more pronounced
 - **More consistent** - Works the same in all contexts (modals, transforms, etc.)
 - **Better on gradients** - Blends more naturally with color transitions

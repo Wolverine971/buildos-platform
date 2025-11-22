@@ -31,7 +31,8 @@ export default {
 
 		prerender: {
 			handleHttpError: ({ path, message }) => {
-				if (path.startsWith('/api/')) {
+				// Skip errors for API routes and auth routes (they're not prerenderable)
+				if (path.startsWith('/api/') || path.startsWith('/auth/')) {
 					return;
 				}
 				// Only fail builds in production
@@ -40,6 +41,7 @@ export default {
 				}
 				console.warn(`Prerender error on ${path}: ${message}`);
 			},
+			crawl: true,
 			entries: [
 				'*',
 				'/beta',

@@ -163,9 +163,7 @@
 
 	<!-- BuildOS Way Reminder -->
 	<div class="mb-8">
-		<div
-			class="dither-soft rounded-xl border-2 border-green-200 dark:border-green-800 p-6"
-		>
+		<div class="dither-soft rounded-xl border-2 border-green-200 dark:border-green-800 p-6">
 			<div class="flex items-start gap-4">
 				<div
 					class="flex-shrink-0 w-10 h-10 dither-gradient rounded-full flex items-center justify-center text-white font-bold shadow-md"

@@ -934,9 +934,7 @@
 
 					<div class="p-4 sm:p-6">
 						<!-- Analysis Button -->
-						<div
-							class="dither-soft rounded-lg p-3 sm:p-4"
-						>
+						<div class="dither-soft rounded-lg p-3 sm:p-4">
 							<div
 								class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3"
 							>

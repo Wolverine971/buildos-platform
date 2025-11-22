@@ -1,12 +1,6 @@
 <!-- apps/web/src/lib/components/agent/ProjectActionSelector.svelte -->
 <script lang="ts">
-	import {
-		BriefcaseBusiness,
-		Search,
-		TrendingUp,
-		Target,
-		ChevronRight
-	} from 'lucide-svelte';
+	import { BriefcaseBusiness, Search, TrendingUp, Target, ChevronRight } from 'lucide-svelte';
 
 	type ProjectAction = 'workspace' | 'audit' | 'forecast';
 

@@ -491,9 +491,7 @@
 	</div>
 
 	<!-- Philosophy Reinforcement + Examples -->
-	<div
-		class="mb-6 p-6 dither-soft rounded-xl border-2 border-blue-200 dark:border-blue-800"
-	>
+	<div class="mb-6 p-6 dither-soft rounded-xl border-2 border-blue-200 dark:border-blue-800">
 		<div
 			class="mb-4 bg-white dark:bg-gray-800 rounded-lg p-8 text-center border-2 border-dashed border-gray-300 dark:border-gray-600"
 		>

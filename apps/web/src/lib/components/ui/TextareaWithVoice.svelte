@@ -514,8 +514,8 @@
 	}
 
 	function handleTextareaInput(event: Event) {
-		let target = event?.target as HTMLTextAreaElement
-		value = target.value
+		let target = event?.target as HTMLTextAreaElement;
+		value = target.value;
 		dispatch('input', { value });
 	}
 

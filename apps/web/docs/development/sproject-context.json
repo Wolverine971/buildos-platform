@@ -44,8 +44,15 @@
 				"PhaseCalendarView",
 				"TaskModal",
 				"DailyBriefModal",
-				"TimeBlockModal"
+				"TimeBlockModal",
+				"MobileTaskTabs",
+				"WeeklyTaskCalendar"
 			]
+		},
+		{
+			"file": "src/lib/components/layout/Navigation.svelte",
+			"type": "component",
+			"components": ["BrainDumpModal", "AgentChatModal"]
 		},
 		{
 			"file": "src/lib/components/notifications/MinimizedNotification.svelte",
@@ -106,6 +113,11 @@
 			"components": ["SynthesisLoadingState"]
 		},
 		{
+			"file": "src/routes/ontology/templates/+page.svelte",
+			"type": "page",
+			"components": ["TemplateDetailModal"]
+		},
+		{
 			"file": "src/routes/projects/[id]/+page.svelte",
 			"type": "page",
 			"components": [
@@ -114,6 +126,27 @@
 				"ProjectSynthesis",
 				"PhasesSection",
 				"BraindumpsSection"
+			]
+		},
+		{
+			"file": "src/routes/ontology/projects/[id]/+page.svelte",
+			"type": "page",
+			"components": [
+				"OntologyGraph",
+				"GraphControls",
+				"NodeDetailsPanel",
+				"ConfirmationModal",
+				"OntologyProjectEditModal",
+				"OutputCreateModal",
+				"OutputEditModal",
+				"DocumentModal",
+				"TaskCreateModal",
+				"TaskEditModal",
+				"PlanCreateModal",
+				"PlanEditModal",
+				"GoalCreateModal",
+				"GoalEditModal",
+				"GoalReverseEngineerModal"
 			]
 		},
 		{
@@ -720,6 +753,9 @@
 	],
 	"dependencies": {
 		"src/routes/+page.svelte": ["src/lib/components/dashboard/Dashboard.svelte"],
+		"src/lib/components/layout/Navigation.svelte": [
+			"src/lib/components/brain-dump/BrainDumpModal.svelte"
+		],
 		"src/lib/components/notifications/NotificationModal.svelte": [
 			"src/lib/components/notifications/types/brain-dump/BrainDumpModalContent.svelte"
 		],
@@ -729,7 +765,7 @@
 		]
 	},
 	"unusedComponents": [
-		"src/lib/components/brain-dump/BrainDumpModal.svelte",
+		"src/lib/components/layout/Navigation.svelte",
 		"src/lib/components/notifications/MinimizedNotification.svelte",
 		"src/lib/components/notifications/NotificationModal.svelte",
 		"src/lib/components/project/ProjectHeaderMinimal.svelte",

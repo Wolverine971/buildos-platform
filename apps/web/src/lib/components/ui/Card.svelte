@@ -75,10 +75,28 @@
 			patternTransform="rotate(0)"
 		>
 			<rect width="4" height="4" fill="rgba(0,0,0,0)" />
-			<circle cx="0" cy="0" r="0.4" fill="rgba(0,0,0,0.015)" class="dark:fill-white/[0.015]" />
+			<circle
+				cx="0"
+				cy="0"
+				r="0.4"
+				fill="rgba(0,0,0,0.015)"
+				class="dark:fill-white/[0.015]"
+			/>
 			<circle cx="2" cy="1" r="0.4" fill="rgba(0,0,0,0.01)" class="dark:fill-white/[0.01]" />
-			<circle cx="1" cy="2" r="0.4" fill="rgba(0,0,0,0.012)" class="dark:fill-white/[0.012]" />
-			<circle cx="3" cy="3" r="0.4" fill="rgba(0,0,0,0.008)" class="dark:fill-white/[0.008]" />
+			<circle
+				cx="1"
+				cy="2"
+				r="0.4"
+				fill="rgba(0,0,0,0.012)"
+				class="dark:fill-white/[0.012]"
+			/>
+			<circle
+				cx="3"
+				cy="3"
+				r="0.4"
+				fill="rgba(0,0,0,0.008)"
+				class="dark:fill-white/[0.008]"
+			/>
 		</pattern>
 	</defs>
 </svg>
