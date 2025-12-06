@@ -347,66 +347,49 @@
 	}
 </script>
 
-<Modal bind:isOpen onClose={handleClose} title="" size="xl">
-	<div slot="header">
-		<div class="sm:hidden">
-			<div class="modal-grab-handle"></div>
-		</div>
+<Modal bind:isOpen onClose={handleClose} title="" size="xl" showCloseButton={false}>
+	{#snippet header()}
+		<!-- Custom gradient header - grey/dark grey -->
 		<div
-			class="relative bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-800 dark:via-gray-800/95 dark:to-gray-800 px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 dark:border-gray-700 dither-gradient"
+			class="flex-shrink-0 bg-gradient-to-r from-gray-600 via-gray-700 to-gray-800 dark:from-gray-700 dark:via-gray-800 dark:to-gray-900 text-white px-3 py-3 sm:px-6 sm:py-5 flex items-start justify-between gap-2 sm:gap-4 dither-gradient"
 		>
-			<!-- Mobile Layout -->
-			<div class="sm:hidden">
-				<div class="flex items-center justify-between mb-2">
-					<h2 class="text-lg font-semibold text-gray-900 dark:text-white flex-1 pr-2">
-						{modalTitle}
-					</h2>
-					<Button
-						type="button"
-						onclick={handleClose}
-						variant="ghost"
-						size="sm"
-						class="!p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
-						aria-label="Close modal"
-					>
-						<X class="w-5 h-5" />
-					</Button>
-				</div>
-				<p class="text-xs text-gray-600 dark:text-gray-400">
-					Update project details and metadata
+			<div class="space-y-1 sm:space-y-2 min-w-0 flex-1">
+				<p class="text-[10px] sm:text-xs font-semibold uppercase tracking-[0.3em] sm:tracking-[0.4em] text-white/70">
+					Project Settings
 				</p>
-			</div>
-
-			<!-- Desktop Layout -->
-			<div class="hidden sm:flex sm:items-start sm:justify-between">
-				<div class="flex-1">
-					<h2 class="text-xl font-semibold text-gray-900 dark:text-white">
-						{modalTitle}
-					</h2>
-					<p class="mt-0.5 text-sm text-gray-600 dark:text-gray-400">
-						Manage project information and context
-					</p>
+				<h2 class="text-lg sm:text-2xl font-bold leading-tight truncate">
+					{name || project?.name || 'Edit Project'}
+				</h2>
+				<div class="flex flex-wrap items-center gap-1.5 sm:gap-3 text-xs sm:text-sm">
+					{#if facetStage}
+						<span class="px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-semibold capitalize bg-white/20">{facetStage}</span>
+					{/if}
+					{#if facetScale}
+						<span class="hidden sm:inline px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-semibold capitalize bg-white/20">{facetScale}</span>
+					{/if}
+					<span class="text-white/80">#{project?.id?.slice(0, 8) || ''}</span>
 				</div>
-				<Button
-					type="button"
-					onclick={handleClose}
-					variant="ghost"
-					size="sm"
-					class="!p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 ml-2"
-					aria-label="Close modal"
-				>
-					<X class="w-5 h-5" />
-				</Button>
 			</div>
+			<Button
+				type="button"
+				onclick={handleClose}
+				variant="ghost"
+				size="sm"
+				class="text-white/80 hover:text-white shrink-0 !p-1.5 sm:!p-2"
+				disabled={isSaving}
+				aria-label="Close modal"
+			>
+				<X class="w-4 h-4 sm:w-5 sm:h-5" />
+			</Button>
 		</div>
-	</div>
+	{/snippet}
 
-	{#if !project}
-		<div class="px-4 sm:px-6 lg:px-8 py-8">
-			<p class="text-gray-600 dark:text-gray-300">Project data is unavailable.</p>
-		</div>
-	{:else}
-		<form onsubmit={handleSubmit} class="flex flex-col flex-1 min-h-0">
+	{#snippet children()}
+		{#if !project}
+			<div class="px-4 sm:px-6 lg:px-8 py-8">
+				<p class="text-slate-600 dark:text-slate-300">Project data is unavailable.</p>
+			</div>
+		{:else}
 			<div
 				class="flex flex-col flex-1 min-h-0 space-y-4 px-4 sm:px-6 lg:px-8 py-4 overflow-y-auto"
 			>
@@ -414,15 +397,15 @@
 				<div class="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-5 min-h-[50vh] flex-1">
 					<!-- Content Section (Takes most space) -->
 					<div
-						class="lg:col-span-3 flex flex-col space-y-3 h-full min-h-0 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all duration-200"
+						class="lg:col-span-3 flex flex-col space-y-3 h-full min-h-0 bg-surface-elevated dark:bg-surface-panel rounded border border-gray-200 dark:border-gray-700 shadow-subtle hover:shadow-elevated transition-all duration-200"
 					>
 						<!-- Project Name Header -->
 						<div
-							class="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/10 dark:to-indigo-900/10 p-3 sm:p-4 rounded-t-xl border-b border-gray-200 dark:border-gray-700 dither-soft"
+							class="bg-surface-panel dark:bg-slate-900/20 p-3 sm:p-4 rounded-t border-b border-gray-200 dark:border-gray-700 dither-soft"
 						>
 							<label
 								for="project-name"
-								class="block text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-1.5"
+								class="block text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1.5"
 							>
 								Project Name <span class="text-red-500 ml-0.5">*</span>
 							</label>
@@ -433,7 +416,7 @@
 								size="lg"
 								required
 								disabled={isSaving}
-								class="font-semibold text-lg bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+								class="font-semibold text-lg bg-surface-clarity dark:bg-surface-elevated border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-accent-orange dark:focus:ring-accent-orange"
 							/>
 						</div>
 
@@ -445,7 +428,7 @@
 							<div>
 								<label
 									for="project-description"
-									class="block text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-1.5"
+									class="block text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1.5"
 								>
 									Description
 								</label>
@@ -454,7 +437,6 @@
 									onUpdate={(newValue) => (description = newValue)}
 									placeholder="One-line summary of what this project achieves"
 									rows={3}
-									class="text-sm bg-gray-50 dark:bg-gray-900/50 border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
 								/>
 							</div>
 
@@ -470,7 +452,7 @@
 											/>
 											<label
 												for="context-document"
-												class="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider"
+												class="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider"
 											>
 												Context Document
 											</label>
@@ -480,7 +462,7 @@
 											onclick={copyContext}
 											variant="ghost"
 											size="sm"
-											class="flex items-center gap-1.5 text-gray-600 hover:text-gray-900 hover:bg-green-50 dark:text-gray-400 dark:hover:text-gray-100 dark:hover:bg-green-900/20 transition-colors"
+											class="flex items-center gap-1.5 text-slate-600 hover:text-slate-900 hover:bg-accent-olive/10 dark:text-slate-400 dark:hover:text-slate-100 dark:hover:bg-accent-olive/20 transition-colors"
 										>
 											<Copy class="w-3.5 h-3.5" />
 											<span class="hidden sm:inline">Copy</span>
@@ -493,8 +475,6 @@
 												(contextDocumentBody = newValue)}
 											placeholder="## Background\nWhy this project exists and its importance\n\n## Key Decisions\nImportant technical and business decisions\n\n## Resources\nTools, documentation, and dependencies\n\n## Challenges\nCurrent blockers or areas needing attention"
 											rows={10}
-											maxRows={20}
-											class="flex-1 leading-relaxed bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/10 dark:to-emerald-900/10 border-green-200 dark:border-green-800 focus:ring-2 focus:ring-green-500 dark:focus:ring-green-400 dither-soft"
 										/>
 									</div>
 								</div>
@@ -502,7 +482,7 @@
 
 							<!-- Character Counts -->
 							<div
-								class="flex flex-wrap gap-3 sm:gap-4 text-xs text-gray-500 dark:text-gray-400 pt-2.5 border-t border-gray-200 dark:border-gray-700"
+								class="flex flex-wrap gap-3 sm:gap-4 text-xs text-slate-500 dark:text-slate-400 pt-2.5 border-t border-gray-200 dark:border-gray-700"
 							>
 								{#if description.length > 0}
 									<span class="flex items-center gap-1.5">
@@ -522,7 +502,7 @@
 								{/if}
 								{#if !description && !contextDocumentBody}
 									<span
-										class="text-gray-400 dark:text-gray-500 italic text-center flex-1"
+										class="text-slate-400 dark:text-slate-500 italic text-center flex-1"
 									>
 										Add project details to enable better organization
 									</span>
@@ -533,15 +513,16 @@
 
 					<!-- Metadata Sidebar -->
 					<div
-						class="lg:col-span-1 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all duration-200 lg:max-h-full lg:overflow-y-auto dither-surface"
+						class="lg:col-span-1 bg-surface-scratch dark:bg-surface-panel rounded border border-gray-200 dark:border-gray-700 shadow-subtle hover:shadow-elevated transition-all duration-200 lg:max-h-full lg:overflow-y-auto dither-soft"
 					>
 						<div
-							class="bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-900/10 dark:to-blue-900/10 p-3 sm:p-3.5 rounded-t-xl border-b border-gray-200 dark:border-gray-700 dither-soft"
+							class="bg-surface-panel dark:bg-slate-900/20 p-3 sm:p-3.5 rounded-t border-b border-gray-200 dark:border-gray-700"
 						>
 							<h3
-								class="text-xs font-semibold text-gray-900 dark:text-white uppercase tracking-wider flex items-center gap-2"
+								class="text-xs font-semibold text-slate-900 dark:text-slate-100 uppercase tracking-wider flex items-center gap-2"
 							>
-								<span class="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-pulse"
+								<span
+									class="w-1.5 h-1.5 bg-accent-orange rounded-full animate-pulse"
 								></span>
 								Project Details
 							</h3>
@@ -552,7 +533,7 @@
 							<div>
 								<label
 									for="facet-context"
-									class="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-2 block"
+									class="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-2 block"
 								>
 									📂 Context
 								</label>
@@ -561,7 +542,7 @@
 									bind:value={facetContext}
 									size="sm"
 									disabled={isSaving}
-									class="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+									class="bg-surface-clarity dark:bg-surface-elevated border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-accent-orange dark:focus:ring-accent-orange"
 								>
 									<option value="">Not set</option>
 									{#each FACET_CONTEXT_OPTIONS as option}
@@ -574,7 +555,7 @@
 							<div>
 								<label
 									for="facet-scale"
-									class="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-2 block"
+									class="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-2 block"
 								>
 									📏 Scale
 								</label>
@@ -583,7 +564,7 @@
 									bind:value={facetScale}
 									size="sm"
 									disabled={isSaving}
-									class="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+									class="bg-surface-clarity dark:bg-surface-elevated border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-accent-orange dark:focus:ring-accent-orange"
 								>
 									<option value="">Not set</option>
 									{#each FACET_SCALE_OPTIONS as option}
@@ -596,7 +577,7 @@
 							<div>
 								<label
 									for="facet-stage"
-									class="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-2 block"
+									class="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-2 block"
 								>
 									🎯 Stage
 								</label>
@@ -605,7 +586,7 @@
 									bind:value={facetStage}
 									size="sm"
 									disabled={isSaving}
-									class="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+									class="bg-surface-clarity dark:bg-surface-elevated border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-accent-orange dark:focus:ring-accent-orange"
 								>
 									<option value="">Not set</option>
 									{#each FACET_STAGE_OPTIONS as option}
@@ -617,7 +598,7 @@
 							{#if templatePropFields.length > 0}
 								<div class="space-y-2">
 									<p
-										class="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider"
+										class="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider"
 									>
 										🔧 Template Attributes
 									</p>
@@ -625,13 +606,15 @@
 										{#each templatePropFields as field}
 											<div class="space-y-1.5">
 												<label
-													class="text-xs text-gray-600 dark:text-gray-300 font-semibold"
+													for={`template-field-${field.key}`}
+													class="text-xs text-slate-600 dark:text-slate-300 font-semibold"
 												>
 													{templateFieldLabel(field)}
 												</label>
 												{#if field.schema?.enum}
 													<select
-														class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-50 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+														id={`template-field-${field.key}`}
+														class="w-full px-3 py-2 rounded border border-gray-200 dark:border-gray-700 bg-surface-clarity dark:bg-surface-elevated text-sm text-slate-900 dark:text-slate-50 focus:ring-2 focus:ring-accent-orange dark:focus:ring-accent-orange"
 														value={String(
 															templatePropValues[field.key] ?? ''
 														)}
@@ -651,11 +634,11 @@
 													</select>
 												{:else if field.schema?.type === 'boolean'}
 													<label
-														class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200"
+														class="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200"
 													>
 														<input
 															type="checkbox"
-															class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+															class="rounded border-gray-200 dark:border-gray-700 text-accent-orange focus:ring-accent-orange"
 															checked={Boolean(
 																templatePropValues[field.key]
 															)}
@@ -673,8 +656,9 @@
 													</label>
 												{:else if field.schema?.type === 'number' || field.schema?.type === 'integer'}
 													<input
+														id={`template-field-${field.key}`}
 														type="number"
-														class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-50 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+														class="w-full px-3 py-2 rounded border border-gray-200 dark:border-gray-700 bg-surface-clarity dark:bg-surface-elevated text-sm text-slate-900 dark:text-slate-50 focus:ring-2 focus:ring-accent-orange dark:focus:ring-accent-orange"
 														value={templatePropValues[field.key] === ''
 															? ''
 															: String(
@@ -690,7 +674,8 @@
 													/>
 												{:else if (field.schema?.type === 'string' && field.schema?.format === 'textarea') || field.schema?.maxLength > 200}
 													<textarea
-														class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-50 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 resize-none"
+														id={`template-field-${field.key}`}
+														class="w-full px-3 py-2 rounded border border-gray-200 dark:border-gray-700 bg-surface-clarity dark:bg-surface-elevated text-sm text-slate-900 dark:text-slate-50 focus:ring-2 focus:ring-accent-orange dark:focus:ring-accent-orange resize-none"
 														rows={3}
 														value={String(
 															templatePropValues[field.key] ?? ''
@@ -704,8 +689,9 @@
 													></textarea>
 												{:else}
 													<input
+														id={`template-field-${field.key}`}
 														type="text"
-														class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-50 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+														class="w-full px-3 py-2 rounded border border-gray-200 dark:border-gray-700 bg-surface-clarity dark:bg-surface-elevated text-sm text-slate-900 dark:text-slate-50 focus:ring-2 focus:ring-accent-orange dark:focus:ring-accent-orange"
 														value={String(
 															templatePropValues[field.key] ?? ''
 														)}
@@ -733,7 +719,7 @@
 							<!-- Timeline Section -->
 							<div class="space-y-3">
 								<div
-									class="flex items-center gap-2 text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider"
+									class="flex items-center gap-2 text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider"
 								>
 									<Calendar class="w-3.5 h-3.5" />
 									Timeline
@@ -743,7 +729,7 @@
 								<div>
 									<label
 										for="start-date"
-										class="text-xs text-gray-500 dark:text-gray-400 mb-1 block"
+										class="text-xs text-slate-500 dark:text-slate-400 mb-1 block"
 									>
 										Start Date
 									</label>
@@ -753,7 +739,7 @@
 										bind:value={startDate}
 										size="sm"
 										disabled={isSaving}
-										class="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+										class="bg-surface-clarity dark:bg-surface-elevated border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-accent-orange dark:focus:ring-accent-orange"
 									/>
 								</div>
 
@@ -761,7 +747,7 @@
 								<div>
 									<label
 										for="end-date"
-										class="text-xs text-gray-500 dark:text-gray-400 mb-1 block"
+										class="text-xs text-slate-500 dark:text-slate-400 mb-1 block"
 									>
 										End Date
 									</label>
@@ -772,7 +758,7 @@
 										min={startDate}
 										size="sm"
 										disabled={isSaving}
-										class="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+										class="bg-surface-clarity dark:bg-surface-elevated border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-accent-orange dark:focus:ring-accent-orange"
 									/>
 								</div>
 							</div>
@@ -782,51 +768,61 @@
 
 				{#if error}
 					<div
-						class="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg"
+						class="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded"
 					>
 						<p class="text-sm text-red-600 dark:text-red-400">{error}</p>
 					</div>
 				{/if}
 			</div>
+		{/if}
+	{/snippet}
 
-			<!-- Footer Actions -->
-			<div
-				class="flex flex-col sm:flex-row justify-end gap-3 px-4 sm:px-6 lg:px-8 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50"
-			>
-				<Button
-					type="button"
-					variant="ghost"
-					onclick={handleClose}
-					disabled={isSaving}
-					class="order-2 sm:order-1 w-full sm:w-auto"
+	{#snippet footer()}
+		{#if project}
+			<!-- Footer Actions - buttons on one row, smaller on mobile -->
+			<form onsubmit={handleSubmit} class="contents">
+				<div
+					class="flex flex-row items-center justify-end gap-2 sm:gap-4 p-2 sm:p-6 border-t border-gray-200 dark:border-gray-700 bg-surface-panel dark:bg-slate-900/30 dither-surface"
 				>
-					Cancel
-				</Button>
-				<Button
-					type="submit"
-					variant="primary"
-					disabled={isSaving}
-					class="order-1 sm:order-2 w-full sm:w-auto"
-				>
-					{isSaving ? 'Saving...' : 'Save Changes'}
-				</Button>
-			</div>
-		</form>
-	{/if}
+					<Button
+						type="button"
+						variant="ghost"
+						size="sm"
+						onclick={handleClose}
+						disabled={isSaving}
+						class="text-xs sm:text-sm px-2 sm:px-4"
+					>
+						Cancel
+					</Button>
+					<Button
+						type="submit"
+						variant="primary"
+						size="sm"
+						loading={isSaving}
+						disabled={isSaving}
+						class="text-xs sm:text-sm px-2 sm:px-4"
+					>
+						<span class="hidden sm:inline">Save Changes</span>
+						<span class="sm:hidden">Save</span>
+					</Button>
+				</div>
+			</form>
+		{/if}
+	{/snippet}
 </Modal>
 
 <style>
-	/* Mobile grab handle */
+	/* Mobile grab handle - Scratchpad Ops styling */
 	:global(.modal-grab-handle) {
 		width: 36px;
 		height: 4px;
-		background: rgb(209 213 219);
+		background: rgb(62 68 89 / 0.4); /* slate-500 */
 		border-radius: 2px;
 		margin: 0.5rem auto 1rem;
 	}
 
 	:global(.dark .modal-grab-handle) {
-		background: rgb(75 85 99);
+		background: rgb(142 149 170 / 0.3); /* slate-400 */
 	}
 
 	/* Premium Apple-style shadows and effects */
@@ -845,18 +841,18 @@
 	:global(.modal-content textarea:focus),
 	:global(.modal-content select:focus) {
 		outline: none;
-		border-color: rgb(59, 130, 246);
+		border-color: var(--accent-orange);
 		box-shadow:
-			0 0 0 4px rgba(59, 130, 246, 0.1),
+			0 0 0 3px rgba(216, 138, 58, 0.15),
 			0 2px 4px 0 rgba(0, 0, 0, 0.05);
 	}
 
 	:global(.dark .modal-content input:focus),
 	:global(.dark .modal-content textarea:focus),
 	:global(.dark .modal-content select:focus) {
-		border-color: rgb(96, 165, 250);
+		border-color: var(--accent-orange);
 		box-shadow:
-			0 0 0 4px rgba(96, 165, 250, 0.15),
+			0 0 0 3px rgba(216, 138, 58, 0.25),
 			0 2px 4px 0 rgba(0, 0, 0, 0.2);
 	}
 

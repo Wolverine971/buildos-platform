@@ -35,6 +35,41 @@ export async function getLegacyMapping(
 	return (data as LegacyMappingRow) ?? null;
 }
 
+/**
+ * Batch lookup of existing legacy mappings.
+ * Returns a Map from legacy_id to onto_id for efficient idempotency checks.
+ */
+export async function getLegacyMappingsBatch(
+	client: TypedSupabaseClient,
+	legacyTable: string,
+	legacyIds: string[]
+): Promise<Map<string, string>> {
+	if (legacyIds.length === 0) {
+		return new Map();
+	}
+
+	const { data, error } = await client
+		.from('legacy_entity_mappings')
+		.select('legacy_id, onto_id')
+		.eq('legacy_table', legacyTable)
+		.in('legacy_id', legacyIds);
+
+	if (error) {
+		throw new Error(
+			`[LegacyMapping] Failed to batch fetch mappings for ${legacyTable} - ${error.message}`
+		);
+	}
+
+	const result = new Map<string, string>();
+	for (const row of data ?? []) {
+		if (row.onto_id) {
+			result.set(row.legacy_id, row.onto_id);
+		}
+	}
+
+	return result;
+}
+
 export async function upsertLegacyMapping(
 	client: TypedSupabaseClient,
 	input: UpsertLegacyMappingInput

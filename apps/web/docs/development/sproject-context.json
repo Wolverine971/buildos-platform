@@ -52,7 +52,7 @@
 		{
 			"file": "src/lib/components/layout/Navigation.svelte",
 			"type": "component",
-			"components": ["BrainDumpModal", "AgentChatModal"]
+			"components": ["AgentChatModal"]
 		},
 		{
 			"file": "src/lib/components/notifications/MinimizedNotification.svelte",
@@ -75,6 +75,11 @@
 				"CalendarAnalysisModalContent",
 				"TimeBlockModalContent"
 			]
+		},
+		{
+			"file": "src/lib/components/ontology/FSMStateBar.svelte",
+			"type": "component",
+			"components": ["Modal"]
 		},
 		{
 			"file": "src/lib/components/project/PhasesSection.svelte",
@@ -115,7 +120,7 @@
 		{
 			"file": "src/routes/ontology/templates/+page.svelte",
 			"type": "page",
-			"components": ["TemplateDetailModal"]
+			"components": ["TemplateDetailModal", "ConfirmationModal"]
 		},
 		{
 			"file": "src/routes/projects/[id]/+page.svelte",
@@ -147,6 +152,24 @@
 				"GoalCreateModal",
 				"GoalEditModal",
 				"GoalReverseEngineerModal"
+			]
+		},
+		{
+			"file": "src/routes/ontology/projects-v2/[id]/+page.svelte",
+			"type": "page",
+			"components": [
+				"FSMStateBar",
+				"ConfirmationModal",
+				"OntologyProjectEditModal",
+				"TaskCreateModal",
+				"TaskEditModal",
+				"OutputCreateModal",
+				"OutputEditModal",
+				"PlanCreateModal",
+				"PlanEditModal",
+				"GoalCreateModal",
+				"GoalEditModal",
+				"DocumentModal"
 			]
 		},
 		{
@@ -753,18 +776,19 @@
 	],
 	"dependencies": {
 		"src/routes/+page.svelte": ["src/lib/components/dashboard/Dashboard.svelte"],
-		"src/lib/components/layout/Navigation.svelte": [
-			"src/lib/components/brain-dump/BrainDumpModal.svelte"
-		],
 		"src/lib/components/notifications/NotificationModal.svelte": [
 			"src/lib/components/notifications/types/brain-dump/BrainDumpModalContent.svelte"
 		],
 		"src/routes/projects/[id]/+page.svelte": [
 			"src/lib/components/project/ProjectSynthesis.svelte",
 			"src/lib/components/project/PhasesSection.svelte"
+		],
+		"src/routes/ontology/projects-v2/[id]/+page.svelte": [
+			"src/lib/components/ontology/FSMStateBar.svelte"
 		]
 	},
 	"unusedComponents": [
+		"src/lib/components/brain-dump/BrainDumpModal.svelte",
 		"src/lib/components/layout/Navigation.svelte",
 		"src/lib/components/notifications/MinimizedNotification.svelte",
 		"src/lib/components/notifications/NotificationModal.svelte",

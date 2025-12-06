@@ -1559,7 +1559,7 @@ Before moving to implementation:
 
 ## Approval Sign-Off
 
-**Approved by:** ********\_********
-**Date:** ********\_********
+**Approved by:** **\*\*\*\***\_**\*\*\*\***
+**Date:** **\*\*\*\***\_**\*\*\*\***
 **Priority:** [ ] Phase 1 only [ ] Phase 1 + 2 [ ] All phases
-**Notes:** ********\_********
+**Notes:** **\*\*\*\***\_**\*\*\*\***

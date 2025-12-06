@@ -60,7 +60,7 @@
 		'flex gap-4',
 		orientation === 'vertical' ? 'flex-col' : 'flex-row flex-wrap',
 		// Add border and padding for better visual grouping
-		'border border-gray-200 dark:border-gray-700 rounded-lg p-4',
+		'border-2 border-gray-200 dark:border-gray-700 rounded p-4 shadow-subtle',
 		error ? 'border-red-500 dark:border-red-400' : '',
 		disabled ? 'opacity-50' : ''
 	);

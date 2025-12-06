@@ -15,10 +15,11 @@
 	- Task Edit Inspiration: /apps/web/src/lib/components/ontology/TaskEditModal.svelte
 -->
 <script lang="ts">
+	import { browser } from '$app/environment';
 	import {
 		ArrowLeft,
 		Calendar,
-		CheckCircle2,
+		CircleCheck,
 		ChevronRight,
 		Clock,
 		Layers,
@@ -77,7 +78,7 @@
 	const manualTemplateOption = {
 		id: '__manual_plan__',
 		name: 'Design from scratch',
-		type_key: 'plan.basic',
+		type_key: 'plan.phase.base',
 		metadata: {
 			category: 'Custom',
 			description: 'Start with a blank canvas and tailor the plan to your workflow.',
@@ -87,7 +88,7 @@
 		default_props: {}
 	};
 
-	const templateSource = $derived(() => {
+	const templateSource = $derived.by(() => {
 		const list = Array.isArray(templates) ? [...templates] : [];
 		if (!list.some((tpl) => tpl?.id === manualTemplateOption.id)) {
 			list.push(manualTemplateOption);
@@ -95,10 +96,11 @@
 		return list;
 	});
 
-	const filteredTemplates = $derived(() => {
+	const filteredTemplates = $derived.by(() => {
 		const query = templateSearch.trim().toLowerCase();
-		if (!query) return templateSource;
-		return templateSource.filter((template) => {
+		const source = templateSource;
+		if (!query) return source;
+		return source.filter((template) => {
 			const values = [
 				template?.name,
 				template?.metadata?.description,
@@ -121,12 +123,10 @@
 		}, {});
 	}
 
-	const templateCategories = $derived(() => groupTemplates(filteredTemplates));
-	const templateCategoryCount = $derived(
-		() => Object.keys(groupTemplates(templateSource)).length
-	);
+	const templateCategories = $derived(groupTemplates(filteredTemplates));
+	const templateCategoryCount = $derived(Object.keys(groupTemplates(templateSource)).length);
 
-	const dateError = $derived(() => {
+	const dateError = $derived.by(() => {
 		if (startDate && endDate) {
 			const start = new Date(startDate);
 			const end = new Date(endDate);
@@ -137,21 +137,21 @@
 		return '';
 	});
 
-	const durationLabel = $derived(() => {
+	const durationLabel = $derived.by(() => {
 		const durationDays = computeDurationDays(startDate, endDate);
 		return durationDays > 0
 			? `${durationDays} day${durationDays === 1 ? '' : 's'}`
 			: 'Flexible timeline';
 	});
 
-	const startLabel = $derived(() => formatDateOnly(startDate) ?? 'Not scheduled');
-	const endLabel = $derived(() => formatDateOnly(endDate) ?? 'Not scheduled');
-	const formattedStateLabel = $derived(() => formatStateLabel(stateKey));
+	const startLabel = $derived(formatDateOnly(startDate) ?? 'Not scheduled');
+	const endLabel = $derived(formatDateOnly(endDate) ?? 'Not scheduled');
+	const formattedStateLabel = $derived(formatStateLabel(stateKey));
 	const canSubmit = $derived(
 		Boolean(name.trim()) && Boolean(selectedTemplate) && !isSaving && !dateError
 	);
 
-	const selectedTemplateTags = $derived(() => {
+	const selectedTemplateTags = $derived.by(() => {
 		const tags = selectedTemplate?.metadata?.tags;
 		if (Array.isArray(tags)) {
 			return tags.slice(0, 4).map((tag) => String(tag));
@@ -159,8 +159,11 @@
 		return [];
 	});
 
+	// Load templates when modal opens (client-side only)
 	$effect(() => {
-		loadTemplates();
+		if (browser) {
+			loadTemplates();
+		}
 	});
 
 	async function loadTemplates() {
@@ -251,7 +254,7 @@
 		try {
 			const body = {
 				project_id: projectId,
-				type_key: selectedTemplate?.type_key || 'plan.basic',
+				type_key: selectedTemplate?.type_key || 'plan.phase.base',
 				name: name.trim(),
 				description: description.trim() || null,
 				state_key: stateKey || 'draft',
@@ -291,52 +294,53 @@
 
 <Modal
 	isOpen={true}
-	title={showTemplateSelection ? 'Plan Templates' : 'Design Plan Blueprint'}
 	{onClose}
 	size="xl"
 	closeOnEscape={!isSaving}
+	showCloseButton={false}
 >
-	<div class="px-4 sm:px-6 py-6 space-y-6">
+	{#snippet header()}
+		<!-- Custom gradient header - grey/dark grey -->
 		<div
-			class="rounded-2xl border border-blue-200 dark:border-blue-900/40 bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 dark:from-blue-900/20 dark:via-indigo-900/30 dark:to-purple-900/30 px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 dither-gradient"
+			class="flex-shrink-0 bg-gradient-to-r from-gray-600 via-gray-700 to-gray-800 dark:from-gray-700 dark:via-gray-800 dark:to-gray-900 text-white px-3 py-3 sm:px-6 sm:py-5 flex items-start justify-between gap-2 sm:gap-4 dither-gradient"
 		>
-			<div>
-				<p
-					class="text-xs font-semibold uppercase tracking-[0.2em] text-blue-500 dark:text-blue-300"
-				>
-					{showTemplateSelection
-						? 'Step 1 • Choose a template'
-						: 'Step 2 • Configure plan details'}
+			<div class="space-y-1 sm:space-y-2 min-w-0 flex-1">
+				<p class="text-[10px] sm:text-xs font-semibold uppercase tracking-[0.3em] sm:tracking-[0.4em] text-white/70">
+					{showTemplateSelection ? 'New Plan • Step 1' : 'New Plan • Step 2'}
 				</p>
-				<h2 class="text-2xl font-semibold text-gray-900 dark:text-white mt-1">
-					{showTemplateSelection
-						? 'Blueprint how your team executes'
-						: 'Finalize your execution blueprint'}
+				<h2 class="text-lg sm:text-2xl font-bold leading-tight truncate">
+					{showTemplateSelection ? 'Select Template' : (name || 'Configure Blueprint')}
 				</h2>
-				<p class="text-sm text-gray-700 dark:text-gray-300 max-w-2xl">
-					Structure initiatives with high-density planning. Templates give you curated
-					best practices, then tune scope, dates, and states before launch.
-				</p>
-			</div>
-			<div class="flex flex-wrap gap-3">
-				<div
-					class="flex items-center gap-2 rounded-full bg-white/70 dark:bg-gray-900/60 border border-white/60 dark:border-gray-700 px-4 py-2 shadow-sm"
-				>
-					<Sparkles class="w-4 h-4 text-blue-500" />
-					<span class="text-sm font-semibold text-gray-700 dark:text-gray-200">
+				<div class="flex flex-wrap items-center gap-1.5 sm:gap-3 text-xs sm:text-sm">
+					<span class="px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-semibold bg-white/20">
 						{templateSource.length} templates
 					</span>
-				</div>
-				<div
-					class="flex items-center gap-2 rounded-full bg-white/70 dark:bg-gray-900/60 border border-white/60 dark:border-gray-700 px-4 py-2 shadow-sm"
-				>
-					<Layers class="w-4 h-4 text-indigo-500" />
-					<span class="text-sm font-semibold text-gray-700 dark:text-gray-200">
+					<span class="hidden sm:inline px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-semibold bg-white/20">
 						{templateCategoryCount} categories
 					</span>
 				</div>
 			</div>
+			<Button
+				variant="ghost"
+				size="sm"
+				onclick={onClose}
+				class="text-white/80 hover:text-white shrink-0 !p-1.5 sm:!p-2"
+				disabled={isSaving}
+			>
+				<svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						stroke-width="2"
+						d="M6 18L18 6M6 6l12 12"
+					></path>
+				</svg>
+			</Button>
 		</div>
+	{/snippet}
+
+	{#snippet children()}
+	<div class="px-3 py-3 sm:px-6 sm:py-6 space-y-4 sm:space-y-6">
 
 		<div class="relative min-h-[420px]">
 			{#key showTemplateSelection}
@@ -348,7 +352,9 @@
 					{#if showTemplateSelection}
 						{#if isLoadingTemplates}
 							<div class="flex items-center justify-center py-24">
-								<Loader class="w-8 h-8 animate-spin text-gray-400" />
+								<Loader
+									class="w-8 h-8 animate-spin text-gray-400 dark:text-gray-500"
+								/>
 							</div>
 						{:else if templateError}
 							<div class="text-center py-16 space-y-4">
@@ -395,7 +401,7 @@
 
 								{#if filteredTemplates.length === 0}
 									<div
-										class="text-center py-20 border border-dashed border-gray-300 dark:border-gray-700 rounded-xl"
+										class="text-center py-20 border border-dashed border-gray-300 dark:border-gray-600 rounded"
 									>
 										<p class="text-gray-600 dark:text-gray-400">
 											No templates match that search.
@@ -455,7 +461,7 @@
 																			</h5>
 																		</div>
 																		<ChevronRight
-																			class="w-5 h-5 text-gray-400 group-hover:text-blue-500 transition-colors"
+																			class="w-5 h-5 text-gray-400 group-hover:text-accent-blue transition-colors"
 																		/>
 																	</div>
 																	<p
@@ -516,7 +522,7 @@
 									>
 										<div>
 											<p
-												class="text-xs font-semibold uppercase tracking-[0.3em] text-blue-600 dark:text-blue-300"
+												class="text-xs font-semibold uppercase tracking-[0.3em] text-accent-blue"
 											>
 												Blueprint details
 											</p>
@@ -609,13 +615,13 @@
 										<CardBody class="space-y-3">
 											<div class="flex items-center gap-3">
 												<div
-													class="rounded-full bg-blue-50 dark:bg-blue-900/20 p-2"
+													class="rounded-full bg-blue-50 dark:bg-blue-900/30 p-2"
 												>
-													<Calendar class="w-4 h-4 text-blue-600" />
+													<Calendar class="w-4 h-4 text-accent-blue" />
 												</div>
 												<div>
 													<p
-														class="text-xs uppercase tracking-[0.4em] text-gray-400"
+														class="text-xs uppercase tracking-[0.4em] text-gray-500 dark:text-gray-400"
 													>
 														Duration
 													</p>
@@ -628,10 +634,10 @@
 											</div>
 											<div class="grid grid-cols-2 gap-3 text-sm">
 												<div
-													class="rounded-lg bg-gray-50 dark:bg-gray-800/70 p-3 border border-gray-200 dark:border-gray-700"
+													class="rounded bg-surface-panel p-3 border border-gray-200 dark:border-gray-600/30"
 												>
 													<p
-														class="text-xs uppercase tracking-[0.3em] text-gray-500"
+														class="text-xs uppercase tracking-[0.3em] text-gray-500 dark:text-gray-400"
 													>
 														Start
 													</p>
@@ -642,10 +648,10 @@
 													</p>
 												</div>
 												<div
-													class="rounded-lg bg-gray-50 dark:bg-gray-800/70 p-3 border border-gray-200 dark:border-gray-700"
+													class="rounded bg-surface-panel p-3 border border-gray-200 dark:border-gray-600/30"
 												>
 													<p
-														class="text-xs uppercase tracking-[0.3em] text-gray-500"
+														class="text-xs uppercase tracking-[0.3em] text-gray-500 dark:text-gray-400"
 													>
 														End
 													</p>
@@ -657,9 +663,9 @@
 												</div>
 											</div>
 											<div
-												class="rounded-lg bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border border-green-200 dark:border-green-800/40 px-3 py-2 flex items-start gap-2 dither-soft"
+												class="rounded bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border border-green-200 dark:border-green-800/40 px-3 py-2 flex items-start gap-2 dither-soft"
 											>
-												<CheckCircle2
+												<CircleCheck
 													class="w-4 h-4 text-green-600 mt-0.5"
 												/>
 												<p
@@ -694,7 +700,7 @@
 											<div class="flex flex-wrap gap-2">
 												{#if selectedTemplate?.metadata?.typical_scope}
 													<span
-														class="text-xs font-semibold text-gray-700 dark:text-gray-300 rounded-full bg-gray-100 dark:bg-gray-800 px-3 py-1"
+														class="text-xs font-semibold text-gray-600 dark:text-gray-300 rounded-full bg-surface-panel px-3 py-1"
 													>
 														Scope: {selectedTemplate.metadata
 															.typical_scope}
@@ -702,7 +708,7 @@
 												{/if}
 												{#each selectedTemplateTags as tag}
 													<span
-														class="text-xs font-semibold text-gray-700 dark:text-gray-300 rounded-full bg-gray-100 dark:bg-gray-800 px-3 py-1"
+														class="text-xs font-semibold text-gray-600 dark:text-gray-300 rounded-full bg-surface-panel px-3 py-1"
 													>
 														#{tag}
 													</span>
@@ -717,9 +723,9 @@
 												</p>
 												<p>
 													Type key: <span
-														class="font-mono text-[11px] text-gray-500"
+														class="font-mono text-[11px] text-gray-500 dark:text-gray-400"
 														>{selectedTemplate?.type_key ||
-															'plan.basic'}</span
+															'plan.phase.base'}</span
 													>
 												</p>
 											</div>
@@ -730,30 +736,33 @@
 
 							{#if error}
 								<div
-									class="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700 dark:border-red-800/60 dark:bg-red-900/20 dark:text-red-200"
+									class="rounded border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700 dark:border-red-800/60 dark:bg-red-900/20 dark:text-red-200"
 								>
 									{error}
 								</div>
 							{/if}
 
 							<div
-								class="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3"
+								class="flex flex-row items-center justify-between gap-2 sm:gap-3"
 							>
 								<Button
 									variant="ghost"
 									type="button"
 									onclick={handleBackToTemplates}
+									class="text-xs sm:text-sm px-2 sm:px-4"
 								>
-									<ArrowLeft class="w-4 h-4 mr-1" />
-									Change template
+									<span class="hidden sm:inline">← Back</span>
+									<span class="sm:hidden">←</span>
 								</Button>
 								<Button
 									type="submit"
 									variant="primary"
 									loading={isSaving}
 									disabled={!canSubmit}
+									class="text-xs sm:text-sm px-2 sm:px-4"
 								>
-									Create plan
+									<span class="hidden sm:inline">Create Plan</span>
+									<span class="sm:hidden">Create</span>
 								</Button>
 							</div>
 						</form>
@@ -762,4 +771,5 @@
 			{/key}
 		</div>
 	</div>
+	{/snippet}
 </Modal>

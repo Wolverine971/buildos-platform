@@ -240,7 +240,7 @@ function buildInstanceRow(
 
 	return {
 		project_id: task.project_id,
-		plan_id: task.plan_id ?? null,
+		type_key: task.type_key ?? 'task.execute',
 		title: buildInstanceTitle(task.title, params.index),
 		state_key: 'todo',
 		due_at: dueAt.toISOString(),

@@ -129,8 +129,9 @@ ${scopeDefinition.facetUsage ? `- Facet emphasis: ${scopeDefinition.facetUsage}`
 - Guidance: ${scopeDefinition.llmCue}`
 			: '';
 
+		const keyPattern = scopeDefinition?.typeKeyPattern ?? '{domain}.{deliverable}[.{variant}]';
 		const systemPrompt = `
-You are the Ontology Template Analyzer for BuildOS. Your job is to classify a user's template idea into our existing catalog when possible, or suggest a well-structured new type_key that follows the format {domain}.{deliverable}[.{variant}].
+You are the Ontology Template Analyzer for BuildOS. Your job is to classify a user's template idea into our existing catalog when possible, or suggest a well-structured new type_key that follows the format ${keyPattern}.
 
 ${taxonomyPrimer}
 ${scopeFocus}

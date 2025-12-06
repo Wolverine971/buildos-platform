@@ -173,7 +173,7 @@
 						tempId: taskId,
 						title: 'New task',
 						description: '',
-						type_key: 'task.basic',
+						type_key: 'task.execute',
 						state_key: 'todo',
 						priority: 3
 					}
@@ -283,426 +283,504 @@
 	}
 </script>
 
-<Modal bind:isOpen={open} size="xl" title={`Reverse engineer ${goalName}`} onClose={handleClose}>
-	<div class="space-y-4 p-4 sm:p-6">
-		<section
-			class="rounded-2xl border border-gray-200 bg-white/90 shadow-lg shadow-gray-200/60 dark:border-gray-800 dark:bg-gray-950/70 dark:shadow-none"
+<Modal bind:isOpen={open} size="xl" onClose={handleClose} showCloseButton={false}>
+	{#snippet header()}
+		<!-- Custom gradient header - grey/dark grey -->
+		<div
+			class="flex-shrink-0 bg-gradient-to-r from-gray-600 via-gray-700 to-gray-800 dark:from-gray-700 dark:via-gray-800 dark:to-gray-900 text-white px-3 py-3 sm:px-6 sm:py-5 flex items-start justify-between gap-2 sm:gap-4 dither-gradient"
 		>
-			<div
-				class="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5"
-			>
-				<div class="space-y-1">
-					<p
-						class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 flex items-center gap-2"
-					>
-						<span class="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
-						Proposed milestones overview
-					</p>
-					<p class="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-white">
-						{editableMilestones.length} milestone{editableMilestones.length === 1
-							? ''
-							: 's'}{' '}
-						· {getTotalTaskCount()} task{getTotalTaskCount() === 1 ? '' : 's'}
-					</p>
-					<p class="text-sm text-gray-600 dark:text-gray-400">
-						Reverse engineered for <span class="font-medium">{goalName}</span>
-					</p>
-				</div>
-				<div class="flex flex-wrap gap-2 shrink-0">
-					<Button variant="secondary" size="sm" onclick={addMilestone}
-						>+ Add Milestone</Button
-					>
-					<Button variant="ghost" size="sm" onclick={handleClose}>Close</Button>
+			<div class="space-y-1 sm:space-y-2 min-w-0 flex-1">
+				<p class="text-[10px] sm:text-xs font-semibold uppercase tracking-[0.3em] sm:tracking-[0.4em] text-white/70">
+					Reverse Engineer
+				</p>
+				<h2 class="text-lg sm:text-2xl font-bold leading-tight truncate">
+					{goalName || 'Goal'}
+				</h2>
+				<div class="flex flex-wrap items-center gap-1.5 sm:gap-3 text-xs sm:text-sm">
+					<span class="px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-semibold bg-white/20">
+						{editableMilestones.length} milestone{editableMilestones.length === 1 ? '' : 's'}
+					</span>
+					<span class="px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-semibold bg-white/20">
+						{getTotalTaskCount()} task{getTotalTaskCount() === 1 ? '' : 's'}
+					</span>
 				</div>
 			</div>
-			{#if reasoning}
-				<div class="border-t border-gray-100 px-4 pb-4 sm:px-5 dark:border-gray-800">
-					<div
-						class="rounded-xl border border-blue-100 bg-gradient-to-r from-blue-50/90 to-indigo-50/90 p-3.5 dither-soft text-sm text-blue-900 dark:border-blue-900/40 dark:from-blue-950/30 dark:to-indigo-950/30 dark:text-blue-100"
-					>
+			<Button
+				variant="ghost"
+				size="sm"
+				onclick={handleClose}
+				class="text-white/80 hover:text-white shrink-0 !p-1.5 sm:!p-2"
+				disabled={loading}
+			>
+				<svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						stroke-width="2"
+						d="M6 18L18 6M6 6l12 12"
+					></path>
+				</svg>
+			</Button>
+		</div>
+	{/snippet}
+
+	{#snippet children()}
+		<div class="space-y-4 px-3 py-3 sm:px-6 sm:py-6">
+			<section
+				class="rounded border border-gray-200 dark:border-gray-700 bg-surface-elevated dark:bg-surface-panel shadow-elevated"
+			>
+				<div
+					class="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5"
+				>
+					<div class="space-y-1">
 						<p
-							class="text-xs font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-200 flex items-center gap-2"
+							class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 flex items-center gap-2"
 						>
-							<span class="text-base">🧠</span>
-							Model reasoning
+							<span class="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+							Proposed milestones overview
 						</p>
-						<p class="mt-2 whitespace-pre-wrap leading-relaxed text-sm">{reasoning}</p>
+						<p class="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-white">
+							{editableMilestones.length} milestone{editableMilestones.length === 1
+								? ''
+								: 's'}{' '}
+							· {getTotalTaskCount()} task{getTotalTaskCount() === 1 ? '' : 's'}
+						</p>
+						<p class="text-sm text-gray-600 dark:text-gray-400">
+							Reverse engineered for <span class="font-medium">{goalName}</span>
+						</p>
+					</div>
+					<div class="flex flex-wrap gap-2 shrink-0">
+						<Button variant="secondary" size="sm" onclick={addMilestone}
+							>+ Add Milestone</Button
+						>
+						<Button variant="ghost" size="sm" onclick={handleClose}>Close</Button>
 					</div>
 				</div>
-			{/if}
-		</section>
-
-		<div class="space-y-3 overflow-y-auto pr-1 max-h-[65vh]">
-			{#if editableMilestones.length === 0}
-				<div
-					class="rounded-2xl border border-dashed border-gray-300 bg-white/60 p-10 text-center text-sm text-gray-500 dark:border-gray-700 dark:bg-gray-900/50 dark:text-gray-400"
-				>
-					No milestones yet. Use “Add milestone” to capture the model’s proposal.
-				</div>
-			{:else}
-				{#each editableMilestones as milestone, index (milestone.tempId)}
-					<div
-						class="rounded-2xl border border-gray-200 bg-white/95 shadow-sm transition-shadow dark:border-gray-800 dark:bg-gray-950/60 hover:shadow-md"
-					>
-						<button
-							type="button"
-							class="w-full rounded-2xl p-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 sm:p-5"
-							onclick={() => toggleMilestoneExpansion(milestone.tempId)}
+				{#if reasoning}
+					<div class="border-t border-gray-200 dark:border-gray-700 px-4 pb-4 sm:px-5">
+						<div
+							class="rounded border border-gray-200 dark:border-gray-700 bg-surface-clarity dark:bg-surface-elevated p-3.5 dither-soft text-sm text-slate-900 dark:text-slate-100"
 						>
-							<div
-								class="flex items-center gap-2 text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400"
+							<p
+								class="text-xs font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-200 flex items-center gap-2"
 							>
-								<Layers
-									class="h-4 w-4 text-gray-400 dark:text-gray-500"
-									aria-hidden="true"
-								/>
-								<span>Milestone {index + 1}</span>
-							</div>
-							<p class="mt-2 text-lg font-semibold text-gray-900 dark:text-white">
-								{milestone.title || 'Untitled milestone'}
+								<span class="text-base">🧠</span>
+								Model reasoning
 							</p>
-							<p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-								{milestone.summary || 'Add a summary to clarify scope'}
+							<p class="mt-2 whitespace-pre-wrap leading-relaxed text-sm">
+								{reasoning}
 							</p>
-							<div
-								class="mt-3 flex flex-wrap items-center gap-4 text-xs text-gray-500 dark:text-gray-400"
-							>
-								<span class="inline-flex items-center gap-1">
-									<Calendar
-										class="h-3.5 w-3.5 text-gray-400"
-										aria-hidden="true"
-									/>
-									{formatDateForDisplay(milestone.due_at)}
-								</span>
-								<span class="inline-flex items-center gap-1">
-									<Target class="h-3.5 w-3.5 text-gray-400" aria-hidden="true" />
-									{milestone.tasks.length} task{milestone.tasks.length === 1
-										? ''
-										: 's'}
-								</span>
-								<span class="ml-auto inline-flex items-center gap-1 text-gray-400">
-									{isMilestoneExpanded(milestone.tempId) ? 'Hide' : 'Expand'}
-									<ChevronDown
-										class={`h-4 w-4 transition-transform duration-200 ${isMilestoneExpanded(milestone.tempId) ? 'rotate-180' : ''}`}
-										aria-hidden="true"
-									/>
-								</span>
-							</div>
-						</button>
+						</div>
+					</div>
+				{/if}
+			</section>
 
-						{#if isMilestoneExpanded(milestone.tempId)}
-							<div
-								class="rounded-b-2xl border-t border-gray-100 bg-gradient-to-b from-gray-50 to-white px-4 pb-5 pt-4 dither-surface dark:border-gray-800 dark:from-gray-950/40 dark:to-gray-900/60 sm:px-6"
+			<div class="space-y-3 overflow-y-auto pr-1 max-h-[65vh]">
+				{#if editableMilestones.length === 0}
+					<div
+						class="rounded border border-dashed border-gray-200 dark:border-gray-700 bg-surface-clarity dark:bg-surface-elevated p-10 text-center text-sm text-slate-600 dark:text-slate-400"
+					>
+						No milestones yet. Use “Add milestone” to capture the model’s proposal.
+					</div>
+				{:else}
+					{#each editableMilestones as milestone, index (milestone.tempId)}
+						<div
+							class="rounded border border-gray-200 dark:border-gray-700 bg-surface-elevated dark:bg-surface-panel shadow-subtle transition-shadow hover:shadow-elevated"
+						>
+							<button
+								type="button"
+								class="w-full rounded p-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-orange sm:p-5"
+								onclick={() => toggleMilestoneExpansion(milestone.tempId)}
 							>
-								<div class="grid gap-3 md:grid-cols-3">
-									<label
-										class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400"
+								<div
+									class="flex items-center gap-2 text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400"
+								>
+									<Layers
+										class="h-4 w-4 text-gray-400 dark:text-gray-500"
+										aria-hidden="true"
+									/>
+									<span>Milestone {index + 1}</span>
+								</div>
+								<p class="mt-2 text-lg font-semibold text-gray-900 dark:text-white">
+									{milestone.title || 'Untitled milestone'}
+								</p>
+								<p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
+									{milestone.summary || 'Add a summary to clarify scope'}
+								</p>
+								<div
+									class="mt-3 flex flex-wrap items-center gap-4 text-xs text-gray-500 dark:text-gray-400"
+								>
+									<span class="inline-flex items-center gap-1">
+										<Calendar
+											class="h-3.5 w-3.5 text-gray-400"
+											aria-hidden="true"
+										/>
+										{formatDateForDisplay(milestone.due_at)}
+									</span>
+									<span class="inline-flex items-center gap-1">
+										<Target
+											class="h-3.5 w-3.5 text-gray-400"
+											aria-hidden="true"
+										/>
+										{milestone.tasks.length} task{milestone.tasks.length === 1
+											? ''
+											: 's'}
+									</span>
+									<span
+										class="ml-auto inline-flex items-center gap-1 text-gray-400"
 									>
-										<span class="mb-1 block">Title</span>
-										<input
-											class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
-											value={milestone.title}
+										{isMilestoneExpanded(milestone.tempId) ? 'Hide' : 'Expand'}
+										<ChevronDown
+											class={`h-4 w-4 transition-transform duration-200 ${isMilestoneExpanded(milestone.tempId) ? 'rotate-180' : ''}`}
+											aria-hidden="true"
+										/>
+									</span>
+								</div>
+							</button>
+
+							{#if isMilestoneExpanded(milestone.tempId)}
+								<div
+									class="rounded-b border-t border-gray-200 dark:border-gray-700 bg-surface-clarity dark:bg-surface-elevated px-4 pb-5 pt-4 dither-soft sm:px-6"
+								>
+									<div class="grid gap-3 md:grid-cols-3">
+										<label
+											class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400"
+										>
+											<span class="mb-1 block">Title</span>
+											<input
+												class="w-full rounded border border-gray-200 dark:border-gray-700 bg-surface-clarity dark:bg-surface-elevated px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:border-accent-orange focus:ring-2 focus:ring-accent-orange dither-soft"
+												value={milestone.title}
+												oninput={(event) =>
+													updateMilestoneField(
+														milestone.tempId,
+														'title',
+														event.currentTarget.value
+													)}
+											/>
+										</label>
+										<label
+											class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400"
+										>
+											<span class="mb-1 block">Due date</span>
+											<input
+												type="date"
+												class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+												value={milestone.due_at ?? ''}
+												oninput={(event) =>
+													updateMilestoneField(
+														milestone.tempId,
+														'due_at',
+														event.currentTarget.value || null
+													)}
+											/>
+										</label>
+										<label
+											class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400"
+										>
+											<span class="mb-1 block">Type key</span>
+											<input
+												class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-mono text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+												value={milestone.type_key ?? ''}
+												oninput={(event) =>
+													updateMilestoneField(
+														milestone.tempId,
+														'type_key',
+														event.currentTarget.value || null
+													)}
+											/>
+										</label>
+									</div>
+									<label
+										class="mt-3 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400"
+									>
+										<span class="mb-1 block">Summary</span>
+										<Textarea
+											class="w-full"
+											rows={3}
+											value={milestone.summary ?? ''}
 											oninput={(event) =>
 												updateMilestoneField(
 													milestone.tempId,
-													'title',
+													'summary',
 													event.currentTarget.value
 												)}
 										/>
 									</label>
-									<label
-										class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400"
-									>
-										<span class="mb-1 block">Due date</span>
-										<input
-											type="date"
-											class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
-											value={milestone.due_at ?? ''}
-											oninput={(event) =>
-												updateMilestoneField(
-													milestone.tempId,
-													'due_at',
-													event.currentTarget.value || null
-												)}
-										/>
-									</label>
-									<label
-										class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400"
-									>
-										<span class="mb-1 block">Type key</span>
-										<input
-											class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-mono text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
-											value={milestone.type_key ?? ''}
-											oninput={(event) =>
-												updateMilestoneField(
-													milestone.tempId,
-													'type_key',
-													event.currentTarget.value || null
-												)}
-										/>
-									</label>
-								</div>
-								<label
-									class="mt-3 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400"
-								>
-									<span class="mb-1 block">Summary</span>
-									<Textarea
-										class="w-full"
-										rows={3}
-										value={milestone.summary ?? ''}
-										oninput={(event) =>
-											updateMilestoneField(
-												milestone.tempId,
-												'summary',
-												event.currentTarget.value
-											)}
-									/>
-								</label>
-
-								<div
-									class="mt-4 space-y-4 rounded-2xl border border-gray-200 bg-white/90 p-4 dark:border-gray-800 dark:bg-gray-950/50"
-								>
-									<div class="flex flex-wrap items-center justify-between gap-3">
-										<div>
-											<p
-												class="text-sm font-semibold text-gray-900 dark:text-white"
-											>
-												Tasks
-											</p>
-											<p class="text-xs text-gray-500 dark:text-gray-400">
-												Expand a task row to edit details inline.
-											</p>
-										</div>
-										<div class="flex flex-wrap gap-2">
-											<Button
-												variant="secondary"
-												size="sm"
-												onclick={() => addTask(milestone.tempId)}
-											>
-												Add task
-											</Button>
-											<Button
-												variant="ghost"
-												size="sm"
-												onclick={() => removeMilestone(milestone.tempId)}
-											>
-												Remove milestone
-											</Button>
-										</div>
-									</div>
 
 									<div
-										class="rounded-xl border border-gray-100 bg-white/95 dark:border-gray-800 dark:bg-gray-900/50"
+										class="mt-4 space-y-4 rounded border border-gray-200 dark:border-gray-700 bg-surface-clarity dark:bg-surface-elevated p-4"
 									>
-										{#if milestone.tasks.length === 0}
-											<div
-												class="p-6 text-center text-sm text-gray-500 dark:text-gray-400"
-											>
-												No tasks yet. Use “Add task” to break down the
-												milestone.
-											</div>
-										{:else}
-											{#each milestone.tasks as task, taskIndex (task.tempId)}
-												<div
-													class="border-b border-gray-100 last:border-b-0 dark:border-gray-800"
+										<div
+											class="flex flex-wrap items-center justify-between gap-3"
+										>
+											<div>
+												<p
+													class="text-sm font-semibold text-gray-900 dark:text-white"
 												>
-													<button
-														type="button"
-														class="w-full px-4 py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-														onclick={() =>
-															toggleTaskExpansion(
-																milestone.tempId,
-																task.tempId
-															)}
-													>
-														<div
-															class="flex items-center gap-2 text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400"
-														>
-															<span>Task {taskIndex + 1}</span>
-															<span
-																class="h-1 w-1 rounded-full bg-gray-300 dark:bg-gray-600"
-															/>
-															<span class="capitalize"
-																>{task.state_key?.replace(
-																	'_',
-																	' '
-																)}</span
-															>
-														</div>
-														<p
-															class="mt-1 text-sm font-semibold text-gray-900 dark:text-white"
-														>
-															{task.title || 'Untitled task'}
-														</p>
-														<p
-															class="text-xs text-gray-500 dark:text-gray-400"
-														>
-															{task.description ||
-																'Add description or acceptance criteria'}
-														</p>
-														<div
-															class="mt-2 flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400"
-														>
-															<span
-																class="rounded-full bg-gray-100 px-2 py-0.5 capitalize dark:bg-gray-800"
-															>
-																{task.state_key?.replace(
-																	'_',
-																	' '
-																) || 'todo'}
-															</span>
-															<span
-																class="rounded-full bg-gray-100 px-2 py-0.5 dark:bg-gray-800"
-															>
-																Priority {task.priority ?? '—'}
-															</span>
-															<ChevronRight
-																class={`ml-auto h-4 w-4 text-gray-400 transition-transform duration-200 ${isTaskExpanded(milestone.tempId, task.tempId) ? 'rotate-90' : ''}`}
-																aria-hidden="true"
-															/>
-														</div>
-													</button>
+													Tasks
+												</p>
+												<p class="text-xs text-gray-500 dark:text-gray-400">
+													Expand a task row to edit details inline.
+												</p>
+											</div>
+											<div class="flex flex-wrap gap-2">
+												<Button
+													variant="secondary"
+													size="sm"
+													onclick={() => addTask(milestone.tempId)}
+												>
+													Add task
+												</Button>
+												<Button
+													variant="ghost"
+													size="sm"
+													onclick={() =>
+														removeMilestone(milestone.tempId)}
+												>
+													Remove milestone
+												</Button>
+											</div>
+										</div>
 
-													{#if isTaskExpanded(milestone.tempId, task.tempId)}
-														<div
-															class="space-y-3 border-t border-gray-100 bg-gray-50 px-4 py-4 dark:border-gray-800 dark:bg-gray-900/50"
-														>
-															<div class="grid gap-3 md:grid-cols-2">
-																<label
-																	class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400"
-																>
-																	<span class="mb-1 block"
-																		>Title</span
-																	>
-																	<input
-																		class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
-																		value={task.title}
-																		oninput={(event) =>
-																			updateTaskField(
-																				milestone.tempId,
-																				task.tempId,
-																				'title',
-																				event.currentTarget
-																					.value
-																			)}
-																	/>
-																</label>
-																<label
-																	class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400"
-																>
-																	<span class="mb-1 block"
-																		>State</span
-																	>
-																	<select
-																		class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm capitalize text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
-																		value={task.state_key}
-																		onchange={(event) =>
-																			updateTaskField(
-																				milestone.tempId,
-																				task.tempId,
-																				'state_key',
-																				event.currentTarget
-																					.value
-																			)}
-																	>
-																		{#each TASK_STATES as stateOption}
-																			<option
-																				value={stateOption}
-																			>
-																				{stateOption.replace(
-																					'_',
-																					' '
-																				)}
-																			</option>
-																		{/each}
-																	</select>
-																</label>
-																<label
-																	class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400"
-																>
-																	<span class="mb-1 block"
-																		>Priority (1-5)</span
-																	>
-																	<input
-																		type="number"
-																		min="1"
-																		max="5"
-																		class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
-																		value={task.priority ?? ''}
-																		oninput={(event) =>
-																			updateTaskField(
-																				milestone.tempId,
-																				task.tempId,
-																				'priority',
-																				event.currentTarget
-																					.value
-																					? Number(
-																							event
-																								.currentTarget
-																								.value
-																						)
-																					: null
-																			)}
-																	/>
-																</label>
-															</div>
-															<label
-																class="block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400"
-															>
-																<span class="mb-1 block"
-																	>Description</span
-																>
-																<Textarea
-																	class="w-full"
-																	rows={3}
-																	value={task.description ?? ''}
-																	oninput={(event) =>
-																		updateTaskField(
-																			milestone.tempId,
-																			task.tempId,
-																			'description',
-																			event.currentTarget
-																				.value
-																		)}
-																/>
-															</label>
-															<div class="flex justify-end">
-																<Button
-																	variant="ghost"
-																	size="sm"
-																	onclick={() =>
-																		removeTask(
-																			milestone.tempId,
-																			task.tempId
-																		)}
-																>
-																	Remove task
-																</Button>
-															</div>
-														</div>
-													{/if}
+										<div
+											class="rounded-xl border border-gray-100 bg-white/95 dark:border-gray-800 dark:bg-gray-900/50"
+										>
+											{#if milestone.tasks.length === 0}
+												<div
+													class="p-6 text-center text-sm text-gray-500 dark:text-gray-400"
+												>
+													No tasks yet. Use “Add task” to break down the
+													milestone.
 												</div>
-											{/each}
-										{/if}
+											{:else}
+												{#each milestone.tasks as task, taskIndex (task.tempId)}
+													<div
+														class="border-b border-gray-100 last:border-b-0 dark:border-gray-800"
+													>
+														<button
+															type="button"
+															class="w-full px-4 py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+															onclick={() =>
+																toggleTaskExpansion(
+																	milestone.tempId,
+																	task.tempId
+																)}
+														>
+															<div
+																class="flex items-center gap-2 text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400"
+															>
+																<span>Task {taskIndex + 1}</span>
+																<span
+																	class="h-1 w-1 rounded-full bg-gray-300 dark:bg-gray-600"
+																/>
+																<span class="capitalize"
+																	>{task.state_key?.replace(
+																		'_',
+																		' '
+																	)}</span
+																>
+															</div>
+															<p
+																class="mt-1 text-sm font-semibold text-gray-900 dark:text-white"
+															>
+																{task.title || 'Untitled task'}
+															</p>
+															<p
+																class="text-xs text-gray-500 dark:text-gray-400"
+															>
+																{task.description ||
+																	'Add description or acceptance criteria'}
+															</p>
+															<div
+																class="mt-2 flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400"
+															>
+																<span
+																	class="rounded-full bg-gray-100 px-2 py-0.5 capitalize dark:bg-gray-800"
+																>
+																	{task.state_key?.replace(
+																		'_',
+																		' '
+																	) || 'todo'}
+																</span>
+																<span
+																	class="rounded-full bg-gray-100 px-2 py-0.5 dark:bg-gray-800"
+																>
+																	Priority {task.priority ?? '—'}
+																</span>
+																<ChevronRight
+																	class={`ml-auto h-4 w-4 text-gray-400 transition-transform duration-200 ${isTaskExpanded(milestone.tempId, task.tempId) ? 'rotate-90' : ''}`}
+																	aria-hidden="true"
+																/>
+															</div>
+														</button>
+
+														{#if isTaskExpanded(milestone.tempId, task.tempId)}
+															<div
+																class="space-y-3 border-t border-gray-100 bg-gray-50 px-4 py-4 dark:border-gray-800 dark:bg-gray-900/50"
+															>
+																<div
+																	class="grid gap-3 md:grid-cols-2"
+																>
+																	<label
+																		class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400"
+																	>
+																		<span class="mb-1 block"
+																			>Title</span
+																		>
+																		<input
+																			class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+																			value={task.title}
+																			oninput={(event) =>
+																				updateTaskField(
+																					milestone.tempId,
+																					task.tempId,
+																					'title',
+																					event
+																						.currentTarget
+																						.value
+																				)}
+																		/>
+																	</label>
+																	<label
+																		class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400"
+																	>
+																		<span class="mb-1 block"
+																			>State</span
+																		>
+																		<select
+																			class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm capitalize text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+																			value={task.state_key}
+																			onchange={(event) =>
+																				updateTaskField(
+																					milestone.tempId,
+																					task.tempId,
+																					'state_key',
+																					event
+																						.currentTarget
+																						.value
+																				)}
+																		>
+																			{#each TASK_STATES as stateOption}
+																				<option
+																					value={stateOption}
+																				>
+																					{stateOption.replace(
+																						'_',
+																						' '
+																					)}
+																				</option>
+																			{/each}
+																		</select>
+																	</label>
+																	<label
+																		class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400"
+																	>
+																		<span class="mb-1 block"
+																			>Priority (1-5)</span
+																		>
+																		<input
+																			type="number"
+																			min="1"
+																			max="5"
+																			class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+																			value={task.priority ??
+																				''}
+																			oninput={(event) =>
+																				updateTaskField(
+																					milestone.tempId,
+																					task.tempId,
+																					'priority',
+																					event
+																						.currentTarget
+																						.value
+																						? Number(
+																								event
+																									.currentTarget
+																									.value
+																							)
+																						: null
+																				)}
+																		/>
+																	</label>
+																</div>
+																<label
+																	class="block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400"
+																>
+																	<span class="mb-1 block"
+																		>Description</span
+																	>
+																	<Textarea
+																		class="w-full"
+																		rows={3}
+																		value={task.description ??
+																			''}
+																		oninput={(event) =>
+																			updateTaskField(
+																				milestone.tempId,
+																				task.tempId,
+																				'description',
+																				event.currentTarget
+																					.value
+																			)}
+																	/>
+																</label>
+																<div class="flex justify-end">
+																	<Button
+																		variant="ghost"
+																		size="sm"
+																		onclick={() =>
+																			removeTask(
+																				milestone.tempId,
+																				task.tempId
+																			)}
+																	>
+																		Remove task
+																	</Button>
+																</div>
+															</div>
+														{/if}
+													</div>
+												{/each}
+											{/if}
+										</div>
 									</div>
 								</div>
-							</div>
-						{/if}
-					</div>
-				{/each}
+							{/if}
+						</div>
+					{/each}
+				{/if}
+			</div>
+
+			{#if errorMessage}
+				<p class="text-sm text-rose-600 dark:text-rose-400">{errorMessage}</p>
 			{/if}
 		</div>
 
-		{#if errorMessage}
-			<p class="text-sm text-rose-600 dark:text-rose-400">{errorMessage}</p>
-		{/if}
-	</div>
+	{/snippet}
 
-	<div
-		slot="footer"
-		class="flex flex-col gap-2 px-4 py-4 sm:flex-row sm:justify-end sm:gap-3 sm:px-6"
-	>
-		<Button variant="ghost" onclick={handleClose} disabled={loading}>Cancel</Button>
-		<Button variant="primary" onclick={handleApprove} {loading}>Approve & Create</Button>
-	</div>
+	{#snippet footer()}
+		<div
+			class="flex flex-row items-center justify-end gap-2 sm:gap-4 p-2 sm:p-6 border-t border-gray-200 dark:border-gray-700 bg-surface-panel dither-surface"
+		>
+			<Button
+				variant="ghost"
+				size="sm"
+				onclick={handleClose}
+				disabled={loading}
+				class="text-xs sm:text-sm px-2 sm:px-4"
+			>
+				Cancel
+			</Button>
+			<Button
+				variant="primary"
+				size="sm"
+				onclick={handleApprove}
+				loading={loading}
+				class="text-xs sm:text-sm px-2 sm:px-4"
+			>
+				<span class="hidden sm:inline">Approve & Create</span>
+				<span class="sm:hidden">Create</span>
+			</Button>
+		</div>
+	{/snippet}
 </Modal>

@@ -21,7 +21,22 @@
 -->
 <script lang="ts">
 	import { onDestroy } from 'svelte';
-	import { Save, Loader, Trash2, FileText, ExternalLink, CheckCircle2 } from 'lucide-svelte';
+	import { browser } from '$app/environment';
+	import {
+		Save,
+		Loader,
+		Trash2,
+		FileText,
+		ExternalLink,
+		CircleCheck,
+		SquareCheck,
+		Target,
+		Flag,
+		Layers,
+		ListChecks,
+		Link2Off,
+		FileOutput
+	} from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
@@ -37,6 +52,30 @@
 	import FSMStateVisualizer from './FSMStateVisualizer.svelte';
 	import TaskSeriesModal from './TaskSeriesModal.svelte';
 	import DocumentModal from './DocumentModal.svelte';
+	import GoalEditModal from './GoalEditModal.svelte';
+	import PlanEditModal from './PlanEditModal.svelte';
+	import TaskEditModalSelf from './TaskEditModal.svelte';
+
+	// Type for linked entities returned from API
+	interface LinkedEntity {
+		id: string;
+		name?: string;
+		title?: string;
+		type_key?: string;
+		state_key?: string;
+		due_at?: string;
+		edge_rel: string;
+		edge_direction: 'outgoing' | 'incoming';
+	}
+
+	interface LinkedEntitiesResult {
+		plans: LinkedEntity[];
+		goals: LinkedEntity[];
+		milestones: LinkedEntity[];
+		documents: LinkedEntity[];
+		dependentTasks: LinkedEntity[];
+		outputs: LinkedEntity[];
+	}
 	import RichMarkdownEditor from '$lib/components/ui/RichMarkdownEditor.svelte';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
 	import { toastService } from '$lib/stores/toast.store';
@@ -45,7 +84,6 @@
 		getPriorityBadgeClass
 	} from '$lib/utils/ontology-badge-styles';
 	import {
-		createTaskDocument,
 		fetchTaskDocuments,
 		promoteTaskDocument,
 		type TaskWorkspaceDocument
@@ -76,6 +114,14 @@
 
 	let modalOpen = $state(true);
 	let task = $state<any>(null);
+	let template = $state<{
+		id: string;
+		type_key: string;
+		name: string;
+		scope: string;
+		status: string;
+		metadata?: Record<string, unknown>;
+	} | null>(null);
 	let isLoading = $state(true);
 	let isSaving = $state(false);
 	let isDeleting = $state(false);
@@ -113,6 +159,17 @@
 
 	let workspaceDocumentModalOpen = $state(false);
 	let workspaceDocumentId = $state<string | null>(null);
+
+	// Linked entities state
+	let linkedEntities = $state<LinkedEntitiesResult | null>(null);
+
+	// Modal states for linked entity navigation
+	let showGoalModal = $state(false);
+	let selectedGoalIdForModal = $state<string | null>(null);
+	let showPlanModal = $state(false);
+	let selectedPlanIdForModal = $state<string | null>(null);
+	let showLinkedTaskModal = $state(false);
+	let selectedLinkedTaskId = $state<string | null>(null);
 
 	const deliverableDocuments = $derived.by(() =>
 		workspaceDocuments.filter((item) => item.edge?.props?.role !== 'scratch')
@@ -166,11 +223,11 @@
 	});
 
 	const stateBadgeClasses = $derived(
-		`px-3 py-1 rounded-full text-xs font-semibold capitalize ${getTaskStateBadgeClass(stateKey)}`
+		`px-2 py-1 rounded-sm text-xs font-semibold uppercase tracking-wide ${getTaskStateBadgeClass(stateKey)}`
 	);
 
 	const priorityBadgeClasses = $derived(
-		`px-3 py-1 rounded-full text-xs font-semibold ${getPriorityBadgeClass(priorityDisplay?.badgeIntent)}`
+		`px-2 py-1 rounded-sm text-xs font-semibold uppercase tracking-wide ${getPriorityBadgeClass(priorityDisplay?.badgeIntent)}`
 	);
 
 	const selectedPlan = $derived.by(() => plans.find((plan) => plan.id === planId) ?? null);
@@ -210,14 +267,15 @@
 
 	// Load task data when modal opens
 	$effect(() => {
+		if (!browser) return;
 		if (taskId) {
 			loadTask();
 		}
 	});
 
 	$effect(() => {
+		if (!browser) return;
 		if (hasLoadedViewPreference) return;
-		if (typeof window === 'undefined') return;
 		const stored = window.localStorage.getItem(VIEW_STORAGE_KEY);
 		if (stored === 'workspace' || stored === 'details') {
 			activeView = stored;
@@ -226,6 +284,7 @@
 	});
 
 	$effect(() => {
+		if (!browser) return;
 		if (activeView === 'workspace' && !workspaceInitialized && task) {
 			loadWorkspaceDocuments();
 		}
@@ -318,12 +377,15 @@
 
 			const data = await response.json();
 			task = data.data?.task;
+			template = data.data?.template || null;
+			linkedEntities = data.data?.linkedEntities || null;
 
 			if (task) {
 				title = task.title || '';
 				description = task.props?.description || '';
 				priority = task.priority || 3;
-				planId = task.plan_id || '';
+				// Plan is now fetched via edge relationship, returned as task.plan object
+				planId = task.plan?.id || '';
 				goalId = extractGoalIdFromProps(task.props || null);
 				milestoneId = extractMilestoneIdFromProps(task.props || null);
 				stateKey = task.state_key || 'todo';
@@ -617,6 +679,70 @@
 		modalOpen = false;
 		onClose?.();
 	}
+
+	// Linked entity modal handlers
+	function openGoalModal(id: string) {
+		selectedGoalIdForModal = id;
+		showGoalModal = true;
+	}
+
+	function openPlanModal(id: string) {
+		selectedPlanIdForModal = id;
+		showPlanModal = true;
+	}
+
+	function openDocumentModal(id: string) {
+		workspaceDocumentId = id;
+		workspaceDocumentModalOpen = true;
+	}
+
+	function openLinkedTaskModal(id: string) {
+		selectedLinkedTaskId = id;
+		showLinkedTaskModal = true;
+	}
+
+	function handleLinkedEntityModalClose() {
+		showGoalModal = false;
+		showPlanModal = false;
+		showLinkedTaskModal = false;
+		selectedGoalIdForModal = null;
+		selectedPlanIdForModal = null;
+		selectedLinkedTaskId = null;
+		// Refresh task data to get updated linked entities
+		loadTask();
+	}
+
+	// Helper to check if there are any linked entities
+	function hasLinkedEntities(linked: LinkedEntitiesResult | null): boolean {
+		if (!linked) return false;
+		return (
+			linked.plans.length > 0 ||
+			linked.goals.length > 0 ||
+			linked.milestones.length > 0 ||
+			linked.documents.length > 0 ||
+			linked.dependentTasks.length > 0 ||
+			linked.outputs.length > 0
+		);
+	}
+
+	// Get display name for a linked entity
+	function getEntityDisplayName(entity: LinkedEntity): string {
+		return entity.name || entity.title || 'Untitled';
+	}
+
+	// Format relationship label for display
+	function formatRelLabel(rel: string, direction: 'outgoing' | 'incoming'): string {
+		const labels: Record<string, string> = {
+			belongs_to_plan: 'In plan',
+			supports_goal: 'Supports',
+			contains: 'Part of',
+			has_document: 'References',
+			depends_on: direction === 'outgoing' ? 'Depends on' : 'Blocked by',
+			blocks: direction === 'outgoing' ? 'Blocks' : 'Blocked by',
+			produces: 'Produces'
+		};
+		return labels[rel] || rel.replace(/_/g, ' ');
+	}
 </script>
 
 <Modal
@@ -624,859 +750,1333 @@
 	size="xl"
 	onClose={handleClose}
 	closeOnEscape={!isSaving}
-	title={title ? `Edit Task: ${title}` : 'Edit Task'}
+	showCloseButton={false}
 >
-	{#if isLoading}
-		<div class="flex items-center justify-center py-16 px-6">
-			<Loader class="w-8 h-8 animate-spin text-gray-400" />
-		</div>
-	{:else if !task}
-		<div class="text-center py-12 px-6">
-			<p class="text-red-600 dark:text-red-400">Task not found</p>
-		</div>
-	{:else}
-		<div class="p-4 sm:p-6">
-			<!-- Tab Navigation -->
-			<div
-				class="flex items-center gap-1 mb-6 p-1 bg-gradient-to-r from-gray-50 to-slate-50 dark:from-gray-800 dark:to-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 dither-surface"
-				role="tablist"
-				aria-label="Task views"
-			>
-				<button
-					type="button"
-					role="tab"
-					aria-selected={activeView === 'details'}
-					aria-controls="details-panel"
-					tabindex={activeView === 'details' ? 0 : -1}
-					class={`flex-1 px-4 py-2.5 rounded-md text-sm font-semibold transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 ${
-						activeView === 'details'
-							? 'bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/50 dark:to-purple-950/50 text-blue-700 dark:text-blue-300 shadow-md border border-blue-600 dark:border-blue-500 dither-accent'
-							: 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-white/50 dark:hover:bg-gray-800/50 border border-transparent'
-					}`}
-					onclick={() => setActiveView('details')}
+	{#snippet header()}
+		<!-- Custom gradient header - grey/dark grey -->
+		<div
+			class="flex-shrink-0 bg-gradient-to-r from-gray-600 via-gray-700 to-gray-800 dark:from-gray-700 dark:via-gray-800 dark:to-gray-900 text-white px-3 py-3 sm:px-6 sm:py-5 flex flex-col gap-2 sm:gap-4 dither-gradient"
+		>
+			<div class="flex items-start justify-between gap-2 sm:gap-4">
+				<div class="space-y-1 sm:space-y-2 min-w-0 flex-1">
+					<p class="text-[10px] sm:text-xs font-semibold uppercase tracking-[0.3em] sm:tracking-[0.4em] text-white/70">
+						Task overview
+					</p>
+					<h2 class="text-lg sm:text-2xl font-bold leading-tight truncate">
+						{title || task?.title || 'Task details'}
+					</h2>
+					<div class="flex flex-wrap items-center gap-1.5 sm:gap-3 text-xs sm:text-sm">
+						<span class="px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-semibold capitalize bg-white/20">{stateKey}</span>
+						<span class="hidden sm:inline font-mono text-xs tracking-wide">{template?.type_key || task?.type_key || 'task'}</span>
+						<span class="text-white/80">#{task?.id?.slice(0, 8) || taskId.slice(0, 8)}</span>
+					</div>
+				</div>
+				<Button
+					variant="ghost"
+					size="sm"
+					onclick={handleClose}
+					class="text-white/80 hover:text-white shrink-0 !p-1.5 sm:!p-2"
+					disabled={isSaving || isDeleting}
 				>
-					Details
-				</button>
-				<button
-					type="button"
-					role="tab"
-					aria-selected={activeView === 'workspace'}
-					aria-controls="workspace-panel"
-					tabindex={activeView === 'workspace' ? 0 : -1}
-					class={`flex-1 px-4 py-2.5 rounded-md text-sm font-semibold transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 ${
-						activeView === 'workspace'
-							? 'bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/50 dark:to-purple-950/50 text-blue-700 dark:text-blue-300 shadow-md border border-blue-600 dark:border-blue-500 dither-accent'
-							: 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-white/50 dark:hover:bg-gray-800/50 border border-transparent'
-					}`}
-					onclick={() => setActiveView('workspace')}
-				>
-					Workspace
-				</button>
+					<svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M6 18L18 6M6 6l12 12"
+						></path>
+					</svg>
+				</Button>
 			</div>
 
-			<!-- Tab Content with Horizontal Slide Animation -->
-			<div class="relative" style="min-height: 400px;">
-				{#key activeView}
-					<div
-						in:fly={{ x: slideDirection * 100, duration: 300, easing: cubicOut }}
-						out:fly={{ x: slideDirection * -100, duration: 300, easing: cubicOut }}
-						class="w-full"
-						role="tabpanel"
-						id={activeView === 'details' ? 'details-panel' : 'workspace-panel'}
-						aria-labelledby={activeView === 'details' ? 'details-tab' : 'workspace-tab'}
-					>
-						{#if activeView === 'details'}
-							<!-- DETAILS TAB -->
-							<form
-								class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 p-2"
-								id={detailsFormId}
-								onsubmit={handleSave}
-							>
-								<!-- Status Overview Card -->
-								<Card variant="elevated" padding="sm" class="lg:col-span-3">
-									<CardBody padding="md">
-										<div class="space-y-3">
-											<!-- Badges Row -->
-											<div class="flex flex-wrap items-center gap-2">
-												<span class={stateBadgeClasses}
-													>{formattedStateLabel}</span
-												>
-												<span class={priorityBadgeClasses}
-													>{priorityDisplay?.label}</span
-												>
-												<span
-													class="text-xs sm:text-sm text-gray-500 dark:text-gray-400"
-												>
-													{priorityDisplay?.description}
-												</span>
-											</div>
+			<div class="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4 text-xs sm:text-sm">
+				<div class="rounded bg-white/10 backdrop-blur p-2 sm:p-3">
+					<p class="text-[10px] sm:text-xs uppercase tracking-[0.2em] sm:tracking-[0.3em] text-white/70">Priority</p>
+					<p class="text-sm sm:text-lg font-semibold">{priorityDisplay?.label?.split(' - ')[0] || 'P3'}</p>
+				</div>
+				<div class="rounded bg-white/10 backdrop-blur p-2 sm:p-3">
+					<p class="text-[10px] sm:text-xs uppercase tracking-[0.2em] sm:tracking-[0.3em] text-white/70">Due</p>
+					<p class="text-sm sm:text-lg font-semibold truncate">{dueAt ? new Date(dueAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : 'No date'}</p>
+				</div>
+				<div class="rounded bg-white/10 backdrop-blur p-2 sm:p-3">
+					<p class="text-[10px] sm:text-xs uppercase tracking-[0.2em] sm:tracking-[0.3em] text-white/70">Docs</p>
+					<p class="text-sm sm:text-lg font-semibold">{deliverableDocuments.length}</p>
+				</div>
+				<div class="rounded bg-white/10 backdrop-blur p-2 sm:p-3">
+					<p class="text-[10px] sm:text-xs uppercase tracking-[0.2em] sm:tracking-[0.3em] text-white/70">Plan</p>
+					<p class="text-sm sm:text-lg font-semibold truncate">{selectedPlan?.name || 'None'}</p>
+				</div>
+			</div>
+		</div>
+	{/snippet}
 
-											<!-- Associations Row -->
-											{#if selectedPlan || selectedGoal || selectedMilestone}
+	{#snippet children()}
+		{#if isLoading}
+			<div class="flex items-center justify-center py-16 px-6">
+				<Loader class="w-8 h-8 animate-spin text-slate-400" />
+			</div>
+		{:else if !task}
+			<div class="text-center py-12 px-6">
+				<p class="text-red-600 dark:text-red-400">Task not found</p>
+			</div>
+		{:else}
+			<div class="px-3 py-3 sm:px-6 sm:py-6">
+				<!-- Tab Navigation - Industrial Tool Tabs -->
+				<div
+					class="flex items-center gap-1 mb-6 border-b border-slate-200 dark:border-slate-700"
+					role="tablist"
+					aria-label="Task views"
+				>
+					<button
+						type="button"
+						role="tab"
+						aria-selected={activeView === 'details'}
+						aria-controls="details-panel"
+						tabindex={activeView === 'details' ? 0 : -1}
+						class={`tab-tool ${activeView === 'details' ? 'active' : ''}`}
+						onclick={() => setActiveView('details')}
+					>
+						DETAILS
+					</button>
+					<button
+						type="button"
+						role="tab"
+						aria-selected={activeView === 'workspace'}
+						aria-controls="workspace-panel"
+						tabindex={activeView === 'workspace' ? 0 : -1}
+						class={`tab-tool ${activeView === 'workspace' ? 'active' : ''}`}
+						onclick={() => setActiveView('workspace')}
+					>
+						WORKSPACE
+					</button>
+				</div>
+
+				<!-- Tab Content with Horizontal Slide Animation -->
+				<div class="relative" style="min-height: 400px;">
+					{#key activeView}
+						<div
+							in:fly={{ x: slideDirection * 100, duration: 300, easing: cubicOut }}
+							out:fly={{ x: slideDirection * -100, duration: 300, easing: cubicOut }}
+							class="w-full"
+							role="tabpanel"
+							id={activeView === 'details' ? 'details-panel' : 'workspace-panel'}
+							aria-labelledby={activeView === 'details'
+								? 'details-tab'
+								: 'workspace-tab'}
+						>
+							{#if activeView === 'details'}
+								<!-- DETAILS TAB -->
+								<form
+									class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 p-2"
+									id={detailsFormId}
+									onsubmit={handleSave}
+								>
+									<!-- Template Info Banner -->
+									{#if template}
+										<div
+											class="rounded border border-blue-200 dark:border-blue-800 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 p-4 lg:col-span-3"
+										>
+											<div class="flex items-center gap-3">
 												<div
-													class="flex flex-wrap gap-2 text-xs text-gray-600 dark:text-gray-300"
+													class="p-2 rounded bg-surface-elevated shadow-subtle"
 												>
-													{#if selectedPlan}
-														<span
-															class="px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-200 whitespace-nowrap"
+													<SquareCheck class="w-4 h-4 text-accent-blue" />
+												</div>
+												<div class="flex-1 min-w-0">
+													<div class="flex items-center gap-2 flex-wrap">
+														<h4
+															class="text-sm font-semibold text-blue-900 dark:text-blue-100"
 														>
-															Plan • {selectedPlan.name}
-														</span>
-													{/if}
-													{#if selectedGoal}
-														<span
-															class="px-3 py-1 rounded-full bg-purple-50 dark:bg-purple-900/30 text-purple-800 dark:text-purple-200 whitespace-nowrap"
+															{template.name}
+														</h4>
+														<Badge variant="info" size="sm">
+															{template.type_key}
+														</Badge>
+													</div>
+													{#if template.metadata?.description}
+														<p
+															class="text-xs text-blue-700 dark:text-blue-300 mt-0.5 line-clamp-1"
 														>
-															Goal • {selectedGoal.name}
-														</span>
-													{/if}
-													{#if selectedMilestone}
-														<span
-															class="px-3 py-1 rounded-full bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-200 whitespace-nowrap"
-														>
-															Milestone • {selectedMilestone.title}
-															{#if milestoneDueLabel}
-																({milestoneDueLabel})
-															{/if}
-														</span>
+															{template.metadata.description}
+														</p>
 													{/if}
 												</div>
+												{#if template.metadata?.typical_duration}
+													<div
+														class="hidden sm:flex items-center gap-1.5 px-2 py-1 bg-surface-panel rounded text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide"
+													>
+														{template.metadata.typical_duration}
+													</div>
+												{/if}
+											</div>
+										</div>
+									{/if}
+
+									<!-- Status Overview Card -->
+									<div class="industrial-panel rounded-sm p-4 lg:col-span-3">
+										<div>
+											<div class="space-y-3">
+												<!-- Badges Row -->
+												<div class="flex flex-wrap items-center gap-2">
+													<span class={stateBadgeClasses}
+														>{formattedStateLabel}</span
+													>
+													<span class={priorityBadgeClasses}
+														>{priorityDisplay?.label}</span
+													>
+													<span
+														class="text-xs sm:text-sm text-gray-500 dark:text-slate-400"
+													>
+														{priorityDisplay?.description}
+													</span>
+												</div>
+
+												<!-- Associations Row -->
+												{#if selectedPlan || selectedGoal || selectedMilestone}
+													<div
+														class="flex flex-wrap gap-2 text-xs text-gray-600 dark:text-gray-300"
+													>
+														{#if selectedPlan}
+															<span
+																class="px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-200 whitespace-nowrap"
+															>
+																Plan • {selectedPlan.name}
+															</span>
+														{/if}
+														{#if selectedGoal}
+															<span
+																class="px-3 py-1 rounded-full bg-purple-50 dark:bg-purple-900/30 text-purple-800 dark:text-purple-200 whitespace-nowrap"
+															>
+																Goal • {selectedGoal.name}
+															</span>
+														{/if}
+														{#if selectedMilestone}
+															<span
+																class="px-3 py-1 rounded-full bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-200 whitespace-nowrap"
+															>
+																Milestone • {selectedMilestone.title}
+																{#if milestoneDueLabel}
+																	({milestoneDueLabel})
+																{/if}
+															</span>
+														{/if}
+													</div>
+												{/if}
+
+												<!-- Metadata Row -->
+												<div
+													class="text-xs text-gray-500 dark:text-slate-400 flex flex-wrap gap-3 sm:gap-4"
+												>
+													<span>
+														Last updated {lastUpdatedLabel ??
+															'Not available'}
+													</span>
+													{#if !template}
+														<span
+															>Template • {task.props?.type_key ||
+																'Basic Task'}</span
+														>
+													{/if}
+												</div>
+											</div>
+										</div>
+									</div>
+
+									<!-- Main Form (Left 2 columns) -->
+									<div class="lg:col-span-2 space-y-6">
+										<!-- Task Title -->
+										<FormField
+											label="Task Title"
+											labelFor="title"
+											required={true}
+											error={!title.trim() && error
+												? 'Task title is required'
+												: ''}
+										>
+											<TextInput
+												id="title"
+												bind:value={title}
+												inputmode="text"
+												enterkeyhint="next"
+												placeholder="Enter task title..."
+												required={true}
+												disabled={isSaving}
+												error={!title.trim() && error ? true : false}
+												size="md"
+											/>
+										</FormField>
+
+										<!-- Description -->
+										<FormField
+											label="Description"
+											labelFor="description"
+											hint="Provide additional context about this task"
+										>
+											<Textarea
+												id="description"
+												bind:value={description}
+												enterkeyhint="next"
+												placeholder="Describe the task..."
+												rows={4}
+												disabled={isSaving}
+												size="md"
+											/>
+										</FormField>
+
+										<!-- Priority & Plan Grid -->
+										<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+											<FormField
+												label="Priority"
+												labelFor="priority"
+												required={true}
+											>
+												<Select
+													id="priority"
+													value={priority}
+													disabled={isSaving}
+													size="md"
+													placeholder="Select priority"
+													onchange={(val) => (priority = Number(val))}
+												>
+													<option value={1}>P1 - Critical</option>
+													<option value={2}>P2 - High</option>
+													<option value={3}>P3 - Medium</option>
+													<option value={4}>P4 - Low</option>
+													<option value={5}>P5 - Nice to have</option>
+												</Select>
+											</FormField>
+
+											{#if plans.length > 0}
+												<FormField
+													label="Plan"
+													labelFor="plan"
+													hint="Optional project plan"
+												>
+													<Select
+														id="plan"
+														bind:value={planId}
+														disabled={isSaving}
+														size="md"
+														placeholder="No plan"
+													>
+														<option value="">No plan</option>
+														{#each plans as plan}
+															<option value={plan.id}
+																>{plan.name}</option
+															>
+														{/each}
+													</Select>
+												</FormField>
 											{/if}
 
-											<!-- Metadata Row -->
-											<div
-												class="text-xs text-gray-500 dark:text-gray-400 flex flex-wrap gap-3 sm:gap-4"
-											>
-												<span>
-													Last updated {lastUpdatedLabel ??
-														'Not available'}
-												</span>
-												<span>Type • {task.type_key || 'task.basic'}</span>
-											</div>
-										</div>
-									</CardBody>
-								</Card>
-
-								<!-- Main Form (Left 2 columns) -->
-								<div class="lg:col-span-2 space-y-6">
-									<!-- Task Title -->
-									<FormField
-										label="Task Title"
-										labelFor="title"
-										required={true}
-										error={!title.trim() && error
-											? 'Task title is required'
-											: ''}
-									>
-										<TextInput
-											id="title"
-											bind:value={title}
-											inputmode="text"
-											enterkeyhint="next"
-											placeholder="Enter task title..."
-											required={true}
-											disabled={isSaving}
-											error={!title.trim() && error ? true : false}
-											size="md"
-										/>
-									</FormField>
-
-									<!-- Description -->
-									<FormField
-										label="Description"
-										labelFor="description"
-										hint="Provide additional context about this task"
-									>
-										<Textarea
-											id="description"
-											bind:value={description}
-											enterkeyhint="next"
-											placeholder="Describe the task..."
-											rows={4}
-											disabled={isSaving}
-											size="md"
-										/>
-									</FormField>
-
-									<!-- Priority & Plan Grid -->
-									<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-										<FormField
-											label="Priority"
-											labelFor="priority"
-											required={true}
-										>
-											<Select
-												id="priority"
-												value={priority}
-												disabled={isSaving}
-												size="md"
-												placeholder="Select priority"
-												onchange={(val) => (priority = Number(val))}
-											>
-												<option value={1}>P1 - Critical</option>
-												<option value={2}>P2 - High</option>
-												<option value={3}>P3 - Medium</option>
-												<option value={4}>P4 - Low</option>
-												<option value={5}>P5 - Nice to have</option>
-											</Select>
-										</FormField>
-
-										{#if plans.length > 0}
-											<FormField
-												label="Plan"
-												labelFor="plan"
-												hint="Optional project plan"
-											>
-												<Select
-													id="plan"
-													bind:value={planId}
-													disabled={isSaving}
-													size="md"
-													placeholder="No plan"
+											{#if goals.length > 0}
+												<FormField
+													label="Goal"
+													labelFor="goal"
+													hint="Link to a project goal"
 												>
-													<option value="">No plan</option>
-													{#each plans as plan}
-														<option value={plan.id}>{plan.name}</option>
-													{/each}
-												</Select>
-											</FormField>
-										{/if}
-
-										{#if goals.length > 0}
-											<FormField
-												label="Goal"
-												labelFor="goal"
-												hint="Link to a project goal"
-											>
-												<Select
-													id="goal"
-													bind:value={goalId}
-													disabled={isSaving}
-													size="md"
-													placeholder="No goal"
-												>
-													<option value="">No goal</option>
-													{#each goals as goal}
-														<option value={goal.id}>{goal.name}</option>
-													{/each}
-												</Select>
-											</FormField>
-										{/if}
-
-										{#if milestones.length > 0}
-											<FormField
-												label="Supporting Milestone"
-												labelFor="milestone"
-												hint="Connect to a milestone"
-											>
-												<Select
-													id="milestone"
-													bind:value={milestoneId}
-													disabled={isSaving}
-													size="md"
-													placeholder="No milestone"
-												>
-													<option value="">No milestone</option>
-													{#each milestones as milestone}
-														<option value={milestone.id}>
-															{milestone.title}
-															{#if milestone.due_at}
-																({new Date(
-																	milestone.due_at
-																).toLocaleDateString()})
-															{/if}
-														</option>
-													{/each}
-												</Select>
-											</FormField>
-										{/if}
-									</div>
-
-									<!-- FSM State Visualizer -->
-									{#if task.type_key && allowedTransitions.length > 0}
-										<div
-											class="pt-4 border-t border-gray-200 dark:border-gray-700"
-										>
-											<FSMStateVisualizer
-												entityId={taskId}
-												entityKind="task"
-												entityName={title}
-												currentState={stateKey}
-												initialTransitions={allowedTransitions}
-												on:stateChange={handleStateChange}
-											/>
-										</div>
-									{:else}
-										<FormField label="State" labelFor="state" required={true}>
-											<Select
-												id="state"
-												bind:value={stateKey}
-												disabled={isSaving}
-												size="md"
-												placeholder="Select state"
-											>
-												<option value="todo">To Do</option>
-												<option value="in_progress">In Progress</option>
-												<option value="blocked">Blocked</option>
-												<option value="done">Done</option>
-												<option value="archived">Archived</option>
-											</Select>
-										</FormField>
-									{/if}
-
-									<!-- Connected Documents List -->
-									<div class="pt-6 border-t border-gray-200 dark:border-gray-700">
-										{#if deliverableDocuments.length > 0}
-											<h3
-												class="text-sm font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2"
-											>
-												<FileText class="w-4 h-4 text-blue-500" />
-												Connected Documents
-												<Badge variant="info" size="sm">
-													{deliverableDocuments.length}
-												</Badge>
-											</h3>
-											<div
-												class="space-y-2 max-h-64 overflow-y-auto"
-												role="list"
-												aria-label="Connected documents"
-											>
-												{#each deliverableDocuments as doc}
-													{@const timestamp = formatTimestamp(
-														doc.document.updated_at ??
-															doc.document.created_at ??
-															null
-													)}
-													<Card
-														variant="interactive"
-														class="group"
-														role="listitem"
+													<Select
+														id="goal"
+														bind:value={goalId}
+														disabled={isSaving}
+														size="md"
+														placeholder="No goal"
 													>
-														<button
-															type="button"
-															onclick={() =>
-																handleDocumentClick(
-																	doc.document.id
-																)}
-															class="w-full text-left focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 rounded-lg"
-															aria-label="Open {doc.document.title ||
-																'Untitled Document'} in workspace"
-														>
-															<CardBody padding="sm">
-																<div
-																	class="flex items-start sm:items-center justify-between gap-3 flex-col sm:flex-row"
-																>
-																	<div class="flex-1 min-w-0">
-																		<p
-																			class="font-semibold text-sm sm:text-base text-gray-900 dark:text-white truncate group-hover:text-blue-700 dark:group-hover:text-blue-300 transition-colors"
-																		>
-																			{doc.document.title ||
-																				'Untitled Document'}
-																		</p>
-																		<p
-																			class="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5"
-																		>
-																			{doc.document.type_key}
-																		</p>
-																		{#if timestamp}
-																			<p
-																				class="text-xs text-gray-400 dark:text-gray-500 mt-1"
-																			>
-																				Updated {timestamp}
-																			</p>
-																		{/if}
-																	</div>
-																	<div
-																		class="flex items-center gap-2 shrink-0"
-																	>
-																		<Badge
-																			variant="info"
-																			size="sm"
-																		>
-																			{doc.document
-																				.state_key ||
-																				'draft'}
-																		</Badge>
-																		<ExternalLink
-																			class="w-4 h-4 text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors"
-																			aria-hidden="true"
-																		/>
-																	</div>
-																</div>
-															</CardBody>
-														</button>
-													</Card>
-												{/each}
+														<option value="">No goal</option>
+														{#each goals as goal}
+															<option value={goal.id}
+																>{goal.name}</option
+															>
+														{/each}
+													</Select>
+												</FormField>
+											{/if}
+
+											{#if milestones.length > 0}
+												<FormField
+													label="Supporting Milestone"
+													labelFor="milestone"
+													hint="Connect to a milestone"
+												>
+													<Select
+														id="milestone"
+														bind:value={milestoneId}
+														disabled={isSaving}
+														size="md"
+														placeholder="No milestone"
+													>
+														<option value="">No milestone</option>
+														{#each milestones as milestone}
+															<option value={milestone.id}>
+																{milestone.title}
+																{#if milestone.due_at}
+																	({new Date(
+																		milestone.due_at
+																	).toLocaleDateString()})
+																{/if}
+															</option>
+														{/each}
+													</Select>
+												</FormField>
+											{/if}
+										</div>
+
+										<!-- FSM State Visualizer -->
+										{#if task.type_key && allowedTransitions.length > 0}
+											<div
+												class="pt-4 border-t border-gray-200 dark:border-gray-700"
+											>
+												<FSMStateVisualizer
+													entityId={taskId}
+													entityKind="task"
+													entityName={title}
+													currentState={stateKey}
+													initialTransitions={allowedTransitions}
+													on:stateChange={handleStateChange}
+												/>
 											</div>
 										{:else}
-											<Card variant="outline" class="border-dashed">
-												<CardBody padding="lg">
-													<div class="text-center">
-														<FileText
-															class="w-8 h-8 text-gray-400 mx-auto mb-3"
-															aria-hidden="true"
-														/>
-														<p
-															class="text-sm text-gray-600 dark:text-gray-400 mb-4"
+											<FormField
+												label="State"
+												labelFor="state"
+												required={true}
+											>
+												<Select
+													id="state"
+													bind:value={stateKey}
+													disabled={isSaving}
+													size="md"
+													placeholder="Select state"
+												>
+													<option value="todo">To Do</option>
+													<option value="in_progress">In Progress</option>
+													<option value="blocked">Blocked</option>
+													<option value="done">Done</option>
+													<option value="archived">Archived</option>
+												</Select>
+											</FormField>
+										{/if}
+
+										<!-- Connected Documents List -->
+										<div
+											class="pt-6 border-t border-gray-200 dark:border-gray-700"
+										>
+											{#if deliverableDocuments.length > 0}
+												<h3
+													class="text-sm font-semibold text-slate-900 dark:text-white mb-4 flex items-center gap-2"
+												>
+													<FileText class="w-4 h-4 text-blue-500" />
+													Connected Documents
+													<Badge variant="info" size="sm">
+														{deliverableDocuments.length}
+													</Badge>
+												</h3>
+												<div
+													class="space-y-2 max-h-64 overflow-y-auto"
+													role="list"
+													aria-label="Connected documents"
+												>
+													{#each deliverableDocuments as doc}
+														{@const timestamp = formatTimestamp(
+															doc.document.updated_at ??
+																doc.document.created_at ??
+																null
+														)}
+														<Card
+															variant="interactive"
+															class="group"
+															role="listitem"
 														>
-															Keep critical briefs and notes attached
-															to this task so the workspace stays in
-															sync.
-														</p>
-														<div
-															class="flex flex-col sm:flex-row gap-2 justify-center"
-														>
-															<Button
+															<button
 																type="button"
-																variant="secondary"
-																size="sm"
 																onclick={() =>
-																	setActiveView('workspace')}
-															>
-																Open workspace
-															</Button>
-															<Button
-																type="button"
-																variant="primary"
-																size="sm"
-																onclick={() =>
-																	openWorkspaceDocumentModal(
-																		null
+																	handleDocumentClick(
+																		doc.document.id
 																	)}
+																class="w-full text-left focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 rounded"
+																aria-label="Open {doc.document
+																	.title ||
+																	'Untitled Document'} in workspace"
 															>
-																Create document
-															</Button>
+																<CardBody padding="sm">
+																	<div
+																		class="flex items-start sm:items-center justify-between gap-3 flex-col sm:flex-row"
+																	>
+																		<div class="flex-1 min-w-0">
+																			<p
+																				class="font-semibold text-sm sm:text-base text-slate-900 dark:text-white truncate group-hover:text-blue-700 dark:group-hover:text-blue-300 transition-colors"
+																			>
+																				{doc.document
+																					.title ||
+																					'Untitled Document'}
+																			</p>
+																			<p
+																				class="text-xs text-gray-500 dark:text-slate-400 truncate mt-0.5"
+																			>
+																				{doc.document
+																					.type_key}
+																			</p>
+																			{#if timestamp}
+																				<p
+																					class="text-xs text-slate-400 dark:text-gray-500 mt-1"
+																				>
+																					Updated {timestamp}
+																				</p>
+																			{/if}
+																		</div>
+																		<div
+																			class="flex items-center gap-2 shrink-0"
+																		>
+																			<Badge
+																				variant="info"
+																				size="sm"
+																			>
+																				{doc.document
+																					.state_key ||
+																					'draft'}
+																			</Badge>
+																			<ExternalLink
+																				class="w-4 h-4 text-slate-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors"
+																				aria-hidden="true"
+																			/>
+																		</div>
+																	</div>
+																</CardBody>
+															</button>
+														</Card>
+													{/each}
+												</div>
+											{:else}
+												<Card variant="outline" class="border-dashed">
+													<CardBody padding="lg">
+														<div class="text-center">
+															<FileText
+																class="w-8 h-8 text-slate-400 mx-auto mb-3"
+																aria-hidden="true"
+															/>
+															<p
+																class="text-sm text-gray-600 dark:text-slate-400 mb-4"
+															>
+																Keep critical briefs and notes
+																attached to this task so the
+																workspace stays in sync.
+															</p>
+															<div
+																class="flex flex-col sm:flex-row gap-2 justify-center"
+															>
+																<Button
+																	type="button"
+																	variant="secondary"
+																	size="sm"
+																	onclick={() =>
+																		setActiveView('workspace')}
+																>
+																	Open workspace
+																</Button>
+																<Button
+																	type="button"
+																	variant="primary"
+																	size="sm"
+																	onclick={() =>
+																		openWorkspaceDocumentModal(
+																			null
+																		)}
+																>
+																	Create document
+																</Button>
+															</div>
 														</div>
-													</div>
-												</CardBody>
-											</Card>
+													</CardBody>
+												</Card>
+											{/if}
+										</div>
+
+										{#if error}
+											<div
+												class="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded"
+											>
+												<p class="text-sm text-red-700 dark:text-red-300">
+													{error}
+												</p>
+											</div>
 										{/if}
 									</div>
 
-									{#if error}
-										<div
-											class="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg"
-										>
-											<p class="text-sm text-red-700 dark:text-red-300">
-												{error}
-											</p>
-										</div>
-									{/if}
-								</div>
+									<!-- Sidebar (Right column) -->
+									<div class="space-y-4">
+										<!-- Task Metadata -->
+										<Card variant="elevated">
+											<CardHeader variant="default">
+												<h3
+													class="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide flex items-center gap-2"
+												>
+													<span
+														class="w-1.5 h-1.5 bg-blue-500 rounded-full"
+													></span>
+													Task Information
+												</h3>
+											</CardHeader>
+											<CardBody padding="sm">
+												<div class="space-y-2 text-sm">
+													<div class="flex justify-between items-center">
+														<span
+															class="text-gray-600 dark:text-slate-400"
+															>Template:</span
+														>
+														<Badge variant="info" size="sm">
+															{template?.name ||
+																task.props?.type_key ||
+																'Basic Task'}
+														</Badge>
+													</div>
 
-								<!-- Sidebar (Right column) -->
-								<div class="space-y-4">
-									<!-- Task Metadata -->
-									<Card variant="elevated">
-										<CardHeader variant="default">
-											<h3
-												class="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide flex items-center gap-2"
-											>
-												<span class="w-1.5 h-1.5 bg-blue-500 rounded-full"
-												></span>
-												Task Information
-											</h3>
-										</CardHeader>
-										<CardBody padding="sm">
-											<div class="space-y-2 text-sm">
-												<div class="flex justify-between items-center">
-													<span class="text-gray-600 dark:text-gray-400"
-														>Type:</span
-													>
-													<Badge variant="info" size="sm">
-														{task.type_key || 'task.basic'}
-													</Badge>
-												</div>
-
-												<div class="flex justify-between">
-													<span class="text-gray-600 dark:text-gray-400"
-														>ID:</span
-													>
-													<span class="font-mono text-xs text-gray-500"
-														>{task.id.slice(0, 8)}...</span
-													>
-												</div>
-
-												{#if task.created_at}
 													<div class="flex justify-between">
 														<span
-															class="text-gray-600 dark:text-gray-400"
-															>Created:</span
+															class="text-gray-600 dark:text-slate-400"
+															>ID:</span
 														>
-														<span class="text-gray-900 dark:text-white">
-															{new Date(
-																task.created_at
-															).toLocaleDateString()}
-														</span>
-													</div>
-												{/if}
-
-												{#if task.updated_at}
-													<div class="flex justify-between">
 														<span
-															class="text-gray-600 dark:text-gray-400"
-															>Updated:</span
+															class="font-mono text-xs text-gray-500"
+															>{task.id.slice(0, 8)}...</span
 														>
-														<span class="text-gray-900 dark:text-white">
-															{new Date(
-																task.updated_at
-															).toLocaleDateString()}
-														</span>
 													</div>
-												{/if}
-											</div>
-										</CardBody>
-									</Card>
 
-									<!-- Schedule -->
-									<Card variant="elevated">
-										<CardHeader variant="accent">
-											<h3
-												class="text-xs font-semibold uppercase tracking-wide flex items-center gap-2"
-											>
-												<span class="text-base">📅</span>
-												{#if !dueAt}Schedule?
-												{:else}Scheduled
-												{/if}
-											</h3>
-										</CardHeader>
-										<CardBody padding="sm">
-											<div class="space-y-3">
-												<div>
-													<label
-														for="sidebar-due-date"
-														class="block text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-400 mb-1.5"
-													>
-														Due Date
-													</label>
-													<TextInput
-														id="sidebar-due-date"
-														type="datetime-local"
-														inputmode="numeric"
-														enterkeyhint="done"
-														bind:value={dueAt}
-														disabled={isSaving}
-														size="sm"
-														class="border-gray-200/60 bg-white/85 dark:border-gray-600/60 dark:bg-gray-900/60 w-full"
-													/>
-													{#if dueAt}
-														<p
-															class="mt-1.5 text-xs text-gray-500 dark:text-gray-400"
-														>
-															{new Date(dueAt).toLocaleString(
-																'en-US',
-																{
-																	weekday: 'short',
-																	month: 'short',
-																	day: 'numeric',
-																	hour: 'numeric',
-																	minute: '2-digit'
-																}
-															)}
-														</p>
-													{:else}
-														<p
-															class="mt-1.5 text-xs text-gray-500 dark:text-gray-400 italic"
-														>
-															No deadline set
-														</p>
+													{#if task.created_at}
+														<div class="flex justify-between">
+															<span
+																class="text-gray-600 dark:text-slate-400"
+																>Created:</span
+															>
+															<span
+																class="text-slate-900 dark:text-white"
+															>
+																{new Date(
+																	task.created_at
+																).toLocaleDateString()}
+															</span>
+														</div>
+													{/if}
+
+													{#if task.updated_at}
+														<div class="flex justify-between">
+															<span
+																class="text-gray-600 dark:text-slate-400"
+																>Updated:</span
+															>
+															<span
+																class="text-slate-900 dark:text-white"
+															>
+																{new Date(
+																	task.updated_at
+																).toLocaleDateString()}
+															</span>
+														</div>
 													{/if}
 												</div>
-											</div>
-										</CardBody>
-									</Card>
+											</CardBody>
+										</Card>
 
-									<!-- Recurrence -->
-									<Card variant="elevated">
-										<CardHeader variant="accent">
-											<h3
-												class="text-xs font-semibold uppercase tracking-wide flex items-center gap-2"
-											>
-												<span class="text-base">🔄</span>
-												Recurrence
-											</h3>
-										</CardHeader>
-										<CardBody padding="sm">
-											{#if isSeriesMaster && seriesMeta}
-												<div class="space-y-2 text-sm">
-													<p class="text-indigo-900 dark:text-indigo-100">
-														This task controls a recurring series.
-													</p>
-													<ul
-														class="text-indigo-800 dark:text-indigo-100 space-y-1"
-													>
-														{#if seriesId}
-															<li>
-																<span class="font-medium"
-																	>Series ID:</span
+										<!-- Linked Entities -->
+										<Card variant="elevated">
+											<CardHeader variant="default">
+												<h3
+													class="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide flex items-center gap-2"
+												>
+													<span
+														class="w-1.5 h-1.5 bg-purple-500 rounded-full"
+													></span>
+													Linked Entities
+												</h3>
+											</CardHeader>
+											<CardBody padding="sm">
+												{#if hasLinkedEntities(linkedEntities)}
+													<div class="space-y-3">
+														<!-- Plans -->
+														{#if linkedEntities?.plans && linkedEntities.plans.length > 0}
+															<div class="space-y-1.5">
+																<div
+																	class="flex items-center gap-1.5 text-xs font-medium text-gray-600 dark:text-slate-400"
 																>
-																<span
-																	class="font-mono text-xs break-all"
-																	>{seriesId}</span
-																>
-															</li>
+																	<Layers
+																		class="w-3.5 h-3.5 text-blue-500"
+																	/>
+																	Plans
+																	<Badge
+																		variant="info"
+																		size="sm"
+																		>{linkedEntities.plans
+																			.length}</Badge
+																	>
+																</div>
+																{#each linkedEntities.plans as entity}
+																	<button
+																		type="button"
+																		onclick={() =>
+																			openPlanModal(
+																				entity.id
+																			)}
+																		class="w-full text-left px-2 py-1.5 rounded hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors group"
+																	>
+																		<div
+																			class="flex items-center justify-between gap-2"
+																		>
+																			<span
+																				class="text-sm text-slate-900 dark:text-white truncate group-hover:text-blue-600 dark:group-hover:text-blue-400"
+																			>
+																				{getEntityDisplayName(
+																					entity
+																				)}
+																			</span>
+																			<ExternalLink
+																				class="w-3.5 h-3.5 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+																			/>
+																		</div>
+																		{#if entity.state_key}
+																			<span
+																				class="text-xs text-gray-500 dark:text-slate-500"
+																				>{entity.state_key}</span
+																			>
+																		{/if}
+																	</button>
+																{/each}
+															</div>
 														{/if}
-														<li>
-															<span class="font-medium"
-																>Timezone:</span
-															>
-															{seriesMeta.timezone}
-														</li>
-														{#if seriesMeta.rrule}
-															<li class="break-all">
-																<span class="font-medium"
-																	>RRULE:</span
-																>
-																{seriesMeta.rrule}
-															</li>
-														{/if}
-														{#if seriesMeta.instance_count}
-															<li>
-																<span class="font-medium"
-																	>Instances:</span
-																>
-																{seriesMeta.instance_count}
-															</li>
-														{/if}
-													</ul>
-												</div>
 
-												{#if seriesActionError}
-													<p
-														class="text-sm text-red-600 dark:text-red-400"
-													>
-														{seriesActionError}
-													</p>
+														<!-- Goals -->
+														{#if linkedEntities?.goals && linkedEntities.goals.length > 0}
+															<div class="space-y-1.5">
+																<div
+																	class="flex items-center gap-1.5 text-xs font-medium text-gray-600 dark:text-slate-400"
+																>
+																	<Target
+																		class="w-3.5 h-3.5 text-purple-500"
+																	/>
+																	Goals
+																	<Badge
+																		variant="info"
+																		size="sm"
+																		>{linkedEntities.goals
+																			.length}</Badge
+																	>
+																</div>
+																{#each linkedEntities.goals as entity}
+																	<button
+																		type="button"
+																		onclick={() =>
+																			openGoalModal(
+																				entity.id
+																			)}
+																		class="w-full text-left px-2 py-1.5 rounded hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors group"
+																	>
+																		<div
+																			class="flex items-center justify-between gap-2"
+																		>
+																			<span
+																				class="text-sm text-slate-900 dark:text-white truncate group-hover:text-purple-600 dark:group-hover:text-purple-400"
+																			>
+																				{getEntityDisplayName(
+																					entity
+																				)}
+																			</span>
+																			<ExternalLink
+																				class="w-3.5 h-3.5 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+																			/>
+																		</div>
+																		{#if entity.state_key}
+																			<span
+																				class="text-xs text-gray-500 dark:text-slate-500"
+																				>{entity.state_key}</span
+																			>
+																		{/if}
+																	</button>
+																{/each}
+															</div>
+														{/if}
+
+														<!-- Milestones -->
+														{#if linkedEntities?.milestones && linkedEntities.milestones.length > 0}
+															<div class="space-y-1.5">
+																<div
+																	class="flex items-center gap-1.5 text-xs font-medium text-gray-600 dark:text-slate-400"
+																>
+																	<Flag
+																		class="w-3.5 h-3.5 text-amber-500"
+																	/>
+																	Milestones
+																	<Badge
+																		variant="info"
+																		size="sm"
+																		>{linkedEntities.milestones
+																			.length}</Badge
+																	>
+																</div>
+																{#each linkedEntities.milestones as entity}
+																	<div
+																		class="w-full text-left px-2 py-1.5 rounded bg-gray-50 dark:bg-slate-800/50"
+																	>
+																		<div
+																			class="flex items-center justify-between gap-2"
+																		>
+																			<span
+																				class="text-sm text-slate-900 dark:text-white truncate"
+																			>
+																				{getEntityDisplayName(
+																					entity
+																				)}
+																			</span>
+																		</div>
+																		{#if entity.due_at}
+																			<span
+																				class="text-xs text-gray-500 dark:text-slate-500"
+																				>Due {new Date(
+																					entity.due_at
+																				).toLocaleDateString()}</span
+																			>
+																		{/if}
+																	</div>
+																{/each}
+															</div>
+														{/if}
+
+														<!-- Documents -->
+														{#if linkedEntities?.documents && linkedEntities.documents.length > 0}
+															<div class="space-y-1.5">
+																<div
+																	class="flex items-center gap-1.5 text-xs font-medium text-gray-600 dark:text-slate-400"
+																>
+																	<FileText
+																		class="w-3.5 h-3.5 text-cyan-500"
+																	/>
+																	Documents
+																	<Badge
+																		variant="info"
+																		size="sm"
+																		>{linkedEntities.documents
+																			.length}</Badge
+																	>
+																</div>
+																{#each linkedEntities.documents as entity}
+																	<button
+																		type="button"
+																		onclick={() =>
+																			openDocumentModal(
+																				entity.id
+																			)}
+																		class="w-full text-left px-2 py-1.5 rounded hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors group"
+																	>
+																		<div
+																			class="flex items-center justify-between gap-2"
+																		>
+																			<span
+																				class="text-sm text-slate-900 dark:text-white truncate group-hover:text-cyan-600 dark:group-hover:text-cyan-400"
+																			>
+																				{getEntityDisplayName(
+																					entity
+																				)}
+																			</span>
+																			<ExternalLink
+																				class="w-3.5 h-3.5 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+																			/>
+																		</div>
+																		{#if entity.type_key}
+																			<span
+																				class="text-xs text-gray-500 dark:text-slate-500"
+																				>{entity.type_key
+																					.split('.')
+																					.pop()}</span
+																			>
+																		{/if}
+																	</button>
+																{/each}
+															</div>
+														{/if}
+
+														<!-- Related Tasks -->
+														{#if linkedEntities?.dependentTasks && linkedEntities.dependentTasks.length > 0}
+															<div class="space-y-1.5">
+																<div
+																	class="flex items-center gap-1.5 text-xs font-medium text-gray-600 dark:text-slate-400"
+																>
+																	<ListChecks
+																		class="w-3.5 h-3.5 text-green-500"
+																	/>
+																	Related Tasks
+																	<Badge
+																		variant="info"
+																		size="sm"
+																		>{linkedEntities
+																			.dependentTasks
+																			.length}</Badge
+																	>
+																</div>
+																{#each linkedEntities.dependentTasks as entity}
+																	<button
+																		type="button"
+																		onclick={() =>
+																			openLinkedTaskModal(
+																				entity.id
+																			)}
+																		class="w-full text-left px-2 py-1.5 rounded hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors group"
+																	>
+																		<div
+																			class="flex items-center justify-between gap-2"
+																		>
+																			<span
+																				class="text-sm text-slate-900 dark:text-white truncate group-hover:text-green-600 dark:group-hover:text-green-400"
+																			>
+																				{getEntityDisplayName(
+																					entity
+																				)}
+																			</span>
+																			<ExternalLink
+																				class="w-3.5 h-3.5 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+																			/>
+																		</div>
+																		<div
+																			class="flex items-center gap-2"
+																		>
+																			{#if entity.state_key}
+																				<span
+																					class="text-xs text-gray-500 dark:text-slate-500"
+																					>{entity.state_key}</span
+																				>
+																			{/if}
+																			<span
+																				class="text-xs text-gray-400 dark:text-slate-600"
+																				>({formatRelLabel(
+																					entity.edge_rel,
+																					entity.edge_direction
+																				)})</span
+																			>
+																		</div>
+																	</button>
+																{/each}
+															</div>
+														{/if}
+
+														<!-- Outputs -->
+														{#if linkedEntities?.outputs && linkedEntities.outputs.length > 0}
+															<div class="space-y-1.5">
+																<div
+																	class="flex items-center gap-1.5 text-xs font-medium text-gray-600 dark:text-slate-400"
+																>
+																	<FileOutput
+																		class="w-3.5 h-3.5 text-violet-500"
+																	/>
+																	Outputs
+																	<Badge
+																		variant="info"
+																		size="sm"
+																		>{linkedEntities.outputs
+																			.length}</Badge
+																	>
+																</div>
+																{#each linkedEntities.outputs as entity}
+																	<div
+																		class="w-full text-left px-2 py-1.5 rounded bg-gray-50 dark:bg-slate-800/50"
+																	>
+																		<div
+																			class="flex items-center justify-between gap-2"
+																		>
+																			<span
+																				class="text-sm text-slate-900 dark:text-white truncate"
+																			>
+																				{getEntityDisplayName(
+																					entity
+																				)}
+																			</span>
+																		</div>
+																		{#if entity.type_key}
+																			<span
+																				class="text-xs text-gray-500 dark:text-slate-500"
+																				>{entity.type_key
+																					.split('.')
+																					.pop()}</span
+																			>
+																		{/if}
+																	</div>
+																{/each}
+															</div>
+														{/if}
+													</div>
+												{:else}
+													<div class="text-center py-4">
+														<Link2Off
+															class="w-6 h-6 text-gray-400 dark:text-slate-500 mx-auto mb-2"
+														/>
+														<p
+															class="text-xs text-gray-500 dark:text-slate-400"
+														>
+															No linked entities yet
+														</p>
+														<p
+															class="text-xs text-gray-400 dark:text-slate-500 mt-1"
+														>
+															Link this task to plans, goals, or
+															documents using the form fields
+														</p>
+													</div>
 												{/if}
+											</CardBody>
+										</Card>
 
-												{#if !showSeriesDeleteConfirm}
+										<!-- Schedule -->
+										<Card variant="elevated">
+											<CardHeader variant="accent">
+												<h3
+													class="text-xs font-semibold uppercase tracking-wide flex items-center gap-2"
+												>
+													<span class="text-base">📅</span>
+													{#if !dueAt}Schedule?
+													{:else}Scheduled
+													{/if}
+												</h3>
+											</CardHeader>
+											<CardBody padding="sm">
+												<div class="space-y-3">
+													<div>
+														<label
+															for="sidebar-due-date"
+															class="block text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-slate-400 mb-1.5"
+														>
+															Due Date
+														</label>
+														<TextInput
+															id="sidebar-due-date"
+															type="datetime-local"
+															inputmode="numeric"
+															enterkeyhint="done"
+															bind:value={dueAt}
+															disabled={isSaving}
+															size="sm"
+															class="border-gray-200 dark:border-gray-700 bg-surface-clarity dark:bg-surface-elevated focus:ring-2 focus:ring-accent-orange w-full"
+														/>
+														{#if dueAt}
+															<p
+																class="mt-1.5 text-xs text-gray-500 dark:text-slate-400"
+															>
+																{new Date(dueAt).toLocaleString(
+																	'en-US',
+																	{
+																		weekday: 'short',
+																		month: 'short',
+																		day: 'numeric',
+																		hour: 'numeric',
+																		minute: '2-digit'
+																	}
+																)}
+															</p>
+														{:else}
+															<p
+																class="mt-1.5 text-xs text-gray-500 dark:text-slate-400 italic"
+															>
+																No deadline set
+															</p>
+														{/if}
+													</div>
+												</div>
+											</CardBody>
+										</Card>
+
+										<!-- Recurrence -->
+										<Card variant="elevated">
+											<CardHeader variant="accent">
+												<h3
+													class="text-xs font-semibold uppercase tracking-wide flex items-center gap-2"
+												>
+													<span class="text-base">🔄</span>
+													Recurrence
+												</h3>
+											</CardHeader>
+											<CardBody padding="sm">
+												{#if isSeriesMaster && seriesMeta}
+													<div class="space-y-2 text-sm">
+														<p
+															class="text-indigo-900 dark:text-indigo-100"
+														>
+															This task controls a recurring series.
+														</p>
+														<ul
+															class="text-indigo-800 dark:text-indigo-100 space-y-1"
+														>
+															{#if seriesId}
+																<li>
+																	<span class="font-medium"
+																		>Series ID:</span
+																	>
+																	<span
+																		class="font-mono text-xs break-all"
+																		>{seriesId}</span
+																	>
+																</li>
+															{/if}
+															<li>
+																<span class="font-medium"
+																	>Timezone:</span
+																>
+																{seriesMeta.timezone}
+															</li>
+															{#if seriesMeta.rrule}
+																<li class="break-all">
+																	<span class="font-medium"
+																		>RRULE:</span
+																	>
+																	{seriesMeta.rrule}
+																</li>
+															{/if}
+															{#if seriesMeta.instance_count}
+																<li>
+																	<span class="font-medium"
+																		>Instances:</span
+																	>
+																	{seriesMeta.instance_count}
+																</li>
+															{/if}
+														</ul>
+													</div>
+
+													{#if seriesActionError}
+														<p
+															class="text-sm text-red-600 dark:text-red-400"
+														>
+															{seriesActionError}
+														</p>
+													{/if}
+
+													{#if !showSeriesDeleteConfirm}
+														<Button
+															size="sm"
+															variant="danger"
+															class="w-full"
+															onclick={() =>
+																(showSeriesDeleteConfirm = true)}
+														>
+															Delete Series
+														</Button>
+													{:else}
+														<div class="space-y-2">
+															<p
+																class="text-sm text-indigo-900 dark:text-indigo-100"
+															>
+																Delete this series? Completed
+																instances remain unless you force
+																delete.
+															</p>
+															<div class="flex flex-col gap-2">
+																<Button
+																	variant="danger"
+																	size="sm"
+																	disabled={isDeletingSeries}
+																	onclick={() =>
+																		handleDeleteSeries(false)}
+																>
+																	{#if isDeletingSeries}
+																		<Loader
+																			class="w-4 h-4 animate-spin"
+																		/>
+																		Removing…
+																	{:else}
+																		Delete Upcoming Only
+																	{/if}
+																</Button>
+																<Button
+																	variant="danger"
+																	size="sm"
+																	disabled={isDeletingSeries}
+																	onclick={() =>
+																		handleDeleteSeries(true)}
+																>
+																	{#if isDeletingSeries}
+																		<Loader
+																			class="w-4 h-4 animate-spin"
+																		/>
+																		Removing…
+																	{:else}
+																		Force Delete All
+																	{/if}
+																</Button>
+																<Button
+																	variant="ghost"
+																	size="sm"
+																	onclick={() => {
+																		showSeriesDeleteConfirm = false;
+																		seriesActionError = '';
+																	}}
+																	disabled={isDeletingSeries}
+																>
+																	Cancel
+																</Button>
+															</div>
+														</div>
+													{/if}
+												{:else if isSeriesInstance && seriesMeta}
+													<p
+														class="text-sm text-indigo-900 dark:text-indigo-100"
+													>
+														This task is part of a recurring series
+														{#if seriesMeta.master_task_id}
+															(master task: {seriesMeta.master_task_id})
+														{/if}
+														. Manage recurrence from the series master.
+													</p>
+												{:else}
+													<p
+														class="text-sm text-indigo-900 dark:text-indigo-100"
+													>
+														Automatically create future instances on a
+														schedule.
+													</p>
 													<Button
 														size="sm"
-														variant="danger"
+														variant="secondary"
 														class="w-full"
-														onclick={() =>
-															(showSeriesDeleteConfirm = true)}
+														onclick={() => (showSeriesModal = true)}
 													>
-														Delete Series
+														Make Recurring
 													</Button>
-												{:else}
-													<div class="space-y-2">
-														<p
-															class="text-sm text-indigo-900 dark:text-indigo-100"
-														>
-															Delete this series? Completed instances
-															remain unless you force delete.
-														</p>
-														<div class="flex flex-col gap-2">
-															<Button
-																variant="danger"
-																size="sm"
-																disabled={isDeletingSeries}
-																onclick={() =>
-																	handleDeleteSeries(false)}
-															>
-																{#if isDeletingSeries}
-																	<Loader
-																		class="w-4 h-4 animate-spin"
-																	/>
-																	Removing…
-																{:else}
-																	Delete Upcoming Only
-																{/if}
-															</Button>
-															<Button
-																variant="danger"
-																size="sm"
-																disabled={isDeletingSeries}
-																onclick={() =>
-																	handleDeleteSeries(true)}
-															>
-																{#if isDeletingSeries}
-																	<Loader
-																		class="w-4 h-4 animate-spin"
-																	/>
-																	Removing…
-																{:else}
-																	Force Delete All
-																{/if}
-															</Button>
-															<Button
-																variant="ghost"
-																size="sm"
-																onclick={() => {
-																	showSeriesDeleteConfirm = false;
-																	seriesActionError = '';
-																}}
-																disabled={isDeletingSeries}
-															>
-																Cancel
-															</Button>
-														</div>
-													</div>
 												{/if}
-											{:else if isSeriesInstance && seriesMeta}
-												<p
-													class="text-sm text-indigo-900 dark:text-indigo-100"
-												>
-													This task is part of a recurring series
-													{#if seriesMeta.master_task_id}
-														(master task: {seriesMeta.master_task_id})
-													{/if}
-													. Manage recurrence from the series master.
-												</p>
-											{:else}
-												<p
-													class="text-sm text-indigo-900 dark:text-indigo-100"
-												>
-													Automatically create future instances on a
-													schedule.
-												</p>
+											</CardBody>
+										</Card>
+									</div>
+								</form>
+							{:else}
+								<!-- WORKSPACE TAB -->
+								<div class="h-full flex flex-col space-y-4 overflow-y-auto">
+									<!-- Document Selector -->
+									<Card variant="elevated">
+										<CardBody padding="md">
+											<div
+												class="flex flex-col sm:flex-row items-stretch sm:items-center gap-4"
+											>
+												<div class="flex items-center gap-3 flex-1 min-w-0">
+													<FileText
+														class="w-5 h-5 text-blue-500 shrink-0 hidden sm:block"
+														aria-hidden="true"
+													/>
+													<div class="flex-1 min-w-0">
+														<label
+															for="workspace-doc-selector"
+															class="sr-only"
+														>
+															Select document
+														</label>
+														<Select
+															id="workspace-doc-selector"
+															value={selectedWorkspaceDocId || ''}
+															onchange={(val) =>
+																selectWorkspaceDocument(
+																	String(val)
+																)}
+															size={{ base: 'sm', md: 'md' }}
+														>
+															{#if deliverableDocuments.length === 0}
+																<option value=""
+																	>No documents yet</option
+																>
+															{:else}
+																{#each deliverableDocuments as doc}
+																	<option value={doc.document.id}>
+																		{doc.document.title ||
+																			'Untitled'} ({doc
+																			.document.state_key})
+																	</option>
+																{/each}
+															{/if}
+														</Select>
+													</div>
+												</div>
 												<Button
 													size="sm"
 													variant="secondary"
-													class="w-full"
-													onclick={() => (showSeriesModal = true)}
-												>
-													Make Recurring
-												</Button>
-											{/if}
-										</CardBody>
-									</Card>
-								</div>
-							</form>
-						{:else}
-							<!-- WORKSPACE TAB -->
-							<div class="h-full flex flex-col space-y-4 overflow-y-auto">
-								<!-- Document Selector -->
-								<Card variant="elevated">
-									<CardBody padding="md">
-										<div
-											class="flex flex-col sm:flex-row items-stretch sm:items-center gap-4"
-										>
-											<div class="flex items-center gap-3 flex-1 min-w-0">
-												<FileText
-													class="w-5 h-5 text-blue-500 shrink-0 hidden sm:block"
-													aria-hidden="true"
-												/>
-												<div class="flex-1 min-w-0">
-													<label
-														for="workspace-doc-selector"
-														class="sr-only"
-													>
-														Select document
-													</label>
-													<Select
-														id="workspace-doc-selector"
-														value={selectedWorkspaceDocId || ''}
-														onchange={(val) =>
-															selectWorkspaceDocument(String(val))}
-														size={{ base: 'sm', md: 'md' }}
-													>
-														{#if deliverableDocuments.length === 0}
-															<option value=""
-																>No documents yet</option
-															>
-														{:else}
-															{#each deliverableDocuments as doc}
-																<option value={doc.document.id}>
-																	{doc.document.title ||
-																		'Untitled'} ({doc.document
-																		.state_key})
-																</option>
-															{/each}
-														{/if}
-													</Select>
-												</div>
-											</div>
-											<Button
-												size="sm"
-												variant="secondary"
-												onclick={() => openWorkspaceDocumentModal(null)}
-												class="w-full sm:w-auto"
-											>
-												+ New Document
-											</Button>
-										</div>
-									</CardBody>
-								</Card>
-
-								<!-- RichMarkdownEditor -->
-								{#if selectedWorkspaceDoc}
-									<Card variant="elevated">
-										<CardBody padding="md">
-											<RichMarkdownEditor
-												bind:value={workspaceDocContent}
-												rows={18}
-												maxLength={20000}
-												size="base"
-												label="Document Content"
-												helpText="Full markdown support with live preview"
-											/>
-										</CardBody>
-									</Card>
-								{:else}
-									<Card variant="outline" class="border-dashed">
-										<CardBody padding="lg">
-											<div class="text-center">
-												<FileText
-													class="w-12 h-12 text-gray-400 mx-auto mb-3"
-													aria-hidden="true"
-												/>
-												<p class="text-gray-600 dark:text-gray-400 mb-4">
-													No document selected. Create one to get started.
-												</p>
-												<Button
-													size="sm"
-													variant="primary"
 													onclick={() => openWorkspaceDocumentModal(null)}
+													class="w-full sm:w-auto"
 												>
-													Create Document
+													+ New Document
 												</Button>
 											</div>
 										</CardBody>
 									</Card>
-								{/if}
-							</div>
-						{/if}
-					</div>
-				{/key}
-			</div>
-		</div>
-	{/if}
 
-	<!-- Footer Actions -->
-	<svelte:fragment slot="footer">
+									<!-- RichMarkdownEditor -->
+									{#if selectedWorkspaceDoc}
+										<Card variant="elevated">
+											<CardBody padding="md">
+												<RichMarkdownEditor
+													bind:value={workspaceDocContent}
+													rows={18}
+													maxLength={20000}
+													size="base"
+													label="Document Content"
+													helpText="Full markdown support with live preview"
+												/>
+											</CardBody>
+										</Card>
+									{:else}
+										<Card variant="outline" class="border-dashed">
+											<CardBody padding="lg">
+												<div class="text-center">
+													<FileText
+														class="w-12 h-12 text-slate-400 mx-auto mb-3"
+														aria-hidden="true"
+													/>
+													<p
+														class="text-gray-600 dark:text-slate-400 mb-4"
+													>
+														No document selected. Create one to get
+														started.
+													</p>
+													<Button
+														size="sm"
+														variant="primary"
+														onclick={() =>
+															openWorkspaceDocumentModal(null)}
+													>
+														Create Document
+													</Button>
+												</div>
+											</CardBody>
+										</Card>
+									{/if}
+								</div>
+							{/if}
+						</div>
+					{/key}
+				</div>
+			</div>
+		{/if}
+	{/snippet}
+
+	<!-- Footer Actions - buttons on one row, smaller on mobile -->
+	{#snippet footer()}
 		<div
-			class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 p-2 sm:p-4 border-t border-gray-200 dark:border-gray-700 bg-gradient-to-r from-gray-50 to-slate-50 dark:from-gray-900/50 dark:to-gray-800/50 dither-surface"
+			class="flex flex-row items-center justify-between gap-2 sm:gap-4 p-2 sm:p-4 border-t border-gray-200 dark:border-gray-700 bg-surface-panel dark:bg-slate-900/30 dither-surface"
 		>
 			{#if activeView === 'details'}
-				<!-- Delete button on the left -->
-				<Button
-					type="button"
-					variant="danger"
-					size="sm"
-					onclick={() => (showDeleteConfirm = true)}
-					disabled={isDeleting || isSaving}
-					class="w-full sm:w-auto"
-				>
-					{#if isDeleting}
-						<Loader class="w-4 h-4 animate-spin" />
-						Deleting...
-					{:else}
-						<Trash2 class="w-4 h-4" />
-						Delete Task
-					{/if}
-				</Button>
+				<!-- Danger zone inline on mobile -->
+				<div class="flex items-center gap-1.5 sm:gap-2">
+					<Trash2 class="w-3 h-3 sm:w-4 sm:h-4 text-red-500 shrink-0" />
+					<Button
+						type="button"
+						variant="danger"
+						size="sm"
+						onclick={() => (showDeleteConfirm = true)}
+						disabled={isDeleting || isSaving}
+						class="text-[10px] sm:text-xs px-2 py-1 sm:px-3 sm:py-1.5"
+					>
+						<span class="hidden sm:inline">Delete</span>
+						<span class="sm:hidden">Del</span>
+					</Button>
+				</div>
 
 				<!-- Cancel and Save buttons on the right -->
-				<div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+				<div class="flex flex-row items-center gap-2">
 					<Button
 						type="button"
 						variant="ghost"
 						size="sm"
 						onclick={handleClose}
 						disabled={isSaving || isDeleting}
-						class="w-full sm:w-auto"
+						class="text-xs sm:text-sm px-2 sm:px-4"
 					>
 						Cancel
 					</Button>
@@ -1485,16 +2085,13 @@
 						form={detailsFormId}
 						variant="primary"
 						size="sm"
+						loading={isSaving}
 						disabled={isSaving || isDeleting || !title.trim()}
-						class="w-full sm:w-auto"
+						class="text-xs sm:text-sm px-2 sm:px-4"
 					>
-						{#if isSaving}
-							<Loader class="w-4 h-4 animate-spin" />
-							Saving...
-						{:else}
-							<Save class="w-4 h-4" />
-							Save Changes
-						{/if}
+						<Save class="w-3 h-3 sm:w-4 sm:h-4" />
+						<span class="hidden sm:inline">Save</span>
+						<span class="sm:hidden">Save</span>
 					</Button>
 				</div>
 			{:else}
@@ -1503,24 +2100,22 @@
 					variant="ghost"
 					size="sm"
 					onclick={() => setActiveView('details')}
-					class="w-full sm:w-auto"
+					class="text-xs sm:text-sm px-2 sm:px-4"
 				>
-					← Back to Details
+					<span class="hidden sm:inline">← Details</span>
+					<span class="sm:hidden">←</span>
 				</Button>
-				<div
-					class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto"
-				>
+				<div class="flex flex-row items-center gap-2">
 					{#if selectedWorkspaceDoc && !selectedWorkspaceDoc.edge?.props?.handed_off}
 						<Button
 							type="button"
 							variant="secondary"
 							size="sm"
 							onclick={() => handlePromoteWorkspaceDocument(selectedWorkspaceDocId!)}
-							class="w-full sm:w-auto"
+							class="text-[10px] sm:text-xs px-2 py-1 sm:px-3"
 						>
-							<CheckCircle2 class="w-4 h-4" />
-							<span class="hidden sm:inline">Promote to Project</span>
-							<span class="sm:hidden">Promote</span>
+							<CircleCheck class="w-3 h-3 sm:w-4 sm:h-4" />
+							<span class="hidden sm:inline">Promote</span>
 						</Button>
 					{/if}
 					<Button
@@ -1528,21 +2123,18 @@
 						variant="primary"
 						size="sm"
 						onclick={saveWorkspaceDocument}
+						loading={workspaceDocSaving}
 						disabled={workspaceDocSaving || !selectedWorkspaceDocId}
-						class="w-full sm:w-auto"
+						class="text-xs sm:text-sm px-2 sm:px-4"
 					>
-						{#if workspaceDocSaving}
-							<Loader class="w-4 h-4 animate-spin" />
-							Saving...
-						{:else}
-							<Save class="w-4 h-4" />
-							Save Document
-						{/if}
+						<Save class="w-3 h-3 sm:w-4 sm:h-4" />
+						<span class="hidden sm:inline">Save Doc</span>
+						<span class="sm:hidden">Save</span>
 					</Button>
 				</div>
 			{/if}
 		</div>
-	</svelte:fragment>
+	{/snippet}
 </Modal>
 
 {#if task}
@@ -1578,8 +2170,45 @@
 		on:confirm={handleDelete}
 		on:cancel={() => (showDeleteConfirm = false)}
 	>
-		<p class="text-sm text-gray-600 dark:text-gray-300" slot="content">
-			This action cannot be undone. The task and all its data will be permanently deleted.
-		</p>
+		{#snippet content()}
+			<p class="text-sm text-gray-600 dark:text-gray-300">
+				This action cannot be undone. The task and all its data will be permanently deleted.
+			</p>
+		{/snippet}
 	</ConfirmationModal>
+{/if}
+
+<!-- Linked Entity Modals -->
+{#if showGoalModal && selectedGoalIdForModal}
+	<GoalEditModal
+		goalId={selectedGoalIdForModal}
+		{projectId}
+		onClose={handleLinkedEntityModalClose}
+		onUpdated={handleLinkedEntityModalClose}
+		onDeleted={handleLinkedEntityModalClose}
+	/>
+{/if}
+
+{#if showPlanModal && selectedPlanIdForModal}
+	<PlanEditModal
+		planId={selectedPlanIdForModal}
+		{projectId}
+		tasks={[]}
+		onClose={handleLinkedEntityModalClose}
+		onUpdated={handleLinkedEntityModalClose}
+		onDeleted={handleLinkedEntityModalClose}
+	/>
+{/if}
+
+{#if showLinkedTaskModal && selectedLinkedTaskId}
+	<TaskEditModalSelf
+		taskId={selectedLinkedTaskId}
+		{projectId}
+		{plans}
+		{goals}
+		{milestones}
+		onClose={handleLinkedEntityModalClose}
+		onUpdated={handleLinkedEntityModalClose}
+		onDeleted={handleLinkedEntityModalClose}
+	/>
 {/if}

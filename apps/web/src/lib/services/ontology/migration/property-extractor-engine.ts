@@ -13,7 +13,6 @@
  * - Validation against JSON schema
  */
 
-import type { Json } from '@buildos/shared-types';
 import type { SmartLLMService } from '$lib/services/smart-llm-service';
 import type {
 	PropertyExtractionOptions,
@@ -70,6 +69,11 @@ export class PropertyExtractorEngine {
 
 	/**
 	 * Validate extracted properties against schema
+	 *
+	 * Handles:
+	 * - Required field checking
+	 * - Type validation with null tolerance for optional fields
+	 * - Special handling for universal fields (facets)
 	 */
 	async validateProperties(
 		props: Record<string, unknown>,
@@ -78,8 +82,13 @@ export class PropertyExtractorEngine {
 		const errors: string[] = [];
 		const warnings: string[] = [];
 
-		// Get required fields
-		const required = new Set(schema.required ?? []);
+		// Get required fields (cast to string[] for proper typing)
+		const requiredFields: string[] = Array.isArray(schema.required) ? schema.required : [];
+		const required = new Set<string>(requiredFields);
+
+		// Universal fields that exist on all entities but aren't in template schemas
+		// These are handled by generated columns (e.g., facet_context, facet_scale)
+		const universalFields = new Set(['facets']);
 
 		// Check required fields
 		for (const field of required) {
@@ -91,6 +100,11 @@ export class PropertyExtractorEngine {
 		// Check types
 		const properties = schema.properties ?? {};
 		for (const [key, value] of Object.entries(props)) {
+			// Skip universal fields - they're handled separately and not in template schemas
+			if (universalFields.has(key)) {
+				continue;
+			}
+
 			const fieldSchema = properties[key];
 			if (!fieldSchema) {
 				warnings.push(`Property ${key} not defined in schema`);
@@ -99,6 +113,22 @@ export class PropertyExtractorEngine {
 
 			const expectedType = fieldSchema.type;
 			const actualType = this.getJsonType(value);
+
+			// Allow null for non-required fields
+			// null semantically means "no value provided" which is valid for optional fields
+			if (actualType === 'null' && !required.has(key)) {
+				continue;
+			}
+
+			// Handle JSON Schema nullable types (type can be an array like ["string", "null"])
+			if (Array.isArray(expectedType)) {
+				if (!expectedType.includes(actualType)) {
+					errors.push(
+						`Type mismatch for ${key}: expected one of [${expectedType.join(', ')}], got ${actualType}`
+					);
+				}
+				continue;
+			}
 
 			if (expectedType && expectedType !== actualType) {
 				errors.push(
@@ -144,7 +174,10 @@ Follow these rules:
    - "Grand Hall" → venue_details: { name: "Grand Hall" } (object)
 3. **Infer missing values** from context when reasonable
 4. **Use template defaults** for truly unknown values
-5. **Always include facets** (context, scale, stage) in props
+5. **Facets for projects**: When scope is project, include facets in both props.facets and top-level facets with allowed values:
+   - context: one of [personal, client, commercial, internal, open_source, community, academic, nonprofit, startup]
+   - scale: one of [micro, small, medium, large, epic]
+   - stage: one of [discovery, planning, execution, launch, maintenance, complete]
 6. **Extract nested structures** when template schema defines objects
 
 Return JSON with populated props matching the template schema.`;
@@ -160,6 +193,14 @@ Return JSON with populated props matching the template schema.`;
 			.join('\n');
 
 		const narrative = this.buildNarrative(options.legacyData);
+		const facetGuidance =
+			this.isLegacyProject(options.legacyData) || options.template.scope === 'project'
+				? `- Include facets with valid values:
+  * context: personal, client, commercial, internal, open_source, community, academic, nonprofit, startup
+  * scale: micro, small, medium, large, epic
+  * stage: discovery, planning, execution, launch, maintenance, complete
+- Place facets inside props.facets AND return them in top-level "facets" for convenience`
+				: '';
 
 		return `Extract template properties from this legacy data.
 
@@ -225,14 +266,15 @@ Extract ALL template properties with values from the narrative above.
 - Infer missing required fields when possible
 - Set confidence 0.0-1.0 based on how complete the data is
 - Add notes explaining extraction decisions
+${facetGuidance}
 
 Return JSON:
 {
   "props": {
-    "facets": { "context": "...", "scale": "...", "stage": "..." },
-    // ...all other template properties with extracted values
+    "facets": { "context": "...", "scale": "...", "stage": "..." }, // include only for projects
+    // ...all template properties with extracted values
   },
-  "facets": { "context": "...", "scale": "...", "stage": "..." },
+  "facets": { "context": "...", "scale": "...", "stage": "..." } // include only for projects
   "confidence": 0.0-1.0,
   "notes": "extraction notes or concerns"
 }`;
@@ -312,7 +354,7 @@ Return JSON:
 			`Status: ${task.status}`,
 			task.description ? `Description:\n${task.description}` : '',
 			task.notes ? `Notes:\n${task.notes}` : '',
-			task.due_date ? `Due Date: ${task.due_date}` : '',
+			task.start_date ? `Due Date: ${task.start_date}` : '',
 			task.priority ? `Priority: ${task.priority}` : ''
 		];
 

@@ -703,18 +703,16 @@
 	const displayName = $derived(user?.name || user?.email?.split('@')[0] || 'there');
 </script>
 
-<main
-	class="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 transition-colors rounded-lg"
->
+<main class="min-h-screen bg-surface-scratch dark:bg-slate-900 transition-colors">
 	<div class="container mx-auto px-2 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-10 max-w-7xl">
 		<!-- Header Section with Apple-style typography -->
 		<header class="mb-4 sm:mb-6">
 			<h1
-				class="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 dark:text-white mb-2 tracking-tight bg-gradient-to-br from-gray-900 to-gray-700 dark:from-white dark:to-gray-300 bg-clip-text text-transparent"
+				class="text-3xl sm:text-4xl lg:text-5xl font-bold text-slate-900 dark:text-white mb-2 tracking-tight"
 			>
 				Welcome back, {displayName}
 			</h1>
-			<p class="text-sm sm:text-base text-gray-500 dark:text-gray-400 font-medium">
+			<p class="text-sm sm:text-base text-slate-500 dark:text-slate-400 font-medium">
 				<time datetime={new Date().toISOString()}>
 					{formatFullDate(new Date())}
 				</time>
@@ -724,7 +722,7 @@
 		<!-- Error State -->
 		{#if dashboardError}
 			<div
-				class="mb-4 sm:mb-6 bg-red-50 dark:bg-red-900/20 rounded-xl p-4 sm:p-6 border border-red-200 dark:border-red-800 transition-colors"
+				class="mb-4 sm:mb-6 bg-red-50 dark:bg-red-900/20 rounded p-4 sm:p-6 border border-red-200 dark:border-red-800 transition-colors"
 			>
 				<div class="text-center">
 					<AlertTriangle class="h-8 w-8 text-red-500 dark:text-red-400 mx-auto mb-3" />
@@ -737,11 +735,11 @@
 		<!-- Loading State -->
 		{#if isLoadingDashboard && !initialData}
 			<div
-				class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-8 sm:p-12 transition-colors"
+				class="bg-surface-panel dark:bg-slate-800 rounded shadow-sm p-8 sm:p-12 transition-colors"
 			>
 				<div class="flex flex-col items-center justify-center">
 					<Loader2 class="h-10 w-10 text-blue-600 dark:text-blue-400 animate-spin mb-4" />
-					<p class="text-gray-600 dark:text-gray-400">Loading your dashboard...</p>
+					<p class="text-slate-600 dark:text-slate-400">Loading your dashboard...</p>
 				</div>
 			</div>
 		{:else if initialData}
@@ -767,19 +765,19 @@
 			{#if showWelcomeMessages && primaryCTA && displayMode !== 'first-time'}
 				{@const Icon = primaryCTA.primaryAction.icon}
 				<div
-					class="mb-4 sm:mb-6 dither-soft bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-2xl p-5 sm:p-6 border border-blue-200/50 dark:border-blue-800/50 shadow-sm backdrop-blur-sm"
+					class="mb-4 sm:mb-6 dither-soft bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded p-5 sm:p-6 border border-blue-200/50 dark:border-blue-800/50 shadow-sm backdrop-blur-sm"
 				>
 					<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
 						<div class="flex-1">
 							<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">
 								{primaryCTA.title}
 							</h3>
-							<p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
+							<p class="text-sm text-slate-600 dark:text-slate-400 mb-4">
 								{primaryCTA.description}
 							</p>
 							<a
 								href={primaryCTA.primaryAction.href}
-								class="inline-flex items-center px-5 py-2.5 dither-gradient bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl shadow-md hover:shadow-lg transition-all text-sm font-semibold"
+								class="inline-flex items-center px-5 py-2.5 dither-gradient bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded shadow-md hover:shadow-lg transition-all text-sm font-semibold"
 							>
 								<Icon class="h-4 w-4 mr-2" />
 								{primaryCTA.primaryAction.text}
@@ -795,11 +793,11 @@
 					{#each nudgeCards as card}
 						{@const CardIcon = card.icon}
 						<div
-							class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md transition-all"
+							class="bg-surface-panel dark:bg-slate-800 rounded border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md transition-all"
 						>
 							<div class="flex items-start space-x-3">
 								<div
-									class="p-2 bg-{card.color}-100 dark:bg-{card.color}-900/30 rounded-lg"
+									class="p-2 bg-{card.color}-100 dark:bg-{card.color}-900/30 rounded"
 								>
 									<CardIcon
 										class="h-4 w-4 text-{card.color}-600 dark:text-{card.color}-400"
@@ -811,7 +809,7 @@
 									>
 										{card.title}
 									</h4>
-									<p class="text-xs text-gray-600 dark:text-gray-400 mb-3">
+									<p class="text-xs text-slate-600 dark:text-slate-400 mb-3">
 										{card.description}
 									</p>
 									<a
@@ -835,23 +833,17 @@
 					{#await import('$lib/components/dashboard/MobileTaskTabs.svelte')}
 						<!-- Loading skeleton matching mobile tabs layout -->
 						<div
-							class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-4 animate-pulse"
+							class="bg-surface-panel dark:bg-slate-800 rounded shadow-sm p-4 animate-pulse"
 						>
 							<div class="flex space-x-2 mb-4">
-								<div
-									class="h-10 w-24 bg-gray-200 dark:bg-gray-700 rounded-lg"
-								></div>
-								<div
-									class="h-10 w-24 bg-gray-200 dark:bg-gray-700 rounded-lg"
-								></div>
-								<div
-									class="h-10 w-24 bg-gray-200 dark:bg-gray-700 rounded-lg"
-								></div>
+								<div class="h-10 w-24 bg-slate-200 dark:bg-slate-700 rounded"></div>
+								<div class="h-10 w-24 bg-slate-200 dark:bg-slate-700 rounded"></div>
+								<div class="h-10 w-24 bg-slate-200 dark:bg-slate-700 rounded"></div>
 							</div>
 							<div class="space-y-2">
-								<div class="h-16 bg-gray-100 dark:bg-gray-700/50 rounded-lg"></div>
-								<div class="h-16 bg-gray-100 dark:bg-gray-700/50 rounded-lg"></div>
-								<div class="h-16 bg-gray-100 dark:bg-gray-700/50 rounded-lg"></div>
+								<div class="h-16 bg-slate-100 dark:bg-slate-700/50 rounded"></div>
+								<div class="h-16 bg-slate-100 dark:bg-slate-700/50 rounded"></div>
+								<div class="h-16 bg-slate-100 dark:bg-slate-700/50 rounded"></div>
 							</div>
 						</div>
 					{:then MobileTaskTabsModule}
@@ -866,7 +858,7 @@
 							onNewTimeBlock={handleNewTimeBlock}
 						/>
 					{:catch error}
-						<div class="bg-red-50 dark:bg-red-900/20 rounded-xl p-4 text-center">
+						<div class="bg-red-50 dark:bg-red-900/20 rounded p-4 text-center">
 							<p class="text-red-700 dark:text-red-400 font-semibold">
 								Failed to load mobile view
 							</p>
@@ -920,25 +912,27 @@
 					{#await import('$lib/components/dashboard/WeeklyTaskCalendar.svelte')}
 						<!-- Loading skeleton matching calendar layout -->
 						<div
-							class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 animate-pulse"
+							class="bg-surface-panel dark:bg-slate-800 rounded shadow-sm p-6 animate-pulse"
 						>
 							<div class="flex items-center justify-between mb-6">
-								<div class="h-8 w-48 bg-gray-200 dark:bg-gray-700 rounded-lg"></div>
+								<div class="h-8 w-48 bg-slate-200 dark:bg-slate-700 rounded"></div>
 								<div class="flex space-x-2">
 									<div
-										class="h-9 w-9 bg-gray-200 dark:bg-gray-700 rounded-lg"
+										class="h-9 w-9 bg-slate-200 dark:bg-slate-700 rounded"
 									></div>
 									<div
-										class="h-9 w-9 bg-gray-200 dark:bg-gray-700 rounded-lg"
+										class="h-9 w-9 bg-slate-200 dark:bg-slate-700 rounded"
 									></div>
 								</div>
 							</div>
 							<div class="grid grid-cols-7 gap-2">
 								{#each Array(7) as _, i}
 									<div class="space-y-2">
-										<div class="h-6 bg-gray-200 dark:bg-gray-700 rounded"></div>
 										<div
-											class="h-24 bg-gray-100 dark:bg-gray-700/50 rounded-lg"
+											class="h-6 bg-slate-200 dark:bg-slate-700 rounded"
+										></div>
+										<div
+											class="h-24 bg-slate-100 dark:bg-slate-700/50 rounded"
 										></div>
 									</div>
 								{/each}
@@ -953,7 +947,7 @@
 							onTimeBlockClick={handleTimeBlockClick}
 						/>
 					{:catch error}
-						<div class="bg-red-50 dark:bg-red-900/20 rounded-xl p-4 text-center">
+						<div class="bg-red-50 dark:bg-red-900/20 rounded p-4 text-center">
 							<p class="text-red-700 dark:text-red-400 font-semibold">
 								Failed to load weekly calendar
 							</p>
@@ -970,11 +964,11 @@
 				<section class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-6">
 					<!-- Weekly Progress with glass effect -->
 					<div
-						class="dither-soft bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/10 dark:to-indigo-900/10 rounded-2xl p-5 sm:p-6 border border-blue-200/50 dark:border-blue-800/50 shadow-sm backdrop-blur-sm"
+						class="dither-soft bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/10 dark:to-indigo-900/10 rounded p-5 sm:p-6 border border-blue-200/50 dark:border-blue-800/50 shadow-sm backdrop-blur-sm"
 					>
 						<div class="flex items-center justify-between mb-5">
 							<div class="flex items-center">
-								<div class="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-xl mr-3">
+								<div class="p-2 bg-blue-100 dark:bg-blue-900/30 rounded mr-3">
 									<TrendingUp class="h-5 w-5 text-blue-600 dark:text-blue-400" />
 								</div>
 								<h3
@@ -990,11 +984,11 @@
 							</span>
 						</div>
 						<div class="space-y-3">
-							<p class="text-sm text-gray-600 dark:text-gray-400">
+							<p class="text-sm text-slate-600 dark:text-slate-400">
 								{weeklyProgressText}
 							</p>
 							<div
-								class="w-full bg-gray-200/50 dark:bg-gray-700/50 rounded-full h-3 overflow-hidden"
+								class="w-full bg-slate-200/50 dark:bg-slate-700/50 rounded-full h-3 overflow-hidden"
 							>
 								<div
 									class="bg-gradient-to-r from-blue-500 to-indigo-600 h-3 rounded-full transition-all duration-700 ease-out shadow-sm"
@@ -1006,11 +1000,11 @@
 
 					<!-- Active Projects with modern card style -->
 					<div
-						class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200/50 dark:border-gray-700/50 p-5 sm:p-6 shadow-sm backdrop-blur-sm"
+						class="bg-surface-panel dark:bg-slate-800 rounded border border-gray-200/50 dark:border-gray-700/50 p-5 sm:p-6 shadow-sm backdrop-blur-sm"
 					>
 						<div class="flex items-center justify-between mb-5">
 							<div class="flex items-center">
-								<div class="p-2 bg-green-100 dark:bg-green-900/30 rounded-xl mr-3">
+								<div class="p-2 bg-green-100 dark:bg-green-900/30 rounded mr-3">
 									<FolderOpen
 										class="h-5 w-5 text-green-600 dark:text-green-400"
 									/>
@@ -1032,7 +1026,7 @@
 								{#each activeProjects.slice(0, 3) as project}
 									<a
 										href="/projects/{project.id}"
-										class="block p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-all hover:shadow-sm group border border-transparent hover:border-gray-200/50 dark:hover:border-gray-700/50"
+										class="block p-3 rounded hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-all hover:shadow-sm group border border-transparent hover:border-gray-200/50 dark:hover:border-gray-700/50"
 									>
 										<div class="flex items-center justify-between">
 											<span
@@ -1058,7 +1052,7 @@
 							</div>
 						{:else}
 							<div class="text-center py-4">
-								<p class="text-gray-500 dark:text-gray-400 mb-3 text-sm">
+								<p class="text-slate-500 dark:text-slate-400 mb-3 text-sm">
 									No active projects yet
 								</p>
 								<a
@@ -1105,7 +1099,7 @@
 
 			<!-- Error state for lazy sections -->
 			{#if showLazyLoadedSections && lazyLoadError}
-				<div class="text-center py-8 text-sm text-gray-500 dark:text-gray-400">
+				<div class="text-center py-8 text-sm text-slate-500 dark:text-slate-400">
 					{lazyLoadError}
 				</div>
 			{/if}

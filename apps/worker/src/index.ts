@@ -321,6 +321,74 @@ app.post('/queue/onboarding', async (req, res) => {
 	}
 });
 
+// Queue chat session classification endpoint
+app.post('/queue/chat/classify', async (req, res) => {
+	try {
+		const { sessionId, userId } = req.body;
+
+		if (!sessionId || !userId) {
+			return res.status(400).json({
+				error: 'sessionId and userId are required'
+			});
+		}
+
+		// Validate UUID format
+		const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+		if (!uuidRegex.test(sessionId) || !uuidRegex.test(userId)) {
+			return res.status(400).json({
+				error: 'sessionId and userId must be valid UUIDs'
+			});
+		}
+
+		// Check for existing classification jobs for this session
+		const { data: existingJobs } = await supabase
+			.from('queue_jobs')
+			.select('*')
+			.eq('user_id', userId)
+			.eq('job_type', 'classify_chat_session')
+			.eq('metadata->>sessionId', sessionId)
+			.in('status', ['pending', 'processing']);
+
+		if (existingJobs && existingJobs.length > 0) {
+			return res.status(409).json({
+				error: 'Classification already in progress for this session',
+				existingJobId: existingJobs[0].queue_job_id
+			});
+		}
+
+		// Queue the job with low priority (background task)
+		const job = await queue.add(
+			'classify_chat_session',
+			userId,
+			{
+				sessionId,
+				userId
+			},
+			{
+				priority: 8, // Low priority - this is a background cleanup task
+				dedupKey: `classify-session-${sessionId}` // Prevent duplicate jobs
+			}
+		);
+
+		console.log(
+			`🏷️  API: Queued chat classification for session ${sessionId}, job ${job.queue_job_id}`
+		);
+
+		return res.json({
+			success: true,
+			jobId: job.queue_job_id,
+			sessionId,
+			message: 'Chat session classification queued'
+		});
+	} catch (error: any) {
+		console.error('Error queueing chat classification:', error);
+		return res.status(500).json({
+			error: 'Failed to queue chat classification',
+			message: error.message
+		});
+	}
+});
+
 // Get job status endpoint
 app.get('/jobs/:jobId', async (req, res) => {
 	try {

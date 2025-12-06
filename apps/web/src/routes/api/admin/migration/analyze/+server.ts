@@ -2,8 +2,9 @@
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { OntologyMigrationOrchestrator } from '$lib/services/ontology/ontology-migration-orchestrator';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
 
-export const POST: RequestHandler = async ({ request, locals: { safeGetSession, supabase } }) => {
+export const POST: RequestHandler = async ({ request, locals: { safeGetSession } }) => {
 	const { user } = await safeGetSession();
 	if (!user) {
 		return ApiResponse.unauthorized();
@@ -20,6 +21,10 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 	const includeArchived = Boolean(payload?.includeArchived);
 	const limitInput = Number(payload?.limit);
 	const limit = Number.isFinite(limitInput) ? Math.min(Math.max(1, limitInput), 100) : 25;
+
+	// Use admin client to bypass RLS - this endpoint is admin-only and needs to access
+	// projects belonging to any user for migration purposes
+	const supabase = createAdminSupabaseClient();
 
 	try {
 		const orchestrator = new OntologyMigrationOrchestrator(supabase);

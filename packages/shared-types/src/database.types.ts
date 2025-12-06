@@ -1777,6 +1777,7 @@ export type Database = {
           archived_at: string | null
           auto_accept_operations: boolean | null
           auto_title: string | null
+          chat_topics: string[] | null
           chat_type: string | null
           compressed_at: string | null
           context_type: string
@@ -1798,6 +1799,7 @@ export type Database = {
           archived_at?: string | null
           auto_accept_operations?: boolean | null
           auto_title?: string | null
+          chat_topics?: string[] | null
           chat_type?: string | null
           compressed_at?: string | null
           context_type: string
@@ -1819,6 +1821,7 @@ export type Database = {
           archived_at?: string | null
           auto_accept_operations?: boolean | null
           auto_title?: string | null
+          chat_topics?: string[] | null
           chat_type?: string | null
           compressed_at?: string | null
           context_type?: string
@@ -4580,7 +4583,6 @@ export type Database = {
       onto_projects: {
         Row: {
           also_types: string[] | null
-          context_document_id: string | null
           created_at: string
           created_by: string
           description: string | null
@@ -4599,7 +4601,6 @@ export type Database = {
         }
         Insert: {
           also_types?: string[] | null
-          context_document_id?: string | null
           created_at?: string
           created_by: string
           description?: string | null
@@ -4618,7 +4619,6 @@ export type Database = {
         }
         Update: {
           also_types?: string[] | null
-          context_document_id?: string | null
           created_at?: string
           created_by?: string
           description?: string | null
@@ -4635,22 +4635,7 @@ export type Database = {
           type_key?: string
           updated_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "fk_context_document"
-            columns: ["context_document_id"]
-            isOneToOne: false
-            referencedRelation: "onto_documents"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fk_context_document"
-            columns: ["context_document_id"]
-            isOneToOne: false
-            referencedRelation: "task_documents"
-            referencedColumns: ["document_id"]
-          },
-        ]
+        Relationships: []
       }
       onto_requirements: {
         Row: {
@@ -4823,13 +4808,13 @@ export type Database = {
           due_at: string | null
           facet_scale: string | null
           id: string
-          plan_id: string | null
           priority: number | null
           project_id: string
           props: Json
           search_vector: unknown
           state_key: string
           title: string
+          type_key: string
           updated_at: string
         }
         Insert: {
@@ -4838,13 +4823,13 @@ export type Database = {
           due_at?: string | null
           facet_scale?: string | null
           id?: string
-          plan_id?: string | null
           priority?: number | null
           project_id: string
           props?: Json
           search_vector?: unknown
           state_key?: string
           title: string
+          type_key?: string
           updated_at?: string
         }
         Update: {
@@ -4853,23 +4838,16 @@ export type Database = {
           due_at?: string | null
           facet_scale?: string | null
           id?: string
-          plan_id?: string | null
           priority?: number | null
           project_id?: string
           props?: Json
           search_vector?: unknown
           state_key?: string
           title?: string
+          type_key?: string
           updated_at?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "onto_tasks_plan_id_fkey"
-            columns: ["plan_id"]
-            isOneToOne: false
-            referencedRelation: "onto_plans"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "onto_tasks_project_id_fkey"
             columns: ["project_id"]
@@ -8140,9 +8118,7 @@ export type Database = {
         Args: { p_object_id: string; p_object_kind: string }
         Returns: {
           actions: Json
-          can_run: boolean
           event: string
-          failed_guards: Json
           guards: Json
           to_state: string
         }[]
@@ -8460,6 +8436,14 @@ export type Database = {
           paused_subscriptions: number
           total_subscribers: number
           trial_subscriptions: number
+        }[]
+      }
+      get_task_plan: {
+        Args: { p_task_id: string }
+        Returns: {
+          plan_id: string
+          plan_name: string
+          plan_type_key: string
         }[]
       }
       get_template_catalog: {
@@ -8939,6 +8923,7 @@ export type Database = {
         | "generate_brief_email"
         | "send_notification"
         | "schedule_daily_sms"
+        | "classify_chat_session"
       recurrence_end_reason:
         | "indefinite"
         | "project_inherited"
@@ -9161,6 +9146,7 @@ export const Constants = {
         "generate_brief_email",
         "send_notification",
         "schedule_daily_sms",
+        "classify_chat_session",
       ],
       recurrence_end_reason: [
         "indefinite",

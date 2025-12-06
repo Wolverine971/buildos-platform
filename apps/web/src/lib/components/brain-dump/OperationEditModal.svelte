@@ -301,7 +301,7 @@
 </script>
 
 <Modal {isOpen} {onClose} title="Edit Operation" size="lg">
-	<svelte:fragment slot="header">
+	{#snippet header()}
 		<!-- Compact Header -->
 		<div class="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 dark:border-gray-700">
 			<div class="flex items-center justify-between">
@@ -365,328 +365,333 @@
 					</div>
 				</div>
 			{/if}
-		</div></svelte:fragment
-	>
-
-	{#if operation}
-		<!-- Operation Type Banner -->
-		{#if operation.error}
-			<div
-				class="px-4 py-2 bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-700"
-			>
-				<p class="text-sm text-amber-800 dark:text-amber-200">
-					<strong>Fix Required Fields:</strong>
-					{operation.error}
-				</p>
-			</div>
-		{:else}
-			<div
-				class="px-4 py-2 bg-primary-50 dark:bg-primary-900/20 border-b border-primary-200 dark:border-primary-700"
-			>
-				<p class="text-sm text-primary-800 dark:text-primary-200">
-					<strong
-						>{operation.operation === 'create' ? 'Creating New' : 'Updating'}
-						{operation.table}</strong
-					>
-					{#if operation.operation === 'create'}
-						- Fields marked with <span class="text-rose-500">*</span> are required
-					{:else}
-						- All fields are optional for updates
-					{/if}
-				</p>
-			</div>
-		{/if}
-
-		<!-- Compact Form -->
-		<form
-			onsubmit={(e) => {
-				e.preventDefault();
-				handleSave();
-			}}
-			class="px-4 sm:px-6 py-4 space-y-3 sm:space-y-4"
-		>
-			{#if fieldsToDisplay.length === 0}
-				<div class="text-center py-8">
-					<div
-						class="mx-auto w-10 h-10 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mb-3"
-					>
-						<Database class="w-5 h-5 text-gray-400" />
-					</div>
-					<p class="text-gray-500 dark:text-gray-400 text-sm">
-						No data fields to display
+		</div>
+	{/snippet}
+	{#snippet children()}
+		{#if operation}
+			<!-- Operation Type Banner -->
+			{#if operation.error}
+				<div
+					class="px-4 py-2 bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-700"
+				>
+					<p class="text-sm text-amber-800 dark:text-amber-200">
+						<strong>Fix Required Fields:</strong>
+						{operation.error}
 					</p>
 				</div>
 			{:else}
-				{#each fieldsToDisplay as field}
-					{@const config = getFieldConfigForField(field)}
-					{@const fieldId = `field-${operation.table}-${field}`}
+				<div
+					class="px-4 py-2 bg-primary-50 dark:bg-primary-900/20 border-b border-primary-200 dark:border-primary-700"
+				>
+					<p class="text-sm text-primary-800 dark:text-primary-200">
+						<strong
+							>{operation.operation === 'create' ? 'Creating New' : 'Updating'}
+							{operation.table}</strong
+						>
+						{#if operation.operation === 'create'}
+							- Fields marked with <span class="text-rose-500">*</span> are required
+						{:else}
+							- All fields are optional for updates
+						{/if}
+					</p>
+				</div>
+			{/if}
 
-					<div class="space-y-2">
-						{#if config.type === 'textarea'}
-							<!-- Compact Textarea -->
-							<div>
-								<label
-									for={fieldId}
-									class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1"
-								>
-									{config.label}
-									{#if config.required}
-										<span class="text-rose-500 ml-0.5">*</span>
-									{/if}
-								</label>
-								{#if config.markdown}
-									<MarkdownToggleField
-										value={editedData[field] || ''}
-										onUpdate={(newValue) =>
-											handleMarkdownUpdate(field, newValue)}
-										placeholder={config.placeholder || ''}
-										rows={Math.min(config.rows || 3, 4)}
-									/>
-								{:else}
-									<Textarea
-										id={fieldId}
-										bind:value={editedData[field]}
-										rows={Math.min(config.rows || 3, 4)}
-										placeholder={config.placeholder || ''}
-										size="sm"
-										class="text-sm"
-									/>
-								{/if}
-							</div>
-						{:else if config.type === 'jsonb'}
-							<!-- Compact JSONB field -->
-							<fieldset>
-								<div class="flex items-center justify-between mb-1">
-									<legend
-										class="text-xs font-medium text-gray-700 dark:text-gray-300"
+			<!-- Compact Form -->
+			<form
+				onsubmit={(e) => {
+					e.preventDefault();
+					handleSave();
+				}}
+				class="px-4 sm:px-6 py-4 space-y-3 sm:space-y-4"
+			>
+				{#if fieldsToDisplay.length === 0}
+					<div class="text-center py-8">
+						<div
+							class="mx-auto w-10 h-10 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mb-3"
+						>
+							<Database class="w-5 h-5 text-gray-400" />
+						</div>
+						<p class="text-gray-500 dark:text-gray-400 text-sm">
+							No data fields to display
+						</p>
+					</div>
+				{:else}
+					{#each fieldsToDisplay as field}
+						{@const config = getFieldConfigForField(field)}
+						{@const fieldId = `field-${operation.table}-${field}`}
+
+						<div class="space-y-2">
+							{#if config.type === 'textarea'}
+								<!-- Compact Textarea -->
+								<div>
+									<label
+										for={fieldId}
+										class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1"
 									>
 										{config.label}
 										{#if config.required}
 											<span class="text-rose-500 ml-0.5">*</span>
 										{/if}
-									</legend>
-									<Button
-										type="button"
-										onclick={() => toggleJsonView(field)}
-										variant="ghost"
-										size="sm"
-										class="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 !p-1"
-									>
-										{#if jsonViewMode[field]}
-											<span class="flex items-center space-x-1">
-												<span>Form View</span>
-											</span>
-										{:else}
-											<span class="flex items-center space-x-1">
-												<Code class="w-3 h-3" />
-												<span>JSON View</span>
-											</span>
-										{/if}
-									</Button>
-								</div>
-
-								{#if jsonViewMode[field]}
-									<!-- Compact JSON Editor -->
-									<div
-										class="bg-gray-50 dark:bg-gray-900 rounded-md border border-gray-200 dark:border-gray-700"
-									>
-										<div
-											class="px-2 py-1.5 border-b border-gray-200 dark:border-gray-700"
-										>
-											<div
-												class="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400"
-											>
-												<Code class="w-3 h-3" />
-												<span>JSON</span>
-											</div>
-										</div>
+									</label>
+									{#if config.markdown}
+										<MarkdownToggleField
+											value={editedData[field] || ''}
+											onUpdate={(newValue) =>
+												handleMarkdownUpdate(field, newValue)}
+											placeholder={config.placeholder || ''}
+											rows={Math.min(config.rows || 3, 4)}
+										/>
+									{:else}
 										<Textarea
-											id="json-{fieldId}"
-											value={jsonTextValues[field] || '{}'}
-											oninput={(e) => handleJsonTextChange(field, e)}
-											rows={5}
-											class="font-mono text-xs border-0 bg-transparent resize-none focus:ring-0 p-2"
-											placeholder="Enter valid JSON..."
-											size="sm"
-										/>
-									</div>
-								{:else}
-									<!-- Compact Form View -->
-									<div
-										class="bg-gray-50 dark:bg-gray-900 rounded-md border border-gray-200 dark:border-gray-700 p-2 space-y-2"
-									>
-										{#if editedData[field] && typeof editedData[field] === 'object'}
-											{#each Object.entries(editedData[field]) as [key, value], index}
-												{@const entryId = `jsonb-entry-${fieldId}-${index}`}
-												<div class="flex gap-2 items-start group">
-													<TextInput
-														id="key-{entryId}"
-														type="text"
-														value={key}
-														onblur={(e) =>
-															updateJsonbKey(
-																field,
-																key,
-																e.target.value
-															)}
-														size="sm"
-														placeholder="Key"
-														class="font-mono text-xs w-24"
-													/>
-													<TextInput
-														id="value-{entryId}"
-														type="text"
-														{value}
-														oninput={(e) =>
-															updateJsonbValue(
-																field,
-																key,
-																e.target.value
-															)}
-														placeholder="Value"
-														size="sm"
-														class="flex-1 text-xs"
-													/>
-													<Button
-														type="button"
-														onclick={() => removeJsonbField(field, key)}
-														variant="ghost"
-														size="sm"
-														class="!p-1 text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:text-rose-400 dark:hover:text-rose-300 dark:hover:bg-rose-900/20 opacity-0 group-hover:opacity-100 transition-opacity"
-														aria-label="Remove field {key}"
-													>
-														<Trash2 class="w-3 h-3" />
-													</Button>
-												</div>
-											{/each}
-										{/if}
-										<Button
-											type="button"
-											onclick={() => addJsonbField(field)}
-											variant="outline"
-											size="sm"
-											class="w-full justify-center text-xs !py-1"
-										>
-											<Plus class="w-3 h-3 mr-1" />
-											Add Field
-										</Button>
-									</div>
-								{/if}
-							</fieldset>
-						{:else}
-							<!-- Compact Other field types -->
-							<div>
-								<label
-									for={fieldId}
-									class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1"
-								>
-									{config.label}
-									{#if config.required}
-										<span class="text-rose-500 ml-0.5">*</span>
-									{/if}
-								</label>
-
-								{#if config.type === 'select'}
-									<Select
-										id={fieldId}
-										bind:value={editedData[field]}
-										size="sm"
-										onchange={(e) => (editedData[field] = e)}
-										class="text-sm"
-									>
-										<option value="">Select {config.label}</option>
-										{#each config.options || [] as option}
-											<option value={option}>{option}</option>
-										{/each}
-									</Select>
-								{:else if config.type === 'date'}
-									<TextInput
-										id={fieldId}
-										type="date"
-										bind:value={editedData[field]}
-										size="sm"
-										class="text-sm"
-									/>
-								{:else if config.type === 'datetime-local'}
-									<TextInput
-										id={fieldId}
-										type="datetime-local"
-										value={editedData[field]
-											? new Date(editedData[field]).toISOString().slice(0, 16)
-											: ''}
-										onchange={(e) => {
-											const value = e.target.value;
-											editedData[field] = value
-												? new Date(value).toISOString()
-												: null;
-										}}
-										size="sm"
-										class="text-sm"
-									/>
-								{:else if config.type === 'number'}
-									<TextInput
-										id={fieldId}
-										type="number"
-										bind:value={editedData[field]}
-										min={config.min}
-										max={config.max}
-										placeholder={config.placeholder || ''}
-										size="sm"
-										class="text-sm"
-									/>
-								{:else if config.type === 'boolean'}
-									<div
-										class="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-900 rounded-md border border-gray-200 dark:border-gray-700"
-									>
-										<input
 											id={fieldId}
-											type="checkbox"
-											checked={editedData[field] || false}
-											onchange={(e) => handleBooleanInput(field, e)}
-											class="h-3.5 w-3.5 text-primary-600 focus:ring-primary-500 border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700"
-										/>
-										<label
-											for={fieldId}
-											class="text-xs text-gray-700 dark:text-gray-300 cursor-pointer"
-										>
-											{config.placeholder || `Enable ${config.label}`}
-										</label>
-									</div>
-								{:else if config.type === 'tags'}
-									<div>
-										<TextInput
-											id={fieldId}
-											value={Array.isArray(editedData[field])
-												? editedData[field].join(', ')
-												: ''}
-											oninput={(e) => handleTagsInput(field, e)}
-											placeholder={config.placeholder ||
-												'Enter tags separated by commas'}
+											bind:value={editedData[field]}
+											rows={Math.min(config.rows || 3, 4)}
+											placeholder={config.placeholder || ''}
 											size="sm"
 											class="text-sm"
 										/>
-										<p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-											Separate tags with commas
-										</p>
+									{/if}
+								</div>
+							{:else if config.type === 'jsonb'}
+								<!-- Compact JSONB field -->
+								<fieldset>
+									<div class="flex items-center justify-between mb-1">
+										<legend
+											class="text-xs font-medium text-gray-700 dark:text-gray-300"
+										>
+											{config.label}
+											{#if config.required}
+												<span class="text-rose-500 ml-0.5">*</span>
+											{/if}
+										</legend>
+										<Button
+											type="button"
+											onclick={() => toggleJsonView(field)}
+											variant="ghost"
+											size="sm"
+											class="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 !p-1"
+										>
+											{#if jsonViewMode[field]}
+												<span class="flex items-center space-x-1">
+													<span>Form View</span>
+												</span>
+											{:else}
+												<span class="flex items-center space-x-1">
+													<Code class="w-3 h-3" />
+													<span>JSON View</span>
+												</span>
+											{/if}
+										</Button>
 									</div>
-								{:else}
-									<TextInput
-										id={fieldId}
-										bind:value={editedData[field]}
-										placeholder={config.placeholder || ''}
-										size="sm"
-										class="text-sm"
-									/>
-								{/if}
-							</div>
-						{/if}
-					</div>
-				{/each}
-			{/if}
-		</form>
-	{/if}
 
-	<svelte:fragment slot="footer">
+									{#if jsonViewMode[field]}
+										<!-- Compact JSON Editor -->
+										<div
+											class="bg-gray-50 dark:bg-gray-900 rounded-md border border-gray-200 dark:border-gray-700"
+										>
+											<div
+												class="px-2 py-1.5 border-b border-gray-200 dark:border-gray-700"
+											>
+												<div
+													class="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400"
+												>
+													<Code class="w-3 h-3" />
+													<span>JSON</span>
+												</div>
+											</div>
+											<Textarea
+												id="json-{fieldId}"
+												value={jsonTextValues[field] || '{}'}
+												oninput={(e) => handleJsonTextChange(field, e)}
+												rows={5}
+												class="font-mono text-xs border-0 bg-transparent resize-none focus:ring-0 p-2"
+												placeholder="Enter valid JSON..."
+												size="sm"
+											/>
+										</div>
+									{:else}
+										<!-- Compact Form View -->
+										<div
+											class="bg-gray-50 dark:bg-gray-900 rounded-md border border-gray-200 dark:border-gray-700 p-2 space-y-2"
+										>
+											{#if editedData[field] && typeof editedData[field] === 'object'}
+												{#each Object.entries(editedData[field]) as [key, value], index}
+													{@const entryId = `jsonb-entry-${fieldId}-${index}`}
+													<div class="flex gap-2 items-start group">
+														<TextInput
+															id="key-{entryId}"
+															type="text"
+															value={key}
+															onblur={(e) =>
+																updateJsonbKey(
+																	field,
+																	key,
+																	e.target.value
+																)}
+															size="sm"
+															placeholder="Key"
+															class="font-mono text-xs w-24"
+														/>
+														<TextInput
+															id="value-{entryId}"
+															type="text"
+															{value}
+															oninput={(e) =>
+																updateJsonbValue(
+																	field,
+																	key,
+																	e.target.value
+																)}
+															placeholder="Value"
+															size="sm"
+															class="flex-1 text-xs"
+														/>
+														<Button
+															type="button"
+															onclick={() =>
+																removeJsonbField(field, key)}
+															variant="ghost"
+															size="sm"
+															class="!p-1 text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:text-rose-400 dark:hover:text-rose-300 dark:hover:bg-rose-900/20 opacity-0 group-hover:opacity-100 transition-opacity"
+															aria-label="Remove field {key}"
+														>
+															<Trash2 class="w-3 h-3" />
+														</Button>
+													</div>
+												{/each}
+											{/if}
+											<Button
+												type="button"
+												onclick={() => addJsonbField(field)}
+												variant="outline"
+												size="sm"
+												class="w-full justify-center text-xs !py-1"
+											>
+												<Plus class="w-3 h-3 mr-1" />
+												Add Field
+											</Button>
+										</div>
+									{/if}
+								</fieldset>
+							{:else}
+								<!-- Compact Other field types -->
+								<div>
+									<label
+										for={fieldId}
+										class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1"
+									>
+										{config.label}
+										{#if config.required}
+											<span class="text-rose-500 ml-0.5">*</span>
+										{/if}
+									</label>
+
+									{#if config.type === 'select'}
+										<Select
+											id={fieldId}
+											bind:value={editedData[field]}
+											size="sm"
+											onchange={(e) => (editedData[field] = e)}
+											class="text-sm"
+										>
+											<option value="">Select {config.label}</option>
+											{#each config.options || [] as option}
+												<option value={option}>{option}</option>
+											{/each}
+										</Select>
+									{:else if config.type === 'date'}
+										<TextInput
+											id={fieldId}
+											type="date"
+											bind:value={editedData[field]}
+											size="sm"
+											class="text-sm"
+										/>
+									{:else if config.type === 'datetime-local'}
+										<TextInput
+											id={fieldId}
+											type="datetime-local"
+											value={editedData[field]
+												? new Date(editedData[field])
+														.toISOString()
+														.slice(0, 16)
+												: ''}
+											onchange={(e) => {
+												const value = e.target.value;
+												editedData[field] = value
+													? new Date(value).toISOString()
+													: null;
+											}}
+											size="sm"
+											class="text-sm"
+										/>
+									{:else if config.type === 'number'}
+										<TextInput
+											id={fieldId}
+											type="number"
+											bind:value={editedData[field]}
+											min={config.min}
+											max={config.max}
+											placeholder={config.placeholder || ''}
+											size="sm"
+											class="text-sm"
+										/>
+									{:else if config.type === 'boolean'}
+										<div
+											class="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-900 rounded-md border border-gray-200 dark:border-gray-700"
+										>
+											<input
+												id={fieldId}
+												type="checkbox"
+												checked={editedData[field] || false}
+												onchange={(e) => handleBooleanInput(field, e)}
+												class="h-3.5 w-3.5 text-primary-600 focus:ring-primary-500 border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700"
+											/>
+											<label
+												for={fieldId}
+												class="text-xs text-gray-700 dark:text-gray-300 cursor-pointer"
+											>
+												{config.placeholder || `Enable ${config.label}`}
+											</label>
+										</div>
+									{:else if config.type === 'tags'}
+										<div>
+											<TextInput
+												id={fieldId}
+												value={Array.isArray(editedData[field])
+													? editedData[field].join(', ')
+													: ''}
+												oninput={(e) => handleTagsInput(field, e)}
+												placeholder={config.placeholder ||
+													'Enter tags separated by commas'}
+												size="sm"
+												class="text-sm"
+											/>
+											<p
+												class="text-xs text-gray-500 dark:text-gray-400 mt-1"
+											>
+												Separate tags with commas
+											</p>
+										</div>
+									{:else}
+										<TextInput
+											id={fieldId}
+											bind:value={editedData[field]}
+											placeholder={config.placeholder || ''}
+											size="sm"
+											class="text-sm"
+										/>
+									{/if}
+								</div>
+							{/if}
+						</div>
+					{/each}
+				{/if}
+			</form>
+		{/if}
+	{/snippet}
+	{#snippet footer()}
 		<!-- Compact Footer -->
 		<div
 			class="flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700"
@@ -699,5 +704,5 @@
 				Save Changes
 			</Button>
 		</div>
-	</svelte:fragment>
+	{/snippet}
 </Modal>

@@ -24,10 +24,6 @@
 	import { toggleMode } from 'mode-watcher';
 	import BriefStatusIndicator from './BriefStatusIndicator.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
-	import {
-		brainDumpV2Store,
-		isModalOpen as brainDumpModalIsOpen
-	} from '$lib/stores/brain-dump-v2.store';
 	import { logout } from '$lib/utils/auth';
 	import { toastService } from '$lib/stores/toast.store';
 	import { browser, dev } from '$app/environment';
@@ -59,20 +55,8 @@
 	let previousPath = $state('');
 	let isDark = $state(false);
 	let showChatModal = $state(false);
-	let showBrainDumpModal = $state(false);
-	let canUseAgenticChat = $state(false);
 
 	const currentPath = $derived($page.url.pathname);
-	const storeProject = $derived($brainDumpV2Store?.core?.selectedProject ?? null);
-	const routeProject = $derived(
-		currentPath.startsWith('/projects/') && $page.data?.project ? $page.data.project : null
-	);
-	const routeOntologyProject = $derived(
-		currentPath.startsWith('/ontology/projects/') && $page.data?.project
-			? $page.data.project
-			: null
-	);
-	const modalProject = $derived(storeProject ?? routeOntologyProject ?? routeProject ?? null);
 
 	// Context-aware chat configuration based on current page
 	const chatContextType = $derived.by((): ChatContextType => {
@@ -133,7 +117,7 @@
 	);
 
 	const loadingAccentClass =
-		'animate-pulse-accent ring-1 ring-blue-300/60 dark:ring-indigo-500/40 shadow-[0_12px_32px_-18px_rgba(59,130,246,0.45)]';
+		'animate-pulse-accent ring-1 ring-indigo-300/60 dark:ring-indigo-500/40 shadow-[0_12px_32px_-18px_rgba(99,102,241,0.45)]';
 
 	const needsOnboarding = $derived(user && (!completedOnboarding || onboardingProgress < 100));
 	const onboardingUrgent = $derived(user && onboardingProgress < 50);
@@ -146,15 +130,6 @@
 			loadingLink = '';
 			closeAllMenus();
 		}
-	});
-
-	// Sync showBrainDumpModal with the store
-	$effect(() => {
-		showBrainDumpModal = $brainDumpModalIsOpen;
-	});
-
-	$effect(() => {
-		canUseAgenticChat = dev || user?.email === 'djwayne35@gmail.com';
 	});
 
 	async function handleSignOut() {
@@ -248,15 +223,6 @@
 		}
 	}
 
-	function handleOpenBrainDump() {
-		closeAllMenus();
-		brainDumpV2Store.openModal({ resetSelection: true });
-	}
-
-	function handleBrainDumpClose() {
-		brainDumpV2Store.closeModal();
-	}
-
 	function handleOpenChat(
 		detailOrEvent?: { projectId: string; chatType: string } | MouseEvent | CustomEvent
 	) {
@@ -304,7 +270,7 @@
 <nav
 	data-fixed-element
 	bind:this={element}
-	class="sticky top-0 z-10 bg-white/90 dark:bg-gray-900/85 border-b border-gray-200/80 dark:border-gray-800/70 backdrop-blur supports-[backdrop-filter]:backdrop-blur-md shadow-sm transition-all duration-200"
+	class="sticky top-0 z-10 bg-surface-panel dark:bg-slate-900 border-b-2 border-gray-200 dark:border-gray-700 shadow-subtle transition-all duration-200"
 >
 	<div class="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 xl:px-8">
 		<div class="flex justify-between items-center h-16 gap-2.5">
@@ -315,13 +281,12 @@
 					<a href="/" class="flex items-center" onclick={() => handleMenuItemClick('/')}>
 						<span class="sr-only">BuildOS</span>
 						<span
-							style="font-weight: bolder;"
-							class="inline-flex items-baseline gap-[0.08em] px-[0.1rem] font-semibold tracking-tight text-[clamp(1.55rem,2.3vw,1.9rem)] leading-none text-slate-900 dark:text-slate-50"
+							class="inline-flex items-baseline gap-[0.08em] font-black tracking-tight text-[clamp(1.5rem,4vw,2.1rem)] sm:text-[clamp(1.75rem,2.5vw,2.1rem)] leading-none"
 							aria-hidden="true"
 						>
-							<span class="text-slate-900 dark:text-slate-50">Build</span>
+							<span class="text-slate-900 dark:text-slate-100">Build</span>
 							<span
-								class="bg-gradient-to-br from-blue-600 via-indigo-500 to-purple-500 bg-clip-text text-transparent drop-shadow-[0_6px_16px_rgba(79,70,229,0.25)] dark:drop-shadow-[0_8px_18px_rgba(148,163,246,0.35)]"
+								class="relative bg-gradient-to-br from-accent-blue via-accent-orange to-accent-olive bg-clip-text text-transparent"
 							>
 								OS
 							</span>
@@ -340,18 +305,24 @@
 							<a
 								href={item.href}
 								onclick={() => handleMenuItemClick(item.href)}
-								class="inline-flex items-center px-1.5 md:px-2 lg:px-2 xl:px-2.5 2xl:px-3 py-1.5 md:py-2 text-xs md:text-sm font-medium rounded-md transition-colors duration-200 whitespace-nowrap
+								class="relative inline-flex items-center px-2 lg:px-3 py-1.5 md:py-2 text-xs md:text-sm font-bold tracking-tight rounded transition-all duration-200 whitespace-nowrap
 								{currentPath === item.href
-									? 'text-blue-600 dark:text-blue-400 dither-accent'
-									: 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700'}
+									? 'text-accent-orange bg-surface-scratch dark:bg-slate-800/50'
+									: 'text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800/50'}
 								{loggingOut ? 'opacity-50 pointer-events-none' : ''}
-								{loadingLink === item.href ? loadingAccentClass : ''}"
+								{loadingLink === item.href ? 'animate-pulse' : ''}"
 							>
+								<!-- Underline indicator for active route -->
+								{#if currentPath === item.href}
+									<div
+										class="absolute bottom-0 left-1 right-1 h-0.5 rounded-full bg-accent-orange"
+									></div>
+								{/if}
 								<Icon
-									class="w-3.5 md:w-4 h-3.5 md:h-4 mr-0.5 lg:mr-1 xl:mr-1.5 2xl:mr-2 flex-shrink-0 {currentPath ===
+									class="w-3.5 md:w-4 h-3.5 md:h-4 mr-1 lg:mr-1.5 flex-shrink-0 {currentPath ===
 									item.href
-										? 'text-blue-600 dark:text-blue-400'
-										: 'text-gray-500 dark:text-gray-400'}"
+										? 'text-accent-orange'
+										: 'text-slate-600 dark:text-slate-400'}"
 								/>
 								<span class="hidden lg:inline">{item.label}</span>
 								<span class="lg:hidden">{item.label.split(' ')[0]}</span>
@@ -368,25 +339,45 @@
 					<div class="hidden xl:block">
 						<BriefStatusIndicator />
 					</div>
-					<!-- Brain Dump Button - Responsive design -->
+
+					<!-- Brain Dump & Chat Button -->
 					<Button
 						variant="outline"
 						size="sm"
-						onclick={handleOpenBrainDump}
-						class={`relative flex items-center gap-2 px-3 h-9 rounded-lg font-semibold text-xs md:text-sm transition-all duration-200 group border-transparent dark:border-transparent bg-white/85 dark:bg-gray-900/45 shadow-[0_1px_3px_rgba(15,23,42,0.08)] hover:bg-purple-50/40 dark:hover:bg-purple-900/35 hover:text-purple-700 dark:hover:text-purple-200 hover:shadow-[0_4px_14px_rgba(99,102,241,0.12)] ${showBrainDumpModal ? 'text-purple-700 dark:text-purple-300 bg-purple-50/40 dark:bg-purple-900/35' : 'text-gray-700 dark:text-gray-200'}`}
-						aria-label="Open Brain Dump"
-						title="Brain Dump"
+						onclick={handleOpenChat}
+						class={`dither-soft relative flex items-center gap-2 px-3 h-9 rounded font-bold tracking-tight text-xs md:text-sm transition-all duration-200 group border-2 ${showChatModal ? 'text-white bg-accent-orange border-slate-700 shadow-pressable dark:bg-accent-orange dark:text-white' : 'text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 border-gray-200 dark:border-gray-700 hover:border-accent-orange hover:bg-accent-orange/10 dark:hover:bg-accent-orange/20 hover:text-accent-orange dark:hover:text-accent-orange shadow-subtle hover:shadow-pressable'}`}
+						aria-label="Open Brain Dump & Chat"
+						title="Brain Dump & Chat - AI-Powered Planning"
 						btnType="container"
 					>
 						<div class="relative flex items-center justify-center">
-							<!-- brain-bolt icon - responsive sizing -->
+							<!-- brain-bolt icon - responsive sizing with dithering, light/dark mode switching -->
+							<!-- Light mode: light version by default, color on hover -->
 							<img
 								src="/brain-bolt.png"
-								alt="Brain Dump"
-								class="w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 lg:w-10 lg:h-10 rounded-md object-cover transition-transform group-hover:scale-105"
+								alt="Brain Dump & Chat"
+								class="w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 lg:w-10 lg:h-10 rounded-md object-cover transition-opacity duration-200 group-hover:opacity-0 dark:hidden"
+							/>
+							<!-- Light mode hover: colored version -->
+							<img
+								src="/brain-bolt.png"
+								alt="Brain Dump & Chat"
+								class="absolute inset-0 w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 lg:w-10 lg:h-10 rounded-md object-cover transition-opacity duration-200 opacity-0 group-hover:opacity-100 dark:hidden"
+							/>
+							<!-- Dark mode: dark version by default, color on hover -->
+							<img
+								src="/brain-bolt.png"
+								alt="Brain Dump & Chat"
+								class="hidden w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 lg:w-10 lg:h-10 rounded-md object-cover transition-opacity duration-200 group-hover:opacity-0 dark:block"
+							/>
+							<!-- Dark mode hover: colored version -->
+							<img
+								src="/brain-bolt.png"
+								alt="Brain Dump & Chat"
+								class="hidden absolute inset-0 w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 lg:w-10 lg:h-10 rounded-md object-cover transition-opacity duration-200 opacity-0 group-hover:opacity-100 dark:block"
 							/>
 							<!-- Overlay icon - changes based on modal state -->
-							{#if showBrainDumpModal}
+							{#if showChatModal}
 								<!-- Zap icon when modal is open - centered on brain-bolt -->
 								<div
 									class="absolute inset-0 flex items-center justify-center pointer-events-none"
@@ -405,24 +396,8 @@
 							{/if}
 						</div>
 						<!-- Text - Hidden on smaller screens, shown on larger -->
-						<span class="hidden xl:inline-block leading-none">Brain Dump</span>
+						<span class="hidden xl:inline-block leading-none">Brain Dump & Chat</span>
 					</Button>
-
-					{#if canUseAgenticChat}
-						<!-- Multi-Agent Chat Button -->
-						<Button
-							variant="outline"
-							size="sm"
-							onclick={handleOpenChat}
-							class={`relative flex items-center gap-2 px-3 h-9 rounded-lg font-semibold text-xs md:text-sm transition-all duration-200 group border-transparent dark:border-transparent bg-white/85 dark:bg-gray-900/45 shadow-[0_1px_3px_rgba(15,23,42,0.08)] hover:bg-blue-50/40 dark:hover:bg-blue-900/35 hover:text-blue-700 dark:hover:text-blue-200 hover:shadow-[0_4px_14px_rgba(59,130,246,0.12)] ${showChatModal ? 'text-blue-700 dark:text-blue-300 bg-blue-50/40 dark:bg-blue-900/35' : 'text-gray-700 dark:text-gray-200'}`}
-							aria-label="Open Multi-Agent Chat"
-							title="Multi-Agent System - Planner + Executor Agents"
-							btnType="container"
-						>
-							<Sparkles class="w-4 h-4 transition-transform group-hover:scale-110" />
-							<span class="hidden xl:inline-block leading-none">Agents</span>
-						</Button>
-					{/if}
 				{/if}
 
 				{#if user}
@@ -433,10 +408,10 @@
 								href="/onboarding"
 								data-onboarding-link
 								onclick={() => handleMenuItemClick('/onboarding')}
-								class="inline-flex items-center px-2 md:px-3 lg:px-3.5 xl:px-4 py-1.5 md:py-2 lg:py-2.5 text-xs md:text-sm lg:text-sm font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 whitespace-nowrap
+								class="inline-flex items-center px-2 md:px-3 lg:px-3.5 xl:px-4 py-1.5 md:py-2 lg:py-2.5 text-xs md:text-sm lg:text-sm font-bold tracking-tight rounded shadow-subtle hover:shadow-pressable transition-all duration-200 whitespace-nowrap border-2
 								{onboardingUrgent
-									? 'dither-gradient bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 hover:from-amber-600 hover:via-orange-600 hover:to-red-600 text-white animate-pulse border-none'
-									: 'dither-gradient bg-gradient-to-r from-purple-600 via-blue-600 to-indigo-600 hover:from-purple-700 hover:via-blue-700 hover:to-indigo-700 text-white border-none'}
+									? 'bg-amber-500 hover:bg-amber-600 text-white border-gray-200 dark:border-gray-700 animate-pulse'
+									: 'bg-accent-blue hover:bg-accent-blue/80 text-white border-gray-200 dark:border-gray-700'}
 								{loggingOut ? 'opacity-50 pointer-events-none' : ''}
 								{loadingLink === '/onboarding' ? loadingAccentClass : ''}"
 							>
@@ -473,7 +448,7 @@
 						variant="ghost"
 						size="sm"
 						icon={showMobileMenu ? X : Menu}
-						class="md:hidden p-2 text-gray-400 hover:text-gray-500 min-h-0"
+						class="md:hidden p-2 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300 min-h-0"
 						aria-expanded={showMobileMenu}
 						aria-label="Toggle mobile menu"
 					></Button>
@@ -486,7 +461,7 @@
 							variant="outline"
 							size="sm"
 							btnType="container"
-							class="flex items-center gap-1.5 px-3 h-9 text-xs md:text-sm rounded-lg font-semibold text-gray-700 dark:text-gray-200 border border-purple-300/50 dark:border-purple-500/60 bg-white/85 dark:bg-gray-900/45 shadow-[0_1px_3px_rgba(15,23,42,0.08)] hover:bg-purple-50/40 dark:hover:bg-purple-900/35 hover:text-purple-700 dark:hover:text-purple-200 hover:shadow-[0_4px_14px_rgba(99,102,241,0.12)] transition-all duration-200"
+							class="flex items-center gap-1.5 px-3 h-9 text-xs md:text-sm rounded font-bold tracking-tight text-slate-700 dark:text-slate-300 border-2 border-gray-200 dark:border-gray-700 bg-surface-scratch dark:bg-slate-800 shadow-subtle hover:border-accent-orange hover:bg-accent-orange/10 dark:hover:bg-accent-orange/20 hover:text-accent-orange dark:hover:text-accent-orange hover:shadow-pressable active:translate-y-[1px] active:shadow-none transition-all duration-100"
 							aria-expanded={showUserMenu}
 							aria-haspopup="true"
 							aria-label="User menu"
@@ -506,31 +481,31 @@
 						<!-- User dropdown -->
 						{#if showUserMenu}
 							<div
-								class="absolute right-0 mt-2 w-56 bg-white/95 dark:bg-gray-800/95 rounded-xl border border-gray-100 dark:border-gray-700/70 shadow-xl ring-1 ring-black/5 dark:ring-gray-600/40 backdrop-blur supports-[backdrop-filter]:backdrop-blur-md z-50"
+								class="absolute right-0 mt-2 w-56 bg-white dark:bg-slate-800 rounded border-2 border-gray-200 dark:border-gray-700 shadow-pressable z-50"
 							>
 								<div class="pt-1">
 									<!-- User info -->
 									<div
-										class="px-4 py-3 text-sm border-b border-gray-100 dark:border-gray-700"
+										class="px-4 py-3 text-sm border-b-2 border-gray-200 dark:border-gray-700"
 									>
 										<div
-											class="font-medium text-gray-900 dark:text-white flex items-center"
+											class="font-bold text-slate-900 dark:text-slate-100 flex items-center"
 										>
 											{user?.name || 'User'}
 											{#if user?.is_admin}
 												<span
-													class="ml-2 px-2 py-1 text-xs bg-red-100 text-red-800 rounded-full dark:bg-red-900 dark:text-red-300"
+													class="ml-2 px-2 py-1 text-xs bg-red-600 text-white rounded font-bold"
 												>
 													Admin
 												</span>
 											{/if}
 										</div>
-										<div class="text-gray-500 dark:text-gray-400 truncate">
+										<div class="text-slate-600 dark:text-slate-400 truncate">
 											{user.email}
 										</div>
 										{#if needsOnboarding}
 											<div
-												class="mt-2 text-xs text-amber-600 dark:text-amber-400 flex items-center"
+												class="mt-2 text-xs text-accent-orange flex items-center font-bold"
 											>
 												<AlertCircle class="w-3 h-3 mr-1" />
 												Setup {onboardingProgress}% complete
@@ -543,10 +518,10 @@
 										<a
 											href="/onboarding"
 											onclick={() => handleMenuItemClick('/onboarding')}
-											class="flex items-center w-full px-4 py-2.5 text-sm font-medium rounded-lg mx-2 mb-2 transition-all duration-200
+											class="flex items-center w-full px-4 py-2.5 text-sm font-bold tracking-tight rounded mx-2 mb-2 transition-all duration-200 shadow-subtle hover:shadow-pressable border-2
 												{onboardingUrgent
-												? 'dither-gradient bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 hover:from-amber-600 hover:via-orange-600 hover:to-red-600 text-white shadow-md'
-												: 'dither-gradient bg-gradient-to-r from-purple-600 via-blue-600 to-indigo-600 hover:from-purple-700 hover:via-blue-700 hover:to-indigo-700 text-white shadow-md'}
+												? 'bg-amber-500 hover:bg-amber-600 text-white border-gray-200 dark:border-gray-700'
+												: 'bg-accent-blue hover:bg-accent-blue/80 text-white border-gray-200 dark:border-gray-700'}
 												{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
 										>
 											{#if onboardingUrgent}
@@ -563,7 +538,7 @@
 									<a
 										href="/profile"
 										onclick={() => handleMenuItemClick('/profile')}
-										class="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors
+										class="flex items-center w-full px-4 py-2 text-sm font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors
 										{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
 									>
 										<User class="w-4 h-4 mr-3" />
@@ -581,7 +556,7 @@
 														? '/profile?tab=billing'
 														: '/pricing'
 												)}
-											class="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors
+											class="flex items-center w-full px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors
 											{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
 										>
 											<svg
@@ -607,7 +582,7 @@
 										<a
 											href="/admin"
 											onclick={() => handleMenuItemClick('/admin')}
-											class="flex items-center w-full px-4 py-2 text-sm text-red-700 dark:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors
+											class="flex items-center w-full px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors
 											{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
 										>
 											<Shield class="w-4 h-4 mr-3" />
@@ -617,7 +592,7 @@
 
 									<button
 										onclick={toggleMode}
-										class="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors
+										class="flex items-center w-full px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors
 										{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
 										disabled={loggingOut}
 										aria-label="Toggle theme"
@@ -639,7 +614,7 @@
 										fullWidth
 										btnType="container"
 										loading={loggingOut}
-										class="justify-start w-full px-4 py-2 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 min-h-0 transition-colors rounded-none"
+										class="justify-start w-full px-4 py-2 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50 min-h-0 transition-colors rounded-none"
 									>
 										{#if loggingOut}
 											<Loader2 class="w-4 h-4 mr-3 animate-spin" />
@@ -656,15 +631,31 @@
 				{:else}
 					<!-- Auth buttons for non-authenticated users -->
 					<div class="hidden md:flex items-center gap-2 lg:gap-3">
+						<!-- Theme toggle for non-authenticated users -->
+						<Button
+							onclick={toggleMode}
+							variant="ghost"
+							size="sm"
+							btnType="container"
+							class="p-2 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/50 rounded-md transition-colors"
+							aria-label="Toggle theme"
+						>
+							{#if isDark}
+								<Sun class="w-5 h-5" />
+							{:else}
+								<Moon class="w-5 h-5" />
+							{/if}
+						</Button>
+
 						<a
 							href="/auth/login"
-							class="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors"
+							class="text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors"
 						>
 							Sign In
 						</a>
 						<a
 							href="/auth/register"
-							class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+							class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
 						>
 							Sign Up
 						</a>
@@ -677,7 +668,7 @@
 						variant="ghost"
 						size="sm"
 						icon={showMobileMenu ? X : Menu}
-						class="md:hidden p-2 text-gray-400 hover:text-gray-500 min-h-0"
+						class="md:hidden p-2 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300 min-h-0"
 						aria-expanded={showMobileMenu}
 					></Button>
 				{/if}
@@ -688,7 +679,7 @@
 	<!-- Mobile menu -->
 	{#if showMobileMenu}
 		<div
-			class="md:hidden border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900"
+			class="md:hidden border-t-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-slate-900"
 			data-mobile-menu
 		>
 			{#if user}
@@ -703,10 +694,10 @@
 						<a
 							href="/onboarding"
 							onclick={() => handleMenuItemClick('/onboarding')}
-							class="flex items-center px-3 py-2.5 text-base font-semibold text-white rounded-xl shadow-lg transition-all duration-300 hover:scale-[1.02]
+							class="flex items-center px-3 py-2.5 text-base font-bold tracking-tight text-white rounded shadow-subtle hover:shadow-pressable transition-all duration-200 border-2
 							{onboardingUrgent
-								? 'dither-gradient bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 hover:from-amber-600 hover:via-orange-600 hover:to-red-600 animate-pulse'
-								: 'dither-gradient bg-gradient-to-r from-purple-600 via-blue-600 to-indigo-600 hover:from-purple-700 hover:via-blue-700 hover:to-indigo-700'}
+								? 'bg-amber-500 hover:bg-amber-600 border-gray-200 dark:border-gray-700 animate-pulse'
+								: 'bg-accent-blue hover:bg-accent-blue/80 border-gray-200 dark:border-gray-700'}
 							{loggingOut ? 'opacity-50 pointer-events-none' : ''}
 							{loadingLink === '/onboarding' ? loadingAccentClass : ''}"
 						>
@@ -726,17 +717,23 @@
 						<a
 							href={item.href}
 							onclick={() => handleMenuItemClick(item.href)}
-							class="flex items-center px-3 py-1.5 text-base font-medium rounded-md transition-colors
+							class="relative flex items-center px-3 py-2 text-base font-bold rounded transition-colors
 							{currentPath === item.href
-								? 'text-blue-600 dark:text-blue-400 dither-accent'
-								: 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700'}
+								? 'text-accent-orange bg-surface-scratch dark:bg-slate-800/50'
+								: 'text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800/50'}
 							{loggingOut ? 'opacity-50 pointer-events-none' : ''}
-							{loadingLink === item.href ? loadingAccentClass : ''}"
+							{loadingLink === item.href ? 'animate-pulse' : ''}"
 						>
+							<!-- Underline indicator for active route -->
+							{#if currentPath === item.href}
+								<div
+									class="absolute bottom-0 left-2 right-2 h-0.5 rounded-full bg-accent-orange"
+								></div>
+							{/if}
 							<Icon
 								class="w-5 h-5 mr-3 {currentPath === item.href
-									? 'text-blue-600 dark:text-blue-400'
-									: 'text-gray-500 dark:text-gray-400'}"
+									? 'text-accent-orange'
+									: 'text-slate-600 dark:text-slate-400'}"
 							/>
 							{item.label}
 						</a>
@@ -744,15 +741,15 @@
 				</div>
 
 				<!-- Mobile User Section -->
-				<div class="pt-3 pb-3 border-t border-gray-200 dark:border-gray-700">
+				<div class="pt-3 pb-3 border-t border-slate-200 dark:border-slate-700">
 					<div class="px-3 mb-2.5">
 						<div
-							class="text-base font-medium text-gray-800 dark:text-gray-200 flex items-center"
+							class="text-base font-medium text-slate-800 dark:text-slate-200 flex items-center"
 						>
 							{user?.name || 'User'}
 							{#if user?.is_admin}
 								<span
-									class="ml-2 px-2 py-1 text-xs bg-red-100 text-red-800 rounded-full dark:bg-red-900 dark:text-red-300"
+									class="ml-2 px-2 py-1 text-xs bg-red-100 text-red-700 rounded-full dark:bg-red-900/40 dark:text-red-300"
 								>
 									Admin
 								</span>
@@ -763,7 +760,7 @@
 								></div>
 							{/if}
 						</div>
-						<div class="text-sm text-gray-500 dark:text-gray-400 truncate">
+						<div class="text-sm text-slate-600 dark:text-slate-400 truncate">
 							{user.email}
 						</div>
 						{#if needsOnboarding}
@@ -780,7 +777,7 @@
 						<a
 							href="/profile"
 							onclick={() => handleMenuItemClick('/profile')}
-							class="flex items-center px-3 py-1.5 text-base font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700 rounded-md transition-colors
+							class="flex items-center px-3 py-1.5 text-base font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-md transition-colors
 							{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
 						>
 							<User class="w-5 h-5 mr-3" />
@@ -798,7 +795,7 @@
 											? '/profile?tab=billing'
 											: '/pricing'
 									)}
-								class="flex items-center px-3 py-1.5 text-base font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700 rounded-md transition-colors
+								class="flex items-center px-3 py-1.5 text-base font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-md transition-colors
 								{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
 							>
 								<svg
@@ -832,7 +829,7 @@
 
 						<button
 							onclick={toggleMode}
-							class="flex items-center px-3 py-1.5 text-base font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700 rounded-md transition-colors
+							class="flex items-center px-3 py-1.5 text-base font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-md transition-colors
 							{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
 							disabled={loggingOut}
 							aria-label="Toggle theme"
@@ -855,7 +852,7 @@
 							icon={loggingOut ? Loader2 : LogOut}
 							iconPosition="left"
 							loading={loggingOut}
-							class="justify-start px-3 py-1.5 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 min-h-0"
+							class="justify-start px-3 py-1.5 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 min-h-0"
 						>
 							{loggingOut ? 'Signing out...' : 'Sign out'}
 						</Button>
@@ -864,17 +861,32 @@
 			{:else}
 				<!-- Mobile auth menu for non-authenticated users -->
 				<div class="px-2 pt-1.5 pb-2 space-y-1">
+					<!-- Theme toggle for non-authenticated mobile users -->
+					<button
+						onclick={toggleMode}
+						class="flex items-center px-3 py-1.5 text-base font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-md transition-colors w-full"
+						aria-label="Toggle theme"
+					>
+						{#if isDark}
+							<Sun class="w-5 h-5 mr-3" />
+							Light Mode
+						{:else}
+							<Moon class="w-5 h-5 mr-3" />
+							Dark Mode
+						{/if}
+					</button>
+
 					<a
 						href="/auth/login"
 						onclick={() => handleMenuItemClick('/auth/login')}
-						class="block px-3 py-1.5 text-base font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700 rounded-md transition-colors"
+						class="block px-3 py-1.5 text-base font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-md transition-colors"
 					>
 						Sign In
 					</a>
 					<a
 						href="/auth/register"
 						onclick={() => handleMenuItemClick('/auth/register')}
-						class="block px-3 py-1.5 text-base font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 rounded-md transition-colors"
+						class="block px-3 py-1.5 text-base font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 rounded-md transition-colors"
 					>
 						Sign Up
 					</a>
@@ -884,21 +896,8 @@
 	{/if}
 </nav>
 
-<!-- Brain Dump Modal -->
-{#if showBrainDumpModal}
-	{#await import('$lib/components/brain-dump/BrainDumpModal.svelte') then { default: BrainDumpModal }}
-		<BrainDumpModal
-			isOpen={showBrainDumpModal}
-			project={modalProject}
-			showNavigationOnSuccess={true}
-			onClose={handleBrainDumpClose}
-			onOpenAgent={handleOpenChat}
-		/>
-	{/await}
-{/if}
-
-<!-- Multi-Agent Chat Modal -->
-{#if showChatModal && canUseAgenticChat}
+<!-- Brain Dump & Chat Modal -->
+{#if showChatModal}
 	{#await import('$lib/components/agent/AgentChatModal.svelte') then { default: AgentChatModal }}
 		<AgentChatModal
 			isOpen={showChatModal}

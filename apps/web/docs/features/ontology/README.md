@@ -2,7 +2,7 @@
 
 # Ontology System Documentation
 
-**Last Updated**: November 8, 2025
+**Last Updated**: December 1, 2025
 **Status**: Phase 3 Complete ✅ (Visual Editors + Validation)
 **Location**: `/apps/web/docs/features/ontology/`
 
@@ -15,9 +15,9 @@
 
 ### Essential Documentation
 
-- **[Type Key Taxonomy](./TYPE_KEY_TAXONOMY.md)** ✨ **NEW** - Naming conventions and entity autonomy framework
+- **[Type Key Taxonomy](./TYPE_KEY_TAXONOMY.md)** ⭐ **UPDATED** - Naming conventions and entity autonomy framework (includes task work mode taxonomy)
 - **[Implementation Roadmap](./ontology-implementation-roadmap.md)** - Detailed implementation plan and progress tracking
-- **[Data Models](./DATA_MODELS.md)** - Complete database schema (25 tables, 2783 lines)
+- **[Data Models](./DATA_MODELS.md)** - Complete database schema (includes task type_key and edge-based plan relationships)
 - **[Implementation Summary](./IMPLEMENTATION_SUMMARY.md)** - Recent CRUD implementation details
 - **[Recurring Series](./RECURRING_SERIES.md)** ✨ - Timezone-aware recurring task architecture & API usage
 - **[Phase 2A Status](./PHASE_2A_STATUS.md)** - Template API foundation (Complete)
@@ -70,11 +70,24 @@ Every ontology project now carries an explicit context document with type key `d
 - Dry-run migrations surface the exact context payload inside the preview modal so reviewers can inspect what will be written without touching the DB.
 - Agentic project creation (`create_onto_project`) now auto-generates this markdown doc when the planner/executor does not provide one, guaranteeing every new project ships with a linked narrative.
 
+### 🧱 Task Schema & Work Mode Taxonomy
+
+> **Full Documentation**: See [TYPE_KEY_TAXONOMY.md](./TYPE_KEY_TAXONOMY.md#onto_tasks) for complete task taxonomy.
+
+**Key Changes (December 2025):**
+
+- **`type_key` is now required** on all tasks (default: `task.execute`)
+- **Work Mode Format**: `task.{work_mode}[.{specialization}]`
+- **8 Base Work Modes**: execute, create, refine, research, review, coordinate, admin, plan
+- **4 Specializations**: task.coordinate.meeting, task.coordinate.standup, task.execute.deploy, task.execute.checklist
+- **Plan relationships via edges**: Tasks no longer have a direct `plan_id` column; instead use `onto_edges` with relations `belongs_to_plan` (task→plan) and `has_task` (plan→task)
+
 ### 🧱 Task + Calendar Migration Preview
 
 - `/admin/migration` now exposes a **Migrate Tasks** action per project. It calls the `TaskMigrationService` in dry-run mode, renders the proposed ontology tasks (state, type, phase/plan mapping, calendar counts), and lets admins approve before writing anything.
 - Confirming writes uses the new `/api/admin/migration/tasks/run` endpoint, which reuses the same services but only touches tasks + calendars for the selected project.
 - `task_calendar_events` are cloned into `onto_events` during task migration, and each event now emits a `task → event` edge (`rel: has_event`) so planners/agents can traverse work sessions from the ontology graph.
+- **Task Migration**: Legacy `task.basic`, `task.deep_work`, `task.recurring` type_keys are automatically normalized to valid work modes (typically `task.execute`).
 
 ### 🧠 Template Inference + Project Mapping
 

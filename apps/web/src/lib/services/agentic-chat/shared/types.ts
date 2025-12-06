@@ -162,6 +162,20 @@ export interface ExecutorSpawnParams {
 }
 
 /**
+ * Metadata for tracking project creation clarification rounds
+ */
+export interface ProjectClarificationMetadata {
+	/** Current round number (0 = initial, 1 = first clarification, 2 = max) */
+	roundNumber: number;
+	/** Accumulated context from all user messages */
+	accumulatedContext: string;
+	/** Questions asked in previous rounds */
+	previousQuestions: string[];
+	/** User responses to previous questions */
+	previousResponses: string[];
+}
+
+/**
  * Request payload for the AgentChatOrchestrator
  */
 export interface AgentChatRequest {
@@ -175,19 +189,46 @@ export interface AgentChatRequest {
 	ontologyContext?: OntologyContext;
 	lastTurnContext?: LastTurnContext;
 	projectFocus?: ProjectFocus | null;
+	/** Metadata for project creation clarification flow */
+	projectClarificationMetadata?: ProjectClarificationMetadata;
 }
 
 /**
- * Planner context (from agent-context-service)
+ * Planner context - canonical definition
+ * Used by agent-context-service and strategy-analyzer
+ *
+ * @see agent-context-service.ts - builds this context
+ * @see strategy-analyzer.ts - consumes this context
  */
 export interface PlannerContext {
+	/** Instructions for planning and orchestration */
 	systemPrompt: string;
+	/** Last N messages (compressed if needed) */
 	conversationHistory: LLMMessage[];
+	/** Current project/task/calendar context (abbreviated) */
 	locationContext: string;
-	locationMetadata?: any;
+	/** Metadata from location context */
+	locationMetadata?: {
+		projectId?: string;
+		projectName?: string;
+		projectDescription?: string;
+		projectStatus?: string;
+		taskCount?: number;
+		goalCount?: number;
+		documentCount?: number;
+		focusedEntityId?: string;
+		focusedEntityType?: string;
+		focusedEntityName?: string;
+		contextDocumentId?: string;
+		[key: string]: unknown;
+	};
+	/** Ontology context if available */
 	ontologyContext?: OntologyContext;
+	/** Context from previous turn */
 	lastTurnContext?: LastTurnContext;
+	/** User preferences and work style */
 	userProfile?: string;
+	/** All tools the planner can use or delegate */
 	availableTools: ChatToolDefinition[];
 	metadata: {
 		sessionId: string;
@@ -196,7 +237,11 @@ export interface PlannerContext {
 		totalTokens: number;
 		hasOntology: boolean;
 		plannerAgentId?: string;
+		/** Current project focus (project + optional entity) */
+		focus?: ProjectFocus | null;
+		/** Ontology scope information */
 		scope?: OntologyContextScope;
+		/** Token usage from compression */
 		compressionUsage?: ContextUsageSnapshot;
 	};
 }

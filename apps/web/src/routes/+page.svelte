@@ -263,7 +263,7 @@
 	{:else}
 		<!-- PERFORMANCE: Lightweight loading state with better UX -->
 		<div
-			class="min-h-screen bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
+			class="min-h-screen bg-surface-scratch dark:bg-slate-900 text-slate-900 dark:text-slate-100"
 			aria-busy="true"
 		>
 			<div class="flex items-center justify-center min-h-screen">
@@ -273,16 +273,18 @@
 						role="status"
 						aria-label="Loading dashboard"
 					></div>
-					<p class="text-gray-600 dark:text-gray-300">Preparing dashboard...</p>
+					<p class="text-slate-600 dark:text-slate-400">Preparing dashboard...</p>
 				</div>
 			</div>
 		</div>
 	{/if}
 {:else}
 	<!-- PERFORMANCE: Optimized landing page with better loading -->
-	<div class="min-h-screen bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+	<div
+		class="min-h-screen bg-surface-scratch dark:bg-slate-900 text-slate-900 dark:text-slate-100"
+	>
 		<!-- Hero Section -->
-		<section class="relative" aria-label="Hero section">
+		<section class="relative industrial-panel" aria-label="Hero section">
 			<div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-16">
 				<div class="text-center mb-12">
 					<!-- Video Icon Container (keep existing) -->
@@ -290,36 +292,37 @@
 						<!-- ... existing video code ... -->
 					</div>
 
-					<div class="relative z-10 max-w-4xl mx-auto text-center">
-						<!-- Tagline -->
+					<div class="relative z-10 max-w-4xl mx-auto text-center flex flex-col">
+						<!-- Tagline with industrial styling -->
 						<h1
-							class="text-4xl sm:text-5xl md:text-6xl font-bold mb-6 leading-tight fade-in"
+							class="text-4xl sm:text-5xl md:text-6xl font-bold mb-6 leading-tight fade-in text-slate-900 dark:text-slate-100"
 						>
 							Project organization built <br />for
-							<span
-								class="bg-gradient-to-r from-primary-400 to-purple-400 dark:from-primary-300 dark:to-purple-300 bg-clip-text text-transparent"
-								>the AI era.</span
-							>
+							<span class="text-[var(--accent-orange)]">the AI era.</span>
 						</h1>
 
 						<!-- Subtitle -->
 						<p
-							class="text-xl text-gray-600 dark:text-gray-300 mb-8 max-w-2xl mx-auto fade-in leading-relaxed"
+							class="text-xl text-slate-700 dark:text-slate-300 mb-8 max-w-2xl mx-auto fade-in leading-relaxed"
 						>
 							Your thoughts, organized.<br class="hidden sm:block" />
 							Your next step, clear.
 						</p>
 
-						<!-- CTA -->
-						<p class="text-lg font-medium text-gray-900 dark:text-white mb-4">
+						<!-- CTA with tactile button -->
+						<p class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">
 							Ready for BuildOS to help you organize your projects?
 						</p>
 						<a href="/auth/register" aria-label="Start working with BuildOS">
-							<Button variant="primary">Start Brain Dumping →</Button>
+							<button class="btn-tactile px-8 py-3 text-lg">
+								Start Brain Dumping →
+							</button>
 						</a>
 
 						<!-- Trust Signal -->
-						<p class="text-sm text-gray-500 dark:text-gray-400 mt-6 fade-in">
+						<p
+							class="text-sm text-slate-600 dark:text-slate-400 mt-6 fade-in badge-draft inline-block m-auto"
+						>
 							14-day free trial • No credit card • Actually built for ADHD
 						</p>
 					</div>
@@ -330,94 +333,91 @@
 		<BuildOSFlow />
 
 		<!-- Who It's For Section -->
-		<section class="py-20 bg-white dark:bg-gray-900" aria-labelledby="audience-heading">
+		<section
+			class="py-20 bg-[var(--surface-panel)] noise-overlay"
+			aria-labelledby="audience-heading"
+		>
 			<div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
 				<h2
 					id="audience-heading"
-					class="text-3xl font-bold text-center mb-12 text-gray-900 dark:text-white"
+					class="text-3xl font-bold text-center mb-12 text-slate-900 dark:text-slate-100"
 				>
 					Finally, a home base for scattered minds
 				</h2>
 
-				<div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+				<div class="grid grid-cols-1 md:grid-cols-3 gap-8 workbench-grid">
 					<!-- For ADHD -->
-					<article
-						class="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-xl p-6 border border-purple-200 dark:border-purple-700"
-					>
-						<h3 class="text-xl font-semibold mb-3 text-gray-900 dark:text-white">
+					<article class="card-industrial p-6 dither-soft relative">
+						<h3 class="text-xl font-semibold mb-3 text-slate-900 dark:text-slate-100">
 							ADHD Minds
 						</h3>
-						<p class="text-gray-600 dark:text-gray-300 mb-4">
+						<p class="text-slate-700 dark:text-slate-300 mb-4">
 							<strong>Your brain isn't broken. Your tools are.</strong> Traditional productivity
 							tools demand linear thinking. Your brain doesn't work that way. BuildOS gets
 							it.
 						</p>
-						<ul class="text-sm text-gray-600 dark:text-gray-300 space-y-2">
+						<ul class="text-sm text-slate-600 dark:text-slate-400 space-y-2">
 							<li class="flex items-start">
-								<span class="text-purple-500 mr-2">✓</span>
+								<span class="text-[var(--accent-blue)] mr-2 font-bold">✓</span>
 								<span>Dump thoughts in any order</span>
 							</li>
 							<li class="flex items-start">
-								<span class="text-purple-500 mr-2">✓</span>
+								<span class="text-[var(--accent-blue)] mr-2 font-bold">✓</span>
 								<span>AI finds the structure</span>
 							</li>
 							<li class="flex items-start">
-								<span class="text-purple-500 mr-2">✓</span>
+								<span class="text-[var(--accent-blue)] mr-2 font-bold">✓</span>
 								<span>Tiny next steps, not overwhelming lists</span>
 							</li>
 						</ul>
 					</article>
 
 					<!-- For Overwhelmed Professionals -->
-					<article
-						class="bg-gradient-to-br from-primary-50 to-blue-50 dark:from-primary-900/20 dark:to-blue-900/20 rounded-xl p-6 border border-primary-200 dark:border-primary-700"
-					>
-						<h3 class="text-xl font-semibold mb-3 text-gray-900 dark:text-white">
+					<article class="card-industrial p-6 dither-soft relative">
+						<h3 class="text-xl font-semibold mb-3 text-slate-900 dark:text-slate-100">
 							Overwhelmed Professionals
 						</h3>
-						<p class="text-gray-600 dark:text-gray-300 mb-4">
+						<p class="text-slate-700 dark:text-slate-300 mb-4">
 							<strong>From drowning to directing.</strong> When everything feels urgent,
 							nothing is clear. BuildOS turns your mental chaos into a command center.
 						</p>
-						<ul class="text-sm text-gray-600 dark:text-gray-300 space-y-2">
+						<ul class="text-sm text-slate-600 dark:text-slate-400 space-y-2">
 							<li class="flex items-start">
-								<span class="text-primary-500 mr-2">✓</span>
+								<span class="text-[var(--accent-olive)] mr-2 font-bold">✓</span>
 								<span>Post-meeting brain dumps</span>
 							</li>
 							<li class="flex items-start">
-								<span class="text-primary-500 mr-2">✓</span>
+								<span class="text-[var(--accent-olive)] mr-2 font-bold">✓</span>
 								<span>All projects in one place</span>
 							</li>
 							<li class="flex items-start">
-								<span class="text-primary-500 mr-2">✓</span>
+								<span class="text-[var(--accent-olive)] mr-2 font-bold">✓</span>
 								<span>Know exactly what to tackle next</span>
 							</li>
 						</ul>
 					</article>
 
 					<!-- For Students & Creators -->
-					<article
-						class="bg-gradient-to-br from-orange-50 to-yellow-50 dark:from-orange-900/20 dark:to-yellow-900/20 rounded-xl p-6 border border-orange-200 dark:border-orange-700"
-					>
-						<h3 class="text-xl font-semibold mb-3 text-gray-900 dark:text-white">
+					<article class="card-industrial p-6 dither-soft relative">
+						<h3 class="text-xl font-semibold mb-3 text-slate-900 dark:text-slate-100">
 							Students & Creators
 						</h3>
-						<p class="text-gray-600 dark:text-gray-300 mb-4">
+						<p class="text-slate-700 dark:text-slate-300 mb-4">
 							<strong>Chaos to dean's list (or ship list).</strong> Stop losing brilliant
 							ideas to the void. Capture everything, organize instantly, actually finish
 							projects.
 						</p>
-						<ul class="text-sm text-gray-600 dark:text-gray-300 space-y-2">
+						<ul class="text-sm text-slate-600 dark:text-slate-400 space-y-2">
 							<li class="flex items-start">
-								<span class="text-orange-500 mr-2">✓</span>
+								<span class="text-[var(--accent-orange)] mr-2 font-bold">✓</span>
 								<span>Semester panic → study plan</span>
 							</li>
 							<li class="flex items-start">
-								<span class="text-orange-500 mr-2">✓</span>
+								<span class="text-[var(--accent-orange)] mr-2 font-bold">✓</span>
 								<span>Creative sparks → content calendar</span>
 							</li>
 							<li class="flex items-start">
-								<span class="text-orange-500 mr-2">✓</span>
+								<span class="text-[var(--accent-orange)] mr-2 font-bold">✓</span>
 								<span>Ideas → execution</span>
 							</li>
 						</ul>
@@ -427,51 +427,54 @@
 		</section>
 
 		<!-- Trust & Objections Section -->
-		<section class="py-20 bg-gray-50 dark:bg-gray-800/50" aria-labelledby="trust-heading">
+		<section
+			class="py-20 bg-[var(--surface-scratch)] dither-pattern"
+			aria-labelledby="trust-heading"
+		>
 			<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
 				<h2
 					id="trust-heading"
-					class="text-3xl font-bold text-center mb-12 text-gray-900 dark:text-white"
+					class="text-3xl font-bold text-center mb-12 text-slate-900 dark:text-slate-100"
 				>
 					Built by someone who struggled with chaos and needed better
 				</h2>
 
 				<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-					<div class="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm">
-						<h3 class="font-semibold text-lg mb-2 text-gray-900 dark:text-white">
+					<div class="clarity-zone p-6">
+						<h3 class="font-semibold text-lg mb-2 text-slate-900 dark:text-slate-100">
 							🧠 No Shame Zone
 						</h3>
-						<p class="text-gray-600 dark:text-gray-300">
+						<p class="text-slate-700 dark:text-slate-300">
 							We know you've abandoned Notion 6 times. BuildOS works even on your
 							worst days. No complex setup. No maintenance guilt.
 						</p>
 					</div>
 
-					<div class="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm">
-						<h3 class="font-semibold text-lg mb-2 text-gray-900 dark:text-white">
+					<div class="clarity-zone p-6">
+						<h3 class="font-semibold text-lg mb-2 text-slate-900 dark:text-slate-100">
 							⚡ 60-Second Clarity
 						</h3>
-						<p class="text-gray-600 dark:text-gray-300">
+						<p class="text-slate-700 dark:text-slate-300">
 							From brain dump to organized projects in literally one minute. Voice,
 							text, paste—however your thoughts come out.
 						</p>
 					</div>
 
-					<div class="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm">
-						<h3 class="font-semibold text-lg mb-2 text-gray-900 dark:text-white">
+					<div class="clarity-zone p-6">
+						<h3 class="font-semibold text-lg mb-2 text-slate-900 dark:text-slate-100">
 							📍 Your Home Base
 						</h3>
-						<p class="text-gray-600 dark:text-gray-300">
+						<p class="text-slate-700 dark:text-slate-300">
 							Not another app to manage. This is where all your scattered thoughts
 							finally come together. Users call it their "external brain."
 						</p>
 					</div>
 
-					<div class="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm">
-						<h3 class="font-semibold text-lg mb-2 text-gray-900 dark:text-white">
+					<div class="clarity-zone p-6">
+						<h3 class="font-semibold text-lg mb-2 text-slate-900 dark:text-slate-100">
 							🎯 Progress, Not Perfection
 						</h3>
-						<p class="text-gray-600 dark:text-gray-300">
+						<p class="text-slate-700 dark:text-slate-300">
 							Celebrate tiny wins. One task done > perfect system abandoned. BuildOS
 							keeps you moving forward, not organizing forever.
 						</p>
@@ -481,11 +484,14 @@
 		</section>
 
 		<!-- Three Pillars -->
-		<section class="py-20 bg-gray-50 dark:bg-gray-800/50" aria-labelledby="pillars-heading">
+		<section
+			class="py-20 bg-[var(--surface-panel)] noise-overlay"
+			aria-labelledby="pillars-heading"
+		>
 			<div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
 				<h2
 					id="pillars-heading"
-					class="text-3xl font-bold text-center mb-12 text-gray-900 dark:text-white"
+					class="text-3xl font-bold text-center mb-12 text-slate-900 dark:text-slate-100"
 				>
 					Brain dump. See structure. Take action.
 				</h2>
@@ -494,17 +500,17 @@
 					<!-- Talk It Out -->
 					<article class="text-center fade-in">
 						<div
-							class="w-16 h-16 bg-gradient-to-br from-primary-100 to-primary-200 dark:from-primary-900/30 dark:to-primary-800/30 rounded-full flex items-center justify-center mx-auto mb-4 float-animation"
+							class="utility-block w-16 h-16 rounded-sm flex items-center justify-center mx-auto mb-4 float-animation"
 						>
 							<CheckCircle2
-								class="w-8 h-8 text-primary-600 dark:text-primary-400"
+								class="w-8 h-8 text-gray-700 dark:text-gray-200"
 								aria-hidden="true"
 							/>
 						</div>
-						<h3 class="text-xl font-semibold mb-3 text-gray-900 dark:text-white">
+						<h3 class="text-xl font-semibold mb-3 text-slate-900 dark:text-slate-100">
 							Talk It Out
 						</h3>
-						<p class="text-gray-600 dark:text-gray-300 leading-relaxed">
+						<p class="text-slate-700 dark:text-slate-300 leading-relaxed">
 							<strong>Your thoughts, any format.</strong> Voice ramble at 2am? Frantic
 							typing after a meeting? Copy-paste from everywhere? BuildOS handles it all.
 							No formatting. No structure needed. Just dump.
@@ -514,17 +520,17 @@
 					<!-- AI Organization -->
 					<article class="text-center fade-in delay-200">
 						<div
-							class="w-16 h-16 bg-gradient-to-br from-purple-100 to-purple-200 dark:from-purple-900/30 dark:to-purple-800/30 rounded-full flex items-center justify-center mx-auto mb-4 float-animation delay-2000"
+							class="utility-block w-16 h-16 rounded-sm flex items-center justify-center mx-auto mb-4 float-animation delay-2000"
 						>
 							<Zap
-								class="w-8 h-8 text-purple-600 dark:text-purple-400"
+								class="w-8 h-8 text-gray-700 dark:text-gray-200"
 								aria-hidden="true"
 							/>
 						</div>
-						<h3 class="text-xl font-semibold mb-3 text-gray-900 dark:text-white">
+						<h3 class="text-xl font-semibold mb-3 text-slate-900 dark:text-slate-100">
 							AI Organization
 						</h3>
-						<p class="text-gray-600 dark:text-gray-300 leading-relaxed">
+						<p class="text-slate-700 dark:text-slate-300 leading-relaxed">
 							<strong>Instant clarity from chaos.</strong> Watch your word vomit transform
 							into clear projects with phases. Every task extracted. Ideas parked for later.
 							Context that builds over time.
@@ -534,17 +540,17 @@
 					<!-- One-Click Execution -->
 					<article class="text-center fade-in delay-400">
 						<div
-							class="w-16 h-16 bg-gradient-to-br from-orange-100 to-orange-200 dark:from-orange-900/30 dark:to-orange-800/30 rounded-full flex items-center justify-center mx-auto mb-4 float-animation delay-4000"
+							class="utility-block w-16 h-16 rounded-sm flex items-center justify-center mx-auto mb-4 float-animation delay-4000"
 						>
 							<Calendar
-								class="w-8 h-8 text-orange-600 dark:text-orange-400"
+								class="w-8 h-8 text-gray-700 dark:text-gray-200"
 								aria-hidden="true"
 							/>
 						</div>
-						<h3 class="text-xl font-semibold mb-3 text-gray-900 dark:text-white">
+						<h3 class="text-xl font-semibold mb-3 text-slate-900 dark:text-slate-100">
 							One-Click Execution
 						</h3>
-						<p class="text-gray-600 dark:text-gray-300 leading-relaxed">
+						<p class="text-slate-700 dark:text-slate-300 leading-relaxed">
 							<strong>From "I should" to "I did".</strong> See your next step. Click to
 							schedule. Get daily briefs that actually help. Stop planning. Start doing.
 						</p>
@@ -554,31 +560,39 @@
 		</section>
 
 		<!-- Final CTA -->
-		<section class="relative my-6 py-20" aria-labelledby="cta-heading">
+		<section
+			class="relative my-6 py-20 industrial-panel grain-animate"
+			aria-labelledby="cta-heading"
+		>
 			<div class="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-				<h2 id="cta-heading" class="text-3xl font-bold mb-6 text-gray-900 dark:text-white">
+				<h2
+					id="cta-heading"
+					class="text-3xl font-bold mb-6 text-slate-900 dark:text-slate-100"
+				>
 					Your scattered thoughts are not the problem.
 					{#if innerWidth > 600}
 						<br />
 					{/if}
 					They're potential waiting to be organized.
 				</h2>
-				<p class="text-xl text-gray-600 dark:text-gray-300 mb-4 mt-8 leading-relaxed">
+				<p class="text-xl text-slate-700 dark:text-slate-300 mb-4 mt-8 leading-relaxed">
 					You've tried the complex systems. You've abandoned the perfect planners.
 				</p>
-				<p class="text-xl text-gray-600 dark:text-gray-300 mb-8 leading-relaxed">
+				<p class="text-xl text-slate-700 dark:text-slate-300 mb-8 leading-relaxed">
 					What if the tools were wrong, not you?
 				</p>
 				<p
-					class="text-lg text-gray-600 dark:text-gray-300 mb-8 leading-relaxed font-semibold"
+					class="text-lg text-slate-700 dark:text-slate-300 mb-8 leading-relaxed font-semibold"
 				>
 					BuildOS is your home base. The one place where your chaos becomes clarity.
 				</p>
 				<div class="space-y-4">
 					<a href="/auth/register" aria-label="Start your free trial with BuildOS">
-						<Button variant="primary">Find Your Home Base →</Button>
+						<button class="btn-tactile px-8 py-3 text-lg">
+							Find Your Home Base →
+						</button>
 					</a>
-					<p class="text-sm text-gray-500 dark:text-gray-400">
+					<p class="text-sm text-slate-600 dark:text-slate-400 badge-draft inline-block">
 						Join 500+ scattered minds who finally stick with their system<br />
 						14 days free • Cancel anytime • No shame in trying
 					</p>

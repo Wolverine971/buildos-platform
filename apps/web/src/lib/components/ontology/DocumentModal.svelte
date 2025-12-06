@@ -1,5 +1,6 @@
 <!-- apps/web/src/lib/components/ontology/DocumentModal.svelte -->
 <script lang="ts">
+	import { browser } from '$app/environment';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import TextInput from '$lib/components/ui/TextInput.svelte';
@@ -130,6 +131,7 @@
 
 	// Watch for modal opening and load/reset form accordingly
 	$effect(() => {
+		if (!browser) return;
 		// Track dependencies explicitly
 		const shouldLoad = isOpen;
 		const currentDocId = documentId;
@@ -278,201 +280,256 @@
 	size="xl"
 	closeOnBackdrop={false}
 	closeOnEscape={!saving}
-	title={documentId ? 'Edit Document' : 'New Document'}
+	showCloseButton={false}
 >
-	<div class="overflow-y-auto" style="max-height: 70vh;">
-		{#if loading}
-			<div class="flex items-center justify-center py-12">
-				<Loader class="w-6 h-6 animate-spin text-gray-400" />
-			</div>
-		{:else}
-			<form id={documentFormId} class="space-y-6 px-4 sm:px-6 py-6" onsubmit={handleSave}>
-				<section
-					class="rounded-2xl border border-gray-200 dark:border-gray-700 bg-gradient-to-r from-white to-slate-50 dark:from-gray-900 dark:to-gray-800 p-4 sm:p-5 shadow-sm space-y-2 dither-surface"
-				>
-					<div class="flex flex-wrap items-center gap-2">
-						<Badge variant={getStateVariant(stateKey)} size="sm" class="capitalize">
-							{stateKey.replace('_', ' ')}
-						</Badge>
-						<Badge variant={contextBadgeVariant} size="sm">{contextBadgeLabel}</Badge>
-						{#if typeKey}
-							<span class="text-xs text-gray-500 dark:text-gray-400"
-								>Type • {typeKey}</span
-							>
-						{/if}
-					</div>
-					<div class="text-xs text-gray-500 dark:text-gray-400 flex flex-wrap gap-4">
-						{#if createdAt}
-							<span>Created {formatDate(createdAt)}</span>
-						{/if}
-						{#if lastUpdatedLabel}
-							<span>Last updated {lastUpdatedLabel}</span>
-						{/if}
-					</div>
-				</section>
-
-				{#if isEditing}
-					<div
-						class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm text-gray-600 dark:text-gray-300"
-					>
-						<div>
-							<p class="font-semibold text-gray-900 dark:text-gray-100">
-								Document ID
-							</p>
-							<p
-								class="font-mono text-xs text-gray-500 dark:text-gray-400 break-all mt-1"
-							>
-								{documentId}
-							</p>
-						</div>
-						<div>
-							<p class="font-semibold text-gray-900 dark:text-gray-100">Created</p>
-							<p class="mt-1 text-gray-700 dark:text-gray-200">
-								{formatDate(createdAt) ?? '—'}
-							</p>
-						</div>
-						<div>
-							<p class="font-semibold text-gray-900 dark:text-gray-100">Updated</p>
-							<p class="mt-1 text-gray-700 dark:text-gray-200">
-								{lastUpdatedLabel ?? '—'}
-							</p>
-						</div>
-					</div>
-				{/if}
-
-				<div class="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
-					<div class="md:col-span-2">
-						<FormField
-							label="Document title"
-							labelFor="document-title"
-							required={true}
-							error={titleFieldError}
-							uppercase={false}
-						>
-							<TextInput
-								id="document-title"
-								bind:value={title}
-								required
-								placeholder="Document title"
-								aria-label="Document title"
-								class="text-sm font-medium"
-								disabled={saving}
-							/>
-						</FormField>
-					</div>
-					<div>
-						<FormField label="State" labelFor="document-state" uppercase={false}>
-							<div class="flex items-center gap-2">
-								<Select
-									id="document-state"
-									bind:value={stateKey}
-									size="sm"
-									class="flex-1"
-								>
-									{#each stateOptions as option}
-										<option value={option.value}>{option.label}</option>
-									{/each}
-								</Select>
-								<Badge
-									variant={getStateVariant(stateKey)}
-									size="sm"
-									class="capitalize shrink-0"
-								>
-									{stateKey.replace('_', ' ')}
-								</Badge>
-							</div>
-						</FormField>
-					</div>
-				</div>
-
-				<FormField
-					label="Document type"
-					labelFor="document-type-input"
-					uppercase={false}
-					error={typeFieldError}
-					hint="Use dot notation so agents can understand the document role."
-				>
-					<input
-						id="document-type-input"
-						list={datalistId}
-						class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 font-mono focus:outline-none focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400 focus:border-purple-500 dark:focus:border-purple-400 transition-all"
-						bind:value={typeKey}
-						placeholder="doc.project.context"
-					/>
-					<datalist id={datalistId}>
-						{#each docTypeOptions as option}
-							<option value={option}></option>
-						{/each}
-					</datalist>
-					<div class="flex flex-wrap gap-2 mt-2 text-[11px] font-mono">
-						<span
-							class="px-2 py-0.5 rounded bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-200"
-						>
-							doc.project.context
-						</span>
-						<span
-							class="px-2 py-0.5 rounded bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-200"
-						>
-							doc.task.spec
-						</span>
-					</div>
-				</FormField>
-
-				<section class="pt-4 border-t border-gray-100 dark:border-gray-800 space-y-3">
-					<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-						<h4 class="text-sm font-semibold text-gray-900 dark:text-gray-100">
-							Content
-						</h4>
-						<p class="text-xs text-gray-500 dark:text-gray-400">
-							Full GitHub-flavored markdown support. Use the toolbar for shortcuts.
-						</p>
-					</div>
-					<RichMarkdownEditor
-						bind:value={body}
-						label="Document content"
-						rows={14}
-						maxLength={12000}
-						helpText="Supports AI summarization, tables, and embeds."
-					/>
-				</section>
-
-				{#if globalFormError}
-					<div
-						class="flex items-center gap-2 px-3 py-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg"
-					>
-						<span class="text-sm text-red-600 dark:text-red-400">{globalFormError}</span
-						>
-					</div>
-				{/if}
-			</form>
-		{/if}
-	</div>
-
-	<svelte:fragment slot="footer">
+	{#snippet header()}
+		<!-- Custom gradient header - grey/dark grey -->
 		<div
-			class="flex items-center justify-between gap-3 px-4 sm:px-6 py-3 sm:py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50"
+			class="flex-shrink-0 bg-gradient-to-r from-gray-600 via-gray-700 to-gray-800 dark:from-gray-700 dark:via-gray-800 dark:to-gray-900 text-white px-3 py-3 sm:px-6 sm:py-5 flex items-start justify-between gap-2 sm:gap-4 dither-gradient"
+		>
+			<div class="space-y-1 sm:space-y-2 min-w-0 flex-1">
+				<p class="text-[10px] sm:text-xs font-semibold uppercase tracking-[0.3em] sm:tracking-[0.4em] text-white/70">
+					{documentId ? 'Edit Document' : 'New Document'}
+				</p>
+				<h2 class="text-lg sm:text-2xl font-bold leading-tight truncate">
+					{title || 'Document details'}
+				</h2>
+				<div class="flex flex-wrap items-center gap-1.5 sm:gap-3 text-xs sm:text-sm">
+					<span class="px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-semibold capitalize bg-white/20">{stateKey}</span>
+					{#if typeKey}
+						<span class="hidden sm:inline font-mono text-xs tracking-wide text-white/70">{typeKey}</span>
+					{/if}
+				</div>
+			</div>
+			<Button
+				variant="ghost"
+				size="sm"
+				onclick={closeModal}
+				class="text-white/80 hover:text-white shrink-0 !p-1.5 sm:!p-2"
+				disabled={saving}
+			>
+				<svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						stroke-width="2"
+						d="M6 18L18 6M6 6l12 12"
+					></path>
+				</svg>
+			</Button>
+		</div>
+	{/snippet}
+
+	{#snippet children()}
+		<div class="overflow-y-auto" style="max-height: 70vh;">
+			{#if loading}
+				<div class="flex items-center justify-center py-12">
+					<Loader class="w-6 h-6 animate-spin text-gray-400" />
+				</div>
+			{:else}
+				<form id={documentFormId} class="space-y-6 px-4 sm:px-6 py-6" onsubmit={handleSave}>
+					<section
+						class="rounded border border-gray-200 dark:border-gray-700 bg-surface-elevated dark:bg-surface-panel p-4 sm:p-5 shadow-subtle space-y-2 dither-soft"
+					>
+						<div class="flex flex-wrap items-center gap-2">
+							<Badge variant={getStateVariant(stateKey)} size="sm" class="capitalize">
+								{stateKey.replace('_', ' ')}
+							</Badge>
+							<Badge variant={contextBadgeVariant} size="sm"
+								>{contextBadgeLabel}</Badge
+							>
+							{#if typeKey}
+								<span class="text-xs text-slate-600 dark:text-slate-400"
+									>Type • {typeKey}</span
+								>
+							{/if}
+						</div>
+						<div
+							class="text-xs text-slate-600 dark:text-slate-400 flex flex-wrap gap-4"
+						>
+							{#if createdAt}
+								<span>Created {formatDate(createdAt)}</span>
+							{/if}
+							{#if lastUpdatedLabel}
+								<span>Last updated {lastUpdatedLabel}</span>
+							{/if}
+						</div>
+					</section>
+
+					{#if isEditing}
+						<div
+							class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm text-slate-600 dark:text-slate-300"
+						>
+							<div>
+								<p class="font-semibold text-slate-900 dark:text-slate-100">
+									Document ID
+								</p>
+								<p
+									class="font-mono text-xs text-slate-600 dark:text-slate-400 break-all mt-1"
+								>
+									{documentId}
+								</p>
+							</div>
+							<div>
+								<p class="font-semibold text-slate-900 dark:text-slate-100">
+									Created
+								</p>
+								<p class="mt-1 text-slate-700 dark:text-slate-200">
+									{formatDate(createdAt) ?? '—'}
+								</p>
+							</div>
+							<div>
+								<p class="font-semibold text-slate-900 dark:text-slate-100">
+									Updated
+								</p>
+								<p class="mt-1 text-slate-700 dark:text-slate-200">
+									{lastUpdatedLabel ?? '—'}
+								</p>
+							</div>
+						</div>
+					{/if}
+
+					<div class="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
+						<div class="md:col-span-2">
+							<FormField
+								label="Document title"
+								labelFor="document-title"
+								required={true}
+								error={titleFieldError}
+								uppercase={false}
+							>
+								<TextInput
+									id="document-title"
+									bind:value={title}
+									required
+									placeholder="Document title"
+									aria-label="Document title"
+									class="text-sm font-medium"
+									disabled={saving}
+								/>
+							</FormField>
+						</div>
+						<div>
+							<FormField label="State" labelFor="document-state" uppercase={false}>
+								<div class="flex items-center gap-2">
+									<Select
+										id="document-state"
+										bind:value={stateKey}
+										size="sm"
+										class="flex-1"
+									>
+										{#each stateOptions as option}
+											<option value={option.value}>{option.label}</option>
+										{/each}
+									</Select>
+									<Badge
+										variant={getStateVariant(stateKey)}
+										size="sm"
+										class="capitalize shrink-0"
+									>
+										{stateKey.replace('_', ' ')}
+									</Badge>
+								</div>
+							</FormField>
+						</div>
+					</div>
+
+					<FormField
+						label="Document type"
+						labelFor="document-type-input"
+						uppercase={false}
+						error={typeFieldError}
+						hint="Use dot notation so agents can understand the document role."
+					>
+						<input
+							id="document-type-input"
+							list={datalistId}
+							class="w-full rounded border border-gray-200 dark:border-gray-700 bg-surface-clarity dark:bg-surface-elevated px-3 py-2 text-sm text-slate-900 dark:text-slate-100 font-mono focus:outline-none focus:ring-2 focus:ring-accent-orange focus:border-accent-orange dither-soft transition-all"
+							bind:value={typeKey}
+							placeholder="doc.project.context"
+						/>
+						<datalist id={datalistId}>
+							{#each docTypeOptions as option}
+								<option value={option}></option>
+							{/each}
+						</datalist>
+						<div class="flex flex-wrap gap-2 mt-2 text-[11px] font-mono">
+							<span
+								class="px-2 py-0.5 rounded bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-200"
+							>
+								doc.project.context
+							</span>
+							<span
+								class="px-2 py-0.5 rounded bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-200"
+							>
+								doc.task.spec
+							</span>
+						</div>
+					</FormField>
+
+					<section class="pt-4 border-t border-gray-200 dark:border-gray-700 space-y-3">
+						<div
+							class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2"
+						>
+							<h4 class="text-sm font-semibold text-slate-900 dark:text-slate-100">
+								Content
+							</h4>
+							<p class="text-xs text-slate-600 dark:text-slate-400">
+								Full GitHub-flavored markdown support. Use the toolbar for
+								shortcuts.
+							</p>
+						</div>
+						<RichMarkdownEditor
+							bind:value={body}
+							label="Document content"
+							rows={14}
+							maxLength={12000}
+							helpText="Supports AI summarization, tables, and embeds."
+						/>
+					</section>
+
+					{#if globalFormError}
+						<div
+							class="flex items-center gap-2 px-3 py-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg"
+						>
+							<span class="text-sm text-red-600 dark:text-red-400"
+								>{globalFormError}</span
+							>
+						</div>
+					{/if}
+				</form>
+			{/if}
+		</div>
+	{/snippet}
+	{#snippet footer()}
+		<div
+			class="flex flex-row items-center justify-between gap-2 sm:gap-4 p-2 sm:p-4 border-t border-gray-200 dark:border-gray-700 bg-surface-panel dark:bg-slate-900/30 dither-surface"
 		>
 			{#if documentId}
-				<Button
-					type="button"
-					variant="ghost"
-					size="sm"
-					class="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/20 transition-colors"
-					onclick={() => (deleteModalOpen = true)}
-				>
-					<Trash2 class="w-4 h-4 mr-1.5" />
-					Delete
-				</Button>
+				<!-- Danger zone inline on mobile -->
+				<div class="flex items-center gap-1.5 sm:gap-2">
+					<Trash2 class="w-3 h-3 sm:w-4 sm:h-4 text-red-500 shrink-0" />
+					<Button
+						type="button"
+						variant="danger"
+						size="sm"
+						onclick={() => (deleteModalOpen = true)}
+						class="text-[10px] sm:text-xs px-2 py-1 sm:px-3 sm:py-1.5"
+					>
+						Delete
+					</Button>
+				</div>
 			{:else}
 				<div></div>
 			{/if}
-			<div class="flex items-center gap-3">
+			<div class="flex flex-row items-center gap-2">
 				<Button
 					type="button"
 					variant="secondary"
 					size="sm"
 					onclick={closeModal}
 					disabled={saving}
+					class="text-xs sm:text-sm px-2 sm:px-4"
 				>
 					Cancel
 				</Button>
@@ -483,17 +540,15 @@
 					size="sm"
 					loading={saving}
 					disabled={saving || !title.trim() || !typeKey.trim()}
+					class="text-xs sm:text-sm px-2 sm:px-4"
 				>
-					{#if saving}
-						Saving...
-					{:else}
-						<Save class="w-4 h-4 mr-1.5" />
-						{documentId ? 'Save Changes' : 'Create Document'}
-					{/if}
+					<Save class="w-3 h-3 sm:w-4 sm:h-4" />
+					<span class="hidden sm:inline">{documentId ? 'Save Changes' : 'Create'}</span>
+					<span class="sm:hidden">Save</span>
 				</Button>
 			</div>
 		</div>
-	</svelte:fragment>
+	{/snippet}
 </Modal>
 
 <ConfirmationModal

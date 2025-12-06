@@ -27,9 +27,21 @@ export interface CalendarMigrationResult {
 
 const DEFAULT_EVENT_TYPE = 'event.task_work';
 const TASK_EVENT_EDGE_REL = 'has_event';
+const DEFAULT_EVENT_CONCURRENCY = 10;
 
 export class CalendarMigrationService {
 	constructor(private readonly client: TypedSupabaseClient) {}
+
+	/**
+	 * Chunk an array into smaller arrays of specified size
+	 */
+	private chunkArray<T>(array: T[], size: number): T[][] {
+		const chunks: T[][] = [];
+		for (let i = 0; i < array.length; i += size) {
+			chunks.push(array.slice(i, i + size));
+		}
+		return chunks;
+	}
 
 	async migrateCalendarData(
 		projectId: string,
@@ -70,89 +82,103 @@ export class CalendarMigrationService {
 				events.map((event) => event.id)
 			);
 
-			for (const event of events) {
-				const existingMapping = eventMappings.get(event.id);
-				if (existingMapping) {
-					skippedEvents += 1;
-					continue;
-				}
+			// Process events in parallel batches for better performance
+			const eventConcurrency = context.eventConcurrency ?? DEFAULT_EVENT_CONCURRENCY;
+			const eventBatches = this.chunkArray(events, eventConcurrency);
 
-				const ontoTaskId = taskMappings[event.task_id] ?? null;
-				if (!ontoTaskId) {
-					skippedEvents += 1;
-					continue;
-				}
+			for (const batch of eventBatches) {
+				const batchResults = await Promise.all(
+					batch.map(async (event) => {
+						const existingMapping = eventMappings.get(event.id);
+						if (existingMapping) {
+							return { created: false };
+						}
 
-				if (!event.event_start) {
-					skippedEvents += 1;
-					continue;
-				}
+						const ontoTaskId = taskMappings[event.task_id] ?? null;
+						if (!ontoTaskId) {
+							return { created: false };
+						}
 
-				const { data: ontoEvent, error: eventError } = await this.client
-					.from('onto_events')
-					.insert({
-						project_id: ontoProjectId,
-						owner_entity_type: 'task',
-						owner_entity_id: ontoTaskId,
-						type_key: DEFAULT_EVENT_TYPE,
-						state_key: event.sync_status === 'cancelled' ? 'cancelled' : 'scheduled',
-						title: event.event_title ?? 'Task Work Session',
-						description: event.event_link,
-						location: null,
-						start_at: event.event_start,
-						end_at: event.event_end,
-						all_day: false,
-						timezone: null,
-						template_snapshot: {},
-						props: {
-							legacy_task_calendar_event_id: event.id,
-							calendar_id: event.project_calendar_id,
-							sync_source: event.sync_source,
-							recurrence: event.recurrence_rule,
-							last_synced_at: event.last_synced_at
-						},
-						created_by: actorId
+						if (!event.event_start) {
+							return { created: false };
+						}
+
+						const { data: ontoEvent, error: eventError } = await this.client
+							.from('onto_events')
+							.insert({
+								project_id: ontoProjectId,
+								owner_entity_type: 'task',
+								owner_entity_id: ontoTaskId,
+								type_key: DEFAULT_EVENT_TYPE,
+								state_key:
+									event.sync_status === 'cancelled' ? 'cancelled' : 'scheduled',
+								title: event.event_title ?? 'Task Work Session',
+								description: event.event_link,
+								location: null,
+								start_at: event.event_start,
+								end_at: event.event_end,
+								all_day: false,
+								timezone: null,
+								template_snapshot: {},
+								props: {
+									legacy_task_calendar_event_id: event.id,
+									calendar_id: event.project_calendar_id,
+									sync_source: event.sync_source,
+									recurrence: event.recurrence_rule,
+									last_synced_at: event.last_synced_at
+								},
+								created_by: actorId
+							})
+							.select('id')
+							.single();
+
+						if (eventError || !ontoEvent) {
+							return { created: false };
+						}
+
+						await upsertLegacyMapping(this.client, {
+							legacyTable: 'task_calendar_events',
+							legacyId: event.id,
+							ontoTable: 'onto_events',
+							ontoId: ontoEvent.id,
+							record: event,
+							metadata: {
+								run_id: context.runId,
+								batch_id: context.batchId,
+								dry_run: context.dryRun
+							}
+						});
+
+						if (event.project_calendar_id && event.calendar_event_id) {
+							await this.client.from('onto_event_sync').insert({
+								event_id: ontoEvent.id,
+								calendar_id: event.project_calendar_id,
+								provider: event.sync_source ?? 'google',
+								external_event_id: event.calendar_event_id,
+								sync_status: event.sync_status ?? 'pending',
+								sync_error: event.sync_error,
+								last_synced_at: event.last_synced_at
+							});
+						}
+
+						await this.linkEventToTask({
+							taskId: ontoTaskId,
+							eventId: ontoEvent.id,
+							legacyEventId: event.id
+						});
+
+						return { created: true };
 					})
-					.select('id')
-					.single();
+				);
 
-				if (eventError || !ontoEvent) {
-					skippedEvents += 1;
-					continue;
-				}
-
-				await upsertLegacyMapping(this.client, {
-					legacyTable: 'task_calendar_events',
-					legacyId: event.id,
-					ontoTable: 'onto_events',
-					ontoId: ontoEvent.id,
-					record: event,
-					metadata: {
-						run_id: context.runId,
-						batch_id: context.batchId,
-						dry_run: context.dryRun
+				// Aggregate batch results
+				for (const result of batchResults) {
+					if (result.created) {
+						createdEvents += 1;
+					} else {
+						skippedEvents += 1;
 					}
-				});
-
-				if (event.project_calendar_id && event.calendar_event_id) {
-					await this.client.from('onto_event_sync').insert({
-						event_id: ontoEvent.id,
-						calendar_id: event.project_calendar_id,
-						provider: event.sync_source ?? 'google',
-						external_event_id: event.calendar_event_id,
-						sync_status: event.sync_status ?? 'pending',
-						sync_error: event.sync_error,
-						last_synced_at: event.last_synced_at
-					});
 				}
-
-				createdEvents += 1;
-
-				await this.linkEventToTask({
-					taskId: ontoTaskId,
-					eventId: ontoEvent.id,
-					legacyEventId: event.id
-				});
 			}
 
 			status = 'completed';

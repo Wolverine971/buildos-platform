@@ -29,6 +29,10 @@ import { SmartLLMService } from '../../smart-llm-service';
 import { ErrorLoggerService } from '$lib/services/errorLogger.service';
 import type { LastTurnContext } from '$lib/types/agent-chat-enhancement';
 import { createEnhancedLLMWrapper, type EnhancedLLMWrapper } from '../config/enhanced-llm-wrapper';
+import {
+	ProjectCreationAnalyzer,
+	type ClarificationRoundMetadata
+} from '../analysis/project-creation-analyzer';
 
 const PLAN_TOOL_DEFINITION: ChatToolDefinition = {
 	type: 'function',
@@ -72,6 +76,50 @@ const PLAN_TOOL_DEFINITION: ChatToolDefinition = {
 const MAX_TOOL_CALLS_PER_TURN = 15;
 const MAX_SESSION_DURATION_MS = 90_000;
 
+/**
+ * Context shift data structure returned by tools that navigate to a new entity
+ */
+interface ContextShiftData {
+	new_context?: ChatContextType | string;
+	entity_id?: string;
+	entity_name?: string;
+	entity_type?: 'project' | 'task' | 'plan' | 'goal' | 'document' | 'output';
+	message?: string;
+}
+
+/**
+ * Type-safe extraction of context_shift from tool execution result
+ * Handles multiple possible locations where context_shift might exist
+ */
+function extractContextShift(result: ToolExecutionResult): ContextShiftData | undefined {
+	// Check common locations for context_shift in order of preference
+	const data = result.data;
+
+	// First check if data itself has context_shift
+	if (data && typeof data === 'object' && 'context_shift' in data) {
+		return data.context_shift as ContextShiftData;
+	}
+
+	// Check if data.result has context_shift (nested result pattern)
+	if (data && typeof data === 'object' && 'result' in data) {
+		const nestedResult = data.result;
+		if (nestedResult && typeof nestedResult === 'object' && 'context_shift' in nestedResult) {
+			return nestedResult.context_shift as ContextShiftData;
+		}
+	}
+
+	// Check metadata for context_shift
+	if (
+		result.metadata &&
+		typeof result.metadata === 'object' &&
+		'context_shift' in result.metadata
+	) {
+		return result.metadata.context_shift as ContextShiftData;
+	}
+
+	return undefined;
+}
+
 type LLMStreamEvent =
 	| { type: 'text'; content?: string }
 	| { type: 'tool_call'; tool_call?: ChatToolCall }
@@ -90,10 +138,13 @@ export interface AgentChatOrchestratorDependencies {
 
 export class AgentChatOrchestrator {
 	private enhancedLLM: EnhancedLLMWrapper;
+	private projectCreationAnalyzer: ProjectCreationAnalyzer;
 
 	constructor(private deps: AgentChatOrchestratorDependencies) {
 		// Create enhanced wrapper for intelligent model selection
 		this.enhancedLLM = createEnhancedLLMWrapper(deps.llmService);
+		// Create analyzer for project creation clarifying questions
+		this.projectCreationAnalyzer = new ProjectCreationAnalyzer(deps.llmService);
 	}
 
 	async *streamConversation(
@@ -183,6 +234,31 @@ export class AgentChatOrchestrator {
 				await callback(usageEvent);
 			}
 
+			// === PROJECT CREATION CLARIFICATION CHECK ===
+			// For project_create context, check if we need to ask clarifying questions
+			// before proceeding with the planner loop
+			if (request.contextType === 'project_create') {
+				const clarificationResult = await this.checkProjectCreationClarification(
+					request,
+					serviceContext,
+					callback
+				);
+
+				if (clarificationResult.needsClarification) {
+					// Emit clarifying questions and return early
+					for (const event of clarificationResult.events) {
+						yield event;
+						await callback(event);
+					}
+
+					// Emit done event
+					const doneEvent: StreamEvent = { type: 'done' };
+					yield doneEvent;
+					await callback(doneEvent);
+					return;
+				}
+			}
+
 			const messages = this.buildPlannerMessages(plannerContext, request.userMessage);
 
 			const tools = this.appendVirtualTools(plannerContext.availableTools);
@@ -251,8 +327,10 @@ export class AgentChatOrchestrator {
 	}
 
 	private appendVirtualTools(tools: ChatToolDefinition[]): ChatToolDefinition[] {
+		// ChatToolDefinition is well-typed with function.name property
+		// No need for 'as any' cast - tools array is already typed
 		const existingPlanTool = tools.find(
-			(tool) => (tool as any)?.function?.name === PLAN_TOOL_DEFINITION.function.name
+			(tool) => tool?.function?.name === PLAN_TOOL_DEFINITION.function.name
 		);
 		if (existingPlanTool) {
 			return tools;
@@ -376,10 +454,9 @@ export class AgentChatOrchestrator {
 				);
 
 				yield { type: 'tool_result', result };
-				const contextShift =
-					(result as any)?.context_shift ??
-					result?.data?.context_shift ??
-					(result?.data as any)?.context_shift;
+
+				// Type-safe context shift extraction
+				const contextShift = extractContextShift(result);
 				if (contextShift) {
 					const normalizedShiftContext = this.normalizeChatContextType(
 						(contextShift.new_context as ChatContextType) ?? serviceContext.contextType
@@ -805,6 +882,144 @@ export class AgentChatOrchestrator {
 			data_accessed: ['context_shift'],
 			timestamp: new Date().toISOString()
 		};
+	}
+
+	/**
+	 * Check if project creation needs clarifying questions before proceeding
+	 *
+	 * Flow:
+	 * 1. Extract clarification metadata from request (or create initial)
+	 * 2. Analyze user message for intent sufficiency
+	 * 3. If sufficient context, return { needsClarification: false }
+	 * 4. If insufficient, generate friendly intro message + questions, return events
+	 * 5. Include updated metadata for the next round in the response
+	 */
+	private async checkProjectCreationClarification(
+		request: AgentChatRequest,
+		serviceContext: ServiceContext,
+		callback: StreamCallback
+	): Promise<{
+		needsClarification: boolean;
+		events: StreamEvent[];
+		updatedMetadata?: ClarificationRoundMetadata;
+	}> {
+		const existingMetadata = request.projectClarificationMetadata;
+		const roundNumber = existingMetadata?.roundNumber ?? 0;
+
+		console.log('[AgentChatOrchestrator] Checking project creation clarification', {
+			roundNumber,
+			messageLength: request.userMessage.length,
+			hasExistingMetadata: !!existingMetadata
+		});
+
+		// Convert to analyzer format
+		const analyzerMetadata: ClarificationRoundMetadata | undefined = existingMetadata
+			? {
+					roundNumber: existingMetadata.roundNumber,
+					accumulatedContext: existingMetadata.accumulatedContext,
+					previousQuestions: existingMetadata.previousQuestions,
+					previousResponses: existingMetadata.previousResponses
+				}
+			: undefined;
+
+		try {
+			const analysis = await this.projectCreationAnalyzer.analyzeIntent(
+				request.userMessage,
+				request.userId,
+				analyzerMetadata
+			);
+
+			console.log('[AgentChatOrchestrator] Project creation analysis result', {
+				hasSufficientContext: analysis.hasSufficientContext,
+				confidence: analysis.confidence,
+				hasQuestions: !!analysis.clarifyingQuestions?.length,
+				inferredType: analysis.inferredProjectType
+			});
+
+			// If sufficient context, proceed with project creation
+			if (analysis.hasSufficientContext) {
+				return { needsClarification: false, events: [] };
+			}
+
+			// Generate clarifying questions response
+			const events: StreamEvent[] = [];
+
+			// First, emit agent state showing we're thinking
+			events.push(
+				this.buildAgentStateEvent(
+					'thinking',
+					'project_create',
+					'Understanding your project...'
+				)
+			);
+
+			// Generate a friendly intro message
+			const introMessage = this.generateClarificationIntro(
+				roundNumber,
+				analysis.inferredProjectType
+			);
+
+			// Emit text with the intro
+			events.push({ type: 'text', content: introMessage });
+
+			// Emit the clarifying questions event
+			const questions = analysis.clarifyingQuestions ?? [
+				"Could you tell me more about what kind of project you'd like to create?"
+			];
+			events.push({ type: 'clarifying_questions', questions });
+
+			// Emit agent state showing we're waiting
+			events.push(
+				this.buildAgentStateEvent(
+					'waiting_on_user',
+					'project_create',
+					'Waiting for more details...'
+				)
+			);
+
+			// Build updated metadata for next round
+			const updatedMetadata: ClarificationRoundMetadata = {
+				roundNumber: roundNumber + 1,
+				accumulatedContext: existingMetadata?.accumulatedContext
+					? `${existingMetadata.accumulatedContext}\n\nUser: ${request.userMessage}`
+					: request.userMessage,
+				previousQuestions: [...(existingMetadata?.previousQuestions ?? []), ...questions],
+				previousResponses: [
+					...(existingMetadata?.previousResponses ?? []),
+					request.userMessage
+				]
+			};
+
+			return {
+				needsClarification: true,
+				events,
+				updatedMetadata
+			};
+		} catch (error) {
+			console.error(
+				'[AgentChatOrchestrator] Project creation clarification check failed:',
+				error
+			);
+
+			// On error, proceed with project creation (don't block the user)
+			return { needsClarification: false, events: [] };
+		}
+	}
+
+	/**
+	 * Generate a friendly intro message for clarifying questions
+	 */
+	private generateClarificationIntro(roundNumber: number, inferredType?: string): string {
+		if (roundNumber === 0) {
+			// First round - welcoming intro
+			if (inferredType) {
+				return `Great! I'd love to help you create a ${inferredType} project. To make sure I set this up perfectly for you, I have a quick question:\n\n`;
+			}
+			return `I'd be happy to help you create a new project! To make sure I set things up well, could you help me understand a bit more?\n\n`;
+		}
+
+		// Second round - acknowledge their input
+		return `Thanks for the additional details! Just one more thing to make sure I get this right:\n\n`;
 	}
 
 	private buildAgentStateEvent(

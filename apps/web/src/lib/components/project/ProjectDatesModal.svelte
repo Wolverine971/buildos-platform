@@ -73,12 +73,14 @@
 	onClose={handleClose}
 	size="sm"
 >
-	<div slot="after-form" class="mt-4">
-		<div class="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
-			<p class="text-sm text-blue-800 dark:text-blue-200">
-				<strong>Note:</strong> Changing project dates may affect phase scheduling. Phases outside
-				the new date range will need to be adjusted.
-			</p>
+	{#snippet afterForm()}
+		<div class="mt-4">
+			<div class="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
+				<p class="text-sm text-blue-800 dark:text-blue-200">
+					<strong>Note:</strong> Changing project dates may affect phase scheduling. Phases
+					outside the new date range will need to be adjusted.
+				</p>
+			</div>
 		</div>
-	</div>
+	{/snippet}
 </FormModal>

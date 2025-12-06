@@ -12,7 +12,7 @@
  *
  * Request Body:
  * - project_id: string (required) - Project UUID
- * - type_key: string (default: 'plan.basic') - Template type key
+ * - type_key: string (default: 'plan.phase.base') - Template type key
  * - name: string (required) - Plan name
  * - description?: string - Plan description
  * - state_key?: string - Initial state (draft, planning, active, etc.)
@@ -48,7 +48,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		const body = await request.json();
 		const {
 			project_id,
-			type_key = 'plan.basic',
+			type_key = 'plan.phase.base',
 			name,
 			description,
 			state_key = 'draft',

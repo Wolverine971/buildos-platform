@@ -34,11 +34,14 @@ export async function requestAgentToAgentMessage(
 	const body = (await res.json()) as
 		| { data?: AgentToAgentMessageResponse }
 		| AgentToAgentMessageResponse;
+
+	// Check if body is AgentToAgentMessageResponse directly
 	if ('message' in body && typeof body.message === 'string') {
 		return body as AgentToAgentMessageResponse;
 	}
 
-	if (body?.data?.message) {
+	// Check if body has nested data property
+	if ('data' in body && body.data?.message) {
 		return body.data;
 	}
 

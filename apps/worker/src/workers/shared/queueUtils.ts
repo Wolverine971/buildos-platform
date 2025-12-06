@@ -63,6 +63,11 @@ export interface SMSJobData {
 	scheduled_sms_id?: string; // Optional ID from scheduled_sms_messages table
 }
 
+export interface ChatClassificationJobData {
+	sessionId: string; // ID of the chat session to classify
+	userId: string; // User ID who owns the session
+}
+
 // Update job status in database
 export async function updateJobStatus(
 	queueJobId: string,
@@ -74,7 +79,8 @@ export async function updateJobStatus(
 		| 'send_sms'
 		| 'email'
 		| 'email_cancelled'
-		| 'email_sent',
+		| 'email_sent'
+		| 'chat_classification',
 	errorMessage?: string
 ) {
 	// Status is now consistent - no mapping needed
@@ -226,4 +232,41 @@ export function validateSMSJobData(data: any): SMSJobData {
 	}
 
 	return data as SMSJobData;
+}
+
+/**
+ * Validate ChatClassificationJobData and throw if invalid
+ * Ensures data integrity before chat classification job processing
+ */
+export function validateChatClassificationJobData(data: any): ChatClassificationJobData {
+	// Check sessionId
+	if (!data.sessionId || typeof data.sessionId !== 'string') {
+		throw new Error(
+			'Invalid chat classification job data: sessionId is required and must be string'
+		);
+	}
+
+	// Validate UUID format for sessionId
+	const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+	if (!uuidRegex.test(data.sessionId)) {
+		throw new Error(
+			`Invalid chat classification job data: sessionId must be a valid UUID, got "${data.sessionId}"`
+		);
+	}
+
+	// Check userId
+	if (!data.userId || typeof data.userId !== 'string') {
+		throw new Error(
+			'Invalid chat classification job data: userId is required and must be string'
+		);
+	}
+
+	// Validate UUID format for userId
+	if (!uuidRegex.test(data.userId)) {
+		throw new Error(
+			`Invalid chat classification job data: userId must be a valid UUID, got "${data.userId}"`
+		);
+	}
+
+	return data as ChatClassificationJobData;
 }

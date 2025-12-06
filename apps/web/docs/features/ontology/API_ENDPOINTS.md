@@ -1,6 +1,6 @@
 # Ontology System API Endpoints Reference
 
-**Last Updated**: November 4, 2025
+**Last Updated**: December 1, 2025
 **Status**: 95% Implemented
 **Base Path**: `/api/onto/`
 
@@ -82,7 +82,7 @@ POST /api/onto/templates
 
 ```json
 {
-  "type_key": "writer.article",
+  "type_key": "output.written.article",
   "name": "Article Template",
   "scope": "output",
   "status": "draft",
@@ -179,7 +179,7 @@ GET /api/onto/projects
     {
       "id": "uuid",
       "name": "My Book Project",
-      "type_key": "writer.book",
+      "type_key": "project.writer.book",
       "state_key": "active",
       "props": { "facets": {...} }
     }
@@ -208,7 +208,7 @@ POST /api/onto/projects/instantiate
 	"project_spec": {
 		"project": {
 			"name": "My Book",
-			"type_key": "writer.book",
+			"type_key": "project.writer.book",
 			"props": {
 				"facets": {
 					"context": "personal",
@@ -224,14 +224,14 @@ POST /api/onto/projects/instantiate
 		"plans": [
 			{
 				"name": "Writing Phase",
-				"type_key": "plan.scheduled",
+				"type_key": "plan.phase.project",
 				"props": { "facets": { "scale": "medium" } }
 			}
 		],
 		"documents": [
 			{
 				"title": "Project Brief",
-				"type_key": "doc.brief"
+				"type_key": "document.context.brief"
 			}
 		]
 	}
@@ -254,6 +254,8 @@ POST /api/onto/projects/instantiate
 
 ## ✅ Task Management
 
+> **Schema Reference**: See [TYPE_KEY_TAXONOMY.md](./TYPE_KEY_TAXONOMY.md#onto_tasks) for complete task type_key documentation.
+
 ### Create Task
 
 ```http
@@ -265,8 +267,8 @@ POST /api/onto/tasks/create
 ```json
 {
 	"project_id": "uuid",
-	"plan_id": "uuid (optional)",
-	"type_key": "task.basic",
+	"plan_id": "uuid (optional - creates edge relationship)",
+	"type_key": "task.execute",
 	"title": "Write chapter 1",
 	"description": "Draft the first chapter",
 	"priority": 2,
@@ -277,6 +279,22 @@ POST /api/onto/tasks/create
 	}
 }
 ```
+
+**type_key Work Mode Taxonomy:**
+| Work Mode | Description |
+|-----------|-------------|
+| `task.execute` | Action tasks (default) |
+| `task.create` | Produce new artifacts |
+| `task.refine` | Improve existing work |
+| `task.research` | Investigate/gather info |
+| `task.review` | Evaluate and feedback |
+| `task.coordinate` | Sync with others |
+| `task.admin` | Administrative tasks |
+| `task.plan` | Strategic planning |
+
+**Specializations:** `task.coordinate.meeting`, `task.coordinate.standup`, `task.execute.deploy`, `task.execute.checklist`
+
+**Note:** `plan_id` creates bidirectional edges (`belongs_to_plan`, `has_task`) in `onto_edges` table.
 
 ### Get Task
 
@@ -295,10 +313,14 @@ PATCH /api/onto/tasks/[id]
 ```json
 {
 	"title": "Updated title",
+	"type_key": "task.review",
 	"state_key": "in_progress",
-	"priority": 1
+	"priority": 1,
+	"plan_id": "uuid or null"
 }
 ```
+
+**Note:** All fields are optional. `plan_id` updates edge relationships.
 
 ### Delete Task
 
@@ -379,7 +401,7 @@ POST /api/onto/plans/create
 ```json
 {
 	"project_id": "uuid",
-	"type_key": "plan.scheduled",
+	"type_key": "plan.timebox.sprint",
 	"name": "Q1 Development",
 	"description": "First quarter development tasks",
 	"state_key": "draft",
@@ -409,7 +431,7 @@ POST /api/onto/goals/create
 ```json
 {
 	"project_id": "uuid",
-	"type_key": "goal.measurable",
+	"type_key": "goal.outcome.milestone",
 	"name": "Launch MVP",
 	"description": "Successfully launch the minimum viable product",
 	"priority": "high",
@@ -479,7 +501,7 @@ POST /api/onto/documents/create
 ```json
 {
 	"project_id": "uuid",
-	"type_key": "doc.research",
+	"type_key": "document.knowledge.research",
 	"title": "Market Research",
 	"content": "Document content here...",
 	"props": {}
@@ -517,7 +539,7 @@ POST /api/onto/outputs/create
 ```json
 {
 	"project_id": "uuid",
-	"type_key": "output.report",
+	"type_key": "output.operational.report",
 	"name": "Q1 Progress Report",
 	"state_key": "draft",
 	"props": {
@@ -679,7 +701,7 @@ POST /api/onto/templates/propose
 {
   "template_id": "uuid",
   "template": {
-    "type_key": "podcast.production",
+    "type_key": "project.media.podcast",
     "name": "Podcast Production",
     ...
   },

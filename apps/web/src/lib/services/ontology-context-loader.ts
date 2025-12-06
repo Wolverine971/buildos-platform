@@ -162,10 +162,22 @@ export class OntologyContextLoader {
 			throw new Error(`Project ${projectId} not found`);
 		}
 
-		// Extract facets and context document reference (column takes precedence, props kept for back-compat)
+		// Extract facets from props
 		const props = (project.props as any) || {};
 		const facets = props.facets || null;
-		const contextDocumentId = project.context_document_id || props.context_document_id || null;
+
+		// Query context document via edge relationship
+		const { data: contextEdge } = await this.supabase
+			.from('onto_edges')
+			.select('dst_id')
+			.eq('src_kind', 'project')
+			.eq('src_id', projectId)
+			.eq('rel', 'has_context_document')
+			.eq('dst_kind', 'document')
+			.limit(1)
+			.maybeSingle();
+
+		const contextDocumentId = contextEdge?.dst_id || null;
 
 		// Load relationships
 		const relationships = await this.loadProjectRelationships(projectId);

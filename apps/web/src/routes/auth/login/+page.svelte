@@ -156,41 +156,39 @@
 
 <!-- Account for navbar height (64px = h-16) by using calc() -->
 <div
-	class="flex items-center justify-center px-4 sm:px-6 lg:px-8"
+	class="flex items-center justify-center px-4 sm:px-6 lg:px-8 bg-[var(--surface-scratch)] dither-pattern"
 	style="min-height: calc(100vh - 64px);"
 >
 	<div class="max-w-md w-full space-y-8 py-12">
 		<!-- Logo/Brand Section -->
 		<div class="text-center">
 			<div class="flex justify-center mb-6">
-				<video
-					src="/onboarding-assets/animations/brain-bolt-electric.mp4"
-					class="w-16 h-16 rounded-md"
-					autoplay
-					loop
-					muted
-					playsinline
-					aria-label="BuildOS Icon"
-				></video>
+				<div class="utility-block w-16 h-16 rounded-sm flex items-center justify-center">
+					<video
+						src="/onboarding-assets/animations/brain-bolt-electric.mp4"
+						class="w-12 h-12"
+						autoplay
+						loop
+						muted
+						playsinline
+						aria-label="BuildOS Icon"
+					></video>
+				</div>
 			</div>
 
-			<h2 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">Welcome back</h2>
-			<p class="text-gray-600 dark:text-gray-400 mb-8">Sign in to your BuildOS account</p>
+			<h2 class="text-3xl font-bold text-slate-900 dark:text-slate-100 mb-2">Welcome back</h2>
+			<p class="text-slate-700 dark:text-slate-300 mb-8">Sign in to your BuildOS account</p>
 		</div>
 
 		<!-- Form Section -->
-		<div class="bg-white dark:bg-gray-800 py-8 px-6 shadow-sm rounded-lg">
+		<div class="card-industrial py-8 px-6 relative noise-overlay">
 			<!-- Google OAuth Button -->
 			<div class="mb-6">
-				<Button
+				<button
 					type="button"
 					onclick={handleGoogleLogin}
 					disabled={googleLoading || loading}
-					loading={googleLoading}
-					fullWidth={true}
-					variant="secondary"
-					size="lg"
-					class="border-gray-300 dark:border-gray-600"
+					class="btn-secondary w-full px-6 py-3 text-base flex items-center justify-center"
 				>
 					{#if !googleLoading}
 						<svg class="w-5 h-5 mr-3" viewBox="0 0 24 24">
@@ -213,16 +211,17 @@
 						</svg>
 					{/if}
 					{googleLoading ? 'Signing in...' : 'Continue with Google'}
-				</Button>
+				</button>
 			</div>
 
 			<!-- Divider -->
 			<div class="relative mb-6">
 				<div class="absolute inset-0 flex items-center">
-					<div class="w-full border-t border-gray-300 dark:border-gray-600"></div>
+					<div class="w-full border-t border-slate-400 dark:border-slate-600"></div>
 				</div>
 				<div class="relative flex justify-center text-sm">
-					<span class="px-2 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400"
+					<span
+						class="px-2 bg-[var(--surface-elevated)] text-slate-600 dark:text-slate-400"
 						>Or continue with email</span
 					>
 				</div>
@@ -230,16 +229,20 @@
 
 			<form onsubmit={handleSubmit} class="space-y-6">
 				{#if error}
-					<div
-						class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 px-4 py-3 rounded-lg"
-					>
+					<div class="badge-draft text-red-800 dark:text-red-300 px-4 py-3">
 						{error}
 					</div>
 				{/if}
 
 				<div class="space-y-5">
-					<FormField label="Email address" labelFor="email" required={true}>
-						<TextInput
+					<div>
+						<label
+							for="email"
+							class="block text-sm font-semibold text-slate-900 dark:text-slate-100 mb-2"
+						>
+							Email address <span class="text-[var(--accent-orange)]">*</span>
+						</label>
+						<input
 							id="email"
 							bind:value={email}
 							type="email"
@@ -249,16 +252,22 @@
 							required
 							disabled={loading || googleLoading}
 							placeholder="Enter your email"
-							size="lg"
 							onblur={validateEmail}
+							class="input-scratchpad w-full dither-soft relative"
 						/>
 						{#if emailError}
 							<p class="mt-1 text-sm text-red-600 dark:text-red-400">{emailError}</p>
 						{/if}
-					</FormField>
+					</div>
 
-					<FormField label="Password" labelFor="password" required={true}>
-						<TextInput
+					<div>
+						<label
+							for="password"
+							class="block text-sm font-semibold text-slate-900 dark:text-slate-100 mb-2"
+						>
+							Password <span class="text-[var(--accent-orange)]">*</span>
+						</label>
+						<input
 							id="password"
 							bind:value={password}
 							type="password"
@@ -268,16 +277,16 @@
 							disabled={loading || googleLoading}
 							onkeydown={handleKeydown}
 							placeholder="Enter your password"
-							size="lg"
+							class="input-scratchpad w-full dither-soft relative"
 						/>
-					</FormField>
+					</div>
 				</div>
 
 				<div class="flex items-center justify-between">
 					<div class="text-sm">
 						<a
 							href="/auth/forgot-password"
-							class="font-medium text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300 transition-colors"
+							class="font-medium text-[var(--accent-blue)] hover:brightness-110 transition-all"
 						>
 							Forgot your password?
 						</a>
@@ -285,27 +294,23 @@
 				</div>
 
 				<div>
-					<Button
+					<button
 						type="submit"
 						disabled={loading || googleLoading}
-						{loading}
-						fullWidth={true}
-						variant="primary"
-						size="lg"
-						class=""
+						class="btn-tactile w-full px-6 py-3 text-base"
 					>
 						{loading ? 'Signing in...' : 'Sign in'}
-					</Button>
+					</button>
 				</div>
 			</form>
 
 			<!-- Sign up link -->
 			<div class="mt-6 text-center">
-				<p class="text-sm text-gray-600 dark:text-gray-400">
+				<p class="text-sm text-slate-600 dark:text-slate-400">
 					Don't have an account?
 					<a
 						href="/auth/register"
-						class="font-medium text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300 transition-colors"
+						class="font-medium text-[var(--accent-blue)] hover:brightness-110 transition-all"
 					>
 						Create one now
 					</a>

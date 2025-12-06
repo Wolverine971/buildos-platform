@@ -312,425 +312,439 @@
 	onClose={() => onClose?.()}
 	size="xl"
 >
-	<div slot="header">
-		<div class="sm:hidden">
-			<div class="modal-grab-handle"></div>
-		</div>
-		<div
-			class="relative bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-800 dark:via-gray-800/95 dark:to-gray-800 px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 dark:border-gray-700"
-		>
-			<!-- Mobile Layout -->
+	{#snippet header()}
+		<div>
 			<div class="sm:hidden">
-				<div class="flex items-center justify-between mb-2">
-					<h2 class="text-lg font-semibold text-gray-900 dark:text-white flex-1 pr-2">
-						{modalTitle}
-					</h2>
+				<div class="modal-grab-handle"></div>
+			</div>
+			<div
+				class="relative bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-800 dark:via-gray-800/95 dark:to-gray-800 px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 dark:border-gray-700"
+			>
+				<!-- Mobile Layout -->
+				<div class="sm:hidden">
+					<div class="flex items-center justify-between mb-2">
+						<h2 class="text-lg font-semibold text-gray-900 dark:text-white flex-1 pr-2">
+							{modalTitle}
+						</h2>
+						<Button
+							type="button"
+							onclick={() => onClose?.()}
+							variant="ghost"
+							size="sm"
+							class="!p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+							aria-label="Close modal"
+						>
+							<X class="w-5 h-5" />
+						</Button>
+					</div>
+					<p class="text-xs text-gray-600 dark:text-gray-400">
+						Update project details, context, and timeline
+					</p>
+				</div>
+
+				<!-- Desktop Layout -->
+				<div class="hidden sm:flex sm:items-start sm:justify-between">
+					<div class="flex-1">
+						<h2 class="text-xl font-semibold text-gray-900 dark:text-white">
+							{modalTitle}
+						</h2>
+						<p class="mt-0.5 text-sm text-gray-600 dark:text-gray-400">
+							Manage project information and objectives
+						</p>
+					</div>
 					<Button
 						type="button"
 						onclick={() => onClose?.()}
 						variant="ghost"
 						size="sm"
-						class="!p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+						class="!p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 ml-2"
 						aria-label="Close modal"
 					>
 						<X class="w-5 h-5" />
 					</Button>
 				</div>
-				<p class="text-xs text-gray-600 dark:text-gray-400">
-					Update project details, context, and timeline
-				</p>
-			</div>
-
-			<!-- Desktop Layout -->
-			<div class="hidden sm:flex sm:items-start sm:justify-between">
-				<div class="flex-1">
-					<h2 class="text-xl font-semibold text-gray-900 dark:text-white">
-						{modalTitle}
-					</h2>
-					<p class="mt-0.5 text-sm text-gray-600 dark:text-gray-400">
-						Manage project information and objectives
-					</p>
-				</div>
-				<Button
-					type="button"
-					onclick={() => onClose?.()}
-					variant="ghost"
-					size="sm"
-					class="!p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 ml-2"
-					aria-label="Close modal"
-				>
-					<X class="w-5 h-5" />
-				</Button>
 			</div>
 		</div>
-	</div>
+	{/snippet}
 
-	<div
-		slot="after-form"
-		class="flex flex-col flex-1 min-h-0 space-y-4 -mt-4 px-4 sm:px-6 lg:px-8"
-	>
-		<!-- Main Content Area -->
-		<div class="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-5 min-h-[50vh] flex-1">
-			<!-- Content Section (Takes most space) -->
-			<div
-				class="lg:col-span-3 flex flex-col space-y-3 h-full min-h-0 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all duration-200"
-			>
-				<!-- Project Name Header -->
+	{#snippet afterForm()}
+		<div class="flex flex-col flex-1 min-h-0 space-y-4 -mt-4 px-4 sm:px-6 lg:px-8">
+			<!-- Main Content Area -->
+			<div class="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-5 min-h-[50vh] flex-1">
+				<!-- Content Section (Takes most space) -->
 				<div
-					class="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/10 dark:to-indigo-900/10 p-4 sm:p-5 rounded-t-xl border-b border-gray-200 dark:border-gray-700"
+					class="lg:col-span-3 flex flex-col space-y-3 h-full min-h-0 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all duration-200"
 				>
-					<label
-						for="project-name"
-						class="block text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-2"
+					<!-- Project Name Header -->
+					<div
+						class="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/10 dark:to-indigo-900/10 p-4 sm:p-5 rounded-t-xl border-b border-gray-200 dark:border-gray-700"
 					>
-						Project Name <span class="text-red-500">*</span>
-					</label>
-					<TextInput
-						id="project-name"
-						bind:value={nameValue}
-						placeholder="Enter a clear, memorable project name"
-						size="lg"
-						class="font-semibold bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
-					/>
-				</div>
-
-				<!-- Content Body -->
-				<div
-					class="flex-1 flex flex-col space-y-4 px-4 sm:px-5 pb-4 sm:pb-5 overflow-y-auto"
-				>
-					<!-- Description -->
-					<div>
 						<label
-							for="project-description"
+							for="project-name"
 							class="block text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-2"
 						>
-							Brief Description
+							Project Name <span class="text-red-500">*</span>
 						</label>
-						<Textarea
-							id="project-description"
-							bind:value={descriptionValue}
-							placeholder="One-line summary of what this project achieves"
-							rows={2}
-							class="bg-gray-50 dark:bg-gray-900/50 border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+						<TextInput
+							id="project-name"
+							bind:value={nameValue}
+							placeholder="Enter a clear, memorable project name"
+							size="lg"
+							class="font-semibold bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
 						/>
 					</div>
 
-					<!-- Executive Summary -->
-					<div>
-						<div class="flex items-center gap-2 mb-2">
-							<Sparkles class="w-4 h-4 text-purple-600 dark:text-purple-400" />
+					<!-- Content Body -->
+					<div
+						class="flex-1 flex flex-col space-y-4 px-4 sm:px-5 pb-4 sm:pb-5 overflow-y-auto"
+					>
+						<!-- Description -->
+						<div>
 							<label
-								for="executive-summary"
-								class="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider"
+								for="project-description"
+								class="block text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-2"
 							>
-								Executive Summary
+								Brief Description
 							</label>
+							<Textarea
+								id="project-description"
+								bind:value={descriptionValue}
+								placeholder="One-line summary of what this project achieves"
+								rows={2}
+								class="bg-gray-50 dark:bg-gray-900/50 border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+							/>
 						</div>
-						<MarkdownToggleField
-							value={executiveSummaryValue}
-							onUpdate={(newValue) => (executiveSummaryValue = newValue)}
-							placeholder="Key highlights, decisions, and current status"
-							rows={3}
-							class="bg-gray-50 dark:bg-gray-900/50 border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
-						/>
-					</div>
 
-					<!-- Project Context - Main Focus -->
-					<div class="flex-1 flex flex-col">
-						<div class="flex items-center justify-between mb-2">
-							<div class="flex items-center gap-2">
-								<FileText class="w-4 h-4 text-green-600 dark:text-green-400" />
+						<!-- Executive Summary -->
+						<div>
+							<div class="flex items-center gap-2 mb-2">
+								<Sparkles class="w-4 h-4 text-purple-600 dark:text-purple-400" />
 								<label
-									for="project-context"
+									for="executive-summary"
 									class="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider"
 								>
-									Detailed Context
+									Executive Summary
 								</label>
 							</div>
-							<div class="flex items-center gap-2">
-								<Button
-									type="button"
-									onclick={copyContext}
-									variant="ghost"
-									size="sm"
-									class="flex items-center gap-1.5 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
-								>
-									<Copy class="w-3.5 h-3.5" />
-									<span class="hidden sm:inline">Copy</span>
-								</Button>
-
-								<Button
-									type="button"
-									onclick={handleExportPDF}
-									disabled={!project?.id}
-									variant="primary"
-									size="sm"
-									class="flex items-center gap-1.5"
-								>
-									<FileDown class="w-3.5 h-3.5" />
-									<span class="hidden sm:inline">Export PDF</span>
-								</Button>
-							</div>
-						</div>
-						<div class="flex-1 flex flex-col">
 							<MarkdownToggleField
-								value={contextValue}
-								onUpdate={(newValue) => (contextValue = newValue)}
-								placeholder="## Background\nWhy this project exists and its importance\n\n## Key Decisions\nImportant technical and business decisions\n\n## Resources\nTools, documentation, and dependencies\n\n## Challenges\nCurrent blockers or areas needing attention"
-								rows={10}
-								maxRows={20}
-								class="flex-1 leading-relaxed bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/10 dark:to-emerald-900/10 border-green-200 dark:border-green-800 focus:ring-2 focus:ring-green-500 dark:focus:ring-green-400"
-							/>
-						</div>
-					</div>
-
-					<!-- Core Dimensions - Strategic Insights -->
-					<div class="pt-4 border-t border-gray-200 dark:border-gray-700">
-						<CoreDimensionsField
-							core_integrity_ideals={coreIntegrityIdeals}
-							core_people_bonds={corePeopleBonds}
-							core_goals_momentum={coreGoalsMomentum}
-							core_meaning_identity={coreMeaningIdentity}
-							core_reality_understanding={coreRealityUnderstanding}
-							core_trust_safeguards={coreTrustSafeguards}
-							core_opportunity_freedom={coreOpportunityFreedom}
-							core_power_resources={corePowerResources}
-							core_harmony_integration={coreHarmonyIntegration}
-							onUpdate={handleCoreDimensionUpdate}
-						/>
-					</div>
-
-					<!-- Character Counts -->
-					<div
-						class="flex flex-wrap gap-4 text-xs text-gray-500 dark:text-gray-400 pt-3 border-t border-gray-200 dark:border-gray-700"
-					>
-						{#if contextValue.length > 0}
-							<span class="flex items-center gap-1">
-								<span class="w-2 h-2 bg-green-500 rounded-full"></span>
-								{contextValue.length.toLocaleString()} context
-							</span>
-						{/if}
-						{#if executiveSummaryValue.length > 0}
-							<span class="flex items-center gap-1">
-								<span class="w-2 h-2 bg-purple-500 rounded-full"></span>
-								{executiveSummaryValue.length.toLocaleString()} summary
-							</span>
-						{/if}
-						{#if !contextValue && !executiveSummaryValue}
-							<span class="text-gray-400 dark:text-gray-500 italic">
-								Add project details to enable AI assistance
-							</span>
-						{/if}
-					</div>
-				</div>
-			</div>
-
-			<!-- Metadata Sidebar -->
-			<div
-				class="lg:col-span-1 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all duration-200 lg:max-h-full lg:overflow-y-auto"
-			>
-				<div
-					class="bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-900/10 dark:to-blue-900/10 p-3 sm:p-4 rounded-t-xl border-b border-gray-200 dark:border-gray-700"
-				>
-					<h3
-						class="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider flex items-center"
-					>
-						<span class="w-2 h-2 bg-indigo-500 rounded-full mr-2 animate-pulse"></span>
-						Project Details
-					</h3>
-				</div>
-
-				<div class="p-3 sm:p-4 space-y-4">
-					<!-- Status -->
-					<div>
-						<label
-							for="project-status"
-							class="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-2 block"
-						>
-							📈 Status
-						</label>
-						<Select
-							id="project-status"
-							bind:value={statusValue}
-							size="sm"
-							class="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
-						>
-							{#each statusOptions as option}
-								<option value={option.value}>{option.label}</option>
-							{/each}
-						</Select>
-					</div>
-
-					<!-- Timeline Section -->
-					<div class="space-y-3">
-						<div
-							class="flex items-center gap-2 text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider"
-						>
-							<Calendar class="w-3.5 h-3.5" />
-							Timeline
-						</div>
-
-						<!-- Start Date -->
-						<div>
-							<label
-								for="project-start-date"
-								class="text-xs text-gray-500 dark:text-gray-400 mb-1 block"
-							>
-								Start Date
-							</label>
-							<TextInput
-								id="project-start-date"
-								type="date"
-								bind:value={startDateValue}
-								size="sm"
-								class="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+								value={executiveSummaryValue}
+								onUpdate={(newValue) => (executiveSummaryValue = newValue)}
+								placeholder="Key highlights, decisions, and current status"
+								rows={3}
+								class="bg-gray-50 dark:bg-gray-900/50 border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
 							/>
 						</div>
 
-						<!-- End Date -->
-						<div>
-							<label
-								for="project-end-date"
-								class="text-xs text-gray-500 dark:text-gray-400 mb-1 block"
-							>
-								End Date
-							</label>
-							<TextInput
-								id="project-end-date"
-								type="date"
-								bind:value={endDateValue}
-								min={startDateValue}
-								size="sm"
-								class="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
-							/>
-						</div>
-					</div>
-
-					<!-- Duration Display -->
-					{#if projectDuration}
-						<div
-							class="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg p-3 border border-blue-200 dark:border-blue-800"
-						>
-							<div class="flex items-center justify-between text-xs mb-2">
-								<span class="text-gray-600 dark:text-gray-400 font-medium"
-									>Progress</span
-								>
-								<span class="font-semibold text-gray-900 dark:text-white">
-									{projectDuration.days} days
-								</span>
-							</div>
-							<div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-								<div
-									class="bg-gradient-to-r from-blue-500 to-indigo-500 h-2 rounded-full transition-all duration-500 shadow-sm"
-									style="width: {projectDuration.progress}%"
-								></div>
-							</div>
-							<div
-								class="text-xs text-gray-500 dark:text-gray-400 mt-1.5 font-medium"
-							>
-								{Math.round(projectDuration.progress)}% elapsed
-							</div>
-						</div>
-					{/if}
-
-					<!-- Tags -->
-					<div>
-						<label
-							for="tag-input"
-							class="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-2 block flex items-center gap-1.5"
-						>
-							<Tag class="w-3.5 h-3.5" />
-							Tags
-						</label>
-						<div class="space-y-2">
-							<div class="flex gap-1.5">
-								<TextInput
-									id="tag-input"
-									bind:value={tagInput}
-									placeholder="Add tag..."
-									onkeydown={handleTagKeydown}
-									size="sm"
-									class="flex-1 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
-								/>
-								<Button
-									type="button"
-									onclick={addTag}
-									variant="ghost"
-									size="sm"
-									class="!px-3 bg-blue-500 text-white hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-500"
-								>
-									+
-								</Button>
-							</div>
-							{#if tagsValue.length > 0}
-								<div class="flex flex-wrap gap-1.5">
-									{#each tagsValue as tag}
-										<span
-											class="inline-flex items-center px-2.5 py-1.5 text-xs font-medium bg-gradient-to-r from-blue-100 to-indigo-100 dark:from-blue-900/30 dark:to-indigo-900/30 text-blue-800 dark:text-blue-200 rounded-full border border-blue-200 dark:border-blue-800"
-										>
-											{tag}
-											<Button
-												type="button"
-												onclick={() => removeTag(tag)}
-												variant="ghost"
-												size="sm"
-												class="ml-1.5 p-0.5 !text-blue-600 dark:!text-blue-300 hover:!text-blue-800 dark:hover:!text-blue-100"
-											>
-												<X class="w-3 h-3" />
-											</Button>
-										</span>
-									{/each}
+						<!-- Project Context - Main Focus -->
+						<div class="flex-1 flex flex-col">
+							<div class="flex items-center justify-between mb-2">
+								<div class="flex items-center gap-2">
+									<FileText class="w-4 h-4 text-green-600 dark:text-green-400" />
+									<label
+										for="project-context"
+										class="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider"
+									>
+										Detailed Context
+									</label>
 								</div>
+								<div class="flex items-center gap-2">
+									<Button
+										type="button"
+										onclick={copyContext}
+										variant="ghost"
+										size="sm"
+										class="flex items-center gap-1.5 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
+									>
+										<Copy class="w-3.5 h-3.5" />
+										<span class="hidden sm:inline">Copy</span>
+									</Button>
+
+									<Button
+										type="button"
+										onclick={handleExportPDF}
+										disabled={!project?.id}
+										variant="primary"
+										size="sm"
+										class="flex items-center gap-1.5"
+									>
+										<FileDown class="w-3.5 h-3.5" />
+										<span class="hidden sm:inline">Export PDF</span>
+									</Button>
+								</div>
+							</div>
+							<div class="flex-1 flex flex-col">
+								<MarkdownToggleField
+									value={contextValue}
+									onUpdate={(newValue) => (contextValue = newValue)}
+									placeholder="## Background\nWhy this project exists and its importance\n\n## Key Decisions\nImportant technical and business decisions\n\n## Resources\nTools, documentation, and dependencies\n\n## Challenges\nCurrent blockers or areas needing attention"
+									rows={10}
+									maxRows={20}
+									class="flex-1 leading-relaxed bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/10 dark:to-emerald-900/10 border-green-200 dark:border-green-800 focus:ring-2 focus:ring-green-500 dark:focus:ring-green-400"
+								/>
+							</div>
+						</div>
+
+						<!-- Core Dimensions - Strategic Insights -->
+						<div class="pt-4 border-t border-gray-200 dark:border-gray-700">
+							<CoreDimensionsField
+								core_integrity_ideals={coreIntegrityIdeals}
+								core_people_bonds={corePeopleBonds}
+								core_goals_momentum={coreGoalsMomentum}
+								core_meaning_identity={coreMeaningIdentity}
+								core_reality_understanding={coreRealityUnderstanding}
+								core_trust_safeguards={coreTrustSafeguards}
+								core_opportunity_freedom={coreOpportunityFreedom}
+								core_power_resources={corePowerResources}
+								core_harmony_integration={coreHarmonyIntegration}
+								onUpdate={handleCoreDimensionUpdate}
+							/>
+						</div>
+
+						<!-- Character Counts -->
+						<div
+							class="flex flex-wrap gap-4 text-xs text-gray-500 dark:text-gray-400 pt-3 border-t border-gray-200 dark:border-gray-700"
+						>
+							{#if contextValue.length > 0}
+								<span class="flex items-center gap-1">
+									<span class="w-2 h-2 bg-green-500 rounded-full"></span>
+									{contextValue.length.toLocaleString()} context
+								</span>
+							{/if}
+							{#if executiveSummaryValue.length > 0}
+								<span class="flex items-center gap-1">
+									<span class="w-2 h-2 bg-purple-500 rounded-full"></span>
+									{executiveSummaryValue.length.toLocaleString()} summary
+								</span>
+							{/if}
+							{#if !contextValue && !executiveSummaryValue}
+								<span class="text-gray-400 dark:text-gray-500 italic">
+									Add project details to enable AI assistance
+								</span>
 							{/if}
 						</div>
 					</div>
+				</div>
 
-					<!-- Activity Indicator (if editing) -->
-					{#if project}
-						<hr class="border-gray-200 dark:border-gray-700" />
-						<div
-							class="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 rounded-lg p-3 border border-gray-200 dark:border-gray-700"
+				<!-- Metadata Sidebar -->
+				<div
+					class="lg:col-span-1 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all duration-200 lg:max-h-full lg:overflow-y-auto"
+				>
+					<div
+						class="bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-900/10 dark:to-blue-900/10 p-3 sm:p-4 rounded-t-xl border-b border-gray-200 dark:border-gray-700"
+					>
+						<h3
+							class="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider flex items-center"
 						>
-							<div class="flex items-center justify-between mb-3">
-								<span
-									class="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider"
+							<span class="w-2 h-2 bg-indigo-500 rounded-full mr-2 animate-pulse"
+							></span>
+							Project Details
+						</h3>
+					</div>
+
+					<div class="p-3 sm:p-4 space-y-4">
+						<!-- Status -->
+						<div>
+							<label
+								for="project-status"
+								class="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-2 block"
+							>
+								📈 Status
+							</label>
+							<Select
+								id="project-status"
+								bind:value={statusValue}
+								size="sm"
+								class="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+							>
+								{#each statusOptions as option}
+									<option value={option.value}>{option.label}</option>
+								{/each}
+							</Select>
+						</div>
+
+						<!-- Timeline Section -->
+						<div class="space-y-3">
+							<div
+								class="flex items-center gap-2 text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider"
+							>
+								<Calendar class="w-3.5 h-3.5" />
+								Timeline
+							</div>
+
+							<!-- Start Date -->
+							<div>
+								<label
+									for="project-start-date"
+									class="text-xs text-gray-500 dark:text-gray-400 mb-1 block"
 								>
-									⏰ Activity
-								</span>
-								<RecentActivityIndicator
-									createdAt={project.created_at}
-									updatedAt={project.updated_at}
+									Start Date
+								</label>
+								<TextInput
+									id="project-start-date"
+									type="date"
+									bind:value={startDateValue}
 									size="sm"
+									class="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
 								/>
 							</div>
-							<div class="grid grid-cols-2 gap-3 text-xs">
-								{#if project.created_at}
-									<div>
-										<span class="text-gray-500 dark:text-gray-400 block mb-0.5"
-											>Created</span
-										>
-										<span class="text-gray-700 dark:text-gray-300 font-medium">
-											{format(new Date(project.created_at), 'MMM d, yyyy')}
-										</span>
-									</div>
-								{/if}
-								{#if project.updated_at}
-									<div>
-										<span class="text-gray-500 dark:text-gray-400 block mb-0.5"
-											>Updated</span
-										>
-										<span class="text-gray-700 dark:text-gray-300 font-medium">
-											{format(new Date(project.updated_at), 'MMM d, yyyy')}
-										</span>
+
+							<!-- End Date -->
+							<div>
+								<label
+									for="project-end-date"
+									class="text-xs text-gray-500 dark:text-gray-400 mb-1 block"
+								>
+									End Date
+								</label>
+								<TextInput
+									id="project-end-date"
+									type="date"
+									bind:value={endDateValue}
+									min={startDateValue}
+									size="sm"
+									class="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+								/>
+							</div>
+						</div>
+
+						<!-- Duration Display -->
+						{#if projectDuration}
+							<div
+								class="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg p-3 border border-blue-200 dark:border-blue-800"
+							>
+								<div class="flex items-center justify-between text-xs mb-2">
+									<span class="text-gray-600 dark:text-gray-400 font-medium"
+										>Progress</span
+									>
+									<span class="font-semibold text-gray-900 dark:text-white">
+										{projectDuration.days} days
+									</span>
+								</div>
+								<div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+									<div
+										class="bg-gradient-to-r from-blue-500 to-indigo-500 h-2 rounded-full transition-all duration-500 shadow-sm"
+										style="width: {projectDuration.progress}%"
+									></div>
+								</div>
+								<div
+									class="text-xs text-gray-500 dark:text-gray-400 mt-1.5 font-medium"
+								>
+									{Math.round(projectDuration.progress)}% elapsed
+								</div>
+							</div>
+						{/if}
+
+						<!-- Tags -->
+						<div>
+							<label
+								for="tag-input"
+								class="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-2 block flex items-center gap-1.5"
+							>
+								<Tag class="w-3.5 h-3.5" />
+								Tags
+							</label>
+							<div class="space-y-2">
+								<div class="flex gap-1.5">
+									<TextInput
+										id="tag-input"
+										bind:value={tagInput}
+										placeholder="Add tag..."
+										onkeydown={handleTagKeydown}
+										size="sm"
+										class="flex-1 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+									/>
+									<Button
+										type="button"
+										onclick={addTag}
+										variant="ghost"
+										size="sm"
+										class="!px-3 bg-blue-500 text-white hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-500"
+									>
+										+
+									</Button>
+								</div>
+								{#if tagsValue.length > 0}
+									<div class="flex flex-wrap gap-1.5">
+										{#each tagsValue as tag}
+											<span
+												class="inline-flex items-center px-2.5 py-1.5 text-xs font-medium bg-gradient-to-r from-blue-100 to-indigo-100 dark:from-blue-900/30 dark:to-indigo-900/30 text-blue-800 dark:text-blue-200 rounded-full border border-blue-200 dark:border-blue-800"
+											>
+												{tag}
+												<Button
+													type="button"
+													onclick={() => removeTag(tag)}
+													variant="ghost"
+													size="sm"
+													class="ml-1.5 p-0.5 !text-blue-600 dark:!text-blue-300 hover:!text-blue-800 dark:hover:!text-blue-100"
+												>
+													<X class="w-3 h-3" />
+												</Button>
+											</span>
+										{/each}
 									</div>
 								{/if}
 							</div>
 						</div>
-					{/if}
+
+						<!-- Activity Indicator (if editing) -->
+						{#if project}
+							<hr class="border-gray-200 dark:border-gray-700" />
+							<div
+								class="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 rounded-lg p-3 border border-gray-200 dark:border-gray-700"
+							>
+								<div class="flex items-center justify-between mb-3">
+									<span
+										class="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider"
+									>
+										⏰ Activity
+									</span>
+									<RecentActivityIndicator
+										createdAt={project.created_at}
+										updatedAt={project.updated_at}
+										size="sm"
+									/>
+								</div>
+								<div class="grid grid-cols-2 gap-3 text-xs">
+									{#if project.created_at}
+										<div>
+											<span
+												class="text-gray-500 dark:text-gray-400 block mb-0.5"
+												>Created</span
+											>
+											<span
+												class="text-gray-700 dark:text-gray-300 font-medium"
+											>
+												{format(
+													new Date(project.created_at),
+													'MMM d, yyyy'
+												)}
+											</span>
+										</div>
+									{/if}
+									{#if project.updated_at}
+										<div>
+											<span
+												class="text-gray-500 dark:text-gray-400 block mb-0.5"
+												>Updated</span
+											>
+											<span
+												class="text-gray-700 dark:text-gray-300 font-medium"
+											>
+												{format(
+													new Date(project.updated_at),
+													'MMM d, yyyy'
+												)}
+											</span>
+										</div>
+									{/if}
+								</div>
+							</div>
+						{/if}
+					</div>
 				</div>
 			</div>
 		</div>
-	</div>
+	{/snippet}
 </FormModal>
 
 <style>

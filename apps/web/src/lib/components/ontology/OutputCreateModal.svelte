@@ -148,29 +148,38 @@
 		aria-labelledby="modal-title"
 		aria-describedby="modal-description"
 	>
-		<!-- Header with proper padding -->
-		<div class="border-b border-gray-200 dark:border-gray-700 p-5 sm:p-6">
-			<div class="flex items-center justify-between">
-				<div>
+		<!-- Custom gradient header - grey/dark grey -->
+		<div
+			class="flex-shrink-0 bg-gradient-to-r from-gray-600 via-gray-700 to-gray-800 dark:from-gray-700 dark:via-gray-800 dark:to-gray-900 text-white px-3 py-3 sm:px-6 sm:py-5 dither-gradient"
+		>
+			<div class="flex items-start justify-between gap-2 sm:gap-4">
+				<div class="space-y-1 sm:space-y-2 min-w-0 flex-1">
+					<p
+						id="modal-description"
+						class="text-[10px] sm:text-xs font-semibold uppercase tracking-[0.3em] sm:tracking-[0.4em] text-white/70"
+					>
+						{selectedTemplate ? 'New Output • Step 2' : 'New Output • Step 1'}
+					</p>
 					<h2
 						id="modal-title"
-						class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white"
+						class="text-lg sm:text-2xl font-bold leading-tight truncate"
 					>
-						Create Text Document
+						{selectedTemplate ? outputName || 'Name your document' : 'Choose a Template'}
 					</h2>
-					<p id="modal-description" class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-						Choose a template for your document
-					</p>
+					{#if selectedTemplate}
+						<div class="flex flex-wrap items-center gap-1.5 sm:gap-3 text-xs sm:text-sm">
+							<span class="px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-semibold bg-white/20">{selectedTemplate.name}</span>
+						</div>
+					{/if}
 				</div>
-				<!-- Close button using BuildOS Button -->
 				<Button
 					variant="ghost"
 					size="sm"
 					onclick={onClose}
-					class="!p-1.5"
+					class="text-white/80 hover:text-white shrink-0 !p-1.5 sm:!p-2"
 					aria-label="Close modal"
 				>
-					<X class="w-5 h-5" />
+					<X class="w-4 h-4 sm:w-5 sm:h-5" />
 				</Button>
 			</div>
 		</div>
@@ -197,7 +206,7 @@
 					{#each templates as template}
 						<button
 							onclick={() => selectTemplate(template)}
-							class="text-left p-4 border-2 border-gray-200 dark:border-gray-700 rounded-lg hover:border-blue-500 dark:hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/10 transition-all duration-200 group focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:ring-offset-2 dark:focus:ring-offset-gray-800"
+							class="text-left p-4 border-2 border-gray-200 dark:border-gray-700 rounded bg-surface-clarity dark:bg-surface-elevated hover:border-accent-orange hover:shadow-elevated transition-all duration-200 group focus:outline-none focus:ring-2 focus:ring-accent-orange dither-soft"
 						>
 							<div class="flex items-start gap-3">
 								<div
@@ -237,7 +246,7 @@
 				<div class="space-y-4">
 					<!-- Selected template indicator -->
 					<div
-						class="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg border dither-soft border-blue-200 dark:border-blue-800"
+						class="p-4 bg-surface-elevated dark:bg-surface-panel rounded border border-gray-200 dark:border-gray-700 dither-soft"
 					>
 						<p
 							class="text-sm text-blue-800 dark:text-blue-300 flex items-center gap-2 font-medium"
@@ -261,7 +270,7 @@
 							bind:value={outputName}
 							oninput={handleNameInput}
 							placeholder={`Enter name for your ${selectedTemplate.name.toLowerCase()}...`}
-							class="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 transition-shadow"
+							class="w-full px-4 py-2.5 border border-gray-200 dark:border-gray-700 rounded bg-surface-clarity dark:bg-surface-elevated focus:ring-2 focus:ring-accent-orange focus:border-accent-orange text-slate-900 dark:text-slate-100 placeholder-slate-500 dark:placeholder-slate-400 transition-shadow dither-soft"
 							aria-required="true"
 						/>
 					</div>
@@ -278,28 +287,30 @@
 						</div>
 					{/if}
 
-					<!-- Action buttons - Responsive -->
-					<div class="flex flex-col sm:flex-row gap-3 justify-end pt-2">
+					<!-- Action buttons - compact on mobile -->
+					<div class="flex flex-row items-center justify-between gap-2 pt-2">
 						<Button
 							onclick={() => {
 								selectedTemplate = null;
 								error = null;
 							}}
 							variant="ghost"
-							size="md"
-							class="w-full sm:w-auto order-2 sm:order-1"
+							size="sm"
+							class="text-xs sm:text-sm px-2 sm:px-4"
 						>
-							Back to Templates
+							<span class="hidden sm:inline">← Back</span>
+							<span class="sm:hidden">←</span>
 						</Button>
 						<Button
 							onclick={createOutput}
 							disabled={!outputName.trim() || isCreating}
 							loading={isCreating}
 							variant="primary"
-							size="md"
-							class="w-full sm:w-auto order-1 sm:order-2"
+							size="sm"
+							class="text-xs sm:text-sm px-2 sm:px-4"
 						>
-							{isCreating ? 'Creating...' : 'Create & Edit'}
+							<span class="hidden sm:inline">Create & Edit</span>
+							<span class="sm:hidden">Create</span>
 						</Button>
 					</div>
 				</div>

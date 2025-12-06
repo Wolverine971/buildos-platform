@@ -12,19 +12,20 @@
 
 	let { variant = 'info', size = 'md', class: className = '', ...rest }: Props = $props();
 
+	// Scratchpad Ops badge variants - subtle, utilitarian
 	const variantClasses: Record<BadgeVariant, string> = {
 		success:
-			'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200 border border-green-200 dark:border-green-800/50',
+			'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 font-semibold tracking-tight',
 		warning:
-			'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200 border border-amber-200 dark:border-amber-800/50',
-		error: 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200 border border-red-200 dark:border-red-800/50',
-		info: 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 border border-blue-200 dark:border-blue-800/50'
+			'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800 font-semibold tracking-tight',
+		error: 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800 font-semibold tracking-tight',
+		info: 'bg-accent-blue/10 dark:bg-accent-blue/20 text-accent-blue dark:text-accent-blue border border-accent-blue/20 dark:border-accent-blue/30 font-semibold tracking-tight'
 	};
 
 	const sizeClasses: Record<BadgeSize, string> = {
-		sm: 'px-2 py-1 text-xs font-medium rounded',
-		md: 'px-2.5 py-1.5 text-sm font-medium rounded-md',
-		lg: 'px-3 py-2 text-base font-medium rounded-lg'
+		sm: 'px-2 py-0.5 text-xs font-semibold rounded',
+		md: 'px-2.5 py-1 text-sm font-semibold rounded',
+		lg: 'px-3 py-1.5 text-base font-semibold rounded'
 	};
 
 	const classes = `inline-flex items-center gap-1.5 ${variantClasses[variant]} ${sizeClasses[size]} ${className}`;

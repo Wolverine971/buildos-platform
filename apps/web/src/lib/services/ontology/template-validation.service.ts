@@ -108,12 +108,12 @@ export class TemplateValidationService {
 			});
 		} else {
 			// Type key format validation
-			const typeKeyRegex = /^[a-z][a-z0-9]*(\.[a-z][a-z0-9]*)*$/;
+			const typeKeyRegex = /^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)*$/;
 			if (!typeKeyRegex.test(data.type_key)) {
 				errors.push({
 					field: 'type_key',
 					message:
-						'Type key must be lowercase, dot-separated (e.g., creative.writing.novel)',
+						'Type key must be lowercase, dot-separated (snake_case allowed, e.g., creative.writing.novel)',
 					code: 'INVALID_FORMAT'
 				});
 			}

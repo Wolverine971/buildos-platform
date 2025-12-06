@@ -59,7 +59,6 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 			title: string;
 			state_key: string;
 			priority: number | null;
-			plan_id: string | null;
 			due_at: string | null;
 			props: Json;
 			created_by: string;
@@ -98,7 +97,6 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 					title: truncate(task.title, 200),
 					state_key: normalizeTaskState(task.state_key),
 					priority: normalizePriority(task.priority),
-					plan_id: null,
 					due_at: null,
 					props: buildTaskProps(
 						task.description,

@@ -108,7 +108,7 @@ export interface OntologyContext {
 	metadata: {
 		entity_count?: Record<string, number>; // Counts by entity type
 		last_updated?: string;
-		context_document_id?: string; // From props->context_document_id
+		context_document_id?: string; // From has_context_document edge relationship
 		facets?: Record<string, any>; // From props->facets
 		hierarchy_level?: number;
 		available_entity_types?: string[];
@@ -134,6 +134,27 @@ export enum ChatStrategy {
 }
 
 /**
+ * Result of project creation intent analysis (imported for type safety)
+ * Full definition in: services/agentic-chat/analysis/project-creation-analyzer.ts
+ */
+export interface ProjectCreationIntentAnalysis {
+	hasSufficientContext: boolean;
+	confidence: number;
+	presentInfo: {
+		hasProjectType: boolean;
+		hasDomain: boolean;
+		hasDeliverable: boolean;
+		hasGoals: boolean;
+		hasTimeline: boolean;
+		hasScale: boolean;
+	};
+	missingInfo: string[];
+	clarifyingQuestions?: string[];
+	reasoning: string;
+	inferredProjectType?: string;
+}
+
+/**
  * Strategy analysis result from planner
  */
 export interface StrategyAnalysis {
@@ -145,6 +166,8 @@ export interface StrategyAnalysis {
 	estimated_steps: number;
 	required_tools: string[];
 	can_complete_directly: boolean;
+	/** Present when strategy is PROJECT_CREATION and intent analysis was performed */
+	project_creation_analysis?: ProjectCreationIntentAnalysis;
 }
 
 /**

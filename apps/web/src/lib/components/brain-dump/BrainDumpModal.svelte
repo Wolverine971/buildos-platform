@@ -1416,152 +1416,158 @@
 	persistent={isProcessing}
 	customClasses="brain-dump-modal"
 >
-	<div
-		slot="header"
-		class="brain-dump-modal-header bg-gradient-to-r from-purple-50/50 to-pink-50/50 dark:from-purple-900/20 dark:to-pink-900/20"
-	>
+	{#snippet header()}
 		<div
-			class="header-content"
-			data-brain-dump-header={enableViewTransitions && isOpen ? true : undefined}
-			style={enableViewTransitions && isOpen
-				? '--brain-dump-header-name: brain-dump-header'
-				: ''}
+			class="brain-dump-modal-header dither-soft bg-gradient-to-r from-purple-50/50 to-pink-50/50 dark:from-purple-900/20 dark:to-pink-900/20 relative overflow-hidden"
 		>
-			<div class="flex items-center">
-				<div
-					class="p-1.5 bg-gradient-to-br from-purple-100/50 to-pink-100/50 dark:from-purple-800/30 dark:to-pink-800/30 rounded-xl mr-3 overflow-hidden"
-					data-brain-dump-indicator={enableViewTransitions && isOpen ? true : undefined}
-					style={enableViewTransitions && isOpen
-						? '--brain-dump-indicator-name: brain-dump-indicator'
-						: ''}
-				>
-					<!-- brain-bolt animation video -->
-					{#if isOpen}
-						<video
-							src="/onboarding-assets/animations/brain-bolt-consistent-pulse.mp4"
-							autoplay
-							loop
-							muted
-							playsinline
-							class="w-8 h-8 rounded-lg"
-						></video>
-					{/if}
-				</div>
-				<div>
-					<h2 class="text-xl font-bold text-gray-900 dark:text-white">Brain Dump</h2>
-					<p class="text-sm text-gray-600 dark:text-gray-400 mt-0.5">
-						Organize your thoughts into actionable tasks
-					</p>
-				</div>
-			</div>
-			{#if !isProcessing}
-				<Button
-					variant="ghost"
-					onclick={handleModalClose}
-					class="close-button"
-					aria-label="Close dialog"
-					icon={X}
-				></Button>
-			{/if}
-		</div>
-	</div>
-
-	<!-- Main Content - Always show immediately -->
-	<!-- Main Content -->
-	<div
-		class="brain-dump-modal-content {currentView === 'recording' ? 'p-0' : ''} {isHandingOff
-			? 'handing-off'
-			: ''}"
-		class:opacity-50={isHandingOff}
-		class:transition-opacity={true}
-		class:duration-300={true}
-	>
-		{#if isHandingOff}
-			<!-- Handoff transition message -->
 			<div
-				class="absolute inset-0 flex items-center justify-center bg-white/80 dark:bg-gray-900/80 z-50 rounded-lg"
+				class="header-content"
+				data-brain-dump-header={enableViewTransitions && isOpen ? true : undefined}
+				style={enableViewTransitions && isOpen
+					? '--brain-dump-header-name: brain-dump-header'
+					: ''}
 			>
-				<div class="text-center">
-					<LoaderCircle class="w-8 h-8 animate-spin mx-auto mb-2 text-primary-500" />
-					<p class="text-sm text-gray-600 dark:text-gray-400">Starting processing...</p>
+				<div class="flex items-center">
+					<div
+						class="p-1.5 dither-gradient bg-gradient-to-br from-purple-100/50 to-pink-100/50 dark:from-purple-800/30 dark:to-pink-800/30 rounded mr-3 overflow-hidden relative"
+						data-brain-dump-indicator={enableViewTransitions && isOpen
+							? true
+							: undefined}
+						style={enableViewTransitions && isOpen
+							? '--brain-dump-indicator-name: brain-dump-indicator'
+							: ''}
+					>
+						<!-- brain-bolt animation video -->
+						{#if isOpen}
+							<video
+								src="/onboarding-assets/animations/brain-bolt-consistent-pulse.mp4"
+								autoplay
+								loop
+								muted
+								playsinline
+								class="w-8 h-8 rounded"
+							></video>
+						{/if}
+					</div>
+					<div>
+						<h2 class="text-xl font-bold text-gray-900 dark:text-white">Brain Dump</h2>
+						<p class="text-sm text-gray-600 dark:text-gray-400 mt-0.5">
+							Organize your thoughts into actionable tasks
+						</p>
+					</div>
 				</div>
+				{#if !isProcessing}
+					<Button
+						variant="ghost"
+						onclick={handleModalClose}
+						class="close-button"
+						aria-label="Close dialog"
+						icon={X}
+					></Button>
+				{/if}
 			</div>
-		{/if}
-		{#if currentView === 'project-selection'}
-			{#if ProjectSelectionView}
-				<div in:fade={{ duration: 300 }} out:fade={{ duration: 200 }}>
-					<ProjectSelectionView
-						projects={isLoadingData ? [] : projects}
-						recentDumps={isLoadingData ? [] : recentDumps}
-						newProjectDraftCount={isLoadingData ? 0 : newProjectDraftCount}
-						isLoading={isLoadingData}
-						{processingProjectIds}
-						on:selectProject={handleProjectSelection}
-						inModal={true}
-					/>
-				</div>
-			{:else}
-				<!-- Loading state for ProjectSelectionView -->
-				<div class="p-6">
-					<div class="space-y-4">
-						<div class="animate-shimmer">
-							<div
-								class="h-4 bg-gradient-to-r from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-600 rounded w-1/4 mb-4"
-							></div>
-							<div class="grid grid-cols-2 gap-4">
-								{#each [1, 2, 3, 4] as _}
-									<div
-										class="h-24 bg-gradient-to-r from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-600 rounded-xl shadow-sm"
-									></div>
-								{/each}
-							</div>
-						</div>
+		</div>
+	{/snippet}
+
+	{#snippet children()}
+		<!-- Main Content - Always show immediately -->
+		<!-- Main Content -->
+		<div
+			class="brain-dump-modal-content {currentView === 'recording' ? 'p-0' : ''} {isHandingOff
+				? 'handing-off'
+				: ''}"
+			class:opacity-50={isHandingOff}
+			class:transition-opacity={true}
+			class:duration-300={true}
+		>
+			{#if isHandingOff}
+				<!-- Handoff transition message -->
+				<div
+					class="absolute inset-0 flex items-center justify-center bg-white/80 dark:bg-gray-900/80 z-50 rounded"
+				>
+					<div class="text-center">
+						<LoaderCircle class="w-8 h-8 animate-spin mx-auto mb-2 text-primary-500" />
+						<p class="text-sm text-gray-600 dark:text-gray-400">
+							Starting processing...
+						</p>
 					</div>
 				</div>
 			{/if}
-		{:else if currentView === 'recording'}
-			{#if RecordingView}
-				<div
-					in:fade={{ duration: 300, delay: 200 }}
-					out:fade={{ duration: 200 }}
-					class="h-full flex flex-col"
-				>
-					<RecordingView
-						{innerWidth}
-						projects={isLoadingData ? [] : projects}
-						{processingProjectIds}
-						{selectedProject}
-						{inputText}
-						{currentPhase}
-						{isProcessing}
-						{isSaving}
-						{voiceError}
-						{microphonePermissionGranted}
-						{voiceCapabilitiesChecked}
-						{isInitializingRecording}
-						{canUseLiveTranscript}
-						hasUnsavedChanges={$hasUnsavedChanges}
-						{isVoiceSupported}
-						{isCurrentlyRecording}
-						{recordingDuration}
-						{accumulatedTranscript}
-						{isLiveTranscribing}
-						{displayedQuestions}
-						showOverlay={!!showProcessingOverlay}
-						allowProjectChange={!project}
-						inModal={true}
-						on:back={handleBack}
-						on:textChange={handleTextChange}
-						on:save={handleSave}
-						on:parse={parseBrainDump}
-						on:startRecording={startRecording}
-						on:stopRecording={stopRecording}
-						on:selectProject={handleProjectChangeInRecording}
-					/>
-				</div>
+			{#if currentView === 'project-selection'}
+				{#if ProjectSelectionView}
+					<div in:fade={{ duration: 300 }} out:fade={{ duration: 200 }}>
+						<ProjectSelectionView
+							projects={isLoadingData ? [] : projects}
+							recentDumps={isLoadingData ? [] : recentDumps}
+							newProjectDraftCount={isLoadingData ? 0 : newProjectDraftCount}
+							isLoading={isLoadingData}
+							{processingProjectIds}
+							on:selectProject={handleProjectSelection}
+							inModal={true}
+						/>
+					</div>
+				{:else}
+					<!-- Loading state for ProjectSelectionView -->
+					<div class="p-6">
+						<div class="space-y-4">
+							<div class="animate-shimmer">
+								<div
+									class="h-4 bg-gradient-to-r from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-600 rounded w-1/4 mb-4"
+								></div>
+								<div class="grid grid-cols-2 gap-4">
+									{#each [1, 2, 3, 4] as _}
+										<div
+											class="h-24 bg-gradient-to-r from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-600 rounded shadow-sm"
+										></div>
+									{/each}
+								</div>
+							</div>
+						</div>
+					</div>
+				{/if}
+			{:else if currentView === 'recording'}
+				{#if RecordingView}
+					<div
+						in:fade={{ duration: 300, delay: 200 }}
+						out:fade={{ duration: 200 }}
+						class="h-full flex flex-col"
+					>
+						<RecordingView
+							{innerWidth}
+							projects={isLoadingData ? [] : projects}
+							{processingProjectIds}
+							{selectedProject}
+							{inputText}
+							{currentPhase}
+							{isProcessing}
+							{isSaving}
+							{voiceError}
+							{microphonePermissionGranted}
+							{voiceCapabilitiesChecked}
+							{isInitializingRecording}
+							{canUseLiveTranscript}
+							hasUnsavedChanges={$hasUnsavedChanges}
+							{isVoiceSupported}
+							{isCurrentlyRecording}
+							{recordingDuration}
+							{accumulatedTranscript}
+							{isLiveTranscribing}
+							{displayedQuestions}
+							showOverlay={!!showProcessingOverlay}
+							allowProjectChange={!project}
+							inModal={true}
+							on:back={handleBack}
+							on:textChange={handleTextChange}
+							on:save={handleSave}
+							on:parse={parseBrainDump}
+							on:startRecording={startRecording}
+							on:stopRecording={stopRecording}
+							on:selectProject={handleProjectChangeInRecording}
+						/>
+					</div>
 
-				<!-- Processing Modal - DISABLED: Now handled by ProcessingNotification -->
-				<!-- {#if ProcessingModal && (isDualProcessing || isRegularProcessing)}
+					<!-- Processing Modal - DISABLED: Now handled by ProcessingNotification -->
+					<!-- {#if ProcessingModal && (isDualProcessing || isRegularProcessing)}
 					<ProcessingModal
 						isOpen={isDualProcessing || isRegularProcessing}
 						processingType={isDualProcessing ? 'dual' : 'single'}
@@ -1573,8 +1579,8 @@
 					/>
 				{/if} -->
 
-				<!-- Parse Results Modal - DISABLED: Now handled by ProcessingNotification -->
-				<!-- {#if ParseResultsDiffView && parseResults && showingParseResults && !isDualProcessing && !isRegularProcessing}
+					<!-- Parse Results Modal - DISABLED: Now handled by ProcessingNotification -->
+					<!-- {#if ParseResultsDiffView && parseResults && showingParseResults && !isDualProcessing && !isRegularProcessing}
 					<ParseResultsDiffView
 						parseResults={parseResults}
 						disabledOperations={disabledOperations}
@@ -1589,53 +1595,56 @@
 						on:cancel={handleCancelParse}
 					/>
 				{/if} -->
-			{:else}
-				<!-- Simple loading/fallback UI for RecordingView while component loads -->
-				<div class="p-6">
-					<div class="space-y-4">
-						<!-- Show a basic textarea immediately so users can start typing -->
-						<textarea
-							class="w-full h-64 p-4 border border-gray-300 dark:border-gray-600 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-							placeholder="Start typing or use voice recording..."
-							value={inputText}
-							oninput={(e) => {
-								throttledUpdateInput(e.currentTarget.value);
-								debouncedAutoSave();
-							}}
-						></textarea>
-						<div class="text-sm text-gray-500 dark:text-gray-400">
-							Loading full interface...
+				{:else}
+					<!-- Simple loading/fallback UI for RecordingView while component loads -->
+					<div class="p-6">
+						<div class="space-y-4">
+							<!-- Show a basic textarea immediately so users can start typing -->
+							<textarea
+								class="w-full h-64 p-4 border border-gray-300 dark:border-gray-600 rounded resize-none focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+								placeholder="Start typing or use voice recording..."
+								value={inputText}
+								oninput={(e) => {
+									throttledUpdateInput(e.currentTarget.value);
+									debouncedAutoSave();
+								}}
+							></textarea>
+							<div class="text-sm text-gray-500 dark:text-gray-400">
+								Loading full interface...
+							</div>
 						</div>
 					</div>
-				</div>
-			{/if}
-		{:else if currentView === 'success'}
-			{#if SuccessView}
-				<div in:fade={{ duration: 300, delay: 200 }} out:fade={{ duration: 200 }}>
-					<SuccessView
-						{successData}
-						{showNavigationOnSuccess}
-						inModal={true}
-						onGoToProject={handleGoToProject}
-						onStartNew={handleStartNew}
-						onContinueWithAgent={handleContinueWithAgent}
-						onNavigateToHistory={handleNavigateToHistory}
-						onClose={handleModalClose}
-					/>
-				</div>
-			{:else}
-				<!-- Loading state for SuccessView -->
-				<div class="p-6 text-center">
-					<div class="animate-pulse">
-						<div
-							class="h-8 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mx-auto mb-4"
-						></div>
-						<div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/2 mx-auto"></div>
+				{/if}
+			{:else if currentView === 'success'}
+				{#if SuccessView}
+					<div in:fade={{ duration: 300, delay: 200 }} out:fade={{ duration: 200 }}>
+						<SuccessView
+							{successData}
+							{showNavigationOnSuccess}
+							inModal={true}
+							onGoToProject={handleGoToProject}
+							onStartNew={handleStartNew}
+							onContinueWithAgent={handleContinueWithAgent}
+							onNavigateToHistory={handleNavigateToHistory}
+							onClose={handleModalClose}
+						/>
 					</div>
-				</div>
+				{:else}
+					<!-- Loading state for SuccessView -->
+					<div class="p-6 text-center">
+						<div class="animate-pulse">
+							<div
+								class="h-8 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mx-auto mb-4"
+							></div>
+							<div
+								class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/2 mx-auto"
+							></div>
+						</div>
+					</div>
+				{/if}
 			{/if}
-		{/if}
-	</div>
+		</div>
+	{/snippet}
 </Modal>
 
 <!-- Operation Edit Modal -->

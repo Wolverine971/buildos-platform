@@ -51,74 +51,70 @@
 		xl: 'px-8 py-4 text-xl min-h-[56px] min-w-[56px]'
 	};
 
-	// Variant classes with gradients + dithering for high-end texture
-	// Note: Removed transition-all for performance - using GPU-optimized transitions in style tag
+	// Variant classes - Scratchpad Ops design
+	// Tactile, tool-like buttons with strong borders and pressable shadows
 	const variantClasses = {
 		primary: `
-			bg-gradient-to-r from-blue-50 to-purple-50 text-blue-700 border-2 border-blue-600 font-semibold
-			hover:from-blue-100 hover:to-purple-100 hover:border-purple-600 hover:text-purple-700 hover:shadow-xl
-			focus:ring-2 focus:ring-purple-500 focus:ring-offset-2
-			disabled:from-blue-50 disabled:to-purple-50 disabled:text-blue-400 disabled:border-blue-300 disabled:cursor-not-allowed
-			dark:from-blue-950/30 dark:to-purple-950/30 dark:text-blue-300 dark:border-blue-500
-			dark:hover:from-blue-900/40 dark:hover:to-purple-900/40 dark:hover:border-purple-500 dark:hover:text-purple-300
-			shadow-lg
-			dither-gradient dither-fade-hover
+			bg-accent-orange text-white border-2 border-slate-700 font-semibold tracking-tight
+			hover:brightness-110 hover:shadow-pressable
+			active:translate-y-[2px] active:shadow-none
+			focus:ring-2 focus:ring-accent-orange focus:ring-offset-1
+			disabled:bg-slate-400 disabled:text-slate-200 disabled:border-slate-500 disabled:cursor-not-allowed disabled:shadow-none
+			dark:border-slate-500 dark:hover:brightness-110
+			shadow-pressable
 		`,
 		secondary: `
-			bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-900 border-2 border-blue-500
-			hover:from-blue-200 hover:to-indigo-200 hover:border-indigo-600 hover:text-indigo-900 hover:shadow-lg
-			focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2
-			disabled:from-blue-50 disabled:to-indigo-50 disabled:text-blue-400 disabled:border-blue-300 disabled:cursor-not-allowed
-			dark:from-blue-950/30 dark:to-indigo-950/30 dark:text-blue-300 dark:border-blue-600
-			dark:hover:from-blue-900/40 dark:hover:to-indigo-900/40 dark:hover:border-indigo-500 dark:hover:text-indigo-300
-			shadow-md
-			dither-gradient dither-fade-hover
+			bg-accent-blue text-white border-2 border-slate-700 font-semibold tracking-tight
+			hover:brightness-110 hover:shadow-pressable
+			active:translate-y-[2px] active:shadow-none
+			focus:ring-2 focus:ring-accent-blue focus:ring-offset-1
+			disabled:bg-slate-400 disabled:text-slate-200 disabled:border-slate-500 disabled:cursor-not-allowed disabled:shadow-none
+			dark:border-slate-500 dark:hover:brightness-110
+			shadow-pressable
 		`,
 		ghost: `
-			bg-transparent text-gray-700 border border-transparent
-			hover:bg-gradient-to-br hover:from-gray-50 hover:to-slate-50 hover:border-gray-200
-			focus:ring-2 focus:ring-gray-400 focus:ring-offset-0
-			disabled:text-gray-400 disabled:cursor-not-allowed
-			dark:text-gray-300 dark:hover:from-gray-800/30 dark:hover:to-slate-800/30 dark:hover:border-gray-700
+			bg-transparent text-accent-olive border-2 border-transparent font-semibold tracking-tight
+			hover:bg-surface-scratch hover:border-gray-300
+			focus:ring-2 focus:ring-slate-400 focus:ring-offset-0
+			disabled:text-slate-400 disabled:cursor-not-allowed
+			dark:text-slate-400 dark:hover:bg-slate-700/30 dark:hover:border-gray-600
 		`,
 		danger: `
-			bg-gradient-to-br from-rose-50 to-red-50 text-rose-700 border border-rose-200
-			hover:from-rose-100 hover:to-red-100 hover:border-rose-300 hover:shadow-md
-			focus:ring-2 focus:ring-rose-500 focus:ring-offset-2
-			disabled:from-gray-50 disabled:to-gray-100 disabled:text-gray-400 disabled:border-gray-200 disabled:cursor-not-allowed
-			dark:from-rose-900/20 dark:to-red-900/20 dark:text-rose-300 dark:border-rose-700
-			dark:hover:from-rose-900/30 dark:hover:to-red-900/30 dark:hover:border-rose-600
-			shadow-sm
-			dither-gradient dither-fade-hover
+			bg-red-600 text-white border-2 border-red-800 font-semibold tracking-tight
+			hover:bg-red-700 hover:shadow-pressable
+			active:translate-y-[2px] active:shadow-none
+			focus:ring-2 focus:ring-red-600 focus:ring-offset-1
+			disabled:bg-slate-400 disabled:text-slate-200 disabled:border-slate-500 disabled:cursor-not-allowed disabled:shadow-none
+			dark:border-red-700 dark:hover:bg-red-700
+			shadow-pressable
 		`,
 		warning: `
-			bg-gradient-to-br from-amber-50 to-yellow-50 text-amber-700 border border-amber-200
-			hover:from-amber-100 hover:to-yellow-100 hover:border-amber-300 hover:shadow-md
-			focus:ring-2 focus:ring-amber-500 focus:ring-offset-2
-			disabled:from-gray-50 disabled:to-gray-100 disabled:text-gray-400 disabled:border-gray-200 disabled:cursor-not-allowed
-			dark:from-amber-900/20 dark:to-yellow-900/20 dark:text-amber-300 dark:border-amber-700
-			dark:hover:from-amber-900/30 dark:hover:to-yellow-900/30 dark:hover:border-amber-600
-			shadow-sm
-			dither-gradient dither-fade-hover
+			bg-amber-600 text-white border-2 border-amber-700 font-semibold tracking-tight
+			hover:bg-amber-700 hover:shadow-pressable
+			active:translate-y-[2px] active:shadow-none
+			focus:ring-2 focus:ring-amber-600 focus:ring-offset-1
+			disabled:bg-slate-400 disabled:text-slate-200 disabled:border-slate-500 disabled:cursor-not-allowed disabled:shadow-none
+			dark:border-amber-700 dark:hover:bg-amber-700
+			shadow-pressable
 		`,
 		outline: `
-			bg-white text-gray-800 border-2 border-gray-400
-			hover:bg-gradient-to-br hover:from-gray-50 hover:to-slate-50 hover:border-gray-500 hover:text-gray-900 hover:shadow-md
-			focus:ring-2 focus:ring-gray-500 focus:ring-offset-2
-			disabled:bg-gray-50 disabled:text-gray-400 disabled:border-gray-200 disabled:cursor-not-allowed
-			dark:bg-transparent dark:text-gray-300 dark:border-gray-600
-			dark:hover:from-gray-800/30 dark:hover:to-slate-800/30 dark:hover:border-gray-500
-			shadow-sm
+			bg-white text-slate-900 border-2 border-slate-700 font-semibold tracking-tight
+			hover:bg-surface-scratch hover:border-slate-700 hover:shadow-subtle
+			active:translate-y-[1px] active:shadow-none
+			focus:ring-2 focus:ring-slate-700 focus:ring-offset-1
+			disabled:bg-slate-50 disabled:text-slate-400 disabled:border-slate-300 disabled:cursor-not-allowed disabled:shadow-none
+			dark:bg-transparent dark:text-slate-100 dark:border-slate-500
+			dark:hover:bg-slate-700/30 dark:hover:border-accent-olive
+			shadow-subtle
 		`,
 		success: `
-			bg-gradient-to-br from-emerald-50 to-green-50 text-emerald-700 border border-emerald-200
-			hover:from-emerald-100 hover:to-green-100 hover:border-emerald-300 hover:shadow-md
-			focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2
-			disabled:from-gray-50 disabled:to-gray-100 disabled:text-gray-400 disabled:border-gray-200 disabled:cursor-not-allowed
-			dark:from-emerald-900/20 dark:to-green-900/20 dark:text-emerald-300 dark:border-emerald-700
-			dark:hover:from-emerald-900/30 dark:hover:to-green-900/30 dark:hover:border-emerald-600
-			shadow-sm
-			dither-gradient dither-fade-hover
+			bg-emerald-600 text-white border-2 border-emerald-700 font-semibold tracking-tight
+			hover:bg-emerald-700 hover:shadow-pressable
+			active:translate-y-[2px] active:shadow-none
+			focus:ring-2 focus:ring-emerald-600 focus:ring-offset-1
+			disabled:bg-slate-400 disabled:text-slate-200 disabled:border-slate-500 disabled:cursor-not-allowed disabled:shadow-none
+			dark:border-emerald-700 dark:hover:bg-emerald-700
+			shadow-pressable
 		`
 	};
 
@@ -133,11 +129,12 @@
 	// Svelte 5 runes: Convert reactive declarations to $derived
 	let buttonClasses = $derived(
 		twMerge(
-			// Base classes
+			// Base classes - Scratchpad Ops styling
 			'inline-flex items-center justify-center',
-			'font-medium rounded-lg',
+			'font-semibold rounded', // 4px radius for industrial feel
 			'focus:outline-none focus-visible:ring-2',
 			'touch-manipulation',
+			'transition-all duration-100', // Fast, tactile transitions
 
 			// Size classes
 			sizeClasses[size],

@@ -1,6 +1,6 @@
 <!-- apps/web/src/lib/components/admin/EmailComposerModal.svelte -->
 <script lang="ts">
-	import { createEventDispatcher, onMount } from 'svelte';
+	import { browser } from '$app/environment';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import { toastService } from '$lib/stores/toast.store';
@@ -8,47 +8,55 @@
 	import EmailHistoryViewerModal from './EmailHistoryViewerModal.svelte';
 	import type { EmailGenerationContext } from '$lib/services/email-generation-service';
 	import {
-		Loader2,
-		Mail,
+		LoaderCircle,
 		Copy,
 		Sparkles,
 		Send,
 		Bot,
 		PenTool,
 		ArrowRight,
-		Edit3,
+		SquarePen,
 		ChevronDown,
 		ChevronUp,
 		History,
 		Eye
 	} from 'lucide-svelte';
 
-	export let isOpen = false;
-	export let userId: string;
-	export let userName: string | null = null;
-	export let userEmail: string;
+	interface Props {
+		isOpen?: boolean;
+		userId: string;
+		userName?: string | null;
+		userEmail: string;
+		onEmailSent?: (data: { userId: string; email: string }) => void;
+	}
 
-	const dispatch = createEventDispatcher();
+	let {
+		isOpen = $bindable(false),
+		userId,
+		userName = null,
+		userEmail,
+		onEmailSent
+	}: Props = $props();
 
-	let instructions = '';
-	let generatedEmail = '';
-	let manualEmail = '';
-	let emailType: EmailGenerationContext['emailType'] = 'custom';
-	let tone: EmailGenerationContext['tone'] = 'friendly';
-	let isGenerating = false;
-	let isSending = false;
-	let userContext: EmailGenerationContext['userInfo'] | null = null;
-	let contextLoading = true;
-	let contextPanelExpanded = false; // Start collapsed on mobile
-	let editMode: 'manual' | 'ai' | 'split' = 'split';
-	let showSystemPrompt = false;
-	let customSystemPrompt = '';
-	let defaultSystemPrompt = '';
-	let emailHistory: any[] = [];
-	let emailHistoryLoading = false;
-	let showEmailHistory = false;
-	let selectedEmailForViewer: any = null;
-	let EmailHistoryViewerModalOpen = false;
+	let instructions = $state('');
+	let generatedEmail = $state('');
+	let manualEmail = $state('');
+	let emailType = $state<EmailGenerationContext['emailType']>('custom');
+	let tone = $state<EmailGenerationContext['tone']>('friendly');
+	let isGenerating = $state(false);
+	let isSending = $state(false);
+	let userContext = $state<EmailGenerationContext['userInfo'] | null>(null);
+	let contextLoading = $state(true);
+	let contextPanelExpanded = $state(false); // Start collapsed on mobile
+	let editMode = $state<'manual' | 'ai' | 'split'>('split');
+	let showSystemPrompt = $state(false);
+	let customSystemPrompt = $state('');
+	let defaultSystemPrompt = $state('');
+	let emailHistory = $state<any[]>([]);
+	let emailHistoryLoading = $state(false);
+	let showEmailHistory = $state(false);
+	let selectedEmailForViewer = $state<any>(null);
+	let EmailHistoryViewerModalOpen = $state(false);
 
 	const emailTemplates = [
 		{ value: 'custom', label: 'Custom Message' },
@@ -64,18 +72,24 @@
 		{ value: 'casual', label: 'Casual' }
 	];
 
-	$: if (isOpen && userEmail) {
-		loadUserContext();
-		loadEmailHistory();
-	}
+	// Load user context and email history when modal opens
+	$effect(() => {
+		if (!browser) return;
+		if (isOpen && userEmail) {
+			loadUserContext();
+			loadEmailHistory();
+		}
+	});
 
 	// Generate default system prompt when context changes
-	$: if (userContext) {
-		defaultSystemPrompt = generateDefaultSystemPrompt();
-		if (!customSystemPrompt) {
-			customSystemPrompt = defaultSystemPrompt;
+	$effect(() => {
+		if (userContext) {
+			defaultSystemPrompt = generateDefaultSystemPrompt();
+			if (!customSystemPrompt) {
+				customSystemPrompt = defaultSystemPrompt;
+			}
 		}
-	}
+	});
 
 	function generateDefaultSystemPrompt() {
 		if (!userContext) return '';
@@ -296,7 +310,7 @@ Guidelines:
 			}
 
 			toastService.success('Email sent successfully');
-			dispatch('emailSent', { userId, email: userEmail });
+			onEmailSent?.({ userId, email: userEmail });
 			closeModal();
 		} catch (error) {
 			console.error('Error sending email:', error);
@@ -314,7 +328,7 @@ Guidelines:
 		emailType = 'custom';
 		tone = 'friendly';
 		userContext = null;
-		contextPanelExpanded = true;
+		contextPanelExpanded = false; // Reset to collapsed state for mobile
 		editMode = 'split';
 		showSystemPrompt = false;
 		customSystemPrompt = '';
@@ -437,7 +451,7 @@ Guidelines:
 					onclick={() => (editMode = 'split')}
 					class="text-xs sm:text-sm flex-shrink-0"
 				>
-					<Edit3 class="w-4 h-4" />
+					<SquarePen class="w-4 h-4" />
 					<span class="ml-1 hidden sm:inline">Split</span>
 				</Button>
 				<Button
@@ -453,7 +467,7 @@ Guidelines:
 			<!-- User Context Panel - Collapsible -->
 			{#if contextLoading}
 				<div class="flex items-center justify-center py-6">
-					<Loader2 class="w-5 h-5 animate-spin text-primary-500" />
+					<LoaderCircle class="w-5 h-5 animate-spin text-primary-500" />
 					<span class="ml-2 text-sm text-gray-600 dark:text-gray-400"
 						>Loading user information...</span
 					>
@@ -631,7 +645,7 @@ Guidelines:
 							class="text-sm"
 						>
 							{#if isGenerating}
-								<Loader2 class="w-4 h-4 mr-2 animate-spin" />
+								<LoaderCircle class="w-4 h-4 mr-2 animate-spin" />
 								Generating...
 							{:else}
 								<Sparkles class="w-4 h-4 mr-2" />
@@ -750,7 +764,7 @@ Guidelines:
 						</Button>
 						<Button onclick={sendEmail} disabled={isSending} class="text-sm">
 							{#if isSending}
-								<Loader2 class="w-4 h-4 mr-2 animate-spin" />
+								<LoaderCircle class="w-4 h-4 mr-2 animate-spin" />
 								Sending...
 							{:else}
 								<Send class="w-4 h-4 mr-2" />

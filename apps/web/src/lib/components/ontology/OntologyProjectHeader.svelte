@@ -80,7 +80,6 @@
 					<div
 						class="flex flex-wrap items-center gap-2 text-sm text-gray-500 dark:text-gray-400"
 					>
-						<span class="font-mono text-xs sm:text-sm">{project.type_key}</span>
 						<span
 							class="px-3 py-1 rounded-full text-xs font-semibold capitalize {getProjectStateBadgeClass(
 								project.state_key
@@ -88,15 +87,6 @@
 						>
 							{project.state_key}
 						</span>
-						{#if template}
-							<span
-								class="inline-flex items-center gap-1 text-xs font-medium text-gray-600 dark:text-gray-300"
-							>
-								<Info class="w-3.5 h-3.5" aria-hidden="true" />
-								<span class="hidden sm:inline">Template:</span>
-								{template.name}
-							</span>
-						{/if}
 					</div>
 				</div>
 				<div class="flex flex-wrap items-center gap-2.5 sm:flex-shrink-0">
@@ -147,27 +137,27 @@
 
 	<div class="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2">
 		<div
-			class="p-3 sm:p-4 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-900/30 shadow-sm hover:shadow-md transition-all duration-200 dither-soft"
+			class="p-3 sm:p-4 rounded bg-surface-elevated border-2 border-gray-300 dark:border-gray-600/50 shadow-subtle hover:shadow-elevated transition-all duration-200"
 		>
 			<div class="flex items-start gap-2.5 sm:gap-3">
-				<div class="flex-shrink-0 rounded-full p-2 bg-white dark:bg-white/10 shadow-sm">
-					<FileText class="w-5 h-5 text-blue-600 dark:text-blue-300" aria-hidden="true" />
+				<div class="flex-shrink-0 rounded-full p-2 bg-surface-panel shadow-sm">
+					<FileText class="w-5 h-5 text-accent-blue" aria-hidden="true" />
 				</div>
 				<div class="flex-1 min-w-0">
 					<p
-						class="text-xs uppercase font-semibold text-blue-800 dark:text-blue-200 tracking-wide mb-1 flex items-center gap-1.5"
+						class="text-xs uppercase font-semibold text-accent-blue tracking-wide mb-1 flex items-center gap-1.5"
 					>
-						<span class="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+						<span class="w-1.5 h-1.5 bg-accent-blue rounded-full"></span>
 						Context Document
 					</p>
-					<p class="text-sm font-semibold text-gray-900 dark:text-white truncate mb-1">
+					<p class="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate mb-1">
 						{contextDocTitle}
 					</p>
 					{#if !contextDocument}
 						<p class="text-xs text-gray-600 dark:text-gray-400 mt-1 leading-relaxed">
 							Create a document with type <code
-								class="px-1 py-0.5 bg-white dark:bg-gray-800 rounded text-xs"
-								>document.project.context</code
+								class="px-1 py-0.5 bg-surface-panel rounded text-xs font-medium"
+								>document.context.project</code
 							> to link it here.
 						</p>
 					{/if}
@@ -175,20 +165,20 @@
 			</div>
 		</div>
 		<div
-			class="p-3 sm:p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-sm hover:shadow-md transition-all duration-200"
+			class="p-3 sm:p-4 rounded border-2 border-gray-300 dark:border-gray-600/50 bg-surface-elevated shadow-subtle hover:shadow-elevated transition-all duration-200"
 		>
 			<p
 				class="text-xs uppercase font-semibold text-gray-500 dark:text-gray-400 tracking-wide mb-2.5 sm:mb-3 flex items-center gap-1.5"
 			>
-				<span class="w-1.5 h-1.5 bg-gray-500 rounded-full"></span>
+				<span class="w-1.5 h-1.5 bg-gray-500 dark:bg-gray-400 rounded-full"></span>
 				Project Entities
 			</p>
 			<div class="grid grid-cols-3 sm:grid-cols-5 gap-2 sm:gap-2.5 text-center">
 				{#each statBlocks as stat}
 					<div
-						class="rounded-lg bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800/50 dark:to-gray-800/30 py-2 px-1.5 sm:px-2 border border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-700 transition-colors dither-subtle dither-fade-hover"
+						class="rounded bg-surface-panel py-2 px-1.5 sm:px-2 border border-gray-200 dark:border-gray-600/30 hover:border-accent-orange transition-colors"
 					>
-						<p class="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">
+						<p class="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100">
 							{stat.value}
 						</p>
 						<p

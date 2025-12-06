@@ -168,30 +168,32 @@
 		size="lg"
 		showCloseButton={true}
 	>
-		<div slot="header" class="flex items-center gap-3 px-6 py-4 border-b dark:border-gray-700">
-			<!-- Status Icon -->
-			{#if notification.status === 'processing'}
-				<Loader2 class="w-6 h-6 text-blue-600 dark:text-blue-400 animate-spin" />
-			{:else if notification.status === 'success'}
-				<CheckCircle class="w-6 h-6 text-green-600 dark:text-green-400" />
-			{:else if notification.status === 'error'}
-				<AlertCircle class="w-6 h-6 text-red-600 dark:text-red-400" />
-			{:else if notification.status === 'cancelled'}
-				<XCircle class="w-6 h-6 text-gray-600 dark:text-gray-400" />
-			{/if}
-
-			<!-- Title -->
-			<div class="flex-1">
-				<h2 class="text-xl font-bold text-gray-900 dark:text-white">
-					{modalTitle}
-				</h2>
-				{#if notification.progress?.message}
-					<p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-						{notification.progress.message}
-					</p>
+		{#snippet header()}
+			<div class="flex items-center gap-3 px-6 py-4 border-b dark:border-gray-700">
+				<!-- Status Icon -->
+				{#if notification.status === 'processing'}
+					<Loader2 class="w-6 h-6 text-blue-600 dark:text-blue-400 animate-spin" />
+				{:else if notification.status === 'success'}
+					<CheckCircle class="w-6 h-6 text-green-600 dark:text-green-400" />
+				{:else if notification.status === 'error'}
+					<AlertCircle class="w-6 h-6 text-red-600 dark:text-red-400" />
+				{:else if notification.status === 'cancelled'}
+					<XCircle class="w-6 h-6 text-gray-600 dark:text-gray-400" />
 				{/if}
+
+				<!-- Title -->
+				<div class="flex-1">
+					<h2 class="text-xl font-bold text-gray-900 dark:text-white">
+						{modalTitle}
+					</h2>
+					{#if notification.progress?.message}
+						<p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+							{notification.progress.message}
+						</p>
+					{/if}
+				</div>
 			</div>
-		</div>
+		{/snippet}
 
 		<!-- Content area -->
 		<div class="px-6 py-5">

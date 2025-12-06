@@ -310,119 +310,128 @@
 </script>
 
 <Modal {isOpen} onClose={handleClose} title="Schedule All Phases" size="xl">
-	<!-- Header -->
-	<svelte:fragment slot="header">
-		<div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-			<div class="flex items-center justify-between mb-3">
-				<div>
-					<h2 class="text-xl font-semibold text-gray-900 dark:text-white">
-						Schedule All Tasks
-					</h2>
-					<p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-						Schedule all unscheduled tasks across multiple phases
+	{#snippet children()}
+		<!-- Header -->
+		{#snippet header()}
+			<div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+				<div class="flex items-center justify-between mb-3">
+					<div>
+						<h2 class="text-xl font-semibold text-gray-900 dark:text-white">
+							Schedule All Tasks
+						</h2>
+						<p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+							Schedule all unscheduled tasks across multiple phases
+						</p>
+					</div>
+					<Button onclick={handleClose} variant="ghost" size="sm" icon={X} class="!p-1" />
+				</div>
+
+				<!-- Summary Stats -->
+				<div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4">
+					<div class="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
+						<div class="text-xs text-gray-500 dark:text-gray-400">Phases</div>
+						<div class="text-lg font-semibold text-gray-900 dark:text-white">
+							{phasesWithUnscheduledTasks.length}
+						</div>
+					</div>
+					<div class="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
+						<div class="text-xs text-gray-500 dark:text-gray-400">
+							Tasks to Schedule
+						</div>
+						<div class="text-lg font-semibold text-primary-600 dark:text-primary-400">
+							{totalTasksToSchedule}
+						</div>
+					</div>
+					<div class="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
+						<div class="text-xs text-gray-500 dark:text-gray-400">
+							Already Scheduled
+						</div>
+						<div class="text-lg font-semibold text-gray-900 dark:text-white">
+							{totalScheduledTasks}
+						</div>
+					</div>
+					<div class="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
+						<div class="text-xs text-gray-500 dark:text-gray-400">Calendar Events</div>
+						<div class="text-lg font-semibold text-gray-900 dark:text-white">
+							{calendarEvents.length}
+						</div>
+					</div>
+				</div>
+
+				<!-- Action Bar -->
+				<div class="flex items-center justify-between mt-4">
+					<div class="flex items-center gap-2">
+						<Button onclick={expandAll} variant="outline" size="sm">Expand All</Button>
+						<Button onclick={collapseAll} variant="outline" size="sm"
+							>Collapse All</Button
+						>
+					</div>
+				</div>
+			</div>
+		{/snippet}
+
+		<!-- Main Content -->
+		<div class="flex-1 overflow-y-auto px-6 py-4 max-h-[60vh]">
+			{#if loading}
+				<div class="flex items-center justify-center py-12">
+					<Loader2 class="w-8 h-8 animate-spin text-gray-400" />
+					<span class="ml-3 text-gray-500 dark:text-gray-400"
+						>Loading scheduling data...</span
+					>
+				</div>
+			{:else if error}
+				<div
+					class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4"
+				>
+					<div class="flex items-start gap-3">
+						<AlertTriangle
+							class="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5"
+						/>
+						<div>
+							<h4 class="font-medium text-red-800 dark:text-red-200">Error</h4>
+							<p class="text-sm text-red-700 dark:text-red-300 mt-1">{error}</p>
+						</div>
+					</div>
+				</div>
+			{:else if phasesWithUnscheduledTasks.length === 0}
+				<div class="text-center py-12">
+					<CheckCircle2 class="w-12 h-12 text-green-500 mx-auto mb-4" />
+					<h3 class="text-lg font-medium text-gray-900 dark:text-white">
+						All tasks are scheduled!
+					</h3>
+					<p class="text-sm text-gray-500 dark:text-gray-400 mt-2">
+						There are no unscheduled tasks in any phase.
 					</p>
 				</div>
-				<Button onclick={handleClose} variant="ghost" size="sm" icon={X} class="!p-1" />
-			</div>
-
-			<!-- Summary Stats -->
-			<div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4">
-				<div class="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
-					<div class="text-xs text-gray-500 dark:text-gray-400">Phases</div>
-					<div class="text-lg font-semibold text-gray-900 dark:text-white">
-						{phasesWithUnscheduledTasks.length}
-					</div>
-				</div>
-				<div class="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
-					<div class="text-xs text-gray-500 dark:text-gray-400">Tasks to Schedule</div>
-					<div class="text-lg font-semibold text-primary-600 dark:text-primary-400">
-						{totalTasksToSchedule}
-					</div>
-				</div>
-				<div class="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
-					<div class="text-xs text-gray-500 dark:text-gray-400">Already Scheduled</div>
-					<div class="text-lg font-semibold text-gray-900 dark:text-white">
-						{totalScheduledTasks}
-					</div>
-				</div>
-				<div class="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
-					<div class="text-xs text-gray-500 dark:text-gray-400">Calendar Events</div>
-					<div class="text-lg font-semibold text-gray-900 dark:text-white">
-						{calendarEvents.length}
-					</div>
-				</div>
-			</div>
-
-			<!-- Action Bar -->
-			<div class="flex items-center justify-between mt-4">
-				<div class="flex items-center gap-2">
-					<Button onclick={expandAll} variant="outline" size="sm">Expand All</Button>
-					<Button onclick={collapseAll} variant="outline" size="sm">Collapse All</Button>
-				</div>
-			</div>
-		</div>
-	</svelte:fragment>
-
-	<!-- Main Content -->
-	<div class="flex-1 overflow-y-auto px-6 py-4 max-h-[60vh]">
-		{#if loading}
-			<div class="flex items-center justify-center py-12">
-				<Loader2 class="w-8 h-8 animate-spin text-gray-400" />
-				<span class="ml-3 text-gray-500 dark:text-gray-400">Loading scheduling data...</span
-				>
-			</div>
-		{:else if error}
-			<div
-				class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4"
-			>
-				<div class="flex items-start gap-3">
-					<AlertTriangle
-						class="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5"
+			{:else}
+				<!-- Global Conflicts -->
+				{#if totalConflicts > 0}
+					<ScheduleConflictAlert
+						conflicts={globalConflicts.filter((c) => c.severity === 'error')}
+						warnings={[]}
+						phaseValidationWarning={null}
 					/>
-					<div>
-						<h4 class="font-medium text-red-800 dark:text-red-200">Error</h4>
-						<p class="text-sm text-red-700 dark:text-red-300 mt-1">{error}</p>
-					</div>
+					<div class="mt-4"></div>
+				{/if}
+
+				<!-- Phase Cards -->
+				<div class="space-y-4">
+					{#each phasesWithUnscheduledTasks as phase (phase.id)}
+						<PhaseScheduleCard
+							{phase}
+							scheduleData={phaseSchedules.get(phase.id)}
+							isExpanded={expandedPhases.has(phase.id)}
+							{loading}
+							on:toggle={togglePhase}
+						/>
+					{/each}
 				</div>
-			</div>
-		{:else if phasesWithUnscheduledTasks.length === 0}
-			<div class="text-center py-12">
-				<CheckCircle2 class="w-12 h-12 text-green-500 mx-auto mb-4" />
-				<h3 class="text-lg font-medium text-gray-900 dark:text-white">
-					All tasks are scheduled!
-				</h3>
-				<p class="text-sm text-gray-500 dark:text-gray-400 mt-2">
-					There are no unscheduled tasks in any phase.
-				</p>
-			</div>
-		{:else}
-			<!-- Global Conflicts -->
-			{#if totalConflicts > 0}
-				<ScheduleConflictAlert
-					conflicts={globalConflicts.filter((c) => c.severity === 'error')}
-					warnings={[]}
-					phaseValidationWarning={null}
-				/>
-				<div class="mt-4"></div>
 			{/if}
+		</div>
 
-			<!-- Phase Cards -->
-			<div class="space-y-4">
-				{#each phasesWithUnscheduledTasks as phase (phase.id)}
-					<PhaseScheduleCard
-						{phase}
-						scheduleData={phaseSchedules.get(phase.id)}
-						isExpanded={expandedPhases.has(phase.id)}
-						{loading}
-						on:toggle={togglePhase}
-					/>
-				{/each}
-			</div>
-		{/if}
-	</div>
-
-	<!-- Footer -->
-	<svelte:fragment slot="footer">
+		<!-- Footer -->
+	{/snippet}
+	{#snippet footer()}
 		<div
 			class="px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800"
 		>
@@ -455,5 +464,5 @@
 				</div>
 			</div>
 		</div>
-	</svelte:fragment>
+	{/snippet}
 </Modal>

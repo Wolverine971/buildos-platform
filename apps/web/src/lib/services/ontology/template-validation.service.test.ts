@@ -22,8 +22,8 @@ const mockTemplates = [
 	},
 	{
 		id: 'tpl-3',
-		type_key: 'task.deep_work',
-		name: 'Deep Work Task',
+		type_key: 'task.create',
+		name: 'Create Task',
 		scope: 'task',
 		status: 'active',
 		parent_template_id: 'tpl-1'

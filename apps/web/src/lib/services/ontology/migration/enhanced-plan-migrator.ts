@@ -6,7 +6,7 @@
  * Replaces hardcoded 'plan.project_phase' with dynamic template selection.
  *
  * Key improvements over legacy migration:
- * - Uses TemplateDiscoveryEngine to discover appropriate plan templates
+ * - Uses FindOrCreateTemplateService (unified template discovery + creation)
  * - Uses PropertyExtractorEngine for intelligent property extraction
  * - Supports diverse plan types (not just phase-based execution plans)
  * - Validates properties against template schema
@@ -21,23 +21,25 @@ import type {
 	EnhancedPlanMigrationResult
 } from './enhanced-migration.types';
 import type { Facets } from '$lib/types/onto';
-import { TemplateDiscoveryEngine } from './template-discovery-engine';
+import {
+	FindOrCreateTemplateService,
+	type FindOrCreateResult
+} from '../find-or-create-template.service';
 import { PropertyExtractorEngine } from './property-extractor-engine';
 import { SmartLLMService } from '$lib/services/smart-llm-service';
 import { upsertLegacyMapping } from '../legacy-mapping.service';
-import { resolveTemplateWithClient } from '../template-resolver.service';
 
 const TEMPLATE_MATCH_THRESHOLD = 0.7; // 70% match required
 
 export class EnhancedPlanMigrator {
-	private readonly discoveryEngine: TemplateDiscoveryEngine;
+	private readonly templateService: FindOrCreateTemplateService;
 	private readonly extractorEngine: PropertyExtractorEngine;
 
 	constructor(
 		private readonly client: TypedSupabaseClient,
 		private readonly llm: SmartLLMService
 	) {
-		this.discoveryEngine = new TemplateDiscoveryEngine(client, llm);
+		this.templateService = new FindOrCreateTemplateService(client, llm);
 		this.extractorEngine = new PropertyExtractorEngine(llm);
 	}
 
@@ -54,63 +56,44 @@ export class EnhancedPlanMigrator {
 		}
 	): Promise<EnhancedPlanMigrationResult> {
 		try {
-			// 1. Template Discovery
+			// 1. Template Discovery + Creation (unified via FindOrCreateTemplateService)
 			const narrative = this.buildPhaseNarrative(phase, projectContext);
 			const realm = this.inferRealm(phase);
 
-			const templates = await this.discoveryEngine.listTemplates({
-				scope: 'plan',
-				realm,
-				context: narrative,
-				facets: projectContext.projectFacets,
-				limit: 15
-			});
-
-			// Check for 70% match threshold
-			const bestMatch = templates.find((t) => t.score >= TEMPLATE_MATCH_THRESHOLD);
-			let templateResult: any;
-
-			if (bestMatch) {
-				// Use existing template
-				templateResult = {
-					template: bestMatch.template,
-					created: false,
-					suggestion: null
-				};
-			} else {
-				// Suggest new template
-				const suggestion = await this.discoveryEngine.suggestTemplate({
+			let templateResult: FindOrCreateResult;
+			try {
+				templateResult = await this.templateService.findOrCreate({
 					scope: 'plan',
-					narrative,
-					existingTemplates: templates,
-					userId: context.initiatedBy
+					context: narrative,
+					userId: context.initiatedBy,
+					realm,
+					facets: projectContext.projectFacets,
+					matchThreshold: TEMPLATE_MATCH_THRESHOLD,
+					allowCreate: !context.dryRun
 				});
-
+			} catch (error) {
+				// If creation is disabled and no template found, return pending_review
 				if (context.dryRun) {
 					return {
 						status: 'pending_review',
 						legacyPhaseId: phase.id,
-						message: 'Plan template suggestion created for review (dry-run mode)'
+						message: `Plan template suggestion created for review (dry-run mode): ${error instanceof Error ? error.message : 'Unknown error'}`
 					};
 				}
-
-				// Create template
-				const ensureResult = await this.discoveryEngine.ensureTemplate({
-					typeKey: suggestion.typeKey,
-					suggestion,
-					allowCreate: true,
-					userId: context.initiatedBy
-				});
-
-				templateResult = ensureResult;
+				throw error;
 			}
 
-			// 2. Resolve template with inheritance
-			const resolvedTemplate = await resolveTemplateWithClient(
-				this.client,
-				templateResult.template.type_key,
-				'plan'
-			);
+			// If dry-run and a suggestion was generated (but not created)
+			if (context.dryRun && templateResult.suggestion && !templateResult.created) {
+				return {
+					status: 'pending_review',
+					legacyPhaseId: phase.id,
+					message: 'Plan template suggestion created for review (dry-run mode)'
+				};
+			}
+
+			// 2. Use resolved template (already resolved by findOrCreate)
+			const resolvedTemplate = templateResult.resolvedTemplate;
 
 			if (!resolvedTemplate) {
 				throw new Error(`Failed to resolve template ${templateResult.template.type_key}`);
@@ -159,6 +142,21 @@ export class EnhancedPlanMigrator {
 			const stateKey = this.determinePhaseState(phase);
 			const facets = propResult.facets ?? {};
 
+			// Build props with facets (facet_* columns are GENERATED from props->'facets')
+			// Note: onto_plans does NOT have start_at/end_at columns, store dates in props
+			const propsWithFacets = {
+				...(finalProps as Record<string, unknown>),
+				facets: {
+					context: facets.context ?? projectContext.projectFacets?.context ?? null,
+					scale: facets.scale ?? projectContext.projectFacets?.scale ?? null,
+					stage: facets.stage ?? projectContext.projectFacets?.stage ?? null
+				},
+				schedule: {
+					start_date: phase.start_date ?? null,
+					end_date: phase.end_date ?? null
+				}
+			};
+
 			const { data, error } = await this.client
 				.from('onto_plans')
 				.insert({
@@ -166,12 +164,7 @@ export class EnhancedPlanMigrator {
 					project_id: projectContext.ontoProjectId,
 					type_key: templateResult.template.type_key,
 					state_key: stateKey,
-					props: finalProps as Json,
-					facet_context: facets.context ?? projectContext.projectFacets?.context ?? null,
-					facet_scale: facets.scale ?? projectContext.projectFacets?.scale ?? null,
-					facet_stage: facets.stage ?? projectContext.projectFacets?.stage ?? null,
-					start_at: phase.start_date,
-					end_at: phase.end_date,
+					props: propsWithFacets as Json,
 					created_by: projectContext.actorId
 				})
 				.select('id')
@@ -216,12 +209,8 @@ export class EnhancedPlanMigrator {
 		}
 	}
 
-	/**
-	 * Clear template discovery cache
-	 */
-	clearCache(): void {
-		this.discoveryEngine.clearCache();
-	}
+	// Note: Template caching is handled internally by FindOrCreateTemplateService
+	// No explicit cache clearing needed
 
 	// ============================================
 	// PRIVATE HELPER METHODS

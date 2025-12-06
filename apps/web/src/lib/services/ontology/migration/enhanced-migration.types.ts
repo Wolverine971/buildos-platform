@@ -23,6 +23,8 @@ export interface TemplateSearchOptions {
 	context?: string;
 	facets?: Facets;
 	limit?: number;
+	/** User ID for LLM usage logging. If not provided, LLM usage won't be logged to the database. */
+	userId?: string;
 }
 
 export interface TemplateSearchResult {
@@ -73,6 +75,7 @@ export interface EnsureTemplateOptions {
 	suggestion?: TemplateSuggestion;
 	allowCreate: boolean;
 	userId: string;
+	scope: string;
 }
 
 export interface EnsureTemplateResult {

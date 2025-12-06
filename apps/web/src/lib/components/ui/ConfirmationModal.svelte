@@ -5,15 +5,35 @@
 	import Modal from './Modal.svelte';
 	import Button from './Button.svelte';
 	import type { ButtonVariant } from './Button.svelte';
+	import type { Snippet } from 'svelte';
 
-	export let isOpen: boolean = false;
-	export let title: string = 'Confirm Action';
-	export let confirmText: string = 'Confirm';
-	export let cancelText: string = 'Cancel';
-	export let confirmVariant: ButtonVariant = 'primary';
-	export let loading: boolean = false;
-	export let loadingText: string = 'Processing...';
-	export let icon: 'warning' | 'danger' | 'info' | 'success' | 'none' = 'warning';
+	interface Props {
+		isOpen?: boolean;
+		title?: string;
+		confirmText?: string;
+		cancelText?: string;
+		confirmVariant?: ButtonVariant;
+		loading?: boolean;
+		loadingText?: string;
+		icon?: 'warning' | 'danger' | 'info' | 'success' | 'none';
+		content?: Snippet;
+		details?: Snippet;
+		footer?: Snippet;
+	}
+
+	let {
+		isOpen = false,
+		title = 'Confirm Action',
+		confirmText = 'Confirm',
+		cancelText = 'Cancel',
+		confirmVariant = 'primary',
+		loading = false,
+		loadingText = 'Processing...',
+		icon = 'warning',
+		content,
+		details,
+		footer
+	}: Props = $props();
 
 	const dispatch = createEventDispatcher<{
 		confirm: void;
@@ -46,8 +66,8 @@
 		none: ''
 	};
 
-	$: IconComponent = icons[icon];
-	$: iconClasses = iconColors[icon];
+	let IconComponent = $derived(icons[icon]);
+	let iconClasses = $derived(iconColors[icon]);
 </script>
 
 <Modal
@@ -59,60 +79,70 @@
 	closeOnEscape={!loading}
 	persistent={loading}
 >
-	<div class="px-3 sm:px-4 lg:px-6 py-3 sm:py-4">
-		<div class="sm:flex sm:items-start">
-			<!-- Icon -->
-			{#if IconComponent}
+	{#snippet children()}
+		<div class="px-3 sm:px-4 lg:px-6 py-3 sm:py-4">
+			<div class="sm:flex sm:items-start">
+				<!-- Icon -->
+				{#if IconComponent}
+					<div
+						class="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full {iconClasses} sm:mx-0 sm:h-10 sm:w-10"
+					>
+						<IconComponent class="h-6 w-6" />
+					</div>
+				{/if}
+
+				<!-- Content -->
 				<div
-					class="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full {iconClasses} sm:mx-0 sm:h-10 sm:w-10"
+					class="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left {IconComponent
+						? ''
+						: 'w-full'}"
 				>
-					<IconComponent class="h-6 w-6" />
+					<!-- Main Content Snippet -->
+					{#if content}
+						{@render content()}
+					{:else}
+						<p class="text-sm text-gray-500 dark:text-gray-400">
+							Are you sure you want to proceed with this action?
+						</p>
+					{/if}
+
+					<!-- Details Snippet -->
+					{#if details}
+						{@render details()}
+					{/if}
 				</div>
-			{/if}
-
-			<!-- Content -->
-			<div
-				class="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left {IconComponent
-					? ''
-					: 'w-full'}"
-			>
-				<!-- Main Content Slot -->
-				<slot name="content">
-					<p class="text-sm text-gray-500 dark:text-gray-400">
-						Are you sure you want to proceed with this action?
-					</p>
-				</slot>
-
-				<!-- Details Slot -->
-				<slot name="details" />
 			</div>
 		</div>
-	</div>
+	{/snippet}
 
-	<!-- Footer with Actions -->
-	<div
-		class="flex flex-col sm:flex-row gap-3 sm:justify-end px-3 sm:px-4 lg:px-6 py-3 sm:py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30"
-		slot="footer"
-	>
-		<Button
-			onclick={handleCancel}
-			disabled={loading}
-			variant="secondary"
-			size="md"
-			class="order-2 sm:order-1 w-full sm:w-auto"
-		>
-			{cancelText}
-		</Button>
+	{#snippet footer()}
+		{#if footer}
+			{@render footer()}
+		{:else}
+			<div
+				class="flex flex-col sm:flex-row gap-3 sm:justify-end px-3 sm:px-4 lg:px-6 py-3 sm:py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30"
+			>
+				<Button
+					onclick={handleCancel}
+					disabled={loading}
+					variant="secondary"
+					size="md"
+					class="order-2 sm:order-1 w-full sm:w-auto"
+				>
+					{cancelText}
+				</Button>
 
-		<Button
-			onclick={handleConfirm}
-			disabled={loading}
-			{loading}
-			variant={confirmVariant}
-			size="md"
-			class="order-1 sm:order-2 w-full sm:w-auto"
-		>
-			{loading ? loadingText : confirmText}
-		</Button>
-	</div>
+				<Button
+					onclick={handleConfirm}
+					disabled={loading}
+					{loading}
+					variant={confirmVariant}
+					size="md"
+					class="order-1 sm:order-2 w-full sm:w-auto"
+				>
+					{loading ? loadingText : confirmText}
+				</Button>
+			</div>
+		{/if}
+	{/snippet}
 </Modal>

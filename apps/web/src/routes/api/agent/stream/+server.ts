@@ -48,11 +48,15 @@ import { ChatCompressionService } from '$lib/services/chat-compression-service';
 const logger = createLogger('API:AgentStream');
 
 // ============================================
-// RATE LIMITING
+// RATE LIMITING (DISABLED)
 // ============================================
 
+// Rate limiting disabled - the agent chat should not have request limits
+// Token costs are managed at the LLM provider level
+const RATE_LIMIT_ENABLED = false;
+
 const RATE_LIMIT = {
-	MAX_REQUESTS_PER_MINUTE: 20, // Lower for agent system (more expensive)
+	MAX_REQUESTS_PER_MINUTE: 20,
 	MAX_TOKENS_PER_MINUTE: 30000
 };
 
@@ -75,9 +79,17 @@ type OntologyCache = {
 	cacheKey: string; // projectId-focusType-entityId or contextType
 };
 
+type ProjectClarificationMetadata = {
+	roundNumber: number;
+	accumulatedContext: string;
+	previousQuestions: string[];
+	previousResponses: string[];
+};
+
 type AgentSessionMetadata = {
 	focus?: ProjectFocus | null;
 	ontologyCache?: OntologyCache;
+	projectClarification?: ProjectClarificationMetadata;
 	[key: string]: any;
 };
 
@@ -297,7 +309,12 @@ async function loadOntologyContext(
 		}
 
 		// If project context, load project-level ontology
-		if ((contextType === 'project' || contextType === 'project_audit') && entityId) {
+		if (
+			(contextType === 'project' ||
+				contextType === 'project_audit' ||
+				contextType === 'project_forecast') &&
+			entityId
+		) {
 			logger.debug('Loading project-level ontology context');
 			return await loader.loadProjectContext(entityId);
 		}
@@ -494,44 +511,47 @@ export const POST: RequestHandler = async ({
 
 	const userId = user.id;
 
-	// Check rate limiting
-	const now = Date.now();
-	let userRateLimit = rateLimiter.get(userId);
+	// Rate limiting (disabled by default)
+	let userRateLimit: { requests: number; tokens: number; resetAt: number } | undefined;
+	if (RATE_LIMIT_ENABLED) {
+		const now = Date.now();
+		userRateLimit = rateLimiter.get(userId);
 
-	if (userRateLimit) {
-		if (userRateLimit.resetAt > now) {
-			if (userRateLimit.requests >= RATE_LIMIT.MAX_REQUESTS_PER_MINUTE) {
-				return ApiResponse.error(
-					'Too many requests. Agent system is more resource-intensive. Please wait before sending another message.',
-					429,
-					'RATE_LIMITED'
-				);
+		if (userRateLimit) {
+			if (userRateLimit.resetAt > now) {
+				if (userRateLimit.requests >= RATE_LIMIT.MAX_REQUESTS_PER_MINUTE) {
+					return ApiResponse.error(
+						'Too many requests. Agent system is more resource-intensive. Please wait before sending another message.',
+						429,
+						'RATE_LIMITED'
+					);
+				}
+				if (userRateLimit.tokens >= RATE_LIMIT.MAX_TOKENS_PER_MINUTE) {
+					return ApiResponse.error(
+						'Token limit reached. Please wait a moment before continuing.',
+						429,
+						'RATE_LIMITED'
+					);
+				}
+				userRateLimit.requests++;
+			} else {
+				// Reset rate limit window
+				userRateLimit = {
+					requests: 1,
+					tokens: 0,
+					resetAt: now + 60000 // 1 minute
+				};
+				rateLimiter.set(userId, userRateLimit);
 			}
-			if (userRateLimit.tokens >= RATE_LIMIT.MAX_TOKENS_PER_MINUTE) {
-				return ApiResponse.error(
-					'Token limit reached. Please wait a moment before continuing.',
-					429,
-					'RATE_LIMITED'
-				);
-			}
-			userRateLimit.requests++;
 		} else {
-			// Reset rate limit window
+			// Initialize rate limit window
 			userRateLimit = {
 				requests: 1,
 				tokens: 0,
-				resetAt: now + 60000 // 1 minute
+				resetAt: now + 60000
 			};
 			rateLimiter.set(userId, userRateLimit);
 		}
-	} else {
-		// Initialize rate limit window
-		userRateLimit = {
-			requests: 1,
-			tokens: 0,
-			resetAt: now + 60000
-		};
-		rateLimiter.set(userId, userRateLimit);
 	}
 
 	try {
@@ -679,7 +699,13 @@ export const POST: RequestHandler = async ({
 			});
 		} else {
 			// Load fresh ontology context
-			if (resolvedProjectFocus?.projectId && normalizedContextType === 'project') {
+			// Check if this is a project-related context type (project, audit, or forecast)
+			const isProjectContext =
+				normalizedContextType === 'project' ||
+				normalizedContextType === 'project_audit' ||
+				normalizedContextType === 'project_forecast';
+
+			if (resolvedProjectFocus?.projectId && isProjectContext) {
 				try {
 					if (
 						resolvedProjectFocus.focusType !== 'project-wide' &&
@@ -714,33 +740,18 @@ export const POST: RequestHandler = async ({
 			}
 
 			// Update cache if we loaded context
+			// Note: We defer persistence to end of stream to avoid race conditions
 			if (ontologyContext) {
 				sessionMetadata.ontologyCache = {
 					context: ontologyContext,
 					loadedAt: Date.now(),
 					cacheKey
 				};
-
-				// Persist cache to session (fire-and-forget to not block stream)
-				supabase
-					.from('chat_sessions')
-					.update({
-						agent_metadata: sessionMetadata
-					})
-					.eq('id', chatSession.id)
-					.then(({ error }) => {
-						if (error) {
-							logger.warn('Failed to persist ontology cache', {
-								error,
-								sessionId: chatSession.id
-							});
-						} else {
-							logger.debug('Ontology cache persisted', {
-								cacheKey,
-								sessionId: chatSession.id
-							});
-						}
-					});
+				// Mark for deferred persistence - will be persisted at end of stream
+				logger.debug('Ontology cache updated in memory, will persist at stream end', {
+					cacheKey,
+					sessionId: chatSession.id
+				});
 			}
 		}
 
@@ -810,6 +821,10 @@ export const POST: RequestHandler = async ({
 		const toolResults: any[] = [];
 		let completionSent = false;
 
+		// Track pending metadata updates to avoid race conditions
+		// All metadata changes are buffered here and persisted once at stream end
+		let pendingMetadataUpdate = false;
+
 		const sendEvent = async (event: StreamEvent | AgentSSEMessage | null | undefined) => {
 			if (!event) return;
 
@@ -819,6 +834,42 @@ export const POST: RequestHandler = async ({
 
 			if ((event as StreamEvent).type === 'tool_call' && (event as any).toolCall) {
 				toolCalls.push((event as any).toolCall);
+			}
+
+			// Handle clarifying questions for project creation
+			if ((event as StreamEvent).type === 'clarifying_questions') {
+				const questions = (event as any).questions ?? [];
+				logger.info('Clarifying questions asked', {
+					questionCount: questions.length,
+					contextType: normalizedContextType
+				});
+
+				// Update session metadata with clarification round info
+				// Note: We defer persistence to end of stream to avoid race conditions
+				if (normalizedContextType === 'project_create') {
+					const currentMetadata = sessionMetadata.projectClarification ?? {
+						roundNumber: 0,
+						accumulatedContext: '',
+						previousQuestions: [],
+						previousResponses: []
+					};
+
+					sessionMetadata.projectClarification = {
+						roundNumber: currentMetadata.roundNumber + 1,
+						accumulatedContext: currentMetadata.accumulatedContext
+							? `${currentMetadata.accumulatedContext}\n\nUser: ${message}`
+							: message,
+						previousQuestions: [...currentMetadata.previousQuestions, ...questions],
+						previousResponses: [...currentMetadata.previousResponses, message]
+					};
+
+					// Mark for deferred persistence - will be persisted at stream end
+					pendingMetadataUpdate = true;
+					logger.debug('Clarification metadata updated in memory', {
+						roundNumber: sessionMetadata.projectClarification?.roundNumber,
+						sessionId: chatSession.id
+					});
+				}
 			}
 
 			if ((event as StreamEvent).type === 'tool_result' && (event as any).result) {
@@ -927,6 +978,12 @@ export const POST: RequestHandler = async ({
 					appName: 'BuildOS Agentic Chat'
 				});
 
+				// Extract project clarification metadata for project_create context
+				const projectClarificationMetadata =
+					normalizedContextType === 'project_create'
+						? sessionMetadata.projectClarification
+						: undefined;
+
 				const orchestratorRequest = {
 					userId,
 					sessionId: chatSession.id,
@@ -937,7 +994,8 @@ export const POST: RequestHandler = async ({
 					chatSession,
 					ontologyContext: ontologyContext || undefined,
 					lastTurnContext: lastTurnContextForPlanner || undefined,
-					projectFocus: resolvedProjectFocus || undefined
+					projectFocus: resolvedProjectFocus || undefined,
+					projectClarificationMetadata
 				};
 
 				for await (const _ of orchestrator.streamConversation(
@@ -1024,13 +1082,15 @@ export const POST: RequestHandler = async ({
 					}
 				}
 
-				// Update rate limiter with token usage
-				const currentRate = rateLimiter.get(userId);
-				if (currentRate) {
-					currentRate.tokens = Math.min(
-						currentRate.tokens + totalTokens,
-						RATE_LIMIT.MAX_TOKENS_PER_MINUTE
-					);
+				// Update rate limiter with token usage (only if rate limiting is enabled)
+				if (RATE_LIMIT_ENABLED) {
+					const currentRate = rateLimiter.get(userId);
+					if (currentRate) {
+						currentRate.tokens = Math.min(
+							currentRate.tokens + totalTokens,
+							RATE_LIMIT.MAX_TOKENS_PER_MINUTE
+						);
+					}
 				}
 
 				// Send completion message
@@ -1064,6 +1124,39 @@ export const POST: RequestHandler = async ({
 							: 'Failed to generate response'
 				});
 			} finally {
+				// Persist any pending metadata updates before closing stream
+				// This consolidates all metadata changes into a single DB write
+				// to avoid race conditions from multiple fire-and-forget updates
+				if (pendingMetadataUpdate || sessionMetadata.ontologyCache) {
+					try {
+						const { error: metadataError } = await supabase
+							.from('chat_sessions')
+							.update({ agent_metadata: sessionMetadata })
+							.eq('id', chatSession.id);
+
+						if (metadataError) {
+							logger.warn('Failed to persist session metadata at stream end', {
+								error: metadataError,
+								sessionId: chatSession.id,
+								hasOntologyCache: !!sessionMetadata.ontologyCache,
+								hasClarification: !!sessionMetadata.projectClarification
+							});
+						} else {
+							logger.debug('Session metadata persisted at stream end', {
+								sessionId: chatSession.id,
+								hasOntologyCache: !!sessionMetadata.ontologyCache,
+								clarificationRound:
+									sessionMetadata.projectClarification?.roundNumber
+							});
+						}
+					} catch (persistError) {
+						logger.error('Exception persisting session metadata', {
+							error: persistError,
+							sessionId: chatSession.id
+						});
+					}
+				}
+
 				await agentStream.close();
 			}
 		})().catch((uncaughtError) => {

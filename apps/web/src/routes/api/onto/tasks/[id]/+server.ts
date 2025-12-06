@@ -35,6 +35,7 @@
  */
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
+import { resolveLinkedEntities } from '../task-linked-helpers';
 
 // GET /api/onto/tasks/[id] - Get a single task
 export const GET: RequestHandler = async ({ params, locals }) => {
@@ -65,11 +66,6 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 				project:onto_projects!inner(
 					id,
 					created_by
-				),
-				plan:onto_plans(
-					id,
-					name,
-					type_key
 				)
 			`
 			)
@@ -85,10 +81,53 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			return ApiResponse.error('Access denied', 403);
 		}
 
-		// Remove nested project data from response
+		// Fetch plan via edge relationship (plan_id is no longer a column)
+		let plan = null;
+		const { data: planEdge } = await supabase
+			.from('onto_edges')
+			.select('dst_id')
+			.eq('src_kind', 'task')
+			.eq('src_id', params.id)
+			.eq('rel', 'belongs_to_plan')
+			.eq('dst_kind', 'plan')
+			.single();
+
+		if (planEdge?.dst_id) {
+			const { data: planData } = await supabase
+				.from('onto_plans')
+				.select('id, name, type_key')
+				.eq('id', planEdge.dst_id)
+				.single();
+
+			if (planData) {
+				plan = planData;
+			}
+		}
+
+		// Fetch the template info based on task's type_key (now a proper column)
+		let template = null;
+		const typeKey = task.type_key;
+
+		if (typeKey) {
+			const { data: templateData } = await supabase
+				.from('onto_templates')
+				.select('id, type_key, name, scope, status, metadata')
+				.eq('type_key', typeKey)
+				.eq('status', 'active')
+				.single();
+
+			if (templateData) {
+				template = templateData;
+			}
+		}
+
+		// Fetch linked entities via onto_edges
+		const linkedEntities = await resolveLinkedEntities(supabase, params.id);
+
+		// Remove nested project data from response, add plan
 		const { project, ...taskData } = task;
 
-		return ApiResponse.success({ task: taskData });
+		return ApiResponse.success({ task: { ...taskData, plan }, template, linkedEntities });
 	} catch (error) {
 		console.error('Error fetching task:', error);
 		return ApiResponse.error('Internal server error', 500);
@@ -111,7 +150,8 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			description,
 			priority,
 			state_key,
-			plan_id,
+			plan_id, // Still accepted from UI, but stored as edge relationship
+			type_key,
 			props,
 			goal_id,
 			supporting_milestone_id,
@@ -213,8 +253,10 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		if (title !== undefined) updateData.title = title;
 		if (priority !== undefined) updateData.priority = priority;
 		if (state_key !== undefined) updateData.state_key = state_key;
-		if (plan_id !== undefined) updateData.plan_id = plan_id;
+		if (type_key !== undefined) updateData.type_key = type_key;
 		if (due_at !== undefined) updateData.due_at = due_at;
+
+		const hasPlanInput = Object.prototype.hasOwnProperty.call(body, 'plan_id');
 
 		// Handle props update - merge with existing
 		const currentProps = (existingTask.props as Record<string, unknown> | null) ?? {};
@@ -303,6 +345,60 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 					dst_kind: 'task',
 					rel: 'contains'
 				});
+			}
+		}
+
+		// Handle plan relationship via edges (plan_id is no longer a column)
+		if (hasPlanInput) {
+			// Remove existing plan relationships for this task
+			await supabase
+				.from('onto_edges')
+				.delete()
+				.eq('rel', 'belongs_to_plan')
+				.eq('src_kind', 'task')
+				.eq('src_id', params.id);
+
+			await supabase
+				.from('onto_edges')
+				.delete()
+				.eq('rel', 'has_task')
+				.eq('dst_kind', 'task')
+				.eq('dst_id', params.id)
+				.eq('src_kind', 'plan');
+
+			const targetPlanId =
+				typeof plan_id === 'string' && plan_id.trim().length > 0 ? plan_id : null;
+
+			if (targetPlanId) {
+				// Validate plan belongs to the same project
+				const { data: planData, error: planError } = await supabase
+					.from('onto_plans')
+					.select('id')
+					.eq('id', targetPlanId)
+					.eq('project_id', existingTask.project_id)
+					.single();
+
+				if (planError || !planData) {
+					return ApiResponse.notFound('Plan');
+				}
+
+				// Create bidirectional edges
+				await supabase.from('onto_edges').insert([
+					{
+						src_id: params.id,
+						src_kind: 'task',
+						dst_id: targetPlanId,
+						dst_kind: 'plan',
+						rel: 'belongs_to_plan'
+					},
+					{
+						src_id: targetPlanId,
+						src_kind: 'plan',
+						dst_id: params.id,
+						dst_kind: 'task',
+						rel: 'has_task'
+					}
+				]);
 			}
 		}
 

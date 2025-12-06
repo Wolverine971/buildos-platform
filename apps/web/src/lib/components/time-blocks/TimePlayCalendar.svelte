@@ -1,6 +1,7 @@
 <!-- apps/web/src/lib/components/time-blocks/TimePlayCalendar.svelte -->
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { browser } from '$app/environment';
 	import type { TimeBlockWithProject } from '@buildos/shared-types';
 	import { resolveBlockAccentColor } from '$lib/utils/time-block-colors';
 	import type { CalendarEvent } from '$lib/services/calendar-service';
@@ -444,6 +445,7 @@
 
 	// Fetch calendar events when date range or connection status changes
 	$effect(() => {
+		if (!browser) return;
 		if (days.length > 0) {
 			fetchCalendarEvents();
 		}

@@ -400,6 +400,56 @@ export class RailwayWorkerService {
 	}
 
 	/**
+	 * Queue a chat session classification job
+	 * This is a fire-and-forget operation that classifies chat sessions
+	 * by generating a title and extracting topics
+	 */
+	static async queueChatSessionClassification(
+		sessionId: string,
+		userId: string
+	): Promise<{ success: boolean; jobId?: string; error?: string }> {
+		// Skip if worker URL is not configured
+		if (!this.WORKER_URL) {
+			console.log('Chat classification skipped: Worker URL not configured');
+			return { success: false, error: 'Worker not configured' };
+		}
+
+		try {
+			const response = await fetch(`${this.WORKER_URL}/queue/chat/classify`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({
+					sessionId,
+					userId
+				}),
+				signal: AbortSignal.timeout(this.TIMEOUT)
+			});
+
+			// Handle conflict (already in progress) gracefully
+			if (response.status === 409) {
+				const data = await response.json();
+				console.log(`Chat classification already in progress: ${data.existingJobId}`);
+				return { success: true, jobId: data.existingJobId };
+			}
+
+			if (!response.ok) {
+				const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+				console.error('Chat classification queue failed:', error);
+				return { success: false, error: error?.error || `HTTP ${response.status}` };
+			}
+
+			const result = await response.json();
+			return { success: true, jobId: result.jobId };
+		} catch (error) {
+			// Silently fail for chat classification - it's a background task
+			console.error('Chat classification queue error:', error);
+			return { success: false, error: 'Network error' };
+		}
+	}
+
+	/**
 	 * Get all jobs for a user with pagination
 	 */
 	static async getUserJobs(

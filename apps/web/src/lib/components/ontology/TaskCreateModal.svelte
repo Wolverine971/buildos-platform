@@ -19,6 +19,7 @@
 	- Form Modal: /apps/web/src/lib/components/ui/FormModal.svelte
 -->
 <script lang="ts">
+	import { browser } from '$app/environment';
 	import { ChevronRight, Loader, Save, CheckSquare, Sparkles } from 'lucide-svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
@@ -81,9 +82,11 @@
 		}, {})
 	);
 
-	// Load templates when modal opens
+	// Load templates when modal opens (client-side only)
 	$effect(() => {
-		loadTemplates();
+		if (browser) {
+			loadTemplates();
+		}
 	});
 
 	async function loadTemplates() {
@@ -153,7 +156,7 @@
 		try {
 			const requestBody = {
 				project_id: projectId,
-				type_key: selectedTemplate?.type_key || 'task.basic',
+				type_key: selectedTemplate?.type_key || 'task.execute',
 				title: title.trim(),
 				description: description.trim() || null,
 				priority: Number(priority),
@@ -216,12 +219,50 @@
 
 <Modal
 	isOpen={true}
-	title={showTemplateSelection ? 'Create New Task' : 'Task Details'}
 	onClose={handleClose}
 	size="xl"
 	closeOnEscape={!isSaving}
+	showCloseButton={false}
 >
-	<div class="px-4 sm:px-6 py-6">
+	{#snippet header()}
+		<!-- Custom gradient header - grey/dark grey -->
+		<div
+			class="flex-shrink-0 bg-gradient-to-r from-gray-600 via-gray-700 to-gray-800 dark:from-gray-700 dark:via-gray-800 dark:to-gray-900 text-white px-3 py-3 sm:px-6 sm:py-5 flex items-start justify-between gap-2 sm:gap-4 dither-gradient"
+		>
+			<div class="space-y-1 sm:space-y-2 min-w-0 flex-1">
+				<p class="text-[10px] sm:text-xs font-semibold uppercase tracking-[0.3em] sm:tracking-[0.4em] text-white/70">
+					{showTemplateSelection ? 'New Task' : 'Task Details'}
+				</p>
+				<h2 class="text-lg sm:text-2xl font-bold leading-tight truncate">
+					{showTemplateSelection ? 'Select a Template' : (title || 'Define your task')}
+				</h2>
+				{#if !showTemplateSelection && selectedTemplate}
+					<div class="flex flex-wrap items-center gap-1.5 sm:gap-3 text-xs sm:text-sm">
+						<span class="px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-semibold bg-white/20">{selectedTemplate.name}</span>
+					</div>
+				{/if}
+			</div>
+			<Button
+				variant="ghost"
+				size="sm"
+				onclick={handleClose}
+				class="text-white/80 hover:text-white shrink-0 !p-1.5 sm:!p-2"
+				disabled={isSaving}
+			>
+				<svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						stroke-width="2"
+						d="M6 18L18 6M6 6l12 12"
+					></path>
+				</svg>
+			</Button>
+		</div>
+	{/snippet}
+
+	{#snippet children()}
+	<div class="px-3 py-3 sm:px-6 sm:py-6">
 		<!-- Horizontal Slide Animation Between Views -->
 		<div class="relative overflow-hidden" style="min-height: 400px;">
 			{#key showTemplateSelection}
@@ -238,9 +279,9 @@
 								class="flex items-center gap-3 pb-4 border-b border-gray-200 dark:border-gray-700"
 							>
 								<div
-									class="p-2 rounded-lg bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-950/50 dark:to-purple-950/50 dither-soft"
+									class="p-2 rounded bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-950/50 dark:to-purple-950/50 dither-soft"
 								>
-									<Sparkles class="w-5 h-5 text-blue-600 dark:text-blue-400" />
+									<Sparkles class="w-5 h-5 text-accent-blue" />
 								</div>
 								<div>
 									<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
@@ -254,7 +295,9 @@
 
 							{#if isLoadingTemplates}
 								<div class="flex items-center justify-center py-16">
-									<Loader class="w-8 h-8 animate-spin text-gray-400" />
+									<Loader
+										class="w-8 h-8 animate-spin text-gray-400 dark:text-gray-500"
+									/>
 								</div>
 							{:else if templateError}
 								<div class="text-center py-12">
@@ -270,9 +313,10 @@
 									{#each Object.entries(templateCategories) as [category, categoryTemplates]}
 										<div>
 											<h3
-												class="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-3 flex items-center gap-2"
+												class="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide mb-3 flex items-center gap-2"
 											>
-												<span class="w-1.5 h-1.5 bg-blue-500 rounded-full"
+												<span
+													class="w-1.5 h-1.5 bg-accent-blue rounded-full"
 												></span>
 												{category}
 											</h3>
@@ -281,18 +325,18 @@
 													<button
 														type="button"
 														onclick={() => selectTemplate(template)}
-														class="p-4 rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-blue-500 dark:hover:border-blue-400 hover:bg-gradient-to-br hover:from-blue-50 hover:to-indigo-50 dark:hover:from-blue-950/20 dark:hover:to-indigo-950/20 transition-all duration-300 text-left group shadow-sm hover:shadow-md dither-fade-hover"
+														class="card-industrial p-4 rounded text-left group hover:border-accent-orange transition-all duration-200"
 													>
 														<div
 															class="flex items-start justify-between mb-2"
 														>
 															<h4
-																class="font-semibold text-gray-900 dark:text-white group-hover:text-blue-700 dark:group-hover:text-blue-300 transition-colors"
+																class="font-semibold text-gray-900 dark:text-white group-hover:text-accent-blue transition-colors"
 															>
 																{template.name}
 															</h4>
 															<ChevronRight
-																class="w-5 h-5 text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 flex-shrink-0 transition-transform group-hover:translate-x-0.5"
+																class="w-5 h-5 text-gray-400 group-hover:text-accent-blue flex-shrink-0 transition-transform group-hover:translate-x-0.5"
 															/>
 														</div>
 														{#if template.metadata?.description}
@@ -304,10 +348,10 @@
 														{/if}
 														{#if template.metadata?.typical_duration}
 															<div
-																class="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 bg-gray-50 dark:bg-gray-700/50 rounded-full"
+																class="mt-2 inline-flex items-center gap-1.5 px-2 py-1 bg-surface-panel rounded"
 															>
 																<span
-																	class="text-xs font-medium text-gray-700 dark:text-gray-300"
+																	class="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide"
 																>
 																	{template.metadata
 																		.typical_duration}
@@ -322,7 +366,7 @@
 
 									{#if templates.length === 0}
 										<div
-											class="text-center py-12 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl"
+											class="text-center py-12 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded"
 										>
 											<CheckSquare
 												class="w-12 h-12 text-gray-400 mx-auto mb-3"
@@ -341,16 +385,14 @@
 							<!-- Selected Template Badge -->
 							{#if selectedTemplate}
 								<div
-									class="rounded-xl border border-blue-200 dark:border-blue-800 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 p-4 dither-soft"
+									class="rounded border border-blue-200 dark:border-blue-800 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 p-4 dither-soft"
 								>
 									<div class="flex items-center justify-between gap-3">
 										<div class="flex items-center gap-3 flex-1 min-w-0">
 											<div
-												class="p-2 rounded-lg bg-white/80 dark:bg-gray-800/80 shadow-sm"
+												class="p-2 rounded bg-surface-elevated shadow-subtle"
 											>
-												<CheckSquare
-													class="w-4 h-4 text-blue-600 dark:text-blue-400"
-												/>
+												<CheckSquare class="w-4 h-4 text-accent-blue" />
 											</div>
 											<div class="flex-1 min-w-0">
 												<h4
@@ -527,7 +569,7 @@
 
 							<!-- Scheduled Section -->
 							<div
-								class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-800/50"
+								class="border border-gray-200 dark:border-gray-700 rounded p-4 bg-surface-panel dither-soft"
 							>
 								<div class="flex items-center gap-2 mb-3">
 									<span class="text-base">📅</span>
@@ -546,7 +588,7 @@
 										bind:value={dueAt}
 										disabled={isSaving}
 										size="md"
-										class="border-gray-200/60 bg-white/85 dark:border-gray-600/60 dark:bg-gray-900/60"
+										class="border-gray-200 dark:border-gray-600 bg-surface-elevated focus:ring-2 focus:ring-accent-orange"
 									/>
 								</FormField>
 								{#if dueAt}
@@ -564,7 +606,7 @@
 
 							{#if error}
 								<div
-									class="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg"
+									class="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded"
 								>
 									<p class="text-sm text-red-700 dark:text-red-300">
 										{error}
@@ -577,11 +619,12 @@
 			{/key}
 		</div>
 	</div>
+	{/snippet}
 
-	<!-- Footer Actions -->
-	<svelte:fragment slot="footer">
+	<!-- Footer Actions - buttons on one row, smaller on mobile -->
+	{#snippet footer()}
 		<div
-			class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 px-4 sm:px-6 py-3 sm:py-4 border-t border-gray-200 dark:border-gray-700 bg-gradient-to-r from-gray-50 to-slate-50 dark:from-gray-900/50 dark:to-gray-800/50 dither-surface"
+			class="flex flex-row items-center justify-between gap-2 sm:gap-4 p-2 sm:p-6 border-t border-gray-200 dark:border-gray-700 bg-surface-panel dither-surface"
 		>
 			{#if showTemplateSelection}
 				<div class="flex-1"></div>
@@ -590,7 +633,7 @@
 					variant="ghost"
 					size="sm"
 					onclick={handleClose}
-					class="w-full sm:w-auto"
+					class="text-xs sm:text-sm px-2 sm:px-4"
 				>
 					Cancel
 				</Button>
@@ -601,18 +644,19 @@
 					size="sm"
 					onclick={handleBack}
 					disabled={isSaving}
-					class="w-full sm:w-auto"
+					class="text-xs sm:text-sm px-2 sm:px-4"
 				>
-					← Back to Templates
+					<span class="hidden sm:inline">← Back</span>
+					<span class="sm:hidden">←</span>
 				</Button>
-				<div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+				<div class="flex flex-row items-center gap-2">
 					<Button
 						type="button"
 						variant="ghost"
 						size="sm"
 						onclick={handleClose}
 						disabled={isSaving}
-						class="w-full sm:w-auto"
+						class="text-xs sm:text-sm px-2 sm:px-4"
 					>
 						Cancel
 					</Button>
@@ -622,18 +666,15 @@
 						size="sm"
 						disabled={isSaving || !title.trim()}
 						onclick={handleSubmit}
-						class="w-full sm:w-auto"
+						loading={isSaving}
+						class="text-xs sm:text-sm px-2 sm:px-4"
 					>
-						{#if isSaving}
-							<Loader class="w-4 h-4 animate-spin" />
-							Creating...
-						{:else}
-							<Save class="w-4 h-4" />
-							Create Task
-						{/if}
+						<Save class="w-3 h-3 sm:w-4 sm:h-4" />
+						<span class="hidden sm:inline">Create Task</span>
+						<span class="sm:hidden">Create</span>
 					</Button>
 				</div>
 			{/if}
 		</div>
-	</svelte:fragment>
+	{/snippet}
 </Modal>

@@ -66,15 +66,13 @@ export const TOOL_CATEGORIES = {
 			'delete_onto_task',
 			'delete_onto_goal',
 			'delete_onto_plan',
-			'delete_onto_document',
-			'suggest_template',
-			'request_template_creation'
+			'delete_onto_document'
 		],
 		averageTokens: 400,
 		costTier: 'medium'
 	},
 	utility: {
-		tools: ['get_field_info'],
+		tools: ['get_field_info', 'find_or_create_template'],
 		averageTokens: 80,
 		costTier: 'low'
 	},
@@ -114,12 +112,7 @@ const TOOL_GROUPS: Record<ToolContextScope, string[]> = {
 		'list_onto_templates',
 		'search_onto_documents'
 	],
-	project_create: [
-		'list_onto_templates',
-		'suggest_template',
-		'request_template_creation',
-		'create_onto_project'
-	],
+	project_create: ['list_onto_templates', 'find_or_create_template', 'create_onto_project'],
 	project: [
 		'list_onto_projects',
 		'search_ontology',
@@ -130,14 +123,13 @@ const TOOL_GROUPS: Record<ToolContextScope, string[]> = {
 		'list_onto_goals',
 		'list_onto_documents',
 		'list_onto_templates',
+		'find_or_create_template',
 		'get_onto_project_details',
 		'get_onto_task_details',
 		'get_onto_goal_details',
 		'get_onto_plan_details',
 		'get_onto_document_details',
 		'search_onto_documents',
-		'suggest_template',
-		'request_template_creation',
 		'list_task_documents',
 		'create_onto_task',
 		'create_onto_goal',
@@ -227,6 +219,7 @@ export function extractTools(names: string[]): ChatToolDefinition[] {
 
 export const ONTOLOGY_TOOLS = extractTools([
 	'list_onto_templates',
+	'find_or_create_template',
 	'list_onto_projects',
 	'search_onto_projects',
 	'search_ontology',

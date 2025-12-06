@@ -16,10 +16,19 @@
 		template: Template;
 		onViewDetails?: () => void;
 		onCreateProject?: () => void;
+		onDelete?: () => void;
 		showRealmBadge?: boolean; // Show realm instead of scope badge
+		isAdmin?: boolean; // Show admin actions like delete
 	}
 
-	let { template, onViewDetails, onCreateProject, showRealmBadge = false }: Props = $props();
+	let {
+		template,
+		onViewDetails,
+		onCreateProject,
+		onDelete,
+		showRealmBadge = false,
+		isAdmin = false
+	}: Props = $props();
 
 	// Scope color mapping
 	const scopeColors = {
@@ -65,31 +74,36 @@
 	function handleCreateProject() {
 		onCreateProject?.();
 	}
+
+	function handleDelete(event: MouseEvent) {
+		event.stopPropagation();
+		onDelete?.();
+	}
 </script>
 
 <!-- Using Card component system for consistency -->
 <Card
 	variant="elevated"
 	padding="none"
-	class="group transition-all duration-300 hover:border-blue-400 dark:hover:border-blue-500 hover:shadow-lg dark:hover:shadow-blue-900/20 hover:-translate-y-1"
+	class="group transition-all duration-300 hover:border-accent-orange dark:hover:border-accent-orange hover:shadow-elevated hover:-translate-y-1"
 >
 	<CardBody padding="md">
 		<!-- Card Header -->
 		<div class="flex items-start justify-between gap-4 mb-4">
 			<div class="flex-1 min-w-0">
 				<h3
-					class="text-lg font-semibold text-gray-900 dark:text-white mb-1 truncate group-hover:text-blue-700 dark:group-hover:text-blue-400 transition-colors"
+					class="text-lg font-semibold text-slate-900 dark:text-white mb-1 truncate group-hover:text-accent-orange transition-colors"
 				>
 					{template.name}
 				</h3>
-				<p class="text-xs font-mono text-gray-500 dark:text-gray-400 truncate">
+				<p class="text-xs font-mono text-slate-600 dark:text-slate-400 truncate">
 					{template.type_key}
 				</p>
 			</div>
 
 			<!-- Scope/Realm Badge -->
 			<span
-				class="px-2.5 py-1 rounded-md text-xs font-medium capitalize whitespace-nowrap flex-shrink-0 {badgeColorClass}"
+				class="px-2.5 py-1 rounded text-xs font-medium capitalize whitespace-nowrap flex-shrink-0 {badgeColorClass}"
 			>
 				{badgeText}
 			</span>
@@ -97,7 +111,7 @@
 
 		<!-- Description -->
 		{#if template.metadata?.description}
-			<p class="text-sm text-gray-600 dark:text-gray-400 mb-4 line-clamp-2 leading-relaxed">
+			<p class="text-sm text-slate-700 dark:text-slate-300 mb-4 line-clamp-2 leading-relaxed">
 				{template.metadata.description}
 			</p>
 		{/if}
@@ -106,21 +120,21 @@
 		<div class="flex flex-wrap gap-2 mb-4">
 			{#if !showRealmBadge && template.metadata?.realm}
 				<span
-					class="px-2.5 py-1 rounded-md text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 capitalize"
+					class="px-2.5 py-1 rounded text-xs font-medium bg-surface-clarity dark:bg-surface-elevated text-slate-700 dark:text-slate-300 capitalize border border-gray-200 dark:border-gray-700"
 				>
 					{template.metadata.realm}
 				</span>
 			{/if}
 			{#if template.metadata?.output_type}
 				<span
-					class="px-2.5 py-1 rounded-md text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 capitalize"
+					class="px-2.5 py-1 rounded text-xs font-medium bg-surface-clarity dark:bg-surface-elevated text-slate-700 dark:text-slate-300 capitalize border border-gray-200 dark:border-gray-700"
 				>
 					{template.metadata.output_type}
 				</span>
 			{/if}
 			{#if template.metadata?.typical_scale}
 				<span
-					class="px-2.5 py-1 rounded-md text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 capitalize"
+					class="px-2.5 py-1 rounded text-xs font-medium bg-surface-clarity dark:bg-surface-elevated text-slate-700 dark:text-slate-300 capitalize border border-gray-200 dark:border-gray-700"
 				>
 					{template.metadata.typical_scale}
 				</span>
@@ -129,7 +143,7 @@
 
 		<!-- FSM Info (if available) -->
 		{#if template.fsm}
-			<div class="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400 mb-4">
+			<div class="flex items-center gap-4 text-xs text-slate-600 dark:text-slate-400 mb-4">
 				<span class="flex items-center gap-1">
 					<svg
 						class="w-3.5 h-3.5"
@@ -170,7 +184,7 @@
 		<!-- Abstract Template Warning -->
 		{#if template.is_abstract}
 			<div
-				class="mb-4 px-3 py-2 bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-900/20 dark:to-yellow-900/20 border border-amber-200 dark:border-amber-800 rounded-lg dither-subtle"
+				class="mb-4 px-3 py-2 bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-900/20 dark:to-yellow-900/20 border border-amber-200 dark:border-amber-800 rounded dither-subtle"
 			>
 				<p class="text-xs text-amber-700 dark:text-amber-400 flex items-center gap-2">
 					<svg
@@ -194,7 +208,7 @@
 	</CardBody>
 
 	<!-- Actions in CardFooter -->
-	<CardFooter class="border-t border-gray-100 dark:border-gray-700">
+	<CardFooter class="border-t border-gray-200 dark:border-gray-700">
 		<div class="flex gap-2 w-full">
 			<Button
 				variant="outline"
@@ -216,6 +230,25 @@
 				>
 					Create →
 				</Button>
+			{/if}
+
+			{#if isAdmin && onDelete}
+				<button
+					type="button"
+					onclick={handleDelete}
+					class="flex items-center justify-center w-9 h-9 rounded border border-red-300 dark:border-red-800 bg-surface-clarity dark:bg-surface-elevated text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:border-red-400 dark:hover:border-red-700 transition-colors flex-shrink-0"
+					aria-label="Delete template"
+					title="Delete template"
+				>
+					<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+						/>
+					</svg>
+				</button>
 			{/if}
 		</div>
 	</CardFooter>

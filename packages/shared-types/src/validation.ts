@@ -13,7 +13,9 @@ import type {
 	SendSMSJobMetadata,
 	GenerateBriefEmailJobMetadata,
 	BriefGenerationProgress,
-	BriefGenerationStep
+	BriefGenerationStep,
+	ScheduleDailySMSJobMetadata,
+	ClassifyChatSessionJobMetadata
 } from './queue-types';
 import type { NotificationJobMetadata } from './notification.types';
 
@@ -463,6 +465,52 @@ export function validateNotificationMetadata(metadata: unknown): NotificationJob
 	return meta as unknown as NotificationJobMetadata;
 }
 
+export function validateScheduleDailySMSMetadata(metadata: unknown): ScheduleDailySMSJobMetadata {
+	if (!metadata || typeof metadata !== 'object') {
+		throw new ValidationError('metadata', metadata, 'object');
+	}
+
+	const meta = metadata as Record<string, unknown>;
+
+	if (typeof meta.userId !== 'string') {
+		throw new ValidationError('userId', meta.userId, 'string');
+	}
+
+	if (typeof meta.date !== 'string' || !isValidDateString(meta.date)) {
+		throw new ValidationError('date', meta.date, 'YYYY-MM-DD date string');
+	}
+
+	if (typeof meta.timezone !== 'string' || !isValidTimezone(meta.timezone)) {
+		throw new ValidationError('timezone', meta.timezone, 'valid IANA timezone');
+	}
+
+	if (typeof meta.leadTimeMinutes !== 'number' || meta.leadTimeMinutes < 0) {
+		throw new ValidationError('leadTimeMinutes', meta.leadTimeMinutes, 'non-negative number');
+	}
+
+	return meta as unknown as ScheduleDailySMSJobMetadata;
+}
+
+export function validateClassifyChatSessionMetadata(
+	metadata: unknown
+): ClassifyChatSessionJobMetadata {
+	if (!metadata || typeof metadata !== 'object') {
+		throw new ValidationError('metadata', metadata, 'object');
+	}
+
+	const meta = metadata as Record<string, unknown>;
+
+	if (typeof meta.sessionId !== 'string' || !isValidUUID(meta.sessionId)) {
+		throw new ValidationError('sessionId', meta.sessionId, 'valid UUID');
+	}
+
+	if (typeof meta.userId !== 'string' || !isValidUUID(meta.userId)) {
+		throw new ValidationError('userId', meta.userId, 'valid UUID');
+	}
+
+	return meta as unknown as ClassifyChatSessionJobMetadata;
+}
+
 // Main validation function
 export function validateJobMetadata<T extends QueueJobType>(
 	jobType: T,
@@ -491,6 +539,10 @@ export function validateJobMetadata<T extends QueueJobType>(
 			return validateGenerateBriefEmailMetadata(metadata) as JobMetadataMap[T];
 		case 'send_notification':
 			return validateNotificationMetadata(metadata) as JobMetadataMap[T];
+		case 'schedule_daily_sms':
+			return validateScheduleDailySMSMetadata(metadata) as JobMetadataMap[T];
+		case 'classify_chat_session':
+			return validateClassifyChatSessionMetadata(metadata) as JobMetadataMap[T];
 		case 'other':
 			return metadata as JobMetadataMap[T];
 		default:

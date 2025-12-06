@@ -5,7 +5,7 @@
  * Migration service aligned with agentic chat template discovery and property extraction patterns.
  *
  * Key improvements over legacy migration:
- * - Uses TemplateDiscoveryEngine (list + score + suggest pattern from agentic chat)
+ * - Uses FindOrCreateTemplateService (unified template discovery + creation)
  * - Uses PropertyExtractorEngine (intelligent type inference, detailed examples)
  * - 70% match threshold for template selection
  * - Validation pipeline for extracted properties
@@ -20,25 +20,30 @@ import type {
 	EnhancedProjectMigrationResult
 } from './enhanced-migration.types';
 import type { Facets } from '$lib/types/onto';
-import { TemplateDiscoveryEngine } from './template-discovery-engine';
+import {
+	FindOrCreateTemplateService,
+	type FindOrCreateResult
+} from '../find-or-create-template.service';
 import { PropertyExtractorEngine } from './property-extractor-engine';
+import { SchemaAutoRepairService } from './schema-auto-repair.service';
 import { SmartLLMService } from '$lib/services/smart-llm-service';
 import { ensureActorId } from '../ontology-projects.service';
 import { upsertLegacyMapping } from '../legacy-mapping.service';
-import { resolveTemplateWithClient } from '../template-resolver.service';
 
 const TEMPLATE_MATCH_THRESHOLD = 0.7; // 70% match required
 
 export class EnhancedProjectMigrator {
-	private readonly discoveryEngine: TemplateDiscoveryEngine;
+	private readonly templateService: FindOrCreateTemplateService;
 	private readonly extractorEngine: PropertyExtractorEngine;
+	private readonly schemaRepairService: SchemaAutoRepairService;
 
 	constructor(
 		private readonly client: TypedSupabaseClient,
 		private readonly llm: SmartLLMService
 	) {
-		this.discoveryEngine = new TemplateDiscoveryEngine(client, llm);
+		this.templateService = new FindOrCreateTemplateService(client, llm);
 		this.extractorEngine = new PropertyExtractorEngine(llm);
+		this.schemaRepairService = new SchemaAutoRepairService(client, llm);
 	}
 
 	/**
@@ -49,64 +54,54 @@ export class EnhancedProjectMigrator {
 		context: MigrationContext
 	): Promise<EnhancedProjectMigrationResult> {
 		try {
-			// 1. Template Discovery (agentic-chat-aligned)
+			// 1. Template Discovery + Creation (unified via FindOrCreateTemplateService)
 			const narrative = this.buildProjectNarrative(project);
 			const realm = this.inferRealm(project);
 
-			const templates = await this.discoveryEngine.listTemplates({
-				scope: 'project',
-				realm,
-				context: narrative,
-				limit: 20
-			});
-
-			// Check for 70% match threshold
-			const bestMatch = templates.find((t) => t.score >= TEMPLATE_MATCH_THRESHOLD);
-			let templateResult: any;
-
-			if (bestMatch) {
-				// Use existing template
-				templateResult = {
-					template: bestMatch.template,
-					created: false,
-					suggestion: null
-				};
-			} else {
-				// Suggest new template
-				const suggestion = await this.discoveryEngine.suggestTemplate({
+			let templateResult: FindOrCreateResult;
+			try {
+				templateResult = await this.templateService.findOrCreate({
 					scope: 'project',
-					narrative,
-					existingTemplates: templates,
-					userId: context.initiatedBy
+					context: narrative,
+					userId: context.initiatedBy,
+					realm,
+					matchThreshold: TEMPLATE_MATCH_THRESHOLD,
+					allowCreate: !context.dryRun
 				});
-
+			} catch (error) {
+				// If creation is disabled and no template found, return pending_review
 				if (context.dryRun) {
-					// Dry-run: return suggestion without creating
 					return {
 						status: 'pending_review',
 						legacyProjectId: project.id,
-						templateSuggestion: suggestion,
-						message: 'Template suggestion created for review (dry-run mode)'
+						templateSuggestion: undefined,
+						message: `No matching template found (dry-run mode): ${error instanceof Error ? error.message : 'Unknown error'}`
 					};
 				}
-
-				// Create template (allowCreate = true for non-dry-run)
-				const ensureResult = await this.discoveryEngine.ensureTemplate({
-					typeKey: suggestion.typeKey,
-					suggestion,
-					allowCreate: true,
-					userId: context.initiatedBy
-				});
-
-				templateResult = ensureResult;
+				throw error;
 			}
 
-			// 2. Resolve template with inheritance
-			const resolvedTemplate = await resolveTemplateWithClient(
-				this.client,
-				templateResult.template.type_key,
-				'project'
-			);
+			// If dry-run and a suggestion was generated (but not created)
+			if (context.dryRun && templateResult.suggestion && !templateResult.created) {
+				return {
+					status: 'pending_review',
+					legacyProjectId: project.id,
+					templateSuggestion: {
+						typeKey: templateResult.suggestion.typeKey,
+						name: templateResult.suggestion.name,
+						description: templateResult.suggestion.description,
+						parentTypeKey: templateResult.suggestion.parentTypeKey ?? null,
+						matchScore: templateResult.suggestion.matchScore,
+						rationale: templateResult.suggestion.rationale,
+						properties: templateResult.suggestion.properties,
+						workflowStates: templateResult.suggestion.workflowStates
+					},
+					message: 'Template suggestion created for review (dry-run mode)'
+				};
+			}
+
+			// 2. Use resolved template (already resolved by findOrCreate)
+			const resolvedTemplate = templateResult.resolvedTemplate;
 
 			if (!resolvedTemplate) {
 				throw new Error(`Failed to resolve template ${templateResult.template.type_key}`);
@@ -120,13 +115,94 @@ export class EnhancedProjectMigrator {
 				userId: context.initiatedBy
 			});
 
-			// 4. Validation
-			const validation = await this.extractorEngine.validateProperties(
-				propResult.props,
+			// 4. Merge with defaults FIRST (before validation)
+			// This ensures template defaults fill in missing required fields
+			// before validation rejects them. The user-extracted props override defaults.
+			const mergedProps = await this.extractorEngine.mergeWithDefaults(
+				resolvedTemplate.default_props ?? {},
+				propResult.props
+			);
+
+			// 5. Fill null required fields with schema defaults if available
+			// This handles cases where extraction returns null for required fields
+			// that have default values defined in the schema
+			const finalProps = this.fillSchemaDefaults(mergedProps, resolvedTemplate.schema);
+
+			// 6. Validation (now runs on merged props with defaults applied)
+			let validation = await this.extractorEngine.validateProperties(
+				finalProps,
 				resolvedTemplate.schema
 			);
 
+			// 6b. If validation fails, attempt auto-repair of schema/default mismatches
+			let repairedProps = finalProps;
 			if (!validation.valid) {
+				console.warn(
+					`[EnhancedProjectMigrator] Initial validation failed for ${project.id}:`,
+					'\n  Template:',
+					templateResult.template.type_key,
+					'\n  Errors:',
+					validation.errors,
+					'\n  Attempting auto-repair...'
+				);
+
+				// Attempt LLM-powered schema auto-repair
+				const repairResult = await this.schemaRepairService.attemptRepair({
+					templateId: templateResult.template.id,
+					typeKey: templateResult.template.type_key,
+					schema: resolvedTemplate.schema,
+					defaultProps: resolvedTemplate.default_props ?? {},
+					extractedProps: finalProps,
+					validationErrors: validation.errors,
+					userId: context.initiatedBy,
+					persistChanges: !context.dryRun // Only persist repairs in live mode
+				});
+
+				if (repairResult.success && repairResult.repairs.length > 0) {
+					console.info(
+						`[EnhancedProjectMigrator] Schema auto-repair successful for ${project.id}:`,
+						'\n  Repairs:',
+						repairResult.repairs.map((r) => `${r.field}: ${JSON.stringify(r.originalDefault)} -> ${JSON.stringify(r.newDefault)} (${r.rationale})`)
+					);
+
+					// Re-apply repaired defaults to props
+					repairedProps = this.schemaRepairService.repairExtractedProps(
+						finalProps,
+						repairResult.repairedSchema
+					);
+
+					// Re-validate with repaired schema
+					validation = await this.extractorEngine.validateProperties(
+						repairedProps,
+						repairResult.repairedSchema
+					);
+
+					if (validation.valid) {
+						console.info(
+							`[EnhancedProjectMigrator] Validation passed after auto-repair for ${project.id}`
+						);
+					}
+				}
+			}
+
+			if (!validation.valid) {
+				console.warn(
+					`[EnhancedProjectMigrator] Validation failed for ${project.id} (after repair attempt):`,
+					'\n  Template:',
+					templateResult.template.type_key,
+					'\n  Errors:',
+					validation.errors,
+					'\n  Warnings:',
+					validation.warnings,
+					'\n  Props extracted:',
+					JSON.stringify(propResult.props, null, 2),
+					'\n  Props after defaults:',
+					JSON.stringify(repairedProps, null, 2),
+					'\n  Schema required:',
+					resolvedTemplate.schema?.required ?? [],
+					'\n  Schema properties:',
+					Object.keys(resolvedTemplate.schema?.properties ?? {})
+				);
 				return {
 					status: 'validation_failed',
 					legacyProjectId: project.id,
@@ -135,29 +211,33 @@ export class EnhancedProjectMigrator {
 				};
 			}
 
-			// 5. Merge with defaults
-			const finalProps = await this.extractorEngine.mergeWithDefaults(
-				resolvedTemplate.default_props ?? {},
-				propResult.props
-			);
-
-			// 6. If dry-run, return preview
+			// 7. If dry-run, return preview
 			if (context.dryRun) {
 				return {
 					status: 'pending_review',
 					legacyProjectId: project.id,
 					templateUsed: templateResult.template.type_key,
 					templateCreated: templateResult.created,
-					propsExtracted: finalProps,
+					propsExtracted: repairedProps,
 					propsConfidence: propResult.confidence,
 					message: 'Dry-run: migration preview ready'
 				};
 			}
 
-			// 7. Create onto_project
+			// 8. Create onto_project
 			const actorId = await ensureActorId(this.client, project.user_id);
 			const stateKey = this.mapStatusToState(project.status);
 			const facets = propResult.facets ?? this.deriveProjectFacets(project);
+
+			// Build props with facets (facet_* columns are GENERATED from props->'facets')
+			const propsWithFacets = {
+				...(repairedProps as Record<string, unknown>),
+				facets: {
+					context: facets.context ?? null,
+					scale: facets.scale ?? null,
+					stage: facets.stage ?? null
+				}
+			};
 
 			const { data, error } = await this.client
 				.from('onto_projects')
@@ -167,14 +247,11 @@ export class EnhancedProjectMigrator {
 					type_key: templateResult.template.type_key,
 					state_key: stateKey,
 					also_types: [],
-					props: finalProps as Json,
+					props: propsWithFacets as Json,
 					start_at: project.start_date,
 					end_at: project.end_date,
 					created_by: actorId,
-					org_id: null,
-					facet_context: facets.context ?? null,
-					facet_scale: facets.scale ?? null,
-					facet_stage: facets.stage ?? null
+					org_id: null
 				})
 				.select('id')
 				.single();
@@ -184,8 +261,11 @@ export class EnhancedProjectMigrator {
 					`Failed to create onto_project for ${project.id}: ${error?.message}`
 				);
 			}
+			console.info(
+				`[EnhancedProjectMigrator] Created onto_project ${data.id} for legacy ${project.id} (typeKey=${templateResult.template.type_key})`
+			);
 
-			// 8. Update legacy mapping
+			// 9. Update legacy mapping
 			await upsertLegacyMapping(this.client, {
 				legacyTable: 'projects',
 				legacyId: project.id,
@@ -201,6 +281,9 @@ export class EnhancedProjectMigrator {
 					enhanced_mode: true
 				}
 			});
+			console.info(
+				`[EnhancedProjectMigrator] Legacy mapping recorded for ${project.id} -> ${data.id} (run=${context.runId})`
+			);
 
 			return {
 				status: 'completed',
@@ -208,7 +291,7 @@ export class EnhancedProjectMigrator {
 				ontoProjectId: data.id,
 				templateUsed: templateResult.template.type_key,
 				templateCreated: templateResult.created,
-				propsExtracted: finalProps,
+				propsExtracted: repairedProps,
 				propsConfidence: propResult.confidence,
 				message: 'Project migrated successfully with enhanced mode'
 			};
@@ -223,13 +306,8 @@ export class EnhancedProjectMigrator {
 		}
 	}
 
-	/**
-	 * Clear template discovery cache
-	 * Useful between migration runs or when template catalog changes
-	 */
-	clearCache(): void {
-		this.discoveryEngine.clearCache();
-	}
+	// Note: Template caching is handled internally by FindOrCreateTemplateService
+	// No explicit cache clearing needed
 
 	// ============================================
 	// PRIVATE HELPER METHODS
@@ -369,6 +447,94 @@ export class EnhancedProjectMigrator {
 				return 'archived';
 			default:
 				return 'discovery';
+		}
+	}
+
+	/**
+	 * Fill null values for required fields using schema-defined defaults.
+	 *
+	 * This handles the case where:
+	 * 1. A field is marked as required in the schema
+	 * 2. The LLM extraction returned null (no value found in legacy data)
+	 * 3. The schema defines a default value for the field
+	 *
+	 * In this case, we use the schema default to satisfy the required constraint.
+	 * This allows migration to succeed when legacy data is incomplete but the
+	 * template provides sensible defaults.
+	 *
+	 * For fields without a schema default, we use type-appropriate fallbacks:
+	 * - number/integer: 0
+	 * - string: "" (empty string)
+	 * - boolean: false
+	 * - array: []
+	 * - object: {}
+	 */
+	private fillSchemaDefaults(
+		props: Record<string, unknown>,
+		schema: any
+	): Record<string, unknown> {
+		if (!schema?.properties) {
+			return props;
+		}
+
+		const result = { ...props };
+		const requiredFields: string[] = Array.isArray(schema.required) ? schema.required : [];
+		const properties = schema.properties ?? {};
+
+		for (const field of requiredFields) {
+			const fieldValue = result[field];
+			const fieldSchema = properties[field];
+
+			// Skip if field already has a non-null value
+			if (fieldValue !== null && fieldValue !== undefined) {
+				continue;
+			}
+
+			// Try schema default first
+			if (fieldSchema?.default !== undefined) {
+				result[field] = fieldSchema.default;
+				console.info(
+					`[EnhancedProjectMigrator] Filled required field '${field}' with schema default: ${JSON.stringify(fieldSchema.default)}`
+				);
+				continue;
+			}
+
+			// Fallback to type-appropriate defaults for migration compatibility
+			const fieldType = fieldSchema?.type;
+			const fallbackDefault = this.getTypeFallbackDefault(fieldType);
+
+			if (fallbackDefault !== undefined) {
+				result[field] = fallbackDefault;
+				console.warn(
+					`[EnhancedProjectMigrator] Filled required field '${field}' with type fallback (${fieldType}): ${JSON.stringify(fallbackDefault)}. ` +
+						`Consider adding a schema default for this field in the template.`
+				);
+			}
+		}
+
+		return result;
+	}
+
+	/**
+	 * Get a type-appropriate fallback default value for migration compatibility.
+	 * Used when a required field has no schema default and the extracted value is null.
+	 */
+	private getTypeFallbackDefault(fieldType: string | undefined): unknown {
+		switch (fieldType) {
+			case 'number':
+			case 'integer':
+				return 0;
+			case 'string':
+				return '';
+			case 'boolean':
+				return false;
+			case 'array':
+				return [];
+			case 'object':
+				return {};
+			default:
+				// Unknown type - don't provide a fallback
+				return undefined;
 		}
 	}
 }

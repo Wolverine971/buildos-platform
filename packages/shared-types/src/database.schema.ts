@@ -1,5 +1,5 @@
 // Lightweight database schema - auto-generated from database.types.ts
-// Generated on: 2025-11-21T17:09:31.778Z
+// Generated on: 2025-12-05T20:57:20.195Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -447,6 +447,7 @@ export type DatabaseSchema = {
 		archived_at: string | null;
 		auto_accept_operations: boolean | null;
 		auto_title: string | null;
+		chat_topics: string[] | null;
 		chat_type: string | null;
 		compressed_at: string | null;
 		context_type: string;
@@ -1152,7 +1153,6 @@ export type DatabaseSchema = {
 	};
 	onto_projects: {
 		also_types: string[] | null;
-		context_document_id: string | null;
 		created_at: string;
 		created_by: string;
 		description: string | null;
@@ -1215,13 +1215,13 @@ export type DatabaseSchema = {
 		due_at: string | null;
 		facet_scale: string | null;
 		id: string;
-		plan_id: string | null;
 		priority: number | null;
 		project_id: string;
 		props: Json;
 		search_vector: unknown;
 		state_key: string;
 		title: string;
+		type_key: string;
 		updated_at: string;
 	};
 	onto_templates: {

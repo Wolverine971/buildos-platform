@@ -14,19 +14,30 @@ import { getLegacyMapping, upsertLegacyMapping } from './legacy-mapping.service'
 import { EnhancedTaskMigrator } from './migration/enhanced-task-migrator';
 import { SmartLLMService } from '$lib/services/smart-llm-service';
 import type { MigrationContext } from './migration/enhanced-migration.types';
+import {
+	BatchTaskMigrationService,
+	type BatchMigrationResult
+} from './batch-task-migration.service';
 
 export type LegacyTaskRow = Database['public']['Tables']['tasks']['Row'];
 
+/** Minimum task count to use batch migration (default: 5) */
+const BATCH_MIGRATION_THRESHOLD = 5;
+
 export class TaskMigrationService {
-	private readonly enhancedMigrator: EnhancedTaskMigrator;
+	private readonly enhancedMigrator: EnhancedTaskMigrator | undefined;
+	private readonly batchMigrator: BatchTaskMigrationService | undefined;
+	private readonly llmService: SmartLLMService | undefined;
 
 	constructor(
 		private readonly client: TypedSupabaseClient,
 		llmService?: SmartLLMService
 	) {
-		// Initialize enhanced migrator if LLM service provided
+		this.llmService = llmService;
+		// Always initialize enhanced migrator when LLM service is available
 		if (llmService) {
 			this.enhancedMigrator = new EnhancedTaskMigrator(client, llmService);
+			this.batchMigrator = new BatchTaskMigrationService(client, llmService);
 		}
 	}
 
@@ -37,7 +48,8 @@ export class TaskMigrationService {
 		context: MigrationServiceContext,
 		phasePlanMapping?: Record<string, string | null>
 	): Promise<TaskMigrationBatchResult> {
-		const tasks = await this.fetchTasks(projectId);
+		const skipCompleted = context.skipCompletedTasks ?? true;
+		const tasks = await this.fetchTasks(projectId, { skipCompleted });
 		const taskIds = tasks.map((task) => task.id);
 		const phaseMap = await this.buildTaskPhaseMap(taskIds);
 		const uniquePhaseIds = Array.from(
@@ -68,6 +80,91 @@ export class TaskMigrationService {
 				summary,
 				preview: this.buildPreview(summary, results)
 			};
+		}
+
+		// ========== BATCH MIGRATION PATH ==========
+		// Use batch migration for projects with 5+ tasks and an onto project
+		const useBatchMigration =
+			this.batchMigrator && ontoProjectId && tasks.length >= BATCH_MIGRATION_THRESHOLD;
+
+		if (useBatchMigration) {
+			console.info(
+				`[TaskMigration] Using BATCH migration for ${tasks.length} tasks in project ${projectId}`
+			);
+
+			try {
+				// Build task-to-phase mapping for per-task plan resolution
+				// This fixes the bug where all tasks got assigned to the first phase's plan
+				const taskToPhaseMapping: Record<string, string | null> = {};
+				for (const task of tasks) {
+					taskToPhaseMapping[task.id] = phaseMap[task.id] ?? null;
+				}
+
+				const batchResult = await this.batchMigrator!.migrateProjectTasks(
+					tasks,
+					{
+						...context,
+						enhancedMode: true,
+						templateConfidenceThreshold: 0.7,
+						propsConfidenceThreshold: 0.6,
+						cacheEnabled: true
+					},
+					{
+						projectId: ontoProjectId!,
+						// Pass the full mappings for correct per-task plan resolution
+						phaseToPlanMapping: resolvedPhasePlanMapping,
+						taskToPhaseMapping,
+						actorId,
+						batchSize: 20,
+						allowTemplateCreation: !context.dryRun,
+						dryRun: context.dryRun
+					}
+				);
+
+				// Convert batch result to TaskMigrationBatchResult format
+				return this.convertBatchResult(
+					batchResult,
+					tasks,
+					projectId,
+					ontoProjectId,
+					phaseMap,
+					phaseMetadata,
+					resolvedPhasePlanMapping,
+					eventCounts,
+					context
+				);
+			} catch (error) {
+				const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+				console.error(
+					'[TaskMigration] Batch migration failed, falling back to per-task:',
+					error
+				);
+
+				// ========== LOG BATCH FALLBACK ==========
+				// Record the fallback in migration_log for audit trail
+				try {
+					await this.client.from('migration_log').insert({
+						run_id: context.runId,
+						batch_id: context.batchId ?? null,
+						entity_type: 'batch_fallback',
+						entity_id: projectId,
+						status: 'failed',
+						legacy_payload: { taskCount: tasks.length },
+						message: `Batch migration failed, falling back to per-task: ${errorMessage}`,
+						metadata: {
+							projectId,
+							ontoProjectId,
+							taskCount: tasks.length,
+							error: errorMessage,
+							fallbackReason: 'batch_exception'
+						}
+					});
+				} catch (logError) {
+					console.error('[TaskMigration] Failed to log batch fallback:', logError);
+				}
+
+				// Fall through to per-task migration below
+			}
 		}
 
 		if (!ontoProjectId) {
@@ -121,203 +218,43 @@ export class TaskMigrationService {
 			};
 		}
 
-		for (const task of tasks) {
-			// Check if enhanced mode is enabled
-			const enhancedMode =
-				process.env.MIGRATION_ENHANCED_TASKS === 'true' && this.enhancedMigrator;
+		// Process tasks in parallel batches for better performance
+		const concurrency = context.taskConcurrency ?? 5;
+		const taskBatches = this.chunkArray(tasks, concurrency);
 
-			const classification = this.classifyTask(task);
-			const phaseId = phaseMap[task.id] ?? null;
-			const suggestedPlanId = phaseId ? (resolvedPhasePlanMapping[phaseId] ?? null) : null;
-			const existingMapping = await getLegacyMapping(this.client, 'tasks', task.id);
+		for (const batch of taskBatches) {
+			const batchResults = await Promise.all(
+				batch.map((task) =>
+					this.processSingleTask(task, {
+						ontoProjectId,
+						actorId,
+						context,
+						phaseMap,
+						resolvedPhasePlanMapping,
+						phaseMetadata,
+						eventCounts
+					})
+				)
+			);
 
-			if (existingMapping?.onto_id) {
-				results.push({
-					legacyTaskId: task.id,
-					ontoTaskId: existingMapping.onto_id,
-					phaseId,
-					suggestedOntoPlanId: suggestedPlanId,
-					recommendedTypeKey: classification.typeKey,
-					status: 'completed',
-					notes: 'Task already migrated.',
-					classification
-				});
-				mappings[task.id] = existingMapping.onto_id;
-				summary.alreadyMigrated += 1;
-				continue;
-			}
+			// Aggregate batch results
+			for (const result of batchResults) {
+				results.push(result.record);
+				mappings[result.record.legacyTaskId] = result.ontoId;
 
-			// Use enhanced migrator if enabled
-			if (enhancedMode && ontoProjectId) {
-				const enhancedResult = await this.migrateTaskEnhanced(task, context, {
-					ontoProjectId,
-					ontoPlanId: suggestedPlanId,
-					actorId
-				});
-
-				// Convert to legacy result format
-				results.push({
-					legacyTaskId: task.id,
-					title: task.title,
-					legacyStatus: task.status,
-					ontoTaskId: enhancedResult.ontoTaskId ?? null,
-					phaseId,
-					phaseName: phaseId ? (phaseMetadata.get(phaseId) ?? null) : null,
-					suggestedOntoPlanId: suggestedPlanId,
-					recommendedTypeKey: enhancedResult.templateUsed ?? classification.typeKey,
-					recommendedStateKey: this.mapTaskState(task.status),
-					dueAt: this.resolveDueAt(task),
-					priority: this.mapPriority(task.priority),
-					facetScale: classification.requiresDeepWork ? 'medium' : 'small',
-					calendarEventCount: eventCounts.get(task.id) ?? 0,
-					status: this.mapEnhancedStatus(enhancedResult.status),
-					notes: enhancedResult.message,
-					classification,
-					proposedPayload: {} as Json
-				});
-
-				mappings[task.id] = enhancedResult.ontoTaskId ?? null;
-
-				if (enhancedResult.status === 'completed') {
-					summary.readyToMigrate += 1;
-				} else if (enhancedResult.status === 'failed') {
-					summary.blocked += 1;
+				// Update summary counts
+				switch (result.summaryType) {
+					case 'alreadyMigrated':
+						summary.alreadyMigrated += 1;
+						break;
+					case 'readyToMigrate':
+						summary.readyToMigrate += 1;
+						break;
+					case 'blocked':
+						summary.blocked += 1;
+						break;
 				}
-
-				continue;
 			}
-
-			if (context.dryRun) {
-				const recommendedStateKey = this.mapTaskState(task.status);
-				const dueAt = this.resolveDueAt(task);
-				const priority = this.mapPriority(task.priority);
-				const facetScale = classification.requiresDeepWork ? 'medium' : 'small';
-				const proposedPayload = this.buildProposedPayload({
-					task,
-					classification,
-					recommendedStateKey,
-					dueAt,
-					priority,
-					facetScale,
-					suggestedPlanId
-				});
-
-				results.push({
-					legacyTaskId: task.id,
-					title: task.title,
-					legacyStatus: task.status,
-					ontoTaskId: null,
-					phaseId,
-					phaseName: phaseId ? (phaseMetadata.get(phaseId) ?? null) : null,
-					suggestedOntoPlanId: suggestedPlanId,
-					recommendedTypeKey: classification.typeKey,
-					recommendedStateKey,
-					dueAt,
-					priority,
-					facetScale,
-					calendarEventCount: eventCounts.get(task.id) ?? 0,
-					status: 'pending',
-					notes: 'Dry-run mode: ontology task not created.',
-					classification,
-					proposedPayload
-				});
-				mappings[task.id] = null;
-				summary.readyToMigrate += 1;
-				continue;
-			}
-
-			const recommendedStateKey = this.mapTaskState(task.status);
-			const dueAt = this.resolveDueAt(task);
-			const priority = this.mapPriority(task.priority);
-			const facetScale = classification.requiresDeepWork ? 'medium' : 'small';
-			const props = this.buildTaskProps(task, classification);
-
-			const proposedPayload = this.buildProposedPayload({
-				task,
-				classification,
-				recommendedStateKey,
-				dueAt,
-				priority,
-				facetScale,
-				suggestedPlanId,
-				props
-			});
-
-			const { data, error } = await this.client
-				.from('onto_tasks')
-				.insert({
-					title: task.title,
-					project_id: ontoProjectId,
-					plan_id: suggestedPlanId,
-					state_key: recommendedStateKey,
-					priority,
-					due_at: dueAt,
-					facet_scale: facetScale,
-					props,
-					created_by: actorId
-				})
-				.select('id')
-				.single();
-
-			if (error || !data) {
-				results.push({
-					legacyTaskId: task.id,
-					title: task.title,
-					legacyStatus: task.status,
-					ontoTaskId: null,
-					phaseId,
-					phaseName: phaseId ? (phaseMetadata.get(phaseId) ?? null) : null,
-					suggestedOntoPlanId: suggestedPlanId,
-					recommendedTypeKey: classification.typeKey,
-					recommendedStateKey,
-					dueAt,
-					priority,
-					facetScale,
-					calendarEventCount: eventCounts.get(task.id) ?? 0,
-					status: 'failed',
-					notes: `Failed to insert task: ${error?.message}`,
-					classification,
-					proposedPayload
-				});
-				mappings[task.id] = null;
-				summary.blocked += 1;
-				continue;
-			}
-
-			await upsertLegacyMapping(this.client, {
-				legacyTable: 'tasks',
-				legacyId: task.id,
-				ontoTable: 'onto_tasks',
-				ontoId: data.id,
-				record: task,
-				metadata: {
-					run_id: context.runId,
-					batch_id: context.batchId,
-					dry_run: context.dryRun
-				}
-			});
-
-			results.push({
-				legacyTaskId: task.id,
-				title: task.title,
-				legacyStatus: task.status,
-				ontoTaskId: data.id,
-				phaseId,
-				phaseName: phaseId ? (phaseMetadata.get(phaseId) ?? null) : null,
-				suggestedOntoPlanId: suggestedPlanId,
-				recommendedTypeKey: classification.typeKey,
-				recommendedStateKey,
-				dueAt,
-				priority,
-				facetScale,
-				calendarEventCount: eventCounts.get(task.id) ?? 0,
-				status: 'completed',
-				notes: 'Task migrated successfully.',
-				classification,
-				proposedPayload
-			});
-			mappings[task.id] = data.id;
-			summary.readyToMigrate += 1;
 		}
 
 		return {
@@ -330,13 +267,22 @@ export class TaskMigrationService {
 		};
 	}
 
-	private async fetchTasks(projectId: string): Promise<LegacyTaskRow[]> {
-		const { data, error } = await this.client
+	private async fetchTasks(
+		projectId: string,
+		options: { skipCompleted?: boolean } = {}
+	): Promise<LegacyTaskRow[]> {
+		let query = this.client
 			.from('tasks')
 			.select('*')
 			.eq('project_id', projectId)
-			.is('deleted_at', null)
-			.order('created_at', { ascending: true });
+			.is('deleted_at', null);
+
+		// Skip completed/done tasks if requested
+		if (options.skipCompleted) {
+			query = query.neq('status', 'done');
+		}
+
+		const { data, error } = await query.order('created_at', { ascending: true });
 
 		if (error) {
 			throw new Error(
@@ -497,13 +443,30 @@ export class TaskMigrationService {
 	}): Json {
 		return {
 			title: params.task.title,
+			type_key: this.normalizeTaskTypeKey(params.classification.typeKey),
 			state_key: params.recommendedStateKey,
-			plan_id: params.suggestedPlanId,
+			suggested_plan_id: params.suggestedPlanId, // For display only, stored via edges
 			due_at: params.dueAt,
 			priority: params.priority,
 			facet_scale: params.facetScale,
 			props: params.props ?? this.buildTaskProps(params.task, params.classification)
 		} as Json;
+	}
+
+	/**
+	 * Normalize legacy type_keys to valid task taxonomy (task.{work_mode})
+	 * Maps old values to the new 8 base work modes
+	 */
+	private normalizeTaskTypeKey(legacyTypeKey: string): string {
+		const mapping: Record<string, string> = {
+			// Legacy task types from classifier
+			'task.recurring': 'task.execute',
+			'task.deep_work': 'task.execute',
+			'task.base': 'task.execute',
+			// Any other legacy patterns
+			'task.basic': 'task.execute'
+		};
+		return mapping[legacyTypeKey] ?? legacyTypeKey ?? 'task.execute';
 	}
 
 	private classifyTask(task: LegacyTaskRow): TaskClassificationSummary {
@@ -535,9 +498,13 @@ export class TaskMigrationService {
 			case 'completed':
 				return 'done';
 			case 'in_progress':
-				return 'active';
+				return 'in_progress';
 			case 'cancelled':
 				return 'cancelled';
+			case 'pending':
+				return 'todo';
+			case 'blocked':
+				return 'blocked';
 			default:
 				return 'backlog';
 		}
@@ -612,5 +579,429 @@ export class TaskMigrationService {
 			default:
 				return 'pending';
 		}
+	}
+
+	/**
+	 * Convert BatchMigrationResult to TaskMigrationBatchResult format
+	 */
+	private convertBatchResult(
+		batchResult: BatchMigrationResult,
+		tasks: LegacyTaskRow[],
+		projectId: string,
+		ontoProjectId: string | null,
+		phaseMap: Record<string, string>,
+		phaseMetadata: Map<string, string | null>,
+		resolvedPhasePlanMapping: Record<string, string | null>,
+		eventCounts: Map<string, number>,
+		context: MigrationServiceContext
+	): TaskMigrationBatchResult {
+		const results: TaskMigrationRecord[] = [];
+		const mappings: Record<string, string | null> = {};
+
+		// Build lookup for classifications and extractions from preview (if available)
+		const classificationMap = new Map<string, { typeKey: string; confidence: number }>();
+		const extractionMap = new Map<
+			string,
+			{ props: Record<string, unknown>; confidence: number }
+		>();
+
+		if (batchResult.preview) {
+			for (const c of batchResult.preview.classifications) {
+				classificationMap.set(c.legacyId, {
+					typeKey: c.typeKey,
+					confidence: c.confidence
+				});
+			}
+			for (const e of batchResult.preview.extractedProps) {
+				extractionMap.set(e.legacyId, {
+					props: e.props,
+					confidence: e.confidence
+				});
+			}
+		}
+
+		// Build task records from batch result
+		for (const task of tasks) {
+			const phaseId = phaseMap[task.id] ?? null;
+			const suggestedPlanId = phaseId ? (resolvedPhasePlanMapping[phaseId] ?? null) : null;
+			const classification = classificationMap.get(task.id);
+			const extraction = extractionMap.get(task.id);
+
+			// Determine type key
+			const typeKey = classification?.typeKey ?? 'task.execute';
+
+			// Determine status based on batch result
+			const hasError = batchResult.errors.some((e) => e.legacyId === task.id);
+			const status: MigrationStatus = hasError
+				? 'failed'
+				: context.dryRun
+					? 'pending'
+					: batchResult.success
+						? 'completed'
+						: 'failed';
+
+			// Create basic classification summary
+			const classificationSummary: TaskClassificationSummary = {
+				typeKey,
+				complexity:
+					(task.duration_minutes ?? 0) >= 120
+						? 'complex'
+						: (task.duration_minutes ?? 0) >= 60
+							? 'moderate'
+							: 'simple',
+				requiresDeepWork: (task.duration_minutes ?? 0) >= 120,
+				isRecurring: !!task.recurrence_pattern,
+				reasoning: `Batch classified as ${typeKey} with confidence ${(classification?.confidence ?? 0.8).toFixed(2)}`
+			};
+
+			const recommendedStateKey = this.mapTaskState(task.status);
+			const dueAt = this.resolveDueAt(task);
+			const priority = this.mapPriority(task.priority);
+			const facetScale = classificationSummary.requiresDeepWork ? 'medium' : 'small';
+
+			// Build proposed payload
+			const props = extraction?.props ?? this.buildTaskProps(task, classificationSummary);
+			const proposedPayload = this.buildProposedPayload({
+				task,
+				classification: classificationSummary,
+				recommendedStateKey,
+				dueAt,
+				priority,
+				facetScale,
+				suggestedPlanId,
+				props: props as Json
+			});
+
+			results.push({
+				legacyTaskId: task.id,
+				title: task.title,
+				legacyStatus: task.status,
+				ontoTaskId: null, // Batch migration doesn't return individual onto IDs; mappings exist in legacy_migrations table
+				phaseId,
+				phaseName: phaseId ? (phaseMetadata.get(phaseId) ?? null) : null,
+				suggestedOntoPlanId: suggestedPlanId,
+				recommendedTypeKey: typeKey,
+				recommendedStateKey,
+				dueAt,
+				priority,
+				facetScale,
+				calendarEventCount: eventCounts.get(task.id) ?? 0,
+				status,
+				notes: hasError
+					? (batchResult.errors.find((e) => e.legacyId === task.id)?.error ??
+						'Unknown error')
+					: context.dryRun
+						? 'Batch dry-run: preview generated'
+						: 'Task migrated via batch migration',
+				classification: classificationSummary,
+				proposedPayload
+			});
+
+			mappings[task.id] = null; // Actual mappings stored in legacy_migrations table by batch service
+		}
+
+		// Build summary
+		const summary: TaskMigrationPreviewSummary = {
+			total: tasks.length,
+			alreadyMigrated: 0,
+			readyToMigrate: batchResult.tasksMigrated,
+			blocked: batchResult.errors.length,
+			missingProject: 0
+		};
+
+		return {
+			projectId,
+			ontoProjectId,
+			tasks: results,
+			taskMappings: mappings,
+			summary,
+			preview: context.dryRun ? this.buildPreview(summary, results) : undefined
+		};
+	}
+
+	/**
+	 * Split an array into chunks of specified size for batch processing
+	 */
+	private chunkArray<T>(array: T[], size: number): T[][] {
+		const chunks: T[][] = [];
+		for (let i = 0; i < array.length; i += size) {
+			chunks.push(array.slice(i, i + size));
+		}
+		return chunks;
+	}
+
+	/**
+	 * Process a single task migration - designed to be run in parallel
+	 */
+	private async processSingleTask(
+		task: LegacyTaskRow,
+		params: {
+			ontoProjectId: string | null;
+			actorId: string;
+			context: MigrationServiceContext;
+			phaseMap: Record<string, string>;
+			resolvedPhasePlanMapping: Record<string, string | null>;
+			phaseMetadata: Map<string, string | null>;
+			eventCounts: Map<string, number>;
+		}
+	): Promise<{
+		record: TaskMigrationRecord;
+		ontoId: string | null;
+		summaryType: 'alreadyMigrated' | 'readyToMigrate' | 'blocked';
+	}> {
+		const {
+			ontoProjectId,
+			actorId,
+			context,
+			phaseMap,
+			resolvedPhasePlanMapping,
+			phaseMetadata,
+			eventCounts
+		} = params;
+
+		const enhancedMode = this.enhancedMigrator !== undefined;
+		const classification = this.classifyTask(task);
+		const phaseId = phaseMap[task.id] ?? null;
+		const suggestedPlanId = phaseId ? (resolvedPhasePlanMapping[phaseId] ?? null) : null;
+
+		// Check for existing migration - use prefetched cache first to avoid DB call
+		const cachedOntoId = context.prefetchedMappings?.tasks?.get(task.id);
+		const existingMapping = cachedOntoId
+			? { onto_id: cachedOntoId }
+			: await getLegacyMapping(this.client, 'tasks', task.id);
+
+		if (existingMapping?.onto_id) {
+			return {
+				record: {
+					legacyTaskId: task.id,
+					title: task.title,
+					legacyStatus: task.status,
+					ontoTaskId: existingMapping.onto_id,
+					phaseId,
+					phaseName: phaseId ? (phaseMetadata.get(phaseId) ?? null) : null,
+					suggestedOntoPlanId: suggestedPlanId,
+					recommendedTypeKey: classification.typeKey,
+					recommendedStateKey: this.mapTaskState(task.status),
+					dueAt: this.resolveDueAt(task),
+					priority: this.mapPriority(task.priority),
+					facetScale: classification.requiresDeepWork ? 'medium' : 'small',
+					calendarEventCount: eventCounts.get(task.id) ?? 0,
+					status: 'completed',
+					notes: 'Task already migrated.',
+					classification,
+					proposedPayload: {} as Json
+				},
+				ontoId: existingMapping.onto_id,
+				summaryType: 'alreadyMigrated'
+			};
+		}
+
+		// Use enhanced migrator if enabled
+		if (enhancedMode && ontoProjectId) {
+			const enhancedResult = await this.migrateTaskEnhanced(task, context, {
+				ontoProjectId,
+				ontoPlanId: suggestedPlanId,
+				actorId
+			});
+
+			const summaryType =
+				enhancedResult.status === 'completed'
+					? 'readyToMigrate'
+					: enhancedResult.status === 'failed'
+						? 'blocked'
+						: 'readyToMigrate';
+
+			return {
+				record: {
+					legacyTaskId: task.id,
+					title: task.title,
+					legacyStatus: task.status,
+					ontoTaskId: enhancedResult.ontoTaskId ?? null,
+					phaseId,
+					phaseName: phaseId ? (phaseMetadata.get(phaseId) ?? null) : null,
+					suggestedOntoPlanId: suggestedPlanId,
+					recommendedTypeKey: enhancedResult.templateUsed ?? classification.typeKey,
+					recommendedStateKey: this.mapTaskState(task.status),
+					dueAt: this.resolveDueAt(task),
+					priority: this.mapPriority(task.priority),
+					facetScale: classification.requiresDeepWork ? 'medium' : 'small',
+					calendarEventCount: eventCounts.get(task.id) ?? 0,
+					status: this.mapEnhancedStatus(enhancedResult.status),
+					notes: enhancedResult.message,
+					classification,
+					proposedPayload: {} as Json
+				},
+				ontoId: enhancedResult.ontoTaskId ?? null,
+				summaryType
+			};
+		}
+
+		// Dry run mode - don't create actual records
+		if (context.dryRun) {
+			const recommendedStateKey = this.mapTaskState(task.status);
+			const dueAt = this.resolveDueAt(task);
+			const priority = this.mapPriority(task.priority);
+			const facetScale = classification.requiresDeepWork ? 'medium' : 'small';
+			const proposedPayload = this.buildProposedPayload({
+				task,
+				classification,
+				recommendedStateKey,
+				dueAt,
+				priority,
+				facetScale,
+				suggestedPlanId
+			});
+
+			return {
+				record: {
+					legacyTaskId: task.id,
+					title: task.title,
+					legacyStatus: task.status,
+					ontoTaskId: null,
+					phaseId,
+					phaseName: phaseId ? (phaseMetadata.get(phaseId) ?? null) : null,
+					suggestedOntoPlanId: suggestedPlanId,
+					recommendedTypeKey: classification.typeKey,
+					recommendedStateKey,
+					dueAt,
+					priority,
+					facetScale,
+					calendarEventCount: eventCounts.get(task.id) ?? 0,
+					status: 'pending',
+					notes: 'Dry-run mode: ontology task not created.',
+					classification,
+					proposedPayload
+				},
+				ontoId: null,
+				summaryType: 'readyToMigrate'
+			};
+		}
+
+		// Actual migration - create the onto_task
+		const recommendedStateKey = this.mapTaskState(task.status);
+		const dueAt = this.resolveDueAt(task);
+		const priority = this.mapPriority(task.priority);
+		const facetScale = classification.requiresDeepWork ? 'medium' : 'small';
+		const baseProps = this.buildTaskProps(task, classification);
+		// Add type_key and facets to props (facet_scale is a GENERATED column from props->'facets'->'scale')
+		const props = {
+			...baseProps,
+			type_key: classification.typeKey,
+			facets: { scale: facetScale }
+		};
+
+		const proposedPayload = this.buildProposedPayload({
+			task,
+			classification,
+			recommendedStateKey,
+			dueAt,
+			priority,
+			facetScale,
+			suggestedPlanId,
+			props
+		});
+
+		// Note: description is stored in props, not as a separate column (onto_tasks has no description column)
+		// Convert legacy type_keys to valid task taxonomy (task.{work_mode})
+		const typeKey = this.normalizeTaskTypeKey(classification.typeKey);
+
+		const { data, error } = await this.client
+			.from('onto_tasks')
+			.insert({
+				title: task.title,
+				project_id: ontoProjectId,
+				type_key: typeKey,
+				state_key: recommendedStateKey,
+				priority,
+				due_at: dueAt,
+				props,
+				created_by: actorId
+			})
+			.select('id')
+			.single();
+
+		if (error || !data) {
+			return {
+				record: {
+					legacyTaskId: task.id,
+					title: task.title,
+					legacyStatus: task.status,
+					ontoTaskId: null,
+					phaseId,
+					phaseName: phaseId ? (phaseMetadata.get(phaseId) ?? null) : null,
+					suggestedOntoPlanId: suggestedPlanId,
+					recommendedTypeKey: classification.typeKey,
+					recommendedStateKey,
+					dueAt,
+					priority,
+					facetScale,
+					calendarEventCount: eventCounts.get(task.id) ?? 0,
+					status: 'failed',
+					notes: `Failed to insert task: ${error?.message}`,
+					classification,
+					proposedPayload
+				},
+				ontoId: null,
+				summaryType: 'blocked'
+			};
+		}
+
+		// Create plan relationship edges if plan exists
+		if (suggestedPlanId) {
+			await this.client.from('onto_edges').insert([
+				{
+					src_id: data.id,
+					src_kind: 'task',
+					dst_id: suggestedPlanId,
+					dst_kind: 'plan',
+					rel: 'belongs_to_plan'
+				},
+				{
+					src_id: suggestedPlanId,
+					src_kind: 'plan',
+					dst_id: data.id,
+					dst_kind: 'task',
+					rel: 'has_task'
+				}
+			]);
+		}
+
+		// Record the mapping
+		await upsertLegacyMapping(this.client, {
+			legacyTable: 'tasks',
+			legacyId: task.id,
+			ontoTable: 'onto_tasks',
+			ontoId: data.id,
+			record: task,
+			metadata: {
+				run_id: context.runId,
+				batch_id: context.batchId,
+				dry_run: context.dryRun
+			}
+		});
+
+		return {
+			record: {
+				legacyTaskId: task.id,
+				title: task.title,
+				legacyStatus: task.status,
+				ontoTaskId: data.id,
+				phaseId,
+				phaseName: phaseId ? (phaseMetadata.get(phaseId) ?? null) : null,
+				suggestedOntoPlanId: suggestedPlanId,
+				recommendedTypeKey: classification.typeKey,
+				recommendedStateKey,
+				dueAt,
+				priority,
+				facetScale,
+				calendarEventCount: eventCounts.get(task.id) ?? 0,
+				status: 'completed',
+				notes: 'Task migrated successfully.',
+				classification,
+				proposedPayload
+			},
+			ontoId: data.id,
+			summaryType: 'readyToMigrate'
+		};
 	}
 }

@@ -10,6 +10,8 @@
 	import Badge from '$lib/components/ui/Badge.svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import type { PageData } from './$types';
+	import { browser } from '$app/environment';
+	import { invalidateAll } from '$app/navigation';
 
 	// ============================================================
 	// PROPS & TYPES
@@ -144,9 +146,10 @@
 	let analysisResult = $state<any>(null);
 	let activeRunSummary = $state<any>(null);
 	let runList = $state<RunRow[]>(data.runs ?? []);
+	let projectList = $state<ProjectRow[]>(data.projects ?? []);
 	let projectAction = $state<{
 		id: string;
-		type: 'analyze' | 'dry-run' | 'migrate' | 'tasks';
+		type: 'analyze' | 'dry-run' | 'migrate';
 	} | null>(null);
 	let message = $state<string | null>(null);
 	let errorMessage = $state<string | null>(null);
@@ -156,15 +159,33 @@
 	let previewData = $state<MigrationPreviewPayload[] | null>(null);
 	let previewModalOpen = $state(false);
 	let activePreviewIndex = $state(0);
-	let taskPreviewProjectId = $state<string | null>(null);
-	let taskMigrationLoading = $state(false);
+	let refreshingProjects = $state(false);
 
 	// ============================================================
 	// DERIVED STATE
 	// ============================================================
 	// ✅ Fixed $derived syntax - no arrow function needed
 	const activePreview = $derived(previewData?.[activePreviewIndex] ?? null);
-	const hasProjects = data.projects.length > 0;
+	const hasProjects = $derived(projectList.length > 0);
+
+	// Sync projectList when data.projects changes (e.g., from invalidateAll)
+	$effect(() => {
+		if (data.projects) {
+			projectList = data.projects;
+		}
+	});
+
+	// Sync runList when data.runs changes
+	$effect(() => {
+		if (data.runs) {
+			// Merge with existing runList to preserve any runs added during the session
+			const existingRunIds = new Set(runList.map((r) => r.run_id));
+			const newRuns = data.runs.filter((r) => !existingRunIds.has(r.run_id));
+			if (newRuns.length > 0 || data.runs.length !== runList.length) {
+				runList = data.runs;
+			}
+		}
+	});
 
 	// ============================================================
 	// API HELPER FUNCTIONS
@@ -216,6 +237,21 @@
 	}
 
 	// ============================================================
+	// PROJECT DATA REFRESH
+	// ============================================================
+	async function refreshProjects() {
+		refreshingProjects = true;
+		try {
+			// Re-run the page load function to get fresh data
+			await invalidateAll();
+		} catch (err) {
+			console.error('Failed to refresh projects:', err);
+		} finally {
+			refreshingProjects = false;
+		}
+	}
+
+	// ============================================================
 	// PROJECT MIGRATION ACTIONS
 	// ============================================================
 	async function analyzeProject(projectId: string) {
@@ -231,7 +267,7 @@
 
 			analysisResult = result;
 			selectedProjectId = projectId;
-			openPreviewModal(result?.previews, null);
+			openPreviewModal(result?.previews);
 			setMessage('Analysis completed');
 		} catch (err) {
 			setError(err instanceof Error ? err.message : 'Failed to analyze project');
@@ -258,7 +294,10 @@
 				setMessage(dryRun ? 'Dry run completed' : 'Migration completed');
 			}
 			if (dryRun) {
-				openPreviewModal(result?.previews, null);
+				openPreviewModal(result?.previews);
+			} else {
+				// Refresh project list to show updated migration status
+				await refreshProjects();
 			}
 		} catch (err) {
 			setError(err instanceof Error ? err.message : 'Failed to start migration');
@@ -267,62 +306,10 @@
 		}
 	}
 
-	async function previewTasks(projectId: string) {
-		projectAction = { id: projectId, type: 'tasks' };
-		setError(null);
-
-		try {
-			const result = await apiPost<{ preview: MigrationPreviewPayload }>(
-				'/api/admin/migration/tasks/preview',
-				{ projectId }
-			);
-
-			if (result?.preview) {
-				openPreviewModal([result.preview], projectId);
-				setMessage('Task preview ready');
-			} else {
-				setError('No preview available for this project');
-			}
-		} catch (err) {
-			setError(err instanceof Error ? err.message : 'Failed to preview tasks');
-		} finally {
-			projectAction = null;
-		}
-	}
-
-	async function runTaskMigration(projectId: string) {
-		if (!projectId) return;
-		taskMigrationLoading = true;
-		setError(null);
-
-		try {
-			const result = await apiPost<{
-				tasks?: { summary?: { readyToMigrate?: number } };
-				calendars?: { createdEvents?: number };
-			}>('/api/admin/migration/tasks/run', { projectId });
-
-			const migrated = result?.tasks?.summary?.readyToMigrate ?? 0;
-			const events = result?.calendars?.createdEvents ?? 0;
-			setMessage(
-				`Task migration completed (${migrated} tasks processed, ${events} events linked).`
-			);
-			taskPreviewProjectId = null;
-			previewModalOpen = false;
-		} catch (err) {
-			setError(err instanceof Error ? err.message : 'Failed to migrate tasks');
-		} finally {
-			taskMigrationLoading = false;
-		}
-	}
-
-	function openPreviewModal(
-		previews?: MigrationPreviewPayload[] | null,
-		projectId: string | null = null
-	) {
+	function openPreviewModal(previews?: MigrationPreviewPayload[] | null) {
 		if (previews && previews.length) {
 			previewData = previews;
 			activePreviewIndex = 0;
-			taskPreviewProjectId = projectId;
 			previewModalOpen = true;
 		}
 	}
@@ -434,7 +421,7 @@
 	}
 </script>
 
-<div class="admin-page space-y-6">
+<div class="space-y-4 sm:space-y-6">
 	<AdminPageHeader
 		title="Ontology Migration"
 		description="Inspect a user's legacy projects, run migrations, and review run history."
@@ -493,144 +480,285 @@
 	</AdminCard>
 
 	{#if hasProjects}
-		<AdminCard class="overflow-hidden">
-			<table class="min-w-full divide-y divide-slate-200 text-sm dark:divide-slate-800">
-				<thead class="bg-slate-50 dark:bg-slate-900/40">
-					<tr
-						class="text-left text-xs font-semibold uppercase tracking-[0.18em] text-slate-500"
+		<AdminCard class="overflow-x-auto">
+			<!-- Mobile card view for small screens -->
+			<div class="block sm:hidden space-y-4">
+				{#each projectList as project}
+					<div
+						class="rounded-lg border border-slate-200 dark:border-slate-700 p-4 space-y-3"
 					>
-						<th class="px-5 py-3">Project</th>
-						<th class="px-5 py-3">Status</th>
-						<th class="px-5 py-3">Mapping</th>
-						<th class="px-5 py-3 text-right">Actions</th>
-					</tr>
-				</thead>
-				<tbody class="divide-y divide-slate-200 dark:divide-slate-800">
-					{#each data.projects as project}
-						<tr class="hover:bg-slate-50/70 dark:hover:bg-slate-900/30">
-							<td class="px-5 py-4">
-								<div class="flex flex-col">
-									<span class="font-semibold text-slate-900 dark:text-slate-100">
-										{project.name}
-									</span>
-									<span class="text-xs text-slate-500">
-										Updated {new Date(project.updated_at).toLocaleString()}
-									</span>
-								</div>
-							</td>
-							<td class="px-5 py-4">
-								<Badge
-									size="sm"
-									variant={project.status === 'active' ? 'success' : 'info'}
+						<div class="flex justify-between items-start">
+							<div class="flex-1">
+								<h3 class="font-semibold text-slate-900 dark:text-slate-100">
+									{project.name}
+								</h3>
+								<p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
+									Updated {new Date(project.updated_at).toLocaleString()}
+								</p>
+							</div>
+							<Badge
+								size="sm"
+								variant={project.status === 'active' ? 'success' : 'info'}
+							>
+								{project.status}
+							</Badge>
+						</div>
+
+						<div class="flex items-center gap-2 text-sm">
+							<span class="text-slate-600 dark:text-slate-400">Mapping:</span>
+							{#if project.hasMapping}
+								<span class="text-emerald-600 dark:text-emerald-400">
+									Migrated
+								</span>
+							{:else}
+								<span class="text-slate-500 dark:text-slate-400">Pending</span>
+							{/if}
+						</div>
+
+						{#if project.runtimeOntoId}
+							<div class="flex items-center gap-2">
+								<a
+									href="/ontology/projects/{project.runtimeOntoId}"
+									class="text-sm font-medium text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300 underline"
 								>
-									{project.status}
-								</Badge>
-							</td>
-							<td class="px-5 py-4">
-								{#if project.hasMapping}
-									<span class="text-xs text-emerald-600 dark:text-emerald-300">
-										Migrated
-									</span>
-									{#if project.runtimeOntoId}
-										<div class="text-[11px] text-slate-500">
-											{project.runtimeOntoId}
-										</div>
-									{/if}
-								{:else}
-									<span class="text-xs text-slate-500">Pending</span>
-								{/if}
-							</td>
-							<td class="px-5 py-4 text-right space-x-2">
-								<Button
-									size="sm"
-									variant="secondary"
-									loading={projectAction?.id === project.id &&
-										projectAction.type === 'analyze'}
-									onclick={() => analyzeProject(project.id)}
-								>
-									Analyze
-								</Button>
-								<Button
-									size="sm"
-									variant="outline"
-									loading={projectAction?.id === project.id &&
-										projectAction.type === 'dry-run'}
-									onclick={() => startMigration(project.id, true)}
-								>
-									Dry Run
-								</Button>
-								<Button
-									size="sm"
-									variant="outline"
-									loading={projectAction?.id === project.id &&
-										projectAction.type === 'tasks'}
-									onclick={() => previewTasks(project.id)}
-								>
-									Migrate Tasks
-								</Button>
-								<Button
-									size="sm"
-									variant="primary"
-									loading={projectAction?.id === project.id &&
-										projectAction.type === 'migrate'}
-									onclick={() => startMigration(project.id, false)}
-								>
-									Migrate
-								</Button>
-							</td>
+									View Project →
+								</a>
+							</div>
+						{/if}
+
+						<div class="grid grid-cols-3 gap-2 pt-2">
+							<Button
+								size="sm"
+								variant="secondary"
+								loading={projectAction?.id === project.id &&
+									projectAction.type === 'analyze'}
+								onclick={() => analyzeProject(project.id)}
+								class="w-full"
+							>
+								Analyze
+							</Button>
+							<Button
+								size="sm"
+								variant="outline"
+								loading={projectAction?.id === project.id &&
+									projectAction.type === 'dry-run'}
+								onclick={() => startMigration(project.id, true)}
+								class="w-full"
+							>
+								Dry Run
+							</Button>
+							<Button
+								size="sm"
+								variant="primary"
+								loading={projectAction?.id === project.id &&
+									projectAction.type === 'migrate'}
+								onclick={() => startMigration(project.id, false)}
+								class="w-full"
+							>
+								Migrate
+							</Button>
+						</div>
+					</div>
+				{/each}
+			</div>
+
+			<!-- Desktop table view -->
+			<div class="hidden sm:block overflow-x-auto">
+				<table class="min-w-full divide-y divide-slate-200 text-sm dark:divide-slate-700">
+					<thead class="bg-slate-50 dark:bg-slate-900/50">
+						<tr
+							class="text-left text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400"
+						>
+							<th class="px-4 py-3 lg:px-6">Project</th>
+							<th class="px-4 py-3 lg:px-6">Status</th>
+							<th class="px-4 py-3 lg:px-6">Mapping</th>
+							<th class="px-4 py-3 lg:px-6 text-right">Actions</th>
 						</tr>
-					{/each}
-				</tbody>
-			</table>
+					</thead>
+					<tbody
+						class="divide-y divide-slate-200 dark:divide-slate-700 bg-white dark:bg-slate-950"
+					>
+						{#each projectList as project}
+							<tr
+								class="hover:bg-slate-50 dark:hover:bg-slate-900/30 transition-colors"
+							>
+								<td class="px-4 py-4 lg:px-6">
+									<div class="flex flex-col">
+										<span
+											class="font-semibold text-slate-900 dark:text-slate-100"
+										>
+											{project.name}
+										</span>
+										<span
+											class="text-xs text-slate-500 dark:text-slate-400 mt-1"
+										>
+											Updated {new Date(project.updated_at).toLocaleString()}
+										</span>
+									</div>
+								</td>
+								<td class="px-4 py-4 lg:px-6">
+									<Badge
+										size="sm"
+										variant={project.status === 'active' ? 'success' : 'info'}
+									>
+										{project.status}
+									</Badge>
+								</td>
+								<td class="px-4 py-4 lg:px-6">
+									{#if project.hasMapping}
+										<span
+											class="text-sm text-emerald-600 dark:text-emerald-400 font-medium"
+										>
+											Migrated
+										</span>
+										{#if project.runtimeOntoId}
+											<a
+												href="/ontology/projects/{project.runtimeOntoId}"
+												class="block text-sm font-medium text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300 underline mt-1"
+											>
+												View Project →
+											</a>
+										{/if}
+									{:else}
+										<span class="text-sm text-slate-500 dark:text-slate-400"
+											>Pending</span
+										>
+									{/if}
+								</td>
+								<td class="px-4 py-4 lg:px-6">
+									<div class="flex flex-wrap gap-2 justify-end">
+										<Button
+											size="sm"
+											variant="secondary"
+											loading={projectAction?.id === project.id &&
+												projectAction.type === 'analyze'}
+											onclick={() => analyzeProject(project.id)}
+										>
+											Analyze
+										</Button>
+										<Button
+											size="sm"
+											variant="outline"
+											loading={projectAction?.id === project.id &&
+												projectAction.type === 'dry-run'}
+											onclick={() => startMigration(project.id, true)}
+										>
+											Dry Run
+										</Button>
+										<Button
+											size="sm"
+											variant="primary"
+											loading={projectAction?.id === project.id &&
+												projectAction.type === 'migrate'}
+											onclick={() => startMigration(project.id, false)}
+										>
+											Migrate
+										</Button>
+									</div>
+								</td>
+							</tr>
+						{/each}
+					</tbody>
+				</table>
+			</div>
 		</AdminCard>
 	{/if}
 
-	<div class="grid gap-6 lg:grid-cols-2">
+	<div class="grid gap-4 sm:gap-6 lg:grid-cols-2">
 		<AdminCard>
-			<h3 class="text-base font-semibold text-slate-900 dark:text-slate-100">Analysis</h3>
+			<h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">Analysis</h3>
 			{#if analysisResult}
-				<div class="mt-4 text-sm text-slate-600 dark:text-slate-300 space-y-2">
-					<p class="font-semibold">Totals</p>
-					<ul class="list-disc pl-5 space-y-1">
-						<li>Projects: {analysisResult.totals?.projects ?? 0}</li>
-						<li>Phases: {analysisResult.totals?.phases ?? 0}</li>
-						<li>Tasks: {analysisResult.totals?.tasks ?? 0}</li>
-						<li>Calendars: {analysisResult.totals?.calendars ?? 0}</li>
-					</ul>
+				<div class="space-y-4 text-sm">
+					<div class="rounded-lg bg-slate-50 dark:bg-slate-900/50 p-4">
+						<p class="font-semibold text-slate-900 dark:text-slate-100 mb-2">Totals</p>
+						<div class="grid grid-cols-2 gap-3">
+							<div class="space-y-2">
+								<div class="flex justify-between">
+									<span class="text-slate-600 dark:text-slate-400">Projects:</span
+									>
+									<span class="font-medium text-slate-900 dark:text-slate-100">
+										{analysisResult.totals?.projects ?? 0}
+									</span>
+								</div>
+								<div class="flex justify-between">
+									<span class="text-slate-600 dark:text-slate-400">Phases:</span>
+									<span class="font-medium text-slate-900 dark:text-slate-100">
+										{analysisResult.totals?.phases ?? 0}
+									</span>
+								</div>
+							</div>
+							<div class="space-y-2">
+								<div class="flex justify-between">
+									<span class="text-slate-600 dark:text-slate-400">Tasks:</span>
+									<span class="font-medium text-slate-900 dark:text-slate-100">
+										{analysisResult.totals?.tasks ?? 0}
+									</span>
+								</div>
+								<div class="flex justify-between">
+									<span class="text-slate-600 dark:text-slate-400"
+										>Calendars:</span
+									>
+									<span class="font-medium text-slate-900 dark:text-slate-100">
+										{analysisResult.totals?.calendars ?? 0}
+									</span>
+								</div>
+							</div>
+						</div>
+					</div>
 					{#if analysisResult.projects?.length}
-						<p class="font-semibold mt-4">First Project Snapshot</p>
-						<pre
-							class="rounded bg-slate-100 p-3 text-xs text-slate-700 dark:bg-slate-900/60 dark:text-slate-200 overflow-auto">
+						<div class="space-y-2">
+							<p class="font-semibold text-slate-900 dark:text-slate-100">
+								First Project Snapshot
+							</p>
+							<pre
+								class="rounded-lg bg-slate-900 dark:bg-slate-950 p-4 text-xs text-slate-100 overflow-auto max-h-64 border border-slate-700">
 {JSON.stringify(analysisResult.projects[0], null, 2)}
-						</pre>
+							</pre>
+						</div>
 					{/if}
 				</div>
 			{:else}
-				<p class="mt-4 text-sm text-slate-500">Run an analysis to see details.</p>
+				<p class="text-sm text-slate-500 dark:text-slate-400 italic">
+					Run an analysis to see details.
+				</p>
 			{/if}
 		</AdminCard>
 
 		<AdminCard>
-			<h3 class="text-base font-semibold text-slate-900 dark:text-slate-100">Recent Runs</h3>
-			<div class="mt-4 space-y-3">
+			<h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">
+				Recent Runs
+			</h3>
+			<div class="space-y-3 max-h-96 overflow-y-auto">
 				{#if runList.length === 0}
-					<p class="text-sm text-slate-500">No runs recorded yet.</p>
+					<p class="text-sm text-slate-500 dark:text-slate-400 italic">
+						No runs recorded yet.
+					</p>
 				{:else}
 					{#each runList as run}
-						<div class="rounded-lg border border-slate-200 p-3 dark:border-slate-700">
-							<div class="flex items-center justify-between text-sm">
-								<span class="font-semibold text-slate-900 dark:text-slate-100">
-									{run.run_id}
-								</span>
+						<div
+							class="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 p-3 hover:bg-slate-50 dark:hover:bg-slate-900/30 transition-colors"
+						>
+							<div class="flex items-center justify-between">
+								<div class="flex-1 min-w-0">
+									<p
+										class="font-medium text-sm text-slate-900 dark:text-slate-100 truncate"
+									>
+										{run.run_id}
+									</p>
+									<p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
+										Started {new Date(run.created_at).toLocaleString()}
+									</p>
+								</div>
 								<Badge
 									size="sm"
-									variant={run.status === 'completed' ? 'success' : 'info'}
+									variant={run.status === 'completed'
+										? 'success'
+										: run.status === 'failed'
+											? 'error'
+											: 'info'}
 								>
 									{run.status}
 								</Badge>
-							</div>
-							<div class="mt-1 text-xs text-slate-500">
-								Started {new Date(run.created_at).toLocaleString()}
 							</div>
 						</div>
 					{/each}
@@ -640,70 +768,94 @@
 	</div>
 
 	<AdminCard>
-		<h3 class="text-base font-semibold text-slate-900 dark:text-slate-100">Run Controls</h3>
-		<div class="mt-4 grid gap-4 md:grid-cols-2">
-			<div class="space-y-2">
-				<label
-					for="select-run"
-					class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
-				>
-					Select Run
-				</label>
-				<select
-					id="select-run"
-					class="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-slate-500 dark:focus:ring-slate-700"
-					bind:value={selectedRunId}
-				>
-					<option value="">Choose…</option>
-					{#each runList as run}
-						<option value={run.run_id}>{run.run_id} ({run.status})</option>
-					{/each}
-				</select>
+		<h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">Run Controls</h3>
+		<div class="space-y-6">
+			<div class="grid gap-4 sm:grid-cols-2">
+				<div class="space-y-2">
+					<label
+						for="select-run"
+						class="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400"
+					>
+						Select Run
+					</label>
+					<select
+						id="select-run"
+						class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 transition-colors placeholder:text-slate-400 focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-200 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-purple-500 dark:focus:ring-purple-900"
+						bind:value={selectedRunId}
+					>
+						<option value="">Choose a run...</option>
+						{#each runList as run}
+							<option value={run.run_id}>
+								{run.run_id} ({run.status})
+							</option>
+						{/each}
+					</select>
+				</div>
+				<div class="space-y-2">
+					<label
+						for="pause-reason"
+						class="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400"
+					>
+						Pause Reason
+					</label>
+					<input
+						id="pause-reason"
+						class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 transition-colors placeholder:text-slate-400 focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-200 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-purple-500 dark:focus:ring-purple-900"
+						bind:value={pauseReason}
+						placeholder="Enter reason for pausing..."
+					/>
+				</div>
 			</div>
+
 			<div class="space-y-2">
 				<label
-					for="pause-reason"
-					class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+					for="rollback-date"
+					class="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400"
 				>
-					Pause Reason
+					Rollback From Date
 				</label>
 				<input
-					id="pause-reason"
-					class="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-slate-500 dark:focus:ring-slate-700"
-					bind:value={pauseReason}
-					placeholder="Reason for pause"
+					id="rollback-date"
+					type="datetime-local"
+					class="w-full sm:w-auto rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 transition-colors focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-200 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:border-purple-500 dark:focus:ring-purple-900"
+					bind:value={rollbackFromDate}
 				/>
 			</div>
-		</div>
 
-		<div class="mt-4 flex flex-wrap gap-2">
-			<Button size="sm" variant="secondary" onclick={() => validateRun(selectedRunId)}>
-				Validate
-			</Button>
-			<Button size="sm" variant="outline" onclick={() => rollbackRun(selectedRunId)}>
-				Rollback
-			</Button>
-			<Button size="sm" variant="outline" onclick={() => pauseRun(selectedRunId)}>
-				Pause
-			</Button>
-			<Button size="sm" variant="primary" onclick={() => resumeRun(selectedRunId)}>
-				Resume
-			</Button>
-		</div>
-
-		<div class="mt-4 space-y-2">
-			<label
-				for="rollback-date"
-				class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
-			>
-				Rollback From
-			</label>
-			<input
-				id="rollback-date"
-				type="datetime-local"
-				class="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-slate-500 dark:focus:ring-slate-700"
-				bind:value={rollbackFromDate}
-			/>
+			<div class="flex flex-wrap gap-2 pt-2 border-t border-slate-200 dark:border-slate-700">
+				<Button
+					size="sm"
+					variant="secondary"
+					onclick={() => validateRun(selectedRunId)}
+					disabled={!selectedRunId}
+				>
+					Validate
+				</Button>
+				<Button
+					size="sm"
+					variant="outline"
+					onclick={() => rollbackRun(selectedRunId)}
+					disabled={!selectedRunId}
+				>
+					Rollback
+				</Button>
+				<Button
+					size="sm"
+					variant="outline"
+					onclick={() => pauseRun(selectedRunId)}
+					disabled={!selectedRunId || !pauseReason}
+				>
+					Pause
+				</Button>
+				<Button
+					size="sm"
+					variant="primary"
+					onclick={() => resumeRun(selectedRunId)}
+					disabled={!selectedRunId}
+				>
+					Resume
+				</Button>
+			</div>
 		</div>
 	</AdminCard>
 
@@ -712,13 +864,15 @@
 			bind:isOpen={previewModalOpen}
 			size="xl"
 			title="LLM Migration Preview"
+			variant={browser && window.innerWidth < 640 ? 'bottom-sheet' : 'center'}
+			enableGestures={true}
+			showDragHandle={true}
 			onClose={() => {
 				previewModalOpen = false;
-				taskPreviewProjectId = null;
 			}}
 		>
-			<!-- ✅ Improved modal layout with proper spacing and structure -->
-			<div class="space-y-6 p-6">
+			<!-- Improved modal layout with mobile optimization -->
+			<div class="space-y-4 sm:space-y-6 p-4 sm:p-6">
 				<!-- Project selector tabs -->
 				<div
 					class="flex flex-wrap gap-2 pb-4 border-b border-slate-200 dark:border-slate-700"
@@ -733,19 +887,6 @@
 						</Button>
 					{/each}
 				</div>
-
-				{#if taskPreviewProjectId}
-					<div class="flex justify-end">
-						<Button
-							variant="primary"
-							size="sm"
-							loading={taskMigrationLoading}
-							onclick={() => runTaskMigration(taskPreviewProjectId)}
-						>
-							Write Tasks to Ontology
-						</Button>
-					</div>
-				{/if}
 
 				{#if activePreview}
 					<!-- Project overview section -->
@@ -850,8 +991,54 @@
 							>
 								Synthesized Plans
 							</p>
+							<!-- Mobile card view -->
+							<div class="block sm:hidden space-y-3">
+								{#each activePreview.planPreview.plans as plan}
+									<div
+										class="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 p-3"
+									>
+										<div
+											class="font-semibold text-slate-900 dark:text-slate-100 mb-2"
+										>
+											{plan.name}
+										</div>
+										<div class="grid grid-cols-2 gap-2 text-xs">
+											<div>
+												<span class="text-slate-500 dark:text-slate-400"
+													>State:</span
+												>
+												<span
+													class="ml-1 text-slate-700 dark:text-slate-300"
+												>
+													{plan.stateKey ?? 'planning'}
+												</span>
+											</div>
+											<div>
+												<span class="text-slate-500 dark:text-slate-400"
+													>Confidence:</span
+												>
+												<span
+													class="ml-1 text-slate-700 dark:text-slate-300"
+												>
+													{plan.confidence
+														? plan.confidence.toFixed(2)
+														: '—'}
+												</span>
+											</div>
+										</div>
+										{#if plan.summary}
+											<p
+												class="mt-2 text-xs text-slate-600 dark:text-slate-300"
+											>
+												{plan.summary}
+											</p>
+										{/if}
+									</div>
+								{/each}
+							</div>
+							<!-- Desktop table view -->
 							<div
-								class="overflow-auto rounded-lg border border-slate-200 dark:border-slate-700"
+								class="hidden sm:block overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700"
 							>
 								<table class="min-w-full text-sm">
 									<thead class="bg-slate-50 dark:bg-slate-900/50">

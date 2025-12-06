@@ -49,14 +49,25 @@
 		lg: 'px-4 py-3 text-lg min-h-[48px]'
 	};
 
+	// Wrapper classes - handles dithering (since textareas can't have ::before pseudo-elements)
+	let wrapperClasses = $derived(
+		twMerge(
+			'relative rounded overflow-hidden', // Container for dithering
+			'dither-soft', // Dithered texture on the container
+			'bg-surface-scratch dark:bg-slate-700/50' // Background on container
+		)
+	);
+
 	let textareaClasses = $derived(
 		twMerge(
-			// Base classes
-			'w-full rounded-lg resize-y',
-			'border transition-colors duration-200',
-			'focus:outline-none focus:ring-2 focus:ring-offset-2',
+			// Base classes - Scratchpad Ops design
+			'w-full rounded resize-y', // 4px radius (default rounded)
+			'border-2 transition-all duration-200', // 2px border for tactile feel
+			'focus:outline-none focus:ring-2 focus:ring-offset-1',
 			'disabled:cursor-not-allowed disabled:opacity-50 disabled:resize-none',
-			'placeholder:text-gray-400 dark:placeholder:text-gray-500',
+
+			// Placeholder - muted notebook feel
+			'placeholder:text-gray-500 dark:placeholder:text-gray-400',
 
 			// Size classes
 			sizeClasses[size],
@@ -64,16 +75,19 @@
 			// Auto resize
 			autoResize && 'resize-none overflow-hidden',
 
-			// State classes
+			// State classes - industrial borders
 			error
-				? 'border-red-500 focus:ring-red-500 dark:border-red-400'
-				: 'border-gray-300 focus:ring-blue-500 dark:border-gray-600',
+				? 'border-red-600 focus:ring-red-500 dark:border-red-500'
+				: 'border-gray-300 focus:ring-accent-orange focus:border-gray-400 dark:border-gray-600 dark:focus:border-gray-500',
 
-			// Background
-			'bg-white dark:bg-gray-800',
+			// Background - transparent to show dithered container beneath
+			'bg-transparent',
 
-			// Text color
+			// Text color - slightly muted for notebook feel
 			'text-gray-900 dark:text-gray-100',
+
+			// Position relative for proper stacking (no z-index needed - mix-blend-mode handles layering)
+			'relative',
 
 			// Custom classes (these will override conflicts)
 			className
@@ -121,25 +135,38 @@
 			adjustHeight();
 		}
 	});
+
+	// Expose focus method for parent components
+	export function focus() {
+		textareaElement?.focus();
+	}
+
+	// Expose blur method for parent components
+	export function blur() {
+		textareaElement?.blur();
+	}
 </script>
 
-<textarea
-	bind:this={textareaElement}
-	bind:value
-	{disabled}
-	{rows}
-	enterkeyhint={computedEnterkeyhint}
-	aria-invalid={error}
-	aria-required={required}
-	aria-describedby={error && errorMessage
-		? 'textarea-error'
-		: helperText
-			? 'textarea-helper'
-			: undefined}
-	class={textareaClasses}
-	oninput={handleInput}
-	{...restProps}
-></textarea>
+<!-- Outer wrapper with dithering texture (textareas can't have ::before pseudo-elements) -->
+<div class={wrapperClasses}>
+	<textarea
+		bind:this={textareaElement}
+		bind:value
+		{disabled}
+		{rows}
+		enterkeyhint={computedEnterkeyhint}
+		aria-invalid={error}
+		aria-required={required}
+		aria-describedby={error && errorMessage
+			? 'textarea-error'
+			: helperText
+				? 'textarea-helper'
+				: undefined}
+		class={textareaClasses}
+		oninput={handleInput}
+		{...restProps}
+	></textarea>
+</div>
 {#if error && errorMessage}
 	<p
 		id="textarea-error"
@@ -173,34 +200,34 @@
 		--tw-ring-offset-color: rgb(31 41 55);
 	}
 
-	/* Custom scrollbar for textarea */
+	/* Custom scrollbar - industrial aesthetic */
 	textarea::-webkit-scrollbar {
-		width: 8px;
+		width: 6px;
 	}
 
 	textarea::-webkit-scrollbar-track {
-		background: rgb(243 244 246);
-		border-radius: 4px;
+		background: rgba(62, 68, 89, 0.1);
+		border-radius: 3px;
 	}
 
 	:global(.dark) textarea::-webkit-scrollbar-track {
-		background: rgb(55 65 81);
+		background: rgba(62, 68, 89, 0.2);
 	}
 
 	textarea::-webkit-scrollbar-thumb {
-		background: rgb(209 213 219);
-		border-radius: 4px;
+		background: rgba(45, 50, 66, 0.4);
+		border-radius: 3px;
 	}
 
 	:global(.dark) textarea::-webkit-scrollbar-thumb {
-		background: rgb(75 85 99);
+		background: rgba(142, 149, 170, 0.3);
 	}
 
 	textarea::-webkit-scrollbar-thumb:hover {
-		background: rgb(156 163 175);
+		background: rgba(45, 50, 66, 0.6);
 	}
 
 	:global(.dark) textarea::-webkit-scrollbar-thumb:hover {
-		background: rgb(107 114 128);
+		background: rgba(142, 149, 170, 0.5);
 	}
 </style>

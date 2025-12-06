@@ -86,14 +86,25 @@
 		}
 	};
 
+	// Wrapper classes - handles dithering (since inputs can't have ::before pseudo-elements)
+	let wrapperClasses = $derived(
+		twMerge(
+			'relative rounded overflow-hidden', // Container for dithering
+			'dither-soft', // Dithered texture on the container
+			'bg-surface-scratch dark:bg-slate-700/50' // Background on container
+		)
+	);
+
 	let inputClasses = $derived(
 		twMerge(
-			// Base classes
-			'w-full rounded-lg',
-			'border transition-colors duration-200',
-			'focus:outline-none focus:ring-2 focus:ring-offset-2',
+			// Base classes - Scratchpad Ops design
+			'w-full rounded', // 4px radius (default rounded)
+			'border-2 transition-all duration-200', // 2px border for tactile feel
+			'focus:outline-none focus:ring-2 focus:ring-offset-1',
 			'disabled:cursor-not-allowed disabled:opacity-50',
-			'placeholder:text-gray-400 dark:placeholder:text-gray-500',
+
+			// Placeholder - muted notebook feel
+			'placeholder:text-gray-500 dark:placeholder:text-gray-400',
 
 			// Size classes
 			sizeClasses[size],
@@ -102,34 +113,38 @@
 			icon && iconPosition === 'left' && iconPaddingClasses.left[size],
 			icon && iconPosition === 'right' && iconPaddingClasses.right[size],
 
-			// State classes
+			// State classes - industrial borders
 			error
-				? 'border-red-500 focus:ring-red-500 dark:border-red-400'
-				: 'border-gray-300 focus:ring-blue-500 dark:border-gray-600',
+				? 'border-red-600 focus:ring-red-500 dark:border-red-500'
+				: 'border-gray-300 focus:ring-accent-orange focus:border-gray-400 dark:border-gray-600 dark:focus:border-gray-500',
 
-			// Background
-			'bg-white dark:bg-gray-800',
+			// Background - transparent to show dithered container beneath
+			'bg-transparent',
 
-			// Text color
+			// Text color - slightly muted for notebook feel
 			'text-gray-900 dark:text-gray-100',
+
+			// Position relative for proper stacking (no z-index needed - mix-blend-mode handles layering)
+			'relative',
 
 			// Custom classes (these will override conflicts)
 			className
 		)
 	);
 
-	// Icon position classes
+	// Icon position classes (no z-index needed - mix-blend-mode handles layering)
 	let iconClasses = $derived(
 		twMerge(
 			'absolute top-1/2 -translate-y-1/2 pointer-events-none',
-			'text-gray-400 dark:text-gray-500',
+			'text-gray-500 dark:text-gray-400',
 			iconPosition === 'left' ? 'left-3' : 'right-3',
 			iconSizes[size]
 		)
 	);
 </script>
 
-<div class="relative">
+<!-- Outer wrapper with dithering texture (inputs can't have ::before pseudo-elements) -->
+<div class={wrapperClasses}>
 	{#if icon}
 		{@const IconComponent = icon}
 		<div class={iconClasses}>

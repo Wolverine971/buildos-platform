@@ -4,6 +4,7 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import TextInput from '$lib/components/ui/TextInput.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
+	import { X, RefreshCw } from 'lucide-svelte';
 
 	let {
 		task,
@@ -138,15 +139,46 @@
 
 <Modal
 	bind:isOpen
-	title="Make Task Recurring"
 	size="lg"
 	onClose={() => {
 		onClose?.();
 	}}
+	showCloseButton={false}
 >
-	<div class="space-y-6">
+	{#snippet header()}
+		<!-- Custom gradient header - grey/dark grey -->
+		<div
+			class="flex-shrink-0 bg-gradient-to-r from-gray-600 via-gray-700 to-gray-800 dark:from-gray-700 dark:via-gray-800 dark:to-gray-900 text-white px-3 py-3 sm:px-6 sm:py-5 flex items-start justify-between gap-2 sm:gap-4 dither-gradient"
+		>
+			<div class="space-y-1 sm:space-y-2 min-w-0 flex-1">
+				<p class="text-[10px] sm:text-xs font-semibold uppercase tracking-[0.3em] sm:tracking-[0.4em] text-white/70">
+					Recurring Task
+				</p>
+				<h2 class="text-lg sm:text-2xl font-bold leading-tight truncate">
+					Make Task Recurring
+				</h2>
+				{#if task?.title}
+					<div class="flex flex-wrap items-center gap-1.5 sm:gap-3 text-xs sm:text-sm">
+						<span class="px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-semibold bg-white/20 truncate max-w-[200px] sm:max-w-none">{task.title}</span>
+					</div>
+				{/if}
+			</div>
+			<Button
+				variant="ghost"
+				size="sm"
+				onclick={() => onClose?.()}
+				class="text-white/80 hover:text-white shrink-0 !p-1.5 sm:!p-2"
+				disabled={isSubmitting}
+			>
+				<X class="w-4 h-4 sm:w-5 sm:h-5" />
+			</Button>
+		</div>
+	{/snippet}
+
+	{#snippet children()}
+	<div class="space-y-4 sm:space-y-6">
 		<div class="space-y-1">
-			<label class="text-sm font-medium text-gray-700 dark:text-gray-200"> Timezone </label>
+			<label class="text-sm font-medium text-slate-600 dark:text-slate-400"> Timezone </label>
 			<TextInput
 				bind:value={timezone}
 				placeholder="e.g. America/Los_Angeles"
@@ -158,16 +190,16 @@
 					<option value={tz} />
 				{/each}
 			</datalist>
-			<p class="text-xs text-gray-500">Start and recurrence will follow this timezone.</p>
+			<p class="text-xs text-slate-500">Start and recurrence will follow this timezone.</p>
 		</div>
 
 		<div class="space-y-1">
-			<label class="text-sm font-medium text-gray-700 dark:text-gray-200">
+			<label class="text-sm font-medium text-slate-600 dark:text-slate-400">
 				Start date & time
 			</label>
 			<input
 				type="datetime-local"
-				class="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+				class="w-full rounded border border-gray-200 dark:border-gray-700 bg-surface-clarity dark:bg-surface-elevated px-3 py-2 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent-orange"
 				bind:value={startAt}
 				disabled={isSubmitting}
 			/>
@@ -175,7 +207,7 @@
 
 		<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
 			<div>
-				<label class="text-sm font-medium text-gray-700 dark:text-gray-200">
+				<label class="text-sm font-medium text-slate-600 dark:text-slate-400">
 					Frequency
 				</label>
 				<Select bind:value={frequency} disabled={isSubmitting}>
@@ -186,14 +218,14 @@
 			</div>
 
 			<div>
-				<label class="text-sm font-medium text-gray-700 dark:text-gray-200">
+				<label class="text-sm font-medium text-slate-600 dark:text-slate-400">
 					Interval
 				</label>
 				<TextInput type="number" min="1" bind:value={interval} disabled={isSubmitting} />
 			</div>
 
 			<div>
-				<label class="text-sm font-medium text-gray-700 dark:text-gray-200">
+				<label class="text-sm font-medium text-slate-600 dark:text-slate-400">
 					Occurrences
 				</label>
 				<TextInput
@@ -207,7 +239,7 @@
 		</div>
 
 		<div
-			class="rounded-lg border border-blue-200 dark:border-blue-900/50 bg-blue-50 dark:bg-blue-900/10 p-4 text-sm text-blue-900 dark:text-blue-100"
+			class="rounded border border-blue-200 dark:border-blue-900/50 bg-blue-50 dark:bg-blue-900/10 p-4 text-sm text-blue-900 dark:text-blue-100"
 		>
 			<p class="font-medium">Generated RRULE</p>
 			<p class="font-mono text-xs break-all mt-1 text-blue-800 dark:text-blue-200">
@@ -217,28 +249,39 @@
 
 		{#if error}
 			<div
-				class="rounded-md border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-3 text-sm text-red-700 dark:text-red-200"
+				class="rounded border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-3 text-sm text-red-700 dark:text-red-200"
 			>
 				{error}
 			</div>
 		{/if}
 
-		<div class="flex justify-end gap-3">
+	</div>
+	{/snippet}
+
+	{#snippet footer()}
+		<div class="flex flex-row items-center justify-end gap-2 sm:gap-4 p-2 sm:p-4 border-t border-gray-200 dark:border-gray-700 bg-surface-panel dither-surface">
 			<Button
 				variant="ghost"
+				size="sm"
 				type="button"
 				onclick={() => onClose?.()}
 				disabled={isSubmitting}
+				class="text-xs sm:text-sm px-2 sm:px-4"
 			>
 				Cancel
 			</Button>
-			<Button variant="primary" type="button" onclick={handleSubmit} disabled={isSubmitting}>
-				{#if isSubmitting}
-					Creating...
-				{:else}
-					Make Recurring
-				{/if}
+			<Button
+				variant="primary"
+				size="sm"
+				type="button"
+				onclick={handleSubmit}
+				disabled={isSubmitting}
+				class="text-xs sm:text-sm px-2 sm:px-4"
+			>
+				<RefreshCw class="w-3 h-3 sm:w-4 sm:h-4" />
+				<span class="hidden sm:inline">{isSubmitting ? 'Creating...' : 'Make Recurring'}</span>
+				<span class="sm:hidden">{isSubmitting ? '...' : 'Recurring'}</span>
 			</Button>
 		</div>
-	</div>
+	{/snippet}
 </Modal>

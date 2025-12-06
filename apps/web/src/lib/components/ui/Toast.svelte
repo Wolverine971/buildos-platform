@@ -18,27 +18,30 @@
 	const typeConfig = {
 		success: {
 			icon: '✓',
-			bgClass: 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800',
-			textClass: 'text-green-800 dark:text-green-200',
-			iconClass: 'text-green-600 dark:text-green-400'
+			bgClass:
+				'bg-accent-olive/10 dark:bg-accent-olive/20 border-2 border-accent-olive/30 dark:border-accent-olive/40',
+			textClass: 'text-accent-olive dark:text-accent-olive',
+			iconClass: 'text-accent-olive dark:text-accent-olive font-bold'
 		},
 		error: {
 			icon: '✕',
-			bgClass: 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800',
+			bgClass: 'bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800',
 			textClass: 'text-red-800 dark:text-red-200',
-			iconClass: 'text-red-600 dark:text-red-400'
+			iconClass: 'text-red-600 dark:text-red-400 font-bold'
 		},
 		warning: {
 			icon: '⚠',
-			bgClass: 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800',
-			textClass: 'text-yellow-800 dark:text-yellow-200',
-			iconClass: 'text-yellow-600 dark:text-yellow-400'
+			bgClass:
+				'bg-accent-orange/10 dark:bg-accent-orange/20 border-2 border-accent-orange/30 dark:border-accent-orange/40',
+			textClass: 'text-accent-orange dark:text-accent-orange',
+			iconClass: 'text-accent-orange dark:text-accent-orange font-bold'
 		},
 		info: {
 			icon: 'ℹ',
-			bgClass: 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800',
-			textClass: 'text-blue-800 dark:text-blue-200',
-			iconClass: 'text-blue-600 dark:text-blue-400'
+			bgClass:
+				'bg-accent-blue/10 dark:bg-accent-blue/20 border-2 border-accent-blue/30 dark:border-accent-blue/40',
+			textClass: 'text-accent-blue dark:text-accent-blue',
+			iconClass: 'text-accent-blue dark:text-accent-blue font-bold'
 		}
 	};
 
@@ -46,7 +49,7 @@
 </script>
 
 <div
-	class="flex items-center gap-3 p-4 rounded-lg border shadow-lg max-w-md w-full {config.bgClass}"
+	class="flex items-center gap-3 p-4 rounded shadow-subtle max-w-md w-full {config.bgClass}"
 	transition:fly={{ x: 300, duration: 300 }}
 >
 	<!-- Icon -->

@@ -25,7 +25,8 @@
 		TestTube,
 		BarChart3,
 		Layers,
-		Activity
+		Activity,
+		Database
 	} from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import AdminSidebar, { type AdminNavGroup } from '$lib/components/admin/AdminSidebar.svelte';
@@ -164,6 +165,12 @@
 					description: 'Knowledge graph'
 				},
 				{
+					title: 'Migration',
+					href: '/admin/migration',
+					icon: Database,
+					description: 'Data migration tools'
+				},
+				{
 					title: 'Error Control',
 					href: '/admin/errors',
 					icon: AlertTriangle,
@@ -210,43 +217,51 @@
 </script>
 
 <div
-	class="admin-shell relative flex min-h-screen bg-slate-100 text-slate-900 transition-colors dark:bg-slate-950 dark:text-slate-100"
+	class="admin-shell relative flex min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 text-slate-900 transition-colors dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 dark:text-slate-100"
 >
 	<!-- Desktop sidebar -->
 	<aside
-		class="relative hidden w-64 shrink-0 border-r border-slate-200 bg-white/95 dark:border-slate-800 dark:bg-slate-900 lg:flex lg:flex-col"
+		class="relative hidden w-72 shrink-0 border-r border-slate-200/80 bg-white/80 backdrop-blur-xl dark:border-slate-800/50 dark:bg-slate-950/80 lg:flex lg:flex-col"
 	>
-		<div class="border-b border-slate-200 px-5 py-5 dark:border-slate-800/80">
-			<div class="flex items-center gap-3">
+		<!-- Logo Section -->
+		<div class="border-b border-slate-200/80 px-6 py-6 dark:border-slate-800/50">
+			<div class="flex items-center gap-4">
 				<div
-					class="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900"
+					class="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-purple-600 text-white shadow-lg shadow-purple-500/20"
 				>
-					<Layers class="h-4 w-4" />
+					<Layers class="h-5 w-5" />
 				</div>
 				<div>
 					<p
-						class="text-[0.6rem] font-semibold uppercase tracking-[0.25em] text-slate-400"
+						class="text-[0.65rem] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-500"
 					>
 						BuildOS
 					</p>
-					<p class="text-sm font-semibold text-slate-900 dark:text-white">
-						Admin Control
-					</p>
+					<p class="text-base font-bold text-slate-900 dark:text-white">Admin Console</p>
 				</div>
 			</div>
 		</div>
 
+		<!-- Navigation -->
 		<AdminSidebar groups={navGroups} {pathname} />
 
-		<div class="border-t border-slate-200 px-5 py-4 dark:border-slate-800/80">
+		<!-- User Profile -->
+		<div class="mt-auto border-t border-slate-200/80 px-6 py-5 dark:border-slate-800/50">
 			<div class="flex items-center gap-3">
-				<div class={avatarClasses}>{initials}</div>
-				<div>
-					<p class="text-sm font-semibold text-slate-900 dark:text-white">
+				<div class="relative">
+					<div class={avatarClasses}>{initials}</div>
+					<span
+						class="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white bg-emerald-500 dark:border-slate-950"
+					></span>
+				</div>
+				<div class="flex-1 min-w-0">
+					<p class="text-sm font-semibold text-slate-900 dark:text-white truncate">
 						{user?.name || 'Admin'}
 					</p>
 					{#if user?.email}
-						<p class="text-xs text-slate-500 dark:text-slate-400">{user.email}</p>
+						<p class="text-xs text-slate-500 dark:text-slate-400 truncate">
+							{user.email}
+						</p>
 					{/if}
 				</div>
 			</div>
@@ -255,69 +270,24 @@
 
 	<!-- Main content -->
 	<div class="flex min-h-screen min-w-0 flex-1 flex-col">
-		<header
-			class="sticky top-0 z-0 border-b border-slate-200/80 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/85 transition-all duration-300 dark:border-slate-800/70 dark:bg-slate-950/90"
-		>
-			<div
-				class="mx-auto flex w-full max-w-[1600px] items-center justify-between px-4 py-3 sm:px-6 lg:px-10"
-			>
-				<div class="flex items-center space-x-3">
-					<Button
-						variant="ghost"
-						size="sm"
-						class="lg:hidden"
-						icon={mobileOpen ? X : Menu}
-						iconPosition="left"
-						aria-controls="admin-mobile-nav"
-						aria-expanded={mobileOpen}
-						on:click={() => (mobileOpen = !mobileOpen)}
-					>
-						Menu
-					</Button>
-					<div class="flex items-center space-x-3 lg:hidden">
-						<div
-							class="flex h-9 w-9 items-center justify-center rounded-xl dither-gradient bg-gradient-to-br from-blue-500 via-purple-500 to-cyan-500 text-white shadow-md shadow-blue-500/40"
-						>
-							<Layers class="h-4 w-4" />
-						</div>
-						<div>
-							<p
-								class="text-[0.55rem] font-semibold uppercase tracking-[0.18em] text-slate-400"
-							>
-								BuildOS
-							</p>
-							<p class="text-sm font-semibold text-slate-900 dark:text-white">
-								Admin Control
-							</p>
-						</div>
-					</div>
-				</div>
+		<!-- Top Header Bar -->
 
-				<div class="flex items-center space-x-3">
-					<div class="hidden flex-col text-right sm:flex">
-						<p
-							class="text-[0.6rem] uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500"
-						>
-							Active Admin
-						</p>
-						<p class="text-sm font-semibold text-slate-900 dark:text-white">
-							{user?.name || 'Operator'}
-						</p>
-					</div>
-					<div class={avatarClasses}>{initials}</div>
-				</div>
-			</div>
-		</header>
-
-		<main class="relative flex-1 min-w-0 pb-10 pt-4 sm:pt-6">
-			<div class="mx-auto w-full max-w-[1600px] px-4 pb-10 sm:px-6 lg:px-10 xl:px-12">
+		<!-- Main Content Area -->
+		<main class="relative flex-1 overflow-y-auto">
+			<div class="min-h-full">
 				{#if $$slots.hero}
-					<div class="mb-5 sm:mb-6">
-						<slot name="hero" />
+					<div
+						class="border-b border-slate-200/60 bg-gradient-to-b from-white to-slate-50/50 dark:border-slate-800/50 dark:from-slate-950 dark:to-slate-900/50"
+					>
+						<div class="px-4 py-6 sm:px-6 lg:px-8">
+							<slot name="hero" />
+						</div>
 					</div>
 				{/if}
-				<div class="admin-stack">
-					<slot />
+				<div class="px-4 py-6 sm:px-6 lg:px-8">
+					<div class="mx-auto max-w-7xl">
+						<slot />
+					</div>
 				</div>
 			</div>
 		</main>
@@ -327,44 +297,68 @@
 	{#if mobileOpen}
 		<div id="admin-mobile-nav" class="fixed inset-0 z-50 flex lg:hidden">
 			<button
-				class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm"
-				on:click={() => (mobileOpen = false)}
+				class="fixed inset-0 bg-slate-950/70 backdrop-blur-sm transition-opacity"
+				onclick={() => (mobileOpen = false)}
 				aria-label="Close menu"
 			/>
 			<div
-				class="relative ml-auto flex h-full w-80 flex-col border-l border-slate-200/60 bg-white/95 shadow-2xl dark:border-slate-800/70 dark:bg-slate-900/95"
+				class="relative ml-auto flex h-full w-80 flex-col bg-white shadow-2xl dark:bg-slate-950 animate-slide-in"
 			>
-				<div class="flex items-center justify-between px-5 py-4">
-					<div>
-						<p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
-							Navigation
-						</p>
-						<p class="text-sm font-semibold text-slate-900 dark:text-white">
-							Choose a module
-						</p>
+				<!-- Mobile Header -->
+				<div
+					class="flex items-center justify-between border-b border-slate-200/80 px-6 py-5 dark:border-slate-800/50"
+				>
+					<div class="flex items-center gap-3">
+						<div
+							class="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-purple-600 text-white shadow-lg shadow-purple-500/20"
+						>
+							<Layers class="h-5 w-5" />
+						</div>
+						<div>
+							<p
+								class="text-[0.65rem] font-bold uppercase tracking-[0.2em] text-slate-500"
+							>
+								BuildOS
+							</p>
+							<p class="text-sm font-bold text-slate-900 dark:text-white">
+								Admin Menu
+							</p>
+						</div>
 					</div>
 					<Button
 						variant="ghost"
 						size="sm"
 						icon={X}
 						iconPosition="left"
-						on:click={() => (mobileOpen = false)}
+						onclick={() => (mobileOpen = false)}
+						class="!p-2"
 					>
-						Close
+						<span class="sr-only">Close</span>
 					</Button>
 				</div>
-				<div class="flex-1 overflow-y-auto pb-8">
+
+				<!-- Mobile Navigation -->
+				<div class="flex-1 overflow-y-auto">
 					<AdminSidebar groups={navGroups} {pathname} onNavigate={handleMobileNavigate} />
 				</div>
-				<div class="border-t border-slate-200/70 px-5 py-4 dark:border-slate-800/70">
-					<div class="flex items-center space-x-4">
-						<div class={avatarClasses}>{initials}</div>
-						<div>
-							<p class="text-sm font-semibold text-slate-900 dark:text-white">
+
+				<!-- Mobile User Profile -->
+				<div class="border-t border-slate-200/80 px-6 py-5 dark:border-slate-800/50">
+					<div class="flex items-center gap-3">
+						<div class="relative">
+							<div class={avatarClasses}>{initials}</div>
+							<span
+								class="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white bg-emerald-500 dark:border-slate-950"
+							></span>
+						</div>
+						<div class="flex-1 min-w-0">
+							<p
+								class="text-sm font-semibold text-slate-900 dark:text-white truncate"
+							>
 								{user?.name || 'Admin'}
 							</p>
 							{#if user?.email}
-								<p class="text-xs text-slate-500 dark:text-slate-400">
+								<p class="text-xs text-slate-500 dark:text-slate-400 truncate">
 									{user.email}
 								</p>
 							{/if}

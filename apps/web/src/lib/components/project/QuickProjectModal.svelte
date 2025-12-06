@@ -249,282 +249,289 @@ What could go wrong and what are we assuming?`;
 	customClasses="quick-project-modal"
 >
 	<!-- Custom Header -->
-	<div
-		slot="header"
-		class="quick-project-header bg-gradient-to-r from-blue-50/50 via-indigo-50/50 to-purple-50/50 dark:from-blue-900/20 dark:via-indigo-900/20 dark:to-purple-900/20"
-	>
-		<div class="header-content">
-			<div class="flex items-center">
-				<div
-					class="p-2 bg-gradient-to-br from-blue-100/50 to-indigo-100/50 dark:from-blue-800/30 dark:to-indigo-800/30 rounded-xl mr-3"
-				>
-					<Folder class="w-5 h-5 text-blue-600 dark:text-blue-400" />
+	{#snippet header()}
+		<div
+			class="quick-project-header bg-gradient-to-r from-blue-50/50 via-indigo-50/50 to-purple-50/50 dark:from-blue-900/20 dark:via-indigo-900/20 dark:to-purple-900/20"
+		>
+			<div class="header-content">
+				<div class="flex items-center">
+					<div
+						class="p-2 bg-gradient-to-br from-blue-100/50 to-indigo-100/50 dark:from-blue-800/30 dark:to-indigo-800/30 rounded-xl mr-3"
+					>
+						<Folder class="w-5 h-5 text-blue-600 dark:text-blue-400" />
+					</div>
+					<div>
+						<h2 class="text-xl font-bold text-gray-900 dark:text-white">
+							Quick Project Setup
+						</h2>
+						<p class="text-sm text-gray-600 dark:text-gray-400 mt-0.5">
+							Get started with essential details
+						</p>
+					</div>
 				</div>
-				<div>
-					<h2 class="text-xl font-bold text-gray-900 dark:text-white">
-						Quick Project Setup
-					</h2>
-					<p class="text-sm text-gray-600 dark:text-gray-400 mt-0.5">
-						Get started with essential details
-					</p>
-				</div>
+				{#if !isSubmitting}
+					<Button
+						variant="ghost"
+						onclick={handleClose}
+						class="close-button"
+						aria-label="Close dialog"
+						icon={X}
+					></Button>
+				{/if}
 			</div>
-			{#if !isSubmitting}
-				<Button
-					variant="ghost"
-					onclick={handleClose}
-					class="close-button"
-					aria-label="Close dialog"
-					icon={X}
-				></Button>
-			{/if}
 		</div>
-	</div>
+	{/snippet}
+	{#snippet children()}
+		<!-- Form Content -->
+		<form
+			onsubmit={(e) => {
+				e.preventDefault();
+				handleSubmit();
+			}}
+			class="px-4 sm:px-6 py-6 space-y-6"
+		>
+			<!-- Basic Information Section -->
+			<div class="space-y-4">
+				<div class="border-b border-gray-200 dark:border-gray-700 pb-2">
+					<h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">
+						Basic Information
+					</h3>
+				</div>
 
-	<!-- Form Content -->
-	<form
-		onsubmit={(e) => {
-			e.preventDefault();
-			handleSubmit();
-		}}
-		class="px-4 sm:px-6 py-6 space-y-6"
-	>
-		<!-- Basic Information Section -->
-		<div class="space-y-4">
-			<div class="border-b border-gray-200 dark:border-gray-700 pb-2">
-				<h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">
-					Basic Information
-				</h3>
-			</div>
-
-			<!-- Project Name -->
-			<FormField label="Project Name" required error={errors.name}>
-				<input
-					type="text"
-					bind:value={formData.name}
-					placeholder="Enter project name..."
-					class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
+				<!-- Project Name -->
+				<FormField label="Project Name" required error={errors.name}>
+					<input
+						type="text"
+						bind:value={formData.name}
+						placeholder="Enter project name..."
+						class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
 					       focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400
 					       bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100
 					       min-h-[44px] transition-all duration-200"
-					disabled={isSubmitting}
-				/>
-			</FormField>
+						disabled={isSubmitting}
+					/>
+				</FormField>
 
-			<!-- Project Description -->
-			<FormField label="Project Description" required error={errors.description}>
-				<textarea
-					bind:value={formData.description}
-					placeholder="What is this project about?"
-					rows="4"
-					class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
+				<!-- Project Description -->
+				<FormField label="Project Description" required error={errors.description}>
+					<textarea
+						bind:value={formData.description}
+						placeholder="What is this project about?"
+						rows="4"
+						class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
 					       focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400
 					       bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100
 					       resize-none transition-all duration-200"
-					disabled={isSubmitting}
-				></textarea>
-			</FormField>
+						disabled={isSubmitting}
+					></textarea>
+				</FormField>
 
-			<!-- Project Tags -->
-			<FormField label="Project Tags (Optional)">
-				<div class="space-y-2">
-					<div class="flex gap-2">
-						<input
-							type="text"
-							bind:value={formData.tagInput}
-							placeholder="Add tags (press Enter or comma)"
-							onkeydown={handleTagKeydown}
-							class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
+				<!-- Project Tags -->
+				<FormField label="Project Tags (Optional)">
+					<div class="space-y-2">
+						<div class="flex gap-2">
+							<input
+								type="text"
+								bind:value={formData.tagInput}
+								placeholder="Add tags (press Enter or comma)"
+								onkeydown={handleTagKeydown}
+								class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
 							       focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400
 							       bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100
 							       min-h-[44px] transition-all duration-200"
+								disabled={isSubmitting}
+							/>
+							<Button
+								type="button"
+								variant="secondary"
+								onclick={addTag}
+								disabled={!formData.tagInput.trim() || isSubmitting}
+								class="min-h-[44px]"
+							>
+								<Tag class="w-4 h-4 mr-1" />
+								Add
+							</Button>
+						</div>
+						{#if formData.tags.length > 0}
+							<div class="flex flex-wrap gap-2">
+								{#each formData.tags as tag, i}
+									<span
+										class="inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+									>
+										{tag}
+										<button
+											type="button"
+											onclick={() => removeTag(i)}
+											class="ml-2 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-200"
+											disabled={isSubmitting}
+										>
+											×
+										</button>
+									</span>
+								{/each}
+							</div>
+						{/if}
+					</div>
+				</FormField>
+			</div>
+
+			<!-- Timeline Section -->
+			<div class="space-y-4">
+				<div class="border-b border-gray-200 dark:border-gray-700 pb-2">
+					<h3
+						class="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center"
+					>
+						<Calendar class="w-4 h-4 mr-2" />
+						Timeline
+					</h3>
+				</div>
+
+				<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+					<!-- Start Date -->
+					<FormField label="Start Date">
+						<input
+							type="date"
+							bind:value={formData.startDate}
+							class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
+						       focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400
+						       bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100
+						       min-h-[44px] transition-all duration-200"
 							disabled={isSubmitting}
 						/>
-						<Button
-							type="button"
-							variant="secondary"
-							onclick={addTag}
-							disabled={!formData.tagInput.trim() || isSubmitting}
-							class="min-h-[44px]"
-						>
-							<Tag class="w-4 h-4 mr-1" />
-							Add
-						</Button>
-					</div>
-					{#if formData.tags.length > 0}
-						<div class="flex flex-wrap gap-2">
-							{#each formData.tags as tag, i}
-								<span
-									class="inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
-								>
-									{tag}
-									<button
-										type="button"
-										onclick={() => removeTag(i)}
-										class="ml-2 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-200"
-										disabled={isSubmitting}
-									>
-										×
-									</button>
-								</span>
-							{/each}
-						</div>
-					{/if}
+					</FormField>
+
+					<!-- End Date -->
+					<FormField label="End Date (Optional)" error={errors.endDate}>
+						<input
+							type="date"
+							bind:value={formData.endDate}
+							min={formData.startDate}
+							class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
+						       focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400
+						       bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100
+						       min-h-[44px] transition-all duration-200"
+							disabled={isSubmitting}
+						/>
+					</FormField>
 				</div>
-			</FormField>
-		</div>
-
-		<!-- Timeline Section -->
-		<div class="space-y-4">
-			<div class="border-b border-gray-200 dark:border-gray-700 pb-2">
-				<h3
-					class="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center"
-				>
-					<Calendar class="w-4 h-4 mr-2" />
-					Timeline
-				</h3>
 			</div>
 
-			<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-				<!-- Start Date -->
-				<FormField label="Start Date">
-					<input
-						type="date"
-						bind:value={formData.startDate}
-						class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
-						       focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400
-						       bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100
-						       min-h-[44px] transition-all duration-200"
-						disabled={isSubmitting}
-					/>
-				</FormField>
-
-				<!-- End Date -->
-				<FormField label="End Date (Optional)" error={errors.endDate}>
-					<input
-						type="date"
-						bind:value={formData.endDate}
-						min={formData.startDate}
-						class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
-						       focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400
-						       bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100
-						       min-h-[44px] transition-all duration-200"
-						disabled={isSubmitting}
-					/>
-				</FormField>
-			</div>
-		</div>
-
-		<!-- Optional Context Section -->
-		<div class="space-y-4">
-			<button
-				type="button"
-				onclick={toggleContextSection}
-				class="w-full flex items-center justify-between p-3 bg-gradient-to-r from-gray-50 to-gray-100
+			<!-- Optional Context Section -->
+			<div class="space-y-4">
+				<button
+					type="button"
+					onclick={toggleContextSection}
+					class="w-full flex items-center justify-between p-3 bg-gradient-to-r from-gray-50 to-gray-100
 				       dark:from-gray-800 dark:to-gray-750 rounded-lg hover:shadow-sm transition-all duration-200
 				       border border-gray-200 dark:border-gray-700"
-				disabled={isSubmitting}
-			>
-				<div class="flex items-center">
-					<FileText class="w-4 h-4 mr-2 text-indigo-600 dark:text-indigo-400" />
-					<span class="text-sm font-medium text-gray-900 dark:text-gray-100">
-						Add Project Context Document (Optional)
-					</span>
-				</div>
-				{#if showContextSection}
-					<ChevronDown class="w-4 h-4 text-gray-500" />
-				{:else}
-					<ChevronRight class="w-4 h-4 text-gray-500" />
-				{/if}
-			</button>
-
-			{#if showContextSection}
-				<div class="space-y-4 animate-fadeIn">
-					<div class="flex items-start gap-2">
-						<FileText
-							class="w-4 h-4 mt-1 text-gray-500 dark:text-gray-400 flex-shrink-0"
-						/>
-						<div class="flex-1">
-							<p class="text-sm text-gray-600 dark:text-gray-400 mb-1">
-								Define your project's vision, scope, and approach using markdown.
-							</p>
-							<p class="text-xs text-gray-500 dark:text-gray-400">
-								This context document helps AI better understand and assist with
-								your project.
-							</p>
-						</div>
+					disabled={isSubmitting}
+				>
+					<div class="flex items-center">
+						<FileText class="w-4 h-4 mr-2 text-indigo-600 dark:text-indigo-400" />
+						<span class="text-sm font-medium text-gray-900 dark:text-gray-100">
+							Add Project Context Document (Optional)
+						</span>
 					</div>
+					{#if showContextSection}
+						<ChevronDown class="w-4 h-4 text-gray-500" />
+					{:else}
+						<ChevronRight class="w-4 h-4 text-gray-500" />
+					{/if}
+				</button>
 
-					<FormField label="Project Context Document">
-						<div class="relative">
-							<textarea
-								bind:value={formData.context}
-								placeholder={contextPlaceholder}
-								rows="12"
-								class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
+				{#if showContextSection}
+					<div class="space-y-4 animate-fadeIn">
+						<div class="flex items-start gap-2">
+							<FileText
+								class="w-4 h-4 mt-1 text-gray-500 dark:text-gray-400 flex-shrink-0"
+							/>
+							<div class="flex-1">
+								<p class="text-sm text-gray-600 dark:text-gray-400 mb-1">
+									Define your project's vision, scope, and approach using
+									markdown.
+								</p>
+								<p class="text-xs text-gray-500 dark:text-gray-400">
+									This context document helps AI better understand and assist with
+									your project.
+								</p>
+							</div>
+						</div>
+
+						<FormField label="Project Context Document">
+							<div class="relative">
+								<textarea
+									bind:value={formData.context}
+									placeholder={contextPlaceholder}
+									rows="12"
+									class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
 								       focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400
 								       bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100
 								       font-mono text-sm resize-y transition-all duration-200"
-								disabled={isSubmitting}
-							></textarea>
-							<div class="absolute top-2 right-2">
-								<span
-									class="text-xs text-gray-400 bg-white dark:bg-gray-800 px-2 py-1 rounded"
-								>
-									Markdown
-								</span>
+									disabled={isSubmitting}
+								></textarea>
+								<div class="absolute top-2 right-2">
+									<span
+										class="text-xs text-gray-400 bg-white dark:bg-gray-800 px-2 py-1 rounded"
+									>
+										Markdown
+									</span>
+								</div>
 							</div>
-						</div>
-						<p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-							Tip: Use markdown formatting (## Headers, **bold**, - lists, etc.)
-						</p>
-					</FormField>
-				</div>
-			{/if}
-		</div>
-
-		<!-- Action Buttons -->
-		<div
-			class="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700"
-		>
-			{#if isMobile}
-				<!-- Mobile layout -->
-				<Button
-					type="submit"
-					variant="primary"
-					size="lg"
-					class="w-full min-h-[44px]"
-					disabled={!isFormValid || isSubmitting}
-					loading={isSubmitting}
-				>
-					{isSubmitting ? 'Creating Project...' : 'Create Project'}
-				</Button>
-				<Button
-					type="button"
-					variant="ghost"
-					size="lg"
-					class="w-full min-h-[44px]"
-					onclick={handleClose}
-					disabled={isSubmitting}
-				>
-					Cancel
-				</Button>
-			{:else}
-				<!-- Desktop layout -->
-				<Button type="button" variant="ghost" onclick={handleClose} disabled={isSubmitting}>
-					Cancel
-				</Button>
-				<Button
-					type="submit"
-					variant="primary"
-					disabled={!isFormValid || isSubmitting}
-					loading={isSubmitting}
-				>
-					{isSubmitting ? 'Creating Project...' : 'Create Project'}
-				</Button>
-			{/if}
-		</div>
-	</form>
+							<p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+								Tip: Use markdown formatting (## Headers, **bold**, - lists, etc.)
+							</p>
+						</FormField>
+					</div>
+				{/if}
+			</div>
+			<!-- Action Buttons -->
+			<div
+				class="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700"
+			>
+				{#if isMobile}
+					<!-- Mobile layout -->
+					<Button
+						type="submit"
+						variant="primary"
+						size="lg"
+						class="w-full min-h-[44px]"
+						disabled={!isFormValid || isSubmitting}
+						loading={isSubmitting}
+					>
+						{isSubmitting ? 'Creating Project...' : 'Create Project'}
+					</Button>
+					<Button
+						type="button"
+						variant="ghost"
+						size="lg"
+						class="w-full min-h-[44px]"
+						onclick={handleClose}
+						disabled={isSubmitting}
+					>
+						Cancel
+					</Button>
+				{:else}
+					<!-- Desktop layout -->
+					<Button
+						type="button"
+						variant="ghost"
+						onclick={handleClose}
+						disabled={isSubmitting}
+					>
+						Cancel
+					</Button>
+					<Button
+						type="submit"
+						variant="primary"
+						disabled={!isFormValid || isSubmitting}
+						loading={isSubmitting}
+					>
+						{isSubmitting ? 'Creating Project...' : 'Create Project'}
+					</Button>
+				{/if}
+			</div>
+		</form>
+	{/snippet}
 </Modal>
 
 <style>

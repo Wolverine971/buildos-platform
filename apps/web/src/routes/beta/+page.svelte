@@ -224,44 +224,45 @@
 	keywords="BuildOS beta, early access, beta program, AI productivity beta, brain dump app beta, founder access, productivity tool beta testing"
 />
 
-<main class="min-h-screen bg-white dark:bg-gray-900">
+<main class="min-h-screen bg-[var(--surface-scratch)] dither-pattern">
 	<!-- Simple Hero Section -->
 	<section class="pt-24 pb-16 px-4 sm:px-6 lg:px-8">
 		<div class="max-w-4xl mx-auto text-center">
 			<div class="flex justify-center mb-8">
 				<div class="relative">
-					<img
-						src="/brain-bolt.png"
-						alt="BuildOS application icon"
-						class="w-16 h-16"
-						width="64"
-						height="64"
-					/>
 					<div
-						class="absolute -top-1 -right-1 bg-primary-600 text-white text-xs font-bold px-2 py-1 rounded-full"
-						aria-label="Beta program"
+						class="utility-block w-20 h-20 rounded-sm flex items-center justify-center"
 					>
+						<img
+							src="/brain-bolt.png"
+							alt="BuildOS application icon"
+							class="w-16 h-16"
+							width="64"
+							height="64"
+						/>
+					</div>
+					<div class="absolute -top-2 -right-2 badge-active" aria-label="Beta program">
 						BETA
 					</div>
 				</div>
 			</div>
 
-			<h1 class="text-4xl md:text-5xl font-bold mb-6 text-gray-900 dark:text-white">
+			<h1 class="text-4xl md:text-5xl font-bold mb-6 text-slate-900 dark:text-slate-100">
 				Join the BuildOS Beta
 			</h1>
 
-			<p class="text-xl text-gray-600 dark:text-gray-400 mb-8 max-w-3xl mx-auto">
+			<p class="text-xl text-slate-700 dark:text-slate-300 mb-8 max-w-3xl mx-auto">
 				Get early access to BuildOS and help shape how it develops. Work directly with me to
 				build better AI-powered productivity.
 			</p>
 
 			{#if existingSignupStatus}
 				<div
-					class="bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-700 rounded-xl p-6 mb-8 max-w-md mx-auto"
+					class="clarity-zone p-6 mb-8 max-w-md mx-auto"
 					role="status"
 					aria-live="polite"
 				>
-					<h3 class="font-semibold mb-2 text-gray-900 dark:text-white">
+					<h3 class="font-semibold mb-2 text-slate-900 dark:text-slate-100">
 						{#if existingSignupStatus === 'pending'}
 							Application Under Review
 						{:else if existingSignupStatus === 'approved'}
@@ -270,7 +271,7 @@
 							You're on the Waitlist
 						{/if}
 					</h3>
-					<p class="text-gray-600 dark:text-gray-400 text-sm">
+					<p class="text-slate-700 dark:text-slate-300 text-sm">
 						{#if existingSignupStatus === 'pending'}
 							I'll review your application within 48 hours.
 						{:else if existingSignupStatus === 'approved'}
@@ -282,24 +283,26 @@
 				</div>
 			{:else}
 				<div class="flex flex-col sm:flex-row gap-4 justify-center">
-					<Button
+					<button
 						onclick={openSignupForm}
-						variant="primary"
-						size="lg"
+						class="btn-tactile px-8 py-4 text-lg font-semibold"
 						aria-describedby="join-beta-description"
-						icon={Users}
 					>
+						<Users class="w-5 h-5 inline mr-2" />
 						Join Beta
-					</Button>
+					</button>
 					<a
 						href="#what-you-get"
-						class="inline-flex items-center px-8 py-4 text-lg font-semibold text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-xl transition-colors"
+						class="inline-flex items-center px-8 py-4 text-lg font-semibold text-slate-700 dark:text-slate-300 border border-slate-400 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-sm transition-colors"
 						aria-label="View what you get in the beta program"
 					>
 						Learn More
 					</a>
 				</div>
-				<p id="join-beta-description" class="text-sm text-gray-500 dark:text-gray-400 mt-4">
+				<p
+					id="join-beta-description"
+					class="text-sm text-slate-600 dark:text-slate-400 mt-4"
+				>
 					Free during beta • Work directly with the founder
 				</p>
 			{/if}
@@ -315,29 +318,28 @@
 			aria-labelledby="signup-modal-title"
 		>
 			<div
-				class="bg-white dark:bg-gray-800 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+				class="card-industrial max-w-2xl w-full max-h-[90vh] overflow-y-auto relative noise-overlay"
 			>
 				<div class="p-8">
 					<header class="flex justify-between items-center mb-6">
 						<h2
 							id="signup-modal-title"
-							class="text-2xl font-bold text-gray-900 dark:text-white"
+							class="text-2xl font-bold text-slate-900 dark:text-slate-100"
 						>
 							Join BuildOS Beta
 						</h2>
-						<Button
+						<button
 							onclick={closeSignupForm}
-							variant="ghost"
-							size="sm"
-							class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 min-w-0 p-2"
+							class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-sm transition-colors"
 							aria-label="Close signup form"
-							icon={X}
-						></Button>
+						>
+							<X class="w-5 h-5 text-slate-600 dark:text-slate-400" />
+						</button>
 					</header>
 
 					{#if submitError}
 						<div
-							class="mb-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4"
+							class="mb-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-sm p-4"
 							role="alert"
 							aria-live="polite"
 						>
@@ -539,33 +541,35 @@
 
 						<!-- Submit Button -->
 						<div class="flex gap-4" role="group" aria-label="Form actions">
-							<Button
+							<button
 								type="button"
 								onclick={closeSignupForm}
-								variant="outline"
-								size="lg"
-								class="flex-1"
+								class="flex-1 px-6 py-3 text-slate-700 dark:text-slate-300 border border-slate-400 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-sm transition-colors font-semibold"
 							>
 								Cancel
-							</Button>
-							<Button
+							</button>
+							<button
 								type="submit"
 								disabled={isSubmitting}
-								variant="primary"
-								size="lg"
-								class="flex-1"
+								class="flex-1 btn-tactile px-6 py-3 font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
 								aria-describedby="submit-help"
 							>
 								{#if isSubmitting}
-									<Loader2 class="w-5 h-5 mr-2 animate-spin" aria-hidden="true" />
+									<Loader2
+										class="w-5 h-5 inline mr-2 animate-spin"
+										aria-hidden="true"
+									/>
 									Submitting...
 								{:else}
-									<Send class="w-5 h-5 mr-2" aria-hidden="true" />
+									<Send class="w-5 h-5 inline mr-2" aria-hidden="true" />
 									Join Beta Program
 								{/if}
-							</Button>
+							</button>
 						</div>
-						<p id="submit-help" class="text-xs text-gray-500 text-center">
+						<p
+							id="submit-help"
+							class="text-xs text-slate-600 dark:text-slate-400 text-center"
+						>
 							By submitting, you agree to our beta program terms.
 						</p>
 					</form>
@@ -577,53 +581,53 @@
 	<!-- What You Get -->
 	<section
 		id="what-you-get"
-		class="py-16 bg-gray-50 dark:bg-gray-800"
+		class="py-16 bg-[var(--surface-panel)] dark:bg-slate-900"
 		aria-labelledby="benefits-heading"
 	>
 		<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
 			<header class="text-center mb-12">
 				<h2
 					id="benefits-heading"
-					class="text-3xl font-bold text-gray-900 dark:text-white mb-4"
+					class="text-3xl font-bold text-slate-900 dark:text-slate-100 mb-4"
 				>
 					What You Get
 				</h2>
-				<p class="text-lg text-gray-600 dark:text-gray-400">
+				<p class="text-lg text-slate-700 dark:text-slate-300">
 					Beta members get early access and direct collaboration with the founder.
 				</p>
 			</header>
 
 			<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-				<div class="bg-white dark:bg-gray-900 rounded-xl p-6">
+				<div class="card-industrial p-6 relative dither-soft">
 					<div class="flex items-start space-x-4">
 						<div
-							class="w-10 h-10 bg-primary-100 dark:bg-primary-900/30 rounded-lg flex items-center justify-center flex-shrink-0"
+							class="utility-block w-10 h-10 rounded-sm flex items-center justify-center flex-shrink-0"
 						>
-							<CheckCircle class="w-5 h-5 text-primary-600 dark:text-primary-400" />
+							<CheckCircle class="w-5 h-5 text-gray-700 dark:text-gray-200" />
 						</div>
 						<div>
-							<h3 class="font-semibold text-gray-900 dark:text-white mb-2">
+							<h3 class="font-semibold text-slate-900 dark:text-slate-100 mb-2">
 								Early Access
 							</h3>
-							<p class="text-gray-600 dark:text-gray-400 text-sm">
+							<p class="text-slate-700 dark:text-slate-300 text-sm">
 								Get BuildOS before public launch and help shape how it develops.
 							</p>
 						</div>
 					</div>
 				</div>
 
-				<div class="bg-white dark:bg-gray-900 rounded-xl p-6">
+				<div class="card-industrial p-6 relative dither-soft">
 					<div class="flex items-start space-x-4">
 						<div
-							class="w-10 h-10 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center flex-shrink-0"
+							class="utility-block w-10 h-10 rounded-sm flex items-center justify-center flex-shrink-0"
 						>
-							<MessageCircle class="w-5 h-5 text-purple-600 dark:text-purple-400" />
+							<MessageCircle class="w-5 h-5 text-gray-700 dark:text-gray-200" />
 						</div>
 						<div>
-							<h3 class="font-semibold text-gray-900 dark:text-white mb-2">
+							<h3 class="font-semibold text-slate-900 dark:text-slate-100 mb-2">
 								Direct Collaboration
 							</h3>
-							<p class="text-gray-600 dark:text-gray-400 text-sm">
+							<p class="text-slate-700 dark:text-slate-300 text-sm">
 								Work directly with me. If you have product-minded feedback, it will
 								be directly heard.
 							</p>
@@ -631,72 +635,72 @@
 					</div>
 				</div>
 
-				<div class="bg-white dark:bg-gray-900 rounded-xl p-6">
+				<div class="card-industrial p-6 relative dither-soft">
 					<div class="flex items-start space-x-4">
 						<div
-							class="w-10 h-10 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg flex items-center justify-center flex-shrink-0"
+							class="utility-block w-10 h-10 rounded-sm flex items-center justify-center flex-shrink-0"
 						>
-							<Star class="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+							<Star class="w-5 h-5 text-gray-700 dark:text-gray-200" />
 						</div>
 						<div>
-							<h3 class="font-semibold text-gray-900 dark:text-white mb-2">
+							<h3 class="font-semibold text-slate-900 dark:text-slate-100 mb-2">
 								Lock-in Special Pricing
 							</h3>
-							<p class="text-gray-600 dark:text-gray-400 text-sm">
+							<p class="text-slate-700 dark:text-slate-300 text-sm">
 								Beta members get to lock in special pricing when BuildOS launches.
 							</p>
 						</div>
 					</div>
 				</div>
 
-				<div class="bg-white dark:bg-gray-900 rounded-xl p-6">
+				<div class="card-industrial p-6 relative dither-soft">
 					<div class="flex items-start space-x-4">
 						<div
-							class="w-10 h-10 bg-orange-100 dark:bg-orange-900/30 rounded-lg flex items-center justify-center flex-shrink-0"
+							class="utility-block w-10 h-10 rounded-sm flex items-center justify-center flex-shrink-0"
 						>
-							<Zap class="w-5 h-5 text-orange-600 dark:text-orange-400" />
+							<Zap class="w-5 h-5 text-gray-700 dark:text-gray-200" />
 						</div>
 						<div>
-							<h3 class="font-semibold text-gray-900 dark:text-white mb-2">
+							<h3 class="font-semibold text-slate-900 dark:text-slate-100 mb-2">
 								Priority Feedback
 							</h3>
-							<p class="text-gray-600 dark:text-gray-400 text-sm">
+							<p class="text-slate-700 dark:text-slate-300 text-sm">
 								Your requests and feedback go to the top of the development queue.
 							</p>
 						</div>
 					</div>
 				</div>
 
-				<div class="bg-white dark:bg-gray-900 rounded-xl p-6">
+				<div class="card-industrial p-6 relative dither-soft">
 					<div class="flex items-start space-x-4">
 						<div
-							class="w-10 h-10 bg-primary-100 dark:bg-primary-900/30 rounded-lg flex items-center justify-center flex-shrink-0"
+							class="utility-block w-10 h-10 rounded-sm flex items-center justify-center flex-shrink-0"
 						>
-							<Gift class="w-5 h-5 text-primary-600 dark:text-primary-400" />
+							<Gift class="w-5 h-5 text-gray-700 dark:text-gray-200" />
 						</div>
 						<div>
-							<h3 class="font-semibold text-gray-900 dark:text-white mb-2">
+							<h3 class="font-semibold text-slate-900 dark:text-slate-100 mb-2">
 								Free Premium Access
 							</h3>
-							<p class="text-gray-600 dark:text-gray-400 text-sm">
+							<p class="text-slate-700 dark:text-slate-300 text-sm">
 								Use all BuildOS features completely free during the beta period.
 							</p>
 						</div>
 					</div>
 				</div>
 
-				<div class="bg-white dark:bg-gray-900 rounded-xl p-6">
+				<div class="card-industrial p-6 relative dither-soft">
 					<div class="flex items-start space-x-4">
 						<div
-							class="w-10 h-10 bg-pink-100 dark:bg-pink-900/30 rounded-lg flex items-center justify-center flex-shrink-0"
+							class="utility-block w-10 h-10 rounded-sm flex items-center justify-center flex-shrink-0"
 						>
-							<Users class="w-5 h-5 text-pink-600 dark:text-pink-400" />
+							<Users class="w-5 h-5 text-gray-700 dark:text-gray-200" />
 						</div>
 						<div>
-							<h3 class="font-semibold text-gray-900 dark:text-white mb-2">
+							<h3 class="font-semibold text-slate-900 dark:text-slate-100 mb-2">
 								Connect with Others
 							</h3>
-							<p class="text-gray-600 dark:text-gray-400 text-sm">
+							<p class="text-slate-700 dark:text-slate-300 text-sm">
 								Chance to connect with fellow productivity enthusiasts in the beta
 								community.
 							</p>
@@ -708,29 +712,28 @@
 	</section>
 
 	<!-- Simple CTA -->
-	<section class="py-16 bg-white dark:bg-gray-900">
+	<section class="py-16">
 		<div class="max-w-3xl mx-auto text-center px-4 sm:px-6 lg:px-8">
-			<h2 class="text-3xl font-bold mb-4 text-gray-900 dark:text-white">
+			<h2 class="text-3xl font-bold mb-4 text-slate-900 dark:text-slate-100">
 				Ready to Help Build BuildOS?
 			</h2>
-			<p class="text-lg text-gray-600 dark:text-gray-400 mb-8">
+			<p class="text-lg text-slate-700 dark:text-slate-300 mb-8">
 				Join the beta program and work with me to create better AI-powered productivity.
 			</p>
 
 			{#if !existingSignupStatus}
 				<div class="flex flex-col sm:flex-row gap-4 justify-center">
-					<Button
+					<button
 						onclick={openSignupForm}
-						variant="primary"
-						size="lg"
+						class="btn-tactile px-8 py-4 text-lg font-semibold"
 						aria-label="Join the BuildOS beta program"
-						icon={Users}
 					>
+						<Users class="w-5 h-5 inline mr-2" />
 						Join Beta Program
-					</Button>
+					</button>
 					<a
 						href="/contact"
-						class="inline-flex items-center px-8 py-4 text-lg font-semibold text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-xl transition-colors"
+						class="inline-flex items-center px-8 py-4 text-lg font-semibold text-slate-700 dark:text-slate-300 border border-slate-400 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-sm transition-colors"
 						aria-label="Contact with questions about the beta program"
 					>
 						<MessageCircle class="w-5 h-5 mr-3" aria-hidden="true" />
@@ -739,7 +742,7 @@
 				</div>
 			{/if}
 
-			<p class="text-sm text-gray-500 dark:text-gray-400 mt-6">
+			<p class="text-sm text-slate-600 dark:text-slate-400 mt-6">
 				Beta spots are limited to maintain quality feedback.
 			</p>
 		</div>

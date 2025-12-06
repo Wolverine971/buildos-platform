@@ -1,23 +1,26 @@
 # BuildOS Tool System - Quick Reference
 
-**Last Updated:** 2025-11-17
+**Last Updated:** 2025-12-02
+
+> **Task Schema Reference**: See [TYPE_KEY_TAXONOMY.md](../../ontology/TYPE_KEY_TAXONOMY.md#onto_tasks) for task work mode taxonomy.
 
 ## Tool Count & Categories
 
-Total: **31 tools**
+Total: **38 tools** (+ 1 virtual tool)
 
 | Category                     | Count | Token Cost | Usage              |
 | ---------------------------- | ----- | ---------- | ------------------ |
-| Search (list/search)         | 8     | 350        | Discovery phase    |
-| Read (detail)                | 2     | 350        | Deep dives         |
-| Write (create/update/delete) | 12    | 400        | Execution phase    |
-| Utility/Knowledge            | 9     | 80-900     | Reference/guidance |
+| Search (list/search)         | 12    | 350        | Discovery phase    |
+| Read (detail)                | 5     | 350        | Deep dives         |
+| Write (create/update/delete) | 15    | 400        | Execution phase    |
+| Template                     | 2     | 300        | Template mgmt      |
+| Utility/Knowledge            | 4     | 80-900     | Reference/guidance |
 
 ---
 
-## All 31 Tools by Category
+## All 38 Tools by Category
 
-### Search Tools (8)
+### Search Tools (12)
 
 ```
 list_onto_projects
@@ -26,47 +29,70 @@ list_onto_tasks
 search_onto_tasks
 list_onto_plans
 list_onto_goals
+list_onto_documents
+search_onto_documents
 list_onto_templates
+list_task_documents
+search_ontology
 get_entity_relationships
 ```
 
-### Read Tools (2)
+### Read Tools (5)
 
 ```
 get_onto_project_details
 get_onto_task_details
+get_onto_goal_details
+get_onto_plan_details
+get_onto_document_details
 ```
 
-### Write Tools (12)
+### Write Tools (15)
 
-Create:
+Create (6):
 
 - create_onto_project
 - create_onto_task
 - create_onto_goal
 - create_onto_plan
+- create_onto_document
+- create_task_document
 
-Update:
+Update (5):
 
 - update_onto_project
 - update_onto_task
+- update_onto_goal
+- update_onto_plan
+- update_onto_document
 
-Delete:
+Delete (4):
 
 - delete_onto_task
 - delete_onto_goal
 - delete_onto_plan
+- delete_onto_document
 
-Special:
+### Template Tools (2)
 
-- request_template_creation
+```
+request_template_creation
+suggest_template
+```
 
-### Utility/Knowledge Tools (8)
+### Utility/Knowledge Tools (4)
 
 ```
 get_field_info
+web_search
 get_buildos_overview
 get_buildos_usage_guide
+```
+
+### Virtual Tools (1)
+
+```
+agent_create_plan  (handled by orchestrator, not a real API tool)
 ```
 
 ---
@@ -84,6 +110,24 @@ get_buildos_usage_guide
 | `project_forecast`   | Base (4) + Project (12)                  | Scenario planning      |
 | `task_update`        | Base (4) + Project (12)                  | Task updates           |
 | `daily_brief_update` | Base (4)                                 | Brief generation       |
+
+---
+
+## Project Creation Clarification Flow
+
+For `project_create` context, the system first checks if there's sufficient information:
+
+```
+User message → ProjectCreationAnalyzer → Sufficient? → Yes → Proceed to creation
+                                              ↓
+                                             No → Ask clarifying questions (max 2 rounds)
+```
+
+**Sufficiency indicators:** project type keywords (app, book, etc.), deliverable verbs (build, create), goals, timeline, scale.
+
+**Session tracking:** `chat_sessions.agent_metadata.projectClarification` stores round count and accumulated context.
+
+**Key file:** `services/agentic-chat/analysis/project-creation-analyzer.ts`
 
 ---
 
@@ -115,7 +159,7 @@ get_buildos_usage_guide
 ### For Creating
 
 1. `create_onto_project` - Bootstrap complete project structure
-2. `create_onto_task` - Add task to project
+2. `create_onto_task` - Add task to project ⚠️ **See Task Creation Philosophy below**
 3. `request_template_creation` - Escalate for new template
 
 ### For Updating
@@ -141,15 +185,69 @@ draft → active → paused → complete → archived
 
 ### Tasks
 
+**State:**
+
 ```
 todo → in_progress → blocked → done
 ```
 
+**type_key Work Modes:** `task.execute` (default), `task.create`, `task.refine`, `task.research`, `task.review`, `task.coordinate`, `task.admin`, `task.plan`
+
+**Specializations:** `task.coordinate.meeting`, `task.coordinate.standup`, `task.execute.deploy`, `task.execute.checklist`
+
 ### Plans
+
+**State:**
 
 ```
 draft → active → blocked → complete
 ```
+
+**type_key Families:** Format: `plan.{family}[.{variant}]`
+
+| Family   | Examples                                       |
+| -------- | ---------------------------------------------- |
+| timebox  | `plan.timebox.sprint`, `plan.timebox.weekly`   |
+| pipeline | `plan.pipeline.sales`, `plan.pipeline.content` |
+| campaign | `plan.campaign.marketing`                      |
+| roadmap  | `plan.roadmap.product`                         |
+| process  | `plan.process.client_onboarding`               |
+| phase    | `plan.phase.project` (default)                 |
+
+### Goals
+
+**type_key Families:** Format: `goal.{family}[.{variant}]`
+
+| Family   | Examples                                         |
+| -------- | ------------------------------------------------ |
+| outcome  | `goal.outcome.project`, `goal.outcome.milestone` |
+| metric   | `goal.metric.revenue`, `goal.metric.usage`       |
+| behavior | `goal.behavior.cadence`, `goal.behavior.routine` |
+| learning | `goal.learning.skill`, `goal.learning.domain`    |
+
+### Documents
+
+**type_key Families:** Format: `document.{family}[.{variant}]`
+
+| Family    | Examples                                                       |
+| --------- | -------------------------------------------------------------- |
+| context   | `document.context.project`, `document.context.brief`           |
+| knowledge | `document.knowledge.research`, `document.knowledge.brain_dump` |
+| decision  | `document.decision.meeting_notes`, `document.decision.rfc`     |
+| spec      | `document.spec.product`, `document.spec.technical`             |
+| reference | `document.reference.handbook`, `document.reference.sop`        |
+| intake    | `document.intake.client`, `document.intake.project`            |
+
+### Outputs
+
+**type_key Families:** Format: `output.{family}[.{variant}]`
+
+| Family      | Examples                                                   |
+| ----------- | ---------------------------------------------------------- |
+| written     | `output.written.article`, `output.written.blog_post`       |
+| media       | `output.media.slide_deck`, `output.media.video`            |
+| software    | `output.software.feature`, `output.software.release`       |
+| operational | `output.operational.report`, `output.operational.contract` |
 
 ---
 
@@ -208,6 +306,36 @@ draft → active → blocked → complete
     create_onto_task({ project_id: 'uuid', title: '...', priority: 4 });
     // Creates and returns new task
     ```
+
+---
+
+## Task Creation Philosophy ⚠️
+
+**The Golden Rule:** Tasks should represent **FUTURE USER WORK**, not a log of what was discussed.
+
+### When to Create Tasks
+
+| ✅ Create                | Example                         | Why               |
+| ------------------------ | ------------------------------- | ----------------- |
+| User explicitly requests | "Add a task to call the client" | Explicit request  |
+| Human action required    | "I need to review the design"   | User must do this |
+| Future user action       | "Remind me to follow up"        | Tracking needed   |
+
+### When NOT to Create Tasks
+
+| ❌ Don't Create         | Example                    | Why                         |
+| ----------------------- | -------------------------- | --------------------------- |
+| Agent can help now      | "Help me brainstorm ideas" | Just help them              |
+| Analysis/research       | "What are my blockers?"    | Analyze and respond         |
+| About to do it yourself | Agent doing research       | Would create then complete  |
+| To appear helpful       | Creating structure         | Only if user needs tracking |
+
+### Decision Questions
+
+1. Is this work the USER must do? → Create
+2. Can I help RIGHT NOW? → Don't create, just help
+3. Did user EXPLICITLY ask? → Create
+4. Am I about to do this myself? → Don't create
 
 ---
 

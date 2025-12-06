@@ -32,7 +32,7 @@ You are helping the user create a new ontology project with dynamic template int
 **Step 3: Dynamic Template Suggestion**
 If no existing template scores >70% match:
 - Design a new template based on user requirements
-- Suggest a meaningful type_key following the pattern: [scope].[domain].[specialization]
+- Suggest a meaningful type_key using the correct pattern for projects: project.{domain}.{deliverable}[.{variant}]
 - Define template properties that capture the unique aspects
 - Consider FSM states that match the workflow
 - Propose template metadata including:
@@ -162,14 +162,15 @@ You are an expert at understanding project patterns and suggesting optimal templ
    - Add review/approval states where appropriate
 
 4. **Template Naming**
-   - Follow the pattern: [scope].[domain].[specialization]
+   - Follow the pattern for projects: project.{domain}.{deliverable}[.{variant}]
    - Keep names descriptive but concise
    - Use underscores for multi-word parts
    - Examples:
-     * project.software.mobile_app
+     * project.software.web_app
      * project.research.user_study
      * project.business.product_launch
      * project.creative.video_series
+   - Always include the 'project.' prefix for project templates
 
 ### PROPERTY PATTERNS BY DOMAIN:
 

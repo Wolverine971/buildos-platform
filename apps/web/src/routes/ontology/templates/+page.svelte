@@ -211,6 +211,11 @@
 	let detailTemplate = $state<ResolvedTemplate | null>(null);
 	let detailChildren = $state<TemplateChild[]>([]);
 	let searchDebounce: ReturnType<typeof setTimeout> | null = null;
+	let showDeleteConfirmModal = $state(false);
+	let templateToDelete = $state<Template | null>(null);
+	let deleteLoading = $state(false);
+	let deleteError = $state<string | null>(null);
+	let deleteProjectCount = $state(0);
 
 	const facetOptions = $derived(filterOptions.facets || {});
 	const facetLabelMap = $derived.by(() => {
@@ -378,6 +383,64 @@
 		if (!value) return '';
 		return value.replace(/[_-]+/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
 	}
+
+	async function handleDeleteTemplate(template: Template) {
+		if (!isAdmin) return;
+
+		templateToDelete = template;
+		deleteError = null;
+		deleteProjectCount = 0;
+
+		// Fetch project count for confirmation
+		try {
+			const response = await fetch(`/api/onto/templates/${template.id}/project-count`);
+			if (response.ok) {
+				const data = await response.json();
+				deleteProjectCount = data.data?.count || 0;
+			}
+		} catch (err) {
+			console.error('Failed to fetch project count:', err);
+		}
+
+		showDeleteConfirmModal = true;
+	}
+
+	function closeDeleteConfirmModal() {
+		if (deleteLoading) return;
+		showDeleteConfirmModal = false;
+		templateToDelete = null;
+		deleteError = null;
+		deleteProjectCount = 0;
+	}
+
+	async function confirmDeleteTemplate() {
+		if (!templateToDelete?.id) return;
+
+		deleteLoading = true;
+		deleteError = null;
+
+		try {
+			const response = await fetch(`/api/onto/templates/${templateToDelete.id}`, {
+				method: 'DELETE'
+			});
+
+			const result = await response.json();
+
+			if (!response.ok) {
+				throw new Error(result.error || 'Failed to delete template');
+			}
+
+			// Close modal and reload page to refresh template list
+			showDeleteConfirmModal = false;
+			window.location.reload();
+		} catch (err) {
+			const message = err instanceof Error ? err.message : 'Failed to delete template';
+			deleteError = message;
+			console.error('Failed to delete template:', err);
+		} finally {
+			deleteLoading = false;
+		}
+	}
 </script>
 
 <svelte:head>
@@ -390,7 +453,7 @@
 		<button
 			type="button"
 			onclick={() => goto('/ontology')}
-			class="inline-flex items-center gap-2 rounded-xl border border-slate-200/70 bg-white/90 px-3 py-2 text-sm font-semibold text-slate-600 transition hover:border-blue-400 hover:text-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-300 dark:hover:border-indigo-500 dark:hover:text-indigo-200"
+			class="inline-flex items-center gap-2 rounded border-2 border-slate-700/30 bg-surface-elevated px-3 py-2 text-sm font-semibold text-slate-600 transition hover:border-accent-orange hover:text-accent-orange focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-orange dark:border-slate-500/30 dark:bg-surface-panel dark:text-slate-300 dark:hover:border-accent-orange dark:hover:text-accent-orange shadow-subtle"
 		>
 			<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
 				<path
@@ -408,10 +471,10 @@
 	<header>
 		<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
 			<div>
-				<h1 class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-2">
+				<h1 class="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-slate-100 mb-2">
 					Ontology Templates
 				</h1>
-				<p class="text-sm sm:text-base text-gray-600 dark:text-gray-400">
+				<p class="text-sm sm:text-base text-slate-600 dark:text-slate-400">
 					Browse and discover {templates.length} template{templates.length !== 1
 						? 's'
 						: ''} across all domains
@@ -442,11 +505,11 @@
 	</header>
 
 	<div
-		class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 sm:p-6 flex flex-wrap gap-4 text-sm text-gray-600 dark:text-gray-300"
+		class="rounded border-2 border-slate-700/30 dark:border-slate-500/30 bg-surface-panel dark:bg-slate-800 p-4 sm:p-6 flex flex-wrap gap-4 text-sm text-slate-600 dark:text-slate-300 shadow-subtle"
 	>
 		<div class="min-w-[200px] flex-1">
 			<p
-				class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 font-semibold"
+				class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400 font-semibold"
 			>
 				Type Keys
 			</p>
@@ -475,7 +538,7 @@
 			<div class="flex flex-wrap gap-2 text-xs mt-1">
 				{#each scopeGroups as group}
 					<span
-						class="inline-flex items-center rounded-full border border-gray-200 dark:border-gray-700 px-3 py-1 text-gray-700 dark:text-gray-200"
+						class="inline-flex items-center rounded-full border border-slate-700/30 dark:border-slate-500/30 px-3 py-1 text-gray-700 dark:text-gray-200"
 					>
 						{group.title}: {group.scopes.length}
 					</span>
@@ -565,7 +628,7 @@
 			<!-- Facet Filters -->
 			<div class="grid gap-3 md:grid-cols-3">
 				<details
-					class={`rounded-2xl border bg-white dark:bg-gray-900 px-4 py-3 ${selectedContexts.length ? 'border-blue-200 dark:border-blue-500/40' : 'border-gray-200 dark:border-gray-800'}`}
+					class={`rounded-2xl border bg-surface-panel dark:bg-slate-800 px-4 py-3 ${selectedContexts.length ? 'border-blue-200 dark:border-blue-500/40' : 'border-2 border-slate-700/30 dark:border-slate-500/30'}`}
 					open={selectedContexts.length > 0}
 				>
 					<summary
@@ -611,7 +674,7 @@
 				</details>
 
 				<details
-					class={`rounded-2xl border bg-white dark:bg-gray-900 px-4 py-3 ${selectedScales.length ? 'border-emerald-200 dark:border-emerald-500/40' : 'border-gray-200 dark:border-gray-800'}`}
+					class={`rounded-2xl border bg-surface-panel dark:bg-slate-800 px-4 py-3 ${selectedScales.length ? 'border-emerald-200 dark:border-emerald-500/40' : 'border-2 border-slate-700/30 dark:border-slate-500/30'}`}
 					open={selectedScales.length > 0}
 				>
 					<summary
@@ -657,7 +720,7 @@
 				</details>
 
 				<details
-					class={`rounded-2xl border bg-white dark:bg-gray-900 px-4 py-3 ${selectedStages.length ? 'border-purple-200 dark:border-purple-500/40' : 'border-gray-200 dark:border-gray-800'}`}
+					class={`rounded-2xl border bg-surface-panel dark:bg-slate-800 px-4 py-3 ${selectedStages.length ? 'border-accent-blue-200 dark:border-accent-blue-500/40' : 'border-2 border-slate-700/30 dark:border-slate-500/30'}`}
 					open={selectedStages.length > 0}
 				>
 					<summary
@@ -679,8 +742,8 @@
 									<label
 										class={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition ${
 											isStageSelected
-												? 'bg-purple-50 border-purple-200 text-purple-700 dark:bg-purple-900/30 dark:border-purple-500/40 dark:text-purple-100'
-												: 'bg-transparent border-gray-200 text-gray-600 dark:border-gray-700 dark:text-gray-400 hover:border-purple-200'
+												? 'bg-accent-blue-50 border-accent-blue-200 text-accent-blue-700 dark:bg-accent-blue-900/30 dark:border-accent-blue-500/40 dark:text-accent-blue-100'
+												: 'bg-transparent border-gray-200 text-gray-600 dark:border-gray-700 dark:text-gray-400 hover:border-accent-blue-200'
 										}`}
 									>
 										<input
@@ -704,7 +767,7 @@
 			</div>
 
 			<div
-				class="flex flex-col gap-4 pt-4 border-t border-gray-200 dark:border-gray-700 md:flex-row md:items-center md:justify-between"
+				class="flex flex-col gap-4 pt-4 border-t border-slate-700/30 dark:border-slate-500/30 md:flex-row md:items-center md:justify-between"
 			>
 				<div class="flex items-center gap-3">
 					<span class="text-sm font-medium text-gray-700 dark:text-gray-300">Sort by</span
@@ -729,7 +792,7 @@
 					<div class="flex gap-2">
 						<button
 							onclick={() => (viewMode = 'realm')}
-							class="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors {viewMode ===
+							class="px-3 py-1.5 rounded text-sm font-medium transition-colors {viewMode ===
 							'realm'
 								? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
 								: 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'}"
@@ -738,7 +801,7 @@
 						</button>
 						<button
 							onclick={() => (viewMode = 'scope')}
-							class="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors {viewMode ===
+							class="px-3 py-1.5 rounded text-sm font-medium transition-colors {viewMode ===
 							'scope'
 								? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
 								: 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'}"
@@ -755,7 +818,7 @@
 				>
 					{#if selectedScopeDetails}
 						<div
-							class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-gradient-to-br from-white to-gray-50 dark:from-gray-900 dark:to-gray-900/40 p-4 space-y-2"
+							class="rounded-2xl border border-2 border-slate-700/30 dark:border-slate-500/30 bg-gradient-to-br from-white to-gray-50 dark:from-gray-900 dark:to-gray-900/40 p-4 space-y-2"
 						>
 							<p
 								class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400"
@@ -788,7 +851,7 @@
 
 					{#if selectedRealm || activeFacetCount}
 						<div
-							class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 space-y-3"
+							class="rounded-2xl border border-2 border-slate-700/30 dark:border-slate-500/30 bg-surface-panel dark:bg-slate-800 p-4 space-y-3"
 						>
 							{#if selectedRealm}
 								<div>
@@ -864,7 +927,7 @@
 												<div class="flex flex-wrap gap-2">
 													{#each selectedStages as value}
 														<span
-															class="inline-flex items-center rounded-full bg-purple-50 dark:bg-purple-500/10 text-purple-700 dark:text-purple-100 border border-purple-100 dark:border-purple-500/40 px-3 py-1 text-xs"
+															class="inline-flex items-center rounded-full bg-accent-blue-50 dark:bg-accent-blue-500/10 text-accent-blue-700 dark:text-accent-blue-100 border border-accent-blue-100 dark:border-accent-blue-500/40 px-3 py-1 text-xs"
 														>
 															{facetLabelMap.stage?.[value] ??
 																capitalize(value)}
@@ -937,8 +1000,10 @@
 								<TemplateCard
 									{template}
 									showRealmBadge={false}
+									{isAdmin}
 									onViewDetails={() => openTemplateDetail(template)}
 									onCreateProject={() => createProjectFromTemplate(template)}
+									onDelete={() => handleDeleteTemplate(template)}
 								/>
 							{/each}
 						</div>
@@ -965,8 +1030,10 @@
 								<TemplateCard
 									{template}
 									showRealmBadge={true}
+									{isAdmin}
 									onViewDetails={() => openTemplateDetail(template)}
 									onCreateProject={() => createProjectFromTemplate(template)}
+									onDelete={() => handleDeleteTemplate(template)}
 								/>
 							{/each}
 						</div>
@@ -985,9 +1052,88 @@
 			error={detailError}
 			template={detailTemplate}
 			children={detailChildren}
+			{isAdmin}
 			onclose={() => closeDetail()}
 			oncreateproject={handleCreateFromDetail}
 			onselecttemplate={handleSelectChild}
+			ondelete={() => {
+				if (detailTemplate) {
+					// Convert ResolvedTemplate back to Template for deletion
+					const templateForDelete: Template = {
+						id: detailTemplate.id,
+						type_key: detailTemplate.type_key,
+						name: detailTemplate.name,
+						scope: detailTemplate.scope,
+						status: detailTemplate.status,
+						parent_template_id: detailTemplate.parent_template_id,
+						is_abstract: detailTemplate.is_abstract,
+						fsm: detailTemplate.fsm,
+						schema: detailTemplate.schema,
+						metadata: detailTemplate.metadata,
+						default_props: detailTemplate.default_props,
+						default_views: detailTemplate.default_views,
+						facet_defaults: detailTemplate.facet_defaults,
+						created_at: '',
+						updated_at: '',
+						created_by: ''
+					};
+					closeDetail();
+					handleDeleteTemplate(templateForDelete);
+				}
+			}}
 		/>
+	{/await}
+{/if}
+
+{#if showDeleteConfirmModal && templateToDelete}
+	{#await import('$lib/components/ui/ConfirmationModal.svelte') then { default: ConfirmationModal }}
+		<ConfirmationModal
+			isOpen={showDeleteConfirmModal}
+			title="Delete Template"
+			confirmText="Delete Template"
+			confirmVariant="danger"
+			loading={deleteLoading}
+			loadingText="Deleting..."
+			icon="danger"
+			on:confirm={confirmDeleteTemplate}
+			on:cancel={closeDeleteConfirmModal}
+		>
+			<div slot="content">
+				<p class="text-sm text-gray-600 dark:text-gray-300 mb-4">
+					Are you sure you want to delete the template
+					<span class="font-semibold">{templateToDelete.name}</span>?
+				</p>
+				<p class="text-sm font-semibold text-red-600 dark:text-red-400">
+					This will permanently delete:
+				</p>
+				<ul
+					class="list-disc list-inside mt-2 text-sm text-gray-600 dark:text-gray-300 space-y-1"
+				>
+					<li>The template and all its configuration</li>
+					{#if deleteProjectCount > 0}
+						<li class="font-semibold text-red-600 dark:text-red-400">
+							{deleteProjectCount} project{deleteProjectCount !== 1 ? 's' : ''} using this
+							template
+						</li>
+						<li class="ml-4">
+							All tasks, goals, plans, documents, and other entities within those
+							projects
+						</li>
+					{:else}
+						<li class="text-gray-500 dark:text-gray-400 italic">
+							No projects are using this template
+						</li>
+					{/if}
+				</ul>
+			</div>
+
+			<div slot="details">
+				{#if deleteError}
+					<p class="mt-3 text-sm text-red-600 dark:text-red-400">
+						{deleteError}
+					</p>
+				{/if}
+			</div>
+		</ConfirmationModal>
 	{/await}
 {/if}

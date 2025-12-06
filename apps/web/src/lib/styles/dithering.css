@@ -22,8 +22,9 @@
    ============================================================================ */
 
 /**
- * Default dithering - balanced 4x4 Bayer matrix
- * Opacity: 3.5-4.5% (medium, noticeable)
+ * Default dithering - balanced 4x4 Bayer matrix (ENHANCED for visibility)
+ * Opacity: 20-28% (increased from 12-18%)
+ * Dot radius: 0.55 (increased from 0.35)
  * Best for: General use, cards, surfaces
  *
  * Uses mix-blend-mode for robust blending with any background
@@ -42,18 +43,18 @@
 	content: '';
 	position: absolute;
 	inset: 0;
-	background-image: url("data:image/svg+xml,%3Csvg width='4' height='4' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='4' height='4' fill='rgba(0,0,0,0)'/%3E%3Ccircle cx='0' cy='0' r='0.5' fill='rgb(0,0,0)'/%3E%3Ccircle cx='2' cy='1' r='0.5' fill='rgb(0,0,0)'/%3E%3Ccircle cx='1' cy='2' r='0.5' fill='rgb(0,0,0)'/%3E%3Ccircle cx='3' cy='3' r='0.5' fill='rgb(0,0,0)'/%3E%3C/svg%3E");
+	background-image: url("data:image/svg+xml,%3Csvg width='4' height='4' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='4' height='4' fill='rgba(0,0,0,0)'/%3E%3Ccircle cx='0' cy='0' r='0.55' fill='rgb(0,0,0)'/%3E%3Ccircle cx='2' cy='1' r='0.55' fill='rgb(0,0,0)'/%3E%3Ccircle cx='1' cy='2' r='0.55' fill='rgb(0,0,0)'/%3E%3Ccircle cx='3' cy='3' r='0.55' fill='rgb(0,0,0)'/%3E%3C/svg%3E");
 	background-size: 4px 4px;
-	mix-blend-mode: overlay;
-	opacity: 0.15;
+	mix-blend-mode: multiply;
+	opacity: 0.2;
 	pointer-events: none;
 }
 
 .dark .dither::before,
 .dark .dither-medium::before {
-	background-image: url("data:image/svg+xml,%3Csvg width='4' height='4' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='4' height='4' fill='rgba(0,0,0,0)'/%3E%3Ccircle cx='0' cy='0' r='0.5' fill='rgb(255,255,255)'/%3E%3Ccircle cx='2' cy='1' r='0.5' fill='rgb(255,255,255)'/%3E%3Ccircle cx='1' cy='2' r='0.5' fill='rgb(255,255,255)'/%3E%3Ccircle cx='3' cy='3' r='0.5' fill='rgb(255,255,255)'/%3E%3C/svg%3E");
+	background-image: url("data:image/svg+xml,%3Csvg width='4' height='4' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='4' height='4' fill='rgba(0,0,0,0)'/%3E%3Ccircle cx='0' cy='0' r='0.55' fill='rgb(255,255,255)'/%3E%3Ccircle cx='2' cy='1' r='0.55' fill='rgb(255,255,255)'/%3E%3Ccircle cx='1' cy='2' r='0.55' fill='rgb(255,255,255)'/%3E%3Ccircle cx='3' cy='3' r='0.55' fill='rgb(255,255,255)'/%3E%3C/svg%3E");
 	mix-blend-mode: soft-light;
-	opacity: 0.2;
+	opacity: 0.28;
 }
 
 /* ============================================================================
@@ -61,9 +62,10 @@
    ============================================================================ */
 
 /**
- * Subtle - Ultra-fine, barely visible
- * Opacity: 1-2%
- * Best for: Backgrounds where dithering should be extremely subtle
+ * Subtle - Ultra-fine, gentle texture (ENHANCED for visibility)
+ * Opacity: 12-18% (increased from 8-12%)
+ * Dot radius: 0.42 (increased from 0.3)
+ * Best for: Backgrounds where dithering should be gentle but visible
  */
 .dither-subtle {
 	position: relative !important;
@@ -74,23 +76,24 @@
 	content: '';
 	position: absolute;
 	inset: 0;
-	background-image: url("data:image/svg+xml,%3Csvg width='4' height='4' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='4' height='4' fill='rgba(0,0,0,0)'/%3E%3Ccircle cx='0' cy='0' r='0.4' fill='rgb(0,0,0)'/%3E%3Ccircle cx='2' cy='1' r='0.4' fill='rgb(0,0,0)'/%3E%3Ccircle cx='1' cy='2' r='0.4' fill='rgb(0,0,0)'/%3E%3Ccircle cx='3' cy='3' r='0.4' fill='rgb(0,0,0)'/%3E%3C/svg%3E");
+	background-image: url("data:image/svg+xml,%3Csvg width='4' height='4' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='4' height='4' fill='rgba(0,0,0,0)'/%3E%3Ccircle cx='0' cy='0' r='0.42' fill='rgb(0,0,0)'/%3E%3Ccircle cx='2' cy='1' r='0.42' fill='rgb(0,0,0)'/%3E%3Ccircle cx='1' cy='2' r='0.42' fill='rgb(0,0,0)'/%3E%3Ccircle cx='3' cy='3' r='0.42' fill='rgb(0,0,0)'/%3E%3C/svg%3E");
 	background-size: 4px 4px;
-	mix-blend-mode: overlay;
-	opacity: 0.08;
+	mix-blend-mode: multiply;
+	opacity: 0.12;
 	pointer-events: none;
 }
 
 .dark .dither-subtle::before {
-	background-image: url("data:image/svg+xml,%3Csvg width='4' height='4' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='4' height='4' fill='rgba(0,0,0,0)'/%3E%3Ccircle cx='0' cy='0' r='0.4' fill='rgb(255,255,255)'/%3E%3Ccircle cx='2' cy='1' r='0.4' fill='rgb(255,255,255)'/%3E%3Ccircle cx='1' cy='2' r='0.4' fill='rgb(255,255,255)'/%3E%3Ccircle cx='3' cy='3' r='0.4' fill='rgb(255,255,255)'/%3E%3C/svg%3E");
+	background-image: url("data:image/svg+xml,%3Csvg width='4' height='4' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='4' height='4' fill='rgba(0,0,0,0)'/%3E%3Ccircle cx='0' cy='0' r='0.42' fill='rgb(255,255,255)'/%3E%3Ccircle cx='2' cy='1' r='0.42' fill='rgb(255,255,255)'/%3E%3Ccircle cx='1' cy='2' r='0.42' fill='rgb(255,255,255)'/%3E%3Ccircle cx='3' cy='3' r='0.42' fill='rgb(255,255,255)'/%3E%3C/svg%3E");
 	mix-blend-mode: soft-light;
-	opacity: 0.12;
+	opacity: 0.18;
 }
 
 /**
- * Soft - Gentle texture
- * Opacity: 2.5-3.5%
- * Best for: Content areas, body text backgrounds
+ * Soft - Gentle texture (ENHANCED for visibility)
+ * Opacity: 18-25% (increased from 10-15%)
+ * Dot radius: 0.5 (increased from 0.32)
+ * Best for: Content areas, body text backgrounds, scratchpad inputs
  */
 .dither-soft {
 	position: relative !important;
@@ -101,22 +104,22 @@
 	content: '';
 	position: absolute;
 	inset: 0;
-	background-image: url("data:image/svg+xml,%3Csvg width='4' height='4' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='4' height='4' fill='rgba(0,0,0,0)'/%3E%3Ccircle cx='0' cy='0' r='0.45' fill='rgb(0,0,0)'/%3E%3Ccircle cx='2' cy='1' r='0.45' fill='rgb(0,0,0)'/%3E%3Ccircle cx='1' cy='2' r='0.45' fill='rgb(0,0,0)'/%3E%3Ccircle cx='3' cy='3' r='0.45' fill='rgb(0,0,0)'/%3E%3C/svg%3E");
+	background-image: url("data:image/svg+xml,%3Csvg width='4' height='4' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='4' height='4' fill='rgba(0,0,0,0)'/%3E%3Ccircle cx='0' cy='0' r='0.5' fill='rgb(0,0,0)'/%3E%3Ccircle cx='2' cy='1' r='0.5' fill='rgb(0,0,0)'/%3E%3Ccircle cx='1' cy='2' r='0.5' fill='rgb(0,0,0)'/%3E%3Ccircle cx='3' cy='3' r='0.5' fill='rgb(0,0,0)'/%3E%3C/svg%3E");
 	background-size: 4px 4px;
-	mix-blend-mode: overlay;
-	opacity: 0.12;
+	mix-blend-mode: multiply;
+	opacity: 0.18;
 	pointer-events: none;
 }
 
 .dark .dither-soft::before {
-	background-image: url("data:image/svg+xml,%3Csvg width='4' height='4' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='4' height='4' fill='rgba(0,0,0,0)'/%3E%3Ccircle cx='0' cy='0' r='0.45' fill='rgb(255,255,255)'/%3E%3Ccircle cx='2' cy='1' r='0.45' fill='rgb(255,255,255)'/%3E%3Ccircle cx='1' cy='2' r='0.45' fill='rgb(255,255,255)'/%3E%3Ccircle cx='3' cy='3' r='0.45' fill='rgb(255,255,255)'/%3E%3C/svg%3E");
+	background-image: url("data:image/svg+xml,%3Csvg width='4' height='4' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='4' height='4' fill='rgba(0,0,0,0)'/%3E%3Ccircle cx='0' cy='0' r='0.5' fill='rgb(255,255,255)'/%3E%3Ccircle cx='2' cy='1' r='0.5' fill='rgb(255,255,255)'/%3E%3Ccircle cx='1' cy='2' r='0.5' fill='rgb(255,255,255)'/%3E%3Ccircle cx='3' cy='3' r='0.5' fill='rgb(255,255,255)'/%3E%3C/svg%3E");
 	mix-blend-mode: soft-light;
-	opacity: 0.18;
+	opacity: 0.25;
 }
 
 /**
  * Strong - Pronounced texture
- * Opacity: 5-6%
+ * Opacity: 30-40%
  * Best for: Emphasis areas, interactive elements
  */
 .dither-strong {
@@ -131,14 +134,14 @@
 	background-image: url("data:image/svg+xml,%3Csvg width='4' height='4' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='4' height='4' fill='rgba(0,0,0,0)'/%3E%3Ccircle cx='0' cy='0' r='0.6' fill='rgb(0,0,0)'/%3E%3Ccircle cx='2' cy='1' r='0.6' fill='rgb(0,0,0)'/%3E%3Ccircle cx='1' cy='2' r='0.6' fill='rgb(0,0,0)'/%3E%3Ccircle cx='3' cy='3' r='0.6' fill='rgb(0,0,0)'/%3E%3C/svg%3E");
 	background-size: 4px 4px;
 	mix-blend-mode: overlay;
-	opacity: 0.22;
+	opacity: 0.3;
 	pointer-events: none;
 }
 
 .dark .dither-strong::before {
 	background-image: url("data:image/svg+xml,%3Csvg width='4' height='4' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='4' height='4' fill='rgba(0,0,0,0)'/%3E%3Ccircle cx='0' cy='0' r='0.6' fill='rgb(255,255,255)'/%3E%3Ccircle cx='2' cy='1' r='0.6' fill='rgb(255,255,255)'/%3E%3Ccircle cx='1' cy='2' r='0.6' fill='rgb(255,255,255)'/%3E%3Ccircle cx='3' cy='3' r='0.6' fill='rgb(255,255,255)'/%3E%3C/svg%3E");
 	mix-blend-mode: soft-light;
-	opacity: 0.28;
+	opacity: 0.4;
 }
 
 /**
@@ -173,8 +176,9 @@
    ============================================================================ */
 
 /**
- * Gradient - Optimized for gradient backgrounds
- * Opacity: 4.5-5.5%
+ * Gradient - Optimized for gradient backgrounds (ENHANCED for visibility)
+ * Opacity: 22-28% (increased from 14-20%)
+ * Dot radius: 0.52 (increased from 0.38)
  * Best for: Headers with gradients, gradient buttons
  */
 .dither-gradient {
@@ -186,22 +190,23 @@
 	content: '';
 	position: absolute;
 	inset: 0;
-	background-image: url("data:image/svg+xml,%3Csvg width='4' height='4' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='4' height='4' fill='rgba(0,0,0,0)'/%3E%3Ccircle cx='0' cy='0' r='0.6' fill='rgb(0,0,0)'/%3E%3Ccircle cx='2' cy='1' r='0.6' fill='rgb(0,0,0)'/%3E%3Ccircle cx='1' cy='2' r='0.6' fill='rgb(0,0,0)'/%3E%3Ccircle cx='3' cy='3' r='0.6' fill='rgb(0,0,0)'/%3E%3C/svg%3E");
+	background-image: url("data:image/svg+xml,%3Csvg width='4' height='4' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='4' height='4' fill='rgba(0,0,0,0)'/%3E%3Ccircle cx='0' cy='0' r='0.52' fill='rgb(0,0,0)'/%3E%3Ccircle cx='2' cy='1' r='0.52' fill='rgb(0,0,0)'/%3E%3Ccircle cx='1' cy='2' r='0.52' fill='rgb(0,0,0)'/%3E%3Ccircle cx='3' cy='3' r='0.52' fill='rgb(0,0,0)'/%3E%3C/svg%3E");
 	background-size: 4px 4px;
-	mix-blend-mode: overlay;
-	opacity: 0.18;
+	mix-blend-mode: multiply;
+	opacity: 0.22;
 	pointer-events: none;
 }
 
 .dark .dither-gradient::before {
-	background-image: url("data:image/svg+xml,%3Csvg width='4' height='4' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='4' height='4' fill='rgba(0,0,0,0)'/%3E%3Ccircle cx='0' cy='0' r='0.6' fill='rgb(255,255,255)'/%3E%3Ccircle cx='2' cy='1' r='0.6' fill='rgb(255,255,255)'/%3E%3Ccircle cx='1' cy='2' r='0.6' fill='rgb(255,255,255)'/%3E%3Ccircle cx='3' cy='3' r='0.6' fill='rgb(255,255,255)'/%3E%3C/svg%3E");
+	background-image: url("data:image/svg+xml,%3Csvg width='4' height='4' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='4' height='4' fill='rgba(0,0,0,0)'/%3E%3Ccircle cx='0' cy='0' r='0.52' fill='rgb(255,255,255)'/%3E%3Ccircle cx='2' cy='1' r='0.52' fill='rgb(255,255,255)'/%3E%3Ccircle cx='1' cy='2' r='0.52' fill='rgb(255,255,255)'/%3E%3Ccircle cx='3' cy='3' r='0.52' fill='rgb(255,255,255)'/%3E%3C/svg%3E");
 	mix-blend-mode: soft-light;
-	opacity: 0.25;
+	opacity: 0.28;
 }
 
 /**
- * Surface - For card and surface textures
- * Opacity: 3-4%
+ * Surface - For card and surface textures (ENHANCED for visibility)
+ * Opacity: 28-40% (increased from 24-35%)
+ * Dot radius: 0.58 (increased from 0.45)
  * Best for: Card backgrounds, panel surfaces
  */
 .dither-surface {
@@ -213,22 +218,23 @@
 	content: '';
 	position: absolute;
 	inset: 0;
-	background-image: url("data:image/svg+xml,%3Csvg width='4' height='4' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='4' height='4' fill='rgba(0,0,0,0)'/%3E%3Ccircle cx='0' cy='0' r='0.45' fill='rgb(0,0,0)'/%3E%3Ccircle cx='2' cy='1' r='0.45' fill='rgb(0,0,0)'/%3E%3Ccircle cx='1' cy='2' r='0.45' fill='rgb(0,0,0)'/%3E%3Ccircle cx='3' cy='3' r='0.45' fill='rgb(0,0,0)'/%3E%3C/svg%3E");
+	background-image: url("data:image/svg+xml,%3Csvg width='4' height='4' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='4' height='4' fill='rgba(0,0,0,0)'/%3E%3Ccircle cx='0' cy='0' r='0.58' fill='rgb(0,0,0)'/%3E%3Ccircle cx='2' cy='1' r='0.58' fill='rgb(0,0,0)'/%3E%3Ccircle cx='1' cy='2' r='0.58' fill='rgb(0,0,0)'/%3E%3Ccircle cx='3' cy='3' r='0.58' fill='rgb(0,0,0)'/%3E%3C/svg%3E");
 	background-size: 4px 4px;
-	mix-blend-mode: overlay;
-	opacity: 0.14;
+	mix-blend-mode: multiply;
+	opacity: 0.28;
 	pointer-events: none;
 }
 
 .dark .dither-surface::before {
-	background-image: url("data:image/svg+xml,%3Csvg width='4' height='4' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='4' height='4' fill='rgba(0,0,0,0)'/%3E%3Ccircle cx='0' cy='0' r='0.45' fill='rgb(255,255,255)'/%3E%3Ccircle cx='2' cy='1' r='0.45' fill='rgb(255,255,255)'/%3E%3Ccircle cx='1' cy='2' r='0.45' fill='rgb(255,255,255)'/%3E%3Ccircle cx='3' cy='3' r='0.45' fill='rgb(255,255,255)'/%3E%3C/svg%3E");
+	background-image: url("data:image/svg+xml,%3Csvg width='4' height='4' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='4' height='4' fill='rgba(0,0,0,0)'/%3E%3Ccircle cx='0' cy='0' r='0.58' fill='rgb(255,255,255)'/%3E%3Ccircle cx='2' cy='1' r='0.58' fill='rgb(255,255,255)'/%3E%3Ccircle cx='1' cy='2' r='0.58' fill='rgb(255,255,255)'/%3E%3Ccircle cx='3' cy='3' r='0.58' fill='rgb(255,255,255)'/%3E%3C/svg%3E");
 	mix-blend-mode: soft-light;
-	opacity: 0.2;
+	opacity: 0.4;
 }
 
 /**
- * Accent - For emphasis and accent areas
- * Opacity: 5-6.5%
+ * Accent - For emphasis and accent areas (ENHANCED for visibility)
+ * Opacity: 22-30% (increased from 16-22%)
+ * Dot radius: 0.52 (increased from 0.38)
  * Best for: Highlighted sections, call-to-action areas
  */
 .dither-accent {
@@ -240,17 +246,17 @@
 	content: '';
 	position: absolute;
 	inset: 0;
-	background-image: url("data:image/svg+xml,%3Csvg width='4' height='4' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='4' height='4' fill='rgba(0,0,0,0)'/%3E%3Ccircle cx='0' cy='0' r='0.6' fill='rgb(0,0,0)'/%3E%3Ccircle cx='2' cy='1' r='0.6' fill='rgb(0,0,0)'/%3E%3Ccircle cx='1' cy='2' r='0.6' fill='rgb(0,0,0)'/%3E%3Ccircle cx='3' cy='3' r='0.6' fill='rgb(0,0,0)'/%3E%3C/svg%3E");
+	background-image: url("data:image/svg+xml,%3Csvg width='4' height='4' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='4' height='4' fill='rgba(0,0,0,0)'/%3E%3Ccircle cx='0' cy='0' r='0.52' fill='rgb(0,0,0)'/%3E%3Ccircle cx='2' cy='1' r='0.52' fill='rgb(0,0,0)'/%3E%3Ccircle cx='1' cy='2' r='0.52' fill='rgb(0,0,0)'/%3E%3Ccircle cx='3' cy='3' r='0.52' fill='rgb(0,0,0)'/%3E%3C/svg%3E");
 	background-size: 4px 4px;
-	mix-blend-mode: overlay;
-	opacity: 0.2;
+	mix-blend-mode: multiply;
+	opacity: 0.22;
 	pointer-events: none;
 }
 
 .dark .dither-accent::before {
-	background-image: url("data:image/svg+xml,%3Csvg width='4' height='4' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='4' height='4' fill='rgba(0,0,0,0)'/%3E%3Ccircle cx='0' cy='0' r='0.6' fill='rgb(255,255,255)'/%3E%3Ccircle cx='2' cy='1' r='0.6' fill='rgb(255,255,255)'/%3E%3Ccircle cx='1' cy='2' r='0.6' fill='rgb(255,255,255)'/%3E%3Ccircle cx='3' cy='3' r='0.6' fill='rgb(255,255,255)'/%3E%3C/svg%3E");
+	background-image: url("data:image/svg+xml,%3Csvg width='4' height='4' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='4' height='4' fill='rgba(0,0,0,0)'/%3E%3Ccircle cx='0' cy='0' r='0.52' fill='rgb(255,255,255)'/%3E%3Ccircle cx='2' cy='1' r='0.52' fill='rgb(255,255,255)'/%3E%3Ccircle cx='1' cy='2' r='0.52' fill='rgb(255,255,255)'/%3E%3Ccircle cx='3' cy='3' r='0.52' fill='rgb(255,255,255)'/%3E%3C/svg%3E");
 	mix-blend-mode: soft-light;
-	opacity: 0.27;
+	opacity: 0.3;
 }
 
 /* ============================================================================
@@ -505,3 +511,38 @@
  * NOTE: No z-index rules needed for gradient combinations either!
  * Mix-blend-mode handles all the layering automatically.
  */
+
+/* ============================================================================
+   TEXT-SPECIFIC DITHERING
+   ============================================================================ */
+
+/**
+ * Text OS - Optimized for the "OS" text in BuildOS logo
+ * Best for: Text with gradient bg-clip-text, high contrast needed
+ *
+ * This applies dithering by combining the gradient with a dithering pattern
+ * in the background property itself, so it gets clipped by bg-clip-text
+ */
+.dither-text-os {
+	background-image:
+		url("data:image/svg+xml,%3Csvg width='3' height='3' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='3' height='3' fill='rgba(0,0,0,0)'/%3E%3Ccircle cx='0' cy='0' r='0.45' fill='rgba(0,0,0,0.18)'/%3E%3Ccircle cx='1.5' cy='0.75' r='0.45' fill='rgba(0,0,0,0.18)'/%3E%3Ccircle cx='0.75' cy='1.5' r='0.45' fill='rgba(0,0,0,0.18)'/%3E%3Ccircle cx='2.25' cy='2.25' r='0.45' fill='rgba(0,0,0,0.18)'/%3E%3C/svg%3E"),
+		linear-gradient(to bottom right, rgb(37 99 235), rgb(99 102 241), rgb(168 85 247)) !important;
+	background-size:
+		3px 3px,
+		100% 100%;
+	background-blend-mode: overlay, normal;
+	-webkit-background-clip: text !important;
+	background-clip: text !important;
+}
+
+.dark .dither-text-os {
+	background-image:
+		url("data:image/svg+xml,%3Csvg width='3' height='3' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='3' height='3' fill='rgba(0,0,0,0)'/%3E%3Ccircle cx='0' cy='0' r='0.45' fill='rgba(255,255,255,0.15)'/%3E%3Ccircle cx='1.5' cy='0.75' r='0.45' fill='rgba(255,255,255,0.15)'/%3E%3Ccircle cx='0.75' cy='1.5' r='0.45' fill='rgba(255,255,255,0.15)'/%3E%3Ccircle cx='2.25' cy='2.25' r='0.45' fill='rgba(255,255,255,0.15)'/%3E%3C/svg%3E"),
+		linear-gradient(to bottom right, rgb(37 99 235), rgb(99 102 241), rgb(168 85 247)) !important;
+	background-size:
+		3px 3px,
+		100% 100%;
+	background-blend-mode: soft-light, normal;
+	-webkit-background-clip: text !important;
+	background-clip: text !important;
+}

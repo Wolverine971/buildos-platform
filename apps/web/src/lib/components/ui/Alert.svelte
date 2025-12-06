@@ -25,36 +25,37 @@
 
 	let isVisible = $state(true);
 
+	// Scratchpad Ops design - Clean clarity zones for important information
 	const variantConfig: Record<
 		AlertVariant,
 		{ icon: any; bg: string; border: string; text: string; icon_color: string }
 	> = {
 		info: {
 			icon: Info,
-			bg: 'bg-blue-50 dark:bg-blue-900/20',
-			border: 'border border-blue-200 dark:border-blue-800/50',
-			text: 'text-blue-800 dark:text-blue-200',
-			icon_color: 'text-blue-600 dark:text-blue-400'
+			bg: 'bg-accent-blue/5 dark:bg-accent-blue/10',
+			border: 'border border-accent-blue/20 dark:border-accent-blue/30',
+			text: 'text-slate-900 dark:text-slate-100',
+			icon_color: 'text-accent-blue'
 		},
 		success: {
 			icon: CheckCircle2,
-			bg: 'bg-green-50 dark:bg-green-900/20',
-			border: 'border border-green-200 dark:border-green-800/50',
-			text: 'text-green-800 dark:text-green-200',
-			icon_color: 'text-green-600 dark:text-green-400'
+			bg: 'bg-emerald-50 dark:bg-emerald-900/10',
+			border: 'border border-emerald-200 dark:border-emerald-800',
+			text: 'text-slate-900 dark:text-slate-100',
+			icon_color: 'text-emerald-600 dark:text-emerald-400'
 		},
 		warning: {
 			icon: AlertTriangle,
-			bg: 'bg-amber-50 dark:bg-amber-900/20',
-			border: 'border border-amber-200 dark:border-amber-800/50',
-			text: 'text-amber-800 dark:text-amber-200',
+			bg: 'bg-amber-50 dark:bg-amber-900/10',
+			border: 'border border-amber-200 dark:border-amber-800',
+			text: 'text-slate-900 dark:text-slate-100',
 			icon_color: 'text-amber-600 dark:text-amber-400'
 		},
 		error: {
 			icon: AlertCircle,
-			bg: 'bg-red-50 dark:bg-red-900/20',
-			border: 'border border-red-200 dark:border-red-800/50',
-			text: 'text-red-800 dark:text-red-200',
+			bg: 'bg-red-50 dark:bg-red-900/10',
+			border: 'border border-red-200 dark:border-red-800',
+			text: 'text-slate-900 dark:text-slate-100',
 			icon_color: 'text-red-600 dark:text-red-400'
 		}
 	};
@@ -66,7 +67,7 @@
 		onClose?.();
 	}
 
-	const containerClasses = `rounded-lg p-4 ${config.bg} ${config.border} ${config.text} ${className}`;
+	const containerClasses = `rounded p-4 ${config.bg} ${config.border} ${config.text} ${className}`;
 </script>
 
 {#if isVisible}
@@ -106,7 +107,7 @@
 			<!-- Close button -->
 			{#if closeable}
 				<button
-					class="flex-shrink-0 flex items-start pt-0.5 hover:opacity-70 transition-opacity focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:ring-offset-1 dark:focus:ring-offset-gray-800 rounded"
+					class="flex-shrink-0 flex items-start pt-0.5 hover:opacity-70 transition-opacity focus:outline-none focus:ring-2 focus:ring-accent-orange focus:ring-offset-1 dark:focus:ring-offset-slate-800 rounded"
 					onclick={handleClose}
 					aria-label="Close alert"
 				>

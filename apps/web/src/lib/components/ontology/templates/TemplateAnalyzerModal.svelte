@@ -253,418 +253,435 @@
 	size="lg"
 	customClasses="sm:max-h-[85vh]"
 >
-	<div class="px-4 py-3 sm:px-6 sm:py-4 space-y-4 text-sm">
-		<section
-			class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-gray-50/80 dark:bg-gray-900/60 p-2 sm:p-3 space-y-2"
-		>
-			<div class="flex flex-wrap items-center justify-between gap-3">
-				<div>
-					<p class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
-						Context
-					</p>
-					<p class="text-base font-semibold text-gray-900 dark:text-white">
-						{scopeRealmLabel}
-					</p>
-				</div>
-				<span
-					class="inline-flex items-center rounded-full border border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-800/70 px-3 py-1 text-xs font-semibold text-gray-700 dark:text-gray-200"
-				>
-					{targetLevel ? targetLevelLabel : 'Template Suggestion'}
-				</span>
-			</div>
-			<div class="flex flex-wrap gap-2 text-xs font-semibold">
-				<span
-					class={`inline-flex items-center gap-1 rounded-full border px-3 py-1 ${
-						scope
-							? 'border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-500/40 dark:bg-blue-500/10 dark:text-blue-200'
-							: 'border-gray-200 text-gray-500 dark:border-gray-700 dark:text-gray-400'
-					}`}
-				>
-					Scope: {readableScope}
-				</span>
-				{#if targetLevel !== 'realm'}
+	{#snippet children()}
+		<div class="px-4 py-3 sm:px-6 sm:py-4 space-y-4 text-sm">
+			<section
+				class="rounded border border-gray-200 dark:border-gray-700 bg-surface-clarity/80 dark:bg-surface-panel/60 p-2 sm:p-3 space-y-2"
+			>
+				<div class="flex flex-wrap items-center justify-between gap-3">
+					<div>
+						<p
+							class="text-xs uppercase tracking-wide text-slate-600 dark:text-slate-400"
+						>
+							Context
+						</p>
+						<p class="text-base font-semibold text-slate-900 dark:text-white">
+							{scopeRealmLabel}
+						</p>
+					</div>
 					<span
-						class={`inline-flex items-center gap-1 rounded-full border px-3 py-1 ${
-							realm
-								? 'border-purple-200 bg-purple-50 text-purple-700 dark:border-purple-500/40 dark:bg-purple-500/10 dark:text-purple-200'
-								: 'border-gray-200 text-gray-500 dark:border-gray-700 dark:text-gray-400'
+						class="inline-flex items-center rounded border border-gray-200 dark:border-gray-700 bg-surface-clarity/80 dark:bg-surface-elevated/70 px-3 py-1 text-xs font-semibold text-slate-700 dark:text-slate-200"
+					>
+						{targetLevel ? targetLevelLabel : 'Template Suggestion'}
+					</span>
+				</div>
+				<div class="flex flex-wrap gap-2 text-xs font-semibold">
+					<span
+						class={`inline-flex items-center gap-1 rounded border px-3 py-1 ${
+							scope
+								? 'border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-500/40 dark:bg-blue-500/10 dark:text-blue-200'
+								: 'border-gray-200 text-slate-600 dark:border-gray-700 dark:text-slate-400'
 						}`}
 					>
-						Realm: {readableRealm}
+						Scope: {readableScope}
 					</span>
-				{/if}
-				{#if domain}
-					<span
-						class="inline-flex items-center gap-1 rounded-full border border-gray-200 dark:border-gray-700 px-3 py-1 text-gray-700 dark:text-gray-200"
-					>
-						Domain: {formatLabel(domain)}
-					</span>
-				{/if}
-				<span
-					class="inline-flex items-center gap-1 rounded-full border border-gray-200 dark:border-gray-700 px-3 py-1 text-gray-700 dark:text-gray-200"
-				>
-					Target: {targetLevelLabel}
-				</span>
-			</div>
-			{#if scopeDefinition}
-				<div
-					class="rounded-2xl border border-dashed border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-900/60 p-4 space-y-2"
-				>
-					<p class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
-						{scopeDefinition.label} Pattern
-					</p>
-					<p class="font-mono text-sm text-gray-900 dark:text-gray-50">
-						{scopeDefinition.typeKeyPattern}
-					</p>
-					{#if scopeDefinition.facetUsage}
-						<p class="text-xs text-gray-500 dark:text-gray-400">
-							Facet focus: {scopeDefinition.facetUsage}
-						</p>
+					{#if targetLevel !== 'realm'}
+						<span
+							class={`inline-flex items-center gap-1 rounded border px-3 py-1 ${
+								realm
+									? 'border-purple-200 bg-purple-50 text-purple-700 dark:border-purple-500/40 dark:bg-purple-500/10 dark:text-purple-200'
+									: 'border-gray-200 text-slate-600 dark:border-gray-700 dark:text-slate-400'
+							}`}
+						>
+							Realm: {readableRealm}
+						</span>
 					{/if}
-					<p class="text-xs text-gray-600 dark:text-gray-300">
-						{scopeDefinition.llmCue}
-					</p>
-				</div>
-			{/if}
-		</section>
-
-		{#if !responseData}
-			<section
-				class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 sm:p-5 space-y-4"
-			>
-				<p class="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
-					{scopeInstruction}
-				</p>
-				<TextareaWithVoice
-					rows={6}
-					bind:value={brainDump}
-					placeholder={scopePlaceholder}
-					disabled={loading}
-					voiceBlocked={loading}
-					voiceBlockedLabel="Analyzing request…"
-					idleHint={voiceIdleHint}
-					voiceButtonLabel={voiceButtonCopy}
-					textareaClass="min-h-[168px]"
-					helperText={undefined}
-					errorMessage={undefined}
-				/>
-
-				{#if error}
-					<p class="text-sm text-red-600 dark:text-red-400">{error}</p>
-				{/if}
-				{#if !canAnalyze}
-					<p class="text-xs text-amber-600 dark:text-amber-400">
-						{unknownScopeMessage}
-					</p>
-				{/if}
-			</section>
-		{:else}
-			<section class="space-y-5">
-				{#if structuredPlan}
-					<div
-						class="rounded-2xl border border-emerald-200 dark:border-emerald-500/40 bg-emerald-50/70 dark:bg-emerald-500/10 p-5 space-y-3"
+					{#if domain}
+						<span
+							class="inline-flex items-center gap-1 rounded border border-gray-200 dark:border-gray-700 px-3 py-1 text-slate-700 dark:text-slate-200"
+						>
+							Domain: {formatLabel(domain)}
+						</span>
+					{/if}
+					<span
+						class="inline-flex items-center gap-1 rounded border border-gray-200 dark:border-gray-700 px-3 py-1 text-slate-700 dark:text-slate-200"
 					>
-						<div class="flex flex-wrap items-start justify-between gap-3">
-							<div>
-								<p
-									class="text-xs uppercase tracking-wide text-emerald-700 dark:text-emerald-200"
-								>
-									Structured Plan (per taxonomy spec)
-								</p>
-								<p
-									class="text-lg font-semibold text-emerald-900 dark:text-emerald-50"
-								>
-									{structuredPlan.type_key}
-								</p>
-								<p class="text-xs text-emerald-900/80 dark:text-emerald-100">
-									{formatEntityCategory(structuredPlan.entity_category)} · Scope{' '}
-									{formatLabel(structuredPlan.scope)} · Realm{' '}
-									{structuredPlan.realm
-										? formatLabel(structuredPlan.realm)
-										: 'Unset'}
-								</p>
-							</div>
-							{#if structuredPlan.type_key_override_reason}
-								<Badge variant="warning">Override rationale captured</Badge>
-							{/if}
-						</div>
-						{#if structuredPlan.type_key_rationale}
-							<p class="text-sm text-emerald-900/80 dark:text-emerald-50">
-								{structuredPlan.type_key_rationale}
+						Target: {targetLevelLabel}
+					</span>
+				</div>
+				{#if scopeDefinition}
+					<div
+						class="rounded border border-dashed border-gray-200 dark:border-gray-700 bg-surface-elevated/80 dark:bg-surface-panel/60 p-4 space-y-2"
+					>
+						<p
+							class="text-xs uppercase tracking-wide text-slate-600 dark:text-slate-400"
+						>
+							{scopeDefinition.label} Pattern
+						</p>
+						<p class="font-mono text-sm text-slate-900 dark:text-white">
+							{scopeDefinition.typeKeyPattern}
+						</p>
+						{#if scopeDefinition.facetUsage}
+							<p class="text-xs text-slate-600 dark:text-slate-400">
+								Facet focus: {scopeDefinition.facetUsage}
 							</p>
 						{/if}
-						{#if structuredPlan.metadata?.summary || structuredPlan.metadata?.description}
-							<div class="text-sm text-emerald-900/80 dark:text-emerald-50">
-								<p class="font-semibold">Summary</p>
-								<p>
-									{structuredPlan.metadata.summary ||
-										structuredPlan.metadata.description}
-								</p>
-							</div>
-						{/if}
-						<div class="grid gap-3 md:grid-cols-3 text-xs">
-							<div>
-								<p class="font-semibold text-emerald-800 dark:text-emerald-200">
-									Context
-								</p>
-								<p class="text-emerald-900/80 dark:text-emerald-50">
-									{formatFacetValues(structuredPlan.facet_defaults?.context)}
-								</p>
-							</div>
-							<div>
-								<p class="font-semibold text-emerald-800 dark:text-emerald-200">
-									Scale
-								</p>
-								<p class="text-emerald-900/80 dark:text-emerald-50">
-									{formatFacetValues(structuredPlan.facet_defaults?.scale)}
-								</p>
-							</div>
-							<div>
-								<p class="font-semibold text-emerald-800 dark:text-emerald-200">
-									Stage
-								</p>
-								<p class="text-emerald-900/80 dark:text-emerald-50">
-									{formatFacetValues(structuredPlan.facet_defaults?.stage)}
-								</p>
-							</div>
-						</div>
-						{#if structuredPlan.open_questions?.length}
-							<div class="text-xs text-emerald-900/80 dark:text-emerald-50 space-y-1">
-								<p class="font-semibold uppercase tracking-wide">Open Questions</p>
-								<ul class="list-disc list-inside space-y-1">
-									{#each structuredPlan.open_questions as question}
-										<li>{question}</li>
-									{/each}
-								</ul>
-							</div>
-						{/if}
-					</div>
-				{/if}
-				{#if responseData.primary}
-					{@const primarySuggestion = responseData.primary}
-					<div
-						class="rounded-2xl border border-blue-200 dark:border-blue-500/40 bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-100 dark:from-blue-500/10 dark:via-indigo-500/10 dark:to-blue-500/5 p-5 space-y-4 shadow-sm dither-soft"
-					>
-						<div class="flex flex-wrap items-start justify-between gap-3">
-							<div class="space-y-1">
-								<div class="flex items-center gap-2">
-									<p
-										class="text-sm font-semibold uppercase text-blue-800 dark:text-blue-200"
-									>
-										Primary Suggestion
-									</p>
-									{#if rejectedFlag}
-										<Badge variant="info">Requested new ideas</Badge>
-									{/if}
-								</div>
-								<p class="text-lg font-semibold text-gray-900 dark:text-white">
-									{formatLabel(primarySuggestion.domain)} ·
-									{formatLabel(primarySuggestion.deliverable)}
-									{#if primarySuggestion.variant}
-										· {formatLabel(primarySuggestion.variant)}
-									{/if}
-								</p>
-								<p class="text-xs font-mono text-gray-600 dark:text-gray-300">
-									{primarySuggestion.type_key}
-								</p>
-							</div>
-							<span
-								class={`px-2 py-1 rounded-full text-xs font-semibold ${
-									badgeClassByMatchLevel[primarySuggestion.match_level] ??
-									badgeClassByMatchLevel.new
-								}`}
-							>
-								{getMatchLabel(primarySuggestion.match_level)}
-							</span>
-						</div>
-						<p class="text-sm text-gray-700 dark:text-gray-200 leading-relaxed">
-							{primarySuggestion.rationale}
+						<p class="text-xs text-slate-700 dark:text-slate-300">
+							{scopeDefinition.llmCue}
 						</p>
-						<div
-							class="grid gap-3 sm:grid-cols-2 text-xs text-gray-600 dark:text-gray-400"
-						>
-							<span
-								>Confidence: {(primarySuggestion.confidence * 100).toFixed(
-									0
-								)}%</span
-							>
-							{#if primarySuggestion.parent_type_key}
-								<span>Parent: {primarySuggestion.parent_type_key}</span>
-							{/if}
-						</div>
-						<div class="flex flex-wrap gap-2">
-							<Button
-								variant="primary"
-								size="sm"
-								onclick={() => handleSuggestionSelect(primarySuggestion)}
-							>
-								Use this Type Key
-							</Button>
-							{#if primarySuggestion.match_level === 'new'}
-								<Badge variant="warning">Will create new template</Badge>
-							{/if}
-						</div>
 					</div>
-				{:else}
-					<p class="text-sm text-gray-600 dark:text-gray-300">
-						No strong primary suggestion. Consider the options below or submit more
-						context.
-					</p>
-				{/if}
-
-				{#if responseData.alternatives?.length}
-					<section class="space-y-2">
-						<h3
-							class="text-sm font-semibold uppercase text-gray-700 dark:text-gray-300"
-						>
-							Alternative Matches
-						</h3>
-						<div
-							class="rounded-2xl border border-gray-200 dark:border-gray-800 divide-y divide-gray-100 dark:divide-gray-800 overflow-hidden bg-white dark:bg-gray-900/60"
-						>
-							{#each responseData.alternatives as suggestion (suggestion.type_key)}
-								<article class="p-4 space-y-2 flex flex-col gap-2">
-									<div class="flex flex-wrap items-center justify-between gap-2">
-										<div>
-											<p
-												class="text-sm font-semibold text-gray-900 dark:text-white"
-											>
-												{formatLabel(suggestion.domain)} ·
-												{formatLabel(suggestion.deliverable)}
-												{#if suggestion.variant}
-													· {formatLabel(suggestion.variant)}
-												{/if}
-											</p>
-											<p
-												class="text-xs font-mono text-gray-500 dark:text-gray-400"
-											>
-												{suggestion.type_key}
-											</p>
-										</div>
-										<span
-											class={`px-2 py-1 rounded-full text-xs font-semibold ${
-												badgeClassByMatchLevel[suggestion.match_level] ??
-												badgeClassByMatchLevel.new
-											}`}
-										>
-											{getMatchLabel(suggestion.match_level)}
-										</span>
-									</div>
-									<p class="text-sm text-gray-600 dark:text-gray-300">
-										{suggestion.rationale}
-									</p>
-									<div
-										class="flex flex-wrap items-center justify-between gap-2 text-xs text-gray-500 dark:text-gray-400"
-									>
-										<span
-											>Confidence: {(suggestion.confidence * 100).toFixed(
-												0
-											)}%</span
-										>
-										{#if suggestion.parent_type_key}
-											<span>Parent: {suggestion.parent_type_key}</span>
-										{/if}
-									</div>
-									<div class="flex flex-wrap gap-2">
-										<Button
-											variant="secondary"
-											size="sm"
-											onclick={() => handleSuggestionSelect(suggestion)}
-										>
-											Use this Type Key
-										</Button>
-										{#if suggestion.match_level === 'new'}
-											<Badge variant="warning">Will create new template</Badge
-											>
-										{/if}
-									</div>
-								</article>
-							{/each}
-						</div>
-					</section>
-				{/if}
-
-				{#if responseData.new_template_options?.length}
-					<section class="space-y-2">
-						<h3
-							class="text-sm font-semibold uppercase text-gray-700 dark:text-gray-300"
-						>
-							Net-New Template Ideas
-						</h3>
-						<div
-							class="rounded-2xl border border-gray-200 dark:border-gray-800 divide-y divide-gray-100 dark:divide-gray-800 overflow-hidden bg-white dark:bg-gray-900/60"
-						>
-							{#each responseData.new_template_options as suggestion (suggestion.type_key)}
-								<article class="p-4 space-y-2 flex flex-col gap-2">
-									<div class="flex flex-wrap items-center justify-between gap-2">
-										<div>
-											<p
-												class="text-sm font-semibold text-gray-900 dark:text-white"
-											>
-												{formatLabel(suggestion.domain)} ·
-												{formatLabel(suggestion.deliverable)}
-												{#if suggestion.variant}
-													· {formatLabel(suggestion.variant)}
-												{/if}
-											</p>
-											<p
-												class="text-xs font-mono text-gray-500 dark:text-gray-400"
-											>
-												{suggestion.type_key}
-											</p>
-										</div>
-										<span
-											class={`px-2 py-1 rounded-full text-xs font-semibold ${
-												badgeClassByMatchLevel[suggestion.match_level] ??
-												badgeClassByMatchLevel.new
-											}`}
-										>
-											{getMatchLabel(suggestion.match_level)}
-										</span>
-									</div>
-									<p class="text-sm text-gray-600 dark:text-gray-300">
-										{suggestion.rationale}
-									</p>
-									<div
-										class="flex flex-wrap items-center justify-between gap-2 text-xs text-gray-500 dark:text-gray-400"
-									>
-										<span
-											>Confidence: {(suggestion.confidence * 100).toFixed(
-												0
-											)}%</span
-										>
-										{#if suggestion.parent_type_key}
-											<span>Parent: {suggestion.parent_type_key}</span>
-										{/if}
-									</div>
-									<div class="flex flex-wrap gap-2">
-										<Button
-											variant="secondary"
-											size="sm"
-											onclick={() => handleSuggestionSelect(suggestion)}
-										>
-											Use this Type Key
-										</Button>
-										<Badge variant="warning">Will create new template</Badge>
-									</div>
-								</article>
-							{/each}
-						</div>
-					</section>
-				{/if}
-
-				{#if error}
-					<p class="text-sm text-red-600 dark:text-red-400">{error}</p>
 				{/if}
 			</section>
-		{/if}
-	</div>
 
-	<svelte:fragment slot="footer">
+			{#if !responseData}
+				<section
+					class="rounded border border-gray-200 dark:border-gray-700 bg-surface-elevated dark:bg-surface-panel p-4 sm:p-5 space-y-4 dither-soft"
+				>
+					<p class="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
+						{scopeInstruction}
+					</p>
+					<TextareaWithVoice
+						rows={6}
+						bind:value={brainDump}
+						placeholder={scopePlaceholder}
+						disabled={loading}
+						voiceBlocked={loading}
+						voiceBlockedLabel="Analyzing request…"
+						idleHint={voiceIdleHint}
+						voiceButtonLabel={voiceButtonCopy}
+						textareaClass="min-h-[168px]"
+						helperText={undefined}
+						errorMessage={undefined}
+					/>
+
+					{#if error}
+						<p class="text-sm text-red-600 dark:text-red-400">{error}</p>
+					{/if}
+					{#if !canAnalyze}
+						<p class="text-xs text-amber-600 dark:text-amber-400">
+							{unknownScopeMessage}
+						</p>
+					{/if}
+				</section>
+			{:else}
+				<section class="space-y-5">
+					{#if structuredPlan}
+						<div
+							class="rounded border border-emerald-200 dark:border-emerald-500/40 bg-emerald-50/70 dark:bg-emerald-500/10 p-5 space-y-3"
+						>
+							<div class="flex flex-wrap items-start justify-between gap-3">
+								<div>
+									<p
+										class="text-xs uppercase tracking-wide text-emerald-700 dark:text-emerald-200"
+									>
+										Structured Plan (per taxonomy spec)
+									</p>
+									<p
+										class="text-lg font-semibold text-emerald-900 dark:text-emerald-50"
+									>
+										{structuredPlan.type_key}
+									</p>
+									<p class="text-xs text-emerald-900/80 dark:text-emerald-100">
+										{formatEntityCategory(structuredPlan.entity_category)} · Scope{' '}
+										{formatLabel(structuredPlan.scope)} · Realm{' '}
+										{structuredPlan.realm
+											? formatLabel(structuredPlan.realm)
+											: 'Unset'}
+									</p>
+								</div>
+								{#if structuredPlan.type_key_override_reason}
+									<Badge variant="warning">Override rationale captured</Badge>
+								{/if}
+							</div>
+							{#if structuredPlan.type_key_rationale}
+								<p class="text-sm text-emerald-900/80 dark:text-emerald-50">
+									{structuredPlan.type_key_rationale}
+								</p>
+							{/if}
+							{#if structuredPlan.metadata?.summary || structuredPlan.metadata?.description}
+								<div class="text-sm text-emerald-900/80 dark:text-emerald-50">
+									<p class="font-semibold">Summary</p>
+									<p>
+										{structuredPlan.metadata.summary ||
+											structuredPlan.metadata.description}
+									</p>
+								</div>
+							{/if}
+							<div class="grid gap-3 md:grid-cols-3 text-xs">
+								<div>
+									<p class="font-semibold text-emerald-800 dark:text-emerald-200">
+										Context
+									</p>
+									<p class="text-emerald-900/80 dark:text-emerald-50">
+										{formatFacetValues(structuredPlan.facet_defaults?.context)}
+									</p>
+								</div>
+								<div>
+									<p class="font-semibold text-emerald-800 dark:text-emerald-200">
+										Scale
+									</p>
+									<p class="text-emerald-900/80 dark:text-emerald-50">
+										{formatFacetValues(structuredPlan.facet_defaults?.scale)}
+									</p>
+								</div>
+								<div>
+									<p class="font-semibold text-emerald-800 dark:text-emerald-200">
+										Stage
+									</p>
+									<p class="text-emerald-900/80 dark:text-emerald-50">
+										{formatFacetValues(structuredPlan.facet_defaults?.stage)}
+									</p>
+								</div>
+							</div>
+							{#if structuredPlan.open_questions?.length}
+								<div
+									class="text-xs text-emerald-900/80 dark:text-emerald-50 space-y-1"
+								>
+									<p class="font-semibold uppercase tracking-wide">
+										Open Questions
+									</p>
+									<ul class="list-disc list-inside space-y-1">
+										{#each structuredPlan.open_questions as question}
+											<li>{question}</li>
+										{/each}
+									</ul>
+								</div>
+							{/if}
+						</div>
+					{/if}
+					{#if responseData.primary}
+						{@const primarySuggestion = responseData.primary}
+						<div
+							class="rounded border border-blue-200 dark:border-blue-500/40 bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-100 dark:from-blue-500/10 dark:via-indigo-500/10 dark:to-blue-500/5 p-5 space-y-4 shadow-subtle"
+						>
+							<div class="flex flex-wrap items-start justify-between gap-3">
+								<div class="space-y-1">
+									<div class="flex items-center gap-2">
+										<p
+											class="text-sm font-semibold uppercase text-blue-800 dark:text-blue-200"
+										>
+											Primary Suggestion
+										</p>
+										{#if rejectedFlag}
+											<Badge variant="info">Requested new ideas</Badge>
+										{/if}
+									</div>
+									<p class="text-lg font-semibold text-slate-900 dark:text-white">
+										{formatLabel(primarySuggestion.domain)} ·
+										{formatLabel(primarySuggestion.deliverable)}
+										{#if primarySuggestion.variant}
+											· {formatLabel(primarySuggestion.variant)}
+										{/if}
+									</p>
+									<p class="text-xs font-mono text-slate-700 dark:text-slate-300">
+										{primarySuggestion.type_key}
+									</p>
+								</div>
+								<span
+									class={`px-2 py-1 rounded text-xs font-semibold ${
+										badgeClassByMatchLevel[primarySuggestion.match_level] ??
+										badgeClassByMatchLevel.new
+									}`}
+								>
+									{getMatchLabel(primarySuggestion.match_level)}
+								</span>
+							</div>
+							<p class="text-sm text-slate-800 dark:text-slate-100 leading-relaxed">
+								{primarySuggestion.rationale}
+							</p>
+							<div
+								class="grid gap-3 sm:grid-cols-2 text-xs text-slate-700 dark:text-slate-300"
+							>
+								<span
+									>Confidence: {(primarySuggestion.confidence * 100).toFixed(
+										0
+									)}%</span
+								>
+								{#if primarySuggestion.parent_type_key}
+									<span>Parent: {primarySuggestion.parent_type_key}</span>
+								{/if}
+							</div>
+							<div class="flex flex-wrap gap-2">
+								<Button
+									variant="primary"
+									size="sm"
+									onclick={() => handleSuggestionSelect(primarySuggestion)}
+								>
+									Use this Type Key
+								</Button>
+								{#if primarySuggestion.match_level === 'new'}
+									<Badge variant="warning">Will create new template</Badge>
+								{/if}
+							</div>
+						</div>
+					{:else}
+						<p class="text-sm text-slate-700 dark:text-slate-300">
+							No strong primary suggestion. Consider the options below or submit more
+							context.
+						</p>
+					{/if}
+
+					{#if responseData.alternatives?.length}
+						<section class="space-y-2">
+							<h3
+								class="text-sm font-semibold uppercase text-slate-700 dark:text-slate-300"
+							>
+								Alternative Matches
+							</h3>
+							<div
+								class="rounded border border-gray-200 dark:border-gray-700 divide-y divide-slate-700/10 dark:divide-slate-500/10 overflow-hidden bg-surface-elevated dark:bg-surface-panel"
+							>
+								{#each responseData.alternatives as suggestion (suggestion.type_key)}
+									<article class="p-4 space-y-2 flex flex-col gap-2">
+										<div
+											class="flex flex-wrap items-center justify-between gap-2"
+										>
+											<div>
+												<p
+													class="text-sm font-semibold text-slate-900 dark:text-white"
+												>
+													{formatLabel(suggestion.domain)} ·
+													{formatLabel(suggestion.deliverable)}
+													{#if suggestion.variant}
+														· {formatLabel(suggestion.variant)}
+													{/if}
+												</p>
+												<p
+													class="text-xs font-mono text-slate-600 dark:text-slate-400"
+												>
+													{suggestion.type_key}
+												</p>
+											</div>
+											<span
+												class={`px-2 py-1 rounded text-xs font-semibold ${
+													badgeClassByMatchLevel[
+														suggestion.match_level
+													] ?? badgeClassByMatchLevel.new
+												}`}
+											>
+												{getMatchLabel(suggestion.match_level)}
+											</span>
+										</div>
+										<p class="text-sm text-slate-700 dark:text-slate-300">
+											{suggestion.rationale}
+										</p>
+										<div
+											class="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-600 dark:text-slate-400"
+										>
+											<span
+												>Confidence: {(suggestion.confidence * 100).toFixed(
+													0
+												)}%</span
+											>
+											{#if suggestion.parent_type_key}
+												<span>Parent: {suggestion.parent_type_key}</span>
+											{/if}
+										</div>
+										<div class="flex flex-wrap gap-2">
+											<Button
+												variant="secondary"
+												size="sm"
+												onclick={() => handleSuggestionSelect(suggestion)}
+											>
+												Use this Type Key
+											</Button>
+											{#if suggestion.match_level === 'new'}
+												<Badge variant="warning"
+													>Will create new template</Badge
+												>
+											{/if}
+										</div>
+									</article>
+								{/each}
+							</div>
+						</section>
+					{/if}
+
+					{#if responseData.new_template_options?.length}
+						<section class="space-y-2">
+							<h3
+								class="text-sm font-semibold uppercase text-slate-700 dark:text-slate-300"
+							>
+								Net-New Template Ideas
+							</h3>
+							<div
+								class="rounded border border-gray-200 dark:border-gray-700 divide-y divide-slate-700/10 dark:divide-slate-500/10 overflow-hidden bg-surface-elevated dark:bg-surface-panel"
+							>
+								{#each responseData.new_template_options as suggestion (suggestion.type_key)}
+									<article class="p-4 space-y-2 flex flex-col gap-2">
+										<div
+											class="flex flex-wrap items-center justify-between gap-2"
+										>
+											<div>
+												<p
+													class="text-sm font-semibold text-gray-900 dark:text-white"
+												>
+													{formatLabel(suggestion.domain)} ·
+													{formatLabel(suggestion.deliverable)}
+													{#if suggestion.variant}
+														· {formatLabel(suggestion.variant)}
+													{/if}
+												</p>
+												<p
+													class="text-xs font-mono text-gray-500 dark:text-gray-400"
+												>
+													{suggestion.type_key}
+												</p>
+											</div>
+											<span
+												class={`px-2 py-1 rounded-full text-xs font-semibold ${
+													badgeClassByMatchLevel[
+														suggestion.match_level
+													] ?? badgeClassByMatchLevel.new
+												}`}
+											>
+												{getMatchLabel(suggestion.match_level)}
+											</span>
+										</div>
+										<p class="text-sm text-gray-600 dark:text-gray-300">
+											{suggestion.rationale}
+										</p>
+										<div
+											class="flex flex-wrap items-center justify-between gap-2 text-xs text-gray-500 dark:text-gray-400"
+										>
+											<span
+												>Confidence: {(suggestion.confidence * 100).toFixed(
+													0
+												)}%</span
+											>
+											{#if suggestion.parent_type_key}
+												<span>Parent: {suggestion.parent_type_key}</span>
+											{/if}
+										</div>
+										<div class="flex flex-wrap gap-2">
+											<Button
+												variant="secondary"
+												size="sm"
+												onclick={() => handleSuggestionSelect(suggestion)}
+											>
+												Use this Type Key
+											</Button>
+											<Badge variant="warning">Will create new template</Badge
+											>
+										</div>
+									</article>
+								{/each}
+							</div>
+						</section>
+					{/if}
+
+					{#if error}
+						<p class="text-sm text-red-600 dark:text-red-400">{error}</p>
+					{/if}
+				</section>
+			{/if}
+		</div>
+	{/snippet}
+	{#snippet footer()}
 		<div
-			class="px-4 sm:px-6 py-4 border-t border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/70 flex flex-wrap items-center justify-between gap-3"
+			class="px-4 sm:px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-surface-panel dark:bg-slate-900/30 flex flex-wrap items-center justify-between gap-3"
 		>
-			<div class="text-xs text-gray-500 dark:text-gray-400">
+			<div class="text-xs text-slate-600 dark:text-slate-400">
 				{#if responseData}
 					{responseData.primary
 						? 'Select a suggestion or request fresh ideas.'
@@ -712,5 +729,5 @@
 				{/if}
 			</div>
 		</div>
-	</svelte:fragment>
+	{/snippet}
 </Modal>

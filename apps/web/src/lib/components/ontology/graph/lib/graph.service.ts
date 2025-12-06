@@ -95,7 +95,7 @@ export class OntologyGraphService {
 					priority: task.priority,
 					dueAt: task.due_at,
 					scale: task.facet_scale,
-					planId: task.plan_id,
+					// Note: planId is determined via onto_edges, not directly on onto_tasks
 					props: task.props
 				},
 				color: task.state_key === 'done' ? '#10b981' : '#f59e0b',

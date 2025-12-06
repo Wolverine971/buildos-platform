@@ -146,16 +146,47 @@
 	}
 </script>
 
-<Modal bind:isOpen {title} size="xl" onClose={handleClose}>
+<Modal bind:isOpen size="xl" onClose={handleClose} showCloseButton={false}>
+	{#snippet header()}
+		<!-- Custom gradient header - grey/dark grey -->
+		<div
+			class="flex-shrink-0 bg-gradient-to-r from-gray-600 via-gray-700 to-gray-800 dark:from-gray-700 dark:via-gray-800 dark:to-gray-900 text-white px-3 py-3 sm:px-6 sm:py-5 flex items-start justify-between gap-2 sm:gap-4 dither-gradient"
+		>
+			<div class="space-y-1 sm:space-y-2 min-w-0 flex-1">
+				<p class="text-[10px] sm:text-xs font-semibold uppercase tracking-[0.3em] sm:tracking-[0.4em] text-white/70">
+					{isEditMode ? 'Editing' : 'Context Document'}
+				</p>
+				<h2 class="text-lg sm:text-2xl font-bold leading-tight truncate">
+					{document?.title || 'Project Context'}
+				</h2>
+				{#if projectName}
+					<div class="flex flex-wrap items-center gap-1.5 sm:gap-3 text-xs sm:text-sm">
+						<span class="px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-semibold bg-white/20">{projectName}</span>
+					</div>
+				{/if}
+			</div>
+			<Button
+				variant="ghost"
+				size="sm"
+				onclick={handleClose}
+				class="text-white/80 hover:text-white shrink-0 !p-1.5 sm:!p-2"
+				disabled={isSaving}
+			>
+				<X class="w-4 h-4 sm:w-5 sm:h-5" />
+			</Button>
+		</div>
+	{/snippet}
+
+	{#snippet children()}
 	{#if !document}
 		<div
-			class="text-center py-12 px-4 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 rounded-lg dither-surface border-2 border-dashed border-gray-300 dark:border-gray-600"
+			class="text-center py-12 px-4 bg-surface-panel dark:bg-surface-elevated rounded border-2 border-dashed border-gray-200 dark:border-gray-700"
 		>
-			<FileText class="w-16 h-16 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
-			<p class="text-gray-600 dark:text-gray-300 text-lg font-medium mb-2">
+			<FileText class="w-16 h-16 text-slate-400 dark:text-slate-500 mx-auto mb-4" />
+			<p class="text-slate-600 dark:text-slate-300 text-lg font-medium mb-2">
 				No Context Document
 			</p>
-			<p class="text-gray-500 dark:text-gray-400 text-sm">
+			<p class="text-slate-500 dark:text-slate-400 text-sm">
 				This project does not have a linked context document yet.
 			</p>
 		</div>
@@ -163,18 +194,18 @@
 		<div class="space-y-4">
 			<!-- Document Header -->
 			<div
-				class="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/10 dark:to-emerald-900/10 border border-green-200 dark:border-green-800 rounded-lg dither-soft p-3 sm:p-4"
+				class="bg-surface-elevated dark:bg-surface-panel border-2 border-gray-200 dark:border-gray-700 rounded p-3 sm:p-4 shadow-subtle"
 			>
 				<div class="flex items-start justify-between gap-3 mb-2.5">
 					<div class="flex-1 min-w-0">
 						<div class="flex items-center gap-2.5 mb-1.5">
-							<span class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"
+							<span class="w-1.5 h-1.5 bg-accent-olive rounded-full animate-pulse"
 							></span>
 							<FileText
-								class="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0"
+								class="w-5 h-5 text-accent-olive dark:text-accent-olive flex-shrink-0"
 							/>
 							<h3
-								class="text-base sm:text-lg font-semibold text-gray-900 dark:text-white"
+								class="text-base sm:text-lg font-semibold text-slate-900 dark:text-slate-100"
 							>
 								{document.title}
 							</h3>
@@ -187,13 +218,13 @@
 							{/if}
 						</div>
 						{#if projectName}
-							<p class="text-xs sm:text-sm text-gray-700 dark:text-gray-300 mb-1.5">
+							<p class="text-xs sm:text-sm text-slate-700 dark:text-slate-300 mb-1.5">
 								<span class="font-semibold">Project:</span>
 								{projectName}
 							</p>
 						{/if}
 						<div
-							class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-600 dark:text-gray-400"
+							class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-600 dark:text-slate-400"
 						>
 							<span class="flex items-center gap-1">
 								<span class="font-medium">Type:</span>

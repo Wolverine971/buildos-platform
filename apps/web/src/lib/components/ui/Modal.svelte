@@ -53,6 +53,32 @@
 	import { browser } from '$app/environment';
 	import Button from './Button.svelte';
 	import { portal } from '$lib/actions/portal';
+	import type { Snippet } from 'svelte';
+
+	interface Props {
+		isOpen?: boolean;
+		onClose?: () => void;
+		title?: string;
+		size?: 'sm' | 'md' | 'lg' | 'xl';
+		variant?: 'center' | 'bottom-sheet';
+		showCloseButton?: boolean;
+		closeOnBackdrop?: boolean;
+		closeOnEscape?: boolean;
+		persistent?: boolean;
+		enableGestures?: boolean;
+		showDragHandle?: boolean;
+		dismissThreshold?: number;
+		customClasses?: string;
+		ariaLabel?: string;
+		ariaDescribedBy?: string;
+		onOpen?: () => void;
+		onBeforeClose?: () => boolean;
+		onGestureStart?: () => void;
+		onGestureEnd?: (dismissed: boolean) => void;
+		header?: Snippet;
+		children?: Snippet;
+		footer?: Snippet;
+	}
 
 	// Props - Svelte 5 runes
 	let {
@@ -74,28 +100,11 @@
 		onOpen,
 		onBeforeClose,
 		onGestureStart,
-		onGestureEnd
-	}: {
-		isOpen?: boolean;
-		onClose?: () => void;
-		title?: string;
-		size?: 'sm' | 'md' | 'lg' | 'xl';
-		variant?: 'center' | 'bottom-sheet';
-		showCloseButton?: boolean;
-		closeOnBackdrop?: boolean;
-		closeOnEscape?: boolean;
-		persistent?: boolean;
-		enableGestures?: boolean;
-		showDragHandle?: boolean;
-		dismissThreshold?: number;
-		customClasses?: string;
-		ariaLabel?: string;
-		ariaDescribedBy?: string;
-		onOpen?: () => void;
-		onBeforeClose?: () => boolean;
-		onGestureStart?: () => void;
-		onGestureEnd?: (dismissed: boolean) => void;
-	} = $props();
+		onGestureEnd,
+		header,
+		children,
+		footer
+	}: Props = $props();
 
 	// Enhanced size classes with 4-tier breakpoint system
 	const sizeClasses = {
@@ -105,19 +114,19 @@
 		xl: 'w-full max-w-full xs:max-w-3xl sm:max-w-4xl md:max-w-6xl'
 	};
 
-	// Variant-specific classes
+	// Variant-specific classes - Scratchpad Ops styling
 	const variantClasses = $derived.by(() => {
 		if (variant === 'bottom-sheet') {
 			return {
 				container: 'items-end sm:items-center',
-				modal: 'rounded-t-2xl sm:rounded-2xl mb-0 sm:mb-4',
+				modal: 'rounded-t sm:rounded mb-0 sm:mb-4', // 4px radius for industrial feel
 				animation: 'animate-modal-slide-up sm:animate-modal-scale'
 			};
 		}
 		// Default: center variant
 		return {
 			container: 'items-center',
-			modal: 'rounded-2xl',
+			modal: 'rounded', // 4px radius for industrial feel
 			animation: 'animate-modal-scale'
 		};
 	});
@@ -423,9 +432,9 @@
 					bind:this={modalElement}
 					use:touchGesture
 					class="relative {sizeClasses[size]}
-						bg-white dark:bg-gray-800
+						industrial-panel
 						{variantClasses.modal}
-						shadow-2xl
+						shadow-xl
 						max-h-[calc(100vh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-1rem)]
 						sm:max-h-[85vh]
 						overflow-hidden
@@ -456,39 +465,39 @@
 					{/if}
 
 					<!-- Header (compact spacing) -->
-					<slot name="header">
-						{#if title || showCloseButton}
-							<div
-								class="flex items-center justify-between
-									px-3 sm:px-4 py-1.5 sm:py-2
-									border-b border-gray-200 dark:border-gray-700
-									bg-gray-50 dark:bg-gray-900/50
-									flex-shrink-0"
-							>
-								{#if title}
-									<h2
-										id={titleId}
-										class="text-base sm:text-lg font-semibold text-gray-900 dark:text-white truncate pr-2"
-									>
-										{title}
-									</h2>
-								{:else}
-									<div></div>
-								{/if}
+					{#if header}
+						{@render header()}
+					{:else if title || showCloseButton}
+						<div
+							class="flex items-center justify-between
+								px-3 sm:px-4 py-2 sm:py-3
+								border-b border-gray-200 dark:border-gray-700
+								bg-surface-panel
+								flex-shrink-0"
+						>
+							{#if title}
+								<h2
+									id={titleId}
+									class="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100 truncate pr-2"
+								>
+									{title}
+								</h2>
+							{:else}
+								<div></div>
+							{/if}
 
-								{#if showCloseButton && !persistent}
-									<Button
-										onclick={attemptClose}
-										variant="ghost"
-										size="sm"
-										icon={X}
-										class="flex-shrink-0 !p-1"
-										aria-label="Close dialog"
-									/>
-								{/if}
-							</div>
-						{/if}
-					</slot>
+							{#if showCloseButton && !persistent}
+								<Button
+									onclick={attemptClose}
+									variant="ghost"
+									size="sm"
+									icon={X}
+									class="flex-shrink-0 !p-1"
+									aria-label="Close dialog"
+								/>
+							{/if}
+						</div>
+					{/if}
 
 					<!-- Content (scrollable, compact spacing) -->
 					<div
@@ -496,16 +505,18 @@
 						class="modal-content overflow-y-auto flex-1 min-h-0 overscroll-contain"
 						style="touch-action: pan-y;"
 					>
-						<slot />
+						{#if children}
+							{@render children()}
+						{/if}
 					</div>
 
 					<!-- Footer (compact spacing with safe area) -->
-					{#if $$slots.footer}
+					{#if footer}
 						<div
 							class="modal-footer flex-shrink-0"
 							style="padding-bottom: max(0.5rem, env(safe-area-inset-bottom, 0px));"
 						>
-							<slot name="footer" />
+							{@render footer()}
 						</div>
 					{/if}
 				</div>
@@ -593,7 +604,7 @@
 		/* Compact visual indicator */
 		width: 32px;
 		height: 3px;
-		background: rgb(156 163 175); /* gray-400 */
+		background: rgb(62 68 89 / 0.4); /* slate-500 */
 		border-radius: 9999px;
 		transition:
 			background-color 150ms,
@@ -601,24 +612,24 @@
 	}
 
 	.drag-handle-wrapper:hover .drag-handle {
-		background: rgb(107 114 128); /* gray-500 */
+		background: rgb(45 50 66 / 0.6); /* slate-700 */
 		width: 40px;
 	}
 
 	.drag-handle-wrapper:active .drag-handle {
-		background: rgb(75 85 99); /* gray-600 */
+		background: rgb(26 31 43); /* slate-900 */
 	}
 
 	.dark .drag-handle {
-		background: rgb(75 85 99); /* gray-600 */
+		background: rgb(142 149 170 / 0.3); /* slate-400 */
 	}
 
 	.dark .drag-handle-wrapper:hover .drag-handle {
-		background: rgb(107 114 128); /* gray-500 */
+		background: rgb(142 149 170 / 0.5); /* slate-400 */
 	}
 
 	.dark .drag-handle-wrapper:active .drag-handle {
-		background: rgb(156 163 175); /* gray-400 */
+		background: rgb(203 213 225); /* slate-300 */
 	}
 
 	/* ==================== Scroll & Overscroll Behavior ==================== */

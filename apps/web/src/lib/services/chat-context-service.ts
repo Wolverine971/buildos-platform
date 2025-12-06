@@ -213,7 +213,7 @@ Create, update, and delete ontology entities:
 - Confirm significant actions with user when appropriate
 
 **Action Tool Best Practices:**
-1. **Create**: Provide sensible defaults (state_key='todo', priority=3, type_key='task.basic')
+1. **Create**: Provide sensible defaults (state_key='todo', priority=3, type_key='task.execute')
 2. **Update**: Only specify fields being changed (partial updates supported)
 3. **Delete**: Verify ownership and warn about permanence
 4. **Feedback**: Report success with entity name and ID for user verification

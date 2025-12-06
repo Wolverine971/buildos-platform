@@ -146,7 +146,6 @@
 			if (query) {
 				const matchesQuery =
 					project.name.toLowerCase().includes(query) ||
-					project.type_key.toLowerCase().includes(query) ||
 					(project.description ?? '').toLowerCase().includes(query);
 				if (!matchesQuery) return false;
 			}
@@ -265,18 +264,18 @@
 </script>
 
 <svelte:head>
-	<title>Ontology Projects | BuildOS</title>
+	<title>Projects | BuildOS</title>
 </svelte:head>
 
 <div class="space-y-4 sm:space-y-6">
 	<!-- Mobile Navigation - Only visible on mobile -->
 	<nav
-		class="lg:hidden flex flex-wrap items-center gap-2 rounded-xl border border-slate-200/70 bg-white/90 p-2 shadow-sm dark:border-slate-800 dark:bg-slate-900/70"
+		class="lg:hidden flex flex-wrap items-center gap-2 rounded border-2 border-slate-700/30 bg-surface-elevated p-2 shadow-subtle dark:border-slate-500/30 dark:bg-surface-panel"
 		aria-label="Ontology navigation"
 	>
 		<a
 			href="/ontology"
-			class="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50/80 px-3 py-1.5 text-xs font-semibold text-blue-700 transition hover:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-blue-800/50 dark:bg-blue-950/40 dark:text-blue-300 dark:hover:bg-blue-900/50"
+			class="inline-flex items-center gap-1.5 rounded border-2 border-accent-orange bg-accent-orange/10 px-3 py-1.5 text-xs font-bold text-accent-orange transition hover:bg-accent-orange/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-orange dark:bg-accent-orange/20 dark:hover:bg-accent-orange/30 shadow-subtle"
 			aria-current="page"
 		>
 			<svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -291,7 +290,7 @@
 		</a>
 		<a
 			href="/ontology/create"
-			class="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:border-blue-400 hover:text-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-slate-700 dark:text-slate-300 dark:hover:border-indigo-500 dark:hover:text-indigo-200"
+			class="inline-flex items-center gap-1.5 rounded border-2 border-slate-700/30 px-3 py-1.5 text-xs font-bold text-slate-700 transition hover:bg-slate-100 hover:border-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-orange dark:border-slate-500/30 dark:text-slate-300 dark:hover:bg-slate-800/50"
 		>
 			<svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
 				<path
@@ -305,7 +304,7 @@
 		</a>
 		<a
 			href="/ontology/templates"
-			class="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:border-blue-400 hover:text-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-slate-700 dark:text-slate-300 dark:hover:border-indigo-500 dark:hover:text-indigo-200"
+			class="inline-flex items-center gap-1.5 rounded border-2 border-slate-700/30 px-3 py-1.5 text-xs font-bold text-slate-700 transition hover:bg-slate-100 hover:border-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-orange dark:border-slate-500/30 dark:text-slate-300 dark:hover:bg-slate-800/50"
 		>
 			<svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
 				<path
@@ -319,7 +318,7 @@
 		</a>
 		<a
 			href="/"
-			class="ml-auto inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:border-blue-400 hover:text-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-slate-700 dark:text-slate-300 dark:hover:border-indigo-500 dark:hover:text-indigo-200"
+			class="ml-auto inline-flex items-center gap-1.5 rounded border-2 border-slate-700/30 px-3 py-1.5 text-xs font-bold text-slate-700 transition hover:bg-slate-100 hover:border-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-orange dark:border-slate-500/30 dark:text-slate-300 dark:hover:bg-slate-800/50"
 		>
 			<svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
 				<path
@@ -333,49 +332,27 @@
 		</a>
 	</nav>
 
-	<header class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-		<div class="space-y-1">
-			<h1 class="text-2xl font-bold text-gray-900 dark:text-white sm:text-3xl">
-				Ontology Projects
+	<header class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between !mt-0">
+		<div class="space-y-1 flex-1">
+			<h1 class="text-2xl font-bold text-slate-900 dark:text-slate-100 sm:text-3xl">
+				Projects
 			</h1>
-			<p class="text-sm text-gray-600 dark:text-gray-400 sm:text-base">
-				Track high-trust knowledge flows, typed templates, and FSM-driven execution.
+			<p class="text-sm text-slate-600 dark:text-slate-400 sm:text-base">
+				Manage and organize your active projects and workflows.
 			</p>
 		</div>
 
-		<Button variant="primary" size="sm" onclick={() => goto('/ontology/create')}>
-			<svg
-				class="h-4 w-4 mr-2"
-				xmlns="http://www.w3.org/2000/svg"
-				fill="none"
-				viewBox="0 0 24 24"
-				stroke="currentColor"
-			>
-				<path
-					stroke-linecap="round"
-					stroke-linejoin="round"
-					stroke-width="2"
-					d="M12 4v16m8-8H4"
-				/>
-			</svg>
-			<span class="hidden sm:inline">New Project</span>
-			<span class="sm:hidden">New</span>
-		</Button>
-	</header>
-
-	<div
-		class="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-gray-200 bg-white p-3 shadow-sm dark:border-gray-700 dark:bg-gray-900"
-	>
 		<nav
-			class="inline-flex rounded-xl bg-gray-100 p-1 text-sm font-medium dark:bg-gray-800 overflow-x-auto scrollbar-hide"
-			aria-label="Ontology view mode"
+			class="inline-flex rounded border-2 border-slate-700/30 bg-surface-elevated p-1 text-sm font-bold dark:bg-surface-panel dark:border-slate-500/30 overflow-x-auto scrollbar-hide shadow-subtle self-baseline
+"
+			aria-label="Project view mode"
 		>
 			<button
 				type="button"
-				class={`relative rounded-lg px-4 py-2 transition ${
+				class={`relative rounded px-4 py-2 transition ${
 					activeTab === 'overview'
-						? 'bg-white text-blue-600 shadow-sm dark:bg-gray-900 dark:text-blue-300'
-						: 'text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white'
+						? 'bg-accent-orange text-white border-2 border-slate-700 shadow-pressable dark:bg-accent-orange dark:text-white'
+						: 'text-slate-700 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-300 dark:hover:text-slate-100 dark:hover:bg-slate-700'
 				}`}
 				aria-pressed={activeTab === 'overview'}
 				onclick={() => setActiveTab('overview')}
@@ -384,10 +361,10 @@
 			</button>
 			<button
 				type="button"
-				class={`relative rounded-lg px-4 py-2 transition ${
+				class={`relative rounded px-4 py-2 transition ${
 					activeTab === 'graph'
-						? 'bg-white text-blue-600 shadow-sm dark:bg-gray-900 dark:text-blue-300'
-						: 'text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white'
+						? 'bg-accent-orange text-white border-2 border-slate-700 shadow-pressable dark:bg-accent-orange dark:text-white'
+						: 'text-slate-700 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-300 dark:hover:text-slate-100 dark:hover:bg-slate-700'
 				}`}
 				aria-pressed={activeTab === 'graph'}
 				onclick={() => setActiveTab('graph')}
@@ -395,36 +372,36 @@
 				Graph
 			</button>
 		</nav>
+	</header>
 
-		{#if activeTab === 'graph'}
-			<div
-				class="flex flex-1 items-center justify-end gap-3 text-xs text-gray-500 dark:text-gray-400"
+	{#if activeTab === 'graph'}
+		<div
+			class="flex flex-wrap items-center justify-end gap-3 rounded border-2 border-slate-700/30 bg-surface-elevated p-3 shadow-subtle dark:border-slate-500/30 dark:bg-surface-panel text-xs text-slate-600 dark:text-slate-400"
+		>
+			{#if $graphStore.status === 'ready' && graphLastUpdated}
+				<span class="hidden sm:inline font-semibold">Last synced {graphLastUpdated}</span>
+			{/if}
+			<button
+				type="button"
+				class="inline-flex items-center gap-1 rounded border-2 border-slate-700/30 px-3 py-1.5 font-bold text-slate-700 transition hover:bg-slate-100 hover:border-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-orange dark:border-slate-500/30 dark:text-slate-300 dark:hover:bg-slate-700 shadow-subtle"
+				onclick={refreshGraph}
+				aria-label="Refresh graph"
 			>
-				{#if $graphStore.status === 'ready' && graphLastUpdated}
-					<span class="hidden sm:inline">Last synced {graphLastUpdated}</span>
-				{/if}
-				<button
-					type="button"
-					class="inline-flex items-center gap-1 rounded-lg border border-gray-200 px-3 py-1.5 font-semibold text-gray-600 transition hover:border-blue-400 hover:text-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-gray-700 dark:text-gray-300 dark:hover:border-blue-500 dark:hover:text-blue-300"
-					onclick={refreshGraph}
-					aria-label="Refresh ontology graph"
+				<svg
+					class="h-3.5 w-3.5"
+					viewBox="0 0 20 20"
+					fill="none"
+					xmlns="http://www.w3.org/2000/svg"
 				>
-					<svg
-						class="h-3.5 w-3.5"
-						viewBox="0 0 20 20"
-						fill="none"
-						xmlns="http://www.w3.org/2000/svg"
-					>
-						<path
-							d="M3.75 10a6.25 6.25 0 0 1 10.18-4.93l1.07.88V3.75a.75.75 0 1 1 1.5 0v4.5a.75.75 0 0 1-.75.75h-4.5a.75.75 0 0 1 0-1.5h2.74l-.67-.54A4.75 4.75 0 1 0 15.75 11a.75.75 0 0 1 1.5 0 6.25 6.25 0 1 1-13.5 0Z"
-							fill="currentColor"
-						/>
-					</svg>
-					<span>Refresh</span>
-				</button>
-			</div>
-		{/if}
-	</div>
+					<path
+						d="M3.75 10a6.25 6.25 0 0 1 10.18-4.93l1.07.88V3.75a.75.75 0 1 1 1.5 0v4.5a.75.75 0 0 1-.75.75h-4.5a.75.75 0 0 1 0-1.5h2.74l-.67-.54A4.75 4.75 0 1 0 15.75 11a.75.75 0 0 1 1.5 0 6.25 6.25 0 1 1-13.5 0Z"
+						fill="currentColor"
+					/>
+				</svg>
+				<span>Refresh</span>
+			</button>
+		</div>
+	{/if}
 
 	{#if activeTab === 'overview'}
 		<section class="space-y-dense-4">
@@ -433,7 +410,7 @@
 					<div class="grid gap-dense-3 sm:grid-cols-2 lg:grid-cols-3">
 						{#each Array.from({ length: 3 }) as _}
 							<div
-								class="rounded-2xl border border-slate-200/70 bg-white/80 p-4 shadow-sm animate-pulse dark:border-slate-800/70 dark:bg-slate-900/70"
+								class="rounded border-2 border-slate-700/30 bg-surface-elevated p-4 shadow-sm animate-pulse dark:border-slate-500/30 dark:bg-surface-panel"
 							>
 								<div class="h-5 w-1/3 rounded bg-slate-200 dark:bg-slate-800"></div>
 								<div
@@ -446,21 +423,19 @@
 						{/each}
 					</div>
 					<div
-						class="rounded-2xl border border-slate-200/70 bg-white/80 p-dense-6 shadow-sm animate-pulse dark:border-slate-800/70 dark:bg-slate-900/70"
+						class="rounded border-2 border-slate-700/30 bg-surface-elevated p-dense-6 shadow-sm animate-pulse dark:border-slate-500/30 dark:bg-surface-panel"
 					>
 						<div class="h-5 w-1/4 rounded bg-slate-200 dark:bg-slate-800"></div>
 						<div class="mt-4 grid gap-dense-3 md:grid-cols-2 lg:grid-cols-3">
 							{#each Array.from({ length: 6 }) as _}
-								<div
-									class="h-24 rounded-xl bg-slate-100 dark:bg-slate-800/80"
-								></div>
+								<div class="h-24 rounded bg-slate-100 dark:bg-slate-800/80"></div>
 							{/each}
 						</div>
 					</div>
 				</div>
 			{:else if projectsError}
 				<div
-					class="rounded-2xl border border-slate-200/80 bg-white/90 p-dense-6 text-center shadow-sm dark:border-slate-800/80 dark:bg-slate-900/80"
+					class="rounded border-2 border-slate-700/30 bg-surface-elevated p-dense-6 text-center shadow-sm dark:border-slate-500/30 dark:bg-surface-panel"
 				>
 					<h2 class="text-base font-semibold text-slate-900 dark:text-slate-100">
 						Unable to load ontology projects
@@ -490,12 +465,12 @@
 							<div class="relative flex-1">
 								<input
 									type="search"
-									class="w-full rounded-xl border border-slate-200 bg-white/90 py-2 pl-10 pr-4 text-sm text-slate-900 placeholder:text-slate-400 shadow-sm transition focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:ring-indigo-400"
-									placeholder="Search projects by name, type, or description..."
+									class="w-full rounded border-2 border-slate-700/30 bg-surface-elevated py-2 pl-10 pr-4 text-sm text-slate-900 placeholder:text-slate-500 transition focus:border-slate-700 focus:outline-none focus:ring-2 focus:ring-accent-orange dark:border-slate-500/30 dark:bg-slate-700/50 dark:text-slate-100 dark:placeholder:text-slate-500 dither-soft"
+									placeholder="Search projects by name or description..."
 									bind:value={searchQuery}
 								/>
 								<svg
-									class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500"
+									class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500 dark:text-slate-400"
 									xmlns="http://www.w3.org/2000/svg"
 									fill="none"
 									viewBox="0 0 24 24"
@@ -514,7 +489,7 @@
 								<Button
 									variant="ghost"
 									size="sm"
-									class="text-blue-600 hover:text-blue-700 dark:text-blue-300 dark:hover:text-blue-200"
+									class="text-accent-blue hover:text-accent-blue/80 dark:text-accent-blue dark:hover:text-accent-blue/80 font-bold"
 									onclick={clearFilters}
 								>
 									Clear filters
@@ -522,110 +497,79 @@
 							{/if}
 						</div>
 
-						<div class="flex flex-wrap gap-2">
-							<button
-								type="button"
-								class="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 transition hover:border-blue-400 hover:text-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-slate-700 dark:text-slate-300 dark:hover:border-indigo-500 dark:hover:text-indigo-200"
-								onclick={() => goto('/ontology/create')}
+						<Button
+							variant="primary"
+							size="sm"
+							onclick={() => goto('/ontology/create')}
+						>
+							<svg
+								class="h-4 w-4 mr-2"
+								xmlns="http://www.w3.org/2000/svg"
+								fill="none"
+								viewBox="0 0 24 24"
+								stroke="currentColor"
 							>
-								<svg
-									class="h-4 w-4"
-									xmlns="http://www.w3.org/2000/svg"
-									fill="none"
-									viewBox="0 0 24 24"
-									stroke="currentColor"
-								>
-									<path
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										stroke-width="2"
-										d="M12 4v16m8-8H4"
-									/>
-								</svg>
-								<span>New project</span>
-							</button>
-							<button
-								type="button"
-								class="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 transition hover:border-blue-400 hover:text-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-slate-700 dark:text-slate-300 dark:hover:border-indigo-500 dark:hover:text-indigo-200"
-								onclick={() => goto('/ontology/templates')}
-							>
-								<svg
-									class="h-4 w-4"
-									xmlns="http://www.w3.org/2000/svg"
-									fill="none"
-									viewBox="0 0 24 24"
-									stroke="currentColor"
-								>
-									<path
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										stroke-width="2"
-										d="M4 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 16a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1H5a1 1 0 01-1-1v-3zM14 16a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1h-4a1 1 0 01-1-1v-3z"
-									/>
-								</svg>
-								<span>Templates</span>
-							</button>
-						</div>
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="2"
+									d="M12 4v16m8-8H4"
+								/>
+							</svg>
+							<span>New Project</span>
+						</Button>
 					</CardBody>
 				</Card>
 
-				<div class="grid grid-cols-2 gap-dense-3 sm:grid-cols-4 sm:gap-dense-4">
-					<Card variant="elevated" padding="sm">
-						<CardBody padding="sm" class="min-h-[80px] flex flex-col justify-between">
-							<p
-								class="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
-							>
-								Projects
-							</p>
-							<p
-								class="text-xl sm:text-2xl font-semibold text-slate-900 dark:text-slate-50 mt-1"
-							>
-								{stats.totalProjects}
-							</p>
-						</CardBody>
-					</Card>
-					<Card variant="elevated" padding="sm">
-						<CardBody padding="sm" class="min-h-[80px] flex flex-col justify-between">
-							<p
-								class="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
-							>
-								Tasks
-							</p>
-							<p
-								class="text-xl sm:text-2xl font-semibold text-slate-900 dark:text-slate-50 mt-1"
-							>
-								{stats.totalTasks}
-							</p>
-						</CardBody>
-					</Card>
-					<Card variant="elevated" padding="sm">
-						<CardBody padding="sm" class="min-h-[80px] flex flex-col justify-between">
-							<p
-								class="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
-							>
-								Outputs
-							</p>
-							<p
-								class="text-xl sm:text-2xl font-semibold text-slate-900 dark:text-slate-50 mt-1"
-							>
-								{stats.totalOutputs}
-							</p>
-						</CardBody>
-					</Card>
-					<Card variant="elevated" padding="sm">
-						<CardBody padding="sm" class="min-h-[80px] flex flex-col justify-between">
-							<p
-								class="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
-							>
-								Active
-							</p>
-							<p
-								class="text-xl sm:text-2xl font-semibold text-emerald-600 dark:text-emerald-400 mt-1"
-							>
-								{stats.activeProjects}
-							</p>
-						</CardBody>
-					</Card>
+				<div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+					<div
+						class="rounded border-2 border-slate-700/30 bg-surface-panel p-4 shadow-subtle dark:border-slate-500/30 dark:bg-slate-800"
+					>
+						<p
+							class="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400"
+						>
+							Projects
+						</p>
+						<p class="text-2xl font-bold text-slate-900 dark:text-slate-100 mt-1">
+							{stats.totalProjects}
+						</p>
+					</div>
+					<div
+						class="rounded border-2 border-slate-700/30 bg-surface-panel p-4 shadow-subtle dark:border-slate-500/30 dark:bg-slate-800"
+					>
+						<p
+							class="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400"
+						>
+							Tasks
+						</p>
+						<p class="text-2xl font-bold text-slate-900 dark:text-slate-100 mt-1">
+							{stats.totalTasks}
+						</p>
+					</div>
+					<div
+						class="rounded border-2 border-slate-700/30 bg-surface-panel p-4 shadow-subtle dark:border-slate-500/30 dark:bg-slate-800"
+					>
+						<p
+							class="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400"
+						>
+							Outputs
+						</p>
+						<p class="text-2xl font-bold text-slate-900 dark:text-slate-100 mt-1">
+							{stats.totalOutputs}
+						</p>
+					</div>
+					<div
+						class="rounded border-2 border-slate-700/30 bg-surface-panel p-4 shadow-subtle dark:border-slate-500/30 dark:bg-slate-800"
+					>
+						<p
+							class="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400"
+						>
+							Active
+						</p>
+						<p class="text-2xl font-bold text-accent-olive dark:text-accent-olive mt-1">
+							{stats.activeProjects}
+						</p>
+					</div>
 				</div>
 
 				<div class="space-y-dense-4">
@@ -640,10 +584,10 @@
 								{#each availableStates as state (state)}
 									<button
 										type="button"
-										class={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-xs font-medium transition ${
+										class={`inline-flex items-center gap-1.5 rounded border-2 px-2.5 py-1.5 text-xs font-bold transition ${
 											selectedStates.includes(state)
-												? 'border-transparent bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-sm'
-												: 'border-slate-300 text-slate-600 hover:border-blue-400 hover:text-blue-600 dark:border-slate-600 dark:text-slate-300 dark:hover:border-indigo-400 dark:hover:text-indigo-200'
+												? 'border-slate-700 bg-accent-blue text-white shadow-pressable dark:bg-accent-blue dark:text-white active:translate-y-[2px] active:shadow-none'
+												: 'border-slate-700/30 text-slate-700 hover:border-slate-700 hover:bg-slate-100 dark:border-slate-500/30 dark:text-slate-300 dark:hover:border-slate-500 dark:hover:bg-slate-800'
 										}`}
 										onclick={() =>
 											(selectedStates = toggleValue(selectedStates, state))}
@@ -667,10 +611,10 @@
 									{#each availableContexts as context (context)}
 										<button
 											type="button"
-											class={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-xs font-medium transition ${
+											class={`inline-flex items-center gap-1.5 rounded border-2 px-2.5 py-1.5 text-xs font-bold transition ${
 												selectedContexts.includes(context)
-													? 'border-transparent bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-sm'
-													: 'border-slate-300 text-slate-600 hover:border-amber-400 hover:text-amber-600 dark:border-slate-600 dark:text-slate-300 dark:hover:border-amber-400 dark:hover:text-amber-300'
+													? 'border-slate-700 bg-accent-orange text-white shadow-pressable dark:bg-accent-orange dark:text-white active:translate-y-[2px] active:shadow-none'
+													: 'border-slate-700/30 text-slate-700 hover:border-slate-700 hover:bg-slate-100 dark:border-slate-500/30 dark:text-slate-300 dark:hover:border-slate-500 dark:hover:bg-slate-800'
 											}`}
 											onclick={() =>
 												(selectedContexts = toggleValue(
@@ -696,10 +640,10 @@
 									{#each availableScales as scale (scale)}
 										<button
 											type="button"
-											class={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-xs font-medium transition ${
+											class={`inline-flex items-center gap-1.5 rounded border-2 px-2.5 py-1.5 text-xs font-bold transition ${
 												selectedScales.includes(scale)
-													? 'border-transparent bg-gradient-to-r from-purple-500 to-indigo-500 text-white shadow-sm'
-													: 'border-slate-300 text-slate-600 hover:border-purple-400 hover:text-purple-600 dark:border-slate-600 dark:text-slate-300 dark:hover:border-purple-400 dark:hover:text-purple-200'
+													? 'border-slate-700 bg-accent-blue text-white shadow-pressable dark:bg-accent-blue dark:text-white active:translate-y-[2px] active:shadow-none'
+													: 'border-slate-700/30 text-slate-700 hover:border-slate-700 hover:bg-slate-100 dark:border-slate-500/30 dark:text-slate-300 dark:hover:border-slate-500 dark:hover:bg-slate-800'
 											}`}
 											onclick={() =>
 												(selectedScales = toggleValue(
@@ -725,10 +669,10 @@
 									{#each availableStages as stage (stage)}
 										<button
 											type="button"
-											class={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-xs font-medium transition ${
+											class={`inline-flex items-center gap-1.5 rounded border-2 px-2.5 py-1.5 text-xs font-bold transition ${
 												selectedStages.includes(stage)
-													? 'border-transparent bg-gradient-to-r from-emerald-500 to-green-500 text-white shadow-sm'
-													: 'border-slate-300 text-slate-600 hover:border-emerald-400 hover:text-emerald-600 dark:border-slate-600 dark:text-slate-300 dark:hover:border-emerald-400 dark:hover:text-emerald-200'
+													? 'border-slate-700 bg-accent-olive text-white shadow-pressable dark:bg-accent-olive dark:text-white active:translate-y-[2px] active:shadow-none'
+													: 'border-slate-700/30 text-slate-700 hover:border-slate-700 hover:bg-slate-100 dark:border-slate-500/30 dark:text-slate-300 dark:hover:border-slate-500 dark:hover:bg-slate-800'
 											}`}
 											onclick={() =>
 												(selectedStages = toggleValue(
@@ -749,10 +693,10 @@
 
 		{#if filteredProjects.length === 0}
 			<div
-				class="rounded-2xl border-2 border-dashed border-slate-300/80 bg-white/80 px-4 py-dense-14 text-center shadow-sm dark:border-slate-700 dark:bg-slate-900/70 sm:px-6 sm:py-dense-16"
+				class="rounded border-2 border-dashed border-slate-700/30 bg-surface-panel px-4 py-12 text-center shadow-subtle dark:border-slate-500/30 dark:bg-slate-800 sm:px-6 sm:py-16"
 			>
 				<div
-					class="mx-auto mb-dense-6 flex h-12 w-12 items-center justify-center rounded-full bg-blue-50 text-blue-500 dark:bg-blue-950/40 dark:text-blue-300 sm:h-14 sm:w-14"
+					class="mx-auto mb-6 flex h-12 w-12 items-center justify-center rounded border-2 border-accent-blue/30 bg-accent-blue/10 text-accent-blue dark:bg-accent-blue/20 dark:text-accent-blue sm:h-14 sm:w-14"
 				>
 					<svg
 						xmlns="http://www.w3.org/2000/svg"
@@ -769,7 +713,7 @@
 						/>
 					</svg>
 				</div>
-				<h2 class="text-xl font-semibold text-slate-900 dark:text-slate-50">
+				<h2 class="text-xl font-bold text-slate-900 dark:text-slate-100">
 					No projects yet
 				</h2>
 				<p
@@ -779,7 +723,7 @@
 						? 'Create your first ontology project using typed templates and FSM workflows.'
 						: 'No projects match the current filters. Adjust your search or clear filters to explore more.'}
 				</p>
-				<div class="mt-6 flex justify-center gap-dense-3">
+				<div class="mt-6 flex justify-center gap-3">
 					{#if projects.length === 0}
 						<Button
 							variant="primary"
@@ -796,27 +740,22 @@
 				</div>
 			</div>
 		{:else}
-			<div class="grid grid-cols-1 gap-dense-4 sm:gap-dense-6 md:grid-cols-2 xl:grid-cols-3">
+			<div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
 				{#each filteredProjects as project (project.id)}
 					<a
 						href="/ontology/projects/{project.id}"
-						class="group relative flex h-full flex-col rounded-2xl border border-slate-200/80 bg-white/90 p-4 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-blue-500/50 hover:shadow-xl dark:border-slate-800 dark:bg-slate-900/70"
+						class="group relative flex h-full flex-col rounded border-2 border-slate-700/30 bg-surface-panel p-4 shadow-subtle transition-all duration-200 hover:border-accent-orange hover:shadow-pressable dark:border-slate-500/30 dark:bg-slate-800 dark:hover:border-accent-orange"
 					>
-						<div class="mb-4 flex items-start justify-between gap-dense-3">
-							<div class="min-w-0 space-y-1">
+						<div class="mb-4 flex items-start justify-between gap-3">
+							<div class="min-w-0">
 								<h3
-									class="truncate text-lg font-semibold text-slate-900 transition-colors group-hover:text-blue-600 dark:text-slate-50 dark:group-hover:text-indigo-300"
+									class="truncate text-lg font-bold text-slate-900 transition-colors group-hover:text-accent-orange dark:text-slate-100 dark:group-hover:text-accent-orange"
 								>
 									{project.name}
 								</h3>
-								<p
-									class="truncate text-xs font-mono uppercase tracking-wide text-slate-500 dark:text-slate-400"
-								>
-									{project.type_key}
-								</p>
 							</div>
 							<span
-								class="flex-shrink-0 rounded-full px-3 py-1 text-xs font-semibold capitalize {getProjectStateBadgeClass(
+								class="flex-shrink-0 rounded border px-2.5 py-1 text-xs font-bold capitalize {getProjectStateBadgeClass(
 									project.state_key
 								)}"
 							>
@@ -834,21 +773,21 @@
 							<div class="mb-4 flex flex-wrap gap-2">
 								{#if project.facet_context}
 									<span
-										class="rounded-md bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700 dark:bg-amber-900/20 dark:text-amber-300"
+										class="rounded border border-accent-orange/30 bg-accent-orange/10 px-2 py-0.5 text-xs font-bold text-accent-orange dark:bg-accent-orange/20"
 									>
 										{project.facet_context}
 									</span>
 								{/if}
 								{#if project.facet_scale}
 									<span
-										class="rounded-md bg-purple-50 px-2.5 py-1 text-xs font-medium text-purple-700 dark:bg-purple-900/20 dark:text-purple-300"
+										class="rounded border border-accent-blue/30 bg-accent-blue/10 px-2 py-0.5 text-xs font-bold text-accent-blue dark:bg-accent-blue/20 dark:text-accent-blue"
 									>
 										{project.facet_scale}
 									</span>
 								{/if}
 								{#if project.facet_stage}
 									<span
-										class="rounded-md bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-300"
+										class="rounded border border-accent-olive/30 bg-accent-olive/10 px-2 py-0.5 text-xs font-bold text-accent-olive dark:bg-accent-olive/20"
 									>
 										{project.facet_stage}
 									</span>
@@ -857,9 +796,9 @@
 						{/if}
 
 						<div
-							class="mt-auto flex items-center justify-between border-t border-slate-100 pt-4 text-sm text-slate-600 dark:border-slate-800 dark:text-slate-400"
+							class="mt-auto flex items-center justify-between border-t-2 border-slate-700/20 pt-3 text-sm text-slate-600 dark:border-slate-500/20 dark:text-slate-400"
 						>
-							<div class="flex items-center gap-dense-4">
+							<div class="flex items-center gap-3">
 								<span class="flex items-center gap-1.5" aria-label="Task count">
 									<svg
 										class="h-4 w-4"
@@ -875,7 +814,7 @@
 											d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
 										/>
 									</svg>
-									<span class="font-semibold">{project.task_count}</span>
+									<span class="font-bold">{project.task_count}</span>
 								</span>
 								<span class="flex items-center gap-1.5" aria-label="Output count">
 									<svg
@@ -892,7 +831,7 @@
 											d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
 										/>
 									</svg>
-									<span class="font-semibold">{project.output_count}</span>
+									<span class="font-bold">{project.output_count}</span>
 								</span>
 							</div>
 							<span class="text-xs text-slate-500 dark:text-slate-500">
@@ -906,52 +845,52 @@
 	{:else}
 		<section class="space-y-dense-4">
 			{#if $graphStore.stats}
-				<div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
+				<div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
 					<div
-						class="rounded-xl border border-slate-200 bg-white/80 px-3 py-3 text-left shadow-sm dark:border-slate-700 dark:bg-slate-900/70"
+						class="rounded border-2 border-slate-700/30 bg-surface-panel px-3 py-3 text-left shadow-subtle dark:border-slate-500/30 dark:bg-slate-800"
 					>
 						<p
-							class="text-[11px] uppercase tracking-wide text-slate-500 dark:text-slate-400"
+							class="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400"
 						>
 							Templates
 						</p>
-						<p class="text-xl font-semibold text-slate-900 dark:text-slate-50">
+						<p class="text-xl font-bold text-slate-900 dark:text-slate-100">
 							{$graphStore.stats.totalTemplates}
 						</p>
 					</div>
 					<div
-						class="rounded-xl border border-slate-200 bg-white/80 px-3 py-3 text-left shadow-sm dark:border-slate-700 dark:bg-slate-900/70"
+						class="rounded border-2 border-slate-700/30 bg-surface-panel px-3 py-3 text-left shadow-subtle dark:border-slate-500/30 dark:bg-slate-800"
 					>
 						<p
-							class="text-[11px] uppercase tracking-wide text-slate-500 dark:text-slate-400"
+							class="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400"
 						>
 							Projects
 						</p>
-						<p class="text-xl font-semibold text-slate-900 dark:text-slate-50">
+						<p class="text-xl font-bold text-slate-900 dark:text-slate-100">
 							{$graphStore.stats.totalProjects}
 						</p>
 					</div>
 					<div
-						class="rounded-xl border border-slate-200 bg-white/80 px-3 py-3 text-left shadow-sm dark:border-slate-700 dark:bg-slate-900/70"
+						class="rounded border-2 border-slate-700/30 bg-surface-panel px-3 py-3 text-left shadow-subtle dark:border-slate-500/30 dark:bg-slate-800"
 					>
 						<p
-							class="text-[11px] uppercase tracking-wide text-slate-500 dark:text-slate-400"
+							class="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400"
 						>
 							Relationships
 						</p>
-						<p class="text-xl font-semibold text-slate-900 dark:text-slate-50">
+						<p class="text-xl font-bold text-slate-900 dark:text-slate-100">
 							{$graphStore.stats.totalEdges}
 						</p>
 					</div>
 					<div
-						class="rounded-xl border border-slate-200 bg-white/80 px-3 py-3 text-left shadow-sm dark:border-slate-700 dark:bg-slate-900/70"
+						class="rounded border-2 border-slate-700/30 bg-surface-panel px-3 py-3 text-left shadow-subtle dark:border-slate-500/30 dark:bg-slate-800"
 					>
 						<p
-							class="text-[11px] uppercase tracking-wide text-slate-500 dark:text-slate-400"
+							class="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400"
 						>
 							Active Projects
 						</p>
-						<p class="text-xl font-semibold text-emerald-600 dark:text-emerald-300">
+						<p class="text-xl font-bold text-accent-olive dark:text-accent-olive">
 							{$graphStore.stats.activeProjects}
 						</p>
 					</div>
@@ -959,7 +898,7 @@
 			{/if}
 
 			<div
-				class="rounded-2xl border border-slate-200/80 bg-white/90 shadow-sm dark:border-slate-800 dark:bg-slate-900/80 overflow-hidden touch-none"
+				class="rounded border-2 border-slate-700/30 bg-surface-panel shadow-subtle dark:border-slate-500/30 dark:bg-slate-800 overflow-hidden touch-none"
 			>
 				<div class="relative h-[60vh] sm:h-[70vh] lg:h-[calc(100vh-18rem)]">
 					{#if $graphStore.status === 'loading'}
@@ -1009,9 +948,9 @@
 				</div>
 			</div>
 
-			<div class="grid gap-dense-4 lg:grid-cols-2">
+			<div class="grid gap-4 lg:grid-cols-2">
 				<section
-					class="rounded-2xl border border-slate-200 bg-white/90 shadow-sm dark:border-slate-800 dark:bg-slate-900/80 overflow-hidden"
+					class="rounded border-2 border-slate-700/30 bg-surface-panel shadow-subtle dark:border-slate-500/30 dark:bg-slate-800 overflow-hidden"
 				>
 					<GraphControls
 						bind:viewMode={graphViewMode}
@@ -1021,7 +960,7 @@
 				</section>
 
 				<section
-					class="rounded-2xl border border-slate-200 bg-white/90 shadow-sm dark:border-slate-800 dark:bg-slate-900/80 overflow-hidden"
+					class="rounded border-2 border-slate-700/30 bg-surface-panel shadow-subtle dark:border-slate-500/30 dark:bg-slate-800 overflow-hidden"
 				>
 					{#if selectedGraphNode && $graphStore.status === 'ready'}
 						<NodeDetailsPanel

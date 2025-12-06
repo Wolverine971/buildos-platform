@@ -1,6 +1,7 @@
 <!-- apps/web/src/lib/components/email/EmailManager.svelte -->
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { browser } from '$app/environment';
 	import {
 		Mail,
 		Plus,
@@ -23,31 +24,38 @@
 	import Button from '$lib/components/ui/Button.svelte';
 
 	// Data state
-	let emails: any[] = [];
-	let isLoading = true;
-	let error: string | null = null;
-	let searchQuery = '';
-	let currentPage = 1;
-	let totalPages = 1;
-	let totalItems = 0;
+	let emails = $state<any[]>([]);
+	let isLoading = $state(true);
+	let error = $state<string | null>(null);
+	let searchQuery = $state('');
+	let currentPage = $state(1);
+	let totalPages = $state(1);
+	let totalItems = $state(0);
 
 	// Filters
-	let statusFilter = 'all';
-	let categoryFilter = 'all';
-	let sortBy = 'created_at';
-	let sortOrder = 'desc';
+	let statusFilter = $state('all');
+	let categoryFilter = $state('all');
+	let sortBy = $state('created_at');
+	let sortOrder = $state('desc');
 
 	// UI state
-	let activeView: 'list' | 'compose' | 'edit' | 'preview' = 'list';
-	let selectedEmail: any = null;
-	let showDeleteModal = false;
-	let emailToDelete: any = null;
-	let isDeleting = false;
+	let activeView = $state<'list' | 'compose' | 'edit' | 'preview'>('list');
+	let selectedEmail = $state<any>(null);
+	let showDeleteModal = $state(false);
+	let emailToDelete = $state<any>(null);
+	let isDeleting = $state(false);
 
 	// Mobile responsive
-	let showMobileFilters = false;
+	let showMobileFilters = $state(false);
 
-	let timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+	let timeZone = $state(Intl.DateTimeFormat().resolvedOptions().timeZone);
+
+	// Track previous filter values to detect changes
+	let prevSearchQuery = '';
+	let prevStatusFilter = 'all';
+	let prevCategoryFilter = 'all';
+	let prevSortBy = 'created_at';
+	let prevSortOrder = 'desc';
 
 	onMount(() => {
 		timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -55,10 +63,25 @@
 	});
 
 	// Watch for filter changes
-	$: if (searchQuery || statusFilter || categoryFilter || sortBy || sortOrder) {
-		currentPage = 1;
-		loadEmails();
-	}
+	$effect(() => {
+		if (!browser) return;
+		const filtersChanged =
+			searchQuery !== prevSearchQuery ||
+			statusFilter !== prevStatusFilter ||
+			categoryFilter !== prevCategoryFilter ||
+			sortBy !== prevSortBy ||
+			sortOrder !== prevSortOrder;
+
+		if (filtersChanged) {
+			prevSearchQuery = searchQuery;
+			prevStatusFilter = statusFilter;
+			prevCategoryFilter = categoryFilter;
+			prevSortBy = sortBy;
+			prevSortOrder = sortOrder;
+			currentPage = 1;
+			loadEmails();
+		}
+	});
 
 	async function loadEmails() {
 		isLoading = true;

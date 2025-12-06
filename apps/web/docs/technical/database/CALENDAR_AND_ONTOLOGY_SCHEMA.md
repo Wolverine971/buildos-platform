@@ -252,24 +252,36 @@ updated_at (timestamptz)
 
 #### `onto_tasks` (Project Tasks)
 
+> **Schema Reference**: See [TYPE_KEY_TAXONOMY.md](../../features/ontology/TYPE_KEY_TAXONOMY.md#onto_tasks) for task type_key documentation.
+
 ```
 id (uuid, pk)
 project_id (uuid fk, not null, cascade delete)
-plan_id (uuid fk, nullable, set null on delete)
+type_key (text, not null, default 'task.execute')  -- Work mode taxonomy
 title (text, not null)
 state_key (text, default 'todo')
-priority (int)
+priority (int, 1-5)
 due_at (timestamptz)
 props (jsonb)
 
-facet_scale (generated)
+facet_scale (generated from props.facets.scale)
 
 created_by (uuid)
 created_at (timestamptz)
 updated_at (timestamptz)
 
-Indexes: project, plan, state_key, due_at, priority, props (gin), title (trgm)
+Indexes: project, type_key, state_key, due_at, priority, props (gin), title (trgm)
 ```
+
+**type_key Format**: `task.{work_mode}[.{specialization}]`
+
+- Work modes: execute (default), create, refine, research, review, coordinate, admin, plan
+- Specializations: task.coordinate.meeting, task.coordinate.standup, task.execute.deploy, task.execute.checklist
+
+**Plan Relationships**: Via `onto_edges` table (not direct column)
+
+- `belongs_to_plan` (task → plan)
+- `has_task` (plan → task)
 
 #### `onto_goals`, `onto_requirements` (Project Context)
 

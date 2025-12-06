@@ -141,6 +141,7 @@ export const TemplateSchema = z.object({
 		'goal',
 		'requirement',
 		'risk',
+		'event',
 		'milestone',
 		'metric'
 	]),
@@ -238,7 +239,11 @@ export const ProjectSpecSchema = z.object({
 			z.object({
 				title: z.string(),
 				plan_name: z.string().optional(),
-				// Note: tasks don't have type_key in the database schema (only entity without it)
+				type_key: z
+					.string()
+					.regex(/^task\.[a-z_]+(\.[a-z_]+)?$/)
+					.optional()
+					.default('task.execute'),
 				state_key: z.string().optional(),
 				priority: z.number().int().min(1).max(5).optional(),
 				due_at: z.string().datetime().optional(),
@@ -403,7 +408,6 @@ export const ProjectSchema = z.object({
 	facet_stage: z.string().nullable().optional(),
 	start_at: z.string().datetime().nullable().optional(),
 	end_at: z.string().datetime().nullable().optional(),
-	context_document_id: z.string().uuid().nullable().optional(),
 	created_by: z.string().uuid(),
 	created_at: z.string().datetime(),
 	updated_at: z.string().datetime()
@@ -431,8 +435,8 @@ export type Plan = z.infer<typeof PlanSchema>;
 export const TaskSchema = z.object({
 	id: z.string().uuid(),
 	project_id: z.string().uuid(),
-	plan_id: z.string().uuid().nullable().optional(),
 	title: z.string(),
+	type_key: z.string().regex(/^task\.[a-z_]+(\.[a-z_]+)?$/),
 	state_key: z.string(),
 	priority: z.number().int().nullable().optional(),
 	due_at: z.string().datetime().nullable().optional(),
@@ -478,11 +482,56 @@ export type Document = z.infer<typeof DocumentSchema>;
 // VALIDATION HELPERS
 // ============================================
 
+// ============================================
+// TYPE KEY VALIDATION PATTERNS
+// ============================================
+
+/**
+ * Scope-specific type_key regex patterns
+ * Based on the family-based taxonomy defined in TYPE_KEY_TAXONOMY.md
+ */
+export const TYPE_KEY_PATTERNS: Record<string, RegExp> = {
+	project: /^project\.[a-z_]+\.[a-z_]+(\.[a-z_]+)?$/,
+	task: /^task\.[a-z_]+(\.[a-z_]+)?$/,
+	plan: /^plan\.[a-z_]+(\.[a-z_]+)?$/,
+	goal: /^goal\.[a-z_]+(\.[a-z_]+)?$/,
+	output: /^output\.[a-z_]+(\.[a-z_]+)?$/,
+	document: /^document\.[a-z_]+(\.[a-z_]+)?$/,
+	risk: /^risk\.[a-z_]+(\.[a-z_]+)?$/,
+	event: /^event\.[a-z_]+(\.[a-z_]+)?$/,
+	requirement: /^requirement\.[a-z_]+(\.[a-z_]+)?$/
+};
+
+/** General type_key pattern (2-3 dot-separated lowercase segments) */
+export const GENERAL_TYPE_KEY_PATTERN = /^[a-z_]+\.[a-z_]+(\.[a-z_]+)?$/;
+
 /**
  * Validate type_key format (lowercase dot-separated, 2-3 segments)
+ * @param typeKey - The type_key to validate
+ * @param scope - Optional scope for scope-specific validation
  */
-export function isValidTypeKey(typeKey: string): boolean {
-	return /^[a-z_]+\.[a-z_]+(\.[a-z_]+)?$/.test(typeKey);
+export function isValidTypeKey(typeKey: string, scope?: string): boolean {
+	if (scope && TYPE_KEY_PATTERNS[scope]) {
+		return TYPE_KEY_PATTERNS[scope].test(typeKey);
+	}
+	return GENERAL_TYPE_KEY_PATTERN.test(typeKey);
+}
+
+/**
+ * Extract family and variant from a type_key
+ * Used for indexing and search faceting
+ */
+export function extractTypeKeyParts(typeKey: string): {
+	scope: string;
+	family: string;
+	variant?: string;
+} {
+	const parts = typeKey.split('.');
+	return {
+		scope: parts[0],
+		family: parts[1],
+		variant: parts[2]
+	};
 }
 
 /**

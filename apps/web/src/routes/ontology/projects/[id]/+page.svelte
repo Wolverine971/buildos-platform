@@ -992,7 +992,7 @@
 </script>
 
 <svelte:head>
-	<title>{project.name} | Ontology</title>
+	<title>{project?.name ?? 'Project'} | Ontology</title>
 </svelte:head>
 
 <div class="flex flex-col gap-4 sm:gap-6">
@@ -1001,7 +1001,7 @@
 		<button
 			type="button"
 			onclick={() => goto('/ontology')}
-			class="inline-flex items-center gap-2 rounded-xl border border-slate-200/70 bg-white/90 px-3 py-2 text-sm font-semibold text-slate-600 transition hover:border-blue-400 hover:text-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-300 dark:hover:border-indigo-500 dark:hover:text-indigo-200"
+			class="inline-flex items-center gap-2 rounded border-2 border-slate-700/30 px-3 py-2 text-sm font-bold text-slate-700 transition hover:bg-slate-100 hover:border-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-orange dark:border-slate-500/30 dark:text-slate-300 dark:hover:bg-slate-800 shadow-subtle"
 		>
 			<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
 				<path
@@ -1067,16 +1067,6 @@
 				{/if}
 			{/if}
 		</div>
-		<Button
-			variant="ghost"
-			size="sm"
-			disabled={dataRefreshing}
-			onclick={() =>
-				refreshProjectData({ refreshGraph: activeTab === 'graph', silent: false })}
-		>
-			<RefreshCw class={`mr-1 h-3 w-3 ${dataRefreshing ? 'animate-spin' : ''}`} />
-			<span>{dataRefreshing ? 'Refreshing…' : 'Refresh data'}</span>
-		</Button>
 	</div>
 
 	<!-- Content -->
@@ -1100,7 +1090,7 @@
 					<!-- Tasks list -->
 					{#if tasks.length === 0}
 						<div
-							class="text-center py-12 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg"
+							class="text-center py-12 border-2 border-dashed border-slate-700/30 dark:border-slate-500/30 rounded"
 						>
 							<Pencil class="w-12 h-12 text-gray-400 mx-auto mb-dense-4" />
 							<p class="text-gray-600 dark:text-gray-400 mb-dense-4">
@@ -1121,7 +1111,7 @@
 								{@const linkedDocs = taskDocuments.get(task.id) ?? []}
 								<button
 									onclick={() => (editingTaskId = task.id)}
-									class="w-full flex flex-col sm:flex-row sm:items-center sm:justify-between gap-dense-3 p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-blue-500 dark:hover:border-blue-400 hover:bg-blue-50/70 dark:hover:bg-blue-900/10 transition-all duration-200 text-left group"
+									class="w-full flex flex-col sm:flex-row sm:items-center sm:justify-between gap-dense-3 p-4 border-2 border-slate-700/30 dark:border-slate-500/30 rounded hover:border-accent-orange dark:hover:border-accent-orange hover:bg-accent-orange/5 dark:hover:bg-accent-orange/10 transition-all duration-200 text-left group shadow-subtle"
 								>
 									<div class="flex-1 min-w-0 flex items-start gap-dense-3">
 										<Pencil
@@ -1231,7 +1221,7 @@
 
 					{#if graphError || graphReloadError}
 						<div
-							class="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-800/50 dark:bg-red-900/30 dark:text-red-200"
+							class="rounded border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-800/50 dark:bg-red-900/30 dark:text-red-200"
 						>
 							<div class="flex items-start gap-dense-3">
 								<div class="flex-1 space-y-1">
@@ -1279,8 +1269,7 @@
 									<div
 										class="relative h-[520px] sm:h-[620px] overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800"
 									>
-										<svelte:component
-											this={OntologyGraphMod.default}
+										<OntologyGraphMod.default
 											data={projectGraphSource}
 											viewMode={graphViewMode}
 											bind:selectedNode={selectedGraphNode}
@@ -1298,8 +1287,7 @@
 									</div>
 								</div>
 								<div class="lg:col-span-1">
-									<svelte:component
-										this={GraphControlsMod.default}
+									<GraphControlsMod.default
 										bind:viewMode={graphViewMode}
 										{graphInstance}
 										stats={projectGraphStats ?? emptyGraphStats}
@@ -1308,7 +1296,7 @@
 							</div>
 						{:catch error}
 							<div
-								class="rounded-lg border border-red-200 bg-red-50 p-6 text-center dark:border-red-800/50 dark:bg-red-900/30"
+								class="rounded border border-red-200 bg-red-50 p-6 text-center dark:border-red-800/50 dark:bg-red-900/30"
 							>
 								<p class="text-red-700 dark:text-red-200 font-semibold mb-2">
 									Failed to load graph visualization
@@ -1324,8 +1312,7 @@
 						>
 							{#if selectedGraphNode}
 								{#await import('$lib/components/ontology/graph/NodeDetailsPanel.svelte') then { default: NodeDetailPanel }}
-									<svelte:component
-										this={NodeDetailPanel}
+									<NodeDetailPanel
 										node={selectedGraphNode}
 										onClose={() => (selectedGraphNode = null)}
 									/>
@@ -1383,7 +1370,7 @@
 					<!-- Outputs list -->
 					{#if outputs.length === 0}
 						<div
-							class="text-center py-12 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg"
+							class="text-center py-12 border-2 border-dashed border-slate-700/30 dark:border-slate-500/30 rounded"
 						>
 							<Pencil class="w-12 h-12 text-gray-400 mx-auto mb-dense-4" />
 							<p class="text-gray-600 dark:text-gray-400 mb-dense-4">
@@ -1403,7 +1390,7 @@
 							{#each outputs as output}
 								<button
 									onclick={() => editOutput(output.id)}
-									class="w-full flex flex-col sm:flex-row sm:items-center sm:justify-between gap-dense-3 p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-blue-500 dark:hover:border-blue-400 hover:bg-blue-50/70 dark:hover:bg-blue-900/10 transition-all duration-200 text-left group"
+									class="w-full flex flex-col sm:flex-row sm:items-center sm:justify-between gap-dense-3 p-4 border-2 border-slate-700/30 dark:border-slate-500/30 rounded hover:border-accent-orange dark:hover:border-accent-orange hover:bg-accent-orange/5 dark:hover:bg-accent-orange/10 transition-all duration-200 text-left group shadow-subtle"
 								>
 									<div class="flex-1 min-w-0 flex items-start gap-dense-3">
 										<Pencil
@@ -1415,15 +1402,13 @@
 											>
 												{output.name}
 											</h3>
-											<div
-												class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400"
-											>
-												<span>{output.type_key}</span>
-												{#if output.props?.word_count}
-													<span class="text-gray-400">•</span>
+											{#if output.props?.word_count}
+												<div
+													class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400"
+												>
 													<span>{output.props.word_count} words</span>
-												{/if}
-											</div>
+												</div>
+											{/if}
 										</div>
 									</div>
 									<!-- ✅ Replaced ternary logic with utility function -->
@@ -1443,7 +1428,7 @@
 				<div class="space-y-dense-4">
 					<!-- Header with gradient accent -->
 					<div
-						class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-dense-3 pb-3 border-b border-gray-200 dark:border-gray-700"
+						class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-dense-3 pb-3 border-b border-slate-700/30 dark:border-slate-500/30"
 					>
 						<div>
 							<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
@@ -1461,7 +1446,7 @@
 
 					{#if documents.length === 0}
 						<div
-							class="text-center py-12 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg"
+							class="text-center py-12 border-2 border-dashed border-slate-700/30 dark:border-slate-500/30 rounded"
 						>
 							<FileText class="w-12 h-12 text-gray-400 mx-auto mb-dense-4" />
 							<p class="text-gray-600 dark:text-gray-400 mb-dense-4">
@@ -1497,9 +1482,9 @@
 												? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300'
 												: state === 'archived'
 													? 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'
-													: 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300'}
+													: 'bg-accent-blue/10 dark:bg-accent-blue/20 text-accent-blue dark:text-accent-blue'}
 								<div
-									class="group/card rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900/60 hover:border-blue-300 dark:hover:border-blue-700 hover:shadow-md transition-all duration-200"
+									class="group/card rounded border-2 border-slate-700/30 dark:border-slate-500/30 bg-surface-panel dark:bg-slate-800 hover:border-accent-orange dark:hover:border-accent-orange hover:shadow-pressable transition-all duration-200 shadow-subtle"
 									data-testid="ontology-document-card"
 								>
 									<div class="p-4 sm:p-5 space-y-3">
@@ -1514,7 +1499,7 @@
 												aria-controls={panelId}
 											>
 												<div
-													class="flex items-center justify-center w-10 h-10 rounded-lg bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 flex-shrink-0 group-hover/expand:from-blue-100 group-hover/expand:to-purple-100 dark:group-hover/expand:from-blue-800/30 dark:group-hover/expand:to-purple-800/30 transition-all"
+													class="flex items-center justify-center w-10 h-10 rounded bg-gradient-to-br from-accent-blue/10 to-accent-orange/10 dark:from-accent-blue/20 dark:to-accent-orange/20 flex-shrink-0 group-hover/expand:from-accent-blue/20 group-hover/expand:to-accent-orange/20 dark:group-hover/expand:from-accent-blue/30 dark:group-hover/expand:to-accent-orange/30 transition-all"
 												>
 													<FileText
 														class="w-5 h-5 text-blue-600 dark:text-blue-400"
@@ -1538,7 +1523,7 @@
 														class="flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400"
 													>
 														<span
-															class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 font-medium"
+															class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-accent-blue/10 dark:bg-accent-blue/20 text-accent-blue dark:text-accent-blue font-bold"
 														>
 															{doc.type_key}
 														</span>
@@ -1583,7 +1568,7 @@
 									{#if isExpanded}
 										<div
 											id={panelId}
-											class="border-t border-gray-200 dark:border-gray-700 px-4 sm:px-5 py-4 bg-gradient-to-br from-gray-50 to-blue-50/30 dark:from-gray-900/30 dark:to-blue-900/10 rounded-b-lg"
+											class="border-t border-slate-700/30 dark:border-slate-500/30 px-4 sm:px-5 py-4 bg-gradient-to-br from-gray-50 to-blue-50/30 dark:from-gray-900/30 dark:to-blue-900/10 rounded-b-lg"
 										>
 											{#if body}
 												<div class={`pt-3 ${getProseClasses('sm')}`}>
@@ -1660,7 +1645,7 @@
 					<!-- Plans list -->
 					{#if plans.length === 0}
 						<div
-							class="text-center py-12 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg"
+							class="text-center py-12 border-2 border-dashed border-slate-700/30 dark:border-slate-500/30 rounded"
 						>
 							<Calendar class="w-12 h-12 text-gray-400 mx-auto mb-dense-4" />
 							<p class="text-gray-600 dark:text-gray-400 mb-dense-4">
@@ -1681,7 +1666,7 @@
 								<button
 									type="button"
 									onclick={() => (editingPlanId = plan.id)}
-									class="w-full flex flex-col sm:flex-row sm:items-center sm:justify-between gap-dense-3 p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-blue-500 dark:hover:border-blue-400 hover:bg-blue-50/70 dark:hover:bg-blue-900/10 transition-all duration-200 text-left"
+									class="w-full flex flex-col sm:flex-row sm:items-center sm:justify-between gap-dense-3 p-4 border border-slate-700/30 dark:border-slate-500/30 rounded hover:border-blue-500 dark:hover:border-blue-400 hover:bg-blue-50/70 dark:hover:bg-blue-900/10 transition-all duration-200 text-left"
 								>
 									<div class="flex-1 min-w-0 flex items-start gap-dense-3">
 										<Calendar
@@ -1693,18 +1678,16 @@
 											>
 												{plan.name}
 											</h3>
-											<div
-												class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400"
-											>
-												<span>{plan.type_key}</span>
-												{#if plan.props?.start_date || plan.props?.end_date}
-													{@const startFormatted = formatPlanDate(
-														plan.props?.start_date
-													)}
-													{@const endFormatted = formatPlanDate(
-														plan.props?.end_date
-													)}
-													<span class="text-gray-400">•</span>
+											{#if plan.props?.start_date || plan.props?.end_date}
+												{@const startFormatted = formatPlanDate(
+													plan.props?.start_date
+												)}
+												{@const endFormatted = formatPlanDate(
+													plan.props?.end_date
+												)}
+												<div
+													class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400"
+												>
 													<span>
 														{startFormatted}
 														{startFormatted && endFormatted
@@ -1712,8 +1695,8 @@
 															: ''}
 														{endFormatted}
 													</span>
-												{/if}
-											</div>
+												</div>
+											{/if}
 										</div>
 									</div>
 									<span
@@ -1746,7 +1729,7 @@
 					<!-- Goals list -->
 					{#if goals.length === 0}
 						<div
-							class="text-center py-12 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg"
+							class="text-center py-12 border-2 border-dashed border-slate-700/30 dark:border-slate-500/30 rounded"
 						>
 							<Target class="w-12 h-12 text-gray-400 mx-auto mb-dense-4" />
 							<p class="text-gray-600 dark:text-gray-400 mb-dense-4">
@@ -1768,7 +1751,7 @@
 								{@const goalMilestones = getGoalMilestones(goal.id)}
 								{@const directGoalTasks = getDirectGoalTasks(goal.id)}
 								<div
-									class="p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-gray-300 dark:hover:border-gray-600 transition-all duration-200"
+									class="p-4 border border-slate-700/30 dark:border-slate-500/30 rounded hover:border-gray-300 dark:hover:border-gray-600 transition-all duration-200"
 								>
 									<div class="flex flex-col gap-dense-3">
 										<div
@@ -1785,13 +1768,6 @@
 														>
 															{goal.name}
 														</h3>
-														{#if goal.type_key}
-															<span
-																class="text-xs text-gray-500 dark:text-gray-400 font-mono"
-															>
-																{goal.type_key}
-															</span>
-														{/if}
 														{#if goal.state_key}
 															<span
 																class="px-3 py-1 rounded-full text-xs font-semibold capitalize {getGoalStateBadgeClass(
@@ -1857,7 +1833,7 @@
 												</Button>
 												<button
 													type="button"
-													class="p-2 rounded-md border border-gray-200 dark:border-gray-700 text-gray-500 hover:text-gray-900 hover:border-gray-400 dark:hover:border-gray-500 transition-colors"
+													class="p-2 rounded-md border border-slate-700/30 dark:border-slate-500/30 text-gray-500 hover:text-gray-900 hover:border-gray-400 dark:hover:border-gray-500 transition-colors"
 													onclick={() => toggleGoalExpansion(goal.id)}
 													aria-label="Toggle goal details"
 													aria-expanded={expandedGoalId === goal.id}
@@ -1873,7 +1849,7 @@
 										</div>
 										{#if expandedGoalId === goal.id}
 											<div
-												class="border-t border-gray-200 dark:border-gray-700 pt-4 space-y-dense-4"
+												class="border-t border-slate-700/30 dark:border-slate-500/30 pt-4 space-y-dense-4"
 											>
 												{#if directGoalTasks.length > 0}
 													<div class="space-y-2">
@@ -1890,7 +1866,7 @@
 														</div>
 														{#each directGoalTasks as task}
 															<div
-																class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-3 rounded-lg bg-gray-50 dark:bg-gray-800/40"
+																class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-3 rounded bg-surface-panel dark:bg-slate-800/40"
 															>
 																<div class="min-w-0">
 																	<p
@@ -1944,7 +1920,7 @@
 															{@const milestoneTasks =
 																getMilestoneTasks(milestone.id)}
 															<div
-																class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 space-y-3"
+																class="border border-slate-700/30 dark:border-slate-500/30 rounded p-4 space-y-3"
 															>
 																<div
 																	class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-dense-3"
@@ -1989,7 +1965,7 @@
 																	{:else}
 																		{#each milestoneTasks as task}
 																			<div
-																				class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-3 rounded-lg bg-gray-50 dark:bg-gray-800/40"
+																				class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-3 rounded bg-surface-panel dark:bg-slate-800/40"
 																			>
 																				<div
 																					class="min-w-0"
@@ -2041,7 +2017,7 @@
 							</h3>
 							{#each requirements as req}
 								<div
-									class="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg text-gray-700 dark:text-gray-300"
+									class="p-4 bg-surface-panel dark:bg-slate-700/50 rounded text-gray-700 dark:text-gray-300"
 								>
 									{req.text}
 								</div>
@@ -2056,7 +2032,7 @@
 							</h3>
 							{#each milestones as milestone}
 								<div
-									class="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg text-gray-700 dark:text-gray-300"
+									class="p-4 bg-surface-panel dark:bg-slate-700/50 rounded text-gray-700 dark:text-gray-300"
 								>
 									{milestone.title} - {new Date(
 										milestone.due_at
@@ -2073,7 +2049,7 @@
 							</h3>
 							{#each risks as risk}
 								<div
-									class="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg text-gray-700 dark:text-gray-300"
+									class="p-4 bg-surface-panel dark:bg-slate-700/50 rounded text-gray-700 dark:text-gray-300"
 								>
 									{risk.title} ({risk.impact})
 								</div>
@@ -2105,33 +2081,34 @@
 			on:confirm={handleProjectDeleteConfirm}
 			on:cancel={closeDeleteModal}
 		>
-			<div slot="content">
+			{#snippet content()}
 				<p class="text-sm text-gray-600 dark:text-gray-300">
-					This will permanently delete <span class="font-semibold">{project.name}</span> and
-					all related ontology data (tasks, plans, goals, documents, etc.). This action cannot
-					be undone.
+					This will permanently delete <span class="font-semibold"
+						>{project?.name ?? 'this project'}</span
+					> and all related ontology data (tasks, plans, goals, documents, etc.). This action
+					cannot be undone.
 				</p>
-			</div>
+			{/snippet}
 
-			<div slot="details">
+			{#snippet details()}
 				{#if deleteProjectError}
 					<p class="mt-2 text-sm text-red-600 dark:text-red-400">
 						{deleteProjectError}
 					</p>
 				{/if}
-			</div>
+			{/snippet}
 		</ConfirmationModal>
 	{/await}
 {/if}
 
 <!-- Project Edit Modal -->
-{#if showProjectEditModal}
+{#if showProjectEditModal && project}
 	{#await import('$lib/components/ontology/OntologyProjectEditModal.svelte') then { default: OntologyProjectEditModal }}
 		<OntologyProjectEditModal
 			bind:isOpen={showProjectEditModal}
 			{project}
-			{contextDocument}
-			{template}
+			contextDocument={contextDocument ?? null}
+			template={template ?? null}
 			onClose={() => (showProjectEditModal = false)}
 			onSaved={handleProjectSaved}
 		/>
@@ -2152,6 +2129,7 @@
 {#if editingOutputId}
 	{#await import('$lib/components/ontology/OutputEditModal.svelte') then { default: OutputEditModal }}
 		<OutputEditModal
+			isOpen={true}
 			outputId={editingOutputId}
 			projectId={project.id}
 			onClose={() => (editingOutputId = null)}

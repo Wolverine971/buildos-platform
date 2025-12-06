@@ -1,6 +1,7 @@
 /* apps/web/src/app.css */
 @import './lib/styles/performance-optimizations.css';
 @import './lib/styles/dithering.css';
+@import './lib/styles/scratchpad-ops.css';
 @import './lib/styles/animation-utils.css';
 @import './lib/styles/containment.css';
 
@@ -10,15 +11,59 @@
 
 @layer base {
 	:root {
+		/* Legacy HSL values for compatibility */
 		--background: 0 0% 100%;
 		--foreground: 222.2 84% 4.9%;
 		--border: 214.3 31.8% 91.4%;
+
+		/* Scratchpad Ops Design System Colors */
+		--slate-900: #1a1f2b;
+		--slate-700: #2d3242;
+		--slate-500: #3e4459;
+
+		--accent-orange: #d88a3a;
+		--accent-blue: #3a6ea5;
+		--accent-olive: #687452;
+
+		--surface-scratch: #f4f4f0;
+		--surface-panel: #ececec;
+		--surface-elevated: #f8f8f8;
+		--surface-clarity: #ffffff;
+
+		--rune-icon: #374151;
+
+		/* Shadows */
+		--shadow-subtle: 0 1px 3px rgba(0, 0, 0, 0.08);
+		--shadow-pressable: 0 2px 0 rgba(0, 0, 0, 0.3);
+		--shadow-elevated: 0 4px 6px rgba(0, 0, 0, 0.1);
 	}
 
 	.dark {
+		/* Legacy HSL values for compatibility */
 		--background: 222.2 84% 4.9%;
 		--foreground: 210 40% 98%;
 		--border: 217.2 32.6% 17.5%;
+
+		/* Scratchpad Ops Design System Colors - Dark Mode */
+		--slate-900: #1a1f2b;
+		--slate-700: #2d3242;
+		--slate-500: #3e4459;
+
+		--accent-orange: #d88a3a;
+		--accent-blue: #5b9fe3;
+		--accent-olive: #8fa678;
+
+		--surface-scratch: #1a1f2e;
+		--surface-panel: #1e293b;
+		--surface-elevated: #2d3548;
+		--surface-clarity: #0f1420;
+
+		--rune-icon: #e5e7eb;
+
+		/* Shadows - Dark Mode */
+		--shadow-subtle: 0 1px 3px rgba(0, 0, 0, 0.2);
+		--shadow-pressable: 0 2px 0 rgba(0, 0, 0, 0.5);
+		--shadow-elevated: 0 4px 6px rgba(0, 0, 0, 0.3);
 	}
 
 	html {
@@ -187,55 +232,71 @@
 		will-change: auto;
 	}
 
+	/* ==================== Scratchpad Ops Gradient Components ==================== */
+	/* Updated to use industrial palette: accent-orange, accent-blue, accent-olive */
+
 	.gradient-btn-primary {
-		@apply gradient-animated-base bg-gradient-to-br from-blue-500 to-indigo-500 text-white shadow-[0_12px_32px_-20px_rgba(59,130,246,0.55)] hover:scale-105 hover:shadow-[0_20px_40px_-18px_rgba(99,102,241,0.6)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100 dark:from-blue-500 dark:to-indigo-500;
+		/* Primary CTA: accent-orange with tactile shadow */
+		@apply gradient-animated-base bg-gradient-to-br from-accent-orange to-amber-600 text-white shadow-[0_12px_32px_-20px_rgba(216,138,58,0.55)] hover:scale-105 hover:shadow-[0_20px_40px_-18px_rgba(216,138,58,0.6)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-orange disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100 dark:from-accent-orange dark:to-amber-700;
 	}
 
 	.gradient-btn-recording {
-		@apply gradient-animated-base bg-gradient-to-br from-rose-500 to-orange-500 text-white shadow-[0_16px_32px_-20px_rgba(244,63,94,0.6)] animate-pulse;
+		/* Recording state: keep rose/orange for urgency */
+		@apply gradient-animated-base bg-gradient-to-br from-rose-500 to-accent-orange text-white shadow-[0_16px_32px_-20px_rgba(244,63,94,0.6)] animate-pulse;
 	}
 
 	.gradient-icon-primary {
-		@apply gradient-animated-base bg-gradient-to-br from-blue-500/20 via-indigo-500/10 to-purple-500/20 shadow-[0_28px_50px_-32px_rgba(59,130,246,0.65)] dark:from-blue-400/20 dark:via-indigo-400/25 dark:to-purple-400/20;
+		/* Icon backgrounds: accent-blue tones */
+		@apply gradient-animated-base bg-gradient-to-br from-accent-blue/20 via-slate-500/10 to-accent-olive/20 shadow-[0_28px_50px_-32px_rgba(58,110,165,0.65)] dark:from-accent-blue/25 dark:via-slate-400/15 dark:to-accent-olive/25;
 	}
 
 	.gradient-glow-primary {
-		@apply bg-gradient-to-br from-blue-500/10 via-indigo-500/10 to-purple-500/10;
+		/* Subtle glow: industrial blue/olive */
+		@apply bg-gradient-to-br from-accent-blue/10 via-slate-500/5 to-accent-olive/10;
 	}
 
 	.gradient-icon-brand {
-		@apply gradient-animated-base bg-gradient-to-br from-purple-500/20 via-pink-500/10 to-indigo-500/20 shadow-[0_12px_30px_-18px_rgba(168,85,247,0.55)] dark:from-purple-400/20 dark:via-pink-400/20 dark:to-indigo-400/20;
+		/* Brand icon: orange/olive industrial */
+		@apply gradient-animated-base bg-gradient-to-br from-accent-orange/20 via-amber-500/10 to-accent-olive/20 shadow-[0_12px_30px_-18px_rgba(216,138,58,0.55)] dark:from-accent-orange/25 dark:via-amber-400/15 dark:to-accent-olive/25;
 	}
 
 	.gradient-badge-blue {
-		@apply bg-gradient-to-br from-blue-500/20 to-indigo-500/20 text-xs font-bold text-blue-600 dark:text-blue-300;
+		/* Badge: accent-blue */
+		@apply bg-gradient-to-br from-accent-blue/20 to-slate-500/20 text-xs font-bold text-accent-blue dark:text-sky-300;
 	}
 
 	.gradient-badge-purple {
-		@apply bg-gradient-to-br from-purple-500/20 to-pink-500/20 text-xs font-bold text-purple-600 dark:text-purple-300;
+		/* Badge: accent-olive (status) */
+		@apply bg-gradient-to-br from-accent-olive/20 to-emerald-500/20 text-xs font-bold text-accent-olive dark:text-emerald-300;
 	}
 
 	.gradient-message-assistant {
-		@apply gradient-animated-base bg-gradient-to-br from-blue-600 to-indigo-600 shadow-[0_8px_24px_-12px_rgba(59,130,246,0.4)] hover:shadow-[0_12px_32px_-10px_rgba(79,70,229,0.5)];
+		/* AI message: accent-blue for clarity */
+		@apply gradient-animated-base bg-gradient-to-br from-accent-blue to-slate-600 shadow-[0_8px_24px_-12px_rgba(58,110,165,0.4)] hover:shadow-[0_12px_32px_-10px_rgba(58,110,165,0.5)];
 	}
 
 	.gradient-avatar-purple {
-		@apply bg-gradient-to-br from-purple-500/20 to-pink-500/20 shadow-sm dark:from-purple-400/25 dark:to-pink-400/25;
+		/* Avatar: accent-olive */
+		@apply bg-gradient-to-br from-accent-olive/20 to-emerald-500/20 shadow-sm dark:from-accent-olive/25 dark:to-emerald-400/25;
 	}
 
 	.gradient-card-purple {
-		@apply bg-gradient-to-br from-purple-50/90 via-pink-50/80 to-indigo-50/90 dark:from-purple-950/40 dark:via-pink-950/40 dark:to-indigo-950/40;
+		/* Card: surface colors with industrial accent */
+		@apply bg-gradient-to-br from-surface-scratch via-slate-50/80 to-surface-panel dark:from-slate-900/40 dark:via-slate-800/40 dark:to-slate-900/40;
 	}
 
 	.gradient-card-primary {
-		@apply bg-gradient-to-r from-blue-50/90 via-indigo-50/80 to-purple-50/80 text-blue-700 shadow-sm ring-1 ring-blue-200/30 dark:from-blue-950/40 dark:via-indigo-950/40 dark:to-purple-950/40 dark:text-blue-200;
+		/* Primary card: surface with blue accent */
+		@apply bg-gradient-to-r from-surface-scratch via-accent-blue/5 to-surface-panel text-slate-700 shadow-sm ring-1 ring-slate-200/30 dark:from-slate-900/40 dark:via-accent-blue/10 dark:to-slate-800/40 dark:text-slate-200;
 	}
 
 	.gradient-fab-purple {
-		@apply gradient-animated-base bg-gradient-to-br from-purple-500 to-pink-500 text-white shadow-[0_16px_32px_-20px_rgba(168,85,247,0.55)] hover:scale-105 hover:shadow-[0_20px_40px_-18px_rgba(236,72,153,0.6)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-400 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100 dark:from-purple-400 dark:to-pink-400;
+		/* Floating action: accent-orange (primary) */
+		@apply gradient-animated-base bg-gradient-to-br from-accent-orange to-amber-600 text-white shadow-[0_16px_32px_-20px_rgba(216,138,58,0.55)] hover:scale-105 hover:shadow-[0_20px_40px_-18px_rgba(216,138,58,0.6)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-orange disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100 dark:from-accent-orange dark:to-amber-700;
 	}
 
 	.gradient-chip-blue {
-		@apply bg-gradient-to-br from-blue-500/20 via-sky-500/10 to-indigo-500/20 text-blue-600 dark:text-blue-300;
+		/* Chip: accent-blue */
+		@apply bg-gradient-to-br from-accent-blue/20 via-slate-500/10 to-accent-blue/20 text-accent-blue dark:text-sky-300;
 	}
 }

@@ -188,206 +188,212 @@
 </script>
 
 <Modal {isOpen} onClose={handleClose} size="lg">
-	<div
-		slot="header"
-		class="flex items-center justify-between p-4 sm:p-5 md:p-6 border-b border-gray-200 dark:border-gray-700"
-	>
-		<div class="flex items-center gap-2 sm:gap-3">
-			<div class="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex-shrink-0">
-				<Inbox class="w-5 h-5 text-blue-600 dark:text-blue-400" />
-			</div>
-			<div class="min-w-0">
-				<h2 class="text-base sm:text-lg font-semibold text-gray-900 dark:text-white">
-					Assign Backlog Tasks
-				</h2>
-				<p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-					{backlogTasks.length} task{backlogTasks.length !== 1 ? 's' : ''} to assign
-				</p>
-			</div>
-		</div>
-	</div>
-
-	<div class="p-4 sm:p-5 md:p-6 space-y-4">
-		{#if error}
-			<div
-				class="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg"
-			>
-				<p class="text-sm text-red-600 dark:text-red-400">{error}</p>
-			</div>
-		{/if}
-
-		<!-- Assignment Method Selection -->
-		<div class="space-y-3">
-			<h3 class="text-sm font-medium text-gray-700 dark:text-gray-300">
-				How would you like to assign these tasks?
-			</h3>
-			<div class="space-y-2">
-				{#each assignmentMethods as method}
-					{@const MethodIcon = method.icon}
-					<Button
-						onclick={() => handleMethodChange(method.value)}
-						disabled={method.disabled}
-						class="w-full p-3 sm:p-4 rounded-lg border-2 transition-all text-left
-									{selectedMethod === method.value
-							? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-							: 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'}
-									{method.disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}"
-					>
-						<div class="flex items-start gap-3">
-							<div
-								class="p-2 rounded-lg {selectedMethod === method.value
-									? 'bg-blue-100 dark:bg-blue-900/50'
-									: 'bg-gray-100 dark:bg-gray-700'}"
-							>
-								<MethodIcon
-									class="w-4 h-4 {selectedMethod === method.value
-										? 'text-blue-600 dark:text-blue-400'
-										: 'text-gray-600 dark:text-gray-400'}"
-								/>
-							</div>
-							<div class="flex-1">
-								<p class="font-medium text-gray-900 dark:text-white">
-									{method.label}
-								</p>
-								<p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-									{method.description}
-								</p>
-								{#if method.disabled && method.value === 'with_calendar'}
-									<p class="text-xs text-orange-600 dark:text-orange-400 mt-1">
-										Calendar not connected
-									</p>
-								{/if}
-							</div>
-						</div>
-					</Button>
-				{/each}
+	{#snippet children()}
+		<div
+			slot="header"
+			class="flex items-center justify-between p-4 sm:p-5 md:p-6 border-b border-gray-200 dark:border-gray-700"
+		>
+			<div class="flex items-center gap-2 sm:gap-3">
+				<div class="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex-shrink-0">
+					<Inbox class="w-5 h-5 text-blue-600 dark:text-blue-400" />
+				</div>
+				<div class="min-w-0">
+					<h2 class="text-base sm:text-lg font-semibold text-gray-900 dark:text-white">
+						Assign Backlog Tasks
+					</h2>
+					<p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+						{backlogTasks.length} task{backlogTasks.length !== 1 ? 's' : ''} to assign
+					</p>
+				</div>
 			</div>
 		</div>
 
-		<!-- Auto-assign Toggle -->
-		<div class="space-y-3">
-			<div
-				class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg"
-			>
-				<label for="auto-assign" class="flex items-center cursor-pointer">
-					<span class="text-sm font-medium text-gray-700 dark:text-gray-300">
-						Automatically assign tasks to phases
-					</span>
-				</label>
-				<input
-					id="auto-assign"
-					type="checkbox"
-					bind:checked={autoAssign}
-					onchange={(e) => handleAutoAssignChange(e.currentTarget.checked)}
-					class="h-5 w-5 text-blue-600 rounded border-gray-300 dark:border-gray-600 focus:ring-blue-500"
-				/>
-			</div>
-			{#if autoAssign}
-				<p class="text-sm text-gray-500 dark:text-gray-400 pl-3">
-					Tasks will be intelligently distributed across phases based on their
-					dependencies and complexity.
-				</p>
+		<div class="p-4 sm:p-5 md:p-6 space-y-4">
+			{#if error}
+				<div
+					class="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg"
+				>
+					<p class="text-sm text-red-600 dark:text-red-400">{error}</p>
+				</div>
 			{/if}
-		</div>
 
-		<!-- Phase Assignment (only shown when manual mode) -->
-		{#if !autoAssign}
+			<!-- Assignment Method Selection -->
 			<div class="space-y-3">
 				<h3 class="text-sm font-medium text-gray-700 dark:text-gray-300">
-					Manually assign tasks to phases
+					How would you like to assign these tasks?
 				</h3>
-				<div class="space-y-2 max-h-64 overflow-y-auto">
-					{#each backlogTasks as task}
-						<div
-							class="flex items-center gap-3 p-2 bg-gray-50 dark:bg-gray-700/50 rounded-lg"
+				<div class="space-y-2">
+					{#each assignmentMethods as method}
+						{@const MethodIcon = method.icon}
+						<Button
+							onclick={() => handleMethodChange(method.value)}
+							disabled={method.disabled}
+							class="w-full p-3 sm:p-4 rounded-lg border-2 transition-all text-left
+									{selectedMethod === method.value
+								? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+								: 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'}
+									{method.disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}"
 						>
-							<div class="flex-1 min-w-0">
-								<p
-									class="text-sm font-medium text-gray-900 dark:text-white truncate"
+							<div class="flex items-start gap-3">
+								<div
+									class="p-2 rounded-lg {selectedMethod === method.value
+										? 'bg-blue-100 dark:bg-blue-900/50'
+										: 'bg-gray-100 dark:bg-gray-700'}"
 								>
-									{task.title}
-								</p>
+									<MethodIcon
+										class="w-4 h-4 {selectedMethod === method.value
+											? 'text-blue-600 dark:text-blue-400'
+											: 'text-gray-600 dark:text-gray-400'}"
+									/>
+								</div>
+								<div class="flex-1">
+									<p class="font-medium text-gray-900 dark:text-white">
+										{method.label}
+									</p>
+									<p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+										{method.description}
+									</p>
+									{#if method.disabled && method.value === 'with_calendar'}
+										<p
+											class="text-xs text-orange-600 dark:text-orange-400 mt-1"
+										>
+											Calendar not connected
+										</p>
+									{/if}
+								</div>
 							</div>
-							<select
-								bind:value={taskPhaseAssignments[task.id]}
-								onchange={(e) => handlePhaseChange(task.id, e.currentTarget.value)}
-								class="px-3 py-1.5 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-							>
-								{#each sortedPhases as phase}
-									{@const isPastPhase =
-										phase.end_date && new Date(phase.end_date) < new Date()}
-									<option
-										value={phase.id}
-										disabled={isPastPhase}
-										class={isPastPhase ? 'text-gray-400' : ''}
-									>
-										{phase.name}
-										{#if phase.start_date}
-											<span class="text-xs text-gray-500">
-												({new Date(phase.start_date).toLocaleDateString(
-													'en-US',
-													{
-														month: 'short',
-														day: 'numeric'
-													}
-												)})
-											</span>
-										{/if}
-										{isPastPhase ? ' (Past)' : ''}
-									</option>
-								{/each}
-							</select>
-						</div>
+						</Button>
 					{/each}
 				</div>
 			</div>
-		{/if}
 
-		<!-- Info Box -->
-		<div
-			class="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg"
-		>
-			<div class="flex gap-2">
-				<Info class="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
-				<div class="text-sm text-blue-700 dark:text-blue-300">
-					{#if selectedMethod === 'phases_only'}
-						Tasks will be assigned to phases but remain unscheduled. You can schedule
-						them later.
-					{:else if selectedMethod === 'with_dates'}
-						Tasks will be assigned dates based on their phase timeline.
-					{:else if selectedMethod === 'with_calendar'}
-						Tasks will be intelligently scheduled around your existing calendar events.
-					{/if}
+			<!-- Auto-assign Toggle -->
+			<div class="space-y-3">
+				<div
+					class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg"
+				>
+					<label for="auto-assign" class="flex items-center cursor-pointer">
+						<span class="text-sm font-medium text-gray-700 dark:text-gray-300">
+							Automatically assign tasks to phases
+						</span>
+					</label>
+					<input
+						id="auto-assign"
+						type="checkbox"
+						bind:checked={autoAssign}
+						onchange={(e) => handleAutoAssignChange(e.currentTarget.checked)}
+						class="h-5 w-5 text-blue-600 rounded border-gray-300 dark:border-gray-600 focus:ring-blue-500"
+					/>
+				</div>
+				{#if autoAssign}
+					<p class="text-sm text-gray-500 dark:text-gray-400 pl-3">
+						Tasks will be intelligently distributed across phases based on their
+						dependencies and complexity.
+					</p>
+				{/if}
+			</div>
+
+			<!-- Phase Assignment (only shown when manual mode) -->
+			{#if !autoAssign}
+				<div class="space-y-3">
+					<h3 class="text-sm font-medium text-gray-700 dark:text-gray-300">
+						Manually assign tasks to phases
+					</h3>
+					<div class="space-y-2 max-h-64 overflow-y-auto">
+						{#each backlogTasks as task}
+							<div
+								class="flex items-center gap-3 p-2 bg-gray-50 dark:bg-gray-700/50 rounded-lg"
+							>
+								<div class="flex-1 min-w-0">
+									<p
+										class="text-sm font-medium text-gray-900 dark:text-white truncate"
+									>
+										{task.title}
+									</p>
+								</div>
+								<select
+									bind:value={taskPhaseAssignments[task.id]}
+									onchange={(e) =>
+										handlePhaseChange(task.id, e.currentTarget.value)}
+									class="px-3 py-1.5 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+								>
+									{#each sortedPhases as phase}
+										{@const isPastPhase =
+											phase.end_date && new Date(phase.end_date) < new Date()}
+										<option
+											value={phase.id}
+											disabled={isPastPhase}
+											class={isPastPhase ? 'text-gray-400' : ''}
+										>
+											{phase.name}
+											{#if phase.start_date}
+												<span class="text-xs text-gray-500">
+													({new Date(phase.start_date).toLocaleDateString(
+														'en-US',
+														{
+															month: 'short',
+															day: 'numeric'
+														}
+													)})
+												</span>
+											{/if}
+											{isPastPhase ? ' (Past)' : ''}
+										</option>
+									{/each}
+								</select>
+							</div>
+						{/each}
+					</div>
+				</div>
+			{/if}
+
+			<!-- Info Box -->
+			<div
+				class="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg"
+			>
+				<div class="flex gap-2">
+					<Info class="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+					<div class="text-sm text-blue-700 dark:text-blue-300">
+						{#if selectedMethod === 'phases_only'}
+							Tasks will be assigned to phases but remain unscheduled. You can
+							schedule them later.
+						{:else if selectedMethod === 'with_dates'}
+							Tasks will be assigned dates based on their phase timeline.
+						{:else if selectedMethod === 'with_calendar'}
+							Tasks will be intelligently scheduled around your existing calendar
+							events.
+						{/if}
+					</div>
 				</div>
 			</div>
 		</div>
-	</div>
 
-	<div
-		slot="footer"
-		class="p-4 sm:p-5 md:p-6 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50"
-	>
-		<div class="flex flex-col-reverse sm:flex-row gap-2 sm:gap-4 sm:justify-end">
-			<Button
-				onclick={handleClose}
-				variant="outline"
-				disabled={loading}
-				class="w-full sm:w-auto"
-			>
-				Cancel
-			</Button>
-			<Button
-				onclick={handleAssign}
-				variant="primary"
-				disabled={loading ||
-					(!autoAssign && Object.keys(taskPhaseAssignments).length === 0)}
-				{loading}
-				class="w-full sm:w-auto"
-			>
-				{loading
-					? 'Assigning...'
-					: `Assign ${backlogTasks.length} Task${backlogTasks.length !== 1 ? 's' : ''}`}
-			</Button>
+		<div
+			slot="footer"
+			class="p-4 sm:p-5 md:p-6 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50"
+		>
+			<div class="flex flex-col-reverse sm:flex-row gap-2 sm:gap-4 sm:justify-end">
+				<Button
+					onclick={handleClose}
+					variant="outline"
+					disabled={loading}
+					class="w-full sm:w-auto"
+				>
+					Cancel
+				</Button>
+				<Button
+					onclick={handleAssign}
+					variant="primary"
+					disabled={loading ||
+						(!autoAssign && Object.keys(taskPhaseAssignments).length === 0)}
+					{loading}
+					class="w-full sm:w-auto"
+				>
+					{loading
+						? 'Assigning...'
+						: `Assign ${backlogTasks.length} Task${backlogTasks.length !== 1 ? 's' : ''}`}
+				</Button>
+			</div>
 		</div>
-	</div>
+	{/snippet}
 </Modal>

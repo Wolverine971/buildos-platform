@@ -168,7 +168,7 @@ export class LLMCacheWrapper {
 	} {
 		const keys = this.cache.keys();
 		const estimatedSavings = keys.reduce((sum, key) => {
-			const opType = key.split(':')[1];
+			const opType = key.split(':')[1] ?? 'unknown';
 			return sum + this.estimateSavedCost(opType);
 		}, 0);
 

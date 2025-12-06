@@ -21,32 +21,36 @@
 	twitterCreator="@djwayne3"
 />
 
-<main class="min-h-screen bg-white dark:bg-gray-900">
+<main class="min-h-screen bg-[var(--surface-scratch)] dither-pattern">
 	<!-- Hero Section -->
-	<section class="bg-gray-50 dark:bg-gray-800">
+	<section class="bg-[var(--surface-panel)] noise-overlay">
 		<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
 			<header class="text-center">
 				<div class="flex justify-center mb-8">
-					<video
-						src="/onboarding-assets/animations/brain-bolt-electric.mp4"
-						class="w-20 h-20 rounded-md"
-						autoplay
-						loop
-						muted
-						playsinline
-						aria-label="BuildOS application icon"
-					></video>
+					<div
+						class="utility-block w-20 h-20 rounded-sm flex items-center justify-center"
+					>
+						<video
+							src="/onboarding-assets/animations/brain-bolt-electric.mp4"
+							class="w-16 h-16"
+							autoplay
+							loop
+							muted
+							playsinline
+							aria-label="BuildOS application icon"
+						></video>
+					</div>
 				</div>
-				<h1 class="text-5xl md:text-6xl font-bold text-gray-900 dark:text-white mb-6">
-					About <span class="text-blue-600">BuildOS</span>
+				<h1 class="text-5xl md:text-6xl font-bold text-slate-900 dark:text-slate-100 mb-6">
+					About <span class="text-[var(--accent-orange)]">BuildOS</span>
 				</h1>
 				<p
-					class="text-xl text-gray-600 dark:text-gray-400 mb-8 max-w-3xl mx-auto leading-relaxed"
+					class="text-xl text-slate-700 dark:text-slate-300 mb-8 max-w-3xl mx-auto leading-relaxed"
 				>
 					Let AI organize your thoughts. Transform brain dumps into structured action with
 					daily briefs and intelligent calendar integration.
 				</p>
-				<div class="text-sm text-gray-500 dark:text-gray-400">
+				<div class="text-sm text-slate-600 dark:text-slate-400 badge-draft inline-block">
 					Built by someone who believes humans are nowhere near as productive as we could
 					be
 				</div>
@@ -55,45 +59,45 @@
 	</section>
 
 	<!-- The Problem -->
-	<section class="py-16 bg-white dark:bg-gray-900" aria-labelledby="problem-heading">
+	<section class="py-16 bg-[var(--surface-scratch)]" aria-labelledby="problem-heading">
 		<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
 			<header class="text-center mb-12">
 				<h2
 					id="problem-heading"
-					class="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-6"
+					class="text-3xl md:text-4xl font-bold text-slate-900 dark:text-slate-100 mb-6"
 				>
 					The Problem
 				</h2>
-				<p class="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
+				<p class="text-lg text-slate-700 dark:text-slate-300 max-w-2xl mx-auto">
 					You're drowning in scattered thoughts across multiple tools, and you keep
 					repeating yourself to AI assistants because you can't maintain context.
 				</p>
 			</header>
 
-			<div class="bg-gray-50 dark:bg-gray-800 rounded-2xl p-8">
+			<div class="card-industrial p-8 relative noise-overlay">
 				<div class="grid grid-cols-1 md:grid-cols-2 gap-8">
 					<article>
-						<h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+						<h3 class="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-4">
 							Productivity Tool Chaos
 						</h3>
-						<ul class="space-y-3 text-gray-600 dark:text-gray-400" role="list">
+						<ul class="space-y-3 text-slate-700 dark:text-slate-300" role="list">
 							<li class="flex items-start space-x-3">
 								<div
-									class="w-2 h-2 bg-red-500 rounded-full mt-2 flex-shrink-0"
+									class="w-2 h-2 bg-[var(--accent-orange)] rounded-full mt-2 flex-shrink-0"
 									aria-hidden="true"
 								></div>
 								<p>Notion for docs, Obsidian for notes, Google Docs for sharing</p>
 							</li>
 							<li class="flex items-start space-x-3">
 								<div
-									class="w-2 h-2 bg-red-500 rounded-full mt-2 flex-shrink-0"
+									class="w-2 h-2 bg-[var(--accent-orange)] rounded-full mt-2 flex-shrink-0"
 									aria-hidden="true"
 								></div>
 								<p>Moleskines, Apple Notes, random text files everywhere</p>
 							</li>
 							<li class="flex items-start space-x-3">
 								<div
-									class="w-2 h-2 bg-red-500 rounded-full mt-2 flex-shrink-0"
+									class="w-2 h-2 bg-[var(--accent-orange)] rounded-full mt-2 flex-shrink-0"
 									aria-hidden="true"
 								></div>
 								<p>Brilliant ideas lost in the chaos of daily tasks</p>
@@ -101,27 +105,27 @@
 						</ul>
 					</article>
 					<article>
-						<h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+						<h3 class="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-4">
 							LLM Context Loss
 						</h3>
-						<ul class="space-y-3 text-gray-600 dark:text-gray-400" role="list">
+						<ul class="space-y-3 text-slate-700 dark:text-slate-300" role="list">
 							<li class="flex items-start space-x-3">
 								<div
-									class="w-2 h-2 bg-red-500 rounded-full mt-2 flex-shrink-0"
+									class="w-2 h-2 bg-[var(--accent-orange)] rounded-full mt-2 flex-shrink-0"
 									aria-hidden="true"
 								></div>
 								<p>Repeating the same project context to Claude and ChatGPT</p>
 							</li>
 							<li class="flex items-start space-x-3">
 								<div
-									class="w-2 h-2 bg-red-500 rounded-full mt-2 flex-shrink-0"
+									class="w-2 h-2 bg-[var(--accent-orange)] rounded-full mt-2 flex-shrink-0"
 									aria-hidden="true"
 								></div>
 								<p>No way to build on previous AI conversations</p>
 							</li>
 							<li class="flex items-start space-x-3">
 								<div
-									class="w-2 h-2 bg-red-500 rounded-full mt-2 flex-shrink-0"
+									class="w-2 h-2 bg-[var(--accent-orange)] rounded-full mt-2 flex-shrink-0"
 									aria-hidden="true"
 								></div>
 								<p>Losing momentum because you can't iterate efficiently</p>
@@ -134,16 +138,19 @@
 	</section>
 
 	<!-- How BuildOS Works -->
-	<section class="py-16 bg-gray-50 dark:bg-gray-800" aria-labelledby="how-it-works-heading">
+	<section
+		class="py-16 bg-[var(--surface-panel)] noise-overlay"
+		aria-labelledby="how-it-works-heading"
+	>
 		<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
 			<header class="text-center mb-12">
 				<h2
 					id="how-it-works-heading"
-					class="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-6"
+					class="text-3xl md:text-4xl font-bold text-slate-900 dark:text-slate-100 mb-6"
 				>
 					How BuildOS Works
 				</h2>
-				<p class="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
+				<p class="text-lg text-slate-700 dark:text-slate-300 max-w-2xl mx-auto">
 					Brain dump everything. Let AI organize it. Get daily briefs. Schedule tasks.
 					Build context for better iteration.
 				</p>
@@ -152,78 +159,77 @@
 			<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
 				<article class="text-center">
 					<div
-						class="flex items-center justify-center w-16 h-16 bg-blue-50 dark:bg-blue-900/20 rounded-2xl mb-4 mx-auto"
+						class="utility-block w-16 h-16 rounded-sm flex items-center justify-center mb-4 mx-auto"
 					>
 						<Brain
-							class="w-8 h-8 text-blue-600 dark:text-blue-400"
+							class="w-8 h-8 text-gray-700 dark:text-gray-200"
 							aria-hidden="true"
 						/>
 					</div>
-					<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+					<h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-2">
 						Brain Dump
 					</h3>
-					<p class="text-gray-600 dark:text-gray-400 text-sm">
+					<p class="text-slate-600 dark:text-slate-400 text-sm">
 						Capture all your scattered thoughts without worrying about structure
 					</p>
 				</article>
 
 				<article class="text-center">
 					<div
-						class="flex items-center justify-center w-16 h-16 bg-green-50 dark:bg-green-900/20 rounded-2xl mb-4 mx-auto"
+						class="utility-block w-16 h-16 rounded-sm flex items-center justify-center mb-4 mx-auto"
 					>
-						<Zap
-							class="w-8 h-8 text-green-600 dark:text-green-400"
-							aria-hidden="true"
-						/>
+						<Zap class="w-8 h-8 text-gray-700 dark:text-gray-200" aria-hidden="true" />
 					</div>
-					<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+					<h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-2">
 						AI Organization
 					</h3>
-					<p class="text-gray-600 dark:text-gray-400 text-sm">
+					<p class="text-slate-600 dark:text-slate-400 text-sm">
 						AI processes your thoughts into projects, tasks, and context
 					</p>
 				</article>
 
 				<article class="text-center">
 					<div
-						class="flex items-center justify-center w-16 h-16 bg-purple-50 dark:bg-purple-900/20 rounded-2xl mb-4 mx-auto"
+						class="utility-block w-16 h-16 rounded-sm flex items-center justify-center mb-4 mx-auto"
 					>
 						<MessageSquare
-							class="w-8 h-8 text-purple-600 dark:text-purple-400"
+							class="w-8 h-8 text-gray-700 dark:text-gray-200"
 							aria-hidden="true"
 						/>
 					</div>
-					<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+					<h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-2">
 						Daily Briefs
 					</h3>
-					<p class="text-gray-600 dark:text-gray-400 text-sm">
+					<p class="text-slate-600 dark:text-slate-400 text-sm">
 						Get personalized updates on your projects and priorities
 					</p>
 				</article>
 
 				<article class="text-center">
 					<div
-						class="flex items-center justify-center w-16 h-16 bg-orange-50 dark:bg-orange-900/20 rounded-2xl mb-4 mx-auto"
+						class="utility-block w-16 h-16 rounded-sm flex items-center justify-center mb-4 mx-auto"
 					>
 						<Calendar
-							class="w-8 h-8 text-orange-600 dark:text-orange-400"
+							class="w-8 h-8 text-gray-700 dark:text-gray-200"
 							aria-hidden="true"
 						/>
 					</div>
-					<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+					<h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-2">
 						Smart Scheduling
 					</h3>
-					<p class="text-gray-600 dark:text-gray-400 text-sm">
+					<p class="text-slate-600 dark:text-slate-400 text-sm">
 						Tasks automatically find optimal time slots in your calendar
 					</p>
 				</article>
 			</div>
 
-			<div class="mt-12 bg-blue-50 dark:bg-blue-900/20 rounded-2xl p-8">
-				<h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-4 text-center">
+			<div class="mt-12 clarity-zone p-8">
+				<h3
+					class="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-4 text-center"
+				>
 					The Real Power: Context Building
 				</h3>
-				<p class="text-gray-600 dark:text-gray-400 text-center max-w-2xl mx-auto">
+				<p class="text-slate-700 dark:text-slate-300 text-center max-w-2xl mx-auto">
 					BuildOS creates rich project context that you can copy and share with LLMs. No
 					more repeating yourself - just paste your project context and say "iterate on
 					this" or "what should I do next?"
@@ -374,13 +380,19 @@
 	</section>
 
 	<!-- Join Us -->
-	<section class="py-16 bg-gray-900 text-white" aria-labelledby="join-heading">
+	<section
+		class="py-16 bg-[var(--surface-panel)] industrial-panel"
+		aria-labelledby="join-heading"
+	>
 		<div class="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
 			<header class="mb-12">
-				<h2 id="join-heading" class="text-3xl md:text-4xl font-bold mb-6">
+				<h2
+					id="join-heading"
+					class="text-3xl md:text-4xl font-bold text-slate-900 dark:text-slate-100 mb-6"
+				>
 					Ready to Organize Your Chaos?
 				</h2>
-				<p class="text-xl text-gray-300 mb-12">
+				<p class="text-xl text-slate-700 dark:text-slate-300 mb-12">
 					Join the beta and help build the future of AI-powered productivity.
 				</p>
 			</header>
@@ -391,41 +403,41 @@
 			>
 				<a
 					href="/beta"
-					class="bg-blue-600 hover:bg-blue-700 rounded-xl p-6 transition-colors group"
+					class="card-industrial p-6 hover:brightness-105 transition-all group relative dither-soft"
 					aria-label="Join the BuildOS beta program"
 				>
 					<Users
-						class="w-8 h-8 mx-auto mb-4 group-hover:scale-110 transition-transform"
+						class="w-8 h-8 mx-auto mb-4 text-gray-700 dark:text-gray-200 group-hover:scale-110 transition-transform"
 						aria-hidden="true"
 					/>
-					<h3 class="font-semibold mb-2">Join Beta</h3>
-					<p class="text-sm text-blue-100">Get early access</p>
+					<h3 class="font-semibold mb-2 text-slate-900 dark:text-slate-100">Join Beta</h3>
+					<p class="text-sm text-slate-600 dark:text-slate-400">Get early access</p>
 				</a>
 
 				<a
 					href="/investors"
-					class="bg-gray-700 hover:bg-gray-600 rounded-xl p-6 transition-colors group"
+					class="card-industrial p-6 hover:brightness-105 transition-all group relative dither-soft"
 					aria-label="Learn about investment opportunities with BuildOS"
 				>
 					<Coffee
-						class="w-8 h-8 mx-auto mb-4 group-hover:scale-110 transition-transform"
+						class="w-8 h-8 mx-auto mb-4 text-gray-700 dark:text-gray-200 group-hover:scale-110 transition-transform"
 						aria-hidden="true"
 					/>
-					<h3 class="font-semibold mb-2">Invest</h3>
-					<p class="text-sm text-gray-300">Partner with us</p>
+					<h3 class="font-semibold mb-2 text-slate-900 dark:text-slate-100">Invest</h3>
+					<p class="text-sm text-slate-600 dark:text-slate-400">Partner with us</p>
 				</a>
 
 				<a
 					href="/contact"
-					class="bg-gray-700 hover:bg-gray-600 rounded-xl p-6 transition-colors group"
+					class="card-industrial p-6 hover:brightness-105 transition-all group relative dither-soft"
 					aria-label="Contact the BuildOS team"
 				>
 					<MessageCircle
-						class="w-8 h-8 mx-auto mb-4 group-hover:scale-110 transition-transform"
+						class="w-8 h-8 mx-auto mb-4 text-gray-700 dark:text-gray-200 group-hover:scale-110 transition-transform"
 						aria-hidden="true"
 					/>
-					<h3 class="font-semibold mb-2">Connect</h3>
-					<p class="text-sm text-gray-300">Let's chat</p>
+					<h3 class="font-semibold mb-2 text-slate-900 dark:text-slate-100">Connect</h3>
+					<p class="text-sm text-slate-600 dark:text-slate-400">Let's chat</p>
 				</a>
 			</nav>
 		</div>

@@ -59,6 +59,32 @@ export default {
 					light: '#6366f1',
 					DEFAULT: '#4f46e5',
 					dark: '#4338ca'
+				},
+				// Scratchpad Ops Design System Colors
+				slate: {
+					50: '#f8fafc',
+					100: '#f1f5f9',
+					200: '#e2e8f0',
+					300: '#cbd5e1',
+					400: '#94a3b8',
+					500: '#3E4459', // Custom
+					600: '#475569',
+					700: '#2D3242', // Custom
+					800: '#1e293b',
+					900: '#1A1F2B', // Custom
+					950: '#0f172a'
+				},
+				accent: {
+					orange: 'var(--accent-orange)',
+					blue: 'var(--accent-blue)',
+					olive: 'var(--accent-olive)'
+				},
+				surface: {
+					scratch: 'var(--surface-scratch)',
+					panel: 'var(--surface-panel)',
+					elevated: 'var(--surface-elevated)',
+					clarity: 'var(--surface-clarity)',
+					rune: '#252525'
 				}
 			},
 			// Custom animations for our design system
@@ -126,10 +152,16 @@ export default {
 				'inner-soft': 'inset 0 2px 4px 0 rgba(0, 0, 0, 0.05)',
 				card: '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1)',
 				'card-hover':
-					'0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)'
+					'0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
+				pressable: '0 2px 0 rgba(0,0,0,0.3)',
+				subtle: '0 1px 3px rgba(0,0,0,0.08)'
 			},
 			// Custom border radius for modern feel
 			borderRadius: {
+				sm: '3px',
+				DEFAULT: '4px',
+				md: '6px',
+				lg: '8px',
 				xl: '0.75rem',
 				'2xl': '1rem',
 				'3xl': '1.5rem'
@@ -154,10 +186,23 @@ export default {
 			maxWidth: {
 				'dense-7xl': '64rem' // Tighter than default 80rem for max-w-7xl
 			},
-			// Font family extensions
+			// Font family extensions - Scratchpad Ops design system
 			fontFamily: {
-				display: ['SF Pro Display', 'system-ui', '-apple-system', 'sans-serif'],
-				body: ['SF Pro Text', 'system-ui', '-apple-system', 'sans-serif']
+				// Primary font for UI/Action items
+				ui: [
+					'Inter',
+					'Söhne',
+					'GT America',
+					'IBM Plex Sans',
+					'system-ui',
+					'-apple-system',
+					'sans-serif'
+				],
+				// Secondary font for notes/scratch areas
+				notes: ['IBM Plex Serif', 'Literata', 'serif'],
+				// Compatibility aliases
+				display: ['Inter', 'SF Pro Display', 'system-ui', '-apple-system', 'sans-serif'],
+				body: ['Inter', 'SF Pro Text', 'system-ui', '-apple-system', 'sans-serif']
 			},
 			typography: (theme) => ({
 				DEFAULT: {
@@ -480,12 +525,12 @@ export default {
 			}
 		}
 	},
-	// Custom plugin for gradient text utility
+	// Custom plugin for gradient text and Scratchpad Ops utilities
 	plugins: [
 		forms,
 		typography,
 		// Add custom utilities
-		function ({ addUtilities }) {
+		function ({ addUtilities, theme }) {
 			addUtilities({
 				// Gradient text utility
 				'.text-gradient': {
@@ -515,6 +560,35 @@ export default {
 					'scrollbar-width': 'none',
 					'&::-webkit-scrollbar': {
 						display: 'none'
+					}
+				},
+				// Scratchpad Ops specific utilities
+				'.text-rune': {
+					color: theme('colors.surface.rune'),
+					'stroke-width': '2.5'
+				},
+				'.bg-scratchpad': {
+					'background-color': 'var(--surface-scratch)'
+				},
+				'.bg-panel': {
+					'background-color': 'var(--surface-panel)'
+				},
+				'.bg-clarity': {
+					'background-color': 'var(--surface-clarity)'
+				},
+				'.bg-elevated': {
+					'background-color': 'var(--surface-elevated)'
+				},
+				'.border-pencil': {
+					'border-image':
+						'linear-gradient(to right, rgba(26,31,43,0.4), rgba(26,31,43,0.6), rgba(26,31,43,0.4)) 1',
+					'border-radius': '4px'
+				},
+				'.tactile-press': {
+					transform: 'translateY(0)',
+					transition: 'all 0.1s ease',
+					'&:active': {
+						transform: 'translateY(2px)'
 					}
 				}
 			});

@@ -603,7 +603,7 @@ export class PlanOrchestrator implements BaseService {
 PROJECT CREATION REQUIREMENTS (CRITICAL):
 - Step 1 MUST discover/select an appropriate template (use list_onto_templates or acknowledge existing template context).
 - If no template fits, include a step that calls request_template_creation ONCE before proceeding.
-- A step MUST call create_onto_project with a complete spec (name, description, type_key, facets, starter goals/tasks) before any other creative work.
+- A step MUST call create_onto_project with a complete spec (name, description, type_key, facets, starter goals). Only include starter tasks if the user explicitly mentioned SPECIFIC FUTURE ACTIONS they need to track (e.g., "I need to call the vendor"). Do NOT add tasks for planning, brainstorming, or work you can help with in the conversation.
 - Include a context_document payload summarizing the braindump and plan so the project has a linked narrative.
 - Only after create_onto_project succeeds may later steps expand on additional artifacts.
 - Do NOT skip project creation; the user must leave this flow with a real ontology project.`

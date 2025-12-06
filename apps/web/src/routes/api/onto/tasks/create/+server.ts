@@ -15,7 +15,8 @@
  * - title: string (required) - Task title
  * - description?: string - Task description
  * - priority?: number (1-5) - Task priority
- * - plan_id?: string - Associated plan UUID
+ * - plan_id?: string - Associated plan UUID (creates edge relationship)
+ * - type_key?: string (default: 'task.execute') - Task type (e.g., task.create, task.review)
  * - state_key?: string (default: 'todo') - Initial state
  * - due_at?: string - Due date ISO string
  * - props?: object - Additional properties
@@ -150,12 +151,13 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		}
 
 		// Create the task
+		// type_key is now a proper column (not in props)
 		const taskData = {
 			project_id,
 			title,
+			type_key: type_key || 'task.execute',
 			state_key,
 			priority,
-			plan_id: plan_id || null,
 			due_at: due_at || null,
 			created_by: actorId,
 			props: {
@@ -177,7 +179,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			return ApiResponse.databaseError(createError);
 		}
 
-		// Create edges linking the task to the project (and optional goal/milestone)
+		// Create edges linking the task to the project, plan (if any), goal, and milestone
 		const edges = [
 			{
 				src_id: project_id,
@@ -187,6 +189,26 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				rel: 'contains'
 			}
 		];
+
+		// Plan relationship via edge (plan_id is no longer a column on onto_tasks)
+		if (plan_id) {
+			// Task -> Plan (belongs_to_plan)
+			edges.push({
+				src_id: task.id,
+				src_kind: 'task',
+				dst_id: plan_id,
+				dst_kind: 'plan',
+				rel: 'belongs_to_plan'
+			});
+			// Plan -> Task (has_task) for reverse lookup
+			edges.push({
+				src_id: plan_id,
+				src_kind: 'plan',
+				dst_id: task.id,
+				dst_kind: 'task',
+				rel: 'has_task'
+			});
+		}
 
 		if (validatedGoalId) {
 			edges.push({

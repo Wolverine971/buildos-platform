@@ -1,6 +1,6 @@
 # Ontology System - Current Implementation Status
 
-**Date**: November 4, 2025
+**Date**: December 1, 2025
 **Migration Status**: Phase 2B Complete ✅
 **Overall Completion**: 85-90%
 
@@ -74,35 +74,62 @@ The BuildOS Ontology System is **production-ready for core functionality** with 
 
 **Migration**: `20250605000001_add_missing_base_templates.sql`
 
-#### Task Templates (8 total: 1 abstract + 7 concrete)
+#### Task Templates (12 total: 8 base work modes + 4 specializations)
+
+> **Full Documentation**: See [TYPE_KEY_TAXONOMY.md](./TYPE_KEY_TAXONOMY.md#onto_tasks) for complete task taxonomy.
+
+**Work Mode Taxonomy (December 2025 Update):**
 
 ```typescript
-✅ task.base            // Abstract base (FSM: todo → in_progress → blocked → done → archived)
-✅ task.quick           // Quick actions (5-30 min, simplified FSM)
-✅ task.deep_work       // Deep work (1-4 hours, focus time)
-✅ task.recurring       // Recurring tasks (RRULE support)
-✅ task.milestone       // Milestones (acceptance flow)
-✅ task.meeting_prep    // Meeting preparation
-✅ task.research        // Research & investigation
-✅ task.review          // Review & feedback
+// 8 Base Work Modes
+✅ task.execute         // Action tasks - do the work (default)
+✅ task.create          // Produce new artifacts
+✅ task.refine          // Improve existing work
+✅ task.research        // Investigate and gather information
+✅ task.review          // Evaluate and provide feedback
+✅ task.coordinate      // Sync with others
+✅ task.admin           // Administrative housekeeping
+✅ task.plan            // Strategic thinking and planning
+
+// 4 Specializations
+✅ task.coordinate.meeting   // Schedule/conduct meetings
+✅ task.coordinate.standup   // Quick team syncs
+✅ task.execute.deploy       // Production deployments
+✅ task.execute.checklist    // Follow predefined processes
 ```
 
 **Template Features:**
 
-- ✅ Inheritance hierarchy (all inherit from task.base)
+- ✅ Work mode inheritance (specializations inherit from base modes)
 - ✅ Category metadata for UI grouping
-- ✅ FSM states synchronized with UI
+- ✅ FSM states synchronized with UI (todo → in_progress → blocked → done)
 - ✅ No dependencies array (uses edges instead)
 - ✅ Schema validation with required fields
+- ✅ `type_key` is now required on all tasks (default: `task.execute`)
+- ✅ Plan relationships via edges (`belongs_to_plan`, `has_task`)
 
-#### Goal Templates (5 total: 1 abstract + 4 concrete)
+#### Goal Templates (Family-Based Taxonomy - December 2025 Update)
 
 ```typescript
-✅ goal.base           // Abstract base (FSM: draft → active → on_track/at_risk → achieved/missed)
-✅ goal.outcome        // Outcome goals (binary completion)
-✅ goal.learning       // Learning goals (skill level progression)
-✅ goal.behavior       // Behavior change (frequency & consistency)
-✅ goal.metric         // Metric goals (numeric targets)
+// Format: goal.{family}[.{variant}]
+// Families: outcome, metric, behavior, learning
+
+// Abstract Bases
+✅ goal.base           // Root abstract (FSM: draft → active → on_track/at_risk → achieved/missed)
+✅ goal.outcome.base   // Outcome family base
+✅ goal.metric.base    // Metric family base
+✅ goal.behavior.base  // Behavior family base
+✅ goal.learning.base  // Learning family base
+
+// Concrete Templates
+✅ goal.outcome.project   // Project outcome goals
+✅ goal.outcome.milestone // Milestone goals
+✅ goal.metric.usage      // Usage metrics (MAU, DAU)
+✅ goal.metric.revenue    // Revenue metrics (MRR, ARR)
+✅ goal.behavior.cadence  // Frequency goals
+✅ goal.behavior.routine  // Routine/habit goals
+✅ goal.learning.skill    // Skill acquisition
+✅ goal.learning.domain   // Domain knowledge
 ```
 
 **Template Features:**
@@ -112,12 +139,126 @@ The BuildOS Ontology System is **production-ready for core functionality** with 
 - ✅ Progress tracking schemas
 - ✅ Success criteria fields
 
-#### Plan Templates (3 concrete)
+#### Plan Templates (Family-Based Taxonomy - December 2025 Update)
+
+> **Full Documentation**: See [TYPE_KEY_TAXONOMY.md](./TYPE_KEY_TAXONOMY.md) and [NAMING_CONVENTIONS.md](./NAMING_CONVENTIONS.md)
 
 ```typescript
-✅ plan.content_calendar    // Content creation planning
-✅ plan.client_onboarding   // Client onboarding process
-✅ plan.product_roadmap     // Product development planning
+// Format: plan.{family}[.{variant}]
+// Families: timebox, pipeline, campaign, roadmap, process, phase
+
+// Abstract Bases
+✅ plan.base               // Root abstract (not instantiable)
+✅ plan.timebox.base       // Timebox family base
+✅ plan.pipeline.base      // Pipeline family base
+✅ plan.campaign.base      // Campaign family base
+✅ plan.roadmap.base       // Roadmap family base
+✅ plan.process.base       // Process family base
+✅ plan.phase.base         // Phase family base
+
+// Concrete Templates
+✅ plan.timebox.sprint     // Development sprints (1-4 weeks)
+✅ plan.timebox.weekly     // Weekly planning
+✅ plan.timebox.daily_focus // Daily focus plan
+✅ plan.pipeline.sales     // Sales pipeline
+✅ plan.pipeline.content   // Content pipeline
+✅ plan.pipeline.feature   // Feature pipeline
+✅ plan.campaign.marketing // Marketing campaigns
+✅ plan.campaign.product_launch // Launch campaigns
+✅ plan.roadmap.product    // Product roadmap
+✅ plan.process.client_onboarding // Client onboarding
+✅ plan.phase.project      // Project phases
+```
+
+#### Document Templates (Family-Based Taxonomy - December 2025 Update)
+
+```typescript
+// Format: document.{family}[.{variant}]
+// Families: context, knowledge, decision, spec, reference, intake
+
+// Abstract Bases
+✅ document.base              // Root abstract (not instantiable)
+✅ document.context.base      // Context family base
+✅ document.knowledge.base    // Knowledge family base
+✅ document.decision.base     // Decision family base
+✅ document.spec.base         // Spec family base
+✅ document.reference.base    // Reference family base
+✅ document.intake.base       // Intake family base
+
+// Concrete Templates
+✅ document.context.project   // Canonical project narrative
+✅ document.context.brief     // Creative brief
+✅ document.knowledge.research // Research findings
+✅ document.knowledge.brain_dump // Brain dump notes
+✅ document.decision.meeting_notes // Meeting minutes
+✅ document.decision.rfc      // Request for comment
+✅ document.spec.product      // Product specifications
+✅ document.spec.technical    // Technical specifications
+✅ document.reference.handbook // Guides and manuals
+✅ document.intake.client     // Client intake forms
+```
+
+#### Risk Templates (Family-Based Taxonomy - December 2025 Update)
+
+```typescript
+// Format: risk.{family}[.{variant}]
+// Families: technical, schedule, resource, budget, scope, external, quality
+
+// Abstract Bases
+✅ risk.base              // Root abstract (not instantiable)
+✅ risk.technical.base    // Technical family base
+✅ risk.schedule.base     // Schedule family base
+✅ risk.resource.base     // Resource family base
+✅ risk.budget.base       // Budget family base
+✅ risk.scope.base        // Scope family base
+✅ risk.external.base     // External family base
+✅ risk.quality.base      // Quality family base
+
+// Concrete Templates
+✅ risk.technical.security // Security risks
+✅ risk.technical.scalability // Scalability risks
+✅ risk.schedule.dependency // Dependency timing risks
+✅ risk.schedule.deadline  // Deadline risks
+✅ risk.resource.headcount // Staffing risks
+✅ risk.resource.skill_gap // Skill gap risks
+✅ risk.budget.overrun     // Budget overrun risks
+✅ risk.external.regulatory // Regulatory risks
+✅ risk.quality.defects    // Quality/defect risks
+```
+
+#### Requirement Templates (6 total: 1 abstract + 5 concrete)
+
+```typescript
+// Abstract Base
+✅ requirement.base           // Abstract base (not instantiable)
+
+// Concrete Templates
+✅ requirement.functional     // Functional requirements
+✅ requirement.non_functional // Non-functional (performance, security)
+✅ requirement.constraint     // Project constraints
+✅ requirement.assumption     // Working assumptions
+✅ requirement.dependency     // External dependencies
+```
+
+#### Event Templates (Family-Based Taxonomy - December 2025 Update)
+
+```typescript
+// Format: event.{family}[.{variant}]
+// Families: work, collab, marker
+
+// Abstract Bases
+✅ event.base             // Root abstract (not instantiable)
+✅ event.work.base        // Work session family base
+✅ event.collab.base      // Collaboration family base
+✅ event.marker.base      // Marker family base
+
+// Concrete Templates
+✅ event.work.focus_block // Deep work focus blocks
+✅ event.work.time_block  // Generic work blocks
+✅ event.collab.meeting.standup // Daily standups
+✅ event.collab.meeting.one_on_one // 1:1 meetings
+✅ event.marker.deadline  // Deadline markers
+✅ event.marker.reminder  // Reminder pings
 ```
 
 #### Project Templates (13 from previous migration)
@@ -424,15 +565,20 @@ flow polish, step validation - Effort: 1-2 days (low priority)
 
 ### Template Inventory
 
-| Scope     | Count                       | Status                      |
-| --------- | --------------------------- | --------------------------- |
-| Projects  | 13                          | ✅ Complete                 |
-| Tasks     | 8 (1 abstract + 7 concrete) | ✅ Complete                 |
-| Goals     | 5 (1 abstract + 4 concrete) | ✅ Complete                 |
-| Plans     | 3                           | ✅ Complete                 |
-| Outputs   | 10+                         | ✅ Complete (from previous) |
-| Documents | 3+                          | ✅ Complete (from previous) |
-| **Total** | **42+**                     | ✅ Complete                 |
+> **Full Reference**: See [NAMING_CONVENTIONS.md](./NAMING_CONVENTIONS.md) and [ONTOLOGY_NAMESPACES_CORE.md](./ONTOLOGY_NAMESPACES_CORE.md) for complete template listings.
+
+| Scope        | Count                                 | Status                        |
+| ------------ | ------------------------------------- | ----------------------------- |
+| Projects     | 13+ (domain.deliverable pattern)      | ✅ Complete                   |
+| Tasks        | 12 (8 work modes + 4 specializations) | ✅ Complete (Dec 2025 Update) |
+| Plans        | 18 (7 family bases + 11 variants)     | ✅ Complete (Dec 2025 Update) |
+| Goals        | 13 (5 family bases + 8 variants)      | ✅ Complete (Dec 2025 Update) |
+| Outputs      | 17 (5 family bases + 12 variants)     | ✅ Complete (Dec 2025 Update) |
+| Documents    | 17 (7 family bases + 10 variants)     | ✅ Complete (Dec 2025 Update) |
+| Risks        | 18 (8 family bases + 10 variants)     | ✅ Complete (Dec 2025 Update) |
+| Events       | 12 (4 family bases + 8 variants)      | ✅ NEW (Dec 2025)             |
+| Requirements | 6 (1 abstract + 5 concrete)           | ✅ Complete                   |
+| **Total**    | **120+**                              | ✅ Complete                   |
 
 ### Implementation Progress by Phase
 
@@ -576,6 +722,6 @@ flow polish, step validation - Effort: 1-2 days (low priority)
 
 ---
 
-**Last Updated:** November 4, 2025
+**Last Updated:** December 1, 2025
 **Status:** Phase 2B Complete ✅ - Ready for Phase 3
 **Overall Completion:** 85-90%

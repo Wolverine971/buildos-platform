@@ -29,41 +29,43 @@
 	keywords="BuildOS documentation, brain dump guide, project context building, daily briefs, AI productivity tutorial, calendar integration, MCP server"
 />
 
-<div class="min-h-screen bg-gray-50 dark:bg-gray-900">
+<div class="min-h-screen bg-[var(--surface-scratch)] dither-pattern">
 	<!-- Header -->
-	<div class="bg-white dark:bg-gray-800 py-20">
+	<div class="bg-[var(--surface-panel)] noise-overlay py-20">
 		<div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
 			<div class="flex justify-center mb-8">
-				<video
-					src="/onboarding-assets/animations/brain-bolt-electric.mp4"
-					class="w-16 h-16 rounded-md"
-					autoplay
-					loop
-					muted
-					playsinline
-					aria-label="BuildOS Icon"
-				></video>
+				<div class="utility-block w-16 h-16 rounded-sm flex items-center justify-center">
+					<video
+						src="/onboarding-assets/animations/brain-bolt-electric.mp4"
+						class="w-12 h-12"
+						autoplay
+						loop
+						muted
+						playsinline
+						aria-label="BuildOS Icon"
+					></video>
+				</div>
 			</div>
-			<h1 class="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-6">
+			<h1 class="text-4xl md:text-5xl font-bold text-slate-900 dark:text-slate-100 mb-6">
 				BuildOS Documentation
 			</h1>
-			<p class="text-xl text-gray-600 dark:text-gray-300 mb-8 max-w-3xl mx-auto">
+			<p class="text-xl text-slate-700 dark:text-slate-300 mb-8 max-w-3xl mx-auto">
 				Learn how to transform scattered thoughts into organized action with AI-powered
 				context building and smart project management.
 			</p>
 			<div class="flex flex-col sm:flex-row gap-4 justify-center">
 				<a
 					href="#getting-started"
-					class="inline-flex items-center px-6 py-3 bg-primary-600 text-white font-semibold rounded-lg hover:bg-primary-700 transition-colors"
+					class="btn-tactile inline-flex items-center px-6 py-3 font-semibold"
 				>
-					<Zap class="w-5 h-5 mr-2" />
+					<Zap class="w-5 h-5 mr-2 text-white" />
 					Quick Start Guide
 				</a>
 				<a
 					href="#workflow"
-					class="inline-flex items-center px-6 py-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-semibold rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+					class="btn-secondary inline-flex items-center px-6 py-3 font-semibold"
 				>
-					<BarChart3 class="w-5 h-5 mr-2" />
+					<BarChart3 class="w-5 h-5 mr-2 text-white" />
 					How It Works
 				</a>
 			</div>
@@ -77,73 +79,71 @@
 				<!-- Sidebar Navigation -->
 				<div class="lg:col-span-1">
 					<nav class="sticky top-8">
-						<div
-							class="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-lg border border-gray-200 dark:border-gray-700"
-						>
-							<h3 class="font-semibold text-gray-900 dark:text-white mb-4">
+						<div class="card-industrial p-6 relative dither-soft">
+							<h3 class="font-semibold text-slate-900 dark:text-slate-100 mb-4">
 								Documentation
 							</h3>
 							<ul class="space-y-2">
 								<li>
 									<a
 										href="#getting-started"
-										class="text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 hover:underline transition-colors"
+										class="text-[var(--accent-blue)] hover:brightness-110 transition-all"
 										>Getting Started</a
 									>
 								</li>
 								<li>
 									<a
 										href="#navigation"
-										class="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
+										class="text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors"
 										>Key Pages & Navigation</a
 									>
 								</li>
 								<li>
 									<a
 										href="#workflow"
-										class="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
+										class="text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors"
 										>How It Works</a
 									>
 								</li>
 								<li>
 									<a
 										href="#brain-dump"
-										class="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
+										class="text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors"
 										>Brain Dump</a
 									>
 								</li>
 								<li>
 									<a
 										href="#project-context"
-										class="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
+										class="text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors"
 										>Project Context</a
 									>
 								</li>
 								<li>
 									<a
 										href="#phases"
-										class="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
+										class="text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors"
 										>Phases & Task Management</a
 									>
 								</li>
 								<li>
 									<a
 										href="#calendar"
-										class="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
+										class="text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors"
 										>Calendar Integration</a
 									>
 								</li>
 								<li>
 									<a
 										href="#daily-briefs"
-										class="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
+										class="text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors"
 										>Daily Briefs</a
 									>
 								</li>
 								<li>
 									<a
 										href="#llm-integration"
-										class="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
+										class="text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors"
 										>LLM Integration</a
 									>
 								</li>
@@ -154,9 +154,7 @@
 
 				<!-- Main Content -->
 				<div class="lg:col-span-3">
-					<div
-						class="bg-white dark:bg-gray-800 rounded-2xl p-8 shadow-lg border border-gray-200 dark:border-gray-700 space-y-12"
-					>
+					<div class="card-industrial p-8 relative space-y-12 noise-overlay">
 						<!-- Getting Started -->
 						<section id="getting-started">
 							<h2
@@ -1845,25 +1843,25 @@
 	</div>
 
 	<!-- Help Section -->
-	<section class="py-20 bg-white dark:bg-gray-800">
+	<section class="py-20 bg-[var(--surface-panel)] industrial-panel">
 		<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-			<h2 class="text-3xl font-bold text-gray-900 dark:text-white mb-6">
+			<h2 class="text-3xl font-bold text-slate-900 dark:text-slate-100 mb-6">
 				Ready to Start Building?
 			</h2>
-			<p class="text-lg text-gray-600 dark:text-gray-300 mb-8">
+			<p class="text-lg text-slate-700 dark:text-slate-300 mb-8">
 				Transform your scattered thoughts into organized action with BuildOS's AI-powered
 				project management.
 			</p>
 			<div class="flex flex-col sm:flex-row gap-4 justify-center">
 				<a
 					href="/auth/register"
-					class="inline-flex items-center px-6 py-3 bg-primary-600 text-white font-semibold rounded-lg hover:bg-primary-700 transition-colors"
+					class="btn-tactile inline-flex items-center px-6 py-3 font-semibold"
 				>
 					Get Started Now <ArrowRight class="w-4 h-4 ml-2" />
 				</a>
 				<a
 					href="/contact"
-					class="inline-flex items-center px-6 py-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-semibold rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+					class="btn-secondary inline-flex items-center px-6 py-3 font-semibold"
 				>
 					Contact Support <ArrowRight class="w-4 h-4 ml-2" />
 				</a>

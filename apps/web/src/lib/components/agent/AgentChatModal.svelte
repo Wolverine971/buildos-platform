@@ -1,17 +1,18 @@
 <!-- apps/web/src/lib/components/agent/AgentChatModal.svelte -->
 <!--
-  AgentChatModal Component
+  AgentChatModal Component - Scratchpad Ops Design System
 
   BuildOS chat interface showing planner-executor conversations.
   Displays BuildOS activity, plan steps, and iterative conversations.
 
-  Design: High-end Apple-inspired UI with responsive layout, dark mode,
-  and high information density following BuildOS Style Guide.
+  README: apps/web/docs/features/agentic-chat/README.md
+  Design: Industrial-Creative Workspace aesthetic with dithered textures,
+  tactile controls, and high information density.
 -->
 
 <script lang="ts">
 	import { tick, onDestroy } from 'svelte';
-	import { dev } from '$app/environment';
+	import { browser, dev } from '$app/environment';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import ContextSelectionScreen from '../chat/ContextSelectionScreen.svelte';
 	import ProjectFocusSelector from './ProjectFocusSelector.svelte';
@@ -33,6 +34,7 @@
 		requestAgentToAgentMessage,
 		type AgentToAgentMessageHistory
 	} from '$lib/services/agentic-chat/agent-to-agent-service';
+	import { RailwayWorkerService } from '$lib/services/railwayWorker.service';
 	// Add ontology integration imports
 	import type { LastTurnContext, ProjectFocus } from '$lib/types/agent-chat-enhancement';
 	import type TextareaWithVoiceComponent from '$lib/components/ui/TextareaWithVoice.svelte';
@@ -346,6 +348,7 @@
 			selectedContextLabel = detail.label ?? 'BuildOS automation';
 			projectFocus = null;
 			showContextSelection = false;
+			// No initial message for agent-to-agent mode
 			return;
 		}
 
@@ -370,6 +373,12 @@
 
 		// If user picked a project from the generic flow, funnel them through the shared action selector
 		showProjectActionSelector = detail.contextType === 'project';
+
+		// Seed the chat with an initial message for contexts that go directly to chat
+		// (not 'project' which shows the action selector first)
+		if (detail.contextType !== 'project') {
+			seedInitialMessage(detail.contextType, detail.label);
+		}
 	}
 
 	function changeContext() {
@@ -389,6 +398,9 @@
 	}
 
 	function handleFocusSelection(newFocus: ProjectFocus) {
+		// Check if we're starting fresh (from action selector) before updating state
+		const isStartingFresh = showProjectActionSelector;
+
 		projectFocus = newFocus;
 		logFocusActivity('Focus updated', newFocus);
 		// Move into project workspace chat with the chosen focus
@@ -397,6 +409,19 @@
 		showProjectActionSelector = false;
 		showFocusSelector = false;
 		showContextSelection = false;
+
+		// Only seed initial message if we're starting a new chat (from action selector)
+		if (isStartingFresh) {
+			// Reset conversation to start fresh with the new focus
+			messages = [];
+			// Create a focused initial message
+			const focusName = newFocus.focusEntityName || newFocus.focusType;
+			const message =
+				newFocus.focusType === 'project-wide'
+					? `What would you like to do with ${newFocus.projectName}? I can help you explore goals, update tasks, or answer questions about the project.`
+					: `Let's focus on "${focusName}" in ${newFocus.projectName}. What would you like to know or update?`;
+			addInitialAssistantMessage(message);
+		}
 	}
 
 	function handleFocusClear() {
@@ -449,6 +474,9 @@
 		showFocusSelector = false;
 		agentToAgentMode = false;
 		agentToAgentStep = null;
+
+		// Seed the chat with a contextual initial message
+		seedInitialMessage(contextType, projectName);
 	}
 
 	function primeProjectContext(projectId: string, projectName: string | null | undefined) {
@@ -728,12 +756,14 @@
 	});
 
 	$effect(() => {
+		if (!browser) return;
 		if (agentToAgentMode && agentToAgentStep === 'project') {
 			loadAgentProjects();
 		}
 	});
 
 	$effect(() => {
+		if (!browser) return;
 		// Auto-run the next turn when the loop is active and idle
 		if (
 			agentToAgentMode &&
@@ -1002,6 +1032,9 @@
 
 			const updatedActivity: ActivityEntry = {
 				...activity,
+				id: activity.id || crypto.randomUUID(),
+				timestamp: activity.timestamp || new Date(),
+				activityType: activity.activityType || 'tool_call',
 				content: newContent,
 				status,
 				metadata: {
@@ -1043,6 +1076,20 @@
 			currentStreamController = null;
 		}
 		cleanupVoiceInput();
+
+		// Trigger chat session classification in the background (fire-and-forget)
+		// Only classify if we have a session with messages
+		if (currentSession?.id && currentSession.user_id && messages.length > 1) {
+			// Don't await - let it run in background
+			RailwayWorkerService.queueChatSessionClassification(
+				currentSession.id,
+				currentSession.user_id
+			).catch((err) => {
+				// Silently ignore errors - classification is a background task
+				if (dev) console.warn('Chat classification queue failed:', err);
+			});
+		}
+
 		if (onClose) onClose();
 	}
 
@@ -1122,7 +1169,8 @@
 		updateThinkingBlockState('thinking', 'BuildOS is processing your request...');
 
 		currentPlan = null;
-		lastTurnContext = null;
+		// NOTE: Do NOT reset lastTurnContext here - it should be preserved and sent with the next request
+		// for conversation continuity. The server will generate fresh context after each turn.
 
 		// Reset scroll flag so we always scroll to show new user message
 		userHasScrolled = false;
@@ -1161,7 +1209,8 @@
 					entity_id: selectedEntityId,
 					conversation_history: conversationHistory, // Pass conversation history for compression
 					ontologyEntityType: ontologyEntityType, // Pass entity type for ontology loading
-					projectFocus: resolvedProjectFocus
+					projectFocus: resolvedProjectFocus,
+					lastTurnContext: lastTurnContext // Pass last turn context for conversation continuity
 				})
 			});
 
@@ -1213,6 +1262,9 @@
 				}
 				isStreaming = false;
 				currentActivity = '';
+				agentState = null;
+				agentStateDetails = null;
+				finalizeThinkingBlock(); // Ensure thinking block is closed on abort
 				return;
 			}
 
@@ -1220,6 +1272,9 @@
 			error = 'Failed to send message. Please try again.';
 			isStreaming = false;
 			currentActivity = '';
+			agentState = null;
+			agentStateDetails = null;
+			finalizeThinkingBlock(); // Ensure thinking block is closed on error
 
 			// Remove user message on error
 			messages = messages.filter((m) => m.id !== userMessage.id);
@@ -1821,6 +1876,80 @@
 		currentAssistantMessageId = null;
 	}
 
+	// ========================================================================
+	// Initial Message Generation
+	// ========================================================================
+
+	/**
+	 * Generates a contextual initial message based on the selected context type and project info.
+	 * This seeds the conversation with the right tone and expectations.
+	 */
+	function generateInitialMessage(
+		contextType: ChatContextType | null,
+		projectName?: string | null
+	): string | null {
+		if (!contextType) return null;
+
+		const name = projectName?.trim() || 'this project';
+
+		switch (contextType) {
+			case 'global':
+				return 'What would you like to know about your projects? I can help you explore tasks, check timelines, or answer questions across your workspace.';
+
+			case 'project_create':
+				return "Tell me about the project you want to create. What are your goals, key milestones, and tasks you're thinking about?";
+
+			case 'project':
+				return `What would you like to do with ${name}? I can help you explore goals, update tasks, or answer questions about the project.`;
+
+			case 'project_audit':
+				return `Let's audit ${name}. I'll help you identify gaps, risks, and areas that need attention.`;
+
+			case 'project_forecast':
+				return `Let's explore timelines and scenarios for ${name}. What aspects would you like to forecast?`;
+
+			case 'task':
+			case 'task_update':
+				return 'What would you like to know or update about this task?';
+
+			case 'calendar':
+				return 'What would you like to plan or review on your calendar?';
+
+			case 'daily_brief_update':
+				return 'What would you like to adjust in your daily brief settings?';
+
+			default:
+				return null;
+		}
+	}
+
+	/**
+	 * Adds an initial assistant message to start the conversation.
+	 * Called when transitioning to chat view after context selection.
+	 */
+	function addInitialAssistantMessage(content: string) {
+		const initialMessage: UIMessage = {
+			id: crypto.randomUUID(),
+			type: 'assistant',
+			role: 'assistant' as ChatRole,
+			content,
+			timestamp: new Date(),
+			created_at: new Date().toISOString()
+		};
+		messages = [initialMessage];
+	}
+
+	/**
+	 * Seeds the chat with an initial message based on current context.
+	 * Should be called after context selection is complete and chat view is ready.
+	 */
+	function seedInitialMessage(contextType: ChatContextType | null, projectName?: string | null) {
+		const message = generateInitialMessage(contextType, projectName);
+		if (message) {
+			addInitialAssistantMessage(message);
+		}
+	}
+
 	onDestroy(() => {
 		stopVoiceInput();
 		if (currentStreamController) {
@@ -1840,219 +1969,220 @@
 	showCloseButton={false}
 	ariaLabel="BuildOS chat assistant dialog"
 >
-	<!-- Ultra-compact header with no extra padding -->
-	<div
-		slot="header"
-		class="border-b border-slate-200/60 bg-white/90 backdrop-blur-xl dark:border-slate-700/60 dark:bg-slate-900/90"
-	>
-		<AgentChatHeader
-			{selectedContextType}
-			{displayContextLabel}
-			{displayContextSubtitle}
-			{isStreaming}
-			showBackButton={shouldShowBackButton}
-			onBack={handleBackNavigation}
-			onClose={handleClose}
-			projectId={selectedEntityId}
-			{resolvedProjectFocus}
-			onChangeFocus={openFocusSelector}
-			onClearFocus={handleFocusClear}
-			{ontologyLoaded}
-			{agentStateLabel}
-			{currentActivity}
-			{contextUsage}
-		/>
-	</div>
-
-	<!-- Optimized height container - more space on mobile -->
-	<div
-		class="relative z-10 flex h-[calc(100vh-8rem)] flex-col overflow-hidden rounded-xl border border-slate-200/60 bg-white/95 shadow-[0_28px_70px_-40px_rgba(15,23,42,0.5)] backdrop-blur-xl dark:border-slate-700/60 dark:bg-slate-900/90 sm:h-[75vh] sm:min-h-[500px]"
-	>
-		<!-- Keep context selection mounted so Back returns to prior step -->
-		<div
-			class={`flex h-full min-h-0 flex-col ${showContextSelection ? '' : 'hidden'}`}
-			aria-hidden={!showContextSelection}
-		>
-			<ContextSelectionScreen
-				bind:this={contextSelectionRef}
-				inModal
-				on:select={handleContextSelect}
-				onNavigationChange={handleContextSelectionNavChange}
+	{#snippet header()}
+		<!-- Industrial header bar with slate colors -->
+		<div class="border-b border-slate-300 bg-slate-50 dark:border-slate-700 dark:bg-slate-900">
+			<AgentChatHeader
+				{selectedContextType}
+				{displayContextLabel}
+				{displayContextSubtitle}
+				{isStreaming}
+				showBackButton={shouldShowBackButton}
+				onBack={handleBackNavigation}
+				onClose={handleClose}
+				projectId={selectedEntityId}
+				{resolvedProjectFocus}
+				onChangeFocus={openFocusSelector}
+				onClearFocus={handleFocusClear}
+				{ontologyLoaded}
+				{agentStateLabel}
+				{currentActivity}
+				{contextUsage}
 			/>
 		</div>
+	{/snippet}
 
-		<!-- Chat / wizard view - Same height constraint as selection -->
-		<div class={`${showContextSelection ? 'hidden' : 'flex'} h-full min-h-0 flex-col`}>
-			{#if showProjectActionSelector}
-				<ProjectActionSelector
-					projectId={selectedEntityId || ''}
-					projectName={projectFocus?.projectName ?? selectedContextLabel ?? 'Project'}
-					onSelectAction={(action) => handleProjectActionSelect(action)}
-					onOpenFocusSelector={openFocusSelector}
+	{#snippet children()}
+		<!-- Industrial panel container with Scratchpad Ops aesthetic -->
+		<div
+			class="industrial-panel relative z-10 flex h-[calc(100vh-8rem)] flex-col overflow-hidden rounded border-2 border-gray-200 bg-surface-panel shadow-subtle dark:border-gray-700 dark:bg-slate-900 sm:h-[75vh] sm:min-h-[500px]"
+		>
+			<!-- Keep context selection mounted so Back returns to prior step -->
+			<div
+				class={`flex h-full min-h-0 flex-col ${showContextSelection ? '' : 'hidden'}`}
+				aria-hidden={!showContextSelection}
+			>
+				<ContextSelectionScreen
+					bind:this={contextSelectionRef}
+					inModal
+					on:select={handleContextSelect}
+					onNavigationChange={handleContextSelectionNavChange}
 				/>
-			{:else if agentToAgentMode && agentToAgentStep !== 'chat'}
-				<AgentAutomationWizard
-					step={agentToAgentStep ?? 'agent'}
-					{agentProjects}
-					{agentProjectsLoading}
-					{agentProjectsError}
-					{agentGoal}
-					{agentTurnBudget}
-					{selectedAgentLabel}
-					{selectedContextLabel}
-					onUseActionableInsight={() => selectAgentForBridge(RESEARCH_AGENT_ID)}
-					onProjectSelect={(project) => selectAgentProject(project)}
-					onBackAgent={backToAgentSelection}
-					onBackProject={backToAgentProjectSelection}
-					onStartChat={startAgentToAgentChat}
-					onExit={() => {
-						agentToAgentMode = false;
-						agentToAgentStep = null;
-						changeContext();
-					}}
-					onGoalChange={(value) => (agentGoal = value)}
-					onTurnBudgetChange={updateAgentTurnBudget}
-				/>
-			{:else}
-				<AgentMessageList
-					{messages}
-					{displayContextLabel}
-					onToggleThinkingBlock={toggleThinkingBlockCollapse}
-					bind:container={messagesContainer}
-					onScroll={handleScroll}
-				/>
-			{/if}
+			</div>
 
-			{#if !showContextSelection && !showProjectActionSelector && isStreaming && currentActivity}
-				<!-- ✅ Compact activity indicator: p-2, h-1.5 w-1.5 dot, text-[11px] -->
-				<div
-					class="border-t border-slate-200 bg-slate-50 p-2 text-[11px] text-slate-600 dark:border-slate-800 dark:bg-slate-900/40 dark:text-slate-300 sm:p-2.5"
-				>
-					<span class="inline-flex items-center gap-1">
-						<span
-							class="inline-flex h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500"
-							aria-hidden="true"
-						></span>
-						<span role="status" aria-live="polite">{currentActivity}</span>
-					</span>
-				</div>
-			{/if}
+			<!-- Chat / wizard view - Same height constraint as selection -->
+			<div class={`${showContextSelection ? 'hidden' : 'flex'} h-full min-h-0 flex-col`}>
+				{#if showProjectActionSelector}
+					<ProjectActionSelector
+						projectId={selectedEntityId || ''}
+						projectName={projectFocus?.projectName ?? selectedContextLabel ?? 'Project'}
+						onSelectAction={(action) => handleProjectActionSelect(action)}
+						onOpenFocusSelector={openFocusSelector}
+					/>
+				{:else if agentToAgentMode && agentToAgentStep !== 'chat'}
+					<AgentAutomationWizard
+						step={agentToAgentStep ?? 'agent'}
+						{agentProjects}
+						{agentProjectsLoading}
+						{agentProjectsError}
+						{agentGoal}
+						{agentTurnBudget}
+						{selectedAgentLabel}
+						{selectedContextLabel}
+						onUseActionableInsight={() => selectAgentForBridge(RESEARCH_AGENT_ID)}
+						onProjectSelect={(project) => selectAgentProject(project)}
+						onBackAgent={backToAgentSelection}
+						onBackProject={backToAgentProjectSelection}
+						onStartChat={startAgentToAgentChat}
+						onExit={() => {
+							agentToAgentMode = false;
+							agentToAgentStep = null;
+							changeContext();
+						}}
+						onGoalChange={(value) => (agentGoal = value)}
+						onTurnBudgetChange={updateAgentTurnBudget}
+					/>
+				{:else}
+					<AgentMessageList
+						{messages}
+						{displayContextLabel}
+						onToggleThinkingBlock={toggleThinkingBlockCollapse}
+						bind:container={messagesContainer}
+						onScroll={handleScroll}
+					/>
+				{/if}
 
-			{#if !showContextSelection && !showProjectActionSelector && error}
-				<!-- ✅ Compact error message: p-2, text-xs -->
-				<div
-					class="border-t border-rose-100 bg-rose-50 p-2 text-xs text-rose-700 dark:border-rose-900/40 dark:bg-rose-950/20 dark:text-rose-300 sm:p-2.5"
-					role="alert"
-					aria-live="assertive"
-				>
-					{error}
-				</div>
-			{/if}
-
-			{#if !showContextSelection && !showProjectActionSelector && agentToAgentMode}
-				<!-- ✅ Compact automation footer: p-2 sm:p-2.5 -->
-				<div
-					class="border-t border-slate-200 bg-white p-2 dark:border-slate-800 dark:bg-slate-900 sm:p-2.5"
-				>
+				{#if !showContextSelection && !showProjectActionSelector && isStreaming && currentActivity}
+					<!-- Industrial activity indicator with accent color -->
 					<div
-						class="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between sm:gap-2"
+						class="border-t border-slate-300 bg-slate-100 p-2 text-[11px] font-semibold uppercase tracking-wider text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 sm:p-2.5"
 					>
-						<div class="space-y-0.5">
-							<!-- ✅ Compact text: text-xs -->
-							<p class="text-xs font-semibold text-slate-900 dark:text-white">
-								Automation loop is {agentLoopActive ? 'active' : 'paused'}.
-							</p>
-							<p class="text-[11px] text-slate-600 dark:text-slate-400">
-								Helper: {selectedAgentLabel} • Project: {selectedContextLabel ??
-									'Select a project'} • Goal: {agentGoal || 'Add a goal'}
-							</p>
-							<p class="text-[11px] text-slate-600 dark:text-slate-400">
-								Turns remaining: {agentTurnsRemaining} / {agentTurnBudget}
-							</p>
-						</div>
-						<!-- ✅ Compact buttons: gap-1, px-2 py-1, text-[11px] -->
-						<div class="flex flex-wrap items-center gap-1">
-							<button
-								type="button"
-								class="inline-flex items-center justify-center rounded-full bg-slate-900 px-2 py-1 text-[11px] font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
-								disabled={isStreaming ||
-									agentMessageLoading ||
-									agentTurnsRemaining <= 0}
-								onclick={() => {
-									agentLoopActive = true;
-									runAgentToAgentTurn();
-								}}
-							>
-								{agentLoopActive ? 'Run next turn' : 'Resume loop'}
-							</button>
-							<button
-								type="button"
-								class="inline-flex items-center justify-center rounded-full border border-slate-200 px-2 py-1 text-[11px] font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
-								onclick={stopAgentLoop}
-							>
-								Stop
-							</button>
-						</div>
-					</div>
-					<!-- ✅ Compact controls: mt-1.5, gap-2, text-[11px] -->
-					<div
-						class="mt-1.5 flex flex-wrap items-center gap-2 text-[11px] text-slate-600 dark:text-slate-400"
-					>
-						<label class="flex items-center gap-1.5">
-							<span class="font-semibold">Turn limit</span>
-							<input
-								type="number"
-								min="1"
-								max="50"
-								class="w-16 rounded border border-slate-200 bg-white px-1.5 py-0.5 text-[11px] text-slate-900 focus:border-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-slate-500 dark:focus:ring-slate-700"
-								value={agentTurnBudget}
-								disabled={agentLoopActive || agentMessageLoading || isStreaming}
-								oninput={(e) =>
-									updateAgentTurnBudget(
-										Number((e.target as HTMLInputElement).value)
-									)}
-							/>
-						</label>
-						{#if agentTurnsRemaining <= 0}
-							<!-- ✅ Compact warning badge: px-1.5 py-0.5, text-[10px] -->
+						<span class="inline-flex items-center gap-1.5">
 							<span
-								class="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800 dark:bg-amber-900/30 dark:text-amber-200"
-							>
-								Turn limit reached — adjust and resume.
-							</span>
+								class="inline-flex h-1.5 w-1.5 animate-pulse rounded-full bg-accent-blue"
+								aria-hidden="true"
+							></span>
+							<span role="status" aria-live="polite">{currentActivity}</span>
+						</span>
+					</div>
+				{/if}
+
+				{#if !showContextSelection && !showProjectActionSelector && error}
+					<!-- Industrial error message styling -->
+					<div
+						class="border-t border-red-300 bg-red-50 p-2 text-xs font-semibold text-red-800 dark:border-red-800 dark:bg-red-950/30 dark:text-red-300 sm:p-2.5"
+						role="alert"
+						aria-live="assertive"
+					>
+						{error}
+					</div>
+				{/if}
+
+				{#if !showContextSelection && !showProjectActionSelector && agentToAgentMode}
+					<!-- Industrial automation footer with dithered background -->
+					<div
+						class="dither-pattern dark:dither-pattern-dark border-t border-slate-300 p-2 dark:border-slate-700 sm:p-2.5"
+					>
+						<div
+							class="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between sm:gap-2"
+						>
+							<div class="space-y-0.5">
+								<!-- ✅ Compact text: text-xs -->
+								<p class="text-xs font-semibold text-slate-900 dark:text-white">
+									Automation loop is {agentLoopActive ? 'active' : 'paused'}.
+								</p>
+								<p class="text-[11px] text-slate-600 dark:text-slate-400">
+									Helper: {selectedAgentLabel} • Project: {selectedContextLabel ??
+										'Select a project'} • Goal: {agentGoal || 'Add a goal'}
+								</p>
+								<p class="text-[11px] text-slate-600 dark:text-slate-400">
+									Turns remaining: {agentTurnsRemaining} / {agentTurnBudget}
+								</p>
+							</div>
+							<!-- Tactile industrial buttons -->
+							<div class="flex flex-wrap items-center gap-2">
+								<button
+									type="button"
+									class="btn-tactile inline-flex items-center justify-center rounded-sm px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide text-white transition disabled:cursor-not-allowed disabled:opacity-60"
+									disabled={isStreaming ||
+										agentMessageLoading ||
+										agentTurnsRemaining <= 0}
+									onclick={() => {
+										agentLoopActive = true;
+										runAgentToAgentTurn();
+									}}
+								>
+									{agentLoopActive ? 'Run next turn' : 'Resume loop'}
+								</button>
+								<button
+									type="button"
+									class="inline-flex items-center justify-center rounded-sm border-2 border-slate-500 px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide text-slate-700 transition hover:bg-slate-200 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
+									onclick={stopAgentLoop}
+								>
+									Stop
+								</button>
+							</div>
+						</div>
+						<!-- ✅ Compact controls: mt-1.5, gap-2, text-[11px] -->
+						<div
+							class="mt-1.5 flex flex-wrap items-center gap-2 text-[11px] text-slate-600 dark:text-slate-400"
+						>
+							<label class="flex items-center gap-1.5">
+								<span class="font-bold uppercase tracking-wider">Turn limit</span>
+								<input
+									type="number"
+									min="1"
+									max="50"
+									class="w-16 rounded border-2 border-gray-200 bg-surface-panel px-1.5 py-0.5 text-[11px] font-semibold text-slate-900 focus:border-accent-orange focus:outline-none dark:border-gray-700 dark:bg-slate-800 dark:text-slate-100"
+									value={agentTurnBudget}
+									disabled={agentLoopActive || agentMessageLoading || isStreaming}
+									oninput={(e) =>
+										updateAgentTurnBudget(
+											Number((e.target as HTMLInputElement).value)
+										)}
+								/>
+							</label>
+							{#if agentTurnsRemaining <= 0}
+								<!-- ✅ Compact warning badge: px-1.5 py-0.5, text-[10px] -->
+								<span
+									class="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800 dark:bg-amber-900/30 dark:text-amber-200"
+								>
+									Turn limit reached — adjust and resume.
+								</span>
+							{/if}
+						</div>
+						{#if agentMessageLoading}
+							<!-- ✅ Compact loading message: mt-1, text-[11px] -->
+							<p class="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
+								Fetching the next update...
+							</p>
 						{/if}
 					</div>
-					{#if agentMessageLoading}
-						<!-- ✅ Compact loading message: mt-1, text-[11px] -->
-						<p class="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
-							Fetching the next update...
-						</p>
-					{/if}
-				</div>
-			{:else if !showContextSelection && !showProjectActionSelector}
-				<!-- ✅ Compact composer footer: p-2 sm:p-2.5 -->
-				<div
-					class="border-t border-slate-200 bg-white p-2 dark:border-slate-800 dark:bg-slate-900 sm:p-2.5"
-				>
-					<AgentComposer
-						bind:voiceInputRef
-						bind:inputValue
-						bind:isVoiceRecording
-						bind:isVoiceInitializing
-						bind:isVoiceTranscribing
-						bind:voiceErrorMessage
-						bind:voiceRecordingDuration
-						bind:voiceSupportsLiveTranscript
-						{isStreaming}
-						{isSendDisabled}
-						{displayContextLabel}
-						onKeyDownHandler={handleKeyDown}
-						onSend={handleSendMessage}
-					/>
-				</div>
-			{/if}
+				{:else if !showContextSelection && !showProjectActionSelector}
+					<!-- Industrial composer footer with surface panel background -->
+					<div
+						class="border-t border-slate-300 bg-surface-panel p-2 dark:border-slate-700 dark:bg-slate-900 sm:p-2.5"
+					>
+						<AgentComposer
+							bind:voiceInputRef
+							bind:inputValue
+							bind:isVoiceRecording
+							bind:isVoiceInitializing
+							bind:isVoiceTranscribing
+							bind:voiceErrorMessage
+							bind:voiceRecordingDuration
+							bind:voiceSupportsLiveTranscript
+							{isStreaming}
+							{isSendDisabled}
+							{displayContextLabel}
+							onKeyDownHandler={handleKeyDown}
+							onSend={handleSendMessage}
+						/>
+					</div>
+				{/if}
+			</div>
 		</div>
-	</div>
+	{/snippet}
 </Modal>
 
 {#if isProjectContext(selectedContextType) && selectedEntityId && resolvedProjectFocus}
@@ -2076,31 +2206,35 @@
 	}
 
 	:global(.agent-chat-scroll::-webkit-scrollbar) {
-		width: 8px;
+		width: 10px;
 	}
 
 	:global(.agent-chat-scroll::-webkit-scrollbar-track) {
-		background: rgb(248 250 252);
+		background: #ececec;
+		border: 1px solid #d1d5db;
 	}
 
 	:global(.agent-chat-scroll::-webkit-scrollbar-thumb) {
-		background: rgb(203 213 225);
-		border-radius: 4px;
+		background: #3e4459;
+		border-radius: 2px;
+		border: 1px solid #2d3242;
 	}
 
 	:global(.dark .agent-chat-scroll::-webkit-scrollbar-track) {
-		background: rgb(15 23 42);
+		background: #1a1f2b;
+		border: 1px solid #3e4459;
 	}
 
 	:global(.dark .agent-chat-scroll::-webkit-scrollbar-thumb) {
-		background: rgb(71 85 105);
+		background: #687452;
+		border: 1px solid #3e4459;
 	}
 
 	:global(.agent-chat-scroll::-webkit-scrollbar-thumb:hover) {
-		background: rgb(148 163 184);
+		background: #2d3242;
 	}
 
 	:global(.dark .agent-chat-scroll::-webkit-scrollbar-thumb:hover) {
-		background: rgb(100 116 139);
+		background: #d88a3a;
 	}
 </style>

@@ -84,21 +84,30 @@
 	{#if showBackButton}
 		<button
 			type="button"
-			class="inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 text-slate-600 transition hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+			class="inline-flex h-8 w-8 items-center justify-center rounded-sm border-2 border-slate-400 text-slate-700 transition hover:bg-slate-200 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
 			onclick={onBack}
 			disabled={isStreaming}
 			aria-label="Go back"
 		>
-			<ArrowLeft class="h-4 w-4" />
+			<ArrowLeft class="h-4 w-4" strokeWidth={2.5} />
 		</button>
 	{/if}
 
-	<!-- Brain-bolt icon -->
-	<img
-		src="/brain-bolt.png"
-		alt="BuildOS Assistant"
-		class="h-7 w-7 shrink-0 rounded-md object-cover"
-	/>
+	<!-- Brain-bolt icon with pre-dithered images -->
+	<div class="relative shrink-0">
+		<!-- Light mode: light dither (no hover effect in header) -->
+		<img
+			src="/brain-bolt.png"
+			alt="BuildOS Assistant"
+			class="h-7 w-7 rounded-md object-cover dark:hidden"
+		/>
+		<!-- Dark mode: dark dither (no hover effect in header) -->
+		<img
+			src="/brain-bolt.png"
+			alt="BuildOS Assistant"
+			class="hidden h-7 w-7 rounded-md object-cover dark:block"
+		/>
+	</div>
 
 	<!-- Title & Focus Section - Optimized for mobile density -->
 	<div class="flex min-w-0 flex-1 items-center gap-1.5 sm:gap-2">
@@ -148,12 +157,12 @@
 
 	<!-- Right side: Status pills, Project link, Close button -->
 	<div class="flex shrink-0 items-center gap-2">
-		<!-- Status pills -->
+		<!-- Status pills with industrial styling -->
 		{#if ontologyLoaded || contextUsage || (currentActivity && !agentStateLabel)}
 			<div class="flex items-center gap-1.5">
 				{#if ontologyLoaded}
 					<span
-						class="rounded-full bg-purple-100 px-2 py-0.5 text-[10px] font-medium text-purple-700 dark:bg-purple-900/30 dark:text-purple-300"
+						class="rounded-sm border border-purple-400 bg-purple-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-purple-700 dark:border-purple-600 dark:bg-purple-900/30 dark:text-purple-400"
 					>
 						ONTO
 					</span>
@@ -161,22 +170,30 @@
 
 				{#if contextUsage}
 					<span
-						class={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-mono ${contextStatusClass}`}
+						class={`inline-flex items-center gap-1 rounded-sm border px-2 py-0.5 text-[10px] font-mono uppercase ${
+							contextUsage.status === 'over_budget'
+								? 'border-rose-400 bg-rose-100 text-rose-700 dark:border-rose-600 dark:bg-rose-900/30 dark:text-rose-400'
+								: contextUsage.status === 'near_limit'
+									? 'border-orange-400 bg-orange-100 text-orange-700 dark:border-orange-600 dark:bg-orange-900/30 dark:text-orange-400'
+									: 'border-green-400 bg-green-100 text-green-700 dark:border-green-600 dark:bg-green-900/30 dark:text-green-400'
+						}`}
 					>
 						<span
 							class={`h-1 w-1 rounded-full ${
 								contextUsage.status === 'over_budget'
 									? 'bg-rose-500'
 									: contextUsage.status === 'near_limit'
-										? 'bg-amber-500'
-										: 'bg-emerald-500'
+										? 'bg-orange-500'
+										: 'bg-green-500'
 							}`}
 						></span>
 						<span class="hidden sm:inline">
 							{formatTokensEstimate(contextUsage.estimatedTokens)}/
 						</span>
 						{formatTokensEstimate(contextUsage.tokenBudget)}
-						<span class="hidden text-[9px] font-sans sm:inline">
+						<span
+							class="hidden text-[9px] font-sans uppercase tracking-wider sm:inline"
+						>
 							{contextStatusLabel}
 						</span>
 					</span>
@@ -184,33 +201,33 @@
 
 				{#if currentActivity && !agentStateLabel}
 					<span
-						class="inline-flex h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500"
+						class="inline-flex h-1.5 w-1.5 animate-pulse rounded-full bg-green-500 dark:bg-green-400"
 						title={currentActivity}
 					></span>
 				{/if}
 			</div>
 		{/if}
 
-		<!-- Project link -->
+		<!-- Project link with proper light/dark contrast -->
 		{#if isProjectContext && projectUrl}
 			<a
 				href={projectUrl}
 				target="_blank"
 				rel="noopener noreferrer"
-				class="flex h-7 items-center gap-1 rounded-md px-2 text-xs font-medium text-slate-600 transition-all hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
+				class="flex h-7 items-center gap-1 rounded-sm border border-slate-300 bg-slate-50 px-2 text-xs font-semibold uppercase tracking-wider text-slate-700 transition-all hover:border-blue-400 hover:bg-blue-50 hover:text-blue-700 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-400 dark:hover:border-blue-600 dark:hover:bg-blue-900/30 dark:hover:text-blue-400"
 				title="Open project in new tab"
 			>
 				<ExternalLink class="h-3.5 w-3.5" />
-				<span class="hidden sm:inline">View Project</span>
+				<span class="hidden sm:inline">View</span>
 			</a>
 		{/if}
 
-		<!-- Close button -->
+		<!-- Close button with proper light/dark contrast -->
 		{#if onClose}
 			<button
 				type="button"
 				onclick={onClose}
-				class="flex h-7 w-7 items-center justify-center rounded-md text-slate-500 transition-all hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
+				class="flex h-7 w-7 items-center justify-center rounded-sm border border-slate-300 bg-slate-50 text-slate-700 transition-all hover:border-rose-400 hover:bg-rose-50 hover:text-rose-700 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-400 dark:hover:border-rose-600 dark:hover:bg-rose-900/30 dark:hover:text-rose-400"
 				aria-label="Close modal"
 			>
 				<X class="h-4 w-4" />

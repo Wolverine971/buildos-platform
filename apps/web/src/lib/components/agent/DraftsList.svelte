@@ -107,7 +107,7 @@
 <div class="flex h-full flex-col">
 	<!-- Header -->
 	<div
-		class="flex items-center justify-between border-b border-slate-200/60 bg-gradient-to-r from-purple-50/50 to-pink-50/50 dither-surface px-4 backdrop-blur-sm dark:border-slate-700/60 dark:from-purple-950/30 dark:to-pink-950/30"
+		class="flex items-center justify-between border-b border-slate-200/60 bg-gradient-to-r from-purple-50/50 to-pink-50/50 px-4 backdrop-blur-sm dark:border-slate-700/60 dark:from-purple-950/30 dark:to-pink-950/30"
 	>
 		<div class="flex items-center gap-2">
 			<h3

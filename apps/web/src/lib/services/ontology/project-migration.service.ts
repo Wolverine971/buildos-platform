@@ -1,4 +1,13 @@
 // apps/web/src/lib/services/ontology/project-migration.service.ts
+/**
+ * Project Migration Service
+ *
+ * Handles migration of legacy projects to the ontology system.
+ *
+ * NOTE: As of December 2025, this service exclusively uses the EnhancedProjectMigrator
+ * which integrates with FindOrCreateTemplateService for template operations.
+ * The legacy migration path using ProjectTemplateInferenceService has been removed.
+ */
 import type { TypedSupabaseClient } from '@buildos/supabase-client';
 import type { Database, Json } from '@buildos/shared-types';
 import type { Facets } from '$lib/types/onto';
@@ -8,10 +17,8 @@ import type {
 	MigrationStatus,
 	TemplateCreationPlan
 } from './migration.types';
-import { getLegacyMapping, upsertLegacyMapping } from './legacy-mapping.service';
+import { getLegacyMapping } from './legacy-mapping.service';
 import { SmartLLMService } from '$lib/services/smart-llm-service';
-import { ProjectTemplateInferenceService } from './project-template-inference.service';
-import { ProjectPropsGenerationService } from './project-props-generation.service';
 import { EnhancedProjectMigrator } from './migration/enhanced-project-migrator';
 import type { MigrationContext } from './migration/enhanced-migration.types';
 
@@ -29,6 +36,7 @@ export interface ProjectMigrationAnalysis {
 export interface ProjectMigrationResult {
 	legacyProjectId: string;
 	ontoProjectId: string | null;
+	typeKey: string;
 	actorId: string;
 	status: MigrationStatus;
 	analysis: ProjectMigrationAnalysis;
@@ -63,19 +71,15 @@ export interface ProjectPropsLLMSummary {
 }
 
 const DEFAULT_PROJECT_TYPE = 'project.migration.generic';
-const CONTEXT_DOCUMENT_TYPE = 'document.project.context';
+const CONTEXT_DOCUMENT_TYPE = 'document.context.project';
 
 export class ProjectMigrationService {
-	private readonly templateInference: ProjectTemplateInferenceService;
-	private readonly propsGenerator: ProjectPropsGenerationService;
 	private readonly enhancedMigrator: EnhancedProjectMigrator;
 
 	constructor(
 		private readonly client: TypedSupabaseClient,
 		llmService: SmartLLMService
 	) {
-		this.templateInference = new ProjectTemplateInferenceService(client, llmService);
-		this.propsGenerator = new ProjectPropsGenerationService(llmService);
 		this.enhancedMigrator = new EnhancedProjectMigrator(client, llmService);
 	}
 
@@ -129,192 +133,19 @@ export class ProjectMigrationService {
 		project: LegacyProjectRow,
 		context: MigrationServiceContext
 	): Promise<ProjectMigrationResult> {
-		// Check if enhanced mode is enabled via environment variable
-		const enhancedMode = process.env.MIGRATION_ENHANCED_MODE === 'true';
-
-		// Use enhanced migrator if enabled
-		if (enhancedMode) {
-			return await this.migrateProjectEnhanced(project, context);
-		}
-
-		// Otherwise use legacy migration flow
-		const actorId = await ensureActorId(this.client, project.user_id);
-		const analysis = await this.buildAnalysis(project);
-		const existingMapping = await getLegacyMapping(this.client, 'projects', project.id);
-		const coreValues = this.extractCoreValues(project);
-		const contextMarkdown = project.context?.trim() || null;
-		let templateSummary: TemplateClassificationSummary | null = null;
-		let templatePropsSummary: ProjectPropsLLMSummary | null = null;
-
-		if (existingMapping?.onto_id) {
-			return {
-				legacyProjectId: project.id,
-				ontoProjectId: existingMapping.onto_id,
-				actorId,
-				status: 'completed',
-				analysis,
-				message: 'Project already migrated; skipping duplicate work.',
-				projectFacets: this.deriveProjectFacets(project, analysis),
-				contextDocumentId: null,
-				contextMarkdown,
-				coreValues
-			};
-		}
-
-		try {
-			const inference = await this.templateInference.inferTemplate({
-				project,
-				userId: context.initiatedBy,
-				dryRun: context.dryRun
-			});
-
-			if (inference) {
-				templateSummary = {
-					typeKey: inference.typeKey,
-					templateId: inference.templateId,
-					realm: inference.realm,
-					domain: inference.domain,
-					deliverable: inference.deliverable,
-					variant: inference.variant,
-					confidence: inference.confidence ?? null,
-					rationale: inference.rationale ?? null,
-					matchLevel: inference.matchLevel ?? null,
-					created: inference.created,
-					creationPlanned: inference.creationPlanned ?? null
-				};
-
-				if (inference.resolvedTemplate) {
-					const propsResult = await this.propsGenerator.generate({
-						project,
-						template: inference.resolvedTemplate,
-						structuredPlan: inference.structuredPlan,
-						coreValues,
-						userId: context.initiatedBy,
-						dryRun: context.dryRun
-					});
-
-					if (propsResult) {
-						templatePropsSummary = {
-							props: propsResult.props ?? null,
-							facets: propsResult.facets ?? null,
-							confidence: propsResult.confidence ?? null,
-							notes: propsResult.notes ?? null
-						};
-					}
-				}
-			}
-		} catch (error) {
-			console.error('[ProjectMigration] Template inference failed', error);
-		}
-
-		const fallbackFacets = this.deriveProjectFacets(project, analysis);
-		const facets = templatePropsSummary?.facets ?? fallbackFacets;
-		const typeKey = templateSummary?.typeKey ?? this.resolveProjectTypeKey(project);
-		let projectProps = this.buildProjectProps(
-			project,
-			facets,
-			context,
-			coreValues,
-			templateSummary,
-			templatePropsSummary
+		// NOTE: As of December 2025, all migrations use the enhanced path
+		// which integrates with FindOrCreateTemplateService.
+		// The legacy migration flow has been removed.
+		console.info(
+			`[ProjectMigration] Start ${project.id} (dryRun=${context.dryRun}, run=${context.runId})`
 		);
 
-		if (context.dryRun) {
-			return {
-				legacyProjectId: project.id,
-				ontoProjectId: null,
-				actorId,
-				status: 'pending',
-				analysis,
-				message: 'Dry-run mode: project migration is queued but not executed.',
-				projectFacets: facets,
-				contextDocumentId: null,
-				contextMarkdown,
-				coreValues,
-				template: templateSummary,
-				templateProps: templatePropsSummary
-			};
-		}
-
-		const stateKey = this.mapStatusToState(project.status);
-
-		const { data, error } = await this.client
-			.from('onto_projects')
-			.insert({
-				name: project.name,
-				description: project.description,
-				type_key: typeKey,
-				state_key: stateKey,
-				also_types: [],
-				props: projectProps,
-				start_at: project.start_date,
-				end_at: project.end_date,
-				created_by: actorId,
-				org_id: null,
-				facet_context: facets.context ?? null,
-				facet_scale: facets.scale ?? null,
-				facet_stage: facets.stage ?? null
-			})
-			.select('id')
-			.single();
-
-		if (error || !data) {
-			throw new Error(
-				`[ProjectMigration] Failed to insert ontology project for ${project.id}: ${error?.message}`
-			);
-		}
-
-		await upsertLegacyMapping(this.client, {
-			legacyTable: 'projects',
-			legacyId: project.id,
-			ontoTable: 'onto_projects',
-			ontoId: data.id,
-			record: project,
-			metadata: {
-				run_id: context.runId,
-				batch_id: context.batchId,
-				dry_run: context.dryRun
-			}
-		});
-
-		const contextDocument = await this.createContextDocument({
-			project,
-			ontoProjectId: data.id,
-			actorId,
-			context,
-			coreValues
-		});
-
-		if (contextDocument.documentId) {
-			projectProps = {
-				...(projectProps as Record<string, unknown>),
-				context_document_id: contextDocument.documentId
-			} as Json;
-
-			await this.client
-				.from('onto_projects')
-				.update({
-					context_document_id: contextDocument.documentId,
-					props: projectProps
-				})
-				.eq('id', data.id);
-		}
-
-		return {
-			legacyProjectId: project.id,
-			ontoProjectId: data.id,
-			actorId,
-			status: 'completed',
-			analysis,
-			message: 'Ontology project created successfully.',
-			projectFacets: facets,
-			contextDocumentId: contextDocument.documentId,
-			contextMarkdown: contextDocument.contextMarkdown,
-			coreValues,
-			template: templateSummary,
-			templateProps: templatePropsSummary
-		};
+		return await this.migrateProjectEnhanced(project, context);
 	}
+
+	// NOTE: Legacy migration flow removed in December 2025 cleanup.
+	// All migrations now use migrateProjectEnhanced which integrates with
+	// FindOrCreateTemplateService. See FIND_OR_CREATE_TEMPLATE_SPEC.md.
 
 	private async buildAnalysis(project: LegacyProjectRow): Promise<ProjectMigrationAnalysis> {
 		const [phaseCount, taskCount, calendarCount, mapping] = await Promise.all([
@@ -381,16 +212,17 @@ export class ProjectMigrationService {
 	}
 
 	private resolveProjectTypeKey(project: LegacyProjectRow): string {
+		// Use domain-based naming: project.{domain}.{deliverable}[.{variant}]
 		if (project.tags?.some((tag) => tag.toLowerCase().includes('write'))) {
-			return 'project.writing.general';
+			return 'project.writer.general';
 		}
 
 		if (project.tags?.some((tag) => tag.toLowerCase().includes('app'))) {
-			return 'project.software.build';
+			return 'project.developer.app';
 		}
 
 		if (project.context?.toLowerCase().includes('client')) {
-			return 'project.client_services';
+			return 'project.coach.client';
 		}
 
 		return DEFAULT_PROJECT_TYPE;
@@ -564,6 +396,9 @@ export class ProjectMigrationService {
 		project: LegacyProjectRow,
 		context: MigrationServiceContext
 	): Promise<ProjectMigrationResult> {
+		console.info(
+			`[ProjectMigration][Enhanced] Start ${project.id} (dryRun=${context.dryRun}, run=${context.runId})`
+		);
 		// Build migration context for enhanced migrator
 		const migrationContext: MigrationContext = {
 			...context,
@@ -582,11 +417,21 @@ export class ProjectMigrationService {
 			? await ensureActorId(this.client, project.user_id)
 			: '';
 		const coreValues = this.extractCoreValues(project);
+		const typeKey = enhancedResult.templateUsed ?? this.resolveProjectTypeKey(project);
+
+		console.info(
+			`[ProjectMigration][Enhanced] Result for ${project.id}: status=${enhancedResult.status}, ontoProjectId=${enhancedResult.ontoProjectId ?? 'none'}, typeKey=${typeKey}` +
+				(enhancedResult.errors?.length
+					? ` | errors: ${enhancedResult.errors.join('; ')}`
+					: '') +
+				(enhancedResult.message ? ` | msg: ${enhancedResult.message}` : '')
+		);
 
 		// Map enhanced result to legacy result format
 		return {
 			legacyProjectId: project.id,
 			ontoProjectId: enhancedResult.ontoProjectId ?? null,
+			typeKey,
 			actorId,
 			status: this.mapEnhancedStatus(enhancedResult.status),
 			analysis,

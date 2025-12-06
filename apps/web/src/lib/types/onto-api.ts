@@ -74,11 +74,12 @@ export interface OntoProject {
 
 /**
  * Task entity from onto_tasks table
+ * Note: plan_id is no longer a column - task-plan relationships are stored in onto_edges
+ * with rel='belongs_to_plan' (src_kind='task', dst_kind='plan')
  */
 export interface OntoTask {
 	id: string;
 	project_id: string;
-	plan_id?: string | null;
 	type_key: string;
 	title: string;
 	state_key: string;

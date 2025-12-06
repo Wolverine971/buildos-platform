@@ -5,7 +5,7 @@ const MAX_CONTEXT_CHARS = 8000;
 const MAX_EXISTING_MILESTONES = 10;
 const MAX_EXISTING_TASKS = 20;
 const DEFAULT_MILESTONE_TYPE_KEY = 'milestone.standard';
-const DEFAULT_TASK_TYPE_KEY = 'task.basic';
+const DEFAULT_TASK_TYPE_KEY = 'task.execute';
 
 export interface ReverseEngineeringProject {
 	id: string;
@@ -184,7 +184,7 @@ ${project.description ? `- Description: ${project.description}` : ''}
 ## Goal To Reverse Engineer
 - ID: ${goal.id}
 	- Name: ${goal.name}
-	- Type: ${goal.type_key ?? 'goal.basic'}
+	- Type: ${goal.type_key ?? 'goal.outcome.project'}
 	- State: ${goalState}
 ${priority ? `- Priority: ${priority}` : ''}
 ${measurement ? `- Measurement Criteria: ${measurement}` : ''}

@@ -94,15 +94,17 @@ Tools for creating, updating, and deleting entities:
 | Tool Name | Purpose | Key Parameters |
 |-----------|---------|-----------------|
 | `create_onto_project` | Create new project with full structure | `project` (required), `goals`, `plans`, `tasks`, `outputs`, `documents`, `context_document` |
-| `create_onto_task` | Create task within a project | `project_id` (required), `title` (required), `description`, `priority`, `plan_id` |
+| `create_onto_task` | Create task within a project | `project_id` (required), `title` (required), `type_key` (default: task.execute), `description`, `priority`, `plan_id` (edge-based) |
 | `create_onto_goal` | Create goal for a project | `project_id` (required), `name` (required) |
 | `create_onto_plan` | Create plan for grouping tasks | `project_id` (required), `name` (required) |
+
+> **Task type_key Reference**: See [TYPE_KEY_TAXONOMY.md](../../ontology/TYPE_KEY_TAXONOMY.md#onto_tasks) for work mode taxonomy (execute, create, refine, research, review, coordinate, admin, plan).
 
 **Update Tools (2):**
 | Tool Name | Purpose | Key Parameters |
 |-----------|---------|-----------------|
 | `update_onto_project` | Modify project details | `project_id` (required), `name`, `state_key`, `props` |
-| `update_onto_task` | Modify task details | `task_id` (required), `state_key`, `priority`, `plan_id` |
+| `update_onto_task` | Modify task details | `task_id` (required), `type_key`, `state_key`, `priority`, `plan_id` (edge-based) |
 
 **Delete Tools (3):**
 | Tool Name | Purpose | Key Parameters |

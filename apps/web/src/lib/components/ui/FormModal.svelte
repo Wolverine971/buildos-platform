@@ -77,6 +77,7 @@
 	import Button from './Button.svelte';
 	import { toastService } from '$lib/stores/toast.store';
 	import type { FormConfig } from '$lib/types/form';
+	import type { Snippet } from 'svelte';
 
 	let {
 		isOpen,
@@ -89,7 +90,10 @@
 		onDelete = null,
 		onClose,
 		size = 'md',
-		customClasses = ''
+		customClasses = '',
+		header,
+		beforeForm,
+		afterForm
 	}: {
 		isOpen: boolean;
 		title: string;
@@ -102,6 +106,9 @@
 		onClose: () => void;
 		size?: 'sm' | 'md' | 'lg' | 'xl';
 		customClasses?: string;
+		header?: Snippet;
+		beforeForm?: Snippet;
+		afterForm?: Snippet;
 	} = $props();
 
 	let loading = $state(false);
@@ -347,305 +354,331 @@
 </script>
 
 <Modal {isOpen} onClose={handleClose} title="" {size} {customClasses} closeOnBackdrop={true}>
-	<!-- Custom header with gradient and improved styling -->
-	<div slot="header">
-		{#if $$slots.header}
-			<slot name="header" />
-		{:else}
-			<div class="sm:hidden">
-				<div class="modal-grab-handle"></div>
-			</div>
-			{#if title}
-				<div
-					class="relative bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-800 dark:via-gray-800/95 dark:to-gray-800 px-6 py-5 border-b border-gray-200 dark:border-gray-700"
-				>
-					<div class="flex items-start justify-between">
-						<div>
-							<h2 class="text-2xl font-semibold text-gray-900 dark:text-white">
-								{title}
-							</h2>
-							{#if title === 'Edit Project'}
-								<p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-									Update project details, context, and timeline
-								</p>
-							{/if}
-						</div>
-						<Button
-							type="button"
-							onclick={handleClose}
-							disabled={loading}
-							variant="ghost"
-							size="sm"
-							class="!p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
-							aria-label="Close modal"
-						>
-							<svg
-								class="w-5 h-5"
-								fill="none"
-								stroke="currentColor"
-								viewBox="0 0 24 24"
+	{#snippet header()}
+		<!-- Custom header with gradient and improved styling -->
+		<div>
+			{#if header}
+				{@render header()}
+			{:else}
+				<div class="sm:hidden">
+					<div class="modal-grab-handle"></div>
+				</div>
+				{#if title}
+					<div
+						class="relative bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-800 dark:via-gray-800/95 dark:to-gray-800 px-6 py-5 border-b border-gray-200 dark:border-gray-700"
+					>
+						<div class="flex items-start justify-between">
+							<div>
+								<h2 class="text-2xl font-semibold text-gray-900 dark:text-white">
+									{title}
+								</h2>
+								{#if title === 'Edit Project'}
+									<p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
+										Update project details, context, and timeline
+									</p>
+								{/if}
+							</div>
+							<Button
+								type="button"
+								onclick={handleClose}
+								disabled={loading}
+								variant="ghost"
+								size="sm"
+								class="!p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+								aria-label="Close modal"
 							>
-								<path
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									stroke-width="2"
-									d="M6 18L18 6M6 6l12 12"
-								/>
-							</svg>
-						</Button>
+								<svg
+									class="w-5 h-5"
+									fill="none"
+									stroke="currentColor"
+									viewBox="0 0 24 24"
+								>
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										stroke-width="2"
+										d="M6 18L18 6M6 6l12 12"
+									/>
+								</svg>
+							</Button>
+						</div>
+					</div>
+				{/if}
+			{/if}
+		</div>
+	{/snippet}
+
+	{#snippet children()}
+		{#if beforeForm}
+			{@render beforeForm()}
+		{/if}
+		<form onsubmit={handleSubmit} class="flex flex-col flex-1 min-h-0">
+			{#if errors.length > 0}
+				<div
+					class="bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 rounded p-4 mx-4 sm:mx-6 lg:mx-8 mb-4"
+				>
+					<div class="flex items-start space-x-2">
+						<AlertCircle
+							class="w-5 h-5 text-rose-600 dark:text-rose-400 mt-0.5 flex-shrink-0"
+						/>
+						<div class="text-sm text-rose-700 dark:text-rose-300">
+							{#each errors as error}
+								<p>{error}</p>
+							{/each}
+						</div>
 					</div>
 				</div>
 			{/if}
-		{/if}
-	</div>
 
-	<slot name="before-form"></slot>
-	<form onsubmit={handleSubmit} class="flex flex-col flex-1 min-h-0">
-		{#if errors.length > 0}
 			<div
-				class="bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 rounded-lg p-4 mx-4 sm:mx-6 lg:mx-8 mb-4"
+				class="space-y-4 sm:space-y-5 lg:space-y-6 overflow-y-auto px-4 sm:px-6 py-4 sm:py-6 flex-1 min-h-0 bg-gray-50/50 dark:bg-gray-900/30"
 			>
-				<div class="flex items-start space-x-2">
-					<AlertCircle
-						class="w-5 h-5 text-rose-600 dark:text-rose-400 mt-0.5 flex-shrink-0"
-					/>
-					<div class="text-sm text-rose-700 dark:text-rose-300">
-						{#each errors as error}
-							<p>{error}</p>
-						{/each}
-					</div>
-				</div>
-			</div>
-		{/if}
+				{#each Object.entries(formConfig) as [field, config] (field)}
+					{@const isContext = field === 'context'}
+					{@const isExecutiveSummary = field === 'executive_summary'}
+					{@const isDateField = config.type === 'date'}
+					{@const FieldIcon = getFieldIcon(field, config)}
+					{@const bgGradient = isContext
+						? 'bg-gradient-to-br from-green-50 to-emerald-50 dark:from-gray-800 dark:to-gray-800 border-green-200 dark:border-gray-700'
+						: isExecutiveSummary
+							? 'bg-gradient-to-br from-purple-50 to-pink-50 dark:from-gray-800 dark:to-gray-800 border-purple-200 dark:border-gray-700'
+							: isDateField
+								? 'bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-gray-800 dark:to-gray-800 border-indigo-200 dark:border-gray-700'
+								: 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700'}
 
-		<div
-			class="space-y-4 sm:space-y-5 lg:space-y-6 overflow-y-auto px-4 sm:px-6 py-4 sm:py-6 flex-1 min-h-0 bg-gray-50/50 dark:bg-gray-900/30"
-		>
-			{#each Object.entries(formConfig) as [field, config] (field)}
-				{@const isContext = field === 'context'}
-				{@const isExecutiveSummary = field === 'executive_summary'}
-				{@const isDateField = config.type === 'date'}
-				{@const FieldIcon = getFieldIcon(field, config)}
-				{@const bgGradient = isContext
-					? 'bg-gradient-to-br from-green-50 to-emerald-50 dark:from-gray-800 dark:to-gray-800 border-green-200 dark:border-gray-700'
-					: isExecutiveSummary
-						? 'bg-gradient-to-br from-purple-50 to-pink-50 dark:from-gray-800 dark:to-gray-800 border-purple-200 dark:border-gray-700'
-						: isDateField
-							? 'bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-gray-800 dark:to-gray-800 border-indigo-200 dark:border-gray-700'
-							: 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700'}
-
-				<!-- Card-style container for each field with contextual gradients -->
-				<div
-					class="{bgGradient} rounded-xl border p-5 shadow-sm hover:shadow-md transition-shadow-gpu"
-				>
-					<!-- Custom label with icon -->
-					<div class="flex items-center justify-between mb-3">
-						<div class="flex items-center gap-2">
-							<FieldIcon class="w-4 h-4 text-gray-600 dark:text-gray-400" />
-							<label
-								for={`field-${field}`}
-								class="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider"
-							>
-								{config.label}
-								{#if config.required}
-									<span class="text-red-500 ml-0.5">*</span>
-								{/if}
-							</label>
+					<!-- Card-style container for each field with contextual gradients -->
+					<div
+						class="{bgGradient} rounded border p-5 shadow-sm hover:shadow-md transition-shadow-gpu"
+					>
+						<!-- Custom label with icon -->
+						<div class="flex items-center justify-between mb-3">
+							<div class="flex items-center gap-2">
+								<FieldIcon class="w-4 h-4 text-gray-600 dark:text-gray-400" />
+								<label
+									for={`field-${field}`}
+									class="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider"
+								>
+									{config.label}
+									{#if config.required}
+										<span class="text-red-500 ml-0.5">*</span>
+									{/if}
+								</label>
+							</div>
+							{#if config.copyButton && field === 'context'}
+								<Button
+									type="button"
+									onclick={() => copyFieldValue(field)}
+									variant="outline"
+									size="sm"
+									class="flex items-center gap-1.5"
+								>
+									<Copy class="w-4 h-4" />
+									Copy
+								</Button>
+							{/if}
 						</div>
-						{#if config.copyButton && field === 'context'}
-							<Button
-								type="button"
-								onclick={() => copyFieldValue(field)}
-								variant="outline"
-								size="sm"
-								class="flex items-center gap-1.5"
-							>
-								<Copy class="w-4 h-4" />
-								Copy
-							</Button>
+						{#if config.description}
+							<p class="text-xs text-gray-600 dark:text-gray-400 mb-3">
+								{config.description}
+							</p>
 						{/if}
-					</div>
-					{#if config.description}
-						<p class="text-xs text-gray-600 dark:text-gray-400 mb-3">
-							{config.description}
-						</p>
-					{/if}
 
-					<!-- Field content without FormField wrapper to avoid duplicate labels -->
-					<div>
-						{#if config.type === 'textarea'}
-							{#if config.markdown}
-								<!-- Markdown textarea (copy button already handled above for context) -->
-								<MarkdownToggleField
-									value={formData[field] || ''}
-									onUpdate={(newValue) => handleMarkdownUpdate(field, newValue)}
-									placeholder={config.placeholder || ''}
-									rows={config.rows || 3}
-									disabled={loading}
-								/>
-							{:else}
-								<!-- Regular textarea -->
-								<Textarea
+						<!-- Field content without FormField wrapper to avoid duplicate labels -->
+						<div>
+							{#if config.type === 'textarea'}
+								{#if config.markdown}
+									<!-- Markdown textarea (copy button already handled above for context) -->
+									<MarkdownToggleField
+										value={formData[field] || ''}
+										onUpdate={(newValue) =>
+											handleMarkdownUpdate(field, newValue)}
+										placeholder={config.placeholder || ''}
+										rows={config.rows || 3}
+										disabled={loading}
+									/>
+								{:else}
+									<!-- Regular textarea -->
+									<Textarea
+										id={`field-${field}`}
+										value={formData[field] || ''}
+										oninput={(e) => handleFieldChange(field, e.detail)}
+										rows={config.rows || 3}
+										disabled={loading}
+										placeholder={config.placeholder || ''}
+										size="md"
+									/>
+								{/if}
+							{:else if config.type === 'select'}
+								<Select
 									id={`field-${field}`}
 									value={formData[field] || ''}
+									onchange={(e) =>
+										handleFieldChange(
+											field,
+											e.detail || (e.target as HTMLSelectElement)?.value
+										)}
+									disabled={loading}
+									size="md"
+								>
+									<option value="">Select {config.label}</option>
+									{#each config.options || [] as option}
+										{#if typeof option === 'object' && 'value' in option && 'label' in option}
+											<option value={option.value}>
+												{option.label}
+											</option>
+										{:else if typeof option === 'string'}
+											<option value={option}>
+												{option.charAt(0).toUpperCase() +
+													option.slice(1).replace('_', ' ')}
+											</option>
+										{/if}
+									{/each}
+								</Select>
+							{:else if config.type === 'date'}
+								<TextInput
+									id={`field-${field}`}
+									type="date"
+									value={getFieldValue(field)}
 									oninput={(e) => handleFieldChange(field, e.detail)}
-									rows={config.rows || 3}
+									disabled={loading}
+									size="md"
+								/>
+							{:else if config.type === 'datetime' || config.type === 'datetime-local'}
+								<TextInput
+									id={`field-${field}`}
+									type="datetime-local"
+									value={getFieldValue(field)}
+									oninput={(e) => handleDateTimeChange(field, e)}
+									disabled={loading}
+									size="md"
+								/>
+							{:else if config.type === 'number'}
+								<TextInput
+									id={`field-${field}`}
+									type="number"
+									value={getFieldValue(field)}
+									oninput={(e) => {
+										const target = e.target as HTMLInputElement | null;
+										handleFieldChange(
+											field,
+											e.detail || target?.valueAsNumber || target?.value
+										);
+									}}
+									min={config.min}
+									max={config.max}
+									disabled={loading}
+									placeholder={config.placeholder || ''}
+									size="md"
+								/>
+							{:else if config.type === 'checkbox'}
+								<div class="flex items-center">
+									<input
+										id={`field-${field}`}
+										type="checkbox"
+										checked={formData[field] || false}
+										aria-invalid={false}
+										aria-required={config.required || false}
+										aria-describedby={config.description
+											? `field-${field}-description`
+											: undefined}
+										onchange={(e) => {
+											const target = e.target as HTMLInputElement | null;
+											handleFieldChange(
+												field,
+												target?.checked ?? target?.value ?? false
+											);
+										}}
+										disabled={loading}
+										class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded disabled:opacity-50"
+									/>
+									{#if config.description}
+										<label
+											id={`field-${field}-description`}
+											for={`field-${field}`}
+											class="ml-2 text-sm text-gray-600 dark:text-gray-400"
+										>
+											{config.description}
+										</label>
+									{/if}
+								</div>
+							{:else if config.type === 'tags'}
+								<TextInput
+									id={`field-${field}`}
+									type="text"
+									value={getFieldValue(field)}
+									oninput={(e) => handleTagsInput(field, e.detail)}
+									disabled={loading}
+									placeholder={config.placeholder ||
+										'Enter tags separated by commas'}
+									size="md"
+								/>
+							{:else}
+								<TextInput
+									id={`field-${field}`}
+									type="text"
+									value={getFieldValue(field)}
+									oninput={(e) => handleFieldChange(field, e.detail)}
 									disabled={loading}
 									placeholder={config.placeholder || ''}
 									size="md"
 								/>
 							{/if}
-						{:else if config.type === 'select'}
-							<Select
-								id={`field-${field}`}
-								value={formData[field] || ''}
-								onchange={(e) =>
-									handleFieldChange(
-										field,
-										e.detail || (e.target as HTMLSelectElement)?.value
-									)}
+						</div>
+					</div>
+				{/each}
+			</div>
+
+			<!-- Add after-form slot here, before the action buttons -->
+			{#if afterForm}
+				{@render afterForm()}
+			{/if}
+
+			<div
+				class="flex flex-col gap-3 pt-5 pb-6 sm:pb-5 mt-2 px-6 border-t border-gray-200 dark:border-gray-700 bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-800 safe-area-bottom flex-shrink-0"
+			>
+				<!-- Mobile Layout: Stack buttons with proper hierarchy -->
+				<div class="sm:hidden space-y-3">
+					<!-- Primary action at top for mobile -->
+					<Button
+						type="submit"
+						disabled={loading}
+						variant="primary"
+						size="lg"
+						{loading}
+						class="w-full font-semibold shadow-sm"
+					>
+						{loading ? loadingText : submitText}
+					</Button>
+
+					<!-- Secondary actions in a row -->
+					<div class="grid grid-cols-2 gap-2">
+						<Button
+							type="button"
+							onclick={handleClose}
+							disabled={loading}
+							variant="ghost"
+							size="md"
+							class="w-full"
+						>
+							Cancel
+						</Button>
+						{#if (formData.id || initialData.id) && onDelete}
+							<Button
+								type="button"
+								onclick={handleDelete}
 								disabled={loading}
+								variant="danger"
 								size="md"
+								class="w-full"
 							>
-								<option value="">Select {config.label}</option>
-								{#each config.options || [] as option}
-									{#if typeof option === 'object' && 'value' in option && 'label' in option}
-										<option value={option.value}>
-											{option.label}
-										</option>
-									{:else if typeof option === 'string'}
-										<option value={option}>
-											{option.charAt(0).toUpperCase() +
-												option.slice(1).replace('_', ' ')}
-										</option>
-									{/if}
-								{/each}
-							</Select>
-						{:else if config.type === 'date'}
-							<TextInput
-								id={`field-${field}`}
-								type="date"
-								value={getFieldValue(field)}
-								oninput={(e) => handleFieldChange(field, e.detail)}
-								disabled={loading}
-								size="md"
-							/>
-						{:else if config.type === 'datetime' || config.type === 'datetime-local'}
-							<TextInput
-								id={`field-${field}`}
-								type="datetime-local"
-								value={getFieldValue(field)}
-								oninput={(e) => handleDateTimeChange(field, e)}
-								disabled={loading}
-								size="md"
-							/>
-						{:else if config.type === 'number'}
-							<TextInput
-								id={`field-${field}`}
-								type="number"
-								value={getFieldValue(field)}
-								oninput={(e) => {
-									const target = e.target as HTMLInputElement | null;
-									handleFieldChange(
-										field,
-										e.detail || target?.valueAsNumber || target?.value
-									);
-								}}
-								min={config.min}
-								max={config.max}
-								disabled={loading}
-								placeholder={config.placeholder || ''}
-								size="md"
-							/>
-						{:else if config.type === 'checkbox'}
-							<div class="flex items-center">
-								<input
-									id={`field-${field}`}
-									type="checkbox"
-									checked={formData[field] || false}
-									aria-invalid={false}
-									aria-required={config.required || false}
-									aria-describedby={config.description
-										? `field-${field}-description`
-										: undefined}
-									onchange={(e) => {
-										const target = e.target as HTMLInputElement | null;
-										handleFieldChange(
-											field,
-											target?.checked ?? target?.value ?? false
-										);
-									}}
-									disabled={loading}
-									class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded disabled:opacity-50"
-								/>
-								{#if config.description}
-									<label
-										id={`field-${field}-description`}
-										for={`field-${field}`}
-										class="ml-2 text-sm text-gray-600 dark:text-gray-400"
-									>
-										{config.description}
-									</label>
-								{/if}
-							</div>
-						{:else if config.type === 'tags'}
-							<TextInput
-								id={`field-${field}`}
-								type="text"
-								value={getFieldValue(field)}
-								oninput={(e) => handleTagsInput(field, e.detail)}
-								disabled={loading}
-								placeholder={config.placeholder || 'Enter tags separated by commas'}
-								size="md"
-							/>
-						{:else}
-							<TextInput
-								id={`field-${field}`}
-								type="text"
-								value={getFieldValue(field)}
-								oninput={(e) => handleFieldChange(field, e.detail)}
-								disabled={loading}
-								placeholder={config.placeholder || ''}
-								size="md"
-							/>
+								Delete
+							</Button>
 						{/if}
 					</div>
 				</div>
-			{/each}
-		</div>
 
-		<!-- Add after-form slot here, before the action buttons -->
-		<slot name="after-form"></slot>
-
-		<div
-			class="flex flex-col gap-3 pt-5 pb-6 sm:pb-5 mt-2 px-6 border-t border-gray-200 dark:border-gray-700 bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-800 safe-area-bottom flex-shrink-0"
-		>
-			<!-- Mobile Layout: Stack buttons with proper hierarchy -->
-			<div class="sm:hidden space-y-3">
-				<!-- Primary action at top for mobile -->
-				<Button
-					type="submit"
-					disabled={loading}
-					variant="primary"
-					size="lg"
-					{loading}
-					class="w-full font-semibold shadow-sm"
-				>
-					{loading ? loadingText : submitText}
-				</Button>
-
-				<!-- Secondary actions in a row -->
-				<div class="grid grid-cols-2 gap-2">
-					<Button
-						type="button"
-						onclick={handleClose}
-						disabled={loading}
-						variant="ghost"
-						size="md"
-						class="w-full"
-					>
-						Cancel
-					</Button>
+				<!-- Desktop Layout: Original horizontal layout -->
+				<div class="hidden sm:flex sm:justify-between sm:items-center">
 					{#if (formData.id || initialData.id) && onDelete}
 						<Button
 							type="button"
@@ -653,47 +686,37 @@
 							disabled={loading}
 							variant="danger"
 							size="md"
-							class="w-full"
 						>
 							Delete
 						</Button>
+					{:else}
+						<div></div>
 					{/if}
+
+					<div class="flex gap-3">
+						<Button
+							type="button"
+							onclick={handleClose}
+							disabled={loading}
+							variant="outline"
+							size="md"
+						>
+							Cancel
+						</Button>
+						<Button
+							type="submit"
+							disabled={loading}
+							variant="primary"
+							size="md"
+							{loading}
+						>
+							{loading ? loadingText : submitText}
+						</Button>
+					</div>
 				</div>
 			</div>
-
-			<!-- Desktop Layout: Original horizontal layout -->
-			<div class="hidden sm:flex sm:justify-between sm:items-center">
-				{#if (formData.id || initialData.id) && onDelete}
-					<Button
-						type="button"
-						onclick={handleDelete}
-						disabled={loading}
-						variant="danger"
-						size="md"
-					>
-						Delete
-					</Button>
-				{:else}
-					<div></div>
-				{/if}
-
-				<div class="flex gap-3">
-					<Button
-						type="button"
-						onclick={handleClose}
-						disabled={loading}
-						variant="outline"
-						size="md"
-					>
-						Cancel
-					</Button>
-					<Button type="submit" disabled={loading} variant="primary" size="md" {loading}>
-						{loading ? loadingText : submitText}
-					</Button>
-				</div>
-			</div>
-		</div>
-	</form>
+		</form>
+	{/snippet}
 </Modal>
 
 <style>

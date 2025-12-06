@@ -119,6 +119,11 @@ export interface ScheduleDailySMSJobMetadata {
 	leadTimeMinutes: number;
 }
 
+export interface ClassifyChatSessionJobMetadata {
+	sessionId: string;
+	userId: string;
+}
+
 // Map job types to their metadata
 export interface JobMetadataMap {
 	generate_daily_brief: DailyBriefJobMetadata;
@@ -133,6 +138,7 @@ export interface JobMetadataMap {
 	generate_brief_email: GenerateBriefEmailJobMetadata;
 	send_notification: NotificationJobMetadata;
 	schedule_daily_sms: ScheduleDailySMSJobMetadata;
+	classify_chat_session: ClassifyChatSessionJobMetadata;
 	other: Record<string, unknown>;
 }
 
@@ -140,6 +146,13 @@ export interface ScheduleDailySMSResult {
 	success: boolean;
 	scheduled_count?: number;
 	message?: string;
+}
+
+export interface ClassifyChatSessionResult {
+	success: boolean;
+	sessionId: string;
+	topics?: string[];
+	error?: string;
 }
 
 // Job result types
@@ -156,6 +169,7 @@ export interface JobResultMap {
 	generate_brief_email: GenerateBriefEmailResult;
 	send_notification: NotificationSendResult;
 	schedule_daily_sms: ScheduleDailySMSResult;
+	classify_chat_session: ClassifyChatSessionResult;
 	other: unknown;
 }
 
@@ -297,6 +311,10 @@ export function isValidJobMetadata<T extends QueueJobType>(
 			return isGenerateBriefEmailMetadata(metadata);
 		case 'send_notification':
 			return isNotificationMetadata(metadata);
+		case 'schedule_daily_sms':
+			return isScheduleDailySMSMetadata(metadata);
+		case 'classify_chat_session':
+			return isClassifyChatSessionMetadata(metadata);
 		default:
 			return true;
 	}
@@ -388,6 +406,23 @@ function isNotificationMetadata(obj: unknown): obj is NotificationJobMetadata {
 		typeof meta.channel === 'string' &&
 		typeof meta.event_type === 'string'
 	);
+}
+
+function isScheduleDailySMSMetadata(obj: unknown): obj is ScheduleDailySMSJobMetadata {
+	if (!obj || typeof obj !== 'object') return false;
+	const meta = obj as Record<string, unknown>;
+	return (
+		typeof meta.userId === 'string' &&
+		typeof meta.date === 'string' &&
+		typeof meta.timezone === 'string' &&
+		typeof meta.leadTimeMinutes === 'number'
+	);
+}
+
+function isClassifyChatSessionMetadata(obj: unknown): obj is ClassifyChatSessionJobMetadata {
+	if (!obj || typeof obj !== 'object') return false;
+	const meta = obj as Record<string, unknown>;
+	return typeof meta.sessionId === 'string' && typeof meta.userId === 'string';
 }
 
 // Helper function to create a typed queue job

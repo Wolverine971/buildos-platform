@@ -1,4 +1,15 @@
 // apps/web/src/lib/constants/template-scope.ts
+
+/**
+ * Template Scope Definitions
+ *
+ * Defines the ontology scopes and their naming conventions.
+ * Based on the family-based taxonomy defined in TYPE_KEY_TAXONOMY.md
+ *
+ * Pattern: {data_type}.{family}[.{variant}]
+ * Abstract bases: {data_type}.base and {data_type}.{family}.base
+ */
+
 export type TemplateScopeCategory = 'autonomous' | 'project_derived';
 
 export type TemplateScopeDefinition = {
@@ -7,6 +18,8 @@ export type TemplateScopeDefinition = {
 	description: string;
 	category: TemplateScopeCategory;
 	typeKeyPattern: string;
+	typeKeyRegex: RegExp;
+	families?: string[];
 	facetUsage?: string;
 	llmCue: string;
 	exampleBrainDump?: string;
@@ -23,9 +36,10 @@ export const TEMPLATE_SCOPE_DEFINITIONS: Record<string, TemplateScopeDefinition>
 		description:
 			'Top-level workspaces that orchestrate domains, deliverables, and phased execution.',
 		category: 'autonomous',
-		typeKeyPattern: '{domain}.{deliverable}[.{variant}]',
+		typeKeyPattern: 'project.{domain}.{deliverable}[.{variant}]',
+		typeKeyRegex: /^project\.[a-z_]+\.[a-z_]+(\.[a-z_]+)?$/,
 		facetUsage: 'context / scale / stage',
-		llmCue: 'Declare the domain (actor), deliverable (work product), and optional variant that make this project reusable across realms.',
+		llmCue: 'Declare the domain (actor), deliverable (work product), and optional variant that make this project reusable across realms. The type_key must start with "project." prefix.',
 		exampleBrainDump:
 			'Example: Autonomous launch playbook for a startup copywriting platform aimed at fintech founders, including onboarding and activation KPIs.'
 	}),
@@ -34,79 +48,119 @@ export const TEMPLATE_SCOPE_DEFINITIONS: Record<string, TemplateScopeDefinition>
 		description:
 			'Reusable orchestration playbooks that describe phases, gates, and sequencing across projects.',
 		category: 'autonomous',
-		typeKeyPattern: 'plan.{type}[.{variant}]',
+		typeKeyPattern: 'plan.{family}[.{variant}]',
+		typeKeyRegex: /^plan\.[a-z_]+(\.[a-z_]+)?$/,
+		families: ['timebox', 'pipeline', 'campaign', 'roadmap', 'process', 'phase'],
 		facetUsage: 'context / scale / stage',
-		llmCue: 'Explain the workflow the plan governs, the persona that runs it, and how it progresses from start to finish.',
+		llmCue: 'Identify the plan family (timebox, pipeline, campaign, roadmap, process, or phase) and variant. Explain the workflow the plan governs, the persona that runs it, and how it progresses from start to finish.',
 		exampleBrainDump:
-			'Example: Iterative discovery sprint for product-market fit including hypothesis logging, interview cadence, and decision checkpoints.'
+			'Example: A sprint plan for a 2-week development cycle → plan.timebox.sprint. A marketing launch campaign → plan.campaign.marketing.'
 	}),
 	task: scope('task', {
 		label: 'Task',
 		description:
-			'Actionable work items that can be templated when they appear across many projects.',
+			'Actionable work items classified by work mode. 8 base work modes with optional specializations.',
 		category: 'autonomous',
-		typeKeyPattern: 'task.{type} (optional)',
+		typeKeyPattern: 'task.{work_mode}[.{specialization}]',
+		typeKeyRegex: /^task\.[a-z_]+(\.[a-z_]+)?$/,
+		families: [
+			'execute',
+			'create',
+			'refine',
+			'research',
+			'review',
+			'coordinate',
+			'admin',
+			'plan'
+		],
 		facetUsage: 'context / scale',
-		llmCue: 'Describe the atomic action, the persona executing it, and what “done” means. Only introduce a type key if the task is reusable.',
+		llmCue: 'Identify the work mode (execute, create, refine, research, review, coordinate, admin, plan). Default to task.execute if unsure. Only add specialization for reusable workflow patterns (meeting, standup, deploy, checklist).',
 		exampleBrainDump:
-			'Example: Outreach follow-up task for SDRs contacting AI agencies, including acceptance criteria and data capture fields.'
+			'Example: A meeting task → task.coordinate.meeting. A code review → task.review. Writing new content → task.create.'
 	}),
 	output: scope('output', {
 		label: 'Output / Deliverable',
 		description:
-			'Artifacts and deliverables that exit the system (chapters, briefs, dashboards, etc.).',
+			'Artifacts and deliverables that exit the system, classified by content modality (written, media, software, operational).',
 		category: 'autonomous',
-		typeKeyPattern: 'deliverable.{type}[.{variant}]',
+		typeKeyPattern: 'output.{family}[.{variant}]',
+		typeKeyRegex: /^output\.[a-z_]+(\.[a-z_]+)?$/,
+		families: ['written', 'media', 'software', 'operational'],
 		facetUsage: 'context / stage',
-		llmCue: 'Clarify the artifact being produced, its consumers, and what differentiates this deliverable variant.',
+		llmCue: 'Identify the content modality family (written, media, software, operational) and the specific deliverable type. Written = text/documents, Media = visual/audio/video, Software = code/features/APIs, Operational = reports/dashboards/contracts.',
 		exampleBrainDump:
-			'Example: Competitive teardown brief for enterprise AI tools, including sections, scoring schema, and stakeholder context.'
+			'Example: A book chapter → output.written.chapter. A design mockup → output.media.design_mockup. A shipped feature → output.software.feature.'
 	}),
 	document: scope('document', {
 		label: 'Document',
-		description: 'Internal knowledge artifacts such as wikis, SOPs, or research summaries.',
+		description:
+			'Internal knowledge artifacts: context, knowledge, decisions, specs, references, and intake forms.',
 		category: 'autonomous',
-		typeKeyPattern: 'document.{type}',
+		typeKeyPattern: 'document.{family}[.{variant}]',
+		typeKeyRegex: /^document\.[a-z_]+(\.[a-z_]+)?$/,
+		families: ['context', 'knowledge', 'decision', 'spec', 'reference', 'intake'],
 		facetUsage: 'context / stage',
-		llmCue: 'Detail the knowledge captured, structure, and reuse scenario for this document template.',
+		llmCue: 'Identify the document family: context (big picture), knowledge (research/findings), decision (meeting notes/RFCs), spec (requirements/technical), reference (handbooks/SOPs), intake (discovery forms). Detail the knowledge captured and reuse scenario.',
 		exampleBrainDump:
-			'Example: Technical architecture decision record documenting tradeoffs for AI inference clusters with required fields and reviewers.'
+			'Example: Project context doc → document.context.project. Research notes → document.knowledge.research. Meeting notes → document.decision.meeting_notes.'
 	}),
 	goal: scope('goal', {
 		label: 'Goal',
-		description: 'Objectives and outcomes that teams track independently of projects.',
+		description:
+			'Objectives and outcomes classified by measurement type: outcome (binary), metric (numeric), behavior (frequency), learning (skill).',
 		category: 'autonomous',
-		typeKeyPattern: 'goal.{type}',
+		typeKeyPattern: 'goal.{family}[.{variant}]',
+		typeKeyRegex: /^goal\.[a-z_]+(\.[a-z_]+)?$/,
+		families: ['outcome', 'metric', 'behavior', 'learning'],
 		facetUsage: 'context / scale',
-		llmCue: 'Define the measurable outcome, metrics, and thresholds that make this goal reusable.',
+		llmCue: 'Identify the goal family based on measurement: outcome (binary completion), metric (numeric target), behavior (frequency/consistency), learning (skill progression). Define the measurable outcome and success criteria.',
 		exampleBrainDump:
-			'Example: Churn reduction goal for B2B SaaS with leading indicators, owner, and milestone checkpoints.'
+			'Example: "Launch v1" → goal.outcome.project. "10k MAU" → goal.metric.usage. "Post 3x/week" → goal.behavior.cadence. "Learn React" → goal.learning.skill.'
+	}),
+	risk: scope('risk', {
+		label: 'Risk',
+		description:
+			'Risk tracking templates classified by category: technical, schedule, resource, budget, scope, external, quality.',
+		category: 'project_derived',
+		typeKeyPattern: 'risk.{family}[.{variant}]',
+		typeKeyRegex: /^risk\.[a-z_]+(\.[a-z_]+)?$/,
+		families: ['technical', 'schedule', 'resource', 'budget', 'scope', 'external', 'quality'],
+		facetUsage: 'context',
+		llmCue: 'Identify the risk family: technical (architecture/security), schedule (timing/deadlines), resource (people/skills), budget (money), scope (creep/ambiguity), external (market/regulatory), quality (bugs/UX). Explain the mitigation metadata.',
+		exampleBrainDump:
+			'Example: Security risk → risk.technical.security. Dependency timing → risk.schedule.dependency. Missing expertise → risk.resource.skill_gap.'
+	}),
+	event: scope('event', {
+		label: 'Event',
+		description:
+			'Calendar-bound time slots classified by type: work (focus sessions), collab (meetings), marker (deadlines/reminders).',
+		category: 'autonomous',
+		typeKeyPattern: 'event.{family}[.{variant}]',
+		typeKeyRegex: /^event\.[a-z_]+(\.[a-z_]+)?$/,
+		families: ['work', 'collab', 'marker'],
+		facetUsage: 'context',
+		llmCue: 'Identify the event family: work (individual focus/time blocks), collab (meetings/coordination), marker (deadlines/reminders/holds). Specify the variant for specific event types.',
+		exampleBrainDump:
+			'Example: Deep work session → event.work.focus_block. Team standup → event.collab.meeting.standup. Project deadline → event.marker.deadline.'
 	}),
 	requirement: scope('requirement', {
 		label: 'Requirement',
 		description: 'Constraints and needs inherited from a parent project.',
 		category: 'project_derived',
-		typeKeyPattern: 'Inherits project semantic (no independent key unless justified)',
+		typeKeyPattern: 'requirement.{type}[.{category}]',
+		typeKeyRegex: /^requirement\.[a-z_]+(\.[a-z_]+)?$/,
+		families: ['functional', 'non_functional', 'constraint', 'assumption', 'dependency'],
 		facetUsage: 'context',
 		llmCue: 'Tie requirements back to the parent project type; only diverge when schema or validation differs.',
 		exampleBrainDump:
 			'Example: Compliance requirement for SOC2 evidence capture across all onboarding projects, noting traceability fields.'
-	}),
-	risk: scope('risk', {
-		label: 'Risk',
-		description: 'Risk tracking templates scoped to projects but optionally globalized.',
-		category: 'project_derived',
-		typeKeyPattern: 'risk.{type} (optional)',
-		facetUsage: 'context',
-		llmCue: 'Explain the recurring risk scenario and mitigation metadata; only add a type key when schema differs.',
-		exampleBrainDump:
-			'Example: Vendor dependency risk for AI model providers including likelihood, impact, and contingency steps.'
 	}),
 	milestone: scope('milestone', {
 		label: 'Milestone',
 		description: 'Lifecycle checkpoints that align with the parent project FSM.',
 		category: 'project_derived',
 		typeKeyPattern: 'Inherits project lifecycle',
+		typeKeyRegex: /^milestone\.[a-z_]+(\.[a-z_]+)?$/,
 		facetUsage: 'stage',
 		llmCue: 'Describe the inflection point inside the project FSM and required entry/exit criteria.',
 		exampleBrainDump:
@@ -117,6 +171,7 @@ export const TEMPLATE_SCOPE_DEFINITIONS: Record<string, TemplateScopeDefinition>
 		description: 'Measurement templates tied to project context but sometimes generalized.',
 		category: 'project_derived',
 		typeKeyPattern: 'Inherit measurement intent',
+		typeKeyRegex: /^metric\.[a-z_]+(\.[a-z_]+)?$/,
 		facetUsage: 'scale',
 		llmCue: 'Capture what is being measured, units, sampling cadence, and why it matters inside the project.',
 		exampleBrainDump:
@@ -124,7 +179,43 @@ export const TEMPLATE_SCOPE_DEFINITIONS: Record<string, TemplateScopeDefinition>
 	})
 };
 
+/**
+ * Get template scope definition by slug
+ */
 export function getTemplateScopeDefinition(scope?: string | null): TemplateScopeDefinition | null {
 	if (!scope) return null;
 	return TEMPLATE_SCOPE_DEFINITIONS[scope] ?? null;
+}
+
+/**
+ * Get all autonomous scopes (entities with independent type_key taxonomy)
+ */
+export function getAutonomousScopes(): TemplateScopeDefinition[] {
+	return Object.values(TEMPLATE_SCOPE_DEFINITIONS).filter((s) => s.category === 'autonomous');
+}
+
+/**
+ * Get all project-derived scopes (entities that inherit from project context)
+ */
+export function getProjectDerivedScopes(): TemplateScopeDefinition[] {
+	return Object.values(TEMPLATE_SCOPE_DEFINITIONS).filter(
+		(s) => s.category === 'project_derived'
+	);
+}
+
+/**
+ * Validate a type_key against its scope's pattern
+ */
+export function isValidTypeKeyForScope(typeKey: string, scope: string): boolean {
+	const scopeDef = TEMPLATE_SCOPE_DEFINITIONS[scope];
+	if (!scopeDef) return false;
+	return scopeDef.typeKeyRegex.test(typeKey);
+}
+
+/**
+ * Get families for a given scope
+ */
+export function getFamiliesForScope(scope: string): string[] {
+	const scopeDef = TEMPLATE_SCOPE_DEFINITIONS[scope];
+	return scopeDef?.families ?? [];
 }

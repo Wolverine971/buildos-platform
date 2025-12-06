@@ -47,29 +47,11 @@ const PROJECT_CONTEXT_DOC_GUIDANCE = generateProjectContextFramework('condensed'
 // TYPES
 // ============================================
 
-/**
- * Context for the Planning Agent
- * Full context with conversation history and all available tools
- */
-export interface PlannerContext {
-	systemPrompt: string; // Instructions for planning and orchestration
-	conversationHistory: LLMMessage[]; // Last N messages (compressed if needed)
-	locationContext: string; // Current project/task/calendar context (abbreviated)
-	locationMetadata?: LocationContext['metadata'];
-	userProfile?: string; // User preferences and work style
-	availableTools: ChatToolDefinition[]; // All tools the planner can use or delegate
-	metadata: {
-		sessionId: string;
-		contextType: ChatContextType;
-		entityId?: string;
-		totalTokens: number;
-		hasOntology: boolean;
-		plannerAgentId?: string;
-		focus?: ProjectFocus | null;
-		scope?: OntologyContextScope;
-		compressionUsage?: ContextUsageSnapshot;
-	};
-}
+// Import PlannerContext from canonical location for use in this file
+import type { PlannerContext } from '$lib/services/agentic-chat/shared/types';
+
+// Re-export for backward compatibility with existing imports
+export type { PlannerContext } from '$lib/services/agentic-chat/shared/types';
 
 /**
  * Executor Task Definition
@@ -395,9 +377,10 @@ Review the templates below, select the best match, infer project details, and im
 ### Workflow:
 
 **Step 1: Select Template**
-- Review templates in the LOCATION CONTEXT below (organized by realm)
-- Match user's request to the most appropriate template
-- ONLY if you cannot find ANY suitable template in the overview AND you have specific search criteria, call list_onto_templates() ONCE with specific parameters
+- Templates are PRE-LOADED in the LOCATION CONTEXT section below (organized by realm)
+- First, review these pre-loaded templates to find the best match for the user's request
+- Match user's request to the most appropriate template from the pre-loaded list
+- ONLY if you cannot find ANY suitable template in the pre-loaded overview AND you have specific search criteria, call list_onto_templates() ONCE with specific parameters (e.g., different realm/scope)
 - After calling list_onto_templates(), DO NOT call it again - proceed immediately to Step 2
 - Extract the type_key (e.g., "writer.book") from the best matching template
 
@@ -413,17 +396,18 @@ From the user's message and selected template, infer as much as possible:
 - **start_at**: Current date/time: ${new Date().toISOString()}
 - **end_at**: Only if deadline is explicitly mentioned
 - **goals**: Create 1-3 relevant goals if user mentions objectives
-- **tasks**: Add initial tasks if user mentions specific actions
+- **tasks**: ONLY add tasks if the user explicitly mentions SPECIFIC FUTURE ACTIONS they need to track (e.g., "I need to call the vendor", "remind me to review the contract"). Do NOT create tasks for work you can help with in the conversation or for vague intentions.
 - **outputs**: Include if user mentions deliverables
 
 **Step 3: Create Project Immediately**
 After selecting template and inferring details, call create_onto_project RIGHT AWAY with all information.
 
 **Step 4: Escalate if No Template Exists**
-- If you truly cannot locate a template (even after ONE thoughtful clarification), call request_template_creation with:
+- If you truly cannot locate a template (even after reviewing the LOCATION CONTEXT below AND calling list_onto_templates ONCE), call request_template_creation with:
   - Full braindump and your realm suggestion
   - Deliverable/facet hints and what was missing
 - After escalation, wait for the template creation response and then immediately proceed with create_onto_project using the returned type_key.
+- NOTE: "Escalate" means calling request_template_creation, NOT asking the user more questions.
 
 ONLY ask clarifying questions if:
 - User says "create a project" with absolutely NO context about what kind
@@ -495,7 +479,7 @@ ${entityHighlights.length > 0 ? entityHighlights.map((line) => `- ${line}`).join
 			const project = ontologyContext.entities.project;
 			prompt += `
 
-## Project Ontology Context
+## Current Project (Internal Reference)
 - Project ID: ${project?.id ?? 'unknown'}
 - Project Name: ${project?.name ?? 'Unnamed project'}
 - State: ${project?.state_key || 'active'}
@@ -538,7 +522,7 @@ ${entityHighlights.length > 0 ? entityHighlights.map((line) => `- ${line}`).join
 
 			prompt += `
 
-## Element Ontology Context
+## Current Element (Internal Reference)
 - Element Type: ${elementType || 'element'}
 - Element ID: ${element?.id ?? 'unknown'}
 - Element Name: ${this.getEntityName(element)}`;
@@ -569,10 +553,10 @@ ${entityHighlights.length > 0 ? entityHighlights.map((line) => `- ${line}`).join
 
 			prompt += `
 
-## Global Ontology Context
+## Workspace Overview (Internal Reference)
 - Total Projects: ${totalProjects}
 - Recent Projects: ${recent.length} loaded
-- Available Entity Types: ${entityTypes.join(', ') || 'project'}`;
+- Available Types: ${entityTypes.join(', ') || 'project'}`;
 
 			if (recent.length > 0) {
 				prompt += `
@@ -744,7 +728,7 @@ ${Object.entries(ontologyContext.metadata.entity_count)
 		content: string;
 		metadata: any;
 	} {
-		let content = `## Ontology Context (${ontology.type})\n\n`;
+		let content = `## Context Overview (Internal Reference - ${ontology.type})\n\n`;
 
 		if (ontology.type === 'project') {
 			const project = ontology.entities.project;

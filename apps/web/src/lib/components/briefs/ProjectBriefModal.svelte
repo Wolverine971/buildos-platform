@@ -21,8 +21,8 @@
 
 {#if brief}
 	<Modal {isOpen} onClose={close} size="xl" customClasses="!p-0">
-		<!-- Custom Header -->
-		<svelte:fragment slot="header">
+		{#snippet header()}
+			<!-- Custom Header -->\
 			<div
 				class="flex flex-col sm:flex-row sm:items-center sm:justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 dark:border-gray-700 space-y-3 sm:space-y-0"
 			>
@@ -75,42 +75,45 @@
 					</a>
 				</div>
 			</div>
-		</svelte:fragment>
-
-		<!-- Main Content - Let Modal handle the scrolling -->
-		<div class="px-4 sm:px-6 py-4">
-			<div
-				class="prose prose-sm sm:prose-base prose-gray dark:prose-invert max-w-none overflow-x-auto
+		{/snippet}
+		{#snippet children()}
+			<!-- Main Content - Let Modal handle the scrolling -->
+			<div class="px-4 sm:px-6 py-4">
+				<div
+					class="prose prose-sm sm:prose-base prose-gray dark:prose-invert max-w-none overflow-x-auto
 				prose-headings:text-gray-900 prose-p:text-gray-700 prose-li:text-gray-700
 				prose-strong:text-gray-900 prose-a:text-primary-600 prose-blockquote:text-gray-700
 				dark:prose-headings:text-white dark:prose-p:text-gray-300 dark:prose-li:text-gray-300
 				dark:prose-strong:text-white dark:prose-a:text-primary-400 dark:prose-blockquote:text-gray-300
 				dark:prose-hr:border-gray-700"
-			>
-				{@html renderMarkdown(brief.brief_content)}
-			</div>
-
-			{#if brief.metadata?.key_insights && brief.metadata.key_insights.length > 0}
-				<div
-					class="mt-4 sm:mt-6 p-3 sm:p-4 lg:p-5 bg-primary-50 dark:bg-primary-900/20 rounded-lg"
 				>
-					<h3 class="font-semibold text-primary-900 dark:!text-primary-200 mb-2">
-						Key Insights
-					</h3>
-					<ul class="space-y-1">
-						{#each brief.metadata.key_insights as insight}
-							<li class="flex items-start text-primary-800 dark:!text-primary-300">
-								<span class="mr-2 flex-shrink-0">•</span>
-								<span class="text-xs sm:text-sm">{insight}</span>
-							</li>
-						{/each}
-					</ul>
+					{@html renderMarkdown(brief.brief_content)}
 				</div>
-			{/if}
-		</div>
 
+				{#if brief.metadata?.key_insights && brief.metadata.key_insights.length > 0}
+					<div
+						class="mt-4 sm:mt-6 p-3 sm:p-4 lg:p-5 bg-primary-50 dark:bg-primary-900/20 rounded-lg"
+					>
+						<h3 class="font-semibold text-primary-900 dark:!text-primary-200 mb-2">
+							Key Insights
+						</h3>
+						<ul class="space-y-1">
+							{#each brief.metadata.key_insights as insight}
+								<li
+									class="flex items-start text-primary-800 dark:!text-primary-300"
+								>
+									<span class="mr-2 flex-shrink-0">•</span>
+									<span class="text-xs sm:text-sm">{insight}</span>
+								</li>
+							{/each}
+						</ul>
+					</div>
+				{/if}
+			</div>
+		{/snippet}
 		<!-- Custom Footer -->
-		<svelte:fragment slot="footer">
+
+		{#snippet footer()}
 			<div
 				class="flex flex-col sm:flex-row items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-t border-gray-200 dark:border-gray-700 space-y-3 sm:space-y-0"
 			>
@@ -129,6 +132,6 @@
 					Close
 				</Button>
 			</div>
-		</svelte:fragment>
+		{/snippet}
 	</Modal>
 {/if}

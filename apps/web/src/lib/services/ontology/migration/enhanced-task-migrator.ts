@@ -6,7 +6,7 @@
  * Replaces hardcoded 3-type classification with dynamic template selection.
  *
  * Key improvements over legacy migration:
- * - Uses TemplateDiscoveryEngine for task template selection
+ * - Uses FindOrCreateTemplateService (unified template discovery + creation)
  * - Uses PropertyExtractorEngine for intelligent property extraction
  * - Supports diverse task types beyond (simple, deep_work, recurring)
  * - Validates properties against template schema
@@ -19,23 +19,25 @@ import type {
 	MigrationContext,
 	EnhancedTaskMigrationResult
 } from './enhanced-migration.types';
-import { TemplateDiscoveryEngine } from './template-discovery-engine';
+import {
+	FindOrCreateTemplateService,
+	type FindOrCreateResult
+} from '../find-or-create-template.service';
 import { PropertyExtractorEngine } from './property-extractor-engine';
 import { SmartLLMService } from '$lib/services/smart-llm-service';
 import { upsertLegacyMapping } from '../legacy-mapping.service';
-import { resolveTemplateWithClient } from '../template-resolver.service';
 
 const TEMPLATE_MATCH_THRESHOLD = 0.7; // 70% match required
 
 export class EnhancedTaskMigrator {
-	private readonly discoveryEngine: TemplateDiscoveryEngine;
+	private readonly templateService: FindOrCreateTemplateService;
 	private readonly extractorEngine: PropertyExtractorEngine;
 
 	constructor(
 		private readonly client: TypedSupabaseClient,
 		private readonly llm: SmartLLMService
 	) {
-		this.discoveryEngine = new TemplateDiscoveryEngine(client, llm);
+		this.templateService = new FindOrCreateTemplateService(client, llm);
 		this.extractorEngine = new PropertyExtractorEngine(llm);
 	}
 
@@ -52,62 +54,43 @@ export class EnhancedTaskMigrator {
 		}
 	): Promise<EnhancedTaskMigrationResult> {
 		try {
-			// 1. Template Discovery
+			// 1. Template Discovery + Creation (unified via FindOrCreateTemplateService)
 			const narrative = this.buildTaskNarrative(task);
 			const realm = this.inferRealm(task);
 
-			const templates = await this.discoveryEngine.listTemplates({
-				scope: 'task',
-				realm,
-				context: narrative,
-				limit: 15
-			});
-
-			// Check for 70% match threshold
-			const bestMatch = templates.find((t) => t.score >= TEMPLATE_MATCH_THRESHOLD);
-			let templateResult: any;
-
-			if (bestMatch) {
-				// Use existing template
-				templateResult = {
-					template: bestMatch.template,
-					created: false,
-					suggestion: null
-				};
-			} else {
-				// Suggest new template
-				const suggestion = await this.discoveryEngine.suggestTemplate({
+			let templateResult: FindOrCreateResult;
+			try {
+				templateResult = await this.templateService.findOrCreate({
 					scope: 'task',
-					narrative,
-					existingTemplates: templates,
-					userId: context.initiatedBy
+					context: narrative,
+					userId: context.initiatedBy,
+					realm,
+					matchThreshold: TEMPLATE_MATCH_THRESHOLD,
+					allowCreate: !context.dryRun
 				});
-
+			} catch (error) {
+				// If creation is disabled and no template found, return pending_review
 				if (context.dryRun) {
 					return {
 						status: 'pending_review',
 						legacyTaskId: task.id,
-						message: 'Task template suggestion created for review (dry-run mode)'
+						message: `Task template suggestion created for review (dry-run mode): ${error instanceof Error ? error.message : 'Unknown error'}`
 					};
 				}
-
-				// Create template
-				const ensureResult = await this.discoveryEngine.ensureTemplate({
-					typeKey: suggestion.typeKey,
-					suggestion,
-					allowCreate: true,
-					userId: context.initiatedBy
-				});
-
-				templateResult = ensureResult;
+				throw error;
 			}
 
-			// 2. Resolve template with inheritance
-			const resolvedTemplate = await resolveTemplateWithClient(
-				this.client,
-				templateResult.template.type_key,
-				'task'
-			);
+			// If dry-run and a suggestion was generated (but not created)
+			if (context.dryRun && templateResult.suggestion && !templateResult.created) {
+				return {
+					status: 'pending_review',
+					legacyTaskId: task.id,
+					message: 'Task template suggestion created for review (dry-run mode)'
+				};
+			}
+
+			// 2. Use resolved template (already resolved by findOrCreate)
+			const resolvedTemplate = templateResult.resolvedTemplate;
 
 			if (!resolvedTemplate) {
 				throw new Error(`Failed to resolve template ${templateResult.template.type_key}`);
@@ -155,22 +138,28 @@ export class EnhancedTaskMigrator {
 			// 7. Create onto_task
 			const stateKey = this.mapStatusToState(task.status);
 			const priority = this.mapPriority(task.priority);
-			const dueAt = task.due_date ?? null;
+			// Note: LegacyTask uses start_date, not due_date
+			const dueAt = task.start_date ?? task.completed_at ?? null;
 			const facetScale = propResult.facets?.scale ?? this.inferScale(task);
+
+			// Include description, type_key, and facets in props (facet_scale is a GENERATED column)
+			const propsWithMetadata = {
+				...(finalProps as Record<string, unknown>),
+				description: task.description ?? null,
+				type_key: templateResult.template.type_key,
+				facets: { scale: facetScale }
+			};
 
 			const { data, error } = await this.client
 				.from('onto_tasks')
 				.insert({
 					title: task.title,
-					description: task.description,
 					project_id: projectContext.ontoProjectId,
-					plan_id: projectContext.ontoPlanId ?? null,
 					type_key: templateResult.template.type_key,
 					state_key: stateKey,
 					priority,
 					due_at: dueAt,
-					facet_scale: facetScale,
-					props: finalProps as Json,
+					props: propsWithMetadata as Json,
 					created_by: projectContext.actorId
 				})
 				.select('id')
@@ -178,6 +167,26 @@ export class EnhancedTaskMigrator {
 
 			if (error || !data) {
 				throw new Error(`Failed to create onto_task for ${task.id}: ${error?.message}`);
+			}
+
+			// 7a. Create plan relationship edges if plan exists
+			if (projectContext.ontoPlanId) {
+				await this.client.from('onto_edges').insert([
+					{
+						src_id: data.id,
+						src_kind: 'task',
+						dst_id: projectContext.ontoPlanId,
+						dst_kind: 'plan',
+						rel: 'belongs_to_plan'
+					},
+					{
+						src_id: projectContext.ontoPlanId,
+						src_kind: 'plan',
+						dst_id: data.id,
+						dst_kind: 'task',
+						rel: 'has_task'
+					}
+				]);
 			}
 
 			// 8. Update legacy mapping
@@ -215,12 +224,8 @@ export class EnhancedTaskMigrator {
 		}
 	}
 
-	/**
-	 * Clear template discovery cache
-	 */
-	clearCache(): void {
-		this.discoveryEngine.clearCache();
-	}
+	// Note: Template caching is handled internally by FindOrCreateTemplateService
+	// No explicit cache clearing needed
 
 	// ============================================
 	// PRIVATE HELPER METHODS
@@ -232,7 +237,7 @@ export class EnhancedTaskMigrator {
 			`Status: ${task.status}`,
 			task.description ? `Description:\n${task.description}` : '',
 			task.notes ? `Notes:\n${task.notes}` : '',
-			task.due_date ? `Due Date: ${task.due_date}` : '',
+			task.start_date ? `Due Date: ${task.start_date}` : '',
 			task.priority ? `Priority: ${task.priority}` : ''
 		];
 

@@ -7,6 +7,7 @@ import { processOnboardingAnalysisJob } from './workers/onboarding/onboardingWor
 import { processSMSJob } from './workers/smsWorker';
 import { processNotification } from './workers/notification/notificationWorker';
 import { processDailySMS } from './workers/dailySmsWorker';
+import { processChatClassificationJob } from './workers/chat/chatSessionClassifier';
 import { createLegacyJob } from './workers/shared/jobAdapter';
 import { getEnvironmentConfig, validateEnvironment } from './config/queueConfig';
 import { cleanupStaleJobs } from './lib/utils/queueCleanup';
@@ -190,6 +191,33 @@ async function processScheduleDailySMS(job: ProcessingJob) {
 }
 
 /**
+ * Chat session classification processor
+ * Generates titles and extracts topics from chat sessions
+ */
+async function processChatClassification(job: ProcessingJob) {
+	const { sessionId } = job.data;
+	const startTime = Date.now();
+
+	await job.log(`🏷️  Chat classification started for session ${sessionId}`);
+
+	try {
+		// Convert ProcessingJob to type-safe legacy format
+		const legacyJob = createLegacyJob(job);
+
+		// Process chat classification
+		const result = await processChatClassificationJob(legacyJob);
+
+		const duration = Date.now() - startTime;
+		await job.log(`✅ Chat classification completed in ${duration}ms`);
+
+		return result;
+	} catch (error: any) {
+		await job.log(`❌ Chat classification failed: ${error.message}`);
+		throw error;
+	}
+}
+
+/**
  * Start the Supabase-based worker
  */
 export async function startWorker() {
@@ -207,6 +235,9 @@ export async function startWorker() {
 	// Register SMS processors
 	queue.process('schedule_daily_sms', processScheduleDailySMS); // Daily calendar event SMS scheduling
 	queue.process('send_sms', processSMS); // Send individual SMS (will fail gracefully if Twilio not configured)
+
+	// Register chat session classification processor
+	queue.process('classify_chat_session', processChatClassification);
 
 	// Check if Twilio is configured
 	const twilioEnabled = !!(
@@ -278,7 +309,8 @@ export async function startWorker() {
 		'generate_brief_email',
 		'generate_phases',
 		'onboarding_analysis',
-		'send_notification'
+		'send_notification',
+		'classify_chat_session'
 	];
 
 	if (twilioEnabled) {

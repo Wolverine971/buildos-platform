@@ -130,6 +130,35 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			failed_guards: Array.isArray(transition.failed_guards) ? transition.failed_guards : []
 		}));
 
+		// Enrich tasks with plan information via edges (plan_id is no longer a column)
+		const tasks = tasksResult.data || [];
+		const plans = plansResult.data || [];
+		if (tasks.length > 0) {
+			const taskIds = tasks.map((t: any) => t.id);
+			const { data: taskPlanEdges } = await supabase
+				.from('onto_edges')
+				.select('src_id, dst_id')
+				.eq('rel', 'belongs_to_plan')
+				.eq('src_kind', 'task')
+				.eq('dst_kind', 'plan')
+				.in('src_id', taskIds);
+
+			if (taskPlanEdges && taskPlanEdges.length > 0) {
+				const taskToPlanMap = new Map<string, string>();
+				for (const edge of taskPlanEdges) {
+					taskToPlanMap.set(edge.src_id, edge.dst_id);
+				}
+				// Add plan_id and plan object to each task for backward compatibility
+				for (const task of tasks) {
+					const planId = taskToPlanMap.get(task.id);
+					if (planId) {
+						(task as any).plan_id = planId;
+						(task as any).plan = plans.find((p: any) => p.id === planId) || null;
+					}
+				}
+			}
+		}
+
 		return ApiResponse.success({
 			project,
 			goals: goalsResult.data || [],

@@ -96,22 +96,22 @@
 		contain: layout style paint;
 		background: linear-gradient(
 			90deg,
-			rgb(243, 244, 246) 25%,
-			rgb(229, 231, 235) 50%,
-			rgb(243, 244, 246) 75%
+			rgb(236, 236, 236) 25%,
+			rgb(222, 222, 222) 50%,
+			rgb(236, 236, 236) 75%
 		);
 		background-size: 200% 100%;
 		animation: skeleton-loading 1.5s infinite;
-		border-radius: 8px;
+		border-radius: 4px;
 		overflow: hidden;
 	}
 
 	.dark .skeleton-loader {
 		background: linear-gradient(
 			90deg,
-			rgb(55, 65, 81) 25%,
-			rgb(75, 85, 99) 50%,
-			rgb(55, 65, 81) 75%
+			rgb(30, 41, 59) 25%,
+			rgb(45, 53, 72) 50%,
+			rgb(30, 41, 59) 75%
 		);
 		background-size: 200% 100%;
 	}

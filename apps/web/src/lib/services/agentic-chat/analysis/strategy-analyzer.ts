@@ -27,6 +27,11 @@ import type {
 import type { ServiceContext, PlannerContext, StreamCallback } from '../shared/types';
 import { StrategyError } from '../shared/types';
 import { formatToolSummaries } from '$lib/services/agentic-chat/tools/core/tools.config';
+import {
+	ProjectCreationAnalyzer,
+	type ClarificationRoundMetadata,
+	type ProjectCreationIntentAnalysis
+} from './project-creation-analyzer';
 
 /**
  * Interface for LLM service (subset of SmartLLMService)
@@ -46,6 +51,8 @@ interface LLMService {
  * Service for analyzing user intent and selecting execution strategies
  */
 export class StrategyAnalyzer {
+	private projectCreationAnalyzer: ProjectCreationAnalyzer;
+
 	// Complexity keywords that indicate multi-step operations
 	private readonly COMPLEX_KEYWORDS = [
 		'analyze',
@@ -74,16 +81,21 @@ export class StrategyAnalyzer {
 		'which'
 	];
 
-	constructor(private llmService: LLMService) {}
+	constructor(private llmService: LLMService) {
+		this.projectCreationAnalyzer = new ProjectCreationAnalyzer(llmService);
+	}
 
 	/**
 	 * Analyze user intent and select the best strategy
+	 *
+	 * @param clarificationMetadata - Optional metadata for tracking project creation clarification rounds
 	 */
 	async analyzeUserIntent(
 		message: string,
 		plannerContext: PlannerContext,
 		context: ServiceContext,
-		lastTurnContext?: LastTurnContext
+		lastTurnContext?: LastTurnContext,
+		clarificationMetadata?: ClarificationRoundMetadata
 	): Promise<StrategyAnalysis> {
 		const availableToolNames = this.getAvailableToolNames(plannerContext.availableTools);
 
@@ -92,7 +104,8 @@ export class StrategyAnalyzer {
 			contextType: context.contextType,
 			hasOntology: plannerContext.metadata?.hasOntology,
 			hasLastTurn: !!lastTurnContext,
-			toolCount: availableToolNames.length
+			toolCount: availableToolNames.length,
+			clarificationRound: clarificationMetadata?.roundNumber ?? 0
 		});
 
 		// Handle empty message
@@ -109,18 +122,13 @@ export class StrategyAnalyzer {
 			};
 		}
 
-		// Force project creation strategy when context already scoped to creation
+		// Project creation context: analyze intent sufficiency before deciding strategy
 		if (context.contextType === 'project_create') {
-			return {
-				primary_strategy: ChatStrategy.PROJECT_CREATION,
-				confidence: 0.95,
-				reasoning:
-					'Project creation context requires template selection and create_onto_project',
-				needs_clarification: false,
-				estimated_steps: 3,
-				required_tools: ['list_onto_templates', 'create_onto_project'],
-				can_complete_directly: false
-			};
+			return this.analyzeProjectCreationIntent(
+				message,
+				context.userId,
+				clarificationMetadata
+			);
 		}
 
 		// Check if we have no tools available
@@ -170,6 +178,125 @@ export class StrategyAnalyzer {
 	}
 
 	/**
+	 * Analyze project creation intent and determine if clarifying questions are needed
+	 *
+	 * Flow:
+	 * 1. If max rounds reached (2), proceed with PROJECT_CREATION strategy
+	 * 2. Analyze if user message has sufficient context
+	 * 3. If sufficient, return PROJECT_CREATION strategy
+	 * 4. If insufficient, return ASK_CLARIFYING strategy with generated questions
+	 */
+	private async analyzeProjectCreationIntent(
+		message: string,
+		userId: string,
+		clarificationMetadata?: ClarificationRoundMetadata
+	): Promise<StrategyAnalysis> {
+		const roundNumber = clarificationMetadata?.roundNumber ?? 0;
+
+		console.log('[StrategyAnalyzer] Analyzing project creation intent', {
+			messageLength: message.length,
+			roundNumber,
+			hasAccumulatedContext: !!clarificationMetadata?.accumulatedContext
+		});
+
+		try {
+			const analysis = await this.projectCreationAnalyzer.analyzeIntent(
+				message,
+				userId,
+				clarificationMetadata
+			);
+
+			console.log('[StrategyAnalyzer] Project creation analysis result', {
+				hasSufficientContext: analysis.hasSufficientContext,
+				confidence: analysis.confidence,
+				missingInfo: analysis.missingInfo,
+				hasQuestions: !!analysis.clarifyingQuestions?.length,
+				inferredType: analysis.inferredProjectType
+			});
+
+			// If sufficient context, proceed with project creation
+			if (analysis.hasSufficientContext) {
+				return {
+					primary_strategy: ChatStrategy.PROJECT_CREATION,
+					confidence: analysis.confidence,
+					reasoning: analysis.reasoning,
+					needs_clarification: false,
+					estimated_steps: 3,
+					required_tools: ['list_onto_templates', 'create_onto_project'],
+					can_complete_directly: false,
+					project_creation_analysis: analysis
+				};
+			}
+
+			// Insufficient context: ask clarifying questions
+			return {
+				primary_strategy: ChatStrategy.ASK_CLARIFYING,
+				confidence: analysis.confidence,
+				reasoning: analysis.reasoning,
+				needs_clarification: true,
+				clarifying_questions: analysis.clarifyingQuestions ?? [
+					"Could you tell me more about what kind of project you'd like to create?"
+				],
+				estimated_steps: 0,
+				required_tools: [],
+				can_complete_directly: false,
+				project_creation_analysis: analysis
+			};
+		} catch (error) {
+			console.error('[StrategyAnalyzer] Project creation analysis failed:', error);
+
+			// Fallback: if we've had at least one round, proceed; otherwise ask generic question
+			if (roundNumber >= 1) {
+				return {
+					primary_strategy: ChatStrategy.PROJECT_CREATION,
+					confidence: 0.6,
+					reasoning:
+						'Analysis failed but clarification was attempted. Proceeding with inference.',
+					needs_clarification: false,
+					estimated_steps: 3,
+					required_tools: ['list_onto_templates', 'create_onto_project'],
+					can_complete_directly: false
+				};
+			}
+
+			return {
+				primary_strategy: ChatStrategy.ASK_CLARIFYING,
+				confidence: 0.3,
+				reasoning: 'Unable to analyze project creation intent. Asking for clarification.',
+				needs_clarification: true,
+				clarifying_questions: [
+					'What type of project would you like to create? For example, is this a software project, a writing project, a business initiative, or something else?'
+				],
+				estimated_steps: 0,
+				required_tools: [],
+				can_complete_directly: false
+			};
+		}
+	}
+
+	/**
+	 * Create initial clarification metadata for project creation flow
+	 */
+	createProjectClarificationMetadata(): ClarificationRoundMetadata {
+		return this.projectCreationAnalyzer.createInitialMetadata();
+	}
+
+	/**
+	 * Update clarification metadata after a round of questions
+	 */
+	updateProjectClarificationMetadata(
+		current: ClarificationRoundMetadata,
+		userResponse: string,
+		questionsAsked: string[]
+	): ClarificationRoundMetadata {
+		return this.projectCreationAnalyzer.updateMetadataAfterRound(
+			current,
+			userResponse,
+			questionsAsked
+		);
+	}
+
+	/**
 	 * Perform LLM-based analysis of user intent
 	 */
 	private async performLLMAnalysis(
@@ -191,15 +318,31 @@ export class StrategyAnalyzer {
 		});
 
 		try {
-			// Extract JSON from markdown code blocks if present
+			// Extract JSON from response - handle various LLM response formats
 			let jsonString = response.trim();
-			if (jsonString.startsWith('```json')) {
-				// Remove opening ```json and closing ```
-				jsonString = jsonString.replace(/^```json\s*/, '').replace(/\s*```$/, '');
-			} else if (jsonString.startsWith('```')) {
-				// Remove opening ``` and closing ```
-				jsonString = jsonString.replace(/^```\s*/, '').replace(/\s*```$/, '');
+
+			// Try 1: Handle markdown code blocks (```json ... ``` or ``` ... ```)
+			if (jsonString.includes('```json')) {
+				const match = jsonString.match(/```json\s*([\s\S]*?)\s*```/);
+				if (match?.[1]) {
+					jsonString = match[1].trim();
+				}
+			} else if (jsonString.includes('```')) {
+				const match = jsonString.match(/```\s*([\s\S]*?)\s*```/);
+				if (match?.[1]) {
+					jsonString = match[1].trim();
+				}
 			}
+
+			// Try 2: If still not valid JSON, extract JSON object from response
+			// This handles cases where LLM adds preamble text like "Here's my analysis:"
+			if (!jsonString.startsWith('{')) {
+				const jsonMatch = jsonString.match(/\{[\s\S]*\}/);
+				if (jsonMatch) {
+					jsonString = jsonMatch[0];
+				}
+			}
+
 			return JSON.parse(jsonString) as StrategyAnalysis;
 		} catch (error) {
 			console.error('[StrategyAnalyzer] Failed to parse LLM response:', error);

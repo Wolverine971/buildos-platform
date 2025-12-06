@@ -8,6 +8,7 @@
 
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { browser } from '$app/environment';
 	import { createEventDispatcher } from 'svelte';
 	import { Globe, Plus, FolderOpen, ChevronRight, Sparkles, Loader2 } from 'lucide-svelte';
 	import Card from '$lib/components/ui/Card.svelte';
@@ -116,6 +117,7 @@
 	}
 
 	$effect(() => {
+		if (!browser) return;
 		if (selectedView === 'projectHub' && !isLoadingProjects && projects.length === 0) {
 			loadProjects(true);
 		}

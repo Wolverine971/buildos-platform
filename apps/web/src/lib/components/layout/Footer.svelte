@@ -85,7 +85,7 @@
 </script>
 
 <footer
-	class="bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 mt-auto no-print"
+	class="bg-[var(--surface-panel)] border-t-2 border-gray-200 dark:border-gray-700 mt-auto no-print industrial-panel"
 >
 	<div class="max-w-7xl mx-auto">
 		{#if isAuthenticated}
@@ -95,21 +95,40 @@
 				<div class="lg:hidden space-y-6">
 					<!-- Brand Section -->
 					<div class="flex items-center justify-between">
-						<a href="/" class="flex items-center space-x-2">
+						<a href="/" class="flex items-center space-x-2 group">
+							<!-- Light mode: light dither, color on hover -->
 							<img
 								src="/brain-bolt.png"
 								alt="BuildOS"
-								class="w-6 h-6"
+								class="w-6 h-6 rounded-md transition-opacity duration-200 group-hover:opacity-0 dark:hidden"
 								loading="lazy"
 							/>
-							<span class="text-lg font-bold text-gray-900 dark:text-white"
+							<img
+								src="/brain-bolt.png"
+								alt="BuildOS"
+								class="absolute w-6 h-6 rounded-md transition-opacity duration-200 opacity-0 group-hover:opacity-100 dark:hidden"
+								loading="lazy"
+							/>
+							<!-- Dark mode: dark dither, color on hover -->
+							<img
+								src="/brain-bolt.png"
+								alt="BuildOS"
+								class="hidden w-6 h-6 rounded-md transition-opacity duration-200 group-hover:opacity-0 dark:block"
+								loading="lazy"
+							/>
+							<img
+								src="/brain-bolt.png"
+								alt="BuildOS"
+								class="hidden absolute w-6 h-6 rounded-md transition-opacity duration-200 opacity-0 group-hover:opacity-100 dark:block"
+								loading="lazy"
+							/>
+							<span
+								class="text-lg font-black tracking-tight text-slate-900 dark:text-slate-100"
 								>BuildOS</span
 							>
 						</a>
 						{#if user?.is_admin}
-							<span
-								class="px-2 py-1 text-xs bg-red-100 text-red-800 rounded-full dark:bg-red-900 dark:text-red-300"
-							>
+							<span class="px-2 py-1 text-xs font-bold bg-red-600 text-white rounded">
 								Admin
 							</span>
 						{/if}
@@ -121,16 +140,16 @@
 							{@const LinkIcon = link.icon}
 							<a
 								href={link.href}
-								class="flex items-center space-x-2 p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50
-									hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors group"
+								class="flex items-center space-x-2 p-3 rounded border-2 border-gray-200 bg-surface-panel dark:bg-slate-800 dark:border-gray-700
+									hover:border-accent-orange hover:bg-accent-orange/10 dark:hover:bg-accent-orange/20 transition-colors group shadow-subtle hover:shadow-pressable"
 							>
 								<LinkIcon
-									class="w-5 h-5 text-gray-600 dark:text-gray-400
-									group-hover:text-gray-900 dark:group-hover:text-white transition-colors"
+									class="w-5 h-5 text-slate-600 dark:text-slate-400
+									group-hover:text-accent-orange transition-colors"
 								/>
 								<span
-									class="text-sm font-medium text-gray-700 dark:text-gray-300
-									group-hover:text-gray-900 dark:group-hover:text-white">{link.label}</span
+									class="text-sm font-bold tracking-tight text-slate-700 dark:text-slate-300
+									group-hover:text-accent-orange">{link.label}</span
 								>
 							</a>
 						{/each}
@@ -141,8 +160,8 @@
 						{#each SUPPORT_LINKS as link}
 							<a
 								href={link.href}
-								class="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900
-									dark:hover:text-white transition-colors"
+								class="text-sm font-bold tracking-tight text-slate-600 dark:text-slate-400 hover:text-accent-blue
+									dark:hover:text-accent-blue transition-colors"
 							>
 								{link.label}
 							</a>
@@ -150,15 +169,15 @@
 					</div>
 
 					<!-- Social & Legal -->
-					<div class="space-y-4 pt-4 border-t border-gray-200 dark:border-gray-800">
+					<div class="space-y-4 pt-4 border-t-2 border-gray-200 dark:border-gray-700">
 						<!-- Social Icons -->
 						<div class="flex justify-center space-x-4">
 							{#each SOCIAL_LINKS as social}
 								{@const SocialIcon = social.icon}
 								<a
 									href={social.href}
-									class="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300
-										transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
+									class="p-2 text-slate-500 hover:text-accent-blue dark:text-slate-400 dark:hover:text-accent-blue
+										transition-colors rounded hover:bg-slate-100 dark:hover:bg-slate-800"
 									aria-label={social.label}
 								>
 									<SocialIcon class="w-5 h-5" />
@@ -171,8 +190,8 @@
 							{#each LEGAL_LINKS as link}
 								<a
 									href={link.href}
-									class="text-gray-500 dark:text-gray-400 hover:text-gray-900
-										dark:hover:text-white transition-colors"
+									class="text-slate-500 dark:text-slate-400 hover:text-slate-900
+										dark:hover:text-slate-100 transition-colors font-bold tracking-tight"
 								>
 									{link.label}
 								</a>
@@ -201,14 +220,35 @@
 					<div class="flex items-center justify-between">
 						<!-- Left: Brand and Navigation -->
 						<div class="flex items-center space-x-8">
-							<a href="/" class="flex items-center space-x-2">
+							<a href="/" class="flex items-center space-x-2 group">
+								<!-- Light mode: light dither, color on hover -->
 								<img
 									src="/brain-bolt.png"
 									alt="BuildOS"
-									class="w-6 h-6"
+									class="w-6 h-6 rounded-md transition-opacity duration-200 group-hover:opacity-0 dark:hidden"
 									loading="lazy"
 								/>
-								<span class="text-lg font-bold text-gray-900 dark:text-white"
+								<img
+									src="/brain-bolt.png"
+									alt="BuildOS"
+									class="absolute w-6 h-6 rounded-md transition-opacity duration-200 opacity-0 group-hover:opacity-100 dark:hidden"
+									loading="lazy"
+								/>
+								<!-- Dark mode: dark dither, color on hover -->
+								<img
+									src="/brain-bolt.png"
+									alt="BuildOS"
+									class="hidden w-6 h-6 rounded-md transition-opacity duration-200 group-hover:opacity-0 dark:block"
+									loading="lazy"
+								/>
+								<img
+									src="/brain-bolt.png"
+									alt="BuildOS"
+									class="hidden absolute w-6 h-6 rounded-md transition-opacity duration-200 opacity-0 group-hover:opacity-100 dark:block"
+									loading="lazy"
+								/>
+								<span
+									class="text-lg font-black tracking-tight text-slate-900 dark:text-slate-100"
 									>BuildOS</span
 								>
 							</a>
@@ -218,9 +258,9 @@
 								{#each [...AUTH_LINKS, ...SUPPORT_LINKS] as link}
 									<a
 										href={link.href}
-										class="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-600
-											dark:text-gray-300 hover:text-gray-900 dark:hover:text-white
-											hover:bg-gray-50 dark:hover:bg-gray-800 rounded-md transition-colors"
+										class="inline-flex items-center px-3 py-2 text-sm font-bold tracking-tight text-slate-600
+											dark:text-slate-300 hover:text-accent-orange dark:hover:text-accent-orange
+											hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors"
 									>
 										{#if link.icon}
 											{@const Icon = link.icon}
@@ -275,13 +315,13 @@
 
 				<!-- Copyright -->
 				<div
-					class="flex items-center justify-center space-x-1 text-xs text-gray-500 dark:text-gray-400
-					mt-6 pt-6 border-t border-gray-200 dark:border-gray-800"
+					class="flex items-center justify-center space-x-1 text-xs font-bold tracking-tight text-slate-500 dark:text-slate-400
+					mt-6 pt-6 border-t-2 border-gray-200 dark:border-gray-700"
 				>
 					<span>© {CURRENT_YEAR} BuildOS</span>
 					<span>•</span>
 					<span>Made with</span>
-					<Heart class="w-3 h-3 text-red-500 fill-red-500 mx-1" />
+					<Heart class="w-3 h-3 text-red-600 fill-red-600 mx-1" />
 					<span>for productivity</span>
 				</div>
 			</div>
@@ -292,18 +332,41 @@
 				<div class="lg:hidden space-y-8">
 					<!-- Brand & CTA -->
 					<div class="text-center space-y-4">
-						<a href="/" class="inline-flex items-center space-x-2">
-							<img
-								src="/brain-bolt.png"
-								alt="BuildOS"
-								class="w-8 h-8"
-								loading="lazy"
-							/>
-							<span class="text-xl font-bold text-gray-900 dark:text-white"
+						<a href="/" class="inline-flex items-center space-x-2 group">
+							<div class="relative">
+								<!-- Light mode: light dither, color on hover -->
+								<img
+									src="/brain-bolt.png"
+									alt="BuildOS"
+									class="w-8 h-8 rounded-md transition-opacity duration-200 group-hover:opacity-0 dark:hidden"
+									loading="lazy"
+								/>
+								<img
+									src="/brain-bolt.png"
+									alt="BuildOS"
+									class="absolute inset-0 w-8 h-8 rounded-md transition-opacity duration-200 opacity-0 group-hover:opacity-100 dark:hidden"
+									loading="lazy"
+								/>
+								<!-- Dark mode: dark dither, color on hover -->
+								<img
+									src="/brain-bolt.png"
+									alt="BuildOS"
+									class="hidden w-8 h-8 rounded-md transition-opacity duration-200 group-hover:opacity-0 dark:block"
+									loading="lazy"
+								/>
+								<img
+									src="/brain-bolt.png"
+									alt="BuildOS"
+									class="hidden absolute inset-0 w-8 h-8 rounded-md transition-opacity duration-200 opacity-0 group-hover:opacity-100 dark:block"
+									loading="lazy"
+								/>
+							</div>
+							<span
+								class="text-xl font-black tracking-tight text-slate-900 dark:text-slate-100"
 								>BuildOS</span
 							>
 						</a>
-						<p class="text-sm text-gray-600 dark:text-gray-400 max-w-xs mx-auto">
+						<p class="text-sm text-slate-600 dark:text-slate-400 max-w-xs mx-auto">
 							Transform thoughts into structured productivity with AI-powered
 							organization.
 						</p>
@@ -312,18 +375,18 @@
 						<div class="flex flex-col sm:flex-row gap-3 max-w-sm mx-auto">
 							<a
 								href="/auth/register"
-								class="flex-1 inline-flex items-center justify-center px-6 py-3 text-sm font-medium
-									text-white dither-gradient bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700
-									hover:to-purple-700 rounded-lg transition-all transform hover:scale-105 shadow-md"
+								class="flex-1 inline-flex items-center justify-center px-6 py-3 text-sm font-bold tracking-tight
+									text-white bg-accent-orange border-2 border-slate-700 hover:brightness-110
+									rounded transition-all hover:shadow-pressable shadow-subtle"
 							>
 								<Brain class="w-4 h-4 mr-2" />
 								Start Free
 							</a>
 							<a
 								href="/beta"
-								class="flex-1 inline-flex items-center justify-center px-6 py-3 text-sm font-medium
-									text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20
-									hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-lg transition-colors"
+								class="flex-1 inline-flex items-center justify-center px-6 py-3 text-sm font-bold tracking-tight
+									text-accent-blue dark:text-accent-blue bg-accent-blue/10 dark:bg-accent-blue/20 border-2 border-accent-blue/30
+									hover:bg-accent-blue/20 dark:hover:bg-accent-blue/30 rounded transition-colors"
 							>
 								<Users class="w-4 h-4 mr-2" />
 								Join Beta
@@ -336,7 +399,7 @@
 						{#each GUEST_SECTIONS.slice(0, 2) as section}
 							<div>
 								<h4
-									class="text-sm font-semibold text-gray-900 dark:text-white mb-3"
+									class="text-sm font-black tracking-tight text-slate-900 dark:text-slate-100 mb-3"
 								>
 									{section.title}
 								</h4>
@@ -345,8 +408,8 @@
 										<li>
 											<a
 												href={link.href}
-												class="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900
-													dark:hover:text-white transition-colors"
+												class="text-sm font-bold tracking-tight text-slate-600 dark:text-slate-400 hover:text-accent-orange
+													dark:hover:text-accent-orange transition-colors"
 											>
 												{link.label}
 											</a>
@@ -359,7 +422,9 @@
 
 					<!-- Company Links -->
 					<div class="text-center">
-						<h4 class="text-sm font-semibold text-gray-900 dark:text-white mb-3">
+						<h4
+							class="text-sm font-black tracking-tight text-slate-900 dark:text-slate-100 mb-3"
+						>
 							Company
 						</h4>
 						<div class="flex flex-wrap justify-center gap-x-4 gap-y-2">
@@ -383,8 +448,8 @@
 								{@const SocialIcon = social.icon}
 								<a
 									href={social.href}
-									class="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300
-										transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
+									class="p-2 text-slate-500 hover:text-accent-blue dark:text-slate-400 dark:hover:text-accent-blue
+										transition-colors rounded hover:bg-slate-100 dark:hover:bg-slate-800"
 									aria-label={social.label}
 								>
 									<SocialIcon class="w-5 h-5" />
@@ -397,8 +462,8 @@
 							{#each LEGAL_LINKS as link}
 								<a
 									href={link.href}
-									class="text-gray-500 dark:text-gray-400 hover:text-gray-900
-										dark:hover:text-white transition-colors"
+									class="text-slate-500 dark:text-slate-400 hover:text-slate-900
+										dark:hover:text-slate-100 transition-colors font-bold tracking-tight"
 								>
 									{link.label}
 								</a>
@@ -413,13 +478,35 @@
 					<div class="flex items-start justify-between">
 						<!-- Brand & Description -->
 						<div class="max-w-sm space-y-4">
-							<a href="/" class="inline-flex items-center space-x-2">
-								<img
-									src="/brain-bolt.png"
-									alt="BuildOS"
-									class="w-8 h-8"
-									loading="lazy"
-								/>
+							<a href="/" class="inline-flex items-center space-x-2 group">
+								<div class="relative">
+									<!-- Light mode: light dither, color on hover -->
+									<img
+										src="/brain-bolt.png"
+										alt="BuildOS"
+										class="w-8 h-8 rounded-md transition-opacity duration-200 group-hover:opacity-0 dark:hidden"
+										loading="lazy"
+									/>
+									<img
+										src="/brain-bolt.png"
+										alt="BuildOS"
+										class="absolute inset-0 w-8 h-8 rounded-md transition-opacity duration-200 opacity-0 group-hover:opacity-100 dark:hidden"
+										loading="lazy"
+									/>
+									<!-- Dark mode: dark dither, color on hover -->
+									<img
+										src="/brain-bolt.png"
+										alt="BuildOS"
+										class="hidden w-8 h-8 rounded-md transition-opacity duration-200 group-hover:opacity-0 dark:block"
+										loading="lazy"
+									/>
+									<img
+										src="/brain-bolt.png"
+										alt="BuildOS"
+										class="hidden absolute inset-0 w-8 h-8 rounded-md transition-opacity duration-200 opacity-0 group-hover:opacity-100 dark:block"
+										loading="lazy"
+									/>
+								</div>
 								<span class="text-xl font-bold text-gray-900 dark:text-white"
 									>BuildOS</span
 								>

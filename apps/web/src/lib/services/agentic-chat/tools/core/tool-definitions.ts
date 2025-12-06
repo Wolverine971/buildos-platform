@@ -31,9 +31,9 @@ export const ENTITY_FIELD_INFO: Record<string, Record<string, FieldInfo>> = {
 		},
 		type_key: {
 			type: 'string',
-			description: 'Template classification such as writer.book',
+			description: 'Template classification with project prefix such as project.writer.book',
 			required: true,
-			example: 'writer.book'
+			example: 'project.writer.book'
 		},
 		state_key: {
 			type: 'enum',
@@ -134,15 +134,19 @@ export const ENTITY_FIELD_INFO: Record<string, Record<string, FieldInfo>> = {
 		},
 		plan_id: {
 			type: 'string',
-			description: 'Optional plan that the task belongs to',
+			description:
+				'Optional plan UUID (INPUT ONLY - not a database column). When provided during task creation/update, creates edge relationships in onto_edges table (task->plan with rel=belongs_to_plan). Query task-plan relationships via onto_edges, not directly on onto_tasks.',
 			required: false,
 			example: '9a9c0d90-736f-4a2b-8ac0-1234567890ab'
 		},
 		type_key: {
 			type: 'string',
-			description: 'Template type for the task (task.marketing.email, etc.)',
+			description: `Task work mode taxonomy. Format: task.{work_mode}[.{specialization}]
+Work modes: execute (default), create, refine, research, review, coordinate, admin, plan.
+Specializations: task.coordinate.meeting, task.coordinate.standup, task.execute.deploy, task.execute.checklist.
+Use the most specific type that matches the task nature.`,
 			required: false,
-			example: 'task.marketing.email'
+			example: 'task.execute'
 		},
 		props: {
 			type: 'string',
@@ -156,13 +160,15 @@ export const ENTITY_FIELD_INFO: Record<string, Record<string, FieldInfo>> = {
 			type: 'string',
 			description: 'Plan name stored in onto_plans.name',
 			required: true,
-			example: 'Acquisition Experiments Plan'
+			example: 'Q1 Development Sprint'
 		},
 		type_key: {
 			type: 'string',
-			description: 'Template classification for the plan',
+			description: `Plan type taxonomy. Format: plan.{family}[.{variant}]
+Families: timebox (sprints, weekly), pipeline (sales, content), campaign (marketing), roadmap (product), process (onboarding), phase (project phases).
+Examples: plan.timebox.sprint, plan.pipeline.sales, plan.phase.project`,
 			required: true,
-			example: 'plan.growth.experiment'
+			example: 'plan.timebox.sprint'
 		},
 		state_key: {
 			type: 'enum',
@@ -187,9 +193,11 @@ export const ENTITY_FIELD_INFO: Record<string, Record<string, FieldInfo>> = {
 		},
 		type_key: {
 			type: 'string',
-			description: 'Template classification for the goal',
+			description: `Goal type taxonomy. Format: goal.{family}[.{variant}]
+Families: outcome (binary completion), metric (quantitative), behavior (frequency), learning (skill progression).
+Examples: goal.outcome.project, goal.metric.revenue, goal.behavior.cadence, goal.learning.skill`,
 			required: false,
-			example: 'goal.revenue.target'
+			example: 'goal.metric.revenue'
 		},
 		props: {
 			type: 'string',
@@ -201,7 +209,17 @@ export const ENTITY_FIELD_INFO: Record<string, Record<string, FieldInfo>> = {
 	ontology_template: {
 		scope: {
 			type: 'enum',
-			enum_values: ['project', 'plan', 'task', 'output', 'document', 'goal', 'requirement'],
+			enum_values: [
+				'project',
+				'plan',
+				'task',
+				'output',
+				'document',
+				'goal',
+				'requirement',
+				'risk',
+				'event'
+			],
 			description: 'Entity type the template instantiates',
 			required: true,
 			example: 'project'
@@ -214,9 +232,15 @@ export const ENTITY_FIELD_INFO: Record<string, Record<string, FieldInfo>> = {
 		},
 		type_key: {
 			type: 'string',
-			description: 'Unique template key (writer.book, plan.growth.launch, etc.)',
+			description: `Unique template key following family-based taxonomy:
+- Projects: project.{domain}.{deliverable}[.{variant}]
+- Plans: plan.{family}[.{variant}] (families: timebox, pipeline, campaign, roadmap, process, phase)
+- Goals: goal.{family}[.{variant}] (families: outcome, metric, behavior, learning)
+- Documents: document.{family}[.{variant}] (families: context, knowledge, decision, spec, reference, intake)
+- Outputs: output.{family}[.{variant}] (families: written, media, software, operational)
+- Tasks: task.{work_mode}[.{specialization}]`,
 			required: true,
-			example: 'writer.book'
+			example: 'project.writer.book'
 		},
 		description: {
 			type: 'string',
@@ -334,7 +358,8 @@ Use for queries about project documentation, briefs, specs, or research artifact
 					},
 					type_key: {
 						type: 'string',
-						description: 'Filter by document type key (e.g., document.project.context)'
+						description:
+							'Filter by document type key (e.g., document.context.project, document.knowledge.research)'
 					},
 					state_key: {
 						type: 'string',
@@ -658,7 +683,33 @@ Shows what entities are connected to this entity and how.`,
 			name: 'create_onto_task',
 			description: `Create a new task in the ontology system.
 Creates a task within a project and optionally assigns it to a plan.
-Automatically creates the onto_edges relationship linking task to project.`,
+Automatically creates the onto_edges relationship linking task to project.
+
+**CRITICAL: When to create tasks vs. when NOT to:**
+
+CREATE a task when:
+- The USER explicitly asks to "add a task", "create a task", "track this", or "remind me to"
+- The work requires HUMAN action (decisions, phone calls, meetings, reviews, approvals)
+- The work must happen OUTSIDE this conversation (external deliverables, future actions)
+- The user is building a project plan and wants persistent task tracking
+
+DO NOT create a task when:
+- You (the agent) can help with the work RIGHT NOW in this conversation
+- The request is for research, analysis, brainstorming, or summarizing (just do it)
+- You're about to perform the action yourself (don't create then immediately complete)
+- You want to appear helpful or structured (only create if the user needs to track it)
+- The user is exploring ideas or asking questions (just respond helpfully)
+
+Examples:
+- "Add a task to call the client tomorrow" → CREATE (user must do this later)
+- "Help me brainstorm marketing ideas" → DO NOT CREATE (help them now)
+- "I need to review the design mockups" → CREATE (user action required)
+- "What are my project blockers?" → DO NOT CREATE (just analyze and respond)
+- "Create tasks for the launch checklist" → CREATE (explicit request)
+- "Let's outline the API endpoints" → DO NOT CREATE (collaborative work you can help with)
+- "Remind me to follow up with Sarah" → CREATE (future user action)
+
+Remember: Tasks should represent FUTURE USER WORK, not a log of what you discussed or helped with.`,
 			parameters: {
 				type: 'object',
 				properties: {
@@ -676,8 +727,11 @@ Automatically creates the onto_edges relationship linking task to project.`,
 					},
 					type_key: {
 						type: 'string',
-						default: 'task.basic',
-						description: 'Template type key (default: task.basic)'
+						default: 'task.execute',
+						description: `Work mode taxonomy: task.{work_mode}[.{specialization}].
+Modes: execute (action), create (produce), refine (improve), research (investigate), review (evaluate), coordinate (sync), admin (housekeeping), plan (strategize).
+Specializations: task.coordinate.meeting, task.coordinate.standup, task.execute.deploy, task.execute.checklist.
+Default: task.execute`
 					},
 					state_key: {
 						type: 'string',
@@ -730,8 +784,9 @@ Goals define project objectives and success criteria.`,
 					},
 					type_key: {
 						type: 'string',
-						default: 'goal.basic',
-						description: 'Template type key'
+						default: 'goal.outcome.project',
+						description: `Goal type taxonomy: goal.{family}[.{variant}]
+Families: outcome, metric, behavior, learning. Default: goal.outcome.project`
 					},
 					props: {
 						type: 'object',
@@ -766,8 +821,9 @@ Plans are logical groupings of tasks within a project.`,
 					},
 					type_key: {
 						type: 'string',
-						default: 'plan.basic',
-						description: 'Template type key'
+						default: 'plan.phase.project',
+						description: `Plan type taxonomy: plan.{family}[.{variant}]
+Families: timebox, pipeline, campaign, roadmap, process, phase. Default: plan.phase.project`
 					},
 					state_key: {
 						type: 'string',
@@ -803,7 +859,9 @@ Use for briefs, specs, context docs, or research artifacts linked to a project.`
 					},
 					type_key: {
 						type: 'string',
-						description: 'Document type key (required)'
+						description: `Document type taxonomy (required): document.{family}[.{variant}]
+Families: context (project/brief), knowledge (research/brain_dump), decision (meeting_notes/rfc), spec (product/technical), reference (handbook/sop), intake (client/project).
+Examples: document.context.project, document.knowledge.research, document.spec.technical`
 					},
 					state_key: {
 						type: 'string',
@@ -905,6 +963,11 @@ Only updates fields that are provided - omitted fields remain unchanged.`,
 						description:
 							'Optional guidance when merging description text (e.g., keep bullets, integrate notes). Used with append/merge_llm.'
 					},
+					type_key: {
+						type: 'string',
+						description:
+							'Work mode taxonomy: task.{work_mode}[.{specialization}]. Modes: execute, create, refine, research, review, coordinate, admin, plan.'
+					},
 					state_key: {
 						type: 'string',
 						description: 'New state (todo, in_progress, done, blocked, etc.)'
@@ -915,7 +978,8 @@ Only updates fields that are provided - omitted fields remain unchanged.`,
 					},
 					plan_id: {
 						type: 'string',
-						description: 'Assign to different plan (or null to unassign)'
+						description:
+							'Assign to different plan (or null to unassign). Uses edge relationships internally.'
 					},
 					due_at: {
 						type: 'string',
@@ -1296,175 +1360,113 @@ Examples:
 	{
 		type: 'function',
 		function: {
-			name: 'suggest_template',
-			description: `Suggest a new template based on user requirements when no existing template fits well.
+			name: 'find_or_create_template',
+			description: `Find an existing template or create a new one using intelligent matching.
 
-This tool helps you propose custom templates that perfectly match the user's needs. The system will automatically create the template when the project is created.
+This is the UNIFIED template discovery and creation tool. It combines:
+- Template search with context-aware matching
+- LLM-powered template scoring (70% match threshold)
+- Automatic template creation when no suitable match exists
+- Support for all 8 entity scopes
 
-Use this when:
-- No existing template scores >70% match
-- User needs combine multiple domains
-- Project has unique workflow requirements
-- You want to specialize an existing template`,
+**When to use this tool**:
+- Before creating any entity, to ensure the right template exists
+- When you need to find a template by context description
+- When migrating data that needs template classification
+- When the user describes work that may need a new template type
+
+**How it works**:
+1. Searches existing templates matching the context
+2. Scores candidates using LLM with abstract template penalty
+3. Returns best match if score >= threshold (default 70%)
+4. Creates new template if no match found and allow_create=true
+
+**Returns**: Template info, whether it was created, match score, and rationale.`,
 			parameters: {
 				type: 'object',
 				properties: {
-					type_key: {
+					scope: {
+						type: 'string',
+						enum: [
+							'project',
+							'task',
+							'plan',
+							'goal',
+							'document',
+							'output',
+							'risk',
+							'event'
+						],
+						description: 'Entity scope for template (required)'
+					},
+					context: {
 						type: 'string',
 						description:
-							'Suggested template type_key following pattern: [scope].[domain].[specialization]. Examples: project.research.ai_climate, project.event.wedding, project.software.mobile_mvp'
+							'Natural language description of the entity to be created. This is used for semantic matching against existing templates.'
 					},
-					name: {
+					preferred_type_key: {
 						type: 'string',
-						description:
-							'Human-readable template name (e.g., "AI Climate Research Project", "Mobile App MVP")'
+						description: 'Optional preferred type_key to check first before searching'
 					},
-					description: {
+					realm: {
 						type: 'string',
-						description:
-							'Clear description of what this template is for and when to use it'
+						description: 'Domain/realm hint (e.g., "writer", "developer", "coach")'
 					},
-					parent_type_key: {
-						type: 'string',
-						description:
-							'Optional parent template to inherit from (e.g., project.research for project.research.ai_climate)'
-					},
-					match_score: {
+					match_threshold: {
 						type: 'number',
+						minimum: 0,
+						maximum: 1,
+						default: 0.7,
 						description:
-							'How well existing templates match (0-100). Use <70 to justify new template'
+							'Minimum match score (0-1) to accept existing template. Default: 0.7 (70%)'
 					},
-					rationale: {
-						type: 'string',
-						description: 'Why a new template is needed instead of existing ones'
+					allow_create: {
+						type: 'boolean',
+						default: true,
+						description:
+							'Whether to create a new template if no match found. Default: true'
 					},
-					properties: {
+					facets: {
 						type: 'object',
-						description:
-							'Suggested template properties with descriptions. Each key is a property name, value is an object with type, description, default value, and whether required'
-					},
-					workflow_states: {
-						type: 'array',
-						description: 'FSM states for the project workflow',
-						items: {
-							type: 'object',
-							properties: {
-								state: {
-									type: 'string',
-									description: 'State name (e.g., planning, execution, review)'
-								},
-								description: {
-									type: 'string',
-									description: 'What happens in this state'
-								},
-								transitions_to: {
-									type: 'array',
-									items: { type: 'string' },
-									description: 'Valid next states'
-								}
+						description: 'Optional facet hints for template matching',
+						properties: {
+							context: {
+								type: 'string',
+								enum: [
+									'personal',
+									'client',
+									'commercial',
+									'internal',
+									'open_source',
+									'community',
+									'academic',
+									'nonprofit',
+									'startup'
+								]
 							},
-							required: ['state']
+							scale: {
+								type: 'string',
+								enum: ['micro', 'small', 'medium', 'large', 'epic']
+							},
+							stage: {
+								type: 'string',
+								enum: [
+									'discovery',
+									'planning',
+									'execution',
+									'launch',
+									'maintenance',
+									'complete'
+								]
+							}
 						}
 					},
 					example_props: {
 						type: 'object',
-						description: `Example property values for this specific project instance extracted from the user's message.
-
-This should contain actual values from the conversation that will be used when creating the project.
-
-Example: If user mentions "200 guests, $80k budget", set:
-{ guest_count: 200, budget: 80000, venue_details: { status: "searching" } }
-
-These values will be passed to create_onto_project as the initial props.`
-					},
-					benefits: {
-						type: 'array',
-						items: { type: 'string' },
-						description: 'Key benefits of using this specialized template'
+						description: 'Example property values to help infer template schema'
 					}
 				},
-				required: [
-					'type_key',
-					'name',
-					'description',
-					'match_score',
-					'rationale',
-					'properties',
-					'workflow_states'
-				]
-			}
-		}
-	},
-	{
-		type: 'function',
-		function: {
-			name: 'request_template_creation',
-			description: `Escalate when no suitable project template exists. Use this AFTER exhausting template search.
-
-Provide the full braindump, your realm recommendation, and any structured hints (deliverables, facets, required data fields).
-Only call this once per user request. If critical information is missing (e.g., audience, deliverable), ask a clarifying question before escalating.`,
-			parameters: {
-				type: 'object',
-				properties: {
-					braindump: {
-						type: 'string',
-						description:
-							'Original user request / braindump describing the desired project (required)'
-					},
-					realm: {
-						type: 'string',
-						description:
-							'Suggested realm slug (e.g., "writer", "developer.saas", "retreats.personal")'
-					},
-					template_hints: {
-						type: 'array',
-						items: {
-							type: 'string'
-						},
-						description:
-							'List of short hints about required data fields, deliverables, or constraints'
-					},
-					deliverables: {
-						type: 'array',
-						items: { type: 'string' },
-						description: 'Specific deliverables or outputs mentioned by the user'
-					},
-					facets: {
-						type: 'object',
-						properties: {
-							context: {
-								type: 'string',
-								description: 'Facet context suggestion (personal, client, etc.)'
-							},
-							scale: {
-								type: 'string',
-								description:
-									'Facet scale suggestion (micro, small, medium, large, epic)'
-							},
-							stage: {
-								type: 'string',
-								description: 'Facet stage suggestion (discovery, planning, etc.)'
-							}
-						}
-					},
-					template_suggestions: {
-						type: 'array',
-						items: { type: 'string' },
-						description:
-							'Optional template name ideas (e.g., "Storytelling Retreat Project")'
-					},
-					missing_information: {
-						type: 'array',
-						items: { type: 'string' },
-						description:
-							'List the critical details you could not infer (e.g., "audience not specified")'
-					},
-					source_message_id: {
-						type: 'string',
-						description: 'Optional message ID that triggered this escalation'
-					}
-				},
-				required: ['braindump', 'realm']
+				required: ['scope', 'context']
 			}
 		}
 	},
@@ -1480,7 +1482,7 @@ This is the PRIMARY tool for creating projects. It supports creating a complete 
 - Outputs, documents, sources
 - Metrics, milestones, risks, decisions
 - Custom entity relationships
-- Context document linkage (document.project.context)
+- Context document linkage (document.context.project)
 
 **IMPORTANT**: You should INFER as much as possible from the user's message:
 - Project name from context
@@ -1549,7 +1551,7 @@ For example:
 							type_key: {
 								type: 'string',
 								description:
-									'Template type key like "writer.book" (REQUIRED - get from list_onto_templates)'
+									'Template type key like "project.writer.book" (REQUIRED - get from list_onto_templates). Must use project.{domain}.{deliverable}[.{variant}] format.'
 							},
 							description: {
 								type: 'string',
@@ -1574,7 +1576,7 @@ This object MUST contain:
 2. ALL template-specific properties with values from the user's message
 
 **Extraction Process**:
-- Review the template schema (from suggest_template or list_onto_templates)
+- Review the template schema (from find_or_create_template or list_onto_templates)
 - For EACH property in the schema, extract relevant info from user's message
 - Populate with specific values the user mentioned
 - Use intelligent defaults for properties inferable from context
@@ -1731,7 +1733,7 @@ DO NOT leave template properties empty if information is available in the conver
 					context_document: {
 						type: 'object',
 						description:
-							'Canonical context document (document.project.context) that will be linked to the project.',
+							'Canonical context document (document.context.project) that will be linked to the project.',
 						properties: {
 							title: { type: 'string' },
 							body_markdown: {
@@ -1740,7 +1742,7 @@ DO NOT leave template properties empty if information is available in the conver
 							},
 							type_key: {
 								type: 'string',
-								description: 'Defaults to document.project.context'
+								description: 'Defaults to document.context.project'
 							},
 							state_key: {
 								type: 'string',
@@ -2152,6 +2154,18 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 		capabilities: ['Supports text + facet filters', 'Great for project creation grounding'],
 		contexts: ['global', 'project_create', 'project'],
 		category: 'search'
+	},
+	find_or_create_template: {
+		summary: 'Unified template discovery and creation with intelligent matching.',
+		capabilities: [
+			'Searches existing templates by context similarity',
+			'LLM-powered scoring with 70% match threshold',
+			'Creates new templates when no suitable match exists',
+			'Supports all 8 entity scopes (project, task, plan, goal, document, output, risk, event)',
+			'Penalizes abstract templates in favor of concrete ones'
+		],
+		contexts: ['global', 'project_create', 'project', 'project_audit'],
+		category: 'utility'
 	},
 	get_field_info: {
 		summary: 'Schema helper that explains entity fields, enums, and valid values.',

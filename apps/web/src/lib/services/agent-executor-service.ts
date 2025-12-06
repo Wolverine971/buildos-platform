@@ -823,10 +823,10 @@ export class AgentExecutorService {
 			step_number?: number;
 			planner_agent_id: string;
 			executor_agent_id: string;
-			session_type: string;
+			session_type: 'planner_thinking' | 'planner_executor';
 			initial_context: Json;
 			user_id: string;
-			status: string;
+			status: 'active' | 'completed' | 'failed';
 			context_type?: string | null;
 			entity_id?: string | null;
 		} = {

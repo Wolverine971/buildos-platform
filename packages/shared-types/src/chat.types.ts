@@ -46,7 +46,10 @@ export type ChatContextType =
 	| 'project_audit' // Critical review of project
 	| 'project_forecast' // Scenario forecasting
 	| 'task_update' // Quick task updates
-	| 'daily_brief_update'; // Daily brief preferences
+	| 'daily_brief_update' // Daily brief preferences
+	// Additional context types
+	| 'ontology' // Ontology system interactions
+	| 'brain_dump'; // Brain dump processing
 export type ChatRole = 'user' | 'assistant' | 'system' | 'tool';
 export type ChatSessionStatus = 'active' | 'archived' | 'compressed';
 export type ToolCategory = 'list' | 'detail' | 'action' | 'calendar';

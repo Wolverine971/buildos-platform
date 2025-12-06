@@ -70,32 +70,37 @@
 	}}
 />
 
-<div class="min-h-screen bg-gray-50 dark:bg-gray-900">
+<div class="min-h-screen bg-[var(--surface-scratch)] dither-pattern">
 	<!-- Hero Section -->
-	<section class="py-20 bg-white dark:bg-gray-800" aria-labelledby="pricing-heading">
+	<section
+		class="py-20 bg-[var(--surface-panel)] noise-overlay"
+		aria-labelledby="pricing-heading"
+	>
 		<div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
 			<div class="text-center mb-16">
 				<div class="flex justify-center mb-6">
-					<img src="/brain-bolt.png" alt="BuildOS Icon" class="w-16 h-16" />
+					<div
+						class="utility-block w-16 h-16 rounded-sm flex items-center justify-center"
+					>
+						<img src="/brain-bolt.png" alt="BuildOS Icon" class="w-12 h-12" />
+					</div>
 				</div>
 				<h1
 					id="pricing-heading"
-					class="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-6"
+					class="text-4xl md:text-5xl font-bold text-slate-900 dark:text-slate-100 mb-6"
 				>
-					Simple, <span class="text-primary-600">Transparent</span> Pricing
+					Simple, <span class="text-[var(--accent-orange)]">Transparent</span> Pricing
 				</h1>
-				<p class="text-xl text-gray-600 dark:text-gray-400 max-w-3xl mx-auto mb-8">
+				<p class="text-xl text-slate-700 dark:text-slate-300 max-w-3xl mx-auto mb-8">
 					Start with a 14-day free trial. No credit card required, cancel anytime.
 				</p>
 
 				{#if error}
 					<div class="max-w-md mx-auto mb-8" role="alert" aria-live="polite">
-						<div
-							class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4"
-						>
+						<div class="badge-draft text-red-800 dark:text-red-300 p-4">
 							<div class="flex items-center">
 								<AlertCircle class="h-5 w-5 text-red-600 mr-2" />
-								<p class="text-red-800 dark:text-red-200">{error}</p>
+								<p>{error}</p>
 							</div>
 						</div>
 					</div>
@@ -106,15 +111,13 @@
 			<div class="max-w-md mx-auto" role="region" aria-label="Pricing plan">
 				<!-- BuildOS Pro -->
 				<article
-					class="bg-white dark:bg-gray-800 rounded-xl p-8 shadow-lg border-2 border-primary-500 relative"
+					class="card-industrial p-8 relative dither-soft"
 					aria-labelledby="pro-plan-heading"
 				>
 					{#if data.trialStatus?.is_in_trial}
 						<!-- Trial Badge -->
 						<div class="absolute -top-3 left-1/2 transform -translate-x-1/2">
-							<span
-								class="bg-emerald-500 text-white px-4 py-1 rounded-full text-sm font-semibold"
-							>
+							<span class="badge-active">
 								{data.trialStatus.days_until_trial_end} Days Left in Trial
 							</span>
 						</div>
@@ -123,18 +126,20 @@
 					<div class="text-center mb-8">
 						<h3
 							id="pro-plan-heading"
-							class="text-2xl font-bold text-gray-900 dark:text-white mb-2"
+							class="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-2"
 						>
 							BuildOS Pro
 						</h3>
-						<p class="text-gray-600 dark:text-gray-400 mb-6">
+						<p class="text-slate-700 dark:text-slate-300 mb-6">
 							Your personal productivity operating system
 						</p>
-						<div class="text-4xl font-bold text-gray-900 dark:text-white mb-2">
+						<div class="text-4xl font-bold text-slate-900 dark:text-slate-100 mb-2">
 							$20
-							<span class="text-lg font-normal text-gray-500">/month</span>
+							<span class="text-lg font-normal text-slate-600 dark:text-slate-400"
+								>/month</span
+							>
 						</div>
-						<p class="text-sm text-gray-500 dark:text-gray-400">
+						<p class="text-sm text-slate-600 dark:text-slate-400">
 							Billed monthly • 14-day free trial
 						</p>
 					</div>

@@ -11,7 +11,7 @@
 		variant = 'default',
 		padding = 'md',
 		hoverable = false,
-		dithered = true,
+		dithered = false, // Cards should typically NOT have dithering - clean containers
 		class: className = '',
 		...restProps
 	}: {
@@ -22,14 +22,14 @@
 		class?: string;
 	} & HTMLAttributes<HTMLDivElement> = $props();
 
-	// Variant styles (GPU-optimized transitions)
+	// Variant styles - Scratchpad Ops design
 	const variantClasses = {
-		default: 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm',
-		elevated: 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-md',
+		default: 'bg-surface-panel border border-gray-200 dark:border-gray-700 shadow-subtle',
+		elevated: 'bg-surface-panel border border-gray-200 dark:border-gray-700 shadow-card',
 		interactive:
-			'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-lg hover:border-gray-300 dark:hover:border-gray-600 cursor-pointer',
+			'bg-surface-panel border border-gray-200 dark:border-gray-700 shadow-subtle hover:shadow-card hover:border-gray-300 dark:hover:border-gray-600 cursor-pointer',
 		outline:
-			'bg-transparent border-2 border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500'
+			'bg-transparent border-2 border-gray-700 dark:border-gray-500 hover:border-accent-olive dark:hover:border-gray-400'
 	};
 
 	// Padding styles - optimized for high information density (Apple-style)
@@ -43,8 +43,8 @@
 	// Svelte 5 runes: Convert reactive declaration to $derived
 	let cardClasses = $derived(
 		twMerge(
-			// Base styles (GPU-optimized, no transition-all)
-			'rounded-lg overflow-hidden',
+			// Base styles - Scratchpad Ops styling
+			'rounded overflow-hidden', // 4px radius for industrial feel
 
 			// Variant
 			variantClasses[variant],
@@ -52,11 +52,11 @@
 			// Padding
 			paddingClasses[padding],
 
-			// Hoverable (uses GPU-optimized utility from animation-utils.css)
-			hoverable && 'hover-scale cursor-pointer',
+			// Hoverable
+			hoverable && 'transition-transform hover:scale-[1.01] cursor-pointer',
 
-			// Dithered effect - CRITICAL: must include 'relative' for ::before positioning
-			dithered && 'card-dithered relative',
+			// Light grain texture for surface (optional)
+			dithered && 'dither-subtle', // Use subtle dithering from dithering.css
 
 			// Custom classes
 			className
@@ -64,58 +64,19 @@
 	);
 </script>
 
-<!-- SVG Dithering Pattern Definition -->
-<svg width="0" height="0" class="absolute">
-	<defs>
-		<pattern
-			id="dither-pattern-subtle"
-			patternUnits="userSpaceOnUse"
-			width="4"
-			height="4"
-			patternTransform="rotate(0)"
-		>
-			<rect width="4" height="4" fill="rgba(0,0,0,0)" />
-			<circle
-				cx="0"
-				cy="0"
-				r="0.4"
-				fill="rgba(0,0,0,0.015)"
-				class="dark:fill-white/[0.015]"
-			/>
-			<circle cx="2" cy="1" r="0.4" fill="rgba(0,0,0,0.01)" class="dark:fill-white/[0.01]" />
-			<circle
-				cx="1"
-				cy="2"
-				r="0.4"
-				fill="rgba(0,0,0,0.012)"
-				class="dark:fill-white/[0.012]"
-			/>
-			<circle
-				cx="3"
-				cy="3"
-				r="0.4"
-				fill="rgba(0,0,0,0.008)"
-				class="dark:fill-white/[0.008]"
-			/>
-		</pattern>
-	</defs>
-</svg>
-
 <div class={cardClasses} {...restProps}>
 	<slot />
 </div>
 
 <style>
-	/* ==================== GPU-Optimized Card Transitions ==================== */
-
-	/* Interactive card transitions */
+	/* Card transitions - optimized for performance */
 	div {
 		/* GPU acceleration */
 		transform: translateZ(0);
 		backface-visibility: hidden;
 
-		/* Only animate GPU-friendly properties */
-		transition-property: box-shadow, border-color, opacity;
+		/* Smooth transitions */
+		transition-property: box-shadow, border-color, transform;
 		transition-duration: 200ms;
 		transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
 	}
@@ -127,33 +88,8 @@
 		transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
 	}
 
+	/* Dark mode focus ring offset */
 	:global(.dark) div {
 		--tw-ring-offset-color: rgb(31 41 55);
-	}
-
-	/* Dithering effect using mix-blend-mode (robust with GPU acceleration) */
-	:global(.card-dithered::before) {
-		content: '';
-		position: absolute;
-		inset: 0;
-		background-image: url("data:image/svg+xml,%3Csvg width='4' height='4' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='4' height='4' fill='rgba(0,0,0,0)'/%3E%3Ccircle cx='0' cy='0' r='0.5' fill='rgb(0,0,0)'/%3E%3Ccircle cx='2' cy='1' r='0.5' fill='rgb(0,0,0)'/%3E%3Ccircle cx='1' cy='2' r='0.5' fill='rgb(0,0,0)'/%3E%3Ccircle cx='3' cy='3' r='0.5' fill='rgb(0,0,0)'/%3E%3C/svg%3E");
-		background-size: 4px 4px;
-		mix-blend-mode: overlay;
-		opacity: 0.15;
-		pointer-events: none;
-		border-radius: inherit;
-		transition: opacity 0.3s ease;
-	}
-
-	/* Dark mode dithering - uses white dots with soft-light blend */
-	:global(.dark .card-dithered::before) {
-		background-image: url("data:image/svg+xml,%3Csvg width='4' height='4' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='4' height='4' fill='rgba(0,0,0,0)'/%3E%3Ccircle cx='0' cy='0' r='0.5' fill='rgb(255,255,255)'/%3E%3Ccircle cx='2' cy='1' r='0.5' fill='rgb(255,255,255)'/%3E%3Ccircle cx='1' cy='2' r='0.5' fill='rgb(255,255,255)'/%3E%3Ccircle cx='3' cy='3' r='0.5' fill='rgb(255,255,255)'/%3E%3C/svg%3E");
-		mix-blend-mode: soft-light;
-		opacity: 0.2;
-	}
-
-	/* Fade out on hover for interactive cards */
-	:global(.card-dithered.hover\:shadow-lg:hover::before) {
-		opacity: 0.08;
 	}
 </style>

@@ -1,6 +1,6 @@
 # Ontology Data Models & Database Schema
 
-**Last Updated**: November 4, 2025
+**Last Updated**: December 1, 2025
 **Status**: Complete Analysis
 **Category**: Feature Documentation
 **Location**: `/apps/web/docs/features/ontology/`
@@ -34,7 +34,7 @@ All ontology tables use the `onto_` prefix in the public schema. Key tables are:
 | Table                | Purpose                      | Key Columns                                                                   |
 | -------------------- | ---------------------------- | ----------------------------------------------------------------------------- |
 | `onto_projects`      | Root projects/work units     | id, name, type_key, state_key, props, facet_context, facet_scale, facet_stage |
-| `onto_tasks`         | Actionable items             | id, project_id, plan_id, title, state_key, priority, due_at, props            |
+| `onto_tasks`         | Actionable items             | id, project_id, type_key, title, state_key, priority, due_at, props           |
 | `onto_plans`         | Logical groupings of tasks   | id, project_id, name, type_key, state_key, props                              |
 | `onto_outputs`       | Deliverables/artifacts       | id, project_id, name, type_key, state_key, props, facet_stage                 |
 | `onto_documents`     | Project documents            | id, project_id, title, type_key, props, state_key                             |
@@ -63,7 +63,7 @@ interface OntoProject {
 	org_id: uuid | null;
 	name: text;
 	description: text | null;
-	type_key: text; // e.g., 'founder.startup', 'writer.book'
+	type_key: text; // e.g., 'project.founder.startup', 'project.writer.book'
 	also_types: text[]; // Additional type keys
 	state_key: text; // e.g., 'draft', 'active', 'complete'
 	props: jsonb; // Flexible properties
@@ -94,16 +94,18 @@ interface OntoProject {
 
 ### 2.2 ONTO_TASKS
 
-**Atomic actionable items, organized into plans.**
+**Atomic actionable items with work mode taxonomy.**
+
+> **Schema Reference**: See [TYPE_KEY_TAXONOMY.md](./TYPE_KEY_TAXONOMY.md#onto_tasks) for complete task type_key documentation.
 
 ```typescript
 interface OntoTask {
 	id: uuid;
 	project_id: uuid; // FK to onto_projects
-	plan_id: uuid | null; // FK to onto_plans (optional grouping)
+	type_key: text; // Work mode taxonomy (required, default: 'task.execute')
 	title: text;
 	state_key: text; // 'todo', 'in_progress', 'done', etc.
-	priority: int | null; // Numeric priority
+	priority: int | null; // Numeric priority (1-5)
 	due_at: timestamptz | null;
 	props: jsonb; // Flexible task properties
 
@@ -114,6 +116,37 @@ interface OntoTask {
 	created_at: timestamptz;
 	updated_at: timestamptz;
 }
+```
+
+**type_key Work Mode Taxonomy**
+
+Format: `task.{work_mode}[.{specialization}]`
+
+| Work Mode         | Description             | Example                       |
+| ----------------- | ----------------------- | ----------------------------- |
+| `task.execute`    | Action tasks (default)  | Call vendor, send email       |
+| `task.create`     | Produce new artifacts   | Write proposal, design mockup |
+| `task.refine`     | Improve existing work   | Edit document, polish copy    |
+| `task.research`   | Investigate/gather info | Research competitors          |
+| `task.review`     | Evaluate and feedback   | Review PR, audit report       |
+| `task.coordinate` | Sync with others        | Schedule meeting              |
+| `task.admin`      | Administrative tasks    | Update spreadsheet            |
+| `task.plan`       | Strategic planning      | Roadmap planning              |
+
+**Specializations**: `task.coordinate.meeting`, `task.coordinate.standup`, `task.execute.deploy`, `task.execute.checklist`
+
+**Plan Relationships**
+
+Tasks relate to plans via `onto_edges` (not a direct column):
+
+- Edge relation `belongs_to_plan`: task → plan
+- Edge relation `has_task`: plan → task
+
+```sql
+-- Find tasks for a plan
+SELECT t.* FROM onto_tasks t
+JOIN onto_edges e ON e.src_id = t.id
+WHERE e.rel = 'belongs_to_plan' AND e.dst_id = 'plan-uuid';
 ```
 
 **Recurring series props**
@@ -160,7 +193,7 @@ interface OntoPlan {
 	id: uuid;
 	project_id: uuid; // FK to onto_projects
 	name: text;
-	type_key: text; // e.g., 'plan.sprint', 'plan.weekly'
+	type_key: text; // e.g., 'plan.timebox.sprint', 'plan.timebox.weekly'
 	state_key: text; // 'draft', 'active', 'review', 'complete'
 	props: jsonb;
 
@@ -192,7 +225,7 @@ interface OntoOutput {
 	id: uuid;
 	project_id: uuid;
 	name: text;
-	type_key: text; // e.g., 'output.chapter', 'output.launch_plan'
+	type_key: text; // e.g., 'output.written.chapter', 'output.operational.playbook'
 	state_key: text; // 'draft', 'review', 'approved', 'published'
 	props: jsonb;
 
@@ -205,16 +238,14 @@ interface OntoOutput {
 }
 ```
 
-**Output Types (seeded):**
+**Output Types (family-based taxonomy):**
 
-- `output.chapter` - Book chapters
-- `output.design` - Design assets
-- `output.workout_plan` - Fitness plans
-- `output.article` - Blog articles/essays
-- `output.blog_post` - Blog posts
-- `output.case_study` - Customer case studies
-- `output.whitepaper` - Technical/research papers
-- `output.newsletter` - Email newsletters
+> See [ONTOLOGY_NAMESPACES_CORE.md](./ONTOLOGY_NAMESPACES_CORE.md#outputs-output) for complete list.
+
+- **Written**: `output.written.chapter`, `output.written.article`, `output.written.blog_post`, `output.written.case_study`, `output.written.whitepaper`, `output.written.newsletter`
+- **Media**: `output.media.design_mockup`, `output.media.slide_deck`, `output.media.video`, `output.media.audio`
+- **Software**: `output.software.feature`, `output.software.release`, `output.software.api`
+- **Operational**: `output.operational.report`, `output.operational.dashboard`, `output.operational.contract`
 
 **Version Tracking:**
 
@@ -241,7 +272,7 @@ interface OntoDocument {
 	id: uuid;
 	project_id: uuid;
 	title: text;
-	type_key: text; // e.g., 'doc.brief', 'doc.notes'
+	type_key: text; // e.g., 'document.context.brief', 'document.knowledge.research'
 	props: jsonb;
 
 	created_by: uuid;
@@ -250,11 +281,16 @@ interface OntoDocument {
 }
 ```
 
-**Document Types (seeded):**
+**Document Types (family-based taxonomy):**
 
-- `doc.brief` - Project brief
-- `doc.notes` - Notes/research
-- `doc.intake` - Intake forms
+> See [ONTOLOGY_NAMESPACES_CORE.md](./ONTOLOGY_NAMESPACES_CORE.md#documents-document) for complete list.
+
+- **Context**: `document.context.project`, `document.context.brief`
+- **Knowledge**: `document.knowledge.research`, `document.knowledge.market_research`, `document.knowledge.brain_dump`
+- **Decision**: `document.decision.meeting_notes`, `document.decision.rfc`, `document.decision.proposal.client`
+- **Spec**: `document.spec.product`, `document.spec.technical`, `document.spec.requirement`
+- **Reference**: `document.reference.handbook`, `document.reference.sop`, `document.reference.checklist`
+- **Intake**: `document.intake.client`, `document.intake.user`, `document.intake.project`
 
 **Version Tracking:**
 
@@ -1095,7 +1131,7 @@ idx_onto_projects_facet_stage (facet_stage)
 idx_onto_projects_org (org_id)
 idx_onto_goals_project (project_id)
 idx_onto_tasks_project (project_id)
-idx_onto_tasks_plan (plan_id)
+idx_onto_tasks_type_key (type_key)
 
 -- State and type queries
 idx_onto_projects_state (state_key)
@@ -1170,7 +1206,7 @@ idx_onto_templates_metadata (metadata jsonb_path_ops)
 constraint chk_type_key_format check (type_key ~ '^[a-z_]+\.[a-z_]+(\.[a-z_]+)?$')
 
 -- Scope validation
-constraint chk_scope_valid check (scope in ('project','plan','task','output','document','goal','requirement','risk','milestone','metric'))
+constraint chk_scope_valid check (scope in ('project','plan','task','output','document','goal','requirement','risk','milestone','metric','event'))
 
 -- Actor identity constraint
 constraint chk_actor_identity check (
@@ -1198,6 +1234,8 @@ unique (actor_id, object_kind, object_id, role_key) -- on assignments
 1. `20250601000001_ontology_system.sql` - Core tables, facets, templates
 2. `20250601000002_ontology_helpers.sql` - PostgreSQL helper functions
 3. `20250602000001_add_base_output_templates.sql` - Output template inheritance
+4. `20251201_add_event_scope.sql` - Add 'event' to template scope constraint
+5. `20251201_family_based_templates_seed.sql` - Family-based taxonomy templates (53 templates)
 
 ---
 

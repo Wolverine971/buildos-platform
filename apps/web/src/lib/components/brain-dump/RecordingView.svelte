@@ -357,7 +357,7 @@
 				onblur={handleTextBlur}
 				placeholder={placeholderText}
 				disabled={isProcessing || isInitializingRecording}
-				class="flex-1 w-full p-4 pb-[env(keyboard-inset-height,4rem)] bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-200/30 dark:border-gray-700/30 rounded-xl outline-none resize-none text-gray-900 dark:text-gray-100 text-base sm:text-[15px] leading-relaxed placeholder:text-gray-500 dark:placeholder:text-gray-500 placeholder:whitespace-pre-line disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 focus:ring-2 focus:ring-purple-500/30 focus:border-purple-500/50 shadow-sm hover:shadow-md"
+				class="input-scratchpad dither-soft flex-1 w-full p-5 pb-[env(keyboard-inset-height,4rem)] resize-none text-base sm:text-[15px] leading-relaxed placeholder:text-slate-500 dark:placeholder:text-slate-400 placeholder:whitespace-pre-line disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
 				spellcheck="true"
 				autocomplete="off"
 			></textarea>

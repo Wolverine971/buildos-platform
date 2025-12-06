@@ -4,6 +4,7 @@
 <script lang="ts">
 	import { AlertCircle } from 'lucide-svelte';
 	import { onDestroy, createEventDispatcher } from 'svelte';
+	import { browser } from '$app/environment';
 	import { projectStoreV2 } from '$lib/stores/project.store';
 	import { notificationStore } from '$lib/stores/notification.store';
 	import { modalStore } from '$lib/stores/modal.store';
@@ -227,18 +228,21 @@
 	$effect(() => {});
 
 	$effect(() => {
+		if (!browser) return;
 		if (hasPhases && viewMode === 'kanban' && !KanbanView) {
 			loadComponent('KanbanView');
 		}
 	});
 
 	$effect(() => {
+		if (!browser) return;
 		if (hasPhases && viewMode === 'timeline' && !TimelineView) {
 			loadComponent('TimelineView');
 		}
 	});
 
 	$effect(() => {
+		if (!browser) return;
 		if (creatingPhase && !PhaseForm) {
 			loadComponent('PhaseForm');
 		}

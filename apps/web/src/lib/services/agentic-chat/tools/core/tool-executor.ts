@@ -12,11 +12,13 @@ import type { TypedSupabaseClient } from '@buildos/supabase-client';
 import type { ChatToolCall, ChatToolResult } from '@buildos/shared-types';
 import { getToolCategory, ENTITY_FIELD_INFO } from './tools.config';
 import { ensureActorId } from '$lib/services/ontology/ontology-projects.service';
-import { TemplateCreationService } from '$lib/services/agentic-chat/template-creation/template-creation-service';
-import { TemplateCrudService } from '$lib/services/ontology/template-crud.service';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { SmartLLMService } from '$lib/services/smart-llm-service';
-import { EnhancedTemplateGenerator } from './template-generator-enhanced';
+import {
+	FindOrCreateTemplateService,
+	type EntityScope,
+	type FindOrCreateResult
+} from '$lib/services/ontology/find-or-create-template.service';
 import {
 	getBuildosOverviewDocument,
 	getBuildosUsageGuide
@@ -107,6 +109,7 @@ interface UpdateOntoTaskArgs {
 	description?: string;
 	update_strategy?: 'replace' | 'append' | 'merge_llm';
 	merge_instructions?: string;
+	type_key?: string;
 	state_key?: string;
 	priority?: number;
 	plan_id?: string;
@@ -314,44 +317,19 @@ interface CreateOntoProjectArgs {
 	meta?: Record<string, unknown>;
 }
 
-interface SuggestTemplateArgs {
-	type_key: string;
-	name: string;
-	description: string;
-	parent_type_key?: string;
-	match_score: number;
-	rationale: string;
-	properties: Record<
-		string,
-		{
-			type: 'string' | 'number' | 'boolean' | 'array' | 'object' | 'date';
-			description?: string;
-			default?: any;
-			required?: boolean;
-		}
-	>;
-	workflow_states: Array<{
-		state: string;
-		description?: string;
-		transitions_to?: string[];
-	}>;
-	example_props?: Record<string, unknown>;
-	benefits?: string[];
-}
-
-interface RequestTemplateCreationArgs {
-	braindump: string;
-	realm: string;
-	template_hints?: string[];
-	deliverables?: string[];
-	template_suggestions?: string[];
-	missing_information?: string[];
+interface FindOrCreateTemplateArgs {
+	scope: 'project' | 'task' | 'plan' | 'goal' | 'document' | 'output' | 'risk' | 'event';
+	context: string;
+	preferred_type_key?: string;
+	realm?: string;
+	match_threshold?: number;
+	allow_create?: boolean;
 	facets?: {
 		context?: string;
 		scale?: string;
 		stage?: string;
 	};
-	source_message_id?: string;
+	example_props?: Record<string, unknown>;
 }
 
 function extractMetaString(
@@ -372,7 +350,7 @@ function buildContextDocumentSpec(
 	if (provided?.title?.trim() && provided?.body_markdown?.trim()) {
 		return {
 			...provided,
-			type_key: provided.type_key ?? 'document.project.context',
+			type_key: provided.type_key ?? 'document.context.project',
 			state_key: provided.state_key ?? 'active'
 		};
 	}
@@ -411,7 +389,7 @@ function buildContextDocumentSpec(
 	return {
 		title: `${args.project.name} Context Document`,
 		body_markdown: body,
-		type_key: 'document.project.context',
+		type_key: 'document.context.project',
 		state_key: 'active',
 		props: {
 			source: 'agent_project_creation',
@@ -425,11 +403,9 @@ export class ChatToolExecutor {
 	private sessionId?: string;
 	private fetchFn: typeof fetch;
 	private actorId?: string;
-	private templateCreationService?: TemplateCreationService;
 	private adminSupabase?: TypedSupabaseClient;
 	private llmService?: SmartLLMService;
-	private templateGenerator?: EnhancedTemplateGenerator;
-	private templateSuggestions?: Map<string, any>;
+	private findOrCreateService?: FindOrCreateTemplateService;
 
 	constructor(
 		private supabase: SupabaseClient,
@@ -454,16 +430,17 @@ export class ChatToolExecutor {
 		return this.adminSupabase;
 	}
 
-	private getTemplateGenerator(): EnhancedTemplateGenerator {
-		if (!this.templateGenerator) {
-			this.templateGenerator = new EnhancedTemplateGenerator(
+	private getFindOrCreateService(): FindOrCreateTemplateService {
+		if (!this.findOrCreateService) {
+			if (!this.llmService) {
+				throw new Error('LLM service required for FindOrCreateTemplateService');
+			}
+			this.findOrCreateService = new FindOrCreateTemplateService(
 				this.getAdminSupabase(),
-				this.llmService,
-				this.userId,
-				this.sessionId
+				this.llmService
 			);
 		}
-		return this.templateGenerator;
+		return this.findOrCreateService;
 	}
 
 	private async getActorId(): Promise<string> {
@@ -499,12 +476,34 @@ export class ChatToolExecutor {
 		if (!response.ok) {
 			let errorMessage = `${response.status} ${response.statusText}`;
 			let errorDetails: any = null;
-			try {
-				const errorPayload = await response.json();
-				errorMessage = errorPayload.error || errorPayload.message || errorMessage;
-				errorDetails = errorPayload.details;
-			} catch {
-				// ignore JSON parse errors
+
+			// Try to extract error details from response body
+			const contentType = response.headers.get('content-type');
+			if (contentType?.includes('application/json')) {
+				try {
+					const errorPayload = await response.json();
+					errorMessage = errorPayload.error || errorPayload.message || errorMessage;
+					errorDetails = errorPayload.details;
+				} catch (jsonError) {
+					// Log JSON parse failure for debugging - don't silently swallow
+					console.warn('[ChatToolExecutor] Failed to parse error response as JSON:', {
+						path,
+						status: response.status,
+						contentType,
+						parseError:
+							jsonError instanceof Error ? jsonError.message : String(jsonError)
+					});
+				}
+			} else {
+				// Non-JSON error response, try to get text
+				try {
+					const textBody = await response.text();
+					if (textBody.length > 0 && textBody.length < 500) {
+						errorMessage = `${errorMessage}: ${textBody}`;
+					}
+				} catch {
+					// Ignore text extraction failure
+				}
 			}
 
 			throw new Error(
@@ -512,6 +511,23 @@ export class ChatToolExecutor {
 					errorDetails ? ` (${JSON.stringify(errorDetails)})` : ''
 				}`
 			);
+		}
+
+		// Validate Content-Type before parsing JSON response
+		const responseContentType = response.headers.get('content-type');
+		if (!responseContentType?.includes('application/json')) {
+			console.warn('[ChatToolExecutor] Response is not JSON:', {
+				path,
+				contentType: responseContentType
+			});
+			// Try to return raw text if not JSON
+			const text = await response.text();
+			try {
+				// Maybe it's JSON without proper content-type
+				return JSON.parse(text);
+			} catch {
+				return { data: text };
+			}
 		}
 
 		const payload = await response.json();
@@ -523,47 +539,19 @@ export class ChatToolExecutor {
 		typeKey?: string;
 		props?: Record<string, unknown>;
 		nameHint?: string;
-		metadata?: Record<string, unknown>;
 	}): Promise<string | undefined> {
-		// Check if we have a suggested template for this type_key
-		if (params.typeKey && this.templateSuggestions?.has(params.typeKey)) {
-			const suggestion = this.templateSuggestions.get(params.typeKey);
+		if (!params.typeKey) return undefined;
 
-			// Pass the suggestion metadata to the template generator
-			// This will help create a more intelligent template
-			const enhancedMetadata = {
-				...params.metadata,
-				suggested_template: {
-					name: suggestion.name,
-					description: suggestion.description,
-					schema: suggestion.schema,
-					default_props: suggestion.default_props,
-					fsm_spec: suggestion.fsm_spec,
-					parent_type_key: suggestion.parent_type_key
-				}
-			};
-
-			// Clear the suggestion after using it
-			this.templateSuggestions.delete(params.typeKey);
-
-			// Use the enhanced metadata for template creation
-			return this.getTemplateGenerator().ensureTemplate({
-				scope: params.scope as any,
-				typeKey: params.typeKey,
-				props: { ...suggestion.default_props, ...params.props },
-				nameHint: suggestion.name || params.nameHint,
-				metadata: enhancedMetadata
-			});
-		}
-
-		// Use the enhanced template generator for intelligent template creation
-		return this.getTemplateGenerator().ensureTemplate({
-			scope: params.scope as any,
+		// Use FindOrCreateTemplateService for template existence checks
+		const template = await this.getFindOrCreateService().ensureTemplateExists({
+			scope: params.scope as EntityScope,
 			typeKey: params.typeKey,
-			props: params.props,
+			userId: this.userId,
 			nameHint: params.nameHint,
-			metadata: params.metadata
+			props: params.props
 		});
+
+		return template.type_key;
 	}
 
 	private async ensureTemplatesForProjectSpec(args: CreateOntoProjectArgs): Promise<void> {
@@ -626,7 +614,7 @@ export class ChatToolExecutor {
 			);
 		}
 
-		const contextTypeKey = args.context_document?.type_key ?? 'document.project.context';
+		const contextTypeKey = args.context_document?.type_key ?? 'document.context.project';
 		tasks.push(
 			this.ensureTemplateForScope({
 				scope: 'document',
@@ -738,13 +726,9 @@ export class ChatToolExecutor {
 				case 'create_onto_project':
 					result = await this.createOntoProject(args as CreateOntoProjectArgs);
 					break;
-				case 'suggest_template':
-					result = await this.suggestTemplate(args as SuggestTemplateArgs);
-					break;
-				case 'request_template_creation':
-					result = await this.requestTemplateCreation(
-						args as RequestTemplateCreationArgs
-					);
+
+				case 'find_or_create_template':
+					result = await this.findOrCreateTemplate(args as FindOrCreateTemplateArgs);
 					break;
 
 				case 'create_onto_task':
@@ -863,174 +847,86 @@ export class ChatToolExecutor {
 		return { payload, streamEvents: events };
 	}
 
-	private getTemplateCreationService(): TemplateCreationService {
-		if (!this.templateCreationService) {
-			this.templateCreationService = new TemplateCreationService(this.supabase as any);
-		}
-		return this.templateCreationService;
-	}
-
-	private async suggestTemplate(args: SuggestTemplateArgs) {
+	/**
+	 * Find or create a template using the unified FindOrCreateTemplateService.
+	 *
+	 * This tool provides intelligent template discovery and creation:
+	 * - Searches existing templates by context similarity
+	 * - Uses LLM-powered scoring with 70% match threshold
+	 * - Creates new templates when no suitable match exists
+	 * - Supports all 8 entity scopes (project, task, plan, goal, document, output, risk, event)
+	 */
+	private async findOrCreateTemplate(args: FindOrCreateTemplateArgs): Promise<{
+		template: {
+			id: string;
+			type_key: string;
+			name: string;
+			description: string;
+			scope: string;
+		};
+		created: boolean;
+		match_score?: number;
+		rationale?: string;
+		message: string;
+	}> {
 		// Validate required fields
-		if (!args.type_key || !args.name || !args.description) {
-			throw new Error('type_key, name, and description are required for template suggestion');
+		if (!args.scope) {
+			throw new Error('scope is required for find_or_create_template');
+		}
+		if (!args.context) {
+			throw new Error('context is required for find_or_create_template');
 		}
 
-		// Build FSM spec from workflow states
-		const fsmSpec = {
-			initial: args.workflow_states[0]?.state || 'draft',
-			states: args.workflow_states.map((s) => s.state),
-			transitions: args.workflow_states.reduce(
-				(acc, state) => {
-					if (state.transitions_to && state.transitions_to.length > 0) {
-						state.transitions_to.forEach((target) => {
-							acc.push({
-								from: state.state,
-								to: target,
-								event: `${state.state}_to_${target}`
-							});
-						});
-					}
-					return acc;
-				},
-				[] as Array<{ from: string; to: string; event: string }>
-			)
-		};
+		const service = this.getFindOrCreateService();
 
-		// Convert properties to JSON schema format
-		const schema = {
-			type: 'object',
-			properties: Object.entries(args.properties).reduce(
-				(acc, [key, prop]) => {
-					acc[key] = {
-						type: prop.type === 'date' ? 'string' : prop.type,
-						...(prop.type === 'date' && { format: 'date-time' }),
-						...(prop.description && { description: prop.description })
-					};
-					return acc;
-				},
-				{} as Record<string, any>
-			),
-			required: Object.entries(args.properties)
-				.filter(([_, prop]) => prop.required)
-				.map(([key]) => key)
-		};
-
-		// Build default props
-		const defaultProps = Object.entries(args.properties).reduce(
-			(acc, [key, prop]) => {
-				if (prop.default !== undefined) {
-					acc[key] = prop.default;
-				}
-				return acc;
-			},
-			{} as Record<string, any>
-		);
-
-		// Store the suggestion for use by create_onto_project
-		// This will be used when the AI creates the project with this type_key
-		const suggestion = {
-			type_key: args.type_key,
-			name: args.name,
-			description: args.description,
-			parent_type_key: args.parent_type_key,
-			schema,
-			default_props: defaultProps,
-			fsm_spec: fsmSpec,
-			match_score: args.match_score,
-			rationale: args.rationale,
-			benefits: args.benefits,
-			example_props: args.example_props,
-			suggested_at: new Date().toISOString()
-		};
-
-		// Store in session context for later use
-		if (!this.templateSuggestions) {
-			this.templateSuggestions = new Map();
-		}
-		this.templateSuggestions.set(args.type_key, suggestion);
-
-		return {
-			success: true,
-			result: {
-				message: `Template suggestion registered: ${args.name}`,
-				type_key: args.type_key,
-				description: args.description,
-				properties_count: Object.keys(args.properties).length,
-				workflow_states: args.workflow_states.map((s) => s.state),
-				match_score: args.match_score,
-				rationale: args.rationale,
-				benefits: args.benefits,
-				note: 'This template will be automatically created when you use create_onto_project with this type_key'
-			}
-		};
-	}
-
-	private async requestTemplateCreation(args: RequestTemplateCreationArgs) {
-		const braindump = args.braindump?.trim();
-		const realm = args.realm?.trim();
-
-		if (!braindump) {
-			throw new Error('braindump is required for template creation');
-		}
-		if (!realm) {
-			throw new Error('realm is required for template creation');
-		}
-
-		const creation = await this.getTemplateCreationService().requestTemplateCreation({
-			userId: this.userId,
-			sessionId: this.sessionId,
-			braindump,
-			realm,
-			templateHints: args.template_hints,
-			deliverables: args.deliverables,
-			templateSuggestions: args.template_suggestions,
-			missingInformation: args.missing_information,
-			facets: args.facets
-		});
-
-		const events: any[] = [
-			{
-				type: 'template_creation_request',
-				request: {
-					request_id: creation.requestId,
-					session_id: this.sessionId,
-					user_id: this.userId,
-					braindump,
-					realm_suggestion: realm,
-					template_hints: creation.templateHints ?? args.template_hints ?? [],
-					missing_information: args.missing_information ?? [],
-					source_message_id: args.source_message_id,
-					created_at: new Date().toISOString()
-				}
-			}
-		];
-
-		if (creation.status === 'completed' && creation.templateResponse) {
-			events.push({
-				type: 'template_created',
-				request_id: creation.requestId,
-				template: creation.templateResponse
+		try {
+			const result: FindOrCreateResult = await service.findOrCreate({
+				scope: args.scope as EntityScope,
+				context: args.context,
+				userId: this.userId,
+				preferredTypeKey: args.preferred_type_key,
+				realm: args.realm,
+				matchThreshold: args.match_threshold ?? 0.7,
+				allowCreate: args.allow_create ?? true,
+				facets: args.facets,
+				exampleProps: args.example_props
 			});
-		} else {
-			events.push({
-				type: 'template_creation_failed',
-				request_id: creation.requestId,
-				error: creation.error || 'Template creation failed',
-				actionable: creation.actionable
-			});
-		}
 
-		return {
-			status: creation.status,
-			request_id: creation.requestId,
-			template: creation.templateResponse ?? null,
-			message:
-				creation.status === 'completed' && creation.templateResponse
-					? `Created template "${creation.templateResponse.name}" (${creation.templateResponse.type_key}).`
-					: `Template creation failed: ${creation.error ?? 'unknown error'}`,
-			_stream_events: events
-		};
+			// Build response
+			const template = result.template;
+			const created = result.created;
+
+			// Extract match info from suggestion if available
+			const matchScore = result.suggestion?.matchScore;
+			const rationale = result.suggestion?.rationale;
+
+			let message: string;
+			if (created) {
+				message = `Created new template "${template.name}" (${template.type_key}) for ${args.scope} scope.`;
+			} else {
+				const scoreInfo = matchScore ? ` (${Math.round(matchScore * 100)}% match)` : '';
+				message = `Found existing template "${template.name}" (${template.type_key})${scoreInfo}.`;
+			}
+
+			return {
+				template: {
+					id: template.id,
+					type_key: template.type_key,
+					name: template.name,
+					description: template.description ?? '',
+					scope: template.scope
+				},
+				created,
+				match_score: matchScore,
+				rationale,
+				message
+			};
+		} catch (error) {
+			console.error('[ChatToolExecutor] find_or_create_template failed:', error);
+			throw new Error(
+				`Failed to find or create template: ${error instanceof Error ? error.message : 'Unknown error'}`
+			);
+		}
 	}
 
 	private async getFieldInfo(args: { entity_type: string; field_name?: string }): Promise<{
@@ -1041,10 +937,14 @@ export class ChatToolExecutor {
 		const { entity_type, field_name } = args;
 
 		// Validate entity_type is provided
+		// The entity_type specifies which ontology entity's field schema to return,
+		// which is needed to know what properties are available for creation/update operations
 		if (!entity_type || entity_type === 'undefined' || entity_type === 'null') {
 			const validTypes = Object.keys(ENTITY_FIELD_INFO).join(', ');
 			throw new Error(
-				`The 'entity_type' parameter is required for get_field_info. Valid types: ${validTypes}. Example: get_field_info({ entity_type: "ontology_project" })`
+				`The 'entity_type' parameter is required to specify which entity's field schema to return. ` +
+					`This helps you understand what properties are available when creating or updating entities. ` +
+					`Valid types: ${validTypes}. Example: get_field_info({ entity_type: "ontology_project" })`
 			);
 		}
 
@@ -1186,14 +1086,15 @@ export class ChatToolExecutor {
 		message: string;
 	}> {
 		const actorId = await this.getActorId();
+		// Note: plan_id is no longer a column on onto_tasks - relationships are stored in onto_edges
 		let query = this.supabase
 			.from('onto_tasks')
 			.select(
 				`
 					id,
 					project_id,
-					plan_id,
 					title,
+					type_key,
 					state_key,
 					priority,
 					due_at,
@@ -1249,14 +1150,15 @@ export class ChatToolExecutor {
 		}
 
 		const actorId = await this.getActorId();
+		// Note: plan_id is no longer a column on onto_tasks - relationships are stored in onto_edges
 		let query = this.supabase
 			.from('onto_tasks')
 			.select(
 				`
 					id,
 					project_id,
-					plan_id,
 					title,
+					type_key,
 					state_key,
 					priority,
 					due_at,
@@ -1649,7 +1551,7 @@ export class ChatToolExecutor {
 		const contextDocument = buildContextDocumentSpec(args);
 
 		const additionalDocuments =
-			args.documents?.filter((doc) => doc.type_key !== 'document.project.context') ?? [];
+			args.documents?.filter((doc) => doc.type_key !== 'document.context.project') ?? [];
 
 		const spec = {
 			project: args.project,
@@ -1696,7 +1598,7 @@ export class ChatToolExecutor {
 	}> {
 		await this.ensureTemplateForScope({
 			scope: 'task',
-			typeKey: args.type_key ?? 'task.basic',
+			typeKey: args.type_key ?? 'task.execute',
 			props: args.props ?? {},
 			nameHint: args.title
 		});
@@ -1705,7 +1607,7 @@ export class ChatToolExecutor {
 			project_id: args.project_id,
 			title: args.title,
 			description: args.description ?? null,
-			type_key: args.type_key ?? 'task.basic',
+			type_key: args.type_key ?? 'task.execute',
 			state_key: args.state_key ?? 'todo',
 			priority: args.priority ?? 3,
 			plan_id: args.plan_id ?? null,
@@ -1732,7 +1634,7 @@ export class ChatToolExecutor {
 			project_id: args.project_id,
 			name: args.name,
 			description: args.description ?? null,
-			type_key: args.type_key ?? 'goal.basic',
+			type_key: args.type_key ?? 'goal.outcome.project',
 			props: args.props ?? {}
 		};
 
@@ -1753,7 +1655,7 @@ export class ChatToolExecutor {
 	}> {
 		await this.ensureTemplateForScope({
 			scope: 'plan',
-			typeKey: args.type_key ?? 'plan.basic',
+			typeKey: args.type_key ?? 'plan.phase.base',
 			props: args.props ?? {},
 			nameHint: args.name
 		});
@@ -1762,7 +1664,7 @@ export class ChatToolExecutor {
 			project_id: args.project_id,
 			name: args.name,
 			description: args.description ?? null,
-			type_key: args.type_key ?? 'plan.basic',
+			type_key: args.type_key ?? 'plan.phase.base',
 			state_key: args.state_key ?? 'draft',
 			props: args.props ?? {}
 		};
@@ -1831,6 +1733,7 @@ export class ChatToolExecutor {
 				}
 			});
 		}
+		if (args.type_key !== undefined) updateData.type_key = args.type_key;
 		if (args.state_key !== undefined) updateData.state_key = args.state_key;
 		if (args.priority !== undefined) updateData.priority = args.priority;
 		if (args.plan_id !== undefined) updateData.plan_id = args.plan_id;
@@ -2259,7 +2162,7 @@ export class ChatToolExecutor {
 		const category = getToolCategory(toolCall.function.name);
 
 		try {
-			await this.supabase.from('chat_tool_executions').insert({
+			const { error: insertError } = await this.supabase.from('chat_tool_executions').insert({
 				session_id: this.sessionId,
 				tool_name: toolCall.function.name,
 				tool_category: category,
@@ -2269,8 +2172,25 @@ export class ChatToolExecutor {
 				success,
 				error_message: errorMessage ?? null
 			});
+
+			// Log Supabase errors explicitly (not silent failures)
+			if (insertError) {
+				console.error('[ChatToolExecutor] Failed to log tool execution (DB error):', {
+					toolName: toolCall.function.name,
+					sessionId: this.sessionId,
+					error: insertError.message,
+					code: insertError.code,
+					hint: insertError.hint
+				});
+			}
 		} catch (error) {
-			console.error('Failed to log tool execution:', error);
+			// Log unexpected errors with full context
+			console.error('[ChatToolExecutor] Failed to log tool execution (exception):', {
+				toolName: toolCall.function.name,
+				sessionId: this.sessionId,
+				error: error instanceof Error ? error.message : String(error),
+				stack: error instanceof Error ? error.stack : undefined
+			});
 		}
 	}
 

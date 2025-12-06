@@ -129,7 +129,7 @@
 </script>
 
 <Modal {isOpen} onClose={handleCancel} size="md" closeOnBackdrop={true} closeOnEscape={true}>
-	<svelte:fragment slot="header">
+	{#snippet header()}
 		<div class="flex items-center space-x-3 p-3 sm:p-4">
 			<div class="p-2 bg-primary-100 dark:bg-primary-900/30 rounded-lg flex-shrink-0">
 				<Calendar class="w-5 h-5 sm:w-6 sm:h-6 text-primary-600 dark:text-primary-400" />
@@ -144,143 +144,149 @@
 				</p>
 			</div>
 		</div>
-	</svelte:fragment>
+	{/snippet}
 
-	<div class="space-y-4 sm:space-y-6">
-		<!-- Task Info -->
-		{#if task}
-			<div class="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 sm:p-4">
-				<h3 class="text-sm sm:text-base font-medium text-gray-900 dark:text-white mb-2">
-					Task
-				</h3>
-				<p class="text-xs sm:text-sm text-gray-700 dark:text-gray-300">{task.title}</p>
-				{#if task.start_date}
-					<p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-						Current date: {formatDateDisplay(task.start_date)}
-					</p>
-				{:else}
-					<p class="text-xs text-gray-500 dark:text-gray-400 mt-1">No current date set</p>
-				{/if}
-			</div>
-		{/if}
-
-		<!-- Target Phase Info -->
-		{#if targetPhase}
-			<div class="bg-primary-50 dark:bg-primary-900/20 rounded-lg p-3 sm:p-4">
-				<h3 class="text-sm sm:text-base font-medium text-gray-900 dark:text-white mb-2">
-					Target Phase
-				</h3>
-				<p class="text-xs sm:text-sm text-gray-700 dark:text-gray-300">
-					{targetPhase.name}
-				</p>
-				<p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-					{formatDateDisplay(targetPhase.start_date)} - {formatDateDisplay(
-						targetPhase.end_date
-					)}
-				</p>
-			</div>
-		{/if}
-
-		<!-- Date Assignment -->
-		<div class="space-y-3">
-			<div class="flex items-center justify-between">
-				<h3 class="text-sm sm:text-base font-medium text-gray-900 dark:text-white">
-					New Task Date
-				</h3>
-				<Button
-					onclick={() => (isEditingDate = !isEditingDate)}
-					variant="outline"
-					size="sm"
-				>
-					<Edit3 class="w-3 h-3 mr-1" />
-					{isEditingDate ? 'Cancel Edit' : 'Edit Date'}
-				</Button>
-			</div>
-
-			{#if isEditingDate}
-				<div class="space-y-3">
-					<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-						<FormField label="Date" labelFor="editable-date" size="sm">
-							<TextInput
-								id="editable-date"
-								type="date"
-								bind:value={editableDate}
-								min={formatDateForInput(targetPhase?.start_date || '')}
-								max={formatDateForInput(targetPhase?.end_date || '')}
-								size="sm"
-							/>
-						</FormField>
-						<FormField label="Time" labelFor="editable-time" size="sm">
-							<TextInput
-								id="editable-time"
-								type="time"
-								bind:value={editableTime}
-								size="sm"
-							/>
-						</FormField>
-					</div>
-
-					{#if dateError}
-						<div class="flex items-start gap-2 text-sm text-red-600 dark:text-red-400">
-							<AlertTriangle class="w-4 h-4 flex-shrink-0 mt-0.5" />
-							<span>{dateError}</span>
-						</div>
+	{#snippet children()}
+		<div class="space-y-4 sm:space-y-6">
+			<!-- Task Info -->
+			{#if task}
+				<div class="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 sm:p-4">
+					<h3 class="text-sm sm:text-base font-medium text-gray-900 dark:text-white mb-2">
+						Task
+					</h3>
+					<p class="text-xs sm:text-sm text-gray-700 dark:text-gray-300">{task.title}</p>
+					{#if task.start_date}
+						<p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+							Current date: {formatDateDisplay(task.start_date)}
+						</p>
+					{:else}
+						<p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+							No current date set
+						</p>
 					{/if}
 				</div>
-			{:else if suggestedDate}
-				<div class="bg-emerald-50 dark:bg-emerald-900/20 rounded-lg p-2 sm:p-3">
-					<p class="text-xs sm:text-sm text-emerald-800 dark:text-emerald-200">
-						<span class="font-medium">Suggested date:</span>
-						{formatDateDisplay(suggestedDate)}
-						at {(() => {
-							const date = new Date(suggestedDate);
-							let hours = date.getHours();
-							const minutes = date.getMinutes();
-							const ampm = hours >= 12 ? 'PM' : 'AM';
-							hours = hours % 12 || 12;
-							return `${hours}:${minutes.toString().padStart(2, '0')} ${ampm}`;
-						})()}
+			{/if}
+
+			<!-- Target Phase Info -->
+			{#if targetPhase}
+				<div class="bg-primary-50 dark:bg-primary-900/20 rounded-lg p-3 sm:p-4">
+					<h3 class="text-sm sm:text-base font-medium text-gray-900 dark:text-white mb-2">
+						Target Phase
+					</h3>
+					<p class="text-xs sm:text-sm text-gray-700 dark:text-gray-300">
+						{targetPhase.name}
+					</p>
+					<p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+						{formatDateDisplay(targetPhase.start_date)} - {formatDateDisplay(
+							targetPhase.end_date
+						)}
 					</p>
 				</div>
 			{/if}
+
+			<!-- Date Assignment -->
+			<div class="space-y-3">
+				<div class="flex items-center justify-between">
+					<h3 class="text-sm sm:text-base font-medium text-gray-900 dark:text-white">
+						New Task Date
+					</h3>
+					<Button
+						onclick={() => (isEditingDate = !isEditingDate)}
+						variant="outline"
+						size="sm"
+					>
+						<Edit3 class="w-3 h-3 mr-1" />
+						{isEditingDate ? 'Cancel Edit' : 'Edit Date'}
+					</Button>
+				</div>
+
+				{#if isEditingDate}
+					<div class="space-y-3">
+						<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+							<FormField label="Date" labelFor="editable-date" size="sm">
+								<TextInput
+									id="editable-date"
+									type="date"
+									bind:value={editableDate}
+									min={formatDateForInput(targetPhase?.start_date || '')}
+									max={formatDateForInput(targetPhase?.end_date || '')}
+									size="sm"
+								/>
+							</FormField>
+							<FormField label="Time" labelFor="editable-time" size="sm">
+								<TextInput
+									id="editable-time"
+									type="time"
+									bind:value={editableTime}
+									size="sm"
+								/>
+							</FormField>
+						</div>
+
+						{#if dateError}
+							<div
+								class="flex items-start gap-2 text-sm text-red-600 dark:text-red-400"
+							>
+								<AlertTriangle class="w-4 h-4 flex-shrink-0 mt-0.5" />
+								<span>{dateError}</span>
+							</div>
+						{/if}
+					</div>
+				{:else if suggestedDate}
+					<div class="bg-emerald-50 dark:bg-emerald-900/20 rounded-lg p-2 sm:p-3">
+						<p class="text-xs sm:text-sm text-emerald-800 dark:text-emerald-200">
+							<span class="font-medium">Suggested date:</span>
+							{formatDateDisplay(suggestedDate)}
+							at {(() => {
+								const date = new Date(suggestedDate);
+								let hours = date.getHours();
+								const minutes = date.getMinutes();
+								const ampm = hours >= 12 ? 'PM' : 'AM';
+								hours = hours % 12 || 12;
+								return `${hours}:${minutes.toString().padStart(2, '0')} ${ampm}`;
+							})()}
+						</p>
+					</div>
+				{/if}
+			</div>
+
+			<!-- Warning message -->
+			{#if task?.start_date}
+				<div
+					class="flex items-start gap-2 p-2 sm:p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg"
+				>
+					<AlertTriangle
+						class="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5"
+					/>
+					<div class="text-xs sm:text-sm text-amber-800 dark:text-amber-200">
+						<p class="font-medium">Task date will be updated</p>
+						<p class="mt-1">
+							The task's start date will be changed to fit within the target phase
+							timeline. Any existing calendar events for this task will be
+							automatically updated.
+						</p>
+					</div>
+				</div>
+			{:else}
+				<div
+					class="flex items-start gap-2 p-2 sm:p-3 bg-primary-50 dark:bg-primary-900/20 rounded-lg"
+				>
+					<Calendar
+						class="w-4 h-4 text-primary-600 dark:text-primary-400 flex-shrink-0 mt-0.5"
+					/>
+					<div class="text-xs sm:text-sm text-primary-800 dark:text-primary-200">
+						<p class="font-medium">Task date will be set</p>
+						<p class="mt-1">
+							This task doesn't have a start date yet. It will be assigned the
+							suggested date.
+						</p>
+					</div>
+				</div>
+			{/if}
 		</div>
+	{/snippet}
 
-		<!-- Warning message -->
-		{#if task?.start_date}
-			<div
-				class="flex items-start gap-2 p-2 sm:p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg"
-			>
-				<AlertTriangle
-					class="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5"
-				/>
-				<div class="text-xs sm:text-sm text-amber-800 dark:text-amber-200">
-					<p class="font-medium">Task date will be updated</p>
-					<p class="mt-1">
-						The task's start date will be changed to fit within the target phase
-						timeline. Any existing calendar events for this task will be automatically
-						updated.
-					</p>
-				</div>
-			</div>
-		{:else}
-			<div
-				class="flex items-start gap-2 p-2 sm:p-3 bg-primary-50 dark:bg-primary-900/20 rounded-lg"
-			>
-				<Calendar
-					class="w-4 h-4 text-primary-600 dark:text-primary-400 flex-shrink-0 mt-0.5"
-				/>
-				<div class="text-xs sm:text-sm text-primary-800 dark:text-primary-200">
-					<p class="font-medium">Task date will be set</p>
-					<p class="mt-1">
-						This task doesn't have a start date yet. It will be assigned the suggested
-						date.
-					</p>
-				</div>
-			</div>
-		{/if}
-	</div>
-
-	<svelte:fragment slot="footer">
+	{#snippet footer()}
 		<div class="flex flex-col sm:flex-row items-center justify-end gap-3 p-3 sm:p-4">
 			<Button
 				onclick={handleCancel}
@@ -301,5 +307,5 @@
 				Move Task
 			</Button>
 		</div>
-	</svelte:fragment>
+	{/snippet}
 </Modal>

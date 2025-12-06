@@ -17,6 +17,16 @@ export interface MigrationRunOptions {
 	includeArchived?: boolean;
 	batchSize?: number;
 	dryRun?: boolean;
+	/** Skip tasks with status 'done' - completed tasks won't be migrated */
+	skipCompletedTasks?: boolean;
+	/** Maximum number of tasks to process in parallel (default: 5) */
+	taskConcurrency?: number;
+	/** Maximum number of projects to process in parallel (default: 3) */
+	projectConcurrency?: number;
+	/** Maximum number of phases to process in parallel (default: 5) */
+	phaseConcurrency?: number;
+	/** Maximum number of calendar events to process in parallel (default: 10) */
+	eventConcurrency?: number;
 }
 
 export interface MigrationAnalysisOptions extends MigrationRunOptions {
@@ -32,6 +42,26 @@ export interface MigrationServiceContext {
 		dualWriteProjects: boolean;
 	};
 	now: string;
+	/** Skip tasks with status 'done' - completed tasks won't be migrated */
+	skipCompletedTasks?: boolean;
+	/** Maximum number of tasks to process in parallel (default: 5) */
+	taskConcurrency?: number;
+	/** Maximum number of projects to process in parallel (default: 3) */
+	projectConcurrency?: number;
+	/** Maximum number of phases to process in parallel (default: 5) */
+	phaseConcurrency?: number;
+	/** Maximum number of calendar events to process in parallel (default: 10) */
+	eventConcurrency?: number;
+	/** Pre-fetched mappings cache for performance optimization */
+	prefetchedMappings?: PrefetchedMappingsCache;
+}
+
+/** Cache for pre-fetched entity mappings to avoid repeated DB lookups */
+export interface PrefetchedMappingsCache {
+	projects: Map<string, string>;
+	phases: Map<string, string>;
+	tasks: Map<string, string>;
+	events: Map<string, string>;
 }
 
 export interface MigrationLogRecord {
@@ -102,6 +132,8 @@ export interface TaskMigrationPreviewSummary {
 	readyToMigrate: number;
 	blocked: number;
 	missingProject: number;
+	/** Tasks skipped because they were already completed (status = 'done') */
+	skippedCompleted?: number;
 }
 
 export interface TaskMigrationPreviewPayload {

@@ -1,6 +1,8 @@
 <!-- apps/web/src/lib/components/ontology/OutputEditModal.svelte -->
 <script lang="ts">
-	import { X, Trash2 } from 'lucide-svelte';
+	import { browser } from '$app/environment';
+	import { Trash2 } from 'lucide-svelte';
+	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
@@ -11,12 +13,20 @@
 	interface Props {
 		outputId: string;
 		projectId: string;
+		isOpen?: boolean;
 		onClose: () => void;
 		onUpdated?: () => void;
 		onDeleted?: () => void;
 	}
 
-	let { outputId, projectId, onClose, onUpdated, onDeleted }: Props = $props();
+	let {
+		outputId,
+		projectId,
+		isOpen = $bindable(false),
+		onClose,
+		onUpdated,
+		onDeleted
+	}: Props = $props();
 
 	type OutputRecord = {
 		id: string;
@@ -45,7 +55,7 @@
 	];
 
 	$effect(() => {
-		if (!outputId) return;
+		if (!browser || !outputId) return;
 		if (previousOutputId === outputId) return;
 		previousOutputId = outputId;
 		loadOutput();
@@ -108,6 +118,7 @@
 	}
 
 	function closeModal() {
+		isOpen = false;
 		onClose();
 	}
 
@@ -199,103 +210,116 @@
 			deleting = false;
 		}
 	}
-
-	function handleBackdropClick(event: MouseEvent) {
-		if (event.target === event.currentTarget) {
-			closeModal();
-		}
-	}
-
-	function handleKeydown(event: KeyboardEvent) {
-		if (event.key === 'Escape') {
-			event.preventDefault();
-			closeModal();
-		}
-	}
 </script>
 
-<svelte:window onkeydown={handleKeydown} />
-
-<div class="fixed inset-0 z-50 flex items-stretch">
-	<div
-		class="absolute inset-0 bg-black/50 backdrop-blur-sm"
-		role="presentation"
-		onclick={handleBackdropClick}
-	></div>
-
-	<div class="relative z-10 flex-1 flex flex-col bg-white dark:bg-gray-900 shadow-2xl">
-		<header
-			class="flex flex-col gap-3 sm:gap-4 border-b border-gray-200 dark:border-gray-800 px-4 sm:px-6 py-3 sm:py-4 sm:flex-row sm:items-center sm:justify-between"
+<Modal
+	bind:isOpen
+	onClose={closeModal}
+	size="xl"
+	closeOnBackdrop={false}
+	closeOnEscape={!savingState}
+	showCloseButton={false}
+>
+	{#snippet header()}
+		<!-- Custom gradient header - grey/dark grey -->
+		<div
+			class="flex-shrink-0 bg-gradient-to-r from-gray-600 via-gray-700 to-gray-800 dark:from-gray-700 dark:via-gray-800 dark:to-gray-900 text-white px-3 py-3 sm:px-6 sm:py-5 flex items-start justify-between gap-2 sm:gap-4 dither-gradient"
 		>
-			<div class="flex items-start gap-2.5 sm:gap-3">
-				<button
-					class="p-2 rounded-full border border-gray-200 dark:border-gray-700 text-gray-500 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600 transition-all duration-200 shrink-0"
-					onclick={closeModal}
-					aria-label="Close"
-				>
-					<X class="w-5 h-5" />
-				</button>
-				<div class="min-w-0 flex-1">
-					<div class="flex items-center gap-2 mb-1">
-						<span class="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse shrink-0"
-						></span>
-						<h2
-							class="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white truncate"
-						>
-							{output?.name || 'Text Document'}
-						</h2>
+			<div class="space-y-1 sm:space-y-2 min-w-0 flex-1">
+				<p class="text-[10px] sm:text-xs font-semibold uppercase tracking-[0.3em] sm:tracking-[0.4em] text-white/70">
+					Output Document
+				</p>
+				<h2 class="text-lg sm:text-2xl font-bold leading-tight truncate">
+					{output?.name || 'Text Document'}
+				</h2>
+				{#if output}
+					<div class="flex flex-wrap items-center gap-1.5 sm:gap-3 text-xs sm:text-sm">
+						<span class="px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-semibold capitalize bg-white/20">{stateKey}</span>
+						<span class="hidden sm:inline font-mono text-xs tracking-wide text-white/70">{output.type_key}</span>
 					</div>
-					<p class="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
-						Type: <code
-							class="font-mono text-xs bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 px-1.5 py-0.5 rounded"
-							>{output?.type_key}</code
-						>
-					</p>
-				</div>
+				{/if}
 			</div>
+			<Button
+				variant="ghost"
+				size="sm"
+				onclick={closeModal}
+				class="text-white/80 hover:text-white shrink-0 !p-1.5 sm:!p-2"
+				disabled={savingState}
+			>
+				<svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						stroke-width="2"
+						d="M6 18L18 6M6 6l12 12"
+					></path>
+				</svg>
+			</Button>
+		</div>
+	{/snippet}
 
-			<div class="flex flex-wrap items-center gap-2.5">
-				<div class="min-w-[140px]">
-					<Select
-						size="sm"
-						value={stateKey}
-						onchange={(val) => handleStateChange(String(val))}
-						disabled={savingState}
-						class="text-sm"
-					>
-						{#each stateOptions as option}
-							<option value={option.value}>{option.label}</option>
-						{/each}
-					</Select>
-				</div>
-				<Button
-					variant="ghost"
-					size="sm"
-					class="text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-700 dark:hover:text-red-300 transition-colors"
-					onclick={() => (showDeleteConfirm = true)}
-				>
-					<Trash2 class="w-4 h-4 mr-1.5" />
-					Delete
-				</Button>
-			</div>
-		</header>
-
-		<section class="flex-1 overflow-hidden bg-gray-50 dark:bg-gray-900">
+	{#snippet children()}
+		<div class="overflow-y-auto" style="max-height: 70vh;">
 			{#if isLoading}
-				<div class="h-full flex items-center justify-center">
+				<div class="flex items-center justify-center py-12">
 					<div class="animate-pulse text-gray-500 dark:text-gray-400">
 						Loading editor…
 					</div>
 				</div>
 			{:else if loadError}
-				<div
-					class="h-full flex flex-col items-center justify-center gap-3 text-center px-6"
-				>
+				<div class="flex flex-col items-center justify-center gap-3 text-center px-6 py-12">
 					<p class="text-gray-600 dark:text-gray-300">{loadError}</p>
 					<Button variant="secondary" onclick={loadOutput}>Try again</Button>
 				</div>
 			{:else if output && resolvedTemplate}
-				<div class="h-full flex flex-col">
+				<div class="px-4 sm:px-6 py-6">
+					<!-- Output Info Section -->
+					<section
+						class="rounded border border-gray-200 dark:border-gray-700 bg-surface-elevated dark:bg-surface-panel p-4 sm:p-5 shadow-subtle space-y-2 dither-soft mb-6"
+					>
+						<div class="flex flex-wrap items-center gap-2">
+							<span
+								class="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse shrink-0"
+							></span>
+							<h3 class="text-base font-semibold text-gray-900 dark:text-white">
+								{output.name}
+							</h3>
+						</div>
+						<div
+							class="flex flex-wrap items-center gap-2 text-xs text-slate-600 dark:text-slate-400"
+						>
+							<span
+								>Type: <code
+									class="font-mono text-xs bg-surface-elevated dark:bg-surface-panel text-accent-orange px-1.5 py-0.5 rounded"
+									>{output.type_key}</code
+								></span
+							>
+						</div>
+					</section>
+
+					<!-- State Selector -->
+					<div class="mb-6">
+						<label
+							for="output-state"
+							class="block text-sm font-medium text-gray-900 dark:text-white mb-2"
+						>
+							Output State
+						</label>
+						<Select
+							id="output-state"
+							size="sm"
+							value={stateKey}
+							onchange={(val) => handleStateChange(String(val))}
+							disabled={savingState}
+							class="max-w-xs"
+						>
+							{#each stateOptions as option}
+								<option value={option.value}>{option.label}</option>
+							{/each}
+						</Select>
+					</div>
+
+					<!-- Document Editor -->
 					<DocumentEditor
 						outputId={output.id}
 						templateKey={output.type_key}
@@ -309,14 +333,42 @@
 				</div>
 			{:else}
 				<div
-					class="h-full flex items-center justify-center text-gray-500 dark:text-gray-400"
+					class="flex items-center justify-center py-12 text-gray-500 dark:text-gray-400"
 				>
 					Unable to load editor for this output.
 				</div>
 			{/if}
-		</section>
-	</div>
-</div>
+		</div>
+	{/snippet}
+	{#snippet footer()}
+		<div
+			class="flex flex-row items-center justify-between gap-2 sm:gap-4 p-2 sm:p-4 border-t border-gray-200 dark:border-gray-700 bg-surface-panel dark:bg-slate-900/30 dither-surface"
+		>
+			<!-- Danger zone inline on mobile -->
+			<div class="flex items-center gap-1.5 sm:gap-2">
+				<Trash2 class="w-3 h-3 sm:w-4 sm:h-4 text-red-500 shrink-0" />
+				<Button
+					variant="danger"
+					size="sm"
+					onclick={() => (showDeleteConfirm = true)}
+					class="text-[10px] sm:text-xs px-2 py-1 sm:px-3 sm:py-1.5"
+				>
+					Delete
+				</Button>
+			</div>
+			<Button
+				type="button"
+				variant="secondary"
+				size="sm"
+				onclick={closeModal}
+				disabled={savingState}
+				class="text-xs sm:text-sm px-2 sm:px-4"
+			>
+				Close
+			</Button>
+		</div>
+	{/snippet}
+</Modal>
 
 <ConfirmationModal
 	isOpen={showDeleteConfirm}

@@ -1,6 +1,7 @@
 <!-- apps/web/src/lib/components/agent/ProjectFocusSelector.svelte -->
 <script lang="ts">
 	import { onDestroy } from 'svelte';
+	import { browser } from '$app/environment';
 	import {
 		CheckSquare,
 		Target,
@@ -125,6 +126,7 @@
 	}
 
 	$effect(() => {
+		if (!browser) return;
 		if (!isOpen || !projectId) return;
 		loadEntities(selectedType, appliedSearch);
 	});
@@ -149,7 +151,7 @@
 	<div class="flex h-full min-h-[500px] max-h-[70vh] flex-col">
 		<!-- Compact Filter Bar -->
 		<div
-			class="border-b border-slate-200/60 bg-gradient-to-r from-slate-50/50 to-white/50 dither-surface px-4 py-3 dark:border-slate-700/60 dark:from-slate-900/50 dark:to-slate-800/50"
+			class="border-b border-slate-200/60 bg-gradient-to-r from-slate-50/50 to-white/50 px-4 py-3 dark:border-slate-700/60 dark:from-slate-900/50 dark:to-slate-800/50"
 		>
 			<div class="mb-2 flex items-center justify-between">
 				<div class="flex flex-wrap gap-1.5">

@@ -312,6 +312,7 @@ async function executeActions(
 					const projectId = entity.project_id ?? entity.id;
 					const createdBy = ctx.actor_id ?? 'fsm_engine';
 					const propsTemplate = (action.props_template ?? {}) as Json;
+					const taskTypeKey = action.type_key ?? 'task.execute';
 					type OntoTaskInsert = Database['public']['Tables']['onto_tasks']['Insert'];
 					type OntoEdgeInsert = Database['public']['Tables']['onto_edges']['Insert'];
 
@@ -340,13 +341,14 @@ async function executeActions(
 						validatedPlanId = plan.id;
 					}
 
-					// Idempotency: reuse existing tasks with the same title + plan within the project
+					// Idempotency: check existing tasks with the same title in project
+					// For plan-specific tasks, we check via edges
 					const { data: existingTasks, error: existingTaskError } = await client
 						.from('onto_tasks')
-						.select('id, title, plan_id')
+						.select('id, title')
 						.eq('project_id', projectId)
 						.in('title', action.titles)
-						.returns<{ id: string; title: string; plan_id: string | null }[]>();
+						.returns<{ id: string; title: string }[]>();
 
 					if (existingTaskError) {
 						throw new Error(
@@ -354,10 +356,30 @@ async function executeActions(
 						);
 					}
 
+					// Build map of existing tasks and their plan associations via edges
 					const existingByKey = new Map<string, { id: string }>();
-					for (const task of existingTasks ?? []) {
-						const key = `${task.title}::${task.plan_id ?? ''}`;
-						existingByKey.set(key, { id: task.id });
+					if (existingTasks && existingTasks.length > 0) {
+						const taskIds = existingTasks.map((t) => t.id);
+						// Check which tasks are linked to plans via edges
+						const { data: planEdges } = await client
+							.from('onto_edges')
+							.select('src_id, dst_id')
+							.eq('rel', 'belongs_to_plan')
+							.eq('src_kind', 'task')
+							.eq('dst_kind', 'plan')
+							.in('src_id', taskIds)
+							.returns<{ src_id: string; dst_id: string }[]>();
+
+						const taskPlanMap = new Map<string, string>();
+						for (const edge of planEdges ?? []) {
+							taskPlanMap.set(edge.src_id, edge.dst_id);
+						}
+
+						for (const task of existingTasks) {
+							const planId = taskPlanMap.get(task.id) ?? '';
+							const key = `${task.title}::${planId}`;
+							existingByKey.set(key, { id: task.id });
+						}
 					}
 
 					const taskInserts: OntoTaskInsert[] = [];
@@ -367,8 +389,8 @@ async function executeActions(
 
 						taskInserts.push({
 							project_id: projectId,
-							plan_id: validatedPlanId,
 							title,
+							type_key: taskTypeKey,
 							state_key: 'todo',
 							props: propsTemplate,
 							created_by: createdBy
@@ -436,17 +458,19 @@ async function executeActions(
 						}
 					}
 
-					// Plan -> Task edges
+					// Plan <-> Task bidirectional edges
 					if (validatedPlanId && allTaskIds.length > 0) {
-						const { data: existingPlanEdges, error: planEdgeQueryError } = await client
-							.from('onto_edges')
-							.select('dst_id')
-							.eq('src_id', validatedPlanId)
-							.eq('src_kind', 'plan')
-							.eq('dst_kind', 'task')
-							.eq('rel', 'contains')
-							.in('dst_id', allTaskIds)
-							.returns<{ dst_id: string }[]>();
+						// Check existing belongs_to_plan edges (task -> plan)
+						const { data: existingBelongsToPlanEdges, error: planEdgeQueryError } =
+							await client
+								.from('onto_edges')
+								.select('src_id')
+								.eq('dst_id', validatedPlanId)
+								.eq('src_kind', 'task')
+								.eq('dst_kind', 'plan')
+								.eq('rel', 'belongs_to_plan')
+								.in('src_id', allTaskIds)
+								.returns<{ src_id: string }[]>();
 
 						if (planEdgeQueryError) {
 							throw new Error(
@@ -454,18 +478,28 @@ async function executeActions(
 							);
 						}
 
-						const existingPlanEdgeIds = new Set(
-							(existingPlanEdges ?? []).map((edge) => edge.dst_id)
+						const existingPlanEdgeTaskIds = new Set(
+							(existingBelongsToPlanEdges ?? []).map((edge) => edge.src_id)
 						);
 
 						for (const taskId of allTaskIds) {
-							if (existingPlanEdgeIds.has(taskId)) continue;
+							if (existingPlanEdgeTaskIds.has(taskId)) continue;
+							// Task -> Plan (belongs_to_plan)
+							edges.push({
+								src_id: taskId,
+								src_kind: 'task',
+								dst_id: validatedPlanId,
+								dst_kind: 'plan',
+								rel: 'belongs_to_plan',
+								props: { origin: 'fsm_action', via: 'spawn_tasks' } as Json
+							});
+							// Plan -> Task (has_task)
 							edges.push({
 								src_id: validatedPlanId,
 								src_kind: 'plan',
 								dst_id: taskId,
 								dst_kind: 'task',
-								rel: 'contains',
+								rel: 'has_task',
 								props: { origin: 'fsm_action', via: 'spawn_tasks' } as Json
 							});
 						}
@@ -665,7 +699,7 @@ function selectClauseForKind(kind: string): string {
 		case 'plan':
 			return 'id, type_key, state_key, props, project_id, name';
 		case 'task':
-			return 'id, type_key, state_key, props, project_id, title, plan_id';
+			return 'id, type_key, state_key, props, project_id, title';
 		case 'output':
 			return 'id, type_key, state_key, props, project_id, name';
 		case 'document':
@@ -676,11 +710,15 @@ function selectClauseForKind(kind: string): string {
 }
 
 function getTableForEntity(entity: EntityRow): OntoTable {
-	// Infer table from entity structure (could be passed explicitly)
-	if ('plan_id' in entity && 'title' in entity) return 'onto_tasks';
-	if ('name' in entity && entity.type_key?.startsWith('output.')) return 'onto_outputs';
-	if ('title' in entity && entity.type_key?.startsWith('doc.')) return 'onto_documents';
-	if ('name' in entity && entity.type_key?.includes('.')) return 'onto_plans';
+	// Infer table from entity structure using type_key pattern
+	if (entity.type_key?.startsWith('task.')) return 'onto_tasks';
+	if (entity.type_key?.startsWith('output.')) return 'onto_outputs';
+	if (entity.type_key?.startsWith('doc.')) return 'onto_documents';
+	if (entity.type_key?.startsWith('plan.')) return 'onto_plans';
+	if (entity.type_key?.startsWith('project.')) return 'onto_projects';
+	// Fallback based on other fields
+	if ('title' in entity && !('name' in entity)) return 'onto_tasks';
+	if ('name' in entity) return 'onto_projects';
 	return 'onto_projects';
 }
 

@@ -16,6 +16,7 @@ import { TaskMigrationService } from './task-migration.service';
 import { CalendarMigrationService } from './calendar-migration.service';
 import { PlanGenerationService } from './plan-generation.service';
 import { SmartLLMService } from '$lib/services/smart-llm-service';
+import { getLegacyMapping } from './legacy-mapping.service';
 import type {
 	MigrationAnalysisOptions,
 	MigrationBatchResult,
@@ -25,8 +26,10 @@ import type {
 	MigrationRunSummary,
 	MigrationScope,
 	MigrationServiceContext,
-	MigrationStatus
+	MigrationStatus,
+	PrefetchedMappingsCache
 } from './migration.types';
+import type { LegacyProjectRow } from './project-migration.service';
 
 const LEGACY_TABLE_BY_SCOPE: Partial<Record<Exclude<MigrationScope, 'run'>, string>> = {
 	project: 'projects',
@@ -72,9 +75,176 @@ export class OntologyMigrationOrchestrator {
 		this.llmService = new SmartLLMService({ supabase: client });
 		this.projectService = new ProjectMigrationService(client, this.llmService);
 		this.planGenerator = new PlanGenerationService(this.llmService);
-		this.phaseService = new PhaseMigrationService(client, this.planGenerator);
-		this.taskService = new TaskMigrationService(client);
+		this.phaseService = new PhaseMigrationService(client, this.planGenerator, this.llmService);
+		this.taskService = new TaskMigrationService(client, this.llmService);
 		this.calendarService = new CalendarMigrationService(client);
+	}
+
+	/**
+	 * Pre-fetch all existing entity mappings for a batch of projects
+	 * This avoids repeated DB lookups during migration
+	 */
+	private async prefetchMappings(projectIds: string[]): Promise<PrefetchedMappingsCache> {
+		const cache: PrefetchedMappingsCache = {
+			projects: new Map(),
+			phases: new Map(),
+			tasks: new Map(),
+			events: new Map()
+		};
+
+		if (!projectIds.length) return cache;
+
+		console.info(
+			`[MigrationOrchestrator] Pre-fetching mappings for ${projectIds.length} projects: ${projectIds.join(', ')}`
+		);
+
+		// Fetch all project mappings
+		const { data: projectMappings, error: projectMappingError } = await this.client
+			.from('legacy_entity_mappings')
+			.select('legacy_id, onto_id')
+			.eq('legacy_table', 'projects')
+			.in('legacy_id', projectIds);
+
+		if (projectMappingError) {
+			console.error(
+				'[MigrationOrchestrator] Error fetching project mappings:',
+				projectMappingError
+			);
+		} else {
+			console.info(
+				`[MigrationOrchestrator] Found ${projectMappings?.length ?? 0} project mappings`
+			);
+		}
+
+		for (const m of projectMappings ?? []) {
+			cache.projects.set(m.legacy_id, m.onto_id);
+		}
+
+		// Fetch all phase IDs for these projects
+		const { data: phases, error: phasesError } = await this.client
+			.from('phases')
+			.select('id')
+			.in('project_id', projectIds);
+
+		if (phasesError) {
+			console.error('[MigrationOrchestrator] Error fetching phases:', phasesError);
+		}
+
+		const phaseIds = (phases ?? []).map((p) => p.id);
+		console.info(`[MigrationOrchestrator] Found ${phaseIds.length} phases`);
+
+		if (phaseIds.length) {
+			const { data: phaseMappings, error: phaseMappingError } = await this.client
+				.from('legacy_entity_mappings')
+				.select('legacy_id, onto_id')
+				.eq('legacy_table', 'phases')
+				.in('legacy_id', phaseIds);
+
+			if (phaseMappingError) {
+				console.error(
+					'[MigrationOrchestrator] Error fetching phase mappings:',
+					phaseMappingError
+				);
+			} else {
+				console.info(
+					`[MigrationOrchestrator] Found ${phaseMappings?.length ?? 0} phase mappings`
+				);
+			}
+
+			for (const m of phaseMappings ?? []) {
+				cache.phases.set(m.legacy_id, m.onto_id);
+			}
+		}
+
+		// Fetch all task IDs for these projects
+		const { data: tasks, error: tasksError } = await this.client
+			.from('tasks')
+			.select('id')
+			.in('project_id', projectIds)
+			.is('deleted_at', null);
+
+		if (tasksError) {
+			console.error('[MigrationOrchestrator] Error fetching tasks:', tasksError);
+		}
+
+		const taskIds = (tasks ?? []).map((t) => t.id);
+		console.info(`[MigrationOrchestrator] Found ${taskIds.length} tasks`);
+
+		if (taskIds.length) {
+			const { data: taskMappings, error: taskMappingError } = await this.client
+				.from('legacy_entity_mappings')
+				.select('legacy_id, onto_id')
+				.eq('legacy_table', 'tasks')
+				.in('legacy_id', taskIds);
+
+			if (taskMappingError) {
+				console.error(
+					'[MigrationOrchestrator] Error fetching task mappings:',
+					taskMappingError
+				);
+			} else {
+				console.info(
+					`[MigrationOrchestrator] Found ${taskMappings?.length ?? 0} task mappings`
+				);
+			}
+
+			for (const m of taskMappings ?? []) {
+				cache.tasks.set(m.legacy_id, m.onto_id);
+			}
+
+			// Fetch all event IDs for these tasks
+			const { data: events, error: eventsError } = await this.client
+				.from('task_calendar_events')
+				.select('id')
+				.in('task_id', taskIds);
+
+			if (eventsError) {
+				console.error('[MigrationOrchestrator] Error fetching events:', eventsError);
+			}
+
+			const eventIds = (events ?? []).map((e) => e.id);
+			console.info(`[MigrationOrchestrator] Found ${eventIds.length} calendar events`);
+
+			if (eventIds.length) {
+				const { data: eventMappings, error: eventMappingError } = await this.client
+					.from('legacy_entity_mappings')
+					.select('legacy_id, onto_id')
+					.eq('legacy_table', 'task_calendar_events')
+					.in('legacy_id', eventIds);
+
+				if (eventMappingError) {
+					console.error(
+						'[MigrationOrchestrator] Error fetching event mappings:',
+						eventMappingError
+					);
+				} else {
+					console.info(
+						`[MigrationOrchestrator] Found ${eventMappings?.length ?? 0} event mappings`
+					);
+				}
+
+				for (const m of eventMappings ?? []) {
+					cache.events.set(m.legacy_id, m.onto_id);
+				}
+			}
+		}
+
+		console.info(
+			`[MigrationOrchestrator] Pre-fetched mappings: ${cache.projects.size} projects, ${cache.phases.size} phases, ${cache.tasks.size} tasks, ${cache.events.size} events`
+		);
+
+		return cache;
+	}
+
+	/**
+	 * Chunk an array into smaller arrays of specified size
+	 */
+	private chunkArray<T>(array: T[], size: number): T[][] {
+		const chunks: T[][] = [];
+		for (let i = 0; i < array.length; i += size) {
+			chunks.push(array.slice(i, i + size));
+		}
+		return chunks;
 	}
 
 	async analyze(
@@ -116,14 +286,6 @@ export class OntologyMigrationOrchestrator {
 			options.orgId ?? null,
 			options.initiatedBy
 		);
-		const context: MigrationServiceContext = {
-			runId,
-			batchId,
-			dryRun,
-			initiatedBy: options.initiatedBy,
-			featureFlags,
-			now
-		};
 
 		await this.logEntries([
 			this.buildLogInsert({
@@ -137,7 +299,7 @@ export class OntologyMigrationOrchestrator {
 					options,
 					initiatedBy: options.initiatedBy,
 					dryRun
-				} as Json
+				} as unknown as Json
 			})
 		]);
 
@@ -161,237 +323,93 @@ export class OntologyMigrationOrchestrator {
 			return { runId, batchId, summary: summaries, dryRun };
 		}
 
+		// Pre-fetch all mappings upfront to avoid repeated DB lookups
+		const prefetchedMappings = await this.prefetchMappings(candidates.map((c) => c.id));
+
+		const context: MigrationServiceContext = {
+			runId,
+			batchId,
+			dryRun,
+			initiatedBy: options.initiatedBy,
+			featureFlags,
+			now,
+			skipCompletedTasks: options.skipCompletedTasks ?? true,
+			taskConcurrency: options.taskConcurrency ?? 5,
+			projectConcurrency: options.projectConcurrency ?? 3,
+			phaseConcurrency: options.phaseConcurrency ?? 5,
+			eventConcurrency: options.eventConcurrency ?? 10,
+			prefetchedMappings
+		};
+
 		let hasFailures = false;
 
-		for (const project of candidates) {
-			const pendingLogs: MigrationLogInsert[] = [];
+		// Process projects in parallel batches
+		const projectConcurrency = context.projectConcurrency ?? 3;
+		const projectBatches = this.chunkArray(candidates, projectConcurrency);
 
-			try {
-				const projectResult = await this.projectService.migrateProject(project, context);
+		for (const batch of projectBatches) {
+			const batchResults = await Promise.all(
+				batch.map((project) =>
+					this.migrateProjectWithDependencies(project, context, options.orgId ?? null)
+				)
+			);
 
-				const phaseResult = await this.phaseService.migratePhases(
-					project.id,
-					projectResult.ontoProjectId,
-					projectResult.actorId,
-					context,
-					projectResult.projectFacets,
-					{
-						projectId: project.id,
-						projectName: project.name,
-						projectStatus: project.status,
-						contextMarkdown: projectResult.contextMarkdown,
-						coreValues: projectResult.coreValues
-					}
-				);
+			// Aggregate results from parallel batch
+			for (const result of batchResults) {
+				if (result.error) {
+					hasFailures = true;
+				}
 
-				phaseBatch.total += phaseResult.phases.length;
-				for (const phasePlan of phaseResult.phases) {
-					this.applyBatchDetail(phaseBatch, phasePlan.status, {
-						legacyId: phasePlan.legacyPhaseId ?? `generated-${phasePlan.name}`,
-						ontoId: phasePlan.existingOntoPlanId,
-						error: phasePlan.notes,
-						status: phasePlan.status
+				// Update project batch
+				this.applyBatchDetail(projectBatch, result.projectResult?.status ?? 'failed', {
+					legacyId: result.projectId,
+					ontoId: result.projectResult?.ontoProjectId ?? null,
+					error: result.error ?? result.projectResult?.message,
+					status: result.projectResult?.status ?? 'failed'
+				});
+
+				// Update phase batch
+				phaseBatch.total += result.phases.length;
+				for (const phase of result.phases) {
+					this.applyBatchDetail(phaseBatch, phase.status, {
+						legacyId: phase.legacyPhaseId ?? `generated-${phase.name}`,
+						ontoId: phase.existingOntoPlanId,
+						error: phase.notes,
+						status: phase.status
 					});
-					pendingLogs.push(
-						this.buildLogInsert({
-							runId,
-							batchId,
-							entityType: 'phase',
-							legacyId: phasePlan.legacyPhaseId,
-							ontoId: phasePlan.existingOntoPlanId,
-							status: phasePlan.status,
-							orgId: options.orgId ?? null,
-							metadata: {
-								message: phasePlan.notes
-							}
-						})
-					);
 				}
 
-				const taskResult = await this.taskService.migrateTasks(
-					project.id,
-					projectResult.ontoProjectId,
-					projectResult.actorId,
-					context,
-					phaseResult.phaseMapping
-				);
-
-				taskBatch.total += taskResult.tasks.length;
-				for (const taskRecord of taskResult.tasks) {
-					this.applyBatchDetail(taskBatch, taskRecord.status, {
-						legacyId: taskRecord.legacyTaskId,
-						ontoId: taskRecord.ontoTaskId,
-						error: taskRecord.notes,
-						status: taskRecord.status
+				// Update task batch
+				taskBatch.total += result.tasks.length;
+				for (const task of result.tasks) {
+					this.applyBatchDetail(taskBatch, task.status, {
+						legacyId: task.legacyTaskId,
+						ontoId: task.ontoTaskId,
+						error: task.notes,
+						status: task.status
 					});
-					pendingLogs.push(
-						this.buildLogInsert({
-							runId,
-							batchId,
-							entityType: 'task',
-							legacyId: taskRecord.legacyTaskId,
-							ontoId: taskRecord.ontoTaskId,
-							status: taskRecord.status,
-							orgId: options.orgId ?? null,
-							metadata: {
-								message: taskRecord.notes,
-								classification: taskRecord.classification,
-								recommendedTypeKey: taskRecord.recommendedTypeKey,
-								phaseId: taskRecord.phaseId,
-								suggestedOntoPlanId: taskRecord.suggestedOntoPlanId
-							} as Json
-						})
-					);
 				}
 
-				const calendarResult = await this.calendarService.migrateCalendarData(
-					project.id,
-					projectResult.ontoProjectId,
-					projectResult.actorId,
-					context,
-					taskResult.taskMappings
-				);
-
-				calendarBatch.total += 1;
-				this.applyBatchDetail(calendarBatch, calendarResult.status, {
-					legacyId: project.id,
-					ontoId: projectResult.ontoProjectId,
-					error: calendarResult.notes,
-					status: calendarResult.status
-				});
-				pendingLogs.push(
-					this.buildLogInsert({
-						runId,
-						batchId,
-						entityType: 'calendar',
-						legacyId: project.id,
-						ontoId: projectResult.ontoProjectId,
-						status: calendarResult.status,
-						orgId: options.orgId ?? null,
-						metadata: {
-							notes: calendarResult.notes,
-							calendarCount: calendarResult.calendarCount,
-							updatedCalendars: calendarResult.updatedCalendars,
-							taskEventCount: calendarResult.taskEventCount,
-							createdEvents: calendarResult.createdEvents,
-							skippedEvents: calendarResult.skippedEvents
-						}
-					})
-				);
-
-				pendingLogs.unshift(
-					this.buildLogInsert({
-						runId,
-						batchId,
-						entityType: 'project',
-						legacyId: project.id,
-						ontoId: projectResult.ontoProjectId,
-						status: projectResult.status,
-						orgId: options.orgId ?? null,
-						metadata: {
-							message: projectResult.message,
-							analysis: projectResult.analysis,
-							template: projectResult.template,
-							templateProps: projectResult.templateProps
-						} as Json
-					})
-				);
-				this.applyBatchDetail(projectBatch, projectResult.status, {
-					legacyId: projectResult.legacyProjectId,
-					ontoId: projectResult.ontoProjectId,
-					error: projectResult.message,
-					status: projectResult.status
-				});
-
-				if (context.dryRun) {
-					const templatePreview = projectResult.template
-						? {
-								typeKey: projectResult.template.typeKey,
-								realm: projectResult.template.realm,
-								domain: projectResult.template.domain,
-								deliverable: projectResult.template.deliverable,
-								variant: projectResult.template.variant,
-								confidence: projectResult.template.confidence,
-								rationale: projectResult.template.rationale,
-								created: projectResult.template.created,
-								creationPlanned: projectResult.template.creationPlanned ?? null
-							}
-						: undefined;
-
-					const hasPreview =
-						phaseResult.preview ||
-						taskResult.preview ||
-						calendarResult.preview ||
-						projectResult.contextMarkdown ||
-						templatePreview;
-
-					if (hasPreview) {
-						previewEntries.push({
-							projectId: project.id,
-							projectName: project.name,
-							projectStatus: project.status,
-							contextDocumentId: projectResult.contextDocumentId,
-							contextMarkdown: projectResult.contextMarkdown,
-							coreValues: projectResult.coreValues,
-							planPreview: phaseResult.preview
-								? {
-										plans: phaseResult.preview.plans.map((plan) => ({
-											legacyPhaseId: plan.legacy_phase_id,
-											name: plan.name,
-											summary: plan.summary,
-											typeKey: plan.type_key,
-											stateKey: plan.state_key,
-											startDate: plan.start_date,
-											endDate: plan.end_date,
-											order: plan.order,
-											confidence: plan.confidence
-										})),
-										reasoning: phaseResult.preview.reasoning,
-										confidence: phaseResult.preview.confidence,
-										prompt: phaseResult.preview.prompt,
-										contextPreview: phaseResult.preview.contextPreview,
-										phasesPreview: phaseResult.preview.phasesPreview
-									}
-								: undefined,
-							taskPreview: taskResult.preview,
-							calendarPreview: calendarResult.preview,
-							templatePreview
-						});
-					}
+				// Update calendar batch
+				if (result.calendarResult) {
+					calendarBatch.total += 1;
+					this.applyBatchDetail(calendarBatch, result.calendarResult.status, {
+						legacyId: result.projectId,
+						ontoId: result.projectResult?.ontoProjectId ?? null,
+						error: result.calendarResult.notes,
+						status: result.calendarResult.status
+					});
 				}
 
-				if (pendingLogs.length) {
-					await this.logEntries(pendingLogs);
-				}
-			} catch (error) {
-				hasFailures = true;
-				const message = error instanceof Error ? error.message : 'Unknown migration error';
-
-				if (pendingLogs.length) {
-					await this.logEntries(pendingLogs);
+				// Add preview if available
+				if (result.preview) {
+					previewEntries.push(result.preview);
 				}
 
-				this.applyBatchDetail(projectBatch, 'failed', {
-					legacyId: project.id,
-					ontoId: null,
-					error: message,
-					status: 'failed'
-				});
-
-				await this.logEntries([
-					this.buildLogInsert({
-						runId,
-						batchId,
-						entityType: 'project',
-						legacyId: project.id,
-						status: 'failed',
-						orgId: options.orgId ?? null,
-						errorMessage: message,
-						metadata: {
-							notes: 'Migration orchestration failed before completion.'
-						}
-					})
-				]);
+				// Log all entries for this project
+				if (result.logs.length) {
+					await this.logEntries(result.logs);
+				}
 			}
 		}
 
@@ -406,6 +424,234 @@ export class OntologyMigrationOrchestrator {
 			dryRun,
 			previews: previewEntries.length ? previewEntries : undefined
 		};
+	}
+
+	/**
+	 * Migrate a single project with all its dependencies (phases, tasks, calendar)
+	 * Designed to be run in parallel with other projects
+	 */
+	private async migrateProjectWithDependencies(
+		project: LegacyProjectRow,
+		context: MigrationServiceContext,
+		orgId: string | null
+	): Promise<{
+		projectId: string;
+		projectResult: Awaited<ReturnType<ProjectMigrationService['migrateProject']>> | null;
+		phases: Awaited<ReturnType<PhaseMigrationService['migratePhases']>>['phases'];
+		tasks: Awaited<ReturnType<TaskMigrationService['migrateTasks']>>['tasks'];
+		calendarResult: Awaited<ReturnType<CalendarMigrationService['migrateCalendarData']>> | null;
+		preview: MigrationPreviewPayload | null;
+		logs: MigrationLogInsert[];
+		error: string | null;
+	}> {
+		const pendingLogs: MigrationLogInsert[] = [];
+
+		try {
+			const projectResult = await this.projectService.migrateProject(project, context);
+
+			const phaseResult = await this.phaseService.migratePhases(
+				project.id,
+				projectResult.ontoProjectId,
+				projectResult.actorId,
+				context,
+				projectResult.projectFacets,
+				{
+					projectId: project.id,
+					projectName: project.name,
+					projectStatus: project.status,
+					contextMarkdown: projectResult.contextMarkdown,
+					coreValues: projectResult.coreValues
+				}
+			);
+
+			for (const phasePlan of phaseResult.phases) {
+				pendingLogs.push(
+					this.buildLogInsert({
+						runId: context.runId,
+						batchId: context.batchId,
+						entityType: 'phase',
+						legacyId: phasePlan.legacyPhaseId,
+						ontoId: phasePlan.existingOntoPlanId,
+						status: phasePlan.status,
+						orgId,
+						metadata: { message: phasePlan.notes }
+					})
+				);
+			}
+
+			const taskResult = await this.taskService.migrateTasks(
+				project.id,
+				projectResult.ontoProjectId,
+				projectResult.actorId,
+				context,
+				phaseResult.phaseMapping
+			);
+
+			for (const taskRecord of taskResult.tasks) {
+				pendingLogs.push(
+					this.buildLogInsert({
+						runId: context.runId,
+						batchId: context.batchId,
+						entityType: 'task',
+						legacyId: taskRecord.legacyTaskId,
+						ontoId: taskRecord.ontoTaskId,
+						status: taskRecord.status,
+						orgId,
+						metadata: {
+							message: taskRecord.notes,
+							classification: taskRecord.classification,
+							recommendedTypeKey: taskRecord.recommendedTypeKey,
+							phaseId: taskRecord.phaseId,
+							suggestedOntoPlanId: taskRecord.suggestedOntoPlanId
+						} as unknown as Json
+					})
+				);
+			}
+
+			const calendarResult = await this.calendarService.migrateCalendarData(
+				project.id,
+				projectResult.ontoProjectId,
+				projectResult.actorId,
+				context,
+				taskResult.taskMappings
+			);
+
+			pendingLogs.push(
+				this.buildLogInsert({
+					runId: context.runId,
+					batchId: context.batchId,
+					entityType: 'calendar',
+					legacyId: project.id,
+					ontoId: projectResult.ontoProjectId,
+					status: calendarResult.status,
+					orgId,
+					metadata: {
+						notes: calendarResult.notes,
+						calendarCount: calendarResult.calendarCount,
+						updatedCalendars: calendarResult.updatedCalendars,
+						taskEventCount: calendarResult.taskEventCount,
+						createdEvents: calendarResult.createdEvents,
+						skippedEvents: calendarResult.skippedEvents
+					}
+				})
+			);
+
+			pendingLogs.unshift(
+				this.buildLogInsert({
+					runId: context.runId,
+					batchId: context.batchId,
+					entityType: 'project',
+					legacyId: project.id,
+					ontoId: projectResult.ontoProjectId,
+					status: projectResult.status,
+					orgId,
+					metadata: {
+						message: projectResult.message,
+						typeKey: projectResult.typeKey,
+						dryRun: context.dryRun,
+						analysis: projectResult.analysis,
+						template: projectResult.template,
+						templateProps: projectResult.templateProps
+					} as unknown as Json
+				})
+			);
+
+			// Build preview if dry run
+			let preview: MigrationPreviewPayload | null = null;
+			if (context.dryRun) {
+				const templatePreview = projectResult.template
+					? {
+							typeKey: projectResult.template.typeKey,
+							realm: projectResult.template.realm,
+							domain: projectResult.template.domain,
+							deliverable: projectResult.template.deliverable,
+							variant: projectResult.template.variant,
+							confidence: projectResult.template.confidence,
+							rationale: projectResult.template.rationale,
+							created: projectResult.template.created,
+							creationPlanned: projectResult.template.creationPlanned ?? null
+						}
+					: undefined;
+
+				const hasPreview =
+					phaseResult.preview ||
+					taskResult.preview ||
+					calendarResult.preview ||
+					projectResult.contextMarkdown ||
+					templatePreview;
+
+				if (hasPreview) {
+					preview = {
+						projectId: project.id,
+						projectName: project.name,
+						projectStatus: project.status,
+						contextDocumentId: projectResult.contextDocumentId,
+						contextMarkdown: projectResult.contextMarkdown,
+						coreValues: projectResult.coreValues,
+						planPreview: phaseResult.preview
+							? {
+									plans: phaseResult.preview.plans.map((plan) => ({
+										legacyPhaseId: plan.legacy_phase_id,
+										name: plan.name,
+										summary: plan.summary,
+										typeKey: plan.type_key,
+										stateKey: plan.state_key,
+										startDate: plan.start_date,
+										endDate: plan.end_date,
+										order: plan.order,
+										confidence: plan.confidence
+									})),
+									reasoning: phaseResult.preview.reasoning,
+									confidence: phaseResult.preview.confidence,
+									prompt: phaseResult.preview.prompt,
+									contextPreview: phaseResult.preview.contextPreview,
+									phasesPreview: phaseResult.preview.phasesPreview
+								}
+							: undefined,
+						taskPreview: taskResult.preview,
+						calendarPreview: calendarResult.preview,
+						templatePreview
+					};
+				}
+			}
+
+			return {
+				projectId: project.id,
+				projectResult,
+				phases: phaseResult.phases,
+				tasks: taskResult.tasks,
+				calendarResult,
+				preview,
+				logs: pendingLogs,
+				error: null
+			};
+		} catch (error) {
+			const message = error instanceof Error ? error.message : 'Unknown migration error';
+
+			pendingLogs.push(
+				this.buildLogInsert({
+					runId: context.runId,
+					batchId: context.batchId,
+					entityType: 'project',
+					legacyId: project.id,
+					status: 'failed',
+					orgId,
+					errorMessage: message,
+					metadata: { notes: 'Migration orchestration failed before completion.' }
+				})
+			);
+
+			return {
+				projectId: project.id,
+				projectResult: null,
+				phases: [],
+				tasks: [],
+				calendarResult: null,
+				preview: null,
+				logs: pendingLogs,
+				error: message
+			};
+		}
 	}
 
 	async getStatus(
@@ -445,104 +691,139 @@ export class OntologyMigrationOrchestrator {
 			return [];
 		}
 
+		// Pre-fetch all mappings upfront
+		const prefetchedMappings = await this.prefetchMappings(candidates.map((c) => c.id));
+
 		const featureFlags = await this.resolveFeatureFlags(null, initiatedBy);
+
+		// Process previews in parallel batches
+		const projectConcurrency = options.projectConcurrency ?? 3;
+		const projectBatches = this.chunkArray(candidates, projectConcurrency);
 		const previews: MigrationPreviewPayload[] = [];
 
-		for (const project of candidates) {
-			const context: MigrationServiceContext = {
-				runId: randomUUID(),
-				batchId: randomUUID(),
-				dryRun: true,
-				initiatedBy,
-				featureFlags,
-				now: new Date().toISOString()
-			};
+		for (const batch of projectBatches) {
+			const batchPreviews = await Promise.all(
+				batch.map(async (project) => {
+					const context: MigrationServiceContext = {
+						runId: randomUUID(),
+						batchId: randomUUID(),
+						dryRun: true,
+						initiatedBy,
+						featureFlags,
+						now: new Date().toISOString(),
+						skipCompletedTasks: options.skipCompletedTasks ?? true,
+						taskConcurrency: options.taskConcurrency ?? 5,
+						projectConcurrency: options.projectConcurrency ?? 3,
+						phaseConcurrency: options.phaseConcurrency ?? 5,
+						eventConcurrency: options.eventConcurrency ?? 10,
+						prefetchedMappings
+					};
 
-			const projectResult = await this.projectService.migrateProject(project, context);
-			const phaseResult = await this.phaseService.migratePhases(
-				project.id,
-				null,
-				projectResult.actorId,
-				context,
-				projectResult.projectFacets,
-				{
-					projectId: project.id,
-					projectName: project.name,
-					projectStatus: project.status,
-					contextMarkdown: projectResult.contextMarkdown,
-					coreValues: projectResult.coreValues
-				}
-			);
+					const projectResult = await this.projectService.migrateProject(
+						project,
+						context
+					);
+					const phaseResult = await this.phaseService.migratePhases(
+						project.id,
+						null,
+						projectResult.actorId,
+						context,
+						projectResult.projectFacets,
+						{
+							projectId: project.id,
+							projectName: project.name,
+							projectStatus: project.status,
+							contextMarkdown: projectResult.contextMarkdown,
+							coreValues: projectResult.coreValues
+						}
+					);
 
-			const taskResult = await this.taskService.migrateTasks(
-				project.id,
-				projectResult.ontoProjectId,
-				projectResult.actorId,
-				context,
-				phaseResult.phaseMapping
-			);
-
-			const calendarResult = await this.calendarService.migrateCalendarData(
-				project.id,
-				projectResult.ontoProjectId,
-				projectResult.actorId,
-				context,
-				taskResult.taskMappings
-			);
-
-			const templatePreview = projectResult.template
-				? {
-						typeKey: projectResult.template.typeKey,
-						realm: projectResult.template.realm,
-						domain: projectResult.template.domain,
-						deliverable: projectResult.template.deliverable,
-						variant: projectResult.template.variant,
-						confidence: projectResult.template.confidence,
-						rationale: projectResult.template.rationale,
-						created: projectResult.template.created,
-						creationPlanned: projectResult.template.creationPlanned ?? null
+					// Check for existing project mapping from cache
+					let ontoProjectIdForTasks = projectResult.ontoProjectId;
+					if (!ontoProjectIdForTasks && prefetchedMappings.projects.has(project.id)) {
+						ontoProjectIdForTasks = prefetchedMappings.projects.get(project.id) ?? null;
 					}
-				: undefined;
 
-			const hasPreview =
-				phaseResult.preview ||
-				taskResult.preview ||
-				calendarResult.preview ||
-				projectResult.contextMarkdown ||
-				templatePreview;
+					const taskResult = await this.taskService.migrateTasks(
+						project.id,
+						ontoProjectIdForTasks,
+						projectResult.actorId,
+						context,
+						phaseResult.phaseMapping
+					);
 
-			if (hasPreview) {
-				previews.push({
-					projectId: project.id,
-					projectName: project.name,
-					projectStatus: project.status,
-					contextDocumentId: projectResult.contextDocumentId,
-					contextMarkdown: projectResult.contextMarkdown,
-					coreValues: projectResult.coreValues,
-					planPreview: phaseResult.preview
+					const calendarResult = await this.calendarService.migrateCalendarData(
+						project.id,
+						ontoProjectIdForTasks,
+						projectResult.actorId,
+						context,
+						taskResult.taskMappings
+					);
+
+					const templatePreview = projectResult.template
 						? {
-								plans: phaseResult.preview.plans.map((plan) => ({
-									legacyPhaseId: plan.legacy_phase_id,
-									name: plan.name,
-									summary: plan.summary,
-									typeKey: plan.type_key,
-									stateKey: plan.state_key,
-									startDate: plan.start_date,
-									endDate: plan.end_date,
-									order: plan.order,
-									confidence: plan.confidence
-								})),
-								reasoning: phaseResult.preview.reasoning,
-								confidence: phaseResult.preview.confidence,
-								prompt: phaseResult.preview.prompt,
-								contextPreview: phaseResult.preview.contextPreview,
-								phasesPreview: phaseResult.preview.phasesPreview
+								typeKey: projectResult.template.typeKey,
+								realm: projectResult.template.realm,
+								domain: projectResult.template.domain,
+								deliverable: projectResult.template.deliverable,
+								variant: projectResult.template.variant,
+								confidence: projectResult.template.confidence,
+								rationale: projectResult.template.rationale,
+								created: projectResult.template.created,
+								creationPlanned: projectResult.template.creationPlanned ?? null
 							}
-						: undefined,
-					taskPreview: taskResult.preview,
-					calendarPreview: calendarResult.preview,
-					templatePreview
-				});
+						: undefined;
+
+					const hasPreview =
+						phaseResult.preview ||
+						taskResult.preview ||
+						calendarResult.preview ||
+						projectResult.contextMarkdown ||
+						templatePreview;
+
+					if (hasPreview) {
+						return {
+							projectId: project.id,
+							projectName: project.name,
+							projectStatus: project.status,
+							contextDocumentId: projectResult.contextDocumentId,
+							contextMarkdown: projectResult.contextMarkdown,
+							coreValues: projectResult.coreValues,
+							planPreview: phaseResult.preview
+								? {
+										plans: phaseResult.preview.plans.map((plan) => ({
+											legacyPhaseId: plan.legacy_phase_id,
+											name: plan.name,
+											summary: plan.summary,
+											typeKey: plan.type_key,
+											stateKey: plan.state_key,
+											startDate: plan.start_date,
+											endDate: plan.end_date,
+											order: plan.order,
+											confidence: plan.confidence
+										})),
+										reasoning: phaseResult.preview.reasoning,
+										confidence: phaseResult.preview.confidence,
+										prompt: phaseResult.preview.prompt,
+										contextPreview: phaseResult.preview.contextPreview,
+										phasesPreview: phaseResult.preview.phasesPreview
+									}
+								: undefined,
+							taskPreview: taskResult.preview,
+							calendarPreview: calendarResult.preview,
+							templatePreview
+						} as MigrationPreviewPayload;
+					}
+
+					return null;
+				})
+			);
+
+			// Add non-null previews
+			for (const preview of batchPreviews) {
+				if (preview) {
+					previews.push(preview);
+				}
 			}
 		}
 

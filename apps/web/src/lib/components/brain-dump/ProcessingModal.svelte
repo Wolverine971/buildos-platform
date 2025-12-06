@@ -182,171 +182,177 @@
 	closeOnEscape={true}
 	persistent={false}
 >
-	<!-- Custom Header -->
-	<div
-		slot="header"
-		class="text-center py-4 sm:py-6 px-4 sm:px-6 border-b border-gray-200 dark:border-gray-700"
-	>
-		<div class="flex justify-center mb-4">
+	{#snippet header()}
+		<!-- Custom Header -->
+		<div
+			class="text-center py-4 sm:py-6 px-4 sm:px-6 border-b border-gray-200 dark:border-gray-700"
+		>
+			<div class="flex justify-center mb-4">
+				{#if processingType === 'dual'}
+					<div class="relative">
+						<Brain class="w-12 h-12 text-primary-600 dark:text-primary-400" />
+						<Zap
+							class="w-6 h-6 text-amber-500 absolute -top-1 -right-1 animate-pulse"
+						/>
+					</div>
+				{:else}
+					<div class="relative">
+						<FileText class="w-12 h-12 text-primary-600 dark:text-primary-400" />
+						<div class="absolute inset-0 flex items-center justify-center">
+							<LoaderCircle
+								class="w-16 h-16 text-primary-600/20 dark:text-primary-400/20 animate-spin"
+							/>
+						</div>
+					</div>
+				{/if}
+			</div>
+			<h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+				{title}
+			</h2>
+			<p class="text-sm text-gray-500 dark:text-gray-400">
+				{subtitle}
+			</p>
+		</div>
+	{/snippet}
+
+	{#snippet children()}
+		<!-- Content -->
+		<div class="px-4 sm:px-6 py-4">
 			{#if processingType === 'dual'}
-				<div class="relative">
-					<Brain class="w-12 h-12 text-primary-600 dark:text-primary-400" />
-					<Zap class="w-6 h-6 text-amber-500 absolute -top-1 -right-1 animate-pulse" />
+				<!-- Dual Processing Content -->
+				<div class="space-y-4">
+					<div class="text-center mb-4 sm:mb-6">
+						<p class="text-sm text-gray-600 dark:text-gray-300">
+							Your brain dump is being analyzed in two ways: understanding the big
+							picture context and extracting specific tasks and actions. This
+							comprehensive approach ensures nothing important is missed.
+						</p>
+					</div>
+
+					<DualProcessingResults
+						bind:this={dualProcessingComponent}
+						{contextResult}
+						{tasksResult}
+						isProcessing={true}
+						inModal={true}
+						showContextPanel={!isShortBraindump}
+						{isShortBraindump}
+					/>
+
+					<!-- Rotating Tips for Dual Processing -->
+					<div class="text-center mt-4">
+						<p class="text-xs text-gray-500 dark:text-gray-400 italic">
+							💡 Tip: {tips[currentTipIndex]}
+						</p>
+					</div>
 				</div>
 			{:else}
-				<div class="relative">
-					<FileText class="w-12 h-12 text-primary-600 dark:text-primary-400" />
-					<div class="absolute inset-0 flex items-center justify-center">
-						<LoaderCircle
-							class="w-16 h-16 text-primary-600/20 dark:text-primary-400/20 animate-spin"
-						/>
+				<!-- Single Processing Content -->
+				<div class="space-y-6">
+					<!-- Animated Processing Steps -->
+					<div class="space-y-4">
+						{#each processingSteps as step, index}
+							<div
+								class="flex items-start gap-4"
+								in:fade={{ delay: index * 200, duration: 300 }}
+							>
+								<div class="flex-shrink-0">
+									{#if step.completed}
+										<div
+											class="w-8 h-8 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center"
+										>
+											<CircleCheck
+												class="w-5 h-5 text-emerald-600 dark:text-emerald-400"
+											/>
+										</div>
+									{:else if step.active}
+										<div
+											class="w-8 h-8 bg-primary-100 dark:bg-primary-900/30 rounded-full flex items-center justify-center"
+										>
+											<LoaderCircle
+												class="w-5 h-5 text-primary-600 dark:text-primary-400 animate-spin"
+											/>
+										</div>
+									{:else}
+										<div
+											class="w-8 h-8 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center"
+										>
+											<div
+												class="w-2 h-2 bg-gray-400 dark:bg-gray-600 rounded-full"
+											></div>
+										</div>
+									{/if}
+								</div>
+								<div class="flex-1">
+									<h4 class="text-sm font-medium text-gray-900 dark:text-white">
+										{step.title}
+									</h4>
+									<p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+										{step.description}
+									</p>
+								</div>
+							</div>
+						{/each}
+					</div>
+
+					<!-- Animated Brain Dump Visual -->
+					<div class="flex justify-center py-4">
+						<div class="relative">
+							<span class="text-4xl glowing-hammer">⚒</span>
+							<div class="absolute inset-0 flex items-center justify-center">
+								<!-- <div
+								class="w-16 h-16 border-2 border-primary-500/30 dark:border-primary-400/30 rounded-full animate-ping"
+							></div> -->
+							</div>
+						</div>
+					</div>
+
+					<!-- Progress Message -->
+					<div class="text-center">
+						<p class="text-sm text-gray-600 dark:text-gray-300 animate-pulse">
+							Turning your thoughts into organized, actionable next steps...
+						</p>
+					</div>
+
+					<!-- Rotating Tips -->
+					<div class="text-center mt-4">
+						<p class="text-xs text-gray-500 dark:text-gray-400 italic">
+							💡 Tip: {tips[currentTipIndex]}
+						</p>
 					</div>
 				</div>
 			{/if}
 		</div>
-		<h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-			{title}
-		</h2>
-		<p class="text-sm text-gray-500 dark:text-gray-400">
-			{subtitle}
-		</p>
-	</div>
+	{/snippet}
 
-	<!-- Content -->
-	<div class="px-4 sm:px-6 py-4">
-		{#if processingType === 'dual'}
-			<!-- Dual Processing Content -->
-			<div class="space-y-4">
-				<div class="text-center mb-4 sm:mb-6">
-					<p class="text-sm text-gray-600 dark:text-gray-300">
-						Your brain dump is being analyzed in two ways: understanding the big picture
-						context and extracting specific tasks and actions. This comprehensive
-						approach ensures nothing important is missed.
-					</p>
+	{#snippet footer()}
+		<!-- Footer info -->
+		<div
+			class="px-4 sm:px-6 py-3 sm:py-4 bg-gray-50 dark:bg-gray-900/50 border-t border-gray-200 dark:border-gray-700"
+		>
+			<p class="text-xs text-center text-gray-500 dark:text-gray-400 mb-3">
+				{#if processingType === 'dual'}
+					Processing longer content thoroughly - this ensures accurate task extraction and
+					context understanding
+				{:else}
+					Quick processing for focused content - typically completes in 5-15 seconds
+				{/if}
+			</p>
+
+			{#if showCancelButton}
+				<div class="flex justify-center" in:fade={{ duration: 200 }}>
+					<Button
+						variant="ghost"
+						size="sm"
+						onclick={handleCancel}
+						class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+					>
+						Cancel Processing
+					</Button>
 				</div>
-
-				<DualProcessingResults
-					bind:this={dualProcessingComponent}
-					{contextResult}
-					{tasksResult}
-					isProcessing={true}
-					inModal={true}
-					showContextPanel={!isShortBraindump}
-					{isShortBraindump}
-				/>
-
-				<!-- Rotating Tips for Dual Processing -->
-				<div class="text-center mt-4">
-					<p class="text-xs text-gray-500 dark:text-gray-400 italic">
-						💡 Tip: {tips[currentTipIndex]}
-					</p>
-				</div>
-			</div>
-		{:else}
-			<!-- Single Processing Content -->
-			<div class="space-y-6">
-				<!-- Animated Processing Steps -->
-				<div class="space-y-4">
-					{#each processingSteps as step, index}
-						<div
-							class="flex items-start gap-4"
-							in:fade={{ delay: index * 200, duration: 300 }}
-						>
-							<div class="flex-shrink-0">
-								{#if step.completed}
-									<div
-										class="w-8 h-8 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center"
-									>
-										<CircleCheck
-											class="w-5 h-5 text-emerald-600 dark:text-emerald-400"
-										/>
-									</div>
-								{:else if step.active}
-									<div
-										class="w-8 h-8 bg-primary-100 dark:bg-primary-900/30 rounded-full flex items-center justify-center"
-									>
-										<LoaderCircle
-											class="w-5 h-5 text-primary-600 dark:text-primary-400 animate-spin"
-										/>
-									</div>
-								{:else}
-									<div
-										class="w-8 h-8 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center"
-									>
-										<div
-											class="w-2 h-2 bg-gray-400 dark:bg-gray-600 rounded-full"
-										></div>
-									</div>
-								{/if}
-							</div>
-							<div class="flex-1">
-								<h4 class="text-sm font-medium text-gray-900 dark:text-white">
-									{step.title}
-								</h4>
-								<p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-									{step.description}
-								</p>
-							</div>
-						</div>
-					{/each}
-				</div>
-
-				<!-- Animated Brain Dump Visual -->
-				<div class="flex justify-center py-4">
-					<div class="relative">
-						<span class="text-4xl glowing-hammer">⚒</span>
-						<div class="absolute inset-0 flex items-center justify-center">
-							<!-- <div
-								class="w-16 h-16 border-2 border-primary-500/30 dark:border-primary-400/30 rounded-full animate-ping"
-							></div> -->
-						</div>
-					</div>
-				</div>
-
-				<!-- Progress Message -->
-				<div class="text-center">
-					<p class="text-sm text-gray-600 dark:text-gray-300 animate-pulse">
-						Turning your thoughts into organized, actionable next steps...
-					</p>
-				</div>
-
-				<!-- Rotating Tips -->
-				<div class="text-center mt-4">
-					<p class="text-xs text-gray-500 dark:text-gray-400 italic">
-						💡 Tip: {tips[currentTipIndex]}
-					</p>
-				</div>
-			</div>
-		{/if}
-	</div>
-
-	<!-- Footer info -->
-	<div
-		slot="footer"
-		class="px-4 sm:px-6 py-3 sm:py-4 bg-gray-50 dark:bg-gray-900/50 border-t border-gray-200 dark:border-gray-700"
-	>
-		<p class="text-xs text-center text-gray-500 dark:text-gray-400 mb-3">
-			{#if processingType === 'dual'}
-				Processing longer content thoroughly - this ensures accurate task extraction and
-				context understanding
-			{:else}
-				Quick processing for focused content - typically completes in 5-15 seconds
 			{/if}
-		</p>
-
-		{#if showCancelButton}
-			<div class="flex justify-center" in:fade={{ duration: 200 }}>
-				<Button
-					variant="ghost"
-					size="sm"
-					onclick={handleCancel}
-					class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-				>
-					Cancel Processing
-				</Button>
-			</div>
-		{/if}
-	</div>
+		</div>
+	{/snippet}
 </Modal>
 
 <style>

@@ -40,24 +40,20 @@
 	const currentPath = $derived($page.url.pathname);
 </script>
 
-<div class="flex min-h-screen min-h-[100dvh] bg-gray-50 dark:bg-gray-900/90">
+<div class="flex min-h-screen min-h-[100dvh] bg-surface-scratch dark:bg-slate-900">
 	<!-- Sidebar - Desktop Only -->
 	<aside
 		id="ontology-sidebar"
-		class="hidden lg:flex w-64 flex-shrink-0 flex-col border-r border-slate-200/80 px-4 pb-4 pt-8 shadow-lg shadow-slate-900/10 backdrop-blur dark:border-gray-800/70 dark:bg-gray-900/90"
+		class="hidden lg:flex w-64 flex-shrink-0 flex-col border-r-2 border-slate-700/20 px-4 pb-4 pt-8 bg-surface-clarity dark:border-slate-500/20 dark:bg-slate-900/90"
 	>
 		<div
-			class="space-y-1.5 rounded-xl border border-slate-200/80 bg-gradient-to-br from-blue-50/80 to-purple-50/60 px-4 py-3 dark:border-slate-800 dark:from-blue-950/30 dark:to-purple-950/20"
+			class="space-y-1.5 rounded border-2 border-slate-700/30 bg-surface-panel px-4 py-3 dark:border-slate-500/30 dark:bg-slate-800 shadow-subtle"
 		>
-			<p
-				class="text-xs font-semibold uppercase tracking-wide text-blue-700/80 dark:text-indigo-300/80"
-			>
-				BuildOS
+			<p class="text-xs font-bold tracking-tight text-accent-olive dark:text-accent-olive">
+				BUILDOS
 			</p>
-			<h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100">
-				Ontology System
-			</h2>
-			<p class="text-xs text-slate-500 dark:text-slate-400">
+			<h2 class="text-lg font-bold text-slate-900 dark:text-slate-100">Ontology System</h2>
+			<p class="text-xs text-slate-600 dark:text-slate-400">
 				High fidelity knowledge operations
 			</p>
 		</div>
@@ -68,18 +64,18 @@
 				{@const Icon = link.icon}
 				<a
 					href={link.href}
-					class={`group relative flex w-full items-start gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
+					class={`group relative flex w-full items-start gap-3 rounded px-3 py-2.5 text-sm font-semibold transition-all duration-100 ${
 						active
-							? 'bg-gradient-to-r from-blue-100/70 to-indigo-100/70 text-blue-700 shadow-md shadow-blue-500/10 ring-1 ring-inset ring-blue-500/30 dark:from-blue-950/40 dark:to-indigo-950/40 dark:text-indigo-200'
-							: 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/70 dark:hover:text-slate-100'
+							? 'bg-accent-orange/10 text-accent-orange border-2 border-accent-orange/30 dark:bg-accent-orange/20 dark:text-accent-orange dark:border-accent-orange/40'
+							: 'text-slate-700 hover:bg-slate-100 hover:text-slate-900 border-2 border-transparent dark:text-slate-300 dark:hover:bg-slate-800/50 dark:hover:text-slate-100'
 					}`}
 					aria-current={active ? 'page' : undefined}
 				>
 					<span
-						class={`flex h-9 w-9 items-center justify-center rounded-lg border text-sm transition-colors ${
+						class={`flex h-9 w-9 items-center justify-center rounded border-2 text-sm transition-all ${
 							active
-								? 'border-transparent bg-white text-blue-600 shadow-sm dark:bg-slate-900 dark:text-indigo-300'
-								: 'border-slate-200/80 bg-white/70 text-slate-500 dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-300'
+								? 'border-accent-orange bg-accent-orange/20 text-accent-orange shadow-subtle dark:bg-accent-orange/30'
+								: 'border-slate-700/20 bg-surface-elevated text-slate-600 dark:border-slate-500/20 dark:bg-slate-800 dark:text-slate-400'
 						}`}
 					>
 						<Icon class="h-4 w-4" />
@@ -96,7 +92,7 @@
 
 		<a
 			href="/"
-			class="mt-3 inline-flex items-center gap-2 rounded-xl border border-slate-200/70 px-3 py-2 text-xs font-semibold text-slate-600 transition hover:border-blue-400 hover:bg-blue-50/70 hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-slate-700 dark:text-slate-300 dark:hover:border-indigo-500 dark:hover:bg-indigo-900/40 dark:hover:text-indigo-200"
+			class="mt-3 inline-flex items-center gap-2 rounded border-2 border-slate-700/30 px-3 py-2 text-xs font-bold text-slate-700 transition hover:bg-accent-olive/10 hover:border-accent-olive hover:text-accent-olive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-orange dark:border-slate-500/30 dark:text-slate-300 dark:hover:bg-accent-olive/20 dark:hover:text-accent-olive shadow-subtle"
 		>
 			<ArrowLeft class="h-4 w-4" />
 			<span>Back to BuildOS</span>
@@ -105,7 +101,7 @@
 
 	<!-- Main content -->
 	<main
-		class="relative flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8 [scrollbar-gutter:stable_both-edges]"
+		class="relative flex-1 overflow-y-auto sm:pb-6 lg:px-8 lg:pb-8 bg-surface-scratch dark:bg-slate-900 [scrollbar-gutter:stable_both-edges]"
 	>
 		<div class="mx-auto max-w-6xl">
 			{@render children()}

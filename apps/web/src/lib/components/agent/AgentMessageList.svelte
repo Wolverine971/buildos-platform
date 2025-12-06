@@ -26,39 +26,41 @@
 	const proseClasses = getProseClasses('sm');
 </script>
 
-<!-- ✅ Ultra-tight 4px grid: space-y-1.5 (6px), px-2 py-2 (8px) -->
+<!-- ✅ Industrial message container with proper light/dark dithered background -->
 <div
 	bind:this={container}
 	onscroll={onScroll}
-	class="agent-chat-scroll flex-1 min-h-0 space-y-1.5 overflow-y-auto bg-slate-50/70 px-2 py-2 dark:bg-slate-900/40 sm:px-3 sm:py-3"
+	class="agent-chat-scroll flex-1 min-h-0 space-y-2 overflow-y-auto bg-gray-50 px-3 py-3 dark:bg-slate-900/50 sm:px-4 sm:py-4"
 >
 	{#if messages.length === 0}
-		<!-- ✅ Compact empty state: px-3 py-2.5, space-y-1.5, rounded-xl -->
+		<!-- ✅ Industrial empty state card with proper light/dark mode -->
 		<div
-			class="rounded-xl border border-dashed border-slate-200 px-3 py-2.5 dark:border-slate-800 sm:px-4 sm:py-3"
+			class="card-industrial rounded-sm border-2 border-dashed border-slate-300 bg-white px-4 py-3 dark:border-slate-600 dark:bg-slate-800/50 sm:px-5 sm:py-4"
 		>
-			<div class="space-y-1.5">
-				<!-- ✅ Compact heading: text-sm -->
-				<p class="font-semibold text-slate-900 dark:text-white text-sm leading-tight">
-					You're set to chat.
+			<div class="space-y-2">
+				<!-- ✅ Industrial heading -->
+				<p
+					class="font-bold uppercase tracking-wider text-slate-900 dark:text-white text-sm"
+				>
+					Ready to Operate
 				</p>
-				<!-- ✅ Compact description: text-xs, leading-snug -->
-				<p class="text-xs leading-snug text-slate-600 dark:text-slate-300">
+				<!-- ✅ Industrial description -->
+				<p class="text-xs font-medium leading-relaxed text-slate-600 dark:text-slate-400">
 					Ask BuildOS to plan, explain, or take the next step for
 					{displayContextLabel.toLowerCase()}.
 				</p>
-				<!-- ✅ Compact list: space-y-1, text-xs -->
-				<ul class="space-y-1 text-xs text-slate-500 dark:text-slate-400">
-					<li class="flex items-start gap-1.5">
-						<span class="mt-0.5 text-slate-400 dark:text-slate-500">•</span>
+				<!-- ✅ Industrial task list -->
+				<ul class="space-y-1.5 text-xs font-medium text-slate-500 dark:text-slate-400">
+					<li class="flex items-start gap-2">
+						<span class="mt-0.5 text-accent-olive">▸</span>
 						<span>Summarize where this stands</span>
 					</li>
-					<li class="flex items-start gap-1.5">
-						<span class="mt-0.5 text-slate-400 dark:text-slate-500">•</span>
+					<li class="flex items-start gap-2">
+						<span class="mt-0.5 text-accent-olive">▸</span>
 						<span>Draft the next update</span>
 					</li>
-					<li class="flex items-start gap-1.5">
-						<span class="mt-0.5 text-slate-400 dark:text-slate-500">•</span>
+					<li class="flex items-start gap-2">
+						<span class="mt-0.5 text-accent-olive">▸</span>
 						<span>What should we do next?</span>
 					</li>
 				</ul>
@@ -67,31 +69,33 @@
 	{:else}
 		{#each messages as message (message.id)}
 			{#if message.type === 'user'}
-				<!-- ✅ User message: max-w-[88%], rounded-xl, px-2.5 py-2, text-xs -->
+				<!-- ✅ Industrial user message with proper light/dark contrast -->
 				<div class="flex justify-end">
 					<div
-						class="max-w-[88%] rounded-xl border border-blue-200/50 bg-white px-2.5 py-2 text-xs text-blue-700 shadow-sm dark:border-blue-500/40 dark:bg-slate-800/70 dark:text-blue-300 sm:max-w-[85%] sm:px-3 sm:py-2.5"
+						class="max-w-[88%] rounded-sm border-2 border-blue-400 bg-blue-50 px-3 py-2.5 text-xs font-medium text-slate-900 shadow-sm dark:border-blue-600 dark:bg-blue-900/20 dark:text-slate-100 sm:max-w-[85%] sm:px-4 sm:py-3"
 					>
-						<div class="whitespace-pre-wrap break-words leading-snug">
+						<div class="whitespace-pre-wrap break-words leading-relaxed">
 							{message.content}
 						</div>
-						<!-- ✅ Compact timestamp: mt-1, text-[11px] -->
-						<div class="mt-1 text-[11px] text-blue-600/60 dark:text-blue-400/60">
+						<!-- ✅ Industrial timestamp with proper contrast -->
+						<div
+							class="mt-1.5 text-[11px] font-semibold uppercase tracking-wider text-blue-600 dark:text-blue-400"
+						>
 							{formatTime(message.timestamp)}
 						</div>
 					</div>
 				</div>
 			{:else if message.type === 'assistant'}
-				<!-- ✅ Assistant message: gap-1.5, h-7 w-7 avatar, px-2.5 py-2, text-xs -->
-				<div class="flex gap-1.5 sm:gap-2">
-					<!-- ✅ Compact avatar: h-7 w-7 (28px) → h-8 w-8 (32px) on desktop -->
+				<!-- ✅ Industrial assistant message with proper light/dark contrast -->
+				<div class="flex gap-2 sm:gap-3">
+					<!-- ✅ Industrial avatar with better contrast -->
 					<div
-						class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-[10px] font-semibold uppercase text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 sm:h-8 sm:w-8 sm:text-xs"
+						class="flex h-8 w-8 shrink-0 items-center justify-center rounded-sm border-2 border-slate-400 bg-slate-700 text-[10px] font-bold uppercase text-white dark:border-slate-500 dark:bg-slate-600 sm:h-9 sm:w-9 sm:text-xs"
 					>
 						OS
 					</div>
 					<div
-						class="agent-resp-div max-w-[88%] rounded-xl border border-slate-200 bg-white px-2.5 py-2 text-xs leading-snug text-slate-900 shadow-sm dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-100 sm:max-w-[85%] sm:px-3 sm:py-2.5"
+						class="agent-resp-div clarity-zone max-w-[88%] rounded-sm border-2 border-slate-300 bg-white px-3 py-2.5 text-xs font-medium leading-relaxed text-slate-900 shadow-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 sm:max-w-[85%] sm:px-4 sm:py-3"
 					>
 						{#if shouldRenderAsMarkdown(message.content)}
 							<div class={proseClasses}>
@@ -102,22 +106,24 @@
 								{message.content}
 							</div>
 						{/if}
-						<!-- ✅ Compact timestamp: mt-1, text-[11px] -->
-						<div class="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
+						<!-- ✅ Industrial timestamp -->
+						<div
+							class="mt-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400"
+						>
 							{formatTime(message.timestamp)}
 						</div>
 					</div>
 				</div>
 			{:else if message.type === 'agent_peer'}
-				<!-- ✅ Agent peer message: gap-1.5, h-7 w-7 avatar, px-2.5 py-2, text-xs -->
-				<div class="flex gap-1.5 sm:gap-2">
+				<!-- ✅ Industrial agent peer message with proper light/dark contrast -->
+				<div class="flex gap-2 sm:gap-3">
 					<div
-						class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-indigo-200 bg-white text-[10px] font-semibold uppercase text-indigo-600 dark:border-indigo-500/50 dark:bg-slate-800 dark:text-indigo-300 sm:h-8 sm:w-8"
+						class="flex h-8 w-8 shrink-0 items-center justify-center rounded-sm border-2 border-orange-400 bg-orange-100 text-[10px] font-bold uppercase text-orange-700 dark:border-orange-600 dark:bg-orange-900/30 dark:text-orange-400 sm:h-9 sm:w-9 sm:text-xs"
 					>
 						AI↔
 					</div>
 					<div
-						class="max-w-[88%] rounded-xl border border-indigo-200 bg-indigo-50/70 px-2.5 py-2 text-xs leading-snug text-slate-900 shadow-sm dark:border-indigo-500/40 dark:bg-indigo-500/5 dark:text-slate-100 sm:max-w-[85%] sm:px-3 sm:py-2.5"
+						class="max-w-[88%] rounded-sm border-2 border-orange-300 bg-orange-50 px-3 py-2.5 text-xs font-medium leading-relaxed text-slate-900 shadow-sm dark:border-orange-700 dark:bg-orange-900/10 dark:text-slate-100 sm:max-w-[85%] sm:px-4 sm:py-3"
 					>
 						{#if shouldRenderAsMarkdown(message.content)}
 							<div class={proseClasses}>
@@ -128,8 +134,10 @@
 								{message.content}
 							</div>
 						{/if}
-						<!-- ✅ Compact timestamp: mt-1, text-[11px] -->
-						<div class="mt-1 text-[11px] text-indigo-700/70 dark:text-indigo-200/80">
+						<!-- ✅ Industrial timestamp with proper contrast -->
+						<div
+							class="mt-1.5 text-[11px] font-semibold uppercase tracking-wider text-orange-600 dark:text-orange-400"
+						>
 							{formatTime(message.timestamp)}
 						</div>
 					</div>
@@ -140,31 +148,31 @@
 					onToggleCollapse={onToggleThinkingBlock}
 				/>
 			{:else if message.type === 'clarification'}
-				<!-- ✅ Clarification message: gap-1.5, h-7 w-7 avatar, px-2.5 py-2.5, text-xs -->
-				<div class="flex gap-1.5 sm:gap-2">
+				<!-- ✅ Industrial clarification message with proper light/dark contrast -->
+				<div class="flex gap-2 sm:gap-3">
 					<div
-						class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-blue-200 bg-white text-[10px] font-semibold uppercase text-blue-600 dark:border-blue-500/40 dark:bg-slate-800 dark:text-blue-300 sm:h-8 sm:w-8 sm:text-xs"
+						class="flex h-8 w-8 shrink-0 items-center justify-center rounded-sm border-2 border-green-500 bg-green-100 text-[10px] font-bold uppercase text-green-700 dark:border-green-600 dark:bg-green-900/30 dark:text-green-400 sm:h-9 sm:w-9 sm:text-xs"
 					>
 						AI
 					</div>
 					<div
-						class="max-w-[90%] rounded-xl border border-blue-200 bg-blue-50/80 px-2.5 py-2.5 text-xs leading-snug text-slate-900 shadow-sm dark:border-blue-500/40 dark:bg-blue-500/5 dark:text-slate-100 sm:max-w-[88%] sm:px-3 sm:py-3"
+						class="max-w-[90%] rounded-sm border-2 border-green-300 bg-green-50 px-3 py-3 text-xs font-medium leading-relaxed text-slate-900 shadow-sm dark:border-green-700 dark:bg-green-900/10 dark:text-slate-100 sm:max-w-[88%] sm:px-4 sm:py-3.5"
 					>
-						<!-- ✅ Compact heading: text-xs font-semibold -->
+						<!-- ✅ Industrial heading -->
 						<p
-							class="text-xs font-semibold text-slate-900 dark:text-white leading-tight"
+							class="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white"
 						>
 							{message.content}
 						</p>
 
 						{#if message.data?.questions?.length}
-							<!-- ✅ Compact questions: mt-2, space-y-1.5, text-xs -->
-							<ol class="mt-2 space-y-1.5 text-xs text-slate-700 dark:text-slate-200">
+							<!-- ✅ Industrial questions list -->
+							<ol class="mt-3 space-y-2 text-xs text-slate-700 dark:text-slate-200">
 								{#each message.data.questions as question, i}
-									<li class="flex gap-1.5 font-medium leading-snug sm:gap-2">
-										<!-- ✅ Compact number badge: h-5 w-5, text-[10px] -->
+									<li class="flex gap-2 font-medium leading-relaxed sm:gap-2.5">
+										<!-- ✅ Industrial number badge -->
 										<span
-											class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-white text-[10px] font-semibold text-blue-600 shadow dark:bg-slate-900 dark:text-blue-300"
+											class="flex h-5 w-5 shrink-0 items-center justify-center rounded-sm bg-slate-900 text-[10px] font-bold text-surface-scratch shadow dark:bg-slate-700"
 										>
 											{i + 1}
 										</span>
@@ -174,13 +182,15 @@
 							</ol>
 						{/if}
 
-						<!-- ✅ Compact hint: mt-2, text-[11px] -->
+						<!-- ✅ Industrial hint -->
 						<p
-							class="mt-2 text-[11px] text-slate-600 dark:text-slate-400 leading-tight"
+							class="mt-3 text-[11px] font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400"
 						>
-							Share the answers in your next message so I can keep going.
+							Share the answers in your next message to continue
 						</p>
-						<div class="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
+						<div
+							class="mt-1.5 text-[11px] font-semibold uppercase tracking-wider text-green-600 dark:text-green-400"
+						>
 							{formatTime(message.timestamp)}
 						</div>
 					</div>

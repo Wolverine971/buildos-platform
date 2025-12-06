@@ -1872,6 +1872,35 @@ You must respond with valid JSON only. Follow these rules:
 						const duration = performance.now() - startTime;
 						const requestCompletedAt = new Date();
 
+						// Yield any pending tool call that wasn't completed
+						// This can happen if the stream ends without a finish_reason
+						if (currentToolCall && currentToolCall.function.name) {
+							// Try to parse incomplete arguments as valid JSON, or use empty object
+							if (!this.isCompleteJSON(currentToolCall.function.arguments)) {
+								// Try to fix common incomplete JSON patterns
+								let fixedArgs = currentToolCall.function.arguments;
+								if (fixedArgs && !fixedArgs.endsWith('}')) {
+									// Attempt to close incomplete JSON
+									fixedArgs = fixedArgs.replace(/,\s*$/, '') + '}';
+								}
+								if (this.isCompleteJSON(fixedArgs)) {
+									currentToolCall.function.arguments = fixedArgs;
+								} else {
+									// Fall back to empty object if we can't fix it
+									console.warn(
+										'Tool call arguments incomplete at stream end:',
+										currentToolCall.function.arguments
+									);
+									currentToolCall.function.arguments = '{}';
+								}
+							}
+							yield {
+								type: 'tool_call',
+								tool_call: currentToolCall
+							};
+							currentToolCall = null;
+						}
+
 						// Log usage if available
 						if (usage) {
 							const actualModel = preferredModels[0] || 'openai/gpt-4o-mini';
@@ -1930,12 +1959,23 @@ You must respond with valid JSON only. Follow these rules:
 							const delta = choice.delta;
 
 							if (delta.content) {
-								// Text content
-								accumulatedContent += delta.content;
-								yield {
-									type: 'text',
-									content: delta.content
-								};
+								// Filter out invisible padding characters that some models (like DeepSeek) emit
+								// U+3164 (ㅤ) = Hangul Filler - often used as invisible thinking/padding
+								// U+200B = Zero Width Space
+								// U+FEFF = Zero Width No-Break Space (BOM)
+								// U+00A0 repeated = Non-breaking spaces used as padding
+								const filteredContent = delta.content
+									.replace(/[\u3164\u200B\uFEFF]+/g, '')
+									.replace(/\u00A0{3,}/g, ' '); // Collapse multiple NBSPs to single space
+
+								if (filteredContent) {
+									// Text content
+									accumulatedContent += filteredContent;
+									yield {
+										type: 'text',
+										content: filteredContent
+									};
+								}
 							}
 
 							if (delta.tool_calls && delta.tool_calls[0]) {

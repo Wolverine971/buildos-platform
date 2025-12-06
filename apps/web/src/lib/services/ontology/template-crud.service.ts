@@ -358,20 +358,147 @@ export class TemplateCrudService {
 	}
 
 	/**
-	 * Delete template (only if not in use)
+	 * Get count of projects using a template
+	 */
+	static async getTemplateProjectCount(
+		client: TypedSupabaseClient,
+		templateId: string
+	): Promise<TemplateServiceResult<{ count: number; projectIds: string[] }>> {
+		// Get template metadata
+		const { data: template, error: templateFetchError } = await client
+			.from('onto_templates')
+			.select('id, type_key')
+			.eq('id', templateId)
+			.maybeSingle();
+
+		if (templateFetchError) {
+			console.error('[Template CRUD] Failed to load template:', templateFetchError);
+			return {
+				success: false,
+				error: 'Unable to load template'
+			};
+		}
+
+		if (!template) {
+			return {
+				success: false,
+				error: 'Template not found'
+			};
+		}
+
+		// Get all projects using this template
+		const { data: projects, error: projectsFetchError } = await client
+			.from('onto_projects')
+			.select('id')
+			.eq('type_key', template.type_key);
+
+		if (projectsFetchError) {
+			console.error('[Template CRUD] Failed to fetch projects:', projectsFetchError);
+			return {
+				success: false,
+				error: 'Failed to check projects using this template'
+			};
+		}
+
+		return {
+			success: true,
+			data: {
+				count: projects?.length || 0,
+				projectIds: projects?.map((p) => p.id) || []
+			}
+		};
+	}
+
+	/**
+	 * Delete template and cascade delete all projects using it
 	 */
 	static async deleteTemplate(
 		client: TypedSupabaseClient,
 		templateId: string
 	): Promise<TemplateServiceResult> {
-		// Check if template can be deleted
-		const canDelete = await TemplateValidationService.canDelete(client, templateId);
-		if (!canDelete.valid) {
+		// Get template metadata
+		const { data: template, error: templateFetchError } = await client
+			.from('onto_templates')
+			.select('id, type_key')
+			.eq('id', templateId)
+			.maybeSingle();
+
+		if (templateFetchError) {
+			console.error('[Template CRUD] Failed to load template:', templateFetchError);
 			return {
 				success: false,
-				error: 'Template cannot be deleted',
-				validationErrors: canDelete.errors
+				error: 'Unable to load template'
 			};
+		}
+
+		if (!template) {
+			return {
+				success: false,
+				error: 'Template not found'
+			};
+		}
+
+		// Check if template has child templates (cannot delete parent templates)
+		const { data: children } = await client
+			.from('onto_templates')
+			.select('id')
+			.eq('parent_template_id', templateId)
+			.limit(1);
+
+		if (children && children.length > 0) {
+			return {
+				success: false,
+				error: 'Cannot delete template with child templates',
+				validationErrors: [
+					{
+						field: 'template',
+						message: 'Cannot delete template with child templates',
+						code: 'HAS_CHILDREN'
+					}
+				]
+			};
+		}
+
+		// Get all projects using this template
+		const { data: projects, error: projectsFetchError } = await client
+			.from('onto_projects')
+			.select('id')
+			.eq('type_key', template.type_key);
+
+		if (projectsFetchError) {
+			console.error('[Template CRUD] Failed to fetch projects:', projectsFetchError);
+			return {
+				success: false,
+				error: 'Failed to check projects using this template'
+			};
+		}
+
+		// CASCADE DELETE: Delete all projects using this template
+		if (projects && projects.length > 0) {
+			console.log(
+				`[Template CRUD] Cascade deleting ${projects.length} project(s) for template ${templateId}`
+			);
+
+			for (const project of projects) {
+				const { error: projectDeleteError } = await client.rpc('delete_onto_project', {
+					p_project_id: project.id
+				});
+
+				if (projectDeleteError) {
+					console.error(
+						`[Template CRUD] Failed to delete project ${project.id}:`,
+						projectDeleteError
+					);
+					return {
+						success: false,
+						error: `Failed to delete associated project: ${projectDeleteError.message}`
+					};
+				}
+			}
+
+			console.log(
+				`[Template CRUD] Successfully deleted ${projects.length} project(s) for template ${templateId}`
+			);
 		}
 
 		// Delete template
@@ -386,7 +513,10 @@ export class TemplateCrudService {
 		}
 
 		return {
-			success: true
+			success: true,
+			data: {
+				deletedProjects: projects?.length || 0
+			}
 		};
 	}
 

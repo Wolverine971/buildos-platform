@@ -241,43 +241,41 @@
 
 <!-- Account for navbar height -->
 <div
-	class="flex items-center justify-center px-4 sm:px-6 lg:px-8"
+	class="flex items-center justify-center px-4 sm:px-6 lg:px-8 bg-[var(--surface-scratch)] dither-pattern"
 	style="min-height: calc(100vh - 64px);"
 >
 	<div class="max-w-md w-full space-y-8 py-12">
 		<!-- Logo/Brand Section -->
 		<div class="text-center">
 			<div class="flex justify-center mb-6">
-				<video
-					src="/onboarding-assets/animations/brain-bolt-electric.mp4"
-					class="w-16 h-16 rounded-md"
-					autoplay
-					loop
-					muted
-					playsinline
-					aria-label="BuildOS Icon"
-				></video>
+				<div class="utility-block w-16 h-16 rounded-sm flex items-center justify-center">
+					<video
+						src="/onboarding-assets/animations/brain-bolt-electric.mp4"
+						class="w-12 h-12"
+						autoplay
+						loop
+						muted
+						playsinline
+						aria-label="BuildOS Icon"
+					></video>
+				</div>
 			</div>
 
-			<h2 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">Join BuildOS</h2>
-			<p class="text-gray-600 dark:text-gray-400 mb-8">
+			<h2 class="text-3xl font-bold text-slate-900 dark:text-slate-100 mb-2">Join BuildOS</h2>
+			<p class="text-slate-700 dark:text-slate-300 mb-8">
 				Create your personal operating system
 			</p>
 		</div>
 
 		<!-- Form Section -->
-		<div class="bg-white dark:bg-gray-800 py-8 px-6 shadow-sm rounded-lg">
+		<div class="card-industrial py-8 px-6 relative noise-overlay">
 			<!-- Google OAuth Button -->
 			<div class="mb-6">
-				<Button
+				<button
 					type="button"
 					onclick={handleGoogleSignUp}
 					disabled={googleLoading || loading || success}
-					loading={googleLoading}
-					fullWidth={true}
-					variant="secondary"
-					size="lg"
-					class="border-gray-300 dark:border-gray-600"
+					class="btn-secondary w-full px-6 py-3 text-base flex items-center justify-center"
 				>
 					{#if !googleLoading}
 						<svg class="w-5 h-5 mr-3" viewBox="0 0 24 24">
@@ -300,7 +298,7 @@
 						</svg>
 					{/if}
 					{googleLoading ? 'Creating account...' : 'Continue with Google'}
-				</Button>
+				</button>
 			</div>
 
 			<!-- Divider -->

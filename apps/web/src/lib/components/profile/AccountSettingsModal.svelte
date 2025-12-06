@@ -236,362 +236,370 @@
 </script>
 
 <Modal {isOpen} onClose={handleClose} size="lg" title="">
-	<div slot="header">
-		<div class="sm:hidden">
-			<div class="modal-grab-handle"></div>
-		</div>
-		<div
-			class="dither-soft px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 dark:border-gray-700"
-		>
-			<div class="flex items-start justify-between">
-				<div class="flex items-center space-x-3">
-					<div class="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-						<Settings class="w-6 h-6 text-blue-600 dark:text-blue-400" />
+	{#snippet header()}
+		<div>
+			<div class="sm:hidden">
+				<div class="modal-grab-handle"></div>
+			</div>
+			<div class="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 dark:border-gray-700">
+				<div class="flex items-start justify-between">
+					<div class="flex items-center space-x-3">
+						<div class="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+							<Settings class="w-6 h-6 text-blue-600 dark:text-blue-400" />
+						</div>
+						<div>
+							<h2 class="text-2xl font-semibold text-gray-900 dark:text-white">
+								Account Settings
+							</h2>
+							<p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
+								Manage your account information and preferences
+							</p>
+						</div>
 					</div>
-					<div>
-						<h2 class="text-2xl font-semibold text-gray-900 dark:text-white">
-							Account Settings
-						</h2>
-						<p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-							Manage your account information and preferences
-						</p>
-					</div>
+					<Button
+						type="button"
+						onclick={handleClose}
+						disabled={loading}
+						variant="ghost"
+						size="sm"
+						class="!p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+						aria-label="Close modal"
+					>
+						<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M6 18L18 6M6 6l12 12"
+							/>
+						</svg>
+					</Button>
 				</div>
-				<Button
-					type="button"
-					onclick={handleClose}
-					disabled={loading}
-					variant="ghost"
-					size="sm"
-					class="!p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
-					aria-label="Close modal"
-				>
-					<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M6 18L18 6M6 6l12 12"
-						/>
-					</svg>
-				</Button>
 			</div>
 		</div>
-	</div>
+	{/snippet}
 
-	<div class="flex flex-col h-full">
-		<!-- Tab Navigation -->
-		<div class="border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
-			<nav class="flex space-x-8 px-6" aria-label="Tabs">
-				<Button
-					onclick={() => switchTab('profile')}
-					disabled={loading}
-					variant="ghost"
-					size="md"
-					class="py-4 px-1 border-b-0 font-medium text-sm transition-colors whitespace-nowrap focus:ring-0 focus:ring-offset-0
+	{#snippet children()}
+		<div class="flex flex-col h-full">
+			<!-- Tab Navigation -->
+			<div class="border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+				<nav class="flex space-x-8 px-6" aria-label="Tabs">
+					<Button
+						onclick={() => switchTab('profile')}
+						disabled={loading}
+						variant="ghost"
+						size="md"
+						class="py-4 px-1 border-b-0 font-medium text-sm transition-colors whitespace-nowrap focus:ring-0 focus:ring-offset-0
 					{activeTab === 'profile'
-						? 'border-blue-500 text-blue-600 dark:text-blue-400'
-						: 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'}"
-					icon={User}
-				>
-					Profile
-				</Button>
-				<Button
-					onclick={() => switchTab('password')}
-					disabled={loading}
-					variant="ghost"
-					size="md"
-					class="py-4 px-1 border-b-0 font-medium text-sm transition-colors whitespace-nowrap focus:ring-0 focus:ring-offset-0
+							? 'border-blue-500 text-blue-600 dark:text-blue-400'
+							: 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'}"
+						icon={User}
+					>
+						Profile
+					</Button>
+					<Button
+						onclick={() => switchTab('password')}
+						disabled={loading}
+						variant="ghost"
+						size="md"
+						class="py-4 px-1 border-b-0 font-medium text-sm transition-colors whitespace-nowrap focus:ring-0 focus:ring-offset-0
 					{activeTab === 'password'
-						? 'border-blue-500 text-blue-600 dark:text-blue-400'
-						: 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'}"
-					icon={Lock}
-				>
-					Password
-				</Button>
-				<Button
-					onclick={() => switchTab('danger')}
-					disabled={loading}
-					variant="ghost"
-					size="md"
-					class="py-4 px-1 border-b-0 font-medium text-sm transition-colors whitespace-nowrap focus:ring-0 focus:ring-offset-0
+							? 'border-blue-500 text-blue-600 dark:text-blue-400'
+							: 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'}"
+						icon={Lock}
+					>
+						Password
+					</Button>
+					<Button
+						onclick={() => switchTab('danger')}
+						disabled={loading}
+						variant="ghost"
+						size="md"
+						class="py-4 px-1 border-b-0 font-medium text-sm transition-colors whitespace-nowrap focus:ring-0 focus:ring-offset-0
 					{activeTab === 'danger'
-						? 'border-red-500 text-red-600 dark:text-red-400'
-						: 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'}"
-					icon={Trash2}
-				>
-					Delete Account
-				</Button>
-			</nav>
-		</div>
-
-		<!-- Tab Content -->
-		<div class="flex-1 overflow-y-auto bg-gray-50/50 dark:bg-gray-900/30">
-			<!-- Success Message -->
-			{#if successMessage}
-				<div
-					class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 mx-6 mt-6"
-				>
-					<div class="flex items-center space-x-2">
-						<CheckCircle class="w-5 h-5 text-green-600 dark:text-green-400" />
-						<p class="text-sm text-green-700 dark:text-green-300">{successMessage}</p>
-					</div>
-				</div>
-			{/if}
-
-			<!-- Error Messages -->
-			{#if errors.length > 0}
-				<div
-					class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 mx-6 mt-6"
-				>
-					<div class="flex items-start space-x-2">
-						<AlertCircle class="w-5 h-5 text-red-600 dark:text-red-400 mt-0.5" />
-						<div class="text-sm text-red-700 dark:text-red-300">
-							{#each errors as error}
-								<p>{error}</p>
-							{/each}
-						</div>
-					</div>
-				</div>
-			{/if}
-
-			<!-- Profile Tab -->
-			{#if activeTab === 'profile'}
-				<div class="px-4 sm:px-6 py-4 space-y-3 sm:space-y-4">
-					<div
-						class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 sm:p-5 lg:p-6"
+							? 'border-red-500 text-red-600 dark:text-red-400'
+							: 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'}"
+						icon={Trash2}
 					>
-						<div class="flex items-center gap-3 mb-6">
-							<User class="w-5 h-5 text-blue-600 dark:text-blue-400" />
-							<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-								Profile Information
-							</h3>
-						</div>
+						Delete Account
+					</Button>
+				</nav>
+			</div>
 
-						<div class="space-y-4">
-							<FormField label="Full Name" labelFor="name" size="md">
-								<TextInput
-									id="name"
-									bind:value={profileForm.name}
-									type="text"
-									placeholder="Enter your full name"
-									disabled={loading}
+			<!-- Tab Content -->
+			<div class="flex-1 overflow-y-auto bg-gray-50/50 dark:bg-gray-900/30">
+				<!-- Success Message -->
+				{#if successMessage}
+					<div
+						class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 mx-6 mt-6"
+					>
+						<div class="flex items-center space-x-2">
+							<CheckCircle class="w-5 h-5 text-green-600 dark:text-green-400" />
+							<p class="text-sm text-green-700 dark:text-green-300">
+								{successMessage}
+							</p>
+						</div>
+					</div>
+				{/if}
+
+				<!-- Error Messages -->
+				{#if errors.length > 0}
+					<div
+						class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 mx-6 mt-6"
+					>
+						<div class="flex items-start space-x-2">
+							<AlertCircle class="w-5 h-5 text-red-600 dark:text-red-400 mt-0.5" />
+							<div class="text-sm text-red-700 dark:text-red-300">
+								{#each errors as error}
+									<p>{error}</p>
+								{/each}
+							</div>
+						</div>
+					</div>
+				{/if}
+
+				<!-- Profile Tab -->
+				{#if activeTab === 'profile'}
+					<div class="px-4 sm:px-6 py-4 space-y-3 sm:space-y-4">
+						<div
+							class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 sm:p-5 lg:p-6"
+						>
+							<div class="flex items-center gap-3 mb-6">
+								<User class="w-5 h-5 text-blue-600 dark:text-blue-400" />
+								<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+									Profile Information
+								</h3>
+							</div>
+
+							<div class="space-y-4">
+								<FormField label="Full Name" labelFor="name" size="md">
+									<TextInput
+										id="name"
+										bind:value={profileForm.name}
+										type="text"
+										placeholder="Enter your full name"
+										disabled={loading}
+										size="md"
+									/>
+								</FormField>
+
+								<FormField
+									label="Email Address"
+									labelFor="email"
 									size="md"
-								/>
-							</FormField>
+									hint="Changing your email will require confirmation"
+								>
+									<TextInput
+										id="email"
+										bind:value={profileForm.email}
+										type="email"
+										placeholder="Enter your email address"
+										disabled={loading}
+										size="md"
+									/>
+								</FormField>
+							</div>
 
-							<FormField
-								label="Email Address"
-								labelFor="email"
-								size="md"
-								hint="Changing your email will require confirmation"
-							>
-								<TextInput
-									id="email"
-									bind:value={profileForm.email}
-									type="email"
-									placeholder="Enter your email address"
+							<div class="flex justify-end mt-6">
+								<Button
+									onclick={updateProfile}
 									disabled={loading}
+									variant="primary"
 									size="md"
-								/>
-							</FormField>
-						</div>
-
-						<div class="flex justify-end mt-6">
-							<Button
-								onclick={updateProfile}
-								disabled={loading}
-								variant="primary"
-								size="md"
-								{loading}
-								loadingText="Updating Profile..."
-							>
-								Update Profile
-							</Button>
+									{loading}
+									loadingText="Updating Profile..."
+								>
+									Update Profile
+								</Button>
+							</div>
 						</div>
 					</div>
-				</div>
-			{/if}
+				{/if}
 
-			<!-- Password Tab -->
-			{#if activeTab === 'password'}
-				<div class="px-4 sm:px-6 py-4 space-y-3 sm:space-y-4">
-					<div
-						class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 sm:p-5 lg:p-6"
-					>
-						<div class="flex items-center gap-3 mb-6">
-							<Lock class="w-5 h-5 text-green-600 dark:text-green-400" />
-							<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-								Change Password
-							</h3>
-						</div>
+				<!-- Password Tab -->
+				{#if activeTab === 'password'}
+					<div class="px-4 sm:px-6 py-4 space-y-3 sm:space-y-4">
+						<div
+							class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 sm:p-5 lg:p-6"
+						>
+							<div class="flex items-center gap-3 mb-6">
+								<Lock class="w-5 h-5 text-green-600 dark:text-green-400" />
+								<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+									Change Password
+								</h3>
+							</div>
 
-						<div class="space-y-4">
-							<FormField
-								label="Current Password"
-								labelFor="currentPassword"
-								size="md"
-								hint="Enter your current password to confirm your identity"
-								required={true}
-							>
-								<div class="relative">
-									<TextInput
-										id="currentPassword"
-										bind:value={passwordForm.currentPassword}
-										type={showCurrentPassword ? 'text' : 'password'}
-										placeholder="Enter current password"
-										disabled={loading}
-										size="md"
-									/>
-									<button
-										type="button"
-										onclick={() => (showCurrentPassword = !showCurrentPassword)}
-										class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
-									>
-										{#if showCurrentPassword}
-											<EyeOff class="w-4 h-4" />
-										{:else}
-											<Eye class="w-4 h-4" />
-										{/if}
-									</button>
-								</div>
-							</FormField>
-
-							<FormField
-								label="New Password"
-								labelFor="newPassword"
-								size="md"
-								hint="Must be at least 6 characters long"
-								required={true}
-							>
-								<div class="relative">
-									<TextInput
-										id="newPassword"
-										bind:value={passwordForm.newPassword}
-										type={showNewPassword ? 'text' : 'password'}
-										placeholder="Enter new password"
-										disabled={loading}
-										size="md"
-									/>
-									<button
-										type="button"
-										onclick={() => (showNewPassword = !showNewPassword)}
-										class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
-									>
-										{#if showNewPassword}
-											<EyeOff class="w-4 h-4" />
-										{:else}
-											<Eye class="w-4 h-4" />
-										{/if}
-									</button>
-								</div>
-							</FormField>
-
-							<FormField
-								label="Confirm New Password"
-								labelFor="confirmPassword"
-								size="md"
-								required={true}
-							>
-								<div class="relative">
-									<TextInput
-										id="confirmPassword"
-										bind:value={passwordForm.confirmPassword}
-										type={showConfirmPassword ? 'text' : 'password'}
-										placeholder="Confirm new password"
-										disabled={loading}
-										size="md"
-									/>
-									<button
-										type="button"
-										onclick={() => (showConfirmPassword = !showConfirmPassword)}
-										class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
-									>
-										{#if showConfirmPassword}
-											<EyeOff class="w-4 h-4" />
-										{:else}
-											<Eye class="w-4 h-4" />
-										{/if}
-									</button>
-								</div>
-							</FormField>
-						</div>
-
-						<div class="flex justify-end mt-6">
-							<Button
-								onclick={updatePassword}
-								disabled={loading}
-								variant="primary"
-								size="md"
-								{loading}
-								loadingText="Updating Password..."
-							>
-								Update Password
-							</Button>
-						</div>
-					</div>
-				</div>
-			{/if}
-
-			<!-- Danger Zone Tab -->
-			{#if activeTab === 'danger'}
-				<div class="px-4 sm:px-6 py-4 space-y-3 sm:space-y-4">
-					<div
-						class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-6"
-					>
-						<div class="flex items-center gap-3 mb-6">
-							<Trash2 class="w-5 h-5 text-red-600 dark:text-red-400" />
-							<h3 class="text-lg font-semibold text-red-900 dark:text-red-100">
-								Delete Account
-							</h3>
-						</div>
-
-						<div class="space-y-4">
-							<div
-								class="bg-white dark:bg-gray-800 rounded-lg p-4 border border-red-200 dark:border-red-700"
-							>
-								<div class="flex items-start space-x-3">
-									<AlertCircle
-										class="w-5 h-5 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0"
-									/>
-									<div class="text-sm">
-										<p class="text-red-800 dark:text-red-200 font-medium mb-2">
-											This action cannot be undone
-										</p>
-										<p class="text-red-700 dark:text-red-300">
-											Deleting your account will permanently remove all your
-											data, including:
-										</p>
-										<ul
-											class="list-disc list-inside mt-2 text-red-700 dark:text-red-300 space-y-1"
+							<div class="space-y-4">
+								<FormField
+									label="Current Password"
+									labelFor="currentPassword"
+									size="md"
+									hint="Enter your current password to confirm your identity"
+									required={true}
+								>
+									<div class="relative">
+										<TextInput
+											id="currentPassword"
+											bind:value={passwordForm.currentPassword}
+											type={showCurrentPassword ? 'text' : 'password'}
+											placeholder="Enter current password"
+											disabled={loading}
+											size="md"
+										/>
+										<button
+											type="button"
+											onclick={() =>
+												(showCurrentPassword = !showCurrentPassword)}
+											class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
 										>
-											<li>All projects and tasks</li>
-											<li>Daily briefs and brain dumps</li>
-											<li>Calendar integration settings</li>
-											<li>Subscription and billing data</li>
-										</ul>
+											{#if showCurrentPassword}
+												<EyeOff class="w-4 h-4" />
+											{:else}
+												<Eye class="w-4 h-4" />
+											{/if}
+										</button>
+									</div>
+								</FormField>
+
+								<FormField
+									label="New Password"
+									labelFor="newPassword"
+									size="md"
+									hint="Must be at least 6 characters long"
+									required={true}
+								>
+									<div class="relative">
+										<TextInput
+											id="newPassword"
+											bind:value={passwordForm.newPassword}
+											type={showNewPassword ? 'text' : 'password'}
+											placeholder="Enter new password"
+											disabled={loading}
+											size="md"
+										/>
+										<button
+											type="button"
+											onclick={() => (showNewPassword = !showNewPassword)}
+											class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
+										>
+											{#if showNewPassword}
+												<EyeOff class="w-4 h-4" />
+											{:else}
+												<Eye class="w-4 h-4" />
+											{/if}
+										</button>
+									</div>
+								</FormField>
+
+								<FormField
+									label="Confirm New Password"
+									labelFor="confirmPassword"
+									size="md"
+									required={true}
+								>
+									<div class="relative">
+										<TextInput
+											id="confirmPassword"
+											bind:value={passwordForm.confirmPassword}
+											type={showConfirmPassword ? 'text' : 'password'}
+											placeholder="Confirm new password"
+											disabled={loading}
+											size="md"
+										/>
+										<button
+											type="button"
+											onclick={() =>
+												(showConfirmPassword = !showConfirmPassword)}
+											class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
+										>
+											{#if showConfirmPassword}
+												<EyeOff class="w-4 h-4" />
+											{:else}
+												<Eye class="w-4 h-4" />
+											{/if}
+										</button>
+									</div>
+								</FormField>
+							</div>
+
+							<div class="flex justify-end mt-6">
+								<Button
+									onclick={updatePassword}
+									disabled={loading}
+									variant="primary"
+									size="md"
+									{loading}
+									loadingText="Updating Password..."
+								>
+									Update Password
+								</Button>
+							</div>
+						</div>
+					</div>
+				{/if}
+
+				<!-- Danger Zone Tab -->
+				{#if activeTab === 'danger'}
+					<div class="px-4 sm:px-6 py-4 space-y-3 sm:space-y-4">
+						<div
+							class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-6"
+						>
+							<div class="flex items-center gap-3 mb-6">
+								<Trash2 class="w-5 h-5 text-red-600 dark:text-red-400" />
+								<h3 class="text-lg font-semibold text-red-900 dark:text-red-100">
+									Delete Account
+								</h3>
+							</div>
+
+							<div class="space-y-4">
+								<div
+									class="bg-white dark:bg-gray-800 rounded-lg p-4 border border-red-200 dark:border-red-700"
+								>
+									<div class="flex items-start space-x-3">
+										<AlertCircle
+											class="w-5 h-5 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0"
+										/>
+										<div class="text-sm">
+											<p
+												class="text-red-800 dark:text-red-200 font-medium mb-2"
+											>
+												This action cannot be undone
+											</p>
+											<p class="text-red-700 dark:text-red-300">
+												Deleting your account will permanently remove all
+												your data, including:
+											</p>
+											<ul
+												class="list-disc list-inside mt-2 text-red-700 dark:text-red-300 space-y-1"
+											>
+												<li>All projects and tasks</li>
+												<li>Daily briefs and brain dumps</li>
+												<li>Calendar integration settings</li>
+												<li>Subscription and billing data</li>
+											</ul>
+										</div>
 									</div>
 								</div>
 							</div>
-						</div>
 
-						<div class="flex justify-end mt-6">
-							<Button
-								onclick={() => (showDeleteConfirmation = true)}
-								disabled={loading}
-								variant="outline"
-								size="md"
-								class="text-red-600 hover:text-white hover:bg-red-600 border-red-600"
-								icon={Trash2}
-							>
-								Delete My Account
-							</Button>
+							<div class="flex justify-end mt-6">
+								<Button
+									onclick={() => (showDeleteConfirmation = true)}
+									disabled={loading}
+									variant="outline"
+									size="md"
+									class="text-red-600 hover:text-white hover:bg-red-600 border-red-600"
+									icon={Trash2}
+								>
+									Delete My Account
+								</Button>
+							</div>
 						</div>
 					</div>
-				</div>
-			{/if}
+				{/if}
+			</div>
 		</div>
-	</div>
+	{/snippet}
 </Modal>
 
 <!-- Delete Confirmation Modal -->

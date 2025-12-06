@@ -236,7 +236,7 @@ export async function instantiateProject(
 		if (parsed.context_document) {
 			const contextDocId = await insertDocument(client, typedProjectId, actorId, {
 				title: parsed.context_document.title,
-				type_key: parsed.context_document.type_key ?? 'document.project.context',
+				type_key: parsed.context_document.type_key ?? 'document.context.project',
 				state_key: parsed.context_document.state_key ?? 'active',
 				body_markdown: parsed.context_document.body_markdown,
 				props: parsed.context_document.props ?? {}
@@ -246,18 +246,14 @@ export async function instantiateProject(
 			inserted.documents.push(contextDocId);
 			documentIdByTitle.set(parsed.context_document.title, contextDocId);
 
+			// Use has_context_document edge to link the context document
 			edgesToInsert.push({
 				src_kind: 'project',
 				src_id: projectId,
-				rel: 'has_document',
+				rel: 'has_context_document',
 				dst_kind: 'document',
 				dst_id: contextDocId
 			});
-
-			await client
-				.from('onto_projects')
-				.update({ context_document_id: contextDocId })
-				.eq('id', projectId);
 		}
 
 		// Goals
@@ -378,10 +374,14 @@ export async function instantiateProject(
 				if (firstDoc) {
 					const fallbackContextDocId = documentIdByTitle.get(firstDoc.title);
 					if (fallbackContextDocId) {
-						await client
-							.from('onto_projects')
-							.update({ context_document_id: fallbackContextDocId })
-							.eq('id', projectId);
+						// Create has_context_document edge for the fallback context doc
+						edgesToInsert.push({
+							src_kind: 'project',
+							src_id: projectId,
+							rel: 'has_context_document',
+							dst_kind: 'document',
+							dst_id: fallbackContextDocId
+						});
 					}
 				}
 			}
@@ -448,10 +448,10 @@ export async function instantiateProject(
 			counts.plans = inserted.plans.length;
 		}
 
-		// Tasks (Note: tasks don't have type_key in the schema, unlike other entities)
+		// Tasks - now have type_key column and use edges for plan relationships
 		if (parsed.tasks?.length) {
 			for (const task of parsed.tasks) {
-				let plan_id: string | null = null;
+				let planId: string | null = null;
 				if (task.plan_name) {
 					const mappedPlanId = planIdByName.get(task.plan_name);
 					if (!mappedPlanId) {
@@ -459,33 +459,47 @@ export async function instantiateProject(
 							`Task "${task.title}" references unknown plan "${task.plan_name}"`
 						);
 					}
-					plan_id = mappedPlanId;
+					planId = mappedPlanId;
 				}
 
-				// Tasks don't use templates (no type_key column), just merge props directly
+				// Resolve template and merge props if type_key is provided
+				const taskTypeKey = task.type_key ?? 'task.execute';
+				let mergedTaskProps = task.props ?? {};
+
+				if (taskTypeKey) {
+					const { mergedProps } = await resolveAndMergeTemplateProps(
+						client,
+						taskTypeKey,
+						'task',
+						task.props ?? {},
+						true // Skip if no template found
+					);
+					mergedTaskProps = mergedProps;
+				}
+
 				const resolvedTaskFacets = resolveFacets(
 					undefined,
-					(task.props?.facets as Facets) ?? undefined
+					(mergedTaskProps?.facets as Facets) ?? undefined
 				);
 				await assertValidFacets(client, resolvedTaskFacets, 'task', `task "${task.title}"`);
 
-				const mergedTaskProps = mergeProps(task.props ?? {});
+				const finalTaskProps = mergeProps(mergedTaskProps);
 				if (hasFacetValues(resolvedTaskFacets)) {
-					mergedTaskProps.facets = resolvedTaskFacets;
+					finalTaskProps.facets = resolvedTaskFacets;
 				} else {
-					delete mergedTaskProps.facets;
+					delete finalTaskProps.facets;
 				}
 
 				const { data: taskRow, error: taskError } = await client
 					.from('onto_tasks')
 					.insert({
 						project_id: typedProjectId,
-						plan_id,
 						title: task.title,
+						type_key: taskTypeKey,
 						state_key: task.state_key ?? 'todo',
 						priority: task.priority ?? null,
 						due_at: task.due_at ?? null,
-						props: mergedTaskProps as Json,
+						props: finalTaskProps as Json,
 						created_by: actorId
 					})
 					.select('id')
@@ -507,13 +521,23 @@ export async function instantiateProject(
 					dst_id: taskId
 				});
 
-				if (plan_id) {
+				// Plan relationship via bidirectional edges (plan_id column removed)
+				if (planId) {
+					// Plan -> Task (has_task)
 					edgesToInsert.push({
 						src_kind: 'plan',
-						src_id: plan_id,
+						src_id: planId,
 						rel: 'has_task',
 						dst_kind: 'task',
 						dst_id: taskId
+					});
+					// Task -> Plan (belongs_to_plan)
+					edgesToInsert.push({
+						src_kind: 'task',
+						src_id: taskId,
+						rel: 'belongs_to_plan',
+						dst_kind: 'plan',
+						dst_id: planId
 					});
 				}
 			}

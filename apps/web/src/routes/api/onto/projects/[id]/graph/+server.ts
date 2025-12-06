@@ -69,7 +69,7 @@ export const GET: RequestHandler = async ({ params, locals, url }) => {
 			.from('onto_projects')
 			.select('*')
 			.eq('id', id)
-			.single();
+			.maybeSingle();
 
 		if (projectError) {
 			console.error('[Project Graph API] Failed to fetch project', projectError);

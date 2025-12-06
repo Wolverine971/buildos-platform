@@ -22,7 +22,6 @@ export type ProjectRow = {
 	state_key: string;
 	type_key: string;
 	props: Record<string, unknown> | null;
-	context_document_id: string | null;
 	created_by: string;
 };
 
@@ -80,9 +79,7 @@ export async function loadGoalReverseContext(
 
 	const { data: projectRow, error: projectError } = await supabase
 		.from('onto_projects')
-		.select(
-			'id, name, description, state_key, type_key, props, context_document_id, created_by'
-		)
+		.select('id, name, description, state_key, type_key, props, created_by')
 		.eq('id', goalRow.project_id)
 		.maybeSingle<ProjectRow>();
 
@@ -114,7 +111,7 @@ export async function loadGoalReverseContext(
 
 	const { data: existingTasks, error: tasksError } = await supabase
 		.from('onto_tasks')
-		.select('id, title, state_key, plan_id')
+		.select('id, title, state_key, type_key')
 		.eq('project_id', projectRow.id)
 		.order('created_at', { ascending: true })
 		.limit(40);
@@ -122,6 +119,26 @@ export async function loadGoalReverseContext(
 	if (tasksError) {
 		console.error('[Goal Reverse] Failed to load tasks:', tasksError);
 		throw new GoalReverseContextError('CONTEXT_LOAD_FAILED');
+	}
+
+	// Fetch plan relationships for tasks via edges
+	const taskIds = (existingTasks || []).map((t) => t.id);
+	let taskPlanMap = new Map<string, string>();
+
+	if (taskIds.length > 0) {
+		const { data: taskPlanEdges } = await supabase
+			.from('onto_edges')
+			.select('src_id, dst_id')
+			.eq('rel', 'belongs_to_plan')
+			.eq('src_kind', 'task')
+			.eq('dst_kind', 'plan')
+			.in('src_id', taskIds);
+
+		if (taskPlanEdges) {
+			for (const edge of taskPlanEdges) {
+				taskPlanMap.set(edge.src_id, edge.dst_id);
+			}
+		}
 	}
 
 	return {
@@ -138,7 +155,7 @@ export async function loadGoalReverseContext(
 			id: task.id,
 			title: task.title,
 			state_key: task.state_key,
-			plan_id: task.plan_id
+			plan_id: taskPlanMap.get(task.id) || null
 		}))
 	};
 }
@@ -147,10 +164,18 @@ async function loadContextDocument(
 	supabase: SupabaseClient<Database>,
 	project: ProjectRow
 ): Promise<ReverseEngineeringContextDocument | null> {
-	const props = (project.props as Record<string, unknown> | null) ?? null;
-	const contextDocumentId =
-		project.context_document_id ||
-		(typeof props?.context_document_id === 'string' ? props.context_document_id : null);
+	// Query context document via edge relationship
+	const { data: contextEdge } = await supabase
+		.from('onto_edges')
+		.select('dst_id')
+		.eq('src_kind', 'project')
+		.eq('src_id', project.id)
+		.eq('rel', 'has_context_document')
+		.eq('dst_kind', 'document')
+		.limit(1)
+		.maybeSingle();
+
+	const contextDocumentId = contextEdge?.dst_id || null;
 
 	if (!contextDocumentId) {
 		return null;

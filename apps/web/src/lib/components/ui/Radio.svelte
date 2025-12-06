@@ -80,14 +80,14 @@
 
 		// State classes
 		checked
-			? 'bg-blue-600 border-blue-600 dark:bg-blue-500 dark:border-blue-500'
-			: 'bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600',
+			? 'bg-accent-orange border-accent-orange dark:bg-accent-orange dark:border-accent-orange'
+			: 'bg-surface-panel border-gray-300 dark:border-gray-600',
 
 		// Error state
 		error && !checked ? 'border-red-500 dark:border-red-400' : '',
 
 		// Focus ring color
-		error ? 'focus:ring-red-500' : 'focus:ring-blue-500',
+		error ? 'focus:ring-red-500' : 'focus:ring-accent-orange',
 
 		// Hover state (only when not disabled)
 		!disabled && !checked ? 'hover:border-gray-400 dark:hover:border-gray-500' : '',
@@ -100,7 +100,7 @@
 		'flex items-start gap-3 group',
 		disabled ? 'cursor-not-allowed' : 'cursor-pointer',
 		// Add hover effect to container
-		!disabled ? 'hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-lg transition-colors' : '',
+		!disabled ? 'hover:bg-gray-100 dark:hover:bg-gray-800/50 rounded transition-colors' : '',
 		containerPadding[size],
 		className
 	);
@@ -110,7 +110,7 @@
 		labelSizeClasses[size],
 		disabled
 			? 'text-gray-400 dark:text-gray-500 cursor-not-allowed'
-			: 'text-gray-900 dark:text-gray-100 cursor-pointer',
+			: 'text-gray-900 dark:text-gray-100 cursor-pointer font-bold',
 		labelClass
 	);
 
@@ -155,7 +155,7 @@
 		/>
 		{#if checked}
 			<div
-				class="absolute pointer-events-none rounded-full bg-white dark:bg-gray-900"
+				class="absolute pointer-events-none rounded-full bg-white dark:bg-slate-900"
 				class:w-1.5={size === 'sm'}
 				class:h-1.5={size === 'sm'}
 				class:w-2={size === 'md'}

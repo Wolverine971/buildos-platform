@@ -1079,592 +1079,622 @@
 	{onClose}
 	size="xl"
 >
-	<div slot="header">
-		<div class="sm:hidden">
-			<div class="modal-grab-handle"></div>
-		</div>
-		<div
-			class="relative border-b border-slate-200/60 dark:border-slate-700/60 bg-white/85 px-4 py-4 backdrop-blur-sm sm:px-6 sm:py-5 dark:bg-slate-900/80"
-		>
-			<!-- Mobile Layout -->
+	{#snippet header()}
+		<div>
 			<div class="sm:hidden">
-				<div class="flex items-center justify-between mb-2">
-					<div class="flex-1 pr-2 space-y-1.5">
+				<div class="modal-grab-handle"></div>
+			</div>
+			<div
+				class="relative border-b border-slate-200/60 dark:border-slate-700/60 bg-white/85 px-4 py-4 backdrop-blur-sm sm:px-6 sm:py-5 dark:bg-slate-900/80"
+			>
+				<!-- Mobile Layout -->
+				<div class="sm:hidden">
+					<div class="flex items-center justify-between mb-2">
+						<div class="flex-1 pr-2 space-y-1.5">
+							<p
+								class="text-[11px] font-semibold uppercase tracking-[0.32em] text-slate-400 dark:text-slate-500"
+							>
+								Task Detail
+							</p>
+							<h2 class="text-lg font-semibold text-slate-900 dark:text-white">
+								{modalTitle}
+							</h2>
+						</div>
+						<!-- Close button for mobile -->
+						<Button
+							type="button"
+							onclick={onClose}
+							variant="ghost"
+							size="sm"
+							class="!p-1.5 text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-200"
+							aria-label="Close modal"
+						>
+							<svg
+								class="w-5 h-5"
+								fill="none"
+								stroke="currentColor"
+								viewBox="0 0 24 24"
+							>
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="2"
+									d="M6 18L18 6M6 6l12 12"
+								/>
+							</svg>
+						</Button>
+					</div>
+				</div>
+
+				<!-- Desktop Layout -->
+				<div class="hidden sm:flex sm:items-start sm:justify-between">
+					<div class="flex-1 space-y-1.5">
 						<p
 							class="text-[11px] font-semibold uppercase tracking-[0.32em] text-slate-400 dark:text-slate-500"
 						>
 							Task Detail
 						</p>
-						<h2 class="text-lg font-semibold text-slate-900 dark:text-white">
+						<h2 class="text-2xl font-semibold text-slate-900 dark:text-white">
 							{modalTitle}
 						</h2>
 					</div>
-					<!-- Close button for mobile -->
-					<Button
-						type="button"
-						onclick={onClose}
-						variant="ghost"
-						size="sm"
-						class="!p-1.5 text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-200"
-						aria-label="Close modal"
-					>
-						<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								stroke-width="2"
-								d="M6 18L18 6M6 6l12 12"
-							/>
-						</svg>
-					</Button>
-				</div>
-			</div>
 
-			<!-- Desktop Layout -->
-			<div class="hidden sm:flex sm:items-start sm:justify-between">
-				<div class="flex-1 space-y-1.5">
-					<p
-						class="text-[11px] font-semibold uppercase tracking-[0.32em] text-slate-400 dark:text-slate-500"
-					>
-						Task Detail
-					</p>
-					<h2 class="text-2xl font-semibold text-slate-900 dark:text-white">
-						{modalTitle}
-					</h2>
-				</div>
-
-				<div class="flex items-center">
-					<Button
-						type="button"
-						onclick={onClose}
-						variant="ghost"
-						size="sm"
-						class="!p-1.5 text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-200"
-						aria-label="Close modal"
-					>
-						<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								stroke-width="2"
-								d="M6 18L18 6M6 6l12 12"
-							/>
-						</svg>
-					</Button>
+					<div class="flex items-center">
+						<Button
+							type="button"
+							onclick={onClose}
+							variant="ghost"
+							size="sm"
+							class="!p-1.5 text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-200"
+							aria-label="Close modal"
+						>
+							<svg
+								class="w-5 h-5"
+								fill="none"
+								stroke="currentColor"
+								viewBox="0 0 24 24"
+							>
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="2"
+									d="M6 18L18 6M6 6l12 12"
+								/>
+							</svg>
+						</Button>
+					</div>
 				</div>
 			</div>
 		</div>
-	</div>
+	{/snippet}
 
-	<div slot="before-form">
-		<!-- Deleted Task Warning -->
-		{#if isDeleted}
-			<div
-				class="mb-4 p-4 bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 rounded-md"
-			>
-				<div class="flex items-start space-x-2">
-					<Trash2 class="w-5 h-5 text-rose-600 dark:text-rose-400 flex-shrink-0 mt-0.5" />
-					<div>
-						<p class="text-sm font-medium text-rose-900 dark:text-rose-100">
-							This task has been deleted
-						</p>
-						{#if task?.deleted_at}
-							<p class="text-xs text-rose-700 dark:text-rose-300 mt-1">
-								Deleted on {formatDateTimeForDisplay(task.deleted_at)}
-							</p>
-						{/if}
-					</div>
-				</div>
-			</div>
-		{/if}
-
-		<!-- Phase Info Box - Show when creating task within a phase -->
-		{#if phase && !isEditing}
-			<div
-				class="mb-4 p-3 bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800 rounded-md"
-			>
-				<div class="flex items-start space-x-2">
-					<Info
-						class="w-4 h-4 text-primary-600 dark:text-primary-400 flex-shrink-0 mt-0.5"
-					/>
-					<div class="text-sm">
-						<span class="font-medium text-primary-900 dark:text-primary-100"
-							>Phase Timeline:</span
-						>
-						<span class="text-primary-800 dark:text-primary-200">
-							{formatDateForDisplay(phase.start_date)} - {formatDateForDisplay(
-								phase.end_date
-							)}
-						</span>
-					</div>
-				</div>
-			</div>
-		{/if}
-	</div>
-
-	<div
-		slot="after-form"
-		class="flex flex-col flex-1 min-h-0 space-y-3 sm:space-y-4 pt-4 px-4 sm:px-6 lg:px-8"
-	>
-		<!-- Main Content Area -->
-		<div class="grid grid-cols-1 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-5 min-h-[40vh] flex-1">
-			<!-- Content Section (Takes most space) -->
-			<div
-				class="lg:col-span-3 flex flex-col space-y-5 h-full min-h-0 rounded-2xl border border-slate-200/60 bg-white/85 p-4 shadow-sm backdrop-blur-sm transition-shadow hover:shadow-md dark:border-slate-700/60 dark:bg-slate-900/70 sm:p-5 lg:p-6"
-			>
-				<!-- Title -->
-				<div class="border-b border-slate-200/60 pb-5 sm:pb-6 dark:border-slate-700/60">
-					<p
-						class="text-[11px] font-semibold uppercase tracking-[0.32em] text-slate-400 dark:text-slate-500"
-					>
-						Task Overview
-					</p>
-					<div class="mt-4 space-y-2">
-						<label
-							for="task-title"
-							class="flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
-						>
-							<span>Title</span>
-							<span class="text-rose-500">*</span>
-						</label>
-						<TextInput
-							id="task-title"
-							bind:value={titleValue}
-							placeholder="What needs to be done?"
-							size="lg"
-							class="font-semibold border-slate-200/60 bg-white/85 text-slate-900 backdrop-blur-sm dark:border-slate-600/60 dark:bg-slate-900/60 dark:text-white"
+	{#snippet beforeForm()}
+		<div>
+			<!-- Deleted Task Warning -->
+			{#if isDeleted}
+				<div
+					class="mb-4 p-4 bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 rounded-md"
+				>
+					<div class="flex items-start space-x-2">
+						<Trash2
+							class="w-5 h-5 text-rose-600 dark:text-rose-400 flex-shrink-0 mt-0.5"
 						/>
+						<div>
+							<p class="text-sm font-medium text-rose-900 dark:text-rose-100">
+								This task has been deleted
+							</p>
+							{#if task?.deleted_at}
+								<p class="text-xs text-rose-700 dark:text-rose-300 mt-1">
+									Deleted on {formatDateTimeForDisplay(task.deleted_at)}
+								</p>
+							{/if}
+						</div>
 					</div>
 				</div>
+			{/if}
 
-				<!-- Description -->
-				<div class="space-y-2">
-					<label
-						for="task-description"
-						class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
-					>
-						Summary
-					</label>
-					<Textarea
-						id="task-description"
-						bind:value={descriptionValue}
-						placeholder="Brief overview of the task..."
-						rows={2}
-						class="border-slate-200/60 bg-white/80 text-slate-700 backdrop-blur-sm dark:border-slate-600/60 dark:bg-slate-900/60 dark:text-slate-200"
-					/>
-				</div>
-
-				<!-- Details -->
-				<div class="flex flex-1 flex-col space-y-2">
-					<label
-						for="task-details"
-						class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
-					>
-						Full Details
-					</label>
-					<Textarea
-						id="task-details"
-						bind:value={detailsValue}
-						placeholder="Detailed task information, implementation notes, acceptance criteria..."
-						autoResize={true}
-						rows={8}
-						maxRows={20}
-						class="flex-1 border-slate-200/60 bg-white/80 leading-relaxed text-slate-700 backdrop-blur-sm dark:border-slate-600/60 dark:bg-slate-900/60 dark:text-slate-200"
-					/>
-				</div>
-
-				<!-- Content Stats -->
+			<!-- Phase Info Box - Show when creating task within a phase -->
+			{#if phase && !isEditing}
 				<div
-					class="flex items-center justify-between text-sm text-slate-500 dark:text-slate-400"
+					class="mb-4 p-3 bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800 rounded-md"
 				>
-					<span>
-						{#if detailsValue.length > 0}
-							{detailsValue.length} characters in details
-						{:else}
-							Add detailed information about this task...
-						{/if}
-					</span>
-					{#if titleValue.length > 0}
-						<span>{titleValue.length} characters in title</span>
-					{/if}
-				</div>
-			</div>
-
-			<!-- Metadata Sidebar -->
-			<div
-				class="lg:col-span-1 rounded-2xl border border-slate-200/60 bg-white/85 p-3 shadow-sm backdrop-blur-sm transition-shadow hover:shadow-md dark:border-slate-700/60 dark:bg-slate-900/70 sm:p-4 lg:max-h-full lg:overflow-y-auto"
-			>
-				<div
-					class="-m-3 -mb-0 border-b border-slate-200/60 px-3 pb-4 pt-3 dark:border-slate-700/60 sm:-m-4 sm:px-4 sm:pt-4"
-				>
-					<h3
-						class="text-[11px] font-semibold uppercase tracking-[0.32em] text-slate-400 dark:text-slate-500"
-					>
-						Task Metadata
-					</h3>
-				</div>
-
-				<!-- Status -->
-				<div class="mt-4 space-y-2">
-					<label
-						for="task-status"
-						class="block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
-						>Status
-					</label>
-					<Select
-						id="task-status"
-						bind:value={statusValue}
-						size="sm"
-						class="border-slate-200/60 bg-white/85 dark:border-slate-600/60 dark:bg-slate-900/60"
-					>
-						{#each statusOptions as option}
-							<option value={option.value}>{option.label}</option>
-						{/each}
-					</Select>
-				</div>
-
-				<!-- Priority -->
-				<div class="space-y-2">
-					<label
-						for="task-priority"
-						class="block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
-						>Priority
-					</label>
-					<Select
-						id="task-priority"
-						bind:value={priorityValue}
-						size="sm"
-						class="border-slate-200/60 bg-white/85 dark:border-slate-600/60 dark:bg-slate-900/60"
-					>
-						{#each priorityOptions as option}
-							<option value={option.value}>{option.label}</option>
-						{/each}
-					</Select>
-				</div>
-
-				<!-- Start Date -->
-				<div class="space-y-2">
-					<label
-						for="task-start-date"
-						class="block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
-						>Schedule
-					</label>
-					<TextInput
-						id="task-start-date"
-						type="datetime-local"
-						bind:value={startDateValue}
-						max={project?.end_date
-							? formatDateTimeForInput(project.end_date)
-							: undefined}
-						size="sm"
-						class={`border-slate-200/60 bg-white/85 dark:border-slate-600/60 dark:bg-slate-900/60 ${
-							dateOutsidePhaseWarning ? 'border-amber-500 dark:border-amber-400' : ''
-						}`}
-					/>
-					{#if dateOutsidePhaseWarning && phase}
-						<div class="mt-1 flex items-start space-x-1">
-							<AlertTriangle
-								class="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5"
-							/>
-							<p class="text-xs text-amber-600 dark:text-amber-400">
-								This date is outside the phase timeline ({formatDateForDisplay(
-									phase.start_date
-								)} - {formatDateForDisplay(phase.end_date)})
-							</p>
+					<div class="flex items-start space-x-2">
+						<Info
+							class="w-4 h-4 text-primary-600 dark:text-primary-400 flex-shrink-0 mt-0.5"
+						/>
+						<div class="text-sm">
+							<span class="font-medium text-primary-900 dark:text-primary-100"
+								>Phase Timeline:</span
+							>
+							<span class="text-primary-800 dark:text-primary-200">
+								{formatDateForDisplay(phase.start_date)} - {formatDateForDisplay(
+									phase.end_date
+								)}
+							</span>
 						</div>
-					{/if}
+					</div>
 				</div>
+			{/if}
+		</div>
+	{/snippet}
 
-				<!-- Duration -->
-				<div class="space-y-2">
-					<label
-						for="task-duration"
-						class="block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
-						>Duration
-					</label>
-					<TextInput
-						id="task-duration"
-						type="number"
-						bind:value={durationMinutesValue}
-						min="1"
-						size="sm"
-						placeholder="Minutes"
-						class="border-slate-200/60 bg-white/85 dark:border-slate-600/60 dark:bg-slate-900/60"
-					/>
-				</div>
+	{#snippet afterForm()}
+		<div class="flex flex-col flex-1 min-h-0 space-y-3 sm:space-y-4 pt-4 px-4 sm:px-6 lg:px-8">
+			<!-- Main Content Area -->
+			<div
+				class="grid grid-cols-1 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-5 min-h-[40vh] flex-1"
+			>
+				<!-- Content Section (Takes most space) -->
+				<div
+					class="lg:col-span-3 flex flex-col space-y-5 h-full min-h-0 rounded-2xl border border-slate-200/60 bg-white/85 p-4 shadow-sm backdrop-blur-sm transition-shadow hover:shadow-md dark:border-slate-700/60 dark:bg-slate-900/70 sm:p-5 lg:p-6"
+				>
+					<!-- Title -->
+					<div class="border-b border-slate-200/60 pb-5 sm:pb-6 dark:border-slate-700/60">
+						<p
+							class="text-[11px] font-semibold uppercase tracking-[0.32em] text-slate-400 dark:text-slate-500"
+						>
+							Task Overview
+						</p>
+						<div class="mt-4 space-y-2">
+							<label
+								for="task-title"
+								class="flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+							>
+								<span>Title</span>
+								<span class="text-rose-500">*</span>
+							</label>
+							<TextInput
+								id="task-title"
+								bind:value={titleValue}
+								placeholder="What needs to be done?"
+								size="lg"
+								class="font-semibold border-slate-200/60 bg-white/85 text-slate-900 backdrop-blur-sm dark:border-slate-600/60 dark:bg-slate-900/60 dark:text-white"
+							/>
+						</div>
+					</div>
 
-				<!-- Task Type - Only show when start date is selected -->
-				{#if startDateValue}
+					<!-- Description -->
 					<div class="space-y-2">
 						<label
-							for="task-type"
-							class="block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+							for="task-description"
+							class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
 						>
-							Task Type
+							Summary
+						</label>
+						<Textarea
+							id="task-description"
+							bind:value={descriptionValue}
+							placeholder="Brief overview of the task..."
+							rows={2}
+							class="border-slate-200/60 bg-white/80 text-slate-700 backdrop-blur-sm dark:border-slate-600/60 dark:bg-slate-900/60 dark:text-slate-200"
+						/>
+					</div>
+
+					<!-- Details -->
+					<div class="flex flex-1 flex-col space-y-2">
+						<label
+							for="task-details"
+							class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+						>
+							Full Details
+						</label>
+						<Textarea
+							id="task-details"
+							bind:value={detailsValue}
+							placeholder="Detailed task information, implementation notes, acceptance criteria..."
+							autoResize={true}
+							rows={8}
+							maxRows={20}
+							class="flex-1 border-slate-200/60 bg-white/80 leading-relaxed text-slate-700 backdrop-blur-sm dark:border-slate-600/60 dark:bg-slate-900/60 dark:text-slate-200"
+						/>
+					</div>
+
+					<!-- Content Stats -->
+					<div
+						class="flex items-center justify-between text-sm text-slate-500 dark:text-slate-400"
+					>
+						<span>
+							{#if detailsValue.length > 0}
+								{detailsValue.length} characters in details
+							{:else}
+								Add detailed information about this task...
+							{/if}
+						</span>
+						{#if titleValue.length > 0}
+							<span>{titleValue.length} characters in title</span>
+						{/if}
+					</div>
+				</div>
+
+				<!-- Metadata Sidebar -->
+				<div
+					class="lg:col-span-1 rounded-2xl border border-slate-200/60 bg-white/85 p-3 shadow-sm backdrop-blur-sm transition-shadow hover:shadow-md dark:border-slate-700/60 dark:bg-slate-900/70 sm:p-4 lg:max-h-full lg:overflow-y-auto"
+				>
+					<div
+						class="-m-3 -mb-0 border-b border-slate-200/60 px-3 pb-4 pt-3 dark:border-slate-700/60 sm:-m-4 sm:px-4 sm:pt-4"
+					>
+						<h3
+							class="text-[11px] font-semibold uppercase tracking-[0.32em] text-slate-400 dark:text-slate-500"
+						>
+							Task Metadata
+						</h3>
+					</div>
+
+					<!-- Status -->
+					<div class="mt-4 space-y-2">
+						<label
+							for="task-status"
+							class="block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+							>Status
 						</label>
 						<Select
-							id="task-type"
-							bind:value={taskTypeValue}
+							id="task-status"
+							bind:value={statusValue}
 							size="sm"
 							class="border-slate-200/60 bg-white/85 dark:border-slate-600/60 dark:bg-slate-900/60"
 						>
-							{#each taskTypeOptions as option}
+							{#each statusOptions as option}
 								<option value={option.value}>{option.label}</option>
 							{/each}
 						</Select>
 					</div>
 
-					<!-- Recurrence -->
-					{#if taskTypeValue === 'recurring'}
-						<RecurrenceSelector
-							pattern={recurrencePatternValue}
-							endDate={recurrenceEndsValue}
-							startDate={parseDateTimeFromInput(startDateValue) ||
-								new Date().toISOString()}
-							projectEndDate={project?.end_date}
-							onChange={(config) => {
-								recurrencePatternValue = config.pattern;
-								recurrenceEndsValue = config.endDate;
-								nextOccurrences = config.nextOccurrences;
-							}}
-						/>
+					<!-- Priority -->
+					<div class="space-y-2">
+						<label
+							for="task-priority"
+							class="block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+							>Priority
+						</label>
+						<Select
+							id="task-priority"
+							bind:value={priorityValue}
+							size="sm"
+							class="border-slate-200/60 bg-white/85 dark:border-slate-600/60 dark:bg-slate-900/60"
+						>
+							{#each priorityOptions as option}
+								<option value={option.value}>{option.label}</option>
+							{/each}
+						</Select>
+					</div>
 
-						{#if recurrenceEndMessage}
-							<div
-								class="mt-3 flex items-start space-x-2 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg"
-							>
-								<Info
-									class="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0"
+					<!-- Start Date -->
+					<div class="space-y-2">
+						<label
+							for="task-start-date"
+							class="block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+							>Schedule
+						</label>
+						<TextInput
+							id="task-start-date"
+							type="datetime-local"
+							bind:value={startDateValue}
+							max={project?.end_date
+								? formatDateTimeForInput(project.end_date)
+								: undefined}
+							size="sm"
+							class={`border-slate-200/60 bg-white/85 dark:border-slate-600/60 dark:bg-slate-900/60 ${
+								dateOutsidePhaseWarning
+									? 'border-amber-500 dark:border-amber-400'
+									: ''
+							}`}
+						/>
+						{#if dateOutsidePhaseWarning && phase}
+							<div class="mt-1 flex items-start space-x-1">
+								<AlertTriangle
+									class="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5"
 								/>
-								<span class="text-sm text-blue-900 dark:text-blue-100">
-									{recurrenceEndMessage}
-								</span>
+								<p class="text-xs text-amber-600 dark:text-amber-400">
+									This date is outside the phase timeline ({formatDateForDisplay(
+										phase.start_date
+									)} - {formatDateForDisplay(phase.end_date)})
+								</p>
 							</div>
 						{/if}
-					{/if}
+					</div>
 
-					{#if calendarPanel}
-						{@const PanelIcon = calendarPanel.icon}
-						<div
-							class={`mt-3 rounded-xl border p-4 sm:p-5 shadow-sm transition-colors ${calendarPanel.cardClasses}`}
-						>
-							<div
-								class="flex flex-col gap-4 sm:items-start sm:justify-between sm:gap-6"
+					<!-- Duration -->
+					<div class="space-y-2">
+						<label
+							for="task-duration"
+							class="block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+							>Duration
+						</label>
+						<TextInput
+							id="task-duration"
+							type="number"
+							bind:value={durationMinutesValue}
+							min="1"
+							size="sm"
+							placeholder="Minutes"
+							class="border-slate-200/60 bg-white/85 dark:border-slate-600/60 dark:bg-slate-900/60"
+						/>
+					</div>
+
+					<!-- Task Type - Only show when start date is selected -->
+					{#if startDateValue}
+						<div class="space-y-2">
+							<label
+								for="task-type"
+								class="block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
 							>
-								<div class="flex items-start gap-3">
-									<div
-										class={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${calendarPanel.iconContainerClasses}`}
-									>
-										<PanelIcon class={calendarPanel.iconClasses} />
-									</div>
-									<div class="space-y-1">
-										<p
-											class={`text-sm font-semibold ${calendarPanel.titleClasses}`}
+								Task Type
+							</label>
+							<Select
+								id="task-type"
+								bind:value={taskTypeValue}
+								size="sm"
+								class="border-slate-200/60 bg-white/85 dark:border-slate-600/60 dark:bg-slate-900/60"
+							>
+								{#each taskTypeOptions as option}
+									<option value={option.value}>{option.label}</option>
+								{/each}
+							</Select>
+						</div>
+
+						<!-- Recurrence -->
+						{#if taskTypeValue === 'recurring'}
+							<RecurrenceSelector
+								pattern={recurrencePatternValue}
+								endDate={recurrenceEndsValue}
+								startDate={parseDateTimeFromInput(startDateValue) ||
+									new Date().toISOString()}
+								projectEndDate={project?.end_date}
+								onChange={(config) => {
+									recurrencePatternValue = config.pattern;
+									recurrenceEndsValue = config.endDate;
+									nextOccurrences = config.nextOccurrences;
+								}}
+							/>
+
+							{#if recurrenceEndMessage}
+								<div
+									class="mt-3 flex items-start space-x-2 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg"
+								>
+									<Info
+										class="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0"
+									/>
+									<span class="text-sm text-blue-900 dark:text-blue-100">
+										{recurrenceEndMessage}
+									</span>
+								</div>
+							{/if}
+						{/if}
+
+						{#if calendarPanel}
+							{@const PanelIcon = calendarPanel.icon}
+							<div
+								class={`mt-3 rounded-xl border p-4 sm:p-5 shadow-sm transition-colors ${calendarPanel.cardClasses}`}
+							>
+								<div
+									class="flex flex-col gap-4 sm:items-start sm:justify-between sm:gap-6"
+								>
+									<div class="flex items-start gap-3">
+										<div
+											class={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${calendarPanel.iconContainerClasses}`}
 										>
-											{calendarPanel.title}
-										</p>
-										<p
-											class={`text-xs leading-relaxed ${calendarPanel.descriptionClasses}`}
-										>
-											{calendarPanel.description}
-										</p>
+											<PanelIcon class={calendarPanel.iconClasses} />
+										</div>
+										<div class="space-y-1">
+											<p
+												class={`text-sm font-semibold ${calendarPanel.titleClasses}`}
+											>
+												{calendarPanel.title}
+											</p>
+											<p
+												class={`text-xs leading-relaxed ${calendarPanel.descriptionClasses}`}
+											>
+												{calendarPanel.description}
+											</p>
+										</div>
 									</div>
+
+									{#if calendarPanel.actions.length > 0}
+										<div
+											class="flex w-full flex-col gap-2 sm:w-auto sm:min-w-[12rem] sm:flex-row sm:flex-wrap sm:justify-center"
+										>
+											{#each calendarPanel.actions as action}
+												{#if action.type === 'button'}
+													<Button
+														type="button"
+														onclick={action.onClick}
+														icon={action.icon}
+														size="sm"
+														variant={action.variant ?? 'ghost'}
+														disabled={action.disabled}
+														loading={action.loading}
+														class={action.className ?? ''}
+													>
+														{action.label}
+													</Button>
+												{:else if action.type === 'message'}
+													<span
+														class={`text-xs ${action.className ?? ''}`}
+													>
+														{action.message}
+													</span>
+												{/if}
+											{/each}
+										</div>
+									{/if}
 								</div>
 
-								{#if calendarPanel.actions.length > 0}
+								{#if calendarPanel.badges && calendarPanel.badges.length > 0}
 									<div
-										class="flex w-full flex-col gap-2 sm:w-auto sm:min-w-[12rem] sm:flex-row sm:flex-wrap sm:justify-center"
+										class="mt-3 flex flex-wrap items-center gap-2 text-[11px] leading-4"
 									>
-										{#each calendarPanel.actions as action}
-											{#if action.type === 'button'}
-												<Button
-													type="button"
-													onclick={action.onClick}
-													icon={action.icon}
-													size="sm"
-													variant={action.variant ?? 'ghost'}
-													disabled={action.disabled}
-													loading={action.loading}
-													class={action.className ?? ''}
-												>
-													{action.label}
-												</Button>
-											{:else if action.type === 'message'}
-												<span class={`text-xs ${action.className ?? ''}`}>
-													{action.message}
-												</span>
-											{/if}
+										{#each calendarPanel.badges as badge}
+											{@const BadgeIcon = badge.icon}
+											<span
+												class={`inline-flex items-center gap-1 rounded-full px-2 py-1 font-medium ${badge.classes}`}
+											>
+												<BadgeIcon class="h-3 w-3" />
+												{badge.text}
+											</span>
 										{/each}
 									</div>
 								{/if}
 							</div>
+						{/if}
+					{/if}
 
-							{#if calendarPanel.badges && calendarPanel.badges.length > 0}
-								<div
-									class="mt-3 flex flex-wrap items-center gap-2 text-[11px] leading-4"
-								>
-									{#each calendarPanel.badges as badge}
-										{@const BadgeIcon = badge.icon}
-										<span
-											class={`inline-flex items-center gap-1 rounded-full px-2 py-1 font-medium ${badge.classes}`}
-										>
-											<BadgeIcon class="h-3 w-3" />
-											{badge.text}
-										</span>
-									{/each}
-								</div>
-							{/if}
+					<!-- Task Steps -->
+					<div class="space-y-2">
+						<label
+							for="task-steps"
+							class="block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+						>
+							Task Steps
+						</label>
+						<Textarea
+							id="task-steps"
+							bind:value={taskStepsValue}
+							placeholder="Step-by-step instructions..."
+							rows={3}
+							size="sm"
+							class="border-slate-200/60 bg-white/85 text-slate-700 dark:border-slate-600/60 dark:bg-slate-900/60 dark:text-slate-200"
+						/>
+					</div>
+
+					<!-- Braindumps Section (only show when editing) -->
+					{#if isEditing && task?.id}
+						<TaskBraindumpSection taskId={task.id} />
+					{/if}
+
+					<!-- Deleted Status -->
+					{#if isDeleted}
+						<hr class="border-rose-200 dark:border-rose-700" />
+						<div class="bg-rose-50 dark:bg-rose-900/30 rounded-md p-3">
+							<div class="flex items-center space-x-2">
+								<Trash2 class="w-4 h-4 text-rose-600 dark:text-rose-400" />
+								<span class="text-sm font-medium text-rose-900 dark:text-rose-100">
+									Task Deleted
+								</span>
+							</div>
 						</div>
 					{/if}
-				{/if}
 
-				<!-- Task Steps -->
-				<div class="space-y-2">
-					<label
-						for="task-steps"
-						class="block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
-					>
-						Task Steps
-					</label>
-					<Textarea
-						id="task-steps"
-						bind:value={taskStepsValue}
-						placeholder="Step-by-step instructions..."
-						rows={3}
-						size="sm"
-						class="border-slate-200/60 bg-white/85 text-slate-700 dark:border-slate-600/60 dark:bg-slate-900/60 dark:text-slate-200"
-					/>
+					<!-- Creation/Update Info (if editing) -->
+					{#if isEditing && task}
+						<hr class="border-slate-200/60 dark:border-slate-700/60" />
+						<div
+							class="rounded-xl border border-slate-200/60 bg-white/85 p-3 space-y-3 dark:border-slate-700/60 dark:bg-slate-900/70"
+						>
+							<!-- Activity Indicator -->
+							<div class="flex items-center justify-between">
+								<span
+									class="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-500 dark:text-slate-400"
+									>Activity</span
+								>
+								<RecentActivityIndicator
+									createdAt={task.created_at}
+									updatedAt={task.updated_at}
+									size="sm"
+								/>
+							</div>
+							<!-- Date Information - Responsive Grid -->
+							<div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 text-xs">
+								{#if task.created_at}
+									<div class="space-y-1">
+										<span
+											class="block font-medium text-slate-500 dark:text-slate-400"
+											>Created</span
+										>
+										<span class="text-slate-700 dark:text-slate-300">
+											{format(new Date(task.created_at), 'MMM d, yyyy')}
+											<span class="hidden sm:inline">
+												• {format(
+													new Date(task.created_at),
+													'h:mm a'
+												)}</span
+											>
+										</span>
+									</div>
+								{/if}
+								{#if task.updated_at}
+									<div class="space-y-1">
+										<span
+											class="block font-medium text-slate-500 dark:text-slate-400"
+											>Updated</span
+										>
+										<span class="text-slate-700 dark:text-slate-300">
+											{format(new Date(task.updated_at), 'MMM d, yyyy')}
+											<span class="hidden sm:inline">
+												• {format(
+													new Date(task.updated_at),
+													'h:mm a'
+												)}</span
+											>
+										</span>
+									</div>
+								{/if}
+								{#if task.completed_at}
+									<div class="col-span-2 sm:col-span-1 space-y-1">
+										<span
+											class="block font-medium text-slate-500 dark:text-slate-400"
+											>Completed</span
+										>
+										<span class="text-slate-700 dark:text-slate-300">
+											{format(new Date(task.completed_at), 'MMM d, yyyy')}
+											<span class="hidden sm:inline">
+												• {format(
+													new Date(task.completed_at),
+													'h:mm a'
+												)}</span
+											>
+										</span>
+									</div>
+								{/if}
+							</div>
+						</div>
+					{/if}
 				</div>
-
-				<!-- Braindumps Section (only show when editing) -->
-				{#if isEditing && task?.id}
-					<TaskBraindumpSection taskId={task.id} />
-				{/if}
-
-				<!-- Deleted Status -->
-				{#if isDeleted}
-					<hr class="border-rose-200 dark:border-rose-700" />
-					<div class="bg-rose-50 dark:bg-rose-900/30 rounded-md p-3">
-						<div class="flex items-center space-x-2">
-							<Trash2 class="w-4 h-4 text-rose-600 dark:text-rose-400" />
-							<span class="text-sm font-medium text-rose-900 dark:text-rose-100">
-								Task Deleted
-							</span>
-						</div>
-					</div>
-				{/if}
-
-				<!-- Creation/Update Info (if editing) -->
-				{#if isEditing && task}
-					<hr class="border-slate-200/60 dark:border-slate-700/60" />
-					<div
-						class="rounded-xl border border-slate-200/60 bg-white/85 p-3 space-y-3 dark:border-slate-700/60 dark:bg-slate-900/70"
-					>
-						<!-- Activity Indicator -->
-						<div class="flex items-center justify-between">
-							<span
-								class="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-500 dark:text-slate-400"
-								>Activity</span
-							>
-							<RecentActivityIndicator
-								createdAt={task.created_at}
-								updatedAt={task.updated_at}
-								size="sm"
-							/>
-						</div>
-						<!-- Date Information - Responsive Grid -->
-						<div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 text-xs">
-							{#if task.created_at}
-								<div class="space-y-1">
-									<span
-										class="block font-medium text-slate-500 dark:text-slate-400"
-										>Created</span
-									>
-									<span class="text-slate-700 dark:text-slate-300">
-										{format(new Date(task.created_at), 'MMM d, yyyy')}
-										<span class="hidden sm:inline">
-											• {format(new Date(task.created_at), 'h:mm a')}</span
-										>
-									</span>
-								</div>
-							{/if}
-							{#if task.updated_at}
-								<div class="space-y-1">
-									<span
-										class="block font-medium text-slate-500 dark:text-slate-400"
-										>Updated</span
-									>
-									<span class="text-slate-700 dark:text-slate-300">
-										{format(new Date(task.updated_at), 'MMM d, yyyy')}
-										<span class="hidden sm:inline">
-											• {format(new Date(task.updated_at), 'h:mm a')}</span
-										>
-									</span>
-								</div>
-							{/if}
-							{#if task.completed_at}
-								<div class="col-span-2 sm:col-span-1 space-y-1">
-									<span
-										class="block font-medium text-slate-500 dark:text-slate-400"
-										>Completed</span
-									>
-									<span class="text-slate-700 dark:text-slate-300">
-										{format(new Date(task.completed_at), 'MMM d, yyyy')}
-										<span class="hidden sm:inline">
-											• {format(new Date(task.completed_at), 'h:mm a')}</span
-										>
-									</span>
-								</div>
-							{/if}
-						</div>
-					</div>
-				{/if}
 			</div>
-		</div>
 
-		<!-- Dashboard Context - Navigation Links -->
-		{#if isDashboardContext && task?.projects}
-			<div class="mt-auto pt-2 border-gray-200 dark:border-gray-700">
-				<div class="space-y-3">
-					<!-- Quick Navigation Header -->
-					<div class="flex items-center space-x-2">
-						<span
-							class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider"
-						>
-							Quick Navigation
-						</span>
-						<div class="flex-1 h-px bg-gray-200 dark:bg-gray-700"></div>
-					</div>
+			<!-- Dashboard Context - Navigation Links -->
+			{#if isDashboardContext && task?.projects}
+				<div class="mt-auto pt-2 border-gray-200 dark:border-gray-700">
+					<div class="space-y-3">
+						<!-- Quick Navigation Header -->
+						<div class="flex items-center space-x-2">
+							<span
+								class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+							>
+								Quick Navigation
+							</span>
+							<div class="flex-1 h-px bg-gray-200 dark:bg-gray-700"></div>
+						</div>
 
-					<!-- Navigation Buttons - Stack on mobile, inline on desktop -->
-					<div class="grid grid-cols-2 sm:flex sm:items-center sm:justify-end gap-2">
-						<a
-							href="/projects/{task.projects.id}"
-							target="_blank"
-							rel="noopener noreferrer"
-							class="flex items-center justify-center px-3 py-2.5 text-xs font-semibold text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-750 hover:border-gray-400 dark:hover:border-gray-500 transition-all duration-200 shadow-sm hover:shadow"
-						>
-							<FolderOpen class="w-4 h-4 mr-1.5" />
-							View Project
-						</a>
-						{#if task?.id}
+						<!-- Navigation Buttons - Stack on mobile, inline on desktop -->
+						<div class="grid grid-cols-2 sm:flex sm:items-center sm:justify-end gap-2">
 							<a
-								href="/projects/{(task as any).projects?.id ||
-									(task as any).project_id ||
-									''}/tasks/{task.id}"
+								href="/projects/{task.projects.id}"
 								target="_blank"
 								rel="noopener noreferrer"
 								class="flex items-center justify-center px-3 py-2.5 text-xs font-semibold text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-750 hover:border-gray-400 dark:hover:border-gray-500 transition-all duration-200 shadow-sm hover:shadow"
 							>
-								<ArrowUpRight class="w-4 h-4 mr-1.5" />
-								View Task
+								<FolderOpen class="w-4 h-4 mr-1.5" />
+								View Project
 							</a>
-						{/if}
+							{#if task?.id}
+								<a
+									href="/projects/{(task as any).projects?.id ||
+										(task as any).project_id ||
+										''}/tasks/{task.id}"
+									target="_blank"
+									rel="noopener noreferrer"
+									class="flex items-center justify-center px-3 py-2.5 text-xs font-semibold text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-750 hover:border-gray-400 dark:hover:border-gray-500 transition-all duration-200 shadow-sm hover:shadow"
+								>
+									<ArrowUpRight class="w-4 h-4 mr-1.5" />
+									View Task
+								</a>
+							{/if}
+						</div>
 					</div>
 				</div>
-			</div>
-		{/if}
-	</div>
+			{/if}
+		</div>
+	{/snippet}
 </FormModal>
 
 <!-- Recurring Delete Modal -->

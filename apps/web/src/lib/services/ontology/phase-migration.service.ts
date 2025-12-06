@@ -39,7 +39,9 @@ export interface PhaseMigrationBatchResult {
 	preview?: PlanGenerationPreview;
 }
 
-const PLAN_TYPE_KEY = 'plan.project_phase';
+// Plan type_key follows family-based taxonomy: plan.{family}[.{variant}]
+// For project phases, we use the 'phase' family with 'project' variant
+const PLAN_TYPE_KEY = 'plan.phase.project';
 
 export class PhaseMigrationService {
 	private readonly enhancedMigrator: EnhancedPlanMigrator;
@@ -63,8 +65,20 @@ export class PhaseMigrationService {
 		projectFacets?: Facets,
 		projectNarrative?: ProjectNarrativeBundle
 	): Promise<PhaseMigrationBatchResult> {
-		const phases = await this.fetchPhases(projectId);
-		const phaseTaskCounts = await this.getPhaseTaskCounts(phases.map((phase) => phase.id));
+		const allPhases = await this.fetchPhases(projectId);
+		const skipCompletedTasks = context.skipCompletedTasks ?? true;
+
+		// Get active task counts if we're skipping completed tasks
+		const phaseTaskCounts = await this.getPhaseTaskCounts(
+			allPhases.map((phase) => phase.id),
+			{ onlyActive: skipCompletedTasks }
+		);
+
+		// Filter out phases with no active tasks if skipCompletedTasks is enabled
+		const phases = skipCompletedTasks
+			? allPhases.filter((phase) => (phaseTaskCounts.get(phase.id) ?? 0) > 0)
+			: allPhases;
+
 		const phasePlans: PhaseMigrationPlan[] = [];
 		const mapping: Record<string, string | null> = {};
 
@@ -185,22 +199,64 @@ export class PhaseMigrationService {
 		return data ?? [];
 	}
 
-	private async getPhaseTaskCounts(phaseIds: string[]): Promise<Map<string, number>> {
+	private async getPhaseTaskCounts(
+		phaseIds: string[],
+		options: { onlyActive?: boolean } = {}
+	): Promise<Map<string, number>> {
 		if (!phaseIds.length) {
 			return new Map();
 		}
 
-		const { data, error } = await this.client
+		// Get all phase-task mappings first
+		const { data: phaseTasks, error: phaseTasksError } = await this.client
 			.from('phase_tasks')
-			.select('phase_id')
+			.select('phase_id, task_id')
 			.in('phase_id', phaseIds);
 
-		if (error) {
-			throw new Error(`[PhaseMigration] Failed to count tasks for phases: ${error.message}`);
+		if (phaseTasksError) {
+			throw new Error(
+				`[PhaseMigration] Failed to count tasks for phases: ${phaseTasksError.message}`
+			);
 		}
 
+		if (!phaseTasks?.length) {
+			return new Map();
+		}
+
+		// If we only want active tasks, filter by task status
+		if (options.onlyActive) {
+			const taskIds = phaseTasks.map((pt) => pt.task_id);
+
+			// Get only active tasks (not deleted and not done)
+			const { data: activeTasks, error: tasksError } = await this.client
+				.from('tasks')
+				.select('id')
+				.in('id', taskIds)
+				.is('deleted_at', null)
+				.neq('status', 'done');
+
+			if (tasksError) {
+				throw new Error(
+					`[PhaseMigration] Failed to filter active tasks: ${tasksError.message}`
+				);
+			}
+
+			const activeTaskIds = new Set((activeTasks ?? []).map((t) => t.id));
+
+			// Count only active tasks per phase
+			const counts = new Map<string, number>();
+			for (const row of phaseTasks) {
+				if (activeTaskIds.has(row.task_id)) {
+					counts.set(row.phase_id, (counts.get(row.phase_id) ?? 0) + 1);
+				}
+			}
+
+			return counts;
+		}
+
+		// Default: count all tasks
 		const counts = new Map<string, number>();
-		for (const row of data ?? []) {
+		for (const row of phaseTasks) {
 			counts.set(row.phase_id, (counts.get(row.phase_id) ?? 0) + 1);
 		}
 
@@ -487,12 +543,14 @@ export class PhaseMigrationService {
 								end: params.phase.end_date
 							}
 						: null,
-					metadata: params.metadata ?? {}
+					metadata: params.metadata ?? {},
+					facets: {
+						context: params.projectFacets?.context ?? null,
+						scale: this.determinePhaseScale(params.taskCount),
+						stage: params.phase ? this.determinePhaseStage(params.phase) : 'planning'
+					}
 				},
-				created_by: params.actorId,
-				facet_context: params.projectFacets?.context ?? null,
-				facet_scale: this.determinePhaseScale(params.taskCount),
-				facet_stage: params.phase ? this.determinePhaseStage(params.phase) : 'planning'
+				created_by: params.actorId
 			})
 			.select('id')
 			.single();

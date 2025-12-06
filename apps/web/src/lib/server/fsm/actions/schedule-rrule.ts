@@ -117,7 +117,7 @@ function buildTaskRows(params: {
 
 		return {
 			project_id: entity.project_id,
-			plan_id: action.plan_id ?? null,
+			type_key: action.type_key ?? 'task.execute',
 			title: occurrences.length > 1 ? `${baseTitle} (${index + 1})` : baseTitle,
 			state_key: stateKey,
 			due_at: occurrenceISO,

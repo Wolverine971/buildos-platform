@@ -151,159 +151,165 @@
 	size="xl"
 >
 	<!-- Custom content layout using slots -->
-	<div slot="after-form" class="space-y-6 -mt-4 px-4 sm:px-6 lg:px-8">
-		<!-- Main Content Area -->
-		<div class="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6 min-h-[40vh] flex-1">
-			<!-- Content Section (Takes most space) -->
-			<div class="lg:col-span-3 flex flex-col space-y-4 min-h-0">
-				<!-- Title -->
-				<FormField label="Title" labelFor="note-title" required={true}>
-					<TextInput
-						id="note-title"
-						bind:value={titleValue}
-						placeholder="Note title..."
-						size="lg"
-						class="font-semibold"
-					/>
-				</FormField>
-
-				<!-- Content -->
-				<div class="flex-1 flex flex-col">
-					<FormField label="Content" labelFor="note-content" class="flex-1 flex flex-col">
-						<Textarea
-							id="note-content"
-							bind:value={contentValue}
-							placeholder="Start writing your note..."
-							autoResize={true}
-							rows={8}
-							maxRows={20}
-							class="flex-1 leading-relaxed"
+	{#snippet afterForm()}
+		<div class="space-y-6 -mt-4 px-4 sm:px-6 lg:px-8">
+			<!-- Main Content Area -->
+			<div class="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6 min-h-[40vh] flex-1">
+				<!-- Content Section (Takes most space) -->
+				<div class="lg:col-span-3 flex flex-col space-y-4 min-h-0">
+					<!-- Title -->
+					<FormField label="Title" labelFor="note-title" required={true}>
+						<TextInput
+							id="note-title"
+							bind:value={titleValue}
+							placeholder="Note title..."
+							size="lg"
+							class="font-semibold"
 						/>
 					</FormField>
-				</div>
 
-				<!-- Content Stats -->
-				<div
-					class="text-sm text-gray-500 dark:text-gray-400 flex justify-between items-center"
-				>
-					<span>
-						{#if contentValue.length > 0}
-							{contentValue.length} characters
-						{:else}
-							Start typing to add content...
-						{/if}
-					</span>
-					{#if titleValue.length > 0}
-						<span>{titleValue.length} characters in title</span>
-					{/if}
-				</div>
-			</div>
+					<!-- Content -->
+					<div class="flex-1 flex flex-col">
+						<FormField
+							label="Content"
+							labelFor="note-content"
+							class="flex-1 flex flex-col"
+						>
+							<Textarea
+								id="note-content"
+								bind:value={contentValue}
+								placeholder="Start writing your note..."
+								autoResize={true}
+								rows={8}
+								maxRows={20}
+								class="flex-1 leading-relaxed"
+							/>
+						</FormField>
+					</div>
 
-			<!-- Metadata Sidebar -->
-			<div
-				class="lg:col-span-1 bg-gray-50 dark:bg-gray-900/50 rounded-lg p-3 sm:p-4 space-y-3 sm:space-y-4 border border-gray-200 dark:border-gray-700 order-first lg:order-last"
-			>
-				<h3
-					class="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wide"
-				>
-					Metadata
-				</h3>
-
-				<!-- Category -->
-				<FormField label="Category" labelFor="note-category">
-					<Select
-						id="note-category"
-						bind:value={categoryValue}
-						size="sm"
-						placeholder="Select category..."
+					<!-- Content Stats -->
+					<div
+						class="text-sm text-gray-500 dark:text-gray-400 flex justify-between items-center"
 					>
-						{#each categoryOptions as option}
-							<option value={option.value}>{option.label}</option>
-						{/each}
-					</Select>
-				</FormField>
+						<span>
+							{#if contentValue.length > 0}
+								{contentValue.length} characters
+							{:else}
+								Start typing to add content...
+							{/if}
+						</span>
+						{#if titleValue.length > 0}
+							<span>{titleValue.length} characters in title</span>
+						{/if}
+					</div>
+				</div>
 
-				<!-- Tags -->
-				<FormField label="Tags" labelFor="note-tags" hint="Press Enter to add a tag">
-					<!-- Tags Display -->
-					{#if tagsValue.length > 0}
-						<div class="flex flex-wrap gap-1 mb-2">
-							{#each tagsValue as tag}
-								<Button
-									type="button"
-									onclick={() => removeTag(tag)}
-									variant="outline"
-									size="sm"
-									class="m-1 p-1 text-blue-600 dark:text-blue-300 hover:text-blue-800 dark:hover:text-blue-100 min-h-[24px]"
-								>
-									{tag}
-									<svg
-										class="w-3 h-3"
-										fill="none"
-										stroke="currentColor"
-										viewBox="0 0 24 24"
-									>
-										<path
-											stroke-linecap="round"
-											stroke-linejoin="round"
-											stroke-width="2"
-											d="M6 18L18 6M6 6l12 12"
-										/>
-									</svg>
-								</Button>
+				<!-- Metadata Sidebar -->
+				<div
+					class="lg:col-span-1 bg-gray-50 dark:bg-gray-900/50 rounded-lg p-3 sm:p-4 space-y-3 sm:space-y-4 border border-gray-200 dark:border-gray-700 order-first lg:order-last"
+				>
+					<h3
+						class="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wide"
+					>
+						Metadata
+					</h3>
+
+					<!-- Category -->
+					<FormField label="Category" labelFor="note-category">
+						<Select
+							id="note-category"
+							bind:value={categoryValue}
+							size="sm"
+							placeholder="Select category..."
+						>
+							{#each categoryOptions as option}
+								<option value={option.value}>{option.label}</option>
 							{/each}
+						</Select>
+					</FormField>
+
+					<!-- Tags -->
+					<FormField label="Tags" labelFor="note-tags" hint="Press Enter to add a tag">
+						<!-- Tags Display -->
+						{#if tagsValue.length > 0}
+							<div class="flex flex-wrap gap-1 mb-2">
+								{#each tagsValue as tag}
+									<Button
+										type="button"
+										onclick={() => removeTag(tag)}
+										variant="outline"
+										size="sm"
+										class="m-1 p-1 text-blue-600 dark:text-blue-300 hover:text-blue-800 dark:hover:text-blue-100 min-h-[24px]"
+									>
+										{tag}
+										<svg
+											class="w-3 h-3"
+											fill="none"
+											stroke="currentColor"
+											viewBox="0 0 24 24"
+										>
+											<path
+												stroke-linecap="round"
+												stroke-linejoin="round"
+												stroke-width="2"
+												d="M6 18L18 6M6 6l12 12"
+											/>
+										</svg>
+									</Button>
+								{/each}
+							</div>
+						{/if}
+
+						<!-- Tag Input -->
+						<TextInput
+							id="note-tags"
+							bind:value={tagInput}
+							onkeydown={handleTagKeydown}
+							placeholder="Add tags (press Enter)..."
+							size="sm"
+						/>
+					</FormField>
+
+					<!-- Creation/Update Info (if editing) -->
+					{#if isEditing && note}
+						<hr class="border-gray-200 dark:border-gray-700" />
+						<div class="space-y-2 text-xs text-gray-600 dark:text-gray-400">
+							{#if note.created_at}
+								<div>
+									<span class="font-medium">Created:</span>
+									<br />
+									{formatDateTimeForDisplay(note.created_at)}
+								</div>
+							{/if}
+							{#if note.updated_at}
+								<div>
+									<span class="font-medium">Updated:</span>
+									<br />
+									{formatDateTimeForDisplay(note.updated_at)}
+								</div>
+							{/if}
 						</div>
 					{/if}
 
-					<!-- Tag Input -->
-					<TextInput
-						id="note-tags"
-						bind:value={tagInput}
-						onkeydown={handleTagKeydown}
-						placeholder="Add tags (press Enter)..."
-						size="sm"
-					/>
-				</FormField>
-
-				<!-- Creation/Update Info (if editing) -->
-				{#if isEditing && note}
-					<hr class="border-gray-200 dark:border-gray-700" />
-					<div class="space-y-2 text-xs text-gray-600 dark:text-gray-400">
-						{#if note.created_at}
-							<div>
-								<span class="font-medium">Created:</span>
-								<br />
-								{formatDateTimeForDisplay(note.created_at)}
-							</div>
-						{/if}
-						{#if note.updated_at}
-							<div>
-								<span class="font-medium">Updated:</span>
-								<br />
-								{formatDateTimeForDisplay(note.updated_at)}
-							</div>
-						{/if}
-					</div>
-				{/if}
-
-				<!-- Content Preview -->
-				<div class="space-y-2">
-					<h4
-						class="text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wide"
-					>
-						Preview
-					</h4>
-					<div
-						class="text-xs p-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded text-gray-600 dark:text-gray-400 max-h-32 overflow-y-auto"
-					>
-						{#if contentValue.trim()}
-							{contentValue.slice(0, 150)}{contentValue.length > 150 ? '...' : ''}
-						{:else}
-							<em>No content yet...</em>
-						{/if}
+					<!-- Content Preview -->
+					<div class="space-y-2">
+						<h4
+							class="text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wide"
+						>
+							Preview
+						</h4>
+						<div
+							class="text-xs p-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded text-gray-600 dark:text-gray-400 max-h-32 overflow-y-auto"
+						>
+							{#if contentValue.trim()}
+								{contentValue.slice(0, 150)}{contentValue.length > 150 ? '...' : ''}
+							{:else}
+								<em>No content yet...</em>
+							{/if}
+						</div>
 					</div>
 				</div>
 			</div>
 		</div>
-	</div>
+	{/snippet}
 </FormModal>

@@ -22,6 +22,7 @@
 	like sidebar metadata and FSM visualization.
 -->
 <script lang="ts">
+	import { browser } from '$app/environment';
 	import { Save, Loader, Trash2 } from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
@@ -65,9 +66,11 @@
 	// FSM related
 	let allowedTransitions = $state<any[]>([]);
 
-	// Load goal data when modal opens
+	// Load goal data when modal opens (client-side only)
 	$effect(() => {
-		loadGoal();
+		if (browser) {
+			loadGoal();
+		}
 	});
 
 	async function loadGoal() {
@@ -208,283 +211,329 @@
 
 <Modal
 	bind:isOpen={modalOpen}
-	size="lg"
+	size="xl"
 	onClose={handleClose}
 	closeOnEscape={!isSaving && !isDeleting}
-	title="Edit Goal: {name || 'Loading...'}"
+	showCloseButton={false}
 >
-	<div class="p-4 sm:p-6">
-		{#if isLoading}
-			<div class="flex items-center justify-center py-12">
-				<Loader class="w-8 h-8 animate-spin text-gray-400" />
+	{#snippet header()}
+		<!-- Custom gradient header - grey/dark grey -->
+		<div
+			class="flex-shrink-0 bg-gradient-to-r from-gray-600 via-gray-700 to-gray-800 dark:from-gray-700 dark:via-gray-800 dark:to-gray-900 text-white px-3 py-3 sm:px-6 sm:py-6 flex flex-col gap-3 sm:gap-5 dither-gradient"
+		>
+			<div class="flex items-start justify-between gap-2 sm:gap-4">
+				<div class="space-y-1 sm:space-y-2 min-w-0 flex-1">
+					<p class="text-[10px] sm:text-xs font-semibold uppercase tracking-[0.3em] sm:tracking-[0.4em] text-white/70">
+						Goal overview
+					</p>
+					<h2 class="text-lg sm:text-2xl font-bold leading-tight truncate">
+						{name || goal?.name || 'Goal details'}
+					</h2>
+					<div class="flex flex-wrap items-center gap-1.5 sm:gap-3 text-xs sm:text-sm">
+						<span class="px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-semibold capitalize bg-white/20">{stateKey}</span>
+						<span class="hidden sm:inline font-mono text-xs tracking-wide">{goal?.type_key || 'goal.outcome.project'}</span>
+						<span class="text-white/80">#{goal?.id?.slice(0, 8) || goalId.slice(0, 8)}</span>
+					</div>
+				</div>
+				<Button
+					variant="ghost"
+					size="sm"
+					onclick={handleClose}
+					class="text-white/80 hover:text-white shrink-0 !p-1.5 sm:!p-2"
+					disabled={isSaving || isDeleting}
+				>
+					<svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M6 18L18 6M6 6l12 12"
+						></path>
+					</svg>
+				</Button>
 			</div>
-		{:else if !goal}
-			<div class="text-center py-8">
-				<p class="text-red-600 dark:text-red-400">Goal not found</p>
+
+			<div class="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4 text-xs sm:text-sm">
+				<div class="rounded bg-white/10 backdrop-blur p-2 sm:p-3">
+					<p class="text-[10px] sm:text-xs uppercase tracking-[0.2em] sm:tracking-[0.3em] text-white/70">Priority</p>
+					<p class="text-sm sm:text-lg font-semibold capitalize">{priority || 'Not set'}</p>
+				</div>
+				<div class="rounded bg-white/10 backdrop-blur p-2 sm:p-3">
+					<p class="text-[10px] sm:text-xs uppercase tracking-[0.2em] sm:tracking-[0.3em] text-white/70">Target</p>
+					<p class="text-sm sm:text-lg font-semibold truncate">{targetDate ? new Date(targetDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : 'No date'}</p>
+				</div>
+				<div class="rounded bg-white/10 backdrop-blur p-2 sm:p-3">
+					<p class="text-[10px] sm:text-xs uppercase tracking-[0.2em] sm:tracking-[0.3em] text-white/70">Created</p>
+					<p class="text-sm sm:text-lg font-semibold truncate">{goal?.created_at ? new Date(goal.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : '-'}</p>
+				</div>
+				<div class="rounded bg-white/10 backdrop-blur p-2 sm:p-3">
+					<p class="text-[10px] sm:text-xs uppercase tracking-[0.2em] sm:tracking-[0.3em] text-white/70">Updated</p>
+					<p class="text-sm sm:text-lg font-semibold truncate">{goal?.updated_at ? new Date(goal.updated_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : '-'}</p>
+				</div>
 			</div>
-		{:else}
-			<div class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-				<!-- Main Form (Left 2 columns) -->
-				<div class="lg:col-span-2">
-					<form
-						onsubmit={(e) => {
-							e.preventDefault();
-							handleSave();
-						}}
-						class="space-y-6"
-					>
-						<FormField
-							label="Goal Name"
-							labelFor="name"
-							required={true}
-							error={!name.trim() && error ? 'Goal name is required' : ''}
+		</div>
+	{/snippet}
+
+	{#snippet children()}
+		<!-- Main content - minimal padding on mobile -->
+		<div class="px-3 py-3 sm:px-6 sm:py-6">
+			{#if isLoading}
+				<div class="flex items-center justify-center py-12">
+					<Loader class="w-8 h-8 animate-spin text-gray-400" />
+				</div>
+			{:else if !goal}
+				<div class="text-center py-8">
+					<p class="text-red-600 dark:text-red-400">Goal not found</p>
+				</div>
+			{:else}
+				<div class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+					<!-- Main Form (Left 2 columns) -->
+					<div class="lg:col-span-2">
+						<form
+							onsubmit={(e) => {
+								e.preventDefault();
+								handleSave();
+							}}
+							class="space-y-6"
 						>
-							<TextInput
-								id="name"
-								bind:value={name}
-								inputmode="text"
-								enterkeyhint="next"
-								placeholder="Enter goal name..."
-								required={true}
-								disabled={isSaving}
-								error={!name.trim() && error ? true : false}
-							/>
-						</FormField>
-
-						<FormField
-							label="Description"
-							labelFor="description"
-							hint="Describe what you want to achieve"
-						>
-							<Textarea
-								id="description"
-								bind:value={description}
-								enterkeyhint="next"
-								placeholder="Describe the goal..."
-								rows={3}
-								disabled={isSaving}
-								size="md"
-							/>
-						</FormField>
-
-						<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 							<FormField
-								label="Priority"
-								labelFor="priority"
+								label="Goal Name"
+								labelFor="name"
 								required={true}
-								hint="Set goal importance level"
-							>
-								<Select
-									id="priority"
-									bind:value={priority}
-									disabled={isSaving}
-									size="md"
-									placeholder="Select priority"
-								>
-									<option value="high">High</option>
-									<option value="medium">Medium</option>
-									<option value="low">Low</option>
-								</Select>
-							</FormField>
-
-							<FormField
-								label="Target Date"
-								labelFor="target-date"
-								hint="When do you want to achieve this?"
+								error={!name.trim() && error ? 'Goal name is required' : ''}
 							>
 								<TextInput
-									type="date"
-									inputmode="numeric"
+									id="name"
+									bind:value={name}
+									inputmode="text"
 									enterkeyhint="next"
-									id="target-date"
-									bind:value={targetDate}
+									placeholder="Enter goal name..."
+									required={true}
 									disabled={isSaving}
+									error={!name.trim() && error ? true : false}
 								/>
 							</FormField>
-						</div>
 
-						<FormField
-							label="Success Criteria"
-							labelFor="measurement-criteria"
-							hint="How will you measure success?"
-						>
-							<Textarea
-								id="measurement-criteria"
-								bind:value={measurementCriteria}
-								enterkeyhint="done"
-								placeholder="How will you measure success..."
-								rows={3}
-								disabled={isSaving}
-								size="md"
-							/>
-						</FormField>
-
-						<!-- FSM State Visualizer -->
-						{#if goal.type_key && allowedTransitions.length > 0}
-							<div class="pt-4 border-t border-gray-200 dark:border-gray-700">
-								<FSMStateVisualizer
-									entityId={goalId}
-									entityKind="goal"
-									entityName={name}
-									currentState={stateKey}
-									initialTransitions={allowedTransitions}
-									on:stateChange={handleStateChange}
-								/>
-							</div>
-						{:else}
 							<FormField
-								label="State"
-								labelFor="state"
-								required={true}
-								hint="Current goal status"
+								label="Description"
+								labelFor="description"
+								hint="Describe what you want to achieve"
 							>
-								<Select
-									id="state"
-									bind:value={stateKey}
+								<Textarea
+									id="description"
+									bind:value={description}
+									enterkeyhint="next"
+									placeholder="Describe the goal..."
+									rows={3}
 									disabled={isSaving}
 									size="md"
-									placeholder="Select state"
-								>
-									<option value="draft">Draft</option>
-									<option value="active">Active</option>
-									<option value="on_track">On Track</option>
-									<option value="at_risk">At Risk</option>
-									<option value="achieved">Achieved</option>
-									<option value="missed">Missed</option>
-									<option value="archived">Archived</option>
-								</Select>
+								/>
 							</FormField>
-						{/if}
 
-						{#if error}
-							<div
-								class="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg"
-							>
-								<p class="text-sm text-red-700 dark:text-red-300">{error}</p>
-							</div>
-						{/if}
-					</form>
-				</div>
-
-				<!-- Sidebar (Right column) -->
-				<div class="space-y-4">
-					<!-- Goal Metadata -->
-					<Card variant="elevated">
-						<CardHeader variant="default">
-							<h3
-								class="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide flex items-center gap-2"
-							>
-								<span class="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
-								Goal Information
-							</h3>
-						</CardHeader>
-						<CardBody padding="sm">
-							<div class="space-y-2 text-sm">
-								<div class="flex justify-between items-center">
-									<span class="text-gray-600 dark:text-gray-400">Type:</span>
-									<Badge variant="info" size="sm">
-										{goal.type_key || 'goal.basic'}
-									</Badge>
-								</div>
-
-								<div class="flex justify-between">
-									<span class="text-gray-600 dark:text-gray-400">ID:</span>
-									<span class="font-mono text-xs text-gray-500"
-										>{goal.id.slice(0, 8)}...</span
+							<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+								<FormField
+									label="Priority"
+									labelFor="priority"
+									required={true}
+									hint="Set goal importance level"
+								>
+									<Select
+										id="priority"
+										bind:value={priority}
+										disabled={isSaving}
+										size="md"
+										placeholder="Select priority"
 									>
-								</div>
+										<option value="high">High</option>
+										<option value="medium">Medium</option>
+										<option value="low">Low</option>
+									</Select>
+								</FormField>
 
-								{#if goal.created_at}
-									<div class="flex justify-between">
-										<span class="text-gray-600 dark:text-gray-400"
-											>Created:</span
-										>
-										<span class="text-gray-900 dark:text-white">
-											{new Date(goal.created_at).toLocaleDateString()}
-										</span>
-									</div>
-								{/if}
-
-								{#if goal.updated_at}
-									<div class="flex justify-between">
-										<span class="text-gray-600 dark:text-gray-400"
-											>Updated:</span
-										>
-										<span class="text-gray-900 dark:text-white">
-											{new Date(goal.updated_at).toLocaleDateString()}
-										</span>
-									</div>
-								{/if}
+								<FormField
+									label="Target Date"
+									labelFor="target-date"
+									hint="When do you want to achieve this?"
+								>
+									<TextInput
+										type="date"
+										inputmode="numeric"
+										enterkeyhint="next"
+										id="target-date"
+										bind:value={targetDate}
+										disabled={isSaving}
+									/>
+								</FormField>
 							</div>
-						</CardBody>
-					</Card>
 
-					<!-- Danger Zone -->
-					<div
-						class="border-2 border-red-200 dark:border-red-800 bg-red-50/50 dark:bg-red-900/10 rounded-lg p-4"
-					>
-						<h3
-							class="text-xs font-semibold text-red-700 dark:text-red-400 mb-3 uppercase tracking-wide flex items-center gap-2"
-						>
-							<span class="text-base">⚠️</span>
-							Danger Zone
-						</h3>
-
-						{#if !showDeleteConfirm}
-							<Button
-								variant="danger"
-								size="sm"
-								onclick={() => (showDeleteConfirm = true)}
-								disabled={isDeleting}
-								class="w-full"
+							<FormField
+								label="Success Criteria"
+								labelFor="measurement-criteria"
+								hint="How will you measure success?"
 							>
-								<Trash2 class="w-4 h-4" />
-								Delete Goal
-							</Button>
-						{:else}
-							<div class="space-y-3">
-								<p class="text-sm text-red-700 dark:text-red-300">
-									Are you sure you want to delete this goal? This action cannot be
-									undone.
-								</p>
-								<div class="flex gap-2">
-									<Button
-										variant="danger"
-										size="sm"
-										onclick={handleDelete}
-										disabled={isDeleting}
-										class="flex-1"
+								<Textarea
+									id="measurement-criteria"
+									bind:value={measurementCriteria}
+									enterkeyhint="done"
+									placeholder="How will you measure success..."
+									rows={3}
+									disabled={isSaving}
+									size="md"
+								/>
+							</FormField>
+
+							<!-- FSM State Visualizer -->
+							{#if goal.type_key && allowedTransitions.length > 0}
+								<div class="pt-4 border-t border-gray-200 dark:border-gray-700">
+									<FSMStateVisualizer
+										entityId={goalId}
+										entityKind="goal"
+										entityName={name}
+										currentState={stateKey}
+										initialTransitions={allowedTransitions}
+										on:stateChange={handleStateChange}
+									/>
+								</div>
+							{:else}
+								<FormField
+									label="State"
+									labelFor="state"
+									required={true}
+									hint="Current goal status"
+								>
+									<Select
+										id="state"
+										bind:value={stateKey}
+										disabled={isSaving}
+										size="md"
+										placeholder="Select state"
 									>
-										{#if isDeleting}
-											<Loader class="w-4 h-4 animate-spin" />
-											Deleting...
-										{:else}
-											Yes, Delete
-										{/if}
-									</Button>
+										<option value="draft">Draft</option>
+										<option value="active">Active</option>
+										<option value="on_track">On Track</option>
+										<option value="at_risk">At Risk</option>
+										<option value="achieved">Achieved</option>
+										<option value="missed">Missed</option>
+										<option value="archived">Archived</option>
+									</Select>
+								</FormField>
+							{/if}
+
+							{#if error}
+								<div
+									class="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded"
+								>
+									<p class="text-sm text-red-700 dark:text-red-300">{error}</p>
+								</div>
+							{/if}
+						</form>
+					</div>
+
+					<!-- Sidebar (Right column) -->
+					<div class="space-y-4">
+						<!-- Goal Metadata -->
+						<Card variant="elevated">
+							<CardHeader variant="default">
+								<h3
+									class="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide flex items-center gap-2"
+								>
+									<span class="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+									Goal Information
+								</h3>
+							</CardHeader>
+							<CardBody padding="sm">
+								<div class="space-y-2 text-sm">
+									<div class="flex justify-between items-center">
+										<span class="text-gray-600 dark:text-gray-400">Type:</span>
+										<Badge variant="info" size="sm">
+											{goal.type_key || 'goal.outcome.project'}
+										</Badge>
+									</div>
+
+									<div class="flex justify-between">
+										<span class="text-gray-600 dark:text-gray-400">ID:</span>
+										<span class="font-mono text-xs text-gray-500"
+											>{goal.id.slice(0, 8)}...</span
+										>
+									</div>
+
+									{#if goal.created_at}
+										<div class="flex justify-between">
+											<span class="text-gray-600 dark:text-gray-400"
+												>Created:</span
+											>
+											<span class="text-gray-900 dark:text-white">
+												{new Date(goal.created_at).toLocaleDateString()}
+											</span>
+										</div>
+									{/if}
+
+									{#if goal.updated_at}
+										<div class="flex justify-between">
+											<span class="text-gray-600 dark:text-gray-400"
+												>Updated:</span
+											>
+											<span class="text-gray-900 dark:text-white">
+												{new Date(goal.updated_at).toLocaleDateString()}
+											</span>
+										</div>
+									{/if}
+								</div>
+							</CardBody>
+						</Card>
+
+						<!-- Danger zone - compact inline on mobile -->
+						<div class="flex items-center justify-between gap-2 p-2 sm:p-3 rounded-lg border border-red-200 dark:border-red-800/40 bg-red-50/50 dark:bg-red-900/10">
+							<div class="flex items-center gap-1.5 sm:gap-2 min-w-0">
+								<Trash2 class="w-3 h-3 sm:w-4 sm:h-4 text-red-500 shrink-0" />
+								<span class="text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-red-600 dark:text-red-400">
+									Danger
+								</span>
+							</div>
+							{#if !showDeleteConfirm}
+								<Button
+									variant="danger"
+									size="sm"
+									onclick={() => (showDeleteConfirm = true)}
+									disabled={isDeleting}
+									class="text-[10px] sm:text-xs px-2 py-1 sm:px-3 sm:py-1.5"
+								>
+									Delete
+								</Button>
+							{:else}
+								<div class="flex items-center gap-1.5 sm:gap-2">
 									<Button
 										variant="ghost"
 										size="sm"
 										onclick={() => (showDeleteConfirm = false)}
 										disabled={isDeleting}
-										class="flex-1"
+										class="text-[10px] sm:text-xs px-2 py-1"
 									>
-										Cancel
+										No
+									</Button>
+									<Button
+										variant="danger"
+										size="sm"
+										onclick={handleDelete}
+										loading={isDeleting}
+										class="text-[10px] sm:text-xs px-2 py-1 sm:px-3 sm:py-1.5"
+									>
+										Confirm
 									</Button>
 								</div>
-							</div>
-						{/if}
+							{/if}
+						</div>
 					</div>
 				</div>
-			</div>
-		{/if}
-	</div>
+			{/if}
+		</div>
+	{/snippet}
 
-	<!-- Footer Actions -->
-	<svelte:fragment slot="footer">
+	<!-- Footer Actions - buttons on one row, smaller on mobile -->
+	{#snippet footer()}
 		{#if !isLoading && goal}
 			<div
-				class="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-3 p-4 sm:p-6 border-t border-gray-200 dark:border-gray-700 bg-gradient-to-r from-gray-50 to-slate-50 dark:from-gray-900/50 dark:to-gray-800/50 dither-surface"
+				class="flex flex-row items-center justify-end gap-2 sm:gap-4 p-2 sm:p-6 border-t border-gray-200 dark:border-gray-700 bg-surface-panel dark:bg-slate-900/30 dither-surface"
 			>
 				<Button
 					type="button"
@@ -492,7 +541,7 @@
 					size="sm"
 					onclick={handleClose}
 					disabled={isSaving || isDeleting}
-					class="w-full sm:w-auto"
+					class="text-xs sm:text-sm px-2 sm:px-4"
 				>
 					Cancel
 				</Button>
@@ -501,20 +550,17 @@
 					variant="primary"
 					size="sm"
 					onclick={handleSave}
+					loading={isSaving}
 					disabled={isSaving || isDeleting || !name.trim()}
-					class="w-full sm:w-auto"
+					class="text-xs sm:text-sm px-2 sm:px-4"
 				>
-					{#if isSaving}
-						<Loader class="w-4 h-4 animate-spin" />
-						Saving...
-					{:else}
-						<Save class="w-4 h-4" />
-						Save Changes
-					{/if}
+					<Save class="w-3 h-3 sm:w-4 sm:h-4" />
+					<span class="hidden sm:inline">Save Changes</span>
+					<span class="sm:hidden">Save</span>
 				</Button>
 			</div>
 		{/if}
-	</svelte:fragment>
+	{/snippet}
 </Modal>
 
 {#if showDeleteConfirm}

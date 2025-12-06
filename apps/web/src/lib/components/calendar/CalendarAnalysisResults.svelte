@@ -1,5 +1,6 @@
 <!-- apps/web/src/lib/components/calendar/CalendarAnalysisResults.svelte -->
 <script lang="ts">
+	import { browser } from '$app/environment';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import { toastService } from '$lib/stores/toast.store';
@@ -86,6 +87,7 @@
 
 	// Start analysis automatically if requested
 	$effect(() => {
+		if (!browser) return;
 		if (isOpen && autoStart && !analysisId && !analyzing && !analysisTriggered) {
 			analysisTriggered = true; // Prevent re-triggering
 			startAnalysis();
@@ -426,7 +428,7 @@
 	>
 		{#if errorMessage}
 			<div
-				class="rounded-lg border border-red-300 bg-red-50/80 p-4 text-sm text-red-700 dark:border-red-800/60 dark:bg-red-900/20 dark:text-red-200"
+				class="rounded border border-red-300 bg-red-50/80 p-4 text-sm text-red-700 dark:border-red-800/60 dark:bg-red-900/20 dark:text-red-200"
 			>
 				{errorMessage}
 			</div>
@@ -434,7 +436,7 @@
 		{#if !analyzing && !analysisId && suggestions.length === 0 && !autoStart}
 			<!-- Date Range Selection (only show if not autoStart) -->
 			<div
-				class="bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-950/30 dark:to-purple-950/30 rounded-xl p-6 border-2 border-blue-200 dark:border-blue-800/50 shadow-sm mx-1"
+				class="bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-950/30 dark:to-purple-950/30 rounded p-6 border-2 border-blue-200 dark:border-blue-800/50 shadow-sm mx-1"
 			>
 				<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
 					Select Analysis Period
@@ -454,7 +456,7 @@
 						<select
 							id="daysBack"
 							bind:value={daysBack}
-							class="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2.5 text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400 transition-all duration-200"
+							class="w-full rounded border border-gray-300 dark:border-gray-600 px-4 py-2.5 text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400 transition-all duration-200"
 						>
 							<option value={30}>1 month</option>
 							<option value={60}>2 months</option>
@@ -472,7 +474,7 @@
 						<select
 							id="daysForward"
 							bind:value={daysForward}
-							class="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2.5 text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400 transition-all duration-200"
+							class="w-full rounded border border-gray-300 dark:border-gray-600 px-4 py-2.5 text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400 transition-all duration-200"
 						>
 							<option value={30}>1 month</option>
 							<option value={60}>2 months (default)</option>
@@ -542,7 +544,7 @@
 		{:else if suggestions.length > 0}
 			<!-- Summary -->
 			<div
-				class="bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-950/30 dark:to-purple-950/30 rounded-xl p-6 border-2 border-blue-200 dark:border-blue-800/50 shadow-sm mx-1"
+				class="clarity-zone bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-950/30 dark:to-purple-950/30 rounded p-6 border-2 border-blue-200 dark:border-blue-800/50 shadow-sm mx-1"
 			>
 				<div class="flex items-center justify-between">
 					<div>
@@ -555,7 +557,7 @@
 							Review and select the projects you'd like to create
 						</p>
 					</div>
-					<div class="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-sm">
+					<div class="bg-white dark:bg-gray-800 p-3 rounded shadow-sm">
 						<Calendar class="w-8 h-8 text-purple-600 dark:text-purple-400" />
 					</div>
 				</div>
@@ -573,9 +575,9 @@
 					{@const patterns = suggestion.event_patterns as EventPatternsData | null}
 
 					<div
-						class="border-2 rounded-xl p-6 transition-all duration-300 hover:shadow-md {isSelected
+						class="border-2 rounded p-6 transition-all duration-300 hover:shadow-md {isSelected
 							? 'border-purple-500 dark:border-purple-400 bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-950/20 dark:to-blue-950/20'
-							: 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800'}"
+							: 'clarity-zone border-gray-200 dark:border-gray-700'}"
 					>
 						<div class="flex items-start gap-4">
 							<!-- Selection Indicator -->
@@ -604,12 +606,12 @@
 												type="text"
 												bind:value={modifications.name}
 												placeholder={suggestion.suggested_name}
-												class="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2.5 mb-3 text-base text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400 transition-all duration-200"
+												class="w-full rounded border border-gray-300 dark:border-gray-600 px-4 py-2.5 mb-3 text-base text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400 transition-all duration-200"
 											/>
 											<textarea
 												bind:value={modifications.description}
 												placeholder={suggestion.suggested_description}
-												class="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2.5 text-sm text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400 transition-all duration-200"
+												class="w-full rounded border border-gray-300 dark:border-gray-600 px-4 py-2.5 text-sm text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400 transition-all duration-200"
 												rows="2"
 											></textarea>
 										{:else}
@@ -628,7 +630,7 @@
 											<!-- Deduplication Notice -->
 											{#if patterns?.add_to_existing && patterns?.existing_project_id}
 												<div
-													class="mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800/50"
+													class="mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-200 dark:border-blue-800/50"
 												>
 													<p
 														class="text-sm text-blue-700 dark:text-blue-300 font-medium"
@@ -725,7 +727,7 @@
 													enabledTasks[taskKey] ?? true}
 
 												<div
-													class="p-3 rounded-lg transition-all duration-200 {isPastTask
+													class="p-3 rounded transition-all duration-200 {isPastTask
 														? 'bg-amber-50 dark:bg-amber-900/20'
 														: 'bg-gray-50 dark:bg-gray-800/50'}"
 												>
@@ -962,7 +964,7 @@
 
 									{#if isExpanded}
 										<div
-											class="mt-4 pl-6 border-l-2 border-purple-200 dark:border-purple-800/50"
+											class="clarity-zone mt-4 p-4 border-l-2 border-purple-200 dark:border-purple-800/50"
 										>
 											<p
 												class="text-sm text-gray-600 dark:text-gray-400 leading-relaxed"
@@ -972,7 +974,7 @@
 
 											{#if patterns && patterns?.executive_summary}
 												<div
-													class="mt-3 p-3 bg-purple-50 dark:bg-purple-950/20 rounded-lg"
+													class="mt-3 p-3 bg-purple-50 dark:bg-purple-950/20 rounded"
 												>
 													<p
 														class="text-xs font-medium text-purple-700 dark:text-purple-300 mb-1"
@@ -1066,7 +1068,7 @@
 										</Button>
 									{:else}
 										<button
-											class="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/20 rounded-lg transition-all duration-200"
+											class="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/20 rounded transition-all duration-200"
 											onclick={() => startEditingSuggestion(suggestion.id)}
 											disabled={processing}
 										>
@@ -1074,7 +1076,7 @@
 											Edit
 										</button>
 										<button
-											class="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/20 rounded-lg transition-all duration-200"
+											class="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/20 rounded transition-all duration-200"
 											onclick={() => toggleSuggestion(suggestion.id)}
 											disabled={processing}
 										>
@@ -1167,9 +1169,11 @@
 		closeOnEscape={true}
 	>
 		{@render resultsContent()}
-		<div slot="footer">
-			{@render resultsFooter()}
-		</div>
+		{#snippet footer()}
+			<div>
+				{@render resultsFooter()}
+			</div>
+		{/snippet}
 	</Modal>
 {/if}
 

@@ -12,7 +12,7 @@
  *
  * Request Body:
  * - project_id: string (required) - Project UUID
- * - type_key: string (default: 'goal.basic') - Template type key
+ * - type_key: string (default: 'goal.outcome.project') - Template type key
  * - name: string (required) - Goal name
  * - description?: string - Goal description
  * - target_date?: string - Target date ISO string
@@ -47,7 +47,13 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	try {
 		// Parse request body
 		const body = await request.json();
-		const { project_id, type_key = 'goal.basic', name, description, props = {} } = body;
+		const {
+			project_id,
+			type_key = 'goal.outcome.project',
+			name,
+			description,
+			props = {}
+		} = body;
 
 		// Validate required fields
 		if (!project_id || !name) {

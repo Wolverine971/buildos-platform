@@ -198,7 +198,7 @@
 					class="w-full"
 					disabled={loading}
 				/>
-				<p class="text-xs text-gray-600 dark:text-gray-400 mt-1">
+				<p class="text-xs text-slate-600 dark:text-slate-400 mt-1">
 					A descriptive name for this template
 				</p>
 			</FormField>
@@ -219,7 +219,7 @@
 						class="w-full font-mono text-sm"
 						disabled={loading || lockTypeKey}
 					/>
-					<p class="text-xs text-gray-600 dark:text-gray-400 mt-1">
+					<p class="text-xs text-slate-600 dark:text-slate-400 mt-1">
 						{typeKeyHelperText ??
 							`Unique identifier in dot notation (lowercase). ${
 								lockTypeKey ? 'Locked by builder.' : 'Auto-generated from name.'
@@ -241,7 +241,7 @@
 							<option value={scopeOption.value}>{scopeOption.label}</option>
 						{/each}
 					</Select>
-					<p class="text-xs text-gray-600 dark:text-gray-400 mt-1">
+					<p class="text-xs text-slate-600 dark:text-slate-400 mt-1">
 						What type of entity does this template represent?
 					</p>
 				</FormField>
@@ -263,7 +263,7 @@
 							</option>
 						{/each}
 					</Select>
-					<p class="text-xs text-gray-600 dark:text-gray-400 mt-1">
+					<p class="text-xs text-slate-600 dark:text-slate-400 mt-1">
 						Inherit properties from another template (optional)
 					</p>
 				</FormField>
@@ -276,7 +276,7 @@
 						<option value={statusOption.value}>{statusOption.label}</option>
 					{/each}
 				</Select>
-				<p class="text-xs text-gray-600 dark:text-gray-400 mt-1">
+				<p class="text-xs text-slate-600 dark:text-slate-400 mt-1">
 					Draft templates are not visible to users
 				</p>
 			</FormField>
@@ -288,14 +288,14 @@
 						type="checkbox"
 						id="abstract"
 						bind:checked={isAbstract}
-						class="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
+						class="rounded border-gray-200 dark:border-gray-700 text-accent-orange focus:ring-2 focus:ring-accent-orange"
 						disabled={loading}
 					/>
-					<span class="text-sm text-gray-700 dark:text-gray-300">
+					<span class="text-sm text-slate-700 dark:text-slate-300">
 						Abstract Template
 					</span>
 				</label>
-				<p class="text-xs text-gray-600 dark:text-gray-400 mt-1">
+				<p class="text-xs text-slate-600 dark:text-slate-400 mt-1">
 					Abstract templates are only used for inheritance, not direct instantiation
 				</p>
 			</FormField>

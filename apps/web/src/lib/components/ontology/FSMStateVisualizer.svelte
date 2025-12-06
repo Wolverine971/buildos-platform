@@ -1,6 +1,7 @@
 <!-- apps/web/src/lib/components/ontology/FSMStateVisualizer.svelte -->
 <script lang="ts">
 	import { onMount, createEventDispatcher } from 'svelte';
+	import { browser } from '$app/environment';
 	import { RefreshCw, AlertTriangle, ShieldCheck, Loader } from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
@@ -90,7 +91,8 @@
 	});
 
 	$effect(() => {
-		if (currentState !== lastFetchedState) {
+		// Only fetch on client-side to avoid SSR fetch warning
+		if (browser && currentState !== lastFetchedState) {
 			void refreshTransitions();
 		}
 	});
