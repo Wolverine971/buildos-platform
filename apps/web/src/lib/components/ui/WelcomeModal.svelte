@@ -130,11 +130,11 @@
 
 			<!-- Title & Description -->
 			<div class="text-center mb-4 sm:mb-6 lg:mb-8">
-				<h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-3">
+				<h2 class="text-2xl font-bold text-foreground mb-3">
 					{title}
 				</h2>
 				{#if subtitle}
-					<p class="text-gray-600 dark:text-gray-300 leading-relaxed">
+					<p class="text-muted-foreground leading-relaxed">
 						{subtitle}
 					</p>
 				{/if}
@@ -170,7 +170,7 @@
 							variant="ghost"
 							size="xl"
 							fullWidth={true}
-							class="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
+							class="text-muted-foreground hover:text-foreground"
 						>
 							{secondaryButtonText}
 						</Button>
@@ -180,7 +180,7 @@
 
 			<!-- Time estimate -->
 			{#if showTimeEstimate}
-				<p class="text-center text-xs text-gray-500 dark:text-gray-400 mt-4">
+				<p class="text-center text-xs text-muted-foreground mt-4">
 					{timeEstimate}
 				</p>
 			{/if}

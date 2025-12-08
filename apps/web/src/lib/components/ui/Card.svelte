@@ -108,8 +108,8 @@
 		transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
 	}
 
-	/* Dark mode focus ring offset */
-	:global(.dark) div {
-		--tw-ring-offset-color: rgb(31 41 55);
+	/* Focus ring offset - matches Inkprint background */
+	div {
+		--tw-ring-offset-color: hsl(var(--background));
 	}
 </style>

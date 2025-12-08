@@ -12,14 +12,14 @@
 		? comparison.fieldComparisons.filter((fc) => fc.hasAnyDifferences)
 		: comparison.fieldComparisons;
 
-	// Get styling for different/same values
+	// Get styling for different/same values - Inkprint design
 	function getValueClass(isDifferent: boolean, isLeft: boolean): string {
 		if (!isDifferent) {
-			return 'bg-gray-50 dark:bg-gray-800/50 border-l-4 border-gray-300 dark:border-gray-600';
+			return 'bg-muted/50 border-l-4 border-border';
 		}
 
 		if (isLeft) {
-			return 'bg-orange-50 dark:bg-orange-900/20 border-l-4 border-orange-500';
+			return 'bg-amber-50 dark:bg-amber-900/20 border-l-4 border-amber-500';
 		} else {
 			return 'bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-500';
 		}
@@ -28,7 +28,7 @@
 
 {#if filteredComparisons.length === 0}
 	<div class="text-center py-8">
-		<p class="text-gray-600 dark:text-gray-400">
+		<p class="text-muted-foreground">
 			{showOnlyDifferences
 				? 'No differences found between items.'
 				: 'No fields configured for comparison.'}
@@ -37,13 +37,13 @@
 {:else}
 	<div class="space-y-6">
 		{#each filteredComparisons as fieldComparison (fieldComparison.field)}
-			<div class="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+			<div class="border border-border rounded-lg overflow-hidden shadow-ink">
 				<!-- Field Header -->
 				<div
-					class="bg-gray-100 dark:bg-gray-800 px-4 py-3 border-b border-gray-200 dark:border-gray-700"
+					class="bg-muted px-4 py-3 border-b border-border"
 				>
 					<div class="flex items-center justify-between">
-						<h3 class="font-medium text-gray-900 dark:text-white">
+						<h3 class="font-medium text-foreground">
 							{fieldComparison.label}
 						</h3>
 						{#if fieldComparison.hasAnyDifferences}
@@ -64,11 +64,11 @@
 
 				<!-- Content Layout: Many on left, One on right -->
 				<div
-					class="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-gray-200 dark:divide-gray-700"
+					class="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-border"
 				>
 					<!-- Left Side: Multiple Items -->
 					<div class="p-4">
-						<h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+						<h4 class="text-sm font-medium text-muted-foreground mb-3">
 							{leftLabel} ({comparison.leftItems.length} items)
 						</h4>
 						<div class="space-y-2 max-h-96 overflow-auto">
@@ -77,7 +77,7 @@
 									<!-- Item identifier -->
 									<div class="flex-shrink-0 w-20">
 										<span
-											class="text-xs font-mono text-gray-500 dark:text-gray-400 truncate block"
+											class="text-xs font-mono text-muted-foreground truncate block"
 										>
 											{leftValue.itemLabel}
 										</span>
@@ -114,7 +114,7 @@
 
 					<!-- Right Side: Reference Item -->
 					<div class="p-4">
-						<h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+						<h4 class="text-sm font-medium text-muted-foreground mb-3">
 							{rightLabel}
 						</h4>
 						<div class="space-y-2">
@@ -122,7 +122,7 @@
 								<!-- Item identifier -->
 								<div class="flex-shrink-0 w-20">
 									<span
-										class="text-xs font-mono text-gray-500 dark:text-gray-400 truncate block"
+										class="text-xs font-mono text-muted-foreground truncate block"
 									>
 										{comparison.rightItem.label || comparison.rightItem.id}
 									</span>

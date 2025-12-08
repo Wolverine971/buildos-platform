@@ -70,7 +70,7 @@
 			autoResize && 'resize-none overflow-hidden',
 
 			// State classes - clean borders
-			error ? 'border-red-600 focus:ring-red-500' : 'border-border focus:border-accent',
+			error ? 'border-destructive focus:ring-destructive' : 'border-border focus:border-accent',
 
 			// Background - card
 			'bg-card',
@@ -163,12 +163,7 @@
 	></textarea>
 </div>
 {#if error && errorMessage}
-	<p
-		id="textarea-error"
-		role="alert"
-		aria-live="polite"
-		class="mt-1 text-sm text-red-600 dark:text-red-400"
-	>
+	<p id="textarea-error" role="alert" aria-live="polite" class="mt-1 text-sm text-destructive">
 		{errorMessage}
 	</p>
 {:else if helperText}

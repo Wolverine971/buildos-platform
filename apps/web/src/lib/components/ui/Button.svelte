@@ -199,9 +199,9 @@
 		will-change: auto;
 	}
 
-	/* Ensure proper focus ring offset in dark mode */
-	:global(.dark) button:focus-visible {
-		--tw-ring-offset-color: rgb(31 41 55);
+	/* Ensure proper focus ring offset - Inkprint design */
+	button:focus-visible {
+		--tw-ring-offset-color: hsl(var(--background));
 	}
 
 	/* Respect reduced motion preferences */

@@ -1,12 +1,17 @@
 <!-- apps/web/src/lib/components/ui/Radio.svelte -->
 <script lang="ts">
 	import type { HTMLInputAttributes } from 'svelte/elements';
-	import { createEventDispatcher, getContext } from 'svelte';
+	import { getContext } from 'svelte';
 	import { twMerge } from 'tailwind-merge';
 
 	type RadioSize = 'sm' | 'md' | 'lg';
 
-	interface $$Props extends Omit<HTMLInputAttributes, 'type' | 'size'> {
+	interface Props extends Omit<HTMLInputAttributes, 'type' | 'size'> {
+		value?: string | number;
+		checked?: boolean;
+		name?: string;
+		disabled?: boolean;
+		required?: boolean;
 		size?: RadioSize;
 		label?: string;
 		description?: string;
@@ -14,38 +19,35 @@
 		class?: string;
 		labelClass?: string;
 		inputClass?: string;
+		onchange?: (event: { value: string | number; checked: boolean }) => void;
 	}
 
-	export let value: string | number = '';
-	export let checked = false;
-	export let name = '';
-	export let disabled = false;
-	export let required = false;
-	export let size: RadioSize = 'md';
-	export let label = '';
-	export let description = '';
-	export let error = false;
-
-	// Allow class props to be passed through
-	let className = '';
-	export { className as class };
-	export let labelClass = '';
-	export let inputClass = '';
-
-	const dispatch = createEventDispatcher();
+	let {
+		value = '',
+		checked = $bindable(false),
+		name = '',
+		disabled = false,
+		required = false,
+		size = 'md',
+		label = '',
+		description = '',
+		error = false,
+		class: className = '',
+		labelClass = '',
+		inputClass = '',
+		onchange,
+		...restProps
+	}: Props = $props();
 
 	// Get group context if available
 	const groupContext = getContext<any>('radioGroup');
 
-	// Use group values if available
-	$: if (groupContext) {
-		name = groupContext.name || name;
-		disabled = groupContext.disabled || disabled;
-		error = groupContext.error || error;
-		size = groupContext.size || size;
-		// Use getter function for reactive value
-		checked = groupContext.value === value;
-	}
+	// Derive values from group context
+	let effectiveName = $derived(groupContext?.name || name);
+	let effectiveDisabled = $derived(groupContext?.disabled || disabled);
+	let effectiveError = $derived(groupContext?.error || error);
+	let effectiveSize = $derived(groupContext?.size || size);
+	let effectiveChecked = $derived(groupContext ? groupContext.value === value : checked);
 
 	// Size classes for the radio input
 	const sizeClasses = {
@@ -68,55 +70,63 @@
 		lg: 'p-4'
 	};
 
-	$: radioClasses = twMerge(
-		// Base classes
-		'appearance-none rounded-full border-2 transition-all duration-200',
-		'focus:outline-none focus:ring-2 focus:ring-offset-2',
-		'disabled:cursor-not-allowed disabled:opacity-50',
-		'cursor-pointer',
+	let radioClasses = $derived(
+		twMerge(
+			// Base classes
+			'appearance-none rounded-full border-2 transition-all duration-200',
+			'focus:outline-none focus:ring-2 focus:ring-offset-2',
+			'disabled:cursor-not-allowed disabled:opacity-50',
+			'cursor-pointer',
 
-		// Size classes
-		sizeClasses[size],
+			// Size classes
+			sizeClasses[effectiveSize],
 
-		// State classes
-		checked
-			? 'bg-accent-orange border-accent-orange dark:bg-accent-orange dark:border-accent-orange'
-			: 'bg-surface-panel border-gray-300 dark:border-gray-600',
+			// State classes - Inkprint design
+			effectiveChecked
+				? 'bg-accent border-accent'
+				: 'bg-card border-border',
 
-		// Error state
-		error && !checked ? 'border-red-500 dark:border-red-400' : '',
+			// Error state
+			effectiveError && !effectiveChecked ? 'border-destructive' : '',
 
-		// Focus ring color
-		error ? 'focus:ring-red-500' : 'focus:ring-accent-orange',
+			// Focus ring color - Inkprint
+			effectiveError ? 'focus:ring-destructive' : 'focus:ring-ring',
 
-		// Hover state (only when not disabled)
-		!disabled && !checked ? 'hover:border-gray-400 dark:hover:border-gray-500' : '',
+			// Hover state (only when not disabled)
+			!effectiveDisabled && !effectiveChecked ? 'hover:border-muted-foreground' : '',
 
-		// Custom input classes
-		inputClass
+			// Custom input classes
+			inputClass
+		)
 	);
 
-	$: containerClasses = twMerge(
-		'flex items-start gap-3 group',
-		disabled ? 'cursor-not-allowed' : 'cursor-pointer',
-		// Add hover effect to container
-		!disabled ? 'hover:bg-gray-100 dark:hover:bg-gray-800/50 rounded transition-colors' : '',
-		containerPadding[size],
-		className
+	let containerClasses = $derived(
+		twMerge(
+			'flex items-start gap-3 group',
+			effectiveDisabled ? 'cursor-not-allowed' : 'cursor-pointer',
+			// Add hover effect to container - Inkprint
+			!effectiveDisabled ? 'hover:bg-muted/50 rounded transition-colors' : '',
+			containerPadding[effectiveSize],
+			className
+		)
 	);
 
-	$: labelClasses = twMerge(
-		'select-none',
-		labelSizeClasses[size],
-		disabled
-			? 'text-gray-400 dark:text-gray-500 cursor-not-allowed'
-			: 'text-gray-900 dark:text-gray-100 cursor-pointer font-bold',
-		labelClass
+	let labelClasses = $derived(
+		twMerge(
+			'select-none',
+			labelSizeClasses[effectiveSize],
+			effectiveDisabled
+				? 'text-muted-foreground/50 cursor-not-allowed'
+				: 'text-foreground cursor-pointer font-bold',
+			labelClass
+		)
 	);
 
-	$: descriptionClasses = twMerge(
-		'text-sm mt-1',
-		disabled ? 'text-gray-400 dark:text-gray-500' : 'text-gray-600 dark:text-gray-400'
+	let descriptionClasses = $derived(
+		twMerge(
+			'text-sm mt-1',
+			effectiveDisabled ? 'text-muted-foreground/50' : 'text-muted-foreground'
+		)
 	);
 
 	function handleChange(event: Event) {
@@ -127,11 +137,11 @@
 			groupContext.onChange(value);
 		}
 
-		dispatch('change', { value, checked });
+		onchange?.({ value, checked: target.checked });
 	}
 
 	function handleClick() {
-		if (!disabled && groupContext) {
+		if (!effectiveDisabled && groupContext) {
 			groupContext.onChange(value);
 		}
 	}
@@ -141,27 +151,25 @@
 	<div class="relative flex items-center justify-center flex-shrink-0">
 		<input
 			type="radio"
-			{name}
+			name={effectiveName}
 			{value}
-			{checked}
-			{disabled}
+			checked={effectiveChecked}
+			disabled={effectiveDisabled}
 			{required}
 			class={radioClasses}
-			on:change={handleChange}
-			on:click={handleClick}
-			on:focus
-			on:blur
-			{...$$restProps}
+			onchange={handleChange}
+			onclick={handleClick}
+			{...restProps}
 		/>
-		{#if checked}
+		{#if effectiveChecked}
 			<div
-				class="absolute pointer-events-none rounded-full bg-white dark:bg-slate-900"
-				class:w-1.5={size === 'sm'}
-				class:h-1.5={size === 'sm'}
-				class:w-2={size === 'md'}
-				class:h-2={size === 'md'}
-				class:w-2.5={size === 'lg'}
-				class:h-2.5={size === 'lg'}
+				class="absolute pointer-events-none rounded-full bg-accent-foreground"
+				class:w-1.5={effectiveSize === 'sm'}
+				class:h-1.5={effectiveSize === 'sm'}
+				class:w-2={effectiveSize === 'md'}
+				class:h-2={effectiveSize === 'md'}
+				class:w-2.5={effectiveSize === 'lg'}
+				class:h-2.5={effectiveSize === 'lg'}
 			></div>
 		{/if}
 	</div>
@@ -172,7 +180,7 @@
 				<span class={labelClasses}>
 					{label}
 					{#if required}
-						<span class="text-red-500 ml-0.5">*</span>
+						<span class="text-destructive ml-0.5">*</span>
 					{/if}
 				</span>
 			{/if}
@@ -192,8 +200,8 @@
 		-moz-appearance: none;
 	}
 
-	/* Dark mode focus ring offset */
-	:global(.dark) input[type='radio']:focus {
-		--tw-ring-offset-color: rgb(31 41 55);
+	/* Focus ring offset - Inkprint design */
+	input[type='radio']:focus {
+		--tw-ring-offset-color: hsl(var(--background));
 	}
 </style>

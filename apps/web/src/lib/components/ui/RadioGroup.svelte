@@ -59,21 +59,21 @@
 	$: groupClasses = twMerge(
 		'flex gap-4',
 		orientation === 'vertical' ? 'flex-col' : 'flex-row flex-wrap',
-		// Add border and padding for better visual grouping
-		'border-2 border-gray-200 dark:border-gray-700 rounded p-4 shadow-subtle',
-		error ? 'border-red-500 dark:border-red-400' : '',
+		// Add border and padding for better visual grouping - Inkprint design
+		'border border-border rounded-lg p-4 shadow-ink bg-card',
+		error ? 'border-destructive' : '',
 		disabled ? 'opacity-50' : ''
 	);
 
 	$: labelClasses = twMerge(
 		'block font-medium mb-2',
 		size === 'sm' ? 'text-sm' : size === 'lg' ? 'text-lg' : 'text-base',
-		disabled ? 'text-gray-400 dark:text-gray-500' : 'text-gray-900 dark:text-gray-100'
+		disabled ? 'text-muted-foreground/50' : 'text-foreground'
 	);
 
 	$: helperTextClasses = twMerge(
 		'text-sm mt-1',
-		error ? 'text-red-600 dark:text-red-400' : 'text-gray-600 dark:text-gray-400'
+		error ? 'text-destructive' : 'text-muted-foreground'
 	);
 
 	// Handle keyboard navigation
@@ -124,7 +124,7 @@
 		<p id={labelId} class={labelClasses}>
 			{label}
 			{#if required}
-				<span class="text-red-500 ml-0.5">*</span>
+				<span class="text-destructive ml-0.5">*</span>
 			{/if}
 		</p>
 	{/if}
@@ -174,8 +174,8 @@
 </div>
 
 <style>
-	/* Ensure consistent focus styles */
-	:global(.dark) [role='radiogroup'] {
-		--tw-ring-offset-color: rgb(31 41 55);
+	/* Ensure consistent focus styles - Inkprint design */
+	[role='radiogroup'] {
+		--tw-ring-offset-color: hsl(var(--background));
 	}
 </style>

@@ -1,6 +1,6 @@
 <!-- apps/web/src/lib/components/ui/skeletons/SynthesisSkeleton.svelte -->
 <div
-	class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-8 animate-pulse"
+	class="bg-card rounded-xl shadow-sm border border-border p-8 animate-pulse"
 >
 	<!-- Header -->
 	<div class="mb-6">
@@ -42,7 +42,7 @@
 
 	<!-- Action Buttons -->
 	<div
-		class="flex justify-between items-center pt-6 border-t border-gray-200 dark:border-gray-700"
+		class="flex justify-between items-center pt-6 border-t border-border"
 	>
 		<div class="h-5 bg-gray-200 dark:bg-gray-700 rounded w-48"></div>
 		<div class="flex gap-3">

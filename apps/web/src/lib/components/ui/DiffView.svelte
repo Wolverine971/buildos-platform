@@ -7,7 +7,7 @@
 	export let toVersionLabel: string = 'New Version';
 	export let showFieldPriority = false;
 
-	// Get line classes for diff display
+	// Get line classes for diff display - Inkprint design
 	function getLineClass(line: DiffLine): string {
 		switch (line.type) {
 			case 'added':
@@ -15,28 +15,28 @@
 			case 'removed':
 				return 'bg-rose-50 dark:bg-rose-900/20 border-l-4 border-rose-500';
 			default:
-				return 'bg-gray-50 dark:bg-gray-800/50';
+				return 'bg-muted/50';
 		}
 	}
 </script>
 
 {#if diffs.length === 0}
 	<div class="text-center py-8">
-		<p class="text-gray-600 dark:text-gray-400">No changes detected between these versions.</p>
+		<p class="text-muted-foreground">No changes detected between these versions.</p>
 	</div>
 {:else}
 	<div class="space-y-8">
 		{#each diffs as diff (diff.field)}
-			<div class="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+			<div class="border border-border rounded-lg overflow-hidden shadow-ink">
 				<!-- Field Header -->
 				<div
-					class="bg-gray-100 dark:bg-gray-800 px-4 py-2 border-b border-gray-200 dark:border-gray-700"
+					class="bg-muted px-4 py-2 border-b border-border"
 				>
-					<h3 class="font-medium text-gray-900 dark:text-white flex items-center">
+					<h3 class="font-medium text-foreground flex items-center">
 						{diff.label}
 						{#if showFieldPriority && diff.field === 'context'}
 							<span
-								class="ml-2 text-xs bg-primary-100 text-primary-800 dark:bg-primary-900/30 dark:text-primary-300 px-2 py-1 rounded"
+								class="ml-2 text-xs bg-accent/10 text-accent px-2 py-1 rounded"
 							>
 								Primary Content
 							</span>
@@ -46,7 +46,7 @@
 
 				<!-- Side-by-side diff -->
 				<div
-					class="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-gray-200 dark:divide-gray-700"
+					class="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-border"
 				>
 					<!-- Old Version -->
 					<div class="p-4">
@@ -57,7 +57,7 @@
 							{#each diff.oldLines as line (line.lineNumber)}
 								<div class="flex">
 									<span
-										class="w-6 sm:w-8 text-gray-400 text-xs pr-1 sm:pr-2 flex-shrink-0"
+										class="w-6 sm:w-8 text-muted-foreground text-xs pr-1 sm:pr-2 flex-shrink-0"
 									>
 										{line.lineNumber}
 									</span>
@@ -79,7 +79,7 @@
 							{#each diff.newLines as line (line.lineNumber)}
 								<div class="flex">
 									<span
-										class="w-6 sm:w-8 text-gray-400 text-xs pr-1 sm:pr-2 flex-shrink-0"
+										class="w-6 sm:w-8 text-muted-foreground text-xs pr-1 sm:pr-2 flex-shrink-0"
 									>
 										{line.lineNumber}
 									</span>

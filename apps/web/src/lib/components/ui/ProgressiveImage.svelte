@@ -60,7 +60,7 @@
 </script>
 
 <div
-	class="relative overflow-hidden bg-gray-100 dark:bg-gray-700 rounded-lg {className}"
+	class="relative overflow-hidden bg-muted rounded-lg {className}"
 	style="width: {typeof width === 'number' ? width + 'px' : width}; height: {typeof height ===
 	'number'
 		? height + 'px'
@@ -100,10 +100,10 @@
 	<!-- Loading overlay -->
 	{#if !isLoaded && !hasError}
 		<div
-			class="absolute inset-0 flex items-center justify-center bg-gray-100/80 dark:bg-gray-700/80 backdrop-blur-sm"
+			class="absolute inset-0 flex items-center justify-center bg-muted/80 backdrop-blur-sm"
 		>
 			<div
-				class="w-6 h-6 border-2 border-gray-200 dark:border-gray-600 border-t-blue-500 dark:border-t-blue-400 rounded-full animate-spin"
+				class="w-6 h-6 border-2 border-border border-t-accent rounded-full animate-spin"
 			></div>
 		</div>
 	{/if}
@@ -111,7 +111,7 @@
 	<!-- Error overlay -->
 	{#if hasError}
 		<div
-			class="absolute inset-0 flex items-center justify-center bg-red-500/10 dark:bg-red-500/20 text-red-600 dark:text-red-400"
+			class="absolute inset-0 flex items-center justify-center bg-destructive/10 text-destructive"
 		>
 			<div class="flex flex-col items-center gap-2 text-center p-4">
 				<svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor">

@@ -101,7 +101,7 @@
 					{#if content}
 						{@render content()}
 					{:else}
-						<p class="text-sm text-gray-500 dark:text-gray-400">
+						<p class="text-sm text-muted-foreground">
 							Are you sure you want to proceed with this action?
 						</p>
 					{/if}
@@ -120,7 +120,7 @@
 			{@render footer()}
 		{:else}
 			<div
-				class="flex flex-col sm:flex-row gap-3 sm:justify-end px-3 sm:px-4 lg:px-6 py-3 sm:py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30"
+				class="flex flex-col sm:flex-row gap-3 sm:justify-end px-3 sm:px-4 lg:px-6 py-3 sm:py-4 border-t border-border bg-muted/30"
 			>
 				<Button
 					onclick={handleCancel}

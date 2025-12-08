@@ -13,13 +13,13 @@
 			class="fixed inset-0 bg-black/50 dark:bg-black/70 backdrop-blur-sm z-[100] flex items-center justify-center"
 		>
 			<div
-				class="bg-white dark:bg-gray-800 rounded-lg p-4 sm:p-6 shadow-xl transform"
+				class="bg-card rounded-lg p-4 sm:p-6 shadow-ink-strong border border-border transform"
 				transition:fade|global={{ duration: 150 }}
 			>
 				<div
-					class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"
+					class="animate-spin rounded-full h-8 w-8 border-b-2 border-accent mx-auto"
 				></div>
-				<p class="mt-2 text-sm text-gray-600 dark:text-gray-400">{message}</p>
+				<p class="mt-2 text-sm text-muted-foreground">{message}</p>
 			</div>
 		</div>
 	</div>

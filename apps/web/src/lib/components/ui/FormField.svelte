@@ -29,7 +29,7 @@
 		[
 			'block text-sm font-semibold',
 			uppercase && 'uppercase tracking-wider',
-			'text-gray-900 dark:text-white',
+			'text-foreground',
 			'mb-2'
 		]
 			.filter(Boolean)
@@ -37,11 +37,11 @@
 	);
 
 	let errorClasses = $derived(
-		['flex items-center gap-1.5 mt-1.5', 'text-sm text-red-600 dark:text-red-400'].join(' ')
+		['flex items-center gap-1.5 mt-1.5', 'text-sm text-destructive'].join(' ')
 	);
 
 	let hintClasses = $derived(
-		['flex items-center gap-1.5 mt-1.5', 'text-sm text-gray-500 dark:text-gray-400'].join(' ')
+		['flex items-center gap-1.5 mt-1.5', 'text-sm text-muted-foreground'].join(' ')
 	);
 </script>
 
@@ -50,9 +50,9 @@
 		<label for={labelFor} class={labelClasses}>
 			{label}
 			{#if required}
-				<span class="text-red-500 ml-0.5">*</span>
+				<span class="text-destructive ml-0.5">*</span>
 			{:else if showOptional && !required}
-				<span class="text-gray-400 dark:text-gray-500 ml-1 text-xs">(optional)</span>
+				<span class="text-muted-foreground ml-1 text-xs">(optional)</span>
 			{/if}
 		</label>
 	{/if}
@@ -90,12 +90,8 @@
 		gap: 1rem;
 	}
 
-	/* Ensure consistent focus behavior */
+	/* Ensure consistent focus behavior - Inkprint design */
 	:global(.form-field-focus) div:focus-within label {
-		color: rgb(99 102 241);
-	}
-
-	:global(.dark .form-field-focus) div:focus-within label {
-		color: rgb(129 140 248);
+		color: hsl(var(--accent));
 	}
 </style>

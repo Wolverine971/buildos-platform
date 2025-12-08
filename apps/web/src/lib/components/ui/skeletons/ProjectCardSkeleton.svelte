@@ -44,19 +44,14 @@
 
 <style>
 	.project-card-skeleton {
-		/* Match ProjectCard container - bg-white dark:bg-gray-800 rounded-lg shadow border */
-		background: white;
-		border: 1px solid #e5e7eb; /* border-gray-200 */
+		/* Match ProjectCard container - Inkprint design */
+		background: hsl(var(--card));
+		border: 1px solid hsl(var(--border));
 		border-radius: 0.5rem; /* rounded-lg */
 		padding: 1rem; /* p-4 */
 		overflow: hidden;
 		animation: skeleton-pulse 1.5s ease-in-out infinite;
-	}
-
-	/* Dark mode */
-	:global(.dark) .project-card-skeleton {
-		background: #1f2937; /* bg-gray-800 */
-		border-color: #374151; /* border-gray-700 */
+		box-shadow: var(--shadow-ink);
 	}
 
 	/* Header section - matches ProjectCard lines 101-128 */

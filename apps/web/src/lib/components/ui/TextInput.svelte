@@ -113,7 +113,7 @@
 			icon && iconPosition === 'right' && iconPaddingClasses.right[size],
 
 			// State classes - clean borders
-			error ? 'border-red-600 focus:ring-red-500' : 'border-border focus:border-accent',
+			error ? 'border-destructive focus:ring-destructive' : 'border-border focus:border-accent',
 
 			// Background - clean card
 			'bg-card',
@@ -171,12 +171,7 @@
 	/>
 </div>
 {#if error && errorMessage}
-	<p
-		id="input-error"
-		role="alert"
-		aria-live="polite"
-		class="mt-1 text-sm text-red-600 dark:text-red-400"
-	>
+	<p id="input-error" role="alert" aria-live="polite" class="mt-1 text-sm text-destructive">
 		{errorMessage}
 	</p>
 {:else if helperText}
@@ -205,8 +200,8 @@
 		appearance: textfield;
 	}
 
-	/* Dark mode focus ring offset */
-	:global(.dark) input:focus {
-		--tw-ring-offset-color: rgb(31 41 55);
+	/* Focus ring offset - matches Inkprint background */
+	input:focus {
+		--tw-ring-offset-color: hsl(var(--background));
 	}
 </style>

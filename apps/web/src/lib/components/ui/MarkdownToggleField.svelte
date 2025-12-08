@@ -120,13 +120,13 @@
 				aria-labelledby={ariaLabelledby}
 			/>
 			<!-- Helper text for edit mode -->
-			<div class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+			<div class="mt-1 text-xs text-muted-foreground">
 				Press Ctrl+Enter to save • ESC to cancel
 			</div>
 		{:else}
 			<!-- Preview Mode -->
 			<div
-				class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800 min-h-[2.5rem] cursor-pointer transition-colors hover:bg-gray-100 dark:hover:bg-gray-700 {showPlaceholder
+				class="w-full px-3 py-2 border border-border rounded-lg bg-muted/50 min-h-[2.5rem] cursor-pointer transition-colors hover:bg-muted {showPlaceholder
 					? 'flex items-center'
 					: ''}"
 				onclick={toggleMode}
@@ -137,7 +137,7 @@
 				aria-labelledby={ariaLabelledby}
 			>
 				{#if showPlaceholder}
-					<span class="text-gray-400 italic text-sm">
+					<span class="text-muted-foreground italic text-sm">
 						{disabled ? 'N/A' : placeholder || 'Click to add content'}
 					</span>
 				{:else}

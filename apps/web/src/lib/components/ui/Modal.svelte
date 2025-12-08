@@ -602,10 +602,10 @@
 	}
 
 	.drag-handle {
-		/* Compact visual indicator */
+		/* Compact visual indicator - Inkprint design */
 		width: 32px;
 		height: 3px;
-		background: rgb(62 68 89 / 0.4); /* slate-500 */
+		background: hsl(var(--muted-foreground) / 0.3);
 		border-radius: 9999px;
 		transition:
 			background-color 150ms,
@@ -613,24 +613,12 @@
 	}
 
 	.drag-handle-wrapper:hover .drag-handle {
-		background: rgb(45 50 66 / 0.6); /* slate-700 */
+		background: hsl(var(--muted-foreground) / 0.5);
 		width: 40px;
 	}
 
 	.drag-handle-wrapper:active .drag-handle {
-		background: rgb(26 31 43); /* slate-900 */
-	}
-
-	.dark .drag-handle {
-		background: rgb(142 149 170 / 0.3); /* slate-400 */
-	}
-
-	.dark .drag-handle-wrapper:hover .drag-handle {
-		background: rgb(142 149 170 / 0.5); /* slate-400 */
-	}
-
-	.dark .drag-handle-wrapper:active .drag-handle {
-		background: rgb(203 213 225); /* slate-300 */
+		background: hsl(var(--foreground) / 0.7);
 	}
 
 	/* ==================== Scroll & Overscroll Behavior ==================== */
