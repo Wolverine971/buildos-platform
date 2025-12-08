@@ -146,20 +146,25 @@
 	showCloseButton={false}
 >
 	{#snippet header()}
-		<!-- Custom gradient header - grey/dark grey -->
+		<!-- Inkprint header with strip texture -->
 		<div
-			class="flex-shrink-0 bg-gradient-to-r from-gray-600 via-gray-700 to-gray-800 dark:from-gray-700 dark:via-gray-800 dark:to-gray-900 text-white px-3 py-3 sm:px-6 sm:py-5 flex items-start justify-between gap-2 sm:gap-4 dither-gradient"
+			class="flex-shrink-0 bg-muted/50 border-b border-border px-3 py-3 sm:px-6 sm:py-5 flex items-start justify-between gap-2 sm:gap-4 tx tx-strip tx-weak"
 		>
 			<div class="space-y-1 sm:space-y-2 min-w-0 flex-1">
-				<p class="text-[10px] sm:text-xs font-semibold uppercase tracking-[0.3em] sm:tracking-[0.4em] text-white/70">
+				<p
+					class="text-[10px] sm:text-xs font-semibold uppercase tracking-[0.3em] sm:tracking-[0.4em] text-muted-foreground"
+				>
 					Recurring Task
 				</p>
-				<h2 class="text-lg sm:text-2xl font-bold leading-tight truncate">
+				<h2 class="text-lg sm:text-2xl font-bold leading-tight truncate text-foreground">
 					Make Task Recurring
 				</h2>
 				{#if task?.title}
 					<div class="flex flex-wrap items-center gap-1.5 sm:gap-3 text-xs sm:text-sm">
-						<span class="px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-semibold bg-white/20 truncate max-w-[200px] sm:max-w-none">{task.title}</span>
+						<span
+							class="px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-semibold bg-accent/20 text-accent-foreground truncate max-w-[200px] sm:max-w-none"
+							>{task.title}</span
+						>
 					</div>
 				{/if}
 			</div>
@@ -167,7 +172,7 @@
 				variant="ghost"
 				size="sm"
 				onclick={() => onClose?.()}
-				class="text-white/80 hover:text-white shrink-0 !p-1.5 sm:!p-2"
+				class="text-muted-foreground hover:text-foreground shrink-0 !p-1.5 sm:!p-2"
 				disabled={isSubmitting}
 			>
 				<X class="w-4 h-4 sm:w-5 sm:h-5" />
@@ -176,90 +181,90 @@
 	{/snippet}
 
 	{#snippet children()}
-	<div class="space-y-4 sm:space-y-6">
-		<div class="space-y-1">
-			<label class="text-sm font-medium text-slate-600 dark:text-slate-400"> Timezone </label>
-			<TextInput
-				bind:value={timezone}
-				placeholder="e.g. America/Los_Angeles"
-				list="timezone-options"
-				disabled={isSubmitting}
-			/>
-			<datalist id="timezone-options">
-				{#each getTimezoneOptions(COMMON_TIMEZONES) as tz}
-					<option value={tz} />
-				{/each}
-			</datalist>
-			<p class="text-xs text-slate-500">Start and recurrence will follow this timezone.</p>
-		</div>
-
-		<div class="space-y-1">
-			<label class="text-sm font-medium text-slate-600 dark:text-slate-400">
-				Start date & time
-			</label>
-			<input
-				type="datetime-local"
-				class="w-full rounded border border-gray-200 dark:border-gray-700 bg-surface-clarity dark:bg-surface-elevated px-3 py-2 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent-orange"
-				bind:value={startAt}
-				disabled={isSubmitting}
-			/>
-		</div>
-
-		<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-			<div>
-				<label class="text-sm font-medium text-slate-600 dark:text-slate-400">
-					Frequency
-				</label>
-				<Select bind:value={frequency} disabled={isSubmitting}>
-					<option value="DAILY">Daily</option>
-					<option value="WEEKLY">Weekly</option>
-					<option value="MONTHLY">Monthly</option>
-				</Select>
-			</div>
-
-			<div>
-				<label class="text-sm font-medium text-slate-600 dark:text-slate-400">
-					Interval
-				</label>
-				<TextInput type="number" min="1" bind:value={interval} disabled={isSubmitting} />
-			</div>
-
-			<div>
-				<label class="text-sm font-medium text-slate-600 dark:text-slate-400">
-					Occurrences
-				</label>
+		<div class="space-y-4 sm:space-y-6">
+			<div class="space-y-1">
+				<label class="text-sm font-medium text-muted-foreground"> Timezone </label>
 				<TextInput
-					type="number"
-					min="1"
-					max="200"
-					bind:value={count}
+					bind:value={timezone}
+					placeholder="e.g. America/Los_Angeles"
+					list="timezone-options"
+					disabled={isSubmitting}
+				/>
+				<datalist id="timezone-options">
+					{#each getTimezoneOptions(COMMON_TIMEZONES) as tz}
+						<option value={tz} />
+					{/each}
+				</datalist>
+				<p class="text-xs text-slate-500">
+					Start and recurrence will follow this timezone.
+				</p>
+			</div>
+
+			<div class="space-y-1">
+				<label class="text-sm font-medium text-muted-foreground"> Start date & time </label>
+				<input
+					type="datetime-local"
+					class="w-full rounded border border-border bg-background px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+					bind:value={startAt}
 					disabled={isSubmitting}
 				/>
 			</div>
-		</div>
 
-		<div
-			class="rounded border border-blue-200 dark:border-blue-900/50 bg-blue-50 dark:bg-blue-900/10 p-4 text-sm text-blue-900 dark:text-blue-100"
-		>
-			<p class="font-medium">Generated RRULE</p>
-			<p class="font-mono text-xs break-all mt-1 text-blue-800 dark:text-blue-200">
-				{buildRrule()}
-			</p>
-		</div>
+			<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+				<div>
+					<label class="text-sm font-medium text-muted-foreground"> Frequency </label>
+					<Select bind:value={frequency} disabled={isSubmitting}>
+						<option value="DAILY">Daily</option>
+						<option value="WEEKLY">Weekly</option>
+						<option value="MONTHLY">Monthly</option>
+					</Select>
+				</div>
 
-		{#if error}
-			<div
-				class="rounded border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-3 text-sm text-red-700 dark:text-red-200"
-			>
-				{error}
+				<div>
+					<label class="text-sm font-medium text-muted-foreground"> Interval </label>
+					<TextInput
+						type="number"
+						min="1"
+						bind:value={interval}
+						disabled={isSubmitting}
+					/>
+				</div>
+
+				<div>
+					<label class="text-sm font-medium text-muted-foreground"> Occurrences </label>
+					<TextInput
+						type="number"
+						min="1"
+						max="200"
+						bind:value={count}
+						disabled={isSubmitting}
+					/>
+				</div>
 			</div>
-		{/if}
 
-	</div>
+			<div
+				class="rounded border border-accent/30 bg-accent/10 p-4 text-sm text-foreground tx tx-bloom tx-weak"
+			>
+				<p class="font-medium">Generated RRULE</p>
+				<p class="font-mono text-xs break-all mt-1 text-accent">
+					{buildRrule()}
+				</p>
+			</div>
+
+			{#if error}
+				<div
+					class="rounded border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"
+				>
+					{error}
+				</div>
+			{/if}
+		</div>
 	{/snippet}
 
 	{#snippet footer()}
-		<div class="flex flex-row items-center justify-end gap-2 sm:gap-4 p-2 sm:p-4 border-t border-gray-200 dark:border-gray-700 bg-surface-panel dither-surface">
+		<div
+			class="flex flex-row items-center justify-end gap-2 sm:gap-4 p-2 sm:p-4 border-t border-border bg-muted/30 tx tx-grain tx-weak"
+		>
 			<Button
 				variant="ghost"
 				size="sm"
@@ -279,7 +284,9 @@
 				class="text-xs sm:text-sm px-2 sm:px-4"
 			>
 				<RefreshCw class="w-3 h-3 sm:w-4 sm:h-4" />
-				<span class="hidden sm:inline">{isSubmitting ? 'Creating...' : 'Make Recurring'}</span>
+				<span class="hidden sm:inline"
+					>{isSubmitting ? 'Creating...' : 'Make Recurring'}</span
+				>
 				<span class="sm:hidden">{isSubmitting ? '...' : 'Recurring'}</span>
 			</Button>
 		</div>

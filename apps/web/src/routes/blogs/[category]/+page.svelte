@@ -150,9 +150,9 @@
 	{/if}
 </svelte:head>
 
-<div class="min-h-screen bg-gray-50 dark:bg-gray-900">
+<div class="min-h-screen bg-background">
 	<!-- Header -->
-	<div class="bg-white dark:bg-gray-800 py-16">
+	<div class="bg-card py-16">
 		<div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
 			<a
 				href="/blogs"
@@ -164,21 +164,21 @@
 
 			<div class="flex items-center mb-6">
 				<div
-					class="flex items-center justify-center w-16 h-16 {colors.iconBg} rounded-2xl mr-6"
+					class="flex items-center justify-center w-16 h-16 {colors.iconBg} rounded-lg mr-6"
 				>
 					<IconComponent class="w-8 h-8 {colors.iconText}" />
 				</div>
 				<div>
-					<h1 class="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-2">
+					<h1 class="text-4xl md:text-5xl font-bold text-foreground mb-2">
 						{data.category.name}
 					</h1>
-					<p class="text-xl text-gray-600 dark:text-gray-400">
+					<p class="text-xl text-muted-foreground">
 						{data.category.description}
 					</p>
 				</div>
 			</div>
 
-			<div class="text-sm text-gray-500 dark:text-gray-400">
+			<div class="text-sm text-muted-foreground">
 				{data.posts.length} article{data.posts.length !== 1 ? 's' : ''} in this category
 			</div>
 		</div>
@@ -191,11 +191,11 @@
 				<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
 					{#each data.posts as post}
 						<article
-							class="bg-white dark:bg-gray-800 rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+							class="bg-card rounded-lg overflow-hidden shadow-ink hover:shadow-xl transition-all duration-300 hover:scale-105"
 						>
 							<div class="p-6">
 								<div
-									class="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400 mb-4"
+									class="flex items-center space-x-2 text-sm text-muted-foreground mb-4"
 								>
 									<div class="flex items-center">
 										<Calendar class="w-4 h-4 mr-1" />
@@ -207,13 +207,11 @@
 									</div>
 								</div>
 
-								<h3
-									class="text-xl font-bold text-gray-900 dark:text-white mb-3 line-clamp-2"
-								>
+								<h3 class="text-xl font-bold text-foreground mb-3 line-clamp-2">
 									{post.title}
 								</h3>
 
-								<p class="text-gray-600 dark:text-gray-400 mb-6 line-clamp-3">
+								<p class="text-muted-foreground mb-6 line-clamp-3">
 									{post.description}
 								</p>
 
@@ -221,7 +219,7 @@
 									<div class="flex flex-wrap gap-2 mb-6">
 										{#each post.tags.slice(0, 3) as tag}
 											<span
-												class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs text-center font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
+												class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs text-center font-medium bg-background text-muted-foreground"
 											>
 												<Tag class="w-3 h-3 mr-1" />
 												{tag}
@@ -244,14 +242,12 @@
 				<!-- Empty State -->
 				<div class="text-center py-16">
 					<div
-						class="flex items-center justify-center w-16 h-16 {colors.iconBg} rounded-2xl mx-auto mb-6"
+						class="flex items-center justify-center w-16 h-16 {colors.iconBg} rounded-lg mx-auto mb-6"
 					>
 						<IconComponent class="w-8 h-8 {colors.iconText}" />
 					</div>
-					<h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-						No articles yet
-					</h3>
-					<p class="text-gray-600 dark:text-gray-400 mb-8">
+					<h3 class="text-xl font-semibold text-foreground mb-2">No articles yet</h3>
+					<p class="text-muted-foreground mb-8">
 						We're working on creating valuable content for this category. Check back
 						soon!
 					</p>
@@ -268,9 +264,9 @@
 
 	<!-- Related Categories -->
 	{#if data.posts.length > 0}
-		<section class="py-16 bg-white dark:bg-gray-800">
+		<section class="py-16 bg-card">
 			<div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-				<h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-8 text-center">
+				<h2 class="text-2xl font-bold text-foreground mb-8 text-center">
 					Explore Other Categories
 				</h2>
 
@@ -283,7 +279,7 @@
 
 							<a
 								href="/blogs/{key}"
-								class="group bg-gray-50 dark:bg-gray-900 rounded-xl p-6 hover:shadow-lg transition-all duration-300"
+								class="group bg-background rounded-lg p-6 hover:shadow-ink transition-all duration-300"
 							>
 								<div
 									class="flex items-center justify-center w-10 h-10 {otherColors.iconBg} rounded-lg mb-4 group-hover:scale-110 transition-transform"
@@ -291,11 +287,11 @@
 									<OtherIconComponent class="w-5 h-5 {otherColors.iconText}" />
 								</div>
 
-								<h3 class="font-semibold text-gray-900 dark:text-white mb-2">
+								<h3 class="font-semibold text-foreground mb-2">
 									{category.name}
 								</h3>
 
-								<p class="text-sm text-gray-600 dark:text-gray-400">
+								<p class="text-sm text-muted-foreground">
 									{category.description}
 								</p>
 							</a>

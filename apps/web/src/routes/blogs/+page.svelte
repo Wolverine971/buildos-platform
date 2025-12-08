@@ -155,14 +155,12 @@
 	{/if}
 </svelte:head>
 
-<div class="min-h-screen bg-gray-50 dark:bg-gray-900">
+<div class="min-h-screen bg-background">
 	<!-- Header -->
-	<div class="bg-white dark:bg-gray-800 py-20">
+	<div class="bg-card py-20">
 		<div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-			<h1 class="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-6">
-				BuildOS Blog
-			</h1>
-			<p class="text-xl text-gray-600 dark:text-gray-400 mb-8 max-w-3xl mx-auto">
+			<h1 class="text-4xl md:text-5xl font-bold text-foreground mb-6">BuildOS Blog</h1>
+			<p class="text-xl text-muted-foreground mb-8 max-w-3xl mx-auto">
 				{#if showDirectPosts}
 					Master your personal operating system with practical guides, productivity
 					insights, and the latest updates from our team.
@@ -205,11 +203,11 @@
 							{@const categoryName = data.categories[post.category].name}
 
 							<article
-								class="bg-white dark:bg-gray-800 rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+								class="bg-card rounded-lg overflow-hidden shadow-ink hover:shadow-xl transition-all duration-300 hover:scale-105"
 							>
 								<div class="p-6">
 									<div
-										class="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400 mb-4"
+										class="flex items-center space-x-2 text-sm text-muted-foreground mb-4"
 									>
 										<span
 											class="px-2.5 py-0.5 {colors.bg} {colors.text} rounded-full font-medium text-xs text-center"
@@ -226,13 +224,11 @@
 										</div>
 									</div>
 
-									<h3
-										class="text-xl font-bold text-gray-900 dark:text-white mb-3 line-clamp-2"
-									>
+									<h3 class="text-xl font-bold text-foreground mb-3 line-clamp-2">
 										{post.title}
 									</h3>
 
-									<p class="text-gray-600 dark:text-gray-400 mb-6 line-clamp-3">
+									<p class="text-muted-foreground mb-6 line-clamp-3">
 										{post.description}
 									</p>
 
@@ -240,7 +236,7 @@
 										<div class="flex flex-wrap gap-2 mb-6">
 											{#each post.tags.slice(0, 3) as tag}
 												<span
-													class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs text-center font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
+													class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs text-center font-medium bg-background text-muted-foreground"
 												>
 													<Tag class="w-3 h-3 mr-1" />
 													{tag}
@@ -263,14 +259,12 @@
 					<!-- Empty State -->
 					<div class="text-center py-16">
 						<div
-							class="flex items-center justify-center w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-2xl mx-auto mb-6"
+							class="flex items-center justify-center w-16 h-16 bg-card rounded-lg mx-auto mb-6"
 						>
-							<Brain class="w-8 h-8 text-gray-400" />
+							<Brain class="w-8 h-8 text-muted-foreground" />
 						</div>
-						<h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-							No articles yet
-						</h3>
-						<p class="text-gray-600 dark:text-gray-400">
+						<h3 class="text-xl font-semibold text-foreground mb-2">No articles yet</h3>
+						<p class="text-muted-foreground">
 							We're working on creating valuable content. Check back soon!
 						</p>
 					</div>
@@ -282,10 +276,8 @@
 		<section class="py-20">
 			<div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
 				<div class="text-center mb-16">
-					<h2 class="text-3xl font-bold text-gray-900 dark:text-white mb-4">
-						Explore by Category
-					</h2>
-					<p class="text-lg text-gray-600 dark:text-gray-400">
+					<h2 class="text-3xl font-bold text-foreground mb-4">Explore by Category</h2>
+					<p class="text-lg text-muted-foreground">
 						Find exactly what you need to level up your productivity
 					</p>
 				</div>
@@ -299,7 +291,7 @@
 						{#if posts?.length}
 							<a
 								href="/blogs/{categoryKey}"
-								class="group bg-white dark:bg-gray-800 rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+								class="group bg-card rounded-lg p-8 shadow-ink hover:shadow-xl transition-all duration-300 hover:scale-105"
 							>
 								<div
 									class="flex items-center justify-center w-12 h-12 {colors.iconBg} rounded-xl mb-6 group-hover:scale-110 transition-transform"
@@ -307,16 +299,16 @@
 									<IconComponent class="w-6 h-6 {colors.iconText}" />
 								</div>
 
-								<h3 class="text-xl font-bold text-gray-900 dark:text-white mb-3">
+								<h3 class="text-xl font-bold text-foreground mb-3">
 									{category.name}
 								</h3>
 
-								<p class="text-gray-600 dark:text-gray-400 mb-4">
+								<p class="text-muted-foreground mb-4">
 									{category.description}
 								</p>
 
 								<div class="flex items-center justify-between">
-									<span class="text-sm text-gray-500 dark:text-gray-400">
+									<span class="text-sm text-muted-foreground">
 										{posts.length} article{posts.length !== 1 ? 's' : ''}
 									</span>
 									<div class="flex items-center {colors.linkText} font-medium">
@@ -331,7 +323,7 @@
 		</section>
 
 		<!-- Recent Posts by Category -->
-		<section class="py-20 bg-white dark:bg-gray-800">
+		<section class="py-20 bg-card">
 			<div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
 				{#each Object.entries(data.categorizedPosts) as [categoryKey, posts]}
 					{@const category = data.categories[categoryKey]}
@@ -340,7 +332,7 @@
 					{#if posts.length > 0}
 						<div class="mb-16 last:mb-0">
 							<div class="flex items-center justify-between mb-8">
-								<h2 class="text-2xl font-bold text-gray-900 dark:text-white">
+								<h2 class="text-2xl font-bold text-foreground">
 									Latest from {category.name}
 								</h2>
 								{#if posts.length > 5}
@@ -356,11 +348,11 @@
 							<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
 								{#each posts.slice(0, 5) as post}
 									<article
-										class="bg-gray-50 dark:bg-gray-900 rounded-xl overflow-hidden hover:shadow-lg transition-shadow"
+										class="bg-background rounded-lg overflow-hidden hover:shadow-ink transition-shadow"
 									>
 										<div class="p-6">
 											<div
-												class="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400 mb-3"
+												class="flex items-center space-x-2 text-sm text-muted-foreground mb-3"
 											>
 												<span
 													class="px-2.5 py-0.5 {colors.bg} {colors.text} rounded-full font-medium text-xs text-center"
@@ -374,20 +366,20 @@
 											</div>
 
 											<h3
-												class="font-semibold text-gray-900 dark:text-white mb-3 line-clamp-2"
+												class="font-semibold text-foreground mb-3 line-clamp-2"
 											>
 												{post.title}
 											</h3>
 
 											<p
-												class="text-gray-600 dark:text-gray-400 text-sm mb-4 line-clamp-3"
+												class="text-muted-foreground text-sm mb-4 line-clamp-3"
 											>
 												{post.description}
 											</p>
 
 											<div class="flex items-center justify-between">
 												<div
-													class="flex items-center text-xs text-gray-500 dark:text-gray-400"
+													class="flex items-center text-xs text-muted-foreground"
 												>
 													<Clock class="w-3 h-3 mr-1" />
 													{post.readingTime} min read
@@ -405,7 +397,7 @@
 												<div class="flex flex-wrap gap-1 mt-3">
 													{#each post.tags.slice(0, 3) as tag}
 														<span
-															class="inline-flex items-center px-2 py-1 rounded text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
+															class="inline-flex items-center px-2 py-1 rounded text-xs bg-card text-muted-foreground"
 														>
 															<Tag class="w-2 h-2 mr-1" />
 															{tag}

@@ -183,27 +183,23 @@
 	keywords="BuildOS feedback, feature request, bug report, user feedback, product improvement, AI productivity feedback"
 />
 
-<div class="min-h-screen bg-gray-50 dark:bg-gray-900">
+<div class="min-h-screen bg-background">
 	<!-- Header -->
-	<div class="bg-white dark:bg-gray-800 py-20">
+	<div class="bg-card py-20">
 		<div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
 			<div class="flex justify-center mb-8">
-				<div
-					class="flex items-center justify-center w-16 h-16 bg-primary-100 dark:bg-primary-900/30 rounded-2xl"
-				>
-					<MessageCircle class="w-8 h-8 text-primary-600 dark:text-primary-400" />
+				<div class="flex items-center justify-center w-16 h-16 bg-accent/10 rounded-lg">
+					<MessageCircle class="w-8 h-8 text-accent" />
 				</div>
 			</div>
-			<h1 class="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-6">
+			<h1 class="text-4xl md:text-5xl font-bold text-foreground mb-6">
 				Your Feedback is hella important
 			</h1>
-			<p class="text-xl text-gray-600 dark:text-gray-400 mb-8 max-w-3xl mx-auto">
+			<p class="text-xl text-muted-foreground mb-8 max-w-3xl mx-auto">
 				Help us build the best personal operating system by sharing your thoughts, ideas,
 				and experiences.
 			</p>
-			<div
-				class="flex items-center justify-center space-x-2 text-sm text-gray-600 dark:text-gray-400"
-			>
+			<div class="flex items-center justify-center space-x-2 text-sm text-muted-foreground">
 				<Heart class="w-4 h-4 text-red-500" />
 				<span>Built with love by two founders who read every message</span>
 			</div>
@@ -215,7 +211,7 @@
 		<section id="success-message" class="py-20">
 			<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
 				<div
-					class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-2xl p-8 text-center"
+					class="bg-green-500/10 border border-green-200 dark:border-green-800 rounded-lg p-8 text-center"
 				>
 					<div class="flex justify-center mb-6">
 						<CheckCircle class="w-16 h-16 text-green-600 dark:text-green-400" />
@@ -237,21 +233,19 @@
 		<!-- Feedback Form -->
 		<section class="py-20">
 			<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-				<div class="bg-white dark:bg-gray-800 rounded-2xl p-8 md:p-12 shadow-lg">
-					<h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-8 text-center">
+				<div class="bg-card rounded-lg p-8 md:p-12 shadow-ink">
+					<h2 class="text-2xl font-bold text-foreground mb-8 text-center">
 						Share Your Feedback
 					</h2>
 
 					<!-- Error Message -->
 					{#if submitError}
 						<div
-							class="mb-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4"
+							class="mb-6 bg-destructive/10 border border-destructive/50 rounded-lg p-4"
 						>
 							<div class="flex items-center">
-								<AlertTriangle
-									class="w-5 h-5 text-red-600 dark:text-red-400 mr-3"
-								/>
-								<p class="text-red-700 dark:text-red-400">{submitError}</p>
+								<AlertTriangle class="w-5 h-5 text-destructive mr-3" />
+								<p class="text-destructive">{submitError}</p>
 							</div>
 						</div>
 					{/if}
@@ -274,7 +268,7 @@
 						<fieldset class="space-y-4">
 							<legend
 								id="feedback-category-legend"
-								class="block text-sm font-medium text-gray-700 dark:text-gray-300"
+								class="block text-sm font-medium text-muted-foreground"
 							>
 								What type of feedback do you have?
 								<span class="text-red-500">*</span>
@@ -291,10 +285,10 @@
 										onclick={() => (selectedCategory = category.id)}
 										variant="ghost"
 										size="lg"
-										class="flex items-center p-4 w-full justify-start border-2 rounded-xl transition-all duration-200 {selectedCategory ===
+										class="flex items-center p-4 w-full justify-start border-2 rounded-lg transition-all duration-200 {selectedCategory ===
 										category.id
 											? `border-${category.color}-500 bg-${category.color}-50 dark:bg-${category.color}-900/20`
-											: 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500'}"
+											: 'border-border hover:border-gray-300 dark:hover:border-gray-500'}"
 										role="radio"
 										aria-checked={selectedCategory === category.id}
 										aria-label={category.label}
@@ -307,7 +301,7 @@
 											/>
 										</div>
 										<div class="text-left">
-											<h3 class="font-semibold text-gray-900 dark:text-white">
+											<h3 class="font-semibold text-foreground">
 												{category.label}
 											</h3>
 										</div>
@@ -320,7 +314,7 @@
 						<fieldset class="space-y-4">
 							<legend
 								id="feedback-rating-legend"
-								class="block text-sm font-medium text-gray-700 dark:text-gray-300"
+								class="block text-sm font-medium text-muted-foreground"
 							>
 								How would you rate your overall experience with BuildOS?
 							</legend>
@@ -344,7 +338,7 @@
 									></Button>
 								{/each}
 								{#if rating > 0}
-									<span class="ml-4 text-sm text-gray-600 dark:text-gray-400">
+									<span class="ml-4 text-sm text-muted-foreground">
 										{rating === 5
 											? 'Excellent!'
 											: rating === 4
@@ -394,7 +388,7 @@
 								onblur={validateEmail}
 							/>
 							{#if emailError}
-								<p class="mt-1 text-sm text-red-600 dark:text-red-400">
+								<p class="mt-1 text-sm text-destructive">
 									{emailError}
 								</p>
 							{/if}
@@ -407,7 +401,7 @@
 								disabled={!feedbackText.trim() || !selectedCategory || isSubmitting}
 								variant="primary"
 								size="xl"
-								class="shadow-lg hover:shadow-xl transform hover:scale-105 disabled:transform-none transition-all duration-200"
+								class="shadow-ink hover:shadow-xl transform hover:scale-105 disabled:transform-none transition-all duration-200"
 								loading={isSubmitting}
 								icon={Send}
 							>
@@ -420,7 +414,7 @@
 						</div>
 
 						<!-- Form Info -->
-						<div class="text-center text-sm text-gray-500 dark:text-gray-400">
+						<div class="text-center text-sm text-muted-foreground">
 							<p>
 								Protected against spam with rate limiting and validation.
 								<br />
@@ -434,13 +428,13 @@
 	{/if}
 
 	<!-- Why Feedback Matters -->
-	<section class="py-20 bg-white dark:bg-gray-800">
+	<section class="py-20 bg-card">
 		<div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
 			<div class="text-center mb-16">
-				<h2 class="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-6">
+				<h2 class="text-3xl md:text-4xl font-bold text-foreground mb-6">
 					Why Your Feedback <span class="text-blue-600">Matters</span>
 				</h2>
-				<p class="text-lg text-gray-600 dark:text-gray-400 max-w-3xl mx-auto">
+				<p class="text-lg text-muted-foreground max-w-3xl mx-auto">
 					As a solo founder building BuildOS, your input directly shapes the product
 					roadmap and development priorities.
 				</p>
@@ -449,14 +443,12 @@
 			<div class="grid grid-cols-1 md:grid-cols-3 gap-8">
 				<div class="text-center">
 					<div
-						class="flex items-center justify-center w-16 h-16 bg-primary-100 dark:bg-primary-900/30 rounded-2xl mb-6 mx-auto"
+						class="flex items-center justify-center w-16 h-16 bg-accent/10 rounded-lg mb-6 mx-auto"
 					>
-						<Target class="w-8 h-8 text-primary-600 dark:text-primary-400" />
+						<Target class="w-8 h-8 text-accent" />
 					</div>
-					<h3 class="text-xl font-bold text-gray-900 dark:text-white mb-4">
-						Direct Impact
-					</h3>
-					<p class="text-gray-600 dark:text-gray-400">
+					<h3 class="text-xl font-bold text-foreground mb-4">Direct Impact</h3>
+					<p class="text-muted-foreground">
 						Your suggestions often get implemented within days. Every piece of feedback
 						is read by the founder personally.
 					</p>
@@ -464,14 +456,12 @@
 
 				<div class="text-center">
 					<div
-						class="flex items-center justify-center w-16 h-16 bg-violet-100 dark:bg-violet-900/30 rounded-2xl mb-6 mx-auto"
+						class="flex items-center justify-center w-16 h-16 bg-violet-100 dark:bg-violet-900/30 rounded-lg mb-6 mx-auto"
 					>
 						<Users class="w-8 h-8 text-violet-600 dark:text-violet-400" />
 					</div>
-					<h3 class="text-xl font-bold text-gray-900 dark:text-white mb-4">
-						Community Building
-					</h3>
-					<p class="text-gray-600 dark:text-gray-400">
+					<h3 class="text-xl font-bold text-foreground mb-4">Community Building</h3>
+					<p class="text-muted-foreground">
 						Help us build a community of productive, goal-oriented individuals who
 						support each other's growth.
 					</p>
@@ -479,14 +469,12 @@
 
 				<div class="text-center">
 					<div
-						class="flex items-center justify-center w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-2xl mb-6 mx-auto"
+						class="flex items-center justify-center w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-lg mb-6 mx-auto"
 					>
 						<Zap class="w-8 h-8 text-green-600 dark:text-green-400" />
 					</div>
-					<h3 class="text-xl font-bold text-gray-900 dark:text-white mb-4">
-						Rapid Iteration
-					</h3>
-					<p class="text-gray-600 dark:text-gray-400">
+					<h3 class="text-xl font-bold text-foreground mb-4">Rapid Iteration</h3>
+					<p class="text-muted-foreground">
 						We ship features fast. Your feedback helps us prioritize what matters most
 						to our users.
 					</p>
@@ -496,37 +484,35 @@
 	</section>
 
 	<!-- Recent Feedback Examples -->
-	<section class="py-20 bg-gray-50 dark:bg-gray-900">
+	<section class="py-20 bg-background">
 		<div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
 			<div class="text-center mb-16">
-				<h2 class="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-6">
+				<h2 class="text-3xl md:text-4xl font-bold text-foreground mb-6">
 					Feedback in <span class="text-green-600">Action</span>
 				</h2>
-				<p class="text-lg text-gray-600 dark:text-gray-400 max-w-3xl mx-auto">
+				<p class="text-lg text-muted-foreground max-w-3xl mx-auto">
 					Here are some recent examples of how user feedback directly improved BuildOS.
 				</p>
 			</div>
 
 			<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
 				<!-- Feedback Example 1 -->
-				<div class="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-lg">
+				<div class="bg-card rounded-lg p-6 shadow-ink">
 					<div class="flex items-center mb-4">
 						<div
-							class="w-8 h-8 bg-primary-100 dark:bg-primary-900/30 rounded-full flex items-center justify-center mr-3"
+							class="w-8 h-8 bg-accent/10 rounded-full flex items-center justify-center mr-3"
 						>
 							<span class="text-sm font-bold text-blue-600">SJ</span>
 						</div>
 						<div>
-							<div class="font-semibold text-gray-900 dark:text-white text-sm">
-								Phillip P.
-							</div>
-							<div class="text-xs text-gray-500 dark:text-gray-400">Beta User</div>
+							<div class="font-semibold text-foreground text-sm">Phillip P.</div>
+							<div class="text-xs text-muted-foreground">Beta User</div>
 						</div>
 					</div>
-					<blockquote class="text-gray-600 dark:text-gray-400 text-sm mb-4 italic">
+					<blockquote class="text-muted-foreground text-sm mb-4 italic">
 						"It would be nice to braindump on any page."
 					</blockquote>
-					<div class="bg-green-50 dark:bg-green-900/20 rounded-lg p-3">
+					<div class="bg-green-500/10 rounded-lg p-3">
 						<div class="flex items-center text-green-700 dark:text-green-300 text-sm">
 							<ThumbsUp class="w-4 h-4 mr-2" />
 							<span class="font-medium">Implemented!</span>
@@ -538,7 +524,7 @@
 				</div>
 
 				<!-- Feedback Example 2 -->
-				<div class="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-lg">
+				<div class="bg-card rounded-lg p-6 shadow-ink">
 					<div class="flex items-center mb-4">
 						<div
 							class="w-8 h-8 bg-violet-100 dark:bg-violet-900/30 rounded-full flex items-center justify-center mr-3"
@@ -546,19 +532,15 @@
 							<span class="text-sm font-bold text-violet-600">MK</span>
 						</div>
 						<div>
-							<div class="font-semibold text-gray-900 dark:text-white text-sm">
-								Mike K.
-							</div>
-							<div class="text-xs text-gray-500 dark:text-gray-400">
-								Product Manager
-							</div>
+							<div class="font-semibold text-foreground text-sm">Mike K.</div>
+							<div class="text-xs text-muted-foreground">Product Manager</div>
 						</div>
 					</div>
-					<blockquote class="text-gray-600 dark:text-gray-400 text-sm mb-4 italic">
+					<blockquote class="text-muted-foreground text-sm mb-4 italic">
 						"The daily brief is great, but could it show progress percentages for each
 						goal?"
 					</blockquote>
-					<div class="bg-green-50 dark:bg-green-900/20 rounded-lg p-3">
+					<div class="bg-green-500/10 rounded-lg p-3">
 						<div class="flex items-center text-green-700 dark:text-green-300 text-sm">
 							<ThumbsUp class="w-4 h-4 mr-2" />
 							<span class="font-medium">Implemented!</span>
@@ -570,7 +552,7 @@
 				</div>
 
 				<!-- Feedback Example 3 -->
-				<div class="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-lg">
+				<div class="bg-card rounded-lg p-6 shadow-ink">
 					<div class="flex items-center mb-4">
 						<div
 							class="w-8 h-8 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mr-3"
@@ -578,17 +560,15 @@
 							<span class="text-sm font-bold text-green-600">AL</span>
 						</div>
 						<div>
-							<div class="font-semibold text-gray-900 dark:text-white text-sm">
-								Alex L.
-							</div>
-							<div class="text-xs text-gray-500 dark:text-gray-400">Designer</div>
+							<div class="font-semibold text-foreground text-sm">Alex L.</div>
+							<div class="text-xs text-muted-foreground">Designer</div>
 						</div>
 					</div>
-					<blockquote class="text-gray-600 dark:text-gray-400 text-sm mb-4 italic">
+					<blockquote class="text-muted-foreground text-sm mb-4 italic">
 						"Love the app! Could we have a dark mode? I work late and it would be easier
 						on my eyes."
 					</blockquote>
-					<div class="bg-green-50 dark:bg-green-900/20 rounded-lg p-3">
+					<div class="bg-green-500/10 rounded-lg p-3">
 						<div class="flex items-center text-green-700 dark:text-green-300 text-sm">
 							<ThumbsUp class="w-4 h-4 mr-2" />
 							<span class="font-medium">Implemented!</span>
@@ -603,12 +583,12 @@
 	</section>
 
 	<!-- Other Ways to Connect -->
-	<section class="py-20 bg-white dark:bg-gray-800">
+	<section class="py-20 bg-card">
 		<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-			<h2 class="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-6">
+			<h2 class="text-3xl md:text-4xl font-bold text-foreground mb-6">
 				Other Ways to Connect
 			</h2>
-			<p class="text-lg text-gray-600 dark:text-gray-400 mb-12">
+			<p class="text-lg text-muted-foreground mb-12">
 				Prefer a different way to share your thoughts? We're available through multiple
 				channels.
 			</p>
@@ -616,17 +596,15 @@
 			<div class="grid grid-cols-1 md:grid-cols-2 gap-8">
 				<a
 					href="/contact"
-					class="bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800 rounded-2xl p-8 hover:shadow-lg transition-all duration-300 group text-left"
+					class="bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800 rounded-lg p-8 hover:shadow-ink transition-all duration-300 group text-left"
 				>
 					<div
-						class="flex items-center justify-center w-12 h-12 bg-primary-100 dark:bg-primary-900/30 rounded-xl mb-4 group-hover:scale-110 transition-transform"
+						class="flex items-center justify-center w-12 h-12 bg-accent/10 rounded-lg mb-4 group-hover:scale-110 transition-transform"
 					>
-						<MessageCircle class="w-6 h-6 text-primary-600 dark:text-primary-400" />
+						<MessageCircle class="w-6 h-6 text-accent" />
 					</div>
-					<h3 class="text-xl font-bold text-gray-900 dark:text-white mb-3">
-						Direct Contact
-					</h3>
-					<p class="text-gray-600 dark:text-gray-400">
+					<h3 class="text-xl font-bold text-foreground mb-3">Direct Contact</h3>
+					<p class="text-muted-foreground">
 						Reach out directly to the founder for detailed discussions or private
 						feedback.
 					</p>
@@ -634,17 +612,15 @@
 
 				<a
 					href="/beta"
-					class="bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-800 rounded-2xl p-8 hover:shadow-lg transition-all duration-300 group text-left"
+					class="bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-800 rounded-lg p-8 hover:shadow-ink transition-all duration-300 group text-left"
 				>
 					<div
-						class="flex items-center justify-center w-12 h-12 bg-violet-100 dark:bg-violet-900/30 rounded-xl mb-4 group-hover:scale-110 transition-transform"
+						class="flex items-center justify-center w-12 h-12 bg-violet-100 dark:bg-violet-900/30 rounded-lg mb-4 group-hover:scale-110 transition-transform"
 					>
 						<Users class="w-6 h-6 text-violet-600 dark:text-violet-400" />
 					</div>
-					<h3 class="text-xl font-bold text-gray-900 dark:text-white mb-3">
-						Beta Community
-					</h3>
-					<p class="text-gray-600 dark:text-gray-400">
+					<h3 class="text-xl font-bold text-foreground mb-3">Beta Community</h3>
+					<p class="text-muted-foreground">
 						Join our beta community for ongoing discussions and collaborative feedback
 						sessions.
 					</p>

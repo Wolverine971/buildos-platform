@@ -285,22 +285,30 @@
 
 <Modal bind:isOpen={open} size="xl" onClose={handleClose} showCloseButton={false}>
 	{#snippet header()}
-		<!-- Custom gradient header - grey/dark grey -->
+		<!-- Inkprint header with strip texture -->
 		<div
-			class="flex-shrink-0 bg-gradient-to-r from-gray-600 via-gray-700 to-gray-800 dark:from-gray-700 dark:via-gray-800 dark:to-gray-900 text-white px-3 py-3 sm:px-6 sm:py-5 flex items-start justify-between gap-2 sm:gap-4 dither-gradient"
+			class="flex-shrink-0 bg-muted/50 border-b border-border px-3 py-3 sm:px-6 sm:py-5 flex items-start justify-between gap-2 sm:gap-4 tx tx-strip tx-weak"
 		>
 			<div class="space-y-1 sm:space-y-2 min-w-0 flex-1">
-				<p class="text-[10px] sm:text-xs font-semibold uppercase tracking-[0.3em] sm:tracking-[0.4em] text-white/70">
+				<p
+					class="text-[10px] sm:text-xs font-semibold uppercase tracking-[0.3em] sm:tracking-[0.4em] text-muted-foreground"
+				>
 					Reverse Engineer
 				</p>
-				<h2 class="text-lg sm:text-2xl font-bold leading-tight truncate">
+				<h2 class="text-lg sm:text-2xl font-bold leading-tight truncate text-foreground">
 					{goalName || 'Goal'}
 				</h2>
 				<div class="flex flex-wrap items-center gap-1.5 sm:gap-3 text-xs sm:text-sm">
-					<span class="px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-semibold bg-white/20">
-						{editableMilestones.length} milestone{editableMilestones.length === 1 ? '' : 's'}
+					<span
+						class="px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-semibold bg-accent/20 text-accent-foreground"
+					>
+						{editableMilestones.length} milestone{editableMilestones.length === 1
+							? ''
+							: 's'}
 					</span>
-					<span class="px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-semibold bg-white/20">
+					<span
+						class="px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-semibold bg-accent/20 text-accent-foreground"
+					>
 						{getTotalTaskCount()} task{getTotalTaskCount() === 1 ? '' : 's'}
 					</span>
 				</div>
@@ -309,10 +317,15 @@
 				variant="ghost"
 				size="sm"
 				onclick={handleClose}
-				class="text-white/80 hover:text-white shrink-0 !p-1.5 sm:!p-2"
+				class="text-muted-foreground hover:text-foreground shrink-0 !p-1.5 sm:!p-2"
 				disabled={loading}
 			>
-				<svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+				<svg
+					class="w-4 h-4 sm:w-5 sm:h-5"
+					fill="none"
+					stroke="currentColor"
+					viewBox="0 0 24 24"
+				>
 					<path
 						stroke-linecap="round"
 						stroke-linejoin="round"
@@ -326,26 +339,24 @@
 
 	{#snippet children()}
 		<div class="space-y-4 px-3 py-3 sm:px-6 sm:py-6">
-			<section
-				class="rounded border border-gray-200 dark:border-gray-700 bg-surface-elevated dark:bg-surface-panel shadow-elevated"
-			>
+			<section class="rounded border border-border bg-card shadow-ink">
 				<div
 					class="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5"
 				>
 					<div class="space-y-1">
 						<p
-							class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 flex items-center gap-2"
+							class="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-2"
 						>
-							<span class="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+							<span class="w-1.5 h-1.5 bg-accent rounded-full"></span>
 							Proposed milestones overview
 						</p>
-						<p class="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-white">
+						<p class="text-xl sm:text-2xl font-semibold text-foreground">
 							{editableMilestones.length} milestone{editableMilestones.length === 1
 								? ''
 								: 's'}{' '}
 							· {getTotalTaskCount()} task{getTotalTaskCount() === 1 ? '' : 's'}
 						</p>
-						<p class="text-sm text-gray-600 dark:text-gray-400">
+						<p class="text-sm text-muted-foreground">
 							Reverse engineered for <span class="font-medium">{goalName}</span>
 						</p>
 					</div>
@@ -357,12 +368,12 @@
 					</div>
 				</div>
 				{#if reasoning}
-					<div class="border-t border-gray-200 dark:border-gray-700 px-4 pb-4 sm:px-5">
+					<div class="border-t border-border px-4 pb-4 sm:px-5">
 						<div
-							class="rounded border border-gray-200 dark:border-gray-700 bg-surface-clarity dark:bg-surface-elevated p-3.5 dither-soft text-sm text-slate-900 dark:text-slate-100"
+							class="rounded border border-border bg-muted/30 p-3.5 tx tx-bloom tx-weak text-sm text-foreground"
 						>
 							<p
-								class="text-xs font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-200 flex items-center gap-2"
+								class="text-xs font-semibold uppercase tracking-wide text-accent flex items-center gap-2"
 							>
 								<span class="text-base">🧠</span>
 								Model reasoning
@@ -378,48 +389,48 @@
 			<div class="space-y-3 overflow-y-auto pr-1 max-h-[65vh]">
 				{#if editableMilestones.length === 0}
 					<div
-						class="rounded border border-dashed border-gray-200 dark:border-gray-700 bg-surface-clarity dark:bg-surface-elevated p-10 text-center text-sm text-slate-600 dark:text-slate-400"
+						class="rounded border border-dashed border-border bg-muted/30 p-10 text-center text-sm text-muted-foreground"
 					>
-						No milestones yet. Use “Add milestone” to capture the model’s proposal.
+						No milestones yet. Use "Add milestone" to capture the model's proposal.
 					</div>
 				{:else}
 					{#each editableMilestones as milestone, index (milestone.tempId)}
 						<div
-							class="rounded border border-gray-200 dark:border-gray-700 bg-surface-elevated dark:bg-surface-panel shadow-subtle transition-shadow hover:shadow-elevated"
+							class="rounded border border-border bg-card shadow-ink transition-shadow hover:shadow-ink-strong"
 						>
 							<button
 								type="button"
-								class="w-full rounded p-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-orange sm:p-5"
+								class="w-full rounded p-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:p-5"
 								onclick={() => toggleMilestoneExpansion(milestone.tempId)}
 							>
 								<div
-									class="flex items-center gap-2 text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400"
+									class="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground"
 								>
 									<Layers
-										class="h-4 w-4 text-gray-400 dark:text-gray-500"
+										class="h-4 w-4 text-muted-foreground"
 										aria-hidden="true"
 									/>
 									<span>Milestone {index + 1}</span>
 								</div>
-								<p class="mt-2 text-lg font-semibold text-gray-900 dark:text-white">
+								<p class="mt-2 text-lg font-semibold text-foreground">
 									{milestone.title || 'Untitled milestone'}
 								</p>
-								<p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
+								<p class="mt-1 text-sm text-muted-foreground">
 									{milestone.summary || 'Add a summary to clarify scope'}
 								</p>
 								<div
-									class="mt-3 flex flex-wrap items-center gap-4 text-xs text-gray-500 dark:text-gray-400"
+									class="mt-3 flex flex-wrap items-center gap-4 text-xs text-muted-foreground"
 								>
 									<span class="inline-flex items-center gap-1">
 										<Calendar
-											class="h-3.5 w-3.5 text-gray-400"
+											class="h-3.5 w-3.5 text-muted-foreground"
 											aria-hidden="true"
 										/>
 										{formatDateForDisplay(milestone.due_at)}
 									</span>
 									<span class="inline-flex items-center gap-1">
 										<Target
-											class="h-3.5 w-3.5 text-gray-400"
+											class="h-3.5 w-3.5 text-muted-foreground"
 											aria-hidden="true"
 										/>
 										{milestone.tasks.length} task{milestone.tasks.length === 1
@@ -427,7 +438,7 @@
 											: 's'}
 									</span>
 									<span
-										class="ml-auto inline-flex items-center gap-1 text-gray-400"
+										class="ml-auto inline-flex items-center gap-1 text-muted-foreground"
 									>
 										{isMilestoneExpanded(milestone.tempId) ? 'Hide' : 'Expand'}
 										<ChevronDown
@@ -440,15 +451,15 @@
 
 							{#if isMilestoneExpanded(milestone.tempId)}
 								<div
-									class="rounded-b border-t border-gray-200 dark:border-gray-700 bg-surface-clarity dark:bg-surface-elevated px-4 pb-5 pt-4 dither-soft sm:px-6"
+									class="rounded-b border-t border-border bg-muted/30 px-4 pb-5 pt-4 tx tx-grain tx-weak sm:px-6"
 								>
 									<div class="grid gap-3 md:grid-cols-3">
 										<label
-											class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400"
+											class="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
 										>
 											<span class="mb-1 block">Title</span>
 											<input
-												class="w-full rounded border border-gray-200 dark:border-gray-700 bg-surface-clarity dark:bg-surface-elevated px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:border-accent-orange focus:ring-2 focus:ring-accent-orange dither-soft"
+												class="w-full rounded border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-ring focus:ring-2 focus:ring-ring"
 												value={milestone.title}
 												oninput={(event) =>
 													updateMilestoneField(
@@ -459,12 +470,12 @@
 											/>
 										</label>
 										<label
-											class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400"
+											class="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
 										>
 											<span class="mb-1 block">Due date</span>
 											<input
 												type="date"
-												class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+												class="w-full rounded border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-ring focus:ring-2 focus:ring-ring"
 												value={milestone.due_at ?? ''}
 												oninput={(event) =>
 													updateMilestoneField(
@@ -475,11 +486,11 @@
 											/>
 										</label>
 										<label
-											class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400"
+											class="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
 										>
 											<span class="mb-1 block">Type key</span>
 											<input
-												class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-mono text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+												class="w-full rounded border border-border bg-background px-3 py-2 text-sm font-mono text-foreground focus:border-ring focus:ring-2 focus:ring-ring"
 												value={milestone.type_key ?? ''}
 												oninput={(event) =>
 													updateMilestoneField(
@@ -491,7 +502,7 @@
 										</label>
 									</div>
 									<label
-										class="mt-3 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400"
+										class="mt-3 block text-xs font-semibold uppercase tracking-wide text-muted-foreground"
 									>
 										<span class="mb-1 block">Summary</span>
 										<Textarea
@@ -508,18 +519,16 @@
 									</label>
 
 									<div
-										class="mt-4 space-y-4 rounded border border-gray-200 dark:border-gray-700 bg-surface-clarity dark:bg-surface-elevated p-4"
+										class="mt-4 space-y-4 rounded border border-border bg-muted/20 p-4"
 									>
 										<div
 											class="flex flex-wrap items-center justify-between gap-3"
 										>
 											<div>
-												<p
-													class="text-sm font-semibold text-gray-900 dark:text-white"
-												>
+												<p class="text-sm font-semibold text-foreground">
 													Tasks
 												</p>
-												<p class="text-xs text-gray-500 dark:text-gray-400">
+												<p class="text-xs text-muted-foreground">
 													Expand a task row to edit details inline.
 												</p>
 											</div>
@@ -542,24 +551,22 @@
 											</div>
 										</div>
 
-										<div
-											class="rounded-xl border border-gray-100 bg-white/95 dark:border-gray-800 dark:bg-gray-900/50"
-										>
+										<div class="rounded-xl border border-border bg-card">
 											{#if milestone.tasks.length === 0}
 												<div
-													class="p-6 text-center text-sm text-gray-500 dark:text-gray-400"
+													class="p-6 text-center text-sm text-muted-foreground"
 												>
-													No tasks yet. Use “Add task” to break down the
+													No tasks yet. Use "Add task" to break down the
 													milestone.
 												</div>
 											{:else}
 												{#each milestone.tasks as task, taskIndex (task.tempId)}
 													<div
-														class="border-b border-gray-100 last:border-b-0 dark:border-gray-800"
+														class="border-b border-border last:border-b-0"
 													>
 														<button
 															type="button"
-															class="w-full px-4 py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+															class="w-full px-4 py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 															onclick={() =>
 																toggleTaskExpansion(
 																	milestone.tempId,
@@ -567,11 +574,11 @@
 																)}
 														>
 															<div
-																class="flex items-center gap-2 text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400"
+																class="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground"
 															>
 																<span>Task {taskIndex + 1}</span>
 																<span
-																	class="h-1 w-1 rounded-full bg-gray-300 dark:bg-gray-600"
+																	class="h-1 w-1 rounded-full bg-muted-foreground/30"
 																/>
 																<span class="capitalize"
 																	>{task.state_key?.replace(
@@ -581,21 +588,21 @@
 																>
 															</div>
 															<p
-																class="mt-1 text-sm font-semibold text-gray-900 dark:text-white"
+																class="mt-1 text-sm font-semibold text-foreground"
 															>
 																{task.title || 'Untitled task'}
 															</p>
 															<p
-																class="text-xs text-gray-500 dark:text-gray-400"
+																class="text-xs text-muted-foreground"
 															>
 																{task.description ||
 																	'Add description or acceptance criteria'}
 															</p>
 															<div
-																class="mt-2 flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400"
+																class="mt-2 flex items-center gap-3 text-xs text-muted-foreground"
 															>
 																<span
-																	class="rounded-full bg-gray-100 px-2 py-0.5 capitalize dark:bg-gray-800"
+																	class="rounded-full bg-muted px-2 py-0.5 capitalize"
 																>
 																	{task.state_key?.replace(
 																		'_',
@@ -603,12 +610,12 @@
 																	) || 'todo'}
 																</span>
 																<span
-																	class="rounded-full bg-gray-100 px-2 py-0.5 dark:bg-gray-800"
+																	class="rounded-full bg-muted px-2 py-0.5"
 																>
 																	Priority {task.priority ?? '—'}
 																</span>
 																<ChevronRight
-																	class={`ml-auto h-4 w-4 text-gray-400 transition-transform duration-200 ${isTaskExpanded(milestone.tempId, task.tempId) ? 'rotate-90' : ''}`}
+																	class={`ml-auto h-4 w-4 text-muted-foreground transition-transform duration-200 ${isTaskExpanded(milestone.tempId, task.tempId) ? 'rotate-90' : ''}`}
 																	aria-hidden="true"
 																/>
 															</div>
@@ -616,19 +623,19 @@
 
 														{#if isTaskExpanded(milestone.tempId, task.tempId)}
 															<div
-																class="space-y-3 border-t border-gray-100 bg-gray-50 px-4 py-4 dark:border-gray-800 dark:bg-gray-900/50"
+																class="space-y-3 border-t border-border bg-muted/30 px-4 py-4"
 															>
 																<div
 																	class="grid gap-3 md:grid-cols-2"
 																>
 																	<label
-																		class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400"
+																		class="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
 																	>
 																		<span class="mb-1 block"
 																			>Title</span
 																		>
 																		<input
-																			class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+																			class="w-full rounded border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-ring focus:ring-2 focus:ring-ring"
 																			value={task.title}
 																			oninput={(event) =>
 																				updateTaskField(
@@ -642,13 +649,13 @@
 																		/>
 																	</label>
 																	<label
-																		class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400"
+																		class="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
 																	>
 																		<span class="mb-1 block"
 																			>State</span
 																		>
 																		<select
-																			class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm capitalize text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+																			class="w-full rounded border border-border bg-background px-3 py-2 text-sm capitalize text-foreground focus:border-ring focus:ring-2 focus:ring-ring"
 																			value={task.state_key}
 																			onchange={(event) =>
 																				updateTaskField(
@@ -673,7 +680,7 @@
 																		</select>
 																	</label>
 																	<label
-																		class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400"
+																		class="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
 																	>
 																		<span class="mb-1 block"
 																			>Priority (1-5)</span
@@ -682,7 +689,7 @@
 																			type="number"
 																			min="1"
 																			max="5"
-																			class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+																			class="w-full rounded border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-ring focus:ring-2 focus:ring-ring"
 																			value={task.priority ??
 																				''}
 																			oninput={(event) =>
@@ -704,7 +711,7 @@
 																	</label>
 																</div>
 																<label
-																	class="block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400"
+																	class="block text-xs font-semibold uppercase tracking-wide text-muted-foreground"
 																>
 																	<span class="mb-1 block"
 																		>Description</span
@@ -752,15 +759,14 @@
 			</div>
 
 			{#if errorMessage}
-				<p class="text-sm text-rose-600 dark:text-rose-400">{errorMessage}</p>
+				<p class="text-sm text-destructive">{errorMessage}</p>
 			{/if}
 		</div>
-
 	{/snippet}
 
 	{#snippet footer()}
 		<div
-			class="flex flex-row items-center justify-end gap-2 sm:gap-4 p-2 sm:p-6 border-t border-gray-200 dark:border-gray-700 bg-surface-panel dither-surface"
+			class="flex flex-row items-center justify-end gap-2 sm:gap-4 p-2 sm:p-6 border-t border-border bg-muted/30 tx tx-grain tx-weak"
 		>
 			<Button
 				variant="ghost"
@@ -775,7 +781,7 @@
 				variant="primary"
 				size="sm"
 				onclick={handleApprove}
-				loading={loading}
+				{loading}
 				class="text-xs sm:text-sm px-2 sm:px-4"
 			>
 				<span class="hidden sm:inline">Approve & Create</span>

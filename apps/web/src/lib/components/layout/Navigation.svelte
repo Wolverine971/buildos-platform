@@ -105,16 +105,13 @@
 		return null;
 	});
 
-	const NAV_ITEMS = [
+	const navItems = [
 		{ href: '/', label: 'Dashboard', icon: Home },
 		{ href: '/projects', label: 'Projects', icon: FolderOpen },
 		{ href: '/time-blocks', label: 'Time Blocks', icon: Clock },
-		{ href: '/history', label: 'History', icon: StickyNote }
+		{ href: '/history', label: 'History', icon: StickyNote },
+		{ href: '/ontology', label: 'Ontology', icon: GitBranch }
 	];
-	const ONTOLOGY_NAV_ITEM = { href: '/ontology', label: 'Ontology', icon: GitBranch };
-	const navItems = $derived.by(() =>
-		dev || user?.email === 'djwayne35@gmail.com' ? [...NAV_ITEMS, ONTOLOGY_NAV_ITEM] : NAV_ITEMS
-	);
 
 	const loadingAccentClass =
 		'animate-pulse-accent ring-1 ring-indigo-300/60 dark:ring-indigo-500/40 shadow-[0_12px_32px_-18px_rgba(99,102,241,0.45)]';
@@ -270,7 +267,7 @@
 <nav
 	data-fixed-element
 	bind:this={element}
-	class="sticky top-0 z-10 bg-surface-panel dark:bg-slate-900 border-b-2 border-gray-200 dark:border-gray-700 shadow-subtle transition-all duration-200"
+	class="sticky top-0 z-10 bg-card border-b border-border shadow-ink transition-all duration-200"
 >
 	<div class="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 xl:px-8">
 		<div class="flex justify-between items-center h-16 gap-2.5">
@@ -278,18 +275,21 @@
 			<div class="flex items-center min-w-0 flex-1">
 				<!-- Logo -->
 				<div class="flex-shrink-0 flex items-center">
-					<a href="/" class="flex items-center" onclick={() => handleMenuItemClick('/')}>
+					<a
+						href="/"
+						class="flex items-center group"
+						onclick={() => handleMenuItemClick('/')}
+					>
 						<span class="sr-only">BuildOS</span>
 						<span
 							class="inline-flex items-baseline gap-[0.08em] font-black tracking-tight text-[clamp(1.5rem,4vw,2.1rem)] sm:text-[clamp(1.75rem,2.5vw,2.1rem)] leading-none"
 							aria-hidden="true"
 						>
-							<span class="text-slate-900 dark:text-slate-100">Build</span>
 							<span
-								class="relative bg-gradient-to-br from-accent-blue via-accent-orange to-accent-olive bg-clip-text text-transparent"
+								class="text-foreground transition-colors duration-200 group-hover:text-accent/80"
+								>Build</span
 							>
-								OS
-							</span>
+							<span class="logo-os">OS</span>
 						</span>
 					</a>
 				</div>
@@ -307,22 +307,22 @@
 								onclick={() => handleMenuItemClick(item.href)}
 								class="relative inline-flex items-center px-2 lg:px-3 py-1.5 md:py-2 text-xs md:text-sm font-bold tracking-tight rounded transition-all duration-200 whitespace-nowrap
 								{currentPath === item.href
-									? 'text-accent-orange bg-surface-scratch dark:bg-slate-800/50'
-									: 'text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800/50'}
+									? 'text-accent bg-muted'
+									: 'text-muted-foreground hover:text-foreground hover:bg-muted/50'}
 								{loggingOut ? 'opacity-50 pointer-events-none' : ''}
 								{loadingLink === item.href ? 'animate-pulse' : ''}"
 							>
 								<!-- Underline indicator for active route -->
 								{#if currentPath === item.href}
 									<div
-										class="absolute bottom-0 left-1 right-1 h-0.5 rounded-full bg-accent-orange"
+										class="absolute bottom-0 left-1 right-1 h-0.5 rounded-full bg-accent"
 									></div>
 								{/if}
 								<Icon
 									class="w-3.5 md:w-4 h-3.5 md:h-4 mr-1 lg:mr-1.5 flex-shrink-0 {currentPath ===
 									item.href
-										? 'text-accent-orange'
-										: 'text-slate-600 dark:text-slate-400'}"
+										? 'text-accent'
+										: 'text-muted-foreground'}"
 								/>
 								<span class="hidden lg:inline">{item.label}</span>
 								<span class="lg:hidden">{item.label.split(' ')[0]}</span>
@@ -345,7 +345,7 @@
 						variant="outline"
 						size="sm"
 						onclick={handleOpenChat}
-						class={`dither-soft relative flex items-center gap-2 px-3 h-9 rounded font-bold tracking-tight text-xs md:text-sm transition-all duration-200 group border-2 ${showChatModal ? 'text-white bg-accent-orange border-slate-700 shadow-pressable dark:bg-accent-orange dark:text-white' : 'text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 border-gray-200 dark:border-gray-700 hover:border-accent-orange hover:bg-accent-orange/10 dark:hover:bg-accent-orange/20 hover:text-accent-orange dark:hover:text-accent-orange shadow-subtle hover:shadow-pressable'}`}
+						class={`relative flex items-center gap-2 px-3 h-9 rounded font-bold tracking-tight text-xs md:text-sm transition-all duration-200 group pressable border ${showChatModal ? 'text-accent-foreground bg-accent border-accent shadow-ink' : 'text-muted-foreground bg-card border-border hover:border-accent hover:bg-accent/10 hover:text-accent shadow-ink'}`}
 						aria-label="Open Brain Dump & Chat"
 						title="Brain Dump & Chat - AI-Powered Planning"
 						btnType="container"
@@ -401,17 +401,17 @@
 				{/if}
 
 				{#if user}
-					<!-- Onboarding CTA with enhanced gradient styling -->
+					<!-- Onboarding CTA with enhanced styling -->
 					{#if needsOnboarding}
 						<div class="hidden md:block">
 							<a
 								href="/onboarding"
 								data-onboarding-link
 								onclick={() => handleMenuItemClick('/onboarding')}
-								class="inline-flex items-center px-2 md:px-3 lg:px-3.5 xl:px-4 py-1.5 md:py-2 lg:py-2.5 text-xs md:text-sm lg:text-sm font-bold tracking-tight rounded shadow-subtle hover:shadow-pressable transition-all duration-200 whitespace-nowrap border-2
+								class="inline-flex items-center px-2 md:px-3 lg:px-3.5 xl:px-4 py-1.5 md:py-2 lg:py-2.5 text-xs md:text-sm lg:text-sm font-bold tracking-tight rounded shadow-ink pressable transition-all duration-200 whitespace-nowrap border tx tx-pulse tx-weak
 								{onboardingUrgent
-									? 'bg-amber-500 hover:bg-amber-600 text-white border-gray-200 dark:border-gray-700 animate-pulse'
-									: 'bg-accent-blue hover:bg-accent-blue/80 text-white border-gray-200 dark:border-gray-700'}
+									? 'bg-amber-500 hover:bg-amber-600 text-white border-amber-600'
+									: 'bg-accent hover:bg-accent/90 text-accent-foreground border-accent'}
 								{loggingOut ? 'opacity-50 pointer-events-none' : ''}
 								{loadingLink === '/onboarding' ? loadingAccentClass : ''}"
 							>
@@ -448,7 +448,7 @@
 						variant="ghost"
 						size="sm"
 						icon={showMobileMenu ? X : Menu}
-						class="md:hidden p-2 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300 min-h-0"
+						class="md:hidden p-2 text-muted-foreground hover:text-foreground min-h-0"
 						aria-expanded={showMobileMenu}
 						aria-label="Toggle mobile menu"
 					></Button>
@@ -461,7 +461,7 @@
 							variant="outline"
 							size="sm"
 							btnType="container"
-							class="flex items-center gap-1.5 px-3 h-9 text-xs md:text-sm rounded font-bold tracking-tight text-slate-700 dark:text-slate-300 border-2 border-gray-200 dark:border-gray-700 bg-surface-scratch dark:bg-slate-800 shadow-subtle hover:border-accent-orange hover:bg-accent-orange/10 dark:hover:bg-accent-orange/20 hover:text-accent-orange dark:hover:text-accent-orange hover:shadow-pressable active:translate-y-[1px] active:shadow-none transition-all duration-100"
+							class="flex items-center gap-1.5 px-3 h-9 text-xs md:text-sm rounded font-bold tracking-tight text-muted-foreground border border-border bg-card shadow-ink hover:border-accent hover:bg-accent/10 hover:text-accent pressable transition-all duration-100"
 							aria-expanded={showUserMenu}
 							aria-haspopup="true"
 							aria-label="User menu"
@@ -481,16 +481,12 @@
 						<!-- User dropdown -->
 						{#if showUserMenu}
 							<div
-								class="absolute right-0 mt-2 w-56 bg-white dark:bg-slate-800 rounded border-2 border-gray-200 dark:border-gray-700 shadow-pressable z-50"
+								class="absolute right-0 mt-2 w-56 bg-card rounded-lg border border-border shadow-ink-strong z-50 tx tx-frame tx-weak ink-frame animate-ink-in"
 							>
 								<div class="pt-1">
 									<!-- User info -->
-									<div
-										class="px-4 py-3 text-sm border-b-2 border-gray-200 dark:border-gray-700"
-									>
-										<div
-											class="font-bold text-slate-900 dark:text-slate-100 flex items-center"
-										>
+									<div class="px-4 py-3 text-sm border-b border-border">
+										<div class="font-bold text-foreground flex items-center">
 											{user?.name || 'User'}
 											{#if user?.is_admin}
 												<span
@@ -500,12 +496,12 @@
 												</span>
 											{/if}
 										</div>
-										<div class="text-slate-600 dark:text-slate-400 truncate">
+										<div class="text-muted-foreground truncate">
 											{user.email}
 										</div>
 										{#if needsOnboarding}
 											<div
-												class="mt-2 text-xs text-accent-orange flex items-center font-bold"
+												class="mt-2 text-xs text-accent flex items-center font-bold"
 											>
 												<AlertCircle class="w-3 h-3 mr-1" />
 												Setup {onboardingProgress}% complete
@@ -518,10 +514,10 @@
 										<a
 											href="/onboarding"
 											onclick={() => handleMenuItemClick('/onboarding')}
-											class="flex items-center w-full px-4 py-2.5 text-sm font-bold tracking-tight rounded mx-2 mb-2 transition-all duration-200 shadow-subtle hover:shadow-pressable border-2
+											class="flex items-center w-full px-4 py-2.5 text-sm font-bold tracking-tight rounded mx-2 mb-2 transition-all duration-200 shadow-ink pressable border tx tx-pulse tx-weak
 												{onboardingUrgent
-												? 'bg-amber-500 hover:bg-amber-600 text-white border-gray-200 dark:border-gray-700'
-												: 'bg-accent-blue hover:bg-accent-blue/80 text-white border-gray-200 dark:border-gray-700'}
+												? 'bg-amber-500 hover:bg-amber-600 text-white border-amber-600'
+												: 'bg-accent hover:bg-accent/90 text-accent-foreground border-accent'}
 												{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
 										>
 											{#if onboardingUrgent}
@@ -538,7 +534,7 @@
 									<a
 										href="/profile"
 										onclick={() => handleMenuItemClick('/profile')}
-										class="flex items-center w-full px-4 py-2 text-sm font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors
+										class="flex items-center w-full px-4 py-2 text-sm font-bold text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors
 										{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
 									>
 										<User class="w-4 h-4 mr-3" />
@@ -556,7 +552,7 @@
 														? '/profile?tab=billing'
 														: '/pricing'
 												)}
-											class="flex items-center w-full px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors
+											class="flex items-center w-full px-4 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors
 											{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
 										>
 											<svg
@@ -592,7 +588,7 @@
 
 									<button
 										onclick={toggleMode}
-										class="flex items-center w-full px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors
+										class="flex items-center w-full px-4 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors
 										{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
 										disabled={loggingOut}
 										aria-label="Toggle theme"
@@ -614,7 +610,7 @@
 										fullWidth
 										btnType="container"
 										loading={loggingOut}
-										class="justify-start w-full px-4 py-2 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50 min-h-0 transition-colors rounded-none"
+										class="justify-start w-full px-4 py-2 text-muted-foreground hover:text-foreground hover:bg-muted/50 min-h-0 transition-colors rounded-none"
 									>
 										{#if loggingOut}
 											<Loader2 class="w-4 h-4 mr-3 animate-spin" />
@@ -678,10 +674,7 @@
 
 	<!-- Mobile menu -->
 	{#if showMobileMenu}
-		<div
-			class="md:hidden border-t-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-slate-900"
-			data-mobile-menu
-		>
+		<div class="md:hidden border-t border-border bg-card animate-ink-in" data-mobile-menu>
 			{#if user}
 				<!-- Mobile Brief Status -->
 				<div class="px-3 pt-2 pb-2">
@@ -694,10 +687,10 @@
 						<a
 							href="/onboarding"
 							onclick={() => handleMenuItemClick('/onboarding')}
-							class="flex items-center px-3 py-2.5 text-base font-bold tracking-tight text-white rounded shadow-subtle hover:shadow-pressable transition-all duration-200 border-2
+							class="flex items-center px-3 py-2.5 text-base font-bold tracking-tight rounded shadow-ink pressable transition-all duration-200 border tx tx-pulse tx-weak
 							{onboardingUrgent
-								? 'bg-amber-500 hover:bg-amber-600 border-gray-200 dark:border-gray-700 animate-pulse'
-								: 'bg-accent-blue hover:bg-accent-blue/80 border-gray-200 dark:border-gray-700'}
+								? 'bg-amber-500 hover:bg-amber-600 text-white border-amber-600 animate-pulse'
+								: 'bg-accent hover:bg-accent/90 text-accent-foreground border-accent'}
 							{loggingOut ? 'opacity-50 pointer-events-none' : ''}
 							{loadingLink === '/onboarding' ? loadingAccentClass : ''}"
 						>
@@ -719,21 +712,21 @@
 							onclick={() => handleMenuItemClick(item.href)}
 							class="relative flex items-center px-3 py-2 text-base font-bold rounded transition-colors
 							{currentPath === item.href
-								? 'text-accent-orange bg-surface-scratch dark:bg-slate-800/50'
-								: 'text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800/50'}
+								? 'text-accent bg-muted'
+								: 'text-muted-foreground hover:text-foreground hover:bg-muted/50'}
 							{loggingOut ? 'opacity-50 pointer-events-none' : ''}
 							{loadingLink === item.href ? 'animate-pulse' : ''}"
 						>
 							<!-- Underline indicator for active route -->
 							{#if currentPath === item.href}
 								<div
-									class="absolute bottom-0 left-2 right-2 h-0.5 rounded-full bg-accent-orange"
+									class="absolute bottom-0 left-2 right-2 h-0.5 rounded-full bg-accent"
 								></div>
 							{/if}
 							<Icon
 								class="w-5 h-5 mr-3 {currentPath === item.href
-									? 'text-accent-orange'
-									: 'text-slate-600 dark:text-slate-400'}"
+									? 'text-accent'
+									: 'text-muted-foreground'}"
 							/>
 							{item.label}
 						</a>
@@ -741,11 +734,9 @@
 				</div>
 
 				<!-- Mobile User Section -->
-				<div class="pt-3 pb-3 border-t border-slate-200 dark:border-slate-700">
+				<div class="pt-3 pb-3 border-t border-border">
 					<div class="px-3 mb-2.5">
-						<div
-							class="text-base font-medium text-slate-800 dark:text-slate-200 flex items-center"
-						>
+						<div class="text-base font-medium text-foreground flex items-center">
 							{user?.name || 'User'}
 							{#if user?.is_admin}
 								<span
@@ -760,13 +751,11 @@
 								></div>
 							{/if}
 						</div>
-						<div class="text-sm text-slate-600 dark:text-slate-400 truncate">
+						<div class="text-sm text-muted-foreground truncate">
 							{user.email}
 						</div>
 						{#if needsOnboarding}
-							<div
-								class="mt-1 text-xs text-amber-600 dark:text-amber-400 flex items-center"
-							>
+							<div class="mt-1 text-xs text-accent flex items-center">
 								<AlertCircle class="w-3 h-3 mr-1" />
 								Setup {onboardingProgress}% complete
 							</div>
@@ -777,7 +766,7 @@
 						<a
 							href="/profile"
 							onclick={() => handleMenuItemClick('/profile')}
-							class="flex items-center px-3 py-1.5 text-base font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-md transition-colors
+							class="flex items-center px-3 py-1.5 text-base font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-md transition-colors
 							{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
 						>
 							<User class="w-5 h-5 mr-3" />
@@ -795,7 +784,7 @@
 											? '/profile?tab=billing'
 											: '/pricing'
 									)}
-								class="flex items-center px-3 py-1.5 text-base font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-md transition-colors
+								class="flex items-center px-3 py-1.5 text-base font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-md transition-colors
 								{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
 							>
 								<svg
@@ -829,7 +818,7 @@
 
 						<button
 							onclick={toggleMode}
-							class="flex items-center px-3 py-1.5 text-base font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-md transition-colors
+							class="flex items-center px-3 py-1.5 text-base font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-md transition-colors w-full
 							{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
 							disabled={loggingOut}
 							aria-label="Toggle theme"
@@ -852,7 +841,7 @@
 							icon={loggingOut ? Loader2 : LogOut}
 							iconPosition="left"
 							loading={loggingOut}
-							class="justify-start px-3 py-1.5 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 min-h-0"
+							class="justify-start px-3 py-1.5 text-muted-foreground hover:bg-muted/50 min-h-0"
 						>
 							{loggingOut ? 'Signing out...' : 'Sign out'}
 						</Button>
@@ -864,7 +853,7 @@
 					<!-- Theme toggle for non-authenticated mobile users -->
 					<button
 						onclick={toggleMode}
-						class="flex items-center px-3 py-1.5 text-base font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-md transition-colors w-full"
+						class="flex items-center px-3 py-1.5 text-base font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-md transition-colors w-full"
 						aria-label="Toggle theme"
 					>
 						{#if isDark}
@@ -879,14 +868,14 @@
 					<a
 						href="/auth/login"
 						onclick={() => handleMenuItemClick('/auth/login')}
-						class="block px-3 py-1.5 text-base font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-md transition-colors"
+						class="block px-3 py-1.5 text-base font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-md transition-colors"
 					>
 						Sign In
 					</a>
 					<a
 						href="/auth/register"
 						onclick={() => handleMenuItemClick('/auth/register')}
-						class="block px-3 py-1.5 text-base font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 rounded-md transition-colors"
+						class="block px-3 py-1.5 text-base font-medium text-accent hover:text-accent/80 rounded-md transition-colors"
 					>
 						Sign Up
 					</a>
@@ -908,3 +897,83 @@
 		/>
 	{/await}
 {/if}
+
+<style>
+	/* BuildOS Logo - Bloom effect on OS */
+	.logo-os {
+		position: relative;
+		display: inline-block;
+		color: hsl(var(--accent));
+		padding: 0 0.08em;
+	}
+
+	/* Bloom radial glow behind OS */
+	.logo-os::before {
+		content: '';
+		position: absolute;
+		inset: -0.2em -0.15em;
+		border-radius: 0.25em;
+		/* Soft radial bloom gradient */
+		background: radial-gradient(
+			ellipse 100% 100% at 50% 55%,
+			hsl(var(--accent) / 0.18) 0%,
+			hsl(var(--accent) / 0.08) 50%,
+			transparent 80%
+		);
+		z-index: -1;
+		pointer-events: none;
+		transition: opacity 0.2s ease;
+	}
+
+	/* Subtle dot texture overlay */
+	.logo-os::after {
+		content: '';
+		position: absolute;
+		inset: -0.15em -0.1em;
+		border-radius: 0.2em;
+		/* Tiny bloom dots */
+		background-image: radial-gradient(
+			circle at center,
+			hsl(var(--accent) / 0.25) 0.5px,
+			transparent 0.5px
+		);
+		background-size: 3px 3px;
+		z-index: -1;
+		pointer-events: none;
+		opacity: 0.6;
+		transition: opacity 0.2s ease;
+	}
+
+	/* Hover - intensify the bloom */
+	:global(.group:hover) .logo-os::before {
+		background: radial-gradient(
+			ellipse 110% 110% at 50% 55%,
+			hsl(var(--accent) / 0.25) 0%,
+			hsl(var(--accent) / 0.12) 50%,
+			transparent 85%
+		);
+	}
+
+	:global(.group:hover) .logo-os::after {
+		opacity: 0.8;
+	}
+
+	/* Dark mode - slightly brighter bloom */
+	:global(.dark) .logo-os::before {
+		background: radial-gradient(
+			ellipse 100% 100% at 50% 55%,
+			hsl(var(--accent) / 0.22) 0%,
+			hsl(var(--accent) / 0.1) 50%,
+			transparent 80%
+		);
+	}
+
+	:global(.dark) .logo-os::after {
+		background-image: radial-gradient(
+			circle at center,
+			hsl(var(--accent) / 0.3) 0.5px,
+			transparent 0.5px
+		);
+		opacity: 0.5;
+	}
+</style>

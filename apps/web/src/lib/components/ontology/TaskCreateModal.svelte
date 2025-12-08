@@ -225,20 +225,25 @@
 	showCloseButton={false}
 >
 	{#snippet header()}
-		<!-- Custom gradient header - grey/dark grey -->
+		<!-- Inkprint header with strip texture -->
 		<div
-			class="flex-shrink-0 bg-gradient-to-r from-gray-600 via-gray-700 to-gray-800 dark:from-gray-700 dark:via-gray-800 dark:to-gray-900 text-white px-3 py-3 sm:px-6 sm:py-5 flex items-start justify-between gap-2 sm:gap-4 dither-gradient"
+			class="flex-shrink-0 bg-muted/50 border-b border-border px-3 py-3 sm:px-6 sm:py-5 flex items-start justify-between gap-2 sm:gap-4 tx tx-strip tx-weak"
 		>
 			<div class="space-y-1 sm:space-y-2 min-w-0 flex-1">
-				<p class="text-[10px] sm:text-xs font-semibold uppercase tracking-[0.3em] sm:tracking-[0.4em] text-white/70">
+				<p
+					class="text-[10px] sm:text-xs font-semibold uppercase tracking-[0.3em] sm:tracking-[0.4em] text-muted-foreground"
+				>
 					{showTemplateSelection ? 'New Task' : 'Task Details'}
 				</p>
-				<h2 class="text-lg sm:text-2xl font-bold leading-tight truncate">
-					{showTemplateSelection ? 'Select a Template' : (title || 'Define your task')}
+				<h2 class="text-lg sm:text-2xl font-bold leading-tight truncate text-foreground">
+					{showTemplateSelection ? 'Select a Template' : title || 'Define your task'}
 				</h2>
 				{#if !showTemplateSelection && selectedTemplate}
 					<div class="flex flex-wrap items-center gap-1.5 sm:gap-3 text-xs sm:text-sm">
-						<span class="px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-semibold bg-white/20">{selectedTemplate.name}</span>
+						<span
+							class="px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-semibold bg-accent/20 text-accent-foreground"
+							>{selectedTemplate.name}</span
+						>
 					</div>
 				{/if}
 			</div>
@@ -246,10 +251,15 @@
 				variant="ghost"
 				size="sm"
 				onclick={handleClose}
-				class="text-white/80 hover:text-white shrink-0 !p-1.5 sm:!p-2"
+				class="text-muted-foreground hover:text-foreground shrink-0 !p-1.5 sm:!p-2"
 				disabled={isSaving}
 			>
-				<svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+				<svg
+					class="w-4 h-4 sm:w-5 sm:h-5"
+					fill="none"
+					stroke="currentColor"
+					viewBox="0 0 24 24"
+				>
 					<path
 						stroke-linecap="round"
 						stroke-linejoin="round"
@@ -262,369 +272,366 @@
 	{/snippet}
 
 	{#snippet children()}
-	<div class="px-3 py-3 sm:px-6 sm:py-6">
-		<!-- Horizontal Slide Animation Between Views -->
-		<div class="relative overflow-hidden" style="min-height: 400px;">
-			{#key showTemplateSelection}
-				<div
-					in:fly={{ x: slideDirection * 100, duration: 300, easing: cubicOut }}
-					out:fly={{ x: slideDirection * -100, duration: 300, easing: cubicOut }}
-					class="absolute inset-0 overflow-y-auto"
-				>
-					{#if showTemplateSelection}
-						<!-- TEMPLATE SELECTION VIEW -->
-						<div class="space-y-6">
-							<!-- Header -->
-							<div
-								class="flex items-center gap-3 pb-4 border-b border-gray-200 dark:border-gray-700"
-							>
-								<div
-									class="p-2 rounded bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-950/50 dark:to-purple-950/50 dither-soft"
-								>
-									<Sparkles class="w-5 h-5 text-accent-blue" />
-								</div>
-								<div>
-									<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-										Choose a Template
-									</h3>
-									<p class="text-sm text-gray-600 dark:text-gray-400">
-										Select a task type to get started with the right structure
-									</p>
-								</div>
-							</div>
-
-							{#if isLoadingTemplates}
-								<div class="flex items-center justify-center py-16">
-									<Loader
-										class="w-8 h-8 animate-spin text-gray-400 dark:text-gray-500"
-									/>
-								</div>
-							{:else if templateError}
-								<div class="text-center py-12">
-									<p class="text-red-600 dark:text-red-400 mb-4">
-										{templateError}
-									</p>
-									<Button variant="secondary" onclick={loadTemplates}
-										>Try Again</Button
-									>
-								</div>
-							{:else}
-								<div class="space-y-6">
-									{#each Object.entries(templateCategories) as [category, categoryTemplates]}
-										<div>
-											<h3
-												class="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide mb-3 flex items-center gap-2"
-											>
-												<span
-													class="w-1.5 h-1.5 bg-accent-blue rounded-full"
-												></span>
-												{category}
-											</h3>
-											<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-												{#each categoryTemplates as template}
-													<button
-														type="button"
-														onclick={() => selectTemplate(template)}
-														class="card-industrial p-4 rounded text-left group hover:border-accent-orange transition-all duration-200"
-													>
-														<div
-															class="flex items-start justify-between mb-2"
-														>
-															<h4
-																class="font-semibold text-gray-900 dark:text-white group-hover:text-accent-blue transition-colors"
-															>
-																{template.name}
-															</h4>
-															<ChevronRight
-																class="w-5 h-5 text-gray-400 group-hover:text-accent-blue flex-shrink-0 transition-transform group-hover:translate-x-0.5"
-															/>
-														</div>
-														{#if template.metadata?.description}
-															<p
-																class="text-sm text-gray-600 dark:text-gray-400 line-clamp-2 mb-2"
-															>
-																{template.metadata.description}
-															</p>
-														{/if}
-														{#if template.metadata?.typical_duration}
-															<div
-																class="mt-2 inline-flex items-center gap-1.5 px-2 py-1 bg-surface-panel rounded"
-															>
-																<span
-																	class="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide"
-																>
-																	{template.metadata
-																		.typical_duration}
-																</span>
-															</div>
-														{/if}
-													</button>
-												{/each}
-											</div>
-										</div>
-									{/each}
-
-									{#if templates.length === 0}
-										<div
-											class="text-center py-12 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded"
-										>
-											<CheckSquare
-												class="w-12 h-12 text-gray-400 mx-auto mb-3"
-											/>
-											<p class="text-sm text-gray-500 dark:text-gray-400">
-												No task templates available
-											</p>
-										</div>
-									{/if}
-								</div>
-							{/if}
-						</div>
-					{:else}
-						<!-- TASK DETAILS FORM -->
-						<form class="space-y-6" onsubmit={handleSubmit}>
-							<!-- Selected Template Badge -->
-							{#if selectedTemplate}
-								<div
-									class="rounded border border-blue-200 dark:border-blue-800 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 p-4 dither-soft"
-								>
-									<div class="flex items-center justify-between gap-3">
-										<div class="flex items-center gap-3 flex-1 min-w-0">
-											<div
-												class="p-2 rounded bg-surface-elevated shadow-subtle"
-											>
-												<CheckSquare class="w-4 h-4 text-accent-blue" />
-											</div>
-											<div class="flex-1 min-w-0">
-												<h4
-													class="text-sm font-semibold text-blue-900 dark:text-blue-100"
-												>
-													{selectedTemplate.name}
-												</h4>
-												{#if selectedTemplate.metadata?.description}
-													<p
-														class="text-xs text-blue-700 dark:text-blue-300 truncate"
-													>
-														{selectedTemplate.metadata.description}
-													</p>
-												{/if}
-											</div>
-										</div>
-										<Button
-											type="button"
-											variant="ghost"
-											size="sm"
-											onclick={handleBack}
-											class="shrink-0"
-										>
-											Change
-										</Button>
+		<div class="px-3 py-3 sm:px-6 sm:py-6">
+			<!-- Horizontal Slide Animation Between Views -->
+			<div class="relative overflow-hidden" style="min-height: 400px;">
+				{#key showTemplateSelection}
+					<div
+						in:fly={{ x: slideDirection * 100, duration: 300, easing: cubicOut }}
+						out:fly={{ x: slideDirection * -100, duration: 300, easing: cubicOut }}
+						class="absolute inset-0 overflow-y-auto"
+					>
+						{#if showTemplateSelection}
+							<!-- TEMPLATE SELECTION VIEW -->
+							<div class="space-y-6">
+								<!-- Header -->
+								<div class="flex items-center gap-3 pb-4 border-b border-border">
+									<div class="p-2 rounded bg-muted tx tx-bloom tx-weak">
+										<Sparkles class="w-5 h-5 text-accent" />
+									</div>
+									<div>
+										<h3 class="text-lg font-semibold text-foreground">
+											Choose a Template
+										</h3>
+										<p class="text-sm text-muted-foreground">
+											Select a task type to get started with the right
+											structure
+										</p>
 									</div>
 								</div>
-							{/if}
 
-							<!-- Task Title -->
-							<FormField
-								label="Task Title"
-								labelFor="title"
-								required={true}
-								error={!title.trim() && error ? 'Task title is required' : ''}
-							>
-								<TextInput
-									id="title"
-									bind:value={title}
-									placeholder="Enter task title..."
-									inputmode="text"
-									enterkeyhint="next"
-									required={true}
-									disabled={isSaving}
-									error={!title.trim() && error ? true : false}
-									size="md"
-								/>
-							</FormField>
+								{#if isLoadingTemplates}
+									<div class="flex items-center justify-center py-16">
+										<Loader
+											class="w-8 h-8 animate-spin text-muted-foreground"
+										/>
+									</div>
+								{:else if templateError}
+									<div class="text-center py-12">
+										<p class="text-destructive mb-4">
+											{templateError}
+										</p>
+										<Button variant="secondary" onclick={loadTemplates}
+											>Try Again</Button
+										>
+									</div>
+								{:else}
+									<div class="space-y-6">
+										{#each Object.entries(templateCategories) as [category, categoryTemplates]}
+											<div>
+												<h3
+													class="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3 flex items-center gap-2"
+												>
+													<span class="w-1.5 h-1.5 bg-accent rounded-full"
+													></span>
+													{category}
+												</h3>
+												<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+													{#each categoryTemplates as template}
+														<button
+															type="button"
+															onclick={() => selectTemplate(template)}
+															class="bg-card border border-border p-4 rounded-lg text-left group hover:border-accent shadow-ink transition-all duration-200"
+														>
+															<div
+																class="flex items-start justify-between mb-2"
+															>
+																<h4
+																	class="font-semibold text-foreground group-hover:text-accent transition-colors"
+																>
+																	{template.name}
+																</h4>
+																<ChevronRight
+																	class="w-5 h-5 text-muted-foreground group-hover:text-accent flex-shrink-0 transition-transform group-hover:translate-x-0.5"
+																/>
+															</div>
+															{#if template.metadata?.description}
+																<p
+																	class="text-sm text-muted-foreground line-clamp-2 mb-2"
+																>
+																	{template.metadata.description}
+																</p>
+															{/if}
+															{#if template.metadata?.typical_duration}
+																<div
+																	class="mt-2 inline-flex items-center gap-1.5 px-2 py-1 bg-muted rounded"
+																>
+																	<span
+																		class="text-xs font-semibold text-foreground uppercase tracking-wide"
+																	>
+																		{template.metadata
+																			.typical_duration}
+																	</span>
+																</div>
+															{/if}
+														</button>
+													{/each}
+												</div>
+											</div>
+										{/each}
 
-							<!-- Description -->
-							<FormField
-								label="Description"
-								labelFor="description"
-								hint="Provide additional context about this task"
-							>
-								<Textarea
-									id="description"
-									bind:value={description}
-									placeholder="Describe the task..."
-									enterkeyhint="next"
-									rows={4}
-									disabled={isSaving}
-									size="md"
-								/>
-							</FormField>
-
-							<!-- Priority & State Grid -->
-							<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-								<FormField label="Priority" labelFor="priority" required={true}>
-									<Select
-										id="priority"
-										bind:value={priority}
-										disabled={isSaving}
-										size="md"
-										placeholder="Select priority"
-									>
-										<option value={1}>P1 - Critical</option>
-										<option value={2}>P2 - High</option>
-										<option value={3}>P3 - Medium</option>
-										<option value={4}>P4 - Low</option>
-										<option value={5}>P5 - Nice to have</option>
-									</Select>
-								</FormField>
-
-								<FormField label="Initial State" labelFor="state" required={true}>
-									<Select
-										id="state"
-										bind:value={stateKey}
-										disabled={isSaving}
-										size="md"
-										placeholder="Select state"
-									>
-										<option value="todo">To Do</option>
-										<option value="in_progress">In Progress</option>
-										<option value="blocked">Blocked</option>
-										<option value="done">Done</option>
-										<option value="archived">Archived</option>
-									</Select>
-								</FormField>
+										{#if templates.length === 0}
+											<div
+												class="text-center py-12 border-2 border-dashed border-border rounded-lg"
+											>
+												<CheckSquare
+													class="w-12 h-12 text-muted-foreground mx-auto mb-3"
+												/>
+												<p class="text-sm text-muted-foreground">
+													No task templates available
+												</p>
+											</div>
+										{/if}
+									</div>
+								{/if}
 							</div>
-
-							<!-- Optional Associations -->
-							<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-								{#if plans.length > 0}
-									<FormField
-										label="Plan"
-										labelFor="plan"
-										hint="Optional project plan"
+						{:else}
+							<!-- TASK DETAILS FORM -->
+							<form class="space-y-6" onsubmit={handleSubmit}>
+								<!-- Selected Template Badge -->
+								{#if selectedTemplate}
+									<div
+										class="rounded-lg border border-border bg-muted/30 p-4 tx tx-grain tx-weak"
 									>
-										<Select
-											id="plan"
-											bind:value={planId}
-											disabled={isSaving}
-											size="md"
-											placeholder="No plan"
-										>
-											<option value="">No plan</option>
-											{#each plans as plan}
-												<option value={plan.id}>{plan.name}</option>
-											{/each}
-										</Select>
-									</FormField>
-								{/if}
-
-								{#if goals.length > 0}
-									<FormField
-										label="Goal"
-										labelFor="goal"
-										hint="Link to a project goal"
-									>
-										<Select
-											id="goal"
-											bind:value={goalId}
-											disabled={isSaving}
-											size="md"
-											placeholder="No goal"
-										>
-											<option value="">No goal</option>
-											{#each goals as goal}
-												<option value={goal.id}>{goal.name}</option>
-											{/each}
-										</Select>
-									</FormField>
-								{/if}
-
-								{#if milestones.length > 0}
-									<FormField
-										label="Supporting Milestone"
-										labelFor="milestone"
-										hint="Connect to a milestone"
-									>
-										<Select
-											id="milestone"
-											bind:value={milestoneId}
-											disabled={isSaving}
-											size="md"
-											placeholder="No milestone"
-										>
-											<option value="">No milestone</option>
-											{#each milestones as milestone}
-												<option value={milestone.id}>
-													{milestone.title}
-													{#if milestone.due_at}
-														({new Date(
-															milestone.due_at
-														).toLocaleDateString()})
+										<div class="flex items-center justify-between gap-3">
+											<div class="flex items-center gap-3 flex-1 min-w-0">
+												<div class="p-2 rounded bg-card shadow-ink">
+													<CheckSquare class="w-4 h-4 text-accent" />
+												</div>
+												<div class="flex-1 min-w-0">
+													<h4
+														class="text-sm font-semibold text-foreground"
+													>
+														{selectedTemplate.name}
+													</h4>
+													{#if selectedTemplate.metadata?.description}
+														<p
+															class="text-xs text-muted-foreground truncate"
+														>
+															{selectedTemplate.metadata.description}
+														</p>
 													{/if}
-												</option>
-											{/each}
-										</Select>
-									</FormField>
+												</div>
+											</div>
+											<Button
+												type="button"
+												variant="ghost"
+												size="sm"
+												onclick={handleBack}
+												class="shrink-0"
+											>
+												Change
+											</Button>
+										</div>
+									</div>
 								{/if}
-							</div>
 
-							<!-- Scheduled Section -->
-							<div
-								class="border border-gray-200 dark:border-gray-700 rounded p-4 bg-surface-panel dither-soft"
-							>
-								<div class="flex items-center gap-2 mb-3">
-									<span class="text-base">📅</span>
-									<h3 class="text-sm font-semibold text-gray-900 dark:text-white">
-										Scheduled
-									</h3>
-								</div>
+								<!-- Task Title -->
 								<FormField
-									label="Due Date"
-									labelFor="dueAt"
-									hint="Optional deadline for this task"
+									label="Task Title"
+									labelFor="title"
+									required={true}
+									error={!title.trim() && error ? 'Task title is required' : ''}
 								>
 									<TextInput
-										id="dueAt"
-										type="datetime-local"
-										bind:value={dueAt}
+										id="title"
+										bind:value={title}
+										placeholder="Enter task title..."
+										inputmode="text"
+										enterkeyhint="next"
+										required={true}
 										disabled={isSaving}
+										error={!title.trim() && error ? true : false}
 										size="md"
-										class="border-gray-200 dark:border-gray-600 bg-surface-elevated focus:ring-2 focus:ring-accent-orange"
 									/>
 								</FormField>
-								{#if dueAt}
-									<p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
-										Due: {new Date(dueAt).toLocaleString('en-US', {
-											weekday: 'short',
-											month: 'short',
-											day: 'numeric',
-											hour: 'numeric',
-											minute: '2-digit'
-										})}
-									</p>
-								{/if}
-							</div>
 
-							{#if error}
-								<div
-									class="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded"
+								<!-- Description -->
+								<FormField
+									label="Description"
+									labelFor="description"
+									hint="Provide additional context about this task"
 								>
-									<p class="text-sm text-red-700 dark:text-red-300">
-										{error}
-									</p>
+									<Textarea
+										id="description"
+										bind:value={description}
+										placeholder="Describe the task..."
+										enterkeyhint="next"
+										rows={4}
+										disabled={isSaving}
+										size="md"
+									/>
+								</FormField>
+
+								<!-- Priority & State Grid -->
+								<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+									<FormField label="Priority" labelFor="priority" required={true}>
+										<Select
+											id="priority"
+											bind:value={priority}
+											disabled={isSaving}
+											size="md"
+											placeholder="Select priority"
+										>
+											<option value={1}>P1 - Critical</option>
+											<option value={2}>P2 - High</option>
+											<option value={3}>P3 - Medium</option>
+											<option value={4}>P4 - Low</option>
+											<option value={5}>P5 - Nice to have</option>
+										</Select>
+									</FormField>
+
+									<FormField
+										label="Initial State"
+										labelFor="state"
+										required={true}
+									>
+										<Select
+											id="state"
+											bind:value={stateKey}
+											disabled={isSaving}
+											size="md"
+											placeholder="Select state"
+										>
+											<option value="todo">To Do</option>
+											<option value="in_progress">In Progress</option>
+											<option value="blocked">Blocked</option>
+											<option value="done">Done</option>
+											<option value="archived">Archived</option>
+										</Select>
+									</FormField>
 								</div>
-							{/if}
-						</form>
-					{/if}
-				</div>
-			{/key}
+
+								<!-- Optional Associations -->
+								<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+									{#if plans.length > 0}
+										<FormField
+											label="Plan"
+											labelFor="plan"
+											hint="Optional project plan"
+										>
+											<Select
+												id="plan"
+												bind:value={planId}
+												disabled={isSaving}
+												size="md"
+												placeholder="No plan"
+											>
+												<option value="">No plan</option>
+												{#each plans as plan}
+													<option value={plan.id}>{plan.name}</option>
+												{/each}
+											</Select>
+										</FormField>
+									{/if}
+
+									{#if goals.length > 0}
+										<FormField
+											label="Goal"
+											labelFor="goal"
+											hint="Link to a project goal"
+										>
+											<Select
+												id="goal"
+												bind:value={goalId}
+												disabled={isSaving}
+												size="md"
+												placeholder="No goal"
+											>
+												<option value="">No goal</option>
+												{#each goals as goal}
+													<option value={goal.id}>{goal.name}</option>
+												{/each}
+											</Select>
+										</FormField>
+									{/if}
+
+									{#if milestones.length > 0}
+										<FormField
+											label="Supporting Milestone"
+											labelFor="milestone"
+											hint="Connect to a milestone"
+										>
+											<Select
+												id="milestone"
+												bind:value={milestoneId}
+												disabled={isSaving}
+												size="md"
+												placeholder="No milestone"
+											>
+												<option value="">No milestone</option>
+												{#each milestones as milestone}
+													<option value={milestone.id}>
+														{milestone.title}
+														{#if milestone.due_at}
+															({new Date(
+																milestone.due_at
+															).toLocaleDateString()})
+														{/if}
+													</option>
+												{/each}
+											</Select>
+										</FormField>
+									{/if}
+								</div>
+
+								<!-- Scheduled Section -->
+								<div
+									class="border border-border rounded-lg p-4 bg-muted/30 tx tx-frame tx-weak"
+								>
+									<div class="flex items-center gap-2 mb-3">
+										<span class="text-base">📅</span>
+										<h3 class="text-sm font-semibold text-foreground">
+											Scheduled
+										</h3>
+									</div>
+									<FormField
+										label="Due Date"
+										labelFor="dueAt"
+										hint="Optional deadline for this task"
+									>
+										<TextInput
+											id="dueAt"
+											type="datetime-local"
+											bind:value={dueAt}
+											disabled={isSaving}
+											size="md"
+										/>
+									</FormField>
+									{#if dueAt}
+										<p class="mt-2 text-xs text-muted-foreground">
+											Due: {new Date(dueAt).toLocaleString('en-US', {
+												weekday: 'short',
+												month: 'short',
+												day: 'numeric',
+												hour: 'numeric',
+												minute: '2-digit'
+											})}
+										</p>
+									{/if}
+								</div>
+
+								{#if error}
+									<div
+										class="p-4 bg-destructive/10 border border-destructive/30 rounded-lg"
+									>
+										<p class="text-sm text-destructive">
+											{error}
+										</p>
+									</div>
+								{/if}
+							</form>
+						{/if}
+					</div>
+				{/key}
+			</div>
 		</div>
-	</div>
 	{/snippet}
 
 	<!-- Footer Actions - buttons on one row, smaller on mobile -->
 	{#snippet footer()}
 		<div
-			class="flex flex-row items-center justify-between gap-2 sm:gap-4 p-2 sm:p-6 border-t border-gray-200 dark:border-gray-700 bg-surface-panel dither-surface"
+			class="flex flex-row items-center justify-between gap-2 sm:gap-4 p-2 sm:p-6 border-t border-border bg-muted/30"
 		>
 			{#if showTemplateSelection}
 				<div class="flex-1"></div>

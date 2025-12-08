@@ -49,25 +49,19 @@
 		lg: 'px-4 py-3 text-lg min-h-[48px]'
 	};
 
-	// Wrapper classes - handles dithering (since textareas can't have ::before pseudo-elements)
-	let wrapperClasses = $derived(
-		twMerge(
-			'relative rounded overflow-hidden', // Container for dithering
-			'dither-soft', // Dithered texture on the container
-			'bg-surface-scratch dark:bg-slate-700/50' // Background on container
-		)
-	);
+	// Wrapper classes - Inkprint design
+	let wrapperClasses = $derived(twMerge('relative rounded-lg overflow-hidden', 'bg-card'));
 
 	let textareaClasses = $derived(
 		twMerge(
-			// Base classes - Scratchpad Ops design
-			'w-full rounded resize-y', // 4px radius (default rounded)
-			'border-2 transition-all duration-200', // 2px border for tactile feel
-			'focus:outline-none focus:ring-2 focus:ring-offset-1',
+			// Base classes - Inkprint design
+			'w-full rounded-lg resize-y',
+			'border transition-all duration-200',
+			'focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1',
 			'disabled:cursor-not-allowed disabled:opacity-50 disabled:resize-none',
 
-			// Placeholder - muted notebook feel
-			'placeholder:text-gray-500 dark:placeholder:text-gray-400',
+			// Placeholder - muted
+			'placeholder:text-muted-foreground',
 
 			// Size classes
 			sizeClasses[size],
@@ -75,19 +69,20 @@
 			// Auto resize
 			autoResize && 'resize-none overflow-hidden',
 
-			// State classes - industrial borders
-			error
-				? 'border-red-600 focus:ring-red-500 dark:border-red-500'
-				: 'border-gray-300 focus:ring-accent-orange focus:border-gray-400 dark:border-gray-600 dark:focus:border-gray-500',
+			// State classes - clean borders
+			error ? 'border-red-600 focus:ring-red-500' : 'border-border focus:border-accent',
 
-			// Background - transparent to show dithered container beneath
-			'bg-transparent',
+			// Background - card
+			'bg-card',
 
-			// Text color - slightly muted for notebook feel
-			'text-gray-900 dark:text-gray-100',
+			// Text color
+			'text-foreground',
 
-			// Position relative for proper stacking (no z-index needed - mix-blend-mode handles layering)
+			// Position relative for proper stacking
 			'relative',
+
+			// Shadow
+			'shadow-ink-inner',
 
 			// Custom classes (these will override conflicts)
 			className
@@ -147,7 +142,7 @@
 	}
 </script>
 
-<!-- Outer wrapper with dithering texture (textareas can't have ::before pseudo-elements) -->
+<!-- Outer wrapper -->
 <div class={wrapperClasses}>
 	<textarea
 		bind:this={textareaElement}
@@ -177,7 +172,7 @@
 		{errorMessage}
 	</p>
 {:else if helperText}
-	<p id="textarea-helper" class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+	<p id="textarea-helper" class="mt-1 text-sm text-muted-foreground">
 		{helperText}
 	</p>
 {/if}
@@ -197,37 +192,25 @@
 
 	/* Dark mode focus ring offset */
 	:global(.dark) textarea:focus {
-		--tw-ring-offset-color: rgb(31 41 55);
+		--tw-ring-offset-color: hsl(var(--background));
 	}
 
-	/* Custom scrollbar - industrial aesthetic */
+	/* Custom scrollbar - Inkprint aesthetic */
 	textarea::-webkit-scrollbar {
 		width: 6px;
 	}
 
 	textarea::-webkit-scrollbar-track {
-		background: rgba(62, 68, 89, 0.1);
+		background: hsl(var(--muted));
 		border-radius: 3px;
-	}
-
-	:global(.dark) textarea::-webkit-scrollbar-track {
-		background: rgba(62, 68, 89, 0.2);
 	}
 
 	textarea::-webkit-scrollbar-thumb {
-		background: rgba(45, 50, 66, 0.4);
+		background: hsl(var(--border));
 		border-radius: 3px;
 	}
 
-	:global(.dark) textarea::-webkit-scrollbar-thumb {
-		background: rgba(142, 149, 170, 0.3);
-	}
-
 	textarea::-webkit-scrollbar-thumb:hover {
-		background: rgba(45, 50, 66, 0.6);
-	}
-
-	:global(.dark) textarea::-webkit-scrollbar-thumb:hover {
-		background: rgba(142, 149, 170, 0.5);
+		background: hsl(var(--muted-foreground) / 0.5);
 	}
 </style>

@@ -156,14 +156,16 @@
 
 <!-- Account for navbar height (64px = h-16) by using calc() -->
 <div
-	class="flex items-center justify-center px-4 sm:px-6 lg:px-8 bg-[var(--surface-scratch)] dither-pattern"
+	class="flex items-center justify-center px-4 sm:px-6 lg:px-8 bg-background"
 	style="min-height: calc(100vh - 64px);"
 >
 	<div class="max-w-md w-full space-y-8 py-12">
 		<!-- Logo/Brand Section -->
 		<div class="text-center">
 			<div class="flex justify-center mb-6">
-				<div class="utility-block w-16 h-16 rounded-sm flex items-center justify-center">
+				<div
+					class="w-16 h-16 rounded-lg flex items-center justify-center border border-border bg-card shadow-ink tx tx-bloom tx-weak"
+				>
 					<video
 						src="/onboarding-assets/animations/brain-bolt-electric.mp4"
 						class="w-12 h-12"
@@ -176,19 +178,21 @@
 				</div>
 			</div>
 
-			<h2 class="text-3xl font-bold text-slate-900 dark:text-slate-100 mb-2">Welcome back</h2>
-			<p class="text-slate-700 dark:text-slate-300 mb-8">Sign in to your BuildOS account</p>
+			<h2 class="text-3xl font-bold text-foreground mb-2">Welcome back</h2>
+			<p class="text-muted-foreground mb-8">Sign in to your BuildOS account</p>
 		</div>
 
 		<!-- Form Section -->
-		<div class="card-industrial py-8 px-6 relative noise-overlay">
+		<div
+			class="rounded-lg border border-border bg-card py-8 px-6 shadow-ink tx tx-grain tx-weak"
+		>
 			<!-- Google OAuth Button -->
 			<div class="mb-6">
 				<button
 					type="button"
 					onclick={handleGoogleLogin}
 					disabled={googleLoading || loading}
-					class="btn-secondary w-full px-6 py-3 text-base flex items-center justify-center"
+					class="w-full px-6 py-3 text-base flex items-center justify-center rounded-lg border border-border bg-card text-foreground shadow-ink hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed pressable"
 				>
 					{#if !googleLoading}
 						<svg class="w-5 h-5 mr-3" viewBox="0 0 24 24">
@@ -217,30 +221,26 @@
 			<!-- Divider -->
 			<div class="relative mb-6">
 				<div class="absolute inset-0 flex items-center">
-					<div class="w-full border-t border-slate-400 dark:border-slate-600"></div>
+					<div class="w-full border-t border-border"></div>
 				</div>
 				<div class="relative flex justify-center text-sm">
-					<span
-						class="px-2 bg-[var(--surface-elevated)] text-slate-600 dark:text-slate-400"
-						>Or continue with email</span
-					>
+					<span class="px-2 bg-card text-muted-foreground">Or continue with email</span>
 				</div>
 			</div>
 
 			<form onsubmit={handleSubmit} class="space-y-6">
 				{#if error}
-					<div class="badge-draft text-red-800 dark:text-red-300 px-4 py-3">
+					<div
+						class="rounded-lg border border-destructive/50 bg-destructive/10 text-destructive px-4 py-3"
+					>
 						{error}
 					</div>
 				{/if}
 
 				<div class="space-y-5">
 					<div>
-						<label
-							for="email"
-							class="block text-sm font-semibold text-slate-900 dark:text-slate-100 mb-2"
-						>
-							Email address <span class="text-[var(--accent-orange)]">*</span>
+						<label for="email" class="block text-sm font-semibold text-foreground mb-2">
+							Email address <span class="text-accent">*</span>
 						</label>
 						<input
 							id="email"
@@ -253,19 +253,19 @@
 							disabled={loading || googleLoading}
 							placeholder="Enter your email"
 							onblur={validateEmail}
-							class="input-scratchpad w-full dither-soft relative"
+							class="w-full px-4 py-3 rounded-lg border border-border bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
 						/>
 						{#if emailError}
-							<p class="mt-1 text-sm text-red-600 dark:text-red-400">{emailError}</p>
+							<p class="mt-1 text-sm text-destructive">{emailError}</p>
 						{/if}
 					</div>
 
 					<div>
 						<label
 							for="password"
-							class="block text-sm font-semibold text-slate-900 dark:text-slate-100 mb-2"
+							class="block text-sm font-semibold text-foreground mb-2"
 						>
-							Password <span class="text-[var(--accent-orange)]">*</span>
+							Password <span class="text-accent">*</span>
 						</label>
 						<input
 							id="password"
@@ -277,7 +277,7 @@
 							disabled={loading || googleLoading}
 							onkeydown={handleKeydown}
 							placeholder="Enter your password"
-							class="input-scratchpad w-full dither-soft relative"
+							class="w-full px-4 py-3 rounded-lg border border-border bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
 						/>
 					</div>
 				</div>
@@ -286,7 +286,7 @@
 					<div class="text-sm">
 						<a
 							href="/auth/forgot-password"
-							class="font-medium text-[var(--accent-blue)] hover:brightness-110 transition-all"
+							class="font-medium text-accent hover:opacity-80 transition-opacity"
 						>
 							Forgot your password?
 						</a>
@@ -297,7 +297,7 @@
 					<button
 						type="submit"
 						disabled={loading || googleLoading}
-						class="btn-tactile w-full px-6 py-3 text-base"
+						class="w-full px-6 py-3 text-base rounded-lg bg-accent text-accent-foreground font-medium shadow-ink hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed pressable"
 					>
 						{loading ? 'Signing in...' : 'Sign in'}
 					</button>
@@ -306,11 +306,11 @@
 
 			<!-- Sign up link -->
 			<div class="mt-6 text-center">
-				<p class="text-sm text-slate-600 dark:text-slate-400">
+				<p class="text-sm text-muted-foreground">
 					Don't have an account?
 					<a
 						href="/auth/register"
-						class="font-medium text-[var(--accent-blue)] hover:brightness-110 transition-all"
+						class="font-medium text-accent hover:opacity-80 transition-opacity"
 					>
 						Create one now
 					</a>

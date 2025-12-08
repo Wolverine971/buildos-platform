@@ -753,32 +753,49 @@
 	showCloseButton={false}
 >
 	{#snippet header()}
-		<!-- Custom gradient header - grey/dark grey -->
+		<!-- Inkprint header with strip texture -->
 		<div
-			class="flex-shrink-0 bg-gradient-to-r from-gray-600 via-gray-700 to-gray-800 dark:from-gray-700 dark:via-gray-800 dark:to-gray-900 text-white px-3 py-3 sm:px-6 sm:py-5 flex flex-col gap-2 sm:gap-4 dither-gradient"
+			class="flex-shrink-0 bg-muted/50 border-b border-border px-3 py-3 sm:px-6 sm:py-5 flex flex-col gap-2 sm:gap-4 tx tx-strip tx-weak"
 		>
 			<div class="flex items-start justify-between gap-2 sm:gap-4">
 				<div class="space-y-1 sm:space-y-2 min-w-0 flex-1">
-					<p class="text-[10px] sm:text-xs font-semibold uppercase tracking-[0.3em] sm:tracking-[0.4em] text-white/70">
+					<p
+						class="text-[10px] sm:text-xs font-semibold uppercase tracking-[0.3em] sm:tracking-[0.4em] text-muted-foreground"
+					>
 						Task overview
 					</p>
-					<h2 class="text-lg sm:text-2xl font-bold leading-tight truncate">
+					<h2
+						class="text-lg sm:text-2xl font-bold leading-tight truncate text-foreground"
+					>
 						{title || task?.title || 'Task details'}
 					</h2>
 					<div class="flex flex-wrap items-center gap-1.5 sm:gap-3 text-xs sm:text-sm">
-						<span class="px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-semibold capitalize bg-white/20">{stateKey}</span>
-						<span class="hidden sm:inline font-mono text-xs tracking-wide">{template?.type_key || task?.type_key || 'task'}</span>
-						<span class="text-white/80">#{task?.id?.slice(0, 8) || taskId.slice(0, 8)}</span>
+						<span
+							class="px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-semibold capitalize bg-accent/20 text-accent-foreground"
+							>{stateKey}</span
+						>
+						<span
+							class="hidden sm:inline font-mono text-xs tracking-wide text-muted-foreground"
+							>{template?.type_key || task?.type_key || 'task'}</span
+						>
+						<span class="text-muted-foreground"
+							>#{task?.id?.slice(0, 8) || taskId.slice(0, 8)}</span
+						>
 					</div>
 				</div>
 				<Button
 					variant="ghost"
 					size="sm"
 					onclick={handleClose}
-					class="text-white/80 hover:text-white shrink-0 !p-1.5 sm:!p-2"
+					class="text-muted-foreground hover:text-foreground shrink-0 !p-1.5 sm:!p-2"
 					disabled={isSaving || isDeleting}
 				>
-					<svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<svg
+						class="w-4 h-4 sm:w-5 sm:h-5"
+						fill="none"
+						stroke="currentColor"
+						viewBox="0 0 24 24"
+					>
 						<path
 							stroke-linecap="round"
 							stroke-linejoin="round"
@@ -790,21 +807,50 @@
 			</div>
 
 			<div class="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4 text-xs sm:text-sm">
-				<div class="rounded bg-white/10 backdrop-blur p-2 sm:p-3">
-					<p class="text-[10px] sm:text-xs uppercase tracking-[0.2em] sm:tracking-[0.3em] text-white/70">Priority</p>
-					<p class="text-sm sm:text-lg font-semibold">{priorityDisplay?.label?.split(' - ')[0] || 'P3'}</p>
+				<div class="rounded bg-muted/50 p-2 sm:p-3">
+					<p
+						class="text-[10px] sm:text-xs uppercase tracking-[0.2em] sm:tracking-[0.3em] text-muted-foreground"
+					>
+						Priority
+					</p>
+					<p class="text-sm sm:text-lg font-semibold text-foreground">
+						{priorityDisplay?.label?.split(' - ')[0] || 'P3'}
+					</p>
 				</div>
-				<div class="rounded bg-white/10 backdrop-blur p-2 sm:p-3">
-					<p class="text-[10px] sm:text-xs uppercase tracking-[0.2em] sm:tracking-[0.3em] text-white/70">Due</p>
-					<p class="text-sm sm:text-lg font-semibold truncate">{dueAt ? new Date(dueAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : 'No date'}</p>
+				<div class="rounded bg-muted/50 p-2 sm:p-3">
+					<p
+						class="text-[10px] sm:text-xs uppercase tracking-[0.2em] sm:tracking-[0.3em] text-muted-foreground"
+					>
+						Due
+					</p>
+					<p class="text-sm sm:text-lg font-semibold truncate text-foreground">
+						{dueAt
+							? new Date(dueAt).toLocaleDateString(undefined, {
+									month: 'short',
+									day: 'numeric'
+								})
+							: 'No date'}
+					</p>
 				</div>
-				<div class="rounded bg-white/10 backdrop-blur p-2 sm:p-3">
-					<p class="text-[10px] sm:text-xs uppercase tracking-[0.2em] sm:tracking-[0.3em] text-white/70">Docs</p>
-					<p class="text-sm sm:text-lg font-semibold">{deliverableDocuments.length}</p>
+				<div class="rounded bg-muted/50 p-2 sm:p-3">
+					<p
+						class="text-[10px] sm:text-xs uppercase tracking-[0.2em] sm:tracking-[0.3em] text-muted-foreground"
+					>
+						Docs
+					</p>
+					<p class="text-sm sm:text-lg font-semibold text-foreground">
+						{deliverableDocuments.length}
+					</p>
 				</div>
-				<div class="rounded bg-white/10 backdrop-blur p-2 sm:p-3">
-					<p class="text-[10px] sm:text-xs uppercase tracking-[0.2em] sm:tracking-[0.3em] text-white/70">Plan</p>
-					<p class="text-sm sm:text-lg font-semibold truncate">{selectedPlan?.name || 'None'}</p>
+				<div class="rounded bg-muted/50 p-2 sm:p-3">
+					<p
+						class="text-[10px] sm:text-xs uppercase tracking-[0.2em] sm:tracking-[0.3em] text-muted-foreground"
+					>
+						Plan
+					</p>
+					<p class="text-sm sm:text-lg font-semibold truncate text-foreground">
+						{selectedPlan?.name || 'None'}
+					</p>
 				</div>
 			</div>
 		</div>
@@ -1401,9 +1447,7 @@
 																		class="w-3.5 h-3.5 text-blue-500"
 																	/>
 																	Plans
-																	<Badge
-																		variant="info"
-																		size="sm"
+																	<Badge variant="info" size="sm"
 																		>{linkedEntities.plans
 																			.length}</Badge
 																	>
@@ -1452,9 +1496,7 @@
 																		class="w-3.5 h-3.5 text-purple-500"
 																	/>
 																	Goals
-																	<Badge
-																		variant="info"
-																		size="sm"
+																	<Badge variant="info" size="sm"
 																		>{linkedEntities.goals
 																			.length}</Badge
 																	>
@@ -1503,9 +1545,7 @@
 																		class="w-3.5 h-3.5 text-amber-500"
 																	/>
 																	Milestones
-																	<Badge
-																		variant="info"
-																		size="sm"
+																	<Badge variant="info" size="sm"
 																		>{linkedEntities.milestones
 																			.length}</Badge
 																	>
@@ -1548,9 +1588,7 @@
 																		class="w-3.5 h-3.5 text-cyan-500"
 																	/>
 																	Documents
-																	<Badge
-																		variant="info"
-																		size="sm"
+																	<Badge variant="info" size="sm"
 																		>{linkedEntities.documents
 																			.length}</Badge
 																	>
@@ -1601,9 +1639,7 @@
 																		class="w-3.5 h-3.5 text-green-500"
 																	/>
 																	Related Tasks
-																	<Badge
-																		variant="info"
-																		size="sm"
+																	<Badge variant="info" size="sm"
 																		>{linkedEntities
 																			.dependentTasks
 																			.length}</Badge
@@ -1664,9 +1700,7 @@
 																		class="w-3.5 h-3.5 text-violet-500"
 																	/>
 																	Outputs
-																	<Badge
-																		variant="info"
-																		size="sm"
+																	<Badge variant="info" size="sm"
 																		>{linkedEntities.outputs
 																			.length}</Badge
 																	>

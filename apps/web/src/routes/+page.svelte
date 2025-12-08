@@ -1,6 +1,6 @@
 <!-- apps/web/src/routes/+page.svelte -->
 <script lang="ts">
-	import { CheckCircle2, Calendar, Zap } from 'lucide-svelte';
+	import { CircleCheck, Calendar, Zap } from 'lucide-svelte';
 	import './dashboard.css';
 	import type { User } from '$lib/types/dashboard';
 	import type { DashboardData } from '$lib/services/dashboardData.service';
@@ -262,67 +262,81 @@
 		/>
 	{:else}
 		<!-- PERFORMANCE: Lightweight loading state with better UX -->
-		<div
-			class="min-h-screen bg-surface-scratch dark:bg-slate-900 text-slate-900 dark:text-slate-100"
-			aria-busy="true"
-		>
+		<div class="min-h-screen bg-background text-foreground" aria-busy="true">
 			<div class="flex items-center justify-center min-h-screen">
 				<div class="text-center">
 					<div
-						class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"
+						class="animate-spin rounded-full h-8 w-8 border-b-2 border-accent mx-auto mb-4"
 						role="status"
 						aria-label="Loading dashboard"
 					></div>
-					<p class="text-slate-600 dark:text-slate-400">Preparing dashboard...</p>
+					<p class="text-muted-foreground">Preparing dashboard...</p>
 				</div>
 			</div>
 		</div>
 	{/if}
 {:else}
-	<!-- PERFORMANCE: Optimized landing page with better loading -->
-	<div
-		class="min-h-screen bg-surface-scratch dark:bg-slate-900 text-slate-900 dark:text-slate-100"
-	>
+	<!-- PERFORMANCE: Optimized landing page with Inkprint styling -->
+	<div class="min-h-screen bg-background text-foreground">
 		<!-- Hero Section -->
-		<section class="relative industrial-panel" aria-label="Hero section">
-			<div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-16">
-				<div class="text-center mb-12">
-					<!-- Video Icon Container (keep existing) -->
-					<div class="flex justify-center mb-8">
-						<!-- ... existing video code ... -->
-					</div>
+		<section class="relative border-b border-border overflow-hidden" aria-label="Hero section">
+			<!-- Subtle halftone background texture -->
+			<div
+				class="absolute inset-0 hero-halftone-bg pointer-events-none"
+				aria-hidden="true"
+			></div>
 
+			<div class="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-16">
+				<div class="text-center mb-12">
 					<div class="relative z-10 max-w-4xl mx-auto text-center flex flex-col">
-						<!-- Tagline with industrial styling -->
+						<!-- Tagline with Inkprint styling -->
 						<h1
-							class="text-4xl sm:text-5xl md:text-6xl font-bold mb-6 leading-tight fade-in text-slate-900 dark:text-slate-100"
+							class="text-4xl sm:text-5xl md:text-6xl font-black mb-6 leading-tight fade-in text-foreground tracking-tight"
 						>
-							Project organization built <br />for
-							<span class="text-[var(--accent-orange)]">the AI era.</span>
+							Project organization built <br class="hidden sm:block" />for
+							<span class="relative inline-block">
+								<span class="relative z-10">the AI era.</span>
+								<span
+									class="absolute inset-x-[-0.15em] bottom-[0.05em] -z-10 h-[0.55em] rounded-sm bg-accent/20 hero-highlight"
+								></span>
+							</span>
 						</h1>
 
 						<!-- Subtitle -->
 						<p
-							class="text-xl text-slate-700 dark:text-slate-300 mb-8 max-w-2xl mx-auto fade-in leading-relaxed"
+							class="text-lg sm:text-xl text-muted-foreground mb-10 max-w-2xl mx-auto fade-in leading-relaxed"
 						>
 							Your thoughts, organized.<br class="hidden sm:block" />
 							Your next step, clear.
 						</p>
 
-						<!-- CTA with tactile button -->
-						<p class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">
-							Ready for BuildOS to help you organize your projects?
-						</p>
-						<a href="/auth/register" aria-label="Start working with BuildOS">
-							<button class="btn-tactile px-8 py-3 text-lg">
-								Start Brain Dumping →
-							</button>
-						</a>
+						<!-- CTA with Inkprint button -->
+						<div class="flex flex-col items-center gap-4">
+							<p class="text-base sm:text-lg font-semibold text-foreground">
+								Ready for BuildOS to help you organize your projects?
+							</p>
+							<a
+								href="/auth/register"
+								aria-label="Start working with BuildOS"
+								class="group"
+							>
+								<button
+									class="pressable rounded-full bg-foreground px-8 py-3.5 text-lg font-bold text-background shadow-ink-strong border-2 border-transparent hover:border-accent transition-all duration-200 group-hover:scale-[1.02]"
+								>
+									Start Brain Dumping
+									<span
+										class="inline-block ml-1 transition-transform duration-200 group-hover:translate-x-1"
+										>→</span
+									>
+								</button>
+							</a>
+						</div>
 
 						<!-- Trust Signal -->
 						<p
-							class="text-sm text-slate-600 dark:text-slate-400 mt-6 fade-in badge-draft inline-block m-auto"
+							class="text-sm text-muted-foreground mt-8 fade-in inline-flex items-center gap-2 m-auto px-5 py-2.5 rounded-full border border-border bg-card/80 backdrop-blur-sm shadow-ink"
 						>
+							<span class="w-2 h-2 rounded-full bg-success animate-pulse"></span>
 							14-day free trial • No credit card • Actually built for ADHD
 						</p>
 					</div>
@@ -333,91 +347,95 @@
 		<BuildOSFlow />
 
 		<!-- Who It's For Section -->
-		<section
-			class="py-20 bg-[var(--surface-panel)] noise-overlay"
-			aria-labelledby="audience-heading"
-		>
+		<section class="py-20 bg-muted border-b border-border" aria-labelledby="audience-heading">
 			<div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
 				<h2
 					id="audience-heading"
-					class="text-3xl font-bold text-center mb-12 text-slate-900 dark:text-slate-100"
+					class="text-3xl font-bold text-center mb-12 text-foreground"
 				>
 					Finally, a home base for scattered minds
 				</h2>
 
-				<div class="grid grid-cols-1 md:grid-cols-3 gap-8 workbench-grid">
+				<div class="grid grid-cols-1 md:grid-cols-3 gap-8">
 					<!-- For ADHD -->
-					<article class="card-industrial p-6 dither-soft relative">
-						<h3 class="text-xl font-semibold mb-3 text-slate-900 dark:text-slate-100">
-							ADHD Minds
-						</h3>
-						<p class="text-slate-700 dark:text-slate-300 mb-4">
-							<strong>Your brain isn't broken. Your tools are.</strong> Traditional productivity
-							tools demand linear thinking. Your brain doesn't work that way. BuildOS gets
-							it.
+					<article
+						class="rounded-3xl border border-border bg-card shadow-ink tx tx-bloom tx-weak ink-frame p-6"
+					>
+						<h3 class="text-xl font-semibold mb-3 text-foreground">ADHD Minds</h3>
+						<p class="text-muted-foreground mb-4">
+							<strong class="text-foreground"
+								>Your brain isn't broken. Your tools are.</strong
+							> Traditional productivity tools demand linear thinking. Your brain doesn't
+							work that way. BuildOS gets it.
 						</p>
-						<ul class="text-sm text-slate-600 dark:text-slate-400 space-y-2">
+						<ul class="text-sm text-muted-foreground space-y-2">
 							<li class="flex items-start">
-								<span class="text-[var(--accent-blue)] mr-2 font-bold">✓</span>
+								<span class="text-accent mr-2 font-bold">✓</span>
 								<span>Dump thoughts in any order</span>
 							</li>
 							<li class="flex items-start">
-								<span class="text-[var(--accent-blue)] mr-2 font-bold">✓</span>
+								<span class="text-accent mr-2 font-bold">✓</span>
 								<span>AI finds the structure</span>
 							</li>
 							<li class="flex items-start">
-								<span class="text-[var(--accent-blue)] mr-2 font-bold">✓</span>
+								<span class="text-accent mr-2 font-bold">✓</span>
 								<span>Tiny next steps, not overwhelming lists</span>
 							</li>
 						</ul>
 					</article>
 
 					<!-- For Overwhelmed Professionals -->
-					<article class="card-industrial p-6 dither-soft relative">
-						<h3 class="text-xl font-semibold mb-3 text-slate-900 dark:text-slate-100">
+					<article
+						class="rounded-3xl border border-border bg-card shadow-ink tx tx-grain tx-weak ink-frame p-6"
+					>
+						<h3 class="text-xl font-semibold mb-3 text-foreground">
 							Overwhelmed Professionals
 						</h3>
-						<p class="text-slate-700 dark:text-slate-300 mb-4">
-							<strong>From drowning to directing.</strong> When everything feels urgent,
-							nothing is clear. BuildOS turns your mental chaos into a command center.
+						<p class="text-muted-foreground mb-4">
+							<strong class="text-foreground">From drowning to directing.</strong> When
+							everything feels urgent, nothing is clear. BuildOS turns your mental chaos
+							into a command center.
 						</p>
-						<ul class="text-sm text-slate-600 dark:text-slate-400 space-y-2">
+						<ul class="text-sm text-muted-foreground space-y-2">
 							<li class="flex items-start">
-								<span class="text-[var(--accent-olive)] mr-2 font-bold">✓</span>
+								<span class="text-accent mr-2 font-bold">✓</span>
 								<span>Post-meeting brain dumps</span>
 							</li>
 							<li class="flex items-start">
-								<span class="text-[var(--accent-olive)] mr-2 font-bold">✓</span>
+								<span class="text-accent mr-2 font-bold">✓</span>
 								<span>All projects in one place</span>
 							</li>
 							<li class="flex items-start">
-								<span class="text-[var(--accent-olive)] mr-2 font-bold">✓</span>
+								<span class="text-accent mr-2 font-bold">✓</span>
 								<span>Know exactly what to tackle next</span>
 							</li>
 						</ul>
 					</article>
 
 					<!-- For Students & Creators -->
-					<article class="card-industrial p-6 dither-soft relative">
-						<h3 class="text-xl font-semibold mb-3 text-slate-900 dark:text-slate-100">
+					<article
+						class="rounded-3xl border border-border bg-card shadow-ink tx tx-pulse tx-weak ink-frame p-6"
+					>
+						<h3 class="text-xl font-semibold mb-3 text-foreground">
 							Students & Creators
 						</h3>
-						<p class="text-slate-700 dark:text-slate-300 mb-4">
-							<strong>Chaos to dean's list (or ship list).</strong> Stop losing brilliant
-							ideas to the void. Capture everything, organize instantly, actually finish
-							projects.
+						<p class="text-muted-foreground mb-4">
+							<strong class="text-foreground"
+								>Chaos to dean's list (or ship list).</strong
+							> Stop losing brilliant ideas to the void. Capture everything, organize instantly,
+							actually finish projects.
 						</p>
-						<ul class="text-sm text-slate-600 dark:text-slate-400 space-y-2">
+						<ul class="text-sm text-muted-foreground space-y-2">
 							<li class="flex items-start">
-								<span class="text-[var(--accent-orange)] mr-2 font-bold">✓</span>
+								<span class="text-accent mr-2 font-bold">✓</span>
 								<span>Semester panic → study plan</span>
 							</li>
 							<li class="flex items-start">
-								<span class="text-[var(--accent-orange)] mr-2 font-bold">✓</span>
+								<span class="text-accent mr-2 font-bold">✓</span>
 								<span>Creative sparks → content calendar</span>
 							</li>
 							<li class="flex items-start">
-								<span class="text-[var(--accent-orange)] mr-2 font-bold">✓</span>
+								<span class="text-accent mr-2 font-bold">✓</span>
 								<span>Ideas → execution</span>
 							</li>
 						</ul>
@@ -427,54 +445,54 @@
 		</section>
 
 		<!-- Trust & Objections Section -->
-		<section
-			class="py-20 bg-[var(--surface-scratch)] dither-pattern"
-			aria-labelledby="trust-heading"
-		>
+		<section class="py-20 bg-background border-b border-border" aria-labelledby="trust-heading">
 			<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-				<h2
-					id="trust-heading"
-					class="text-3xl font-bold text-center mb-12 text-slate-900 dark:text-slate-100"
-				>
+				<h2 id="trust-heading" class="text-3xl font-bold text-center mb-12 text-foreground">
 					Built by someone who struggled with chaos and needed better
 				</h2>
 
 				<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-					<div class="clarity-zone p-6">
-						<h3 class="font-semibold text-lg mb-2 text-slate-900 dark:text-slate-100">
-							🧠 No Shame Zone
-						</h3>
-						<p class="text-slate-700 dark:text-slate-300">
+					<div
+						class="rounded-2xl border border-border bg-card tx tx-thread tx-weak p-6 shadow-ink ink-frame"
+					>
+						<h3 class="font-semibold text-lg mb-2 text-foreground">🧠 No Shame Zone</h3>
+						<p class="text-muted-foreground">
 							We know you've abandoned Notion 6 times. BuildOS works even on your
 							worst days. No complex setup. No maintenance guilt.
 						</p>
 					</div>
 
-					<div class="clarity-zone p-6">
-						<h3 class="font-semibold text-lg mb-2 text-slate-900 dark:text-slate-100">
+					<div
+						class="rounded-2xl border border-border bg-card tx tx-thread tx-weak p-6 shadow-ink ink-frame"
+					>
+						<h3 class="font-semibold text-lg mb-2 text-foreground">
 							⚡ 60-Second Clarity
 						</h3>
-						<p class="text-slate-700 dark:text-slate-300">
+						<p class="text-muted-foreground">
 							From brain dump to organized projects in literally one minute. Voice,
 							text, paste—however your thoughts come out.
 						</p>
 					</div>
 
-					<div class="clarity-zone p-6">
-						<h3 class="font-semibold text-lg mb-2 text-slate-900 dark:text-slate-100">
+					<div
+						class="rounded-2xl border border-border bg-card tx tx-thread tx-weak p-6 shadow-ink ink-frame"
+					>
+						<h3 class="font-semibold text-lg mb-2 text-foreground">
 							📍 Your Home Base
 						</h3>
-						<p class="text-slate-700 dark:text-slate-300">
+						<p class="text-muted-foreground">
 							Not another app to manage. This is where all your scattered thoughts
 							finally come together. Users call it their "external brain."
 						</p>
 					</div>
 
-					<div class="clarity-zone p-6">
-						<h3 class="font-semibold text-lg mb-2 text-slate-900 dark:text-slate-100">
+					<div
+						class="rounded-2xl border border-border bg-card tx tx-thread tx-weak p-6 shadow-ink ink-frame"
+					>
+						<h3 class="font-semibold text-lg mb-2 text-foreground">
 							🎯 Progress, Not Perfection
 						</h3>
-						<p class="text-slate-700 dark:text-slate-300">
+						<p class="text-muted-foreground">
 							Celebrate tiny wins. One task done > perfect system abandoned. BuildOS
 							keeps you moving forward, not organizing forever.
 						</p>
@@ -484,14 +502,11 @@
 		</section>
 
 		<!-- Three Pillars -->
-		<section
-			class="py-20 bg-[var(--surface-panel)] noise-overlay"
-			aria-labelledby="pillars-heading"
-		>
+		<section class="py-20 bg-muted border-b border-border" aria-labelledby="pillars-heading">
 			<div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
 				<h2
 					id="pillars-heading"
-					class="text-3xl font-bold text-center mb-12 text-slate-900 dark:text-slate-100"
+					class="text-3xl font-bold text-center mb-12 text-foreground"
 				>
 					Brain dump. See structure. Take action.
 				</h2>
@@ -500,59 +515,47 @@
 					<!-- Talk It Out -->
 					<article class="text-center fade-in">
 						<div
-							class="utility-block w-16 h-16 rounded-sm flex items-center justify-center mx-auto mb-4 float-animation"
+							class="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-border bg-card shadow-ink tx tx-bloom tx-weak ink-frame"
 						>
-							<CheckCircle2
-								class="w-8 h-8 text-gray-700 dark:text-gray-200"
-								aria-hidden="true"
-							/>
+							<CircleCheck class="w-8 h-8 text-foreground" aria-hidden="true" />
 						</div>
-						<h3 class="text-xl font-semibold mb-3 text-slate-900 dark:text-slate-100">
-							Talk It Out
-						</h3>
-						<p class="text-slate-700 dark:text-slate-300 leading-relaxed">
-							<strong>Your thoughts, any format.</strong> Voice ramble at 2am? Frantic
-							typing after a meeting? Copy-paste from everywhere? BuildOS handles it all.
-							No formatting. No structure needed. Just dump.
+						<h3 class="text-xl font-semibold mb-3 text-foreground">Talk It Out</h3>
+						<p class="text-muted-foreground leading-relaxed">
+							<strong class="text-foreground">Your thoughts, any format.</strong> Voice
+							ramble at 2am? Frantic typing after a meeting? Copy-paste from everywhere?
+							BuildOS handles it all. No formatting. No structure needed. Just dump.
 						</p>
 					</article>
 
 					<!-- AI Organization -->
 					<article class="text-center fade-in delay-200">
 						<div
-							class="utility-block w-16 h-16 rounded-sm flex items-center justify-center mx-auto mb-4 float-animation delay-2000"
+							class="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-border bg-card shadow-ink tx tx-grain tx-weak ink-frame"
 						>
-							<Zap
-								class="w-8 h-8 text-gray-700 dark:text-gray-200"
-								aria-hidden="true"
-							/>
+							<Zap class="w-8 h-8 text-foreground" aria-hidden="true" />
 						</div>
-						<h3 class="text-xl font-semibold mb-3 text-slate-900 dark:text-slate-100">
-							AI Organization
-						</h3>
-						<p class="text-slate-700 dark:text-slate-300 leading-relaxed">
-							<strong>Instant clarity from chaos.</strong> Watch your word vomit transform
-							into clear projects with phases. Every task extracted. Ideas parked for later.
-							Context that builds over time.
+						<h3 class="text-xl font-semibold mb-3 text-foreground">AI Organization</h3>
+						<p class="text-muted-foreground leading-relaxed">
+							<strong class="text-foreground">Instant clarity from chaos.</strong> Watch
+							your word vomit transform into clear projects with phases. Every task extracted.
+							Ideas parked for later. Context that builds over time.
 						</p>
 					</article>
 
 					<!-- One-Click Execution -->
 					<article class="text-center fade-in delay-400">
 						<div
-							class="utility-block w-16 h-16 rounded-sm flex items-center justify-center mx-auto mb-4 float-animation delay-4000"
+							class="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-border bg-card shadow-ink tx tx-pulse tx-weak ink-frame"
 						>
-							<Calendar
-								class="w-8 h-8 text-gray-700 dark:text-gray-200"
-								aria-hidden="true"
-							/>
+							<Calendar class="w-8 h-8 text-foreground" aria-hidden="true" />
 						</div>
-						<h3 class="text-xl font-semibold mb-3 text-slate-900 dark:text-slate-100">
+						<h3 class="text-xl font-semibold mb-3 text-foreground">
 							One-Click Execution
 						</h3>
-						<p class="text-slate-700 dark:text-slate-300 leading-relaxed">
-							<strong>From "I should" to "I did".</strong> See your next step. Click to
-							schedule. Get daily briefs that actually help. Stop planning. Start doing.
+						<p class="text-muted-foreground leading-relaxed">
+							<strong class="text-foreground">From "I should" to "I did".</strong> See
+							your next step. Click to schedule. Get daily briefs that actually help. Stop
+							planning. Start doing.
 						</p>
 					</article>
 				</div>
@@ -561,13 +564,19 @@
 
 		<!-- Final CTA -->
 		<section
-			class="relative my-6 py-20 industrial-panel grain-animate"
+			class="relative my-6 py-20 bg-card border border-border rounded-3xl mx-4 tx tx-frame tx-weak shadow-ink-strong overflow-hidden"
 			aria-labelledby="cta-heading"
 		>
+			<!-- Subtle halftone accent in corner -->
+			<div
+				class="absolute -top-20 -right-20 w-64 h-64 cta-halftone-accent opacity-30 pointer-events-none"
+				aria-hidden="true"
+			></div>
+
 			<div class="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
 				<h2
 					id="cta-heading"
-					class="text-3xl font-bold mb-6 text-slate-900 dark:text-slate-100"
+					class="text-2xl sm:text-3xl font-black mb-6 text-foreground tracking-tight"
 				>
 					Your scattered thoughts are not the problem.
 					{#if innerWidth > 600}
@@ -575,29 +584,117 @@
 					{/if}
 					They're potential waiting to be organized.
 				</h2>
-				<p class="text-xl text-slate-700 dark:text-slate-300 mb-4 mt-8 leading-relaxed">
+				<p class="text-lg sm:text-xl text-muted-foreground mb-4 mt-8 leading-relaxed">
 					You've tried the complex systems. You've abandoned the perfect planners.
 				</p>
-				<p class="text-xl text-slate-700 dark:text-slate-300 mb-8 leading-relaxed">
+				<p class="text-lg sm:text-xl text-muted-foreground mb-8 leading-relaxed">
 					What if the tools were wrong, not you?
 				</p>
-				<p
-					class="text-lg text-slate-700 dark:text-slate-300 mb-8 leading-relaxed font-semibold"
-				>
+				<p class="text-base sm:text-lg text-foreground mb-8 leading-relaxed font-semibold">
 					BuildOS is your home base. The one place where your chaos becomes clarity.
 				</p>
-				<div class="space-y-4">
-					<a href="/auth/register" aria-label="Start your free trial with BuildOS">
-						<button class="btn-tactile px-8 py-3 text-lg">
-							Find Your Home Base →
+				<div class="flex flex-col items-center gap-4">
+					<a
+						href="/auth/register"
+						aria-label="Start your free trial with BuildOS"
+						class="group"
+					>
+						<button
+							class="pressable rounded-full bg-accent px-8 py-3.5 text-lg font-bold text-accent-foreground shadow-ink-strong border-2 border-transparent hover:border-foreground/20 transition-all duration-200 group-hover:scale-[1.02]"
+						>
+							Find Your Home Base
+							<span
+								class="inline-block ml-1 transition-transform duration-200 group-hover:translate-x-1"
+								>→</span
+							>
 						</button>
 					</a>
-					<p class="text-sm text-slate-600 dark:text-slate-400 badge-draft inline-block">
-						Join 500+ scattered minds who finally stick with their system<br />
-						14 days free • Cancel anytime • No shame in trying
+					<p
+						class="text-sm text-muted-foreground inline-flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 px-5 py-2.5 rounded-full border border-border bg-background/80 backdrop-blur-sm shadow-ink"
+					>
+						<span>Join 500+ scattered minds who finally stick with their system</span>
+						<span class="hidden sm:inline text-border">•</span>
+						<span class="text-xs sm:text-sm">14 days free • Cancel anytime</span>
 					</p>
 				</div>
 			</div>
 		</section>
 	</div>
 {/if}
+
+<style>
+	/* Hero section halftone background */
+	.hero-halftone-bg {
+		background-image: radial-gradient(
+			circle at 30% 20%,
+			hsl(var(--accent) / 0.04) 1px,
+			transparent 1px
+		);
+		background-size: 24px 24px;
+		mask-image: radial-gradient(
+			ellipse 80% 60% at 50% 0%,
+			rgba(0, 0, 0, 0.5) 0%,
+			transparent 70%
+		);
+		-webkit-mask-image: radial-gradient(
+			ellipse 80% 60% at 50% 0%,
+			rgba(0, 0, 0, 0.5) 0%,
+			transparent 70%
+		);
+	}
+
+	:global(.dark) .hero-halftone-bg {
+		background-image: radial-gradient(
+			circle at 30% 20%,
+			hsl(var(--accent) / 0.06) 1px,
+			transparent 1px
+		);
+	}
+
+	/* Hero highlight with halftone texture */
+	.hero-highlight {
+		background-image: radial-gradient(
+			circle at center,
+			hsl(var(--accent) / 0.15) 1px,
+			transparent 1px
+		);
+		background-size: 4px 4px;
+		background-color: hsl(var(--accent) / 0.15);
+	}
+
+	/* CTA section corner halftone */
+	.cta-halftone-accent {
+		background-image: radial-gradient(
+			circle at center,
+			hsl(var(--accent) / 0.4) 2px,
+			transparent 2px
+		);
+		background-size: 8px 8px;
+		border-radius: 50%;
+		filter: blur(1px);
+	}
+
+	:global(.dark) .cta-halftone-accent {
+		background-image: radial-gradient(
+			circle at center,
+			hsl(var(--accent) / 0.5) 2px,
+			transparent 2px
+		);
+	}
+
+	/* Fade in animation for landing page elements */
+	.fade-in {
+		animation: fadeInUp 0.6s ease-out forwards;
+	}
+
+	@keyframes fadeInUp {
+		from {
+			opacity: 0;
+			transform: translateY(8px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
+	}
+</style>

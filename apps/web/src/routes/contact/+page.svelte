@@ -87,12 +87,14 @@
 	author="DJ Wayne"
 />
 
-<main class="min-h-screen bg-[var(--surface-scratch)] dither-pattern">
+<main class="min-h-screen bg-background">
 	<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
 		<!-- Header -->
 		<header class="text-center mb-12">
 			<div class="flex justify-center mb-6">
-				<div class="utility-block w-14 h-14 rounded-sm flex items-center justify-center">
+				<div
+					class="rounded-lg border border-border bg-card shadow-ink w-14 h-14 rounded-sm flex items-center justify-center"
+				>
 					<video
 						src="/onboarding-assets/animations/brain-bolt-electric.mp4"
 						class="w-10 h-10"
@@ -104,26 +106,30 @@
 					></video>
 				</div>
 			</div>
-			<h1 class="text-4xl md:text-5xl font-bold text-slate-900 dark:text-slate-100 mb-4">
-				Building BuildOS
-			</h1>
-			<p class="text-xl text-slate-700 dark:text-slate-300 max-w-2xl mx-auto mb-6">
+			<h1 class="text-4xl md:text-5xl font-bold text-foreground mb-4">Building BuildOS</h1>
+			<p class="text-xl text-muted-foreground max-w-2xl mx-auto mb-6">
 				AI that organizes your brain dumps into structured projects and tasks. Never lose
 				information, build context as you go.
 			</p>
 
 			<!-- Founder credibility -->
 			<div class="flex justify-center items-center space-x-6 text-sm">
-				<span class="flex items-center badge-draft">
-					<div class="w-2 h-2 bg-[var(--accent-orange)] rounded-full mr-2"></div>
+				<span
+					class="flex items-center rounded-lg border border-border bg-muted px-2 py-1 text-sm text-muted-foreground"
+				>
+					<div class="w-2 h-2 bg-accent rounded-full mr-2"></div>
 					Veteran Founder
 				</span>
-				<span class="flex items-center badge-draft">
-					<div class="w-2 h-2 bg-[var(--accent-blue)] rounded-full mr-2"></div>
+				<span
+					class="flex items-center rounded-lg border border-border bg-muted px-2 py-1 text-sm text-muted-foreground"
+				>
+					<div class="w-2 h-2 bg-accent rounded-full mr-2"></div>
 					YC-backed startup experience
 				</span>
-				<span class="flex items-center badge-draft">
-					<div class="w-2 h-2 bg-[var(--accent-olive)] rounded-full mr-2"></div>
+				<span
+					class="flex items-center rounded-lg border border-border bg-muted px-2 py-1 text-sm text-muted-foreground"
+				>
+					<div class="w-2 h-2 bg-accent rounded-full mr-2"></div>
 					USMC Veteran
 				</span>
 			</div>
@@ -136,17 +142,19 @@
 					{@const Icon = card.icon}
 					<a
 						href={card.href}
-						class="relative card-industrial p-6 hover:brightness-105 transition-all group dither-soft"
+						class="relative rounded-lg border border-border bg-card shadow-ink p-6 hover:brightness-105 transition-all group tx tx-grain tx-weak"
 					>
 						{#if card.badge}
-							<div class="absolute -top-2 -right-2 badge-active">
+							<div
+								class="absolute -top-2 -right-2 rounded-full bg-accent text-accent-foreground text-xs font-bold px-2 py-1"
+							>
 								{card.badge}
 							</div>
 						{/if}
 						<div class="flex items-start space-x-4">
 							<div class="flex-shrink-0">
 								<div
-									class="utility-block w-12 h-12 rounded-sm flex items-center justify-center"
+									class="rounded-lg border border-border bg-card shadow-ink w-12 h-12 rounded-sm flex items-center justify-center"
 								>
 									<Icon
 										class="w-6 h-6 text-gray-700 dark:text-gray-200 group-hover:scale-110 transition-transform"
@@ -154,10 +162,10 @@
 								</div>
 							</div>
 							<div>
-								<h3 class="font-bold text-slate-900 dark:text-slate-100 mb-1">
+								<h3 class="font-bold text-foreground mb-1">
 									{card.title}
 								</h3>
-								<p class="text-sm text-slate-700 dark:text-slate-300">
+								<p class="text-sm text-muted-foreground">
 									{card.description}
 								</p>
 							</div>
@@ -168,46 +176,40 @@
 		</section>
 
 		<!-- Why BuildOS -->
-		<section class="card-industrial p-8 mb-12 relative noise-overlay">
-			<h2 class="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-6">
-				The Problem We're Solving
-			</h2>
+		<section
+			class="rounded-lg border border-border bg-card shadow-ink p-8 mb-12 relative tx tx-grain tx-weak"
+		>
+			<h2 class="text-2xl font-bold text-foreground mb-6">The Problem We're Solving</h2>
 			<div class="grid md:grid-cols-2 gap-8">
 				<div>
-					<h3 class="font-semibold text-slate-900 dark:text-slate-100 mb-3">
-						Scattered Information
-					</h3>
-					<p class="text-slate-700 dark:text-slate-300 mb-4">
+					<h3 class="font-semibold text-foreground mb-3">Scattered Information</h3>
+					<p class="text-muted-foreground mb-4">
 						Thoughts spread across Notion, Obsidian, Apple Notes, random text files.
 						Brilliant ideas lost in daily chaos.
 					</p>
-					<h3 class="font-semibold text-slate-900 dark:text-slate-100 mb-3">
-						LLM Context Loss
-					</h3>
-					<p class="text-slate-700 dark:text-slate-300">
+					<h3 class="font-semibold text-foreground mb-3">LLM Context Loss</h3>
+					<p class="text-muted-foreground">
 						Constantly repeating project context to Claude/ChatGPT instead of building
 						on previous conversations.
 					</p>
 				</div>
 				<div>
-					<h3 class="font-semibold text-slate-900 dark:text-slate-100 mb-3">
-						BuildOS Solution
-					</h3>
-					<ul class="space-y-2 text-slate-700 dark:text-slate-300">
+					<h3 class="font-semibold text-foreground mb-3">BuildOS Solution</h3>
+					<ul class="space-y-2 text-muted-foreground">
 						<li class="flex items-center">
-							<div class="w-2 h-2 bg-[var(--accent-olive)] rounded-full mr-3"></div>
+							<div class="w-2 h-2 bg-accent rounded-full mr-3"></div>
 							Brain dump → AI organizes automatically
 						</li>
 						<li class="flex items-center">
-							<div class="w-2 h-2 bg-[var(--accent-blue)] rounded-full mr-3"></div>
+							<div class="w-2 h-2 bg-accent rounded-full mr-3"></div>
 							Build rich project context over time
 						</li>
 						<li class="flex items-center">
-							<div class="w-2 h-2 bg-[var(--oxide-blue)] rounded-full mr-3"></div>
+							<div class="w-2 h-2 bg-accent rounded-full mr-3"></div>
 							Copy/paste context to any LLM
 						</li>
 						<li class="flex items-center">
-							<div class="w-2 h-2 bg-[var(--accent-orange)] rounded-full mr-3"></div>
+							<div class="w-2 h-2 bg-accent rounded-full mr-3"></div>
 							Smart scheduling bridges thoughts to action
 						</li>
 					</ul>
@@ -216,10 +218,10 @@
 		</section>
 
 		<!-- Meet the Founders -->
-		<section class="clarity-zone p-8 mb-12">
-			<h2 class="text-2xl font-bold text-slate-900 dark:text-slate-100 text-center mb-8">
-				Meet the Founder
-			</h2>
+		<section
+			class="rounded-lg border border-border bg-card shadow-ink tx tx-grain tx-weak p-8 mb-12"
+		>
+			<h2 class="text-2xl font-bold text-foreground text-center mb-8">Meet the Founder</h2>
 
 			<!-- DJ Wayne -->
 			<div class="flex items-start space-x-6">
@@ -232,18 +234,16 @@
 					loading="lazy"
 				/>
 				<div class="flex-1">
-					<h3 class="text-xl font-bold text-slate-900 dark:text-slate-100 mb-1">
-						DJ Wayne
-					</h3>
-					<p class="text-slate-700 dark:text-slate-300 mb-2">
+					<h3 class="text-xl font-bold text-foreground mb-1">DJ Wayne</h3>
+					<p class="text-muted-foreground mb-2">
 						Dad, former USMC Scout Sniper, creator of <a
 							href="https://9takes.com"
 							target="_blank"
-							class="text-[var(--accent-blue)] hover:brightness-110">9takes</a
+							class="text-accent hover:brightness-110">9takes</a
 						>, Tiny Tibe Adventures, The Cadre Training. Software engineer with
 						YC-backed startup experience (Curri).
 					</p>
-					<p class="text-sm text-slate-600 dark:text-slate-400">
+					<p class="text-sm text-muted-foreground">
 						Brings technical depth and product vision to BuildOS.
 					</p>
 				</div>
@@ -252,7 +252,7 @@
 
 		<!-- Contact Methods -->
 		<section class="mb-12">
-			<h3 class="text-1xl font-bold text-slate-900 dark:text-slate-100 text-center mb-8">
+			<h3 class="text-1xl font-bold text-foreground text-center mb-8">
 				Connect With BuildOS
 			</h3>
 			<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
@@ -261,19 +261,17 @@
 					<a
 						href={method.href}
 						{...method.external ? { target: '_blank', rel: 'noopener noreferrer' } : {}}
-						class="card-industrial p-6 hover:brightness-105 transition-all group dither-soft relative"
+						class="rounded-lg border border-border bg-card shadow-ink p-6 hover:brightness-105 transition-all group tx tx-grain tx-weak relative"
 					>
 						<div
-							class="utility-block w-12 h-12 rounded-sm flex items-center justify-center mb-4 mx-auto group-hover:scale-110 transition-transform"
+							class="rounded-lg border border-border bg-card shadow-ink w-12 h-12 rounded-sm flex items-center justify-center mb-4 mx-auto group-hover:scale-110 transition-transform"
 						>
 							<MethodIcon class="w-6 h-6 text-gray-700 dark:text-gray-200" />
 						</div>
-						<h3
-							class="font-semibold text-slate-900 dark:text-slate-100 text-center mb-2"
-						>
+						<h3 class="font-semibold text-foreground text-center mb-2">
 							{method.title}
 						</h3>
-						<p class="text-sm text-slate-700 dark:text-slate-300 text-center">
+						<p class="text-sm text-muted-foreground text-center">
 							{method.description}
 						</p>
 					</a>
@@ -282,9 +280,7 @@
 
 			<!-- Founder Links -->
 			<div class="text-center mb-6">
-				<p class="text-sm text-slate-600 dark:text-slate-400 mb-4">
-					Connect with the founder directly:
-				</p>
+				<p class="text-sm text-muted-foreground mb-4">Connect with the founder directly:</p>
 				<div class="flex justify-center space-x-4">
 					{#each founderContacts as founder}
 						{@const FounderIcon = founder.icon}
@@ -293,16 +289,15 @@
 							{...founder.external
 								? { target: '_blank', rel: 'noopener noreferrer' }
 								: {}}
-							class="inline-flex items-center space-x-2 px-4 py-2 utility-block hover:brightness-105 transition-all"
+							class="inline-flex items-center space-x-2 px-4 py-2 rounded-lg border border-border bg-card shadow-ink hover:brightness-105 transition-all"
 						>
 							<FounderIcon class="w-4 h-4 text-gray-700 dark:text-gray-200" />
 							<div class="text-left">
-								<span
-									class="block text-sm font-medium text-slate-900 dark:text-slate-100"
+								<span class="block text-sm font-medium text-foreground"
 									>{founder.title}</span
 								>
 								{#if founder.subtitle}
-									<span class="block text-xs text-slate-600 dark:text-slate-400"
+									<span class="block text-xs text-muted-foreground"
 										>{founder.subtitle}</span
 									>
 								{/if}
@@ -315,8 +310,10 @@
 
 		<!-- Response Notice -->
 		<footer class="text-center">
-			<div class="inline-flex items-center space-x-2 badge-active">
-				<div class="w-2 h-2 bg-[var(--accent-olive)] rounded-full animate-pulse"></div>
+			<div
+				class="inline-flex items-center space-x-2 rounded-full bg-accent text-accent-foreground text-xs font-bold px-2 py-1"
+			>
+				<div class="w-2 h-2 bg-accent rounded-full animate-pulse"></div>
 				<span class="text-sm font-medium">Response within 24 hours</span>
 			</div>
 		</footer>

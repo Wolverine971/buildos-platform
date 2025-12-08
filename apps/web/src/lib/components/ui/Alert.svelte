@@ -1,7 +1,8 @@
 <!-- apps/web/src/lib/components/ui/Alert.svelte -->
 <script lang="ts">
-	import { AlertCircle, CheckCircle2, AlertTriangle, Info, X } from 'lucide-svelte';
+	import { CircleAlert, CircleCheck, TriangleAlert, Info, X } from 'lucide-svelte';
 	import type { HTMLAttributes } from 'svelte/elements';
+	import type { Snippet } from 'svelte';
 
 	type AlertVariant = 'info' | 'success' | 'warning' | 'error';
 
@@ -11,6 +12,8 @@
 		description?: string;
 		closeable?: boolean;
 		onClose?: () => void;
+		icon?: Snippet;
+		children?: Snippet;
 	}
 
 	let {
@@ -19,44 +22,51 @@
 		description,
 		closeable = false,
 		onClose,
+		icon,
+		children,
 		class: className = '',
 		...rest
 	}: Props = $props();
 
 	let isVisible = $state(true);
 
-	// Scratchpad Ops design - Clean clarity zones for important information
+	// Inkprint design - Status colors paired with semantic textures
+	// Per design bible: Success→Grain (steady progress), Warning/Danger→Static (interference), Info→Thread (connection)
 	const variantConfig: Record<
 		AlertVariant,
-		{ icon: any; bg: string; border: string; text: string; icon_color: string }
+		{ icon: any; bg: string; border: string; text: string; icon_color: string; texture: string }
 	> = {
 		info: {
 			icon: Info,
-			bg: 'bg-accent-blue/5 dark:bg-accent-blue/10',
-			border: 'border border-accent-blue/20 dark:border-accent-blue/30',
-			text: 'text-slate-900 dark:text-slate-100',
-			icon_color: 'text-accent-blue'
+			bg: 'bg-muted/50',
+			border: 'border border-border',
+			text: 'text-foreground',
+			icon_color: 'text-muted-foreground',
+			texture: 'tx tx-thread tx-weak'
 		},
 		success: {
-			icon: CheckCircle2,
+			icon: CircleCheck,
 			bg: 'bg-emerald-50 dark:bg-emerald-900/10',
 			border: 'border border-emerald-200 dark:border-emerald-800',
-			text: 'text-slate-900 dark:text-slate-100',
-			icon_color: 'text-emerald-600 dark:text-emerald-400'
+			text: 'text-foreground',
+			icon_color: 'text-emerald-600 dark:text-emerald-400',
+			texture: 'tx tx-grain tx-weak'
 		},
 		warning: {
-			icon: AlertTriangle,
+			icon: TriangleAlert,
 			bg: 'bg-amber-50 dark:bg-amber-900/10',
 			border: 'border border-amber-200 dark:border-amber-800',
-			text: 'text-slate-900 dark:text-slate-100',
-			icon_color: 'text-amber-600 dark:text-amber-400'
+			text: 'text-foreground',
+			icon_color: 'text-amber-600 dark:text-amber-400',
+			texture: 'tx tx-static tx-weak'
 		},
 		error: {
-			icon: AlertCircle,
+			icon: CircleAlert,
 			bg: 'bg-red-50 dark:bg-red-900/10',
 			border: 'border border-red-200 dark:border-red-800',
-			text: 'text-slate-900 dark:text-slate-100',
-			icon_color: 'text-red-600 dark:text-red-400'
+			text: 'text-foreground',
+			icon_color: 'text-red-600 dark:text-red-400',
+			texture: 'tx tx-static tx-weak'
 		}
 	};
 
@@ -67,16 +77,16 @@
 		onClose?.();
 	}
 
-	const containerClasses = `rounded p-4 ${config.bg} ${config.border} ${config.text} ${className}`;
+	const containerClasses = `rounded-lg p-4 shadow-ink ${config.bg} ${config.border} ${config.text} ${config.texture} ${className}`;
 </script>
 
 {#if isVisible}
 	<div class={containerClasses} role="alert" {...rest}>
 		<div class="flex gap-3">
 			<!-- Icon -->
-			{#if $$slots.icon}
+			{#if icon}
 				<div class="flex-shrink-0 flex items-start pt-0.5">
-					<slot name="icon" />
+					{@render icon()}
 				</div>
 			{:else}
 				{@const AlertIcon = config.icon}
@@ -93,12 +103,12 @@
 					</h3>
 				{/if}
 
-				{#if $$slots.default}
-					<div class="text-sm {title ? 'opacity-90' : ''}">
-						<slot />
+				{#if children}
+					<div class="text-sm {title ? 'text-muted-foreground' : ''}">
+						{@render children()}
 					</div>
 				{:else if description}
-					<p class="text-sm {title ? 'opacity-90' : ''}">
+					<p class="text-sm {title ? 'text-muted-foreground' : ''}">
 						{description}
 					</p>
 				{/if}
@@ -107,7 +117,7 @@
 			<!-- Close button -->
 			{#if closeable}
 				<button
-					class="flex-shrink-0 flex items-start pt-0.5 hover:opacity-70 transition-opacity focus:outline-none focus:ring-2 focus:ring-accent-orange focus:ring-offset-1 dark:focus:ring-offset-slate-800 rounded"
+					class="flex-shrink-0 flex items-start pt-0.5 hover:opacity-70 transition-opacity focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 rounded pressable"
 					onclick={handleClose}
 					aria-label="Close alert"
 				>
@@ -117,7 +127,3 @@
 		</div>
 	</div>
 {/if}
-
-<style>
-	/* Additional styling can be added here if needed */
-</style>

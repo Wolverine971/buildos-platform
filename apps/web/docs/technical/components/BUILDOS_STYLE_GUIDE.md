@@ -1,8 +1,29 @@
 <!-- apps/web/docs/technical/components/BUILDOS_STYLE_GUIDE.md -->
 
-# BuildOS Style Guide
+# BuildOS Style Guide (Legacy Reference)
 
-> A comprehensive design system for BuildOS - High-end Apple-inspired design with ADHD-optimized UX
+> **IMPORTANT: This style guide has been superseded by the Inkprint Design System.**
+>
+> **New Primary Reference:** [INKPRINT_DESIGN_SYSTEM.md](./INKPRINT_DESIGN_SYSTEM.md)
+>
+> This document is retained for historical reference and for components that have not yet been migrated to Inkprint. When building new components or updating existing ones, please use the Inkprint Design System as your primary reference.
+
+---
+
+## Migration Status
+
+| Area           | Status          | Notes                                                             |
+| -------------- | --------------- | ----------------------------------------------------------------- |
+| Color System   | **Migrated**    | Use Inkprint tokens (`bg-card`, `text-foreground`, etc.)          |
+| Texture System | **New**         | Inkprint adds synesthetic textures (`tx-bloom`, `tx-grain`, etc.) |
+| Shadows        | **Migrated**    | Use `shadow-ink`, `shadow-ink-strong`, `shadow-ink-inner`         |
+| Components     | **In Progress** | See [INKPRINT_MIGRATION.md](../INKPRINT_MIGRATION.md)             |
+
+---
+
+## Legacy Documentation (Below)
+
+> The following documentation describes the previous "Apple-inspired" design system. Use for reference only.
 
 **📍 Status**: Phase 3 Complete - Badge & Alert components added (v1.2.0)
 **✅ Design Health Score**: 92/100

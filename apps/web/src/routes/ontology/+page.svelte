@@ -270,12 +270,12 @@
 <div class="space-y-4 sm:space-y-6">
 	<!-- Mobile Navigation - Only visible on mobile -->
 	<nav
-		class="lg:hidden flex flex-wrap items-center gap-2 rounded border-2 border-slate-700/30 bg-surface-elevated p-2 shadow-subtle dark:border-slate-500/30 dark:bg-surface-panel"
+		class="lg:hidden flex flex-wrap items-center gap-2 rounded-lg border border-border bg-card p-2 shadow-ink tx tx-strip tx-weak"
 		aria-label="Ontology navigation"
 	>
 		<a
 			href="/ontology"
-			class="inline-flex items-center gap-1.5 rounded border-2 border-accent-orange bg-accent-orange/10 px-3 py-1.5 text-xs font-bold text-accent-orange transition hover:bg-accent-orange/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-orange dark:bg-accent-orange/20 dark:hover:bg-accent-orange/30 shadow-subtle"
+			class="inline-flex items-center gap-1.5 rounded border border-accent bg-accent/10 px-3 py-1.5 text-xs font-bold text-accent transition hover:bg-accent/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring pressable shadow-ink"
 			aria-current="page"
 		>
 			<svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -290,7 +290,7 @@
 		</a>
 		<a
 			href="/ontology/create"
-			class="inline-flex items-center gap-1.5 rounded border-2 border-slate-700/30 px-3 py-1.5 text-xs font-bold text-slate-700 transition hover:bg-slate-100 hover:border-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-orange dark:border-slate-500/30 dark:text-slate-300 dark:hover:bg-slate-800/50"
+			class="inline-flex items-center gap-1.5 rounded border border-border px-3 py-1.5 text-xs font-bold text-muted-foreground transition hover:bg-muted/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring pressable"
 		>
 			<svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
 				<path
@@ -304,7 +304,7 @@
 		</a>
 		<a
 			href="/ontology/templates"
-			class="inline-flex items-center gap-1.5 rounded border-2 border-slate-700/30 px-3 py-1.5 text-xs font-bold text-slate-700 transition hover:bg-slate-100 hover:border-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-orange dark:border-slate-500/30 dark:text-slate-300 dark:hover:bg-slate-800/50"
+			class="inline-flex items-center gap-1.5 rounded border border-border px-3 py-1.5 text-xs font-bold text-muted-foreground transition hover:bg-muted/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring pressable"
 		>
 			<svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
 				<path
@@ -318,7 +318,7 @@
 		</a>
 		<a
 			href="/"
-			class="ml-auto inline-flex items-center gap-1.5 rounded border-2 border-slate-700/30 px-3 py-1.5 text-xs font-bold text-slate-700 transition hover:bg-slate-100 hover:border-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-orange dark:border-slate-500/30 dark:text-slate-300 dark:hover:bg-slate-800/50"
+			class="ml-auto inline-flex items-center gap-1.5 rounded border border-border px-3 py-1.5 text-xs font-bold text-muted-foreground transition hover:bg-muted/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring pressable"
 		>
 			<svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
 				<path
@@ -334,25 +334,22 @@
 
 	<header class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between !mt-0">
 		<div class="space-y-1 flex-1">
-			<h1 class="text-2xl font-bold text-slate-900 dark:text-slate-100 sm:text-3xl">
-				Projects
-			</h1>
-			<p class="text-sm text-slate-600 dark:text-slate-400 sm:text-base">
+			<h1 class="text-2xl font-bold text-foreground sm:text-3xl">Projects</h1>
+			<p class="text-sm text-muted-foreground sm:text-base">
 				Manage and organize your active projects and workflows.
 			</p>
 		</div>
 
 		<nav
-			class="inline-flex rounded border-2 border-slate-700/30 bg-surface-elevated p-1 text-sm font-bold dark:bg-surface-panel dark:border-slate-500/30 overflow-x-auto scrollbar-hide shadow-subtle self-baseline
-"
+			class="inline-flex rounded-lg border border-border bg-card p-1 text-sm font-bold overflow-x-auto scrollbar-hide shadow-ink self-baseline"
 			aria-label="Project view mode"
 		>
 			<button
 				type="button"
-				class={`relative rounded px-4 py-2 transition ${
+				class={`relative rounded px-4 py-2 transition pressable ${
 					activeTab === 'overview'
-						? 'bg-accent-orange text-white border-2 border-slate-700 shadow-pressable dark:bg-accent-orange dark:text-white'
-						: 'text-slate-700 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-300 dark:hover:text-slate-100 dark:hover:bg-slate-700'
+						? 'bg-accent text-accent-foreground shadow-ink'
+						: 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
 				}`}
 				aria-pressed={activeTab === 'overview'}
 				onclick={() => setActiveTab('overview')}
@@ -361,10 +358,10 @@
 			</button>
 			<button
 				type="button"
-				class={`relative rounded px-4 py-2 transition ${
+				class={`relative rounded px-4 py-2 transition pressable ${
 					activeTab === 'graph'
-						? 'bg-accent-orange text-white border-2 border-slate-700 shadow-pressable dark:bg-accent-orange dark:text-white'
-						: 'text-slate-700 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-300 dark:hover:text-slate-100 dark:hover:bg-slate-700'
+						? 'bg-accent text-accent-foreground shadow-ink'
+						: 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
 				}`}
 				aria-pressed={activeTab === 'graph'}
 				onclick={() => setActiveTab('graph')}
@@ -376,14 +373,14 @@
 
 	{#if activeTab === 'graph'}
 		<div
-			class="flex flex-wrap items-center justify-end gap-3 rounded border-2 border-slate-700/30 bg-surface-elevated p-3 shadow-subtle dark:border-slate-500/30 dark:bg-surface-panel text-xs text-slate-600 dark:text-slate-400"
+			class="flex flex-wrap items-center justify-end gap-3 rounded-lg border border-border bg-card p-3 shadow-ink text-xs text-muted-foreground"
 		>
 			{#if $graphStore.status === 'ready' && graphLastUpdated}
 				<span class="hidden sm:inline font-semibold">Last synced {graphLastUpdated}</span>
 			{/if}
 			<button
 				type="button"
-				class="inline-flex items-center gap-1 rounded border-2 border-slate-700/30 px-3 py-1.5 font-bold text-slate-700 transition hover:bg-slate-100 hover:border-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-orange dark:border-slate-500/30 dark:text-slate-300 dark:hover:bg-slate-700 shadow-subtle"
+				class="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 font-bold text-foreground transition hover:bg-muted hover:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring shadow-ink pressable"
 				onclick={refreshGraph}
 				aria-label="Refresh graph"
 			>
@@ -404,43 +401,39 @@
 	{/if}
 
 	{#if activeTab === 'overview'}
-		<section class="space-y-dense-4">
+		<section class="space-y-4">
 			{#if projectsLoading}
-				<div class="space-y-dense-6">
-					<div class="grid gap-dense-3 sm:grid-cols-2 lg:grid-cols-3">
+				<div class="space-y-6">
+					<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
 						{#each Array.from({ length: 3 }) as _}
 							<div
-								class="rounded border-2 border-slate-700/30 bg-surface-elevated p-4 shadow-sm animate-pulse dark:border-slate-500/30 dark:bg-surface-panel"
+								class="rounded-lg border border-border bg-card p-4 shadow-ink animate-pulse"
 							>
-								<div class="h-5 w-1/3 rounded bg-slate-200 dark:bg-slate-800"></div>
-								<div
-									class="mt-4 h-4 w-3/4 rounded bg-slate-100 dark:bg-slate-800/80"
-								></div>
-								<div
-									class="mt-2 h-3 w-2/3 rounded bg-slate-100 dark:bg-slate-800/80"
-								></div>
+								<div class="h-5 w-1/3 rounded bg-muted"></div>
+								<div class="mt-4 h-4 w-3/4 rounded bg-muted/80"></div>
+								<div class="mt-2 h-3 w-2/3 rounded bg-muted/80"></div>
 							</div>
 						{/each}
 					</div>
 					<div
-						class="rounded border-2 border-slate-700/30 bg-surface-elevated p-dense-6 shadow-sm animate-pulse dark:border-slate-500/30 dark:bg-surface-panel"
+						class="rounded-lg border border-border bg-card p-6 shadow-ink animate-pulse"
 					>
-						<div class="h-5 w-1/4 rounded bg-slate-200 dark:bg-slate-800"></div>
-						<div class="mt-4 grid gap-dense-3 md:grid-cols-2 lg:grid-cols-3">
+						<div class="h-5 w-1/4 rounded bg-muted"></div>
+						<div class="mt-4 grid gap-3 md:grid-cols-2 lg:grid-cols-3">
 							{#each Array.from({ length: 6 }) as _}
-								<div class="h-24 rounded bg-slate-100 dark:bg-slate-800/80"></div>
+								<div class="h-24 rounded bg-muted/80"></div>
 							{/each}
 						</div>
 					</div>
 				</div>
 			{:else if projectsError}
 				<div
-					class="rounded border-2 border-slate-700/30 bg-surface-elevated p-dense-6 text-center shadow-sm dark:border-slate-500/30 dark:bg-surface-panel"
+					class="rounded-lg border border-border bg-card p-6 text-center shadow-ink tx tx-static tx-weak"
 				>
-					<h2 class="text-base font-semibold text-slate-900 dark:text-slate-100">
+					<h2 class="text-base font-semibold text-foreground">
 						Unable to load ontology projects
 					</h2>
-					<p class="mt-2 text-sm text-slate-600 dark:text-slate-400">
+					<p class="mt-2 text-sm text-muted-foreground">
 						{projectsError}
 					</p>
 					<div class="mt-4 flex justify-center">
@@ -465,12 +458,12 @@
 							<div class="relative flex-1">
 								<input
 									type="search"
-									class="w-full rounded border-2 border-slate-700/30 bg-surface-elevated py-2 pl-10 pr-4 text-sm text-slate-900 placeholder:text-slate-500 transition focus:border-slate-700 focus:outline-none focus:ring-2 focus:ring-accent-orange dark:border-slate-500/30 dark:bg-slate-700/50 dark:text-slate-100 dark:placeholder:text-slate-500 dither-soft"
+									class="w-full rounded-lg border border-border bg-card py-2 pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground transition focus:border-accent focus:outline-none focus:ring-2 focus:ring-ring shadow-ink-inner"
 									placeholder="Search projects by name or description..."
 									bind:value={searchQuery}
 								/>
 								<svg
-									class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500 dark:text-slate-400"
+									class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
 									xmlns="http://www.w3.org/2000/svg"
 									fill="none"
 									viewBox="0 0 24 24"
@@ -489,7 +482,7 @@
 								<Button
 									variant="ghost"
 									size="sm"
-									class="text-accent-blue hover:text-accent-blue/80 dark:text-accent-blue dark:hover:text-accent-blue/80 font-bold"
+									class="text-accent hover:text-accent/80 font-bold"
 									onclick={clearFilters}
 								>
 									Clear filters
@@ -523,71 +516,51 @@
 
 				<div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
 					<div
-						class="rounded border-2 border-slate-700/30 bg-surface-panel p-4 shadow-subtle dark:border-slate-500/30 dark:bg-slate-800"
+						class="rounded-lg border border-border bg-card p-4 shadow-ink tx tx-bloom tx-weak ink-frame"
 					>
-						<p
-							class="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400"
-						>
-							Projects
-						</p>
-						<p class="text-2xl font-bold text-slate-900 dark:text-slate-100 mt-1">
+						<p class="micro-label">Projects</p>
+						<p class="text-2xl font-bold text-foreground mt-1">
 							{stats.totalProjects}
 						</p>
 					</div>
 					<div
-						class="rounded border-2 border-slate-700/30 bg-surface-panel p-4 shadow-subtle dark:border-slate-500/30 dark:bg-slate-800"
+						class="rounded-lg border border-border bg-card p-4 shadow-ink tx tx-grain tx-weak ink-frame"
 					>
-						<p
-							class="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400"
-						>
-							Tasks
-						</p>
-						<p class="text-2xl font-bold text-slate-900 dark:text-slate-100 mt-1">
+						<p class="micro-label">Tasks</p>
+						<p class="text-2xl font-bold text-foreground mt-1">
 							{stats.totalTasks}
 						</p>
 					</div>
 					<div
-						class="rounded border-2 border-slate-700/30 bg-surface-panel p-4 shadow-subtle dark:border-slate-500/30 dark:bg-slate-800"
+						class="rounded-lg border border-border bg-card p-4 shadow-ink tx tx-thread tx-weak ink-frame"
 					>
-						<p
-							class="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400"
-						>
-							Outputs
-						</p>
-						<p class="text-2xl font-bold text-slate-900 dark:text-slate-100 mt-1">
+						<p class="micro-label">Outputs</p>
+						<p class="text-2xl font-bold text-foreground mt-1">
 							{stats.totalOutputs}
 						</p>
 					</div>
 					<div
-						class="rounded border-2 border-slate-700/30 bg-surface-panel p-4 shadow-subtle dark:border-slate-500/30 dark:bg-slate-800"
+						class="rounded-lg border border-border bg-card p-4 shadow-ink tx tx-pulse tx-weak ink-frame"
 					>
-						<p
-							class="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400"
-						>
-							Active
-						</p>
-						<p class="text-2xl font-bold text-accent-olive dark:text-accent-olive mt-1">
+						<p class="micro-label">Active</p>
+						<p class="text-2xl font-bold text-accent mt-1">
 							{stats.activeProjects}
 						</p>
 					</div>
 				</div>
 
-				<div class="space-y-dense-4">
+				<div class="space-y-4">
 					{#if availableStates.length}
 						<div class="flex flex-col gap-2">
-							<p
-								class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
-							>
-								State
-							</p>
+							<p class="micro-label">State</p>
 							<div class="flex flex-wrap gap-2">
 								{#each availableStates as state (state)}
 									<button
 										type="button"
-										class={`inline-flex items-center gap-1.5 rounded border-2 px-2.5 py-1.5 text-xs font-bold transition ${
+										class={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-bold transition pressable ${
 											selectedStates.includes(state)
-												? 'border-slate-700 bg-accent-blue text-white shadow-pressable dark:bg-accent-blue dark:text-white active:translate-y-[2px] active:shadow-none'
-												: 'border-slate-700/30 text-slate-700 hover:border-slate-700 hover:bg-slate-100 dark:border-slate-500/30 dark:text-slate-300 dark:hover:border-slate-500 dark:hover:bg-slate-800'
+												? 'border-accent bg-accent text-accent-foreground shadow-ink'
+												: 'border-border text-muted-foreground hover:border-accent hover:bg-muted/50 hover:text-foreground'
 										}`}
 										onclick={() =>
 											(selectedStates = toggleValue(selectedStates, state))}
@@ -599,22 +572,18 @@
 						</div>
 					{/if}
 
-					<div class="grid grid-cols-1 gap-dense-4 md:grid-cols-3">
+					<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
 						{#if availableContexts.length}
 							<div class="flex flex-col gap-2">
-								<p
-									class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
-								>
-									Context
-								</p>
+								<p class="micro-label">Context</p>
 								<div class="flex flex-wrap gap-2">
 									{#each availableContexts as context (context)}
 										<button
 											type="button"
-											class={`inline-flex items-center gap-1.5 rounded border-2 px-2.5 py-1.5 text-xs font-bold transition ${
+											class={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-bold transition pressable ${
 												selectedContexts.includes(context)
-													? 'border-slate-700 bg-accent-orange text-white shadow-pressable dark:bg-accent-orange dark:text-white active:translate-y-[2px] active:shadow-none'
-													: 'border-slate-700/30 text-slate-700 hover:border-slate-700 hover:bg-slate-100 dark:border-slate-500/30 dark:text-slate-300 dark:hover:border-slate-500 dark:hover:bg-slate-800'
+													? 'border-accent bg-accent text-accent-foreground shadow-ink'
+													: 'border-border text-muted-foreground hover:border-accent hover:bg-muted/50 hover:text-foreground'
 											}`}
 											onclick={() =>
 												(selectedContexts = toggleValue(
@@ -631,19 +600,15 @@
 
 						{#if availableScales.length}
 							<div class="flex flex-col gap-2">
-								<p
-									class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
-								>
-									Scale
-								</p>
+								<p class="micro-label">Scale</p>
 								<div class="flex flex-wrap gap-2">
 									{#each availableScales as scale (scale)}
 										<button
 											type="button"
-											class={`inline-flex items-center gap-1.5 rounded border-2 px-2.5 py-1.5 text-xs font-bold transition ${
+											class={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-bold transition pressable ${
 												selectedScales.includes(scale)
-													? 'border-slate-700 bg-accent-blue text-white shadow-pressable dark:bg-accent-blue dark:text-white active:translate-y-[2px] active:shadow-none'
-													: 'border-slate-700/30 text-slate-700 hover:border-slate-700 hover:bg-slate-100 dark:border-slate-500/30 dark:text-slate-300 dark:hover:border-slate-500 dark:hover:bg-slate-800'
+													? 'border-accent bg-accent text-accent-foreground shadow-ink'
+													: 'border-border text-muted-foreground hover:border-accent hover:bg-muted/50 hover:text-foreground'
 											}`}
 											onclick={() =>
 												(selectedScales = toggleValue(
@@ -660,19 +625,15 @@
 
 						{#if availableStages.length}
 							<div class="flex flex-col gap-2">
-								<p
-									class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
-								>
-									Stage
-								</p>
+								<p class="micro-label">Stage</p>
 								<div class="flex flex-wrap gap-2">
 									{#each availableStages as stage (stage)}
 										<button
 											type="button"
-											class={`inline-flex items-center gap-1.5 rounded border-2 px-2.5 py-1.5 text-xs font-bold transition ${
+											class={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-bold transition pressable ${
 												selectedStages.includes(stage)
-													? 'border-slate-700 bg-accent-olive text-white shadow-pressable dark:bg-accent-olive dark:text-white active:translate-y-[2px] active:shadow-none'
-													: 'border-slate-700/30 text-slate-700 hover:border-slate-700 hover:bg-slate-100 dark:border-slate-500/30 dark:text-slate-300 dark:hover:border-slate-500 dark:hover:bg-slate-800'
+													? 'border-accent bg-accent text-accent-foreground shadow-ink'
+													: 'border-border text-muted-foreground hover:border-accent hover:bg-muted/50 hover:text-foreground'
 											}`}
 											onclick={() =>
 												(selectedStages = toggleValue(
@@ -693,10 +654,10 @@
 
 		{#if filteredProjects.length === 0}
 			<div
-				class="rounded border-2 border-dashed border-slate-700/30 bg-surface-panel px-4 py-12 text-center shadow-subtle dark:border-slate-500/30 dark:bg-slate-800 sm:px-6 sm:py-16"
+				class="rounded-lg border border-dashed border-border bg-card px-4 py-12 text-center shadow-ink tx tx-thread tx-weak sm:px-6 sm:py-16"
 			>
 				<div
-					class="mx-auto mb-6 flex h-12 w-12 items-center justify-center rounded border-2 border-accent-blue/30 bg-accent-blue/10 text-accent-blue dark:bg-accent-blue/20 dark:text-accent-blue sm:h-14 sm:w-14"
+					class="mx-auto mb-6 flex h-12 w-12 items-center justify-center rounded-lg border border-accent/30 bg-accent/10 text-accent sm:h-14 sm:w-14"
 				>
 					<svg
 						xmlns="http://www.w3.org/2000/svg"
@@ -713,12 +674,8 @@
 						/>
 					</svg>
 				</div>
-				<h2 class="text-xl font-bold text-slate-900 dark:text-slate-100">
-					No projects yet
-				</h2>
-				<p
-					class="mx-auto mt-2 max-w-md text-sm text-slate-600 dark:text-slate-400 sm:text-base"
-				>
+				<h2 class="text-xl font-bold text-foreground">No projects yet</h2>
+				<p class="mx-auto mt-2 max-w-md text-sm text-muted-foreground sm:text-base">
 					{projects.length === 0
 						? 'Create your first ontology project using typed templates and FSM workflows.'
 						: 'No projects match the current filters. Adjust your search or clear filters to explore more.'}
@@ -744,18 +701,18 @@
 				{#each filteredProjects as project (project.id)}
 					<a
 						href="/ontology/projects/{project.id}"
-						class="group relative flex h-full flex-col rounded border-2 border-slate-700/30 bg-surface-panel p-4 shadow-subtle transition-all duration-200 hover:border-accent-orange hover:shadow-pressable dark:border-slate-500/30 dark:bg-slate-800 dark:hover:border-accent-orange"
+						class="group relative flex h-full flex-col rounded-lg border border-border bg-card p-4 shadow-ink transition-all duration-200 hover:border-accent hover:shadow-ink-strong pressable"
 					>
 						<div class="mb-4 flex items-start justify-between gap-3">
 							<div class="min-w-0">
 								<h3
-									class="truncate text-lg font-bold text-slate-900 transition-colors group-hover:text-accent-orange dark:text-slate-100 dark:group-hover:text-accent-orange"
+									class="truncate text-lg font-bold text-foreground transition-colors group-hover:text-accent"
 								>
 									{project.name}
 								</h3>
 							</div>
 							<span
-								class="flex-shrink-0 rounded border px-2.5 py-1 text-xs font-bold capitalize {getProjectStateBadgeClass(
+								class="flex-shrink-0 rounded-lg border px-2.5 py-1 text-xs font-bold capitalize {getProjectStateBadgeClass(
 									project.state_key
 								)}"
 							>
@@ -764,7 +721,7 @@
 						</div>
 
 						{#if project.description}
-							<p class="mb-4 line-clamp-2 text-sm text-slate-600 dark:text-slate-400">
+							<p class="mb-4 line-clamp-2 text-sm text-muted-foreground">
 								{project.description}
 							</p>
 						{/if}
@@ -773,21 +730,21 @@
 							<div class="mb-4 flex flex-wrap gap-2">
 								{#if project.facet_context}
 									<span
-										class="rounded border border-accent-orange/30 bg-accent-orange/10 px-2 py-0.5 text-xs font-bold text-accent-orange dark:bg-accent-orange/20"
+										class="rounded-lg border border-accent/30 bg-accent/10 px-2 py-0.5 text-xs font-bold text-accent"
 									>
 										{project.facet_context}
 									</span>
 								{/if}
 								{#if project.facet_scale}
 									<span
-										class="rounded border border-accent-blue/30 bg-accent-blue/10 px-2 py-0.5 text-xs font-bold text-accent-blue dark:bg-accent-blue/20 dark:text-accent-blue"
+										class="rounded-lg border border-muted-foreground/30 bg-muted/30 px-2 py-0.5 text-xs font-bold text-muted-foreground"
 									>
 										{project.facet_scale}
 									</span>
 								{/if}
 								{#if project.facet_stage}
 									<span
-										class="rounded border border-accent-olive/30 bg-accent-olive/10 px-2 py-0.5 text-xs font-bold text-accent-olive dark:bg-accent-olive/20"
+										class="rounded-lg border border-foreground/20 bg-muted/50 px-2 py-0.5 text-xs font-bold text-foreground/80"
 									>
 										{project.facet_stage}
 									</span>
@@ -796,7 +753,7 @@
 						{/if}
 
 						<div
-							class="mt-auto flex items-center justify-between border-t-2 border-slate-700/20 pt-3 text-sm text-slate-600 dark:border-slate-500/20 dark:text-slate-400"
+							class="mt-auto flex items-center justify-between border-t border-border pt-3 text-sm text-muted-foreground"
 						>
 							<div class="flex items-center gap-3">
 								<span class="flex items-center gap-1.5" aria-label="Task count">
@@ -834,7 +791,7 @@
 									<span class="font-bold">{project.output_count}</span>
 								</span>
 							</div>
-							<span class="text-xs text-slate-500 dark:text-slate-500">
+							<span class="text-xs text-muted-foreground/70">
 								{new Date(project.updated_at).toLocaleDateString()}
 							</span>
 						</div>
@@ -843,54 +800,38 @@
 			</div>
 		{/if}
 	{:else}
-		<section class="space-y-dense-4">
+		<section class="space-y-4">
 			{#if $graphStore.stats}
 				<div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
 					<div
-						class="rounded border-2 border-slate-700/30 bg-surface-panel px-3 py-3 text-left shadow-subtle dark:border-slate-500/30 dark:bg-slate-800"
+						class="rounded-lg border border-border bg-card px-3 py-3 text-left shadow-ink tx tx-bloom tx-weak"
 					>
-						<p
-							class="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400"
-						>
-							Templates
-						</p>
-						<p class="text-xl font-bold text-slate-900 dark:text-slate-100">
+						<p class="micro-label">Templates</p>
+						<p class="text-xl font-bold text-foreground">
 							{$graphStore.stats.totalTemplates}
 						</p>
 					</div>
 					<div
-						class="rounded border-2 border-slate-700/30 bg-surface-panel px-3 py-3 text-left shadow-subtle dark:border-slate-500/30 dark:bg-slate-800"
+						class="rounded-lg border border-border bg-card px-3 py-3 text-left shadow-ink tx tx-grain tx-weak"
 					>
-						<p
-							class="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400"
-						>
-							Projects
-						</p>
-						<p class="text-xl font-bold text-slate-900 dark:text-slate-100">
+						<p class="micro-label">Projects</p>
+						<p class="text-xl font-bold text-foreground">
 							{$graphStore.stats.totalProjects}
 						</p>
 					</div>
 					<div
-						class="rounded border-2 border-slate-700/30 bg-surface-panel px-3 py-3 text-left shadow-subtle dark:border-slate-500/30 dark:bg-slate-800"
+						class="rounded-lg border border-border bg-card px-3 py-3 text-left shadow-ink tx tx-thread tx-weak"
 					>
-						<p
-							class="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400"
-						>
-							Relationships
-						</p>
-						<p class="text-xl font-bold text-slate-900 dark:text-slate-100">
+						<p class="micro-label">Relationships</p>
+						<p class="text-xl font-bold text-foreground">
 							{$graphStore.stats.totalEdges}
 						</p>
 					</div>
 					<div
-						class="rounded border-2 border-slate-700/30 bg-surface-panel px-3 py-3 text-left shadow-subtle dark:border-slate-500/30 dark:bg-slate-800"
+						class="rounded-lg border border-border bg-card px-3 py-3 text-left shadow-ink tx tx-pulse tx-weak"
 					>
-						<p
-							class="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400"
-						>
-							Active Projects
-						</p>
-						<p class="text-xl font-bold text-accent-olive dark:text-accent-olive">
+						<p class="micro-label">Active Projects</p>
+						<p class="text-xl font-bold text-accent">
 							{$graphStore.stats.activeProjects}
 						</p>
 					</div>
@@ -898,19 +839,19 @@
 			{/if}
 
 			<div
-				class="rounded border-2 border-slate-700/30 bg-surface-panel shadow-subtle dark:border-slate-500/30 dark:bg-slate-800 overflow-hidden touch-none"
+				class="rounded-lg border border-border bg-card shadow-ink overflow-hidden touch-none"
 			>
 				<div class="relative h-[60vh] sm:h-[70vh] lg:h-[calc(100vh-18rem)]">
 					{#if $graphStore.status === 'loading'}
 						<LoadingSkeleton message="Preparing ontology graph..." height="100%" />
 					{:else if $graphStore.status === 'error'}
 						<div
-							class="flex h-full flex-col items-center justify-center gap-dense-3 p-dense-6 text-center"
+							class="flex h-full flex-col items-center justify-center gap-3 p-6 text-center tx tx-static tx-weak"
 						>
-							<h3 class="text-base font-semibold text-slate-800 dark:text-slate-100">
+							<h3 class="text-base font-semibold text-foreground">
 								Unable to load graph
 							</h3>
-							<p class="text-sm text-slate-500 dark:text-slate-400">
+							<p class="text-sm text-muted-foreground">
 								{$graphStore.error ??
 									'An unexpected error occurred while loading your ontology data.'}
 							</p>
@@ -927,12 +868,12 @@
 						/>
 					{:else}
 						<div
-							class="flex h-full flex-col items-center justify-center gap-dense-3 p-dense-6 text-center"
+							class="flex h-full flex-col items-center justify-center gap-3 p-6 text-center tx tx-thread tx-weak"
 						>
-							<h3 class="text-base font-semibold text-slate-800 dark:text-slate-100">
+							<h3 class="text-base font-semibold text-foreground">
 								No ontology data yet
 							</h3>
-							<p class="text-sm text-slate-500 dark:text-slate-400">
+							<p class="text-sm text-muted-foreground">
 								Start by creating a project or template to visualize your ontology
 								relationships.
 							</p>
@@ -949,9 +890,7 @@
 			</div>
 
 			<div class="grid gap-4 lg:grid-cols-2">
-				<section
-					class="rounded border-2 border-slate-700/30 bg-surface-panel shadow-subtle dark:border-slate-500/30 dark:bg-slate-800 overflow-hidden"
-				>
+				<section class="rounded-lg border border-border bg-card shadow-ink overflow-hidden">
 					<GraphControls
 						bind:viewMode={graphViewMode}
 						{graphInstance}
@@ -959,9 +898,7 @@
 					/>
 				</section>
 
-				<section
-					class="rounded border-2 border-slate-700/30 bg-surface-panel shadow-subtle dark:border-slate-500/30 dark:bg-slate-800 overflow-hidden"
-				>
+				<section class="rounded-lg border border-border bg-card shadow-ink overflow-hidden">
 					{#if selectedGraphNode && $graphStore.status === 'ready'}
 						<NodeDetailsPanel
 							node={selectedGraphNode}
@@ -969,7 +906,7 @@
 						></NodeDetailsPanel>
 					{:else}
 						<div
-							class="flex h-full items-center justify-center p-dense-6 text-sm text-slate-500 dark:text-slate-400"
+							class="flex h-full items-center justify-center p-6 text-sm text-muted-foreground"
 						>
 							{#if $graphStore.status === 'ready'}
 								Select a node to view details.

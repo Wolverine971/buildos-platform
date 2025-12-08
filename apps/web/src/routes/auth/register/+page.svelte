@@ -241,14 +241,16 @@
 
 <!-- Account for navbar height -->
 <div
-	class="flex items-center justify-center px-4 sm:px-6 lg:px-8 bg-[var(--surface-scratch)] dither-pattern"
+	class="flex items-center justify-center px-4 sm:px-6 lg:px-8 bg-background"
 	style="min-height: calc(100vh - 64px);"
 >
 	<div class="max-w-md w-full space-y-8 py-12">
 		<!-- Logo/Brand Section -->
 		<div class="text-center">
 			<div class="flex justify-center mb-6">
-				<div class="utility-block w-16 h-16 rounded-sm flex items-center justify-center">
+				<div
+					class="w-16 h-16 rounded-lg flex items-center justify-center border border-border bg-card shadow-ink tx tx-bloom tx-weak"
+				>
 					<video
 						src="/onboarding-assets/animations/brain-bolt-electric.mp4"
 						class="w-12 h-12"
@@ -261,21 +263,21 @@
 				</div>
 			</div>
 
-			<h2 class="text-3xl font-bold text-slate-900 dark:text-slate-100 mb-2">Join BuildOS</h2>
-			<p class="text-slate-700 dark:text-slate-300 mb-8">
-				Create your personal operating system
-			</p>
+			<h2 class="text-3xl font-bold text-foreground mb-2">Join BuildOS</h2>
+			<p class="text-muted-foreground mb-8">Create your personal operating system</p>
 		</div>
 
 		<!-- Form Section -->
-		<div class="card-industrial py-8 px-6 relative noise-overlay">
+		<div
+			class="rounded-lg border border-border bg-card py-8 px-6 shadow-ink tx tx-grain tx-weak"
+		>
 			<!-- Google OAuth Button -->
 			<div class="mb-6">
 				<button
 					type="button"
 					onclick={handleGoogleSignUp}
 					disabled={googleLoading || loading || success}
-					class="btn-secondary w-full px-6 py-3 text-base flex items-center justify-center"
+					class="w-full px-6 py-3 text-base flex items-center justify-center rounded-lg border border-border bg-card text-foreground shadow-ink hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed pressable"
 				>
 					{#if !googleLoading}
 						<svg class="w-5 h-5 mr-3" viewBox="0 0 24 24">
@@ -304,10 +306,10 @@
 			<!-- Divider -->
 			<div class="relative mb-6">
 				<div class="absolute inset-0 flex items-center">
-					<div class="w-full border-t border-gray-300 dark:border-gray-600"></div>
+					<div class="w-full border-t border-border"></div>
 				</div>
 				<div class="relative flex justify-center text-sm">
-					<span class="px-2 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400"
+					<span class="px-2 bg-card text-muted-foreground"
 						>Or create account with email</span
 					>
 				</div>
@@ -317,7 +319,7 @@
 				<form onsubmit={handleSubmit} class="space-y-6">
 					{#if error}
 						<div
-							class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 px-4 py-3 rounded-lg"
+							class="rounded-lg border border-destructive/50 bg-destructive/10 text-destructive px-4 py-3"
 						>
 							{error}
 						</div>
@@ -357,7 +359,7 @@
 								onblur={validateEmail}
 							/>
 							{#if emailError}
-								<p class="mt-1 text-sm text-red-600 dark:text-red-400">
+								<p class="mt-1 text-sm text-destructive">
 									{emailError}
 								</p>
 							{/if}
@@ -381,9 +383,7 @@
 								<div class="mt-2 space-y-1">
 									<div class="flex space-x-1">
 										{#each Array(4) as _, i}
-											<div
-												class="h-1 w-full rounded-full bg-gray-200 dark:bg-gray-600"
-											>
+											<div class="h-1 w-full rounded-full bg-muted">
 												<div
 													class="h-full rounded-full transition-colors {passwordStrength.score >
 													i
@@ -391,13 +391,13 @@
 															? 'bg-green-500'
 															: passwordStrength.score >= 2
 																? 'bg-yellow-500'
-																: 'bg-red-500'
+																: 'bg-destructive'
 														: ''}"
 												></div>
 											</div>
 										{/each}
 									</div>
-									<div class="text-xs text-gray-600 dark:text-gray-400">
+									<div class="text-xs text-muted-foreground">
 										<span class="block">Password requirements:</span>
 										<ul class="mt-1 space-y-0.5">
 											<li
@@ -472,14 +472,14 @@
 						</Button>
 					</div>
 
-					<div class="text-xs text-gray-500 dark:text-gray-400 text-center">
+					<div class="text-xs text-muted-foreground text-center">
 						By signing up, you agree to our terms of service and privacy policy.
 					</div>
 				</form>
 			{:else}
 				<!-- Success message -->
 				<div
-					class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-300 px-4 py-3 rounded-lg"
+					class="rounded-lg border border-green-500/50 bg-green-500/10 text-green-700 dark:text-green-300 px-4 py-3"
 				>
 					<h3 class="font-semibold mb-2">Check your email!</h3>
 					<p>{successMessage}</p>
@@ -497,11 +497,11 @@
 			<!-- Sign in link -->
 			{#if !success}
 				<div class="mt-6 text-center">
-					<p class="text-sm text-gray-600 dark:text-gray-400">
+					<p class="text-sm text-muted-foreground">
 						Already have an account?
 						<a
 							href="/auth/login"
-							class="font-medium text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300 transition-colors"
+							class="font-medium text-accent hover:opacity-80 transition-opacity"
 						>
 							Sign in here
 						</a>

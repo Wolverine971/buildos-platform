@@ -1,6 +1,9 @@
 // apps/web/src/routes/admin/migration/+page.server.ts
+// Global migration dashboard data loader
 import { redirect, error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
+import { MigrationStatsService } from '$lib/services/ontology/migration-stats.service';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
 
 const DEFAULT_USER_ID = '255735ad-a34b-4ca9-942c-397ed8cc1435';
 
@@ -32,12 +35,36 @@ export const load: PageServerLoad = async ({ url, locals: { safeGetSession, supa
 		throw error(403, 'Admin access required');
 	}
 
+	// View mode: 'global' (default) or 'user'
+	const viewMode = url.searchParams.get('view') || 'global';
 	const targetUserId = url.searchParams.get('userId')?.trim() || DEFAULT_USER_ID;
 
+	// Use admin client to bypass RLS for global stats
+	const adminSupabase = createAdminSupabaseClient();
+	const statsService = new MigrationStatsService(adminSupabase);
+
+	// Load global progress stats
+	let globalProgress = null;
+	try {
+		globalProgress = await statsService.getGlobalProgress();
+	} catch (err) {
+		console.error('[Migration Dashboard] Failed to load global progress:', err);
+		// Don't throw - just proceed with null
+	}
+
+	// Load lock status
+	let lockStatus = null;
+	try {
+		lockStatus = await statsService.getLockStatus();
+	} catch (err) {
+		console.error('[Migration Dashboard] Failed to load lock status:', err);
+	}
+
+	// If in user view mode, load user-specific data
 	let targetUser: { id: string; email: string; name: string | null } | null = null;
 	let projects: ProjectRow[] = [];
 
-	if (targetUserId) {
+	if (viewMode === 'user' && targetUserId) {
 		const { data: userRow } = await supabase
 			.from('users')
 			.select('id, email, name')
@@ -84,6 +111,7 @@ export const load: PageServerLoad = async ({ url, locals: { safeGetSession, supa
 		}));
 	}
 
+	// Load recent runs
 	const { data: runRows, error: runsError } = await supabase
 		.from('migration_log')
 		.select('run_id, status, created_at, updated_at, metadata')
@@ -96,6 +124,9 @@ export const load: PageServerLoad = async ({ url, locals: { safeGetSession, supa
 	}
 
 	return {
+		viewMode,
+		globalProgress,
+		lockStatus,
 		targetUser,
 		targetUserId,
 		defaultUserId: DEFAULT_USER_ID,

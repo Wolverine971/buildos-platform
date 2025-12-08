@@ -1,5 +1,5 @@
 // Lightweight database schema - auto-generated from database.types.ts
-// Generated on: 2025-12-05T20:57:20.195Z
+// Generated on: 2025-12-08T05:51:31.013Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -837,8 +837,10 @@ export type DatabaseSchema = {
 		batch_id: string | null;
 		created_at: string;
 		entity_type: string;
+		error_category: string | null;
 		error_message: string | null;
 		id: number;
+		last_retry_at: string | null;
 		legacy_id: string | null;
 		legacy_table: string | null;
 		metadata: Json;
@@ -846,9 +848,18 @@ export type DatabaseSchema = {
 		onto_table: string | null;
 		operation: string;
 		org_id: string | null;
+		retry_count: number | null;
 		run_id: string;
 		status: string;
 		updated_at: string;
+		user_id: string | null;
+	};
+	migration_platform_lock: {
+		expires_at: string | null;
+		id: number;
+		locked_at: string | null;
+		locked_by: string | null;
+		run_id: string | null;
 	};
 	notes: {
 		category: string | null;
@@ -2021,6 +2032,7 @@ export const tableNames = [
 	'llm_usage_logs',
 	'llm_usage_summary',
 	'migration_log',
+	'migration_platform_lock',
 	'notes',
 	'notification_deliveries',
 	'notification_events',

@@ -60,7 +60,22 @@ export type Database = {
           granted_by?: string | null
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "admin_users_granted_by_fkey"
+            columns: ["granted_by"]
+            isOneToOne: false
+            referencedRelation: "user_migration_stats"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "admin_users_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "user_migration_stats"
+            referencedColumns: ["user_id"]
+          },
+        ]
       }
       agent_chat_messages: {
         Row: {
@@ -486,6 +501,13 @@ export type Database = {
             referencedRelation: "chat_sessions"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "agent_template_creation_requests_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_migration_stats"
+            referencedColumns: ["user_id"]
+          },
         ]
       }
       agents: {
@@ -648,6 +670,13 @@ export type Database = {
             referencedRelation: "beta_members"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "beta_event_attendance_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_migration_stats"
+            referencedColumns: ["user_id"]
+          },
         ]
       }
       beta_events: {
@@ -705,7 +734,15 @@ export type Database = {
           scheduled_at?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "beta_events_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "user_migration_stats"
+            referencedColumns: ["user_id"]
+          },
+        ]
       }
       beta_feature_votes: {
         Row: {
@@ -812,6 +849,13 @@ export type Database = {
             referencedRelation: "beta_members"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "beta_feedback_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_migration_stats"
+            referencedColumns: ["user_id"]
+          },
         ]
       }
       beta_members: {
@@ -907,6 +951,13 @@ export type Database = {
             referencedRelation: "beta_signups"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "beta_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "user_migration_stats"
+            referencedColumns: ["user_id"]
+          },
         ]
       }
       beta_signups: {
@@ -973,7 +1024,15 @@ export type Database = {
           wants_weekly_calls?: boolean | null
           why_interested?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "beta_signups_invited_by_fkey"
+            columns: ["invited_by"]
+            isOneToOne: false
+            referencedRelation: "user_migration_stats"
+            referencedColumns: ["user_id"]
+          },
+        ]
       }
       brain_dump_links: {
         Row: {
@@ -1177,7 +1236,15 @@ export type Database = {
           user_id?: string
           user_rating?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "calendar_analyses_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_migration_stats"
+            referencedColumns: ["user_id"]
+          },
+        ]
       }
       calendar_analysis_events: {
         Row: {
@@ -1315,7 +1382,15 @@ export type Database = {
           updated_at?: string | null
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "calendar_analysis_preferences_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "user_migration_stats"
+            referencedColumns: ["user_id"]
+          },
+        ]
       }
       calendar_project_suggestions: {
         Row: {
@@ -1414,6 +1489,13 @@ export type Database = {
             referencedRelation: "projects"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "calendar_project_suggestions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_migration_stats"
+            referencedColumns: ["user_id"]
+          },
         ]
       }
       calendar_themes: {
@@ -1444,7 +1526,15 @@ export type Database = {
           updated_at?: string | null
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "calendar_themes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_migration_stats"
+            referencedColumns: ["user_id"]
+          },
+        ]
       }
       calendar_webhook_channels: {
         Row: {
@@ -1601,7 +1691,15 @@ export type Database = {
           related_entity_ids?: string[] | null
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "chat_context_cache_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_migration_stats"
+            referencedColumns: ["user_id"]
+          },
+        ]
       }
       chat_messages: {
         Row: {
@@ -2434,6 +2532,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "email_attachments_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "user_migration_stats"
+            referencedColumns: ["user_id"]
+          },
+          {
             foreignKeyName: "email_attachments_email_id_fkey"
             columns: ["email_id"]
             isOneToOne: false
@@ -2666,7 +2771,15 @@ export type Database = {
           tracking_id?: string | null
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "emails_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "user_migration_stats"
+            referencedColumns: ["user_id"]
+          },
+        ]
       }
       error_logs: {
         Row: {
@@ -2797,6 +2910,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "projects"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "error_logs_resolved_by_fkey"
+            columns: ["resolved_by"]
+            isOneToOne: false
+            referencedRelation: "user_migration_stats"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "error_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_migration_stats"
+            referencedColumns: ["user_id"]
           },
         ]
       }
@@ -2944,7 +3071,15 @@ export type Database = {
           user_id?: string | null
           user_ip?: unknown
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "feedback_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_migration_stats"
+            referencedColumns: ["user_id"]
+          },
+        ]
       }
       feedback_rate_limit: {
         Row: {
@@ -3223,6 +3358,13 @@ export type Database = {
             referencedRelation: "tasks"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "llm_usage_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_migration_stats"
+            referencedColumns: ["user_id"]
+          },
         ]
       }
       llm_usage_summary: {
@@ -3286,15 +3428,25 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "llm_usage_summary_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_migration_stats"
+            referencedColumns: ["user_id"]
+          },
+        ]
       }
       migration_log: {
         Row: {
           batch_id: string | null
           created_at: string
           entity_type: string
+          error_category: string | null
           error_message: string | null
           id: number
+          last_retry_at: string | null
           legacy_id: string | null
           legacy_table: string | null
           metadata: Json
@@ -3302,16 +3454,20 @@ export type Database = {
           onto_table: string | null
           operation: string
           org_id: string | null
+          retry_count: number | null
           run_id: string
           status: string
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           batch_id?: string | null
           created_at?: string
           entity_type: string
+          error_category?: string | null
           error_message?: string | null
           id?: number
+          last_retry_at?: string | null
           legacy_id?: string | null
           legacy_table?: string | null
           metadata?: Json
@@ -3319,16 +3475,20 @@ export type Database = {
           onto_table?: string | null
           operation?: string
           org_id?: string | null
+          retry_count?: number | null
           run_id: string
           status?: string
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           batch_id?: string | null
           created_at?: string
           entity_type?: string
+          error_category?: string | null
           error_message?: string | null
           id?: number
+          last_retry_at?: string | null
           legacy_id?: string | null
           legacy_table?: string | null
           metadata?: Json
@@ -3336,11 +3496,53 @@ export type Database = {
           onto_table?: string | null
           operation?: string
           org_id?: string | null
+          retry_count?: number | null
           run_id?: string
           status?: string
           updated_at?: string
+          user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "migration_log_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_migration_stats"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      migration_platform_lock: {
+        Row: {
+          expires_at: string | null
+          id: number
+          locked_at: string | null
+          locked_by: string | null
+          run_id: string | null
+        }
+        Insert: {
+          expires_at?: string | null
+          id?: number
+          locked_at?: string | null
+          locked_by?: string | null
+          run_id?: string | null
+        }
+        Update: {
+          expires_at?: string | null
+          id?: number
+          locked_at?: string | null
+          locked_by?: string | null
+          run_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "migration_platform_lock_locked_by_fkey"
+            columns: ["locked_by"]
+            isOneToOne: false
+            referencedRelation: "user_migration_stats"
+            referencedColumns: ["user_id"]
+          },
+        ]
       }
       notes: {
         Row: {
@@ -5244,6 +5446,13 @@ export type Database = {
             referencedRelation: "projects"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "project_calendars_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_migration_stats"
+            referencedColumns: ["user_id"]
+          },
         ]
       }
       project_daily_briefs: {
@@ -5579,6 +5788,13 @@ export type Database = {
             referencedRelation: "projects"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "project_synthesis_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_migration_stats"
+            referencedColumns: ["user_id"]
+          },
         ]
       }
       projects: {
@@ -5907,7 +6123,15 @@ export type Database = {
           updated_at?: string | null
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "brief_generation_jobs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_migration_stats"
+            referencedColumns: ["user_id"]
+          },
+        ]
       }
       recurring_task_instances: {
         Row: {
@@ -5963,6 +6187,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "tasks"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_task_instances_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_migration_stats"
+            referencedColumns: ["user_id"]
           },
         ]
       }
@@ -6033,6 +6264,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "tasks"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_task_migration_log_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_migration_stats"
+            referencedColumns: ["user_id"]
           },
         ]
       }
@@ -6152,6 +6390,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "sms_messages"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scheduled_sms_messages_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_migration_stats"
+            referencedColumns: ["user_id"]
           },
         ]
       }
@@ -6408,6 +6653,13 @@ export type Database = {
             referencedRelation: "sms_templates"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "sms_messages_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_migration_stats"
+            referencedColumns: ["user_id"]
+          },
         ]
       }
       sms_metrics: {
@@ -6444,7 +6696,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "sms_metrics_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_migration_stats"
+            referencedColumns: ["user_id"]
+          },
+        ]
       }
       sms_templates: {
         Row: {
@@ -6495,7 +6755,15 @@ export type Database = {
           updated_at?: string | null
           usage_count?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "sms_templates_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "user_migration_stats"
+            referencedColumns: ["user_id"]
+          },
+        ]
       }
       subscription_plans: {
         Row: {
@@ -7008,7 +7276,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "user_brief_preferences_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "user_migration_stats"
+            referencedColumns: ["user_id"]
+          },
+        ]
       }
       user_calendar_preferences: {
         Row: {
@@ -7533,6 +7809,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "user_sms_preferences_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "user_migration_stats"
+            referencedColumns: ["user_id"]
+          },
+          {
             foreignKeyName: "user_sms_preferences_user_id_fkey1"
             columns: ["user_id"]
             isOneToOne: true
@@ -7615,6 +7898,13 @@ export type Database = {
           usage_archetype?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "users_id_fkey"
+            columns: ["id"]
+            isOneToOne: true
+            referencedRelation: "user_migration_stats"
+            referencedColumns: ["user_id"]
+          },
           {
             foreignKeyName: "users_subscription_plan_id_fkey"
             columns: ["subscription_plan_id"]
@@ -7715,7 +8005,15 @@ export type Database = {
           total_tokens: number | null
           user_id: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "llm_usage_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_migration_stats"
+            referencedColumns: ["user_id"]
+          },
+        ]
       }
       brief_email_stats: {
         Row: {
@@ -7740,6 +8038,23 @@ export type Database = {
           last_occurrence: string | null
           resolved_count: number | null
           severity: string | null
+        }
+        Relationships: []
+      }
+      global_migration_progress: {
+        Row: {
+          data_errors: number | null
+          failed_projects: number | null
+          failed_tasks: number | null
+          fatal_errors: number | null
+          migrated_projects: number | null
+          migrated_tasks: number | null
+          recoverable_errors: number | null
+          total_errors: number | null
+          total_projects: number | null
+          total_tasks: number | null
+          total_users: number | null
+          users_with_projects: number | null
         }
         Relationships: []
       }
@@ -7856,8 +8171,40 @@ export type Database = {
         }
         Relationships: []
       }
+      user_migration_stats: {
+        Row: {
+          avatar_url: string | null
+          email: string | null
+          failed_projects: number | null
+          last_migration_at: string | null
+          migrated_projects: number | null
+          migrated_tasks: number | null
+          migration_status: string | null
+          name: string | null
+          pending_projects: number | null
+          percent_complete: number | null
+          total_projects: number | null
+          total_tasks: number | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
+      acquire_migration_platform_lock: {
+        Args: {
+          p_duration_minutes?: number
+          p_locked_by: string
+          p_run_id: string
+        }
+        Returns: {
+          acquired: boolean
+          existing_expires_at: string
+          existing_locked_at: string
+          existing_locked_by: string
+          existing_run_id: string
+        }[]
+      }
       add_queue_job: {
         Args: {
           p_dedup_key?: string
@@ -8200,6 +8547,17 @@ export type Database = {
           total_clicks: number
           total_links: number
           unique_clicked_links: number
+        }[]
+      }
+      get_migration_platform_lock_status: {
+        Args: never
+        Returns: {
+          expires_at: string
+          is_locked: boolean
+          locked_at: string
+          locked_by: string
+          locked_by_email: string
+          run_id: string
         }[]
       }
       get_notification_active_subscriptions: {
@@ -8553,6 +8911,10 @@ export type Database = {
         }[]
       }
       has_active_subscription: { Args: { user_uuid: string }; Returns: boolean }
+      increment_migration_retry_count: {
+        Args: { row_id: number }
+        Returns: undefined
+      }
       increment_question_display_count: {
         Args: { question_ids: string[] }
         Returns: undefined
@@ -8653,6 +9015,18 @@ export type Database = {
       }
       refresh_sms_metrics_daily: { Args: never; Returns: undefined }
       refresh_system_metrics: { Args: never; Returns: undefined }
+      refresh_user_migration_stats: {
+        Args: never
+        Returns: {
+          duration_ms: number
+          refreshed: boolean
+          row_count: number
+        }[]
+      }
+      release_migration_platform_lock: {
+        Args: { p_run_id: string }
+        Returns: boolean
+      }
       reorder_phases_with_tasks: {
         Args: {
           p_affected_task_ids?: string[]

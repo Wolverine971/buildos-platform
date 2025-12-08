@@ -33,26 +33,30 @@
 
 <!-- Account for navbar height (64px = h-16) by using calc() -->
 <div
-	class="flex items-center justify-center px-4 sm:px-6 lg:px-8"
+	class="flex items-center justify-center px-4 sm:px-6 lg:px-8 bg-background"
 	style="min-height: calc(100vh - 64px);"
 >
 	<div class="max-w-md w-full space-y-8 py-12">
 		<!-- Logo/Brand Section -->
 		<div class="text-center">
 			<div class="flex justify-center mb-6">
-				<img src="/brain-bolt.png" alt="BuildOS Icon" class="w-16 h-16" />
+				<div
+					class="w-16 h-16 rounded-lg flex items-center justify-center border border-border bg-card shadow-ink tx tx-bloom tx-weak"
+				>
+					<img src="/brain-bolt.png" alt="BuildOS Icon" class="w-12 h-12" />
+				</div>
 			</div>
 
-			<h2 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-				Reset your password
-			</h2>
-			<p class="text-gray-600 dark:text-gray-400 mb-8">
+			<h2 class="text-3xl font-bold text-foreground mb-2">Reset your password</h2>
+			<p class="text-muted-foreground mb-8">
 				Enter your email address and we'll send you a link to reset your password.
 			</p>
 		</div>
 
 		<!-- Form Section -->
-		<div class="bg-white dark:bg-gray-800 py-8 px-6 shadow-sm rounded-lg">
+		<div
+			class="rounded-lg border border-border bg-card py-8 px-6 shadow-ink tx tx-grain tx-weak"
+		>
 			<form
 				method="POST"
 				class="space-y-6"
@@ -66,7 +70,7 @@
 			>
 				{#if form?.error}
 					<div
-						class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 px-4 py-3 rounded-lg"
+						class="rounded-lg border border-destructive/50 bg-destructive/10 text-destructive px-4 py-3"
 					>
 						{form.error}
 					</div>
@@ -74,7 +78,7 @@
 
 				{#if form?.success}
 					<div
-						class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-300 px-4 py-3 rounded-lg"
+						class="rounded-lg border border-green-500/50 bg-green-500/10 text-green-700 dark:text-green-300 px-4 py-3"
 					>
 						{form.message}
 					</div>
@@ -96,7 +100,7 @@
 							onblur={validateEmail}
 						/>
 						{#if emailError}
-							<p class="mt-1 text-sm text-red-600 dark:text-red-400">{emailError}</p>
+							<p class="mt-1 text-sm text-destructive">{emailError}</p>
 						{/if}
 					</FormField>
 				</div>
@@ -109,7 +113,6 @@
 						fullWidth={true}
 						variant="primary"
 						size="lg"
-						class="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg"
 					>
 						{loading ? 'Sending reset link...' : 'Send reset link'}
 					</Button>
@@ -120,7 +123,7 @@
 			<div class="mt-6 text-center">
 				<a
 					href="/auth/login"
-					class="text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300 transition-colors"
+					class="text-sm font-medium text-accent hover:opacity-80 transition-opacity"
 				>
 					← Back to sign in
 				</a>

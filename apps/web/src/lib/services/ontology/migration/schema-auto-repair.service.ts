@@ -58,7 +58,13 @@ export class SchemaAutoRepairService {
 		userId: string;
 		persistChanges?: boolean; // Whether to save repairs to the template
 	}): Promise<SchemaRepairResult> {
-		const { schema, defaultProps, extractedProps, validationErrors, persistChanges = true } = options;
+		const {
+			schema,
+			defaultProps,
+			extractedProps,
+			validationErrors,
+			persistChanges = true
+		} = options;
 
 		// Parse validation errors to identify repairable issues
 		const repairableIssues = this.parseValidationErrors(validationErrors, schema);
@@ -109,12 +115,19 @@ export class SchemaAutoRepairService {
 		// Persist changes to template if requested
 		let templateUpdated = false;
 		if (persistChanges && repairs.length > 0) {
-			templateUpdated = await this.persistRepairs(options.templateId, repairedSchema, repairedDefaultProps);
+			templateUpdated = await this.persistRepairs(
+				options.templateId,
+				repairedSchema,
+				repairedDefaultProps
+			);
 		}
 
 		console.log(
 			`[SchemaAutoRepair] Applied ${repairs.length} repair(s):`,
-			repairs.map((r) => `${r.field}: ${JSON.stringify(r.originalDefault)} -> ${JSON.stringify(r.newDefault)}`)
+			repairs.map(
+				(r) =>
+					`${r.field}: ${JSON.stringify(r.originalDefault)} -> ${JSON.stringify(r.newDefault)}`
+			)
 		);
 
 		return {
@@ -247,10 +260,10 @@ ${JSON.stringify(properties, null, 2)}
 
 Extracted values that couldn't be used (for context):
 ${JSON.stringify(
-			Object.fromEntries(issues.map((i) => [i.field, extractedProps[i.field]])),
-			null,
-			2
-		)}
+	Object.fromEntries(issues.map((i) => [i.field, extractedProps[i.field]])),
+	null,
+	2
+)}
 
 Return JSON:
 {
@@ -390,7 +403,9 @@ Return JSON:
 				return false;
 			}
 
-			console.info(`[SchemaAutoRepair] Successfully persisted repairs to template ${templateId}`);
+			console.info(
+				`[SchemaAutoRepair] Successfully persisted repairs to template ${templateId}`
+			);
 			return true;
 		} catch (error) {
 			console.error('[SchemaAutoRepair] Error persisting repairs:', error);
@@ -436,10 +451,7 @@ Return JSON:
 	 * Repair extracted props based on schema to fix type mismatches
 	 * This fixes the props without modifying the template schema
 	 */
-	repairExtractedProps(
-		props: Record<string, unknown>,
-		schema: any
-	): Record<string, unknown> {
+	repairExtractedProps(props: Record<string, unknown>, schema: any): Record<string, unknown> {
 		if (!schema?.properties) {
 			return props;
 		}

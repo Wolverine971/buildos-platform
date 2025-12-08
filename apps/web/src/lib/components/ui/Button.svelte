@@ -51,70 +51,62 @@
 		xl: 'px-8 py-4 text-xl min-h-[56px] min-w-[56px]'
 	};
 
-	// Variant classes - Scratchpad Ops design
-	// Tactile, tool-like buttons with strong borders and pressable shadows
+	// Variant classes - Inkprint design system
+	// Tactile, pressable buttons with subtle shadows and clean borders
 	const variantClasses = {
 		primary: `
-			bg-accent-orange text-white border-2 border-slate-700 font-semibold tracking-tight
-			hover:brightness-110 hover:shadow-pressable
-			active:translate-y-[2px] active:shadow-none
-			focus:ring-2 focus:ring-accent-orange focus:ring-offset-1
-			disabled:bg-slate-400 disabled:text-slate-200 disabled:border-slate-500 disabled:cursor-not-allowed disabled:shadow-none
-			dark:border-slate-500 dark:hover:brightness-110
-			shadow-pressable
+			bg-accent text-accent-foreground border border-accent font-semibold tracking-tight
+			hover:bg-accent/90 hover:shadow-ink-strong
+			active:translate-y-[1px] active:shadow-ink-inner
+			focus:ring-2 focus:ring-ring focus:ring-offset-1
+			disabled:bg-muted disabled:text-muted-foreground disabled:border-border disabled:cursor-not-allowed disabled:shadow-none
+			shadow-ink pressable
 		`,
 		secondary: `
-			bg-accent-blue text-white border-2 border-slate-700 font-semibold tracking-tight
-			hover:brightness-110 hover:shadow-pressable
-			active:translate-y-[2px] active:shadow-none
-			focus:ring-2 focus:ring-accent-blue focus:ring-offset-1
-			disabled:bg-slate-400 disabled:text-slate-200 disabled:border-slate-500 disabled:cursor-not-allowed disabled:shadow-none
-			dark:border-slate-500 dark:hover:brightness-110
-			shadow-pressable
+			bg-foreground text-background border border-foreground font-semibold tracking-tight
+			hover:bg-foreground/90 hover:shadow-ink-strong
+			active:translate-y-[1px] active:shadow-ink-inner
+			focus:ring-2 focus:ring-ring focus:ring-offset-1
+			disabled:bg-muted disabled:text-muted-foreground disabled:border-border disabled:cursor-not-allowed disabled:shadow-none
+			shadow-ink pressable
 		`,
 		ghost: `
-			bg-transparent text-accent-olive border-2 border-transparent font-semibold tracking-tight
-			hover:bg-surface-scratch hover:border-gray-300
-			focus:ring-2 focus:ring-slate-400 focus:ring-offset-0
-			disabled:text-slate-400 disabled:cursor-not-allowed
-			dark:text-slate-400 dark:hover:bg-slate-700/30 dark:hover:border-gray-600
+			bg-transparent text-muted-foreground border border-transparent font-semibold tracking-tight
+			hover:bg-muted/50 hover:text-foreground hover:border-border
+			focus:ring-2 focus:ring-ring focus:ring-offset-0
+			disabled:text-muted-foreground/50 disabled:cursor-not-allowed
 		`,
 		danger: `
-			bg-red-600 text-white border-2 border-red-800 font-semibold tracking-tight
-			hover:bg-red-700 hover:shadow-pressable
-			active:translate-y-[2px] active:shadow-none
+			bg-red-600 text-white border border-red-700 font-semibold tracking-tight
+			hover:bg-red-700 hover:shadow-ink-strong
+			active:translate-y-[1px] active:shadow-ink-inner
 			focus:ring-2 focus:ring-red-600 focus:ring-offset-1
-			disabled:bg-slate-400 disabled:text-slate-200 disabled:border-slate-500 disabled:cursor-not-allowed disabled:shadow-none
-			dark:border-red-700 dark:hover:bg-red-700
-			shadow-pressable
+			disabled:bg-muted disabled:text-muted-foreground disabled:border-border disabled:cursor-not-allowed disabled:shadow-none
+			shadow-ink pressable
 		`,
 		warning: `
-			bg-amber-600 text-white border-2 border-amber-700 font-semibold tracking-tight
-			hover:bg-amber-700 hover:shadow-pressable
-			active:translate-y-[2px] active:shadow-none
+			bg-amber-600 text-white border border-amber-700 font-semibold tracking-tight
+			hover:bg-amber-700 hover:shadow-ink-strong
+			active:translate-y-[1px] active:shadow-ink-inner
 			focus:ring-2 focus:ring-amber-600 focus:ring-offset-1
-			disabled:bg-slate-400 disabled:text-slate-200 disabled:border-slate-500 disabled:cursor-not-allowed disabled:shadow-none
-			dark:border-amber-700 dark:hover:bg-amber-700
-			shadow-pressable
+			disabled:bg-muted disabled:text-muted-foreground disabled:border-border disabled:cursor-not-allowed disabled:shadow-none
+			shadow-ink pressable
 		`,
 		outline: `
-			bg-white text-slate-900 border-2 border-slate-700 font-semibold tracking-tight
-			hover:bg-surface-scratch hover:border-slate-700 hover:shadow-subtle
-			active:translate-y-[1px] active:shadow-none
-			focus:ring-2 focus:ring-slate-700 focus:ring-offset-1
-			disabled:bg-slate-50 disabled:text-slate-400 disabled:border-slate-300 disabled:cursor-not-allowed disabled:shadow-none
-			dark:bg-transparent dark:text-slate-100 dark:border-slate-500
-			dark:hover:bg-slate-700/30 dark:hover:border-accent-olive
-			shadow-subtle
+			bg-card text-foreground border border-border font-semibold tracking-tight
+			hover:bg-muted/50 hover:border-accent hover:text-accent
+			active:translate-y-[1px] active:shadow-ink-inner
+			focus:ring-2 focus:ring-ring focus:ring-offset-1
+			disabled:bg-muted/50 disabled:text-muted-foreground disabled:border-border disabled:cursor-not-allowed disabled:shadow-none
+			shadow-ink pressable
 		`,
 		success: `
-			bg-emerald-600 text-white border-2 border-emerald-700 font-semibold tracking-tight
-			hover:bg-emerald-700 hover:shadow-pressable
-			active:translate-y-[2px] active:shadow-none
+			bg-emerald-600 text-white border border-emerald-700 font-semibold tracking-tight
+			hover:bg-emerald-700 hover:shadow-ink-strong
+			active:translate-y-[1px] active:shadow-ink-inner
 			focus:ring-2 focus:ring-emerald-600 focus:ring-offset-1
-			disabled:bg-slate-400 disabled:text-slate-200 disabled:border-slate-500 disabled:cursor-not-allowed disabled:shadow-none
-			dark:border-emerald-700 dark:hover:bg-emerald-700
-			shadow-pressable
+			disabled:bg-muted disabled:text-muted-foreground disabled:border-border disabled:cursor-not-allowed disabled:shadow-none
+			shadow-ink pressable
 		`
 	};
 
@@ -129,9 +121,9 @@
 	// Svelte 5 runes: Convert reactive declarations to $derived
 	let buttonClasses = $derived(
 		twMerge(
-			// Base classes - Scratchpad Ops styling
+			// Base classes - Inkprint design system
 			'inline-flex items-center justify-center',
-			'font-semibold rounded', // 4px radius for industrial feel
+			'font-semibold rounded-lg', // Slightly rounded for softer feel
 			'focus:outline-none focus-visible:ring-2',
 			'touch-manipulation',
 			'transition-all duration-100', // Fast, tactile transitions

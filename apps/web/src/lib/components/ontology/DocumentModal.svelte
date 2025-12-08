@@ -283,21 +283,29 @@
 	showCloseButton={false}
 >
 	{#snippet header()}
-		<!-- Custom gradient header - grey/dark grey -->
+		<!-- Inkprint header with strip texture -->
 		<div
-			class="flex-shrink-0 bg-gradient-to-r from-gray-600 via-gray-700 to-gray-800 dark:from-gray-700 dark:via-gray-800 dark:to-gray-900 text-white px-3 py-3 sm:px-6 sm:py-5 flex items-start justify-between gap-2 sm:gap-4 dither-gradient"
+			class="flex-shrink-0 bg-muted/50 border-b border-border px-3 py-3 sm:px-6 sm:py-5 flex items-start justify-between gap-2 sm:gap-4 tx tx-strip tx-weak"
 		>
 			<div class="space-y-1 sm:space-y-2 min-w-0 flex-1">
-				<p class="text-[10px] sm:text-xs font-semibold uppercase tracking-[0.3em] sm:tracking-[0.4em] text-white/70">
+				<p
+					class="text-[10px] sm:text-xs font-semibold uppercase tracking-[0.3em] sm:tracking-[0.4em] text-muted-foreground"
+				>
 					{documentId ? 'Edit Document' : 'New Document'}
 				</p>
-				<h2 class="text-lg sm:text-2xl font-bold leading-tight truncate">
+				<h2 class="text-lg sm:text-2xl font-bold leading-tight truncate text-foreground">
 					{title || 'Document details'}
 				</h2>
 				<div class="flex flex-wrap items-center gap-1.5 sm:gap-3 text-xs sm:text-sm">
-					<span class="px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-semibold capitalize bg-white/20">{stateKey}</span>
+					<span
+						class="px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-semibold capitalize bg-accent/20 text-accent-foreground"
+						>{stateKey}</span
+					>
 					{#if typeKey}
-						<span class="hidden sm:inline font-mono text-xs tracking-wide text-white/70">{typeKey}</span>
+						<span
+							class="hidden sm:inline font-mono text-xs tracking-wide text-muted-foreground"
+							>{typeKey}</span
+						>
 					{/if}
 				</div>
 			</div>
@@ -305,10 +313,15 @@
 				variant="ghost"
 				size="sm"
 				onclick={closeModal}
-				class="text-white/80 hover:text-white shrink-0 !p-1.5 sm:!p-2"
+				class="text-muted-foreground hover:text-foreground shrink-0 !p-1.5 sm:!p-2"
 				disabled={saving}
 			>
-				<svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+				<svg
+					class="w-4 h-4 sm:w-5 sm:h-5"
+					fill="none"
+					stroke="currentColor"
+					viewBox="0 0 24 24"
+				>
 					<path
 						stroke-linecap="round"
 						stroke-linejoin="round"
@@ -324,12 +337,12 @@
 		<div class="overflow-y-auto" style="max-height: 70vh;">
 			{#if loading}
 				<div class="flex items-center justify-center py-12">
-					<Loader class="w-6 h-6 animate-spin text-gray-400" />
+					<Loader class="w-6 h-6 animate-spin text-muted-foreground" />
 				</div>
 			{:else}
 				<form id={documentFormId} class="space-y-6 px-4 sm:px-6 py-6" onsubmit={handleSave}>
 					<section
-						class="rounded border border-gray-200 dark:border-gray-700 bg-surface-elevated dark:bg-surface-panel p-4 sm:p-5 shadow-subtle space-y-2 dither-soft"
+						class="rounded border border-border bg-muted/30 p-4 sm:p-5 shadow-ink space-y-2 tx tx-grain tx-weak"
 					>
 						<div class="flex flex-wrap items-center gap-2">
 							<Badge variant={getStateVariant(stateKey)} size="sm" class="capitalize">
@@ -339,14 +352,10 @@
 								>{contextBadgeLabel}</Badge
 							>
 							{#if typeKey}
-								<span class="text-xs text-slate-600 dark:text-slate-400"
-									>Type • {typeKey}</span
-								>
+								<span class="text-xs text-muted-foreground">Type • {typeKey}</span>
 							{/if}
 						</div>
-						<div
-							class="text-xs text-slate-600 dark:text-slate-400 flex flex-wrap gap-4"
-						>
+						<div class="text-xs text-muted-foreground flex flex-wrap gap-4">
 							{#if createdAt}
 								<span>Created {formatDate(createdAt)}</span>
 							{/if}
@@ -358,31 +367,23 @@
 
 					{#if isEditing}
 						<div
-							class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm text-slate-600 dark:text-slate-300"
+							class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm text-muted-foreground"
 						>
 							<div>
-								<p class="font-semibold text-slate-900 dark:text-slate-100">
-									Document ID
-								</p>
-								<p
-									class="font-mono text-xs text-slate-600 dark:text-slate-400 break-all mt-1"
-								>
+								<p class="font-semibold text-foreground">Document ID</p>
+								<p class="font-mono text-xs text-muted-foreground break-all mt-1">
 									{documentId}
 								</p>
 							</div>
 							<div>
-								<p class="font-semibold text-slate-900 dark:text-slate-100">
-									Created
-								</p>
-								<p class="mt-1 text-slate-700 dark:text-slate-200">
+								<p class="font-semibold text-foreground">Created</p>
+								<p class="mt-1 text-foreground">
 									{formatDate(createdAt) ?? '—'}
 								</p>
 							</div>
 							<div>
-								<p class="font-semibold text-slate-900 dark:text-slate-100">
-									Updated
-								</p>
-								<p class="mt-1 text-slate-700 dark:text-slate-200">
+								<p class="font-semibold text-foreground">Updated</p>
+								<p class="mt-1 text-foreground">
 									{lastUpdatedLabel ?? '—'}
 								</p>
 							</div>
@@ -444,7 +445,7 @@
 						<input
 							id="document-type-input"
 							list={datalistId}
-							class="w-full rounded border border-gray-200 dark:border-gray-700 bg-surface-clarity dark:bg-surface-elevated px-3 py-2 text-sm text-slate-900 dark:text-slate-100 font-mono focus:outline-none focus:ring-2 focus:ring-accent-orange focus:border-accent-orange dither-soft transition-all"
+							class="w-full rounded border border-border bg-background px-3 py-2 text-sm text-foreground font-mono focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring transition-all"
 							bind:value={typeKey}
 							placeholder="doc.project.context"
 						/>
@@ -454,27 +455,21 @@
 							{/each}
 						</datalist>
 						<div class="flex flex-wrap gap-2 mt-2 text-[11px] font-mono">
-							<span
-								class="px-2 py-0.5 rounded bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-200"
-							>
+							<span class="px-2 py-0.5 rounded bg-accent/10 text-accent">
 								doc.project.context
 							</span>
-							<span
-								class="px-2 py-0.5 rounded bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-200"
-							>
+							<span class="px-2 py-0.5 rounded bg-accent/10 text-accent">
 								doc.task.spec
 							</span>
 						</div>
 					</FormField>
 
-					<section class="pt-4 border-t border-gray-200 dark:border-gray-700 space-y-3">
+					<section class="pt-4 border-t border-border space-y-3">
 						<div
 							class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2"
 						>
-							<h4 class="text-sm font-semibold text-slate-900 dark:text-slate-100">
-								Content
-							</h4>
-							<p class="text-xs text-slate-600 dark:text-slate-400">
+							<h4 class="text-sm font-semibold text-foreground">Content</h4>
+							<p class="text-xs text-muted-foreground">
 								Full GitHub-flavored markdown support. Use the toolbar for
 								shortcuts.
 							</p>
@@ -490,11 +485,9 @@
 
 					{#if globalFormError}
 						<div
-							class="flex items-center gap-2 px-3 py-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg"
+							class="flex items-center gap-2 px-3 py-2 bg-destructive/10 border border-destructive/30 rounded-lg"
 						>
-							<span class="text-sm text-red-600 dark:text-red-400"
-								>{globalFormError}</span
-							>
+							<span class="text-sm text-destructive">{globalFormError}</span>
 						</div>
 					{/if}
 				</form>
@@ -503,7 +496,7 @@
 	{/snippet}
 	{#snippet footer()}
 		<div
-			class="flex flex-row items-center justify-between gap-2 sm:gap-4 p-2 sm:p-4 border-t border-gray-200 dark:border-gray-700 bg-surface-panel dark:bg-slate-900/30 dither-surface"
+			class="flex flex-row items-center justify-between gap-2 sm:gap-4 p-2 sm:p-4 border-t border-border bg-muted/30 tx tx-grain tx-weak"
 		>
 			{#if documentId}
 				<!-- Danger zone inline on mobile -->

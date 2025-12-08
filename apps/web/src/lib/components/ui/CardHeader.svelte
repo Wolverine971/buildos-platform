@@ -4,35 +4,49 @@
 	import type { Snippet } from 'svelte';
 	import { twMerge } from 'tailwind-merge';
 
-	type HeaderVariant = 'default' | 'gradient' | 'accent';
+	type HeaderVariant = 'default' | 'muted' | 'accent' | 'strip';
+	type HeaderTexture = 'none' | 'strip' | 'frame' | 'grain';
 
 	// Svelte 5 runes: Use $props() with rest syntax
 	let {
 		variant = 'default',
-		dithered = false,
+		texture = 'none',
+		dithered = false, // Legacy prop
 		class: className = '',
 		children,
 		...restProps
 	}: {
 		variant?: HeaderVariant;
+		texture?: HeaderTexture;
 		dithered?: boolean;
 		class?: string;
 		children: Snippet;
 	} & HTMLAttributes<HTMLDivElement> = $props();
 
+	// Variant styles - Inkprint design system
 	const variantClasses = {
-		default: 'bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700',
-		gradient:
-			'bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/10 dark:to-indigo-900/10 border-b border-gray-200 dark:border-gray-700 dither-gradient',
-		accent: 'bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/10 dark:to-pink-900/10 border-b border-gray-200 dark:border-gray-700 dither-accent'
+		default: 'bg-muted/50 border-b border-border',
+		muted: 'bg-muted border-b border-border',
+		accent: 'bg-accent/10 border-b border-accent/20',
+		strip: 'bg-card border-b border-border'
 	};
 
-	// Optimized for high information density (Apple-style)
+	// Texture classes - Inkprint
+	const textureClasses = {
+		none: '',
+		strip: 'tx tx-strip tx-weak',
+		frame: 'tx tx-frame tx-weak',
+		grain: 'tx tx-grain tx-weak'
+	};
+
+	// Optimized for high information density
 	let headerClasses = $derived(
 		twMerge(
 			'px-3 py-2 sm:py-2.5 relative overflow-hidden', // Compact: 12px horizontal, 8-10px vertical
 			variantClasses[variant],
-			dithered && 'dither-strong',
+			textureClasses[texture],
+			// Legacy dithered support
+			dithered && texture === 'none' && 'tx tx-strip tx-weak',
 			className
 		)
 	);

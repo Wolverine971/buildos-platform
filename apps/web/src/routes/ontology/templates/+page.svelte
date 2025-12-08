@@ -453,7 +453,7 @@
 		<button
 			type="button"
 			onclick={() => goto('/ontology')}
-			class="inline-flex items-center gap-2 rounded border-2 border-slate-700/30 bg-surface-elevated px-3 py-2 text-sm font-semibold text-slate-600 transition hover:border-accent-orange hover:text-accent-orange focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-orange dark:border-slate-500/30 dark:bg-surface-panel dark:text-slate-300 dark:hover:border-accent-orange dark:hover:text-accent-orange shadow-subtle"
+			class="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm font-semibold text-muted-foreground transition hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring shadow-ink pressable"
 		>
 			<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
 				<path
@@ -471,10 +471,10 @@
 	<header>
 		<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
 			<div>
-				<h1 class="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-slate-100 mb-2">
+				<h1 class="text-2xl sm:text-3xl font-bold text-foreground mb-2">
 					Ontology Templates
 				</h1>
-				<p class="text-sm sm:text-base text-slate-600 dark:text-slate-400">
+				<p class="text-sm sm:text-base text-muted-foreground">
 					Browse and discover {templates.length} template{templates.length !== 1
 						? 's'
 						: ''} across all domains
@@ -505,40 +505,29 @@
 	</header>
 
 	<div
-		class="rounded border-2 border-slate-700/30 dark:border-slate-500/30 bg-surface-panel dark:bg-slate-800 p-4 sm:p-6 flex flex-wrap gap-4 text-sm text-slate-600 dark:text-slate-300 shadow-subtle"
+		class="rounded-lg border border-border bg-card p-4 sm:p-6 flex flex-wrap gap-4 text-sm text-muted-foreground shadow-ink tx tx-thread tx-weak"
 	>
 		<div class="min-w-[200px] flex-1">
-			<p
-				class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400 font-semibold"
-			>
-				Type Keys
-			</p>
+			<p class="micro-label text-accent mb-1">Type Keys</p>
 			<p>
-				Autonomous scopes use <code class="font-mono">domain.deliverable[.variant]</code> so
-				schema + FSM stay reusable.
+				Autonomous scopes use <code class="font-mono text-foreground"
+					>domain.deliverable[.variant]</code
+				> so schema + FSM stay reusable.
 			</p>
 		</div>
 		<div class="min-w-[200px] flex-1">
-			<p
-				class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 font-semibold"
-			>
-				Facets
-			</p>
+			<p class="micro-label text-accent mb-1">Facets</p>
 			<p>
 				Context · scale · stage layer perspective onto the instance without renaming the
 				entity.
 			</p>
 		</div>
 		<div class="min-w-[200px] flex-1">
-			<p
-				class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 font-semibold"
-			>
-				Entity Categories
-			</p>
+			<p class="micro-label text-accent mb-1">Entity Categories</p>
 			<div class="flex flex-wrap gap-2 text-xs mt-1">
 				{#each scopeGroups as group}
 					<span
-						class="inline-flex items-center rounded-full border border-slate-700/30 dark:border-slate-500/30 px-3 py-1 text-gray-700 dark:text-gray-200"
+						class="inline-flex items-center rounded-full border border-border px-3 py-1 text-foreground"
 					>
 						{group.title}: {group.scopes.length}
 					</span>
@@ -588,15 +577,10 @@
 				</div>
 
 				<div
-					class="rounded-2xl border border-gray-100 dark:border-gray-800 bg-gray-50/70 dark:bg-gray-900/40 p-3 sm:p-4 flex flex-wrap items-center justify-between gap-3 text-sm"
+					class="rounded-lg border border-border bg-muted/30 p-3 sm:p-4 flex flex-wrap items-center justify-between gap-3 text-sm"
 				>
-					<div class="flex items-center gap-2 text-gray-600 dark:text-gray-300">
-						<svg
-							class="w-4 h-4 text-gray-400 dark:text-gray-500"
-							viewBox="0 0 24 24"
-							fill="none"
-							stroke="currentColor"
-						>
+					<div class="flex items-center gap-2 text-muted-foreground">
+						<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
 							<path
 								stroke-linecap="round"
 								stroke-linejoin="round"
@@ -611,7 +595,7 @@
 						</span>
 						{#if activeFacetCount}
 							<span
-								class="inline-flex items-center rounded-full bg-white/80 dark:bg-gray-800/70 px-2 py-0.5 text-xs font-semibold text-gray-700 dark:text-gray-200"
+								class="inline-flex items-center rounded-full bg-card border border-border px-2 py-0.5 text-xs font-semibold text-foreground"
 							>
 								{activeFacetCount} facet{activeFacetCount === 1 ? '' : 's'}
 							</span>
@@ -628,19 +612,19 @@
 			<!-- Facet Filters -->
 			<div class="grid gap-3 md:grid-cols-3">
 				<details
-					class={`rounded-2xl border bg-surface-panel dark:bg-slate-800 px-4 py-3 ${selectedContexts.length ? 'border-blue-200 dark:border-blue-500/40' : 'border-2 border-slate-700/30 dark:border-slate-500/30'}`}
+					class={`rounded-lg border bg-card px-4 py-3 ${selectedContexts.length ? 'border-accent' : 'border-border'}`}
 					open={selectedContexts.length > 0}
 				>
 					<summary
-						class="flex items-center justify-between gap-2 cursor-pointer text-xs font-semibold text-gray-800 dark:text-gray-200 uppercase tracking-wide"
+						class="flex items-center justify-between gap-2 cursor-pointer text-xs font-semibold text-foreground uppercase tracking-wide"
 					>
 						<span>Context</span>
-						<span class="text-[11px] text-gray-500 dark:text-gray-400">
+						<span class="text-[11px] text-muted-foreground">
 							{selectedContexts.length}/{facetOptions.context?.length ?? 0}
 						</span>
 					</summary>
 					<div class="mt-2 space-y-2">
-						<p class="text-xs text-gray-500 dark:text-gray-400">
+						<p class="text-xs text-muted-foreground">
 							{facetDescriptions.context}
 						</p>
 						<div class="flex flex-wrap gap-2">
@@ -648,10 +632,10 @@
 								{#each facetOptions.context as option}
 									{@const isSelected = selectedContexts.includes(option.value)}
 									<label
-										class={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition ${
+										class={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition cursor-pointer ${
 											isSelected
-												? 'bg-blue-50 border-blue-200 text-blue-700 dark:bg-blue-900/30 dark:border-blue-500/40 dark:text-blue-100'
-												: 'bg-transparent border-gray-200 text-gray-600 dark:border-gray-700 dark:text-gray-400 hover:border-blue-200'
+												? 'bg-accent/10 border-accent text-accent'
+												: 'bg-transparent border-border text-muted-foreground hover:border-accent/50'
 										}`}
 									>
 										<input
@@ -665,28 +649,26 @@
 									</label>
 								{/each}
 							{:else}
-								<p class="text-xs text-gray-500 dark:text-gray-500">
-									No context facets.
-								</p>
+								<p class="text-xs text-muted-foreground">No context facets.</p>
 							{/if}
 						</div>
 					</div>
 				</details>
 
 				<details
-					class={`rounded-2xl border bg-surface-panel dark:bg-slate-800 px-4 py-3 ${selectedScales.length ? 'border-emerald-200 dark:border-emerald-500/40' : 'border-2 border-slate-700/30 dark:border-slate-500/30'}`}
+					class={`rounded-lg border bg-card px-4 py-3 ${selectedScales.length ? 'border-emerald-500' : 'border-border'}`}
 					open={selectedScales.length > 0}
 				>
 					<summary
-						class="flex items-center justify-between gap-2 cursor-pointer text-xs font-semibold text-gray-800 dark:text-gray-200 uppercase tracking-wide"
+						class="flex items-center justify-between gap-2 cursor-pointer text-xs font-semibold text-foreground uppercase tracking-wide"
 					>
 						<span>Scale</span>
-						<span class="text-[11px] text-gray-500 dark:text-gray-400">
+						<span class="text-[11px] text-muted-foreground">
 							{selectedScales.length}/{facetOptions.scale?.length ?? 0}
 						</span>
 					</summary>
 					<div class="mt-2 space-y-2">
-						<p class="text-xs text-gray-500 dark:text-gray-400">
+						<p class="text-xs text-muted-foreground">
 							{facetDescriptions.scale}
 						</p>
 						<div class="flex flex-wrap gap-2">
@@ -694,10 +676,10 @@
 								{#each facetOptions.scale as option}
 									{@const isScaleSelected = selectedScales.includes(option.value)}
 									<label
-										class={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition ${
+										class={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition cursor-pointer ${
 											isScaleSelected
-												? 'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-900/30 dark:border-emerald-500/40 dark:text-emerald-100'
-												: 'bg-transparent border-gray-200 text-gray-600 dark:border-gray-700 dark:text-gray-400 hover:border-emerald-200'
+												? 'bg-emerald-500/10 border-emerald-500 text-emerald-600'
+												: 'bg-transparent border-border text-muted-foreground hover:border-emerald-500/50'
 										}`}
 									>
 										<input
@@ -711,28 +693,26 @@
 									</label>
 								{/each}
 							{:else}
-								<p class="text-xs text-gray-500 dark:text-gray-500">
-									No scale facets.
-								</p>
+								<p class="text-xs text-muted-foreground">No scale facets.</p>
 							{/if}
 						</div>
 					</div>
 				</details>
 
 				<details
-					class={`rounded-2xl border bg-surface-panel dark:bg-slate-800 px-4 py-3 ${selectedStages.length ? 'border-accent-blue-200 dark:border-accent-blue-500/40' : 'border-2 border-slate-700/30 dark:border-slate-500/30'}`}
+					class={`rounded-lg border bg-card px-4 py-3 ${selectedStages.length ? 'border-blue-500' : 'border-border'}`}
 					open={selectedStages.length > 0}
 				>
 					<summary
-						class="flex items-center justify-between gap-2 cursor-pointer text-xs font-semibold text-gray-800 dark:text-gray-200 uppercase tracking-wide"
+						class="flex items-center justify-between gap-2 cursor-pointer text-xs font-semibold text-foreground uppercase tracking-wide"
 					>
 						<span>Stage</span>
-						<span class="text-[11px] text-gray-500 dark:text-gray-400">
+						<span class="text-[11px] text-muted-foreground">
 							{selectedStages.length}/{facetOptions.stage?.length ?? 0}
 						</span>
 					</summary>
 					<div class="mt-2 space-y-2">
-						<p class="text-xs text-gray-500 dark:text-gray-400">
+						<p class="text-xs text-muted-foreground">
 							{facetDescriptions.stage}
 						</p>
 						<div class="flex flex-wrap gap-2">
@@ -740,10 +720,10 @@
 								{#each facetOptions.stage as option}
 									{@const isStageSelected = selectedStages.includes(option.value)}
 									<label
-										class={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition ${
+										class={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition cursor-pointer ${
 											isStageSelected
-												? 'bg-accent-blue-50 border-accent-blue-200 text-accent-blue-700 dark:bg-accent-blue-900/30 dark:border-accent-blue-500/40 dark:text-accent-blue-100'
-												: 'bg-transparent border-gray-200 text-gray-600 dark:border-gray-700 dark:text-gray-400 hover:border-accent-blue-200'
+												? 'bg-blue-500/10 border-blue-500 text-blue-600'
+												: 'bg-transparent border-border text-muted-foreground hover:border-blue-500/50'
 										}`}
 									>
 										<input
@@ -757,9 +737,7 @@
 									</label>
 								{/each}
 							{:else}
-								<p class="text-xs text-gray-500 dark:text-gray-500">
-									No stage facets.
-								</p>
+								<p class="text-xs text-muted-foreground">No stage facets.</p>
 							{/if}
 						</div>
 					</div>
@@ -767,11 +745,10 @@
 			</div>
 
 			<div
-				class="flex flex-col gap-4 pt-4 border-t border-slate-700/30 dark:border-slate-500/30 md:flex-row md:items-center md:justify-between"
+				class="flex flex-col gap-4 pt-4 border-t border-border md:flex-row md:items-center md:justify-between"
 			>
 				<div class="flex items-center gap-3">
-					<span class="text-sm font-medium text-gray-700 dark:text-gray-300">Sort by</span
-					>
+					<span class="text-sm font-medium text-foreground">Sort by</span>
 					<Select id="sortBy" bind:value={sortBy} onchange={updateFilters} class="w-auto">
 						<option value="name">Name</option>
 						<option value="type_key">Type Key</option>
@@ -786,25 +763,23 @@
 				</div>
 
 				<div class="flex items-center gap-2">
-					<span class="text-sm font-medium text-gray-700 dark:text-gray-300"
-						>Group by:</span
-					>
+					<span class="text-sm font-medium text-foreground">Group by:</span>
 					<div class="flex gap-2">
 						<button
 							onclick={() => (viewMode = 'realm')}
-							class="px-3 py-1.5 rounded text-sm font-medium transition-colors {viewMode ===
+							class="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors pressable {viewMode ===
 							'realm'
-								? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
-								: 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'}"
+								? 'bg-accent/10 text-accent border border-accent/30'
+								: 'bg-muted text-muted-foreground border border-border hover:border-accent/50 hover:text-foreground'}"
 						>
 							Realm
 						</button>
 						<button
 							onclick={() => (viewMode = 'scope')}
-							class="px-3 py-1.5 rounded text-sm font-medium transition-colors {viewMode ===
+							class="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors pressable {viewMode ===
 							'scope'
-								? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
-								: 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'}"
+								? 'bg-accent/10 text-accent border border-accent/30'
+								: 'bg-muted text-muted-foreground border border-border hover:border-accent/50 hover:text-foreground'}"
 						>
 							Scope
 						</button>
@@ -813,36 +788,30 @@
 			</div>
 
 			{#if selectedScopeDetails || selectedRealm || activeFacetCount}
-				<div
-					class="grid gap-4 pt-5 border-t border-gray-100 dark:border-gray-800 md:grid-cols-2"
-				>
+				<div class="grid gap-4 pt-5 border-t border-border md:grid-cols-2">
 					{#if selectedScopeDetails}
 						<div
-							class="rounded-2xl border border-2 border-slate-700/30 dark:border-slate-500/30 bg-gradient-to-br from-white to-gray-50 dark:from-gray-900 dark:to-gray-900/40 p-4 space-y-2"
+							class="rounded-lg border border-border bg-card p-4 space-y-2 shadow-ink tx tx-frame tx-weak"
 						>
-							<p
-								class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400"
-							>
-								Scope Insight
-							</p>
-							<h4 class="text-lg font-semibold text-gray-900 dark:text-gray-50">
+							<p class="micro-label text-accent">Scope Insight</p>
+							<h4 class="text-lg font-semibold text-foreground">
 								{selectedScopeDetails.label}
 							</h4>
-							<p class="text-sm text-gray-600 dark:text-gray-300">
+							<p class="text-sm text-muted-foreground">
 								{selectedScopeDetails.summary}
 							</p>
 							{#if selectedScopeDetails.typeKeyPattern}
-								<p class="text-xs font-mono text-gray-500 dark:text-gray-400">
+								<p class="text-xs font-mono text-muted-foreground">
 									Type Key pattern: {selectedScopeDetails.typeKeyPattern}
 								</p>
 							{/if}
 							{#if selectedScopeDetails.facetUsage}
-								<p class="text-xs text-gray-500 dark:text-gray-400">
+								<p class="text-xs text-muted-foreground">
 									Facet focus: {selectedScopeDetails.facetUsage}
 								</p>
 							{/if}
 							{#if selectedScopeDetails.notes}
-								<p class="text-xs text-gray-500 dark:text-gray-400">
+								<p class="text-xs text-muted-foreground">
 									{selectedScopeDetails.notes}
 								</p>
 							{/if}
@@ -851,21 +820,15 @@
 
 					{#if selectedRealm || activeFacetCount}
 						<div
-							class="rounded-2xl border border-2 border-slate-700/30 dark:border-slate-500/30 bg-surface-panel dark:bg-slate-800 p-4 space-y-3"
+							class="rounded-lg border border-border bg-card p-4 space-y-3 shadow-ink"
 						>
 							{#if selectedRealm}
 								<div>
-									<p
-										class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400"
-									>
-										Realm
-									</p>
-									<p
-										class="text-base font-semibold text-gray-900 dark:text-gray-50"
-									>
+									<p class="micro-label text-accent">Realm</p>
+									<p class="text-base font-semibold text-foreground">
 										{formatRealm(selectedRealm)}
 									</p>
-									<p class="text-xs text-gray-500 dark:text-gray-400">
+									<p class="text-xs text-muted-foreground">
 										Use realms to cluster templates by practitioner perspective.
 									</p>
 								</div>
@@ -873,23 +836,17 @@
 
 							{#if activeFacetCount}
 								<div class="space-y-2">
-									<p
-										class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400"
-									>
-										Facet Lenses
-									</p>
+									<p class="micro-label text-accent">Facet Lenses</p>
 									<div class="space-y-3">
 										{#if selectedContexts.length}
 											<div class="space-y-1">
-												<p
-													class="text-xs font-semibold text-gray-600 dark:text-gray-300"
-												>
+												<p class="text-xs font-semibold text-foreground">
 													Context
 												</p>
 												<div class="flex flex-wrap gap-2">
 													{#each selectedContexts as value}
 														<span
-															class="inline-flex items-center rounded-full bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-100 border border-blue-100 dark:border-blue-500/40 px-3 py-1 text-xs"
+															class="inline-flex items-center rounded-full bg-accent/10 text-accent border border-accent/30 px-3 py-1 text-xs"
 														>
 															{facetLabelMap.context?.[value] ??
 																capitalize(value)}
@@ -900,15 +857,13 @@
 										{/if}
 										{#if selectedScales.length}
 											<div class="space-y-1">
-												<p
-													class="text-xs font-semibold text-gray-600 dark:text-gray-300"
-												>
+												<p class="text-xs font-semibold text-foreground">
 													Scale
 												</p>
 												<div class="flex flex-wrap gap-2">
 													{#each selectedScales as value}
 														<span
-															class="inline-flex items-center rounded-full bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-100 border border-emerald-100 dark:border-emerald-500/40 px-3 py-1 text-xs"
+															class="inline-flex items-center rounded-full bg-emerald-500/10 text-emerald-600 border border-emerald-500/30 px-3 py-1 text-xs"
 														>
 															{facetLabelMap.scale?.[value] ??
 																capitalize(value)}
@@ -919,15 +874,13 @@
 										{/if}
 										{#if selectedStages.length}
 											<div class="space-y-1">
-												<p
-													class="text-xs font-semibold text-gray-600 dark:text-gray-300"
-												>
+												<p class="text-xs font-semibold text-foreground">
 													Stage
 												</p>
 												<div class="flex flex-wrap gap-2">
 													{#each selectedStages as value}
 														<span
-															class="inline-flex items-center rounded-full bg-accent-blue-50 dark:bg-accent-blue-500/10 text-accent-blue-700 dark:text-accent-blue-100 border border-accent-blue-100 dark:border-accent-blue-500/40 px-3 py-1 text-xs"
+															class="inline-flex items-center rounded-full bg-blue-500/10 text-blue-600 border border-blue-500/30 px-3 py-1 text-xs"
 														>
 															{facetLabelMap.stage?.[value] ??
 																capitalize(value)}
@@ -951,11 +904,9 @@
 		{#if templates.length === 0}
 			<!-- Empty State -->
 			<div
-				class="text-center py-16 sm:py-20 bg-white dark:bg-gray-800 rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-600"
+				class="text-center py-16 sm:py-20 bg-card rounded-xl border-2 border-dashed border-border"
 			>
-				<div
-					class="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-6 text-gray-400 dark:text-gray-500"
-				>
+				<div class="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-6 text-muted-foreground">
 					<svg
 						xmlns="http://www.w3.org/2000/svg"
 						fill="none"
@@ -970,10 +921,10 @@
 						/>
 					</svg>
 				</div>
-				<h2 class="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-white mb-2">
+				<h2 class="text-xl sm:text-2xl font-semibold text-foreground mb-2">
 					No templates found
 				</h2>
-				<p class="text-gray-600 dark:text-gray-400 mb-6 px-4">
+				<p class="text-muted-foreground mb-6 px-4">
 					Try adjusting your filters or search query
 				</p>
 				<Button variant="outline" size="md" onclick={clearFilters}>
@@ -985,10 +936,10 @@
 				{#each Object.entries(grouped) as [realm, realmTemplates]}
 					<div class="space-y-6">
 						<div class="flex items-center justify-between">
-							<h2 class="text-2xl font-bold text-gray-900 dark:text-white capitalize">
+							<h2 class="text-2xl font-bold text-foreground capitalize">
 								{realm}
 							</h2>
-							<span class="text-sm text-gray-500 dark:text-gray-400">
+							<span class="text-sm text-muted-foreground">
 								{realmTemplates.length} template{realmTemplates.length !== 1
 									? 's'
 									: ''}
@@ -1015,10 +966,10 @@
 				{#each Object.entries(byScope) as [scopeKey, scopeTemplates]}
 					<div class="space-y-6">
 						<div class="flex items-center justify-between">
-							<h2 class="text-2xl font-bold text-gray-900 dark:text-white capitalize">
+							<h2 class="text-2xl font-bold text-foreground capitalize">
 								{scopeKey}
 							</h2>
-							<span class="text-sm text-gray-500 dark:text-gray-400">
+							<span class="text-sm text-muted-foreground">
 								{scopeTemplates.length} template{scopeTemplates.length !== 1
 									? 's'
 									: ''}
@@ -1099,19 +1050,15 @@
 			on:cancel={closeDeleteConfirmModal}
 		>
 			<div slot="content">
-				<p class="text-sm text-gray-600 dark:text-gray-300 mb-4">
+				<p class="text-sm text-muted-foreground mb-4">
 					Are you sure you want to delete the template
-					<span class="font-semibold">{templateToDelete.name}</span>?
+					<span class="font-semibold text-foreground">{templateToDelete.name}</span>?
 				</p>
-				<p class="text-sm font-semibold text-red-600 dark:text-red-400">
-					This will permanently delete:
-				</p>
-				<ul
-					class="list-disc list-inside mt-2 text-sm text-gray-600 dark:text-gray-300 space-y-1"
-				>
+				<p class="text-sm font-semibold text-red-600">This will permanently delete:</p>
+				<ul class="list-disc list-inside mt-2 text-sm text-muted-foreground space-y-1">
 					<li>The template and all its configuration</li>
 					{#if deleteProjectCount > 0}
-						<li class="font-semibold text-red-600 dark:text-red-400">
+						<li class="font-semibold text-red-600">
 							{deleteProjectCount} project{deleteProjectCount !== 1 ? 's' : ''} using this
 							template
 						</li>
@@ -1120,7 +1067,7 @@
 							projects
 						</li>
 					{:else}
-						<li class="text-gray-500 dark:text-gray-400 italic">
+						<li class="text-muted-foreground italic">
 							No projects are using this template
 						</li>
 					{/if}
@@ -1129,7 +1076,7 @@
 
 			<div slot="details">
 				{#if deleteError}
-					<p class="mt-3 text-sm text-red-600 dark:text-red-400">
+					<p class="mt-3 text-sm text-red-600">
 						{deleteError}
 					</p>
 				{/if}

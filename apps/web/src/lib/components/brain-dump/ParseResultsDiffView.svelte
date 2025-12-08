@@ -1183,7 +1183,7 @@
 														<div class="flex flex-wrap gap-2">
 															{#each operation.data.tags as tag}
 																<span
-																	class="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300 rounded-full"
+																	class="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-accent/10 text-accent rounded-full"
 																>
 																	<Tag class="w-3 h-3" />
 																	{tag}
@@ -1365,7 +1365,7 @@
 	}
 
 	.operation-badge-primary {
-		@apply bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300;
+		@apply bg-accent/10 text-accent;
 	}
 
 	.operation-badge-emerald {

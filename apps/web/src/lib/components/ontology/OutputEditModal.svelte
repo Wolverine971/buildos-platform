@@ -221,21 +221,29 @@
 	showCloseButton={false}
 >
 	{#snippet header()}
-		<!-- Custom gradient header - grey/dark grey -->
+		<!-- Inkprint header with strip texture -->
 		<div
-			class="flex-shrink-0 bg-gradient-to-r from-gray-600 via-gray-700 to-gray-800 dark:from-gray-700 dark:via-gray-800 dark:to-gray-900 text-white px-3 py-3 sm:px-6 sm:py-5 flex items-start justify-between gap-2 sm:gap-4 dither-gradient"
+			class="flex-shrink-0 bg-muted/50 border-b border-border px-3 py-3 sm:px-6 sm:py-5 flex items-start justify-between gap-2 sm:gap-4 tx tx-strip tx-weak"
 		>
 			<div class="space-y-1 sm:space-y-2 min-w-0 flex-1">
-				<p class="text-[10px] sm:text-xs font-semibold uppercase tracking-[0.3em] sm:tracking-[0.4em] text-white/70">
+				<p
+					class="text-[10px] sm:text-xs font-semibold uppercase tracking-[0.3em] sm:tracking-[0.4em] text-muted-foreground"
+				>
 					Output Document
 				</p>
-				<h2 class="text-lg sm:text-2xl font-bold leading-tight truncate">
+				<h2 class="text-lg sm:text-2xl font-bold leading-tight truncate text-foreground">
 					{output?.name || 'Text Document'}
 				</h2>
 				{#if output}
 					<div class="flex flex-wrap items-center gap-1.5 sm:gap-3 text-xs sm:text-sm">
-						<span class="px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-semibold capitalize bg-white/20">{stateKey}</span>
-						<span class="hidden sm:inline font-mono text-xs tracking-wide text-white/70">{output.type_key}</span>
+						<span
+							class="px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-semibold capitalize bg-accent/20 text-accent-foreground"
+							>{stateKey}</span
+						>
+						<span
+							class="hidden sm:inline font-mono text-xs tracking-wide text-muted-foreground"
+							>{output.type_key}</span
+						>
 					</div>
 				{/if}
 			</div>
@@ -243,10 +251,15 @@
 				variant="ghost"
 				size="sm"
 				onclick={closeModal}
-				class="text-white/80 hover:text-white shrink-0 !p-1.5 sm:!p-2"
+				class="text-muted-foreground hover:text-foreground shrink-0 !p-1.5 sm:!p-2"
 				disabled={savingState}
 			>
-				<svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+				<svg
+					class="w-4 h-4 sm:w-5 sm:h-5"
+					fill="none"
+					stroke="currentColor"
+					viewBox="0 0 24 24"
+				>
 					<path
 						stroke-linecap="round"
 						stroke-linejoin="round"
@@ -275,22 +288,21 @@
 				<div class="px-4 sm:px-6 py-6">
 					<!-- Output Info Section -->
 					<section
-						class="rounded border border-gray-200 dark:border-gray-700 bg-surface-elevated dark:bg-surface-panel p-4 sm:p-5 shadow-subtle space-y-2 dither-soft mb-6"
+						class="rounded border border-border bg-muted/30 p-4 sm:p-5 shadow-ink space-y-2 tx tx-grain tx-weak mb-6"
 					>
 						<div class="flex flex-wrap items-center gap-2">
-							<span
-								class="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse shrink-0"
+							<span class="w-1.5 h-1.5 bg-accent rounded-full animate-pulse shrink-0"
 							></span>
-							<h3 class="text-base font-semibold text-gray-900 dark:text-white">
+							<h3 class="text-base font-semibold text-foreground">
 								{output.name}
 							</h3>
 						</div>
 						<div
-							class="flex flex-wrap items-center gap-2 text-xs text-slate-600 dark:text-slate-400"
+							class="flex flex-wrap items-center gap-2 text-xs text-muted-foreground"
 						>
 							<span
 								>Type: <code
-									class="font-mono text-xs bg-surface-elevated dark:bg-surface-panel text-accent-orange px-1.5 py-0.5 rounded"
+									class="font-mono text-xs bg-muted px-1.5 py-0.5 rounded text-accent"
 									>{output.type_key}</code
 								></span
 							>
@@ -342,7 +354,7 @@
 	{/snippet}
 	{#snippet footer()}
 		<div
-			class="flex flex-row items-center justify-between gap-2 sm:gap-4 p-2 sm:p-4 border-t border-gray-200 dark:border-gray-700 bg-surface-panel dark:bg-slate-900/30 dither-surface"
+			class="flex flex-row items-center justify-between gap-2 sm:gap-4 p-2 sm:p-4 border-t border-border bg-muted/30 tx tx-grain tx-weak"
 		>
 			<!-- Danger zone inline on mobile -->
 			<div class="flex items-center gap-1.5 sm:gap-2">

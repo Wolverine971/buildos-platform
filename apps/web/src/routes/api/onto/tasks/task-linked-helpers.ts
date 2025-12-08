@@ -115,10 +115,16 @@ export async function resolveLinkedEntities(
 	const [plansData, goalsData, milestonesData, documentsData, tasksData, outputsData] =
 		await Promise.all([
 			planIds.length > 0
-				? supabase.from('onto_plans').select('id, name, state_key, type_key').in('id', planIds)
+				? supabase
+						.from('onto_plans')
+						.select('id, name, state_key, type_key')
+						.in('id', planIds)
 				: Promise.resolve({ data: [] }),
 			goalIds.length > 0
-				? supabase.from('onto_goals').select('id, name, state_key, type_key').in('id', goalIds)
+				? supabase
+						.from('onto_goals')
+						.select('id, name, state_key, type_key')
+						.in('id', goalIds)
 				: Promise.resolve({ data: [] }),
 			milestoneIds.length > 0
 				? supabase
@@ -139,7 +145,10 @@ export async function resolveLinkedEntities(
 						.in('id', taskIds)
 				: Promise.resolve({ data: [] }),
 			outputIds.length > 0
-				? supabase.from('onto_outputs').select('id, name, type_key, state_key').in('id', outputIds)
+				? supabase
+						.from('onto_outputs')
+						.select('id, name, type_key, state_key')
+						.in('id', outputIds)
 				: Promise.resolve({ data: [] })
 		]);
 

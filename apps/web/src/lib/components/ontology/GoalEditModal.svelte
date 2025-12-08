@@ -217,32 +217,49 @@
 	showCloseButton={false}
 >
 	{#snippet header()}
-		<!-- Custom gradient header - grey/dark grey -->
+		<!-- Inkprint header with strip texture -->
 		<div
-			class="flex-shrink-0 bg-gradient-to-r from-gray-600 via-gray-700 to-gray-800 dark:from-gray-700 dark:via-gray-800 dark:to-gray-900 text-white px-3 py-3 sm:px-6 sm:py-6 flex flex-col gap-3 sm:gap-5 dither-gradient"
+			class="flex-shrink-0 bg-muted/50 border-b border-border px-3 py-3 sm:px-6 sm:py-6 flex flex-col gap-3 sm:gap-5 tx tx-strip tx-weak"
 		>
 			<div class="flex items-start justify-between gap-2 sm:gap-4">
 				<div class="space-y-1 sm:space-y-2 min-w-0 flex-1">
-					<p class="text-[10px] sm:text-xs font-semibold uppercase tracking-[0.3em] sm:tracking-[0.4em] text-white/70">
+					<p
+						class="text-[10px] sm:text-xs font-semibold uppercase tracking-[0.3em] sm:tracking-[0.4em] text-muted-foreground"
+					>
 						Goal overview
 					</p>
-					<h2 class="text-lg sm:text-2xl font-bold leading-tight truncate">
+					<h2
+						class="text-lg sm:text-2xl font-bold leading-tight truncate text-foreground"
+					>
 						{name || goal?.name || 'Goal details'}
 					</h2>
 					<div class="flex flex-wrap items-center gap-1.5 sm:gap-3 text-xs sm:text-sm">
-						<span class="px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-semibold capitalize bg-white/20">{stateKey}</span>
-						<span class="hidden sm:inline font-mono text-xs tracking-wide">{goal?.type_key || 'goal.outcome.project'}</span>
-						<span class="text-white/80">#{goal?.id?.slice(0, 8) || goalId.slice(0, 8)}</span>
+						<span
+							class="px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-semibold capitalize bg-accent/20 text-accent-foreground"
+							>{stateKey}</span
+						>
+						<span
+							class="hidden sm:inline font-mono text-xs tracking-wide text-muted-foreground"
+							>{goal?.type_key || 'goal.outcome.project'}</span
+						>
+						<span class="text-muted-foreground"
+							>#{goal?.id?.slice(0, 8) || goalId.slice(0, 8)}</span
+						>
 					</div>
 				</div>
 				<Button
 					variant="ghost"
 					size="sm"
 					onclick={handleClose}
-					class="text-white/80 hover:text-white shrink-0 !p-1.5 sm:!p-2"
+					class="text-muted-foreground hover:text-foreground shrink-0 !p-1.5 sm:!p-2"
 					disabled={isSaving || isDeleting}
 				>
-					<svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<svg
+						class="w-4 h-4 sm:w-5 sm:h-5"
+						fill="none"
+						stroke="currentColor"
+						viewBox="0 0 24 24"
+					>
 						<path
 							stroke-linecap="round"
 							stroke-linejoin="round"
@@ -254,21 +271,60 @@
 			</div>
 
 			<div class="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4 text-xs sm:text-sm">
-				<div class="rounded bg-white/10 backdrop-blur p-2 sm:p-3">
-					<p class="text-[10px] sm:text-xs uppercase tracking-[0.2em] sm:tracking-[0.3em] text-white/70">Priority</p>
-					<p class="text-sm sm:text-lg font-semibold capitalize">{priority || 'Not set'}</p>
+				<div class="rounded bg-muted/50 p-2 sm:p-3">
+					<p
+						class="text-[10px] sm:text-xs uppercase tracking-[0.2em] sm:tracking-[0.3em] text-muted-foreground"
+					>
+						Priority
+					</p>
+					<p class="text-sm sm:text-lg font-semibold capitalize text-foreground">
+						{priority || 'Not set'}
+					</p>
 				</div>
-				<div class="rounded bg-white/10 backdrop-blur p-2 sm:p-3">
-					<p class="text-[10px] sm:text-xs uppercase tracking-[0.2em] sm:tracking-[0.3em] text-white/70">Target</p>
-					<p class="text-sm sm:text-lg font-semibold truncate">{targetDate ? new Date(targetDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : 'No date'}</p>
+				<div class="rounded bg-muted/50 p-2 sm:p-3">
+					<p
+						class="text-[10px] sm:text-xs uppercase tracking-[0.2em] sm:tracking-[0.3em] text-muted-foreground"
+					>
+						Target
+					</p>
+					<p class="text-sm sm:text-lg font-semibold truncate text-foreground">
+						{targetDate
+							? new Date(targetDate).toLocaleDateString(undefined, {
+									month: 'short',
+									day: 'numeric'
+								})
+							: 'No date'}
+					</p>
 				</div>
-				<div class="rounded bg-white/10 backdrop-blur p-2 sm:p-3">
-					<p class="text-[10px] sm:text-xs uppercase tracking-[0.2em] sm:tracking-[0.3em] text-white/70">Created</p>
-					<p class="text-sm sm:text-lg font-semibold truncate">{goal?.created_at ? new Date(goal.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : '-'}</p>
+				<div class="rounded bg-muted/50 p-2 sm:p-3">
+					<p
+						class="text-[10px] sm:text-xs uppercase tracking-[0.2em] sm:tracking-[0.3em] text-muted-foreground"
+					>
+						Created
+					</p>
+					<p class="text-sm sm:text-lg font-semibold truncate text-foreground">
+						{goal?.created_at
+							? new Date(goal.created_at).toLocaleDateString(undefined, {
+									month: 'short',
+									day: 'numeric'
+								})
+							: '-'}
+					</p>
 				</div>
-				<div class="rounded bg-white/10 backdrop-blur p-2 sm:p-3">
-					<p class="text-[10px] sm:text-xs uppercase tracking-[0.2em] sm:tracking-[0.3em] text-white/70">Updated</p>
-					<p class="text-sm sm:text-lg font-semibold truncate">{goal?.updated_at ? new Date(goal.updated_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : '-'}</p>
+				<div class="rounded bg-muted/50 p-2 sm:p-3">
+					<p
+						class="text-[10px] sm:text-xs uppercase tracking-[0.2em] sm:tracking-[0.3em] text-muted-foreground"
+					>
+						Updated
+					</p>
+					<p class="text-sm sm:text-lg font-semibold truncate text-foreground">
+						{goal?.updated_at
+							? new Date(goal.updated_at).toLocaleDateString(undefined, {
+									month: 'short',
+									day: 'numeric'
+								})
+							: '-'}
+					</p>
 				</div>
 			</div>
 		</div>
@@ -279,11 +335,11 @@
 		<div class="px-3 py-3 sm:px-6 sm:py-6">
 			{#if isLoading}
 				<div class="flex items-center justify-center py-12">
-					<Loader class="w-8 h-8 animate-spin text-gray-400" />
+					<Loader class="w-8 h-8 animate-spin text-muted-foreground" />
 				</div>
 			{:else if !goal}
 				<div class="text-center py-8">
-					<p class="text-red-600 dark:text-red-400">Goal not found</p>
+					<p class="text-destructive">Goal not found</p>
 				</div>
 			{:else}
 				<div class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
@@ -384,7 +440,7 @@
 
 							<!-- FSM State Visualizer -->
 							{#if goal.type_key && allowedTransitions.length > 0}
-								<div class="pt-4 border-t border-gray-200 dark:border-gray-700">
+								<div class="pt-4 border-t border-border">
 									<FSMStateVisualizer
 										entityId={goalId}
 										entityKind="goal"
@@ -421,9 +477,9 @@
 
 							{#if error}
 								<div
-									class="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded"
+									class="p-4 bg-destructive/10 border border-destructive/30 rounded"
 								>
-									<p class="text-sm text-red-700 dark:text-red-300">{error}</p>
+									<p class="text-sm text-destructive">{error}</p>
 								</div>
 							{/if}
 						</form>
@@ -435,34 +491,32 @@
 						<Card variant="elevated">
 							<CardHeader variant="default">
 								<h3
-									class="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide flex items-center gap-2"
+									class="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2"
 								>
-									<span class="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+									<span class="w-1.5 h-1.5 bg-accent rounded-full"></span>
 									Goal Information
 								</h3>
 							</CardHeader>
 							<CardBody padding="sm">
 								<div class="space-y-2 text-sm">
 									<div class="flex justify-between items-center">
-										<span class="text-gray-600 dark:text-gray-400">Type:</span>
+										<span class="text-muted-foreground">Type:</span>
 										<Badge variant="info" size="sm">
 											{goal.type_key || 'goal.outcome.project'}
 										</Badge>
 									</div>
 
 									<div class="flex justify-between">
-										<span class="text-gray-600 dark:text-gray-400">ID:</span>
-										<span class="font-mono text-xs text-gray-500"
+										<span class="text-muted-foreground">ID:</span>
+										<span class="font-mono text-xs text-muted-foreground"
 											>{goal.id.slice(0, 8)}...</span
 										>
 									</div>
 
 									{#if goal.created_at}
 										<div class="flex justify-between">
-											<span class="text-gray-600 dark:text-gray-400"
-												>Created:</span
-											>
-											<span class="text-gray-900 dark:text-white">
+											<span class="text-muted-foreground">Created:</span>
+											<span class="text-foreground">
 												{new Date(goal.created_at).toLocaleDateString()}
 											</span>
 										</div>
@@ -470,10 +524,8 @@
 
 									{#if goal.updated_at}
 										<div class="flex justify-between">
-											<span class="text-gray-600 dark:text-gray-400"
-												>Updated:</span
-											>
-											<span class="text-gray-900 dark:text-white">
+											<span class="text-muted-foreground">Updated:</span>
+											<span class="text-foreground">
 												{new Date(goal.updated_at).toLocaleDateString()}
 											</span>
 										</div>
@@ -483,10 +535,14 @@
 						</Card>
 
 						<!-- Danger zone - compact inline on mobile -->
-						<div class="flex items-center justify-between gap-2 p-2 sm:p-3 rounded-lg border border-red-200 dark:border-red-800/40 bg-red-50/50 dark:bg-red-900/10">
+						<div
+							class="flex items-center justify-between gap-2 p-2 sm:p-3 rounded-lg border border-destructive/30 bg-destructive/5"
+						>
 							<div class="flex items-center gap-1.5 sm:gap-2 min-w-0">
-								<Trash2 class="w-3 h-3 sm:w-4 sm:h-4 text-red-500 shrink-0" />
-								<span class="text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-red-600 dark:text-red-400">
+								<Trash2 class="w-3 h-3 sm:w-4 sm:h-4 text-destructive shrink-0" />
+								<span
+									class="text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-destructive"
+								>
 									Danger
 								</span>
 							</div>
@@ -533,7 +589,7 @@
 	{#snippet footer()}
 		{#if !isLoading && goal}
 			<div
-				class="flex flex-row items-center justify-end gap-2 sm:gap-4 p-2 sm:p-6 border-t border-gray-200 dark:border-gray-700 bg-surface-panel dark:bg-slate-900/30 dither-surface"
+				class="flex flex-row items-center justify-end gap-2 sm:gap-4 p-2 sm:p-6 border-t border-border bg-muted/30 tx tx-grain tx-weak"
 			>
 				<Button
 					type="button"

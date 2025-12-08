@@ -1001,7 +1001,7 @@
 		<button
 			type="button"
 			onclick={() => goto('/ontology')}
-			class="inline-flex items-center gap-2 rounded border-2 border-slate-700/30 px-3 py-2 text-sm font-bold text-slate-700 transition hover:bg-slate-100 hover:border-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-orange dark:border-slate-500/30 dark:text-slate-300 dark:hover:bg-slate-800 shadow-subtle"
+			class="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm font-semibold text-muted-foreground transition hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring shadow-ink pressable"
 		>
 			<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
 				<path
@@ -1052,18 +1052,16 @@
 	</Card>
 
 	<div
-		class="flex flex-col gap-2 text-xs text-gray-500 dark:text-gray-400 sm:flex-row sm:items-center sm:justify-between"
+		class="flex flex-col gap-2 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between"
 	>
 		<div class="flex flex-wrap items-center gap-2">
 			{#if dataRefreshing}
-				<RefreshCw class="h-3 w-3 animate-spin text-blue-500 dark:text-blue-300" />
+				<RefreshCw class="h-3 w-3 animate-spin text-accent" />
 				<span>Syncing latest project data…</span>
 			{:else}
 				<span>Last synced {lastDataRefreshLabel || 'just now'}</span>
 				{#if dataRefreshError}
-					<span class="text-red-600 dark:text-red-400"
-						>Sync issue: {dataRefreshError}</span
-					>
+					<span class="text-red-600">Sync issue: {dataRefreshError}</span>
 				{/if}
 			{/if}
 		</div>
@@ -1076,7 +1074,7 @@
 				<div class="space-y-4 sm:space-y-6">
 					<!-- Create button -->
 					<div class="flex justify-between items-center">
-						<h3 class="text-xl font-semibold text-gray-900 dark:text-white">Tasks</h3>
+						<h3 class="text-xl font-semibold text-foreground">Tasks</h3>
 						<Button
 							variant="primary"
 							size="sm"
@@ -1090,10 +1088,10 @@
 					<!-- Tasks list -->
 					{#if tasks.length === 0}
 						<div
-							class="text-center py-12 border-2 border-dashed border-slate-700/30 dark:border-slate-500/30 rounded"
+							class="text-center py-12 border-2 border-dashed border-border rounded-lg"
 						>
-							<Pencil class="w-12 h-12 text-gray-400 mx-auto mb-dense-4" />
-							<p class="text-gray-600 dark:text-gray-400 mb-dense-4">
+							<Pencil class="w-12 h-12 text-muted-foreground mx-auto mb-dense-4" />
+							<p class="text-muted-foreground mb-dense-4">
 								No tasks yet. Create your first task to get started.
 							</p>
 							<Button
@@ -1111,20 +1109,20 @@
 								{@const linkedDocs = taskDocuments.get(task.id) ?? []}
 								<button
 									onclick={() => (editingTaskId = task.id)}
-									class="w-full flex flex-col sm:flex-row sm:items-center sm:justify-between gap-dense-3 p-4 border-2 border-slate-700/30 dark:border-slate-500/30 rounded hover:border-accent-orange dark:hover:border-accent-orange hover:bg-accent-orange/5 dark:hover:bg-accent-orange/10 transition-all duration-200 text-left group shadow-subtle"
+									class="w-full flex flex-col sm:flex-row sm:items-center sm:justify-between gap-dense-3 p-4 border border-border rounded-lg hover:border-accent hover:bg-accent/5 transition-all duration-200 text-left group shadow-ink pressable"
 								>
 									<div class="flex-1 min-w-0 flex items-start gap-dense-3">
 										<Pencil
-											class="w-5 h-5 text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 flex-shrink-0 mt-0.5"
+											class="w-5 h-5 text-muted-foreground group-hover:text-accent flex-shrink-0 mt-0.5"
 										/>
 										<div class="flex-1 min-w-0">
 											<h3
-												class="font-semibold text-gray-900 dark:text-white group-hover:text-blue-700 dark:group-hover:text-blue-300 mb-1"
+												class="font-semibold text-foreground group-hover:text-accent mb-1"
 											>
 												{task.title}
 											</h3>
 											<div
-												class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400"
+												class="flex items-center gap-2 text-sm text-muted-foreground"
 											>
 												{#if task.props?.description}
 													<span class="line-clamp-1"
@@ -1132,7 +1130,7 @@
 													>
 												{/if}
 												{#if task.plan_id}
-													<span class="text-gray-400">•</span>
+													<span class="text-border">•</span>
 													<span
 														>Plan: {plans.find(
 															(p) => p.id === task.plan_id
@@ -1140,11 +1138,13 @@
 													>
 												{/if}
 												{#if linkedDocs.length}
-													<span class="text-gray-400">•</span>
+													<span class="text-border">•</span>
 													<span
 														class="inline-flex items-center gap-1 text-xs"
 													>
-														<FileText class="w-4 h-4 text-gray-400" />
+														<FileText
+															class="w-4 h-4 text-muted-foreground"
+														/>
 														{linkedDocs.length} document{linkedDocs.length ===
 														1
 															? ''
@@ -1155,7 +1155,6 @@
 										</div>
 									</div>
 									<div class="flex items-center gap-2 flex-shrink-0">
-										<!-- ✅ Replaced ternary logic with utility function -->
 										<span
 											class="px-3 py-1 rounded-full text-xs font-semibold capitalize {getTaskStateBadgeClass(
 												task.state_key
@@ -1165,13 +1164,13 @@
 										</span>
 										{#if task.priority}
 											<span
-												class="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-xs font-semibold text-gray-700 dark:text-gray-300"
+												class="px-2 py-1 bg-muted rounded text-xs font-semibold text-foreground"
 											>
 												P{task.priority}
 											</span>
 										{/if}
 										<ChevronRight
-											class="w-5 h-5 text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400"
+											class="w-5 h-5 text-muted-foreground group-hover:text-accent"
 										/>
 									</div>
 								</button>
@@ -1185,15 +1184,13 @@
 						class="flex flex-col gap-dense-3 lg:flex-row lg:items-center lg:justify-between lg:gap-dense-4"
 					>
 						<div class="space-y-1">
-							<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-								Project graph
-							</h3>
-							<p class="text-sm text-gray-600 dark:text-gray-400 max-w-2xl">
+							<h3 class="text-lg font-semibold text-foreground">Project graph</h3>
+							<p class="text-sm text-muted-foreground max-w-2xl">
 								Explore how this project's tasks, outputs, documents, and templates
 								connect at a glance.
 							</p>
 							{#if graphLastUpdated}
-								<p class="text-xs text-gray-500 dark:text-gray-400">
+								<p class="text-xs text-muted-foreground">
 									Updated {graphLastUpdated}
 								</p>
 							{/if}
@@ -1354,9 +1351,7 @@
 				<div class="space-y-dense-4">
 					<!-- Create button -->
 					<div class="flex justify-between items-center">
-						<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-							Text Documents
-						</h3>
+						<h3 class="text-lg font-semibold text-foreground">Text Documents</h3>
 						<Button
 							variant="primary"
 							size="sm"
@@ -1370,10 +1365,10 @@
 					<!-- Outputs list -->
 					{#if outputs.length === 0}
 						<div
-							class="text-center py-12 border-2 border-dashed border-slate-700/30 dark:border-slate-500/30 rounded"
+							class="text-center py-12 border-2 border-dashed border-border rounded-lg"
 						>
-							<Pencil class="w-12 h-12 text-gray-400 mx-auto mb-dense-4" />
-							<p class="text-gray-600 dark:text-gray-400 mb-dense-4">
+							<Pencil class="w-12 h-12 text-muted-foreground mx-auto mb-dense-4" />
+							<p class="text-muted-foreground mb-dense-4">
 								No documents yet. Create your first document to get started.
 							</p>
 							<Button
@@ -1390,28 +1385,27 @@
 							{#each outputs as output}
 								<button
 									onclick={() => editOutput(output.id)}
-									class="w-full flex flex-col sm:flex-row sm:items-center sm:justify-between gap-dense-3 p-4 border-2 border-slate-700/30 dark:border-slate-500/30 rounded hover:border-accent-orange dark:hover:border-accent-orange hover:bg-accent-orange/5 dark:hover:bg-accent-orange/10 transition-all duration-200 text-left group shadow-subtle"
+									class="w-full flex flex-col sm:flex-row sm:items-center sm:justify-between gap-dense-3 p-4 border border-border rounded-lg hover:border-accent hover:bg-accent/5 transition-all duration-200 text-left group shadow-ink pressable"
 								>
 									<div class="flex-1 min-w-0 flex items-start gap-dense-3">
 										<Pencil
-											class="w-5 h-5 text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 flex-shrink-0 mt-0.5"
+											class="w-5 h-5 text-muted-foreground group-hover:text-accent flex-shrink-0 mt-0.5"
 										/>
 										<div class="flex-1 min-w-0">
 											<h3
-												class="font-semibold text-gray-900 dark:text-white group-hover:text-blue-700 dark:group-hover:text-blue-300 mb-1"
+												class="font-semibold text-foreground group-hover:text-accent mb-1"
 											>
 												{output.name}
 											</h3>
 											{#if output.props?.word_count}
 												<div
-													class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400"
+													class="flex items-center gap-2 text-sm text-muted-foreground"
 												>
 													<span>{output.props.word_count} words</span>
 												</div>
 											{/if}
 										</div>
 									</div>
-									<!-- ✅ Replaced ternary logic with utility function -->
 									<span
 										class="px-3 py-1 rounded-full text-xs font-semibold capitalize self-start sm:self-center {getOutputStateBadgeClass(
 											output.state_key
@@ -1428,13 +1422,11 @@
 				<div class="space-y-dense-4">
 					<!-- Header with gradient accent -->
 					<div
-						class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-dense-3 pb-3 border-b border-slate-700/30 dark:border-slate-500/30"
+						class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-dense-3 pb-3 border-b border-border"
 					>
 						<div>
-							<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-								Documents
-							</h3>
-							<p class="text-sm text-gray-600 dark:text-gray-400 mt-0.5">
+							<h3 class="text-lg font-semibold text-foreground">Documents</h3>
+							<p class="text-sm text-muted-foreground mt-0.5">
 								Project documentation and artifacts
 							</p>
 						</div>
@@ -1446,10 +1438,10 @@
 
 					{#if documents.length === 0}
 						<div
-							class="text-center py-12 border-2 border-dashed border-slate-700/30 dark:border-slate-500/30 rounded"
+							class="text-center py-12 border-2 border-dashed border-border rounded-lg"
 						>
-							<FileText class="w-12 h-12 text-gray-400 mx-auto mb-dense-4" />
-							<p class="text-gray-600 dark:text-gray-400 mb-dense-4">
+							<FileText class="w-12 h-12 text-muted-foreground mx-auto mb-dense-4" />
+							<p class="text-muted-foreground mb-dense-4">
 								No documents yet. Documents track project documentation and
 								artifacts.
 							</p>
@@ -1631,7 +1623,7 @@
 				<div class="space-y-dense-4">
 					<!-- Create button -->
 					<div class="flex justify-between items-center">
-						<h3 class="text-lg font-semibold text-gray-900 dark:text-white">Plans</h3>
+						<h3 class="text-lg font-semibold text-foreground">Plans</h3>
 						<Button
 							variant="primary"
 							size="sm"
@@ -1645,10 +1637,10 @@
 					<!-- Plans list -->
 					{#if plans.length === 0}
 						<div
-							class="text-center py-12 border-2 border-dashed border-slate-700/30 dark:border-slate-500/30 rounded"
+							class="text-center py-12 border-2 border-dashed border-border rounded-lg"
 						>
-							<Calendar class="w-12 h-12 text-gray-400 mx-auto mb-dense-4" />
-							<p class="text-gray-600 dark:text-gray-400 mb-dense-4">
+							<Calendar class="w-12 h-12 text-muted-foreground mx-auto mb-dense-4" />
+							<p class="text-muted-foreground mb-dense-4">
 								No plans yet. Create your first plan to organize tasks.
 							</p>
 							<Button
@@ -1666,16 +1658,14 @@
 								<button
 									type="button"
 									onclick={() => (editingPlanId = plan.id)}
-									class="w-full flex flex-col sm:flex-row sm:items-center sm:justify-between gap-dense-3 p-4 border border-slate-700/30 dark:border-slate-500/30 rounded hover:border-blue-500 dark:hover:border-blue-400 hover:bg-blue-50/70 dark:hover:bg-blue-900/10 transition-all duration-200 text-left"
+									class="w-full flex flex-col sm:flex-row sm:items-center sm:justify-between gap-dense-3 p-4 border border-border rounded-lg hover:border-accent hover:bg-accent/5 transition-all duration-200 text-left shadow-ink pressable"
 								>
 									<div class="flex-1 min-w-0 flex items-start gap-dense-3">
 										<Calendar
-											class="w-5 h-5 text-gray-400 flex-shrink-0 mt-0.5"
+											class="w-5 h-5 text-muted-foreground flex-shrink-0 mt-0.5"
 										/>
 										<div class="flex-1">
-											<h3
-												class="font-semibold text-gray-900 dark:text-white mb-1"
-											>
+											<h3 class="font-semibold text-foreground mb-1">
 												{plan.name}
 											</h3>
 											{#if plan.props?.start_date || plan.props?.end_date}
@@ -1686,7 +1676,7 @@
 													plan.props?.end_date
 												)}
 												<div
-													class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400"
+													class="flex items-center gap-2 text-sm text-muted-foreground"
 												>
 													<span>
 														{startFormatted}
@@ -1715,7 +1705,7 @@
 				<div class="space-y-dense-4">
 					<!-- Create button -->
 					<div class="flex justify-between items-center">
-						<h3 class="text-lg font-semibold text-gray-900 dark:text-white">Goals</h3>
+						<h3 class="text-lg font-semibold text-foreground">Goals</h3>
 						<Button
 							variant="primary"
 							size="sm"

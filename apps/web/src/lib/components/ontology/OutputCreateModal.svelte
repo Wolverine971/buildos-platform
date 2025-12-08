@@ -148,27 +148,34 @@
 		aria-labelledby="modal-title"
 		aria-describedby="modal-description"
 	>
-		<!-- Custom gradient header - grey/dark grey -->
+		<!-- Inkprint header with strip texture -->
 		<div
-			class="flex-shrink-0 bg-gradient-to-r from-gray-600 via-gray-700 to-gray-800 dark:from-gray-700 dark:via-gray-800 dark:to-gray-900 text-white px-3 py-3 sm:px-6 sm:py-5 dither-gradient"
+			class="flex-shrink-0 bg-muted/50 border-b border-border px-3 py-3 sm:px-6 sm:py-5 tx tx-strip tx-weak"
 		>
 			<div class="flex items-start justify-between gap-2 sm:gap-4">
 				<div class="space-y-1 sm:space-y-2 min-w-0 flex-1">
 					<p
 						id="modal-description"
-						class="text-[10px] sm:text-xs font-semibold uppercase tracking-[0.3em] sm:tracking-[0.4em] text-white/70"
+						class="text-[10px] sm:text-xs font-semibold uppercase tracking-[0.3em] sm:tracking-[0.4em] text-muted-foreground"
 					>
 						{selectedTemplate ? 'New Output • Step 2' : 'New Output • Step 1'}
 					</p>
 					<h2
 						id="modal-title"
-						class="text-lg sm:text-2xl font-bold leading-tight truncate"
+						class="text-lg sm:text-2xl font-bold leading-tight truncate text-foreground"
 					>
-						{selectedTemplate ? outputName || 'Name your document' : 'Choose a Template'}
+						{selectedTemplate
+							? outputName || 'Name your document'
+							: 'Choose a Template'}
 					</h2>
 					{#if selectedTemplate}
-						<div class="flex flex-wrap items-center gap-1.5 sm:gap-3 text-xs sm:text-sm">
-							<span class="px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-semibold bg-white/20">{selectedTemplate.name}</span>
+						<div
+							class="flex flex-wrap items-center gap-1.5 sm:gap-3 text-xs sm:text-sm"
+						>
+							<span
+								class="px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-semibold bg-accent/20 text-accent-foreground"
+								>{selectedTemplate.name}</span
+							>
 						</div>
 					{/if}
 				</div>
@@ -176,7 +183,7 @@
 					variant="ghost"
 					size="sm"
 					onclick={onClose}
-					class="text-white/80 hover:text-white shrink-0 !p-1.5 sm:!p-2"
+					class="text-muted-foreground hover:text-foreground shrink-0 !p-1.5 sm:!p-2"
 					aria-label="Close modal"
 				>
 					<X class="w-4 h-4 sm:w-5 sm:h-5" />
@@ -187,49 +194,47 @@
 		<!-- Content with BuildOS CardBody -->
 		<CardBody padding="md" class="flex-1 overflow-y-auto">
 			{#if isLoading}
-				<!-- Loading state with proper dark mode support -->
+				<!-- Loading state -->
 				<div class="text-center py-12">
 					<div
-						class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 dark:border-blue-400 mx-auto"
+						class="animate-spin rounded-full h-12 w-12 border-b-2 border-accent mx-auto"
 					></div>
-					<p class="text-gray-600 dark:text-gray-400 mt-4">Loading templates...</p>
+					<p class="text-muted-foreground mt-4">Loading templates...</p>
 				</div>
 			{:else if error && !selectedTemplate}
 				<!-- Error state -->
 				<div class="text-center py-12">
-					<p class="text-red-600 dark:text-red-400 mb-4">{error}</p>
+					<p class="text-destructive mb-4">{error}</p>
 					<Button onclick={loadTemplates} variant="ghost" size="sm">Try Again</Button>
 				</div>
 			{:else if !selectedTemplate}
-				<!-- Template Selection Grid - High information density -->
+				<!-- Template Selection Grid -->
 				<div class="grid grid-cols-1 md:grid-cols-2 gap-3">
 					{#each templates as template}
 						<button
 							onclick={() => selectTemplate(template)}
-							class="text-left p-4 border-2 border-gray-200 dark:border-gray-700 rounded bg-surface-clarity dark:bg-surface-elevated hover:border-accent-orange hover:shadow-elevated transition-all duration-200 group focus:outline-none focus:ring-2 focus:ring-accent-orange dither-soft"
+							class="text-left p-4 border border-border rounded-lg bg-card hover:border-accent shadow-ink transition-all duration-200 group focus:outline-none focus:ring-2 focus:ring-ring"
 						>
 							<div class="flex items-start gap-3">
 								<div
-									class="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg group-hover:bg-blue-200 dark:group-hover:bg-blue-800/40 transition-colors duration-200"
+									class="p-2 bg-muted rounded-lg group-hover:bg-accent/10 transition-colors duration-200"
 								>
-									<FileText class="w-5 h-5 text-blue-600 dark:text-blue-400" />
+									<FileText class="w-5 h-5 text-accent" />
 								</div>
 								<div class="flex-1 min-w-0">
 									<h3
-										class="font-semibold text-gray-900 dark:text-white mb-1 group-hover:text-blue-700 dark:group-hover:text-blue-300 transition-colors"
+										class="font-semibold text-foreground mb-1 group-hover:text-accent transition-colors"
 									>
 										{template.name}
 									</h3>
-									<p
-										class="text-xs text-gray-600 dark:text-gray-400 mb-2 line-clamp-2"
-									>
+									<p class="text-xs text-muted-foreground mb-2 line-clamp-2">
 										{template.metadata.description || template.type_key}
 									</p>
 									{#if template.metadata.typical_use_by && Array.isArray(template.metadata.typical_use_by)}
 										<div class="flex flex-wrap gap-1">
 											{#each template.metadata.typical_use_by.slice(0, 3) as persona}
 												<span
-													class="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded text-xs"
+													class="px-2 py-0.5 bg-muted text-foreground rounded text-xs"
 												>
 													{persona}
 												</span>
@@ -246,12 +251,10 @@
 				<div class="space-y-4">
 					<!-- Selected template indicator -->
 					<div
-						class="p-4 bg-surface-elevated dark:bg-surface-panel rounded border border-gray-200 dark:border-gray-700 dither-soft"
+						class="p-4 bg-muted/30 rounded-lg border border-border tx tx-grain tx-weak"
 					>
-						<p
-							class="text-sm text-blue-800 dark:text-blue-300 flex items-center gap-2 font-medium"
-						>
-							<Sparkles class="w-4 h-4" />
+						<p class="text-sm text-foreground flex items-center gap-2 font-medium">
+							<Sparkles class="w-4 h-4 text-accent" />
 							Creating: <strong>{selectedTemplate.name}</strong>
 						</p>
 					</div>
@@ -260,9 +263,9 @@
 					<div>
 						<label
 							for="output-name"
-							class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+							class="block text-sm font-medium text-foreground mb-2"
 						>
-							Document Name <span class="text-red-500">*</span>
+							Document Name <span class="text-destructive">*</span>
 						</label>
 						<input
 							id="output-name"
@@ -270,7 +273,7 @@
 							bind:value={outputName}
 							oninput={handleNameInput}
 							placeholder={`Enter name for your ${selectedTemplate.name.toLowerCase()}...`}
-							class="w-full px-4 py-2.5 border border-gray-200 dark:border-gray-700 rounded bg-surface-clarity dark:bg-surface-elevated focus:ring-2 focus:ring-accent-orange focus:border-accent-orange text-slate-900 dark:text-slate-100 placeholder-slate-500 dark:placeholder-slate-400 transition-shadow dither-soft"
+							class="w-full px-4 py-2.5 border border-border rounded-lg bg-card focus:ring-2 focus:ring-ring focus:border-ring text-foreground placeholder-muted-foreground transition-shadow"
 							aria-required="true"
 						/>
 					</div>
@@ -278,10 +281,10 @@
 					<!-- Error display -->
 					{#if error}
 						<div
-							class="p-3 bg-gradient-to-r from-red-50 to-rose-50 dark:from-red-900/20 dark:to-rose-900/20 border dither-soft border-red-200 dark:border-red-800 rounded-lg"
+							class="p-3 bg-destructive/10 border border-destructive/30 rounded-lg"
 							role="alert"
 						>
-							<p class="text-sm text-red-800 dark:text-red-300 font-medium">
+							<p class="text-sm text-destructive font-medium">
 								{error}
 							</p>
 						</div>

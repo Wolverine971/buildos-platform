@@ -70,28 +70,25 @@
 	}}
 />
 
-<div class="min-h-screen bg-[var(--surface-scratch)] dither-pattern">
+<div class="min-h-screen bg-background">
 	<!-- Hero Section -->
-	<section
-		class="py-20 bg-[var(--surface-panel)] noise-overlay"
-		aria-labelledby="pricing-heading"
-	>
+	<section class="py-20 bg-muted" aria-labelledby="pricing-heading">
 		<div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
 			<div class="text-center mb-16">
 				<div class="flex justify-center mb-6">
 					<div
-						class="utility-block w-16 h-16 rounded-sm flex items-center justify-center"
+						class="rounded-lg border border-border bg-card shadow-ink w-16 h-16 rounded-sm flex items-center justify-center"
 					>
 						<img src="/brain-bolt.png" alt="BuildOS Icon" class="w-12 h-12" />
 					</div>
 				</div>
 				<h1
 					id="pricing-heading"
-					class="text-4xl md:text-5xl font-bold text-slate-900 dark:text-slate-100 mb-6"
+					class="text-4xl md:text-5xl font-bold text-foreground mb-6"
 				>
-					Simple, <span class="text-[var(--accent-orange)]">Transparent</span> Pricing
+					Simple, <span class="text-accent">Transparent</span> Pricing
 				</h1>
-				<p class="text-xl text-slate-700 dark:text-slate-300 max-w-3xl mx-auto mb-8">
+				<p class="text-xl text-muted-foreground max-w-3xl mx-auto mb-8">
 					Start with a 14-day free trial. No credit card required, cancel anytime.
 				</p>
 
@@ -111,7 +108,7 @@
 			<div class="max-w-md mx-auto" role="region" aria-label="Pricing plan">
 				<!-- BuildOS Pro -->
 				<article
-					class="card-industrial p-8 relative dither-soft"
+					class="rounded-lg border border-border bg-card shadow-ink p-8 relative"
 					aria-labelledby="pro-plan-heading"
 				>
 					{#if data.trialStatus?.is_in_trial}
@@ -124,22 +121,17 @@
 					{/if}
 
 					<div class="text-center mb-8">
-						<h3
-							id="pro-plan-heading"
-							class="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-2"
-						>
+						<h3 id="pro-plan-heading" class="text-2xl font-bold text-foreground mb-2">
 							BuildOS Pro
 						</h3>
-						<p class="text-slate-700 dark:text-slate-300 mb-6">
+						<p class="text-muted-foreground mb-6">
 							Your personal productivity operating system
 						</p>
-						<div class="text-4xl font-bold text-slate-900 dark:text-slate-100 mb-2">
+						<div class="text-4xl font-bold text-foreground mb-2">
 							$20
-							<span class="text-lg font-normal text-slate-600 dark:text-slate-400"
-								>/month</span
-							>
+							<span class="text-lg font-normal text-muted-foreground">/month</span>
 						</div>
-						<p class="text-sm text-slate-600 dark:text-slate-400">
+						<p class="text-sm text-muted-foreground">
 							Billed monthly • 14-day free trial
 						</p>
 					</div>
@@ -147,47 +139,35 @@
 					<ul class="space-y-4 mb-8" role="list" aria-label="Plan features">
 						<li class="flex items-center">
 							<Check class="w-5 h-5 text-primary-500 mr-3 flex-shrink-0" />
-							<span class="text-gray-600 dark:text-gray-400">Unlimited projects</span>
+							<span class="text-muted-foreground">Unlimited projects</span>
 						</li>
 						<li class="flex items-center">
 							<Check class="w-5 h-5 text-primary-500 mr-3 flex-shrink-0" />
-							<span class="text-gray-600 dark:text-gray-400"
-								>AI-powered brain dump parsing</span
-							>
+							<span class="text-muted-foreground">AI-powered brain dump parsing</span>
 						</li>
 						<li class="flex items-center">
 							<Check class="w-5 h-5 text-primary-500 mr-3 flex-shrink-0" />
-							<span class="text-gray-600 dark:text-gray-400"
-								>Advanced task automation</span
-							>
+							<span class="text-muted-foreground">Advanced task automation</span>
 						</li>
 						<li class="flex items-center">
 							<Check class="w-5 h-5 text-primary-500 mr-3 flex-shrink-0" />
-							<span class="text-gray-600 dark:text-gray-400"
-								>Daily AI insights & briefs</span
-							>
+							<span class="text-muted-foreground">Daily AI insights & briefs</span>
 						</li>
 						<li class="flex items-center">
 							<Check class="w-5 h-5 text-primary-500 mr-3 flex-shrink-0" />
-							<span class="text-gray-600 dark:text-gray-400"
-								>Goal-task alignment tracking</span
-							>
+							<span class="text-muted-foreground">Goal-task alignment tracking</span>
 						</li>
 						<li class="flex items-center">
 							<Check class="w-5 h-5 text-primary-500 mr-3 flex-shrink-0" />
-							<span class="text-gray-600 dark:text-gray-400"
-								>Priority email support</span
-							>
+							<span class="text-muted-foreground">Priority email support</span>
 						</li>
 						<li class="flex items-center">
 							<Check class="w-5 h-5 text-primary-500 mr-3 flex-shrink-0" />
-							<span class="text-gray-600 dark:text-gray-400"
-								>Calendar integrations</span
-							>
+							<span class="text-muted-foreground">Calendar integrations</span>
 						</li>
 						<li class="flex items-center">
 							<Check class="w-5 h-5 text-primary-500 mr-3 flex-shrink-0" />
-							<span class="text-gray-600 dark:text-gray-400">Data export</span>
+							<span class="text-muted-foreground">Data export</span>
 						</li>
 					</ul>
 
@@ -228,20 +208,20 @@
 	</section>
 
 	<!-- FAQ -->
-	<section class="py-20 bg-white dark:bg-gray-800">
+	<section class="py-20 bg-card">
 		<div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
 			<div class="text-center mb-16">
-				<h2 class="text-4xl font-bold text-gray-900 dark:text-white mb-6">
+				<h2 class="text-4xl font-bold text-foreground mb-6">
 					Frequently Asked <span class="text-primary-600">Questions</span>
 				</h2>
 			</div>
 
 			<div class="space-y-8" role="region" aria-label="Frequently asked questions">
-				<article class="bg-gray-50 dark:bg-gray-900 rounded-xl p-8">
-					<h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+				<article class="bg-muted rounded-lg p-8">
+					<h3 class="text-xl font-semibold text-foreground mb-4">
 						What happens after my 14-day trial?
 					</h3>
-					<p class="text-gray-600 dark:text-gray-400">
+					<p class="text-muted-foreground">
 						After your trial ends, you'll have a 7-day grace period to subscribe. During
 						this time, your account will be in read-only mode - you can view all your
 						data but cannot create or edit content. Subscribe anytime to regain full
@@ -249,32 +229,32 @@
 					</p>
 				</article>
 
-				<article class="bg-gray-50 dark:bg-gray-900 rounded-xl p-8">
-					<h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+				<article class="bg-muted rounded-lg p-8">
+					<h3 class="text-xl font-semibold text-foreground mb-4">
 						Do I need a credit card to start?
 					</h3>
-					<p class="text-gray-600 dark:text-gray-400">
+					<p class="text-muted-foreground">
 						No! You can start your 14-day trial without entering any payment
 						information. You'll only need to add a payment method when you're ready to
 						subscribe.
 					</p>
 				</article>
 
-				<article class="bg-gray-50 dark:bg-gray-900 rounded-xl p-8">
-					<h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+				<article class="bg-muted rounded-lg p-8">
+					<h3 class="text-xl font-semibold text-foreground mb-4">
 						What happens to my data if I cancel?
 					</h3>
-					<p class="text-gray-600 dark:text-gray-400">
+					<p class="text-muted-foreground">
 						You can export all your data at any time. After cancellation, your data
 						remains accessible for 30 days before being permanently deleted.
 					</p>
 				</article>
 
-				<article class="bg-gray-50 dark:bg-gray-900 rounded-xl p-8">
-					<h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+				<article class="bg-muted rounded-lg p-8">
+					<h3 class="text-xl font-semibold text-foreground mb-4">
 						Can I cancel anytime?
 					</h3>
-					<p class="text-gray-600 dark:text-gray-400">
+					<p class="text-muted-foreground">
 						Absolutely! You can cancel your subscription at any time from your profile
 						settings. You'll continue to have access until the end of your billing
 						period, then your account will switch to read-only mode.
@@ -285,17 +265,17 @@
 	</section>
 
 	<!-- Final CTA -->
-	<section class="py-20 bg-gradient-to-r from-blue-600 to-purple-600 text-white">
+	<section class="py-20 bg-accent text-accent-foreground">
 		<div class="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
 			<h2 class="text-4xl font-bold mb-6">Ready to Transform Your Productivity?</h2>
-			<p class="text-xl text-blue-100 mb-12">
+			<p class="text-xl opacity-90 mb-12">
 				Start your 14-day free trial today. No credit card required.
 			</p>
 
 			<div class="flex justify-center">
 				<a
 					href="/auth/register"
-					class="inline-flex items-center px-8 py-4 text-lg font-semibold text-blue-900 bg-white hover:bg-gray-100 rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
+					class="inline-flex items-center px-8 py-4 text-lg font-semibold bg-card text-foreground hover:opacity-90 rounded-lg shadow-ink transform hover:scale-105 transition-all duration-200"
 				>
 					<Brain class="w-5 h-5 mr-3" />
 					Start Free Trial

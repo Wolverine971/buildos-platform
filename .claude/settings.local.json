@@ -14,7 +14,9 @@
       "Bash(pnpm run check:ts:*)",
       "Bash(pnpm install:*)",
       "Bash(pnpm build:*)",
-      "Bash(kill:*)"
+      "Bash(kill:*)",
+      "Bash(pnpm test:*)",
+      "Bash(rm:*)"
     ],
     "deny": [],
     "ask": []

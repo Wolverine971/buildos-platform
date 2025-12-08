@@ -89,6 +89,24 @@ Every ontology project now carries an explicit context document with type key `d
 - `task_calendar_events` are cloned into `onto_events` during task migration, and each event now emits a `task → event` edge (`rel: has_event`) so planners/agents can traverse work sessions from the ontology graph.
 - **Task Migration**: Legacy `task.basic`, `task.deep_work`, `task.recurring` type_keys are automatically normalized to valid work modes (typically `task.execute`).
 
+### 🎛️ Migration Dashboard (Complete - Dec 2025)
+
+The **[Migration Dashboard](./MIGRATION_DASHBOARD_SPEC.md)** provides a comprehensive admin interface for migrating all users from legacy projects to the ontology system:
+
+- **Global Dashboard** (`/admin/migration`) - Platform-wide progress visualization with user list
+- **User Detail View** (`/admin/migration/users/[userId]`) - Per-user migration status and actions
+- **Error Browser** (`/admin/migration/errors`) - Filterable error list with retry capabilities
+- **LLM Cost Estimation** - Token and cost estimates before running migrations
+- **Soft/Hard Rollback** - Undo migrations with data integrity guarantees
+
+**Key Services:**
+
+- `migration-stats.service.ts` - Global progress, user stats, lock management
+- `migration-error.service.ts` - Error classification and remediation suggestions
+- `migration-retry.service.ts` - Targeted retry with exponential backoff
+- `migration-rollback.service.ts` - Soft (deleted_at) and hard (cascade delete) rollback
+- `migration-llm.service.ts` - Rate limiter with circuit breaker, cost estimation
+
 ### 🧠 Template Inference + Project Mapping
 
 - Legacy project migrations now run a multi-step LLM workflow to classify the correct `project` template:

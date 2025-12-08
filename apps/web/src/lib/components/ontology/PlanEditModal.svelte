@@ -300,35 +300,49 @@
 	showCloseButton={false}
 >
 	{#snippet header()}
-		<!-- Custom gradient header - grey/dark grey -->
+		<!-- Inkprint header with strip texture -->
 		<div
-			class="flex-shrink-0 bg-gradient-to-r from-gray-600 via-gray-700 to-gray-800 dark:from-gray-700 dark:via-gray-800 dark:to-gray-900 text-white px-3 py-3 sm:px-6 sm:py-6 flex flex-col gap-3 sm:gap-5 dither-gradient"
+			class="flex-shrink-0 bg-muted/50 border-b border-border px-3 py-3 sm:px-6 sm:py-6 flex flex-col gap-3 sm:gap-5 tx tx-strip tx-weak"
 		>
 			<div class="flex items-start justify-between gap-2 sm:gap-4">
 				<div class="space-y-1 sm:space-y-2 min-w-0 flex-1">
-					<p class="text-[10px] sm:text-xs font-semibold uppercase tracking-[0.3em] sm:tracking-[0.4em] text-white/70">
+					<p
+						class="text-[10px] sm:text-xs font-semibold uppercase tracking-[0.3em] sm:tracking-[0.4em] text-muted-foreground"
+					>
 						Plan overview
 					</p>
-					<h2 class="text-lg sm:text-2xl font-bold leading-tight truncate">
+					<h2
+						class="text-lg sm:text-2xl font-bold leading-tight truncate text-foreground"
+					>
 						{name || plan?.name || 'Plan details'}
 					</h2>
 					<div class="flex flex-wrap items-center gap-1.5 sm:gap-3 text-xs sm:text-sm">
 						<span class={stateBadgeClasses}>{stateKey}</span>
-						<span class="hidden sm:inline font-mono text-xs tracking-wide">{planTypeLabel}</span>
-						<span class="text-white/80">#{planIdLabel}</span>
+						<span
+							class="hidden sm:inline font-mono text-xs tracking-wide text-muted-foreground"
+							>{planTypeLabel}</span
+						>
+						<span class="text-muted-foreground">#{planIdLabel}</span>
 					</div>
 					{#if lastUpdatedLabel}
-						<p class="text-xs sm:text-sm text-white/80 hidden sm:block">Updated {lastUpdatedLabel}</p>
+						<p class="text-xs sm:text-sm text-muted-foreground hidden sm:block">
+							Updated {lastUpdatedLabel}
+						</p>
 					{/if}
 				</div>
 				<Button
 					variant="ghost"
 					size="sm"
 					onclick={handleClose}
-					class="text-white/80 hover:text-white shrink-0 !p-1.5 sm:!p-2"
+					class="text-muted-foreground hover:text-foreground shrink-0 !p-1.5 sm:!p-2"
 					disabled={isSaving || isDeleting}
 				>
-					<svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<svg
+						class="w-4 h-4 sm:w-5 sm:h-5"
+						fill="none"
+						stroke="currentColor"
+						viewBox="0 0 24 24"
+					>
 						<path
 							stroke-linecap="round"
 							stroke-linejoin="round"
@@ -340,24 +354,46 @@
 			</div>
 
 			<div class="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4 text-xs sm:text-sm">
-				<div class="rounded bg-white/10 backdrop-blur p-2 sm:p-3">
-					<p class="text-[10px] sm:text-xs uppercase tracking-[0.2em] sm:tracking-[0.3em] text-white/70">Duration</p>
-					<p class="text-sm sm:text-lg font-semibold truncate">{durationLabel}</p>
+				<div class="rounded bg-muted/50 p-2 sm:p-3">
+					<p
+						class="text-[10px] sm:text-xs uppercase tracking-[0.2em] sm:tracking-[0.3em] text-muted-foreground"
+					>
+						Duration
+					</p>
+					<p class="text-sm sm:text-lg font-semibold truncate text-foreground">
+						{durationLabel}
+					</p>
 				</div>
-				<div class="rounded bg-white/10 backdrop-blur p-2 sm:p-3">
-					<p class="text-[10px] sm:text-xs uppercase tracking-[0.2em] sm:tracking-[0.3em] text-white/70">Start</p>
-					<p class="text-sm sm:text-lg font-semibold truncate">{startLabel}</p>
+				<div class="rounded bg-muted/50 p-2 sm:p-3">
+					<p
+						class="text-[10px] sm:text-xs uppercase tracking-[0.2em] sm:tracking-[0.3em] text-muted-foreground"
+					>
+						Start
+					</p>
+					<p class="text-sm sm:text-lg font-semibold truncate text-foreground">
+						{startLabel}
+					</p>
 				</div>
-				<div class="rounded bg-white/10 backdrop-blur p-2 sm:p-3">
-					<p class="text-[10px] sm:text-xs uppercase tracking-[0.2em] sm:tracking-[0.3em] text-white/70">End</p>
-					<p class="text-sm sm:text-lg font-semibold truncate">{endLabel}</p>
+				<div class="rounded bg-muted/50 p-2 sm:p-3">
+					<p
+						class="text-[10px] sm:text-xs uppercase tracking-[0.2em] sm:tracking-[0.3em] text-muted-foreground"
+					>
+						End
+					</p>
+					<p class="text-sm sm:text-lg font-semibold truncate text-foreground">
+						{endLabel}
+					</p>
 				</div>
-				<div class="rounded bg-white/10 backdrop-blur p-2 sm:p-3">
-					<p class="text-[10px] sm:text-xs uppercase tracking-[0.2em] sm:tracking-[0.3em] text-white/70">Tasks</p>
-					<p class="text-sm sm:text-lg font-semibold">
+				<div class="rounded bg-muted/50 p-2 sm:p-3">
+					<p
+						class="text-[10px] sm:text-xs uppercase tracking-[0.2em] sm:tracking-[0.3em] text-muted-foreground"
+					>
+						Tasks
+					</p>
+					<p class="text-sm sm:text-lg font-semibold text-foreground">
 						{planTasks.length}
 						{#if completionPercent !== null}
-							<span class="text-xs sm:text-sm font-medium text-white/80">
+							<span class="text-xs sm:text-sm font-medium text-muted-foreground">
 								({completionPercent}%)</span
 							>
 						{/if}
@@ -372,27 +408,27 @@
 		<div class="px-3 py-3 sm:px-6 sm:py-6">
 			{#if isLoading}
 				<div class="flex items-center justify-center py-16">
-					<Loader class="w-8 h-8 animate-spin text-gray-400 dark:text-gray-500" />
+					<Loader class="w-8 h-8 animate-spin text-muted-foreground" />
 				</div>
 			{:else if !plan}
 				<div class="text-center py-16">
-					<p class="text-red-600 dark:text-red-400">Plan not found</p>
+					<p class="text-destructive">Plan not found</p>
 				</div>
 			{:else}
 				<div class="grid gap-6 lg:grid-cols-3">
 					<section class="space-y-6 lg:col-span-2">
-						<Card class="shadow-lg">
+						<Card class="shadow-ink">
 							<CardHeader
-								variant="gradient"
-								class="flex items-center justify-between"
+								variant="default"
+								class="flex items-center justify-between tx tx-frame tx-weak"
 							>
 								<div>
 									<p
-										class="text-xs font-semibold uppercase tracking-[0.3em] text-accent-blue"
+										class="text-xs font-semibold uppercase tracking-[0.3em] text-accent"
 									>
 										Plan details
 									</p>
-									<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+									<h3 class="text-lg font-semibold text-foreground">
 										Structure the execution blueprint
 									</h3>
 								</div>
@@ -465,9 +501,7 @@
 									</div>
 
 									{#if allowedTransitions.length > 0}
-										<div
-											class="pt-4 border-t border-gray-200 dark:border-gray-700"
-										>
+										<div class="pt-4 border-t border-border">
 											<FSMStateVisualizer
 												entityId={planId}
 												entityKind="plan"
@@ -499,7 +533,7 @@
 
 									{#if error}
 										<div
-											class="rounded border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700 dark:border-red-800/60 dark:bg-red-900/20 dark:text-red-200"
+											class="rounded border border-destructive/30 bg-destructive/10 px-4 py-2 text-sm text-destructive"
 										>
 											{error}
 										</div>
@@ -510,40 +544,40 @@
 					</section>
 
 					<div class="space-y-4">
-						<Card class="shadow-lg">
+						<Card class="shadow-ink">
 							<CardHeader class="flex items-center gap-2">
-								<Clock class="w-4 h-4 text-blue-500" />
+								<Clock class="w-4 h-4 text-accent" />
 								<h4
-									class="text-sm font-semibold uppercase tracking-[0.3em] text-gray-600 dark:text-gray-400"
+									class="text-sm font-semibold uppercase tracking-[0.3em] text-muted-foreground"
 								>
 									Timeline insight
 								</h4>
 							</CardHeader>
 							<CardBody class="space-y-3">
 								<div class="grid grid-cols-2 gap-3 text-sm">
-									<div
-										class="rounded bg-surface-panel p-3 border border-gray-200 dark:border-gray-700"
-									>
-										<p class="text-xs uppercase tracking-[0.3em] text-gray-500">
+									<div class="rounded bg-muted/30 p-3 border border-border">
+										<p
+											class="text-xs uppercase tracking-[0.3em] text-muted-foreground"
+										>
 											Start
 										</p>
-										<p class="font-semibold text-gray-900 dark:text-white">
+										<p class="font-semibold text-foreground">
 											{startLabel}
 										</p>
 									</div>
-									<div
-										class="rounded bg-surface-panel p-3 border border-gray-200 dark:border-gray-700"
-									>
-										<p class="text-xs uppercase tracking-[0.3em] text-gray-500">
+									<div class="rounded bg-muted/30 p-3 border border-border">
+										<p
+											class="text-xs uppercase tracking-[0.3em] text-muted-foreground"
+										>
 											End
 										</p>
-										<p class="font-semibold text-gray-900 dark:text-white">
+										<p class="font-semibold text-foreground">
 											{endLabel}
 										</p>
 									</div>
 								</div>
 								<div
-									class="rounded bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border border-green-200 dark:border-green-800/40 px-3 py-2 text-xs text-green-900 dark:text-green-200 dither-soft"
+									class="rounded bg-accent/10 border border-accent/30 px-3 py-2 text-xs text-foreground tx tx-bloom tx-weak"
 								>
 									Align plan duration with sprint cadence. If work exceeds six
 									weeks, consider splitting into phases.
@@ -551,33 +585,31 @@
 							</CardBody>
 						</Card>
 
-						<Card class="shadow-lg">
+						<Card class="shadow-ink">
 							<CardHeader class="flex items-center gap-2">
-								<ListChecks class="w-4 h-4 text-indigo-500" />
+								<ListChecks class="w-4 h-4 text-accent" />
 								<h4
-									class="text-sm font-semibold uppercase tracking-[0.3em] text-gray-600 dark:text-gray-400"
+									class="text-sm font-semibold uppercase tracking-[0.3em] text-muted-foreground"
 								>
 									Linked tasks
 								</h4>
 							</CardHeader>
 							<CardBody class="space-y-3">
 								{#if planTasks.length === 0}
-									<div class="text-sm text-gray-600 dark:text-gray-400">
+									<div class="text-sm text-muted-foreground">
 										No tasks linked yet. Assign tasks to this plan from the
 										Tasks tab to visualize progress.
 									</div>
 								{:else}
 									{#each highlightedTasks as task}
 										<div
-											class="p-3 border border-gray-200 dark:border-gray-700 rounded flex items-start justify-between gap-3"
+											class="p-3 border border-border rounded flex items-start justify-between gap-3"
 										>
 											<div>
-												<p
-													class="font-semibold text-gray-900 dark:text-white"
-												>
+												<p class="font-semibold text-foreground">
 													{task.title}
 												</p>
-												<p class="text-xs text-gray-500 dark:text-gray-400">
+												<p class="text-xs text-muted-foreground">
 													{formatTaskMeta(task)}
 												</p>
 											</div>
@@ -589,7 +621,7 @@
 										</div>
 									{/each}
 									{#if planTasks.length > highlightedTasks.length}
-										<p class="text-xs text-gray-500 dark:text-gray-400">
+										<p class="text-xs text-muted-foreground">
 											+{planTasks.length - highlightedTasks.length} more tasks
 											linked
 										</p>
@@ -599,10 +631,14 @@
 						</Card>
 
 						<!-- Danger zone - compact inline on mobile -->
-						<div class="flex items-center justify-between gap-2 p-2 sm:p-3 rounded-lg border border-red-200 dark:border-red-800/40 bg-red-50/50 dark:bg-red-900/10">
+						<div
+							class="flex items-center justify-between gap-2 p-2 sm:p-3 rounded-lg border border-destructive/30 bg-destructive/5"
+						>
 							<div class="flex items-center gap-1.5 sm:gap-2 min-w-0">
-								<Trash2 class="w-3 h-3 sm:w-4 sm:h-4 text-red-500 shrink-0" />
-								<span class="text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-red-600 dark:text-red-400">
+								<Trash2 class="w-3 h-3 sm:w-4 sm:h-4 text-destructive shrink-0" />
+								<span
+									class="text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-destructive"
+								>
 									Danger
 								</span>
 							</div>
@@ -649,7 +685,7 @@
 	{#snippet footer()}
 		{#if !isLoading && plan}
 			<div
-				class="flex flex-row items-center justify-end gap-2 sm:gap-4 p-2 sm:p-6 border-t border-gray-200 dark:border-gray-700 bg-surface-panel dither-surface"
+				class="flex flex-row items-center justify-end gap-2 sm:gap-4 p-2 sm:p-6 border-t border-border bg-muted/30 tx tx-grain tx-weak"
 			>
 				<Button
 					variant="ghost"

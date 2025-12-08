@@ -292,30 +292,30 @@
 	}
 </script>
 
-<Modal
-	isOpen={true}
-	{onClose}
-	size="xl"
-	closeOnEscape={!isSaving}
-	showCloseButton={false}
->
+<Modal isOpen={true} {onClose} size="xl" closeOnEscape={!isSaving} showCloseButton={false}>
 	{#snippet header()}
-		<!-- Custom gradient header - grey/dark grey -->
+		<!-- Inkprint header with strip texture -->
 		<div
-			class="flex-shrink-0 bg-gradient-to-r from-gray-600 via-gray-700 to-gray-800 dark:from-gray-700 dark:via-gray-800 dark:to-gray-900 text-white px-3 py-3 sm:px-6 sm:py-5 flex items-start justify-between gap-2 sm:gap-4 dither-gradient"
+			class="flex-shrink-0 bg-muted/50 border-b border-border px-3 py-3 sm:px-6 sm:py-5 flex items-start justify-between gap-2 sm:gap-4 tx tx-strip tx-weak"
 		>
 			<div class="space-y-1 sm:space-y-2 min-w-0 flex-1">
-				<p class="text-[10px] sm:text-xs font-semibold uppercase tracking-[0.3em] sm:tracking-[0.4em] text-white/70">
+				<p
+					class="text-[10px] sm:text-xs font-semibold uppercase tracking-[0.3em] sm:tracking-[0.4em] text-muted-foreground"
+				>
 					{showTemplateSelection ? 'New Plan • Step 1' : 'New Plan • Step 2'}
 				</p>
-				<h2 class="text-lg sm:text-2xl font-bold leading-tight truncate">
-					{showTemplateSelection ? 'Select Template' : (name || 'Configure Blueprint')}
+				<h2 class="text-lg sm:text-2xl font-bold leading-tight truncate text-foreground">
+					{showTemplateSelection ? 'Select Template' : name || 'Configure Blueprint'}
 				</h2>
 				<div class="flex flex-wrap items-center gap-1.5 sm:gap-3 text-xs sm:text-sm">
-					<span class="px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-semibold bg-white/20">
+					<span
+						class="px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-semibold bg-accent/20 text-accent-foreground"
+					>
 						{templateSource.length} templates
 					</span>
-					<span class="hidden sm:inline px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-semibold bg-white/20">
+					<span
+						class="hidden sm:inline px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-semibold bg-accent/20 text-accent-foreground"
+					>
 						{templateCategoryCount} categories
 					</span>
 				</div>
@@ -324,10 +324,15 @@
 				variant="ghost"
 				size="sm"
 				onclick={onClose}
-				class="text-white/80 hover:text-white shrink-0 !p-1.5 sm:!p-2"
+				class="text-muted-foreground hover:text-foreground shrink-0 !p-1.5 sm:!p-2"
 				disabled={isSaving}
 			>
-				<svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+				<svg
+					class="w-4 h-4 sm:w-5 sm:h-5"
+					fill="none"
+					stroke="currentColor"
+					viewBox="0 0 24 24"
+				>
 					<path
 						stroke-linecap="round"
 						stroke-linejoin="round"
@@ -340,436 +345,429 @@
 	{/snippet}
 
 	{#snippet children()}
-	<div class="px-3 py-3 sm:px-6 sm:py-6 space-y-4 sm:space-y-6">
-
-		<div class="relative min-h-[420px]">
-			{#key showTemplateSelection}
-				<div
-					in:fly={{ x: slideDirection * 120, duration: 300, easing: cubicOut }}
-					out:fly={{ x: slideDirection * -120, duration: 300, easing: cubicOut }}
-					class="absolute inset-0 overflow-y-auto pr-1"
-				>
-					{#if showTemplateSelection}
-						{#if isLoadingTemplates}
-							<div class="flex items-center justify-center py-24">
-								<Loader
-									class="w-8 h-8 animate-spin text-gray-400 dark:text-gray-500"
-								/>
-							</div>
-						{:else if templateError}
-							<div class="text-center py-16 space-y-4">
-								<p class="text-base text-red-600 dark:text-red-400">
-									{templateError}
-								</p>
-								<Button variant="secondary" size="sm" onclick={loadTemplates}>
-									Retry
-								</Button>
-							</div>
-						{:else}
-							<div class="space-y-5">
-								<div
-									class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between"
-								>
-									<div>
-										<h3
-											class="text-lg font-semibold text-gray-900 dark:text-white"
-										>
-											Explore templates
-										</h3>
-										<p class="text-sm text-gray-600 dark:text-gray-400">
-											Filter by problem type, planning horizon, or go custom.
-										</p>
-									</div>
-									<div class="w-full lg:w-72">
-										<FormField
-											label="Search templates"
-											uppercase={false}
-											showOptional={false}
-										>
-											<TextInput
-												bind:value={templateSearch}
-												placeholder="Search by name, metric, scope..."
-												type="search"
-												inputmode="search"
-												enterkeyhint="search"
-												size="sm"
-												icon={Search}
-											/>
-										</FormField>
-									</div>
+		<div class="px-3 py-3 sm:px-6 sm:py-6 space-y-4 sm:space-y-6">
+			<div class="relative min-h-[420px]">
+				{#key showTemplateSelection}
+					<div
+						in:fly={{ x: slideDirection * 120, duration: 300, easing: cubicOut }}
+						out:fly={{ x: slideDirection * -120, duration: 300, easing: cubicOut }}
+						class="absolute inset-0 overflow-y-auto pr-1"
+					>
+						{#if showTemplateSelection}
+							{#if isLoadingTemplates}
+								<div class="flex items-center justify-center py-24">
+									<Loader class="w-8 h-8 animate-spin text-muted-foreground" />
 								</div>
-
-								{#if filteredTemplates.length === 0}
+							{:else if templateError}
+								<div class="text-center py-16 space-y-4">
+									<p class="text-base text-destructive">
+										{templateError}
+									</p>
+									<Button variant="secondary" size="sm" onclick={loadTemplates}>
+										Retry
+									</Button>
+								</div>
+							{:else}
+								<div class="space-y-5">
 									<div
-										class="text-center py-20 border border-dashed border-gray-300 dark:border-gray-600 rounded"
-									>
-										<p class="text-gray-600 dark:text-gray-400">
-											No templates match that search.
-										</p>
-										<p class="text-sm text-gray-500 dark:text-gray-500">
-											Try another keyword or start from scratch.
-										</p>
-									</div>
-								{:else}
-									<div class="space-y-6">
-										{#each Object.entries(templateCategories) as [category, categoryTemplates]}
-											<section class="space-y-3">
-												<div class="flex items-center justify-between">
-													<h4
-														class="text-sm font-semibold tracking-[0.2em] uppercase text-gray-600 dark:text-gray-400"
-													>
-														{category}
-													</h4>
-													<span
-														class="text-xs text-gray-500 dark:text-gray-500"
-													>
-														{categoryTemplates.length} option{categoryTemplates.length ===
-														1
-															? ''
-															: 's'}
-													</span>
-												</div>
-												<div
-													class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3"
-												>
-													{#each categoryTemplates as template}
-														<button
-															type="button"
-															onclick={() => selectTemplate(template)}
-															class="group text-left"
-														>
-															<Card
-																variant="interactive"
-																class="h-full border-2 border-transparent group-hover:border-blue-400 dark:group-hover:border-blue-500"
-															>
-																<CardBody class="space-y-3">
-																	<div
-																		class="flex items-start justify-between gap-3"
-																	>
-																		<div>
-																			<p
-																				class="text-sm uppercase tracking-[0.3em] text-gray-400 dark:text-gray-500"
-																			>
-																				{template.metadata
-																					?.category ||
-																					'General'}
-																			</p>
-																			<h5
-																				class="text-lg font-semibold text-gray-900 dark:text-white"
-																			>
-																				{template.name}
-																			</h5>
-																		</div>
-																		<ChevronRight
-																			class="w-5 h-5 text-gray-400 group-hover:text-accent-blue transition-colors"
-																		/>
-																	</div>
-																	<p
-																		class="text-sm text-gray-600 dark:text-gray-300 line-clamp-3"
-																	>
-																		{template.metadata
-																			?.description ||
-																			'Structured yet flexible execution template.'}
-																	</p>
-																	<div
-																		class="flex flex-wrap gap-2 pt-1"
-																	>
-																		{#if template.metadata?.typical_scope}
-																			<Badge
-																				size="sm"
-																				variant="info"
-																			>
-																				<Calendar
-																					class="w-3 h-3"
-																					slot="icon"
-																				/>
-																				{template.metadata
-																					.typical_scope}
-																			</Badge>
-																		{/if}
-																		{#if template.metadata?.measurement_type}
-																			<Badge
-																				size="sm"
-																				variant="success"
-																			>
-																				<Target
-																					class="w-3 h-3"
-																					slot="icon"
-																				/>
-																				{template.metadata
-																					.measurement_type}
-																			</Badge>
-																		{/if}
-																	</div>
-																</CardBody>
-															</Card>
-														</button>
-													{/each}
-												</div>
-											</section>
-										{/each}
-									</div>
-								{/if}
-							</div>
-						{/if}
-					{:else}
-						<form class="space-y-6" onsubmit={handleSubmit}>
-							<div class="grid gap-6 lg:grid-cols-3">
-								<Card class="lg:col-span-2 shadow-lg">
-									<CardHeader
-										variant="gradient"
-										class="flex items-center justify-between"
+										class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between"
 									>
 										<div>
-											<p
-												class="text-xs font-semibold uppercase tracking-[0.3em] text-accent-blue"
-											>
-												Blueprint details
-											</p>
-											<h3
-												class="text-xl font-semibold text-gray-900 dark:text-white"
-											>
-												Name, context, and timeline
+											<h3 class="text-lg font-semibold text-foreground">
+												Explore templates
 											</h3>
+											<p class="text-sm text-muted-foreground">
+												Filter by problem type, planning horizon, or go
+												custom.
+											</p>
 										</div>
-										<Badge variant="info" size="sm">Step 2 of 2</Badge>
-									</CardHeader>
-									<CardBody class="space-y-5">
-										<FormField label="Plan name" labelFor="plan-name" required>
-											<TextInput
-												id="plan-name"
-												bind:value={name}
-												placeholder="e.g., Foundation Sprint, Q2 GTM Rollout"
-												inputmode="text"
-												enterkeyhint="next"
-												required
-											/>
-										</FormField>
-
-										<FormField
-											label="Plan description"
-											labelFor="plan-description"
-											showOptional={false}
-										>
-											<Textarea
-												id="plan-description"
-												bind:value={description}
-												rows={4}
-												enterkeyhint="next"
-												placeholder="Summarize the scope, success criteria, and how this plan ladders up to goals."
-											/>
-										</FormField>
-
-										<div class="grid gap-4 sm:grid-cols-2">
+										<div class="w-full lg:w-72">
 											<FormField
-												label="Start date"
-												labelFor="plan-start"
+												label="Search templates"
+												uppercase={false}
 												showOptional={false}
 											>
 												<TextInput
-													id="plan-start"
-													bind:value={startDate}
-													type="date"
-												/>
-											</FormField>
-											<FormField
-												label="End date"
-												labelFor="plan-end"
-												error={dateError}
-												showOptional={false}
-											>
-												<TextInput
-													id="plan-end"
-													bind:value={endDate}
-													type="date"
+													bind:value={templateSearch}
+													placeholder="Search by name, metric, scope..."
+													type="search"
+													inputmode="search"
+													enterkeyhint="search"
+													size="sm"
+													icon={Search}
 												/>
 											</FormField>
 										</div>
+									</div>
 
-										<FormField
-											label="Initial state"
-											labelFor="plan-state"
-											showOptional={false}
+									{#if filteredTemplates.length === 0}
+										<div
+											class="text-center py-20 border border-dashed border-border rounded-lg"
 										>
-											<Select id="plan-state" bind:value={stateKey}>
-												{#each stateOptions as option}
-													<option value={option.value}
-														>{option.label}</option
-													>
-												{/each}
-											</Select>
-										</FormField>
-									</CardBody>
-								</Card>
-
-								<div class="space-y-4">
-									<Card class="shadow-lg">
-										<CardHeader class="flex items-center gap-2">
-											<Clock class="w-4 h-4 text-blue-500" />
-											<h4
-												class="text-sm font-semibold uppercase tracking-[0.3em] text-gray-600 dark:text-gray-300"
-											>
-												Timeline insight
-											</h4>
-										</CardHeader>
-										<CardBody class="space-y-3">
-											<div class="flex items-center gap-3">
-												<div
-													class="rounded-full bg-blue-50 dark:bg-blue-900/30 p-2"
-												>
-													<Calendar class="w-4 h-4 text-accent-blue" />
-												</div>
-												<div>
-													<p
-														class="text-xs uppercase tracking-[0.4em] text-gray-500 dark:text-gray-400"
-													>
-														Duration
-													</p>
-													<p
-														class="text-lg font-semibold text-gray-900 dark:text-white"
-													>
-														{durationLabel}
-													</p>
-												</div>
-											</div>
-											<div class="grid grid-cols-2 gap-3 text-sm">
-												<div
-													class="rounded bg-surface-panel p-3 border border-gray-200 dark:border-gray-600/30"
-												>
-													<p
-														class="text-xs uppercase tracking-[0.3em] text-gray-500 dark:text-gray-400"
-													>
-														Start
-													</p>
-													<p
-														class="font-semibold text-gray-900 dark:text-white"
-													>
-														{startLabel}
-													</p>
-												</div>
-												<div
-													class="rounded bg-surface-panel p-3 border border-gray-200 dark:border-gray-600/30"
-												>
-													<p
-														class="text-xs uppercase tracking-[0.3em] text-gray-500 dark:text-gray-400"
-													>
-														End
-													</p>
-													<p
-														class="font-semibold text-gray-900 dark:text-white"
-													>
-														{endLabel}
-													</p>
-												</div>
-											</div>
-											<div
-												class="rounded bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border border-green-200 dark:border-green-800/40 px-3 py-2 flex items-start gap-2 dither-soft"
-											>
-												<CircleCheck
-													class="w-4 h-4 text-green-600 mt-0.5"
-												/>
-												<p
-													class="text-xs text-green-900 dark:text-green-200"
-												>
-													Keep duration realistic—plans over 45 days often
-													perform better when split into phases.
-												</p>
-											</div>
-										</CardBody>
-									</Card>
-
-									<Card class="shadow-lg">
-										<CardHeader class="flex items-center gap-2">
-											<Target class="w-4 h-4 text-purple-500" />
-											<h4
-												class="text-sm font-semibold uppercase tracking-[0.3em] text-gray-600 dark:text-gray-300"
-											>
-												Template guidance
-											</h4>
-										</CardHeader>
-										<CardBody class="space-y-3">
-											<p
-												class="text-base font-semibold text-gray-900 dark:text-white"
-											>
-												{selectedTemplate?.name || 'Custom plan'}
+											<p class="text-muted-foreground">
+												No templates match that search.
 											</p>
-											<p class="text-sm text-gray-600 dark:text-gray-300">
-												{selectedTemplate?.metadata?.description ||
-													'Use this template as a launchpad. Layer in tasks, owners, and checkpoints after saving.'}
+											<p class="text-sm text-muted-foreground">
+												Try another keyword or start from scratch.
 											</p>
-											<div class="flex flex-wrap gap-2">
-												{#if selectedTemplate?.metadata?.typical_scope}
-													<span
-														class="text-xs font-semibold text-gray-600 dark:text-gray-300 rounded-full bg-surface-panel px-3 py-1"
+										</div>
+									{:else}
+										<div class="space-y-6">
+											{#each Object.entries(templateCategories) as [category, categoryTemplates]}
+												<section class="space-y-3">
+													<div class="flex items-center justify-between">
+														<h4
+															class="text-sm font-semibold tracking-[0.2em] uppercase text-muted-foreground"
+														>
+															{category}
+														</h4>
+														<span class="text-xs text-muted-foreground">
+															{categoryTemplates.length} option{categoryTemplates.length ===
+															1
+																? ''
+																: 's'}
+														</span>
+													</div>
+													<div
+														class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3"
 													>
-														Scope: {selectedTemplate.metadata
-															.typical_scope}
-													</span>
-												{/if}
-												{#each selectedTemplateTags as tag}
-													<span
-														class="text-xs font-semibold text-gray-600 dark:text-gray-300 rounded-full bg-surface-panel px-3 py-1"
-													>
-														#{tag}
-													</span>
-												{/each}
-											</div>
-											<div class="text-xs text-gray-500 dark:text-gray-400">
-												<p>
-													State preview: <span
-														class="font-semibold text-gray-900 dark:text-white"
-														>{formattedStateLabel}</span
-													>
-												</p>
-												<p>
-													Type key: <span
-														class="font-mono text-[11px] text-gray-500 dark:text-gray-400"
-														>{selectedTemplate?.type_key ||
-															'plan.phase.base'}</span
-													>
-												</p>
-											</div>
-										</CardBody>
-									</Card>
-								</div>
-							</div>
-
-							{#if error}
-								<div
-									class="rounded border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700 dark:border-red-800/60 dark:bg-red-900/20 dark:text-red-200"
-								>
-									{error}
+														{#each categoryTemplates as template}
+															<button
+																type="button"
+																onclick={() =>
+																	selectTemplate(template)}
+																class="group text-left"
+															>
+																<Card
+																	variant="interactive"
+																	class="h-full border border-border group-hover:border-accent shadow-ink"
+																>
+																	<CardBody class="space-y-3">
+																		<div
+																			class="flex items-start justify-between gap-3"
+																		>
+																			<div>
+																				<p
+																					class="text-sm uppercase tracking-[0.3em] text-muted-foreground"
+																				>
+																					{template
+																						.metadata
+																						?.category ||
+																						'General'}
+																				</p>
+																				<h5
+																					class="text-lg font-semibold text-foreground"
+																				>
+																					{template.name}
+																				</h5>
+																			</div>
+																			<ChevronRight
+																				class="w-5 h-5 text-muted-foreground group-hover:text-accent transition-colors"
+																			/>
+																		</div>
+																		<p
+																			class="text-sm text-muted-foreground line-clamp-3"
+																		>
+																			{template.metadata
+																				?.description ||
+																				'Structured yet flexible execution template.'}
+																		</p>
+																		<div
+																			class="flex flex-wrap gap-2 pt-1"
+																		>
+																			{#if template.metadata?.typical_scope}
+																				<Badge
+																					size="sm"
+																					variant="info"
+																				>
+																					<Calendar
+																						class="w-3 h-3"
+																						slot="icon"
+																					/>
+																					{template
+																						.metadata
+																						.typical_scope}
+																				</Badge>
+																			{/if}
+																			{#if template.metadata?.measurement_type}
+																				<Badge
+																					size="sm"
+																					variant="success"
+																				>
+																					<Target
+																						class="w-3 h-3"
+																						slot="icon"
+																					/>
+																					{template
+																						.metadata
+																						.measurement_type}
+																				</Badge>
+																			{/if}
+																		</div>
+																	</CardBody>
+																</Card>
+															</button>
+														{/each}
+													</div>
+												</section>
+											{/each}
+										</div>
+									{/if}
 								</div>
 							{/if}
+						{:else}
+							<form class="space-y-6" onsubmit={handleSubmit}>
+								<div class="grid gap-6 lg:grid-cols-3">
+									<Card class="lg:col-span-2 shadow-ink">
+										<CardHeader
+											class="flex items-center justify-between border-b border-border bg-muted/30 tx tx-frame tx-weak"
+										>
+											<div>
+												<p
+													class="text-xs font-semibold uppercase tracking-[0.3em] text-accent"
+												>
+													Blueprint details
+												</p>
+												<h3 class="text-xl font-semibold text-foreground">
+													Name, context, and timeline
+												</h3>
+											</div>
+											<Badge variant="info" size="sm">Step 2 of 2</Badge>
+										</CardHeader>
+										<CardBody class="space-y-5">
+											<FormField
+												label="Plan name"
+												labelFor="plan-name"
+												required
+											>
+												<TextInput
+													id="plan-name"
+													bind:value={name}
+													placeholder="e.g., Foundation Sprint, Q2 GTM Rollout"
+													inputmode="text"
+													enterkeyhint="next"
+													required
+												/>
+											</FormField>
 
-							<div
-								class="flex flex-row items-center justify-between gap-2 sm:gap-3"
-							>
-								<Button
-									variant="ghost"
-									type="button"
-									onclick={handleBackToTemplates}
-									class="text-xs sm:text-sm px-2 sm:px-4"
+											<FormField
+												label="Plan description"
+												labelFor="plan-description"
+												showOptional={false}
+											>
+												<Textarea
+													id="plan-description"
+													bind:value={description}
+													rows={4}
+													enterkeyhint="next"
+													placeholder="Summarize the scope, success criteria, and how this plan ladders up to goals."
+												/>
+											</FormField>
+
+											<div class="grid gap-4 sm:grid-cols-2">
+												<FormField
+													label="Start date"
+													labelFor="plan-start"
+													showOptional={false}
+												>
+													<TextInput
+														id="plan-start"
+														bind:value={startDate}
+														type="date"
+													/>
+												</FormField>
+												<FormField
+													label="End date"
+													labelFor="plan-end"
+													error={dateError}
+													showOptional={false}
+												>
+													<TextInput
+														id="plan-end"
+														bind:value={endDate}
+														type="date"
+													/>
+												</FormField>
+											</div>
+
+											<FormField
+												label="Initial state"
+												labelFor="plan-state"
+												showOptional={false}
+											>
+												<Select id="plan-state" bind:value={stateKey}>
+													{#each stateOptions as option}
+														<option value={option.value}
+															>{option.label}</option
+														>
+													{/each}
+												</Select>
+											</FormField>
+										</CardBody>
+									</Card>
+
+									<div class="space-y-4">
+										<Card class="shadow-ink">
+											<CardHeader
+												class="flex items-center gap-2 border-b border-border"
+											>
+												<Clock class="w-4 h-4 text-accent" />
+												<h4
+													class="text-sm font-semibold uppercase tracking-[0.3em] text-muted-foreground"
+												>
+													Timeline insight
+												</h4>
+											</CardHeader>
+											<CardBody class="space-y-3">
+												<div class="flex items-center gap-3">
+													<div class="rounded-full bg-muted p-2">
+														<Calendar class="w-4 h-4 text-accent" />
+													</div>
+													<div>
+														<p
+															class="text-xs uppercase tracking-[0.4em] text-muted-foreground"
+														>
+															Duration
+														</p>
+														<p
+															class="text-lg font-semibold text-foreground"
+														>
+															{durationLabel}
+														</p>
+													</div>
+												</div>
+												<div class="grid grid-cols-2 gap-3 text-sm">
+													<div
+														class="rounded bg-muted/50 p-3 border border-border"
+													>
+														<p
+															class="text-xs uppercase tracking-[0.3em] text-muted-foreground"
+														>
+															Start
+														</p>
+														<p class="font-semibold text-foreground">
+															{startLabel}
+														</p>
+													</div>
+													<div
+														class="rounded bg-muted/50 p-3 border border-border"
+													>
+														<p
+															class="text-xs uppercase tracking-[0.3em] text-muted-foreground"
+														>
+															End
+														</p>
+														<p class="font-semibold text-foreground">
+															{endLabel}
+														</p>
+													</div>
+												</div>
+												<div
+													class="rounded-lg bg-muted/30 border border-border px-3 py-2 flex items-start gap-2 tx tx-grain tx-weak"
+												>
+													<CircleCheck
+														class="w-4 h-4 text-accent mt-0.5"
+													/>
+													<p class="text-xs text-muted-foreground">
+														Keep duration realistic—plans over 45 days
+														often perform better when split into phases.
+													</p>
+												</div>
+											</CardBody>
+										</Card>
+
+										<Card class="shadow-ink">
+											<CardHeader
+												class="flex items-center gap-2 border-b border-border"
+											>
+												<Target class="w-4 h-4 text-accent" />
+												<h4
+													class="text-sm font-semibold uppercase tracking-[0.3em] text-muted-foreground"
+												>
+													Template guidance
+												</h4>
+											</CardHeader>
+											<CardBody class="space-y-3">
+												<p class="text-base font-semibold text-foreground">
+													{selectedTemplate?.name || 'Custom plan'}
+												</p>
+												<p class="text-sm text-muted-foreground">
+													{selectedTemplate?.metadata?.description ||
+														'Use this template as a launchpad. Layer in tasks, owners, and checkpoints after saving.'}
+												</p>
+												<div class="flex flex-wrap gap-2">
+													{#if selectedTemplate?.metadata?.typical_scope}
+														<span
+															class="text-xs font-semibold text-foreground rounded-full bg-muted px-3 py-1"
+														>
+															Scope: {selectedTemplate.metadata
+																.typical_scope}
+														</span>
+													{/if}
+													{#each selectedTemplateTags as tag}
+														<span
+															class="text-xs font-semibold text-foreground rounded-full bg-muted px-3 py-1"
+														>
+															#{tag}
+														</span>
+													{/each}
+												</div>
+												<div class="text-xs text-muted-foreground">
+													<p>
+														State preview: <span
+															class="font-semibold text-foreground"
+															>{formattedStateLabel}</span
+														>
+													</p>
+													<p>
+														Type key: <span
+															class="font-mono text-[11px] text-muted-foreground"
+															>{selectedTemplate?.type_key ||
+																'plan.phase.base'}</span
+														>
+													</p>
+												</div>
+											</CardBody>
+										</Card>
+									</div>
+								</div>
+
+								{#if error}
+									<div
+										class="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2 text-sm text-destructive"
+									>
+										{error}
+									</div>
+								{/if}
+
+								<div
+									class="flex flex-row items-center justify-between gap-2 sm:gap-3"
 								>
-									<span class="hidden sm:inline">← Back</span>
-									<span class="sm:hidden">←</span>
-								</Button>
-								<Button
-									type="submit"
-									variant="primary"
-									loading={isSaving}
-									disabled={!canSubmit}
-									class="text-xs sm:text-sm px-2 sm:px-4"
-								>
-									<span class="hidden sm:inline">Create Plan</span>
-									<span class="sm:hidden">Create</span>
-								</Button>
-							</div>
-						</form>
-					{/if}
-				</div>
-			{/key}
+									<Button
+										variant="ghost"
+										type="button"
+										onclick={handleBackToTemplates}
+										class="text-xs sm:text-sm px-2 sm:px-4"
+									>
+										<span class="hidden sm:inline">← Back</span>
+										<span class="sm:hidden">←</span>
+									</Button>
+									<Button
+										type="submit"
+										variant="primary"
+										loading={isSaving}
+										disabled={!canSubmit}
+										class="text-xs sm:text-sm px-2 sm:px-4"
+									>
+										<span class="hidden sm:inline">Create Plan</span>
+										<span class="sm:hidden">Create</span>
+									</Button>
+								</div>
+							</form>
+						{/if}
+					</div>
+				{/key}
+			</div>
 		</div>
-	</div>
 	{/snippet}
 </Modal>

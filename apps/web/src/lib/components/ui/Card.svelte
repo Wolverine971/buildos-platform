@@ -1,38 +1,43 @@
 <!-- apps/web/src/lib/components/ui/Card.svelte -->
 <script lang="ts">
 	import type { HTMLAttributes } from 'svelte/elements';
+	import type { Snippet } from 'svelte';
 	import { twMerge } from 'tailwind-merge';
 
 	type CardVariant = 'default' | 'elevated' | 'interactive' | 'outline';
 	type CardPadding = 'none' | 'sm' | 'md' | 'lg';
+	type CardTexture = 'none' | 'bloom' | 'grain' | 'thread' | 'frame' | 'static';
 
 	// Svelte 5 runes: Use $props() with rest syntax
 	let {
 		variant = 'default',
 		padding = 'md',
 		hoverable = false,
-		dithered = false, // Cards should typically NOT have dithering - clean containers
+		texture = 'none',
+		dithered = false, // Legacy prop - use texture instead
 		class: className = '',
+		children,
 		...restProps
 	}: {
 		variant?: CardVariant;
 		padding?: CardPadding;
 		hoverable?: boolean;
+		texture?: CardTexture;
 		dithered?: boolean;
 		class?: string;
+		children?: Snippet;
 	} & HTMLAttributes<HTMLDivElement> = $props();
 
-	// Variant styles - Scratchpad Ops design
+	// Variant styles - Inkprint design system
 	const variantClasses = {
-		default: 'bg-surface-panel border border-gray-200 dark:border-gray-700 shadow-subtle',
-		elevated: 'bg-surface-panel border border-gray-200 dark:border-gray-700 shadow-card',
+		default: 'bg-card border border-border shadow-ink',
+		elevated: 'bg-card border border-border shadow-ink-strong ink-frame',
 		interactive:
-			'bg-surface-panel border border-gray-200 dark:border-gray-700 shadow-subtle hover:shadow-card hover:border-gray-300 dark:hover:border-gray-600 cursor-pointer',
-		outline:
-			'bg-transparent border-2 border-gray-700 dark:border-gray-500 hover:border-accent-olive dark:hover:border-gray-400'
+			'bg-card border border-border shadow-ink hover:shadow-ink-strong hover:border-accent/50 cursor-pointer',
+		outline: 'bg-transparent border border-border hover:border-accent'
 	};
 
-	// Padding styles - optimized for high information density (Apple-style)
+	// Padding styles - optimized for high information density
 	const paddingClasses = {
 		none: 'p-0',
 		sm: 'p-2', // Compact: 8px - consistent with 8px grid system
@@ -40,11 +45,21 @@
 		lg: 'p-4 sm:p-6' // Comfortable: 16-24px - for special emphasis cards
 	};
 
+	// Texture classes - Inkprint textures
+	const textureClasses = {
+		none: '',
+		bloom: 'tx tx-bloom tx-weak',
+		grain: 'tx tx-grain tx-weak',
+		thread: 'tx tx-thread tx-weak',
+		frame: 'tx tx-frame tx-weak',
+		static: 'tx tx-static tx-weak'
+	};
+
 	// Svelte 5 runes: Convert reactive declaration to $derived
 	let cardClasses = $derived(
 		twMerge(
-			// Base styles - Scratchpad Ops styling
-			'rounded overflow-hidden', // 4px radius for industrial feel
+			// Base styles - Inkprint design system
+			'rounded-lg overflow-hidden', // Softer radius
 
 			// Variant
 			variantClasses[variant],
@@ -53,10 +68,13 @@
 			paddingClasses[padding],
 
 			// Hoverable
-			hoverable && 'transition-transform hover:scale-[1.01] cursor-pointer',
+			hoverable && 'transition-all hover:scale-[1.005] cursor-pointer pressable',
 
-			// Light grain texture for surface (optional)
-			dithered && 'dither-subtle', // Use subtle dithering from dithering.css
+			// Texture (new Inkprint system)
+			textureClasses[texture],
+
+			// Legacy dithered support
+			dithered && texture === 'none' && 'tx tx-grain tx-weak',
 
 			// Custom classes
 			className
@@ -65,7 +83,9 @@
 </script>
 
 <div class={cardClasses} {...restProps}>
-	<slot />
+	{#if children}
+		{@render children()}
+	{/if}
 </div>
 
 <style>

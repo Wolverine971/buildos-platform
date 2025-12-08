@@ -1073,7 +1073,7 @@
 		<button
 			type="button"
 			onclick={handleCancel}
-			class="inline-flex items-center gap-2 rounded-xl border border-slate-200/70 bg-white/90 px-3 py-2 text-sm font-semibold text-slate-600 transition hover:border-blue-400 hover:text-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-300 dark:hover:border-indigo-500 dark:hover:text-indigo-200"
+			class="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm font-semibold text-muted-foreground transition hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring shadow-ink pressable"
 		>
 			<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
 				<path
@@ -1089,10 +1089,8 @@
 
 	<!-- Header -->
 	<header class="mb-3">
-		<h1 class="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-2">
-			Create New Template
-		</h1>
-		<p class="text-base sm:text-lg text-gray-600 dark:text-gray-400">
+		<h1 class="text-3xl sm:text-4xl font-bold text-foreground mb-2">Create New Template</h1>
+		<p class="text-base sm:text-lg text-muted-foreground">
 			Step {currentStep} of {totalSteps}: {steps.find((s) => s.number === currentStep)?.name}
 		</p>
 	</header>
@@ -1112,10 +1110,10 @@
 					<div
 						class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-colors {step.number ===
 						currentStep
-							? 'bg-blue-600 dark:bg-blue-500 text-white'
+							? 'bg-accent text-accent-foreground'
 							: step.number < currentStep
-								? 'bg-green-600 dark:bg-green-500 text-white'
-								: 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400'}"
+								? 'bg-emerald-500 text-white'
+								: 'bg-muted text-muted-foreground'}"
 					>
 						{#if step.number < currentStep}
 							<svg
@@ -1138,14 +1136,14 @@
 					<div class="text-center hidden sm:block">
 						<div
 							class="text-xs font-semibold {step.number === currentStep
-								? 'text-blue-600 dark:text-blue-400'
+								? 'text-accent'
 								: step.number < currentStep
-									? 'text-green-600 dark:text-green-400'
-									: 'text-gray-500 dark:text-gray-500'}"
+									? 'text-emerald-600'
+									: 'text-muted-foreground'}"
 						>
 							{step.name}
 						</div>
-						<div class="text-xs text-gray-500 dark:text-gray-400">
+						<div class="text-xs text-muted-foreground">
 							{step.description}
 						</div>
 					</div>
@@ -1153,8 +1151,8 @@
 				{#if step.number < totalSteps}
 					<div
 						class="flex-1 h-0.5 mx-2 {step.number < currentStep
-							? 'bg-green-600 dark:bg-green-500'
-							: 'bg-gray-200 dark:bg-gray-700'}"
+							? 'bg-emerald-500'
+							: 'bg-muted'}"
 					></div>
 				{/if}
 			{/each}
@@ -1163,23 +1161,17 @@
 
 	<!-- Error Display -->
 	{#if error}
-		<div
-			class="mb-4 px-4 py-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg"
-		>
-			<p class="text-sm text-red-800 dark:text-red-300 font-medium">{error}</p>
+		<div class="mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded-lg">
+			<p class="text-sm text-red-800 font-medium">{error}</p>
 		</div>
 	{/if}
 
 	{#if validationErrors.length > 0}
-		<div
-			class="mb-4 px-4 py-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg"
-		>
-			<p class="text-sm text-amber-800 dark:text-amber-300 font-medium mb-2">
-				Validation Errors:
-			</p>
+		<div class="mb-4 px-4 py-3 bg-amber-50 border border-amber-200 rounded-lg">
+			<p class="text-sm text-amber-800 font-medium mb-2">Validation Errors:</p>
 			<ul class="list-disc list-inside space-y-1">
 				{#each validationErrors as valError}
-					<li class="text-sm text-amber-700 dark:text-amber-400">
+					<li class="text-sm text-amber-700">
 						<strong>{valError.field}:</strong>
 						{valError.message}
 					</li>

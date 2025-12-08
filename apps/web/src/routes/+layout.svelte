@@ -2,8 +2,8 @@
 <script lang="ts">
 	import '../app.css';
 	import '$lib/styles/pwa.css';
-	import '$lib/styles/dithering.css';
-	import '$lib/styles/scratchpad-ops.css';
+	// import '$lib/styles/dithering.css';
+	// import '$lib/styles/scratchpad-ops.css';
 	import { ModeWatcher } from 'mode-watcher';
 	import { setContext, onMount, onDestroy, untrack } from 'svelte';
 	import { page } from '$app/stores';
@@ -708,13 +708,13 @@
 <IOSSplashScreens />
 
 <div
-	class="flex min-h-screen min-h-[100dvh] w-full flex-col overflow-x-hidden bg-surface-scratch transition-colors dark:bg-slate-900"
+	class="flex min-h-screen min-h-[100dvh] w-full flex-col overflow-x-hidden bg-background text-foreground transition-colors"
 	style="padding-left: max(0px, env(safe-area-inset-left)); padding-right: max(0px, env(safe-area-inset-right));"
 >
 	<!-- Skip to main content link for accessibility -->
 	<a
 		href="#main-content"
-		class="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 bg-accent-orange text-white px-4 py-2 rounded z-50 shadow-pressable"
+		class="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 bg-accent text-accent-foreground px-4 py-2 rounded z-50 shadow-ink pressable"
 	>
 		Skip to main content
 	</a>

@@ -26,27 +26,27 @@ From `apps/web/docs/features/ontology/DATA_MODELS.md:483-519`:
 
 ```typescript
 interface OntoEdge {
-  id: uuid;
-  src_kind: text;  // 'task', 'goal', 'plan', 'milestone', 'document', etc.
-  src_id: uuid;
-  rel: text;       // 'belongs_to_plan', 'supports_goal', 'contains', 'references', etc.
-  dst_kind: text;
-  dst_id: uuid;
-  props: jsonb;    // Additional edge metadata
-  created_at: timestamptz;
+	id: uuid;
+	src_kind: text; // 'task', 'goal', 'plan', 'milestone', 'document', etc.
+	src_id: uuid;
+	rel: text; // 'belongs_to_plan', 'supports_goal', 'contains', 'references', etc.
+	dst_kind: text;
+	dst_id: uuid;
+	props: jsonb; // Additional edge metadata
+	created_at: timestamptz;
 }
 ```
 
 **Common Task Relationships:**
 
-| Relationship Direction | Edge `rel` | Description |
-|------------------------|------------|-------------|
-| `task` → `plan` | `belongs_to_plan` | Task belongs to a plan |
-| `goal` → `task` | `supports_goal` | Task supports a goal |
-| `milestone` → `task` | `contains` | Milestone contains task |
-| `task` → `document` | `has_document`, `produces` | Task linked to document |
-| `task` → `task` | `depends_on`, `blocks` | Task dependencies |
-| `output` → `task` | `produced_by` | Output produced by task |
+| Relationship Direction | Edge `rel`                 | Description             |
+| ---------------------- | -------------------------- | ----------------------- |
+| `task` → `plan`        | `belongs_to_plan`          | Task belongs to a plan  |
+| `goal` → `task`        | `supports_goal`            | Task supports a goal    |
+| `milestone` → `task`   | `contains`                 | Milestone contains task |
+| `task` → `document`    | `has_document`, `produces` | Task linked to document |
+| `task` → `task`        | `depends_on`, `blocks`     | Task dependencies       |
+| `output` → `task`      | `produced_by`              | Output produced by task |
 
 ## Requirements
 
@@ -55,18 +55,18 @@ interface OntoEdge {
 1. **Display Linked Entities Panel**: Add a "Linked Entities" card on the right sidebar showing all entities connected via `onto_edges`
 
 2. **Entity Types to Display**:
-   - 📋 **Plans** - Tasks belong to plans
-   - 🎯 **Goals** - Tasks support goals
-   - 🏁 **Milestones** - Tasks contained by milestones
-   - 📄 **Documents** - Documents linked to tasks (excluding workspace/scratch docs)
-   - ✅ **Dependent Tasks** - Tasks this task depends on or blocks
+    - 📋 **Plans** - Tasks belong to plans
+    - 🎯 **Goals** - Tasks support goals
+    - 🏁 **Milestones** - Tasks contained by milestones
+    - 📄 **Documents** - Documents linked to tasks (excluding workspace/scratch docs)
+    - ✅ **Dependent Tasks** - Tasks this task depends on or blocks
 
 3. **Clickable Navigation**: Each linked entity opens its respective modal:
-   - Plan → `PlanEditModal`
-   - Goal → `GoalEditModal`
-   - Milestone → (new MilestoneEditModal or info display)
-   - Document → `DocumentModal`
-   - Task → `TaskEditModal` (recursive, with navigation stack)
+    - Plan → `PlanEditModal`
+    - Goal → `GoalEditModal`
+    - Milestone → (new MilestoneEditModal or info display)
+    - Document → `DocumentModal`
+    - Task → `TaskEditModal` (recursive, with navigation stack)
 
 4. **Real-time Sync**: When a relationship is added/removed via dropdowns, the linked entities panel updates
 
@@ -93,17 +93,17 @@ Modify `GET /api/onto/tasks/[id]` to return linked entities:
 
 // Add new query to fetch all edges where task is src or dst
 const { data: edges } = await supabase
-  .from('onto_edges')
-  .select('*')
-  .or(`src_id.eq.${taskId},dst_id.eq.${taskId}`);
+	.from('onto_edges')
+	.select('*')
+	.or(`src_id.eq.${taskId},dst_id.eq.${taskId}`);
 
 // Resolve entity details for each edge
 const linkedEntities = await resolveLinkedEntities(supabase, edges, taskId);
 
 return ApiResponse.success({
-  task: { ...taskData, plan },
-  template,
-  linkedEntities  // NEW: Add linked entities to response
+	task: { ...taskData, plan },
+	template,
+	linkedEntities // NEW: Add linked entities to response
 });
 ```
 
@@ -111,12 +111,24 @@ return ApiResponse.success({
 
 ```typescript
 interface LinkedEntitiesResponse {
-  plans: Array<{ id: string; name: string; state_key: string; edge_rel: string }>;
-  goals: Array<{ id: string; name: string; state_key?: string; edge_rel: string }>;
-  milestones: Array<{ id: string; title: string; due_at?: string; edge_rel: string }>;
-  documents: Array<{ id: string; title: string; type_key: string; state_key: string; edge_rel: string }>;
-  dependentTasks: Array<{ id: string; title: string; state_key: string; edge_rel: string }>;
-  outputs: Array<{ id: string; name: string; type_key: string; state_key: string; edge_rel: string }>;
+	plans: Array<{ id: string; name: string; state_key: string; edge_rel: string }>;
+	goals: Array<{ id: string; name: string; state_key?: string; edge_rel: string }>;
+	milestones: Array<{ id: string; title: string; due_at?: string; edge_rel: string }>;
+	documents: Array<{
+		id: string;
+		title: string;
+		type_key: string;
+		state_key: string;
+		edge_rel: string;
+	}>;
+	dependentTasks: Array<{ id: string; title: string; state_key: string; edge_rel: string }>;
+	outputs: Array<{
+		id: string;
+		name: string;
+		type_key: string;
+		state_key: string;
+		edge_rel: string;
+	}>;
 }
 ```
 
@@ -147,21 +159,21 @@ let showLinkedTaskModal = $state(false);
 
 ```typescript
 async function loadTask() {
-  try {
-    isLoading = true;
-    // ... existing code ...
+	try {
+		isLoading = true;
+		// ... existing code ...
 
-    const response = await fetch(`/api/onto/tasks/${taskId}`);
-    const data = await response.json();
+		const response = await fetch(`/api/onto/tasks/${taskId}`);
+		const data = await response.json();
 
-    task = data.data?.task;
-    template = data.data?.template || null;
-    linkedEntities = data.data?.linkedEntities || null;  // NEW
+		task = data.data?.task;
+		template = data.data?.template || null;
+		linkedEntities = data.data?.linkedEntities || null; // NEW
 
-    // ... rest of existing code ...
-  } catch (err) {
-    // ... error handling ...
-  }
+		// ... rest of existing code ...
+	} catch (err) {
+		// ... error handling ...
+	}
 }
 ```
 
@@ -172,81 +184,81 @@ Add after the "Task Information" card in the sidebar:
 ```svelte
 <!-- Linked Entities Card -->
 <Card variant="elevated">
-  <CardHeader variant="default">
-    <h3 class="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide flex items-center gap-2">
-      <span class="w-1.5 h-1.5 bg-purple-500 rounded-full"></span>
-      Linked Entities
-    </h3>
-  </CardHeader>
-  <CardBody padding="sm">
-    {#if linkedEntitiesLoading}
-      <div class="flex justify-center py-4">
-        <Loader class="w-5 h-5 animate-spin text-gray-400" />
-      </div>
-    {:else if linkedEntities && hasLinkedEntities(linkedEntities)}
-      <div class="space-y-3">
-        <!-- Plans Section -->
-        {#if linkedEntities.plans.length > 0}
-          <LinkedEntitySection
-            label="Plans"
-            icon={Layers}
-            items={linkedEntities.plans}
-            onItemClick={(id) => openPlanModal(id)}
-          />
-        {/if}
+	<CardHeader variant="default">
+		<h3
+			class="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide flex items-center gap-2"
+		>
+			<span class="w-1.5 h-1.5 bg-purple-500 rounded-full"></span>
+			Linked Entities
+		</h3>
+	</CardHeader>
+	<CardBody padding="sm">
+		{#if linkedEntitiesLoading}
+			<div class="flex justify-center py-4">
+				<Loader class="w-5 h-5 animate-spin text-gray-400" />
+			</div>
+		{:else if linkedEntities && hasLinkedEntities(linkedEntities)}
+			<div class="space-y-3">
+				<!-- Plans Section -->
+				{#if linkedEntities.plans.length > 0}
+					<LinkedEntitySection
+						label="Plans"
+						icon={Layers}
+						items={linkedEntities.plans}
+						onItemClick={(id) => openPlanModal(id)}
+					/>
+				{/if}
 
-        <!-- Goals Section -->
-        {#if linkedEntities.goals.length > 0}
-          <LinkedEntitySection
-            label="Goals"
-            icon={Target}
-            items={linkedEntities.goals}
-            onItemClick={(id) => openGoalModal(id)}
-          />
-        {/if}
+				<!-- Goals Section -->
+				{#if linkedEntities.goals.length > 0}
+					<LinkedEntitySection
+						label="Goals"
+						icon={Target}
+						items={linkedEntities.goals}
+						onItemClick={(id) => openGoalModal(id)}
+					/>
+				{/if}
 
-        <!-- Milestones Section -->
-        {#if linkedEntities.milestones.length > 0}
-          <LinkedEntitySection
-            label="Milestones"
-            icon={Flag}
-            items={linkedEntities.milestones}
-            onItemClick={(id) => openMilestoneModal(id)}
-          />
-        {/if}
+				<!-- Milestones Section -->
+				{#if linkedEntities.milestones.length > 0}
+					<LinkedEntitySection
+						label="Milestones"
+						icon={Flag}
+						items={linkedEntities.milestones}
+						onItemClick={(id) => openMilestoneModal(id)}
+					/>
+				{/if}
 
-        <!-- Documents Section -->
-        {#if linkedEntities.documents.length > 0}
-          <LinkedEntitySection
-            label="Documents"
-            icon={FileText}
-            items={linkedEntities.documents}
-            onItemClick={(id) => openDocumentModal(id)}
-          />
-        {/if}
+				<!-- Documents Section -->
+				{#if linkedEntities.documents.length > 0}
+					<LinkedEntitySection
+						label="Documents"
+						icon={FileText}
+						items={linkedEntities.documents}
+						onItemClick={(id) => openDocumentModal(id)}
+					/>
+				{/if}
 
-        <!-- Dependent Tasks Section -->
-        {#if linkedEntities.dependentTasks.length > 0}
-          <LinkedEntitySection
-            label="Related Tasks"
-            icon={ListChecks}
-            items={linkedEntities.dependentTasks}
-            onItemClick={(id) => openTaskModal(id)}
-          />
-        {/if}
-      </div>
-    {:else}
-      <div class="text-center py-4">
-        <Link2Off class="w-6 h-6 text-gray-400 mx-auto mb-2" />
-        <p class="text-xs text-gray-500 dark:text-slate-400">
-          No linked entities yet
-        </p>
-        <p class="text-xs text-gray-400 dark:text-slate-500 mt-1">
-          Link this task to plans, goals, or documents using the form fields
-        </p>
-      </div>
-    {/if}
-  </CardBody>
+				<!-- Dependent Tasks Section -->
+				{#if linkedEntities.dependentTasks.length > 0}
+					<LinkedEntitySection
+						label="Related Tasks"
+						icon={ListChecks}
+						items={linkedEntities.dependentTasks}
+						onItemClick={(id) => openTaskModal(id)}
+					/>
+				{/if}
+			</div>
+		{:else}
+			<div class="text-center py-4">
+				<Link2Off class="w-6 h-6 text-gray-400 mx-auto mb-2" />
+				<p class="text-xs text-gray-500 dark:text-slate-400">No linked entities yet</p>
+				<p class="text-xs text-gray-400 dark:text-slate-500 mt-1">
+					Link this task to plans, goals, or documents using the form fields
+				</p>
+			</div>
+		{/if}
+	</CardBody>
 </Card>
 ```
 
@@ -288,36 +300,36 @@ Create a reusable sub-component for each entity type section:
 
 ```typescript
 function openPlanModal(id: string) {
-  selectedPlanIdForModal = id;
-  showPlanModal = true;
+	selectedPlanIdForModal = id;
+	showPlanModal = true;
 }
 
 function openGoalModal(id: string) {
-  selectedGoalId = id;
-  showGoalModal = true;
+	selectedGoalId = id;
+	showGoalModal = true;
 }
 
 function openDocumentModal(id: string) {
-  selectedDocumentId = id;
-  workspaceDocumentModalOpen = true;
-  workspaceDocumentId = id;
+	selectedDocumentId = id;
+	workspaceDocumentModalOpen = true;
+	workspaceDocumentId = id;
 }
 
 function openTaskModal(id: string) {
-  selectedLinkedTaskId = id;
-  showLinkedTaskModal = true;
+	selectedLinkedTaskId = id;
+	showLinkedTaskModal = true;
 }
 
 function handleLinkedEntityModalClose() {
-  selectedGoalId = null;
-  selectedPlanIdForModal = null;
-  selectedDocumentId = null;
-  selectedLinkedTaskId = null;
-  showGoalModal = false;
-  showPlanModal = false;
-  showLinkedTaskModal = false;
-  // Refresh task data to get updated linked entities
-  loadTask();
+	selectedGoalId = null;
+	selectedPlanIdForModal = null;
+	selectedDocumentId = null;
+	selectedLinkedTaskId = null;
+	showGoalModal = false;
+	showPlanModal = false;
+	showLinkedTaskModal = false;
+	// Refresh task data to get updated linked entities
+	loadTask();
 }
 ```
 
@@ -370,155 +382,165 @@ function handleLinkedEntityModalClose() {
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 interface LinkedEntity {
-  id: string;
-  name?: string;
-  title?: string;
-  type_key?: string;
-  state_key?: string;
-  due_at?: string;
-  edge_rel: string;
+	id: string;
+	name?: string;
+	title?: string;
+	type_key?: string;
+	state_key?: string;
+	due_at?: string;
+	edge_rel: string;
 }
 
 interface LinkedEntitiesResult {
-  plans: LinkedEntity[];
-  goals: LinkedEntity[];
-  milestones: LinkedEntity[];
-  documents: LinkedEntity[];
-  dependentTasks: LinkedEntity[];
-  outputs: LinkedEntity[];
+	plans: LinkedEntity[];
+	goals: LinkedEntity[];
+	milestones: LinkedEntity[];
+	documents: LinkedEntity[];
+	dependentTasks: LinkedEntity[];
+	outputs: LinkedEntity[];
 }
 
 export async function resolveLinkedEntities(
-  supabase: SupabaseClient,
-  taskId: string
+	supabase: SupabaseClient,
+	taskId: string
 ): Promise<LinkedEntitiesResult> {
-  const result: LinkedEntitiesResult = {
-    plans: [],
-    goals: [],
-    milestones: [],
-    documents: [],
-    dependentTasks: [],
-    outputs: []
-  };
+	const result: LinkedEntitiesResult = {
+		plans: [],
+		goals: [],
+		milestones: [],
+		documents: [],
+		dependentTasks: [],
+		outputs: []
+	};
 
-  // Fetch all edges where task is source or destination
-  const { data: edges, error } = await supabase
-    .from('onto_edges')
-    .select('*')
-    .or(`src_id.eq.${taskId},dst_id.eq.${taskId}`);
+	// Fetch all edges where task is source or destination
+	const { data: edges, error } = await supabase
+		.from('onto_edges')
+		.select('*')
+		.or(`src_id.eq.${taskId},dst_id.eq.${taskId}`);
 
-  if (error || !edges || edges.length === 0) {
-    return result;
-  }
+	if (error || !edges || edges.length === 0) {
+		return result;
+	}
 
-  // Group edges by entity type
-  const planIds: string[] = [];
-  const goalIds: string[] = [];
-  const milestoneIds: string[] = [];
-  const documentIds: string[] = [];
-  const taskIds: string[] = [];
-  const outputIds: string[] = [];
+	// Group edges by entity type
+	const planIds: string[] = [];
+	const goalIds: string[] = [];
+	const milestoneIds: string[] = [];
+	const documentIds: string[] = [];
+	const taskIds: string[] = [];
+	const outputIds: string[] = [];
 
-  const edgeMap = new Map<string, string>(); // entityId -> rel
+	const edgeMap = new Map<string, string>(); // entityId -> rel
 
-  for (const edge of edges) {
-    const isSource = edge.src_id === taskId;
-    const linkedId = isSource ? edge.dst_id : edge.src_id;
-    const linkedKind = isSource ? edge.dst_kind : edge.src_kind;
+	for (const edge of edges) {
+		const isSource = edge.src_id === taskId;
+		const linkedId = isSource ? edge.dst_id : edge.src_id;
+		const linkedKind = isSource ? edge.dst_kind : edge.src_kind;
 
-    edgeMap.set(linkedId, edge.rel);
+		edgeMap.set(linkedId, edge.rel);
 
-    switch (linkedKind) {
-      case 'plan':
-        if (!planIds.includes(linkedId)) planIds.push(linkedId);
-        break;
-      case 'goal':
-        if (!goalIds.includes(linkedId)) goalIds.push(linkedId);
-        break;
-      case 'milestone':
-        if (!milestoneIds.includes(linkedId)) milestoneIds.push(linkedId);
-        break;
-      case 'document':
-        if (!documentIds.includes(linkedId)) documentIds.push(linkedId);
-        break;
-      case 'task':
-        if (linkedId !== taskId && !taskIds.includes(linkedId)) taskIds.push(linkedId);
-        break;
-      case 'output':
-        if (!outputIds.includes(linkedId)) outputIds.push(linkedId);
-        break;
-    }
-  }
+		switch (linkedKind) {
+			case 'plan':
+				if (!planIds.includes(linkedId)) planIds.push(linkedId);
+				break;
+			case 'goal':
+				if (!goalIds.includes(linkedId)) goalIds.push(linkedId);
+				break;
+			case 'milestone':
+				if (!milestoneIds.includes(linkedId)) milestoneIds.push(linkedId);
+				break;
+			case 'document':
+				if (!documentIds.includes(linkedId)) documentIds.push(linkedId);
+				break;
+			case 'task':
+				if (linkedId !== taskId && !taskIds.includes(linkedId)) taskIds.push(linkedId);
+				break;
+			case 'output':
+				if (!outputIds.includes(linkedId)) outputIds.push(linkedId);
+				break;
+		}
+	}
 
-  // Fetch entity details in parallel
-  const [plansData, goalsData, milestonesData, documentsData, tasksData, outputsData] = await Promise.all([
-    planIds.length > 0
-      ? supabase.from('onto_plans').select('id, name, state_key').in('id', planIds)
-      : Promise.resolve({ data: [] }),
-    goalIds.length > 0
-      ? supabase.from('onto_goals').select('id, name, state_key').in('id', goalIds)
-      : Promise.resolve({ data: [] }),
-    milestoneIds.length > 0
-      ? supabase.from('onto_milestones').select('id, title, due_at').in('id', milestoneIds)
-      : Promise.resolve({ data: [] }),
-    documentIds.length > 0
-      ? supabase.from('onto_documents').select('id, title, type_key, state_key').in('id', documentIds)
-      : Promise.resolve({ data: [] }),
-    taskIds.length > 0
-      ? supabase.from('onto_tasks').select('id, title, state_key').in('id', taskIds)
-      : Promise.resolve({ data: [] }),
-    outputIds.length > 0
-      ? supabase.from('onto_outputs').select('id, name, type_key, state_key').in('id', outputIds)
-      : Promise.resolve({ data: [] })
-  ]);
+	// Fetch entity details in parallel
+	const [plansData, goalsData, milestonesData, documentsData, tasksData, outputsData] =
+		await Promise.all([
+			planIds.length > 0
+				? supabase.from('onto_plans').select('id, name, state_key').in('id', planIds)
+				: Promise.resolve({ data: [] }),
+			goalIds.length > 0
+				? supabase.from('onto_goals').select('id, name, state_key').in('id', goalIds)
+				: Promise.resolve({ data: [] }),
+			milestoneIds.length > 0
+				? supabase
+						.from('onto_milestones')
+						.select('id, title, due_at')
+						.in('id', milestoneIds)
+				: Promise.resolve({ data: [] }),
+			documentIds.length > 0
+				? supabase
+						.from('onto_documents')
+						.select('id, title, type_key, state_key')
+						.in('id', documentIds)
+				: Promise.resolve({ data: [] }),
+			taskIds.length > 0
+				? supabase.from('onto_tasks').select('id, title, state_key').in('id', taskIds)
+				: Promise.resolve({ data: [] }),
+			outputIds.length > 0
+				? supabase
+						.from('onto_outputs')
+						.select('id, name, type_key, state_key')
+						.in('id', outputIds)
+				: Promise.resolve({ data: [] })
+		]);
 
-  // Map results with edge relationships
-  if (plansData.data) {
-    result.plans = plansData.data.map((p: any) => ({
-      ...p,
-      edge_rel: edgeMap.get(p.id) || 'belongs_to_plan'
-    }));
-  }
+	// Map results with edge relationships
+	if (plansData.data) {
+		result.plans = plansData.data.map((p: any) => ({
+			...p,
+			edge_rel: edgeMap.get(p.id) || 'belongs_to_plan'
+		}));
+	}
 
-  if (goalsData.data) {
-    result.goals = goalsData.data.map((g: any) => ({
-      ...g,
-      edge_rel: edgeMap.get(g.id) || 'supports_goal'
-    }));
-  }
+	if (goalsData.data) {
+		result.goals = goalsData.data.map((g: any) => ({
+			...g,
+			edge_rel: edgeMap.get(g.id) || 'supports_goal'
+		}));
+	}
 
-  if (milestonesData.data) {
-    result.milestones = milestonesData.data.map((m: any) => ({
-      ...m,
-      edge_rel: edgeMap.get(m.id) || 'contains'
-    }));
-  }
+	if (milestonesData.data) {
+		result.milestones = milestonesData.data.map((m: any) => ({
+			...m,
+			edge_rel: edgeMap.get(m.id) || 'contains'
+		}));
+	}
 
-  if (documentsData.data) {
-    // Filter out scratch/workspace documents
-    result.documents = documentsData.data
-      .filter((d: any) => !d.type_key?.includes('scratch'))
-      .map((d: any) => ({
-        ...d,
-        edge_rel: edgeMap.get(d.id) || 'has_document'
-      }));
-  }
+	if (documentsData.data) {
+		// Filter out scratch/workspace documents
+		result.documents = documentsData.data
+			.filter((d: any) => !d.type_key?.includes('scratch'))
+			.map((d: any) => ({
+				...d,
+				edge_rel: edgeMap.get(d.id) || 'has_document'
+			}));
+	}
 
-  if (tasksData.data) {
-    result.dependentTasks = tasksData.data.map((t: any) => ({
-      ...t,
-      edge_rel: edgeMap.get(t.id) || 'depends_on'
-    }));
-  }
+	if (tasksData.data) {
+		result.dependentTasks = tasksData.data.map((t: any) => ({
+			...t,
+			edge_rel: edgeMap.get(t.id) || 'depends_on'
+		}));
+	}
 
-  if (outputsData.data) {
-    result.outputs = outputsData.data.map((o: any) => ({
-      ...o,
-      edge_rel: edgeMap.get(o.id) || 'produces'
-    }));
-  }
+	if (outputsData.data) {
+		result.outputs = outputsData.data.map((o: any) => ({
+			...o,
+			edge_rel: edgeMap.get(o.id) || 'produces'
+		}));
+	}
 
-  return result;
+	return result;
 }
 ```
 
@@ -573,24 +595,26 @@ export async function resolveLinkedEntities(
 
 ### Color Coding (Dark Mode Compatible)
 
-| Entity Type | Icon Color | Badge Color |
-|-------------|------------|-------------|
-| Plans | Blue (#3b82f6) | `variant="info"` |
-| Goals | Purple (#8b5cf6) | `variant="purple"` |
-| Milestones | Amber (#f59e0b) | `variant="warning"` |
-| Documents | Cyan (#06b6d4) | `variant="info"` |
-| Tasks | Green/Orange | State-based |
-| Outputs | Violet (#8b5cf6) | `variant="purple"` |
+| Entity Type | Icon Color       | Badge Color         |
+| ----------- | ---------------- | ------------------- |
+| Plans       | Blue (#3b82f6)   | `variant="info"`    |
+| Goals       | Purple (#8b5cf6) | `variant="purple"`  |
+| Milestones  | Amber (#f59e0b)  | `variant="warning"` |
+| Documents   | Cyan (#06b6d4)   | `variant="info"`    |
+| Tasks       | Green/Orange     | State-based         |
+| Outputs     | Violet (#8b5cf6) | `variant="purple"`  |
 
 ## Implementation Phases
 
 ### Phase 1: Backend & API (Est. 2-3 hours)
+
 - [ ] Create `resolveLinkedEntities` helper function
 - [ ] Update `GET /api/onto/tasks/[id]` to include linked entities
 - [ ] Add TypeScript types for `LinkedEntitiesResponse`
 - [ ] Add unit tests for the helper function
 
 ### Phase 2: UI Components (Est. 3-4 hours)
+
 - [ ] Add state variables for linked entities
 - [ ] Create LinkedEntitiesCard component
 - [ ] Add imports for required icons (Target, Flag, Layers, etc.)
@@ -598,12 +622,14 @@ export async function resolveLinkedEntities(
 - [ ] Style with Tailwind (responsive, dark mode)
 
 ### Phase 3: Modal Integration (Est. 2-3 hours)
+
 - [ ] Import GoalEditModal, PlanEditModal
 - [ ] Add modal instances to template
 - [ ] Handle modal close with data refresh
 - [ ] Test recursive TaskEditModal opening
 
 ### Phase 4: Polish & Testing (Est. 1-2 hours)
+
 - [ ] Empty states and loading states
 - [ ] Error handling with toast notifications
 - [ ] Keyboard navigation and accessibility
@@ -637,9 +663,9 @@ export async function resolveLinkedEntities(
 - **API**: `apps/web/src/routes/api/onto/tasks/[id]/+server.ts`
 - **Types**: `apps/web/src/lib/types/onto-api.ts`
 - **Modals**:
-  - `GoalEditModal.svelte`
-  - `PlanEditModal.svelte`
-  - `DocumentModal.svelte`
+    - `GoalEditModal.svelte`
+    - `PlanEditModal.svelte`
+    - `DocumentModal.svelte`
 - **Data Models**: `apps/web/docs/features/ontology/DATA_MODELS.md`
 
 ## References

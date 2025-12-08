@@ -86,25 +86,24 @@
 		}
 	};
 
-	// Wrapper classes - handles dithering (since inputs can't have ::before pseudo-elements)
+	// Wrapper classes - Inkprint design
 	let wrapperClasses = $derived(
 		twMerge(
-			'relative rounded overflow-hidden', // Container for dithering
-			'dither-soft', // Dithered texture on the container
-			'bg-surface-scratch dark:bg-slate-700/50' // Background on container
+			'relative rounded-lg overflow-hidden', // Container with softer radius
+			'bg-card' // Clean card background
 		)
 	);
 
 	let inputClasses = $derived(
 		twMerge(
-			// Base classes - Scratchpad Ops design
-			'w-full rounded', // 4px radius (default rounded)
-			'border-2 transition-all duration-200', // 2px border for tactile feel
-			'focus:outline-none focus:ring-2 focus:ring-offset-1',
+			// Base classes - Inkprint design
+			'w-full rounded-lg', // Softer radius
+			'border transition-all duration-200',
+			'focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1',
 			'disabled:cursor-not-allowed disabled:opacity-50',
 
-			// Placeholder - muted notebook feel
-			'placeholder:text-gray-500 dark:placeholder:text-gray-400',
+			// Placeholder - muted
+			'placeholder:text-muted-foreground',
 
 			// Size classes
 			sizeClasses[size],
@@ -113,30 +112,31 @@
 			icon && iconPosition === 'left' && iconPaddingClasses.left[size],
 			icon && iconPosition === 'right' && iconPaddingClasses.right[size],
 
-			// State classes - industrial borders
-			error
-				? 'border-red-600 focus:ring-red-500 dark:border-red-500'
-				: 'border-gray-300 focus:ring-accent-orange focus:border-gray-400 dark:border-gray-600 dark:focus:border-gray-500',
+			// State classes - clean borders
+			error ? 'border-red-600 focus:ring-red-500' : 'border-border focus:border-accent',
 
-			// Background - transparent to show dithered container beneath
-			'bg-transparent',
+			// Background - clean card
+			'bg-card',
 
-			// Text color - slightly muted for notebook feel
-			'text-gray-900 dark:text-gray-100',
+			// Text color
+			'text-foreground',
 
-			// Position relative for proper stacking (no z-index needed - mix-blend-mode handles layering)
+			// Position relative for proper stacking
 			'relative',
+
+			// Shadow
+			'shadow-ink-inner',
 
 			// Custom classes (these will override conflicts)
 			className
 		)
 	);
 
-	// Icon position classes (no z-index needed - mix-blend-mode handles layering)
+	// Icon position classes
 	let iconClasses = $derived(
 		twMerge(
 			'absolute top-1/2 -translate-y-1/2 pointer-events-none',
-			'text-gray-500 dark:text-gray-400',
+			'text-muted-foreground',
 			iconPosition === 'left' ? 'left-3' : 'right-3',
 			iconSizes[size]
 		)
@@ -180,7 +180,7 @@
 		{errorMessage}
 	</p>
 {:else if helperText}
-	<p id="input-helper" class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+	<p id="input-helper" class="mt-1 text-sm text-muted-foreground">
 		{helperText}
 	</p>
 {/if}

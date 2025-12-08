@@ -162,7 +162,10 @@ export class EnhancedProjectMigrator {
 					console.info(
 						`[EnhancedProjectMigrator] Schema auto-repair successful for ${project.id}:`,
 						'\n  Repairs:',
-						repairResult.repairs.map((r) => `${r.field}: ${JSON.stringify(r.originalDefault)} -> ${JSON.stringify(r.newDefault)} (${r.rationale})`)
+						repairResult.repairs.map(
+							(r) =>
+								`${r.field}: ${JSON.stringify(r.originalDefault)} -> ${JSON.stringify(r.newDefault)} (${r.rationale})`
+						)
 					);
 
 					// Re-apply repaired defaults to props

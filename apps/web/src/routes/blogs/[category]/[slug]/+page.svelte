@@ -126,9 +126,9 @@
 	</script>
 </svelte:head>
 
-<div class="min-h-screen bg-gray-50 dark:bg-gray-900">
+<div class="min-h-screen bg-background">
 	<!-- Header -->
-	<div class="bg-white dark:bg-gray-800 py-8 rounded-md mb-4">
+	<div class="bg-card py-8 rounded-lg mb-4">
 		<div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
 			<div class="flex items-center space-x-4 mb-8">
 				<a
@@ -150,9 +150,7 @@
 			</div>
 
 			<div class="mb-6">
-				<div
-					class="flex items-center space-x-4 text-sm text-gray-600 dark:text-gray-400 mb-4"
-				>
+				<div class="flex items-center space-x-4 text-sm text-muted-foreground mb-4">
 					<span
 						class="bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 px-3 py-1 rounded-full font-medium"
 					>
@@ -168,11 +166,11 @@
 					</div>
 				</div>
 
-				<h1 class="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-4">
+				<h1 class="text-4xl md:text-5xl font-bold text-foreground mb-4">
 					{data.post.title}
 				</h1>
 
-				<p class="text-xl text-gray-600 dark:text-gray-400 mb-6">
+				<p class="text-xl text-muted-foreground mb-6">
 					{data.post.description}
 				</p>
 
@@ -180,7 +178,7 @@
 					<div class="flex flex-wrap gap-2">
 						{#each data.post.tags as tag}
 							<span
-								class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs text-center font-medium bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200"
+								class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs text-center font-medium bg-background text-muted-foreground border border-border"
 							>
 								<Tag class="w-3 h-3 mr-1" />
 								{tag}
@@ -190,8 +188,8 @@
 				{/if}
 			</div>
 
-			<div class="text-sm text-gray-500 dark:text-gray-400">
-				By <span class="font-medium text-gray-900 dark:text-white"
+			<div class="text-sm text-muted-foreground">
+				By <span class="font-medium text-foreground"
 					>{data.post.author || 'BuildOS Team'}</span
 				>
 			</div>
@@ -214,22 +212,19 @@
 						<div
 							class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"
 						></div>
-						<span class="ml-3 text-gray-600 dark:text-gray-400">Loading content...</span
-						>
+						<span class="ml-3 text-muted-foreground">Loading content...</span>
 					</div>
 				{:else if error}
 					<div class="text-center py-12">
-						<p class="text-red-600 dark:text-red-400">{error}</p>
-						<p class="text-gray-500 dark:text-gray-400 mt-2">
-							Please try refreshing the page.
-						</p>
+						<p class="text-destructive">{error}</p>
+						<p class="text-muted-foreground mt-2">Please try refreshing the page.</p>
 					</div>
 				{:else if contentComponent}
 					{@const MarkdownContent = contentComponent}
 					<MarkdownContent />
 				{:else}
 					<div class="text-center py-12">
-						<p class="text-gray-500 dark:text-gray-400">Content not available.</p>
+						<p class="text-muted-foreground">Content not available.</p>
 					</div>
 				{/if}
 			</div>

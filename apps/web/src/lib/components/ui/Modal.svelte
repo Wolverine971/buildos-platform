@@ -114,19 +114,19 @@
 		xl: 'w-full max-w-full xs:max-w-3xl sm:max-w-4xl md:max-w-6xl'
 	};
 
-	// Variant-specific classes - Scratchpad Ops styling
+	// Variant-specific classes - Inkprint styling
 	const variantClasses = $derived.by(() => {
 		if (variant === 'bottom-sheet') {
 			return {
 				container: 'items-end sm:items-center',
-				modal: 'rounded-t sm:rounded mb-0 sm:mb-4', // 4px radius for industrial feel
+				modal: 'rounded-t-2xl sm:rounded-2xl mb-0 sm:mb-4', // Softer radius
 				animation: 'animate-modal-slide-up sm:animate-modal-scale'
 			};
 		}
 		// Default: center variant
 		return {
 			container: 'items-center',
-			modal: 'rounded', // 4px radius for industrial feel
+			modal: 'rounded-2xl', // Softer radius
 			animation: 'animate-modal-scale'
 		};
 	});
@@ -432,9 +432,9 @@
 					bind:this={modalElement}
 					use:touchGesture
 					class="relative {sizeClasses[size]}
-						industrial-panel
+						bg-card border border-border
 						{variantClasses.modal}
-						shadow-xl
+						shadow-ink-strong
 						max-h-[calc(100vh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-1rem)]
 						sm:max-h-[85vh]
 						overflow-hidden
@@ -442,7 +442,8 @@
 						flex flex-col
 						{variantClasses.animation}
 						{animationComplete ? 'animation-complete' : ''}
-						modal-container"
+						modal-container
+						tx tx-frame tx-weak ink-frame"
 					style="
 						transform: translateY({dragTranslateY}px) translateZ(0);
 						transition: {isDragging ? 'none' : 'transform 200ms cubic-bezier(0.4, 0, 0.2, 1)'};
@@ -471,14 +472,14 @@
 						<div
 							class="flex items-center justify-between
 								px-3 sm:px-4 py-2 sm:py-3
-								border-b border-gray-200 dark:border-gray-700
-								bg-surface-panel
+								border-b border-border
+								bg-muted/30 tx tx-strip tx-weak
 								flex-shrink-0"
 						>
 							{#if title}
 								<h2
 									id={titleId}
-									class="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100 truncate pr-2"
+									class="text-base sm:text-lg font-semibold text-foreground truncate pr-2"
 								>
 									{title}
 								</h2>
@@ -716,12 +717,12 @@
 	/* ==================== Dark Mode Optimizations ==================== */
 
 	.dark .modal-container {
-		/* True black for OLED screens */
-		background-color: rgb(0 0 0);
+		/* Use card color from Inkprint tokens */
+		background-color: hsl(var(--card));
 	}
 
-	/* Reduce shadow intensity in dark mode */
+	/* Use Inkprint shadow in dark mode */
 	.dark .modal-container {
-		box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
+		box-shadow: var(--shadow-ink-strong);
 	}
 </style>

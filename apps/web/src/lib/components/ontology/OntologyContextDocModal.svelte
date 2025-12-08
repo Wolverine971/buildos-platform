@@ -148,20 +148,25 @@
 
 <Modal bind:isOpen size="xl" onClose={handleClose} showCloseButton={false}>
 	{#snippet header()}
-		<!-- Custom gradient header - grey/dark grey -->
+		<!-- Inkprint header with strip texture -->
 		<div
-			class="flex-shrink-0 bg-gradient-to-r from-gray-600 via-gray-700 to-gray-800 dark:from-gray-700 dark:via-gray-800 dark:to-gray-900 text-white px-3 py-3 sm:px-6 sm:py-5 flex items-start justify-between gap-2 sm:gap-4 dither-gradient"
+			class="flex-shrink-0 bg-muted/50 border-b border-border px-3 py-3 sm:px-6 sm:py-5 flex items-start justify-between gap-2 sm:gap-4 tx tx-strip tx-weak"
 		>
 			<div class="space-y-1 sm:space-y-2 min-w-0 flex-1">
-				<p class="text-[10px] sm:text-xs font-semibold uppercase tracking-[0.3em] sm:tracking-[0.4em] text-white/70">
+				<p
+					class="text-[10px] sm:text-xs font-semibold uppercase tracking-[0.3em] sm:tracking-[0.4em] text-muted-foreground"
+				>
 					{isEditMode ? 'Editing' : 'Context Document'}
 				</p>
-				<h2 class="text-lg sm:text-2xl font-bold leading-tight truncate">
+				<h2 class="text-lg sm:text-2xl font-bold leading-tight truncate text-foreground">
 					{document?.title || 'Project Context'}
 				</h2>
 				{#if projectName}
 					<div class="flex flex-wrap items-center gap-1.5 sm:gap-3 text-xs sm:text-sm">
-						<span class="px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-semibold bg-white/20">{projectName}</span>
+						<span
+							class="px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-semibold bg-accent/20 text-accent-foreground"
+							>{projectName}</span
+						>
 					</div>
 				{/if}
 			</div>
@@ -169,7 +174,7 @@
 				variant="ghost"
 				size="sm"
 				onclick={handleClose}
-				class="text-white/80 hover:text-white shrink-0 !p-1.5 sm:!p-2"
+				class="text-muted-foreground hover:text-foreground shrink-0 !p-1.5 sm:!p-2"
 				disabled={isSaving}
 			>
 				<X class="w-4 h-4 sm:w-5 sm:h-5" />
@@ -178,206 +183,195 @@
 	{/snippet}
 
 	{#snippet children()}
-	{#if !document}
-		<div
-			class="text-center py-12 px-4 bg-surface-panel dark:bg-surface-elevated rounded border-2 border-dashed border-gray-200 dark:border-gray-700"
-		>
-			<FileText class="w-16 h-16 text-slate-400 dark:text-slate-500 mx-auto mb-4" />
-			<p class="text-slate-600 dark:text-slate-300 text-lg font-medium mb-2">
-				No Context Document
-			</p>
-			<p class="text-slate-500 dark:text-slate-400 text-sm">
-				This project does not have a linked context document yet.
-			</p>
-		</div>
-	{:else}
-		<div class="space-y-4">
-			<!-- Document Header -->
+		{#if !document}
 			<div
-				class="bg-surface-elevated dark:bg-surface-panel border-2 border-gray-200 dark:border-gray-700 rounded p-3 sm:p-4 shadow-subtle"
+				class="text-center py-12 px-4 bg-muted/30 rounded border-2 border-dashed border-border"
 			>
-				<div class="flex items-start justify-between gap-3 mb-2.5">
-					<div class="flex-1 min-w-0">
-						<div class="flex items-center gap-2.5 mb-1.5">
-							<span class="w-1.5 h-1.5 bg-accent-olive rounded-full animate-pulse"
-							></span>
-							<FileText
-								class="w-5 h-5 text-accent-olive dark:text-accent-olive flex-shrink-0"
-							/>
-							<h3
-								class="text-base sm:text-lg font-semibold text-slate-900 dark:text-slate-100"
-							>
-								{document.title}
-							</h3>
-							{#if isEditMode}
-								<span
-									class="px-2 py-0.5 text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded"
-								>
-									Editing
-								</span>
-							{/if}
-						</div>
-						{#if projectName}
-							<p class="text-xs sm:text-sm text-slate-700 dark:text-slate-300 mb-1.5">
-								<span class="font-semibold">Project:</span>
-								{projectName}
-							</p>
-						{/if}
-						<div
-							class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-600 dark:text-slate-400"
-						>
-							<span class="flex items-center gap-1">
-								<span class="font-medium">Type:</span>
-								<code
-									class="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 rounded font-mono"
-								>
-									{document.type_key}
-								</code>
-							</span>
-							{#if formatTimestamp(document.updated_at)}
-								<span class="flex items-center gap-1">
-									<Clock class="w-3 h-3" />
-									<span>Updated {formatTimestamp(document.updated_at)}</span>
-								</span>
-							{/if}
-						</div>
-					</div>
-					<div class="flex items-center gap-2">
-						{#if !isEditMode}
-							<Button
-								type="button"
-								onclick={toggleEditMode}
-								variant="ghost"
-								size="sm"
-								class="flex items-center gap-1.5 text-blue-700 hover:text-blue-900 hover:bg-blue-50 dark:text-blue-400 dark:hover:text-blue-200 dark:hover:bg-blue-900/20 bg-white dark:bg-gray-800 border border-blue-300 dark:border-blue-700 transition-colors"
-							>
-								<Edit class="w-4 h-4" />
-								<span class="hidden sm:inline">Edit</span>
-							</Button>
-							<Button
-								type="button"
-								onclick={copyContext}
-								variant="ghost"
-								size="sm"
-								class="flex items-center gap-1.5 text-green-700 hover:text-green-900 hover:bg-green-50 dark:text-green-400 dark:hover:text-green-200 dark:hover:bg-green-900/20 bg-white dark:bg-gray-800 border border-green-300 dark:border-green-700 transition-colors"
-							>
-								<Copy class="w-4 h-4" />
-								<span class="hidden sm:inline">Copy</span>
-							</Button>
-						{:else}
-							<Button
-								type="button"
-								onclick={saveChanges}
-								variant="primary"
-								size="sm"
-								disabled={isSaving}
-								class="flex items-center gap-1.5"
-							>
-								<Save class="w-4 h-4" />
-								<span class="hidden sm:inline"
-									>{isSaving ? 'Saving...' : 'Save Changes'}</span
-								>
-							</Button>
-							<Button
-								type="button"
-								onclick={toggleEditMode}
-								variant="ghost"
-								size="sm"
-								disabled={isSaving}
-								class="flex items-center gap-1.5 text-gray-700 hover:text-gray-900 hover:bg-gray-50 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700/50 transition-colors"
-							>
-								<X class="w-4 h-4" />
-								<span class="hidden sm:inline">Cancel</span>
-							</Button>
-						{/if}
-					</div>
-				</div>
+				<FileText class="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+				<p class="text-foreground text-lg font-medium mb-2">No Context Document</p>
+				<p class="text-muted-foreground text-sm">
+					This project does not have a linked context document yet.
+				</p>
 			</div>
-
-			<!-- Document Content -->
-			{#if isEditMode}
-				<!-- Edit Mode -->
-				<div class="space-y-2.5">
-					<div
-						class="bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800 rounded-lg p-2.5"
-					>
-						<p class="text-sm text-blue-800 dark:text-blue-300 flex items-center gap-2">
-							<span class="text-blue-500 dark:text-blue-400">✏️</span>
-							<span
-								><span class="font-semibold">Editing mode:</span> Make changes to the
-								context document below. Use markdown for formatting.</span
+		{:else}
+			<div class="space-y-4">
+				<!-- Document Header -->
+				<div
+					class="bg-card border border-border rounded p-3 sm:p-4 shadow-ink tx tx-frame tx-weak"
+				>
+					<div class="flex items-start justify-between gap-3 mb-2.5">
+						<div class="flex-1 min-w-0">
+							<div class="flex items-center gap-2.5 mb-1.5">
+								<span class="w-1.5 h-1.5 bg-accent rounded-full animate-pulse"
+								></span>
+								<FileText class="w-5 h-5 text-accent flex-shrink-0" />
+								<h3 class="text-base sm:text-lg font-semibold text-foreground">
+									{document.title}
+								</h3>
+								{#if isEditMode}
+									<span
+										class="px-2 py-0.5 text-xs font-medium bg-accent/20 text-accent-foreground rounded"
+									>
+										Editing
+									</span>
+								{/if}
+							</div>
+							{#if projectName}
+								<p class="text-xs sm:text-sm text-foreground mb-1.5">
+									<span class="font-semibold">Project:</span>
+									{projectName}
+								</p>
+							{/if}
+							<div
+								class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground"
 							>
-						</p>
-					</div>
-					<MarkdownToggleField
-						value={editedBody}
-						onUpdate={(newValue) => (editedBody = newValue)}
-						placeholder="Enter context document content..."
-						rows={20}
-						class="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
-					/>
-					<div
-						class="flex flex-wrap items-center gap-3 sm:gap-4 text-xs text-gray-500 dark:text-gray-400 px-1"
-					>
-						<span class="flex items-center gap-1.5">
-							<span class="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
-							<span class="font-medium">{editedBody.length.toLocaleString()}</span> characters
-						</span>
-						<span class="flex items-center gap-1.5">
-							<span class="w-1.5 h-1.5 bg-purple-500 rounded-full"></span>
-							<span class="font-medium">{Math.ceil(editedBody.length / 5)}</span> words
-							(approx)
-						</span>
-					</div>
-				</div>
-			{:else if renderedBody}
-				<!-- View Mode -->
-				<div
-					class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 sm:p-5 max-h-[60vh] overflow-y-auto"
-				>
-					<div
-						class="prose prose-sm sm:prose max-w-none leading-relaxed text-gray-700 dark:text-gray-300
-						prose-headings:text-gray-900 dark:prose-headings:text-white
-						prose-p:text-gray-700 dark:prose-p:text-gray-300
-						prose-strong:text-gray-900 dark:prose-strong:text-white
-						prose-a:text-blue-600 dark:prose-a:text-blue-400
-						prose-blockquote:text-gray-700 dark:prose-blockquote:text-gray-300
-						prose-code:text-gray-800 dark:prose-code:text-gray-200
-						prose-pre:bg-gray-100 dark:prose-pre:bg-gray-800
-						prose-ul:text-gray-700 dark:prose-ul:text-gray-300
-						prose-ol:text-gray-700 dark:prose-ol:text-gray-300
-						prose-li:text-gray-700 dark:prose-li:text-gray-300"
-						data-testid="context-doc-body"
-					>
-						{@html renderedBody}
+								<span class="flex items-center gap-1">
+									<span class="font-medium">Type:</span>
+									<code class="px-2 py-0.5 bg-muted rounded font-mono">
+										{document.type_key}
+									</code>
+								</span>
+								{#if formatTimestamp(document.updated_at)}
+									<span class="flex items-center gap-1">
+										<Clock class="w-3 h-3" />
+										<span>Updated {formatTimestamp(document.updated_at)}</span>
+									</span>
+								{/if}
+							</div>
+						</div>
+						<div class="flex items-center gap-2">
+							{#if !isEditMode}
+								<Button
+									type="button"
+									onclick={toggleEditMode}
+									variant="secondary"
+									size="sm"
+									class="flex items-center gap-1.5"
+								>
+									<Edit class="w-4 h-4" />
+									<span class="hidden sm:inline">Edit</span>
+								</Button>
+								<Button
+									type="button"
+									onclick={copyContext}
+									variant="ghost"
+									size="sm"
+									class="flex items-center gap-1.5"
+								>
+									<Copy class="w-4 h-4" />
+									<span class="hidden sm:inline">Copy</span>
+								</Button>
+							{:else}
+								<Button
+									type="button"
+									onclick={saveChanges}
+									variant="primary"
+									size="sm"
+									disabled={isSaving}
+									class="flex items-center gap-1.5"
+								>
+									<Save class="w-4 h-4" />
+									<span class="hidden sm:inline"
+										>{isSaving ? 'Saving...' : 'Save Changes'}</span
+									>
+								</Button>
+								<Button
+									type="button"
+									onclick={toggleEditMode}
+									variant="ghost"
+									size="sm"
+									disabled={isSaving}
+									class="flex items-center gap-1.5"
+								>
+									<X class="w-4 h-4" />
+									<span class="hidden sm:inline">Cancel</span>
+								</Button>
+							{/if}
+						</div>
 					</div>
 				</div>
 
-				<!-- Document Stats -->
-				<div
-					class="flex flex-wrap items-center gap-3 sm:gap-4 text-xs text-gray-500 dark:text-gray-400 px-1"
-				>
-					<span class="flex items-center gap-1.5">
-						<span class="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
-						<span class="font-medium">{docBody.length.toLocaleString()}</span> characters
-					</span>
-					<span class="flex items-center gap-1.5">
-						<span class="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
-						<span class="font-medium">{Math.ceil(docBody.length / 5)}</span> words (approx)
-					</span>
-				</div>
-			{:else}
-				<!-- No Content -->
-				<div
-					class="text-center py-8 px-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700"
-				>
-					<p class="text-gray-600 dark:text-gray-300">
-						No content available for this document.
-					</p>
-				</div>
-			{/if}
-		</div>
-	{/if}
+				<!-- Document Content -->
+				{#if isEditMode}
+					<!-- Edit Mode -->
+					<div class="space-y-2.5">
+						<div
+							class="bg-accent/10 border border-accent/30 rounded-lg p-2.5 tx tx-bloom tx-weak"
+						>
+							<p class="text-sm text-foreground flex items-center gap-2">
+								<span class="text-accent">✏️</span>
+								<span
+									><span class="font-semibold">Editing mode:</span> Make changes to
+									the context document below. Use markdown for formatting.</span
+								>
+							</p>
+						</div>
+						<MarkdownToggleField
+							value={editedBody}
+							onUpdate={(newValue) => (editedBody = newValue)}
+							placeholder="Enter context document content..."
+							rows={20}
+						/>
+						<div
+							class="flex flex-wrap items-center gap-3 sm:gap-4 text-xs text-muted-foreground px-1"
+						>
+							<span class="flex items-center gap-1.5">
+								<span class="w-1.5 h-1.5 bg-accent rounded-full"></span>
+								<span class="font-medium">{editedBody.length.toLocaleString()}</span
+								> characters
+							</span>
+							<span class="flex items-center gap-1.5">
+								<span class="w-1.5 h-1.5 bg-accent rounded-full"></span>
+								<span class="font-medium">{Math.ceil(editedBody.length / 5)}</span> words
+								(approx)
+							</span>
+						</div>
+					</div>
+				{:else if renderedBody}
+					<!-- View Mode -->
+					<div
+						class="bg-card border border-border rounded-lg p-3 sm:p-5 max-h-[60vh] overflow-y-auto"
+					>
+						<div
+							class="prose prose-sm sm:prose max-w-none leading-relaxed text-foreground
+						prose-headings:text-foreground
+						prose-p:text-foreground
+						prose-strong:text-foreground
+						prose-a:text-accent
+						prose-blockquote:text-muted-foreground
+						prose-code:text-foreground
+						prose-pre:bg-muted
+						prose-ul:text-foreground
+						prose-ol:text-foreground
+						prose-li:text-foreground"
+							data-testid="context-doc-body"
+						>
+							{@html renderedBody}
+						</div>
+					</div>
+
+					<!-- Document Stats -->
+					<div
+						class="flex flex-wrap items-center gap-3 sm:gap-4 text-xs text-muted-foreground px-1"
+					>
+						<span class="flex items-center gap-1.5">
+							<span class="w-1.5 h-1.5 bg-accent rounded-full"></span>
+							<span class="font-medium">{docBody.length.toLocaleString()}</span> characters
+						</span>
+						<span class="flex items-center gap-1.5">
+							<span class="w-1.5 h-1.5 bg-accent rounded-full"></span>
+							<span class="font-medium">{Math.ceil(docBody.length / 5)}</span> words (approx)
+						</span>
+					</div>
+				{:else}
+					<!-- No Content -->
+					<div class="text-center py-8 px-4 bg-muted/30 rounded-lg border border-border">
+						<p class="text-muted-foreground">No content available for this document.</p>
+					</div>
+				{/if}
+			</div>
+		{/if}
+	{/snippet}
 </Modal>
 
 <style>

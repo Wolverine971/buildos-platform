@@ -1,0 +1,313 @@
+/* apps/web/src/lib/styles/inkprint.css */
+/* BuildOS "Inkprint" Design System - Synesthetic texture layer */
+
+/* ============================================
+   CSS Variables - Inkprint Color System
+   ============================================ */
+
+:root {
+	/* Paper & Ink base (light mode = paper studio) */
+	--background: 40 20% 98%; /* warm paper white */
+	--foreground: 240 10% 10%; /* deep ink black */
+
+	/* Card surfaces */
+	--card: 40 15% 96%;
+	--card-foreground: 240 10% 10%;
+
+	/* Muted surfaces */
+	--muted: 40 10% 92%;
+	--muted-foreground: 240 5% 45%;
+
+	/* Border */
+	--border: 40 10% 85%;
+
+	/* Accent (BuildOS signal color) */
+	--accent: 24 80% 55%; /* warm orange-amber */
+	--accent-foreground: 0 0% 100%;
+
+	/* Ring for focus states */
+	--ring: 24 80% 55%;
+
+	/* Inkprint texture base color */
+	--tx-ink: 240 10% 10%;
+	--tx-ink-rgb: 24, 24, 27;
+
+	/* Inkprint shadows */
+	--shadow-ink: 0 1px 2px rgba(0, 0, 0, 0.06), 0 2px 4px rgba(0, 0, 0, 0.04);
+	--shadow-ink-strong: 0 4px 12px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06);
+	--shadow-ink-inner: inset 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.dark {
+	/* Ink room (dark mode) */
+	--background: 240 10% 6%; /* near-black */
+	--foreground: 40 10% 92%; /* off-white */
+
+	/* Card surfaces */
+	--card: 240 10% 10%;
+	--card-foreground: 40 10% 92%;
+
+	/* Muted surfaces */
+	--muted: 240 10% 14%;
+	--muted-foreground: 40 5% 55%;
+
+	/* Border */
+	--border: 240 10% 18%;
+
+	/* Accent (glows slightly in dark) */
+	--accent: 24 85% 58%;
+	--accent-foreground: 240 10% 6%;
+
+	/* Ring */
+	--ring: 24 85% 58%;
+
+	/* Dark mode texture ink */
+	--tx-ink: 40 10% 92%;
+	--tx-ink-rgb: 235, 233, 228;
+
+	/* Dark mode shadows */
+	--shadow-ink: 0 1px 2px rgba(0, 0, 0, 0.2), 0 2px 4px rgba(0, 0, 0, 0.15);
+	--shadow-ink-strong: 0 4px 12px rgba(0, 0, 0, 0.3), 0 2px 4px rgba(0, 0, 0, 0.2);
+	--shadow-ink-inner: inset 0 1px 2px rgba(0, 0, 0, 0.15);
+}
+
+/* ============================================
+   Texture System - Base Classes
+   ============================================ */
+
+/* Base texture class - enables texture layer */
+.tx {
+	position: relative;
+}
+
+.tx::before {
+	content: '';
+	position: absolute;
+	inset: 0;
+	pointer-events: none;
+	z-index: 1;
+	border-radius: inherit;
+	mix-blend-mode: multiply;
+}
+
+.dark .tx::before {
+	mix-blend-mode: screen;
+}
+
+/* ============================================
+   Texture Types - Semantic Meanings
+   ============================================
+
+   Bloom  - ideation, newness, creative expansion
+   Grain  - execution, steady progress, craftsmanship
+   Pulse  - urgency, sprints, deadlines, momentum
+   Static - blockers, noise, overwhelm, risk
+   Thread - relationships, collaboration, dependencies
+   Frame  - canon, structure, decisions, officialness
+   Strip  - header band, separator, printed label strip
+*/
+
+/* Bloom - radial halftone pattern */
+.tx-bloom::before {
+	background-image: radial-gradient(
+		circle at 50% 50%,
+		rgba(var(--tx-ink-rgb), var(--tx-opacity, 0.04)) 1px,
+		transparent 1px
+	);
+	background-size: 8px 8px;
+}
+
+/* Grain - diagonal line pattern (woodgrain feel) */
+.tx-grain::before {
+	background-image: repeating-linear-gradient(
+		45deg,
+		transparent,
+		transparent 2px,
+		rgba(var(--tx-ink-rgb), var(--tx-opacity, 0.03)) 2px,
+		rgba(var(--tx-ink-rgb), var(--tx-opacity, 0.03)) 3px
+	);
+}
+
+/* Pulse - horizontal stripe pattern (heartbeat) */
+.tx-pulse::before {
+	background-image: repeating-linear-gradient(
+		0deg,
+		transparent,
+		transparent 3px,
+		rgba(var(--tx-ink-rgb), var(--tx-opacity, 0.04)) 3px,
+		rgba(var(--tx-ink-rgb), var(--tx-opacity, 0.04)) 4px
+	);
+}
+
+/* Static - noise pattern (interference) */
+.tx-static::before {
+	background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+	opacity: var(--tx-opacity, 0.06);
+}
+
+/* Thread - crosshatch pattern (woven) */
+.tx-thread::before {
+	background-image:
+		repeating-linear-gradient(
+			45deg,
+			transparent,
+			transparent 4px,
+			rgba(var(--tx-ink-rgb), var(--tx-opacity, 0.025)) 4px,
+			rgba(var(--tx-ink-rgb), var(--tx-opacity, 0.025)) 5px
+		),
+		repeating-linear-gradient(
+			-45deg,
+			transparent,
+			transparent 4px,
+			rgba(var(--tx-ink-rgb), var(--tx-opacity, 0.025)) 4px,
+			rgba(var(--tx-ink-rgb), var(--tx-opacity, 0.025)) 5px
+		);
+}
+
+/* Frame - carved border effect (linocut) */
+.tx-frame::before {
+	background-image:
+		linear-gradient(
+			to right,
+			rgba(var(--tx-ink-rgb), var(--tx-opacity, 0.03)) 1px,
+			transparent 1px
+		),
+		linear-gradient(
+			to bottom,
+			rgba(var(--tx-ink-rgb), var(--tx-opacity, 0.03)) 1px,
+			transparent 1px
+		);
+	background-size: 12px 12px;
+}
+
+/* Strip - horizontal band pattern (printed label) */
+.tx-strip::before {
+	background-image: repeating-linear-gradient(
+		90deg,
+		transparent,
+		transparent 1px,
+		rgba(var(--tx-ink-rgb), var(--tx-opacity, 0.04)) 1px,
+		rgba(var(--tx-ink-rgb), var(--tx-opacity, 0.04)) 2px
+	);
+}
+
+/* ============================================
+   Texture Intensities
+   ============================================ */
+
+.tx-weak {
+	--tx-opacity: 0.03;
+}
+
+.tx-med {
+	--tx-opacity: 0.06;
+}
+
+.tx-strong {
+	--tx-opacity: 0.1;
+}
+
+/* ============================================
+   Ink Frame - Carved Inner Border
+   ============================================ */
+
+.ink-frame {
+	box-shadow:
+		inset 0 0 0 1px rgba(var(--tx-ink-rgb), 0.06),
+		inset 0 1px 0 rgba(var(--tx-ink-rgb), 0.04);
+}
+
+.dark .ink-frame {
+	box-shadow:
+		inset 0 0 0 1px rgba(var(--tx-ink-rgb), 0.08),
+		inset 0 1px 0 rgba(var(--tx-ink-rgb), 0.06);
+}
+
+/* ============================================
+   Interactive States
+   ============================================ */
+
+/* Pressable - tactile button interaction */
+.pressable {
+	transition:
+		transform 100ms ease,
+		opacity 100ms ease,
+		box-shadow 100ms ease;
+	transform: translateY(0);
+}
+
+.pressable:hover {
+	opacity: 0.95;
+}
+
+.pressable:active {
+	transform: translateY(1px);
+}
+
+/* ============================================
+   Shadow Utilities
+   ============================================ */
+
+.shadow-ink {
+	box-shadow: var(--shadow-ink);
+}
+
+.shadow-ink-strong {
+	box-shadow: var(--shadow-ink-strong);
+}
+
+.shadow-ink-inner {
+	box-shadow: var(--shadow-ink-inner);
+}
+
+/* ============================================
+   Motion - Ink Set Animation
+   ============================================ */
+
+@keyframes ink-in {
+	from {
+		opacity: 0;
+		transform: translateY(4px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+@keyframes ink-out {
+	from {
+		opacity: 1;
+		transform: translateY(0);
+	}
+	to {
+		opacity: 0;
+		transform: translateY(-4px);
+	}
+}
+
+.animate-ink-in {
+	animation: ink-in 180ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.animate-ink-out {
+	animation: ink-out 120ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ============================================
+   Utility Classes
+   ============================================ */
+
+/* Micro-label pattern for metadata */
+.micro-label {
+	font-size: 0.65rem;
+	text-transform: uppercase;
+	letter-spacing: 0.15em;
+	color: hsl(var(--muted-foreground));
+}
+
+/* Ensure text remains readable over textures */
+.tx > * {
+	position: relative;
+	z-index: 2;
+}

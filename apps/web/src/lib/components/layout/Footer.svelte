@@ -3,26 +3,25 @@
 	import Button from '$components/ui/Button.svelte';
 	import {
 		Brain,
-		Target,
 		FolderOpen,
-		Calendar,
 		StickyNote,
 		Mail,
-		Linkedin,
-		Twitter,
 		Shield,
 		Heart,
 		Users,
 		TrendingUp,
 		FileText,
 		BookOpen,
-		HelpCircle,
+		CircleHelp,
 		Info,
 		DollarSign,
 		MessageSquare
 	} from 'lucide-svelte';
+	import LinkedinIcon from 'lucide-svelte/icons/linkedin';
+	import XIcon from 'lucide-svelte/icons/twitter';
 
-	export let user: any | null = null;
+	// Svelte 5 props
+	let { user = null }: { user: any | null } = $props();
 
 	const CURRENT_YEAR = new Date().getFullYear();
 
@@ -33,7 +32,7 @@
 	];
 
 	const SUPPORT_LINKS = [
-		{ href: '/help', label: 'Help', icon: HelpCircle },
+		{ href: '/help', label: 'Help', icon: CircleHelp },
 		{ href: '/docs', label: 'Docs', icon: BookOpen },
 		{ href: '/feedback', label: 'Feedback', icon: MessageSquare }
 	];
@@ -52,7 +51,7 @@
 			title: 'Resources',
 			links: [
 				{ href: '/blogs', label: 'Blog', icon: FileText },
-				{ href: '/help', label: 'Help', icon: HelpCircle },
+				{ href: '/help', label: 'Help', icon: CircleHelp },
 				{ href: '/docs', label: 'Docs', icon: BookOpen }
 			]
 		},
@@ -73,20 +72,18 @@
 	];
 
 	const SOCIAL_LINKS = [
-		{ href: 'https://x.com/build_os', icon: Twitter, label: 'Twitter' },
+		{ href: 'https://x.com/build_os', icon: XIcon, label: 'X' },
 		{
 			href: 'https://www.linkedin.com/company/build-os-app',
-			icon: Linkedin,
+			icon: LinkedinIcon,
 			label: 'LinkedIn'
 		}
 	];
 
-	$: isAuthenticated = !!user;
+	let isAuthenticated = $derived(!!user);
 </script>
 
-<footer
-	class="bg-[var(--surface-panel)] border-t-2 border-gray-200 dark:border-gray-700 mt-auto no-print industrial-panel"
->
+<footer class="bg-card border-t border-border mt-auto no-print tx tx-frame tx-weak">
 	<div class="max-w-7xl mx-auto">
 		{#if isAuthenticated}
 			<!-- Authenticated User Footer -->
@@ -96,36 +93,15 @@
 					<!-- Brand Section -->
 					<div class="flex items-center justify-between">
 						<a href="/" class="flex items-center space-x-2 group">
-							<!-- Light mode: light dither, color on hover -->
 							<img
 								src="/brain-bolt.png"
 								alt="BuildOS"
-								class="w-6 h-6 rounded-md transition-opacity duration-200 group-hover:opacity-0 dark:hidden"
+								class="w-6 h-6 rounded-md transition-opacity duration-200 group-hover:opacity-80"
 								loading="lazy"
 							/>
-							<img
-								src="/brain-bolt.png"
-								alt="BuildOS"
-								class="absolute w-6 h-6 rounded-md transition-opacity duration-200 opacity-0 group-hover:opacity-100 dark:hidden"
-								loading="lazy"
-							/>
-							<!-- Dark mode: dark dither, color on hover -->
-							<img
-								src="/brain-bolt.png"
-								alt="BuildOS"
-								class="hidden w-6 h-6 rounded-md transition-opacity duration-200 group-hover:opacity-0 dark:block"
-								loading="lazy"
-							/>
-							<img
-								src="/brain-bolt.png"
-								alt="BuildOS"
-								class="hidden absolute w-6 h-6 rounded-md transition-opacity duration-200 opacity-0 group-hover:opacity-100 dark:block"
-								loading="lazy"
-							/>
-							<span
-								class="text-lg font-black tracking-tight text-slate-900 dark:text-slate-100"
-								>BuildOS</span
-							>
+							<span class="text-lg font-black tracking-tight text-foreground">
+								BuildOS
+							</span>
 						</a>
 						{#if user?.is_admin}
 							<span class="px-2 py-1 text-xs font-bold bg-red-600 text-white rounded">
@@ -140,17 +116,17 @@
 							{@const LinkIcon = link.icon}
 							<a
 								href={link.href}
-								class="flex items-center space-x-2 p-3 rounded border-2 border-gray-200 bg-surface-panel dark:bg-slate-800 dark:border-gray-700
-									hover:border-accent-orange hover:bg-accent-orange/10 dark:hover:bg-accent-orange/20 transition-colors group shadow-subtle hover:shadow-pressable"
+								class="flex items-center space-x-2 p-3 rounded-lg border border-border bg-card
+									hover:border-accent hover:bg-accent/5 transition-colors group shadow-ink pressable"
 							>
 								<LinkIcon
-									class="w-5 h-5 text-slate-600 dark:text-slate-400
-									group-hover:text-accent-orange transition-colors"
+									class="w-5 h-5 text-muted-foreground group-hover:text-accent transition-colors"
 								/>
 								<span
-									class="text-sm font-bold tracking-tight text-slate-700 dark:text-slate-300
-									group-hover:text-accent-orange">{link.label}</span
+									class="text-sm font-semibold tracking-tight text-foreground group-hover:text-accent"
 								>
+									{link.label}
+								</span>
 							</a>
 						{/each}
 					</div>
@@ -160,8 +136,7 @@
 						{#each SUPPORT_LINKS as link}
 							<a
 								href={link.href}
-								class="text-sm font-bold tracking-tight text-slate-600 dark:text-slate-400 hover:text-accent-blue
-									dark:hover:text-accent-blue transition-colors"
+								class="text-sm font-semibold tracking-tight text-muted-foreground hover:text-accent transition-colors"
 							>
 								{link.label}
 							</a>
@@ -169,15 +144,14 @@
 					</div>
 
 					<!-- Social & Legal -->
-					<div class="space-y-4 pt-4 border-t-2 border-gray-200 dark:border-gray-700">
+					<div class="space-y-4 pt-4 border-t border-border">
 						<!-- Social Icons -->
 						<div class="flex justify-center space-x-4">
 							{#each SOCIAL_LINKS as social}
 								{@const SocialIcon = social.icon}
 								<a
 									href={social.href}
-									class="p-2 text-slate-500 hover:text-accent-blue dark:text-slate-400 dark:hover:text-accent-blue
-										transition-colors rounded hover:bg-slate-100 dark:hover:bg-slate-800"
+									class="p-2 text-muted-foreground hover:text-accent transition-colors rounded-lg hover:bg-muted"
 									aria-label={social.label}
 								>
 									<SocialIcon class="w-5 h-5" />
@@ -190,8 +164,7 @@
 							{#each LEGAL_LINKS as link}
 								<a
 									href={link.href}
-									class="text-slate-500 dark:text-slate-400 hover:text-slate-900
-										dark:hover:text-slate-100 transition-colors font-bold tracking-tight"
+									class="text-muted-foreground hover:text-foreground transition-colors font-semibold tracking-tight"
 								>
 									{link.label}
 								</a>
@@ -201,7 +174,7 @@
 
 					<!-- Admin Link -->
 					{#if user?.is_admin}
-						<div class="pt-4 border-t border-gray-200 dark:border-gray-800">
+						<div class="pt-4 border-t border-border">
 							<a
 								href="/admin"
 								class="flex items-center justify-center space-x-2 p-3 text-red-600 dark:text-red-400
@@ -221,36 +194,15 @@
 						<!-- Left: Brand and Navigation -->
 						<div class="flex items-center space-x-8">
 							<a href="/" class="flex items-center space-x-2 group">
-								<!-- Light mode: light dither, color on hover -->
 								<img
 									src="/brain-bolt.png"
 									alt="BuildOS"
-									class="w-6 h-6 rounded-md transition-opacity duration-200 group-hover:opacity-0 dark:hidden"
+									class="w-6 h-6 rounded-md transition-opacity duration-200 group-hover:opacity-80"
 									loading="lazy"
 								/>
-								<img
-									src="/brain-bolt.png"
-									alt="BuildOS"
-									class="absolute w-6 h-6 rounded-md transition-opacity duration-200 opacity-0 group-hover:opacity-100 dark:hidden"
-									loading="lazy"
-								/>
-								<!-- Dark mode: dark dither, color on hover -->
-								<img
-									src="/brain-bolt.png"
-									alt="BuildOS"
-									class="hidden w-6 h-6 rounded-md transition-opacity duration-200 group-hover:opacity-0 dark:block"
-									loading="lazy"
-								/>
-								<img
-									src="/brain-bolt.png"
-									alt="BuildOS"
-									class="hidden absolute w-6 h-6 rounded-md transition-opacity duration-200 opacity-0 group-hover:opacity-100 dark:block"
-									loading="lazy"
-								/>
-								<span
-									class="text-lg font-black tracking-tight text-slate-900 dark:text-slate-100"
-									>BuildOS</span
-								>
+								<span class="text-lg font-black tracking-tight text-foreground">
+									BuildOS
+								</span>
 							</a>
 
 							<!-- Navigation Links -->
@@ -258,9 +210,8 @@
 								{#each [...AUTH_LINKS, ...SUPPORT_LINKS] as link}
 									<a
 										href={link.href}
-										class="inline-flex items-center px-3 py-2 text-sm font-bold tracking-tight text-slate-600
-											dark:text-slate-300 hover:text-accent-orange dark:hover:text-accent-orange
-											hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors"
+										class="inline-flex items-center px-3 py-2 text-sm font-semibold tracking-tight text-muted-foreground
+											hover:text-accent hover:bg-muted rounded-lg transition-colors"
 									>
 										{#if link.icon}
 											{@const Icon = link.icon}
@@ -274,7 +225,7 @@
 										href="/admin"
 										class="inline-flex items-center px-3 py-2 text-sm font-medium text-red-600
 											dark:text-red-400 hover:text-red-700 dark:hover:text-red-300
-											hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors ml-2"
+											hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors ml-2"
 									>
 										<Shield class="w-4 h-4 mr-2" />
 										Admin
@@ -289,8 +240,7 @@
 								{#each LEGAL_LINKS as link}
 									<a
 										href={link.href}
-										class="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900
-											dark:hover:text-white transition-colors"
+										class="text-sm text-muted-foreground hover:text-foreground transition-colors"
 									>
 										{link.label}
 									</a>
@@ -301,8 +251,7 @@
 									{@const SocialIcon = social.icon}
 									<a
 										href={social.href}
-										class="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300
-											transition-colors rounded-md hover:bg-gray-100 dark:hover:bg-gray-800"
+										class="p-2 text-muted-foreground hover:text-accent transition-colors rounded-lg hover:bg-muted"
 										aria-label={social.label}
 									>
 										<SocialIcon class="w-4 h-4" />
@@ -315,8 +264,8 @@
 
 				<!-- Copyright -->
 				<div
-					class="flex items-center justify-center space-x-1 text-xs font-bold tracking-tight text-slate-500 dark:text-slate-400
-					mt-6 pt-6 border-t-2 border-gray-200 dark:border-gray-700"
+					class="flex items-center justify-center space-x-1 text-xs font-semibold tracking-tight text-muted-foreground
+					mt-6 pt-6 border-t border-border"
 				>
 					<span>© {CURRENT_YEAR} BuildOS</span>
 					<span>•</span>
@@ -334,39 +283,18 @@
 					<div class="text-center space-y-4">
 						<a href="/" class="inline-flex items-center space-x-2 group">
 							<div class="relative">
-								<!-- Light mode: light dither, color on hover -->
 								<img
 									src="/brain-bolt.png"
 									alt="BuildOS"
-									class="w-8 h-8 rounded-md transition-opacity duration-200 group-hover:opacity-0 dark:hidden"
-									loading="lazy"
-								/>
-								<img
-									src="/brain-bolt.png"
-									alt="BuildOS"
-									class="absolute inset-0 w-8 h-8 rounded-md transition-opacity duration-200 opacity-0 group-hover:opacity-100 dark:hidden"
-									loading="lazy"
-								/>
-								<!-- Dark mode: dark dither, color on hover -->
-								<img
-									src="/brain-bolt.png"
-									alt="BuildOS"
-									class="hidden w-8 h-8 rounded-md transition-opacity duration-200 group-hover:opacity-0 dark:block"
-									loading="lazy"
-								/>
-								<img
-									src="/brain-bolt.png"
-									alt="BuildOS"
-									class="hidden absolute inset-0 w-8 h-8 rounded-md transition-opacity duration-200 opacity-0 group-hover:opacity-100 dark:block"
+									class="w-8 h-8 rounded-md transition-opacity duration-200 group-hover:opacity-80"
 									loading="lazy"
 								/>
 							</div>
-							<span
-								class="text-xl font-black tracking-tight text-slate-900 dark:text-slate-100"
-								>BuildOS</span
-							>
+							<span class="text-xl font-black tracking-tight text-foreground">
+								BuildOS
+							</span>
 						</a>
-						<p class="text-sm text-slate-600 dark:text-slate-400 max-w-xs mx-auto">
+						<p class="text-sm text-muted-foreground max-w-xs mx-auto">
 							Transform thoughts into structured productivity with AI-powered
 							organization.
 						</p>
@@ -375,18 +303,18 @@
 						<div class="flex flex-col sm:flex-row gap-3 max-w-sm mx-auto">
 							<a
 								href="/auth/register"
-								class="flex-1 inline-flex items-center justify-center px-6 py-3 text-sm font-bold tracking-tight
-									text-white bg-accent-orange border-2 border-slate-700 hover:brightness-110
-									rounded transition-all hover:shadow-pressable shadow-subtle"
+								class="flex-1 inline-flex items-center justify-center px-6 py-3 text-sm font-semibold tracking-tight
+									text-accent-foreground bg-accent border border-accent hover:bg-accent/90
+									rounded-lg transition-all shadow-ink pressable"
 							>
 								<Brain class="w-4 h-4 mr-2" />
 								Start Free
 							</a>
 							<a
 								href="/beta"
-								class="flex-1 inline-flex items-center justify-center px-6 py-3 text-sm font-bold tracking-tight
-									text-accent-blue dark:text-accent-blue bg-accent-blue/10 dark:bg-accent-blue/20 border-2 border-accent-blue/30
-									hover:bg-accent-blue/20 dark:hover:bg-accent-blue/30 rounded transition-colors"
+								class="flex-1 inline-flex items-center justify-center px-6 py-3 text-sm font-semibold tracking-tight
+									text-foreground bg-card border border-border
+									hover:bg-muted hover:border-accent rounded-lg transition-colors"
 							>
 								<Users class="w-4 h-4 mr-2" />
 								Join Beta
@@ -398,9 +326,7 @@
 					<div class="grid grid-cols-2 gap-8">
 						{#each GUEST_SECTIONS.slice(0, 2) as section}
 							<div>
-								<h4
-									class="text-sm font-black tracking-tight text-slate-900 dark:text-slate-100 mb-3"
-								>
+								<h4 class="text-sm font-black tracking-tight text-foreground mb-3">
 									{section.title}
 								</h4>
 								<ul class="space-y-2">
@@ -408,8 +334,7 @@
 										<li>
 											<a
 												href={link.href}
-												class="text-sm font-bold tracking-tight text-slate-600 dark:text-slate-400 hover:text-accent-orange
-													dark:hover:text-accent-orange transition-colors"
+												class="text-sm font-semibold tracking-tight text-muted-foreground hover:text-accent transition-colors"
 											>
 												{link.label}
 											</a>
@@ -422,17 +347,14 @@
 
 					<!-- Company Links -->
 					<div class="text-center">
-						<h4
-							class="text-sm font-black tracking-tight text-slate-900 dark:text-slate-100 mb-3"
-						>
+						<h4 class="text-sm font-black tracking-tight text-foreground mb-3">
 							Company
 						</h4>
 						<div class="flex flex-wrap justify-center gap-x-4 gap-y-2">
-							{#each GUEST_SECTIONS[2].links as link}
+							{#each GUEST_SECTIONS[2]?.links ?? [] as link}
 								<a
 									href={link.href}
-									class="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900
-										dark:hover:text-white transition-colors"
+									class="text-sm text-muted-foreground hover:text-foreground transition-colors"
 								>
 									{link.label}
 								</a>
@@ -441,15 +363,14 @@
 					</div>
 
 					<!-- Social & Legal -->
-					<div class="space-y-4 pt-8 border-t border-gray-200 dark:border-gray-800">
+					<div class="space-y-4 pt-8 border-t border-border">
 						<!-- Social Icons -->
 						<div class="flex justify-center space-x-4">
 							{#each SOCIAL_LINKS as social}
 								{@const SocialIcon = social.icon}
 								<a
 									href={social.href}
-									class="p-2 text-slate-500 hover:text-accent-blue dark:text-slate-400 dark:hover:text-accent-blue
-										transition-colors rounded hover:bg-slate-100 dark:hover:bg-slate-800"
+									class="p-2 text-muted-foreground hover:text-accent transition-colors rounded-lg hover:bg-muted"
 									aria-label={social.label}
 								>
 									<SocialIcon class="w-5 h-5" />
@@ -462,8 +383,7 @@
 							{#each LEGAL_LINKS as link}
 								<a
 									href={link.href}
-									class="text-slate-500 dark:text-slate-400 hover:text-slate-900
-										dark:hover:text-slate-100 transition-colors font-bold tracking-tight"
+									class="text-muted-foreground hover:text-foreground transition-colors font-semibold tracking-tight"
 								>
 									{link.label}
 								</a>
@@ -480,38 +400,16 @@
 						<div class="max-w-sm space-y-4">
 							<a href="/" class="inline-flex items-center space-x-2 group">
 								<div class="relative">
-									<!-- Light mode: light dither, color on hover -->
 									<img
 										src="/brain-bolt.png"
 										alt="BuildOS"
-										class="w-8 h-8 rounded-md transition-opacity duration-200 group-hover:opacity-0 dark:hidden"
-										loading="lazy"
-									/>
-									<img
-										src="/brain-bolt.png"
-										alt="BuildOS"
-										class="absolute inset-0 w-8 h-8 rounded-md transition-opacity duration-200 opacity-0 group-hover:opacity-100 dark:hidden"
-										loading="lazy"
-									/>
-									<!-- Dark mode: dark dither, color on hover -->
-									<img
-										src="/brain-bolt.png"
-										alt="BuildOS"
-										class="hidden w-8 h-8 rounded-md transition-opacity duration-200 group-hover:opacity-0 dark:block"
-										loading="lazy"
-									/>
-									<img
-										src="/brain-bolt.png"
-										alt="BuildOS"
-										class="hidden absolute inset-0 w-8 h-8 rounded-md transition-opacity duration-200 opacity-0 group-hover:opacity-100 dark:block"
+										class="w-8 h-8 rounded-md transition-opacity duration-200 group-hover:opacity-80"
 										loading="lazy"
 									/>
 								</div>
-								<span class="text-xl font-bold text-gray-900 dark:text-white"
-									>BuildOS</span
-								>
+								<span class="text-xl font-bold text-foreground">BuildOS</span>
 							</a>
-							<p class="text-sm text-gray-600 dark:text-gray-400">
+							<p class="text-sm text-muted-foreground">
 								Transform thoughts into structured productivity with AI-powered
 								organization. Capture ideas, manage projects, and stay organized
 								effortlessly.
@@ -531,9 +429,7 @@
 						<div class="grid grid-cols-3 gap-8">
 							{#each GUEST_SECTIONS as section}
 								<div>
-									<h4
-										class="text-sm font-semibold text-gray-900 dark:text-white mb-4"
-									>
+									<h4 class="text-sm font-semibold text-foreground mb-4">
 										{section.title}
 									</h4>
 									<ul class="space-y-3">
@@ -541,14 +437,13 @@
 											<li>
 												<a
 													href={link.href}
-													class="inline-flex items-center text-sm text-gray-600 dark:text-gray-400
-														hover:text-gray-900 dark:hover:text-white transition-colors group"
+													class="inline-flex items-center text-sm text-muted-foreground
+														hover:text-foreground transition-colors group"
 												>
 													{#if link.icon}
 														{@const Icon = link.icon}
 														<Icon
-															class="w-4 h-4 mr-2 text-gray-400 group-hover:text-gray-600
-																dark:group-hover:text-gray-300 transition-colors"
+															class="w-4 h-4 mr-2 text-muted-foreground group-hover:text-foreground transition-colors"
 														/>
 													{/if}
 													{link.label}
@@ -562,16 +457,13 @@
 					</div>
 
 					<!-- Bottom Section -->
-					<div
-						class="flex items-center justify-between pt-8 border-t border-gray-200 dark:border-gray-800"
-					>
+					<div class="flex items-center justify-between pt-8 border-t border-border">
 						<!-- Legal Links -->
 						<nav class="flex space-x-4">
 							{#each LEGAL_LINKS as link}
 								<a
 									href={link.href}
-									class="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900
-										dark:hover:text-white transition-colors"
+									class="text-sm text-muted-foreground hover:text-foreground transition-colors"
 								>
 									{link.label}
 								</a>
@@ -584,8 +476,7 @@
 								{@const SocialIcon = social.icon}
 								<a
 									href={social.href}
-									class="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300
-										transition-colors rounded-md hover:bg-gray-100 dark:hover:bg-gray-800"
+									class="p-2 text-muted-foreground hover:text-accent transition-colors rounded-lg hover:bg-muted"
 									aria-label={social.label}
 								>
 									<SocialIcon class="w-4 h-4" />
@@ -597,8 +488,8 @@
 
 				<!-- Copyright -->
 				<div
-					class="flex items-center justify-center space-x-1 text-xs text-gray-500 dark:text-gray-400
-					mt-8 pt-8 border-t border-gray-200 dark:border-gray-800"
+					class="flex items-center justify-center space-x-1 text-xs text-muted-foreground
+					mt-8 pt-8 border-t border-border"
 				>
 					<span>© {CURRENT_YEAR} BuildOS</span>
 					<span>•</span>
@@ -614,7 +505,7 @@
 <style>
 	/* Enhanced focus states */
 	a:focus-visible {
-		outline: 2px solid rgb(59 130 246);
+		outline: 2px solid hsl(var(--ring));
 		outline-offset: 2px;
 		border-radius: 4px;
 	}

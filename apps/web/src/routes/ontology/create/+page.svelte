@@ -413,7 +413,7 @@
 		<button
 			type="button"
 			onclick={() => goto('/ontology')}
-			class="inline-flex items-center gap-2 rounded-xl border border-slate-200/70 bg-white/90 px-3 py-2 text-sm font-semibold text-slate-600 transition hover:border-blue-400 hover:text-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-300 dark:hover:border-indigo-500 dark:hover:text-indigo-200"
+			class="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm font-semibold text-muted-foreground transition hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring shadow-ink pressable"
 		>
 			<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
 				<path
@@ -428,21 +428,19 @@
 	</div>
 
 	<header>
-		<h1 class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-2">
-			Create New Project
-		</h1>
-		<p class="text-sm sm:text-base text-gray-600 dark:text-gray-400">
+		<h1 class="text-2xl sm:text-3xl font-bold text-foreground mb-2">Create New Project</h1>
+		<p class="text-sm sm:text-base text-muted-foreground">
 			Select a template and configure your project
 		</p>
 	</header>
 
 	{#if !selectedTemplate}
 		<div class="space-y-6">
-			<h2 class="text-xl font-semibold text-gray-900 dark:text-white">Choose a Template</h2>
+			<h2 class="text-xl font-semibold text-foreground">Choose a Template</h2>
 
 			{#each Object.entries(grouped) as [realm, templates]}
 				<div class="space-y-4">
-					<h3 class="text-lg font-semibold text-gray-700 dark:text-gray-300 capitalize">
+					<h3 class="text-lg font-semibold text-muted-foreground capitalize">
 						{realm}
 					</h3>
 					<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
@@ -455,20 +453,16 @@
 								<CardBody padding="none">
 									<div class="space-y-3">
 										<div>
-											<h4
-												class="text-lg font-semibold text-gray-900 dark:text-white mb-1"
-											>
+											<h4 class="text-lg font-semibold text-foreground mb-1">
 												{template.name}
 											</h4>
-											<p
-												class="text-xs font-mono text-gray-500 dark:text-gray-400"
-											>
+											<p class="text-xs font-mono text-muted-foreground">
 												{template.type_key}
 											</p>
 										</div>
 										{#if template.metadata?.description}
 											<p
-												class="text-sm text-gray-600 dark:text-gray-400 line-clamp-2 leading-relaxed"
+												class="text-sm text-muted-foreground line-clamp-2 leading-relaxed"
 											>
 												{template.metadata.description}
 											</p>
@@ -496,10 +490,10 @@
 					class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-dense-4"
 				>
 					<div>
-						<h2 class="text-2xl font-semibold text-gray-900 dark:text-white mb-1">
+						<h2 class="text-2xl font-semibold text-foreground mb-1">
 							Configure Project
 						</h2>
-						<p class="text-sm text-gray-600 dark:text-gray-400">
+						<p class="text-sm text-muted-foreground">
 							Template: {selectedTemplate.name}
 						</p>
 					</div>
@@ -535,9 +529,7 @@
 					{/if}
 
 					<div class="space-y-dense-4">
-						<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-							Basic Information
-						</h3>
+						<h3 class="text-lg font-semibold text-foreground">Basic Information</h3>
 
 						<FormField label="Project Name" labelFor="name" required={true}>
 							<TextInput
@@ -559,9 +551,7 @@
 					</div>
 
 					<div class="space-y-dense-4">
-						<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-							Facet Overrides
-						</h3>
+						<h3 class="text-lg font-semibold text-foreground">Facet Overrides</h3>
 
 						<div class="grid grid-cols-1 sm:grid-cols-3 gap-dense-3">
 							<FormField label="Context" labelFor="facet-context">
@@ -604,7 +594,7 @@
 							</FormField>
 						</div>
 
-						<p class="text-xs text-gray-500 dark:text-gray-400">
+						<p class="text-xs text-muted-foreground">
 							Facets power filtering and discovery. Override template defaults if this
 							project differs from the baseline.
 						</p>
@@ -612,7 +602,7 @@
 
 					{#if schemaProperties.length > 0}
 						<div class="space-y-dense-6">
-							<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+							<h3 class="text-lg font-semibold text-foreground">
 								Template Properties
 							</h3>
 
@@ -680,12 +670,12 @@
 											/>
 										{:else if field.schema.type === 'boolean'}
 											<label
-												class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer"
+												class="flex items-center gap-2 text-sm text-foreground cursor-pointer"
 											>
 												<input
 													id={`prop-${field.key}`}
 													type="checkbox"
-													class="h-4 w-4 rounded border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-blue-600 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:ring-offset-0 transition-colors cursor-pointer"
+													class="h-4 w-4 rounded border-border bg-card text-accent focus:ring-2 focus:ring-ring focus:ring-offset-0 transition-colors cursor-pointer"
 													checked={Boolean(customProps[field.key])}
 													onchange={(event) =>
 														updateCustomProp(
@@ -735,21 +725,19 @@
 					<!-- Optional Goals -->
 					<div class="space-y-dense-4">
 						<div class="flex items-center justify-between">
-							<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-								Initial Goals
-							</h3>
+							<h3 class="text-lg font-semibold text-foreground">Initial Goals</h3>
 							<Button variant="ghost" size="sm" onclick={() => addGoal()}
 								>Add Goal</Button
 							>
 						</div>
-						<p class="text-xs text-gray-500 dark:text-gray-400">
+						<p class="text-xs text-muted-foreground">
 							Optional: seed the project with high-level goals. You can always add
 							more later.
 						</p>
 
 						{#if showGoals}
 							{#if goals.length === 0}
-								<p class="text-sm text-gray-600 dark:text-gray-400">
+								<p class="text-sm text-muted-foreground">
 									No goals added yet. Use "Add Goal" to create one.
 								</p>
 							{/if}
@@ -761,7 +749,7 @@
 											<div class="space-y-3">
 												<div class="flex items-center justify-between">
 													<h4
-														class="text-sm font-semibold text-gray-800 dark:text-gray-200"
+														class="text-sm font-semibold text-foreground"
 													>
 														Goal {index + 1}
 													</h4>
@@ -821,20 +809,18 @@
 					<!-- Optional Tasks -->
 					<div class="space-y-dense-4">
 						<div class="flex items-center justify-between">
-							<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-								Initial Tasks
-							</h3>
+							<h3 class="text-lg font-semibold text-foreground">Initial Tasks</h3>
 							<Button variant="ghost" size="sm" onclick={() => addTask()}
 								>Add Task</Button
 							>
 						</div>
-						<p class="text-xs text-gray-500 dark:text-gray-400">
+						<p class="text-xs text-muted-foreground">
 							Optional: capture starting work items. Each task needs a title.
 						</p>
 
 						{#if showTasks}
 							{#if tasks.length === 0}
-								<p class="text-sm text-gray-600 dark:text-gray-400">
+								<p class="text-sm text-muted-foreground">
 									No tasks added yet. Use "Add Task" to create one.
 								</p>
 							{/if}
@@ -846,7 +832,7 @@
 											<div class="space-y-3">
 												<div class="flex items-center justify-between">
 													<h4
-														class="text-sm font-semibold text-gray-800 dark:text-gray-200"
+														class="text-sm font-semibold text-foreground"
 													>
 														Task {index + 1}
 													</h4>
@@ -930,7 +916,7 @@
 			<CardFooter>
 				<div class="flex items-center justify-end gap-dense-4">
 					{#if error && !formErrors.length}
-						<p class="text-sm text-red-600 dark:text-red-400 flex items-center gap-2">
+						<p class="text-sm text-red-600 flex items-center gap-2">
 							<AlertCircle class="w-4 h-4" />
 							{error}
 						</p>
