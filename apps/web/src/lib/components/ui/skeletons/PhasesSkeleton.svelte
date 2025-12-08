@@ -1,4 +1,5 @@
 <!-- apps/web/src/lib/components/ui/skeletons/PhasesSkeleton.svelte -->
+<!-- Inkprint Design System -->
 <script lang="ts">
 	export let count = 3;
 </script>
@@ -6,7 +7,7 @@
 <div class="space-y-4">
 	{#each Array(count) as _, i}
 		<div
-			class="bg-card rounded-xl shadow-sm border border-border overflow-hidden animate-pulse"
+			class="bg-card rounded-xl shadow-ink border border-border overflow-hidden animate-pulse tx tx-frame tx-weak"
 		>
 			<!-- Phase header - mobile responsive -->
 			<div class="p-4 sm:p-6 border-b border-border">
@@ -49,7 +50,7 @@
 				<div class="space-y-3">
 					{#each Array(2) as _, j}
 						<div
-							class="flex items-center gap-3 sm:gap-4 p-2 sm:p-3 rounded-lg bg-muted/50"
+							class="flex items-center gap-3 sm:gap-4 p-2 sm:p-3 rounded-lg bg-muted/50 border border-border"
 						>
 							<!-- Checkbox -->
 							<div
@@ -72,10 +73,10 @@
 							<!-- Task actions - fewer buttons on mobile -->
 							<div class="flex gap-1 sm:gap-2">
 								<div
-									class="h-7 w-7 sm:h-8 sm:w-8 bg-muted rounded"
+									class="h-7 w-7 sm:h-8 sm:w-8 bg-muted rounded-lg"
 								></div>
 								<div
-									class="hidden sm:block h-8 w-8 bg-muted rounded"
+									class="hidden sm:block h-8 w-8 bg-muted rounded-lg"
 								></div>
 							</div>
 						</div>

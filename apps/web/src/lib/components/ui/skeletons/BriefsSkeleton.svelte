@@ -1,4 +1,5 @@
 <!-- apps/web/src/lib/components/ui/skeletons/BriefsSkeleton.svelte -->
+<!-- Inkprint Design System -->
 <script lang="ts">
 	export let count = 3;
 </script>
@@ -6,7 +7,7 @@
 <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
 	{#each Array(count) as _, i}
 		<div
-			class="bg-card rounded-lg p-6 shadow-sm border border-border animate-pulse"
+			class="bg-card rounded-lg p-6 shadow-ink border border-border animate-pulse tx tx-grain tx-weak"
 		>
 			<!-- Brief date -->
 			<div class="h-5 bg-muted rounded w-32 mb-3"></div>

@@ -1,4 +1,9 @@
 <!-- apps/web/src/lib/components/ontology/FSMStateVisualizer.svelte -->
+<!--
+	FSM State Visualizer - Inkprint Design System
+
+	Full FSM visualization with transitions, guards, and actions.
+-->
 <script lang="ts">
 	import { onMount, createEventDispatcher } from 'svelte';
 	import { browser } from '$app/environment';
@@ -175,7 +180,6 @@
 				throw new Error(payload.error || payload.message || 'Transition failed');
 			}
 
-			// ✅ FIX: Extract from ApiResponse.data wrapper
 			const stateAfter = payload.data?.state_after as string;
 			const actionsRun = (payload.data?.actions_run ?? []) as string[];
 
@@ -250,15 +254,15 @@
 </script>
 
 <div
-	class="fsm-visualizer bg-gradient-to-br from-white to-gray-50/50 dark:from-gray-800 dark:to-gray-900/50 border border-gray-200 dark:border-gray-700 rounded-lg p-3 sm:p-4 space-y-3 shadow-sm hover:shadow-md transition-shadow duration-200 dither-surface"
+	class="fsm-visualizer bg-card border border-border rounded-lg p-3 sm:p-4 space-y-3 shadow-ink tx tx-frame tx-weak"
 >
 	<div class="flex items-center justify-between gap-3">
 		<div class="min-w-0 flex-1">
 			<p
-				class="text-[10px] uppercase tracking-wider text-gray-500 dark:text-gray-400 font-semibold mb-1.5"
+				class="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1.5"
 			>
 				Current State: <span
-					class="px-3 py-1 rounded-full bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/40 dark:to-indigo-950/40 text-blue-700 dark:text-blue-300 font-semibold capitalize text-xs sm:text-sm border border-blue-200 dark:border-blue-800/50 dither-accent"
+					class="px-3 py-1 rounded-lg bg-accent/10 text-accent font-semibold capitalize text-xs sm:text-sm border border-accent/20"
 				>
 					{localState}
 				</span>
@@ -272,7 +276,7 @@
 			disabled={loading}
 			{loading}
 			icon={RefreshCw}
-			class="shrink-0 border-gray-300 dark:border-gray-600 hover:border-blue-400 dark:hover:border-blue-500 transition-colors"
+			class="shrink-0 border-border hover:border-accent transition-colors"
 		>
 			<span class="hidden sm:inline text-xs">{loading ? 'Refreshing…' : 'Refresh'}</span>
 		</Button>
@@ -280,7 +284,7 @@
 
 	{#if successInfo}
 		<div
-			class="flex items-start gap-2 p-2 rounded-lg bg-gradient-to-br from-emerald-50 to-green-50 dark:from-emerald-900/20 dark:to-green-900/20 border border-emerald-200 dark:border-emerald-800/50 dither-soft"
+			class="flex items-start gap-2 p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 tx tx-grain tx-weak"
 		>
 			<ShieldCheck
 				class="w-4 h-4 text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-0.5"
@@ -300,11 +304,11 @@
 
 	{#if fetchError}
 		<div
-			class="flex items-start gap-2 p-2 rounded-lg bg-gradient-to-br from-rose-50 to-red-50 dark:from-rose-900/20 dark:to-red-900/20 border border-rose-200 dark:border-rose-800 dither-soft"
+			class="flex items-start gap-2 p-2 rounded-lg bg-red-500/10 border border-red-500/20 tx tx-static tx-weak"
 		>
-			<AlertTriangle class="w-4 h-4 text-rose-600 dark:text-rose-400 flex-shrink-0 mt-0.5" />
+			<AlertTriangle class="w-4 h-4 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
 			<div class="flex-1 min-w-0">
-				<p class="text-xs font-medium text-rose-700 dark:text-rose-300 truncate">
+				<p class="text-xs font-medium text-red-700 dark:text-red-300 truncate">
 					{fetchError}
 				</p>
 			</div>
@@ -313,11 +317,11 @@
 
 	{#if transitionError}
 		<div
-			class="flex items-start gap-2 p-2 rounded-lg bg-gradient-to-br from-rose-50 to-red-50 dark:from-rose-900/20 dark:to-red-900/20 border border-rose-200 dark:border-rose-800 dither-soft"
+			class="flex items-start gap-2 p-2 rounded-lg bg-red-500/10 border border-red-500/20 tx tx-static tx-weak"
 		>
-			<AlertTriangle class="w-4 h-4 text-rose-600 dark:text-rose-400 flex-shrink-0 mt-0.5" />
+			<AlertTriangle class="w-4 h-4 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
 			<div class="flex-1 min-w-0">
-				<p class="text-xs font-medium text-rose-700 dark:text-rose-300 truncate">
+				<p class="text-xs font-medium text-red-700 dark:text-red-300 truncate">
 					{transitionError}
 				</p>
 			</div>
@@ -326,39 +330,39 @@
 
 	{#if loading && transitions.length === 0}
 		<div
-			class="flex items-center justify-center py-6 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900/40 dark:to-gray-800/40 rounded-lg border border-gray-200 dark:border-gray-700 dither-soft"
+			class="flex items-center justify-center py-6 bg-muted rounded-lg border border-border"
 		>
 			<div class="flex items-center gap-2">
-				<Loader class="w-4 h-4 text-blue-600 dark:text-blue-400 animate-spin" />
-				<p class="text-xs font-medium text-gray-700 dark:text-gray-300">
+				<Loader class="w-4 h-4 text-accent animate-spin" />
+				<p class="text-xs font-medium text-muted-foreground">
 					Loading transitions...
 				</p>
 			</div>
 		</div>
 	{:else if transitions.length === 0}
 		<div
-			class="flex items-center gap-2 p-2 rounded-lg bg-gradient-to-br from-gray-50 to-slate-50 dark:from-gray-900/40 dark:to-slate-900/40 border border-gray-200 dark:border-gray-700 dither-subtle"
+			class="flex items-center gap-2 p-2 rounded-lg bg-muted border border-border"
 		>
-			<ShieldCheck class="w-4 h-4 text-gray-500 dark:text-gray-400 flex-shrink-0" />
-			<p class="text-xs text-gray-600 dark:text-gray-400">No transitions available</p>
+			<ShieldCheck class="w-4 h-4 text-muted-foreground flex-shrink-0" />
+			<p class="text-xs text-muted-foreground">No transitions available</p>
 		</div>
 	{:else}
 		<div class="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
 			{#each transitions as transition (transition.event)}
 				<div
-					class="flex flex-col gap-2 border border-gray-200 dark:border-gray-700 rounded-lg p-2.5 sm:p-3 bg-gradient-to-br from-gray-50/80 to-white dark:from-gray-900/40 dark:to-gray-800/40 hover:shadow-md hover:border-blue-300 dark:hover:border-blue-700 transition-all duration-200 dither-soft dither-fade-hover"
+					class="flex flex-col gap-2 border border-border rounded-lg p-2.5 sm:p-3 bg-card hover:border-accent/50 transition-all duration-200 shadow-ink"
 				>
 					<div class="flex items-start justify-between gap-2">
 						<div class="min-w-0 flex-1 space-y-1">
 							<div class="flex items-center gap-1.5">
 								<p
-									class="text-xs sm:text-sm font-semibold text-gray-900 dark:text-white truncate"
+									class="text-xs sm:text-sm font-semibold text-foreground truncate"
 								>
 									{transition.event}
 								</p>
-								<span class="text-gray-400 dark:text-gray-500 text-xs">→</span>
+								<span class="text-muted-foreground text-xs">→</span>
 								<span
-									class="text-xs font-medium text-blue-600 dark:text-blue-400 truncate capitalize"
+									class="text-xs font-medium text-accent truncate capitalize"
 								>
 									{transition.to}
 								</span>
@@ -381,7 +385,7 @@
 					</div>
 
 					{#if !transition.can_run && transition.failedGuards?.length}
-						<div class="space-y-1.5 pt-2 border-t border-gray-200 dark:border-gray-700">
+						<div class="space-y-1.5 pt-2 border-t border-border">
 							<p
 								class="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400"
 							>
@@ -391,7 +395,7 @@
 							<div class="flex flex-wrap gap-1">
 								{#each transition.failedGuards as guard, index (index)}
 									<span
-										class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-gradient-to-br from-amber-50 to-yellow-50 dark:from-amber-900/30 dark:to-yellow-900/30 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800/50 dither-subtle"
+										class="inline-flex items-center px-1.5 py-0.5 rounded-lg text-[10px] font-medium bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20"
 										title={JSON.stringify(guard, null, 2)}
 									>
 										{guardLabel(guard)}
@@ -419,7 +423,7 @@
 
 <!-- Confirmation Modal -->
 <ConfirmationModal
-	bind:isOpen={showConfirmModal}
+	isOpen={showConfirmModal}
 	title="Confirm Transition"
 	confirmText="Execute"
 	cancelText="Cancel"
@@ -428,47 +432,49 @@
 	on:confirm={handleConfirmTransition}
 	on:cancel={handleCancelTransition}
 >
-	<div slot="content" class="space-y-2">
-		{#if pendingTransition}
-			<div
-				class="p-2 rounded-lg bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 border border-blue-200 dark:border-blue-800/50 space-y-1.5 dither-soft"
-			>
-				<div class="flex items-center justify-between">
-					<span
-						class="text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400"
-						>Event</span
-					>
-					<span class="text-xs font-semibold text-blue-700 dark:text-blue-300"
-						>{pendingTransition.event}</span
-					>
-				</div>
-
-				<div class="flex items-center justify-between">
-					<span
-						class="text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400"
-						>Entity</span
-					>
-					<span class="text-xs text-gray-700 dark:text-gray-300 truncate"
-						>{entityName || entityKind}</span
-					>
-				</div>
-
-				<div class="pt-1.5 border-t border-blue-200 dark:border-blue-800/50">
-					<div class="flex items-center gap-2 text-xs">
-						<span class="font-medium text-gray-700 dark:text-gray-300 capitalize"
-							>{localState}</span
+	{#snippet content()}
+		<div class="space-y-2">
+			{#if pendingTransition}
+				<div
+					class="p-2 rounded-lg bg-accent/5 border border-accent/20 space-y-1.5"
+				>
+					<div class="flex items-center justify-between">
+						<span
+							class="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
+							>Event</span
 						>
-						<span class="text-gray-400 dark:text-gray-500">→</span>
-						<span class="font-semibold text-blue-700 dark:text-blue-300 capitalize"
-							>{pendingTransition.to}</span
+						<span class="text-xs font-semibold text-accent"
+							>{pendingTransition.event}</span
 						>
 					</div>
-				</div>
-			</div>
-		{/if}
 
-		<p class="text-xs text-gray-600 dark:text-gray-400">
-			This will execute the transition and any associated actions.
-		</p>
-	</div>
+					<div class="flex items-center justify-between">
+						<span
+							class="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
+							>Entity</span
+						>
+						<span class="text-xs text-foreground truncate"
+							>{entityName || entityKind}</span
+						>
+					</div>
+
+					<div class="pt-1.5 border-t border-accent/20">
+						<div class="flex items-center gap-2 text-xs">
+							<span class="font-medium text-muted-foreground capitalize"
+								>{localState}</span
+							>
+							<span class="text-muted-foreground">→</span>
+							<span class="font-semibold text-accent capitalize"
+								>{pendingTransition.to}</span
+							>
+						</div>
+					</div>
+				</div>
+			{/if}
+
+			<p class="text-xs text-muted-foreground">
+				This will execute the transition and any associated actions.
+			</p>
+		</div>
+	{/snippet}
 </ConfirmationModal>

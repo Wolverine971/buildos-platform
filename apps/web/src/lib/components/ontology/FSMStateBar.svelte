@@ -1,6 +1,6 @@
 <!-- apps/web/src/lib/components/ontology/FSMStateBar.svelte -->
 <!--
-	Lightweight FSM State Bar - Industrial/Scratchpad Ops Design
+	FSM State Bar - Inkprint Design System
 
 	Shows current state → next state in a compact one-line format.
 	- Single runnable transition: Execute button
@@ -76,13 +76,12 @@
 
 	// Derived states
 	const runnableTransitions = $derived(transitions.filter((t) => t.can_run));
-	const blockedTransitions = $derived(transitions.filter((t) => !t.can_run));
 	const hasMultipleTransitions = $derived(transitions.length > 1);
 	const hasSingleRunnableTransition = $derived(
-		transitions.length === 1 && transitions[0].can_run
+		transitions.length === 1 && transitions[0]?.can_run === true
 	);
 	const hasSingleBlockedTransition = $derived(
-		transitions.length === 1 && !transitions[0].can_run
+		transitions.length === 1 && transitions[0]?.can_run === false
 	);
 	const primaryTransition = $derived(transitions.length > 0 ? transitions[0] : null);
 
@@ -220,52 +219,52 @@
 	}
 </script>
 
-<!-- Main State Bar - Compact Inline Design -->
+<!-- Main State Bar - Inkprint Compact Design -->
 <div
-	class="fsm-state-bar flex items-center gap-2 sm:gap-2.5 px-1 sm:px-2 py-1 sm:py-1 rounded border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/50"
+	class="fsm-state-bar flex items-center gap-2 sm:gap-2.5 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg border border-border bg-card shadow-ink tx tx-grain tx-weak"
 >
 	<!-- Current State -->
 	<span
-		class="px-1.5 sm:px-2 py-0.5 rounded text-[10px] sm:text-xs font-bold uppercase tracking-wide bg-accent-blue/10 text-accent-blue"
+		class="px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-lg text-[10px] sm:text-xs font-bold uppercase tracking-wide bg-accent/10 text-accent"
 	>
 		{localState}
 	</span>
 
 	<!-- Arrow & Next State (if transition available) -->
 	{#if loading}
-		<Loader2 class="w-3 h-3 sm:w-3.5 sm:h-3.5 animate-spin text-slate-400" />
+		<Loader2 class="w-3 h-3 sm:w-3.5 sm:h-3.5 animate-spin text-muted-foreground" />
 	{:else if transitions.length === 0}
-		<span class="text-[10px] sm:text-xs text-slate-400 dark:text-slate-500 italic">final</span>
+		<span class="text-[10px] sm:text-xs text-muted-foreground italic">final</span>
 	{:else}
 		<ChevronRight
-			class="w-3 h-3 sm:w-3.5 sm:h-3.5 text-slate-400 flex-shrink-0"
+			class="w-3 h-3 sm:w-3.5 sm:h-3.5 text-muted-foreground flex-shrink-0"
 			strokeWidth={2.5}
 		/>
 
 		<!-- Next State Display -->
 		{#if hasMultipleTransitions}
 			<span
-				class="px-1.5 sm:px-2 py-0.5 rounded text-[10px] sm:text-xs font-medium text-slate-600 dark:text-slate-300 bg-slate-200 dark:bg-slate-700"
+				class="px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-lg text-[10px] sm:text-xs font-medium text-muted-foreground bg-muted"
 			>
 				{runnableTransitions.length} next
 			</span>
 		{:else if primaryTransition}
 			<span
-				class="px-1.5 sm:px-2 py-0.5 rounded text-[10px] sm:text-xs font-bold uppercase tracking-wide {primaryTransition.can_run
-					? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300'
-					: 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300'}"
+				class="px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-lg text-[10px] sm:text-xs font-bold uppercase tracking-wide {primaryTransition.can_run
+					? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+					: 'bg-amber-500/10 text-amber-600 dark:text-amber-400'}"
 			>
 				{primaryTransition.to}
 			</span>
 		{/if}
 
-		<!-- Action Button - More compact -->
+		<!-- Action Button -->
 		<div class="flex-shrink-0 ml-auto">
 			{#if hasMultipleTransitions}
 				<button
 					onclick={handleTransitionClick}
 					disabled={executing}
-					class="inline-flex items-center gap-1 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:border-accent-blue hover:text-accent-blue dark:hover:border-accent-blue text-[10px] sm:text-xs font-semibold uppercase tracking-wide transition-colors"
+					class="inline-flex items-center gap-1 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg border border-border bg-card text-muted-foreground hover:border-accent hover:text-accent text-[10px] sm:text-xs font-semibold uppercase tracking-wide transition-colors shadow-ink pressable"
 				>
 					<GitBranch class="w-3 h-3 sm:w-3.5 sm:h-3.5" strokeWidth={2.5} />
 					<span class="hidden xs:inline">CHOOSE</span>
@@ -274,7 +273,7 @@
 				<button
 					onclick={handleExecuteClick}
 					disabled={executing}
-					class="inline-flex items-center gap-1 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded bg-accent-orange hover:bg-accent-orange/90 text-white text-[10px] sm:text-xs font-semibold uppercase tracking-wide transition-colors disabled:opacity-50"
+					class="inline-flex items-center gap-1 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg bg-accent hover:bg-accent/90 text-accent-foreground text-[10px] sm:text-xs font-semibold uppercase tracking-wide transition-colors disabled:opacity-50 shadow-ink pressable"
 				>
 					{#if executing}
 						<Loader2 class="w-3 h-3 sm:w-3.5 sm:h-3.5 animate-spin" />
@@ -286,7 +285,7 @@
 			{:else if hasSingleBlockedTransition}
 				<button
 					onclick={handleBlockersClick}
-					class="inline-flex items-center gap-1 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded border border-amber-300 dark:border-amber-600 bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/30 text-[10px] sm:text-xs font-semibold uppercase tracking-wide transition-colors"
+					class="inline-flex items-center gap-1 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg border border-amber-500/50 bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 text-[10px] sm:text-xs font-semibold uppercase tracking-wide transition-colors shadow-ink pressable"
 				>
 					<AlertTriangle class="w-3 h-3 sm:w-3.5 sm:h-3.5" strokeWidth={2.5} />
 					<span class="hidden xs:inline">FIX</span>
@@ -302,36 +301,36 @@
 		<Modal isOpen={showTransitionModal} onClose={() => (showTransitionModal = false)} size="md">
 			{#snippet header()}
 				<div class="flex items-center gap-3">
-					<div class="p-2 rounded-sm bg-slate-100 dark:bg-slate-800">
+					<div class="p-2 rounded-lg bg-muted">
 						<GitBranch
-							class="w-5 h-5 text-slate-600 dark:text-slate-400"
+							class="w-5 h-5 text-muted-foreground"
 							strokeWidth={2}
 						/>
 					</div>
 					<div>
-						<h2 class="text-lg font-bold text-slate-900 dark:text-white">
+						<h2 class="text-lg font-bold text-foreground">
 							Select Transition
 						</h2>
-						<p class="text-sm text-slate-500 dark:text-slate-400">
+						<p class="text-sm text-muted-foreground">
 							Choose how to progress {entityName || 'this ' + entityKind}
 						</p>
 					</div>
 				</div>
 			{/snippet}
 
-			{#snippet body()}
+			{#snippet children()}
 				<div class="space-y-3">
 					<!-- Current State -->
 					<div
-						class="flex items-center gap-2 p-3 rounded-sm bg-slate-100 dark:bg-slate-800"
+						class="flex items-center gap-2 p-3 rounded-lg bg-muted"
 					>
 						<span
-							class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400"
+							class="text-xs font-bold uppercase tracking-wider text-muted-foreground"
 						>
 							Current:
 						</span>
 						<span
-							class="px-2 py-0.5 rounded-sm text-xs font-bold uppercase bg-accent-blue/10 text-accent-blue"
+							class="px-2 py-0.5 rounded-lg text-xs font-bold uppercase bg-accent/10 text-accent"
 						>
 							{localState}
 						</span>
@@ -341,21 +340,21 @@
 					<div class="space-y-2">
 						{#each transitions as transition (transition.event)}
 							<div
-								class="p-3 rounded-sm border-2 {transition.can_run
-									? 'border-slate-200 dark:border-slate-700 hover:border-accent-blue dark:hover:border-accent-blue'
-									: 'border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-900/10'} transition-colors"
+								class="p-3 rounded-lg border {transition.can_run
+									? 'border-border hover:border-accent'
+									: 'border-amber-500/30 bg-amber-500/5'} transition-colors shadow-ink"
 							>
 								<div class="flex items-center justify-between gap-3">
 									<div class="min-w-0 flex-1">
 										<div class="flex items-center gap-2">
 											<span
-												class="text-sm font-semibold text-slate-900 dark:text-white"
+												class="text-sm font-semibold text-foreground"
 											>
 												{transition.event}
 											</span>
-											<ChevronRight class="w-4 h-4 text-slate-400" />
+											<ChevronRight class="w-4 h-4 text-muted-foreground" />
 											<span
-												class="text-sm font-bold uppercase text-accent-blue"
+												class="text-sm font-bold uppercase text-accent"
 											>
 												{transition.to}
 											</span>
@@ -366,7 +365,7 @@
 										<button
 											onclick={() => executeTransition(transition.event)}
 											disabled={executing}
-											class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-sm bg-accent-orange hover:bg-accent-orange/90 text-white font-semibold text-xs uppercase tracking-wide transition-all duration-150 disabled:opacity-50"
+											class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent hover:bg-accent/90 text-accent-foreground font-semibold text-xs uppercase tracking-wide transition-all duration-150 disabled:opacity-50 shadow-ink pressable"
 										>
 											{#if executing}
 												<Loader2 class="w-3.5 h-3.5 animate-spin" />
@@ -378,7 +377,7 @@
 									{:else}
 										<button
 											onclick={() => openBlockersForTransition(transition)}
-											class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-sm border-2 border-amber-400 dark:border-amber-500 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 font-semibold text-xs uppercase tracking-wide transition-all duration-150"
+											class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-amber-500/50 bg-amber-500/10 text-amber-600 dark:text-amber-400 font-semibold text-xs uppercase tracking-wide transition-all duration-150 shadow-ink pressable"
 										>
 											<AlertTriangle class="w-3.5 h-3.5" strokeWidth={2.5} />
 											BLOCKED
@@ -388,7 +387,7 @@
 
 								{#if !transition.can_run && transition.failedGuards.length > 0}
 									<div
-										class="mt-2 pt-2 border-t border-amber-200 dark:border-amber-800"
+										class="mt-2 pt-2 border-t border-amber-500/20"
 									>
 										<p class="text-xs text-amber-600 dark:text-amber-400">
 											{transition.failedGuards.length} blocker{transition
@@ -408,7 +407,7 @@
 				<div class="flex justify-end">
 					<button
 						onclick={() => (showTransitionModal = false)}
-						class="px-4 py-2 rounded-sm border-2 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 font-semibold text-sm uppercase tracking-wide transition-colors"
+						class="px-4 py-2 rounded-lg border border-border text-muted-foreground hover:bg-muted font-semibold text-sm uppercase tracking-wide transition-colors shadow-ink pressable"
 					>
 						CANCEL
 					</button>
@@ -430,67 +429,69 @@
 			size="sm"
 		>
 			{#snippet header()}
+				{@const transition = blockedTransition!}
 				<div class="flex items-center gap-3">
-					<div class="p-2 rounded-sm bg-amber-100 dark:bg-amber-900/30">
+					<div class="p-2 rounded-lg bg-amber-500/10">
 						<AlertTriangle
 							class="w-5 h-5 text-amber-600 dark:text-amber-400"
 							strokeWidth={2}
 						/>
 					</div>
 					<div>
-						<h2 class="text-lg font-bold text-slate-900 dark:text-white">
+						<h2 class="text-lg font-bold text-foreground">
 							Transition Blocked
 						</h2>
-						<p class="text-sm text-slate-500 dark:text-slate-400">
-							Requirements not met for "{blockedTransition.event}"
+						<p class="text-sm text-muted-foreground">
+							Requirements not met for "{transition.event}"
 						</p>
 					</div>
 				</div>
 			{/snippet}
 
-			{#snippet body()}
+			{#snippet children()}
+				{@const transition = blockedTransition!}
 				<div class="space-y-4">
 					<!-- Transition Summary -->
 					<div
-						class="flex items-center gap-2 p-3 rounded-sm bg-slate-100 dark:bg-slate-800"
+						class="flex items-center gap-2 p-3 rounded-lg bg-muted"
 					>
 						<span
-							class="text-xs font-bold uppercase text-slate-500 dark:text-slate-400"
+							class="text-xs font-bold uppercase text-muted-foreground"
 						>
 							{localState}
 						</span>
-						<ChevronRight class="w-4 h-4 text-slate-400" />
+						<ChevronRight class="w-4 h-4 text-muted-foreground" />
 						<span
 							class="text-xs font-bold uppercase text-amber-600 dark:text-amber-400"
 						>
-							{blockedTransition.to}
+							{transition.to}
 						</span>
 					</div>
 
 					<!-- Blockers List -->
 					<div class="space-y-2">
 						<p
-							class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400"
+							class="text-xs font-bold uppercase tracking-wider text-muted-foreground"
 						>
-							Blockers ({blockedTransition.failedGuards.length})
+							Blockers ({transition.failedGuards.length})
 						</p>
 						<div class="space-y-2">
-							{#each blockedTransition.failedGuards as guard, index (index)}
+							{#each transition.failedGuards as guard, index (index)}
 								<div
-									class="flex items-start gap-3 p-3 rounded-sm bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800"
+									class="flex items-start gap-3 p-3 rounded-lg bg-amber-500/5 border border-amber-500/20 tx tx-static tx-weak"
 								>
 									<div
-										class="flex-shrink-0 w-5 h-5 rounded-full bg-amber-200 dark:bg-amber-800 flex items-center justify-center"
+										class="flex-shrink-0 w-5 h-5 rounded-full bg-amber-500/20 flex items-center justify-center"
 									>
 										<span
-											class="text-xs font-bold text-amber-700 dark:text-amber-300"
+											class="text-xs font-bold text-amber-600 dark:text-amber-400"
 										>
 											{index + 1}
 										</span>
 									</div>
 									<div class="flex-1 min-w-0">
 										<p
-											class="text-sm font-medium text-amber-800 dark:text-amber-200"
+											class="text-sm font-medium text-amber-700 dark:text-amber-300"
 										>
 											{guardLabel(guard)}
 										</p>
@@ -500,7 +501,7 @@
 						</div>
 					</div>
 
-					<p class="text-xs text-slate-500 dark:text-slate-400">
+					<p class="text-xs text-muted-foreground">
 						Resolve these requirements to enable this transition.
 					</p>
 				</div>
@@ -513,7 +514,7 @@
 							showBlockersModal = false;
 							blockedTransition = null;
 						}}
-						class="px-4 py-2 rounded-sm border-2 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 font-semibold text-sm uppercase tracking-wide transition-colors"
+						class="px-4 py-2 rounded-lg border border-border text-muted-foreground hover:bg-muted font-semibold text-sm uppercase tracking-wide transition-colors shadow-ink pressable"
 					>
 						CLOSE
 					</button>

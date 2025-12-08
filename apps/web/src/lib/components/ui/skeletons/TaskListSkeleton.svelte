@@ -7,7 +7,7 @@
 <div class="space-y-3 sm:space-y-4">
 	{#each Array(count) as _, i}
 		<div
-			class="bg-card border border-border rounded-lg p-3 sm:p-4 animate-pulse shadow-ink"
+			class="bg-card border border-border rounded-lg p-3 sm:p-4 animate-pulse shadow-ink tx tx-grain tx-weak"
 		>
 			<!-- Task header with checkbox, title, and priority -->
 			<div class="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">

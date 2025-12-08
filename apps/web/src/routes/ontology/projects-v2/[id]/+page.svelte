@@ -1,14 +1,8 @@
 <!-- apps/web/src/routes/ontology/projects-v2/[id]/+page.svelte -->
 <!--
-	Ontology Project Detail Page V2 - Scratchpad Ops Design System
+	Ontology Project Detail Page V2 - Inkprint Design System
 
-	Industrial-Creative Workspace for Builders
-	Chaos → Action → Structure
-
-	Design Philosophy:
-	- Scratchpad (chaos): Where thoughts and fragments live (dithered textures)
-	- Workbench (order): Where structure and organization appear (solid utility blocks)
-	- Tools (action): Where transformations happen (tactile buttons)
+	Texture-based semantic design following Inkprint principles.
 -->
 <script lang="ts">
 	import { goto } from '$app/navigation';
@@ -171,11 +165,11 @@
 	function getTaskStateBadgeClass(state: string) {
 		const normalized = state?.toLowerCase() || '';
 		if (normalized === 'done' || normalized === 'completed' || normalized === 'complete') {
-			return 'badge-complete';
+			return 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20';
 		} else if (normalized === 'in_progress' || normalized === 'active') {
-			return 'badge-active';
+			return 'bg-accent/10 text-accent border border-accent/20';
 		}
-		return 'badge-draft';
+		return 'bg-muted text-muted-foreground border border-border';
 	}
 
 	function formatDueDate(dateString: string) {
@@ -372,16 +366,16 @@
 	<title>{project.name} | BuildOS Workspace</title>
 </svelte:head>
 
-<div class="min-h-screen bg-surface-panel dark:bg-slate-950">
-	<!-- Compact Header Bar -->
-	<header class="border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+<div class="min-h-screen bg-background">
+	<!-- Header Bar - Inkprint Frame texture -->
+	<header class="border-b border-border bg-card tx tx-frame tx-weak">
 		<div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-2.5 sm:py-3">
 			<!-- Row 1: Back + Title + Actions -->
 			<div class="flex items-center gap-2 sm:gap-3">
 				<!-- Back Navigation -->
 				<button
 					onclick={() => goto('/ontology')}
-					class="flex-shrink-0 p-1.5 -ml-1.5 rounded text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
+					class="flex-shrink-0 p-1.5 -ml-1.5 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors pressable"
 					title="Back to projects"
 				>
 					<ArrowLeft class="w-4 h-4" strokeWidth={2.5} />
@@ -389,23 +383,23 @@
 
 				<!-- Project Title -->
 				<h1
-					class="flex-1 min-w-0 text-sm sm:text-base lg:text-lg font-semibold text-slate-900 dark:text-white truncate"
+					class="flex-1 min-w-0 text-sm sm:text-base lg:text-lg font-semibold text-foreground truncate"
 				>
 					{project.name}
 				</h1>
 
-				<!-- Project Actions - Compact icon buttons -->
+				<!-- Project Actions -->
 				<div class="flex-shrink-0 flex items-center gap-0.5">
 					<button
 						onclick={() => (showProjectEditModal = true)}
-						class="p-1.5 sm:p-2 rounded text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
+						class="p-1.5 sm:p-2 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors pressable"
 						title="Edit project"
 					>
 						<Pencil class="w-3.5 h-3.5 sm:w-4 sm:h-4" />
 					</button>
 					<button
 						onclick={() => (showDeleteProjectModal = true)}
-						class="p-1.5 sm:p-2 rounded text-slate-500 dark:text-slate-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-500 transition-colors"
+						class="p-1.5 sm:p-2 rounded-lg text-muted-foreground hover:bg-red-500/10 hover:text-red-500 transition-colors pressable"
 						title="Delete project"
 					>
 						<Trash2 class="w-3.5 h-3.5 sm:w-4 sm:h-4" />
@@ -413,7 +407,7 @@
 				</div>
 			</div>
 
-			<!-- Row 2: FSM State Bar (compact, inline) -->
+			<!-- Row 2: FSM State Bar -->
 			<div class="mt-2">
 				{#await import('$lib/components/ontology/FSMStateBar.svelte') then { default: FSMStateBar }}
 					<FSMStateBar
@@ -428,9 +422,9 @@
 		</div>
 	</header>
 
-	<!-- Tab Navigation - Compact on mobile with visible labels -->
+	<!-- Tab Navigation -->
 	<nav
-		class="sticky top-0 z-0 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900"
+		class="sticky top-0 z-10 border-b border-border bg-card shadow-ink"
 	>
 		<div class="max-w-7xl mx-auto px-1.5 sm:px-6 lg:px-8">
 			<div class="flex items-center gap-0 h-10 sm:h-11 overflow-x-auto scrollbar-none">
@@ -438,19 +432,19 @@
 					{@const Icon = tab.icon}
 					<button
 						onclick={() => handleTabChange(tab.id)}
-						class="tab-tool flex items-center gap-1 sm:gap-1.5 whitespace-nowrap text-[11px] sm:text-sm px-1.5 sm:px-3 py-1 sm:py-1.5 {activeTab ===
+						class="flex items-center gap-1 sm:gap-1.5 whitespace-nowrap text-[11px] sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2 font-medium transition-colors pressable {activeTab ===
 						tab.id
-							? 'active'
-							: ''}"
+							? 'text-accent border-b-2 border-accent'
+							: 'text-muted-foreground hover:text-foreground'}"
 					>
 						<Icon class="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" strokeWidth={2.5} />
 						<span>{tab.label}</span>
 						{#if tab.count > 0}
 							<span
-								class="px-1 py-0.5 text-[9px] sm:text-xs font-bold rounded-sm min-w-[14px] text-center {activeTab ===
+								class="px-1.5 py-0.5 text-[9px] sm:text-xs font-bold rounded-lg min-w-[14px] text-center {activeTab ===
 								tab.id
-									? 'bg-accent-orange text-white'
-									: 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'}"
+									? 'bg-accent text-accent-foreground'
+									: 'bg-muted text-muted-foreground'}"
 							>
 								{tab.count}
 							</span>
@@ -461,15 +455,15 @@
 		</div>
 	</nav>
 
-	<!-- Main Content Area - Minimal padding on mobile -->
+	<!-- Main Content Area -->
 	<main class="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 py-3 sm:py-6">
-		<!-- Sync Status Bar - Compact -->
+		<!-- Sync Status Bar -->
 		<div
 			class="mb-3 sm:mb-6 flex items-center justify-between text-[10px] sm:text-xs px-1 sm:px-0"
 		>
-			<div class="flex items-center gap-1.5 sm:gap-2 text-slate-500 dark:text-slate-400">
+			<div class="flex items-center gap-1.5 sm:gap-2 text-muted-foreground">
 				{#if dataRefreshing}
-					<RefreshCw class="w-3 h-3 animate-spin text-accent-blue" />
+					<RefreshCw class="w-3 h-3 animate-spin text-accent" />
 					<span class="hidden sm:inline">Syncing workspace data…</span>
 					<span class="sm:hidden">Syncing…</span>
 				{:else}
@@ -483,36 +477,36 @@
 			<button
 				onclick={() => refreshProjectData()}
 				disabled={dataRefreshing}
-				class="text-accent-blue hover:text-accent-blue/80 font-semibold tracking-wide"
+				class="text-accent hover:text-accent/80 font-semibold tracking-wide pressable"
 			>
 				<RefreshCw class="w-3.5 h-3.5 sm:hidden" />
 				<span class="hidden sm:inline">{dataRefreshing ? 'REFRESHING…' : 'REFRESH'}</span>
 			</button>
 		</div>
 
-		<!-- Tab Content - Reduced padding on mobile -->
-		<div class="industrial-panel rounded-sm p-3 sm:p-6">
+		<!-- Tab Content -->
+		<div class="bg-card border border-border rounded-lg p-3 sm:p-6 shadow-ink tx tx-frame tx-weak">
 			{#if activeTab === 'tasks'}
 				<div class="space-y-3 sm:space-y-6">
-					<!-- Section Header - Compact on mobile -->
+					<!-- Section Header -->
 					<div
-						class="flex items-center justify-between pb-2 sm:pb-4 border-b border-slate-200 dark:border-slate-700"
+						class="flex items-center justify-between pb-2 sm:pb-4 border-b border-border"
 					>
 						<div class="min-w-0">
 							<h2
-								class="text-base sm:text-xl font-bold text-slate-900 dark:text-white truncate"
+								class="text-base sm:text-xl font-bold text-foreground truncate"
 							>
 								Tasks
 							</h2>
 							<p
-								class="hidden sm:block mt-1 text-sm text-slate-600 dark:text-slate-400"
+								class="hidden sm:block mt-1 text-sm text-muted-foreground"
 							>
 								Transform ideas into actionable items
 							</p>
 						</div>
 						<button
 							onclick={() => (showTaskCreateModal = true)}
-							class="btn-tactile px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-sm text-white font-semibold text-xs sm:text-sm tracking-wide flex items-center gap-1.5 sm:gap-2 flex-shrink-0"
+							class="px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-lg bg-accent hover:bg-accent/90 text-accent-foreground font-semibold text-xs sm:text-sm tracking-wide flex items-center gap-1.5 sm:gap-2 flex-shrink-0 shadow-ink pressable"
 						>
 							<Plus class="w-3.5 h-3.5 sm:w-4 sm:h-4" strokeWidth={2.5} />
 							<span class="hidden sm:inline">NEW TASK</span>
@@ -523,25 +517,25 @@
 					<!-- Tasks List -->
 					{#if tasks.length === 0}
 						<div
-							class="dither-pattern dark:dither-pattern-dark rounded-sm p-6 sm:p-12 text-center"
+							class="rounded-lg border-2 border-dashed border-border p-6 sm:p-12 text-center tx tx-bloom tx-weak"
 						>
 							<div class="max-w-md mx-auto space-y-3 sm:space-y-4">
 								<CircleCheck
-									class="w-10 h-10 sm:w-16 sm:h-16 text-slate-400 mx-auto opacity-50"
+									class="w-10 h-10 sm:w-16 sm:h-16 text-muted-foreground mx-auto opacity-50"
 								/>
 								<p
-									class="text-sm sm:text-base text-slate-600 dark:text-slate-400 font-medium"
+									class="text-sm sm:text-base text-muted-foreground font-medium"
 								>
 									No tasks yet
 								</p>
 								<p
-									class="text-xs sm:text-sm text-slate-500 dark:text-slate-500 hidden sm:block"
+									class="text-xs sm:text-sm text-muted-foreground hidden sm:block"
 								>
 									Start building by creating your first task.
 								</p>
 								<button
 									onclick={() => (showTaskCreateModal = true)}
-									class="btn-tactile px-4 sm:px-6 py-2 sm:py-3 rounded-sm text-white font-semibold text-sm tracking-wide inline-flex items-center gap-2"
+									class="px-4 sm:px-6 py-2 sm:py-3 rounded-lg bg-accent hover:bg-accent/90 text-accent-foreground font-semibold text-sm tracking-wide inline-flex items-center gap-2 shadow-ink pressable"
 								>
 									<Plus class="w-4 h-4 sm:w-5 sm:h-5" strokeWidth={2.5} />
 									<span>CREATE TASK</span>
@@ -554,17 +548,17 @@
 								{@const StateIcon = getTaskStateIcon(task.state_key)}
 								<button
 									onclick={() => (editingTaskId = task.id)}
-									class="w-full card-industrial rounded-sm p-2.5 sm:p-4 flex items-start gap-2.5 sm:gap-4 text-left hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all duration-200 hover:shadow-md group"
+									class="w-full bg-card border border-border rounded-lg p-2.5 sm:p-4 flex items-start gap-2.5 sm:gap-4 text-left hover:border-accent/50 transition-all duration-200 shadow-ink group tx tx-grain tx-weak"
 								>
 									<!-- Task State Icon -->
 									<div class="flex-shrink-0 mt-0.5">
 										<StateIcon
 											class="w-4 h-4 sm:w-5 sm:h-5 {task.state_key ===
 												'done' || task.state_key === 'completed'
-												? 'text-accent-orange'
+												? 'text-emerald-500'
 												: task.state_key === 'in_progress'
-													? 'text-accent-blue'
-													: 'text-slate-400'} group-hover:opacity-80 transition-opacity"
+													? 'text-accent'
+													: 'text-muted-foreground'} group-hover:opacity-80 transition-opacity"
 											strokeWidth={2}
 										/>
 									</div>
@@ -572,13 +566,13 @@
 									<!-- Task Content -->
 									<div class="flex-1 min-w-0">
 										<h3
-											class="text-sm sm:text-base font-semibold text-slate-900 dark:text-white group-hover:text-accent-blue transition-colors line-clamp-1"
+											class="text-sm sm:text-base font-semibold text-foreground group-hover:text-accent transition-colors line-clamp-1"
 										>
 											{task.title}
 										</h3>
 										{#if task.props?.description}
 											<p
-												class="mt-0.5 sm:mt-1 text-xs sm:text-sm text-slate-600 dark:text-slate-400 line-clamp-1 sm:line-clamp-2"
+												class="mt-0.5 sm:mt-1 text-xs sm:text-sm text-muted-foreground line-clamp-1 sm:line-clamp-2"
 											>
 												{task.props.description}
 											</p>
@@ -587,7 +581,7 @@
 											class="mt-1.5 sm:mt-2 flex flex-wrap items-center gap-1.5 sm:gap-2 text-[10px] sm:text-xs"
 										>
 											<span
-												class="px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-sm font-semibold {getTaskStateBadgeClass(
+												class="px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-lg font-semibold {getTaskStateBadgeClass(
 													task.state_key
 												)}"
 											>
@@ -595,7 +589,7 @@
 											</span>
 											{#if task.priority}
 												<span
-													class="px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-sm bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold"
+													class="px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-lg bg-muted text-muted-foreground font-semibold border border-border"
 												>
 													P{task.priority}
 												</span>
@@ -606,7 +600,7 @@
 												)}
 												{#if plan}
 													<span
-														class="text-slate-500 dark:text-slate-400 hidden sm:inline"
+														class="text-muted-foreground hidden sm:inline"
 													>
 														Plan: {plan.name}
 													</span>
@@ -621,25 +615,25 @@
 				</div>
 			{:else if activeTab === 'outputs'}
 				<div class="space-y-3 sm:space-y-6">
-					<!-- Section Header - Compact on mobile -->
+					<!-- Section Header -->
 					<div
-						class="flex items-center justify-between pb-2 sm:pb-4 border-b border-slate-200 dark:border-slate-700"
+						class="flex items-center justify-between pb-2 sm:pb-4 border-b border-border"
 					>
 						<div class="min-w-0">
 							<h2
-								class="text-base sm:text-xl font-bold text-slate-900 dark:text-white truncate"
+								class="text-base sm:text-xl font-bold text-foreground truncate"
 							>
 								Outputs
 							</h2>
 							<p
-								class="hidden sm:block mt-1 text-sm text-slate-600 dark:text-slate-400"
+								class="hidden sm:block mt-1 text-sm text-muted-foreground"
 							>
 								Structured deliverables and artifacts
 							</p>
 						</div>
 						<button
 							onclick={() => (showOutputCreateModal = true)}
-							class="btn-tactile px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-sm text-white font-semibold text-xs sm:text-sm tracking-wide flex items-center gap-1.5 sm:gap-2 flex-shrink-0"
+							class="px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-lg bg-accent hover:bg-accent/90 text-accent-foreground font-semibold text-xs sm:text-sm tracking-wide flex items-center gap-1.5 sm:gap-2 flex-shrink-0 shadow-ink pressable"
 						>
 							<Plus class="w-3.5 h-3.5 sm:w-4 sm:h-4" strokeWidth={2.5} />
 							<span class="hidden sm:inline">NEW OUTPUT</span>
@@ -650,25 +644,25 @@
 					<!-- Outputs Grid -->
 					{#if outputs.length === 0}
 						<div
-							class="dither-pattern dark:dither-pattern-dark rounded-sm p-6 sm:p-12 text-center"
+							class="rounded-lg border-2 border-dashed border-border p-6 sm:p-12 text-center tx tx-bloom tx-weak"
 						>
 							<div class="max-w-md mx-auto space-y-3 sm:space-y-4">
 								<FileText
-									class="w-10 h-10 sm:w-16 sm:h-16 text-slate-400 mx-auto opacity-50"
+									class="w-10 h-10 sm:w-16 sm:h-16 text-muted-foreground mx-auto opacity-50"
 								/>
 								<p
-									class="text-sm sm:text-base text-slate-600 dark:text-slate-400 font-medium"
+									class="text-sm sm:text-base text-muted-foreground font-medium"
 								>
 									No outputs yet
 								</p>
 								<p
-									class="text-xs sm:text-sm text-slate-500 dark:text-slate-500 hidden sm:block"
+									class="text-xs sm:text-sm text-muted-foreground hidden sm:block"
 								>
 									Output documents are the tangible deliverables of your work.
 								</p>
 								<button
 									onclick={() => (showOutputCreateModal = true)}
-									class="btn-tactile px-4 sm:px-6 py-2 sm:py-3 rounded-sm text-white font-semibold text-sm tracking-wide inline-flex items-center gap-2"
+									class="px-4 sm:px-6 py-2 sm:py-3 rounded-lg bg-accent hover:bg-accent/90 text-accent-foreground font-semibold text-sm tracking-wide inline-flex items-center gap-2 shadow-ink pressable"
 								>
 									<Plus class="w-4 h-4 sm:w-5 sm:h-5" strokeWidth={2.5} />
 									<span>CREATE OUTPUT</span>
@@ -680,30 +674,30 @@
 							{#each outputs as output}
 								<button
 									onclick={() => (editingOutputId = output.id)}
-									class="card-industrial rounded-sm p-2.5 sm:p-4 text-left hover:shadow-md transition-all duration-200 group"
+									class="bg-card border border-border rounded-lg p-2.5 sm:p-4 text-left hover:border-accent/50 transition-all duration-200 shadow-ink group"
 								>
 									<div class="flex items-start justify-between gap-2 sm:gap-3">
 										<div class="flex-1 min-w-0">
 											<h3
-												class="text-sm sm:text-base font-semibold text-slate-900 dark:text-white group-hover:text-accent-blue transition-colors line-clamp-1"
+												class="text-sm sm:text-base font-semibold text-foreground group-hover:text-accent transition-colors line-clamp-1"
 											>
 												{output.name}
 											</h3>
 											{#if output.props?.word_count}
 												<p
-													class="mt-0.5 sm:mt-1 text-xs sm:text-sm text-slate-600 dark:text-slate-400"
+													class="mt-0.5 sm:mt-1 text-xs sm:text-sm text-muted-foreground"
 												>
 													{output.props.word_count} words
 												</p>
 											{/if}
 										</div>
 										<span
-											class="px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-sm text-[10px] sm:text-xs font-semibold flex-shrink-0 {output.state_key ===
+											class="px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-lg text-[10px] sm:text-xs font-semibold flex-shrink-0 {output.state_key ===
 											'published'
-												? 'badge-complete'
+												? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
 												: output.state_key === 'draft'
-													? 'badge-draft'
-													: 'badge-active'}"
+													? 'bg-muted text-muted-foreground border border-border'
+													: 'bg-accent/10 text-accent border border-accent/20'}"
 										>
 											{output.state_key.toUpperCase()}
 										</span>
@@ -715,25 +709,25 @@
 				</div>
 			{:else if activeTab === 'documents'}
 				<div class="space-y-3 sm:space-y-6">
-					<!-- Section Header - Compact on mobile -->
+					<!-- Section Header -->
 					<div
-						class="flex items-center justify-between pb-2 sm:pb-4 border-b border-slate-200 dark:border-slate-700"
+						class="flex items-center justify-between pb-2 sm:pb-4 border-b border-border"
 					>
 						<div class="min-w-0">
 							<h2
-								class="text-base sm:text-xl font-bold text-slate-900 dark:text-white truncate"
+								class="text-base sm:text-xl font-bold text-foreground truncate"
 							>
 								Documents
 							</h2>
 							<p
-								class="hidden sm:block mt-1 text-sm text-slate-600 dark:text-slate-400"
+								class="hidden sm:block mt-1 text-sm text-muted-foreground"
 							>
 								Knowledge base and reference materials
 							</p>
 						</div>
 						<button
 							onclick={() => openDocumentModal(null)}
-							class="btn-tactile px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-sm text-white font-semibold text-xs sm:text-sm tracking-wide flex items-center gap-1.5 sm:gap-2 flex-shrink-0"
+							class="px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-lg bg-accent hover:bg-accent/90 text-accent-foreground font-semibold text-xs sm:text-sm tracking-wide flex items-center gap-1.5 sm:gap-2 flex-shrink-0 shadow-ink pressable"
 						>
 							<Plus class="w-3.5 h-3.5 sm:w-4 sm:h-4" strokeWidth={2.5} />
 							<span class="hidden sm:inline">NEW DOC</span>
@@ -744,25 +738,25 @@
 					<!-- Documents List -->
 					{#if documents.length === 0}
 						<div
-							class="dither-pattern dark:dither-pattern-dark rounded-sm p-6 sm:p-12 text-center"
+							class="rounded-lg border-2 border-dashed border-border p-6 sm:p-12 text-center tx tx-bloom tx-weak"
 						>
 							<div class="max-w-md mx-auto space-y-3 sm:space-y-4">
 								<FileText
-									class="w-10 h-10 sm:w-16 sm:h-16 text-slate-400 mx-auto opacity-50"
+									class="w-10 h-10 sm:w-16 sm:h-16 text-muted-foreground mx-auto opacity-50"
 								/>
 								<p
-									class="text-sm sm:text-base text-slate-600 dark:text-slate-400 font-medium"
+									class="text-sm sm:text-base text-muted-foreground font-medium"
 								>
 									No documents yet
 								</p>
 								<p
-									class="text-xs sm:text-sm text-slate-500 dark:text-slate-500 hidden sm:block"
+									class="text-xs sm:text-sm text-muted-foreground hidden sm:block"
 								>
 									Documents capture important context and decisions.
 								</p>
 								<button
 									onclick={() => openDocumentModal(null)}
-									class="btn-tactile px-4 sm:px-6 py-2 sm:py-3 rounded-sm text-white font-semibold text-sm tracking-wide inline-flex items-center gap-2"
+									class="px-4 sm:px-6 py-2 sm:py-3 rounded-lg bg-accent hover:bg-accent/90 text-accent-foreground font-semibold text-sm tracking-wide inline-flex items-center gap-2 shadow-ink pressable"
 								>
 									<Plus class="w-4 h-4 sm:w-5 sm:h-5" strokeWidth={2.5} />
 									<span>CREATE DOC</span>
@@ -774,29 +768,29 @@
 							{#each documents as doc}
 								{@const isExpanded = expandedDocumentId === doc.id}
 								{@const preview = getDocumentPreview(doc)}
-								<div class="card-industrial rounded-sm overflow-hidden">
+								<div class="bg-card border border-border rounded-lg overflow-hidden shadow-ink">
 									<button
 										onclick={() => toggleDocumentExpansion(doc.id)}
-										class="w-full p-2.5 sm:p-4 flex items-start gap-2.5 sm:gap-4 text-left hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+										class="w-full p-2.5 sm:p-4 flex items-start gap-2.5 sm:gap-4 text-left hover:bg-muted/50 transition-colors"
 									>
 										<div class="flex-shrink-0 hidden sm:block">
 											<div
-												class="w-10 h-10 rounded-sm bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-800 flex items-center justify-center"
+												class="w-10 h-10 rounded-lg bg-muted flex items-center justify-center"
 											>
 												<FileText
-													class="w-5 h-5 text-slate-600 dark:text-slate-400"
+													class="w-5 h-5 text-muted-foreground"
 												/>
 											</div>
 										</div>
 										<div class="flex-1 min-w-0">
 											<h3
-												class="text-sm sm:text-base font-semibold text-slate-900 dark:text-white line-clamp-1"
+												class="text-sm sm:text-base font-semibold text-foreground line-clamp-1"
 											>
 												{doc.title ?? 'Untitled document'}
 											</h3>
 											{#if preview}
 												<p
-													class="mt-0.5 sm:mt-1 text-xs sm:text-sm text-slate-600 dark:text-slate-400 line-clamp-1 sm:line-clamp-2"
+													class="mt-0.5 sm:mt-1 text-xs sm:text-sm text-muted-foreground line-clamp-1 sm:line-clamp-2"
 												>
 													{preview}
 												</p>
@@ -806,14 +800,14 @@
 											>
 												{#if doc.type_key}
 													<span
-														class="px-1.5 sm:px-2 py-0.5 rounded-sm bg-accent-olive/10 text-accent-olive font-semibold"
+														class="px-1.5 sm:px-2 py-0.5 rounded-lg bg-accent/10 text-accent font-semibold border border-accent/20"
 													>
 														{doc.type_key.toUpperCase()}
 													</span>
 												{/if}
 												{#if doc.updated_at}
 													<span
-														class="text-slate-500 dark:text-slate-400 hidden sm:inline"
+														class="text-muted-foreground hidden sm:inline"
 													>
 														Updated {new Date(
 															doc.updated_at
@@ -823,7 +817,7 @@
 											</div>
 										</div>
 										<ChevronDown
-											class="w-4 h-4 sm:w-5 sm:h-5 text-slate-400 transition-transform flex-shrink-0 {isExpanded
+											class="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground transition-transform flex-shrink-0 {isExpanded
 												? 'rotate-180'
 												: ''}"
 										/>
@@ -831,7 +825,7 @@
 
 									{#if isExpanded}
 										<div
-											class="border-t border-slate-200 dark:border-slate-700 p-3 sm:p-4 bg-slate-50 dark:bg-slate-800/30"
+											class="border-t border-border p-3 sm:p-4 bg-muted/30"
 										>
 											<div
 												class="prose prose-sm dark:prose-invert max-w-none text-xs sm:text-sm"
@@ -839,7 +833,7 @@
 												{#if preview}
 													<p>{preview}</p>
 												{:else}
-													<p class="italic text-slate-500">
+													<p class="italic text-muted-foreground">
 														No content available
 													</p>
 												{/if}
@@ -850,7 +844,7 @@
 														e.stopPropagation();
 														openDocumentModal(doc.id);
 													}}
-													class="px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-sm border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 font-semibold text-[10px] sm:text-xs tracking-wide transition-colors"
+													class="px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg border border-border text-muted-foreground hover:bg-card font-semibold text-[10px] sm:text-xs tracking-wide transition-colors shadow-ink pressable"
 												>
 													<Pencil
 														class="w-3 h-3 sm:w-3.5 sm:h-3.5 inline mr-1"
@@ -867,25 +861,25 @@
 				</div>
 			{:else if activeTab === 'plans'}
 				<div class="space-y-3 sm:space-y-6">
-					<!-- Section Header - Compact on mobile -->
+					<!-- Section Header -->
 					<div
-						class="flex items-center justify-between pb-2 sm:pb-4 border-b border-slate-200 dark:border-slate-700"
+						class="flex items-center justify-between pb-2 sm:pb-4 border-b border-border"
 					>
 						<div class="min-w-0">
 							<h2
-								class="text-base sm:text-xl font-bold text-slate-900 dark:text-white truncate"
+								class="text-base sm:text-xl font-bold text-foreground truncate"
 							>
 								Plans
 							</h2>
 							<p
-								class="hidden sm:block mt-1 text-sm text-slate-600 dark:text-slate-400"
+								class="hidden sm:block mt-1 text-sm text-muted-foreground"
 							>
 								Structured roadmaps and timelines
 							</p>
 						</div>
 						<button
 							onclick={() => (showPlanCreateModal = true)}
-							class="btn-tactile px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-sm text-white font-semibold text-xs sm:text-sm tracking-wide flex items-center gap-1.5 sm:gap-2 flex-shrink-0"
+							class="px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-lg bg-accent hover:bg-accent/90 text-accent-foreground font-semibold text-xs sm:text-sm tracking-wide flex items-center gap-1.5 sm:gap-2 flex-shrink-0 shadow-ink pressable"
 						>
 							<Plus class="w-3.5 h-3.5 sm:w-4 sm:h-4" strokeWidth={2.5} />
 							<span class="hidden sm:inline">NEW PLAN</span>
@@ -896,25 +890,25 @@
 					<!-- Plans Grid -->
 					{#if plans.length === 0}
 						<div
-							class="dither-pattern dark:dither-pattern-dark rounded-sm p-6 sm:p-12 text-center"
+							class="rounded-lg border-2 border-dashed border-border p-6 sm:p-12 text-center tx tx-bloom tx-weak"
 						>
 							<div class="max-w-md mx-auto space-y-3 sm:space-y-4">
 								<Calendar
-									class="w-10 h-10 sm:w-16 sm:h-16 text-slate-400 mx-auto opacity-50"
+									class="w-10 h-10 sm:w-16 sm:h-16 text-muted-foreground mx-auto opacity-50"
 								/>
 								<p
-									class="text-sm sm:text-base text-slate-600 dark:text-slate-400 font-medium"
+									class="text-sm sm:text-base text-muted-foreground font-medium"
 								>
 									No plans yet
 								</p>
 								<p
-									class="text-xs sm:text-sm text-slate-500 dark:text-slate-500 hidden sm:block"
+									class="text-xs sm:text-sm text-muted-foreground hidden sm:block"
 								>
 									Plans organize tasks into phases and timelines.
 								</p>
 								<button
 									onclick={() => (showPlanCreateModal = true)}
-									class="btn-tactile px-4 sm:px-6 py-2 sm:py-3 rounded-sm text-white font-semibold text-sm tracking-wide inline-flex items-center gap-2"
+									class="px-4 sm:px-6 py-2 sm:py-3 rounded-lg bg-accent hover:bg-accent/90 text-accent-foreground font-semibold text-sm tracking-wide inline-flex items-center gap-2 shadow-ink pressable"
 								>
 									<Plus class="w-4 h-4 sm:w-5 sm:h-5" strokeWidth={2.5} />
 									<span>CREATE PLAN</span>
@@ -926,21 +920,21 @@
 							{#each plans as plan}
 								<button
 									onclick={() => (editingPlanId = plan.id)}
-									class="card-industrial rounded-sm p-2.5 sm:p-4 text-left hover:shadow-md transition-all duration-200 group"
+									class="bg-card border border-border rounded-lg p-2.5 sm:p-4 text-left hover:border-accent/50 transition-all duration-200 shadow-ink group"
 								>
 									<div class="flex items-start gap-2 sm:gap-3">
 										<Calendar
-											class="w-4 h-4 sm:w-5 sm:h-5 text-slate-400 mt-0.5 flex-shrink-0"
+											class="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground mt-0.5 flex-shrink-0"
 										/>
 										<div class="flex-1 min-w-0">
 											<h3
-												class="text-sm sm:text-base font-semibold text-slate-900 dark:text-white group-hover:text-accent-blue transition-colors line-clamp-1"
+												class="text-sm sm:text-base font-semibold text-foreground group-hover:text-accent transition-colors line-clamp-1"
 											>
 												{plan.name}
 											</h3>
 											{#if plan.props?.start_date || plan.props?.end_date}
 												<p
-													class="mt-0.5 sm:mt-1 text-xs sm:text-sm text-slate-600 dark:text-slate-400"
+													class="mt-0.5 sm:mt-1 text-xs sm:text-sm text-muted-foreground"
 												>
 													{#if plan.props?.start_date && typeof plan.props.start_date === 'string'}
 														{new Date(
@@ -959,12 +953,12 @@
 											{/if}
 										</div>
 										<span
-											class="px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-sm text-[10px] sm:text-xs font-semibold flex-shrink-0 {plan.state_key ===
+											class="px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-lg text-[10px] sm:text-xs font-semibold flex-shrink-0 {plan.state_key ===
 											'active'
-												? 'badge-active'
+												? 'bg-accent/10 text-accent border border-accent/20'
 												: plan.state_key === 'completed'
-													? 'badge-complete'
-													: 'badge-draft'}"
+													? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
+													: 'bg-muted text-muted-foreground border border-border'}"
 										>
 											{plan.state_key.toUpperCase()}
 										</span>
@@ -976,25 +970,25 @@
 				</div>
 			{:else if activeTab === 'goals'}
 				<div class="space-y-3 sm:space-y-6">
-					<!-- Section Header - Compact on mobile -->
+					<!-- Section Header -->
 					<div
-						class="flex items-center justify-between pb-2 sm:pb-4 border-b border-slate-200 dark:border-slate-700"
+						class="flex items-center justify-between pb-2 sm:pb-4 border-b border-border"
 					>
 						<div class="min-w-0">
 							<h2
-								class="text-base sm:text-xl font-bold text-slate-900 dark:text-white truncate"
+								class="text-base sm:text-xl font-bold text-foreground truncate"
 							>
 								Goals
 							</h2>
 							<p
-								class="hidden sm:block mt-1 text-sm text-slate-600 dark:text-slate-400"
+								class="hidden sm:block mt-1 text-sm text-muted-foreground"
 							>
 								High-level objectives and success criteria
 							</p>
 						</div>
 						<button
 							onclick={() => (showGoalCreateModal = true)}
-							class="btn-tactile px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-sm text-white font-semibold text-xs sm:text-sm tracking-wide flex items-center gap-1.5 sm:gap-2 flex-shrink-0"
+							class="px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-lg bg-accent hover:bg-accent/90 text-accent-foreground font-semibold text-xs sm:text-sm tracking-wide flex items-center gap-1.5 sm:gap-2 flex-shrink-0 shadow-ink pressable"
 						>
 							<Plus class="w-3.5 h-3.5 sm:w-4 sm:h-4" strokeWidth={2.5} />
 							<span class="hidden sm:inline">NEW GOAL</span>
@@ -1005,25 +999,25 @@
 					<!-- Goals List -->
 					{#if goals.length === 0}
 						<div
-							class="dither-pattern dark:dither-pattern-dark rounded-sm p-6 sm:p-12 text-center"
+							class="rounded-lg border-2 border-dashed border-border p-6 sm:p-12 text-center tx tx-bloom tx-weak"
 						>
 							<div class="max-w-md mx-auto space-y-3 sm:space-y-4">
 								<Target
-									class="w-10 h-10 sm:w-16 sm:h-16 text-slate-400 mx-auto opacity-50"
+									class="w-10 h-10 sm:w-16 sm:h-16 text-muted-foreground mx-auto opacity-50"
 								/>
 								<p
-									class="text-sm sm:text-base text-slate-600 dark:text-slate-400 font-medium"
+									class="text-sm sm:text-base text-muted-foreground font-medium"
 								>
 									No goals yet
 								</p>
 								<p
-									class="text-xs sm:text-sm text-slate-500 dark:text-slate-500 hidden sm:block"
+									class="text-xs sm:text-sm text-muted-foreground hidden sm:block"
 								>
 									Goals define what success looks like for this project.
 								</p>
 								<button
 									onclick={() => (showGoalCreateModal = true)}
-									class="btn-tactile px-4 sm:px-6 py-2 sm:py-3 rounded-sm text-white font-semibold text-sm tracking-wide inline-flex items-center gap-2"
+									class="px-4 sm:px-6 py-2 sm:py-3 rounded-lg bg-accent hover:bg-accent/90 text-accent-foreground font-semibold text-sm tracking-wide inline-flex items-center gap-2 shadow-ink pressable"
 								>
 									<Plus class="w-4 h-4 sm:w-5 sm:h-5" strokeWidth={2.5} />
 									<span>CREATE GOAL</span>
@@ -1034,11 +1028,11 @@
 						<div class="space-y-2 sm:space-y-3">
 							{#each goals as goal}
 								{@const isExpanded = expandedGoalId === goal.id}
-								<div class="card-industrial rounded-sm overflow-hidden">
+								<div class="bg-card border border-border rounded-lg overflow-hidden shadow-ink">
 									<div class="p-2.5 sm:p-4">
 										<div class="flex items-start gap-2.5 sm:gap-4">
 											<Target
-												class="w-4 h-4 sm:w-5 sm:h-5 text-accent-orange mt-0.5 flex-shrink-0"
+												class="w-4 h-4 sm:w-5 sm:h-5 text-accent mt-0.5 flex-shrink-0"
 											/>
 											<div class="flex-1 min-w-0">
 												<div
@@ -1046,13 +1040,13 @@
 												>
 													<div class="flex-1 min-w-0">
 														<h3
-															class="text-sm sm:text-base font-semibold text-slate-900 dark:text-white line-clamp-1"
+															class="text-sm sm:text-base font-semibold text-foreground line-clamp-1"
 														>
 															{goal.name}
 														</h3>
 														{#if goal.props?.measurement_criteria}
 															<p
-																class="mt-0.5 sm:mt-1 text-xs sm:text-sm text-slate-600 dark:text-slate-400 line-clamp-1 sm:line-clamp-2"
+																class="mt-0.5 sm:mt-1 text-xs sm:text-sm text-muted-foreground line-clamp-1 sm:line-clamp-2"
 															>
 																{goal.props.measurement_criteria}
 															</p>
@@ -1061,18 +1055,18 @@
 															class="mt-1.5 sm:mt-2 flex flex-wrap items-center gap-1.5 sm:gap-2"
 														>
 															<span
-																class="px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-sm text-[10px] sm:text-xs font-semibold {goal.state_key ===
+																class="px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-lg text-[10px] sm:text-xs font-semibold {goal.state_key ===
 																'achieved'
-																	? 'badge-complete'
+																	? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
 																	: goal.state_key === 'active'
-																		? 'badge-active'
-																		: 'badge-draft'}"
+																		? 'bg-accent/10 text-accent border border-accent/20'
+																		: 'bg-muted text-muted-foreground border border-border'}"
 															>
 																{goal.state_key.toUpperCase()}
 															</span>
 															{#if goal.props?.priority}
 																<span
-																	class="px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-sm bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 text-[10px] sm:text-xs font-semibold hidden sm:inline"
+																	class="px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-lg bg-muted text-muted-foreground text-[10px] sm:text-xs font-semibold hidden sm:inline border border-border"
 																>
 																	{goal.props.priority.toUpperCase()}
 																</span>
@@ -1085,19 +1079,19 @@
 														<button
 															onclick={() =>
 																(editingGoalId = goal.id)}
-															class="p-1.5 sm:p-2 rounded-sm hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+															class="p-1.5 sm:p-2 rounded-lg hover:bg-muted transition-colors pressable"
 														>
 															<Pencil
-																class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-500"
+																class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground"
 															/>
 														</button>
 														<button
 															onclick={() =>
 																toggleGoalExpansion(goal.id)}
-															class="p-1.5 sm:p-2 rounded-sm hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+															class="p-1.5 sm:p-2 rounded-lg hover:bg-muted transition-colors pressable"
 														>
 															<ChevronDown
-																class="w-4 h-4 sm:w-5 sm:h-5 text-slate-400 transition-transform {isExpanded
+																class="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground transition-transform {isExpanded
 																	? 'rotate-180'
 																	: ''}"
 															/>
@@ -1109,10 +1103,10 @@
 
 										{#if isExpanded}
 											<div
-												class="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-slate-200 dark:border-slate-700 space-y-3 sm:space-y-4"
+												class="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-border space-y-3 sm:space-y-4"
 											>
 												<div
-													class="text-xs sm:text-sm text-slate-600 dark:text-slate-400"
+													class="text-xs sm:text-sm text-muted-foreground"
 												>
 													<p>
 														Goal details and milestones would appear
@@ -1132,14 +1126,14 @@
 					{#if requirements.length > 0}
 						<div class="space-y-2 sm:space-y-4">
 							<h3
-								class="text-sm sm:text-lg font-semibold text-slate-900 dark:text-white"
+								class="text-sm sm:text-lg font-semibold text-foreground"
 							>
 								Requirements ({requirements.length})
 							</h3>
 							<div class="space-y-1.5 sm:space-y-2">
 								{#each requirements as req}
 									<div
-										class="p-2.5 sm:p-4 rounded-sm bg-slate-50 dark:bg-slate-800/50 text-xs sm:text-sm text-slate-700 dark:text-slate-300"
+										class="p-2.5 sm:p-4 rounded-lg bg-muted border border-border text-xs sm:text-sm text-foreground"
 									>
 										{req.text}
 									</div>
@@ -1151,21 +1145,21 @@
 					{#if milestones.length > 0}
 						<div class="space-y-2 sm:space-y-4">
 							<h3
-								class="text-sm sm:text-lg font-semibold text-slate-900 dark:text-white"
+								class="text-sm sm:text-lg font-semibold text-foreground"
 							>
 								Milestones ({milestones.length})
 							</h3>
 							<div class="space-y-1.5 sm:space-y-2">
 								{#each milestones as milestone}
 									<div
-										class="p-2.5 sm:p-4 rounded-sm bg-slate-50 dark:bg-slate-800/50 flex items-center justify-between gap-2"
+										class="p-2.5 sm:p-4 rounded-lg bg-muted border border-border flex items-center justify-between gap-2"
 									>
 										<span
-											class="text-xs sm:text-sm text-slate-700 dark:text-slate-300 line-clamp-1"
+											class="text-xs sm:text-sm text-foreground line-clamp-1"
 											>{milestone.title}</span
 										>
 										<span
-											class="text-[10px] sm:text-sm text-slate-500 dark:text-slate-400 flex-shrink-0"
+											class="text-[10px] sm:text-sm text-muted-foreground flex-shrink-0"
 										>
 											{formatDueDate(milestone.due_at)}
 										</span>
@@ -1178,23 +1172,23 @@
 					{#if risks.length > 0}
 						<div class="space-y-2 sm:space-y-4">
 							<h3
-								class="text-sm sm:text-lg font-semibold text-slate-900 dark:text-white"
+								class="text-sm sm:text-lg font-semibold text-foreground"
 							>
 								Risks ({risks.length})
 							</h3>
 							<div class="space-y-1.5 sm:space-y-2">
 								{#each risks as risk}
 									<div
-										class="p-2.5 sm:p-4 rounded-sm bg-slate-50 dark:bg-slate-800/50"
+										class="p-2.5 sm:p-4 rounded-lg bg-muted border border-border tx tx-static tx-weak"
 									>
 										<div class="flex items-center justify-between gap-2">
 											<span
-												class="text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 line-clamp-1"
+												class="text-xs sm:text-sm font-medium text-foreground line-clamp-1"
 											>
 												{risk.title}
 											</span>
 											<span
-												class="px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-sm bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 text-[10px] sm:text-xs font-semibold flex-shrink-0"
+												class="px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-lg bg-red-500/10 text-red-600 dark:text-red-400 text-[10px] sm:text-xs font-semibold flex-shrink-0 border border-red-500/20"
 											>
 												{risk.impact.toUpperCase()}
 											</span>
@@ -1207,9 +1201,9 @@
 
 					{#if requirements.length === 0 && milestones.length === 0 && risks.length === 0}
 						<div
-							class="dither-pattern dark:dither-pattern-dark rounded-sm p-12 text-center"
+							class="rounded-lg border-2 border-dashed border-border p-12 text-center"
 						>
-							<p class="text-slate-600 dark:text-slate-400">
+							<p class="text-muted-foreground">
 								No additional project entities yet
 							</p>
 						</div>
@@ -1235,8 +1229,8 @@
 			on:cancel={() => (showDeleteProjectModal = false)}
 		>
 			{#snippet content()}
-				<p class="text-sm text-slate-600 dark:text-slate-300">
-					This will permanently delete <span class="font-semibold">{project.name}</span> and
+				<p class="text-sm text-muted-foreground">
+					This will permanently delete <span class="font-semibold text-foreground">{project.name}</span> and
 					all related data. This action cannot be undone.
 				</p>
 			{/snippet}

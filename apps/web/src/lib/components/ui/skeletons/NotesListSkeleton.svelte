@@ -1,4 +1,5 @@
 <!-- apps/web/src/lib/components/ui/skeletons/NotesListSkeleton.svelte -->
+<!-- Inkprint Design System -->
 <script lang="ts">
 	export let count = 3;
 </script>
@@ -6,7 +7,7 @@
 <div class="space-y-4">
 	{#each Array(count) as _, i}
 		<div
-			class="bg-card rounded-lg p-6 shadow-sm border border-border animate-pulse"
+			class="bg-card rounded-lg p-6 shadow-ink border border-border animate-pulse tx tx-grain tx-weak"
 		>
 			<!-- Note header -->
 			<div class="flex items-start justify-between mb-4">
@@ -21,8 +22,8 @@
 				</div>
 				<!-- Actions -->
 				<div class="flex gap-2">
-					<div class="h-8 w-8 bg-muted rounded"></div>
-					<div class="h-8 w-8 bg-muted rounded"></div>
+					<div class="h-8 w-8 bg-muted rounded-lg"></div>
+					<div class="h-8 w-8 bg-muted rounded-lg"></div>
 				</div>
 			</div>
 

@@ -1,5 +1,6 @@
 <!-- apps/web/src/lib/components/ui/skeletons/ProjectCardSkeleton.svelte -->
-<div class="project-card-skeleton">
+<!-- Inkprint Design System -->
+<div class="project-card-skeleton tx tx-grain tx-weak">
 	<!-- Header - matches ProjectCard line 101-128 -->
 	<div class="skeleton-header">
 		<div class="skeleton-title-row">
