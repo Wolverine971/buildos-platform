@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/components/INKPRINT_DESIGN_SYSTEM.md -->
+
 # BuildOS Inkprint Design System
 
 > **Version:** 1.0

@@ -1,4 +1,5 @@
 <!-- apps/web/src/lib/components/agent/ProjectFocusIndicator.svelte -->
+<!-- INKPRINT Design System: Compact focus indicator badge -->
 <script lang="ts">
 	import { Target } from 'lucide-svelte';
 	import type { ProjectFocus } from '@buildos/shared-types';
@@ -39,18 +40,18 @@
 </script>
 
 {#if focus}
-	<!-- Ultra-compact inline focus indicator - mobile optimized -->
+	<!-- INKPRINT compact inline focus indicator -->
 	<span class="inline-flex items-center gap-0.5 text-xs sm:gap-1">
-		<!-- Focus type emoji: Smaller on mobile -->
+		<!-- Focus type emoji -->
 		<span class="text-[11px] sm:text-xs" aria-hidden="true">
 			{focusIcons[focus.focusType] || '🔍'}
 		</span>
 
-		<!-- Focus label with interactive actions: More compact on mobile -->
+		<!-- INKPRINT focus label button -->
 		<button
 			type="button"
 			onclick={() => onChangeFocus?.()}
-			class="inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-xs font-medium text-blue-700 transition-all hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-950/50 sm:px-1.5"
+			class="inline-flex items-center gap-0.5 rounded-lg px-1 py-0.5 text-xs font-medium text-accent transition-all hover:bg-accent/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:px-1.5"
 			title={resolvedLabel}
 		>
 			<!-- Narrower max-width on mobile for high density -->
@@ -63,11 +64,11 @@
 			{/if}
 		</button>
 
-		<!-- Clear button: More compact on mobile -->
+		<!-- INKPRINT clear button -->
 		{#if onClearFocus && focus.focusType !== 'project-wide'}
 			<button
 				type="button"
-				class="ml-0 rounded px-0.5 py-0.5 text-[10px] font-medium text-slate-500 transition-all hover:bg-slate-100 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200 sm:ml-0.5 sm:px-1"
+				class="ml-0 rounded-lg px-0.5 py-0.5 text-[0.65rem] font-medium text-muted-foreground transition-all hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:ml-0.5 sm:px-1"
 				onclick={() => onClearFocus?.()}
 				aria-label="Clear focus"
 			>

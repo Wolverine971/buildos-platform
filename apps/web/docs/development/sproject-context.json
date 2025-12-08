@@ -134,6 +134,24 @@
 			]
 		},
 		{
+			"file": "src/routes/ontology/projects-v2/[id]/+page.svelte",
+			"type": "page",
+			"components": [
+				"FSMStateBar",
+				"ConfirmationModal",
+				"OntologyProjectEditModal",
+				"TaskCreateModal",
+				"TaskEditModal",
+				"OutputCreateModal",
+				"OutputEditModal",
+				"PlanCreateModal",
+				"PlanEditModal",
+				"GoalCreateModal",
+				"GoalEditModal",
+				"DocumentModal"
+			]
+		},
+		{
 			"file": "src/routes/ontology/projects/[id]/+page.svelte",
 			"type": "page",
 			"components": [
@@ -152,24 +170,6 @@
 				"GoalCreateModal",
 				"GoalEditModal",
 				"GoalReverseEngineerModal"
-			]
-		},
-		{
-			"file": "src/routes/ontology/projects-v2/[id]/+page.svelte",
-			"type": "page",
-			"components": [
-				"FSMStateBar",
-				"ConfirmationModal",
-				"OntologyProjectEditModal",
-				"TaskCreateModal",
-				"TaskEditModal",
-				"OutputCreateModal",
-				"OutputEditModal",
-				"PlanCreateModal",
-				"PlanEditModal",
-				"GoalCreateModal",
-				"GoalEditModal",
-				"DocumentModal"
 			]
 		},
 		{

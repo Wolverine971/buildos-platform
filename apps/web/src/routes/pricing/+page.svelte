@@ -94,10 +94,10 @@
 
 				{#if error}
 					<div class="max-w-md mx-auto mb-8" role="alert" aria-live="polite">
-						<div class="badge-draft text-red-800 dark:text-red-300 p-4">
+						<div class="bg-destructive/10 border border-destructive/30 rounded-lg p-4">
 							<div class="flex items-center">
-								<AlertCircle class="h-5 w-5 text-red-600 mr-2" />
-								<p>{error}</p>
+								<AlertCircle class="h-5 w-5 text-destructive mr-2" />
+								<p class="text-destructive">{error}</p>
 							</div>
 						</div>
 					</div>
@@ -114,7 +114,9 @@
 					{#if data.trialStatus?.is_in_trial}
 						<!-- Trial Badge -->
 						<div class="absolute -top-3 left-1/2 transform -translate-x-1/2">
-							<span class="badge-active">
+							<span
+								class="bg-accent text-accent-foreground px-3 py-1 rounded-full text-sm font-semibold shadow-ink"
+							>
 								{data.trialStatus.days_until_trial_end} Days Left in Trial
 							</span>
 						</div>
@@ -138,35 +140,35 @@
 
 					<ul class="space-y-4 mb-8" role="list" aria-label="Plan features">
 						<li class="flex items-center">
-							<Check class="w-5 h-5 text-primary-500 mr-3 flex-shrink-0" />
+							<Check class="w-5 h-5 text-accent mr-3 flex-shrink-0" />
 							<span class="text-muted-foreground">Unlimited projects</span>
 						</li>
 						<li class="flex items-center">
-							<Check class="w-5 h-5 text-primary-500 mr-3 flex-shrink-0" />
+							<Check class="w-5 h-5 text-accent mr-3 flex-shrink-0" />
 							<span class="text-muted-foreground">AI-powered brain dump parsing</span>
 						</li>
 						<li class="flex items-center">
-							<Check class="w-5 h-5 text-primary-500 mr-3 flex-shrink-0" />
+							<Check class="w-5 h-5 text-accent mr-3 flex-shrink-0" />
 							<span class="text-muted-foreground">Advanced task automation</span>
 						</li>
 						<li class="flex items-center">
-							<Check class="w-5 h-5 text-primary-500 mr-3 flex-shrink-0" />
+							<Check class="w-5 h-5 text-accent mr-3 flex-shrink-0" />
 							<span class="text-muted-foreground">Daily AI insights & briefs</span>
 						</li>
 						<li class="flex items-center">
-							<Check class="w-5 h-5 text-primary-500 mr-3 flex-shrink-0" />
+							<Check class="w-5 h-5 text-accent mr-3 flex-shrink-0" />
 							<span class="text-muted-foreground">Goal-task alignment tracking</span>
 						</li>
 						<li class="flex items-center">
-							<Check class="w-5 h-5 text-primary-500 mr-3 flex-shrink-0" />
+							<Check class="w-5 h-5 text-accent mr-3 flex-shrink-0" />
 							<span class="text-muted-foreground">Priority email support</span>
 						</li>
 						<li class="flex items-center">
-							<Check class="w-5 h-5 text-primary-500 mr-3 flex-shrink-0" />
+							<Check class="w-5 h-5 text-accent mr-3 flex-shrink-0" />
 							<span class="text-muted-foreground">Calendar integrations</span>
 						</li>
 						<li class="flex items-center">
-							<Check class="w-5 h-5 text-primary-500 mr-3 flex-shrink-0" />
+							<Check class="w-5 h-5 text-accent mr-3 flex-shrink-0" />
 							<span class="text-muted-foreground">Data export</span>
 						</li>
 					</ul>
@@ -212,7 +214,7 @@
 		<div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
 			<div class="text-center mb-16">
 				<h2 class="text-4xl font-bold text-foreground mb-6">
-					Frequently Asked <span class="text-primary-600">Questions</span>
+					Frequently Asked <span class="text-accent">Questions</span>
 				</h2>
 			</div>
 

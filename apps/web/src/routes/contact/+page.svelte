@@ -157,7 +157,7 @@
 									class="rounded-lg border border-border bg-card shadow-ink w-12 h-12 rounded-sm flex items-center justify-center"
 								>
 									<Icon
-										class="w-6 h-6 text-gray-700 dark:text-gray-200 group-hover:scale-110 transition-transform"
+										class="w-6 h-6 text-foreground group-hover:scale-110 transition-transform"
 									/>
 								</div>
 							</div>
@@ -239,7 +239,7 @@
 						Dad, former USMC Scout Sniper, creator of <a
 							href="https://9takes.com"
 							target="_blank"
-							class="text-accent hover:brightness-110">9takes</a
+							class="text-accent hover:text-accent/80">9takes</a
 						>, Tiny Tibe Adventures, The Cadre Training. Software engineer with
 						YC-backed startup experience (Curri).
 					</p>
@@ -266,7 +266,7 @@
 						<div
 							class="rounded-lg border border-border bg-card shadow-ink w-12 h-12 rounded-sm flex items-center justify-center mb-4 mx-auto group-hover:scale-110 transition-transform"
 						>
-							<MethodIcon class="w-6 h-6 text-gray-700 dark:text-gray-200" />
+							<MethodIcon class="w-6 h-6 text-foreground" />
 						</div>
 						<h3 class="font-semibold text-foreground text-center mb-2">
 							{method.title}
@@ -291,7 +291,7 @@
 								: {}}
 							class="inline-flex items-center space-x-2 px-4 py-2 rounded-lg border border-border bg-card shadow-ink hover:brightness-105 transition-all"
 						>
-							<FounderIcon class="w-4 h-4 text-gray-700 dark:text-gray-200" />
+							<FounderIcon class="w-4 h-4 text-foreground" />
 							<div class="text-left">
 								<span class="block text-sm font-medium text-foreground"
 									>{founder.title}</span

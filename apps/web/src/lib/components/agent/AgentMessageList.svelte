@@ -1,4 +1,5 @@
 <!-- apps/web/src/lib/components/agent/AgentMessageList.svelte -->
+<!-- INKPRINT Design System: Message list with semantic textures -->
 <script lang="ts">
 	import ThinkingBlock from './ThinkingBlock.svelte';
 	import { renderMarkdown, getProseClasses } from '$lib/utils/markdown';
@@ -26,41 +27,39 @@
 	const proseClasses = getProseClasses('sm');
 </script>
 
-<!-- ✅ Industrial message container with proper light/dark dithered background -->
+<!-- INKPRINT message container with muted background -->
 <div
 	bind:this={container}
 	onscroll={onScroll}
-	class="agent-chat-scroll flex-1 min-h-0 space-y-2 overflow-y-auto bg-gray-50 px-3 py-3 dark:bg-slate-900/50 sm:px-4 sm:py-4"
+	class="agent-chat-scroll flex-1 min-h-0 space-y-2 overflow-y-auto bg-muted px-3 py-3 sm:px-4 sm:py-4"
 >
 	{#if messages.length === 0}
-		<!-- ✅ Industrial empty state card with proper light/dark mode -->
+		<!-- INKPRINT empty state card with Bloom texture -->
 		<div
-			class="card-industrial rounded-sm border-2 border-dashed border-slate-300 bg-white px-4 py-3 dark:border-slate-600 dark:bg-slate-800/50 sm:px-5 sm:py-4"
+			class="rounded-lg border-2 border-dashed border-border bg-card px-4 py-3 tx tx-bloom tx-weak shadow-ink sm:px-5 sm:py-4"
 		>
 			<div class="space-y-2">
-				<!-- ✅ Industrial heading -->
-				<p
-					class="font-bold uppercase tracking-wider text-slate-900 dark:text-white text-sm"
-				>
-					Ready to Operate
+				<!-- INKPRINT micro-label heading -->
+				<p class="text-[0.65rem] font-bold uppercase tracking-[0.15em] text-accent">
+					READY TO OPERATE
 				</p>
-				<!-- ✅ Industrial description -->
-				<p class="text-xs font-medium leading-relaxed text-slate-600 dark:text-slate-400">
+				<!-- Body text -->
+				<p class="text-sm font-medium leading-relaxed text-muted-foreground">
 					Ask BuildOS to plan, explain, or take the next step for
 					{displayContextLabel.toLowerCase()}.
 				</p>
-				<!-- ✅ Industrial task list -->
-				<ul class="space-y-1.5 text-xs font-medium text-slate-500 dark:text-slate-400">
+				<!-- Suggestion list -->
+				<ul class="space-y-1.5 text-sm font-medium text-muted-foreground">
 					<li class="flex items-start gap-2">
-						<span class="mt-0.5 text-accent-olive">▸</span>
+						<span class="mt-0.5 text-accent">▸</span>
 						<span>Summarize where this stands</span>
 					</li>
 					<li class="flex items-start gap-2">
-						<span class="mt-0.5 text-accent-olive">▸</span>
+						<span class="mt-0.5 text-accent">▸</span>
 						<span>Draft the next update</span>
 					</li>
 					<li class="flex items-start gap-2">
-						<span class="mt-0.5 text-accent-olive">▸</span>
+						<span class="mt-0.5 text-accent">▸</span>
 						<span>What should we do next?</span>
 					</li>
 				</ul>
@@ -69,33 +68,33 @@
 	{:else}
 		{#each messages as message (message.id)}
 			{#if message.type === 'user'}
-				<!-- ✅ Industrial user message with proper light/dark contrast -->
+				<!-- INKPRINT user message with accent border -->
 				<div class="flex justify-end">
 					<div
-						class="max-w-[88%] rounded-sm border-2 border-blue-400 bg-blue-50 px-3 py-2.5 text-xs font-medium text-slate-900 shadow-sm dark:border-blue-600 dark:bg-blue-900/20 dark:text-slate-100 sm:max-w-[85%] sm:px-4 sm:py-3"
+						class="max-w-[88%] rounded-lg border border-accent/30 bg-accent/5 px-3 py-2.5 text-sm font-medium text-foreground shadow-ink sm:max-w-[85%] sm:px-4 sm:py-3"
 					>
 						<div class="whitespace-pre-wrap break-words leading-relaxed">
 							{message.content}
 						</div>
-						<!-- ✅ Industrial timestamp with proper contrast -->
+						<!-- INKPRINT micro-label timestamp -->
 						<div
-							class="mt-1.5 text-[11px] font-semibold uppercase tracking-wider text-blue-600 dark:text-blue-400"
+							class="mt-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-accent"
 						>
 							{formatTime(message.timestamp)}
 						</div>
 					</div>
 				</div>
 			{:else if message.type === 'assistant'}
-				<!-- ✅ Industrial assistant message with proper light/dark contrast -->
+				<!-- INKPRINT assistant message with Frame texture -->
 				<div class="flex gap-2 sm:gap-3">
-					<!-- ✅ Industrial avatar with better contrast -->
+					<!-- INKPRINT avatar badge -->
 					<div
-						class="flex h-8 w-8 shrink-0 items-center justify-center rounded-sm border-2 border-slate-400 bg-slate-700 text-[10px] font-bold uppercase text-white dark:border-slate-500 dark:bg-slate-600 sm:h-9 sm:w-9 sm:text-xs"
+						class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border bg-foreground text-[0.65rem] font-bold uppercase tracking-[0.1em] text-background shadow-ink sm:h-9 sm:w-9"
 					>
 						OS
 					</div>
 					<div
-						class="agent-resp-div clarity-zone max-w-[88%] rounded-sm border-2 border-slate-300 bg-white px-3 py-2.5 text-xs font-medium leading-relaxed text-slate-900 shadow-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 sm:max-w-[85%] sm:px-4 sm:py-3"
+						class="agent-resp-div clarity-zone max-w-[88%] rounded-lg border border-border bg-card px-3 py-2.5 text-sm font-medium leading-relaxed text-foreground shadow-ink tx tx-frame tx-weak sm:max-w-[85%] sm:px-4 sm:py-3"
 					>
 						{#if shouldRenderAsMarkdown(message.content)}
 							<div class={proseClasses}>
@@ -106,24 +105,24 @@
 								{message.content}
 							</div>
 						{/if}
-						<!-- ✅ Industrial timestamp -->
+						<!-- INKPRINT micro-label timestamp -->
 						<div
-							class="mt-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400"
+							class="mt-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-muted-foreground"
 						>
 							{formatTime(message.timestamp)}
 						</div>
 					</div>
 				</div>
 			{:else if message.type === 'agent_peer'}
-				<!-- ✅ Industrial agent peer message with proper light/dark contrast -->
+				<!-- INKPRINT agent peer message with Thread texture -->
 				<div class="flex gap-2 sm:gap-3">
 					<div
-						class="flex h-8 w-8 shrink-0 items-center justify-center rounded-sm border-2 border-orange-400 bg-orange-100 text-[10px] font-bold uppercase text-orange-700 dark:border-orange-600 dark:bg-orange-900/30 dark:text-orange-400 sm:h-9 sm:w-9 sm:text-xs"
+						class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-amber-600/30 bg-amber-50 text-[0.65rem] font-bold uppercase tracking-[0.1em] text-amber-700 shadow-ink tx tx-thread tx-weak dark:bg-amber-950/30 dark:text-amber-400 sm:h-9 sm:w-9"
 					>
 						AI↔
 					</div>
 					<div
-						class="max-w-[88%] rounded-sm border-2 border-orange-300 bg-orange-50 px-3 py-2.5 text-xs font-medium leading-relaxed text-slate-900 shadow-sm dark:border-orange-700 dark:bg-orange-900/10 dark:text-slate-100 sm:max-w-[85%] sm:px-4 sm:py-3"
+						class="max-w-[88%] rounded-lg border border-amber-600/20 bg-amber-50/50 px-3 py-2.5 text-sm font-medium leading-relaxed text-foreground shadow-ink tx tx-thread tx-weak dark:bg-amber-950/10 sm:max-w-[85%] sm:px-4 sm:py-3"
 					>
 						{#if shouldRenderAsMarkdown(message.content)}
 							<div class={proseClasses}>
@@ -134,9 +133,9 @@
 								{message.content}
 							</div>
 						{/if}
-						<!-- ✅ Industrial timestamp with proper contrast -->
+						<!-- INKPRINT micro-label timestamp -->
 						<div
-							class="mt-1.5 text-[11px] font-semibold uppercase tracking-wider text-orange-600 dark:text-orange-400"
+							class="mt-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-amber-600 dark:text-amber-400"
 						>
 							{formatTime(message.timestamp)}
 						</div>
@@ -148,31 +147,31 @@
 					onToggleCollapse={onToggleThinkingBlock}
 				/>
 			{:else if message.type === 'clarification'}
-				<!-- ✅ Industrial clarification message with proper light/dark contrast -->
+				<!-- INKPRINT clarification message with Bloom texture -->
 				<div class="flex gap-2 sm:gap-3">
 					<div
-						class="flex h-8 w-8 shrink-0 items-center justify-center rounded-sm border-2 border-green-500 bg-green-100 text-[10px] font-bold uppercase text-green-700 dark:border-green-600 dark:bg-green-900/30 dark:text-green-400 sm:h-9 sm:w-9 sm:text-xs"
+						class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-emerald-600/30 bg-emerald-50 text-[0.65rem] font-bold uppercase tracking-[0.1em] text-emerald-700 shadow-ink tx tx-bloom tx-weak dark:bg-emerald-950/30 dark:text-emerald-400 sm:h-9 sm:w-9"
 					>
 						AI
 					</div>
 					<div
-						class="max-w-[90%] rounded-sm border-2 border-green-300 bg-green-50 px-3 py-3 text-xs font-medium leading-relaxed text-slate-900 shadow-sm dark:border-green-700 dark:bg-green-900/10 dark:text-slate-100 sm:max-w-[88%] sm:px-4 sm:py-3.5"
+						class="max-w-[90%] rounded-lg border border-emerald-600/20 bg-emerald-50/50 px-3 py-3 text-sm font-medium leading-relaxed text-foreground shadow-ink tx tx-bloom tx-weak dark:bg-emerald-950/10 sm:max-w-[88%] sm:px-4 sm:py-3.5"
 					>
-						<!-- ✅ Industrial heading -->
+						<!-- INKPRINT micro-label heading -->
 						<p
-							class="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white"
+							class="text-[0.65rem] font-bold uppercase tracking-[0.15em] text-foreground"
 						>
 							{message.content}
 						</p>
 
 						{#if message.data?.questions?.length}
-							<!-- ✅ Industrial questions list -->
-							<ol class="mt-3 space-y-2 text-xs text-slate-700 dark:text-slate-200">
+							<!-- INKPRINT questions list -->
+							<ol class="mt-3 space-y-2 text-sm text-foreground">
 								{#each message.data.questions as question, i}
 									<li class="flex gap-2 font-medium leading-relaxed sm:gap-2.5">
-										<!-- ✅ Industrial number badge -->
+										<!-- INKPRINT number badge -->
 										<span
-											class="flex h-5 w-5 shrink-0 items-center justify-center rounded-sm bg-slate-900 text-[10px] font-bold text-surface-scratch shadow dark:bg-slate-700"
+											class="flex h-5 w-5 shrink-0 items-center justify-center rounded-lg bg-foreground text-[0.65rem] font-bold text-background shadow-ink"
 										>
 											{i + 1}
 										</span>
@@ -182,14 +181,14 @@
 							</ol>
 						{/if}
 
-						<!-- ✅ Industrial hint -->
+						<!-- INKPRINT hint -->
 						<p
-							class="mt-3 text-[11px] font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400"
+							class="mt-3 text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-muted-foreground"
 						>
 							Share the answers in your next message to continue
 						</p>
 						<div
-							class="mt-1.5 text-[11px] font-semibold uppercase tracking-wider text-green-600 dark:text-green-400"
+							class="mt-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-emerald-600 dark:text-emerald-400"
 						>
 							{formatTime(message.timestamp)}
 						</div>
@@ -198,34 +197,32 @@
 			{:else if message.type === 'plan'}
 				{#if dev}
 					<div
-						class="rounded-md bg-amber-100 px-2 py-1 text-[11px] text-amber-800 dark:bg-amber-900/20 dark:text-amber-300"
+						class="rounded-lg border border-amber-600/30 bg-amber-50 px-2 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-amber-700 tx tx-static tx-weak dark:bg-amber-950/20 dark:text-amber-400"
 					>
 						⚠️ Dev Warning: Legacy plan message
 					</div>
 				{/if}
-				<!-- ✅ Legacy plan: gap-1.5, compact padding -->
-				<div class="flex gap-1.5 text-[11px] text-slate-500 dark:text-slate-400">
-					<div
-						class="w-12 shrink-0 pt-[2px] text-[10px] font-mono text-slate-400 dark:text-slate-500"
-					>
+				<!-- Legacy plan with INKPRINT styling -->
+				<div class="flex gap-1.5 text-[0.65rem] text-muted-foreground">
+					<div class="w-12 shrink-0 pt-[2px] font-mono uppercase tracking-[0.1em]">
 						{formatTime(message.timestamp)}
 					</div>
 					<div
-						class="max-w-[75%] rounded-lg border border-slate-200 bg-white/80 px-2 py-1.5 text-[11px] leading-snug text-slate-700 shadow-sm dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-100"
+						class="max-w-[75%] rounded-lg border border-border bg-card px-2 py-1.5 text-sm leading-snug text-foreground shadow-ink"
 					>
-						<p class="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+						<p
+							class="text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-muted-foreground"
+						>
 							Plan
 						</p>
-						<p class="mt-0.5 text-slate-800 dark:text-slate-50">
+						<p class="mt-0.5 text-foreground">
 							{message.content}
 						</p>
 						{#if message.data?.steps}
-							<ol
-								class="mt-1 space-y-0.5 text-[11px] text-slate-600 dark:text-slate-300"
-							>
+							<ol class="mt-1 space-y-0.5 text-sm text-muted-foreground">
 								{#each message.data.steps as step}
 									<li class="flex gap-1.5 leading-tight">
-										<span class="w-3 text-right font-semibold text-slate-400">
+										<span class="w-3 text-right font-semibold">
 											{step.stepNumber}.
 										</span>
 										<span class="flex-1">
@@ -240,34 +237,30 @@
 			{:else if message.type === 'activity'}
 				{#if dev}
 					<div
-						class="rounded-md bg-amber-100 px-2 py-1 text-[11px] text-amber-800 dark:bg-amber-900/20 dark:text-amber-300"
+						class="rounded-lg border border-amber-600/30 bg-amber-50 px-2 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-amber-700 tx tx-static tx-weak dark:bg-amber-950/20 dark:text-amber-400"
 					>
 						⚠️ Dev Warning: Legacy activity message
 					</div>
 				{/if}
-				<!-- ✅ Legacy activity: gap-1.5, compact padding -->
-				<div class="flex gap-1.5 text-[11px] text-slate-500 dark:text-slate-400">
-					<div
-						class="w-12 shrink-0 pt-[2px] font-mono text-slate-400 dark:text-slate-500"
-					>
+				<!-- Legacy activity with INKPRINT styling -->
+				<div class="flex gap-1.5 text-[0.65rem] text-muted-foreground">
+					<div class="w-12 shrink-0 pt-[2px] font-mono uppercase tracking-[0.1em]">
 						{formatTime(message.timestamp)}
 					</div>
 					<div
-						class="max-w-[65%] rounded-md border border-slate-200/70 bg-slate-50/70 px-2 py-1 text-[11px] font-medium italic leading-tight text-slate-600 shadow-sm dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-300"
+						class="max-w-[65%] rounded-lg border border-border bg-muted px-2 py-1 text-sm font-medium italic leading-tight text-muted-foreground shadow-ink"
 					>
 						<p class="leading-snug">{message.content}</p>
 					</div>
 				</div>
 			{:else}
-				<!-- ✅ Default message: gap-1.5, compact padding -->
-				<div class="flex gap-1.5 text-[11px] text-slate-500 dark:text-slate-400">
-					<div
-						class="w-12 shrink-0 pt-[2px] font-mono text-slate-400 dark:text-slate-500"
-					>
+				<!-- Default message with INKPRINT styling -->
+				<div class="flex gap-1.5 text-[0.65rem] text-muted-foreground">
+					<div class="w-12 shrink-0 pt-[2px] font-mono uppercase tracking-[0.1em]">
 						{formatTime(message.timestamp)}
 					</div>
 					<div
-						class="max-w-[65%] rounded-md border border-slate-200/70 bg-slate-50/70 px-2 py-1 text-[11px] font-medium italic leading-tight text-slate-600 shadow-sm dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-300"
+						class="max-w-[65%] rounded-lg border border-border bg-muted px-2 py-1 text-sm font-medium italic leading-tight text-muted-foreground shadow-ink"
 					>
 						<p class="leading-snug">{message.content}</p>
 					</div>

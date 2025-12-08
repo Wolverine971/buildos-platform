@@ -2,8 +2,6 @@
 <script lang="ts">
 	import '../app.css';
 	import '$lib/styles/pwa.css';
-	// import '$lib/styles/dithering.css';
-	// import '$lib/styles/scratchpad-ops.css';
 	import { ModeWatcher } from 'mode-watcher';
 	import { setContext, onMount, onDestroy, untrack } from 'svelte';
 	import { page } from '$app/stores';

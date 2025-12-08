@@ -432,7 +432,7 @@
 		<div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
 			<div class="text-center mb-16">
 				<h2 class="text-3xl md:text-4xl font-bold text-foreground mb-6">
-					Why Your Feedback <span class="text-blue-600">Matters</span>
+					Why Your Feedback <span class="text-accent">Matters</span>
 				</h2>
 				<p class="text-lg text-muted-foreground max-w-3xl mx-auto">
 					As a solo founder building BuildOS, your input directly shapes the product
@@ -488,7 +488,7 @@
 		<div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
 			<div class="text-center mb-16">
 				<h2 class="text-3xl md:text-4xl font-bold text-foreground mb-6">
-					Feedback in <span class="text-green-600">Action</span>
+					Feedback in <span class="text-accent">Action</span>
 				</h2>
 				<p class="text-lg text-muted-foreground max-w-3xl mx-auto">
 					Here are some recent examples of how user feedback directly improved BuildOS.
@@ -596,7 +596,7 @@
 			<div class="grid grid-cols-1 md:grid-cols-2 gap-8">
 				<a
 					href="/contact"
-					class="bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800 rounded-lg p-8 hover:shadow-ink transition-all duration-300 group text-left"
+					class="bg-accent/10 border border-accent/30 rounded-lg p-8 hover:shadow-ink transition-all duration-300 group text-left"
 				>
 					<div
 						class="flex items-center justify-center w-12 h-12 bg-accent/10 rounded-lg mb-4 group-hover:scale-110 transition-transform"

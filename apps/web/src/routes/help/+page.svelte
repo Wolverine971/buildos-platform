@@ -49,7 +49,7 @@
 			<!-- Search Bar -->
 			<div class="relative max-w-2xl mx-auto">
 				<div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-					<Search class="h-5 w-5 text-gray-400" />
+					<Search class="h-5 w-5 text-muted-foreground" />
 				</div>
 				<TextInput
 					type="text"
@@ -327,17 +327,17 @@
 	</section>
 
 	<!-- Beta Notice -->
-	<section class=" my-4 py-16 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg">
+	<section class="my-4 py-16 bg-accent rounded-lg">
 		<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-			<div class="bg-white bg-opacity-10 rounded-lg p-8">
-				<h3 class="text-2xl font-bold text-white mb-4">BuildOS is in Beta</h3>
-				<p class="text-blue-100 mb-6">
+			<div class="bg-card/10 rounded-lg p-8 tx tx-grain tx-weak">
+				<h3 class="text-2xl font-bold text-accent-foreground mb-4">BuildOS is in Beta</h3>
+				<p class="text-accent-foreground/80 mb-6">
 					We're constantly improving and adding new features. If you encounter any issues
 					or have suggestions, please let us know!
 				</p>
 				<a
 					href="/feedback"
-					class="inline-flex items-center px-6 py-3 bg-white text-blue-600 font-semibold rounded-lg hover:bg-gray-100 transition-colors"
+					class="inline-flex items-center px-6 py-3 bg-card text-accent font-semibold rounded-lg hover:bg-card/90 transition-colors shadow-ink"
 				>
 					<MessageCircle class="w-5 h-5 mr-2" />
 					Give Feedback

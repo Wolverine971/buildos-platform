@@ -12,68 +12,60 @@
 	author="BuildOS"
 />
 
-<div class="min-h-screen bg-[var(--surface-scratch)] dither-pattern py-12">
+<div class="min-h-screen bg-background py-12">
 	<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
 		<!-- Header -->
 		<div class="text-center mb-16">
 			<div class="flex justify-center mb-6">
-				<div class="utility-block w-16 h-16 rounded-sm flex items-center justify-center">
-					<Shield class="w-8 h-8 text-gray-700 dark:text-gray-200" />
+				<div
+					class="w-16 h-16 rounded bg-card border border-border shadow-ink flex items-center justify-center tx tx-frame tx-weak"
+				>
+					<Shield class="w-8 h-8 text-foreground" />
 				</div>
 			</div>
-			<h1 class="text-4xl md:text-5xl font-bold text-slate-900 dark:text-slate-100 mb-4">
-				Privacy Policy
-			</h1>
-			<p class="text-xl text-slate-700 dark:text-slate-300 max-w-2xl mx-auto">
+			<h1 class="text-4xl md:text-5xl font-bold text-foreground mb-4">Privacy Policy</h1>
+			<p class="text-xl text-muted-foreground max-w-2xl mx-auto">
 				Your privacy matters to us. Here's how we handle your data in BuildOS.
 			</p>
 		</div>
 
 		<!-- Quick Summary -->
-		<div class="clarity-zone p-8 mb-12">
-			<h2
-				class="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-6 flex items-center"
-			>
-				<Eye class="w-6 h-6 mr-3 text-slate-900 dark:text-slate-100" />
+		<div class="bg-card rounded border border-border p-8 mb-12 shadow-ink tx tx-frame tx-weak">
+			<h2 class="text-2xl font-bold text-foreground mb-6 flex items-center">
+				<Eye class="w-6 h-6 mr-3 text-foreground" />
 				Privacy at a Glance
 			</h2>
 			<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
 				<div class="text-center">
 					<div
-						class="utility-block w-12 h-12 rounded-sm flex items-center justify-center mb-3 mx-auto"
+						class="w-12 h-12 rounded bg-muted border border-border flex items-center justify-center mb-3 mx-auto"
 					>
-						<Download class="w-6 h-6 text-gray-700 dark:text-gray-200" />
+						<Download class="w-6 h-6 text-foreground" />
 					</div>
-					<h3 class="font-semibold text-slate-900 dark:text-slate-100 mb-2">
-						Access Your Data
-					</h3>
-					<p class="text-sm text-slate-700 dark:text-slate-300">
+					<h3 class="font-semibold text-foreground mb-2">Access Your Data</h3>
+					<p class="text-sm text-muted-foreground">
 						View and export all your projects, tasks, and notes through the app
 					</p>
 				</div>
 				<div class="text-center">
 					<div
-						class="utility-block w-12 h-12 rounded-sm flex items-center justify-center mb-3 mx-auto"
+						class="w-12 h-12 rounded bg-muted border border-border flex items-center justify-center mb-3 mx-auto"
 					>
-						<Trash2 class="w-6 h-6 text-gray-700 dark:text-gray-200" />
+						<Trash2 class="w-6 h-6 text-foreground" />
 					</div>
-					<h3 class="font-semibold text-slate-900 dark:text-slate-100 mb-2">
-						Delete Your Data
-					</h3>
-					<p class="text-sm text-slate-700 dark:text-slate-300">
+					<h3 class="font-semibold text-foreground mb-2">Delete Your Data</h3>
+					<p class="text-sm text-muted-foreground">
 						Delete projects, tasks, and profile data directly in the app
 					</p>
 				</div>
 				<div class="text-center">
 					<div
-						class="utility-block w-12 h-12 rounded-sm flex items-center justify-center mb-3 mx-auto"
+						class="w-12 h-12 rounded bg-muted border border-border flex items-center justify-center mb-3 mx-auto"
 					>
-						<Lock class="w-6 h-6 text-gray-700 dark:text-gray-200" />
+						<Lock class="w-6 h-6 text-foreground" />
 					</div>
-					<h3 class="font-semibold text-slate-900 dark:text-slate-100 mb-2">
-						No Data Sales
-					</h3>
-					<p class="text-sm text-slate-700 dark:text-slate-300">
+					<h3 class="font-semibold text-foreground mb-2">No Data Sales</h3>
+					<p class="text-sm text-muted-foreground">
 						We never sell your data or use it for advertising
 					</p>
 				</div>
@@ -81,78 +73,69 @@
 		</div>
 
 		<!-- Main Content -->
-		<div class="card-industrial p-8 md:p-12 relative noise-overlay space-y-8">
+		<div
+			class="bg-card rounded border border-border p-8 md:p-12 shadow-ink tx tx-grain tx-weak space-y-8"
+		>
 			<section>
-				<h2 class="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-4">
-					Data We Collect
-				</h2>
+				<h2 class="text-2xl font-bold text-foreground mb-4">Data We Collect</h2>
 				<div class="prose dark:prose-invert max-w-none">
-					<p class="text-slate-700 dark:text-slate-300 mb-4">
+					<p class="text-muted-foreground mb-4">
 						BuildOS collects the following data to provide you with a productivity
 						platform:
 					</p>
-					<ul class="space-y-2 text-slate-700 dark:text-slate-300">
-						<li class="text-slate-700 dark:text-slate-300">
-							<strong class="text-slate-900 dark:text-slate-100"
-								>Account Information:</strong
-							> Email address and name from Google OAuth authentication
+					<ul class="space-y-2 text-muted-foreground">
+						<li class="text-muted-foreground">
+							<strong class="text-foreground">Account Information:</strong> Email address
+							and name from Google OAuth authentication
 						</li>
-						<li class="text-slate-700 dark:text-slate-300">
-							<strong class="text-slate-900 dark:text-slate-100">Content Data:</strong
-							> Your projects, tasks, notes, brain dumps, and onboarding questionnaire
-							responses
+						<li class="text-muted-foreground">
+							<strong class="text-foreground">Content Data:</strong> Your projects, tasks,
+							notes, brain dumps, and onboarding questionnaire responses
 						</li>
-						<li class="text-slate-700 dark:text-slate-300">
-							<strong class="text-slate-900 dark:text-slate-100"
-								>Phone Number (Optional):</strong
-							> Your phone number, only if you choose to enable SMS notifications. Phone
-							numbers are verified before use and are used solely for sending you reminders
-							and notifications you've opted into
+						<li class="text-muted-foreground">
+							<strong class="text-foreground">Phone Number (Optional):</strong> Your phone
+							number, only if you choose to enable SMS notifications. Phone numbers are
+							verified before use and are used solely for sending you reminders and notifications
+							you've opted into
 						</li>
-						<li class="text-slate-700 dark:text-slate-300">
-							<strong class="text-slate-900 dark:text-slate-100"
-								>Google Calendar Data:</strong
-							> Calendar events and scheduling information (only if you enable calendar
-							integration)
+						<li class="text-muted-foreground">
+							<strong class="text-foreground">Google Calendar Data:</strong> Calendar events
+							and scheduling information (only if you enable calendar integration)
 						</li>
-						<li class="text-slate-700 dark:text-slate-300">
-							<strong class="text-slate-900 dark:text-slate-100"
-								>Usage Analytics:</strong
-							> Page views and user interactions via Google Analytics
+						<li class="text-muted-foreground">
+							<strong class="text-foreground">Usage Analytics:</strong> Page views and
+							user interactions via Google Analytics
 						</li>
-						<li class="text-slate-700 dark:text-slate-300">
-							<strong class="text-slate-900 dark:text-slate-100"
-								>Technical Data:</strong
-							> Login timestamps, IP address, and browser information for security
+						<li class="text-muted-foreground">
+							<strong class="text-foreground">Technical Data:</strong> Login timestamps,
+							IP address, and browser information for security
 						</li>
 					</ul>
 				</div>
 			</section>
 
 			<section>
-				<h2 class="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-4">
-					How We Use Your Data
-				</h2>
+				<h2 class="text-2xl font-bold text-foreground mb-4">How We Use Your Data</h2>
 				<div class="prose dark:prose-invert max-w-none">
-					<p class="text-slate-700 dark:text-slate-300 mb-4">Your data is used to:</p>
-					<ul class="space-y-2 text-slate-700 dark:text-slate-300">
-						<li class="text-slate-700 dark:text-slate-300">
+					<p class="text-muted-foreground mb-4">Your data is used to:</p>
+					<ul class="space-y-2 text-muted-foreground">
+						<li class="text-muted-foreground">
 							Provide the BuildOS service and store your content
 						</li>
-						<li class="text-slate-700 dark:text-slate-300">
+						<li class="text-muted-foreground">
 							Generate AI-powered insights and task organization
 						</li>
-						<li class="text-slate-700 dark:text-slate-300">
+						<li class="text-muted-foreground">
 							Send you SMS reminders and notifications (only if you opt in and verify
 							your phone number)
 						</li>
-						<li class="text-slate-700 dark:text-slate-300">
+						<li class="text-muted-foreground">
 							Sync with your Google Calendar (when enabled)
 						</li>
-						<li class="text-slate-700 dark:text-slate-300">
+						<li class="text-muted-foreground">
 							Improve the product through usage analytics
 						</li>
-						<li class="text-gray-700 dark:text-gray-300">
+						<li class="text-muted-foreground">
 							Communicate with you about your account
 						</li>
 					</ul>
@@ -271,7 +254,7 @@
 							href="https://developers.google.com/workspace/workspace-api-user-data-developer-policy#limited-use"
 							target="_blank"
 							rel="noopener noreferrer"
-							class="text-accent hover:brightness-110 underline"
+							class="text-accent hover:text-accent/80 underline"
 							>Google API Services User Limited Use Data Policy</a
 						>, including the Limited Use requirements.
 					</p>

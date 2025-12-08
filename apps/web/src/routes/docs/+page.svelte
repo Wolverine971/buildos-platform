@@ -58,16 +58,16 @@
 			<div class="flex flex-col sm:flex-row gap-4 justify-center">
 				<a
 					href="#getting-started"
-					class="btn-tactile inline-flex items-center px-6 py-3 font-semibold"
+					class="inline-flex items-center px-6 py-3 bg-accent text-accent-foreground font-semibold rounded-lg hover:bg-accent/90 transition-colors shadow-ink"
 				>
-					<Zap class="w-5 h-5 mr-2 text-white" />
+					<Zap class="w-5 h-5 mr-2" />
 					Quick Start Guide
 				</a>
 				<a
 					href="#workflow"
-					class="btn-secondary inline-flex items-center px-6 py-3 font-semibold"
+					class="inline-flex items-center px-6 py-3 bg-card border border-border text-foreground font-semibold rounded-lg hover:bg-muted transition-colors shadow-ink"
 				>
-					<BarChart3 class="w-5 h-5 mr-2 text-white" />
+					<BarChart3 class="w-5 h-5 mr-2" />
 					How It Works
 				</a>
 			</div>
@@ -89,7 +89,7 @@
 								<li>
 									<a
 										href="#getting-started"
-										class="text-accent hover:brightness-110 transition-all"
+										class="text-accent hover:text-accent/80 transition-all"
 										>Getting Started</a
 									>
 								</li>
@@ -162,7 +162,7 @@
 						<!-- Getting Started -->
 						<section id="getting-started">
 							<h2 class="text-3xl font-bold text-foreground mb-6 flex items-center">
-								<Zap class="w-7 h-7 mr-3 text-primary-600 dark:text-primary-400" />
+								<Zap class="w-7 h-7 mr-3 text-accent" />
 								Getting Started
 							</h2>
 							<div class="prose dark:prose-invert max-w-none">
@@ -176,7 +176,7 @@
 									Recommended First-Time User Journey
 								</h3>
 								<ol
-									class="list-decimal list-inside space-y-4 text-gray-600 dark:text-gray-300 mb-8"
+									class="list-decimal list-inside space-y-4 text-muted-foreground mb-8"
 								>
 									<li class="text-muted-foreground">
 										<strong class="text-foreground"
@@ -213,15 +213,11 @@
 									</li>
 								</ol>
 
-								<div
-									class="bg-primary-50 dark:bg-primary-900/30 border border-primary-200 dark:border-primary-700 rounded-lg p-6"
-								>
-									<h4
-										class="font-semibold text-primary-900 dark:text-primary-100 mb-3"
-									>
+								<div class="bg-accent/10 border border-accent/30 rounded-lg p-6">
+									<h4 class="font-semibold text-foreground mb-3">
 										💡 Pro Tip: Think in Projects
 									</h4>
-									<p class="text-primary-800 dark:text-primary-200">
+									<p class="text-muted-foreground">
 										Always frame your brain dumps as projects with clear goals,
 										phases, current state, and blockers. This helps BuildOS
 										create rich, actionable context that you can use with any
@@ -248,36 +244,26 @@
 								<!-- Page Grid -->
 								<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
 									<div
-										class="bg-primary-50 dark:bg-primary-900/30 border border-primary-200 dark:border-primary-700 rounded-lg p-6"
+										class="bg-accent/10 border border-accent/30 rounded-lg p-6"
 									>
 										<div class="flex items-center mb-3">
-											<BarChart3
-												class="w-6 h-6 text-primary-600 dark:text-primary-400 mr-3"
-											/>
-											<h4
-												class="font-semibold text-primary-900 dark:text-primary-100"
-											>
-												Dashboard
-											</h4>
+											<BarChart3 class="w-6 h-6 text-accent mr-3" />
+											<h4 class="font-semibold text-foreground">Dashboard</h4>
 										</div>
-										<p
-											class="text-sm text-primary-800 dark:text-primary-200 mb-2"
-										>
+										<p class="text-sm text-muted-foreground mb-2">
 											Your daily command center showing:
 										</p>
-										<ul
-											class="text-xs text-primary-700 dark:text-primary-300 space-y-1"
-										>
-											<li class="text-primary-700 dark:text-primary-300">
+										<ul class="text-xs text-muted-foreground space-y-1">
+											<li class="text-muted-foreground">
 												• Today's tasks and tomorrow's agenda
 											</li>
-											<li class="text-primary-700 dark:text-primary-300">
+											<li class="text-muted-foreground">
 												• Recent brain dumps
 											</li>
-											<li class="text-primary-700 dark:text-primary-300">
+											<li class="text-muted-foreground">
 												• Past week's accomplishments
 											</li>
-											<li class="text-primary-700 dark:text-primary-300">
+											<li class="text-muted-foreground">
 												• Quick access to all functions
 											</li>
 										</ul>
@@ -397,7 +383,7 @@
 										<Clock class="w-6 h-6 text-muted-foreground mr-3" />
 										<h4 class="font-semibold text-foreground">History</h4>
 									</div>
-									<p class="text-sm text-gray-700 dark:text-gray-300">
+									<p class="text-sm text-muted-foreground">
 										Chronological view of all your brain dumps. Perfect for
 										reflecting on your thinking patterns and tracking how
 										projects evolved over time.
@@ -405,19 +391,17 @@
 								</div>
 
 								<div
-									class="bg-primary-50 dark:bg-primary-900/30 border border-primary-200 dark:border-primary-700 rounded-lg p-6 mt-6"
+									class="bg-accent/10 border border-accent/30 rounded-lg p-6 mt-6"
 								>
-									<h4
-										class="font-semibold text-primary-900 dark:text-primary-100 mb-3"
-									>
+									<h4 class="font-semibold text-foreground mb-3">
 										🔧 Settings & Integrations
 									</h4>
-									<p class="text-primary-800 dark:text-primary-200">
+									<p class="text-muted-foreground">
 										Connect your Google Calendar and customize your productivity
 										preferences at
 										<a
 											href="/profile?tab=calendar"
-											class="text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 hover:underline font-medium transition-colors"
+											class="text-accent hover:text-accent/80 hover:underline font-medium transition-colors"
 											>/profile?tab=calendar</a
 										>
 									</p>
@@ -455,37 +439,31 @@
 												<h4 class="font-semibold text-foreground">
 													Brain Dump About Projects
 												</h4>
-												<p class="text-sm text-gray-600 dark:text-gray-300">
+												<p class="text-sm text-muted-foreground">
 													Capture project goals, current state, blockers,
 													and thoughts
 												</p>
 											</div>
-											<ArrowRight
-												class="w-5 h-5 text-gray-400 dark:text-gray-500"
-											/>
+											<ArrowRight class="w-5 h-5 text-muted-foreground/60" />
 										</div>
 
 										<!-- Step 2 -->
 										<div class="flex items-center space-x-4">
 											<div
-												class="flex items-center justify-center w-12 h-12 bg-primary-100 dark:bg-primary-900/50 border border-primary-200 dark:border-primary-700 rounded-full"
+												class="flex items-center justify-center w-12 h-12 bg-accent/20 border border-accent/40 rounded-full"
 											>
-												<CheckCircle
-													class="w-6 h-6 text-primary-600 dark:text-primary-400"
-												/>
+												<CheckCircle class="w-6 h-6 text-accent" />
 											</div>
 											<div class="flex-1">
 												<h4 class="font-semibold text-foreground">
 													Review & Approve AI Processing
 												</h4>
-												<p class="text-sm text-gray-600 dark:text-gray-300">
+												<p class="text-sm text-muted-foreground">
 													See what BuildOS will create and edit before
 													execution
 												</p>
 											</div>
-											<ArrowRight
-												class="w-5 h-5 text-gray-400 dark:text-gray-500"
-											/>
+											<ArrowRight class="w-5 h-5 text-muted-foreground/60" />
 										</div>
 
 										<!-- Step 3 -->
@@ -501,14 +479,12 @@
 												<h4 class="font-semibold text-foreground">
 													Rich Project Context Created
 												</h4>
-												<p class="text-sm text-gray-600 dark:text-gray-300">
+												<p class="text-sm text-muted-foreground">
 													AI builds comprehensive markdown context + tasks
 													+ notes
 												</p>
 											</div>
-											<ArrowRight
-												class="w-5 h-5 text-gray-400 dark:text-gray-500"
-											/>
+											<ArrowRight class="w-5 h-5 text-muted-foreground/60" />
 										</div>
 
 										<!-- Step 4 -->
@@ -524,14 +500,12 @@
 												<h4 class="font-semibold text-foreground">
 													Export to Any LLM
 												</h4>
-												<p class="text-sm text-gray-600 dark:text-gray-300">
+												<p class="text-sm text-muted-foreground">
 													Copy context to ChatGPT, Claude, or any AI for
 													collaboration
 												</p>
 											</div>
-											<ArrowRight
-												class="w-5 h-5 text-gray-400 dark:text-gray-500"
-											/>
+											<ArrowRight class="w-5 h-5 text-muted-foreground/60" />
 										</div>
 
 										<!-- Step 5 -->
@@ -547,7 +521,7 @@
 												<h4 class="font-semibold text-foreground">
 													Continuous Context Building
 												</h4>
-												<p class="text-sm text-gray-600 dark:text-gray-300">
+												<p class="text-sm text-muted-foreground">
 													Dump learnings back to build richer project
 													context
 												</p>
@@ -556,15 +530,11 @@
 									</div>
 								</div>
 
-								<div
-									class="bg-primary-50 dark:bg-primary-900/30 border border-primary-200 dark:border-primary-700 rounded-lg p-6"
-								>
-									<h4
-										class="font-semibold text-primary-900 dark:text-primary-100 mb-3"
-									>
+								<div class="bg-accent/10 border border-accent/30 rounded-lg p-6">
+									<h4 class="font-semibold text-foreground mb-3">
 										The Context Building Loop
 									</h4>
-									<p class="text-primary-800 dark:text-primary-200">
+									<p class="text-muted-foreground">
 										Each brain dump builds richer project context. Copy this
 										context to work with any LLM, then dump your learnings,
 										research, and new insights back into BuildOS. This creates a
@@ -630,22 +600,18 @@
 											/>
 											Existing Project
 										</h4>
-										<p class="text-sm text-gray-600 dark:text-gray-300">
+										<p class="text-sm text-muted-foreground">
 											Add to an existing project's context, tasks, and notes
 										</p>
 									</div>
-									<div
-										class="bg-primary-50 dark:bg-primary-900/20 rounded-lg p-6"
-									>
+									<div class="bg-accent/10 rounded-lg p-6">
 										<h4
 											class="font-semibold text-foreground mb-2 flex items-center"
 										>
-											<Target
-												class="w-5 h-5 mr-2 text-primary-600 dark:text-primary-400"
-											/>
+											<Target class="w-5 h-5 mr-2 text-accent" />
 											New Project
 										</h4>
-										<p class="text-sm text-gray-600 dark:text-gray-300">
+										<p class="text-sm text-muted-foreground">
 											Create a new project with goals, phases, and context
 										</p>
 									</div>
@@ -658,7 +624,7 @@
 											/>
 											Quick Note
 										</h4>
-										<p class="text-sm text-gray-600 dark:text-gray-300">
+										<p class="text-sm text-muted-foreground">
 											Capture thoughts that don't belong to a specific project
 										</p>
 									</div>
@@ -668,7 +634,7 @@
 									Input Methods
 								</h3>
 								<ul
-									class="list-disc list-inside space-y-2 text-gray-600 dark:text-gray-300 mb-6"
+									class="list-disc list-inside space-y-2 text-muted-foreground mb-6"
 								>
 									<li class="text-muted-foreground">
 										<strong class="text-foreground">Voice Input:</strong> Speak naturally
@@ -693,7 +659,7 @@
 										brain dump:
 									</p>
 									<ul
-										class="list-disc list-inside space-y-2 text-gray-600 dark:text-gray-300"
+										class="list-disc list-inside space-y-2 text-muted-foreground"
 									>
 										<li class="text-muted-foreground">
 											<strong class="text-foreground">Clear Goals:</strong> What
@@ -760,9 +726,7 @@
 									</div>
 								</div>
 
-								<div
-									class="bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-600 rounded-lg p-6"
-								>
+								<div class="bg-muted border border-border rounded-lg p-6">
 									<h4 class="font-semibold text-foreground mb-3">
 										Example Brain Dump (Fitness Project)
 									</h4>
@@ -783,9 +747,7 @@
 						<!-- Project Context -->
 						<section id="project-context">
 							<h2 class="text-3xl font-bold text-foreground mb-6 flex items-center">
-								<Target
-									class="w-7 h-7 mr-3 text-primary-600 dark:text-primary-400"
-								/>
+								<Target class="w-7 h-7 mr-3 text-accent" />
 								Project Context: Your AI Collaboration Engine
 							</h2>
 							<div class="prose dark:prose-invert max-w-none">
@@ -799,15 +761,13 @@
 								<h3 class="text-xl font-semibold text-foreground mb-4">
 									What is Project Context?
 								</h3>
-								<div
-									class="bg-primary-50 dark:bg-primary-900/20 rounded-lg p-6 mb-6"
-								>
+								<div class="bg-accent/10 rounded-lg p-6 mb-6">
 									<p class="text-muted-foreground mb-4">
 										Project context is a comprehensive markdown document that
 										captures everything important about your project:
 									</p>
 									<ul
-										class="list-disc list-inside space-y-2 text-gray-600 dark:text-gray-300"
+										class="list-disc list-inside space-y-2 text-muted-foreground"
 									>
 										<li class="text-muted-foreground">
 											Strategic objectives and success metrics
@@ -937,7 +897,7 @@
 												Rich Markdown Editor
 											</h4>
 										</div>
-										<p class="text-sm text-gray-600 dark:text-gray-300">
+										<p class="text-sm text-muted-foreground">
 											Full markdown support with headers, lists, links, and
 											formatting for comprehensive project documentation
 										</p>
@@ -951,7 +911,7 @@
 												One-Click Export
 											</h4>
 										</div>
-										<p class="text-sm text-gray-600 dark:text-gray-300">
+										<p class="text-sm text-muted-foreground">
 											Copy full context to clipboard for immediate use in
 											ChatGPT, Claude, or any LLM
 										</p>
@@ -968,7 +928,7 @@
 										🔄 The Power Loop
 									</h4>
 									<ol
-										class="list-decimal list-inside space-y-2 text-gray-600 dark:text-gray-300"
+										class="list-decimal list-inside space-y-2 text-muted-foreground"
 									>
 										<li class="text-muted-foreground">
 											<strong class="text-foreground">Export context</strong> from
@@ -1038,7 +998,7 @@
 										a structured execution plan:
 									</p>
 									<ul
-										class="list-disc list-inside space-y-2 text-gray-600 dark:text-gray-300"
+										class="list-disc list-inside space-y-2 text-muted-foreground"
 									>
 										<li class="text-muted-foreground">
 											AI analyzes your project context and existing tasks
@@ -1060,23 +1020,17 @@
 									Kanban & Timeline Views
 								</h3>
 								<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-									<div
-										class="bg-primary-50 dark:bg-primary-900/20 rounded-lg p-6"
-									>
+									<div class="bg-accent/10 rounded-lg p-6">
 										<h4
 											class="font-semibold text-foreground mb-2 flex items-center"
 										>
-											<Target
-												class="w-5 h-5 mr-2 text-primary-600 dark:text-primary-400"
-											/>
+											<Target class="w-5 h-5 mr-2 text-accent" />
 											Kanban View
 										</h4>
-										<p class="text-sm text-gray-600 dark:text-gray-300 mb-3">
+										<p class="text-sm text-muted-foreground mb-3">
 											Trello-style board with phases as columns
 										</p>
-										<ul
-											class="text-xs text-gray-600 dark:text-gray-300 space-y-1"
-										>
+										<ul class="text-xs text-muted-foreground space-y-1">
 											<li class="text-muted-foreground">
 												• Drag and drop tasks between phases
 											</li>
@@ -1102,12 +1056,10 @@
 											/>
 											Timeline View
 										</h4>
-										<p class="text-sm text-gray-600 dark:text-gray-300 mb-3">
+										<p class="text-sm text-muted-foreground mb-3">
 											Gantt-style timeline with date tracking
 										</p>
-										<ul
-											class="text-xs text-gray-600 dark:text-gray-300 space-y-1"
-										>
+										<ul class="text-xs text-muted-foreground space-y-1">
 											<li class="text-muted-foreground">
 												• Phase start and end dates
 											</li>
@@ -1183,7 +1135,7 @@
 										🎯 Phase Management Tips
 									</h4>
 									<ul
-										class="list-disc list-inside space-y-2 text-gray-600 dark:text-gray-300"
+										class="list-disc list-inside space-y-2 text-muted-foreground"
 									>
 										<li class="text-muted-foreground">
 											Use phases to break large projects into manageable
@@ -1226,13 +1178,13 @@
 									Setup Instructions
 								</h3>
 								<ol
-									class="list-decimal list-inside space-y-3 text-gray-600 dark:text-gray-300 mb-8"
+									class="list-decimal list-inside space-y-3 text-muted-foreground mb-8"
 								>
 									<li class="text-muted-foreground">
 										Go to
 										<a
 											href="/profile?tab=calendar"
-											class="text-primary-600 dark:text-primary-400 hover:underline font-medium"
+											class="text-accent hover:underline font-medium"
 											>/profile and tab "calendar"</a
 										>
 									</li>
@@ -1265,23 +1217,19 @@
 												One-Click Scheduling
 											</h4>
 										</div>
-										<p class="text-sm text-gray-600 dark:text-gray-300">
+										<p class="text-sm text-muted-foreground">
 											Click "Schedule" on any task to automatically find
 											optimal time slots and create calendar events
 										</p>
 									</div>
-									<div
-										class="bg-primary-50 dark:bg-primary-900/20 rounded-lg p-6"
-									>
+									<div class="bg-accent/10 rounded-lg p-6">
 										<div class="flex items-center mb-3">
-											<Settings
-												class="w-5 h-5 text-primary-600 dark:text-primary-400 mr-2"
-											/>
+											<Settings class="w-5 h-5 text-accent mr-2" />
 											<h4 class="font-semibold text-foreground">
 												Work Hours Respect
 											</h4>
 										</div>
-										<p class="text-sm text-gray-600 dark:text-gray-300">
+										<p class="text-sm text-muted-foreground">
 											Only schedules during your defined working hours and
 											respects your work-life balance preferences
 										</p>
@@ -1300,7 +1248,7 @@
 										scheduling is a separate action:
 									</p>
 									<ul
-										class="list-disc list-inside space-y-2 text-gray-600 dark:text-gray-300"
+										class="list-disc list-inside space-y-2 text-muted-foreground"
 									>
 										<li class="text-muted-foreground">
 											<strong class="text-foreground">Task Dates:</strong> Due
@@ -1378,7 +1326,7 @@
 									</div>
 								</div>
 
-								<div class="bg-primary-50 dark:bg-primary-900/20 rounded-lg p-6">
+								<div class="bg-accent/10 rounded-lg p-6">
 									<h4 class="font-semibold text-foreground mb-3">
 										🔗 Currently Supported
 									</h4>
@@ -1408,13 +1356,11 @@
 									Brief Types & Customization
 								</h3>
 								<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-									<div
-										class="bg-primary-50 dark:bg-primary-900/20 rounded-lg p-6"
-									>
+									<div class="bg-accent/10 rounded-lg p-6">
 										<h4 class="font-semibold text-foreground mb-2">
 											Individual Project Briefs
 										</h4>
-										<p class="text-sm text-gray-600 dark:text-gray-300">
+										<p class="text-sm text-muted-foreground">
 											Deep-dive updates on specific projects with focused
 											insights, next actions, and context-aware
 											recommendations
@@ -1426,7 +1372,7 @@
 										<h4 class="font-semibold text-foreground mb-2">
 											Master Daily Briefings
 										</h4>
-										<p class="text-sm text-gray-600 dark:text-gray-300">
+										<p class="text-sm text-muted-foreground">
 											Comprehensive overview of all projects, priorities for
 											the day, and strategic alignment across your work
 										</p>
@@ -1437,7 +1383,7 @@
 									Scheduling & Delivery
 								</h3>
 								<ul
-									class="list-disc list-inside space-y-2 text-gray-600 dark:text-gray-300 mb-6"
+									class="list-disc list-inside space-y-2 text-muted-foreground mb-6"
 								>
 									<li class="text-muted-foreground">
 										<strong class="text-foreground">Daily Frequency:</strong> Perfect
@@ -1466,7 +1412,7 @@
 										includes:
 									</p>
 									<ul
-										class="list-disc list-inside space-y-2 text-gray-600 dark:text-gray-300"
+										class="list-disc list-inside space-y-2 text-muted-foreground"
 									>
 										<li class="text-muted-foreground">
 											<strong class="text-foreground">Project Status:</strong>
@@ -1588,18 +1534,14 @@
 									Use Cases for LLM Collaboration
 								</h3>
 								<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-									<div
-										class="bg-primary-50 dark:bg-primary-900/20 rounded-lg p-6"
-									>
+									<div class="bg-accent/10 rounded-lg p-6">
 										<h4 class="font-semibold text-foreground mb-2">
 											Strategic Planning
 										</h4>
-										<p class="text-sm text-gray-600 dark:text-gray-300 mb-2">
+										<p class="text-sm text-muted-foreground mb-2">
 											Share project context for informed strategy advice
 										</p>
-										<ul
-											class="text-xs text-gray-600 dark:text-gray-300 space-y-1"
-										>
+										<ul class="text-xs text-muted-foreground space-y-1">
 											<li class="text-muted-foreground">
 												• Market analysis with project specifics
 											</li>
@@ -1617,12 +1559,10 @@
 										<h4 class="font-semibold text-foreground mb-2">
 											Technical Implementation
 										</h4>
-										<p class="text-sm text-gray-600 dark:text-gray-300 mb-2">
+										<p class="text-sm text-muted-foreground mb-2">
 											Get code and architecture advice with full context
 										</p>
-										<ul
-											class="text-xs text-gray-600 dark:text-gray-300 space-y-1"
-										>
+										<ul class="text-xs text-muted-foreground space-y-1">
 											<li class="text-muted-foreground">
 												• Code reviews with project requirements
 											</li>
@@ -1638,12 +1578,10 @@
 										<h4 class="font-semibold text-foreground mb-2">
 											Content Creation
 										</h4>
-										<p class="text-sm text-gray-600 dark:text-gray-300 mb-2">
+										<p class="text-sm text-muted-foreground mb-2">
 											Generate aligned content with brand context
 										</p>
-										<ul
-											class="text-xs text-gray-600 dark:text-gray-300 space-y-1"
-										>
+										<ul class="text-xs text-muted-foreground space-y-1">
 											<li class="text-muted-foreground">
 												• Marketing copy with brand voice
 											</li>
@@ -1659,12 +1597,10 @@
 										<h4 class="font-semibold text-foreground mb-2">
 											Problem Solving
 										</h4>
-										<p class="text-sm text-gray-600 dark:text-gray-300 mb-2">
+										<p class="text-sm text-muted-foreground mb-2">
 											Get specific solutions with complete context
 										</p>
-										<ul
-											class="text-xs text-gray-600 dark:text-gray-300 space-y-1"
-										>
+										<ul class="text-xs text-muted-foreground space-y-1">
 											<li class="text-muted-foreground">
 												• Troubleshooting with environment details
 											</li>
@@ -1691,7 +1627,7 @@
 										Each collaboration cycle makes your projects smarter:
 									</p>
 									<ol
-										class="list-decimal list-inside space-y-2 text-gray-600 dark:text-gray-300"
+										class="list-decimal list-inside space-y-2 text-muted-foreground"
 									>
 										<li class="text-muted-foreground">
 											Export rich context → Get better AI advice
@@ -1738,13 +1674,13 @@
 			<div class="flex flex-col sm:flex-row gap-4 justify-center">
 				<a
 					href="/auth/register"
-					class="btn-tactile inline-flex items-center px-6 py-3 font-semibold"
+					class="inline-flex items-center px-6 py-3 bg-accent text-accent-foreground font-semibold rounded-lg hover:bg-accent/90 transition-colors shadow-ink"
 				>
 					Get Started Now <ArrowRight class="w-4 h-4 ml-2" />
 				</a>
 				<a
 					href="/contact"
-					class="btn-secondary inline-flex items-center px-6 py-3 font-semibold"
+					class="inline-flex items-center px-6 py-3 bg-card border border-border text-foreground font-semibold rounded-lg hover:bg-muted transition-colors shadow-ink"
 				>
 					Contact Support <ArrowRight class="w-4 h-4 ml-2" />
 				</a>

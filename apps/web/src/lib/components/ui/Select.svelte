@@ -1,4 +1,5 @@
 <!-- apps/web/src/lib/components/ui/Select.svelte -->
+<!-- Inkprint Design System - Select Component -->
 <script lang="ts">
 	import type { HTMLSelectAttributes } from 'svelte/elements';
 	import type { Snippet } from 'svelte';
@@ -187,43 +188,40 @@
 		return classArray.join(' ');
 	}
 
-	// Wrapper classes - handles dithering (since selects can't have ::before pseudo-elements)
-	let wrapperClasses = $derived(
-		twMerge(
-			'relative rounded overflow-hidden', // Container for dithering
-			'dither-soft', // Dithered texture on the container
-			'bg-surface-scratch dark:bg-slate-700/50' // Background on container
-		)
-	);
+	// Wrapper classes - Inkprint styling (minimal wrapper for icon positioning)
+	let wrapperClasses = $derived(twMerge('relative'));
 
 	// Svelte 5 runes: Convert reactive declarations to $derived
 	let selectClasses = $derived(
 		twMerge(
-			// Base classes - Scratchpad Ops styling
-			'w-full rounded appearance-none cursor-pointer', // 4px radius for industrial feel
-			'border-2 transition-all duration-200', // 2px border for tactile feel
-			'focus:outline-none focus:ring-2 focus:ring-offset-1',
+			// Base classes - Inkprint styling
+			'w-full rounded-lg appearance-none cursor-pointer',
+			'border transition-all duration-200',
+			'focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1',
 			'disabled:cursor-not-allowed',
 
 			// Size classes (supports both single and responsive sizes)
 			getResponsiveSizeClasses(size, sizeClasses),
 
-			// State classes - industrial borders
+			// State classes - Inkprint borders
 			disabled && error
-				? 'border-red-300 dark:border-red-500/50 opacity-50'
+				? 'border-destructive/50 opacity-50'
 				: error
-					? 'border-red-600 focus:ring-red-500 dark:border-red-500'
+					? 'border-destructive focus:ring-destructive'
 					: disabled
-						? 'border-gray-300 dark:border-gray-600 opacity-50'
-						: 'border-gray-300 focus:ring-accent-orange focus:border-gray-400 dark:border-gray-600 dark:focus:border-gray-500',
+						? 'border-border opacity-50'
+						: 'border-border hover:border-border/80 focus:border-accent',
 
-			// Background - transparent to show dithered container beneath
-			'bg-transparent',
+			// Background - clean card background
+			'bg-card',
 
-			// Text color - slightly muted for notebook feel
-			value ? 'text-gray-900 dark:text-gray-100' : 'text-gray-500 dark:text-gray-400',
+			// Text color - Inkprint tokens
+			value ? 'text-foreground' : 'text-muted-foreground',
 
-			// Position relative for proper stacking (no z-index needed - mix-blend-mode handles layering)
+			// Shadow for depth
+			'shadow-ink',
+
+			// Position relative for proper stacking
 			'relative',
 
 			// Custom classes (these will override conflicts)
@@ -231,11 +229,11 @@
 		)
 	);
 
-	// Icon position and sizing classes (no z-index needed - mix-blend-mode handles layering)
+	// Icon position and sizing classes
 	let iconClasses = $derived(
 		twMerge(
 			'absolute top-1/2 -translate-y-1/2 right-3 pointer-events-none',
-			'text-gray-500 dark:text-gray-400',
+			'text-muted-foreground',
 			getResponsiveIconClasses(size, iconSizes)
 		)
 	);
@@ -287,16 +285,11 @@
 	</div>
 </div>
 {#if error && errorMessage}
-	<p
-		id="select-error"
-		role="alert"
-		aria-live="polite"
-		class="mt-1 text-sm text-red-600 dark:text-red-400"
-	>
+	<p id="select-error" role="alert" aria-live="polite" class="mt-1 text-sm text-destructive">
 		{errorMessage}
 	</p>
 {:else if helperText}
-	<p id="select-helper" class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+	<p id="select-helper" class="mt-1 text-sm text-muted-foreground">
 		{helperText}
 	</p>
 {/if}
@@ -312,18 +305,14 @@
 		display: none;
 	}
 
-	/* Dark mode focus ring offset */
-	:global(.dark) select:focus {
-		--tw-ring-offset-color: rgb(31 41 55);
+	/* Focus ring offset color - matches Inkprint background */
+	select:focus {
+		--tw-ring-offset-color: hsl(var(--background));
 	}
 
-	/* Ensure option text is visible */
+	/* Ensure option text is visible - uses Inkprint tokens */
 	option {
-		color: rgb(17 24 39);
-	}
-
-	:global(.dark) option {
-		color: rgb(243 244 246);
-		background-color: rgb(31 41 55);
+		color: hsl(var(--foreground));
+		background-color: hsl(var(--card));
 	}
 </style>

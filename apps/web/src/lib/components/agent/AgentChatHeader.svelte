@@ -1,4 +1,5 @@
 <!-- apps/web/src/lib/components/agent/AgentChatHeader.svelte -->
+<!-- INKPRINT Design System: Header component with Frame texture -->
 <script lang="ts">
 	import { X, ExternalLink, ArrowLeft } from 'lucide-svelte';
 	import ProjectFocusIndicator from './ProjectFocusIndicator.svelte';
@@ -51,7 +52,7 @@
 
 	const contextStatusClass = $derived.by(() => {
 		if (!contextUsage) return '';
-		if (contextUsage.status === 'over_budget') return 'text-rose-600 dark:text-rose-400';
+		if (contextUsage.status === 'over_budget') return 'text-red-600 dark:text-red-400';
 		if (contextUsage.status === 'near_limit') return 'text-amber-600 dark:text-amber-400';
 		return 'text-emerald-600 dark:text-emerald-400';
 	});
@@ -78,13 +79,13 @@
 	});
 </script>
 
-<!-- Ultra-compact single-line header: fixed 48px height -->
+<!-- INKPRINT compact header: fixed 48px height -->
 <div class="flex h-12 items-center gap-2 px-3 sm:px-4">
-	<!-- Back button: Compact, always in header when navigation is available -->
+	<!-- Back button with INKPRINT outline style -->
 	{#if showBackButton}
 		<button
 			type="button"
-			class="inline-flex h-8 w-8 items-center justify-center rounded-sm border-2 border-slate-400 text-slate-700 transition hover:bg-slate-200 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
+			class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-ink transition pressable hover:border-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 			onclick={onBack}
 			disabled={isStreaming}
 			aria-label="Go back"
@@ -93,46 +94,37 @@
 		</button>
 	{/if}
 
-	<!-- Brain-bolt icon with pre-dithered images -->
+	<!-- Brain-bolt icon -->
 	<div class="relative shrink-0">
-		<!-- Light mode: light dither (no hover effect in header) -->
 		<img
 			src="/brain-bolt.png"
 			alt="BuildOS Assistant"
-			class="h-7 w-7 rounded-md object-cover dark:hidden"
+			class="h-7 w-7 rounded-lg object-cover shadow-ink dark:hidden"
 		/>
-		<!-- Dark mode: dark dither (no hover effect in header) -->
 		<img
 			src="/brain-bolt.png"
 			alt="BuildOS Assistant"
-			class="hidden h-7 w-7 rounded-md object-cover dark:block"
+			class="hidden h-7 w-7 rounded-lg object-cover shadow-ink dark:block"
 		/>
 	</div>
 
-	<!-- Title & Focus Section - Optimized for mobile density -->
+	<!-- Title & Focus Section -->
 	<div class="flex min-w-0 flex-1 items-center gap-1.5 sm:gap-2">
 		{#if selectedContextType}
-			<h2 class="truncate text-sm font-semibold text-slate-900 dark:text-white">
+			<h2 class="truncate text-sm font-semibold text-foreground">
 				{displayContextLabel}
 			</h2>
 		{:else}
-			<!-- BuildOS with gradient OS -->
+			<!-- BuildOS with accent color -->
 			<h2 class="inline-flex items-baseline gap-[0.05em] text-sm font-bold tracking-tight">
-				<span class="text-slate-900 dark:text-white">Build</span>
-				<span
-					class="bg-gradient-to-br from-blue-600 via-indigo-500 to-purple-500 bg-clip-text text-transparent"
-				>
-					OS
-				</span>
-				<span class="ml-1 text-sm font-semibold text-slate-900 dark:text-white"
-					>Assistant</span
-				>
+				<span class="text-foreground">Build</span>
+				<span class="text-accent">OS</span>
+				<span class="ml-1 text-sm font-semibold text-foreground">Assistant</span>
 			</h2>
 		{/if}
 
 		{#if selectedContextType}
-			<!-- Separator: Hidden on small screens to save space -->
-			<span class="hidden text-slate-400 dark:text-slate-600 sm:inline">•</span>
+			<span class="hidden text-muted-foreground sm:inline">•</span>
 
 			{#if resolvedProjectFocus}
 				<ProjectFocusIndicator
@@ -141,15 +133,13 @@
 					{onClearFocus}
 				/>
 			{:else}
-				<!-- Subtitle: Hidden on mobile, shown on desktop -->
-				<span class="hidden truncate text-xs text-slate-600 dark:text-slate-400 sm:inline">
+				<span class="hidden truncate text-xs text-muted-foreground sm:inline">
 					{displayContextSubtitle || 'Ready to assist'}
 				</span>
 			{/if}
 		{:else}
-			<!-- No context selected: Hide subtitle on mobile -->
-			<span class="hidden text-slate-400 dark:text-slate-600 sm:inline">•</span>
-			<span class="hidden truncate text-xs text-slate-600 dark:text-slate-400 sm:inline">
+			<span class="hidden text-muted-foreground sm:inline">•</span>
+			<span class="hidden truncate text-xs text-muted-foreground sm:inline">
 				{displayContextSubtitle}
 			</span>
 		{/if}
@@ -157,12 +147,12 @@
 
 	<!-- Right side: Status pills, Project link, Close button -->
 	<div class="flex shrink-0 items-center gap-2">
-		<!-- Status pills with industrial styling -->
+		<!-- INKPRINT status pills with micro-label styling -->
 		{#if ontologyLoaded || contextUsage || (currentActivity && !agentStateLabel)}
 			<div class="flex items-center gap-1.5">
 				{#if ontologyLoaded}
 					<span
-						class="rounded-sm border border-purple-400 bg-purple-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-purple-700 dark:border-purple-600 dark:bg-purple-900/30 dark:text-purple-400"
+						class="micro-label rounded-lg border border-purple-600/30 bg-purple-50 px-2 py-0.5 text-purple-700 tx tx-thread tx-weak dark:bg-purple-950/30 dark:text-purple-400"
 					>
 						ONTO
 					</span>
@@ -170,21 +160,21 @@
 
 				{#if contextUsage}
 					<span
-						class={`inline-flex items-center gap-1 rounded-sm border px-2 py-0.5 text-[10px] font-mono uppercase ${
+						class={`inline-flex items-center gap-1 rounded-lg border px-2 py-0.5 text-[0.65rem] font-mono uppercase tracking-[0.1em] ${
 							contextUsage.status === 'over_budget'
-								? 'border-rose-400 bg-rose-100 text-rose-700 dark:border-rose-600 dark:bg-rose-900/30 dark:text-rose-400'
+								? 'border-red-600/30 bg-red-50 text-red-700 tx tx-static tx-weak dark:bg-red-950/30 dark:text-red-400'
 								: contextUsage.status === 'near_limit'
-									? 'border-orange-400 bg-orange-100 text-orange-700 dark:border-orange-600 dark:bg-orange-900/30 dark:text-orange-400'
-									: 'border-green-400 bg-green-100 text-green-700 dark:border-green-600 dark:bg-green-900/30 dark:text-green-400'
+									? 'border-amber-600/30 bg-amber-50 text-amber-700 tx tx-static tx-weak dark:bg-amber-950/30 dark:text-amber-400'
+									: 'border-emerald-600/30 bg-emerald-50 text-emerald-700 tx tx-grain tx-weak dark:bg-emerald-950/30 dark:text-emerald-400'
 						}`}
 					>
 						<span
 							class={`h-1 w-1 rounded-full ${
 								contextUsage.status === 'over_budget'
-									? 'bg-rose-500'
+									? 'bg-red-600'
 									: contextUsage.status === 'near_limit'
-										? 'bg-orange-500'
-										: 'bg-green-500'
+										? 'bg-amber-600'
+										: 'bg-emerald-600'
 							}`}
 						></span>
 						<span class="hidden sm:inline">
@@ -201,20 +191,20 @@
 
 				{#if currentActivity && !agentStateLabel}
 					<span
-						class="inline-flex h-1.5 w-1.5 animate-pulse rounded-full bg-green-500 dark:bg-green-400"
+						class="inline-flex h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-600 dark:bg-emerald-400"
 						title={currentActivity}
 					></span>
 				{/if}
 			</div>
 		{/if}
 
-		<!-- Project link with proper light/dark contrast -->
+		<!-- INKPRINT project link button -->
 		{#if isProjectContext && projectUrl}
 			<a
 				href={projectUrl}
 				target="_blank"
 				rel="noopener noreferrer"
-				class="flex h-7 items-center gap-1 rounded-sm border border-slate-300 bg-slate-50 px-2 text-xs font-semibold uppercase tracking-wider text-slate-700 transition-all hover:border-blue-400 hover:bg-blue-50 hover:text-blue-700 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-400 dark:hover:border-blue-600 dark:hover:bg-blue-900/30 dark:hover:text-blue-400"
+				class="flex h-7 items-center gap-1 rounded-lg border border-border bg-card px-2 text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-muted-foreground shadow-ink transition-all pressable hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 				title="Open project in new tab"
 			>
 				<ExternalLink class="h-3.5 w-3.5" />
@@ -222,12 +212,12 @@
 			</a>
 		{/if}
 
-		<!-- Close button with proper light/dark contrast -->
+		<!-- INKPRINT close button -->
 		{#if onClose}
 			<button
 				type="button"
 				onclick={onClose}
-				class="flex h-7 w-7 items-center justify-center rounded-sm border border-slate-300 bg-slate-50 text-slate-700 transition-all hover:border-rose-400 hover:bg-rose-50 hover:text-rose-700 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-400 dark:hover:border-rose-600 dark:hover:bg-rose-900/30 dark:hover:text-rose-400"
+				class="flex h-7 w-7 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-ink transition-all pressable hover:border-red-600/50 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:hover:border-red-400/50 dark:hover:text-red-400"
 				aria-label="Close modal"
 			>
 				<X class="h-4 w-4" />

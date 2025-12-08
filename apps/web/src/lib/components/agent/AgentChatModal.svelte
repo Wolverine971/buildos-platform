@@ -1,13 +1,13 @@
 <!-- apps/web/src/lib/components/agent/AgentChatModal.svelte -->
 <!--
-  AgentChatModal Component - Scratchpad Ops Design System
+  AgentChatModal Component - INKPRINT Design System
 
   BuildOS chat interface showing planner-executor conversations.
   Displays BuildOS activity, plan steps, and iterative conversations.
 
   README: apps/web/docs/features/agentic-chat/README.md
-  Design: Industrial-Creative Workspace aesthetic with dithered textures,
-  tactile controls, and high information density.
+  Design: INKPRINT texture-based design language - ink on paper,
+  semantic textures, high information density, tactile controls.
 -->
 
 <script lang="ts">
@@ -1970,8 +1970,8 @@
 	ariaLabel="BuildOS chat assistant dialog"
 >
 	{#snippet header()}
-		<!-- Industrial header bar with slate colors -->
-		<div class="border-b border-slate-300 bg-slate-50 dark:border-slate-700 dark:bg-slate-900">
+		<!-- INKPRINT header bar with Frame texture -->
+		<div class="border-b border-border bg-card tx tx-frame tx-weak">
 			<AgentChatHeader
 				{selectedContextType}
 				{displayContextLabel}
@@ -1993,9 +1993,9 @@
 	{/snippet}
 
 	{#snippet children()}
-		<!-- Industrial panel container with Scratchpad Ops aesthetic -->
+		<!-- INKPRINT panel container with Frame texture -->
 		<div
-			class="industrial-panel relative z-10 flex h-[calc(100vh-8rem)] flex-col overflow-hidden rounded border-2 border-gray-200 bg-surface-panel shadow-subtle dark:border-gray-700 dark:bg-slate-900 sm:h-[75vh] sm:min-h-[500px]"
+			class="relative z-10 flex h-[calc(100vh-8rem)] flex-col overflow-hidden rounded-lg border border-border bg-card shadow-ink tx tx-frame tx-weak sm:h-[75vh] sm:min-h-[500px]"
 		>
 			<!-- Keep context selection mounted so Back returns to prior step -->
 			<div
@@ -2053,13 +2053,13 @@
 				{/if}
 
 				{#if !showContextSelection && !showProjectActionSelector && isStreaming && currentActivity}
-					<!-- Industrial activity indicator with accent color -->
+					<!-- INKPRINT activity indicator with Grain texture -->
 					<div
-						class="border-t border-slate-300 bg-slate-100 p-2 text-[11px] font-semibold uppercase tracking-wider text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 sm:p-2.5"
+						class="border-t border-border bg-muted p-2 text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-muted-foreground tx tx-grain tx-weak sm:p-2.5"
 					>
 						<span class="inline-flex items-center gap-1.5">
 							<span
-								class="inline-flex h-1.5 w-1.5 animate-pulse rounded-full bg-accent-blue"
+								class="inline-flex h-1.5 w-1.5 animate-pulse rounded-full bg-accent"
 								aria-hidden="true"
 							></span>
 							<span role="status" aria-live="polite">{currentActivity}</span>
@@ -2068,9 +2068,9 @@
 				{/if}
 
 				{#if !showContextSelection && !showProjectActionSelector && error}
-					<!-- Industrial error message styling -->
+					<!-- INKPRINT error message with Static texture -->
 					<div
-						class="border-t border-red-300 bg-red-50 p-2 text-xs font-semibold text-red-800 dark:border-red-800 dark:bg-red-950/30 dark:text-red-300 sm:p-2.5"
+						class="border-t border-red-600/30 bg-red-50 p-2 text-xs font-semibold text-red-700 tx tx-static tx-weak dark:bg-red-950/20 dark:text-red-400 sm:p-2.5"
 						role="alert"
 						aria-live="assertive"
 					>
@@ -2079,31 +2079,32 @@
 				{/if}
 
 				{#if !showContextSelection && !showProjectActionSelector && agentToAgentMode}
-					<!-- Industrial automation footer with dithered background -->
-					<div
-						class="dither-pattern dark:dither-pattern-dark border-t border-slate-300 p-2 dark:border-slate-700 sm:p-2.5"
-					>
+					<!-- INKPRINT automation footer with Thread texture -->
+					<div class="border-t border-border bg-muted p-2 tx tx-thread tx-weak sm:p-2.5">
 						<div
 							class="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between sm:gap-2"
 						>
 							<div class="space-y-0.5">
-								<!-- ✅ Compact text: text-xs -->
-								<p class="text-xs font-semibold text-slate-900 dark:text-white">
+								<p class="text-xs font-semibold text-foreground">
 									Automation loop is {agentLoopActive ? 'active' : 'paused'}.
 								</p>
-								<p class="text-[11px] text-slate-600 dark:text-slate-400">
+								<p
+									class="text-[0.65rem] uppercase tracking-[0.15em] text-muted-foreground"
+								>
 									Helper: {selectedAgentLabel} • Project: {selectedContextLabel ??
 										'Select a project'} • Goal: {agentGoal || 'Add a goal'}
 								</p>
-								<p class="text-[11px] text-slate-600 dark:text-slate-400">
+								<p
+									class="text-[0.65rem] uppercase tracking-[0.15em] text-muted-foreground"
+								>
 									Turns remaining: {agentTurnsRemaining} / {agentTurnBudget}
 								</p>
 							</div>
-							<!-- Tactile industrial buttons -->
+							<!-- INKPRINT tactile buttons -->
 							<div class="flex flex-wrap items-center gap-2">
 								<button
 									type="button"
-									class="btn-tactile inline-flex items-center justify-center rounded-sm px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide text-white transition disabled:cursor-not-allowed disabled:opacity-60"
+									class="inline-flex items-center justify-center rounded-lg bg-accent px-3 py-1.5 text-[0.65rem] font-bold uppercase tracking-[0.15em] text-accent-foreground shadow-ink transition pressable disabled:cursor-not-allowed disabled:opacity-60"
 									disabled={isStreaming ||
 										agentMessageLoading ||
 										agentTurnsRemaining <= 0}
@@ -2116,24 +2117,24 @@
 								</button>
 								<button
 									type="button"
-									class="inline-flex items-center justify-center rounded-sm border-2 border-slate-500 px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide text-slate-700 transition hover:bg-slate-200 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
+									class="inline-flex items-center justify-center rounded-lg border border-border bg-card px-3 py-1.5 text-[0.65rem] font-bold uppercase tracking-[0.15em] text-foreground shadow-ink transition pressable hover:border-accent hover:bg-muted"
 									onclick={stopAgentLoop}
 								>
 									Stop
 								</button>
 							</div>
 						</div>
-						<!-- ✅ Compact controls: mt-1.5, gap-2, text-[11px] -->
+						<!-- INKPRINT micro-label controls -->
 						<div
-							class="mt-1.5 flex flex-wrap items-center gap-2 text-[11px] text-slate-600 dark:text-slate-400"
+							class="mt-1.5 flex flex-wrap items-center gap-2 text-[0.65rem] uppercase tracking-[0.15em] text-muted-foreground"
 						>
 							<label class="flex items-center gap-1.5">
-								<span class="font-bold uppercase tracking-wider">Turn limit</span>
+								<span class="font-bold">Turn limit</span>
 								<input
 									type="number"
 									min="1"
 									max="50"
-									class="w-16 rounded border-2 border-gray-200 bg-surface-panel px-1.5 py-0.5 text-[11px] font-semibold text-slate-900 focus:border-accent-orange focus:outline-none dark:border-gray-700 dark:bg-slate-800 dark:text-slate-100"
+									class="w-16 rounded-lg border border-border bg-background px-1.5 py-0.5 text-[0.65rem] font-semibold text-foreground shadow-ink-inner focus:border-accent focus:outline-none focus:ring-ring"
 									value={agentTurnBudget}
 									disabled={agentLoopActive || agentMessageLoading || isStreaming}
 									oninput={(e) =>
@@ -2143,26 +2144,25 @@
 								/>
 							</label>
 							{#if agentTurnsRemaining <= 0}
-								<!-- ✅ Compact warning badge: px-1.5 py-0.5, text-[10px] -->
+								<!-- INKPRINT warning badge with Static texture -->
 								<span
-									class="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800 dark:bg-amber-900/30 dark:text-amber-200"
+									class="rounded-lg bg-amber-100 px-1.5 py-0.5 text-[0.65rem] font-semibold text-amber-700 tx tx-static tx-weak dark:bg-amber-900/30 dark:text-amber-300"
 								>
 									Turn limit reached — adjust and resume.
 								</span>
 							{/if}
 						</div>
 						{#if agentMessageLoading}
-							<!-- ✅ Compact loading message: mt-1, text-[11px] -->
-							<p class="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
+							<p
+								class="mt-1 text-[0.65rem] uppercase tracking-[0.15em] text-muted-foreground"
+							>
 								Fetching the next update...
 							</p>
 						{/if}
 					</div>
 				{:else if !showContextSelection && !showProjectActionSelector}
-					<!-- Industrial composer footer with surface panel background -->
-					<div
-						class="border-t border-slate-300 bg-surface-panel p-2 dark:border-slate-700 dark:bg-slate-900 sm:p-2.5"
-					>
+					<!-- INKPRINT composer footer -->
+					<div class="border-t border-border bg-card p-2 sm:p-2.5">
 						<AgentComposer
 							bind:voiceInputRef
 							bind:inputValue
@@ -2200,41 +2200,41 @@
 	.agent-resp-div p {
 		margin-bottom: 0.2rem;
 	}
-	/* Scrollbar Styling */
+
+	/* INKPRINT Scrollbar Styling - Ink on Paper aesthetic */
 	.agent-chat-scroll {
 		scrollbar-gutter: stable;
+		scrollbar-width: thin;
+		scrollbar-color: hsl(var(--muted-foreground) / 0.3) hsl(var(--muted));
 	}
 
 	:global(.agent-chat-scroll::-webkit-scrollbar) {
-		width: 10px;
+		width: 8px;
 	}
 
 	:global(.agent-chat-scroll::-webkit-scrollbar-track) {
-		background: #ececec;
-		border: 1px solid #d1d5db;
+		background: hsl(var(--muted));
+		border-radius: 4px;
 	}
 
 	:global(.agent-chat-scroll::-webkit-scrollbar-thumb) {
-		background: #3e4459;
-		border-radius: 2px;
-		border: 1px solid #2d3242;
-	}
-
-	:global(.dark .agent-chat-scroll::-webkit-scrollbar-track) {
-		background: #1a1f2b;
-		border: 1px solid #3e4459;
-	}
-
-	:global(.dark .agent-chat-scroll::-webkit-scrollbar-thumb) {
-		background: #687452;
-		border: 1px solid #3e4459;
+		background: hsl(var(--muted-foreground) / 0.3);
+		border-radius: 4px;
 	}
 
 	:global(.agent-chat-scroll::-webkit-scrollbar-thumb:hover) {
-		background: #2d3242;
+		background: hsl(var(--muted-foreground) / 0.5);
+	}
+
+	:global(.dark .agent-chat-scroll::-webkit-scrollbar-track) {
+		background: hsl(var(--muted));
+	}
+
+	:global(.dark .agent-chat-scroll::-webkit-scrollbar-thumb) {
+		background: hsl(var(--muted-foreground) / 0.4);
 	}
 
 	:global(.dark .agent-chat-scroll::-webkit-scrollbar-thumb:hover) {
-		background: #d88a3a;
+		background: hsl(var(--accent));
 	}
 </style>

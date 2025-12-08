@@ -9,9 +9,9 @@
 		Clock,
 		Heart,
 		Star,
-		Gift
+		Gift,
+		X
 	} from 'lucide-svelte';
-	import { XIcon } from 'lucide-svelte/icons/x';
 	import { onMount } from 'svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 
@@ -212,7 +212,7 @@
 						onclick={shareOnX}
 						variant="primary"
 						size="lg"
-						icon={XIcon}
+						icon={X}
 						aria-label="Share BuildOS beta on X"
 					>
 						Share on X
