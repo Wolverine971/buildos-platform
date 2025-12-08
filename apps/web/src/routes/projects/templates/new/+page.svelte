@@ -1043,7 +1043,7 @@
 			}
 
 			// Success! Redirect to templates page
-			goto('/ontology/templates');
+			goto('/projects/templates');
 		} catch (err) {
 			console.error('[Template Creation] Error:', err);
 			error = err instanceof Error ? err.message : 'An unexpected error occurred';
@@ -1053,7 +1053,7 @@
 	}
 
 	function handleCancel() {
-		goto('/ontology/templates');
+		goto('/projects/templates');
 	}
 
 	function goToStep(step: number) {

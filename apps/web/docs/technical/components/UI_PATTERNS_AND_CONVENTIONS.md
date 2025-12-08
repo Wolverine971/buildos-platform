@@ -1,19 +1,27 @@
 # BuildOS UI Patterns and Style Conventions - Complete Analysis
 
+> **⚠️ Design System Update (December 2025)**
+>
+> BuildOS now uses the **Inkprint Design System**.
+>
+> **Primary Reference:** [INKPRINT_DESIGN_SYSTEM.md](./INKPRINT_DESIGN_SYSTEM.md)
+>
+> Some patterns in this document may be outdated. When in doubt, refer to the Inkprint spec.
+
 ## Overview
 
-BuildOS follows a **premium Apple-inspired aesthetic** with focus on clarity, high information density, and sophisticated UX. All components must support:
+BuildOS follows the **Inkprint Design System** - a printmaking-inspired aesthetic with semantic textures, warm accent colors, and high information density. All components must support:
 
 - Responsive design (mobile-first)
-- Light and dark modes
+- Light and dark modes using **semantic color tokens**
 - WCAG AA accessibility standards (4.5:1 contrast ratio)
-- High information density with Apple-style refinement
+- High information density with texture-based visual feedback
 
 ---
 
 ## 1. Style Guide Location and Philosophy
 
-**Master Reference**: `/apps/web/docs/technical/components/BUILDOS_STYLE_GUIDE.md`
+**Master Reference**: `/apps/web/docs/technical/components/INKPRINT_DESIGN_SYSTEM.md`
 
 **Core Design Principles**:
 

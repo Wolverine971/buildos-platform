@@ -82,9 +82,7 @@
 			sizeClasses[effectiveSize],
 
 			// State classes - Inkprint design
-			effectiveChecked
-				? 'bg-accent border-accent'
-				: 'bg-card border-border',
+			effectiveChecked ? 'bg-accent border-accent' : 'bg-card border-border',
 
 			// Error state
 			effectiveError && !effectiveChecked ? 'border-destructive' : '',

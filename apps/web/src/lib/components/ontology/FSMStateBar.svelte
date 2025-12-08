@@ -302,15 +302,10 @@
 			{#snippet header()}
 				<div class="flex items-center gap-3">
 					<div class="p-2 rounded-lg bg-muted">
-						<GitBranch
-							class="w-5 h-5 text-muted-foreground"
-							strokeWidth={2}
-						/>
+						<GitBranch class="w-5 h-5 text-muted-foreground" strokeWidth={2} />
 					</div>
 					<div>
-						<h2 class="text-lg font-bold text-foreground">
-							Select Transition
-						</h2>
+						<h2 class="text-lg font-bold text-foreground">Select Transition</h2>
 						<p class="text-sm text-muted-foreground">
 							Choose how to progress {entityName || 'this ' + entityKind}
 						</p>
@@ -321,9 +316,7 @@
 			{#snippet children()}
 				<div class="space-y-3">
 					<!-- Current State -->
-					<div
-						class="flex items-center gap-2 p-3 rounded-lg bg-muted"
-					>
+					<div class="flex items-center gap-2 p-3 rounded-lg bg-muted">
 						<span
 							class="text-xs font-bold uppercase tracking-wider text-muted-foreground"
 						>
@@ -347,15 +340,11 @@
 								<div class="flex items-center justify-between gap-3">
 									<div class="min-w-0 flex-1">
 										<div class="flex items-center gap-2">
-											<span
-												class="text-sm font-semibold text-foreground"
-											>
+											<span class="text-sm font-semibold text-foreground">
 												{transition.event}
 											</span>
 											<ChevronRight class="w-4 h-4 text-muted-foreground" />
-											<span
-												class="text-sm font-bold uppercase text-accent"
-											>
+											<span class="text-sm font-bold uppercase text-accent">
 												{transition.to}
 											</span>
 										</div>
@@ -386,9 +375,7 @@
 								</div>
 
 								{#if !transition.can_run && transition.failedGuards.length > 0}
-									<div
-										class="mt-2 pt-2 border-t border-amber-500/20"
-									>
+									<div class="mt-2 pt-2 border-t border-amber-500/20">
 										<p class="text-xs text-amber-600 dark:text-amber-400">
 											{transition.failedGuards.length} blocker{transition
 												.failedGuards.length !== 1
@@ -438,9 +425,7 @@
 						/>
 					</div>
 					<div>
-						<h2 class="text-lg font-bold text-foreground">
-							Transition Blocked
-						</h2>
+						<h2 class="text-lg font-bold text-foreground">Transition Blocked</h2>
 						<p class="text-sm text-muted-foreground">
 							Requirements not met for "{transition.event}"
 						</p>
@@ -452,12 +437,8 @@
 				{@const transition = blockedTransition!}
 				<div class="space-y-4">
 					<!-- Transition Summary -->
-					<div
-						class="flex items-center gap-2 p-3 rounded-lg bg-muted"
-					>
-						<span
-							class="text-xs font-bold uppercase text-muted-foreground"
-						>
+					<div class="flex items-center gap-2 p-3 rounded-lg bg-muted">
+						<span class="text-xs font-bold uppercase text-muted-foreground">
 							{localState}
 						</span>
 						<ChevronRight class="w-4 h-4 text-muted-foreground" />
@@ -470,9 +451,7 @@
 
 					<!-- Blockers List -->
 					<div class="space-y-2">
-						<p
-							class="text-xs font-bold uppercase tracking-wider text-muted-foreground"
-						>
+						<p class="text-xs font-bold uppercase tracking-wider text-muted-foreground">
 							Blockers ({transition.failedGuards.length})
 						</p>
 						<div class="space-y-2">

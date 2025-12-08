@@ -70,7 +70,9 @@
 			autoResize && 'resize-none overflow-hidden',
 
 			// State classes - clean borders
-			error ? 'border-destructive focus:ring-destructive' : 'border-border focus:border-accent',
+			error
+				? 'border-destructive focus:ring-destructive'
+				: 'border-border focus:border-accent',
 
 			// Background - card
 			'bg-card',

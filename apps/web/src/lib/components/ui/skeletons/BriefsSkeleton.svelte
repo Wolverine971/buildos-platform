@@ -23,9 +23,7 @@
 			</div>
 
 			<!-- Brief stats -->
-			<div
-				class="flex items-center justify-between pt-4 border-t border-border"
-			>
+			<div class="flex items-center justify-between pt-4 border-t border-border">
 				<div class="flex gap-3">
 					<div class="h-5 bg-muted rounded w-20"></div>
 					<div class="h-5 bg-muted rounded w-24"></div>

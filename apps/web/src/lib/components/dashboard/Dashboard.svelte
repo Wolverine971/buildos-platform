@@ -1,718 +1,127 @@
 <!-- apps/web/src/lib/components/dashboard/Dashboard.svelte -->
+<!-- Projects-focused dashboard with AgentChatModal integration -->
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import {
+		Plus,
 		FolderOpen,
-		CheckCircle2,
-		ArrowRight,
-		Calendar,
-		TrendingUp,
 		Loader2,
-		AlertTriangle
+		AlertTriangle,
+		ChevronRight,
+		Sparkles
 	} from 'lucide-svelte';
-	import { onMount, onDestroy, createEventDispatcher } from 'svelte';
-	import { formatFullDate, differenceInHours } from '$lib/utils/date-utils';
-	import { toastService } from '$lib/stores/toast.store';
-	import type { Task } from '$lib/types/project';
-	import type {
-		User,
-		UserFamiliarity,
-		NudgeCard,
-		PrimaryCTA,
-		BottomSectionsData
-	} from '$lib/types/dashboard';
-	import type { TimeBlockWithProject } from '@buildos/shared-types';
-	import type { DashboardData } from '$lib/services/dashboardData.service';
-	import { dashboardStore } from '$lib/stores/dashboard.store';
-	import { dashboardDataService } from '$lib/services/dashboardData.service';
-
-	// Components
-	import DailyBriefCard from '$lib/components/dashboard/DailyBriefCard.svelte';
-	import TimeBlocksCard from '$lib/components/dashboard/TimeBlocksCard.svelte';
-	import FirstTimeBrainDumpCard from '$lib/components/dashboard/FirstTimeBrainDumpCard.svelte';
-	import {
-		brainDumpV2Store,
-		isModalOpen as brainDumpModalIsOpen
-	} from '$lib/stores/brain-dump-v2.store';
+	import { formatFullDate } from '$lib/utils/date-utils';
+	import { getProjectStateBadgeClass } from '$lib/utils/ontology-badge-styles';
 	import Button from '$lib/components/ui/Button.svelte';
 
-	// Lazy-loaded modal components
-	let TaskModal = $state<any>(null);
-	let DailyBriefModal = $state<any>(null);
-	let TimeBlockModal = $state<any>(null);
+	// Types
+	interface OntologyProjectSummary {
+		id: string;
+		name: string;
+		description: string | null;
+		type_key: string;
+		state_key: string;
+		facet_context: string | null;
+		facet_scale: string | null;
+		facet_stage: string | null;
+		created_at: string;
+		updated_at: string;
+		task_count: number;
+		output_count: number;
+	}
 
-	// Props with proper types
+	interface User {
+		id: string;
+		email?: string;
+		name?: string;
+		is_admin?: boolean;
+	}
+
+	// Props
 	type Props = {
 		user: User;
-		initialData?: DashboardData | null;
-		isLoadingDashboard?: boolean;
-		dashboardError?: string | null;
 	};
 
-	let {
-		user,
-		initialData = null,
-		isLoadingDashboard = false,
-		dashboardError = null
-	}: Props = $props();
-
-	// Event dispatcher
-	const dispatch = createEventDispatcher();
-
-	// ============================================
-	// STATE MANAGEMENT
-	// ============================================
-
-	// Core data state - now using reactive store
-	// Use initial data until store is initialized
-	const pastDueTasks = $derived(
-		$dashboardStore.initialized ? $dashboardStore.pastDueTasks : initialData?.pastDueTasks || []
-	);
-	const todaysTasks = $derived(
-		$dashboardStore.initialized ? $dashboardStore.todaysTasks : initialData?.todaysTasks || []
-	);
-	const tomorrowsTasks = $derived(
-		$dashboardStore.initialized
-			? $dashboardStore.tomorrowsTasks
-			: initialData?.tomorrowsTasks || []
-	);
-	const weeklyTasks = $derived(
-		$dashboardStore.initialized ? $dashboardStore.weeklyTasks : initialData?.weeklyTasks || []
-	);
-	const weeklyTasksByDate = $derived(
-		$dashboardStore.initialized
-			? $dashboardStore.weeklyTasksByDate
-			: initialData?.weeklyTasksByDate || {}
-	);
-	const activeProjects = $derived(
-		$dashboardStore.initialized
-			? $dashboardStore.activeProjects
-			: initialData?.activeProjects || []
-	);
-	const calendarStatus = $derived(
-		$dashboardStore.initialized
-			? $dashboardStore.calendarStatus
-			: initialData?.calendarStatus
-				? {
-						isConnected: initialData.calendarStatus.isConnected || false,
-						loading: false,
-						error: null
-					}
-				: { isConnected: false, loading: false, error: null }
-	);
-	const dashboardStats = $derived(
-		$dashboardStore.initialized
-			? $dashboardStore.stats
-			: initialData?.stats || {
-					totalProjects: 0,
-					activeTasks: 0,
-					completedToday: 0,
-					upcomingDeadlines: 0
-				}
-	);
-	const storeLoading = $derived($dashboardStore.loading);
-	const storeError = $derived($dashboardStore.error);
-	const storeInitialized = $derived($dashboardStore.initialized);
-
-	// Modal states
-	let showTaskModal = $state(false);
-	let selectedTask = $state<any>(null);
-	let taskModalLoading = $state(false);
-	let showDailyBriefModal = $state(false);
-	let selectedBrief = $state<any>(null);
-	const showBrainDumpModal = $derived($brainDumpModalIsOpen);
-	let showTimeBlockModal = $state(false);
-	let selectedTimeBlock = $state<TimeBlockWithProject | null>(null);
-	let brainDumpModalWasOpen = false;
-	let pendingBrainDumpRefresh = false;
-
-	$effect(() => {
-		const isOpen = showBrainDumpModal;
-		const storeSnapshot = $brainDumpV2Store;
-		const activeCount =
-			storeSnapshot?.activeBrainDumps instanceof Map
-				? storeSnapshot.activeBrainDumps.size
-				: 0;
-		const processingPhase = storeSnapshot?.processing?.phase ?? 'idle';
-		const handoffActive = activeCount > 0 || processingPhase !== 'idle';
-
-		if (!isOpen && brainDumpModalWasOpen) {
-			if (handoffActive) {
-				pendingBrainDumpRefresh = true;
-			} else {
-				pendingBrainDumpRefresh = false;
-				void requestRefresh();
-			}
-		}
-
-		if (pendingBrainDumpRefresh && !handoffActive) {
-			pendingBrainDumpRefresh = false;
-			void requestRefresh();
-		}
-		brainDumpModalWasOpen = isOpen;
-	});
-
-	// Time block states
-	let timeBlocks = $state<TimeBlockWithProject[]>([]);
-	let loadingTimeBlocks = $state(false);
-	let timeBlocksError = $state<string | null>(null);
-
-	// Lazy loading states
-	let loadingBottomSections = $state(false);
-	let bottomSectionsLoaded = $state(false);
-	let bottomSectionsData = $state<BottomSectionsData>({});
-	let lazyLoadError = $state<string | null>(null);
-	let todaysBrief = $state<any>(initialData?.todaysBrief || null);
-	let loadingBrief = $state(false);
-
-	// Lazy-loaded components
-	let BraindumpWeekView = $state<any>(null);
-	let PhaseCalendarView = $state<any>(null);
-
-	// Modal loading states
-	let loadingTaskModal = $state(false);
-	let loadingDailyBriefModal = $state(false);
-
-	// Performance optimization states
-	let lazyLoadTrigger = $state<HTMLElement>();
-	let intersectionObserver: IntersectionObserver | null = null;
-	let invalidationTimeout: number | null = null;
-
-	// ============================================
-	// DATA EXTRACTION & COMPUTED PROPERTIES
-	// ============================================
-
-	// Initialize store helper function
-	function initializeStore(data: DashboardData) {
-		if (!data) return;
-
-		const mappedCalendarStatus = data.calendarStatus
-			? {
-					// Map isConnected from API to connected for store
-					isConnected: data.calendarStatus.isConnected || false,
-					loading: false,
-					error: null
-				}
-			: {
-					isConnected: false,
-					loading: false,
-					error: null
-				};
-
-		dashboardStore.updateState({
-			pastDueTasks: data.pastDueTasks || [],
-			todaysTasks: data.todaysTasks || [],
-			tomorrowsTasks: data.tomorrowsTasks || [],
-			weeklyTasks: data.weeklyTasks || [],
-			weeklyTasksByDate: data.weeklyTasksByDate || {},
-			activeProjects: data.activeProjects || [],
-			recentBriefs: data.recentBriefs || [],
-			stats: data.stats || {
-				totalProjects: 0,
-				activeTasks: 0,
-				completedToday: 0,
-				upcomingDeadlines: 0
-			},
-			calendarStatus: mappedCalendarStatus,
-			timezone: data.timezone || 'UTC',
-			initialized: true
-		});
-	}
-
-	// Computed stats - use store data when available, fallback to initialData
-	const stats = $derived({
-		activeProjects: storeInitialized ? activeProjects : initialData?.activeProjects || [],
-		pastDueTasks: storeInitialized ? pastDueTasks : initialData?.pastDueTasks || [],
-		todaysTasks: storeInitialized ? todaysTasks : initialData?.todaysTasks || [],
-		tomorrowsTasks: storeInitialized ? tomorrowsTasks : initialData?.tomorrowsTasks || [],
-		weeklyTasks: storeInitialized ? weeklyTasks : initialData?.weeklyTasks || [],
-		weeklyProgress: storeInitialized
-			? dashboardStats?.weeklyProgress || { completed: 0, total: 0 }
-			: initialData?.stats?.weeklyProgress || { completed: 0, total: 0 },
-		lastUpdated: new Date().toISOString()
-	});
-
-	// User familiarity calculations
-	const userFamiliarity = $derived(calculateUserFamiliarity());
-	const showWelcomeMessages = $derived(shouldShowWelcomeMessages());
-	const primaryCTA = $derived(getPrimaryCTA());
-	const nudgeCards = $derived(initialData ? calculateNudgeCards() : null);
-
-	// Display mode calculation for progressive disclosure
-	const displayMode = $derived(calculateDisplayMode());
-	const showBrainDumpCard = $derived(displayMode === 'first-time');
-	const showTaskCards = $derived(displayMode !== 'first-time');
-	const showWeeklyCalendar = $derived(
-		displayMode === 'experienced' ||
-			(displayMode === 'intermediate' && (weeklyTasks?.length || 0) > 0)
-	);
-	const showStatsGrid = $derived(displayMode !== 'first-time');
-	const isCompactBrainDumpCard = $derived(false);
-	const showLazyLoadedSections = $derived(displayMode !== 'first-time');
-
-	// Progress metrics
-	const productivityScore = $derived(calculateProductivityScore(stats?.weeklyProgress));
-	const weeklyProgressText = $derived(getWeeklyProgressText(stats?.weeklyProgress));
-
-	// ============================================
-	// LIFECYCLE HOOKS
-	// ============================================
-
-	onMount(async () => {
-		// Initialize store with existing data if available, otherwise load fresh
-		if (initialData) {
-			initializeStore(initialData);
-		} else {
-			// Fallback: load fresh data with correct timezone
-			const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-			await dashboardDataService.loadDashboardData(timezone);
-		}
-
-		// Load time blocks for Today and Tomorrow
-		await loadTimeBlocks();
-
-		// Setup lazy loading for bottom sections
-		setupLazyLoading();
-	});
-
-	onDestroy(async () => {
-		if (intersectionObserver) {
-			intersectionObserver.disconnect();
-			intersectionObserver = null;
-		}
-		if (invalidationTimeout) {
-			clearTimeout(invalidationTimeout);
-			invalidationTimeout = null;
-		}
-	});
-
-	// ============================================
-	// DATA LOADING FUNCTIONS
-	// ============================================
-
-	async function loadBottomSections() {
-		if (loadingBottomSections || bottomSectionsLoaded) return;
-
-		loadingBottomSections = true;
-		lazyLoadError = null;
-
-		try {
-			const [componentsResult, dataResult] = await Promise.allSettled([
-				Promise.all([
-					import('$lib/components/dashboard/BraindumpWeekView.svelte'),
-					import('$lib/components/dashboard/PhaseCalendarView.svelte')
-				]),
-				fetch('/api/dashboard/bottom-sections').then((res) => res.json())
-			]);
-
-			if (componentsResult.status === 'fulfilled') {
-				const [braindumpModule, phaseModule] = componentsResult.value;
-				BraindumpWeekView = braindumpModule.default;
-				PhaseCalendarView = phaseModule.default;
-			}
-
-			if (dataResult.status === 'fulfilled') {
-				const result = dataResult.value;
-				const data = result.success && result.data ? result.data : result;
-				if (!result.error) {
-					bottomSectionsData = data;
-					// Set todaysBrief from bottom sections data
-					if (data.todaysBrief) {
-						todaysBrief = data.todaysBrief;
-					}
-					bottomSectionsLoaded = true;
-					// Note: Stats are now handled via $derived, no manual caching needed
-					if (intersectionObserver) {
-						intersectionObserver.disconnect();
-					}
-				}
-			}
-		} catch (error) {
-			console.error('Error loading bottom sections:', error);
-			lazyLoadError = 'Failed to load additional content. Please refresh the page.';
-		} finally {
-			loadingBottomSections = false;
-		}
-	}
-
-	function setupLazyLoading() {
-		if (typeof window === 'undefined') return;
-
-		// Don't setup lazy loading for first-time users
-		if (displayMode === 'first-time') return;
-
-		intersectionObserver = new IntersectionObserver(
-			(entries) => {
-				entries.forEach((entry) => {
-					if (entry.isIntersecting && !bottomSectionsLoaded && !loadingBottomSections) {
-						loadBottomSections();
-					}
-				});
-			},
-			{ rootMargin: '400px' } // Increased margin for earlier loading
-		);
-
-		if (lazyLoadTrigger) {
-			intersectionObserver.observe(lazyLoadTrigger);
-		}
-	}
-
-	async function loadTaskModal() {
-		if (TaskModal || loadingTaskModal) return;
-		loadingTaskModal = true;
-		try {
-			const module = await import('$lib/components/project/TaskModal.svelte');
-			TaskModal = module.default;
-		} catch (error) {
-			console.error('Failed to load TaskModal:', error);
-		} finally {
-			loadingTaskModal = false;
-		}
-	}
-
-	async function loadDailyBriefModal() {
-		if (DailyBriefModal || loadingDailyBriefModal) return;
-		loadingDailyBriefModal = true;
-		try {
-			const module = await import('$lib/components/briefs/DailyBriefModal.svelte');
-			DailyBriefModal = module.default;
-		} catch (error) {
-			console.error('Failed to load DailyBriefModal:', error);
-		} finally {
-			loadingDailyBriefModal = false;
-		}
-	}
-
-	async function loadTimeBlockModal() {
-		if (TimeBlockModal) return;
-		try {
-			const module = await import('$lib/components/time-blocks/TimeBlockModal.svelte');
-			TimeBlockModal = module.default;
-		} catch (error) {
-			console.error('Failed to load TimeBlockModal:', error);
-		}
-	}
-
-	async function loadTimeBlocks() {
-		if (loadingTimeBlocks) return;
-
-		loadingTimeBlocks = true;
-		timeBlocksError = null;
-
-		try {
-			// Get date range for today and tomorrow
-			const now = new Date();
-			const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-			const endOfTomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 2);
-
-			const response = await fetch(
-				`/api/time-blocks/blocks?start_date=${startOfToday.toISOString()}&end_date=${endOfTomorrow.toISOString()}`
-			);
-
-			if (!response.ok) {
-				throw new Error('Failed to load time blocks');
-			}
-
-			const result = await response.json();
-			if (result.success && result.data) {
-				timeBlocks = result.data.blocks || [];
-			}
-		} catch (error) {
-			console.error('[Dashboard] Failed to load time blocks:', error);
-			timeBlocksError = 'Failed to load focus sessions';
-		} finally {
-			loadingTimeBlocks = false;
-		}
-	}
-
-	// ============================================
-	// USER EXPERIENCE CALCULATIONS
-	// ============================================
-
-	function calculateUserFamiliarity(): UserFamiliarity {
-		const projectCount = activeProjects?.length || 0;
-		const taskCount =
-			(pastDueTasks?.length || 0) +
-			(todaysTasks?.length || 0) +
-			(tomorrowsTasks?.length || 0) +
-			(weeklyTasks?.length || 0);
-		const lastActivityHours = calculateLastActivityHours();
-		const isStale = lastActivityHours > 48;
-		const isVeryStale = lastActivityHours > 168;
-
-		if (projectCount === 0) {
-			return { tier: 1, level: 'brand-new', projectCount, taskCount, isStale, isVeryStale };
-		}
-		if (projectCount === 1) {
-			return {
-				tier: 2,
-				level: 'getting-started',
-				projectCount,
-				taskCount,
-				isStale,
-				isVeryStale
-			};
-		}
-		return { tier: 3, level: 'experienced', projectCount, taskCount, isStale, isVeryStale };
-	}
-
-	function calculateLastActivityHours() {
-		const dates = [];
-		if (user?.updated_at) dates.push(new Date(user.updated_at));
-		activeProjects?.forEach((p) => {
-			if (p.updated_at) dates.push(new Date(p.updated_at));
-		});
-		if (dates.length === 0) return 0;
-		const mostRecent = new Date(Math.max(...dates.map((d) => d.getTime())));
-		return differenceInHours(new Date(), mostRecent);
-	}
-
-	function shouldShowWelcomeMessages() {
-		if (!userFamiliarity) return false;
-		return userFamiliarity.tier === 1 || userFamiliarity.isVeryStale;
-	}
-
-	function calculateNudgeCards(): NudgeCard[] {
-		if (!userFamiliarity) return [];
-		const cards = [];
-
-		// Calendar connection nudge
-		if (!calendarStatus?.isConnected && (todaysTasks.length > 0 || weeklyTasks.length > 0)) {
-			cards.push({
-				type: 'calendar-connection',
-				title: 'Connect Calendar',
-				description: 'Schedule tasks automatically',
-				action: { text: 'Connect', href: '/profile?tab=calendar' },
-				icon: Calendar,
-				color: 'blue'
-			});
-		}
-
-		return cards;
-	}
-
-	function getPrimaryCTA(): PrimaryCTA | null {
-		if (!userFamiliarity || userFamiliarity.tier > 1) return null;
-
-		return {
-			title: 'Welcome to BuildOS!',
-			subtitle: 'Your personal operating system for projects',
-			description: 'Start by creating your first project. Include goals, dates, and tasks.',
-			primaryAction: {
-				text: 'Create Project',
-				href: '/projects',
-				icon: FolderOpen
-			}
-		};
-	}
-
-	function calculateProductivityScore(
-		progress: { completed: number; total: number } | undefined
-	): number {
-		if (!progress || progress.total === 0) return 0;
-		return Math.round((progress.completed / progress.total) * 100);
-	}
-
-	function getWeeklyProgressText(
-		progress: { completed: number; total: number } | undefined
-	): string {
-		if (!progress || progress.total === 0) return 'No tasks this week';
-		return `${progress.completed}/${progress.total} completed`;
-	}
-
-	function calculateDisplayMode():
-		| 'first-time'
-		| 'getting-started'
-		| 'intermediate'
-		| 'experienced' {
-		const hasProjects = (activeProjects?.length || 0) > 0;
-		const hasTasks =
-			(pastDueTasks?.length || 0) +
-				(todaysTasks?.length || 0) +
-				(tomorrowsTasks?.length || 0) +
-				(weeklyTasks?.length || 0) >
-			0;
-		const hasBrainDumps = bottomSectionsData?.braindumps?.length > 0;
-
-		if (!hasProjects && !hasBrainDumps && !hasTasks) {
-			return 'first-time'; // Stage 1: No data at all
-		} else if (hasProjects && activeProjects.length <= 1) {
-			return 'getting-started'; // Stage 2: First project created
-		} else if (activeProjects.length <= 2) {
-			return 'intermediate'; // Stage 3: 2 projects
-		} else {
-			return 'experienced'; // Stage 4: 3+ projects
-		}
-	}
-
-	// ============================================
-	// EVENT HANDLERS
-	// ============================================
-
-	async function requestRefresh() {
-		// Refresh dashboard data using the service
-		const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-		await dashboardDataService.loadDashboardData(timezone);
-	}
-
-	async function handleTaskClick(task: any) {
-		selectedTask = task;
-		await loadTaskModal();
-		showTaskModal = true;
-	}
-
-	async function handleOpenBrief(event: CustomEvent) {
-		selectedBrief = event.detail.brief;
-		await loadDailyBriefModal();
-		showDailyBriefModal = true;
-	}
-
-	function handleCloseBriefModal() {
-		showDailyBriefModal = false;
-		selectedBrief = null;
-	}
-
-	function handleStartBrainDump() {
-		brainDumpV2Store.openModal({ resetSelection: true });
-	}
-	function handleCloseTaskModal() {
-		showTaskModal = false;
-		selectedTask = null;
-		taskModalLoading = false;
-	}
-
-	async function handleTaskUpdate(updatedTask: Task) {
-		if (!updatedTask || !updatedTask.id) {
-			handleCloseTaskModal();
-			return;
-		}
-
-		// Ensure we have project_id from either the updated task or the selected task
-		const projectId = updatedTask.project_id || selectedTask?.project_id;
-		if (!projectId) {
-			toastService?.error?.('Cannot update task: project information missing');
-			handleCloseTaskModal();
-			return;
-		}
-
-		// Add project_id to the update if not present
-		const taskToUpdate = { ...updatedTask, project_id: projectId };
-
-		taskModalLoading = true;
-		try {
-			// Use the dashboard service for optimistic updates, passing projectId separately
-			const result = await dashboardDataService.updateTask(
-				taskToUpdate.id,
-				taskToUpdate,
-				projectId
-			);
-
-			if (!result.success) {
-				const errorMsg = result.errors?.[0] || result.message || 'Failed to update task';
-				throw new Error(errorMsg);
-			}
-
-			dispatch('taskUpdated', result.data);
-			toastService?.success?.('Task updated successfully');
-
-			// Refresh bottom sections if loaded
-			if (bottomSectionsLoaded) {
-				await loadBottomSections();
-			}
-		} catch (error: any) {
-			console.error('Error updating task:', error);
-			toastService?.error?.(error.message || 'Failed to update task');
-		} finally {
-			taskModalLoading = false;
-			handleCloseTaskModal();
-		}
-	}
-
-	async function handleTaskDelete(taskId: string) {
-		if (!taskId || !selectedTask?.project_id) {
-			handleCloseTaskModal();
-			return;
-		}
-		taskModalLoading = true;
-		try {
-			// Use the dashboard service for optimistic delete
-			const result = await dashboardDataService.deleteTask(taskId);
-
-			if (!result.success) {
-				throw new Error(result.errors?.[0] || 'Failed to delete task');
-			}
-
-			dispatch('taskDeleted', taskId);
-			toastService?.success?.('Task deleted successfully');
-
-			// Refresh bottom sections if loaded
-			if (bottomSectionsLoaded) {
-				await loadBottomSections();
-			}
-		} catch (error: any) {
-			console.error('Error deleting task:', error);
-			toastService?.error?.(error.message || 'Failed to delete task');
-		} finally {
-			taskModalLoading = false;
-			handleCloseTaskModal();
-		}
-	}
-
-	// ============================================
-	// TIME BLOCK HANDLERS
-	// ============================================
-
-	async function handleTimeBlockClick(block: TimeBlockWithProject) {
-		selectedTimeBlock = block;
-		await loadTimeBlockModal();
-		showTimeBlockModal = true;
-	}
-
-	async function handleNewTimeBlock() {
-		selectedTimeBlock = null;
-		await loadTimeBlockModal();
-		showTimeBlockModal = true;
-	}
-
-	function handleTimeBlockClose() {
-		showTimeBlockModal = false;
-		selectedTimeBlock = null;
-	}
-
-	async function handleTimeBlockCreate(block: TimeBlockWithProject) {
-		// Optimistically add to local state
-		timeBlocks = [...timeBlocks, block];
-		toastService?.success?.('Focus session created');
-		handleTimeBlockClose();
-	}
-
-	async function handleTimeBlockUpdate(block: TimeBlockWithProject) {
-		// Optimistically update local state
-		timeBlocks = timeBlocks.map((tb) => (tb.id === block.id ? block : tb));
-		toastService?.success?.('Focus session updated');
-		handleTimeBlockClose();
-	}
-
-	async function handleTimeBlockDelete(blockId: string) {
-		// Optimistically remove from local state
-		timeBlocks = timeBlocks.filter((tb) => tb.id !== blockId);
-		toastService?.success?.('Focus session deleted');
-		handleTimeBlockClose();
-	}
-
-	// Display name helper
+	let { user }: Props = $props();
+
+	// State
+	let projects = $state<OntologyProjectSummary[]>([]);
+	let isLoading = $state(true);
+	let error = $state<string | null>(null);
+	let showChatModal = $state(false);
+	let AgentChatModal = $state<any>(null);
+
+	// Computed
 	const displayName = $derived(user?.name || user?.email?.split('@')[0] || 'there');
+	const hasProjects = $derived(projects.length > 0);
+
+	// Load projects on mount
+	onMount(async () => {
+		await loadProjects();
+	});
+
+	async function loadProjects() {
+		isLoading = true;
+		error = null;
+
+		try {
+			const response = await fetch('/api/onto/projects', {
+				method: 'GET',
+				credentials: 'same-origin',
+				headers: {
+					Accept: 'application/json'
+				}
+			});
+
+			const payload = await response.json();
+
+			if (!response.ok || payload?.success === false) {
+				error = payload?.error || 'Failed to load projects';
+				projects = [];
+				return;
+			}
+
+			const fetchedProjects = payload?.data?.projects ?? payload?.projects ?? [];
+			projects = fetchedProjects;
+		} catch (err) {
+			console.error('Failed to load projects:', err);
+			error = 'Failed to load projects. Please try again.';
+		} finally {
+			isLoading = false;
+		}
+	}
+
+	async function handleCreateProject() {
+		// Lazy load the AgentChatModal
+		if (!AgentChatModal) {
+			try {
+				const module = await import('$lib/components/agent/AgentChatModal.svelte');
+				AgentChatModal = module.default;
+			} catch (err) {
+				console.error('Failed to load AgentChatModal:', err);
+				return;
+			}
+		}
+		showChatModal = true;
+	}
+
+	function handleChatClose() {
+		showChatModal = false;
+		// Refresh projects after modal closes in case a new project was created
+		loadProjects();
+	}
 </script>
 
-<main class="min-h-screen bg-surface-scratch dark:bg-slate-900 transition-colors">
-	<div class="container mx-auto px-2 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-10 max-w-7xl">
-		<!-- Header Section with Apple-style typography -->
-		<header class="mb-4 sm:mb-6">
+<main class="min-h-screen bg-background transition-colors">
+	<div class="container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-10 max-w-7xl">
+		<!-- Header Section -->
+		<header class="mb-6 sm:mb-8">
 			<h1
-				class="text-3xl sm:text-4xl lg:text-5xl font-bold text-slate-900 dark:text-white mb-2 tracking-tight"
+				class="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground mb-2 tracking-tight"
 			>
 				Welcome back, {displayName}
 			</h1>
-			<p class="text-sm sm:text-base text-slate-500 dark:text-slate-400 font-medium">
+			<p class="text-sm sm:text-base text-muted-foreground font-medium">
 				<time datetime={new Date().toISOString()}>
 					{formatFullDate(new Date())}
 				</time>
@@ -720,424 +129,223 @@
 		</header>
 
 		<!-- Error State -->
-		{#if dashboardError}
+		{#if error}
 			<div
-				class="mb-4 sm:mb-6 bg-red-50 dark:bg-red-900/20 rounded p-4 sm:p-6 border border-red-200 dark:border-red-800 transition-colors"
+				class="mb-6 bg-card rounded-lg p-6 border border-border shadow-ink tx tx-static tx-weak"
 			>
 				<div class="text-center">
-					<AlertTriangle class="h-8 w-8 text-red-500 dark:text-red-400 mx-auto mb-3" />
-					<p class="text-red-600 dark:text-red-400 mb-4">{dashboardError}</p>
-					<Button onclick={requestRefresh} variant="danger" size="sm">Try Again</Button>
+					<AlertTriangle class="h-8 w-8 text-red-500 mx-auto mb-3" />
+					<p class="text-red-600 dark:text-red-400 mb-4">{error}</p>
+					<Button onclick={loadProjects} variant="primary" size="sm">Try Again</Button>
 				</div>
 			</div>
 		{/if}
 
 		<!-- Loading State -->
-		{#if isLoadingDashboard && !initialData}
-			<div
-				class="bg-surface-panel dark:bg-slate-800 rounded shadow-sm p-8 sm:p-12 transition-colors"
-			>
+		{#if isLoading}
+			<div class="bg-card rounded-lg shadow-ink p-8 sm:p-12 tx tx-frame tx-weak">
 				<div class="flex flex-col items-center justify-center">
-					<Loader2 class="h-10 w-10 text-blue-600 dark:text-blue-400 animate-spin mb-4" />
-					<p class="text-slate-600 dark:text-slate-400">Loading your dashboard...</p>
+					<Loader2 class="h-10 w-10 text-accent animate-spin mb-4" />
+					<p class="text-muted-foreground">Loading your projects...</p>
 				</div>
 			</div>
-		{:else if initialData}
-			<!-- Brain Dump Card for First-Time Users -->
-			{#if showBrainDumpCard}
-				<section class="mb-4 sm:mb-6">
-					<FirstTimeBrainDumpCard
-						isCompact={isCompactBrainDumpCard}
-						on:startBrainDump={handleStartBrainDump}
-					/>
-				</section>
-			{/if}
-
-			<!-- Quick Actions - Show daily brief if available -->
-			{#if todaysBrief && initialData?.activeProjects && displayMode !== 'first-time'}
-				<section class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-6">
-					<!-- Daily Brief -->
-					<DailyBriefCard brief={todaysBrief} on:openBrief={handleOpenBrief} />
-				</section>
-			{/if}
-
-			<!-- Welcome Message with modern gradient -->
-			{#if showWelcomeMessages && primaryCTA && displayMode !== 'first-time'}
-				{@const Icon = primaryCTA.primaryAction.icon}
-				<div
-					class="mb-4 sm:mb-6 dither-soft bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded p-5 sm:p-6 border border-blue-200/50 dark:border-blue-800/50 shadow-sm backdrop-blur-sm"
-				>
-					<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-						<div class="flex-1">
-							<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-								{primaryCTA.title}
-							</h3>
-							<p class="text-sm text-slate-600 dark:text-slate-400 mb-4">
-								{primaryCTA.description}
-							</p>
-							<a
-								href={primaryCTA.primaryAction.href}
-								class="inline-flex items-center px-5 py-2.5 dither-gradient bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded shadow-md hover:shadow-lg transition-all text-sm font-semibold"
-							>
-								<Icon class="h-4 w-4 mr-2" />
-								{primaryCTA.primaryAction.text}
-							</a>
+		{:else}
+			<!-- Projects Grid -->
+			<section class="space-y-6">
+				<!-- Section Header -->
+				<div class="flex items-center justify-between">
+					<div class="flex items-center gap-3">
+						<div class="p-2 bg-accent/10 rounded-lg border border-accent/30">
+							<FolderOpen class="h-5 w-5 text-accent" />
 						</div>
+						<h2 class="text-xl font-bold text-foreground">Your Projects</h2>
 					</div>
+					{#if hasProjects}
+						<Button
+							variant="primary"
+							size="sm"
+							onclick={handleCreateProject}
+							class="pressable"
+						>
+							<Plus class="h-4 w-4 mr-2" />
+							New Project
+						</Button>
+					{/if}
 				</div>
-			{/if}
 
-			<!-- Nudge Cards -->
-			{#if nudgeCards?.length}
-				<div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4 sm:mb-6">
-					{#each nudgeCards as card}
-						{@const CardIcon = card.icon}
+				<!-- Projects Grid -->
+				<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+					<!-- Create New Project Card (shown first or as only card when empty) -->
+					{#if !hasProjects}
+						<!-- Empty State - Large Create Card -->
 						<div
-							class="bg-surface-panel dark:bg-slate-800 rounded border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md transition-all"
+							class="col-span-full rounded-lg border-2 border-dashed border-border bg-card p-8 sm:p-12 text-center shadow-ink tx tx-bloom tx-weak"
 						>
-							<div class="flex items-start space-x-3">
-								<div
-									class="p-2 bg-{card.color}-100 dark:bg-{card.color}-900/30 rounded"
-								>
-									<CardIcon
-										class="h-4 w-4 text-{card.color}-600 dark:text-{card.color}-400"
-									/>
-								</div>
-								<div class="flex-1">
-									<h4
-										class="text-sm font-semibold text-gray-900 dark:text-white mb-1"
-									>
-										{card.title}
-									</h4>
-									<p class="text-xs text-slate-600 dark:text-slate-400 mb-3">
-										{card.description}
-									</p>
-									<a
-										href={card.action.href}
-										class="inline-flex items-center text-xs font-medium text-{card.color}-600 dark:text-{card.color}-400 hover:text-{card.color}-700 dark:hover:text-{card.color}-300"
-									>
-										{card.action.text}
-										<ArrowRight class="h-3 w-3 ml-1" />
-									</a>
-								</div>
-							</div>
-						</div>
-					{/each}
-				</div>
-			{/if}
-
-			<!-- Task Cards - Mobile Tabs / Desktop Grid -->
-			{#if showTaskCards}
-				<!-- Mobile: Tab view with Time Blocks (LAZY LOADED - desktop never downloads this!) -->
-				<section class="sm:hidden mb-6">
-					{#await import('$lib/components/dashboard/MobileTaskTabs.svelte')}
-						<!-- Loading skeleton matching mobile tabs layout -->
-						<div
-							class="bg-surface-panel dark:bg-slate-800 rounded shadow-sm p-4 animate-pulse"
-						>
-							<div class="flex space-x-2 mb-4">
-								<div class="h-10 w-24 bg-slate-200 dark:bg-slate-700 rounded"></div>
-								<div class="h-10 w-24 bg-slate-200 dark:bg-slate-700 rounded"></div>
-								<div class="h-10 w-24 bg-slate-200 dark:bg-slate-700 rounded"></div>
-							</div>
-							<div class="space-y-2">
-								<div class="h-16 bg-slate-100 dark:bg-slate-700/50 rounded"></div>
-								<div class="h-16 bg-slate-100 dark:bg-slate-700/50 rounded"></div>
-								<div class="h-16 bg-slate-100 dark:bg-slate-700/50 rounded"></div>
-							</div>
-						</div>
-					{:then MobileTaskTabsModule}
-						<MobileTaskTabsModule.default
-							{pastDueTasks}
-							{todaysTasks}
-							{tomorrowsTasks}
-							{timeBlocks}
-							{calendarStatus}
-							onTaskClick={handleTaskClick}
-							onTimeBlockClick={handleTimeBlockClick}
-							onNewTimeBlock={handleNewTimeBlock}
-						/>
-					{:catch error}
-						<div class="bg-red-50 dark:bg-red-900/20 rounded p-4 text-center">
-							<p class="text-red-700 dark:text-red-400 font-semibold">
-								Failed to load mobile view
-							</p>
-							<p class="text-sm text-red-600 dark:text-red-500 mt-1">
-								Please refresh the page
-							</p>
-						</div>
-					{/await}
-				</section>
-
-				<!-- Desktop: Grid view -->
-				<section
-					class="hidden sm:grid auto-rows-fr items-stretch sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-5 mb-4 sm:mb-6"
-				>
-					<TimeBlocksCard
-						title="Past Due"
-						tasks={pastDueTasks || []}
-						{calendarStatus}
-						onTaskClick={handleTaskClick}
-						emptyMessage="No overdue tasks"
-						emptyIcon={CheckCircle2}
-					/>
-					<TimeBlocksCard
-						title="Today"
-						tasks={todaysTasks || []}
-						{timeBlocks}
-						{calendarStatus}
-						onTaskClick={handleTaskClick}
-						onTimeBlockClick={handleTimeBlockClick}
-						onNewTimeBlock={handleNewTimeBlock}
-						emptyMessage="No tasks for today"
-						emptyIcon={CheckCircle2}
-					/>
-					<TimeBlocksCard
-						title="Tomorrow"
-						tasks={tomorrowsTasks || []}
-						{timeBlocks}
-						{calendarStatus}
-						onTaskClick={handleTaskClick}
-						onTimeBlockClick={handleTimeBlockClick}
-						onNewTimeBlock={handleNewTimeBlock}
-						emptyMessage="No tasks for tomorrow"
-						emptyIcon={Calendar}
-					/>
-				</section>
-			{/if}
-
-			<!-- Weekly Calendar (LAZY LOADED - loads on demand for better initial performance) -->
-			{#if showWeeklyCalendar && weeklyTasks && weeklyTasks.length > 0}
-				<section class="mb-4 sm:mb-6">
-					{#await import('$lib/components/dashboard/WeeklyTaskCalendar.svelte')}
-						<!-- Loading skeleton matching calendar layout -->
-						<div
-							class="bg-surface-panel dark:bg-slate-800 rounded shadow-sm p-6 animate-pulse"
-						>
-							<div class="flex items-center justify-between mb-6">
-								<div class="h-8 w-48 bg-slate-200 dark:bg-slate-700 rounded"></div>
-								<div class="flex space-x-2">
-									<div
-										class="h-9 w-9 bg-slate-200 dark:bg-slate-700 rounded"
-									></div>
-									<div
-										class="h-9 w-9 bg-slate-200 dark:bg-slate-700 rounded"
-									></div>
-								</div>
-							</div>
-							<div class="grid grid-cols-7 gap-2">
-								{#each Array(7) as _, i}
-									<div class="space-y-2">
-										<div
-											class="h-6 bg-slate-200 dark:bg-slate-700 rounded"
-										></div>
-										<div
-											class="h-24 bg-slate-100 dark:bg-slate-700/50 rounded"
-										></div>
-									</div>
-								{/each}
-							</div>
-						</div>
-					{:then WeeklyTaskCalendarModule}
-						<WeeklyTaskCalendarModule.default
-							tasksByDate={weeklyTasksByDate}
-							{timeBlocks}
-							{calendarStatus}
-							onTaskClick={handleTaskClick}
-							onTimeBlockClick={handleTimeBlockClick}
-						/>
-					{:catch error}
-						<div class="bg-red-50 dark:bg-red-900/20 rounded p-4 text-center">
-							<p class="text-red-700 dark:text-red-400 font-semibold">
-								Failed to load weekly calendar
-							</p>
-							<p class="text-sm text-red-600 dark:text-red-500 mt-1">
-								Please refresh the page
-							</p>
-						</div>
-					{/await}
-				</section>
-			{/if}
-
-			<!-- Stats Grid -->
-			{#if showStatsGrid}
-				<section class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-6">
-					<!-- Weekly Progress with glass effect -->
-					<div
-						class="dither-soft bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/10 dark:to-indigo-900/10 rounded p-5 sm:p-6 border border-blue-200/50 dark:border-blue-800/50 shadow-sm backdrop-blur-sm"
-					>
-						<div class="flex items-center justify-between mb-5">
-							<div class="flex items-center">
-								<div class="p-2 bg-blue-100 dark:bg-blue-900/30 rounded mr-3">
-									<TrendingUp class="h-5 w-5 text-blue-600 dark:text-blue-400" />
-								</div>
-								<h3
-									class="text-lg font-semibold text-gray-900 dark:text-white tracking-tight"
-								>
-									Weekly Progress
-								</h3>
-							</div>
-							<span
-								class="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400 bg-clip-text text-transparent"
-							>
-								{productivityScore}%
-							</span>
-						</div>
-						<div class="space-y-3">
-							<p class="text-sm text-slate-600 dark:text-slate-400">
-								{weeklyProgressText}
-							</p>
 							<div
-								class="w-full bg-slate-200/50 dark:bg-slate-700/50 rounded-full h-3 overflow-hidden"
+								class="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-xl border border-accent/30 bg-accent/10 text-accent"
 							>
-								<div
-									class="bg-gradient-to-r from-blue-500 to-indigo-600 h-3 rounded-full transition-all duration-700 ease-out shadow-sm"
-									style="width: {productivityScore}%"
-								></div>
+								<Sparkles class="h-8 w-8" />
 							</div>
+							<h3 class="text-xl font-bold text-foreground mb-2">
+								Create Your First Project
+							</h3>
+							<p class="text-muted-foreground mb-6 max-w-md mx-auto">
+								Start by telling our AI assistant about your project. Describe your
+								goals, tasks, and timeline - we'll help you organize everything.
+							</p>
+							<Button
+								variant="primary"
+								size="lg"
+								onclick={handleCreateProject}
+								class="pressable"
+							>
+								<Plus class="h-5 w-5 mr-2" />
+								Create Project
+							</Button>
 						</div>
-					</div>
-
-					<!-- Active Projects with modern card style -->
-					<div
-						class="bg-surface-panel dark:bg-slate-800 rounded border border-gray-200/50 dark:border-gray-700/50 p-5 sm:p-6 shadow-sm backdrop-blur-sm"
-					>
-						<div class="flex items-center justify-between mb-5">
-							<div class="flex items-center">
-								<div class="p-2 bg-green-100 dark:bg-green-900/30 rounded mr-3">
-									<FolderOpen
-										class="h-5 w-5 text-green-600 dark:text-green-400"
-									/>
-								</div>
-								<h3
-									class="text-lg font-semibold text-gray-900 dark:text-white tracking-tight"
-								>
-									Active Projects
-								</h3>
+					{:else}
+						<!-- Create New Project Card (compact version in grid) -->
+						<button
+							onclick={handleCreateProject}
+							class="group flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-border bg-card/50 p-6 shadow-ink transition-all duration-200 hover:border-accent hover:bg-accent/5 pressable min-h-[200px]"
+						>
+							<div
+								class="mb-4 flex h-12 w-12 items-center justify-center rounded-lg border border-accent/30 bg-accent/10 text-accent transition-all group-hover:bg-accent group-hover:text-accent-foreground"
+							>
+								<Plus class="h-6 w-6" />
 							</div>
 							<span
-								class="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 dark:from-green-400 dark:to-emerald-400 bg-clip-text text-transparent"
+								class="text-sm font-bold text-muted-foreground group-hover:text-foreground"
 							>
-								{activeProjects?.length || 0}
+								Create New Project
 							</span>
-						</div>
-						{#if activeProjects && activeProjects.length > 0}
-							<div class="space-y-2">
-								{#each activeProjects.slice(0, 3) as project}
-									<a
-										href="/projects/{project.id}"
-										class="block p-3 rounded hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-all hover:shadow-sm group border border-transparent hover:border-gray-200/50 dark:hover:border-gray-700/50"
+						</button>
+
+						<!-- Project Cards -->
+						{#each projects as project (project.id)}
+							<a
+								href="/projects/projects/{project.id}"
+								class="group relative flex flex-col rounded-lg border border-border bg-card p-4 shadow-ink transition-all duration-200 hover:border-accent hover:shadow-ink-strong pressable tx tx-frame tx-weak"
+							>
+								<!-- Header -->
+								<div class="mb-3 flex items-start justify-between gap-3">
+									<h3
+										class="text-lg font-bold text-foreground truncate transition-colors group-hover:text-accent"
 									>
-										<div class="flex items-center justify-between">
-											<span
-												class="text-sm text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white transition-colors"
-											>
-												{project.name}
-											</span>
-											<ArrowRight
-												class="h-4 w-4 text-gray-400 dark:text-gray-500 group-hover:text-gray-600 dark:group-hover:text-gray-300 transition-colors"
-											/>
-										</div>
-									</a>
-								{/each}
-								{#if activeProjects.length > 3}
-									<a
-										href="/projects"
-										class="block text-center py-2 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 text-sm font-medium transition-colors"
+										{project.name}
+									</h3>
+									<span
+										class="flex-shrink-0 rounded-lg border px-2.5 py-1 text-xs font-bold capitalize {getProjectStateBadgeClass(
+											project.state_key
+										)}"
 									>
-										View all {activeProjects.length} projects
-										<ArrowRight class="inline h-4 w-4 ml-1" />
-									</a>
+										{project.state_key}
+									</span>
+								</div>
+
+								<!-- Description -->
+								{#if project.description}
+									<p
+										class="mb-3 line-clamp-2 text-sm text-muted-foreground flex-1"
+									>
+										{project.description}
+									</p>
+								{:else}
+									<p class="mb-3 text-sm text-muted-foreground/50 italic flex-1">
+										No description
+									</p>
 								{/if}
-							</div>
-						{:else}
-							<div class="text-center py-4">
-								<p class="text-slate-500 dark:text-slate-400 mb-3 text-sm">
-									No active projects yet
-								</p>
-								<a
-									href="/projects"
-									class="inline-flex items-center text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 text-sm font-medium transition-colors"
+
+								<!-- Facets (metadata tags) -->
+								{#if project.facet_context || project.facet_scale || project.facet_stage}
+									<div class="mb-3 flex flex-wrap gap-2">
+										{#if project.facet_context}
+											<span
+												class="rounded-lg border border-accent/30 bg-accent/10 px-2 py-0.5 text-xs font-bold text-accent"
+											>
+												{project.facet_context}
+											</span>
+										{/if}
+										{#if project.facet_scale}
+											<span
+												class="rounded-lg border border-muted-foreground/30 bg-muted/30 px-2 py-0.5 text-xs font-bold text-muted-foreground"
+											>
+												{project.facet_scale}
+											</span>
+										{/if}
+										{#if project.facet_stage}
+											<span
+												class="rounded-lg border border-foreground/20 bg-muted/50 px-2 py-0.5 text-xs font-bold text-foreground/80"
+											>
+												{project.facet_stage}
+											</span>
+										{/if}
+									</div>
+								{/if}
+
+								<!-- Footer Stats -->
+								<div
+									class="mt-auto flex items-center justify-between border-t border-border pt-3 text-sm text-muted-foreground"
 								>
-									Create your first project
-									<ArrowRight class="h-4 w-4 ml-1" />
-								</a>
-							</div>
-						{/if}
-					</div>
-				</section>
-			{/if}
-
-			<!-- Lazy load trigger - positioned before lazy loaded sections for earlier loading -->
-			{#if showLazyLoadedSections}
-				<div bind:this={lazyLoadTrigger} class="h-px opacity-0"></div>
-			{/if}
-
-			<!-- Lazy loaded sections -->
-			{#if showLazyLoadedSections && bottomSectionsLoaded}
-				{#if BraindumpWeekView}
-					<section class="mb-4 sm:mb-6">
-						<BraindumpWeekView data={bottomSectionsData} />
-					</section>
-				{/if}
-
-				{#if PhaseCalendarView}
-					<section class="mb-4 sm:mb-6">
-						<PhaseCalendarView data={bottomSectionsData} />
-					</section>
-				{/if}
-			{/if}
-
-			<!-- Loading indicator for lazy sections -->
-			{#if showLazyLoadedSections && loadingBottomSections}
-				<div class="text-center py-8">
-					<Loader2
-						class="h-6 w-6 text-gray-400 dark:text-gray-600 animate-spin mx-auto"
-					/>
+									<div class="flex items-center gap-3">
+										<span class="flex items-center gap-1.5" title="Tasks">
+											<svg
+												class="h-4 w-4"
+												xmlns="http://www.w3.org/2000/svg"
+												fill="none"
+												viewBox="0 0 24 24"
+												stroke="currentColor"
+											>
+												<path
+													stroke-linecap="round"
+													stroke-linejoin="round"
+													stroke-width="2"
+													d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
+												/>
+											</svg>
+											<span class="font-bold">{project.task_count}</span>
+										</span>
+										<span class="flex items-center gap-1.5" title="Outputs">
+											<svg
+												class="h-4 w-4"
+												xmlns="http://www.w3.org/2000/svg"
+												fill="none"
+												viewBox="0 0 24 24"
+												stroke="currentColor"
+											>
+												<path
+													stroke-linecap="round"
+													stroke-linejoin="round"
+													stroke-width="2"
+													d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+												/>
+											</svg>
+											<span class="font-bold">{project.output_count}</span>
+										</span>
+									</div>
+									<div
+										class="flex items-center gap-1 text-xs text-muted-foreground/70"
+									>
+										<span
+											>{new Date(
+												project.updated_at
+											).toLocaleDateString()}</span
+										>
+										<ChevronRight
+											class="h-4 w-4 opacity-0 transition-opacity group-hover:opacity-100"
+										/>
+									</div>
+								</div>
+							</a>
+						{/each}
+					{/if}
 				</div>
-			{/if}
-
-			<!-- Error state for lazy sections -->
-			{#if showLazyLoadedSections && lazyLoadError}
-				<div class="text-center py-8 text-sm text-slate-500 dark:text-slate-400">
-					{lazyLoadError}
-				</div>
-			{/if}
+			</section>
 		{/if}
 	</div>
 </main>
 
-<!-- Modals - Lazy Loaded -->
-
-{#if TaskModal && showTaskModal && selectedTask}
-	<TaskModal
-		isOpen={showTaskModal}
-		task={selectedTask}
-		projectId={selectedTask?.project_id}
-		project={activeProjects.find((p) => p.id === selectedTask?.project_id)}
-		{calendarStatus}
-		onClose={handleCloseTaskModal}
-		onUpdate={handleTaskUpdate}
-		onDelete={handleTaskDelete}
-		isDashboardContext={true}
-	/>
-{/if}
-
-{#if DailyBriefModal}
-	<DailyBriefModal
-		isOpen={showDailyBriefModal}
-		brief={selectedBrief}
-		onClose={handleCloseBriefModal}
-	/>
-{/if}
-{#if TimeBlockModal}
-	<TimeBlockModal
-		isOpen={showTimeBlockModal}
-		block={selectedTimeBlock}
-		projects={activeProjects}
-		onClose={handleTimeBlockClose}
-		onCreate={handleTimeBlockCreate}
-		onUpdate={handleTimeBlockUpdate}
-		onDelete={handleTimeBlockDelete}
-	/>
+<!-- Agent Chat Modal for Project Creation -->
+{#if AgentChatModal && showChatModal}
+	<AgentChatModal isOpen={showChatModal} contextType="project_create" onClose={handleChatClose} />
 {/if}

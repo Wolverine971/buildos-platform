@@ -200,10 +200,14 @@ For detailed patterns, see:
 #### UI Design Requirements
 
 - **Responsive Design:** ALL components must work on mobile and desktop
-- **Dark Mode:** Every component requires light/dark mode support with `dark:` prefix
-- **Style Guide:** Always consult `/apps/web/docs/technical/components/BUILDOS_STYLE_GUIDE.md`
-- **Design Philosophy:** High-end Apple-inspired aesthetic with high information density
-- **Components:** Use Card system (Card, CardHeader, CardBody, CardFooter)
+- **Dark Mode:** Every component requires light/dark mode support using semantic tokens
+- **Design System:** **ALWAYS consult:** `/apps/web/docs/technical/components/INKPRINT_DESIGN_SYSTEM.md`
+- **Design Philosophy:** Inkprint - a printmaking-inspired aesthetic with semantic textures and warm accent colors
+- **Key Patterns:**
+    - Use semantic color tokens: `bg-card`, `text-foreground`, `text-muted-foreground`, `border-border`, `bg-muted`, `bg-accent`
+    - Use Inkprint shadows: `shadow-ink`, `shadow-ink-strong`
+    - Use texture classes: `tx tx-frame tx-weak`, `tx tx-grain tx-weak`, `tx tx-bloom tx-weak`
+    - Use `pressable` class for interactive elements
 
 #### API Patterns
 

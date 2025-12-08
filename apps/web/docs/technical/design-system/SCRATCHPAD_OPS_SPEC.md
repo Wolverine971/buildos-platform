@@ -1,4 +1,23 @@
-<!-- apps/web/new-design.md -->
+<!-- apps/web/docs/technical/design-system/SCRATCHPAD_OPS_SPEC.md -->
+
+> # ⚠️ DEPRECATED - DO NOT USE
+>
+> **This design system has been superseded by the Inkprint Design System (December 2025).**
+>
+> **New Primary Reference:** [`/apps/web/docs/technical/components/INKPRINT_DESIGN_SYSTEM.md`](../components/INKPRINT_DESIGN_SYSTEM.md)
+>
+> This document is retained for **historical reference only**. Do NOT use these patterns for new development:
+>
+> - ❌ Dithering classes (`dither-*`)
+> - ❌ Industrial design patterns (`btn-tactile`, `industrial-panel`)
+> - ❌ Scratchpad/workbench/tools metaphors
+> - ❌ The color palette and design tokens described below
+>
+> **Instead, use Inkprint patterns:** semantic tokens (`bg-card`, `text-foreground`), texture classes (`tx tx-frame tx-weak`), and Inkprint shadows (`shadow-ink`).
+
+---
+
+## Historical Documentation (Below)
 
 Below is a **clean, hand-off-ready design system spec** written in a way that another LLM can ingest and use to _rewrite, restyle, or generate UI code_ inside your BuildOS workspace.
 

@@ -39,9 +39,7 @@
 		{#each filteredComparisons as fieldComparison (fieldComparison.field)}
 			<div class="border border-border rounded-lg overflow-hidden shadow-ink">
 				<!-- Field Header -->
-				<div
-					class="bg-muted px-4 py-3 border-b border-border"
-				>
+				<div class="bg-muted px-4 py-3 border-b border-border">
 					<div class="flex items-center justify-between">
 						<h3 class="font-medium text-foreground">
 							{fieldComparison.label}

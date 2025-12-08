@@ -42,9 +42,7 @@
 	</div>
 
 	<!-- Action Buttons -->
-	<div
-		class="flex justify-between items-center pt-6 border-t border-border"
-	>
+	<div class="flex justify-between items-center pt-6 border-t border-border">
 		<div class="h-5 bg-muted rounded w-48"></div>
 		<div class="flex gap-3">
 			<div class="h-10 bg-muted rounded-lg w-32"></div>

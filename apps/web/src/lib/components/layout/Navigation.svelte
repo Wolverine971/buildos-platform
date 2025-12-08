@@ -18,8 +18,7 @@
 		Zap,
 		Clock,
 		Sun,
-		Moon,
-		GitBranch
+		Moon
 	} from 'lucide-svelte';
 	import { toggleMode } from 'mode-watcher';
 	import BriefStatusIndicator from './BriefStatusIndicator.svelte';
@@ -60,16 +59,12 @@
 
 	// Context-aware chat configuration based on current page
 	const chatContextType = $derived.by((): ChatContextType => {
-		// Task page: /projects/[id]/tasks/[taskId]
-		if (currentPath.match(/^\/projects\/[^/]+\/tasks\/[^/]+/)) {
+		// Task page: /projects-old/[id]/tasks/[taskId] (deprecated)
+		if (currentPath.match(/^\/projects-old\/[^/]+\/tasks\/[^/]+/)) {
 			return 'task';
 		}
-		// Ontology project page: /ontology/projects/[id]
-		if (currentPath.match(/^\/ontology\/projects\/[^/]+$/) && $page.data?.project) {
-			return 'project';
-		}
-		// Project page: /projects/[id]
-		if (currentPath.match(/^\/projects\/[^/]+$/) && $page.data?.project) {
+		// Project detail page: /projects/projects/[id]
+		if (currentPath.match(/^\/projects\/projects\/[^/]+$/) && $page.data?.project) {
 			return 'project';
 		}
 		// Default: global context
@@ -77,17 +72,13 @@
 	});
 
 	const chatEntityId = $derived.by((): string | undefined => {
-		// Task page: return task ID
-		const taskMatch = currentPath.match(/^\/projects\/[^/]+\/tasks\/([^/]+)/);
+		// Task page (deprecated): return task ID
+		const taskMatch = currentPath.match(/^\/projects-old\/[^/]+\/tasks\/([^/]+)/);
 		if (taskMatch) {
 			return taskMatch[1];
 		}
-		// Ontology project page: return project ID
-		if (currentPath.match(/^\/ontology\/projects\/([^/]+)$/) && $page.data?.project) {
-			return $page.data.project.id;
-		}
-		// Project page: return project ID
-		if (currentPath.match(/^\/projects\/([^/]+)$/) && $page.data?.project) {
+		// Project detail page: return project ID
+		if (currentPath.match(/^\/projects\/projects\/([^/]+)$/) && $page.data?.project) {
 			return $page.data.project.id;
 		}
 		// No entity
@@ -95,7 +86,7 @@
 	});
 
 	const chatAutoInitProject = $derived.by(() => {
-		if (currentPath.match(/^\/ontology\/projects\/[^/]+$/) && $page.data?.project) {
+		if (currentPath.match(/^\/projects\/projects\/[^/]+$/) && $page.data?.project) {
 			return {
 				projectId: $page.data.project.id,
 				projectName: $page.data.project.name ?? 'Project',
@@ -107,10 +98,9 @@
 
 	const navItems = [
 		{ href: '/', label: 'Dashboard', icon: Home },
-		{ href: '/projects', label: 'Projects', icon: FolderOpen },
-		{ href: '/time-blocks', label: 'Time Blocks', icon: Clock },
-		{ href: '/history', label: 'History', icon: StickyNote },
-		{ href: '/ontology', label: 'Ontology', icon: GitBranch }
+		{ href: '/projects', label: 'Projects', icon: FolderOpen }
+		// { href: '/time-blocks', label: 'Time Blocks', icon: Clock },
+		// { href: '/history', label: 'History', icon: StickyNote }
 	];
 
 	const loadingAccentClass =

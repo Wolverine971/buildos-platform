@@ -20,7 +20,8 @@
 	const typeConfig = {
 		success: {
 			icon: '✓',
-			bgClass: 'bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800',
+			bgClass:
+				'bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800',
 			textClass: 'text-emerald-700 dark:text-emerald-300',
 			iconClass: 'text-emerald-600 dark:text-emerald-400 font-bold'
 		},
@@ -32,7 +33,8 @@
 		},
 		warning: {
 			icon: '⚠',
-			bgClass: 'bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800',
+			bgClass:
+				'bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800',
 			textClass: 'text-amber-700 dark:text-amber-300',
 			iconClass: 'text-amber-600 dark:text-amber-400 font-bold'
 		},

@@ -16,7 +16,8 @@
       "Bash(pnpm build:*)",
       "Bash(kill:*)",
       "Bash(pnpm test:*)",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "Bash(cat:*)"
     ],
     "deny": [],
     "ask": []

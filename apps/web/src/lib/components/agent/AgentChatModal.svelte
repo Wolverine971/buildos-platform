@@ -669,7 +669,7 @@
 		agentLoopActive = false;
 	}
 
-	// Auto-initialize the modal when launched with a project preset
+	// Auto-initialize the modal when launched with a context preset or project preset
 	$effect(() => {
 		if (!isOpen) {
 			if (wasOpen) {
@@ -683,6 +683,19 @@
 
 		if (!wasOpen) {
 			wasOpen = true;
+
+			// Handle direct context initialization (e.g., project_create)
+			// Skip context selection and go directly to chat
+			if (_initialContextType && _initialContextType !== 'global' && !autoInitProject) {
+				resetConversation({ preserveContext: false });
+				selectedContextType = _initialContextType;
+				selectedEntityId = _initialEntityId;
+				selectedContextLabel = CONTEXT_DESCRIPTORS[_initialContextType]?.title ?? null;
+				showContextSelection = false;
+				showProjectActionSelector = false;
+				seedInitialMessage(_initialContextType, selectedContextLabel);
+				return;
+			}
 		}
 
 		if (!autoInitProject) {

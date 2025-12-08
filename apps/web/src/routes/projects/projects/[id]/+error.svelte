@@ -42,7 +42,7 @@
 	}
 
 	function handleGoBack() {
-		goto('/ontology');
+		goto('/projects');
 	}
 </script>
 
@@ -111,7 +111,7 @@
 						<Button
 							variant="outline"
 							size="md"
-							onclick={() => goto('/ontology/create')}
+							onclick={() => goto('/projects/create')}
 						>
 							Create New Project
 						</Button>

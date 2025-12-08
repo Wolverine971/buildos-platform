@@ -4656,6 +4656,8 @@ export type Database = {
           project_id: string
           props: Json
           search_vector: unknown
+          source_document_id: string | null
+          source_event_id: string | null
           state_key: string
           type_key: string
           updated_at: string
@@ -4669,6 +4671,8 @@ export type Database = {
           project_id: string
           props?: Json
           search_vector?: unknown
+          source_document_id?: string | null
+          source_event_id?: string | null
           state_key?: string
           type_key: string
           updated_at?: string
@@ -4682,6 +4686,8 @@ export type Database = {
           project_id?: string
           props?: Json
           search_vector?: unknown
+          source_document_id?: string | null
+          source_event_id?: string | null
           state_key?: string
           type_key?: string
           updated_at?: string
@@ -4692,6 +4698,27 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onto_outputs_source_document_id_fkey"
+            columns: ["source_document_id"]
+            isOneToOne: false
+            referencedRelation: "onto_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onto_outputs_source_document_id_fkey"
+            columns: ["source_document_id"]
+            isOneToOne: false
+            referencedRelation: "task_documents"
+            referencedColumns: ["document_id"]
+          },
+          {
+            foreignKeyName: "onto_outputs_source_event_id_fkey"
+            columns: ["source_event_id"]
+            isOneToOne: false
+            referencedRelation: "onto_events"
             referencedColumns: ["id"]
           },
         ]
@@ -8525,6 +8552,10 @@ export type Database = {
           p_user_id: string
         }
         Returns: Json
+      }
+      get_deliverable_primitive: {
+        Args: { p_type_key: string }
+        Returns: string
       }
       get_engagement_analytics: {
         Args: never

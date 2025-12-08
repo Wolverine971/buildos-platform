@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/ontology/TEMPLATE_TAXONOMY.md -->
+
 # Template Taxonomy - Outputs & Deliverables Catalog
 
 **Last Updated**: November 4, 2025

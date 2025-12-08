@@ -457,12 +457,33 @@ export const OutputSchema = z.object({
 	state_key: z.string(),
 	props: z.record(z.unknown()),
 	facet_stage: z.string().nullable().optional(),
+	// Promotion source references
+	source_document_id: z.string().uuid().nullable().optional(),
+	source_event_id: z.string().uuid().nullable().optional(),
 	created_by: z.string().uuid(),
 	created_at: z.string().datetime(),
 	updated_at: z.string().datetime()
 });
 
 export type Output = z.infer<typeof OutputSchema>;
+
+/**
+ * Deliverable/Output with enriched data for UI display
+ */
+export interface EnrichedOutput extends Output {
+	/** The primitive type derived from type_key */
+	primitive: DeliverablePrimitive;
+	/** Display label for the deliverable type */
+	type_label: string;
+	/** Related tasks count */
+	task_count?: number;
+	/** Related documents count (for collections) */
+	child_count?: number;
+	/** Source document if promoted from document */
+	source_document?: Document;
+	/** Source event if promoted from event */
+	source_event?: OntoEvent;
+}
 
 export const DocumentSchema = z.object({
 	id: z.string().uuid(),
@@ -477,6 +498,44 @@ export const DocumentSchema = z.object({
 });
 
 export type Document = z.infer<typeof DocumentSchema>;
+
+// ============================================
+// ONTO_EVENTS (Calendar Events)
+// ============================================
+
+export const OntoEventSchema = z.object({
+	id: z.string().uuid(),
+	org_id: z.string().uuid().nullable().optional(),
+	project_id: z.string().uuid().nullable().optional(),
+	owner_entity_type: z.enum(['project', 'plan', 'task', 'goal', 'output', 'actor', 'standalone']),
+	owner_entity_id: z.string().uuid().nullable().optional(),
+	type_key: z.string(),
+	state_key: z.string(),
+	template_id: z.string().uuid().nullable().optional(),
+	template_snapshot: z.record(z.unknown()),
+	title: z.string(),
+	description: z.string().nullable().optional(),
+	location: z.string().nullable().optional(),
+	start_at: z.string().datetime(),
+	end_at: z.string().datetime().nullable().optional(),
+	all_day: z.boolean(),
+	timezone: z.string().nullable().optional(),
+	recurrence: z.record(z.unknown()),
+	external_link: z.string().nullable().optional(),
+	props: z.record(z.unknown()),
+	last_synced_at: z.string().datetime().nullable().optional(),
+	sync_status: z.string(),
+	sync_error: z.string().nullable().optional(),
+	deleted_at: z.string().datetime().nullable().optional(),
+	facet_context: z.string().nullable().optional(),
+	facet_scale: z.string().nullable().optional(),
+	facet_stage: z.string().nullable().optional(),
+	created_by: z.string().uuid(),
+	created_at: z.string().datetime(),
+	updated_at: z.string().datetime()
+});
+
+export type OntoEvent = z.infer<typeof OntoEventSchema>;
 
 // ============================================
 // VALIDATION HELPERS
@@ -495,12 +554,78 @@ export const TYPE_KEY_PATTERNS: Record<string, RegExp> = {
 	task: /^task\.[a-z_]+(\.[a-z_]+)?$/,
 	plan: /^plan\.[a-z_]+(\.[a-z_]+)?$/,
 	goal: /^goal\.[a-z_]+(\.[a-z_]+)?$/,
-	output: /^output\.[a-z_]+(\.[a-z_]+)?$/,
+	// Output supports both legacy output.* and new deliverable.* patterns
+	output: /^(output|deliverable)\.[a-z_]+(\.[a-z_]+)?$/,
+	// Deliverable-specific pattern: deliverable.{primitive}.{variant}
+	deliverable: /^deliverable\.(document|event|collection|external)\.[a-z_]+$/,
 	document: /^document\.[a-z_]+(\.[a-z_]+)?$/,
 	risk: /^risk\.[a-z_]+(\.[a-z_]+)?$/,
 	event: /^event\.[a-z_]+(\.[a-z_]+)?$/,
 	requirement: /^requirement\.[a-z_]+(\.[a-z_]+)?$/
 };
+
+// ============================================
+// DELIVERABLE PRIMITIVES
+// ============================================
+
+/**
+ * Deliverable primitives - the fundamental types of outputs
+ * - document: Text-based content editable in BuildOS (chapters, articles, etc.)
+ * - event: Time-bound experiences (workshops, webinars, keynotes)
+ * - collection: Multi-document containers (books, courses, email sequences)
+ * - external: External artifacts tracked but not edited in BuildOS (Figma, GitHub, etc.)
+ */
+export const DELIVERABLE_PRIMITIVES = ['document', 'event', 'collection', 'external'] as const;
+export type DeliverablePrimitive = (typeof DELIVERABLE_PRIMITIVES)[number];
+
+/**
+ * Extract the primitive from a deliverable type_key
+ * @param typeKey - e.g., 'deliverable.document.chapter' → 'document'
+ */
+export function getDeliverablePrimitive(typeKey: string): DeliverablePrimitive | null {
+	if (!typeKey.startsWith('deliverable.')) {
+		// Handle legacy output.* patterns
+		if (typeKey.startsWith('output.written.') || typeKey.startsWith('output.chapter')) {
+			return 'document';
+		}
+		if (typeKey.startsWith('output.media.') || typeKey.startsWith('output.software.')) {
+			return 'external';
+		}
+		return 'document'; // Default for legacy
+	}
+
+	const parts = typeKey.split('.');
+	const primitive = parts[1] as DeliverablePrimitive;
+	return DELIVERABLE_PRIMITIVES.includes(primitive) ? primitive : null;
+}
+
+/**
+ * Check if a type_key represents a collection deliverable
+ */
+export function isCollectionDeliverable(typeKey: string): boolean {
+	return getDeliverablePrimitive(typeKey) === 'collection';
+}
+
+/**
+ * Check if a type_key represents an external deliverable
+ */
+export function isExternalDeliverable(typeKey: string): boolean {
+	return getDeliverablePrimitive(typeKey) === 'external';
+}
+
+/**
+ * Check if a type_key represents an event deliverable
+ */
+export function isEventDeliverable(typeKey: string): boolean {
+	return getDeliverablePrimitive(typeKey) === 'event';
+}
+
+/**
+ * Check if a type_key represents a document deliverable
+ */
+export function isDocumentDeliverable(typeKey: string): boolean {
+	return getDeliverablePrimitive(typeKey) === 'document';
+}
 
 /** General type_key pattern (2-3 dot-separated lowercase segments) */
 export const GENERAL_TYPE_KEY_PATTERN = /^[a-z_]+\.[a-z_]+(\.[a-z_]+)?$/;

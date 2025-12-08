@@ -1,6 +1,26 @@
 # Dithering System Migration Plan
 
-**Status:** In Progress
+> # ⚠️ DEPRECATED - DITHERING SYSTEM NO LONGER IN USE
+>
+> **This migration plan has been superseded by the Inkprint Design System (December 2025).**
+>
+> **New Primary Reference:** [INKPRINT_DESIGN_SYSTEM.md](./INKPRINT_DESIGN_SYSTEM.md)
+>
+> The dithering system described in this document is **no longer used** in BuildOS. All dithering classes (`dither-*`) have been replaced by Inkprint texture classes (`tx tx-*`).
+>
+> **Migration path:** Replace dithering classes with Inkprint equivalents:
+>
+> - `dither-soft` → `tx tx-grain tx-weak`
+> - `dither-gradient` → `tx tx-frame tx-weak`
+> - `dither-surface` → `tx tx-grain tx-weak`
+>
+> This document is retained for historical reference only.
+
+---
+
+## Historical Documentation (Below)
+
+**Status:** ❌ DEPRECATED (December 2025)
 **Created:** 2025-11-21
 **Last Updated:** 2025-11-21
 **Owner:** Development Team

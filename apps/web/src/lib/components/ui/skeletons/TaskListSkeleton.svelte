@@ -12,9 +12,7 @@
 			<!-- Task header with checkbox, title, and priority -->
 			<div class="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
 				<!-- Checkbox skeleton -->
-				<div
-					class="w-4 h-4 sm:w-5 sm:h-5 bg-muted rounded flex-shrink-0"
-				></div>
+				<div class="w-4 h-4 sm:w-5 sm:h-5 bg-muted rounded flex-shrink-0"></div>
 
 				<!-- Title skeleton - responsive width -->
 				<div class="flex-1 max-w-[60%] sm:max-w-[70%]">
@@ -22,9 +20,7 @@
 				</div>
 
 				<!-- Priority badge skeleton - smaller on mobile -->
-				<div
-					class="w-12 h-5 sm:w-15 sm:h-6 bg-muted rounded-full"
-				></div>
+				<div class="w-12 h-5 sm:w-15 sm:h-6 bg-muted rounded-full"></div>
 			</div>
 
 			<!-- Task metadata - responsive layout -->

@@ -78,9 +78,7 @@
 										{option.label}
 									</h4>
 									{#if selectedId === option.id}
-										<Check
-											class="w-4 h-4 text-accent"
-										/>
+										<Check class="w-4 h-4 text-accent" />
 									{/if}
 								</div>
 								{#if option.description}

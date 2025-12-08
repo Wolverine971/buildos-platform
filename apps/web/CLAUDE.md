@@ -347,7 +347,7 @@ This project uses Svelte 5 with the new runes syntax:
 
 ### UI & Design Patterns
 
-**Design Philosophy:** BuildOS follows a **high-end Apple-inspired aesthetic** with focus on clarity, high information density, and sophisticated UX.
+**Design Philosophy:** BuildOS follows the **Inkprint Design System** - a printmaking-inspired aesthetic with semantic textures, warm accent colors, and high information density.
 
 #### Core Design Requirements
 
@@ -358,7 +358,7 @@ This project uses Svelte 5 with the new runes syntax:
 
 2. **Light & Dark Mode (Required)**
     - Every component MUST support both light and dark modes
-    - Use Tailwind's `dark:` prefix for dark mode styles
+    - Use **semantic color tokens** (NOT hardcoded colors like `gray-200`, `slate-700`)
     - Maintain proper contrast ratios in both modes (WCAG AA: 4.5:1)
 
 3. **High Information Density**
@@ -366,36 +366,101 @@ This project uses Svelte 5 with the new runes syntax:
     - Use compact layouts with clear visual hierarchy
     - Progressive disclosure for complex information
 
-4. **Style Guide Reference**
-    - **ALWAYS consult:** `/apps/web/docs/technical/components/BUILDOS_STYLE_GUIDE.md`
-    - Follows color system, typography scale, spacing grid (8px base)
-    - Use the Card component system (Card, CardHeader, CardBody, CardFooter)
-    - Gradient buttons for primary actions, subtle animations
+4. **Design System Reference**
+    - **ALWAYS consult:** `/apps/web/docs/technical/components/INKPRINT_DESIGN_SYSTEM.md`
+    - This is the **PRIMARY** design reference for all new components
 
-#### Example Component Pattern
+#### Inkprint Design System Quick Reference
+
+**Semantic Color Tokens (Required):**
+
+```css
+/* Backgrounds */
+bg-background       /* Page background */
+bg-card             /* Card/panel backgrounds */
+bg-muted            /* Muted/secondary backgrounds */
+bg-accent           /* Accent color backgrounds */
+
+/* Text */
+text-foreground         /* Primary text */
+text-muted-foreground   /* Secondary/muted text */
+text-accent             /* Accent-colored text */
+text-accent-foreground  /* Text on accent backgrounds */
+
+/* Borders */
+border-border       /* Standard borders */
+```
+
+**Inkprint Shadows:**
+
+```css
+shadow-ink          /* Standard elevation */
+shadow-ink-strong   /* Modal/overlay elevation */
+shadow-ink-inner    /* Inset shadows */
+```
+
+**Texture Classes (Synesthetic Feedback):**
+
+```css
+tx tx-frame tx-weak   /* Structural containers (cards, panels) */
+tx tx-grain tx-weak   /* Interactive surfaces (buttons, inputs) */
+tx tx-bloom tx-weak   /* Empty states, CTAs */
+tx tx-static tx-weak  /* Error/warning states */
+tx tx-pulse tx-weak   /* Loading/processing states */
+```
+
+**Interactive Elements:**
+
+```css
+pressable           /* Add to buttons for micro-interactions */
+```
+
+#### Example Component Pattern (Inkprint)
 
 ```svelte
 <script lang="ts">
-	import { Card, CardHeader, CardBody } from '$lib/components/ui';
-
 	let data = $state([]);
 	let isLoading = $derived(data.length === 0);
 </script>
 
-<!-- Responsive card with dark mode -->
+<!-- Inkprint-styled card -->
 <div class="p-4 sm:p-6 lg:p-8">
-	<Card variant="elevated">
-		<CardHeader variant="gradient">
-			<h2 class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Title</h2>
-		</CardHeader>
-		<CardBody padding="md">
+	<div class="bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak">
+		<!-- Header -->
+		<div class="px-4 py-3 border-b border-border">
+			<h2 class="text-lg font-semibold text-foreground">Title</h2>
+			<p class="text-sm text-muted-foreground">Description</p>
+		</div>
+
+		<!-- Body -->
+		<div class="p-4">
 			<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-				<!-- High-density information layout -->
+				<!-- Content -->
 			</div>
-		</CardBody>
-	</Card>
+		</div>
+
+		<!-- Footer with action -->
+		<div class="px-4 py-3 border-t border-border">
+			<button
+				class="px-4 py-2 bg-accent text-accent-foreground rounded-lg font-semibold shadow-ink pressable"
+			>
+				Action
+			</button>
+		</div>
+	</div>
 </div>
 ```
+
+#### What NOT to Use (Deprecated)
+
+Do NOT use these patterns from older design systems:
+
+- ❌ Hardcoded colors: `text-gray-700`, `bg-slate-100`, `border-gray-200`
+- ❌ Old gradient patterns: `bg-gradient-to-r from-blue-50 to-purple-50`
+- ❌ Dithering classes: `dither-*`, industrial design patterns
+- ❌ Scratchpad/workbench metaphors
+
+Instead, use Inkprint semantic tokens and texture classes.
 
 ### API Patterns
 

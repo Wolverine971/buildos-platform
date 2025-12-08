@@ -294,7 +294,7 @@
 
 			toastService.success('Project deleted');
 			showDeleteProjectModal = false;
-			goto('/ontology');
+			goto('/projects');
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Failed to delete project';
 			deleteProjectError = message;
@@ -374,7 +374,7 @@
 			<div class="flex items-center gap-2 sm:gap-3">
 				<!-- Back Navigation -->
 				<button
-					onclick={() => goto('/ontology')}
+					onclick={() => goto('/projects')}
 					class="flex-shrink-0 p-1.5 -ml-1.5 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors pressable"
 					title="Back to projects"
 				>
@@ -423,9 +423,7 @@
 	</header>
 
 	<!-- Tab Navigation -->
-	<nav
-		class="sticky top-0 z-10 border-b border-border bg-card shadow-ink"
-	>
+	<nav class="sticky top-0 z-10 border-b border-border bg-card shadow-ink">
 		<div class="max-w-7xl mx-auto px-1.5 sm:px-6 lg:px-8">
 			<div class="flex items-center gap-0 h-10 sm:h-11 overflow-x-auto scrollbar-none">
 				{#each tabs as tab}
@@ -485,7 +483,9 @@
 		</div>
 
 		<!-- Tab Content -->
-		<div class="bg-card border border-border rounded-lg p-3 sm:p-6 shadow-ink tx tx-frame tx-weak">
+		<div
+			class="bg-card border border-border rounded-lg p-3 sm:p-6 shadow-ink tx tx-frame tx-weak"
+		>
 			{#if activeTab === 'tasks'}
 				<div class="space-y-3 sm:space-y-6">
 					<!-- Section Header -->
@@ -493,14 +493,10 @@
 						class="flex items-center justify-between pb-2 sm:pb-4 border-b border-border"
 					>
 						<div class="min-w-0">
-							<h2
-								class="text-base sm:text-xl font-bold text-foreground truncate"
-							>
+							<h2 class="text-base sm:text-xl font-bold text-foreground truncate">
 								Tasks
 							</h2>
-							<p
-								class="hidden sm:block mt-1 text-sm text-muted-foreground"
-							>
+							<p class="hidden sm:block mt-1 text-sm text-muted-foreground">
 								Transform ideas into actionable items
 							</p>
 						</div>
@@ -523,14 +519,10 @@
 								<CircleCheck
 									class="w-10 h-10 sm:w-16 sm:h-16 text-muted-foreground mx-auto opacity-50"
 								/>
-								<p
-									class="text-sm sm:text-base text-muted-foreground font-medium"
-								>
+								<p class="text-sm sm:text-base text-muted-foreground font-medium">
 									No tasks yet
 								</p>
-								<p
-									class="text-xs sm:text-sm text-muted-foreground hidden sm:block"
-								>
+								<p class="text-xs sm:text-sm text-muted-foreground hidden sm:block">
 									Start building by creating your first task.
 								</p>
 								<button
@@ -620,14 +612,10 @@
 						class="flex items-center justify-between pb-2 sm:pb-4 border-b border-border"
 					>
 						<div class="min-w-0">
-							<h2
-								class="text-base sm:text-xl font-bold text-foreground truncate"
-							>
+							<h2 class="text-base sm:text-xl font-bold text-foreground truncate">
 								Outputs
 							</h2>
-							<p
-								class="hidden sm:block mt-1 text-sm text-muted-foreground"
-							>
+							<p class="hidden sm:block mt-1 text-sm text-muted-foreground">
 								Structured deliverables and artifacts
 							</p>
 						</div>
@@ -650,14 +638,10 @@
 								<FileText
 									class="w-10 h-10 sm:w-16 sm:h-16 text-muted-foreground mx-auto opacity-50"
 								/>
-								<p
-									class="text-sm sm:text-base text-muted-foreground font-medium"
-								>
+								<p class="text-sm sm:text-base text-muted-foreground font-medium">
 									No outputs yet
 								</p>
-								<p
-									class="text-xs sm:text-sm text-muted-foreground hidden sm:block"
-								>
+								<p class="text-xs sm:text-sm text-muted-foreground hidden sm:block">
 									Output documents are the tangible deliverables of your work.
 								</p>
 								<button
@@ -714,14 +698,10 @@
 						class="flex items-center justify-between pb-2 sm:pb-4 border-b border-border"
 					>
 						<div class="min-w-0">
-							<h2
-								class="text-base sm:text-xl font-bold text-foreground truncate"
-							>
+							<h2 class="text-base sm:text-xl font-bold text-foreground truncate">
 								Documents
 							</h2>
-							<p
-								class="hidden sm:block mt-1 text-sm text-muted-foreground"
-							>
+							<p class="hidden sm:block mt-1 text-sm text-muted-foreground">
 								Knowledge base and reference materials
 							</p>
 						</div>
@@ -744,14 +724,10 @@
 								<FileText
 									class="w-10 h-10 sm:w-16 sm:h-16 text-muted-foreground mx-auto opacity-50"
 								/>
-								<p
-									class="text-sm sm:text-base text-muted-foreground font-medium"
-								>
+								<p class="text-sm sm:text-base text-muted-foreground font-medium">
 									No documents yet
 								</p>
-								<p
-									class="text-xs sm:text-sm text-muted-foreground hidden sm:block"
-								>
+								<p class="text-xs sm:text-sm text-muted-foreground hidden sm:block">
 									Documents capture important context and decisions.
 								</p>
 								<button
@@ -768,7 +744,9 @@
 							{#each documents as doc}
 								{@const isExpanded = expandedDocumentId === doc.id}
 								{@const preview = getDocumentPreview(doc)}
-								<div class="bg-card border border-border rounded-lg overflow-hidden shadow-ink">
+								<div
+									class="bg-card border border-border rounded-lg overflow-hidden shadow-ink"
+								>
 									<button
 										onclick={() => toggleDocumentExpansion(doc.id)}
 										class="w-full p-2.5 sm:p-4 flex items-start gap-2.5 sm:gap-4 text-left hover:bg-muted/50 transition-colors"
@@ -777,9 +755,7 @@
 											<div
 												class="w-10 h-10 rounded-lg bg-muted flex items-center justify-center"
 											>
-												<FileText
-													class="w-5 h-5 text-muted-foreground"
-												/>
+												<FileText class="w-5 h-5 text-muted-foreground" />
 											</div>
 										</div>
 										<div class="flex-1 min-w-0">
@@ -824,9 +800,7 @@
 									</button>
 
 									{#if isExpanded}
-										<div
-											class="border-t border-border p-3 sm:p-4 bg-muted/30"
-										>
+										<div class="border-t border-border p-3 sm:p-4 bg-muted/30">
 											<div
 												class="prose prose-sm dark:prose-invert max-w-none text-xs sm:text-sm"
 											>
@@ -866,14 +840,10 @@
 						class="flex items-center justify-between pb-2 sm:pb-4 border-b border-border"
 					>
 						<div class="min-w-0">
-							<h2
-								class="text-base sm:text-xl font-bold text-foreground truncate"
-							>
+							<h2 class="text-base sm:text-xl font-bold text-foreground truncate">
 								Plans
 							</h2>
-							<p
-								class="hidden sm:block mt-1 text-sm text-muted-foreground"
-							>
+							<p class="hidden sm:block mt-1 text-sm text-muted-foreground">
 								Structured roadmaps and timelines
 							</p>
 						</div>
@@ -896,14 +866,10 @@
 								<Calendar
 									class="w-10 h-10 sm:w-16 sm:h-16 text-muted-foreground mx-auto opacity-50"
 								/>
-								<p
-									class="text-sm sm:text-base text-muted-foreground font-medium"
-								>
+								<p class="text-sm sm:text-base text-muted-foreground font-medium">
 									No plans yet
 								</p>
-								<p
-									class="text-xs sm:text-sm text-muted-foreground hidden sm:block"
-								>
+								<p class="text-xs sm:text-sm text-muted-foreground hidden sm:block">
 									Plans organize tasks into phases and timelines.
 								</p>
 								<button
@@ -975,14 +941,10 @@
 						class="flex items-center justify-between pb-2 sm:pb-4 border-b border-border"
 					>
 						<div class="min-w-0">
-							<h2
-								class="text-base sm:text-xl font-bold text-foreground truncate"
-							>
+							<h2 class="text-base sm:text-xl font-bold text-foreground truncate">
 								Goals
 							</h2>
-							<p
-								class="hidden sm:block mt-1 text-sm text-muted-foreground"
-							>
+							<p class="hidden sm:block mt-1 text-sm text-muted-foreground">
 								High-level objectives and success criteria
 							</p>
 						</div>
@@ -1005,14 +967,10 @@
 								<Target
 									class="w-10 h-10 sm:w-16 sm:h-16 text-muted-foreground mx-auto opacity-50"
 								/>
-								<p
-									class="text-sm sm:text-base text-muted-foreground font-medium"
-								>
+								<p class="text-sm sm:text-base text-muted-foreground font-medium">
 									No goals yet
 								</p>
-								<p
-									class="text-xs sm:text-sm text-muted-foreground hidden sm:block"
-								>
+								<p class="text-xs sm:text-sm text-muted-foreground hidden sm:block">
 									Goals define what success looks like for this project.
 								</p>
 								<button
@@ -1028,7 +986,9 @@
 						<div class="space-y-2 sm:space-y-3">
 							{#each goals as goal}
 								{@const isExpanded = expandedGoalId === goal.id}
-								<div class="bg-card border border-border rounded-lg overflow-hidden shadow-ink">
+								<div
+									class="bg-card border border-border rounded-lg overflow-hidden shadow-ink"
+								>
 									<div class="p-2.5 sm:p-4">
 										<div class="flex items-start gap-2.5 sm:gap-4">
 											<Target
@@ -1125,9 +1085,7 @@
 				<div class="space-y-4 sm:space-y-8">
 					{#if requirements.length > 0}
 						<div class="space-y-2 sm:space-y-4">
-							<h3
-								class="text-sm sm:text-lg font-semibold text-foreground"
-							>
+							<h3 class="text-sm sm:text-lg font-semibold text-foreground">
 								Requirements ({requirements.length})
 							</h3>
 							<div class="space-y-1.5 sm:space-y-2">
@@ -1144,9 +1102,7 @@
 
 					{#if milestones.length > 0}
 						<div class="space-y-2 sm:space-y-4">
-							<h3
-								class="text-sm sm:text-lg font-semibold text-foreground"
-							>
+							<h3 class="text-sm sm:text-lg font-semibold text-foreground">
 								Milestones ({milestones.length})
 							</h3>
 							<div class="space-y-1.5 sm:space-y-2">
@@ -1171,9 +1127,7 @@
 
 					{#if risks.length > 0}
 						<div class="space-y-2 sm:space-y-4">
-							<h3
-								class="text-sm sm:text-lg font-semibold text-foreground"
-							>
+							<h3 class="text-sm sm:text-lg font-semibold text-foreground">
 								Risks ({risks.length})
 							</h3>
 							<div class="space-y-1.5 sm:space-y-2">
@@ -1203,9 +1157,7 @@
 						<div
 							class="rounded-lg border-2 border-dashed border-border p-12 text-center"
 						>
-							<p class="text-muted-foreground">
-								No additional project entities yet
-							</p>
+							<p class="text-muted-foreground">No additional project entities yet</p>
 						</div>
 					{/if}
 				</div>
@@ -1230,8 +1182,9 @@
 		>
 			{#snippet content()}
 				<p class="text-sm text-muted-foreground">
-					This will permanently delete <span class="font-semibold text-foreground">{project.name}</span> and
-					all related data. This action cannot be undone.
+					This will permanently delete <span class="font-semibold text-foreground"
+						>{project.name}</span
+					> and all related data. This action cannot be undone.
 				</p>
 			{/snippet}
 			{#snippet details()}

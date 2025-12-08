@@ -1,882 +1,958 @@
 <!-- apps/web/src/routes/projects/+page.svelte -->
 <script lang="ts">
-	import { FolderOpen, FileText, Plus } from 'lucide-svelte';
-	import { enhance } from '$app/forms';
-	import { toastService } from '$lib/stores/toast.store';
+	import { get } from 'svelte/store';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
-	import { onMount, onDestroy } from 'svelte';
-	import { browser } from '$app/environment';
-	import type { PageData } from './$types';
-	import type { ActionResult } from '@sveltejs/kit';
-
-	// Core components - loaded immediately
-	import TabNav from '$lib/components/ui/TabNav.svelte';
-	import ProjectsFilterBar from '$lib/components/projects/ProjectsFilterBar.svelte';
-	import ProjectsEmptyState from '$lib/components/projects/ProjectsEmptyState.svelte';
-	import ProjectsGrid from '$lib/components/projects/ProjectsGrid.svelte';
-	import BriefsGrid from '$lib/components/projects/BriefsGrid.svelte';
-	import ProjectStats from '$lib/components/projects/ProjectStats.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
-	import ProjectsGridSkeleton from '$lib/components/ui/skeletons/ProjectsGridSkeleton.svelte';
-	import ProjectStatsSkeleton from '$lib/components/ui/skeletons/ProjectStatsSkeleton.svelte';
-	import DailyBriefSection from '$lib/components/briefs/DailyBriefSection.svelte';
-	import DailyBriefsTab from '$lib/components/briefs/DailyBriefsTab.svelte';
-	import {
-		brainDumpV2Store,
-		isModalOpen as brainDumpModalIsOpen
-	} from '$lib/stores/brain-dump-v2.store';
+	import Card from '$lib/components/ui/Card.svelte';
+	import CardBody from '$lib/components/ui/CardBody.svelte';
+	import LoadingSkeleton from '$lib/components/ui/LoadingSkeleton.svelte';
+	import GraphControls from '$lib/components/ontology/graph/GraphControls.svelte';
+	import OntologyGraph from '$lib/components/ontology/graph/OntologyGraph.svelte';
+	import NodeDetailsPanel from '$lib/components/ontology/graph/NodeDetailsPanel.svelte';
+	import type {
+		ViewMode,
+		GraphNode,
+		OntologyGraphInstance,
+		GraphStats
+	} from '$lib/components/ontology/graph/lib/graph.types';
+	import type { OntologyProjectSummary } from '$lib/services/ontology/ontology-projects.service';
+	import { ontologyGraphStore } from '$lib/stores/ontology-graph.store';
+	import { getProjectStateBadgeClass } from '$lib/utils/ontology-badge-styles';
 
-	// Modal components - loaded dynamically
-	let NewProjectModal = $state<any>(null);
-	let ProjectBriefModal = $state<any>(null);
-	let DailyBriefModal = $state<any>(null);
-	let QuickProjectModal = $state<any>(null);
+	let { data } = $props();
 
-	// Utils and types
-	import {
-		filterProjects,
-		filterBriefs,
-		calculateFilterCounts,
-		debounce
-	} from '$lib/utils/projects-filters';
-	import type { TabType, ProjectsFilterState } from '$lib/types/projects-page';
-	import { ProjectService } from '$lib/services/projectService';
-	let { data }: { data: PageData } = $props();
-	// export let data: PageData;
+	// AgentChatModal state for creating new projects
+	let showChatModal = $state(false);
+	let AgentChatModal = $state<any>(null);
 
-	// Project data state
-	let projects = $state<any[]>([]);
-	let projectsLoaded = $state(false);
-	let loadingProjects = $state(false);
+	async function handleCreateProject() {
+		// Lazy load the AgentChatModal
+		if (!AgentChatModal) {
+			try {
+				const module = await import('$lib/components/agent/AgentChatModal.svelte');
+				AgentChatModal = module.default;
+			} catch (err) {
+				console.error('Failed to load AgentChatModal:', err);
+				// Fallback to navigation
+				goto('/projects/create');
+				return;
+			}
+		}
+		showChatModal = true;
+	}
+
+	function handleChatClose() {
+		showChatModal = false;
+		// Refresh the page to show new project if created
+		// Using invalidateAll would be better but for simplicity we reload
+		window.location.reload();
+	}
+
+	// Check if user is admin - only admins see filters, graph, and mobile nav
+	const isAdmin = $derived(data?.user?.is_admin ?? false);
+
+	const graphStore = ontologyGraphStore;
+
+	let activeTab = $state<'overview' | 'graph'>(
+		get(page).url.searchParams.get('view') === 'graph' ? 'graph' : 'overview'
+	);
+	let graphViewMode = $state<ViewMode>('full');
+	let graphInstance = $state<OntologyGraphInstance | null>(null);
+	let selectedGraphNode = $state<GraphNode | null>(null);
+	const emptyGraphStats: GraphStats = {
+		totalTemplates: 0,
+		totalProjects: 0,
+		activeProjects: 0,
+		totalEdges: 0,
+		totalTasks: 0,
+		totalOutputs: 0,
+		totalDocuments: 0
+	};
+
+	function isPromiseLike<T>(value: unknown): value is PromiseLike<T> {
+		return !!value && typeof (value as PromiseLike<T>).then === 'function';
+	}
+
+	function getErrorMessage(error: unknown, fallback: string): string {
+		if (error instanceof Error && error.message) return error.message;
+		if (typeof error === 'string' && error.length > 0) return error;
+		return fallback;
+	}
+
+	let projectsStreamVersion = 0;
+	let projectsLoading = $state(
+		isPromiseLike<OntologyProjectSummary[]>(data.projects) ? true : false
+	);
 	let projectsError = $state<string | null>(null);
-	let projectBriefsMap = $state<Map<string, any>>(new Map());
-
-	// State management - organized into logical groups
-	let activeTab = $state<TabType>('projects');
-
-	// Check URL params for initial tab
-	$effect(() => {
-		if (!browser) return;
-
-		const urlParams = new URLSearchParams($page.url.search);
-		const tabParam = urlParams.get('tab');
-		if (tabParam === 'briefs') {
-			if (activeTab !== 'briefs') {
-				activeTab = 'briefs';
-			}
-			if (!briefsLoaded) {
-				loadBriefs();
-			}
-		}
-	});
-
-	// Check URL params for brief modal on load
-	$effect(() => {
-		if (!browser) return;
-
-		const urlParams = new URLSearchParams($page.url.search);
-		const briefDateParam = urlParams.get('briefDate');
-
-		// Open modal if briefDate in URL and modal not already open
-		if (briefDateParam && !briefModalOpen) {
-			// Validate date format (YYYY-MM-DD)
-			if (/^\d{4}-\d{2}-\d{2}$/.test(briefDateParam)) {
-				// Use IIFE for async operation in effect (Svelte 5 pattern)
-				(async () => {
-					await loadDailyBriefModal();
-					selectedBriefDate = briefDateParam;
-					briefModalOpen = true;
-				})();
-			}
-		}
-
-		// Close modal if briefDate removed from URL
-		if (!briefDateParam && briefModalOpen) {
-			briefModalOpen = false;
-			selectedBriefDate = null;
-		}
-	});
-	const filters = $state<ProjectsFilterState>({
-		projectFilter: 'all',
-		briefDateRange: 'week',
-		selectedProjectFilter: 'all',
-		searchQuery: ''
-	});
-
-	// Brief management
-	let projectBriefs = $state<any[]>([]);
-	let briefsLoaded = $state(false);
-	let loadingBriefs = $state(false);
-	let todayProjectBriefs = $state<any[]>([]);
-
-	// Modal state
-	let selectedBrief = $state<any>(null);
-	let showBriefModal = $state(false);
-	let briefModalOpen = $state(false); // Daily brief modal
-	let selectedBriefDate = $state<string | null>(null); // Date for daily brief modal
-	let showNewProjectModal = $state(false);
-	let showQuickProjectModal = $state(false);
-	let creatingProject = $state(false);
-	const showBrainDumpModal = $derived($brainDumpModalIsOpen);
-	let brainDumpModalWasOpen = false;
-	let pendingBrainDumpRefresh = false;
-
-	$effect(() => {
-		const isOpen = showBrainDumpModal;
-		const storeSnapshot = $brainDumpV2Store;
-		const activeCount =
-			storeSnapshot?.activeBrainDumps instanceof Map
-				? storeSnapshot.activeBrainDumps.size
-				: 0;
-		const processingPhase = storeSnapshot?.processing?.phase ?? 'idle';
-		const handoffActive = activeCount > 0 || processingPhase !== 'idle';
-
-		if (!isOpen && brainDumpModalWasOpen) {
-			if (handoffActive) {
-				pendingBrainDumpRefresh = true;
-			} else {
-				pendingBrainDumpRefresh = false;
-				handleBrainDumpClose();
-			}
-		}
-
-		if (pendingBrainDumpRefresh && !handoffActive) {
-			pendingBrainDumpRefresh = false;
-			handleBrainDumpClose();
-		}
-
-		brainDumpModalWasOpen = isOpen;
-	});
-
-	// Navigation state
-	let currentPath = '';
-
-	// Form reference
-	let createProjectForm: HTMLFormElement;
-
-	// Dynamic component loading functions
-	async function loadNewProjectModal() {
-		if (!NewProjectModal) {
-			NewProjectModal = (await import('$lib/components/projects/NewProjectModal.svelte'))
-				.default;
-		}
-		return NewProjectModal;
-	}
-
-	async function loadProjectBriefModal() {
-		if (!ProjectBriefModal) {
-			ProjectBriefModal = (await import('$lib/components/briefs/ProjectBriefModal.svelte'))
-				.default;
-		}
-		return ProjectBriefModal;
-	}
-
-	async function loadDailyBriefModal() {
-		if (!DailyBriefModal) {
-			DailyBriefModal = (await import('$lib/components/briefs/DailyBriefModal.svelte'))
-				.default;
-		}
-		return DailyBriefModal;
-	}
-
-	async function loadQuickProjectModal() {
-		if (!QuickProjectModal) {
-			QuickProjectModal = (await import('$lib/components/project/QuickProjectModal.svelte'))
-				.default;
-		}
-		return QuickProjectModal;
-	}
-
-	// Computed values with memoization
-	const filteredProjects = $derived(
-		filterProjects(projects, filters.projectFilter, filters.searchQuery)
+	let projectSummaries = $state<OntologyProjectSummary[]>(
+		Array.isArray(data.projects) ? (data.projects as OntologyProjectSummary[]) : []
 	);
 
-	const filteredBriefs = $derived(
-		filterBriefs(
-			projectBriefs,
-			filters.briefDateRange,
-			filters.selectedProjectFilter,
-			filters.searchQuery
+	$effect(() => {
+		const incoming = data.projects;
+		const currentVersion = ++projectsStreamVersion;
+		projectsError = null;
+
+		if (isPromiseLike<OntologyProjectSummary[]>(incoming)) {
+			projectsLoading = true;
+
+			incoming
+				.then((result) => {
+					if (currentVersion !== projectsStreamVersion) return;
+					projectSummaries = Array.isArray(result) ? result : [];
+					projectsLoading = false;
+				})
+				.catch((err) => {
+					if (currentVersion !== projectsStreamVersion) return;
+					projectsError = getErrorMessage(err, 'Failed to load ontology projects');
+					projectSummaries = [];
+					projectsLoading = false;
+				});
+			return;
+		}
+
+		projectSummaries = Array.isArray(incoming) ? (incoming as OntologyProjectSummary[]) : [];
+		projectsLoading = false;
+	});
+
+	const projects = $derived(projectSummaries);
+	const availableStates = $derived(
+		Array.from(
+			new Set(
+				(projects ?? [])
+					.map((project) => project.state_key)
+					.filter((state): state is string => Boolean(state))
+			)
+		).sort()
+	);
+	const availableContexts = $derived(
+		Array.from(
+			new Set(
+				(projects ?? [])
+					.map((project) => project.facet_context)
+					.filter((context): context is string => Boolean(context))
+			)
+		).sort()
+	);
+	const availableScales = $derived(
+		Array.from(
+			new Set(
+				(projects ?? [])
+					.map((project) => project.facet_scale)
+					.filter((scale): scale is string => Boolean(scale))
+			)
+		).sort()
+	);
+	const availableStages = $derived(
+		Array.from(
+			new Set(
+				(projects ?? [])
+					.map((project) => project.facet_stage)
+					.filter((stage): stage is string => Boolean(stage))
+			)
+		).sort()
+	);
+
+	let searchQuery = $state('');
+	let selectedStates = $state<string[]>([]);
+	let selectedContexts = $state<string[]>([]);
+	let selectedScales = $state<string[]>([]);
+	let selectedStages = $state<string[]>([]);
+
+	const hasFilters = $derived(
+		Boolean(
+			searchQuery.trim() ||
+				selectedStates.length ||
+				selectedContexts.length ||
+				selectedScales.length ||
+				selectedStages.length
 		)
 	);
 
-	const filterCounts = $derived(calculateFilterCounts(projects));
-
-	// Always show filter bar to prevent layout shift, but adjust visibility of search
-	const showSearch = $derived(
-		(activeTab === 'projects' && projects.length > 5) ||
-			(activeTab === 'briefs' && projectBriefs.length > 5)
-	);
-
-	// Always show filter bar container, but conditionally show controls
-	const showFilterControls = $derived(
-		(activeTab === 'projects' && projectsLoaded) || (activeTab === 'briefs' && briefsLoaded)
-	);
-
-	const hasActiveFilters = $derived(
-		Boolean(filters.searchQuery) ||
-			(activeTab === 'projects' && filters.projectFilter !== 'all') ||
-			(activeTab === 'briefs' &&
-				(filters.briefDateRange !== 'all' || filters.selectedProjectFilter !== 'all'))
-	);
-
-	const tabs = $derived([
-		{
-			id: 'projects',
-			label: 'Projects',
-			icon: FolderOpen,
-			count: projectsLoaded ? projects.length : undefined
-		},
-		{
-			id: 'briefs',
-			label: 'Daily Briefs',
-			icon: FileText,
-			count: briefsLoaded ? projectBriefs.length : undefined
-		}
-	]);
-
-	// Optimized search handler with debouncing
-	const handleSearchChange = debounce((value: string) => {
-		filters.searchQuery = value;
-	}, 300);
-
-	// Event handlers
-	function handleTabChange(tabId: string) {
-		activeTab = tabId as TabType;
-		filters.searchQuery = '';
-
-		// Update URL parameter for browser history and bookmarking
-		if (browser) {
-			const url = new URL(window.location.href);
-			if (tabId === 'briefs') {
-				url.searchParams.set('tab', 'briefs');
-			} else {
-				url.searchParams.delete('tab');
-			}
-			window.history.pushState({}, '', url);
-		}
-
-		if (tabId === 'briefs' && !briefsLoaded) {
-			loadBriefs();
-		}
-	}
-
-	// API calls
-	async function loadProjects() {
-		if (projectsLoaded || loadingProjects) return;
-
-		loadingProjects = true;
-		projectsError = null;
-
-		try {
-			const response = await fetch('/api/projects/list');
-			if (!response.ok) {
-				throw new Error('Failed to load projects');
+	const filteredProjects = $derived.by(() => {
+		const query = searchQuery.trim().toLowerCase();
+		return (projects ?? []).filter((project) => {
+			if (query) {
+				const matchesQuery =
+					project.name.toLowerCase().includes(query) ||
+					(project.description ?? '').toLowerCase().includes(query);
+				if (!matchesQuery) return false;
 			}
 
-			const result = await response.json();
-
-			if (result.success) {
-				projects = result.data.projects || [];
-				projectsLoaded = true;
-				// Load today's project briefs after projects are loaded
-				loadTodayProjectBriefs();
-			} else {
-				throw new Error(result.error || 'Failed to load projects');
-			}
-		} catch (error) {
-			console.error('Error loading projects:', error);
-			projectsError = error instanceof Error ? error.message : 'Failed to load projects';
-			toastService.error(projectsError);
-		} finally {
-			loadingProjects = false;
-		}
-	}
-
-	async function loadProjectsWithCacheBust() {
-		if (loadingProjects) return;
-
-		loadingProjects = true;
-		projectsError = null;
-
-		try {
-			// Force fresh data with cache-busting headers
-			const response = await fetch('/api/projects/list', {
-				headers: {
-					'Cache-Control': 'no-cache',
-					Pragma: 'no-cache'
-				},
-				cache: 'no-store'
-			});
-
-			if (!response.ok) {
-				throw new Error('Failed to load projects');
+			if (selectedStates.length && !selectedStates.includes(project.state_key)) {
+				return false;
 			}
 
-			const result = await response.json();
-			if (result.success) {
-				projects = result.data.projects || [];
-				projectsLoaded = true;
-				// Load today's project briefs after projects are loaded
-				loadTodayProjectBriefs();
-			} else {
-				throw new Error(result.error || 'Failed to load projects');
-			}
-		} catch (error) {
-			console.error('Error loading projects:', error);
-			projectsError = error instanceof Error ? error.message : 'Failed to load projects';
-			toastService.error(projectsError);
-		} finally {
-			loadingProjects = false;
-		}
-	}
-
-	async function loadTodayProjectBriefs() {
-		if (!browser || projects.length === 0) return;
-
-		try {
-			// Get today's date in user's timezone
-			const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-			const formatter = new Intl.DateTimeFormat('en-CA', {
-				timeZone: timezone,
-				year: 'numeric',
-				month: '2-digit',
-				day: '2-digit'
-			});
-			const todayDate = formatter.format(new Date());
-
-			const params = new URLSearchParams();
-			params.set('date', todayDate);
-
-			const response = await fetch(`/api/project-briefs?${params.toString()}`);
-
-			if (!response.ok) {
-				throw new Error(`Failed to load today's project briefs (HTTP ${response.status})`);
-			}
-
-			const result = await response.json();
-			if (!result.success) {
-				throw new Error(result.error || "Failed to load today's project briefs");
-			}
-
-			todayProjectBriefs = result.data?.briefs || [];
-			projectBriefsMap = new Map();
-			for (const brief of todayProjectBriefs) {
-				if (brief.project_id) {
-					projectBriefsMap.set(brief.project_id, brief);
+			if (selectedContexts.length) {
+				if (!project.facet_context || !selectedContexts.includes(project.facet_context)) {
+					return false;
 				}
 			}
-		} catch (error) {
-			console.error("Error loading today's project briefs:", error);
-		}
-	}
 
-	async function loadBriefs() {
-		if (briefsLoaded || loadingBriefs) return;
-
-		loadingBriefs = true;
-		try {
-			const response = await fetch('/api/project-briefs');
-			if (!response.ok) {
-				throw new Error(`Failed to load project briefs (HTTP ${response.status})`);
+			if (selectedScales.length) {
+				if (!project.facet_scale || !selectedScales.includes(project.facet_scale)) {
+					return false;
+				}
 			}
 
-			const result = await response.json();
-			if (!result.success) {
-				throw new Error(result.error || 'Failed to load project briefs');
+			if (selectedStages.length) {
+				if (!project.facet_stage || !selectedStages.includes(project.facet_stage)) {
+					return false;
+				}
 			}
 
-			projectBriefs = result.data?.briefs || [];
-			briefsLoaded = true;
-		} catch (error) {
-			console.error('Error loading briefs:', error);
-			toastService.error('Failed to load briefs');
-		} finally {
-			loadingBriefs = false;
-		}
-	}
+			return true;
+		});
+	});
 
-	// Modal handlers
-	async function handleNewProject() {
-		await loadNewProjectModal();
-		showNewProjectModal = true;
-	}
+	const stats = $derived.by(() => {
+		const list = filteredProjects;
+		const taskTotal = list.reduce((acc, project) => acc + (project.task_count ?? 0), 0);
+		const outputTotal = list.reduce((acc, project) => acc + (project.output_count ?? 0), 0);
+		const inProgress = list.filter((project) =>
+			['active', 'execution', 'in_progress'].includes(project.state_key)
+		).length;
 
-	async function handleBrainDump() {
-		showNewProjectModal = false;
-		const newProjectSelection = { id: 'new', name: 'New Project / Note', isProject: false };
-		brainDumpV2Store.openModal({ project: newProjectSelection });
-	}
+		return {
+			totalProjects: list.length,
+			totalTasks: taskTotal,
+			totalOutputs: outputTotal,
+			activeProjects: inProgress
+		};
+	});
 
-	async function handleCreateEmptyProject() {
-		if (creatingProject) return;
+	const graphLastUpdated = $derived.by(() => {
+		const iso = $graphStore.metadata?.generatedAt;
+		return iso ? new Date(iso).toLocaleString() : null;
+	});
 
-		creatingProject = true;
-		showNewProjectModal = false;
-
-		if (createProjectForm) {
-			createProjectForm.requestSubmit();
-		}
-	}
-
-	async function handleQuickForm() {
-		await loadQuickProjectModal();
-		showNewProjectModal = false;
-		showQuickProjectModal = true;
-	}
-
-	function handleQuickProjectClose() {
-		showQuickProjectModal = false;
-		// Refresh projects after successful creation
-		projectsLoaded = false;
-		loadProjectsWithCacheBust();
+	function toggleValue(list: string[], value: string): string[] {
+		return list.includes(value) ? list.filter((item) => item !== value) : [...list, value];
 	}
 
 	function clearFilters() {
-		filters.searchQuery = '';
-		if (activeTab === 'projects') {
-			filters.projectFilter = 'all';
+		searchQuery = '';
+		selectedStates = [];
+		selectedContexts = [];
+		selectedScales = [];
+		selectedStages = [];
+	}
+
+	async function setActiveTab(tab: 'overview' | 'graph') {
+		if (activeTab === tab) return;
+		activeTab = tab;
+
+		if (typeof window !== 'undefined') {
+			window.dispatchEvent(
+				new CustomEvent('ontology-view.change', {
+					detail: { view: tab }
+				})
+			);
+		}
+
+		const params = new URLSearchParams($page.url.searchParams);
+		if (tab === 'graph') {
+			params.set('view', 'graph');
 		} else {
-			filters.briefDateRange = 'all';
-			filters.selectedProjectFilter = 'all';
-		}
-	}
-
-	async function openBriefModal(brief: any) {
-		await loadProjectBriefModal();
-		selectedBrief = brief;
-		showBriefModal = true;
-	}
-
-	// Daily brief modal handlers
-	async function handleViewBrief(data: { briefId: string | null; briefDate: string }) {
-		const { briefDate } = data;
-		await loadDailyBriefModal();
-		selectedBriefDate = briefDate;
-		briefModalOpen = true;
-		updateBriefUrl(briefDate);
-	}
-
-	function closeDailyBriefModal() {
-		briefModalOpen = false;
-		selectedBriefDate = null;
-		updateBriefUrl(null);
-	}
-
-	function updateBriefUrl(briefDate: string | null) {
-		if (!browser) return;
-
-		const url = new URL(window.location.href);
-
-		if (briefDate) {
-			url.searchParams.set('briefDate', briefDate);
-		} else {
-			url.searchParams.delete('briefDate');
+			params.delete('view');
+			selectedGraphNode = null;
 		}
 
-		// Use goto() instead of pushState to trigger Svelte reactivity
-		goto(url.pathname + url.search, { replaceState: false, noScroll: true, keepFocus: true });
+		const query = params.toString();
+		await goto(`${$page.url.pathname}${query ? `?${query}` : ''}`, {
+			replaceState: true,
+			keepFocus: true,
+			noScroll: tab === 'graph'
+		});
 	}
 
-	function handleBrainDumpClose() {
-		// Clear ALL cache layers
-		if (typeof window !== 'undefined' && browser) {
-			const projectService = ProjectService.getInstance();
-			projectService.clearCache();
-		}
-
-		// Reset component state
-		projectsLoaded = false;
-
-		// Force fresh data with cache-busting
-		loadProjectsWithCacheBust();
+	function refreshGraph() {
+		graphStore.load({ viewMode: graphViewMode, force: true });
 	}
 
-	// Form enhancement
-	const createProjectEnhancement = () => {
-		return async ({ result }: { result: ActionResult }) => {
-			creatingProject = false;
-
-			if (result.type === 'redirect') {
-				toastService.success('Project created successfully!');
-				goto(result.location);
-			} else if (result.type === 'failure') {
-				const error = result.data?.error || 'Failed to create project';
-				toastService.error(error);
-				showNewProjectModal = true;
-			}
-		};
-	};
-
-	// Track path changes with $effect (Svelte 5 pattern)
 	$effect(() => {
-		if (!browser) return;
-
-		const newPath = $page?.url?.pathname;
-		if (newPath !== currentPath) {
-			currentPath = newPath;
+		const viewParam = $page.url.searchParams.get('view') === 'graph' ? 'graph' : 'overview';
+		if (viewParam !== activeTab) {
+			activeTab = viewParam;
 		}
 	});
 
-	// Lifecycle
-	onMount(() => {
-		if (!browser) return;
-
-		// Check if we need to force refresh (e.g., after deletion)
-		if ($page.url.searchParams.get('refresh') === 'true') {
-			// Clear any cached state and force fresh load
-			projectsLoaded = false;
-			loadProjectsWithCacheBust();
-
-			// Clean up the URL to remove the refresh param
-			const cleanUrl = new URL(window.location.href);
-			cleanUrl.searchParams.delete('refresh');
-			window.history.replaceState({}, '', cleanUrl.toString());
-		} else {
-			// Load projects normally
-			loadProjects();
+	$effect(() => {
+		const state = $graphStore;
+		if (activeTab === 'graph' && state.status === 'idle') {
+			graphStore.load({ viewMode: graphViewMode });
 		}
-
-		// Handle browser back/forward buttons for brief modal
-		async function handlePopState() {
-			if (!browser) return;
-
-			const urlParams = new URLSearchParams(window.location.search);
-			const briefDateParam = urlParams.get('briefDate');
-
-			if (briefDateParam && !briefModalOpen) {
-				// Open modal when navigating forward to a URL with briefDate
-				if (/^\d{4}-\d{2}-\d{2}$/.test(briefDateParam)) {
-					await loadDailyBriefModal();
-					selectedBriefDate = briefDateParam;
-					briefModalOpen = true;
-				}
-			} else if (!briefDateParam && briefModalOpen) {
-				// Close modal when navigating back to a URL without briefDate
-				briefModalOpen = false;
-				selectedBriefDate = null;
-			}
-		}
-
-		window.addEventListener('popstate', handlePopState);
-
-		return () => {
-			window.removeEventListener('popstate', handlePopState);
-		};
 	});
 
-	onDestroy(() => {
-		if (!browser) return;
-
-		// Cleanup to prevent memory retention
-		projectBriefs = [];
-		selectedBrief = null;
+	$effect(() => {
+		const state = $graphStore;
+		if (state.status === 'loading') {
+			selectedGraphNode = null;
+		}
 	});
 </script>
 
-<!-- Hidden form for project creation -->
-<form
-	bind:this={createProjectForm}
-	method="POST"
-	action="?/createProject"
-	use:enhance={createProjectEnhancement}
-	style="display: none;"
->
-	<!-- Empty form - the action doesn't need any data -->
-</form>
-
 <svelte:head>
-	<title>Projects - BuildOS | Organize Your Work & Personal Projects</title>
-	<meta
-		name="description"
-		content="Organize and track your work and personal projects with BuildOS. View daily briefs, manage tasks, and build context for AI collaboration across all your projects."
-	/>
-	<meta
-		name="keywords"
-		content="project management, task organization, daily briefs, AI context building, productivity dashboard, project tracking"
-	/>
-	<link rel="canonical" href="https://build-os.com/projects" />
-
-	<!-- Open Graph / Facebook -->
-	<meta property="og:type" content="website" />
-	<meta property="og:url" content="https://build-os.com/projects" />
-	<meta
-		property="og:title"
-		content="Projects - BuildOS | Organize Your Work & Personal Projects"
-	/>
-	<meta
-		property="og:description"
-		content="Organize and track your work and personal projects with BuildOS. View daily briefs, manage tasks, and build context for AI collaboration."
-	/>
-	<meta property="og:image" content="https://build-os.com/brain-bolt.png" />
-
-	<!-- Twitter -->
-	<meta property="twitter:card" content="summary_large_image" />
-	<meta property="twitter:url" content="https://build-os.com/projects" />
-	<meta
-		property="twitter:title"
-		content="Projects - BuildOS | Organize Your Work & Personal Projects"
-	/>
-	<meta
-		property="twitter:description"
-		content="Organize and track your work and personal projects with BuildOS. View daily briefs and manage tasks efficiently."
-	/>
-	<meta property="twitter:image" content="https://build-os.com/brain-bolt.png" />
-
-	<!-- Additional Meta Tags -->
-	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-	<meta name="robots" content="noindex, nofollow" />
-	<meta name="author" content="DJ Wayne" />
+	<title>Projects | BuildOS</title>
 </svelte:head>
 
-<div class="min-h-screen bg-gray-50 dark:bg-gray-900">
-	<div class="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 md:py-8">
-		<!-- Page header - Apple-style refined -->
-		<div class="mb-4 sm:mb-6">
-			<!-- Header section with improved spacing -->
-			<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6">
-				<div>
-					<h1
-						class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-1 sm:mb-2 tracking-tight"
-					>
-						Projects
-					</h1>
-					<p class="text-sm sm:text-base text-gray-600 dark:text-gray-400">
-						{#if projectsLoaded}
-							{projects.length} active {projects.length === 1
-								? 'project'
-								: 'projects'}
-						{:else}
-							Loading projects...
-						{/if}
-					</p>
-				</div>
+<div class="space-y-4 sm:space-y-6">
+	<!-- Mobile Navigation - Only visible on mobile, Admin Only -->
+	{#if isAdmin}
+		<nav
+			class="lg:hidden flex flex-wrap items-center gap-2 rounded-lg border border-border bg-card p-2 shadow-ink tx tx-strip tx-weak"
+			aria-label="Projects navigation"
+		>
+			<a
+				href="/projects"
+				class="inline-flex items-center gap-1.5 rounded border border-accent bg-accent/10 px-3 py-1.5 text-xs font-bold text-accent transition hover:bg-accent/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring pressable shadow-ink"
+				aria-current="page"
+			>
+				<svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						stroke-width="2"
+						d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+					/>
+				</svg>
+				<span>Projects</span>
+			</a>
+			<a
+				href="/projects/create"
+				class="inline-flex items-center gap-1.5 rounded border border-border px-3 py-1.5 text-xs font-bold text-muted-foreground transition hover:bg-muted/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring pressable"
+			>
+				<svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						stroke-width="2"
+						d="M12 4v16m8-8H4"
+					/>
+				</svg>
+				<span>Create</span>
+			</a>
+			<a
+				href="/projects/templates"
+				class="inline-flex items-center gap-1.5 rounded border border-border px-3 py-1.5 text-xs font-bold text-muted-foreground transition hover:bg-muted/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring pressable"
+			>
+				<svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						stroke-width="2"
+						d="M4 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 16a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1H5a1 1 0 01-1-1v-3zM14 16a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1h-4a1 1 0 01-1-1v-3z"
+					/>
+				</svg>
+				<span>Templates</span>
+			</a>
+			<a
+				href="/"
+				class="ml-auto inline-flex items-center gap-1.5 rounded border border-border px-3 py-1.5 text-xs font-bold text-muted-foreground transition hover:bg-muted/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring pressable"
+			>
+				<svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						stroke-width="2"
+						d="M10 19l-7-7m0 0l7-7m-7 7h18"
+					/>
+				</svg>
+				<span>Back</span>
+			</a>
+		</nav>
+	{/if}
 
-				<!-- Button group for desktop and mobile -->
-				<div class="flex gap-2 mt-4 sm:mt-0">
-					<!-- Brain Dump Button -->
-
-					<!-- New Project Button -->
-					<Button
-						onclick={handleNewProject}
-						variant="outline"
-						disabled={creatingProject}
-						class="flex-1 sm:flex-initial"
-						icon={Plus}
-					>
-						{creatingProject ? 'Creating...' : 'New Project'}
-					</Button>
-				</div>
-			</div>
-
-			<!-- Tab Navigation -->
-			<TabNav
-				{tabs}
-				{activeTab}
-				onchange={(e) => handleTabChange(e.detail)}
-				ariaLabel="Project content tabs"
-			/>
+	<header class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between !mt-0">
+		<div class="space-y-1 flex-1">
+			<h1 class="text-2xl font-bold text-foreground sm:text-3xl">Projects</h1>
+			<p class="text-sm text-muted-foreground sm:text-base">
+				Manage and organize your active projects and workflows.
+			</p>
 		</div>
 
-		<!-- Search and Filter Controls - Always reserve space to prevent layout shift -->
-		{#if activeTab == 'briefs'}
-			<div class="filter-bar-container">
-				{#if showFilterControls}
-					<ProjectsFilterBar
-						{showSearch}
-						searchQuery={filters.searchQuery}
-						{activeTab}
-						projectFilter={filters.projectFilter}
-						briefDateRange={filters.briefDateRange}
-						selectedProjectFilter={filters.selectedProjectFilter}
-						{filterCounts}
-						{projects}
-						{briefsLoaded}
-						on:searchChange={(e) => handleSearchChange(e.detail)}
-						on:projectFilterChange={(e) => (filters.projectFilter = e.detail)}
-						on:briefDateRangeChange={(e) => (filters.briefDateRange = e.detail)}
-						on:selectedProjectChange={(e) => (filters.selectedProjectFilter = e.detail)}
+		<!-- Graph/Overview toggle - Admin Only -->
+		{#if isAdmin}
+			<nav
+				class="inline-flex rounded-lg border border-border bg-card p-1 text-sm font-bold overflow-x-auto scrollbar-hide shadow-ink self-baseline"
+				aria-label="Project view mode"
+			>
+				<button
+					type="button"
+					class={`relative rounded px-4 py-2 transition pressable ${
+						activeTab === 'overview'
+							? 'bg-accent text-accent-foreground shadow-ink'
+							: 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+					}`}
+					aria-pressed={activeTab === 'overview'}
+					onclick={() => setActiveTab('overview')}
+				>
+					Overview
+				</button>
+				<button
+					type="button"
+					class={`relative rounded px-4 py-2 transition pressable ${
+						activeTab === 'graph'
+							? 'bg-accent text-accent-foreground shadow-ink'
+							: 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+					}`}
+					aria-pressed={activeTab === 'graph'}
+					onclick={() => setActiveTab('graph')}
+				>
+					Graph
+				</button>
+			</nav>
+		{/if}
+	</header>
+
+	<!-- Graph refresh bar - Admin Only -->
+	{#if isAdmin && activeTab === 'graph'}
+		<div
+			class="flex flex-wrap items-center justify-end gap-3 rounded-lg border border-border bg-card p-3 shadow-ink text-xs text-muted-foreground"
+		>
+			{#if $graphStore.status === 'ready' && graphLastUpdated}
+				<span class="hidden sm:inline font-semibold">Last synced {graphLastUpdated}</span>
+			{/if}
+			<button
+				type="button"
+				class="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 font-bold text-foreground transition hover:bg-muted hover:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring shadow-ink pressable"
+				onclick={refreshGraph}
+				aria-label="Refresh graph"
+			>
+				<svg
+					class="h-3.5 w-3.5"
+					viewBox="0 0 20 20"
+					fill="none"
+					xmlns="http://www.w3.org/2000/svg"
+				>
+					<path
+						d="M3.75 10a6.25 6.25 0 0 1 10.18-4.93l1.07.88V3.75a.75.75 0 1 1 1.5 0v4.5a.75.75 0 0 1-.75.75h-4.5a.75.75 0 0 1 0-1.5h2.74l-.67-.54A4.75 4.75 0 1 0 15.75 11a.75.75 0 0 1 1.5 0 6.25 6.25 0 1 1-13.5 0Z"
+						fill="currentColor"
 					/>
-				{:else}
-					<!-- Skeleton/placeholder to maintain height -->
-					<div class="filter-bar-skeleton"></div>
+				</svg>
+				<span>Refresh</span>
+			</button>
+		</div>
+	{/if}
+
+	{#if activeTab === 'overview'}
+		<section class="space-y-4">
+			{#if projectsLoading}
+				<div class="space-y-6">
+					<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+						{#each Array.from({ length: 3 }) as _}
+							<div
+								class="rounded-lg border border-border bg-card p-4 shadow-ink animate-pulse"
+							>
+								<div class="h-5 w-1/3 rounded bg-muted"></div>
+								<div class="mt-4 h-4 w-3/4 rounded bg-muted/80"></div>
+								<div class="mt-2 h-3 w-2/3 rounded bg-muted/80"></div>
+							</div>
+						{/each}
+					</div>
+					<div
+						class="rounded-lg border border-border bg-card p-6 shadow-ink animate-pulse"
+					>
+						<div class="h-5 w-1/4 rounded bg-muted"></div>
+						<div class="mt-4 grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+							{#each Array.from({ length: 6 }) as _}
+								<div class="h-24 rounded bg-muted/80"></div>
+							{/each}
+						</div>
+					</div>
+				</div>
+			{:else if projectsError}
+				<div
+					class="rounded-lg border border-border bg-card p-6 text-center shadow-ink tx tx-static tx-weak"
+				>
+					<h2 class="text-base font-semibold text-foreground">
+						Unable to load ontology projects
+					</h2>
+					<p class="mt-2 text-sm text-muted-foreground">
+						{projectsError}
+					</p>
+					<div class="mt-4 flex justify-center">
+						<Button
+							variant="primary"
+							size="sm"
+							onclick={() => goto('/projects', { replaceState: true })}
+						>
+							Try again
+						</Button>
+					</div>
+				</div>
+			{:else}
+				<Card variant="elevated" padding="none">
+					<CardBody
+						padding="md"
+						class="space-y-dense-4 lg:flex lg:items-start lg:justify-between lg:gap-dense-6 lg:space-y-0"
+					>
+						<div
+							class="flex flex-col gap-dense-3 sm:flex-row sm:items-center sm:gap-dense-4 lg:flex-1"
+						>
+							<div class="relative flex-1">
+								<input
+									type="search"
+									class="w-full rounded-lg border border-border bg-card py-2 pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground transition focus:border-accent focus:outline-none focus:ring-2 focus:ring-ring shadow-ink-inner"
+									placeholder="Search projects by name or description..."
+									bind:value={searchQuery}
+								/>
+								<svg
+									class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+									xmlns="http://www.w3.org/2000/svg"
+									fill="none"
+									viewBox="0 0 24 24"
+									stroke="currentColor"
+								>
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										stroke-width="2"
+										d="M21 21l-4.35-4.35M17 10a7 7 0 11-14 0 7 7 0 0114 0z"
+									/>
+								</svg>
+							</div>
+
+							{#if hasFilters}
+								<Button
+									variant="ghost"
+									size="sm"
+									class="text-accent hover:text-accent/80 font-bold"
+									onclick={clearFilters}
+								>
+									Clear filters
+								</Button>
+							{/if}
+						</div>
+
+						<Button variant="primary" size="sm" onclick={handleCreateProject}>
+							<svg
+								class="h-4 w-4 mr-2"
+								xmlns="http://www.w3.org/2000/svg"
+								fill="none"
+								viewBox="0 0 24 24"
+								stroke="currentColor"
+							>
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="2"
+									d="M12 4v16m8-8H4"
+								/>
+							</svg>
+							<span>New Project</span>
+						</Button>
+					</CardBody>
+				</Card>
+
+				<div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+					<div
+						class="rounded-lg border border-border bg-card p-4 shadow-ink tx tx-bloom tx-weak ink-frame"
+					>
+						<p class="micro-label">Projects</p>
+						<p class="text-2xl font-bold text-foreground mt-1">
+							{stats.totalProjects}
+						</p>
+					</div>
+					<div
+						class="rounded-lg border border-border bg-card p-4 shadow-ink tx tx-grain tx-weak ink-frame"
+					>
+						<p class="micro-label">Tasks</p>
+						<p class="text-2xl font-bold text-foreground mt-1">
+							{stats.totalTasks}
+						</p>
+					</div>
+					<div
+						class="rounded-lg border border-border bg-card p-4 shadow-ink tx tx-thread tx-weak ink-frame"
+					>
+						<p class="micro-label">Outputs</p>
+						<p class="text-2xl font-bold text-foreground mt-1">
+							{stats.totalOutputs}
+						</p>
+					</div>
+					<div
+						class="rounded-lg border border-border bg-card p-4 shadow-ink tx tx-pulse tx-weak ink-frame"
+					>
+						<p class="micro-label">Active</p>
+						<p class="text-2xl font-bold text-accent mt-1">
+							{stats.activeProjects}
+						</p>
+					</div>
+				</div>
+
+				<!-- Ontology filters - Admin Only -->
+				{#if isAdmin}
+					<div class="space-y-4">
+						{#if availableStates.length}
+							<div class="flex flex-col gap-2">
+								<p class="micro-label">State</p>
+								<div class="flex flex-wrap gap-2">
+									{#each availableStates as state (state)}
+										<button
+											type="button"
+											class={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-bold transition pressable ${
+												selectedStates.includes(state)
+													? 'border-accent bg-accent text-accent-foreground shadow-ink'
+													: 'border-border text-muted-foreground hover:border-accent hover:bg-muted/50 hover:text-foreground'
+											}`}
+											onclick={() =>
+												(selectedStates = toggleValue(
+													selectedStates,
+													state
+												))}
+										>
+											{state}
+										</button>
+									{/each}
+								</div>
+							</div>
+						{/if}
+
+						<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+							{#if availableContexts.length}
+								<div class="flex flex-col gap-2">
+									<p class="micro-label">Context</p>
+									<div class="flex flex-wrap gap-2">
+										{#each availableContexts as context (context)}
+											<button
+												type="button"
+												class={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-bold transition pressable ${
+													selectedContexts.includes(context)
+														? 'border-accent bg-accent text-accent-foreground shadow-ink'
+														: 'border-border text-muted-foreground hover:border-accent hover:bg-muted/50 hover:text-foreground'
+												}`}
+												onclick={() =>
+													(selectedContexts = toggleValue(
+														selectedContexts,
+														context
+													))}
+											>
+												{context}
+											</button>
+										{/each}
+									</div>
+								</div>
+							{/if}
+
+							{#if availableScales.length}
+								<div class="flex flex-col gap-2">
+									<p class="micro-label">Scale</p>
+									<div class="flex flex-wrap gap-2">
+										{#each availableScales as scale (scale)}
+											<button
+												type="button"
+												class={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-bold transition pressable ${
+													selectedScales.includes(scale)
+														? 'border-accent bg-accent text-accent-foreground shadow-ink'
+														: 'border-border text-muted-foreground hover:border-accent hover:bg-muted/50 hover:text-foreground'
+												}`}
+												onclick={() =>
+													(selectedScales = toggleValue(
+														selectedScales,
+														scale
+													))}
+											>
+												{scale}
+											</button>
+										{/each}
+									</div>
+								</div>
+							{/if}
+
+							{#if availableStages.length}
+								<div class="flex flex-col gap-2">
+									<p class="micro-label">Stage</p>
+									<div class="flex flex-wrap gap-2">
+										{#each availableStages as stage (stage)}
+											<button
+												type="button"
+												class={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-bold transition pressable ${
+													selectedStages.includes(stage)
+														? 'border-accent bg-accent text-accent-foreground shadow-ink'
+														: 'border-border text-muted-foreground hover:border-accent hover:bg-muted/50 hover:text-foreground'
+												}`}
+												onclick={() =>
+													(selectedStages = toggleValue(
+														selectedStages,
+														stage
+													))}
+											>
+												{stage}
+											</button>
+										{/each}
+									</div>
+								</div>
+							{/if}
+						</div>
+					</div>
 				{/if}
+			{/if}
+		</section>
+
+		{#if filteredProjects.length === 0}
+			<div
+				class="rounded-lg border border-dashed border-border bg-card px-4 py-12 text-center shadow-ink tx tx-thread tx-weak sm:px-6 sm:py-16"
+			>
+				<div
+					class="mx-auto mb-6 flex h-12 w-12 items-center justify-center rounded-lg border border-accent/30 bg-accent/10 text-accent sm:h-14 sm:w-14"
+				>
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						fill="none"
+						viewBox="0 0 24 24"
+						stroke="currentColor"
+						class="h-6 w-6"
+					>
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
+						/>
+					</svg>
+				</div>
+				<h2 class="text-xl font-bold text-foreground">No projects yet</h2>
+				<p class="mx-auto mt-2 max-w-md text-sm text-muted-foreground sm:text-base">
+					{projects.length === 0
+						? 'Create your first ontology project using typed templates and FSM workflows.'
+						: 'No projects match the current filters. Adjust your search or clear filters to explore more.'}
+				</p>
+				<div class="mt-6 flex justify-center gap-3">
+					{#if projects.length === 0}
+						<Button variant="primary" size="sm" onclick={handleCreateProject}>
+							Create first project
+						</Button>
+					{:else if hasFilters}
+						<Button variant="outline" size="sm" onclick={clearFilters}>
+							Clear filters
+						</Button>
+					{/if}
+				</div>
+			</div>
+		{:else}
+			<div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+				{#each filteredProjects as project (project.id)}
+					<a
+						href="/projects/projects/{project.id}"
+						class="group relative flex h-full flex-col rounded-lg border border-border bg-card p-4 shadow-ink transition-all duration-200 hover:border-accent hover:shadow-ink-strong pressable"
+					>
+						<div class="mb-4 flex items-start justify-between gap-3">
+							<div class="min-w-0">
+								<h3
+									class="truncate text-lg font-bold text-foreground transition-colors group-hover:text-accent"
+								>
+									{project.name}
+								</h3>
+							</div>
+							<span
+								class="flex-shrink-0 rounded-lg border px-2.5 py-1 text-xs font-bold capitalize {getProjectStateBadgeClass(
+									project.state_key
+								)}"
+							>
+								{project.state_key}
+							</span>
+						</div>
+
+						{#if project.description}
+							<p class="mb-4 line-clamp-2 text-sm text-muted-foreground">
+								{project.description}
+							</p>
+						{/if}
+
+						{#if project.facet_context || project.facet_scale || project.facet_stage}
+							<div class="mb-4 flex flex-wrap gap-2">
+								{#if project.facet_context}
+									<span
+										class="rounded-lg border border-accent/30 bg-accent/10 px-2 py-0.5 text-xs font-bold text-accent"
+									>
+										{project.facet_context}
+									</span>
+								{/if}
+								{#if project.facet_scale}
+									<span
+										class="rounded-lg border border-muted-foreground/30 bg-muted/30 px-2 py-0.5 text-xs font-bold text-muted-foreground"
+									>
+										{project.facet_scale}
+									</span>
+								{/if}
+								{#if project.facet_stage}
+									<span
+										class="rounded-lg border border-foreground/20 bg-muted/50 px-2 py-0.5 text-xs font-bold text-foreground/80"
+									>
+										{project.facet_stage}
+									</span>
+								{/if}
+							</div>
+						{/if}
+
+						<div
+							class="mt-auto flex items-center justify-between border-t border-border pt-3 text-sm text-muted-foreground"
+						>
+							<div class="flex items-center gap-3">
+								<span class="flex items-center gap-1.5" aria-label="Task count">
+									<svg
+										class="h-4 w-4"
+										xmlns="http://www.w3.org/2000/svg"
+										fill="none"
+										viewBox="0 0 24 24"
+										stroke="currentColor"
+									>
+										<path
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											stroke-width="2"
+											d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
+										/>
+									</svg>
+									<span class="font-bold">{project.task_count}</span>
+								</span>
+								<span class="flex items-center gap-1.5" aria-label="Output count">
+									<svg
+										class="h-4 w-4"
+										xmlns="http://www.w3.org/2000/svg"
+										fill="none"
+										viewBox="0 0 24 24"
+										stroke="currentColor"
+									>
+										<path
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											stroke-width="2"
+											d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+										/>
+									</svg>
+									<span class="font-bold">{project.output_count}</span>
+								</span>
+							</div>
+							<span class="text-xs text-muted-foreground/70">
+								{new Date(project.updated_at).toLocaleDateString()}
+							</span>
+						</div>
+					</a>
+				{/each}
 			</div>
 		{/if}
+		<!-- Graph view - Admin Only -->
+	{:else if isAdmin}
+		<section class="space-y-4">
+			{#if $graphStore.stats}
+				<div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+					<div
+						class="rounded-lg border border-border bg-card px-3 py-3 text-left shadow-ink tx tx-bloom tx-weak"
+					>
+						<p class="micro-label">Templates</p>
+						<p class="text-xl font-bold text-foreground">
+							{$graphStore.stats.totalTemplates}
+						</p>
+					</div>
+					<div
+						class="rounded-lg border border-border bg-card px-3 py-3 text-left shadow-ink tx tx-grain tx-weak"
+					>
+						<p class="micro-label">Projects</p>
+						<p class="text-xl font-bold text-foreground">
+							{$graphStore.stats.totalProjects}
+						</p>
+					</div>
+					<div
+						class="rounded-lg border border-border bg-card px-3 py-3 text-left shadow-ink tx tx-thread tx-weak"
+					>
+						<p class="micro-label">Relationships</p>
+						<p class="text-xl font-bold text-foreground">
+							{$graphStore.stats.totalEdges}
+						</p>
+					</div>
+					<div
+						class="rounded-lg border border-border bg-card px-3 py-3 text-left shadow-ink tx tx-pulse tx-weak"
+					>
+						<p class="micro-label">Active Projects</p>
+						<p class="text-xl font-bold text-accent">
+							{$graphStore.stats.activeProjects}
+						</p>
+					</div>
+				</div>
+			{/if}
 
-		<!-- Daily Brief Section (only for projects tab) -->
-		{#if activeTab === 'projects' && filteredProjects?.length}
-			<DailyBriefSection user={data.user} onViewBrief={handleViewBrief} />
-		{/if}
-
-		<!-- Tab Content with smooth transitions -->
-		<div class="tab-content-container">
-			{#if activeTab === 'projects'}
-				<!-- Projects Tab Content -->
-				<div class="content-transition">
-					{#if loadingProjects && !projectsLoaded}
-						<!-- Show skeleton while loading -->
-						<div class="fade-in">
-							<ProjectsGridSkeleton count={6} />
-						</div>
-					{:else if projectsError}
-						<!-- Show error state -->
-						<div class="text-center py-12 fade-in">
-							<p class="text-red-500 dark:text-red-400 mb-4">{projectsError}</p>
-							<Button onclick={loadProjectsWithCacheBust} variant="outline"
-								>Retry</Button
+			<div
+				class="rounded-lg border border-border bg-card shadow-ink overflow-hidden touch-none"
+			>
+				<div class="relative h-[60vh] sm:h-[70vh] lg:h-[calc(100vh-18rem)]">
+					{#if $graphStore.status === 'loading'}
+						<LoadingSkeleton message="Preparing ontology graph..." height="100%" />
+					{:else if $graphStore.status === 'error'}
+						<div
+							class="flex h-full flex-col items-center justify-center gap-3 p-6 text-center tx tx-static tx-weak"
+						>
+							<h3 class="text-base font-semibold text-foreground">
+								Unable to load graph
+							</h3>
+							<p class="text-sm text-muted-foreground">
+								{$graphStore.error ??
+									'An unexpected error occurred while loading your ontology data.'}
+							</p>
+							<Button variant="primary" size="sm" onclick={refreshGraph}
+								>Try again</Button
 							>
 						</div>
-					{:else if filteredProjects.length > 0}
-						<div class="fade-in">
-							<ProjectsGrid
-								projects={filteredProjects}
-								{projectBriefsMap}
-								on:viewBrief={(e) => openBriefModal(e.detail)}
-							/>
-						</div>
+					{:else if $graphStore.data}
+						<OntologyGraph
+							data={$graphStore.data}
+							viewMode={graphViewMode}
+							bind:selectedNode={selectedGraphNode}
+							bind:graphInstance
+						/>
 					{:else}
-						<div class="fade-in">
-							<ProjectsEmptyState
-								type="projects"
-								hasFilters={hasActiveFilters}
-								on:clearFilters={clearFilters}
-								on:createProject={handleNewProject}
-							/>
+						<div
+							class="flex h-full flex-col items-center justify-center gap-3 p-6 text-center tx tx-thread tx-weak"
+						>
+							<h3 class="text-base font-semibold text-foreground">
+								No ontology data yet
+							</h3>
+							<p class="text-sm text-muted-foreground">
+								Start by creating a project or template to visualize your ontology
+								relationships.
+							</p>
+							<Button variant="primary" size="sm" onclick={handleCreateProject}>
+								Create project
+							</Button>
 						</div>
 					{/if}
 				</div>
-			{:else}
-				<!-- Briefs Tab Content - Full briefs functionality -->
-				<div class="content-transition fade-in">
-					<DailyBriefsTab user={data.user} onViewBrief={handleViewBrief} />
-				</div>
-			{/if}
-		</div>
+			</div>
 
-		<!-- Project Stats Footer - Always show for projects tab to prevent layout shift -->
-		{#if activeTab === 'projects'}
-			{#if projectsLoaded && projects.length > 0}
-				<div class="fade-in">
-					<ProjectStats {filterCounts} totalProjects={projects.length} />
-				</div>
-			{:else if loadingProjects || (!projectsLoaded && !projectsError)}
-				<ProjectStatsSkeleton />
-			{/if}
-		{/if}
-	</div>
+			<div class="grid gap-4 lg:grid-cols-2">
+				<section class="rounded-lg border border-border bg-card shadow-ink overflow-hidden">
+					<GraphControls
+						bind:viewMode={graphViewMode}
+						{graphInstance}
+						stats={$graphStore.stats ?? emptyGraphStats}
+					/>
+				</section>
+
+				<section class="rounded-lg border border-border bg-card shadow-ink overflow-hidden">
+					{#if selectedGraphNode && $graphStore.status === 'ready'}
+						<NodeDetailsPanel
+							node={selectedGraphNode}
+							onClose={() => (selectedGraphNode = null)}
+						></NodeDetailsPanel>
+					{:else}
+						<div
+							class="flex h-full items-center justify-center p-6 text-sm text-muted-foreground"
+						>
+							{#if $graphStore.status === 'ready'}
+								Select a node to view details.
+							{:else}
+								Graph details will appear here once loaded.
+							{/if}
+						</div>
+					{/if}
+				</section>
+			</div>
+		</section>
+	{/if}
 </div>
 
-<!-- Modals - Lazy loaded -->
-{#if NewProjectModal}
-	<NewProjectModal
-		isOpen={showNewProjectModal}
-		{creatingProject}
-		isFirstProject={projects.length === 0}
-		on:close={() => (showNewProjectModal = false)}
-		on:createEmpty={handleCreateEmptyProject}
-		on:brainDump={handleBrainDump}
-		on:quickForm={handleQuickForm}
-	/>
+<!-- Agent Chat Modal for Project Creation -->
+{#if AgentChatModal && showChatModal}
+	<AgentChatModal isOpen={showChatModal} contextType="project_create" onClose={handleChatClose} />
 {/if}
-
-{#if ProjectBriefModal}
-	<ProjectBriefModal
-		brief={selectedBrief}
-		isOpen={showBriefModal}
-		on:close={() => {
-			showBriefModal = false;
-			selectedBrief = null;
-		}}
-	/>
-{/if}
-
-{#if DailyBriefModal}
-	<DailyBriefModal
-		isOpen={briefModalOpen}
-		briefDate={selectedBriefDate}
-		onClose={closeDailyBriefModal}
-	/>
-{/if}
-{#if QuickProjectModal}
-	<QuickProjectModal isOpen={showQuickProjectModal} on:close={handleQuickProjectClose} />
-{/if}
-
-<!-- Brain Dump Processing Notification moved to +layout.svelte for global persistence -->
-
-<style>
-	/* Filter bar container - prevent layout shift */
-	.filter-bar-container {
-		min-height: 60px; /* Reserve space for filter controls */
-		transition: all 0.2s ease-out;
-		display: flex;
-		flex-direction: column;
-		justify-content: center;
-	}
-
-	.filter-bar-skeleton {
-		height: 52px; /* Matches typical filter bar height */
-		background: transparent;
-		border-radius: 0.5rem;
-		animation: fade-in 0.3s ease-out;
-	}
-
-	/* Tab content transitions - Apple-style smooth animations */
-	.tab-content-container {
-		min-height: 400px; /* Reserve minimum space to prevent layout shift */
-		transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94); /* Apple's easeOutQuad */
-	}
-
-	.content-transition {
-		transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-	}
-
-	/* Smooth fade-in animation for content */
-	.fade-in {
-		animation: smooth-fade-in 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
-	}
-
-	/* Enhanced fade-in with subtle upward motion (Apple-style) */
-	@keyframes smooth-fade-in {
-		from {
-			opacity: 0;
-			transform: translateY(8px);
-		}
-		to {
-			opacity: 1;
-			transform: translateY(0);
-		}
-	}
-
-	/* Basic fade-in for simpler cases */
-	@keyframes fade-in {
-		from {
-			opacity: 0;
-		}
-		to {
-			opacity: 1;
-		}
-	}
-
-	/* Reduce motion for accessibility */
-	@media (prefers-reduced-motion: reduce) {
-		.fade-in,
-		.content-transition,
-		.tab-content-container,
-		.filter-bar-container {
-			animation: none;
-			transition: none;
-		}
-
-		@keyframes smooth-fade-in {
-			from {
-				opacity: 0;
-			}
-			to {
-				opacity: 1;
-			}
-		}
-	}
-</style>

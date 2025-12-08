@@ -412,7 +412,7 @@
 	<div class="lg:hidden">
 		<button
 			type="button"
-			onclick={() => goto('/ontology')}
+			onclick={() => goto('/projects')}
 			class="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm font-semibold text-muted-foreground transition hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring shadow-ink pressable"
 		>
 			<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">

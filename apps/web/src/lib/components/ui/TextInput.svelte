@@ -113,7 +113,9 @@
 			icon && iconPosition === 'right' && iconPaddingClasses.right[size],
 
 			// State classes - clean borders
-			error ? 'border-destructive focus:ring-destructive' : 'border-border focus:border-accent',
+			error
+				? 'border-destructive focus:ring-destructive'
+				: 'border-border focus:border-accent',
 
 			// Background - clean card
 			'bg-card',

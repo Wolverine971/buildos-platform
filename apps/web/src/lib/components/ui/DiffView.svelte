@@ -29,15 +29,11 @@
 		{#each diffs as diff (diff.field)}
 			<div class="border border-border rounded-lg overflow-hidden shadow-ink">
 				<!-- Field Header -->
-				<div
-					class="bg-muted px-4 py-2 border-b border-border"
-				>
+				<div class="bg-muted px-4 py-2 border-b border-border">
 					<h3 class="font-medium text-foreground flex items-center">
 						{diff.label}
 						{#if showFieldPriority && diff.field === 'context'}
-							<span
-								class="ml-2 text-xs bg-accent/10 text-accent px-2 py-1 rounded"
-							>
+							<span class="ml-2 text-xs bg-accent/10 text-accent px-2 py-1 rounded">
 								Primary Content
 							</span>
 						{/if}

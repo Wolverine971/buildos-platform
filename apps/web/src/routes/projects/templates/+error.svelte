@@ -45,7 +45,7 @@
 	}
 
 	function handleGoBack() {
-		goto('/ontology');
+		goto('/projects');
 	}
 
 	function handleLogin() {

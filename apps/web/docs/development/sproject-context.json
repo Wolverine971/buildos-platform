@@ -19,6 +19,11 @@
 		{
 			"file": "src/routes/projects/+page.svelte",
 			"type": "page",
+			"components": ["AgentChatModal"]
+		},
+		{
+			"file": "src/routes/projects-old/+page.svelte",
+			"type": "page",
 			"components": [
 				"NewProjectModal",
 				"ProjectBriefModal",
@@ -37,7 +42,7 @@
 			]
 		},
 		{
-			"file": "src/lib/components/dashboard/Dashboard.svelte",
+			"file": "src/lib/components/dashboard/Dashboard-old.svelte",
 			"type": "component",
 			"components": [
 				"BraindumpWeekView",
@@ -48,6 +53,11 @@
 				"MobileTaskTabs",
 				"WeeklyTaskCalendar"
 			]
+		},
+		{
+			"file": "src/lib/components/dashboard/Dashboard.svelte",
+			"type": "component",
+			"components": ["AgentChatModal"]
 		},
 		{
 			"file": "src/lib/components/layout/Navigation.svelte",
@@ -118,12 +128,12 @@
 			"components": ["SynthesisLoadingState"]
 		},
 		{
-			"file": "src/routes/ontology/templates/+page.svelte",
+			"file": "src/routes/projects/templates/+page.svelte",
 			"type": "page",
 			"components": ["TemplateDetailModal", "ConfirmationModal"]
 		},
 		{
-			"file": "src/routes/projects/[id]/+page.svelte",
+			"file": "src/routes/projects-old/[id]/+page.svelte",
 			"type": "page",
 			"components": [
 				"TasksList",
@@ -134,25 +144,7 @@
 			]
 		},
 		{
-			"file": "src/routes/ontology/projects-v2/[id]/+page.svelte",
-			"type": "page",
-			"components": [
-				"FSMStateBar",
-				"ConfirmationModal",
-				"OntologyProjectEditModal",
-				"TaskCreateModal",
-				"TaskEditModal",
-				"OutputCreateModal",
-				"OutputEditModal",
-				"PlanCreateModal",
-				"PlanEditModal",
-				"GoalCreateModal",
-				"GoalEditModal",
-				"DocumentModal"
-			]
-		},
-		{
-			"file": "src/routes/ontology/projects/[id]/+page.svelte",
+			"file": "src/routes/projects/projects/[id]/+page.svelte",
 			"type": "page",
 			"components": [
 				"OntologyGraph",
@@ -170,6 +162,24 @@
 				"GoalCreateModal",
 				"GoalEditModal",
 				"GoalReverseEngineerModal"
+			]
+		},
+		{
+			"file": "src/routes/projects/projects-v2/[id]/+page.svelte",
+			"type": "page",
+			"components": [
+				"FSMStateBar",
+				"ConfirmationModal",
+				"OntologyProjectEditModal",
+				"TaskCreateModal",
+				"TaskEditModal",
+				"OutputCreateModal",
+				"OutputEditModal",
+				"PlanCreateModal",
+				"PlanEditModal",
+				"GoalCreateModal",
+				"GoalEditModal",
+				"DocumentModal"
 			]
 		},
 		{
@@ -779,16 +789,17 @@
 		"src/lib/components/notifications/NotificationModal.svelte": [
 			"src/lib/components/notifications/types/brain-dump/BrainDumpModalContent.svelte"
 		],
-		"src/routes/projects/[id]/+page.svelte": [
+		"src/routes/projects-old/[id]/+page.svelte": [
 			"src/lib/components/project/ProjectSynthesis.svelte",
 			"src/lib/components/project/PhasesSection.svelte"
 		],
-		"src/routes/ontology/projects-v2/[id]/+page.svelte": [
+		"src/routes/projects/projects-v2/[id]/+page.svelte": [
 			"src/lib/components/ontology/FSMStateBar.svelte"
 		]
 	},
 	"unusedComponents": [
 		"src/lib/components/brain-dump/BrainDumpModal.svelte",
+		"src/lib/components/dashboard/Dashboard-old.svelte",
 		"src/lib/components/layout/Navigation.svelte",
 		"src/lib/components/notifications/MinimizedNotification.svelte",
 		"src/lib/components/notifications/NotificationModal.svelte",

@@ -1,5 +1,9 @@
 # BuildOS UI Components - Quick Reference Guide
 
+> **Design System:** [INKPRINT_DESIGN_SYSTEM.md](./INKPRINT_DESIGN_SYSTEM.md)
+>
+> Always use **semantic color tokens** (`text-foreground`, `text-muted-foreground`, `bg-card`, etc.) instead of hardcoded colors.
+
 ## Essential Imports
 
 ```typescript
@@ -16,22 +20,23 @@ import { TextInput, Textarea, Select, FormField } from '$lib/components/ui';
 import { Button, Badge, Alert } from '$lib/components/ui';
 
 // Icons (Lucide)
-import { Plus, Edit2, Trash2, ChevronDown } from 'lucide-svelte';
+import { Plus, Pencil, Trash2, ChevronDown } from 'lucide-svelte';
 ```
 
 ---
 
-## Quick Component Recipes
+## Quick Component Recipes (Inkprint Style)
 
 ### Simple Card
 
 ```svelte
-<Card variant="elevated">
-	<CardBody padding="md">
-		<h3 class="text-lg font-semibold mb-2">Title</h3>
-		<p class="text-sm text-gray-600 dark:text-gray-400">Content here</p>
-	</CardBody>
-</Card>
+<!-- Use semantic tokens + Inkprint textures -->
+<div class="bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak">
+	<div class="p-4">
+		<h3 class="text-lg font-semibold text-foreground mb-2">Title</h3>
+		<p class="text-sm text-muted-foreground">Content here</p>
+	</div>
+</div>
 ```
 
 ### Card with Header and Footer
@@ -61,7 +66,7 @@ import { Plus, Edit2, Trash2, ChevronDown } from 'lucide-svelte';
 		<Card variant="interactive" hoverable={true}>
 			<CardBody padding="md">
 				<h3 class="font-semibold mb-2">{item.name}</h3>
-				<p class="text-sm text-gray-600 dark:text-gray-400 mb-4">{item.description}</p>
+				<p class="text-sm text-muted-foreground mb-4">{item.description}</p>
 				<div class="flex gap-2">
 					<Button size="sm" variant="outline">Edit</Button>
 					<Button size="sm" variant="danger">Delete</Button>
@@ -169,7 +174,7 @@ import { Plus, Edit2, Trash2, ChevronDown } from 'lucide-svelte';
 ```svelte
 <Modal {isOpen} {onClose} title="Confirm Action" size="md">
 	<div class="px-6 py-4">
-		<p class="text-gray-600 dark:text-gray-400 mb-4">Are you sure you want to continue?</p>
+		<p class="text-muted-foreground mb-4">Are you sure you want to continue?</p>
 	</div>
 	<div slot="footer" class="flex justify-end gap-3 px-6 py-4 border-t">
 		<Button variant="ghost" on:click={onClose}>Cancel</Button>
@@ -309,7 +314,7 @@ import { Plus, Edit2, Trash2, ChevronDown } from 'lucide-svelte';
 			<Card variant="interactive">
 				<CardBody padding="md">
 					<h3 class="font-semibold mb-2">{item.name}</h3>
-					<p class="text-sm text-gray-600 dark:text-gray-400 mb-4">{item.description}</p>
+					<p class="text-sm text-muted-foreground mb-4">{item.description}</p>
 					<div class="flex gap-2">
 						<Button size="sm" variant="outline" on:click={() => openEdit(item)}
 							>Edit</Button
@@ -345,23 +350,26 @@ import { Plus, Edit2, Trash2, ChevronDown } from 'lucide-svelte';
 
 ## Styling Patterns
 
-### Dark Mode
+### Dark Mode (Using Semantic Tokens)
 
 ```svelte
-<!-- Text -->
-<p class="text-gray-900 dark:text-white">Primary text</p>
+<!-- Text - use semantic tokens that auto-switch -->
+<p class="text-foreground">Primary text</p>
+<p class="text-muted-foreground">Secondary text</p>
 
-<!-- Background -->
-<div class="bg-white dark:bg-gray-800">Content</div>
+<!-- Background - semantic tokens handle dark mode -->
+<div class="bg-background">Page background</div>
+<div class="bg-card">Card/panel content</div>
+<div class="bg-muted">Muted sections</div>
 
-<!-- Border -->
-<div class="border border-gray-200 dark:border-gray-700">Content</div>
+<!-- Border - auto-adapts to theme -->
+<div class="border border-border">Content</div>
 
-<!-- Gradient -->
-<div class="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/30 dark:to-purple-950/30">
-	Content
-</div>
+<!-- Accent areas -->
+<div class="bg-accent text-accent-foreground">Accent content</div>
 ```
+
+> **Note:** Inkprint semantic tokens automatically adapt to light/dark mode. Avoid hardcoded colors like `text-gray-900 dark:text-white`.
 
 ### Responsive Spacing
 
@@ -421,21 +429,23 @@ For every component:
 
 ## Common Mistakes to Avoid
 
-1. **Not supporting dark mode** - Always add `dark:` variants
-2. **Forgetting responsive design** - Test on mobile!
-3. **Contrast too low** - Use a contrast checker
-4. **Missing ARIA labels** - Accessibility is not optional
-5. **Touch targets too small** - Minimum 44x44px
-6. **Hardcoded colors** - Use Tailwind classes
-7. **Not handling loading states** - Always show feedback
-8. **Forgetting error validation** - Display errors prominently
+1. **Using hardcoded colors** - Use semantic tokens (`text-foreground`, not `text-gray-900`)
+2. **Forgetting Inkprint textures** - Add `tx tx-frame tx-weak` to cards/containers
+3. **Missing `pressable` class** - Interactive buttons should have micro-interactions
+4. **Forgetting responsive design** - Test on mobile!
+5. **Contrast too low** - Use a contrast checker (WCAG AA: 4.5:1)
+6. **Missing ARIA labels** - Accessibility is not optional
+7. **Touch targets too small** - Minimum 44x44px
+8. **Not handling loading states** - Use `tx tx-pulse tx-weak` for loading feedback
+9. **Forgetting error validation** - Display errors prominently with `tx tx-static tx-weak`
 
 ---
 
 ## Resources
 
-- **Master Style Guide**: `/apps/web/docs/technical/components/BUILDOS_STYLE_GUIDE.md`
+- **Inkprint Design System**: `/apps/web/docs/technical/components/INKPRINT_DESIGN_SYSTEM.md` ⭐ PRIMARY
 - **Component Patterns**: `/apps/web/docs/technical/components/UI_PATTERNS_AND_CONVENTIONS.md`
+- **Style Guide (Legacy)**: `/apps/web/docs/technical/components/BUILDOS_STYLE_GUIDE.md`
 - **Tailwind Docs**: https://tailwindcss.com
 - **Lucide Icons**: https://lucide.dev
 - **WCAG Guidelines**: https://www.w3.org/WAI/WCAG21/quickref/

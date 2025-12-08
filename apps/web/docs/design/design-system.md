@@ -1,26 +1,44 @@
 ---
-title: 'BuildOS Design System'
-description: 'Complete design system including color palette, typography, components, spacing, and implementation guidelines for BuildOS'
+title: 'BuildOS Design System (Legacy)'
+description: 'DEPRECATED - See Inkprint Design System for current design patterns'
 date_created: '2025-09-26'
-date_modified: '2025-10-05'
-status: 'active'
+date_modified: '2025-12-08'
+status: 'deprecated'
 category: 'design-system'
-tags: [design-system, style-guide, components, typography, colors, accessibility, dark-mode]
+tags: [design-system, style-guide, legacy, deprecated]
 related_files:
-    - apps/web/docs/design/design-principles-checklist.md
-    - apps/web/docs/design/components/modal-standards.md
-important_files:
-    - apps/web/src/lib/components/ui/Button.svelte
-    - apps/web/src/lib/components/ui/Modal.svelte
-    - apps/web/src/lib/components/ui/Card.svelte
-    - apps/web/tailwind.config.js
+    - apps/web/docs/technical/components/INKPRINT_DESIGN_SYSTEM.md
 ---
 
-# BuildOS Design System
+# BuildOS Design System (Legacy)
+
+> # ⚠️ DEPRECATED - DO NOT USE FOR NEW DEVELOPMENT
+>
+> **This design system has been superseded by the Inkprint Design System (December 2025).**
+>
+> **New Primary Reference:** [`/apps/web/docs/technical/components/INKPRINT_DESIGN_SYSTEM.md`](/apps/web/docs/technical/components/INKPRINT_DESIGN_SYSTEM.md)
+>
+> This document describes the **previous** "Apple-inspired" design system and is retained for historical reference only.
+>
+> **Do NOT use these patterns for new development:**
+>
+> - ❌ Gradient buttons (`from-blue-50 to-purple-50`)
+> - ❌ Hardcoded colors (`text-gray-700`, `bg-slate-100`)
+> - ❌ The color palette and design tokens described below
+>
+> **Instead, use Inkprint patterns:**
+>
+> - Semantic tokens: `bg-card`, `text-foreground`, `border-border`
+> - Inkprint shadows: `shadow-ink`, `shadow-ink-strong`
+> - Texture classes: `tx tx-frame tx-weak`, `tx tx-grain tx-weak`
+
+---
+
+## Historical Documentation (Below)
 
 > A comprehensive design system for BuildOS - High-end Apple-inspired design with ADHD-optimized UX
 
-## Design Philosophy
+## Design Philosophy (Legacy)
 
 BuildOS follows a **premium Apple-inspired aesthetic** with subtle gradients, generous whitespace, and smooth animations. The design prioritizes clarity, focus, and reduced cognitive load for ADHD users while maintaining a sophisticated, modern appearance.
 

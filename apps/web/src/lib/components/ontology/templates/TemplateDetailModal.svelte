@@ -543,7 +543,7 @@
 						</button>
 						<!-- Edit Template Button (Admin only) -->
 						<a
-							href="/ontology/templates/{template.id}/edit"
+							href="/projects/templates/{template.id}/edit"
 							class="px-4 py-2 rounded border border-accent-orange/50 dark:border-accent-orange/40 bg-surface-clarity dark:bg-surface-elevated text-sm font-medium text-accent-orange hover:bg-accent-orange/10 dark:hover:bg-accent-orange/20 transition-colors inline-flex items-center gap-2 focus:ring-2 focus:ring-accent-orange"
 						>
 							<svg

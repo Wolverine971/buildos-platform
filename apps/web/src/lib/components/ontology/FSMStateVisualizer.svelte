@@ -329,20 +329,14 @@
 	{/if}
 
 	{#if loading && transitions.length === 0}
-		<div
-			class="flex items-center justify-center py-6 bg-muted rounded-lg border border-border"
-		>
+		<div class="flex items-center justify-center py-6 bg-muted rounded-lg border border-border">
 			<div class="flex items-center gap-2">
 				<Loader class="w-4 h-4 text-accent animate-spin" />
-				<p class="text-xs font-medium text-muted-foreground">
-					Loading transitions...
-				</p>
+				<p class="text-xs font-medium text-muted-foreground">Loading transitions...</p>
 			</div>
 		</div>
 	{:else if transitions.length === 0}
-		<div
-			class="flex items-center gap-2 p-2 rounded-lg bg-muted border border-border"
-		>
+		<div class="flex items-center gap-2 p-2 rounded-lg bg-muted border border-border">
 			<ShieldCheck class="w-4 h-4 text-muted-foreground flex-shrink-0" />
 			<p class="text-xs text-muted-foreground">No transitions available</p>
 		</div>
@@ -361,9 +355,7 @@
 									{transition.event}
 								</p>
 								<span class="text-muted-foreground text-xs">→</span>
-								<span
-									class="text-xs font-medium text-accent truncate capitalize"
-								>
+								<span class="text-xs font-medium text-accent truncate capitalize">
 									{transition.to}
 								</span>
 							</div>
@@ -435,9 +427,7 @@
 	{#snippet content()}
 		<div class="space-y-2">
 			{#if pendingTransition}
-				<div
-					class="p-2 rounded-lg bg-accent/5 border border-accent/20 space-y-1.5"
-				>
+				<div class="p-2 rounded-lg bg-accent/5 border border-accent/20 space-y-1.5">
 					<div class="flex items-center justify-between">
 						<span
 							class="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
