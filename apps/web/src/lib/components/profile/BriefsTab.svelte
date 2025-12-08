@@ -16,7 +16,7 @@
 		ExternalLink,
 		XCircle,
 		RefreshCw,
-		AlertCircle,
+		CircleAlert,
 		Mail
 	} from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
@@ -210,14 +210,34 @@
 	}
 
 	function formatJobStatus(status: string) {
-		const statusMap = {
-			pending: { text: 'Pending', color: 'text-yellow-600 bg-yellow-100' },
-			generating: { text: 'Generating', color: 'text-blue-600 bg-blue-100' },
-			completed: { text: 'Completed', color: 'text-green-600 bg-green-100' },
-			failed: { text: 'Failed', color: 'text-red-600 bg-red-100' },
-			cancelled: { text: 'Cancelled', color: 'text-gray-600 bg-gray-100' }
+		const statusMap: Record<string, { text: string; color: string }> = {
+			pending: {
+				text: 'Pending',
+				color: 'text-amber-700 bg-amber-500/20 border border-amber-500/30'
+			},
+			generating: {
+				text: 'Generating',
+				color: 'text-accent bg-accent/20 border border-accent/30'
+			},
+			completed: {
+				text: 'Completed',
+				color: 'text-emerald-700 bg-emerald-500/20 border border-emerald-500/30'
+			},
+			failed: {
+				text: 'Failed',
+				color: 'text-red-700 bg-red-500/20 border border-red-500/30'
+			},
+			cancelled: {
+				text: 'Cancelled',
+				color: 'text-muted-foreground bg-muted border border-border'
+			}
 		};
-		return statusMap[status] || { text: status, color: 'text-gray-600 bg-gray-100' };
+		return (
+			statusMap[status] || {
+				text: status,
+				color: 'text-muted-foreground bg-muted border border-border'
+			}
+		);
 	}
 
 	function formatDateTime(dateString: string) {
@@ -246,21 +266,17 @@
 
 <div class="space-y-4 sm:space-y-6">
 	<!-- Brief Preferences -->
-	<div
-		class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700"
-	>
-		<div class="p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700">
+	<div class="bg-card rounded-lg shadow-ink border border-border tx tx-frame tx-weak">
+		<div class="p-4 sm:p-6 border-b border-border">
 			<div
 				class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0"
 			>
 				<div class="flex-1">
-					<h3
-						class="text-base sm:text-lg font-medium text-gray-900 dark:text-white flex items-center"
-					>
-						<Bell class="w-4 h-4 sm:w-5 sm:h-5 mr-2 text-blue-600 dark:text-blue-400" />
+					<h3 class="text-base sm:text-lg font-medium text-foreground flex items-center">
+						<Bell class="w-4 h-4 sm:w-5 sm:h-5 mr-2 text-accent" />
 						Brief Preferences
 					</h3>
-					<p class="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">
+					<p class="text-xs sm:text-sm text-muted-foreground mt-1">
 						Configure when you receive briefs
 					</p>
 				</div>
@@ -314,19 +330,24 @@
 			{#if briefPreferencesState.isLoading}
 				<div class="text-center py-8">
 					<div
-						class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"
+						class="animate-spin rounded-full h-8 w-8 border-b-2 border-accent mx-auto"
 					></div>
-					<p class="text-sm sm:text-base text-gray-500 dark:text-gray-400 mt-4">
+					<p class="text-sm sm:text-base text-muted-foreground mt-4">
 						Loading preferences...
 					</p>
 				</div>
 			{:else if briefPreferencesState.error}
 				<div class="text-center py-8">
-					<AlertCircle class="w-12 h-12 text-red-400 mx-auto mb-4" />
-					<p class="text-sm sm:text-base text-gray-500 dark:text-gray-400 mb-4">
+					<CircleAlert class="w-12 h-12 text-red-500 mx-auto mb-4" />
+					<p class="text-sm sm:text-base text-muted-foreground mb-4">
 						Failed to load brief preferences
 					</p>
-					<Button onclick={loadBriefPreferences} variant="primary" size="sm">
+					<Button
+						onclick={loadBriefPreferences}
+						variant="primary"
+						size="sm"
+						class="shadow-ink pressable"
+					>
 						<RefreshCw class="w-4 h-4 mr-2" />
 						Retry
 					</Button>
@@ -335,22 +356,22 @@
 				<!-- Display Mode -->
 				<div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
 					<div>
-						<p class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-							Frequency
-						</p>
-						<div class="px-3 py-2 bg-gray-50 dark:bg-gray-700 rounded-lg">
+						<p class="block text-sm font-medium text-foreground mb-2">Frequency</p>
+						<div
+							class="px-3 py-2 bg-muted text-foreground rounded-lg border border-border"
+						>
 							{briefPreferences.frequency === 'daily' ? 'Daily' : 'Weekly'}
 						</div>
 					</div>
 
 					{#if briefPreferences.frequency === 'weekly'}
 						<div>
-							<p
-								class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-							>
+							<p class="block text-sm font-medium text-foreground mb-2">
 								Day of Week
 							</p>
-							<div class="px-3 py-2 bg-gray-50 dark:bg-gray-700 rounded-lg">
+							<div
+								class="px-3 py-2 bg-muted text-foreground rounded-lg border border-border"
+							>
 								{DAY_OPTIONS.find((d) => d.value === briefPreferences?.day_of_week)
 									?.label || 'Monday'}
 							</div>
@@ -358,29 +379,25 @@
 					{/if}
 
 					<div>
-						<p class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-							Time
-						</p>
-						<div class="px-3 py-2 bg-gray-50 dark:bg-gray-700 rounded-lg">
+						<p class="block text-sm font-medium text-foreground mb-2">Time</p>
+						<div
+							class="px-3 py-2 bg-muted text-foreground rounded-lg border border-border"
+						>
 							{convertTimeToHHMM(briefPreferences?.time_of_day)}
 						</div>
 					</div>
 
 					<div class="sm:col-span-2">
-						<p class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-							Status
-						</p>
+						<p class="block text-sm font-medium text-foreground mb-2">Status</p>
 						<div class="space-y-2">
 							<div class="flex flex-col sm:flex-row sm:items-center gap-2">
 								<div
-									class={`px-3 py-1 rounded-full text-xs sm:text-sm font-medium w-fit ${briefPreferences.is_active ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'}`}
+									class={`px-3 py-1 rounded-full text-xs sm:text-sm font-medium w-fit ${briefPreferences.is_active ? 'bg-emerald-500/20 text-emerald-700 border border-emerald-500/30' : 'bg-muted text-muted-foreground border border-border'}`}
 								>
 									{briefPreferences.is_active ? 'Active' : 'Inactive'}
 								</div>
 								{#if briefPreferencesState.nextScheduledBrief}
-									<span
-										class="text-xs sm:text-sm text-gray-500 dark:text-gray-400"
-									>
+									<span class="text-xs sm:text-sm text-muted-foreground">
 										Next: {formatDateTime(
 											briefPreferencesState.nextScheduledBrief.toISOString()
 										)}
@@ -389,8 +406,8 @@
 							</div>
 							{#if briefPreferences.is_active && hasEmailOptIn}
 								<div class="flex items-center space-x-2">
-									<Mail class="w-4 h-4 text-blue-600 dark:text-blue-400" />
-									<span class="text-sm text-gray-600 dark:text-gray-400">
+									<Mail class="w-4 h-4 text-accent" />
+									<span class="text-sm text-muted-foreground">
 										Email delivery enabled
 									</span>
 								</div>
@@ -441,24 +458,23 @@
 								<input
 									type="checkbox"
 									bind:checked={briefPreferencesForm.is_active}
-									class="h-4 w-4 mt-0.5 sm:mt-0 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 cursor-pointer dark:bg-gray-700 dark:checked:bg-blue-600 flex-shrink-0"
+									class="h-4 w-4 mt-0.5 sm:mt-0 rounded border-border text-accent focus:ring-accent cursor-pointer bg-muted checked:bg-accent flex-shrink-0"
 								/>
-								<span class="text-sm font-medium text-gray-700 dark:text-gray-300">
+								<span class="text-sm font-medium text-foreground">
 									Enable daily brief generation
 								</span>
 							</label>
 
 							{#if briefPreferencesForm.is_active}
 								<div
-									class="ml-6 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg"
+									class="ml-6 p-3 bg-accent/10 border border-accent/30 rounded-lg"
 								>
-									<p class="text-xs text-gray-600 dark:text-gray-400">
-										<strong>Note:</strong> To receive briefs via email or SMS,
-										visit the
+									<p class="text-xs text-muted-foreground">
+										<strong class="text-foreground">Note:</strong> To receive
+										briefs via email or SMS, visit the
 										<a
 											href="/settings?tab=notifications"
-											class="text-blue-600 dark:text-blue-400 hover:underline"
-											>Notifications</a
+											class="text-accent hover:underline">Notifications</a
 										> tab.
 									</p>
 								</div>
@@ -468,11 +484,11 @@
 
 					{#if briefPreferencesForm.is_active}
 						<div
-							class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4"
+							class="bg-accent/10 border border-accent/30 rounded-lg p-4 tx tx-grain tx-weak"
 						>
 							<div class="flex items-center">
-								<Clock class="w-5 h-5 text-blue-600 dark:text-blue-400 mr-2" />
-								<p class="text-sm text-blue-700 dark:text-blue-300">
+								<Clock class="w-5 h-5 text-accent mr-2" />
+								<p class="text-sm text-foreground">
 									<strong>Preview:</strong> Next brief will be scheduled for {briefPreferencesForm.frequency ===
 									'daily'
 										? 'daily'
@@ -491,21 +507,15 @@
 	</div>
 
 	<!-- Scheduled Briefs -->
-	<div
-		class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700"
-	>
-		<div class="p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700">
+	<div class="bg-card rounded-lg shadow-ink border border-border tx tx-frame tx-weak">
+		<div class="p-4 sm:p-6 border-b border-border">
 			<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
 				<div class="flex-1">
-					<h3
-						class="text-base sm:text-lg font-medium text-gray-900 dark:text-white flex items-center"
-					>
-						<Calendar
-							class="w-4 h-4 sm:w-5 sm:h-5 mr-2 text-green-600 dark:text-green-400"
-						/>
+					<h3 class="text-base sm:text-lg font-medium text-foreground flex items-center">
+						<Calendar class="w-4 h-4 sm:w-5 sm:h-5 mr-2 text-emerald-500" />
 						Scheduled Briefs
 					</h3>
-					<p class="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">
+					<p class="text-xs sm:text-sm text-muted-foreground mt-1">
 						Upcoming and recent jobs
 					</p>
 				</div>
@@ -516,12 +526,13 @@
 						variant="ghost"
 						size="sm"
 						title="Refresh brief jobs"
+						class="pressable"
 					>
 						<RefreshCw class={`w-4 h-4 ${refreshingJobs ? 'animate-spin' : ''}`} />
 					</Button>
 					<a
 						href="/projects?tab=briefs"
-						class="inline-flex items-center px-3 sm:px-4 py-2 text-xs sm:text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+						class="inline-flex items-center px-3 sm:px-4 py-2 text-xs sm:text-sm text-accent hover:text-accent/80 font-medium rounded-lg hover:bg-accent/10 transition-colors pressable"
 					>
 						<span class="hidden sm:inline">View All Briefs</span>
 						<span class="sm:hidden">View All</span>
@@ -535,19 +546,19 @@
 			{#if briefPreferencesState.isLoading}
 				<div class="text-center py-8">
 					<div
-						class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"
+						class="animate-spin rounded-full h-8 w-8 border-b-2 border-accent mx-auto"
 					></div>
-					<p class="text-sm sm:text-base text-gray-500 dark:text-gray-400 mt-4">
+					<p class="text-sm sm:text-base text-muted-foreground mt-4">
 						Loading scheduled briefs...
 					</p>
 				</div>
 			{:else if briefPreferencesState.jobs.length === 0}
-				<div class="text-center py-8">
-					<Calendar class="w-12 h-12 text-gray-400 mx-auto mb-4" />
-					<p class="text-sm sm:text-base text-gray-500 dark:text-gray-400 mb-4">
+				<div class="text-center py-8 tx tx-bloom tx-weak rounded-lg p-6">
+					<Calendar class="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+					<p class="text-sm sm:text-base text-muted-foreground mb-4">
 						No scheduled briefs found
 					</p>
-					<p class="text-xs sm:text-sm text-gray-400 dark:text-gray-500">
+					<p class="text-xs sm:text-sm text-muted-foreground/70">
 						Enable brief preferences above to start scheduling
 					</p>
 				</div>
@@ -556,22 +567,20 @@
 					<!-- Upcoming Briefs -->
 					{#each getUpcomingJobs() as job}
 						<div
-							class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 sm:p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg"
+							class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 sm:p-4 bg-accent/10 border border-accent/30 rounded-lg tx tx-grain tx-weak"
 							transition:slide
 						>
 							<div class="flex items-center gap-2 sm:gap-3 min-w-0">
 								<div class="flex-shrink-0">
-									<Clock
-										class="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 dark:text-blue-400"
-									/>
+									<Clock class="w-4 h-4 sm:w-5 sm:h-5 text-accent" />
 								</div>
 								<div class="min-w-0">
 									<p
-										class="text-xs sm:text-sm font-medium text-gray-900 dark:text-white truncate"
+										class="text-xs sm:text-sm font-medium text-foreground truncate"
 									>
 										{formatDateTime(job.scheduled_for)}
 									</p>
-									<p class="text-xs text-gray-500 dark:text-gray-400">
+									<p class="text-xs text-muted-foreground">
 										{job.job_type || 'Daily Brief'}
 									</p>
 								</div>
@@ -587,7 +596,7 @@
 										onclick={() => cancelBriefJob(job)}
 										variant="ghost"
 										size="sm"
-										class="p-1 text-red-400 hover:text-red-600 dark:hover:text-red-300 rounded"
+										class="p-1 text-red-500 hover:text-red-600 rounded pressable"
 										title="Cancel job"
 									>
 										<XCircle class="w-4 h-4" />
@@ -600,20 +609,20 @@
 					<!-- Recent Briefs -->
 					{#each getRecentJobs() as job}
 						<div
-							class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 sm:p-4 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg"
+							class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 sm:p-4 bg-muted border border-border rounded-lg"
 							transition:slide
 						>
 							<div class="flex items-center gap-2 sm:gap-3 min-w-0">
 								<div class="flex-shrink-0">
-									<Calendar class="w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
+									<Calendar class="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground" />
 								</div>
 								<div class="min-w-0">
 									<p
-										class="text-xs sm:text-sm font-medium text-gray-900 dark:text-white truncate"
+										class="text-xs sm:text-sm font-medium text-foreground truncate"
 									>
 										{formatDateTime(job.scheduled_for)}
 									</p>
-									<p class="text-xs text-gray-500 dark:text-gray-400">
+									<p class="text-xs text-muted-foreground">
 										{job.job_type || 'Daily Brief'}
 									</p>
 								</div>
@@ -626,7 +635,7 @@
 								</span>
 								{#if job.error_message}
 									<span
-										class="text-xs text-red-500 dark:text-red-400 truncate"
+										class="text-xs text-red-500 truncate"
 										title={job.error_message}
 									>
 										Error

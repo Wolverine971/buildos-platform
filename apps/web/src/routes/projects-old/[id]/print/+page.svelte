@@ -1,4 +1,4 @@
-<!-- apps/web/src/routes/projects/[id]/print/+page.svelte -->
+<!-- apps/web/src/routes/projects-old/[id]/print/+page.svelte -->
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { marked } from 'marked';

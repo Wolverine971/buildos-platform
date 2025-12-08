@@ -1,4 +1,4 @@
-// apps/web/src/routes/ontology/create/+page.server.ts
+// apps/web/src/routes/projects/create/+page.server.ts
 /**
  * Create Project - Server Load
  * Fetches templates for the guided form

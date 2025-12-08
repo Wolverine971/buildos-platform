@@ -1,4 +1,4 @@
-<!-- apps/web/src/routes/ontology/templates/[id]/edit/+page.svelte -->
+<!-- apps/web/src/routes/projects/templates/[id]/edit/+page.svelte -->
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';

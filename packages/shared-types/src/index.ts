@@ -22,6 +22,9 @@ export * from './chat.types';
 // Export agent types
 export * from './agent.types';
 
+// Export project activity logging types
+export * from './project-activity.types';
+
 // Legacy types kept for backward compatibility (will be deprecated)
 export interface BriefGenerationJob {
 	id: string;

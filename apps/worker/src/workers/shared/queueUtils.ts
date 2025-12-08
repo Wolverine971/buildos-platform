@@ -68,6 +68,11 @@ export interface ChatClassificationJobData {
 	userId: string; // User ID who owns the session
 }
 
+export interface BraindumpProcessingJobData {
+	braindumpId: string; // ID of the onto_braindumps record to process
+	userId: string; // User ID who owns the braindump
+}
+
 // Update job status in database
 export async function updateJobStatus(
 	queueJobId: string,
@@ -80,7 +85,8 @@ export async function updateJobStatus(
 		| 'email'
 		| 'email_cancelled'
 		| 'email_sent'
-		| 'chat_classification',
+		| 'chat_classification'
+		| 'process_onto_braindump',
 	errorMessage?: string
 ) {
 	// Status is now consistent - no mapping needed
@@ -269,4 +275,41 @@ export function validateChatClassificationJobData(data: any): ChatClassification
 	}
 
 	return data as ChatClassificationJobData;
+}
+
+/**
+ * Validate BraindumpProcessingJobData and throw if invalid
+ * Ensures data integrity before braindump processing job processing
+ */
+export function validateBraindumpProcessingJobData(data: any): BraindumpProcessingJobData {
+	// Check braindumpId
+	if (!data.braindumpId || typeof data.braindumpId !== 'string') {
+		throw new Error(
+			'Invalid braindump processing job data: braindumpId is required and must be string'
+		);
+	}
+
+	// Validate UUID format for braindumpId
+	const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+	if (!uuidRegex.test(data.braindumpId)) {
+		throw new Error(
+			`Invalid braindump processing job data: braindumpId must be a valid UUID, got "${data.braindumpId}"`
+		);
+	}
+
+	// Check userId
+	if (!data.userId || typeof data.userId !== 'string') {
+		throw new Error(
+			'Invalid braindump processing job data: userId is required and must be string'
+		);
+	}
+
+	// Validate UUID format for userId
+	if (!uuidRegex.test(data.userId)) {
+		throw new Error(
+			`Invalid braindump processing job data: userId must be a valid UUID, got "${data.userId}"`
+		);
+	}
+
+	return data as BraindumpProcessingJobData;
 }

@@ -1,4 +1,4 @@
-<!-- apps/web/src/routes/ontology/create/+page.svelte -->
+<!-- apps/web/src/routes/projects/create/+page.svelte -->
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import type { ProjectSpec, Template } from '$lib/types/onto';

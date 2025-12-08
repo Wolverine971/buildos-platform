@@ -228,21 +228,19 @@ if (project.state_key === 'blocked') {
 	/>
 </svelte:head>
 
-<div
-	class="min-h-screen bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-950"
->
+<div class="min-h-screen bg-background text-foreground">
 	<!-- Hero Section with enhanced gradients and spacing -->
-	<section class="relative overflow-hidden border-b border-gray-200 dark:border-gray-800">
+	<section class="relative overflow-hidden border-b border-border">
 		<!-- Background gradient overlay -->
 		<div
-			class="absolute inset-0 bg-gradient-to-br from-blue-50/50 via-transparent to-purple-50/50 dark:from-blue-950/20 dark:to-purple-950/20"
+			class="absolute inset-0 bg-gradient-to-br from-accent/5 via-transparent to-purple-500/5"
 		></div>
 
 		<div class="container relative mx-auto px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
 			<div class="mx-auto max-w-4xl text-center">
 				<!-- Badge with proper dark mode -->
 				<div
-					class="mb-6 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/30 dark:to-purple-950/30 px-4 py-2 text-sm font-medium text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800"
+					class="mb-6 inline-flex items-center gap-2 rounded-full bg-accent/10 px-4 py-2 text-sm font-medium text-accent border border-accent/20"
 				>
 					<Sparkles class="h-4 w-4 animate-pulse" />
 					<span>BuildOS Integration Platform</span>
@@ -250,11 +248,11 @@ if (project.state_key === 'blocked') {
 
 				<!-- Main heading with responsive text -->
 				<h1
-					class="mb-6 text-3xl font-bold tracking-tight text-gray-900 dark:text-white sm:text-4xl md:text-5xl lg:text-6xl"
+					class="mb-6 text-3xl font-bold tracking-tight text-foreground sm:text-4xl md:text-5xl lg:text-6xl"
 				>
 					Transform Chaos into
 					<span
-						class="bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400 bg-clip-text text-transparent"
+						class="bg-gradient-to-r from-accent to-purple-500 bg-clip-text text-transparent"
 					>
 						Actionable Intelligence
 					</span>
@@ -262,7 +260,7 @@ if (project.state_key === 'blocked') {
 
 				<!-- Description with better contrast -->
 				<p
-					class="mb-8 text-base text-gray-600 dark:text-gray-300 sm:text-lg lg:text-xl max-w-3xl mx-auto"
+					class="mb-8 text-base text-muted-foreground sm:text-lg lg:text-xl max-w-3xl mx-auto"
 				>
 					Integrate with BuildOS to access real-time project insights, AI-enriched
 					context, and intelligent task management. Let your AI agents and tools
@@ -271,11 +269,19 @@ if (project.state_key === 'blocked') {
 
 				<!-- CTA Buttons with proper spacing -->
 				<div class="flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4">
-					<Button size="lg" variant="primary" class="gap-2 min-w-[200px]">
+					<Button
+						size="lg"
+						variant="primary"
+						class="gap-2 min-w-[200px] shadow-ink pressable"
+					>
 						View Documentation
 						<ArrowRight class="h-4 w-4" />
 					</Button>
-					<Button size="lg" variant="outline" class="gap-2 min-w-[200px]">
+					<Button
+						size="lg"
+						variant="outline"
+						class="gap-2 min-w-[200px] shadow-ink pressable"
+					>
 						<MessageSquare class="h-4 w-4" />
 						Schedule a Demo
 					</Button>
@@ -283,29 +289,29 @@ if (project.state_key === 'blocked') {
 
 				<!-- Trust badges with enhanced styling -->
 				<div
-					class="mt-12 flex flex-wrap items-center justify-center gap-4 sm:gap-6 lg:gap-8 text-sm text-gray-600 dark:text-gray-400"
+					class="mt-12 flex flex-wrap items-center justify-center gap-4 sm:gap-6 lg:gap-8 text-sm text-muted-foreground"
 				>
 					<div
-						class="flex items-center gap-2 px-3 py-1.5 bg-green-50 dark:bg-green-950/20 rounded-full border border-green-200 dark:border-green-800"
+						class="flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 rounded-full border border-emerald-500/20"
 					>
-						<CheckCircle2 class="h-4 w-4 text-green-600 dark:text-green-400" />
-						<span class="font-medium text-green-700 dark:text-green-300"
+						<CheckCircle2 class="h-4 w-4 text-emerald-500" />
+						<span class="font-medium text-emerald-600 dark:text-emerald-400"
 							>SOC 2 Compliant</span
 						>
 					</div>
 					<div
-						class="flex items-center gap-2 px-3 py-1.5 bg-green-50 dark:bg-green-950/20 rounded-full border border-green-200 dark:border-green-800"
+						class="flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 rounded-full border border-emerald-500/20"
 					>
-						<CheckCircle2 class="h-4 w-4 text-green-600 dark:text-green-400" />
-						<span class="font-medium text-green-700 dark:text-green-300"
+						<CheckCircle2 class="h-4 w-4 text-emerald-500" />
+						<span class="font-medium text-emerald-600 dark:text-emerald-400"
 							>GDPR Ready</span
 						>
 					</div>
 					<div
-						class="flex items-center gap-2 px-3 py-1.5 bg-green-50 dark:bg-green-950/20 rounded-full border border-green-200 dark:border-green-800"
+						class="flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 rounded-full border border-emerald-500/20"
 					>
-						<CheckCircle2 class="h-4 w-4 text-green-600 dark:text-green-400" />
-						<span class="font-medium text-green-700 dark:text-green-300"
+						<CheckCircle2 class="h-4 w-4 text-emerald-500" />
+						<span class="font-medium text-emerald-600 dark:text-emerald-400"
 							>99.9% Uptime SLA</span
 						>
 					</div>
@@ -315,18 +321,16 @@ if (project.state_key === 'blocked') {
 	</section>
 
 	<!-- What is BuildOS Section with Card components -->
-	<section class="py-12 sm:py-16 lg:py-20 border-b border-gray-200 dark:border-gray-800">
+	<section class="py-12 sm:py-16 lg:py-20 border-b border-border bg-card">
 		<div class="container mx-auto px-4 sm:px-6 lg:px-8">
 			<div class="mx-auto max-w-3xl text-center mb-12">
-				<h2
-					class="mb-4 text-2xl font-bold text-gray-900 dark:text-white sm:text-3xl lg:text-4xl"
-				>
+				<h2 class="mb-4 text-2xl font-bold text-foreground sm:text-3xl lg:text-4xl">
 					What is BuildOS?
 				</h2>
-				<p class="text-base text-gray-600 dark:text-gray-300 sm:text-lg">
+				<p class="text-base text-muted-foreground sm:text-lg">
 					BuildOS is an AI-powered productivity platform that transforms unstructured
-					thoughts into actionable plans. Our <strong
-						class="text-gray-900 dark:text-white">Brain Dump System</strong
+					thoughts into actionable plans. Our <strong class="text-foreground"
+						>Brain Dump System</strong
 					> lets users write stream-of-consciousness thoughts, and AI automatically extracts
 					projects, tasks, and context.
 				</p>
@@ -338,16 +342,16 @@ if (project.state_key === 'blocked') {
 					<Card
 						variant="elevated"
 						padding="sm"
-						class="text-center transform transition-all duration-500 hover:scale-105"
+						class="text-center transform transition-all duration-500 hover:scale-105 shadow-ink tx tx-grain tx-weak"
 						style="animation: fadeInUp 0.5s ease-out {metric.delay} forwards; opacity: 0"
 					>
 						<CardBody padding="md">
 							<div
-								class="text-2xl sm:text-3xl lg:text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400 bg-clip-text text-transparent"
+								class="text-2xl sm:text-3xl lg:text-4xl font-bold bg-gradient-to-r from-accent to-purple-500 bg-clip-text text-transparent"
 							>
 								{metric.value}
 							</div>
-							<div class="mt-2 text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+							<div class="mt-2 text-xs sm:text-sm text-muted-foreground">
 								{metric.label}
 							</div>
 						</CardBody>
@@ -361,12 +365,10 @@ if (project.state_key === 'blocked') {
 	<section class="py-12 sm:py-16 lg:py-20">
 		<div class="container mx-auto px-4 sm:px-6 lg:px-8">
 			<div class="mx-auto max-w-3xl text-center mb-12">
-				<h2
-					class="mb-4 text-2xl font-bold text-gray-900 dark:text-white sm:text-3xl lg:text-4xl"
-				>
+				<h2 class="mb-4 text-2xl font-bold text-foreground sm:text-3xl lg:text-4xl">
 					Integration Possibilities
 				</h2>
-				<p class="text-base text-gray-600 dark:text-gray-300 sm:text-lg">
+				<p class="text-base text-muted-foreground sm:text-lg">
 					Connect BuildOS to your existing tools and unlock powerful workflows
 				</p>
 			</div>
@@ -377,7 +379,7 @@ if (project.state_key === 'blocked') {
 				{#each integrationCategories as category, i}
 					<Card
 						variant="interactive"
-						class="group relative overflow-hidden transition-all duration-300 hover:shadow-2xl"
+						class="group relative overflow-hidden transition-all duration-300 hover:shadow-ink-strong shadow-ink tx tx-frame tx-weak pressable"
 						onmouseenter={() => (hoveredCategory = i)}
 						onmouseleave={() => (hoveredCategory = null)}
 					>
@@ -392,12 +394,10 @@ if (project.state_key === 'blocked') {
 							>
 								<svelte:component this={category.icon} class="h-6 w-6 text-white" />
 							</div>
-							<h3
-								class="text-lg font-semibold text-gray-900 dark:text-white sm:text-xl"
-							>
+							<h3 class="text-lg font-semibold text-foreground sm:text-xl">
 								{category.title}
 							</h3>
-							<p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+							<p class="mt-2 text-sm text-muted-foreground">
 								{category.description}
 							</p>
 						</CardHeader>
@@ -408,7 +408,7 @@ if (project.state_key === 'blocked') {
 									<Badge
 										variant="info"
 										size="sm"
-										class="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm"
+										class="bg-card/80 backdrop-blur-sm"
 									>
 										{example}
 									</Badge>
@@ -422,9 +422,7 @@ if (project.state_key === 'blocked') {
 	</section>
 
 	<!-- AI Agent Use Case with improved layout -->
-	<section
-		class="border-y border-gray-200 dark:border-gray-800 bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-950 py-12 sm:py-16 lg:py-20"
-	>
+	<section class="border-y border-border bg-muted py-12 sm:py-16 lg:py-20">
 		<div class="container mx-auto px-4 sm:px-6 lg:px-8">
 			<div class="mx-auto max-w-6xl">
 				<div class="grid gap-8 lg:gap-12 lg:grid-cols-2 lg:items-center">
@@ -434,12 +432,10 @@ if (project.state_key === 'blocked') {
 							Primary Use Case
 						</Badge>
 
-						<h2
-							class="mb-6 text-2xl font-bold text-gray-900 dark:text-white sm:text-3xl lg:text-4xl"
-						>
+						<h2 class="mb-6 text-2xl font-bold text-foreground sm:text-3xl lg:text-4xl">
 							Perfect for AI Agents
 						</h2>
-						<p class="mb-8 text-base text-gray-600 dark:text-gray-300 sm:text-lg">
+						<p class="mb-8 text-base text-muted-foreground sm:text-lg">
 							AI agents can query BuildOS for real-time project status updates and use
 							this rich context to make informed decisions, trigger workflows, and
 							provide intelligent assistance.
@@ -448,14 +444,12 @@ if (project.state_key === 'blocked') {
 						<div class="space-y-4">
 							{#each [{ title: 'Real-time Project Intelligence', desc: 'Get instant updates on project state, completion, blockers, and next milestones' }, { title: 'Contextual Understanding', desc: 'Access AI-enriched context for every project, task, and goal' }, { title: 'Automated Workflows', desc: 'Trigger actions based on project state changes and dependencies' }] as feature}
 								<div class="flex gap-3">
-									<CheckCircle2
-										class="mt-1 h-5 w-5 shrink-0 text-green-600 dark:text-green-400"
-									/>
+									<CheckCircle2 class="mt-1 h-5 w-5 shrink-0 text-emerald-500" />
 									<div>
-										<div class="font-medium text-gray-900 dark:text-white">
+										<div class="font-medium text-foreground">
 											{feature.title}
 										</div>
-										<div class="text-sm text-gray-600 dark:text-gray-400">
+										<div class="text-sm text-muted-foreground">
 											{feature.desc}
 										</div>
 									</div>
@@ -464,37 +458,27 @@ if (project.state_key === 'blocked') {
 						</div>
 					</div>
 
-					<Card variant="elevated" class="overflow-hidden">
+					<Card variant="elevated" class="overflow-hidden shadow-ink tx tx-frame tx-weak">
 						<CardHeader variant="gradient">
-							<div class="text-sm font-medium text-gray-700 dark:text-gray-300">
-								Example Scenario
-							</div>
+							<div class="text-sm font-medium text-foreground">Example Scenario</div>
 						</CardHeader>
 						<CardBody padding="lg">
 							<div class="space-y-3 font-mono text-xs sm:text-sm">
-								<div
-									class="rounded-lg bg-white dark:bg-gray-800 p-3 border border-gray-200 dark:border-gray-700"
-								>
-									<span class="text-blue-600 dark:text-blue-400 font-semibold"
-										>AI Agent</span
-									>
-									<span class="text-gray-500 dark:text-gray-400 mx-2">→</span>
-									<span class="text-gray-700 dark:text-gray-300">BuildOS:</span>
-									<span class="text-gray-600 dark:text-gray-400 ml-2"
+								<div class="rounded-lg bg-card p-3 border border-border">
+									<span class="text-accent font-semibold">AI Agent</span>
+									<span class="text-muted-foreground mx-2">→</span>
+									<span class="text-foreground">BuildOS:</span>
+									<span class="text-muted-foreground ml-2"
 										>"Q4 marketing status?"</span
 									>
 								</div>
 
-								<div
-									class="rounded-lg bg-white dark:bg-gray-800 p-3 border border-gray-200 dark:border-gray-700"
-								>
-									<span class="text-green-600 dark:text-green-400 font-semibold"
-										>BuildOS</span
-									>
-									<span class="text-gray-500 dark:text-gray-400 mx-2">→</span>
-									<span class="text-gray-700 dark:text-gray-300">AI Agent:</span>
+								<div class="rounded-lg bg-card p-3 border border-border">
+									<span class="text-emerald-500 font-semibold">BuildOS</span>
+									<span class="text-muted-foreground mx-2">→</span>
+									<span class="text-foreground">AI Agent:</span>
 									<pre
-										class="mt-2 text-xs text-gray-600 dark:text-gray-400 overflow-x-auto">{`{
+										class="mt-2 text-xs text-muted-foreground overflow-x-auto">{`{
   project: "Q4 Marketing",
   state: "execution",
   completion: 67,
@@ -503,13 +487,9 @@ if (project.state_key === 'blocked') {
 }`}</pre>
 								</div>
 
-								<div
-									class="rounded-lg bg-white dark:bg-gray-800 p-3 border border-gray-200 dark:border-gray-700"
-								>
-									<span class="text-blue-600 dark:text-blue-400 font-semibold"
-										>AI Agent</span
-									>:
-									<span class="text-gray-600 dark:text-gray-400 ml-2"
+								<div class="rounded-lg bg-card p-3 border border-border">
+									<span class="text-accent font-semibold">AI Agent</span>:
+									<span class="text-muted-foreground ml-2"
 										>Notifies design team</span
 									>
 								</div>
@@ -525,12 +505,10 @@ if (project.state_key === 'blocked') {
 	<section class="py-12 sm:py-16 lg:py-20">
 		<div class="container mx-auto px-4 sm:px-6 lg:px-8">
 			<div class="mx-auto max-w-3xl text-center mb-12">
-				<h2
-					class="mb-4 text-2xl font-bold text-gray-900 dark:text-white sm:text-3xl lg:text-4xl"
-				>
+				<h2 class="mb-4 text-2xl font-bold text-foreground sm:text-3xl lg:text-4xl">
 					Built for Developers
 				</h2>
-				<p class="text-base text-gray-600 dark:text-gray-300 sm:text-lg">
+				<p class="text-base text-muted-foreground sm:text-lg">
 					Powerful APIs and tools to build robust integrations
 				</p>
 			</div>
@@ -541,23 +519,23 @@ if (project.state_key === 'blocked') {
 				{#each developerFeatures as feature}
 					<Card
 						variant="default"
-						class="group hover:shadow-lg transition-all duration-300"
+						class="group hover:shadow-ink-strong transition-all duration-300 shadow-ink tx tx-grain tx-weak pressable"
 					>
 						<CardBody padding="md">
 							<div class="flex gap-4">
 								<div
-									class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-950/30 dark:to-purple-950/30 border border-blue-200 dark:border-blue-800 group-hover:scale-110 transition-transform duration-300"
+									class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-accent/10 border border-accent/20 group-hover:scale-110 transition-transform duration-300"
 								>
 									<svelte:component
 										this={feature.icon}
-										class="h-6 w-6 text-blue-600 dark:text-blue-400"
+										class="h-6 w-6 text-accent"
 									/>
 								</div>
 								<div>
-									<h3 class="mb-1 font-semibold text-gray-900 dark:text-white">
+									<h3 class="mb-1 font-semibold text-foreground">
 										{feature.title}
 									</h3>
-									<p class="text-sm text-gray-600 dark:text-gray-400">
+									<p class="text-sm text-muted-foreground">
 										{feature.description}
 									</p>
 								</div>
@@ -570,14 +548,19 @@ if (project.state_key === 'blocked') {
 			<!-- Code Example Card -->
 			<div class="mt-12 lg:mt-16">
 				<div class="mx-auto max-w-4xl">
-					<Card variant="elevated" class="overflow-hidden">
+					<Card variant="elevated" class="overflow-hidden shadow-ink tx tx-frame tx-weak">
 						<CardHeader variant="gradient" class="flex items-center justify-between">
-							<span class="text-sm font-medium text-gray-700 dark:text-gray-300">
+							<span class="text-sm font-medium text-foreground">
 								Quick Start Example
 							</span>
-							<Button variant="ghost" size="sm" onclick={copyCode} class="gap-2">
+							<Button
+								variant="ghost"
+								size="sm"
+								onclick={copyCode}
+								class="gap-2 pressable"
+							>
 								{#if isCodeCopied}
-									<Check class="h-4 w-4 text-green-600 dark:text-green-400" />
+									<Check class="h-4 w-4 text-emerald-500" />
 									Copied!
 								{:else}
 									<Copy class="h-4 w-4" />
@@ -587,8 +570,7 @@ if (project.state_key === 'blocked') {
 						</CardHeader>
 						<CardBody padding="lg">
 							<pre class="overflow-x-auto text-xs sm:text-sm"><code
-									class="language-javascript text-gray-700 dark:text-gray-300"
-									>{codeExample}</code
+									class="language-javascript text-foreground">{codeExample}</code
 								></pre>
 						</CardBody>
 					</Card>
@@ -598,17 +580,13 @@ if (project.state_key === 'blocked') {
 	</section>
 
 	<!-- Pricing Section with enhanced Cards -->
-	<section
-		class="border-t border-gray-200 dark:border-gray-800 bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-950 py-12 sm:py-16 lg:py-20"
-	>
+	<section class="border-t border-border bg-card py-12 sm:py-16 lg:py-20">
 		<div class="container mx-auto px-4 sm:px-6 lg:px-8">
 			<div class="mx-auto max-w-3xl text-center mb-12">
-				<h2
-					class="mb-4 text-2xl font-bold text-gray-900 dark:text-white sm:text-3xl lg:text-4xl"
-				>
+				<h2 class="mb-4 text-2xl font-bold text-foreground sm:text-3xl lg:text-4xl">
 					Simple, Transparent Pricing
 				</h2>
-				<p class="text-base text-gray-600 dark:text-gray-300 sm:text-lg">
+				<p class="text-base text-muted-foreground sm:text-lg">
 					Start free, scale as you grow
 				</p>
 			</div>
@@ -617,15 +595,15 @@ if (project.state_key === 'blocked') {
 				{#each pricingTiers as tier, i}
 					<Card
 						variant={tier.highlighted ? 'elevated' : 'default'}
-						class="relative transform transition-all duration-300 hover:scale-105 {tier.highlighted
-							? 'border-2 border-blue-500 dark:border-blue-400 shadow-2xl'
+						class="relative transform transition-all duration-300 hover:scale-105 shadow-ink tx tx-frame tx-weak pressable {tier.highlighted
+							? 'border-2 border-accent shadow-ink-strong'
 							: ''}"
 						onmouseenter={() => (selectedTier = i)}
 						onmouseleave={() => (selectedTier = null)}
 					>
 						{#if tier.highlighted}
 							<div
-								class="absolute -top-4 left-1/2 -translate-x-1/2 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 px-4 py-1.5 text-xs font-medium text-white shadow-lg"
+								class="absolute -top-4 left-1/2 -translate-x-1/2 rounded-full bg-gradient-to-r from-accent to-purple-500 px-4 py-1.5 text-xs font-medium text-accent-foreground shadow-lg"
 							>
 								Most Popular
 							</div>
@@ -639,22 +617,20 @@ if (project.state_key === 'blocked') {
 						{/if}
 
 						<CardHeader class="relative">
-							<h3 class="text-xl font-semibold text-gray-900 dark:text-white">
+							<h3 class="text-xl font-semibold text-foreground">
 								{tier.name}
 							</h3>
 							<div class="mt-4 flex items-baseline">
-								<span
-									class="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white"
-								>
+								<span class="text-3xl sm:text-4xl font-bold text-foreground">
 									{tier.price}
 								</span>
 								{#if tier.period}
-									<span class="ml-1 text-gray-600 dark:text-gray-400">
+									<span class="ml-1 text-muted-foreground">
 										{tier.period}
 									</span>
 								{/if}
 							</div>
-							<p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+							<p class="mt-2 text-sm text-muted-foreground">
 								{tier.description}
 							</p>
 						</CardHeader>
@@ -664,9 +640,9 @@ if (project.state_key === 'blocked') {
 								{#each tier.features as feature}
 									<li class="flex items-start gap-2">
 										<CheckCircle2
-											class="mt-0.5 h-4 w-4 shrink-0 text-green-600 dark:text-green-400"
+											class="mt-0.5 h-4 w-4 shrink-0 text-emerald-500"
 										/>
-										<span class="text-sm text-gray-700 dark:text-gray-300">
+										<span class="text-sm text-foreground">
 											{feature}
 										</span>
 									</li>
@@ -676,7 +652,7 @@ if (project.state_key === 'blocked') {
 
 						<CardFooter class="relative">
 							<Button
-								class="w-full"
+								class="w-full shadow-ink pressable"
 								variant={tier.highlighted ? 'primary' : 'secondary'}
 								size="md"
 							>
@@ -688,11 +664,11 @@ if (project.state_key === 'blocked') {
 			</div>
 
 			<div class="mt-12 text-center">
-				<p class="text-gray-600 dark:text-gray-400">
+				<p class="text-muted-foreground">
 					Need more?
 					<a
 						href="/contact"
-						class="ml-1 font-medium text-blue-600 dark:text-blue-400 hover:text-purple-600 dark:hover:text-purple-400 transition-colors duration-200"
+						class="ml-1 font-medium text-accent hover:text-accent/80 transition-colors duration-200"
 					>
 						Contact us for Enterprise pricing
 					</a>
@@ -702,38 +678,45 @@ if (project.state_key === 'blocked') {
 	</section>
 
 	<!-- CTA Section with final polish -->
-	<section class="border-t border-gray-200 dark:border-gray-800 py-12 sm:py-16 lg:py-20">
+	<section class="border-t border-border py-12 sm:py-16 lg:py-20">
 		<div class="container mx-auto px-4 sm:px-6 lg:px-8">
-			<Card variant="elevated" class="max-w-4xl mx-auto overflow-hidden">
-				<div
-					class="absolute inset-0 bg-gradient-to-br from-blue-50/50 to-purple-50/50 dark:from-blue-950/20 dark:to-purple-950/20"
-				></div>
+			<Card
+				variant="elevated"
+				class="max-w-4xl mx-auto overflow-hidden shadow-ink tx tx-bloom tx-weak"
+			>
+				<div class="absolute inset-0 bg-gradient-to-br from-accent/5 to-purple-500/5"></div>
 
 				<CardBody padding="lg" class="relative text-center">
-					<h2
-						class="mb-4 text-2xl font-bold text-gray-900 dark:text-white sm:text-3xl lg:text-4xl"
-					>
+					<h2 class="mb-4 text-2xl font-bold text-foreground sm:text-3xl lg:text-4xl">
 						Ready to Build Something Amazing?
 					</h2>
-					<p class="mb-8 text-base text-gray-600 dark:text-gray-300 sm:text-lg">
+					<p class="mb-8 text-base text-muted-foreground sm:text-lg">
 						Join developers building the future of productivity
 					</p>
 
 					<div
 						class="flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4 mb-12"
 					>
-						<Button size="lg" variant="primary" class="gap-2 min-w-[200px]">
+						<Button
+							size="lg"
+							variant="primary"
+							class="gap-2 min-w-[200px] shadow-ink pressable"
+						>
 							<Rocket class="h-4 w-4" />
 							Get API Access
 						</Button>
-						<Button size="lg" variant="secondary" class="gap-2 min-w-[200px]">
+						<Button
+							size="lg"
+							variant="secondary"
+							class="gap-2 min-w-[200px] shadow-ink pressable"
+						>
 							<FileText class="h-4 w-4" />
 							Read the Docs
 						</Button>
 					</div>
 
 					<Alert variant="info" class="max-w-2xl mx-auto">
-						<p class="mb-4 text-sm font-medium text-gray-700 dark:text-gray-300">
+						<p class="mb-4 text-sm font-medium text-foreground">
 							Questions? We're here to help
 						</p>
 						<div
@@ -741,19 +724,19 @@ if (project.state_key === 'blocked') {
 						>
 							<a
 								href="mailto:dj@build-os.com"
-								class="flex items-center gap-2 font-medium text-blue-600 dark:text-blue-400 hover:text-purple-600 dark:hover:text-purple-400 transition-colors duration-200"
+								class="flex items-center gap-2 font-medium text-accent hover:text-accent/80 transition-colors duration-200"
 							>
 								dj@build-os.com
 							</a>
 							<!-- <a
 								href="/discord"
-								class="flex items-center gap-2 font-medium text-blue-600 dark:text-blue-400 hover:text-purple-600 dark:hover:text-purple-400 transition-colors duration-200"
+								class="flex items-center gap-2 font-medium text-accent hover:text-accent/80 transition-colors duration-200"
 							>
 								Join our Discord
 							</a> -->
 							<a
 								href="/docs"
-								class="flex items-center gap-2 font-medium text-blue-600 dark:text-blue-400 hover:text-purple-600 dark:hover:text-purple-400 transition-colors duration-200"
+								class="flex items-center gap-2 font-medium text-accent hover:text-accent/80 transition-colors duration-200"
 							>
 								Documentation
 							</a>
@@ -776,11 +759,6 @@ if (project.state_key === 'blocked') {
 			opacity: 1;
 			transform: translateY(0);
 		}
-	}
-
-	/* Ensure proper contrast in dark mode */
-	:global(.dark) {
-		color-scheme: dark;
 	}
 
 	/* High information density with proper spacing */

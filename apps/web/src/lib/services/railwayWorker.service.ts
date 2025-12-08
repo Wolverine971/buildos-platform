@@ -450,6 +450,56 @@ export class RailwayWorkerService {
 	}
 
 	/**
+	 * Queue a braindump processing job
+	 * This is a fire-and-forget operation that processes braindumps
+	 * by generating a title, extracting topics, and creating a summary
+	 */
+	static async queueBraindumpProcessing(
+		braindumpId: string,
+		userId: string
+	): Promise<{ success: boolean; jobId?: string; error?: string }> {
+		// Skip if worker URL is not configured
+		if (!this.WORKER_URL) {
+			console.log('Braindump processing skipped: Worker URL not configured');
+			return { success: false, error: 'Worker not configured' };
+		}
+
+		try {
+			const response = await fetch(`${this.WORKER_URL}/queue/braindump/process`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({
+					braindumpId,
+					userId
+				}),
+				signal: AbortSignal.timeout(this.TIMEOUT)
+			});
+
+			// Handle conflict (already in progress) gracefully
+			if (response.status === 409) {
+				const data = await response.json();
+				console.log(`Braindump processing already in progress: ${data.existingJobId}`);
+				return { success: true, jobId: data.existingJobId };
+			}
+
+			if (!response.ok) {
+				const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+				console.error('Braindump processing queue failed:', error);
+				return { success: false, error: error?.error || `HTTP ${response.status}` };
+			}
+
+			const result = await response.json();
+			return { success: true, jobId: result.jobId };
+		} catch (error) {
+			// Silently fail for braindump processing - it's a background task
+			console.error('Braindump processing queue error:', error);
+			return { success: false, error: 'Network error' };
+		}
+	}
+
+	/**
 	 * Get all jobs for a user with pagination
 	 */
 	static async getUserJobs(

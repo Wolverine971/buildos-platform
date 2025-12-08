@@ -128,22 +128,22 @@
 
 <div class="min-h-screen bg-background">
 	<!-- Header -->
-	<div class="bg-card py-8 rounded-lg mb-4">
+	<div class="bg-card py-8 rounded-lg mb-4 shadow-ink border border-border tx tx-frame tx-weak">
 		<div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
 			<div class="flex items-center space-x-4 mb-8">
 				<a
 					href="/blogs"
-					class="inline-flex items-center text-blue-600 dark:text-blue-400 hover:underline group"
+					class="inline-flex items-center text-accent hover:text-accent/80 group transition-colors"
 				>
 					<ArrowLeft
 						class="w-4 h-4 mr-2 group-hover:-translate-x-1 transition-transform"
 					/>
 					Blog
 				</a>
-				<span class="text-gray-400">/</span>
+				<span class="text-muted-foreground">/</span>
 				<a
 					href="/blogs/{data.post.category}"
-					class="text-blue-600 dark:text-blue-400 hover:underline"
+					class="text-accent hover:text-accent/80 transition-colors"
 				>
 					{categoryDisplayName}
 				</a>
@@ -152,7 +152,7 @@
 			<div class="mb-6">
 				<div class="flex items-center space-x-4 text-sm text-muted-foreground mb-4">
 					<span
-						class="bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 px-3 py-1 rounded-full font-medium"
+						class="bg-accent/10 text-accent px-3 py-1 rounded-full font-medium border border-accent/20"
 					>
 						{categoryDisplayName}
 					</span>
@@ -210,7 +210,7 @@
 				{#if loading}
 					<div class="flex items-center justify-center py-12">
 						<div
-							class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"
+							class="animate-spin rounded-full h-8 w-8 border-b-2 border-accent"
 						></div>
 						<span class="ml-3 text-muted-foreground">Loading content...</span>
 					</div>
@@ -233,37 +233,31 @@
 
 	<!-- Related Articles -->
 	{#if data.relatedPosts && data.relatedPosts.length > 0}
-		<section class="py-8 bg-white dark:bg-gray-800 rounded-md mt-8">
+		<section class="py-8 bg-card rounded-lg mt-8 shadow-ink border border-border">
 			<div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-				<h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-8">
-					Related Articles
-				</h2>
+				<h2 class="text-2xl font-bold text-foreground mb-8">Related Articles</h2>
 
 				<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 					{#each data.relatedPosts as relatedPost}
 						<article
-							class="bg-gray-50 dark:bg-gray-900 rounded-xl p-6 hover:shadow-lg transition-shadow"
+							class="bg-muted rounded-lg p-6 shadow-ink border border-border hover:border-accent transition-all tx tx-frame tx-weak pressable"
 						>
-							<div
-								class="flex items-center text-xs text-gray-600 dark:text-gray-400 mb-3"
-							>
+							<div class="flex items-center text-xs text-muted-foreground mb-3">
 								<Calendar class="w-3 h-3 mr-1" />
 								{format(new Date(relatedPost.date), 'MMM dd, yyyy')}
 							</div>
 
-							<h3
-								class="font-semibold text-gray-900 dark:text-white mb-2 line-clamp-2"
-							>
+							<h3 class="font-semibold text-foreground mb-2 line-clamp-2">
 								{relatedPost.title}
 							</h3>
 
-							<p class="text-gray-600 dark:text-gray-400 text-sm mb-4 line-clamp-2">
+							<p class="text-muted-foreground text-sm mb-4 line-clamp-2">
 								{relatedPost.description}
 							</p>
 
 							<a
 								href="/blogs/{relatedPost.category}/{relatedPost.slug}"
-								class="inline-flex items-center text-blue-600 dark:text-blue-400 text-sm font-medium hover:underline"
+								class="inline-flex items-center text-accent text-sm font-medium hover:text-accent/80 transition-colors"
 							>
 								Read more <ArrowRight class="w-3 h-3 ml-1" />
 							</a>
@@ -275,21 +269,19 @@
 	{/if}
 
 	<!-- Footer Navigation -->
-	<div
-		class="bg-white dark:bg-gray-800 py-8 rounded-md mt-2 border-gray-200 dark:border-gray-700"
-	>
+	<div class="bg-card py-8 rounded-lg mt-2 border border-border shadow-ink">
 		<div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
 			<div class="flex flex-col sm:flex-row gap-4">
 				<a
 					href="/blogs/{data.post.category}"
-					class="flex-1 inline-flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white px-6 py-3 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+					class="flex-1 inline-flex items-center justify-center bg-muted text-foreground px-6 py-3 rounded-lg hover:bg-muted/80 border border-border hover:border-accent transition-colors shadow-ink pressable"
 				>
 					<ArrowLeft class="w-4 h-4 mr-2" />
 					More {categoryDisplayName}
 				</a>
 				<a
 					href="/blogs"
-					class="flex-1 inline-flex items-center justify-center bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
+					class="flex-1 inline-flex items-center justify-center bg-accent text-accent-foreground px-6 py-3 rounded-lg hover:bg-accent/90 transition-colors shadow-ink pressable"
 				>
 					Explore All Articles
 				</a>

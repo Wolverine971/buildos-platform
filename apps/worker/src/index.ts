@@ -389,6 +389,74 @@ app.post('/queue/chat/classify', async (req, res) => {
 	}
 });
 
+// Queue braindump processing endpoint
+app.post('/queue/braindump/process', async (req, res) => {
+	try {
+		const { braindumpId, userId } = req.body;
+
+		if (!braindumpId || !userId) {
+			return res.status(400).json({
+				error: 'braindumpId and userId are required'
+			});
+		}
+
+		// Validate UUID format
+		const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+		if (!uuidRegex.test(braindumpId) || !uuidRegex.test(userId)) {
+			return res.status(400).json({
+				error: 'braindumpId and userId must be valid UUIDs'
+			});
+		}
+
+		// Check for existing processing jobs for this braindump
+		const { data: existingJobs } = await supabase
+			.from('queue_jobs')
+			.select('*')
+			.eq('user_id', userId)
+			.eq('job_type', 'process_onto_braindump')
+			.eq('metadata->>braindumpId', braindumpId)
+			.in('status', ['pending', 'processing']);
+
+		if (existingJobs && existingJobs.length > 0) {
+			return res.status(409).json({
+				error: 'Processing already in progress for this braindump',
+				existingJobId: existingJobs[0].queue_job_id
+			});
+		}
+
+		// Queue the job with low priority (background task)
+		const job = await queue.add(
+			'process_onto_braindump',
+			userId,
+			{
+				braindumpId,
+				userId
+			},
+			{
+				priority: 7, // Low priority - this is a background processing task
+				dedupKey: `process-onto-braindump-${braindumpId}` // Prevent duplicate jobs
+			}
+		);
+
+		console.log(
+			`🧠 API: Queued braindump processing for ${braindumpId}, job ${job.queue_job_id}`
+		);
+
+		return res.json({
+			success: true,
+			jobId: job.queue_job_id,
+			braindumpId,
+			message: 'Braindump processing queued'
+		});
+	} catch (error: any) {
+		console.error('Error queueing braindump processing:', error);
+		return res.status(500).json({
+			error: 'Failed to queue braindump processing',
+			message: error.message
+		});
+	}
+});
+
 // Get job status endpoint
 app.get('/jobs/:jobId', async (req, res) => {
 	try {

@@ -8,6 +8,7 @@ import { processSMSJob } from './workers/smsWorker';
 import { processNotification } from './workers/notification/notificationWorker';
 import { processDailySMS } from './workers/dailySmsWorker';
 import { processChatClassificationJob } from './workers/chat/chatSessionClassifier';
+import { processBraindumpProcessingJob } from './workers/braindump/braindumpProcessor';
 import { createLegacyJob } from './workers/shared/jobAdapter';
 import { getEnvironmentConfig, validateEnvironment } from './config/queueConfig';
 import { cleanupStaleJobs } from './lib/utils/queueCleanup';
@@ -218,6 +219,33 @@ async function processChatClassification(job: ProcessingJob) {
 }
 
 /**
+ * Braindump processing processor
+ * Generates titles, topics, and summaries from braindumps
+ */
+async function processBraindumpProcessing(job: ProcessingJob) {
+	const { braindumpId } = job.data;
+	const startTime = Date.now();
+
+	await job.log(`🧠 Braindump processing started for ${braindumpId}`);
+
+	try {
+		// Convert ProcessingJob to type-safe legacy format
+		const legacyJob = createLegacyJob(job);
+
+		// Process braindump
+		const result = await processBraindumpProcessingJob(legacyJob);
+
+		const duration = Date.now() - startTime;
+		await job.log(`✅ Braindump processing completed in ${duration}ms`);
+
+		return result;
+	} catch (error: any) {
+		await job.log(`❌ Braindump processing failed: ${error.message}`);
+		throw error;
+	}
+}
+
+/**
  * Start the Supabase-based worker
  */
 export async function startWorker() {
@@ -238,6 +266,9 @@ export async function startWorker() {
 
 	// Register chat session classification processor
 	queue.process('classify_chat_session', processChatClassification);
+
+	// Register braindump processing processor
+	queue.process('process_onto_braindump', processBraindumpProcessing);
 
 	// Check if Twilio is configured
 	const twilioEnabled = !!(
@@ -310,7 +341,8 @@ export async function startWorker() {
 		'generate_phases',
 		'onboarding_analysis',
 		'send_notification',
-		'classify_chat_session'
+		'classify_chat_session',
+		'process_onto_braindump'
 	];
 
 	if (twilioEnabled) {

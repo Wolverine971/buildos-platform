@@ -1,4 +1,4 @@
-// apps/web/src/routes/ontology/templates/[id]/edit/+page.server.ts
+// apps/web/src/routes/projects/templates/[id]/edit/+page.server.ts
 /**
  * Edit Template Page - Server Load
  * Loads existing template data for editing

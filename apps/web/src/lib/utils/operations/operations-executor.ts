@@ -18,6 +18,7 @@ import { BrainDumpStatusService } from '$lib/services/braindump-status.service';
 import { validateTaskDateAgainstProject } from '../dateValidation';
 import { CalendarService } from '$lib/services/calendar-service';
 import { normalizeMarkdownHeadings } from '../markdown-nesting';
+import { seedProjectNextSteps } from '$lib/services/next-step-seeding.service';
 
 export class OperationsExecutor {
 	private supabase: SupabaseClient<Database>;
@@ -471,6 +472,20 @@ export class OperationsExecutor {
 				await this.markBrainDumpAsCompleted(brainDumpId, (result as any).id);
 				this.completedBrainDumpIds.add(brainDumpId);
 			}
+
+			// Seed initial next steps for the new project (non-blocking)
+			seedProjectNextSteps(this.supabase, {
+				projectId: (result as any).id,
+				userId,
+				projectData: {
+					name: data.name,
+					description: data.description,
+					context: data.context
+				},
+				isOntoProject: false // Legacy projects table
+			}).catch((err) => {
+				console.warn('Failed to seed next steps (non-fatal):', err);
+			});
 		}
 
 		return result;

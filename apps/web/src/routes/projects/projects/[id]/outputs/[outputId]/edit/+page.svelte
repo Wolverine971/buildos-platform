@@ -1,4 +1,4 @@
-<!-- apps/web/src/routes/ontology/projects/[id]/outputs/[outputId]/edit/+page.svelte -->
+<!-- apps/web/src/routes/projects/projects/[id]/outputs/[outputId]/edit/+page.svelte -->
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import Button from '$lib/components/ui/Button.svelte';

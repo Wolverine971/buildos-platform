@@ -1,4 +1,4 @@
-<!-- apps/web/src/routes/projects/[id]/notes/[noteId]/+page.svelte -->
+<!-- apps/web/src/routes/projects-old/[id]/notes/[noteId]/+page.svelte -->
 <script lang="ts">
 	import {
 		ArrowLeft,

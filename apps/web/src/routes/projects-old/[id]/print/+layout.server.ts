@@ -1,4 +1,4 @@
-// apps/web/src/routes/projects/[id]/print/+layout.server.ts
+// apps/web/src/routes/projects-old/[id]/print/+layout.server.ts
 // Provides only essential session data
 import type { LayoutServerLoad } from './$types';
 

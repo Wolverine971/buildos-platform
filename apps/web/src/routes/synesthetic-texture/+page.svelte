@@ -1,3 +1,4 @@
+<!-- apps/web/src/routes/synesthetic-texture/+page.svelte -->
 <script lang="ts">
 	const steps = [
 		{
@@ -10,7 +11,7 @@
 			label: '02 • Shape',
 			title: 'Carve structure out of noise.',
 			texture: 'tx-grain',
-			body: 'Agents split your dump into goals, tasks, plans, risks — using project ontologies instead of rigid templates.'
+			body: 'Agents split your dump into goals, tasks, plans, risks — adapting to your project instead of forcing rigid templates.'
 		},
 		{
 			label: '03 • Drive',
@@ -29,9 +30,11 @@
 	<header class="sticky top-0 z-20 border-b border-border bg-background/80 backdrop-blur">
 		<div class="mx-auto max-w-6xl px-4 py-3 flex items-center justify-between gap-4">
 			<div class="flex items-center gap-3">
-				<div
-					class="h-9 w-9 rounded-2xl border border-border bg-card shadow-ink tx tx-frame tx-weak ink-frame"
-				></div>
+				<img
+					src="/brain-bolt.png"
+					alt="BuildOS"
+					class="w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 lg:w-10 lg:h-10 rounded-md object-cover transition-opacity duration-200 group-hover:opacity-0"
+				/>
 				<div>
 					<div class="text-[0.7rem] uppercase tracking-[0.22em] text-muted-foreground">
 						BuildOS
@@ -53,11 +56,12 @@
 				>
 					View demo
 				</button>
-				<button
+				<a
+					href="/auth/register"
 					class="pressable rounded-full bg-accent px-4 py-2 text-xs font-semibold text-accent-foreground shadow-ink"
 				>
-					Get early access
-				</button>
+					Sign up free
+				</a>
 			</div>
 		</div>
 	</header>
@@ -90,11 +94,12 @@
 				</p>
 
 				<div class="flex flex-wrap gap-3 items-center">
-					<button
+					<a
+						href="/auth/register"
 						class="pressable rounded-full bg-foreground px-5 py-2.5 text-sm font-semibold text-background shadow-ink"
 					>
-						Join the founder beta
-					</button>
+						Get started free
+					</a>
 					<a
 						class="text-xs text-muted-foreground hover:text-foreground underline underline-offset-4"
 						href="#how"
@@ -137,9 +142,9 @@
 							</div>
 							<ul class="text-[0.8rem] leading-relaxed">
 								<li>▸ Goal: Close 3–5 angel checks</li>
-								<li>▸ Tasks: Investor pipeline</li>
-								<li>▸ Sprint: Landing page clarity</li>
 								<li>▸ Plan: Weekly content engine</li>
+								<li>▸ Milestone: Landing page clarity</li>
+								<li>▸ Task: Investor pipeline</li>
 							</ul>
 						</div>
 					</div>
@@ -167,11 +172,11 @@
 		<div class="mx-auto max-w-6xl px-4 py-14 space-y-8">
 			<div>
 				<h2 class="text-2xl sm:text-3xl font-semibold tracking-tight">
-					From noise → ontology → action.
+					From noise → structure → action.
 				</h2>
 				<p class="mt-2 text-sm text-muted-foreground max-w-xl">
-					BuildOS builds a project ontology around you — goals, tasks, plans, risks,
-					relationships — so the AI understands what you’re building.
+					BuildOS builds a project structure around you — goals, tasks, plans, risks,
+					relationships — so the AI understands what you're building.
 				</p>
 			</div>
 

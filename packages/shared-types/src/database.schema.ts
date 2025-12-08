@@ -1,5 +1,5 @@
 // Lightweight database schema - auto-generated from database.types.ts
-// Generated on: 2025-12-08T19:36:52.443Z
+// Generated on: 2025-12-08T22:08:53.818Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -960,6 +960,21 @@ export type DatabaseSchema = {
 		object_kind: string;
 		role_key: string;
 	};
+	onto_braindumps: {
+		chat_session_id: string | null;
+		content: string;
+		created_at: string;
+		error_message: string | null;
+		id: string;
+		metadata: Json | null;
+		processed_at: string | null;
+		status: string;
+		summary: string | null;
+		title: string | null;
+		topics: string[] | null;
+		updated_at: string;
+		user_id: string;
+	};
 	onto_decisions: {
 		created_at: string;
 		created_by: string;
@@ -1164,6 +1179,19 @@ export type DatabaseSchema = {
 		type_key: string;
 		updated_at: string;
 	};
+	onto_project_logs: {
+		action: string;
+		after_data: Json | null;
+		before_data: Json | null;
+		change_source: string | null;
+		changed_by: string;
+		chat_session_id: string | null;
+		created_at: string;
+		entity_id: string;
+		entity_type: string;
+		id: string;
+		project_id: string;
+	};
 	onto_projects: {
 		also_types: string[] | null;
 		created_at: string;
@@ -1175,6 +1203,10 @@ export type DatabaseSchema = {
 		facet_stage: string | null;
 		id: string;
 		name: string;
+		next_step_long: string | null;
+		next_step_short: string | null;
+		next_step_source: string | null;
+		next_step_updated_at: string | null;
 		org_id: string | null;
 		props: Json;
 		start_at: string | null;
@@ -2043,6 +2075,7 @@ export const tableNames = [
 	'notification_tracking_links',
 	'onto_actors',
 	'onto_assignments',
+	'onto_braindumps',
 	'onto_decisions',
 	'onto_document_versions',
 	'onto_documents',
@@ -2060,6 +2093,7 @@ export const tableNames = [
 	'onto_outputs',
 	'onto_permissions',
 	'onto_plans',
+	'onto_project_logs',
 	'onto_projects',
 	'onto_requirements',
 	'onto_risks',

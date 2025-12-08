@@ -2,11 +2,11 @@
 <!--
 	Ontology Project Detail V3 - Deliverables-Centric View
 
-	This prototype implements the "outputs as central organizing principle" model:
-	- Deliverables (outputs) are the main characters
-	- Tasks, plans, events orbit around deliverables
-	- Board view grouped by deliverable state
-	- Primitive-based filtering (document, event, collection, external)
+	Deliverable-first layout:
+	- Outputs as the primary cards with primitive filter
+	- Documents live directly below as lighter cards ready for promotion
+	- Right rail shows collapsible stacks for goals, plans, tasks, risks, milestones
+	- Sticky header keeps project identity and actions visible
 
 	Design: Inkprint Design System
 -->
@@ -19,19 +19,18 @@
 		Calendar,
 		Layers,
 		ExternalLink,
-		ChevronRight,
 		ArrowLeft,
 		RefreshCw,
-		Settings,
 		Filter,
-		LayoutGrid,
-		List,
 		CheckCircle2,
 		Circle,
 		Clock,
 		Sparkles,
 		Target,
-		Link2
+		ChevronDown,
+		AlertTriangle,
+		Flag,
+		ListChecks
 	} from 'lucide-svelte';
 	import type { Project, Task, Output, Document, Plan } from '$lib/types/onto';
 	import {
@@ -39,7 +38,6 @@
 		isCollectionDeliverable,
 		isExternalDeliverable,
 		isEventDeliverable,
-		isDocumentDeliverable,
 		type DeliverablePrimitive
 	} from '$lib/types/onto';
 	import type { PageData } from './$types';
@@ -55,10 +53,35 @@
 		props?: Record<string, unknown>;
 	}
 
-	type ViewMode = 'board' | 'list';
+	interface Milestone {
+		id: string;
+		title: string;
+		due_at: string | null;
+		state_key?: string | null;
+		props?: Record<string, unknown> | null;
+	}
+
+	interface Risk {
+		id: string;
+		title: string;
+		impact?: string | null;
+		state_key?: string | null;
+		props?: Record<string, unknown> | null;
+	}
+
 	type PrimitiveFilter = DeliverablePrimitive | 'all';
 
-	// State columns for the board view
+	type InsightPanelKey = 'tasks' | 'plans' | 'goals' | 'risks' | 'milestones';
+
+	type InsightPanel = {
+		key: InsightPanelKey;
+		label: string;
+		icon: typeof CheckCircle2;
+		items: Array<unknown>;
+		description?: string;
+	};
+
+	// State colors for output badges
 	const STATE_COLUMNS = [
 		{ key: 'draft', label: 'Draft', color: 'bg-muted' },
 		{ key: 'review', label: 'In Review', color: 'bg-amber-500/10' },
@@ -89,17 +112,38 @@
 	let documents = $state((data.documents || []) as Document[]);
 	let plans = $state((data.plans || []) as Plan[]);
 	let goals = $state((data.goals || []) as Goal[]);
+	let milestones = $state((data.milestones || []) as Milestone[]);
+	let risks = $state((data.risks || []) as Risk[]);
+	let showTaskCreateModal = $state(false);
+	let showPlanCreateModal = $state(false);
+	let showGoalCreateModal = $state(false);
+	let editingTaskId = $state<string | null>(null);
+	let editingPlanId = $state<string | null>(null);
+	let editingGoalId = $state<string | null>(null);
 
 	// UI State
-	let viewMode = $state<ViewMode>('board');
 	let primitiveFilter = $state<PrimitiveFilter>('all');
-	let selectedDeliverableId = $state<string | null>(null);
 	let dataRefreshing = $state(false);
 	let showCreateModal = $state(false);
+	let expandedPanels = $state<Record<InsightPanelKey, boolean>>({
+		tasks: false,
+		plans: false,
+		goals: false,
+		risks: false,
+		milestones: false
+	});
 
 	// ============================================================
 	// DERIVED STATE
 	// ============================================================
+
+	const projectStats = $derived(() => ({
+		outputs: outputs.length,
+		documents: documents.length,
+		tasks: tasks.length,
+		plans: plans.length,
+		goals: goals.length
+	}));
 
 	// Enrich outputs with primitive info
 	const enrichedOutputs = $derived(
@@ -119,17 +163,6 @@
 			: enrichedOutputs.filter((o) => o.primitive === primitiveFilter)
 	);
 
-	// Group outputs by state for board view
-	const outputsByState = $derived(() => {
-		const grouped: Record<string, typeof enrichedOutputs> = {};
-		for (const col of STATE_COLUMNS) {
-			grouped[col.key] = filteredOutputs.filter(
-				(o) => normalizeState(o.state_key) === col.key
-			);
-		}
-		return grouped;
-	});
-
 	// Count by primitive for filter badges
 	const primitiveCounts = $derived(() => {
 		const counts: Record<string, number> = { all: outputs.length };
@@ -140,22 +173,6 @@
 		return counts;
 	});
 
-	// Selected deliverable details
-	const selectedDeliverable = $derived(
-		selectedDeliverableId ? enrichedOutputs.find((o) => o.id === selectedDeliverableId) : null
-	);
-
-	// Tasks related to selected deliverable
-	const relatedTasks = $derived(
-		selectedDeliverableId
-			? tasks.filter((t) => {
-					// Check if task is linked to this output via props or edges
-					const props = t.props as Record<string, unknown>;
-					return props?.output_id === selectedDeliverableId;
-				})
-			: []
-	);
-
 	// Documents that could be promoted to deliverables
 	const promotableDocuments = $derived(
 		documents.filter((doc) => {
@@ -165,6 +182,44 @@
 			);
 		})
 	);
+
+	const insightPanels = $derived<InsightPanel[]>(() => [
+		{
+			key: 'tasks',
+			label: 'Tasks',
+			icon: ListChecks,
+			items: tasks,
+			description: 'What needs to move'
+		},
+		{
+			key: 'plans',
+			label: 'Plans',
+			icon: Calendar,
+			items: plans,
+			description: 'Execution scaffolding'
+		},
+		{
+			key: 'goals',
+			label: 'Goals',
+			icon: Target,
+			items: goals,
+			description: 'What success looks like'
+		},
+		{
+			key: 'risks',
+			label: 'Risks',
+			icon: AlertTriangle,
+			items: risks,
+			description: 'What could go wrong'
+		},
+		{
+			key: 'milestones',
+			label: 'Milestones',
+			icon: Flag,
+			items: milestones,
+			description: 'Checkpoints and dates'
+		}
+	]);
 
 	// ============================================================
 	// UTILITY FUNCTIONS
@@ -222,6 +277,32 @@
 		return col?.color || 'bg-muted';
 	}
 
+	function togglePanel(key: InsightPanelKey) {
+		expandedPanels = { ...expandedPanels, [key]: !expandedPanels[key] };
+	}
+
+	function getTaskVisuals(state: string) {
+		const normalized = state?.toLowerCase() || '';
+		if (normalized === 'done' || normalized === 'completed' || normalized === 'complete') {
+			return { icon: CheckCircle2, color: 'text-emerald-500' };
+		}
+		if (normalized === 'in_progress' || normalized === 'active') {
+			return { icon: Clock, color: 'text-accent' };
+		}
+		return { icon: Circle, color: 'text-muted-foreground' };
+	}
+
+	function formatDueDate(dateString?: string | null) {
+		if (!dateString) return 'No due date';
+		const parsed = new Date(dateString);
+		if (Number.isNaN(parsed.getTime())) return 'No due date';
+		return parsed.toLocaleDateString(undefined, {
+			month: 'short',
+			day: 'numeric',
+			year: 'numeric'
+		});
+	}
+
 	// ============================================================
 	// DATA MANAGEMENT
 	// ============================================================
@@ -245,6 +326,8 @@
 			documents = newData.documents || [];
 			plans = newData.plans || [];
 			goals = newData.goals || [];
+			milestones = newData.milestones || [];
+			risks = newData.risks || [];
 
 			toastService.success('Data refreshed');
 		} catch (error) {
@@ -259,10 +342,6 @@
 	// EVENT HANDLERS
 	// ============================================================
 
-	function selectDeliverable(id: string) {
-		selectedDeliverableId = selectedDeliverableId === id ? null : id;
-	}
-
 	function handlePrimitiveFilter(primitive: PrimitiveFilter) {
 		primitiveFilter = primitive;
 	}
@@ -271,6 +350,51 @@
 		// TODO: Implement document promotion flow
 		// This would open a modal to select deliverable type
 		toastService.info('Document promotion coming soon');
+	}
+
+	async function handleTaskCreated() {
+		await refreshData();
+		showTaskCreateModal = false;
+	}
+
+	async function handleTaskUpdated() {
+		await refreshData();
+		editingTaskId = null;
+	}
+
+	async function handleTaskDeleted() {
+		await refreshData();
+		editingTaskId = null;
+	}
+
+	async function handlePlanCreated() {
+		await refreshData();
+		showPlanCreateModal = false;
+	}
+
+	async function handlePlanUpdated() {
+		await refreshData();
+		editingPlanId = null;
+	}
+
+	async function handlePlanDeleted() {
+		await refreshData();
+		editingPlanId = null;
+	}
+
+	async function handleGoalCreated() {
+		await refreshData();
+		showGoalCreateModal = false;
+	}
+
+	async function handleGoalUpdated() {
+		await refreshData();
+		editingGoalId = null;
+	}
+
+	async function handleGoalDeleted() {
+		await refreshData();
+		editingGoalId = null;
 	}
 
 	async function handleCreateDeliverable(primitive: DeliverablePrimitive) {
@@ -289,10 +413,9 @@
 	<header
 		class="sticky top-0 z-40 border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80"
 	>
-		<div class="mx-auto max-w-screen-2xl px-4 sm:px-6 lg:px-8">
-			<div class="flex h-16 items-center justify-between gap-4">
-				<!-- Left: Back + Project Name -->
-				<div class="flex items-center gap-3">
+		<div class="mx-auto max-w-screen-2xl px-4 sm:px-6 lg:px-8 py-3">
+			<div class="flex flex-wrap items-center justify-between gap-4">
+				<div class="flex items-center gap-3 min-w-0">
 					<button
 						onclick={() => goto('/projects')}
 						class="p-2 rounded-lg hover:bg-muted transition-colors"
@@ -301,17 +424,32 @@
 						<ArrowLeft class="w-5 h-5 text-muted-foreground" />
 					</button>
 
-					<div>
-						<h1 class="text-lg font-semibold text-foreground line-clamp-1">
+					<div class="min-w-0">
+						<p class="text-[11px] uppercase tracking-wide text-muted-foreground">
+							Project
+						</p>
+						<h1
+							class="text-xl font-semibold text-foreground leading-tight line-clamp-2"
+						>
 							{project?.name || 'Untitled Project'}
 						</h1>
-						<p class="text-sm text-muted-foreground">
-							{outputs.length} deliverables
-						</p>
+						<div
+							class="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground"
+						>
+							<span
+								class="px-2 py-0.5 rounded-full bg-muted text-foreground/80 border border-border"
+							>
+								{project?.state_key || 'draft'}
+							</span>
+							<span
+								class="px-2 py-0.5 rounded-full bg-muted text-foreground/80 border border-border"
+							>
+								{project?.type_key || 'project'}
+							</span>
+						</div>
 					</div>
 				</div>
 
-				<!-- Right: Actions -->
 				<div class="flex items-center gap-2">
 					<button
 						onclick={refreshData}
@@ -325,32 +463,48 @@
 								: ''}"
 						/>
 					</button>
-
-					<button
-						onclick={() => (showCreateModal = true)}
-						class="flex items-center gap-2 px-4 py-2 bg-accent text-accent-foreground rounded-lg font-medium shadow-ink pressable hover:bg-accent/90 transition-colors"
-					>
-						<Plus class="w-4 h-4" />
-						<span class="hidden sm:inline">New Deliverable</span>
-					</button>
 				</div>
+			</div>
+
+			<div class="mt-3 flex flex-wrap gap-3">
+				{#each [{ label: 'Outputs', value: projectStats().outputs }, { label: 'Documents', value: projectStats().documents }, { label: 'Tasks', value: projectStats().tasks }, { label: 'Plans', value: projectStats().plans }, { label: 'Goals', value: projectStats().goals }] as stat}
+					<div class="px-3 py-2 rounded-lg bg-muted/60 border border-border shadow-ink">
+						<p class="text-[11px] uppercase tracking-wide text-muted-foreground">
+							{stat.label}
+						</p>
+						<p class="text-base font-semibold text-foreground">{stat.value}</p>
+					</div>
+				{/each}
 			</div>
 		</div>
 	</header>
 
 	<!-- Main Content -->
 	<main class="mx-auto max-w-screen-2xl px-4 sm:px-6 lg:px-8 py-6">
-		<div class="flex flex-col lg:flex-row gap-6">
-			<!-- Left Panel: Deliverables Board/List -->
-			<div class="flex-1 min-w-0">
-				<!-- Toolbar: View Toggle + Filters -->
-				<div
-					class="flex flex-wrap items-center justify-between gap-4 mb-6 p-4 bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak"
+		<div
+			class="grid grid-cols-1 lg:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)] gap-6 items-start"
+		>
+			<div class="space-y-8">
+				<section
+					class="bg-card border border-border rounded-xl shadow-ink tx tx-frame tx-weak p-4"
 				>
-					<!-- Primitive Filters -->
-					<div class="flex flex-wrap items-center gap-2">
-						<span class="text-sm text-muted-foreground mr-2">
-							<Filter class="w-4 h-4 inline-block" />
+					<div class="flex flex-wrap items-start justify-between gap-4">
+						<div>
+							<p class="text-xs uppercase tracking-wide text-muted-foreground">
+								Outputs
+							</p>
+							<h2 class="text-lg font-semibold text-foreground">Deliverables</h2>
+							<p class="text-sm text-muted-foreground">
+								Outputs are the primary focus. Documents live just below as smaller
+								cards.
+							</p>
+						</div>
+					</div>
+
+					<div class="mt-3 flex flex-wrap items-center gap-2">
+						<span class="text-sm text-muted-foreground flex items-center gap-1">
+							<Filter class="w-4 h-4" />
+							Primitive
 						</span>
 						<button
 							onclick={() => handlePrimitiveFilter('all')}
@@ -363,428 +517,492 @@
 						</button>
 						{#each Object.entries(PRIMITIVE_CONFIG) as [primitive, config]}
 							{@const count = primitiveCounts()[primitive] || 0}
-							{#if count > 0}
-								<button
-									onclick={() =>
-										handlePrimitiveFilter(primitive as DeliverablePrimitive)}
-									class="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg transition-colors {primitiveFilter ===
-									primitive
-										? 'bg-accent text-accent-foreground'
-										: 'bg-muted text-muted-foreground hover:bg-muted/80'}"
-								>
-									<svelte:component this={config.icon} class="w-3.5 h-3.5" />
-									<span>{config.label}</span>
-									<span class="text-xs opacity-70">({count})</span>
-								</button>
-							{/if}
-						{/each}
-					</div>
-
-					<!-- View Toggle -->
-					<div class="flex items-center gap-1 bg-muted rounded-lg p-1">
-						<button
-							onclick={() => (viewMode = 'board')}
-							class="p-2 rounded-md transition-colors {viewMode === 'board'
-								? 'bg-card shadow-sm'
-								: 'hover:bg-card/50'}"
-							aria-label="Board view"
-						>
-							<LayoutGrid class="w-4 h-4" />
-						</button>
-						<button
-							onclick={() => (viewMode = 'list')}
-							class="p-2 rounded-md transition-colors {viewMode === 'list'
-								? 'bg-card shadow-sm'
-								: 'hover:bg-card/50'}"
-							aria-label="List view"
-						>
-							<List class="w-4 h-4" />
-						</button>
-					</div>
-				</div>
-
-				<!-- Board View -->
-				{#if viewMode === 'board'}
-					<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-						{#each STATE_COLUMNS as column}
-							{@const columnOutputs = outputsByState()[column.key] || []}
-							<div class="flex flex-col">
-								<!-- Column Header -->
-								<div
-									class="flex items-center justify-between px-3 py-2 mb-3 rounded-lg {column.color}"
-								>
-									<h3 class="font-medium text-foreground">{column.label}</h3>
-									<span
-										class="text-sm text-muted-foreground bg-background/50 px-2 py-0.5 rounded"
-									>
-										{columnOutputs.length}
-									</span>
-								</div>
-
-								<!-- Column Cards -->
-								<div class="flex flex-col gap-3 min-h-[200px]">
-									{#each columnOutputs as output}
-										{@const PrimitiveIcon = getPrimitiveIcon(output.primitive)}
-										<button
-											onclick={() => selectDeliverable(output.id)}
-											class="text-left p-4 bg-card border rounded-lg shadow-ink tx tx-grain tx-weak hover:shadow-ink-strong transition-all {selectedDeliverableId ===
-											output.id
-												? 'border-accent ring-2 ring-accent/20'
-												: 'border-border'}"
-										>
-											<!-- Type Badge -->
-											<div class="flex items-center gap-2 mb-2">
-												<span class={getPrimitiveColor(output.primitive)}>
-													<PrimitiveIcon class="w-4 h-4" />
-												</span>
-												<span class="text-xs text-muted-foreground">
-													{output.typeLabel}
-												</span>
-											</div>
-
-											<!-- Name -->
-											<h4
-												class="font-medium text-foreground line-clamp-2 mb-2"
-											>
-												{output.name}
-											</h4>
-
-											<!-- Meta -->
-											<div
-												class="flex items-center gap-3 text-xs text-muted-foreground"
-											>
-												{#if output.taskCount > 0}
-													<span class="flex items-center gap-1">
-														<CheckCircle2 class="w-3 h-3" />
-														{output.taskCount} tasks
-													</span>
-												{/if}
-												{#if output.childCount !== undefined && output.childCount > 0}
-													<span class="flex items-center gap-1">
-														<Layers class="w-3 h-3" />
-														{output.childCount} items
-													</span>
-												{/if}
-											</div>
-										</button>
-									{:else}
-										<div
-											class="flex-1 flex items-center justify-center p-6 border-2 border-dashed border-border/50 rounded-lg"
-										>
-											<p class="text-sm text-muted-foreground">
-												No deliverables
-											</p>
-										</div>
-									{/each}
-								</div>
-							</div>
-						{/each}
-					</div>
-
-					<!-- List View -->
-				{:else}
-					<div class="space-y-3">
-						{#each filteredOutputs as output}
-							{@const PrimitiveIcon = getPrimitiveIcon(output.primitive)}
 							<button
-								onclick={() => selectDeliverable(output.id)}
-								class="w-full text-left flex items-center gap-4 p-4 bg-card border rounded-lg shadow-ink tx tx-grain tx-weak hover:shadow-ink-strong transition-all {selectedDeliverableId ===
-								output.id
-									? 'border-accent ring-2 ring-accent/20'
-									: 'border-border'}"
+								onclick={() =>
+									handlePrimitiveFilter(primitive as DeliverablePrimitive)}
+								class="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg transition-colors {primitiveFilter ===
+								primitive
+									? 'bg-accent text-accent-foreground'
+									: 'bg-muted text-muted-foreground hover:bg-muted/80'}"
 							>
-								<!-- Primitive Icon -->
-								<div
-									class="flex-shrink-0 w-10 h-10 rounded-lg {getStateColor(
-										output.state_key
-									)} flex items-center justify-center"
-								>
-									<PrimitiveIcon
-										class="w-5 h-5 {getPrimitiveColor(output.primitive)}"
-									/>
-								</div>
-
-								<!-- Content -->
-								<div class="flex-1 min-w-0">
-									<div class="flex items-center gap-2 mb-1">
-										<h4 class="font-medium text-foreground truncate">
-											{output.name}
-										</h4>
-										<span
-											class="flex-shrink-0 px-2 py-0.5 text-xs rounded-full {getStateColor(
-												output.state_key
-											)}"
-										>
-											{output.state_key}
-										</span>
-									</div>
-									<p class="text-sm text-muted-foreground">
-										{output.typeLabel}
-										{#if output.taskCount > 0}
-											<span class="mx-1">·</span>
-											{output.taskCount} tasks
-										{/if}
-									</p>
-								</div>
-
-								<!-- Arrow -->
-								<ChevronRight class="w-5 h-5 text-muted-foreground flex-shrink-0" />
+								<svelte:component this={config.icon} class="w-3.5 h-3.5" />
+								<span>{config.label}</span>
+								<span class="text-xs opacity-70">({count})</span>
 							</button>
-						{:else}
-							<div
-								class="flex flex-col items-center justify-center p-12 bg-card border border-border rounded-lg tx tx-bloom tx-weak"
-							>
-								<Sparkles class="w-12 h-12 text-muted-foreground mb-4" />
-								<h3 class="text-lg font-medium text-foreground mb-2">
-									No deliverables yet
-								</h3>
-								<p class="text-sm text-muted-foreground mb-4">
-									Create your first deliverable to get started
-								</p>
-								<button
-									onclick={() => (showCreateModal = true)}
-									class="flex items-center gap-2 px-4 py-2 bg-accent text-accent-foreground rounded-lg font-medium shadow-ink pressable"
-								>
-									<Plus class="w-4 h-4" />
-									New Deliverable
-								</button>
-							</div>
 						{/each}
-					</div>
-				{/if}
-			</div>
 
-			<!-- Right Panel: Details -->
-			<aside class="w-full lg:w-96 flex-shrink-0">
-				{#if selectedDeliverable}
-					{@const PrimitiveIcon = getPrimitiveIcon(selectedDeliverable.primitive)}
-					<div
-						class="sticky top-24 bg-card border border-border rounded-lg shadow-ink-strong tx tx-frame tx-weak overflow-hidden"
-					>
-						<!-- Header -->
-						<div
-							class="p-4 border-b border-border {getStateColor(
-								selectedDeliverable.state_key
-							)}"
+						<button
+							onclick={() => (showCreateModal = true)}
+							class="ml-auto inline-flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg border border-border bg-muted/60 font-medium hover:bg-muted transition-colors"
 						>
-							<div class="flex items-center gap-3 mb-2">
-								<div
-									class="w-10 h-10 rounded-lg bg-background/50 flex items-center justify-center"
-								>
-									<PrimitiveIcon
-										class="w-5 h-5 {getPrimitiveColor(
-											selectedDeliverable.primitive
-										)}"
-									/>
-								</div>
-								<div>
-									<span class="text-xs text-muted-foreground block">
-										{PRIMITIVE_CONFIG[selectedDeliverable.primitive]?.label ||
-											'Deliverable'}
-									</span>
-									<span
-										class="text-xs px-2 py-0.5 rounded-full bg-background/50 text-foreground"
-									>
-										{selectedDeliverable.state_key}
-									</span>
-								</div>
-							</div>
-							<h2 class="text-lg font-semibold text-foreground">
-								{selectedDeliverable.name}
-							</h2>
-							<p class="text-sm text-muted-foreground mt-1">
-								{selectedDeliverable.typeLabel}
-							</p>
+							<Plus class="w-4 h-4" />
+							New Deliverable
+						</button>
+					</div>
+
+					{#if filteredOutputs.length === 0}
+						<div
+							class="mt-4 flex items-center gap-3 text-sm text-muted-foreground bg-muted/40 border border-border rounded-lg px-3 py-2"
+						>
+							<Sparkles class="w-4 h-4" />
+							<span>No deliverables yet. Create one to get started.</span>
 						</div>
+					{/if}
+				</section>
 
-						<!-- Content Sections -->
-						<div class="p-4 space-y-6">
-							<!-- Related Tasks -->
-							<section>
-								<h3
-									class="text-sm font-medium text-foreground mb-3 flex items-center gap-2"
-								>
-									<CheckCircle2 class="w-4 h-4 text-muted-foreground" />
-									Related Tasks ({relatedTasks.length})
-								</h3>
-								{#if relatedTasks.length > 0}
-									<div class="space-y-2">
-										{#each relatedTasks as task}
-											<div
-												class="flex items-center gap-3 p-2 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
-											>
-												{#if task.state_key === 'done'}
-													<CheckCircle2
-														class="w-4 h-4 text-emerald-500"
-													/>
-												{:else if task.state_key === 'in_progress'}
-													<Clock class="w-4 h-4 text-accent" />
-												{:else}
-													<Circle class="w-4 h-4 text-muted-foreground" />
-												{/if}
-												<span
-													class="text-sm text-foreground truncate flex-1"
-												>
-													{task.title}
-												</span>
-											</div>
-										{/each}
+				<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+					{#each filteredOutputs as output}
+						{@const PrimitiveIcon = getPrimitiveIcon(output.primitive)}
+						<article
+							class="h-full p-4 bg-card border border-border rounded-xl shadow-ink tx tx-grain tx-weak hover:shadow-ink-strong transition-all"
+						>
+							<div class="flex items-start justify-between gap-3">
+								<div class="flex items-start gap-3 min-w-0">
+									<div
+										class="w-10 h-10 rounded-lg bg-muted flex items-center justify-center"
+									>
+										<PrimitiveIcon
+											class="w-5 h-5 {getPrimitiveColor(output.primitive)}"
+										/>
 									</div>
-								{:else}
-									<p class="text-sm text-muted-foreground">
-										No tasks linked to this deliverable
-									</p>
+									<div class="min-w-0 space-y-1">
+										<p
+											class="text-xs uppercase text-muted-foreground tracking-wide"
+										>
+											{output.typeLabel}
+										</p>
+										<h3
+											class="text-base font-semibold text-foreground leading-tight line-clamp-2 break-words"
+										>
+											{output.name}
+										</h3>
+									</div>
+								</div>
+								<span
+									class="flex-shrink-0 text-[11px] px-2 py-1 rounded-full border border-border {getStateColor(
+										output.state_key
+									)}"
+								>
+									{normalizeState(output.state_key)}
+								</span>
+							</div>
+
+							<div
+								class="mt-3 flex flex-wrap items-center gap-3 text-xs text-muted-foreground"
+							>
+								<span class="flex items-center gap-1">
+									<FileText class="w-3.5 h-3.5" />
+									{PRIMITIVE_CONFIG[output.primitive]?.label}
+								</span>
+								{#if output.taskCount > 0}
+									<span class="flex items-center gap-1">
+										<CheckCircle2 class="w-3 h-3" />
+										{output.taskCount} tasks
+									</span>
 								{/if}
-								<button
-									class="mt-3 w-full flex items-center justify-center gap-2 px-3 py-2 text-sm border border-dashed border-border rounded-lg text-muted-foreground hover:text-foreground hover:border-border/80 transition-colors"
-								>
-									<Plus class="w-4 h-4" />
-									Add Task
-								</button>
-							</section>
-
-							<!-- Goals -->
-							{#if goals.length > 0}
-								<section>
-									<h3
-										class="text-sm font-medium text-foreground mb-3 flex items-center gap-2"
-									>
-										<Target class="w-4 h-4 text-muted-foreground" />
-										Related Goals
-									</h3>
-									<div class="space-y-2">
-										{#each goals.slice(0, 3) as goal}
-											<div
-												class="flex items-center gap-3 p-2 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
-											>
-												<Target class="w-4 h-4 text-amber-500" />
-												<span
-													class="text-sm text-foreground truncate flex-1"
-												>
-													{goal.name}
-												</span>
-											</div>
-										{/each}
-									</div>
-								</section>
-							{/if}
-
-							<!-- Collection Children (for collection type) -->
-							{#if isCollectionDeliverable(selectedDeliverable.type_key)}
-								<section>
-									<h3
-										class="text-sm font-medium text-foreground mb-3 flex items-center gap-2"
-									>
-										<Layers class="w-4 h-4 text-muted-foreground" />
-										Collection Items ({selectedDeliverable.childCount || 0})
-									</h3>
-									<p class="text-sm text-muted-foreground">
-										Manage the items in this collection
-									</p>
-									<button
-										class="mt-3 w-full flex items-center justify-center gap-2 px-3 py-2 text-sm border border-dashed border-border rounded-lg text-muted-foreground hover:text-foreground hover:border-border/80 transition-colors"
-									>
-										<Plus class="w-4 h-4" />
-										Add Item
-									</button>
-								</section>
-							{/if}
-
-							<!-- External Link (for external type) -->
-							{#if isExternalDeliverable(selectedDeliverable.type_key)}
-								{@const props = selectedDeliverable.props as Record<
-									string,
-									unknown
-								>}
-								{@const externalUri = props?.external_uri as string | undefined}
-								<section>
-									<h3
-										class="text-sm font-medium text-foreground mb-3 flex items-center gap-2"
-									>
-										<Link2 class="w-4 h-4 text-muted-foreground" />
-										External Link
-									</h3>
+								{#if output.childCount !== undefined && output.childCount > 0}
+									<span class="flex items-center gap-1">
+										<Layers class="w-3 h-3" />
+										{output.childCount} items
+									</span>
+								{/if}
+								{#if isExternalDeliverable(output.type_key)}
+									{@const props = output.props as Record<string, unknown>}
+									{@const externalUri = props?.external_uri as string | undefined}
 									{#if externalUri}
 										<a
 											href={externalUri}
 											target="_blank"
 											rel="noopener noreferrer"
-											class="flex items-center gap-2 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors text-sm text-accent underline"
+											class="text-xs text-accent underline hover:text-accent/80"
 										>
-											<ExternalLink class="w-4 h-4" />
-											{externalUri}
+											External link
 										</a>
-									{:else}
-										<button
-											class="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm border border-dashed border-border rounded-lg text-muted-foreground hover:text-foreground hover:border-border/80 transition-colors"
-										>
-											<Link2 class="w-4 h-4" />
-											Add External Link
-										</button>
 									{/if}
-								</section>
-							{/if}
+								{/if}
+								{#if isCollectionDeliverable(output.type_key)}
+									<span class="flex items-center gap-1">
+										<Layers class="w-3 h-3" />
+										Collection
+									</span>
+								{/if}
+								{#if isEventDeliverable(output.type_key)}
+									<span class="flex items-center gap-1">
+										<Calendar class="w-3 h-3" />
+										Event
+									</span>
+								{/if}
+							</div>
+						</article>
+					{:else}{/each}
+				</div>
 
-							<!-- Actions -->
-							<section class="pt-4 border-t border-border">
-								<div class="flex flex-wrap gap-2">
-									<button
-										class="flex-1 px-3 py-2 text-sm bg-accent text-accent-foreground rounded-lg font-medium hover:bg-accent/90 transition-colors"
-									>
-										Edit
-									</button>
-									<button
-										class="px-3 py-2 text-sm bg-muted text-muted-foreground rounded-lg hover:bg-muted/80 transition-colors"
-									>
-										<Settings class="w-4 h-4" />
-									</button>
-								</div>
-							</section>
+				<section
+					class="bg-card border border-border rounded-xl shadow-ink tx tx-frame tx-weak p-4"
+				>
+					<div class="flex flex-wrap items-center justify-between gap-4 mb-3">
+						<div>
+							<p class="text-xs uppercase tracking-wide text-muted-foreground">
+								Documents
+							</p>
+							<h3 class="text-lg font-semibold text-foreground">Supporting docs</h3>
+							<p class="text-sm text-muted-foreground">
+								Lighter-weight cards so outputs stay primary.
+							</p>
 						</div>
-					</div>
-				{:else}
-					<!-- Empty State - Promotable Documents -->
-					<div
-						class="sticky top-24 bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak p-6"
-					>
-						<h3 class="text-sm font-medium text-foreground mb-4">
-							Select a deliverable to see details
-						</h3>
-
 						{#if promotableDocuments.length > 0}
-							<div class="mt-6">
-								<h4
-									class="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3"
-								>
-									Documents to Promote
-								</h4>
-								<div class="space-y-2">
-									{#each promotableDocuments.slice(0, 5) as doc}
-										<button
-											onclick={() => handlePromoteDocument(doc.id)}
-											class="w-full flex items-center gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors text-left"
-										>
-											<FileText
-												class="w-4 h-4 text-muted-foreground flex-shrink-0"
-											/>
-											<div class="flex-1 min-w-0">
-												<p class="text-sm text-foreground truncate">
-													{doc.title}
-												</p>
-												<p class="text-xs text-muted-foreground">
-													Click to promote to deliverable
-												</p>
-											</div>
-											<Sparkles
-												class="w-4 h-4 text-amber-500 flex-shrink-0"
-											/>
-										</button>
-									{/each}
-								</div>
+							<div
+								class="flex items-center gap-2 text-xs text-amber-600 bg-amber-500/10 border border-amber-500/30 px-3 py-2 rounded-lg"
+							>
+								<Sparkles class="w-4 h-4" />
+								<span>{promotableDocuments.length} ready to promote</span>
 							</div>
 						{/if}
 					</div>
-				{/if}
+
+					<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+						{#each documents as doc}
+							<article
+								class="p-3 rounded-lg border border-border bg-muted/50 shadow-ink tx tx-grain tx-weak"
+							>
+								<div class="flex items-start justify-between gap-3">
+									<div class="min-w-0 space-y-1">
+										<p
+											class="text-[11px] uppercase text-muted-foreground tracking-wide"
+										>
+											{getTypeLabel(doc.type_key)}
+										</p>
+										<h4
+											class="text-sm font-semibold text-foreground leading-snug line-clamp-2"
+										>
+											{doc.title}
+										</h4>
+									</div>
+									<span
+										class="flex-shrink-0 text-[11px] px-2 py-1 rounded-full bg-card border border-border"
+									>
+										{doc.state_key || 'draft'}
+									</span>
+								</div>
+							</article>
+						{:else}
+							<div
+								class="col-span-full flex flex-col gap-2 sm:flex-row sm:items-center justify-between p-4 rounded-lg border border-border bg-muted/40"
+							>
+								<div>
+									<p class="text-sm font-medium text-foreground">
+										No documents attached
+									</p>
+									<p class="text-sm text-muted-foreground">
+										Add research or drafts, then promote them into deliverables.
+									</p>
+								</div>
+							</div>
+						{/each}
+					</div>
+				</section>
+			</div>
+
+			<aside class="w-full lg:w-[340px] xl:w-[380px]">
+				<div class="sticky top-24 space-y-3">
+					{#each insightPanels() as section}
+						{@const isOpen = expandedPanels[section.key]}
+						<div
+							class="bg-card border border-border rounded-xl shadow-ink tx tx-frame tx-weak overflow-hidden"
+						>
+							<button
+								onclick={() => togglePanel(section.key)}
+								class="w-full flex items-center justify-between gap-3 px-4 py-3 text-left hover:bg-muted/60 transition-colors"
+							>
+								<div class="flex items-start gap-3">
+									<div
+										class="w-9 h-9 rounded-lg bg-muted flex items-center justify-center"
+									>
+										<svelte:component
+											this={section.icon}
+											class="w-4 h-4 text-foreground"
+										/>
+									</div>
+									<div class="min-w-0">
+										<p class="text-sm font-semibold text-foreground">
+											{section.label}
+										</p>
+										<p class="text-xs text-muted-foreground">
+											{section.items.length}
+											{section.items.length === 1 ? 'item' : 'items'}
+											{#if section.description}
+												· {section.description}
+											{/if}
+										</p>
+									</div>
+								</div>
+								<ChevronDown
+									class="w-4 h-4 text-muted-foreground transition-transform {isOpen
+										? 'rotate-180'
+										: ''}"
+								/>
+							</button>
+
+							{#if isOpen}
+								<div class="border-t border-border">
+									{#if section.key === 'tasks'}
+										<div
+											class="flex items-center justify-between px-4 pt-3 pb-2"
+										>
+											<p
+												class="text-xs text-muted-foreground uppercase tracking-wide"
+											>
+												Tasks
+											</p>
+											<button
+												type="button"
+												onclick={() => (showTaskCreateModal = true)}
+												class="inline-flex items-center gap-2 px-2.5 py-1 text-xs rounded-md border border-border bg-muted/60 hover:bg-muted transition-colors"
+											>
+												<Plus class="w-3.5 h-3.5" />
+												New Task
+											</button>
+										</div>
+										{#if tasks.length > 0}
+											<ul class="divide-y divide-border/80">
+												{#each tasks as task}
+													{@const visuals = getTaskVisuals(
+														task.state_key
+													)}
+													<li>
+														<button
+															type="button"
+															onclick={() =>
+																(editingTaskId = task.id)}
+															class="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted/60 transition-colors"
+														>
+															<svelte:component
+																this={visuals.icon}
+																class="w-4 h-4 {visuals.color}"
+															/>
+															<div class="min-w-0">
+																<p
+																	class="text-sm text-foreground truncate"
+																>
+																	{task.title}
+																</p>
+																<p
+																	class="text-xs text-muted-foreground"
+																>
+																	{task.state_key || 'draft'}
+																</p>
+															</div>
+														</button>
+													</li>
+												{/each}
+											</ul>
+										{:else}
+											<p class="px-4 py-3 text-sm text-muted-foreground">
+												No tasks yet
+											</p>
+										{/if}
+									{:else if section.key === 'plans'}
+										<div
+											class="flex items-center justify-between px-4 pt-3 pb-2"
+										>
+											<p
+												class="text-xs text-muted-foreground uppercase tracking-wide"
+											>
+												Plans
+											</p>
+											<button
+												type="button"
+												onclick={() => (showPlanCreateModal = true)}
+												class="inline-flex items-center gap-2 px-2.5 py-1 text-xs rounded-md border border-border bg-muted/60 hover:bg-muted transition-colors"
+											>
+												<Plus class="w-3.5 h-3.5" />
+												New Plan
+											</button>
+										</div>
+										{#if plans.length > 0}
+											<ul class="divide-y divide-border/80">
+												{#each plans as plan}
+													<li>
+														<button
+															type="button"
+															onclick={() =>
+																(editingPlanId = plan.id)}
+															class="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted/60 transition-colors"
+														>
+															<Calendar
+																class="w-4 h-4 text-muted-foreground"
+															/>
+															<div class="min-w-0">
+																<p
+																	class="text-sm text-foreground truncate"
+																>
+																	{plan.name}
+																</p>
+																<p
+																	class="text-xs text-muted-foreground"
+																>
+																	{plan.state_key || 'draft'}
+																</p>
+															</div>
+														</button>
+													</li>
+												{/each}
+											</ul>
+										{:else}
+											<p class="px-4 py-3 text-sm text-muted-foreground">
+												No plans yet
+											</p>
+										{/if}
+									{:else if section.key === 'goals'}
+										<div
+											class="flex items-center justify-between px-4 pt-3 pb-2"
+										>
+											<p
+												class="text-xs text-muted-foreground uppercase tracking-wide"
+											>
+												Goals
+											</p>
+											<button
+												type="button"
+												onclick={() => (showGoalCreateModal = true)}
+												class="inline-flex items-center gap-2 px-2.5 py-1 text-xs rounded-md border border-border bg-muted/60 hover:bg-muted transition-colors"
+											>
+												<Plus class="w-3.5 h-3.5" />
+												New Goal
+											</button>
+										</div>
+										{#if goals.length > 0}
+											<ul class="divide-y divide-border/80">
+												{#each goals as goal}
+													<li>
+														<button
+															type="button"
+															onclick={() =>
+																(editingGoalId = goal.id)}
+															class="w-full flex items-start gap-3 px-4 py-3 text-left hover:bg-muted/60 transition-colors"
+														>
+															<Target
+																class="w-4 h-4 text-amber-500"
+															/>
+															<div class="min-w-0">
+																<p
+																	class="text-sm text-foreground truncate"
+																>
+																	{goal.name}
+																</p>
+																<p
+																	class="text-xs text-muted-foreground"
+																>
+																	{goal.state_key || 'draft'}
+																</p>
+															</div>
+														</button>
+													</li>
+												{/each}
+											</ul>
+										{:else}
+											<p class="px-4 py-3 text-sm text-muted-foreground">
+												No goals yet
+											</p>
+										{/if}
+									{:else if section.key === 'risks'}
+										<div
+											class="flex items-center justify-between px-4 pt-3 pb-2"
+										>
+											<p
+												class="text-xs text-muted-foreground uppercase tracking-wide"
+											>
+												Risks
+											</p>
+											<button
+												type="button"
+												onclick={() =>
+													toastService.info('Risk creation coming soon')}
+												class="inline-flex items-center gap-2 px-2.5 py-1 text-xs rounded-md border border-border bg-muted/60 hover:bg-muted transition-colors"
+											>
+												<Plus class="w-3.5 h-3.5" />
+												New Risk
+											</button>
+										</div>
+										{#if risks.length > 0}
+											<ul class="divide-y divide-border/80">
+												{#each risks as risk}
+													<li class="flex items-start gap-3 px-4 py-3">
+														<AlertTriangle
+															class="w-4 h-4 text-amber-500"
+														/>
+														<div class="min-w-0">
+															<p
+																class="text-sm text-foreground truncate"
+															>
+																{risk.title}
+															</p>
+															<p
+																class="text-xs text-muted-foreground"
+															>
+																{risk.impact || 'Unrated'}
+															</p>
+														</div>
+													</li>
+												{/each}
+											</ul>
+										{:else}
+											<p class="px-4 py-3 text-sm text-muted-foreground">
+												No risks logged
+											</p>
+										{/if}
+									{:else if section.key === 'milestones'}
+										<div
+											class="flex items-center justify-between px-4 pt-3 pb-2"
+										>
+											<p
+												class="text-xs text-muted-foreground uppercase tracking-wide"
+											>
+												Milestones
+											</p>
+											<button
+												type="button"
+												onclick={() =>
+													toastService.info(
+														'Milestone creation coming soon'
+													)}
+												class="inline-flex items-center gap-2 px-2.5 py-1 text-xs rounded-md border border-border bg-muted/60 hover:bg-muted transition-colors"
+											>
+												<Plus class="w-3.5 h-3.5" />
+												New Milestone
+											</button>
+										</div>
+										{#if milestones.length > 0}
+											<ul class="divide-y divide-border/80">
+												{#each milestones as milestone}
+													<li class="flex items-start gap-3 px-4 py-3">
+														<Flag class="w-4 h-4 text-emerald-500" />
+														<div class="min-w-0">
+															<p
+																class="text-sm text-foreground truncate"
+															>
+																{milestone.title}
+															</p>
+															<p
+																class="text-xs text-muted-foreground"
+															>
+																{formatDueDate(milestone.due_at)}
+															</p>
+														</div>
+													</li>
+												{/each}
+											</ul>
+										{:else}
+											<p class="px-4 py-3 text-sm text-muted-foreground">
+												No milestones yet
+											</p>
+										{/if}
+									{/if}
+								</div>
+							{/if}
+						</div>
+					{/each}
+				</div>
 			</aside>
 		</div>
 	</main>
@@ -825,4 +1043,83 @@
 			</div>
 		</div>
 	</div>
+{/if}
+
+<!-- Task Create Modal -->
+{#if showTaskCreateModal}
+	{#await import('$lib/components/ontology/TaskCreateModal.svelte') then { default: TaskCreateModal }}
+		<TaskCreateModal
+			projectId={project.id}
+			{plans}
+			{goals}
+			{milestones}
+			onClose={() => (showTaskCreateModal = false)}
+			onCreated={handleTaskCreated}
+		/>
+	{/await}
+{/if}
+
+<!-- Task Edit Modal -->
+{#if editingTaskId}
+	{#await import('$lib/components/ontology/TaskEditModal.svelte') then { default: TaskEditModal }}
+		<TaskEditModal
+			taskId={editingTaskId}
+			projectId={project.id}
+			{plans}
+			{goals}
+			{milestones}
+			onClose={() => (editingTaskId = null)}
+			onUpdated={handleTaskUpdated}
+			onDeleted={handleTaskDeleted}
+		/>
+	{/await}
+{/if}
+
+<!-- Plan Create Modal -->
+{#if showPlanCreateModal}
+	{#await import('$lib/components/ontology/PlanCreateModal.svelte') then { default: PlanCreateModal }}
+		<PlanCreateModal
+			projectId={project.id}
+			onClose={() => (showPlanCreateModal = false)}
+			onCreated={handlePlanCreated}
+		/>
+	{/await}
+{/if}
+
+<!-- Plan Edit Modal -->
+{#if editingPlanId}
+	{#await import('$lib/components/ontology/PlanEditModal.svelte') then { default: PlanEditModal }}
+		<PlanEditModal
+			planId={editingPlanId}
+			projectId={project.id}
+			{tasks}
+			onClose={() => (editingPlanId = null)}
+			onUpdated={handlePlanUpdated}
+			onDeleted={handlePlanDeleted}
+		/>
+	{/await}
+{/if}
+
+<!-- Goal Create Modal -->
+{#if showGoalCreateModal}
+	{#await import('$lib/components/ontology/GoalCreateModal.svelte') then { default: GoalCreateModal }}
+		<GoalCreateModal
+			projectId={project.id}
+			onClose={() => (showGoalCreateModal = false)}
+			onCreated={handleGoalCreated}
+		/>
+	{/await}
+{/if}
+
+<!-- Goal Edit Modal -->
+{#if editingGoalId}
+	{#await import('$lib/components/ontology/GoalEditModal.svelte') then { default: GoalEditModal }}
+		<GoalEditModal
+			goalId={editingGoalId}
+			projectId={project.id}
+			onClose={() => (editingGoalId = null)}
+			onUpdated={handleGoalUpdated}
+			onDeleted={handleGoalDeleted}
+		/>
+	{/await}
 {/if}

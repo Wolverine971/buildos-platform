@@ -119,14 +119,14 @@
 		if (variant === 'bottom-sheet') {
 			return {
 				container: 'items-end sm:items-center',
-				modal: 'rounded-t-2xl sm:rounded-2xl mb-0 sm:mb-4', // Softer radius
+				modal: 'rounded-t-2xl sm:rounded-lg mb-0 sm:mb-4', // Softer radius
 				animation: 'animate-modal-slide-up sm:animate-modal-scale'
 			};
 		}
 		// Default: center variant
 		return {
 			container: 'items-center',
-			modal: 'rounded-2xl', // Softer radius
+			modal: 'rounded-lg', // Softer radius
 			animation: 'animate-modal-scale'
 		};
 	});

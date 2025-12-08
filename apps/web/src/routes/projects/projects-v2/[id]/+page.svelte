@@ -1,4 +1,4 @@
-<!-- apps/web/src/routes/ontology/projects-v2/[id]/+page.svelte -->
+<!-- apps/web/src/routes/projects/projects-v2/[id]/+page.svelte -->
 <!--
 	Ontology Project Detail Page V2 - Inkprint Design System
 

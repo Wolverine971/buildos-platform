@@ -124,6 +124,11 @@ export interface ClassifyChatSessionJobMetadata {
 	userId: string;
 }
 
+export interface OntoBraindumpProcessingJobMetadata {
+	braindumpId: string;
+	userId: string;
+}
+
 // Map job types to their metadata
 export interface JobMetadataMap {
 	generate_daily_brief: DailyBriefJobMetadata;
@@ -139,6 +144,7 @@ export interface JobMetadataMap {
 	send_notification: NotificationJobMetadata;
 	schedule_daily_sms: ScheduleDailySMSJobMetadata;
 	classify_chat_session: ClassifyChatSessionJobMetadata;
+	process_onto_braindump: OntoBraindumpProcessingJobMetadata;
 	other: Record<string, unknown>;
 }
 
@@ -152,6 +158,18 @@ export interface ClassifyChatSessionResult {
 	success: boolean;
 	sessionId: string;
 	topics?: string[];
+	error?: string;
+}
+
+export interface OntoBraindumpProcessingResult {
+	success: boolean;
+	braindumpId: string;
+	title?: string;
+	topics?: string[];
+	summary?: string;
+	contentLength?: number;
+	skipped?: boolean;
+	reason?: string;
 	error?: string;
 }
 
@@ -170,6 +188,7 @@ export interface JobResultMap {
 	send_notification: NotificationSendResult;
 	schedule_daily_sms: ScheduleDailySMSResult;
 	classify_chat_session: ClassifyChatSessionResult;
+	process_onto_braindump: OntoBraindumpProcessingResult;
 	other: unknown;
 }
 
@@ -315,6 +334,8 @@ export function isValidJobMetadata<T extends QueueJobType>(
 			return isScheduleDailySMSMetadata(metadata);
 		case 'classify_chat_session':
 			return isClassifyChatSessionMetadata(metadata);
+		case 'process_onto_braindump':
+			return isOntoBraindumpProcessingMetadata(metadata);
 		default:
 			return true;
 	}
@@ -423,6 +444,14 @@ function isClassifyChatSessionMetadata(obj: unknown): obj is ClassifyChatSession
 	if (!obj || typeof obj !== 'object') return false;
 	const meta = obj as Record<string, unknown>;
 	return typeof meta.sessionId === 'string' && typeof meta.userId === 'string';
+}
+
+function isOntoBraindumpProcessingMetadata(
+	obj: unknown
+): obj is OntoBraindumpProcessingJobMetadata {
+	if (!obj || typeof obj !== 'object') return false;
+	const meta = obj as Record<string, unknown>;
+	return typeof meta.braindumpId === 'string' && typeof meta.userId === 'string';
 }
 
 // Helper function to create a typed queue job

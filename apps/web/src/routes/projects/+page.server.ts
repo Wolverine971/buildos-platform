@@ -1,4 +1,4 @@
-// apps/web/src/routes/ontology/+page.server.ts
+// apps/web/src/routes/projects/+page.server.ts
 /**
  * Ontology Dashboard - Server Load
  * Fetches all projects for the dashboard view

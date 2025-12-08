@@ -1,7 +1,7 @@
 <!-- apps/web/src/lib/components/profile/AccountTab.svelte -->
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
-	import { User, Lock, Trash2, AlertTriangle, CheckCircle2, Eye, EyeOff } from 'lucide-svelte';
+	import { User, Lock, Trash2, TriangleAlert, CircleCheck, Eye, EyeOff } from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import TextInput from '$lib/components/ui/TextInput.svelte';
 	import FormField from '$lib/components/ui/FormField.svelte';
@@ -200,11 +200,11 @@
 	<!-- Success Message -->
 	{#if successMessage}
 		<div
-			class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4"
+			class="bg-emerald-500/10 border border-emerald-500/30 rounded-lg p-4 shadow-ink tx tx-grain tx-weak"
 		>
 			<div class="flex items-center space-x-2">
-				<CheckCircle2 class="w-5 h-5 text-green-600 dark:text-green-400" />
-				<p class="text-sm text-green-700 dark:text-green-300">{successMessage}</p>
+				<CircleCheck class="w-5 h-5 text-emerald-500" />
+				<p class="text-sm text-foreground">{successMessage}</p>
 			</div>
 		</div>
 	{/if}
@@ -212,11 +212,11 @@
 	<!-- Error Messages -->
 	{#if errors.length > 0}
 		<div
-			class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4"
+			class="bg-red-500/10 border border-red-500/30 rounded-lg p-4 shadow-ink tx tx-static tx-weak"
 		>
 			<div class="flex items-start space-x-2">
-				<AlertTriangle class="w-5 h-5 text-red-600 dark:text-red-400 mt-0.5" />
-				<div class="text-sm text-red-700 dark:text-red-300">
+				<TriangleAlert class="w-5 h-5 text-red-500 mt-0.5" />
+				<div class="text-sm text-foreground">
 					{#each errors as error}
 						<p>{error}</p>
 					{/each}
@@ -226,10 +226,8 @@
 	{/if}
 
 	<!-- Section Buttons -->
-	<div
-		class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700"
-	>
-		<div class="border-b border-gray-200 dark:border-gray-700">
+	<div class="bg-card rounded-lg shadow-ink border border-border tx tx-frame tx-weak">
+		<div class="border-b border-border">
 			<nav
 				class="flex overflow-x-auto px-4 sm:px-6 -mb-px scrollbar-hide"
 				aria-label="Account sections"
@@ -241,8 +239,8 @@
 					size="md"
 					class="py-3 sm:py-4 px-2 sm:px-4 border-b-2 font-medium text-xs sm:text-sm transition-colors whitespace-nowrap focus:ring-0 focus:ring-offset-0 flex-shrink-0
 					{activeSection === 'profile'
-						? 'border-blue-500 text-blue-600 dark:text-blue-400'
-						: 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'}"
+						? 'border-accent text-accent'
+						: 'border-transparent text-muted-foreground hover:text-foreground'}"
 					icon={User}
 				>
 					<span class="hidden sm:inline">Profile Information</span>
@@ -255,8 +253,8 @@
 					size="md"
 					class="py-3 sm:py-4 px-2 sm:px-4 border-b-2 font-medium text-xs sm:text-sm transition-colors whitespace-nowrap focus:ring-0 focus:ring-offset-0 flex-shrink-0 ml-4 sm:ml-8
 					{activeSection === 'password'
-						? 'border-blue-500 text-blue-600 dark:text-blue-400'
-						: 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'}"
+						? 'border-accent text-accent'
+						: 'border-transparent text-muted-foreground hover:text-foreground'}"
 					icon={Lock}
 				>
 					<span class="hidden sm:inline">Change Password</span>
@@ -269,8 +267,8 @@
 					size="md"
 					class="py-3 sm:py-4 px-2 sm:px-4 border-b-2 font-medium text-xs sm:text-sm transition-colors whitespace-nowrap focus:ring-0 focus:ring-offset-0 flex-shrink-0 ml-4 sm:ml-8
 					{activeSection === 'danger'
-						? 'border-red-500 text-red-600 dark:text-red-400'
-						: 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'}"
+						? 'border-red-500 text-red-500'
+						: 'border-transparent text-muted-foreground hover:text-foreground'}"
 					icon={Trash2}
 				>
 					<span class="hidden sm:inline">Delete Account</span>
@@ -285,14 +283,10 @@
 			{#if activeSection === 'profile'}
 				<div class="space-y-4 sm:space-y-6">
 					<div>
-						<h3
-							class="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-1"
-						>
+						<h3 class="text-base sm:text-lg font-semibold text-foreground mb-1">
 							Profile Information
 						</h3>
-						<p class="text-sm text-gray-600 dark:text-gray-400">
-							Update your account information
-						</p>
+						<p class="text-sm text-muted-foreground">Update your account information</p>
 					</div>
 
 					<div class="space-y-4">
@@ -334,7 +328,7 @@
 							variant="primary"
 							size="md"
 							{loading}
-							class="w-full sm:w-auto"
+							class="w-full sm:w-auto shadow-ink pressable"
 						>
 							{loading ? 'Updating...' : 'Update Profile'}
 						</Button>
@@ -346,12 +340,10 @@
 			{#if activeSection === 'password'}
 				<div class="space-y-4 sm:space-y-6">
 					<div>
-						<h3
-							class="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-1"
-						>
+						<h3 class="text-base sm:text-lg font-semibold text-foreground mb-1">
 							Change Password
 						</h3>
-						<p class="text-sm text-gray-600 dark:text-gray-400">
+						<p class="text-sm text-muted-foreground">
 							Update your password to keep your account secure
 						</p>
 					</div>
@@ -377,7 +369,7 @@
 								<button
 									type="button"
 									onclick={() => (showCurrentPassword = !showCurrentPassword)}
-									class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
+									class="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
 								>
 									{#if showCurrentPassword}
 										<EyeOff class="w-4 h-4" />
@@ -408,7 +400,7 @@
 								<button
 									type="button"
 									onclick={() => (showNewPassword = !showNewPassword)}
-									class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
+									class="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
 								>
 									{#if showNewPassword}
 										<EyeOff class="w-4 h-4" />
@@ -438,7 +430,7 @@
 								<button
 									type="button"
 									onclick={() => (showConfirmPassword = !showConfirmPassword)}
-									class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
+									class="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
 								>
 									{#if showConfirmPassword}
 										<EyeOff class="w-4 h-4" />
@@ -457,7 +449,7 @@
 							variant="primary"
 							size="md"
 							{loading}
-							class="w-full sm:w-auto"
+							class="w-full sm:w-auto shadow-ink pressable"
 						>
 							{loading ? 'Updating...' : 'Update Password'}
 						</Button>
@@ -469,35 +461,31 @@
 			{#if activeSection === 'danger'}
 				<div class="space-y-4 sm:space-y-6">
 					<div
-						class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4 sm:p-6"
+						class="bg-red-500/10 border border-red-500/30 rounded-xl p-4 sm:p-6 tx tx-static tx-weak"
 					>
 						<div class="flex items-center gap-3 mb-4 sm:mb-6">
-							<Trash2 class="w-5 h-5 text-red-600 dark:text-red-400" />
-							<h3
-								class="text-base sm:text-lg font-semibold text-red-900 dark:text-red-100"
-							>
+							<Trash2 class="w-5 h-5 text-red-500" />
+							<h3 class="text-base sm:text-lg font-semibold text-foreground">
 								Delete Account
 							</h3>
 						</div>
 
 						<div class="space-y-4">
-							<div
-								class="bg-white dark:bg-gray-800 rounded-lg p-4 border border-red-200 dark:border-red-700"
-							>
+							<div class="bg-card rounded-lg p-4 border border-red-500/30">
 								<div class="flex items-start space-x-3">
-									<AlertTriangle
-										class="w-5 h-5 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0"
+									<TriangleAlert
+										class="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0"
 									/>
 									<div class="text-sm">
-										<p class="text-red-800 dark:text-red-200 font-medium mb-2">
+										<p class="text-foreground font-medium mb-2">
 											This action cannot be undone
 										</p>
-										<p class="text-red-700 dark:text-red-300">
+										<p class="text-muted-foreground">
 											Deleting your account will permanently remove all your
 											data, including:
 										</p>
 										<ul
-											class="list-disc list-inside mt-2 text-red-700 dark:text-red-300 space-y-1"
+											class="list-disc list-inside mt-2 text-muted-foreground space-y-1"
 										>
 											<li>All projects and tasks</li>
 											<li>Daily briefs and brain dumps</li>
@@ -515,7 +503,7 @@
 								disabled={loading}
 								variant="outline"
 								size="md"
-								class="text-red-600 hover:text-white hover:bg-red-600 border-red-600 w-full sm:w-auto"
+								class="text-red-500 hover:text-white hover:bg-red-600 border-red-500 w-full sm:w-auto shadow-ink pressable"
 								icon={Trash2}
 							>
 								<span class="hidden sm:inline">Delete My Account</span>

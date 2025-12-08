@@ -1,4 +1,4 @@
-<!-- apps/web/src/routes/ontology/projects/[id]/+page.svelte -->
+<!-- apps/web/src/routes/projects/projects/[id]/+page.svelte -->
 <!--
 	Ontology Project Detail Page
 

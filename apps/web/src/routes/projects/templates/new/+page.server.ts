@@ -1,4 +1,4 @@
-// apps/web/src/routes/ontology/templates/new/+page.server.ts
+// apps/web/src/routes/projects/templates/new/+page.server.ts
 /**
  * New Template Page - Server Load
  * Loads necessary data for template creation form

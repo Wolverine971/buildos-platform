@@ -1,4 +1,4 @@
-// apps/web/src/routes/ontology/projects/[id]/+page.server.ts
+// apps/web/src/routes/projects/projects/[id]/+page.server.ts
 /**
  * Project Detail - Server Load
  * Fetches complete project data with all related entities

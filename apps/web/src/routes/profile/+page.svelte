@@ -7,7 +7,7 @@
 	import { goto } from '$app/navigation';
 	import {
 		User,
-		CheckCircle,
+		CircleCheck,
 		Rocket,
 		Settings,
 		Sparkles,
@@ -268,17 +268,17 @@
 	<meta name="robots" content="noindex, nofollow" />
 </svelte:head>
 
-<div class="min-h-screen bg-gray-50 dark:bg-gray-900">
+<div class="min-h-screen bg-background text-foreground">
 	<div class="max-w-6xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 md:py-8">
 		<!-- Success Banner -->
 		{#if showOnboardingComplete}
 			<div
-				class="mb-6 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg"
+				class="mb-6 p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-lg shadow-ink tx tx-grain tx-weak"
 				transition:slide
 			>
 				<div class="flex items-center">
-					<CheckCircle class="w-5 h-5 text-green-600 dark:text-green-400 mr-3" />
-					<p class="text-green-700 dark:text-green-300 font-medium">
+					<CircleCheck class="w-5 h-5 text-emerald-500 mr-3" />
+					<p class="text-foreground font-medium">
 						Setup complete! BuildOS is now personalized to your workflow and
 						preferences.
 					</p>
@@ -288,21 +288,19 @@
 
 		{#if saveSuccess}
 			<div
-				class="mb-6 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg"
+				class="mb-6 p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-lg shadow-ink tx tx-grain tx-weak"
 				transition:slide
 			>
 				<div class="flex items-center justify-between">
 					<div class="flex items-center">
-						<CheckCircle class="w-5 h-5 text-green-600 dark:text-green-400 mr-3" />
-						<p class="text-green-700 dark:text-green-300 font-medium">
-							Changes saved successfully!
-						</p>
+						<CircleCheck class="w-5 h-5 text-emerald-500 mr-3" />
+						<p class="text-foreground font-medium">Changes saved successfully!</p>
 					</div>
 					<Button
 						onclick={() => (saveSuccess = false)}
 						variant="ghost"
 						size="sm"
-						class="p-1 text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300"
+						class="p-1 text-emerald-500 hover:text-emerald-600"
 						icon={XCircle}
 					></Button>
 				</div>
@@ -311,13 +309,13 @@
 
 		{#if saveError}
 			<div
-				class="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg"
+				class="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-lg shadow-ink tx tx-static tx-weak"
 				transition:slide
 			>
 				<div class="flex items-center justify-between">
 					<div class="flex items-center">
-						<AlertCircle class="w-5 h-5 text-red-600 dark:text-red-400 mr-3" />
-						<p class="text-red-700 dark:text-red-300 font-medium">
+						<AlertCircle class="w-5 h-5 text-red-500 mr-3" />
+						<p class="text-foreground font-medium">
 							{errorMessage || 'An error occurred'}
 						</p>
 					</div>
@@ -325,7 +323,7 @@
 						onclick={() => (saveError = false)}
 						variant="ghost"
 						size="sm"
-						class="p-1 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+						class="p-1 text-red-500 hover:text-red-600"
 						icon={XCircle}
 					></Button>
 				</div>
@@ -334,30 +332,28 @@
 
 		<!-- Profile Header -->
 		<div
-			class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 sm:p-6 mb-4 sm:mb-6"
+			class="bg-card rounded-lg shadow-ink border border-border p-4 sm:p-6 mb-4 sm:mb-6 tx tx-frame tx-weak"
 		>
 			<div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
 				<div class="flex items-center space-x-3 sm:space-x-4">
 					<div
-						class="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center flex-shrink-0"
+						class="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-accent to-purple-500 rounded-full flex items-center justify-center flex-shrink-0"
 					>
-						<User class="w-6 h-6 sm:w-8 sm:h-8 text-white" />
+						<User class="w-6 h-6 sm:w-8 sm:h-8 text-accent-foreground" />
 					</div>
 					<div class="min-w-0">
-						<h1
-							class="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white truncate"
-						>
+						<h1 class="text-lg sm:text-2xl font-bold text-foreground truncate">
 							{data.user?.user_metadata?.name || 'Your Profile'}
 						</h1>
 						<p
-							class="text-sm sm:text-base text-gray-600 dark:text-gray-400 flex items-center mt-1 truncate"
+							class="text-sm sm:text-base text-muted-foreground flex items-center mt-1 truncate"
 						>
 							<Mail class="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2 flex-shrink-0" />
 							<span class="truncate">{data.user?.email}</span>
 						</p>
 						{#if data.userContext?.created_at}
 							<p
-								class="text-xs sm:text-sm text-gray-500 dark:text-gray-400 flex items-center mt-1"
+								class="text-xs sm:text-sm text-muted-foreground flex items-center mt-1"
 							>
 								<Calendar
 									class="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2 flex-shrink-0"
@@ -376,7 +372,7 @@
 							onclick={() => goto('/onboarding')}
 							variant="primary"
 							size="sm"
-							class="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow hover:shadow-lg transform hover:scale-[1.02] transition-all duration-200 w-full sm:w-auto text-xs sm:text-sm"
+							class="bg-accent hover:bg-accent/90 shadow-ink pressable w-full sm:w-auto text-xs sm:text-sm"
 						>
 							{#if progressData.missingRequiredFields?.length > 0}
 								<AlertCircle class="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
@@ -394,9 +390,7 @@
 		</div>
 
 		<!-- Tab Navigation -->
-		<div
-			class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 mb-4 sm:mb-6"
-		>
+		<div class="bg-card rounded-lg shadow-ink border border-border mb-4 sm:mb-6">
 			<TabNav
 				tabs={profileTabs}
 				{activeTab}
@@ -435,49 +429,43 @@
 				{#if data.subscriptionDetails?.subscription}
 					<!-- Active Subscription -->
 					<div
-						class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700"
+						class="bg-card rounded-lg shadow-ink border border-border tx tx-frame tx-weak"
 					>
 						<div class="p-4 sm:p-6">
 							<div
 								class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4 sm:mb-6"
 							>
 								<div class="flex items-center gap-3">
-									<div
-										class="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg flex-shrink-0"
-									>
-										<CheckCircle
-											class="w-5 h-5 sm:w-6 sm:h-6 text-green-600 dark:text-green-400"
+									<div class="p-2 bg-emerald-500/10 rounded-lg flex-shrink-0">
+										<CircleCheck
+											class="w-5 h-5 sm:w-6 sm:h-6 text-emerald-500"
 										/>
 									</div>
 									<div>
 										<h2
-											class="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white"
+											class="text-lg sm:text-xl font-semibold text-foreground"
 										>
 											{data.subscriptionDetails.subscription
 												.subscription_plans?.name || 'Pro Plan'}
 										</h2>
-										<p
-											class="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1"
-										>
+										<p class="text-xs sm:text-sm text-muted-foreground mt-1">
 											Active subscription
 										</p>
 									</div>
 								</div>
 
 								<div class="text-left sm:text-right">
-									<p
-										class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white"
-									>
+									<p class="text-xl sm:text-2xl font-bold text-foreground">
 										${(
 											data.subscriptionDetails.subscription.subscription_plans
 												?.price_cents / 100
 										).toFixed(2)}
-										<span class="text-sm font-normal text-gray-500"
+										<span class="text-sm font-normal text-muted-foreground"
 											>/{data.subscriptionDetails.subscription
 												.subscription_plans?.billing_interval}</span
 										>
 									</p>
-									<p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+									<p class="text-xs text-muted-foreground mt-1">
 										Next billing: {data.subscriptionDetails.subscription
 											.current_period_end
 											? new Date(
@@ -488,27 +476,21 @@
 								</div>
 							</div>
 
-							<div class="border-t border-gray-200 dark:border-gray-700 pt-4">
+							<div class="border-t border-border pt-4">
 								<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 									<div>
-										<p
-											class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-										>
+										<p class="text-sm font-medium text-foreground mb-1">
 											Status
 										</p>
-										<p
-											class="text-sm text-gray-600 dark:text-gray-400 capitalize"
-										>
+										<p class="text-sm text-muted-foreground capitalize">
 											{data.subscriptionDetails.subscription.status}
 										</p>
 									</div>
 									<div>
-										<p
-											class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-										>
+										<p class="text-sm font-medium text-foreground mb-1">
 											Member since
 										</p>
-										<p class="text-sm text-gray-600 dark:text-gray-400">
+										<p class="text-sm text-muted-foreground">
 											{data.subscriptionDetails.subscription.created_at
 												? new Date(
 														data.subscriptionDetails.subscription.created_at
@@ -524,7 +506,7 @@
 											type="submit"
 											variant="secondary"
 											size="sm"
-											class="sm:size-md w-full sm:w-auto"
+											class="sm:size-md w-full sm:w-auto shadow-ink pressable"
 											icon={Settings}
 										>
 											Manage Subscription
@@ -536,11 +518,11 @@
 					</div>
 
 					<!-- Invoice Settings Info -->
-					<div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 sm:p-4 mt-4">
-						<h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+					<div class="bg-muted rounded-lg p-3 sm:p-4 mt-4 border border-border">
+						<h4 class="text-sm font-medium text-foreground mb-2">
 							Invoice Information
 						</h4>
-						<div class="text-xs sm:text-sm text-gray-600 dark:text-gray-400 space-y-1">
+						<div class="text-xs sm:text-sm text-muted-foreground space-y-1">
 							<p>• Invoices are automatically sent to your email</p>
 							<p>
 								• Tax ID and business details can be updated in the billing portal
@@ -552,28 +534,26 @@
 					<!-- Payment History -->
 					{#if data.subscriptionDetails.invoices.length > 0}
 						<div
-							class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700"
+							class="bg-card rounded-lg shadow-ink border border-border tx tx-frame tx-weak"
 						>
 							<div class="p-4 sm:p-6">
 								<h3
-									class="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-3 sm:mb-4"
+									class="text-base sm:text-lg font-semibold text-foreground mb-3 sm:mb-4"
 								>
 									Payment History
 								</h3>
 								<div class="space-y-3">
 									{#each data.subscriptionDetails.invoices as invoice}
 										<div
-											class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0 py-3 border-b border-gray-100 dark:border-gray-700 last:border-0"
+											class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0 py-3 border-b border-border last:border-0"
 										>
 											<div>
 												<p
-													class="text-sm sm:text-base font-medium text-gray-900 dark:text-white"
+													class="text-sm sm:text-base font-medium text-foreground"
 												>
 													${(invoice.amount_paid / 100).toFixed(2)}
 												</p>
-												<p
-													class="text-xs sm:text-sm text-gray-600 dark:text-gray-400"
-												>
+												<p class="text-xs sm:text-sm text-muted-foreground">
 													{invoice.created_at
 														? new Date(
 																invoice.created_at
@@ -583,7 +563,7 @@
 											</div>
 											<div class="text-left sm:text-right">
 												<p
-													class="text-xs sm:text-sm font-medium capitalize text-gray-700 dark:text-gray-300"
+													class="text-xs sm:text-sm font-medium capitalize text-foreground"
 												>
 													{invoice.status}
 												</p>
@@ -592,7 +572,7 @@
 														href={invoice.invoice_pdf}
 														target="_blank"
 														rel="noopener noreferrer"
-														class="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+														class="text-sm text-accent hover:text-accent/80 transition-colors"
 													>
 														Download PDF
 													</a>
@@ -604,7 +584,7 @@
 															)}
 														variant="ghost"
 														size="sm"
-														class="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+														class="text-sm text-accent hover:text-accent/80"
 													>
 														Generate PDF
 													</Button>
@@ -619,59 +599,59 @@
 				{:else}
 					<!-- No Subscription -->
 					<div
-						class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700"
+						class="bg-card rounded-lg shadow-ink border border-border tx tx-bloom tx-weak"
 					>
 						<div class="p-6 text-center">
 							<div class="max-w-md mx-auto">
 								<div
-									class="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center"
+									class="p-3 bg-accent/10 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center"
 								>
-									<Sparkles class="w-8 h-8 text-blue-600 dark:text-blue-400" />
+									<Sparkles class="w-8 h-8 text-accent" />
 								</div>
-								<h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+								<h2 class="text-2xl font-bold text-foreground mb-2">
 									Upgrade to Pro
 								</h2>
-								<p class="text-gray-600 dark:text-gray-400 mb-6">
+								<p class="text-muted-foreground mb-6">
 									Unlock all features and take your productivity to the next level
 								</p>
 								<div class="space-y-3 text-left max-w-sm mx-auto mb-6">
 									<div class="flex items-start">
-										<CheckCircle
-											class="w-5 h-5 text-green-500 mr-3 mt-0.5 flex-shrink-0"
+										<CircleCheck
+											class="w-5 h-5 text-emerald-500 mr-3 mt-0.5 flex-shrink-0"
 										/>
-										<p class="text-sm text-gray-700 dark:text-gray-300">
+										<p class="text-sm text-foreground">
 											Google Calendar integration for automatic task
 											scheduling
 										</p>
 									</div>
 									<div class="flex items-start">
-										<CheckCircle
-											class="w-5 h-5 text-green-500 mr-3 mt-0.5 flex-shrink-0"
+										<CircleCheck
+											class="w-5 h-5 text-emerald-500 mr-3 mt-0.5 flex-shrink-0"
 										/>
-										<p class="text-sm text-gray-700 dark:text-gray-300">
+										<p class="text-sm text-foreground">
 											AI-powered daily briefs to keep you on track
 										</p>
 									</div>
 									<div class="flex items-start">
-										<CheckCircle
-											class="w-5 h-5 text-green-500 mr-3 mt-0.5 flex-shrink-0"
+										<CircleCheck
+											class="w-5 h-5 text-emerald-500 mr-3 mt-0.5 flex-shrink-0"
 										/>
-										<p class="text-sm text-gray-700 dark:text-gray-300">
+										<p class="text-sm text-foreground">
 											Advanced project phases and timeline management
 										</p>
 									</div>
 									<div class="flex items-start">
-										<CheckCircle
-											class="w-5 h-5 text-green-500 mr-3 mt-0.5 flex-shrink-0"
+										<CircleCheck
+											class="w-5 h-5 text-emerald-500 mr-3 mt-0.5 flex-shrink-0"
 										/>
-										<p class="text-sm text-gray-700 dark:text-gray-300">
+										<p class="text-sm text-foreground">
 											Priority support and early access to new features
 										</p>
 									</div>
 								</div>
 								<a
 									href="/pricing"
-									class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all duration-200"
+									class="inline-flex items-center px-6 py-3 bg-accent hover:bg-accent/90 text-accent-foreground font-medium rounded-lg shadow-ink pressable transition-all duration-200"
 								>
 									<Rocket class="w-5 h-5 mr-2" />
 									Get Started - $20/month
@@ -690,12 +670,12 @@
 				transition:fade
 			>
 				<div
-					class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden"
+					class="bg-card rounded-xl shadow-ink-strong border border-border max-w-4xl w-full max-h-[90vh] overflow-hidden tx tx-frame tx-weak"
 					transition:slide
 				>
-					<div class="p-6 border-b border-gray-200 dark:border-gray-700">
+					<div class="p-6 border-b border-border">
 						<div class="flex items-center justify-between">
-							<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+							<h3 class="text-lg font-semibold text-foreground">
 								{#if editingTemplate.preview}
 									Preview Template: {editingTemplate.name}
 								{:else if editingTemplate.id}
@@ -708,7 +688,7 @@
 								onclick={closeTemplateEditor}
 								variant="ghost"
 								size="sm"
-								class="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
+								class="p-2 text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted pressable"
 								icon={X}
 							></Button>
 						</div>
@@ -719,23 +699,19 @@
 						<div class="p-6 overflow-y-auto max-h-[60vh]">
 							<div class="space-y-4">
 								<div>
-									<h4
-										class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-									>
+									<h4 class="text-sm font-medium text-foreground mb-2">
 										Description
 									</h4>
-									<p class="text-gray-600 dark:text-gray-400">
+									<p class="text-muted-foreground">
 										{editingTemplate.description || 'No description provided'}
 									</p>
 								</div>
 								<div>
-									<h4
-										class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-									>
+									<h4 class="text-sm font-medium text-foreground mb-2">
 										Template Content
 									</h4>
 									<pre
-										class="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg text-sm font-mono whitespace-pre-wrap overflow-x-auto">
+										class="bg-muted p-4 rounded-lg text-sm font-mono whitespace-pre-wrap overflow-x-auto border border-border text-foreground">
 {editingTemplate.template_content}
 									</pre>
 								</div>
@@ -796,18 +772,22 @@
 								</div>
 							</div>
 
-							<div
-								class="p-6 border-t border-gray-200 dark:border-gray-700 flex justify-end space-x-3"
-							>
+							<div class="p-6 border-t border-border flex justify-end space-x-3">
 								<Button
 									type="button"
 									onclick={closeTemplateEditor}
 									variant="ghost"
 									size="md"
+									class="pressable"
 								>
 									Cancel
 								</Button>
-								<Button type="submit" variant="primary" size="md">
+								<Button
+									type="submit"
+									variant="primary"
+									size="md"
+									class="shadow-ink pressable"
+								>
 									{editingTemplate.id ? 'Update' : 'Create'} Template
 								</Button>
 							</div>

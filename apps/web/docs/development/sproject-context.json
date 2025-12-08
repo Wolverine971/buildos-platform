@@ -144,6 +144,24 @@
 			]
 		},
 		{
+			"file": "src/routes/projects/projects-v2/[id]/+page.svelte",
+			"type": "page",
+			"components": [
+				"FSMStateBar",
+				"ConfirmationModal",
+				"OntologyProjectEditModal",
+				"TaskCreateModal",
+				"TaskEditModal",
+				"OutputCreateModal",
+				"OutputEditModal",
+				"PlanCreateModal",
+				"PlanEditModal",
+				"GoalCreateModal",
+				"GoalEditModal",
+				"DocumentModal"
+			]
+		},
+		{
 			"file": "src/routes/projects/projects/[id]/+page.svelte",
 			"type": "page",
 			"components": [
@@ -165,21 +183,15 @@
 			]
 		},
 		{
-			"file": "src/routes/projects/projects-v2/[id]/+page.svelte",
+			"file": "src/routes/projects/projects-v3/[id]/+page.svelte",
 			"type": "page",
 			"components": [
-				"FSMStateBar",
-				"ConfirmationModal",
-				"OntologyProjectEditModal",
 				"TaskCreateModal",
 				"TaskEditModal",
-				"OutputCreateModal",
-				"OutputEditModal",
 				"PlanCreateModal",
 				"PlanEditModal",
 				"GoalCreateModal",
-				"GoalEditModal",
-				"DocumentModal"
+				"GoalEditModal"
 			]
 		},
 		{
@@ -375,6 +387,16 @@
 			"exports": ["LLMUsageService"]
 		},
 		{
+			"file": "src/lib/services/next-step-seeding.service.ts",
+			"type": "service",
+			"components": [],
+			"exports": [
+				"NextStepSeedingService",
+				"createNextStepSeedingService",
+				"seedProjectNextSteps"
+			]
+		},
+		{
 			"file": "src/lib/services/notification-analytics.service.ts",
 			"type": "service",
 			"components": [],
@@ -437,6 +459,12 @@
 				"cleanupPhaseGenerationNotificationBridge",
 				"startPhaseGeneration"
 			]
+		},
+		{
+			"file": "src/lib/services/project-activity-log.service.ts",
+			"type": "service",
+			"components": [],
+			"exports": ["ProjectActivityLogService", "createProjectActivityLogService"]
 		},
 		{
 			"file": "src/lib/services/project-calendar.service.ts",

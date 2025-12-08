@@ -1,4 +1,4 @@
-// apps/web/src/routes/ontology/templates/+page.server.ts
+// apps/web/src/routes/projects/templates/+page.server.ts
 /**
  * Server-side data loading for ontology templates browse page.
  */

@@ -1,4 +1,4 @@
-<!-- apps/web/src/routes/ontology/templates/new/+page.svelte -->
+<!-- apps/web/src/routes/projects/templates/new/+page.svelte -->
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import Button from '$lib/components/ui/Button.svelte';

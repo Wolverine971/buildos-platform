@@ -1,5 +1,6 @@
 // apps/worker/src/workers/chat/chatSessionClassifier.ts
 // Worker processor for classifying chat sessions and generating titles/topics
+// Also handles activity logging and next step generation for project-related sessions
 
 import { supabase } from '../../lib/supabase';
 import { SmartLLMService } from '../../lib/services/smart-llm-service';
@@ -9,6 +10,7 @@ import {
 	validateChatClassificationJobData
 } from '../shared/queueUtils';
 import { LegacyJob } from '../shared/jobAdapter';
+import { processSessionActivityAndNextSteps } from './chatSessionActivityProcessor';
 
 /**
  * Response structure from LLM classification
@@ -194,6 +196,28 @@ export async function processChatClassificationJob(job: LegacyJob<ChatClassifica
 			throw new Error(`Failed to update session with classification: ${updateError.message}`);
 		}
 
+		// Process activity logging and next steps for project-related sessions
+		// This runs after classification to ensure we have the title/topics context
+		let activityResult = {
+			activityLogsCreated: 0,
+			nextStepUpdated: false,
+			projectId: null as string | null
+		};
+		try {
+			activityResult = await processSessionActivityAndNextSteps(
+				validatedData.sessionId,
+				validatedData.userId
+			);
+			if (activityResult.activityLogsCreated > 0 || activityResult.nextStepUpdated) {
+				console.log(
+					`📊 Activity processing: ${activityResult.activityLogsCreated} logs, next step ${activityResult.nextStepUpdated ? 'updated' : 'unchanged'}`
+				);
+			}
+		} catch (activityError) {
+			// Don't fail the classification job if activity processing fails
+			console.error(`⚠️ Activity processing failed (non-fatal):`, activityError);
+		}
+
 		await updateJobStatus(job.id, 'completed', 'chat_classification');
 
 		return {
@@ -201,7 +225,10 @@ export async function processChatClassificationJob(job: LegacyJob<ChatClassifica
 			sessionId: validatedData.sessionId,
 			title,
 			topics,
-			messageCount: messages.length
+			messageCount: messages.length,
+			activityLogsCreated: activityResult.activityLogsCreated,
+			nextStepUpdated: activityResult.nextStepUpdated,
+			projectId: activityResult.projectId
 		};
 	} catch (error: any) {
 		console.error(`❌ Chat classification job ${job.id} failed:`, error.message);

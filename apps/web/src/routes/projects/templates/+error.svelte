@@ -1,4 +1,4 @@
-<!-- apps/web/src/routes/ontology/templates/+error.svelte -->
+<!-- apps/web/src/routes/projects/templates/+error.svelte -->
 <script lang="ts">
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';

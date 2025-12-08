@@ -1,4 +1,4 @@
-<!-- apps/web/src/routes/ontology/templates/+page.svelte -->
+<!-- apps/web/src/routes/projects/templates/+page.svelte -->
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';

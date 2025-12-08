@@ -1,4 +1,4 @@
-<!-- apps/web/src/routes/projects/[id]/print/+layout.svelte -->
+<!-- apps/web/src/routes/projects-old/[id]/print/+layout.svelte -->
 <!-- The @ symbol tells SvelteKit to ignore parent layouts -->
 <script lang="ts">
 	// Absolutely minimal - no imports, no external CSS, no interference

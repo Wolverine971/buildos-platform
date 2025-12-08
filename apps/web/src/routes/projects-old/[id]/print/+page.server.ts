@@ -1,4 +1,4 @@
-// apps/web/src/routes/projects/[id]/print/+page.server.ts
+// apps/web/src/routes/projects-old/[id]/print/+page.server.ts
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 

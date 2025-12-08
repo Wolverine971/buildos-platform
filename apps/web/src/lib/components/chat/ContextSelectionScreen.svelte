@@ -10,7 +10,15 @@
 	import { onMount } from 'svelte';
 	import { browser } from '$app/environment';
 	import { createEventDispatcher } from 'svelte';
-	import { Globe, Plus, FolderOpen, ChevronRight, Sparkles, Loader2 } from 'lucide-svelte';
+	import {
+		Globe,
+		Plus,
+		FolderOpen,
+		ChevronRight,
+		Sparkles,
+		Loader2,
+		Lightbulb
+	} from 'lucide-svelte';
 	import Card from '$lib/components/ui/Card.svelte';
 	import CardBody from '$lib/components/ui/CardBody.svelte';
 	import type { ChatContextType } from '@buildos/shared-types';
@@ -143,6 +151,10 @@
 
 	function selectProjectCreate() {
 		dispatch('select', { contextType: 'project_create', label: 'New project flow' });
+	}
+
+	function selectBraindump() {
+		dispatch('select', { contextType: 'brain_dump', label: 'Braindump' });
 	}
 
 	function showProjectSelection() {
@@ -299,6 +311,35 @@
 						class="flex items-center justify-between text-xs font-medium text-emerald-600 dark:text-emerald-400"
 					>
 						<span>Project flows</span>
+						<ChevronRight
+							class="h-4 w-4 transition-transform group-hover:translate-x-1"
+						/>
+					</div>
+				</button>
+
+				<!-- Braindump -->
+				<button
+					onclick={selectBraindump}
+					class="group flex h-full flex-col gap-3 rounded-xl border border-slate-200/60 bg-gradient-to-br from-violet-50/70 via-purple-50/40 to-white/80 dither-soft dither-fade-hover p-5 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-violet-300/60 hover:shadow-md active:translate-y-0 dark:border-slate-700/60 dark:from-slate-900/80 dark:via-slate-900/50 dark:to-slate-900/70 dark:hover:border-violet-500/60"
+				>
+					<div
+						class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500/10 via-purple-400/10 to-fuchsia-500/10 dither-subtle text-violet-600 transition-transform duration-200 group-hover:scale-105 dark:text-violet-300"
+					>
+						<Lightbulb class="h-5 w-5" />
+					</div>
+					<div class="flex-1 space-y-1">
+						<h3 class="text-sm font-semibold text-slate-900 dark:text-white">
+							Braindump
+						</h3>
+						<p class="text-xs text-slate-600 dark:text-slate-400 leading-snug">
+							Capture raw thoughts, then save them or explore with AI as a thought
+							partner.
+						</p>
+					</div>
+					<div
+						class="flex items-center justify-between text-xs font-medium text-violet-600 dark:text-violet-400"
+					>
+						<span>Capture thoughts</span>
 						<ChevronRight
 							class="h-4 w-4 transition-transform group-hover:translate-x-1"
 						/>

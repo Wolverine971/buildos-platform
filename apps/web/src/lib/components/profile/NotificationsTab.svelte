@@ -47,15 +47,13 @@
 	<!-- Header -->
 	<div class="flex items-start gap-3 sm:gap-4">
 		<div
-			class="flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-lg dither-gradient shadow-lg flex-shrink-0"
+			class="flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-accent shadow-ink flex-shrink-0"
 		>
-			<Bell class="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+			<Bell class="w-5 h-5 sm:w-6 sm:h-6 text-accent-foreground" />
 		</div>
 		<div class="flex-1 min-w-0">
-			<h2 class="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white">
-				Notification Settings
-			</h2>
-			<p class="text-xs sm:text-base text-gray-600 dark:text-gray-400 mt-1">
+			<h2 class="text-lg sm:text-2xl font-bold text-foreground">Notification Settings</h2>
+			<p class="text-xs sm:text-base text-muted-foreground mt-1">
 				Manage how you receive notifications
 			</p>
 		</div>
@@ -70,7 +68,7 @@
 	<!-- Scheduled Messages List -->
 	{#if !loadingPreferences && smsPreferences?.event_reminders_enabled}
 		<div
-			class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg p-4 sm:p-6"
+			class="bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak p-4 sm:p-6"
 		>
 			<ScheduledSMSList timezone={userTimezone} />
 		</div>

@@ -3978,6 +3978,69 @@ export type Database = {
           },
         ]
       }
+      onto_braindumps: {
+        Row: {
+          chat_session_id: string | null
+          content: string
+          created_at: string
+          error_message: string | null
+          id: string
+          metadata: Json | null
+          processed_at: string | null
+          status: Database["public"]["Enums"]["onto_braindump_status"]
+          summary: string | null
+          title: string | null
+          topics: string[] | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          chat_session_id?: string | null
+          content: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          metadata?: Json | null
+          processed_at?: string | null
+          status?: Database["public"]["Enums"]["onto_braindump_status"]
+          summary?: string | null
+          title?: string | null
+          topics?: string[] | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          chat_session_id?: string | null
+          content?: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          metadata?: Json | null
+          processed_at?: string | null
+          status?: Database["public"]["Enums"]["onto_braindump_status"]
+          summary?: string | null
+          title?: string | null
+          topics?: string[] | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onto_braindumps_chat_session_id_fkey"
+            columns: ["chat_session_id"]
+            isOneToOne: false
+            referencedRelation: "chat_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onto_braindumps_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_migration_stats"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       onto_decisions: {
         Row: {
           created_at: string
@@ -4809,6 +4872,70 @@ export type Database = {
           },
         ]
       }
+      onto_project_logs: {
+        Row: {
+          action: string
+          after_data: Json | null
+          before_data: Json | null
+          change_source: string | null
+          changed_by: string
+          chat_session_id: string | null
+          created_at: string
+          entity_id: string
+          entity_type: string
+          id: string
+          project_id: string
+        }
+        Insert: {
+          action: string
+          after_data?: Json | null
+          before_data?: Json | null
+          change_source?: string | null
+          changed_by: string
+          chat_session_id?: string | null
+          created_at?: string
+          entity_id: string
+          entity_type: string
+          id?: string
+          project_id: string
+        }
+        Update: {
+          action?: string
+          after_data?: Json | null
+          before_data?: Json | null
+          change_source?: string | null
+          changed_by?: string
+          chat_session_id?: string | null
+          created_at?: string
+          entity_id?: string
+          entity_type?: string
+          id?: string
+          project_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onto_project_logs_changed_by_fkey"
+            columns: ["changed_by"]
+            isOneToOne: false
+            referencedRelation: "user_migration_stats"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "onto_project_logs_chat_session_id_fkey"
+            columns: ["chat_session_id"]
+            isOneToOne: false
+            referencedRelation: "chat_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onto_project_logs_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       onto_projects: {
         Row: {
           also_types: string[] | null
@@ -4821,6 +4948,10 @@ export type Database = {
           facet_stage: string | null
           id: string
           name: string
+          next_step_long: string | null
+          next_step_short: string | null
+          next_step_source: string | null
+          next_step_updated_at: string | null
           org_id: string | null
           props: Json
           start_at: string | null
@@ -4839,6 +4970,10 @@ export type Database = {
           facet_stage?: string | null
           id?: string
           name: string
+          next_step_long?: string | null
+          next_step_short?: string | null
+          next_step_source?: string | null
+          next_step_updated_at?: string | null
           org_id?: string | null
           props?: Json
           start_at?: string | null
@@ -4857,6 +4992,10 @@ export type Database = {
           facet_stage?: string | null
           id?: string
           name?: string
+          next_step_long?: string | null
+          next_step_short?: string | null
+          next_step_source?: string | null
+          next_step_updated_at?: string | null
           org_id?: string | null
           props?: Json
           start_at?: string | null
@@ -8975,6 +9114,20 @@ export type Database = {
         }
         Returns: undefined
       }
+      log_project_change: {
+        Args: {
+          p_action: string
+          p_after_data?: Json
+          p_before_data?: Json
+          p_change_source?: string
+          p_changed_by?: string
+          p_chat_session_id?: string
+          p_entity_id: string
+          p_entity_type: string
+          p_project_id: string
+        }
+        Returns: string
+      }
       normalize_queue_job_metadata: {
         Args: never
         Returns: {
@@ -9191,6 +9344,15 @@ export type Database = {
         Args: { p_date: string; p_user_id: string }
         Returns: undefined
       }
+      update_project_next_step: {
+        Args: {
+          p_next_step_long: string
+          p_next_step_short: string
+          p_project_id: string
+          p_source?: string
+        }
+        Returns: undefined
+      }
       update_scheduled_sms_send_time: {
         Args: {
           p_message_id: string
@@ -9300,6 +9462,7 @@ export type Database = {
       message_role: "system" | "user" | "assistant" | "tool"
       message_sender_type: "planner" | "executor" | "system"
       onto_actor_kind: "human" | "agent"
+      onto_braindump_status: "pending" | "processing" | "processed" | "failed"
       onto_template_status: "draft" | "active" | "deprecated"
       planning_strategy:
         | "planner_stream"
@@ -9329,6 +9492,7 @@ export type Database = {
         | "send_notification"
         | "schedule_daily_sms"
         | "classify_chat_session"
+        | "process_onto_braindump"
       recurrence_end_reason:
         | "indefinite"
         | "project_inherited"
@@ -9521,6 +9685,7 @@ export const Constants = {
       message_role: ["system", "user", "assistant", "tool"],
       message_sender_type: ["planner", "executor", "system"],
       onto_actor_kind: ["human", "agent"],
+      onto_braindump_status: ["pending", "processing", "processed", "failed"],
       onto_template_status: ["draft", "active", "deprecated"],
       planning_strategy: [
         "planner_stream",
@@ -9552,6 +9717,7 @@ export const Constants = {
         "send_notification",
         "schedule_daily_sms",
         "classify_chat_session",
+        "process_onto_braindump",
       ],
       recurrence_end_reason: [
         "indefinite",
