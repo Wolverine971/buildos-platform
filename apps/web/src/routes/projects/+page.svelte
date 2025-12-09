@@ -19,6 +19,7 @@
 	import type { OntologyProjectSummary } from '$lib/services/ontology/ontology-projects.service';
 	import { ontologyGraphStore } from '$lib/stores/ontology-graph.store';
 	import { getProjectStateBadgeClass } from '$lib/utils/ontology-badge-styles';
+	import { ListChecks, Layers, Target, Calendar, FileText } from 'lucide-svelte';
 
 	let { data } = $props();
 
@@ -210,6 +211,9 @@
 		const list = filteredProjects;
 		const taskTotal = list.reduce((acc, project) => acc + (project.task_count ?? 0), 0);
 		const outputTotal = list.reduce((acc, project) => acc + (project.output_count ?? 0), 0);
+		const goalTotal = list.reduce((acc, project) => acc + (project.goal_count ?? 0), 0);
+		const planTotal = list.reduce((acc, project) => acc + (project.plan_count ?? 0), 0);
+		const documentTotal = list.reduce((acc, project) => acc + (project.document_count ?? 0), 0);
 		const inProgress = list.filter((project) =>
 			['active', 'execution', 'in_progress'].includes(project.state_key)
 		).length;
@@ -218,6 +222,9 @@
 			totalProjects: list.length,
 			totalTasks: taskTotal,
 			totalOutputs: outputTotal,
+			totalGoals: goalTotal,
+			totalPlans: planTotal,
+			totalDocuments: documentTotal,
 			activeProjects: inProgress
 		};
 	});
@@ -787,46 +794,52 @@
 						{/if}
 
 						<div
-							class="mt-auto flex items-center justify-between border-t border-border pt-3 text-sm text-muted-foreground"
+							class="mt-auto flex flex-col gap-2 border-t border-border pt-3 text-sm text-muted-foreground"
 						>
-							<div class="flex items-center gap-3">
-								<span class="flex items-center gap-1.5" aria-label="Task count">
-									<svg
-										class="h-4 w-4"
-										xmlns="http://www.w3.org/2000/svg"
-										fill="none"
-										viewBox="0 0 24 24"
-										stroke="currentColor"
-									>
-										<path
-											stroke-linecap="round"
-											stroke-linejoin="round"
-											stroke-width="2"
-											d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
-										/>
-									</svg>
-									<span class="font-bold">{project.task_count}</span>
+							<div class="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+								<span
+									class="flex items-center gap-1"
+									aria-label="Task count"
+									title="Tasks"
+								>
+									<ListChecks class="h-3.5 w-3.5" />
+									<span class="font-bold text-xs">{project.task_count}</span>
 								</span>
-								<span class="flex items-center gap-1.5" aria-label="Output count">
-									<svg
-										class="h-4 w-4"
-										xmlns="http://www.w3.org/2000/svg"
-										fill="none"
-										viewBox="0 0 24 24"
-										stroke="currentColor"
-									>
-										<path
-											stroke-linecap="round"
-											stroke-linejoin="round"
-											stroke-width="2"
-											d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-										/>
-									</svg>
-									<span class="font-bold">{project.output_count}</span>
+								<span
+									class="flex items-center gap-1"
+									aria-label="Output count"
+									title="Outputs"
+								>
+									<Layers class="h-3.5 w-3.5" />
+									<span class="font-bold text-xs">{project.output_count}</span>
+								</span>
+								<span
+									class="flex items-center gap-1"
+									aria-label="Goal count"
+									title="Goals"
+								>
+									<Target class="h-3.5 w-3.5" />
+									<span class="font-bold text-xs">{project.goal_count}</span>
+								</span>
+								<span
+									class="flex items-center gap-1"
+									aria-label="Plan count"
+									title="Plans"
+								>
+									<Calendar class="h-3.5 w-3.5" />
+									<span class="font-bold text-xs">{project.plan_count}</span>
+								</span>
+								<span
+									class="flex items-center gap-1"
+									aria-label="Document count"
+									title="Documents"
+								>
+									<FileText class="h-3.5 w-3.5" />
+									<span class="font-bold text-xs">{project.document_count}</span>
 								</span>
 							</div>
 							<span class="text-xs text-muted-foreground/70">
-								{new Date(project.updated_at).toLocaleDateString()}
+								Updated {new Date(project.updated_at).toLocaleDateString()}
 							</span>
 						</div>
 					</a>

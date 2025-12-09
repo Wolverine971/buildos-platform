@@ -15,7 +15,7 @@
 -->
 <script lang="ts">
 	import { browser } from '$app/environment';
-	import { Clock, ListChecks, Loader, Save, Trash2 } from 'lucide-svelte';
+	import { Clock, Loader, Save, Trash2 } from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
@@ -27,22 +27,24 @@
 	import Select from '$lib/components/ui/Select.svelte';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
 	import FSMStateVisualizer from './FSMStateVisualizer.svelte';
+	import LinkedEntities from './linked-entities/LinkedEntities.svelte';
+	import type { EntityKind } from './linked-entities/linked-entities.types';
+	import GoalEditModal from './GoalEditModal.svelte';
+	import TaskEditModal from './TaskEditModal.svelte';
+	import DocumentModal from './DocumentModal.svelte';
 	import {
-		getPlanStateBadgeClass,
-		getTaskStateBadgeClass
+		getPlanStateBadgeClass
 	} from '$lib/utils/ontology-badge-styles';
-	import type { Task } from '$lib/types/onto';
 
 	interface Props {
 		planId: string;
 		projectId: string;
-		tasks?: Task[];
 		onClose: () => void;
 		onUpdated?: () => void;
 		onDeleted?: () => void;
 	}
 
-	let { planId, projectId, tasks = [], onClose, onUpdated, onDeleted }: Props = $props();
+	let { planId, projectId, onClose, onUpdated, onDeleted }: Props = $props();
 
 	let modalOpen = $state(true);
 	let plan = $state<any>(null);
@@ -71,18 +73,14 @@
 	// FSM related
 	let allowedTransitions = $state<any[]>([]);
 
-	const planTasks = $derived((tasks || []).filter((task) => task.plan_id === planId));
-	const completedTasks = $derived(
-		planTasks.filter((task) => ['done', 'completed'].includes(task.state_key)).length
-	);
-	const completionPercent = $derived(
-		planTasks.length ? Math.round((completedTasks / planTasks.length) * 100) : null
-	);
-	const highlightedTasks = $derived(
-		[...planTasks]
-			.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
-			.slice(0, 3)
-	);
+	// Modal states for linked entity navigation
+	let showGoalModal = $state(false);
+	let selectedGoalIdForModal = $state<string | null>(null);
+	let showTaskModal = $state(false);
+	let selectedTaskIdForModal = $state<string | null>(null);
+	let showDocumentModal = $state(false);
+	let selectedDocumentIdForModal = $state<string | null>(null);
+
 	const stateBadgeClasses = $derived(
 		`px-3 py-1 rounded-full text-xs font-semibold capitalize ${getPlanStateBadgeClass(stateKey)}`
 	);
@@ -281,14 +279,35 @@
 		return diff > 0 ? Math.round(diff / (1000 * 60 * 60 * 24)) : 0;
 	}
 
-	function formatTaskMeta(task: Task): string {
-		if (task.due_at) {
-			const dueLabel = formatDateOnly(task.due_at);
-			return dueLabel ? `Due ${dueLabel}` : 'Due date pending';
+	// Linked entity click handler
+	function handleLinkedEntityClick(kind: EntityKind, id: string) {
+		switch (kind) {
+			case 'goal':
+				selectedGoalIdForModal = id;
+				showGoalModal = true;
+				break;
+			case 'task':
+				selectedTaskIdForModal = id;
+				showTaskModal = true;
+				break;
+			case 'document':
+				selectedDocumentIdForModal = id;
+				showDocumentModal = true;
+				break;
+			default:
+				console.warn(`Unhandled entity kind: ${kind}`);
 		}
-		return formatRelativeTime(task.updated_at)
-			? `Updated ${formatRelativeTime(task.updated_at)}`
-			: 'No recent activity';
+	}
+
+	function closeLinkedEntityModals() {
+		showGoalModal = false;
+		showTaskModal = false;
+		showDocumentModal = false;
+		selectedGoalIdForModal = null;
+		selectedTaskIdForModal = null;
+		selectedDocumentIdForModal = null;
+		// Refresh plan data to get updated linked entities
+		loadPlan();
 	}
 </script>
 
@@ -527,50 +546,14 @@
 							</CardBody>
 						</Card>
 
-						<Card class="shadow-ink">
-							<CardHeader class="flex items-center gap-2">
-								<ListChecks class="w-4 h-4 text-accent" />
-								<h4
-									class="text-sm font-semibold uppercase tracking-[0.3em] text-muted-foreground"
-								>
-									Linked tasks
-								</h4>
-							</CardHeader>
-							<CardBody class="space-y-3">
-								{#if planTasks.length === 0}
-									<div class="text-sm text-muted-foreground">
-										No tasks linked yet. Assign tasks to this plan from the
-										Tasks tab to visualize progress.
-									</div>
-								{:else}
-									{#each highlightedTasks as task}
-										<div
-											class="p-3 border border-border rounded flex items-start justify-between gap-3"
-										>
-											<div>
-												<p class="font-semibold text-foreground">
-													{task.title}
-												</p>
-												<p class="text-xs text-muted-foreground">
-													{formatTaskMeta(task)}
-												</p>
-											</div>
-											<span
-												class={`text-xs font-semibold px-3 py-1 rounded-full ${getTaskStateBadgeClass(task.state_key)}`}
-											>
-												{task.state_key}
-											</span>
-										</div>
-									{/each}
-									{#if planTasks.length > highlightedTasks.length}
-										<p class="text-xs text-muted-foreground">
-											+{planTasks.length - highlightedTasks.length} more tasks
-											linked
-										</p>
-									{/if}
-								{/if}
-							</CardBody>
-						</Card>
+						<!-- Linked Entities -->
+						<LinkedEntities
+							sourceId={planId}
+							sourceKind="plan"
+							{projectId}
+							onEntityClick={handleLinkedEntityClick}
+							onLinksChanged={loadPlan}
+						/>
 					</div>
 				</div>
 			{/if}
@@ -644,4 +627,36 @@
 			This will permanently remove the plan and disconnect linked tasks.
 		</p>
 	</ConfirmationModal>
+{/if}
+
+<!-- Linked Entity Modals -->
+{#if showGoalModal && selectedGoalIdForModal}
+	<GoalEditModal
+		goalId={selectedGoalIdForModal}
+		{projectId}
+		onClose={closeLinkedEntityModals}
+		onUpdated={closeLinkedEntityModals}
+		onDeleted={closeLinkedEntityModals}
+	/>
+{/if}
+
+{#if showTaskModal && selectedTaskIdForModal}
+	<TaskEditModal
+		taskId={selectedTaskIdForModal}
+		{projectId}
+		onClose={closeLinkedEntityModals}
+		onUpdated={closeLinkedEntityModals}
+		onDeleted={closeLinkedEntityModals}
+	/>
+{/if}
+
+{#if showDocumentModal && selectedDocumentIdForModal}
+	<DocumentModal
+		{projectId}
+		documentId={selectedDocumentIdForModal}
+		bind:isOpen={showDocumentModal}
+		onClose={closeLinkedEntityModals}
+		onSaved={closeLinkedEntityModals}
+		onDeleted={closeLinkedEntityModals}
+	/>
 {/if}

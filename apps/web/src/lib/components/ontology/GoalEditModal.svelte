@@ -36,6 +36,11 @@
 	import Badge from '$lib/components/ui/Badge.svelte';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
 	import FSMStateVisualizer from './FSMStateVisualizer.svelte';
+	import LinkedEntities from './linked-entities/LinkedEntities.svelte';
+	import type { EntityKind } from './linked-entities/linked-entities.types';
+	import TaskEditModal from './TaskEditModal.svelte';
+	import PlanEditModal from './PlanEditModal.svelte';
+	import DocumentModal from './DocumentModal.svelte';
 
 	interface Props {
 		goalId: string;
@@ -65,6 +70,14 @@
 
 	// FSM related
 	let allowedTransitions = $state<any[]>([]);
+
+	// Modal states for linked entity navigation
+	let showTaskModal = $state(false);
+	let selectedTaskIdForModal = $state<string | null>(null);
+	let showPlanModal = $state(false);
+	let selectedPlanIdForModal = $state<string | null>(null);
+	let showDocumentModal = $state(false);
+	let selectedDocumentIdForModal = $state<string | null>(null);
 
 	// Load goal data when modal opens (client-side only)
 	$effect(() => {
@@ -206,6 +219,37 @@
 	function handleClose() {
 		modalOpen = false;
 		onClose?.();
+	}
+
+	// Linked entity click handler
+	function handleLinkedEntityClick(kind: EntityKind, id: string) {
+		switch (kind) {
+			case 'task':
+				selectedTaskIdForModal = id;
+				showTaskModal = true;
+				break;
+			case 'plan':
+				selectedPlanIdForModal = id;
+				showPlanModal = true;
+				break;
+			case 'document':
+				selectedDocumentIdForModal = id;
+				showDocumentModal = true;
+				break;
+			default:
+				console.warn(`Unhandled entity kind: ${kind}`);
+		}
+	}
+
+	function closeLinkedEntityModals() {
+		showTaskModal = false;
+		showPlanModal = false;
+		showDocumentModal = false;
+		selectedTaskIdForModal = null;
+		selectedPlanIdForModal = null;
+		selectedDocumentIdForModal = null;
+		// Refresh goal data to get updated linked entities
+		loadGoal();
 	}
 </script>
 
@@ -421,6 +465,15 @@
 
 					<!-- Sidebar (Right column) -->
 					<div class="space-y-4">
+						<!-- Linked Entities -->
+						<LinkedEntities
+							sourceId={goalId}
+							sourceKind="goal"
+							{projectId}
+							onEntityClick={handleLinkedEntityClick}
+							onLinksChanged={loadGoal}
+						/>
+
 						<!-- Goal Metadata -->
 						<Card variant="elevated">
 							<CardHeader variant="default">
@@ -542,4 +595,36 @@
 			This action cannot be undone. The goal and all its data will be permanently deleted.
 		</p>
 	</ConfirmationModal>
+{/if}
+
+<!-- Linked Entity Modals -->
+{#if showTaskModal && selectedTaskIdForModal}
+	<TaskEditModal
+		taskId={selectedTaskIdForModal}
+		{projectId}
+		onClose={closeLinkedEntityModals}
+		onUpdated={closeLinkedEntityModals}
+		onDeleted={closeLinkedEntityModals}
+	/>
+{/if}
+
+{#if showPlanModal && selectedPlanIdForModal}
+	<PlanEditModal
+		planId={selectedPlanIdForModal}
+		{projectId}
+		onClose={closeLinkedEntityModals}
+		onUpdated={closeLinkedEntityModals}
+		onDeleted={closeLinkedEntityModals}
+	/>
+{/if}
+
+{#if showDocumentModal && selectedDocumentIdForModal}
+	<DocumentModal
+		{projectId}
+		documentId={selectedDocumentIdForModal}
+		bind:isOpen={showDocumentModal}
+		onClose={closeLinkedEntityModals}
+		onSaved={closeLinkedEntityModals}
+		onDeleted={closeLinkedEntityModals}
+	/>
 {/if}

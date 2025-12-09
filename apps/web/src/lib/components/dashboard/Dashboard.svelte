@@ -8,7 +8,12 @@
 		Loader2,
 		AlertTriangle,
 		ChevronRight,
-		Sparkles
+		Sparkles,
+		ListChecks,
+		Layers,
+		Target,
+		Calendar,
+		FileText
 	} from 'lucide-svelte';
 	import { formatFullDate } from '$lib/utils/date-utils';
 	import { getProjectStateBadgeClass } from '$lib/utils/ontology-badge-styles';
@@ -28,6 +33,9 @@
 		updated_at: string;
 		task_count: number;
 		output_count: number;
+		goal_count: number;
+		plan_count: number;
+		document_count: number;
 	}
 
 	interface User {
@@ -285,49 +293,65 @@
 
 								<!-- Footer Stats -->
 								<div
-									class="mt-auto flex items-center justify-between border-t border-border pt-3 text-sm text-muted-foreground"
+									class="mt-auto flex flex-col gap-2 border-t border-border pt-3 text-sm text-muted-foreground"
 								>
-									<div class="flex items-center gap-3">
-										<span class="flex items-center gap-1.5" title="Tasks">
-											<svg
-												class="h-4 w-4"
-												xmlns="http://www.w3.org/2000/svg"
-												fill="none"
-												viewBox="0 0 24 24"
-												stroke="currentColor"
+									<div class="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+										<span
+											class="flex items-center gap-1"
+											aria-label="Task count"
+											title="Tasks"
+										>
+											<ListChecks class="h-3.5 w-3.5" />
+											<span class="font-bold text-xs"
+												>{project.task_count}</span
 											>
-												<path
-													stroke-linecap="round"
-													stroke-linejoin="round"
-													stroke-width="2"
-													d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
-												/>
-											</svg>
-											<span class="font-bold">{project.task_count}</span>
 										</span>
-										<span class="flex items-center gap-1.5" title="Outputs">
-											<svg
-												class="h-4 w-4"
-												xmlns="http://www.w3.org/2000/svg"
-												fill="none"
-												viewBox="0 0 24 24"
-												stroke="currentColor"
+										<span
+											class="flex items-center gap-1"
+											aria-label="Output count"
+											title="Outputs"
+										>
+											<Layers class="h-3.5 w-3.5" />
+											<span class="font-bold text-xs"
+												>{project.output_count}</span
 											>
-												<path
-													stroke-linecap="round"
-													stroke-linejoin="round"
-													stroke-width="2"
-													d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-												/>
-											</svg>
-											<span class="font-bold">{project.output_count}</span>
+										</span>
+										<span
+											class="flex items-center gap-1"
+											aria-label="Goal count"
+											title="Goals"
+										>
+											<Target class="h-3.5 w-3.5" />
+											<span class="font-bold text-xs"
+												>{project.goal_count}</span
+											>
+										</span>
+										<span
+											class="flex items-center gap-1"
+											aria-label="Plan count"
+											title="Plans"
+										>
+											<Calendar class="h-3.5 w-3.5" />
+											<span class="font-bold text-xs"
+												>{project.plan_count}</span
+											>
+										</span>
+										<span
+											class="flex items-center gap-1"
+											aria-label="Document count"
+											title="Documents"
+										>
+											<FileText class="h-3.5 w-3.5" />
+											<span class="font-bold text-xs"
+												>{project.document_count}</span
+											>
 										</span>
 									</div>
 									<div
-										class="flex items-center gap-1 text-xs text-muted-foreground/70"
+										class="flex items-center justify-between text-xs text-muted-foreground/70"
 									>
 										<span
-											>{new Date(
+											>Updated {new Date(
 												project.updated_at
 											).toLocaleDateString()}</span
 										>

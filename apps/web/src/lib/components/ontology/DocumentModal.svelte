@@ -9,6 +9,11 @@
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
 	import RichMarkdownEditor from '$lib/components/ui/RichMarkdownEditor.svelte';
 	import Badge from '$lib/components/ui/Badge.svelte';
+	import LinkedEntities from './linked-entities/LinkedEntities.svelte';
+	import type { EntityKind } from './linked-entities/linked-entities.types';
+	import TaskEditModal from './TaskEditModal.svelte';
+	import PlanEditModal from './PlanEditModal.svelte';
+	import GoalEditModal from './GoalEditModal.svelte';
 	import { toastService } from '$lib/stores/toast.store';
 	import { FileText, Loader, Save, Trash2 } from 'lucide-svelte';
 
@@ -72,6 +77,14 @@
 
 	let lastLoadedId = $state<string | null>(null);
 	const datalistId = `document-type-${Math.random().toString(36).slice(2, 9)}`;
+
+	// Modal states for linked entity navigation
+	let showTaskModal = $state(false);
+	let selectedTaskIdForModal = $state<string | null>(null);
+	let showPlanModal = $state(false);
+	let selectedPlanIdForModal = $state<string | null>(null);
+	let showGoalModal = $state(false);
+	let selectedGoalIdForModal = $state<string | null>(null);
 
 	const docTypeOptions = $derived.by(() => {
 		const set = new Set<string>();
@@ -272,6 +285,39 @@
 		}
 		return 'info';
 	}
+
+	// Linked entity click handler
+	function handleLinkedEntityClick(kind: EntityKind, id: string) {
+		switch (kind) {
+			case 'task':
+				selectedTaskIdForModal = id;
+				showTaskModal = true;
+				break;
+			case 'plan':
+				selectedPlanIdForModal = id;
+				showPlanModal = true;
+				break;
+			case 'goal':
+				selectedGoalIdForModal = id;
+				showGoalModal = true;
+				break;
+			default:
+				console.warn(`Unhandled entity kind: ${kind}`);
+		}
+	}
+
+	function closeLinkedEntityModals() {
+		showTaskModal = false;
+		showPlanModal = false;
+		showGoalModal = false;
+		selectedTaskIdForModal = null;
+		selectedPlanIdForModal = null;
+		selectedGoalIdForModal = null;
+		// Refresh document data to get updated linked entities
+		if (documentId) {
+			loadDocument(documentId);
+		}
+	}
 </script>
 
 <Modal
@@ -383,6 +429,17 @@
 								</p>
 							</div>
 						</div>
+
+						<!-- Linked Entities (only show when editing an existing document) -->
+						{#if documentId}
+							<LinkedEntities
+								sourceId={documentId}
+								sourceKind="document"
+								{projectId}
+								onEntityClick={handleLinkedEntityClick}
+								onLinksChanged={() => loadDocument(documentId)}
+							/>
+						{/if}
 					{/if}
 
 					<div class="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
@@ -554,3 +611,34 @@
 		this context.
 	</p></ConfirmationModal
 >
+
+<!-- Linked Entity Modals -->
+{#if showTaskModal && selectedTaskIdForModal}
+	<TaskEditModal
+		taskId={selectedTaskIdForModal}
+		{projectId}
+		onClose={closeLinkedEntityModals}
+		onUpdated={closeLinkedEntityModals}
+		onDeleted={closeLinkedEntityModals}
+	/>
+{/if}
+
+{#if showPlanModal && selectedPlanIdForModal}
+	<PlanEditModal
+		planId={selectedPlanIdForModal}
+		{projectId}
+		onClose={closeLinkedEntityModals}
+		onUpdated={closeLinkedEntityModals}
+		onDeleted={closeLinkedEntityModals}
+	/>
+{/if}
+
+{#if showGoalModal && selectedGoalIdForModal}
+	<GoalEditModal
+		goalId={selectedGoalIdForModal}
+		{projectId}
+		onClose={closeLinkedEntityModals}
+		onUpdated={closeLinkedEntityModals}
+		onDeleted={closeLinkedEntityModals}
+	/>
+{/if}

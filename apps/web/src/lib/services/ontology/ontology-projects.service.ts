@@ -20,6 +20,9 @@ export interface OntologyProjectSummary {
 	updated_at: string;
 	task_count: number;
 	output_count: number;
+	goal_count: number;
+	plan_count: number;
+	document_count: number;
 }
 
 /**
@@ -61,7 +64,10 @@ export async function fetchProjectSummaries(
 			created_at,
 			updated_at,
 			onto_tasks(count),
-			onto_outputs(count)
+			onto_outputs(count),
+			onto_goals(count),
+			onto_plans(count),
+			onto_documents(count)
 		`
 		)
 		.eq('created_by', actorId)
@@ -84,6 +90,9 @@ export async function fetchProjectSummaries(
 		created_at: project.created_at,
 		updated_at: project.updated_at,
 		task_count: project.onto_tasks?.[0]?.count ?? 0,
-		output_count: project.onto_outputs?.[0]?.count ?? 0
+		output_count: project.onto_outputs?.[0]?.count ?? 0,
+		goal_count: project.onto_goals?.[0]?.count ?? 0,
+		plan_count: project.onto_plans?.[0]?.count ?? 0,
+		document_count: project.onto_documents?.[0]?.count ?? 0
 	}));
 }

@@ -7,6 +7,9 @@
 	import Select from '$lib/components/ui/Select.svelte';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
 	import DocumentEditor from '$lib/components/ontology/DocumentEditor.svelte';
+	import LinkedEntities from './linked-entities/LinkedEntities.svelte';
+	import type { EntityKind } from './linked-entities/linked-entities.types';
+	import TaskEditModal from './TaskEditModal.svelte';
 	import { toastService } from '$lib/stores/toast.store';
 	import type { ResolvedTemplate } from '$lib/services/ontology/template-resolver.service';
 
@@ -53,6 +56,10 @@
 		{ value: 'approved', label: 'Approved' },
 		{ value: 'published', label: 'Published' }
 	];
+
+	// Modal states for linked entity navigation
+	let showTaskModal = $state(false);
+	let selectedTaskIdForModal = $state<string | null>(null);
 
 	$effect(() => {
 		if (!browser || !outputId) return;
@@ -210,6 +217,23 @@
 			deleting = false;
 		}
 	}
+
+	// Linked entity click handler
+	function handleLinkedEntityClick(kind: EntityKind, id: string) {
+		if (kind === 'task') {
+			selectedTaskIdForModal = id;
+			showTaskModal = true;
+		} else {
+			console.warn(`Unhandled entity kind: ${kind}`);
+		}
+	}
+
+	function closeLinkedEntityModals() {
+		showTaskModal = false;
+		selectedTaskIdForModal = null;
+		// Refresh output data to get updated linked entities
+		loadOutput();
+	}
 </script>
 
 <Modal
@@ -319,6 +343,17 @@
 						</Select>
 					</div>
 
+					<!-- Linked Entities -->
+					<div class="mb-6">
+						<LinkedEntities
+							sourceId={outputId}
+							sourceKind="output"
+							{projectId}
+							onEntityClick={handleLinkedEntityClick}
+							onLinksChanged={loadOutput}
+						/>
+					</div>
+
 					<!-- Document Editor -->
 					<DocumentEditor
 						outputId={output.id}
@@ -386,3 +421,14 @@
 		undone.
 	</p>
 </ConfirmationModal>
+
+<!-- Linked Entity Modals -->
+{#if showTaskModal && selectedTaskIdForModal}
+	<TaskEditModal
+		taskId={selectedTaskIdForModal}
+		{projectId}
+		onClose={closeLinkedEntityModals}
+		onUpdated={closeLinkedEntityModals}
+		onDeleted={closeLinkedEntityModals}
+	/>
+{/if}
