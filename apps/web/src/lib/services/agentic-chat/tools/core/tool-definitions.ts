@@ -672,6 +672,44 @@ Shows what entities are connected to this entity and how.`,
 		}
 	},
 
+	{
+		type: 'function',
+		function: {
+			name: 'get_linked_entities',
+			description: `Get detailed information about entities linked to a specific entity via relationships.
+Use this tool when you need to:
+- Understand what plans a task belongs to
+- Find all tasks that support a goal
+- See documents referenced by an entity
+- Explore task dependencies
+- Get full details including descriptions for linked entities
+
+This returns richer information than get_entity_relationships, including entity names, states, types, and descriptions.
+The initial context shows abbreviated linked entities. Use this tool to get full details.`,
+			parameters: {
+				type: 'object',
+				properties: {
+					entity_id: {
+						type: 'string',
+						description: 'UUID of the entity to get linked entities for'
+					},
+					entity_kind: {
+						type: 'string',
+						enum: ['task', 'plan', 'goal', 'milestone', 'document', 'output'],
+						description: 'Type of the source entity'
+					},
+					filter_kind: {
+						type: 'string',
+						enum: ['task', 'plan', 'goal', 'milestone', 'document', 'output', 'all'],
+						default: 'all',
+						description: 'Filter to specific entity type, or "all" for everything'
+					}
+				},
+				required: ['entity_id', 'entity_kind']
+			}
+		}
+	},
+
 	// ============================================
 	// ONTOLOGY ACTION TOOLS (Create/Update/Delete)
 	// ============================================
@@ -2030,6 +2068,16 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 	get_entity_relationships: {
 		summary: 'Graph traversal helper for edges between ontology entities.',
 		capabilities: ['Supports direction filters', 'Useful before multi-entity analysis'],
+		contexts: ['base', 'project', 'project_audit', 'project_forecast'],
+		category: 'read'
+	},
+	get_linked_entities: {
+		summary: 'Get detailed linked entities with names, states, and descriptions.',
+		capabilities: [
+			'Returns full entity details',
+			'Supports filtering by entity type',
+			'Use when abbreviated context needs expansion'
+		],
 		contexts: ['base', 'project', 'project_audit', 'project_forecast'],
 		category: 'read'
 	},

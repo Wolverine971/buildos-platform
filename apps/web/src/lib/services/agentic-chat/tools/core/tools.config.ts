@@ -45,7 +45,8 @@ export const TOOL_CATEGORIES = {
 			'get_onto_plan_details',
 			'get_onto_document_details',
 			'list_task_documents',
-			'get_entity_relationships'
+			'get_entity_relationships',
+			'get_linked_entities'
 		],
 		averageTokens: 350,
 		costTier: 'medium'
@@ -96,6 +97,7 @@ const TOOL_GROUPS: Record<ToolContextScope, string[]> = {
 	base: [
 		'get_field_info',
 		'get_entity_relationships',
+		'get_linked_entities',
 		'web_search',
 		'get_buildos_overview',
 		'get_buildos_usage_guide'

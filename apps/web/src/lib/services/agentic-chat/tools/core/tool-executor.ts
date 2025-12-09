@@ -24,6 +24,12 @@ import {
 	getBuildosUsageGuide
 } from '$lib/services/agentic-chat/tools/buildos';
 import { performWebSearch, type WebSearchArgs } from '$lib/services/agentic-chat/tools/websearch';
+import { OntologyContextLoader } from '$lib/services/ontology-context-loader';
+import {
+	formatLinkedEntitiesFullDetail,
+	getLinkedEntitiesSummary
+} from '$lib/services/linked-entity-context-formatter';
+import type { OntologyEntityType } from '$lib/types/agent-chat-enhancement';
 
 interface ListOntoTasksArgs {
 	project_id?: string;
@@ -72,6 +78,12 @@ interface GetOntoTaskDetailsArgs {
 interface GetEntityRelationshipsArgs {
 	entity_id: string;
 	direction?: 'outgoing' | 'incoming' | 'both';
+}
+
+interface GetLinkedEntitiesArgs {
+	entity_id: string;
+	entity_kind: 'task' | 'plan' | 'goal' | 'milestone' | 'document' | 'output';
+	filter_kind?: 'task' | 'plan' | 'goal' | 'milestone' | 'document' | 'output' | 'all';
 }
 
 interface CreateOntoTaskArgs {
@@ -717,6 +729,10 @@ export class ChatToolExecutor {
 
 				case 'get_entity_relationships':
 					result = await this.getEntityRelationships(args as GetEntityRelationshipsArgs);
+					break;
+
+				case 'get_linked_entities':
+					result = await this.getLinkedEntities(args as GetLinkedEntitiesArgs);
 					break;
 
 				case 'list_onto_templates':
@@ -1499,6 +1515,103 @@ export class ChatToolExecutor {
 			relationships,
 			message: `Found ${relationships.length} relationships for entity ${args.entity_id}.`
 		};
+	}
+
+	/**
+	 * Get detailed linked entities for a specific entity.
+	 * Returns full information about all linked entities including descriptions.
+	 */
+	private async getLinkedEntities(args: GetLinkedEntitiesArgs): Promise<{
+		linked_entities: string;
+		summary: string;
+		counts: Record<string, number>;
+		message: string;
+	}> {
+		await this.assertEntityOwnership(args.entity_id);
+
+		// Get entity name for context
+		const entityName = await this.getEntityDisplayName(args.entity_id, args.entity_kind);
+
+		// Load linked entities with full details
+		const ontologyLoader = new OntologyContextLoader(this.supabase);
+		const linkedContext = await ontologyLoader.loadLinkedEntitiesContext(
+			args.entity_id,
+			args.entity_kind as OntologyEntityType,
+			entityName,
+			{
+				maxPerType: 50, // Full mode - get all
+				includeDescriptions: true,
+				priorityOrder: 'active_first'
+			}
+		);
+
+		// Filter by kind if specified
+		if (args.filter_kind && args.filter_kind !== 'all') {
+			const kindKey = `${args.filter_kind}s` as keyof typeof linkedContext.linkedEntities;
+			const filteredEntities = linkedContext.linkedEntities[kindKey] || [];
+			const filteredContext = {
+				...linkedContext,
+				linkedEntities: {
+					plans: kindKey === 'plans' ? filteredEntities : [],
+					goals: kindKey === 'goals' ? filteredEntities : [],
+					tasks: kindKey === 'tasks' ? filteredEntities : [],
+					milestones: kindKey === 'milestones' ? filteredEntities : [],
+					documents: kindKey === 'documents' ? filteredEntities : [],
+					outputs: kindKey === 'outputs' ? filteredEntities : []
+				},
+				counts: {
+					...linkedContext.counts,
+					total: filteredEntities.length
+				}
+			};
+
+			const formattedOutput = formatLinkedEntitiesFullDetail(filteredContext);
+			const summary = `${filteredEntities.length} ${args.filter_kind}(s) linked`;
+
+			return {
+				linked_entities: formattedOutput,
+				summary,
+				counts: { [args.filter_kind]: filteredEntities.length },
+				message: `Found ${filteredEntities.length} linked ${args.filter_kind}(s) for ${args.entity_kind} "${entityName}".`
+			};
+		}
+
+		// Return all linked entities
+		const formattedOutput = formatLinkedEntitiesFullDetail(linkedContext);
+		const summary = getLinkedEntitiesSummary(linkedContext);
+
+		return {
+			linked_entities: formattedOutput,
+			summary,
+			counts: linkedContext.counts,
+			message: `Found ${linkedContext.counts.total} linked entities for ${args.entity_kind} "${entityName}".`
+		};
+	}
+
+	/**
+	 * Get display name for an entity by its kind
+	 */
+	private async getEntityDisplayName(entityId: string, entityKind: string): Promise<string> {
+		const tableMap: Record<string, string> = {
+			task: 'onto_tasks',
+			plan: 'onto_plans',
+			goal: 'onto_goals',
+			milestone: 'onto_milestones',
+			document: 'onto_documents',
+			output: 'onto_outputs'
+		};
+
+		const table = tableMap[entityKind];
+		if (!table) return entityId;
+
+		const { data } = await this.supabase
+			.from(table as any)
+			.select('name, title, summary')
+			.eq('id', entityId)
+			.single();
+
+		if (!data) return entityId;
+		return (data as any).name || (data as any).title || (data as any).summary || entityId;
 	}
 
 	private async listOntoTemplates(args: ListOntoTemplatesArgs): Promise<{

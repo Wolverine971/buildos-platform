@@ -39,7 +39,13 @@ import type {
 	OntologyEntityType,
 	OntologyContextScope
 } from '$lib/types/agent-chat-enhancement';
+import type { EntityLinkedContext } from '$lib/types/linked-entity-context.types';
 import { getAvailableTemplates } from './ontology/template-resolver.service';
+import { OntologyContextLoader } from './ontology-context-loader';
+import {
+	formatLinkedEntitiesForSystemPrompt,
+	hasLinkedEntities
+} from './linked-entity-context-formatter';
 
 const PROJECT_CONTEXT_DOC_GUIDANCE = generateProjectContextFramework('condensed');
 
@@ -135,6 +141,7 @@ export class AgentContextService {
 
 	private compressionService?: ChatCompressionService;
 	private chatContextService: ChatContextService;
+	private ontologyLoader: OntologyContextLoader;
 
 	constructor(
 		private supabase: SupabaseClient<Database>,
@@ -142,6 +149,7 @@ export class AgentContextService {
 	) {
 		this.compressionService = compressionService;
 		this.chatContextService = new ChatContextService(supabase);
+		this.ontologyLoader = new OntologyContextLoader(supabase);
 	}
 
 	// ============================================
@@ -172,12 +180,35 @@ export class AgentContextService {
 			hasFocus: !!projectFocus
 		});
 
+		// Step 0: Load linked entities if there's a focus entity (for element/combined contexts)
+		let linkedEntitiesContext: EntityLinkedContext | undefined;
+		const focus = ontologyContext?.scope?.focus;
+		if (focus?.type && focus?.id && focus?.name) {
+			try {
+				console.log('[AgentContext] Loading linked entities for focus:', focus.type, focus.id);
+				linkedEntitiesContext = await this.ontologyLoader.loadLinkedEntitiesContext(
+					focus.id,
+					focus.type,
+					focus.name,
+					{ maxPerType: 3, includeDescriptions: false }
+				);
+				console.log('[AgentContext] Linked entities loaded:', {
+					total: linkedEntitiesContext.counts.total,
+					truncated: linkedEntitiesContext.truncated
+				});
+			} catch (error) {
+				console.error('[AgentContext] Failed to load linked entities:', error);
+				// Continue without linked entities - non-critical failure
+			}
+		}
+
 		// Step 1: Build system prompt with ontology awareness
 		const systemPrompt = await this.buildEnhancedSystemPrompt(
 			normalizedContext,
 			ontologyContext,
 			lastTurnContext,
-			entityId
+			entityId,
+			linkedEntitiesContext
 		);
 
 		// Step 2: Process conversation history with compression if needed
@@ -293,7 +324,8 @@ export class AgentContextService {
 		contextType: ChatContextType,
 		ontologyContext?: OntologyContext,
 		lastTurnContext?: LastTurnContext,
-		entityId?: string
+		entityId?: string,
+		linkedEntitiesContext?: EntityLinkedContext
 	): Promise<string> {
 		let prompt = `You are an AI assistant in BuildOS with advanced context awareness.
 
@@ -591,6 +623,14 @@ ${entityHighlights.length > 0 ? entityHighlights.map((line) => `- ${line}`).join
 				prompt += `
 - Direct Relationships: ${ontologyContext.relationships.edges.length}`;
 			}
+		}
+
+		// Add linked entities context when there's a focus entity
+		if (linkedEntitiesContext && hasLinkedEntities(linkedEntitiesContext)) {
+			const linkedEntitiesPrompt = formatLinkedEntitiesForSystemPrompt(linkedEntitiesContext);
+			prompt += `
+
+${linkedEntitiesPrompt}`;
 		}
 
 		// Add global context

@@ -11,6 +11,12 @@ import type {
 	EntityRelationships,
 	OntologyEntityType
 } from '$lib/types/agent-chat-enhancement';
+import type {
+	EntityLinkedContext,
+	LinkedEntityContext,
+	LinkedEntityKind,
+	LoadLinkedEntitiesOptions
+} from '$lib/types/linked-entity-context.types';
 
 type ProjectRow = Database['public']['Tables']['onto_projects']['Row'];
 type ElementType = Exclude<OntologyEntityType, 'project'>;
@@ -332,6 +338,236 @@ export class OntologyContextLoader {
 					name: this.getEntityDisplayName(focusEntity, focusType)
 				}
 			}
+		};
+	}
+
+	/**
+	 * Load linked entities context for a focused entity.
+	 * This provides the AI agent with relationship awareness.
+	 *
+	 * @param entityId - The ID of the focused entity
+	 * @param entityKind - The type of the focused entity (task, plan, goal, etc.)
+	 * @param entityName - The display name of the focused entity
+	 * @param options - Options for loading (maxPerType, includeDescriptions)
+	 * @returns EntityLinkedContext with linked entities grouped by type
+	 */
+	async loadLinkedEntitiesContext(
+		entityId: string,
+		entityKind: OntologyEntityType,
+		entityName: string,
+		options: LoadLinkedEntitiesOptions = {}
+	): Promise<EntityLinkedContext> {
+		const { maxPerType = 3, includeDescriptions = false, priorityOrder = 'active_first' } = options;
+
+		console.log('[OntologyLoader] Loading linked entities for:', entityKind, entityId);
+
+		// Query all edges where this entity is source OR destination
+		const { data: edges, error } = await this.supabase
+			.from('onto_edges')
+			.select('id, src_kind, src_id, rel, dst_kind, dst_id')
+			.or(`src_id.eq.${entityId},dst_id.eq.${entityId}`);
+
+		if (error) {
+			console.error('[OntologyLoader] Failed to load linked entity edges:', error);
+			return this.createEmptyLinkedContext(entityId, entityKind, entityName);
+		}
+
+		// Group edges by target entity kind
+		const edgesByKind: Record<
+			LinkedEntityKind,
+			Array<{
+				edgeId: string;
+				targetId: string;
+				relation: string;
+				direction: 'outgoing' | 'incoming';
+			}>
+		> = {
+			task: [],
+			plan: [],
+			goal: [],
+			milestone: [],
+			document: [],
+			output: []
+		};
+
+		for (const edge of edges || []) {
+			const isSource = edge.src_id === entityId;
+			const targetKind = (isSource ? edge.dst_kind : edge.src_kind) as LinkedEntityKind;
+			const targetId = isSource ? edge.dst_id : edge.src_id;
+
+			// Skip if target kind is not a valid linked entity kind
+			if (!edgesByKind[targetKind]) continue;
+
+			// Skip self-references
+			if (targetId === entityId) continue;
+
+			edgesByKind[targetKind].push({
+				edgeId: edge.id,
+				targetId,
+				relation: edge.rel,
+				direction: isSource ? 'outgoing' : 'incoming'
+			});
+		}
+
+		// Batch fetch entity details for each kind
+		const linkedEntities: EntityLinkedContext['linkedEntities'] = {
+			plans: [],
+			goals: [],
+			tasks: [],
+			milestones: [],
+			documents: [],
+			outputs: []
+		};
+
+		const counts: EntityLinkedContext['counts'] = {
+			plans: edgesByKind.plan.length,
+			goals: edgesByKind.goal.length,
+			tasks: edgesByKind.task.length,
+			milestones: edgesByKind.milestone.length,
+			documents: edgesByKind.document.length,
+			outputs: edgesByKind.output.length,
+			total: 0
+		};
+		counts.total = counts.plans + counts.goals + counts.tasks + counts.milestones + counts.documents + counts.outputs;
+
+		let truncated = false;
+
+		// Fetch each entity type
+		const entityFetchers: Array<{
+			kind: LinkedEntityKind;
+			table: string;
+			edges: typeof edgesByKind.task;
+			targetKey: keyof EntityLinkedContext['linkedEntities'];
+		}> = [
+			{ kind: 'plan', table: 'onto_plans', edges: edgesByKind.plan, targetKey: 'plans' },
+			{ kind: 'goal', table: 'onto_goals', edges: edgesByKind.goal, targetKey: 'goals' },
+			{ kind: 'task', table: 'onto_tasks', edges: edgesByKind.task, targetKey: 'tasks' },
+			{ kind: 'milestone', table: 'onto_milestones', edges: edgesByKind.milestone, targetKey: 'milestones' },
+			{ kind: 'document', table: 'onto_documents', edges: edgesByKind.document, targetKey: 'documents' },
+			{ kind: 'output', table: 'onto_outputs', edges: edgesByKind.output, targetKey: 'outputs' }
+		];
+
+		// Fetch all entity types in parallel
+		await Promise.all(
+			entityFetchers.map(async ({ kind, table, edges: kindEdges, targetKey }) => {
+				if (kindEdges.length === 0) return;
+
+				// Check if we need to truncate
+				if (kindEdges.length > maxPerType) {
+					truncated = true;
+				}
+
+				// Get IDs to fetch (limited to maxPerType)
+				const idsToFetch = kindEdges.slice(0, maxPerType).map((e) => e.targetId);
+
+				// Fetch entities
+				const { data: entities, error: fetchError } = await this.supabase
+					.from(table as any)
+					.select('*')
+					.in('id', idsToFetch);
+
+				if (fetchError || !entities) {
+					console.error(`[OntologyLoader] Failed to fetch ${kind} entities:`, fetchError);
+					return;
+				}
+
+				// Map to LinkedEntityContext format
+				const entityMap = new Map(entities.map((e: any) => [e.id, e]));
+
+				for (const edge of kindEdges.slice(0, maxPerType)) {
+					const entity = entityMap.get(edge.targetId) as any;
+					if (!entity) continue;
+
+					// Filter out scratch/workspace documents
+					if (kind === 'document') {
+						const typeKey = entity.type_key || '';
+						if (typeKey.includes('scratch') || typeKey.includes('workspace')) {
+							continue;
+						}
+					}
+
+					const linkedEntity: LinkedEntityContext = {
+						kind,
+						id: entity.id,
+						name: entity.name || entity.title || entity.summary || `${kind}:${entity.id}`,
+						state: entity.state_key || null,
+						typeKey: entity.type_key || null,
+						relation: edge.relation,
+						direction: edge.direction,
+						edgeId: edge.edgeId
+					};
+
+					// Add optional fields
+					if (includeDescriptions && entity.description) {
+						linkedEntity.description = entity.description;
+					}
+					if (kind === 'milestone' && entity.due_at) {
+						linkedEntity.dueAt = entity.due_at;
+					}
+
+					linkedEntities[targetKey].push(linkedEntity);
+				}
+
+				// Sort by active_first if specified
+				if (priorityOrder === 'active_first') {
+					linkedEntities[targetKey].sort((a, b) => {
+						const activeStates = ['active', 'in_progress', 'todo'];
+						const aActive = activeStates.includes(a.state || '');
+						const bActive = activeStates.includes(b.state || '');
+						if (aActive && !bActive) return -1;
+						if (!aActive && bActive) return 1;
+						return 0;
+					});
+				}
+			})
+		);
+
+		return {
+			source: {
+				kind: entityKind,
+				id: entityId,
+				name: entityName
+			},
+			linkedEntities,
+			counts,
+			truncated,
+			loadedAt: new Date().toISOString()
+		};
+	}
+
+	/**
+	 * Create an empty linked context for when no edges exist
+	 */
+	private createEmptyLinkedContext(
+		entityId: string,
+		entityKind: OntologyEntityType,
+		entityName: string
+	): EntityLinkedContext {
+		return {
+			source: {
+				kind: entityKind,
+				id: entityId,
+				name: entityName
+			},
+			linkedEntities: {
+				plans: [],
+				goals: [],
+				tasks: [],
+				milestones: [],
+				documents: [],
+				outputs: []
+			},
+			counts: {
+				plans: 0,
+				goals: 0,
+				tasks: 0,
+				milestones: 0,
+				documents: 0,
+				outputs: 0,
+				total: 0
+			},
+			truncated: false,
+			loadedAt: new Date().toISOString()
 		};
 	}
 
