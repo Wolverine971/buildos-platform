@@ -29,12 +29,7 @@
 		FileText,
 		ExternalLink,
 		CircleCheck,
-		Target,
-		Flag,
-		Layers,
-		ListChecks,
-		Link2Off,
-		FileOutput
+		ListChecks
 	} from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
@@ -54,27 +49,10 @@
 	import GoalEditModal from './GoalEditModal.svelte';
 	import PlanEditModal from './PlanEditModal.svelte';
 	import TaskEditModalSelf from './TaskEditModal.svelte';
+	import LinkedEntities from './linked-entities/LinkedEntities.svelte';
+	import type { EntityKind } from './linked-entities/linked-entities.types';
 
-	// Type for linked entities returned from API
-	interface LinkedEntity {
-		id: string;
-		name?: string;
-		title?: string;
-		type_key?: string;
-		state_key?: string;
-		due_at?: string;
-		edge_rel: string;
-		edge_direction: 'outgoing' | 'incoming';
-	}
-
-	interface LinkedEntitiesResult {
-		plans: LinkedEntity[];
-		goals: LinkedEntity[];
-		milestones: LinkedEntity[];
-		documents: LinkedEntity[];
-		dependentTasks: LinkedEntity[];
-		outputs: LinkedEntity[];
-	}
+	// Linked entities types are imported from linked-entities component
 	import RichMarkdownEditor from '$lib/components/ui/RichMarkdownEditor.svelte';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
 	import { toastService } from '$lib/stores/toast.store';
@@ -155,8 +133,7 @@
 	let workspaceDocumentModalOpen = $state(false);
 	let workspaceDocumentId = $state<string | null>(null);
 
-	// Linked entities state
-	let linkedEntities = $state<LinkedEntitiesResult | null>(null);
+	// Note: LinkedEntities component fetches its own data
 
 	// Modal states for linked entity navigation
 	let showGoalModal = $state(false);
@@ -294,7 +271,6 @@
 			const data = await response.json();
 			task = data.data?.task;
 			template = data.data?.template || null;
-			linkedEntities = data.data?.linkedEntities || null;
 
 			if (task) {
 				title = task.title || '';
@@ -628,36 +604,25 @@
 		loadTask();
 	}
 
-	// Helper to check if there are any linked entities
-	function hasLinkedEntities(linked: LinkedEntitiesResult | null): boolean {
-		if (!linked) return false;
-		return (
-			linked.plans.length > 0 ||
-			linked.goals.length > 0 ||
-			linked.milestones.length > 0 ||
-			linked.documents.length > 0 ||
-			linked.dependentTasks.length > 0 ||
-			linked.outputs.length > 0
-		);
-	}
-
-	// Get display name for a linked entity
-	function getEntityDisplayName(entity: LinkedEntity): string {
-		return entity.name || entity.title || 'Untitled';
-	}
-
-	// Format relationship label for display
-	function formatRelLabel(rel: string, direction: 'outgoing' | 'incoming'): string {
-		const labels: Record<string, string> = {
-			belongs_to_plan: 'In plan',
-			supports_goal: 'Supports',
-			contains: 'Part of',
-			has_document: 'References',
-			depends_on: direction === 'outgoing' ? 'Depends on' : 'Blocked by',
-			blocks: direction === 'outgoing' ? 'Blocks' : 'Blocked by',
-			produces: 'Produces'
-		};
-		return labels[rel] || rel.replace(/_/g, ' ');
+	// Unified handler for LinkedEntities component clicks
+	function handleLinkedEntityClick(kind: EntityKind, id: string) {
+		switch (kind) {
+			case 'goal':
+				openGoalModal(id);
+				break;
+			case 'plan':
+				openPlanModal(id);
+				break;
+			case 'document':
+				openDocumentModal(id);
+				break;
+			case 'task':
+				openLinkedTaskModal(id);
+				break;
+			// milestone and output don't have edit modals yet, could add later
+			default:
+				console.log(`No modal handler for entity kind: ${kind}`);
+		}
 	}
 </script>
 
@@ -1096,333 +1061,13 @@
 									<!-- Sidebar (Right column) -->
 									<div class="space-y-4">
 										<!-- Linked Entities -->
-										<Card variant="elevated">
-											<CardHeader variant="default">
-												<h3
-													class="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2"
-												>
-													<span class="w-1.5 h-1.5 bg-accent rounded-full"
-													></span>
-													Linked Entities
-												</h3>
-											</CardHeader>
-											<CardBody padding="sm">
-												{#if hasLinkedEntities(linkedEntities)}
-													<div class="space-y-3">
-														<!-- Plans -->
-														{#if linkedEntities?.plans && linkedEntities.plans.length > 0}
-															<div class="space-y-1.5">
-																<div
-																	class="flex items-center gap-1.5 text-xs font-medium text-muted-foreground"
-																>
-																	<Layers
-																		class="w-3.5 h-3.5 text-accent"
-																	/>
-																	Plans
-																	<Badge variant="info" size="sm"
-																		>{linkedEntities.plans
-																			.length}</Badge
-																	>
-																</div>
-																{#each linkedEntities.plans as entity}
-																	<button
-																		type="button"
-																		onclick={() =>
-																			openPlanModal(
-																				entity.id
-																			)}
-																		class="w-full text-left px-2 py-1.5 rounded hover:bg-muted transition-colors group"
-																	>
-																		<div
-																			class="flex items-center justify-between gap-2"
-																		>
-																			<span
-																				class="text-sm text-foreground truncate group-hover:text-accent"
-																			>
-																				{getEntityDisplayName(
-																					entity
-																				)}
-																			</span>
-																			<ExternalLink
-																				class="w-3.5 h-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
-																			/>
-																		</div>
-																		{#if entity.state_key}
-																			<span
-																				class="text-xs text-muted-foreground"
-																				>{entity.state_key}</span
-																			>
-																		{/if}
-																	</button>
-																{/each}
-															</div>
-														{/if}
-
-														<!-- Goals -->
-														{#if linkedEntities?.goals && linkedEntities.goals.length > 0}
-															<div class="space-y-1.5">
-																<div
-																	class="flex items-center gap-1.5 text-xs font-medium text-muted-foreground"
-																>
-																	<Target
-																		class="w-3.5 h-3.5 text-purple-500"
-																	/>
-																	Goals
-																	<Badge variant="info" size="sm"
-																		>{linkedEntities.goals
-																			.length}</Badge
-																	>
-																</div>
-																{#each linkedEntities.goals as entity}
-																	<button
-																		type="button"
-																		onclick={() =>
-																			openGoalModal(
-																				entity.id
-																			)}
-																		class="w-full text-left px-2 py-1.5 rounded hover:bg-muted transition-colors group"
-																	>
-																		<div
-																			class="flex items-center justify-between gap-2"
-																		>
-																			<span
-																				class="text-sm text-foreground truncate group-hover:text-accent"
-																			>
-																				{getEntityDisplayName(
-																					entity
-																				)}
-																			</span>
-																			<ExternalLink
-																				class="w-3.5 h-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
-																			/>
-																		</div>
-																		{#if entity.state_key}
-																			<span
-																				class="text-xs text-muted-foreground"
-																				>{entity.state_key}</span
-																			>
-																		{/if}
-																	</button>
-																{/each}
-															</div>
-														{/if}
-
-														<!-- Milestones -->
-														{#if linkedEntities?.milestones && linkedEntities.milestones.length > 0}
-															<div class="space-y-1.5">
-																<div
-																	class="flex items-center gap-1.5 text-xs font-medium text-muted-foreground"
-																>
-																	<Flag
-																		class="w-3.5 h-3.5 text-amber-500"
-																	/>
-																	Milestones
-																	<Badge variant="info" size="sm"
-																		>{linkedEntities.milestones
-																			.length}</Badge
-																	>
-																</div>
-																{#each linkedEntities.milestones as entity}
-																	<div
-																		class="w-full text-left px-2 py-1.5 rounded bg-muted/50"
-																	>
-																		<div
-																			class="flex items-center justify-between gap-2"
-																		>
-																			<span
-																				class="text-sm text-foreground truncate"
-																			>
-																				{getEntityDisplayName(
-																					entity
-																				)}
-																			</span>
-																		</div>
-																		{#if entity.due_at}
-																			<span
-																				class="text-xs text-muted-foreground"
-																				>Due {new Date(
-																					entity.due_at
-																				).toLocaleDateString()}</span
-																			>
-																		{/if}
-																	</div>
-																{/each}
-															</div>
-														{/if}
-
-														<!-- Documents -->
-														{#if linkedEntities?.documents && linkedEntities.documents.length > 0}
-															<div class="space-y-1.5">
-																<div
-																	class="flex items-center gap-1.5 text-xs font-medium text-muted-foreground"
-																>
-																	<FileText
-																		class="w-3.5 h-3.5 text-cyan-500"
-																	/>
-																	Documents
-																	<Badge variant="info" size="sm"
-																		>{linkedEntities.documents
-																			.length}</Badge
-																	>
-																</div>
-																{#each linkedEntities.documents as entity}
-																	<button
-																		type="button"
-																		onclick={() =>
-																			openDocumentModal(
-																				entity.id
-																			)}
-																		class="w-full text-left px-2 py-1.5 rounded hover:bg-muted transition-colors group"
-																	>
-																		<div
-																			class="flex items-center justify-between gap-2"
-																		>
-																			<span
-																				class="text-sm text-foreground truncate group-hover:text-accent"
-																			>
-																				{getEntityDisplayName(
-																					entity
-																				)}
-																			</span>
-																			<ExternalLink
-																				class="w-3.5 h-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
-																			/>
-																		</div>
-																		{#if entity.type_key}
-																			<span
-																				class="text-xs text-muted-foreground"
-																				>{entity.type_key
-																					.split('.')
-																					.pop()}</span
-																			>
-																		{/if}
-																	</button>
-																{/each}
-															</div>
-														{/if}
-
-														<!-- Related Tasks -->
-														{#if linkedEntities?.dependentTasks && linkedEntities.dependentTasks.length > 0}
-															<div class="space-y-1.5">
-																<div
-																	class="flex items-center gap-1.5 text-xs font-medium text-muted-foreground"
-																>
-																	<ListChecks
-																		class="w-3.5 h-3.5 text-green-500"
-																	/>
-																	Related Tasks
-																	<Badge variant="info" size="sm"
-																		>{linkedEntities
-																			.dependentTasks
-																			.length}</Badge
-																	>
-																</div>
-																{#each linkedEntities.dependentTasks as entity}
-																	<button
-																		type="button"
-																		onclick={() =>
-																			openLinkedTaskModal(
-																				entity.id
-																			)}
-																		class="w-full text-left px-2 py-1.5 rounded hover:bg-muted transition-colors group"
-																	>
-																		<div
-																			class="flex items-center justify-between gap-2"
-																		>
-																			<span
-																				class="text-sm text-foreground truncate group-hover:text-accent"
-																			>
-																				{getEntityDisplayName(
-																					entity
-																				)}
-																			</span>
-																			<ExternalLink
-																				class="w-3.5 h-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
-																			/>
-																		</div>
-																		<div
-																			class="flex items-center gap-2"
-																		>
-																			{#if entity.state_key}
-																				<span
-																					class="text-xs text-muted-foreground"
-																					>{entity.state_key}</span
-																				>
-																			{/if}
-																			<span
-																				class="text-xs text-muted-foreground/70"
-																				>({formatRelLabel(
-																					entity.edge_rel,
-																					entity.edge_direction
-																				)})</span
-																			>
-																		</div>
-																	</button>
-																{/each}
-															</div>
-														{/if}
-
-														<!-- Outputs -->
-														{#if linkedEntities?.outputs && linkedEntities.outputs.length > 0}
-															<div class="space-y-1.5">
-																<div
-																	class="flex items-center gap-1.5 text-xs font-medium text-muted-foreground"
-																>
-																	<FileOutput
-																		class="w-3.5 h-3.5 text-violet-500"
-																	/>
-																	Outputs
-																	<Badge variant="info" size="sm"
-																		>{linkedEntities.outputs
-																			.length}</Badge
-																	>
-																</div>
-																{#each linkedEntities.outputs as entity}
-																	<div
-																		class="w-full text-left px-2 py-1.5 rounded bg-muted/50"
-																	>
-																		<div
-																			class="flex items-center justify-between gap-2"
-																		>
-																			<span
-																				class="text-sm text-foreground truncate"
-																			>
-																				{getEntityDisplayName(
-																					entity
-																				)}
-																			</span>
-																		</div>
-																		{#if entity.type_key}
-																			<span
-																				class="text-xs text-muted-foreground"
-																				>{entity.type_key
-																					.split('.')
-																					.pop()}</span
-																			>
-																		{/if}
-																	</div>
-																{/each}
-															</div>
-														{/if}
-													</div>
-												{:else}
-													<div class="text-center py-4">
-														<Link2Off
-															class="w-6 h-6 text-muted-foreground mx-auto mb-2"
-														/>
-														<p class="text-xs text-muted-foreground">
-															No linked entities yet
-														</p>
-														<p
-															class="text-xs text-muted-foreground/70 mt-1"
-														>
-															Link this task to plans, goals, or
-															documents using the form fields
-														</p>
-													</div>
-												{/if}
-											</CardBody>
-										</Card>
+										<LinkedEntities
+											sourceId={taskId}
+											sourceKind="task"
+											projectId={task.project_id}
+											onEntityClick={handleLinkedEntityClick}
+											onLinksChanged={loadTask}
+										/>
 
 										<!-- Schedule -->
 										<Card variant="elevated">

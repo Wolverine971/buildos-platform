@@ -31,14 +31,14 @@ import type {
 
 /**
  * Regex pattern for matching entity references
- * Matches: [[type:uuid|displayText]]
+ * Matches: [[type:id|displayText]]
  *
  * Groups:
  * 1. type - entity type (word characters)
- * 2. id - entity ID (UUID format: hex chars and hyphens)
+ * 2. id - entity ID (alphanumeric, hyphens, underscores - supports UUIDs and slugs)
  * 3. displayText - display text (anything except closing bracket)
  */
-const ENTITY_REF_REGEX = /\[\[(\w+):([a-f0-9-]+)\|([^\]]+)\]\]/gi;
+const ENTITY_REF_REGEX = /\[\[(\w+):([\w-]+)\|([^\]]+)\]\]/gi;
 
 /**
  * Valid entity types that can be referenced
@@ -129,6 +129,10 @@ export function parseEntityReferences(markdown: string): ParsedNextStepLong {
 	let match: RegExpExecArray | null;
 	while ((match = ENTITY_REF_REGEX.exec(markdown)) !== null) {
 		const [, type, id, displayText] = match;
+
+		// Ensure all captured groups exist
+		if (!type || !id || !displayText) continue;
+
 		const normalizedType = type.toLowerCase() as EntityReferenceType;
 
 		// Only include valid entity types
@@ -258,9 +262,9 @@ export function isValidEntityReference(ref: EntityReference): boolean {
 		return false;
 	}
 
-	// Check ID looks like a UUID (basic check)
-	const uuidRegex = /^[a-f0-9-]+$/i;
-	if (!uuidRegex.test(ref.id)) {
+	// Check ID is valid (alphanumeric, hyphens, underscores - supports UUIDs and slugs)
+	const idRegex = /^[\w-]+$/;
+	if (!idRegex.test(ref.id)) {
 		return false;
 	}
 

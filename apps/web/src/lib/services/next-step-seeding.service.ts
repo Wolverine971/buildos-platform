@@ -224,7 +224,7 @@ export class NextStepSeedingService {
 
 		if (highPriorityTasks.length > 0) {
 			// Focus on high priority tasks
-			const task = highPriorityTasks[0];
+			const task = highPriorityTasks[0]!;
 			shortStep = `Start with "${this.truncate(task.title, 60)}" - it's marked as high priority.`;
 			longStep = this.buildLongStepWithTasks(
 				`Begin by tackling the high-priority items first.`,

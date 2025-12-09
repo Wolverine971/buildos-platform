@@ -54,7 +54,6 @@
 		Trash2,
 		ArrowLeft,
 		RefreshCw,
-		Filter,
 		CheckCircle2,
 		Circle,
 		Clock,
@@ -69,12 +68,12 @@
 	import {
 		getDeliverablePrimitive,
 		isCollectionDeliverable,
-		isExternalDeliverable,
-		isEventDeliverable,
 		type DeliverablePrimitive
 	} from '$lib/types/onto';
 	import type { PageData } from './$types';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
+	import NextStepDisplay from '$lib/components/project/NextStepDisplay.svelte';
+	import type { EntityReference } from '$lib/utils/entity-reference-parser';
 
 	// ============================================================
 	// TYPES
@@ -102,8 +101,6 @@
 		state_key?: string | null;
 		props?: Record<string, unknown> | null;
 	}
-
-	type PrimitiveFilter = DeliverablePrimitive | 'all';
 
 	type InsightPanelKey = 'tasks' | 'plans' | 'goals' | 'risks' | 'milestones';
 
@@ -165,8 +162,9 @@
 	let editingOutputId = $state<string | null>(null);
 
 	// UI State
-	let primitiveFilter = $state<PrimitiveFilter>('all');
 	let dataRefreshing = $state(false);
+	let outputsExpanded = $state(true);
+	let documentsExpanded = $state(true);
 	let expandedPanels = $state<Record<InsightPanelKey, boolean>>({
 		tasks: false,
 		plans: false,
@@ -206,32 +204,6 @@
 		}))
 	);
 
-	// Filter outputs by primitive
-	const filteredOutputs = $derived(
-		primitiveFilter === 'all'
-			? enrichedOutputs
-			: enrichedOutputs.filter((o) => o.primitive === primitiveFilter)
-	);
-
-	// Count by primitive for filter badges
-	const primitiveCounts = $derived(() => {
-		const counts: Record<string, number> = { all: outputs.length };
-		for (const output of outputs) {
-			const primitive = getDeliverablePrimitive(output.type_key) || 'document';
-			counts[primitive] = (counts[primitive] || 0) + 1;
-		}
-		return counts;
-	});
-
-	// Documents that could be promoted to deliverables
-	const promotableDocuments = $derived(
-		documents.filter((doc) => {
-			// Document not already linked to an output
-			return !outputs.some(
-				(o) => (o as Output & { source_document_id?: string }).source_document_id === doc.id
-			);
-		})
-	);
 
 	const insightPanels: InsightPanel[] = $derived([
 		{
@@ -393,16 +365,6 @@
 	// EVENT HANDLERS
 	// ============================================================
 
-	function handlePrimitiveFilter(primitive: PrimitiveFilter) {
-		primitiveFilter = primitive;
-	}
-
-	async function handlePromoteDocument(documentId: string) {
-		// TODO: Implement document promotion flow
-		// This would open a modal to select deliverable type
-		toastService.info('Document promotion coming soon');
-	}
-
 	async function handleOutputCreated() {
 		await refreshData();
 		showOutputCreateModal = false;
@@ -507,6 +469,30 @@
 			isDeletingProject = false;
 		}
 	}
+
+	function handleNextStepEntityClick(ref: EntityReference) {
+		// Open the appropriate modal based on entity type
+		switch (ref.type) {
+			case 'task':
+				editingTaskId = ref.id;
+				break;
+			case 'plan':
+				editingPlanId = ref.id;
+				break;
+			case 'goal':
+				editingGoalId = ref.id;
+				break;
+			case 'output':
+				editingOutputId = ref.id;
+				break;
+			case 'document':
+				activeDocumentId = ref.id;
+				showDocumentModal = true;
+				break;
+			default:
+				console.warn(`Unknown entity type clicked: ${ref.type}`);
+		}
+	}
 </script>
 
 <svelte:head>
@@ -585,6 +571,21 @@
 					/>
 				{/await}
 			</div>
+
+			<!-- Next Step Display -->
+			<div class="mt-3">
+				<NextStepDisplay
+					projectId={project.id}
+					nextStepShort={project.next_step_short}
+					nextStepLong={project.next_step_long}
+					nextStepSource={project.next_step_source}
+					nextStepUpdatedAt={project.next_step_updated_at}
+					onEntityClick={handleNextStepEntityClick}
+					onNextStepGenerated={async () => {
+						await refreshData();
+					}}
+				/>
+			</div>
 		</div>
 	</header>
 
@@ -594,242 +595,195 @@
 			class="grid grid-cols-1 lg:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)] gap-6 items-start"
 		>
 			<div class="space-y-8">
+				<!-- Outputs Section - Collapsible -->
 				<section
-					class="bg-card border border-border rounded-xl shadow-ink tx tx-frame tx-weak p-4"
+					class="bg-card border border-border rounded-xl shadow-ink tx tx-frame tx-weak overflow-hidden"
 				>
-					<div class="flex flex-wrap items-start justify-between gap-4">
-						<div>
-							<p class="text-xs uppercase tracking-wide text-muted-foreground">
-								Outputs
-							</p>
-							<h2 class="text-lg font-semibold text-foreground">Deliverables</h2>
-							<p class="text-sm text-muted-foreground">
-								Outputs are the primary focus. Documents live just below as smaller
-								cards.
-							</p>
+					<div class="flex items-center justify-between gap-3 px-4 py-3">
+						<button
+							onclick={() => (outputsExpanded = !outputsExpanded)}
+							class="flex items-center gap-3 flex-1 text-left hover:bg-muted/60 -m-3 p-3 rounded-lg transition-colors"
+						>
+							<div
+								class="w-9 h-9 rounded-lg bg-muted flex items-center justify-center"
+							>
+								<Layers class="w-4 h-4 text-foreground" />
+							</div>
+							<div>
+								<p class="text-sm font-semibold text-foreground">Outputs</p>
+								<p class="text-xs text-muted-foreground">
+									{outputs.length}
+									{outputs.length === 1 ? 'deliverable' : 'deliverables'}
+								</p>
+							</div>
+						</button>
+						<div class="flex items-center gap-2">
+							<button
+								onclick={() => (showOutputCreateModal = true)}
+								class="p-1.5 rounded-md hover:bg-muted transition-colors"
+								aria-label="Add output"
+							>
+								<Plus class="w-4 h-4 text-muted-foreground" />
+							</button>
+							<button
+								onclick={() => (outputsExpanded = !outputsExpanded)}
+								class="p-1.5 rounded-md hover:bg-muted transition-colors"
+								aria-label={outputsExpanded ? 'Collapse outputs' : 'Expand outputs'}
+							>
+								<ChevronDown
+									class="w-4 h-4 text-muted-foreground transition-transform {outputsExpanded
+										? 'rotate-180'
+										: ''}"
+								/>
+							</button>
 						</div>
 					</div>
 
-					<div class="mt-3 flex flex-wrap items-center gap-2">
-						<span class="text-sm text-muted-foreground flex items-center gap-1">
-							<Filter class="w-4 h-4" />
-							Primitive
-						</span>
-						<button
-							onclick={() => handlePrimitiveFilter('all')}
-							class="px-3 py-1.5 text-sm rounded-lg transition-colors {primitiveFilter ===
-							'all'
-								? 'bg-accent text-accent-foreground'
-								: 'bg-muted text-muted-foreground hover:bg-muted/80'}"
-						>
-							All ({primitiveCounts().all || 0})
-						</button>
-						{#each Object.entries(PRIMITIVE_CONFIG) as [primitive, config]}
-							{@const count = primitiveCounts()[primitive] || 0}
-							<button
-								onclick={() =>
-									handlePrimitiveFilter(primitive as DeliverablePrimitive)}
-								class="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg transition-colors {primitiveFilter ===
-								primitive
-									? 'bg-accent text-accent-foreground'
-									: 'bg-muted text-muted-foreground hover:bg-muted/80'}"
-							>
-								<svelte:component this={config.icon} class="w-3.5 h-3.5" />
-								<span>{config.label}</span>
-								<span class="text-xs opacity-70">({count})</span>
-							</button>
-						{/each}
-
-						<button
-							onclick={() => (showOutputCreateModal = true)}
-							class="ml-auto inline-flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg border border-border bg-muted/60 font-medium hover:bg-muted transition-colors"
-						>
-							<Plus class="w-4 h-4" />
-							New Deliverable
-						</button>
-					</div>
-
-					{#if filteredOutputs.length === 0}
-						<div
-							class="mt-4 flex items-center gap-3 text-sm text-muted-foreground bg-muted/40 border border-border rounded-lg px-3 py-2"
-						>
-							<Sparkles class="w-4 h-4" />
-							<span>No deliverables yet. Create one to get started.</span>
+					{#if outputsExpanded}
+						<div class="border-t border-border">
+							{#if outputs.length === 0}
+								<div
+									class="flex items-center gap-3 text-sm text-muted-foreground px-4 py-3"
+								>
+									<Sparkles class="w-4 h-4" />
+									<span>No outputs yet. Create one to get started.</span>
+								</div>
+							{:else}
+								<ul class="divide-y divide-border/80">
+									{#each enrichedOutputs as output}
+										{@const PrimitiveIcon = getPrimitiveIcon(output.primitive)}
+										<li>
+											<button
+												type="button"
+												onclick={() => (editingOutputId = output.id)}
+												class="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted/60 transition-colors"
+											>
+												<div
+													class="w-8 h-8 rounded-lg bg-muted flex items-center justify-center flex-shrink-0"
+												>
+													<PrimitiveIcon
+														class="w-4 h-4 {getPrimitiveColor(
+															output.primitive
+														)}"
+													/>
+												</div>
+												<div class="min-w-0 flex-1">
+													<p class="text-sm text-foreground truncate">
+														{output.name}
+													</p>
+													<p class="text-xs text-muted-foreground">
+														{output.typeLabel}
+													</p>
+												</div>
+												<span
+													class="flex-shrink-0 text-[11px] px-2 py-1 rounded-full border border-border {getStateColor(
+														output.state_key
+													)}"
+												>
+													{normalizeState(output.state_key)}
+												</span>
+											</button>
+										</li>
+									{/each}
+								</ul>
+							{/if}
 						</div>
 					{/if}
 				</section>
 
-				<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-					{#each filteredOutputs as output}
-						{@const PrimitiveIcon = getPrimitiveIcon(output.primitive)}
-						<article
-							class="h-full p-4 bg-card border border-border rounded-xl shadow-ink tx tx-grain tx-weak hover:shadow-ink-strong hover:border-accent/60 transition-all cursor-pointer"
-							onclick={() => (editingOutputId = output.id)}
-							role="button"
-							tabindex="0"
-							onkeydown={(e) => e.key === 'Enter' && (editingOutputId = output.id)}
-						>
-							<div class="flex items-start justify-between gap-3">
-								<div class="flex items-start gap-3 min-w-0">
-									<div
-										class="w-10 h-10 rounded-lg bg-muted flex items-center justify-center"
-									>
-										<PrimitiveIcon
-											class="w-5 h-5 {getPrimitiveColor(output.primitive)}"
-										/>
-									</div>
-									<div class="min-w-0 space-y-1">
-										<p
-											class="text-xs uppercase text-muted-foreground tracking-wide"
-										>
-											{output.typeLabel}
-										</p>
-										<h3
-											class="text-base font-semibold text-foreground leading-tight line-clamp-2 break-words"
-										>
-											{output.name}
-										</h3>
-									</div>
-								</div>
-								<span
-									class="flex-shrink-0 text-[11px] px-2 py-1 rounded-full border border-border {getStateColor(
-										output.state_key
-									)}"
-								>
-									{normalizeState(output.state_key)}
-								</span>
-							</div>
-
-							<div
-								class="mt-3 flex flex-wrap items-center gap-3 text-xs text-muted-foreground"
-							>
-								<span class="flex items-center gap-1">
-									<FileText class="w-3.5 h-3.5" />
-									{PRIMITIVE_CONFIG[output.primitive]?.label}
-								</span>
-								{#if output.taskCount > 0}
-									<span class="flex items-center gap-1">
-										<CheckCircle2 class="w-3 h-3" />
-										{output.taskCount} tasks
-									</span>
-								{/if}
-								{#if output.childCount !== undefined && output.childCount > 0}
-									<span class="flex items-center gap-1">
-										<Layers class="w-3 h-3" />
-										{output.childCount} items
-									</span>
-								{/if}
-								{#if isExternalDeliverable(output.type_key)}
-									{@const props = output.props as Record<string, unknown>}
-									{@const externalUri = props?.external_uri as string | undefined}
-									{#if externalUri}
-										<a
-											href={externalUri}
-											target="_blank"
-											rel="noopener noreferrer"
-											class="text-xs text-accent underline hover:text-accent/80"
-										>
-											External link
-										</a>
-									{/if}
-								{/if}
-								{#if isCollectionDeliverable(output.type_key)}
-									<span class="flex items-center gap-1">
-										<Layers class="w-3 h-3" />
-										Collection
-									</span>
-								{/if}
-								{#if isEventDeliverable(output.type_key)}
-									<span class="flex items-center gap-1">
-										<Calendar class="w-3 h-3" />
-										Event
-									</span>
-								{/if}
-							</div>
-						</article>
-					{:else}{/each}
-				</div>
-
+				<!-- Documents Section - Collapsible -->
 				<section
-					class="bg-card border border-border rounded-xl shadow-ink tx tx-frame tx-weak p-4"
+					class="bg-card border border-border rounded-xl shadow-ink tx tx-frame tx-weak overflow-hidden"
 				>
-					<div class="flex flex-wrap items-center justify-between gap-4 mb-3">
-						<div>
-							<p class="text-xs uppercase tracking-wide text-muted-foreground">
-								Documents
-							</p>
-							<h3 class="text-lg font-semibold text-foreground">Supporting docs</h3>
-							<p class="text-sm text-muted-foreground">
-								Lighter-weight cards so outputs stay primary.
-							</p>
-						</div>
+					<div class="flex items-center justify-between gap-3 px-4 py-3">
+						<button
+							onclick={() => (documentsExpanded = !documentsExpanded)}
+							class="flex items-center gap-3 flex-1 text-left hover:bg-muted/60 -m-3 p-3 rounded-lg transition-colors"
+						>
+							<div
+								class="w-9 h-9 rounded-lg bg-muted flex items-center justify-center"
+							>
+								<FileText class="w-4 h-4 text-foreground" />
+							</div>
+							<div>
+								<p class="text-sm font-semibold text-foreground">Documents</p>
+								<p class="text-xs text-muted-foreground">
+									{documents.length}
+									{documents.length === 1 ? 'document' : 'documents'}
+								</p>
+							</div>
+						</button>
 						<div class="flex items-center gap-2">
 							<button
-								type="button"
 								onclick={() => {
 									activeDocumentId = null;
 									showDocumentModal = true;
 								}}
-								class="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-muted/60 text-sm font-medium hover:bg-muted transition-colors"
+								class="p-1.5 rounded-md hover:bg-muted transition-colors"
+								aria-label="Add document"
 							>
-								<Plus class="w-4 h-4" />
-								New Document
+								<Plus class="w-4 h-4 text-muted-foreground" />
 							</button>
-							{#if promotableDocuments.length > 0}
-								<div
-									class="flex items-center gap-2 text-xs text-amber-600 bg-amber-500/10 border border-amber-500/30 px-3 py-2 rounded-lg"
-								>
-									<Sparkles class="w-4 h-4" />
-									<span>{promotableDocuments.length} ready to promote</span>
-								</div>
-							{/if}
+							<button
+								onclick={() => (documentsExpanded = !documentsExpanded)}
+								class="p-1.5 rounded-md hover:bg-muted transition-colors"
+								aria-label={documentsExpanded ? 'Collapse documents' : 'Expand documents'}
+							>
+								<ChevronDown
+									class="w-4 h-4 text-muted-foreground transition-transform {documentsExpanded
+										? 'rotate-180'
+										: ''}"
+								/>
+							</button>
 						</div>
 					</div>
 
-					<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-						{#each documents as doc}
-							<article
-								class="p-3 rounded-lg border border-border bg-muted/50 shadow-ink tx tx-grain tx-weak hover:border-accent/60 transition-colors cursor-pointer"
-								onclick={() => {
-									activeDocumentId = doc.id;
-									showDocumentModal = true;
-								}}
-							>
-								<div class="flex items-start justify-between gap-3">
-									<div class="min-w-0 space-y-1">
-										<p
-											class="text-[11px] uppercase text-muted-foreground tracking-wide"
-										>
-											{getTypeLabel(doc.type_key)}
-										</p>
-										<h4
-											class="text-sm font-semibold text-foreground leading-snug line-clamp-2"
-										>
-											{doc.title}
-										</h4>
-									</div>
-									<span
-										class="flex-shrink-0 text-[11px] px-2 py-1 rounded-full bg-card border border-border"
-									>
-										{doc.state_key || 'draft'}
-									</span>
+					{#if documentsExpanded}
+						<div class="border-t border-border">
+							{#if documents.length === 0}
+								<div
+									class="flex items-center gap-3 text-sm text-muted-foreground px-4 py-3"
+								>
+									<Sparkles class="w-4 h-4" />
+									<span>No documents yet. Add research or drafts.</span>
 								</div>
-							</article>
-						{:else}
-							<div
-								class="col-span-full flex flex-col gap-2 sm:flex-row sm:items-center justify-between p-4 rounded-lg border border-border bg-muted/40"
-							>
-								<div>
-									<p class="text-sm font-medium text-foreground">
-										No documents attached
-									</p>
-									<p class="text-sm text-muted-foreground">
-										Add research or drafts, then promote them into deliverables.
-									</p>
-								</div>
-							</div>
-						{/each}
-					</div>
+							{:else}
+								<ul class="divide-y divide-border/80">
+									{#each documents as doc}
+										<li>
+											<button
+												type="button"
+												onclick={() => {
+													activeDocumentId = doc.id;
+													showDocumentModal = true;
+												}}
+												class="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted/60 transition-colors"
+											>
+												<div
+													class="w-8 h-8 rounded-lg bg-muted flex items-center justify-center flex-shrink-0"
+												>
+													<FileText class="w-4 h-4 text-blue-500" />
+												</div>
+												<div class="min-w-0 flex-1">
+													<p class="text-sm text-foreground truncate">
+														{doc.title}
+													</p>
+													<p class="text-xs text-muted-foreground">
+														{getTypeLabel(doc.type_key)}
+													</p>
+												</div>
+												<span
+													class="flex-shrink-0 text-[11px] px-2 py-1 rounded-full bg-card border border-border"
+												>
+													{doc.state_key || 'draft'}
+												</span>
+											</button>
+										</li>
+									{/each}
+								</ul>
+							{/if}
+						</div>
+					{/if}
 				</section>
 			</div>
 

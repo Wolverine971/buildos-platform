@@ -17,6 +17,11 @@
 			"components": ["Dashboard"]
 		},
 		{
+			"file": "src/routes/projects/+page.svelte",
+			"type": "page",
+			"components": ["AgentChatModal"]
+		},
+		{
 			"file": "src/routes/projects-old/+page.svelte",
 			"type": "page",
 			"components": [
@@ -25,11 +30,6 @@
 				"DailyBriefModal",
 				"QuickProjectModal"
 			]
-		},
-		{
-			"file": "src/routes/projects/+page.svelte",
-			"type": "page",
-			"components": ["AgentChatModal"]
 		},
 		{
 			"file": "src/lib/components/brain-dump/BrainDumpModal.svelte",
@@ -128,6 +128,11 @@
 			"components": ["SynthesisLoadingState"]
 		},
 		{
+			"file": "src/routes/projects/templates/+page.svelte",
+			"type": "page",
+			"components": ["TemplateDetailModal", "ConfirmationModal"]
+		},
+		{
 			"file": "src/routes/projects-old/[id]/+page.svelte",
 			"type": "page",
 			"components": [
@@ -154,11 +159,6 @@
 				"GoalEditModal",
 				"OntologyProjectEditModal"
 			]
-		},
-		{
-			"file": "src/routes/projects/templates/+page.svelte",
-			"type": "page",
-			"components": ["TemplateDetailModal", "ConfirmationModal"]
 		},
 		{
 			"file": "src/routes/projects/projects-v2/[id]/+page.svelte",
@@ -369,6 +369,12 @@
 			"type": "service",
 			"components": [],
 			"exports": ["LLMUsageService"]
+		},
+		{
+			"file": "src/lib/services/next-step-generation.service.ts",
+			"type": "service",
+			"components": [],
+			"exports": ["generateProjectNextStep"]
 		},
 		{
 			"file": "src/lib/services/next-step-seeding.service.ts",
@@ -790,6 +796,24 @@
 			"exports": ["isThinkingBlockMessage", "findThinkingBlockById"]
 		},
 		{
+			"file": "src/lib/components/ontology/linked-entities/linked-entities.service.ts",
+			"type": "component",
+			"components": [],
+			"exports": ["fetchLinkedEntities", "createEdges", "deleteEdge", "filterEntities"]
+		},
+		{
+			"file": "src/lib/components/ontology/linked-entities/linked-entities.types.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"RELATIONSHIP_MAP",
+				"getRelationship",
+				"ENTITY_SECTIONS",
+				"getEntityDisplayName",
+				"formatRelationshipLabel"
+			]
+		},
+		{
 			"file": "src/lib/components/ontology/graph/lib/graph.service.ts",
 			"type": "component",
 			"components": [],
@@ -821,6 +845,8 @@
 		"src/lib/components/agent/agent-chat-formatters.ts",
 		"src/lib/components/agent/agent-chat.constants.ts",
 		"src/lib/components/agent/agent-chat.types.ts",
+		"src/lib/components/ontology/linked-entities/linked-entities.service.ts",
+		"src/lib/components/ontology/linked-entities/linked-entities.types.ts",
 		"src/lib/components/ontology/graph/lib/graph.service.ts"
 	]
 }
