@@ -1,4 +1,4 @@
-<!-- apps/web/src/routes/projects/projects/[id]/+page.svelte -->
+<!-- apps/web/src/routes/projects/[id]/+page.svelte -->
 <!--
 	Ontology Project Detail - Deliverables-Centric View
 
@@ -30,7 +30,7 @@
 	- FSM State Bar: /apps/web/src/lib/components/ontology/FSMStateBar.svelte
 
 	API Integration:
-	- Server Data Loading: /apps/web/src/routes/projects/projects/[id]/+page.server.ts
+	- Server Data Loading: /apps/web/src/routes/projects/[id]/+page.server.ts
 	- Project API: /apps/web/src/routes/api/onto/projects/
 	- Task API: /apps/web/src/routes/api/onto/tasks/
 	- Plan API: /apps/web/src/routes/api/onto/plans/

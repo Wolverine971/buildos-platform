@@ -196,6 +196,7 @@
 	input[type='radio'] {
 		-webkit-appearance: none;
 		-moz-appearance: none;
+		appearance: none;
 	}
 
 	/* Focus ring offset - Inkprint design */

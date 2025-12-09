@@ -63,8 +63,8 @@
 		if (currentPath.match(/^\/projects-old\/[^/]+\/tasks\/[^/]+/)) {
 			return 'task';
 		}
-		// Project detail page: /projects/projects/[id]
-		if (currentPath.match(/^\/projects\/projects\/[^/]+$/) && $page.data?.project) {
+		// Project detail page: /projects/[id]
+		if (currentPath.match(/^\/projects\/[^/]+$/) && $page.data?.project) {
 			return 'project';
 		}
 		// Default: global context
@@ -78,7 +78,7 @@
 			return taskMatch[1];
 		}
 		// Project detail page: return project ID
-		if (currentPath.match(/^\/projects\/projects\/([^/]+)$/) && $page.data?.project) {
+		if (currentPath.match(/^\/projects\/([^/]+)$/) && $page.data?.project) {
 			return $page.data.project.id;
 		}
 		// No entity
@@ -86,7 +86,7 @@
 	});
 
 	const chatAutoInitProject = $derived.by(() => {
-		if (currentPath.match(/^\/projects\/projects\/[^/]+$/) && $page.data?.project) {
+		if (currentPath.match(/^\/projects\/[^/]+$/) && $page.data?.project) {
 			return {
 				projectId: $page.data.project.id,
 				projectName: $page.data.project.name ?? 'Project',

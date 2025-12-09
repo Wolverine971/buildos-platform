@@ -734,7 +734,7 @@
 			<div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
 				{#each filteredProjects as project (project.id)}
 					<a
-						href="/projects/projects/{project.id}"
+						href="/projects/{project.id}"
 						class="group relative flex h-full flex-col rounded-lg border border-border bg-card p-4 shadow-ink transition-all duration-200 hover:border-accent hover:shadow-ink-strong pressable"
 					>
 						<div class="mb-4 flex items-start justify-between gap-3">

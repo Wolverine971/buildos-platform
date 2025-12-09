@@ -9,26 +9,26 @@
 
 ## Implementation Progress
 
-| Phase | Description | Status |
-|-------|-------------|--------|
-| Phase 1 | Database Migration | ✅ Complete |
-| Phase 2 | Enhanced Chat Classification | ✅ Complete |
-| Phase 3 | History Page Updates | ✅ Complete |
+| Phase   | Description                       | Status      |
+| ------- | --------------------------------- | ----------- |
+| Phase 1 | Database Migration                | ✅ Complete |
+| Phase 2 | Enhanced Chat Classification      | ✅ Complete |
+| Phase 3 | History Page Updates              | ✅ Complete |
 | Phase 4 | AgentChatModal Session Resumption | ✅ Complete |
-| Testing | Type checks and lint | ✅ Complete |
+| Testing | Type checks and lint              | ✅ Complete |
 
 ### Files Created/Modified
 
-| File | Change | Status |
-|------|--------|--------|
-| `supabase/migrations/20251208_add_chat_session_summary.sql` | Add summary column + indexes | ✅ Created |
-| `packages/shared-types/src/database.schema.ts` | Add summary type | ✅ Modified |
-| `packages/shared-types/src/queue-types.ts` | Update ClassifyChatSessionResult | ✅ Modified |
-| `apps/worker/src/workers/chat/chatSessionClassifier.ts` | Add summary generation | ✅ Modified |
-| `apps/web/src/routes/history/+page.server.ts` | Fetch both types, unified items | ✅ Modified |
-| `apps/web/src/routes/history/+page.svelte` | Unified UI with type filters | ✅ Modified |
-| `apps/web/src/routes/api/chat/sessions/[id]/+server.ts` | Add GET endpoint | ✅ Modified |
-| `apps/web/src/lib/components/agent/AgentChatModal.svelte` | Session resumption | ✅ Modified |
+| File                                                        | Change                           | Status      |
+| ----------------------------------------------------------- | -------------------------------- | ----------- |
+| `supabase/migrations/20251208_add_chat_session_summary.sql` | Add summary column + indexes     | ✅ Created  |
+| `packages/shared-types/src/database.schema.ts`              | Add summary type                 | ✅ Modified |
+| `packages/shared-types/src/queue-types.ts`                  | Update ClassifyChatSessionResult | ✅ Modified |
+| `apps/worker/src/workers/chat/chatSessionClassifier.ts`     | Add summary generation           | ✅ Modified |
+| `apps/web/src/routes/history/+page.server.ts`               | Fetch both types, unified items  | ✅ Modified |
+| `apps/web/src/routes/history/+page.svelte`                  | Unified UI with type filters     | ✅ Modified |
+| `apps/web/src/routes/api/chat/sessions/[id]/+server.ts`     | Add GET endpoint                 | ✅ Modified |
+| `apps/web/src/lib/components/agent/AgentChatModal.svelte`   | Session resumption               | ✅ Modified |
 
 ---
 
@@ -231,6 +231,7 @@ const { error: updateError } = await supabase
 **File:** `/apps/web/src/routes/history/+page.server.ts`
 
 Implemented:
+
 - Unified `HistoryItem` interface exported for use in page component
 - Type filter support (`all`, `braindumps`, `chats`)
 - Fetches both `onto_braindumps` and `chat_sessions`
@@ -259,6 +260,7 @@ export interface HistoryItem {
 **File:** `/apps/web/src/routes/history/+page.svelte`
 
 Implemented:
+
 - Type filter tabs (All / Braindumps / Chats) with counts
 - Visual distinction between types (Brain icon for braindumps, MessagesSquare for chats)
 - Color-coded badges (violet for braindumps, blue for chats)
@@ -387,7 +389,8 @@ async function loadChatSession(sessionId: string) {
 				id: crypto.randomUUID(),
 				type: 'activity',
 				role: 'assistant' as ChatRole,
-				content: 'Note: This conversation has been truncated to show the most recent messages.',
+				content:
+					'Note: This conversation has been truncated to show the most recent messages.',
 				timestamp: new Date(),
 				created_at: new Date().toISOString()
 			};
@@ -584,6 +587,7 @@ With summary:
 ## Deployment Steps
 
 ### Step 1: Database Migration
+
 ```bash
 # Apply the migration
 supabase db push
@@ -591,14 +595,17 @@ supabase db push
 ```
 
 ### Step 2: Deploy Worker
+
 - Deploy worker service to Railway
 - New sessions will get summaries generated
 
 ### Step 3: Deploy Web App
+
 - Deploy to Vercel
 - History page will show both braindumps and chat sessions
 
 ### Step 4: Backfill (Optional)
+
 - Create job to re-classify old sessions
 - Generate summaries for historical data
 
@@ -606,30 +613,30 @@ supabase db push
 
 ## Files Modified Summary
 
-| File | Change |
-|------|--------|
-| `supabase/migrations/20251208_add_chat_session_summary.sql` | ✅ Created - Add summary column + indexes |
-| `packages/shared-types/src/database.schema.ts` | ✅ Modified - Add summary to chat_sessions |
-| `packages/shared-types/src/queue-types.ts` | ✅ Modified - Add summary/title/messageCount to result |
-| `apps/worker/src/workers/chat/chatSessionClassifier.ts` | ✅ Modified - Generate summaries |
-| `apps/web/src/routes/history/+page.server.ts` | ✅ Modified - Unified history items |
-| `apps/web/src/routes/history/+page.svelte` | ✅ Modified - Type filters, dual display |
-| `apps/web/src/routes/api/chat/sessions/[id]/+server.ts` | ✅ Modified - Add GET endpoint |
-| `apps/web/src/lib/components/agent/AgentChatModal.svelte` | ✅ Modified - Session resumption |
+| File                                                        | Change                                                 |
+| ----------------------------------------------------------- | ------------------------------------------------------ |
+| `supabase/migrations/20251208_add_chat_session_summary.sql` | ✅ Created - Add summary column + indexes              |
+| `packages/shared-types/src/database.schema.ts`              | ✅ Modified - Add summary to chat_sessions             |
+| `packages/shared-types/src/queue-types.ts`                  | ✅ Modified - Add summary/title/messageCount to result |
+| `apps/worker/src/workers/chat/chatSessionClassifier.ts`     | ✅ Modified - Generate summaries                       |
+| `apps/web/src/routes/history/+page.server.ts`               | ✅ Modified - Unified history items                    |
+| `apps/web/src/routes/history/+page.svelte`                  | ✅ Modified - Type filters, dual display               |
+| `apps/web/src/routes/api/chat/sessions/[id]/+server.ts`     | ✅ Modified - Add GET endpoint                         |
+| `apps/web/src/lib/components/agent/AgentChatModal.svelte`   | ✅ Modified - Session resumption                       |
 
 ---
 
 ## Open Questions (Resolved)
 
 1. **Should we backfill summaries for existing sessions?**
-   - Decision: Optional backfill job can be created later
-   - New sessions will get summaries immediately
+    - Decision: Optional backfill job can be created later
+    - New sessions will get summaries immediately
 
 2. **Filter by context_type?**
-   - Decision: Not in initial implementation, can add later
+    - Decision: Not in initial implementation, can add later
 
 3. **Session archival from history?**
-   - Decision: Not in scope for initial implementation
+    - Decision: Not in scope for initial implementation
 
 4. **Real-time status updates?**
-   - Decision: Not in scope for initial implementation
+    - Decision: Not in scope for initial implementation

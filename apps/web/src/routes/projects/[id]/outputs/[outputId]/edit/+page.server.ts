@@ -1,4 +1,4 @@
-// apps/web/src/routes/projects/projects/[id]/outputs/[outputId]/edit/+page.server.ts
+// apps/web/src/routes/projects/[id]/outputs/[outputId]/edit/+page.server.ts
 /**
  * Output Edit Page - Server Load
  * Loads output and project data for editing

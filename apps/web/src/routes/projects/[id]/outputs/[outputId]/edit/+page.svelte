@@ -1,4 +1,4 @@
-<!-- apps/web/src/routes/projects/projects/[id]/outputs/[outputId]/edit/+page.svelte -->
+<!-- apps/web/src/routes/projects/[id]/outputs/[outputId]/edit/+page.svelte -->
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import Button from '$lib/components/ui/Button.svelte';
@@ -59,7 +59,7 @@
 	 * Navigates back to the project detail page
 	 */
 	function goBack(): void {
-		goto(`/ontology/projects/${data.project.id}`);
+		goto(`/projects/${data.project.id}`);
 	}
 </script>
 

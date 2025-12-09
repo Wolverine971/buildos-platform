@@ -1,4 +1,4 @@
-// apps/web/src/routes/projects/projects/[id]/+page.server.ts
+// apps/web/src/routes/projects/[id]/+page.server.ts
 /**
  * Project Detail - Deliverables-Centric View
  * Server load function - fetches project with all entities

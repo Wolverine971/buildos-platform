@@ -224,7 +224,7 @@
 						<!-- Project Cards -->
 						{#each projects as project (project.id)}
 							<a
-								href="/projects/projects/{project.id}"
+								href="/projects/{project.id}"
 								class="group relative flex flex-col rounded-lg border border-border bg-card p-4 shadow-ink transition-all duration-200 hover:border-accent hover:shadow-ink-strong pressable tx tx-frame tx-weak"
 							>
 								<!-- Header -->
