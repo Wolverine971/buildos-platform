@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/chat-system/multi-agent-chat/COMPRESSION_INTEGRATION_ARCHITECTURE.md -->
+
 # Chat Compression Integration Architecture
 
 **Date:** 2025-10-29

@@ -28,6 +28,7 @@ research_focus:
   - "Responsive breakpoint strategies beyond 640px"
   - "iOS and Android specific considerations"
   - "Accessibility on mobile (touch targets, screen readers)"
+path: thoughts/shared/research/2025-11-21_15-38-14_mobile-modal-bottom-sheet-ux-patterns.md
 ---
 
 # Modern Mobile Modal and Bottom Sheet UX Patterns for 2025

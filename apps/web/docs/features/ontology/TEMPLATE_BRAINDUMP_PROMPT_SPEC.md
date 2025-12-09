@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/ontology/TEMPLATE_BRAINDUMP_PROMPT_SPEC.md -->
+
 # Template Braindump Prompt Spec
 
 **Last updated:** 2025-11-08  

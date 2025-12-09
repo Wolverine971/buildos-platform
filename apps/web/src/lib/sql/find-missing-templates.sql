@@ -1,3 +1,4 @@
+-- apps/web/src/lib/sql/find-missing-templates.sql
 -- Find Missing Templates Query
 -- This query identifies all entities that reference templates that don't exist
 -- Run this to find which templates need to be created in a migration

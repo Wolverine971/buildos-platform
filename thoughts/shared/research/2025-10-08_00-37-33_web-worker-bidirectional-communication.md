@@ -8,6 +8,7 @@ related_docs:
     - /docs/DEPLOYMENT_TOPOLOGY.md
     - /apps/web/CLAUDE.md
     - /apps/worker/CLAUDE.md
+path: thoughts/shared/research/2025-10-08_00-37-33_web-worker-bidirectional-communication.md
 ---
 
 # Web-Worker Bidirectional Communication Research

@@ -1,3 +1,4 @@
+<!-- thoughts/shared/research/2025-11-04_ontology-naming-conventions-analysis.md -->
 # Ontology Naming Conventions Analysis & Recommendations
 
 **Date**: November 4, 2025

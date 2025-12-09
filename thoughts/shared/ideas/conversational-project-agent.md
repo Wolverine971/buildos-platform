@@ -1,3 +1,4 @@
+<!-- thoughts/shared/ideas/conversational-project-agent.md -->
 # BuildOS Conversational Project Agent - Implementation Spec v3.0 (TAILORED)
 
 ## Executive Summary

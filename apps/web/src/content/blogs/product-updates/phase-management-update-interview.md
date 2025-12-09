@@ -11,6 +11,7 @@ tags: ['planning', 'outline', 'internal']
 readingTime: 1
 excerpt: 'Internal planning document for feature announcement.'
 pic: 'planning'
+path: apps/web/src/content/blogs/product-updates/phase-management-update-interview.md
 ---
 
 # Blog Interview Guide: Phase Management Update - Three Ways to Generate Phases

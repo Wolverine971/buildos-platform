@@ -13,6 +13,7 @@ important_files:
     - apps/web/src/routes/api/projects/list/+server.ts
     - apps/web/src/routes/projects/+page.svelte
     - supabase/migrations/20250916_add_search_optimization_indexes.sql
+path: apps/web/docs/technical/performance/projects-route-optimization-report.md
 ---
 
 # Projects Route Performance Optimization Report

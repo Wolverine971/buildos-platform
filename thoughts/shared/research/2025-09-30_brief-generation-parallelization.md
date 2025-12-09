@@ -9,6 +9,7 @@ tags: [research, codebase, worker, brief-generation, performance, parallelizatio
 status: complete
 last_updated: 2025-09-30
 last_updated_by: Claude Code
+path: thoughts/shared/research/2025-09-30_brief-generation-parallelization.md
 ---
 
 # Research: Brief Generation Parallelization Audit and Improvement Plan

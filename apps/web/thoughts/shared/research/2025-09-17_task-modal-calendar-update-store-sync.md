@@ -9,6 +9,7 @@ tags: [research, codebase, task-modal, calendar-integration, project-store, filt
 status: complete
 last_updated: 2025-09-17
 last_updated_by: Claude Code
+path: apps/web/thoughts/shared/research/2025-09-17_task-modal-calendar-update-store-sync.md
 ---
 
 # Research: Task Modal Calendar Update Store Synchronization Issue

@@ -9,6 +9,7 @@ related_docs:
     - /docs/guides/sms-setup-guide.md
     - /docs/api/sms-api-reference.md
     - /docs/architecture/SMS_NOTIFICATION_CHANNEL_DESIGN.md
+path: docs/features/sms-event-scheduling/research/sms-infrastructure.md
 ---
 
 # SMS/Twilio Infrastructure Research

@@ -1,3 +1,5 @@
+<!-- apps/worker/README.md -->
+
 # Daily Brief Worker Service
 
 A background worker service for generating automated daily briefs using a Supabase-based queue system. Built with TypeScript and designed to integrate with your existing SvelteKit + Supabase application.

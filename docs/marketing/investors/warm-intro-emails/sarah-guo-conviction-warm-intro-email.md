@@ -1,3 +1,5 @@
+<!-- docs/marketing/investors/warm-intro-emails/sarah-guo-conviction-warm-intro-email.md -->
+
 # Sarah Guo (Conviction) - Warm Introduction Email Template
 
 ## Investor Context

@@ -22,6 +22,7 @@ phase_2.1_completed: 2025-09-30
 last_updated: 2025-09-30
 last_updated_by: Claude Code
 last_updated_note: 'Phase 2.1 testing - Added debugging for voice recording callback flow'
+path: thoughts/shared/research/2025-09-30_brain-dump-flow-audit.md
 ---
 
 # Brain Dump Flow Comprehensive Audit

@@ -1,3 +1,5 @@
+<!-- apps/web/docs/prompts/architecture.md -->
+
 # BuildOS Prompt Architecture
 
 ## Overview

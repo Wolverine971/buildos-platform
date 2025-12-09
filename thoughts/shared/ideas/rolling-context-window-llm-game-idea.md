@@ -1,3 +1,4 @@
+<!-- thoughts/shared/ideas/rolling-context-window-llm-game-idea.md -->
 # Question
 
 If I have a turn based dungeons and dragons game that is faciilitated in a llm chat window, what should be the limit for how many tokens can be used before the scenario becomes too expensive to keep going?

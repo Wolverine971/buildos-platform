@@ -1,3 +1,5 @@
+<!-- docs/philosophy/braindump-psychology.md -->
+
 # The Sacred Act of Brain Dumping: BuildOS Psychology & Philosophy
 
 ## Core Principle: The Uninterrupted Release

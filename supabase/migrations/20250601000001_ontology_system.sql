@@ -1,3 +1,4 @@
+-- supabase/migrations/20250601000001_ontology_system.sql
 -- ============================================
 -- BuildOS Ontology System Migration
 -- Tables in PUBLIC schema with onto_ prefix

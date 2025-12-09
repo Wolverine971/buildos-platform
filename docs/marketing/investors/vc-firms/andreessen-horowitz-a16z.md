@@ -12,6 +12,7 @@ related_docs:
 contact_verified: 'yes'
 fund_size: '$46B AUM, $7.2B raised in 2024'
 recent_update: 'Raghu Raghuram (ex-VMware CEO) joined as GP in October 2025'
+path: docs/marketing/investors/vc-firms/andreessen-horowitz-a16z.md
 ---
 
 # Andreessen Horowitz (a16z) - VC Firm Profile

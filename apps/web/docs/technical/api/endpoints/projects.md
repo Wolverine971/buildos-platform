@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/api/endpoints/projects.md -->
+
 # Projects API
 
 **Base Path:** `/api/projects`

@@ -8,6 +8,7 @@ category: error-tracking, production-debugging
 related_files:
     - apps/web/src/lib/services/errorLogger.service.ts
     - apps/web/supabase/migrations/20251023_create_error_logs_table.sql
+path: thoughts/shared/research/2025-10-23_18-00-00_error-logging-implementation-status.md
 ---
 
 # Error Logging Implementation Status

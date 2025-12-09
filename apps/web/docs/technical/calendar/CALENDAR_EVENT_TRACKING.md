@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/calendar/CALENDAR_EVENT_TRACKING.md -->
+
 # Calendar Event Tracking - Organizer & Attendee Support
 
 **Status**: ✅ Implemented

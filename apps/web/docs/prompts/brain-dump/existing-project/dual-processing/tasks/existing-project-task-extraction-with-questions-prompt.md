@@ -1,3 +1,4 @@
+<!-- apps/web/docs/prompts/brain-dump/existing-project/dual-processing/tasks/existing-project-task-extraction-with-questions-prompt.md -->
 # Prompt Audit: existing-project-dual-tasks-with-questions
 
 **Generated at:** 2025-09-17T22:26:37.967Z

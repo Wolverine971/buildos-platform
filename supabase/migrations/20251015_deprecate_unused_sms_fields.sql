@@ -1,3 +1,4 @@
+-- supabase/migrations/20251015_deprecate_unused_sms_fields.sql
 -- =====================================================
 -- Phase 3a: Mark Deprecated SMS Fields
 -- =====================================================

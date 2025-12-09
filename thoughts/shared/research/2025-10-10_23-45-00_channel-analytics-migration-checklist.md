@@ -8,6 +8,7 @@ priority: HIGH
 related:
     - 2025-10-10_23-30-00_notification-bug-fixes-summary.md
     - 20251011_fix_notification_analytics_bugs.sql
+path: thoughts/shared/research/2025-10-10_23-45-00_channel-analytics-migration-checklist.md
 ---
 
 # Channel Analytics Migration Updates - Frontend Checklist

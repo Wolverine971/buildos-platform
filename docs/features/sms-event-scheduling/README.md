@@ -15,6 +15,7 @@ phase_2_completed: 2025-10-08
 phase_3_completed: 2025-10-08
 phase_4_completed: 2025-10-08
 phase_5_completed: 2025-10-08
+path: docs/features/sms-event-scheduling/README.md
 ---
 
 # SMS Event Scheduling System

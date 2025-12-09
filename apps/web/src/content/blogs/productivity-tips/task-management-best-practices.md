@@ -11,6 +11,7 @@ tags: ['task-management', 'productivity-tips', 'organization', 'execution', 'cal
 readingTime: 12
 excerpt: 'Transform scattered to-do lists into a systematic task management approach that integrates seamlessly with your projects, calendar, and energy patterns for sustained productivity.'
 pic: 'task-management-mastery'
+path: apps/web/src/content/blogs/productivity-tips/task-management-best-practices.md
 ---
 
 Task management in Build OS goes far beyond simple to-do lists. It's a sophisticated system that connects individual actions to larger projects, aligns with your energy patterns, integrates with your calendar, and adapts based on your working style and progress patterns.

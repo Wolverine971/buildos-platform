@@ -1,3 +1,5 @@
+<!-- docs/marketing/investors/vc-firms/README.md -->
+
 # VC Firms Directory - BuildOS Investor Profiles
 
 **Last Updated:** January 2025

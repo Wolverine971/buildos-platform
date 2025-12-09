@@ -11,6 +11,7 @@ related_docs:
     - ../buildos-fundraising-strategy.md
 contact_verified: 'yes'
 note: 'NOT AN INVESTOR - Serial entrepreneur who explicitly avoids investing to maintain focus on building companies'
+path: docs/marketing/investors/profiles/dennis-mortensen-profile.md
 ---
 
 # Dennis R. Mortensen - Entrepreneur Profile

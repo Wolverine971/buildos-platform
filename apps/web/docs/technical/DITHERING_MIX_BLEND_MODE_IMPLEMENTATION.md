@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/DITHERING_MIX_BLEND_MODE_IMPLEMENTATION.md -->
+
 # Dithering Mix-Blend-Mode Implementation
 
 **Date:** 2025-11-21

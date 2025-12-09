@@ -1,3 +1,5 @@
+<!-- apps/web/src/lib/components/notifications/README.md -->
+
 # Generic Stackable Notification System
 
 **Location:** `/apps/web/src/lib/components/notifications/`

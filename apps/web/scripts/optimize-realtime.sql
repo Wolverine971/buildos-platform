@@ -1,4 +1,4 @@
--- scripts/optimize-realtime.sql
+-- apps/web/scripts/optimize-realtime.sql
 -- Optimize real-time performance
 -- Run in Supabase SQL Editor
 

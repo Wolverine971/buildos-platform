@@ -10,6 +10,7 @@ tags:
 status: complete
 last_updated: 2025-09-18
 last_updated_by: Claude Code
+path: apps/web/thoughts/shared/research/2025-09-18_01-02-24_phase-calendar-view-apple-redesign.md
 ---
 
 # Research: PhaseCalendarView Apple-Style Redesign and Readability Improvements

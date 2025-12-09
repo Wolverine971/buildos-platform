@@ -9,6 +9,7 @@ tags: [research, codebase, project-header, ui-design, apple-design, minimalism]
 status: complete
 last_updated: 2025-09-26
 last_updated_by: Claude
+path: apps/web/thoughts/shared/research/2025-09-26_06-11-03_minimalist-project-header-redesign.md
 ---
 
 # Research: Minimalist ProjectHeader Redesign with Apple-Inspired Design

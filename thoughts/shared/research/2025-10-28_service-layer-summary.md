@@ -1,3 +1,4 @@
+<!-- thoughts/shared/research/2025-10-28_service-layer-summary.md -->
 # Service Layer Architecture Summary
 
 **Date:** 2025-10-28  

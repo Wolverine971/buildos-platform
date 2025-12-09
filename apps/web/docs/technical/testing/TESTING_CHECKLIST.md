@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/testing/TESTING_CHECKLIST.md -->
+
 # Comprehensive Testing Checklist
 
 This document provides detailed testing procedures for all phases of development. Use this checklist to ensure comprehensive test coverage and quality assurance.

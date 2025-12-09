@@ -10,6 +10,7 @@ status: complete
 last_updated: 2025-09-26
 last_updated_by: Claude
 last_updated_note: 'Implemented all improvements based on user feedback'
+path: apps/web/thoughts/shared/research/2025-09-26_23-33-00_brain-dump-performance-improvements.md
 ---
 
 # Research: Brain Dump Performance and Auto-Accept Flow Improvements

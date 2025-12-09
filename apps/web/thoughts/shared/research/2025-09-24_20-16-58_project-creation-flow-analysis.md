@@ -9,6 +9,7 @@ tags: [research, codebase, project-creation, brain-dump, user-flow]
 status: complete
 last_updated: 2025-09-24
 last_updated_by: Claude
+path: apps/web/thoughts/shared/research/2025-09-24_20-16-58_project-creation-flow-analysis.md
 ---
 
 # Research: Project Creation Flow Without Brain Dump

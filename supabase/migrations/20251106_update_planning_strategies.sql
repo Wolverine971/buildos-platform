@@ -1,3 +1,4 @@
+-- supabase/migrations/20251106_update_planning_strategies.sql
 -- Migration: Update planning strategy enum to match ChatStrategy values
 -- Date: 2025-11-06
 -- Description: Replace legacy 'direct'/'complex' enum with chat strategy labels

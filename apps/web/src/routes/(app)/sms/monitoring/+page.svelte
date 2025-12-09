@@ -1,4 +1,5 @@
 <!-- apps/web/src/routes/(app)/sms/monitoring/+page.svelte -->
+<!-- apps/web/src/routes/(app)/sms/monitoring/+page.svelte -->
 <script lang="ts">
 	// apps/web/src/routes/(app)/sms/monitoring/+page.svelte
 	/**

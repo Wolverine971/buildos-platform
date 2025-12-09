@@ -1,3 +1,5 @@
+<!-- apps/web/docs/migrations/completed/2025-11-17-agentic-chat-optimizations.md -->
+
 # Implementation Plan - Agentic Chat Improvements
 
 **Date**: 2025-11-17

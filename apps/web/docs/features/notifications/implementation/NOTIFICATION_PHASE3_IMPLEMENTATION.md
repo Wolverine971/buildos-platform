@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/notifications/implementation/NOTIFICATION_PHASE3_IMPLEMENTATION.md -->
+
 # Notification System Phase 3 - Implementation Summary
 
 **Status:** Complete - Ready for Testing

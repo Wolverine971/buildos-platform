@@ -9,6 +9,7 @@ tags: [research, codebase, chat-system, agent-system, architecture, integration]
 status: complete
 last_updated: 2025-10-28
 last_updated_by: Claude Code
+path: thoughts/shared/research/2025-10-28_23-30-00_chat-agent-integration-architecture.md
 ---
 
 # Research: Chat & Agent System Integration - Unified Architecture

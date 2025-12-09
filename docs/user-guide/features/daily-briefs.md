@@ -1,3 +1,5 @@
+<!-- docs/user-guide/features/daily-briefs.md -->
+
 ﻿# Daily Briefs Configuration
 
 Daily Briefs turn everything BuildOS knows about your projects, calendar, and brain dumps into a concise morning or evening plan. The worker service generates each brief, queues follow-up emails or SMS, and respects the preferences you set in the app. Use this guide to configure delivery, understand timing, and troubleshoot missed briefs.

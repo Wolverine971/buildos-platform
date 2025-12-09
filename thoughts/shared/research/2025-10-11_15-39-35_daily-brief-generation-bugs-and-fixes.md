@@ -9,6 +9,7 @@ tags: [research, bug-fix, daily-briefs, queue-jobs, types, sms-metrics]
 status: complete
 last_updated: 2025-10-11
 last_updated_by: Claude
+path: thoughts/shared/research/2025-10-11_15-39-35_daily-brief-generation-bugs-and-fixes.md
 ---
 
 # Research: Daily Brief Generation Bugs and Type Inconsistencies

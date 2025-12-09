@@ -20,6 +20,7 @@
 					"readingTime": 1,
 					"excerpt": "Internal planning document for blog post creation.",
 					"pic": "planning",
+					"path": "apps/web/src/content/blogs/advanced-guides/advanced-task-dependency-management-interview.md",
 					"slug": "advanced-task-dependency-management-interview",
 					"category": "advanced-guides",
 					"filePath": "src/content/blogs/advanced-guides/advanced-task-dependency-management-interview.md"
@@ -44,6 +45,7 @@
 					"readingTime": 12,
 					"excerpt": "Learn advanced techniques for managing task dependencies, critical paths, and complex project workflows in BuildOS. Bridge the gap between simple task lists and professional project management.",
 					"pic": "task-dependencies",
+					"path": "apps/web/src/content/blogs/advanced-guides/advanced-task-dependency-management.md",
 					"slug": "advanced-task-dependency-management",
 					"category": "advanced-guides",
 					"filePath": "src/content/blogs/advanced-guides/advanced-task-dependency-management.md"
@@ -61,6 +63,7 @@
 					"readingTime": 1,
 					"excerpt": "Internal planning document for blog post creation.",
 					"pic": "planning",
+					"path": "apps/web/src/content/blogs/advanced-guides/api-integration-workflows-interview.md",
 					"slug": "api-integration-workflows-interview",
 					"category": "advanced-guides",
 					"filePath": "src/content/blogs/advanced-guides/api-integration-workflows-interview.md"
@@ -85,6 +88,7 @@
 					"readingTime": 15,
 					"excerpt": "Advanced guide to connecting BuildOS with external tools via API integrations. Learn webhook patterns, automation workflows, and integration best practices.",
 					"pic": "api-integrations",
+					"path": "apps/web/src/content/blogs/advanced-guides/api-integration-workflows.md",
 					"slug": "api-integration-workflows",
 					"category": "advanced-guides",
 					"filePath": "src/content/blogs/advanced-guides/api-integration-workflows.md"
@@ -102,6 +106,7 @@
 					"readingTime": 1,
 					"excerpt": "Internal planning document for blog post creation.",
 					"pic": "planning",
+					"path": "apps/web/src/content/blogs/advanced-guides/custom-context-field-mastery-interview.md",
 					"slug": "custom-context-field-mastery-interview",
 					"category": "advanced-guides",
 					"filePath": "src/content/blogs/advanced-guides/custom-context-field-mastery-interview.md"
@@ -126,6 +131,7 @@
 					"readingTime": 11,
 					"excerpt": "Master custom context fields in BuildOS to capture what actually matters for YOUR specific projects. Learn design patterns and advanced techniques for project context.",
 					"pic": "context-fields",
+					"path": "apps/web/src/content/blogs/advanced-guides/custom-context-field-mastery.md",
 					"slug": "custom-context-field-mastery",
 					"category": "advanced-guides",
 					"filePath": "src/content/blogs/advanced-guides/custom-context-field-mastery.md"
@@ -143,6 +149,7 @@
 					"readingTime": 1,
 					"excerpt": "Internal planning document for blog post creation.",
 					"pic": "planning",
+					"path": "apps/web/src/content/blogs/advanced-guides/power-user-automation-techniques-interview.md",
 					"slug": "power-user-automation-techniques-interview",
 					"category": "advanced-guides",
 					"filePath": "src/content/blogs/advanced-guides/power-user-automation-techniques-interview.md"
@@ -167,6 +174,7 @@
 					"readingTime": 14,
 					"excerpt": "Discover advanced techniques, automations, and workflows that separate good BuildOS users from power users. Learn to unlock the other 80% of capabilities.",
 					"pic": "power-user",
+					"path": "apps/web/src/content/blogs/advanced-guides/power-user-automation-techniques.md",
 					"slug": "power-user-automation-techniques",
 					"category": "advanced-guides",
 					"filePath": "src/content/blogs/advanced-guides/power-user-automation-techniques.md"
@@ -190,6 +198,7 @@
 					"readingTime": 11,
 					"excerpt": "Comprehensive troubleshooting guide for Build OS users. Find solutions to common issues, optimization tips, and preventive measures to ensure smooth productivity system operation.",
 					"pic": "troubleshooting-guide",
+					"path": "apps/web/src/content/blogs/advanced-guides/troubleshooting-common-issues.md",
 					"slug": "troubleshooting-common-issues",
 					"category": "advanced-guides",
 					"filePath": "src/content/blogs/advanced-guides/troubleshooting-common-issues.md"
@@ -216,6 +225,7 @@
 					"readingTime": 1,
 					"excerpt": "Internal planning document for case study creation.",
 					"pic": "planning",
+					"path": "apps/web/src/content/blogs/case-studies/academic-researcher-time-management-interview.md",
 					"slug": "academic-researcher-time-management-interview",
 					"category": "case-studies",
 					"filePath": "src/content/blogs/case-studies/academic-researcher-time-management-interview.md"
@@ -240,6 +250,7 @@
 					"readingTime": 8,
 					"excerpt": "Real story of how an academic researcher juggling 5 research projects, teaching, and publications regained control of their time and focus using BuildOS.",
 					"pic": "academic-case-study",
+					"path": "apps/web/src/content/blogs/case-studies/academic-researcher-time-management.md",
 					"slug": "academic-researcher-time-management",
 					"category": "case-studies",
 					"filePath": "src/content/blogs/case-studies/academic-researcher-time-management.md"
@@ -257,6 +268,7 @@
 					"readingTime": 1,
 					"excerpt": "Internal planning document for case study creation.",
 					"pic": "planning",
+					"path": "apps/web/src/content/blogs/case-studies/creative-professional-project-organization-interview.md",
 					"slug": "creative-professional-project-organization-interview",
 					"category": "case-studies",
 					"filePath": "src/content/blogs/case-studies/creative-professional-project-organization-interview.md"
@@ -281,6 +293,7 @@
 					"readingTime": 7,
 					"excerpt": "Discover how a creative professional transformed chaotic client work into organized, profitable projects without losing creative freedom.",
 					"pic": "creative-case-study",
+					"path": "apps/web/src/content/blogs/case-studies/creative-professional-project-organization.md",
 					"slug": "creative-professional-project-organization",
 					"category": "case-studies",
 					"filePath": "src/content/blogs/case-studies/creative-professional-project-organization.md"
@@ -298,6 +311,7 @@
 					"readingTime": 1,
 					"excerpt": "Internal planning document for case study creation.",
 					"pic": "planning",
+					"path": "apps/web/src/content/blogs/case-studies/remote-team-coordination-success-interview.md",
 					"slug": "remote-team-coordination-success-interview",
 					"category": "case-studies",
 					"filePath": "src/content/blogs/case-studies/remote-team-coordination-success-interview.md"
@@ -322,6 +336,7 @@
 					"readingTime": 9,
 					"excerpt": "Learn how a remote team solved async communication challenges and project visibility issues with BuildOS team features.",
 					"pic": "remote-team-case-study",
+					"path": "apps/web/src/content/blogs/case-studies/remote-team-coordination-success.md",
 					"slug": "remote-team-coordination-success",
 					"category": "case-studies",
 					"filePath": "src/content/blogs/case-studies/remote-team-coordination-success.md"
@@ -339,6 +354,7 @@
 					"readingTime": 1,
 					"excerpt": "Internal planning document for case study creation.",
 					"pic": "planning",
+					"path": "apps/web/src/content/blogs/case-studies/startup-founder-productivity-transformation-interview.md",
 					"slug": "startup-founder-productivity-transformation-interview",
 					"category": "case-studies",
 					"filePath": "src/content/blogs/case-studies/startup-founder-productivity-transformation-interview.md"
@@ -363,6 +379,7 @@
 					"readingTime": 8,
 					"excerpt": "The story of how a startup founder went from constant firefighting to strategic execution using BuildOS to manage competing priorities.",
 					"pic": "founder-case-study",
+					"path": "apps/web/src/content/blogs/case-studies/startup-founder-productivity-transformation.md",
 					"slug": "startup-founder-productivity-transformation",
 					"category": "case-studies",
 					"filePath": "src/content/blogs/case-studies/startup-founder-productivity-transformation.md"
@@ -395,6 +412,7 @@
 					"readingTime": 10,
 					"excerpt": "Transform your daily productivity with AI-powered briefs that provide personalized insights, priority guidance, and strategic recommendations based on your unique context.",
 					"pic": "daily-briefs-guide",
+					"path": "apps/web/src/content/blogs/getting-started/daily-brief-guide.md",
 					"slug": "daily-brief-guide",
 					"category": "getting-started",
 					"filePath": "src/content/blogs/getting-started/daily-brief-guide.md"
@@ -412,6 +430,7 @@
 					"readingTime": 7,
 					"excerpt": "Master the foundational skill of transforming scattered thoughts into organized, actionable projects using Build OS intelligent parsing.",
 					"pic": "brain-dumping-guide",
+					"path": "apps/web/src/content/blogs/getting-started/effective-brain-dumping.md",
 					"slug": "effective-brain-dumping",
 					"category": "getting-started",
 					"filePath": "src/content/blogs/getting-started/effective-brain-dumping.md"
@@ -429,6 +448,7 @@
 					"readingTime": 8,
 					"excerpt": "Transform your first big idea into a structured, actionable project using Build OS intelligent project creation and phase management system.",
 					"pic": "first-project-setup",
+					"path": "apps/web/src/content/blogs/getting-started/first-project-setup.md",
 					"slug": "first-project-setup",
 					"category": "getting-started",
 					"filePath": "src/content/blogs/getting-started/first-project-setup.md"
@@ -446,6 +466,7 @@
 					"readingTime": 8,
 					"excerpt": "BuildOS is built on a simple truth: your projects are unique, and your tools should adapt to you. Learn how our flexible system turns chaos into clarity.",
 					"pic": "how-buildos-works",
+					"path": "apps/web/src/content/blogs/getting-started/how-buildos-works.md",
 					"slug": "how-buildos-works",
 					"category": "getting-started",
 					"filePath": "src/content/blogs/getting-started/how-buildos-works.md"
@@ -463,6 +484,7 @@
 					"readingTime": 9,
 					"excerpt": "Master the fundamental distinction between enduring life goals and executable projects to create perfect alignment between your daily actions and long-term vision.",
 					"pic": "goals-vs-projects",
+					"path": "apps/web/src/content/blogs/getting-started/understanding-life-goals.md",
 					"slug": "understanding-life-goals",
 					"category": "getting-started",
 					"filePath": "src/content/blogs/getting-started/understanding-life-goals.md"
@@ -500,6 +522,7 @@
 					"readingTime": 6,
 					"excerpt": "While everyone focuses on giving AI agents more capabilities, the real edge comes from context engineering—teaching them judgment through curated, relevant, evolving information. Discover why contextual precision beats raw capability.",
 					"pic": "context-vs-agentic",
+					"path": "apps/web/src/content/blogs/philosophy/agentic-vrs-context-engineering.md",
 					"slug": "agentic-vrs-context-engineering",
 					"category": "philosophy",
 					"filePath": "src/content/blogs/philosophy/agentic-vrs-context-engineering.md"
@@ -530,6 +553,7 @@
 					"readingTime": 7,
 					"excerpt": "While everyone races to build AI that does everything for you, Build OS takes the opposite approach: AI that helps you see clearly so you can do what matters. Learn why clarity beats automation for actually shipping products.",
 					"pic": "ai-clarity-execution",
+					"path": "apps/web/src/content/blogs/philosophy/anti-ai-assistant-execution-engine.md",
 					"slug": "anti-ai-assistant-execution-engine",
 					"category": "philosophy",
 					"filePath": "src/content/blogs/philosophy/anti-ai-assistant-execution-engine.md"
@@ -547,6 +571,7 @@
 					"readingTime": 1,
 					"excerpt": "Internal planning document for blog post creation.",
 					"pic": "planning",
+					"path": "apps/web/src/content/blogs/philosophy/future-of-personal-knowledge-management-interview.md",
 					"slug": "future-of-personal-knowledge-management-interview",
 					"category": "philosophy",
 					"filePath": "src/content/blogs/philosophy/future-of-personal-knowledge-management-interview.md"
@@ -577,6 +602,7 @@
 					"readingTime": 12,
 					"excerpt": "Most knowledge management is productivity theater—80% of notes are never revisited. The future isn't better filing cabinets, it's AI systems that turn chaos into clarity and knowledge into action. Learn why strategic forgetting beats total recall, and how to prepare for the shift from passive archives to active intelligence.",
 					"pic": "knowledge-management-future",
+					"path": "apps/web/src/content/blogs/philosophy/future-of-personal-knowledge-management.md",
 					"slug": "future-of-personal-knowledge-management",
 					"category": "philosophy",
 					"filePath": "src/content/blogs/philosophy/future-of-personal-knowledge-management.md"
@@ -594,6 +620,7 @@
 					"readingTime": 1,
 					"excerpt": "Internal planning document for blog post creation.",
 					"pic": "planning",
+					"path": "apps/web/src/content/blogs/philosophy/information-architecture-principles-interview.md",
 					"slug": "information-architecture-principles-interview",
 					"category": "philosophy",
 					"filePath": "src/content/blogs/philosophy/information-architecture-principles-interview.md"
@@ -617,6 +644,7 @@
 					"readingTime": 10,
 					"excerpt": "Explore the foundational principles of information architecture applied to personal productivity. Learn how to organize knowledge for maximum utility and minimal friction.",
 					"pic": "information-architecture",
+					"path": "apps/web/src/content/blogs/philosophy/information-architecture-principles.md",
 					"slug": "information-architecture-principles",
 					"category": "philosophy",
 					"filePath": "src/content/blogs/philosophy/information-architecture-principles.md"
@@ -634,6 +662,7 @@
 					"readingTime": 1,
 					"excerpt": "Internal planning document for blog post creation.",
 					"pic": "planning",
+					"path": "apps/web/src/content/blogs/philosophy/personal-operating-system-manifesto-interview.md",
 					"slug": "personal-operating-system-manifesto-interview",
 					"category": "philosophy",
 					"filePath": "src/content/blogs/philosophy/personal-operating-system-manifesto-interview.md"
@@ -658,6 +687,7 @@
 					"readingTime": 12,
 					"excerpt": "A bold vision for the future of personal productivity: treating your life like an operating system that orchestrates everything you do.",
 					"pic": "manifesto",
+					"path": "apps/web/src/content/blogs/philosophy/personal-operating-system-manifesto.md",
 					"slug": "personal-operating-system-manifesto",
 					"category": "philosophy",
 					"filePath": "src/content/blogs/philosophy/personal-operating-system-manifesto.md"
@@ -675,6 +705,7 @@
 					"readingTime": 1,
 					"excerpt": "Internal planning document for blog post creation.",
 					"pic": "planning",
+					"path": "apps/web/src/content/blogs/philosophy/productivity-vs-busy-work-interview.md",
 					"slug": "productivity-vs-busy-work-interview",
 					"category": "philosophy",
 					"filePath": "src/content/blogs/philosophy/productivity-vs-busy-work-interview.md"
@@ -699,6 +730,7 @@
 					"readingTime": 9,
 					"excerpt": "Learn to distinguish between meaningful productivity and performative busy work. Discover why motion doesn't equal progress.",
 					"pic": "productivity-vs-busy",
+					"path": "apps/web/src/content/blogs/philosophy/productivity-vs-busy-work.md",
 					"slug": "productivity-vs-busy-work",
 					"category": "philosophy",
 					"filePath": "src/content/blogs/philosophy/productivity-vs-busy-work.md"
@@ -725,6 +757,7 @@
 					"readingTime": 1,
 					"excerpt": "Internal planning document for launch announcement.",
 					"pic": "planning",
+					"path": "apps/web/src/content/blogs/product-updates/build-os-beta-launch-interview.md",
 					"slug": "build-os-beta-launch-interview",
 					"category": "product-updates",
 					"filePath": "src/content/blogs/product-updates/build-os-beta-launch-interview.md"
@@ -742,6 +775,7 @@
 					"readingTime": 5,
 					"excerpt": "BuildOS beta is now live! Discover the AI-powered productivity platform that transforms how you organize your work and life.",
 					"pic": "beta-launch",
+					"path": "apps/web/src/content/blogs/product-updates/build-os-beta-launch.md",
 					"slug": "build-os-beta-launch",
 					"category": "product-updates",
 					"filePath": "src/content/blogs/product-updates/build-os-beta-launch.md"
@@ -759,6 +793,7 @@
 					"readingTime": 1,
 					"excerpt": "Internal planning document for feature announcement.",
 					"pic": "planning",
+					"path": "apps/web/src/content/blogs/product-updates/calendar-integration-announcement-interview.md",
 					"slug": "calendar-integration-announcement-interview",
 					"category": "product-updates",
 					"filePath": "src/content/blogs/product-updates/calendar-integration-announcement-interview.md"
@@ -782,6 +817,7 @@
 					"readingTime": 6,
 					"excerpt": "BuildOS now integrates with Google Calendar for intelligent time blocking and task scheduling. Learn how to connect your calendar.",
 					"pic": "calendar-announcement",
+					"path": "apps/web/src/content/blogs/product-updates/calendar-integration-announcement.md",
 					"slug": "calendar-integration-announcement",
 					"category": "product-updates",
 					"filePath": "src/content/blogs/product-updates/calendar-integration-announcement.md"
@@ -799,6 +835,7 @@
 					"readingTime": 1,
 					"excerpt": "Internal planning document for feature announcement.",
 					"pic": "planning",
+					"path": "apps/web/src/content/blogs/product-updates/dynamic-context-feature-interview.md",
 					"slug": "dynamic-context-feature-interview",
 					"category": "product-updates",
 					"filePath": "src/content/blogs/product-updates/dynamic-context-feature-interview.md"
@@ -822,6 +859,7 @@
 					"readingTime": 7,
 					"excerpt": "New dynamic context feature lets projects remember important details and evolve with your work. Learn how to use custom context fields.",
 					"pic": "dynamic-context",
+					"path": "apps/web/src/content/blogs/product-updates/dynamic-context-feature.md",
 					"slug": "dynamic-context-feature",
 					"category": "product-updates",
 					"filePath": "src/content/blogs/product-updates/dynamic-context-feature.md"
@@ -839,6 +877,7 @@
 					"readingTime": 1,
 					"excerpt": "Internal planning document for feature announcement.",
 					"pic": "planning",
+					"path": "apps/web/src/content/blogs/product-updates/phase-management-update-interview.md",
 					"slug": "phase-management-update-interview",
 					"category": "product-updates",
 					"filePath": "src/content/blogs/product-updates/phase-management-update-interview.md"
@@ -862,6 +901,7 @@
 					"readingTime": 6,
 					"excerpt": "Enhanced phase management lets you organize projects with more flexibility. Discover new phase features and improvements.",
 					"pic": "phase-update",
+					"path": "apps/web/src/content/blogs/product-updates/phase-management-update.md",
 					"slug": "phase-management-update",
 					"category": "product-updates",
 					"filePath": "src/content/blogs/product-updates/phase-management-update.md"
@@ -888,6 +928,7 @@
 					"readingTime": 1,
 					"excerpt": "Internal planning document for blog post creation.",
 					"pic": "planning",
+					"path": "apps/web/src/content/blogs/productivity-tips/calendar-integration-workflow-interview.md",
 					"slug": "calendar-integration-workflow-interview",
 					"category": "productivity-tips",
 					"filePath": "src/content/blogs/productivity-tips/calendar-integration-workflow-interview.md"
@@ -912,6 +953,7 @@
 					"readingTime": 8,
 					"excerpt": "Master the calendar integration workflow in BuildOS. Learn time blocking strategies and smart scheduling techniques.",
 					"pic": "calendar-workflow",
+					"path": "apps/web/src/content/blogs/productivity-tips/calendar-integration-workflow.md",
 					"slug": "calendar-integration-workflow",
 					"category": "productivity-tips",
 					"filePath": "src/content/blogs/productivity-tips/calendar-integration-workflow.md"
@@ -940,6 +982,7 @@
 					"readingTime": 8,
 					"excerpt": "The evolution from prompt engineering to context engineering represents a fundamental shift in how we work with AI. Learn why building contextual systems beats crafting perfect prompts, and how to implement context engineering in your workflows today.",
 					"pic": "",
+					"path": "apps/web/src/content/blogs/productivity-tips/context-engineering-101.md",
 					"slug": "context-engineering-101",
 					"category": "productivity-tips",
 					"filePath": "src/content/blogs/productivity-tips/context-engineering-101.md"
@@ -966,6 +1009,7 @@
 					"readingTime": 9,
 					"excerpt": "From GTD to Notion to AI-native systems: how note-taking evolved from manual organization to intelligent automation. Discover why AI-first approaches like Build-OS solve fundamental problems that traditional productivity systems never could.",
 					"pic": "note-taking-evolution",
+					"path": "apps/web/src/content/blogs/productivity-tips/evolution-of-note-taking.md",
 					"slug": "evolution-of-note-taking",
 					"category": "productivity-tips",
 					"filePath": "src/content/blogs/productivity-tips/evolution-of-note-taking.md"
@@ -983,6 +1027,7 @@
 					"readingTime": 1,
 					"excerpt": "Internal planning document for blog post creation.",
 					"pic": "planning",
+					"path": "apps/web/src/content/blogs/productivity-tips/focus-time-optimization-interview.md",
 					"slug": "focus-time-optimization-interview",
 					"category": "productivity-tips",
 					"filePath": "src/content/blogs/productivity-tips/focus-time-optimization-interview.md"
@@ -1007,6 +1052,7 @@
 					"readingTime": 9,
 					"excerpt": "Practical strategies for protecting focus time and maximizing deep work sessions. Learn attention management with BuildOS.",
 					"pic": "focus-time",
+					"path": "apps/web/src/content/blogs/productivity-tips/focus-time-optimization.md",
 					"slug": "focus-time-optimization",
 					"category": "productivity-tips",
 					"filePath": "src/content/blogs/productivity-tips/focus-time-optimization.md"
@@ -1024,6 +1070,7 @@
 					"readingTime": 1,
 					"excerpt": "Internal planning document for blog post creation.",
 					"pic": "planning",
+					"path": "apps/web/src/content/blogs/productivity-tips/phase-based-project-execution-interview.md",
 					"slug": "phase-based-project-execution-interview",
 					"category": "productivity-tips",
 					"filePath": "src/content/blogs/productivity-tips/phase-based-project-execution-interview.md"
@@ -1048,6 +1095,7 @@
 					"readingTime": 10,
 					"excerpt": "Master phase-based project execution. Break down complex projects into manageable phases and execute systematically.",
 					"pic": "phase-execution",
+					"path": "apps/web/src/content/blogs/productivity-tips/phase-based-project-execution.md",
 					"slug": "phase-based-project-execution",
 					"category": "productivity-tips",
 					"filePath": "src/content/blogs/productivity-tips/phase-based-project-execution.md"
@@ -1071,6 +1119,7 @@
 					"readingTime": 12,
 					"excerpt": "Transform scattered to-do lists into a systematic task management approach that integrates seamlessly with your projects, calendar, and energy patterns for sustained productivity.",
 					"pic": "task-management-mastery",
+					"path": "apps/web/src/content/blogs/productivity-tips/task-management-best-practices.md",
 					"slug": "task-management-best-practices",
 					"category": "productivity-tips",
 					"filePath": "src/content/blogs/productivity-tips/task-management-best-practices.md"
@@ -1078,7 +1127,7 @@
 			}
 		}
 	},
-	"generatedAt": "2025-12-09T14:31:11.506Z",
+	"generatedAt": "2025-12-09T15:56:13.070Z",
 	"totalPosts": 49,
 	"totalCategories": 6
 }

@@ -1,3 +1,4 @@
+-- supabase/migrations/20251013_refactor_daily_brief_notification_prefs.sql
 -- Migration: Refactor daily brief notification preferences
 -- Purpose: Separate brief generation timing from notification delivery
 -- Date: 2025-10-13

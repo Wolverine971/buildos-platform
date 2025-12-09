@@ -32,6 +32,7 @@ seo:
             'thought organization system',
             'working memory tools'
         ]
+path: apps/web/src/content/blogs/vision-deserves-better-operating-system.md
 ---
 
 You wake up at 3 AM with a breakthrough. The architecture finally makes sense. You fumble for your phone, type it into Notes, and fall back asleep knowing you'll remember in the morning.

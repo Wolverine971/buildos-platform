@@ -1,3 +1,4 @@
+-- supabase/migrations/20251016_002_consolidate_notification_preferences.sql
 -- Migration: Phase 3 - Consolidate Notification Preferences
 -- Description: Consolidate multiple user_notification_preferences rows into one per user
 -- Date: 2025-10-16

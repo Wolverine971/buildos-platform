@@ -10,6 +10,7 @@ status: in_progress
 last_updated: 2025-09-14T12:00:00-0400
 last_updated_by: Claude
 last_updated_note: 'Standardized data flow patterns across all components'
+path: apps/web/thoughts/shared/research/2025-09-14_frontend-patterns-analysis.md
 ---
 
 # Research: Frontend Component Patterns and Reactivity Analysis for /projects/[slug]

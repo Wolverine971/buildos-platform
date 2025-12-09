@@ -1,3 +1,5 @@
+<!-- docs/features/sms-event-scheduling/research/README.md -->
+
 # SMS Event Scheduling - Research Documentation
 
 This directory contains detailed research gathered during the design phase of the SMS Event Scheduling System. These documents provide deep technical context for the implementation.

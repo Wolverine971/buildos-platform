@@ -5,6 +5,7 @@ repository: buildos-platform
 topic: 'Ontology Calendar Migration Strategy'
 tags: [research, buildos, ontology, calendar, migration, architecture]
 status: complete
+path: thoughts/shared/research/2025-11-09_ontology-calendar-migration-strategy.md
 ---
 
 # Research: Ontology Calendar Migration Strategy

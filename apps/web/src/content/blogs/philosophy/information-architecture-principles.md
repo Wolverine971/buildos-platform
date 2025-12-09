@@ -18,6 +18,7 @@ tags:
 readingTime: 10
 excerpt: 'Explore the foundational principles of information architecture applied to personal productivity. Learn how to organize knowledge for maximum utility and minimal friction.'
 pic: 'information-architecture'
+path: apps/web/src/content/blogs/philosophy/information-architecture-principles.md
 ---
 
 # Information Architecture Principles

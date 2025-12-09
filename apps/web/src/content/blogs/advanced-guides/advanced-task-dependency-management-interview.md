@@ -11,6 +11,7 @@ tags: ['planning', 'outline', 'internal']
 readingTime: 1
 excerpt: 'Internal planning document for blog post creation.'
 pic: 'planning'
+path: apps/web/src/content/blogs/advanced-guides/advanced-task-dependency-management-interview.md
 ---
 
 # Blog Interview Guide: Advanced Task Dependency Management - Orchestrating Complex Workflows

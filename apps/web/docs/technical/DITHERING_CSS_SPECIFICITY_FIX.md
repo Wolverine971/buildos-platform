@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/DITHERING_CSS_SPECIFICITY_FIX.md -->
+
 # Dithering CSS Specificity Fix
 
 **Date:** 2025-11-21

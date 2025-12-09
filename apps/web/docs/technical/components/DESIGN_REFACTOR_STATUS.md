@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/components/DESIGN_REFACTOR_STATUS.md -->
+
 # Design System Refactoring Status
 
 **Last Updated**: October 25, 2025

@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/ontology/AGENT_CHAT_ONTOLOGY_INTEGRATION_STATUS.md -->
+
 # Agent Chat Ontology Integration - Implementation Status
 
 **Date:** 2025-11-04

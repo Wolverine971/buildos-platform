@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/deployment/DEPLOYMENT_CHECKLIST.md -->
+
 # Build OS - Production Deployment Checklist
 
 **Target**: Vercel Production Deployment

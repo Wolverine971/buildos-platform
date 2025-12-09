@@ -1,3 +1,4 @@
+<!-- thoughts/shared/ideas/chat-implementation-index.md -->
 # 📚 BuildOS Chat System - Implementation Index
 
 ## Overview

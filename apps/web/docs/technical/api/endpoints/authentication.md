@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/api/endpoints/authentication.md -->
+
 # Authentication & Account API
 
 **Base Paths:** `/api/auth`, `/api/account`

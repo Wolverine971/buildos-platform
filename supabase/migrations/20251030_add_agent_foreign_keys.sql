@@ -1,3 +1,4 @@
+-- supabase/migrations/20251030_add_agent_foreign_keys.sql
 -- Migration: Add Missing Foreign Key Constraints to Agent Tables
 -- Date: 2025-10-30
 -- Description: Adds FK constraints for chat_sessions references that were missing

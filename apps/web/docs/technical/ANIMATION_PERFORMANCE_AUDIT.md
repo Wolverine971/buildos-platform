@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/ANIMATION_PERFORMANCE_AUDIT.md -->
+
 # Animation Performance Audit & Optimization Plan
 
 **Created**: November 21, 2025

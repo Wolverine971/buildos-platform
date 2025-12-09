@@ -1,4 +1,4 @@
--- scripts/optimize-project-realtime.sql
+-- apps/web/scripts/optimize-project-realtime.sql
 -- Optimized indexes for RealtimeProjectService subscriptions
 -- Run this in Supabase SQL Editor to improve realtime query performance
 

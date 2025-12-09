@@ -1,3 +1,4 @@
+-- supabase/migrations/20251016_999_POST_MIGRATION_VERIFICATION.sql
 -- =====================================================
 -- POST-MIGRATION VERIFICATION SCRIPT
 -- =====================================================

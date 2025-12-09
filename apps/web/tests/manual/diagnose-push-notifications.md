@@ -1,3 +1,5 @@
+<!-- apps/web/tests/manual/diagnose-push-notifications.md -->
+
 # Push Notification Diagnostic Guide
 
 **Problem**: Calling `/api/admin/notifications/test` returns 200 but no push notification appears on phone

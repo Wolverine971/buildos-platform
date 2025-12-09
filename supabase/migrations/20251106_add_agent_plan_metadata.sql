@@ -1,3 +1,4 @@
+-- supabase/migrations/20251106_add_agent_plan_metadata.sql
 -- Migration: Add metadata column to agent_plans
 -- Created: 2025-11-06
 -- Description: Allows storing structured telemetry for generated agent plans

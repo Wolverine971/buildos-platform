@@ -8,6 +8,7 @@ category: 'design-system'
 tags: [design-system, style-guide, legacy, deprecated]
 related_files:
     - apps/web/docs/technical/components/INKPRINT_DESIGN_SYSTEM.md
+path: apps/web/docs/design/design-system.md
 ---
 
 # BuildOS Design System (Legacy)

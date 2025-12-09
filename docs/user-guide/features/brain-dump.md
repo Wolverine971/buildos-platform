@@ -24,6 +24,7 @@ keywords:
 image: '/images/blog/brain-dump-effectively.jpg'
 imageAlt: 'Voice recording transforming into organized digital structure'
 readingTime: '4 min'
+path: docs/user-guide/features/brain-dump.md
 ---
 
 ## How to Brain Dump Effectively

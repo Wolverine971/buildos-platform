@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/project-activity-logging/NEXT_STEP_GENERATION_FLOW.md -->
+
 # Next Step Generation Flow
 
 ## Overview

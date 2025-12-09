@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/api/endpoints/daily-briefs.md -->
+
 # Daily Briefs API Endpoints
 
 This document provides comprehensive documentation for all Daily Briefs API endpoints in the BuildOS platform.

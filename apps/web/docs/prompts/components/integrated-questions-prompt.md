@@ -4,6 +4,7 @@ type: Prompt component (integrated into main prompts)
 source: promptTemplate.service.ts::getIntegratedQuestionsPrompt()
 tokens: ~200-400
 integration: Added to long braindump prompts when questions exist
+path: apps/web/docs/prompts/components/integrated-questions-prompt.md
 ---
 
 # Integrated Questions Prompt Component

@@ -1,3 +1,5 @@
+<!-- apps/web/docs/operations/deployment/READY_TO_DEPLOY.md -->
+
 # ✅ Implementation Ready for Deployment
 
 **Status**: All code integrated and typechecking successfully

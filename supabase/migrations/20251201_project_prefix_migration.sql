@@ -1,3 +1,4 @@
+-- supabase/migrations/20251201_project_prefix_migration.sql
 -- Migration: Add 'project.' prefix to all project template type_keys
 -- Date: December 1, 2025
 -- Purpose: Align project templates with the unified naming convention where all entities use scope prefixes

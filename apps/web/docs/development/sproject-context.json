@@ -128,22 +128,6 @@
 			"components": ["SynthesisLoadingState"]
 		},
 		{
-			"file": "src/routes/projects/templates/+page.svelte",
-			"type": "page",
-			"components": ["TemplateDetailModal", "ConfirmationModal"]
-		},
-		{
-			"file": "src/routes/projects-old/[id]/+page.svelte",
-			"type": "page",
-			"components": [
-				"TasksList",
-				"NotesSection",
-				"ProjectSynthesis",
-				"PhasesSection",
-				"BraindumpsSection"
-			]
-		},
-		{
 			"file": "src/routes/projects/[id]/+page.svelte",
 			"type": "page",
 			"components": [
@@ -158,6 +142,22 @@
 				"GoalCreateModal",
 				"GoalEditModal",
 				"OntologyProjectEditModal"
+			]
+		},
+		{
+			"file": "src/routes/projects/templates/+page.svelte",
+			"type": "page",
+			"components": ["TemplateDetailModal", "ConfirmationModal"]
+		},
+		{
+			"file": "src/routes/projects-old/[id]/+page.svelte",
+			"type": "page",
+			"components": [
+				"TasksList",
+				"NotesSection",
+				"ProjectSynthesis",
+				"PhasesSection",
+				"BraindumpsSection"
 			]
 		},
 		{
@@ -825,11 +825,11 @@
 		"src/lib/components/notifications/NotificationModal.svelte": [
 			"src/lib/components/notifications/types/brain-dump/BrainDumpModalContent.svelte"
 		],
+		"src/routes/projects/[id]/+page.svelte": ["src/lib/components/ontology/FSMStateBar.svelte"],
 		"src/routes/projects-old/[id]/+page.svelte": [
 			"src/lib/components/project/ProjectSynthesis.svelte",
 			"src/lib/components/project/PhasesSection.svelte"
 		],
-		"src/routes/projects/[id]/+page.svelte": ["src/lib/components/ontology/FSMStateBar.svelte"],
 		"src/routes/projects/projects-v2/[id]/+page.svelte": [
 			"src/lib/components/ontology/FSMStateBar.svelte"
 		]

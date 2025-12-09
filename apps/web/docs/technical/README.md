@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/README.md -->
+
 # 📚 Technical Documentation
 
 This directory contains all technical documentation for BuildOS, organized by system component and functionality.

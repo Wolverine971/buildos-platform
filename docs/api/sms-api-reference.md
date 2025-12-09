@@ -1,3 +1,5 @@
+<!-- docs/api/sms-api-reference.md -->
+
 # SMS API Reference
 
 ## Overview

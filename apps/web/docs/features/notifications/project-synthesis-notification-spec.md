@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/notifications/project-synthesis-notification-spec.md -->
+
 # Project Synthesis Notification System - Specification
 
 **Date:** 2025-10-05

@@ -9,6 +9,7 @@ tags: [research, codebase, typescript, code-quality, refactoring, complexity]
 status: complete
 last_updated: 2025-09-16
 last_updated_by: Claude Code
+path: apps/web/thoughts/shared/research/2025-09-16_11-49-13_typescript-code-quality-analysis.md
 ---
 
 # Research: TypeScript Code Quality Analysis - Most Messy to Least Messy Files

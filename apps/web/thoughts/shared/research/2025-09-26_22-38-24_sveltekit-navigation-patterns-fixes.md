@@ -9,6 +9,7 @@ tags: [research, codebase, navigation, sveltekit, refactoring]
 status: complete
 last_updated: 2025-09-26
 last_updated_by: Claude
+path: apps/web/thoughts/shared/research/2025-09-26_22-38-24_sveltekit-navigation-patterns-fixes.md
 ---
 
 # Research: SvelteKit Navigation Patterns - Research and Fixes

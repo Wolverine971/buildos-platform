@@ -1,3 +1,4 @@
+-- apps/web/supabase/migrations/20251022_fix_foreign_key_constraint_timing.sql
 -- ============================================================================
 -- FIX: Foreign Key Constraint Timing Issue on User Registration
 -- Date: 2025-10-22

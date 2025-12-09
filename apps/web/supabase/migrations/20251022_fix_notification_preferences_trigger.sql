@@ -1,3 +1,4 @@
+-- apps/web/supabase/migrations/20251022_fix_notification_preferences_trigger.sql
 -- ============================================================================
 -- FIX: user_notification_preferences trigger using wrong columns
 -- Date: 2025-10-22

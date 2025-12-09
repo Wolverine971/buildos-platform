@@ -1,3 +1,5 @@
+<!-- docs/marketing/investors/warm-intro-emails/paige-craig-outlander-vc-warm-intro-email.md -->
+
 # Paige Craig (Outlander VC) - Warm Introduction Email Template
 
 ## Investor Context

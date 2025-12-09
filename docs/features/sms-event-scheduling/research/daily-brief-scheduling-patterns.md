@@ -10,6 +10,7 @@ related_files:
     - /apps/worker/src/lib/supabaseQueue.ts
     - /apps/worker/src/workers/brief/briefWorker.ts
     - /apps/worker/src/workers/brief/briefGenerator.ts
+path: docs/features/sms-event-scheduling/research/daily-brief-scheduling-patterns.md
 ---
 
 # Daily Brief Worker - Scheduling Patterns for SMS Implementation

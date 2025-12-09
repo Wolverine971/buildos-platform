@@ -9,6 +9,7 @@ tags: [research, codebase, brain-dump, bug, state-management, multi-brain-dump]
 status: complete
 last_updated: 2025-10-06
 last_updated_by: Claude
+path: thoughts/shared/research/2025-10-06_01-36-48_brain-dump-input-not-clearing-after-save.md
 ---
 
 # Research: Brain Dump Input Not Clearing After Process & Save

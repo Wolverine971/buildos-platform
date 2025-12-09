@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/ontology/RECURRING_SERIES.md -->
+
 # Recurring Task Series
 
 **Last Updated**: November 8, 2025  

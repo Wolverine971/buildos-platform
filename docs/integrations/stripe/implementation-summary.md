@@ -1,3 +1,5 @@
+<!-- docs/integrations/stripe/implementation-summary.md -->
+
 # Stripe Integration - Complete Implementation Summary
 
 **Status**: ✅ PRODUCTION READY

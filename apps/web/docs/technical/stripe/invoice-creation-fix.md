@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/stripe/invoice-creation-fix.md -->
+
 # Stripe Invoice Creation Fix - Complete Solution
 
 ## Issues Fixed

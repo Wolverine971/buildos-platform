@@ -9,6 +9,7 @@ tags: [research, codebase, sms, calendar-reminders, worker, daily-scheduling]
 status: complete
 last_updated: 2025-10-13
 last_updated_by: Claude Code
+path: thoughts/shared/research/2025-10-13_04-55-45_daily-sms-scheduling-flow-investigation.md
 ---
 
 # Research: Daily SMS Scheduling Flow - Completeness Investigation

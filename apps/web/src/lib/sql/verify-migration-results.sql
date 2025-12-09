@@ -1,3 +1,4 @@
+-- apps/web/src/lib/sql/verify-migration-results.sql
 -- Verification Script for Task Documentation Migration
 -- Run this to verify the migration completed successfully
 

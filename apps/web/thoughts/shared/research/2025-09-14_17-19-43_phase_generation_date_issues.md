@@ -18,6 +18,7 @@ status: complete
 last_updated: 2025-09-14
 last_updated_by: Claude
 last_updated_note: 'Added implementation of fixes for phase date validation and historical preservation'
+path: apps/web/thoughts/shared/research/2025-09-14_17-19-43_phase_generation_date_issues.md
 ---
 
 # Research: Phase Generation Date Issues and Historical Preservation Problems

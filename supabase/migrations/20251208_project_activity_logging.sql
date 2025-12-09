@@ -1,3 +1,4 @@
+-- supabase/migrations/20251208_project_activity_logging.sql
 -- Migration: Project Activity Logging & Next Steps
 -- Date: 2025-12-08
 -- Description: Adds onto_project_logs table for tracking project changes

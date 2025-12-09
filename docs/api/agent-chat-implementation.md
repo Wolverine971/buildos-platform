@@ -1,3 +1,5 @@
+<!-- docs/api/agent-chat-implementation.md -->
+
 # BuildOS Agent Chat API Implementation - Complete Overview
 
 ## Architecture Overview

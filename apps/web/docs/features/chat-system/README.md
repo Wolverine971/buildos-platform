@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/chat-system/README.md -->
+
 # 🤖 BuildOS Chat System with Progressive Disclosure Pattern
 
 ## Overview

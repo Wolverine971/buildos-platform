@@ -1,3 +1,5 @@
+<!-- docs/technical/implementation/AGENT_CHAT_ONTOLOGY_INTEGRATION_SPEC.md -->
+
 # BuildOS Agent Chat Enhancement - Implementation Specification
 
 ## Document Metadata

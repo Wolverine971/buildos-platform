@@ -9,6 +9,7 @@ related:
     - 2025-10-10_23-30-00_notification-bug-fixes-summary.md
     - 2025-10-10_21-00-00_notification-system-audit.md
     - /apps/web/docs/features/notifications/NOTIFICATION_LOGGING_IMPLEMENTATION_SPEC.md
+path: thoughts/shared/research/2025-10-11_00-00-00_notification-logging-next-steps.md
 ---
 
 # Notification System - Next Steps: Logging & Admin Page Implementation

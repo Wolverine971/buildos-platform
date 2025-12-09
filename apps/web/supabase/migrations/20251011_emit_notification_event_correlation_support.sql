@@ -1,3 +1,4 @@
+-- apps/web/supabase/migrations/20251011_emit_notification_event_correlation_support.sql
 -- =====================================================
 -- ADD CORRELATION ID SUPPORT TO emit_notification_event
 -- =====================================================

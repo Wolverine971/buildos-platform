@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/components/agent/AGENT_CHAT_MOBILE_OPTIMIZATION.md -->
+
 # AgentChatModal Mobile Optimization Summary
 
 **Date:** November 21, 2025

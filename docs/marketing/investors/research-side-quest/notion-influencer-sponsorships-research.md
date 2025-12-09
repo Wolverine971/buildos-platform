@@ -1,3 +1,5 @@
+<!-- docs/marketing/investors/research-side-quest/notion-influencer-sponsorships-research.md -->
+
 # YouTube Influencers with Notion Sponsorships - Research Side Quest
 
 **Research Date:** October 29, 2025

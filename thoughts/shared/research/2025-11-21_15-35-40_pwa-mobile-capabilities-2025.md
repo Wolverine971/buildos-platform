@@ -15,6 +15,7 @@ research_focus:
   - Mobile input enhancements
   - Pull-to-refresh patterns
   - Mobile security considerations
+path: thoughts/shared/research/2025-11-21_15-35-40_pwa-mobile-capabilities-2025.md
 ---
 
 # PWA Features and Mobile-Specific Capabilities for 2025

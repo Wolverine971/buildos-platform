@@ -2,6 +2,7 @@
 title: Documentation Cleanup Findings
 date: 2025-11-07
 author: Codex Agent
+path: docs/reports/documentation-cleanup-findings.md
 ---
 
 # BuildOS Documentation Cleanup Findings

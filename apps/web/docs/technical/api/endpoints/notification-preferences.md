@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/api/endpoints/notification-preferences.md -->
+
 # Notification Preferences API Endpoints
 
 This document provides comprehensive documentation for the Notification Preferences API endpoints in the BuildOS platform.

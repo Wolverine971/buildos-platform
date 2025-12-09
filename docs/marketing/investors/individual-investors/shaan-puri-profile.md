@@ -1,3 +1,5 @@
+<!-- docs/marketing/investors/individual-investors/shaan-puri-profile.md -->
+
 # Shaan Puri - Individual Investor Profile
 
 _Research Date: October 29, 2025_

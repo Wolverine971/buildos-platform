@@ -1,3 +1,4 @@
+-- apps/web/supabase/migrations/20251011_fix_notification_analytics_bugs.sql
 -- =====================================================
 -- FIX NOTIFICATION ANALYTICS BUGS
 -- =====================================================

@@ -1,3 +1,5 @@
+<!-- docs/marketing/investors/vc-firms/standard-capital.md -->
+
 # Standard Capital - BuildOS Investor Profile
 
 ## Fund Overview

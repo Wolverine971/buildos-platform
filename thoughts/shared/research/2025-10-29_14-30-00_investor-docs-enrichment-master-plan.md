@@ -9,6 +9,7 @@ tags: [research, investors, documentation, data-enrichment, fundraising]
 status: complete
 last_updated: 2025-10-29
 last_updated_by: Claude
+path: thoughts/shared/research/2025-10-29_14-30-00_investor-docs-enrichment-master-plan.md
 ---
 
 # Investor Documentation Enrichment Master Plan

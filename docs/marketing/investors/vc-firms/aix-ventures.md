@@ -12,6 +12,7 @@ related_docs:
 contact_verified: 'yes'
 fund_size: '$202M Fund II (Feb 2024)'
 recent_update: 'Christopher Manning (Stanford AI Lab Director) joined as GP in July 2025'
+path: docs/marketing/investors/vc-firms/aix-ventures.md
 ---
 
 # AIX Ventures - VC Firm Profile

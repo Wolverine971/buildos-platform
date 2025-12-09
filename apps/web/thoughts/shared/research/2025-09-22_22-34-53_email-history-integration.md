@@ -9,6 +9,7 @@ tags: [research, codebase, email-system, admin-panel, database-models]
 status: complete
 last_updated: 2025-09-22
 last_updated_by: Claude
+path: apps/web/thoughts/shared/research/2025-09-22_22-34-53_email-history-integration.md
 ---
 
 # Research: Email History Integration in Admin EmailComposerModal

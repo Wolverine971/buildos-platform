@@ -1,3 +1,4 @@
+-- supabase/migrations/20251201_add_chat_topics_column.sql
 -- Migration: Add chat_topics column and classify_chat_session job type
 -- Purpose: Store extracted topics from chat session conversations for classification
 

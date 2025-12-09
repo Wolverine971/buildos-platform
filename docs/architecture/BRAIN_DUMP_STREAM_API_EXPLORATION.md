@@ -1,3 +1,5 @@
+<!-- docs/architecture/BRAIN_DUMP_STREAM_API_EXPLORATION.md -->
+
 # Brain Dump API Endpoints - Complete Exploration
 
 ## Executive Summary

@@ -8,6 +8,7 @@ related_docs:
     - /docs/DEPLOYMENT_TOPOLOGY.md
     - /apps/web/CLAUDE.md
     - /apps/worker/CLAUDE.md
+path: docs/features/sms-event-scheduling/research/worker-web-communication.md
 ---
 
 # Web-Worker Bidirectional Communication Research

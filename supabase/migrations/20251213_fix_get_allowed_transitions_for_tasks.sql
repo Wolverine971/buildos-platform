@@ -1,3 +1,4 @@
+-- supabase/migrations/20251213_fix_get_allowed_transitions_for_tasks.sql
 -- Fix get_allowed_transitions to handle tasks without type_key column
 -- Tasks don't have a type_key column, so we use a default value
 

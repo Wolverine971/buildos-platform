@@ -14,6 +14,7 @@ related_specs:
     - thoughts/shared/research/2025-10-06_22-08-35_notification-tracking-system-spec.md
     - thoughts/shared/research/2025-10-06_23-30-00_phase2-push-notification-tracking-implementation.md
     - thoughts/shared/research/2025-10-07_00-00-00_phase3-sms-click-tracking-plan.md
+path: thoughts/shared/research/2025-10-07_00-15-00_phase4-in-app-notification-tracking-spec.md
 ---
 
 # Phase 4: In-App Notification Tracking Implementation Specification

@@ -1,3 +1,5 @@
+<!-- docs/marketing/investors/vc-firms/lightspeed-venture-partners.md -->
+
 # Lightspeed Venture Partners - BuildOS Investor Profile
 
 ## Fund Overview

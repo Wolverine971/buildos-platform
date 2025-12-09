@@ -1,3 +1,5 @@
+<!-- docs/marketing/social-media/content-template-educational-content.md -->
+
 ## 🧩 Educational Content Thread Template
 
 ### 1️⃣ Hook (Opening Tweet)

@@ -14,6 +14,7 @@ files_analyzed:
     - apps/web/src/lib/services/dashboardData.service.ts
     - apps/web/src/lib/stores/dashboard.store.ts
     - apps/web/src/lib/services/dashboardData.service.test.ts
+path: thoughts/shared/research/2025-10-06_optimistic-update-flow-analysis.md
 ---
 
 # Dashboard Optimistic Update Flow Analysis

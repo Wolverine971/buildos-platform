@@ -1,3 +1,5 @@
+<!-- docs/architecture/diagrams/QUEUE-SYSTEM-FLOW.md -->
+
 # Queue System Flow Diagrams
 
 **Purpose:** Visual reference for BuildOS queue-based job processing

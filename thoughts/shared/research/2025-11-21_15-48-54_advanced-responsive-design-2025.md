@@ -30,6 +30,7 @@ tags:
   - container-queries
   - dark-mode
   - accessibility
+path: thoughts/shared/research/2025-11-21_15-48-54_advanced-responsive-design-2025.md
 ---
 
 # Advanced Responsive Design Patterns and Mobile-First CSS Techniques for 2025

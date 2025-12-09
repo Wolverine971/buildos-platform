@@ -1,3 +1,5 @@
+<!-- apps/worker/docs/features/daily-briefs/daily-brief-exponential-backoff-spec.md -->
+
 # Daily Brief Exponential Backoff Implementation Spec
 
 **Date**: 2025-09-29T18:42:25-04:00

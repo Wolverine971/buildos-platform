@@ -1,3 +1,4 @@
+-- apps/web/supabase/migrations/20251015_add_sync_source_to_time_blocks.sql
 -- Migration: Add sync_source tracking to time_blocks for webhook sync
 -- This enables two-way sync between BuildOS and Google Calendar
 -- Similar to task_calendar_events sync_source pattern

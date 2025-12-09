@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/chat-system/multi-agent-chat/README.md -->
+
 # Multi-Agent Chat System
 
 **Status:** ✅ Phase 4 Complete - Full Iterative Conversations Implemented

@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/ontology/BASE_TEMPLATE_AUTO_CREATION_SPEC.md -->
+
 # Base Template Auto-Creation Specification
 
 **Last Updated**: December 2, 2025

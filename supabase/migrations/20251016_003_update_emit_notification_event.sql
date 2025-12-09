@@ -1,3 +1,4 @@
+-- supabase/migrations/20251016_003_update_emit_notification_event.sql
 -- =====================================================
 -- Phase 4: Update emit_notification_event Function
 -- =====================================================

@@ -5,6 +5,7 @@ repository: buildos-platform
 topic: 'Ontology UI/UX Comprehensive Audit'
 tags: [research, buildos, ontology, ui-ux, style-guide, accessibility]
 status: complete
+path: thoughts/shared/research/2025-11-05_21-11-04_ontology-ui-ux-audit.md
 ---
 
 # Research: Ontology UI/UX Comprehensive Audit

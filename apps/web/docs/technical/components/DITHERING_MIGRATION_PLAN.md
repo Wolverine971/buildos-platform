@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/components/DITHERING_MIGRATION_PLAN.md -->
+
 # Dithering System Migration Plan
 
 > # ⚠️ DEPRECATED - DITHERING SYSTEM NO LONGER IN USE

@@ -1,3 +1,4 @@
+-- supabase/migrations/20251201_fix_type_key_constraint.sql
 -- Migration: Fix type_key check constraint to allow project. prefix
 -- Date: December 1, 2025
 -- Purpose: Update the chk_type_key_format constraint to allow 4-segment project type_keys

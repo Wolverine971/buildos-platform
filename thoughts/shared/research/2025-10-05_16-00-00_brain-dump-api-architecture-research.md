@@ -13,6 +13,7 @@ related_docs:
     - /apps/web/docs/features/brain-dump/README.md
     - /apps/web/docs/technical/architecture/brain-dump-flow.md
     - /apps/web/CLAUDE.md
+path: thoughts/shared/research/2025-10-05_16-00-00_brain-dump-api-architecture-research.md
 ---
 
 # Brain Dump API Architecture Research

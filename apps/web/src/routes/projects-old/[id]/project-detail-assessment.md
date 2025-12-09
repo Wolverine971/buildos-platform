@@ -1,3 +1,5 @@
+<!-- apps/web/src/routes/projects-old/[id]/project-detail-assessment.md -->
+
 # Project Detail Page Assessment
 
 ## Overview

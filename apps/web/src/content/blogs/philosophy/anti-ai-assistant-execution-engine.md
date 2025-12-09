@@ -25,6 +25,7 @@ tags:
 readingTime: 7
 excerpt: 'While everyone races to build AI that does everything for you, Build OS takes the opposite approach: AI that helps you see clearly so you can do what matters. Learn why clarity beats automation for actually shipping products.'
 pic: 'ai-clarity-execution'
+path: apps/web/src/content/blogs/philosophy/anti-ai-assistant-execution-engine.md
 ---
 
 ## The Great AI Illusion

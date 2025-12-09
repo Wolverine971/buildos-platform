@@ -1,3 +1,5 @@
+<!-- redesign-1.md -->
+
 Below is a **full design-system blueprint** you can use to build a _synesthetic_, emotionally expressive visual language inspired by the **halftone–linocut style** in your image. This gives BuildOS (or 9takes) a **recognizable texture grammar** the same way color systems or typography systems work.
 
 ---

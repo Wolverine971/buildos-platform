@@ -9,6 +9,7 @@ tags: [research, google-calendar, oauth, verification, scopes]
 status: complete
 last_updated: 2025-10-06
 last_updated_by: Claude
+path: thoughts/shared/research/2025-10-06_17-31-44_google-calendar-oauth-scopes-verification.md
 ---
 
 # Research: Google Calendar OAuth Scopes - Verification Explanation

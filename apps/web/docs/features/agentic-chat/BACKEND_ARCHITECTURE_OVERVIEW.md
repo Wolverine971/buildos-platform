@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/agentic-chat/BACKEND_ARCHITECTURE_OVERVIEW.md -->
+
 # Backend Agentic Chat Flow - Architecture Overview
 
 ## Document Metadata

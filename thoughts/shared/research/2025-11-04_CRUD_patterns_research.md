@@ -3,6 +3,7 @@ title: 'CRUD Operation Patterns Research'
 date: 2025-11-04
 status: 'completed'
 focus: 'ontology_entity_management'
+path: thoughts/shared/research/2025-11-04_CRUD_patterns_research.md
 ---
 
 # CRUD Operation Patterns - BuildOS Platform Analysis

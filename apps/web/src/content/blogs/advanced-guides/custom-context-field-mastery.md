@@ -19,6 +19,7 @@ tags:
 readingTime: 11
 excerpt: 'Master custom context fields in BuildOS to capture what actually matters for YOUR specific projects. Learn design patterns and advanced techniques for project context.'
 pic: 'context-fields'
+path: apps/web/src/content/blogs/advanced-guides/custom-context-field-mastery.md
 ---
 
 # Custom Context Field Mastery

@@ -1,3 +1,5 @@
+<!-- apps/worker/IMPLEMENTATION_COMPLETE.md -->
+
 # Brief Generation Parallelization - Implementation Complete
 
 **Date**: 2025-09-30

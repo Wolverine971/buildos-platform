@@ -1,3 +1,5 @@
+<!-- docs/architecture/BRAIN_DUMP_STREAM_API_QUICK_REFERENCE.md -->
+
 # Brain Dump Stream API - Quick Reference
 
 ## Core Files at a Glance

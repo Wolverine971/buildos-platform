@@ -8,6 +8,7 @@ related:
     - /apps/web/docs/development/GIT_WORKFLOW.md
     - /docs/DEPLOYMENT_TOPOLOGY.md
     - /docs/architecture/decisions/
+path: thoughts/shared/research/2025-10-23_15-14-32_development-workflow-best-practices-audit.md
 ---
 
 # Development Workflow Best Practices Audit

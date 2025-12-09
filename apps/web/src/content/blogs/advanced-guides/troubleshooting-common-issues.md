@@ -11,6 +11,7 @@ tags: ['troubleshooting', 'support', 'solutions', 'advanced-guides', 'optimizati
 readingTime: 11
 excerpt: 'Comprehensive troubleshooting guide for Build OS users. Find solutions to common issues, optimization tips, and preventive measures to ensure smooth productivity system operation.'
 pic: 'troubleshooting-guide'
+path: apps/web/src/content/blogs/advanced-guides/troubleshooting-common-issues.md
 ---
 
 Even the most well-designed systems occasionally need troubleshooting. Build OS is designed to be robust and reliable, but understanding how to diagnose and resolve common issues will help you maintain peak productivity and confidence in your personal operating system.

@@ -10,6 +10,7 @@ tags:
 status: complete
 last_updated: 2025-09-18
 last_updated_by: Claude
+path: apps/web/thoughts/shared/research/2025-09-18_23-46-26_brain-dump-processing-audit.md
 ---
 
 # Research: Brain Dump Processing Flow Audit and Simplification Analysis

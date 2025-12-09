@@ -1,3 +1,4 @@
+-- supabase/migrations/20260101_drop_agent_research_tables.sql
 -- Drop legacy agent research tables (deprecated agent-to-agent v1)
 -- Order: child tables first, then parent session table.
 

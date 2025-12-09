@@ -1,3 +1,4 @@
+-- supabase/migrations/20251208_deliverable_taxonomy_migration.sql
 -- Migration: Deliverable Taxonomy Migration
 -- Date: 2025-12-08
 -- Description: Migrates output type_keys to deliverable.* taxonomy and adds

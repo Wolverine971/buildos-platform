@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/api/README.md -->
+
 # API Documentation
 
 Welcome to the BuildOS API documentation.

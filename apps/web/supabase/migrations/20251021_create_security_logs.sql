@@ -1,3 +1,4 @@
+-- apps/web/supabase/migrations/20251021_create_security_logs.sql
 -- Create security_logs table for tracking prompt injection attempts and other security events
 CREATE TABLE IF NOT EXISTS security_logs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

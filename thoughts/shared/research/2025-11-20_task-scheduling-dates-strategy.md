@@ -5,6 +5,7 @@ repository: buildos-platform
 topic: 'onto_tasks Date and Scheduling Strategy'
 tags: [research, ontology, tasks, scheduling, dates, fsm]
 status: complete
+path: thoughts/shared/research/2025-11-20_task-scheduling-dates-strategy.md
 ---
 
 # Research: onto_tasks Date and Scheduling Strategy

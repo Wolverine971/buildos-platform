@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/ontology/MIGRATION_DASHBOARD_SPEC.md -->
+
 # Migration Dashboard Specification
 
 > **Version:** 2.2

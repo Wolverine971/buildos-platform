@@ -6,6 +6,7 @@ author: 'DJ Wayne'
 publishDate: '2025-09-16'
 draft: true
 tags: ['content-strategy', 'productivity', 'workflows', 'adhd', 'systems']
+path: apps/web/src/content/blogs/_index-productivity.md
 ---
 
 # Productivity Blog Category Index

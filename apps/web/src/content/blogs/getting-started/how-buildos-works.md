@@ -11,6 +11,7 @@ tags: ['how-it-works', 'getting-started', 'flexibility', 'ai-organization']
 readingTime: 8
 excerpt: 'BuildOS is built on a simple truth: your projects are unique, and your tools should adapt to you. Learn how our flexible system turns chaos into clarity.'
 pic: 'how-buildos-works'
+path: apps/web/src/content/blogs/getting-started/how-buildos-works.md
 ---
 
 Every productivity tool promises to organize your life. Most of them fail for the same reason: they force your messy, creative, human brain into rigid boxes designed by someone else.

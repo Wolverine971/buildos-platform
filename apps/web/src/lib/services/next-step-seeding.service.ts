@@ -1,3 +1,4 @@
+// apps/web/src/lib/services/next-step-seeding.service.ts
 /**
  * NextStepSeedingService - Generates and seeds initial next steps for new projects
  *

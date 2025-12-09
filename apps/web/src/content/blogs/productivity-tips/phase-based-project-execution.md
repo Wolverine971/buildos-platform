@@ -19,6 +19,7 @@ tags:
 readingTime: 10
 excerpt: 'Master phase-based project execution. Break down complex projects into manageable phases and execute systematically.'
 pic: 'phase-execution'
+path: apps/web/src/content/blogs/productivity-tips/phase-based-project-execution.md
 ---
 
 # Phase-Based Project Execution

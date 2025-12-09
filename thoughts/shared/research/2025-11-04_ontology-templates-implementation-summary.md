@@ -1,3 +1,4 @@
+<!-- thoughts/shared/research/2025-11-04_ontology-templates-implementation-summary.md -->
 # Ontology Base Templates Implementation Summary
 
 **Date**: November 4, 2025

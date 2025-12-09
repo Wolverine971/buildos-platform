@@ -1,3 +1,5 @@
+<!-- docs/testing/README.md -->
+
 # BuildOS Testing Infrastructure
 
 **Last Updated**: 2025-10-06

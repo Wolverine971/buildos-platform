@@ -1,3 +1,4 @@
+-- supabase/migrations/20251208_add_chat_session_summary.sql
 -- Add summary field to chat_sessions table
 -- This enables displaying chat session summaries on the history page alongside braindumps
 

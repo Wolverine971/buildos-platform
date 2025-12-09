@@ -1,3 +1,5 @@
+<!-- apps/web/docs/NAVIGATION_INDEX.md -->
+
 # BuildOS Web App Documentation Navigation Index
 
 **Last Updated**: November 4, 2025

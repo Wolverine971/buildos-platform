@@ -1,3 +1,5 @@
+<!-- docs/admin-tools-and-patterns.md -->
+
 # Admin Tools & Manual Trigger Endpoints - Pattern Analysis
 
 ## Overview

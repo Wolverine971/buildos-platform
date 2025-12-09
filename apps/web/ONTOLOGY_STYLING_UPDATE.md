@@ -1,3 +1,5 @@
+<!-- apps/web/ONTOLOGY_STYLING_UPDATE.md -->
+
 # Ontology Section Styling Update Summary
 
 ## Overview

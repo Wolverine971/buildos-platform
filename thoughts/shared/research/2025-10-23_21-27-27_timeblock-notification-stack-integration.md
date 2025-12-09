@@ -10,6 +10,7 @@ tags:
 status: complete
 last_updated: 2025-10-23
 last_updated_by: Claude Code
+path: thoughts/shared/research/2025-10-23_21-27-27_timeblock-notification-stack-integration.md
 ---
 
 # Research: Time-Block Creation Integration with Notification Stack System

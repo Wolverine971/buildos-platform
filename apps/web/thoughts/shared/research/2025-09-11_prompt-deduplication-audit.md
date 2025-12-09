@@ -10,6 +10,7 @@ status: complete
 last_updated: 2025-09-11
 last_updated_by: Claude
 last_updated_note: 'Completed immediate fixes for identified issues'
+path: apps/web/thoughts/shared/research/2025-09-11_prompt-deduplication-audit.md
 ---
 
 # Research: Prompt Deduplication and Core Instructions Preservation Audit

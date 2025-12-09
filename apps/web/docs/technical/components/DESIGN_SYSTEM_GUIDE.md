@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/components/DESIGN_SYSTEM_GUIDE.md -->
+
 # BuildOS Design System Guide
 
 **📍 Status**: Phase 3 Complete - Badge & Alert components + 10 component refactorings (v1.2.0)

@@ -9,6 +9,7 @@ tags: [research, codebase, brain-dump, database, ai-insights, parsed-results]
 status: in_progress
 last_updated: 2025-01-17
 last_updated_by: Claude Code
+path: apps/web/thoughts/shared/research/2025-01-17_14-30-45_brain-dump-ai-insights-field-fix.md
 ---
 
 # Research: Brain Dump AI Insights Field Misuse Fix

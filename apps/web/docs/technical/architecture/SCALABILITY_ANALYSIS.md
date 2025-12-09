@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/architecture/SCALABILITY_ANALYSIS.md -->
+
 # Build OS Scalability Analysis
 
 ## Current Architecture Overview

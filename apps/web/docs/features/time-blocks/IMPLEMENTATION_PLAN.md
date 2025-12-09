@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/time-blocks/IMPLEMENTATION_PLAN.md -->
+
 # Time Play - Implementation Plan
 
 **Status:** Phase 0, 1, 2 & 3 Complete ✅

@@ -10,6 +10,7 @@ status: complete
 last_updated: 2025-09-10
 last_updated_by: Claude
 last_updated_note: 'Implemented all recommended optimizations'
+path: apps/web/thoughts/shared/research/2025-09-10_braindump-services-optimization-analysis.md
 ---
 
 # Research: Braindump Services Code Quality and Optimization Analysis

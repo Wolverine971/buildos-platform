@@ -1,3 +1,4 @@
+<!-- thoughts/shared/research/2025-10-03_00-00-00_documentation-reorganization-summary.md -->
 # Documentation Reorganization Summary
 
 **Date:** October 3, 2025  

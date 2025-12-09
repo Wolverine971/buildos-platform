@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/deployment/runbooks/supabase-connection-recovery.md -->
+
 # Supabase Connection Recovery Runbook
 
 > **Purpose**: Procedures for diagnosing and recovering from Supabase connection failures in BuildOS

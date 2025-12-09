@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/design-system/IMPLEMENTATION_REPORT.md -->
+
 # Scratchpad Ops Design System - Full Implementation Report
 
 ## Executive Summary

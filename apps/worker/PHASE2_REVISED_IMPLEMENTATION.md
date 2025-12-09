@@ -1,3 +1,5 @@
+<!-- apps/worker/PHASE2_REVISED_IMPLEMENTATION.md -->
+
 # Phase 2 REVISED: Email Decoupling Using Existing Email Infrastructure
 
 **Date**: 2025-09-30

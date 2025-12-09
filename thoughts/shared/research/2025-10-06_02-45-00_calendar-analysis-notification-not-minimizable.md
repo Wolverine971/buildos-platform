@@ -9,6 +9,7 @@ tags: [research, codebase, notifications, calendar-analysis, bug, integration]
 status: complete
 last_updated: 2025-10-06
 last_updated_by: Claude Code
+path: thoughts/shared/research/2025-10-06_02-45-00_calendar-analysis-notification-not-minimizable.md
 ---
 
 # Research: Calendar Analysis Notification Not Minimizable - Integration Bug

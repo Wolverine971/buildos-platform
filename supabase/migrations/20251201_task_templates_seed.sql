@@ -1,3 +1,4 @@
+-- supabase/migrations/20251201_task_templates_seed.sql
 -- Migration: Seed task templates for onto_templates
 -- Implements the task type_key taxonomy with 8 base work modes + 4 v1 specializations
 --

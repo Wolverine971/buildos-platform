@@ -11,6 +11,7 @@ tags: ['planning', 'outline', 'internal']
 readingTime: 1
 excerpt: 'Internal planning document for blog post creation.'
 pic: 'planning'
+path: apps/web/src/content/blogs/philosophy/future-of-personal-knowledge-management-interview.md
 ---
 
 # Blog Interview Guide: The Future of Personal Knowledge Management

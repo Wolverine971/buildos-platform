@@ -1,3 +1,4 @@
+<!-- thoughts/shared/ideas/chat-spec-improved-v2.md -->
 # 📋 BuildOS Chat System - Implementation Specification v2
 
 ## With Progressive Disclosure Pattern

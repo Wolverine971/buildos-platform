@@ -9,6 +9,7 @@ tags: [research, codebase, notifications, modals, bugs, event-handling]
 status: complete
 last_updated: 2025-10-04
 last_updated_by: Claude Code
+path: thoughts/shared/research/2025-10-04_03-30-59_notification-modal-closing-bugs.md
 ---
 
 # Research: Notification Modal Closing Inconsistencies and Bugs

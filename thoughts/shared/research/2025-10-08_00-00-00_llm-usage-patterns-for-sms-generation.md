@@ -11,6 +11,7 @@ related_files:
     - /apps/worker/src/workers/brief/briefGenerator.ts
     - /apps/worker/src/workers/onboarding/prompts.ts
 purpose: 'Document LLM service patterns, prompt engineering techniques, and configuration options that can be adapted for SMS message generation'
+path: thoughts/shared/research/2025-10-08_00-00-00_llm-usage-patterns-for-sms-generation.md
 ---
 
 # LLM Usage Patterns in BuildOS Codebase

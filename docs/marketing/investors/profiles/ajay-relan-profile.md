@@ -21,6 +21,7 @@ related_docs:
     - ../buildos-fundraising-strategy.md
     - ./austin-clements-slauson-co-profile.md
 contact_verified: 'yes'
+path: docs/marketing/investors/profiles/ajay-relan-profile.md
 ---
 
 # Ajay Relan - SLAUSON & Co. Managing Partner Profile

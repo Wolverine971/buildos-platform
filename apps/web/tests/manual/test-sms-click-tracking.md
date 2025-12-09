@@ -1,3 +1,5 @@
+<!-- apps/web/tests/manual/test-sms-click-tracking.md -->
+
 # Manual Test: SMS Click Tracking
 
 **Purpose**: Verify that links in SMS messages are shortened and clicks are tracked correctly.

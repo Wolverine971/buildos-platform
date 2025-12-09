@@ -1,3 +1,4 @@
+-- apps/web/supabase/migrations/20251021_fix_add_queue_job_enum_cast.sql
 -- =====================================================
 -- HOTFIX: Add missing enum casts to add_queue_job()
 -- =====================================================

@@ -5,6 +5,7 @@ author: Claude Code
 tags: [architecture, testing, brain-dump, llm-service, migration]
 status: active
 context: Research for fixing broken BrainDumpProcessor tests after LLMPool → SmartLLMService migration
+path: thoughts/shared/research/2025-10-06_15-36-31_brain-dump-processor-architecture.md
 ---
 
 # Brain Dump Processor Architecture & Test Migration Guide

@@ -1,3 +1,5 @@
+<!-- docs/architecture/SMS_NOTIFICATION_CHANNEL_DESIGN.md -->
+
 # SMS Notification Channel Design
 
 ## Overview

@@ -12,6 +12,7 @@ tags:
 readingTime: 8
 excerpt: 'Master the calendar integration workflow in BuildOS. Learn time blocking strategies and smart scheduling techniques.'
 pic: 'calendar-workflow'
+path: apps/web/src/content/blogs/productivity-tips/calendar-integration-workflow.md
 ---
 
 # Calendar Integration Workflow

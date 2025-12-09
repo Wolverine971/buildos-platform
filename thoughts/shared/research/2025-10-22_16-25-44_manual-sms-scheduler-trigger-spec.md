@@ -9,6 +9,7 @@ tags: [research, sms-scheduler, admin-tools, notifications, calendar-integration
 status: complete
 last_updated: 2025-10-22
 last_updated_by: Claude
+path: thoughts/shared/research/2025-10-22_16-25-44_manual-sms-scheduler-trigger-spec.md
 ---
 
 # Research: Manual SMS Scheduler Trigger - Admin Tool Implementation Spec

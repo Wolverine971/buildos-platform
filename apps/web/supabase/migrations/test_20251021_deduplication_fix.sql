@@ -1,3 +1,4 @@
+-- apps/web/supabase/migrations/test_20251021_deduplication_fix.sql
 -- =====================================================
 -- TEST SCRIPT FOR QUEUE JOB DEDUPLICATION FIX
 -- =====================================================

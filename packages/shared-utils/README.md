@@ -1,3 +1,5 @@
+<!-- packages/shared-utils/README.md -->
+
 # @buildos/shared-utils
 
 Shared utilities and services for BuildOS platform. Used by both web and worker applications.

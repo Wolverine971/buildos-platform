@@ -9,6 +9,7 @@ tags: [research, codebase, email, daily-brief, database, constraint, bug]
 status: complete
 last_updated: 2025-10-07
 last_updated_by: Claude Code
+path: thoughts/shared/research/2025-10-07_02-21-40_daily-brief-email-status-constraint-error.md
 ---
 
 # Research: Daily Brief Email Creation Failing with Status Constraint Violation

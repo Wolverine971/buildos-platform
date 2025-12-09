@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/ontology/API_ENDPOINTS.md -->
+
 # Ontology System API Endpoints Reference
 
 **Last Updated**: December 1, 2025

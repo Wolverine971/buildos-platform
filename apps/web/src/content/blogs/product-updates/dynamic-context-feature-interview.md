@@ -11,6 +11,7 @@ tags: ['planning', 'outline', 'internal']
 readingTime: 1
 excerpt: 'Internal planning document for feature announcement.'
 pic: 'planning'
+path: apps/web/src/content/blogs/product-updates/dynamic-context-feature-interview.md
 ---
 
 # Blog Interview Guide: Dynamic Context Feature - Projects That Learn

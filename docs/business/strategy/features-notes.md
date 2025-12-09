@@ -1,3 +1,5 @@
+<!-- docs/business/strategy/features-notes.md -->
+
 Idea bank
 
 - braindump about half baked ideas

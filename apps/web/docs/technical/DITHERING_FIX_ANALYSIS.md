@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/DITHERING_FIX_ANALYSIS.md -->
+
 # Dithering Effect Analysis & Fix
 
 **Date:** 2025-11-21

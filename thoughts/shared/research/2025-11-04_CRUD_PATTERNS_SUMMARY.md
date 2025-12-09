@@ -1,3 +1,4 @@
+<!-- thoughts/shared/research/2025-11-04_CRUD_PATTERNS_SUMMARY.md -->
 # CRUD Patterns Research - Summary Report
 
 **Date:** November 4, 2025  

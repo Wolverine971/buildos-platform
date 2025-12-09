@@ -11,6 +11,7 @@ tags: ['first-project', 'getting-started', 'project-management', 'setup']
 readingTime: 8
 excerpt: 'Transform your first big idea into a structured, actionable project using Build OS intelligent project creation and phase management system.'
 pic: 'first-project-setup'
+path: apps/web/src/content/blogs/getting-started/first-project-setup.md
 ---
 
 Creating your first project in Build OS is where the magic happens. This is where scattered thoughts transform into structured plans, where overwhelming ideas become manageable phases, and where your personal operating system begins to truly serve your goals.

@@ -9,6 +9,7 @@ tags: [research, codebase, worker, brief-generation, queue-system, email-flow, l
 status: complete
 last_updated: 2025-09-30
 last_updated_by: Claude Code
+path: thoughts/shared/research/2025-09-30_worker-brief-generation-flow.md
 ---
 
 # Worker Brief Generation Flow - Complete Architecture Analysis

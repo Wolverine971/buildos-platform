@@ -1,3 +1,4 @@
+<!-- thoughts/shared/research/2025-10-21_17-23-41_daily-brief-modal-implementation-complete.md -->
 # Daily Brief Modal with URL Query Parameters - Implementation Complete
 
 **Date:** 2025-10-21

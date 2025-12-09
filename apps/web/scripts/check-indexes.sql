@@ -1,4 +1,4 @@
--- check-indexes.sql
+-- apps/web/scripts/check-indexes.sql
 -- Script to check all existing indexes in your Supabase database
 -- Run this in your Supabase SQL editor
 

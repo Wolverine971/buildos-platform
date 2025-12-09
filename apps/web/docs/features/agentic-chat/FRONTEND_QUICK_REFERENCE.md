@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/agentic-chat/FRONTEND_QUICK_REFERENCE.md -->
+
 # Agentic Chat Frontend - Quick Reference
 
 ## File Locations

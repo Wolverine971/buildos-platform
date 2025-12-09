@@ -10,6 +10,7 @@ status: complete
 last_updated: 2025-09-18
 last_updated_by: Claude Code
 last_updated_note: 'Added implementation status updates for high priority fixes'
+path: apps/web/thoughts/shared/research/2025-09-18_14-57-01_llm-timeout-investigation.md
 ---
 
 # Research: LLM Timeout Investigation - Brain Dump Processing Failures

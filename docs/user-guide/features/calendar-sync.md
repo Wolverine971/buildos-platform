@@ -1,3 +1,5 @@
+<!-- docs/user-guide/features/calendar-sync.md -->
+
 ﻿# Calendar Sync Setup
 
 Connecting Google Calendar gives BuildOS real-time context for what is already on your schedule so the AI can propose realistic plans, fill gaps with TimeBlocks, and warn you about conflicts before they happen. This guide shows how to connect, what data is synced, and how to get the most from the scheduling UI.

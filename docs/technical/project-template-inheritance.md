@@ -1,3 +1,5 @@
+<!-- docs/technical/project-template-inheritance.md -->
+
 # Project Template Inheritance Notes
 
 _Last updated: 2025-11-12_

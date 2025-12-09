@@ -9,6 +9,7 @@ tags: [spec, time-blocks, calendar-integration, features]
 status: complete
 last_updated: 2025-10-24
 last_updated_by: Claude Code
+path: thoughts/shared/research/2025-10-24_14-30-00_timeblock-adjustment-feature-spec.md
 ---
 
 # Feature Specification: Time Block Date/Time Adjustment with Google Calendar Sync

@@ -1,3 +1,4 @@
+-- apps/worker/migrations/engagement_analytics_rpc.sql
 -- Engagement Analytics RPC Function
 -- Optional analytics function for the admin dashboard
 -- This provides aggregated engagement metrics across all users

@@ -1,3 +1,4 @@
+-- supabase/migrations/20251007_notification_tracking_links.sql
 -- =====================================================
 -- NOTIFICATION TRACKING LINKS - PHASE 3
 -- =====================================================

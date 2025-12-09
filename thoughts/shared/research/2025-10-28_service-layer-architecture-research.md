@@ -1,3 +1,4 @@
+<!-- thoughts/shared/research/2025-10-28_service-layer-architecture-research.md -->
 # Service Layer Architecture Research: Chat & Agent Systems
 
 ## Executive Summary

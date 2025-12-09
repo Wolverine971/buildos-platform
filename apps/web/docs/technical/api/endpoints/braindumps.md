@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/api/endpoints/braindumps.md -->
+
 # Brain Dumps API Endpoints
 
 This document provides comprehensive documentation for all Brain Dump API endpoints in the BuildOS platform.

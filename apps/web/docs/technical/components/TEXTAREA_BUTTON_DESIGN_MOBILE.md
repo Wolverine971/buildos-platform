@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/components/TEXTAREA_BUTTON_DESIGN_MOBILE.md -->
+
 # TextareaWithVoice - Mobile Button Design Strategy
 
 **Last Updated**: November 22, 2025

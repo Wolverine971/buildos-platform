@@ -9,6 +9,7 @@ related_docs:
     - /apps/web/supabase/migrations/20250928_add_sms_messaging_tables.sql
     - /apps/web/supabase/migrations/20241220_trial_system.sql
     - /apps/web/src/routes/onboarding/+page.svelte
+path: thoughts/shared/research/2025-10-03_14-30-00_user-preferences-database-schema-research.md
 ---
 
 # User Preferences & Onboarding Database Schema Research

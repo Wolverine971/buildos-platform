@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/integrations/INTEGRATION_OFFERINGS_SPEC.md -->
+
 # BuildOS Integration Offerings Specification
 
 ## Overview

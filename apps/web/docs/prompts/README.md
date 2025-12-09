@@ -1,3 +1,5 @@
+<!-- apps/web/docs/prompts/README.md -->
+
 # 📝 AI Prompt Templates
 
 This directory contains all AI prompt templates used in BuildOS for brain dump processing, task extraction, and content generation.

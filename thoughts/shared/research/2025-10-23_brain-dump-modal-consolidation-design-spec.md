@@ -1,3 +1,4 @@
+<!-- thoughts/shared/research/2025-10-23_brain-dump-modal-consolidation-design-spec.md -->
 # Brain Dump Modal Consolidation - Design Specification
 
 **Date:** 2025-10-23

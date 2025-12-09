@@ -25,6 +25,7 @@ tags:
 readingTime: 12
 excerpt: "Most knowledge management is productivity theater—80% of notes are never revisited. The future isn't better filing cabinets, it's AI systems that turn chaos into clarity and knowledge into action. Learn why strategic forgetting beats total recall, and how to prepare for the shift from passive archives to active intelligence."
 pic: 'knowledge-management-future'
+path: apps/web/src/content/blogs/philosophy/future-of-personal-knowledge-management.md
 ---
 
 Here's the paradox of modern productivity: we have more tools than ever for capturing our thoughts, yet most of us can't find what we wrote last week. We text ourselves ideas while driving. Email ourselves screenshots of inspiration. Save bookmarks we'll never revisit. Create elaborate folder systems we abandon by Tuesday.

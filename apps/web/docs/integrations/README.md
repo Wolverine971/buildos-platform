@@ -1,3 +1,5 @@
+<!-- apps/web/docs/integrations/README.md -->
+
 # Integrations Documentation
 
 Stripe integration docs now live in the monorepo documentation hub at /docs/integrations/stripe/.

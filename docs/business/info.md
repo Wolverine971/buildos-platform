@@ -1,3 +1,5 @@
+<!-- docs/business/info.md -->
+
 Company name: BuildOS
 
 Board members

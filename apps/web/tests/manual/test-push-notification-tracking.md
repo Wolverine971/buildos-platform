@@ -1,3 +1,5 @@
+<!-- apps/web/tests/manual/test-push-notification-tracking.md -->
+
 # Manual Test: Push Notification Click Tracking
 
 **Purpose**: Verify that push notification clicks are properly tracked in the `notification_deliveries` table.

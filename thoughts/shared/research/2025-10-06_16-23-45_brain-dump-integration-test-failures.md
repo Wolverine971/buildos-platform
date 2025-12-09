@@ -8,6 +8,7 @@ related_files:
     - /Users/annawayne/buildos-platform/apps/web/src/lib/utils/__tests__/brain-dump-integration-simple.test.ts
     - /Users/annawayne/buildos-platform/apps/web/src/lib/utils/__tests__/brain-dump-processor.test.ts
     - /Users/annawayne/buildos-platform/apps/web/src/lib/utils/braindump-processor.ts
+path: thoughts/shared/research/2025-10-06_16-23-45_brain-dump-integration-test-failures.md
 ---
 
 # Brain Dump Integration Test Failures Analysis

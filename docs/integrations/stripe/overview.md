@@ -1,3 +1,5 @@
+<!-- docs/integrations/stripe/overview.md -->
+
 # Build OS Stripe Integration Overview
 
 ## Executive Summary

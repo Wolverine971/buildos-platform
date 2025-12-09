@@ -1,3 +1,4 @@
+-- apps/web/src/lib/sql/find-missing-templates-simple.sql
 -- Simple query to find all missing templates
 -- This will show you exactly which templates need to be created
 

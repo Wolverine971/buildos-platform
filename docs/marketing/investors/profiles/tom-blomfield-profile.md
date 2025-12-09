@@ -11,6 +11,7 @@ related_docs:
     - ../warm-intro-emails/tom-blomfield-yc-warm-intro-email.md
     - ../buildos-fundraising-strategy.md
 contact_verified: 'yes'
+path: docs/marketing/investors/profiles/tom-blomfield-profile.md
 ---
 
 # Tom Blomfield - Y Combinator Group Partner Profile

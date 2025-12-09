@@ -12,6 +12,7 @@ tags:
 readingTime: 7
 excerpt: 'Discover how a creative professional transformed chaotic client work into organized, profitable projects without losing creative freedom.'
 pic: 'creative-case-study'
+path: apps/web/src/content/blogs/case-studies/creative-professional-project-organization.md
 ---
 
 # Case Study: Creative Professional Project Organization

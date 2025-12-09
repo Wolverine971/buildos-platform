@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/LAZY_LOADING_OPPORTUNITIES_ANALYSIS.md -->
+
 # Comprehensive Lazy Loading Opportunities Analysis
 
 **Date:** November 21, 2025

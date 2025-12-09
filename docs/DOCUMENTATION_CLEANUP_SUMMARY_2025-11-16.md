@@ -1,3 +1,5 @@
+<!-- docs/DOCUMENTATION_CLEANUP_SUMMARY_2025-11-16.md -->
+
 # Documentation Cleanup Summary - November 16, 2025
 
 **Executed:** November 16, 2025

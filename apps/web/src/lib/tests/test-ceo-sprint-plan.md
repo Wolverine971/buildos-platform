@@ -1,3 +1,5 @@
+<!-- apps/web/src/lib/tests/test-ceo-sprint-plan.md -->
+
 # BuildOS CEO Training Sprint
 
 **Start Date:** September 30, 2025 | **Daily Sessions:** 7:00 AM | **Duration:** 30 Days

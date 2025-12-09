@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/chat-system/QUICK_START.md -->
+
 # Chat System Quick Start Guide
 
 ## 🚀 Getting Started in 5 Minutes

@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/agentic-chat/tool-system/QUICK_REFERENCE.md -->
+
 # BuildOS Tool System - Quick Reference
 
 **Last Updated:** 2025-12-02

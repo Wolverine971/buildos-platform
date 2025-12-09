@@ -1,3 +1,4 @@
+<!-- thoughts/shared/research/2025-10-28_llm-integration-index.md -->
 # LLM Service Integration - Quick Reference Index
 
 **Full Research Document**: `/thoughts/shared/research/2025-10-28_llm-service-integration-research.md` (1305 lines)

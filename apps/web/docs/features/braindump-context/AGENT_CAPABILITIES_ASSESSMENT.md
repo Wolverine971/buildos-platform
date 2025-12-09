@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/braindump-context/AGENT_CAPABILITIES_ASSESSMENT.md -->
+
 # Braindump Context Agent Capabilities Assessment
 
 **Date:** 2024-12-08

@@ -1,3 +1,5 @@
+<!-- docs/architecture/NOTIFICATION_TRACKING_SYSTEM.md -->
+
 # Notification Tracking System Architecture
 
 **Status**: Phase 1 Partially Complete

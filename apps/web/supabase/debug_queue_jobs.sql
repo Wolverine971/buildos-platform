@@ -1,3 +1,4 @@
+-- apps/web/supabase/debug_queue_jobs.sql
 -- Debug script to identify queue_jobs constraint violations
 -- Run this before applying the migration to understand the data
 

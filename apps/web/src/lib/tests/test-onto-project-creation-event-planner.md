@@ -1,3 +1,5 @@
+<!-- apps/web/src/lib/tests/test-onto-project-creation-event-planner.md -->
+
 # Ontology Project Creation Tests - Event Planner Persona
 
 **Test Suite**: Ontology project creation with agentic chat

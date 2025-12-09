@@ -15,6 +15,7 @@ tags:
     - queue
     - realtime
     - notifications
+path: thoughts/shared/research/2025-10-05_18-00-00_event-driven-architecture-patterns-research.md
 ---
 
 # Event-Driven Architecture Patterns in BuildOS

@@ -1,3 +1,4 @@
+-- supabase/migrations/20251027_create_chat_tables.sql
 -- =====================================================
 -- Chat System Tables - Progressive Disclosure Pattern
 -- =====================================================

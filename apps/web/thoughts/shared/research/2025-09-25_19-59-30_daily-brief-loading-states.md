@@ -10,6 +10,7 @@ tags:
 status: complete
 last_updated: 2025-09-25
 last_updated_by: Claude
+path: apps/web/thoughts/shared/research/2025-09-25_19-59-30_daily-brief-loading-states.md
 ---
 
 # Research: Daily Brief Generation Loading States Audit

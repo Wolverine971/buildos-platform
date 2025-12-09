@@ -1,3 +1,4 @@
+-- apps/web/supabase/diagnostics/check_latest_registration.sql
 -- ============================================================================
 -- QUICK CHECK: Verify Latest User Registration
 -- Date: 2025-10-22

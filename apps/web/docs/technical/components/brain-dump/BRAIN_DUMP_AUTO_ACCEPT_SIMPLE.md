@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/components/brain-dump/BRAIN_DUMP_AUTO_ACCEPT_SIMPLE.md -->
+
 # Brain Dump Auto-Accept Feature (Simplified)
 
 ## Overview

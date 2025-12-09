@@ -1,3 +1,5 @@
+<!-- docs/guides/sms-testing-guide.md -->
+
 # SMS Testing Guide
 
 This guide provides comprehensive testing strategies for the BuildOS SMS integration, including unit tests, integration tests, and end-to-end testing scenarios.

@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/components/modals/MODAL_ENHANCEMENT_SPEC.md -->
+
 # Modal.svelte Enhancement Specification
 
 **Date:** November 21, 2025

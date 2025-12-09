@@ -7,6 +7,7 @@ related:
     - /docs/technical/implementation/PROJECT_CONTEXT_SHIFT_SPEC.md
     - /apps/web/docs/features/ontology/INTELLIGENT_PROJECT_CREATION.md
     - /apps/web/docs/features/ontology/CRUD_TOOLS_IMPLEMENTATION.md
+path: docs/technical/implementation/PROJECT_CONTEXT_SHIFT_IMPLEMENTATION.md
 ---
 
 # Project Context Shift Implementation Summary

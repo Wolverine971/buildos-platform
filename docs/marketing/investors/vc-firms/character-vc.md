@@ -12,6 +12,7 @@ related_docs:
 contact_verified: 'yes'
 fund_size: '$52M Fund II (May 2025)'
 recent_update: 'Jake Knapp joined full-time in 2024, max check size increased to $2M'
+path: docs/marketing/investors/vc-firms/character-vc.md
 ---
 
 # Character VC - VC Firm Profile

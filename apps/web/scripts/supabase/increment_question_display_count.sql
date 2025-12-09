@@ -1,4 +1,4 @@
--- scripts/supabase/increment_question_display_count.sql
+-- apps/web/scripts/supabase/increment_question_display_count.sql
 -- Function to increment the display count for project questions
 
 CREATE OR REPLACE FUNCTION increment_question_display_count(question_ids UUID[])

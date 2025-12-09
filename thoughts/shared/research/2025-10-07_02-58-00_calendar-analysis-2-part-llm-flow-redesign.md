@@ -9,6 +9,7 @@ tags: [research, codebase, calendar-analysis, llm-optimization, architecture]
 status: complete
 last_updated: 2025-10-07
 last_updated_by: Claude (Sonnet 4.5)
+path: thoughts/shared/research/2025-10-07_02-58-00_calendar-analysis-2-part-llm-flow-redesign.md
 ---
 
 # Research: Calendar Analysis 2-Part LLM Flow Redesign

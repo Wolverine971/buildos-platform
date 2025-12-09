@@ -11,6 +11,7 @@ implementation_status: phase_3_not_started
 last_updated: 2025-10-07
 last_updated_by: Claude (AI Assistant)
 related_spec: thoughts/shared/research/2025-10-06_22-08-35_notification-tracking-system-spec.md
+path: thoughts/shared/research/2025-10-07_00-00-00_phase3-sms-click-tracking-plan.md
 ---
 
 # Phase 3: SMS Click Tracking - Implementation Plan

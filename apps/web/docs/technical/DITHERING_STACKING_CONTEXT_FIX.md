@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/DITHERING_STACKING_CONTEXT_FIX.md -->
+
 # Dithering Stacking Context Fix
 
 **Date:** November 21, 2025

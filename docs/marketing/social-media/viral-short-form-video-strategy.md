@@ -1,3 +1,5 @@
+<!-- docs/marketing/social-media/viral-short-form-video-strategy.md -->
+
 # Viral Short-Form Video Strategy - BuildOS
 
 **Last Updated:** January 2025

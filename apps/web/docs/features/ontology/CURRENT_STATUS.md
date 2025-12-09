@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/ontology/CURRENT_STATUS.md -->
+
 # Ontology System - Current Implementation Status
 
 **Date**: December 1, 2025

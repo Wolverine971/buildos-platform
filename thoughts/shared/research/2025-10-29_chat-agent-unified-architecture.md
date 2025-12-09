@@ -5,6 +5,7 @@ status: active
 related:
     - 2025-10-28_chat-agent-unified-integration-plan.md
     - 2025-10-28_23-30-00_chat-agent-integration-architecture.md
+path: thoughts/shared/research/2025-10-29_chat-agent-unified-architecture.md
 ---
 
 # Chat-Agent Unified Architecture (Revised)

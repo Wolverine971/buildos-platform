@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/agentic-chat/tool-system/DOCUMENTATION.md -->
+
 # BuildOS Agentic Chat Tool System Documentation
 
 **Last Updated:** 2025-11-17

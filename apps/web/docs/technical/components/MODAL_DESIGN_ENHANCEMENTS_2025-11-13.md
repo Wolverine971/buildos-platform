@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/components/MODAL_DESIGN_ENHANCEMENTS_2025-11-13.md -->
+
 # Modal Design Enhancements - November 13, 2025
 
 ## 🎨 Overview

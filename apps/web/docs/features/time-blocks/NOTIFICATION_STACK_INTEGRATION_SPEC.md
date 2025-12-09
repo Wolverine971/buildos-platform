@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/time-blocks/NOTIFICATION_STACK_INTEGRATION_SPEC.md -->
+
 # Time-Block Creation: Notification Stack Integration Specification
 
 **Status**: Draft

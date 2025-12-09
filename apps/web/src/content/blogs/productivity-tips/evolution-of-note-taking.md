@@ -21,6 +21,7 @@ tags:
 readingTime: 9
 excerpt: 'From GTD to Notion to AI-native systems: how note-taking evolved from manual organization to intelligent automation. Discover why AI-first approaches like Build-OS solve fundamental problems that traditional productivity systems never could.'
 pic: 'note-taking-evolution'
+path: apps/web/src/content/blogs/productivity-tips/evolution-of-note-taking.md
 ---
 
 <!-- EDITOR'S NOTE: Stronger lead with specific problem/data -->

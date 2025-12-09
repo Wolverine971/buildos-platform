@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/chat-system/multi-agent-chat/UI_IMPLEMENTATION.md -->
+
 # Multi-Agent Chat UI Implementation
 
 **Date:** 2025-10-29

@@ -12,6 +12,7 @@ related_files:
     - /apps/web/src/lib/components/dashboard/WeeklyTaskCalendar.svelte
     - /apps/web/src/lib/components/dashboard/BraindumpWeekView.svelte
     - /apps/web/src/lib/components/dashboard/PhaseCalendarView.svelte
+path: thoughts/shared/research/2025-10-11_00-00-00_dashboard-mobile-information-density-improvement.md
 ---
 
 # Dashboard Mobile Information Density Improvement Specification

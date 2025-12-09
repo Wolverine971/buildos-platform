@@ -1,3 +1,5 @@
+<!-- docs/philosophy/productivity-in-the-future.md -->
+
 Question:
 
 If you were to look into the future 3 years and factor in the fact that ai and llms are getting better how would the most efficient and productive people be using ai?

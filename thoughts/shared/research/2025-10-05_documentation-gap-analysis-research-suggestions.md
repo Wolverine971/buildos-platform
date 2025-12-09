@@ -9,6 +9,7 @@ tags: [research, documentation, gaps, suggestions, meta]
 status: complete
 last_updated: 2025-10-05
 last_updated_by: Claude (Sonnet 4.5)
+path: thoughts/shared/research/2025-10-05_documentation-gap-analysis-research-suggestions.md
 ---
 
 # Research: Documentation Gap Analysis & Research Suggestions for BuildOS

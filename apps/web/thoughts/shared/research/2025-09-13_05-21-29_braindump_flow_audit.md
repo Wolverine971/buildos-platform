@@ -9,6 +9,7 @@ tags: [research, codebase, braindump, architecture, audit, prompts, services, ap
 status: complete
 last_updated: 2025-09-13
 last_updated_by: Claude
+path: apps/web/thoughts/shared/research/2025-09-13_05-21-29_braindump_flow_audit.md
 ---
 
 # Research: Comprehensive Audit of Braindump Flow Architecture

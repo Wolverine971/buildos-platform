@@ -1,3 +1,5 @@
+<!-- apps/worker/RAILWAY_DEPLOYMENT.md -->
+
 # Railway Deployment Instructions - Worker Service
 
 ## Option A: Creating New Railway Project (Recommended)

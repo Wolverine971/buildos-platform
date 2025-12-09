@@ -8,6 +8,7 @@ related_docs:
     - /apps/web/src/lib/stores/project.store.ts
     - /apps/web/src/routes/api/projects/[id]/tasks/[taskId]/+server.ts
     - /apps/web/src/lib/services/projectData.service.ts
+path: thoughts/shared/research/2025-10-11_17-25-38_task-update-delete-patterns.md
 ---
 
 # Task Update and Delete Patterns in BuildOS

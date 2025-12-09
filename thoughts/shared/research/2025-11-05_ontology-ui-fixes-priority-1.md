@@ -5,6 +5,7 @@ repository: buildos-platform
 topic: 'Ontology UI Priority 1 Fixes - Mobile Layout & TypeScript'
 tags: [bugfix, ontology, mobile, typescript, responsive, ui-ux]
 status: complete
+path: thoughts/shared/research/2025-11-05_ontology-ui-fixes-priority-1.md
 ---
 
 # Ontology UI Priority 1 Fixes

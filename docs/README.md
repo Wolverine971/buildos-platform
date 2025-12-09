@@ -1,3 +1,5 @@
+<!-- docs/README.md -->
+
 # BuildOS Platform Documentation
 
 ## 🏗️ You Are Here: Monorepo Root

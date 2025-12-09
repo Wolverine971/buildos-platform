@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/ontology/LINKED_ENTITIES_COMPONENT.md -->
+
 # LinkedEntities Component Specification
 
 **Created**: December 9, 2025

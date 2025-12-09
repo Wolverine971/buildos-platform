@@ -10,6 +10,7 @@ status: in_progress
 progress: 'Phase 4 of 9 complete (Database migrations and functions ready)'
 last_updated: 2025-10-16
 last_updated_by: Claude Code
+path: thoughts/shared/research/2025-10-16_notification-preferences-refactor-implementation-phases.md
 ---
 
 # Notification Preferences Refactor - Implementation Phases

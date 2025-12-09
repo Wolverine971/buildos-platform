@@ -1,3 +1,4 @@
+-- supabase/migrations/20250605000001_add_missing_base_templates.sql
 -- ============================================
 -- Add Missing Base Templates for Ontology
 -- Tasks, Goals, and Additional Plans

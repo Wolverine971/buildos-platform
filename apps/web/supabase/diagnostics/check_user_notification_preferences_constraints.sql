@@ -1,3 +1,4 @@
+-- apps/web/supabase/diagnostics/check_user_notification_preferences_constraints.sql
 -- ============================================================================
 -- CHECK: user_notification_preferences table constraints and structure
 -- Date: 2025-10-22

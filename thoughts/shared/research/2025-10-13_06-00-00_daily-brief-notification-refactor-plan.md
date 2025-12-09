@@ -10,6 +10,7 @@ status: completed
 last_updated: 2025-10-13
 last_updated_by: Claude Code
 implementation_date: 2025-10-13
+path: thoughts/shared/research/2025-10-13_06-00-00_daily-brief-notification-refactor-plan.md
 ---
 
 # Daily Brief Notification Refactor - Implementation Plan

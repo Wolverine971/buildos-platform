@@ -1,3 +1,4 @@
+-- supabase/migrations/20251122_legacy_mapping_backfill.sql
 -- Migration: Legacy mapping helpers + backfill
 -- Description: Adds helper functions/triggers for legacy_entity_mappings, backfills existing ontology entities, and links project_calendars.
 -- Author: Codex (Agent)

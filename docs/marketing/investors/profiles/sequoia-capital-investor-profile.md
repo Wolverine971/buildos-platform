@@ -1,3 +1,5 @@
+<!-- docs/marketing/investors/profiles/sequoia-capital-investor-profile.md -->
+
 # Sequoia Capital Investor Profile
 
 _Research Date: September 16, 2025_

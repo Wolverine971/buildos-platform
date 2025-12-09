@@ -19,6 +19,7 @@ seo:
             'thinking process',
             'feedback loops'
         ]
+path: apps/web/src/content/blogs/talking-listening-productivity-phases.md
 ---
 
 <!-- Research Questions for Content Development:

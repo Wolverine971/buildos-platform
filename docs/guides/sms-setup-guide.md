@@ -1,3 +1,5 @@
+<!-- docs/guides/sms-setup-guide.md -->
+
 # SMS Setup Guide
 
 This guide walks you through setting up SMS notifications in BuildOS from scratch, including Twilio account setup, configuration, and testing.

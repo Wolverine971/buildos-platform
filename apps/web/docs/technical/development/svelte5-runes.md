@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/development/svelte5-runes.md -->
+
 # Svelte 5 Runes Cheat Sheet
 
 > **Complete guide to Svelte 5 runes** - Best practices, patterns, and anti-patterns for BuildOS development

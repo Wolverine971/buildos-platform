@@ -1,3 +1,5 @@
+<!-- docs/marketing/social-media/content-template-hot-take.md -->
+
 ## 🔥 Hot Take Thread Template
 
 ### 1️⃣ Provocative Hook

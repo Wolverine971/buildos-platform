@@ -9,6 +9,7 @@ related:
     - /apps/web/src/lib/components/ontology/TaskCreateModal.svelte
     - /apps/web/src/lib/components/ontology/GoalCreateModal.svelte
     - /apps/web/src/routes/api/onto/templates/+server.ts
+path: thoughts/shared/research/2025-11-04_ontology-templates-implementation-complete.md
 ---
 
 # Ontology Templates Implementation - Complete Summary

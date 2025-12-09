@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/api/endpoints/admin.md -->
+
 # Admin API
 
 **Base Path:** `/api/admin`

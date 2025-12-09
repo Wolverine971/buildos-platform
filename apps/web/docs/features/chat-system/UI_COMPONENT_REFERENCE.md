@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/chat-system/UI_COMPONENT_REFERENCE.md -->
+
 # UI Component & Pattern Reference for Chat & Agent Systems
 
 This document provides a quick reference for BuildOS UI components and patterns for developing chat and agent interfaces.

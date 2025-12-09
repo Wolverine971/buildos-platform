@@ -1,3 +1,5 @@
+<!-- docs/marketing/investors/investor-skeptics.md -->
+
 # BuildOS Investor Messaging - Skeptics
 
 ## Core Positioning

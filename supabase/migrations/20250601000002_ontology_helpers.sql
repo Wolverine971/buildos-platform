@@ -1,3 +1,4 @@
+-- supabase/migrations/20250601000002_ontology_helpers.sql
 -- ============================================
 -- Ontology Helper Functions
 -- Provides database-side utilities for the ontology system

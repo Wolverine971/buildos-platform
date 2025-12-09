@@ -20,6 +20,7 @@ tags:
 status: complete
 last_updated: 2025-10-16
 last_updated_by: Claude Code
+path: thoughts/shared/research/2025-10-16_08-00-00_frontend-notification-preferences-verification.md
 ---
 
 # Research: Frontend Notification Preferences Verification After Refactor

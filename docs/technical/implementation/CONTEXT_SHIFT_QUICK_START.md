@@ -1,3 +1,5 @@
+<!-- docs/technical/implementation/CONTEXT_SHIFT_QUICK_START.md -->
+
 # Project Context Shift - Quick Start Guide
 
 **Status**: ✅ Ready for Testing

@@ -9,6 +9,7 @@ tags: [research, modals, ui-components, standardization, design-system, accessib
 status: complete
 last_updated: 2025-10-23
 last_updated_by: Claude Code
+path: thoughts/shared/research/2025-10-23_modal-standardization-audit.md
 ---
 
 # Research: Modal Standardization Audit - BuildOS Web App

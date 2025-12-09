@@ -1,3 +1,4 @@
+-- apps/web/supabase/migrations/20251012_fix_queue_job_enum_casting.sql
 -- =====================================================
 -- FIX ENUM TYPE CASTING IN QUEUE JOB FUNCTIONS
 -- =====================================================

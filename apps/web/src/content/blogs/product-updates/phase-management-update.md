@@ -11,6 +11,7 @@ tags: ['product-updates', 'features', 'phases', 'project-management', 'updates']
 readingTime: 6
 excerpt: 'Enhanced phase management lets you organize projects with more flexibility. Discover new phase features and improvements.'
 pic: 'phase-update'
+path: apps/web/src/content/blogs/product-updates/phase-management-update.md
 ---
 
 # Phase Management Update

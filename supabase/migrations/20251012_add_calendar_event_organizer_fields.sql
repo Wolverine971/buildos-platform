@@ -1,3 +1,4 @@
+-- supabase/migrations/20251012_add_calendar_event_organizer_fields.sql
 -- =====================================================
 -- CALENDAR EVENT ORGANIZER & ATTENDEE TRACKING
 -- =====================================================

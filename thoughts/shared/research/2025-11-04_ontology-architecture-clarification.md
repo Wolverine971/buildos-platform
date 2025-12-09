@@ -1,3 +1,4 @@
+<!-- thoughts/shared/research/2025-11-04_ontology-architecture-clarification.md -->
 # Ontology Architecture Clarification: Projects, Plans, Tasks & Relationships
 
 **Date**: November 4, 2025

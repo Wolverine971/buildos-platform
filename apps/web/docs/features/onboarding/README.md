@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/onboarding/README.md -->
+
 # Onboarding Feature
 
 User onboarding flow to introduce BuildOS and help users get started.

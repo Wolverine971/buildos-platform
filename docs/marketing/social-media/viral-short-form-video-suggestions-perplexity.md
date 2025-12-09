@@ -1,3 +1,5 @@
+<!-- docs/marketing/social-media/viral-short-form-video-suggestions-perplexity.md -->
+
 To grab massive engagement for BuildOS, the short-form video concepts must empathize with overwhelm, visually dramatize internal chaos, and deliver instant, relatable “aha” moments that resonate with neurodivergent experiences. Here are fresh, scroll-stopping frameworks and examples tailored to ADHD minds and overwhelmed creators:
 
 ---

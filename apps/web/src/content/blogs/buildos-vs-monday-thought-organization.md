@@ -19,6 +19,7 @@ seo:
             'thought organization',
             'workflow tools'
         ]
+path: apps/web/src/content/blogs/buildos-vs-monday-thought-organization.md
 ---
 
 <!-- Research Questions for Content Development:

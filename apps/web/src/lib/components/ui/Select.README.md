@@ -1,3 +1,5 @@
+<!-- apps/web/src/lib/components/ui/Select.README.md -->
+
 # Select Component Documentation
 
 The `Select` component is a styled dropdown input with full support for responsive sizing, error states, helper text, and accessibility features.

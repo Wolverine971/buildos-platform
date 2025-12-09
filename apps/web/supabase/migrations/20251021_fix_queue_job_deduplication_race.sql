@@ -1,3 +1,4 @@
+-- apps/web/supabase/migrations/20251021_fix_queue_job_deduplication_race.sql
 -- =====================================================
 -- FIX QUEUE JOB DEDUPLICATION RACE CONDITION
 -- =====================================================

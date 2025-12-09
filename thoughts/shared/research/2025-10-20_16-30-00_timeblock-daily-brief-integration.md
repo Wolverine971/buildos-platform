@@ -9,6 +9,7 @@ tags: [research, timeblocks, daily-briefs, architecture, worker-service, capacit
 status: complete
 last_updated: 2025-10-20
 last_updated_by: Claude Code
+path: thoughts/shared/research/2025-10-20_16-30-00_timeblock-daily-brief-integration.md
 ---
 
 # Research: Elegant Timeblock Integration into Daily Brief Analysis

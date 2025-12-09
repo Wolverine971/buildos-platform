@@ -1,3 +1,5 @@
+<!-- docs/testing/SMS_NOTIFICATION_TESTING_GUIDE.md -->
+
 # SMS Notification Channel Testing Guide
 
 This guide walks through testing the SMS notification integration end-to-end, including Phase 3 UX enhancements.

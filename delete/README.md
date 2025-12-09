@@ -1,3 +1,4 @@
+<!-- delete/README.md -->
 # Documentation Pending Deletion
 
 ## ⚠️ Review Before Deleting

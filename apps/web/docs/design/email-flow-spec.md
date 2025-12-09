@@ -13,6 +13,7 @@ important_files:
     - apps/web/src/lib/components/admin/EmailComposerModal.svelte
     - apps/web/src/lib/services/email-generation-service.ts
     - apps/web/src/routes/api/admin/emails/+server.ts
+path: apps/web/docs/design/email-flow-spec.md
 ---
 
 # Email Flow System Specification

@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/ontology/TEMPLATES_PAGE_IMPLEMENTATION_CHECKLIST.md -->
+
 # Ontology Templates Page - Implementation Checklist
 
 **Feature:** `/ontology/templates`

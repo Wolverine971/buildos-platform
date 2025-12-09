@@ -5,6 +5,7 @@ author: Claude Code
 tags: [research, users, admin, database, authentication, rls]
 status: complete
 context: 'Comprehensive analysis of user and admin management for test bed feature implementation'
+path: thoughts/shared/research/2025-10-06_05-00-00_user-admin-management-research.md
 ---
 
 # BuildOS User and Admin Management System Research

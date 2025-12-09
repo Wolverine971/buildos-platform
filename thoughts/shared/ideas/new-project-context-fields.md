@@ -1,3 +1,4 @@
+<!-- thoughts/shared/ideas/new-project-context-fields.md -->
 prep analysis
 
 ---

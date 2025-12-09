@@ -1,3 +1,4 @@
+<!-- thoughts/shared/ideas/ontology/MY_CURRENT_UNDERSTANDING.md -->
 # My vision
 
 Have a flexible schema where buildos can handle the creation and evolution of any project and project type.

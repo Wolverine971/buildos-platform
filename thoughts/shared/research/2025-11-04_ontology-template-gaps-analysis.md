@@ -1,3 +1,4 @@
+<!-- thoughts/shared/research/2025-11-04_ontology-template-gaps-analysis.md -->
 # Ontology Template Gaps Analysis & Base Template Recommendations
 
 **Date**: November 4, 2025

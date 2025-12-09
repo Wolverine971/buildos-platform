@@ -9,6 +9,7 @@ tags: [research, notifications, push, bug-analysis, implementation-audit]
 status: complete
 last_updated: 2025-10-06
 last_updated_by: Claude (AI Assistant)
+path: thoughts/shared/research/2025-10-06_17-00-00_push-notification-not-working-audit.md
 ---
 
 # Push Notification System Audit - Why Push Notifications Aren't Working

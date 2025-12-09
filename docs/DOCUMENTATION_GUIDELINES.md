@@ -1,3 +1,5 @@
+<!-- docs/DOCUMENTATION_GUIDELINES.md -->
+
 # Documentation Guidelines for LLMs and Contributors
 
 **Last Updated:** October 3, 2025  

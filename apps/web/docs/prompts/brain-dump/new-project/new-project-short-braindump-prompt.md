@@ -1,3 +1,4 @@
+<!-- apps/web/docs/prompts/brain-dump/new-project/new-project-short-braindump-prompt.md -->
 # Prompt Audit: new-project-short
 
 **Generated at:** 2025-09-14T14:53:17.092Z

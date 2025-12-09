@@ -1,3 +1,4 @@
+// packages/shared-types/src/project-activity.types.ts
 /**
  * Project Activity Logging & Next Steps Types
  *

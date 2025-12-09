@@ -11,6 +11,7 @@ related_files:
     - apps/web/supabase/migrations/20251006_notification_system_phase3.sql
     - apps/web/supabase/migrations/20251011_fix_queue_status_comparison.sql
 created: 2025-10-10
+path: thoughts/shared/research/2025-10-10_14-30-00_notification-timing-and-duplication-analysis.md
 ---
 
 # Daily Brief Notification Timing and Duplication Analysis

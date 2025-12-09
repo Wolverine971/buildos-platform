@@ -1,3 +1,5 @@
+<!-- apps/worker/SCHEDULER_REVIEW_SUMMARY.md -->
+
 # Scheduler Review Summary
 
 **Date:** 2025-10-01

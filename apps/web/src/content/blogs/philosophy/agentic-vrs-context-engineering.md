@@ -23,6 +23,7 @@ tags:
 readingTime: 6
 excerpt: 'While everyone focuses on giving AI agents more capabilities, the real edge comes from context engineering—teaching them judgment through curated, relevant, evolving information. Discover why contextual precision beats raw capability.'
 pic: 'context-vs-agentic'
+path: apps/web/src/content/blogs/philosophy/agentic-vrs-context-engineering.md
 ---
 
 Right now, everyone’s talking about **AI agents** — autonomous programs that can chain together reasoning steps, call APIs, operate tools, and act on your behalf. The hype is about _capability_:

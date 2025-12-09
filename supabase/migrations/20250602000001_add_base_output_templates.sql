@@ -1,3 +1,4 @@
+-- supabase/migrations/20250602000001_add_base_output_templates.sql
 -- ============================================
 -- Add Base Abstract Output Templates
 -- Adds inheritance structure for text documents

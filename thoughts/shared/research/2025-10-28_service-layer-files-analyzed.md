@@ -1,3 +1,4 @@
+<!-- thoughts/shared/research/2025-10-28_service-layer-files-analyzed.md -->
 # Service Layer Research - Files Analyzed
 
 **Research Date:** 2025-10-28  

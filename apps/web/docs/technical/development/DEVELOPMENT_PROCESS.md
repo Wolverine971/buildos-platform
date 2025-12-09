@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/development/DEVELOPMENT_PROCESS.md -->
+
 # Comprehensive Development Process Guide
 
 This document provides a complete workflow for feature development, bug fixes, and maintenance tasks. Follow this process for any code changes to ensure quality, consistency, and proper version control.

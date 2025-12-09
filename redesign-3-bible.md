@@ -1,3 +1,5 @@
+<!-- redesign-3-bible.md -->
+
 # BuildOS “Inkprint” Design System Bible (Long Version)
 
 _A go-to reference for designing new pages and refactoring existing UI. If you’re about to add a component, change spacing, pick a color, or make a “quick” UI tweak—check this first._

@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/conversational-agent/SYSTEM_PROMPT_ARCHITECTURE.md -->
+
 # Conversational Agent System Prompt Architecture
 
 **Last Updated**: 2025-10-28

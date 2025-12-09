@@ -1,3 +1,4 @@
+<!-- thoughts/shared/ideas/ontology/buildos-ontology-master-plan.md -->
 # BuildOS Ontology Master Plan — AI‑Assisted Project Creation (v3.1 - Simplified)
 
 > Purpose: Hand this to an "Implementer Agent" to iteratively ship the ontology layer with **simplified 3-facet metadata system**, migrations, seeding, minimal UI, AI‑assisted project/template creation, FSM actions, and lineage — all on Supabase/Postgres.

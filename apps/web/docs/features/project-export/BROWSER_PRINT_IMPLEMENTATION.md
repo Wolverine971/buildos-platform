@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/project-export/BROWSER_PRINT_IMPLEMENTATION.md -->
+
 # Project Context Export - Browser Print Implementation
 
 **Date:** 2025-10-15

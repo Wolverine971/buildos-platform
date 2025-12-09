@@ -1,3 +1,4 @@
+-- supabase/migrations/20250615000003_fix_fsm_variant_resolution.sql
 -- Ensure FSM transitions resolve through template inheritance and backfill
 -- stale project state_keys for variant templates.
 

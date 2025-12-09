@@ -1,3 +1,4 @@
+-- supabase/migrations/20251028_add_user_id_to_chat_messages.sql
 -- Migration: Add user_id column to chat_messages table
 -- Description: Adds user_id column to chat_messages for proper user scoping and RLS policies
 -- Author: BuildOS Team

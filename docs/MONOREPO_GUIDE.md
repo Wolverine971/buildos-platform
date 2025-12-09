@@ -1,3 +1,5 @@
+<!-- docs/MONOREPO_GUIDE.md -->
+
 # BuildOS Monorepo Guide
 
 ## Overview

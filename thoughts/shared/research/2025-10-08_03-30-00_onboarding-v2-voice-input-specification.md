@@ -10,6 +10,7 @@ status: implemented
 last_updated: 2025-10-08
 last_updated_by: Claude Code
 last_updated_note: 'Added implementation completion notes - voice functionality fully integrated into ProjectsCaptureStep'
+path: thoughts/shared/research/2025-10-08_03-30-00_onboarding-v2-voice-input-specification.md
 ---
 
 # Research: Onboarding V2 Voice Input Specification

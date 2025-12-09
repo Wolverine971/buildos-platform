@@ -1,3 +1,4 @@
+-- supabase/migrations/20251121_ontology_calendar_foundation.sql
 -- Migration: Ontology calendar foundation tables
 -- Description: Adds legacy mapping registry plus onto_events and onto_event_sync tables
 -- Author: Codex (Agent)

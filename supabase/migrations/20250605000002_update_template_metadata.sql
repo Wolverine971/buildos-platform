@@ -1,3 +1,4 @@
+-- supabase/migrations/20250605000002_update_template_metadata.sql
 -- ============================================
 -- Update Template Metadata
 -- Add category and measurement_type fields

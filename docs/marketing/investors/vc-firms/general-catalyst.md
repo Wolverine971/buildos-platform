@@ -1,3 +1,5 @@
+<!-- docs/marketing/investors/vc-firms/general-catalyst.md -->
+
 # General Catalyst - BuildOS Investor Profile
 
 ## Fund Overview

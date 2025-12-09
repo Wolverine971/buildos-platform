@@ -1,3 +1,4 @@
+<!-- apps/web/src/lib/components/project/NextStepDisplay.svelte -->
 <!--
 	NextStepDisplay.svelte
 

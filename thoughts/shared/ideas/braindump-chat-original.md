@@ -1,3 +1,4 @@
+<!-- thoughts/shared/ideas/braindump-chat-original.md -->
 # BuildOS Conversational Project Agent - Design Document v1.0
 
 ## Executive Summary

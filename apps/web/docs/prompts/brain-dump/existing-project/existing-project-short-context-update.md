@@ -7,6 +7,7 @@ tokens_system: ~800
 tokens_user: ~200-400
 tokens_total: ~1000-1200
 processing_mode: Single context-focused processing
+path: apps/web/docs/prompts/brain-dump/existing-project/existing-project-short-context-update.md
 ---
 
 # Existing Project - Short Context Update Prompt

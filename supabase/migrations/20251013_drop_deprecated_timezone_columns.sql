@@ -1,3 +1,4 @@
+-- supabase/migrations/20251013_drop_deprecated_timezone_columns.sql
 -- Migration: Drop deprecated timezone columns
 -- Date: 2025-10-13
 -- Description: Cleanup after timezone centralization to users.timezone

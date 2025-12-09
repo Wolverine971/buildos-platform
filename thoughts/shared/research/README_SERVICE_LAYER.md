@@ -1,3 +1,4 @@
+<!-- thoughts/shared/research/README_SERVICE_LAYER.md -->
 # Service Layer Architecture Research - Complete Index
 
 **Research Completed:** 2025-10-28  

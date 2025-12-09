@@ -1,3 +1,5 @@
+<!-- docs/marketing/growth/viral-plan-notes.md -->
+
 pitch in public with loom videos telling certain creators to try out buildos
 
 highschooler signs

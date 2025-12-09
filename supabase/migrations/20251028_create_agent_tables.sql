@@ -1,3 +1,4 @@
+-- supabase/migrations/20251028_create_agent_tables.sql
 -- Migration: Create Conversational Agent Tables
 -- Description: Adds tables and schema extensions for the conversational project agent feature
 -- Author: BuildOS Team

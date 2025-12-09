@@ -1,3 +1,5 @@
+<!-- apps/web/supabase/diagnostics/README.md -->
+
 # Supabase Diagnostics
 
 This folder contains diagnostic queries for troubleshooting Supabase database issues.

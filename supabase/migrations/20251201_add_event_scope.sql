@@ -1,3 +1,4 @@
+-- supabase/migrations/20251201_add_event_scope.sql
 -- Migration: Add 'event' to onto_templates scope constraint
 -- Purpose: Allow event templates in the ontology system
 -- Date: 2025-12-01

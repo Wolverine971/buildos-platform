@@ -1,3 +1,5 @@
+<!-- apps/web/docs/design/README.md -->
+
 # Design System & UI Documentation
 
 > **⚠️ IMPORTANT: Design System Update (December 2025)**

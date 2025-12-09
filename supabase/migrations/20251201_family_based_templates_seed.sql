@@ -1,3 +1,4 @@
+-- supabase/migrations/20251201_family_based_templates_seed.sql
 -- Migration: Seed family-based templates for plans, goals, documents, outputs, risks, and events
 -- Date: December 1, 2025
 -- Purpose: Implement the new family-based taxonomy for ontology entities

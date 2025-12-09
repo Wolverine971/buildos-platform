@@ -1,3 +1,4 @@
+<!-- thoughts/shared/research/2025-11-04_CRUD_PATTERNS_INDEX.md -->
 # CRUD Patterns Research - Complete Index
 
 **Research Completed:** November 4, 2025  

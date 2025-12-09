@@ -9,6 +9,7 @@ tags: [research, context-ventures, tim-hsia, mike-steadman, ai-saas, investor-an
 status: complete
 last_updated: 2025-09-20
 last_updated_by: DJ
+path: apps/web/thoughts/shared/research/2025-09-20_context-ventures-ai-saas-assessment.md
 ---
 
 # Research: Context Ventures AI/SaaS Guidance Capability Assessment

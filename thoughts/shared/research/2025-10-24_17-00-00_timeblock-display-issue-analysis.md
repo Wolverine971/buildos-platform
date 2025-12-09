@@ -9,6 +9,7 @@ tags: [research, codebase, timeblocks, dashboard, mobile, reactivity, svelte5]
 status: complete
 last_updated: 2025-10-24
 last_updated_by: Claude
+path: thoughts/shared/research/2025-10-24_17-00-00_timeblock-display-issue-analysis.md
 ---
 
 # Research: Timeblock Display Issue Analysis

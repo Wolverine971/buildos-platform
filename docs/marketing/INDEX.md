@@ -1,3 +1,5 @@
+<!-- docs/marketing/INDEX.md -->
+
 # 📱 Marketing Documentation Index
 
 > **Complete guide to BuildOS marketing strategy, brand development, fundraising, and customer acquisition**

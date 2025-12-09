@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/chat-system/multi-agent-chat/HANDOFF.md -->
+
 # Multi-Agent System - Implementation Handoff
 
 **Date:** 2025-10-29

@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/architecture/decisions/ADR-001-agentic-chat-performance-optimizations.md -->
+
 # ADR-001: Agentic Chat Performance and Maintainability Optimizations
 
 **Date**: 2025-11-17

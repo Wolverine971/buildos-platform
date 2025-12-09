@@ -1,3 +1,5 @@
+<!-- docs/marketing/investors/VC-notes.md -->
+
 ## Contact Information & Research Notes
 
 **Original contacts preserved:**

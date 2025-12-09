@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/deployment/runbooks/database-recovery.md -->
+
 # Database Recovery Procedures
 
 > **Purpose**: Procedures for diagnosing and recovering from database issues in BuildOS (Supabase PostgreSQL)

@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/design-system/DARK_MODE.md -->
+
 # Scratchpad Ops Dark Mode Specification
 
 ## Design Philosophy

@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/ontology/INTELLIGENT_PROJECT_CREATION.md -->
+
 # Intelligent Project Creation - AI Agent Implementation
 
 **Status**: ✅ Complete

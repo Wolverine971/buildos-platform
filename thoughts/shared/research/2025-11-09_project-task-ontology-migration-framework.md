@@ -5,6 +5,7 @@ repository: buildos-platform
 topic: 'Project and Task Ontology Migration Framework'
 tags: [research, buildos, ontology, migration, llm, templates, architecture]
 status: complete
+path: thoughts/shared/research/2025-11-09_project-task-ontology-migration-framework.md
 ---
 
 # Project and Task Ontology Migration Framework

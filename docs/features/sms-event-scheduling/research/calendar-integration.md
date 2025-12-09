@@ -4,6 +4,7 @@ date: 2025-10-08
 type: research
 tags: [calendar, google-calendar, architecture, database, api]
 status: complete
+path: docs/features/sms-event-scheduling/research/calendar-integration.md
 ---
 
 # Calendar Integration System Research

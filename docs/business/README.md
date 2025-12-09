@@ -1,3 +1,5 @@
+<!-- docs/business/README.md -->
+
 # 💼 Business Documentation
 
 This directory contains all business-related documentation for BuildOS, organized by business function and strategic areas.

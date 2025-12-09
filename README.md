@@ -1,3 +1,5 @@
+<!-- README.md -->
+
 # BuildOS Platform
 
 A unified monorepo for the BuildOS ecosystem, combining the main web application and background worker services.

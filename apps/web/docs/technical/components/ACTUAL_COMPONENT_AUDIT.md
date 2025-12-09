@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/components/ACTUAL_COMPONENT_AUDIT.md -->
+
 # BuildOS Component Audit - ACTUAL Findings
 
 **Date**: October 25, 2025

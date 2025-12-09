@@ -11,6 +11,7 @@ tags: ['planning', 'outline', 'internal']
 readingTime: 1
 excerpt: 'Internal planning document for case study creation.'
 pic: 'planning'
+path: apps/web/src/content/blogs/case-studies/creative-professional-project-organization-interview.md
 ---
 
 # Blog Interview Guide: Case Study - Creative Professional Project Organization Success

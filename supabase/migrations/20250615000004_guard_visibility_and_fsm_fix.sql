@@ -1,3 +1,4 @@
+-- supabase/migrations/20250615000004_guard_visibility_and_fsm_fix.sql
 -- Update get_allowed_transitions to expose guard availability and ensure
 -- variant templates resolve FSM definitions correctly.
 

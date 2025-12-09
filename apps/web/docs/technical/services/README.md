@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/services/README.md -->
+
 # ⚙️ Service Layer Documentation
 
 This directory contains documentation for BuildOS service layer components that handle business logic and external integrations.

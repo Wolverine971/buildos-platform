@@ -1,3 +1,4 @@
+-- supabase/migrations/20250615000005_fsm_guard_failures.sql
 -- Improve FSM transition diagnostic output by returning failing guards
 -- and hiding satisfied requirements.
 

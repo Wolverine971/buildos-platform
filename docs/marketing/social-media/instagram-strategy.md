@@ -1,3 +1,5 @@
+<!-- docs/marketing/social-media/instagram-strategy.md -->
+
 # BuildOS Instagram Strategy
 
 ## Profile Setup

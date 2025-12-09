@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/architecture/BUILD_OS_MASTER_CONTEXT.md -->
+
 # BUILD OS MASTER CONTEXT
 
 ## Overview

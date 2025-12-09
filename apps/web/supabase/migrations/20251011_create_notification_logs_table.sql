@@ -1,3 +1,4 @@
+-- apps/web/supabase/migrations/20251011_create_notification_logs_table.sql
 -- =====================================================
 -- CREATE NOTIFICATION LOGS TABLE
 -- =====================================================

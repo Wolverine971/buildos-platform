@@ -14,6 +14,7 @@ important_files:
     - apps/web/src/lib/services/calendar-service.ts
     - apps/web/src/routes/webhooks/calendar-events/+server.ts
     - apps/web/src/routes/api/cron/renew-webhooks/+server.ts
+path: apps/web/docs/design/calendar-webhook-integration.md
 ---
 
 # Google Calendar Webhook Integration - Implementation Guide

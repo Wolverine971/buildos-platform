@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/api/routes-reference.md -->
+
 # API Routes Documentation
 
 _Auto-generated on 2025-09-27T04:23:00.929Z_

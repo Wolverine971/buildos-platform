@@ -1,3 +1,5 @@
+<!-- docs/integrations/stripe/setup.md -->
+
 # Stripe Integration Setup Guide
 
 This guide will help you set up Stripe payments for Build OS, including local testing and production deployment.

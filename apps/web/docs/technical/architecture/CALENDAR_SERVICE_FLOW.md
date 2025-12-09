@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/architecture/CALENDAR_SERVICE_FLOW.md -->
+
 # Calendar Service Typed Documentation
 
 ## Overview

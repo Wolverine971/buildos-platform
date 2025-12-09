@@ -1,3 +1,5 @@
+<!-- docs/business/buildos-pitch-deck-renaissance-rewrite.md -->
+
 # BuildOS Investment Pitch Deck - Renaissance Rebellion Rewrite
 
 _Using Lulu Cheng Meservey's Strategic Framework + DJ/Zach/Anna's Vision_

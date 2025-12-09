@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/api/templates.md -->
+
 # API Request/Response Templates
 
 _Auto-generated on 2025-09-27T04:23:16.671Z_

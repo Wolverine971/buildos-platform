@@ -1,3 +1,5 @@
+<!-- docs/marketing/investors/fundraising-preparedness-checklist.md -->
+
 # BuildOS Fundraising Preparedness Checklist & Strategy Guide
 
 ## Welcome, Anna 👋

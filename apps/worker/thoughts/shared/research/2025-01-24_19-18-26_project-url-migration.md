@@ -9,6 +9,7 @@ tags: [research, codebase, project-urls, migration, markdown-links]
 status: complete
 last_updated: 2025-01-24
 last_updated_by: Claude
+path: apps/worker/thoughts/shared/research/2025-01-24_19-18-26_project-url-migration.md
 ---
 
 # Research: Project URL Migration from Slug-based to ID-based

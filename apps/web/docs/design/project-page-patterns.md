@@ -13,6 +13,7 @@ important_files:
     - apps/web/src/lib/stores/project.store.ts
     - apps/web/src/routes/projects/[slug]/+page.svelte
     - apps/web/src/lib/components/projects/
+path: apps/web/docs/design/project-page-patterns.md
 ---
 
 # Project Page Component Patterns & Data Flow Guidelines

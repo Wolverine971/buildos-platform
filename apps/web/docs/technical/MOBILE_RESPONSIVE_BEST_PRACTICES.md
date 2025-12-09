@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/MOBILE_RESPONSIVE_BEST_PRACTICES.md -->
+
 # Mobile & Responsive Best Practices for BuildOS
 
 **Last Updated**: November 21, 2025

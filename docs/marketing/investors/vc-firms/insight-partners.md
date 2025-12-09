@@ -1,3 +1,5 @@
+<!-- docs/marketing/investors/vc-firms/insight-partners.md -->
+
 # Insight Partners - BuildOS Investor Profile
 
 ## Fund Overview

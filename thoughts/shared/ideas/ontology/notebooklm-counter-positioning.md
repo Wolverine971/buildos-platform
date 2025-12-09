@@ -1,3 +1,4 @@
+<!-- thoughts/shared/ideas/ontology/notebooklm-counter-positioning.md -->
 I'll search for current information about NotebookLM's positioning and features to help you understand the competitive terrain.Perfect! Now I have a clear picture of the competitive terrain. Let me break down NotebookLM's positioning and show you how BuildOS can carve out a distinctly more valuable category.
 
 ## NotebookLM's Positioning

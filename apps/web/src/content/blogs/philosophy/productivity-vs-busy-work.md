@@ -11,6 +11,7 @@ tags: ['philosophy', 'productivity', 'busy-work', 'effectiveness', 'priority', '
 readingTime: 9
 excerpt: "Learn to distinguish between meaningful productivity and performative busy work. Discover why motion doesn't equal progress."
 pic: 'productivity-vs-busy'
+path: apps/web/src/content/blogs/philosophy/productivity-vs-busy-work.md
 ---
 
 # Productivity vs Busy Work

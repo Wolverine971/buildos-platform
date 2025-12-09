@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/components/modals/README.md -->
+
 # Modal Components Documentation
 
 **Last Updated**: November 21, 2025

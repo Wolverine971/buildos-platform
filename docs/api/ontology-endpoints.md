@@ -2,6 +2,7 @@
 title: Ontology API Reference
 description: REST endpoints that power the BuildOS ontology system.
 last_updated: 2025-11-05
+path: docs/api/ontology-endpoints.md
 ---
 
 # Ontology API Reference

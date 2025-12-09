@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/components/TEXTAREA_WITH_VOICE_MOBILE_OPTIMIZATION.md -->
+
 # TextareaWithVoice Mobile Optimization
 
 **Last Updated**: November 22, 2025

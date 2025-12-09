@@ -7,6 +7,7 @@ status: completed
 priority: CRITICAL
 related:
     - 2025-10-10_21-00-00_notification-system-audit.md
+path: thoughts/shared/research/2025-10-10_23-30-00_notification-bug-fixes-summary.md
 ---
 
 # Notification System Bug Fixes Summary

@@ -204,7 +204,6 @@
 		}))
 	);
 
-
 	const insightPanels: InsightPanel[] = $derived([
 		{
 			key: 'tasks',
@@ -727,7 +726,9 @@
 							<button
 								onclick={() => (documentsExpanded = !documentsExpanded)}
 								class="p-1.5 rounded-md hover:bg-muted transition-colors"
-								aria-label={documentsExpanded ? 'Collapse documents' : 'Expand documents'}
+								aria-label={documentsExpanded
+									? 'Collapse documents'
+									: 'Expand documents'}
 							>
 								<ChevronDown
 									class="w-4 h-4 text-muted-foreground transition-transform {documentsExpanded

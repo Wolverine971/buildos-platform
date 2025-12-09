@@ -1,3 +1,5 @@
+<!-- apps/web/docs/operations/deployment/VERCEL_DEPLOYMENT_FIX.md -->
+
 # URGENT: Vercel Deployment Fix
 
 ## The Issue

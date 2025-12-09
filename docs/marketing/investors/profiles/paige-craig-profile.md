@@ -22,6 +22,7 @@ related_docs:
     - ../warm-intro-emails/paige-craig-outlander-vc-warm-intro-email.md
     - ../buildos-fundraising-strategy.md
 contact_verified: 'yes'
+path: docs/marketing/investors/profiles/paige-craig-profile.md
 ---
 
 # Paige Craig - Outlander VC Profile

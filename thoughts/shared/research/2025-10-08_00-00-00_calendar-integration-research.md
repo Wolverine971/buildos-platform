@@ -4,6 +4,7 @@ date: 2025-10-08
 type: research
 tags: [calendar, google-calendar, architecture, database, api]
 status: complete
+path: thoughts/shared/research/2025-10-08_00-00-00_calendar-integration-research.md
 ---
 
 # Calendar Integration System Research

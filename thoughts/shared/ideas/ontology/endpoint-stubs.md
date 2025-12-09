@@ -1,3 +1,4 @@
+<!-- thoughts/shared/ideas/ontology/endpoint-stubs.md -->
 TypeScript endpoint stubs (SvelteKit server routes)
 Types: src/lib/types/onto.ts
 typescriptexport type ProjectSpec = {

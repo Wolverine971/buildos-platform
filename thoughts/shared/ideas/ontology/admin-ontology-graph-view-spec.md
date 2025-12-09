@@ -1,3 +1,4 @@
+<!-- thoughts/shared/ideas/ontology/admin-ontology-graph-view-spec.md -->
 # Cytoscape.js Ontology Visualization Specification
 
 ## Project Context

@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/chat-system/UI_DESIGN_AUDIT.md -->
+
 # UI Design Audit - Agent & Chat System
 
 **Date**: 2025-10-30

@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/api/types.md -->
+
 # API Types Documentation
 
 _Auto-generated on 2025-09-27T04:23:16.655Z_

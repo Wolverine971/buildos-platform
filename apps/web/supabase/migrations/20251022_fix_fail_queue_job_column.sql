@@ -1,3 +1,4 @@
+-- apps/web/supabase/migrations/20251022_fix_fail_queue_job_column.sql
 -- Fix fail_queue_job function to use correct column name
 -- The queue_jobs table doesn't have a 'failed_at' column
 -- Failed jobs should use 'completed_at' to mark when they finished

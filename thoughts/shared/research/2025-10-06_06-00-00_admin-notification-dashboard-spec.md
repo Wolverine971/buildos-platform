@@ -9,6 +9,7 @@ tags: [research, admin, notifications, analytics, testing, spec]
 status: complete
 last_updated: 2025-10-06
 last_updated_by: Claude (AI Assistant)
+path: thoughts/shared/research/2025-10-06_06-00-00_admin-notification-dashboard-spec.md
 ---
 
 # Admin Notification Dashboard - Analytics & Test Bed Specification

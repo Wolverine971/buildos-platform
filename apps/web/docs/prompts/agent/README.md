@@ -1,3 +1,5 @@
+<!-- apps/web/docs/prompts/agent/README.md -->
+
 # Agent System Prompts
 
 This directory contains automatically generated prompt audits from the BuildOS multi-agent system.

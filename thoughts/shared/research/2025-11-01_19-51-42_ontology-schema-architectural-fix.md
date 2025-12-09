@@ -11,6 +11,7 @@ related_files:
 related_docs:
     - docs/architecture/decisions/ADR-003-ontology-schema-public-prefix.md
 context: 'Architectural refactor from onto schema to onto_ prefix in public schema'
+path: thoughts/shared/research/2025-11-01_19-51-42_ontology-schema-architectural-fix.md
 ---
 
 # Ontology System - Schema Architecture Fix

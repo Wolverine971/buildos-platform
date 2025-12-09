@@ -10,6 +10,7 @@ status: complete
 last_updated: 2025-10-31
 last_updated_by: Claude Code
 last_updated_note: 'Added fixes completed section (2025-10-31T03:30:47Z)'
+path: thoughts/shared/research/2025-10-31_02-00-00_frontend-backend-type-sync-issues.md
 ---
 
 # Research: Frontend-Backend Type Synchronization Issues

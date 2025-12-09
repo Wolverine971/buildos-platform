@@ -1,3 +1,4 @@
+-- apps/web/supabase/migrations/20251011_fix_sms_preferences_column_name.sql
 -- Fix column naming mismatch in user_sms_preferences
 -- The code expects 'event_reminder_lead_time_minutes' but the migration created 'reminder_lead_time_minutes'
 -- This migration renames the column to match the code expectations

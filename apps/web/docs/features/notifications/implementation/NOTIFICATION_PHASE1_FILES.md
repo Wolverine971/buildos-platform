@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/notifications/implementation/NOTIFICATION_PHASE1_FILES.md -->
+
 # Notification System Phase 1 - Files Created
 
 All files have been created for Phase 1 of the Extensible Notification System. Below is a complete list organized by category.

@@ -19,6 +19,7 @@ seo:
             'executive dysfunction tools',
             'creative productivity'
         ]
+path: apps/web/src/content/blogs/buildos-vs-notion-adhd-minds.md
 ---
 
 There's a silent crisis happening in creative studios and startup offices around the world.

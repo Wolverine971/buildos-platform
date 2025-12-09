@@ -10,6 +10,7 @@ status: complete
 last_updated: 2025-10-24
 last_updated_by: Claude
 last_updated_note: 'Added implementation details for both fixes'
+path: thoughts/shared/research/2025-10-24_16-00-00_daily-brief-linking-and-titles.md
 ---
 
 # Research: Daily Brief Title Standardization and Task/Project Linking in Executive Summary

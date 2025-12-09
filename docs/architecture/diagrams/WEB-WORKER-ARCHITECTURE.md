@@ -1,3 +1,5 @@
+<!-- docs/architecture/diagrams/WEB-WORKER-ARCHITECTURE.md -->
+
 # Web-Worker Architecture Documentation
 
 **Last Updated:** 2025-10-05

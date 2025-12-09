@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/notifications/NOTIFICATION_SYSTEM_IMPLEMENTATION.md -->
+
 # Generic Stackable Notification System - Implementation Summary
 
 **Status:** Phase 1 Complete ✅

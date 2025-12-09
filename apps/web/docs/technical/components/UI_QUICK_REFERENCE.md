@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/components/UI_QUICK_REFERENCE.md -->
+
 # BuildOS UI Components - Quick Reference Guide
 
 > **Design System:** [INKPRINT_DESIGN_SYSTEM.md](./INKPRINT_DESIGN_SYSTEM.md)

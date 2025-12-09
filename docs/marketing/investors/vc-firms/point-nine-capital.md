@@ -12,6 +12,7 @@ related_docs:
 contact_verified: 'yes'
 fund_size: '€180M Fund VI (Sept 2022)'
 recent_update: 'Poolside became unicorn in 2024, 1 year after first investment'
+path: docs/marketing/investors/vc-firms/point-nine-capital.md
 ---
 
 # Point Nine Capital - VC Firm Profile

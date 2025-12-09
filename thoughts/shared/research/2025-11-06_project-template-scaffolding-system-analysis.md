@@ -5,6 +5,7 @@ repository: buildos-platform
 topic: Project Template Scaffolding System - Creating Starter Templates for Workflows
 tags: [research, ontology, templates, project-creation, workflows, scaffolding]
 status: complete
+path: thoughts/shared/research/2025-11-06_project-template-scaffolding-system-analysis.md
 ---
 
 # Research: Project Template Scaffolding System for BuildOS

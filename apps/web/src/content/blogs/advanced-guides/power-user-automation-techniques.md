@@ -11,6 +11,7 @@ tags: ['advanced-guides', 'automation', 'power-users', 'workflows', 'productivit
 readingTime: 14
 excerpt: 'Discover advanced techniques, automations, and workflows that separate good BuildOS users from power users. Learn to unlock the other 80% of capabilities.'
 pic: 'power-user'
+path: apps/web/src/content/blogs/advanced-guides/power-user-automation-techniques.md
 ---
 
 # Power User Automation Techniques

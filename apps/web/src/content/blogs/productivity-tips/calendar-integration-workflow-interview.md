@@ -11,6 +11,7 @@ tags: ['planning', 'outline', 'internal']
 readingTime: 1
 excerpt: 'Internal planning document for blog post creation.'
 pic: 'planning'
+path: apps/web/src/content/blogs/productivity-tips/calendar-integration-workflow-interview.md
 ---
 
 # Blog Interview Guide: Calendar Integration Workflow - Time Blocking That Actually Works

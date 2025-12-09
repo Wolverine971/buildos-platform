@@ -9,6 +9,7 @@ tags: [research, codebase, daily-briefs, notifications, worker, timing, bug]
 status: complete
 last_updated: 2025-10-10
 last_updated_by: Claude Code
+path: thoughts/shared/research/2025-10-10_06-10-46_daily-brief-notification-timing-issue.md
 ---
 
 # Research: Daily Brief Notification Timing Issue

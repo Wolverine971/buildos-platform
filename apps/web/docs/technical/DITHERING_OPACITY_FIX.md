@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/DITHERING_OPACITY_FIX.md -->
+
 # Dithering Opacity Fix - Modern High-DPI Display Calibration
 
 **Date:** November 21, 2025

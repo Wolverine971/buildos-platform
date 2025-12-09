@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/api/endpoints/calendar.md -->
+
 # Calendar API Endpoints
 
 This document provides comprehensive documentation for all Calendar API endpoints in the BuildOS platform.

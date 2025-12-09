@@ -1,3 +1,5 @@
+<!-- apps/web/src/content/blogs/buildos-vs-monday-thought-organization-interview.md -->
+
 # Blog Interview Guide: BuildOS vs Monday.com - Completing the Comparison
 
 ## Overview & Direction

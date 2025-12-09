@@ -1,3 +1,4 @@
+-- supabase/migrations/20251029_create_agent_architecture.sql
 -- Migration: Agent-to-Agent Architecture
 -- Created: 2025-10-29
 -- Description: Creates tables for multi-agent system with LLM-to-LLM conversations

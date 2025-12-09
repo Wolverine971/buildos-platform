@@ -9,6 +9,7 @@ tags: [research, seo, meta-tags, svelte-head, SEOHead-component]
 status: complete
 last_updated: 2025-09-17
 last_updated_by: Claude Code
+path: apps/web/thoughts/shared/research/2025-09-18_00-55-35_seo-meta-tags-audit.md
 ---
 
 # Research: SEO Meta Tags and Head Elements Audit

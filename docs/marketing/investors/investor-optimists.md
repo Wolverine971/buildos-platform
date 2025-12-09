@@ -1,3 +1,5 @@
+<!-- docs/marketing/investors/investor-optimists.md -->
+
 # BuildOS Investor Messaging - Optimists
 
 ## Core Positioning

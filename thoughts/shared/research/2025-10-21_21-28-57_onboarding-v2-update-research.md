@@ -9,6 +9,7 @@ tags: [research, onboarding, ui/ux, user-experience, features]
 status: complete
 last_updated: 2025-10-21
 last_updated_by: Claude Code
+path: thoughts/shared/research/2025-10-21_21-28-57_onboarding-v2-update-research.md
 ---
 
 # Research: Onboarding V2 Update - New Flow Structure

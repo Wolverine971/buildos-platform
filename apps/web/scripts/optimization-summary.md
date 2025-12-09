@@ -1,3 +1,5 @@
+<!-- apps/web/scripts/optimization-summary.md -->
+
 # Build Optimization Implementation Summary
 
 ## Completed Optimizations

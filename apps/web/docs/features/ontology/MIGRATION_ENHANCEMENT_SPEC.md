@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/ontology/MIGRATION_ENHANCEMENT_SPEC.md -->
+
 # Migration System Enhancement Specification
 
 ## Executive Summary

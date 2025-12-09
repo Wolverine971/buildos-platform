@@ -19,6 +19,7 @@ tags:
 status: complete
 last_updated: 2025-09-16
 last_updated_by: Claude Code
+path: apps/web/thoughts/shared/research/2025-09-16_12-00-00_competitor-comparison-blog-research.md
 ---
 
 # Research: Competitor Comparison Blog Research: BuildOS vs Notion, Monday.com, Obsidian

@@ -24,6 +24,7 @@ related_docs:
     - ../warm-intro-emails/tim-hsia-context-ventures-warm-intro-email.md
     - ../buildos-fundraising-strategy.md
 contact_verified: 'yes'
+path: docs/marketing/investors/profiles/tim-hsia-context-ventures-profile.md
 ---
 
 # Tim Hsia - Context Ventures Profile

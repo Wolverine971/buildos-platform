@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/deployment/runbooks/performance-issues.md -->
+
 # Performance Troubleshooting Guide
 
 > **Purpose**: Procedures for diagnosing and resolving performance issues in BuildOS

@@ -1,3 +1,4 @@
+-- supabase/migrations/20251028_fix_context_type_constraint.sql
 -- Migration: Fix context_type constraint to support all agent chat types
 -- Description: Updates the check constraint on chat_sessions.context_type to accept all agent chat type values
 -- Author: BuildOS Team

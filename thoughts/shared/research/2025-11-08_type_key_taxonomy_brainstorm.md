@@ -5,6 +5,7 @@ repository: buildos-platform
 topic: Type Key Naming Convention for Ontology Tables Beyond onto_projects
 tags: [research, ontology, architecture, type-key, taxonomy, database-design]
 status: brainstorm
+path: thoughts/shared/research/2025-11-08_type_key_taxonomy_brainstorm.md
 ---
 
 # Deep Architectural Thinking: Type Key Taxonomy for Ontology Tables

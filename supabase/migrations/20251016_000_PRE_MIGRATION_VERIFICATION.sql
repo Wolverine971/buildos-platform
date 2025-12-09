@@ -1,3 +1,4 @@
+-- supabase/migrations/20251016_000_PRE_MIGRATION_VERIFICATION.sql
 -- =====================================================
 -- PRE-MIGRATION VERIFICATION SCRIPT
 -- =====================================================

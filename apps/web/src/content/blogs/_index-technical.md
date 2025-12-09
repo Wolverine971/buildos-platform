@@ -6,6 +6,7 @@ author: 'DJ Wayne'
 publishDate: '2025-09-16'
 draft: true
 tags: ['content-strategy', 'technical', 'engineering', 'ai-development', 'architecture']
+path: apps/web/src/content/blogs/_index-technical.md
 ---
 
 # Technical Blog Category Index

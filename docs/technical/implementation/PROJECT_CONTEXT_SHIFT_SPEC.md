@@ -8,6 +8,7 @@ related:
     - /apps/web/docs/features/ontology/CRUD_TOOLS_IMPLEMENTATION.md
     - /apps/web/src/lib/components/agent/ChatInterface.svelte
     - /apps/web/src/routes/api/agent/stream/+server.ts
+path: docs/technical/implementation/PROJECT_CONTEXT_SHIFT_SPEC.md
 ---
 
 # Project Context Shift After Creation - Implementation Specification

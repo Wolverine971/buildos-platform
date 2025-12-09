@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/chat-system/ADMIN_MONITORING.md -->
+
 # 📊 Admin Chat Monitoring System
 
 ## Overview

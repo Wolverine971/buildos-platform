@@ -1,3 +1,4 @@
+<!-- thoughts/shared/ideas/buildos-conversational-agent.md -->
 # BuildOS Conversational Agent - Context & Vision Document
 
 ## The Problem We're Solving

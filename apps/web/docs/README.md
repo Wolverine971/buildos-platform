@@ -1,3 +1,5 @@
+<!-- apps/web/docs/README.md -->
+
 # Web App Documentation
 
 ## 🧭 Quick Navigation

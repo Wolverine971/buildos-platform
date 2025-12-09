@@ -9,6 +9,7 @@ tags: [research, codebase, projectheader, task-dots, timeline, ui-components]
 status: complete
 last_updated: 2025-09-26
 last_updated_by: Claude
+path: apps/web/thoughts/shared/research/2025-09-26_19-48-12_projectheader-minimal-task-dots-investigation.md
 ---
 
 # Research: ProjectHeaderMinimal Task Dots Issue Investigation and Fix

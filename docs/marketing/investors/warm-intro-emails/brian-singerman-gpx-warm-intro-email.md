@@ -1,3 +1,5 @@
+<!-- docs/marketing/investors/warm-intro-emails/brian-singerman-gpx-warm-intro-email.md -->
+
 # Brian Singerman (GPx Fund) - Warm Introduction Email Template
 
 ## Investor Context

@@ -4,6 +4,7 @@ researcher: Claude Code
 topic: 'Time Block Adjustment Feature - Implementation Ultrathinking'
 tags: [implementation, design-decisions, architecture]
 status: in-progress
+path: thoughts/shared/research/2025-10-24_15-00-00_timeblock-implementation-ultrathinking.md
 ---
 
 # Time Block Adjustment - Deep Implementation Thinking

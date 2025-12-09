@@ -1,3 +1,5 @@
+<!-- docs/technical/web-search-tooling.md -->
+
 # Agentic Chat – Web Search Tooling (Tavily)
 
 ## Goals

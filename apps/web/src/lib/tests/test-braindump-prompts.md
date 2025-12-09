@@ -1,3 +1,5 @@
+<!-- apps/web/src/lib/tests/test-braindump-prompts.md -->
+
 # Brain Dump Test Prompts- AUG 28 lez go
 
 ## Test Prompt 1: New Project Creation

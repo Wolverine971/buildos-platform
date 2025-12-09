@@ -1,3 +1,5 @@
+<!-- docs/TASK_INDEX.md -->
+
 # Task-Based Documentation Index
 
 Navigation organized by **what you want to do**, not just what exists.

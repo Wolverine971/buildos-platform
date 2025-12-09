@@ -1,3 +1,5 @@
+<!-- docs/integrations/README.md -->
+
 # Integrations Hub
 
 Centralized references for shared third-party integrations used across the BuildOS platform.

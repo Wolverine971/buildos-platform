@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/ontology/ONTOLOGY_FIRST_REFACTORING.md -->
+
 # Ontology-First Tool System Refactoring
 
 **Date:** 2025-11-04

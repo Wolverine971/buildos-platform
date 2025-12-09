@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/ontology/TYPE_KEY_TAXONOMY.md -->
+
 # Type Key Taxonomy Architecture
 
 **Last Updated**: December 1, 2025

@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/notifications/implementation/NOTIFICATION_ADMIN_DASHBOARD_IMPLEMENTATION_SUMMARY.md -->
+
 # Notification Admin Dashboard - Phase 1 Implementation Summary
 
 **Date**: 2025-10-06

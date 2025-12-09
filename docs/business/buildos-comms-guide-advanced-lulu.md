@@ -1,3 +1,5 @@
+<!-- docs/business/buildos-comms-guide-advanced-lulu.md -->
+
 # BuildOS Communications Strategy: The Lulu Cheng Meservey Deep Dive
 
 _"The ability to make people believe something is inevitable is the highest form of persuasion"_

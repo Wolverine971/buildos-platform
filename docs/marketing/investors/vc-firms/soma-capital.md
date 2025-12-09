@@ -1,3 +1,5 @@
+<!-- docs/marketing/investors/vc-firms/soma-capital.md -->
+
 # Soma Capital - BuildOS Investor Profile
 
 ## Fund Overview

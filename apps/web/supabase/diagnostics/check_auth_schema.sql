@@ -1,3 +1,4 @@
+-- apps/web/supabase/diagnostics/check_auth_schema.sql
 -- ============================================================================
 -- AUTH SCHEMA DIAGNOSTIC QUERY
 -- Purpose: Check the current state of Supabase auth schema to diagnose

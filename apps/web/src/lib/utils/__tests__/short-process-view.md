@@ -1,3 +1,5 @@
+<!-- apps/web/src/lib/utils/__tests__/short-process-view.md -->
+
 ok now in the brain-dump-processor in the processShortBraindumpForExistingProject function, I want
 this to be connected to the frontend and stream in data like we do with the dual processing flow.\
  \

@@ -10,6 +10,7 @@ tags:
     - implementation
 status: in-progress
 confidence: 95%
+path: thoughts/shared/research/2025-10-28_conversational-agent-implementation-progress.md
 ---
 
 # Conversational Project Agent Implementation Progress

@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/design-system/STYLE_UPDATE.md -->
+
 # Scratchpad Ops Design System - Comprehensive Style Update
 
 ## 🎯 Update Summary

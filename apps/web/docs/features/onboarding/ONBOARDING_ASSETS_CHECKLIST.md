@@ -1,3 +1,4 @@
+<!-- apps/web/docs/features/onboarding/ONBOARDING_ASSETS_CHECKLIST.md -->
 <!-- todo: priority 2 -->
 
 # BuildOS Onboarding Assets Checklist

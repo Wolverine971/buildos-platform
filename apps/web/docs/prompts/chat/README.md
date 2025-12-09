@@ -1,3 +1,5 @@
+<!-- apps/web/docs/prompts/chat/README.md -->
+
 # Chat System Prompts
 
 This directory contains automatically generated prompt audits from the BuildOS chat compression system.

@@ -1,3 +1,5 @@
+<!-- apps/web/docs/prompts/PROMPT_AUDIT_STATUS.md -->
+
 # Prompt Audit Infrastructure - Status Report
 
 **Last Updated**: 2025-10-31

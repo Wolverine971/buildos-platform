@@ -1,3 +1,5 @@
+<!-- apps/web/src/lib/chat/LLM_TOOL_INSTRUCTIONS.md -->
+
 # LLM Tool Instructions for BuildOS Agentic Chat
 
 ## Core Principle

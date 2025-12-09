@@ -6,6 +6,7 @@ tags: [ontology, fsm, migration, refactoring]
 related:
     - buildos-ontology-master-plan.md
     - endpoint-stubs.md
+path: thoughts/shared/research/2025-02-11_ontology-deliverable-to-output-migration.md
 ---
 
 # Ontology System: Deliverable→Output Migration & Enhanced FSM Implementation

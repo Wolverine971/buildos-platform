@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/notifications/NOTIFICATION_SYSTEM_DOCS_MAP.md -->
+
 # Notification System - Documentation Map
 
 This file provides a complete overview of all notification system documentation and how the files interlink.

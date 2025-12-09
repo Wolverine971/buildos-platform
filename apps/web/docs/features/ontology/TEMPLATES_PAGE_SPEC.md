@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/ontology/TEMPLATES_PAGE_SPEC.md -->
+
 # Ontology Templates Page Specification
 
 **Feature:** Template Browser & Management

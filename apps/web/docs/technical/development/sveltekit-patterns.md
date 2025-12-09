@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/development/sveltekit-patterns.md -->
+
 # SvelteKit + Supabase Patterns Cheat Sheet
 
 > **Complete guide to SvelteKit patterns** - Load functions, SSR, Supabase authentication, and BuildOS-specific best practices

@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/components/UI_PATTERNS_AND_CONVENTIONS.md -->
+
 # BuildOS UI Patterns and Style Conventions - Complete Analysis
 
 > **⚠️ Design System Update (December 2025)**

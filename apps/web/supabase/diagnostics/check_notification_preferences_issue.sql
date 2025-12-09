@@ -1,3 +1,4 @@
+-- apps/web/supabase/diagnostics/check_notification_preferences_issue.sql
 -- ============================================================================
 -- DIAGNOSE: user_notification_preferences table structure issue
 -- Date: 2025-10-22

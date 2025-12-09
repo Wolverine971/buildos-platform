@@ -11,6 +11,7 @@ tags: ['planning', 'outline', 'internal']
 readingTime: 1
 excerpt: 'Internal planning document for launch announcement.'
 pic: 'planning'
+path: apps/web/src/content/blogs/product-updates/build-os-beta-launch-interview.md
 ---
 
 # Blog Interview Guide: BuildOS Beta Launch Announcement

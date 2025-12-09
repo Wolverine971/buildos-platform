@@ -1,3 +1,5 @@
+<!-- docs/business/strategy/masterplan-notes.md -->
+
 ## best case scenario
 
 launch Build OS

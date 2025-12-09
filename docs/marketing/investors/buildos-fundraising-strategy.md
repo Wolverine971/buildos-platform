@@ -1,3 +1,5 @@
+<!-- docs/marketing/investors/buildos-fundraising-strategy.md -->
+
 # BuildOS Fundraising Strategy & VC Pitch Guide
 
 ## Executive Summary

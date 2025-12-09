@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/notifications/README.md -->
+
 # Notification System Feature
 
 Generic stackable notification system for long-running processes with minimized and modal views, plus user notification preferences for daily briefs and events.

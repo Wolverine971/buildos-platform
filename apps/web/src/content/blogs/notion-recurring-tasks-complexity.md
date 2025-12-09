@@ -21,6 +21,7 @@ seo:
             'Notion alternative',
             'simple productivity tools'
         ]
+path: apps/web/src/content/blogs/notion-recurring-tasks-complexity.md
 ---
 
 I watched [Thomas Frank's YouTube short](https://youtube.com/shorts/yYNbf__-gx4) on creating recurring tasks in Notion.

@@ -11,6 +11,7 @@ tags: ['philosophy', 'manifesto', 'productivity', 'operating-systems', 'future-o
 readingTime: 12
 excerpt: 'A bold vision for the future of personal productivity: treating your life like an operating system that orchestrates everything you do.'
 pic: 'manifesto'
+path: apps/web/src/content/blogs/philosophy/personal-operating-system-manifesto.md
 ---
 
 # The Personal Operating System Manifesto

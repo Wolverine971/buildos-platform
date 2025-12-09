@@ -1,3 +1,5 @@
+<!-- apps/worker/DOCUMENTATION_INDEX.md -->
+
 # Worker App Documentation Index
 
 Welcome! Here's how to navigate the BuildOS Worker documentation.

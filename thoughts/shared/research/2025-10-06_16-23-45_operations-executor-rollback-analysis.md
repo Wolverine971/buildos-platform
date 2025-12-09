@@ -8,6 +8,7 @@ related_files:
     - /apps/web/src/lib/utils/operations/operations-executor.ts
     - /apps/web/src/lib/utils/operations/operations-executor.test.ts
     - /apps/web/src/lib/utils/operations/operation-validator.ts
+path: thoughts/shared/research/2025-10-06_16-23-45_operations-executor-rollback-analysis.md
 ---
 
 # OperationsExecutor Rollback Functionality Analysis

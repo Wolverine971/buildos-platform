@@ -9,6 +9,7 @@ tags: [research, components, ui, tabs, standardization, design-system]
 status: complete
 last_updated: 2025-10-22
 last_updated_by: Claude Code
+path: thoughts/shared/research/2025-10-22_15-55-49_tab-component-standardization.md
 ---
 
 # Research: Tab Component Standardization

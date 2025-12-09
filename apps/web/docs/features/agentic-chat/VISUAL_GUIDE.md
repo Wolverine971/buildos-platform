@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/agentic-chat/VISUAL_GUIDE.md -->
+
 # BuildOS Agentic Chat - Visual Flow Guide
 
 **Quick Reference**: High-level visual overview of the agentic chat system flow

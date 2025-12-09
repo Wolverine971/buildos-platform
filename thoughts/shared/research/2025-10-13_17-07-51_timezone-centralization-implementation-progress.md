@@ -10,6 +10,7 @@ status: in_progress
 last_updated: 2025-10-13
 last_updated_by: Claude Code
 related_research: 2025-10-13_04-55-45_overlapping-notification-preferences-analysis.md
+path: thoughts/shared/research/2025-10-13_17-07-51_timezone-centralization-implementation-progress.md
 ---
 
 # Timezone Centralization Implementation Progress

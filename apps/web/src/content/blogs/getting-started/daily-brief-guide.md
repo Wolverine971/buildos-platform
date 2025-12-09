@@ -11,6 +11,7 @@ tags: ['daily-briefs', 'ai-intelligence', 'productivity', 'getting-started', 'de
 readingTime: 10
 excerpt: 'Transform your daily productivity with AI-powered briefs that provide personalized insights, priority guidance, and strategic recommendations based on your unique context.'
 pic: 'daily-briefs-guide'
+path: apps/web/src/content/blogs/getting-started/daily-brief-guide.md
 ---
 
 Your daily brief is Build OS's most powerful feature—a personalized intelligence report that understands your projects, goals, and working style to provide targeted guidance for each day. Unlike generic productivity advice, your daily brief is tailored specifically to your current context and priorities.

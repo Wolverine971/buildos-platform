@@ -1,3 +1,5 @@
+<!-- docs/technical/implementation/AGENT_CHAT_ONTOLOGY_INTEGRATION_SPEC_PHASES_2-5.md -->
+
 # BuildOS Agent Chat Enhancement - Phases 2-5 Complete Implementation
 
 ## PHASE 2: Modify Services (Complete Implementation)

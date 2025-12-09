@@ -1,3 +1,5 @@
+<!-- apps/worker/docs/EMAIL_SETUP.md -->
+
 # Email Setup Guide for Daily Brief Worker
 
 This guide explains how to configure email sending for the Daily Brief Worker using Gmail with an optional custom sender alias.

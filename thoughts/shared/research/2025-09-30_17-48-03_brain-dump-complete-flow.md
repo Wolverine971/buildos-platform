@@ -9,6 +9,7 @@ tags: [research, codebase, brain-dump, flow-analysis, architecture, svelte5, ai-
 status: complete
 last_updated: 2025-09-30
 last_updated_by: Claude (Sonnet 4.5)
+path: thoughts/shared/research/2025-09-30_17-48-03_brain-dump-complete-flow.md
 ---
 
 # Research: Brain Dump Complete Flow Analysis

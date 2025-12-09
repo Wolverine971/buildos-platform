@@ -1,3 +1,5 @@
+<!-- apps/worker/PHASE1_IMPLEMENTATION.md -->
+
 # Phase 1 Implementation: Parallel Processing Optimizations
 
 **Date**: 2025-09-30

@@ -4,6 +4,7 @@ date: 2025-10-13
 type: operations
 status: completed
 tags: [database, cleanup, maintenance, jobs, queue]
+path: thoughts/shared/research/2025-10-13_stale-jobs-cleanup.md
 ---
 
 # Stale Jobs Cleanup - October 2025

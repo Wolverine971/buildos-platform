@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/chat-system/IMPLEMENTATION_SUMMARY.md -->
+
 # Chat System Implementation Summary
 
 ## 📋 Implementation Status: ✅ COMPLETE

@@ -12,6 +12,7 @@ last_updated_by: Claude Code
 related_docs:
     - thoughts/shared/research/2025-10-13_17-40-27_sms-flow-deprecation-migration-plan.md
     - thoughts/shared/research/2025-10-13_04-55-45_overlapping-notification-preferences-analysis.md
+path: thoughts/shared/research/2025-10-13_17-40-27_sms-flow-clean-data-model-spec.md
 ---
 
 # Clean SMS Flow Data Model Specification

@@ -5,6 +5,7 @@ repository: buildos-platform
 topic: 'Agentic Chat System - Improvement Opportunities'
 tags: [research, buildos, agentic-chat, improvements, optimization, technical-debt]
 status: complete
+path: thoughts/shared/research/2025-11-17_improvement-opportunities.md
 ---
 
 # Agentic Chat System - Improvement Opportunities

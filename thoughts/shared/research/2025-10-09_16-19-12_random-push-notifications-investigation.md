@@ -9,6 +9,7 @@ tags: [research, codebase, notifications, push-notifications, worker, sms, debug
 status: complete
 last_updated: 2025-10-09
 last_updated_by: Claude Code
+path: thoughts/shared/research/2025-10-09_16-19-12_random-push-notifications-investigation.md
 ---
 
 # Research: Investigation of Random Push Notifications with No Information

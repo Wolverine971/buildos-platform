@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/phase-generation/PROCEDURAL_PHASE_GENERATION_STATUS.md -->
+
 # Procedural Phase Generation – Implementation Status (October 2025)
 
 This document captures the current status of the procedural phase-generation redesign, summarizes what has been implemented, and outlines the remaining work needed to satisfy the full specification (`thoughts/shared/research/2025-10-12_22-51-12_phase-generation-procedural-redesign-spec.md`).

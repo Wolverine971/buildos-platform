@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/ontology/TEMPLATES_PAGE_WIREFRAMES.md -->
+
 # Ontology Templates Page - Visual Wireframes
 
 **Feature:** `/ontology/templates`

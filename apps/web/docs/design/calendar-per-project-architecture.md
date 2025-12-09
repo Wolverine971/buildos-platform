@@ -12,6 +12,7 @@ related_files:
 important_files:
     - apps/web/src/lib/services/calendar-service.ts
     - supabase/migrations/*calendar*.sql
+path: apps/web/docs/design/calendar-per-project-architecture.md
 ---
 
 # Google Calendar Per-Project Architecture

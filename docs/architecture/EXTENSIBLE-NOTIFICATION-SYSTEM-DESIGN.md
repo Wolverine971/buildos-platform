@@ -1,3 +1,5 @@
+<!-- docs/architecture/EXTENSIBLE-NOTIFICATION-SYSTEM-DESIGN.md -->
+
 # Extensible Notification System Design
 
 **Status:** Design Specification

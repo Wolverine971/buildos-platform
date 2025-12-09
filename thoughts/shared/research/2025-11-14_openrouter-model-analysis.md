@@ -6,6 +6,7 @@ topic: 'OpenRouter Model Analysis - Speed vs Intelligence Optimization'
 tags: [research, openrouter, llm-models, performance, cost-optimization]
 status: complete
 last_updated: 2025-11-14T15:30:00-08:00
+path: thoughts/shared/research/2025-11-14_openrouter-model-analysis.md
 ---
 
 # OpenRouter Model Analysis: Speed vs Intelligence (January 2025 - Updated)

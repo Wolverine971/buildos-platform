@@ -6,6 +6,7 @@ repository: buildos-platform
 topic: 'Flexible Recurrence Framework - Making ANY Task Type Recurring'
 tags: [research, buildos, recurring-tasks, architecture, framework-design, fsm]
 status: revised
+path: thoughts/shared/research/2025-11-07_recurrence-framework-design.md
 ---
 
 # Research: Flexible Recurrence Framework Design (Timezone-Ready Series Master Plan)

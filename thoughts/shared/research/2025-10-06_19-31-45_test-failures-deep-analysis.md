@@ -9,6 +9,7 @@ tags: [research, testing, bug-fix, dashboardData, brain-dump-processor, prompt-a
 status: complete
 last_updated: 2025-10-06
 last_updated_by: Claude
+path: thoughts/shared/research/2025-10-06_19-31-45_test-failures-deep-analysis.md
 ---
 
 # Research: Test Failures Deep Analysis and Remediation Strategy

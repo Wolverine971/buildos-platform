@@ -3,6 +3,7 @@ title: 'Monitoring and Observability Best Practices Audit'
 date: 2025-10-23
 status: completed
 tags: [monitoring, observability, infrastructure, audit]
+path: thoughts/shared/research/2025-10-23_00-00-00_monitoring-observability-audit.md
 ---
 
 # Monitoring and Observability Best Practices Audit

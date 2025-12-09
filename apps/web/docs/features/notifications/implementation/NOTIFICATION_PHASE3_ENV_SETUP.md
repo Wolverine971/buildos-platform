@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/notifications/implementation/NOTIFICATION_PHASE3_ENV_SETUP.md -->
+
 # Notification System Phase 3 - Environment Setup
 
 ## Required Environment Variables

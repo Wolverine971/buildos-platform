@@ -5,6 +5,7 @@ repository: buildos-platform
 topic: 'Audit of Unexecuted onto_tasks Table Extension Plans (Recurring Tasks & Additional Fields)'
 tags: [research, buildos, onto_tasks, recurring-tasks, migrations, schema-extension]
 status: complete
+path: thoughts/shared/research/2025-11-07_onto_tasks_extension_plans_audit.md
 ---
 
 # Research: Unexecuted onto_tasks Extension Plans

@@ -9,6 +9,7 @@ tags: [research, navigation, ui-design, brain-icons, theme-toggle, user-experien
 status: complete
 last_updated: 2025-10-08
 last_updated_by: Claude
+path: thoughts/shared/research/2025-10-08_05-04-43_navigation-bar-design-improvement.md
 ---
 
 # Research: Navigation Bar Design Improvement - Reducing Visual Clutter

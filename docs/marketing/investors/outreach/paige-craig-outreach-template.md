@@ -1,3 +1,5 @@
+<!-- docs/marketing/investors/outreach/paige-craig-outreach-template.md -->
+
 # Paige Craig (Outlander VC) - Outreach Template & Preparation Guide
 
 ## Quick Context

@@ -9,6 +9,7 @@ tags: [research, codebase, brain-dump, voice-recording, speech-recognition, perf
 status: complete
 last_updated: 2025-10-06
 last_updated_by: Claude Code
+path: thoughts/shared/research/2025-10-06_16-00-00_brain-dump-voice-recording-issues-comprehensive.md
 ---
 
 # Research: Brain Dump Voice Recording Issues - Comprehensive Analysis

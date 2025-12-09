@@ -1,3 +1,5 @@
+<!-- apps/worker/email-system.md -->
+
 # Email System Overview
 
 This document explains how BuildOS persists and tracks outgoing email, the tables involved, and the service layer APIs you should use.

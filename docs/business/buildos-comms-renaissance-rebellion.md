@@ -1,3 +1,5 @@
+<!-- docs/business/buildos-comms-renaissance-rebellion.md -->
+
 # BuildOS: The Creativity Renaissance Manifesto
 
 _A Lulu Cheng Meservey Strategic Framework for Revolution_

@@ -1,3 +1,4 @@
+-- supabase/migrations/20251201_task_type_key_and_edge_based_plans.sql
 -- Migration: Add type_key to onto_tasks and move plan relationships to edges
 --
 -- This migration:

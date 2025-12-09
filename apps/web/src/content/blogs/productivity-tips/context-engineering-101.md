@@ -23,6 +23,7 @@ tags:
 readingTime: 8
 excerpt: 'The evolution from prompt engineering to context engineering represents a fundamental shift in how we work with AI. Learn why building contextual systems beats crafting perfect prompts, and how to implement context engineering in your workflows today.'
 pic: ''
+path: apps/web/src/content/blogs/productivity-tips/context-engineering-101.md
 ---
 
 The way we work with AI is fundamentally changing. What started as prompt engineering—crafting the perfect message to get good AI responses—is evolving into something much more powerful: context engineering.

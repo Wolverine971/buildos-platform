@@ -9,6 +9,7 @@ tags: [research, sms, event-reminders, worker, scheduler, debugging]
 status: complete
 last_updated: 2025-10-27
 last_updated_by: Claude Code
+path: thoughts/shared/research/2025-10-27_event-reminder-sms-not-working.md
 ---
 
 # Research: Event Reminder SMS Not Working - Investigation

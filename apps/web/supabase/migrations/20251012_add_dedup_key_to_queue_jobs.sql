@@ -1,3 +1,4 @@
+-- apps/web/supabase/migrations/20251012_add_dedup_key_to_queue_jobs.sql
 -- =====================================================
 -- ADD DEDUP_KEY COLUMN TO QUEUE_JOBS
 -- =====================================================

@@ -1,3 +1,4 @@
+-- supabase/migrations/20251013_cleanup_stale_jobs.sql
 -- Migration: Cleanup stale and failed jobs
 -- Created: 2025-10-13
 -- Purpose: Remove old failed/pending job records to reduce database bloat

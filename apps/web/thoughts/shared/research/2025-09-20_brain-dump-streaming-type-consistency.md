@@ -9,6 +9,7 @@ tags: [research, codebase, brain-dump, streaming, types, sse, data-flow]
 status: complete
 last_updated: 2025-09-20
 last_updated_by: Claude Code
+path: apps/web/thoughts/shared/research/2025-09-20_brain-dump-streaming-type-consistency.md
 ---
 
 # Research: Brain Dump Streaming Endpoint Type Consistency and Data Flow

@@ -1,4 +1,4 @@
--- scripts/audit-enum-values.sql
+-- apps/web/scripts/audit-enum-values.sql
 -- Audit SQL queries to get distinct values for potential enum fields
 -- Run this against your Supabase database to get current values
 

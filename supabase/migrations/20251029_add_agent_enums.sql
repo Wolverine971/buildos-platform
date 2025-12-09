@@ -1,3 +1,4 @@
+-- supabase/migrations/20251029_add_agent_enums.sql
 -- Migration: Add PostgreSQL Enums for Agent System
 -- Created: 2025-10-29
 -- Description: Replaces TEXT CHECK constraints with proper PostgreSQL enums for type safety

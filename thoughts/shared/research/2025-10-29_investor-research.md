@@ -10,6 +10,7 @@ tags:
     - venture-capital
     - AI-investing
     - 2024-2025
+path: thoughts/shared/research/2025-10-29_investor-research.md
 ---
 
 # Investor Research: Recent Activity & Market Views (2024-2025)

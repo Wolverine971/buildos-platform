@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/time-blocks/README.md -->
+
 # Time Play - Implementation Specification
 
 **Status:** Phase 3 (Time Allocation Visualization) In Progress

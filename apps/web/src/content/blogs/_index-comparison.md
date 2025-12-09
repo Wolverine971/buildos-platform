@@ -6,6 +6,7 @@ author: 'DJ Wayne'
 publishDate: '2025-09-16'
 draft: true
 tags: ['content-strategy', 'comparison', 'competitors', 'positioning']
+path: apps/web/src/content/blogs/_index-comparison.md
 ---
 
 # Comparison Blog Category Index

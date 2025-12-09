@@ -1,3 +1,4 @@
+<!-- thoughts/shared/research/2025-10-30_02-00-00_executor-context-fixes-complete.md -->
 # Multi-Agent Executor Context Enrichment - Implementation Complete
 
 ## Metadata

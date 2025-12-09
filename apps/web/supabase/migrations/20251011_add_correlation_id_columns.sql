@@ -1,3 +1,4 @@
+-- apps/web/supabase/migrations/20251011_add_correlation_id_columns.sql
 -- =====================================================
 -- ADD CORRELATION_ID COLUMNS FOR EFFICIENT QUERYING
 -- =====================================================

@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/database/CALENDAR_AND_ONTOLOGY_SCHEMA.md -->
+
 # BuildOS Database Schema: Calendar & Ontology System
 
 ## Executive Summary

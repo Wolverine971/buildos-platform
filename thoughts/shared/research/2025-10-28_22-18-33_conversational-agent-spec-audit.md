@@ -9,6 +9,7 @@ tags: [research, codebase, chat-system, conversational-agent, architecture, spec
 status: complete
 last_updated: 2025-10-28
 last_updated_by: Claude
+path: thoughts/shared/research/2025-10-28_22-18-33_conversational-agent-spec-audit.md
 ---
 
 # Research: Audit and Tailor Conversational Agent Design Spec to BuildOS Codebase

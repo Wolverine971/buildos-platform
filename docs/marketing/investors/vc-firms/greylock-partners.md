@@ -1,3 +1,5 @@
+<!-- docs/marketing/investors/vc-firms/greylock-partners.md -->
+
 # Greylock Partners - BuildOS Investor Profile
 
 ## Fund Overview

@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/components/UI_DOCUMENTATION_INDEX.md -->
+
 # BuildOS UI Documentation Index
 
 ## Complete Documentation Map

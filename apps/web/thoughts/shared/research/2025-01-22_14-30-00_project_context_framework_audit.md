@@ -9,6 +9,7 @@ tags: [research, codebase, context-framework, prompts, flexibility, buildos]
 status: complete
 last_updated: 2025-01-22
 last_updated_by: Claude
+path: apps/web/thoughts/shared/research/2025-01-22_14-30-00_project_context_framework_audit.md
 ---
 
 # Research: Project Context Framework Audit and Flexibility Enhancement

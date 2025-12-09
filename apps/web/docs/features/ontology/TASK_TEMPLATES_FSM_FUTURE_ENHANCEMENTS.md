@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/ontology/TASK_TEMPLATES_FSM_FUTURE_ENHANCEMENTS.md -->
+
 # Task Templates: Future FSM Enhancements Reference
 
 **Last Updated**: December 1, 2025

@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/chat-system/ARCHITECTURE.md -->
+
 # Chat System Architecture
 
 ## System Design

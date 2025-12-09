@@ -1,3 +1,5 @@
+<!-- apps/web/docs/START-HERE.md -->
+
 # START HERE - Web App Documentation Guide
 
 **Last Updated:** 2025-10-06

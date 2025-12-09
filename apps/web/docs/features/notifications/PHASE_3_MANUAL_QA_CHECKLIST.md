@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/notifications/PHASE_3_MANUAL_QA_CHECKLIST.md -->
+
 # Phase 3: Phase Generation Notification - Manual QA Testing Checklist
 
 **Date Created**: 2025-10-04

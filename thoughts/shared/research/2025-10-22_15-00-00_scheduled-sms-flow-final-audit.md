@@ -9,6 +9,7 @@ related_docs:
     - /apps/worker/src/workers/smsWorker.ts
     - /apps/web/src/routes/api/webhooks/twilio/status/+server.ts
     - /apps/web/src/lib/services/scheduledSmsUpdate.service.ts
+path: thoughts/shared/research/2025-10-22_15-00-00_scheduled-sms-flow-final-audit.md
 ---
 
 # Scheduled SMS Flow - Final Comprehensive Audit

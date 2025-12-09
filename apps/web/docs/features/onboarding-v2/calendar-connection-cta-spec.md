@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/onboarding-v2/calendar-connection-cta-spec.md -->
+
 # Onboarding V2: Calendar Connection & Analysis CTA - Design Spec
 
 **Date**: 2025-10-07

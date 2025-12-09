@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/components/projects/PROJECT_PAGE_COMPONENT_PATTERNS.md -->
+
 # Project Page Component Patterns & Data Flow Guidelines
 
 ## Overview

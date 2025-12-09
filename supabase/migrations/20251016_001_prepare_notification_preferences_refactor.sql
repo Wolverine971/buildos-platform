@@ -1,3 +1,4 @@
+-- supabase/migrations/20251016_001_prepare_notification_preferences_refactor.sql
 -- Migration: Phase 1 - Prepare for Notification Preferences Refactor
 -- Description: Add event_type to user_notifications and create backup of user_notification_preferences
 -- Date: 2025-10-16

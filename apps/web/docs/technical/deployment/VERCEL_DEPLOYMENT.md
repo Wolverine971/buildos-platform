@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/deployment/VERCEL_DEPLOYMENT.md -->
+
 # Vercel Deployment Instructions - Updating to Monorepo
 
 ## Step-by-Step Instructions

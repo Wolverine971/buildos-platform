@@ -1,3 +1,5 @@
+<!-- docs/operations/worker/scheduler-and-cron-analysis.md -->
+
 # Worker Scheduler Configuration & Cron Jobs Analysis
 
 **Created:** 2025-10-27  

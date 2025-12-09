@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/ontology/PROJECT_PREFIX_MIGRATION.md -->
+
 # Project Template Prefix Migration
 
 **Date**: December 1, 2025

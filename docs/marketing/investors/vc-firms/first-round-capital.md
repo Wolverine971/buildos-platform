@@ -12,6 +12,7 @@ related_docs:
 contact_verified: 'yes'
 fund_size: 'Fund X targeting $500M'
 recent_update: 'Liz Wessel joined as Partner, Clay became unicorn at $3B (June 2025)'
+path: docs/marketing/investors/vc-firms/first-round-capital.md
 ---
 
 # First Round Capital - VC Firm Profile

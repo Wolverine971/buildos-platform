@@ -19,6 +19,7 @@ tags:
 readingTime: 12
 excerpt: 'Learn advanced techniques for managing task dependencies, critical paths, and complex project workflows in BuildOS. Bridge the gap between simple task lists and professional project management.'
 pic: 'task-dependencies'
+path: apps/web/src/content/blogs/advanced-guides/advanced-task-dependency-management.md
 ---
 
 # Advanced Task Dependency Management

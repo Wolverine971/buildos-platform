@@ -9,6 +9,7 @@ tags: [research, codebase, agent-chat, ontology, context-loading, strategy-selec
 status: complete
 last_updated: 2025-11-04
 last_updated_by: Claude
+path: thoughts/shared/research/2025-11-04_13-59-57_agent-chat-flow-audit.md
 ---
 
 # Research: Agentic Chat Flow Audit and Recommendations

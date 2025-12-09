@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/deployment/BUILD.md -->
+
 # Build Process Documentation
 
 This document explains the various build scripts and logging options available in this project.

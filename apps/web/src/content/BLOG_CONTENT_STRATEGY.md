@@ -3,6 +3,7 @@ title: BuildOS Blog Content Strategy & Development Roadmap
 lastModified: 2025-10-03
 status: active
 priority: high
+path: apps/web/src/content/BLOG_CONTENT_STRATEGY.md
 ---
 
 # BuildOS Blog Content Strategy & Development Roadmap

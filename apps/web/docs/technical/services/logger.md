@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/services/logger.md -->
+
 # Logger Service
 
 **Location**: `/src/lib/utils/logger.ts`

@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/MODAL_LAZY_LOADING_SUMMARY.md -->
+
 # Modal Lazy Loading Implementation Summary
 
 **Date:** November 21, 2025

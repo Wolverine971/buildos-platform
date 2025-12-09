@@ -9,6 +9,7 @@ tags: [research, codebase, tasks, calendar, completion, audit, bugs]
 status: complete
 last_updated: 2025-10-11
 last_updated_by: Claude Code
+path: thoughts/shared/research/2025-10-11_18-30-00_task-completion-calendar-cleanup-audit.md
 ---
 
 # Research: Task Completion Calendar Cleanup Audit

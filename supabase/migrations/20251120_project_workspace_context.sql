@@ -1,3 +1,4 @@
+-- supabase/migrations/20251120_project_workspace_context.sql
 -- Migration: Rename project_update context to project workspace
 -- Description: Consolidates the project_update agent context into the standard "project" context
 --              and refreshes the chat_sessions context_type constraint.

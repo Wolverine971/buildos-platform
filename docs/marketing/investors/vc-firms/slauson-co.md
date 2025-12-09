@@ -23,6 +23,7 @@ related_docs:
 contact_verified: 'yes'
 fund_size: '$100M Fund II (2024), $75M Fund I (2020)'
 recent_update: 'Friends & Family 2025 cohort announced with $300K checks (up from $150K), 10 companies selected from 800+ applications'
+path: docs/marketing/investors/vc-firms/slauson-co.md
 ---
 
 # SLAUSON & Co. - VC Firm Profile

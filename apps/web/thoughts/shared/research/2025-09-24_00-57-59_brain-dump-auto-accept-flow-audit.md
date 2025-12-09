@@ -9,6 +9,7 @@ tags: [research, codebase, brain-dump, auto-accept, flow-audit, consistency-chec
 status: complete
 last_updated: 2025-09-24
 last_updated_by: Claude
+path: apps/web/thoughts/shared/research/2025-09-24_00-57-59_brain-dump-auto-accept-flow-audit.md
 ---
 
 # Research: Brain Dump Auto-Accept Flow Audit and Verification

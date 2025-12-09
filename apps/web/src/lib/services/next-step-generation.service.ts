@@ -1,3 +1,4 @@
+// apps/web/src/lib/services/next-step-generation.service.ts
 /**
  * NextStepGenerationService - Generates contextual next step recommendations
  *

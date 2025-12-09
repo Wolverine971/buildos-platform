@@ -1,3 +1,5 @@
+<!-- docs/technical/ontology-remediation-plan.md -->
+
 # Ontology Remediation Plan
 
 _Author: Codex (GPT-5)_  

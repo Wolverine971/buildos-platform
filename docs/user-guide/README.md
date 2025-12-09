@@ -1,3 +1,5 @@
+<!-- docs/user-guide/README.md -->
+
 # 👤 User Guide
 
 This directory contains end-user documentation for BuildOS, helping users understand and effectively use the platform.

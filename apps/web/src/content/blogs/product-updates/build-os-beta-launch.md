@@ -11,6 +11,7 @@ tags: ['product-updates', 'launch', 'beta', 'announcement', 'news']
 readingTime: 5
 excerpt: 'BuildOS beta is now live! Discover the AI-powered productivity platform that transforms how you organize your work and life.'
 pic: 'beta-launch'
+path: apps/web/src/content/blogs/product-updates/build-os-beta-launch.md
 ---
 
 # BuildOS Beta Launch

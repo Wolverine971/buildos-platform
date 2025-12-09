@@ -9,6 +9,7 @@ tags: [research, notifications, logging, bugs, audit, architecture]
 status: complete
 last_updated: 2025-10-10
 last_updated_by: Claude
+path: thoughts/shared/research/2025-10-10_21-00-00_notification-system-audit.md
 ---
 
 # Research: Notification System Audit - Logging, Flow Analysis, and Bug Identification

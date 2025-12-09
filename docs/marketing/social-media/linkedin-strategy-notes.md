@@ -1,3 +1,5 @@
+<!-- docs/marketing/social-media/linkedin-strategy-notes.md -->
+
 ## Rules
 
 be real dont be too professional. Speak in your real voice

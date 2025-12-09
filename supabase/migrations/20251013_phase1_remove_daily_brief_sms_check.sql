@@ -1,3 +1,4 @@
+-- supabase/migrations/20251013_phase1_remove_daily_brief_sms_check.sql
 -- =====================================================
 -- Phase 1: Remove Redundant daily_brief_sms Check
 -- =====================================================

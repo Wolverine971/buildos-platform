@@ -11,6 +11,7 @@ related_files:
 important_files:
     - apps/web/src/lib/components/ui/
     - apps/web/tailwind.config.js
+path: apps/web/docs/design/design-principles-checklist.md
 ---
 
 # S-Tier SaaS Dashboard Design Checklist (Inspired by Stripe, Airbnb, Linear)

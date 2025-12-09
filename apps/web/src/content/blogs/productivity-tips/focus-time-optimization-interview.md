@@ -11,6 +11,7 @@ tags: ['planning', 'outline', 'internal']
 readingTime: 1
 excerpt: 'Internal planning document for blog post creation.'
 pic: 'planning'
+path: apps/web/src/content/blogs/productivity-tips/focus-time-optimization-interview.md
 ---
 
 # Blog Interview Guide: Focus Time Optimization - Protecting Deep Work in a Distracted World

@@ -1,3 +1,5 @@
+<!-- docs/marketing/investors/individual-investors/README.md -->
+
 # Individual Angel Investors - Directory
 
 **Last Updated:** October 29, 2025

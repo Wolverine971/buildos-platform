@@ -4,6 +4,7 @@ date: 2025-10-14
 type: research
 status: active
 tags: [notification-system, bugs, error-handling, race-conditions]
+path: thoughts/shared/research/2025-10-14_notification-worker-remaining-issues-spec.md
 ---
 
 # Notification Worker - Remaining Issues Specification

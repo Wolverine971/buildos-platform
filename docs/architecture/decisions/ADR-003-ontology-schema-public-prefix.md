@@ -1,3 +1,5 @@
+<!-- docs/architecture/decisions/ADR-003-ontology-schema-public-prefix.md -->
+
 # ADR-003: Ontology Schema - Public Schema with onto\_ Prefix
 
 **Date**: 2025-11-01

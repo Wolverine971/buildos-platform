@@ -7,6 +7,7 @@ tags: [ontology, fsm, roadmap, implementation]
 related:
     - buildos-ontology-master-plan.md
     - 2025-02-11_ontology-deliverable-to-output-migration.md
+path: thoughts/shared/ideas/ontology/ontology-implementation-roadmap.md
 ---
 
 # Ontology System Implementation Roadmap

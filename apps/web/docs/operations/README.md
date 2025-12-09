@@ -1,3 +1,5 @@
+<!-- apps/web/docs/operations/README.md -->
+
 # Operations & Deployment Documentation
 
 This directory contains deployment procedures, operational guides, and runbooks for the BuildOS web application deployment to Vercel.

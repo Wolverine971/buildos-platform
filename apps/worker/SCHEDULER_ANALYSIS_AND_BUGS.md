@@ -1,3 +1,5 @@
+<!-- apps/worker/SCHEDULER_ANALYSIS_AND_BUGS.md -->
+
 # Scheduler.ts Analysis & Bug Report
 
 **Generated:** 2025-10-01

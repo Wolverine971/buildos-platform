@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/components/modals/QUICK_REFERENCE.md -->
+
 # Modal Components Quick Reference
 
 **Last Updated**: November 4, 2025

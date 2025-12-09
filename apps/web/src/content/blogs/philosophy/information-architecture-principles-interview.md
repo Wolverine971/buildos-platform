@@ -11,6 +11,7 @@ tags: ['planning', 'outline', 'internal']
 readingTime: 1
 excerpt: 'Internal planning document for blog post creation.'
 pic: 'planning'
+path: apps/web/src/content/blogs/philosophy/information-architecture-principles-interview.md
 ---
 
 # Blog Interview Guide: Information Architecture Principles for Personal Productivity

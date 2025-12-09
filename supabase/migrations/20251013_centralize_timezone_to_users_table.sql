@@ -1,3 +1,4 @@
+-- supabase/migrations/20251013_centralize_timezone_to_users_table.sql
 -- Migration: Centralize timezone storage to users table
 -- Date: 2025-10-13
 -- Description: Adds timezone column to users table and migrates data from various preference tables

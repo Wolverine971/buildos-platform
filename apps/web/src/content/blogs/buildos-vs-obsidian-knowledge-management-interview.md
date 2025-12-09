@@ -1,3 +1,5 @@
+<!-- apps/web/src/content/blogs/buildos-vs-obsidian-knowledge-management-interview.md -->
+
 # Blog Interview Guide: BuildOS vs Obsidian - Completing the Comparison
 
 ## Overview & Direction

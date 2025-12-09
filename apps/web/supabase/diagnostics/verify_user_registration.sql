@@ -1,3 +1,4 @@
+-- apps/web/supabase/diagnostics/verify_user_registration.sql
 -- ============================================================================
 -- COMPREHENSIVE USER REGISTRATION VERIFICATION QUERY
 -- Date: 2025-10-22

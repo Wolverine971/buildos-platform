@@ -1,3 +1,4 @@
+-- supabase/migrations/applied_backup/20251120_convert_task_docs_to_edges.sql
 -- Migration: Convert task.spec and task.scratch to document edges
 -- Date: 2025-11-20
 -- Description: Migrates existing task.spec and task.scratch documents to use the task.documentation template

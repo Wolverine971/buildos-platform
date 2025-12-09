@@ -9,6 +9,7 @@ tags: [svelte5, runes, bug-fixes, code-quality, frontend]
 status: complete
 last_updated: 2025-10-24
 last_updated_by: Claude Code
+path: thoughts/shared/research/2025-10-24_svelte5-runes-audit.md
 ---
 
 # Research: Comprehensive Svelte 5 Runes Audit

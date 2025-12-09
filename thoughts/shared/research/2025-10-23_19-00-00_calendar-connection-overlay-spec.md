@@ -9,6 +9,7 @@ tags: [research, feature-spec, calendar-integration, time-blocks, ui-design]
 status: complete
 last_updated: 2025-10-23
 last_updated_by: Claude
+path: thoughts/shared/research/2025-10-23_19-00-00_calendar-connection-overlay-spec.md
 ---
 
 # Feature Specification: Calendar Connection Overlay for Time-Blocks

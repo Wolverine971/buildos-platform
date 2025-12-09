@@ -9,6 +9,7 @@ tags: [research, spec, tasks, bulk-operations, ui-patterns, calendar-integration
 status: complete
 last_updated: 2025-10-11
 last_updated_by: Claude Code
+path: thoughts/shared/research/2025-10-11_21-30-52_bulk-task-operations-spec.md
 ---
 
 # Specification: Bulk Task Operations in TasksList Component

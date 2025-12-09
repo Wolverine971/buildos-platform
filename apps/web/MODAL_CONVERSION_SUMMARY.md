@@ -1,3 +1,5 @@
+<!-- apps/web/MODAL_CONVERSION_SUMMARY.md -->
+
 # Modal Component Conversion Summary: Slots → Snippets
 
 ## Overview

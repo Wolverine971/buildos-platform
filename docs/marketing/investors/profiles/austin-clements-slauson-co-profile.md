@@ -21,6 +21,7 @@ related_docs:
     - ../buildos-fundraising-strategy.md
     - ./ajay-relan-profile.md
 contact_verified: 'yes'
+path: docs/marketing/investors/profiles/austin-clements-slauson-co-profile.md
 ---
 
 # Austin Clements - SLAUSON & Co. Managing Partner Profile

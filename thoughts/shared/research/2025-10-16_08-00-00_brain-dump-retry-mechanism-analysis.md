@@ -9,6 +9,7 @@ tags: [research, codebase, brain-dump, retry-mechanism, sse-streaming, bug-analy
 status: complete
 last_updated: 2025-10-16
 last_updated_by: Claude
+path: thoughts/shared/research/2025-10-16_08-00-00_brain-dump-retry-mechanism-analysis.md
 ---
 
 # Research: Brain Dump Retry Mechanism - Why Retry Status Isn't Reaching Frontend

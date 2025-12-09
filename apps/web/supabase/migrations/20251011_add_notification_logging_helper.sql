@@ -1,3 +1,4 @@
+-- apps/web/supabase/migrations/20251011_add_notification_logging_helper.sql
 -- =====================================================
 -- ADD DATABASE FUNCTION LOGGING TO NOTIFICATION SYSTEM
 -- =====================================================

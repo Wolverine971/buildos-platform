@@ -9,6 +9,7 @@ tags: [implementation, chat-system, agent-system, integration, refactoring]
 status: in_progress
 last_updated: 2025-10-28
 last_updated_by: Claude Code
+path: thoughts/shared/research/2025-10-28_chat-agent-unified-integration-plan.md
 ---
 
 # Chat & Agent System Unified Integration Plan

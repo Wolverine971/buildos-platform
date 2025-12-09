@@ -10,6 +10,7 @@ status: complete
 severity: medium
 last_updated: 2025-10-06
 last_updated_by: Claude (claude-sonnet-4-5)
+path: thoughts/shared/research/2025-10-06_12-52-52_live-transcript-inconsistency-analysis.md
 ---
 
 # Research: Live Transcript Inconsistency - Root Cause Analysis

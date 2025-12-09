@@ -1,3 +1,5 @@
+<!-- apps/worker/src/workers/README.md -->
+
 # Workers Directory Structure
 
 This directory contains the modular worker implementations for different job types.

@@ -7,6 +7,7 @@ tokens_system: ~2400-3000
 tokens_project_data: ~500-2000
 tokens_total: ~3000-6000
 processing_mode: Single LLM call
+path: apps/web/docs/prompts/task-synthesis/task-synthesis-reorganization.md
 ---
 
 # Task Synthesis - Three-Step Reorganization Prompt

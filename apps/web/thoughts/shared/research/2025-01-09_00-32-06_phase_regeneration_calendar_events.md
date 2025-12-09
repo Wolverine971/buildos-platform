@@ -9,6 +9,7 @@ tags: [research, codebase, phase-generation, calendar-sync, task-calendar-events
 status: complete
 last_updated: 2025-01-09
 last_updated_by: Claude
+path: apps/web/thoughts/shared/research/2025-01-09_00-32-06_phase_regeneration_calendar_events.md
 ---
 
 # Research: Phase Regeneration and Task Calendar Events Synchronization

@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/ontology/TEMPLATE_CREATION_FLOW_REDESIGN.md -->
+
 # Template Creation Flow Redesign – Work Log & Design Spec
 
 **Owner:** Codex AI Pair (GPT‑5)  

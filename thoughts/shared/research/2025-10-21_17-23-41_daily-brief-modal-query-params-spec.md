@@ -9,6 +9,7 @@ tags: [research, codebase, daily-briefs, modals, url-params, ui-ux, projects-pag
 status: complete
 last_updated: 2025-10-21
 last_updated_by: Claude
+path: thoughts/shared/research/2025-10-21_17-23-41_daily-brief-modal-query-params-spec.md
 ---
 
 # Research: Daily Brief Modal with Query Parameters - Implementation Spec

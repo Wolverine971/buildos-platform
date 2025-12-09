@@ -11,6 +11,7 @@ tags: ['planning', 'outline', 'internal']
 readingTime: 1
 excerpt: 'Internal planning document for blog post creation.'
 pic: 'planning'
+path: apps/web/src/content/blogs/philosophy/productivity-vs-busy-work-interview.md
 ---
 
 # Blog Interview Guide: Productivity vs Busy Work - The Essential Distinction

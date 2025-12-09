@@ -22,6 +22,7 @@ related_docs:
     - ../warm-intro-emails/casey-caruso-topology-ventures-warm-intro-email.md
     - ../buildos-fundraising-strategy.md
 contact_verified: 'yes'
+path: docs/marketing/investors/profiles/casey-caruso-topology-ventures-profile.md
 ---
 
 # Casey Caruso - Topology Ventures Profile

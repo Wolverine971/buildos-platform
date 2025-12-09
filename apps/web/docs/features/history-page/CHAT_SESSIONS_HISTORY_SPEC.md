@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/history-page/CHAT_SESSIONS_HISTORY_SPEC.md -->
+
 # Chat Sessions on History Page - Implementation Spec
 
 **Date:** 2024-12-08

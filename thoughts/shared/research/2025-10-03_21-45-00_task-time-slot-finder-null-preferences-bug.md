@@ -9,6 +9,7 @@ tags: [research, codebase, bug, task-scheduling, calendar-preferences, null-poin
 status: complete
 last_updated: 2025-10-03
 last_updated_by: Claude
+path: thoughts/shared/research/2025-10-03_21-45-00_task-time-slot-finder-null-preferences-bug.md
 ---
 
 # Research: TaskTimeSlotFinder Null Preferences Bug Analysis

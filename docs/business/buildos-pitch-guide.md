@@ -1,3 +1,5 @@
+<!-- docs/business/buildos-pitch-guide.md -->
+
 # BuildOS Pitch Guide
 
 **Last Updated**: October 30, 2025

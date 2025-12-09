@@ -1,3 +1,5 @@
+<!-- apps/worker/QUICK_REFERENCE.md -->
+
 # Worker App - Quick Reference Guide
 
 ## Overview

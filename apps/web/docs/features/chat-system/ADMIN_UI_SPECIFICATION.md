@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/chat-system/ADMIN_UI_SPECIFICATION.md -->
+
 # Admin UI Specification - AI Chat Monitoring & Analytics
 
 **Created:** 2025-10-29

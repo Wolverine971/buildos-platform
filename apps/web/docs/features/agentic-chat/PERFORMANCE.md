@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/agentic-chat/PERFORMANCE.md -->
+
 # Agentic Chat Performance Guide
 
 **Last Updated**: 2025-11-17

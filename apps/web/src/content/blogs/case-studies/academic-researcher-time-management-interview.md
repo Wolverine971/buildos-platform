@@ -11,6 +11,7 @@ tags: ['planning', 'outline', 'internal']
 readingTime: 1
 excerpt: 'Internal planning document for case study creation.'
 pic: 'planning'
+path: apps/web/src/content/blogs/case-studies/academic-researcher-time-management-interview.md
 ---
 
 # Blog Interview Guide: Case Study - Academic Researcher Time Management Transformation

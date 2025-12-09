@@ -1,3 +1,4 @@
+<!-- delete/apps/web/start-here.md -->
 # 📚 BuildOS Documentation Hub - Start Here
 
 > **The single source of truth for all BuildOS documentation**

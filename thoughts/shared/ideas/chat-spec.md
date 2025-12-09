@@ -1,3 +1,4 @@
+<!-- thoughts/shared/ideas/chat-spec.md -->
 ## 📋 **Build OS Chat System - Complete Specification**
 
 ### **Core Requirements Summary**

@@ -9,6 +9,7 @@ related_components:
     - ScheduleConflictAlert.svelte
     - TaskScheduleItem.svelte
     - CalendarView.svelte
+path: thoughts/shared/research/2025-10-03_phase-scheduling-modal-redesign.md
 ---
 
 # PhaseSchedulingModal UX Redesign

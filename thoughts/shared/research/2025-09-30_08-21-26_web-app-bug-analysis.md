@@ -12,6 +12,7 @@ last_updated_by: Claude Code
 fixes_applied: true
 fixes_date: 2025-09-30
 tests_created: true
+path: thoughts/shared/research/2025-09-30_08-21-26_web-app-bug-analysis.md
 ---
 
 # Research: Comprehensive Bug Analysis of Web Application

@@ -16,6 +16,7 @@ tags:
 status: complete
 last_updated: 2025-10-20
 last_updated_by: Claude Code
+path: thoughts/shared/research/2025-10-20_16-00-00_preparatory-analysis-executive-summary.md
 ---
 
 # Preparatory Analysis Feature - Executive Summary

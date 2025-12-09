@@ -1,3 +1,5 @@
+<!-- docs/marketing/investors/individual-investors/PROFILE_TEMPLATE.md -->
+
 # [Investor Name] - Individual Investor Profile
 
 _Research Date: [Date]_

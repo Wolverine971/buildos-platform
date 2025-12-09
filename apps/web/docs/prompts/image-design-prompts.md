@@ -1,3 +1,5 @@
+<!-- apps/web/docs/prompts/image-design-prompts.md -->
+
 midjourney images
 mountain range, purple-blue gradient color scheme, vector logo, simple design, flat colors, simple shapes and lines, dark background
 

@@ -1,3 +1,4 @@
+-- supabase/migrations/20250603000001_fix_documents_schema.sql
 -- Migration: Fix onto_documents schema to support FSM
 -- Date: 2025-11-03
 -- Purpose: Add state_key and updated_at columns to onto_documents table

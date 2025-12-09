@@ -1,3 +1,4 @@
+-- supabase/migrations/applied_backup/20251120_create_specific_missing_templates.sql
 -- Migration: Create Specific Missing Templates with Intelligent Schemas
 -- Date: 2024-11-20
 -- Purpose: Create missing templates identified in production with proper schemas and defaults

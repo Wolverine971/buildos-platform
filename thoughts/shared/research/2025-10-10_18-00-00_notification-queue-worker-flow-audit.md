@@ -4,6 +4,7 @@ date: 2025-10-10
 type: technical-audit
 status: complete
 tags: [notifications, queue, worker, debugging, architecture]
+path: thoughts/shared/research/2025-10-10_18-00-00_notification-queue-worker-flow-audit.md
 ---
 
 # Notification Queue and Worker Flow Audit

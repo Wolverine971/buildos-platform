@@ -9,6 +9,7 @@ tags: [research, codebase, caching, projects, stale-data, performance]
 status: complete
 last_updated: 2025-09-22
 last_updated_by: Claude
+path: apps/web/thoughts/shared/research/2025-09-22_18-32-58_projects-cache-stale-data-investigation.md
 ---
 
 # Research: Stale Cache Data on /projects Route

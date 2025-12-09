@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/chat-system/TOOL_EXECUTOR_API_PATTERN.md -->
+
 # Chat Tool Executor - API Pattern Documentation
 
 ## Overview

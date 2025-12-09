@@ -1,3 +1,5 @@
+<!-- docs/blogs/ceo-lvl-productivity.md -->
+
 Looking at your Build OS concept, you're already incorporating several CEO-level productivity principles. Here's how to enhance it to truly deliver Fortune 500 CEO-level efficiency:
 
 ## 🎯 Strategic Enhancements for CEO-Level Productivity

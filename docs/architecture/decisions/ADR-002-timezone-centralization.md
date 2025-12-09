@@ -1,3 +1,5 @@
+<!-- docs/architecture/decisions/ADR-002-timezone-centralization.md -->
+
 # ADR-002: Centralize Timezone to users.timezone Column
 
 **Date**: 2025-10-13

@@ -1,3 +1,5 @@
+<!-- apps/worker/migrations/README.md -->
+
 # Database Migrations
 
 ## 001_add_phases_generation.sql

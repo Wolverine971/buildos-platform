@@ -1,3 +1,5 @@
+<!-- apps/worker/docs/features/daily-briefs/README.md -->
+
 # Daily Briefs Feature
 
 Scheduled generation and delivery of daily email briefs summarizing user's projects and tasks.

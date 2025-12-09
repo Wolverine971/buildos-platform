@@ -1,3 +1,4 @@
+<!-- apps/web/docs/prompts/brain-dump/new-project/dual-processing/tasks/new-project-task-extraction-prompt.md -->
 # Prompt Audit: new-project-dual-tasks
 
 **Generated at:** 2025-09-27T00:04:59.031Z

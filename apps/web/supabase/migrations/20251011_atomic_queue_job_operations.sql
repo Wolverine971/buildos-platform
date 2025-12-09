@@ -1,3 +1,4 @@
+-- apps/web/supabase/migrations/20251011_atomic_queue_job_operations.sql
 -- =====================================================
 -- ATOMIC QUEUE JOB OPERATIONS
 -- =====================================================

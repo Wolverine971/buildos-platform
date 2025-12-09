@@ -9,6 +9,7 @@ tags: [research, codebase, brain-dump, lazy-loading, race-condition, component-l
 status: complete
 last_updated: 2025-09-24
 last_updated_by: Claude
+path: apps/web/thoughts/shared/research/2025-09-24_16-58-10_braindump-loading-issue.md
 ---
 
 # Research: BrainDumpModal gets stuck at 'Loading full interface' when project prop is passed

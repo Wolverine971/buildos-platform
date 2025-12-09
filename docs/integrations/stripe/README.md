@@ -1,3 +1,5 @@
+<!-- docs/integrations/stripe/README.md -->
+
 # Stripe Integration
 
 Comprehensive documentation for Stripe billing, subscriptions, and webhook handling across BuildOS.

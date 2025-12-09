@@ -9,6 +9,7 @@ tags: [research, codebase, documentation, cleanup, maintenance]
 status: complete
 last_updated: 2025-09-24
 last_updated_by: Claude
+path: apps/web/thoughts/shared/research/2025-09-24_21-50-00_outdated-documentation-cleanup.md
 ---
 
 # Research: Outdated Documentation Cleanup and File Deletion Analysis

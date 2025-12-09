@@ -1,3 +1,4 @@
+-- supabase/migrations/20251123_backfill_task_calendar_events.sql
 -- Migration: Backfill task calendar events into ontology events
 -- Description: Materializes existing task_calendar_events rows as onto_events + onto_event_sync + graph edges.
 -- Author: Codex (Agent)

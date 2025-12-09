@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/notifications/URGENT_NOTIFICATION_BUG.md -->
+
 # URGENT: Notification Being Deleted Immediately After Creation
 
 **Date:** 2025-10-01

@@ -1,3 +1,4 @@
+<!-- thoughts/shared/ideas/braindump-chat-replacement.md -->
 # BuildOS Conversational Agent - Multi-Phase Implementation Spec
 
 ## Executive Summary

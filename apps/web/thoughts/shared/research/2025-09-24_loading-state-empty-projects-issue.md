@@ -9,6 +9,7 @@ tags: [research, codebase, bug-investigation, loading-state, empty-projects]
 status: complete
 last_updated: 2025-09-24
 last_updated_by: Claude
+path: apps/web/thoughts/shared/research/2025-09-24_loading-state-empty-projects-issue.md
 ---
 
 # Research: Loading State Issue with Empty Projects

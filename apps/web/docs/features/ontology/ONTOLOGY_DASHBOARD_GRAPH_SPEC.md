@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/ontology/ONTOLOGY_DASHBOARD_GRAPH_SPEC.md -->
+
 # Ontology Dashboard Graph View
 
 - **Status**: Draft - awaiting product + eng sign-off

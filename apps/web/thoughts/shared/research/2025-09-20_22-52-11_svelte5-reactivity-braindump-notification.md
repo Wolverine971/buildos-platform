@@ -9,6 +9,7 @@ tags: [research, codebase, svelte5, reactivity, brain-dump, stores, runes]
 status: complete
 last_updated: 2025-09-20
 last_updated_by: Claude
+path: apps/web/thoughts/shared/research/2025-09-20_22-52-11_svelte5-reactivity-braindump-notification.md
 ---
 
 # Research: Svelte 5 Reactivity Issues in BrainDumpProcessingNotification Component

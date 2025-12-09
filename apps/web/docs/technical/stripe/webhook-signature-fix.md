@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/stripe/webhook-signature-fix.md -->
+
 # Stripe Webhook Signature Verification Fix
 
 ## Problem

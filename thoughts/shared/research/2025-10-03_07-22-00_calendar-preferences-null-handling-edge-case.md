@@ -9,6 +9,7 @@ tags: [research, codebase, brain-dump, task-scheduling, calendar-preferences, ed
 status: complete
 last_updated: 2025-10-03
 last_updated_by: Claude
+path: thoughts/shared/research/2025-10-03_07-22-00_calendar-preferences-null-handling-edge-case.md
 ---
 
 <!-- todo: priority 4 -->

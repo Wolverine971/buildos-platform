@@ -9,6 +9,7 @@ tags: [research, email, railway, smtp, production-issue, nodemailer, gmail]
 status: complete
 last_updated: 2025-09-26
 last_updated_by: Claude
+path: apps/worker/thoughts/shared/research/2025-09-26_21-14-50_email_sending_railway_production_issue.md
 ---
 
 # Research: Email Sending Failure in Railway Production - SMTP Connection Timeout

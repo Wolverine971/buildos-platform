@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/api/API_IMPROVEMENTS_AND_OPTIMIZATIONS.md -->
+
 # API Improvements and Optimizations
 
 **Date:** 2025-01-15

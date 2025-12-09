@@ -1,3 +1,4 @@
+-- supabase/migrations/20251023_analyze_tasks_tables.sql
 -- Migration: Analyze tables after adding performance indexes
 -- Created: 2025-10-23
 -- Purpose: Update query planner statistics for optimal index usage

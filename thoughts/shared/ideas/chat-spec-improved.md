@@ -1,3 +1,4 @@
+<!-- thoughts/shared/ideas/chat-spec-improved.md -->
 # 📋 BuildOS Chat System - Tailored Implementation Specification
 
 ### ⚠️ Note: This is v1 - See Updated Version

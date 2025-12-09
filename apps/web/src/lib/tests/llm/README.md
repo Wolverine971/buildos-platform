@@ -1,3 +1,5 @@
+<!-- apps/web/src/lib/tests/llm/README.md -->
+
 # LLM Tests
 
 ⚠️ **WARNING: These tests make real API calls to LLMs and cost money!** ⚠️

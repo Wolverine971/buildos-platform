@@ -1,3 +1,5 @@
+<!-- packages/shared-types/TYPE_SYSTEM_UPDATE_2025-09-27.md -->
+
 # Type System Update - September 27, 2025
 
 ## Overview

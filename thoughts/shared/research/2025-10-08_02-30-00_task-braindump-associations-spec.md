@@ -9,6 +9,7 @@ tags: [research, feature-spec, ui, task-modal, braindumps, user-experience]
 status: complete
 last_updated: 2025-10-08
 last_updated_by: Claude
+path: thoughts/shared/research/2025-10-08_02-30-00_task-braindump-associations-spec.md
 ---
 
 # Feature Spec: Display Associated Braindumps in TaskModal

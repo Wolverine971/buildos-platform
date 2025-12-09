@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/components/modals/VISUAL_GUIDE.md -->
+
 # Modal Components Visual Reference Guide
 
 **Last Updated**: November 4, 2025

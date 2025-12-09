@@ -9,6 +9,7 @@ tags: [research, daily-briefs, timezone, bugs, manual-scheduling]
 status: complete
 last_updated: 2025-10-08
 last_updated_by: Claude (Sonnet 4.5)
+path: thoughts/shared/research/2025-10-08_02-00-00_daily-brief-manual-scheduling-timezone-bugs.md
 ---
 
 # Research: Daily Brief Manual Scheduling - Timezone Bug Investigation

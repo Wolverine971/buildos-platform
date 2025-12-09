@@ -11,6 +11,7 @@ tags: ['brain-dumping', 'getting-started', 'productivity', 'idea-capture']
 readingTime: 7
 excerpt: 'Master the foundational skill of transforming scattered thoughts into organized, actionable projects using Build OS intelligent parsing.'
 pic: 'brain-dumping-guide'
+path: apps/web/src/content/blogs/getting-started/effective-brain-dumping.md
 ---
 
 Brain dumping is the foundation of effective personal productivity, yet most people do it wrong. They treat it like a simple list-making exercise, missing the transformative power of properly structured thought capture.

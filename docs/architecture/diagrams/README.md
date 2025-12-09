@@ -1,3 +1,5 @@
+<!-- docs/architecture/diagrams/README.md -->
+
 # Architecture Diagrams
 
 This directory contains visual documentation and flow diagrams for the BuildOS platform architecture.

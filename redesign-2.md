@@ -1,3 +1,5 @@
+<!-- redesign-2.md -->
+
 ## 0) What I’m keeping from your current Tailwind setup
 
 Your current config already uses **CSS-variable colors** via `withOpacity(...)` and `darkMode: 'class'` — that’s perfect for theming, so the solution below builds on that.

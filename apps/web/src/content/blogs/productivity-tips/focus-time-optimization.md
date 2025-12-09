@@ -11,6 +11,7 @@ tags: ['productivity-tips', 'focus', 'deep-work', 'time-management', 'attention'
 readingTime: 9
 excerpt: 'Practical strategies for protecting focus time and maximizing deep work sessions. Learn attention management with BuildOS.'
 pic: 'focus-time'
+path: apps/web/src/content/blogs/productivity-tips/focus-time-optimization.md
 ---
 
 # Focus Time Optimization

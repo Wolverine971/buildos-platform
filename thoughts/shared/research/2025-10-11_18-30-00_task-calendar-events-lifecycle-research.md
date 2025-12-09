@@ -9,6 +9,7 @@ related:
     - /apps/web/src/routes/api/projects/[id]/tasks/batch/+server.ts
     - /apps/web/docs/technical/architecture/CALENDAR_SERVICE_FLOW.md
 status: complete
+path: thoughts/shared/research/2025-10-11_18-30-00_task-calendar-events-lifecycle-research.md
 ---
 
 # Task Calendar Events Lifecycle Research

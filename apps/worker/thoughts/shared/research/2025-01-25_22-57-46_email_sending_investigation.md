@@ -9,6 +9,7 @@ tags: [research, codebase, email, gmail, nodemailer, daily-brief]
 status: complete
 last_updated: 2025-01-25
 last_updated_by: Claude
+path: apps/worker/thoughts/shared/research/2025-01-25_22-57-46_email_sending_investigation.md
 ---
 
 # Research: Email Sending from Daily Brief

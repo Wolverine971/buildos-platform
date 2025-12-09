@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/components/modals/MODAL_V2_IMPLEMENTATION_SUMMARY.md -->
+
 # Modal v2.0 Implementation Summary
 
 **Date:** November 21, 2025

@@ -20,6 +20,7 @@ tags:
 status: complete
 last_updated: 2025-10-23
 last_updated_by: Claude
+path: thoughts/shared/research/2025-10-23_16-30-00_best-practices-audit.md
 ---
 
 # BuildOS Platform Best Practices Audit

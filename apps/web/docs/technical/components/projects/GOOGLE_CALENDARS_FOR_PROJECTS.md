@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/components/projects/GOOGLE_CALENDARS_FOR_PROJECTS.md -->
+
 ## Google Calendar Integration Spec
 
 ### Architecture Decision: One Calendar Per Project

@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/project-export/PDF_EXPORT_MIGRATION_SESSION.md -->
+
 # PDF Export Migration Session Summary
 
 **Date:** 2025-10-15

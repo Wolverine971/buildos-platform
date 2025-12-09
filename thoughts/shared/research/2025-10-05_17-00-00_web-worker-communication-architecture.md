@@ -4,6 +4,7 @@ date: 2025-10-05T17:00:00
 author: Claude Code
 tags: [architecture, communication, queue, realtime, notifications, database]
 status: complete
+path: thoughts/shared/research/2025-10-05_17-00-00_web-worker-communication-architecture.md
 ---
 
 # BuildOS Web-Worker Communication Architecture

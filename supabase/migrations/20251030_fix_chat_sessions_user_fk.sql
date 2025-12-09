@@ -1,3 +1,4 @@
+-- supabase/migrations/20251030_fix_chat_sessions_user_fk.sql
 -- Migration: Fix chat_sessions.user_id foreign key constraint
 -- Description: Changes FK from auth.users to public.users for PostgREST relationship detection
 -- Author: BuildOS Team

@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/ontology/chatgpt-outputs-chat.md -->
+
 Love this direction. You’re basically saying:
 
 > “A project is the story of turning ideas into outputs. Outputs are the main characters. Everything else is supporting cast.”

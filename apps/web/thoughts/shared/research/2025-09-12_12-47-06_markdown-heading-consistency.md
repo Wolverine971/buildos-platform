@@ -9,6 +9,7 @@ tags: [research, codebase, markdown, prompts, project-context, heading-consisten
 status: complete
 last_updated: 2025-09-12
 last_updated_by: Claude
+path: apps/web/thoughts/shared/research/2025-09-12_12-47-06_markdown-heading-consistency.md
 ---
 
 # Research: Markdown Heading Consistency in Project Context Prompts

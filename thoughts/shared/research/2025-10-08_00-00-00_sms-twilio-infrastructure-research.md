@@ -9,6 +9,7 @@ related_docs:
     - /docs/guides/sms-setup-guide.md
     - /docs/api/sms-api-reference.md
     - /docs/architecture/SMS_NOTIFICATION_CHANNEL_DESIGN.md
+path: thoughts/shared/research/2025-10-08_00-00-00_sms-twilio-infrastructure-research.md
 ---
 
 # SMS/Twilio Infrastructure Research

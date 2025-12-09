@@ -1,3 +1,5 @@
+<!-- CLAUDE.md -->
+
 # CLAUDE.md - BuildOS Platform (Turborepo Monorepo)
 
 ⚠️ **IMPORTANT**: This is a BuildOS platform codebase. ALWAYS use `pnpm` (never `npm`). The project uses Svelte 5 with new runes syntax (`$state`, `$derived`, `$effect`) - not the old reactive syntax.

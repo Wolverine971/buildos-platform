@@ -6,6 +6,7 @@ status: completed
 tags: [infrastructure, database, queue-system, backup, deployment, monitoring]
 scope: codebase-audit
 priority: high
+path: thoughts/shared/research/2025-10-23_database-infrastructure-best-practices-research.md
 ---
 
 # Database and Infrastructure Best Practices Research

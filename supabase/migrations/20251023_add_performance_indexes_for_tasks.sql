@@ -1,3 +1,4 @@
+-- supabase/migrations/20251023_add_performance_indexes_for_tasks.sql
 -- Migration: Add performance indexes for tasks queries
 -- Created: 2025-10-23
 -- Purpose: Improve performance of tasks loading by adding proper indexes

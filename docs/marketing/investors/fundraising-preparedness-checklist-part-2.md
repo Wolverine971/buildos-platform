@@ -1,3 +1,5 @@
+<!-- docs/marketing/investors/fundraising-preparedness-checklist-part-2.md -->
+
 # Fundraising Preparedness Checklist - Part 2: Action Plan & Refined Strategy
 
 ## 🚨 Critical Priority: Get Incorporated TODAY

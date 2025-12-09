@@ -1,3 +1,5 @@
+<!-- apps/web/DARK_MODE_IMPLEMENTATION.md -->
+
 # Scratchpad Ops Dark Mode Implementation
 
 ## Summary

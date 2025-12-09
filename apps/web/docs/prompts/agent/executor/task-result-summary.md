@@ -1,3 +1,5 @@
+<!-- apps/web/docs/prompts/agent/executor/task-result-summary.md -->
+
 # Prompt Audit: agent-executor-result
 
 **Generated at:** 2025-11-14T23:15:56.655Z

@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/MOBILE_PERFORMANCE_OPTIMIZATION_PLAN.md -->
+
 # BuildOS Mobile Performance Optimization Plan
 
 **Created:** November 21, 2025

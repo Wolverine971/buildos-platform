@@ -6,6 +6,7 @@ type: security-research
 tags: [security, validation, api, audit, vulnerability-assessment]
 status: completed
 priority: high
+path: thoughts/shared/research/2025-10-21_00-00-00_input-validation-security-audit.md
 ---
 
 # Input Validation and Security Audit - BuildOS Platform

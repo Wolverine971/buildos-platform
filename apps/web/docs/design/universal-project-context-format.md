@@ -11,6 +11,7 @@ related_files:
     - apps/web/docs/features/brain-dump/README.md
 important_files:
     - apps/web/src/lib/services/promptTemplate.service.ts
+path: apps/web/docs/design/universal-project-context-format.md
 ---
 
 # Universal Project Context Format

@@ -1,3 +1,4 @@
+<!-- apps/web/docs/prompts/phase-generation/schedule-in-phases-prompt.md -->
 # Prompt Audit: phase-generation-schedule-in-phases
 
 **Generated at:** 2025-10-13T01:49:40.022Z

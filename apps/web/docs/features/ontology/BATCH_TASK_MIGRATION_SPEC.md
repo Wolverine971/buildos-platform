@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/ontology/BATCH_TASK_MIGRATION_SPEC.md -->
+
 # Batch Task Migration Spec
 
 **Created**: December 3, 2025

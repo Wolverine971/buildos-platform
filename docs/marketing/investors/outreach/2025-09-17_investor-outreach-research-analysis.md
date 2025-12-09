@@ -9,6 +9,7 @@ tags: [research, investors, outreach, military-founder, vc-analysis, buildos]
 status: complete
 last_updated: 2025-09-17
 last_updated_by: Claude Code
+path: docs/marketing/investors/outreach/2025-09-17_investor-outreach-research-analysis.md
 ---
 
 # Research: Investor Outreach Strategy for BuildOS

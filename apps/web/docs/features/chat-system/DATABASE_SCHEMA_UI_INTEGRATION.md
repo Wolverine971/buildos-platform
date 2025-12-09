@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/chat-system/DATABASE_SCHEMA_UI_INTEGRATION.md -->
+
 # Database Schema & UI Integration Research
 
 ## Conversational Agent Interface - Comprehensive Analysis

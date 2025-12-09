@@ -10,6 +10,7 @@ related_files:
     - /packages/shared-types/src/database.types.ts
     - /apps/web/src/lib/types/project.ts
     - /apps/web/src/lib/types/index.ts
+path: thoughts/shared/research/2025-10-11_17-20-49_task-data-model-and-status-field-research.md
 ---
 
 # Task Data Model and Status Field Research

@@ -26,6 +26,7 @@ implementation_files:
     - apps/web/docs/features/onboarding-v2/README.md (MODIFIED - Phase 2)
     - supabase/migrations/20251015_deprecate_unused_sms_fields.sql (NEW - Phase 3a)
     - supabase/migrations/20251029_remove_deprecated_sms_fields.sql (NEW - Phase 3b)
+path: thoughts/shared/research/2025-10-13_17-40-27_sms-flow-deprecation-migration-plan.md
 ---
 
 # SMS Flow Deprecation and Migration Plan

@@ -8,6 +8,7 @@ related:
     - apps/web/src/lib/utils/voice.ts
     - apps/web/src/lib/services/voiceRecording.service.ts
     - apps/web/src/lib/components/brain-dump/BrainDumpModal.svelte
+path: thoughts/shared/research/2025-10-06_voice-recording-pause-transcript-loss-analysis.md
 ---
 
 # Voice Recording Pause Transcript Loss Analysis

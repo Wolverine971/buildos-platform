@@ -12,6 +12,7 @@ related_docs:
     - ../warm-intro-emails/jack-raines-slow-ventures-warm-intro-email.md
     - ../buildos-fundraising-strategy.md
 contact_verified: 'yes'
+path: docs/marketing/investors/profiles/slow-ventures-jack-raines-profile.md
 ---
 
 # Jack Raines - Slow Ventures Profile

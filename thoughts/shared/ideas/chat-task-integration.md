@@ -1,3 +1,4 @@
+<!-- thoughts/shared/ideas/chat-task-integration.md -->
 # Chat System Integration - Task Detail Page
 
 ## Overview

@@ -1,3 +1,5 @@
+<!-- docs/marketing/user-segments/user-persona-aquisition-strategy.md -->
+
 # Project War Room - User Personas & Acquisition Strategy
 
 ## Primary Personas

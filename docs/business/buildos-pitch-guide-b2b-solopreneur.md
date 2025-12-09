@@ -1,3 +1,5 @@
+<!-- docs/business/buildos-pitch-guide-b2b-solopreneur.md -->
+
 # BuildOS Pitch Guide: B2B / Solopreneur Edition
 
 **Last Updated**: October 30, 2025

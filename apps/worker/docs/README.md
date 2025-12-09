@@ -1,3 +1,5 @@
+<!-- apps/worker/docs/README.md -->
+
 # Worker Service Documentation
 
 ## ⚙️ Deployment Target: Railway

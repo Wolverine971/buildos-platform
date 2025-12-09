@@ -1,3 +1,4 @@
+// apps/web/src/lib/services/project-activity-log.service.ts
 /**
  * ProjectActivityLogService - Manages project activity logging and next steps
  *

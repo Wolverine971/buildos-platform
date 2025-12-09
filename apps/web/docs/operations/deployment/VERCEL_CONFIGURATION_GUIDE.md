@@ -1,3 +1,5 @@
+<!-- apps/web/docs/operations/deployment/VERCEL_CONFIGURATION_GUIDE.md -->
+
 # Vercel Configuration Guide for BuildOS Platform
 
 ## 🚨 CRITICAL ISSUE IDENTIFIED

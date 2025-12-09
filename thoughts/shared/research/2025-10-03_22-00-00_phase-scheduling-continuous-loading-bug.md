@@ -9,6 +9,7 @@ tags: [research, codebase, bug-analysis, scheduling, loading-state, race-conditi
 status: complete
 last_updated: 2025-10-03
 last_updated_by: Claude Code
+path: thoughts/shared/research/2025-10-03_22-00-00_phase-scheduling-continuous-loading-bug.md
 ---
 
 # Research: Phase Scheduling Modal - Continuous Loading State Bug

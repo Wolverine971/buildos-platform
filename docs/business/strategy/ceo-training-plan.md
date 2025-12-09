@@ -1,3 +1,5 @@
+<!-- docs/business/strategy/ceo-training-plan.md -->
+
 # CEO Training Program: LLM Lesson Generation Context
 
 ## 🎯 PROGRAM OVERVIEW

@@ -1,3 +1,4 @@
+-- supabase/migrations/20251013_fix_notification_broadcast_bug.sql
 -- =====================================================
 -- FIX: Notification Broadcast Bug
 -- =====================================================

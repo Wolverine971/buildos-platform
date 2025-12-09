@@ -51,4 +51,5 @@
 - **Format**: Open-ended
 - **Maximum**: 15 (unless scenario requires more)
 
+path: docs/marketing/brand/communication-guide.md
 ---

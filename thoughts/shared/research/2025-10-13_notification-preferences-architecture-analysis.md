@@ -8,6 +8,7 @@ topic: 'Notification Preferences Architecture Analysis - Post-Refactor'
 tags: [research, notifications, architecture, preferences, database-schema]
 status: complete
 last_updated: 2025-10-13
+path: thoughts/shared/research/2025-10-13_notification-preferences-architecture-analysis.md
 ---
 
 # Notification Preferences Architecture Analysis (Post-Refactor)

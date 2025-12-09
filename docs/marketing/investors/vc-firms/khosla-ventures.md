@@ -1,3 +1,5 @@
+<!-- docs/marketing/investors/vc-firms/khosla-ventures.md -->
+
 # Khosla Ventures - BuildOS Investor Profile
 
 ## Fund Overview

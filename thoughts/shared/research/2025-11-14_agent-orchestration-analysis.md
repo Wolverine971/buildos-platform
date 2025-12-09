@@ -5,6 +5,7 @@ repository: buildos-platform
 topic: 'Agent Orchestration Service Deep Analysis'
 tags: [research, buildos, agentic-chat, orchestration, architecture]
 status: complete
+path: thoughts/shared/research/2025-11-14_agent-orchestration-analysis.md
 ---
 
 # Research: Agent Orchestration Service Analysis

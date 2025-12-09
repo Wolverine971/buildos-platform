@@ -11,6 +11,7 @@ tags: ['case-studies', 'startup', 'founder', 'entrepreneurship', 'productivity',
 readingTime: 8
 excerpt: 'The story of how a startup founder went from constant firefighting to strategic execution using BuildOS to manage competing priorities.'
 pic: 'founder-case-study'
+path: apps/web/src/content/blogs/case-studies/startup-founder-productivity-transformation.md
 ---
 
 # Case Study: Startup Founder Productivity Transformation

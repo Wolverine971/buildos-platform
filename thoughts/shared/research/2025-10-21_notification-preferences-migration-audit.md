@@ -9,6 +9,7 @@ related_migrations:
     - 20251013_refactor_daily_brief_notification_prefs.sql
     - 20251016_003_update_emit_notification_event.sql
     - 20251016_004_emit_notification_use_defaults.sql
+path: thoughts/shared/research/2025-10-21_notification-preferences-migration-audit.md
 ---
 
 # Notification Preferences Migration Audit

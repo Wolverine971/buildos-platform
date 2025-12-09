@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/components/modals/ANALYSIS_SUMMARY.md -->
+
 # MODAL COMPONENTS ANALYSIS - EXECUTIVE SUMMARY
 
 LOCATION & FILES:

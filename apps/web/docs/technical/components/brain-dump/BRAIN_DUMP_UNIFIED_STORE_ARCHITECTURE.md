@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/components/brain-dump/BRAIN_DUMP_UNIFIED_STORE_ARCHITECTURE.md -->
+
 # Brain Dump Unified Store Architecture
 
 ## Overview

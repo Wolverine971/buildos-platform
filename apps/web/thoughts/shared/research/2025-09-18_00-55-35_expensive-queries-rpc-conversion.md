@@ -10,6 +10,7 @@ status: complete
 last_updated: 2025-09-18
 last_updated_by: Claude
 implementation_status: in_progress
+path: apps/web/thoughts/shared/research/2025-09-18_00-55-35_expensive-queries-rpc-conversion.md
 ---
 
 # Research: Expensive Database Queries for RPC Function Conversion

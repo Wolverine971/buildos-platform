@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/development/GIT_WORKFLOW.md -->
+
 # Git Workflow Guide
 
 This document outlines the git workflow, branching strategy, and commit practices for the Build OS project. Follow these guidelines to maintain a clean, traceable git history and protect your work.

@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/agentic-chat/tool-system/README.md -->
+
 # Agentic Chat Tool System
 
 **Location**: Part of the agentic chat system

@@ -1,3 +1,5 @@
+<!-- docs/business/strategy/market-context.md -->
+
 # 🚀 Build OS: Business & Marketing Context Document
 
 **Tagline**: "Let AI organize your thoughts"

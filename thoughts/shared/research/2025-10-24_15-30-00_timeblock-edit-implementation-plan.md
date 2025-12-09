@@ -4,6 +4,7 @@ researcher: Claude Code
 topic: 'Time Block Edit Feature - Implementation Plan with TaskModal Pattern'
 tags: [implementation, design-decisions, patterns]
 status: in-progress
+path: thoughts/shared/research/2025-10-24_15-30-00_timeblock-edit-implementation-plan.md
 ---
 
 # Time Block Edit Implementation - Ultrathinking & Plan

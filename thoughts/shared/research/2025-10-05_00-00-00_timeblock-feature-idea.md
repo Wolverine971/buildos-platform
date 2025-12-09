@@ -32,6 +32,7 @@ Then it recommends *how to fill the gaps* based on both productivity theory and 
 * “You have 5 free hours Saturday — would you rather make progress on your book or your fitness project?”
 * “You have 2 hours of open time tomorrow morning; this is your best focus window for deep work.”
 
+path: thoughts/shared/research/2025-10-05_00-00-00_timeblock-feature-idea.md
 ---
 
 ## ⚙️ Core Architecture Sketch

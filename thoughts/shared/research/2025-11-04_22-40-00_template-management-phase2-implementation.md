@@ -6,6 +6,7 @@ status: in-progress
 related:
     - /apps/web/docs/features/ontology/
     - /apps/web/src/routes/ontology/templates/
+path: thoughts/shared/research/2025-11-04_22-40-00_template-management-phase2-implementation.md
 ---
 
 # Template Management System - Phase 2 Implementation

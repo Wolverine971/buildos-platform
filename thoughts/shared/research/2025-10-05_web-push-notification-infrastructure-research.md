@@ -4,6 +4,7 @@ date: 2025-10-05
 type: research
 tags: [notifications, web-push, infrastructure, pwa, backend]
 status: complete
+path: thoughts/shared/research/2025-10-05_web-push-notification-infrastructure-research.md
 ---
 
 # Web Push Notification Infrastructure Research

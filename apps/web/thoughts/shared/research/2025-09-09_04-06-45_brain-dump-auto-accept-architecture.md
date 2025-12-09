@@ -9,6 +9,7 @@ tags: [research, codebase, brain-dump, auto-accept, architecture, verification]
 status: complete
 last_updated: 2025-09-09
 last_updated_by: Claude
+path: apps/web/thoughts/shared/research/2025-09-09_04-06-45_brain-dump-auto-accept-architecture.md
 ---
 
 # Research: Brain Dump Auto-Accept Feature Architecture

@@ -1,3 +1,4 @@
+<!-- thoughts/shared/ideas/chat-context-and-tools-design.md -->
 # 🧠 Context Management & Tool Calling - Design Document
 
 ## ✅ IMPLEMENTATION STATUS: 98% COMPLETE (October 28, 2025)

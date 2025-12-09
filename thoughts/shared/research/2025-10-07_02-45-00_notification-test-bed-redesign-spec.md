@@ -9,6 +9,7 @@ tags: [research, notifications, admin, ui-spec, test-bed]
 status: complete
 last_updated: 2025-10-07
 last_updated_by: Claude
+path: thoughts/shared/research/2025-10-07_02-45-00_notification-test-bed-redesign-spec.md
 ---
 
 # Research: Notification Test-Bed Page Redesign Specification

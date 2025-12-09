@@ -11,6 +11,7 @@ tags: ['planning', 'outline', 'internal']
 readingTime: 1
 excerpt: 'Internal planning document for case study creation.'
 pic: 'planning'
+path: apps/web/src/content/blogs/case-studies/remote-team-coordination-success-interview.md
 ---
 
 # Blog Interview Guide: Case Study - Remote Team Coordination Success with BuildOS

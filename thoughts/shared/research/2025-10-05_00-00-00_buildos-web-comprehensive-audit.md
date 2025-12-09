@@ -9,6 +9,7 @@ tags: [research, audit, architecture, web-app, patterns, antipatterns, bugs, opp
 status: complete
 last_updated: 2025-10-05
 last_updated_by: Claude (Anthropic)
+path: thoughts/shared/research/2025-10-05_00-00-00_buildos-web-comprehensive-audit.md
 ---
 
 <!-- todo: priority 5 -->

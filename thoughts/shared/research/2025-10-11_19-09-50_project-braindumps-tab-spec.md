@@ -9,6 +9,7 @@ tags: [research, braindumps, project-page, ui-spec, responsive-design]
 status: complete
 last_updated: 2025-10-11
 last_updated_by: Claude
+path: thoughts/shared/research/2025-10-11_19-09-50_project-braindumps-tab-spec.md
 ---
 
 # Research: Project Braindumps Tab - Complete Specification

@@ -9,6 +9,7 @@ tags: [research, notifications, task-count, multi-device, brief-completed, paylo
 status: complete
 last_updated: 2025-10-10
 last_updated_by: Claude Code
+path: thoughts/shared/research/2025-10-10_17-36-09_notification-duplicate-and-task-count-issues.md
 ---
 
 # Research: Notification System - Repeated Notifications and Task Count Discrepancies

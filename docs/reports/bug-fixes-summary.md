@@ -1,3 +1,5 @@
+<!-- docs/reports/bug-fixes-summary.md -->
+
 # Bug Fixes Summary
 
 **Date**: 2025-10-24

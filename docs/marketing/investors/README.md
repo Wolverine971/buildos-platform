@@ -1,3 +1,5 @@
+<!-- docs/marketing/investors/README.md -->
+
 # Investor Relations & Fundraising - Master Index
 
 **Last Updated:** October 29, 2025 (Phase 1 + Individual Investors Complete ✅)

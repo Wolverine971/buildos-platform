@@ -1,3 +1,5 @@
+<!-- docs/technical/agentic-chat-flow-followup.md -->
+
 # Agentic Chat Flow – Follow-Up Assessment
 
 The earlier fixes brought the last-turn context and compression flows back in line, but a second pass shows a few remaining weak spots that are worth addressing.

@@ -1,3 +1,5 @@
+<!-- docs/testing/COVERAGE_MATRIX.md -->
+
 # Test Coverage Matrix
 
 **Last Updated**: 2025-10-06

@@ -10,6 +10,7 @@ status: IMPLEMENTED
 last_updated: 2025-09-07
 last_updated_by: Claude Code
 implementation_completed: 2025-09-07
+path: apps/web/docs/design/prompt-template-refactoring-plan.md
 ---
 
 # Research: PromptTemplate Service Simplification and Refactoring

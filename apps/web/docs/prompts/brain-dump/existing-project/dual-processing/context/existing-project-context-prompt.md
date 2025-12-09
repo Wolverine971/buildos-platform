@@ -1,3 +1,4 @@
+<!-- apps/web/docs/prompts/brain-dump/existing-project/dual-processing/context/existing-project-context-prompt.md -->
 # Prompt Audit: existing-project-dual-context
 
 **Generated at:** 2025-09-26T06:49:41.686Z

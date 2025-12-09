@@ -6,6 +6,7 @@ tags: ai, productivity, startup
 # cover_image: https://direct_url_to_image.jpg
 # Use a ratio of 100:42 for best results.
 # published_at: 2025-06-03 02:49 +0000
+path: docs/blogs/why-I-built-buildos.md
 ---
 
 # I Built an AI-Powered "Operating System" for My Chaotic Life (And You Can Try It Too)

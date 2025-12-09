@@ -3,6 +3,7 @@ title: 'CRUD Patterns - Quick Reference Guide'
 date: 2025-11-04
 status: 'completed'
 focus: 'ontology_entity_management'
+path: thoughts/shared/research/2025-11-04_CRUD_patterns_quick_reference.md
 ---
 
 # CRUD Patterns - Quick Reference Guide

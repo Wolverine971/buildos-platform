@@ -1,3 +1,5 @@
+<!-- docs/marketing/investors/vc-firms/craft-ventures.md -->
+
 # Craft Ventures - David Sacks - BuildOS Investor Profile
 
 ## Fund Overview

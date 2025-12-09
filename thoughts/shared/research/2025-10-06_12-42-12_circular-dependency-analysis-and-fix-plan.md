@@ -9,6 +9,7 @@ tags: [research, circular-dependencies, architecture, refactoring, project-store
 status: complete
 last_updated: 2025-10-06
 last_updated_by: Claude (Anthropic)
+path: thoughts/shared/research/2025-10-06_12-42-12_circular-dependency-analysis-and-fix-plan.md
 ---
 
 # Research: Circular Dependency Analysis and Fix Plan

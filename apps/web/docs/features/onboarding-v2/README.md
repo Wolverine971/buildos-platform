@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/onboarding-v2/README.md -->
+
 # Onboarding V2 Documentation
 
 Comprehensive onboarding flow that captures user preferences, projects, and personalization data.

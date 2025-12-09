@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/chat-system/DATABASE_SCHEMA_ANALYSIS.md -->
+
 # BuildOS Chat System Database Schema Analysis
 
 **Analysis Date:** October 28, 2025  

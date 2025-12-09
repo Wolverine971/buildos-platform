@@ -1,3 +1,5 @@
+<!-- docs/architecture/AGENTIC_WORKFLOW_DESIGN_CONTEXT.md -->
+
 # Agentic Workflow Design Context
 
 **Purpose:** This document provides comprehensive context for designing and implementing an agentic workflow system in the BuildOS platform.

@@ -1,3 +1,4 @@
+-- supabase/migrations/20251224000000_ontology_search_vectors.sql
 -- Migration: Ontology cross-entity search vectors and RPC
 -- Date: 2025-12-24
 -- Purpose: Enable fuzzy, cross-entity search across ontology data types for agentic chat

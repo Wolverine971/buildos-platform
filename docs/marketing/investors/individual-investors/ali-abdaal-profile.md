@@ -1,3 +1,5 @@
+<!-- docs/marketing/investors/individual-investors/ali-abdaal-profile.md -->
+
 # Ali Abdaal - Individual Investor Profile
 
 _Research Date: October 29, 2025_

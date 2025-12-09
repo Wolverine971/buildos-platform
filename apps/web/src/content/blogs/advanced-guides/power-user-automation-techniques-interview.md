@@ -11,6 +11,7 @@ tags: ['planning', 'outline', 'internal']
 readingTime: 1
 excerpt: 'Internal planning document for blog post creation.'
 pic: 'planning'
+path: apps/web/src/content/blogs/advanced-guides/power-user-automation-techniques-interview.md
 ---
 
 # Blog Interview Guide: Power User Automation Techniques - Maximizing BuildOS Efficiency

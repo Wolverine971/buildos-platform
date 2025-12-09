@@ -8,6 +8,7 @@ tags:
     - implementation
     - handoff
 status: handoff-ready
+path: thoughts/shared/research/2025-10-28_agent-implementation-handoff.md
 ---
 
 # 🤖 LLM Implementation Handoff: Conversational Agent System

@@ -1,3 +1,5 @@
+<!-- docs/technical/implementation/ACTIONABLE_INSIGHT_AGENT_SPEC.md -->
+
 # Actionable Insight Agent — Research Chat Specification
 
 Goal: add an “AI agent chat” mode in `AgentChatModal` that lets a user pick a project, pick the “actionable insight agent,” set a goal, and have the agent read the project (tasks/goals/plans/docs) to pursue that goal. First iteration is read-only and does not auto-generate a research doc (doc writing can be added later if the user explicitly asks).

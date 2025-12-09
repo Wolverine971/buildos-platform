@@ -9,6 +9,7 @@ tags: [research, specification, time-play, calendar, feature-design]
 status: draft
 last_updated: 2025-10-14
 last_updated_by: Claude
+path: thoughts/shared/research/2025-10-14_20-01-44_available-time-slot-finder-spec.md
 ---
 
 # Available Time Slot Finder - Feature Specification

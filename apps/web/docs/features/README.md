@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/README.md -->
+
 # Features Documentation
 
 This directory contains comprehensive documentation for all BuildOS web application features, including specifications, implementation guides, and testing procedures.

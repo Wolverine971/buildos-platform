@@ -12,6 +12,7 @@ related:
     - /docs/architecture/EXTENSIBLE-NOTIFICATION-SYSTEM-DESIGN.md
     - /docs/architecture/NOTIFICATION_SYSTEM_PHASE1_IMPLEMENTATION.md
     - /NOTIFICATION_PHASE3_IMPLEMENTATION.md
+path: thoughts/shared/research/2025-10-06_04-00-00_notification-system-implementation-status.md
 ---
 
 # Notification System Implementation Status

@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/chat-system/UI_LAYER_ANALYSIS.md -->
+
 # BuildOS UI Layer Analysis: Chat System & Component Patterns
 
 ## Executive Summary

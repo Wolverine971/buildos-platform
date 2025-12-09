@@ -9,6 +9,7 @@ tags: [research, testing, operations-executor, brain-dump-integration, validatio
 status: complete
 last_updated: 2025-10-06
 last_updated_by: Claude
+path: thoughts/shared/research/2025-10-06_16-28-30_second-batch-test-failures.md
 ---
 
 # Research: Second Batch Test Failures Analysis

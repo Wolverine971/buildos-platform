@@ -9,6 +9,7 @@ tags: [research, time-play, dashboard, modal-design, calendar-integration, ui-ux
 status: complete
 last_updated: 2025-10-15
 last_updated_by: Claude (AI Assistant)
+path: thoughts/shared/research/2025-10-15_dashboard-time-blocks-integration-spec.md
 ---
 
 # Dashboard Time Blocks Integration & Modal Design Specification

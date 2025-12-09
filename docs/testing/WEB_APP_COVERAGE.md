@@ -1,3 +1,5 @@
+<!-- docs/testing/WEB_APP_COVERAGE.md -->
+
 nin t# Web App Testing Coverage - Detailed Analysis
 
 **Application**: BuildOS Web App (SvelteKit + Svelte 5)

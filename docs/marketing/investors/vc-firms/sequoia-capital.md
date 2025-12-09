@@ -22,6 +22,7 @@ related_docs:
 contact_verified: 'yes'
 fund_size: '$85B+ AUM, $950M raised in Oct 2025'
 recent_update: '$950M across two early-stage funds announced October 2025'
+path: docs/marketing/investors/vc-firms/sequoia-capital.md
 ---
 
 # Sequoia Capital - VC Firm Profile

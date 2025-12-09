@@ -13,6 +13,7 @@ related_docs:
     - ../buildos-fundraising-strategy.md
 contact_verified: 'partial'
 critical_update: 'Left Founders Fund as Partner Emeritus in Dec 2024. Now raising GPx fund ($500M+) with Peter Thiel backing'
+path: docs/marketing/investors/profiles/brian-singerman-founders-fund-profile.md
 ---
 
 # Brian Singerman - GPx & Founders Fund Partner Emeritus Profile

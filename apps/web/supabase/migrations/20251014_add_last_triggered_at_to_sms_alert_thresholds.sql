@@ -1,3 +1,4 @@
+-- apps/web/supabase/migrations/20251014_add_last_triggered_at_to_sms_alert_thresholds.sql
 -- Add last_triggered_at column to sms_alert_thresholds
 -- Migration: 20251014_add_last_triggered_at_to_sms_alert_thresholds.sql
 -- Purpose: Add missing last_triggered_at column for alert cooldown functionality

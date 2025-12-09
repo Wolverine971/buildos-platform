@@ -9,6 +9,7 @@ tags: [research, codebase, brain-dump, questions, analysis, architecture]
 status: complete
 last_updated: 2025-09-18
 last_updated_by: Claude Code
+path: apps/web/thoughts/shared/research/2025-09-18_17-37-32_brain-dump-question-analysis-inconsistencies.md
 ---
 
 # Research: Brain Dump Question Analysis Flow Inconsistencies

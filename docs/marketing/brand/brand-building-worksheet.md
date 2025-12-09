@@ -1,3 +1,5 @@
+<!-- docs/marketing/brand/brand-building-worksheet.md -->
+
 # Brand Building Cheat Sheet
 
 ## Phase 1: Foundation Research

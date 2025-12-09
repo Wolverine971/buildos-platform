@@ -1,3 +1,4 @@
+-- supabase/migrations/20251217_agent_research_read_only.sql
 -- Migration: Create agent research tables (read-only ontology scope, no repo/doc generation)
 -- Description: Supports AI agent chat (Actionable Insight Agent) sessions that read ontology data and stream findings.
 -- Notes:

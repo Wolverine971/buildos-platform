@@ -10,6 +10,7 @@ status: complete
 last_updated: 2025-09-10
 last_updated_by: Claude
 last_updated_note: 'Integrated BrainDumpStatusService in stream endpoints'
+path: apps/web/thoughts/shared/research/2025-09-10_stream-endpoints-optimization.md
 ---
 
 # Stream Endpoints Optimization - BrainDumpStatusService Integration

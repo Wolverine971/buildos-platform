@@ -19,6 +19,7 @@ tags:
 readingTime: 9
 excerpt: 'Learn how a remote team solved async communication challenges and project visibility issues with BuildOS team features.'
 pic: 'remote-team-case-study'
+path: apps/web/src/content/blogs/case-studies/remote-team-coordination-success.md
 ---
 
 # Case Study: Remote Team Coordination Success

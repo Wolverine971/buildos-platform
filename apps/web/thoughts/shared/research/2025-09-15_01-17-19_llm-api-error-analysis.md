@@ -9,6 +9,7 @@ tags: [research, codebase, llm-pool, openai, anthropic, o1-models, api-error]
 status: complete
 last_updated: 2025-09-15
 last_updated_by: Claude
+path: apps/web/thoughts/shared/research/2025-09-15_01-17-19_llm-api-error-analysis.md
 ---
 
 # Research: LLM API Error: System Role Not Supported for O1 Models

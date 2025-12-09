@@ -1,3 +1,5 @@
+<!-- docs/architecture/decisions/ADR-001-user-level-notification-preferences.md -->
+
 # ADR-001: User-Level Notification Preferences with event_type='user'
 
 **Date**: 2025-10-13

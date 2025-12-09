@@ -1,3 +1,5 @@
+<!-- docs/marketing/customer-lingo-adhd.md -->
+
 # ADHD Customer Language Decoder
 
 ## ROLE

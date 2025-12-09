@@ -1,3 +1,5 @@
+<!-- docs/marketing/brand/brand-guide-1-pager.md -->
+
 # BuildOS Brand Guide
 
 ## Core Identity

@@ -9,6 +9,7 @@ tags: [research, codebase, project-page, architecture, svelte, api-endpoints, st
 status: complete
 last_updated: 2025-09-14
 last_updated_by: Claude
+path: apps/web/thoughts/shared/research/2025-09-14_09-31-02_projects-slug-page-audit.md
 ---
 
 # Research: Audit of /projects/[slug] Page - Components, Services, State, and Endpoints

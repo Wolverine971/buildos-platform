@@ -11,6 +11,7 @@ tags: ['planning', 'outline', 'internal']
 readingTime: 1
 excerpt: 'Internal planning document for blog post creation.'
 pic: 'planning'
+path: apps/web/src/content/blogs/advanced-guides/api-integration-workflows-interview.md
 ---
 
 # Blog Interview Guide: API Integration Workflows - Connecting BuildOS to Your Tech Stack

@@ -1,3 +1,5 @@
+<!-- docs/integrations/stripe/implementation-checklist.md -->
+
 # Stripe Implementation Checklist
 
 ## Phase 1: Initial Setup ✅

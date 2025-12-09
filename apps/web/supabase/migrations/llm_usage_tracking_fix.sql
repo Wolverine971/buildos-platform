@@ -1,3 +1,4 @@
+-- apps/web/supabase/migrations/llm_usage_tracking_fix.sql
 -- ============================================
 -- Fix for nested aggregate function error in get_user_llm_usage
 -- ============================================

@@ -9,6 +9,7 @@ related_docs:
     - /docs/architecture/NOTIFICATION_TRACKING_SYSTEM.md
     - /apps/web/supabase/migrations/20250928_add_sms_messaging_tables.sql
     - /apps/web/supabase/migrations/20251006_sms_notification_channel_phase1.sql
+path: docs/features/sms-event-scheduling/research/database-schema.md
 ---
 
 # SMS Scheduling Database Schema Research

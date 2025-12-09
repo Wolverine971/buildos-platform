@@ -1,3 +1,5 @@
+<!-- docs/marketing/brand/buildos-brand-personality-profile.md -->
+
 # BuildOS Brand Personality Profile
 
 ## Brand Personality Analysis

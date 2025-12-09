@@ -1,3 +1,5 @@
+<!-- docs/technical/implementation/ONTOLOGY_SEARCH_TOOL_SPEC.md -->
+
 # Ontology Cross-Entity Search Tool (Agentic Chat)
 
 ## Document Metadata

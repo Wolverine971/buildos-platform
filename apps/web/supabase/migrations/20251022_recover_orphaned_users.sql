@@ -1,3 +1,4 @@
+-- apps/web/supabase/migrations/20251022_recover_orphaned_users.sql
 -- ============================================================================
 -- RECOVERY: Create missing public.users entries for orphaned auth.users
 -- Date: 2025-10-22

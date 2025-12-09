@@ -1,3 +1,4 @@
+<!-- thoughts/shared/research/2025-10-20_19-03-16_documentation-structure-audit.md -->
 # BuildOS Platform Documentation Structure - Complete Audit
 
 **Date:** 2025-10-20

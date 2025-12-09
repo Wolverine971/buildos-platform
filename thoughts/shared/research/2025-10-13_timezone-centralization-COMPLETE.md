@@ -16,6 +16,7 @@ notes: |
     Initial implementation claimed 100% complete but missed several worker code paths.
     Additional bugfixes applied on 2025-10-13 to complete the migration.
     See /docs/BUGFIX_CHANGELOG.md entry for details.
+path: thoughts/shared/research/2025-10-13_timezone-centralization-COMPLETE.md
 ---
 
 # Timezone Centralization - Implementation Complete ✅

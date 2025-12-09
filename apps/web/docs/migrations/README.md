@@ -1,3 +1,5 @@
+<!-- apps/web/docs/migrations/README.md -->
+
 # Active Migrations & Progress Tracking
 
 This directory contains documentation of active migrations, refactoring efforts, and ongoing implementation phases that are in progress or recently completed.

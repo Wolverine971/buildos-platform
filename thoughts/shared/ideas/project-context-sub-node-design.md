@@ -1,3 +1,4 @@
+<!-- thoughts/shared/ideas/project-context-sub-node-design.md -->
 # Project Context Sub-node System - Feature Overview
 
 ## Problem Statement

@@ -1,3 +1,5 @@
+<!-- docs/user-guide/getting-started.md -->
+
 ﻿# Getting Started with BuildOS
 
 BuildOS launches every new account into an onboarding flow that captures your priorities, syncs the right data sources, and enables accountability loops in under five minutes. This guide explains every step, the data that is stored, and how to restart or skip parts of the flow.

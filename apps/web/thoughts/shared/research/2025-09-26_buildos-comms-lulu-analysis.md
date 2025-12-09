@@ -9,6 +9,7 @@ tags: [research, communications, strategy, branding, lulu-cheng-meservey, buildo
 status: complete
 last_updated: 2025-09-26
 last_updated_by: Claude
+path: apps/web/thoughts/shared/research/2025-09-26_buildos-comms-lulu-analysis.md
 ---
 
 # Research: Applying Lulu Cheng Meservey's Communications Strategy to BuildOS

@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/ANIMATION_PERFORMANCE_OPTIMIZATION_SUMMARY.md -->
+
 # Animation Performance Optimization Summary
 
 **Date:** 2025-11-21

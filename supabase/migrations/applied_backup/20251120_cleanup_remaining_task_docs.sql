@@ -1,3 +1,4 @@
+-- supabase/migrations/applied_backup/20251120_cleanup_remaining_task_docs.sql
 -- Migration: Cleanup Remaining Task Document Type Keys
 -- Date: 2025-11-20
 -- Description: Fixes any remaining documents with old task.spec/task.scratch patterns

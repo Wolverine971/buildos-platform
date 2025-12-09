@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/onboarding/ONBOARDING_V2_UPDATED_SPEC.md -->
+
 # Onboarding V2 Updated Flow - Comprehensive Specification
 
 **Date:** 2025-10-21

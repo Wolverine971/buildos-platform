@@ -1,3 +1,5 @@
+<!-- docs/integrations/stripe/testing-plan.md -->
+
 # Stripe Integration Testing Plan
 
 ## Overview

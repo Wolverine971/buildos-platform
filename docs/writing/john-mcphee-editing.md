@@ -1,3 +1,5 @@
+<!-- docs/writing/john-mcphee-editing.md -->
+
 Here’s a holistic, end-to-end process for making a blog post that’s beautiful, genuinely useful, and conversion-ready. It blends McPhee’s structure-first approach with modern UX, SEO, and CRO.
 
 # 1) Strategy & Brief (before you write)

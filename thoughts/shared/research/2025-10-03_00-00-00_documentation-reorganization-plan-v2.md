@@ -1,3 +1,4 @@
+<!-- thoughts/shared/research/2025-10-03_00-00-00_documentation-reorganization-plan-v2.md -->
 <!-- TODO priority 3 -->
 
 # BuildOS Documentation Reorganization Plan v2.0

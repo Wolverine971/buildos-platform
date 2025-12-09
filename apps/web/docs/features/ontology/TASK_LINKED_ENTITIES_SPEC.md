@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/ontology/TASK_LINKED_ENTITIES_SPEC.md -->
+
 # TaskEditModal Linked Entities Feature Specification
 
 **Created**: December 5, 2025

@@ -23,6 +23,7 @@ status: complete
 last_updated: 2025-09-24
 last_updated_by: Claude Code
 last_updated_note: 'MAJOR FIX: Completed all critical fixes - eliminated race conditions, fixed memory leaks, completed Svelte 5 migration, fixed infinite loops'
+path: apps/web/thoughts/shared/research/2025-09-22_04-32-15_brain-dump-modal-notification-integration-audit.md
 ---
 
 # Research: Brain Dump Modal and Processing Notification Integration Audit

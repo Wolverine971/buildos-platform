@@ -1,3 +1,4 @@
+<!-- thoughts/shared/ideas/ontology/buildos-outputs.md -->
 # BuildOS Project Outputs & Deliverables — Master Reference (v2)
 
 > A comprehensive taxonomy of project deliverables, their primitives, inheritance strategy, and recommended tools for creation.

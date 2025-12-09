@@ -5,6 +5,7 @@ repository: buildos-platform
 topic: 'Ontology Templates Feature - Complete Implementation Status'
 tags: [research, buildos, ontology, templates, features, implementation-status]
 status: complete
+path: thoughts/shared/research/2025-11-09_15-30-00_ontology-templates-feature.md
 ---
 
 # Research: Ontology Templates Feature - Complete Implementation Status

@@ -1,3 +1,4 @@
+-- supabase/migrations/20251209_create_onto_braindumps.sql
 -- Migration: Create onto_braindumps table for generic braindump capture
 -- This table stores raw thought captures from the agent chat braindump context
 

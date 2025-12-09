@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/ontology/missing_data_model_taxonomy_conventions.md -->
+
 Love this direction — you’re basically giving yourself a mini “type system” inside the type_key.
 
 Below is an updated **master namespace doc** that bakes in your feedback:

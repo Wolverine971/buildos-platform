@@ -9,6 +9,7 @@ tags: [research, codebase, pwa, push-notifications, service-worker, web-app, not
 status: complete
 last_updated: 2025-10-05
 last_updated_by: Claude Code
+path: thoughts/shared/research/2025-10-05_15-30-00_pwa-browser-push-notifications-research.md
 ---
 
 # Research: PWA Browser Push Notifications for BuildOS Web App

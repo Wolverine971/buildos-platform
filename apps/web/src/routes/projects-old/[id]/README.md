@@ -1,3 +1,5 @@
+<!-- apps/web/src/routes/projects-old/[id]/README.md -->
+
 # /projects/[slug] Page Documentation
 
 ## Overview

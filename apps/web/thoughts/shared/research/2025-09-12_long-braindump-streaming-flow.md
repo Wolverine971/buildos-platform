@@ -9,6 +9,7 @@ tags: [research, codebase, braindump, streaming, sse, dual-processing]
 status: complete
 last_updated: 2025-09-12
 last_updated_by: Claude
+path: apps/web/thoughts/shared/research/2025-09-12_long-braindump-streaming-flow.md
 ---
 
 # Research: Long Braindump Streaming Flow Analysis (>500 chars)

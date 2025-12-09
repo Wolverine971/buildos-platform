@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/api/endpoints/utilities.md -->
+
 # Utilities API
 
 **Base Paths:** `/api/search`, `/api/feedback`, `/api/notifications`, `/api/templates`, `/api/analytics`

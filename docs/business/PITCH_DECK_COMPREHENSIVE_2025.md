@@ -1,3 +1,5 @@
+<!-- docs/business/PITCH_DECK_COMPREHENSIVE_2025.md -->
+
 # BuildOS Investor Pitch Deck — V2
 
 ## Simplified Presentation Document

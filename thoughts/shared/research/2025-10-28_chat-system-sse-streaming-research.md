@@ -4,6 +4,7 @@ date: '2025-10-28'
 author: 'Claude Code'
 status: 'COMPLETED'
 scope: 'Chat System Architecture'
+path: thoughts/shared/research/2025-10-28_chat-system-sse-streaming-research.md
 ---
 
 # BuildOS Chat System & SSE Streaming Infrastructure Research

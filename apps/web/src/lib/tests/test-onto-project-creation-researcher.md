@@ -1,3 +1,5 @@
+<!-- apps/web/src/lib/tests/test-onto-project-creation-researcher.md -->
+
 # Ontology Project Creation Tests - Researcher/Academic Persona
 
 **Test Suite**: Ontology project creation with agentic chat

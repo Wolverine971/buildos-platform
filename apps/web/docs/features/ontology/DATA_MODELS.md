@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/ontology/DATA_MODELS.md -->
+
 # Ontology Data Models & Database Schema
 
 **Last Updated**: December 1, 2025

@@ -1,3 +1,4 @@
+-- apps/web/supabase/migrations/llm_usage_tracking.sql
 -- ============================================
 -- LLM Usage Tracking Migration
 -- Created: 2025-09-30

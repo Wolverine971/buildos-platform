@@ -1,3 +1,5 @@
+<!-- docs/marketing/social-media/types-of-content.md -->
+
 ### 1. **Educational / How-To**
 
 - Step-by-step guides, frameworks, or “playbooks.”

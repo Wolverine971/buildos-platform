@@ -9,6 +9,7 @@ tags: [research, codebase, synthesis, performance, architecture, bugs]
 status: complete
 last_updated: 2025-09-14
 last_updated_by: Claude
+path: apps/web/thoughts/shared/research/2025-09-14_17-41-52_project-synthesis-flow-analysis.md
 ---
 
 # Research: ProjectSynthesis.svelte Flow Analysis - Frontend, Backend, and Performance

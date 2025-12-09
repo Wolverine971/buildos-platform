@@ -10,6 +10,7 @@ tags:
 status: complete
 last_updated: 2025-10-13
 last_updated_by: Claude (Sonnet 4.5)
+path: thoughts/shared/research/2025-10-12_22-51-12_phase-generation-procedural-redesign-spec.md
 ---
 
 # Phase Generation Procedural Redesign - Formal Specification

@@ -11,6 +11,7 @@ tags: ['life-goals', 'projects', 'strategy', 'getting-started', 'alignment']
 readingTime: 9
 excerpt: 'Master the fundamental distinction between enduring life goals and executable projects to create perfect alignment between your daily actions and long-term vision.'
 pic: 'goals-vs-projects'
+path: apps/web/src/content/blogs/getting-started/understanding-life-goals.md
 ---
 
 One of the most powerful aspects of Build OS is how it helps you maintain clear alignment between your daily actions and long-term vision. This alignment comes from understanding the crucial distinction between life goals (strategic) and projects (tactical).

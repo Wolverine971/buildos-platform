@@ -9,6 +9,7 @@ tags: [research, codebase, shared-utils, sms-metrics, monorepo, architecture, pa
 status: complete
 last_updated: 2025-10-09
 last_updated_by: Claude
+path: thoughts/shared/research/2025-10-09_17-01-53_shared-utils-package-design.md
 ---
 
 # Research: Shared Utils Package Design - Consolidating sms-metrics and Duplicated Utilities

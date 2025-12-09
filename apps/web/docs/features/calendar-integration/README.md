@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/calendar-integration/README.md -->
+
 # Calendar Integration Feature
 
 Google Calendar sync with bidirectional updates for task scheduling and availability awareness.

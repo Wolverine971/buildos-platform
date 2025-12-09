@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/notifications/NOTIFICATION_LOGGING_IMPLEMENTATION_SPEC.md -->
+
 # Notification Logging System - Implementation Specification
 
 **Status**: 🔴 Not Started

@@ -1,3 +1,5 @@
+<!-- docs/marketing/growth/3-phase-warm-outreach-template.md -->
+
 ## **3-Phase Warm Outreach Template**
 
 ### **Phase 1: Build Trust (Common Ground)**

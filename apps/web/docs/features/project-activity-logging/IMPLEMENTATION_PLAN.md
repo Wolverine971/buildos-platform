@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/project-activity-logging/IMPLEMENTATION_PLAN.md -->
+
 # Project Activity Logging & Next Steps Feature
 
 ## Overview

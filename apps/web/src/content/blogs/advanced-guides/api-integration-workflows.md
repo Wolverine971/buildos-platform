@@ -11,6 +11,7 @@ tags: ['advanced-guides', 'api', 'integrations', 'workflows', 'automation', 'web
 readingTime: 15
 excerpt: 'Advanced guide to connecting BuildOS with external tools via API integrations. Learn webhook patterns, automation workflows, and integration best practices.'
 pic: 'api-integrations'
+path: apps/web/src/content/blogs/advanced-guides/api-integration-workflows.md
 ---
 
 # API Integration Workflows

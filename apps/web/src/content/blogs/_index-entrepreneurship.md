@@ -6,6 +6,7 @@ author: 'DJ Wayne'
 publishDate: '2025-09-16'
 draft: true
 tags: ['content-strategy', 'entrepreneurship', 'startup', 'founder-journey', 'business-building']
+path: apps/web/src/content/blogs/_index-entrepreneurship.md
 ---
 
 # Entrepreneurship Blog Category Index

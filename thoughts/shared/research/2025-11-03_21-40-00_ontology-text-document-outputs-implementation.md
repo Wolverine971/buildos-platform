@@ -9,6 +9,7 @@ tags: [research, codebase, ontology, outputs, templates, inheritance, text-docum
 status: complete
 last_updated: 2025-02-12
 last_updated_by: Codex (GPT-5)
+path: thoughts/shared/research/2025-11-03_21-40-00_ontology-text-document-outputs-implementation.md
 ---
 
 # Research: Ontology Text Document Outputs Implementation Strategy

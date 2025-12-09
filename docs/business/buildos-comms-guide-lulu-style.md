@@ -1,3 +1,5 @@
+<!-- docs/business/buildos-comms-guide-lulu-style.md -->
+
 # BuildOS Communications Guide
 
 _Applying Lulu Cheng Meservey's Strategic Principles_

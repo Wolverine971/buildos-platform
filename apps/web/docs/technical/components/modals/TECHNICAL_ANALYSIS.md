@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/components/modals/TECHNICAL_ANALYSIS.md -->
+
 # Modal Components Technical Analysis
 
 **Last Updated**: November 4, 2025

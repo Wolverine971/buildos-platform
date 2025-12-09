@@ -13,6 +13,7 @@ tags:
         'human-ai-collaboration',
         'productivity-philosophy'
     ]
+path: apps/web/src/content/blogs/_index-philosophy.md
 ---
 
 # Philosophy Blog Category Index

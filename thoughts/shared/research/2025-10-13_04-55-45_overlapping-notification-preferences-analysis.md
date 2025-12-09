@@ -10,6 +10,7 @@ status: complete
 last_updated: 2025-10-13
 last_updated_by: Claude Code
 last_updated_note: 'Added follow-up research section after daily brief notification refactor completion'
+path: thoughts/shared/research/2025-10-13_04-55-45_overlapping-notification-preferences-analysis.md
 ---
 
 # Research: Overlapping Database Columns in Daily Briefs, SMS Notifications, and Generic Notification System

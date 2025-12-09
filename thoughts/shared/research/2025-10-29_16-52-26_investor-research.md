@@ -9,6 +9,7 @@ tags: [research, investors, fundraising, individual-investors, content-creators,
 status: complete
 last_updated: 2025-10-29
 last_updated_by: Claude
+path: thoughts/shared/research/2025-10-29_16-52-26_investor-research.md
 ---
 
 # Research: Individual Angel Investors - High-Net-Worth Content Creators

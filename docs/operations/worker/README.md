@@ -1,3 +1,5 @@
+<!-- docs/operations/worker/README.md -->
+
 # Worker Operations
 
 Runbooks and operational guides for the background worker service.

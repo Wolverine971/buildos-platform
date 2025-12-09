@@ -9,6 +9,7 @@ tags: [research, codebase, braindump-processor, prompt-templates, task-extractio
 status: complete
 last_updated: 2025-09-14
 last_updated_by: Claude
+path: apps/web/thoughts/shared/research/2025-09-14_task-extraction-prompt-analysis.md
 ---
 
 # Research: Task Extraction Prompt Not Tailored for New vs Existing Projects

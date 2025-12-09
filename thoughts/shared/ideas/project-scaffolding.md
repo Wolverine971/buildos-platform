@@ -1,3 +1,4 @@
+<!-- thoughts/shared/ideas/project-scaffolding.md -->
 
 > almost. I like my current flexible structure. I just want to add this onto_scaffolding_templates on top of what 
 already exists. So that I can through a project scaffolding template gallery select a predfined template and it

@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/design-system/README.md -->
+
 # BuildOS Design System
 
 > **⚠️ IMPORTANT: Design System Update (December 2025)**

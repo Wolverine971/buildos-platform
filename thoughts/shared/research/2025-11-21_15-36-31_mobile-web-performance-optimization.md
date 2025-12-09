@@ -10,6 +10,7 @@ sources:
   - "MDN Web Docs"
   - "Performance-focused blogs (2023-2025)"
 status: "complete"
+path: thoughts/shared/research/2025-11-21_15-36-31_mobile-web-performance-optimization.md
 ---
 
 # Mobile Web Performance Optimization for Modal-Heavy Applications (2025)

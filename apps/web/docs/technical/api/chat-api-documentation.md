@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/api/chat-api-documentation.md -->
+
 # Chat API Documentation
 
 ## Overview

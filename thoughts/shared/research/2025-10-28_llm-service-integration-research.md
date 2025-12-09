@@ -1,3 +1,4 @@
+<!-- thoughts/shared/research/2025-10-28_llm-service-integration-research.md -->
 # BuildOS LLM Service Integration Research Report
 
 **Date**: 2025-10-28  

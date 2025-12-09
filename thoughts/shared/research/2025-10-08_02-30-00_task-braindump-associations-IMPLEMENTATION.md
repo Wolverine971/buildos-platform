@@ -9,6 +9,7 @@ tags: [implementation, completed, ui, task-modal, braindumps]
 status: complete
 last_updated: 2025-10-08
 last_updated_by: Claude
+path: thoughts/shared/research/2025-10-08_02-30-00_task-braindump-associations-IMPLEMENTATION.md
 ---
 
 # Implementation Summary: Task-Braindump Associations

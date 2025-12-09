@@ -11,6 +11,7 @@ tags: ['case-studies', 'academic', 'research', 'time-management', 'productivity'
 readingTime: 8
 excerpt: 'Real story of how an academic researcher juggling 5 research projects, teaching, and publications regained control of their time and focus using BuildOS.'
 pic: 'academic-case-study'
+path: apps/web/src/content/blogs/case-studies/academic-researcher-time-management.md
 ---
 
 # Case Study: Academic Researcher Time Management

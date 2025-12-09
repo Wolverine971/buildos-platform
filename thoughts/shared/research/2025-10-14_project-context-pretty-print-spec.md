@@ -7,6 +7,7 @@ tags: [feature-spec, export, pdf-generation, design-system]
 related:
     - /apps/web/src/lib/components/project/ProjectContextDocModal.svelte
     - /apps/web/tailwind.config.js
+path: thoughts/shared/research/2025-10-14_project-context-pretty-print-spec.md
 ---
 
 # Project Context Document Pretty-Print Tool - Technical Specification

@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/design-system/IMPLEMENTATION_GUIDE.md -->
+
 # Scratchpad Ops Design System - Implementation Guide
 
 ## Overview

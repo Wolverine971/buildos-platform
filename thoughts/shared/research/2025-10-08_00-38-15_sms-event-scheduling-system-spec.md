@@ -9,6 +9,7 @@ tags: [research, spec, sms, scheduling, worker, calendar, llm, notifications]
 status: complete
 last_updated: 2025-10-08
 last_updated_by: Claude
+path: thoughts/shared/research/2025-10-08_00-38-15_sms-event-scheduling-system-spec.md
 ---
 
 # SMS Event Scheduling System - Comprehensive Specification

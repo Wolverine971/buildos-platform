@@ -1,3 +1,5 @@
+<!-- docs/SECURITY.md -->
+
 # Security Documentation - BuildOS Platform
 
 This document describes the security measures implemented in the BuildOS platform.

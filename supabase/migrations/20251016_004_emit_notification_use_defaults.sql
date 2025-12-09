@@ -1,3 +1,4 @@
+-- supabase/migrations/20251016_004_emit_notification_use_defaults.sql
 -- =====================================================
 -- Phase 4b: Update emit_notification_event to Use Defaults
 -- =====================================================

@@ -1,3 +1,4 @@
+-- apps/web/supabase/migrations/20251008_sms_metrics_monitoring.sql
 -- SMS Metrics Monitoring Infrastructure
 -- Migration: 20251008_sms_metrics_monitoring.sql
 -- Purpose: Implement comprehensive SMS metrics tracking, aggregation, and alerting

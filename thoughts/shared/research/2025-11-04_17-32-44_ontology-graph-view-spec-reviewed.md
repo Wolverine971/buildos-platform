@@ -9,6 +9,7 @@ tags: [research, ontology, cytoscape, graph-visualization, admin, ui-components]
 status: complete
 last_updated: 2025-11-04
 last_updated_by: Claude
+path: thoughts/shared/research/2025-11-04_17-32-44_ontology-graph-view-spec-reviewed.md
 ---
 
 # Research: Ontology Graph Visualization Spec - BuildOS-Specific Review

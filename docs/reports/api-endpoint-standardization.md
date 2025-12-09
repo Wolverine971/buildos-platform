@@ -1,3 +1,5 @@
+<!-- docs/reports/api-endpoint-standardization.md -->
+
 # API Endpoint Standardization - Complete Project Report
 
 **Date Completed**: 2025-10-24

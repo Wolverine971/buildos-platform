@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/admin-dashboard/README.md -->
+
 # LLM Usage Admin Dashboard
 
 ## Overview

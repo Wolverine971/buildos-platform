@@ -9,6 +9,7 @@ tags: [research, mobile, ios, native-app, architecture, deployment]
 status: complete
 last_updated: 2025-10-07
 last_updated_by: Claude (Sonnet 4.5)
+path: thoughts/shared/research/2025-10-07_23-50-04_native-ios-app-conversion-options.md
 ---
 
 # Research: Native iOS App Conversion Options for BuildOS

@@ -19,6 +19,7 @@ seo:
             'AI organization',
             'note-taking'
         ]
+path: apps/web/src/content/blogs/buildos-vs-obsidian-knowledge-management.md
 ---
 
 <!-- Research Questions for Content Development:

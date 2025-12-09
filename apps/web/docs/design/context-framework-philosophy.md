@@ -12,6 +12,7 @@ related_files:
 important_files:
     - apps/web/src/lib/services/promptTemplate.service.ts
     - apps/web/src/lib/utils/braindump-processor.ts
+path: apps/web/docs/design/context-framework-philosophy.md
 ---
 
 # Context Framework Philosophy

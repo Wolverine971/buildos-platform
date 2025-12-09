@@ -9,6 +9,7 @@ tags: [research, codebase, stripe, payments, subscriptions, trial-system]
 status: complete
 last_updated: 2025-09-11
 last_updated_by: Claude
+path: apps/web/thoughts/shared/research/2025-09-11_16-57-03_stripe_setup_research.md
 ---
 
 # Research: Stripe Integration Setup and Configuration Requirements

@@ -1,3 +1,5 @@
+<!-- apps/web/scripts/post-migration-steps.md -->
+
 # Post-Migration Steps
 
 After running the `create-claim-pending-jobs-function.sql` script in Supabase:

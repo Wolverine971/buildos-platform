@@ -5,6 +5,7 @@ repository: buildos-platform
 topic: 'Agentic Chat Flow - Complete System Guide'
 tags: [research, buildos, agentic-chat, architecture, flow-diagrams]
 status: complete
+path: thoughts/shared/research/2025-11-17_00-00-00_agentic-chat-flow-guide.md
 ---
 
 # Research: BuildOS Agentic Chat Flow - Complete System Guide

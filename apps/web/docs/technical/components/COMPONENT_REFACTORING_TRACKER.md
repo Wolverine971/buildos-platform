@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/components/COMPONENT_REFACTORING_TRACKER.md -->
+
 # Component Refactoring Tracker
 
 **Status**: ⚠️ **CORRECTED - Hallucinated Work Removed**

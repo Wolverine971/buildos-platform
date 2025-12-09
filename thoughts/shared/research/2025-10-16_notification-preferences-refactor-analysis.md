@@ -18,6 +18,7 @@ tags:
 status: complete
 last_updated: 2025-10-16
 last_updated_by: Claude Code
+path: thoughts/shared/research/2025-10-16_notification-preferences-refactor-analysis.md
 ---
 
 # Research: Notification Preferences Table Refactor Analysis

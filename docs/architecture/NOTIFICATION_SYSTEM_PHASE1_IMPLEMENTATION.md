@@ -1,3 +1,5 @@
+<!-- docs/architecture/NOTIFICATION_SYSTEM_PHASE1_IMPLEMENTATION.md -->
+
 # Notification System Phase 1 - Implementation Guide
 
 **Status:** Ready for Deployment

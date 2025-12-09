@@ -1,3 +1,5 @@
+<!-- docs/business/war-room/war-room-llm-prompting-strategy.md -->
+
 # Project War Room - LLM Prompting Strategy
 
 ## Core Principles

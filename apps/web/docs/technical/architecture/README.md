@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/architecture/README.md -->
+
 # 🏗️ Architecture Documentation
 
 This directory contains system architecture documentation for BuildOS.

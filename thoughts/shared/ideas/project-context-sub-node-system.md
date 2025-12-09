@@ -1,3 +1,4 @@
+<!-- thoughts/shared/ideas/project-context-sub-node-system.md -->
 # Implementation Instructions: Project Context Sub-node System
 
 ## Overview

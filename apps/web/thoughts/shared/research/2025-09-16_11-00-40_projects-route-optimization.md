@@ -9,6 +9,7 @@ tags: [research, codebase, projects, performance, optimization, database, compon
 status: complete
 last_updated: 2025-09-16
 last_updated_by: Claude Code
+path: apps/web/thoughts/shared/research/2025-09-16_11-00-40_projects-route-optimization.md
 ---
 
 # Research: /projects Route Performance Optimization Analysis
