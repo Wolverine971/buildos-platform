@@ -67,7 +67,7 @@ function formatEmailTemplate(delivery: NotificationDelivery): {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${title}</title>
 </head>
-<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #1A1A1D; max-width: 600px; margin: 0 auto; padding: 20px;">
   <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
     <h1 style="color: white; margin: 0; font-size: 24px;">${title}</h1>
   </div>
@@ -243,17 +243,18 @@ export async function sendEmailNotification(
 
 					subject = `BuildOS Daily Brief - ${dateFormatted}`;
 
+					// Inkprint Design System colors
 					const fullContent = `
             <div style="margin: 20px 0;">
               ${contentHtml}
             </div>
 
-            <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 32px 0;">
+            <hr style="border: none; border-top: 1px solid #DCD9D1; margin: 32px 0;">
 
             <div style="text-align: center; margin-top: 24px;">
-              <a href="${baseUrl}/projects?briefDate=${delivery.payload.data?.brief_date || ''}" style="color: #3b82f6; text-decoration: none; font-size: 14px;">View in BuildOS →</a>
-              <span style="color: #d1d5db; margin: 0 8px;">|</span>
-              <a href="${baseUrl}/profile?tab=notifications" style="color: #3b82f6; text-decoration: none; font-size: 14px;">Manage Preferences</a>
+              <a href="${baseUrl}/projects?briefDate=${delivery.payload.data?.brief_date || ''}" style="color: #D96C1E; text-decoration: none; font-size: 14px;">View in BuildOS →</a>
+              <span style="color: #8C8B91; margin: 0 8px;">|</span>
+              <a href="${baseUrl}/profile?tab=notifications" style="color: #D96C1E; text-decoration: none; font-size: 14px;">Manage Preferences</a>
             </div>
           `;
 
@@ -265,7 +266,7 @@ export async function sendEmailNotification(
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${subject}</title>
 </head>
-<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #1A1A1D; max-width: 600px; margin: 0 auto; padding: 20px;">
   ${fullContent}
 </body>
 </html>

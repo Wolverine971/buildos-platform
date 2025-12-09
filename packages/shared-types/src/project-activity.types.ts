@@ -9,6 +9,8 @@
  * @see /apps/web/docs/features/project-activity-logging/IMPLEMENTATION_PLAN.md
  */
 
+import type { Json } from './database.schema';
+
 // =============================================================================
 // Entity Type Definitions
 // =============================================================================
@@ -59,8 +61,8 @@ export interface ProjectLogEntry {
 	entity_type: ProjectLogEntityType;
 	entity_id: string;
 	action: ProjectLogAction;
-	before_data: Record<string, unknown> | null;
-	after_data: Record<string, unknown> | null;
+	before_data: Json | null;
+	after_data: Json | null;
 	changed_by: string;
 	change_source: ProjectLogChangeSource | null;
 	chat_session_id: string | null;
@@ -75,8 +77,8 @@ export interface ProjectLogInsert {
 	entity_type: ProjectLogEntityType;
 	entity_id: string;
 	action: ProjectLogAction;
-	before_data?: Record<string, unknown> | null;
-	after_data?: Record<string, unknown> | null;
+	before_data?: Json | null;
+	after_data?: Json | null;
 	changed_by: string;
 	change_source?: ProjectLogChangeSource | null;
 	chat_session_id?: string | null;

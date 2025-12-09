@@ -1,43 +1,48 @@
 // apps/web/src/lib/utils/email-styles.ts
 
 /**
- * Email-safe color system
+ * Email-safe color system - Inkprint Design System
  * Uses hex colors for maximum email client compatibility
+ *
+ * Based on BuildOS Inkprint Design System:
+ * - Paper studio light mode with warm off-white backgrounds
+ * - Warm orange-amber accent color (brand color)
+ * - Warm gray text for readability
  */
 export const emailColors = {
-	// Primary colors
-	primary: '#2563eb', // primary-600
-	primaryLight: '#dbeafe', // primary-100
-	primaryDark: '#1e40af', // primary-800
+	// Primary/Accent colors (warm orange-amber from Inkprint)
+	primary: '#D96C1E', // accent - warm orange-amber hsl(24, 80%, 55%)
+	primaryLight: '#FDF4ED', // accent light background
+	primaryDark: '#B85A19', // accent darker shade
 
 	// Success colors
-	success: '#10b981', // emerald-600
-	successLight: '#d1fae5', // emerald-100
-	successDark: '#065f46', // emerald-800
+	success: '#059669', // emerald-600
+	successLight: '#ECFDF5', // emerald-50
+	successDark: '#047857', // emerald-700
 
 	// Error colors
-	error: '#ef4444', // red-600
-	errorLight: '#fee2e2', // red-100
-	errorDark: '#991b1b', // red-800
+	error: '#DC2626', // red-600
+	errorLight: '#FEF2F2', // red-50
+	errorDark: '#B91C1C', // red-700
 
-	// Warning colors
-	warning: '#f59e0b', // amber-600
-	warningLight: '#fef3c7', // amber-100
-	warningDark: '#92400e', // amber-800
+	// Warning colors (using accent-adjacent amber)
+	warning: '#D97706', // amber-600
+	warningLight: '#FFFBEB', // amber-50
+	warningDark: '#B45309', // amber-700
 
-	// Neutral colors
-	background: '#ffffff',
-	backgroundAlt: '#f3f4f6', // gray-100
-	text: '#111827', // gray-900
-	textMuted: '#6b7280', // gray-500
-	border: '#e5e7eb', // gray-200
+	// Neutral colors (warm off-white from Inkprint "paper studio")
+	background: '#FAF9F7', // warm off-white - hsl(40, 20%, 98%)
+	backgroundAlt: '#F5F4F0', // slightly warmer card bg - hsl(40, 15%, 96%)
+	text: '#1A1A1D', // deep ink black - hsl(240, 10%, 10%)
+	textMuted: '#6F6E75', // warm gray - hsl(240, 5%, 45%)
+	border: '#DCD9D1', // warm border - hsl(40, 10%, 85%)
 
-	// Dark mode alternatives (for future use)
-	darkBackground: '#1f2937', // gray-800
-	darkBackgroundAlt: '#111827', // gray-900
-	darkText: '#f9fafb', // gray-50
-	darkTextMuted: '#9ca3af', // gray-400
-	darkBorder: '#374151' // gray-700
+	// Dark mode alternatives (Inkprint "ink room")
+	darkBackground: '#101014', // near-black - hsl(240, 10%, 6%)
+	darkBackgroundAlt: '#1A1A1E', // slightly lighter - hsl(240, 10%, 10%)
+	darkText: '#EDEBE6', // warm off-white - hsl(40, 10%, 92%)
+	darkTextMuted: '#8C8B91', // warm muted - hsl(40, 5%, 55%)
+	darkBorder: '#2D2D32' // dark border - hsl(240, 10%, 18%)
 };
 
 /**

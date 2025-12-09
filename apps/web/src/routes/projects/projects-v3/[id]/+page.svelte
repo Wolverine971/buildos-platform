@@ -114,6 +114,9 @@
 	let goals = $state((data.goals || []) as Goal[]);
 	let milestones = $state((data.milestones || []) as Milestone[]);
 	let risks = $state((data.risks || []) as Risk[]);
+	let showOutputCreateModal = $state(false);
+	let showDocumentModal = $state(false);
+	let activeDocumentId = $state<string | null>(null);
 	let showTaskCreateModal = $state(false);
 	let showPlanCreateModal = $state(false);
 	let showGoalCreateModal = $state(false);
@@ -124,7 +127,6 @@
 	// UI State
 	let primitiveFilter = $state<PrimitiveFilter>('all');
 	let dataRefreshing = $state(false);
-	let showCreateModal = $state(false);
 	let expandedPanels = $state<Record<InsightPanelKey, boolean>>({
 		tasks: false,
 		plans: false,
@@ -144,6 +146,14 @@
 		plans: plans.length,
 		goals: goals.length
 	}));
+
+	const documentTypeOptions = $derived(() => {
+		const set = new Set<string>();
+		for (const doc of documents) {
+			if (doc.type_key) set.add(doc.type_key);
+		}
+		return Array.from(set);
+	});
 
 	// Enrich outputs with primitive info
 	const enrichedOutputs = $derived(
@@ -352,6 +362,23 @@
 		toastService.info('Document promotion coming soon');
 	}
 
+	async function handleOutputCreated() {
+		await refreshData();
+		showOutputCreateModal = false;
+	}
+
+	async function handleDocumentSaved() {
+		await refreshData();
+		showDocumentModal = false;
+		activeDocumentId = null;
+	}
+
+	async function handleDocumentDeleted() {
+		await refreshData();
+		showDocumentModal = false;
+		activeDocumentId = null;
+	}
+
 	async function handleTaskCreated() {
 		await refreshData();
 		showTaskCreateModal = false;
@@ -395,12 +422,6 @@
 	async function handleGoalDeleted() {
 		await refreshData();
 		editingGoalId = null;
-	}
-
-	async function handleCreateDeliverable(primitive: DeliverablePrimitive) {
-		// TODO: Implement deliverable creation
-		toastService.info(`Create ${primitive} deliverable coming soon`);
-		showCreateModal = false;
 	}
 </script>
 
@@ -532,7 +553,7 @@
 						{/each}
 
 						<button
-							onclick={() => (showCreateModal = true)}
+							onclick={() => (showOutputCreateModal = true)}
 							class="ml-auto inline-flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg border border-border bg-muted/60 font-medium hover:bg-muted transition-colors"
 						>
 							<Plus class="w-4 h-4" />
@@ -650,20 +671,37 @@
 								Lighter-weight cards so outputs stay primary.
 							</p>
 						</div>
-						{#if promotableDocuments.length > 0}
-							<div
-								class="flex items-center gap-2 text-xs text-amber-600 bg-amber-500/10 border border-amber-500/30 px-3 py-2 rounded-lg"
+						<div class="flex items-center gap-2">
+							<button
+								type="button"
+								onclick={() => {
+									activeDocumentId = null;
+									showDocumentModal = true;
+								}}
+								class="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-muted/60 text-sm font-medium hover:bg-muted transition-colors"
 							>
-								<Sparkles class="w-4 h-4" />
-								<span>{promotableDocuments.length} ready to promote</span>
-							</div>
-						{/if}
+								<Plus class="w-4 h-4" />
+								New Document
+							</button>
+							{#if promotableDocuments.length > 0}
+								<div
+									class="flex items-center gap-2 text-xs text-amber-600 bg-amber-500/10 border border-amber-500/30 px-3 py-2 rounded-lg"
+								>
+									<Sparkles class="w-4 h-4" />
+									<span>{promotableDocuments.length} ready to promote</span>
+								</div>
+							{/if}
+						</div>
 					</div>
 
 					<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
 						{#each documents as doc}
 							<article
-								class="p-3 rounded-lg border border-border bg-muted/50 shadow-ink tx tx-grain tx-weak"
+								class="p-3 rounded-lg border border-border bg-muted/50 shadow-ink tx tx-grain tx-weak hover:border-accent/60 transition-colors cursor-pointer"
+								onclick={() => {
+									activeDocumentId = doc.id;
+									showDocumentModal = true;
+								}}
 							>
 								<div class="flex items-start justify-between gap-3">
 									<div class="min-w-0 space-y-1">
@@ -1008,41 +1046,33 @@
 	</main>
 </div>
 
-<!-- Create Deliverable Modal -->
-{#if showCreateModal}
-	<div
-		class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
-		onclick={() => (showCreateModal = false)}
-	>
-		<div
-			class="bg-card border border-border rounded-xl shadow-ink-strong w-full max-w-md mx-4 p-6"
-			onclick={(e) => e.stopPropagation()}
-		>
-			<h2 class="text-lg font-semibold text-foreground mb-4">Create Deliverable</h2>
-			<p class="text-sm text-muted-foreground mb-6">Choose a deliverable type to create</p>
+<!-- Output Create Modal -->
+{#if showOutputCreateModal}
+	{#await import('$lib/components/ontology/OutputCreateModal.svelte') then { default: OutputCreateModal }}
+		<OutputCreateModal
+			projectId={project.id}
+			onClose={() => (showOutputCreateModal = false)}
+			onCreated={handleOutputCreated}
+		/>
+	{/await}
+{/if}
 
-			<div class="grid grid-cols-2 gap-3">
-				{#each Object.entries(PRIMITIVE_CONFIG) as [primitive, config]}
-					<button
-						onclick={() => handleCreateDeliverable(primitive as DeliverablePrimitive)}
-						class="flex flex-col items-center gap-2 p-4 rounded-lg border border-border bg-muted/50 hover:bg-muted hover:border-border/80 transition-colors"
-					>
-						<svelte:component this={config.icon} class="w-8 h-8 {config.color}" />
-						<span class="text-sm font-medium text-foreground">{config.label}</span>
-					</button>
-				{/each}
-			</div>
-
-			<div class="mt-6 pt-4 border-t border-border">
-				<button
-					onclick={() => (showCreateModal = false)}
-					class="w-full px-4 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-				>
-					Cancel
-				</button>
-			</div>
-		</div>
-	</div>
+<!-- Document Create/Edit Modal -->
+{#if showDocumentModal}
+	{#await import('$lib/components/ontology/DocumentModal.svelte') then { default: DocumentModal }}
+		<DocumentModal
+			bind:isOpen={showDocumentModal}
+			projectId={project.id}
+			documentId={activeDocumentId}
+			typeOptions={documentTypeOptions()}
+			onClose={() => {
+				showDocumentModal = false;
+				activeDocumentId = null;
+			}}
+			onSaved={handleDocumentSaved}
+			onDeleted={handleDocumentDeleted}
+		/>
+	{/await}
 {/if}
 
 <!-- Task Create Modal -->

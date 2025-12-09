@@ -62,12 +62,22 @@
 		initialAction?: ProjectAction;
 	}
 
+	interface InitialBraindump {
+		id: string;
+		content: string;
+		title: string | null;
+		topics: string[] | null;
+		summary: string | null;
+		status: string;
+	}
+
 	interface Props {
 		isOpen?: boolean;
 		contextType?: ChatContextType;
 		entityId?: string;
 		onClose?: () => void;
 		autoInitProject?: AutoInitProjectConfig | null;
+		initialBraindump?: InitialBraindump | null;
 	}
 
 	type ContextSelectionType = ChatContextType | 'agent_to_agent';
@@ -83,7 +93,8 @@
 		contextType: _initialContextType = 'global',
 		entityId: _initialEntityId,
 		onClose,
-		autoInitProject = null
+		autoInitProject = null,
+		initialBraindump = null
 	}: Props = $props();
 
 	// Context selection state
@@ -837,6 +848,45 @@
 		}
 
 		initializeFromAutoInit(autoInitProject);
+	});
+
+	// Handle initialBraindump prop - when opening from history to explore an existing braindump
+	$effect(() => {
+		if (!isOpen || !initialBraindump) return;
+
+		// Only initialize once per open
+		if (wasOpen && selectedContextType === 'brain_dump' && braindumpMode === 'chat') {
+			return; // Already initialized
+		}
+
+		// Reset and set up for braindump exploration
+		resetConversation({ preserveContext: false });
+		selectedContextType = 'brain_dump';
+		selectedContextLabel = initialBraindump.title || 'Braindump Exploration';
+		showContextSelection = false;
+		showProjectActionSelector = false;
+		braindumpMode = 'chat';
+
+		// Add a system context message explaining this is a braindump exploration
+		const systemNote: UIMessage = {
+			id: crypto.randomUUID(),
+			type: 'activity',
+			role: 'assistant' as ChatRole,
+			content: initialBraindump.summary
+				? `Exploring your braindump: "${initialBraindump.title || 'Untitled'}"\n\n**Summary:** ${initialBraindump.summary}\n\nWhat would you like to explore or discuss about these thoughts?`
+				: "Resuming braindump exploration. I'll help you clarify and organize your thoughts.",
+			timestamp: new Date(),
+			created_at: new Date().toISOString()
+		};
+		messages = [systemNote];
+
+		// Set the input to the braindump content and send it as the first message
+		inputValue = initialBraindump.content;
+
+		// Use setTimeout to ensure state updates before sending
+		setTimeout(() => {
+			sendMessage();
+		}, 0);
 	});
 
 	// Helper: Check if user is scrolled to bottom (within threshold)

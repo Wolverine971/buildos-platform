@@ -1,6 +1,7 @@
 <!-- apps/web/src/lib/components/email/ImageUploadModal.svelte -->
 <script lang="ts">
 	import { onMount, createEventDispatcher } from 'svelte';
+	import { browser } from '$app/environment';
 	import { Upload, Image as ImageIcon, Trash2, Eye, X, Search } from 'lucide-svelte';
 	import Modal from '../ui/Modal.svelte';
 	import FormField from '../ui/FormField.svelte';
@@ -38,7 +39,7 @@
 	});
 
 	// Watch for open state changes
-	$: if (isOpen) {
+	$: if (browser && isOpen) {
 		loadImages();
 		activeTab = 'upload';
 		clearUpload();

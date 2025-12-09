@@ -17,7 +17,8 @@
       "Bash(kill:*)",
       "Bash(pnpm test:*)",
       "Bash(rm:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(pnpm typecheck:*)"
     ],
     "deny": [],
     "ask": []

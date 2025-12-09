@@ -28,21 +28,21 @@ async function sendBetaApprovalEmail(signupData: any) {
 
 	<p>You're officially in! We're <em>thrilled</em> to have you as one of our first beta users!</p>
 
-	<div style="background-color: #f8fafc; border: 2px solid #e2e8f0; padding: 24px; border-radius: 12px; margin: 24px 0; text-align: center;">
-		<h3 style="margin-top: 0; color: #1e40af;">📺 Quick BuildOS Explainer</h3>
+	<div style="background-color: #FAF9F7; border: 2px solid #DCD9D1; padding: 24px; border-radius: 12px; margin: 24px 0; text-align: center;">
+		<h3 style="margin-top: 0; color: #D96C1E;">Quick BuildOS Explainer</h3>
 		<p style="margin-bottom: 16px;">Before you dive in, here's a quick overview of what BuildOS is all about:</p>
 
 		<div style="position: relative; width: 100%; max-width: 560px; margin: 0 auto;">
 			<a href="https://youtu.be/u_BII_b85Wc" target="_blank" style="display: block; text-decoration: none;">
 				<img src="https://img.youtube.com/vi/u_BII_b85Wc/maxresdefault.jpg"
 					 alt="BuildOS Explainer Video"
-					 style="width: 100%; height: auto; border-radius: 8px; border: 2px solid #3b82f6;">
+					 style="width: 100%; height: auto; border-radius: 8px; border: 2px solid #D96C1E;">
 			</a>
 		</div>
 
 		<p style="margin-top: 12px; margin-bottom: 0; font-size: 14px;">
-			<a href="https://youtu.be/u_BII_b85Wc" target="_blank" style="color: #3b82f6; text-decoration: none;">
-				👉 Watch the BuildOS Explainer Video
+			<a href="https://youtu.be/u_BII_b85Wc" target="_blank" style="color: #D96C1E; text-decoration: none;">
+				Watch the BuildOS Explainer Video
 			</a>
 		</p>
 	</div>
@@ -54,14 +54,14 @@ async function sendBetaApprovalEmail(signupData: any) {
 		<p style="margin-bottom: 0;">The first thing we request that you do is <strong>brain dump a project</strong> and see how the system handles what you said. We're excited to see you use it and see what you build!</p>
 	</div>
 
-	<div style="background-color: #dbeafe; border: 2px solid #3b82f6; padding: 20px; border-radius: 12px; margin: 24px 0;">
-		<h3 style="margin-top: 0; color: #1e40af;">🔑 Ready to Get Started?</h3>
+	<div style="background-color: #FDF4ED; border: 2px solid #D96C1E; padding: 20px; border-radius: 12px; margin: 24px 0;">
+		<h3 style="margin-top: 0; color: #D96C1E;">Ready to Get Started?</h3>
 
 		<p><strong>Create your beta account:</strong><br>
-		<a href="https://build-os.com/auth/register" style="color: #3b82f6; text-decoration: none; font-weight: bold;">👉 https://build-os.com/auth/register</a></p>
+		<a href="https://build-os.com/auth/register" style="color: #D96C1E; text-decoration: none; font-weight: bold;">https://build-os.com/auth/register</a></p>
 
 		<p><strong>Already have an account? Login here:</strong><br>
-		<a href="https://build-os.com/auth/login" style="color: #3b82f6; text-decoration: none; font-weight: bold;">👉 https://build-os.com/auth/login</a></p>
+		<a href="https://build-os.com/auth/login" style="color: #D96C1E; text-decoration: none; font-weight: bold;">https://build-os.com/auth/login</a></p>
 
 		<p style="font-size: 14px; margin-bottom: 0;">Use the same email address you signed up with – Google login is available for fastest access.</p>
 	</div>
@@ -74,7 +74,7 @@ async function sendBetaApprovalEmail(signupData: any) {
 
 	<p>If you don't know already, we've been using BuildOS to build BuildOS. We believe this is a game-changing productivity tool for creative and chaotic minds like ours – and now yours.</p>
 
-	<p>Found a bug or have feedback? <strong><a href="https://build-os.com/feedback" style="color: #3b82f6; text-decoration: none;">Let us know here</a></strong> – your input shapes where we go next.</p>
+	<p>Found a bug or have feedback? <strong><a href="https://build-os.com/feedback" style="color: #D96C1E; text-decoration: none;">Let us know here</a></strong> – your input shapes where we go next.</p>
 
 	<p>Thanks for being part of this journey. We're excited to build with you.</p>
 

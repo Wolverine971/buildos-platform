@@ -1,6 +1,7 @@
 <!-- apps/web/src/lib/components/project/ProjectCalendarSettingsModal.svelte -->
 <script lang="ts">
 	import { createEventDispatcher, onMount } from 'svelte';
+	import { browser } from '$app/environment';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import FormField from '$lib/components/ui/FormField.svelte';
 	import TextInput from '$lib/components/ui/TextInput.svelte';
@@ -62,7 +63,7 @@
 	let shares: Array<{ email: string; role: 'reader' | 'writer' }> = [];
 
 	// Initialize form data when modal opens
-	$: if (project && isOpen) {
+	$: if (browser && project && isOpen) {
 		loadCalendarSettings();
 	}
 

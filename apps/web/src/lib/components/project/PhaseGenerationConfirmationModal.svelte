@@ -1,6 +1,7 @@
 <!-- apps/web/src/lib/components/project/PhaseGenerationConfirmationModal.svelte -->
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
+	import { browser } from '$app/environment';
 	import {
 		AlertTriangle,
 		Calendar,
@@ -109,7 +110,7 @@
 	$: hasRecurringTasks = previewData?.recurring_task_info?.count > 0;
 
 	// Load preview data when modal opens or selections change
-	$: if (isOpen) {
+	$: if (browser && isOpen) {
 		loadPreviewData();
 	}
 

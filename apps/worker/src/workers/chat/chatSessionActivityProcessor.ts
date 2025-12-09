@@ -6,7 +6,8 @@ import { SmartLLMService } from '../../lib/services/smart-llm-service';
 import type {
 	ProjectLogEntityType,
 	ProjectLogInsert,
-	NextStepGenerationContext
+	NextStepGenerationContext,
+	Json
 } from '@buildos/shared-types';
 
 // =============================================================================
@@ -299,8 +300,8 @@ function processOperationsToActivityLogs(
 			entity_type: entityType,
 			entity_id: entityId,
 			action,
-			before_data: op.before_data,
-			after_data: op.after_data,
+			before_data: op.before_data as Json | null,
+			after_data: op.after_data as Json | null,
 			changed_by: userId,
 			change_source: 'chat',
 			chat_session_id: sessionId

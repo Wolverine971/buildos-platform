@@ -60,6 +60,48 @@ const VALID_ENTITY_TYPES: Set<EntityReferenceType> = new Set([
 ]);
 
 // =============================================================================
+// Escaping Helpers
+// =============================================================================
+
+/**
+ * Basic HTML escaper to prevent injection in rendered links
+ */
+function escapeHtml(value: string): string {
+	return value
+		.replace(/&/g, '&amp;')
+		.replace(/</g, '&lt;')
+		.replace(/>/g, '&gt;')
+		.replace(/"/g, '&quot;')
+		.replace(/'/g, '&#39;');
+}
+
+/**
+ * Sanitize hrefs to block javascript/data URLs while keeping relative links
+ */
+function sanitizeHref(rawHref: string): string {
+	const href = rawHref.trim();
+
+	// Allow relative paths and hash anchors
+	if (href.startsWith('/') || href.startsWith('#')) {
+		return escapeHtml(href);
+	}
+
+	try {
+		const url = new URL(href, 'http://localhost'); // base to parse relative URLs
+		const protocol = url.protocol.toLowerCase();
+		const allowedProtocols = new Set(['http:', 'https:', 'mailto:', 'tel:']);
+
+		if (allowedProtocols.has(protocol)) {
+			return escapeHtml(href);
+		}
+	} catch {
+		// Fall through to unsafe
+	}
+
+	return '#';
+}
+
+// =============================================================================
 // Parser Functions
 // =============================================================================
 
@@ -178,9 +220,10 @@ export function renderEntityReferencesAsHtml(
 		}
 
 		const ref: EntityReference = { type: normalizedType, id, displayText };
-		const href = linkBuilder(ref);
+		const href = sanitizeHref(linkBuilder(ref));
+		const safeText = escapeHtml(displayText);
 
-		return `<a href="${href}" class="entity-ref entity-ref-${normalizedType}" data-entity-type="${normalizedType}" data-entity-id="${id}">${displayText}</a>`;
+		return `<a href="${href}" class="entity-ref entity-ref-${normalizedType}" data-entity-type="${normalizedType}" data-entity-id="${id}">${safeText}</a>`;
 	});
 }
 

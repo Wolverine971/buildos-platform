@@ -6,15 +6,17 @@
 	import Card from '$lib/components/ui/Card.svelte';
 	import CardBody from '$lib/components/ui/CardBody.svelte';
 	import type { ResolvedTemplate } from '$lib/services/ontology/template-resolver.service';
+	import { getDeliverablePrimitive, type DeliverablePrimitive } from '$lib/types/onto';
 
 	// ✅ Proper Svelte 5 props interface
 	interface Props {
 		projectId: string;
 		onClose: () => void;
 		onCreated: (outputId: string) => void;
+		primitive?: DeliverablePrimitive | 'all';
 	}
 
-	let { projectId, onClose, onCreated }: Props = $props();
+	let { projectId, onClose, onCreated, primitive = 'all' }: Props = $props();
 
 	let templates = $state<ResolvedTemplate[]>([]);
 	let selectedTemplate = $state<ResolvedTemplate | null>(null);
@@ -25,6 +27,15 @@
 
 	// ✅ FIX: Track if user has manually edited the name
 	let userHasEditedName = $state(false);
+	let primitiveFilter = $state<DeliverablePrimitive | 'all'>(
+		primitive === 'all' ? 'all' : primitive
+	);
+
+	const filteredTemplates = $derived(() =>
+		primitiveFilter === 'all'
+			? templates
+			: templates.filter((t) => getDeliverablePrimitive(t.type_key) === primitiveFilter)
+	);
 
 	onMount(async () => {
 		await loadTemplates();
@@ -49,9 +60,11 @@
 		error = null; // ✅ FIX: Clear error on retry
 
 		try {
-			const response = await fetch(
-				'/api/onto/templates?scope=output&primitive=TEXT_DOCUMENT'
-			);
+			const primitiveParam =
+				primitive && primitive !== 'all'
+					? `&primitive=${encodeURIComponent(primitive)}`
+					: '';
+			const response = await fetch(`/api/onto/templates?scope=output${primitiveParam}`);
 			if (!response.ok) {
 				throw new Error('Failed to load templates');
 			}
@@ -129,6 +142,14 @@
 	function handleNameInput() {
 		userHasEditedName = true;
 	}
+
+	const primitiveOptions: Array<{ value: DeliverablePrimitive | 'all'; label: string }> = [
+		{ value: 'all', label: 'All' },
+		{ value: 'document', label: 'Document' },
+		{ value: 'event', label: 'Event' },
+		{ value: 'collection', label: 'Collection' },
+		{ value: 'external', label: 'External' }
+	];
 </script>
 
 <!-- Modal Backdrop with BuildOS styling -->
@@ -208,9 +229,25 @@
 					<Button onclick={loadTemplates} variant="ghost" size="sm">Try Again</Button>
 				</div>
 			{:else if !selectedTemplate}
+				<div class="flex flex-wrap items-center gap-2 mb-4">
+					<p class="text-xs uppercase tracking-wide text-muted-foreground">Primitive</p>
+					{#each primitiveOptions as option}
+						<button
+							type="button"
+							onclick={() => (primitiveFilter = option.value)}
+							class="px-3 py-1.5 text-sm rounded-lg border border-border transition-colors {primitiveFilter ===
+							option.value
+								? 'bg-accent text-accent-foreground'
+								: 'bg-muted text-muted-foreground hover:bg-muted/80'}"
+						>
+							{option.label}
+						</button>
+					{/each}
+				</div>
+
 				<!-- Template Selection Grid -->
 				<div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-					{#each templates as template}
+					{#each filteredTemplates as template}
 						<button
 							onclick={() => selectTemplate(template)}
 							class="text-left p-4 border border-border rounded-lg bg-card hover:border-accent shadow-ink transition-all duration-200 group focus:outline-none focus:ring-2 focus:ring-ring"
@@ -227,10 +264,15 @@
 									>
 										{template.name}
 									</h3>
-									<p class="text-xs text-muted-foreground mb-2 line-clamp-2">
-										{template.metadata.description || template.type_key}
+									<p class="text-xs text-muted-foreground mb-1 line-clamp-2">
+										{template.metadata?.description || template.type_key}
 									</p>
-									{#if template.metadata.typical_use_by && Array.isArray(template.metadata.typical_use_by)}
+									<p
+										class="text-[11px] text-muted-foreground uppercase tracking-wide"
+									>
+										{getDeliverablePrimitive(template.type_key) || 'document'}
+									</p>
+									{#if template.metadata?.typical_use_by && Array.isArray(template.metadata.typical_use_by)}
 										<div class="flex flex-wrap gap-1">
 											{#each template.metadata.typical_use_by.slice(0, 3) as persona}
 												<span
@@ -244,6 +286,12 @@
 								</div>
 							</div>
 						</button>
+					{:else}
+						<div
+							class="col-span-full p-6 border border-dashed border-border rounded-lg text-center text-sm text-muted-foreground"
+						>
+							No templates for this primitive. Try another filter.
+						</div>
 					{/each}
 				</div>
 			{:else}

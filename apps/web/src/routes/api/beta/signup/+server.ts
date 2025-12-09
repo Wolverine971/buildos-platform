@@ -134,8 +134,8 @@ async function sendBetaWelcomeEmail(signupData: any) {
 					: ''
 			}
 
-			<div style="background-color: #dbeafe; border: 1px solid #3b82f6; padding: 20px; border-radius: 12px; margin: 24px 0;">
-				<h3 style="margin-top: 0; color: #1e40af;">💡 In the meantime...</h3>
+			<div style="background-color: #FDF4ED; border: 1px solid #D96C1E; padding: 20px; border-radius: 12px; margin: 24px 0;">
+				<h3 style="margin-top: 0; color: #D96C1E;">In the meantime...</h3>
 				<p style="margin-bottom: 0;">Keep an eye on your inbox! I'll be sending you beta access details soon, along with some behind-the-scenes updates on what we're building. If you have any questions or just want to chat about productivity, hit reply - I read every email personally.</p>
 			</div>
 
@@ -143,11 +143,11 @@ async function sendBetaWelcomeEmail(signupData: any) {
 
 			<p>Cheers,<br>
 			<strong>DJ</strong><br>
-			<span style="color: #6b7280; font-size: 14px;">Founder, BuildOS</span></p>
+			<span style="color: #6F6E75; font-size: 14px;">Founder, BuildOS</span></p>
 
-			<hr style="margin: 32px 0; border: none; border-top: 1px solid #e5e7eb;">
+			<hr style="margin: 32px 0; border: none; border-top: 1px solid #DCD9D1;">
 
-			<div style="font-size: 14px; color: #6b7280;">
+			<div style="font-size: 14px; color: #6F6E75;">
 				<p><strong>Your beta application details:</strong></p>
 				<p>📧 Email: ${signupData.email}<br>
 				${signupData.job_title ? `💼 Role: ${signupData.job_title}<br>` : ''}
@@ -203,12 +203,12 @@ async function sendBetaSignupNotification(signupData: any) {
 				${signupData.referral_source ? `<p><strong>Heard about us:</strong> ${signupData.referral_source}</p>` : ''}
 			</div>
 
-			<div style="background-color: #ffffff; border: 1px solid #e5e7eb; padding: 16px; border-radius: 8px; margin: 16px 0;">
+			<div style="background-color: #FAF9F7; border: 1px solid #DCD9D1; padding: 16px; border-radius: 8px; margin: 16px 0;">
 				<h3>Why they're interested:</h3>
 				<p style="font-style: italic;">"${signupData.why_interested}"</p>
 			</div>
 
-			<div style="background-color: #ffffff; border: 1px solid #e5e7eb; padding: 16px; border-radius: 8px; margin: 16px 0;">
+			<div style="background-color: #FAF9F7; border: 1px solid #DCD9D1; padding: 16px; border-radius: 8px; margin: 16px 0;">
 				<h3>Their biggest challenge:</h3>
 				<p style="font-style: italic;">"${signupData.biggest_challenge}"</p>
 			</div>
@@ -216,7 +216,7 @@ async function sendBetaSignupNotification(signupData: any) {
 			${
 				signupData.productivity_tools && signupData.productivity_tools.length > 0
 					? `
-				<div style="background-color: #f9fafb; padding: 16px; border-radius: 8px; margin: 16px 0;">
+				<div style="background-color: #FAF9F7; padding: 16px; border-radius: 8px; margin: 16px 0;">
 					<h3>Tools they currently use:</h3>
 					<p>${signupData.productivity_tools.join(', ')}</p>
 				</div>
@@ -224,7 +224,7 @@ async function sendBetaSignupNotification(signupData: any) {
 					: ''
 			}
 
-			<div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #e5e7eb; color: #6b7280; font-size: 14px;">
+			<div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #DCD9D1; color: #6F6E75; font-size: 14px;">
 				<p>Review this application in the admin panel and approve/decline as needed.</p>
 				<p>Signup ID: ${signupData.id}</p>
 			</div>
