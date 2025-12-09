@@ -1,376 +1,298 @@
 // apps/web/src/routes/history/+page.server.ts
+/**
+ * History Page - Server Load
+ *
+ * Lists both braindumps and chat sessions for a unified history view.
+ * Supports filtering by type, status, and search.
+ */
+
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
+
+/** Braindump from onto_braindumps table */
+interface OntoBraindump {
+	id: string;
+	content: string;
+	title: string | null;
+	topics: string[] | null;
+	summary: string | null;
+	status: 'pending' | 'processing' | 'processed' | 'failed';
+	chat_session_id: string | null;
+	metadata: Record<string, unknown> | null;
+	processed_at: string | null;
+	error_message: string | null;
+	created_at: string;
+	updated_at: string;
+}
+
+/** Chat session from chat_sessions table */
+interface ChatSession {
+	id: string;
+	title: string | null;
+	auto_title: string | null;
+	chat_topics: string[] | null;
+	summary: string | null;
+	context_type: string;
+	entity_id: string | null;
+	message_count: number | null;
+	status: string;
+	created_at: string | null;
+	updated_at: string | null;
+	last_message_at: string | null;
+}
+
+/** Unified history item for display */
+export interface HistoryItem {
+	id: string;
+	type: 'braindump' | 'chat_session';
+	title: string;
+	preview: string;
+	topics: string[];
+	status: string;
+	createdAt: string;
+	messageCount?: number;
+	contextType?: string;
+	entityId?: string | null;
+	originalData: OntoBraindump | ChatSession;
+}
+
+/** Type filter options */
+type TypeFilter = 'all' | 'braindumps' | 'chats';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
 	const { safeGetSession, supabase } = locals;
 	const { user } = await safeGetSession();
 
 	if (!user) {
-		redirect(302, '/');
+		redirect(302, '/auth/login');
 	}
 
 	try {
-		const currentYear = new Date().getFullYear();
-		const selectedYear = parseInt(url.searchParams.get('year') || currentYear.toString());
-		const searchQuery = url.searchParams.get('search') || '';
-		const selectedDay = url.searchParams.get('day') || '';
-		const braindumpId = url.searchParams.get('braindump') || '';
+		// Parse query parameters
+		const limit = Math.min(parseInt(url.searchParams.get('limit') || '50'), 100);
+		const offset = parseInt(url.searchParams.get('offset') || '0');
+		const typeFilter = (url.searchParams.get('type') as TypeFilter) || 'all';
+		const status = url.searchParams.get('status') || null;
+		const search = url.searchParams.get('search') || '';
+		const selectedId = url.searchParams.get('id') || null;
+		const selectedType = url.searchParams.get('itemType') || null;
 
-		// Get contribution data directly instead of API call
-		let contributionData = { contributions: [], stats: {} };
-		try {
-			contributionData = await getContributionData(
-				supabase,
-				user.id,
-				selectedYear,
-				searchQuery
-			);
-		} catch (err) {
-			console.warn('Could not fetch contribution data:', err);
-		}
+		// Fetch data based on type filter
+		let braindumps: OntoBraindump[] = [];
+		let chatSessions: ChatSession[] = [];
+		let braindumpCount = 0;
+		let chatSessionCount = 0;
 
-		// Helper function to enrich braindumps with computed properties
-		function enrichBraindumps(braindumps: any[], braindumpLinks: any[], projects: any[]) {
-			return braindumps.map((braindump) => {
-				// Get links for this braindump
-				const links = braindumpLinks.filter((link) => link.brain_dump_id === braindump.id);
-
-				// Determine if this is unlinked (no project_id in brain_dumps table)
-				const isUnlinked = !braindump.project_id;
-
-				// Get linked project if exists
-				const linkedProject = braindump.project_id
-					? projects.find((p) => p.id === braindump.project_id)
-					: null;
-
-				// Determine if this is a new project
-				let isNewProject = false;
-				if (linkedProject && links.length > 0) {
-					const braindumpCreated = new Date(braindump.updated_at);
-					const projectCreated = new Date(linkedProject.updated_at);
-
-					// Check if there's a brain_dump_link with this project_id
-					const hasProjectLink = links.some(
-						(link) => link.project_id === braindump.project_id
-					);
-
-					if (hasProjectLink) {
-						const timeDiff = Math.abs(
-							projectCreated.getTime() - braindumpCreated.getTime()
-						);
-						// If created within 5 minutes of each other, consider it a new project
-						isNewProject = timeDiff <= 5 * 60 * 1000;
-					}
-				}
-
-				// Determine linked types from brain_dump_links
-				const linkedTypes = [];
-				links.forEach((link) => {
-					if (link.project_id) linkedTypes.push('project');
-					if (link.task_id) linkedTypes.push('task');
-					if (link.note_id) linkedTypes.push('note');
-				});
-
-				return {
-					...braindump,
-					brain_dump_links: links,
-					isNote: isUnlinked,
-					isNewProject,
-					linkedProject,
-					linkedTypes: [...new Set(linkedTypes)] // Remove duplicates
-				};
-			});
-		}
-
-		// Helper function to build braindump query with filters
-		function buildBraindumpQuery() {
-			let query = supabase
-				.from('brain_dumps')
-				.select('*')
+		// Fetch braindumps if needed
+		if (typeFilter === 'all' || typeFilter === 'braindumps') {
+			let braindumpQuery = supabase
+				.from('onto_braindumps')
+				.select('*', { count: 'exact' })
 				.eq('user_id', user.id)
-				.order('updated_at', { ascending: false });
+				.order('created_at', { ascending: false });
 
-			// Apply year filter
-			const year = selectedYear;
-			const startOfYear = `${year}-01-01T00:00:00.000Z`;
-			const endOfYear = `${year}-12-31T23:59:59.999Z`;
-			query = query.gte('updated_at', startOfYear).lte('updated_at', endOfYear);
-
-			// Apply day filter if specified
-			if (selectedDay) {
-				const startOfDay = `${selectedDay}T00:00:00.000Z`;
-				const endOfDay = `${selectedDay}T23:59:59.999Z`;
-				query = query.gte('updated_at', startOfDay).lte('updated_at', endOfDay);
+			// Apply status filter for braindumps
+			if (status && ['pending', 'processing', 'processed', 'failed'].includes(status)) {
+				braindumpQuery = braindumpQuery.eq('status', status);
 			}
 
 			// Apply search filter
-			if (searchQuery) {
-				query = query.or(
-					`title.ilike.%${searchQuery}%,content.ilike.%${searchQuery}%,ai_summary.ilike.%${searchQuery}%`
+			if (search) {
+				braindumpQuery = braindumpQuery.or(
+					`content.ilike.%${search}%,title.ilike.%${search}%,summary.ilike.%${search}%`
 				);
 			}
 
-			return query;
-		}
+			const { data: braindumpData, error: braindumpError, count } = await braindumpQuery;
 
-		// Get braindumps based on filters
-		let braindumps = [];
-		let braindumpIds = [];
-
-		if (selectedDay) {
-			// Get braindumps for selected day
-			const { data: dayData, error: dayError } = await buildBraindumpQuery().limit(50);
-
-			if (dayError) {
-				console.error('Error fetching day braindumps:', dayError);
+			if (!braindumpError) {
+				braindumps = (braindumpData || []) as OntoBraindump[];
+				braindumpCount = count || 0;
 			} else {
-				braindumps = dayData || [];
-			}
-		} else {
-			// Get recent braindumps (last 7 days or search results)
-			let recentQuery = buildBraindumpQuery();
-
-			if (!searchQuery) {
-				// Only limit to last 7 days if not searching
-				const sevenDaysAgo = new Date();
-				sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-				recentQuery = recentQuery.gte('updated_at', sevenDaysAgo.toISOString());
-			}
-
-			const { data: recentData, error: recentError } = await recentQuery.limit(20);
-
-			if (recentError) {
-				console.error('Error fetching recent braindumps:', recentError);
-			} else {
-				braindumps = recentData || [];
+				console.error('Error fetching braindumps:', braindumpError);
 			}
 		}
 
-		braindumpIds = braindumps.map((b) => b.id);
+		// Fetch chat sessions if needed
+		if (typeFilter === 'all' || typeFilter === 'chats') {
+			let chatQuery = supabase
+				.from('chat_sessions')
+				.select('*', { count: 'exact' })
+				.eq('user_id', user.id)
+				.neq('status', 'archived')
+				.order('created_at', { ascending: false });
 
-		// Handle specific braindump URL parameter
-		let urlBraindump = null;
-		let urlBraindumpInResults = false;
+			// Apply status filter for chat sessions (only show completed/active)
+			if (status === 'processed') {
+				// "processed" means has summary
+				chatQuery = chatQuery.not('summary', 'is', null);
+			}
 
-		if (braindumpId) {
-			// Check if the requested braindump is already in our results
-			urlBraindumpInResults = braindumps.some((b) => b.id === braindumpId);
+			// Apply search filter
+			if (search) {
+				chatQuery = chatQuery.or(
+					`title.ilike.%${search}%,auto_title.ilike.%${search}%,summary.ilike.%${search}%`
+				);
+			}
 
-			if (!urlBraindumpInResults) {
-				// Fetch the specific braindump
-				const { data: specificBraindump, error: specificError } = await supabase
-					.from('brain_dumps')
-					.select('*')
-					.eq('id', braindumpId)
-					.eq('user_id', user.id)
-					.single();
+			// Only include sessions with meaningful content (3+ messages or summary)
+			// This filters out empty or very brief sessions
+			chatQuery = chatQuery.or('message_count.gte.3,summary.not.is.null');
 
-				if (!specificError && specificBraindump) {
-					urlBraindump = specificBraindump;
-					// Add to our list for link processing
-					braindumps.push(specificBraindump);
-					braindumpIds.push(specificBraindump.id);
+			const { data: chatData, error: chatError, count } = await chatQuery;
+
+			if (!chatError) {
+				chatSessions = (chatData || []) as ChatSession[];
+				chatSessionCount = count || 0;
+			} else {
+				console.error('Error fetching chat sessions:', chatError);
+			}
+		}
+
+		// Merge and sort items by creation date
+		const allItems: HistoryItem[] = [
+			...braindumps.map(
+				(b): HistoryItem => ({
+					id: b.id,
+					type: 'braindump',
+					title: b.title || 'Untitled Braindump',
+					preview:
+						b.summary ||
+						b.content.slice(0, 200) + (b.content.length > 200 ? '...' : ''),
+					topics: b.topics || [],
+					status: b.status,
+					createdAt: b.created_at,
+					originalData: b
+				})
+			),
+			...chatSessions.map(
+				(c): HistoryItem => ({
+					id: c.id,
+					type: 'chat_session',
+					title: c.title || c.auto_title || 'Untitled Chat',
+					preview: c.summary || 'No summary available',
+					topics: c.chat_topics || [],
+					status: c.status,
+					createdAt: c.created_at || new Date().toISOString(),
+					messageCount: c.message_count || 0,
+					contextType: c.context_type,
+					entityId: c.entity_id,
+					originalData: c
+				})
+			)
+		];
+
+		// Sort by creation date descending
+		allItems.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+		// Apply pagination to merged results
+		const paginatedItems = allItems.slice(offset, offset + limit);
+		const totalItems = allItems.length;
+
+		// Get selected item if specified
+		let selectedItem: HistoryItem | null = null;
+		if (selectedId && selectedType) {
+			if (selectedType === 'braindump') {
+				const found = braindumps.find((b) => b.id === selectedId);
+				if (found) {
+					selectedItem = {
+						id: found.id,
+						type: 'braindump',
+						title: found.title || 'Untitled Braindump',
+						preview: found.summary || found.content.slice(0, 200),
+						topics: found.topics || [],
+						status: found.status,
+						createdAt: found.created_at,
+						originalData: found
+					};
+				}
+			} else if (selectedType === 'chat_session') {
+				const found = chatSessions.find((c) => c.id === selectedId);
+				if (found) {
+					selectedItem = {
+						id: found.id,
+						type: 'chat_session',
+						title: found.title || found.auto_title || 'Untitled Chat',
+						preview: found.summary || 'No summary available',
+						topics: found.chat_topics || [],
+						status: found.status,
+						createdAt: found.created_at || new Date().toISOString(),
+						messageCount: found.message_count || 0,
+						contextType: found.context_type,
+						entityId: found.entity_id,
+						originalData: found
+					};
 				}
 			}
 		}
 
-		// Get brain_dump_links for all braindumps in a single query
-		let braindumpLinks = [];
-		if (braindumpIds.length > 0) {
-			const { data: linksData, error: linksError } = await supabase
-				.from('brain_dump_links')
-				.select('*')
-				.in('brain_dump_id', braindumpIds);
+		// Calculate stats
+		const { data: braindumpStats } = await supabase
+			.from('onto_braindumps')
+			.select('status')
+			.eq('user_id', user.id);
 
-			if (linksError) {
-				console.error('Error fetching brain dump links:', linksError);
-			} else {
-				braindumpLinks = linksData || [];
-			}
-		}
+		const { data: chatStats } = await supabase
+			.from('chat_sessions')
+			.select('id, summary')
+			.eq('user_id', user.id)
+			.neq('status', 'archived')
+			.or('message_count.gte.3,summary.not.is.null');
 
-		// Get all unique project IDs we need to fetch
-		const projectIds = [
-			...new Set([
-				...braindumps.map((b) => b.project_id).filter(Boolean),
-				...braindumpLinks.map((l) => l.project_id).filter(Boolean)
-			])
-		];
-
-		// Get projects in a single query
-		let projects = [];
-		if (projectIds.length > 0) {
-			const { data: projectsData, error: projectsError } = await supabase
-				.from('projects')
-				.select('id, name, slug, description, status, updated_at')
-				.in('id', projectIds)
-				.eq('user_id', user.id);
-
-			if (projectsError) {
-				console.error('Error fetching projects:', projectsError);
-			} else {
-				projects = projectsData || [];
-			}
-		}
-
-		// Enrich braindumps with computed properties
-		const enrichedBraindumps = enrichBraindumps(braindumps, braindumpLinks, projects);
-
-		// Remove the URL braindump from the main list if it was added separately
-		let finalBraindumps = enrichedBraindumps;
-		if (urlBraindump && !urlBraindumpInResults) {
-			finalBraindumps = enrichedBraindumps.filter((b) => b.id !== braindumpId);
-		}
-
-		// Separate day and recent braindumps for the component
-		const dayBraindumps = selectedDay ? finalBraindumps : [];
-		const recentBraindumps = !selectedDay ? finalBraindumps : [];
-
-		// Get the enriched URL braindump if it exists
-		let enrichedUrlBraindump = null;
-		if (braindumpId) {
-			enrichedUrlBraindump = enrichedBraindumps.find((b) => b.id === braindumpId);
-		}
-
-		// Get available years for navigation
-		const availableYears = [];
-		const firstYear = contributionData.stats?.firstBraindumpDate
-			? new Date(contributionData.stats.firstBraindumpDate).getFullYear()
-			: currentYear;
-
-		for (let year = firstYear; year <= currentYear; year++) {
-			availableYears.push(year);
-		}
+		const stats = {
+			totalBraindumps: braindumpStats?.length || 0,
+			processedBraindumps:
+				braindumpStats?.filter((b) => b.status === 'processed').length || 0,
+			pendingBraindumps: braindumpStats?.filter((b) => b.status === 'pending').length || 0,
+			totalChatSessions: chatStats?.length || 0,
+			chatSessionsWithSummary: chatStats?.filter((c) => c.summary).length || 0
+		};
 
 		return {
-			contributionData,
-			dayBraindumps,
-			recentBraindumps,
-			availableYears,
+			items: paginatedItems,
+			totalItems,
+			braindumpCount,
+			chatSessionCount,
+			stats,
 			filters: {
-				selectedYear,
-				searchQuery,
-				selectedDay,
-				currentYear,
-				braindumpId
+				limit,
+				offset,
+				typeFilter,
+				status,
+				search,
+				selectedId,
+				selectedType
 			},
-			stats: contributionData.stats || {},
-			urlBraindump: enrichedUrlBraindump,
-			urlBraindumpInResults,
+			selectedItem,
+			hasMore: totalItems > offset + limit,
 			user
 		};
 	} catch (err) {
-		console.error('Error loading braindumps page:', err);
+		console.error('Error loading history page:', err);
 		return {
-			contributionData: { contributions: [], stats: {} },
-			dayBraindumps: [],
-			recentBraindumps: [],
-			availableYears: [new Date().getFullYear()],
-			filters: {
-				selectedYear: new Date().getFullYear(),
-				searchQuery: '',
-				selectedDay: '',
-				currentYear: new Date().getFullYear(),
-				braindumpId: ''
+			items: [] as HistoryItem[],
+			totalItems: 0,
+			braindumpCount: 0,
+			chatSessionCount: 0,
+			stats: {
+				totalBraindumps: 0,
+				processedBraindumps: 0,
+				pendingBraindumps: 0,
+				totalChatSessions: 0,
+				chatSessionsWithSummary: 0
 			},
-			stats: {},
-			urlBraindump: null,
-			urlBraindumpInResults: false,
+			filters: {
+				limit: 50,
+				offset: 0,
+				typeFilter: 'all' as TypeFilter,
+				status: null,
+				search: '',
+				selectedId: null,
+				selectedType: null
+			},
+			selectedItem: null,
+			hasMore: false,
 			user: null
 		};
 	}
 };
-
-// Move the contribution data logic to a helper function
-async function getContributionData(
-	supabase: any,
-	userId: string,
-	year: number,
-	searchQuery?: string
-) {
-	const startOfYear = `${year}-01-01T00:00:00.000Z`;
-	const endOfYear = `${year}-12-31T23:59:59.999Z`;
-
-	// First, get the first braindump date for this user
-	const { data: firstBraindump } = await supabase
-		.from('brain_dumps')
-		.select('updated_at')
-		.eq('user_id', userId)
-		.order('updated_at', { ascending: true })
-		.limit(1);
-
-	const firstBraindumpDate = firstBraindump?.[0]?.updated_at
-		? new Date(firstBraindump[0].updated_at)
-		: new Date();
-
-	// Build the contribution query
-	let query = supabase
-		.from('brain_dumps')
-		.select('updated_at')
-		.eq('user_id', userId)
-		.gte('updated_at', startOfYear)
-		.lte('updated_at', endOfYear);
-
-	// Apply search filter if provided
-	if (searchQuery) {
-		query = query.or(
-			`title.ilike.%${searchQuery}%,content.ilike.%${searchQuery}%,ai_summary.ilike.%${searchQuery}%,ai_insights.ilike.%${searchQuery}%`
-		);
-	}
-
-	const { data: braindumps, error } = await query;
-
-	if (error) {
-		throw error;
-	}
-
-	// Create contribution map and process data (same logic as your API)
-	const contributionMap: Record<string, number> = {};
-
-	const startDate = new Date(startOfYear);
-	const endDate = new Date(endOfYear);
-
-	for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-		const dateStr = d.toISOString().split('T')[0];
-		contributionMap[dateStr] = 0;
-	}
-
-	braindumps?.forEach((braindump) => {
-		const date = new Date(braindump.updated_at);
-		const dateStr = date.toISOString().split('T')[0];
-		contributionMap[dateStr] = (contributionMap[dateStr] || 0) + 1;
-	});
-
-	const contributions = Object.entries(contributionMap).map(([date, count]) => ({
-		date,
-		count,
-		level: getContributionLevel(count)
-	}));
-
-	const totalBraindumps = braindumps?.length || 0;
-	const daysWithActivity = contributions.filter((c) => c.count > 0).length;
-	const maxDailyCount = Math.max(...contributions.map((c) => c.count));
-	const avgDailyCount = totalBraindumps / 365;
-
-	return {
-		contributions,
-		stats: {
-			year,
-			totalBraindumps,
-			daysWithActivity,
-			maxDailyCount,
-			avgDailyCount: Math.round(avgDailyCount * 100) / 100,
-			firstBraindumpDate: firstBraindumpDate.toISOString(),
-			searchQuery
-		}
-	};
-}
-
-function getContributionLevel(count: number): number {
-	if (count === 0) return 0;
-	if (count === 1) return 1;
-	if (count <= 3) return 2;
-	if (count <= 6) return 3;
-	return 4;
-}

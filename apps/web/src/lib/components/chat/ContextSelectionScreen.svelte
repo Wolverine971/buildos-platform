@@ -478,7 +478,7 @@
 					<div class="flex flex-col items-center justify-center py-16 text-center">
 						<p class="mb-4 text-sm text-red-600 dark:text-red-400">{projectsError}</p>
 						<button
-							onclick={loadProjects}
+							onclick={() => loadProjects()}
 							class="text-sm font-medium text-blue-600 hover:underline dark:text-blue-400"
 						>
 							Try again
@@ -609,6 +609,7 @@
 		overflow: hidden;
 		display: -webkit-box;
 		-webkit-line-clamp: 2;
+		line-clamp: 2;
 		-webkit-box-orient: vertical;
 	}
 </style>

@@ -285,47 +285,39 @@
 
 <Modal bind:isOpen={open} size="xl" onClose={handleClose} showCloseButton={false}>
 	{#snippet header()}
-		<!-- Inkprint header with strip texture -->
+		<!-- Compact Inkprint header -->
 		<div
-			class="flex-shrink-0 bg-muted/50 border-b border-border px-3 py-3 sm:px-6 sm:py-5 flex items-start justify-between gap-2 sm:gap-4 tx tx-strip tx-weak"
+			class="flex-shrink-0 bg-muted/50 border-b border-border px-3 py-2 sm:px-4 sm:py-2.5 flex items-center justify-between gap-2 tx tx-strip tx-weak"
 		>
-			<div class="space-y-1 sm:space-y-2 min-w-0 flex-1">
-				<p
-					class="text-[10px] sm:text-xs font-semibold uppercase tracking-[0.3em] sm:tracking-[0.4em] text-muted-foreground"
+			<div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+				<div
+					class="p-1.5 rounded bg-purple-500/10 text-purple-600 dark:text-purple-400 shrink-0"
 				>
-					Reverse Engineer
-				</p>
-				<h2 class="text-lg sm:text-2xl font-bold leading-tight truncate text-foreground">
-					{goalName || 'Goal'}
-				</h2>
-				<div class="flex flex-wrap items-center gap-1.5 sm:gap-3 text-xs sm:text-sm">
-					<span
-						class="px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-semibold bg-accent/20 text-accent-foreground"
+					<Target class="w-4 h-4" />
+				</div>
+				<div class="min-w-0 flex-1">
+					<h2
+						class="text-sm sm:text-base font-semibold leading-tight truncate text-foreground"
 					>
+						{goalName || 'Reverse Engineer Goal'}
+					</h2>
+					<p class="text-[10px] sm:text-xs text-muted-foreground mt-0.5">
 						{editableMilestones.length} milestone{editableMilestones.length === 1
 							? ''
+							: 's'} · {getTotalTaskCount()} task{getTotalTaskCount() === 1
+							? ''
 							: 's'}
-					</span>
-					<span
-						class="px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-semibold bg-accent/20 text-accent-foreground"
-					>
-						{getTotalTaskCount()} task{getTotalTaskCount() === 1 ? '' : 's'}
-					</span>
+					</p>
 				</div>
 			</div>
 			<Button
 				variant="ghost"
 				size="sm"
 				onclick={handleClose}
-				class="text-muted-foreground hover:text-foreground shrink-0 !p-1.5 sm:!p-2"
+				class="text-muted-foreground hover:text-foreground shrink-0 !p-1 sm:!p-1.5"
 				disabled={loading}
 			>
-				<svg
-					class="w-4 h-4 sm:w-5 sm:h-5"
-					fill="none"
-					stroke="currentColor"
-					viewBox="0 0 24 24"
-				>
+				<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 					<path
 						stroke-linecap="round"
 						stroke-linejoin="round"

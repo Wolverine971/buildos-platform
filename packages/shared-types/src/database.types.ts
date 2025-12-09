@@ -1886,6 +1886,7 @@ export type Database = {
           message_count: number | null
           preferences: Json | null
           status: string
+          summary: string | null
           title: string | null
           tool_call_count: number | null
           total_tokens_used: number | null
@@ -1908,6 +1909,7 @@ export type Database = {
           message_count?: number | null
           preferences?: Json | null
           status?: string
+          summary?: string | null
           title?: string | null
           tool_call_count?: number | null
           total_tokens_used?: number | null
@@ -1930,6 +1932,7 @@ export type Database = {
           message_count?: number | null
           preferences?: Json | null
           status?: string
+          summary?: string | null
           title?: string | null
           tool_call_count?: number | null
           total_tokens_used?: number | null

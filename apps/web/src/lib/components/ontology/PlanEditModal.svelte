@@ -300,106 +300,48 @@
 	showCloseButton={false}
 >
 	{#snippet header()}
-		<!-- Inkprint header with strip texture -->
+		<!-- Compact Inkprint header -->
 		<div
-			class="flex-shrink-0 bg-muted/50 border-b border-border px-3 py-3 sm:px-6 sm:py-6 flex flex-col gap-3 sm:gap-5 tx tx-strip tx-weak"
+			class="flex-shrink-0 bg-muted/50 border-b border-border px-3 py-2 sm:px-4 sm:py-2.5 flex items-center justify-between gap-2 tx tx-strip tx-weak"
 		>
-			<div class="flex items-start justify-between gap-2 sm:gap-4">
-				<div class="space-y-1 sm:space-y-2 min-w-0 flex-1">
-					<p
-						class="text-[10px] sm:text-xs font-semibold uppercase tracking-[0.3em] sm:tracking-[0.4em] text-muted-foreground"
-					>
-						Plan overview
-					</p>
+			<div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+				<div class="p-1.5 rounded bg-blue-500/10 text-blue-600 dark:text-blue-400 shrink-0">
+					<Clock class="w-4 h-4" />
+				</div>
+				<div class="min-w-0 flex-1">
 					<h2
-						class="text-lg sm:text-2xl font-bold leading-tight truncate text-foreground"
+						class="text-sm sm:text-base font-semibold leading-tight truncate text-foreground"
 					>
-						{name || plan?.name || 'Plan details'}
+						{name || plan?.name || 'Plan'}
 					</h2>
-					<div class="flex flex-wrap items-center gap-1.5 sm:gap-3 text-xs sm:text-sm">
-						<span class={stateBadgeClasses}>{stateKey}</span>
-						<span
-							class="hidden sm:inline font-mono text-xs tracking-wide text-muted-foreground"
-							>{planTypeLabel}</span
-						>
-						<span class="text-muted-foreground">#{planIdLabel}</span>
-					</div>
-					{#if lastUpdatedLabel}
-						<p class="text-xs sm:text-sm text-muted-foreground hidden sm:block">
-							Updated {lastUpdatedLabel}
-						</p>
-					{/if}
-				</div>
-				<Button
-					variant="ghost"
-					size="sm"
-					onclick={handleClose}
-					class="text-muted-foreground hover:text-foreground shrink-0 !p-1.5 sm:!p-2"
-					disabled={isSaving || isDeleting}
-				>
-					<svg
-						class="w-4 h-4 sm:w-5 sm:h-5"
-						fill="none"
-						stroke="currentColor"
-						viewBox="0 0 24 24"
-					>
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M6 18L18 6M6 6l12 12"
-						></path>
-					</svg>
-				</Button>
-			</div>
-
-			<div class="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4 text-xs sm:text-sm">
-				<div class="rounded bg-muted/50 p-2 sm:p-3">
-					<p
-						class="text-[10px] sm:text-xs uppercase tracking-[0.2em] sm:tracking-[0.3em] text-muted-foreground"
-					>
-						Duration
-					</p>
-					<p class="text-sm sm:text-lg font-semibold truncate text-foreground">
-						{durationLabel}
-					</p>
-				</div>
-				<div class="rounded bg-muted/50 p-2 sm:p-3">
-					<p
-						class="text-[10px] sm:text-xs uppercase tracking-[0.2em] sm:tracking-[0.3em] text-muted-foreground"
-					>
-						Start
-					</p>
-					<p class="text-sm sm:text-lg font-semibold truncate text-foreground">
-						{startLabel}
-					</p>
-				</div>
-				<div class="rounded bg-muted/50 p-2 sm:p-3">
-					<p
-						class="text-[10px] sm:text-xs uppercase tracking-[0.2em] sm:tracking-[0.3em] text-muted-foreground"
-					>
-						End
-					</p>
-					<p class="text-sm sm:text-lg font-semibold truncate text-foreground">
-						{endLabel}
-					</p>
-				</div>
-				<div class="rounded bg-muted/50 p-2 sm:p-3">
-					<p
-						class="text-[10px] sm:text-xs uppercase tracking-[0.2em] sm:tracking-[0.3em] text-muted-foreground"
-					>
-						Tasks
-					</p>
-					<p class="text-sm sm:text-lg font-semibold text-foreground">
-						{planTasks.length}
-						{#if completionPercent !== null}
-							<span class="text-xs sm:text-sm font-medium text-muted-foreground">
-								({completionPercent}%)</span
-							>
-						{/if}
+					<p class="text-[10px] sm:text-xs text-muted-foreground mt-0.5">
+						{#if plan?.created_at}Created {new Date(plan.created_at).toLocaleDateString(
+								undefined,
+								{ month: 'short', day: 'numeric' }
+							)}{/if}{#if plan?.updated_at && plan.updated_at !== plan.created_at}
+							· Updated {new Date(plan.updated_at).toLocaleDateString(undefined, {
+								month: 'short',
+								day: 'numeric'
+							})}{/if}
 					</p>
 				</div>
 			</div>
+			<Button
+				variant="ghost"
+				size="sm"
+				onclick={handleClose}
+				class="text-muted-foreground hover:text-foreground shrink-0 !p-1 sm:!p-1.5"
+				disabled={isSaving || isDeleting}
+			>
+				<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						stroke-width="2"
+						d="M6 18L18 6M6 6l12 12"
+					></path>
+				</svg>
+			</Button>
 		</div>
 	{/snippet}
 
@@ -629,85 +571,58 @@
 								{/if}
 							</CardBody>
 						</Card>
-
-						<!-- Danger zone - compact inline on mobile -->
-						<div
-							class="flex items-center justify-between gap-2 p-2 sm:p-3 rounded-lg border border-destructive/30 bg-destructive/5"
-						>
-							<div class="flex items-center gap-1.5 sm:gap-2 min-w-0">
-								<Trash2 class="w-3 h-3 sm:w-4 sm:h-4 text-destructive shrink-0" />
-								<span
-									class="text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-destructive"
-								>
-									Danger
-								</span>
-							</div>
-							{#if !showDeleteConfirm}
-								<Button
-									variant="danger"
-									size="sm"
-									onclick={() => (showDeleteConfirm = true)}
-									disabled={isDeleting}
-									class="text-[10px] sm:text-xs px-2 py-1 sm:px-3 sm:py-1.5"
-								>
-									Delete
-								</Button>
-							{:else}
-								<div class="flex items-center gap-1.5 sm:gap-2">
-									<Button
-										variant="ghost"
-										size="sm"
-										onclick={() => (showDeleteConfirm = false)}
-										disabled={isDeleting}
-										class="text-[10px] sm:text-xs px-2 py-1"
-									>
-										No
-									</Button>
-									<Button
-										variant="danger"
-										size="sm"
-										onclick={handleDelete}
-										loading={isDeleting}
-										class="text-[10px] sm:text-xs px-2 py-1 sm:px-3 sm:py-1.5"
-									>
-										Confirm
-									</Button>
-								</div>
-							{/if}
-						</div>
 					</div>
 				</div>
 			{/if}
 		</div>
 	{/snippet}
 
-	<!-- Footer Actions - buttons on one row, smaller on mobile -->
+	<!-- Footer Actions - delete on left, cancel/save on right -->
 	{#snippet footer()}
 		{#if !isLoading && plan}
 			<div
-				class="flex flex-row items-center justify-end gap-2 sm:gap-4 p-2 sm:p-6 border-t border-border bg-muted/30 tx tx-grain tx-weak"
+				class="flex flex-row items-center justify-between gap-2 sm:gap-4 p-2 sm:p-4 border-t border-border bg-muted/30 tx tx-grain tx-weak"
 			>
-				<Button
-					variant="ghost"
-					size="sm"
-					onclick={handleClose}
-					disabled={isSaving || isDeleting}
-					class="text-xs sm:text-sm px-2 sm:px-4"
-				>
-					Cancel
-				</Button>
-				<Button
-					variant="primary"
-					size="sm"
-					onclick={handleSave}
-					loading={isSaving}
-					disabled={formDisabled || !name.trim()}
-					class="text-xs sm:text-sm px-2 sm:px-4"
-				>
-					<Save class="w-3 h-3 sm:w-4 sm:h-4" />
-					<span class="hidden sm:inline">Save changes</span>
-					<span class="sm:hidden">Save</span>
-				</Button>
+				<!-- Delete button on left -->
+				<div class="flex items-center gap-1.5 sm:gap-2">
+					<Trash2 class="w-3 h-3 sm:w-4 sm:h-4 text-red-500 shrink-0" />
+					<Button
+						type="button"
+						variant="danger"
+						size="sm"
+						onclick={() => (showDeleteConfirm = true)}
+						disabled={isDeleting || isSaving}
+						class="text-[10px] sm:text-xs px-2 py-1 sm:px-3 sm:py-1.5"
+					>
+						<span class="hidden sm:inline">Delete</span>
+						<span class="sm:hidden">Del</span>
+					</Button>
+				</div>
+
+				<!-- Cancel and Save on right -->
+				<div class="flex flex-row items-center gap-2">
+					<Button
+						variant="ghost"
+						size="sm"
+						onclick={handleClose}
+						disabled={isSaving || isDeleting}
+						class="text-xs sm:text-sm px-2 sm:px-4"
+					>
+						Cancel
+					</Button>
+					<Button
+						variant="primary"
+						size="sm"
+						onclick={handleSave}
+						loading={isSaving}
+						disabled={formDisabled || !name.trim()}
+						class="text-xs sm:text-sm px-2 sm:px-4"
+					>
+						<Save class="w-3 h-3 sm:w-4 sm:h-4" />
+						<span class="hidden sm:inline">Save changes</span>
+						<span class="sm:hidden">Save</span>
+					</Button>
+				</div>
 			</div>
 		{/if}
 	{/snippet}

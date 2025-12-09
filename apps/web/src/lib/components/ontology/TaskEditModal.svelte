@@ -29,7 +29,6 @@
 		FileText,
 		ExternalLink,
 		CircleCheck,
-		SquareCheck,
 		Target,
 		Flag,
 		Layers,
@@ -79,10 +78,6 @@
 	import RichMarkdownEditor from '$lib/components/ui/RichMarkdownEditor.svelte';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
 	import { toastService } from '$lib/stores/toast.store';
-	import {
-		getTaskStateBadgeClass,
-		getPriorityBadgeClass
-	} from '$lib/utils/ontology-badge-styles';
 	import {
 		fetchTaskDocuments,
 		promoteTaskDocument,
@@ -180,71 +175,7 @@
 		return workspaceDocuments.find((doc) => doc.document.id === selectedWorkspaceDocId);
 	});
 
-	const priorityLevels = [
-		{
-			value: 1,
-			label: 'P1 • Critical',
-			badgeIntent: 'urgent' as const,
-			description: 'Requires immediate attention'
-		},
-		{
-			value: 2,
-			label: 'P2 • High',
-			badgeIntent: 'high' as const,
-			description: 'High impact deliverable'
-		},
-		{
-			value: 3,
-			label: 'P3 • Medium',
-			badgeIntent: 'medium' as const,
-			description: 'Balanced workload'
-		},
-		{
-			value: 4,
-			label: 'P4 • Low',
-			badgeIntent: 'low' as const,
-			description: 'Can be scheduled later'
-		},
-		{
-			value: 5,
-			label: 'P5 • Nice to have',
-			badgeIntent: 'low' as const,
-			description: 'Quality-of-life improvement'
-		}
-	];
-
-	const defaultPriorityLevel = priorityLevels[2];
-
-	const priorityDisplay = $derived.by(() => {
-		const numericPriority = Number(priority);
-		return (
-			priorityLevels.find((level) => level.value === numericPriority) ?? defaultPriorityLevel
-		);
-	});
-
-	const stateBadgeClasses = $derived(
-		`px-2 py-1 rounded-sm text-xs font-semibold uppercase tracking-wide ${getTaskStateBadgeClass(stateKey)}`
-	);
-
-	const priorityBadgeClasses = $derived(
-		`px-2 py-1 rounded-sm text-xs font-semibold uppercase tracking-wide ${getPriorityBadgeClass(priorityDisplay?.badgeIntent)}`
-	);
-
-	const selectedPlan = $derived.by(() => plans.find((plan) => plan.id === planId) ?? null);
-	const selectedGoal = $derived.by(() => goals.find((goal) => goal.id === goalId) ?? null);
-	const selectedMilestone = $derived.by(
-		() => milestones.find((milestone) => milestone.id === milestoneId) ?? null
-	);
-
-	const milestoneDueLabel = $derived.by(() =>
-		selectedMilestone?.due_at ? formatDateOnly(selectedMilestone.due_at) : null
-	);
-
 	const detailsFormId = $derived(`task-edit-${taskId}-details`);
-	const formattedStateLabel = $derived(formatStateLabel(stateKey));
-	const lastUpdatedLabel = $derived(
-		formatTimestamp(task?.updated_at ?? task?.created_at ?? null)
-	);
 
 	// FSM related
 	let allowedTransitions = $state<any[]>([]);
@@ -315,26 +246,11 @@
 		return typeof milestoneId === 'string' && milestoneId.trim().length > 0 ? milestoneId : '';
 	}
 
-	function formatStateLabel(value: string): string {
-		return value
-			.split('_')
-			.filter(Boolean)
-			.map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
-			.join(' ');
-	}
-
 	function formatTimestamp(value: string | null | undefined): string | null {
 		if (!value) return null;
 		const date = new Date(value);
 		if (Number.isNaN(date.getTime())) return null;
 		return date.toLocaleString();
-	}
-
-	function formatDateOnly(value: string | null | undefined): string | null {
-		if (!value) return null;
-		const date = new Date(value);
-		if (Number.isNaN(date.getTime())) return null;
-		return date.toLocaleDateString();
 	}
 
 	function formatDateTimeForInput(date: Date | string | null): string {
@@ -753,123 +669,67 @@
 	showCloseButton={false}
 >
 	{#snippet header()}
-		<!-- Inkprint header with strip texture -->
+		<!-- Compact Inkprint header -->
 		<div
-			class="flex-shrink-0 bg-muted/50 border-b border-border px-3 py-3 sm:px-6 sm:py-5 flex flex-col gap-2 sm:gap-4 tx tx-strip tx-weak"
+			class="flex-shrink-0 bg-muted/50 border-b border-border px-3 py-2 sm:px-4 sm:py-2.5 flex items-center justify-between gap-2 tx tx-strip tx-weak"
 		>
-			<div class="flex items-start justify-between gap-2 sm:gap-4">
-				<div class="space-y-1 sm:space-y-2 min-w-0 flex-1">
-					<p
-						class="text-[10px] sm:text-xs font-semibold uppercase tracking-[0.3em] sm:tracking-[0.4em] text-muted-foreground"
-					>
-						Task overview
-					</p>
-					<h2
-						class="text-lg sm:text-2xl font-bold leading-tight truncate text-foreground"
-					>
-						{title || task?.title || 'Task details'}
-					</h2>
-					<div class="flex flex-wrap items-center gap-1.5 sm:gap-3 text-xs sm:text-sm">
-						<span
-							class="px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-semibold capitalize bg-accent/20 text-accent-foreground"
-							>{stateKey}</span
-						>
-						<span
-							class="hidden sm:inline font-mono text-xs tracking-wide text-muted-foreground"
-							>{template?.type_key || task?.type_key || 'task'}</span
-						>
-						<span class="text-muted-foreground"
-							>#{task?.id?.slice(0, 8) || taskId.slice(0, 8)}</span
-						>
-					</div>
-				</div>
-				<Button
-					variant="ghost"
-					size="sm"
-					onclick={handleClose}
-					class="text-muted-foreground hover:text-foreground shrink-0 !p-1.5 sm:!p-2"
-					disabled={isSaving || isDeleting}
+			<div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+				<div
+					class="p-1.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shrink-0"
 				>
-					<svg
-						class="w-4 h-4 sm:w-5 sm:h-5"
-						fill="none"
-						stroke="currentColor"
-						viewBox="0 0 24 24"
-					>
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M6 18L18 6M6 6l12 12"
-						></path>
-					</svg>
-				</Button>
-			</div>
-
-			<div class="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4 text-xs sm:text-sm">
-				<div class="rounded bg-muted/50 p-2 sm:p-3">
-					<p
-						class="text-[10px] sm:text-xs uppercase tracking-[0.2em] sm:tracking-[0.3em] text-muted-foreground"
-					>
-						Priority
-					</p>
-					<p class="text-sm sm:text-lg font-semibold text-foreground">
-						{priorityDisplay?.label?.split(' - ')[0] || 'P3'}
-					</p>
+					<ListChecks class="w-4 h-4" />
 				</div>
-				<div class="rounded bg-muted/50 p-2 sm:p-3">
-					<p
-						class="text-[10px] sm:text-xs uppercase tracking-[0.2em] sm:tracking-[0.3em] text-muted-foreground"
+				<div class="min-w-0 flex-1">
+					<h2
+						class="text-sm sm:text-base font-semibold leading-tight truncate text-foreground"
 					>
-						Due
-					</p>
-					<p class="text-sm sm:text-lg font-semibold truncate text-foreground">
-						{dueAt
-							? new Date(dueAt).toLocaleDateString(undefined, {
-									month: 'short',
-									day: 'numeric'
-								})
-							: 'No date'}
-					</p>
-				</div>
-				<div class="rounded bg-muted/50 p-2 sm:p-3">
-					<p
-						class="text-[10px] sm:text-xs uppercase tracking-[0.2em] sm:tracking-[0.3em] text-muted-foreground"
-					>
-						Docs
-					</p>
-					<p class="text-sm sm:text-lg font-semibold text-foreground">
-						{deliverableDocuments.length}
-					</p>
-				</div>
-				<div class="rounded bg-muted/50 p-2 sm:p-3">
-					<p
-						class="text-[10px] sm:text-xs uppercase tracking-[0.2em] sm:tracking-[0.3em] text-muted-foreground"
-					>
-						Plan
-					</p>
-					<p class="text-sm sm:text-lg font-semibold truncate text-foreground">
-						{selectedPlan?.name || 'None'}
+						{title || task?.title || 'Task'}
+					</h2>
+					<p class="text-[10px] sm:text-xs text-muted-foreground mt-0.5">
+						{#if task?.created_at}Created {new Date(task.created_at).toLocaleDateString(
+								undefined,
+								{ month: 'short', day: 'numeric' }
+							)}{/if}{#if task?.updated_at && task.updated_at !== task.created_at}
+							· Updated {new Date(task.updated_at).toLocaleDateString(undefined, {
+								month: 'short',
+								day: 'numeric'
+							})}{/if}
 					</p>
 				</div>
 			</div>
+			<Button
+				variant="ghost"
+				size="sm"
+				onclick={handleClose}
+				class="text-muted-foreground hover:text-foreground shrink-0 !p-1 sm:!p-1.5"
+				disabled={isSaving || isDeleting}
+			>
+				<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						stroke-width="2"
+						d="M6 18L18 6M6 6l12 12"
+					></path>
+				</svg>
+			</Button>
 		</div>
 	{/snippet}
 
 	{#snippet children()}
 		{#if isLoading}
 			<div class="flex items-center justify-center py-16 px-6">
-				<Loader class="w-8 h-8 animate-spin text-slate-400" />
+				<Loader class="w-8 h-8 animate-spin text-muted-foreground" />
 			</div>
 		{:else if !task}
 			<div class="text-center py-12 px-6">
-				<p class="text-red-600 dark:text-red-400">Task not found</p>
+				<p class="text-destructive">Task not found</p>
 			</div>
 		{:else}
 			<div class="px-3 py-3 sm:px-6 sm:py-6">
-				<!-- Tab Navigation - Industrial Tool Tabs -->
+				<!-- Tab Navigation - Inkprint Tool Tabs -->
 				<div
-					class="flex items-center gap-1 mb-6 border-b border-slate-200 dark:border-slate-700"
+					class="flex items-center gap-1 mb-6 border-b border-border"
 					role="tablist"
 					aria-label="Task views"
 				>
@@ -917,117 +777,6 @@
 									id={detailsFormId}
 									onsubmit={handleSave}
 								>
-									<!-- Template Info Banner -->
-									{#if template}
-										<div
-											class="rounded border border-blue-200 dark:border-blue-800 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 p-4 lg:col-span-3"
-										>
-											<div class="flex items-center gap-3">
-												<div
-													class="p-2 rounded bg-surface-elevated shadow-subtle"
-												>
-													<SquareCheck class="w-4 h-4 text-accent-blue" />
-												</div>
-												<div class="flex-1 min-w-0">
-													<div class="flex items-center gap-2 flex-wrap">
-														<h4
-															class="text-sm font-semibold text-blue-900 dark:text-blue-100"
-														>
-															{template.name}
-														</h4>
-														<Badge variant="info" size="sm">
-															{template.type_key}
-														</Badge>
-													</div>
-													{#if template.metadata?.description}
-														<p
-															class="text-xs text-blue-700 dark:text-blue-300 mt-0.5 line-clamp-1"
-														>
-															{template.metadata.description}
-														</p>
-													{/if}
-												</div>
-												{#if template.metadata?.typical_duration}
-													<div
-														class="hidden sm:flex items-center gap-1.5 px-2 py-1 bg-surface-panel rounded text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide"
-													>
-														{template.metadata.typical_duration}
-													</div>
-												{/if}
-											</div>
-										</div>
-									{/if}
-
-									<!-- Status Overview Card -->
-									<div class="industrial-panel rounded-sm p-4 lg:col-span-3">
-										<div>
-											<div class="space-y-3">
-												<!-- Badges Row -->
-												<div class="flex flex-wrap items-center gap-2">
-													<span class={stateBadgeClasses}
-														>{formattedStateLabel}</span
-													>
-													<span class={priorityBadgeClasses}
-														>{priorityDisplay?.label}</span
-													>
-													<span
-														class="text-xs sm:text-sm text-gray-500 dark:text-slate-400"
-													>
-														{priorityDisplay?.description}
-													</span>
-												</div>
-
-												<!-- Associations Row -->
-												{#if selectedPlan || selectedGoal || selectedMilestone}
-													<div
-														class="flex flex-wrap gap-2 text-xs text-gray-600 dark:text-gray-300"
-													>
-														{#if selectedPlan}
-															<span
-																class="px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-200 whitespace-nowrap"
-															>
-																Plan • {selectedPlan.name}
-															</span>
-														{/if}
-														{#if selectedGoal}
-															<span
-																class="px-3 py-1 rounded-full bg-purple-50 dark:bg-purple-900/30 text-purple-800 dark:text-purple-200 whitespace-nowrap"
-															>
-																Goal • {selectedGoal.name}
-															</span>
-														{/if}
-														{#if selectedMilestone}
-															<span
-																class="px-3 py-1 rounded-full bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-200 whitespace-nowrap"
-															>
-																Milestone • {selectedMilestone.title}
-																{#if milestoneDueLabel}
-																	({milestoneDueLabel})
-																{/if}
-															</span>
-														{/if}
-													</div>
-												{/if}
-
-												<!-- Metadata Row -->
-												<div
-													class="text-xs text-gray-500 dark:text-slate-400 flex flex-wrap gap-3 sm:gap-4"
-												>
-													<span>
-														Last updated {lastUpdatedLabel ??
-															'Not available'}
-													</span>
-													{#if !template}
-														<span
-															>Template • {task.props?.type_key ||
-																'Basic Task'}</span
-														>
-													{/if}
-												</div>
-											</div>
-										</div>
-									</div>
-
 									<!-- Main Form (Left 2 columns) -->
 									<div class="lg:col-span-2 space-y-6">
 										<!-- Task Title -->
@@ -1169,9 +918,7 @@
 
 										<!-- FSM State Visualizer -->
 										{#if task.type_key && allowedTransitions.length > 0}
-											<div
-												class="pt-4 border-t border-gray-200 dark:border-gray-700"
-											>
+											<div class="pt-4 border-t border-border">
 												<FSMStateVisualizer
 													entityId={taskId}
 													entityKind="task"
@@ -1204,14 +951,12 @@
 										{/if}
 
 										<!-- Connected Documents List -->
-										<div
-											class="pt-6 border-t border-gray-200 dark:border-gray-700"
-										>
+										<div class="pt-6 border-t border-border">
 											{#if deliverableDocuments.length > 0}
 												<h3
-													class="text-sm font-semibold text-slate-900 dark:text-white mb-4 flex items-center gap-2"
+													class="text-sm font-semibold text-foreground mb-4 flex items-center gap-2"
 												>
-													<FileText class="w-4 h-4 text-blue-500" />
+													<FileText class="w-4 h-4 text-accent" />
 													Connected Documents
 													<Badge variant="info" size="sm">
 														{deliverableDocuments.length}
@@ -1250,21 +995,21 @@
 																	>
 																		<div class="flex-1 min-w-0">
 																			<p
-																				class="font-semibold text-sm sm:text-base text-slate-900 dark:text-white truncate group-hover:text-blue-700 dark:group-hover:text-blue-300 transition-colors"
+																				class="font-semibold text-sm sm:text-base text-foreground truncate group-hover:text-accent transition-colors"
 																			>
 																				{doc.document
 																					.title ||
 																					'Untitled Document'}
 																			</p>
 																			<p
-																				class="text-xs text-gray-500 dark:text-slate-400 truncate mt-0.5"
+																				class="text-xs text-muted-foreground truncate mt-0.5"
 																			>
 																				{doc.document
 																					.type_key}
 																			</p>
 																			{#if timestamp}
 																				<p
-																					class="text-xs text-slate-400 dark:text-gray-500 mt-1"
+																					class="text-xs text-muted-foreground/70 mt-1"
 																				>
 																					Updated {timestamp}
 																				</p>
@@ -1282,7 +1027,7 @@
 																					'draft'}
 																			</Badge>
 																			<ExternalLink
-																				class="w-4 h-4 text-slate-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors"
+																				class="w-4 h-4 text-muted-foreground group-hover:text-accent transition-colors"
 																				aria-hidden="true"
 																			/>
 																		</div>
@@ -1297,11 +1042,11 @@
 													<CardBody padding="lg">
 														<div class="text-center">
 															<FileText
-																class="w-8 h-8 text-slate-400 mx-auto mb-3"
+																class="w-8 h-8 text-muted-foreground mx-auto mb-3"
 																aria-hidden="true"
 															/>
 															<p
-																class="text-sm text-gray-600 dark:text-slate-400 mb-4"
+																class="text-sm text-muted-foreground mb-4"
 															>
 																Keep critical briefs and notes
 																attached to this task so the
@@ -1350,86 +1095,13 @@
 
 									<!-- Sidebar (Right column) -->
 									<div class="space-y-4">
-										<!-- Task Metadata -->
-										<Card variant="elevated">
-											<CardHeader variant="default">
-												<h3
-													class="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide flex items-center gap-2"
-												>
-													<span
-														class="w-1.5 h-1.5 bg-blue-500 rounded-full"
-													></span>
-													Task Information
-												</h3>
-											</CardHeader>
-											<CardBody padding="sm">
-												<div class="space-y-2 text-sm">
-													<div class="flex justify-between items-center">
-														<span
-															class="text-gray-600 dark:text-slate-400"
-															>Template:</span
-														>
-														<Badge variant="info" size="sm">
-															{template?.name ||
-																task.props?.type_key ||
-																'Basic Task'}
-														</Badge>
-													</div>
-
-													<div class="flex justify-between">
-														<span
-															class="text-gray-600 dark:text-slate-400"
-															>ID:</span
-														>
-														<span
-															class="font-mono text-xs text-gray-500"
-															>{task.id.slice(0, 8)}...</span
-														>
-													</div>
-
-													{#if task.created_at}
-														<div class="flex justify-between">
-															<span
-																class="text-gray-600 dark:text-slate-400"
-																>Created:</span
-															>
-															<span
-																class="text-slate-900 dark:text-white"
-															>
-																{new Date(
-																	task.created_at
-																).toLocaleDateString()}
-															</span>
-														</div>
-													{/if}
-
-													{#if task.updated_at}
-														<div class="flex justify-between">
-															<span
-																class="text-gray-600 dark:text-slate-400"
-																>Updated:</span
-															>
-															<span
-																class="text-slate-900 dark:text-white"
-															>
-																{new Date(
-																	task.updated_at
-																).toLocaleDateString()}
-															</span>
-														</div>
-													{/if}
-												</div>
-											</CardBody>
-										</Card>
-
 										<!-- Linked Entities -->
 										<Card variant="elevated">
 											<CardHeader variant="default">
 												<h3
-													class="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide flex items-center gap-2"
+													class="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2"
 												>
-													<span
-														class="w-1.5 h-1.5 bg-purple-500 rounded-full"
+													<span class="w-1.5 h-1.5 bg-accent rounded-full"
 													></span>
 													Linked Entities
 												</h3>
@@ -1441,10 +1113,10 @@
 														{#if linkedEntities?.plans && linkedEntities.plans.length > 0}
 															<div class="space-y-1.5">
 																<div
-																	class="flex items-center gap-1.5 text-xs font-medium text-gray-600 dark:text-slate-400"
+																	class="flex items-center gap-1.5 text-xs font-medium text-muted-foreground"
 																>
 																	<Layers
-																		class="w-3.5 h-3.5 text-blue-500"
+																		class="w-3.5 h-3.5 text-accent"
 																	/>
 																	Plans
 																	<Badge variant="info" size="sm"
@@ -1459,25 +1131,25 @@
 																			openPlanModal(
 																				entity.id
 																			)}
-																		class="w-full text-left px-2 py-1.5 rounded hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors group"
+																		class="w-full text-left px-2 py-1.5 rounded hover:bg-muted transition-colors group"
 																	>
 																		<div
 																			class="flex items-center justify-between gap-2"
 																		>
 																			<span
-																				class="text-sm text-slate-900 dark:text-white truncate group-hover:text-blue-600 dark:group-hover:text-blue-400"
+																				class="text-sm text-foreground truncate group-hover:text-accent"
 																			>
 																				{getEntityDisplayName(
 																					entity
 																				)}
 																			</span>
 																			<ExternalLink
-																				class="w-3.5 h-3.5 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+																				class="w-3.5 h-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
 																			/>
 																		</div>
 																		{#if entity.state_key}
 																			<span
-																				class="text-xs text-gray-500 dark:text-slate-500"
+																				class="text-xs text-muted-foreground"
 																				>{entity.state_key}</span
 																			>
 																		{/if}
@@ -1490,7 +1162,7 @@
 														{#if linkedEntities?.goals && linkedEntities.goals.length > 0}
 															<div class="space-y-1.5">
 																<div
-																	class="flex items-center gap-1.5 text-xs font-medium text-gray-600 dark:text-slate-400"
+																	class="flex items-center gap-1.5 text-xs font-medium text-muted-foreground"
 																>
 																	<Target
 																		class="w-3.5 h-3.5 text-purple-500"
@@ -1508,25 +1180,25 @@
 																			openGoalModal(
 																				entity.id
 																			)}
-																		class="w-full text-left px-2 py-1.5 rounded hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors group"
+																		class="w-full text-left px-2 py-1.5 rounded hover:bg-muted transition-colors group"
 																	>
 																		<div
 																			class="flex items-center justify-between gap-2"
 																		>
 																			<span
-																				class="text-sm text-slate-900 dark:text-white truncate group-hover:text-purple-600 dark:group-hover:text-purple-400"
+																				class="text-sm text-foreground truncate group-hover:text-accent"
 																			>
 																				{getEntityDisplayName(
 																					entity
 																				)}
 																			</span>
 																			<ExternalLink
-																				class="w-3.5 h-3.5 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+																				class="w-3.5 h-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
 																			/>
 																		</div>
 																		{#if entity.state_key}
 																			<span
-																				class="text-xs text-gray-500 dark:text-slate-500"
+																				class="text-xs text-muted-foreground"
 																				>{entity.state_key}</span
 																			>
 																		{/if}
@@ -1539,7 +1211,7 @@
 														{#if linkedEntities?.milestones && linkedEntities.milestones.length > 0}
 															<div class="space-y-1.5">
 																<div
-																	class="flex items-center gap-1.5 text-xs font-medium text-gray-600 dark:text-slate-400"
+																	class="flex items-center gap-1.5 text-xs font-medium text-muted-foreground"
 																>
 																	<Flag
 																		class="w-3.5 h-3.5 text-amber-500"
@@ -1552,13 +1224,13 @@
 																</div>
 																{#each linkedEntities.milestones as entity}
 																	<div
-																		class="w-full text-left px-2 py-1.5 rounded bg-gray-50 dark:bg-slate-800/50"
+																		class="w-full text-left px-2 py-1.5 rounded bg-muted/50"
 																	>
 																		<div
 																			class="flex items-center justify-between gap-2"
 																		>
 																			<span
-																				class="text-sm text-slate-900 dark:text-white truncate"
+																				class="text-sm text-foreground truncate"
 																			>
 																				{getEntityDisplayName(
 																					entity
@@ -1567,7 +1239,7 @@
 																		</div>
 																		{#if entity.due_at}
 																			<span
-																				class="text-xs text-gray-500 dark:text-slate-500"
+																				class="text-xs text-muted-foreground"
 																				>Due {new Date(
 																					entity.due_at
 																				).toLocaleDateString()}</span
@@ -1582,7 +1254,7 @@
 														{#if linkedEntities?.documents && linkedEntities.documents.length > 0}
 															<div class="space-y-1.5">
 																<div
-																	class="flex items-center gap-1.5 text-xs font-medium text-gray-600 dark:text-slate-400"
+																	class="flex items-center gap-1.5 text-xs font-medium text-muted-foreground"
 																>
 																	<FileText
 																		class="w-3.5 h-3.5 text-cyan-500"
@@ -1600,25 +1272,25 @@
 																			openDocumentModal(
 																				entity.id
 																			)}
-																		class="w-full text-left px-2 py-1.5 rounded hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors group"
+																		class="w-full text-left px-2 py-1.5 rounded hover:bg-muted transition-colors group"
 																	>
 																		<div
 																			class="flex items-center justify-between gap-2"
 																		>
 																			<span
-																				class="text-sm text-slate-900 dark:text-white truncate group-hover:text-cyan-600 dark:group-hover:text-cyan-400"
+																				class="text-sm text-foreground truncate group-hover:text-accent"
 																			>
 																				{getEntityDisplayName(
 																					entity
 																				)}
 																			</span>
 																			<ExternalLink
-																				class="w-3.5 h-3.5 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+																				class="w-3.5 h-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
 																			/>
 																		</div>
 																		{#if entity.type_key}
 																			<span
-																				class="text-xs text-gray-500 dark:text-slate-500"
+																				class="text-xs text-muted-foreground"
 																				>{entity.type_key
 																					.split('.')
 																					.pop()}</span
@@ -1633,7 +1305,7 @@
 														{#if linkedEntities?.dependentTasks && linkedEntities.dependentTasks.length > 0}
 															<div class="space-y-1.5">
 																<div
-																	class="flex items-center gap-1.5 text-xs font-medium text-gray-600 dark:text-slate-400"
+																	class="flex items-center gap-1.5 text-xs font-medium text-muted-foreground"
 																>
 																	<ListChecks
 																		class="w-3.5 h-3.5 text-green-500"
@@ -1652,20 +1324,20 @@
 																			openLinkedTaskModal(
 																				entity.id
 																			)}
-																		class="w-full text-left px-2 py-1.5 rounded hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors group"
+																		class="w-full text-left px-2 py-1.5 rounded hover:bg-muted transition-colors group"
 																	>
 																		<div
 																			class="flex items-center justify-between gap-2"
 																		>
 																			<span
-																				class="text-sm text-slate-900 dark:text-white truncate group-hover:text-green-600 dark:group-hover:text-green-400"
+																				class="text-sm text-foreground truncate group-hover:text-accent"
 																			>
 																				{getEntityDisplayName(
 																					entity
 																				)}
 																			</span>
 																			<ExternalLink
-																				class="w-3.5 h-3.5 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+																				class="w-3.5 h-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
 																			/>
 																		</div>
 																		<div
@@ -1673,12 +1345,12 @@
 																		>
 																			{#if entity.state_key}
 																				<span
-																					class="text-xs text-gray-500 dark:text-slate-500"
+																					class="text-xs text-muted-foreground"
 																					>{entity.state_key}</span
 																				>
 																			{/if}
 																			<span
-																				class="text-xs text-gray-400 dark:text-slate-600"
+																				class="text-xs text-muted-foreground/70"
 																				>({formatRelLabel(
 																					entity.edge_rel,
 																					entity.edge_direction
@@ -1694,7 +1366,7 @@
 														{#if linkedEntities?.outputs && linkedEntities.outputs.length > 0}
 															<div class="space-y-1.5">
 																<div
-																	class="flex items-center gap-1.5 text-xs font-medium text-gray-600 dark:text-slate-400"
+																	class="flex items-center gap-1.5 text-xs font-medium text-muted-foreground"
 																>
 																	<FileOutput
 																		class="w-3.5 h-3.5 text-violet-500"
@@ -1707,13 +1379,13 @@
 																</div>
 																{#each linkedEntities.outputs as entity}
 																	<div
-																		class="w-full text-left px-2 py-1.5 rounded bg-gray-50 dark:bg-slate-800/50"
+																		class="w-full text-left px-2 py-1.5 rounded bg-muted/50"
 																	>
 																		<div
 																			class="flex items-center justify-between gap-2"
 																		>
 																			<span
-																				class="text-sm text-slate-900 dark:text-white truncate"
+																				class="text-sm text-foreground truncate"
 																			>
 																				{getEntityDisplayName(
 																					entity
@@ -1722,7 +1394,7 @@
 																		</div>
 																		{#if entity.type_key}
 																			<span
-																				class="text-xs text-gray-500 dark:text-slate-500"
+																				class="text-xs text-muted-foreground"
 																				>{entity.type_key
 																					.split('.')
 																					.pop()}</span
@@ -1736,15 +1408,13 @@
 												{:else}
 													<div class="text-center py-4">
 														<Link2Off
-															class="w-6 h-6 text-gray-400 dark:text-slate-500 mx-auto mb-2"
+															class="w-6 h-6 text-muted-foreground mx-auto mb-2"
 														/>
-														<p
-															class="text-xs text-gray-500 dark:text-slate-400"
-														>
+														<p class="text-xs text-muted-foreground">
 															No linked entities yet
 														</p>
 														<p
-															class="text-xs text-gray-400 dark:text-slate-500 mt-1"
+															class="text-xs text-muted-foreground/70 mt-1"
 														>
 															Link this task to plans, goals, or
 															documents using the form fields
@@ -1771,7 +1441,7 @@
 													<div>
 														<label
 															for="sidebar-due-date"
-															class="block text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-slate-400 mb-1.5"
+															class="block text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1.5"
 														>
 															Due Date
 														</label>
@@ -1783,11 +1453,11 @@
 															bind:value={dueAt}
 															disabled={isSaving}
 															size="sm"
-															class="border-gray-200 dark:border-gray-700 bg-surface-clarity dark:bg-surface-elevated focus:ring-2 focus:ring-accent-orange w-full"
+															class="border-border bg-card focus:ring-2 focus:ring-accent w-full"
 														/>
 														{#if dueAt}
 															<p
-																class="mt-1.5 text-xs text-gray-500 dark:text-slate-400"
+																class="mt-1.5 text-xs text-muted-foreground"
 															>
 																{new Date(dueAt).toLocaleString(
 																	'en-US',
@@ -1802,7 +1472,7 @@
 															</p>
 														{:else}
 															<p
-																class="mt-1.5 text-xs text-gray-500 dark:text-slate-400 italic"
+																class="mt-1.5 text-xs text-muted-foreground italic"
 															>
 																No deadline set
 															</p>
@@ -1825,17 +1495,14 @@
 											<CardBody padding="sm">
 												{#if isSeriesMaster && seriesMeta}
 													<div class="space-y-2 text-sm">
-														<p
-															class="text-indigo-900 dark:text-indigo-100"
-														>
+														<p class="text-foreground">
 															This task controls a recurring series.
 														</p>
-														<ul
-															class="text-indigo-800 dark:text-indigo-100 space-y-1"
-														>
+														<ul class="text-muted-foreground space-y-1">
 															{#if seriesId}
 																<li>
-																	<span class="font-medium"
+																	<span
+																		class="font-medium text-foreground"
 																		>Series ID:</span
 																	>
 																	<span
@@ -1845,14 +1512,16 @@
 																</li>
 															{/if}
 															<li>
-																<span class="font-medium"
+																<span
+																	class="font-medium text-foreground"
 																	>Timezone:</span
 																>
 																{seriesMeta.timezone}
 															</li>
 															{#if seriesMeta.rrule}
 																<li class="break-all">
-																	<span class="font-medium"
+																	<span
+																		class="font-medium text-foreground"
 																		>RRULE:</span
 																	>
 																	{seriesMeta.rrule}
@@ -1860,7 +1529,8 @@
 															{/if}
 															{#if seriesMeta.instance_count}
 																<li>
-																	<span class="font-medium"
+																	<span
+																		class="font-medium text-foreground"
 																		>Instances:</span
 																	>
 																	{seriesMeta.instance_count}
@@ -1870,9 +1540,7 @@
 													</div>
 
 													{#if seriesActionError}
-														<p
-															class="text-sm text-red-600 dark:text-red-400"
-														>
+														<p class="text-sm text-destructive">
 															{seriesActionError}
 														</p>
 													{/if}
@@ -1881,16 +1549,16 @@
 														<Button
 															size="sm"
 															variant="danger"
-															class="w-full"
+															class="w-full mt-3"
 															onclick={() =>
 																(showSeriesDeleteConfirm = true)}
 														>
 															Delete Series
 														</Button>
 													{:else}
-														<div class="space-y-2">
+														<div class="space-y-2 mt-3">
 															<p
-																class="text-sm text-indigo-900 dark:text-indigo-100"
+																class="text-sm text-muted-foreground"
 															>
 																Delete this series? Completed
 																instances remain unless you force
@@ -1944,9 +1612,7 @@
 														</div>
 													{/if}
 												{:else if isSeriesInstance && seriesMeta}
-													<p
-														class="text-sm text-indigo-900 dark:text-indigo-100"
-													>
+													<p class="text-sm text-muted-foreground">
 														This task is part of a recurring series
 														{#if seriesMeta.master_task_id}
 															(master task: {seriesMeta.master_task_id})
@@ -1954,9 +1620,7 @@
 														. Manage recurrence from the series master.
 													</p>
 												{:else}
-													<p
-														class="text-sm text-indigo-900 dark:text-indigo-100"
-													>
+													<p class="text-sm text-muted-foreground mb-3">
 														Automatically create future instances on a
 														schedule.
 													</p>
@@ -1984,7 +1648,7 @@
 											>
 												<div class="flex items-center gap-3 flex-1 min-w-0">
 													<FileText
-														class="w-5 h-5 text-blue-500 shrink-0 hidden sm:block"
+														class="w-5 h-5 text-accent shrink-0 hidden sm:block"
 														aria-hidden="true"
 													/>
 													<div class="flex-1 min-w-0">
@@ -2050,12 +1714,10 @@
 											<CardBody padding="lg">
 												<div class="text-center">
 													<FileText
-														class="w-12 h-12 text-slate-400 mx-auto mb-3"
+														class="w-12 h-12 text-muted-foreground mx-auto mb-3"
 														aria-hidden="true"
 													/>
-													<p
-														class="text-gray-600 dark:text-slate-400 mb-4"
-													>
+													<p class="text-muted-foreground mb-4">
 														No document selected. Create one to get
 														started.
 													</p>
@@ -2083,7 +1745,7 @@
 	<!-- Footer Actions - buttons on one row, smaller on mobile -->
 	{#snippet footer()}
 		<div
-			class="flex flex-row items-center justify-between gap-2 sm:gap-4 p-2 sm:p-4 border-t border-gray-200 dark:border-gray-700 bg-surface-panel dark:bg-slate-900/30 dither-surface"
+			class="flex flex-row items-center justify-between gap-2 sm:gap-4 p-2 sm:p-4 border-t border-border bg-muted/50"
 		>
 			{#if activeView === 'details'}
 				<!-- Danger zone inline on mobile -->
@@ -2205,7 +1867,7 @@
 		on:cancel={() => (showDeleteConfirm = false)}
 	>
 		{#snippet content()}
-			<p class="text-sm text-gray-600 dark:text-gray-300">
+			<p class="text-sm text-muted-foreground">
 				This action cannot be undone. The task and all its data will be permanently deleted.
 			</p>
 		{/snippet}

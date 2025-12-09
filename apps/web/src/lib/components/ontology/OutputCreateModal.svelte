@@ -1,7 +1,7 @@
 <!-- apps/web/src/lib/components/ontology/OutputCreateModal.svelte -->
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
-	import { FileText, X, Sparkles } from 'lucide-svelte';
+	import { FileText, X, Sparkles, Layers } from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
 	import CardBody from '$lib/components/ui/CardBody.svelte';
@@ -169,47 +169,40 @@
 		aria-labelledby="modal-title"
 		aria-describedby="modal-description"
 	>
-		<!-- Inkprint header with strip texture -->
+		<!-- Compact Inkprint header -->
 		<div
-			class="flex-shrink-0 bg-muted/50 border-b border-border px-3 py-3 sm:px-6 sm:py-5 tx tx-strip tx-weak"
+			class="flex-shrink-0 bg-muted/50 border-b border-border px-3 py-2 sm:px-4 sm:py-2.5 flex items-center justify-between gap-2 tx tx-strip tx-weak"
 		>
-			<div class="flex items-start justify-between gap-2 sm:gap-4">
-				<div class="space-y-1 sm:space-y-2 min-w-0 flex-1">
-					<p
-						id="modal-description"
-						class="text-[10px] sm:text-xs font-semibold uppercase tracking-[0.3em] sm:tracking-[0.4em] text-muted-foreground"
-					>
-						{selectedTemplate ? 'New Output • Step 2' : 'New Output • Step 1'}
-					</p>
+			<div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+				<div
+					class="p-1.5 rounded bg-violet-500/10 text-violet-600 dark:text-violet-400 shrink-0"
+				>
+					<Layers class="w-4 h-4" />
+				</div>
+				<div class="min-w-0 flex-1">
 					<h2
 						id="modal-title"
-						class="text-lg sm:text-2xl font-bold leading-tight truncate text-foreground"
+						class="text-sm sm:text-base font-semibold leading-tight truncate text-foreground"
 					>
-						{selectedTemplate
-							? outputName || 'Name your document'
-							: 'Choose a Template'}
+						{selectedTemplate ? outputName || 'New Output' : 'New Output'}
 					</h2>
-					{#if selectedTemplate}
-						<div
-							class="flex flex-wrap items-center gap-1.5 sm:gap-3 text-xs sm:text-sm"
-						>
-							<span
-								class="px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-semibold bg-accent/20 text-accent-foreground"
-								>{selectedTemplate.name}</span
-							>
-						</div>
-					{/if}
+					<p
+						id="modal-description"
+						class="text-[10px] sm:text-xs text-muted-foreground mt-0.5"
+					>
+						{selectedTemplate ? 'Name your deliverable' : 'Choose a template'}
+					</p>
 				</div>
-				<Button
-					variant="ghost"
-					size="sm"
-					onclick={onClose}
-					class="text-muted-foreground hover:text-foreground shrink-0 !p-1.5 sm:!p-2"
-					aria-label="Close modal"
-				>
-					<X class="w-4 h-4 sm:w-5 sm:h-5" />
-				</Button>
 			</div>
+			<Button
+				variant="ghost"
+				size="sm"
+				onclick={onClose}
+				class="text-muted-foreground hover:text-foreground shrink-0 !p-1 sm:!p-1.5"
+				aria-label="Close modal"
+			>
+				<X class="w-4 h-4" />
+			</Button>
 		</div>
 
 		<!-- Content with BuildOS CardBody -->

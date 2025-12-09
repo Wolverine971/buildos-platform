@@ -1,5 +1,5 @@
 // Lightweight database schema - auto-generated from database.types.ts
-// Generated on: 2025-12-09T00:16:00.890Z
+// Generated on: 2025-12-09T04:38:14.725Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -458,6 +458,7 @@ export type DatabaseSchema = {
 		message_count: number | null;
 		preferences: Json | null;
 		status: string;
+		summary: string | null;
 		title: string | null;
 		tool_call_count: number | null;
 		total_tokens_used: number | null;

@@ -1,763 +1,514 @@
 <!-- apps/web/src/routes/history/+page.svelte -->
+<!--
+  History Page - INKPRINT Design System
+
+  Unified history view showing both braindumps and chat sessions.
+  Users can view, filter, and resume previous conversations.
+-->
+
 <script lang="ts">
-	import {
-		Brain,
-		Search,
-		X,
-		Loader2,
-		Calendar,
-		ChevronLeft,
-		ChevronRight,
-		Plus
-	} from 'lucide-svelte';
-	import TextInput from '$lib/components/ui/TextInput.svelte';
-	import Select from '$lib/components/ui/Select.svelte';
-	import Button from '$lib/components/ui/Button.svelte';
-	import SearchCombobox from '$lib/components/SearchCombobox.svelte';
-	import { goto, replaceState } from '$app/navigation';
+	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
-	import { onMount } from 'svelte';
-	import { format } from 'date-fns';
-	import ContributionChart from '$lib/components/history/ContributionChart.svelte';
-	import BraindumpHistoryCard from '$components/history/BraindumpHistoryCard.svelte';
-	import BraindumpModal from '$lib/components/history/BraindumpModalHistory.svelte';
-	import BraindumpHistoryDeleteModal from '$lib/components/history/BraindumpHistoryDeleteModal.svelte';
-	import { toastService } from '$lib/stores/toast.store';
-	import './history.css';
-	import type { PageData } from './$types';
+	import { browser } from '$app/environment';
+	import {
+		Lightbulb,
+		Search,
+		Filter,
+		Clock,
+		CheckCircle,
+		AlertCircle,
+		Loader2,
+		MessageSquare,
+		Tag,
+		ChevronRight,
+		X,
+		Brain,
+		MessagesSquare
+	} from 'lucide-svelte';
+	import AgentChatModal from '$lib/components/agent/AgentChatModal.svelte';
+	import type { HistoryItem } from './+page.server';
 
-	export let data: PageData;
+	interface OntoBraindump {
+		id: string;
+		content: string;
+		title: string | null;
+		topics: string[] | null;
+		summary: string | null;
+		status: 'pending' | 'processing' | 'processed' | 'failed';
+		chat_session_id: string | null;
+		metadata: Record<string, unknown> | null;
+		processed_at: string | null;
+		error_message: string | null;
+		created_at: string;
+		updated_at: string;
+	}
 
-	// Reactive data
-	$: contributionData = data.contributionData;
-	$: dayBraindumps = data.dayBraindumps || [];
-	$: recentBraindumps = data.recentBraindumps || [];
-	$: availableYears = data.availableYears || [];
-	$: filters = data.filters || {};
-	$: stats = data.stats || {};
-	$: urlBraindump = data.urlBraindump;
-	$: urlBraindumpInResults = data.urlBraindumpInResults;
-	$: userId = data.user?.id || '';
+	interface PageData {
+		items: HistoryItem[];
+		totalItems: number;
+		braindumpCount: number;
+		chatSessionCount: number;
+		stats: {
+			totalBraindumps: number;
+			processedBraindumps: number;
+			pendingBraindumps: number;
+			totalChatSessions: number;
+			chatSessionsWithSummary: number;
+		};
+		filters: {
+			limit: number;
+			offset: number;
+			typeFilter: 'all' | 'braindumps' | 'chats';
+			status: string | null;
+			search: string;
+			selectedId: string | null;
+			selectedType: string | null;
+		};
+		selectedItem: HistoryItem | null;
+		hasMore: boolean;
+	}
 
-	// State
-	let searchQuery = filters?.searchQuery || '';
-	let selectedYear = filters?.selectedYear || new Date().getFullYear();
-	let selectedDay = filters?.selectedDay || '';
-	let braindumpId = filters?.braindumpId || '';
-	let isLoading = false;
-	let selectedBraindump: any = null;
-	let showBraindumpModal = false;
-	let isFetchingBraindump = false;
+	let { data }: { data: PageData } = $props();
 
-	// Delete dialog state
-	let showDeleteDialog = false;
-	let braindumpToDelete: any = null;
-	let isDeletingBraindump = false;
+	// Local state
+	let searchInput = $state(data.filters.search);
+	let statusFilter = $state<string>(data.filters.status || '');
+	let typeFilter = $state<'all' | 'braindumps' | 'chats'>(data.filters.typeFilter || 'all');
+	let isAgentModalOpen = $state(false);
+	let selectedBraindumpForChat = $state<OntoBraindump | null>(null);
+	let selectedChatSessionId = $state<string | null>(null);
+	let isLoadingChatSession = $state(false);
 
-	// Display data
-	$: displayBraindumps = selectedDay ? dayBraindumps : recentBraindumps;
-	$: hasSearchResults = searchQuery && displayBraindumps.length > 0;
-	$: searchMatchDates = searchQuery
-		? contributionData.contributions?.filter((c) => c.count > 0).map((c) => c.date)
-		: [];
-
-	// Debounced URL update
-	let urlUpdateTimeout: number;
-	function updateUrl(newBraindumpId: string | null) {
-		clearTimeout(urlUpdateTimeout);
-		urlUpdateTimeout = setTimeout(() => {
-			const params = new URLSearchParams($page.url.searchParams);
-
-			if (newBraindumpId) {
-				params.set('braindump', newBraindumpId);
-			} else {
-				params.delete('braindump');
+	// Open modal if we have a selectedItem from URL
+	$effect(() => {
+		if (data.selectedItem && browser) {
+			if (data.selectedItem.type === 'braindump') {
+				selectedBraindumpForChat = data.selectedItem.originalData as OntoBraindump;
+				selectedChatSessionId = null;
+				isAgentModalOpen = true;
+			} else if (data.selectedItem.type === 'chat_session') {
+				selectedChatSessionId = data.selectedItem.id;
+				selectedBraindumpForChat = null;
+				isAgentModalOpen = true;
 			}
-
-			const newUrl = `${$page.url.pathname}?${params.toString()}`;
-			replaceState(newUrl, {});
-		}, 100);
-	}
-
-	// Fetch individual braindump
-	async function fetchBraindump(id: string): Promise<any> {
-		isFetchingBraindump = true;
-		try {
-			const response = await fetch(`/api/braindumps/${id}`);
-			if (!response.ok) {
-				if (response.status === 404) {
-					return null;
-				}
-				throw new Error('Failed to fetch braindump');
-			}
-
-			const result = await response.json();
-			// Handle standardized response format
-			const data = result.success && result.data ? result.data : result;
-
-			// Enrich the braindump with the same properties as server-side
-			const braindump = data.braindump;
-			const links = data.linkedData || {};
-
-			// Basic enrichment (simplified version of server logic)
-			const isUnlinked = !braindump.project_id;
-			const linkedTypes = [];
-			if (links.projects?.length > 0) linkedTypes.push('project');
-			if (links.tasks?.length > 0) linkedTypes.push('task');
-			if (links.notes?.length > 0) linkedTypes.push('note');
-
-			return {
-				...braindump,
-				isNote: isUnlinked,
-				isNewProject: false, // We can't easily determine this client-side
-				linkedProject: links.projects?.[0] || null,
-				linkedTypes,
-				brain_dump_links: [] // Not used in modal display
-			};
-		} catch (error) {
-			console.error('Error fetching braindump:', error);
-			return null;
-		} finally {
-			isFetchingBraindump = false;
 		}
-	}
-
-	// Handle braindump URL parameter on mount and page updates
-	async function handleBraindumpUrlParam() {
-		const currentBraindumpId = $page.url.searchParams.get('braindump');
-
-		if (!currentBraindumpId) {
-			showBraindumpModal = false;
-			selectedBraindump = null;
-			return;
-		}
-
-		// Check if we already have this braindump loaded
-		if (urlBraindump && urlBraindump.id === currentBraindumpId) {
-			selectedBraindump = urlBraindump;
-			showBraindumpModal = true;
-
-			// Show warning if braindump is not in current results
-			if (!urlBraindumpInResults && (searchQuery || selectedDay)) {
-				const searchParams = new URLSearchParams();
-				searchParams.set('braindump', currentBraindumpId);
-				const properUrl = `${$page.url.pathname}?${searchParams.toString()}`;
-
-				toastService.warning(
-					`This braindump is outside your current search filters. <a href="${properUrl}" class="underline">View without filters</a>`,
-					{ duration: 8000 }
-				);
-			}
-			return;
-		}
-
-		// Check if braindump is in current results
-		const braindumpInResults = displayBraindumps.find((b) => b.id === currentBraindumpId);
-		if (braindumpInResults) {
-			selectedBraindump = braindumpInResults;
-			showBraindumpModal = true;
-			return;
-		}
-
-		// Need to fetch the braindump
-		const fetchedBraindump = await fetchBraindump(currentBraindumpId);
-
-		if (!fetchedBraindump) {
-			// Braindump doesn't exist
-			toastService.error("Braindump not found or you don't have permission to view it.");
-
-			// Remove the invalid braindump parameter
-			const params = new URLSearchParams($page.url.searchParams);
-			params.delete('braindump');
-			await goto(`?${params.toString()}`, { replaceState: true });
-			return;
-		}
-
-		// Braindump exists but not in current results
-		selectedBraindump = fetchedBraindump;
-		showBraindumpModal = true;
-
-		// Show warning about filters
-		if (searchQuery || selectedDay) {
-			const searchParams = new URLSearchParams();
-			searchParams.set('braindump', currentBraindumpId);
-			const properUrl = `${$page.url.pathname}?${searchParams.toString()}`;
-
-			toastService.warning(
-				`This braindump is outside your current search filters. <a href="${properUrl}" class="underline">View without filters</a>`,
-				{ duration: 8000 }
-			);
-		}
-	}
-
-	// Navigation handlers
-	async function navigateToYear(year: number) {
-		selectedYear = year;
-		isLoading = true;
-
-		const params = new URLSearchParams($page.url.searchParams);
-		params.set('year', year.toString());
-
-		await goto(`?${params.toString()}`, { replaceState: true });
-		isLoading = false;
-	}
-
-	async function handleSearch() {
-		isLoading = true;
-
-		const params = new URLSearchParams($page.url.searchParams);
-		if (searchQuery.trim()) {
-			params.set('search', searchQuery.trim());
-		} else {
-			params.delete('search');
-		}
-
-		// Reset day selection when searching
-		params.delete('day');
-		selectedDay = '';
-
-		await goto(`?${params.toString()}`, { replaceState: true });
-		isLoading = false;
-	}
-
-	async function clearSearch() {
-		searchQuery = '';
-		isLoading = true;
-
-		const params = new URLSearchParams($page.url.searchParams);
-		params.delete('search');
-		params.delete('day');
-		selectedDay = '';
-
-		await goto(`?${params.toString()}`, { replaceState: true });
-		isLoading = false;
-	}
-
-	async function selectDay(date: string) {
-		selectedDay = date;
-		isLoading = true;
-
-		const params = new URLSearchParams($page.url.searchParams);
-		// Clear search and braindump parameters when selecting a day
-		params.delete('search');
-		params.delete('braindump');
-		params.set('day', date);
-
-		// Clear search query state
-		searchQuery = '';
-
-		await goto(`?${params.toString()}`, { replaceState: true });
-		isLoading = false;
-	}
-
-	async function clearDaySelection() {
-		selectedDay = '';
-		isLoading = true;
-
-		const params = new URLSearchParams($page.url.searchParams);
-		params.delete('day');
-
-		await goto(`?${params.toString()}`, { replaceState: true });
-		isLoading = false;
-	}
-
-	function handleBraindumpClick(braindump: any) {
-		selectedBraindump = braindump;
-		showBraindumpModal = true;
-		updateUrl(braindump.id);
-	}
-
-	function handleCloseModal() {
-		showBraindumpModal = false;
-		// Keep braindump in URL as requested
-	}
-
-	function handleKeyDown(event: KeyboardEvent) {
-		if (event.key === 'Enter' && searchQuery.trim()) {
-			handleSearch();
-		}
-	}
-
-	// Delete handlers
-	function handleDeleteRequest(event: CustomEvent) {
-		braindumpToDelete = event.detail.braindump;
-		showDeleteDialog = true;
-	}
-
-	async function handleConfirmDelete() {
-		if (!braindumpToDelete) return;
-
-		isDeletingBraindump = true;
-		try {
-			const response = await fetch(`/api/braindumps/${braindumpToDelete.id}`, {
-				method: 'DELETE',
-				headers: {
-					'Content-Type': 'application/json'
-				}
-			});
-
-			if (!response.ok) {
-				throw new Error('Failed to delete braindump');
-			}
-
-			const result = await response.json();
-
-			// Remove braindump from the displayed list
-			if (selectedDay) {
-				dayBraindumps = dayBraindumps.filter((b) => b.id !== braindumpToDelete.id);
-			} else {
-				recentBraindumps = recentBraindumps.filter((b) => b.id !== braindumpToDelete.id);
-			}
-
-			// Close modal if deleting the currently viewed braindump
-			if (selectedBraindump?.id === braindumpToDelete.id) {
-				showBraindumpModal = false;
-				selectedBraindump = null;
-				// Clear URL parameter
-				const params = new URLSearchParams($page.url.searchParams);
-				params.delete('braindump');
-				await goto(`?${params.toString()}`, { replaceState: true });
-			}
-
-			// Show success message with details
-			const deleted = result.data?.deleted || result.deleted;
-			let message = `Successfully deleted "${deleted?.title || 'braindump'}"`;
-			if (deleted?.links_cleared > 0 || deleted?.questions_affected > 0) {
-				const details = [];
-				if (deleted.links_cleared > 0) {
-					details.push(
-						`${deleted.links_cleared} link${deleted.links_cleared !== 1 ? 's' : ''} cleared`
-					);
-				}
-				if (deleted.questions_affected > 0) {
-					details.push(
-						`${deleted.questions_affected} question${deleted.questions_affected !== 1 ? 's' : ''} unlinked`
-					);
-				}
-				message += ` (${details.join(', ')})`;
-			}
-			toastService.success(message);
-
-			// Close delete dialog
-			showDeleteDialog = false;
-			braindumpToDelete = null;
-		} catch (error) {
-			console.error('Error deleting braindump:', error);
-			toastService.error('Failed to delete braindump. Please try again.');
-		} finally {
-			isDeletingBraindump = false;
-		}
-	}
-
-	function handleCancelDelete() {
-		showDeleteDialog = false;
-		braindumpToDelete = null;
-	}
-
-	// Utility functions
-	function formatDate(dateStr: string): string {
-		return format(new Date(dateStr), 'MMMM d, yyyy');
-	}
-
-	function getDayOfWeek(dateStr: string): string {
-		return format(new Date(dateStr), 'EEEE');
-	}
-
-	// Handle page updates
-	$: {
-		// Update local state when data changes
-		searchQuery = filters?.searchQuery || '';
-		selectedYear = filters?.selectedYear || new Date().getFullYear();
-		selectedDay = filters?.selectedDay || '';
-		braindumpId = filters?.braindumpId || '';
-
-		// Handle braindump URL parameter
-		handleBraindumpUrlParam();
-	}
-
-	onMount(() => {
-		// Handle initial braindump URL parameter
-		handleBraindumpUrlParam();
 	});
+
+	// Derived states
+	const items = $derived(data.items);
+	const stats = $derived(data.stats);
+	const hasMore = $derived(data.hasMore);
+	const currentOffset = $derived(data.filters.offset);
+	const limit = $derived(data.filters.limit);
+	const totalItems = $derived(data.totalItems);
+
+	function getStatusIcon(status: string) {
+		switch (status) {
+			case 'processed':
+			case 'active':
+			case 'completed':
+				return CheckCircle;
+			case 'processing':
+				return Loader2;
+			case 'pending':
+				return Clock;
+			case 'failed':
+				return AlertCircle;
+			default:
+				return Clock;
+		}
+	}
+
+	function getStatusColor(status: string) {
+		switch (status) {
+			case 'processed':
+			case 'active':
+			case 'completed':
+				return 'text-emerald-600 dark:text-emerald-400';
+			case 'processing':
+				return 'text-blue-600 dark:text-blue-400 animate-spin';
+			case 'pending':
+				return 'text-amber-600 dark:text-amber-400';
+			case 'failed':
+				return 'text-red-600 dark:text-red-400';
+			default:
+				return 'text-muted-foreground';
+		}
+	}
+
+	function getTypeIcon(type: HistoryItem['type']) {
+		return type === 'chat_session' ? MessagesSquare : Brain;
+	}
+
+	function getTypeColor(type: HistoryItem['type']) {
+		return type === 'chat_session'
+			? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+			: 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300';
+	}
+
+	function formatDate(dateStr: string) {
+		const date = new Date(dateStr);
+		const now = new Date();
+		const diffMs = now.getTime() - date.getTime();
+		const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+		if (diffDays === 0) {
+			return `Today at ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+		} else if (diffDays === 1) {
+			return `Yesterday at ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+		} else if (diffDays < 7) {
+			return `${diffDays} days ago`;
+		} else {
+			return date.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
+		}
+	}
+
+	function applyFilters() {
+		const params = new URLSearchParams();
+		if (searchInput) params.set('search', searchInput);
+		if (statusFilter) params.set('status', statusFilter);
+		if (typeFilter !== 'all') params.set('type', typeFilter);
+		goto(`/history?${params.toString()}`);
+	}
+
+	function setTypeFilter(newFilter: 'all' | 'braindumps' | 'chats') {
+		typeFilter = newFilter;
+		applyFilters();
+	}
+
+	function clearFilters() {
+		searchInput = '';
+		statusFilter = '';
+		typeFilter = 'all';
+		goto('/history');
+	}
+
+	function loadMore() {
+		const params = new URLSearchParams($page.url.searchParams);
+		params.set('offset', String(currentOffset + limit));
+		goto(`/history?${params.toString()}`);
+	}
+
+	function openItem(item: HistoryItem) {
+		if (item.type === 'braindump') {
+			selectedBraindumpForChat = item.originalData as OntoBraindump;
+			selectedChatSessionId = null;
+		} else {
+			selectedChatSessionId = item.id;
+			selectedBraindumpForChat = null;
+		}
+		isAgentModalOpen = true;
+		// Update URL to reflect selection
+		const params = new URLSearchParams($page.url.searchParams);
+		params.set('id', item.id);
+		params.set('itemType', item.type);
+		goto(`/history?${params.toString()}`, { replaceState: true });
+	}
+
+	function closeAgentModal() {
+		isAgentModalOpen = false;
+		selectedBraindumpForChat = null;
+		selectedChatSessionId = null;
+		// Remove selection from URL
+		const params = new URLSearchParams($page.url.searchParams);
+		params.delete('id');
+		params.delete('itemType');
+		const newUrl = params.toString() ? `/history?${params.toString()}` : '/history';
+		goto(newUrl, { replaceState: true });
+	}
+
+	function handleKeydown(event: KeyboardEvent) {
+		if (event.key === 'Enter') {
+			applyFilters();
+		}
+	}
 </script>
 
 <svelte:head>
-	<title>Braindump History - BuildOS | Track Your Thinking Evolution</title>
-	<meta
-		name="description"
-		content="View your complete braindump history and idea evolution over time. Track your thinking patterns, search past insights, and visualize your productivity journey with BuildOS."
-	/>
-	<meta
-		name="keywords"
-		content="braindump history, thinking evolution, idea tracking, productivity insights, BuildOS history, thought patterns, brain dump timeline"
-	/>
-	<link rel="canonical" href="https://build-os.com/history" />
-
-	<!-- Open Graph / Facebook -->
-	<meta property="og:type" content="website" />
-	<meta property="og:url" content="https://build-os.com/history" />
-	<meta
-		property="og:title"
-		content="Braindump History - BuildOS | Track Your Thinking Evolution"
-	/>
-	<meta
-		property="og:description"
-		content="View your complete braindump history and idea evolution over time. Track your thinking patterns and visualize your productivity journey."
-	/>
-	<meta property="og:image" content="https://build-os.com/og-history.jpg" />
-
-	<!-- Twitter -->
-	<meta property="twitter:card" content="summary_large_image" />
-	<meta property="twitter:url" content="https://build-os.com/history" />
-	<meta
-		property="twitter:title"
-		content="Braindump History - BuildOS | Track Your Thinking Evolution"
-	/>
-	<meta
-		property="twitter:description"
-		content="View your complete braindump history and idea evolution over time with BuildOS."
-	/>
-	<meta property="twitter:image" content="https://build-os.com/og-history.jpg" />
-
-	<!-- Additional Meta Tags -->
-	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-	<meta name="robots" content="index, follow" />
-	<meta name="author" content="BuildOS" />
-
-	<!-- JSON-LD Structured Data -->
-	<script type="application/ld+json">
-		{
-			"@context": "https://schema.org",
-			"@type": "WebPage",
-			"name": "Braindump History",
-			"description": "Track your thinking evolution and braindump history with BuildOS",
-			"url": "https://build-os.com/history",
-			"isPartOf": {
-				"@type": "WebSite",
-				"name": "BuildOS",
-				"url": "https://build-os.com"
-			},
-			"mainEntity": {
-				"@type": "SoftwareApplication",
-				"name": "BuildOS",
-				"applicationCategory": "Productivity Software",
-				"description": "AI-native productivity platform for context building and braindump tracking"
-			}
-		}
-	</script>
+	<title>History | BuildOS</title>
+	<meta name="description" content="View and explore your braindumps and chat conversations" />
 </svelte:head>
 
-<!-- Main container -->
-<div class="min-h-screen bg-gray-50 dark:bg-gray-900">
-	<div class="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 md:py-8">
-		<!-- Page header -->
-		<div class="mb-8">
-			<div class="flex items-center justify-between mb-6">
+<div class="min-h-screen bg-background">
+	<!-- Header -->
+	<div class="border-b border-border bg-card">
+		<div class="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
+			<div class="flex items-center gap-3">
+				<div class="rounded-lg bg-violet-100 p-2 dark:bg-violet-900/30">
+					<Lightbulb class="h-6 w-6 text-violet-600 dark:text-violet-400" />
+				</div>
 				<div>
-					<h1
-						class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white flex items-center mb-1 sm:mb-2 tracking-tight"
-					>
-						<Brain class="w-8 h-8 mr-3 text-purple-600 dark:text-purple-400" />
-						Braindump History
-					</h1>
-					<p class="text-sm sm:text-base text-gray-600 dark:text-gray-400">
-						Your thinking history and idea evolution over time
+					<h1 class="text-2xl font-bold text-foreground">History</h1>
+					<p class="text-sm text-muted-foreground">
+						Your braindumps and chat conversations
 					</p>
 				</div>
-
-				<!-- Quick stats -->
-				<div class="text-right">
-					<div class="text-2xl font-bold text-purple-600 dark:text-purple-400">
-						{stats.totalBraindumps || 0}
-					</div>
-					<div class="text-sm text-gray-600 dark:text-gray-400">Total braindumps</div>
-				</div>
-			</div>
-
-			<!-- Enhanced Global Search with SearchCombobox -->
-			<div class="mb-6">
-				<div class="lg:col-span-1">
-					<SearchCombobox {userId} />
-				</div>
-			</div>
-
-			<!-- History Filter (optional, for filtering the timeline view) -->
-			<details class="mb-6">
-				<summary
-					class="cursor-pointer text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors"
-				>
-					Advanced: Filter history timeline
-				</summary>
-				<div class="mt-4 flex flex-col sm:flex-row gap-4">
-					<!-- Filter search input -->
-					<div class="flex-1 relative">
-						<div
-							class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"
-						>
-							<Search class="h-4 w-4 text-gray-400" />
-						</div>
-						<TextInput
-							type="text"
-							bind:value={searchQuery}
-							onkeydown={handleKeyDown}
-							placeholder="Filter timeline by keyword..."
-							class="pl-10 pr-12"
-							size="md"
-						/>
-						{#if searchQuery}
-							<Button
-								onclick={clearSearch}
-								variant="ghost"
-								size="sm"
-								class="absolute inset-y-0 right-0 pr-3 flex items-center min-h-0"
-								icon={X}
-							></Button>
-						{/if}
-					</div>
-
-					<!-- Filter button -->
-					<Button
-						onclick={handleSearch}
-						disabled={!searchQuery.trim() || isLoading}
-						variant="secondary"
-						size="md"
-						loading={isLoading}
-						icon={Search}
-					>
-						Filter Timeline
-					</Button>
-				</div>
-			</details>
-
-			<!-- Active filters display -->
-			{#if searchQuery || selectedDay}
-				<div class="flex items-center gap-2 mb-4">
-					<span class="text-sm text-gray-600 dark:text-gray-400">Active filters:</span>
-
-					{#if searchQuery}
-						<div
-							class="flex items-center gap-1 px-3 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300 rounded-full text-sm"
-						>
-							<Search class="w-3 h-3" />
-							<span>"{searchQuery}"</span>
-							<Button
-								onclick={clearSearch}
-								variant="ghost"
-								size="sm"
-								class="ml-1 p-0 min-h-0"
-								icon={X}
-							></Button>
-						</div>
-					{/if}
-
-					{#if selectedDay}
-						<div
-							class="flex items-center gap-1 px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 rounded-full text-sm"
-						>
-							<Calendar class="w-3 h-3" />
-							<span>{formatDate(selectedDay)}</span>
-							<Button
-								onclick={clearDaySelection}
-								variant="ghost"
-								size="sm"
-								class="ml-1 p-0 min-h-0"
-								icon={X}
-							></Button>
-						</div>
-					{/if}
-				</div>
-			{/if}
-		</div>
-
-		<!-- Year navigation -->
-		<div class="mb-6">
-			<div
-				class="flex items-center justify-between bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4"
-			>
-				<div class="flex items-center space-x-4">
-					<h2 class="text-lg font-semibold text-gray-900 dark:text-white">
-						{selectedYear} Activity
-					</h2>
-					{#if stats.daysWithActivity}
-						<span class="text-sm text-gray-600 dark:text-gray-400">
-							{stats.daysWithActivity} days active • {stats.totalBraindumps} braindumps
-						</span>
-					{/if}
-				</div>
-
-				<!-- Year navigation controls -->
-				<div class="flex items-center space-x-2">
-					{#if availableYears.length > 1}
-						<Button
-							onclick={() => navigateToYear(selectedYear - 1)}
-							disabled={selectedYear <= Math.min(...availableYears) || isLoading}
-							variant="ghost"
-							size="sm"
-							class="p-2"
-							icon={ChevronLeft}
-						></Button>
-
-						<Select
-							bind:value={selectedYear}
-							onchange={(e) => {
-								selectedYear = e.detail;
-								navigateToYear(parseInt(e.detail));
-							}}
-							disabled={isLoading}
-							size="sm"
-						>
-							{#each availableYears as year}
-								<option value={year}>{year}</option>
-							{/each}
-						</Select>
-
-						<Button
-							onclick={() => navigateToYear(selectedYear + 1)}
-							disabled={selectedYear >= Math.max(...availableYears) || isLoading}
-							variant="ghost"
-							size="sm"
-							class="p-2"
-							icon={ChevronRight}
-						></Button>
-					{/if}
-				</div>
 			</div>
 		</div>
+	</div>
 
-		<!-- Contribution chart -->
-		<div class="mb-8">
-			<ContributionChart
-				contributions={contributionData.contributions || []}
-				{searchMatchDates}
-				{selectedDay}
-				onDayClick={selectDay}
-				{isLoading}
-			/>
-		</div>
-
-		<!-- Braindumps display -->
-		<div>
-			<!-- Section header -->
-			<div class="flex items-center justify-between mb-6">
-				<h3 class="text-xl font-semibold text-gray-900 dark:text-white">
-					{#if selectedDay}
-						Braindumps from {formatDate(selectedDay)}
-						<span class="text-sm font-normal text-gray-600 dark:text-gray-400 ml-2">
-							({getDayOfWeek(selectedDay)})
-						</span>
-					{:else if searchQuery}
-						Search Results
-					{:else}
-						Recent Braindumps
-					{/if}
-				</h3>
-
-				{#if displayBraindumps.length > 0}
-					<span class="text-sm text-gray-600 dark:text-gray-400">
-						{displayBraindumps.length} braindump{displayBraindumps.length !== 1
-							? 's'
-							: ''}
+	<!-- Main content -->
+	<div class="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
+		<!-- Stats cards -->
+		<div class="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
+			<div class="rounded-lg border border-border bg-card p-4 shadow-ink tx tx-frame tx-weak">
+				<div class="text-2xl font-bold text-foreground">
+					{stats.totalBraindumps + stats.totalChatSessions}
+				</div>
+				<div class="text-sm text-muted-foreground">Total Items</div>
+			</div>
+			<div class="rounded-lg border border-border bg-card p-4 shadow-ink tx tx-frame tx-weak">
+				<div class="flex items-center gap-2">
+					<Brain class="h-5 w-5 text-violet-600 dark:text-violet-400" />
+					<span class="text-2xl font-bold text-violet-600 dark:text-violet-400">
+						{stats.totalBraindumps}
 					</span>
+				</div>
+				<div class="text-sm text-muted-foreground">Braindumps</div>
+			</div>
+			<div class="rounded-lg border border-border bg-card p-4 shadow-ink tx tx-frame tx-weak">
+				<div class="flex items-center gap-2">
+					<MessagesSquare class="h-5 w-5 text-blue-600 dark:text-blue-400" />
+					<span class="text-2xl font-bold text-blue-600 dark:text-blue-400">
+						{stats.totalChatSessions}
+					</span>
+				</div>
+				<div class="text-sm text-muted-foreground">Chat Sessions</div>
+			</div>
+			<div class="rounded-lg border border-border bg-card p-4 shadow-ink tx tx-frame tx-weak">
+				<div class="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+					{stats.processedBraindumps + stats.chatSessionsWithSummary}
+				</div>
+				<div class="text-sm text-muted-foreground">With Summary</div>
+			</div>
+		</div>
+
+		<!-- Type filter tabs -->
+		<div class="mb-4 flex gap-2 border-b border-border">
+			<button
+				onclick={() => setTypeFilter('all')}
+				class="relative px-4 py-2 text-sm font-medium transition-colors {typeFilter ===
+				'all'
+					? 'text-foreground'
+					: 'text-muted-foreground hover:text-foreground'}"
+			>
+				All
+				{#if typeFilter === 'all'}
+					<span class="absolute bottom-0 left-0 right-0 h-0.5 bg-violet-600"></span>
+				{/if}
+			</button>
+			<button
+				onclick={() => setTypeFilter('braindumps')}
+				class="relative flex items-center gap-1.5 px-4 py-2 text-sm font-medium transition-colors {typeFilter ===
+				'braindumps'
+					? 'text-foreground'
+					: 'text-muted-foreground hover:text-foreground'}"
+			>
+				<Brain class="h-4 w-4" />
+				Braindumps
+				<span
+					class="rounded-full bg-violet-100 px-1.5 py-0.5 text-xs text-violet-700 dark:bg-violet-900/30 dark:text-violet-300"
+				>
+					{stats.totalBraindumps}
+				</span>
+				{#if typeFilter === 'braindumps'}
+					<span class="absolute bottom-0 left-0 right-0 h-0.5 bg-violet-600"></span>
+				{/if}
+			</button>
+			<button
+				onclick={() => setTypeFilter('chats')}
+				class="relative flex items-center gap-1.5 px-4 py-2 text-sm font-medium transition-colors {typeFilter ===
+				'chats'
+					? 'text-foreground'
+					: 'text-muted-foreground hover:text-foreground'}"
+			>
+				<MessagesSquare class="h-4 w-4" />
+				Chats
+				<span
+					class="rounded-full bg-blue-100 px-1.5 py-0.5 text-xs text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
+				>
+					{stats.totalChatSessions}
+				</span>
+				{#if typeFilter === 'chats'}
+					<span class="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600"></span>
+				{/if}
+			</button>
+		</div>
+
+		<!-- Search and filters -->
+		<div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center">
+			<div class="relative flex-1">
+				<Search
+					class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+				/>
+				<input
+					type="text"
+					placeholder="Search history..."
+					bind:value={searchInput}
+					onkeydown={handleKeydown}
+					class="w-full rounded-lg border border-border bg-background py-2 pl-10 pr-4 text-foreground placeholder:text-muted-foreground focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/20"
+				/>
+			</div>
+			<div class="flex items-center gap-2">
+				<Filter class="h-4 w-4 text-muted-foreground" />
+				<select
+					bind:value={statusFilter}
+					onchange={applyFilters}
+					class="rounded-lg border border-border bg-background px-3 py-2 text-foreground focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/20"
+				>
+					<option value="">All statuses</option>
+					<option value="processed">Processed / With Summary</option>
+					<option value="pending">Pending</option>
+					<option value="processing">Processing</option>
+					<option value="failed">Failed</option>
+				</select>
+				<button
+					onclick={applyFilters}
+					class="rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 pressable"
+				>
+					Search
+				</button>
+				{#if searchInput || statusFilter || typeFilter !== 'all'}
+					<button
+						onclick={clearFilters}
+						class="rounded-lg border border-border px-3 py-2 text-sm text-muted-foreground hover:bg-muted pressable"
+					>
+						<X class="h-4 w-4" />
+					</button>
 				{/if}
 			</div>
-
-			<!-- Loading state -->
-			{#if isLoading}
-				<div class="flex items-center justify-center py-12">
-					<Loader2 class="w-8 h-8 animate-spin text-purple-600 dark:text-purple-400" />
-				</div>
-
-				<!-- Braindumps grid -->
-			{:else if displayBraindumps.length > 0}
-				<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-					{#each displayBraindumps as braindump (braindump.id)}
-						<BraindumpHistoryCard
-							{braindump}
-							onClick={() => handleBraindumpClick(braindump)}
-							highlightSearch={searchQuery}
-							on:delete={handleDeleteRequest}
-						/>
-					{/each}
-				</div>
-
-				<!-- Empty states -->
-			{:else}
-				<!-- No search results -->
-				{#if searchQuery}
-					<div class="text-center py-12">
-						<Search class="w-12 h-12 text-gray-400 mx-auto mb-4" />
-						<h4 class="text-lg font-medium text-gray-900 dark:text-white mb-2">
-							No braindumps found
-						</h4>
-						<p class="text-gray-500 dark:text-gray-400 mb-6">
-							No braindumps match your search for "{searchQuery}"
-						</p>
-						<Button onclick={clearSearch} variant="outline" size="md">
-							Clear search
-						</Button>
-					</div>
-
-					<!-- No braindumps for selected day -->
-				{:else if selectedDay}
-					<div class="text-center py-12">
-						<Calendar class="w-12 h-12 text-gray-400 mx-auto mb-4" />
-						<h4 class="text-lg font-medium text-gray-900 dark:text-white mb-2">
-							No braindumps on this day
-						</h4>
-						<p class="text-gray-500 dark:text-gray-400 mb-6">
-							No braindumps were recorded on {formatDate(selectedDay)}
-						</p>
-						<Button onclick={clearDaySelection} variant="outline" size="md">
-							View recent braindumps
-						</Button>
-					</div>
-
-					<!-- No braindumps at all -->
-				{:else}
-					<div class="text-center py-12">
-						<Brain class="w-16 h-16 text-gray-400 mx-auto mb-4" />
-						<h4 class="text-lg font-medium text-gray-900 dark:text-white mb-2">
-							No braindumps yet
-						</h4>
-						<p class="text-gray-500 dark:text-gray-400 mb-6 max-w-md mx-auto">
-							Start capturing your thoughts and ideas. Your braindumps will appear
-							here and create a visual history of your thinking over time.
-						</p>
-						<Button variant="primary" size="md" icon={Plus}>
-							Create your first braindump
-						</Button>
-					</div>
-				{/if}
-			{/if}
 		</div>
+
+		<!-- History items list -->
+		{#if items.length === 0}
+			<div
+				class="flex flex-col items-center justify-center rounded-lg border border-dashed border-border bg-muted/50 py-16 tx tx-bloom tx-weak"
+			>
+				<Lightbulb class="mb-4 h-12 w-12 text-muted-foreground" />
+				<h3 class="mb-2 text-lg font-medium text-foreground">No history found</h3>
+				<p class="mb-4 text-center text-sm text-muted-foreground">
+					{#if typeFilter === 'braindumps'}
+						You haven't captured any braindumps yet.<br />
+						Use the Braindump context in agent chat to get started.
+					{:else if typeFilter === 'chats'}
+						You haven't had any chat sessions yet.<br />
+						Start a conversation with BuildOS to see it here.
+					{:else}
+						Your braindumps and chat sessions will appear here.
+					{/if}
+				</p>
+			</div>
+		{:else}
+			<!-- Responsive grid: 1 col mobile, 2 cols tablet, 3 cols desktop -->
+			<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+				{#each items as item (item.id)}
+					<button
+						onclick={() => openItem(item)}
+						class="group flex h-full flex-col rounded-lg border border-border bg-card p-4 text-left shadow-ink transition-all hover:border-violet-500/50 hover:shadow-ink-strong tx tx-frame tx-weak pressable"
+					>
+						<!-- Header: Type badge and status -->
+						<div class="mb-2 flex items-center justify-between">
+							<span
+								class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium {getTypeColor(
+									item.type
+								)}"
+							>
+								<svelte:component this={getTypeIcon(item.type)} class="h-3 w-3" />
+								{item.type === 'chat_session' ? 'Chat' : 'Braindump'}
+							</span>
+							<svelte:component
+								this={getStatusIcon(item.status)}
+								class="h-4 w-4 flex-shrink-0 {getStatusColor(item.status)}"
+							/>
+						</div>
+
+						<!-- Title -->
+						<h3 class="mb-2 line-clamp-2 font-medium text-foreground">
+							{item.title}
+						</h3>
+
+						<!-- Preview / Summary -->
+						<p class="mb-3 line-clamp-3 flex-1 text-sm text-muted-foreground">
+							{item.preview}
+						</p>
+
+						<!-- Topics (compact) -->
+						{#if item.topics && item.topics.length > 0}
+							<div class="mb-3 flex flex-wrap gap-1">
+								{#each item.topics.slice(0, 3) as topic}
+									<span
+										class="inline-flex items-center rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground"
+									>
+										{topic}
+									</span>
+								{/each}
+								{#if item.topics.length > 3}
+									<span class="text-[10px] text-muted-foreground">
+										+{item.topics.length - 3}
+									</span>
+								{/if}
+							</div>
+						{/if}
+
+						<!-- Footer: Metadata -->
+						<div
+							class="mt-auto flex items-center justify-between border-t border-border pt-3 text-xs text-muted-foreground"
+						>
+							<span class="flex items-center gap-1">
+								<Clock class="h-3 w-3" />
+								{formatDate(item.createdAt)}
+							</span>
+							<div class="flex items-center gap-2">
+								{#if item.type === 'chat_session' && item.messageCount}
+									<span class="flex items-center gap-1">
+										<MessageSquare class="h-3 w-3" />
+										{item.messageCount}
+									</span>
+								{/if}
+								<ChevronRight
+									class="h-4 w-4 text-muted-foreground transition-colors group-hover:text-violet-600 dark:group-hover:text-violet-400"
+								/>
+							</div>
+						</div>
+					</button>
+				{/each}
+			</div>
+
+			<!-- Load more -->
+			{#if hasMore}
+				<div class="mt-6 flex justify-center">
+					<button
+						onclick={loadMore}
+						class="rounded-lg border border-border px-6 py-2 text-sm font-medium text-foreground hover:bg-muted pressable"
+					>
+						Load more
+					</button>
+				</div>
+			{/if}
+
+			<!-- Results info -->
+			<div class="mt-4 text-center text-sm text-muted-foreground">
+				Showing {Math.min(currentOffset + items.length, totalItems)} of {totalItems} items
+			</div>
+		{/if}
 	</div>
 </div>
 
-<!-- Braindump detail modal -->
-{#if showBraindumpModal && selectedBraindump}
-	<BraindumpModal
-		braindump={selectedBraindump}
-		isOpen={showBraindumpModal}
-		onClose={handleCloseModal}
-		on:delete={handleDeleteRequest}
+<!-- Agent Chat Modal for braindumps -->
+{#if isAgentModalOpen && selectedBraindumpForChat}
+	<AgentChatModal
+		isOpen={isAgentModalOpen}
+		contextType="brain_dump"
+		onClose={closeAgentModal}
+		initialBraindump={selectedBraindumpForChat}
 	/>
 {/if}
 
-<!-- Delete confirmation modal -->
-<BraindumpHistoryDeleteModal
-	isOpen={showDeleteDialog}
-	braindump={braindumpToDelete}
-	isDeleting={isDeletingBraindump}
-	on:confirm={handleConfirmDelete}
-	on:cancel={handleCancelDelete}
-/>
-
-<!-- Loading overlay for fetching individual braindumps -->
-{#if isFetchingBraindump}
-	<div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-		<div class="bg-white dark:bg-gray-800 rounded-lg p-6 flex items-center space-x-3">
-			<Loader2 class="w-5 h-5 animate-spin text-purple-600 dark:text-purple-400" />
-			<span class="text-gray-900 dark:text-white">Loading braindump...</span>
-		</div>
-	</div>
+<!-- Agent Chat Modal for chat sessions - need to pass session ID -->
+{#if isAgentModalOpen && selectedChatSessionId}
+	<AgentChatModal
+		isOpen={isAgentModalOpen}
+		onClose={closeAgentModal}
+		initialChatSessionId={selectedChatSessionId}
+	/>
 {/if}

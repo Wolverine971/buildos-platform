@@ -1,251 +1,157 @@
 <!-- apps/web/src/routes/projects/projects/[id]/+page.svelte -->
 <!--
-	Ontology Project Detail Page
+	Ontology Project Detail - Deliverables-Centric View
 
-	Main interface for managing all entities within an ontology project:
-	- Tasks (full CRUD operations)
-	- Plans (create operation)
-	- Goals (create operation)
-	- Documents (view and create)
-	- Requirements, Milestones, Risks, etc.
+	Deliverable-first layout focusing on outputs as the primary cards:
+	- Outputs as the primary cards with primitive filter (document, event, collection, external)
+	- Documents live directly below as lighter cards ready for promotion
+	- Right rail shows collapsible stacks for goals, plans, tasks, risks, milestones
+	- Sticky header keeps project identity and actions visible
+	- FSM state bar for workflow transitions
 
 	Documentation:
 	- 📚 Ontology System Overview: /apps/web/docs/features/ontology/README.md
 	- 📊 Data Models & Schema: /apps/web/docs/features/ontology/DATA_MODELS.md
 	- 🔧 Implementation Guide: /apps/web/docs/features/ontology/IMPLEMENTATION_SUMMARY.md
-	- 🎨 BuildOS Style Guide: /apps/web/docs/technical/components/BUILDOS_STYLE_GUIDE.md
+	- 🎨 Inkprint Design System: /apps/web/docs/technical/components/INKPRINT_DESIGN_SYSTEM.md
 	- 🔍 Navigation Index: /apps/web/docs/NAVIGATION_INDEX.md
 
 	Related Components:
 	- Task Management: /apps/web/src/lib/components/ontology/TaskCreateModal.svelte
+	- Task Editing: /apps/web/src/lib/components/ontology/TaskEditModal.svelte
 	- Plan Management: /apps/web/src/lib/components/ontology/PlanCreateModal.svelte
+	- Plan Editing: /apps/web/src/lib/components/ontology/PlanEditModal.svelte
 	- Goal Management: /apps/web/src/lib/components/ontology/GoalCreateModal.svelte
+	- Goal Editing: /apps/web/src/lib/components/ontology/GoalEditModal.svelte
+	- Output Create: /apps/web/src/lib/components/ontology/OutputCreateModal.svelte
+	- Output Editing: /apps/web/src/lib/components/ontology/OutputEditModal.svelte
+	- Document Management: /apps/web/src/lib/components/ontology/DocumentModal.svelte
+	- Project Editing: /apps/web/src/lib/components/ontology/OntologyProjectEditModal.svelte
+	- FSM State Bar: /apps/web/src/lib/components/ontology/FSMStateBar.svelte
 
 	API Integration:
-	- Server Data Loading: /apps/web/src/routes/ontology/projects/[id]/+page.server.ts
+	- Server Data Loading: /apps/web/src/routes/projects/projects/[id]/+page.server.ts
+	- Project API: /apps/web/src/routes/api/onto/projects/
 	- Task API: /apps/web/src/routes/api/onto/tasks/
 	- Plan API: /apps/web/src/routes/api/onto/plans/
 	- Goal API: /apps/web/src/routes/api/onto/goals/
+	- Output API: /apps/web/src/routes/api/onto/outputs/
+	- Document API: /apps/web/src/routes/api/onto/documents/
+
+	Type Definitions:
+	- Deliverable Primitives: /apps/web/src/lib/types/onto.ts (getDeliverablePrimitive, isCollectionDeliverable, etc.)
 -->
 <script lang="ts">
-	// ============================================================
-	// IMPORTS
-	// ============================================================
 	import { goto } from '$app/navigation';
-	import Button from '$lib/components/ui/Button.svelte';
-	import TabNav, { type Tab } from '$lib/components/ui/TabNav.svelte';
-	import Card from '$lib/components/ui/Card.svelte';
-	import CardBody from '$lib/components/ui/CardBody.svelte';
-	import FSMStateVisualizer from '$lib/components/ontology/FSMStateVisualizer.svelte';
-	import OntologyProjectHeader from '$lib/components/ontology/OntologyProjectHeader.svelte';
 	import { toastService } from '$lib/stores/toast.store';
-	import { renderMarkdown, getMarkdownPreview, getProseClasses } from '$lib/utils/markdown';
 	import {
 		Plus,
-		Pencil,
-		ChevronRight,
-		ChevronDown,
-		Calendar,
-		Target,
 		FileText,
+		Calendar,
+		Layers,
+		ExternalLink,
+		Pencil,
+		Trash2,
+		ArrowLeft,
+		RefreshCw,
+		Filter,
+		CheckCircle2,
+		Circle,
+		Clock,
 		Sparkles,
-		GitBranch,
-		RefreshCw
+		Target,
+		ChevronDown,
+		AlertTriangle,
+		Flag,
+		ListChecks
 	} from 'lucide-svelte';
-	import type { GoalReverseEngineeringResult } from '$lib/services/ontology/goal-reverse-engineering.service';
-	import type {
-		Project,
-		Task,
-		Output,
-		Document,
-		Plan,
-		Template as OntoTemplate
-	} from '$lib/types/onto';
+	import type { Project, Task, Output, Document, Plan } from '$lib/types/onto';
 	import {
-		getTaskStateBadgeClass,
-		getOutputStateBadgeClass,
-		getPlanStateBadgeClass,
-		getGoalStateBadgeClass,
-		getPriorityBadgeClass
-	} from '$lib/utils/ontology-badge-styles';
+		getDeliverablePrimitive,
+		isCollectionDeliverable,
+		isExternalDeliverable,
+		isEventDeliverable,
+		type DeliverablePrimitive
+	} from '$lib/types/onto';
 	import type { PageData } from './$types';
-	import type {
-		GraphNode,
-		GraphSourceData,
-		GraphStats,
-		OntologyGraphInstance,
-		ViewMode
-	} from '$lib/components/ontology/graph/lib/graph.types';
+	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
 
 	// ============================================================
 	// TYPES
 	// ============================================================
-
-	/**
-	 * Page-specific types for entities not yet formalized in onto.ts
-	 * These represent raw database rows from Supabase tables
-	 */
-
 	interface Goal {
 		id: string;
 		name: string;
 		type_key?: string | null;
 		state_key: string;
-		props?: {
-			measurement_criteria?: string;
-			priority?: 'low' | 'medium' | 'high' | 'urgent';
-			[key: string]: unknown;
-		};
-	}
-
-	interface Requirement {
-		id?: string;
-		text: string;
-		project_id?: string;
-		created_at?: string;
 		props?: Record<string, unknown>;
 	}
 
 	interface Milestone {
 		id: string;
 		title: string;
-		due_at: string;
-		props?: {
-			goal_id?: string;
-			summary?: string;
-			[key: string]: unknown;
-		} | null;
+		due_at: string | null;
+		state_key?: string | null;
+		props?: Record<string, unknown> | null;
 	}
 
 	interface Risk {
-		id?: string;
+		id: string;
 		title: string;
-		impact: string;
-		project_id?: string;
-		created_at?: string;
-		props?: Record<string, unknown>;
+		impact?: string | null;
+		state_key?: string | null;
+		props?: Record<string, unknown> | null;
 	}
 
-	type Guard = Record<string, unknown>;
-	type TransitionAction = Record<string, unknown>;
+	type PrimitiveFilter = DeliverablePrimitive | 'all';
 
-	interface TransitionDetail {
-		event: string;
-		to: string;
-		guards?: Guard[];
-		actions?: TransitionAction[];
-		can_run?: boolean;
-		failed_guards?: Guard[];
-	}
+	type InsightPanelKey = 'tasks' | 'plans' | 'goals' | 'risks' | 'milestones';
 
-	type ReverseEngineerMilestonePayload = {
-		title: string;
-		due_at: string | null;
-		summary: string | null;
-		type_key?: string | null;
-		confidence?: number | null;
-		tasks: Array<{
-			title: string;
-			description: string | null;
-			state_key: string;
-			priority: number | null;
-		}>;
+	type InsightPanel = {
+		key: InsightPanelKey;
+		label: string;
+		icon: typeof CheckCircle2;
+		items: Array<unknown>;
+		description?: string;
 	};
 
-	// ============================================================
-	// COMPONENT STATE & INITIALIZATION
-	// ============================================================
+	// State colors for output badges
+	const STATE_COLUMNS = [
+		{ key: 'draft', label: 'Draft', color: 'bg-muted' },
+		{ key: 'review', label: 'In Review', color: 'bg-amber-500/10' },
+		{ key: 'approved', label: 'Approved', color: 'bg-blue-500/10' },
+		{ key: 'published', label: 'Published', color: 'bg-emerald-500/10' }
+	];
+
+	// Primitive icons and labels
+	const PRIMITIVE_CONFIG: Record<
+		DeliverablePrimitive,
+		{ icon: typeof FileText; label: string; color: string }
+	> = {
+		document: { icon: FileText, label: 'Document', color: 'text-blue-500' },
+		event: { icon: Calendar, label: 'Event', color: 'text-purple-500' },
+		collection: { icon: Layers, label: 'Collection', color: 'text-amber-500' },
+		external: { icon: ExternalLink, label: 'External', color: 'text-emerald-500' }
+	};
 
 	// ============================================================
 	// PROPS & DATA
 	// ============================================================
 	let { data }: { data: PageData } = $props();
 
-	// ============================================================
-	// DERIVED STATE
-	// ============================================================
+	// Core data
 	let project = $state(data.project as Project);
 	let tasks = $state((data.tasks || []) as Task[]);
 	let outputs = $state((data.outputs || []) as Output[]);
 	let documents = $state((data.documents || []) as Document[]);
 	let plans = $state((data.plans || []) as Plan[]);
 	let goals = $state((data.goals || []) as Goal[]);
-	let requirements = $state((data.requirements || []) as Requirement[]);
 	let milestones = $state((data.milestones || []) as Milestone[]);
 	let risks = $state((data.risks || []) as Risk[]);
-	let template = $state((data.template || null) as OntoTemplate | null);
 	let contextDocument = $state((data.context_document || null) as Document | null);
-	let allowedTransitions = $state((data.allowed_transitions || []) as TransitionDetail[]);
-	const initialTransitionDetails = $derived(
-		allowedTransitions.map((transition) => ({
-			event: transition.event,
-			to: transition.to,
-			guards: (transition.guards ?? []) as Guard[],
-			actions: (transition.actions ?? []) as TransitionAction[],
-			can_run: transition.can_run ?? true,
-			failedGuards: (transition.failed_guards ?? []) as Guard[]
-		}))
-	);
-
-	const emptyGraphStats: GraphStats = {
-		totalTemplates: 0,
-		totalProjects: 0,
-		activeProjects: 0,
-		totalEdges: 0,
-		totalTasks: 0,
-		totalOutputs: 0,
-		totalDocuments: 0
-	};
-
-	let projectGraphSource = $state((data.graphSource ?? null) as GraphSourceData | null);
-	let projectGraphStats = $state((data.graphStats ?? null) as GraphStats | null);
-	let graphMetadata = $state(
-		(data.graphMetadata ?? null) as { generatedAt?: string | null } | null
-	);
-	let graphError = $state<string | null>((data.graphError ?? null) as string | null);
-	const TASK_DOCUMENT_REL = 'task_has_document';
-
-	const projectStats = $derived({
-		tasks: tasks.length,
-		goals: goals.length,
-		plans: plans.length,
-		outputs: outputs.length,
-		documents: documents.length
-	});
-
-	const graphLastUpdated = $derived.by(() => {
-		const timestamp = graphMetadata?.generatedAt;
-		if (!timestamp) return null;
-		const parsed = new Date(timestamp);
-		return Number.isNaN(parsed.getTime()) ? null : parsed.toLocaleString();
-	});
-
-	$effect(() => {
-		project = data.project as Project;
-		tasks = (data.tasks || []) as Task[];
-		outputs = (data.outputs || []) as Output[];
-		documents = (data.documents || []) as Document[];
-		plans = (data.plans || []) as Plan[];
-		goals = (data.goals || []) as Goal[];
-		requirements = (data.requirements || []) as Requirement[];
-		milestones = (data.milestones || []) as Milestone[];
-		risks = (data.risks || []) as Risk[];
-		template = (data.template || null) as OntoTemplate | null;
-		contextDocument = (data.context_document || null) as Document | null;
-		allowedTransitions = (data.allowed_transitions || []) as TransitionDetail[];
-		projectGraphSource = (data.graphSource ?? null) as GraphSourceData | null;
-		projectGraphStats = (data.graphStats ?? null) as GraphStats | null;
-		graphMetadata = (data.graphMetadata ?? null) as { generatedAt?: string | null } | null;
-		graphError = (data.graphError ?? null) as string | null;
-		lastDataRefreshAt = Date.now();
-		dataRefreshError = null;
-	});
-
-	// ============================================================
-	// COMPONENT STATE
-	// ============================================================
-	let activeTab = $state('tasks');
 	let showOutputCreateModal = $state(false);
+	let showDocumentModal = $state(false);
+	let activeDocumentId = $state<string | null>(null);
 	let showTaskCreateModal = $state(false);
 	let showPlanCreateModal = $state(false);
 	let showGoalCreateModal = $state(false);
@@ -254,303 +160,231 @@
 	let isDeletingProject = $state(false);
 	let deleteProjectError = $state<string | null>(null);
 	let editingTaskId = $state<string | null>(null);
-	let editingOutputId = $state<string | null>(null);
-	let showDocumentModal = $state(false);
-	let activeDocumentId = $state<string | null>(null);
-	let expandedDocumentId = $state<string | null>(null);
 	let editingPlanId = $state<string | null>(null);
 	let editingGoalId = $state<string | null>(null);
-	let expandedGoalId = $state<string | null>(null);
-	let reverseEngineeringGoalId = $state<string | null>(null);
-	let reverseEngineerModalOpen = $state(false);
-	let reverseEngineerPreview = $state<GoalReverseEngineeringResult | null>(null);
-	let reverseEngineerGoalMeta = $state<{ id: string; name: string } | null>(null);
-	let approvingReverseEngineer = $state(false);
-	let graphViewMode = $state<ViewMode>('projects');
-	let graphInstance = $state<OntologyGraphInstance | null>(null);
-	let selectedGraphNode = $state<GraphNode | null>(null);
-	let graphLoading = $state(false);
-	let graphReloadError = $state<string | null>(null);
-	let dataRefreshing = $state(false);
-	let dataRefreshError = $state<string | null>(null);
-	let lastDataRefreshAt = $state<number>(Date.now());
-	let activeRefreshController: AbortController | null = null;
+	let editingOutputId = $state<string | null>(null);
 
-	const tabs = $derived<Tab[]>([
-		{ id: 'tasks', label: 'Tasks', count: tasks.length },
+	// UI State
+	let primitiveFilter = $state<PrimitiveFilter>('all');
+	let dataRefreshing = $state(false);
+	let expandedPanels = $state<Record<InsightPanelKey, boolean>>({
+		tasks: false,
+		plans: false,
+		goals: false,
+		risks: false,
+		milestones: false
+	});
+
+	// ============================================================
+	// DERIVED STATE
+	// ============================================================
+
+	const projectStats = $derived(() => ({
+		outputs: outputs.length,
+		documents: documents.length,
+		tasks: tasks.length,
+		plans: plans.length,
+		goals: goals.length
+	}));
+
+	const documentTypeOptions = $derived(() => {
+		const set = new Set<string>();
+		for (const doc of documents) {
+			if (doc.type_key) set.add(doc.type_key);
+		}
+		return Array.from(set);
+	});
+
+	// Enrich outputs with primitive info
+	const enrichedOutputs = $derived(
+		outputs.map((output) => ({
+			...output,
+			primitive: getDeliverablePrimitive(output.type_key) || 'document',
+			typeLabel: getTypeLabel(output.type_key),
+			taskCount: getRelatedTaskCount(output.id),
+			childCount: isCollectionDeliverable(output.type_key) ? getChildCount(output) : undefined
+		}))
+	);
+
+	// Filter outputs by primitive
+	const filteredOutputs = $derived(
+		primitiveFilter === 'all'
+			? enrichedOutputs
+			: enrichedOutputs.filter((o) => o.primitive === primitiveFilter)
+	);
+
+	// Count by primitive for filter badges
+	const primitiveCounts = $derived(() => {
+		const counts: Record<string, number> = { all: outputs.length };
+		for (const output of outputs) {
+			const primitive = getDeliverablePrimitive(output.type_key) || 'document';
+			counts[primitive] = (counts[primitive] || 0) + 1;
+		}
+		return counts;
+	});
+
+	// Documents that could be promoted to deliverables
+	const promotableDocuments = $derived(
+		documents.filter((doc) => {
+			// Document not already linked to an output
+			return !outputs.some(
+				(o) => (o as Output & { source_document_id?: string }).source_document_id === doc.id
+			);
+		})
+	);
+
+	const insightPanels: InsightPanel[] = $derived([
 		{
-			id: 'graph',
-			label: 'Graph',
-			icon: GitBranch,
-			count: projectGraphStats?.totalEdges
+			key: 'tasks',
+			label: 'Tasks',
+			icon: ListChecks,
+			items: tasks,
+			description: 'What needs to move'
 		},
-		{ id: 'outputs', label: 'Outputs', count: outputs.length },
-		{ id: 'documents', label: 'Documents', count: documents.length },
-		{ id: 'plans', label: 'Plans', count: plans.length },
-		{ id: 'goals', label: 'Goals', count: goals.length },
 		{
-			id: 'other',
-			label: 'Other',
-			count: requirements.length + milestones.length + risks.length
+			key: 'plans',
+			label: 'Plans',
+			icon: Calendar,
+			items: plans,
+			description: 'Execution scaffolding'
+		},
+		{
+			key: 'goals',
+			label: 'Goals',
+			icon: Target,
+			items: goals,
+			description: 'What success looks like'
+		},
+		{
+			key: 'risks',
+			label: 'Risks',
+			icon: AlertTriangle,
+			items: risks,
+			description: 'What could go wrong'
+		},
+		{
+			key: 'milestones',
+			label: 'Milestones',
+			icon: Flag,
+			items: milestones,
+			description: 'Checkpoints and dates'
 		}
 	]);
 
-	// ✅ Fixed $derived syntax - remove arrow functions, use IIFE pattern for complex logic
-	const milestonesByGoal = $derived(
-		(() => {
-			const map = new Map<string, Milestone[]>();
-			for (const milestone of milestones) {
-				const goalId = getGoalIdFromMilestone(milestone);
-				if (!goalId) continue;
-				const existing = map.get(goalId);
-				if (existing) {
-					existing.push(milestone);
-				} else {
-					map.set(goalId, [milestone]);
-				}
-			}
-			return map;
-		})()
-	);
+	// ============================================================
+	// UTILITY FUNCTIONS
+	// ============================================================
 
-	const lastDataRefreshLabel = $derived.by(() =>
-		lastDataRefreshAt ? new Date(lastDataRefreshAt).toLocaleTimeString() : ''
-	);
-
-	const taskDocuments = $derived(
-		(() => {
-			const map = new Map<string, Document[]>();
-			const docsById = new Map<string, Document>();
-			for (const doc of documents) {
-				if (doc?.id) docsById.set(doc.id, doc);
-			}
-
-			const edges = projectGraphSource?.edges ?? [];
-			for (const edge of edges) {
-				if (
-					edge?.rel !== TASK_DOCUMENT_REL ||
-					edge.src_kind !== 'task' ||
-					edge.dst_kind !== 'document'
-				) {
-					continue;
-				}
-				const doc = docsById.get(edge.dst_id);
-				if (!doc) continue;
-				const existing = map.get(edge.src_id);
-				if (existing) {
-					existing.push(doc);
-				} else {
-					map.set(edge.src_id, [doc]);
-				}
-			}
-
-			return map;
-		})()
-	);
-
-	const tasksByMilestone = $derived(
-		(() => {
-			const map = new Map<string, Task[]>();
-			for (const task of tasks) {
-				const milestoneId = getMilestoneIdFromTask(task);
-				if (!milestoneId) continue;
-				const existing = map.get(milestoneId);
-				if (existing) {
-					existing.push(task);
-				} else {
-					map.set(milestoneId, [task]);
-				}
-			}
-			return map;
-		})()
-	);
-
-	const tasksByGoal = $derived(
-		(() => {
-			const map = new Map<string, Task[]>();
-			for (const task of tasks) {
-				const goalIds = getGoalIdsFromTask(task);
-				for (const goalId of goalIds) {
-					const existing = map.get(goalId);
-					if (existing) {
-						existing.push(task);
-					} else {
-						map.set(goalId, [task]);
-					}
-				}
-			}
-			return map;
-		})()
-	);
-
-	const goalStats = $derived(
-		(() => {
-			const stats = new Map<
-				string,
-				{ milestoneCount: number; taskCount: number; completedTaskCount: number }
-			>();
-
-			for (const goal of goals) {
-				const goalMilestones = milestonesByGoal.get(goal.id) ?? [];
-				const milestoneTasks: Task[] = [];
-				for (const milestone of goalMilestones) {
-					milestoneTasks.push(...(tasksByMilestone.get(milestone.id) ?? []));
-				}
-
-				// Prefer dedicated goal links and avoid double-counting milestone-linked tasks
-				const directGoalTasks = getDirectGoalTasks(goal.id);
-				const allTasks = [...milestoneTasks, ...directGoalTasks];
-				const seenTaskIds = new Set<string>();
-				let totalTasks = 0;
-				let completedTasks = 0;
-
-				for (const task of allTasks) {
-					if (seenTaskIds.has(task.id)) continue;
-					seenTaskIds.add(task.id);
-					totalTasks += 1;
-					if (isTaskComplete(task)) {
-						completedTasks += 1;
-					}
-				}
-
-				stats.set(goal.id, {
-					milestoneCount: goalMilestones.length,
-					taskCount: totalTasks,
-					completedTaskCount: completedTasks
-				});
-			}
-
-			return stats;
-		})()
-	);
-
-	const documentTypeOptions = $derived.by(() => {
-		const types = new Set<string>();
-		for (const doc of documents) {
-			if (doc.type_key) {
-				types.add(doc.type_key);
-			}
-		}
-		return Array.from(types);
-	});
-
-	type ProjectSnapshot = Partial<
-		Pick<
-			PageData,
-			| 'project'
-			| 'tasks'
-			| 'outputs'
-			| 'documents'
-			| 'plans'
-			| 'goals'
-			| 'requirements'
-			| 'milestones'
-			| 'risks'
-			| 'template'
-			| 'context_document'
-			| 'allowed_transitions'
-		>
-	>;
-
-	function applyProjectSnapshot(snapshot: ProjectSnapshot | null | undefined, markFresh = false) {
-		if (!snapshot) return;
-
-		if (snapshot.project) {
-			project = snapshot.project as Project;
-		}
-		if (snapshot.tasks !== undefined) {
-			tasks = (snapshot.tasks || []) as Task[];
-		}
-		if (snapshot.outputs !== undefined) {
-			outputs = (snapshot.outputs || []) as Output[];
-		}
-		if (snapshot.documents !== undefined) {
-			documents = (snapshot.documents || []) as Document[];
-		}
-		if (snapshot.plans !== undefined) {
-			plans = (snapshot.plans || []) as Plan[];
-		}
-		if (snapshot.goals !== undefined) {
-			goals = (snapshot.goals || []) as Goal[];
-		}
-		if (snapshot.requirements !== undefined) {
-			requirements = (snapshot.requirements || []) as Requirement[];
-		}
-		if (snapshot.milestones !== undefined) {
-			milestones = (snapshot.milestones || []) as Milestone[];
-		}
-		if (snapshot.risks !== undefined) {
-			risks = (snapshot.risks || []) as Risk[];
-		}
-		if (snapshot.template !== undefined) {
-			template = (snapshot.template || null) as OntoTemplate | null;
-		}
-		if (snapshot.context_document !== undefined) {
-			contextDocument = (snapshot.context_document || null) as Document | null;
-		}
-		if (snapshot.allowed_transitions !== undefined) {
-			allowedTransitions = (snapshot.allowed_transitions || []) as TransitionDetail[];
-		}
-
-		if (markFresh) {
-			lastDataRefreshAt = Date.now();
-			dataRefreshError = null;
-		}
+	function normalizeState(state: string): string {
+		const s = state?.toLowerCase() || 'draft';
+		if (s === 'complete' || s === 'completed' || s === 'shipped') return 'published';
+		if (s === 'in_review' || s === 'reviewing') return 'review';
+		if (s === 'in_progress' || s === 'drafting') return 'draft';
+		if (STATE_COLUMNS.some((c) => c.key === s)) return s;
+		return 'draft';
 	}
 
-	type RefreshOptions = {
-		refreshGraph?: boolean;
-		silent?: boolean;
-	};
+	function getTypeLabel(typeKey: string): string {
+		// Extract the last part of the type_key
+		const parts = typeKey.split('.');
+		const variant = parts[parts.length - 1] ?? typeKey;
+		// Convert snake_case to Title Case
+		return variant
+			.split('_')
+			.map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+			.join(' ');
+	}
 
-	async function refreshProjectData(options: RefreshOptions = {}) {
-		if (!project?.id) return;
-		const { refreshGraph = false, silent = true } = options;
+	function getRelatedTaskCount(outputId: string): number {
+		return tasks.filter((t) => {
+			const props = t.props as Record<string, unknown>;
+			return props?.output_id === outputId;
+		}).length;
+	}
 
-		// Abort any in-flight refresh since this data is newer
-		if (activeRefreshController) {
-			activeRefreshController.abort();
+	function getChildCount(output: Output): number {
+		const props = output.props as Record<string, unknown>;
+		if (Array.isArray(props?.children)) {
+			return props.children.length;
 		}
-		const controller = new AbortController();
-		activeRefreshController = controller;
+		if (Array.isArray(props?.chapters)) {
+			return props.chapters.length;
+		}
+		return 0;
+	}
 
+	function getPrimitiveIcon(primitive: DeliverablePrimitive) {
+		return PRIMITIVE_CONFIG[primitive]?.icon || FileText;
+	}
+
+	function getPrimitiveColor(primitive: DeliverablePrimitive) {
+		return PRIMITIVE_CONFIG[primitive]?.color || 'text-muted-foreground';
+	}
+
+	function getStateColor(state: string): string {
+		const normalized = normalizeState(state);
+		const col = STATE_COLUMNS.find((c) => c.key === normalized);
+		return col?.color || 'bg-muted';
+	}
+
+	function togglePanel(key: InsightPanelKey) {
+		expandedPanels = { ...expandedPanels, [key]: !expandedPanels[key] };
+	}
+
+	function getTaskVisuals(state: string) {
+		const normalized = state?.toLowerCase() || '';
+		if (normalized === 'done' || normalized === 'completed' || normalized === 'complete') {
+			return { icon: CheckCircle2, color: 'text-emerald-500' };
+		}
+		if (normalized === 'in_progress' || normalized === 'active') {
+			return { icon: Clock, color: 'text-accent' };
+		}
+		return { icon: Circle, color: 'text-muted-foreground' };
+	}
+
+	function formatDueDate(dateString?: string | null) {
+		if (!dateString) return 'No due date';
+		const parsed = new Date(dateString);
+		if (Number.isNaN(parsed.getTime())) return 'No due date';
+		return parsed.toLocaleDateString(undefined, {
+			month: 'short',
+			day: 'numeric',
+			year: 'numeric'
+		});
+	}
+
+	// ============================================================
+	// DATA MANAGEMENT
+	// ============================================================
+
+	async function refreshData() {
+		if (!project?.id) return;
 		dataRefreshing = true;
-		dataRefreshError = null;
 
 		try {
-			const response = await fetch(`/api/onto/projects/${project.id}`, {
-				signal: controller.signal
-			});
+			const response = await fetch(`/api/onto/projects/${project.id}`);
 			const payload = await response.json().catch(() => null);
 
 			if (!response.ok) {
-				throw new Error(payload?.error ?? 'Failed to refresh project data');
+				throw new Error(payload?.error ?? 'Failed to refresh data');
 			}
 
-			applyProjectSnapshot(payload?.data ?? null, true);
+			const newData = payload?.data || {};
+			project = newData.project || project;
+			tasks = newData.tasks || [];
+			outputs = newData.outputs || [];
+			documents = newData.documents || [];
+			plans = newData.plans || [];
+			goals = newData.goals || [];
+			milestones = newData.milestones || [];
+			risks = newData.risks || [];
+			contextDocument = newData.context_document || null;
 
-			if (refreshGraph) {
-				queueMicrotask(() => {
-					if (!controller.signal.aborted) {
-						refreshProjectGraph();
-					}
-				});
-			}
+			toastService.success('Data refreshed');
 		} catch (error) {
-			if (controller.signal.aborted) return;
 			console.error('[Project] Failed to refresh', error);
-			const message =
-				error instanceof Error && error.message
-					? error.message
-					: 'Failed to refresh project data';
-			dataRefreshError = message;
-			if (!silent) {
-				toastService.error(message);
-			}
+			toastService.error(error instanceof Error ? error.message : 'Failed to refresh data');
 		} finally {
-			if (activeRefreshController === controller) {
-				activeRefreshController = null;
-			}
 			dataRefreshing = false;
 		}
 	}
@@ -558,81 +392,110 @@
 	// ============================================================
 	// EVENT HANDLERS
 	// ============================================================
-	function handleTabChange(tabId: string) {
-		activeTab = tabId;
-		if (tabId === 'graph' && !projectGraphSource && !graphLoading) {
-			refreshProjectGraph();
-		}
+
+	function handlePrimitiveFilter(primitive: PrimitiveFilter) {
+		primitiveFilter = primitive;
 	}
 
-	async function handleStateChange(): Promise<void> {
-		await refreshProjectData({ refreshGraph: true, silent: false });
+	async function handlePromoteDocument(documentId: string) {
+		// TODO: Implement document promotion flow
+		// This would open a modal to select deliverable type
+		toastService.info('Document promotion coming soon');
 	}
 
-	function handleProjectSaved(updatedProject: Project): void {
-		applyProjectSnapshot({ project: updatedProject }, true);
+	async function handleOutputCreated() {
+		await refreshData();
+		showOutputCreateModal = false;
 	}
 
-	async function refreshProjectGraph() {
+	async function handleOutputUpdated() {
+		await refreshData();
+		editingOutputId = null;
+	}
+
+	async function handleOutputDeleted() {
+		await refreshData();
+		editingOutputId = null;
+	}
+
+	async function handleDocumentSaved() {
+		await refreshData();
+		showDocumentModal = false;
+		activeDocumentId = null;
+	}
+
+	async function handleDocumentDeleted() {
+		await refreshData();
+		showDocumentModal = false;
+		activeDocumentId = null;
+	}
+
+	async function handleTaskCreated() {
+		await refreshData();
+		showTaskCreateModal = false;
+	}
+
+	async function handleTaskUpdated() {
+		await refreshData();
+		editingTaskId = null;
+	}
+
+	async function handleTaskDeleted() {
+		await refreshData();
+		editingTaskId = null;
+	}
+
+	async function handlePlanCreated() {
+		await refreshData();
+		showPlanCreateModal = false;
+	}
+
+	async function handlePlanUpdated() {
+		await refreshData();
+		editingPlanId = null;
+	}
+
+	async function handlePlanDeleted() {
+		await refreshData();
+		editingPlanId = null;
+	}
+
+	async function handleGoalCreated() {
+		await refreshData();
+		showGoalCreateModal = false;
+	}
+
+	async function handleGoalUpdated() {
+		await refreshData();
+		editingGoalId = null;
+	}
+
+	async function handleGoalDeleted() {
+		await refreshData();
+		editingGoalId = null;
+	}
+
+	async function handleProjectStateChange(data: {
+		state: string;
+		actions: string[];
+		event: string;
+	}) {
+		project = { ...project, state_key: data.state };
+		await refreshData();
+		toastService.success(`Project moved to "${data.state}"`);
+	}
+
+	async function handleProjectDeleteConfirm() {
 		if (!project?.id) return;
-
-		try {
-			graphLoading = true;
-			graphReloadError = null;
-			const response = await fetch(`/api/onto/projects/${project.id}/graph?viewMode=full`);
-			const payload = await response.json().catch(() => null);
-
-			if (!response.ok) {
-				throw new Error(payload?.error ?? 'Failed to load project graph');
-			}
-
-			projectGraphSource = (payload?.data?.source ?? null) as GraphSourceData | null;
-			projectGraphStats = (payload?.data?.stats ?? null) as GraphStats | null;
-			graphMetadata = (payload?.data?.metadata ?? null) as {
-				generatedAt?: string | null;
-			} | null;
-			graphError = null;
-			selectedGraphNode = null;
-		} catch (error) {
-			console.error('[Project Graph] Failed to refresh', error);
-			const message =
-				error instanceof Error && error.message
-					? error.message
-					: 'Failed to load project graph';
-			graphReloadError = message;
-			graphError = message;
-		} finally {
-			graphLoading = false;
-		}
-	}
-
-	function openDeleteModal(): void {
-		deleteProjectError = null;
-		showDeleteProjectModal = true;
-	}
-
-	function closeDeleteModal(): void {
-		if (isDeletingProject) return;
-		showDeleteProjectModal = false;
-	}
-
-	async function handleProjectDeleteConfirm(): Promise<void> {
-		if (!project?.id) return;
-
 		isDeletingProject = true;
 		deleteProjectError = null;
 
 		try {
-			const response = await fetch(`/api/onto/projects/${project.id}`, {
-				method: 'DELETE'
-			});
-
+			const response = await fetch(`/api/onto/projects/${project.id}`, { method: 'DELETE' });
 			const payload = await response.json().catch(() => null);
-
 			if (!response.ok) {
 				throw new Error(payload?.error || 'Failed to delete project');
 			}
-
 			toastService.success('Project deleted');
 			showDeleteProjectModal = false;
 			goto('/projects');
@@ -644,1466 +507,636 @@
 			isDeletingProject = false;
 		}
 	}
-
-	// ============================================================
-	// HELPER FUNCTIONS
-	// ============================================================
-	function getGoalIdFromMilestone(milestone: Milestone): string | null {
-		const goalId = milestone.props?.goal_id;
-		return typeof goalId === 'string' ? goalId : null;
-	}
-
-	function getGoalIdsFromTask(task: Task): string[] {
-		const ids = new Set<string>();
-		const props = (task.props as Record<string, unknown> | null) ?? null;
-
-		if (props && typeof props === 'object') {
-			const goalId = (props as Record<string, unknown>).goal_id;
-			if (typeof goalId === 'string' && goalId.trim().length > 0) {
-				ids.add(goalId);
-			}
-
-			const sourceGoalId = (props as Record<string, unknown>).source_goal_id;
-			if (typeof sourceGoalId === 'string' && sourceGoalId.trim().length > 0) {
-				ids.add(sourceGoalId);
-			}
-
-			const goalIds = (props as Record<string, unknown>).goal_ids;
-			if (Array.isArray(goalIds)) {
-				for (const value of goalIds) {
-					if (typeof value === 'string' && value.trim().length > 0) {
-						ids.add(value);
-					}
-				}
-			}
-		}
-
-		const topLevelGoalId = (task as Record<string, unknown>).goal_id;
-		if (typeof topLevelGoalId === 'string' && topLevelGoalId.trim().length > 0) {
-			ids.add(topLevelGoalId);
-		}
-
-		return Array.from(ids);
-	}
-
-	function getMilestoneIdFromTask(task: Task): string | null {
-		const milestoneId = task.props?.supporting_milestone_id;
-		return typeof milestoneId === 'string' ? milestoneId : null;
-	}
-
-	function isTaskComplete(task: Task): boolean {
-		const normalized = task.state_key?.toLowerCase?.() ?? '';
-		return normalized === 'done' || normalized === 'completed' || normalized === 'complete';
-	}
-
-	function getGoalMilestones(goalId: string): Milestone[] {
-		return milestonesByGoal.get(goalId) ?? [];
-	}
-
-	function getMilestoneTasks(milestoneId: string): Task[] {
-		return tasksByMilestone.get(milestoneId) ?? [];
-	}
-
-	function getDirectGoalTasks(goalId: string): Task[] {
-		const linkedTasks = tasksByGoal.get(goalId) ?? [];
-		const milestonesForGoal = new Set(
-			(milestonesByGoal.get(goalId) ?? []).map((milestone) => milestone.id)
-		);
-		return linkedTasks.filter((task) => {
-			const milestoneId = getMilestoneIdFromTask(task);
-			// If the task is tied to a milestone that already rolls up to this goal, skip to avoid duplication
-			if (milestoneId && milestonesForGoal.has(milestoneId)) {
-				return false;
-			}
-			return true;
-		});
-	}
-
-	function handleReverseEngineerModalClose() {
-		reverseEngineerModalOpen = false;
-		reverseEngineerPreview = null;
-		reverseEngineerGoalMeta = null;
-		approvingReverseEngineer = false;
-	}
-
-	function convertDateToISO(dateString: string | null): string | null {
-		if (!dateString) return null;
-		const parsed = new Date(`${dateString}T00:00:00Z`);
-		if (Number.isNaN(parsed.getTime())) {
-			return null;
-		}
-		return parsed.toISOString();
-	}
-
-	// Event handler removed - now using direct prop callback
-
-	function getGoalStatsForDisplay(goalId: string) {
-		return (
-			goalStats.get(goalId) ?? {
-				milestoneCount: 0,
-				taskCount: 0,
-				completedTaskCount: 0
-			}
-		);
-	}
-
-	function getMilestoneTaskStats(milestoneId: string) {
-		const milestoneTasks = getMilestoneTasks(milestoneId);
-		return {
-			total: milestoneTasks.length,
-			completed: milestoneTasks.filter((task) => isTaskComplete(task)).length
-		};
-	}
-
-	function formatDueDate(dateString: string) {
-		const date = new Date(dateString);
-		if (Number.isNaN(date.getTime())) {
-			return 'No due date';
-		}
-		return date.toLocaleDateString(undefined, {
-			month: 'short',
-			day: 'numeric',
-			year: 'numeric'
-		});
-	}
-
-	function formatUpdatedTimestamp(dateString?: string | null) {
-		if (!dateString) return null;
-		const date = new Date(dateString);
-		if (Number.isNaN(date.getTime())) {
-			return null;
-		}
-		return date.toLocaleDateString(undefined, {
-			month: 'short',
-			day: 'numeric',
-			year: 'numeric'
-		});
-	}
-
-	function formatPlanDate(value: unknown): string {
-		if (typeof value !== 'string' || !value) {
-			return '';
-		}
-		try {
-			const date = new Date(value);
-			return isNaN(date.getTime()) ? '' : date.toLocaleDateString();
-		} catch {
-			return '';
-		}
-	}
-
-	function toggleGoalExpansion(goalId: string) {
-		expandedGoalId = expandedGoalId === goalId ? null : goalId;
-	}
-
-	async function handleReverseEngineerGoal(goalId: string) {
-		if (reverseEngineeringGoalId) return;
-
-		try {
-			reverseEngineeringGoalId = goalId;
-			const response = await fetch(`/api/onto/goals/${goalId}/reverse`, {
-				method: 'POST'
-			});
-
-			const payload = await response.json().catch(() => null);
-
-			if (!response.ok) {
-				throw new Error(payload?.error ?? 'Failed to generate plan preview');
-			}
-
-			const preview = payload?.data?.preview as GoalReverseEngineeringResult | undefined;
-			if (!preview || !preview.milestones?.length) {
-				throw new Error('Model did not return any milestones. Try again.');
-			}
-
-			const goalMeta = (payload?.data?.goal as { id: string; name: string } | undefined) ??
-				goals.find((goal) => goal.id === goalId) ?? {
-					id: goalId,
-					name: 'Goal'
-				};
-
-			reverseEngineerPreview = preview;
-			reverseEngineerGoalMeta = {
-				id: goalMeta.id,
-				name: goalMeta.name
-			};
-			reverseEngineerModalOpen = true;
-		} catch (error) {
-			console.error('[Goal Reverse] Failed', error);
-			const message =
-				error instanceof Error && error.message
-					? error.message
-					: 'Failed to generate plan preview';
-			toastService.error(message);
-		} finally {
-			reverseEngineeringGoalId = null;
-		}
-	}
-
-	async function handleReverseEngineerApproval(milestones: ReverseEngineerMilestonePayload[]) {
-		if (!reverseEngineerGoalMeta) return;
-
-		try {
-			approvingReverseEngineer = true;
-			const response = await fetch(
-				`/api/onto/goals/${reverseEngineerGoalMeta.id}/reverse/apply`,
-				{
-					method: 'POST',
-					headers: {
-						'Content-Type': 'application/json'
-					},
-					body: JSON.stringify({
-						milestones: milestones.map((milestone) => ({
-							...milestone,
-							due_at: convertDateToISO(milestone.due_at)
-						}))
-					})
-				}
-			);
-
-			const payload = await response.json().catch(() => null);
-
-			if (!response.ok) {
-				throw new Error(payload?.error ?? 'Failed to create milestones');
-			}
-
-			const createdMilestones = Number(
-				payload?.data?.milestones_created ?? milestones.length
-			);
-			const createdTasks = Number(payload?.data?.tasks_created ?? 0);
-
-			toastService.success(
-				`Created ${createdMilestones} milestone${createdMilestones === 1 ? '' : 's'} and ${createdTasks} task${createdTasks === 1 ? '' : 's'}.`
-			);
-
-			await refreshProjectData({ refreshGraph: true });
-			expandedGoalId = reverseEngineerGoalMeta.id;
-			handleReverseEngineerModalClose();
-		} catch (error) {
-			console.error('[Goal Reverse] Apply failed', error);
-			const message =
-				error instanceof Error && error.message
-					? error.message
-					: 'Failed to create milestones';
-			toastService.error(message);
-		} finally {
-			approvingReverseEngineer = false;
-		}
-	}
-
-	function editOutput(outputId: string) {
-		editingOutputId = outputId;
-	}
-
-	async function handleOutputCreated(outputId: string) {
-		// Reload data to show new output
-		await refreshProjectData({ refreshGraph: true });
-		// Open the edit modal for the new output
-		editingOutputId = outputId;
-	}
-
-	async function handleOutputUpdated() {
-		await refreshProjectData({ refreshGraph: true });
-	}
-
-	async function handleOutputDeleted() {
-		await refreshProjectData({ refreshGraph: true });
-		editingOutputId = null;
-	}
-
-	async function handleTaskCreated(taskId: string) {
-		// Reload data to show new task
-		await refreshProjectData({ refreshGraph: true });
-		// Optionally open the edit modal for the new task
-		editingTaskId = taskId;
-	}
-
-	async function handleTaskUpdated() {
-		// Reload data to show updated task
-		await refreshProjectData({ refreshGraph: true });
-	}
-
-	async function handleTaskDeleted() {
-		// Reload data to remove deleted task
-		await refreshProjectData({ refreshGraph: true });
-	}
-
-	function openDocumentModal(documentId: string | null = null) {
-		activeDocumentId = documentId;
-		showDocumentModal = true;
-	}
-
-	async function handleDocumentSaved() {
-		await refreshProjectData({ refreshGraph: true });
-		showDocumentModal = false;
-	}
-
-	async function handleDocumentDeleted() {
-		await refreshProjectData({ refreshGraph: true });
-		showDocumentModal = false;
-	}
-
-	function toggleDocumentExpansion(documentId: string) {
-		expandedDocumentId = expandedDocumentId === documentId ? null : documentId;
-	}
-
-	function getDocumentBody(doc: Document): string {
-		const props = (doc.props ?? {}) as Record<string, unknown>;
-		const candidateKeys = [
-			'body_markdown',
-			'body',
-			'content',
-			'summary_markdown',
-			'description'
-		];
-
-		for (const key of candidateKeys) {
-			const value = props[key];
-			if (typeof value === 'string' && value.trim().length > 0) {
-				return value;
-			}
-		}
-
-		return '';
-	}
-
-	function getDocumentPreview(doc: Document): string {
-		const body = getDocumentBody(doc);
-		return body ? getMarkdownPreview(body, 160) : '';
-	}
-
-	async function handlePlanUpdated() {
-		await refreshProjectData({ refreshGraph: true });
-	}
-
-	async function handlePlanDeleted() {
-		await refreshProjectData({ refreshGraph: true });
-		editingPlanId = null;
-	}
-
-	async function handleGoalUpdated() {
-		await refreshProjectData({ refreshGraph: true });
-	}
-
-	async function handleGoalDeleted() {
-		await refreshProjectData({ refreshGraph: true });
-		editingGoalId = null;
-	}
 </script>
 
 <svelte:head>
-	<title>{project?.name ?? 'Project'} | Ontology</title>
+	<title>{project?.name || 'Project'} | BuildOS</title>
 </svelte:head>
 
-<div class="flex flex-col gap-4 sm:gap-6">
-	<!-- Mobile Back Button - Only visible on mobile -->
-	<div class="lg:hidden">
-		<button
-			type="button"
-			onclick={() => goto('/projects')}
-			class="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm font-semibold text-muted-foreground transition hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring shadow-ink pressable"
-		>
-			<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-				<path
-					stroke-linecap="round"
-					stroke-linejoin="round"
-					stroke-width="2"
-					d="M10 19l-7-7m0 0l7-7m-7 7h18"
-				/>
-			</svg>
-			<span>Back to Projects</span>
-		</button>
-	</div>
-
-	<Card variant="elevated" padding="none">
-		<CardBody padding="lg" class="space-y-6">
-			<!-- <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-dense-3"></div> -->
-
-			<OntologyProjectHeader
-				{project}
-				{template}
-				stats={projectStats}
-				{contextDocument}
-				onEdit={() => (showProjectEditModal = true)}
-				onDelete={openDeleteModal}
-			/>
-
-			<FSMStateVisualizer
-				entityId={project.id}
-				entityKind="project"
-				entityName={project.name}
-				currentState={project.state_key}
-				initialTransitions={initialTransitionDetails}
-				onstatechange={handleStateChange}
-				showGuardEditCTA={true}
-				on:requestedit={() => (showProjectEditModal = true)}
-			/>
-		</CardBody>
-	</Card>
-
-	<!-- Tabs -->
-	<Card variant="elevated" padding="none">
-		<TabNav
-			{tabs}
-			{activeTab}
-			on:change={(e) => handleTabChange(e.detail)}
-			ariaLabel="Project sections"
-		/>
-	</Card>
-
-	<div
-		class="flex flex-col gap-2 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between"
+<div class="min-h-screen bg-background">
+	<!-- Header -->
+	<header
+		class="sticky top-0 z-40 border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80"
 	>
-		<div class="flex flex-wrap items-center gap-2">
-			{#if dataRefreshing}
-				<RefreshCw class="h-3 w-3 animate-spin text-accent" />
-				<span>Syncing latest project data…</span>
-			{:else}
-				<span>Last synced {lastDataRefreshLabel || 'just now'}</span>
-				{#if dataRefreshError}
-					<span class="text-red-600">Sync issue: {dataRefreshError}</span>
-				{/if}
-			{/if}
-		</div>
-	</div>
+		<div class="mx-auto max-w-screen-2xl px-4 sm:px-6 lg:px-8 py-3">
+			<div class="flex flex-wrap items-center justify-between gap-4">
+				<div class="flex items-center gap-3 min-w-0">
+					<button
+						onclick={() => goto('/projects')}
+						class="p-2 rounded-lg hover:bg-muted transition-colors"
+						aria-label="Back to projects"
+					>
+						<ArrowLeft class="w-5 h-5 text-muted-foreground" />
+					</button>
 
-	<!-- Content -->
-	<Card variant="elevated" padding="none">
-		<CardBody padding="lg">
-			{#if activeTab === 'tasks'}
-				<div class="space-y-4 sm:space-y-6">
-					<!-- Create button -->
-					<div class="flex justify-between items-center">
-						<h3 class="text-xl font-semibold text-foreground">Tasks</h3>
-						<Button
-							variant="primary"
-							size="sm"
-							onclick={() => (showTaskCreateModal = true)}
+					<div class="min-w-0">
+						<p class="text-[11px] uppercase tracking-wide text-muted-foreground">
+							Project
+						</p>
+						<h1
+							class="text-xl font-semibold text-foreground leading-tight line-clamp-2"
 						>
-							<Plus class="w-4 h-4" />
-							Create Task
-						</Button>
+							{project?.name || 'Untitled Project'}
+						</h1>
+					</div>
+				</div>
+
+				<div class="flex items-center gap-2">
+					<button
+						onclick={refreshData}
+						disabled={dataRefreshing}
+						class="p-2 rounded-lg hover:bg-muted transition-colors disabled:opacity-50"
+						aria-label="Refresh data"
+					>
+						<RefreshCw
+							class="w-5 h-5 text-muted-foreground {dataRefreshing
+								? 'animate-spin'
+								: ''}"
+						/>
+					</button>
+
+					<button
+						onclick={() => (showProjectEditModal = true)}
+						class="p-2 rounded-lg hover:bg-muted transition-colors"
+						aria-label="Edit project"
+						title="Edit project"
+					>
+						<Pencil class="w-5 h-5 text-muted-foreground" />
+					</button>
+					<button
+						onclick={() => (showDeleteProjectModal = true)}
+						class="p-2 rounded-lg hover:bg-red-500/10 transition-colors"
+						aria-label="Delete project"
+						title="Delete project"
+					>
+						<Trash2 class="w-5 h-5 text-red-500" />
+					</button>
+				</div>
+			</div>
+
+			<div class="mt-3">
+				{#await import('$lib/components/ontology/FSMStateBar.svelte') then { default: FSMStateBar }}
+					<FSMStateBar
+						entityId={project.id}
+						entityKind="project"
+						currentState={project.state_key}
+						entityName={project.name}
+						onstatechange={handleProjectStateChange}
+					/>
+				{/await}
+			</div>
+		</div>
+	</header>
+
+	<!-- Main Content -->
+	<main class="mx-auto max-w-screen-2xl px-4 sm:px-6 lg:px-8 py-6">
+		<div
+			class="grid grid-cols-1 lg:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)] gap-6 items-start"
+		>
+			<div class="space-y-8">
+				<section
+					class="bg-card border border-border rounded-xl shadow-ink tx tx-frame tx-weak p-4"
+				>
+					<div class="flex flex-wrap items-start justify-between gap-4">
+						<div>
+							<p class="text-xs uppercase tracking-wide text-muted-foreground">
+								Outputs
+							</p>
+							<h2 class="text-lg font-semibold text-foreground">Deliverables</h2>
+							<p class="text-sm text-muted-foreground">
+								Outputs are the primary focus. Documents live just below as smaller
+								cards.
+							</p>
+						</div>
 					</div>
 
-					<!-- Tasks list -->
-					{#if tasks.length === 0}
-						<div
-							class="text-center py-12 border-2 border-dashed border-border rounded-lg"
+					<div class="mt-3 flex flex-wrap items-center gap-2">
+						<span class="text-sm text-muted-foreground flex items-center gap-1">
+							<Filter class="w-4 h-4" />
+							Primitive
+						</span>
+						<button
+							onclick={() => handlePrimitiveFilter('all')}
+							class="px-3 py-1.5 text-sm rounded-lg transition-colors {primitiveFilter ===
+							'all'
+								? 'bg-accent text-accent-foreground'
+								: 'bg-muted text-muted-foreground hover:bg-muted/80'}"
 						>
-							<Pencil class="w-12 h-12 text-muted-foreground mx-auto mb-dense-4" />
-							<p class="text-muted-foreground mb-dense-4">
-								No tasks yet. Create your first task to get started.
-							</p>
-							<Button
-								variant="primary"
-								size="md"
-								onclick={() => (showTaskCreateModal = true)}
+							All ({primitiveCounts().all || 0})
+						</button>
+						{#each Object.entries(PRIMITIVE_CONFIG) as [primitive, config]}
+							{@const count = primitiveCounts()[primitive] || 0}
+							<button
+								onclick={() =>
+									handlePrimitiveFilter(primitive as DeliverablePrimitive)}
+								class="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg transition-colors {primitiveFilter ===
+								primitive
+									? 'bg-accent text-accent-foreground'
+									: 'bg-muted text-muted-foreground hover:bg-muted/80'}"
 							>
-								<Plus class="w-4 h-4" />
-								Create Task
-							</Button>
-						</div>
-					{:else}
-						<div class="space-y-3">
-							{#each tasks as task}
-								{@const linkedDocs = taskDocuments.get(task.id) ?? []}
-								<button
-									onclick={() => (editingTaskId = task.id)}
-									class="w-full flex flex-col sm:flex-row sm:items-center sm:justify-between gap-dense-3 p-4 border border-border rounded-lg hover:border-accent hover:bg-accent/5 transition-all duration-200 text-left group shadow-ink pressable"
-								>
-									<div class="flex-1 min-w-0 flex items-start gap-dense-3">
-										<Pencil
-											class="w-5 h-5 text-muted-foreground group-hover:text-accent flex-shrink-0 mt-0.5"
-										/>
-										<div class="flex-1 min-w-0">
-											<h3
-												class="font-semibold text-foreground group-hover:text-accent mb-1"
-											>
-												{task.title}
-											</h3>
-											<div
-												class="flex items-center gap-2 text-sm text-muted-foreground"
-											>
-												{#if task.props?.description}
-													<span class="line-clamp-1"
-														>{task.props.description}</span
-													>
-												{/if}
-												{#if task.plan_id}
-													<span class="text-border">•</span>
-													<span
-														>Plan: {plans.find(
-															(p) => p.id === task.plan_id
-														)?.name || 'Unknown'}</span
-													>
-												{/if}
-												{#if linkedDocs.length}
-													<span class="text-border">•</span>
-													<span
-														class="inline-flex items-center gap-1 text-xs"
-													>
-														<FileText
-															class="w-4 h-4 text-muted-foreground"
-														/>
-														{linkedDocs.length} document{linkedDocs.length ===
-														1
-															? ''
-															: 's'}
-													</span>
-												{/if}
-											</div>
-										</div>
-									</div>
-									<div class="flex items-center gap-2 flex-shrink-0">
-										<span
-											class="px-3 py-1 rounded-full text-xs font-semibold capitalize {getTaskStateBadgeClass(
-												task.state_key
-											)}"
-										>
-											{task.state_key}
-										</span>
-										{#if task.priority}
-											<span
-												class="px-2 py-1 bg-muted rounded text-xs font-semibold text-foreground"
-											>
-												P{task.priority}
-											</span>
-										{/if}
-										<ChevronRight
-											class="w-5 h-5 text-muted-foreground group-hover:text-accent"
-										/>
-									</div>
-								</button>
-							{/each}
+								<svelte:component this={config.icon} class="w-3.5 h-3.5" />
+								<span>{config.label}</span>
+								<span class="text-xs opacity-70">({count})</span>
+							</button>
+						{/each}
+
+						<button
+							onclick={() => (showOutputCreateModal = true)}
+							class="ml-auto inline-flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg border border-border bg-muted/60 font-medium hover:bg-muted transition-colors"
+						>
+							<Plus class="w-4 h-4" />
+							New Deliverable
+						</button>
+					</div>
+
+					{#if filteredOutputs.length === 0}
+						<div
+							class="mt-4 flex items-center gap-3 text-sm text-muted-foreground bg-muted/40 border border-border rounded-lg px-3 py-2"
+						>
+							<Sparkles class="w-4 h-4" />
+							<span>No deliverables yet. Create one to get started.</span>
 						</div>
 					{/if}
+				</section>
+
+				<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+					{#each filteredOutputs as output}
+						{@const PrimitiveIcon = getPrimitiveIcon(output.primitive)}
+						<article
+							class="h-full p-4 bg-card border border-border rounded-xl shadow-ink tx tx-grain tx-weak hover:shadow-ink-strong hover:border-accent/60 transition-all cursor-pointer"
+							onclick={() => (editingOutputId = output.id)}
+							role="button"
+							tabindex="0"
+							onkeydown={(e) => e.key === 'Enter' && (editingOutputId = output.id)}
+						>
+							<div class="flex items-start justify-between gap-3">
+								<div class="flex items-start gap-3 min-w-0">
+									<div
+										class="w-10 h-10 rounded-lg bg-muted flex items-center justify-center"
+									>
+										<PrimitiveIcon
+											class="w-5 h-5 {getPrimitiveColor(output.primitive)}"
+										/>
+									</div>
+									<div class="min-w-0 space-y-1">
+										<p
+											class="text-xs uppercase text-muted-foreground tracking-wide"
+										>
+											{output.typeLabel}
+										</p>
+										<h3
+											class="text-base font-semibold text-foreground leading-tight line-clamp-2 break-words"
+										>
+											{output.name}
+										</h3>
+									</div>
+								</div>
+								<span
+									class="flex-shrink-0 text-[11px] px-2 py-1 rounded-full border border-border {getStateColor(
+										output.state_key
+									)}"
+								>
+									{normalizeState(output.state_key)}
+								</span>
+							</div>
+
+							<div
+								class="mt-3 flex flex-wrap items-center gap-3 text-xs text-muted-foreground"
+							>
+								<span class="flex items-center gap-1">
+									<FileText class="w-3.5 h-3.5" />
+									{PRIMITIVE_CONFIG[output.primitive]?.label}
+								</span>
+								{#if output.taskCount > 0}
+									<span class="flex items-center gap-1">
+										<CheckCircle2 class="w-3 h-3" />
+										{output.taskCount} tasks
+									</span>
+								{/if}
+								{#if output.childCount !== undefined && output.childCount > 0}
+									<span class="flex items-center gap-1">
+										<Layers class="w-3 h-3" />
+										{output.childCount} items
+									</span>
+								{/if}
+								{#if isExternalDeliverable(output.type_key)}
+									{@const props = output.props as Record<string, unknown>}
+									{@const externalUri = props?.external_uri as string | undefined}
+									{#if externalUri}
+										<a
+											href={externalUri}
+											target="_blank"
+											rel="noopener noreferrer"
+											class="text-xs text-accent underline hover:text-accent/80"
+										>
+											External link
+										</a>
+									{/if}
+								{/if}
+								{#if isCollectionDeliverable(output.type_key)}
+									<span class="flex items-center gap-1">
+										<Layers class="w-3 h-3" />
+										Collection
+									</span>
+								{/if}
+								{#if isEventDeliverable(output.type_key)}
+									<span class="flex items-center gap-1">
+										<Calendar class="w-3 h-3" />
+										Event
+									</span>
+								{/if}
+							</div>
+						</article>
+					{:else}{/each}
 				</div>
-			{:else if activeTab === 'graph'}
-				<div class="space-y-dense-5">
-					<div
-						class="flex flex-col gap-dense-3 lg:flex-row lg:items-center lg:justify-between lg:gap-dense-4"
-					>
-						<div class="space-y-1">
-							<h3 class="text-lg font-semibold text-foreground">Project graph</h3>
-							<p class="text-sm text-muted-foreground max-w-2xl">
-								Explore how this project's tasks, outputs, documents, and templates
-								connect at a glance.
+
+				<section
+					class="bg-card border border-border rounded-xl shadow-ink tx tx-frame tx-weak p-4"
+				>
+					<div class="flex flex-wrap items-center justify-between gap-4 mb-3">
+						<div>
+							<p class="text-xs uppercase tracking-wide text-muted-foreground">
+								Documents
 							</p>
-							{#if graphLastUpdated}
-								<p class="text-xs text-muted-foreground">
-									Updated {graphLastUpdated}
-								</p>
-							{/if}
+							<h3 class="text-lg font-semibold text-foreground">Supporting docs</h3>
+							<p class="text-sm text-muted-foreground">
+								Lighter-weight cards so outputs stay primary.
+							</p>
 						</div>
 						<div class="flex items-center gap-2">
-							<Button
-								variant="ghost"
-								size="sm"
-								onclick={() => graphInstance?.fitToView()}
-								disabled={!graphInstance}
+							<button
+								type="button"
+								onclick={() => {
+									activeDocumentId = null;
+									showDocumentModal = true;
+								}}
+								class="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-muted/60 text-sm font-medium hover:bg-muted transition-colors"
 							>
-								Fit to view
-							</Button>
-							<Button
-								variant="primary"
-								size="sm"
-								onclick={refreshProjectGraph}
-								loading={graphLoading}
-							>
-								<RefreshCw class="w-4 h-4 mr-1" />
-								Refresh graph
-							</Button>
-						</div>
-					</div>
-
-					{#if graphError || graphReloadError}
-						<div
-							class="rounded border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-800/50 dark:bg-red-900/30 dark:text-red-200"
-						>
-							<div class="flex items-start gap-dense-3">
-								<div class="flex-1 space-y-1">
-									<p class="font-semibold">Unable to load project graph</p>
-									<p>{graphReloadError || graphError}</p>
-								</div>
-								<Button
-									variant="outline"
-									size="sm"
-									onclick={refreshProjectGraph}
-									loading={graphLoading}
-								>
-									Try again
-								</Button>
-							</div>
-						</div>
-					{/if}
-
-					{#if projectGraphSource}
-						{#await Promise.all([
-							import('$lib/components/ontology/graph/OntologyGraph.svelte'),
-							import('$lib/components/ontology/graph/GraphControls.svelte'),
-							import('$lib/components/ontology/graph/NodeDetailsPanel.svelte')
-						])}
-							<!-- Loading skeleton while graph components load -->
-							<div class="grid gap-dense-4 lg:grid-cols-3 animate-pulse">
-								<div class="lg:col-span-2">
-									<div
-										class="h-[520px] sm:h-[620px] rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center"
-									>
-										<div
-											class="h-10 w-10 animate-spin rounded-full border-4 border-blue-200 border-t-blue-500 dark:border-blue-900/60 dark:border-t-indigo-400"
-										></div>
-									</div>
-								</div>
-								<div class="lg:col-span-1">
-									<div
-										class="h-[520px] sm:h-[620px] rounded-xl bg-gray-100 dark:bg-gray-800"
-									></div>
-								</div>
-							</div>
-						{:then [OntologyGraphMod, GraphControlsMod, NodeDetailsMod]}
-							<div class="grid gap-dense-4 lg:grid-cols-3">
-								<div class="lg:col-span-2">
-									<div
-										class="relative h-[520px] sm:h-[620px] overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800"
-									>
-										<OntologyGraphMod.default
-											data={projectGraphSource}
-											viewMode={graphViewMode}
-											bind:selectedNode={selectedGraphNode}
-											bind:graphInstance
-										/>
-										{#if graphLoading}
-											<div
-												class="absolute inset-0 flex items-center justify-center bg-white/70 dark:bg-gray-900/70"
-											>
-												<div
-													class="h-10 w-10 animate-spin rounded-full border-4 border-blue-200 border-t-blue-500 dark:border-blue-900/60 dark:border-t-indigo-400"
-												></div>
-											</div>
-										{/if}
-									</div>
-								</div>
-								<div class="lg:col-span-1">
-									<GraphControlsMod.default
-										bind:viewMode={graphViewMode}
-										{graphInstance}
-										stats={projectGraphStats ?? emptyGraphStats}
-									/>
-								</div>
-							</div>
-						{:catch error}
-							<div
-								class="rounded border border-red-200 bg-red-50 p-6 text-center dark:border-red-800/50 dark:bg-red-900/30"
-							>
-								<p class="text-red-700 dark:text-red-200 font-semibold mb-2">
-									Failed to load graph visualization
-								</p>
-								<p class="text-red-600 dark:text-red-300 text-sm">
-									{error.message}
-								</p>
-							</div>
-						{/await}
-
-						<section
-							class="mt-4 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800"
-						>
-							{#if selectedGraphNode}
-								{#await import('$lib/components/ontology/graph/NodeDetailsPanel.svelte') then { default: NodeDetailPanel }}
-									<NodeDetailPanel
-										node={selectedGraphNode}
-										onClose={() => (selectedGraphNode = null)}
-									/>
-								{/await}
-							{:else}
+								<Plus class="w-4 h-4" />
+								New Document
+							</button>
+							{#if promotableDocuments.length > 0}
 								<div
-									class="flex min-h-[180px] items-center justify-center px-6 py-10 text-sm text-gray-500 dark:text-gray-400"
+									class="flex items-center gap-2 text-xs text-amber-600 bg-amber-500/10 border border-amber-500/30 px-3 py-2 rounded-lg"
 								>
-									Select a node to view its details.
+									<Sparkles class="w-4 h-4" />
+									<span>{promotableDocuments.length} ready to promote</span>
 								</div>
 							{/if}
-						</section>
-					{:else if graphLoading}
-						<div
-							class="flex flex-col items-center justify-center gap-dense-3 py-dense-16 text-center"
-						>
-							<div
-								class="h-12 w-12 animate-spin rounded-full border-4 border-blue-200 border-t-blue-500 dark:border-blue-900/40 dark:border-t-indigo-400"
-							></div>
-							<p class="text-sm text-gray-600 dark:text-gray-400">Loading graph...</p>
 						</div>
-					{:else}
-						<div
-							class="flex flex-col items-center justify-center gap-dense-3 py-dense-14 text-center"
-						>
-							<GitBranch class="h-10 w-10 text-gray-400" />
-							<p class="text-sm text-gray-600 dark:text-gray-400">
-								No relationships yet. Create tasks, outputs, and documents to
-								visualize this project.
-							</p>
-							<Button variant="primary" size="sm" onclick={refreshProjectGraph}>
-								<RefreshCw class="w-4 h-4 mr-1" />
-								Build graph
-							</Button>
-						</div>
-					{/if}
-				</div>
-			{:else if activeTab === 'outputs'}
-				<div class="space-y-dense-4">
-					<!-- Create button -->
-					<div class="flex justify-between items-center">
-						<h3 class="text-lg font-semibold text-foreground">Text Documents</h3>
-						<Button
-							variant="primary"
-							size="sm"
-							onclick={() => (showOutputCreateModal = true)}
-						>
-							<Plus class="w-4 h-4" />
-							Create Document
-						</Button>
 					</div>
 
-					<!-- Outputs list -->
-					{#if outputs.length === 0}
-						<div
-							class="text-center py-12 border-2 border-dashed border-border rounded-lg"
-						>
-							<Pencil class="w-12 h-12 text-muted-foreground mx-auto mb-dense-4" />
-							<p class="text-muted-foreground mb-dense-4">
-								No documents yet. Create your first document to get started.
-							</p>
-							<Button
-								variant="primary"
-								size="md"
-								onclick={() => (showOutputCreateModal = true)}
+					<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+						{#each documents as doc}
+							<article
+								class="p-3 rounded-lg border border-border bg-muted/50 shadow-ink tx tx-grain tx-weak hover:border-accent/60 transition-colors cursor-pointer"
+								onclick={() => {
+									activeDocumentId = doc.id;
+									showDocumentModal = true;
+								}}
 							>
-								<Plus class="w-4 h-4" />
-								Create Document
-							</Button>
-						</div>
-					{:else}
-						<div class="space-y-3">
-							{#each outputs as output}
-								<button
-									onclick={() => editOutput(output.id)}
-									class="w-full flex flex-col sm:flex-row sm:items-center sm:justify-between gap-dense-3 p-4 border border-border rounded-lg hover:border-accent hover:bg-accent/5 transition-all duration-200 text-left group shadow-ink pressable"
-								>
-									<div class="flex-1 min-w-0 flex items-start gap-dense-3">
-										<Pencil
-											class="w-5 h-5 text-muted-foreground group-hover:text-accent flex-shrink-0 mt-0.5"
-										/>
-										<div class="flex-1 min-w-0">
-											<h3
-												class="font-semibold text-foreground group-hover:text-accent mb-1"
-											>
-												{output.name}
-											</h3>
-											{#if output.props?.word_count}
-												<div
-													class="flex items-center gap-2 text-sm text-muted-foreground"
-												>
-													<span>{output.props.word_count} words</span>
-												</div>
-											{/if}
-										</div>
+								<div class="flex items-start justify-between gap-3">
+									<div class="min-w-0 space-y-1">
+										<p
+											class="text-[11px] uppercase text-muted-foreground tracking-wide"
+										>
+											{getTypeLabel(doc.type_key)}
+										</p>
+										<h4
+											class="text-sm font-semibold text-foreground leading-snug line-clamp-2"
+										>
+											{doc.title}
+										</h4>
 									</div>
 									<span
-										class="px-3 py-1 rounded-full text-xs font-semibold capitalize self-start sm:self-center {getOutputStateBadgeClass(
-											output.state_key
-										)}"
+										class="flex-shrink-0 text-[11px] px-2 py-1 rounded-full bg-card border border-border"
 									>
-										{output.state_key}
+										{doc.state_key || 'draft'}
 									</span>
-								</button>
-							{/each}
-						</div>
-					{/if}
-				</div>
-			{:else if activeTab === 'documents'}
-				<div class="space-y-dense-4">
-					<!-- Header with gradient accent -->
-					<div
-						class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-dense-3 pb-3 border-b border-border"
-					>
-						<div>
-							<h3 class="text-lg font-semibold text-foreground">Documents</h3>
-							<p class="text-sm text-muted-foreground mt-0.5">
-								Project documentation and artifacts
-							</p>
-						</div>
-						<Button variant="primary" size="sm" onclick={() => openDocumentModal(null)}>
-							<Plus class="w-4 h-4" />
-							New Document
-						</Button>
-					</div>
-
-					{#if documents.length === 0}
-						<div
-							class="text-center py-12 border-2 border-dashed border-border rounded-lg"
-						>
-							<FileText class="w-12 h-12 text-muted-foreground mx-auto mb-dense-4" />
-							<p class="text-muted-foreground mb-dense-4">
-								No documents yet. Documents track project documentation and
-								artifacts.
-							</p>
-							<Button
-								variant="primary"
-								size="sm"
-								onclick={() => openDocumentModal(null)}
+								</div>
+							</article>
+						{:else}
+							<div
+								class="col-span-full flex flex-col gap-2 sm:flex-row sm:items-center justify-between p-4 rounded-lg border border-border bg-muted/40"
 							>
-								<Plus class="w-4 h-4" />
-								Create Document
-							</Button>
-						</div>
-					{:else}
-						<div class="space-y-3">
-							{#each documents as doc (doc.id)}
-								{@const panelId = `document-panel-${doc.id}`}
-								{@const isExpanded = expandedDocumentId === doc.id}
-								{@const body = getDocumentBody(doc)}
-								{@const preview = getDocumentPreview(doc)}
-								{@const createdAtLabel = formatUpdatedTimestamp(doc.created_at)}
-								{@const updatedAtLabel = formatUpdatedTimestamp(doc.updated_at)}
-								{@const hasTemporalMeta = Boolean(createdAtLabel || updatedAtLabel)}
-								{@const state = doc.state_key || 'draft'}
-								{@const stateClasses =
-									state === 'published'
-										? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300'
-										: state === 'approved'
-											? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
-											: state === 'review'
-												? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300'
-												: state === 'archived'
-													? 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'
-													: 'bg-accent-blue/10 dark:bg-accent-blue/20 text-accent-blue dark:text-accent-blue'}
-								<div
-									class="group/card rounded border-2 border-slate-700/30 dark:border-slate-500/30 bg-surface-panel dark:bg-slate-800 hover:border-accent-orange dark:hover:border-accent-orange hover:shadow-pressable transition-all duration-200 shadow-subtle"
-									data-testid="ontology-document-card"
-								>
-									<div class="p-4 sm:p-5 space-y-3">
+								<div>
+									<p class="text-sm font-medium text-foreground">
+										No documents attached
+									</p>
+									<p class="text-sm text-muted-foreground">
+										Add research or drafts, then promote them into deliverables.
+									</p>
+								</div>
+							</div>
+						{/each}
+					</div>
+				</section>
+			</div>
+
+			<aside class="w-full lg:w-[340px] xl:w-[380px]">
+				<div class="sticky top-24 space-y-3">
+					{#each insightPanels as section}
+						{@const isOpen = expandedPanels[section.key]}
+						<div
+							class="bg-card border border-border rounded-xl shadow-ink tx tx-frame tx-weak overflow-hidden"
+						>
+							<button
+								onclick={() => togglePanel(section.key)}
+								class="w-full flex items-center justify-between gap-3 px-4 py-3 text-left hover:bg-muted/60 transition-colors"
+							>
+								<div class="flex items-start gap-3">
+									<div
+										class="w-9 h-9 rounded-lg bg-muted flex items-center justify-center"
+									>
+										<svelte:component
+											this={section.icon}
+											class="w-4 h-4 text-foreground"
+										/>
+									</div>
+									<div class="min-w-0">
+										<p class="text-sm font-semibold text-foreground">
+											{section.label}
+										</p>
+										<p class="text-xs text-muted-foreground">
+											{section.items.length}
+											{section.items.length === 1 ? 'item' : 'items'}
+											{#if section.description}
+												· {section.description}
+											{/if}
+										</p>
+									</div>
+								</div>
+								<ChevronDown
+									class="w-4 h-4 text-muted-foreground transition-transform {isOpen
+										? 'rotate-180'
+										: ''}"
+								/>
+							</button>
+
+							{#if isOpen}
+								<div class="border-t border-border">
+									{#if section.key === 'tasks'}
 										<div
-											class="flex flex-col gap-dense-3 sm:flex-row sm:items-start sm:justify-between"
+											class="flex items-center justify-between px-4 pt-3 pb-2"
 										>
+											<p
+												class="text-xs text-muted-foreground uppercase tracking-wide"
+											>
+												Tasks
+											</p>
 											<button
 												type="button"
-												class="flex items-start gap-dense-3 text-left flex-1 group/expand"
-												onclick={() => toggleDocumentExpansion(doc.id)}
-												aria-expanded={isExpanded}
-												aria-controls={panelId}
+												onclick={() => (showTaskCreateModal = true)}
+												class="inline-flex items-center gap-2 px-2.5 py-1 text-xs rounded-md border border-border bg-muted/60 hover:bg-muted transition-colors"
 											>
-												<div
-													class="flex items-center justify-center w-10 h-10 rounded bg-gradient-to-br from-accent-blue/10 to-accent-orange/10 dark:from-accent-blue/20 dark:to-accent-orange/20 flex-shrink-0 group-hover/expand:from-accent-blue/20 group-hover/expand:to-accent-orange/20 dark:group-hover/expand:from-accent-blue/30 dark:group-hover/expand:to-accent-orange/30 transition-all"
-												>
-													<FileText
-														class="w-5 h-5 text-blue-600 dark:text-blue-400"
-													/>
-												</div>
-												<div class="flex-1 min-w-0 space-y-1.5">
-													<div class="flex items-start gap-2">
-														<h3
-															class="font-semibold text-base text-gray-900 dark:text-white group-hover/expand:text-blue-700 dark:group-hover/expand:text-blue-300 transition-colors"
-														>
-															{doc.title ?? 'Untitled document'}
-														</h3>
-													</div>
-													<p
-														class="text-sm text-gray-600 dark:text-gray-400 line-clamp-2"
-													>
-														{preview ||
-															'No body content yet. Expand to add context.'}
-													</p>
-													<div
-														class="flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400"
-													>
-														<span
-															class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-accent-blue/10 dark:bg-accent-blue/20 text-accent-blue dark:text-accent-blue font-bold"
-														>
-															{doc.type_key}
-														</span>
-														{#if updatedAtLabel}
-															<span
-																class="text-gray-300 dark:text-gray-600"
-																>•</span
-															>
-															<span>Updated {updatedAtLabel}</span>
-														{/if}
-													</div>
-												</div>
-												<ChevronDown
-													class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform duration-200 group-hover/expand:text-blue-600 dark:group-hover/expand:text-blue-400 {isExpanded
-														? 'rotate-180'
-														: ''}"
-												/>
+												<Plus class="w-3.5 h-3.5" />
+												New Task
 											</button>
-											<div
-												class="flex items-center gap-2 self-start sm:self-center"
-											>
-												<span
-													class="px-3 py-1 rounded-full text-xs font-semibold capitalize {stateClasses}"
-												>
-													{state}
-												</span>
-												<Button
-													type="button"
-													variant="secondary"
-													size="sm"
-													onclick={(e) => {
-														e.stopPropagation();
-														openDocumentModal(doc.id);
-													}}
-												>
-													<Pencil class="w-4 h-4 mr-1" />
-													Edit
-												</Button>
-											</div>
 										</div>
-									</div>
-									{#if isExpanded}
+										{#if tasks.length > 0}
+											<ul class="divide-y divide-border/80">
+												{#each tasks as task}
+													{@const visuals = getTaskVisuals(
+														task.state_key
+													)}
+													<li>
+														<button
+															type="button"
+															onclick={() =>
+																(editingTaskId = task.id)}
+															class="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted/60 transition-colors"
+														>
+															<svelte:component
+																this={visuals.icon}
+																class="w-4 h-4 {visuals.color}"
+															/>
+															<div class="min-w-0">
+																<p
+																	class="text-sm text-foreground truncate"
+																>
+																	{task.title}
+																</p>
+																<p
+																	class="text-xs text-muted-foreground"
+																>
+																	{task.state_key || 'draft'}
+																</p>
+															</div>
+														</button>
+													</li>
+												{/each}
+											</ul>
+										{:else}
+											<p class="px-4 py-3 text-sm text-muted-foreground">
+												No tasks yet
+											</p>
+										{/if}
+									{:else if section.key === 'plans'}
 										<div
-											id={panelId}
-											class="border-t border-slate-700/30 dark:border-slate-500/30 px-4 sm:px-5 py-4 bg-gradient-to-br from-gray-50 to-blue-50/30 dark:from-gray-900/30 dark:to-blue-900/10 rounded-b-lg"
+											class="flex items-center justify-between px-4 pt-3 pb-2"
 										>
-											{#if body}
-												<div class={`pt-3 ${getProseClasses('sm')}`}>
-													{@html renderMarkdown(body)}
-												</div>
-											{:else}
-												<p
-													class="pt-3 text-sm italic text-gray-500 dark:text-gray-400"
-												>
-													This document does not have any content yet. Use
-													the editor to start writing.
-												</p>
-											{/if}
-											<div
-												class="flex flex-wrap items-center justify-between gap-dense-3 mt-4 text-xs text-gray-500 dark:text-gray-400"
+											<p
+												class="text-xs text-muted-foreground uppercase tracking-wide"
 											>
-												<div class="flex flex-wrap items-center gap-2">
-													{#if createdAtLabel}
-														<span>Created {createdAtLabel}</span>
-													{/if}
-													{#if updatedAtLabel}
-														<span
-															class="text-gray-300 dark:text-gray-600"
-															>•</span
-														>
-														<span>Updated {updatedAtLabel}</span>
-													{/if}
-													{#if hasTemporalMeta}
-														<span
-															class="text-gray-300 dark:text-gray-600"
-															>•</span
-														>
-													{/if}
-													<span
-														class="font-mono text-[11px] text-gray-500 dark:text-gray-400"
-														>#{doc.id}</span
-													>
-												</div>
-												<Button
-													type="button"
-													variant="primary"
-													size="sm"
-													onclick={(e) => {
-														e.stopPropagation();
-														openDocumentModal(doc.id);
-													}}
-												>
-													<Pencil class="w-4 h-4 mr-1" />
-													Open Editor
-												</Button>
-											</div>
+												Plans
+											</p>
+											<button
+												type="button"
+												onclick={() => (showPlanCreateModal = true)}
+												class="inline-flex items-center gap-2 px-2.5 py-1 text-xs rounded-md border border-border bg-muted/60 hover:bg-muted transition-colors"
+											>
+												<Plus class="w-3.5 h-3.5" />
+												New Plan
+											</button>
 										</div>
+										{#if plans.length > 0}
+											<ul class="divide-y divide-border/80">
+												{#each plans as plan}
+													<li>
+														<button
+															type="button"
+															onclick={() =>
+																(editingPlanId = plan.id)}
+															class="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted/60 transition-colors"
+														>
+															<Calendar
+																class="w-4 h-4 text-muted-foreground"
+															/>
+															<div class="min-w-0">
+																<p
+																	class="text-sm text-foreground truncate"
+																>
+																	{plan.name}
+																</p>
+																<p
+																	class="text-xs text-muted-foreground"
+																>
+																	{plan.state_key || 'draft'}
+																</p>
+															</div>
+														</button>
+													</li>
+												{/each}
+											</ul>
+										{:else}
+											<p class="px-4 py-3 text-sm text-muted-foreground">
+												No plans yet
+											</p>
+										{/if}
+									{:else if section.key === 'goals'}
+										<div
+											class="flex items-center justify-between px-4 pt-3 pb-2"
+										>
+											<p
+												class="text-xs text-muted-foreground uppercase tracking-wide"
+											>
+												Goals
+											</p>
+											<button
+												type="button"
+												onclick={() => (showGoalCreateModal = true)}
+												class="inline-flex items-center gap-2 px-2.5 py-1 text-xs rounded-md border border-border bg-muted/60 hover:bg-muted transition-colors"
+											>
+												<Plus class="w-3.5 h-3.5" />
+												New Goal
+											</button>
+										</div>
+										{#if goals.length > 0}
+											<ul class="divide-y divide-border/80">
+												{#each goals as goal}
+													<li>
+														<button
+															type="button"
+															onclick={() =>
+																(editingGoalId = goal.id)}
+															class="w-full flex items-start gap-3 px-4 py-3 text-left hover:bg-muted/60 transition-colors"
+														>
+															<Target
+																class="w-4 h-4 text-amber-500"
+															/>
+															<div class="min-w-0">
+																<p
+																	class="text-sm text-foreground truncate"
+																>
+																	{goal.name}
+																</p>
+																<p
+																	class="text-xs text-muted-foreground"
+																>
+																	{goal.state_key || 'draft'}
+																</p>
+															</div>
+														</button>
+													</li>
+												{/each}
+											</ul>
+										{:else}
+											<p class="px-4 py-3 text-sm text-muted-foreground">
+												No goals yet
+											</p>
+										{/if}
+									{:else if section.key === 'risks'}
+										<div
+											class="flex items-center justify-between px-4 pt-3 pb-2"
+										>
+											<p
+												class="text-xs text-muted-foreground uppercase tracking-wide"
+											>
+												Risks
+											</p>
+											<button
+												type="button"
+												onclick={() =>
+													toastService.info('Risk creation coming soon')}
+												class="inline-flex items-center gap-2 px-2.5 py-1 text-xs rounded-md border border-border bg-muted/60 hover:bg-muted transition-colors"
+											>
+												<Plus class="w-3.5 h-3.5" />
+												New Risk
+											</button>
+										</div>
+										{#if risks.length > 0}
+											<ul class="divide-y divide-border/80">
+												{#each risks as risk}
+													<li class="flex items-start gap-3 px-4 py-3">
+														<AlertTriangle
+															class="w-4 h-4 text-amber-500"
+														/>
+														<div class="min-w-0">
+															<p
+																class="text-sm text-foreground truncate"
+															>
+																{risk.title}
+															</p>
+															<p
+																class="text-xs text-muted-foreground"
+															>
+																{risk.impact || 'Unrated'}
+															</p>
+														</div>
+													</li>
+												{/each}
+											</ul>
+										{:else}
+											<p class="px-4 py-3 text-sm text-muted-foreground">
+												No risks logged
+											</p>
+										{/if}
+									{:else if section.key === 'milestones'}
+										<div
+											class="flex items-center justify-between px-4 pt-3 pb-2"
+										>
+											<p
+												class="text-xs text-muted-foreground uppercase tracking-wide"
+											>
+												Milestones
+											</p>
+											<button
+												type="button"
+												onclick={() =>
+													toastService.info(
+														'Milestone creation coming soon'
+													)}
+												class="inline-flex items-center gap-2 px-2.5 py-1 text-xs rounded-md border border-border bg-muted/60 hover:bg-muted transition-colors"
+											>
+												<Plus class="w-3.5 h-3.5" />
+												New Milestone
+											</button>
+										</div>
+										{#if milestones.length > 0}
+											<ul class="divide-y divide-border/80">
+												{#each milestones as milestone}
+													<li class="flex items-start gap-3 px-4 py-3">
+														<Flag class="w-4 h-4 text-emerald-500" />
+														<div class="min-w-0">
+															<p
+																class="text-sm text-foreground truncate"
+															>
+																{milestone.title}
+															</p>
+															<p
+																class="text-xs text-muted-foreground"
+															>
+																{formatDueDate(milestone.due_at)}
+															</p>
+														</div>
+													</li>
+												{/each}
+											</ul>
+										{:else}
+											<p class="px-4 py-3 text-sm text-muted-foreground">
+												No milestones yet
+											</p>
+										{/if}
 									{/if}
 								</div>
-							{/each}
+							{/if}
 						</div>
-					{/if}
+					{/each}
 				</div>
-			{:else if activeTab === 'plans'}
-				<div class="space-y-dense-4">
-					<!-- Create button -->
-					<div class="flex justify-between items-center">
-						<h3 class="text-lg font-semibold text-foreground">Plans</h3>
-						<Button
-							variant="primary"
-							size="sm"
-							onclick={() => (showPlanCreateModal = true)}
-						>
-							<Plus class="w-4 h-4" />
-							Create Plan
-						</Button>
-					</div>
-
-					<!-- Plans list -->
-					{#if plans.length === 0}
-						<div
-							class="text-center py-12 border-2 border-dashed border-border rounded-lg"
-						>
-							<Calendar class="w-12 h-12 text-muted-foreground mx-auto mb-dense-4" />
-							<p class="text-muted-foreground mb-dense-4">
-								No plans yet. Create your first plan to organize tasks.
-							</p>
-							<Button
-								variant="primary"
-								size="md"
-								onclick={() => (showPlanCreateModal = true)}
-							>
-								<Plus class="w-4 h-4" />
-								Create Plan
-							</Button>
-						</div>
-					{:else}
-						<div class="space-y-3">
-							{#each plans as plan}
-								<button
-									type="button"
-									onclick={() => (editingPlanId = plan.id)}
-									class="w-full flex flex-col sm:flex-row sm:items-center sm:justify-between gap-dense-3 p-4 border border-border rounded-lg hover:border-accent hover:bg-accent/5 transition-all duration-200 text-left shadow-ink pressable"
-								>
-									<div class="flex-1 min-w-0 flex items-start gap-dense-3">
-										<Calendar
-											class="w-5 h-5 text-muted-foreground flex-shrink-0 mt-0.5"
-										/>
-										<div class="flex-1">
-											<h3 class="font-semibold text-foreground mb-1">
-												{plan.name}
-											</h3>
-											{#if plan.props?.start_date || plan.props?.end_date}
-												{@const startFormatted = formatPlanDate(
-													plan.props?.start_date
-												)}
-												{@const endFormatted = formatPlanDate(
-													plan.props?.end_date
-												)}
-												<div
-													class="flex items-center gap-2 text-sm text-muted-foreground"
-												>
-													<span>
-														{startFormatted}
-														{startFormatted && endFormatted
-															? ' - '
-															: ''}
-														{endFormatted}
-													</span>
-												</div>
-											{/if}
-										</div>
-									</div>
-									<span
-										class="px-3 py-1 rounded-full text-xs font-semibold capitalize self-start sm:self-center {getPlanStateBadgeClass(
-											plan.state_key
-										)}"
-									>
-										{plan.state_key}
-									</span>
-								</button>
-							{/each}
-						</div>
-					{/if}
-				</div>
-			{:else if activeTab === 'goals'}
-				<div class="space-y-dense-4">
-					<!-- Create button -->
-					<div class="flex justify-between items-center">
-						<h3 class="text-lg font-semibold text-foreground">Goals</h3>
-						<Button
-							variant="primary"
-							size="sm"
-							onclick={() => (showGoalCreateModal = true)}
-						>
-							<Plus class="w-4 h-4" />
-							Create Goal
-						</Button>
-					</div>
-
-					<!-- Goals list -->
-					{#if goals.length === 0}
-						<div
-							class="text-center py-12 border-2 border-dashed border-slate-700/30 dark:border-slate-500/30 rounded"
-						>
-							<Target class="w-12 h-12 text-gray-400 mx-auto mb-dense-4" />
-							<p class="text-gray-600 dark:text-gray-400 mb-dense-4">
-								No goals yet. Define what you want to achieve.
-							</p>
-							<Button
-								variant="primary"
-								size="md"
-								onclick={() => (showGoalCreateModal = true)}
-							>
-								<Plus class="w-4 h-4" />
-								Create Goal
-							</Button>
-						</div>
-					{:else}
-						<div class="space-y-3">
-							{#each goals as goal}
-								{@const stats = getGoalStatsForDisplay(goal.id)}
-								{@const goalMilestones = getGoalMilestones(goal.id)}
-								{@const directGoalTasks = getDirectGoalTasks(goal.id)}
-								<div
-									class="p-4 border border-slate-700/30 dark:border-slate-500/30 rounded hover:border-gray-300 dark:hover:border-gray-600 transition-all duration-200"
-								>
-									<div class="flex flex-col gap-dense-3">
-										<div
-											class="flex flex-col gap-dense-3 sm:flex-row sm:items-start sm:justify-between"
-										>
-											<div class="flex flex-1 gap-dense-3">
-												<Target
-													class="w-5 h-5 text-gray-400 flex-shrink-0 mt-0.5"
-												/>
-												<div class="flex-1 min-w-0 space-y-1">
-													<div class="flex flex-wrap items-center gap-2">
-														<h3
-															class="font-semibold text-gray-900 dark:text-white"
-														>
-															{goal.name}
-														</h3>
-														{#if goal.state_key}
-															<span
-																class="px-3 py-1 rounded-full text-xs font-semibold capitalize {getGoalStateBadgeClass(
-																	goal.state_key
-																)}"
-															>
-																{goal.state_key}
-															</span>
-														{/if}
-														{#if goal.props?.priority}
-															<span
-																class="text-xs px-2 py-0.5 rounded {getPriorityBadgeClass(
-																	goal.props.priority
-																)}"
-															>
-																{goal.props.priority} priority
-															</span>
-														{/if}
-													</div>
-													{#if goal.props?.measurement_criteria}
-														<p
-															class="text-sm text-gray-600 dark:text-gray-400"
-														>
-															{goal.props.measurement_criteria}
-														</p>
-													{/if}
-													<div
-														class="flex flex-wrap items-center gap-dense-3 text-sm text-gray-500 dark:text-gray-400"
-													>
-														<span>
-															{stats.milestoneCount} milestone{stats.milestoneCount ===
-															1
-																? ''
-																: 's'}
-														</span>
-														<span>
-															{stats.completedTaskCount}/{stats.taskCount ||
-																0} tasks complete
-														</span>
-													</div>
-												</div>
-											</div>
-											<div
-												class="flex items-center gap-2 self-stretch sm:self-auto"
-											>
-												<Button
-													variant="ghost"
-													size="sm"
-													onclick={() => (editingGoalId = goal.id)}
-												>
-													<Pencil class="w-4 h-4 mr-1" />
-													Edit
-												</Button>
-												<Button
-													variant="secondary"
-													size="sm"
-													icon={Sparkles}
-													loading={reverseEngineeringGoalId === goal.id}
-													onclick={() =>
-														handleReverseEngineerGoal(goal.id)}
-												>
-													Reverse Engineer
-												</Button>
-												<button
-													type="button"
-													class="p-2 rounded-md border border-slate-700/30 dark:border-slate-500/30 text-gray-500 hover:text-gray-900 hover:border-gray-400 dark:hover:border-gray-500 transition-colors"
-													onclick={() => toggleGoalExpansion(goal.id)}
-													aria-label="Toggle goal details"
-													aria-expanded={expandedGoalId === goal.id}
-												>
-													<ChevronDown
-														class="w-5 h-5 transition-transform {expandedGoalId ===
-														goal.id
-															? 'rotate-180'
-															: ''}"
-													/>
-												</button>
-											</div>
-										</div>
-										{#if expandedGoalId === goal.id}
-											<div
-												class="border-t border-slate-700/30 dark:border-slate-500/30 pt-4 space-y-dense-4"
-											>
-												{#if directGoalTasks.length > 0}
-													<div class="space-y-2">
-														<div
-															class="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400"
-														>
-															<span
-																class="font-semibold text-gray-800 dark:text-gray-200"
-																>Direct tasks</span
-															>
-															<span
-																>{directGoalTasks.length} linked</span
-															>
-														</div>
-														{#each directGoalTasks as task}
-															<div
-																class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-3 rounded bg-surface-panel dark:bg-slate-800/40"
-															>
-																<div class="min-w-0">
-																	<p
-																		class="font-medium text-gray-900 dark:text-gray-100"
-																	>
-																		{task.title}
-																	</p>
-																	{#if task.props?.description}
-																		<p
-																			class="text-sm text-gray-600 dark:text-gray-400"
-																		>
-																			{task.props.description}
-																		</p>
-																	{/if}
-																</div>
-																<span
-																	class="px-3 py-1 rounded-full text-xs font-semibold capitalize {getTaskStateBadgeClass(
-																		task.state_key
-																	)}"
-																>
-																	{task.state_key}
-																</span>
-															</div>
-														{/each}
-													</div>
-												{/if}
-
-												<div class="space-y-3">
-													<div
-														class="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400"
-													>
-														<span
-															class="font-semibold text-gray-800 dark:text-gray-200"
-															>Milestones</span
-														>
-														<span>{goalMilestones.length} linked</span>
-													</div>
-
-													{#if goalMilestones.length === 0}
-														<p
-															class="text-sm text-gray-500 dark:text-gray-400"
-														>
-															No milestones linked yet. Use reverse
-															engineering or edit tasks to connect
-															one.
-														</p>
-													{:else}
-														{#each goalMilestones as milestone}
-															{@const milestoneStats =
-																getMilestoneTaskStats(milestone.id)}
-															{@const milestoneTasks =
-																getMilestoneTasks(milestone.id)}
-															<div
-																class="border border-slate-700/30 dark:border-slate-500/30 rounded p-4 space-y-3"
-															>
-																<div
-																	class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-dense-3"
-																>
-																	<div class="min-w-0">
-																		<p
-																			class="font-semibold text-gray-900 dark:text-white"
-																		>
-																			{milestone.title}
-																		</p>
-																		<p
-																			class="text-sm text-gray-600 dark:text-gray-400 mt-0.5"
-																		>
-																			Due {formatDueDate(
-																				milestone.due_at
-																			)}
-																		</p>
-																		{#if milestone.props?.summary}
-																			<p
-																				class="text-sm text-gray-600 dark:text-gray-400 mt-1"
-																			>
-																				{milestone.props
-																					.summary}
-																			</p>
-																		{/if}
-																	</div>
-																	<span
-																		class="text-sm font-medium text-gray-600 dark:text-gray-300 whitespace-nowrap"
-																	>
-																		{milestoneStats.completed}/{milestoneStats.total}
-																		tasks complete
-																	</span>
-																</div>
-																<div class="space-y-2">
-																	{#if milestoneTasks.length === 0}
-																		<p
-																			class="text-sm text-gray-500 dark:text-gray-400"
-																		>
-																			No tasks yet for this
-																			milestone.
-																		</p>
-																	{:else}
-																		{#each milestoneTasks as task}
-																			<div
-																				class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-3 rounded bg-surface-panel dark:bg-slate-800/40"
-																			>
-																				<div
-																					class="min-w-0"
-																				>
-																					<p
-																						class="font-medium text-gray-900 dark:text-gray-100"
-																					>
-																						{task.title}
-																					</p>
-																					{#if task.props?.description}
-																						<p
-																							class="text-sm text-gray-600 dark:text-gray-400"
-																						>
-																							{task
-																								.props
-																								.description}
-																						</p>
-																					{/if}
-																				</div>
-																				<span
-																					class="px-3 py-1 rounded-full text-xs font-semibold capitalize {getTaskStateBadgeClass(
-																						task.state_key
-																					)}"
-																				>
-																					{task.state_key}
-																				</span>
-																			</div>
-																		{/each}
-																	{/if}
-																</div>
-															</div>
-														{/each}
-													{/if}
-												</div>
-											</div>
-										{/if}
-									</div>
-								</div>
-							{/each}
-						</div>
-					{/if}
-				</div>
-			{:else if activeTab === 'other'}
-				<div class="space-y-8">
-					{#if requirements.length > 0}
-						<div class="space-y-3">
-							<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-								Requirements ({requirements.length})
-							</h3>
-							{#each requirements as req}
-								<div
-									class="p-4 bg-surface-panel dark:bg-slate-700/50 rounded text-gray-700 dark:text-gray-300"
-								>
-									{req.text}
-								</div>
-							{/each}
-						</div>
-					{/if}
-
-					{#if milestones.length > 0}
-						<div class="space-y-3">
-							<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-								Milestones ({milestones.length})
-							</h3>
-							{#each milestones as milestone}
-								<div
-									class="p-4 bg-surface-panel dark:bg-slate-700/50 rounded text-gray-700 dark:text-gray-300"
-								>
-									{milestone.title} - {new Date(
-										milestone.due_at
-									).toLocaleDateString()}
-								</div>
-							{/each}
-						</div>
-					{/if}
-
-					{#if risks.length > 0}
-						<div class="space-y-3">
-							<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-								Risks ({risks.length})
-							</h3>
-							{#each risks as risk}
-								<div
-									class="p-4 bg-surface-panel dark:bg-slate-700/50 rounded text-gray-700 dark:text-gray-300"
-								>
-									{risk.title} ({risk.impact})
-								</div>
-							{/each}
-						</div>
-					{/if}
-
-					{#if requirements.length === 0 && milestones.length === 0 && risks.length === 0}
-						<p class="text-center py-12 text-gray-500 dark:text-gray-400">
-							No other entities yet
-						</p>
-					{/if}
-				</div>
-			{/if}
-		</CardBody>
-	</Card>
+			</aside>
+		</div>
+	</main>
 </div>
-
-{#if showDeleteProjectModal}
-	{#await import('$lib/components/ui/ConfirmationModal.svelte') then { default: ConfirmationModal }}
-		<ConfirmationModal
-			isOpen={showDeleteProjectModal}
-			title="Delete ontology project"
-			confirmText="Delete project"
-			confirmVariant="danger"
-			loading={isDeletingProject}
-			loadingText="Deleting..."
-			icon="danger"
-			on:confirm={handleProjectDeleteConfirm}
-			on:cancel={closeDeleteModal}
-		>
-			{#snippet content()}
-				<p class="text-sm text-gray-600 dark:text-gray-300">
-					This will permanently delete <span class="font-semibold"
-						>{project?.name ?? 'this project'}</span
-					> and all related ontology data (tasks, plans, goals, documents, etc.). This action
-					cannot be undone.
-				</p>
-			{/snippet}
-
-			{#snippet details()}
-				{#if deleteProjectError}
-					<p class="mt-2 text-sm text-red-600 dark:text-red-400">
-						{deleteProjectError}
-					</p>
-				{/if}
-			{/snippet}
-		</ConfirmationModal>
-	{/await}
-{/if}
-
-<!-- Project Edit Modal -->
-{#if showProjectEditModal && project}
-	{#await import('$lib/components/ontology/OntologyProjectEditModal.svelte') then { default: OntologyProjectEditModal }}
-		<OntologyProjectEditModal
-			bind:isOpen={showProjectEditModal}
-			{project}
-			contextDocument={contextDocument ?? null}
-			template={template ?? null}
-			onClose={() => (showProjectEditModal = false)}
-			onSaved={handleProjectSaved}
-		/>
-	{/await}
-{/if}
 
 <!-- Output Create Modal -->
 {#if showOutputCreateModal}
@@ -2116,10 +1149,10 @@
 	{/await}
 {/if}
 
+<!-- Output Edit Modal -->
 {#if editingOutputId}
 	{#await import('$lib/components/ontology/OutputEditModal.svelte') then { default: OutputEditModal }}
 		<OutputEditModal
-			isOpen={true}
 			outputId={editingOutputId}
 			projectId={project.id}
 			onClose={() => (editingOutputId = null)}
@@ -2129,14 +1162,18 @@
 	{/await}
 {/if}
 
+<!-- Document Create/Edit Modal -->
 {#if showDocumentModal}
 	{#await import('$lib/components/ontology/DocumentModal.svelte') then { default: DocumentModal }}
 		<DocumentModal
 			bind:isOpen={showDocumentModal}
 			projectId={project.id}
 			documentId={activeDocumentId}
-			typeOptions={documentTypeOptions}
-			onClose={() => (showDocumentModal = false)}
+			typeOptions={documentTypeOptions()}
+			onClose={() => {
+				showDocumentModal = false;
+				activeDocumentId = null;
+			}}
 			onSaved={handleDocumentSaved}
 			onDeleted={handleDocumentDeleted}
 		/>
@@ -2179,14 +1216,12 @@
 		<PlanCreateModal
 			projectId={project.id}
 			onClose={() => (showPlanCreateModal = false)}
-			onCreated={async () => {
-				await refreshProjectData({ refreshGraph: true });
-				showPlanCreateModal = false;
-			}}
+			onCreated={handlePlanCreated}
 		/>
 	{/await}
 {/if}
 
+<!-- Plan Edit Modal -->
 {#if editingPlanId}
 	{#await import('$lib/components/ontology/PlanEditModal.svelte') then { default: PlanEditModal }}
 		<PlanEditModal
@@ -2206,14 +1241,12 @@
 		<GoalCreateModal
 			projectId={project.id}
 			onClose={() => (showGoalCreateModal = false)}
-			onCreated={async () => {
-				await refreshProjectData({ refreshGraph: true });
-				showGoalCreateModal = false;
-			}}
+			onCreated={handleGoalCreated}
 		/>
 	{/await}
 {/if}
 
+<!-- Goal Edit Modal -->
 {#if editingGoalId}
 	{#await import('$lib/components/ontology/GoalEditModal.svelte') then { default: GoalEditModal }}
 		<GoalEditModal
@@ -2226,15 +1259,48 @@
 	{/await}
 {/if}
 
-{#if reverseEngineerPreview}
-	{#await import('$lib/components/ontology/GoalReverseEngineerModal.svelte') then { default: GoalReverseEngineerModal }}
-		<GoalReverseEngineerModal
-			bind:open={reverseEngineerModalOpen}
-			goalName={reverseEngineerGoalMeta?.name ?? 'Goal'}
-			preview={reverseEngineerPreview}
-			loading={approvingReverseEngineer}
-			onApprove={(payload) => handleReverseEngineerApproval(payload.milestones)}
-			onCancel={handleReverseEngineerModalClose}
+<!-- Project Edit Modal -->
+{#if showProjectEditModal}
+	{#await import('$lib/components/ontology/OntologyProjectEditModal.svelte') then { default: OntologyProjectEditModal }}
+		<OntologyProjectEditModal
+			bind:isOpen={showProjectEditModal}
+			{project}
+			{contextDocument}
+			template={null}
+			onClose={() => (showProjectEditModal = false)}
+			onSaved={async () => {
+				await refreshData();
+				showProjectEditModal = false;
+			}}
 		/>
 	{/await}
+{/if}
+
+<!-- Project Delete Confirmation -->
+{#if showDeleteProjectModal}
+	<ConfirmationModal
+		title="Delete project"
+		confirmText="Delete"
+		confirmVariant="destructive"
+		isOpen={showDeleteProjectModal}
+		isProcessing={isDeletingProject}
+		on:confirm={handleProjectDeleteConfirm}
+		on:cancel={() => (showDeleteProjectModal = false)}
+	>
+		{#snippet content()}
+			<p class="text-sm text-muted-foreground">
+				This will permanently delete <span class="font-semibold text-foreground"
+					>{project.name}</span
+				>
+				and all related data. This action cannot be undone.
+			</p>
+		{/snippet}
+		{#snippet details()}
+			{#if deleteProjectError}
+				<p class="mt-2 text-sm text-red-600 dark:text-red-400">
+					{deleteProjectError}
+				</p>
+			{/if}
+		{/snippet}
+	</ConfirmationModal>
 {/if}

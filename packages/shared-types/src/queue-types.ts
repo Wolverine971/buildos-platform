@@ -157,7 +157,10 @@ export interface ScheduleDailySMSResult {
 export interface ClassifyChatSessionResult {
 	success: boolean;
 	sessionId: string;
+	title?: string;
 	topics?: string[];
+	summary?: string;
+	messageCount?: number;
 	error?: string;
 }
 

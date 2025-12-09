@@ -7,7 +7,8 @@
 	import Select from '$lib/components/ui/Select.svelte';
 	import MarkdownToggleField from '$lib/components/ui/MarkdownToggleField.svelte';
 	import { toastService } from '$lib/stores/toast.store';
-	import { Copy, Calendar, FileText, X } from 'lucide-svelte';
+	import { Copy, Calendar, FileText, X, FolderKanban, Trash2 } from 'lucide-svelte';
+	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
 	import type { Project, Document, Template } from '$lib/types/onto';
 	import { renderMarkdown } from '$lib/utils/markdown';
 
@@ -18,6 +19,7 @@
 		template?: Template | null;
 		onClose?: () => void;
 		onSaved?: (project: Project) => void;
+		onDeleted?: () => void;
 	}
 
 	const FACET_CONTEXT_OPTIONS = [
@@ -54,7 +56,8 @@
 		contextDocument = null,
 		template = null,
 		onClose,
-		onSaved
+		onSaved,
+		onDeleted
 	}: Props = $props();
 
 	let name = $state('');
@@ -65,6 +68,8 @@
 	let startDate = $state('');
 	let endDate = $state('');
 	let isSaving = $state(false);
+	let isDeleting = $state(false);
+	let showDeleteConfirm = $state(false);
 	let error = $state<string | null>(null);
 
 	// Context document state - now editable
@@ -148,8 +153,38 @@
 	}
 
 	function handleClose() {
-		if (isSaving) return;
+		if (isSaving || isDeleting) return;
 		onClose?.();
+	}
+
+	async function handleDelete() {
+		if (!project) return;
+
+		isDeleting = true;
+		error = null;
+
+		try {
+			const response = await fetch(`/api/onto/projects/${project.id}`, {
+				method: 'DELETE'
+			});
+
+			const result = await response.json().catch(() => ({}));
+
+			if (!response.ok) {
+				throw new Error(result.error ?? 'Failed to delete project');
+			}
+
+			toastService.success('Project deleted');
+			onDeleted?.();
+			onClose?.();
+		} catch (err) {
+			const message = err instanceof Error ? err.message : 'Failed to delete project';
+			error = message;
+			toastService.error(message);
+			showDeleteConfirm = false;
+		} finally {
+			isDeleting = false;
+		}
 	}
 
 	function templateFieldLabel(field: TemplatePropField): string {
@@ -349,33 +384,34 @@
 
 <Modal bind:isOpen onClose={handleClose} title="" size="xl" showCloseButton={false}>
 	{#snippet header()}
-		<!-- Inkprint header with strip texture -->
+		<!-- Compact Inkprint header -->
 		<div
-			class="flex-shrink-0 bg-muted/50 border-b border-border px-3 py-3 sm:px-6 sm:py-5 flex items-start justify-between gap-2 sm:gap-4 tx tx-strip tx-weak"
+			class="flex-shrink-0 bg-muted/50 border-b border-border px-3 py-2 sm:px-4 sm:py-2.5 flex items-center justify-between gap-2 tx tx-strip tx-weak"
 		>
-			<div class="space-y-1 sm:space-y-2 min-w-0 flex-1">
-				<p
-					class="text-[10px] sm:text-xs font-semibold uppercase tracking-[0.3em] sm:tracking-[0.4em] text-muted-foreground"
+			<div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+				<div
+					class="p-1.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 shrink-0"
 				>
-					Project Settings
-				</p>
-				<h2 class="text-lg sm:text-2xl font-bold leading-tight truncate text-foreground">
-					{name || project?.name || 'Edit Project'}
-				</h2>
-				<div class="flex flex-wrap items-center gap-1.5 sm:gap-3 text-xs sm:text-sm">
-					{#if facetStage}
-						<span
-							class="px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-semibold capitalize bg-accent/20 text-accent-foreground"
-							>{facetStage}</span
-						>
-					{/if}
-					{#if facetScale}
-						<span
-							class="hidden sm:inline px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-semibold capitalize bg-accent/20 text-accent-foreground"
-							>{facetScale}</span
-						>
-					{/if}
-					<span class="text-muted-foreground">#{project?.id?.slice(0, 8) || ''}</span>
+					<FolderKanban class="w-4 h-4" />
+				</div>
+				<div class="min-w-0 flex-1">
+					<h2
+						class="text-sm sm:text-base font-semibold leading-tight truncate text-foreground"
+					>
+						{name || project?.name || 'Project Settings'}
+					</h2>
+					<p class="text-[10px] sm:text-xs text-muted-foreground mt-0.5">
+						{#if project?.created_at}Created {new Date(
+								project.created_at
+							).toLocaleDateString(undefined, {
+								month: 'short',
+								day: 'numeric'
+							})}{/if}{#if project?.updated_at && project.updated_at !== project.created_at}
+							· Updated {new Date(project.updated_at).toLocaleDateString(undefined, {
+								month: 'short',
+								day: 'numeric'
+							})}{/if}
+					</p>
 				</div>
 			</div>
 			<Button
@@ -383,11 +419,11 @@
 				onclick={handleClose}
 				variant="ghost"
 				size="sm"
-				class="text-muted-foreground hover:text-foreground shrink-0 !p-1.5 sm:!p-2"
+				class="text-muted-foreground hover:text-foreground shrink-0 !p-1 sm:!p-1.5"
 				disabled={isSaving}
 				aria-label="Close modal"
 			>
-				<X class="w-4 h-4 sm:w-5 sm:h-5" />
+				<X class="w-4 h-4" />
 			</Button>
 		</div>
 	{/snippet}
@@ -769,37 +805,75 @@
 
 	{#snippet footer()}
 		{#if project}
-			<!-- Footer Actions - buttons on one row, smaller on mobile -->
+			<!-- Footer Actions - delete on left, cancel/save on right -->
 			<form onsubmit={handleSubmit} class="contents">
 				<div
-					class="flex flex-row items-center justify-end gap-2 sm:gap-4 p-2 sm:p-6 border-t border-border bg-muted/30 tx tx-grain tx-weak"
+					class="flex flex-row items-center justify-between gap-2 sm:gap-4 p-2 sm:p-4 border-t border-border bg-muted/30 tx tx-grain tx-weak"
 				>
-					<Button
-						type="button"
-						variant="ghost"
-						size="sm"
-						onclick={handleClose}
-						disabled={isSaving}
-						class="text-xs sm:text-sm px-2 sm:px-4"
-					>
-						Cancel
-					</Button>
-					<Button
-						type="submit"
-						variant="primary"
-						size="sm"
-						loading={isSaving}
-						disabled={isSaving}
-						class="text-xs sm:text-sm px-2 sm:px-4"
-					>
-						<span class="hidden sm:inline">Save Changes</span>
-						<span class="sm:hidden">Save</span>
-					</Button>
+					<!-- Delete button on left -->
+					<div class="flex items-center gap-1.5 sm:gap-2">
+						<Trash2 class="w-3 h-3 sm:w-4 sm:h-4 text-red-500 shrink-0" />
+						<Button
+							type="button"
+							variant="danger"
+							size="sm"
+							onclick={() => (showDeleteConfirm = true)}
+							disabled={isDeleting || isSaving}
+							class="text-[10px] sm:text-xs px-2 py-1 sm:px-3 sm:py-1.5"
+						>
+							<span class="hidden sm:inline">Delete</span>
+							<span class="sm:hidden">Del</span>
+						</Button>
+					</div>
+
+					<!-- Cancel and Save on right -->
+					<div class="flex flex-row items-center gap-2">
+						<Button
+							type="button"
+							variant="ghost"
+							size="sm"
+							onclick={handleClose}
+							disabled={isSaving || isDeleting}
+							class="text-xs sm:text-sm px-2 sm:px-4"
+						>
+							Cancel
+						</Button>
+						<Button
+							type="submit"
+							variant="primary"
+							size="sm"
+							loading={isSaving}
+							disabled={isSaving || isDeleting}
+							class="text-xs sm:text-sm px-2 sm:px-4"
+						>
+							<span class="hidden sm:inline">Save Changes</span>
+							<span class="sm:hidden">Save</span>
+						</Button>
+					</div>
 				</div>
 			</form>
 		{/if}
 	{/snippet}
 </Modal>
+
+{#if showDeleteConfirm}
+	<ConfirmationModal
+		isOpen={showDeleteConfirm}
+		title="Delete Project"
+		confirmText="Delete Project"
+		confirmVariant="danger"
+		loading={isDeleting}
+		loadingText="Deleting..."
+		icon="danger"
+		on:confirm={handleDelete}
+		on:cancel={() => (showDeleteConfirm = false)}
+	>
+		<p class="text-sm text-gray-600 dark:text-gray-300" slot="content">
+			This action cannot be undone. The project and all its associated data will be
+			permanently deleted.
+		</p>
+	</ConfirmationModal>
+{/if}
 
 <style>
 	/* Mobile grab handle - Scratchpad Ops styling */

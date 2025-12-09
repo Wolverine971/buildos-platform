@@ -2,6 +2,59 @@
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 
+/**
+ * GET /api/chat/sessions/[id]
+ *
+ * Fetches a chat session with its messages for resumption.
+ * Used by the history page when resuming a previous chat session.
+ */
+export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetSession } }) => {
+	const { user } = await safeGetSession();
+
+	if (!user?.id) {
+		return ApiResponse.unauthorized();
+	}
+
+	const sessionId = params.id;
+	if (!sessionId) {
+		return ApiResponse.badRequest('Session id is required');
+	}
+
+	// Fetch the session
+	const { data: session, error: sessionError } = await supabase
+		.from('chat_sessions')
+		.select('*')
+		.eq('id', sessionId)
+		.eq('user_id', user.id)
+		.single();
+
+	if (sessionError || !session) {
+		return ApiResponse.notFound('Chat session not found');
+	}
+
+	// Fetch messages for the session (limit to avoid loading too much data)
+	const MESSAGE_LIMIT = 400;
+	const { data: messages, error: messagesError } = await supabase
+		.from('chat_messages')
+		.select('*')
+		.eq('session_id', sessionId)
+		.order('created_at', { ascending: true })
+		.limit(MESSAGE_LIMIT);
+
+	if (messagesError) {
+		return ApiResponse.databaseError(messagesError);
+	}
+
+	// Check if there are more messages than we fetched (truncation indicator)
+	const truncated = (messages?.length || 0) >= MESSAGE_LIMIT;
+
+	return ApiResponse.success({
+		session,
+		messages: messages || [],
+		truncated
+	});
+};
+
 export const PATCH: RequestHandler = async ({
 	params,
 	request,

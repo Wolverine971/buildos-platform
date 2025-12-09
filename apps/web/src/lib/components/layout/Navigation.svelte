@@ -98,9 +98,9 @@
 
 	const navItems = [
 		{ href: '/', label: 'Dashboard', icon: Home },
-		{ href: '/projects', label: 'Projects', icon: FolderOpen }
+		{ href: '/projects', label: 'Projects', icon: FolderOpen },
 		// { href: '/time-blocks', label: 'Time Blocks', icon: Clock },
-		// { href: '/history', label: 'History', icon: StickyNote }
+		{ href: '/history', label: 'History', icon: StickyNote }
 	];
 
 	const loadingAccentClass =

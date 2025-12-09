@@ -18,6 +18,7 @@ import { processSessionActivityAndNextSteps } from './chatSessionActivityProcess
 interface ChatClassificationResponse {
 	title: string; // Max 50 characters, descriptive title
 	topics: string[]; // 3-7 topic keywords
+	summary: string; // 2-3 sentences, max 500 characters
 }
 
 /**
@@ -33,22 +34,26 @@ interface ChatMessage {
 /**
  * System prompt for chat classification
  */
-const CLASSIFICATION_SYSTEM_PROMPT = `You are a chat session classifier. Your task is to analyze chat conversation history and generate:
+const CLASSIFICATION_SYSTEM_PROMPT = `You are a chat session analyzer. Your task is to analyze chat conversation history and generate:
 
 1. A concise, descriptive title (max 50 characters) that captures the main topic/purpose of the conversation
 2. A list of 3-7 topic keywords that represent the subjects discussed
+3. A brief summary (2-3 sentences, max 500 characters) that captures what was discussed and any outcomes
 
 Guidelines:
-- The title should be human-readable and descriptive (e.g., "Planning vacation to Japan", "Debugging API auth issues", "Project timeline discussion")
-- Topics should be specific keywords, not sentences (e.g., "authentication", "database", "scheduling", "budget")
-- Focus on the user's actual intent and what was accomplished or discussed
+- Title should be human-readable (e.g., "Planning vacation to Japan", "Debugging API issues")
+- Topics should be specific keywords, not sentences (e.g., "authentication", "scheduling")
+- Summary should help the user quickly recall what this conversation was about
+- Include any key decisions made, tasks created, or outcomes achieved
+- Focus on the user's actual intent and what was accomplished
 - Ignore meta-discussion about the AI or system
 - If the conversation is too short or unclear, use "Quick chat" as the title
 
 Respond ONLY with valid JSON in this exact format:
 {
   "title": "Your descriptive title here",
-  "topics": ["topic1", "topic2", "topic3"]
+  "topics": ["topic1", "topic2", "topic3"],
+  "summary": "A 2-3 sentence summary of what was discussed and any outcomes."
 }`;
 
 /**
@@ -93,7 +98,7 @@ export async function processChatClassificationJob(job: LegacyJob<ChatClassifica
 		// Fetch the chat session to verify it exists and get current state
 		const { data: session, error: sessionError } = await supabase
 			.from('chat_sessions')
-			.select('id, title, auto_title, chat_topics, message_count, status')
+			.select('id, title, auto_title, chat_topics, summary, message_count, status')
 			.eq('id', validatedData.sessionId)
 			.eq('user_id', validatedData.userId)
 			.single();
@@ -104,8 +109,13 @@ export async function processChatClassificationJob(job: LegacyJob<ChatClassifica
 			);
 		}
 
-		// Skip if already classified (has auto_title set)
-		if (session.auto_title && session.chat_topics && session.chat_topics.length > 0) {
+		// Skip if already classified (has auto_title, topics, and summary)
+		if (
+			session.auto_title &&
+			session.chat_topics &&
+			session.chat_topics.length > 0 &&
+			session.summary
+		) {
 			console.log(`⏭️  Session ${validatedData.sessionId} already classified, skipping`);
 			await updateJobStatus(job.id, 'completed', 'chat_classification');
 			return { success: true, skipped: true, reason: 'already_classified' };
@@ -129,12 +139,15 @@ export async function processChatClassificationJob(job: LegacyJob<ChatClassifica
 				`⚠️  Session ${validatedData.sessionId} has insufficient messages (${messages?.length || 0})`
 			);
 
+			const defaultSummary = 'A brief conversation captured for reference.';
+
 			// Update with default values
 			const { error: updateError } = await supabase
 				.from('chat_sessions')
 				.update({
 					auto_title: 'Quick chat',
 					chat_topics: ['general'],
+					summary: defaultSummary,
 					updated_at: new Date().toISOString()
 				})
 				.eq('id', validatedData.sessionId);
@@ -148,6 +161,8 @@ export async function processChatClassificationJob(job: LegacyJob<ChatClassifica
 				success: true,
 				title: 'Quick chat',
 				topics: ['general'],
+				summary: defaultSummary,
+				messageCount: messages?.length || 0,
 				reason: 'insufficient_messages'
 			};
 		}
@@ -178,16 +193,19 @@ export async function processChatClassificationJob(job: LegacyJob<ChatClassifica
 		// Validate and sanitize the response
 		const title = sanitizeTitle(classification.title);
 		const topics = sanitizeTopics(classification.topics);
+		const summary = sanitizeSummary(classification.summary);
 
 		console.log(`✅ Classification result: "${title}" with topics: [${topics.join(', ')}]`);
+		console.log(`📝 Summary: ${summary.slice(0, 100)}${summary.length > 100 ? '...' : ''}`);
 
 		// Update the chat session with classification results
 		const { error: updateError } = await supabase
 			.from('chat_sessions')
 			.update({
-				title: title, // Update main title too
+				// Preserve any user-provided title; only set the auto title
 				auto_title: title,
 				chat_topics: topics,
+				summary: summary,
 				updated_at: new Date().toISOString()
 			})
 			.eq('id', validatedData.sessionId);
@@ -225,6 +243,7 @@ export async function processChatClassificationJob(job: LegacyJob<ChatClassifica
 			sessionId: validatedData.sessionId,
 			title,
 			topics,
+			summary,
 			messageCount: messages.length,
 			activityLogsCreated: activityResult.activityLogsCreated,
 			nextStepUpdated: activityResult.nextStepUpdated,
@@ -270,4 +289,20 @@ function sanitizeTopics(topics: string[]): string[] {
 
 	// Ensure at least one topic
 	return sanitized.length > 0 ? sanitized : ['general'];
+}
+
+/**
+ * Sanitize and validate the summary
+ */
+function sanitizeSummary(summary: string | undefined | null): string {
+	if (!summary || typeof summary !== 'string') {
+		return 'A conversation captured for reference.';
+	}
+
+	let sanitized = summary.trim();
+	if (sanitized.length > 500) {
+		sanitized = sanitized.slice(0, 497) + '...';
+	}
+
+	return sanitized || 'A conversation captured for reference.';
 }

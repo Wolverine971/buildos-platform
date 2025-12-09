@@ -78,6 +78,7 @@
 		onClose?: () => void;
 		autoInitProject?: AutoInitProjectConfig | null;
 		initialBraindump?: InitialBraindump | null;
+		initialChatSessionId?: string | null;
 	}
 
 	type ContextSelectionType = ChatContextType | 'agent_to_agent';
@@ -94,7 +95,8 @@
 		entityId: _initialEntityId,
 		onClose,
 		autoInitProject = null,
-		initialBraindump = null
+		initialBraindump = null,
+		initialChatSessionId = null
 	}: Props = $props();
 
 	// Context selection state
@@ -225,6 +227,11 @@
 	let pendingBraindumpContent = $state('');
 	let isSavingBraindump = $state(false);
 	let braindumpSaveError = $state<string | null>(null);
+
+	// Session resumption state
+	let isLoadingSession = $state(false);
+	let sessionLoadError = $state<string | null>(null);
+	let lastLoadedSessionId = $state<string | null>(null);
 
 	// Helper to check if we're in braindump context
 	const isBraindumpContext = $derived(selectedContextType === 'brain_dump');
@@ -359,6 +366,8 @@
 		agentMessageLoading = false;
 		agentTurnBudget = 5;
 		agentTurnsRemaining = 5;
+		// Reset session resumption state
+		sessionLoadError = null;
 
 		if (!preserveContext) {
 			selectedContextType = null;
@@ -800,6 +809,7 @@
 				wasOpen = false;
 				autoInitDismissed = false;
 				lastAutoInitProjectId = null;
+				lastLoadedSessionId = null; // Reset to allow reloading same session
 				showProjectActionSelector = false;
 			}
 			return;
@@ -807,6 +817,11 @@
 
 		if (!wasOpen) {
 			wasOpen = true;
+
+			// If resuming a session, skip any auto-init flows that would create a new one
+			if (initialChatSessionId) {
+				return;
+			}
 
 			// Handle direct context initialization (e.g., project_create)
 			// Skip context selection and go directly to chat
@@ -823,6 +838,11 @@
 		}
 
 		if (!autoInitProject) {
+			return;
+		}
+
+		// If resuming a session, do not auto-init a new project chat
+		if (initialChatSessionId) {
 			return;
 		}
 
@@ -888,6 +908,107 @@
 			sendMessage();
 		}, 0);
 	});
+
+	// Handle initialChatSessionId prop - when resuming a previous chat session from history
+	$effect(() => {
+		if (!isOpen || !initialChatSessionId) return;
+
+		// Only load once per session
+		if (lastLoadedSessionId === initialChatSessionId) {
+			return; // Already loaded this session
+		}
+
+		loadChatSession(initialChatSessionId);
+	});
+
+	// Load a chat session and restore its messages for resumption
+	async function loadChatSession(sessionId: string) {
+		if (isLoadingSession) return;
+
+		isLoadingSession = true;
+		sessionLoadError = null;
+		// Clear any prior session state to avoid bleed-through while loading
+		resetConversation({ preserveContext: false });
+
+		try {
+			const response = await fetch(`/api/chat/sessions/${sessionId}`);
+			const result = await response.json();
+
+			if (!response.ok || !result.success) {
+				throw new Error(result.error || 'Failed to load chat session');
+			}
+
+			const { session, messages: loadedMessages, truncated } = result.data;
+
+			// Set session and context
+			currentSession = session;
+			lastLoadedSessionId = sessionId;
+
+			// Map context type - handle 'general' alias
+			const contextType =
+				session.context_type === 'general' ? 'global' : session.context_type;
+			selectedContextType = contextType as ChatContextType;
+			selectedEntityId = session.entity_id || undefined;
+			selectedContextLabel = session.title || session.auto_title || 'Resumed Chat';
+
+			// Set up project focus if applicable
+			if (isProjectContext(selectedContextType) && selectedEntityId) {
+				projectFocus = buildProjectWideFocus(selectedEntityId, selectedContextLabel);
+			}
+
+			showContextSelection = false;
+			showProjectActionSelector = false;
+
+			// Convert loaded messages to UIMessages
+			const restoredMessages: UIMessage[] = loadedMessages.map((msg: any) => ({
+				id: msg.id,
+				session_id: msg.session_id,
+				user_id: msg.user_id,
+				type: msg.role === 'user' ? 'user' : 'assistant',
+				role: msg.role as ChatRole,
+				content: msg.content,
+				timestamp: new Date(msg.created_at),
+				created_at: msg.created_at,
+				tool_calls: msg.tool_calls,
+				tool_call_id: msg.tool_call_id
+			}));
+
+			messages = restoredMessages;
+
+			// Add a system message if conversation was truncated
+			if (truncated) {
+				const truncationNote: UIMessage = {
+					id: crypto.randomUUID(),
+					type: 'activity',
+					role: 'assistant' as ChatRole,
+					content:
+						'Note: This conversation has been truncated to show the most recent messages.',
+					timestamp: new Date(),
+					created_at: new Date().toISOString()
+				};
+				messages = [truncationNote, ...messages];
+			}
+
+			// Add a welcome-back message
+			const welcomeMessage: UIMessage = {
+				id: crypto.randomUUID(),
+				type: 'assistant',
+				role: 'assistant' as ChatRole,
+				content: session.summary
+					? `Resuming your conversation. Here's where we left off:\n\n**Summary:** ${session.summary}\n\nHow can I help you continue?`
+					: "Welcome back! I've restored your previous conversation. How can I help you continue?",
+				timestamp: new Date(),
+				created_at: new Date().toISOString()
+			};
+			messages = [...messages, welcomeMessage];
+		} catch (err: any) {
+			console.error('Failed to load chat session:', err);
+			sessionLoadError = err.message || 'Failed to load chat session';
+			error = sessionLoadError;
+		} finally {
+			isLoadingSession = false;
+		}
+	}
 
 	// Helper: Check if user is scrolled to bottom (within threshold)
 	function isScrolledToBottom(container: HTMLElement, threshold = 100): boolean {
