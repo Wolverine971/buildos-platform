@@ -185,9 +185,10 @@ export class EnhancedPlanMigrator {
 
 			if (edgeError) {
 				console.error(
-					`[EnhancedPlanMigrator] Failed to create has_plan edge for plan ${phase.id}: ${edgeError.message}`
+					`[EnhancedPlanMigrator] Failed to create has_plan edge for plan ${phase.id} → project ${projectContext.ontoProjectId}: ${edgeError.message}`
 				);
-				// Don't fail the whole operation for edge errors, but log it
+				// Throw to ensure edge creation failures are not silently ignored
+				throw new Error(`Failed to create project-plan edge: ${edgeError.message}`);
 			}
 
 			// 8. Update legacy mapping

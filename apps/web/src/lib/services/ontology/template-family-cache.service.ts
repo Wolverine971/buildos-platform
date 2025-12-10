@@ -82,7 +82,10 @@ const CACHE_TTL_MS = 60 * 60 * 1000;
  * Static family definitions with descriptions for LLM context.
  * These provide semantic meaning even when no templates exist yet.
  */
-const FAMILY_DEFINITIONS: Record<EntityScope, Record<string, { name: string; description: string }>> = {
+const FAMILY_DEFINITIONS: Record<
+	EntityScope,
+	Record<string, { name: string; description: string }>
+> = {
 	plan: {
 		timebox: {
 			name: 'Timebox',
@@ -94,7 +97,8 @@ const FAMILY_DEFINITIONS: Record<EntityScope, Record<string, { name: string; des
 		},
 		campaign: {
 			name: 'Campaign',
-			description: 'Multi-channel pushes like marketing campaigns, content calendars, launch campaigns'
+			description:
+				'Multi-channel pushes like marketing campaigns, content calendars, launch campaigns'
 		},
 		roadmap: {
 			name: 'Roadmap',
@@ -102,7 +106,8 @@ const FAMILY_DEFINITIONS: Record<EntityScope, Record<string, { name: string; des
 		},
 		process: {
 			name: 'Process',
-			description: 'Repeatable workflows like client onboarding, release process, review cycles'
+			description:
+				'Repeatable workflows like client onboarding, release process, review cycles'
 		},
 		phase: {
 			name: 'Phase',
@@ -140,7 +145,8 @@ const FAMILY_DEFINITIONS: Record<EntityScope, Record<string, { name: string; des
 		},
 		plan: {
 			name: 'Plan',
-			description: 'Strategic thinking and planning - sprint planning, roadmap planning, backlog grooming'
+			description:
+				'Strategic thinking and planning - sprint planning, roadmap planning, backlog grooming'
 		}
 	},
 	goal: {
@@ -184,7 +190,8 @@ const FAMILY_DEFINITIONS: Record<EntityScope, Record<string, { name: string; des
 		},
 		intake: {
 			name: 'Intake',
-			description: 'Information gathered at start - client intake, project intake, requirements'
+			description:
+				'Information gathered at start - client intake, project intake, requirements'
 		}
 	},
 	output: {
@@ -301,7 +308,9 @@ export class TemplateFamilyCacheService {
 	 * Get families for multiple scopes in parallel.
 	 * Useful for batch operations.
 	 */
-	async getFamiliesMultiple(scopes: EntityScope[]): Promise<Map<EntityScope, FamilyCacheEntry[]>> {
+	async getFamiliesMultiple(
+		scopes: EntityScope[]
+	): Promise<Map<EntityScope, FamilyCacheEntry[]>> {
 		const results = new Map<EntityScope, FamilyCacheEntry[]>();
 		await Promise.all(
 			scopes.map(async (scope) => {
@@ -387,7 +396,10 @@ export class TemplateFamilyCacheService {
 				.eq('status', 'active');
 
 			if (error) {
-				console.error(`[TemplateFamilyCache] Failed to query templates for ${scope}:`, error);
+				console.error(
+					`[TemplateFamilyCache] Failed to query templates for ${scope}:`,
+					error
+				);
 				// Return static definitions as fallback
 				return this.getStaticFamilies(scope);
 			}

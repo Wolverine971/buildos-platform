@@ -1,4 +1,15 @@
 // apps/web/src/lib/services/ontology/task-migration.service.ts
+/**
+ * Task Migration Service
+ *
+ * Handles migration of legacy tasks to onto_tasks in the ontology system.
+ * Uses EnhancedTaskMigrator for individual tasks and BatchTaskMigrationService
+ * for optimized batch processing.
+ *
+ * @see /thoughts/shared/research/2025-12-10_migration-system-design.md
+ *      For comprehensive system design documentation including architecture diagrams,
+ *      data flow, component details, and error handling strategies.
+ */
 import type { TypedSupabaseClient } from '@buildos/supabase-client';
 import type { Database, Json } from '@buildos/shared-types';
 import type {
@@ -948,7 +959,7 @@ export class TaskMigrationService {
 
 		// Create plan relationship edges if plan exists
 		if (suggestedPlanId) {
-			await this.client.from('onto_edges').insert([
+			const { error: edgeError } = await this.client.from('onto_edges').insert([
 				{
 					src_id: data.id,
 					src_kind: 'task',
@@ -964,6 +975,14 @@ export class TaskMigrationService {
 					rel: 'has_task'
 				}
 			]);
+
+			if (edgeError) {
+				console.error(
+					`[TaskMigration] Failed to create task-plan edges for task ${task.id} → plan ${suggestedPlanId}: ${edgeError.message}`
+				);
+				// Throw to ensure edge creation failures are not silently ignored
+				throw new Error(`Failed to create task-plan edges: ${edgeError.message}`);
+			}
 		}
 
 		// Record the mapping

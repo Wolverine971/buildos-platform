@@ -1,4 +1,14 @@
 // apps/web/src/lib/services/ontology/ontology-migration-orchestrator.ts
+/**
+ * Ontology Migration Orchestrator
+ *
+ * Main entry point for migrating legacy BuildOS data to the ontology system.
+ * Coordinates project, phase, task, and calendar event migrations.
+ *
+ * @see /thoughts/shared/research/2025-12-10_migration-system-design.md
+ *      For comprehensive system design documentation including architecture diagrams,
+ *      data flow, component details, and error handling strategies.
+ */
 import { randomUUID } from 'crypto';
 import type { TypedSupabaseClient } from '@buildos/supabase-client';
 import type { Database, Json } from '@buildos/shared-types';

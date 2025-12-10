@@ -476,8 +476,9 @@ clarifications: [
 1. **No Undo**: Project creation is permanent, no rollback
 2. **No Draft Mode**: Projects are created immediately (state_key="draft" but committed to DB)
 3. **No Validation Preview**: User doesn't see what will be created before confirmation
-4. **Limited Entity Types**: Currently supports goals, plans, tasks, outputs, documents
-    - Missing: requirements, sources, metrics, milestones, risks, decisions (defined in ProjectSpec but not emphasized in prompts)
+4. **Limited Entity Types**: Currently supports goals, plans, tasks, outputs, documents, risks
+    - Missing from prompts: requirements, sources, metrics, milestones, decisions (defined in ProjectSpec but not emphasized in prompts)
+    - Note: Risks have full CRUD UI support as of 2025-12-10
 5. **No Batch Creation**: Must create one project at a time
 6. **Clarification Handling**: Requires manual re-invocation after user answers (not automatic)
 

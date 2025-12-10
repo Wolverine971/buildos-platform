@@ -35,7 +35,10 @@
 	}
 
 	// Get node size based on type
-	function getNodeSize(nodeType: string, originalSize: number | [number, number] | undefined): number | [number, number] {
+	function getNodeSize(
+		nodeType: string,
+		originalSize: number | [number, number] | undefined
+	): number | [number, number] {
 		if (originalSize) return originalSize;
 		const sizes: Record<string, number | [number, number]> = {
 			template: 36,
@@ -85,7 +88,10 @@
 					},
 					style: {
 						type: getNodeShape(node.nodeType),
-						size: getNodeSize(node.nodeType, node.size as number | [number, number] | undefined),
+						size: getNodeSize(
+							node.nodeType,
+							node.size as number | [number, number] | undefined
+						),
 						fill: node.style.fill,
 						stroke: node.style.stroke,
 						lineWidth: 2,
@@ -99,7 +105,8 @@
 						labelText: node.label,
 						labelFill: node.labelCfg?.style?.fill ?? '#1f2937',
 						labelFontSize: node.labelCfg?.style?.fontSize ?? 11,
-						labelFontWeight: node.nodeType === 'project' || node.nodeType === 'goal' ? 600 : 400,
+						labelFontWeight:
+							node.nodeType === 'project' || node.nodeType === 'goal' ? 600 : 400,
 						labelFontFamily: 'Inter, system-ui, sans-serif',
 						labelPlacement: 'center',
 						labelMaxWidth: node.nodeType === 'project' ? 110 : 80,
@@ -163,11 +170,15 @@
 				}
 			},
 			layout: {
-				type: 'dagre',
+				type: 'antv-dagre',
 				rankdir: 'TB',
-				nodesep: 50,
-				ranksep: 80,
-				align: 'UL'
+				nodesep: 80, // Horizontal spacing between nodes
+				ranksep: 120, // Vertical spacing between ranks/levels
+				align: 'UL',
+				controlPoints: true, // Add control points for better edge routing
+				nodeSize: [120, 60], // Default node size for layout calculations
+				preventOverlap: true,
+				sortByCombo: false
 			},
 			behaviors: [
 				{
@@ -257,7 +268,10 @@
 				},
 				style: {
 					type: getNodeShape(node.nodeType),
-					size: getNodeSize(node.nodeType, node.size as number | [number, number] | undefined),
+					size: getNodeSize(
+						node.nodeType,
+						node.size as number | [number, number] | undefined
+					),
 					fill: node.style.fill,
 					stroke: node.style.stroke,
 					lineWidth: 2,
@@ -270,7 +284,8 @@
 					labelText: node.label,
 					labelFill: node.labelCfg?.style?.fill ?? '#1f2937',
 					labelFontSize: node.labelCfg?.style?.fontSize ?? 11,
-					labelFontWeight: node.nodeType === 'project' || node.nodeType === 'goal' ? 600 : 400,
+					labelFontWeight:
+						node.nodeType === 'project' || node.nodeType === 'goal' ? 600 : 400,
 					labelFontFamily: 'Inter, system-ui, sans-serif',
 					labelPlacement: 'center',
 					labelMaxWidth: node.nodeType === 'project' ? 110 : 80,

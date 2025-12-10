@@ -20,11 +20,13 @@ This spec describes how to properly load and format linked entity context (via `
 - **Document** - A project document
 
 When an entity is selected in the focus selector:
+
 1. The `OntologyContext.scope.focus` is populated with `{ type, id, name }`
 2. The context type becomes `element` (single entity) or `combined` (project + entity)
 3. **NEW:** Linked entities are loaded and included in the system prompt
 
 **This does NOT apply to:**
+
 - Global context (no focus selected)
 - Project-only context (project selected but no specific entity)
 - Calendar context
@@ -32,12 +34,14 @@ When an entity is selected in the focus selector:
 ## Problem Statement
 
 **Current State:**
+
 - The `OntologyContextLoader` loads basic edge data (relation type, target kind, target ID) with limits of 50 for projects and 20 for elements
 - Edge target names are NOT resolved by default (lazy resolution)
 - The frontend `LinkedEntities` component fetches rich linked entity data via `/api/onto/edges/linked` endpoint
 - **Gap:** The chat context lacks the rich relationship data that users see in the UI
 
 **User Impact:**
+
 - When chatting about a task, the AI doesn't know what plan it belongs to, what goals it supports, or what documents it references
 - Users have to manually explain relationships that are already defined in the system
 - The AI cannot help with relationship-aware queries like "what tasks support this goal?"
@@ -112,68 +116,68 @@ New type to represent linked entity context for chat:
 // src/lib/types/chat-context.types.ts
 
 export interface LinkedEntityContext {
-  /** Entity type (task, plan, goal, milestone, document, output) */
-  kind: OntologyEntityType;
+	/** Entity type (task, plan, goal, milestone, document, output) */
+	kind: OntologyEntityType;
 
-  /** Entity ID */
-  id: string;
+	/** Entity ID */
+	id: string;
 
-  /** Display name (name or title) */
-  name: string;
+	/** Display name (name or title) */
+	name: string;
 
-  /** Current state (active, draft, completed, etc.) */
-  state: string | null;
+	/** Current state (active, draft, completed, etc.) */
+	state: string | null;
 
-  /** Template type key for categorization */
-  typeKey: string | null;
+	/** Template type key for categorization */
+	typeKey: string | null;
 
-  /** Relationship type (belongs_to_plan, supports_goal, etc.) */
-  relation: string;
+	/** Relationship type (belongs_to_plan, supports_goal, etc.) */
+	relation: string;
 
-  /** Direction from source entity's perspective */
-  direction: 'outgoing' | 'incoming';
+	/** Direction from source entity's perspective */
+	direction: 'outgoing' | 'incoming';
 
-  /** Edge ID for reference */
-  edgeId: string;
+	/** Edge ID for reference */
+	edgeId: string;
 
-  /** Optional description (truncated for abbreviated mode) */
-  description?: string;
+	/** Optional description (truncated for abbreviated mode) */
+	description?: string;
 
-  /** Optional due date (for milestones) */
-  dueAt?: string;
+	/** Optional due date (for milestones) */
+	dueAt?: string;
 }
 
 export interface EntityLinkedContext {
-  /** Source entity being described */
-  source: {
-    kind: OntologyEntityType;
-    id: string;
-    name: string;
-  };
+	/** Source entity being described */
+	source: {
+		kind: OntologyEntityType;
+		id: string;
+		name: string;
+	};
 
-  /** Linked entities grouped by type */
-  linkedEntities: {
-    plans: LinkedEntityContext[];
-    goals: LinkedEntityContext[];
-    tasks: LinkedEntityContext[];
-    milestones: LinkedEntityContext[];
-    documents: LinkedEntityContext[];
-    outputs: LinkedEntityContext[];
-  };
+	/** Linked entities grouped by type */
+	linkedEntities: {
+		plans: LinkedEntityContext[];
+		goals: LinkedEntityContext[];
+		tasks: LinkedEntityContext[];
+		milestones: LinkedEntityContext[];
+		documents: LinkedEntityContext[];
+		outputs: LinkedEntityContext[];
+	};
 
-  /** Summary counts */
-  counts: {
-    plans: number;
-    goals: number;
-    tasks: number;
-    milestones: number;
-    documents: number;
-    outputs: number;
-    total: number;
-  };
+	/** Summary counts */
+	counts: {
+		plans: number;
+		goals: number;
+		tasks: number;
+		milestones: number;
+		documents: number;
+		outputs: number;
+		total: number;
+	};
 
-  /** Whether data was truncated */
-  truncated: boolean;
+	/** Whether data was truncated */
+	truncated: boolean;
 }
 ```
 
@@ -181,14 +185,14 @@ export interface EntityLinkedContext {
 
 The relationship direction matters for context understanding:
 
-| Source | Relation | Target | Direction | Meaning |
-|--------|----------|--------|-----------|---------|
-| task | belongs_to_plan | plan | outgoing | "This task is part of plan X" |
-| plan | has_task | task | incoming | "This plan includes task X" |
-| task | supports_goal | goal | outgoing | "This task works toward goal X" |
-| goal | requires | task | incoming | "This goal needs task X" |
-| task | depends_on | task | outgoing | "This task requires task X first" |
-| task | depends_on | task | incoming | "Task X requires this task first" |
+| Source | Relation        | Target | Direction | Meaning                           |
+| ------ | --------------- | ------ | --------- | --------------------------------- |
+| task   | belongs_to_plan | plan   | outgoing  | "This task is part of plan X"     |
+| plan   | has_task        | task   | incoming  | "This plan includes task X"       |
+| task   | supports_goal   | goal   | outgoing  | "This task works toward goal X"   |
+| goal   | requires        | task   | incoming  | "This goal needs task X"          |
+| task   | depends_on      | task   | outgoing  | "This task requires task X first" |
+| task   | depends_on      | task   | incoming  | "Task X requires this task first" |
 
 ## Implementation Plan
 
@@ -227,6 +231,7 @@ async loadLinkedEntitiesContext(
 **File:** `src/lib/services/agent-context-service.ts`
 
 The linked entities context should be loaded and included in the system prompt when:
+
 1. User opens chat with an entity selected in the focus selector
 2. The `focus?.type && focus?.id` condition is met
 3. Context type is `element` or `combined`
@@ -234,35 +239,35 @@ The linked entities context should be loaded and included in the system prompt w
 ```typescript
 // In buildPlannerContext() or buildOntologyContext()
 if (focus?.type && focus?.id) {
-  // Load abbreviated linked entities for system prompt
-  const linkedContext = await this.ontologyLoader.loadLinkedEntitiesContext(
-    focus.id,
-    focus.type,
-    projectId,
-    {
-      maxPerType: 3,              // Show first 3 per type
-      includeDescriptions: false  // No descriptions in abbreviated mode
-    }
-  );
+	// Load abbreviated linked entities for system prompt
+	const linkedContext = await this.ontologyLoader.loadLinkedEntitiesContext(
+		focus.id,
+		focus.type,
+		projectId,
+		{
+			maxPerType: 3, // Show first 3 per type
+			includeDescriptions: false // No descriptions in abbreviated mode
+		}
+	);
 
-  // Format for system prompt inclusion
-  const linkedEntitiesPrompt = this.formatLinkedEntitiesForSystemPrompt(linkedContext);
+	// Format for system prompt inclusion
+	const linkedEntitiesPrompt = this.formatLinkedEntitiesForSystemPrompt(linkedContext);
 
-  // Append to system prompt
-  systemPrompt += '\n\n' + linkedEntitiesPrompt;
+	// Append to system prompt
+	systemPrompt += '\n\n' + linkedEntitiesPrompt;
 }
 ```
 
 **When this loads:**
 
-| User Action | Focus Selector State | Linked Entities Loaded? |
-|-------------|---------------------|------------------------|
-| Opens chat, no selection | Empty | **No** |
-| Opens chat, project selected | Project only | **No** (project-level, no entity focus) |
-| Opens chat, task selected | Task focused | **Yes** - task's linked entities |
-| Opens chat, plan selected | Plan focused | **Yes** - plan's linked entities |
-| Opens chat, goal selected | Goal focused | **Yes** - goal's linked entities |
-| Opens chat, document selected | Document focused | **Yes** - document's linked entities |
+| User Action                   | Focus Selector State | Linked Entities Loaded?                 |
+| ----------------------------- | -------------------- | --------------------------------------- |
+| Opens chat, no selection      | Empty                | **No**                                  |
+| Opens chat, project selected  | Project only         | **No** (project-level, no entity focus) |
+| Opens chat, task selected     | Task focused         | **Yes** - task's linked entities        |
+| Opens chat, plan selected     | Plan focused         | **Yes** - plan's linked entities        |
+| Opens chat, goal selected     | Goal focused         | **Yes** - goal's linked entities        |
+| Opens chat, document selected | Document focused     | **Yes** - document's linked entities    |
 
 ### Phase 3: Context Formatting
 
@@ -287,28 +292,33 @@ When the user opens a chat with an entity selected in the focus selector, this a
 This task has the following relationships:
 
 ### Plans (2 linked)
+
 - **Q4 Marketing Plan** [plan-uuid-123] (active) - belongs_to_plan
 - **Product Launch Plan** [plan-uuid-456] (draft) - belongs_to_plan
 
 ### Goals (1 linked)
+
 - **Increase User Retention** [goal-uuid-789] (active) - supports_goal
 
 ### Documents (5 linked, showing first 3)
+
 - **Requirements Doc** [doc-uuid-001] - references
 - **Design Spec** [doc-uuid-002] - references
 - **Meeting Notes** [doc-uuid-003] - references
 - ... and 2 more documents
 
 ### Dependent Tasks (4 linked, showing first 3)
+
 - **Set up CI/CD pipeline** [task-uuid-101] (in_progress) - depends_on
 - **Write unit tests** [task-uuid-102] (todo) - depends_on
 - **Configure database** [task-uuid-103] (done) - depends_on
 - ... and 1 more task
 
-*Use `get_linked_entities` tool to see full details including descriptions.*
+_Use `get_linked_entities` tool to see full details including descriptions._
 ```
 
 **Key points:**
+
 - **IDs included:** Each entity shows its UUID in brackets so the agent can query it directly
 - **Overflow indicator:** When more than 3 entities exist for a type, shows "... and X more"
 - **Loaded on chat open:** This is part of the initial system prompt, not loaded on demand
@@ -323,12 +333,14 @@ When the agent needs more details, it can call the `get_linked_entities` tool to
 ### Plans (2 total)
 
 #### Q4 Marketing Plan [plan-uuid-123]
+
 - **State:** active
 - **Type:** plan.marketing.campaign
 - **Relationship:** belongs_to_plan (outgoing)
 - **Description:** Comprehensive marketing strategy for Q4 product launches including social media campaigns, influencer partnerships, and paid advertising across multiple channels.
 
 #### Product Launch Plan [plan-uuid-456]
+
 - **State:** draft
 - **Type:** plan.product.launch
 - **Relationship:** belongs_to_plan (outgoing)
@@ -337,6 +349,7 @@ When the agent needs more details, it can call the `get_linked_entities` tool to
 ### Goals (1 total)
 
 #### Increase User Retention [goal-uuid-789]
+
 - **State:** active
 - **Type:** goal.metric.retention
 - **Relationship:** supports_goal (outgoing)
@@ -345,12 +358,14 @@ When the agent needs more details, it can call the `get_linked_entities` tool to
 ### Documents (5 total)
 
 #### Requirements Doc [doc-uuid-001]
+
 - **State:** published
 - **Type:** document.spec.requirements
 - **Relationship:** references (outgoing)
 - **Description:** Complete requirements specification for OAuth integration including supported providers, security requirements, and UX flows.
 
 #### Design Spec [doc-uuid-002]
+
 - **State:** draft
 - **Type:** document.spec.design
 - **Relationship:** references (outgoing)
@@ -360,6 +375,7 @@ When the agent needs more details, it can call the `get_linked_entities` tool to
 ```
 
 **Key points:**
+
 - **IDs in headers:** Each entity header includes UUID for easy reference
 - **Full descriptions:** Complete description text (not truncated)
 - **All entities shown:** No limit, shows every linked entity
@@ -373,39 +389,39 @@ New tool for fetching full linked entity details:
 
 ```typescript
 export const getLinkedEntitiesTool: ChatToolDefinition = {
-  name: 'get_linked_entities',
-  description: `Get detailed information about entities linked to a specific entity via relationships.
+	name: 'get_linked_entities',
+	description: `Get detailed information about entities linked to a specific entity via relationships.
 Use this tool when you need to:
 - Understand what plans a task belongs to
 - Find all tasks that support a goal
 - See documents referenced by an entity
 - Explore task dependencies`,
 
-  parameters: {
-    type: 'object',
-    properties: {
-      entity_id: {
-        type: 'string',
-        description: 'UUID of the entity to get linked entities for'
-      },
-      entity_kind: {
-        type: 'string',
-        enum: ['task', 'plan', 'goal', 'milestone', 'document', 'output'],
-        description: 'Type of the source entity'
-      },
-      filter_kind: {
-        type: 'string',
-        enum: ['task', 'plan', 'goal', 'milestone', 'document', 'output', 'all'],
-        description: 'Filter to specific entity type, or "all" for everything',
-        default: 'all'
-      }
-    },
-    required: ['entity_id', 'entity_kind']
-  },
+	parameters: {
+		type: 'object',
+		properties: {
+			entity_id: {
+				type: 'string',
+				description: 'UUID of the entity to get linked entities for'
+			},
+			entity_kind: {
+				type: 'string',
+				enum: ['task', 'plan', 'goal', 'milestone', 'document', 'output'],
+				description: 'Type of the source entity'
+			},
+			filter_kind: {
+				type: 'string',
+				enum: ['task', 'plan', 'goal', 'milestone', 'document', 'output', 'all'],
+				description: 'Filter to specific entity type, or "all" for everything',
+				default: 'all'
+			}
+		},
+		required: ['entity_id', 'entity_kind']
+	},
 
-  tier: 2,  // Detail tool (use after list tools)
-  contextTypes: ['project', 'task', 'plan', 'goal', 'global'],
-  group: 'ontology_read'
+	tier: 2, // Detail tool (use after list tools)
+	contextTypes: ['project', 'task', 'plan', 'goal', 'global'],
+	group: 'ontology_read'
 };
 ```
 
@@ -437,6 +453,7 @@ tool to see full details including descriptions and properties.
 - **Incoming:** Another entity points TO this one (e.g., goal → task)
 
 Understanding direction helps interpret the relationship meaning:
+
 - "Task A belongs_to_plan Plan B" (outgoing from task)
 - "Goal X requires Task A" (incoming to task)
 ```
@@ -446,6 +463,7 @@ Understanding direction helps interpret the relationship meaning:
 ### Current Allocation
 
 From the research, the current token budget is:
+
 - System prompt: ~800 tokens (never truncated)
 - Location context: ~1000 tokens
 - Related data: ~500 tokens
@@ -454,12 +472,13 @@ From the research, the current token budget is:
 
 ### Linked Entity Token Estimate
 
-| Mode | Per Entity | Max Entities | Total |
-|------|------------|--------------|-------|
-| Abbreviated | ~40 tokens | 18 (3 per type × 6 types) + overflow lines | ~500 tokens |
-| Full | ~150 tokens | 50 | ~7500 tokens (via tool) |
+| Mode        | Per Entity  | Max Entities                               | Total                   |
+| ----------- | ----------- | ------------------------------------------ | ----------------------- |
+| Abbreviated | ~40 tokens  | 18 (3 per type × 6 types) + overflow lines | ~500 tokens             |
+| Full        | ~150 tokens | 50                                         | ~7500 tokens (via tool) |
 
 **Abbreviated token breakdown per entity:**
+
 - Entity name: ~5-10 tokens
 - Entity ID (UUID): ~15 tokens
 - State: ~3 tokens
@@ -468,10 +487,12 @@ From the research, the current token budget is:
 - **Total: ~35-40 tokens per entity**
 
 **Plus per-type overhead:**
+
 - Section header: ~10 tokens
 - Overflow indicator ("... and X more"): ~8 tokens when applicable
 
 **Recommendation:**
+
 - Include abbreviated linked entities in the ~500 token "Related data" budget
 - Full linked entities loaded via tool (no budget impact on initial context)
 
@@ -515,6 +536,7 @@ The linked entities API already uses optimized queries:
 4. **Result limits:** 100 per type for available, configurable for linked
 
 For chat context, we can reduce limits further:
+
 - Max 10 linked entities per type (vs 100 available)
 - Skip "available" entities (not needed for context)
 
@@ -536,6 +558,7 @@ const cacheKey = `linked:${entityId}:${entityKind}`;
 ```
 
 **Cache invalidation scenarios:**
+
 - Edge created/deleted (handled by UI component's `onLinksChanged` callback)
 - For chat, stale data is acceptable (1 minute) since edges don't change frequently
 
@@ -544,31 +567,31 @@ const cacheKey = `linked:${entityId}:${entityKind}`;
 ### Unit Tests
 
 1. **`ontology-context-loader.test.ts`**
-   - `loadLinkedEntitiesContext()` returns correct structure
-   - Handles entities with no links
-   - Respects maxPerType limits
-   - Correctly identifies incoming vs outgoing edges
+    - `loadLinkedEntitiesContext()` returns correct structure
+    - Handles entities with no links
+    - Respects maxPerType limits
+    - Correctly identifies incoming vs outgoing edges
 
 2. **`chat-context-service.test.ts`**
-   - `formatLinkedEntitiesContext()` produces correct markdown
-   - Abbreviated mode respects character limits
-   - Full mode includes all details
+    - `formatLinkedEntitiesContext()` produces correct markdown
+    - Abbreviated mode respects character limits
+    - Full mode includes all details
 
 3. **`get-linked-entities.tool.test.ts`**
-   - Tool execution returns formatted context
-   - Filter by kind works correctly
-   - Handles missing/invalid entity IDs
+    - Tool execution returns formatted context
+    - Filter by kind works correctly
+    - Handles missing/invalid entity IDs
 
 ### Integration Tests
 
 1. **Context building with linked entities**
-   - Task context includes linked plans, goals, documents
-   - Project context includes linked goals, plans
-   - Global context doesn't include linked entities (no focus entity)
+    - Task context includes linked plans, goals, documents
+    - Project context includes linked goals, plans
+    - Global context doesn't include linked entities (no focus entity)
 
 2. **Tool execution in chat**
-   - `get_linked_entities` tool returns expected data
-   - Multiple calls work (no cache issues)
+    - `get_linked_entities` tool returns expected data
+    - Multiple calls work (no cache issues)
 
 ### Manual QA
 
@@ -595,27 +618,27 @@ const cacheKey = `linked:${entityId}:${entityKind}`;
 
 ## Success Metrics
 
-| Metric | Target |
-|--------|--------|
-| Context load time increase | < 100ms |
-| Token usage increase (abbreviated) | < 500 tokens |
+| Metric                                   | Target            |
+| ---------------------------------------- | ----------------- |
+| Context load time increase               | < 100ms           |
+| Token usage increase (abbreviated)       | < 500 tokens      |
 | User satisfaction (relationship queries) | Improved accuracy |
-| Tool usage (get_linked_entities) | Used when needed |
+| Tool usage (get_linked_entities)         | Used when needed  |
 
 ## Open Questions
 
 1. **How deep should we traverse? Just direct links or 2nd-degree connections?**
-   - Recommendation: Direct links only (1 hop) to avoid context explosion
+    - Recommendation: Direct links only (1 hop) to avoid context explosion
 
 2. **Should the tool support creating/removing links or just reading?**
-   - Recommendation: Read-only for now, create/remove via existing CRUD tools
+    - Recommendation: Read-only for now, create/remove via existing CRUD tools
 
 3. **How to handle circular references (A → B → A)?**
-   - Recommendation: Already handled by edge uniqueness constraint, show both directions
+    - Recommendation: Already handled by edge uniqueness constraint, show both directions
 
 4. **Should we show the project context document as a linked entity?**
-   - The project already has a context document edge - should this be shown separately?
-   - Recommendation: Yes, include it in the documents section with special marker
+    - The project already has a context document edge - should this be shown separately?
+    - Recommendation: Yes, include it in the documents section with special marker
 
 ## Appendix: Relationship Type Reference
 
@@ -623,69 +646,71 @@ Full list of valid relationship types:
 
 ```typescript
 const RELATIONSHIP_TYPES = {
-  // Task relationships
-  'belongs_to_plan': 'Task belongs to a plan',
-  'supports_goal': 'Task supports achieving a goal',
-  'depends_on': 'Task depends on another task',
-  'targets_milestone': 'Task targets a milestone',
-  'references': 'Entity references a document',
-  'produces': 'Task produces an output',
+	// Task relationships
+	belongs_to_plan: 'Task belongs to a plan',
+	supports_goal: 'Task supports achieving a goal',
+	depends_on: 'Task depends on another task',
+	targets_milestone: 'Task targets a milestone',
+	references: 'Entity references a document',
+	produces: 'Task produces an output',
 
-  // Plan relationships
-  'has_task': 'Plan contains a task',
+	// Plan relationships
+	has_task: 'Plan contains a task',
 
-  // Goal relationships
-  'requires': 'Goal requires a task',
-  'achieved_by': 'Goal is achieved by a plan',
+	// Goal relationships
+	requires: 'Goal requires a task',
+	achieved_by: 'Goal is achieved by a plan',
 
-  // Document relationships
-  'referenced_by': 'Document is referenced by another entity',
+	// Document relationships
+	referenced_by: 'Document is referenced by another entity',
 
-  // Milestone relationships
-  'contains': 'Milestone contains tasks/plans',
+	// Milestone relationships
+	contains: 'Milestone contains tasks/plans',
 
-  // Output relationships
-  'produced_by': 'Output is produced by a task',
+	// Output relationships
+	produced_by: 'Output is produced by a task',
 
-  // Generic
-  'relates_to': 'Generic relationship (fallback)'
+	// Generic
+	relates_to: 'Generic relationship (fallback)'
 };
 ```
 
 ## Implementation Checklist
 
 - [x] **Phase 1: Data Layer**
-  - [x] Add `LinkedEntityContext` and `EntityLinkedContext` types (`src/lib/types/linked-entity-context.types.ts`)
-  - [x] Add `loadLinkedEntitiesContext()` to `OntologyContextLoader` (`src/lib/services/ontology-context-loader.ts`)
-  - [ ] Add unit tests for new method
+    - [x] Add `LinkedEntityContext` and `EntityLinkedContext` types (`src/lib/types/linked-entity-context.types.ts`)
+    - [x] Add `loadLinkedEntitiesContext()` to `OntologyContextLoader` (`src/lib/services/ontology-context-loader.ts`)
+    - [ ] Add unit tests for new method
 
 - [x] **Phase 2: Context Integration**
-  - [x] Modify `buildPlannerContext()` to include linked entities (`src/lib/services/agent-context-service.ts`)
-  - [x] Add `formatLinkedEntitiesForSystemPrompt()` formatter (`src/lib/services/linked-entity-context-formatter.ts`)
-  - [x] Include linked entities in system prompt when focus entity exists
+    - [x] Modify `buildPlannerContext()` to include linked entities (`src/lib/services/agent-context-service.ts`)
+    - [x] Add `formatLinkedEntitiesForSystemPrompt()` formatter (`src/lib/services/linked-entity-context-formatter.ts`)
+    - [x] Include linked entities in system prompt when focus entity exists
 
 - [x] **Phase 3: Tool Implementation**
-  - [x] Add `get_linked_entities` tool definition (`src/lib/services/agentic-chat/tools/core/tool-definitions.ts`)
-  - [x] Add tool executor method (`src/lib/services/agentic-chat/tools/core/tool-executor.ts`)
-  - [x] Register tool in `tools.config.ts` (base group and ontology category)
+    - [x] Add `get_linked_entities` tool definition (`src/lib/services/agentic-chat/tools/core/tool-definitions.ts`)
+    - [x] Add tool executor method (`src/lib/services/agentic-chat/tools/core/tool-executor.ts`)
+    - [x] Register tool in `tools.config.ts` (base group and ontology category)
 
 - [x] **Phase 4: Prompt Updates**
-  - [x] Linked entities context automatically included in system prompt when focus exists
-  - [x] Tool description includes guidance on when to use it
+    - [x] Linked entities context automatically included in system prompt when focus exists
+    - [x] Tool description includes guidance on when to use it
 
 - [ ] **Phase 5: Testing & Rollout**
-  - [ ] Complete unit test suite
-  - [ ] Integration tests
-  - [ ] Manual QA checklist
-  - [x] Enabled by default (no feature flag)
+    - [ ] Complete unit test suite
+    - [ ] Integration tests
+    - [ ] Manual QA checklist
+    - [x] Enabled by default (no feature flag)
 
 ## Files Created/Modified
 
 ### New Files
+
 - `src/lib/types/linked-entity-context.types.ts` - TypeScript types for linked entity context
 - `src/lib/services/linked-entity-context-formatter.ts` - Formatters for system prompt and tool output
 
 ### Modified Files
+
 - `src/lib/services/ontology-context-loader.ts` - Added `loadLinkedEntitiesContext()` method
 - `src/lib/services/agent-context-service.ts` - Integrated linked entities loading into `buildPlannerContext()`
 - `src/lib/services/agentic-chat/tools/core/tool-definitions.ts` - Added `get_linked_entities` tool definition
@@ -694,4 +719,4 @@ const RELATIONSHIP_TYPES = {
 
 ---
 
-*Last updated: 2025-12-09*
+_Last updated: 2025-12-09_

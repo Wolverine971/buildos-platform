@@ -185,7 +185,11 @@ export class AgentContextService {
 		const focus = ontologyContext?.scope?.focus;
 		if (focus?.type && focus?.id && focus?.name) {
 			try {
-				console.log('[AgentContext] Loading linked entities for focus:', focus.type, focus.id);
+				console.log(
+					'[AgentContext] Loading linked entities for focus:',
+					focus.type,
+					focus.id
+				);
 				linkedEntitiesContext = await this.ontologyLoader.loadLinkedEntitiesContext(
 					focus.id,
 					focus.type,

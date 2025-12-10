@@ -24,7 +24,8 @@
       "WebFetch(domain:svelteflow.dev)",
       "WebFetch(domain:www.svelvet.io)",
       "Bash(pnpm add:*)",
-      "Bash(pnpm tsc:*)"
+      "Bash(pnpm tsc:*)",
+      "mcp__perplexity__search"
     ],
     "deny": [],
     "ask": []

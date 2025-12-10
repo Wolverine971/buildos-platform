@@ -107,10 +107,8 @@
 
 	<!-- Main content -->
 	<main
-		class="relative flex-1 overflow-y-auto px-4 sm:px-6 sm:pb-6 lg:px-8 lg:pb-8 bg-background [scrollbar-gutter:stable_both-edges]"
+		class="relative flex-1 overflow-y-auto bg-background [scrollbar-gutter:stable_both-edges]"
 	>
-		<div class="mx-auto max-w-6xl pt-4 sm:pt-6">
-			{@render children()}
-		</div>
+		{@render children()}
 	</main>
 </div>

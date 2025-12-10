@@ -17,6 +17,8 @@
  * └─────────────┘    └─────────────┘    └─────────────┘    └─────────────┘
  *
  * @see /apps/web/docs/features/ontology/BATCH_TASK_MIGRATION_SPEC.md
+ * @see /thoughts/shared/research/2025-12-10_migration-system-design.md
+ *      For comprehensive system design documentation.
  */
 
 import type { TypedSupabaseClient } from '@buildos/supabase-client';
@@ -28,10 +30,7 @@ import { FindOrCreateTemplateService, type EntityScope } from './find-or-create-
 import { resolveTemplateWithClient } from './template-resolver.service';
 import { upsertLegacyMapping, getLegacyMappingsBatch } from './legacy-mapping.service';
 import { deepMergeProps } from './template-props-merger.service';
-import {
-	getGlobalFamilyCache,
-	type FamilyCacheEntry
-} from './template-family-cache.service';
+import { getGlobalFamilyCache, type FamilyCacheEntry } from './template-family-cache.service';
 
 // ============================================
 // TYPE DEFINITIONS
@@ -607,9 +606,7 @@ export class BatchTaskMigrationService {
 		projectId: string,
 		userId: string
 	): Promise<TaskClassification[]> {
-		console.info(
-			`[BatchTaskMigration] TWO_PHASE_START tasks=${tasks.length}`
-		);
+		console.info(`[BatchTaskMigration] TWO_PHASE_START tasks=${tasks.length}`);
 
 		// ========== PHASE 1: WORK MODE CLASSIFICATION (Fast Model) ==========
 		const phase1Start = Date.now();
@@ -625,11 +622,7 @@ export class BatchTaskMigrationService {
 			isRecurring: !!task.recurrence_pattern
 		}));
 
-		const workModeClassifications = await this.classifyWorkModes(
-			preparedTasks,
-			tasks,
-			userId
-		);
+		const workModeClassifications = await this.classifyWorkModes(preparedTasks, tasks, userId);
 
 		const phase1Duration = Date.now() - phase1Start;
 		const workModeDistribution = this.countBy(workModeClassifications, (c) => c.workMode);
@@ -697,7 +690,10 @@ ${workModeList}
 6. "review" = solo evaluation (not with others)`;
 
 		const taskList = preparedTasks
-			.map((t, i) => `[${i}] "${t.title}" - ${t.description || t.details || '(no description)'}`)
+			.map(
+				(t, i) =>
+					`[${i}] "${t.title}" - ${t.description || t.details || '(no description)'}`
+			)
 			.join('\n');
 
 		const userPrompt = `## Tasks (${preparedTasks.length} total)
@@ -723,7 +719,9 @@ IMPORTANT: Include ALL ${preparedTasks.length} tasks. work_mode MUST be one of: 
 
 		if (!response?.classifications) {
 			// Fallback: assign all to 'execute'
-			console.warn('[BatchTaskMigration] Work mode classification failed, using execute fallback');
+			console.warn(
+				'[BatchTaskMigration] Work mode classification failed, using execute fallback'
+			);
 			return preparedTasks.map((t, i) => ({
 				index: i,
 				legacyId: t.legacyId,
@@ -1570,8 +1568,11 @@ Return a JSON object with extractions array.
 			const { error: edgeError } = await this.client.from('onto_edges').insert(edgeRecords);
 
 			if (edgeError) {
-				console.error('[BatchTaskMigration] Edge insert failed:', edgeError);
-				// Don't fail the whole operation for edge errors
+				console.error(
+					`[BatchTaskMigration] Edge insert failed for ${edgeRecords.length} edges: ${edgeError.message}`
+				);
+				// Throw to ensure edge creation failures are not silently ignored
+				throw new Error(`Failed to create task-plan edges in batch: ${edgeError.message}`);
 			} else {
 				console.info(`[BatchTaskMigration] Inserted ${edgeRecords.length} edges`);
 			}

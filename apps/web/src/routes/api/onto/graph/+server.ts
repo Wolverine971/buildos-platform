@@ -16,6 +16,21 @@ import type {
 const DEFAULT_NODE_LIMIT = 1000;
 const VIEW_MODES: ViewMode[] = ['full', 'templates', 'projects'];
 
+// Batch size for .in() queries to avoid URL length limits
+// Each UUID is ~36 chars, 100 UUIDs ≈ 3.6KB which is safe for URL limits
+const IN_QUERY_BATCH_SIZE = 100;
+
+/**
+ * Batches an array into chunks of the specified size
+ */
+function batchArray<T>(array: T[], batchSize: number): T[][] {
+	const batches: T[][] = [];
+	for (let i = 0; i < array.length; i += batchSize) {
+		batches.push(array.slice(i, i + batchSize));
+	}
+	return batches;
+}
+
 function parseViewMode(raw: string | null): ViewMode | null {
 	if (!raw) return 'full';
 	return VIEW_MODES.includes(raw as ViewMode) ? (raw as ViewMode) : null;
@@ -83,23 +98,24 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 
 		const projectIds = projects.map((project) => project.id);
 
-		const [tasksRes, outputsRes, documentsRes, plansRes, goalsRes, milestonesRes] = projectIds.length
-			? await Promise.all([
-					supabase.from('onto_tasks').select('*').in('project_id', projectIds),
-					supabase.from('onto_outputs').select('*').in('project_id', projectIds),
-					supabase.from('onto_documents').select('*').in('project_id', projectIds),
-					supabase.from('onto_plans').select('*').in('project_id', projectIds),
-					supabase.from('onto_goals').select('*').in('project_id', projectIds),
-					supabase.from('onto_milestones').select('*').in('project_id', projectIds)
-				])
-			: [
-					{ data: [], error: null },
-					{ data: [], error: null },
-					{ data: [], error: null },
-					{ data: [], error: null },
-					{ data: [], error: null },
-					{ data: [], error: null }
-				];
+		const [tasksRes, outputsRes, documentsRes, plansRes, goalsRes, milestonesRes] =
+			projectIds.length
+				? await Promise.all([
+						supabase.from('onto_tasks').select('*').in('project_id', projectIds),
+						supabase.from('onto_outputs').select('*').in('project_id', projectIds),
+						supabase.from('onto_documents').select('*').in('project_id', projectIds),
+						supabase.from('onto_plans').select('*').in('project_id', projectIds),
+						supabase.from('onto_goals').select('*').in('project_id', projectIds),
+						supabase.from('onto_milestones').select('*').in('project_id', projectIds)
+					])
+				: [
+						{ data: [], error: null },
+						{ data: [], error: null },
+						{ data: [], error: null },
+						{ data: [], error: null },
+						{ data: [], error: null },
+						{ data: [], error: null }
+					];
 
 		if (tasksRes.error) {
 			console.error('[Ontology Graph API] Failed to fetch tasks', tasksRes.error);
@@ -153,36 +169,43 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 		if (nodeIds.size > 0) {
 			const idList = Array.from(nodeIds);
 
-			const [edgesFromSource, edgesFromDest] = await Promise.all([
-				supabase.from('onto_edges').select('*').in('src_id', idList),
-				supabase.from('onto_edges').select('*').in('dst_id', idList)
-			]);
+			// Batch the IDs to avoid URL length limits when using .in()
+			const idBatches = batchArray(idList, IN_QUERY_BATCH_SIZE);
 
-			if (edgesFromSource.error) {
-				console.error(
-					'[Ontology Graph API] Failed to fetch edges (source)',
-					edgesFromSource.error
-				);
-				return ApiResponse.databaseError(edgesFromSource.error);
-			}
-
-			if (edgesFromDest.error) {
-				console.error(
-					'[Ontology Graph API] Failed to fetch edges (destination)',
-					edgesFromDest.error
-				);
-				return ApiResponse.databaseError(edgesFromDest.error);
-			}
-
+			// Fetch edges in batches
 			const edgeMap = new Map<string, GraphSourceData['edges'][number]>();
-			for (const edge of edgesFromSource.data ?? []) {
-				if (edge?.id) {
-					edgeMap.set(edge.id, edge as GraphSourceData['edges'][number]);
+
+			for (const batch of idBatches) {
+				const [edgesFromSource, edgesFromDest] = await Promise.all([
+					supabase.from('onto_edges').select('*').in('src_id', batch),
+					supabase.from('onto_edges').select('*').in('dst_id', batch)
+				]);
+
+				if (edgesFromSource.error) {
+					console.error(
+						'[Ontology Graph API] Failed to fetch edges (source)',
+						edgesFromSource.error
+					);
+					return ApiResponse.databaseError(edgesFromSource.error);
 				}
-			}
-			for (const edge of edgesFromDest.data ?? []) {
-				if (edge?.id) {
-					edgeMap.set(edge.id, edge as GraphSourceData['edges'][number]);
+
+				if (edgesFromDest.error) {
+					console.error(
+						'[Ontology Graph API] Failed to fetch edges (destination)',
+						edgesFromDest.error
+					);
+					return ApiResponse.databaseError(edgesFromDest.error);
+				}
+
+				for (const edge of edgesFromSource.data ?? []) {
+					if (edge?.id) {
+						edgeMap.set(edge.id, edge as GraphSourceData['edges'][number]);
+					}
+				}
+				for (const edge of edgesFromDest.data ?? []) {
+					if (edge?.id) {
+						edgeMap.set(edge.id, edge as GraphSourceData['edges'][number]);
+					}
 				}
 			}
 

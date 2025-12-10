@@ -8,7 +8,7 @@
 /**
  * Supported entity kinds that can be linked.
  */
-export type EntityKind = 'task' | 'plan' | 'goal' | 'milestone' | 'document' | 'output';
+export type EntityKind = 'task' | 'plan' | 'goal' | 'milestone' | 'document' | 'output' | 'risk';
 
 /**
  * Entity that is currently linked via an edge.
@@ -48,6 +48,7 @@ export interface LinkedEntitiesResult {
 	milestones: LinkedEntity[];
 	documents: LinkedEntity[];
 	outputs: LinkedEntity[];
+	risks: LinkedEntity[];
 }
 
 /**
@@ -60,6 +61,7 @@ export interface AvailableEntitiesResult {
 	milestones: AvailableEntity[];
 	documents: AvailableEntity[];
 	outputs: AvailableEntity[];
+	risks: AvailableEntity[];
 }
 
 /**
@@ -114,7 +116,18 @@ export const RELATIONSHIP_MAP: Record<string, string> = {
 	'milestone-plan': 'contains',
 
 	// Output relationships
-	'output-task': 'produced_by'
+	'output-task': 'produced_by',
+
+	// Risk relationships
+	'risk-task': 'mitigated_by',
+	'risk-plan': 'addressed_in',
+	'risk-goal': 'threatens',
+	'risk-document': 'documented_in',
+
+	// Reverse risk relationships (from other entities to risks)
+	'task-risk': 'mitigates',
+	'plan-risk': 'addresses',
+	'goal-risk': 'has_risk'
 };
 
 /**
@@ -134,7 +147,8 @@ export const ENTITY_SECTIONS: EntitySectionConfig[] = [
 	{ kind: 'goal', label: 'Goal', labelPlural: 'Goals', iconColor: 'text-purple-500' },
 	{ kind: 'milestone', label: 'Milestone', labelPlural: 'Milestones', iconColor: 'text-amber-500' },
 	{ kind: 'document', label: 'Document', labelPlural: 'Documents', iconColor: 'text-cyan-500' },
-	{ kind: 'output', label: 'Output', labelPlural: 'Outputs', iconColor: 'text-violet-500' }
+	{ kind: 'output', label: 'Output', labelPlural: 'Outputs', iconColor: 'text-violet-500' },
+	{ kind: 'risk', label: 'Risk', labelPlural: 'Risks', iconColor: 'text-red-500' }
 ];
 
 /**

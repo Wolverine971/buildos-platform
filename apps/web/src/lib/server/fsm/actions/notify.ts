@@ -53,7 +53,7 @@ export async function executeNotifyAction(
 	const message =
 		action.message ?? `State updated to "${entity.state_key}" for ${entity.type_key}`;
 	const title = action.name ?? 'Project Updated';
-	const actionUrl = entity.project_id ? `/ontology/projects/${entity.project_id}` : null;
+	const actionUrl = entity.project_id ? `/projects/${entity.project_id}` : null;
 
 	const notificationRows = userIds.map((userId) => ({
 		user_id: userId,

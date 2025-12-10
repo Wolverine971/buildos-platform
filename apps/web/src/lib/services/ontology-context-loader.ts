@@ -357,7 +357,11 @@ export class OntologyContextLoader {
 		entityName: string,
 		options: LoadLinkedEntitiesOptions = {}
 	): Promise<EntityLinkedContext> {
-		const { maxPerType = 3, includeDescriptions = false, priorityOrder = 'active_first' } = options;
+		const {
+			maxPerType = 3,
+			includeDescriptions = false,
+			priorityOrder = 'active_first'
+		} = options;
 
 		console.log('[OntologyLoader] Loading linked entities for:', entityKind, entityId);
 
@@ -428,7 +432,13 @@ export class OntologyContextLoader {
 			outputs: edgesByKind.output.length,
 			total: 0
 		};
-		counts.total = counts.plans + counts.goals + counts.tasks + counts.milestones + counts.documents + counts.outputs;
+		counts.total =
+			counts.plans +
+			counts.goals +
+			counts.tasks +
+			counts.milestones +
+			counts.documents +
+			counts.outputs;
 
 		let truncated = false;
 
@@ -442,9 +452,24 @@ export class OntologyContextLoader {
 			{ kind: 'plan', table: 'onto_plans', edges: edgesByKind.plan, targetKey: 'plans' },
 			{ kind: 'goal', table: 'onto_goals', edges: edgesByKind.goal, targetKey: 'goals' },
 			{ kind: 'task', table: 'onto_tasks', edges: edgesByKind.task, targetKey: 'tasks' },
-			{ kind: 'milestone', table: 'onto_milestones', edges: edgesByKind.milestone, targetKey: 'milestones' },
-			{ kind: 'document', table: 'onto_documents', edges: edgesByKind.document, targetKey: 'documents' },
-			{ kind: 'output', table: 'onto_outputs', edges: edgesByKind.output, targetKey: 'outputs' }
+			{
+				kind: 'milestone',
+				table: 'onto_milestones',
+				edges: edgesByKind.milestone,
+				targetKey: 'milestones'
+			},
+			{
+				kind: 'document',
+				table: 'onto_documents',
+				edges: edgesByKind.document,
+				targetKey: 'documents'
+			},
+			{
+				kind: 'output',
+				table: 'onto_outputs',
+				edges: edgesByKind.output,
+				targetKey: 'outputs'
+			}
 		];
 
 		// Fetch all entity types in parallel
@@ -489,7 +514,8 @@ export class OntologyContextLoader {
 					const linkedEntity: LinkedEntityContext = {
 						kind,
 						id: entity.id,
-						name: entity.name || entity.title || entity.summary || `${kind}:${entity.id}`,
+						name:
+							entity.name || entity.title || entity.summary || `${kind}:${entity.id}`,
 						state: entity.state_key || null,
 						typeKey: entity.type_key || null,
 						relation: edge.relation,

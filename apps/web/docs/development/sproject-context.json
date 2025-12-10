@@ -17,11 +17,6 @@
 			"components": ["Dashboard"]
 		},
 		{
-			"file": "src/routes/projects/+page.svelte",
-			"type": "page",
-			"components": ["AgentChatModal"]
-		},
-		{
 			"file": "src/routes/projects-old/+page.svelte",
 			"type": "page",
 			"components": [
@@ -30,6 +25,11 @@
 				"DailyBriefModal",
 				"QuickProjectModal"
 			]
+		},
+		{
+			"file": "src/routes/projects/+page.svelte",
+			"type": "page",
+			"components": ["AgentChatModal"]
 		},
 		{
 			"file": "src/lib/components/brain-dump/BrainDumpModal.svelte",
@@ -128,6 +128,17 @@
 			"components": ["SynthesisLoadingState"]
 		},
 		{
+			"file": "src/routes/projects-old/[id]/+page.svelte",
+			"type": "page",
+			"components": [
+				"TasksList",
+				"NotesSection",
+				"ProjectSynthesis",
+				"PhasesSection",
+				"BraindumpsSection"
+			]
+		},
+		{
 			"file": "src/routes/projects/[id]/+page.svelte",
 			"type": "page",
 			"components": [
@@ -141,6 +152,10 @@
 				"PlanEditModal",
 				"GoalCreateModal",
 				"GoalEditModal",
+				"RiskCreateModal",
+				"RiskEditModal",
+				"MilestoneCreateModal",
+				"MilestoneEditModal",
 				"OntologyProjectEditModal"
 			]
 		},
@@ -150,15 +165,9 @@
 			"components": ["TemplateDetailModal", "ConfirmationModal"]
 		},
 		{
-			"file": "src/routes/projects-old/[id]/+page.svelte",
+			"file": "src/routes/admin/ontology/graph/+page.svelte",
 			"type": "page",
-			"components": [
-				"TasksList",
-				"NotesSection",
-				"ProjectSynthesis",
-				"PhasesSection",
-				"BraindumpsSection"
-			]
+			"components": ["SvelteFlowGraph", "G6Graph"]
 		},
 		{
 			"file": "src/routes/projects/projects-v2/[id]/+page.svelte",
@@ -363,6 +372,17 @@
 			"type": "service",
 			"components": [],
 			"exports": ["linkShortenerService"]
+		},
+		{
+			"file": "src/lib/services/linked-entity-context-formatter.ts",
+			"type": "service",
+			"components": [],
+			"exports": [
+				"formatLinkedEntitiesForSystemPrompt",
+				"formatLinkedEntitiesFullDetail",
+				"hasLinkedEntities",
+				"getLinkedEntitiesSummary"
+			]
 		},
 		{
 			"file": "src/lib/services/llm-usage.service.ts",
@@ -814,10 +834,22 @@
 			]
 		},
 		{
+			"file": "src/lib/components/ontology/graph/lib/g6.service.ts",
+			"type": "component",
+			"components": [],
+			"exports": ["G6GraphService"]
+		},
+		{
 			"file": "src/lib/components/ontology/graph/lib/graph.service.ts",
 			"type": "component",
 			"components": [],
 			"exports": ["OntologyGraphService"]
+		},
+		{
+			"file": "src/lib/components/ontology/graph/lib/svelteflow.service.ts",
+			"type": "component",
+			"components": [],
+			"exports": ["SvelteFlowGraphService"]
 		}
 	],
 	"dependencies": {
@@ -825,11 +857,11 @@
 		"src/lib/components/notifications/NotificationModal.svelte": [
 			"src/lib/components/notifications/types/brain-dump/BrainDumpModalContent.svelte"
 		],
-		"src/routes/projects/[id]/+page.svelte": ["src/lib/components/ontology/FSMStateBar.svelte"],
 		"src/routes/projects-old/[id]/+page.svelte": [
 			"src/lib/components/project/ProjectSynthesis.svelte",
 			"src/lib/components/project/PhasesSection.svelte"
 		],
+		"src/routes/projects/[id]/+page.svelte": ["src/lib/components/ontology/FSMStateBar.svelte"],
 		"src/routes/projects/projects-v2/[id]/+page.svelte": [
 			"src/lib/components/ontology/FSMStateBar.svelte"
 		]
@@ -847,6 +879,8 @@
 		"src/lib/components/agent/agent-chat.types.ts",
 		"src/lib/components/ontology/linked-entities/linked-entities.service.ts",
 		"src/lib/components/ontology/linked-entities/linked-entities.types.ts",
-		"src/lib/components/ontology/graph/lib/graph.service.ts"
+		"src/lib/components/ontology/graph/lib/g6.service.ts",
+		"src/lib/components/ontology/graph/lib/graph.service.ts",
+		"src/lib/components/ontology/graph/lib/svelteflow.service.ts"
 	]
 }

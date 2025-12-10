@@ -172,7 +172,7 @@
 
 {#if hasNextStep}
 	<div
-		class="group rounded-lg border border-accent/20 bg-accent/5 {className}"
+		class="group rounded-lg border border-border bg-card shadow-ink tx tx-frame tx-weak {className}"
 		role="region"
 		aria-label="Next step"
 	>
@@ -187,44 +187,70 @@
 					toggleExpand();
 				}
 			}}
-			class="w-full text-left px-3 py-2.5 flex items-start gap-3 {hasLongVersion
-				? 'cursor-pointer'
+			class="w-full text-left px-3 py-2 sm:py-2.5 {hasLongVersion
+				? 'cursor-pointer hover:bg-accent/5 transition-colors'
 				: 'cursor-default'}"
 			aria-expanded={isExpanded}
 		>
-			<!-- Icon -->
-			<div
-				class="flex-shrink-0 w-7 h-7 rounded-full bg-accent/10 flex items-center justify-center mt-0.5"
-			>
-				<Zap class="w-4 h-4 text-accent" />
-			</div>
+			<!-- Mobile: Column layout (header row + content row) | Desktop: Row layout -->
+			<div class="flex flex-col gap-1 sm:flex-row sm:items-start sm:gap-3">
+				<!-- Header wrapper - becomes transparent on desktop via sm:contents -->
+				<div class="flex items-center gap-2 sm:contents">
+					<!-- Icon -->
+					<div
+						class="flex-shrink-0 w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-accent/15 flex items-center justify-center sm:mt-0.5"
+					>
+						<Zap class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-accent" />
+					</div>
 
-			<!-- Content -->
-			<div class="flex-1 min-w-0">
-				<!-- Label row -->
-				<div class="flex items-center gap-2 mb-0.5">
-					<span class="text-[10px] font-semibold uppercase tracking-wider text-accent">
+					<!-- Mobile: Label in header row -->
+					<span
+						class="text-[10px] font-semibold uppercase tracking-wider text-accent sm:hidden"
+					>
 						Next Move
 					</span>
-					<!-- {#if sourceLabel()}
-						<span
-							class="inline-flex items-center gap-1 text-[10px] text-muted-foreground"
-						>
-							{#if nextStepSource === 'ai'}
-								<Sparkles class="w-3 h-3" />
-							{:else}
-								<User class="w-3 h-3" />
-							{/if}
-							{sourceLabel()}
-						</span>
-					{/if} -->
-					{#if updatedTimeAgo()}
-						<span class="text-[10px] text-muted-foreground/60">
-							{updatedTimeAgo()}
-						</span>
-					{/if}
 
-					<!-- Regenerate button (shown on hover, in the label row) -->
+					<!-- Desktop: Content column (hidden on mobile, direct flex child on desktop) -->
+					<div class="hidden sm:block sm:flex-1 sm:min-w-0">
+						<div class="flex items-center gap-2 mb-0.5">
+							<span
+								class="text-[10px] font-semibold uppercase tracking-wider text-accent"
+							>
+								Next Move
+							</span>
+							{#if updatedTimeAgo()}
+								<span class="text-[10px] text-muted-foreground">
+									{updatedTimeAgo()}
+								</span>
+							{/if}
+							<!-- Desktop: Regenerate button (hover reveal) -->
+							<button
+								type="button"
+								onclick={(e) => {
+									e.stopPropagation();
+									handleGenerateNextStep();
+								}}
+								disabled={isGenerating}
+								class="ml-auto p-1.5 -mr-1 rounded-md opacity-0 group-hover:opacity-100 hover:bg-accent/15 active:bg-accent/25 transition-all disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-ring pressable"
+								title="Regenerate next step"
+								aria-label="Regenerate next step"
+							>
+								{#if isGenerating}
+									<Loader2
+										class="w-3.5 h-3.5 text-muted-foreground animate-spin"
+									/>
+								{:else}
+									<RefreshCw class="w-3.5 h-3.5 text-muted-foreground" />
+								{/if}
+							</button>
+						</div>
+						<!-- Desktop: Next step text (indented under label) -->
+						<p class="text-sm font-medium text-foreground leading-snug pr-6">
+							{nextStepShort}
+						</p>
+					</div>
+
+					<!-- Mobile: Regenerate button in header -->
 					<button
 						type="button"
 						onclick={(e) => {
@@ -232,41 +258,42 @@
 							handleGenerateNextStep();
 						}}
 						disabled={isGenerating}
-						class="ml-auto p-1 rounded-md opacity-0 group-hover:opacity-100 hover:bg-accent/20 transition-all disabled:opacity-50"
+						class="ml-auto p-1.5 rounded-md hover:bg-accent/15 active:bg-accent/25 transition-all disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-ring pressable sm:hidden"
 						title="Regenerate next step"
 						aria-label="Regenerate next step"
 					>
 						{#if isGenerating}
-							<Loader2 class="w-3 h-3 text-muted-foreground animate-spin" />
+							<Loader2 class="w-3.5 h-3.5 text-muted-foreground animate-spin" />
 						{:else}
-							<RefreshCw class="w-3 h-3 text-muted-foreground" />
+							<RefreshCw class="w-3.5 h-3.5 text-muted-foreground" />
 						{/if}
 					</button>
+
+					<!-- Chevron (in header on mobile, direct flex child on desktop) -->
+					{#if hasLongVersion}
+						<div
+							class="flex-shrink-0 w-5 h-5 flex items-center justify-center text-muted-foreground transition-transform duration-200 {isExpanded
+								? 'rotate-180'
+								: ''}"
+						>
+							<ChevronDown class="w-4 h-4" />
+						</div>
+					{/if}
 				</div>
 
-				<!-- Short description - always visible -->
-				<p class="text-sm font-medium text-foreground leading-snug pr-6">
+				<!-- Mobile: Next step text (full width, own row) -->
+				<p class="text-sm font-medium text-foreground leading-snug sm:hidden">
 					{nextStepShort}
 				</p>
 			</div>
-
-			<!-- Expand indicator -->
-			{#if hasLongVersion}
-				<div
-					class="flex-shrink-0 w-5 h-5 flex items-center justify-center text-muted-foreground transition-transform duration-200 {isExpanded
-						? 'rotate-180'
-						: ''}"
-				>
-					<ChevronDown class="w-4 h-4" />
-				</div>
-			{/if}
 		</div>
 
 		<!-- Expanded content -->
 		{#if isExpanded && hasLongVersion}
 			<div class="px-3 pb-3 pt-0">
-				<div class="pl-10">
-					<div class="h-px bg-border/50 mb-2.5"></div>
+				<!-- No indent on mobile, indent on desktop to align under label -->
+				<div class="sm:pl-10">
+					<div class="h-px bg-border mb-2"></div>
 					<!-- eslint-disable-next-line svelte/no-at-html-tags -->
 					<div
 						class="text-sm text-muted-foreground leading-relaxed prose prose-sm prose-neutral dark:prose-invert max-w-none"
@@ -282,7 +309,7 @@
 {:else}
 	<!-- Empty state with generate button -->
 	<div
-		class="rounded-lg border border-dashed border-muted-foreground/30 bg-muted/30 {className}"
+		class="rounded-lg border border-dashed border-border bg-muted/30 tx tx-bloom tx-weak {className}"
 		role="region"
 		aria-label="Generate next step"
 	>
@@ -290,7 +317,7 @@
 			type="button"
 			onclick={handleGenerateNextStep}
 			disabled={isGenerating}
-			class="w-full px-3 py-3 flex items-center gap-3 hover:bg-muted/50 transition-colors rounded-lg disabled:opacity-70"
+			class="w-full px-3 py-2.5 flex items-center gap-2.5 sm:gap-3 hover:bg-muted/50 active:bg-muted/70 transition-colors rounded-lg disabled:opacity-70 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-inset pressable"
 		>
 			<!-- Icon -->
 			<div
@@ -312,16 +339,20 @@
 				</span>
 				<p class="text-sm text-muted-foreground">
 					{#if isGenerating}
-						Analyzing project and generating next step...
+						<span class="hidden sm:inline"
+							>Analyzing project and generating next step...</span
+						>
+						<span class="sm:hidden">Generating...</span>
 					{:else}
-						Click to generate your next step
+						<span class="hidden sm:inline">Click to generate your next step</span>
+						<span class="sm:hidden">Tap to generate</span>
 					{/if}
 				</p>
 			</div>
 
 			<!-- Arrow/indicator -->
 			{#if !isGenerating}
-				<div class="flex-shrink-0 text-muted-foreground">
+				<div class="flex-shrink-0 text-accent">
 					<Zap class="w-4 h-4" />
 				</div>
 			{/if}

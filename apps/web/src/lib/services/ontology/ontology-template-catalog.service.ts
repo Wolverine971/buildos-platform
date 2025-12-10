@@ -51,60 +51,22 @@ export async function fetchTemplateCatalog(
 	const normalizedDirection: TemplateCatalogDirection =
 		(direction ?? 'asc').toLowerCase() === 'desc' ? 'desc' : 'asc';
 
-	if (primitive === 'TEXT_DOCUMENT' && scope === 'output') {
+	// Normalize empty strings to null for proper filtering
+	const normalizedScope = scope?.trim() || null;
+	const normalizedRealm = realm?.trim() || null;
+	const normalizedSearch = search?.trim() || null;
+	const normalizedPrimitive = primitive?.trim() || null;
+
+	if (normalizedPrimitive === 'TEXT_DOCUMENT' && normalizedScope === 'output') {
 		templates = await getTextDocumentTemplates(client);
-	} else if (scope) {
-		templates = await getAvailableTemplates(client, scope, false);
-
-		if (realm) {
-			templates = templates.filter((t) => getMetadataString(t, 'realm') === realm);
-		}
-
-		if (contexts.length) {
-			const contextSet = new Set(contexts);
-			templates = templates.filter((t) =>
-				contextSet.has((t.facet_defaults?.context as string | undefined) ?? '')
-			);
-		}
-
-		if (scales.length) {
-			const scaleSet = new Set(scales);
-			templates = templates.filter((t) =>
-				scaleSet.has((t.facet_defaults?.scale as string | undefined) ?? '')
-			);
-		}
-
-		if (stages.length) {
-			const stageSet = new Set(stages);
-			templates = templates.filter((t) =>
-				stageSet.has((t.facet_defaults?.stage as string | undefined) ?? '')
-			);
-		}
-
-		if (primitive) {
-			templates = templates.filter((t) => getMetadataString(t, 'primitive') === primitive);
-		}
-
-		if (search) {
-			const searchLower = search.toLowerCase();
-			templates = templates.filter((t) => {
-				const description = getMetadataString(t, 'description');
-				const matchesDescription =
-					typeof description === 'string' &&
-					description.toLowerCase().includes(searchLower);
-
-				return (
-					t.name.toLowerCase().includes(searchLower) ||
-					t.type_key.toLowerCase().includes(searchLower) ||
-					matchesDescription
-				);
-			});
-		}
+	} else if (normalizedScope) {
+		templates = await getAvailableTemplates(client, normalizedScope, false);
 	} else {
+		// No scope filter - fetch all active templates via RPC
 		const { data, error } = await client.rpc('get_template_catalog', {
-			p_scope: scope ?? undefined,
-			p_realm: realm ?? undefined,
-			p_search: search ?? undefined
+			p_scope: normalizedScope ?? undefined,
+			p_realm: normalizedRealm ?? undefined,
+			p_search: normalizedSearch ?? undefined
 		});
 
 		if (error) {
@@ -118,6 +80,53 @@ export async function fetchTemplateCatalog(
 					inheritance_chain: []
 				}) as unknown as ResolvedTemplate
 		);
+	}
+
+	// Apply filters consistently for all code paths
+	if (normalizedRealm) {
+		templates = templates.filter((t) => getMetadataString(t, 'realm') === normalizedRealm);
+	}
+
+	if (contexts.length) {
+		const contextSet = new Set(contexts);
+		templates = templates.filter((t) =>
+			contextSet.has((t.facet_defaults?.context as string | undefined) ?? '')
+		);
+	}
+
+	if (scales.length) {
+		const scaleSet = new Set(scales);
+		templates = templates.filter((t) =>
+			scaleSet.has((t.facet_defaults?.scale as string | undefined) ?? '')
+		);
+	}
+
+	if (stages.length) {
+		const stageSet = new Set(stages);
+		templates = templates.filter((t) =>
+			stageSet.has((t.facet_defaults?.stage as string | undefined) ?? '')
+		);
+	}
+
+	if (normalizedPrimitive) {
+		templates = templates.filter(
+			(t) => getMetadataString(t, 'primitive') === normalizedPrimitive
+		);
+	}
+
+	if (normalizedSearch) {
+		const searchLower = normalizedSearch.toLowerCase();
+		templates = templates.filter((t) => {
+			const description = getMetadataString(t, 'description');
+			const matchesDescription =
+				typeof description === 'string' && description.toLowerCase().includes(searchLower);
+
+			return (
+				t.name.toLowerCase().includes(searchLower) ||
+				t.type_key.toLowerCase().includes(searchLower) ||
+				matchesDescription
+			);
+		});
 	}
 
 	const sorted = sortTemplates(templates, sort ?? 'name', normalizedDirection);

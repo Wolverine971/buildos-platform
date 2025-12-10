@@ -1,12 +1,6 @@
 <!-- apps/web/src/lib/components/ontology/graph/GraphControls.svelte -->
 <script lang="ts">
 	import { onDestroy } from 'svelte';
-	import Card from '$lib/components/ui/Card.svelte';
-	import CardHeader from '$lib/components/ui/CardHeader.svelte';
-	import CardBody from '$lib/components/ui/CardBody.svelte';
-	import Select from '$lib/components/ui/Select.svelte';
-	import TextInput from '$lib/components/ui/TextInput.svelte';
-	import Button from '$lib/components/ui/Button.svelte';
 	import {
 		Search,
 		Download,
@@ -17,7 +11,11 @@
 		Target,
 		Flag,
 		Layers,
-		FileText
+		FileText,
+		ChevronDown,
+		ChevronRight,
+		Maximize2,
+		SlidersHorizontal
 	} from 'lucide-svelte';
 	import type { GraphStats, OntologyGraphInstance, ViewMode } from './lib/graph.types';
 
@@ -26,37 +24,50 @@
 	let {
 		viewMode = $bindable<ViewMode>(),
 		graphInstance,
-		graphLibrary = 'cytoscape',
-		stats
+		graphLibrary = 'cytoscape' as GraphLibrary,
+		stats,
+		showStats = true
 	}: {
 		viewMode: ViewMode;
 		graphInstance: OntologyGraphInstance | null;
-		graphLibrary: GraphLibrary;
+		graphLibrary?: GraphLibrary;
 		stats: GraphStats;
+		showStats?: boolean;
 	} = $props();
 
 	// Feature support by library
-	const libraryFeatures: Record<GraphLibrary, { layout: boolean; search: boolean; filter: boolean; fitToView: boolean; export: boolean }> = {
+	const libraryFeatures: Record<
+		GraphLibrary,
+		{ layout: boolean; search: boolean; filter: boolean; fitToView: boolean; export: boolean }
+	> = {
 		cytoscape: { layout: true, search: true, filter: true, fitToView: true, export: true },
-		svelteflow: { layout: false, search: false, filter: false, fitToView: false, export: false },
+		svelteflow: {
+			layout: false,
+			search: false,
+			filter: false,
+			fitToView: false,
+			export: false
+		},
 		g6: { layout: false, search: false, filter: false, fitToView: false, export: false }
 	};
 
 	let features = $derived(libraryFeatures[graphLibrary]);
 
 	let searchQuery = $state('');
-	let selectedLayout = $state('dagre');
+	let selectedLayout = $state('cose-bilkent'); // Default to spring layout
 	let selectedFilter = $state('all');
+	let statsExpanded = $state(false);
+	let legendExpanded = $state(true);
 
 	const layouts = [
-		{ value: 'dagre', label: 'Hierarchical (DAG)' },
-		{ value: 'cola', label: 'Force-Directed (Cola)' },
-		{ value: 'cose-bilkent', label: 'Spring (COSE)' },
+		{ value: 'cose-bilkent', label: 'Spring' },
+		{ value: 'dagre', label: 'Hierarchical' },
+		{ value: 'cola', label: 'Force' },
 		{ value: 'circle', label: 'Circular' }
 	];
 
 	const filters = [
-		{ value: 'all', label: 'All Nodes' },
+		{ value: 'all', label: 'All' },
 		{ value: 'template', label: 'Templates' },
 		{ value: 'project', label: 'Projects' },
 		{ value: 'task', label: 'Tasks' },
@@ -67,12 +78,29 @@
 		{ value: 'document', label: 'Documents' }
 	];
 
-	let searchTimeout: ReturnType<typeof setTimeout> | null = null;
+	// Node legend items with colors matching the graph
+	const nodeLegend = [
+		{ icon: Hexagon, label: 'Template', color: 'text-blue-500' },
+		{ icon: FolderKanban, label: 'Project', color: 'text-emerald-500' },
+		{ icon: ListChecks, label: 'Task', color: 'text-muted-foreground' },
+		{ icon: Calendar, label: 'Plan', color: 'text-indigo-500' },
+		{ icon: Target, label: 'Goal', color: 'text-amber-500' },
+		{ icon: Flag, label: 'Milestone', color: 'text-emerald-500' },
+		{ icon: Layers, label: 'Output', color: 'text-purple-500' },
+		{ icon: FileText, label: 'Document', color: 'text-blue-500' }
+	];
 
-	const handleFilterSelect = (event: CustomEvent<string>) => {
-		const value = event.detail;
-		selectedFilter = value ?? 'all';
-	};
+	// Edge legend items
+	const edgeLegend = [
+		{ color: 'bg-muted-foreground', label: 'Hierarchy' },
+		{ color: 'bg-amber-500', label: 'Goals' },
+		{ color: 'bg-orange-500', label: 'Depends' },
+		{ color: 'bg-emerald-500', label: 'Milestone' },
+		{ color: 'bg-blue-500', label: 'Document' },
+		{ color: 'bg-purple-500', label: 'Output' }
+	];
+
+	let searchTimeout: ReturnType<typeof setTimeout> | null = null;
 
 	function handleSearch() {
 		if (searchTimeout) clearTimeout(searchTimeout);
@@ -82,14 +110,40 @@
 			if (typeof window !== 'undefined') {
 				window.dispatchEvent(
 					new CustomEvent('ontology-graph.interaction', {
-						detail: {
-							type: 'search',
-							query
-						}
+						detail: { type: 'search', query }
 					})
 				);
 			}
 		}, 300);
+	}
+
+	function handleFitToView() {
+		graphInstance?.fitToView();
+		if (typeof window !== 'undefined') {
+			window.dispatchEvent(
+				new CustomEvent('ontology-graph.interaction', {
+					detail: { type: 'fit_to_view' }
+				})
+			);
+		}
+	}
+
+	function handleExport() {
+		const instance = graphInstance;
+		if (instance?.cy) {
+			const png = instance.cy.png({ scale: 2 });
+			const link = document.createElement('a');
+			link.href = png;
+			link.download = `ontology-graph-${Date.now()}.png`;
+			link.click();
+			if (typeof window !== 'undefined') {
+				window.dispatchEvent(
+					new CustomEvent('ontology-graph.interaction', {
+						detail: { type: 'export', format: 'png' }
+					})
+				);
+			}
+		}
 	}
 
 	onDestroy(() => {
@@ -104,10 +158,7 @@
 			if (typeof window !== 'undefined') {
 				window.dispatchEvent(
 					new CustomEvent('ontology-graph.interaction', {
-						detail: {
-							type: 'layout_change',
-							value: selectedLayout
-						}
+						detail: { type: 'layout_change', value: selectedLayout }
 					})
 				);
 			}
@@ -134,276 +185,258 @@
 		if (typeof window !== 'undefined') {
 			window.dispatchEvent(
 				new CustomEvent('ontology-graph.interaction', {
-					detail: {
-						type: 'filter',
-						value: selectedFilter
-					}
+					detail: { type: 'filter', value: selectedFilter }
 				})
 			);
 		}
 	});
 </script>
 
-<div class="p-4 space-y-4 h-full overflow-y-auto bg-white dark:bg-gray-800">
-	<Card variant="default">
-		<CardHeader variant="gradient">
-			<h3 class="font-semibold text-white text-sm">Ontology Statistics</h3>
-		</CardHeader>
-		<CardBody padding="md">
-			<div class="space-y-2 text-xs text-gray-900 dark:text-white">
-				<div class="flex justify-between">
-					<span class="text-gray-600 dark:text-gray-400">Templates</span>
-					<span class="font-semibold">{stats.totalTemplates}</span>
-				</div>
-				<div class="flex justify-between">
-					<span class="text-gray-600 dark:text-gray-400">Projects</span>
-					<span class="font-semibold">{stats.totalProjects}</span>
-				</div>
-				<div class="flex justify-between">
-					<span class="text-gray-600 dark:text-gray-400">Active Projects</span>
-					<span class="font-semibold text-green-600 dark:text-green-400">
-						{stats.activeProjects}
-					</span>
-				</div>
-				<div class="flex justify-between">
-					<span class="text-gray-600 dark:text-gray-400">Tasks</span>
-					<span class="font-semibold">{stats.totalTasks}</span>
-				</div>
-				<div class="flex justify-between">
-					<span class="text-gray-600 dark:text-gray-400">Plans</span>
-					<span class="font-semibold text-indigo-600 dark:text-indigo-400">
-						{stats.totalPlans}
-					</span>
-				</div>
-				<div class="flex justify-between">
-					<span class="text-gray-600 dark:text-gray-400">Goals</span>
-					<span class="font-semibold text-amber-600 dark:text-amber-400">
-						{stats.totalGoals}
-					</span>
-				</div>
-				<div class="flex justify-between">
-					<span class="text-gray-600 dark:text-gray-400">Milestones</span>
-					<span class="font-semibold text-emerald-600 dark:text-emerald-400">
-						{stats.totalMilestones}
-					</span>
-				</div>
-				<div class="flex justify-between">
-					<span class="text-gray-600 dark:text-gray-400">Outputs</span>
-					<span class="font-semibold text-purple-600 dark:text-purple-400">
-						{stats.totalOutputs}
-					</span>
-				</div>
-				<div class="flex justify-between">
-					<span class="text-gray-600 dark:text-gray-400">Documents</span>
-					<span class="font-semibold text-blue-600 dark:text-blue-400">
-						{stats.totalDocuments}
-					</span>
-				</div>
-				<div class="flex justify-between border-t border-gray-200 dark:border-gray-700 pt-2 mt-2">
-					<span class="text-gray-600 dark:text-gray-400">Relationships</span>
-					<span class="font-semibold">{stats.totalEdges}</span>
-				</div>
-			</div>
-		</CardBody>
-	</Card>
-
-	<!-- Entity Type Legend -->
-	<Card variant="default">
-		<CardHeader variant="gradient">
-			<h3 class="font-semibold text-white text-sm">Node Legend</h3>
-		</CardHeader>
-		<CardBody padding="sm">
-			<div class="grid grid-cols-2 gap-1.5 text-xs">
-				<div class="flex items-center gap-1.5">
-					<Hexagon class="w-3.5 h-3.5 text-blue-500" />
-					<span class="text-gray-700 dark:text-gray-300">Template</span>
-				</div>
-				<div class="flex items-center gap-1.5">
-					<FolderKanban class="w-3.5 h-3.5 text-emerald-500" />
-					<span class="text-gray-700 dark:text-gray-300">Project</span>
-				</div>
-				<div class="flex items-center gap-1.5">
-					<ListChecks class="w-3.5 h-3.5 text-gray-500" />
-					<span class="text-gray-700 dark:text-gray-300">Task</span>
-				</div>
-				<div class="flex items-center gap-1.5">
-					<Calendar class="w-3.5 h-3.5 text-indigo-500" />
-					<span class="text-gray-700 dark:text-gray-300">Plan</span>
-				</div>
-				<div class="flex items-center gap-1.5">
-					<Target class="w-3.5 h-3.5 text-amber-500" />
-					<span class="text-gray-700 dark:text-gray-300">Goal</span>
-				</div>
-				<div class="flex items-center gap-1.5">
-					<Flag class="w-3.5 h-3.5 text-emerald-500" />
-					<span class="text-gray-700 dark:text-gray-300">Milestone</span>
-				</div>
-				<div class="flex items-center gap-1.5">
-					<Layers class="w-3.5 h-3.5 text-purple-500" />
-					<span class="text-gray-700 dark:text-gray-300">Output</span>
-				</div>
-				<div class="flex items-center gap-1.5">
-					<FileText class="w-3.5 h-3.5 text-blue-500" />
-					<span class="text-gray-700 dark:text-gray-300">Document</span>
-				</div>
-			</div>
-		</CardBody>
-	</Card>
-
-	<!-- Edge Type Legend -->
-	<Card variant="default">
-		<CardHeader variant="gradient">
-			<h3 class="font-semibold text-white text-sm">Edge Legend</h3>
-		</CardHeader>
-		<CardBody padding="sm">
-			<div class="space-y-1.5 text-xs">
-				<div class="flex items-center gap-2">
-					<div class="w-6 h-0.5 bg-gray-500"></div>
-					<span class="text-gray-700 dark:text-gray-300">Hierarchical</span>
-				</div>
-				<div class="flex items-center gap-2">
-					<div class="w-6 h-1 bg-amber-500"></div>
-					<span class="text-gray-700 dark:text-gray-300">Goal Support</span>
-				</div>
-				<div class="flex items-center gap-2">
-					<div class="w-6 h-0.5 bg-orange-500"></div>
-					<span class="text-gray-700 dark:text-gray-300">Dependencies</span>
-				</div>
-				<div class="flex items-center gap-2">
-					<div class="w-6 h-0.5 bg-emerald-500"></div>
-					<span class="text-gray-700 dark:text-gray-300">Milestones</span>
-				</div>
-				<div class="flex items-center gap-2">
-					<div class="w-6 h-0.5 bg-blue-500"></div>
-					<span class="text-gray-700 dark:text-gray-300">Documents</span>
-				</div>
-				<div class="flex items-center gap-2">
-					<div class="w-6 h-0.5 bg-purple-500"></div>
-					<span class="text-gray-700 dark:text-gray-300">Outputs</span>
-				</div>
-			</div>
-		</CardBody>
-	</Card>
-
-	<div class="space-y-2">
-		<div class="block text-xs font-semibold text-gray-700 dark:text-gray-300">View Mode</div>
-		<Select bind:value={viewMode} size="sm" placeholder="" class="w-full text-sm">
-			<option value="templates">Templates Hierarchy</option>
-			<option value="projects">Projects & Entities</option>
-			<option value="full">Complete Ontology</option>
-		</Select>
-	</div>
-
-	{#if features.layout}
-		<div class="space-y-2">
-			<div class="block text-xs font-semibold text-gray-700 dark:text-gray-300">Layout</div>
-			<Select bind:value={selectedLayout} size="sm" placeholder="" class="w-full text-sm">
-				{#each layouts as layout}
-					<option value={layout.value}>{layout.label}</option>
-				{/each}
-			</Select>
-		</div>
-	{:else}
-		<div class="space-y-2">
-			<div class="block text-xs font-semibold text-gray-700 dark:text-gray-300">Layout</div>
-			<div class="text-xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-900 rounded-md px-3 py-2">
-				{graphLibrary === 'g6' ? 'Hierarchical (DAG)' : graphLibrary === 'svelteflow' ? 'Auto-layout' : 'Default'}
-				<span class="text-gray-400 dark:text-gray-500 ml-1">(fixed)</span>
-			</div>
-		</div>
-	{/if}
-
-	{#if features.search}
-		<div class="space-y-2">
-			<div class="block text-xs font-semibold text-gray-700 dark:text-gray-300">Search Nodes</div>
-			<TextInput
-				bind:value={searchQuery}
-				oninput={handleSearch}
-				placeholder="Type to search..."
-				size="sm"
-				icon={Search}
-				class="text-sm"
-			/>
-		</div>
-	{/if}
-
-	{#if features.filter}
-		<div class="space-y-2">
-			<div class="block text-xs font-semibold text-gray-700 dark:text-gray-300">Filter</div>
-			<Select
-				bind:value={selectedFilter}
-				size="sm"
-				placeholder=""
-				class="w-full text-sm"
-				onchange={handleFilterSelect}
+<div class="flex flex-col h-full bg-card">
+	<!-- Collapsible Stats Panel -->
+	{#if showStats}
+		<div class="border-b border-border">
+			<button
+				type="button"
+				class="w-full flex items-center justify-between px-3 py-2 text-xs font-bold text-muted-foreground hover:text-foreground hover:bg-muted/50 transition pressable"
+				onclick={() => (statsExpanded = !statsExpanded)}
+				aria-expanded={statsExpanded}
 			>
-				{#each filters as filter}
-					<option value={filter.value}>{filter.label}</option>
-				{/each}
-			</Select>
-		</div>
-	{/if}
+				<span class="uppercase tracking-wider">Statistics</span>
+				<div class="flex items-center gap-2">
+					<span class="text-foreground font-bold">{stats.totalEdges} edges</span>
+					{#if statsExpanded}
+						<ChevronDown class="w-3.5 h-3.5" />
+					{:else}
+						<ChevronRight class="w-3.5 h-3.5" />
+					{/if}
+				</div>
+			</button>
 
-	{#if features.fitToView || features.export}
-		<div class="space-y-2 pt-4 border-t border-gray-200 dark:border-gray-700">
-			{#if features.fitToView}
-				<Button
-					onclick={() => {
-						graphInstance?.fitToView();
-						if (typeof window !== 'undefined') {
-							window.dispatchEvent(
-								new CustomEvent('ontology-graph.interaction', {
-									detail: {
-										type: 'fit_to_view'
-									}
-								})
-							);
-						}
-					}}
-					variant="primary"
-					size="sm"
-					fullWidth={true}
-				>
-					Fit to View
-				</Button>
+			{#if statsExpanded}
+				<div class="px-3 pb-3 grid grid-cols-3 gap-2 text-xs animate-ink-in">
+					<div
+						class="flex flex-col items-center p-2 rounded-lg bg-muted/50 border border-border"
+					>
+						<span class="text-lg font-bold text-foreground">{stats.totalTemplates}</span
+						>
+						<span class="text-muted-foreground">Templates</span>
+					</div>
+					<div
+						class="flex flex-col items-center p-2 rounded-lg bg-muted/50 border border-border"
+					>
+						<span class="text-lg font-bold text-foreground">{stats.totalProjects}</span>
+						<span class="text-muted-foreground">Projects</span>
+					</div>
+					<div
+						class="flex flex-col items-center p-2 rounded-lg bg-accent/10 border border-accent/30"
+					>
+						<span class="text-lg font-bold text-accent">{stats.activeProjects}</span>
+						<span class="text-accent/80">Active</span>
+					</div>
+					<div
+						class="flex flex-col items-center p-2 rounded-lg bg-muted/50 border border-border"
+					>
+						<span class="text-lg font-bold text-foreground">{stats.totalTasks}</span>
+						<span class="text-muted-foreground">Tasks</span>
+					</div>
+					<div
+						class="flex flex-col items-center p-2 rounded-lg bg-muted/50 border border-border"
+					>
+						<span class="text-lg font-bold text-foreground"
+							>{stats.totalPlans ?? 0}</span
+						>
+						<span class="text-muted-foreground">Plans</span>
+					</div>
+					<div
+						class="flex flex-col items-center p-2 rounded-lg bg-muted/50 border border-border"
+					>
+						<span class="text-lg font-bold text-foreground"
+							>{stats.totalGoals ?? 0}</span
+						>
+						<span class="text-muted-foreground">Goals</span>
+					</div>
+					<div
+						class="flex flex-col items-center p-2 rounded-lg bg-muted/50 border border-border"
+					>
+						<span class="text-lg font-bold text-foreground"
+							>{stats.totalMilestones ?? 0}</span
+						>
+						<span class="text-muted-foreground">Milestones</span>
+					</div>
+					<div
+						class="flex flex-col items-center p-2 rounded-lg bg-muted/50 border border-border"
+					>
+						<span class="text-lg font-bold text-foreground">{stats.totalOutputs}</span>
+						<span class="text-muted-foreground">Outputs</span>
+					</div>
+					<div
+						class="flex flex-col items-center p-2 rounded-lg bg-muted/50 border border-border"
+					>
+						<span class="text-lg font-bold text-foreground">{stats.totalDocuments}</span
+						>
+						<span class="text-muted-foreground">Documents</span>
+					</div>
+				</div>
 			{/if}
+		</div>
+	{/if}
 
-			{#if features.export}
-				<Button
-					onclick={() => {
-						const instance = graphInstance;
-						if (instance?.cy) {
-							const png = instance.cy.png({ scale: 2 });
-							const link = document.createElement('a');
-							link.href = png;
-							link.download = `ontology-graph-${Date.now()}.png`;
-							link.click();
-							if (typeof window !== 'undefined') {
-								window.dispatchEvent(
-									new CustomEvent('ontology-graph.interaction', {
-										detail: {
-											type: 'export',
-											format: 'png'
-										}
-									})
-								);
-							}
-						}
-					}}
-					variant="secondary"
-					size="sm"
-					fullWidth={true}
-					icon={Download}
+	<!-- Main Controls Area -->
+	<div class="flex-1 overflow-y-auto p-3 space-y-3">
+		<!-- View & Layout Row -->
+		<div class="flex gap-2">
+			<div class="flex-1">
+				<span
+					class="block text-[0.65rem] uppercase tracking-wider font-bold text-muted-foreground mb-1"
+					id="view-label"
 				>
-					Export as PNG
-				</Button>
+					View
+				</span>
+				<select
+					bind:value={viewMode}
+					aria-labelledby="view-label"
+					class="w-full h-8 px-2 text-xs font-bold rounded-lg border border-border bg-card text-foreground shadow-ink-inner focus:border-accent focus:outline-none focus:ring-1 focus:ring-ring transition"
+				>
+					<option value="projects">Projects & Entities</option>
+					<option value="templates">Templates</option>
+					<option value="full">Complete</option>
+				</select>
+			</div>
+			{#if features.layout}
+				<div class="flex-1">
+					<span
+						class="block text-[0.65rem] uppercase tracking-wider font-bold text-muted-foreground mb-1"
+						id="layout-label"
+					>
+						Layout
+					</span>
+					<select
+						bind:value={selectedLayout}
+						aria-labelledby="layout-label"
+						class="w-full h-8 px-2 text-xs font-bold rounded-lg border border-border bg-card text-foreground shadow-ink-inner focus:border-accent focus:outline-none focus:ring-1 focus:ring-ring transition"
+					>
+						{#each layouts as layout}
+							<option value={layout.value}>{layout.label}</option>
+						{/each}
+					</select>
+				</div>
 			{/if}
 		</div>
-	{/if}
 
-	{#if !features.search && !features.filter}
-		<div class="text-xs text-gray-500 dark:text-gray-400 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-md px-3 py-2">
-			<span class="font-medium text-amber-700 dark:text-amber-400">Note:</span> Search, filter, and export features are only available with Cytoscape.
+		<!-- Search & Filter Row -->
+		{#if features.search || features.filter}
+			<div class="flex gap-2">
+				{#if features.search}
+					<div class="flex-1 relative">
+						<Search
+							class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none"
+						/>
+						<input
+							type="text"
+							bind:value={searchQuery}
+							oninput={handleSearch}
+							placeholder="Search nodes..."
+							class="w-full h-8 pl-8 pr-3 text-xs rounded-lg border border-border bg-card text-foreground placeholder:text-muted-foreground shadow-ink-inner focus:border-accent focus:outline-none focus:ring-1 focus:ring-ring transition"
+						/>
+					</div>
+				{/if}
+				{#if features.filter}
+					<div class="w-28">
+						<div class="relative">
+							<SlidersHorizontal
+								class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none"
+							/>
+							<select
+								bind:value={selectedFilter}
+								aria-label="Filter node type"
+								class="w-full h-8 pl-8 pr-2 text-xs font-bold rounded-lg border border-border bg-card text-foreground shadow-ink-inner focus:border-accent focus:outline-none focus:ring-1 focus:ring-ring transition appearance-none"
+							>
+								{#each filters as filter}
+									<option value={filter.value}>{filter.label}</option>
+								{/each}
+							</select>
+						</div>
+					</div>
+				{/if}
+			</div>
+		{/if}
+
+		<!-- Action Buttons -->
+		{#if features.fitToView || features.export}
+			<div class="flex gap-2">
+				{#if features.fitToView}
+					<button
+						type="button"
+						onclick={handleFitToView}
+						class="flex-1 flex items-center justify-center gap-1.5 h-8 px-3 text-xs font-bold rounded-lg border border-border bg-card text-foreground hover:border-accent hover:bg-muted/50 shadow-ink pressable transition"
+					>
+						<Maximize2 class="w-3.5 h-3.5" />
+						<span>Fit</span>
+					</button>
+				{/if}
+				{#if features.export}
+					<button
+						type="button"
+						onclick={handleExport}
+						class="flex-1 flex items-center justify-center gap-1.5 h-8 px-3 text-xs font-bold rounded-lg border border-border bg-card text-foreground hover:border-accent hover:bg-muted/50 shadow-ink pressable transition"
+					>
+						<Download class="w-3.5 h-3.5" />
+						<span>Export</span>
+					</button>
+				{/if}
+			</div>
+		{/if}
+
+		<!-- Combined Legend -->
+		<div class="border-t border-border pt-3">
+			<button
+				type="button"
+				class="w-full flex items-center justify-between text-[0.65rem] uppercase tracking-wider font-bold text-muted-foreground hover:text-foreground transition mb-2"
+				onclick={() => (legendExpanded = !legendExpanded)}
+				aria-expanded={legendExpanded}
+			>
+				<span>Legend</span>
+				{#if legendExpanded}
+					<ChevronDown class="w-3 h-3" />
+				{:else}
+					<ChevronRight class="w-3 h-3" />
+				{/if}
+			</button>
+
+			{#if legendExpanded}
+				<div class="space-y-2 animate-ink-in">
+					<!-- Node Types -->
+					<div class="grid grid-cols-4 gap-1">
+						{#each nodeLegend as item}
+							{@const Icon = item.icon}
+							<div class="flex items-center gap-1 text-[0.6rem]" title={item.label}>
+								<Icon class="w-3 h-3 {item.color} flex-shrink-0" />
+								<span class="text-muted-foreground truncate">{item.label}</span>
+							</div>
+						{/each}
+					</div>
+
+					<!-- Edge Types -->
+					<div class="flex flex-wrap gap-x-3 gap-y-1 pt-1 border-t border-border/50">
+						{#each edgeLegend as item}
+							<div class="flex items-center gap-1.5 text-[0.6rem]">
+								<div class="w-4 h-0.5 rounded-full {item.color}"></div>
+								<span class="text-muted-foreground">{item.label}</span>
+							</div>
+						{/each}
+					</div>
+				</div>
+			{/if}
 		</div>
-	{/if}
+
+		<!-- Library Notice -->
+		{#if !features.search && !features.filter}
+			<div
+				class="text-[0.65rem] text-muted-foreground bg-muted/50 border border-border rounded-lg px-2 py-1.5"
+			>
+				<span class="font-bold text-foreground">Note:</span> Full controls require Cytoscape.
+			</div>
+		{/if}
+	</div>
 </div>

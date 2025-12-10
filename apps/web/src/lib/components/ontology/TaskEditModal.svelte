@@ -692,9 +692,9 @@
 			</div>
 		{:else}
 			<div class="px-3 py-3 sm:px-6 sm:py-6">
-				<!-- Tab Navigation - Inkprint Tool Tabs -->
+				<!-- Tab Navigation - Pill Toggle -->
 				<div
-					class="flex items-center gap-1 mb-6 border-b border-border"
+					class="inline-flex rounded-lg border border-border bg-muted/50 p-1 text-sm font-bold mb-6 shadow-ink"
 					role="tablist"
 					aria-label="Task views"
 				>
@@ -704,10 +704,14 @@
 						aria-selected={activeView === 'details'}
 						aria-controls="details-panel"
 						tabindex={activeView === 'details' ? 0 : -1}
-						class={`tab-tool ${activeView === 'details' ? 'active' : ''}`}
+						class={`relative rounded px-4 py-2 transition pressable ${
+							activeView === 'details'
+								? 'bg-accent text-accent-foreground shadow-ink'
+								: 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+						}`}
 						onclick={() => setActiveView('details')}
 					>
-						DETAILS
+						Details
 					</button>
 					<button
 						type="button"
@@ -715,10 +719,14 @@
 						aria-selected={activeView === 'workspace'}
 						aria-controls="workspace-panel"
 						tabindex={activeView === 'workspace' ? 0 : -1}
-						class={`tab-tool ${activeView === 'workspace' ? 'active' : ''}`}
+						class={`relative rounded px-4 py-2 transition pressable ${
+							activeView === 'workspace'
+								? 'bg-accent text-accent-foreground shadow-ink'
+								: 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+						}`}
 						onclick={() => setActiveView('workspace')}
 					>
-						WORKSPACE
+						Workspace
 					</button>
 				</div>
 
@@ -1049,9 +1057,9 @@
 
 										{#if error}
 											<div
-												class="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded"
+												class="p-3 bg-destructive/10 border border-destructive/30 rounded-lg tx tx-static tx-weak"
 											>
-												<p class="text-sm text-red-700 dark:text-red-300">
+												<p class="text-sm text-destructive">
 													{error}
 												</p>
 											</div>
@@ -1534,7 +1542,6 @@
 	<PlanEditModal
 		planId={selectedPlanIdForModal}
 		{projectId}
-		tasks={[]}
 		onClose={handleLinkedEntityModalClose}
 		onUpdated={handleLinkedEntityModalClose}
 		onDeleted={handleLinkedEntityModalClose}

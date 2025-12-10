@@ -37,8 +37,18 @@ export function formatLinkedEntitiesForSystemPrompt(context: EntityLinkedContext
 		{ key: 'plans', label: 'Plans', singular: 'plan', count: context.counts.plans },
 		{ key: 'goals', label: 'Goals', singular: 'goal', count: context.counts.goals },
 		{ key: 'tasks', label: 'Tasks', singular: 'task', count: context.counts.tasks },
-		{ key: 'milestones', label: 'Milestones', singular: 'milestone', count: context.counts.milestones },
-		{ key: 'documents', label: 'Documents', singular: 'document', count: context.counts.documents },
+		{
+			key: 'milestones',
+			label: 'Milestones',
+			singular: 'milestone',
+			count: context.counts.milestones
+		},
+		{
+			key: 'documents',
+			label: 'Documents',
+			singular: 'document',
+			count: context.counts.documents
+		},
 		{ key: 'outputs', label: 'Outputs', singular: 'output', count: context.counts.outputs }
 	];
 
@@ -63,7 +73,9 @@ export function formatLinkedEntitiesForSystemPrompt(context: EntityLinkedContext
 
 		// Overflow indicator
 		if (remainingCount > 0) {
-			lines.push(`- ... and ${remainingCount} more ${remainingCount === 1 ? singular : label.toLowerCase()}`);
+			lines.push(
+				`- ... and ${remainingCount} more ${remainingCount === 1 ? singular : label.toLowerCase()}`
+			);
 		}
 
 		lines.push('');
@@ -154,7 +166,9 @@ function formatFullDetailEntity(entity: LinkedEntityContext): string {
 	if (entity.typeKey) {
 		lines.push(`- **Type:** ${entity.typeKey}`);
 	}
-	lines.push(`- **Relationship:** ${getRelationshipLabel(entity.relation)} (${entity.direction})`);
+	lines.push(
+		`- **Relationship:** ${getRelationshipLabel(entity.relation)} (${entity.direction})`
+	);
 
 	// Description if present
 	if (entity.description) {

@@ -6,10 +6,12 @@
 		Controls,
 		Background,
 		MiniMap,
+		Position,
 		type NodeTypes,
 		type EdgeTypes
 	} from '@xyflow/svelte';
 	import '@xyflow/svelte/dist/style.css';
+	import dagre from '@dagrejs/dagre';
 
 	import { SvelteFlowGraphService } from '../lib/svelteflow.service';
 	import type { GraphNode, GraphSourceData, ViewMode } from '../lib/graph.types';
@@ -53,85 +55,91 @@
 	// Default edge type (can be customized later)
 	const edgeTypes: EdgeTypes = {} as EdgeTypes;
 
-	// Apply auto-layout using dagre-like positioning
-	function applyLayout(inputNodes: SvelteFlowNode[], inputEdges: SvelteFlowEdge[]) {
-		// Build adjacency map
-		const children = new Map<string, string[]>();
-		const parents = new Map<string, string[]>();
+	// Node dimensions by type for proper layout calculation
+	const nodeDimensions: Record<string, { width: number; height: number }> = {
+		template: { width: 140, height: 60 },
+		project: { width: 180, height: 80 },
+		task: { width: 160, height: 70 },
+		plan: { width: 160, height: 70 },
+		goal: { width: 150, height: 70 },
+		milestone: { width: 150, height: 60 },
+		output: { width: 140, height: 60 },
+		document: { width: 140, height: 60 }
+	};
 
+	const defaultDimension = { width: 150, height: 60 };
+
+	// Apply hierarchical layout using dagre
+	function applyDagreLayout(
+		inputNodes: SvelteFlowNode[],
+		inputEdges: SvelteFlowEdge[],
+		direction: 'TB' | 'LR' = 'TB'
+	): SvelteFlowNode[] {
+		if (inputNodes.length === 0) return [];
+
+		// Create a new dagre graph for each layout to avoid stale state
+		const dagreGraph = new dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
+
+		const isHorizontal = direction === 'LR';
+
+		// Configure the graph layout
+		dagreGraph.setGraph({
+			rankdir: direction,
+			nodesep: 60, // Horizontal spacing between nodes
+			ranksep: 100, // Vertical spacing between ranks/levels
+			marginx: 40,
+			marginy: 40,
+			acyclicer: 'greedy', // Handle cycles gracefully
+			ranker: 'network-simplex' // Better for complex graphs
+		});
+
+		// Add nodes to dagre graph with their dimensions
+		for (const node of inputNodes) {
+			const nodeType = node.data?.type ?? 'default';
+			const dim = nodeDimensions[nodeType] ?? defaultDimension;
+			dagreGraph.setNode(node.id, { width: dim.width, height: dim.height });
+		}
+
+		// Add edges to dagre graph
 		for (const edge of inputEdges) {
-			if (!children.has(edge.source)) children.set(edge.source, []);
-			if (!parents.has(edge.target)) parents.set(edge.target, []);
-			children.get(edge.source)!.push(edge.target);
-			parents.get(edge.target)!.push(edge.source);
-		}
-
-		// Find root nodes (no parents)
-		const roots = inputNodes.filter(
-			(node) => !parents.has(node.id) || parents.get(node.id)!.length === 0
-		);
-
-		// BFS to assign levels
-		const levels = new Map<string, number>();
-		const queue = roots.map((r) => ({ id: r.id, level: 0 }));
-		const visited = new Set<string>();
-
-		while (queue.length > 0) {
-			const { id, level } = queue.shift()!;
-			if (visited.has(id)) continue;
-			visited.add(id);
-			levels.set(id, level);
-
-			const nodeChildren = children.get(id) ?? [];
-			for (const childId of nodeChildren) {
-				if (!visited.has(childId)) {
-					queue.push({ id: childId, level: level + 1 });
-				}
+			if (edge.source && edge.target) {
+				dagreGraph.setEdge(edge.source, edge.target);
 			}
 		}
 
-		// Assign positions to nodes not in the hierarchy
-		for (const node of inputNodes) {
-			if (!levels.has(node.id)) {
-				levels.set(node.id, 0);
-			}
-		}
+		// Run the dagre layout algorithm
+		dagre.layout(dagreGraph);
 
-		// Group nodes by level
-		const levelGroups = new Map<number, SvelteFlowNode[]>();
-		for (const node of inputNodes) {
-			const level = levels.get(node.id) ?? 0;
-			if (!levelGroups.has(level)) levelGroups.set(level, []);
-			levelGroups.get(level)!.push(node);
-		}
+		// Apply the calculated positions to nodes
+		const layoutedNodes: SvelteFlowNode[] = inputNodes.map((node) => {
+			const nodeWithPosition = dagreGraph.node(node.id);
+			const nodeType = node.data?.type ?? 'default';
+			const dim = nodeDimensions[nodeType] ?? defaultDimension;
 
-		// Position nodes
-		const HORIZONTAL_SPACING = 220;
-		const VERTICAL_SPACING = 150;
-
-		const positioned: SvelteFlowNode[] = [];
-		for (const [level, levelNodes] of levelGroups) {
-			const totalWidth = levelNodes.length * HORIZONTAL_SPACING;
-			const startX = -totalWidth / 2 + HORIZONTAL_SPACING / 2;
-
-			levelNodes.forEach((node, i) => {
-				positioned.push({
-					...node,
-					position: {
-						x: startX + i * HORIZONTAL_SPACING,
-						y: level * VERTICAL_SPACING
+			// Dagre gives us center positions, we need top-left for Svelte Flow
+			const position = nodeWithPosition
+				? {
+						x: nodeWithPosition.x - dim.width / 2,
+						y: nodeWithPosition.y - dim.height / 2
 					}
-				});
-			});
-		}
+				: { x: 0, y: 0 };
 
-		return positioned;
+			return {
+				...node,
+				position,
+				// Set handle positions based on layout direction
+				targetPosition: isHorizontal ? Position.Left : Position.Top,
+				sourcePosition: isHorizontal ? Position.Right : Position.Bottom
+			};
+		});
+
+		return layoutedNodes;
 	}
 
 	// Initialize graph data
 	function updateGraphData() {
 		const graphData = SvelteFlowGraphService.buildGraphData(data, viewMode);
-		const layoutedNodes = applyLayout(graphData.nodes, graphData.edges);
+		const layoutedNodes = applyDagreLayout(graphData.nodes, graphData.edges, 'TB');
 		nodes = layoutedNodes;
 		edges = graphData.edges;
 	}

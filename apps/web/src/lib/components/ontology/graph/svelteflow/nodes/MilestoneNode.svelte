@@ -9,7 +9,10 @@
 	const formatDate = (dateStr: string | undefined) => {
 		if (!dateStr) return null;
 		try {
-			return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+			return new Date(dateStr).toLocaleDateString('en-US', {
+				month: 'short',
+				day: 'numeric'
+			});
 		} catch {
 			return null;
 		}

@@ -7,6 +7,10 @@
  * NOTE: As of December 2025, this service exclusively uses the EnhancedProjectMigrator
  * which integrates with FindOrCreateTemplateService for template operations.
  * The legacy migration path using ProjectTemplateInferenceService has been removed.
+ *
+ * @see /thoughts/shared/research/2025-12-10_migration-system-design.md
+ *      For comprehensive system design documentation including architecture diagrams,
+ *      data flow, component details, and error handling strategies.
  */
 import type { TypedSupabaseClient } from '@buildos/supabase-client';
 import type { Database, Json } from '@buildos/shared-types';

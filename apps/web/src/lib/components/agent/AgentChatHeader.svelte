@@ -72,10 +72,10 @@
 			resolvedProjectFocus &&
 			['task', 'goal', 'plan', 'document', 'output'].includes(resolvedProjectFocus.focusType)
 		) {
-			return `/ontology/projects/${projectId}`;
+			return `/projects/${projectId}`;
 		}
 		// Default to regular project URL
-		return `/ontology/projects/${projectId}`;
+		return `/projects/${projectId}`;
 	});
 </script>
 

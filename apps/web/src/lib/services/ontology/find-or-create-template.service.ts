@@ -1053,7 +1053,9 @@ export class FindOrCreateTemplateService {
 			domainEntry.templateCount++;
 
 			// Find or create deliverable entry
-			let deliverableEntry = domainEntry.deliverables.find((d) => d.deliverable === deliverable);
+			let deliverableEntry = domainEntry.deliverables.find(
+				(d) => d.deliverable === deliverable
+			);
 			if (!deliverableEntry) {
 				deliverableEntry = {
 					deliverable,
@@ -1103,7 +1105,17 @@ export class FindOrCreateTemplateService {
 			};
 		}
 
-		const [, domain, deliverable, variant] = parts;
+		const domain = parts[1];
+		const deliverable = parts[2];
+		const variant = parts[3]; // undefined for 3-segment keys
+
+		// Safety check (should never fail after length check, but TypeScript needs it)
+		if (!domain || !deliverable) {
+			return {
+				valid: false,
+				error: `Missing domain or deliverable segment`
+			};
+		}
 
 		// Check for blocked terms
 		if (PROJECT_BLOCKED_TERMS.has(domain)) {
@@ -1445,7 +1457,9 @@ Return JSON:
 		userId: string
 	): Promise<{ variant: string | null; typeKey: string; existingTemplateId: string | null }> {
 		const domainEntry = taxonomy.domains.find((d) => d.domain === domain);
-		const deliverableEntry = domainEntry?.deliverables.find((d) => d.deliverable === deliverable);
+		const deliverableEntry = domainEntry?.deliverables.find(
+			(d) => d.deliverable === deliverable
+		);
 		const existingVariants = deliverableEntry?.variants ?? [];
 		const baseTypeKey = `project.${domain}.${deliverable}`;
 
@@ -1545,9 +1559,7 @@ Return JSON:
 	): Promise<ProjectClassificationResult> {
 		const startTime = Date.now();
 
-		console.info(
-			`[ProjectClassification] START project="${context.name}" userId=${userId}`
-		);
+		console.info(`[ProjectClassification] START project="${context.name}" userId=${userId}`);
 
 		try {
 			// 1. Extract current taxonomy
@@ -1623,7 +1635,10 @@ Return JSON:
 				method: 'multi_phase',
 				phases: {
 					domain: { value: domainResult.domain, isNew: domainResult.isNew },
-					deliverable: { value: deliverableResult.deliverable, isNew: deliverableResult.isNew },
+					deliverable: {
+						value: deliverableResult.deliverable,
+						isNew: deliverableResult.isNew
+					},
 					variant: variantResult.variant
 						? { value: variantResult.variant, isNew: !variantResult.existingTemplateId }
 						: undefined
@@ -2134,7 +2149,9 @@ Now generate for: ${typeKey}`;
 
 			// 2. SPECIAL HANDLING FOR PROJECT SCOPE - Use smart classification
 			if (options.scope === 'project') {
-				console.info('[FindOrCreateTemplate] Using PROJECT CLASSIFICATION for scope=project');
+				console.info(
+					'[FindOrCreateTemplate] Using PROJECT CLASSIFICATION for scope=project'
+				);
 
 				// Build classification context from options
 				const classificationContext: ProjectClassificationContext = {
@@ -2161,13 +2178,21 @@ Now generate for: ${typeKey}`;
 					}
 				}
 
-				const classification = await this.classifyProject(classificationContext, options.userId);
+				const classification = await this.classifyProject(
+					classificationContext,
+					options.userId
+				);
 
 				// If existing template found, return it
 				if (classification.existingTemplateId) {
-					const template = await this.fetchTemplateById(classification.existingTemplateId);
+					const template = await this.fetchTemplateById(
+						classification.existingTemplateId
+					);
 					if (template) {
-						const resolved = await this.resolveTemplateSafe(template.type_key, options.scope);
+						const resolved = await this.resolveTemplateSafe(
+							template.type_key,
+							options.scope
+						);
 						this.logResult(
 							'MATCH',
 							options.scope,
@@ -2244,9 +2269,7 @@ Now generate for: ${typeKey}`;
 			}
 
 			// 4. Flat selection: Search for templates
-			console.info(
-				`[FindOrCreateTemplate] Using FLAT selection for scope=${options.scope}`
-			);
+			console.info(`[FindOrCreateTemplate] Using FLAT selection for scope=${options.scope}`);
 			const searchResults = await this.searchTemplates(options.scope, options.context, {
 				realm: options.realm,
 				limit: MAX_TEMPLATES_TO_SCORE
@@ -3352,6 +3375,29 @@ ${facetValuesText}`;
 		// Cache the result
 		if (template) {
 			this.cache.setByTypeKey(typeKey, template);
+		}
+
+		return template;
+	}
+
+	private async fetchTemplateById(id: string): Promise<TemplateRow | null> {
+		const { data, error } = await this.client
+			.from('onto_templates')
+			.select('*')
+			.eq('id', id)
+			.maybeSingle();
+
+		if (error && error.code !== 'PGRST116') {
+			throw new Error(
+				`[FindOrCreateTemplate] Failed to fetch template by id ${id}: ${error.message}`
+			);
+		}
+
+		const template = (data as TemplateRow) ?? null;
+
+		// Cache the result by type_key for future lookups
+		if (template) {
+			this.cache.setByTypeKey(template.type_key, template);
 		}
 
 		return template;

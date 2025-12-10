@@ -62,7 +62,8 @@
 		ChevronDown,
 		AlertTriangle,
 		Flag,
-		ListChecks
+		ListChecks,
+		MoreVertical
 	} from 'lucide-svelte';
 	import type { Project, Task, Output, Document, Plan } from '$lib/types/onto';
 	import {
@@ -160,6 +161,10 @@
 	let editingPlanId = $state<string | null>(null);
 	let editingGoalId = $state<string | null>(null);
 	let editingOutputId = $state<string | null>(null);
+	let showRiskCreateModal = $state(false);
+	let editingRiskId = $state<string | null>(null);
+	let showMilestoneCreateModal = $state(false);
+	let editingMilestoneId = $state<string | null>(null);
 
 	// UI State
 	let dataRefreshing = $state(false);
@@ -172,6 +177,7 @@
 		risks: false,
 		milestones: false
 	});
+	let showMobileMenu = $state(false);
 
 	// ============================================================
 	// DERIVED STATE
@@ -436,6 +442,36 @@
 		editingGoalId = null;
 	}
 
+	async function handleRiskCreated() {
+		await refreshData();
+		showRiskCreateModal = false;
+	}
+
+	async function handleRiskUpdated() {
+		await refreshData();
+		editingRiskId = null;
+	}
+
+	async function handleRiskDeleted() {
+		await refreshData();
+		editingRiskId = null;
+	}
+
+	async function handleMilestoneCreated() {
+		await refreshData();
+		showMilestoneCreateModal = false;
+	}
+
+	async function handleMilestoneUpdated() {
+		await refreshData();
+		editingMilestoneId = null;
+	}
+
+	async function handleMilestoneDeleted() {
+		await refreshData();
+		editingMilestoneId = null;
+	}
+
 	async function handleProjectStateChange(data: {
 		state: string;
 		actions: string[];
@@ -498,35 +534,33 @@
 	<title>{project?.name || 'Project'} | BuildOS</title>
 </svelte:head>
 
-<div class="min-h-screen bg-background">
+<div class="min-h-screen bg-background overflow-x-hidden">
 	<!-- Header -->
 	<header
 		class="sticky top-0 z-40 border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80"
 	>
-		<div class="mx-auto max-w-screen-2xl px-4 sm:px-6 lg:px-8 py-3">
-			<div class="flex flex-wrap items-center justify-between gap-4">
-				<div class="flex items-center gap-3 min-w-0">
+		<div
+			class="mx-auto max-w-screen-2xl px-2 sm:px-4 lg:px-6 py-2 sm:py-3 space-y-2 sm:space-y-3"
+		>
+			<!-- Title Row -->
+			<div class="flex items-center justify-between gap-2">
+				<div class="flex items-center gap-2 sm:gap-3 min-w-0">
 					<button
 						onclick={() => goto('/projects')}
-						class="p-2 rounded-lg hover:bg-muted transition-colors"
+						class="p-1.5 sm:p-2 rounded-lg hover:bg-muted transition-colors shrink-0"
 						aria-label="Back to projects"
 					>
 						<ArrowLeft class="w-5 h-5 text-muted-foreground" />
 					</button>
-
-					<div class="min-w-0">
-						<p class="text-[11px] uppercase tracking-wide text-muted-foreground">
-							Project
-						</p>
-						<h1
-							class="text-xl font-semibold text-foreground leading-tight line-clamp-2"
-						>
-							{project?.name || 'Untitled Project'}
-						</h1>
-					</div>
+					<h1
+						class="text-lg sm:text-xl font-semibold text-foreground leading-tight line-clamp-2 min-w-0"
+					>
+						{project?.name || 'Untitled Project'}
+					</h1>
 				</div>
 
-				<div class="flex items-center gap-2">
+				<!-- Desktop: Show all buttons -->
+				<div class="hidden sm:flex items-center gap-1.5 shrink-0">
 					<button
 						onclick={refreshData}
 						disabled={dataRefreshing}
@@ -539,12 +573,10 @@
 								: ''}"
 						/>
 					</button>
-
 					<button
 						onclick={() => (showProjectEditModal = true)}
 						class="p-2 rounded-lg hover:bg-muted transition-colors"
 						aria-label="Edit project"
-						title="Edit project"
 					>
 						<Pencil class="w-5 h-5 text-muted-foreground" />
 					</button>
@@ -552,48 +584,109 @@
 						onclick={() => (showDeleteProjectModal = true)}
 						class="p-2 rounded-lg hover:bg-red-500/10 transition-colors"
 						aria-label="Delete project"
-						title="Delete project"
 					>
 						<Trash2 class="w-5 h-5 text-red-500" />
 					</button>
 				</div>
+
+				<!-- Mobile: 3-dot menu -->
+				<div class="relative sm:hidden">
+					<button
+						onclick={() => (showMobileMenu = !showMobileMenu)}
+						class="p-1.5 rounded-lg hover:bg-muted transition-colors"
+						aria-label="Project options"
+						aria-expanded={showMobileMenu}
+					>
+						<MoreVertical class="w-5 h-5 text-muted-foreground" />
+					</button>
+
+					{#if showMobileMenu}
+						<!-- Backdrop -->
+						<button
+							type="button"
+							class="fixed inset-0 z-40"
+							onclick={() => (showMobileMenu = false)}
+							aria-label="Close menu"
+						></button>
+
+						<!-- Dropdown -->
+						<div
+							class="absolute right-0 top-full mt-1 z-50 w-44 rounded-lg border border-border bg-card shadow-ink-strong py-1"
+						>
+							<button
+								onclick={() => {
+									showMobileMenu = false;
+									refreshData();
+								}}
+								disabled={dataRefreshing}
+								class="w-full flex items-center gap-3 px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors disabled:opacity-50"
+							>
+								<RefreshCw
+									class="w-4 h-4 text-muted-foreground {dataRefreshing
+										? 'animate-spin'
+										: ''}"
+								/>
+								Refresh
+							</button>
+							<button
+								onclick={() => {
+									showMobileMenu = false;
+									showProjectEditModal = true;
+								}}
+								class="w-full flex items-center gap-3 px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors"
+							>
+								<Pencil class="w-4 h-4 text-muted-foreground" />
+								Edit project
+							</button>
+							<hr class="my-1 border-border" />
+							<button
+								onclick={() => {
+									showMobileMenu = false;
+									showDeleteProjectModal = true;
+								}}
+								class="w-full flex items-center gap-3 px-3 py-2 text-sm text-red-500 hover:bg-red-500/10 transition-colors"
+							>
+								<Trash2 class="w-4 h-4" />
+								Delete project
+							</button>
+						</div>
+					{/if}
+				</div>
 			</div>
 
-			<div class="mt-3">
-				{#await import('$lib/components/ontology/FSMStateBar.svelte') then { default: FSMStateBar }}
-					<FSMStateBar
-						entityId={project.id}
-						entityKind="project"
-						currentState={project.state_key}
-						entityName={project.name}
-						onstatechange={handleProjectStateChange}
-					/>
-				{/await}
-			</div>
+			<!-- FSM State Bar -->
+			{#await import('$lib/components/ontology/FSMStateBar.svelte') then { default: FSMStateBar }}
+				<FSMStateBar
+					entityId={project.id}
+					entityKind="project"
+					currentState={project.state_key}
+					entityName={project.name}
+					onstatechange={handleProjectStateChange}
+				/>
+			{/await}
 
 			<!-- Next Step Display -->
-			<div class="mt-3">
-				<NextStepDisplay
-					projectId={project.id}
-					nextStepShort={project.next_step_short}
-					nextStepLong={project.next_step_long}
-					nextStepSource={project.next_step_source}
-					nextStepUpdatedAt={project.next_step_updated_at}
-					onEntityClick={handleNextStepEntityClick}
-					onNextStepGenerated={async () => {
-						await refreshData();
-					}}
-				/>
-			</div>
+			<NextStepDisplay
+				projectId={project.id}
+				nextStepShort={project.next_step_short}
+				nextStepLong={project.next_step_long}
+				nextStepSource={project.next_step_source}
+				nextStepUpdatedAt={project.next_step_updated_at}
+				onEntityClick={handleNextStepEntityClick}
+				onNextStepGenerated={async () => {
+					await refreshData();
+				}}
+			/>
 		</div>
 	</header>
 
 	<!-- Main Content -->
-	<main class="mx-auto max-w-screen-2xl px-4 sm:px-6 lg:px-8 py-6">
+	<main class="mx-auto max-w-screen-2xl px-2 sm:px-4 lg:px-6 py-4 sm:py-6 overflow-x-hidden">
 		<div
-			class="grid grid-cols-1 lg:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)] gap-6 items-start"
+			class="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px] xl:grid-cols-[minmax(0,1fr)_380px] gap-3 sm:gap-4 lg:gap-6"
 		>
-			<div class="space-y-8">
+			<!-- Left Column: Outputs & Documents -->
+			<div class="min-w-0 space-y-4">
 				<!-- Outputs Section - Collapsible -->
 				<section
 					class="bg-card border border-border rounded-xl shadow-ink tx tx-frame tx-weak overflow-hidden"
@@ -788,281 +881,295 @@
 				</section>
 			</div>
 
-			<aside class="w-full lg:w-[340px] xl:w-[380px]">
-				<div class="sticky top-24 space-y-3">
-					{#each insightPanels as section}
-						{@const isOpen = expandedPanels[section.key]}
-						<div
-							class="bg-card border border-border rounded-xl shadow-ink tx tx-frame tx-weak overflow-hidden"
+			<!-- Right Column: Insight Panels -->
+			<aside class="min-w-0 space-y-3 lg:sticky lg:top-24">
+				{#each insightPanels as section}
+					{@const isOpen = expandedPanels[section.key]}
+					<div
+						class="bg-card border border-border rounded-xl shadow-ink tx tx-frame tx-weak overflow-hidden"
+					>
+						<button
+							onclick={() => togglePanel(section.key)}
+							class="w-full flex items-center justify-between gap-3 px-4 py-3 text-left hover:bg-muted/60 transition-colors"
 						>
-							<button
-								onclick={() => togglePanel(section.key)}
-								class="w-full flex items-center justify-between gap-3 px-4 py-3 text-left hover:bg-muted/60 transition-colors"
-							>
-								<div class="flex items-start gap-3">
-									<div
-										class="w-9 h-9 rounded-lg bg-muted flex items-center justify-center"
-									>
-										<svelte:component
-											this={section.icon}
-											class="w-4 h-4 text-foreground"
-										/>
-									</div>
-									<div class="min-w-0">
-										<p class="text-sm font-semibold text-foreground">
-											{section.label}
-										</p>
-										<p class="text-xs text-muted-foreground">
-											{section.items.length}
-											{section.items.length === 1 ? 'item' : 'items'}
-											{#if section.description}
-												· {section.description}
-											{/if}
-										</p>
-									</div>
+							<div class="flex items-start gap-3">
+								<div
+									class="w-9 h-9 rounded-lg bg-muted flex items-center justify-center"
+								>
+									<svelte:component
+										this={section.icon}
+										class="w-4 h-4 text-foreground"
+									/>
 								</div>
-								<ChevronDown
-									class="w-4 h-4 text-muted-foreground transition-transform {isOpen
-										? 'rotate-180'
-										: ''}"
-								/>
-							</button>
+								<div class="min-w-0">
+									<p class="text-sm font-semibold text-foreground">
+										{section.label}
+									</p>
+									<p class="text-xs text-muted-foreground">
+										{section.items.length}
+										{section.items.length === 1 ? 'item' : 'items'}
+										{#if section.description}
+											· {section.description}
+										{/if}
+									</p>
+								</div>
+							</div>
+							<ChevronDown
+								class="w-4 h-4 text-muted-foreground transition-transform {isOpen
+									? 'rotate-180'
+									: ''}"
+							/>
+						</button>
 
-							{#if isOpen}
-								<div class="border-t border-border">
-									{#if section.key === 'tasks'}
-										<div
-											class="flex items-center justify-between px-4 pt-3 pb-2"
+						{#if isOpen}
+							<div class="border-t border-border">
+								{#if section.key === 'tasks'}
+									<div class="flex items-center justify-between px-4 pt-3 pb-2">
+										<p
+											class="text-xs text-muted-foreground uppercase tracking-wide"
 										>
-											<p
-												class="text-xs text-muted-foreground uppercase tracking-wide"
-											>
-												Tasks
-											</p>
-											<button
-												type="button"
-												onclick={() => (showTaskCreateModal = true)}
-												class="inline-flex items-center gap-2 px-2.5 py-1 text-xs rounded-md border border-border bg-muted/60 hover:bg-muted transition-colors"
-											>
-												<Plus class="w-3.5 h-3.5" />
-												New Task
-											</button>
-										</div>
-										{#if tasks.length > 0}
-											<ul class="divide-y divide-border/80">
-												{#each tasks as task}
-													{@const visuals = getTaskVisuals(
-														task.state_key
-													)}
-													<li>
-														<button
-															type="button"
-															onclick={() =>
-																(editingTaskId = task.id)}
-															class="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted/60 transition-colors"
-														>
-															<svelte:component
-																this={visuals.icon}
-																class="w-4 h-4 {visuals.color}"
-															/>
-															<div class="min-w-0">
-																<p
-																	class="text-sm text-foreground truncate"
-																>
-																	{task.title}
-																</p>
-																<p
-																	class="text-xs text-muted-foreground"
-																>
-																	{task.state_key || 'draft'}
-																</p>
-															</div>
-														</button>
-													</li>
-												{/each}
-											</ul>
-										{:else}
-											<p class="px-4 py-3 text-sm text-muted-foreground">
-												No tasks yet
-											</p>
-										{/if}
-									{:else if section.key === 'plans'}
-										<div
-											class="flex items-center justify-between px-4 pt-3 pb-2"
+											Tasks
+										</p>
+										<button
+											type="button"
+											onclick={() => (showTaskCreateModal = true)}
+											class="inline-flex items-center gap-2 px-2.5 py-1 text-xs rounded-md border border-border bg-muted/60 hover:bg-muted transition-colors"
 										>
-											<p
-												class="text-xs text-muted-foreground uppercase tracking-wide"
-											>
-												Plans
-											</p>
-											<button
-												type="button"
-												onclick={() => (showPlanCreateModal = true)}
-												class="inline-flex items-center gap-2 px-2.5 py-1 text-xs rounded-md border border-border bg-muted/60 hover:bg-muted transition-colors"
-											>
-												<Plus class="w-3.5 h-3.5" />
-												New Plan
-											</button>
-										</div>
-										{#if plans.length > 0}
-											<ul class="divide-y divide-border/80">
-												{#each plans as plan}
-													<li>
-														<button
-															type="button"
-															onclick={() =>
-																(editingPlanId = plan.id)}
-															class="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted/60 transition-colors"
-														>
-															<Calendar
-																class="w-4 h-4 text-muted-foreground"
-															/>
-															<div class="min-w-0">
-																<p
-																	class="text-sm text-foreground truncate"
-																>
-																	{plan.name}
-																</p>
-																<p
-																	class="text-xs text-muted-foreground"
-																>
-																	{plan.state_key || 'draft'}
-																</p>
-															</div>
-														</button>
-													</li>
-												{/each}
-											</ul>
-										{:else}
-											<p class="px-4 py-3 text-sm text-muted-foreground">
-												No plans yet
-											</p>
-										{/if}
-									{:else if section.key === 'goals'}
-										<div
-											class="flex items-center justify-between px-4 pt-3 pb-2"
-										>
-											<p
-												class="text-xs text-muted-foreground uppercase tracking-wide"
-											>
-												Goals
-											</p>
-											<button
-												type="button"
-												onclick={() => (showGoalCreateModal = true)}
-												class="inline-flex items-center gap-2 px-2.5 py-1 text-xs rounded-md border border-border bg-muted/60 hover:bg-muted transition-colors"
-											>
-												<Plus class="w-3.5 h-3.5" />
-												New Goal
-											</button>
-										</div>
-										{#if goals.length > 0}
-											<ul class="divide-y divide-border/80">
-												{#each goals as goal}
-													<li>
-														<button
-															type="button"
-															onclick={() =>
-																(editingGoalId = goal.id)}
-															class="w-full flex items-start gap-3 px-4 py-3 text-left hover:bg-muted/60 transition-colors"
-														>
-															<Target
-																class="w-4 h-4 text-amber-500"
-															/>
-															<div class="min-w-0">
-																<p
-																	class="text-sm text-foreground truncate"
-																>
-																	{goal.name}
-																</p>
-																<p
-																	class="text-xs text-muted-foreground"
-																>
-																	{goal.state_key || 'draft'}
-																</p>
-															</div>
-														</button>
-													</li>
-												{/each}
-											</ul>
-										{:else}
-											<p class="px-4 py-3 text-sm text-muted-foreground">
-												No goals yet
-											</p>
-										{/if}
-									{:else if section.key === 'risks'}
-										<div
-											class="flex items-center justify-between px-4 pt-3 pb-2"
-										>
-											<p
-												class="text-xs text-muted-foreground uppercase tracking-wide"
-											>
-												Risks
-											</p>
-											<button
-												type="button"
-												onclick={() =>
-													toastService.info('Risk creation coming soon')}
-												class="inline-flex items-center gap-2 px-2.5 py-1 text-xs rounded-md border border-border bg-muted/60 hover:bg-muted transition-colors"
-											>
-												<Plus class="w-3.5 h-3.5" />
-												New Risk
-											</button>
-										</div>
-										{#if risks.length > 0}
-											<ul class="divide-y divide-border/80">
-												{#each risks as risk}
-													<li class="flex items-start gap-3 px-4 py-3">
-														<AlertTriangle
-															class="w-4 h-4 text-amber-500"
+											<Plus class="w-3.5 h-3.5" />
+											New Task
+										</button>
+									</div>
+									{#if tasks.length > 0}
+										<ul class="divide-y divide-border/80">
+											{#each tasks as task}
+												{@const visuals = getTaskVisuals(task.state_key)}
+												<li>
+													<button
+														type="button"
+														onclick={() => (editingTaskId = task.id)}
+														class="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted/60 transition-colors"
+													>
+														<svelte:component
+															this={visuals.icon}
+															class="w-4 h-4 {visuals.color}"
 														/>
 														<div class="min-w-0">
+															<p
+																class="text-sm text-foreground truncate"
+															>
+																{task.title}
+															</p>
+															<p
+																class="text-xs text-muted-foreground"
+															>
+																{task.state_key || 'draft'}
+															</p>
+														</div>
+													</button>
+												</li>
+											{/each}
+										</ul>
+									{:else}
+										<p class="px-4 py-3 text-sm text-muted-foreground">
+											No tasks yet
+										</p>
+									{/if}
+								{:else if section.key === 'plans'}
+									<div class="flex items-center justify-between px-4 pt-3 pb-2">
+										<p
+											class="text-xs text-muted-foreground uppercase tracking-wide"
+										>
+											Plans
+										</p>
+										<button
+											type="button"
+											onclick={() => (showPlanCreateModal = true)}
+											class="inline-flex items-center gap-2 px-2.5 py-1 text-xs rounded-md border border-border bg-muted/60 hover:bg-muted transition-colors"
+										>
+											<Plus class="w-3.5 h-3.5" />
+											New Plan
+										</button>
+									</div>
+									{#if plans.length > 0}
+										<ul class="divide-y divide-border/80">
+											{#each plans as plan}
+												<li>
+													<button
+														type="button"
+														onclick={() => (editingPlanId = plan.id)}
+														class="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted/60 transition-colors"
+													>
+														<Calendar
+															class="w-4 h-4 text-muted-foreground"
+														/>
+														<div class="min-w-0">
+															<p
+																class="text-sm text-foreground truncate"
+															>
+																{plan.name}
+															</p>
+															<p
+																class="text-xs text-muted-foreground"
+															>
+																{plan.state_key || 'draft'}
+															</p>
+														</div>
+													</button>
+												</li>
+											{/each}
+										</ul>
+									{:else}
+										<p class="px-4 py-3 text-sm text-muted-foreground">
+											No plans yet
+										</p>
+									{/if}
+								{:else if section.key === 'goals'}
+									<div class="flex items-center justify-between px-4 pt-3 pb-2">
+										<p
+											class="text-xs text-muted-foreground uppercase tracking-wide"
+										>
+											Goals
+										</p>
+										<button
+											type="button"
+											onclick={() => (showGoalCreateModal = true)}
+											class="inline-flex items-center gap-2 px-2.5 py-1 text-xs rounded-md border border-border bg-muted/60 hover:bg-muted transition-colors"
+										>
+											<Plus class="w-3.5 h-3.5" />
+											New Goal
+										</button>
+									</div>
+									{#if goals.length > 0}
+										<ul class="divide-y divide-border/80">
+											{#each goals as goal}
+												<li>
+													<button
+														type="button"
+														onclick={() => (editingGoalId = goal.id)}
+														class="w-full flex items-start gap-3 px-4 py-3 text-left hover:bg-muted/60 transition-colors"
+													>
+														<Target class="w-4 h-4 text-amber-500" />
+														<div class="min-w-0">
+															<p
+																class="text-sm text-foreground truncate"
+															>
+																{goal.name}
+															</p>
+															<p
+																class="text-xs text-muted-foreground"
+															>
+																{goal.state_key || 'draft'}
+															</p>
+														</div>
+													</button>
+												</li>
+											{/each}
+										</ul>
+									{:else}
+										<p class="px-4 py-3 text-sm text-muted-foreground">
+											No goals yet
+										</p>
+									{/if}
+								{:else if section.key === 'risks'}
+									<div class="flex items-center justify-between px-4 pt-3 pb-2">
+										<p
+											class="text-xs text-muted-foreground uppercase tracking-wide"
+										>
+											Risks
+										</p>
+										<button
+											type="button"
+											onclick={() => (showRiskCreateModal = true)}
+											class="inline-flex items-center gap-2 px-2.5 py-1 text-xs rounded-md border border-border bg-muted/60 hover:bg-muted transition-colors"
+										>
+											<Plus class="w-3.5 h-3.5" />
+											New Risk
+										</button>
+									</div>
+									{#if risks.length > 0}
+										<ul class="divide-y divide-border/80">
+											{#each risks as risk}
+												{@const impactColor =
+													risk.impact === 'critical'
+														? 'text-red-500'
+														: risk.impact === 'high'
+															? 'text-orange-500'
+															: risk.impact === 'medium'
+																? 'text-amber-500'
+																: 'text-emerald-500'}
+												<li>
+													<button
+														type="button"
+														onclick={() => (editingRiskId = risk.id)}
+														class="w-full flex items-start gap-3 px-4 py-3 text-left hover:bg-muted/60 transition-colors"
+													>
+														<AlertTriangle
+															class="w-4 h-4 {impactColor}"
+														/>
+														<div class="min-w-0 flex-1">
 															<p
 																class="text-sm text-foreground truncate"
 															>
 																{risk.title}
 															</p>
 															<p
-																class="text-xs text-muted-foreground"
+																class="text-xs text-muted-foreground capitalize"
 															>
-																{risk.impact || 'Unrated'}
+																{risk.impact || 'Unrated'} · {risk.state_key?.replace(
+																	/_/g,
+																	' '
+																) || 'identified'}
 															</p>
 														</div>
-													</li>
-												{/each}
-											</ul>
-										{:else}
-											<p class="px-4 py-3 text-sm text-muted-foreground">
-												No risks logged
-											</p>
-										{/if}
-									{:else if section.key === 'milestones'}
-										<div
-											class="flex items-center justify-between px-4 pt-3 pb-2"
+													</button>
+												</li>
+											{/each}
+										</ul>
+									{:else}
+										<p class="px-4 py-3 text-sm text-muted-foreground">
+											No risks logged
+										</p>
+									{/if}
+								{:else if section.key === 'milestones'}
+									<div class="flex items-center justify-between px-4 pt-3 pb-2">
+										<p
+											class="text-xs text-muted-foreground uppercase tracking-wide"
 										>
-											<p
-												class="text-xs text-muted-foreground uppercase tracking-wide"
-											>
-												Milestones
-											</p>
-											<button
-												type="button"
-												onclick={() =>
-													toastService.info(
-														'Milestone creation coming soon'
-													)}
-												class="inline-flex items-center gap-2 px-2.5 py-1 text-xs rounded-md border border-border bg-muted/60 hover:bg-muted transition-colors"
-											>
-												<Plus class="w-3.5 h-3.5" />
-												New Milestone
-											</button>
-										</div>
-										{#if milestones.length > 0}
-											<ul class="divide-y divide-border/80">
-												{#each milestones as milestone}
-													<li class="flex items-start gap-3 px-4 py-3">
-														<Flag class="w-4 h-4 text-emerald-500" />
-														<div class="min-w-0">
+											Milestones
+										</p>
+										<button
+											type="button"
+											onclick={() => (showMilestoneCreateModal = true)}
+											class="inline-flex items-center gap-2 px-2.5 py-1 text-xs rounded-md border border-border bg-muted/60 hover:bg-muted transition-colors"
+										>
+											<Plus class="w-3.5 h-3.5" />
+											New Milestone
+										</button>
+									</div>
+									{#if milestones.length > 0}
+										<ul class="divide-y divide-border/80">
+											{#each milestones as milestone}
+												{@const stateKey =
+													milestone.props?.state_key || 'pending'}
+												{@const stateColor =
+													stateKey === 'achieved'
+														? 'text-emerald-500'
+														: stateKey === 'missed'
+															? 'text-red-500'
+															: stateKey === 'in_progress'
+																? 'text-blue-500'
+																: stateKey === 'deferred'
+																	? 'text-amber-500'
+																	: 'text-muted-foreground'}
+												<li>
+													<button
+														type="button"
+														onclick={() =>
+															(editingMilestoneId = milestone.id)}
+														class="w-full flex items-start gap-3 px-4 py-3 text-left hover:bg-muted/60 transition-colors"
+													>
+														<Flag class="w-4 h-4 {stateColor}" />
+														<div class="min-w-0 flex-1">
 															<p
 																class="text-sm text-foreground truncate"
 															>
@@ -1074,20 +1181,20 @@
 																{formatDueDate(milestone.due_at)}
 															</p>
 														</div>
-													</li>
-												{/each}
-											</ul>
-										{:else}
-											<p class="px-4 py-3 text-sm text-muted-foreground">
-												No milestones yet
-											</p>
-										{/if}
+													</button>
+												</li>
+											{/each}
+										</ul>
+									{:else}
+										<p class="px-4 py-3 text-sm text-muted-foreground">
+											No milestones yet
+										</p>
 									{/if}
-								</div>
-							{/if}
-						</div>
-					{/each}
-				</div>
+								{/if}
+							</div>
+						{/if}
+					</div>
+				{/each}
 			</aside>
 		</div>
 	</main>
@@ -1182,7 +1289,6 @@
 		<PlanEditModal
 			planId={editingPlanId}
 			projectId={project.id}
-			{tasks}
 			onClose={() => (editingPlanId = null)}
 			onUpdated={handlePlanUpdated}
 			onDeleted={handlePlanDeleted}
@@ -1210,6 +1316,54 @@
 			onClose={() => (editingGoalId = null)}
 			onUpdated={handleGoalUpdated}
 			onDeleted={handleGoalDeleted}
+		/>
+	{/await}
+{/if}
+
+<!-- Risk Create Modal -->
+{#if showRiskCreateModal}
+	{#await import('$lib/components/ontology/RiskCreateModal.svelte') then { default: RiskCreateModal }}
+		<RiskCreateModal
+			projectId={project.id}
+			onClose={() => (showRiskCreateModal = false)}
+			onCreated={handleRiskCreated}
+		/>
+	{/await}
+{/if}
+
+<!-- Risk Edit Modal -->
+{#if editingRiskId}
+	{#await import('$lib/components/ontology/RiskEditModal.svelte') then { default: RiskEditModal }}
+		<RiskEditModal
+			riskId={editingRiskId}
+			projectId={project.id}
+			onClose={() => (editingRiskId = null)}
+			onUpdated={handleRiskUpdated}
+			onDeleted={handleRiskDeleted}
+		/>
+	{/await}
+{/if}
+
+<!-- Milestone Create Modal -->
+{#if showMilestoneCreateModal}
+	{#await import('$lib/components/ontology/MilestoneCreateModal.svelte') then { default: MilestoneCreateModal }}
+		<MilestoneCreateModal
+			projectId={project.id}
+			onClose={() => (showMilestoneCreateModal = false)}
+			onCreated={handleMilestoneCreated}
+		/>
+	{/await}
+{/if}
+
+<!-- Milestone Edit Modal -->
+{#if editingMilestoneId}
+	{#await import('$lib/components/ontology/MilestoneEditModal.svelte') then { default: MilestoneEditModal }}
+		<MilestoneEditModal
+			milestoneId={editingMilestoneId}
+			projectId={project.id}
+			onClose={() => (editingMilestoneId = null)}
+			onUpdated={handleMilestoneUpdated}
+			onDeleted={handleMilestoneDeleted}
 		/>
 	{/await}
 {/if}

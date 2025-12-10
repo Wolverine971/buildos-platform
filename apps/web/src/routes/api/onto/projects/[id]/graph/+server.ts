@@ -84,16 +84,15 @@ export const GET: RequestHandler = async ({ params, locals, url }) => {
 			return ApiResponse.forbidden('You do not have permission to access this project');
 		}
 
-		const [tasksRes, outputsRes, documentsRes, plansRes, goalsRes, milestonesRes] = await Promise.all(
-			[
+		const [tasksRes, outputsRes, documentsRes, plansRes, goalsRes, milestonesRes] =
+			await Promise.all([
 				supabase.from('onto_tasks').select('*').eq('project_id', id),
 				supabase.from('onto_outputs').select('*').eq('project_id', id),
 				supabase.from('onto_documents').select('*').eq('project_id', id),
 				supabase.from('onto_plans').select('*').eq('project_id', id),
 				supabase.from('onto_goals').select('*').eq('project_id', id),
 				supabase.from('onto_milestones').select('*').eq('project_id', id)
-			]
-		);
+			]);
 
 		if (tasksRes.error) {
 			console.error('[Project Graph API] Failed to fetch tasks', tasksRes.error);

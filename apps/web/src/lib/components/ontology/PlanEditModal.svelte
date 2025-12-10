@@ -32,9 +32,7 @@
 	import GoalEditModal from './GoalEditModal.svelte';
 	import TaskEditModal from './TaskEditModal.svelte';
 	import DocumentModal from './DocumentModal.svelte';
-	import {
-		getPlanStateBadgeClass
-	} from '$lib/utils/ontology-badge-styles';
+	import { getPlanStateBadgeClass } from '$lib/utils/ontology-badge-styles';
 
 	interface Props {
 		planId: string;

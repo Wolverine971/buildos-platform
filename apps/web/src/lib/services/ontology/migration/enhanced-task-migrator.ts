@@ -171,7 +171,7 @@ export class EnhancedTaskMigrator {
 
 			// 7a. Create plan relationship edges if plan exists
 			if (projectContext.ontoPlanId) {
-				await this.client.from('onto_edges').insert([
+				const { error: edgeError } = await this.client.from('onto_edges').insert([
 					{
 						src_id: data.id,
 						src_kind: 'task',
@@ -187,6 +187,14 @@ export class EnhancedTaskMigrator {
 						rel: 'has_task'
 					}
 				]);
+
+				if (edgeError) {
+					console.error(
+						`[EnhancedTaskMigrator] Failed to create task-plan edges for task ${task.id} → plan ${projectContext.ontoPlanId}: ${edgeError.message}`
+					);
+					// Throw to ensure edge creation failures are not silently ignored
+					throw new Error(`Failed to create task-plan edges: ${edgeError.message}`);
+				}
 			}
 
 			// 8. Update legacy mapping

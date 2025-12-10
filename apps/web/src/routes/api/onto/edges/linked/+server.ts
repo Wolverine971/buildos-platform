@@ -18,7 +18,7 @@ import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-type EntityKind = 'task' | 'plan' | 'goal' | 'milestone' | 'document' | 'output';
+type EntityKind = 'task' | 'plan' | 'goal' | 'milestone' | 'document' | 'output' | 'risk';
 
 interface LinkedEntity {
 	id: string;
@@ -49,6 +49,7 @@ interface LinkedEntitiesResult {
 	milestones: LinkedEntity[];
 	documents: LinkedEntity[];
 	outputs: LinkedEntity[];
+	risks: LinkedEntity[];
 }
 
 interface AvailableEntitiesResult {
@@ -58,9 +59,18 @@ interface AvailableEntitiesResult {
 	milestones: AvailableEntity[];
 	documents: AvailableEntity[];
 	outputs: AvailableEntity[];
+	risks: AvailableEntity[];
 }
 
-const VALID_KINDS: EntityKind[] = ['task', 'plan', 'goal', 'milestone', 'document', 'output'];
+const VALID_KINDS: EntityKind[] = [
+	'task',
+	'plan',
+	'goal',
+	'milestone',
+	'document',
+	'output',
+	'risk'
+];
 
 function isValidKind(kind: string): kind is EntityKind {
 	return VALID_KINDS.includes(kind as EntityKind);
@@ -140,7 +150,8 @@ async function fetchLinkedEntities(
 		goals: [],
 		milestones: [],
 		documents: [],
-		outputs: []
+		outputs: [],
+		risks: []
 	};
 
 	// Fetch all edges where entity is source or destination
@@ -185,7 +196,8 @@ async function fetchLinkedEntities(
 		goal: [],
 		milestone: [],
 		document: [],
-		output: []
+		output: [],
+		risk: []
 	};
 
 	for (const [id, info] of entityMap) {
@@ -193,7 +205,7 @@ async function fetchLinkedEntities(
 	}
 
 	// Fetch entity details in parallel
-	const [tasks, plans, goals, milestones, documents, outputs] = await Promise.all([
+	const [tasks, plans, goals, milestones, documents, outputs, risks] = await Promise.all([
 		fetchEntityDetails(supabase, 'onto_tasks', idsByKind.task, [
 			'id',
 			'title',
@@ -229,6 +241,13 @@ async function fetchLinkedEntities(
 			'name',
 			'type_key',
 			'state_key'
+		]),
+		fetchEntityDetails(supabase, 'onto_risks', idsByKind.risk, [
+			'id',
+			'title',
+			'state_key',
+			'type_key',
+			'impact'
 		])
 	]);
 
@@ -241,6 +260,7 @@ async function fetchLinkedEntities(
 		mapEntitiesToLinked(documents, entityMap, 'document')
 	);
 	result.outputs = mapEntitiesToLinked(outputs, entityMap, 'output');
+	result.risks = mapEntitiesToLinked(risks, entityMap, 'risk');
 
 	return result;
 }
@@ -308,11 +328,12 @@ async function fetchAvailableEntities(
 		goals: new Set(linked.goals.map((e) => e.id)),
 		milestones: new Set(linked.milestones.map((e) => e.id)),
 		documents: new Set(linked.documents.map((e) => e.id)),
-		outputs: new Set(linked.outputs.map((e) => e.id))
+		outputs: new Set(linked.outputs.map((e) => e.id)),
+		risks: new Set(linked.risks.map((e) => e.id))
 	};
 
 	// Fetch all entities from the project in parallel
-	const [tasks, plans, goals, milestones, documents, outputs] = await Promise.all([
+	const [tasks, plans, goals, milestones, documents, outputs, risks] = await Promise.all([
 		supabase
 			.from('onto_tasks')
 			.select('id, title, state_key, type_key')
@@ -354,6 +375,13 @@ async function fetchAvailableEntities(
 			.eq('project_id', projectId)
 			.neq('id', sourceKind === 'output' ? sourceId : '')
 			.order('created_at', { ascending: false })
+			.limit(100),
+		supabase
+			.from('onto_risks')
+			.select('id, title, state_key, type_key, impact')
+			.eq('project_id', projectId)
+			.neq('id', sourceKind === 'risk' ? sourceId : '')
+			.order('created_at', { ascending: false })
 			.limit(100)
 	]);
 
@@ -365,7 +393,8 @@ async function fetchAvailableEntities(
 		documents: filterScratchAvailable(
 			mapToAvailable(documents.data || [], linkedIds.documents)
 		),
-		outputs: mapToAvailable(outputs.data || [], linkedIds.outputs)
+		outputs: mapToAvailable(outputs.data || [], linkedIds.outputs),
+		risks: mapToAvailable(risks.data || [], linkedIds.risks)
 	};
 }
 

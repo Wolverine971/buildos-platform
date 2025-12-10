@@ -10,6 +10,7 @@
 ## Problem Statement
 
 The current `FindOrCreateTemplateService.suggestTemplate()` method generates invalid or overly-generic type_keys like:
+
 - `project.migration.generic` (meaningless)
 - `project.trainer.marksmanship` (may duplicate existing patterns)
 - `project.coach.client` (valid, but may not align with existing templates)
@@ -74,27 +75,27 @@ Extract from existing templates to build a hierarchical view:
 
 ```typescript
 interface ProjectTaxonomy {
-  domains: DomainEntry[];
-  totalTemplates: number;
+	domains: DomainEntry[];
+	totalTemplates: number;
 }
 
 interface DomainEntry {
-  domain: string;                    // e.g., "writer", "coach", "developer"
-  templateCount: number;             // Total templates in this domain
-  deliverables: DeliverableEntry[];
+	domain: string; // e.g., "writer", "coach", "developer"
+	templateCount: number; // Total templates in this domain
+	deliverables: DeliverableEntry[];
 }
 
 interface DeliverableEntry {
-  deliverable: string;               // e.g., "book", "client", "app"
-  baseTypeKey: string;               // e.g., "project.writer.book"
-  templateId: string;                // UUID of the template
-  variants: VariantEntry[];          // Optional variants
+	deliverable: string; // e.g., "book", "client", "app"
+	baseTypeKey: string; // e.g., "project.writer.book"
+	templateId: string; // UUID of the template
+	variants: VariantEntry[]; // Optional variants
 }
 
 interface VariantEntry {
-  variant: string;                   // e.g., "fiction", "mobile", "executive"
-  typeKey: string;                   // e.g., "project.writer.book.fiction"
-  templateId: string;
+	variant: string; // e.g., "fiction", "mobile", "executive"
+	typeKey: string; // e.g., "project.writer.book.fiction"
+	templateId: string;
 }
 ```
 
@@ -190,74 +191,74 @@ ORDER BY domain, deliverable, variant NULLS FIRST;
 
 ```typescript
 interface TaxonomyRow {
-  domain: string;
-  deliverable: string;
-  variant: string | null;
-  type_key: string;
-  template_id: string;
-  name: string;
-  depth: number;
+	domain: string;
+	deliverable: string;
+	variant: string | null;
+	type_key: string;
+	template_id: string;
+	name: string;
+	depth: number;
 }
 
 async function extractProjectTaxonomy(client: TypedSupabaseClient): Promise<ProjectTaxonomy> {
-  const { data, error } = await client
-    .from('onto_templates')
-    .select('id, type_key, name')
-    .like('type_key', 'project.%')
-    .eq('scope', 'project')
-    .eq('status', 'active');
+	const { data, error } = await client
+		.from('onto_templates')
+		.select('id, type_key, name')
+		.like('type_key', 'project.%')
+		.eq('scope', 'project')
+		.eq('status', 'active');
 
-  if (error) throw new Error(`Failed to extract taxonomy: ${error.message}`);
+	if (error) throw new Error(`Failed to extract taxonomy: ${error.message}`);
 
-  const domainMap = new Map<string, DomainEntry>();
+	const domainMap = new Map<string, DomainEntry>();
 
-  for (const template of data ?? []) {
-    const parts = template.type_key.split('.');
-    if (parts.length < 3) continue; // Invalid, skip
+	for (const template of data ?? []) {
+		const parts = template.type_key.split('.');
+		if (parts.length < 3) continue; // Invalid, skip
 
-    const [, domain, deliverable, variant] = parts;
-    if (!domain || !deliverable) continue;
+		const [, domain, deliverable, variant] = parts;
+		if (!domain || !deliverable) continue;
 
-    // Get or create domain entry
-    if (!domainMap.has(domain)) {
-      domainMap.set(domain, {
-        domain,
-        templateCount: 0,
-        deliverables: []
-      });
-    }
-    const domainEntry = domainMap.get(domain)!;
-    domainEntry.templateCount++;
+		// Get or create domain entry
+		if (!domainMap.has(domain)) {
+			domainMap.set(domain, {
+				domain,
+				templateCount: 0,
+				deliverables: []
+			});
+		}
+		const domainEntry = domainMap.get(domain)!;
+		domainEntry.templateCount++;
 
-    // Find or create deliverable entry
-    let deliverableEntry = domainEntry.deliverables.find(d => d.deliverable === deliverable);
-    if (!deliverableEntry) {
-      deliverableEntry = {
-        deliverable,
-        baseTypeKey: `project.${domain}.${deliverable}`,
-        templateId: variant ? '' : template.id, // Only set if this is the base
-        variants: []
-      };
-      domainEntry.deliverables.push(deliverableEntry);
-    }
+		// Find or create deliverable entry
+		let deliverableEntry = domainEntry.deliverables.find((d) => d.deliverable === deliverable);
+		if (!deliverableEntry) {
+			deliverableEntry = {
+				deliverable,
+				baseTypeKey: `project.${domain}.${deliverable}`,
+				templateId: variant ? '' : template.id, // Only set if this is the base
+				variants: []
+			};
+			domainEntry.deliverables.push(deliverableEntry);
+		}
 
-    // If this is a variant, add it
-    if (variant) {
-      deliverableEntry.variants.push({
-        variant,
-        typeKey: template.type_key,
-        templateId: template.id
-      });
-    } else {
-      // This is the base template
-      deliverableEntry.templateId = template.id;
-    }
-  }
+		// If this is a variant, add it
+		if (variant) {
+			deliverableEntry.variants.push({
+				variant,
+				typeKey: template.type_key,
+				templateId: template.id
+			});
+		} else {
+			// This is the base template
+			deliverableEntry.templateId = template.id;
+		}
+	}
 
-  return {
-    domains: Array.from(domainMap.values()),
-    totalTemplates: data?.length ?? 0
-  };
+	return {
+		domains: Array.from(domainMap.values()),
+		totalTemplates: data?.length ?? 0
+	};
 }
 ```
 
@@ -271,29 +272,28 @@ When there are 30 or fewer project templates, use a single LLM call:
 
 ```typescript
 async function classifyProjectSinglePhase(
-  context: ProjectContext,
-  taxonomy: ProjectTaxonomy,
-  llm: SmartLLMService,
-  userId: string
+	context: ProjectContext,
+	taxonomy: ProjectTaxonomy,
+	llm: SmartLLMService,
+	userId: string
 ): Promise<ClassificationResult> {
+	// Build flat list of all templates
+	const allTemplates = taxonomy.domains
+		.flatMap((d) =>
+			d.deliverables.flatMap((del) => [
+				{ typeKey: del.baseTypeKey, templateId: del.templateId },
+				...del.variants.map((v) => ({ typeKey: v.typeKey, templateId: v.templateId }))
+			])
+		)
+		.filter((t) => t.templateId); // Only include templates that exist
 
-  // Build flat list of all templates
-  const allTemplates = taxonomy.domains.flatMap(d =>
-    d.deliverables.flatMap(del => [
-      { typeKey: del.baseTypeKey, templateId: del.templateId },
-      ...del.variants.map(v => ({ typeKey: v.typeKey, templateId: v.templateId }))
-    ])
-  ).filter(t => t.templateId); // Only include templates that exist
+	const existingDomainsText = taxonomy.domains
+		.map((d) => `- ${d.domain}: ${d.deliverables.map((del) => del.deliverable).join(', ')}`)
+		.join('\n');
 
-  const existingDomainsText = taxonomy.domains
-    .map(d => `- ${d.domain}: ${d.deliverables.map(del => del.deliverable).join(', ')}`)
-    .join('\n');
+	const templatesText = allTemplates.map((t) => `- ${t.typeKey}`).join('\n');
 
-  const templatesText = allTemplates
-    .map(t => `- ${t.typeKey}`)
-    .join('\n');
-
-  const systemPrompt = `You classify projects into ontology templates.
+	const systemPrompt = `You classify projects into ontology templates.
 
 Format: project.{domain}.{deliverable}[.{variant}]
 
@@ -315,7 +315,7 @@ RULES:
 5. Use lowercase snake_case for all segments
 6. Maximum 4 segments total (project.domain.deliverable.variant)`;
 
-  const userPrompt = `Classify this project:
+	const userPrompt = `Classify this project:
 
 Name: ${context.name}
 Description: ${context.description}
@@ -332,41 +332,43 @@ Return JSON:
 
 If an existing template fits >= 70%, use it. Only create new if truly needed.`;
 
-  const response = await llm.getJSONResponse<{
-    type_key: string;
-    is_existing: boolean;
-    confidence: number;
-    rationale: string;
-  }>({
-    systemPrompt,
-    userPrompt,
-    userId,
-    profile: 'balanced',
-    temperature: 0.2,
-    validation: { retryOnParseError: true, maxRetries: 2 },
-    operationType: 'project_classification.single_phase'
-  });
+	const response = await llm.getJSONResponse<{
+		type_key: string;
+		is_existing: boolean;
+		confidence: number;
+		rationale: string;
+	}>({
+		systemPrompt,
+		userPrompt,
+		userId,
+		profile: 'balanced',
+		temperature: 0.2,
+		validation: { retryOnParseError: true, maxRetries: 2 },
+		operationType: 'project_classification.single_phase'
+	});
 
-  if (!response) {
-    throw new Error('[ProjectClassification] LLM returned empty response');
-  }
+	if (!response) {
+		throw new Error('[ProjectClassification] LLM returned empty response');
+	}
 
-  // Validate the type_key
-  const validation = validateProjectTypeKey(response.type_key);
-  if (!validation.valid) {
-    throw new Error(`[ProjectClassification] Invalid type_key "${response.type_key}": ${validation.error}`);
-  }
+	// Validate the type_key
+	const validation = validateProjectTypeKey(response.type_key);
+	if (!validation.valid) {
+		throw new Error(
+			`[ProjectClassification] Invalid type_key "${response.type_key}": ${validation.error}`
+		);
+	}
 
-  // Check if it matches an existing template
-  const existingTemplate = allTemplates.find(t => t.typeKey === response.type_key);
+	// Check if it matches an existing template
+	const existingTemplate = allTemplates.find((t) => t.typeKey === response.type_key);
 
-  return {
-    typeKey: response.type_key,
-    existingTemplateId: existingTemplate?.templateId ?? null,
-    needsCreation: !existingTemplate,
-    confidence: response.confidence,
-    rationale: response.rationale
-  };
+	return {
+		typeKey: response.type_key,
+		existingTemplateId: existingTemplate?.templateId ?? null,
+		needsCreation: !existingTemplate,
+		confidence: response.confidence,
+		rationale: response.rationale
+	};
 }
 ```
 
@@ -378,17 +380,22 @@ When there are more than 30 project templates, use a 3-phase approach:
 
 ```typescript
 async function selectDomain(
-  context: ProjectContext,
-  taxonomy: ProjectTaxonomy,
-  llm: SmartLLMService,
-  userId: string
+	context: ProjectContext,
+	taxonomy: ProjectTaxonomy,
+	llm: SmartLLMService,
+	userId: string
 ): Promise<{ domain: string; isNew: boolean }> {
+	const domainsText = taxonomy.domains
+		.map(
+			(d) =>
+				`- ${d.domain} (${d.templateCount} templates): ${d.deliverables
+					.slice(0, 5)
+					.map((del) => del.deliverable)
+					.join(', ')}${d.deliverables.length > 5 ? '...' : ''}`
+		)
+		.join('\n');
 
-  const domainsText = taxonomy.domains
-    .map(d => `- ${d.domain} (${d.templateCount} templates): ${d.deliverables.slice(0, 5).map(del => del.deliverable).join(', ')}${d.deliverables.length > 5 ? '...' : ''}`)
-    .join('\n');
-
-  const systemPrompt = `You select the domain for a project template.
+	const systemPrompt = `You select the domain for a project template.
 
 The domain represents WHO is doing the work - their role/profession.
 
@@ -402,7 +409,7 @@ RULES:
 4. Use lowercase snake_case
 5. Be specific but not overly narrow (e.g., "trainer" not "rifle_trainer")`;
 
-  const userPrompt = `Select domain for this project:
+	const userPrompt = `Select domain for this project:
 
 Name: ${context.name}
 Description: ${context.description}
@@ -415,34 +422,36 @@ Return JSON:
   "rationale": "Why this domain fits"
 }`;
 
-  const response = await llm.getJSONResponse<{
-    domain: string;
-    is_existing: boolean;
-    rationale: string;
-  }>({
-    systemPrompt,
-    userPrompt,
-    userId,
-    profile: 'fast',
-    temperature: 0.1,
-    operationType: 'project_classification.phase1_domain'
-  });
+	const response = await llm.getJSONResponse<{
+		domain: string;
+		is_existing: boolean;
+		rationale: string;
+	}>({
+		systemPrompt,
+		userPrompt,
+		userId,
+		profile: 'fast',
+		temperature: 0.1,
+		operationType: 'project_classification.phase1_domain'
+	});
 
-  if (!response?.domain) {
-    throw new Error('[ProjectClassification] Phase 1 failed: no domain returned');
-  }
+	if (!response?.domain) {
+		throw new Error('[ProjectClassification] Phase 1 failed: no domain returned');
+	}
 
-  const normalized = normalizeSlug(response.domain);
-  if (!normalized || BLOCKED_TERMS.has(normalized)) {
-    throw new Error(`[ProjectClassification] Phase 1 failed: invalid domain "${response.domain}"`);
-  }
+	const normalized = normalizeSlug(response.domain);
+	if (!normalized || BLOCKED_TERMS.has(normalized)) {
+		throw new Error(
+			`[ProjectClassification] Phase 1 failed: invalid domain "${response.domain}"`
+		);
+	}
 
-  const existingDomain = taxonomy.domains.find(d => d.domain === normalized);
+	const existingDomain = taxonomy.domains.find((d) => d.domain === normalized);
 
-  return {
-    domain: normalized,
-    isNew: !existingDomain
-  };
+	return {
+		domain: normalized,
+		isNew: !existingDomain
+	};
 }
 ```
 
@@ -450,23 +459,26 @@ Return JSON:
 
 ```typescript
 async function selectDeliverable(
-  context: ProjectContext,
-  domain: string,
-  taxonomy: ProjectTaxonomy,
-  llm: SmartLLMService,
-  userId: string
+	context: ProjectContext,
+	domain: string,
+	taxonomy: ProjectTaxonomy,
+	llm: SmartLLMService,
+	userId: string
 ): Promise<{ deliverable: string; isNew: boolean }> {
+	const domainEntry = taxonomy.domains.find((d) => d.domain === domain);
+	const existingDeliverables = domainEntry?.deliverables ?? [];
 
-  const domainEntry = taxonomy.domains.find(d => d.domain === domain);
-  const existingDeliverables = domainEntry?.deliverables ?? [];
+	const deliverablesText =
+		existingDeliverables.length > 0
+			? existingDeliverables
+					.map(
+						(d) =>
+							`- ${d.deliverable}${d.variants.length > 0 ? ` (variants: ${d.variants.map((v) => v.variant).join(', ')})` : ''}`
+					)
+					.join('\n')
+			: '- None yet (this is a new domain)';
 
-  const deliverablesText = existingDeliverables.length > 0
-    ? existingDeliverables.map(d =>
-        `- ${d.deliverable}${d.variants.length > 0 ? ` (variants: ${d.variants.map(v => v.variant).join(', ')})` : ''}`
-      ).join('\n')
-    : '- None yet (this is a new domain)';
-
-  const systemPrompt = `You select the deliverable for a project template.
+	const systemPrompt = `You select the deliverable for a project template.
 
 Domain: ${domain}
 The deliverable represents WHAT is being produced - the primary output.
@@ -481,7 +493,7 @@ RULES:
 4. Use lowercase snake_case
 5. Be specific but reusable (e.g., "client" for coaching clients, "app" for software)`;
 
-  const userPrompt = `Select deliverable for:
+	const userPrompt = `Select deliverable for:
 
 Domain: ${domain}
 Name: ${context.name}
@@ -494,34 +506,36 @@ Return JSON:
   "rationale": "Why this deliverable fits"
 }`;
 
-  const response = await llm.getJSONResponse<{
-    deliverable: string;
-    is_existing: boolean;
-    rationale: string;
-  }>({
-    systemPrompt,
-    userPrompt,
-    userId,
-    profile: 'fast',
-    temperature: 0.1,
-    operationType: 'project_classification.phase2_deliverable'
-  });
+	const response = await llm.getJSONResponse<{
+		deliverable: string;
+		is_existing: boolean;
+		rationale: string;
+	}>({
+		systemPrompt,
+		userPrompt,
+		userId,
+		profile: 'fast',
+		temperature: 0.1,
+		operationType: 'project_classification.phase2_deliverable'
+	});
 
-  if (!response?.deliverable) {
-    throw new Error('[ProjectClassification] Phase 2 failed: no deliverable returned');
-  }
+	if (!response?.deliverable) {
+		throw new Error('[ProjectClassification] Phase 2 failed: no deliverable returned');
+	}
 
-  const normalized = normalizeSlug(response.deliverable);
-  if (!normalized || BLOCKED_TERMS.has(normalized)) {
-    throw new Error(`[ProjectClassification] Phase 2 failed: invalid deliverable "${response.deliverable}"`);
-  }
+	const normalized = normalizeSlug(response.deliverable);
+	if (!normalized || BLOCKED_TERMS.has(normalized)) {
+		throw new Error(
+			`[ProjectClassification] Phase 2 failed: invalid deliverable "${response.deliverable}"`
+		);
+	}
 
-  const existingDeliverable = existingDeliverables.find(d => d.deliverable === normalized);
+	const existingDeliverable = existingDeliverables.find((d) => d.deliverable === normalized);
 
-  return {
-    deliverable: normalized,
-    isNew: !existingDeliverable
-  };
+	return {
+		deliverable: normalized,
+		isNew: !existingDeliverable
+	};
 }
 ```
 
@@ -529,23 +543,22 @@ Return JSON:
 
 ```typescript
 async function selectVariant(
-  context: ProjectContext,
-  domain: string,
-  deliverable: string,
-  taxonomy: ProjectTaxonomy,
-  llm: SmartLLMService,
-  userId: string
+	context: ProjectContext,
+	domain: string,
+	deliverable: string,
+	taxonomy: ProjectTaxonomy,
+	llm: SmartLLMService,
+	userId: string
 ): Promise<{ variant: string | null; typeKey: string; existingTemplateId: string | null }> {
+	const domainEntry = taxonomy.domains.find((d) => d.domain === domain);
+	const deliverableEntry = domainEntry?.deliverables.find((d) => d.deliverable === deliverable);
+	const existingVariants = deliverableEntry?.variants ?? [];
+	const baseTypeKey = `project.${domain}.${deliverable}`;
 
-  const domainEntry = taxonomy.domains.find(d => d.domain === domain);
-  const deliverableEntry = domainEntry?.deliverables.find(d => d.deliverable === deliverable);
-  const existingVariants = deliverableEntry?.variants ?? [];
-  const baseTypeKey = `project.${domain}.${deliverable}`;
-
-  // If base template exists and context doesn't suggest specialization, use base
-  if (deliverableEntry?.templateId && existingVariants.length === 0) {
-    // No variants exist - check if we need one or base is fine
-    const systemPrompt = `Determine if this project needs a specialized variant or if the base template is sufficient.
+	// If base template exists and context doesn't suggest specialization, use base
+	if (deliverableEntry?.templateId && existingVariants.length === 0) {
+		// No variants exist - check if we need one or base is fine
+		const systemPrompt = `Determine if this project needs a specialized variant or if the base template is sufficient.
 
 Base template: ${baseTypeKey}
 
@@ -561,52 +574,53 @@ Return JSON:
   "rationale": "Why"
 }`;
 
-    const response = await llm.getJSONResponse<{
-      needs_variant: boolean;
-      variant: string | null;
-      rationale: string;
-    }>({
-      systemPrompt,
-      userPrompt: `Project: ${context.name}\n${context.description}`,
-      userId,
-      profile: 'fast',
-      temperature: 0.1,
-      operationType: 'project_classification.phase3_variant'
-    });
+		const response = await llm.getJSONResponse<{
+			needs_variant: boolean;
+			variant: string | null;
+			rationale: string;
+		}>({
+			systemPrompt,
+			userPrompt: `Project: ${context.name}\n${context.description}`,
+			userId,
+			profile: 'fast',
+			temperature: 0.1,
+			operationType: 'project_classification.phase3_variant'
+		});
 
-    if (!response?.needs_variant) {
-      return {
-        variant: null,
-        typeKey: baseTypeKey,
-        existingTemplateId: deliverableEntry.templateId
-      };
-    }
+		if (!response?.needs_variant) {
+			return {
+				variant: null,
+				typeKey: baseTypeKey,
+				existingTemplateId: deliverableEntry.templateId
+			};
+		}
 
-    if (response.variant) {
-      const normalized = normalizeSlug(response.variant);
-      if (normalized && !BLOCKED_TERMS.has(normalized)) {
-        return {
-          variant: normalized,
-          typeKey: `${baseTypeKey}.${normalized}`,
-          existingTemplateId: null // New variant
-        };
-      }
-    }
+		if (response.variant) {
+			const normalized = normalizeSlug(response.variant);
+			if (normalized && !BLOCKED_TERMS.has(normalized)) {
+				return {
+					variant: normalized,
+					typeKey: `${baseTypeKey}.${normalized}`,
+					existingTemplateId: null // New variant
+				};
+			}
+		}
 
-    // Variant suggested but invalid, fall back to base
-    return {
-      variant: null,
-      typeKey: baseTypeKey,
-      existingTemplateId: deliverableEntry.templateId
-    };
-  }
+		// Variant suggested but invalid, fall back to base
+		return {
+			variant: null,
+			typeKey: baseTypeKey,
+			existingTemplateId: deliverableEntry.templateId
+		};
+	}
 
-  // Variants exist - let LLM choose or create
-  const variantsText = existingVariants.length > 0
-    ? existingVariants.map(v => `- ${v.variant}: ${v.typeKey}`).join('\n')
-    : '- None yet';
+	// Variants exist - let LLM choose or create
+	const variantsText =
+		existingVariants.length > 0
+			? existingVariants.map((v) => `- ${v.variant}: ${v.typeKey}`).join('\n')
+			: '- None yet';
 
-  const systemPrompt = `Select or create a variant for this project.
+	const systemPrompt = `Select or create a variant for this project.
 
 Base: ${baseTypeKey}
 Existing variants:
@@ -620,36 +634,36 @@ Return JSON:
   "rationale": "Why"
 }`;
 
-  const response = await llm.getJSONResponse<{
-    use_base: boolean;
-    variant: string | null;
-    is_existing_variant: boolean;
-    rationale: string;
-  }>({
-    systemPrompt,
-    userPrompt: `Project: ${context.name}\n${context.description}`,
-    userId,
-    profile: 'fast',
-    temperature: 0.1,
-    operationType: 'project_classification.phase3_variant_select'
-  });
+	const response = await llm.getJSONResponse<{
+		use_base: boolean;
+		variant: string | null;
+		is_existing_variant: boolean;
+		rationale: string;
+	}>({
+		systemPrompt,
+		userPrompt: `Project: ${context.name}\n${context.description}`,
+		userId,
+		profile: 'fast',
+		temperature: 0.1,
+		operationType: 'project_classification.phase3_variant_select'
+	});
 
-  if (response?.use_base || !response?.variant) {
-    return {
-      variant: null,
-      typeKey: baseTypeKey,
-      existingTemplateId: deliverableEntry?.templateId ?? null
-    };
-  }
+	if (response?.use_base || !response?.variant) {
+		return {
+			variant: null,
+			typeKey: baseTypeKey,
+			existingTemplateId: deliverableEntry?.templateId ?? null
+		};
+	}
 
-  const normalized = normalizeSlug(response.variant);
-  const existingVariant = existingVariants.find(v => v.variant === normalized);
+	const normalized = normalizeSlug(response.variant);
+	const existingVariant = existingVariants.find((v) => v.variant === normalized);
 
-  return {
-    variant: normalized,
-    typeKey: existingVariant?.typeKey ?? `${baseTypeKey}.${normalized}`,
-    existingTemplateId: existingVariant?.templateId ?? null
-  };
+	return {
+		variant: normalized,
+		typeKey: existingVariant?.typeKey ?? `${baseTypeKey}.${normalized}`,
+		existingTemplateId: existingVariant?.templateId ?? null
+	};
 }
 ```
 
@@ -661,68 +675,83 @@ Return JSON:
 
 ```typescript
 const BLOCKED_TERMS = new Set([
-  'migration', 'generic', 'base', 'default', 'misc', 'other',
-  'project', 'template', 'type', 'undefined', 'null', 'none',
-  'test', 'example', 'sample', 'demo', 'tmp', 'temp'
+	'migration',
+	'generic',
+	'base',
+	'default',
+	'misc',
+	'other',
+	'project',
+	'template',
+	'type',
+	'undefined',
+	'null',
+	'none',
+	'test',
+	'example',
+	'sample',
+	'demo',
+	'tmp',
+	'temp'
 ]);
 
 const PROJECT_TYPE_KEY_PATTERN = /^project\.[a-z][a-z0-9_]*\.[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)?$/;
 
 interface ValidationResult {
-  valid: boolean;
-  error?: string;
+	valid: boolean;
+	error?: string;
 }
 
 function validateProjectTypeKey(typeKey: string): ValidationResult {
-  // Check basic format
-  if (!PROJECT_TYPE_KEY_PATTERN.test(typeKey)) {
-    return {
-      valid: false,
-      error: `Does not match pattern project.{domain}.{deliverable}[.{variant}]`
-    };
-  }
+	// Check basic format
+	if (!PROJECT_TYPE_KEY_PATTERN.test(typeKey)) {
+		return {
+			valid: false,
+			error: `Does not match pattern project.{domain}.{deliverable}[.{variant}]`
+		};
+	}
 
-  const parts = typeKey.split('.');
-  if (parts.length < 3 || parts.length > 4) {
-    return {
-      valid: false,
-      error: `Must have 3-4 segments, got ${parts.length}`
-    };
-  }
+	const parts = typeKey.split('.');
+	if (parts.length < 3 || parts.length > 4) {
+		return {
+			valid: false,
+			error: `Must have 3-4 segments, got ${parts.length}`
+		};
+	}
 
-  const [scope, domain, deliverable, variant] = parts;
+	const [scope, domain, deliverable, variant] = parts;
 
-  // Check for blocked terms
-  if (BLOCKED_TERMS.has(domain)) {
-    return {
-      valid: false,
-      error: `Domain "${domain}" is a blocked term`
-    };
-  }
+	// Check for blocked terms
+	if (BLOCKED_TERMS.has(domain)) {
+		return {
+			valid: false,
+			error: `Domain "${domain}" is a blocked term`
+		};
+	}
 
-  if (BLOCKED_TERMS.has(deliverable)) {
-    return {
-      valid: false,
-      error: `Deliverable "${deliverable}" is a blocked term`
-    };
-  }
+	if (BLOCKED_TERMS.has(deliverable)) {
+		return {
+			valid: false,
+			error: `Deliverable "${deliverable}" is a blocked term`
+		};
+	}
 
-  if (variant && BLOCKED_TERMS.has(variant)) {
-    return {
-      valid: false,
-      error: `Variant "${variant}" is a blocked term`
-    };
-  }
+	if (variant && BLOCKED_TERMS.has(variant)) {
+		return {
+			valid: false,
+			error: `Variant "${variant}" is a blocked term`
+		};
+	}
 
-  // Check minimum length
-  if (domain.length < 2 || deliverable.length < 2) {
-    return {
-      valid: false,
-      error: `Domain and deliverable must be at least 2 characters`
-    };
-  }
+	// Check minimum length
+	if (domain.length < 2 || deliverable.length < 2) {
+		return {
+			valid: false,
+			error: `Domain and deliverable must be at least 2 characters`
+		};
+	}
 
-  return { valid: true };
+	return { valid: true };
 }
 ```
 
@@ -732,118 +761,132 @@ function validateProjectTypeKey(typeKey: string): ValidationResult {
 
 ```typescript
 interface ProjectClassificationOptions {
-  context: ProjectContext;
-  llm: SmartLLMService;
-  client: TypedSupabaseClient;
-  userId: string;
+	context: ProjectContext;
+	llm: SmartLLMService;
+	client: TypedSupabaseClient;
+	userId: string;
 }
 
 interface ProjectClassificationResult {
-  typeKey: string;
-  existingTemplateId: string | null;
-  needsCreation: boolean;
-  confidence: number;
-  rationale: string;
-  method: 'single_phase' | 'multi_phase';
-  phases?: {
-    domain: { value: string; isNew: boolean };
-    deliverable: { value: string; isNew: boolean };
-    variant?: { value: string | null; isNew: boolean };
-  };
+	typeKey: string;
+	existingTemplateId: string | null;
+	needsCreation: boolean;
+	confidence: number;
+	rationale: string;
+	method: 'single_phase' | 'multi_phase';
+	phases?: {
+		domain: { value: string; isNew: boolean };
+		deliverable: { value: string; isNew: boolean };
+		variant?: { value: string | null; isNew: boolean };
+	};
 }
 
 async function classifyProject(
-  options: ProjectClassificationOptions
+	options: ProjectClassificationOptions
 ): Promise<ProjectClassificationResult> {
-  const { context, llm, client, userId } = options;
-  const startTime = Date.now();
+	const { context, llm, client, userId } = options;
+	const startTime = Date.now();
 
-  console.info(`[ProjectClassification] START project="${context.name}"`);
+	console.info(`[ProjectClassification] START project="${context.name}"`);
 
-  try {
-    // 1. Extract current taxonomy
-    const taxonomy = await extractProjectTaxonomy(client);
-    console.info(`[ProjectClassification] Taxonomy: ${taxonomy.totalTemplates} templates, ${taxonomy.domains.length} domains`);
+	try {
+		// 1. Extract current taxonomy
+		const taxonomy = await extractProjectTaxonomy(client);
+		console.info(
+			`[ProjectClassification] Taxonomy: ${taxonomy.totalTemplates} templates, ${taxonomy.domains.length} domains`
+		);
 
-    // 2. Choose classification method based on template count
-    const MULTI_PHASE_THRESHOLD = 30;
+		// 2. Choose classification method based on template count
+		const MULTI_PHASE_THRESHOLD = 30;
 
-    if (taxonomy.totalTemplates <= MULTI_PHASE_THRESHOLD) {
-      // Single-phase classification
-      console.info(`[ProjectClassification] Using SINGLE_PHASE (${taxonomy.totalTemplates} <= ${MULTI_PHASE_THRESHOLD})`);
+		if (taxonomy.totalTemplates <= MULTI_PHASE_THRESHOLD) {
+			// Single-phase classification
+			console.info(
+				`[ProjectClassification] Using SINGLE_PHASE (${taxonomy.totalTemplates} <= ${MULTI_PHASE_THRESHOLD})`
+			);
 
-      const result = await classifyProjectSinglePhase(context, taxonomy, llm, userId);
+			const result = await classifyProjectSinglePhase(context, taxonomy, llm, userId);
 
-      console.info(
-        `[ProjectClassification] RESULT typeKey=${result.typeKey} ` +
-        `existing=${!!result.existingTemplateId} confidence=${result.confidence} ` +
-        `duration=${Date.now() - startTime}ms`
-      );
+			console.info(
+				`[ProjectClassification] RESULT typeKey=${result.typeKey} ` +
+					`existing=${!!result.existingTemplateId} confidence=${result.confidence} ` +
+					`duration=${Date.now() - startTime}ms`
+			);
 
-      return {
-        ...result,
-        method: 'single_phase'
-      };
-    }
+			return {
+				...result,
+				method: 'single_phase'
+			};
+		}
 
-    // Multi-phase classification
-    console.info(`[ProjectClassification] Using MULTI_PHASE (${taxonomy.totalTemplates} > ${MULTI_PHASE_THRESHOLD})`);
+		// Multi-phase classification
+		console.info(
+			`[ProjectClassification] Using MULTI_PHASE (${taxonomy.totalTemplates} > ${MULTI_PHASE_THRESHOLD})`
+		);
 
-    // Phase 1: Domain
-    const domainResult = await selectDomain(context, taxonomy, llm, userId);
-    console.info(`[ProjectClassification] Phase 1 DOMAIN=${domainResult.domain} isNew=${domainResult.isNew}`);
+		// Phase 1: Domain
+		const domainResult = await selectDomain(context, taxonomy, llm, userId);
+		console.info(
+			`[ProjectClassification] Phase 1 DOMAIN=${domainResult.domain} isNew=${domainResult.isNew}`
+		);
 
-    // Phase 2: Deliverable
-    const deliverableResult = await selectDeliverable(
-      context,
-      domainResult.domain,
-      taxonomy,
-      llm,
-      userId
-    );
-    console.info(`[ProjectClassification] Phase 2 DELIVERABLE=${deliverableResult.deliverable} isNew=${deliverableResult.isNew}`);
+		// Phase 2: Deliverable
+		const deliverableResult = await selectDeliverable(
+			context,
+			domainResult.domain,
+			taxonomy,
+			llm,
+			userId
+		);
+		console.info(
+			`[ProjectClassification] Phase 2 DELIVERABLE=${deliverableResult.deliverable} isNew=${deliverableResult.isNew}`
+		);
 
-    // Phase 3: Variant
-    const variantResult = await selectVariant(
-      context,
-      domainResult.domain,
-      deliverableResult.deliverable,
-      taxonomy,
-      llm,
-      userId
-    );
-    console.info(
-      `[ProjectClassification] Phase 3 VARIANT=${variantResult.variant ?? 'none'} ` +
-      `typeKey=${variantResult.typeKey} existingTemplate=${!!variantResult.existingTemplateId}`
-    );
+		// Phase 3: Variant
+		const variantResult = await selectVariant(
+			context,
+			domainResult.domain,
+			deliverableResult.deliverable,
+			taxonomy,
+			llm,
+			userId
+		);
+		console.info(
+			`[ProjectClassification] Phase 3 VARIANT=${variantResult.variant ?? 'none'} ` +
+				`typeKey=${variantResult.typeKey} existingTemplate=${!!variantResult.existingTemplateId}`
+		);
 
-    const duration = Date.now() - startTime;
-    console.info(`[ProjectClassification] RESULT typeKey=${variantResult.typeKey} duration=${duration}ms`);
+		const duration = Date.now() - startTime;
+		console.info(
+			`[ProjectClassification] RESULT typeKey=${variantResult.typeKey} duration=${duration}ms`
+		);
 
-    return {
-      typeKey: variantResult.typeKey,
-      existingTemplateId: variantResult.existingTemplateId,
-      needsCreation: !variantResult.existingTemplateId,
-      confidence: 85, // Multi-phase is generally high confidence
-      rationale: `Domain: ${domainResult.domain}, Deliverable: ${deliverableResult.deliverable}${variantResult.variant ? `, Variant: ${variantResult.variant}` : ''}`,
-      method: 'multi_phase',
-      phases: {
-        domain: { value: domainResult.domain, isNew: domainResult.isNew },
-        deliverable: { value: deliverableResult.deliverable, isNew: deliverableResult.isNew },
-        variant: variantResult.variant
-          ? { value: variantResult.variant, isNew: !variantResult.existingTemplateId }
-          : undefined
-      }
-    };
-
-  } catch (error) {
-    const duration = Date.now() - startTime;
-    console.error(
-      `[ProjectClassification] FAILED project="${context.name}" ` +
-      `duration=${duration}ms error=${error instanceof Error ? error.message : 'Unknown'}`
-    );
-    throw error; // Re-throw to fail the migration
-  }
+		return {
+			typeKey: variantResult.typeKey,
+			existingTemplateId: variantResult.existingTemplateId,
+			needsCreation: !variantResult.existingTemplateId,
+			confidence: 85, // Multi-phase is generally high confidence
+			rationale: `Domain: ${domainResult.domain}, Deliverable: ${deliverableResult.deliverable}${variantResult.variant ? `, Variant: ${variantResult.variant}` : ''}`,
+			method: 'multi_phase',
+			phases: {
+				domain: { value: domainResult.domain, isNew: domainResult.isNew },
+				deliverable: {
+					value: deliverableResult.deliverable,
+					isNew: deliverableResult.isNew
+				},
+				variant: variantResult.variant
+					? { value: variantResult.variant, isNew: !variantResult.existingTemplateId }
+					: undefined
+			}
+		};
+	} catch (error) {
+		const duration = Date.now() - startTime;
+		console.error(
+			`[ProjectClassification] FAILED project="${context.name}" ` +
+				`duration=${duration}ms error=${error instanceof Error ? error.message : 'Unknown'}`
+		);
+		throw error; // Re-throw to fail the migration
+	}
 }
 ```
 
@@ -857,37 +900,37 @@ Replace the current `suggestTemplate` call for projects with:
 // In findOrCreate() method, before calling suggestTemplate for projects:
 
 if (options.scope === 'project') {
-  // Use specialized project classification
-  const classification = await classifyProject({
-    context: options.context,
-    llm: this.llm,
-    client: this.client,
-    userId: options.userId
-  });
+	// Use specialized project classification
+	const classification = await classifyProject({
+		context: options.context,
+		llm: this.llm,
+		client: this.client,
+		userId: options.userId
+	});
 
-  if (classification.existingTemplateId) {
-    // Existing template found - use it
-    const template = await this.fetchTemplateById(classification.existingTemplateId);
-    if (template) {
-      return {
-        template,
-        created: false,
-        matchScore: classification.confidence / 100,
-        matchRationale: classification.rationale,
-        usedHierarchical: false
-      };
-    }
-  }
+	if (classification.existingTemplateId) {
+		// Existing template found - use it
+		const template = await this.fetchTemplateById(classification.existingTemplateId);
+		if (template) {
+			return {
+				template,
+				created: false,
+				matchScore: classification.confidence / 100,
+				matchRationale: classification.rationale,
+				usedHierarchical: false
+			};
+		}
+	}
 
-  // Need to create new template
-  const suggestion: TemplateSuggestion = {
-    typeKey: classification.typeKey,
-    name: this.humanizeTypeKey(classification.typeKey),
-    description: classification.rationale,
-    // ... generate schema and FSM for new template
-  };
+	// Need to create new template
+	const suggestion: TemplateSuggestion = {
+		typeKey: classification.typeKey,
+		name: this.humanizeTypeKey(classification.typeKey),
+		description: classification.rationale
+		// ... generate schema and FSM for new template
+	};
 
-  return this.createTemplateFromSuggestion(suggestion, options);
+	return this.createTemplateFromSuggestion(suggestion, options);
 }
 
 // For non-project scopes, use existing suggestTemplate logic
@@ -903,42 +946,41 @@ if (options.scope === 'project') {
 // In the migration orchestrator:
 
 try {
-  const classification = await classifyProject({
-    context: projectData,
-    llm,
-    client,
-    userId
-  });
+	const classification = await classifyProject({
+		context: projectData,
+		llm,
+		client,
+		userId
+	});
 
-  // Continue with migration...
-
+	// Continue with migration...
 } catch (error) {
-  // Log detailed error
-  console.error('[Migration] Project classification failed', {
-    projectId: projectData.id,
-    projectName: projectData.name,
-    error: error instanceof Error ? error.message : 'Unknown',
-    stack: error instanceof Error ? error.stack : undefined
-  });
+	// Log detailed error
+	console.error('[Migration] Project classification failed', {
+		projectId: projectData.id,
+		projectName: projectData.name,
+		error: error instanceof Error ? error.message : 'Unknown',
+		stack: error instanceof Error ? error.stack : undefined
+	});
 
-  // Record failure in migration log
-  await recordMigrationFailure(client, {
-    entityType: 'project',
-    entityId: projectData.id,
-    phase: 'classification',
-    error: error instanceof Error ? error.message : 'Unknown',
-    context: {
-      projectName: projectData.name,
-      projectDescription: projectData.description?.substring(0, 500)
-    }
-  });
+	// Record failure in migration log
+	await recordMigrationFailure(client, {
+		entityType: 'project',
+		entityId: projectData.id,
+		phase: 'classification',
+		error: error instanceof Error ? error.message : 'Unknown',
+		context: {
+			projectName: projectData.name,
+			projectDescription: projectData.description?.substring(0, 500)
+		}
+	});
 
-  // Return failure result (don't throw - allow other projects to continue)
-  return {
-    status: 'failed',
-    projectId: projectData.id,
-    error: `Classification failed: ${error instanceof Error ? error.message : 'Unknown'}`
-  };
+	// Return failure result (don't throw - allow other projects to continue)
+	return {
+		status: 'failed',
+		projectId: projectData.id,
+		error: `Classification failed: ${error instanceof Error ? error.message : 'Unknown'}`
+	};
 }
 ```
 
@@ -975,6 +1017,7 @@ try {
 ## Changelog
 
 ### December 10, 2025 - Initial Spec
+
 - Defined 3-phase classification architecture
 - Created taxonomy extraction query
 - Defined validation rules with blocked terms

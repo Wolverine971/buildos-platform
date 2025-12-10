@@ -365,7 +365,10 @@ export class TemplateCrudService {
 			};
 		}
 
-		this.invalidateFamilyCache(client, (data as { scope?: string } | null)?.scope as EntityScope);
+		this.invalidateFamilyCache(
+			client,
+			(data as { scope?: string } | null)?.scope as EntityScope
+		);
 
 		return {
 			success: true,

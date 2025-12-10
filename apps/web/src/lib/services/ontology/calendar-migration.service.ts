@@ -1,4 +1,14 @@
 // apps/web/src/lib/services/ontology/calendar-migration.service.ts
+/**
+ * Calendar Migration Service
+ *
+ * Handles migration of legacy calendar events by linking them to onto_tasks via edges.
+ * Events stay in calendar_events table but are linked to ontology entities.
+ *
+ * @see /thoughts/shared/research/2025-12-10_migration-system-design.md
+ *      For comprehensive system design documentation including architecture diagrams,
+ *      data flow, component details, and error handling strategies.
+ */
 import type { TypedSupabaseClient } from '@buildos/supabase-client';
 import type { Database } from '@buildos/shared-types';
 import type {
@@ -309,7 +319,11 @@ export class CalendarMigrationService {
 		});
 
 		if (error) {
-			console.error('[CalendarMigration] Failed to create task→event edge', error);
+			console.error(
+				`[CalendarMigration] Failed to create task→event edge for task ${params.taskId} → event ${params.eventId}: ${error.message}`
+			);
+			// Throw to ensure edge creation failures are not silently ignored
+			throw new Error(`Failed to create task-event edge: ${error.message}`);
 		}
 	}
 }

@@ -1,4 +1,14 @@
 // apps/web/src/lib/services/ontology/phase-migration.service.ts
+/**
+ * Phase Migration Service
+ *
+ * Handles migration of legacy phases to onto_plans in the ontology system.
+ * Uses EnhancedPlanMigrator for template discovery and property extraction.
+ *
+ * @see /thoughts/shared/research/2025-12-10_migration-system-design.md
+ *      For comprehensive system design documentation including architecture diagrams,
+ *      data flow, component details, and error handling strategies.
+ */
 import type { TypedSupabaseClient } from '@buildos/supabase-client';
 import type { Database } from '@buildos/shared-types';
 import type { Facets } from '$lib/types/onto';
@@ -572,9 +582,10 @@ export class PhaseMigrationService {
 
 		if (edgeError) {
 			console.error(
-				`[PhaseMigration] Failed to create has_plan edge for plan "${params.name}": ${edgeError.message}`
+				`[PhaseMigration] Failed to create has_plan edge for plan "${params.name}" → project ${params.ontoProjectId}: ${edgeError.message}`
 			);
-			// Don't fail the whole operation for edge errors, but log it
+			// Throw to ensure edge creation failures are not silently ignored
+			throw new Error(`Failed to create project-plan edge: ${edgeError.message}`);
 		}
 
 		return data.id;

@@ -19,7 +19,8 @@
 	type EditorSize = 'sm' | 'base' | 'lg';
 	type ToolbarAction = 'bold' | 'italic' | 'h1' | 'h2' | 'ul' | 'ol' | 'quote' | 'code' | 'link';
 
-	interface Props extends HTMLTextAreaAttributes {
+	interface Props extends Omit<HTMLTextAreaAttributes, 'value'> {
+		value?: string;
 		label?: string;
 		helpText?: string;
 		maxLength?: number;

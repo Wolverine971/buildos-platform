@@ -39,8 +39,9 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 	let templates: ResolvedTemplate[];
 	let groupedByRealm: Record<string, ResolvedTemplate[]>;
 
-	try {
-		const result = await fetchTemplateCatalog(locals.supabase, {
+	// Fetch filtered templates and all available filter options in parallel
+	const [catalogResult, allFilterOptions] = await Promise.all([
+		fetchTemplateCatalog(locals.supabase, {
 			scope,
 			realm,
 			search,
@@ -50,14 +51,15 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 			stages,
 			sort,
 			direction
-		});
+		}).catch((catalogError) => {
+			console.error('[Ontology Templates] Failed to load templates:', catalogError);
+			throw error(500, 'Failed to fetch templates');
+		}),
+		getAllFilterOptions(locals.supabase)
+	]);
 
-		templates = result.templates;
-		groupedByRealm = result.groupedByRealm;
-	} catch (catalogError) {
-		console.error('[Ontology Templates] Failed to load templates:', catalogError);
-		throw error(500, 'Failed to fetch templates');
-	}
+	templates = catalogResult.templates;
+	groupedByRealm = catalogResult.groupedByRealm;
 
 	// Group templates by scope for alternate view
 	const byScope = templates.reduce(
@@ -70,12 +72,6 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 		},
 		{} as Record<string, ResolvedTemplate[]>
 	);
-
-	// Get unique realms and scopes for filter options
-	const uniqueRealms = Array.from(
-		new Set(templates.map((t) => (t.metadata?.realm as string | undefined) ?? 'other'))
-	);
-	const uniqueScopes = Array.from(new Set(templates.map((t) => t.scope)));
 
 	const facets = await getFacetValues(locals.supabase);
 	const facetOptions = mapFacetValuesByKey(facets);
@@ -96,13 +92,51 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 			detail: detailParam
 		},
 		filterOptions: {
-			realms: uniqueRealms,
-			scopes: uniqueScopes,
+			realms: allFilterOptions.realms,
+			scopes: allFilterOptions.scopes,
 			facets: facetOptions
 		},
 		isAdmin: user.is_admin ?? false
 	};
 };
+
+/**
+ * Fetch all available scopes and realms from the database, independent of current filters.
+ * This ensures filter dropdowns always show all available options.
+ */
+async function getAllFilterOptions(
+	supabase: TypedSupabaseClient
+): Promise<{ scopes: string[]; realms: string[] }> {
+	// Fetch all unique scopes and realms from templates table
+	const { data, error: queryError } = await supabase
+		.from('onto_templates')
+		.select('scope, metadata')
+		.eq('status', 'active');
+
+	if (queryError) {
+		console.error('[Templates Page] Failed to fetch filter options:', queryError);
+		return { scopes: [], realms: [] };
+	}
+
+	const scopes = new Set<string>();
+	const realms = new Set<string>();
+
+	for (const template of data ?? []) {
+		if (template.scope) {
+			scopes.add(template.scope);
+		}
+		const realm = (template.metadata as Record<string, unknown> | null)?.realm;
+		if (typeof realm === 'string') {
+			realms.add(realm);
+		}
+	}
+
+	// Sort alphabetically for consistent display
+	return {
+		scopes: Array.from(scopes).sort(),
+		realms: Array.from(realms).sort()
+	};
+}
 
 async function getFacetValues(supabase: TypedSupabaseClient): Promise<FacetValue[]> {
 	const { data, error: facetError } = await supabase

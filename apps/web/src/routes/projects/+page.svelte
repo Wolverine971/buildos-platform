@@ -58,7 +58,7 @@
 	let activeTab = $state<'overview' | 'graph'>(
 		get(page).url.searchParams.get('view') === 'graph' ? 'graph' : 'overview'
 	);
-	let graphViewMode = $state<ViewMode>('full');
+	let graphViewMode = $state<ViewMode>('projects'); // Default to Projects & Entities
 	let graphInstance = $state<OntologyGraphInstance | null>(null);
 	let selectedGraphNode = $state<GraphNode | null>(null);
 	const emptyGraphStats: GraphStats = {
@@ -412,36 +412,6 @@
 			</nav>
 		{/if}
 	</header>
-
-	<!-- Graph refresh bar - Admin Only -->
-	{#if isAdmin && activeTab === 'graph'}
-		<div
-			class="flex flex-wrap items-center justify-end gap-3 rounded-lg border border-border bg-card p-3 shadow-ink text-xs text-muted-foreground"
-		>
-			{#if $graphStore.status === 'ready' && graphLastUpdated}
-				<span class="hidden sm:inline font-semibold">Last synced {graphLastUpdated}</span>
-			{/if}
-			<button
-				type="button"
-				class="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 font-bold text-foreground transition hover:bg-muted hover:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring shadow-ink pressable"
-				onclick={refreshGraph}
-				aria-label="Refresh graph"
-			>
-				<svg
-					class="h-3.5 w-3.5"
-					viewBox="0 0 20 20"
-					fill="none"
-					xmlns="http://www.w3.org/2000/svg"
-				>
-					<path
-						d="M3.75 10a6.25 6.25 0 0 1 10.18-4.93l1.07.88V3.75a.75.75 0 1 1 1.5 0v4.5a.75.75 0 0 1-.75.75h-4.5a.75.75 0 0 1 0-1.5h2.74l-.67-.54A4.75 4.75 0 1 0 15.75 11a.75.75 0 0 1 1.5 0 6.25 6.25 0 1 1-13.5 0Z"
-						fill="currentColor"
-					/>
-				</svg>
-				<span>Refresh</span>
-			</button>
-		</div>
-	{/if}
 
 	{#if activeTab === 'overview'}
 		<section class="space-y-4">
@@ -849,43 +819,6 @@
 		<!-- Graph view - Admin Only -->
 	{:else if isAdmin}
 		<section class="space-y-4">
-			{#if $graphStore.stats}
-				<div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
-					<div
-						class="rounded-lg border border-border bg-card px-3 py-3 text-left shadow-ink tx tx-bloom tx-weak"
-					>
-						<p class="micro-label">Templates</p>
-						<p class="text-xl font-bold text-foreground">
-							{$graphStore.stats.totalTemplates}
-						</p>
-					</div>
-					<div
-						class="rounded-lg border border-border bg-card px-3 py-3 text-left shadow-ink tx tx-grain tx-weak"
-					>
-						<p class="micro-label">Projects</p>
-						<p class="text-xl font-bold text-foreground">
-							{$graphStore.stats.totalProjects}
-						</p>
-					</div>
-					<div
-						class="rounded-lg border border-border bg-card px-3 py-3 text-left shadow-ink tx tx-thread tx-weak"
-					>
-						<p class="micro-label">Relationships</p>
-						<p class="text-xl font-bold text-foreground">
-							{$graphStore.stats.totalEdges}
-						</p>
-					</div>
-					<div
-						class="rounded-lg border border-border bg-card px-3 py-3 text-left shadow-ink tx tx-pulse tx-weak"
-					>
-						<p class="micro-label">Active Projects</p>
-						<p class="text-xl font-bold text-accent">
-							{$graphStore.stats.activeProjects}
-						</p>
-					</div>
-				</div>
-			{/if}
-
 			<div
 				class="rounded-lg border border-border bg-card shadow-ink overflow-hidden touch-none"
 			>

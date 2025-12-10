@@ -11,7 +11,7 @@
 -->
 
 <script lang="ts">
-	import { tick, onDestroy } from 'svelte';
+	import { onDestroy } from 'svelte';
 	import { browser, dev } from '$app/environment';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import ContextSelectionScreen from '../chat/ContextSelectionScreen.svelte';
@@ -1017,14 +1017,19 @@
 		return scrollHeight - scrollPosition < threshold;
 	}
 
-	// Helper: Smooth scroll to bottom without jarring shifts
+	// Helper: Scroll to bottom without jarring shifts during streaming
+	// Uses requestAnimationFrame for smooth updates and avoids layout thrashing
 	function scrollToBottomIfNeeded() {
 		if (!messagesContainer) return;
 
 		// Only scroll if user hasn't manually scrolled up
 		if (!userHasScrolled || isScrolledToBottom(messagesContainer)) {
-			tick().then(() => {
+			// Use requestAnimationFrame to batch with browser's paint cycle
+			// This prevents layout thrashing during rapid streaming updates
+			requestAnimationFrame(() => {
 				if (messagesContainer) {
+					// Use instant scroll during streaming to avoid animation lag
+					// The CSS overflow-anchor handles visual stability
 					messagesContainer.scrollTop = messagesContainer.scrollHeight;
 					userHasScrolled = false;
 				}
@@ -1044,10 +1049,21 @@
 		}
 	}
 
-	// Sticky scroll behavior: Only auto-scroll on new messages, not on scroll position changes
-	// This effect tracks messages.length, so it only triggers when new messages arrive
+	// Derive a "scroll trigger" value that changes when:
+	// 1. New messages are added (messages.length changes)
+	// 2. Content is streamed into the last message (content length changes during streaming)
+	const scrollTrigger = $derived.by(() => {
+		if (messages.length === 0) return 0;
+		const lastMessage = messages[messages.length - 1];
+		// Track both message count and last message content length
+		// This triggers scroll during streaming when content grows
+		return messages.length * 10000 + (lastMessage?.content?.length ?? 0);
+	});
+
+	// Sticky scroll behavior: Auto-scroll when new messages arrive OR when streaming content grows
+	// Only scrolls if user hasn't manually scrolled up
 	$effect(() => {
-		if (messages.length > 0) {
+		if (scrollTrigger > 0) {
 			scrollToBottomIfNeeded();
 		}
 	});

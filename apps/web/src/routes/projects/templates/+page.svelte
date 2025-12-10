@@ -537,102 +537,204 @@
 	</div>
 	<!-- Filters -->
 	<Card variant="elevated" padding="none">
-		<CardBody padding="lg" class="space-y-5">
-			<div class="flex flex-col lg:flex-row gap-4">
-				<!-- Search -->
-				<div class="flex-1">
-					<FormField label="Search templates" labelFor="search">
-						<TextInput
-							id="search"
-							type="text"
-							placeholder="Search by name or type..."
-							bind:value={searchQuery}
-							oninput={handleSearchInput}
-						/>
-					</FormField>
-				</div>
-
-				<!-- Scope Filter -->
-				<div class="w-full lg:w-52">
-					<FormField label="Scope" labelFor="scope">
-						<Select id="scope" bind:value={selectedScope} onchange={updateFilters}>
-							<option value="">All Scopes</option>
-							{#each filterOptions.scopes as scopeOption}
-								<option value={scopeOption}>{capitalize(scopeOption)}</option>
-							{/each}
-						</Select>
-					</FormField>
-				</div>
-
-				<!-- Realm Filter -->
-				<div class="w-full lg:w-52">
-					<FormField label="Realm" labelFor="realm">
-						<Select id="realm" bind:value={selectedRealm} onchange={updateFilters}>
-							<option value="">All Realms</option>
-							{#each filterOptions.realms as realmOption}
-								<option value={realmOption}>{capitalize(realmOption)}</option>
-							{/each}
-						</Select>
-					</FormField>
-				</div>
-
-				<div
-					class="rounded-lg border border-border bg-muted/30 p-3 sm:p-4 flex flex-wrap items-center justify-between gap-3 text-sm"
+		<CardBody padding="md" class="space-y-3">
+			<!-- Row 1: Search (full width) -->
+			<div class="relative">
+				<svg
+					class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
 				>
-					<div class="flex items-center gap-2 text-muted-foreground">
-						<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								stroke-width="2"
-								d="M4 5h16l-5.5 7v5l-5 2v-7L4 5z"
-							/>
-						</svg>
-						<span>
-							{hasActiveFilters
-								? `${totalFilterCount} filter${totalFilterCount === 1 ? '' : 's'} applied`
-								: 'No filters applied'}
-						</span>
-						{#if activeFacetCount}
-							<span
-								class="inline-flex items-center rounded-full bg-card border border-border px-2 py-0.5 text-xs font-semibold text-foreground"
-							>
-								{activeFacetCount} facet{activeFacetCount === 1 ? '' : 's'}
-							</span>
-						{/if}
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						stroke-width="2"
+						d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+					/>
+				</svg>
+				<TextInput
+					id="search"
+					type="text"
+					placeholder="Search templates by name, type key, or description..."
+					bind:value={searchQuery}
+					oninput={handleSearchInput}
+					class="pl-10"
+				/>
+			</div>
+
+			<!-- Row 2: Entity Filters + Sort + View + Filter Status -->
+			<div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+				<!-- Left: Entity filters (Scope + Realm) grouped -->
+				<div class="flex flex-wrap items-center gap-2">
+					<span class="text-xs font-medium text-muted-foreground uppercase tracking-wide"
+						>Filter:</span
+					>
+					<Select
+						id="scope"
+						bind:value={selectedScope}
+						onchange={updateFilters}
+						class="w-auto min-w-[120px]"
+					>
+						<option value="">All Scopes</option>
+						{#each filterOptions.scopes as scopeOption}
+							<option value={scopeOption}>{capitalize(scopeOption)}</option>
+						{/each}
+					</Select>
+					<Select
+						id="realm"
+						bind:value={selectedRealm}
+						onchange={updateFilters}
+						class="w-auto min-w-[120px]"
+					>
+						<option value="">All Realms</option>
+						{#each filterOptions.realms as realmOption}
+							<option value={realmOption}>{capitalize(realmOption)}</option>
+						{/each}
+					</Select>
+
+					<span class="hidden lg:inline text-border">|</span>
+
+					<span class="text-xs font-medium text-muted-foreground uppercase tracking-wide"
+						>Sort:</span
+					>
+					<Select
+						id="sortBy"
+						bind:value={sortBy}
+						onchange={updateFilters}
+						class="w-auto min-w-[100px]"
+					>
+						<option value="name">Name</option>
+						<option value="type_key">Type Key</option>
+						<option value="realm">Realm</option>
+						<option value="scope">Scope</option>
+						<option value="status">Status</option>
+					</Select>
+					<Select
+						bind:value={sortDirection}
+						onchange={updateFilters}
+						class="w-auto min-w-[100px]"
+					>
+						<option value="asc">A → Z</option>
+						<option value="desc">Z → A</option>
+					</Select>
+				</div>
+
+				<!-- Right: View toggle + Filter status -->
+				<div class="flex items-center gap-3">
+					<div
+						class="flex items-center gap-1.5 rounded-lg border border-border bg-muted/50 p-0.5"
+					>
+						<button
+							onclick={() => (viewMode = 'realm')}
+							class="px-2.5 py-1 rounded-md text-xs font-medium transition-colors pressable {viewMode ===
+							'realm'
+								? 'bg-card text-foreground shadow-ink'
+								: 'text-muted-foreground hover:text-foreground'}"
+						>
+							By Realm
+						</button>
+						<button
+							onclick={() => (viewMode = 'scope')}
+							class="px-2.5 py-1 rounded-md text-xs font-medium transition-colors pressable {viewMode ===
+							'scope'
+								? 'bg-card text-foreground shadow-ink'
+								: 'text-muted-foreground hover:text-foreground'}"
+						>
+							By Scope
+						</button>
 					</div>
+
 					{#if hasActiveFilters}
-						<Button variant="ghost" size="sm" onclick={clearFilters} class="shrink-0">
-							Reset filters
-						</Button>
+						<div class="flex items-center gap-2 text-xs text-muted-foreground">
+							<span
+								class="inline-flex items-center gap-1.5 rounded-full bg-accent/10 text-accent border border-accent/30 px-2 py-0.5 font-medium"
+							>
+								<svg
+									class="w-3 h-3"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+								>
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										stroke-width="2"
+										d="M4 5h16l-5.5 7v5l-5 2v-7L4 5z"
+									/>
+								</svg>
+								{totalFilterCount}
+							</span>
+							<button
+								onclick={clearFilters}
+								class="text-muted-foreground hover:text-foreground transition-colors"
+								title="Clear all filters"
+							>
+								<svg
+									class="w-4 h-4"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+								>
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										stroke-width="2"
+										d="M6 18L18 6M6 6l12 12"
+									/>
+								</svg>
+							</button>
+						</div>
 					{/if}
 				</div>
 			</div>
 
-			<!-- Facet Filters -->
-			<div class="grid gap-3 md:grid-cols-3">
-				<details
-					class={`rounded-lg border bg-card px-4 py-3 ${selectedContexts.length ? 'border-accent' : 'border-border'}`}
-					open={selectedContexts.length > 0}
+			<!-- Row 3: Facet Filters (collapsible) -->
+			<details class="group" open={activeFacetCount > 0}>
+				<summary
+					class="flex items-center gap-2 cursor-pointer text-xs font-medium text-muted-foreground uppercase tracking-wide py-1 select-none"
 				>
-					<summary
-						class="flex items-center justify-between gap-2 cursor-pointer text-xs font-semibold text-foreground uppercase tracking-wide"
+					<svg
+						class="w-3 h-3 transition-transform group-open:rotate-90"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
 					>
-						<span>Context</span>
-						<span class="text-[11px] text-muted-foreground">
-							{selectedContexts.length}/{facetOptions.context?.length ?? 0}
-						</span>
-					</summary>
-					<div class="mt-2 space-y-2">
-						<p class="text-xs text-muted-foreground">
-							{facetDescriptions.context}
-						</p>
-						<div class="flex flex-wrap gap-2">
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M9 5l7 7-7 7"
+						/>
+					</svg>
+					<span>Facet Filters</span>
+					{#if activeFacetCount > 0}
+						<span class="text-[10px] text-accent font-semibold"
+							>({activeFacetCount} active)</span
+						>
+					{/if}
+				</summary>
+
+				<div class="grid gap-2 pt-2 sm:grid-cols-3">
+					<!-- Context Facet -->
+					<div
+						class={`rounded-lg border bg-muted/30 p-2.5 ${selectedContexts.length ? 'border-accent/50' : 'border-border'}`}
+					>
+						<div class="flex items-center justify-between mb-2">
+							<span
+								class="text-[10px] font-semibold text-foreground uppercase tracking-wide"
+								>Context</span
+							>
+							<span class="text-[10px] text-muted-foreground"
+								>{selectedContexts.length}/{facetOptions.context?.length ?? 0}</span
+							>
+						</div>
+						<div class="flex flex-wrap gap-1.5">
 							{#if facetOptions.context && facetOptions.context.length}
 								{#each facetOptions.context as option}
 									{@const isSelected = selectedContexts.includes(option.value)}
 									<label
-										class={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition cursor-pointer ${
+										class={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium transition cursor-pointer ${
 											isSelected
 												? 'bg-accent/10 border-accent text-accent'
 												: 'bg-transparent border-border text-muted-foreground hover:border-accent/50'
@@ -649,36 +751,32 @@
 									</label>
 								{/each}
 							{:else}
-								<p class="text-xs text-muted-foreground">No context facets.</p>
+								<p class="text-[10px] text-muted-foreground italic">No options</p>
 							{/if}
 						</div>
 					</div>
-				</details>
 
-				<details
-					class={`rounded-lg border bg-card px-4 py-3 ${selectedScales.length ? 'border-emerald-500' : 'border-border'}`}
-					open={selectedScales.length > 0}
-				>
-					<summary
-						class="flex items-center justify-between gap-2 cursor-pointer text-xs font-semibold text-foreground uppercase tracking-wide"
+					<!-- Scale Facet -->
+					<div
+						class={`rounded-lg border bg-muted/30 p-2.5 ${selectedScales.length ? 'border-emerald-500/50' : 'border-border'}`}
 					>
-						<span>Scale</span>
-						<span class="text-[11px] text-muted-foreground">
-							{selectedScales.length}/{facetOptions.scale?.length ?? 0}
-						</span>
-					</summary>
-					<div class="mt-2 space-y-2">
-						<p class="text-xs text-muted-foreground">
-							{facetDescriptions.scale}
-						</p>
-						<div class="flex flex-wrap gap-2">
+						<div class="flex items-center justify-between mb-2">
+							<span
+								class="text-[10px] font-semibold text-foreground uppercase tracking-wide"
+								>Scale</span
+							>
+							<span class="text-[10px] text-muted-foreground"
+								>{selectedScales.length}/{facetOptions.scale?.length ?? 0}</span
+							>
+						</div>
+						<div class="flex flex-wrap gap-1.5">
 							{#if facetOptions.scale && facetOptions.scale.length}
 								{#each facetOptions.scale as option}
 									{@const isScaleSelected = selectedScales.includes(option.value)}
 									<label
-										class={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition cursor-pointer ${
+										class={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium transition cursor-pointer ${
 											isScaleSelected
-												? 'bg-emerald-500/10 border-emerald-500 text-emerald-600'
+												? 'bg-emerald-500/10 border-emerald-500 text-emerald-600 dark:text-emerald-400'
 												: 'bg-transparent border-border text-muted-foreground hover:border-emerald-500/50'
 										}`}
 									>
@@ -693,36 +791,32 @@
 									</label>
 								{/each}
 							{:else}
-								<p class="text-xs text-muted-foreground">No scale facets.</p>
+								<p class="text-[10px] text-muted-foreground italic">No options</p>
 							{/if}
 						</div>
 					</div>
-				</details>
 
-				<details
-					class={`rounded-lg border bg-card px-4 py-3 ${selectedStages.length ? 'border-blue-500' : 'border-border'}`}
-					open={selectedStages.length > 0}
-				>
-					<summary
-						class="flex items-center justify-between gap-2 cursor-pointer text-xs font-semibold text-foreground uppercase tracking-wide"
+					<!-- Stage Facet -->
+					<div
+						class={`rounded-lg border bg-muted/30 p-2.5 ${selectedStages.length ? 'border-blue-500/50' : 'border-border'}`}
 					>
-						<span>Stage</span>
-						<span class="text-[11px] text-muted-foreground">
-							{selectedStages.length}/{facetOptions.stage?.length ?? 0}
-						</span>
-					</summary>
-					<div class="mt-2 space-y-2">
-						<p class="text-xs text-muted-foreground">
-							{facetDescriptions.stage}
-						</p>
-						<div class="flex flex-wrap gap-2">
+						<div class="flex items-center justify-between mb-2">
+							<span
+								class="text-[10px] font-semibold text-foreground uppercase tracking-wide"
+								>Stage</span
+							>
+							<span class="text-[10px] text-muted-foreground"
+								>{selectedStages.length}/{facetOptions.stage?.length ?? 0}</span
+							>
+						</div>
+						<div class="flex flex-wrap gap-1.5">
 							{#if facetOptions.stage && facetOptions.stage.length}
 								{#each facetOptions.stage as option}
 									{@const isStageSelected = selectedStages.includes(option.value)}
 									<label
-										class={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition cursor-pointer ${
+										class={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium transition cursor-pointer ${
 											isStageSelected
-												? 'bg-blue-500/10 border-blue-500 text-blue-600'
+												? 'bg-blue-500/10 border-blue-500 text-blue-600 dark:text-blue-400'
 												: 'bg-transparent border-border text-muted-foreground hover:border-blue-500/50'
 										}`}
 									>
@@ -737,161 +831,48 @@
 									</label>
 								{/each}
 							{:else}
-								<p class="text-xs text-muted-foreground">No stage facets.</p>
+								<p class="text-[10px] text-muted-foreground italic">No options</p>
 							{/if}
 						</div>
 					</div>
-				</details>
-			</div>
-
-			<div
-				class="flex flex-col gap-4 pt-4 border-t border-border md:flex-row md:items-center md:justify-between"
-			>
-				<div class="flex items-center gap-3">
-					<span class="text-sm font-medium text-foreground">Sort by</span>
-					<Select id="sortBy" bind:value={sortBy} onchange={updateFilters} class="w-auto">
-						<option value="name">Name</option>
-						<option value="type_key">Type Key</option>
-						<option value="realm">Realm</option>
-						<option value="scope">Scope</option>
-						<option value="status">Status</option>
-					</Select>
-					<Select bind:value={sortDirection} onchange={updateFilters} class="w-auto">
-						<option value="asc">Ascending</option>
-						<option value="desc">Descending</option>
-					</Select>
 				</div>
+			</details>
 
-				<div class="flex items-center gap-2">
-					<span class="text-sm font-medium text-foreground">Group by:</span>
-					<div class="flex gap-2">
-						<button
-							onclick={() => (viewMode = 'realm')}
-							class="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors pressable {viewMode ===
-							'realm'
-								? 'bg-accent/10 text-accent border border-accent/30'
-								: 'bg-muted text-muted-foreground border border-border hover:border-accent/50 hover:text-foreground'}"
-						>
-							Realm
-						</button>
-						<button
-							onclick={() => (viewMode = 'scope')}
-							class="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors pressable {viewMode ===
-							'scope'
-								? 'bg-accent/10 text-accent border border-accent/30'
-								: 'bg-muted text-muted-foreground border border-border hover:border-accent/50 hover:text-foreground'}"
-						>
-							Scope
-						</button>
-					</div>
-				</div>
-			</div>
-
-			{#if selectedScopeDetails || selectedRealm || activeFacetCount}
-				<div class="grid gap-4 pt-5 border-t border-border md:grid-cols-2">
+			<!-- Active Filter Insights (only when relevant) -->
+			{#if selectedScopeDetails || selectedRealm}
+				<div class="flex flex-wrap gap-3 pt-2 border-t border-border">
 					{#if selectedScopeDetails}
 						<div
-							class="rounded-lg border border-border bg-card p-4 space-y-2 shadow-ink tx tx-frame tx-weak"
+							class="flex-1 min-w-[200px] rounded-lg border border-border bg-muted/30 p-2.5 space-y-1"
 						>
-							<p class="micro-label text-accent">Scope Insight</p>
-							<h4 class="text-lg font-semibold text-foreground">
-								{selectedScopeDetails.label}
-							</h4>
-							<p class="text-sm text-muted-foreground">
+							<p
+								class="text-[10px] uppercase tracking-wide font-semibold text-accent"
+							>
+								Scope: {selectedScopeDetails.label}
+							</p>
+							<p class="text-xs text-muted-foreground leading-snug">
 								{selectedScopeDetails.summary}
 							</p>
 							{#if selectedScopeDetails.typeKeyPattern}
-								<p class="text-xs font-mono text-muted-foreground">
-									Type Key pattern: {selectedScopeDetails.typeKeyPattern}
-								</p>
-							{/if}
-							{#if selectedScopeDetails.facetUsage}
-								<p class="text-xs text-muted-foreground">
-									Facet focus: {selectedScopeDetails.facetUsage}
-								</p>
-							{/if}
-							{#if selectedScopeDetails.notes}
-								<p class="text-xs text-muted-foreground">
-									{selectedScopeDetails.notes}
+								<p class="text-[10px] font-mono text-muted-foreground">
+									Pattern: {selectedScopeDetails.typeKeyPattern}
 								</p>
 							{/if}
 						</div>
 					{/if}
 
-					{#if selectedRealm || activeFacetCount}
+					{#if selectedRealm}
 						<div
-							class="rounded-lg border border-border bg-card p-4 space-y-3 shadow-ink"
+							class="flex-1 min-w-[200px] rounded-lg border border-border bg-muted/30 p-2.5 space-y-1"
 						>
-							{#if selectedRealm}
-								<div>
-									<p class="micro-label text-accent">Realm</p>
-									<p class="text-base font-semibold text-foreground">
-										{formatRealm(selectedRealm)}
-									</p>
-									<p class="text-xs text-muted-foreground">
-										Use realms to cluster templates by practitioner perspective.
-									</p>
-								</div>
-							{/if}
-
-							{#if activeFacetCount}
-								<div class="space-y-2">
-									<p class="micro-label text-accent">Facet Lenses</p>
-									<div class="space-y-3">
-										{#if selectedContexts.length}
-											<div class="space-y-1">
-												<p class="text-xs font-semibold text-foreground">
-													Context
-												</p>
-												<div class="flex flex-wrap gap-2">
-													{#each selectedContexts as value}
-														<span
-															class="inline-flex items-center rounded-full bg-accent/10 text-accent border border-accent/30 px-3 py-1 text-xs"
-														>
-															{facetLabelMap.context?.[value] ??
-																capitalize(value)}
-														</span>
-													{/each}
-												</div>
-											</div>
-										{/if}
-										{#if selectedScales.length}
-											<div class="space-y-1">
-												<p class="text-xs font-semibold text-foreground">
-													Scale
-												</p>
-												<div class="flex flex-wrap gap-2">
-													{#each selectedScales as value}
-														<span
-															class="inline-flex items-center rounded-full bg-emerald-500/10 text-emerald-600 border border-emerald-500/30 px-3 py-1 text-xs"
-														>
-															{facetLabelMap.scale?.[value] ??
-																capitalize(value)}
-														</span>
-													{/each}
-												</div>
-											</div>
-										{/if}
-										{#if selectedStages.length}
-											<div class="space-y-1">
-												<p class="text-xs font-semibold text-foreground">
-													Stage
-												</p>
-												<div class="flex flex-wrap gap-2">
-													{#each selectedStages as value}
-														<span
-															class="inline-flex items-center rounded-full bg-blue-500/10 text-blue-600 border border-blue-500/30 px-3 py-1 text-xs"
-														>
-															{facetLabelMap.stage?.[value] ??
-																capitalize(value)}
-														</span>
-													{/each}
-												</div>
-											</div>
-										{/if}
-									</div>
-								</div>
-							{/if}
+							<p
+								class="text-[10px] uppercase tracking-wide font-semibold text-accent"
+							>
+								Realm: {formatRealm(selectedRealm)}
+							</p>
+							<p class="text-xs text-muted-foreground leading-snug">
+								Templates filtered by practitioner perspective.
+							</p>
 						</div>
 					{/if}
 				</div>

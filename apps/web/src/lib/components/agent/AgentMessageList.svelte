@@ -28,10 +28,16 @@
 </script>
 
 <!-- INKPRINT message container with muted background -->
+<!--
+	Scroll anchoring: We use overflow-anchor CSS to keep the viewport stable while
+	streaming text. The anchor element at the bottom is the preferred anchor point,
+	so new content pushes content up rather than the viewport down.
+-->
 <div
 	bind:this={container}
 	onscroll={onScroll}
 	class="agent-chat-scroll flex-1 min-h-0 space-y-2 overflow-y-auto bg-muted px-3 py-3 sm:px-4 sm:py-4"
+	style="overflow-anchor: auto;"
 >
 	{#if messages.length === 0}
 		<!-- INKPRINT empty state card with Bloom texture -->
@@ -69,7 +75,7 @@
 		{#each messages as message (message.id)}
 			{#if message.type === 'user'}
 				<!-- INKPRINT user message with accent border -->
-				<div class="flex justify-end">
+				<div class="flex justify-end" style="overflow-anchor: none;">
 					<div
 						class="max-w-[88%] rounded-lg border border-accent/30 bg-accent/5 px-3 py-2.5 text-sm font-medium text-foreground shadow-ink sm:max-w-[85%] sm:px-4 sm:py-3"
 					>
@@ -86,7 +92,7 @@
 				</div>
 			{:else if message.type === 'assistant'}
 				<!-- INKPRINT assistant message with Frame texture -->
-				<div class="flex gap-2 sm:gap-3">
+				<div class="flex gap-2 sm:gap-3" style="overflow-anchor: none;">
 					<!-- INKPRINT avatar badge -->
 					<div
 						class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border bg-foreground text-[0.65rem] font-bold uppercase tracking-[0.1em] text-background shadow-ink sm:h-9 sm:w-9"
@@ -115,7 +121,7 @@
 				</div>
 			{:else if message.type === 'agent_peer'}
 				<!-- INKPRINT agent peer message with Thread texture -->
-				<div class="flex gap-2 sm:gap-3">
+				<div class="flex gap-2 sm:gap-3" style="overflow-anchor: none;">
 					<div
 						class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-amber-600/30 bg-amber-50 text-[0.65rem] font-bold uppercase tracking-[0.1em] text-amber-700 shadow-ink tx tx-thread tx-weak dark:bg-amber-950/30 dark:text-amber-400 sm:h-9 sm:w-9"
 					>
@@ -148,7 +154,7 @@
 				/>
 			{:else if message.type === 'clarification'}
 				<!-- INKPRINT clarification message with Bloom texture -->
-				<div class="flex gap-2 sm:gap-3">
+				<div class="flex gap-2 sm:gap-3" style="overflow-anchor: none;">
 					<div
 						class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-emerald-600/30 bg-emerald-50 text-[0.65rem] font-bold uppercase tracking-[0.1em] text-emerald-700 shadow-ink tx tx-bloom tx-weak dark:bg-emerald-950/30 dark:text-emerald-400 sm:h-9 sm:w-9"
 					>
@@ -198,12 +204,16 @@
 				{#if dev}
 					<div
 						class="rounded-lg border border-amber-600/30 bg-amber-50 px-2 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-amber-700 tx tx-static tx-weak dark:bg-amber-950/20 dark:text-amber-400"
+						style="overflow-anchor: none;"
 					>
 						⚠️ Dev Warning: Legacy plan message
 					</div>
 				{/if}
 				<!-- Legacy plan with INKPRINT styling -->
-				<div class="flex gap-1.5 text-[0.65rem] text-muted-foreground">
+				<div
+					class="flex gap-1.5 text-[0.65rem] text-muted-foreground"
+					style="overflow-anchor: none;"
+				>
 					<div class="w-12 shrink-0 pt-[2px] font-mono uppercase tracking-[0.1em]">
 						{formatTime(message.timestamp)}
 					</div>
@@ -238,12 +248,16 @@
 				{#if dev}
 					<div
 						class="rounded-lg border border-amber-600/30 bg-amber-50 px-2 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-amber-700 tx tx-static tx-weak dark:bg-amber-950/20 dark:text-amber-400"
+						style="overflow-anchor: none;"
 					>
 						⚠️ Dev Warning: Legacy activity message
 					</div>
 				{/if}
 				<!-- Legacy activity with INKPRINT styling -->
-				<div class="flex gap-1.5 text-[0.65rem] text-muted-foreground">
+				<div
+					class="flex gap-1.5 text-[0.65rem] text-muted-foreground"
+					style="overflow-anchor: none;"
+				>
 					<div class="w-12 shrink-0 pt-[2px] font-mono uppercase tracking-[0.1em]">
 						{formatTime(message.timestamp)}
 					</div>
@@ -255,7 +269,10 @@
 				</div>
 			{:else}
 				<!-- Default message with INKPRINT styling -->
-				<div class="flex gap-1.5 text-[0.65rem] text-muted-foreground">
+				<div
+					class="flex gap-1.5 text-[0.65rem] text-muted-foreground"
+					style="overflow-anchor: none;"
+				>
 					<div class="w-12 shrink-0 pt-[2px] font-mono uppercase tracking-[0.1em]">
 						{formatTime(message.timestamp)}
 					</div>
@@ -267,5 +284,15 @@
 				</div>
 			{/if}
 		{/each}
+		<!--
+			Scroll anchor: This invisible element at the bottom serves as the anchor point
+			for the browser's scroll anchoring. When content grows above it (like streaming text),
+			the browser keeps this anchor in view, preventing the "expanding down" effect.
+		-->
+		<div
+			class="scroll-anchor h-px w-full"
+			style="overflow-anchor: auto;"
+			aria-hidden="true"
+		></div>
 	{/if}
 </div>

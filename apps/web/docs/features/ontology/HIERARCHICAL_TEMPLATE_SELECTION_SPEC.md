@@ -36,12 +36,12 @@ User Context → Search 30 Templates → LLM Scores All → Best Match or Create
 
 ### Impact
 
-| Scope | Templates | Families | Problem |
-|-------|-----------|----------|---------|
-| plan | 20+ | 6 | May miss `plan.roadmap.*` if keywords match `plan.timebox.*` |
-| task | 12+ | 8 | Specializations compete with base work modes |
-| output | 25+ | 4 | Written/media/software/operational mixed together |
-| document | 20+ | 6 | Context/knowledge/spec families conflated |
+| Scope    | Templates | Families | Problem                                                      |
+| -------- | --------- | -------- | ------------------------------------------------------------ |
+| plan     | 20+       | 6        | May miss `plan.roadmap.*` if keywords match `plan.timebox.*` |
+| task     | 12+       | 8        | Specializations compete with base work modes                 |
+| output   | 25+       | 4        | Written/media/software/operational mixed together            |
+| document | 20+       | 6        | Context/knowledge/spec families conflated                    |
 
 ---
 
@@ -82,76 +82,76 @@ User Context → Search 30 Templates → LLM Scores All → Best Match or Create
 
 ### Plans (`plan.{family}[.{variant}]`)
 
-| Family | Description | Example Variants |
-|--------|-------------|------------------|
-| `timebox` | Fixed time windows | sprint, weekly, daily, monthly |
-| `pipeline` | Stage-based funnels | sales, kanban, hiring |
+| Family     | Description          | Example Variants                    |
+| ---------- | -------------------- | ----------------------------------- |
+| `timebox`  | Fixed time windows   | sprint, weekly, daily, monthly      |
+| `pipeline` | Stage-based funnels  | sales, kanban, hiring               |
 | `campaign` | Multi-channel pushes | marketing, content_calendar, launch |
-| `roadmap` | Long-term direction | product, strategy, technical |
-| `process` | Repeatable workflows | client_onboarding, release, review |
-| `phase` | Project phases | project, discovery, execution |
+| `roadmap`  | Long-term direction  | product, strategy, technical        |
+| `process`  | Repeatable workflows | client_onboarding, release, review  |
+| `phase`    | Project phases       | project, discovery, execution       |
 
 ### Tasks (`task.{work_mode}[.{specialization}]`)
 
-| Work Mode | Description | Example Specializations |
-|-----------|-------------|------------------------|
-| `execute` | Action tasks (default) | deploy, migration, setup, checklist |
-| `create` | Produce new artifacts | design, prototype, draft |
-| `refine` | Improve existing work | edit, optimize, polish |
-| `research` | Investigate & gather | competitor, user, market |
-| `review` | Evaluate & feedback | code, design, document |
-| `coordinate` | Sync with others | meeting, standup, interview |
-| `admin` | Administrative tasks | reporting, cleanup, filing |
-| `plan` | Strategic thinking | sprint, roadmap, backlog |
+| Work Mode    | Description            | Example Specializations             |
+| ------------ | ---------------------- | ----------------------------------- |
+| `execute`    | Action tasks (default) | deploy, migration, setup, checklist |
+| `create`     | Produce new artifacts  | design, prototype, draft            |
+| `refine`     | Improve existing work  | edit, optimize, polish              |
+| `research`   | Investigate & gather   | competitor, user, market            |
+| `review`     | Evaluate & feedback    | code, design, document              |
+| `coordinate` | Sync with others       | meeting, standup, interview         |
+| `admin`      | Administrative tasks   | reporting, cleanup, filing          |
+| `plan`       | Strategic thinking     | sprint, roadmap, backlog            |
 
 ### Goals (`goal.{family}[.{variant}]`)
 
-| Family | Description | Example Variants |
-|--------|-------------|------------------|
-| `outcome` | Binary completion | project, milestone, launch |
-| `metric` | Quantitative targets | revenue, usage, retention |
-| `behavior` | Frequency/consistency | cadence, habit, practice |
-| `learning` | Skill progression | skill, certification, mastery |
+| Family     | Description           | Example Variants              |
+| ---------- | --------------------- | ----------------------------- |
+| `outcome`  | Binary completion     | project, milestone, launch    |
+| `metric`   | Quantitative targets  | revenue, usage, retention     |
+| `behavior` | Frequency/consistency | cadence, habit, practice      |
+| `learning` | Skill progression     | skill, certification, mastery |
 
 ### Documents (`document.{family}[.{variant}]`)
 
-| Family | Description | Example Variants |
-|--------|-------------|------------------|
-| `context` | Big picture/intent | project, product, team |
-| `knowledge` | Research/findings | research, analysis, notes |
-| `decision` | Decisions/commitments | adr, meeting_notes, rfc |
-| `spec` | Formalized what/how | technical, product, api |
-| `reference` | Reusable guides | handbook, playbook, guide |
-| `intake` | Information at start | client, project, requirements |
+| Family      | Description           | Example Variants              |
+| ----------- | --------------------- | ----------------------------- |
+| `context`   | Big picture/intent    | project, product, team        |
+| `knowledge` | Research/findings     | research, analysis, notes     |
+| `decision`  | Decisions/commitments | adr, meeting_notes, rfc       |
+| `spec`      | Formalized what/how   | technical, product, api       |
+| `reference` | Reusable guides       | handbook, playbook, guide     |
+| `intake`    | Information at start  | client, project, requirements |
 
 ### Outputs (`output.{family}[.{variant}]`)
 
-| Family | Description | Example Variants |
-|--------|-------------|------------------|
-| `written` | Long-form text | chapter, article, blog_post, report |
-| `media` | Visual/audio/video | design_mockup, slide_deck, video |
-| `software` | Code/releases | feature, release, api, component |
-| `operational` | Business deliverables | report, dashboard, analysis |
+| Family        | Description           | Example Variants                    |
+| ------------- | --------------------- | ----------------------------------- |
+| `written`     | Long-form text        | chapter, article, blog_post, report |
+| `media`       | Visual/audio/video    | design_mockup, slide_deck, video    |
+| `software`    | Code/releases         | feature, release, api, component    |
+| `operational` | Business deliverables | report, dashboard, analysis         |
 
 ### Risks (`risk.{family}[.{variant}]`)
 
-| Family | Description | Example Variants |
-|--------|-------------|------------------|
+| Family      | Description       | Example Variants                   |
+| ----------- | ----------------- | ---------------------------------- |
 | `technical` | Tech/architecture | security, scalability, reliability |
-| `schedule` | Timing/deadlines | dependency, delay, milestone |
-| `resource` | People/skills | skill_gap, bandwidth, turnover |
-| `budget` | Money-related | overrun, funding, vendor |
-| `scope` | Scope issues | creep, ambiguity, change |
-| `external` | Outside factors | regulatory, market, vendor |
-| `quality` | Quality issues | bugs, ux, performance |
+| `schedule`  | Timing/deadlines  | dependency, delay, milestone       |
+| `resource`  | People/skills     | skill_gap, bandwidth, turnover     |
+| `budget`    | Money-related     | overrun, funding, vendor           |
+| `scope`     | Scope issues      | creep, ambiguity, change           |
+| `external`  | Outside factors   | regulatory, market, vendor         |
+| `quality`   | Quality issues    | bugs, ux, performance              |
 
 ### Events (`event.{family}[.{variant}]`)
 
-| Family | Description | Example Variants |
-|--------|-------------|------------------|
-| `work` | Individual sessions | focus_block, time_block, deep_work |
-| `collab` | Coordination | meeting, standup, workshop, one_on_one |
-| `marker` | Deadlines/reminders | deadline, reminder, milestone |
+| Family   | Description         | Example Variants                       |
+| -------- | ------------------- | -------------------------------------- |
+| `work`   | Individual sessions | focus_block, time_block, deep_work     |
+| `collab` | Coordination        | meeting, standup, workshop, one_on_one |
+| `marker` | Deadlines/reminders | deadline, reminder, milestone          |
 
 ---
 
@@ -163,25 +163,25 @@ User Context → Search 30 Templates → LLM Scores All → Best Match or Create
 
 ```typescript
 interface FamilyCache {
-  /** Scope → Family definitions */
-  families: Map<EntityScope, FamilyCacheEntry[]>;
-  /** Last refresh timestamp */
-  lastRefreshed: number;
-  /** Cache TTL in milliseconds */
-  ttlMs: number;
+	/** Scope → Family definitions */
+	families: Map<EntityScope, FamilyCacheEntry[]>;
+	/** Last refresh timestamp */
+	lastRefreshed: number;
+	/** Cache TTL in milliseconds */
+	ttlMs: number;
 }
 
 interface FamilyCacheEntry {
-  /** Family key (e.g., "timebox", "execute") */
-  key: string;
-  /** Human-readable name */
-  name: string;
-  /** Description for LLM context */
-  description: string;
-  /** Example type_keys in this family */
-  examples: string[];
-  /** Number of templates in this family */
-  templateCount: number;
+	/** Family key (e.g., "timebox", "execute") */
+	key: string;
+	/** Human-readable name */
+	name: string;
+	/** Description for LLM context */
+	description: string;
+	/** Example type_keys in this family */
+	examples: string[];
+	/** Number of templates in this family */
+	templateCount: number;
 }
 ```
 
@@ -190,47 +190,47 @@ interface FamilyCacheEntry {
 ```typescript
 // Populate from onto_templates table
 async function populateFamilyCache(
-  client: TypedSupabaseClient,
-  scope: EntityScope
+	client: TypedSupabaseClient,
+	scope: EntityScope
 ): Promise<FamilyCacheEntry[]> {
-  // Query distinct families from templates
-  const { data } = await client
-    .from('onto_templates')
-    .select('type_key, name, metadata')
-    .eq('scope', scope)
-    .eq('status', 'active');
+	// Query distinct families from templates
+	const { data } = await client
+		.from('onto_templates')
+		.select('type_key, name, metadata')
+		.eq('scope', scope)
+		.eq('status', 'active');
 
-  // Extract families from type_keys
-  const familyMap = new Map<string, FamilyCacheEntry>();
+	// Extract families from type_keys
+	const familyMap = new Map<string, FamilyCacheEntry>();
 
-  for (const template of data ?? []) {
-    const family = extractFamily(template.type_key, scope);
-    if (!familyMap.has(family)) {
-      familyMap.set(family, {
-        key: family,
-        name: getFamilyDisplayName(family, scope),
-        description: getFamilyDescription(family, scope),
-        examples: [],
-        templateCount: 0
-      });
-    }
-    const entry = familyMap.get(family)!;
-    entry.examples.push(template.type_key);
-    entry.templateCount++;
-  }
+	for (const template of data ?? []) {
+		const family = extractFamily(template.type_key, scope);
+		if (!familyMap.has(family)) {
+			familyMap.set(family, {
+				key: family,
+				name: getFamilyDisplayName(family, scope),
+				description: getFamilyDescription(family, scope),
+				examples: [],
+				templateCount: 0
+			});
+		}
+		const entry = familyMap.get(family)!;
+		entry.examples.push(template.type_key);
+		entry.templateCount++;
+	}
 
-  return Array.from(familyMap.values());
+	return Array.from(familyMap.values());
 }
 ```
 
 #### Cache Configuration
 
-| Setting | Value | Rationale |
-|---------|-------|-----------|
-| **TTL** | 1 hour | Templates rarely change during migration |
-| **Refresh Strategy** | Lazy | Refresh on first access after TTL |
-| **Scope** | Per-service instance | Shared across batch operations |
-| **Invalidation** | On template CRUD | Clear relevant scope on template changes |
+| Setting              | Value                | Rationale                                |
+| -------------------- | -------------------- | ---------------------------------------- |
+| **TTL**              | 1 hour               | Templates rarely change during migration |
+| **Refresh Strategy** | Lazy                 | Refresh on first access after TTL        |
+| **Scope**            | Per-service instance | Shared across batch operations           |
+| **Invalidation**     | On template CRUD     | Clear relevant scope on template changes |
 
 ### 2. Phase 1: Family Selection
 
@@ -238,10 +238,10 @@ async function populateFamilyCache(
 
 ```typescript
 const FAMILY_SELECTION_CONFIG = {
-  profile: 'fast' as const,        // Uses fastest available model
-  temperature: 0.1,                 // Low temperature for consistent selection
-  maxTokens: 150,                   // Small response (just family + rationale)
-  operationType: 'template_selection.family'
+	profile: 'fast' as const, // Uses fastest available model
+	temperature: 0.1, // Low temperature for consistent selection
+	maxTokens: 150, // Small response (just family + rationale)
+	operationType: 'template_selection.family'
 };
 ```
 
@@ -249,19 +249,19 @@ const FAMILY_SELECTION_CONFIG = {
 
 ```typescript
 function buildFamilySelectionPrompt(
-  scope: EntityScope,
-  context: string,
-  families: FamilyCacheEntry[]
+	scope: EntityScope,
+	context: string,
+	families: FamilyCacheEntry[]
 ): { system: string; user: string } {
-  const familyList = families
-    .map(f => `- ${f.key}: ${f.description} (${f.templateCount} templates)`)
-    .join('\n');
+	const familyList = families
+		.map((f) => `- ${f.key}: ${f.description} (${f.templateCount} templates)`)
+		.join('\n');
 
-  return {
-    system: `You select the best ${scope} family for a given context.
+	return {
+		system: `You select the best ${scope} family for a given context.
 Choose ONLY from the provided families. Be decisive.`,
 
-    user: `## Context
+		user: `## Context
 ${context}
 
 ## Available Families
@@ -271,7 +271,7 @@ ${familyList}
 { "family": "selected_family_key", "confidence": 0-100, "rationale": "brief reason" }
 
 Select the single best matching family.`
-  };
+	};
 }
 ```
 
@@ -279,9 +279,9 @@ Select the single best matching family.`
 
 ```typescript
 interface FamilySelectionResponse {
-  family: string;      // e.g., "timebox"
-  confidence: number;  // 0-100
-  rationale: string;   // Brief explanation
+	family: string; // e.g., "timebox"
+	confidence: number; // 0-100
+	rationale: string; // Brief explanation
 }
 ```
 
@@ -291,21 +291,21 @@ interface FamilySelectionResponse {
 
 ```typescript
 async function queryFamilyVariants(
-  client: TypedSupabaseClient,
-  scope: EntityScope,
-  family: string
+	client: TypedSupabaseClient,
+	scope: EntityScope,
+	family: string
 ): Promise<TemplateRow[]> {
-  const familyPrefix = `${scope}.${family}`;
+	const familyPrefix = `${scope}.${family}`;
 
-  const { data } = await client
-    .from('onto_templates')
-    .select('*')
-    .eq('scope', scope)
-    .eq('status', 'active')
-    .like('type_key', `${familyPrefix}%`)
-    .order('type_key');
+	const { data } = await client
+		.from('onto_templates')
+		.select('*')
+		.eq('scope', scope)
+		.eq('status', 'active')
+		.like('type_key', `${familyPrefix}%`)
+		.order('type_key');
 
-  return data ?? [];
+	return data ?? [];
 }
 ```
 
@@ -315,20 +315,20 @@ Uses existing `scoreTemplates()` logic but with a narrowed template set:
 
 ```typescript
 async function scoreVariants(
-  templates: TemplateRow[],
-  context: string,
-  scope: EntityScope,
-  family: string,
-  userId: string
+	templates: TemplateRow[],
+	context: string,
+	scope: EntityScope,
+	family: string,
+	userId: string
 ): Promise<TemplateSearchResult[]> {
-  // Reuse existing scoring logic with focused template set
-  // Templates array is now 3-10 items instead of 30
-  return this.scoreTemplates(
-    templates.map(t => ({ template: t, score: 0 })),
-    context,
-    scope,
-    userId
-  );
+	// Reuse existing scoring logic with focused template set
+	// Templates array is now 3-10 items instead of 30
+	return this.scoreTemplates(
+		templates.map((t) => ({ template: t, score: 0 })),
+		context,
+		scope,
+		userId
+	);
 }
 ```
 
@@ -428,25 +428,25 @@ private async classifyBatchHierarchical(
 // Add to find-or-create-template.service.ts
 
 export interface HierarchicalSelectionOptions extends FindOrCreateTemplateOptions {
-  /** Skip Phase 1 and use this family directly */
-  preselectedFamily?: string;
-  /** Force flat selection (skip hierarchical) */
-  useFlat?: boolean;
+	/** Skip Phase 1 and use this family directly */
+	preselectedFamily?: string;
+	/** Force flat selection (skip hierarchical) */
+	useFlat?: boolean;
 }
 
 export interface FamilySelectionResult {
-  family: string;
-  confidence: number;
-  rationale: string;
-  cached: boolean;
-  durationMs: number;
+	family: string;
+	confidence: number;
+	rationale: string;
+	cached: boolean;
+	durationMs: number;
 }
 
 export interface HierarchicalSelectionResult extends FindOrCreateResult {
-  /** Phase 1 result */
-  familySelection?: FamilySelectionResult;
-  /** Number of variants evaluated in Phase 2 */
-  variantsEvaluated?: number;
+	/** Phase 1 result */
+	familySelection?: FamilySelectionResult;
+	/** Number of variants evaluated in Phase 2 */
+	variantsEvaluated?: number;
 }
 ```
 
@@ -456,24 +456,24 @@ export interface HierarchicalSelectionResult extends FindOrCreateResult {
 // New file: template-family-cache.service.ts
 
 export interface TemplateFamilyCache {
-  /** Get cached families for a scope */
-  getFamilies(scope: EntityScope): Promise<FamilyCacheEntry[]>;
+	/** Get cached families for a scope */
+	getFamilies(scope: EntityScope): Promise<FamilyCacheEntry[]>;
 
-  /** Force refresh cache for a scope */
-  refreshCache(scope: EntityScope): Promise<void>;
+	/** Force refresh cache for a scope */
+	refreshCache(scope: EntityScope): Promise<void>;
 
-  /** Invalidate cache (called on template CRUD) */
-  invalidate(scope?: EntityScope): void;
+	/** Invalidate cache (called on template CRUD) */
+	invalidate(scope?: EntityScope): void;
 
-  /** Get cache stats */
-  getStats(): CacheStats;
+	/** Get cache stats */
+	getStats(): CacheStats;
 }
 
 export interface CacheStats {
-  hitCount: number;
-  missCount: number;
-  refreshCount: number;
-  lastRefreshByScope: Record<EntityScope, number>;
+	hitCount: number;
+	missCount: number;
+	refreshCount: number;
+	lastRefreshByScope: Record<EntityScope, number>;
 }
 ```
 
@@ -483,31 +483,31 @@ export interface CacheStats {
 
 ### Token Usage Comparison
 
-| Phase | Current (Flat) | Proposed (Hierarchical) |
-|-------|---------------|-------------------------|
-| Template Search | N/A | N/A |
-| Family Selection | N/A | ~200 tokens (fast model) |
+| Phase            | Current (Flat)              | Proposed (Hierarchical)     |
+| ---------------- | --------------------------- | --------------------------- |
+| Template Search  | N/A                         | N/A                         |
+| Family Selection | N/A                         | ~200 tokens (fast model)    |
 | Template Scoring | ~3000 tokens (30 templates) | ~600 tokens (5-10 variants) |
-| **Total** | ~3000 tokens | ~800 tokens |
-| **Reduction** | - | **~73% fewer tokens** |
+| **Total**        | ~3000 tokens                | ~800 tokens                 |
+| **Reduction**    | -                           | **~73% fewer tokens**       |
 
 ### Latency Comparison
 
-| Phase | Current | Proposed |
-|-------|---------|----------|
-| Search | 50ms | 10ms (cached families) |
-| LLM Call 1 | 800ms (30 templates) | 200ms (fast model, 6-8 families) |
-| LLM Call 2 | N/A | 400ms (5-10 variants) |
-| **Total** | ~850ms | ~610ms |
-| **Improvement** | - | **~28% faster** |
+| Phase           | Current              | Proposed                         |
+| --------------- | -------------------- | -------------------------------- |
+| Search          | 50ms                 | 10ms (cached families)           |
+| LLM Call 1      | 800ms (30 templates) | 200ms (fast model, 6-8 families) |
+| LLM Call 2      | N/A                  | 400ms (5-10 variants)            |
+| **Total**       | ~850ms               | ~610ms                           |
+| **Improvement** | -                    | **~28% faster**                  |
 
 ### Accuracy Improvement
 
-| Metric | Current | Proposed |
-|--------|---------|----------|
-| Family Coverage | Partial (keyword-dependent) | 100% (all families evaluated) |
-| False Positives | Higher (unrelated families scored) | Lower (focused evaluation) |
-| Template Creation | May create in wrong family | Always in correct family |
+| Metric            | Current                            | Proposed                      |
+| ----------------- | ---------------------------------- | ----------------------------- |
+| Family Coverage   | Partial (keyword-dependent)        | 100% (all families evaluated) |
+| False Positives   | Higher (unrelated families scored) | Lower (focused evaluation)    |
+| Template Creation | May create in wrong family         | Always in correct family      |
 
 ---
 
@@ -549,18 +549,18 @@ export interface CacheStats {
 
 ```typescript
 describe('TemplateFamilyCacheService', () => {
-  it('should cache families by scope');
-  it('should refresh after TTL expires');
-  it('should invalidate on template CRUD');
-  it('should handle empty scope gracefully');
+	it('should cache families by scope');
+	it('should refresh after TTL expires');
+	it('should invalidate on template CRUD');
+	it('should handle empty scope gracefully');
 });
 
 describe('HierarchicalTemplateSelection', () => {
-  it('should select correct family for plan context');
-  it('should select correct work_mode for task context');
-  it('should fall back to flat for project scope');
-  it('should use cached families');
-  it('should create variant in selected family');
+	it('should select correct family for plan context');
+	it('should select correct work_mode for task context');
+	it('should fall back to flat for project scope');
+	it('should use cached families');
+	it('should create variant in selected family');
 });
 ```
 
@@ -568,14 +568,14 @@ describe('HierarchicalTemplateSelection', () => {
 
 ```typescript
 describe('BatchTaskMigration with Hierarchical Selection', () => {
-  it('should classify tasks with two-phase approach');
-  it('should group specializations by work_mode');
-  it('should handle mixed work_modes in batch');
+	it('should classify tasks with two-phase approach');
+	it('should group specializations by work_mode');
+	it('should handle mixed work_modes in batch');
 });
 
 describe('EnhancedPlanMigrator with Hierarchical Selection', () => {
-  it('should select plan family before variant');
-  it('should create new variant in correct family');
+	it('should select plan family before variant');
+	it('should create new variant in correct family');
 });
 ```
 
@@ -583,10 +583,10 @@ describe('EnhancedPlanMigrator with Hierarchical Selection', () => {
 
 ```typescript
 describe('Family Selection Accuracy', () => {
-  it('should select timebox for sprint-related context');
-  it('should select campaign for marketing context');
-  it('should select execute for action tasks');
-  it('should select coordinate for meeting tasks');
+	it('should select timebox for sprint-related context');
+	it('should select campaign for marketing context');
+	it('should select execute for action tasks');
+	it('should select coordinate for meeting tasks');
 });
 ```
 
@@ -612,6 +612,7 @@ const FEATURE_FLAGS = {
 ### Rollback Trigger
 
 If any of these occur, disable feature flag:
+
 - Family selection accuracy < 80%
 - Overall migration success rate drops > 5%
 - Template creation in wrong family > 2%
@@ -620,29 +621,29 @@ If any of these occur, disable feature flag:
 
 ## Success Metrics
 
-| Metric | Target | Measurement |
-|--------|--------|-------------|
-| Token Reduction | >60% | Compare before/after per migration |
-| Latency Improvement | >20% | Measure P50/P95 template selection time |
-| Family Accuracy | >90% | Manual review of 100 migrations |
-| Variant Accuracy | >85% | Compare with human selection |
-| Cache Hit Rate | >95% | Track cache hits vs misses |
+| Metric              | Target | Measurement                             |
+| ------------------- | ------ | --------------------------------------- |
+| Token Reduction     | >60%   | Compare before/after per migration      |
+| Latency Improvement | >20%   | Measure P50/P95 template selection time |
+| Family Accuracy     | >90%   | Manual review of 100 migrations         |
+| Variant Accuracy    | >85%   | Compare with human selection            |
+| Cache Hit Rate      | >95%   | Track cache hits vs misses              |
 
 ---
 
 ## Open Questions
 
 1. **Should project scope also use hierarchical?**
-   - Project uses `domain.deliverable` pattern which is more varied
-   - May need different approach (domain → deliverable)
+    - Project uses `domain.deliverable` pattern which is more varied
+    - May need different approach (domain → deliverable)
 
 2. **How to handle new families not in cache?**
-   - Option A: Refresh cache on cache miss
-   - Option B: Allow LLM to suggest new family
+    - Option A: Refresh cache on cache miss
+    - Option B: Allow LLM to suggest new family
 
 3. **Batch optimization for Phase 1?**
-   - Could classify multiple entities' families in single LLM call
-   - Trade-off: latency vs accuracy for diverse batches
+    - Could classify multiple entities' families in single LLM call
+    - Trade-off: latency vs accuracy for diverse batches
 
 ---
 
@@ -658,6 +659,7 @@ If any of these occur, disable feature flag:
 ## Changelog
 
 ### December 9, 2025 - Initial Draft
+
 - Created specification based on assessment of current implementation
 - Defined two-phase hierarchical approach
 - Added caching layer design

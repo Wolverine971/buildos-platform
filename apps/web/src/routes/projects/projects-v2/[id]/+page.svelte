@@ -1283,7 +1283,6 @@
 		<PlanEditModal
 			planId={editingPlanId}
 			projectId={project.id}
-			{tasks}
 			onClose={() => (editingPlanId = null)}
 			onUpdated={refreshProjectData}
 			onDeleted={async () => {

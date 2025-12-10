@@ -10,6 +10,7 @@
 ## Executive Summary
 
 This specification defines enhancements to the admin ontology graph viewer to:
+
 1. Display **all entity types** connected to projects (not just 5 of 15)
 2. Show **complete edge relationships** between all entities
 3. Apply **best practice styling** for node/edge visualization
@@ -21,28 +22,28 @@ This specification defines enhancements to the admin ontology graph viewer to:
 
 ### What's Currently Loaded (5 of 15 Entity Types)
 
-| Entity | Table | Loaded | Visualized |
-|--------|-------|--------|------------|
-| Templates | `onto_templates` | Yes | Yes |
-| Projects | `onto_projects` | Yes | Yes |
-| Tasks | `onto_tasks` | Yes | Yes |
-| Outputs | `onto_outputs` | Yes | Yes |
-| Documents | `onto_documents` | Yes | Yes |
+| Entity    | Table            | Loaded | Visualized |
+| --------- | ---------------- | ------ | ---------- |
+| Templates | `onto_templates` | Yes    | Yes        |
+| Projects  | `onto_projects`  | Yes    | Yes        |
+| Tasks     | `onto_tasks`     | Yes    | Yes        |
+| Outputs   | `onto_outputs`   | Yes    | Yes        |
+| Documents | `onto_documents` | Yes    | Yes        |
 
 ### What's Missing (10 Entity Types)
 
-| Entity | Table | Has Edges | Priority |
-|--------|-------|-----------|----------|
-| **Plans** | `onto_plans` | Yes (belongs_to_plan, has_task) | HIGH |
-| **Goals** | `onto_goals` | Yes (supports_goal, requires) | HIGH |
-| **Milestones** | `onto_milestones` | Yes (targets_milestone, contains) | HIGH |
-| Requirements | `onto_requirements` | Yes (has_requirement) | MEDIUM |
-| Risks | `onto_risks` | Possible | MEDIUM |
-| Metrics | `onto_metrics` | Possible | LOW |
-| Metric Points | `onto_metric_points` | No (data points) | SKIP |
-| Decisions | `onto_decisions` | Possible | LOW |
-| Sources | `onto_sources` | Yes (has_source) | LOW |
-| Signals | `onto_signals` | Yes (has_signal) | LOW |
+| Entity         | Table                | Has Edges                         | Priority |
+| -------------- | -------------------- | --------------------------------- | -------- |
+| **Plans**      | `onto_plans`         | Yes (belongs_to_plan, has_task)   | HIGH     |
+| **Goals**      | `onto_goals`         | Yes (supports_goal, requires)     | HIGH     |
+| **Milestones** | `onto_milestones`    | Yes (targets_milestone, contains) | HIGH     |
+| Requirements   | `onto_requirements`  | Yes (has_requirement)             | MEDIUM   |
+| Risks          | `onto_risks`         | Possible                          | MEDIUM   |
+| Metrics        | `onto_metrics`       | Possible                          | LOW      |
+| Metric Points  | `onto_metric_points` | No (data points)                  | SKIP     |
+| Decisions      | `onto_decisions`     | Possible                          | LOW      |
+| Sources        | `onto_sources`       | Yes (has_source)                  | LOW      |
+| Signals        | `onto_signals`       | Yes (has_signal)                  | LOW      |
 
 ### Current Edge Problem
 
@@ -51,7 +52,7 @@ The graph currently filters edges to only include those where **both source AND 
 ```typescript
 // Current behavior in graph.service.ts:219
 const filteredEdges = edges.filter(
-  (edge) => nodeIds.has(edge.data.source) && nodeIds.has(edge.data.target)
+	(edge) => nodeIds.has(edge.data.source) && nodeIds.has(edge.data.target)
 );
 ```
 
@@ -69,27 +70,27 @@ Add queries for missing high-priority entities:
 
 ```typescript
 const [
-  templatesRes,
-  projectsRes,
-  edgesRes,
-  tasksRes,
-  outputsRes,
-  documentsRes,
-  // NEW:
-  plansRes,
-  goalsRes,
-  milestonesRes
+	templatesRes,
+	projectsRes,
+	edgesRes,
+	tasksRes,
+	outputsRes,
+	documentsRes,
+	// NEW:
+	plansRes,
+	goalsRes,
+	milestonesRes
 ] = await Promise.all([
-  adminClient.from('onto_templates').select('*').eq('status', 'active'),
-  adminClient.from('onto_projects').select('*'),
-  adminClient.from('onto_edges').select('*'),
-  adminClient.from('onto_tasks').select('*'),
-  adminClient.from('onto_outputs').select('*'),
-  adminClient.from('onto_documents').select('*'),
-  // NEW:
-  adminClient.from('onto_plans').select('*'),
-  adminClient.from('onto_goals').select('*'),
-  adminClient.from('onto_milestones').select('*')
+	adminClient.from('onto_templates').select('*').eq('status', 'active'),
+	adminClient.from('onto_projects').select('*'),
+	adminClient.from('onto_edges').select('*'),
+	adminClient.from('onto_tasks').select('*'),
+	adminClient.from('onto_outputs').select('*'),
+	adminClient.from('onto_documents').select('*'),
+	// NEW:
+	adminClient.from('onto_plans').select('*'),
+	adminClient.from('onto_goals').select('*'),
+	adminClient.from('onto_milestones').select('*')
 ]);
 ```
 
@@ -103,42 +104,42 @@ export type OntoMilestone = Database['public']['Tables']['onto_milestones']['Row
 
 // Expand NodeType union
 export type NodeType =
-  | 'template'
-  | 'project'
-  | 'task'
-  | 'output'
-  | 'document'
-  | 'plan'      // NEW
-  | 'goal'      // NEW
-  | 'milestone'; // NEW
+	| 'template'
+	| 'project'
+	| 'task'
+	| 'output'
+	| 'document'
+	| 'plan' // NEW
+	| 'goal' // NEW
+	| 'milestone'; // NEW
 
 // Update GraphSourceData
 export interface GraphSourceData {
-  templates: OntoTemplate[];
-  projects: OntoProject[];
-  edges: OntoEdge[];
-  tasks: OntoTask[];
-  outputs: OntoOutput[];
-  documents: OntoDocument[];
-  // NEW:
-  plans: OntoPlan[];
-  goals: OntoGoal[];
-  milestones: OntoMilestone[];
+	templates: OntoTemplate[];
+	projects: OntoProject[];
+	edges: OntoEdge[];
+	tasks: OntoTask[];
+	outputs: OntoOutput[];
+	documents: OntoDocument[];
+	// NEW:
+	plans: OntoPlan[];
+	goals: OntoGoal[];
+	milestones: OntoMilestone[];
 }
 
 // Update GraphStats
 export interface GraphStats {
-  totalTemplates: number;
-  totalProjects: number;
-  activeProjects: number;
-  totalEdges: number;
-  totalTasks: number;
-  totalOutputs: number;
-  totalDocuments: number;
-  // NEW:
-  totalPlans: number;
-  totalGoals: number;
-  totalMilestones: number;
+	totalTemplates: number;
+	totalProjects: number;
+	activeProjects: number;
+	totalEdges: number;
+	totalTasks: number;
+	totalOutputs: number;
+	totalDocuments: number;
+	// NEW:
+	totalPlans: number;
+	totalGoals: number;
+	totalMilestones: number;
 }
 ```
 
@@ -231,15 +232,15 @@ case 'projects': {
 
 ```typescript
 const filters = [
-  { value: 'all', label: 'All Nodes' },
-  { value: 'template', label: 'Templates' },
-  { value: 'project', label: 'Projects' },
-  { value: 'task', label: 'Tasks' },
-  { value: 'plan', label: 'Plans' },      // NEW
-  { value: 'goal', label: 'Goals' },      // NEW
-  { value: 'milestone', label: 'Milestones' }, // NEW
-  { value: 'output', label: 'Outputs' },
-  { value: 'document', label: 'Documents' }
+	{ value: 'all', label: 'All Nodes' },
+	{ value: 'template', label: 'Templates' },
+	{ value: 'project', label: 'Projects' },
+	{ value: 'task', label: 'Tasks' },
+	{ value: 'plan', label: 'Plans' }, // NEW
+	{ value: 'goal', label: 'Goals' }, // NEW
+	{ value: 'milestone', label: 'Milestones' }, // NEW
+	{ value: 'output', label: 'Outputs' },
+	{ value: 'document', label: 'Documents' }
 ];
 ```
 
@@ -251,34 +252,34 @@ const filters = [
 
 Design a cohesive color system for all entity types with light/dark mode support:
 
-| Entity Type | Light Mode | Dark Mode | Shape | Size Range | Semantic |
-|-------------|------------|-----------|-------|------------|----------|
-| Template (abstract) | `#9ca3af` | `#6b7280` | hexagon | 40 | Gray - meta |
-| Template (concrete) | `#3b82f6` | `#60a5fa` | hexagon | 40 | Blue - definition |
-| Project (draft) | `#9ca3af` | `#6b7280` | round-rectangle | 30-60 | Gray - inactive |
-| Project (active) | `#10b981` | `#34d399` | round-rectangle | 30-60 | Green - active |
-| Project (complete) | `#3b82f6` | `#60a5fa` | round-rectangle | 30-60 | Blue - done |
-| Task (todo) | `#f59e0b` | `#fbbf24` | ellipse | 25 | Amber - pending |
-| Task (done) | `#10b981` | `#34d399` | ellipse | 25 | Green - complete |
-| Plan | `#8b5cf6` | `#a78bfa` | round-rectangle | 35 | Purple - planning |
-| Goal | `#ef4444` | `#f87171` | star | 45 | Red - strategic |
-| Milestone | `#06b6d4` | `#22d3ee` | diamond | 30 | Cyan - temporal |
-| Output | `#8b5cf6` | `#a78bfa` | diamond | 30 | Purple - deliverable |
-| Document | `#06b6d4` | `#22d3ee` | rectangle | 25 | Cyan - reference |
+| Entity Type         | Light Mode | Dark Mode | Shape           | Size Range | Semantic             |
+| ------------------- | ---------- | --------- | --------------- | ---------- | -------------------- |
+| Template (abstract) | `#9ca3af`  | `#6b7280` | hexagon         | 40         | Gray - meta          |
+| Template (concrete) | `#3b82f6`  | `#60a5fa` | hexagon         | 40         | Blue - definition    |
+| Project (draft)     | `#9ca3af`  | `#6b7280` | round-rectangle | 30-60      | Gray - inactive      |
+| Project (active)    | `#10b981`  | `#34d399` | round-rectangle | 30-60      | Green - active       |
+| Project (complete)  | `#3b82f6`  | `#60a5fa` | round-rectangle | 30-60      | Blue - done          |
+| Task (todo)         | `#f59e0b`  | `#fbbf24` | ellipse         | 25         | Amber - pending      |
+| Task (done)         | `#10b981`  | `#34d399` | ellipse         | 25         | Green - complete     |
+| Plan                | `#8b5cf6`  | `#a78bfa` | round-rectangle | 35         | Purple - planning    |
+| Goal                | `#ef4444`  | `#f87171` | star            | 45         | Red - strategic      |
+| Milestone           | `#06b6d4`  | `#22d3ee` | diamond         | 30         | Cyan - temporal      |
+| Output              | `#8b5cf6`  | `#a78bfa` | diamond         | 30         | Purple - deliverable |
+| Document            | `#06b6d4`  | `#22d3ee` | rectangle       | 25         | Cyan - reference     |
 
 #### 2.2 Edge Styling by Relationship Type
 
 Color-code edges based on relationship semantics:
 
-| Relationship Category | Edge Types | Color | Style |
-|----------------------|------------|-------|-------|
-| Hierarchical | `belongs_to_plan`, `has_task`, `contains` | `#6b7280` | solid |
-| Goal Support | `supports_goal`, `requires`, `achieved_by` | `#ef4444` | solid, thicker |
-| Dependencies | `depends_on`, `blocks` | `#f59e0b` | dashed |
-| Temporal | `targets_milestone` | `#06b6d4` | dotted |
-| Knowledge | `references`, `referenced_by`, `has_document` | `#8b5cf6` | solid, thin |
-| Production | `produces`, `produced_by` | `#10b981` | solid |
-| Generic | `relates_to` | `#9ca3af` | dotted, thin |
+| Relationship Category | Edge Types                                    | Color     | Style          |
+| --------------------- | --------------------------------------------- | --------- | -------------- |
+| Hierarchical          | `belongs_to_plan`, `has_task`, `contains`     | `#6b7280` | solid          |
+| Goal Support          | `supports_goal`, `requires`, `achieved_by`    | `#ef4444` | solid, thicker |
+| Dependencies          | `depends_on`, `blocks`                        | `#f59e0b` | dashed         |
+| Temporal              | `targets_milestone`                           | `#06b6d4` | dotted         |
+| Knowledge             | `references`, `referenced_by`, `has_document` | `#8b5cf6` | solid, thin    |
+| Production            | `produces`, `produced_by`                     | `#10b981` | solid          |
+| Generic               | `relates_to`                                  | `#9ca3af` | dotted, thin   |
 
 Implementation in `edgesToCytoscape`:
 
@@ -317,13 +318,12 @@ Add CSS variable-based theming:
 ```typescript
 // In OntologyGraph.svelte, detect dark mode and adjust colors
 const isDarkMode = $derived(
-  typeof window !== 'undefined' &&
-  window.matchMedia('(prefers-color-scheme: dark)').matches
+	typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches
 );
 
 // Apply theme-aware colors when building graph
 function getThemedColor(lightColor: string, darkColor: string): string {
-  return isDarkMode ? darkColor : lightColor;
+	return isDarkMode ? darkColor : lightColor;
 }
 ```
 
@@ -337,15 +337,15 @@ Add intelligent layout selection based on graph characteristics:
 
 ```typescript
 function selectOptimalLayout(nodeCount: number, edgeCount: number): string {
-  const density = edgeCount / nodeCount;
+	const density = edgeCount / nodeCount;
 
-  if (density < 2) {
-    return 'dagre'; // Hierarchical, sparse graphs
-  } else if (density < 4 && nodeCount < 500) {
-    return 'cola'; // Moderate density, constraint-based
-  } else {
-    return 'cose-bilkent'; // Dense, force-directed
-  }
+	if (density < 2) {
+		return 'dagre'; // Hierarchical, sparse graphs
+	} else if (density < 4 && nodeCount < 500) {
+		return 'cola'; // Moderate density, constraint-based
+	} else {
+		return 'cose-bilkent'; // Dense, force-directed
+	}
 }
 ```
 
@@ -355,8 +355,8 @@ Add warning when graph exceeds performance thresholds:
 
 ```typescript
 const PERFORMANCE_THRESHOLDS = {
-  warning: 1000,  // Show performance warning
-  limit: 2000     // Hard limit with filtering suggestion
+	warning: 1000, // Show performance warning
+	limit: 2000 // Hard limit with filtering suggestion
 };
 ```
 
@@ -386,26 +386,26 @@ Update `GraphControls.svelte` to show all entity counts:
 
 ```svelte
 <div class="space-y-2 text-xs text-gray-900 dark:text-white">
-  <!-- Existing -->
-  <div class="flex justify-between">
-    <span class="text-gray-600 dark:text-gray-400">Templates</span>
-    <span class="font-semibold">{stats.totalTemplates}</span>
-  </div>
-  <!-- ... projects, tasks, outputs, documents ... -->
+	<!-- Existing -->
+	<div class="flex justify-between">
+		<span class="text-gray-600 dark:text-gray-400">Templates</span>
+		<span class="font-semibold">{stats.totalTemplates}</span>
+	</div>
+	<!-- ... projects, tasks, outputs, documents ... -->
 
-  <!-- NEW -->
-  <div class="flex justify-between">
-    <span class="text-gray-600 dark:text-gray-400">Plans</span>
-    <span class="font-semibold">{stats.totalPlans}</span>
-  </div>
-  <div class="flex justify-between">
-    <span class="text-gray-600 dark:text-gray-400">Goals</span>
-    <span class="font-semibold text-red-600 dark:text-red-400">{stats.totalGoals}</span>
-  </div>
-  <div class="flex justify-between">
-    <span class="text-gray-600 dark:text-gray-400">Milestones</span>
-    <span class="font-semibold text-cyan-600 dark:text-cyan-400">{stats.totalMilestones}</span>
-  </div>
+	<!-- NEW -->
+	<div class="flex justify-between">
+		<span class="text-gray-600 dark:text-gray-400">Plans</span>
+		<span class="font-semibold">{stats.totalPlans}</span>
+	</div>
+	<div class="flex justify-between">
+		<span class="text-gray-600 dark:text-gray-400">Goals</span>
+		<span class="font-semibold text-red-600 dark:text-red-400">{stats.totalGoals}</span>
+	</div>
+	<div class="flex justify-between">
+		<span class="text-gray-600 dark:text-gray-400">Milestones</span>
+		<span class="font-semibold text-cyan-600 dark:text-cyan-400">{stats.totalMilestones}</span>
+	</div>
 </div>
 ```
 
@@ -415,26 +415,26 @@ Add a visual legend showing edge colors and their meanings:
 
 ```svelte
 <Card variant="default">
-  <CardHeader variant="gradient">
-    <h3 class="font-semibold text-white text-sm">Relationship Legend</h3>
-  </CardHeader>
-  <CardBody padding="md">
-    <div class="space-y-1 text-xs">
-      <div class="flex items-center gap-2">
-        <div class="w-4 h-0.5 bg-gray-500"></div>
-        <span>Hierarchical</span>
-      </div>
-      <div class="flex items-center gap-2">
-        <div class="w-4 h-0.5 bg-red-500"></div>
-        <span>Goal Support</span>
-      </div>
-      <div class="flex items-center gap-2">
-        <div class="w-4 h-0.5 bg-amber-500 border-dashed"></div>
-        <span>Dependencies</span>
-      </div>
-      <!-- ... -->
-    </div>
-  </CardBody>
+	<CardHeader variant="gradient">
+		<h3 class="font-semibold text-white text-sm">Relationship Legend</h3>
+	</CardHeader>
+	<CardBody padding="md">
+		<div class="space-y-1 text-xs">
+			<div class="flex items-center gap-2">
+				<div class="w-4 h-0.5 bg-gray-500"></div>
+				<span>Hierarchical</span>
+			</div>
+			<div class="flex items-center gap-2">
+				<div class="w-4 h-0.5 bg-red-500"></div>
+				<span>Goal Support</span>
+			</div>
+			<div class="flex items-center gap-2">
+				<div class="w-4 h-0.5 bg-amber-500 border-dashed"></div>
+				<span>Dependencies</span>
+			</div>
+			<!-- ... -->
+		</div>
+	</CardBody>
 </Card>
 ```
 
@@ -443,6 +443,7 @@ Add a visual legend showing edge colors and their meanings:
 ## Implementation Checklist
 
 ### Phase 1: Core Entity Expansion (COMPLETED 2025-12-09)
+
 - [x] Update `+page.server.ts` to load plans, goals, milestones
 - [x] Add type definitions for new entities in `graph.types.ts`
 - [x] Add transformation methods in `graph.service.ts`
@@ -453,6 +454,7 @@ Add a visual legend showing edge colors and their meanings:
 - [x] Update NodeDetailsPanel for new entity types
 
 ### Phase 2: Visual Styling (COMPLETED 2025-12-09)
+
 - [x] Implement comprehensive color palette
 - [x] Add edge styling by relationship type
 - [x] Add dark mode color variants (via semantic classes)
@@ -460,12 +462,14 @@ Add a visual legend showing edge colors and their meanings:
 - [ ] Test contrast ratios (WCAG AA)
 
 ### Phase 3: Performance & UX
+
 - [ ] Add layout selection logic
 - [ ] Add performance warning for large graphs
 - [ ] Debounce graph updates
 - [ ] Test with 500-2000 nodes
 
 ### Phase 4: Statistics & Controls (COMPLETED 2025-12-09)
+
 - [x] Update statistics panel
 - [x] Add node legend
 - [x] Add edge legend
@@ -475,14 +479,14 @@ Add a visual legend showing edge colors and their meanings:
 
 ## Files Modified (2025-12-09)
 
-| File | Changes |
-|------|---------|
-| `apps/web/src/routes/admin/ontology/graph/+page.server.ts` | Added plan/goal/milestone queries, updated stats |
-| `apps/web/src/lib/components/ontology/graph/lib/graph.types.ts` | Added OntoPlan, OntoGoal, OntoMilestone types; expanded NodeType union; updated GraphSourceData and GraphStats |
-| `apps/web/src/lib/components/ontology/graph/lib/graph.service.ts` | Added plansToNodes, goalsToNodes, milestonesToNodes methods; added getEdgeStyle for relationship-based coloring; updated buildGraphData to include all entities |
-| `apps/web/src/lib/components/ontology/graph/GraphControls.svelte` | Added Plan/Goal/Milestone filters; updated stats display; added Node Legend and Edge Legend cards |
-| `apps/web/src/lib/components/ontology/graph/OntologyGraph.svelte` | Updated edge styling to use data(color) and data(width) from edge data |
-| `apps/web/src/lib/components/ontology/graph/NodeDetailsPanel.svelte` | Added colors for plan, goal, milestone types; added URL routing for new entity types |
+| File                                                                 | Changes                                                                                                                                                         |
+| -------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `apps/web/src/routes/admin/ontology/graph/+page.server.ts`           | Added plan/goal/milestone queries, updated stats                                                                                                                |
+| `apps/web/src/lib/components/ontology/graph/lib/graph.types.ts`      | Added OntoPlan, OntoGoal, OntoMilestone types; expanded NodeType union; updated GraphSourceData and GraphStats                                                  |
+| `apps/web/src/lib/components/ontology/graph/lib/graph.service.ts`    | Added plansToNodes, goalsToNodes, milestonesToNodes methods; added getEdgeStyle for relationship-based coloring; updated buildGraphData to include all entities |
+| `apps/web/src/lib/components/ontology/graph/GraphControls.svelte`    | Added Plan/Goal/Milestone filters; updated stats display; added Node Legend and Edge Legend cards                                                               |
+| `apps/web/src/lib/components/ontology/graph/OntologyGraph.svelte`    | Updated edge styling to use data(color) and data(width) from edge data                                                                                          |
+| `apps/web/src/lib/components/ontology/graph/NodeDetailsPanel.svelte` | Added colors for plan, goal, milestone types; added URL routing for new entity types                                                                            |
 
 ---
 
@@ -510,38 +514,43 @@ Add a visual legend showing edge colors and their meanings:
 Three graph library implementations are now available on the admin page:
 
 ### Implementation 1: Cytoscape.js (Default/Stable)
+
 - **Status:** Production-ready
 - **File:** `OntologyGraph.svelte`
 - **Features:** Full-featured with dagre, cola, cose-bilkent layouts
 - **Best for:** General use, moderate-sized graphs
 
 ### Implementation 2: Svelte Flow (Native Svelte)
+
 - **Status:** Implemented
 - **Files:**
-  - `svelteflow/SvelteFlowGraph.svelte` - Main component
-  - `svelteflow/nodes/` - Custom node components with Lucide icons
-  - `lib/svelteflow.service.ts` - Data transformation service
+    - `svelteflow/SvelteFlowGraph.svelte` - Main component
+    - `svelteflow/nodes/` - Custom node components with Lucide icons
+    - `lib/svelteflow.service.ts` - Data transformation service
 - **Features:**
-  - Native Svelte components for custom nodes
-  - Custom node components: TemplateNode, ProjectNode, TaskNode, PlanNode, GoalNode, MilestoneNode, OutputNode, DocumentNode
-  - Built-in Controls, MiniMap, Background
-  - Dark mode support via CSS variables
+    - Native Svelte components for custom nodes
+    - Custom node components: TemplateNode, ProjectNode, TaskNode, PlanNode, GoalNode, MilestoneNode, OutputNode, DocumentNode
+    - Built-in Controls, MiniMap, Background
+    - Dark mode support via CSS variables
 - **Best for:** Svelte-native development, custom node interactions
 
 ### Implementation 3: G6 by AntV (High Performance)
+
 - **Status:** Implemented
 - **Files:**
-  - `g6/G6Graph.svelte` - Wrapper component
-  - `lib/g6.service.ts` - Data transformation service
+    - `g6/G6Graph.svelte` - Wrapper component
+    - `lib/g6.service.ts` - Data transformation service
 - **Features:**
-  - High-performance rendering (30k+ nodes)
-  - Built-in dagre layout
-  - Minimap and toolbar plugins
-  - Click-to-select, drag canvas, zoom behaviors
+    - High-performance rendering (30k+ nodes)
+    - Built-in dagre layout
+    - Minimap and toolbar plugins
+    - Click-to-select, drag canvas, zoom behaviors
 - **Best for:** Large graphs, performance-critical applications
 
 ### Library Switcher
+
 The admin page now includes a toggle to switch between implementations:
+
 - Location: Top of the graph page, below the header
 - Options: Cytoscape (stable), Svelte Flow (native), G6 (performance)
 
