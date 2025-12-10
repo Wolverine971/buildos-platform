@@ -12,10 +12,13 @@
 
 	const typeColors: Record<string, string> = {
 		template: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400',
-		project: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400',
-		task: 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400',
+		project: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400',
+		task: 'bg-gray-100 dark:bg-gray-800/50 text-gray-700 dark:text-gray-400',
+		plan: 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400',
+		goal: 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400',
+		milestone: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400',
 		output: 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400',
-		document: 'bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-400'
+		document: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
 	};
 
 	function formatMetadata(metadata: Record<string, unknown> | undefined) {
@@ -56,6 +59,18 @@
 			case 'project':
 				return `/ontology/projects/${current.id}`;
 			case 'task': {
+				const projectId = readString(meta, 'projectId', 'project_id');
+				return projectId ? `/ontology/projects/${projectId}` : null;
+			}
+			case 'plan': {
+				const projectId = readString(meta, 'projectId', 'project_id');
+				return projectId ? `/ontology/projects/${projectId}` : null;
+			}
+			case 'goal': {
+				const projectId = readString(meta, 'projectId', 'project_id');
+				return projectId ? `/ontology/projects/${projectId}` : null;
+			}
+			case 'milestone': {
 				const projectId = readString(meta, 'projectId', 'project_id');
 				return projectId ? `/ontology/projects/${projectId}` : null;
 			}
@@ -125,6 +140,18 @@
 			</CardHeader>
 			<CardBody padding="md">
 				<dl class="space-y-2 text-xs">
+					<div class="flex justify-between items-center">
+						<dt class="text-gray-600 dark:text-gray-400">Type</dt>
+						<dd>
+							<span
+								class="inline-block px-2 py-0.5 text-xs rounded-full font-medium capitalize {typeColors[
+									node?.type ?? ''
+								] || 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'}"
+							>
+								{node?.type ?? 'unknown'}
+							</span>
+						</dd>
+					</div>
 					<div class="flex justify-between">
 						<dt class="text-gray-600 dark:text-gray-400">ID</dt>
 						<dd class="font-mono text-[11px] text-gray-900 dark:text-white">

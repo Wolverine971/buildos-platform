@@ -394,7 +394,7 @@
 			const result = await response.json();
 			isSubmitting = false;
 			// ✅ Extract from ApiResponse.data wrapper
-			goto(`/ontology/projects/${result.data.project_id}`);
+			goto(`/projects/${result.data.project_id}`);
 		} catch (err) {
 			console.error('[Create Project] Error:', err);
 			error = err instanceof Error ? err.message : 'Failed to create project';

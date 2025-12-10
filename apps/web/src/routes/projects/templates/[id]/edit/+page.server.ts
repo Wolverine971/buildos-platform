@@ -17,7 +17,7 @@ export const load: PageServerLoad = async ({ params, locals: { safeGetSession, s
 
 	// Only admins can access template editing
 	if (!user.is_admin) {
-		throw redirect(302, '/ontology/templates');
+		throw redirect(302, '/projects/templates');
 	}
 
 	const templateId = params.id;

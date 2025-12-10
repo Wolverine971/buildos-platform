@@ -6,7 +6,10 @@ import type {
 	GraphStats,
 	OntoDocument,
 	OntoEdge,
+	OntoGoal,
+	OntoMilestone,
 	OntoOutput,
+	OntoPlan,
 	OntoProject,
 	OntoTask,
 	OntoTemplate
@@ -37,15 +40,27 @@ export const load: PageServerLoad = async ({ locals: { safeGetSession, supabase 
 	const adminClient = createAdminSupabaseClient();
 
 	try {
-		const [templatesRes, projectsRes, edgesRes, tasksRes, outputsRes, documentsRes] =
-			await Promise.all([
-				adminClient.from('onto_templates').select('*').eq('status', 'active'),
-				adminClient.from('onto_projects').select('*'),
-				adminClient.from('onto_edges').select('*'),
-				adminClient.from('onto_tasks').select('*'),
-				adminClient.from('onto_outputs').select('*'),
-				adminClient.from('onto_documents').select('*')
-			]);
+		const [
+			templatesRes,
+			projectsRes,
+			edgesRes,
+			tasksRes,
+			outputsRes,
+			documentsRes,
+			plansRes,
+			goalsRes,
+			milestonesRes
+		] = await Promise.all([
+			adminClient.from('onto_templates').select('*').eq('status', 'active'),
+			adminClient.from('onto_projects').select('*'),
+			adminClient.from('onto_edges').select('*'),
+			adminClient.from('onto_tasks').select('*'),
+			adminClient.from('onto_outputs').select('*'),
+			adminClient.from('onto_documents').select('*'),
+			adminClient.from('onto_plans').select('*'),
+			adminClient.from('onto_goals').select('*'),
+			adminClient.from('onto_milestones').select('*')
+		]);
 
 		if (templatesRes.error) throw templatesRes.error;
 		if (projectsRes.error) throw projectsRes.error;
@@ -53,6 +68,9 @@ export const load: PageServerLoad = async ({ locals: { safeGetSession, supabase 
 		if (tasksRes.error) throw tasksRes.error;
 		if (outputsRes.error) throw outputsRes.error;
 		if (documentsRes.error) throw documentsRes.error;
+		if (plansRes.error) throw plansRes.error;
+		if (goalsRes.error) throw goalsRes.error;
+		if (milestonesRes.error) throw milestonesRes.error;
 
 		const templates = (templatesRes.data ?? []) as OntoTemplate[];
 		const projects = (projectsRes.data ?? []) as OntoProject[];
@@ -60,6 +78,9 @@ export const load: PageServerLoad = async ({ locals: { safeGetSession, supabase 
 		const tasks = (tasksRes.data ?? []) as OntoTask[];
 		const outputs = (outputsRes.data ?? []) as OntoOutput[];
 		const documents = (documentsRes.data ?? []) as OntoDocument[];
+		const plans = (plansRes.data ?? []) as OntoPlan[];
+		const goals = (goalsRes.data ?? []) as OntoGoal[];
+		const milestones = (milestonesRes.data ?? []) as OntoMilestone[];
 
 		const stats: GraphStats = {
 			totalTemplates: templates.length,
@@ -68,7 +89,10 @@ export const load: PageServerLoad = async ({ locals: { safeGetSession, supabase 
 			totalEdges: edges.length,
 			totalTasks: tasks.length,
 			totalOutputs: outputs.length,
-			totalDocuments: documents.length
+			totalDocuments: documents.length,
+			totalPlans: plans.length,
+			totalGoals: goals.length,
+			totalMilestones: milestones.length
 		};
 
 		return {
@@ -78,6 +102,9 @@ export const load: PageServerLoad = async ({ locals: { safeGetSession, supabase 
 			tasks,
 			outputs,
 			documents,
+			plans,
+			goals,
+			milestones,
 			stats,
 			user: {
 				id: user.id,

@@ -90,9 +90,9 @@
 				{
 					selector: 'edge',
 					style: {
-						width: 2,
-						'line-color': '#9ca3af',
-						'target-arrow-color': '#9ca3af',
+						width: 'data(width)',
+						'line-color': 'data(color)',
+						'target-arrow-color': 'data(color)',
 						'target-arrow-shape': 'triangle',
 						'curve-style': 'bezier',
 						label: 'data(label)',

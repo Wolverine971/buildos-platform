@@ -281,7 +281,7 @@
 		if (sortBy) params.set('sort', sortBy);
 		if (sortDirection) params.set('direction', sortDirection);
 
-		goto(`/ontology/templates${params.toString() ? '?' + params.toString() : ''}`, {
+		goto(`/projects/templates${params.toString() ? '?' + params.toString() : ''}`, {
 			replaceState: true,
 			noScroll: true
 		});
@@ -301,7 +301,7 @@
 
 	function createProjectFromTemplate(template: { id?: string | null; type_key: string }) {
 		const identifier = template.id ?? template.type_key;
-		goto(`/ontology/create?template=${encodeURIComponent(identifier)}`);
+		goto(`/projects/create?template=${encodeURIComponent(identifier)}`);
 	}
 
 	async function openTemplateDetail(template: Template) {

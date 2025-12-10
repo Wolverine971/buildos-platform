@@ -28,6 +28,10 @@ import { FindOrCreateTemplateService, type EntityScope } from './find-or-create-
 import { resolveTemplateWithClient } from './template-resolver.service';
 import { upsertLegacyMapping, getLegacyMappingsBatch } from './legacy-mapping.service';
 import { deepMergeProps } from './template-props-merger.service';
+import {
+	getGlobalFamilyCache,
+	type FamilyCacheEntry
+} from './template-family-cache.service';
 
 // ============================================
 // TYPE DEFINITIONS
@@ -184,6 +188,14 @@ const DEFAULT_BATCH_SIZE = 20;
 const MAX_TEMPLATES_TO_LOAD = 50;
 const DEFAULT_CLASSIFICATION_CONFIDENCE = 0.8;
 
+/**
+ * Feature flag for two-phase hierarchical task classification.
+ * When enabled:
+ * - Phase 1: Fast model selects work_mode for all tasks
+ * - Phase 2: Balanced model selects specialization within each work_mode group
+ */
+const ENABLE_TWO_PHASE_CLASSIFICATION = true;
+
 // 8 base work modes for tasks
 const VALID_WORK_MODES = [
 	'execute',
@@ -194,7 +206,51 @@ const VALID_WORK_MODES = [
 	'coordinate',
 	'admin',
 	'plan'
-];
+] as const;
+
+type WorkMode = (typeof VALID_WORK_MODES)[number];
+
+/** Work mode descriptions for LLM context (used in Phase 1) */
+const WORK_MODE_DESCRIPTIONS: Record<WorkMode, string> = {
+	execute: 'Action tasks - doing the actual work (default for most tasks)',
+	create: 'Producing NEW artifacts from scratch - writing, designing, building',
+	refine: 'Improving EXISTING work - editing, polishing, optimizing',
+	research: 'Investigating and gathering information - analysis, discovery, learning',
+	review: 'Evaluating and providing feedback - code review, design review, QA',
+	coordinate: 'Syncing with others - meetings, standups, interviews, collaboration',
+	admin: 'Administrative housekeeping - reporting, filing, cleanup, maintenance',
+	plan: 'Strategic thinking and planning - sprint planning, roadmap planning'
+};
+
+/** LLM response for work mode classification */
+interface LLMWorkModeResponse {
+	classifications: Array<{
+		index: number;
+		work_mode: WorkMode;
+		confidence: number;
+		rationale: string;
+	}>;
+}
+
+/** LLM response for specialization classification */
+interface LLMSpecializationResponse {
+	classifications: Array<{
+		index: number;
+		specialization: string | null;
+		confidence: number;
+		rationale: string;
+	}>;
+}
+
+/** Intermediate classification with work mode only */
+interface WorkModeClassification {
+	index: number;
+	legacyId: string;
+	workMode: WorkMode;
+	confidence: number;
+	rationale: string;
+	legacyTask: LegacyTask;
+}
 
 // ============================================
 // SERVICE IMPLEMENTATION
@@ -521,9 +577,344 @@ export class BatchTaskMigrationService {
 	// ============================================
 
 	/**
-	 * Classify a batch of tasks into type_keys using a single LLM call.
+	 * Classify a batch of tasks into type_keys.
+	 *
+	 * When ENABLE_TWO_PHASE_CLASSIFICATION is true:
+	 * - Phase 1: Fast model selects work_mode (8 options)
+	 * - Phase 2: Balanced model selects specialization per work_mode group
+	 *
+	 * When disabled, uses single-pass classification.
 	 */
 	private async classifyBatch(
+		tasks: LegacyTask[],
+		projectId: string,
+		userId: string
+	): Promise<TaskClassification[]> {
+		if (ENABLE_TWO_PHASE_CLASSIFICATION) {
+			return this.classifyBatchTwoPhase(tasks, projectId, userId);
+		}
+		return this.classifyBatchSinglePass(tasks, projectId, userId);
+	}
+
+	/**
+	 * Two-phase hierarchical classification.
+	 *
+	 * Phase 1: Fast model selects work_mode for all tasks (8 choices)
+	 * Phase 2: For each work_mode group, select specialization (focused choices)
+	 */
+	private async classifyBatchTwoPhase(
+		tasks: LegacyTask[],
+		projectId: string,
+		userId: string
+	): Promise<TaskClassification[]> {
+		console.info(
+			`[BatchTaskMigration] TWO_PHASE_START tasks=${tasks.length}`
+		);
+
+		// ========== PHASE 1: WORK MODE CLASSIFICATION (Fast Model) ==========
+		const phase1Start = Date.now();
+
+		const preparedTasks: ClassificationTask[] = tasks.map((task) => ({
+			legacyId: task.id,
+			title: task.title,
+			description: task.description ?? '',
+			details: task.details ? task.details.slice(0, 200) : '',
+			status: String(task.status),
+			priority: this.priorityToNumber(task.priority),
+			startDate: task.start_date,
+			isRecurring: !!task.recurrence_pattern
+		}));
+
+		const workModeClassifications = await this.classifyWorkModes(
+			preparedTasks,
+			tasks,
+			userId
+		);
+
+		const phase1Duration = Date.now() - phase1Start;
+		const workModeDistribution = this.countBy(workModeClassifications, (c) => c.workMode);
+		console.info(
+			`[BatchTaskMigration] PHASE1_COMPLETE duration=${phase1Duration}ms ` +
+				`distribution=${JSON.stringify(workModeDistribution)}`
+		);
+
+		// ========== PHASE 2: SPECIALIZATION CLASSIFICATION (Per Work Mode) ==========
+		const phase2Start = Date.now();
+
+		// Group tasks by work mode
+		const tasksByWorkMode = this.groupBy(workModeClassifications, (c) => c.workMode);
+		const finalClassifications: TaskClassification[] = [];
+
+		for (const [workMode, tasksInMode] of Object.entries(tasksByWorkMode)) {
+			if (tasksInMode.length === 0) continue;
+
+			// Get specializations for this work mode
+			const specializations = await this.classifySpecializations(
+				tasksInMode,
+				workMode as WorkMode,
+				userId
+			);
+
+			finalClassifications.push(...specializations);
+		}
+
+		const phase2Duration = Date.now() - phase2Start;
+		console.info(
+			`[BatchTaskMigration] PHASE2_COMPLETE duration=${phase2Duration}ms ` +
+				`classifications=${finalClassifications.length}`
+		);
+
+		// Sort by original index to maintain order
+		finalClassifications.sort((a, b) => a.index - b.index);
+
+		return finalClassifications;
+	}
+
+	/**
+	 * Phase 1: Classify work modes using fast model.
+	 * Simple 8-way classification with clear descriptions.
+	 */
+	private async classifyWorkModes(
+		preparedTasks: ClassificationTask[],
+		tasks: LegacyTask[],
+		userId: string
+	): Promise<WorkModeClassification[]> {
+		const workModeList = Object.entries(WORK_MODE_DESCRIPTIONS)
+			.map(([mode, desc]) => `- ${mode}: ${desc}`)
+			.join('\n');
+
+		const systemPrompt = `You classify tasks into work modes. Choose ONE work mode per task.
+
+## Work Modes (choose EXACTLY one per task)
+${workModeList}
+
+## Selection Rules
+1. Default to "execute" when unsure
+2. "create" = producing NEW from scratch
+3. "refine" = improving EXISTING work
+4. "coordinate" = involving other people
+5. "research" = investigation/learning
+6. "review" = solo evaluation (not with others)`;
+
+		const taskList = preparedTasks
+			.map((t, i) => `[${i}] "${t.title}" - ${t.description || t.details || '(no description)'}`)
+			.join('\n');
+
+		const userPrompt = `## Tasks (${preparedTasks.length} total)
+${taskList}
+
+## Output Format (JSON)
+{ "classifications": [{ "index": 0, "work_mode": "execute", "confidence": 90, "rationale": "brief" }, ...] }
+
+IMPORTANT: Include ALL ${preparedTasks.length} tasks. work_mode MUST be one of: ${VALID_WORK_MODES.join(', ')}`;
+
+		const response = await this.llm.getJSONResponse<LLMWorkModeResponse>({
+			systemPrompt,
+			userPrompt,
+			userId,
+			profile: 'fast', // Fast model for simple 8-way classification
+			temperature: 0.1,
+			validation: {
+				retryOnParseError: true,
+				maxRetries: 2
+			},
+			operationType: 'batch_task_migration.work_mode_classification'
+		});
+
+		if (!response?.classifications) {
+			// Fallback: assign all to 'execute'
+			console.warn('[BatchTaskMigration] Work mode classification failed, using execute fallback');
+			return preparedTasks.map((t, i) => ({
+				index: i,
+				legacyId: t.legacyId,
+				workMode: 'execute' as WorkMode,
+				confidence: 0.5,
+				rationale: 'Fallback to execute',
+				legacyTask: tasks[i]!
+			}));
+		}
+
+		return response.classifications.map((c, i) => {
+			const idx = c.index ?? i;
+			const workMode = this.validateWorkMode(c.work_mode);
+			return {
+				index: idx,
+				legacyId: preparedTasks[idx]?.legacyId ?? tasks[i]!.id,
+				workMode,
+				confidence: (c.confidence ?? 80) / 100,
+				rationale: c.rationale ?? 'No rationale',
+				legacyTask: tasks[idx]!
+			};
+		});
+	}
+
+	/**
+	 * Phase 2: Classify specializations within a work mode.
+	 * Only called for tasks in that work mode group.
+	 */
+	private async classifySpecializations(
+		tasksInMode: WorkModeClassification[],
+		workMode: WorkMode,
+		userId: string
+	): Promise<TaskClassification[]> {
+		// If only a few tasks, skip specialization and use base work mode
+		if (tasksInMode.length <= 2) {
+			return tasksInMode.map((t) => ({
+				index: t.index,
+				legacyId: t.legacyId,
+				typeKey: `task.${workMode}`,
+				confidence: t.confidence,
+				rationale: `${t.rationale} (base work mode)`
+			}));
+		}
+
+		// Get common specializations for this work mode from existing templates
+		const existingSpecializations = await this.getExistingSpecializations(workMode);
+
+		const systemPrompt = `You add specializations to tasks already classified as "${workMode}".
+
+## Work Mode: ${workMode}
+${WORK_MODE_DESCRIPTIONS[workMode]}
+
+## Existing Specializations for task.${workMode}
+${existingSpecializations.length > 0 ? existingSpecializations.map((s) => `- ${s}`).join('\n') : '- (none yet - you may suggest new ones)'}
+
+## Rules
+1. Use an existing specialization if it fits well
+2. Suggest a NEW specialization only if existing ones don't fit
+3. Use null/empty for base work mode (no specialization needed)
+4. Specializations should be single words or underscore_separated`;
+
+		const taskList = tasksInMode
+			.map(
+				(t, i) =>
+					`[${i}] "${t.legacyTask.title}" - ${t.legacyTask.description || '(no description)'}`
+			)
+			.join('\n');
+
+		const userPrompt = `## Tasks in "${workMode}" mode (${tasksInMode.length} total)
+${taskList}
+
+## Output Format (JSON)
+{ "classifications": [{ "index": 0, "specialization": "meeting" or null, "confidence": 90, "rationale": "brief" }, ...] }
+
+IMPORTANT: Include ALL ${tasksInMode.length} tasks. Use null for base work mode.`;
+
+		const response = await this.llm.getJSONResponse<LLMSpecializationResponse>({
+			systemPrompt,
+			userPrompt,
+			userId,
+			profile: 'balanced', // Balanced model for nuanced specialization
+			temperature: 0.2,
+			validation: {
+				retryOnParseError: true,
+				maxRetries: 2
+			},
+			operationType: 'batch_task_migration.specialization_classification'
+		});
+
+		if (!response?.classifications) {
+			// Fallback: use base work mode
+			return tasksInMode.map((t) => ({
+				index: t.index,
+				legacyId: t.legacyId,
+				typeKey: `task.${workMode}`,
+				confidence: t.confidence * 0.8,
+				rationale: `${t.rationale} (specialization fallback)`
+			}));
+		}
+
+		return response.classifications.map((c, i) => {
+			const idx = c.index ?? i;
+			const baseTask = tasksInMode[idx]!;
+			const specialization = c.specialization
+				? this.normalizeSpecialization(c.specialization)
+				: null;
+			const typeKey = specialization
+				? `task.${workMode}.${specialization}`
+				: `task.${workMode}`;
+
+			return {
+				index: baseTask.index,
+				legacyId: baseTask.legacyId,
+				typeKey,
+				confidence: ((c.confidence ?? 80) / 100) * baseTask.confidence,
+				rationale: `${baseTask.rationale} → ${c.rationale ?? 'specialized'}`
+			};
+		});
+	}
+
+	/**
+	 * Get existing specializations for a work mode from templates.
+	 */
+	private async getExistingSpecializations(workMode: WorkMode): Promise<string[]> {
+		const { data } = await this.client
+			.from('onto_templates')
+			.select('type_key')
+			.eq('scope', 'task')
+			.eq('status', 'active')
+			.like('type_key', `task.${workMode}.%`);
+
+		if (!data || data.length === 0) return [];
+
+		// Extract specialization from type_key (task.execute.deploy → deploy)
+		return data
+			.map((t) => {
+				const parts = t.type_key.split('.');
+				return parts.length >= 3 ? parts[2] : null;
+			})
+			.filter((s): s is string => s !== null && s !== 'base');
+	}
+
+	/**
+	 * Validate work mode is one of the 8 valid options.
+	 */
+	private validateWorkMode(workMode: string): WorkMode {
+		const lower = workMode?.toLowerCase() ?? 'execute';
+		if (VALID_WORK_MODES.includes(lower as WorkMode)) {
+			return lower as WorkMode;
+		}
+		console.warn(`[BatchTaskMigration] Invalid work mode "${workMode}", using execute`);
+		return 'execute';
+	}
+
+	/**
+	 * Normalize specialization to valid format.
+	 */
+	private normalizeSpecialization(spec: string): string {
+		return spec
+			.toLowerCase()
+			.replace(/[^a-z0-9]+/g, '_')
+			.replace(/^_+|_+$/g, '');
+	}
+
+	/**
+	 * Count items by key.
+	 */
+	private countBy<T>(items: T[], keyFn: (item: T) => string): Record<string, number> {
+		const counts: Record<string, number> = {};
+		for (const item of items) {
+			const key = keyFn(item);
+			counts[key] = (counts[key] ?? 0) + 1;
+		}
+		return counts;
+	}
+
+	/**
+	 * Convert priority string to number.
+	 */
+	private priorityToNumber(priority: string | number | null | undefined): number | null {
+		if (priority === null || priority === undefined) return null;
+		if (typeof priority === 'number') return priority;
+		const map: Record<string, number> = { low: 1, medium: 2, high: 3 };
+		return map[priority.toLowerCase()] ?? null;
+	}
+
+	/**
+	 * Single-pass classification (original implementation).
+	 * Used when two-phase classification is disabled.
+	 */
+	private async classifyBatchSinglePass(
 		tasks: LegacyTask[],
 		projectId: string,
 		userId: string
@@ -534,8 +925,8 @@ export class BatchTaskMigrationService {
 			title: task.title,
 			description: task.description ?? '',
 			details: task.details ? task.details.slice(0, 200) : '', // Truncate to 200 chars
-			status: task.status,
-			priority: task.priority,
+			status: String(task.status),
+			priority: this.priorityToNumber(task.priority),
 			startDate: task.start_date,
 			isRecurring: !!task.recurrence_pattern
 		}));
@@ -682,7 +1073,7 @@ IMPORTANT:
 
 		// Validate work mode
 		const workMode = parts[1];
-		if (!workMode || !VALID_WORK_MODES.includes(workMode)) {
+		if (!workMode || !(VALID_WORK_MODES as readonly string[]).includes(workMode)) {
 			return 'task.execute';
 		}
 

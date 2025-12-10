@@ -18,7 +18,13 @@
       "Bash(pnpm test:*)",
       "Bash(rm:*)",
       "Bash(cat:*)",
-      "Bash(pnpm typecheck:*)"
+      "Bash(pnpm typecheck:*)",
+      "mcp__perplexity__reason",
+      "WebSearch",
+      "WebFetch(domain:svelteflow.dev)",
+      "WebFetch(domain:www.svelvet.io)",
+      "Bash(pnpm add:*)",
+      "Bash(pnpm tsc:*)"
     ],
     "deny": [],
     "ask": []

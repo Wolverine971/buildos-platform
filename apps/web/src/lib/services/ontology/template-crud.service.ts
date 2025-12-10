@@ -6,6 +6,7 @@
 
 import type { TypedSupabaseClient } from '@buildos/supabase-client';
 import { TemplateValidationService, type TemplateData } from './template-validation.service';
+import { getGlobalFamilyCache, type EntityScope } from './template-family-cache.service';
 
 export interface CreateTemplateInput extends TemplateData {
 	created_by: string;
@@ -71,6 +72,9 @@ export class TemplateCrudService {
 				error: `Failed to create template: ${error.message}`
 			};
 		}
+
+		// Invalidate family cache so new families/variants are visible immediately
+		this.invalidateFamilyCache(client, input.scope as EntityScope);
 
 		return {
 			success: true,
@@ -174,6 +178,14 @@ export class TemplateCrudService {
 				success: false,
 				error: `Failed to update template: ${error.message}`
 			};
+		}
+
+		// Invalidate family caches for both old and new scopes (if changed)
+		const scopesToInvalidate = new Set<EntityScope>();
+		if (existing.scope) scopesToInvalidate.add(existing.scope as EntityScope);
+		if (mergedData.scope) scopesToInvalidate.add(mergedData.scope as EntityScope);
+		for (const scope of scopesToInvalidate) {
+			this.invalidateFamilyCache(client, scope);
 		}
 
 		return {
@@ -309,6 +321,8 @@ export class TemplateCrudService {
 			};
 		}
 
+		this.invalidateFamilyCache(client, template.scope as EntityScope);
+
 		return {
 			success: true,
 			data
@@ -351,6 +365,8 @@ export class TemplateCrudService {
 			};
 		}
 
+		this.invalidateFamilyCache(client, (data as { scope?: string } | null)?.scope as EntityScope);
+
 		return {
 			success: true,
 			data
@@ -367,7 +383,7 @@ export class TemplateCrudService {
 		// Get template metadata
 		const { data: template, error: templateFetchError } = await client
 			.from('onto_templates')
-			.select('id, type_key')
+			.select('id, type_key, scope')
 			.eq('id', templateId)
 			.maybeSingle();
 
@@ -512,12 +528,23 @@ export class TemplateCrudService {
 			};
 		}
 
+		this.invalidateFamilyCache(client, template.scope as EntityScope);
+
 		return {
 			success: true,
 			data: {
 				deletedProjects: projects?.length || 0
 			}
 		};
+	}
+
+	/**
+	 * Clear the family cache for a scope so hierarchical selection reflects changes.
+	 */
+	private static invalidateFamilyCache(client: TypedSupabaseClient, scope?: EntityScope): void {
+		if (!scope) return;
+		const familyCache = getGlobalFamilyCache(client);
+		familyCache.invalidate(scope);
 	}
 
 	/**

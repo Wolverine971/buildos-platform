@@ -123,6 +123,7 @@
 		"pnpm": ">=8.0.0"
 	},
 	"dependencies": {
+		"@antv/g6": "^5.0.50",
 		"@buildos/shared-types": "workspace:*",
 		"@buildos/shared-utils": "workspace:*",
 		"@buildos/supabase-client": "workspace:*",
@@ -141,6 +142,7 @@
 		"@types/nodemailer": "^6.4.17",
 		"@vercel/analytics": "^1.5.0",
 		"@vercel/speed-insights": "^1.2.0",
+		"@xyflow/svelte": "^1.5.0",
 		"canvas-confetti": "^1.9.3",
 		"cytoscape": "^3.33.1",
 		"cytoscape-cola": "^2.5.1",
