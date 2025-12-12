@@ -633,7 +633,7 @@ export class ToolExecutionService implements BaseService {
 			message.includes('Active project template not found')
 		) {
 			const typeKey = typeof args?.type_key === 'string' ? args.type_key : 'unknown';
-			return `Template "${typeKey}" is not active. Call request_template_creation to generate it before running create_onto_project again. Original error: ${message}`;
+			return `Project type_key "${typeKey}" was not accepted. Use project.{realm}.{deliverable}[.{variant}] classification and retry. Original error: ${message}`;
 		}
 		return message;
 	}

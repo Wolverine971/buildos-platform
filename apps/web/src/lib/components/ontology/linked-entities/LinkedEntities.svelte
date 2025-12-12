@@ -15,7 +15,6 @@
 	/>
 -->
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import { toastService } from '$lib/stores/toast.store';
 	import type {
 		EntityKind,
@@ -56,7 +55,8 @@
 		goals: [],
 		milestones: [],
 		documents: [],
-		outputs: []
+		outputs: [],
+		risks: []
 	});
 	let availableEntities = $state<AvailableEntitiesResult>({
 		tasks: [],
@@ -64,7 +64,8 @@
 		goals: [],
 		milestones: [],
 		documents: [],
-		outputs: []
+		outputs: [],
+		risks: []
 	});
 
 	// Link picker modal state

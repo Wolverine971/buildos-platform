@@ -4,7 +4,6 @@
 	import {
 		Search,
 		Download,
-		Hexagon,
 		FolderKanban,
 		ListChecks,
 		Calendar,
@@ -68,7 +67,6 @@
 
 	const filters = [
 		{ value: 'all', label: 'All' },
-		{ value: 'template', label: 'Templates' },
 		{ value: 'project', label: 'Projects' },
 		{ value: 'task', label: 'Tasks' },
 		{ value: 'plan', label: 'Plans' },
@@ -80,7 +78,6 @@
 
 	// Node legend items with colors matching the graph
 	const nodeLegend = [
-		{ icon: Hexagon, label: 'Template', color: 'text-blue-500' },
 		{ icon: FolderKanban, label: 'Project', color: 'text-emerald-500' },
 		{ icon: ListChecks, label: 'Task', color: 'text-muted-foreground' },
 		{ icon: Calendar, label: 'Plan', color: 'text-indigo-500' },
@@ -218,13 +215,6 @@
 					<div
 						class="flex flex-col items-center p-2 rounded-lg bg-muted/50 border border-border"
 					>
-						<span class="text-lg font-bold text-foreground">{stats.totalTemplates}</span
-						>
-						<span class="text-muted-foreground">Templates</span>
-					</div>
-					<div
-						class="flex flex-col items-center p-2 rounded-lg bg-muted/50 border border-border"
-					>
 						<span class="text-lg font-bold text-foreground">{stats.totalProjects}</span>
 						<span class="text-muted-foreground">Projects</span>
 					</div>
@@ -299,8 +289,7 @@
 					class="w-full h-8 px-2 text-xs font-bold rounded-lg border border-border bg-card text-foreground shadow-ink-inner focus:border-accent focus:outline-none focus:ring-1 focus:ring-ring transition"
 				>
 					<option value="projects">Projects & Entities</option>
-					<option value="templates">Templates</option>
-					<option value="full">Complete</option>
+					<option value="full">Complete (all edges)</option>
 				</select>
 			</div>
 			{#if features.layout}

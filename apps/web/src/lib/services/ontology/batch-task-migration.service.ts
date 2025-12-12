@@ -25,18 +25,11 @@ import type { TypedSupabaseClient } from '@buildos/supabase-client';
 import type { Database, Json } from '@buildos/shared-types';
 import type { SmartLLMService } from '$lib/services/smart-llm-service';
 import type { MigrationContext, LegacyTask } from './migration/enhanced-migration.types';
-import type { ResolvedTemplate } from './template-resolver.service';
-import { FindOrCreateTemplateService, type EntityScope } from './find-or-create-template.service';
-import { resolveTemplateWithClient } from './template-resolver.service';
 import { upsertLegacyMapping, getLegacyMappingsBatch } from './legacy-mapping.service';
-import { deepMergeProps } from './template-props-merger.service';
-import { getGlobalFamilyCache, type FamilyCacheEntry } from './template-family-cache.service';
 
 // ============================================
 // TYPE DEFINITIONS
 // ============================================
-
-type TemplateRow = Database['public']['Tables']['onto_templates']['Row'];
 
 /** Input for batch task migration */
 export interface BatchTaskMigrationOptions {
@@ -159,10 +152,9 @@ interface TaskExtraction {
 	validationErrors?: string[];
 }
 
-/** Resolved template with creation metadata */
-interface ResolvedTemplateWithMeta {
-	template: TemplateRow;
-	resolved: ResolvedTemplate | null;
+/** Template metadata (stub - template table removed) */
+interface TemplateMetadata {
+	template: { id: string; type_key: string; name: string } | null;
 	created: boolean;
 	parentFallback: boolean;
 }
@@ -256,14 +248,10 @@ interface WorkModeClassification {
 // ============================================
 
 export class BatchTaskMigrationService {
-	private readonly findOrCreateService: FindOrCreateTemplateService;
-
 	constructor(
 		private readonly client: TypedSupabaseClient,
 		private readonly llm: SmartLLMService
-	) {
-		this.findOrCreateService = new FindOrCreateTemplateService(client, llm);
-	}
+	) {}
 
 	/**
 	 * Migrate a batch of legacy tasks using optimized batch operations.
@@ -348,132 +336,41 @@ export class BatchTaskMigrationService {
 				`duration=${timing.classifyMs}ms`
 		);
 
-		// ========== PHASE 2: BATCH TEMPLATE RESOLUTION ==========
+		// ========== PHASE 2: BATCH TEMPLATE RESOLUTION (REMOVED) ==========
 		const startResolve = Date.now();
 		const uniqueTypeKeys = [...new Set(allClassifications.map((c) => c.typeKey))];
 
-		options.onProgress?.({
-			phase: 'resolve',
-			batchNumber: 1,
-			totalBatches: 1,
-			tasksProcessed: 0,
-			totalTasks: uniqueTypeKeys.length,
-			currentOperation: `Resolving ${uniqueTypeKeys.length} unique templates`
-		});
-
-		try {
-			templateCache = await this.resolveTemplates({
-				uniqueTypeKeys,
-				projectContext: `Batch migration for project ${options.projectId}`,
-				allowCreate: options.allowTemplateCreation ?? !options.dryRun,
-				dryRun: options.dryRun ?? false,
-				userId: context.initiatedBy
-			});
-		} catch (error) {
-			console.error('[BatchTaskMigration] Template resolution failed:', error);
-			// This is critical - can't continue without templates
-			throw new Error(
-				`Template resolution failed: ${error instanceof Error ? error.message : 'Unknown'}`
-			);
-		}
-		timing.resolveMs = Date.now() - startResolve;
-		console.info(
-			`[BatchTaskMigration] PHASE_2_COMPLETE templates=${templateCache.size} ` +
-				`created=${[...templateCache.values()].filter((t) => t.created).length} ` +
-				`duration=${timing.resolveMs}ms`
+		// Template resolution removed - tasks will need templates to be created separately
+		console.warn(
+			'[BatchTaskMigration] Template resolution removed - templates must exist before migration'
 		);
 
-		// ========== PHASE 3: BATCH PROPERTY EXTRACTION ==========
+		timing.resolveMs = Date.now() - startResolve;
+
+		// ========== PHASE 3: BATCH PROPERTY EXTRACTION (REMOVED) ==========
 		const startExtract = Date.now();
 
-		// Group tasks by type_key for efficient extraction
-		const tasksByTypeKey = this.groupBy(
-			allClassifications.map((c, i) => ({
-				...c,
-				legacyTask: activeTasks[i]!
-			})),
-			(c) => c.typeKey
-		);
+		// Property extraction removed - tasks will use minimal props
+		console.warn('[BatchTaskMigration] Property extraction removed - using minimal task data');
 
-		let extractBatchNum = 0;
-		const totalExtractBatches = Object.keys(tasksByTypeKey).length;
-
-		for (const [typeKey, tasksGroup] of Object.entries(tasksByTypeKey)) {
-			extractBatchNum++;
-			const templateMeta = templateCache.get(typeKey);
-
-			if (!templateMeta?.resolved) {
-				// Skip extraction for tasks with no resolved template
-				console.warn(
-					`[BatchTaskMigration] No resolved template for ${typeKey}, skipping extraction`
-				);
-				for (const task of tasksGroup) {
-					allExtractions.push({
-						legacyId: task.legacyId,
-						typeKey,
-						props: { title: task.legacyTask.title },
-						confidence: 0.3,
-						validationErrors: ['No resolved template available']
-					});
-				}
-				continue;
-			}
-
-			// Sub-batch if group is large
-			const extractionBatches = this.chunkArray(
-				tasksGroup,
-				this.getExtractionBatchSize(templateMeta.resolved)
-			);
-
-			for (const extractBatch of extractionBatches) {
-				options.onProgress?.({
-					phase: 'extract',
-					batchNumber: extractBatchNum,
-					totalBatches: totalExtractBatches,
-					tasksProcessed: allExtractions.length,
-					totalTasks: activeTasks.length,
-					currentOperation: `Extracting ${typeKey} (${extractBatch.length} tasks)`
-				});
-
-				try {
-					const extracted = await this.extractPropertiesBatch(
-						extractBatch.map((t) => t.legacyTask),
-						templateMeta.resolved,
-						context.initiatedBy
-					);
-					allExtractions.push(
-						...extracted.map((e, i) => ({
-							...e,
-							typeKey,
-							legacyId: extractBatch[i]!.legacyId
-						}))
-					);
-				} catch (error) {
-					console.error(`[BatchTaskMigration] Extraction failed for ${typeKey}:`, error);
-					// Use minimal extraction on failure
-					for (const task of extractBatch) {
-						allExtractions.push({
-							legacyId: task.legacyId,
-							typeKey,
-							props: { title: task.legacyTask.title },
-							confidence: 0.3,
-							validationErrors: [
-								error instanceof Error ? error.message : 'Extraction failed'
-							]
-						});
-						errors.push({
-							legacyId: task.legacyId,
-							phase: 'extract',
-							error: error instanceof Error ? error.message : 'Unknown error'
-						});
-					}
-				}
-			}
+		// Create minimal extractions for all tasks
+		for (let i = 0; i < allClassifications.length; i++) {
+			const classification = allClassifications[i]!;
+			const legacyTask = activeTasks[i]!;
+			allExtractions.push({
+				legacyId: classification.legacyId,
+				typeKey: classification.typeKey,
+				props: {
+					title: legacyTask.title,
+					description: legacyTask.description ?? null
+				},
+				confidence: 0.5
+			});
 		}
+
 		timing.extractMs = Date.now() - startExtract;
 		console.info(
-			`[BatchTaskMigration] PHASE_3_COMPLETE extractions=${allExtractions.length} ` +
-				`avgConfidence=${(allExtractions.reduce((sum, e) => sum + e.confidence, 0) / allExtractions.length).toFixed(2)} ` +
+			`[BatchTaskMigration] PHASE_3_COMPLETE extractions=${allExtractions.length} (minimal) ` +
 				`duration=${timing.extractMs}ms`
 		);
 
@@ -843,25 +740,13 @@ IMPORTANT: Include ALL ${tasksInMode.length} tasks. Use null for base work mode.
 	}
 
 	/**
-	 * Get existing specializations for a work mode from templates.
+	 * Get existing specializations for a work mode.
+	 * Returns common specializations since template table is no longer used.
 	 */
-	private async getExistingSpecializations(workMode: WorkMode): Promise<string[]> {
-		const { data } = await this.client
-			.from('onto_templates')
-			.select('type_key')
-			.eq('scope', 'task')
-			.eq('status', 'active')
-			.like('type_key', `task.${workMode}.%`);
-
-		if (!data || data.length === 0) return [];
-
-		// Extract specialization from type_key (task.execute.deploy → deploy)
-		return data
-			.map((t) => {
-				const parts = t.type_key.split('.');
-				return parts.length >= 3 ? parts[2] : null;
-			})
-			.filter((s): s is string => s !== null && s !== 'base');
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
+	private async getExistingSpecializations(_workMode: WorkMode): Promise<string[]> {
+		// Common specializations used across work modes
+		return ['meeting', 'standup', 'review', 'deploy', 'checklist', 'planning'];
 	}
 
 	/**
@@ -1087,297 +972,10 @@ IMPORTANT:
 	}
 
 	// ============================================
-	// PHASE 2: BATCH TEMPLATE RESOLUTION
+	// PHASE 2 & 3: TEMPLATE RESOLUTION AND PROPERTY EXTRACTION (REMOVED)
 	// ============================================
-
-	/**
-	 * Resolve templates for all unique type_keys in a single pass.
-	 */
-	private async resolveTemplates(params: {
-		uniqueTypeKeys: string[];
-		projectContext: string;
-		allowCreate: boolean;
-		dryRun: boolean;
-		userId: string;
-	}): Promise<Map<string, ResolvedTemplateWithMeta>> {
-		const templateCache = new Map<string, ResolvedTemplateWithMeta>();
-
-		// 1. SINGLE database query for all existing task templates
-		const { data: allTaskTemplates, error } = await this.client
-			.from('onto_templates')
-			.select('*')
-			.eq('scope', 'task')
-			.eq('status', 'active')
-			.limit(MAX_TEMPLATES_TO_LOAD);
-
-		if (error) {
-			throw new Error(`Failed to load templates: ${error.message}`);
-		}
-
-		console.info(
-			`[BatchTaskMigration] Loaded ${allTaskTemplates?.length ?? 0} existing task templates`
-		);
-
-		// Build type_key lookup
-		const templatesByTypeKey = new Map<string, TemplateRow>();
-		for (const template of allTaskTemplates ?? []) {
-			templatesByTypeKey.set(template.type_key, template as TemplateRow);
-		}
-
-		// 2. Separate existing vs. new type_keys
-		const existingTypeKeys: string[] = [];
-		const newTypeKeys: string[] = [];
-
-		for (const typeKey of params.uniqueTypeKeys) {
-			if (templatesByTypeKey.has(typeKey)) {
-				existingTypeKeys.push(typeKey);
-			} else {
-				newTypeKeys.push(typeKey);
-			}
-		}
-
-		console.info(
-			`[BatchTaskMigration] Type key resolution: existing=${existingTypeKeys.length} new=${newTypeKeys.length}`
-		);
-
-		// 3. Resolve existing templates (fast - no LLM)
-		for (const typeKey of existingTypeKeys) {
-			const template = templatesByTypeKey.get(typeKey)!;
-			const resolved = await this.safeResolveTemplate(typeKey);
-			templateCache.set(typeKey, {
-				template,
-				resolved,
-				created: false,
-				parentFallback: false
-			});
-		}
-
-		// 4. Handle new type_keys
-		if (params.allowCreate && !params.dryRun) {
-			// Create new templates using FindOrCreateTemplateService
-			for (const typeKey of newTypeKeys) {
-				try {
-					const result = await this.findOrCreateService.findOrCreate({
-						scope: 'task' as EntityScope,
-						context: `Creating template for ${typeKey} in context: ${params.projectContext}`,
-						userId: params.userId,
-						preferredTypeKey: typeKey,
-						matchThreshold: 1.0, // Force exact match only
-						allowCreate: true
-					});
-
-					const resolved = result.resolvedTemplate ?? null;
-					templateCache.set(typeKey, {
-						template: result.template,
-						resolved,
-						created: result.created,
-						parentFallback: false
-					});
-				} catch (error) {
-					console.warn(
-						`[BatchTaskMigration] Failed to create template ${typeKey}, using parent fallback:`,
-						error
-					);
-					// Fall back to parent template
-					const parentKey = this.getParentTypeKey(typeKey);
-					const parentTemplate = templatesByTypeKey.get(parentKey);
-
-					if (parentTemplate) {
-						const resolved = await this.safeResolveTemplate(parentKey);
-						templateCache.set(typeKey, {
-							template: parentTemplate,
-							resolved,
-							created: false,
-							parentFallback: true
-						});
-					}
-				}
-			}
-		} else {
-			// Fall back to parent templates for new type_keys (dry-run or creation disabled)
-			for (const typeKey of newTypeKeys) {
-				const parentKey = this.getParentTypeKey(typeKey);
-				const parentTemplate = templatesByTypeKey.get(parentKey);
-
-				if (parentTemplate) {
-					const resolved = await this.safeResolveTemplate(parentKey);
-					templateCache.set(typeKey, {
-						template: parentTemplate,
-						resolved,
-						created: false,
-						parentFallback: true
-					});
-					console.info(
-						`[BatchTaskMigration] Falling back to parent ${parentKey} for ${typeKey}`
-					);
-				} else {
-					// Last resort: use task.execute
-					const executeTemplate = templatesByTypeKey.get('task.execute');
-					if (executeTemplate) {
-						const resolved = await this.safeResolveTemplate('task.execute');
-						templateCache.set(typeKey, {
-							template: executeTemplate,
-							resolved,
-							created: false,
-							parentFallback: true
-						});
-						console.info(
-							`[BatchTaskMigration] Falling back to task.execute for ${typeKey}`
-						);
-					}
-				}
-			}
-		}
-
-		return templateCache;
-	}
-
-	private getParentTypeKey(typeKey: string): string {
-		const segments = typeKey.split('.');
-		if (segments.length <= 2) return typeKey; // Already at base (task.execute)
-		return segments.slice(0, -1).join('.'); // Remove last segment
-	}
-
-	private async safeResolveTemplate(typeKey: string): Promise<ResolvedTemplate | null> {
-		try {
-			return await resolveTemplateWithClient(this.client, typeKey, 'task');
-		} catch (error) {
-			console.warn(`[BatchTaskMigration] Failed to resolve template ${typeKey}:`, error);
-			return null;
-		}
-	}
-
-	// ============================================
-	// PHASE 3: BATCH PROPERTY EXTRACTION
-	// ============================================
-
-	/**
-	 * Extract properties for multiple tasks sharing the same schema.
-	 */
-	private async extractPropertiesBatch(
-		tasks: LegacyTask[],
-		template: ResolvedTemplate,
-		userId: string
-	): Promise<Array<{ props: Record<string, unknown>; confidence: number }>> {
-		const systemPrompt = this.buildExtractionSystemPrompt();
-		const userPrompt = this.buildExtractionUserPrompt(tasks, template);
-
-		const response = await this.llm.getJSONResponse<LLMBatchExtractionResponse>({
-			systemPrompt,
-			userPrompt,
-			userId,
-			profile: 'balanced',
-			temperature: 0.2,
-			validation: {
-				retryOnParseError: true,
-				maxRetries: 2
-			},
-			operationType: 'batch_task_migration.property_extraction'
-		});
-
-		if (!response?.extractions) {
-			// Return minimal extraction on failure
-			return tasks.map((task) => ({
-				props: { title: task.title },
-				confidence: 0.3
-			}));
-		}
-
-		// Map response back to tasks
-		return tasks.map((task, index) => {
-			const extraction = response.extractions.find((e) => e.index === index);
-			if (extraction) {
-				return {
-					props: extraction.props ?? { title: task.title },
-					confidence: (extraction.confidence ?? 60) / 100
-				};
-			}
-			return {
-				props: { title: task.title },
-				confidence: 0.3
-			};
-		});
-	}
-
-	private buildExtractionSystemPrompt(): string {
-		return `You are extracting structured properties from task descriptions.
-
-Follow these rules:
-1. Review template schema - extract a value for EACH property defined
-2. Use intelligent type inference:
-   - "$80k budget" → budget: 80000 (number)
-   - "200 guests" → guest_count: 200 (number)
-   - "React + TypeScript" → tech_stack: ["React", "TypeScript"] (array)
-   - "June 20, 2026" → target_date: "2026-06-20" (ISO date string)
-3. Infer missing values from context when reasonable
-4. Leave optional fields null if not inferrable
-5. Extract nested structures when template schema defines objects`;
-	}
-
-	private buildExtractionUserPrompt(tasks: LegacyTask[], template: ResolvedTemplate): string {
-		// Extract schema fields
-		const schemaProperties = template.schema?.properties ?? {};
-		const fieldList = Object.entries(schemaProperties)
-			.map(([key, def]) => {
-				const typeDef = def as { type?: string; description?: string; required?: boolean };
-				return `- ${key}: ${typeDef.type ?? 'string'}${typeDef.description ? ` — ${typeDef.description}` : ''}`;
-			})
-			.join('\n');
-
-		const taskList = tasks
-			.map(
-				(t, i) =>
-					`[${i}] Legacy ID: ${t.id}
-   Title: "${t.title}"
-   Description: ${t.description ?? '(none)'}
-   Details: ${t.details ? t.details.slice(0, 200) : '(none)'}
-   Status: ${t.status}
-   Priority: ${t.priority ?? '(none)'}`
-			)
-			.join('\n\n');
-
-		return `## Template Schema for ${template.type_key}
-${fieldList.length > 0 ? fieldList : '- No specific properties defined'}
-
-## Tasks to Extract (${tasks.length} tasks, all ${template.type_key})
-${taskList}
-
-## Output Format (JSON)
-Return a JSON object with extractions array.
-
-{
-  "extractions": [
-    {
-      "index": 0,
-      "legacy_id": "abc-123",
-      "props": {
-        "title": "Implement login flow",
-        "estimated_duration_minutes": 120,
-        "complexity": "moderate"
-      },
-      "confidence": 85
-    },
-    ...
-  ]
-}
-
-## Extraction Rules
-- Use intelligent type inference (e.g., "$80k budget" → 80000)
-- Dates should be ISO 8601 format
-- Arrays from comma/+ separated strings
-- Leave optional fields null if not inferrable
-- confidence should be 0-100 (will be converted to 0-1 scale)`;
-	}
-
-	private getExtractionBatchSize(template: ResolvedTemplate): number {
-		// Estimate based on schema complexity
-		const schemaProperties = template.schema?.properties ?? {};
-		const fieldCount = Object.keys(schemaProperties).length;
-
-		if (fieldCount <= 5) return 25; // Small schema
-		if (fieldCount <= 10) return 15; // Medium schema
-		return 8; // Large schema
-	}
+	// Template resolution and property extraction have been removed.
+	// Tasks are migrated with minimal properties from legacy data only.
 
 	// ============================================
 	// PHASE 4: BATCH DATABASE OPERATIONS
@@ -1389,7 +987,7 @@ Return a JSON object with extractions array.
 	private async batchInsertTasks(
 		extractions: TaskExtraction[],
 		classifications: TaskClassification[],
-		templateCache: Map<string, ResolvedTemplateWithMeta>,
+		templateCache: Map<string, TemplateMetadata>,
 		legacyTasks: LegacyTask[],
 		options: BatchTaskMigrationOptions,
 		context: MigrationContext
@@ -1460,15 +1058,10 @@ Return a JSON object with extractions array.
 				continue;
 			}
 
-			// Merge with defaults
-			const mergedProps = deepMergeProps(
-				(templateMeta.resolved?.default_props ?? {}) as Record<string, unknown>,
-				extraction.props
-			);
-
+			// No template merging - use extraction props directly
 			// Add metadata to props
 			const propsWithMetadata = {
-				...mergedProps,
+				...extraction.props,
 				description: legacyTask.description ?? null,
 				type_key: typeKey,
 				facets: { scale: this.inferScale(legacyTask) }

@@ -34,7 +34,6 @@
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import type { EnsureActorResponse } from '$lib/types/onto-api';
-import { resolveAndMergeTemplateProps } from '$lib/services/ontology/template-props-merger.service';
 
 const VALID_IMPACTS = ['low', 'medium', 'high', 'critical'] as const;
 type Impact = (typeof VALID_IMPACTS)[number];
@@ -110,15 +109,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			return ApiResponse.notFound('Project');
 		}
 
-		// Resolve template and merge props (skip if no template found)
-		const { mergedProps } = await resolveAndMergeTemplateProps(
-			supabase,
-			type_key,
-			'risk',
-			props || {},
-			true
-		);
-
 		// Create the risk
 		const riskData = {
 			project_id,
@@ -130,7 +120,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			state_key,
 			created_by: actorId,
 			props: {
-				...mergedProps,
+				...props,
 				description: description?.trim() || null,
 				mitigation_strategy: mitigation_strategy?.trim() || null
 			}

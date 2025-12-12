@@ -118,24 +118,6 @@
 		}
 	}
 
-	async function handleRetryWithFallback(errorIds: number[]) {
-		if (errorIds.length === 0) return;
-		retryLoading = true;
-		try {
-			const result = await apiPost<{
-				retrying: number;
-				successful?: number;
-				failed?: number;
-			}>('/api/admin/migration/retry', { errorIds, useFallbackTemplates: true });
-			setSuccess(`Retry with fallback initiated for ${result.retrying} errors`);
-			await invalidateAll();
-		} catch (err) {
-			setError(err instanceof Error ? err.message : 'Failed to retry with fallback');
-		} finally {
-			retryLoading = false;
-		}
-	}
-
 	async function handleRetryAllRecoverable() {
 		retryLoading = true;
 		try {

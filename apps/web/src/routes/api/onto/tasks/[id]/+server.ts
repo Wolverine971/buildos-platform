@@ -11,7 +11,7 @@
  * - API Patterns: /apps/web/docs/technical/api/PATTERNS.md
  *
  * GET /api/onto/tasks/[id]:
- * - Returns task with template and FSM information
+ * - Returns task with FSM information
  * - Includes project ownership verification
  *
  * PATCH /api/onto/tasks/[id]:
@@ -47,30 +47,31 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 	const supabase = locals.supabase;
 
 	try {
-		// Get user's actor ID
-		const { data: actorId, error: actorError } = await supabase.rpc('ensure_actor_for_user', {
-			p_user_id: session.user.id
-		});
+		// Parallelize initial queries: actor resolution and task fetch
+		const [actorResult, taskResult] = await Promise.all([
+			supabase.rpc('ensure_actor_for_user', { p_user_id: session.user.id }),
+			supabase
+				.from('onto_tasks')
+				.select(
+					`
+					*,
+					project:onto_projects!inner(
+						id,
+						created_by
+					)
+				`
+				)
+				.eq('id', params.id)
+				.single()
+		]);
+
+		const { data: actorId, error: actorError } = actorResult;
+		const { data: task, error } = taskResult;
 
 		if (actorError || !actorId) {
 			console.error('[Task GET] Failed to resolve actor:', actorError);
 			return ApiResponse.error('Failed to get user actor', 500);
 		}
-
-		// Get task with project to verify ownership
-		const { data: task, error } = await supabase
-			.from('onto_tasks')
-			.select(
-				`
-				*,
-				project:onto_projects!inner(
-					id,
-					created_by
-				)
-			`
-			)
-			.eq('id', params.id)
-			.single();
 
 		if (error || !task) {
 			return ApiResponse.error('Task not found', 404);
@@ -81,22 +82,26 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			return ApiResponse.error('Access denied', 403);
 		}
 
-		// Fetch plan via edge relationship (plan_id is no longer a column)
-		let plan = null;
-		const { data: planEdge } = await supabase
-			.from('onto_edges')
-			.select('dst_id')
-			.eq('src_kind', 'task')
-			.eq('src_id', params.id)
-			.eq('rel', 'belongs_to_plan')
-			.eq('dst_kind', 'plan')
-			.single();
+		// Parallelize secondary queries: plan edge and linked entities
+		const [planEdgeResult, linkedEntities] = await Promise.all([
+			supabase
+				.from('onto_edges')
+				.select('dst_id')
+				.eq('src_kind', 'task')
+				.eq('src_id', params.id)
+				.eq('rel', 'belongs_to_plan')
+				.eq('dst_kind', 'plan')
+				.single(),
+			resolveLinkedEntities(supabase, params.id)
+		]);
 
-		if (planEdge?.dst_id) {
+		// Fetch plan data if edge exists (this is a dependent query)
+		let plan = null;
+		if (planEdgeResult.data?.dst_id) {
 			const { data: planData } = await supabase
 				.from('onto_plans')
 				.select('id, name, type_key')
-				.eq('id', planEdge.dst_id)
+				.eq('id', planEdgeResult.data.dst_id)
 				.single();
 
 			if (planData) {
@@ -104,30 +109,10 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			}
 		}
 
-		// Fetch the template info based on task's type_key (now a proper column)
-		let template = null;
-		const typeKey = task.type_key;
-
-		if (typeKey) {
-			const { data: templateData } = await supabase
-				.from('onto_templates')
-				.select('id, type_key, name, scope, status, metadata')
-				.eq('type_key', typeKey)
-				.eq('status', 'active')
-				.single();
-
-			if (templateData) {
-				template = templateData;
-			}
-		}
-
-		// Fetch linked entities via onto_edges
-		const linkedEntities = await resolveLinkedEntities(supabase, params.id);
-
 		// Remove nested project data from response, add plan
 		const { project, ...taskData } = task;
 
-		return ApiResponse.success({ task: { ...taskData, plan }, template, linkedEntities });
+		return ApiResponse.success({ task: { ...taskData, plan }, linkedEntities });
 	} catch (error) {
 		console.error('Error fetching task:', error);
 		return ApiResponse.error('Internal server error', 500);

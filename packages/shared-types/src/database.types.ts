@@ -431,85 +431,6 @@ export type Database = {
           },
         ]
       }
-      agent_template_creation_requests: {
-        Row: {
-          braindump: string | null
-          created_at: string
-          deliverables: Json | null
-          error: string | null
-          facets: Json | null
-          id: string
-          missing_information: Json | null
-          realm: string
-          request_id: string
-          result_template_id: string | null
-          session_id: string | null
-          status: string
-          template_hints: Json | null
-          template_summary: Json | null
-          updated_at: string
-          user_id: string | null
-        }
-        Insert: {
-          braindump?: string | null
-          created_at?: string
-          deliverables?: Json | null
-          error?: string | null
-          facets?: Json | null
-          id?: string
-          missing_information?: Json | null
-          realm: string
-          request_id: string
-          result_template_id?: string | null
-          session_id?: string | null
-          status?: string
-          template_hints?: Json | null
-          template_summary?: Json | null
-          updated_at?: string
-          user_id?: string | null
-        }
-        Update: {
-          braindump?: string | null
-          created_at?: string
-          deliverables?: Json | null
-          error?: string | null
-          facets?: Json | null
-          id?: string
-          missing_information?: Json | null
-          realm?: string
-          request_id?: string
-          result_template_id?: string | null
-          session_id?: string | null
-          status?: string
-          template_hints?: Json | null
-          template_summary?: Json | null
-          updated_at?: string
-          user_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "agent_template_creation_requests_result_template_id_fkey"
-            columns: ["result_template_id"]
-            isOneToOne: false
-            referencedRelation: "onto_templates"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "agent_template_creation_requests_session_id_fkey"
-            columns: ["session_id"]
-            isOneToOne: false
-            referencedRelation: "chat_sessions"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "agent_template_creation_requests_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "user_migration_stats"
-            referencedColumns: ["user_id"]
-          },
-        ]
-      }
       agents: {
         Row: {
           available_tools: Json | null
@@ -4295,8 +4216,6 @@ export type Database = {
           state_key: string
           sync_error: string | null
           sync_status: string
-          template_id: string | null
-          template_snapshot: Json
           timezone: string | null
           title: string
           type_key: string
@@ -4326,8 +4245,6 @@ export type Database = {
           state_key?: string
           sync_error?: string | null
           sync_status?: string
-          template_id?: string | null
-          template_snapshot?: Json
           timezone?: string | null
           title: string
           type_key: string
@@ -4357,8 +4274,6 @@ export type Database = {
           state_key?: string
           sync_error?: string | null
           sync_status?: string
-          template_id?: string | null
-          template_snapshot?: Json
           timezone?: string | null
           title?: string
           type_key?: string
@@ -4370,13 +4285,6 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "onto_projects"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "onto_events_template_id_fkey"
-            columns: ["template_id"]
-            isOneToOne: false
-            referencedRelation: "onto_templates"
             referencedColumns: ["id"]
           },
         ]
@@ -5224,71 +5132,6 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "onto_projects"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      onto_templates: {
-        Row: {
-          created_at: string
-          created_by: string
-          default_props: Json
-          default_views: Json
-          facet_defaults: Json
-          fsm: Json
-          id: string
-          is_abstract: boolean | null
-          metadata: Json
-          name: string
-          parent_template_id: string | null
-          schema: Json
-          scope: string
-          status: Database["public"]["Enums"]["onto_template_status"]
-          type_key: string
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          created_by: string
-          default_props?: Json
-          default_views?: Json
-          facet_defaults?: Json
-          fsm?: Json
-          id?: string
-          is_abstract?: boolean | null
-          metadata?: Json
-          name: string
-          parent_template_id?: string | null
-          schema?: Json
-          scope: string
-          status?: Database["public"]["Enums"]["onto_template_status"]
-          type_key: string
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          created_by?: string
-          default_props?: Json
-          default_views?: Json
-          facet_defaults?: Json
-          fsm?: Json
-          id?: string
-          is_abstract?: boolean | null
-          metadata?: Json
-          name?: string
-          parent_template_id?: string | null
-          schema?: Json
-          scope?: string
-          status?: Database["public"]["Enums"]["onto_template_status"]
-          type_key?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "onto_templates_parent_template_id_fkey"
-            columns: ["parent_template_id"]
-            isOneToOne: false
-            referencedRelation: "onto_templates"
             referencedColumns: ["id"]
           },
         ]
@@ -8977,24 +8820,6 @@ export type Database = {
           plan_type_key: string
         }[]
       }
-      get_template_catalog: {
-        Args: { p_realm?: string; p_scope?: string; p_search?: string }
-        Returns: {
-          created_at: string
-          default_props: Json
-          default_views: Json
-          facet_defaults: Json
-          fsm: Json
-          id: string
-          metadata: Json
-          name: string
-          schema: Json
-          scope: string
-          status: Database["public"]["Enums"]["onto_template_status"]
-          type_key: string
-          updated_at: string
-        }[]
-      }
       get_user_active_generations: {
         Args: { p_user_id: string }
         Returns: {
@@ -9466,7 +9291,6 @@ export type Database = {
       message_sender_type: "planner" | "executor" | "system"
       onto_actor_kind: "human" | "agent"
       onto_braindump_status: "pending" | "processing" | "processed" | "failed"
-      onto_template_status: "draft" | "active" | "deprecated"
       planning_strategy:
         | "planner_stream"
         | "ask_clarifying_questions"
@@ -9689,7 +9513,6 @@ export const Constants = {
       message_sender_type: ["planner", "executor", "system"],
       onto_actor_kind: ["human", "agent"],
       onto_braindump_status: ["pending", "processing", "processed", "failed"],
-      onto_template_status: ["draft", "active", "deprecated"],
       planning_strategy: [
         "planner_stream",
         "ask_clarifying_questions",

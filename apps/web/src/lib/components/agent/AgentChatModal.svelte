@@ -1923,52 +1923,6 @@
 				}
 				break;
 			}
-			case 'template_creation_request': {
-				const request = event.request;
-				const realmLabel = request?.realm_suggestion || 'new realm';
-				addActivityToThinkingBlock(
-					`Escalating template creation (${realmLabel})...`,
-					'template_request',
-					{
-						request
-					}
-				);
-				break;
-			}
-			case 'template_creation_status':
-				addActivityToThinkingBlock(
-					`Template creation status: ${event.status.replace(/_/g, ' ')}${
-						event.message ? ` · ${event.message}` : ''
-					}`,
-					'template_status',
-					{
-						status: event.status,
-						message: event.message
-					}
-				);
-				break;
-			case 'template_created': {
-				const template = event.template;
-				addActivityToThinkingBlock(
-					`Template ready: ${template?.name || 'Untitled'} (${template?.type_key})`,
-					'template_status',
-					{
-						template
-					}
-				);
-				break;
-			}
-			case 'template_creation_failed':
-				addActivityToThinkingBlock(
-					`Template creation failed: ${event.error || 'Unknown error'}`,
-					'template_status',
-					{
-						error: event.error
-					}
-				);
-				error = event.error || 'Template creation failed. Please adjust the request.';
-				break;
-
 			case 'context_shift': {
 				const shift = event.context_shift;
 				if (shift) {

@@ -3,7 +3,6 @@ import type { TypedSupabaseClient } from '@buildos/supabase-client';
 import type { Database, Json } from '@buildos/shared-types';
 
 type OntoEventRow = Database['public']['Tables']['onto_events']['Row'];
-type OntoTemplateRow = Database['public']['Tables']['onto_templates']['Row'];
 
 export type OntoEventOwnerType =
 	| 'project'
@@ -216,50 +215,22 @@ export class OntoEventService {
 		return Object.fromEntries(Object.entries(value).filter(([, v]) => v !== undefined)) as T;
 	}
 
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	private static async resolveTemplate(
-		client: TypedSupabaseClient,
+		_client: TypedSupabaseClient,
 		opts: {
 			typeKey?: string;
 			templateId?: string;
 			templateSnapshot?: Json;
 		}
 	): Promise<{ id: string | null; snapshot: Json } | null> {
+		// Template system removed - use provided snapshot if available, otherwise return null
 		if (opts.templateSnapshot && opts.templateId) {
 			return { id: opts.templateId, snapshot: opts.templateSnapshot };
 		}
-
-		if (opts.templateId) {
-			const { data, error } = await client
-				.from('onto_templates')
-				.select('*')
-				.eq('id', opts.templateId)
-				.single();
-
-			if (error || !data) {
-				throw new Error(error?.message ?? 'Template not found for ontology event');
-			}
-
-			return { id: data.id, snapshot: data as unknown as Json };
+		if (opts.templateSnapshot) {
+			return { id: null, snapshot: opts.templateSnapshot };
 		}
-
-		if (opts.typeKey) {
-			const { data, error } = await client
-				.from('onto_templates')
-				.select('*')
-				.eq('type_key', opts.typeKey)
-				.order('updated_at', { ascending: false })
-				.limit(1)
-				.single();
-
-			if (error || !data) {
-				throw new Error(
-					error?.message ?? `No template found for ontology event type ${opts.typeKey}`
-				);
-			}
-
-			return { id: data.id, snapshot: data as unknown as Json };
-		}
-
 		return null;
 	}
 }

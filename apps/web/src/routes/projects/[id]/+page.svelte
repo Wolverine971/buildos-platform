@@ -1375,7 +1375,6 @@
 			bind:isOpen={showProjectEditModal}
 			{project}
 			{contextDocument}
-			template={null}
 			onClose={() => (showProjectEditModal = false)}
 			onSaved={async () => {
 				await refreshData();

@@ -5,7 +5,6 @@ import type { Database } from '@buildos/shared-types';
 export type CytoscapeCore = any;
 
 // Database row types for all ontology entities
-export type OntoTemplate = Database['public']['Tables']['onto_templates']['Row'];
 export type OntoProject = Database['public']['Tables']['onto_projects']['Row'];
 export type OntoEdge = Database['public']['Tables']['onto_edges']['Row'];
 export type OntoTask = Database['public']['Tables']['onto_tasks']['Row'];
@@ -15,11 +14,10 @@ export type OntoPlan = Database['public']['Tables']['onto_plans']['Row'];
 export type OntoGoal = Database['public']['Tables']['onto_goals']['Row'];
 export type OntoMilestone = Database['public']['Tables']['onto_milestones']['Row'];
 
-export type ViewMode = 'templates' | 'projects' | 'full';
+export type ViewMode = 'projects' | 'full';
 
 // All supported node types in the graph
 export type NodeType =
-	| 'template'
 	| 'project'
 	| 'task'
 	| 'output'
@@ -69,7 +67,6 @@ export interface GraphData {
 }
 
 export interface GraphSourceData {
-	templates: OntoTemplate[];
 	projects: OntoProject[];
 	edges: OntoEdge[];
 	tasks: OntoTask[];
@@ -81,7 +78,6 @@ export interface GraphSourceData {
 }
 
 export interface GraphStats {
-	totalTemplates: number;
 	totalProjects: number;
 	activeProjects: number;
 	totalEdges: number;

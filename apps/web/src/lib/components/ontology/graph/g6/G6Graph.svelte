@@ -1,3 +1,4 @@
+<!-- apps/web/src/lib/components/ontology/graph/g6/G6Graph.svelte -->
 <!-- G6Graph.svelte - High-performance ontology graph using G6 by AntV -->
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
@@ -22,7 +23,6 @@
 	// Get node shape based on type
 	function getNodeShape(nodeType: string): string {
 		const shapes: Record<string, string> = {
-			template: 'diamond',
 			project: 'rect',
 			task: 'circle',
 			plan: 'rect',
@@ -41,7 +41,6 @@
 	): number | [number, number] {
 		if (originalSize) return originalSize;
 		const sizes: Record<string, number | [number, number]> = {
-			template: 36,
 			project: [120, 44],
 			task: 28,
 			plan: [100, 36],

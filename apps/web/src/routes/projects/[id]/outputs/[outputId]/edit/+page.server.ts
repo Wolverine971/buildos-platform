@@ -6,9 +6,8 @@
 
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
-import { resolveTemplateWithClient } from '$lib/services/ontology/template-resolver.service';
 
-export const load: PageServerLoad = async ({ params, fetch, locals }) => {
+export const load: PageServerLoad = async ({ params, fetch }) => {
 	const { id, outputId } = params;
 
 	if (!id || !outputId) {
@@ -43,17 +42,8 @@ export const load: PageServerLoad = async ({ params, fetch, locals }) => {
 
 	const projectData = await projectResponse.json();
 
-	// Resolve template with inheritance
-	const resolvedTemplate = await resolveTemplateWithClient(
-		locals.supabase,
-		output.type_key,
-		'output'
-	);
-
 	return {
 		output,
-		// ✅ Extract from ApiResponse.data wrapper
-		project: projectData.data.project,
-		resolvedTemplate
+		project: projectData.data.project
 	};
 };

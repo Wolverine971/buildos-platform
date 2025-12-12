@@ -205,49 +205,6 @@ Examples: goal.outcome.project, goal.metric.revenue, goal.behavior.cadence, goal
 			required: false,
 			example: '{"metrics":{"target":50000,"unit":"USD"}}'
 		}
-	},
-	ontology_template: {
-		scope: {
-			type: 'enum',
-			enum_values: [
-				'project',
-				'plan',
-				'task',
-				'output',
-				'document',
-				'goal',
-				'requirement',
-				'risk',
-				'event'
-			],
-			description: 'Entity type the template instantiates',
-			required: true,
-			example: 'project'
-		},
-		realm: {
-			type: 'string',
-			description: 'Domain/realm such as writer, developer, coach',
-			required: false,
-			example: 'writer'
-		},
-		type_key: {
-			type: 'string',
-			description: `Unique template key following family-based taxonomy:
-- Projects: project.{domain}.{deliverable}[.{variant}]
-- Plans: plan.{family}[.{variant}] (families: timebox, pipeline, campaign, roadmap, process, phase)
-- Goals: goal.{family}[.{variant}] (families: outcome, metric, behavior, learning)
-- Documents: document.{family}[.{variant}] (families: context, knowledge, decision, spec, reference, intake)
-- Outputs: output.{family}[.{variant}] (families: written, media, software, operational)
-- Tasks: task.{work_mode}[.{specialization}]`,
-			required: true,
-			example: 'project.writer.book'
-		},
-		description: {
-			type: 'string',
-			description: 'Short explanation of what the template is used for',
-			required: false,
-			example: 'Multi-chapter book project structure with outline, drafts, and launch plan.'
-		}
 	}
 };
 
@@ -444,7 +401,7 @@ Use for discovering available projects or getting project overviews.`,
 					},
 					type_key: {
 						type: 'string',
-						description: 'Filter by template type key'
+						description: 'Filter by type_key classification'
 					},
 					limit: {
 						type: 'number',
@@ -1316,199 +1273,6 @@ This action is permanent and cannot be undone.`,
 		}
 	},
 
-	// ============================================
-	// TEMPLATE & PROJECT CREATION TOOLS
-	// ============================================
-
-	{
-		type: 'function',
-		function: {
-			name: 'list_onto_templates',
-			description: `Search and list available ontology templates to find the right template for creating projects, tasks, plans, etc.
-
-Use this tool when the user wants to create a new project/entity and you need to find the appropriate template.
-Templates are organized by scope (project, task, plan, output) and realm (writer, developer, coach, etc.).
-
-Examples:
-- User: "Create a book writing project" → list_onto_templates(scope="project", realm="writer", search="book")
-- User: "Start a new software project" → list_onto_templates(scope="project", realm="developer")
-- User: "Create a coaching plan" → list_onto_templates(scope="plan", realm="coach")`,
-			parameters: {
-				type: 'object',
-				properties: {
-					scope: {
-						type: 'string',
-						enum: [
-							'project',
-							'plan',
-							'task',
-							'output',
-							'document',
-							'goal',
-							'requirement'
-						],
-						description: 'Entity type to find templates for (required for best results)'
-					},
-					realm: {
-						type: 'string',
-						description:
-							'Domain/realm filter (e.g., "writer", "developer", "coach", "designer")'
-					},
-					search: {
-						type: 'string',
-						description:
-							'Text search across template names, type_keys, and descriptions'
-					},
-					context: {
-						type: 'string',
-						enum: [
-							'personal',
-							'client',
-							'commercial',
-							'internal',
-							'open_source',
-							'community',
-							'academic',
-							'nonprofit',
-							'startup'
-						],
-						description: 'Filter by context facet'
-					},
-					scale: {
-						type: 'string',
-						enum: ['micro', 'small', 'medium', 'large', 'epic'],
-						description: 'Filter by scale facet'
-					},
-					stage: {
-						type: 'string',
-						enum: [
-							'discovery',
-							'planning',
-							'execution',
-							'launch',
-							'maintenance',
-							'complete'
-						],
-						description: 'Filter by stage facet'
-					}
-				}
-			}
-		}
-	},
-	{
-		type: 'function',
-		function: {
-			name: 'find_or_create_template',
-			description: `Find an existing template or create a new one using intelligent matching.
-
-This is the UNIFIED template discovery and creation tool. It combines:
-- Template search with context-aware matching
-- LLM-powered template scoring (70% match threshold)
-- Automatic template creation when no suitable match exists
-- Support for all 8 entity scopes
-
-**When to use this tool**:
-- Before creating any entity, to ensure the right template exists
-- When you need to find a template by context description
-- When migrating data that needs template classification
-- When the user describes work that may need a new template type
-
-**How it works**:
-1. Searches existing templates matching the context
-2. Scores candidates using LLM with abstract template penalty
-3. Returns best match if score >= threshold (default 70%)
-4. Creates new template if no match found and allow_create=true
-
-**Returns**: Template info, whether it was created, match score, and rationale.`,
-			parameters: {
-				type: 'object',
-				properties: {
-					scope: {
-						type: 'string',
-						enum: [
-							'project',
-							'task',
-							'plan',
-							'goal',
-							'document',
-							'output',
-							'risk',
-							'event'
-						],
-						description: 'Entity scope for template (required)'
-					},
-					context: {
-						type: 'string',
-						description:
-							'Natural language description of the entity to be created. This is used for semantic matching against existing templates.'
-					},
-					preferred_type_key: {
-						type: 'string',
-						description: 'Optional preferred type_key to check first before searching'
-					},
-					realm: {
-						type: 'string',
-						description: 'Domain/realm hint (e.g., "writer", "developer", "coach")'
-					},
-					match_threshold: {
-						type: 'number',
-						minimum: 0,
-						maximum: 1,
-						default: 0.7,
-						description:
-							'Minimum match score (0-1) to accept existing template. Default: 0.7 (70%)'
-					},
-					allow_create: {
-						type: 'boolean',
-						default: true,
-						description:
-							'Whether to create a new template if no match found. Default: true'
-					},
-					facets: {
-						type: 'object',
-						description: 'Optional facet hints for template matching',
-						properties: {
-							context: {
-								type: 'string',
-								enum: [
-									'personal',
-									'client',
-									'commercial',
-									'internal',
-									'open_source',
-									'community',
-									'academic',
-									'nonprofit',
-									'startup'
-								]
-							},
-							scale: {
-								type: 'string',
-								enum: ['micro', 'small', 'medium', 'large', 'epic']
-							},
-							stage: {
-								type: 'string',
-								enum: [
-									'discovery',
-									'planning',
-									'execution',
-									'launch',
-									'maintenance',
-									'complete'
-								]
-							}
-						}
-					},
-					example_props: {
-						type: 'object',
-						description: 'Example property values to help infer template schema'
-					}
-				},
-				required: ['scope', 'context']
-			}
-		}
-	},
-
 	{
 		type: 'function',
 		function: {
@@ -1524,21 +1288,18 @@ This is the PRIMARY tool for creating projects. It supports creating a complete 
 
 **IMPORTANT**: You should INFER as much as possible from the user's message:
 - Project name from context
-- Appropriate template type_key (use list_onto_templates first)
+- Appropriate type_key classification using project.{realm}.{deliverable}[.{variant}]
 - Start date (default to today if not specified)
 - Facets (context, scale, stage) from user intent
 - Basic goals and tasks from user description
-- ⚠️ **Template-specific props extracted from user's message** - CRITICAL!
+- ⚠️ **Props extracted from user's message** - CRITICAL!
 
 **Props Extraction (CRITICAL)**:
-After selecting a template, you MUST:
-1. Review the template's property schema
-2. Extract ALL relevant values from the user's message
-3. Populate project.props with template-specific properties
-4. Include facets plus all template properties with extracted values
+1. Use the prop conventions (snake_case, booleans as is_* or has_*)
+2. Extract ALL relevant values from the user's message (e.g., genre, tech_stack, audience, deadlines)
+3. Populate project.props (JSONB) with inferred values plus facets (context/scale/stage) when present
 
 Example: User says "wedding for 150 guests at Grand Hall"
-Template has: venue_details, guest_count, budget
 → props: { facets: {...}, venue_details: { name: "Grand Hall" }, guest_count: 150, budget: null }
 
 **When to use clarifications array**:
@@ -1548,8 +1309,8 @@ For example:
 - If user says "start a project", DO ask what kind of project
 
 **Workflow**:
-1. Search templates with list_onto_templates to find appropriate type_key
-2. Extract template-specific property values from user's message
+1. Infer the right type_key from taxonomy (project.creative.book, project.technical.app, etc.)
+2. Extract props from the user's message using prop naming guidance
 3. Fill in ProjectSpec with inferred data AND extracted props
 4. Add clarifications[] only if essential info is missing
 5. Call this tool with the complete spec
@@ -1558,7 +1319,7 @@ For example:
 {
   project: {
     name: string (REQUIRED - infer from user message),
-    type_key: string (REQUIRED - from template search),
+    type_key: string (REQUIRED - classify via project.{realm}.{deliverable}[.{variant}]),
     description?: string (infer from user message),
     state_key?: string (default: "draft"),
     props?: { facets?: { context?, scale?, stage? } },
@@ -1589,7 +1350,7 @@ For example:
 							type_key: {
 								type: 'string',
 								description:
-									'Template type key like "project.writer.book" (REQUIRED - get from list_onto_templates). Must use project.{domain}.{deliverable}[.{variant}] format.'
+									'Type classification like "project.creative.book" (REQUIRED). Must use project.{realm}.{deliverable}[.{variant}] format. Always set a value based on the conversation (no templates).'
 							},
 							description: {
 								type: 'string',
@@ -1607,29 +1368,25 @@ For example:
 							},
 							props: {
 								type: 'object',
-								description: `⚠️ CRITICAL: Template-specific properties extracted from user's message.
+								description: `⚠️ CRITICAL: Properties extracted from the user's message.
 
-This object MUST contain:
+This object is stored as JSONB and SHOULD contain:
 1. facets (context, scale, stage) - Standard project facets
-2. ALL template-specific properties with values from the user's message
+2. ALL relevant properties with values from the user's message using prop naming
 
 **Extraction Process**:
-- Review the template schema (from find_or_create_template or list_onto_templates)
-- For EACH property in the schema, extract relevant info from user's message
-- Populate with specific values the user mentioned
+- Use prop naming guidance (snake_case, is_/has_ for booleans, *_count, target_*)
+- For each meaningful attribute the user mentions, add it to props
 - Use intelligent defaults for properties inferable from context
 
 **Examples**:
-- Wedding template (venue_details, guest_count, budget):
-  User says "200 guests, $80k budget" → props: { guest_count: 200, budget: 80000, venue_details: { status: "searching" } }
+- Software app: user says "Next.js app on Vercel, MVP for indie creators" → props: { tech_stack: ["nextjs"], deployment_target: "vercel", is_mvp: true, target_users: "indie creators" }
+- Business launch: user says "product launch in Feb with $75k budget and 500 target customers" → props: { launch_date: "2025-02-01", budget: 75000, target_customers: 500, channels: ["email", "paid_social"] }
+- Event: user says "wedding for 200 guests at Grand Hall" → props: { venue: "Grand Hall", guest_count: 200, budget: null }
+- Creative book: user says "YA sci-fi novel, 80k words, due Sept 1" → props: { genre: "sci-fi", audience: "ya", target_word_count: 80000, deadline_date: "2025-09-01" }
+- Course: user says "live LLM safety course, 8 lessons, 45 minutes each" → props: { topic: "LLM safety", lesson_count: 8, target_duration_minutes: 45, delivery_mode: "live" }
 
-- Software template (tech_stack, deployment_target):
-  User says "Next.js app on Vercel" → props: { tech_stack: ["Next.js"], deployment_target: "Vercel" }
-
-- Research template (hypothesis, methodology):
-  User says "testing if meditation reduces stress" → props: { hypothesis: "meditation reduces stress", methodology: "experimental" }
-
-DO NOT leave template properties empty if information is available in the conversation!`,
+DO NOT leave props empty when information is available in the conversation!`,
 								properties: {
 									facets: {
 										type: 'object',
@@ -1864,8 +1621,7 @@ Use this when users ask questions like:
 							'ontology_project',
 							'ontology_task',
 							'ontology_plan',
-							'ontology_goal',
-							'ontology_template'
+							'ontology_goal'
 						],
 						description: 'Ontology entity type to inspect'
 					},
@@ -1949,7 +1705,7 @@ The tool responds with a structured document that summarizes the mission, archit
 			name: 'get_buildos_usage_guide',
 			description: `Return the hands-on BuildOS usage playbook.
 Use this when the user needs step-by-step instructions for capturing brain dumps, creating ontology projects, connecting calendar integrations, or collaborating with the agentic chat system.
-It responds with a structured guide that walks through onboarding, planning, automation, and template workflows.`,
+It responds with a structured guide that walks through onboarding, planning, automation, and agent workflows.`,
 			parameters: {
 				type: 'object',
 				properties: {},
@@ -2082,7 +1838,8 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 		category: 'read'
 	},
 	create_onto_project: {
-		summary: 'End-to-end project creation from a template brief plus nested entities.',
+		summary:
+			'End-to-end project creation with classified type_key, inferred props, and nested entities.',
 		capabilities: ['Supports goals/plans/tasks scaffolding', 'Captures clarifications'],
 		contexts: ['project_create', 'project'],
 		category: 'write'
@@ -2197,24 +1954,6 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 		contexts: ['project', 'project_audit', 'project_forecast'],
 		category: 'write'
 	},
-	list_onto_templates: {
-		summary: 'Discover ontology templates by scope/realm/facets.',
-		capabilities: ['Supports text + facet filters', 'Great for project creation grounding'],
-		contexts: ['global', 'project_create', 'project'],
-		category: 'search'
-	},
-	find_or_create_template: {
-		summary: 'Unified template discovery and creation with intelligent matching.',
-		capabilities: [
-			'Searches existing templates by context similarity',
-			'LLM-powered scoring with 70% match threshold',
-			'Creates new templates when no suitable match exists',
-			'Supports all 8 entity scopes (project, task, plan, goal, document, output, risk, event)',
-			'Penalizes abstract templates in favor of concrete ones'
-		],
-		contexts: ['global', 'project_create', 'project', 'project_audit'],
-		category: 'utility'
-	},
 	get_field_info: {
 		summary: 'Schema helper that explains entity fields, enums, and valid values.',
 		capabilities: ['Provides enum values & examples', 'Great for structured updates'],
@@ -2267,7 +2006,7 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 		summary: 'Step-by-step BuildOS usage playbook for onboarding, planning, and automation.',
 		capabilities: [
 			'Describes workflows (brain dumps → ontology → scheduling)',
-			'Highlights template + calendar actions',
+			'Highlights prop inference + calendar actions',
 			'Suggests follow-up tool calls'
 		],
 		contexts: [

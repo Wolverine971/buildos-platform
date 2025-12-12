@@ -1,12 +1,11 @@
 // apps/web/src/routes/api/onto/outputs/generate/+server.ts
 /**
  * AI Content Generation for Text Document Outputs
- * Generates content for text documents based on template and instructions
+ * Generates content for text documents based on type_key and instructions
  */
 
 import type { RequestHandler } from './$types';
 import { SmartLLMService } from '$lib/services/smart-llm-service';
-import { resolveTemplateWithClient } from '$lib/services/ontology/template-resolver.service';
 import { ApiResponse } from '$lib/utils/api-response';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
@@ -17,10 +16,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		}
 
 		const body = await request.json();
-		const { template_key, instructions, project_id, current_props } = body;
+		const { type_key, instructions, project_id, current_props } = body;
 
-		if (!template_key) {
-			return ApiResponse.badRequest('template_key is required');
+		if (!type_key) {
+			return ApiResponse.badRequest('type_key is required');
 		}
 
 		if (!instructions || !instructions.trim()) {
@@ -28,9 +27,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		}
 
 		const supabase = locals.supabase;
-
-		// Resolve template to understand structure
-		const resolved = await resolveTemplateWithClient(supabase, template_key, 'output');
 
 		// Get project context
 		const { data: project, error: projectError } = await supabase
@@ -77,10 +73,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			appName: 'BuildOS Output Generator'
 		});
 
-		// Build prompt based on template type
+		// Build prompt based on type_key
 		const prompt = buildGenerationPrompt({
-			templateKey: template_key,
-			resolvedTemplate: resolved,
+			typeKey: type_key,
 			instructions,
 			project,
 			currentProps: current_props || {}
@@ -123,20 +118,20 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 };
 
 function buildGenerationPrompt({
-	templateKey,
-	resolvedTemplate,
+	typeKey,
 	instructions,
 	project,
 	currentProps
 }: {
-	templateKey: string;
-	resolvedTemplate: any;
+	typeKey: string;
 	instructions: string;
 	project: any;
 	currentProps: Record<string, unknown>;
 }): string {
+	const documentType = getDocumentTypeName(typeKey);
+
 	const basePrompt = `
-You are writing content for a ${resolvedTemplate.name} document.
+You are writing content for a ${documentType} document.
 
 User Instructions:
 ${instructions}
@@ -158,13 +153,10 @@ ${JSON.stringify(currentProps, null, 2)}
 `
 		: ''
 }
-
-Template Requirements:
-${JSON.stringify(resolvedTemplate.schema.properties, null, 2)}
 `;
 
-	// Add template-specific guidance
-	const specificGuidance = getTemplateSpecificGuidance(templateKey, currentProps);
+	// Add type-specific guidance
+	const specificGuidance = getTypeSpecificGuidance(typeKey, currentProps);
 
 	return `${basePrompt}
 
@@ -183,14 +175,27 @@ The content should be:
 2. Professional in tone
 3. Complete and ready to use
 4. Aligned with the user's instructions
-5. Appropriate for the document type (${resolvedTemplate.name})
+5. Appropriate for the document type (${documentType})
 
 Return ONLY the HTML content, no markdown code fences or explanations.
 `;
 }
 
-function getTemplateSpecificGuidance(templateKey: string, props: Record<string, unknown>): string {
-	switch (templateKey) {
+function getDocumentTypeName(typeKey: string): string {
+	const typeNames: Record<string, string> = {
+		'output.chapter': 'Book Chapter',
+		'output.article': 'Article',
+		'output.blog_post': 'Blog Post',
+		'output.case_study': 'Case Study',
+		'output.whitepaper': 'Whitepaper',
+		'output.newsletter': 'Newsletter'
+	};
+
+	return typeNames[typeKey] || 'Document';
+}
+
+function getTypeSpecificGuidance(typeKey: string, props: Record<string, unknown>): string {
+	switch (typeKey) {
 		case 'output.chapter':
 			return `
 This is a book chapter. Include:

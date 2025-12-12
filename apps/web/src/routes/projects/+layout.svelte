@@ -1,7 +1,7 @@
 <!-- apps/web/src/routes/projects/+layout.svelte -->
 <script lang="ts">
 	import { page } from '$app/stores';
-	import { ArrowLeft, Layers, LayoutTemplate, PlusCircle } from 'lucide-svelte';
+	import { ArrowLeft, Layers, PlusCircle } from 'lucide-svelte';
 
 	type NavLink = {
 		href: string;
@@ -9,12 +9,11 @@
 		description: string;
 		icon: typeof Layers;
 		match(path: string): boolean;
-		adminOnly?: boolean;
 	};
 
 	let { children, data } = $props();
 
-	// Check if user is admin - only admins see the full sidebar with Templates
+	// Check if user is admin
 	const isAdmin = $derived(data?.user?.is_admin ?? false);
 
 	const navLinks: NavLink[] = [
@@ -31,19 +30,10 @@
 			description: 'Start a new project',
 			icon: PlusCircle,
 			match: (path) => path === '/projects/create'
-		},
-		{
-			href: '/projects/templates',
-			label: 'Templates',
-			description: 'Reusable blueprints',
-			icon: LayoutTemplate,
-			match: (path) => path.startsWith('/projects/templates'),
-			adminOnly: true
 		}
 	];
 
-	// Filter nav links based on admin status
-	const visibleNavLinks = $derived(navLinks.filter((link) => !link.adminOnly || isAdmin));
+	const visibleNavLinks = $derived(navLinks);
 
 	const currentPath = $derived($page.url.pathname);
 </script>

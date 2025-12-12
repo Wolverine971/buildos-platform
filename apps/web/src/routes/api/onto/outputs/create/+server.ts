@@ -6,10 +6,6 @@
 
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
-import {
-	resolveTemplateWithClient,
-	validateTemplateForInstantiation
-} from '$lib/services/ontology/template-resolver.service';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	try {
@@ -72,20 +68,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			);
 		}
 
-		// Validate template exists and is instantiable
-		const validation = await validateTemplateForInstantiation(supabase, type_key, 'output');
-		if (!validation.valid) {
-			return ApiResponse.badRequest(validation.error || 'Invalid template');
-		}
-
-		// Resolve template to get defaults
-		const resolved = await resolveTemplateWithClient(supabase, type_key, 'output');
-
-		// Note: actorId already obtained and validated in security check above
-
-		// Merge props with template defaults
+		// Build props with default values
 		const mergedProps = {
-			...resolved.default_props,
 			...props,
 			content: props?.content || '',
 			content_type: 'html',

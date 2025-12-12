@@ -1,5 +1,4 @@
 // apps/web/src/routes/(public)/integrations/+page.ts
-// apps/web/src/routes/(public)/integrations/+page.ts
 import type { PageLoad } from './$types';
 
 export const load: PageLoad = async () => {

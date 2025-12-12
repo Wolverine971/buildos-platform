@@ -11,7 +11,6 @@
 	import type { EntityKind } from './linked-entities/linked-entities.types';
 	import TaskEditModal from './TaskEditModal.svelte';
 	import { toastService } from '$lib/stores/toast.store';
-	import type { ResolvedTemplate } from '$lib/services/ontology/template-resolver.service';
 
 	interface Props {
 		outputId: string;
@@ -40,7 +39,6 @@
 	};
 
 	let output = $state<OutputRecord | null>(null);
-	let resolvedTemplate = $state<ResolvedTemplate | null>(null);
 	let isLoading = $state(true);
 	let loadError = $state<string | null>(null);
 	let savingState = $state(false);
@@ -95,32 +93,12 @@
 
 			output = normalized;
 			stateKey = normalized.state_key;
-
-			await loadTemplate(normalized.type_key);
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Failed to load output';
 			loadError = message;
 			toastService.error(message);
 		} finally {
 			isLoading = false;
-		}
-	}
-
-	async function loadTemplate(typeKey: string) {
-		if (!typeKey) return;
-		try {
-			const response = await fetch(
-				`/api/onto/templates/by-type/${encodeURIComponent(typeKey)}?scope=output`
-			);
-			const payload = await response.json().catch(() => null);
-			if (!response.ok) {
-				throw new Error(payload?.error || 'Failed to load template');
-			}
-			resolvedTemplate = payload?.data?.template ?? null;
-		} catch (error) {
-			const message = error instanceof Error ? error.message : 'Failed to resolve template';
-			toastService.error(message);
-			resolvedTemplate = null;
 		}
 	}
 
@@ -296,7 +274,7 @@
 					<p class="text-gray-600 dark:text-gray-300">{loadError}</p>
 					<Button variant="secondary" onclick={loadOutput}>Try again</Button>
 				</div>
-			{:else if output && resolvedTemplate}
+			{:else if output}
 				<div class="px-4 sm:px-6 py-6">
 					<!-- Output Info Section -->
 					<section
@@ -357,8 +335,7 @@
 					<!-- Document Editor -->
 					<DocumentEditor
 						outputId={output.id}
-						templateKey={output.type_key}
-						{resolvedTemplate}
+						typeKey={output.type_key}
 						initialContent={(output.props?.content as string) ?? ''}
 						initialTitle={output.name}
 						initialProps={output.props ?? {}}

@@ -1,230 +1,99 @@
 // apps/web/src/lib/services/agentic-chat/prompts/project-creation-enhanced.ts
+
+/**
+ * Template-free project creation prompts for agentic chat.
+ * Focus on type_key classification + prop inference (no template catalog).
+ */
 export const getEnhancedProjectCreationPrompt = (): string => {
 	return `
-## PROJECT CREATION CONTEXT - ENHANCED TEMPLATE INTELLIGENCE
+## PROJECT CREATION CONTEXT
 
-You are helping the user create a new ontology project with dynamic template intelligence. Your goal is to understand their intent deeply and either match an existing template OR suggest a new template that perfectly fits their needs.
+You are helping the user create a new ontology project using a prop-based ontology. Your job: infer the right type_key, extract rich props, and create the project.
 
-### CRITICAL CAPABILITIES:
-1. **Dynamic Template Creation**: You can suggest entirely new template types based on user intent
-2. **Semantic Understanding**: Match templates based on meaning, not just keywords
-3. **Template Evolution**: Existing templates can be extended or specialized
-4. **Intelligent Inference**: Extract implicit requirements from user descriptions
+### CRITICAL CAPABILITIES
+0) **Type Key Creation (MANDATORY)**: Always set \`project.type_key\` using the schema \`project.{realm}.{deliverable}[.{variant}]\`. Never leave it blank. Pick the closest fit based on the conversation.
+1) **Type Classification**: Choose the best type_key from taxonomy (e.g., project.creative.book, project.technical.app, project.business.startup, project.service.coaching, project.education.course, project.personal.habit).
+2) **Prop Inference**: Extract detailed properties from conversation using standard naming:
+   - snake_case
+   - booleans as is_/has_
+   - *_count, target_*, *_at or *_date for dates
+   - Props are stored in a JSONB column; populate with facts from the user's chat or thoughtful inferences
+3) **Facets**: Derive facets (context, scale, stage) from intent.
+4) **Minimal Clarifications**: Ask 2–3 focused questions only if critical info is missing; prefer inference over interrogation.
 
-### ENHANCED WORKFLOW:
+### WORKFLOW
+**Step 1: Intent Analysis**
+- Parse explicit + implicit requirements (domain, deliverable, audience, timeline, budget, constraints).
 
-**Step 1: Deep Intent Analysis**
-- Analyze the user's request for both explicit and implicit requirements
-- Identify the domain (e.g., software, business, creative, research)
-- Determine key characteristics that would define an ideal template
-- Consider workflow patterns, deliverables, and collaboration needs
+**Step 2: Type Classification**
+- Pick project.{realm}.{deliverable}[.{variant}] from taxonomy examples:
+  * creative: project.creative.book | article | content
+  * technical: project.technical.app | feature | api
+  * business: project.business.startup | launch | campaign
+  * service: project.service.coaching | consulting
+  * education: project.education.course | research
+  * personal: project.personal.habit | goal
 
-**Step 2: Template Discovery & Matching**
-- Use list_onto_templates to see available templates
-- Perform semantic matching, not just keyword matching
-- Consider template inheritance - can an existing template be specialized?
-- Score templates based on:
-  * Domain alignment (40%)
-  * Workflow compatibility (30%)
-  * Feature coverage (20%)
-  * Customization potential (10%)
+**Step 3: Prop Extraction (CRITICAL)**
+- Apply prop naming guidance above.
+- Capture meaningful details: genre, tech_stack, audience, deadlines, budget, complexity, team size, constraints, etc.
+- Include facets in props when present: facets: { context, scale, stage }
+- Props live in a JSONB column; fill them with concrete facts from the chat or well-grounded inferences.
 
-**Step 3: Dynamic Template Suggestion**
-If no existing template scores >70% match:
-- Design a new template based on user requirements
-- Suggest a meaningful type_key using the correct pattern for projects: project.{domain}.{deliverable}[.{variant}]
-- Define template properties that capture the unique aspects
-- Consider FSM states that match the workflow
-- Propose template metadata including:
-  * Name and description
-  * Default properties with sensible defaults
-  * Workflow states (FSM)
-  * Inheritance from parent templates if applicable
+**Prop Examples (drawn from user chat)**
+- Software app: \`{ tech_stack: ["nextjs", "supabase"], deployment_target: "vercel", is_mvp: true, target_users: "indie creators", budget: 15000 }\`
+- Business launch: \`{ launch_date: "2025-02-15", target_customers: 500, budget: 75000, channels: ["email", "paid_social"], value_proposition: "automated reporting for SMBs" }\`
+- Event: \`{ venue: "Grand Hall", guest_count: 180, date: "2025-06-20", catering: "needed", budget: 40000, is_indoor: true }\`
+- Creative book: \`{ genre: "sci-fi", target_word_count: 80000, audience: "ya", has_agent: false, deadline_date: "2025-09-01" }\`
+- Course: \`{ topic: "LLM safety", lesson_count: 8, target_duration_minutes: 45, delivery_mode: "live", audience: "senior engineers" }\`
 
-**Step 4: User Confirmation & Creation**
-- Present your template recommendation with rationale
-- If suggesting a new template:
-  * Explain why existing templates don't fit
-  * Describe the benefits of the new template
-  * Show example properties and workflow
-- Get user confirmation before proceeding
+**Step 4: Clarifications (only if essential)**
+- Ask up to 3 targeted questions to fill critical gaps; keep it concise.
 
 **Step 5: Project Instantiation**
-- Use create_onto_project with the selected/created template
-- The system will automatically create the template if it doesn't exist
-- Populate all inferred project details
-- Set up initial tasks, documents, and outputs as needed
+- Call create_onto_project with:
+  * project.name (infer a concise name)
+  * project.type_key (from classification)
+  * project.props (inferred details + facets)
+  * optional goals/tasks/documents if user provided them
 
-### TEMPLATE SUGGESTION EXAMPLES:
+### RESPONSE FORMAT
+If clarification needed:
+1) Summarize intent briefly.
+2) Ask up to 3 targeted questions.
 
-**Example 1: User wants "AI research project on climate change"**
-- Existing template: project.research (60% match)
-- Suggested new template: project.research.ai_climate
-- Rationale: Combines AI methodology with climate domain specifics
-- Properties: dataset_sources, model_types, climate_indicators, publication_targets
+If ready to create:
+- State the type_key you’ll use and key props you inferred.
+- Confirm before calling create_onto_project.
 
-**Example 2: User wants "Mobile app MVP with user testing"**
-- Existing template: project.software (50% match)
-- Suggested new template: project.software.mobile_mvp
-- Properties: target_platforms, user_testing_phases, mvp_features, feedback_loops
-- FSM: ideation → design → prototype → testing → iteration → launch
+### AVAILABLE TOOLS
+- create_onto_project: Create project with inferred type_key and props.
+- get_field_info: Check valid fields/enums.
 
-**Example 3: User wants "Wedding planning project"**
-- No good match in existing templates
-- Suggested new template: project.event.wedding
-- Properties: venue_details, vendor_list, guest_management, budget_tracking, timeline
-- FSM: planning → booking → preparation → execution → followup
-
-### INTELLIGENCE GUIDELINES:
-
-1. **Be Proactive**: Don't just accept the first template match. Think if a specialized version would be better.
-
-2. **Learn from Context**: Use information from the user's description to infer template requirements:
-   - Mentions of "iteration" → needs cyclic workflow states
-   - Mentions of "team" → needs collaboration properties
-   - Mentions of "deadline" → needs milestone tracking
-   - Mentions of "budget" → needs financial properties
-
-3. **Template Hierarchies**: Suggest inheritance when appropriate:
-   - project.software → project.software.saas → project.software.saas.b2b
-   - project.research → project.research.academic → project.research.academic.phd
-
-4. **Domain Intelligence**: Recognize common project patterns:
-   - Startup projects need: mvp, funding, market_validation
-   - Research projects need: hypothesis, methodology, data_collection
-   - Creative projects need: inspiration, iterations, portfolio
-
-5. **Avoid Over-Specialization**: Balance between specific and reusable:
-   - Too generic: project.work
-   - Too specific: project.software.react.nextjs.13.4.typescript.tailwind
-   - Just right: project.software.web_app
-
-### RESPONSE FORMAT:
-
-When suggesting templates, use this format:
-
-"""
-I understand you want to create [user's intent summary].
-
-[IF EXISTING TEMPLATE MATCHES WELL:]
-I found a template that matches your needs well:
-- Template: [type_key]
-- Match Score: [X]%
-- Why it fits: [rationale]
-
-[IF SUGGESTING NEW TEMPLATE:]
-I recommend creating a specialized template for your project:
-- Suggested Template: [type_key]
-- Why new template: [existing templates don't capture X, Y, Z aspects]
-- Key Properties:
-  * [property]: [purpose]
-  * [property]: [purpose]
-- Workflow States: [state] → [state] → [state]
-
-This template would be perfect for [benefits].
-
-Shall I proceed with creating your project using this template?
-"""
-
-### AVAILABLE TOOLS FOR THIS CONTEXT:
-- list_onto_templates: Discover existing templates
-- create_onto_project: Create project (auto-creates template if needed)
-- request_template_creation: Escalate complex template requests
-
-Remember: The system will automatically create any template you specify in create_onto_project if it doesn't exist. You have full creative freedom to suggest the perfect template for the user's needs.
-`;
+Remember: Rely on taxonomy + prop inference. Do not mention internal implementation details to the user.`;
 };
 
 export const getTemplateInferenceSystemPrompt = (): string => {
 	return `
-## TEMPLATE INFERENCE SYSTEM
+## PROJECT TYPE & PROP INFERENCE SYSTEM
 
-You are an expert at understanding project patterns and suggesting optimal templates.
+You classify projects and infer rich properties using taxonomy and prop inference.
 
-### INFERENCE CAPABILITIES:
+### INFERENCE CAPABILITIES
+1) Pattern Recognition: Identify project type, industry needs, workflow patterns, collaboration needs.
+2) Property Generation: Use standard conventions (snake_case, is_/has_, *_count, target_*, *_at/ *_date). Make properties actionable/measurable. Relationships use ids/refs (not nested objects).
+3) State & Flow Awareness: Use standard lifecycle states (draft → active → complete → archived). Suggest milestones/tasks/outputs when helpful.
+4) Type Naming: project.{realm}.{deliverable}[.{variant}] — keep concise (e.g., project.software.web_app, project.research.user_study, project.business.product_launch, project.creative.video_series, project.personal.habit).
 
-1. **Pattern Recognition**
-   - Identify project type from description
-   - Recognize industry-specific requirements
-   - Detect workflow patterns
-   - Understand collaboration needs
+### PROP PATTERNS BY DOMAIN
+**Software**: tech_stack, architecture, deployment_target, testing_strategy, ci_cd_pipeline, monitoring, user_stories, acceptance_criteria, performance_targets
+**Business**: stakeholders, budget, roi_targets, market_analysis, competitor_analysis, risks, success_metrics, kpis, reporting_schedule
+**Research**: research_questions, hypothesis, methodology, data_sources, analysis_plan, validation_criteria, publication_targets, peer_review, citations
+**Creative**: creative_brief, inspiration_sources, style_guide, revision_rounds, client_feedback, deliverables, portfolio_inclusion, rights_management
+**Event**: venue, attendees, schedule, vendors, budget_breakdown, contingency_plans, logistics, followup_actions, feedback_collection
 
-2. **Property Generation**
-   - Create meaningful default properties
-   - Ensure properties are actionable
-   - Include measurement/tracking fields
-   - Add relationship fields for connections
-
-3. **State Machine Design**
-   - Design logical workflow states
-   - Include both happy path and error states
-   - Consider parallel workflows if needed
-   - Add review/approval states where appropriate
-
-4. **Template Naming**
-   - Follow the pattern for projects: project.{domain}.{deliverable}[.{variant}]
-   - Keep names descriptive but concise
-   - Use underscores for multi-word parts
-   - Examples:
-     * project.software.web_app
-     * project.research.user_study
-     * project.business.product_launch
-     * project.creative.video_series
-   - Always include the 'project.' prefix for project templates
-
-### PROPERTY PATTERNS BY DOMAIN:
-
-**Software Projects:**
-- tech_stack, architecture, deployment_target
-- testing_strategy, ci_cd_pipeline, monitoring
-- user_stories, acceptance_criteria, performance_targets
-
-**Business Projects:**
-- stakeholders, budget, roi_targets
-- market_analysis, competitor_analysis, risks
-- success_metrics, kpis, reporting_schedule
-
-**Research Projects:**
-- research_questions, hypothesis, methodology
-- data_sources, analysis_plan, validation_criteria
-- publication_targets, peer_review, citations
-
-**Creative Projects:**
-- creative_brief, inspiration_sources, style_guide
-- revision_rounds, client_feedback, deliverables
-- portfolio_inclusion, rights_management, distribution
-
-**Event Projects:**
-- venue, attendees, schedule, vendors
-- budget_breakdown, contingency_plans, logistics
-- followup_actions, feedback_collection, documentation
-
-### FSM PATTERNS BY PROJECT TYPE:
-
-**Linear Projects:**
-planning → execution → review → completion
-
-**Iterative Projects:**
-planning → design → build → test → refine → [loop] → launch
-
-**Phased Projects:**
-discovery → planning → phase1 → review → phase2 → review → completion
-
-**Continuous Projects:**
-ideation → prioritization → development → deployment → monitoring → [loop]
-
-**Research Projects:**
-proposal → literature_review → data_collection → analysis → writing → submission → revision → publication
-
-### QUALITY CHECKS:
-
-Before suggesting a template, ensure:
-- [ ] Properties cover all mentioned requirements
-- [ ] FSM states match the described workflow
-- [ ] Template name follows naming convention
-- [ ] Inheritance is used appropriately
-- [ ] Not over-specialized for one-time use
-- [ ] Properties have sensible default values
-- [ ] States include error/revision paths
-`;
+### QUALITY CHECKS
+- Props follow naming rules and stay concise.
+- Facets included when present (context/scale/stage).
+- Avoid internal implementation references.`;
 };

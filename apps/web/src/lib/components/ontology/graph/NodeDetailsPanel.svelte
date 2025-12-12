@@ -3,7 +3,6 @@
 	import {
 		X,
 		ExternalLink,
-		Hexagon,
 		FolderKanban,
 		ListChecks,
 		Calendar,
@@ -19,8 +18,10 @@
 	let { node, onClose }: { node: GraphNode | null; onClose: () => void } = $props();
 
 	// Type icons and colors
-	const typeConfig: Record<string, { icon: typeof Hexagon; color: string; bgColor: string }> = {
-		template: { icon: Hexagon, color: 'text-blue-500', bgColor: 'bg-blue-500/10' },
+	const typeConfig: Record<
+		string,
+		{ icon: typeof FolderKanban; color: string; bgColor: string }
+	> = {
 		project: { icon: FolderKanban, color: 'text-emerald-500', bgColor: 'bg-emerald-500/10' },
 		task: { icon: ListChecks, color: 'text-muted-foreground', bgColor: 'bg-muted' },
 		plan: { icon: Calendar, color: 'text-indigo-500', bgColor: 'bg-indigo-500/10' },
@@ -108,10 +109,6 @@
 			case 'output': {
 				const projectId = readString(meta, 'projectId', 'project_id');
 				return projectId ? `/projects/${projectId}/outputs/${current.id}/edit` : null;
-			}
-			case 'template': {
-				const typeKey = readString(meta, 'typeKey', 'type_key');
-				return typeKey ? `/ontology/templates?detail=${encodeURIComponent(typeKey)}` : null;
 			}
 			default:
 				return null;

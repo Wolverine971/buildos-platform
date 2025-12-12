@@ -1,3 +1,4 @@
+<!-- apps/web/src/lib/components/ontology/graph/svelteflow/nodes/GoalNode.svelte -->
 <!-- GoalNode.svelte - Svelte Flow custom node for goals -->
 <script lang="ts">
 	import { Handle, Position } from '@xyflow/svelte';

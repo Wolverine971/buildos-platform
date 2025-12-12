@@ -360,48 +360,6 @@ export async function getRecentActivity(client: TypedSupabaseClient) {
 	}));
 }
 
-export async function getTemplateUsageStats(client: TypedSupabaseClient) {
-	const { data, error } = await client.from('project_daily_briefs').select(
-		`
-				template_id,
-				project_brief_templates (
-					name
-				)
-			`
-	);
-
-	if (error) {
-		throw new Error(error.message);
-	}
-
-	const templateCounts: Record<
-		string,
-		{
-			name: string;
-			count: number;
-			type: string;
-		}
-	> = {};
-
-	data?.forEach((usage) => {
-		const templateName = usage.project_brief_templates?.name || 'Default Project Template';
-		const key = `project_${usage.template_id || 'default'}`;
-
-		if (!templateCounts[key]) {
-			templateCounts[key] = { name: templateName, count: 0, type: 'project' };
-		}
-		templateCounts[key].count++;
-	});
-
-	return Object.values(templateCounts)
-		.map((template) => ({
-			template_name: template.name,
-			usage_count: template.count,
-			template_type: template.type
-		}))
-		.sort((a, b) => b.usage_count - a.usage_count);
-}
-
 export async function getFeedbackOverview(
 	client: TypedSupabaseClient
 ): Promise<typeof DEFAULT_FEEDBACK_OVERVIEW> {
@@ -847,7 +805,6 @@ export interface DashboardAnalyticsPayload {
 	briefGenerationStats: Awaited<ReturnType<typeof getBriefGenerationStats>>;
 	systemMetrics: Awaited<ReturnType<typeof getSystemMetrics>>;
 	recentActivity: Awaited<ReturnType<typeof getRecentActivity>>;
-	templateUsageStats: Awaited<ReturnType<typeof getTemplateUsageStats>>;
 	feedbackOverview: Awaited<ReturnType<typeof getFeedbackOverview>>;
 	betaOverview: Awaited<ReturnType<typeof getBetaOverview>>;
 	subscriptionData: Awaited<ReturnType<typeof getSubscriptionOverview>> | null;
@@ -877,7 +834,6 @@ export async function getDashboardAnalytics(
 		briefGenerationStats,
 		systemMetrics,
 		recentActivity,
-		templateUsageStats,
 		feedbackOverview,
 		betaOverview,
 		subscriptionData,
@@ -925,11 +881,6 @@ export async function getDashboardAnalytics(
 			() => getRecentActivity(client)
 		),
 		safeFetch(
-			'template usage stats',
-			() => [],
-			() => getTemplateUsageStats(client)
-		),
-		safeFetch(
 			'feedback overview',
 			() => clone(DEFAULT_FEEDBACK_OVERVIEW),
 			() => getFeedbackOverview(client)
@@ -965,7 +916,6 @@ export async function getDashboardAnalytics(
 		briefGenerationStats,
 		systemMetrics,
 		recentActivity,
-		templateUsageStats,
 		feedbackOverview,
 		betaOverview,
 		subscriptionData,

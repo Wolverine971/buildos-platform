@@ -222,7 +222,7 @@ export class StrategyAnalyzer {
 					reasoning: analysis.reasoning,
 					needs_clarification: false,
 					estimated_steps: 3,
-					required_tools: ['list_onto_templates', 'create_onto_project'],
+					required_tools: ['create_onto_project'],
 					can_complete_directly: false,
 					project_creation_analysis: analysis
 				};
@@ -254,7 +254,7 @@ export class StrategyAnalyzer {
 						'Analysis failed but clarification was attempted. Proceeding with inference.',
 					needs_clarification: false,
 					estimated_steps: 3,
-					required_tools: ['list_onto_templates', 'create_onto_project'],
+					required_tools: ['create_onto_project'],
 					can_complete_directly: false
 				};
 			}
@@ -377,8 +377,7 @@ Available strategies:
    - ONLY after attempting reasoning/research first, and include concrete questions
 
 3. project_creation: ONLY when context_type === project_create (or the user explicitly asks to start a new project)
-   - Select the best template, infer missing details, then call create_onto_project immediately
-   - Optionally call request_template_creation ONCE if the catalog lacks a suitable template
+   - Classify the project with a project.{realm}.{deliverable}[.{variant}] type_key, infer props from conversation, then call create_onto_project immediately
    - Do not perform additional planning/research until the project is instantiated
 
 Context available:
@@ -622,7 +621,7 @@ Return a JSON object with:
 				return "I need to ask clarifying questions to better understand what you're looking for";
 
 			case ChatStrategy.PROJECT_CREATION:
-				return 'This is a project creation request. Select a template, infer details, then create the project immediately.';
+				return 'This is a project creation request. Classify a type_key, infer props from the chat, and create the project immediately.';
 
 			default:
 				return 'Unknown strategy';

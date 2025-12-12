@@ -34,7 +34,6 @@
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import type { EnsureActorResponse } from '$lib/types/onto-api';
-import { resolveAndMergeTemplateProps } from '$lib/services/ontology/template-props-merger.service';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	// Check authentication
@@ -137,19 +136,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			validatedMilestoneId = milestone.id;
 		}
 
-		// Resolve template and merge props if type_key is provided
-		let mergedProps = props;
-		if (type_key) {
-			const templateMerge = await resolveAndMergeTemplateProps(
-				supabase,
-				type_key,
-				'task',
-				props,
-				true // Skip if no template found
-			);
-			mergedProps = templateMerge.mergedProps;
-		}
-
 		// Create the task
 		// type_key is now a proper column (not in props)
 		const taskData = {
@@ -161,7 +147,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			due_at: due_at || null,
 			created_by: actorId,
 			props: {
-				...mergedProps,
+				...props,
 				description: description || null,
 				...(validatedGoalId ? { goal_id: validatedGoalId } : {}),
 				...(validatedMilestoneId ? { supporting_milestone_id: validatedMilestoneId } : {})

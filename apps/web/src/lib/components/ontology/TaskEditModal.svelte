@@ -44,13 +44,56 @@
 	import { fly } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
 	import FSMStateVisualizer from './FSMStateVisualizer.svelte';
-	import TaskSeriesModal from './TaskSeriesModal.svelte';
-	import DocumentModal from './DocumentModal.svelte';
-	import GoalEditModal from './GoalEditModal.svelte';
-	import PlanEditModal from './PlanEditModal.svelte';
-	import TaskEditModalSelf from './TaskEditModal.svelte';
 	import LinkedEntities from './linked-entities/LinkedEntities.svelte';
 	import type { EntityKind } from './linked-entities/linked-entities.types';
+	import type { ComponentType } from 'svelte';
+
+	// Lazy-loaded modal components for better initial load performance
+	let TaskSeriesModalComponent = $state<ComponentType<any> | null>(null);
+	let DocumentModalComponent = $state<ComponentType<any> | null>(null);
+	let GoalEditModalComponent = $state<ComponentType<any> | null>(null);
+	let PlanEditModalComponent = $state<ComponentType<any> | null>(null);
+	let TaskEditModalSelfComponent = $state<ComponentType<any> | null>(null);
+
+	async function loadTaskSeriesModal() {
+		if (!TaskSeriesModalComponent) {
+			const mod = await import('./TaskSeriesModal.svelte');
+			TaskSeriesModalComponent = mod.default;
+		}
+		return TaskSeriesModalComponent;
+	}
+
+	async function loadDocumentModal() {
+		if (!DocumentModalComponent) {
+			const mod = await import('./DocumentModal.svelte');
+			DocumentModalComponent = mod.default;
+		}
+		return DocumentModalComponent;
+	}
+
+	async function loadGoalEditModal() {
+		if (!GoalEditModalComponent) {
+			const mod = await import('./GoalEditModal.svelte');
+			GoalEditModalComponent = mod.default;
+		}
+		return GoalEditModalComponent;
+	}
+
+	async function loadPlanEditModal() {
+		if (!PlanEditModalComponent) {
+			const mod = await import('./PlanEditModal.svelte');
+			PlanEditModalComponent = mod.default;
+		}
+		return PlanEditModalComponent;
+	}
+
+	async function loadTaskEditModalSelf() {
+		if (!TaskEditModalSelfComponent) {
+			const mod = await import('./TaskEditModal.svelte');
+			TaskEditModalSelfComponent = mod.default;
+		}
+		return TaskEditModalSelfComponent;
+	}
 
 	// Linked entities types are imported from linked-entities component
 	import RichMarkdownEditor from '$lib/components/ui/RichMarkdownEditor.svelte';
@@ -87,14 +130,6 @@
 
 	let modalOpen = $state(true);
 	let task = $state<any>(null);
-	let template = $state<{
-		id: string;
-		type_key: string;
-		name: string;
-		scope: string;
-		status: string;
-		metadata?: Record<string, unknown>;
-	} | null>(null);
 	let isLoading = $state(true);
 	let isSaving = $state(false);
 	let isDeleting = $state(false);
@@ -191,6 +226,7 @@
 		hasLoadedViewPreference = true;
 	});
 
+	// Deferred loading: Only load workspace documents when user switches to workspace tab
 	$effect(() => {
 		if (!browser) return;
 		if (activeView === 'workspace' && !workspaceInitialized && task) {
@@ -265,12 +301,17 @@
 			selectedWorkspaceDocId = null;
 			workspaceDocContent = '';
 
-			const response = await fetch(`/api/onto/tasks/${taskId}`);
-			if (!response.ok) throw new Error('Failed to load task');
+			// Parallelize task and transitions fetch for faster loading
+			// Workspace documents are deferred until user switches to workspace tab
+			const [taskResponse, transitionsResponse] = await Promise.all([
+				fetch(`/api/onto/tasks/${taskId}`),
+				fetch(`/api/onto/fsm/transitions?kind=task&id=${taskId}`).catch(() => null)
+			]);
 
-			const data = await response.json();
+			if (!taskResponse.ok) throw new Error('Failed to load task');
+
+			const data = await taskResponse.json();
 			task = data.data?.task;
-			template = data.data?.template || null;
 
 			if (task) {
 				title = task.title || '';
@@ -286,9 +327,25 @@
 				showSeriesDeleteConfirm = false;
 			}
 
-			// Load FSM transitions if available
-			await loadTransitions();
-			await loadWorkspaceDocuments();
+			// Process transitions response (already fetched in parallel)
+			if (transitionsResponse?.ok) {
+				try {
+					const transData = await transitionsResponse.json();
+					allowedTransitions =
+						(transData.data?.transitions || []).map((transition: any) => ({
+							...transition,
+							can_run:
+								typeof transition?.can_run === 'boolean'
+									? (transition.can_run as boolean)
+									: true,
+							failed_guards: Array.isArray(transition?.failed_guards)
+								? transition.failed_guards
+								: []
+						})) ?? [];
+				} catch {
+					allowedTransitions = [];
+				}
+			}
 		} catch (err) {
 			console.error('Error loading task:', err);
 			error = 'Failed to load task';
@@ -421,7 +478,8 @@
 		}
 	}
 
-	function openWorkspaceDocumentModal(documentId: string | null = null) {
+	async function openWorkspaceDocumentModal(documentId: string | null = null) {
+		await loadDocumentModal();
 		workspaceDocumentId = documentId;
 		workspaceDocumentModalOpen = true;
 	}
@@ -572,23 +630,33 @@
 		onClose?.();
 	}
 
-	// Linked entity modal handlers
-	function openGoalModal(id: string) {
+	// Series modal handler with lazy loading
+	async function openSeriesModal() {
+		await loadTaskSeriesModal();
+		showSeriesModal = true;
+	}
+
+	// Linked entity modal handlers with lazy loading
+	async function openGoalModal(id: string) {
+		await loadGoalEditModal();
 		selectedGoalIdForModal = id;
 		showGoalModal = true;
 	}
 
-	function openPlanModal(id: string) {
+	async function openPlanModal(id: string) {
+		await loadPlanEditModal();
 		selectedPlanIdForModal = id;
 		showPlanModal = true;
 	}
 
-	function openDocumentModal(id: string) {
+	async function openDocumentModal(id: string) {
+		await loadDocumentModal();
 		workspaceDocumentId = id;
 		workspaceDocumentModalOpen = true;
 	}
 
-	function openLinkedTaskModal(id: string) {
+	async function openLinkedTaskModal(id: string) {
+		await loadTaskEditModalSelf();
 		selectedLinkedTaskId = id;
 		showLinkedTaskModal = true;
 	}
@@ -1281,7 +1349,7 @@
 														size="sm"
 														variant="secondary"
 														class="w-full"
-														onclick={() => (showSeriesModal = true)}
+														onclick={openSeriesModal}
 													>
 														Make Recurring
 													</Button>
@@ -1486,8 +1554,9 @@
 	{/snippet}
 </Modal>
 
-{#if task}
-	<TaskSeriesModal
+{#if task && showSeriesModal && TaskSeriesModalComponent}
+	<svelte:component
+		this={TaskSeriesModalComponent}
 		{task}
 		bind:isOpen={showSeriesModal}
 		onClose={() => (showSeriesModal = false)}
@@ -1495,8 +1564,9 @@
 	/>
 {/if}
 
-{#if task}
-	<DocumentModal
+{#if task && workspaceDocumentModalOpen && DocumentModalComponent}
+	<svelte:component
+		this={DocumentModalComponent}
 		projectId={task.project_id}
 		taskId={task.id}
 		bind:isOpen={workspaceDocumentModalOpen}
@@ -1527,9 +1597,10 @@
 	</ConfirmationModal>
 {/if}
 
-<!-- Linked Entity Modals -->
-{#if showGoalModal && selectedGoalIdForModal}
-	<GoalEditModal
+<!-- Linked Entity Modals (Lazy Loaded) -->
+{#if showGoalModal && selectedGoalIdForModal && GoalEditModalComponent}
+	<svelte:component
+		this={GoalEditModalComponent}
 		goalId={selectedGoalIdForModal}
 		{projectId}
 		onClose={handleLinkedEntityModalClose}
@@ -1538,8 +1609,9 @@
 	/>
 {/if}
 
-{#if showPlanModal && selectedPlanIdForModal}
-	<PlanEditModal
+{#if showPlanModal && selectedPlanIdForModal && PlanEditModalComponent}
+	<svelte:component
+		this={PlanEditModalComponent}
 		planId={selectedPlanIdForModal}
 		{projectId}
 		onClose={handleLinkedEntityModalClose}
@@ -1548,8 +1620,9 @@
 	/>
 {/if}
 
-{#if showLinkedTaskModal && selectedLinkedTaskId}
-	<TaskEditModalSelf
+{#if showLinkedTaskModal && selectedLinkedTaskId && TaskEditModalSelfComponent}
+	<svelte:component
+		this={TaskEditModalSelfComponent}
 		taskId={selectedLinkedTaskId}
 		{projectId}
 		{plans}

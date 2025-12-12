@@ -9,7 +9,6 @@ import {
 	ONBOARDING_REFERENCE,
 	ONTOLOGY_REFERENCE,
 	STYLE_GUIDE_REFERENCE,
-	TEMPLATE_INHERITANCE_REFERENCE,
 	WEB_DOCS_OVERVIEW_REFERENCE
 } from './references';
 
@@ -48,17 +47,17 @@ const OVERVIEW_SECTIONS: BuildosDocSection[] = [
 		references: [FEATURES_INDEX_REFERENCE, CALENDAR_FEATURE_REFERENCE, ONBOARDING_REFERENCE]
 	},
 	{
-		title: 'Ontology & Template System',
+		title: 'Ontology System',
 		summary:
-			'Work management is modeled as an ontology—a knowledge graph where projects, tasks, plans, goals, and documents form interconnected webs of meaning instead of flat lists.',
+			'Work management is modeled as an ontology—a knowledge graph where projects, tasks, plans, goals, documents, outputs, and milestones form interconnected webs of meaning instead of flat lists.',
 		highlights: [
-			'Every project uses a template (type_key like "writer.book" or "dev.app") plus three facets (context, scale, stage) to classify work without rigid hierarchies.',
+			'Classification uses `type_key` strings (e.g., project.creative.book, task.execute, document.spec) plus three facets (context, scale, stage) to route UI and filtering.',
 			'Context documents capture the narrative "why" of a project—the story from brain dumps that persists as work evolves, giving AI agents rich background when planning.',
 			'The graph structure creates relationships: tasks belong to plans, plans support goals, everything ties to project context. This web lets agents understand dependencies, priorities, and the bigger picture.',
-			'Templates define default properties and suggestions, but projects remain flexible. Users can add custom fields, change states, and adapt the structure to their workflow.',
-			'Template inheritance merges defaults at creation time, but the schema stays loose—projects evolve beyond their templates as needs change.'
+			'Props live in JSONB and are inferred from conversation; the schema is flexible and grows with the project. State machines are handled in the app layer.',
+			'Type taxonomy is documented in ontology specs; projects remain flexible—users can add custom fields, change states, and adapt the structure to their workflow.'
 		],
-		references: [ONTOLOGY_REFERENCE, TEMPLATE_INHERITANCE_REFERENCE]
+		references: [ONTOLOGY_REFERENCE]
 	},
 	{
 		title: 'Agentic Chat & Tooling',

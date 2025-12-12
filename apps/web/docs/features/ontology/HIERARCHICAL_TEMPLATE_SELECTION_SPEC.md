@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/ontology/HIERARCHICAL_TEMPLATE_SELECTION_SPEC.md -->
+
 # Hierarchical Template Selection Specification
 
 **Created**: December 9, 2025

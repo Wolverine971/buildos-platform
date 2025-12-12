@@ -633,19 +633,7 @@ Respond with JSON in this exact format:
 					const callCount = (toolCallHistory.get(toolName) || 0) + 1;
 					toolCallHistory.set(toolName, callCount);
 
-					// Special handling for list_onto_templates in project_create context
-					if (toolName === 'list_onto_templates' && callCount > 1) {
-						console.warn(
-							`[Planner] Preventing repeated call to ${toolName} (called ${callCount} times)`
-						);
-						// Add a system message to guide the LLM
-						messages.push({
-							role: 'system',
-							content: `You have already called list_onto_templates. Please proceed with creating the project using create_onto_project() now. Do not search for templates again.`
-						});
-						// Skip this tool call
-						toolCalls = toolCalls.filter((tc) => tc.id !== toolCall.id);
-					} else if (callCount > 3) {
+					if (callCount > 3) {
 						// General protection against any tool being called too many times
 						console.error(
 							`[Planner] Tool ${toolName} called ${callCount} times, stopping to prevent infinite loop`

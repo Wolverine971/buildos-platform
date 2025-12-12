@@ -20,7 +20,6 @@ export interface RetryRequest {
 	errorCategory?: ErrorCategory;
 
 	// Options
-	useFallbackTemplates?: boolean;
 	maxRetries?: number;
 	projectConcurrency?: number;
 	phaseConcurrency?: number;
@@ -110,7 +109,6 @@ export class MigrationRetryService {
 			projectId,
 			entityType,
 			errorCategory,
-			useFallbackTemplates = false,
 			maxRetries = 3
 		} = request;
 
@@ -342,8 +340,7 @@ export class MigrationRetryService {
 		runId: string,
 		batchId: string,
 		initiatedBy: string,
-		targetCount: number,
-		useFallbackTemplates: boolean
+		targetCount: number
 	): Promise<void> {
 		await this.supabase.from('migration_log').insert({
 			run_id: runId,
@@ -354,7 +351,6 @@ export class MigrationRetryService {
 			metadata: {
 				initiatedBy,
 				targetCount,
-				useFallbackTemplates,
 				startedAt: new Date().toISOString()
 			}
 		});
@@ -384,8 +380,7 @@ export class MigrationRetryService {
 	private async retryProject(
 		target: Database['public']['Tables']['migration_log']['Row'],
 		runId: string,
-		batchId: string,
-		useFallbackTemplates: boolean
+		batchId: string
 	): Promise<void> {
 		const legacyId = target.legacy_id;
 		if (!legacyId) {
@@ -423,7 +418,6 @@ export class MigrationRetryService {
 			user_id: target.user_id,
 			metadata: {
 				originalErrorId: target.id,
-				useFallbackTemplates,
 				retryAttempt: (target.retry_count ?? 0) + 1
 			}
 		});
@@ -438,8 +432,7 @@ export class MigrationRetryService {
 	private async retryPhase(
 		target: Database['public']['Tables']['migration_log']['Row'],
 		runId: string,
-		batchId: string,
-		useFallbackTemplates: boolean
+		batchId: string
 	): Promise<void> {
 		const legacyId = target.legacy_id;
 		if (!legacyId) {
@@ -472,7 +465,6 @@ export class MigrationRetryService {
 			user_id: target.user_id,
 			metadata: {
 				originalErrorId: target.id,
-				useFallbackTemplates,
 				retryAttempt: (target.retry_count ?? 0) + 1
 			}
 		});
@@ -486,8 +478,7 @@ export class MigrationRetryService {
 	private async retryTask(
 		target: Database['public']['Tables']['migration_log']['Row'],
 		runId: string,
-		batchId: string,
-		useFallbackTemplates: boolean
+		batchId: string
 	): Promise<void> {
 		const legacyId = target.legacy_id;
 		if (!legacyId) {
@@ -520,7 +511,6 @@ export class MigrationRetryService {
 			user_id: target.user_id,
 			metadata: {
 				originalErrorId: target.id,
-				useFallbackTemplates,
 				retryAttempt: (target.retry_count ?? 0) + 1
 			}
 		});

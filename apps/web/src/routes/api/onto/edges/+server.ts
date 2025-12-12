@@ -31,7 +31,7 @@ interface EdgeInput {
 	props?: Record<string, unknown>;
 }
 
-const VALID_KINDS = ['task', 'plan', 'goal', 'milestone', 'document', 'output', 'project'];
+const VALID_KINDS = ['task', 'plan', 'goal', 'milestone', 'document', 'output', 'project', 'risk'];
 const VALID_RELS = [
 	'belongs_to_plan',
 	'has_task',
@@ -47,7 +47,15 @@ const VALID_RELS = [
 	'produces',
 	'produced_by',
 	'has_document',
-	'relates_to'
+	'relates_to',
+	// Risk relationships
+	'mitigated_by',
+	'addressed_in',
+	'threatens',
+	'documented_in',
+	'mitigates',
+	'addresses',
+	'has_risk'
 ];
 
 function validateEdge(edge: EdgeInput): string | null {
@@ -105,23 +113,44 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			return ApiResponse.error('Failed to resolve user actor', 500);
 		}
 
+		// Check for existing edges to avoid duplicates
+		const existingEdgesPromises = edges.map((edge) =>
+			supabase
+				.from('onto_edges')
+				.select('id')
+				.eq('src_id', edge.src_id)
+				.eq('dst_id', edge.dst_id)
+				.eq('rel', edge.rel)
+				.maybeSingle()
+		);
+
+		const existingResults = await Promise.all(existingEdgesPromises);
+
+		// Filter out edges that already exist
+		const newEdges = edges.filter((_, index) => {
+			const result = existingResults[index];
+			return !result?.data; // Only include if no existing edge found
+		});
+
+		if (newEdges.length === 0) {
+			// All edges already exist
+			return ApiResponse.success({ created: 0 });
+		}
+
 		// Prepare edges for insertion
-		const edgesToInsert = edges.map((edge) => ({
+		const edgesToInsert = newEdges.map((edge) => ({
 			src_kind: edge.src_kind,
 			src_id: edge.src_id,
 			dst_kind: edge.dst_kind,
 			dst_id: edge.dst_id,
 			rel: edge.rel,
-			props: edge.props || {}
+			props: (edge.props || {}) as Record<string, never>
 		}));
 
-		// Insert edges (ignore duplicates)
+		// Insert new edges
 		const { data: insertedEdges, error: insertError } = await supabase
 			.from('onto_edges')
-			.upsert(edgesToInsert, {
-				onConflict: 'src_id,dst_id,rel',
-				ignoreDuplicates: true
-			})
+			.insert(edgesToInsert)
 			.select('id');
 
 		if (insertError) {
@@ -130,7 +159,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		}
 
 		return ApiResponse.success({
-			created: insertedEdges?.length || edges.length
+			created: insertedEdges?.length || newEdges.length
 		});
 	} catch (error) {
 		console.error('[Edges API] Error:', error);

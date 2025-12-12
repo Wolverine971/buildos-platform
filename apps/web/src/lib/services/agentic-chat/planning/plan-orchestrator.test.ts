@@ -87,7 +87,6 @@ describe('PlanOrchestrator', () => {
 			availableTools: [
 				{ name: 'list_onto_tasks', description: 'List tasks', parameters: {} },
 				{ name: 'create_onto_task', description: 'Create task', parameters: {} },
-				{ name: 'list_onto_templates', description: 'List templates', parameters: {} },
 				{ name: 'create_onto_project', description: 'Create project', parameters: {} }
 			],
 			metadata: {
@@ -234,8 +233,8 @@ describe('PlanOrchestrator', () => {
 					{
 						stepNumber: 1,
 						type: 'research',
-						description: 'List templates',
-						tools: ['list_onto_templates'],
+						description: 'Collect requirements',
+						tools: ['list_onto_tasks'],
 						executorRequired: false
 					},
 					{
@@ -279,8 +278,8 @@ describe('PlanOrchestrator', () => {
 					{
 						stepNumber: 1,
 						type: 'research',
-						description: 'Only list templates',
-						tools: ['list_onto_templates'],
+						description: 'Collect context only',
+						tools: ['list_onto_tasks'],
 						executorRequired: false
 					}
 				]

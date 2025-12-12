@@ -48,7 +48,7 @@ export const CONTEXT_DESCRIPTORS: Record<ChatContextType, { title: string; subti
 	},
 	ontology: {
 		title: 'Ontology',
-		subtitle: 'Work with the ontology system and templates.'
+		subtitle: 'Work with the ontology system (projects, tasks, docs, goals).'
 	}
 };
 

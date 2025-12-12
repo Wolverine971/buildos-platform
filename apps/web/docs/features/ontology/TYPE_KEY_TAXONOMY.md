@@ -2,7 +2,7 @@
 
 # Type Key Taxonomy Architecture
 
-**Last Updated**: December 1, 2025
+**Last Updated**: December 10, 2025
 **Status**: Architecture Guide
 **Purpose**: Naming conventions, taxonomy patterns, and architectural decisions for ontology entities
 
@@ -10,20 +10,20 @@
 
 ## Quick Reference
 
-| Entity                | Has Type Key? | Format                                       | Templates | Example                                                   |
-| --------------------- | ------------- | -------------------------------------------- | --------- | --------------------------------------------------------- |
-| **onto_projects**     | Yes           | `project.{domain}.{deliverable}[.{variant}]` | 13+       | `project.writer.book`, `project.coach.client.executive`   |
-| **onto_tasks**        | Yes           | `task.{work_mode}[.{specialization}]`        | 12        | `task.execute`, `task.coordinate.meeting`                 |
-| **onto_plans**        | Yes           | `plan.{family}[.{variant}]`                  | 20+       | `plan.timebox.sprint`, `plan.campaign.marketing`          |
-| **onto_goals**        | Yes           | `goal.{family}[.{variant}]`                  | 12+       | `goal.outcome.project`, `goal.metric.revenue`             |
-| **onto_outputs**      | Yes           | `output.{family}[.{variant}]`                | 25+       | `output.written.chapter`, `output.media.slide_deck`       |
-| **onto_documents**    | Yes           | `document.{family}[.{variant}]`              | 20+       | `document.context.project`, `document.knowledge.research` |
-| **onto_risks**        | Yes           | `risk.{family}[.{variant}]`                  | 18+       | `risk.technical.security`, `risk.schedule.dependency`     |
-| **onto_events**       | Yes           | `event.{family}[.{variant}]`                 | 18+       | `event.work.focus_block`, `event.collab.meeting.standup`  |
-| **onto_requirements** | Yes           | `requirement.{type}[.{category}]`            | 6         | `requirement.functional`, `requirement.constraint`        |
-| **onto_metrics**      | No            | Inherited from project                       | -         | N/A                                                       |
-| **onto_milestones**   | No            | Inherited from project                       | -         | N/A                                                       |
-| **onto_decisions**    | No            | Inherited from project                       | -         | N/A                                                       |
+| Entity                | Has Type Key? | Format                                      | Templates | Example                                                   |
+| --------------------- | ------------- | ------------------------------------------- | --------- | --------------------------------------------------------- |
+| **onto_projects**     | Yes           | `project.{realm}.{deliverable}[.{variant}]` | 13+       | `project.creative.book`, `project.technical.app.mobile`   |
+| **onto_tasks**        | Yes           | `task.{work_mode}[.{specialization}]`       | 12        | `task.execute`, `task.coordinate.meeting`                 |
+| **onto_plans**        | Yes           | `plan.{family}[.{variant}]`                 | 20+       | `plan.timebox.sprint`, `plan.campaign.marketing`          |
+| **onto_goals**        | Yes           | `goal.{family}[.{variant}]`                 | 12+       | `goal.outcome.project`, `goal.metric.revenue`             |
+| **onto_outputs**      | Yes           | `output.{family}[.{variant}]`               | 25+       | `output.written.chapter`, `output.media.slide_deck`       |
+| **onto_documents**    | Yes           | `document.{family}[.{variant}]`             | 20+       | `document.context.project`, `document.knowledge.research` |
+| **onto_risks**        | Yes           | `risk.{family}[.{variant}]`                 | 18+       | `risk.technical.security`, `risk.schedule.dependency`     |
+| **onto_events**       | Yes           | `event.{family}[.{variant}]`                | 18+       | `event.work.focus_block`, `event.collab.meeting.standup`  |
+| **onto_requirements** | Yes           | `requirement.{type}[.{category}]`           | 6         | `requirement.functional`, `requirement.constraint`        |
+| **onto_metrics**      | No            | Inherited from project                      | -         | N/A                                                       |
+| **onto_milestones**   | No            | Inherited from project                      | -         | N/A                                                       |
+| **onto_decisions**    | No            | Inherited from project                      | -         | N/A                                                       |
 
 ---
 
@@ -82,12 +82,115 @@ These entities have independent lifecycles, can be discovered independently, and
 
 #### onto_projects
 
-- **Format**: `project.{domain}.{deliverable}[.{variant}]`
-- **Examples**:
-    - `project.writer.book` - Writer creating a book
-    - `project.coach.client.executive` - Coach working with executive client
-    - `project.developer.app.mobile` - Developer building mobile app
-- **Why**: Top-level entities with independent meaning, unified with other entity scope prefixes
+- **Format**: `project.{realm}.{deliverable}[.{variant}]`
+- **Key Insight**: Realm describes the _category of value/output_ the project creates, NOT the role of the person doing the work. Role is orthogonal and belongs to the user, not the project.
+
+##### Project Realms (Domains)
+
+| Realm         | Core Focus                   | Distinct Because                  | Example Deliverables                               |
+| ------------- | ---------------------------- | --------------------------------- | -------------------------------------------------- |
+| **creative**  | Original content, expression | Artifact is the expression itself | book, article, album, video, design, brand         |
+| **technical** | Building functional systems  | Artifact is a working system      | app, api, feature, infrastructure                  |
+| **business**  | Commercial growth & ventures | Success = revenue/market          | startup, product_launch, campaign, market_research |
+| **service**   | Delivering value to clients  | Success = client outcome          | coaching_program, consulting_engagement, workshop  |
+| **education** | Acquiring knowledge          | Success = learning/credential     | course, thesis, certification                      |
+| **personal**  | Self/life improvement        | Success = personal change         | habit, routine, goal, wellness                     |
+
+> **Note**: We intentionally limit to 6 core realms for high classification accuracy. Edge cases:
+>
+> - **Research** → Usually `business` (market research) or `education` (academic research) or a phase within another project
+> - **Operations** → Usually `business` (company ops) or `service` (client ops)
+> - **Design** → Usually `creative` (visual/brand) or `technical` (UX/product design)
+
+##### Examples by Realm
+
+**Creative**:
+
+- `project.creative.book` - Writing a book
+- `project.creative.article` - Writing an article or essay
+- `project.creative.album` - Music album production
+- `project.creative.video` - Video production
+- `project.creative.screenplay` - Screenwriting project
+- `project.creative.brand` - Brand/identity design
+- `project.creative.design` - Visual design project
+
+**Technical**:
+
+- `project.technical.app` - Application development
+- `project.technical.app.mobile` - Mobile app development
+- `project.technical.app.web` - Web application
+- `project.technical.api` - API development
+- `project.technical.feature` - Feature implementation
+- `project.technical.infrastructure` - Infrastructure/DevOps
+- `project.technical.ux` - UX design (system-focused)
+
+**Business**:
+
+- `project.business.startup` - New venture/company
+- `project.business.product_launch` - Launching a product
+- `project.business.campaign` - Marketing/sales campaign
+- `project.business.fundraise` - Fundraising round
+- `project.business.market_research` - Market research/analysis
+- `project.business.event` - Company event/conference
+- `project.business.hiring` - Hiring initiative
+
+**Service**:
+
+- `project.service.coaching_program` - Coaching engagement
+- `project.service.consulting_engagement` - Consulting project
+- `project.service.workshop` - Workshop delivery
+- `project.service.retainer` - Ongoing retainer work
+
+**Education**:
+
+- `project.education.course` - Taking/completing a course
+- `project.education.thesis` - Thesis or dissertation
+- `project.education.certification` - Getting certified
+- `project.education.degree` - Degree program
+- `project.education.research` - Academic research
+
+**Personal**:
+
+- `project.personal.habit` - Building a new habit
+- `project.personal.routine` - Establishing a routine
+- `project.personal.goal` - Personal goal achievement
+- `project.personal.wellness` - Health/wellness initiative
+- `project.personal.finance` - Personal finance project
+
+##### Realm Classification Signals
+
+When inferring realm from user input (brain dumps), use these signals:
+
+| Realm         | Strong Vocabulary Signals                                                                                | Confidence  |
+| ------------- | -------------------------------------------------------------------------------------------------------- | ----------- |
+| **technical** | "build", "code", "app", "API", "feature", "deploy", "bug", "database"                                    | High        |
+| **creative**  | "write", "book", "article", "publish", "draft", "story", "content", "design", "brand"                    | High        |
+| **business**  | "launch", "startup", "revenue", "customers", "market", "pitch", "fundraise", "sales", "campaign", "hire" | High        |
+| **service**   | "client", "engagement", "deliverable", "SOW", "consulting", "session", "workshop"                        | High        |
+| **education** | "class", "assignment", "thesis", "degree", "learn", "exam", "professor", "course", "study"               | High        |
+| **personal**  | "habit", "routine", "goal", "health", "morning", "productivity", "self", "wellness"                      | Medium-High |
+
+##### Disambiguation Strategy
+
+When classification is ambiguous, ask: **"What does success look like?"**
+
+- "I shipped the feature / it's working" → **technical**
+- "The client achieved their goal" → **service**
+- "We hit revenue target / gained customers" → **business**
+- "I learned the skill / passed the exam" → **education**
+- "It's published / the content is out" → **creative**
+- "I'm doing it consistently / I feel better" → **personal**
+
+##### Why Realm ≠ Role
+
+**Critical distinction**: The realm describes the _project_, not the _person_.
+
+- A **developer** can have a `project.creative.book` (writing a technical book)
+- A **writer** can have a `project.technical.app` (building a writing tool)
+- A **coach** can have a `project.business.startup` (launching their practice)
+- A **founder** can have a `project.education.course` (taking a leadership course)
+
+Role belongs to the user and influences which templates are shown, but does not change what the project fundamentally is.
 
 #### onto_tasks
 
@@ -323,7 +426,7 @@ System-wide reference data:
 
 ```typescript
 {
-  type_key: "plan.campaign.marketing",  // WHAT KIND of plan (family + variant)
+  type_key: "project.technical.app.mobile",  // WHAT KIND of project (realm + deliverable)
   props: {
     facets: {
       context: "client",              // WHO it's for (instance-specific)
@@ -336,6 +439,24 @@ System-wide reference data:
 
 The type_key defines the category and suggests default behaviors, while facets provide orthogonal dimensions that vary per instance.
 
+### Role is NOT in type_key
+
+Role (writer, developer, coach, founder, etc.) is orthogonal to project type:
+
+```typescript
+// CORRECT: Role is user context, not project taxonomy
+{
+  type_key: "project.creative.book",  // The project IS a book
+  // User's role (writer, developer writing a tech book, etc.)
+  // is determined separately and influences template selection
+}
+
+// INCORRECT: Don't put role in type_key
+{
+  type_key: "project.writer.book",  // WRONG - writer is a role, not a realm
+}
+```
+
 ---
 
 ## Naming Conventions
@@ -344,9 +465,10 @@ The type_key defines the category and suggests default behaviors, while facets p
 
 All autonomous entities follow: `{scope}.{type}[.{variant}]`
 
-- **Projects**: `project.{domain}.{deliverable}[.{variant}]`
-    - `project.writer.book`
-    - `project.coach.client.executive`
+- **Projects**: `project.{realm}.{deliverable}[.{variant}]`
+    - `project.creative.book`
+    - `project.technical.app.mobile`
+    - `project.service.coaching_program`
 
 - **Tasks**: `task.{work_mode}[.{specialization}]`
     - `task.execute` (default)
@@ -408,6 +530,9 @@ const TYPE_KEY_PATTERNS = {
 
 // General type_key pattern (2-3 dot-separated segments, lowercase with underscores)
 const GENERAL_TYPE_KEY_PATTERN = /^[a-z_]+\.[a-z_]+(\.[a-z_]+)?$/;
+
+// Valid project realms (6 core realms)
+const PROJECT_REALMS = ['creative', 'technical', 'business', 'service', 'education', 'personal'];
 ```
 
 ### Validation Helper
@@ -419,6 +544,15 @@ function isValidTypeKey(typeKey: string, scope?: string): boolean {
 	}
 	return GENERAL_TYPE_KEY_PATTERN.test(typeKey);
 }
+
+function isValidProjectRealm(realm: string): boolean {
+	return PROJECT_REALMS.includes(realm);
+}
+
+function extractProjectRealm(typeKey: string): string | null {
+	const match = typeKey.match(/^project\.([a-z_]+)\./);
+	return match ? match[1] : null;
+}
 ```
 
 ---
@@ -428,6 +562,22 @@ function isValidTypeKey(typeKey: string, scope?: string): boolean {
 With the family-based taxonomy, you get powerful querying:
 
 ```sql
+-- All creative projects
+SELECT * FROM onto_projects
+WHERE type_key LIKE 'project.creative.%';
+
+-- All technical projects
+SELECT * FROM onto_projects
+WHERE type_key LIKE 'project.technical.%';
+
+-- All business projects
+SELECT * FROM onto_projects
+WHERE type_key LIKE 'project.business.%';
+
+-- All service projects
+SELECT * FROM onto_projects
+WHERE type_key LIKE 'project.service.%';
+
 -- All written outputs
 SELECT * FROM onto_outputs
 WHERE type_key LIKE 'output.written.%';
@@ -474,6 +624,9 @@ extractFamily('output.written.chapter');
 
 extractFamily('plan.timebox.sprint');
 // → { scope: 'plan', family: 'timebox', variant: 'sprint' }
+
+extractFamily('project.technical.app');
+// → { scope: 'project', family: 'technical', variant: 'app' }
 ```
 
 ---
@@ -511,10 +664,10 @@ interface Task {
 
 Project context flows down to child entities:
 
-- **Projects say**: "We're doing a `project.writer.book` project"
-- **Plans say**: "Within that, we're using a `plan.campaign.content_calendar` plan"
+- **Projects say**: "We're doing a `project.technical.app` project"
+- **Plans say**: "Within that, we're using a `plan.timebox.sprint` plan"
 - **Tasks say**: "Some tasks are `task.execute` or `task.create`" (work mode typing)
-- **Outputs say**: "We're producing `output.written.chapter` outputs"
+- **Outputs say**: "We're producing `output.software.feature` outputs"
 
 Each level adds specificity while maintaining parent context.
 
@@ -556,6 +709,17 @@ When adding a new entity type, ask:
 
 ## Changelog
 
+### December 10, 2025 (Project Realm Taxonomy Update)
+
+- **BREAKING**: Changed project type_key format from `project.{role}.{deliverable}` to `project.{realm}.{deliverable}`
+- **NEW**: Defined 6 core project realms: creative, technical, business, service, education, personal
+- **NOTE**: Edge cases (research, operations, design) fold into core realms for higher classification accuracy
+- **NEW**: Added realm classification signals for AI inference from brain dumps
+- **NEW**: Added disambiguation strategy ("What does success look like?")
+- **CLARIFIED**: Role belongs to the user, not the project - role is orthogonal to type_key
+- **UPDATED**: All project examples to use realm-based naming
+- **ADDED**: PROJECT_REALMS constant for validation
+
 ### December 1, 2025 (Family-Based Taxonomy Update)
 
 - **NEW**: Added family-based taxonomy pattern for plans, goals, documents, outputs, risks, and events
@@ -571,4 +735,4 @@ When adding a new entity type, ask:
 
 ---
 
-**Key Insight**: The elegance of this system is that it solves the ontology problem at the project level, then lets each sub-entity choose whether it needs independent structure. Don't create taxonomy when you don't need it - only introduce complexity where the problem actually exists.
+**Key Insight**: The elegance of this system is that it solves the ontology problem at the project level with realms that describe _what kind of value is being created_, then lets each sub-entity choose whether it needs independent structure. Role is about _who is doing the work_ and belongs to the user context, not the project taxonomy. Don't conflate the two.

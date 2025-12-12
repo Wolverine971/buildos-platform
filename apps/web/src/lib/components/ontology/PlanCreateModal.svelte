@@ -1,33 +1,13 @@
 <!-- apps/web/src/lib/components/ontology/PlanCreateModal.svelte -->
 <!--
-	Plan Creation Modal Component (2025 refresh)
-
-	High-polish creation experience for BuildOS plans with two-phase flow:
-	1. Curated template exploration (searchable, categorized)
-	2. Plan blueprint configuration with live timeline insights
-
-	Design references:
-	- TaskEditModal for layout density + gradient hero
-	- .claude/commands/design-update.md guidelines (Apple-style minimalism)
+	Plan Creation Modal Component (Template-Free)
+	Creates plans without template selection - uses type_key directly
 
 	Related files:
 	- API Endpoint: /apps/web/src/routes/api/onto/plans/create/+server.ts
-	- Task Edit Inspiration: /apps/web/src/lib/components/ontology/TaskEditModal.svelte
 -->
 <script lang="ts">
-	import { browser } from '$app/environment';
-	import {
-		ArrowLeft,
-		Calendar,
-		CircleCheck,
-		ChevronRight,
-		Clock,
-		Layers,
-		Loader,
-		Search,
-		Sparkles,
-		Target
-	} from 'lucide-svelte';
+	import { Calendar, CircleCheck, ChevronRight, Clock, Search, Target } from 'lucide-svelte';
 	import { fly } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
 	import Modal from '$lib/components/ui/Modal.svelte';
@@ -41,6 +21,66 @@
 	import Select from '$lib/components/ui/Select.svelte';
 	import Badge from '$lib/components/ui/Badge.svelte';
 
+	// Hardcoded plan types (templates removed)
+	interface PlanType {
+		id: string;
+		name: string;
+		type_key: string;
+		metadata: {
+			category: string;
+			description: string;
+			measurement_type?: string;
+			typical_scope?: string;
+		};
+	}
+
+	const PLAN_TYPES: PlanType[] = [
+		{
+			id: 'sprint',
+			name: 'Sprint',
+			type_key: 'plan.phase.sprint',
+			metadata: {
+				category: 'Agile',
+				description: 'Time-boxed iteration for focused execution',
+				measurement_type: 'Velocity tracking',
+				typical_scope: '1-4 weeks'
+			}
+		},
+		{
+			id: 'phase',
+			name: 'Project Phase',
+			type_key: 'plan.phase.base',
+			metadata: {
+				category: 'Project',
+				description: 'Major phase of a larger project',
+				measurement_type: 'Milestone completion',
+				typical_scope: '1-3 months'
+			}
+		},
+		{
+			id: 'quarter',
+			name: 'Quarterly Plan',
+			type_key: 'plan.phase.quarter',
+			metadata: {
+				category: 'Strategic',
+				description: 'Quarter-level planning and OKR tracking',
+				measurement_type: 'OKR progress',
+				typical_scope: '3 months'
+			}
+		},
+		{
+			id: 'custom',
+			name: 'Custom Plan',
+			type_key: 'plan.phase.base',
+			metadata: {
+				category: 'Custom',
+				description: 'Flexible plan structure for any workflow',
+				measurement_type: 'Manual tracking',
+				typical_scope: 'Flexible'
+			}
+		}
+	];
+
 	interface Props {
 		projectId: string;
 		onClose: () => void;
@@ -49,13 +89,10 @@
 
 	let { projectId, onClose, onCreated }: Props = $props();
 
-	let templates = $state<any[]>([]);
-	let isLoadingTemplates = $state(true);
-	let templateError = $state('');
 	let templateSearch = $state('');
 	let showTemplateSelection = $state(true);
 	let slideDirection = $state<1 | -1>(1);
-	let selectedTemplate = $state<any>(null);
+	let selectedTemplate = $state<PlanType | null>(null);
 	let isSaving = $state(false);
 	let error = $state('');
 
@@ -75,38 +112,16 @@
 		{ value: 'cancelled', label: 'Cancelled' }
 	];
 
-	const manualTemplateOption = {
-		id: '__manual_plan__',
-		name: 'Design from scratch',
-		type_key: 'plan.phase.base',
-		metadata: {
-			category: 'Custom',
-			description: 'Start with a blank canvas and tailor the plan to your workflow.',
-			measurement_type: 'Manual configuration',
-			typical_scope: 'Flexible timeline'
-		},
-		default_props: {}
-	};
-
-	const templateSource = $derived.by(() => {
-		const list = Array.isArray(templates) ? [...templates] : [];
-		if (!list.some((tpl) => tpl?.id === manualTemplateOption.id)) {
-			list.push(manualTemplateOption);
-		}
-		return list;
-	});
-
 	const filteredTemplates = $derived.by(() => {
 		const query = templateSearch.trim().toLowerCase();
-		const source = templateSource;
-		if (!query) return source;
-		return source.filter((template) => {
+		if (!query) return PLAN_TYPES;
+		return PLAN_TYPES.filter((template) => {
 			const values = [
-				template?.name,
-				template?.metadata?.description,
-				template?.metadata?.category,
-				template?.metadata?.measurement_type,
-				template?.type_key
+				template.name,
+				template.metadata.description,
+				template.metadata.category,
+				template.metadata.measurement_type,
+				template.type_key
 			]
 				.filter((value): value is string => Boolean(value && typeof value === 'string'))
 				.map((value) => value.toLowerCase());
@@ -114,9 +129,9 @@
 		});
 	});
 
-	function groupTemplates(list: any[]): Record<string, any[]> {
-		return list.reduce((acc: Record<string, any[]>, template) => {
-			const category = template?.metadata?.category || 'General';
+	function groupTemplates(list: PlanType[]): Record<string, PlanType[]> {
+		return list.reduce((acc: Record<string, PlanType[]>, template) => {
+			const category = template.metadata.category || 'General';
 			if (!acc[category]) acc[category] = [];
 			acc[category].push(template);
 			return acc;
@@ -124,7 +139,6 @@
 	}
 
 	const templateCategories = $derived(groupTemplates(filteredTemplates));
-	const templateCategoryCount = $derived(Object.keys(groupTemplates(templateSource)).length);
 
 	const dateError = $derived.by(() => {
 		if (startDate && endDate) {
@@ -151,49 +165,13 @@
 		Boolean(name.trim()) && Boolean(selectedTemplate) && !isSaving && !dateError
 	);
 
-	const selectedTemplateTags = $derived.by(() => {
-		const tags = selectedTemplate?.metadata?.tags;
-		if (Array.isArray(tags)) {
-			return tags.slice(0, 4).map((tag) => String(tag));
-		}
-		return [];
-	});
-
-	// Load templates when modal opens (client-side only)
-	$effect(() => {
-		if (browser) {
-			loadTemplates();
-		}
-	});
-
-	async function loadTemplates() {
-		try {
-			isLoadingTemplates = true;
-			const response = await fetch('/api/onto/templates?scope=plan');
-			if (!response.ok) throw new Error('Failed to load templates');
-
-			const data = await response.json();
-			templates = data.data?.templates || [];
-			templateError = '';
-		} catch (err) {
-			console.error('Error loading plan templates:', err);
-			templateError = 'Unable to load plan templates';
-		} finally {
-			isLoadingTemplates = false;
-		}
+	function applyTemplateDefaults(template: PlanType) {
+		name = template.name || name;
+		description = template.metadata.description || '';
+		stateKey = 'draft';
 	}
 
-	function applyTemplateDefaults(template: any) {
-		name =
-			template?.metadata?.name_pattern?.replace('{{project}}', 'Project') ||
-			template?.name ||
-			name;
-		description =
-			template?.metadata?.default_description || template?.metadata?.description || '';
-		stateKey = template?.fsm?.initial || stateKey;
-	}
-
-	function selectTemplate(template: any) {
+	function selectTemplate(template: PlanType) {
 		selectedTemplate = template;
 		slideDirection = 1;
 		showTemplateSelection = false;
@@ -254,7 +232,7 @@
 		try {
 			const body = {
 				project_id: projectId,
-				type_key: selectedTemplate?.type_key || 'plan.phase.base',
+				type_key: selectedTemplate.type_key,
 				name: name.trim(),
 				description: description.trim() || null,
 				state_key: stateKey || 'draft',
@@ -263,8 +241,7 @@
 				props: {
 					description: description.trim() || null,
 					start_date: startDate || null,
-					end_date: endDate || null,
-					...(selectedTemplate?.default_props || {})
+					end_date: endDate || null
 				}
 			};
 
@@ -342,167 +319,147 @@
 						class="absolute inset-0 overflow-y-auto pr-1"
 					>
 						{#if showTemplateSelection}
-							{#if isLoadingTemplates}
-								<div class="flex items-center justify-center py-24">
-									<Loader class="w-8 h-8 animate-spin text-muted-foreground" />
-								</div>
-							{:else if templateError}
-								<div class="text-center py-16 space-y-4">
-									<p class="text-base text-destructive">
-										{templateError}
-									</p>
-									<Button variant="secondary" size="sm" onclick={loadTemplates}>
-										Retry
-									</Button>
-								</div>
-							{:else}
-								<div class="space-y-5">
-									<div
-										class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between"
-									>
-										<div>
-											<h3 class="text-lg font-semibold text-foreground">
-												Explore templates
-											</h3>
-											<p class="text-sm text-muted-foreground">
-												Filter by problem type, planning horizon, or go
-												custom.
-											</p>
-										</div>
-										<div class="w-full lg:w-72">
-											<FormField
-												label="Search templates"
-												uppercase={false}
-												showOptional={false}
-											>
-												<TextInput
-													bind:value={templateSearch}
-													placeholder="Search by name, metric, scope..."
-													type="search"
-													inputmode="search"
-													enterkeyhint="search"
-													size="sm"
-													icon={Search}
-												/>
-											</FormField>
-										</div>
+							<div class="space-y-5">
+								<div
+									class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between"
+								>
+									<div>
+										<h3 class="text-lg font-semibold text-foreground">
+											Explore templates
+										</h3>
+										<p class="text-sm text-muted-foreground">
+											Filter by problem type, planning horizon, or go custom.
+										</p>
 									</div>
-
-									{#if filteredTemplates.length === 0}
-										<div
-											class="text-center py-20 border border-dashed border-border rounded-lg"
+									<div class="w-full lg:w-72">
+										<FormField
+											label="Search templates"
+											uppercase={false}
+											showOptional={false}
 										>
-											<p class="text-muted-foreground">
-												No templates match that search.
-											</p>
-											<p class="text-sm text-muted-foreground">
-												Try another keyword or start from scratch.
-											</p>
-										</div>
-									{:else}
-										<div class="space-y-6">
-											{#each Object.entries(templateCategories) as [category, categoryTemplates]}
-												<section class="space-y-3">
-													<div class="flex items-center justify-between">
-														<h4
-															class="text-sm font-semibold tracking-[0.2em] uppercase text-muted-foreground"
-														>
-															{category}
-														</h4>
-														<span class="text-xs text-muted-foreground">
-															{categoryTemplates.length} option{categoryTemplates.length ===
-															1
-																? ''
-																: 's'}
-														</span>
-													</div>
-													<div
-														class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3"
-													>
-														{#each categoryTemplates as template}
-															<button
-																type="button"
-																onclick={() =>
-																	selectTemplate(template)}
-																class="group text-left"
-															>
-																<Card
-																	variant="interactive"
-																	class="h-full border border-border group-hover:border-accent shadow-ink"
-																>
-																	<CardBody class="space-y-3">
-																		<div
-																			class="flex items-start justify-between gap-3"
-																		>
-																			<div>
-																				<p
-																					class="text-sm uppercase tracking-[0.3em] text-muted-foreground"
-																				>
-																					{template
-																						.metadata
-																						?.category ||
-																						'General'}
-																				</p>
-																				<h5
-																					class="text-lg font-semibold text-foreground"
-																				>
-																					{template.name}
-																				</h5>
-																			</div>
-																			<ChevronRight
-																				class="w-5 h-5 text-muted-foreground group-hover:text-accent transition-colors"
-																			/>
-																		</div>
-																		<p
-																			class="text-sm text-muted-foreground line-clamp-3"
-																		>
-																			{template.metadata
-																				?.description ||
-																				'Structured yet flexible execution template.'}
-																		</p>
-																		<div
-																			class="flex flex-wrap gap-2 pt-1"
-																		>
-																			{#if template.metadata?.typical_scope}
-																				<Badge
-																					size="sm"
-																					variant="info"
-																				>
-																					<Calendar
-																						class="w-3 h-3"
-																						slot="icon"
-																					/>
-																					{template
-																						.metadata
-																						.typical_scope}
-																				</Badge>
-																			{/if}
-																			{#if template.metadata?.measurement_type}
-																				<Badge
-																					size="sm"
-																					variant="success"
-																				>
-																					<Target
-																						class="w-3 h-3"
-																						slot="icon"
-																					/>
-																					{template
-																						.metadata
-																						.measurement_type}
-																				</Badge>
-																			{/if}
-																		</div>
-																	</CardBody>
-																</Card>
-															</button>
-														{/each}
-													</div>
-												</section>
-											{/each}
-										</div>
-									{/if}
+											<TextInput
+												bind:value={templateSearch}
+												placeholder="Search by name, metric, scope..."
+												type="search"
+												inputmode="search"
+												enterkeyhint="search"
+												size="sm"
+												icon={Search}
+											/>
+										</FormField>
+									</div>
 								</div>
-							{/if}
+
+								{#if filteredTemplates.length === 0}
+									<div
+										class="text-center py-20 border border-dashed border-border rounded-lg"
+									>
+										<p class="text-muted-foreground">
+											No templates match that search.
+										</p>
+										<p class="text-sm text-muted-foreground">
+											Try another keyword or start from scratch.
+										</p>
+									</div>
+								{:else}
+									<div class="space-y-6">
+										{#each Object.entries(templateCategories) as [category, categoryTemplates]}
+											<section class="space-y-3">
+												<div class="flex items-center justify-between">
+													<h4
+														class="text-sm font-semibold tracking-[0.2em] uppercase text-muted-foreground"
+													>
+														{category}
+													</h4>
+													<span class="text-xs text-muted-foreground">
+														{categoryTemplates.length} option{categoryTemplates.length ===
+														1
+															? ''
+															: 's'}
+													</span>
+												</div>
+												<div
+													class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3"
+												>
+													{#each categoryTemplates as template}
+														<button
+															type="button"
+															onclick={() => selectTemplate(template)}
+															class="group text-left"
+														>
+															<Card
+																variant="interactive"
+																class="h-full border border-border group-hover:border-accent shadow-ink"
+															>
+																<CardBody class="space-y-3">
+																	<div
+																		class="flex items-start justify-between gap-3"
+																	>
+																		<div>
+																			<p
+																				class="text-sm uppercase tracking-[0.3em] text-muted-foreground"
+																			>
+																				{template.metadata
+																					?.category ||
+																					'General'}
+																			</p>
+																			<h5
+																				class="text-lg font-semibold text-foreground"
+																			>
+																				{template.name}
+																			</h5>
+																		</div>
+																		<ChevronRight
+																			class="w-5 h-5 text-muted-foreground group-hover:text-accent transition-colors"
+																		/>
+																	</div>
+																	<p
+																		class="text-sm text-muted-foreground line-clamp-3"
+																	>
+																		{template.metadata
+																			?.description ||
+																			'Structured yet flexible execution template.'}
+																	</p>
+																	<div
+																		class="flex flex-wrap gap-2 pt-1"
+																	>
+																		{#if template.metadata?.typical_scope}
+																			<Badge
+																				size="sm"
+																				variant="info"
+																			>
+																				<Calendar
+																					class="w-3 h-3"
+																					slot="icon"
+																				/>
+																				{template.metadata
+																					.typical_scope}
+																			</Badge>
+																		{/if}
+																		{#if template.metadata?.measurement_type}
+																			<Badge
+																				size="sm"
+																				variant="success"
+																			>
+																				<Target
+																					class="w-3 h-3"
+																					slot="icon"
+																				/>
+																				{template.metadata
+																					.measurement_type}
+																			</Badge>
+																		{/if}
+																	</div>
+																</CardBody>
+															</Card>
+														</button>
+													{/each}
+												</div>
+											</section>
+										{/each}
+									</div>
+								{/if}
+							</div>
 						{:else}
 							<form class="space-y-6" onsubmit={handleSubmit}>
 								<div class="grid gap-6 lg:grid-cols-3">
@@ -692,13 +649,6 @@
 																.typical_scope}
 														</span>
 													{/if}
-													{#each selectedTemplateTags as tag}
-														<span
-															class="text-xs font-semibold text-foreground rounded-full bg-muted px-3 py-1"
-														>
-															#{tag}
-														</span>
-													{/each}
 												</div>
 												<div class="text-xs text-muted-foreground">
 													<p>

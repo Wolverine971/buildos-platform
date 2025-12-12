@@ -407,7 +407,6 @@ export class ProjectMigrationService {
 		const migrationContext: MigrationContext = {
 			...context,
 			enhancedMode: true,
-			templateConfidenceThreshold: 0.7,
 			propsConfidenceThreshold: 0.6,
 			cacheEnabled: true
 		};
@@ -421,7 +420,7 @@ export class ProjectMigrationService {
 			? await ensureActorId(this.client, project.user_id)
 			: '';
 		const coreValues = this.extractCoreValues(project);
-		const typeKey = enhancedResult.templateUsed ?? this.resolveProjectTypeKey(project);
+		const typeKey = enhancedResult.typeKeyUsed ?? this.resolveProjectTypeKey(project);
 
 		console.info(
 			`[ProjectMigration][Enhanced] Result for ${project.id}: status=${enhancedResult.status}, ontoProjectId=${enhancedResult.ontoProjectId ?? 'none'}, typeKey=${typeKey}` +
@@ -444,16 +443,16 @@ export class ProjectMigrationService {
 			contextDocumentId: null, // Enhanced mode doesn't create context docs yet
 			contextMarkdown: project.context?.trim() || null,
 			coreValues,
-			template: enhancedResult.templateUsed
+			template: enhancedResult.typeKeyUsed
 				? {
-						typeKey: enhancedResult.templateUsed,
+						typeKey: enhancedResult.typeKeyUsed,
 						templateId: null,
 						realm: null,
 						domain: null,
 						deliverable: null,
 						variant: null,
 						confidence: enhancedResult.propsConfidence ?? null,
-						created: enhancedResult.templateCreated ?? false
+						created: false
 					}
 				: null,
 			templateProps: enhancedResult.propsExtracted

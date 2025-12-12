@@ -113,19 +113,10 @@ export async function executeCreateOutputAction(
 	return `create_output(${action.name})`;
 }
 
-async function loadOutputTemplate(client: TypedSupabaseClient, typeKey: string) {
-	const { data, error } = await client
-		.from('onto_templates')
-		.select('default_props, facet_defaults')
-		.eq('scope', 'output')
-		.eq('type_key', typeKey)
-		.maybeSingle();
-
-	if (error) {
-		throw new Error(`Failed to load output template: ${error.message}`);
-	}
-
-	return (data as TemplateRow | null) ?? null;
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+async function loadOutputTemplate(_client: TypedSupabaseClient, _typeKey: string) {
+	// Template system removed - return null to use action props directly
+	return null;
 }
 
 function deepMerge(

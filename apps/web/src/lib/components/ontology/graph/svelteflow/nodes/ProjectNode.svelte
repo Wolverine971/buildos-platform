@@ -1,3 +1,4 @@
+<!-- apps/web/src/lib/components/ontology/graph/svelteflow/nodes/ProjectNode.svelte -->
 <!-- ProjectNode.svelte - Svelte Flow custom node for projects -->
 <script lang="ts">
 	import { Handle, Position } from '@xyflow/svelte';

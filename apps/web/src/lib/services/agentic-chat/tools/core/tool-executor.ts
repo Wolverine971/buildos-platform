@@ -15,11 +15,6 @@ import { ensureActorId } from '$lib/services/ontology/ontology-projects.service'
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { SmartLLMService } from '$lib/services/smart-llm-service';
 import {
-	FindOrCreateTemplateService,
-	type EntityScope,
-	type FindOrCreateResult
-} from '$lib/services/ontology/find-or-create-template.service';
-import {
 	getBuildosOverviewDocument,
 	getBuildosUsageGuide
 } from '$lib/services/agentic-chat/tools/buildos';
@@ -246,15 +241,6 @@ interface CreateTaskDocumentArgs {
 	props?: Record<string, unknown>;
 }
 
-interface ListOntoTemplatesArgs {
-	scope?: 'project' | 'plan' | 'task' | 'output' | 'document' | 'goal' | 'requirement';
-	realm?: string;
-	search?: string;
-	context?: string;
-	scale?: string;
-	stage?: string;
-}
-
 interface CreateOntoProjectArgs {
 	project: {
 		name: string;
@@ -327,21 +313,6 @@ interface CreateOntoProjectArgs {
 		help_text?: string;
 	}>;
 	meta?: Record<string, unknown>;
-}
-
-interface FindOrCreateTemplateArgs {
-	scope: 'project' | 'task' | 'plan' | 'goal' | 'document' | 'output' | 'risk' | 'event';
-	context: string;
-	preferred_type_key?: string;
-	realm?: string;
-	match_threshold?: number;
-	allow_create?: boolean;
-	facets?: {
-		context?: string;
-		scale?: string;
-		stage?: string;
-	};
-	example_props?: Record<string, unknown>;
 }
 
 function extractMetaString(
@@ -417,7 +388,6 @@ export class ChatToolExecutor {
 	private actorId?: string;
 	private adminSupabase?: TypedSupabaseClient;
 	private llmService?: SmartLLMService;
-	private findOrCreateService?: FindOrCreateTemplateService;
 
 	constructor(
 		private supabase: SupabaseClient,
@@ -440,19 +410,6 @@ export class ChatToolExecutor {
 			this.adminSupabase = createAdminSupabaseClient();
 		}
 		return this.adminSupabase;
-	}
-
-	private getFindOrCreateService(): FindOrCreateTemplateService {
-		if (!this.findOrCreateService) {
-			if (!this.llmService) {
-				throw new Error('LLM service required for FindOrCreateTemplateService');
-			}
-			this.findOrCreateService = new FindOrCreateTemplateService(
-				this.getAdminSupabase(),
-				this.llmService
-			);
-		}
-		return this.findOrCreateService;
 	}
 
 	private async getActorId(): Promise<string> {
@@ -552,93 +509,13 @@ export class ChatToolExecutor {
 		props?: Record<string, unknown>;
 		nameHint?: string;
 	}): Promise<string | undefined> {
-		if (!params.typeKey) return undefined;
-
-		// Use FindOrCreateTemplateService for template existence checks
-		const template = await this.getFindOrCreateService().ensureTemplateExists({
-			scope: params.scope as EntityScope,
-			typeKey: params.typeKey,
-			userId: this.userId,
-			nameHint: params.nameHint,
-			props: params.props
-		});
-
-		return template.type_key;
+		// Template system has been removed - this is a no-op stub
+		return params.typeKey;
 	}
 
 	private async ensureTemplatesForProjectSpec(args: CreateOntoProjectArgs): Promise<void> {
-		const tasks: Array<Promise<string | undefined>> = [];
-
-		tasks.push(
-			this.ensureTemplateForScope({
-				scope: 'project',
-				typeKey: args.project.type_key,
-				props: args.project.props ?? {},
-				nameHint: args.project.name
-			})
-		);
-
-		for (const plan of args.plans ?? []) {
-			if (!plan.type_key) continue;
-			tasks.push(
-				this.ensureTemplateForScope({
-					scope: 'plan',
-					typeKey: plan.type_key,
-					props: plan.props ?? {},
-					nameHint: plan.name
-				})
-			);
-		}
-
-		for (const task of args.tasks ?? []) {
-			if (!task.type_key) continue;
-			tasks.push(
-				this.ensureTemplateForScope({
-					scope: 'task',
-					typeKey: task.type_key,
-					props: task.props ?? {},
-					nameHint: task.title
-				})
-			);
-		}
-
-		for (const output of args.outputs ?? []) {
-			if (!output.type_key) continue;
-			tasks.push(
-				this.ensureTemplateForScope({
-					scope: 'output',
-					typeKey: output.type_key,
-					props: output.props ?? {},
-					nameHint: output.name
-				})
-			);
-		}
-
-		for (const doc of args.documents ?? []) {
-			if (!doc.type_key) continue;
-			tasks.push(
-				this.ensureTemplateForScope({
-					scope: 'document',
-					typeKey: doc.type_key,
-					props: doc.props ?? {},
-					nameHint: doc.title
-				})
-			);
-		}
-
-		const contextTypeKey = args.context_document?.type_key ?? 'document.context.project';
-		tasks.push(
-			this.ensureTemplateForScope({
-				scope: 'document',
-				typeKey: contextTypeKey,
-				props: args.context_document?.props ?? {},
-				nameHint: args.context_document?.title ?? 'Project Context'
-			})
-		);
-
-		if (tasks.length > 0) {
-			await Promise.all(tasks);
-		}
+		// Template system has been removed - this is a no-op stub
+		return Promise.resolve();
 	}
 
 	async execute(toolCall: ChatToolCall): Promise<ChatToolResult> {
@@ -735,16 +612,8 @@ export class ChatToolExecutor {
 					result = await this.getLinkedEntities(args as GetLinkedEntitiesArgs);
 					break;
 
-				case 'list_onto_templates':
-					result = await this.listOntoTemplates(args as ListOntoTemplatesArgs);
-					break;
-
 				case 'create_onto_project':
 					result = await this.createOntoProject(args as CreateOntoProjectArgs);
-					break;
-
-				case 'find_or_create_template':
-					result = await this.findOrCreateTemplate(args as FindOrCreateTemplateArgs);
 					break;
 
 				case 'create_onto_task':
@@ -861,88 +730,6 @@ export class ChatToolExecutor {
 			delete (payload as Record<string, any>)._stream_events;
 		}
 		return { payload, streamEvents: events };
-	}
-
-	/**
-	 * Find or create a template using the unified FindOrCreateTemplateService.
-	 *
-	 * This tool provides intelligent template discovery and creation:
-	 * - Searches existing templates by context similarity
-	 * - Uses LLM-powered scoring with 70% match threshold
-	 * - Creates new templates when no suitable match exists
-	 * - Supports all 8 entity scopes (project, task, plan, goal, document, output, risk, event)
-	 */
-	private async findOrCreateTemplate(args: FindOrCreateTemplateArgs): Promise<{
-		template: {
-			id: string;
-			type_key: string;
-			name: string;
-			description: string;
-			scope: string;
-		};
-		created: boolean;
-		match_score?: number;
-		rationale?: string;
-		message: string;
-	}> {
-		// Validate required fields
-		if (!args.scope) {
-			throw new Error('scope is required for find_or_create_template');
-		}
-		if (!args.context) {
-			throw new Error('context is required for find_or_create_template');
-		}
-
-		const service = this.getFindOrCreateService();
-
-		try {
-			const result: FindOrCreateResult = await service.findOrCreate({
-				scope: args.scope as EntityScope,
-				context: args.context,
-				userId: this.userId,
-				preferredTypeKey: args.preferred_type_key,
-				realm: args.realm,
-				matchThreshold: args.match_threshold ?? 0.7,
-				allowCreate: args.allow_create ?? true,
-				facets: args.facets,
-				exampleProps: args.example_props
-			});
-
-			// Build response
-			const template = result.template;
-			const created = result.created;
-
-			// Extract match info from suggestion if available
-			const matchScore = result.suggestion?.matchScore;
-			const rationale = result.suggestion?.rationale;
-
-			let message: string;
-			if (created) {
-				message = `Created new template "${template.name}" (${template.type_key}) for ${args.scope} scope.`;
-			} else {
-				const scoreInfo = matchScore ? ` (${Math.round(matchScore * 100)}% match)` : '';
-				message = `Found existing template "${template.name}" (${template.type_key})${scoreInfo}.`;
-			}
-
-			return {
-				template: {
-					id: template.id,
-					type_key: template.type_key,
-					name: template.name,
-					description: template.description ?? '',
-					scope: template.scope
-				},
-				created,
-				match_score: matchScore,
-				rationale,
-				message
-			};
-		} catch (error) {
-			console.error('[ChatToolExecutor] find_or_create_template failed:', error);
-			throw new Error(
-				`Failed to find or create template: ${error instanceof Error ? error.message : 'Unknown error'}`
-			);
-		}
 	}
 
 	private async getFieldInfo(args: { entity_type: string; field_name?: string }): Promise<{
@@ -1612,30 +1399,6 @@ export class ChatToolExecutor {
 
 		if (!data) return entityId;
 		return (data as any).name || (data as any).title || (data as any).summary || entityId;
-	}
-
-	private async listOntoTemplates(args: ListOntoTemplatesArgs): Promise<{
-		templates: any[];
-		count: number;
-		message: string;
-	}> {
-		const params = new URLSearchParams();
-		if (args.scope) params.append('scope', args.scope);
-		if (args.realm) params.append('realm', args.realm);
-		if (args.search) params.append('search', args.search);
-		if (args.context) params.append('context', args.context);
-		if (args.scale) params.append('scale', args.scale);
-		if (args.stage) params.append('stage', args.stage);
-
-		const data = await this.apiRequest(`/api/onto/templates?${params.toString()}`);
-
-		return {
-			templates: data.templates ?? [],
-			count: data.count ?? data.templates?.length ?? 0,
-			message: `Found ${data.count ?? data.templates?.length ?? 0} templates${
-				args.scope ? ` for ${args.scope}` : ''
-			}${args.realm ? ` in ${args.realm}` : ''}.`
-		};
 	}
 
 	private async createOntoProject(args: CreateOntoProjectArgs): Promise<{

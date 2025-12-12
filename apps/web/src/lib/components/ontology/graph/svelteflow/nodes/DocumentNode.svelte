@@ -1,3 +1,4 @@
+<!-- apps/web/src/lib/components/ontology/graph/svelteflow/nodes/DocumentNode.svelte -->
 <!-- DocumentNode.svelte - Svelte Flow custom node for documents -->
 <script lang="ts">
 	import { Handle, Position } from '@xyflow/svelte';

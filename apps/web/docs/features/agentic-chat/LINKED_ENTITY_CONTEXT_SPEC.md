@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/agentic-chat/LINKED_ENTITY_CONTEXT_SPEC.md -->
+
 # Linked Entity Context for Agentic Chat
 
 > **Status:** Implemented

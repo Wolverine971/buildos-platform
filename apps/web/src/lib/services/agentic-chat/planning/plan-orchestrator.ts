@@ -601,8 +601,7 @@ export class PlanOrchestrator implements BaseService {
 			strategy === ChatStrategy.PROJECT_CREATION || intent?.contextType === 'project_create'
 				? `
 PROJECT CREATION REQUIREMENTS (CRITICAL):
-- Step 1 MUST discover/select an appropriate template (use list_onto_templates or acknowledge existing template context).
-- If no template fits, include a step that calls request_template_creation ONCE before proceeding.
+- Step 1 MUST classify the project (type_key) using taxonomy and gather key props/facets (template-free).
 - A step MUST call create_onto_project with a complete spec (name, description, type_key, facets, starter goals). Only include starter tasks if the user explicitly mentioned SPECIFIC FUTURE ACTIONS they need to track (e.g., "I need to call the vendor"). Do NOT add tasks for planning, brainstorming, or work you can help with in the conversation.
 - Include a context_document payload summarizing the braindump and plan so the project has a linked narrative.
 - Only after create_onto_project succeeds may later steps expand on additional artifacts.
@@ -680,10 +679,8 @@ Generate an execution plan to fulfill this request.`;
 
 	private enforceProjectCreationPlan(plan: AgentPlan, plannerContext: PlannerContext): void {
 		const steps = plan.steps || [];
-		const templateTools = new Set(['list_onto_templates', 'request_template_creation']);
 		const createProjectTools = new Set(['create_onto_project']);
 
-		const templateStepIndex = steps.findIndex((step) => this.stepUsesTool(step, templateTools));
 		const createProjectIndex = steps.findIndex((step) =>
 			this.stepUsesTool(step, createProjectTools)
 		);
@@ -697,12 +694,7 @@ Generate an execution plan to fulfill this request.`;
 			});
 		}
 
-		if (templateStepIndex === -1 || templateStepIndex > createProjectIndex) {
-			throw new PlanExecutionError(
-				'Project creation plan must select or create a template before calling create_onto_project',
-				{ planId: plan.id }
-			);
-		}
+		// Template selection is no longer required in template-free ontology
 	}
 
 	private stepUsesTool(step: PlanStep, toolNames: Set<string>): boolean {

@@ -17,6 +17,11 @@
 			"components": ["Dashboard"]
 		},
 		{
+			"file": "src/routes/projects/+page.svelte",
+			"type": "page",
+			"components": ["AgentChatModal"]
+		},
+		{
 			"file": "src/routes/projects-old/+page.svelte",
 			"type": "page",
 			"components": [
@@ -25,11 +30,6 @@
 				"DailyBriefModal",
 				"QuickProjectModal"
 			]
-		},
-		{
-			"file": "src/routes/projects/+page.svelte",
-			"type": "page",
-			"components": ["AgentChatModal"]
 		},
 		{
 			"file": "src/lib/components/brain-dump/BrainDumpModal.svelte",
@@ -128,17 +128,6 @@
 			"components": ["SynthesisLoadingState"]
 		},
 		{
-			"file": "src/routes/projects-old/[id]/+page.svelte",
-			"type": "page",
-			"components": [
-				"TasksList",
-				"NotesSection",
-				"ProjectSynthesis",
-				"PhasesSection",
-				"BraindumpsSection"
-			]
-		},
-		{
 			"file": "src/routes/projects/[id]/+page.svelte",
 			"type": "page",
 			"components": [
@@ -160,9 +149,20 @@
 			]
 		},
 		{
-			"file": "src/routes/projects/templates/+page.svelte",
+			"file": "src/routes/projects/create/+page.svelte",
 			"type": "page",
-			"components": ["TemplateDetailModal", "ConfirmationModal"]
+			"components": ["AgentChatModal"]
+		},
+		{
+			"file": "src/routes/projects-old/[id]/+page.svelte",
+			"type": "page",
+			"components": [
+				"TasksList",
+				"NotesSection",
+				"ProjectSynthesis",
+				"PhasesSection",
+				"BraindumpsSection"
+			]
 		},
 		{
 			"file": "src/routes/admin/ontology/graph/+page.svelte",
@@ -857,11 +857,11 @@
 		"src/lib/components/notifications/NotificationModal.svelte": [
 			"src/lib/components/notifications/types/brain-dump/BrainDumpModalContent.svelte"
 		],
+		"src/routes/projects/[id]/+page.svelte": ["src/lib/components/ontology/FSMStateBar.svelte"],
 		"src/routes/projects-old/[id]/+page.svelte": [
 			"src/lib/components/project/ProjectSynthesis.svelte",
 			"src/lib/components/project/PhasesSection.svelte"
 		],
-		"src/routes/projects/[id]/+page.svelte": ["src/lib/components/ontology/FSMStateBar.svelte"],
 		"src/routes/projects/projects-v2/[id]/+page.svelte": [
 			"src/lib/components/ontology/FSMStateBar.svelte"
 		]

@@ -1,3 +1,4 @@
+<!-- apps/web/src/lib/components/ontology/graph/svelteflow/nodes/OutputNode.svelte -->
 <!-- OutputNode.svelte - Svelte Flow custom node for outputs -->
 <script lang="ts">
 	import { Handle, Position } from '@xyflow/svelte';

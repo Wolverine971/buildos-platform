@@ -25,7 +25,9 @@
       "WebFetch(domain:www.svelvet.io)",
       "Bash(pnpm add:*)",
       "Bash(pnpm tsc:*)",
-      "mcp__perplexity__search"
+      "mcp__perplexity__search",
+      "Bash(pnpm label-paths:*)",
+      "Bash(pnpm check:*)"
     ],
     "deny": [],
     "ask": []

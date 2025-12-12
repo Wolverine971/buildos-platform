@@ -32,7 +32,6 @@
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import type { EnsureActorResponse } from '$lib/types/onto-api';
-import { resolveAndMergeTemplateProps } from '$lib/services/ontology/template-props-merger.service';
 
 const VALID_STATES = ['pending', 'in_progress', 'achieved', 'missed', 'deferred'] as const;
 type MilestoneState = (typeof VALID_STATES)[number];
@@ -107,15 +106,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			return ApiResponse.notFound('Project');
 		}
 
-		// Resolve template and merge props (skip if no template found)
-		const { mergedProps } = await resolveAndMergeTemplateProps(
-			supabase,
-			type_key,
-			'milestone',
-			props || {},
-			true
-		);
-
 		// Create the milestone
 		const milestoneData = {
 			project_id,
@@ -124,7 +114,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			due_at: dueDate.toISOString(),
 			created_by: actorId,
 			props: {
-				...mergedProps,
+				...props,
 				description: description?.trim() || null,
 				state_key: state_key || 'pending'
 			}

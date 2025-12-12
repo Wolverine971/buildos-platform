@@ -40,7 +40,6 @@ import type {
 	OntologyContextScope
 } from '$lib/types/agent-chat-enhancement';
 import type { EntityLinkedContext } from '$lib/types/linked-entity-context.types';
-import { getAvailableTemplates } from './ontology/template-resolver.service';
 import { OntologyContextLoader } from './ontology-context-loader';
 import {
 	formatLinkedEntitiesForSystemPrompt,
@@ -229,14 +228,16 @@ export class AgentContextService {
 		let locationMetadata: any = {};
 
 		if (contextType === 'project_create') {
-			// Project creation path: Load template catalog from database
-			// This provides the agent with available project templates to choose from
-			const templateOverview = await this.loadTemplateOverview();
-			locationContext = templateOverview.content;
-			locationMetadata = templateOverview.metadata;
-			console.log('[AgentContext] Using template overview for project_create', {
-				template_count: locationMetadata.template_count
-			});
+			// Project creation path: Use standard context
+			const standardContext = await this.chatContextService.loadLocationContext(
+				normalizedContext,
+				entityId,
+				true, // abbreviated
+				userId
+			);
+			locationContext = standardContext.content;
+			locationMetadata = standardContext.metadata;
+			console.log('[AgentContext] Using standard context for project_create');
 		} else if (ontologyContext?.type === 'combined' && projectFocus) {
 			const formatted = this.formatCombinedContext(ontologyContext, projectFocus);
 			locationContext = formatted.content;
@@ -398,34 +399,24 @@ Analyze each request and choose the appropriate strategy:
 
 ## PROJECT CREATION CONTEXT
 
-You are helping the user create a new ontology project. Available project templates are provided in the LOCATION CONTEXT below.
+You are helping the user create a new ontology project.
 
 ### Your Task: Create a project in ONE interaction
 
-Review the templates below, select the best match, infer project details, and immediately call create_onto_project. Do NOT stop to ask for confirmation unless CRITICAL information is completely missing.
+Infer project details from the user's request and immediately call create_onto_project. Do NOT stop to ask for confirmation unless CRITICAL information is completely missing.
 
 ### Tool Usage Guide
-- **list_onto_templates**: ONLY if you cannot find a suitable template in the context. Call ONCE with specific parameters.
-- **get_field_info**: Use ONLY if you need to check valid field values. Call with entity_type="ontology_project", entity_type="ontology_task", entity_type="ontology_goal", entity_type="ontology_plan", or entity_type="ontology_template" as needed.
-- **create_onto_project**: Your primary tool - call this to create the project after selecting template and inferring details.
-- **request_template_creation**: When NO template fits (after one clarification), escalate with the full braindump + realm + hints so the template-creation service can generate one. Use once per request.
+- **get_field_info**: Use if you need to check valid field values. Call with entity_type="ontology_project", entity_type="ontology_task", entity_type="ontology_goal", or entity_type="ontology_plan" as needed.
+- **create_onto_project**: Your primary tool - call this to create the project after inferring details.
 
 ### Workflow:
 
-**Step 1: Select Template**
-- Templates are PRE-LOADED in the LOCATION CONTEXT section below (organized by realm)
-- First, review these pre-loaded templates to find the best match for the user's request
-- Match user's request to the most appropriate template from the pre-loaded list
-- ONLY if you cannot find ANY suitable template in the pre-loaded overview AND you have specific search criteria, call list_onto_templates() ONCE with specific parameters (e.g., different realm/scope)
-- After calling list_onto_templates(), DO NOT call it again - proceed immediately to Step 2
-- Extract the type_key (e.g., "writer.book") from the best matching template
-
-**Step 2: Infer All Project Details**
-From the user's message and selected template, infer as much as possible:
+**Step 1: Infer All Project Details**
+From the user's message, infer as much as possible:
 - **name**: Extract clear project name (e.g., "book project" → "Book Writing Project")
 - **description**: Expand on what user said (1-2 sentences)
-- **type_key**: From the template you selected
-- **facets** (use template defaults if not mentioned):
+- **type_key**: Infer appropriate type_key based on project domain (e.g., "project.general", "project.creative", "project.development")
+- **facets**:
   - context: personal (default), client, commercial, internal
   - scale: micro, small, medium, large, epic
   - stage: discovery (default), planning, execution, review, complete
@@ -435,15 +426,8 @@ From the user's message and selected template, infer as much as possible:
 - **tasks**: ONLY add tasks if the user explicitly mentions SPECIFIC FUTURE ACTIONS they need to track (e.g., "I need to call the vendor", "remind me to review the contract"). Do NOT create tasks for work you can help with in the conversation or for vague intentions.
 - **outputs**: Include if user mentions deliverables
 
-**Step 3: Create Project Immediately**
-After selecting template and inferring details, call create_onto_project RIGHT AWAY with all information.
-
-**Step 4: Escalate if No Template Exists**
-- If you truly cannot locate a template (even after reviewing the LOCATION CONTEXT below AND calling list_onto_templates ONCE), call request_template_creation with:
-  - Full braindump and your realm suggestion
-  - Deliverable/facet hints and what was missing
-- After escalation, wait for the template creation response and then immediately proceed with create_onto_project using the returned type_key.
-- NOTE: "Escalate" means calling request_template_creation, NOT asking the user more questions.
+**Step 2: Create Project Immediately**
+After inferring details, call create_onto_project RIGHT AWAY with all information.
 
 ONLY ask clarifying questions if:
 - User says "create a project" with absolutely NO context about what kind
@@ -451,7 +435,7 @@ ONLY ask clarifying questions if:
 
 Do NOT ask if:
 - You can infer project type from keywords ("book" = writing, "app" = developer)
-- Missing non-critical details (use template defaults)
+- Missing non-critical details (use defaults)
 - User provided enough context to make a reasonable choice
 
 ### Example Workflow
@@ -461,18 +445,17 @@ User: "Create a book writing project"
 Response: "I'll create a book writing project for you."
 
 Then IMMEDIATELY:
-1. Select template: "writer.book" from context
-2. Infer details:
+1. Infer details:
    - name: "Book Writing Project"
    - description: "A writing project focused on creating a book"
-   - type_key: "writer.book"
+   - type_key: "project.creative"
    - facets: { context: "personal", scale: "large", stage: "discovery" }
    - start_at: "${new Date().toISOString()}"
-3. Call create_onto_project({
+2. Call create_onto_project({
      project: {
        name: "Book Writing Project",
        description: "A writing project focused on creating a book",
-       type_key: "writer.book",
+       type_key: "project.creative",
        props: { facets: { context: "personal", scale: "large", stage: "discovery" } },
        start_at: "${new Date().toISOString()}"
      },
@@ -481,16 +464,13 @@ Then IMMEDIATELY:
        { name: "Publish book", description: "Finalize and publish the completed book" }
      ]
    })
-4. After creation, tell user: "Created your book writing project with 2 goals. You can start adding tasks and content now."
+3. After creation, tell user: "Created your book writing project with 2 goals. You can start adding tasks and content now."
 
 CRITICAL INSTRUCTIONS:
-- Templates are in the context below - review them first
-- NEVER call list_onto_templates() more than ONCE - if you've already called it, proceed with what you have
-- After selecting template or getting list_onto_templates results, IMMEDIATELY call create_onto_project
-- Do NOT stop after reviewing templates - continue to creation
+- IMMEDIATELY call create_onto_project after inferring details
+- Do NOT stop after inferring - continue to creation
 - Do NOT ask for confirmation unless critical info is missing
 - Be decisive and proactive
-- IMPORTANT: Do not get stuck searching for templates - make a decision and create the project
 
 ### Context Document Requirements (MANDATORY)
 ${PROJECT_CONTEXT_DOC_GUIDANCE}
@@ -918,8 +898,7 @@ ${
 
 ### Hints
 - Use list_onto_projects to find specific projects
-- Use create_onto_project to start new projects
-- Use list_onto_templates for a broader catalog`;
+- Use create_onto_project to start new projects`;
 		}
 
 		return {
@@ -1049,91 +1028,6 @@ ${propKeys.map((key) => `- ${key}: ${JSON.stringify(elementProps[key])}`).join('
 			if (toolName.includes(`_${focusType}`)) return true;
 			return !otherTypes.some((type) => toolName.includes(`_${type}`));
 		});
-	}
-
-	/**
-	 * Load template overview for project creation
-	 * Provides a high-level summary of available project templates
-	 */
-	private async loadTemplateOverview(): Promise<{ content: string; metadata: any }> {
-		try {
-			// Fetch all project templates using proper service function
-			const templates = await getAvailableTemplates(
-				this.supabase as any,
-				'project',
-				false // Don't include abstract templates
-			);
-
-			// Group templates by realm
-			const grouped: Record<string, any[]> = templates.reduce(
-				(acc: Record<string, any[]>, template) => {
-					const realm = (template.metadata?.realm as string) || 'other';
-					if (!acc[realm]) {
-						acc[realm] = [];
-					}
-					acc[realm].push(template);
-					return acc;
-				},
-				{}
-			);
-
-			// Build concise overview
-			let content = `## Available Project Templates\n\nTotal templates: ${templates.length}\n\n`;
-
-			// List templates by realm
-			for (const [realm, realmTemplates] of Object.entries(grouped)) {
-				content += `### ${realm.charAt(0).toUpperCase() + realm.slice(1)} Projects\n`;
-				for (const template of realmTemplates.slice(0, 5)) {
-					// Limit to 5 per realm to save tokens
-					content += `- **${template.type_key}**: ${template.name}`;
-					if (template.metadata?.description) {
-						content += ` - ${template.metadata.description.substring(0, 100)}`;
-					}
-					if (template.facet_defaults) {
-						const facets = [];
-						if (template.facet_defaults.context)
-							facets.push(`context: ${template.facet_defaults.context}`);
-						if (template.facet_defaults.scale)
-							facets.push(`scale: ${template.facet_defaults.scale}`);
-						if (template.facet_defaults.stage)
-							facets.push(`stage: ${template.facet_defaults.stage}`);
-						if (facets.length > 0) {
-							content += ` (${facets.join(', ')})`;
-						}
-					}
-					content += '\n';
-				}
-				if (realmTemplates.length > 5) {
-					content += `  ...and ${realmTemplates.length - 5} more\n`;
-				}
-				content += '\n';
-			}
-
-			content += `\nUse list_onto_templates(scope="project", realm="...", search="...") to search for specific templates.\n`;
-			content += `Realms available: ${Object.keys(grouped).join(', ')}`;
-
-			return {
-				content,
-				metadata: {
-					template_count: templates.length,
-					realms: Object.keys(grouped),
-					realm_counts: Object.fromEntries(
-						Object.entries(grouped).map(([realm, temps]) => [realm, temps.length])
-					)
-				}
-			};
-		} catch (error) {
-			const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-			console.error('[AgentContext] Error loading template overview:', errorMessage, error);
-			return {
-				content: `Error loading template information: ${errorMessage}. Please use list_onto_templates tool to search for templates directly.`,
-				metadata: {
-					error: true,
-					error_message: errorMessage,
-					template_count: 0
-				}
-			};
-		}
 	}
 
 	/**

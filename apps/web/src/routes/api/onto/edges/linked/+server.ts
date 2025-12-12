@@ -332,57 +332,73 @@ async function fetchAvailableEntities(
 		risks: new Set(linked.risks.map((e) => e.id))
 	};
 
+	// Build queries - only add .neq filter when querying the same entity type as source
+	// (to exclude the source entity itself from appearing in available list)
+	const tasksQuery = supabase
+		.from('onto_tasks')
+		.select('id, title, state_key, type_key')
+		.eq('project_id', projectId)
+		.order('created_at', { ascending: false })
+		.limit(100);
+	if (sourceKind === 'task') tasksQuery.neq('id', sourceId);
+
+	const plansQuery = supabase
+		.from('onto_plans')
+		.select('id, name, state_key, type_key')
+		.eq('project_id', projectId)
+		.order('created_at', { ascending: false })
+		.limit(100);
+	if (sourceKind === 'plan') plansQuery.neq('id', sourceId);
+
+	const goalsQuery = supabase
+		.from('onto_goals')
+		.select('id, name, state_key, type_key')
+		.eq('project_id', projectId)
+		.order('created_at', { ascending: false })
+		.limit(100);
+	if (sourceKind === 'goal') goalsQuery.neq('id', sourceId);
+
+	const milestonesQuery = supabase
+		.from('onto_milestones')
+		.select('id, title, due_at, type_key')
+		.eq('project_id', projectId)
+		.order('due_at', { ascending: true })
+		.limit(100);
+	if (sourceKind === 'milestone') milestonesQuery.neq('id', sourceId);
+
+	const documentsQuery = supabase
+		.from('onto_documents')
+		.select('id, title, type_key, state_key')
+		.eq('project_id', projectId)
+		.order('created_at', { ascending: false })
+		.limit(100);
+	if (sourceKind === 'document') documentsQuery.neq('id', sourceId);
+
+	const outputsQuery = supabase
+		.from('onto_outputs')
+		.select('id, name, type_key, state_key')
+		.eq('project_id', projectId)
+		.order('created_at', { ascending: false })
+		.limit(100);
+	if (sourceKind === 'output') outputsQuery.neq('id', sourceId);
+
+	const risksQuery = supabase
+		.from('onto_risks')
+		.select('id, title, state_key, type_key, impact')
+		.eq('project_id', projectId)
+		.order('created_at', { ascending: false })
+		.limit(100);
+	if (sourceKind === 'risk') risksQuery.neq('id', sourceId);
+
 	// Fetch all entities from the project in parallel
 	const [tasks, plans, goals, milestones, documents, outputs, risks] = await Promise.all([
-		supabase
-			.from('onto_tasks')
-			.select('id, title, state_key, type_key')
-			.eq('project_id', projectId)
-			.neq('id', sourceKind === 'task' ? sourceId : '')
-			.order('created_at', { ascending: false })
-			.limit(100),
-		supabase
-			.from('onto_plans')
-			.select('id, name, state_key, type_key')
-			.eq('project_id', projectId)
-			.neq('id', sourceKind === 'plan' ? sourceId : '')
-			.order('created_at', { ascending: false })
-			.limit(100),
-		supabase
-			.from('onto_goals')
-			.select('id, name, state_key, type_key')
-			.eq('project_id', projectId)
-			.neq('id', sourceKind === 'goal' ? sourceId : '')
-			.order('created_at', { ascending: false })
-			.limit(100),
-		supabase
-			.from('onto_milestones')
-			.select('id, title, due_at, type_key')
-			.eq('project_id', projectId)
-			.neq('id', sourceKind === 'milestone' ? sourceId : '')
-			.order('due_at', { ascending: true })
-			.limit(100),
-		supabase
-			.from('onto_documents')
-			.select('id, title, type_key, state_key')
-			.eq('project_id', projectId)
-			.neq('id', sourceKind === 'document' ? sourceId : '')
-			.order('created_at', { ascending: false })
-			.limit(100),
-		supabase
-			.from('onto_outputs')
-			.select('id, name, type_key, state_key')
-			.eq('project_id', projectId)
-			.neq('id', sourceKind === 'output' ? sourceId : '')
-			.order('created_at', { ascending: false })
-			.limit(100),
-		supabase
-			.from('onto_risks')
-			.select('id, title, state_key, type_key, impact')
-			.eq('project_id', projectId)
-			.neq('id', sourceKind === 'risk' ? sourceId : '')
-			.order('created_at', { ascending: false })
-			.limit(100)
+		tasksQuery,
+		plansQuery,
+		goalsQuery,
+		milestonesQuery,
+		documentsQuery,
+		outputsQuery,
+		risksQuery
 	]);
 
 	return {

@@ -8,7 +8,6 @@ import type {
 	OntoPlan,
 	OntoProject,
 	OntoTask,
-	OntoTemplate,
 	ViewMode
 } from './graph.types';
 
@@ -56,40 +55,6 @@ export interface G6GraphData {
  * G6 offers high-performance rendering for large graphs (30k+ nodes).
  */
 export class G6GraphService {
-	static templatesToNodes(templates: OntoTemplate[]): G6NodeData[] {
-		return templates.map((template) => {
-			const isAbstract = template.is_abstract ?? false;
-			return {
-				id: template.id,
-				label: template.name,
-				nodeType: 'template',
-				metadata: {
-					scope: template.scope,
-					typeKey: template.type_key,
-					status: template.status,
-					isAbstract,
-					schema: template.schema,
-					defaultProps: template.default_props,
-					fsm: template.fsm,
-					metadata: template.metadata
-				},
-				type: 'hexagon',
-				size: 40,
-				style: {
-					fill: isAbstract ? '#f3f4f6' : '#dbeafe',
-					stroke: isAbstract ? '#9ca3af' : '#3b82f6',
-					lineWidth: 2
-				},
-				labelCfg: {
-					style: {
-						fill: isAbstract ? '#6b7280' : '#1d4ed8',
-						fontSize: 11
-					}
-				}
-			};
-		});
-	}
-
 	static projectsToNodes(projects: OntoProject[]): G6NodeData[] {
 		const defaultColors = { fill: '#f3f4f6', stroke: '#9ca3af', text: '#6b7280' };
 		const stateColors: Record<string, { fill: string; stroke: string; text: string }> = {
@@ -418,56 +383,39 @@ export class G6GraphService {
 		let nodes: G6NodeData[] = [];
 		let edges: G6EdgeData[] = [];
 
-		switch (viewMode) {
-			case 'templates': {
-				nodes = this.templatesToNodes(data.templates);
-				const templateEdges = data.edges.filter(
-					(edge) => edge.src_kind === 'template' && edge.dst_kind === 'template'
-				);
-				edges = this.edgesToG6(templateEdges);
-				break;
-			}
-			case 'projects': {
-				const allowedKinds = new Set([
-					'project',
-					'task',
-					'output',
-					'document',
-					'plan',
-					'goal',
-					'milestone'
-				]);
-				nodes = [
-					...this.projectsToNodes(data.projects),
-					...this.tasksToNodes(data.tasks),
-					...this.outputsToNodes(data.outputs),
-					...this.documentsToNodes(data.documents),
-					...this.plansToNodes(data.plans),
-					...this.goalsToNodes(data.goals),
-					...this.milestonesToNodes(data.milestones)
-				];
-				const projectEdges = data.edges.filter(
-					(edge) => allowedKinds.has(edge.src_kind) && allowedKinds.has(edge.dst_kind)
-				);
-				edges = this.edgesToG6(projectEdges);
-				break;
-			}
-			case 'full':
-			default: {
-				nodes = [
-					...this.templatesToNodes(data.templates),
-					...this.projectsToNodes(data.projects),
-					...this.tasksToNodes(data.tasks),
-					...this.outputsToNodes(data.outputs),
-					...this.documentsToNodes(data.documents),
-					...this.plansToNodes(data.plans),
-					...this.goalsToNodes(data.goals),
-					...this.milestonesToNodes(data.milestones)
-				];
-				edges = this.edgesToG6(data.edges);
-				break;
-			}
-		}
+		const allowedKinds = new Set([
+			'project',
+			'task',
+			'output',
+			'document',
+			'plan',
+			'goal',
+			'milestone'
+		]);
+
+		nodes = [
+			...this.projectsToNodes(data.projects),
+			...this.tasksToNodes(data.tasks),
+			...this.outputsToNodes(data.outputs),
+			...this.documentsToNodes(data.documents),
+			...this.plansToNodes(data.plans),
+			...this.goalsToNodes(data.goals),
+			...this.milestonesToNodes(data.milestones)
+		];
+
+		const filteredSourceEdges =
+			viewMode === 'projects'
+				? data.edges.filter(
+						(edge) => allowedKinds.has(edge.src_kind) && allowedKinds.has(edge.dst_kind)
+					)
+				: data.edges.filter(
+						(edge) =>
+							!edge.src_kind ||
+							!edge.dst_kind ||
+							(allowedKinds.has(edge.src_kind) && allowedKinds.has(edge.dst_kind))
+					);
+
+		edges = this.edgesToG6(filteredSourceEdges);
 
 		// Filter edges to only include those connecting existing nodes
 		const nodeIds = new Set(nodes.map((node) => node.id));

@@ -11,8 +11,7 @@ import type {
 	OntoOutput,
 	OntoPlan,
 	OntoProject,
-	OntoTask,
-	OntoTemplate
+	OntoTask
 } from '$lib/components/ontology/graph/lib/graph.types';
 
 export const load: PageServerLoad = async ({ locals: { safeGetSession, supabase } }) => {
@@ -41,7 +40,6 @@ export const load: PageServerLoad = async ({ locals: { safeGetSession, supabase 
 
 	try {
 		const [
-			templatesRes,
 			projectsRes,
 			edgesRes,
 			tasksRes,
@@ -51,7 +49,6 @@ export const load: PageServerLoad = async ({ locals: { safeGetSession, supabase 
 			goalsRes,
 			milestonesRes
 		] = await Promise.all([
-			adminClient.from('onto_templates').select('*').eq('status', 'active'),
 			adminClient.from('onto_projects').select('*'),
 			adminClient.from('onto_edges').select('*'),
 			adminClient.from('onto_tasks').select('*'),
@@ -62,7 +59,6 @@ export const load: PageServerLoad = async ({ locals: { safeGetSession, supabase 
 			adminClient.from('onto_milestones').select('*')
 		]);
 
-		if (templatesRes.error) throw templatesRes.error;
 		if (projectsRes.error) throw projectsRes.error;
 		if (edgesRes.error) throw edgesRes.error;
 		if (tasksRes.error) throw tasksRes.error;
@@ -72,9 +68,10 @@ export const load: PageServerLoad = async ({ locals: { safeGetSession, supabase 
 		if (goalsRes.error) throw goalsRes.error;
 		if (milestonesRes.error) throw milestonesRes.error;
 
-		const templates = (templatesRes.data ?? []) as OntoTemplate[];
 		const projects = (projectsRes.data ?? []) as OntoProject[];
-		const edges = (edgesRes.data ?? []) as OntoEdge[];
+		const edges = ((edgesRes.data ?? []) as OntoEdge[]).filter(
+			(edge) => edge.src_kind !== 'template' && edge.dst_kind !== 'template'
+		);
 		const tasks = (tasksRes.data ?? []) as OntoTask[];
 		const outputs = (outputsRes.data ?? []) as OntoOutput[];
 		const documents = (documentsRes.data ?? []) as OntoDocument[];
@@ -83,7 +80,6 @@ export const load: PageServerLoad = async ({ locals: { safeGetSession, supabase 
 		const milestones = (milestonesRes.data ?? []) as OntoMilestone[];
 
 		const stats: GraphStats = {
-			totalTemplates: templates.length,
 			totalProjects: projects.length,
 			activeProjects: projects.filter((project) => project.state_key === 'active').length,
 			totalEdges: edges.length,
@@ -96,7 +92,6 @@ export const load: PageServerLoad = async ({ locals: { safeGetSession, supabase 
 		};
 
 		return {
-			templates,
 			projects,
 			edges,
 			tasks,

@@ -185,13 +185,6 @@
 			activity_data: unknown;
 		}>
 	>([]);
-	let templateUsageStats = $state<
-		Array<{
-			template_name: string;
-			usage_count: number;
-			template_type: string;
-		}>
-	>([]);
 
 	// Feedback data
 	let feedbackOverview = $state<{
@@ -653,7 +646,6 @@
 		briefGenerationStats = payload.briefGenerationStats ?? [];
 		systemMetrics = payload.systemMetrics ?? [];
 		recentActivity = payload.recentActivity ?? [];
-		templateUsageStats = payload.templateUsageStats ?? [];
 		feedbackOverview = payload.feedbackOverview;
 		betaOverview = payload.betaOverview;
 		comprehensiveAnalytics = payload.comprehensiveAnalytics;
@@ -1457,8 +1449,8 @@
 				</div>
 			</div>
 
-			<!-- System Health and Template Usage -->
-			<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 mb-4 sm:mb-6">
+			<!-- System Health Metrics -->
+			<div class="mb-4 sm:mb-6">
 				<!-- System Health Metrics -->
 				<div class="admin-panel p-4 sm:p-6">
 					<h3
@@ -1504,57 +1496,6 @@
 						</div>
 					{:else}
 						<p class="text-gray-500 text-center py-8">No metrics available</p>
-					{/if}
-				</div>
-
-				<!-- Template Usage -->
-				<div class="admin-panel p-4 sm:p-6">
-					<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-						Template Usage
-					</h3>
-					{#if templateUsageStats.length > 0}
-						<div class="space-y-3">
-							{#each templateUsageStats.slice(0, 8) as template}
-								<div class="flex items-center justify-between">
-									<div class="flex-1 min-w-0">
-										<div
-											class="text-xs sm:text-sm font-medium text-gray-900 dark:text-white truncate"
-										>
-											{template.template_name}
-										</div>
-										<div class="text-xs text-gray-500 capitalize">
-											{template.template_type} template
-										</div>
-									</div>
-									<div class="flex items-center ml-2">
-										<div
-											class="w-12 sm:w-16 bg-gray-200 rounded-full h-2 mr-2 dark:bg-gray-700"
-										>
-											<div
-												class="bg-green-600 h-2 rounded-full transition-all duration-300"
-												style="width: {Math.min(
-													(template.usage_count /
-														Math.max(
-															...templateUsageStats.map(
-																(t) => t.usage_count
-															)
-														)) *
-														100,
-													100
-												)}%"
-											></div>
-										</div>
-										<span
-											class="text-xs sm:text-sm font-medium text-gray-900 dark:text-white w-6 sm:w-8 text-right"
-										>
-											{template.usage_count}
-										</span>
-									</div>
-								</div>
-							{/each}
-						</div>
-					{:else}
-						<p class="text-gray-500 text-center py-8">No template usage data</p>
 					{/if}
 				</div>
 			</div>

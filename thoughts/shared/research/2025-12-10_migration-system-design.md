@@ -5,6 +5,7 @@ repository: buildos-platform
 topic: Migration Flow System Design
 tags: [research, migration, ontology, system-design, admin]
 status: complete
+path: thoughts/shared/research/2025-12-10_migration-system-design.md
 ---
 
 <!-- todo -->

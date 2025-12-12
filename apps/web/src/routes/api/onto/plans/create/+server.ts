@@ -32,7 +32,6 @@
  */
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
-import { resolveAndMergeTemplateProps } from '$lib/services/ontology/template-props-merger.service';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	// Check authentication
@@ -84,15 +83,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			return ApiResponse.notFound('Project');
 		}
 
-		// Resolve template and merge props
-		const { mergedProps } = await resolveAndMergeTemplateProps(
-			supabase,
-			type_key,
-			'plan',
-			props || {},
-			true // Skip if no template found
-		);
-
 		// Create the plan
 		const planData = {
 			project_id,
@@ -101,7 +91,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			state_key,
 			created_by: actorId,
 			props: {
-				...mergedProps,
+				...props,
 				description: description || null,
 				start_date: start_date || null,
 				end_date: end_date || null

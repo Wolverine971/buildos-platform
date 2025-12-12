@@ -97,8 +97,7 @@
 	<main class="flex-1 overflow-hidden">
 		<DocumentEditor
 			outputId={data.output.id}
-			templateKey={data.output.type_key}
-			resolvedTemplate={data.resolvedTemplate}
+			typeKey={data.output.type_key}
 			initialContent={(data.output.props?.content as string) ?? ''}
 			initialTitle={data.output.name}
 			initialProps={data.output.props ?? {}}

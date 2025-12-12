@@ -1,5 +1,5 @@
 // Lightweight database schema - auto-generated from database.types.ts
-// Generated on: 2025-12-10T19:52:40.066Z
+// Generated on: 2025-12-12T03:00:45.704Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -83,24 +83,6 @@ export type DatabaseSchema = {
 		updated_at: string;
 		user_id: string;
 		user_message: string;
-	};
-	agent_template_creation_requests: {
-		braindump: string | null;
-		created_at: string;
-		deliverables: Json | null;
-		error: string | null;
-		facets: Json | null;
-		id: string;
-		missing_information: Json | null;
-		realm: string;
-		request_id: string;
-		result_template_id: string | null;
-		session_id: string | null;
-		status: string;
-		template_hints: Json | null;
-		template_summary: Json | null;
-		updated_at: string;
-		user_id: string | null;
 	};
 	agents: {
 		available_tools: Json | null;
@@ -1055,8 +1037,6 @@ export type DatabaseSchema = {
 		state_key: string;
 		sync_error: string | null;
 		sync_status: string;
-		template_id: string | null;
-		template_snapshot: Json;
 		timezone: string | null;
 		title: string;
 		type_key: string;
@@ -1267,24 +1247,6 @@ export type DatabaseSchema = {
 		search_vector: unknown;
 		state_key: string;
 		title: string;
-		type_key: string;
-		updated_at: string;
-	};
-	onto_templates: {
-		created_at: string;
-		created_by: string;
-		default_props: Json;
-		default_views: Json;
-		facet_defaults: Json;
-		fsm: Json;
-		id: string;
-		is_abstract: boolean | null;
-		metadata: Json;
-		name: string;
-		parent_template_id: string | null;
-		schema: Json;
-		scope: string;
-		status: string;
 		type_key: string;
 		updated_at: string;
 	};
@@ -2020,7 +1982,6 @@ export const tableNames = [
 	'agent_chat_sessions',
 	'agent_executions',
 	'agent_plans',
-	'agent_template_creation_requests',
 	'agents',
 	'api_keys',
 	'beta_event_attendance',
@@ -2101,7 +2062,6 @@ export const tableNames = [
 	'onto_signals',
 	'onto_sources',
 	'onto_tasks',
-	'onto_templates',
 	'onto_tools',
 	'payment_methods',
 	'phase_tasks',

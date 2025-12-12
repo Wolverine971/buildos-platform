@@ -116,7 +116,6 @@ export class TaskMigrationService {
 					{
 						...context,
 						enhancedMode: true,
-						templateConfidenceThreshold: 0.7,
 						propsConfidenceThreshold: 0.6,
 						cacheEnabled: true
 					},
@@ -551,14 +550,13 @@ export class TaskMigrationService {
 	): Promise<{
 		status: string;
 		ontoTaskId?: string | null;
-		templateUsed?: string;
+		typeKeyUsed?: string;
 		message: string;
 	}> {
 		// Build migration context for enhanced migrator
 		const migrationContext: MigrationContext = {
 			...context,
 			enhancedMode: true,
-			templateConfidenceThreshold: 0.7,
 			propsConfidenceThreshold: 0.6,
 			cacheEnabled: true
 		};
@@ -573,7 +571,7 @@ export class TaskMigrationService {
 		return {
 			status: enhancedResult.status,
 			ontoTaskId: enhancedResult.ontoTaskId ?? null,
-			templateUsed: enhancedResult.templateUsed,
+			typeKeyUsed: enhancedResult.typeKeyUsed,
 			message: enhancedResult.message
 		};
 	}
@@ -831,7 +829,7 @@ export class TaskMigrationService {
 					phaseId,
 					phaseName: phaseId ? (phaseMetadata.get(phaseId) ?? null) : null,
 					suggestedOntoPlanId: suggestedPlanId,
-					recommendedTypeKey: enhancedResult.templateUsed ?? classification.typeKey,
+					recommendedTypeKey: enhancedResult.typeKeyUsed ?? classification.typeKey,
 					recommendedStateKey: this.mapTaskState(task.status),
 					dueAt: this.resolveDueAt(task),
 					priority: this.mapPriority(task.priority),

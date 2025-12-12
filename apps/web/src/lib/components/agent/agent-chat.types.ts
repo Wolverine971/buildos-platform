@@ -12,9 +12,6 @@ export type ActivityType =
 	| 'executor_spawned'
 	| 'executor_result'
 	| 'context_shift'
-	| 'template_request'
-	| 'template_status'
-	| 'template_suggestion'
 	| 'ontology_loaded'
 	| 'clarification'
 	| 'general';

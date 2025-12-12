@@ -62,13 +62,15 @@
 	let graphInstance = $state<OntologyGraphInstance | null>(null);
 	let selectedGraphNode = $state<GraphNode | null>(null);
 	const emptyGraphStats: GraphStats = {
-		totalTemplates: 0,
 		totalProjects: 0,
 		activeProjects: 0,
 		totalEdges: 0,
 		totalTasks: 0,
 		totalOutputs: 0,
-		totalDocuments: 0
+		totalDocuments: 0,
+		totalPlans: 0,
+		totalGoals: 0,
+		totalMilestones: 0
 	};
 
 	function isPromiseLike<T>(value: unknown): value is PromiseLike<T> {
@@ -339,20 +341,6 @@
 					/>
 				</svg>
 				<span>Create</span>
-			</a>
-			<a
-				href="/projects/templates"
-				class="inline-flex items-center gap-1.5 rounded border border-border px-3 py-1.5 text-xs font-bold text-muted-foreground transition hover:bg-muted/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring pressable"
-			>
-				<svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						stroke-width="2"
-						d="M4 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 16a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1H5a1 1 0 01-1-1v-3zM14 16a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1h-4a1 1 0 01-1-1v-3z"
-					/>
-				</svg>
-				<span>Templates</span>
 			</a>
 			<a
 				href="/"

@@ -23,14 +23,7 @@
 		Circle,
 		Clock
 	} from 'lucide-svelte';
-	import type {
-		Project,
-		Task,
-		Output,
-		Document,
-		Plan,
-		Template as OntoTemplate
-	} from '$lib/types/onto';
+	import type { Project, Task, Output, Document, Plan } from '$lib/types/onto';
 	import type { PageData } from './$types';
 
 	// ============================================================
@@ -91,7 +84,6 @@
 	let requirements = $state((data.requirements || []) as Requirement[]);
 	let milestones = $state((data.milestones || []) as Milestone[]);
 	let risks = $state((data.risks || []) as Risk[]);
-	let template = $state((data.template || null) as OntoTemplate | null);
 	let contextDocument = $state((data.context_document || null) as Document | null);
 
 	// UI State
@@ -242,7 +234,6 @@
 			requirements = newData.requirements || [];
 			milestones = newData.milestones || [];
 			risks = newData.risks || [];
-			template = newData.template || null;
 			contextDocument = newData.context_document || null;
 
 			lastDataRefreshAt = Date.now();
@@ -356,7 +347,6 @@
 		requirements = (data.requirements || []) as Requirement[];
 		milestones = (data.milestones || []) as Milestone[];
 		risks = (data.risks || []) as Risk[];
-		template = (data.template || null) as OntoTemplate | null;
 		contextDocument = (data.context_document || null) as Document | null;
 		lastDataRefreshAt = Date.now();
 	});
@@ -1204,7 +1194,6 @@
 			bind:isOpen={showProjectEditModal}
 			{project}
 			{contextDocument}
-			{template}
 			onClose={() => (showProjectEditModal = false)}
 			onSaved={async () => {
 				await refreshProjectData();

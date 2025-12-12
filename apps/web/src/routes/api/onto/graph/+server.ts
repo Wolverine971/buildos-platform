@@ -14,7 +14,7 @@ import type {
 } from '$lib/components/ontology/graph/lib/graph.types';
 
 const DEFAULT_NODE_LIMIT = 1000;
-const VIEW_MODES: ViewMode[] = ['full', 'templates', 'projects'];
+const VIEW_MODES: ViewMode[] = ['full', 'projects'];
 
 // Batch size for .in() queries to avoid URL length limits
 // Each UUID is ~36 chars, 100 UUIDs ≈ 3.6KB which is safe for URL limits
@@ -74,29 +74,18 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 			return ApiResponse.error('Failed to resolve user actor', 500);
 		}
 
-		const [templatesRes, projectsRes] = await Promise.all([
-			supabase.from('onto_templates').select('*').eq('status', 'active'),
-			supabase
-				.from('onto_projects')
-				.select('*')
-				.eq('created_by', actorId)
-				.order('updated_at', { ascending: false })
-		]);
+		const { data: projects, error: projectsError } = await supabase
+			.from('onto_projects')
+			.select('*')
+			.eq('created_by', actorId)
+			.order('updated_at', { ascending: false });
 
-		if (templatesRes.error) {
-			console.error('[Ontology Graph API] Failed to fetch templates', templatesRes.error);
-			return ApiResponse.databaseError(templatesRes.error);
+		if (projectsError) {
+			console.error('[Ontology Graph API] Failed to fetch projects', projectsError);
+			return ApiResponse.databaseError(projectsError);
 		}
 
-		if (projectsRes.error) {
-			console.error('[Ontology Graph API] Failed to fetch projects', projectsRes.error);
-			return ApiResponse.databaseError(projectsRes.error);
-		}
-
-		const templates = (templatesRes.data ?? []) as GraphSourceData['templates'];
-		const projects = (projectsRes.data ?? []) as GraphSourceData['projects'];
-
-		const projectIds = projects.map((project) => project.id);
+		const projectIds = (projects ?? []).map((project) => project.id);
 
 		const [tasksRes, outputsRes, documentsRes, plansRes, goalsRes, milestonesRes] =
 			projectIds.length
@@ -155,7 +144,6 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 		const milestones = (milestonesRes.data ?? []) as GraphSourceData['milestones'];
 
 		const nodeIds = new Set<string>();
-		templates.forEach((template) => nodeIds.add(template.id));
 		projects.forEach((project) => nodeIds.add(project.id));
 		tasks.forEach((task) => nodeIds.add(task.id));
 		outputs.forEach((output) => nodeIds.add(output.id));
@@ -216,10 +204,13 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 			);
 		}
 
+		const filteredEdges = edges.filter(
+			(edge) => edge.src_kind !== 'template' && edge.dst_kind !== 'template'
+		);
+
 		const sourceData: GraphSourceData = {
-			templates,
-			projects,
-			edges,
+			projects: projects ?? [],
+			edges: filteredEdges,
 			tasks,
 			outputs,
 			documents,
@@ -243,10 +234,10 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 		}
 
 		const stats: GraphStats = {
-			totalTemplates: templates.length,
-			totalProjects: projects.length,
-			activeProjects: projects.filter((project) => project.state_key === 'active').length,
-			totalEdges: edges.length,
+			totalProjects: (projects ?? []).length,
+			activeProjects: (projects ?? []).filter((project) => project.state_key === 'active')
+				.length,
+			totalEdges: filteredEdges.length,
 			totalTasks: tasks.length,
 			totalOutputs: outputs.length,
 			totalDocuments: documents.length,

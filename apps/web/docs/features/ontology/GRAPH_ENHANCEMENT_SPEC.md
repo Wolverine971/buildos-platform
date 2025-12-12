@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/ontology/GRAPH_ENHANCEMENT_SPEC.md -->
+
 # Ontology Graph Enhancement Specification
 
 **Created**: 2025-12-09

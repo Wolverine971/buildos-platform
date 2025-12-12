@@ -6,7 +6,7 @@
 
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
-import type { Project, Template, Document } from '$lib/types/onto';
+import type { Project, Document } from '$lib/types/onto';
 
 export const GET: RequestHandler = async ({ params, locals }) => {
 	try {
@@ -23,27 +23,44 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 
 		const supabase = locals.supabase;
 
-		// Fetch project with template metadata
-		const { data: projectRows, error: projectFetchError } = await supabase.rpc(
-			'get_project_with_template',
-			{
-				p_project_id: id
-			}
-		);
+		// Fetch project
+		const { data: project, error: projectFetchError } = await supabase
+			.from('onto_projects')
+			.select('*')
+			.eq('id', id)
+			.single();
 
 		if (projectFetchError) {
 			console.error('[Project API] Failed to fetch project:', projectFetchError);
 			return ApiResponse.error(`Failed to fetch project: ${projectFetchError.message}`, 500);
 		}
 
-		if (!projectRows || projectRows.length === 0 || !projectRows[0]?.project) {
+		if (!project) {
 			return ApiResponse.notFound('Project not found');
 		}
 
-		const project = projectRows[0].project as Project;
-		const template = (projectRows[0].template as Template | null | undefined) ?? null;
-		const contextDocument =
-			(projectRows[0].context_document as Document | null | undefined) ?? null;
+		// Fetch context document via edge relationship
+		let contextDocument: Document | null = null;
+		const { data: contextEdge } = await supabase
+			.from('onto_edges')
+			.select('dst_id')
+			.eq('src_kind', 'project')
+			.eq('src_id', id)
+			.eq('rel', 'has_context_document')
+			.eq('dst_kind', 'document')
+			.single();
+
+		if (contextEdge?.dst_id) {
+			const { data: docData } = await supabase
+				.from('onto_documents')
+				.select('*')
+				.eq('id', contextEdge.dst_id)
+				.single();
+
+			if (docData) {
+				contextDocument = docData;
+			}
+		}
 
 		// Security check: Verify user owns this project via actor
 		const { data: actorId, error: actorError } = await supabase.rpc('ensure_actor_for_user', {
@@ -172,7 +189,6 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			risks: risksResult.data || [],
 			decisions: decisionsResult.data || [],
 			metrics: metricsResult.data || [],
-			template,
 			context_document: contextDocument,
 			allowed_transitions: allowedTransitions
 		});

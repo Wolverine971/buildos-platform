@@ -1,3 +1,4 @@
+<!-- apps/web/src/lib/components/ontology/graph/svelteflow/SvelteFlowGraph.svelte -->
 <!-- SvelteFlowGraph.svelte - Ontology graph using Svelte Flow -->
 <script lang="ts">
 	import { onMount } from 'svelte';
@@ -18,7 +19,6 @@
 	import type { SvelteFlowNode, SvelteFlowEdge } from '../lib/svelteflow.service';
 
 	// Import custom node components
-	import TemplateNode from './nodes/TemplateNode.svelte';
 	import ProjectNode from './nodes/ProjectNode.svelte';
 	import TaskNode from './nodes/TaskNode.svelte';
 	import PlanNode from './nodes/PlanNode.svelte';
@@ -42,7 +42,6 @@
 
 	// Define custom node types
 	const nodeTypes: NodeTypes = {
-		template: TemplateNode,
 		project: ProjectNode,
 		task: TaskNode,
 		plan: PlanNode,
@@ -57,7 +56,6 @@
 
 	// Node dimensions by type for proper layout calculation
 	const nodeDimensions: Record<string, { width: number; height: number }> = {
-		template: { width: 140, height: 60 },
 		project: { width: 180, height: 80 },
 		task: { width: 160, height: 70 },
 		plan: { width: 160, height: 70 },

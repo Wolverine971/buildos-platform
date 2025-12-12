@@ -1,5 +1,4 @@
 // apps/web/src/routes/profile/$types.ts
-// apps/web/src/routes/profile/$types.ts
 import type { Database } from '@buildos/shared-types';
 
 type SubscriptionDetails = {

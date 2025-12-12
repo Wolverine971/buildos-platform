@@ -1,4 +1,4 @@
--- rollback-ontology-migration.sql
+-- apps/web/scripts/rollback-ontology-migration.sql
 -- Purpose: Rollback ontology migration data created within a specific time window
 -- Created: 2025-12-09
 --

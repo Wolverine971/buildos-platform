@@ -1,39 +1,87 @@
 <!-- apps/web/src/lib/components/ontology/TaskCreateModal.svelte -->
 <!--
-	Task Creation Modal Component
-
-	Creates tasks within the BuildOS ontology system using a two-step flow:
-	1. Template selection
-	2. Task details entry
-
-	Documentation:
-	- Ontology System Overview: /apps/web/docs/features/ontology/README.md
-	- Data Models & Schema: /apps/web/docs/features/ontology/DATA_MODELS.md
-	- Implementation Guide: /apps/web/docs/features/ontology/IMPLEMENTATION_SUMMARY.md
-	- Modal Component Guide: /apps/web/docs/technical/components/modals/QUICK_REFERENCE.md
+	Task Creation Modal Component (Template-Free)
+	Creates tasks without template selection - uses type_key directly
 
 	Related Files:
 	- API Endpoint: /apps/web/src/routes/api/onto/tasks/create/+server.ts
-	- Edit Modal: /apps/web/src/lib/components/ontology/TaskEditModal.svelte
-	- Base Modal: /apps/web/src/lib/components/ui/Modal.svelte
-	- Form Modal: /apps/web/src/lib/components/ui/FormModal.svelte
 -->
 <script lang="ts">
-	import { browser } from '$app/environment';
-	import { ChevronRight, Loader, Save, CheckSquare, Sparkles, ListChecks } from 'lucide-svelte';
+	import { ChevronRight, Save, CheckSquare, ListChecks } from 'lucide-svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import FormField from '$lib/components/ui/FormField.svelte';
 	import TextInput from '$lib/components/ui/TextInput.svelte';
 	import Textarea from '$lib/components/ui/Textarea.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
-	import Card from '$lib/components/ui/Card.svelte';
-	import CardHeader from '$lib/components/ui/CardHeader.svelte';
-	import CardBody from '$lib/components/ui/CardBody.svelte';
 	import { fly } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
-	import { toastService } from '$lib/stores/toast.store';
 	import { format } from 'date-fns';
+
+	// Hardcoded task types (templates removed)
+	interface TaskType {
+		id: string;
+		name: string;
+		type_key: string;
+		metadata: {
+			category: string;
+			description: string;
+			typical_duration?: string;
+		};
+	}
+
+	const TASK_TYPES: TaskType[] = [
+		{
+			id: 'execute',
+			name: 'Execute Task',
+			type_key: 'task.execute',
+			metadata: {
+				category: 'Execution',
+				description: 'Standard actionable task to complete',
+				typical_duration: '1-4 hours'
+			}
+		},
+		{
+			id: 'review',
+			name: 'Review Task',
+			type_key: 'task.review',
+			metadata: {
+				category: 'Review',
+				description: 'Review or approve work from others',
+				typical_duration: '30-60 min'
+			}
+		},
+		{
+			id: 'research',
+			name: 'Research Task',
+			type_key: 'task.research',
+			metadata: {
+				category: 'Research',
+				description: 'Investigate or gather information',
+				typical_duration: '2-8 hours'
+			}
+		},
+		{
+			id: 'planning',
+			name: 'Planning Task',
+			type_key: 'task.planning',
+			metadata: {
+				category: 'Planning',
+				description: 'Plan, organize, or coordinate work',
+				typical_duration: '1-2 hours'
+			}
+		},
+		{
+			id: 'meeting',
+			name: 'Meeting',
+			type_key: 'task.meeting',
+			metadata: {
+				category: 'Collaboration',
+				description: 'Scheduled meeting or discussion',
+				typical_duration: '30-60 min'
+			}
+		}
+	];
 
 	interface Props {
 		projectId: string;
@@ -53,14 +101,11 @@
 		onCreated
 	}: Props = $props();
 
-	let selectedTemplate = $state<any>(null);
-	let templates = $state<any[]>([]);
-	let isLoadingTemplates = $state(true);
-	let templateError = $state('');
+	let selectedTemplate = $state<TaskType | null>(null);
 	let showTemplateSelection = $state(true);
 	let isSaving = $state(false);
 	let error = $state('');
-	let slideDirection = $state<1 | -1>(1); // 1 = slide left, -1 = slide right
+	let slideDirection = $state<1 | -1>(1);
 
 	// Form fields
 	let title = $state('');
@@ -72,72 +117,32 @@
 	let stateKey = $state('todo');
 	let dueAt = $state('');
 
-	// Template categories for better organization
+	// Group types by category
 	const templateCategories = $derived(
-		templates.reduce((acc: Record<string, any[]>, template) => {
-			const category = template.metadata?.category || 'General';
+		TASK_TYPES.reduce((acc: Record<string, TaskType[]>, template) => {
+			const category = template.metadata.category || 'General';
 			if (!acc[category]) acc[category] = [];
 			acc[category].push(template);
 			return acc;
 		}, {})
 	);
 
-	// Load templates when modal opens (client-side only)
-	$effect(() => {
-		if (browser) {
-			loadTemplates();
-		}
-	});
-
-	async function loadTemplates() {
-		try {
-			isLoadingTemplates = true;
-			const response = await fetch('/api/onto/templates?scope=task');
-			if (!response.ok) throw new Error('Failed to load templates');
-
-			const data = await response.json();
-			templates = data.data?.templates || [];
-			templateError = '';
-		} catch (err) {
-			console.error('Error loading templates:', err);
-			templateError = 'Failed to load task templates';
-		} finally {
-			isLoadingTemplates = false;
-		}
-	}
-
-	function selectTemplate(template: any) {
+	function selectTemplate(template: TaskType) {
 		selectedTemplate = template;
-		// Pre-populate form fields with template defaults
-		title = template.metadata?.name_pattern?.replace('{{project}}', 'Project') || '';
-		stateKey = template.fsm?.initial || 'todo';
+		title = '';
+		stateKey = 'todo';
 		slideDirection = 1;
 		showTemplateSelection = false;
-	}
-
-	function formatDateTimeForInput(date: Date | string | null): string {
-		if (!date) return '';
-		try {
-			const dateObj = typeof date === 'string' ? new Date(date) : date;
-			if (isNaN(dateObj.getTime())) return '';
-			// Format for HTML datetime-local input
-			return format(dateObj, "yyyy-MM-dd'T'HH:mm");
-		} catch (error) {
-			console.warn('Failed to format datetime for input:', date, error);
-			return '';
-		}
 	}
 
 	function parseDateTimeFromInput(value: string): string | null {
 		if (!value) return null;
 		try {
-			// The datetime-local input gives us a value in local time
 			const date = new Date(value);
 			if (isNaN(date.getTime())) return null;
-			// Convert to ISO string for storage (UTC)
 			return date.toISOString();
-		} catch (error) {
-			console.warn('Failed to parse datetime from input:', value, error);
+		} catch (err) {
+			console.warn('Failed to parse datetime from input:', value, err);
 			return null;
 		}
 	}
@@ -150,13 +155,18 @@
 			return;
 		}
 
+		if (!selectedTemplate) {
+			error = 'Please select a task type';
+			return;
+		}
+
 		isSaving = true;
 		error = '';
 
 		try {
 			const requestBody = {
 				project_id: projectId,
-				type_key: selectedTemplate?.type_key || 'task.execute',
+				type_key: selectedTemplate.type_key,
 				title: title.trim(),
 				description: description.trim() || null,
 				priority: Number(priority),
@@ -166,8 +176,7 @@
 				supporting_milestone_id: milestoneId?.trim() || null,
 				due_at: parseDateTimeFromInput(dueAt),
 				props: {
-					description: description.trim() || null,
-					...(selectedTemplate?.default_props || {})
+					description: description.trim() || null
 				}
 			};
 
@@ -185,7 +194,6 @@
 				throw new Error(result.error || 'Failed to create task');
 			}
 
-			// Success! Call the callback
 			if (onCreated) {
 				onCreated(result.data.task.id);
 			}
@@ -201,7 +209,6 @@
 		slideDirection = -1;
 		showTemplateSelection = true;
 		selectedTemplate = null;
-		// Reset form
 		title = '';
 		description = '';
 		priority = 3;
@@ -209,6 +216,7 @@
 		goalId = '';
 		milestoneId = '';
 		stateKey = 'todo';
+		dueAt = '';
 		error = '';
 	}
 
@@ -281,11 +289,11 @@
 								<!-- Header -->
 								<div class="flex items-center gap-3 pb-4 border-b border-border">
 									<div class="p-2 rounded bg-muted tx tx-bloom tx-weak">
-										<Sparkles class="w-5 h-5 text-accent" />
+										<ListChecks class="w-5 h-5 text-accent" />
 									</div>
 									<div>
 										<h3 class="text-lg font-semibold text-foreground">
-											Choose a Template
+											Choose a Task Type
 										</h3>
 										<p class="text-sm text-muted-foreground">
 											Select a task type to get started with the right
@@ -294,90 +302,60 @@
 									</div>
 								</div>
 
-								{#if isLoadingTemplates}
-									<div class="flex items-center justify-center py-16">
-										<Loader
-											class="w-8 h-8 animate-spin text-muted-foreground"
-										/>
-									</div>
-								{:else if templateError}
-									<div class="text-center py-12">
-										<p class="text-destructive mb-4">
-											{templateError}
-										</p>
-										<Button variant="secondary" onclick={loadTemplates}
-											>Try Again</Button
-										>
-									</div>
-								{:else}
-									<div class="space-y-6">
-										{#each Object.entries(templateCategories) as [category, categoryTemplates]}
-											<div>
-												<h3
-													class="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3 flex items-center gap-2"
-												>
-													<span class="w-1.5 h-1.5 bg-accent rounded-full"
-													></span>
-													{category}
-												</h3>
-												<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-													{#each categoryTemplates as template}
-														<button
-															type="button"
-															onclick={() => selectTemplate(template)}
-															class="bg-card border border-border p-4 rounded-lg text-left group hover:border-accent shadow-ink transition-all duration-200"
-														>
-															<div
-																class="flex items-start justify-between mb-2"
-															>
-																<h4
-																	class="font-semibold text-foreground group-hover:text-accent transition-colors"
-																>
-																	{template.name}
-																</h4>
-																<ChevronRight
-																	class="w-5 h-5 text-muted-foreground group-hover:text-accent flex-shrink-0 transition-transform group-hover:translate-x-0.5"
-																/>
-															</div>
-															{#if template.metadata?.description}
-																<p
-																	class="text-sm text-muted-foreground line-clamp-2 mb-2"
-																>
-																	{template.metadata.description}
-																</p>
-															{/if}
-															{#if template.metadata?.typical_duration}
-																<div
-																	class="mt-2 inline-flex items-center gap-1.5 px-2 py-1 bg-muted rounded"
-																>
-																	<span
-																		class="text-xs font-semibold text-foreground uppercase tracking-wide"
-																	>
-																		{template.metadata
-																			.typical_duration}
-																	</span>
-																</div>
-															{/if}
-														</button>
-													{/each}
-												</div>
-											</div>
-										{/each}
-
-										{#if templates.length === 0}
-											<div
-												class="text-center py-12 border-2 border-dashed border-border rounded-lg"
+								<div class="space-y-6">
+									{#each Object.entries(templateCategories) as [category, categoryTemplates]}
+										<div>
+											<h3
+												class="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3 flex items-center gap-2"
 											>
-												<CheckSquare
-													class="w-12 h-12 text-muted-foreground mx-auto mb-3"
-												/>
-												<p class="text-sm text-muted-foreground">
-													No task templates available
-												</p>
+												<span class="w-1.5 h-1.5 bg-accent rounded-full"
+												></span>
+												{category}
+											</h3>
+											<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+												{#each categoryTemplates as template}
+													<button
+														type="button"
+														onclick={() => selectTemplate(template)}
+														class="bg-card border border-border p-4 rounded-lg text-left group hover:border-accent shadow-ink transition-all duration-200"
+													>
+														<div
+															class="flex items-start justify-between mb-2"
+														>
+															<h4
+																class="font-semibold text-foreground group-hover:text-accent transition-colors"
+															>
+																{template.name}
+															</h4>
+															<ChevronRight
+																class="w-5 h-5 text-muted-foreground group-hover:text-accent flex-shrink-0 transition-transform group-hover:translate-x-0.5"
+															/>
+														</div>
+														{#if template.metadata?.description}
+															<p
+																class="text-sm text-muted-foreground line-clamp-2 mb-2"
+															>
+																{template.metadata.description}
+															</p>
+														{/if}
+														{#if template.metadata?.typical_duration}
+															<div
+																class="mt-2 inline-flex items-center gap-1.5 px-2 py-1 bg-muted rounded"
+															>
+																<span
+																	class="text-xs font-semibold text-foreground uppercase tracking-wide"
+																>
+																	{template.metadata
+																		.typical_duration}
+																</span>
+															</div>
+														{/if}
+													</button>
+												{/each}
 											</div>
-										{/if}
-									</div>
-								{/if}
+										</div>
+									{/each}
+								</div>
 							</div>
 						{:else}
 							<!-- TASK DETAILS FORM -->

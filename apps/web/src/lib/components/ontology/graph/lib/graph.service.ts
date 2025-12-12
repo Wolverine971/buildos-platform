@@ -12,7 +12,6 @@ import type {
 	OntoPlan,
 	OntoProject,
 	OntoTask,
-	OntoTemplate,
 	ViewMode
 } from './graph.types';
 
@@ -20,30 +19,6 @@ import type {
  * Transform ontology entities into Cytoscape-friendly payloads with consistent styling.
  */
 export class OntologyGraphService {
-	static templatesToNodes(templates: OntoTemplate[]): CytoscapeNode[] {
-		return templates.map((template) => ({
-			data: {
-				id: template.id,
-				label: template.name,
-				type: 'template',
-				parent: template.parent_template_id ?? undefined,
-				metadata: {
-					scope: template.scope,
-					typeKey: template.type_key,
-					status: template.status,
-					isAbstract: template.is_abstract ?? false,
-					schema: template.schema,
-					defaultProps: template.default_props,
-					fsm: template.fsm,
-					metadata: template.metadata
-				},
-				color: template.is_abstract ? '#9ca3af' : '#3b82f6',
-				shape: template.parent_template_id ? 'ellipse' : 'hexagon',
-				size: 40
-			}
-		}));
-	}
-
 	static projectsToNodes(projects: OntoProject[]): CytoscapeNode[] {
 		return projects.map((project) => {
 			const stateColors: Record<string, string> = {
@@ -308,57 +283,39 @@ export class OntologyGraphService {
 		let nodes: CytoscapeNode[] = [];
 		let edges: CytoscapeEdge[] = [];
 
-		switch (viewMode) {
-			case 'templates': {
-				nodes = this.templatesToNodes(data.templates);
-				const templateEdges = data.edges.filter(
-					(edge) => edge.src_kind === 'template' && edge.dst_kind === 'template'
-				);
-				edges = this.edgesToCytoscape(templateEdges);
-				break;
-			}
-			case 'projects': {
-				// Include all project-related entity types
-				const allowedKinds = new Set([
-					'project',
-					'task',
-					'output',
-					'document',
-					'plan',
-					'goal',
-					'milestone'
-				]);
-				nodes = [
-					...this.projectsToNodes(data.projects),
-					...this.tasksToNodes(data.tasks),
-					...this.outputsToNodes(data.outputs),
-					...this.documentsToNodes(data.documents),
-					...this.plansToNodes(data.plans),
-					...this.goalsToNodes(data.goals),
-					...this.milestonesToNodes(data.milestones)
-				];
-				const projectEdges = data.edges.filter(
-					(edge) => allowedKinds.has(edge.src_kind) && allowedKinds.has(edge.dst_kind)
-				);
-				edges = this.edgesToCytoscape(projectEdges);
-				break;
-			}
-			case 'full':
-			default: {
-				nodes = [
-					...this.templatesToNodes(data.templates),
-					...this.projectsToNodes(data.projects),
-					...this.tasksToNodes(data.tasks),
-					...this.outputsToNodes(data.outputs),
-					...this.documentsToNodes(data.documents),
-					...this.plansToNodes(data.plans),
-					...this.goalsToNodes(data.goals),
-					...this.milestonesToNodes(data.milestones)
-				];
-				edges = this.edgesToCytoscape(data.edges);
-				break;
-			}
-		}
+		const allowedKinds = new Set([
+			'project',
+			'task',
+			'output',
+			'document',
+			'plan',
+			'goal',
+			'milestone'
+		]);
+
+		nodes = [
+			...this.projectsToNodes(data.projects),
+			...this.tasksToNodes(data.tasks),
+			...this.outputsToNodes(data.outputs),
+			...this.documentsToNodes(data.documents),
+			...this.plansToNodes(data.plans),
+			...this.goalsToNodes(data.goals),
+			...this.milestonesToNodes(data.milestones)
+		];
+
+		const filteredSourceEdges =
+			viewMode === 'projects'
+				? data.edges.filter(
+						(edge) => allowedKinds.has(edge.src_kind) && allowedKinds.has(edge.dst_kind)
+					)
+				: data.edges.filter(
+						(edge) =>
+							!edge.src_kind ||
+							!edge.dst_kind ||
+							(allowedKinds.has(edge.src_kind) && allowedKinds.has(edge.dst_kind))
+					);
+
+		edges = this.edgesToCytoscape(filteredSourceEdges);
 
 		const nodeIds = new Set(nodes.map((node) => node.data.id));
 		const filteredEdges = edges.filter(

@@ -1,3 +1,4 @@
+<!-- apps/web/src/lib/components/ontology/graph/svelteflow/nodes/MilestoneNode.svelte -->
 <!-- MilestoneNode.svelte - Svelte Flow custom node for milestones -->
 <script lang="ts">
 	import { Handle, Position } from '@xyflow/svelte';

@@ -9,7 +9,6 @@ import type {
 	OntoPlan,
 	OntoProject,
 	OntoTask,
-	OntoTemplate,
 	ViewMode
 } from './graph.types';
 
@@ -38,30 +37,6 @@ export interface SvelteFlowGraphData {
  * Transform ontology entities into Svelte Flow format with custom node types.
  */
 export class SvelteFlowGraphService {
-	static templatesToNodes(templates: OntoTemplate[]): SvelteFlowNode[] {
-		return templates.map((template, index) => ({
-			id: template.id,
-			type: 'template',
-			position: { x: 100 + (index % 5) * 200, y: 100 + Math.floor(index / 5) * 150 },
-			data: {
-				label: template.name,
-				type: 'template',
-				metadata: {
-					scope: template.scope,
-					typeKey: template.type_key,
-					status: template.status,
-					isAbstract: template.is_abstract ?? false,
-					schema: template.schema,
-					defaultProps: template.default_props,
-					fsm: template.fsm,
-					metadata: template.metadata
-				},
-				color: template.is_abstract ? '#9ca3af' : '#3b82f6',
-				state: template.status
-			}
-		}));
-	}
-
 	static projectsToNodes(projects: OntoProject[]): SvelteFlowNode[] {
 		const stateColors: Record<string, string> = {
 			draft: '#9ca3af',
@@ -305,56 +280,39 @@ export class SvelteFlowGraphService {
 		let nodes: SvelteFlowNode[] = [];
 		let edges: SvelteFlowEdge[] = [];
 
-		switch (viewMode) {
-			case 'templates': {
-				nodes = this.templatesToNodes(data.templates);
-				const templateEdges = data.edges.filter(
-					(edge) => edge.src_kind === 'template' && edge.dst_kind === 'template'
-				);
-				edges = this.edgesToSvelteFlow(templateEdges);
-				break;
-			}
-			case 'projects': {
-				const allowedKinds = new Set([
-					'project',
-					'task',
-					'output',
-					'document',
-					'plan',
-					'goal',
-					'milestone'
-				]);
-				nodes = [
-					...this.projectsToNodes(data.projects),
-					...this.tasksToNodes(data.tasks),
-					...this.outputsToNodes(data.outputs),
-					...this.documentsToNodes(data.documents),
-					...this.plansToNodes(data.plans),
-					...this.goalsToNodes(data.goals),
-					...this.milestonesToNodes(data.milestones)
-				];
-				const projectEdges = data.edges.filter(
-					(edge) => allowedKinds.has(edge.src_kind) && allowedKinds.has(edge.dst_kind)
-				);
-				edges = this.edgesToSvelteFlow(projectEdges);
-				break;
-			}
-			case 'full':
-			default: {
-				nodes = [
-					...this.templatesToNodes(data.templates),
-					...this.projectsToNodes(data.projects),
-					...this.tasksToNodes(data.tasks),
-					...this.outputsToNodes(data.outputs),
-					...this.documentsToNodes(data.documents),
-					...this.plansToNodes(data.plans),
-					...this.goalsToNodes(data.goals),
-					...this.milestonesToNodes(data.milestones)
-				];
-				edges = this.edgesToSvelteFlow(data.edges);
-				break;
-			}
-		}
+		const allowedKinds = new Set([
+			'project',
+			'task',
+			'output',
+			'document',
+			'plan',
+			'goal',
+			'milestone'
+		]);
+
+		nodes = [
+			...this.projectsToNodes(data.projects),
+			...this.tasksToNodes(data.tasks),
+			...this.outputsToNodes(data.outputs),
+			...this.documentsToNodes(data.documents),
+			...this.plansToNodes(data.plans),
+			...this.goalsToNodes(data.goals),
+			...this.milestonesToNodes(data.milestones)
+		];
+
+		const filteredSourceEdges =
+			viewMode === 'projects'
+				? data.edges.filter(
+						(edge) => allowedKinds.has(edge.src_kind) && allowedKinds.has(edge.dst_kind)
+					)
+				: data.edges.filter(
+						(edge) =>
+							!edge.src_kind ||
+							!edge.dst_kind ||
+							(allowedKinds.has(edge.src_kind) && allowedKinds.has(edge.dst_kind))
+					);
+
+		edges = this.edgesToSvelteFlow(filteredSourceEdges);
 
 		// Filter edges to only include those connecting existing nodes
 		const nodeIds = new Set(nodes.map((node) => node.id));

@@ -19,30 +19,19 @@ import type {
 	MigrationContext,
 	EnhancedTaskMigrationResult
 } from './enhanced-migration.types';
-import {
-	FindOrCreateTemplateService,
-	type FindOrCreateResult
-} from '../find-or-create-template.service';
-import { PropertyExtractorEngine } from './property-extractor-engine';
 import { SmartLLMService } from '$lib/services/smart-llm-service';
 import { upsertLegacyMapping } from '../legacy-mapping.service';
 
 const TEMPLATE_MATCH_THRESHOLD = 0.7; // 70% match required
 
 export class EnhancedTaskMigrator {
-	private readonly templateService: FindOrCreateTemplateService;
-	private readonly extractorEngine: PropertyExtractorEngine;
-
 	constructor(
 		private readonly client: TypedSupabaseClient,
 		private readonly llm: SmartLLMService
-	) {
-		this.templateService = new FindOrCreateTemplateService(client, llm);
-		this.extractorEngine = new PropertyExtractorEngine(llm);
-	}
+	) {}
 
 	/**
-	 * Migrate a task using enhanced template discovery and property extraction
+	 * Migrate a task (template discovery/property extraction removed)
 	 */
 	async migrate(
 		task: LegacyTask,
@@ -54,99 +43,29 @@ export class EnhancedTaskMigrator {
 		}
 	): Promise<EnhancedTaskMigrationResult> {
 		try {
-			// 1. Template Discovery + Creation (unified via FindOrCreateTemplateService)
-			const narrative = this.buildTaskNarrative(task);
-			const realm = this.inferRealm(task);
+			// Template discovery and property extraction removed
+			// Tasks are now migrated with minimal properties only
+			const typeKey = 'task.execute'; // Default type key
 
-			let templateResult: FindOrCreateResult;
-			try {
-				templateResult = await this.templateService.findOrCreate({
-					scope: 'task',
-					context: narrative,
-					userId: context.initiatedBy,
-					realm,
-					matchThreshold: TEMPLATE_MATCH_THRESHOLD,
-					allowCreate: !context.dryRun
-				});
-			} catch (error) {
-				// If creation is disabled and no template found, return pending_review
-				if (context.dryRun) {
-					return {
-						status: 'pending_review',
-						legacyTaskId: task.id,
-						message: `Task template suggestion created for review (dry-run mode): ${error instanceof Error ? error.message : 'Unknown error'}`
-					};
-				}
-				throw error;
-			}
-
-			// If dry-run and a suggestion was generated (but not created)
-			if (context.dryRun && templateResult.suggestion && !templateResult.created) {
-				return {
-					status: 'pending_review',
-					legacyTaskId: task.id,
-					message: 'Task template suggestion created for review (dry-run mode)'
-				};
-			}
-
-			// 2. Use resolved template (already resolved by findOrCreate)
-			const resolvedTemplate = templateResult.resolvedTemplate;
-
-			if (!resolvedTemplate) {
-				throw new Error(`Failed to resolve template ${templateResult.template.type_key}`);
-			}
-
-			// 3. Property Extraction
-			const propResult = await this.extractorEngine.extractProperties({
-				template: resolvedTemplate,
-				legacyData: task,
-				context,
-				userId: context.initiatedBy
-			});
-
-			// 4. Validation
-			const validation = await this.extractorEngine.validateProperties(
-				propResult.props,
-				resolvedTemplate.schema
-			);
-
-			if (!validation.valid) {
-				return {
-					status: 'validation_failed',
-					legacyTaskId: task.id,
-					message: `Property validation failed: ${validation.errors.join(', ')}`
-				};
-			}
-
-			// 5. Merge with defaults
-			const finalProps = await this.extractorEngine.mergeWithDefaults(
-				resolvedTemplate.default_props ?? {},
-				propResult.props
-			);
-
-			// 6. If dry-run, return preview
 			if (context.dryRun) {
 				return {
 					status: 'pending_review',
 					legacyTaskId: task.id,
-					templateUsed: templateResult.template.type_key,
-					templateCreated: templateResult.created,
-					message: 'Dry-run: task migration preview ready'
+					typeKeyUsed: typeKey,
+					message: 'Dry-run: task migration preview ready (template discovery removed)'
 				};
 			}
 
-			// 7. Create onto_task
+			// Create onto_task with minimal properties
 			const stateKey = this.mapStatusToState(task.status);
 			const priority = this.mapPriority(task.priority);
-			// Note: LegacyTask uses start_date, not due_date
 			const dueAt = task.start_date ?? task.completed_at ?? null;
-			const facetScale = propResult.facets?.scale ?? this.inferScale(task);
+			const facetScale = this.inferScale(task);
 
-			// Include description, type_key, and facets in props (facet_scale is a GENERATED column)
 			const propsWithMetadata = {
-				...(finalProps as Record<string, unknown>),
+				title: task.title,
 				description: task.description ?? null,
-				type_key: templateResult.template.type_key,
+				type_key: typeKey,
 				facets: { scale: facetScale }
 			};
 
@@ -155,7 +74,7 @@ export class EnhancedTaskMigrator {
 				.insert({
 					title: task.title,
 					project_id: projectContext.ontoProjectId,
-					type_key: templateResult.template.type_key,
+					type_key: typeKey,
 					state_key: stateKey,
 					priority,
 					due_at: dueAt,
@@ -169,7 +88,7 @@ export class EnhancedTaskMigrator {
 				throw new Error(`Failed to create onto_task for ${task.id}: ${error?.message}`);
 			}
 
-			// 7a. Create plan relationship edges if plan exists
+			// Create plan relationship edges if plan exists
 			if (projectContext.ontoPlanId) {
 				const { error: edgeError } = await this.client.from('onto_edges').insert([
 					{
@@ -192,12 +111,11 @@ export class EnhancedTaskMigrator {
 					console.error(
 						`[EnhancedTaskMigrator] Failed to create task-plan edges for task ${task.id} → plan ${projectContext.ontoPlanId}: ${edgeError.message}`
 					);
-					// Throw to ensure edge creation failures are not silently ignored
 					throw new Error(`Failed to create task-plan edges: ${edgeError.message}`);
 				}
 			}
 
-			// 8. Update legacy mapping
+			// Update legacy mapping
 			await upsertLegacyMapping(this.client, {
 				legacyTable: 'tasks',
 				legacyId: task.id,
@@ -207,10 +125,9 @@ export class EnhancedTaskMigrator {
 				metadata: {
 					run_id: context.runId,
 					batch_id: context.batchId,
-					template_used: templateResult.template.type_key,
-					template_created: templateResult.created,
-					props_confidence: propResult.confidence,
-					enhanced_mode: true
+					type_key_used: typeKey,
+					props_confidence: 0.5,
+					enhanced_mode: false // Template features removed
 				}
 			});
 
@@ -218,9 +135,8 @@ export class EnhancedTaskMigrator {
 				status: 'completed',
 				legacyTaskId: task.id,
 				ontoTaskId: data.id,
-				templateUsed: templateResult.template.type_key,
-				templateCreated: templateResult.created,
-				message: 'Task migrated successfully with enhanced mode'
+				typeKeyUsed: typeKey,
+				message: 'Task migrated successfully (template discovery removed)'
 			};
 		} catch (error) {
 			console.error('[EnhancedTaskMigrator] Migration failed:', error);
@@ -232,70 +148,9 @@ export class EnhancedTaskMigrator {
 		}
 	}
 
-	// Note: Template caching is handled internally by FindOrCreateTemplateService
-	// No explicit cache clearing needed
-
 	// ============================================
 	// PRIVATE HELPER METHODS
 	// ============================================
-
-	private buildTaskNarrative(task: LegacyTask): string {
-		const segments: string[] = [
-			`Task Title: ${task.title}`,
-			`Status: ${task.status}`,
-			task.description ? `Description:\n${task.description}` : '',
-			task.notes ? `Notes:\n${task.notes}` : '',
-			task.start_date ? `Due Date: ${task.start_date}` : '',
-			task.priority ? `Priority: ${task.priority}` : ''
-		];
-
-		return segments.filter(Boolean).join('\n\n');
-	}
-
-	private inferRealm(task: LegacyTask): string | undefined {
-		const allText = [task.title, task.description ?? '', task.notes ?? '']
-			.join(' ')
-			.toLowerCase();
-
-		// Simple heuristics
-		if (
-			allText.includes('code') ||
-			allText.includes('develop') ||
-			allText.includes('implement')
-		) {
-			return 'developer';
-		}
-
-		if (allText.includes('write') || allText.includes('draft') || allText.includes('article')) {
-			return 'writer';
-		}
-
-		if (
-			allText.includes('design') ||
-			allText.includes('mockup') ||
-			allText.includes('prototype')
-		) {
-			return 'designer';
-		}
-
-		if (
-			allText.includes('research') ||
-			allText.includes('analyze') ||
-			allText.includes('study')
-		) {
-			return 'research';
-		}
-
-		if (
-			allText.includes('marketing') ||
-			allText.includes('campaign') ||
-			allText.includes('promote')
-		) {
-			return 'marketing';
-		}
-
-		return undefined;
-	}
 
 	private mapStatusToState(status: LegacyTask['status']): string {
 		switch (status) {

@@ -1,4 +1,4 @@
--- analyze-template-realms.sql
+-- apps/web/scripts/analyze-template-realms.sql
 -- Query to analyze which templates have realms and which are missing
 -- Run against your Supabase database to understand realm coverage
 

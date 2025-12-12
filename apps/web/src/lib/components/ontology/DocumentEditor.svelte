@@ -26,12 +26,10 @@
 	import Color from '@tiptap/extension-color';
 	import { TextStyle } from '@tiptap/extension-text-style';
 	import Button from '$lib/components/ui/Button.svelte';
-	import type { ResolvedTemplate } from '$lib/services/ontology/template-resolver.service';
 
 	interface DocumentEditorProps {
 		outputId?: string | null;
-		templateKey: string;
-		resolvedTemplate: ResolvedTemplate;
+		typeKey?: string;
 		initialContent?: string;
 		initialTitle?: string;
 		initialProps?: Record<string, unknown>;
@@ -182,7 +180,7 @@
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
-					template_key: propsData.templateKey,
+					type_key: propsData.typeKey,
 					instructions: aiInstructions,
 					project_id: propsData.projectId,
 					current_props: currentProps
@@ -308,15 +306,12 @@
 			</div>
 		</div>
 
-		<!-- Template info with dark mode -->
-		<div class="text-sm text-gray-600 dark:text-gray-400 mb-2">
-			<span class="font-medium">{propsData.resolvedTemplate.name}</span>
-			{#if propsData.resolvedTemplate.inheritance_chain.length > 1}
-				<span class="text-gray-400 dark:text-gray-500 ml-2">
-					({propsData.resolvedTemplate.inheritance_chain.join(' → ')})
-				</span>
-			{/if}
-		</div>
+		<!-- Type key info with dark mode -->
+		{#if propsData.typeKey}
+			<div class="text-sm text-gray-600 dark:text-gray-400 mb-2">
+				<span class="font-medium font-mono">{propsData.typeKey}</span>
+			</div>
+		{/if}
 
 		<!-- Errors with proper ARIA and dark mode -->
 		{#if saveError}
@@ -579,9 +574,11 @@
 				</span>
 			{/if}
 		</div>
-		<div class="text-xs text-gray-400 dark:text-gray-500 font-mono">
-			{propsData.templateKey}
-		</div>
+		{#if propsData.typeKey}
+			<div class="text-xs text-gray-400 dark:text-gray-500 font-mono">
+				{propsData.typeKey}
+			</div>
+		{/if}
 	</div>
 </div>
 

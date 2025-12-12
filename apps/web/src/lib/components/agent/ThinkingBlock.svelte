@@ -70,21 +70,6 @@
 			color: 'text-amber-600 dark:text-amber-400',
 			prefix: 'CONTEXT'
 		},
-		template_request: {
-			icon: '📄',
-			color: 'text-pink-600 dark:text-pink-400',
-			prefix: 'TEMPLATE'
-		},
-		template_status: {
-			icon: '📄',
-			color: 'text-pink-600 dark:text-pink-400',
-			prefix: 'TEMPLATE'
-		},
-		template_suggestion: {
-			icon: '✨',
-			color: 'text-purple-600 dark:text-purple-400',
-			prefix: 'SUGGEST'
-		},
 		ontology_loaded: {
 			icon: '📚',
 			color: 'text-indigo-600 dark:text-indigo-400',

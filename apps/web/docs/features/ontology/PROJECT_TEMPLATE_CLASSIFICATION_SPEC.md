@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/ontology/PROJECT_TEMPLATE_CLASSIFICATION_SPEC.md -->
+
 # Project Template Classification Spec
 
 **Last Updated**: December 10, 2025

@@ -38,7 +38,6 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession }
 				projectId: typeof projectId === 'string' ? projectId : undefined,
 				entityType: payload.entityType as EntityType | undefined,
 				errorCategory: payload.errorCategory as ErrorCategory | undefined,
-				useFallbackTemplates: Boolean(payload.useFallbackTemplates),
 				maxRetries: typeof payload.maxRetries === 'number' ? payload.maxRetries : 3
 			},
 			user.id

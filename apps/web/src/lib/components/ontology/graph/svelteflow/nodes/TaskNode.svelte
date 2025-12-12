@@ -1,3 +1,4 @@
+<!-- apps/web/src/lib/components/ontology/graph/svelteflow/nodes/TaskNode.svelte -->
 <!-- TaskNode.svelte - Svelte Flow custom node for tasks -->
 <script lang="ts">
 	import { Handle, Position } from '@xyflow/svelte';

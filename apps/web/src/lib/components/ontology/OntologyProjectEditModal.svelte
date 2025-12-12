@@ -9,14 +9,13 @@
 	import { toastService } from '$lib/stores/toast.store';
 	import { Copy, Calendar, FileText, X, FolderKanban, Trash2 } from 'lucide-svelte';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
-	import type { Project, Document, Template } from '$lib/types/onto';
+	import type { Project, Document } from '$lib/types/onto';
 	import { renderMarkdown } from '$lib/utils/markdown';
 
 	interface Props {
 		isOpen?: boolean;
 		project: Project | null;
 		contextDocument?: Document | null;
-		template?: Template | null;
 		onClose?: () => void;
 		onSaved?: (project: Project) => void;
 		onDeleted?: () => void;
@@ -44,17 +43,10 @@
 		'complete'
 	];
 
-	type TemplatePropField = {
-		key: string;
-		schema: Record<string, any>;
-		required: boolean;
-	};
-
 	let {
 		isOpen = $bindable(false),
 		project,
 		contextDocument = null,
-		template = null,
 		onClose,
 		onSaved,
 		onDeleted
@@ -74,8 +66,6 @@
 
 	// Context document state - now editable
 	let contextDocumentBody = $state('');
-	let templatePropValues = $state<Record<string, unknown>>({});
-	let templatePropsDirty = $state(false);
 
 	// Initialize context document from props
 	const initialContextBody = $derived.by(() => {
@@ -92,20 +82,6 @@
 
 	const modalTitle = $derived(project ? `Edit ${project.name}` : 'Edit Ontology Project');
 
-	const templatePropFields = $derived.by(() => {
-		const schema = template?.schema;
-		const properties = (schema?.properties ?? {}) as Record<string, any>;
-		const requiredList = Array.isArray(schema?.required) ? (schema?.required as string[]) : [];
-		return Object.entries(properties).map(
-			([key, propSchema]) =>
-				({
-					key,
-					schema: (propSchema ?? {}) as Record<string, any>,
-					required: requiredList.includes(key)
-				}) as TemplatePropField
-		);
-	});
-
 	$effect(() => {
 		if (!project || !isOpen) return;
 
@@ -118,22 +94,6 @@
 		endDate = toDateInput(project.end_at);
 		contextDocumentBody = initialContextBody;
 		error = null;
-
-		const nextTemplateValues: Record<string, unknown> = {};
-		for (const field of templatePropFields) {
-			const existing = project.props?.[field.key];
-			if (existing !== undefined) {
-				nextTemplateValues[field.key] = existing;
-			} else if (field.schema?.default !== undefined) {
-				nextTemplateValues[field.key] = field.schema.default;
-			} else if (field.schema?.type === 'boolean') {
-				nextTemplateValues[field.key] = false;
-			} else {
-				nextTemplateValues[field.key] = '';
-			}
-		}
-		templatePropValues = nextTemplateValues;
-		templatePropsDirty = false;
 	});
 
 	function toDateInput(value?: string | null): string {
@@ -185,37 +145,6 @@
 		} finally {
 			isDeleting = false;
 		}
-	}
-
-	function templateFieldLabel(field: TemplatePropField): string {
-		const title =
-			typeof field.schema?.title === 'string' && field.schema.title.length > 0
-				? field.schema.title
-				: facetLabel(field.key);
-		return field.required ? `${title} *` : title;
-	}
-
-	function coerceTemplateValue(field: TemplatePropField, raw: unknown): unknown {
-		const type = field.schema?.type;
-		if (type === 'number' || type === 'integer') {
-			if (raw === '' || raw === null || raw === undefined) {
-				return '';
-			}
-			const parsed = Number(raw);
-			return Number.isNaN(parsed) ? '' : parsed;
-		}
-		if (type === 'boolean') {
-			return Boolean(raw);
-		}
-		return typeof raw === 'string' ? raw : (raw ?? '');
-	}
-
-	function updateTemplateProp(field: TemplatePropField, rawValue: unknown) {
-		templatePropValues = {
-			...templatePropValues,
-			[field.key]: coerceTemplateValue(field, rawValue)
-		};
-		templatePropsDirty = true;
 	}
 
 	// Copy context to clipboard
@@ -279,15 +208,6 @@
 
 		if (parsedEnd !== (project.end_at ?? null)) {
 			payload.end_at = parsedEnd;
-		}
-
-		const hasTemplatePropChanges = templatePropsDirty && templatePropFields.length > 0;
-
-		if (hasTemplatePropChanges) {
-			payload.props = {
-				...(project.props ?? {}),
-				...templatePropValues
-			};
 		}
 
 		// Check if context document changed
@@ -626,125 +546,6 @@
 									{/each}
 								</Select>
 							</div>
-
-							{#if templatePropFields.length > 0}
-								<div class="space-y-2">
-									<p
-										class="text-xs font-semibold text-muted-foreground uppercase tracking-wider"
-									>
-										🔧 Template Attributes
-									</p>
-									<div class="space-y-3">
-										{#each templatePropFields as field}
-											<div class="space-y-1.5">
-												<label
-													for={`template-field-${field.key}`}
-													class="text-xs text-muted-foreground font-semibold"
-												>
-													{templateFieldLabel(field)}
-												</label>
-												{#if field.schema?.enum}
-													<select
-														id={`template-field-${field.key}`}
-														class="w-full px-3 py-2 rounded border border-border bg-background text-sm text-foreground focus:ring-2 focus:ring-ring"
-														value={String(
-															templatePropValues[field.key] ?? ''
-														)}
-														onchange={(event) =>
-															updateTemplateProp(
-																field,
-																event.currentTarget.value
-															)}
-														disabled={isSaving}
-													>
-														<option value="">Select...</option>
-														{#each field.schema.enum as option}
-															<option value={option}
-																>{facetLabel(option)}</option
-															>
-														{/each}
-													</select>
-												{:else if field.schema?.type === 'boolean'}
-													<label
-														class="flex items-center gap-2 text-sm text-foreground"
-													>
-														<input
-															type="checkbox"
-															class="rounded border-border text-accent focus:ring-ring"
-															checked={Boolean(
-																templatePropValues[field.key]
-															)}
-															onchange={(event) =>
-																updateTemplateProp(
-																	field,
-																	event.currentTarget.checked
-																)}
-															disabled={isSaving}
-														/>
-														<span
-															>{field.schema?.description ??
-																'Enabled'}</span
-														>
-													</label>
-												{:else if field.schema?.type === 'number' || field.schema?.type === 'integer'}
-													<input
-														id={`template-field-${field.key}`}
-														type="number"
-														class="w-full px-3 py-2 rounded border border-border bg-background text-sm text-foreground focus:ring-2 focus:ring-ring"
-														value={templatePropValues[field.key] === ''
-															? ''
-															: String(
-																	templatePropValues[field.key] ??
-																		''
-																)}
-														oninput={(event) =>
-															updateTemplateProp(
-																field,
-																event.currentTarget.value
-															)}
-														disabled={isSaving}
-													/>
-												{:else if (field.schema?.type === 'string' && field.schema?.format === 'textarea') || field.schema?.maxLength > 200}
-													<textarea
-														id={`template-field-${field.key}`}
-														class="w-full px-3 py-2 rounded border border-border bg-background text-sm text-foreground focus:ring-2 focus:ring-ring resize-none"
-														rows={3}
-														value={String(
-															templatePropValues[field.key] ?? ''
-														)}
-														oninput={(event) =>
-															updateTemplateProp(
-																field,
-																event.currentTarget.value
-															)}
-														disabled={isSaving}
-													></textarea>
-												{:else}
-													<input
-														id={`template-field-${field.key}`}
-														type="text"
-														class="w-full px-3 py-2 rounded border border-border bg-background text-sm text-foreground focus:ring-2 focus:ring-ring"
-														value={String(
-															templatePropValues[field.key] ?? ''
-														)}
-														oninput={(event) =>
-															updateTemplateProp(
-																field,
-																event.currentTarget.value
-															)}
-														disabled={isSaving}
-													/>
-												{/if}
-												{#if field.schema?.description}
-													<p class="text-xs text-muted-foreground">
-														{field.schema.description}
-													</p>
-												{/if}
-											</div>
-										{/each}
-									</div>
-								</div>
-							{/if}
 
 							<!-- Timeline Section -->
 							<div class="space-y-3">

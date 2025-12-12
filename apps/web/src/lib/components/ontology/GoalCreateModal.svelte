@@ -1,25 +1,13 @@
 <!-- apps/web/src/lib/components/ontology/GoalCreateModal.svelte -->
 <!--
-	Goal Creation Modal Component
-
-	Creates goals within the BuildOS ontology system using a two-step flow:
-	1. Template selection
-	2. Goal details entry with measurement criteria
-
-	Documentation:
-	- Ontology System Overview: /apps/web/docs/features/ontology/README.md
-	- Data Models & Schema: /apps/web/docs/features/ontology/DATA_MODELS.md
-	- Implementation Guide: /apps/web/docs/features/ontology/IMPLEMENTATION_SUMMARY.md
-	- Modal Component Guide: /apps/web/docs/technical/components/modals/QUICK_REFERENCE.md
+	Goal Creation Modal Component (Template-Free)
+	Creates goals without template selection - uses type_key directly
 
 	Related Files:
 	- API Endpoint: /apps/web/src/routes/api/onto/goals/create/+server.ts
-	- Base Modal: /apps/web/src/lib/components/ui/Modal.svelte
-	- Plan Creation: /apps/web/src/lib/components/ontology/PlanCreateModal.svelte
 -->
 <script lang="ts">
-	import { browser } from '$app/environment';
-	import { ChevronRight, Loader, Target, Save, Sparkles } from 'lucide-svelte';
+	import { ChevronRight, Target, Save } from 'lucide-svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import FormField from '$lib/components/ui/FormField.svelte';
@@ -29,6 +17,61 @@
 	import { fly } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
 
+	// Hardcoded goal types (templates removed)
+	interface GoalType {
+		id: string;
+		name: string;
+		type_key: string;
+		metadata: {
+			category: string;
+			description: string;
+			measurement_type?: string;
+		};
+	}
+
+	const GOAL_TYPES: GoalType[] = [
+		{
+			id: 'outcome',
+			name: 'Project Outcome',
+			type_key: 'goal.outcome.project',
+			metadata: {
+				category: 'Outcomes',
+				description: 'Define the desired end result for your project',
+				measurement_type: 'Milestone completion'
+			}
+		},
+		{
+			id: 'okr',
+			name: 'OKR (Objective & Key Results)',
+			type_key: 'goal.outcome.okr',
+			metadata: {
+				category: 'Strategic',
+				description: 'Set measurable objectives with key results',
+				measurement_type: 'Percentage progress'
+			}
+		},
+		{
+			id: 'milestone',
+			name: 'Milestone Goal',
+			type_key: 'goal.outcome.milestone',
+			metadata: {
+				category: 'Milestones',
+				description: 'Track progress toward a specific milestone',
+				measurement_type: 'Binary completion'
+			}
+		},
+		{
+			id: 'metric',
+			name: 'Metric Goal',
+			type_key: 'goal.outcome.metric',
+			metadata: {
+				category: 'Metrics',
+				description: 'Track a quantifiable metric over time',
+				measurement_type: 'Numeric target'
+			}
+		}
+	];
+
 	interface Props {
 		projectId: string;
 		onClose: () => void;
@@ -37,14 +80,11 @@
 
 	let { projectId, onClose, onCreated }: Props = $props();
 
-	let selectedTemplate = $state<any>(null);
-	let templates = $state<any[]>([]);
-	let isLoadingTemplates = $state(true);
-	let templateError = $state('');
+	let selectedTemplate = $state<GoalType | null>(null);
 	let showTemplateSelection = $state(true);
 	let isSaving = $state(false);
 	let error = $state('');
-	let slideDirection = $state<1 | -1>(1); // 1 = slide left, -1 = slide right
+	let slideDirection = $state<1 | -1>(1);
 
 	// Form fields
 	let name = $state('');
@@ -54,46 +94,21 @@
 	let targetDate = $state('');
 	let stateKey = $state('draft');
 
-	// Template categories for better organization
+	// Group types by category
 	const templateCategories = $derived(
-		templates.reduce((acc: Record<string, any[]>, template) => {
-			const category = template.metadata?.category || 'General';
+		GOAL_TYPES.reduce((acc: Record<string, GoalType[]>, template) => {
+			const category = template.metadata.category || 'General';
 			if (!acc[category]) acc[category] = [];
 			acc[category].push(template);
 			return acc;
 		}, {})
 	);
 
-	// Load templates when modal opens (client-side only)
-	$effect(() => {
-		if (browser) {
-			loadTemplates();
-		}
-	});
-
-	async function loadTemplates() {
-		try {
-			isLoadingTemplates = true;
-			const response = await fetch('/api/onto/templates?scope=goal');
-			if (!response.ok) throw new Error('Failed to load templates');
-
-			const data = await response.json();
-			templates = data.data?.templates || [];
-			templateError = '';
-		} catch (err) {
-			console.error('Error loading templates:', err);
-			templateError = 'Failed to load goal templates';
-		} finally {
-			isLoadingTemplates = false;
-		}
-	}
-
-	function selectTemplate(template: any) {
+	function selectTemplate(template: GoalType) {
 		selectedTemplate = template;
-		// Pre-populate form fields with template defaults
-		name = template.metadata?.name_pattern?.replace('{{project}}', 'Project') || '';
-		measurementCriteria = template.default_props?.measurement_criteria || '';
-		stateKey = template.fsm?.initial || 'draft';
+		name = '';
+		measurementCriteria = '';
+		stateKey = 'draft';
 		slideDirection = 1;
 		showTemplateSelection = false;
 	}
@@ -106,13 +121,18 @@
 			return;
 		}
 
+		if (!selectedTemplate) {
+			error = 'Please select a goal type';
+			return;
+		}
+
 		isSaving = true;
 		error = '';
 
 		try {
 			const requestBody = {
 				project_id: projectId,
-				type_key: selectedTemplate?.type_key || 'goal.outcome.project',
+				type_key: selectedTemplate.type_key,
 				name: name.trim(),
 				description: description.trim() || null,
 				state_key: stateKey || 'draft',
@@ -120,8 +140,7 @@
 					description: description.trim() || null,
 					target_date: targetDate || null,
 					measurement_criteria: measurementCriteria.trim() || null,
-					priority: priority || 'medium',
-					...(selectedTemplate?.default_props || {})
+					priority: priority || 'medium'
 				}
 			};
 
@@ -139,7 +158,6 @@
 				throw new Error(result.error || 'Failed to create goal');
 			}
 
-			// Success! Call the callback
 			if (onCreated) {
 				onCreated(result.data.goal.id);
 			}
@@ -155,7 +173,6 @@
 		slideDirection = -1;
 		showTemplateSelection = true;
 		selectedTemplate = null;
-		// Reset form
 		name = '';
 		description = '';
 		measurementCriteria = '';
@@ -238,7 +255,7 @@
 									</div>
 									<div>
 										<h3 class="text-lg font-semibold text-foreground">
-											Choose a Goal Template
+											Choose a Goal Type
 										</h3>
 										<p class="text-sm text-muted-foreground">
 											Select a goal type to define success criteria and
@@ -247,93 +264,63 @@
 									</div>
 								</div>
 
-								{#if isLoadingTemplates}
-									<div class="flex items-center justify-center py-16">
-										<Loader
-											class="w-8 h-8 animate-spin text-muted-foreground"
-										/>
-									</div>
-								{:else if templateError}
-									<div class="text-center py-12">
-										<p class="text-destructive mb-4">
-											{templateError}
-										</p>
-										<Button variant="secondary" onclick={loadTemplates}
-											>Try Again</Button
-										>
-									</div>
-								{:else}
-									<div class="space-y-6">
-										{#each Object.entries(templateCategories) as [category, categoryTemplates]}
-											<div>
-												<h3
-													class="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3 flex items-center gap-2"
-												>
-													<span class="w-1.5 h-1.5 bg-accent rounded-full"
-													></span>
-													{category}
-												</h3>
-												<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-													{#each categoryTemplates as template}
-														<button
-															type="button"
-															onclick={() => selectTemplate(template)}
-															class="bg-card border border-border p-4 rounded-lg text-left group hover:border-accent shadow-ink transition-all duration-200"
-														>
-															<div
-																class="flex items-start justify-between mb-2"
-															>
-																<h4
-																	class="font-semibold text-foreground group-hover:text-accent transition-colors"
-																>
-																	{template.name}
-																</h4>
-																<ChevronRight
-																	class="w-5 h-5 text-muted-foreground group-hover:text-accent flex-shrink-0 transition-transform group-hover:translate-x-0.5"
-																/>
-															</div>
-															{#if template.metadata?.description}
-																<p
-																	class="text-sm text-muted-foreground line-clamp-2 mb-2"
-																>
-																	{template.metadata.description}
-																</p>
-															{/if}
-															{#if template.metadata?.measurement_type}
-																<div
-																	class="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 bg-muted rounded"
-																>
-																	<Target
-																		class="w-3 h-3 text-accent"
-																	/>
-																	<span
-																		class="text-xs font-medium text-foreground"
-																	>
-																		{template.metadata
-																			.measurement_type}
-																	</span>
-																</div>
-															{/if}
-														</button>
-													{/each}
-												</div>
-											</div>
-										{/each}
-
-										{#if templates.length === 0}
-											<div
-												class="text-center py-12 border-2 border-dashed border-border rounded-lg"
+								<div class="space-y-6">
+									{#each Object.entries(templateCategories) as [category, categoryTemplates]}
+										<div>
+											<h3
+												class="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3 flex items-center gap-2"
 											>
-												<Target
-													class="w-12 h-12 text-muted-foreground mx-auto mb-3"
-												/>
-												<p class="text-sm text-muted-foreground">
-													No goal templates available
-												</p>
+												<span class="w-1.5 h-1.5 bg-accent rounded-full"
+												></span>
+												{category}
+											</h3>
+											<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+												{#each categoryTemplates as template}
+													<button
+														type="button"
+														onclick={() => selectTemplate(template)}
+														class="bg-card border border-border p-4 rounded-lg text-left group hover:border-accent shadow-ink transition-all duration-200"
+													>
+														<div
+															class="flex items-start justify-between mb-2"
+														>
+															<h4
+																class="font-semibold text-foreground group-hover:text-accent transition-colors"
+															>
+																{template.name}
+															</h4>
+															<ChevronRight
+																class="w-5 h-5 text-muted-foreground group-hover:text-accent flex-shrink-0 transition-transform group-hover:translate-x-0.5"
+															/>
+														</div>
+														{#if template.metadata?.description}
+															<p
+																class="text-sm text-muted-foreground line-clamp-2 mb-2"
+															>
+																{template.metadata.description}
+															</p>
+														{/if}
+														{#if template.metadata?.measurement_type}
+															<div
+																class="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 bg-muted rounded"
+															>
+																<Target
+																	class="w-3 h-3 text-accent"
+																/>
+																<span
+																	class="text-xs font-medium text-foreground"
+																>
+																	{template.metadata
+																		.measurement_type}
+																</span>
+															</div>
+														{/if}
+													</button>
+												{/each}
 											</div>
-										{/if}
-									</div>
-								{/if}
+										</div>
+									{/each}
+								</div>
 							</div>
 						{:else}
 							<!-- GOAL DETAILS FORM -->

@@ -13,12 +13,9 @@ import { executeNotifyAction } from './actions/notify';
 import { executeCreateOutputAction } from './actions/create-output';
 import { executeScheduleRruleAction } from './actions/schedule-rrule';
 import { executeEmailUserAction } from './actions/email-user';
-import { executeCreateDocFromTemplateAction } from './actions/create-doc-from-template';
 import { executeEmailAdminAction } from './actions/email-admin';
-import { executeCreateResearchDocAction } from './actions/create-research-doc';
 import { executeRunLlmCritiqueAction } from './actions/run-llm-critique';
 import type { Database, Json } from '@buildos/shared-types';
-import { resolveTemplateWithClient } from '$lib/services/ontology/template-resolver.service';
 
 // ============================================
 // TYPES
@@ -94,21 +91,15 @@ export async function runTransition(
 		props: toJsonObject(rawEntity.props)
 	};
 
-	// 2) Load template FSM with inheritance resolution
-	let resolvedTemplate: { fsm: FSMDef | null };
-	try {
-		const scope = kindToScope(request.object_kind);
-		const template = await resolveTemplateWithClient(client, entity.type_key, scope);
-		resolvedTemplate = { fsm: template.fsm as FSMDef | null };
-	} catch (err) {
-		const message = err instanceof Error ? err.message : 'Unknown error';
-		return {
-			ok: false,
-			error: `FSM template not found for type_key: ${entity.type_key} (${message})`
-		};
-	}
+	// 2) FSM is no longer template-based - would need to be loaded from entity props or other source
+	// For now, return error indicating FSM is not available
+	return {
+		ok: false,
+		error: `FSM execution no longer supported without template system for type_key: ${entity.type_key}`
+	};
 
-	const fsm = resolvedTemplate.fsm;
+	// The following code is unreachable but kept for reference
+	const fsm: FSMDef | null = null;
 
 	// 3) Find transition
 	if (!fsm) {
@@ -539,28 +530,6 @@ async function executeActions(
 
 				case 'create_output': {
 					const result = await executeCreateOutputAction(action, entity, ctx, client);
-					executed.push(result);
-					break;
-				}
-
-				case 'create_doc_from_template': {
-					const result = await executeCreateDocFromTemplateAction(
-						action,
-						entity,
-						ctx,
-						client
-					);
-					executed.push(result);
-					break;
-				}
-
-				case 'create_research_doc': {
-					const result = await executeCreateResearchDocAction(
-						action,
-						entity,
-						ctx,
-						client
-					);
 					executed.push(result);
 					break;
 				}

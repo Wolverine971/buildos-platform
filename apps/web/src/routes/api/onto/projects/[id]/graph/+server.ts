@@ -14,7 +14,7 @@ import type {
 } from '$lib/components/ontology/graph/lib/graph.types';
 
 const DEFAULT_NODE_LIMIT = 600;
-const VIEW_MODES: ViewMode[] = ['full', 'templates', 'projects'];
+const VIEW_MODES: ViewMode[] = ['full', 'projects'];
 
 function parseViewMode(raw: string | null): ViewMode | null {
 	if (!raw) return 'full';
@@ -179,48 +179,16 @@ export const GET: RequestHandler = async ({ params, locals, url }) => {
 			edges = Array.from(edgeMap.values());
 		}
 
-		const templateIds = new Set<string>();
-		// Check for type_key which references the template type
-		// Template IDs will be collected from edges instead
-
-		for (const edge of edges) {
-			if (edge.src_kind === 'template' && edge.src_id) {
-				templateIds.add(edge.src_id);
-			}
-			if (edge.dst_kind === 'template' && edge.dst_id) {
-				templateIds.add(edge.dst_id);
-			}
-		}
-
-		let templates: GraphSourceData['templates'] = [];
-
-		if (templateIds.size > 0) {
-			const { data: templateRows, error: templatesError } = await supabase
-				.from('onto_templates')
-				.select('*')
-				.in('id', Array.from(templateIds));
-
-			if (templatesError) {
-				console.error('[Project Graph API] Failed to fetch templates', templatesError);
-				return ApiResponse.databaseError(templatesError);
-			}
-
-			templates = (templateRows ?? []) as GraphSourceData['templates'];
-		}
-
-		const allowedNodeIds = new Set<string>([
-			...nodeIds,
-			...templates.map((template) => template.id)
-		]);
-
+		// Filter edges to only include those between nodes we have
 		const filteredEdges = edges.filter(
 			(edge) =>
-				Boolean(edge.src_id && allowedNodeIds.has(edge.src_id)) &&
-				Boolean(edge.dst_id && allowedNodeIds.has(edge.dst_id))
+				edge.src_kind !== 'template' &&
+				edge.dst_kind !== 'template' &&
+				Boolean(edge.src_id && nodeIds.has(edge.src_id)) &&
+				Boolean(edge.dst_id && nodeIds.has(edge.dst_id))
 		);
 
 		const sourceData: GraphSourceData = {
-			templates,
 			projects: [project],
 			edges: filteredEdges,
 			tasks,
@@ -246,7 +214,6 @@ export const GET: RequestHandler = async ({ params, locals, url }) => {
 		}
 
 		const stats: GraphStats = {
-			totalTemplates: templates.length,
 			totalProjects: 1,
 			activeProjects: project.state_key === 'active' ? 1 : 0,
 			totalEdges: filteredEdges.length,

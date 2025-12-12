@@ -1,3 +1,4 @@
+-- apps/web/scripts/reset-migration-last-2-hours.sql
 -- ============================================================
 -- COMPLETE MIGRATION RESET - Last 24 Hours
 -- Run this in Supabase SQL Editor

@@ -1,22 +1,14 @@
 // apps/web/src/routes/projects/create/+page.server.ts
 /**
  * Create Project - Server Load
- * Fetches templates for the guided form
+ *
+ * This page uses the AgentChatModal for project creation.
+ * No server-side data loading is required as the chat handles
+ * all project setup through conversation.
  */
 
 import type { PageServerLoad } from './$types';
 import { error } from '@sveltejs/kit';
-import type { ResolvedTemplate } from '$lib/services/ontology/template-resolver.service';
-import type { TypedSupabaseClient } from '@buildos/supabase-client';
-import { fetchTemplateCatalog } from '$lib/services/ontology/ontology-template-catalog.service';
-
-type FacetValue = {
-	facet_key: string;
-	value: string;
-	label: string;
-	description: string | null;
-	color: string | null;
-};
 
 export const load: PageServerLoad = async ({ locals }) => {
 	const { user } = await locals.safeGetSession();
@@ -24,74 +16,6 @@ export const load: PageServerLoad = async ({ locals }) => {
 		throw error(401, 'Authentication required');
 	}
 
-	try {
-		const [catalog, facetValues] = await Promise.all([
-			fetchTemplateCatalog(locals.supabase, {
-				scope: 'project',
-				sort: 'name',
-				direction: 'asc'
-			}),
-			getFacetValues(locals.supabase)
-		]);
-
-		const templates = catalog.templates;
-		const grouped = groupTemplatesByRealm(templates);
-		const facets = mapFacetValuesByKey(facetValues);
-
-		return {
-			templates,
-			grouped,
-			facets
-		};
-	} catch (catalogError) {
-		console.error('[Create Project] Failed to load templates:', catalogError);
-		return {
-			templates: [],
-			grouped: {},
-			facets: {},
-			error: 'Failed to load templates'
-		};
-	}
+	// No data needed - AgentChatModal handles project creation
+	return {};
 };
-
-async function getFacetValues(supabase: TypedSupabaseClient): Promise<FacetValue[]> {
-	const { data, error: facetError } = await supabase
-		.from('onto_facet_values')
-		.select('facet_key, value, label, description, color')
-		.order('facet_key')
-		.order('sort_order');
-
-	if (facetError) {
-		console.error('[Create Project] Failed to fetch facet taxonomy:', facetError);
-		return [];
-	}
-
-	return (data as FacetValue[]) ?? [];
-}
-
-function groupTemplatesByRealm(templates: ResolvedTemplate[]): Record<string, ResolvedTemplate[]> {
-	return templates.reduce(
-		(acc, template) => {
-			const realm = (template.metadata?.realm as string | undefined) ?? 'other';
-			if (!acc[realm]) {
-				acc[realm] = [];
-			}
-			acc[realm].push(template);
-			return acc;
-		},
-		{} as Record<string, ResolvedTemplate[]>
-	);
-}
-
-function mapFacetValuesByKey(facetValues: FacetValue[]): Record<string, FacetValue[]> {
-	return facetValues.reduce(
-		(acc, facet) => {
-			if (!acc[facet.facet_key]) {
-				acc[facet.facet_key] = [];
-			}
-			acc[facet.facet_key]!.push(facet);
-			return acc;
-		},
-		{} as Record<string, FacetValue[]>
-	);
-}

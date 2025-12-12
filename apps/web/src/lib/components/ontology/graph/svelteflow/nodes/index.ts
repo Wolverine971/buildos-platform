@@ -1,5 +1,5 @@
+// apps/web/src/lib/components/ontology/graph/svelteflow/nodes/index.ts
 // Export all custom node components for Svelte Flow
-export { default as TemplateNode } from './TemplateNode.svelte';
 export { default as ProjectNode } from './ProjectNode.svelte';
 export { default as TaskNode } from './TaskNode.svelte';
 export { default as PlanNode } from './PlanNode.svelte';

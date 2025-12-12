@@ -507,7 +507,6 @@ export class PhaseMigrationService {
 			const migrationContext: MigrationContext = {
 				...params.context,
 				enhancedMode: true,
-				templateConfidenceThreshold: 0.7,
 				propsConfidenceThreshold: 0.6,
 				cacheEnabled: true
 			};

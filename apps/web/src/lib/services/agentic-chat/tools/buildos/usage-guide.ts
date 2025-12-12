@@ -7,8 +7,7 @@ import {
 	CHAT_CONVERSATION_MODES_REFERENCE,
 	FEATURES_INDEX_REFERENCE,
 	ONBOARDING_REFERENCE,
-	ONTOLOGY_REFERENCE,
-	TEMPLATE_INHERITANCE_REFERENCE
+	ONTOLOGY_REFERENCE
 } from './references';
 
 const USAGE_SECTIONS: BuildosDocSection[] = [
@@ -42,7 +41,7 @@ const USAGE_SECTIONS: BuildosDocSection[] = [
 			'For exploring ideas across multiple projects or planning the week ahead, suggest global mode. This gives access to all projects, calendar, and cross-project tools.',
 			'When working within a single project—asking "what is next?", creating tasks, or updating plans—recommend project mode. The agent loads that project context document and can reason about its specific needs.',
 			'Within project mode, users can narrow focus further: users can say "Let me talk about the deployment task" or "Show me the API documentation document." The ProjectFocusSelector lets them choose tasks, goals, plans, documents, or outputs.',
-			'For turning a spark of an idea into a structured project, use project_create mode. This guides through template selection, facet classification, and initial task planning.',
+			'For turning a spark of an idea into a structured project, use project_create mode. This guides through type_key classification, prop inference, facet selection, and initial planning.',
 			'Task-focused mode is perfect for detailed work on one task: breaking it down, clarifying requirements, checking dependencies, or updating status.',
 			'Explain that each mode loads different context: project mode loads the project narrative story from context documents; task mode loads task details, blockers, and related work.',
 			'Remind users they can change modes mid-conversation if the scope shifts: users can say "let me switch to project mode so I can see related tasks."'
@@ -67,13 +66,13 @@ const USAGE_SECTIONS: BuildosDocSection[] = [
 		summary:
 			'Move accepted ideas into the ontology so plans, tasks, goals, and documents stay linked and queryable in the knowledge graph.',
 		highlights: [
-			'When creating a project, always set the type_key (e.g., writer.book or dev.app) and infer the three facets (context, scale, stage) to keep the graph queryable.',
+			'When creating a project, always set the type_key (e.g., project.creative.book or project.technical.app) and infer the three facets (context, scale, stage) to keep the graph queryable.',
 			'Context documents capture the narrative story of a project—why it matters, what success looks like, and the history of decisions. These come from brain dumps and persist as the project evolves.',
 			'The ontology creates relationships: tasks belong to plans, plans support goals, everything connects to project context. This web of connections helps agents understand dependencies and the bigger picture.',
-			'Template defaults inject default properties and suggestions automatically, but projects stay flexible—users can add custom fields and adapt the structure as needs change.',
+			'Props live in JSONB—populate them with concrete facts from the conversation (tech_stack, audience, budget, timelines).',
 			'When the agent references context documents during planning, it has access to the full narrative story, not just task lists. This produces better, more aligned suggestions.'
 		],
-		references: [ONTOLOGY_REFERENCE, TEMPLATE_INHERITANCE_REFERENCE]
+		references: [ONTOLOGY_REFERENCE]
 	},
 	{
 		title: '6. Automate Scheduling & Reviews',
@@ -87,15 +86,15 @@ const USAGE_SECTIONS: BuildosDocSection[] = [
 		references: [CALENDAR_FEATURE_REFERENCE, FEATURES_INDEX_REFERENCE]
 	},
 	{
-		title: '7. Iterate with Templates & AI Agents',
+		title: '7. Iterate with Prop Inference & AI Agents',
 		summary:
-			'Teach power users how to evolve templates and leverage agent escalations when existing blueprints fall short.',
+			'Teach power users how to iterate on prop inference, clarify gaps, and escalate when the model needs more guidance.',
 		highlights: [
-			'Encourage frequent use of `list_onto_templates` during project planning so the LLM can reference real schema hints rather than hallucinate fields.',
-			'If no template fits, escalate via the template creation flow (documented in agentic chat specs) so new realms or deliverables can be reviewed before use.',
-			'Remind users that templates carry default props but they must still supply project-specific metadata (e.g., `mvp_date`, `tech_stack`).'
+			'Coach the agent to restate the chosen type_key and key props it inferred so users can spot gaps quickly.',
+			'If critical details are missing (budget, deadline, audience), ask 2–3 targeted questions; otherwise infer from context.',
+			'Remind users that props come directly from the conversation—provide concrete facts (tech_stack, audience, guest_count, deadlines) to improve accuracy.'
 		],
-		references: [TEMPLATE_INHERITANCE_REFERENCE, AGENTIC_WORKFLOW_REFERENCE]
+		references: [AGENTIC_WORKFLOW_REFERENCE]
 	}
 ];
 
@@ -103,12 +102,12 @@ export const getBuildosUsageGuide: BuildosDocGenerator = () => ({
 	documentTitle: 'BuildOS Usage Guide',
 	lastReviewed: '2025-11-14',
 	summary:
-		'Step-by-step playbook for helping users capture inputs, organize them via ontology templates, and keep execution in sync with calendars and chat.',
+		'Step-by-step playbook for helping users capture inputs, organize them via ontology projects, and keep execution in sync with calendars and chat.',
 	sections: USAGE_SECTIONS,
 	recommendedQuestions: [
 		'Can you walk me through how to capture a chaotic week inside BuildOS?',
-		'How do I go from a braindump to a templated project with linked tasks?',
-		'What should I tell a user who needs to reconnect Google Calendar or request a new template?'
+		'How do I go from a braindump to a structured project with linked tasks?',
+		'What should I tell a user who needs to reconnect Google Calendar or supply missing project details?'
 	],
 	followUpActions: [
 		'Use `get_buildos_overview` if the user needs context before diving into workflows.',

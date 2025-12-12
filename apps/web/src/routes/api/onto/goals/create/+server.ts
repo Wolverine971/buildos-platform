@@ -33,7 +33,6 @@
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import type { EnsureActorResponse } from '$lib/types/onto-api';
-import { resolveAndMergeTemplateProps } from '$lib/services/ontology/template-props-merger.service';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	// Check authentication
@@ -84,15 +83,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			return ApiResponse.notFound('Project');
 		}
 
-		// Resolve template and merge props
-		const { mergedProps } = await resolveAndMergeTemplateProps(
-			supabase,
-			type_key,
-			'goal',
-			props || {},
-			true // Skip if no template found
-		);
-
 		// Create the goal
 		const goalData = {
 			project_id,
@@ -100,7 +90,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			name,
 			created_by: actorId,
 			props: {
-				...mergedProps,
+				...props,
 				description: description || null
 			}
 		};
