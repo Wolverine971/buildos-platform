@@ -1092,29 +1092,138 @@
 		string,
 		(args: any) => { action: string; target?: string }
 	> = {
+		search_ontology: (args) => ({
+			action: 'Searching workspace',
+			target: args?.query || args?.search
+		}),
+		list_onto_projects: (args) => ({
+			action: 'Listing projects',
+			target: args?.search
+		}),
+		search_onto_projects: (args) => ({
+			action: 'Searching projects',
+			target: args?.search || args?.query
+		}),
+		get_onto_project_details: (args) => ({
+			action: 'Loading project',
+			target: args?.project_id
+		}),
+		create_onto_project: (args) => ({
+			action: 'Creating project',
+			target: args?.project?.name
+		}),
+		update_onto_project: (args) => ({
+			action: 'Updating project',
+			target: args?.project_id || args?.project?.name
+		}),
+		list_onto_tasks: (args) => ({
+			action: 'Listing tasks',
+			target: args?.project_id
+		}),
+		search_onto_tasks: (args) => ({
+			action: 'Searching tasks',
+			target: args?.query
+		}),
+		get_onto_task_details: (args) => ({
+			action: 'Loading task',
+			target: args?.task_id
+		}),
 		create_onto_task: (args) => ({
 			action: 'Creating task',
-			target: args.name || args.task_name
+			target: args?.title || args?.task_name || args?.name
 		}),
 		update_onto_task: (args) => ({
 			action: 'Updating task',
-			target: args.name || args.task_name
+			target: args?.task_id || args?.title
 		}),
 		delete_onto_task: (args) => ({
 			action: 'Deleting task',
-			target: args.name || args.task_name
+			target: args?.task_id
 		}),
-		create_onto_plan: (args) => ({
-			action: 'Creating plan',
-			target: args.name
+		list_onto_goals: (args) => ({
+			action: 'Listing goals',
+			target: args?.project_id
 		}),
-		update_onto_plan: (args) => ({
-			action: 'Updating plan',
-			target: args.name
+		get_onto_goal_details: (args) => ({
+			action: 'Loading goal',
+			target: args?.goal_id
 		}),
 		create_onto_goal: (args) => ({
 			action: 'Creating goal',
-			target: args.name
+			target: args?.name
+		}),
+		update_onto_goal: (args) => ({
+			action: 'Updating goal',
+			target: args?.goal_id || args?.name
+		}),
+		delete_onto_goal: (args) => ({
+			action: 'Deleting goal',
+			target: args?.goal_id
+		}),
+		list_onto_plans: (args) => ({
+			action: 'Listing plans',
+			target: args?.project_id
+		}),
+		get_onto_plan_details: (args) => ({
+			action: 'Loading plan',
+			target: args?.plan_id
+		}),
+		create_onto_plan: (args) => ({
+			action: 'Creating plan',
+			target: args?.name
+		}),
+		update_onto_plan: (args) => ({
+			action: 'Updating plan',
+			target: args?.plan_id || args?.name
+		}),
+		delete_onto_plan: (args) => ({
+			action: 'Deleting plan',
+			target: args?.plan_id
+		}),
+		list_onto_documents: (args) => ({
+			action: 'Listing documents',
+			target: args?.project_id
+		}),
+		search_onto_documents: (args) => ({
+			action: 'Searching documents',
+			target: args?.search || args?.query
+		}),
+		get_onto_document_details: (args) => ({
+			action: 'Loading document',
+			target: args?.document_id
+		}),
+		create_onto_document: (args) => ({
+			action: 'Creating document',
+			target: args?.title || args?.name
+		}),
+		update_onto_document: (args) => ({
+			action: 'Updating document',
+			target: args?.document_id || args?.title
+		}),
+		delete_onto_document: (args) => ({
+			action: 'Deleting document',
+			target: args?.document_id
+		}),
+		get_entity_relationships: (args) => ({
+			action: 'Loading relationships',
+			target: args?.entity_id
+		}),
+		get_linked_entities: (args) => ({
+			action: 'Loading linked entities',
+			target: args?.entity_id
+		}),
+		get_field_info: () => ({
+			action: 'Loading field guidance'
+		}),
+		web_search: (args) => ({
+			action: 'Running web search',
+			target: args?.query
+		}),
+		get_buildos_overview: () => ({
+			action: 'Loading BuildOS overview'
+		}),
+		get_buildos_usage_guide: () => ({
+			action: 'Loading BuildOS usage guide'
 		}),
 		fetch_project_data: (args) => ({
 			action: 'Fetching project',
@@ -1745,16 +1854,19 @@
 					currentStep: null // Will be updated as steps execute
 				};
 
-				addActivityToThinkingBlock(
-					`Plan created with ${event.plan?.steps?.length || 0} steps`,
-					'plan_created',
-					enrichedMetadata
-				);
-				break;
-			case 'plan_ready_for_review': {
-				currentPlan = event.plan;
-				const summary =
-					event.summary ||
+			addActivityToThinkingBlock(
+				`Plan created with ${event.plan?.steps?.length || 0} steps`,
+				'plan_created',
+				enrichedMetadata
+			);
+			addPlanStatusAssistantMessage(
+				`I drafted a plan with ${event.plan?.steps?.length || 0} steps and will start executing it.`
+			);
+			break;
+		case 'plan_ready_for_review': {
+			currentPlan = event.plan;
+			const summary =
+				event.summary ||
 					'Plan drafted and waiting for your approval. Reply with any changes or say "run it".';
 
 				// Extract rich metadata for enhanced visualization
@@ -1773,17 +1885,20 @@
 					currentStep: null
 				};
 
-				addActivityToThinkingBlock(
-					`Plan ready for review: ${event.plan?.steps?.length || 0} steps`,
-					'plan_created',
-					reviewMetadata
-				);
-				addActivityToThinkingBlock(summary, 'general');
-				currentActivity = 'Waiting on your feedback about the plan...';
-				agentState = 'waiting_on_user';
-				agentStateDetails = summary;
-				updateThinkingBlockState('waiting_on_user', summary);
-				break;
+			addActivityToThinkingBlock(
+				`Plan ready for review: ${event.plan?.steps?.length || 0} steps`,
+				'plan_created',
+				reviewMetadata
+			);
+			addActivityToThinkingBlock(summary, 'general');
+			addPlanStatusAssistantMessage(
+				`I drafted a ${event.plan?.steps?.length || 0}-step plan. Review it and say "run it" or suggest changes.`
+			);
+			currentActivity = 'Waiting on your feedback about the plan...';
+			agentState = 'waiting_on_user';
+			agentStateDetails = summary;
+			updateThinkingBlockState('waiting_on_user', summary);
+			break;
 			}
 
 			case 'step_start':
@@ -2043,6 +2158,19 @@
 			timestamp: new Date()
 		};
 		messages = [...messages, planMessage];
+	}
+
+	function addPlanStatusAssistantMessage(content: string) {
+		if (!content?.trim()) return;
+		const planStatusMessage: UIMessage = {
+			id: crypto.randomUUID(),
+			type: 'assistant',
+			role: 'assistant' as ChatRole,
+			content,
+			timestamp: new Date(),
+			created_at: new Date().toISOString()
+		};
+		messages = [...messages, planStatusMessage];
 	}
 
 	function addClarifyingQuestionsMessage(questions: unknown) {

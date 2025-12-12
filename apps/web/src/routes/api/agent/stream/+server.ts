@@ -1313,31 +1313,6 @@ function mapPlannerEventToSSE(
 				type: 'tool_result',
 				result: (event as any).result ?? (event as any).tool_result
 			};
-		case 'template_creation_request':
-			return {
-				type: 'template_creation_request',
-				request: (event as any).request
-			};
-		case 'template_creation_status':
-			return {
-				type: 'template_creation_status',
-				request_id: (event as any).request_id,
-				status: (event as any).status,
-				message: (event as any).message
-			};
-		case 'template_created':
-			return {
-				type: 'template_created',
-				request_id: (event as any).request_id,
-				template: (event as any).template
-			};
-		case 'template_creation_failed':
-			return {
-				type: 'template_creation_failed',
-				request_id: (event as any).request_id,
-				error: (event as any).error,
-				actionable: (event as any).actionable
-			};
 		case 'focus_active':
 			return { type: 'focus_active', focus: (event as any).focus };
 		case 'focus_changed':

@@ -1351,7 +1351,7 @@ For example:
 							type_key: {
 								type: 'string',
 								description:
-									'Type classification like "project.creative.book" (REQUIRED). Must use project.{realm}.{deliverable}[.{variant}] format. Always set a value based on the conversation (no templates).'
+									'Type classification (REQUIRED). Must use project.{realm}.{deliverable}[.{variant}] format with 3-4 segments. Realm MUST be one of: creative, technical, business, service, education, personal. Examples: "project.business.product_launch", "project.creative.book", "project.technical.app.mobile". Use the "What does success look like?" test to pick the right realm.'
 							},
 							description: {
 								type: 'string',

@@ -10,7 +10,10 @@
 import type { ChatContextType } from '@buildos/shared-types';
 import type { LastTurnContext, OntologyContext } from '$lib/types/agent-chat-enhancement';
 import type { EntityLinkedContext } from '$lib/types/linked-entity-context.types';
-import { generateProjectContextFramework } from '$lib/services/prompts/core/prompt-components';
+import {
+	generateProjectContextFramework,
+	generateProjectTypeKeyGuidance
+} from '$lib/services/prompts/core/prompt-components';
 import {
 	formatLinkedEntitiesForSystemPrompt,
 	hasLinkedEntities
@@ -246,9 +249,7 @@ You are helping the user create a new project. Your goal is to understand their 
 
 **Note:** The system has already gathered context. You can proceed confidently with project creation.
 
-**Type Key Naming (MANDATORY):**
-- Always set \`project.type_key\` using \`project.{realm}.{deliverable}[.{variant}]\` (e.g., project.technical.app, project.business.launch, project.creative.book).
-- Never leave type_key blank; pick the closest fit based on the conversation.
+${generateProjectTypeKeyGuidance('short')}
 
 ### INTERNAL CAPABILITIES (do not explain to user):
 1. **Type Classification**: Map intent to project.{realm}.{deliverable}[.{variant}]
@@ -273,14 +274,8 @@ You are helping the user create a new project. Your goal is to understand their 
 - Determine deliverable, constraints, audience, timelines, and success criteria
 
 **Step 2: Type Classification**
-- Select a type_key using taxonomy (project.{realm}.{deliverable}[.{variant}])
-- Examples:
-  * project.creative.book, project.creative.article, project.creative.content
-  * project.technical.app, project.technical.feature, project.technical.api
-  * project.business.startup, project.business.launch, project.business.campaign
-  * project.service.coaching, project.service.consulting
-  * project.education.course, project.education.research
-  * project.personal.habit, project.personal.goal
+- Use the type_key guidance above to select the correct realm and deliverable
+- Ask yourself: "What does success look like?" to disambiguate
 
 **Step 3: Prop Extraction (CRITICAL)**
 - Apply prop naming guidance: snake_case; booleans as is_/has_; *_count; target_*; *_at or *_date for dates
@@ -299,7 +294,7 @@ You are helping the user create a new project. Your goal is to understand their 
 From the user's message, infer:
 - **name**: Clear project name
 - **description**: Expand on intent (1-2 sentences)
-- **type_key**: From classification
+- **type_key**: From classification (MUST follow project.{realm}.{deliverable} format)
 - **facets**: Intelligent defaults based on context (context, scale, stage)
 - **start_at**: Current date/time: ${new Date().toISOString()}
 - **end_at**: Only if deadline mentioned
@@ -311,7 +306,7 @@ From the user's message, infer:
 
 **Step 5: Create Project Immediately**
 Call create_onto_project with:
-- The chosen type_key
+- The chosen type_key (MUST be project.{realm}.{deliverable} format)
 - Populated props object with ALL extracted information
 
 ### Context Document Requirements (MANDATORY)

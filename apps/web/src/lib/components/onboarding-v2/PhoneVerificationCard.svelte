@@ -191,43 +191,43 @@
 </script>
 
 <div
-	class="bg-white dark:bg-gray-800 rounded-xl border-2 border-gray-200 dark:border-gray-700 p-6 shadow-sm hover:shadow-md transition-shadow duration-200"
+	class="bg-card rounded-xl border border-border p-6 shadow-ink hover:shadow-ink-strong transition-shadow duration-200 tx tx-frame tx-weak"
 >
 	<div class="flex items-start gap-4">
 		<div
-			class="flex-shrink-0 w-12 h-12 dither-subtle rounded-lg flex items-center justify-center"
+			class="flex-shrink-0 w-12 h-12 bg-emerald-500/10 rounded-lg flex items-center justify-center shadow-ink"
 		>
-			<Phone class="w-6 h-6 text-green-600 dark:text-green-400" />
+			<Phone class="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
 		</div>
 
 		<div class="flex-1">
-			<h4 class="font-semibold text-lg mb-2 text-gray-900 dark:text-white">
+			<h4 class="font-semibold text-lg mb-2 text-foreground">
 				SMS Notifications
 			</h4>
-			<p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
+			<p class="text-sm text-muted-foreground mb-4">
 				Stay on track with text reminders before events, morning kickoffs with your
 				schedule, and evening recaps
 			</p>
 
 			{#if isLoadingExisting}
 				<!-- Loading State -->
-				<div class="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
-					<Loader2 class="w-5 h-5 text-gray-400 animate-spin flex-shrink-0" />
-					<p class="text-sm text-gray-600 dark:text-gray-400">
+				<div class="flex items-center gap-2 p-3 bg-muted rounded-lg tx tx-pulse tx-weak">
+					<Loader2 class="w-5 h-5 text-muted-foreground animate-spin flex-shrink-0" />
+					<p class="text-sm text-muted-foreground">
 						Checking for existing phone number...
 					</p>
 				</div>
 			{:else if verified}
 				<!-- Success State -->
 				<div
-					class="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800"
+					class="flex items-center gap-2 p-3 bg-emerald-500/10 rounded-lg border border-emerald-500/30 tx tx-grain tx-weak"
 				>
-					<CheckCircle class="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0" />
+					<CheckCircle class="w-5 h-5 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
 					<div class="flex-1">
-						<p class="font-medium text-green-700 dark:text-green-300">
+						<p class="font-medium text-emerald-700 dark:text-emerald-300">
 							Phone verified!
 						</p>
-						<p class="text-xs text-green-600 dark:text-green-400 mt-0.5">
+						<p class="text-xs text-emerald-600 dark:text-emerald-400 mt-0.5">
 							{phoneNumber}
 						</p>
 					</div>
@@ -238,7 +238,7 @@
 					<div>
 						<label
 							for="phone-number"
-							class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+							class="block text-sm font-medium text-foreground mb-1"
 						>
 							Phone Number
 						</label>
@@ -255,14 +255,14 @@
 							class="w-full"
 							aria-label="Phone number"
 						/>
-						<p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+						<p class="text-xs text-muted-foreground mt-1">
 							We'll send a verification code to this number
 						</p>
 					</div>
 
 					{#if error}
 						<div
-							class="flex items-start gap-2 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800"
+							class="flex items-start gap-2 p-3 bg-red-500/10 rounded-lg border border-red-500/30 tx tx-static tx-weak"
 						>
 							<AlertCircle
 								class="w-4 h-4 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0"
@@ -277,7 +277,7 @@
 							onclick={sendVerificationCode}
 							loading={isSending}
 							disabled={phoneNumber.replace(/\D/g, '').length < 10}
-							class="flex-1 min-w-[120px]"
+							class="flex-1 min-w-[120px] shadow-ink pressable"
 						>
 							{#if isSending}
 								Sending...
@@ -297,20 +297,20 @@
 						<div class="flex items-baseline justify-between mb-1">
 							<label
 								for="verification-code"
-								class="block text-sm font-medium text-gray-700 dark:text-gray-300"
+								class="block text-sm font-medium text-foreground"
 							>
 								Verification Code
 							</label>
 							<button
 								type="button"
 								onclick={changePhoneNumber}
-								class="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+								class="text-xs text-accent hover:text-accent/80 hover:underline"
 								disabled={isVerifying}
 							>
 								Change number
 							</button>
 						</div>
-						<p class="text-sm text-gray-600 dark:text-gray-400 mb-2">
+						<p class="text-sm text-muted-foreground mb-2">
 							Enter the 6-digit code sent to {phoneNumber}
 						</p>
 						<TextInput
@@ -331,7 +331,7 @@
 
 					{#if error}
 						<div
-							class="flex items-start gap-2 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800"
+							class="flex items-start gap-2 p-3 bg-red-500/10 rounded-lg border border-red-500/30 tx tx-static tx-weak"
 						>
 							<AlertCircle
 								class="w-4 h-4 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0"
@@ -346,7 +346,7 @@
 							onclick={confirmVerification}
 							loading={isVerifying}
 							disabled={verificationCode.length !== 6}
-							class="flex-1 min-w-[120px]"
+							class="flex-1 min-w-[120px] shadow-ink pressable"
 						>
 							{#if isVerifying}
 								Verifying...

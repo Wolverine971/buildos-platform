@@ -547,6 +547,165 @@ Include in your response:
 }
 
 /**
+ * Generates project type_key classification guidance
+ *
+ * This is the authoritative guide for LLMs to create valid project type_keys.
+ * Format: project.{realm}.{deliverable}[.{variant}]
+ *
+ * @param mode - 'short' for quick reference with examples, 'full' for complete guidance
+ */
+export function generateProjectTypeKeyGuidance(mode: 'full' | 'short' = 'short'): string {
+	if (mode === 'short') {
+		return `## Project Type Key (MANDATORY)
+
+**Format**: \`project.{realm}.{deliverable}\` (3 segments, lowercase, underscores for multi-word)
+
+**The 6 Realms**:
+- **creative** — Original content/expression (the artifact IS the output)
+- **technical** — Building functional systems/tools
+- **business** — Commercial growth, revenue, market goals
+- **service** — Delivering value to a specific client
+- **education** — Acquiring knowledge or credentials
+- **personal** — Self-improvement, life optimization
+
+**Examples by Realm**:
+- creative: \`project.creative.book\`, \`project.creative.video\`, \`project.creative.brand\`
+- technical: \`project.technical.app\`, \`project.technical.api\`, \`project.technical.feature\`
+- business: \`project.business.product_launch\`, \`project.business.startup\`, \`project.business.campaign\`
+- service: \`project.service.consulting_engagement\`, \`project.service.workshop\`, \`project.service.retainer\`
+- education: \`project.education.course\`, \`project.education.thesis\`, \`project.education.certification\`
+- personal: \`project.personal.habit\`, \`project.personal.wellness\`, \`project.personal.finance\`
+
+**Disambiguation** — Ask "What does success look like?":
+- "It's published/shipped" → creative | "It's working/deployed" → technical
+- "We hit revenue/customers" → business | "Client achieved their goal" → service
+- "I learned it/passed" → education | "I'm doing it consistently" → personal
+
+**Note**: Realm describes the PROJECT, not the person. A developer writing a book = \`project.creative.book\`.`;
+	}
+
+	// Full version with complete taxonomy and detailed guidance
+	return `## Project Type Key Classification (MANDATORY)
+
+**Format**: \`project.{realm}.{deliverable}\` — exactly 3 lowercase dot-separated segments.
+Optional 4th segment for variants: \`project.{realm}.{deliverable}.{variant}\`
+
+Use only lowercase letters and underscores. No spaces, hyphens, or uppercase.
+
+### The 6 Core Realms
+
+Realms describe the **category of value/output** the project creates, NOT the role of the person doing the work.
+
+| Realm | Core Focus | Success Looks Like |
+|-------|------------|-------------------|
+| **creative** | Original content, artistic expression | "It's published, shipped, the content is out" |
+| **technical** | Building functional systems | "It's working, deployed, the feature shipped" |
+| **business** | Commercial growth & ventures | "We hit revenue, gained customers, closed the deal" |
+| **service** | Delivering value to clients | "Client achieved their goal, engagement successful" |
+| **education** | Acquiring knowledge | "I learned it, passed the exam, got certified" |
+| **personal** | Self/life improvement | "I'm doing it consistently, I feel better" |
+
+### Realm Classification Signals
+
+When inferring realm from user input, use these vocabulary signals:
+
+| Realm | Strong Vocabulary Signals |
+|-------|--------------------------|
+| **technical** | "build", "code", "app", "API", "feature", "deploy", "bug", "database", "ship" |
+| **creative** | "write", "book", "article", "publish", "draft", "story", "content", "design", "brand" |
+| **business** | "launch", "startup", "revenue", "customers", "market", "pitch", "fundraise", "sales", "campaign", "hire" |
+| **service** | "client", "engagement", "deliverable", "SOW", "consulting", "session", "workshop" |
+| **education** | "class", "assignment", "thesis", "degree", "learn", "exam", "professor", "course", "study" |
+| **personal** | "habit", "routine", "goal", "health", "morning", "productivity", "self", "wellness" |
+
+### Complete Examples by Realm
+
+**Creative** (\`project.creative.*\`):
+- \`project.creative.book\` — Writing a book
+- \`project.creative.article\` — Writing an article or essay
+- \`project.creative.album\` — Music album production
+- \`project.creative.video\` — Video production
+- \`project.creative.screenplay\` — Screenwriting project
+- \`project.creative.brand\` — Brand/identity design
+- \`project.creative.design\` — Visual design project
+
+**Technical** (\`project.technical.*\`):
+- \`project.technical.app\` — Application development
+- \`project.technical.app.mobile\` — Mobile app (variant)
+- \`project.technical.app.web\` — Web application (variant)
+- \`project.technical.api\` — API development
+- \`project.technical.feature\` — Feature implementation
+- \`project.technical.infrastructure\` — Infrastructure/DevOps
+- \`project.technical.ux\` — UX design (system-focused)
+
+**Business** (\`project.business.*\`):
+- \`project.business.startup\` — New venture/company
+- \`project.business.product_launch\` — Launching a product
+- \`project.business.campaign\` — Marketing/sales campaign
+- \`project.business.fundraise\` — Fundraising round
+- \`project.business.market_research\` — Market research/analysis
+- \`project.business.event\` — Company event/conference
+- \`project.business.hiring\` — Hiring initiative
+
+**Service** (\`project.service.*\`):
+- \`project.service.coaching_program\` — Coaching engagement
+- \`project.service.consulting_engagement\` — Consulting project
+- \`project.service.workshop\` — Workshop delivery
+- \`project.service.retainer\` — Ongoing retainer work
+
+**Education** (\`project.education.*\`):
+- \`project.education.course\` — Taking/completing a course
+- \`project.education.thesis\` — Thesis or dissertation
+- \`project.education.certification\` — Getting certified
+- \`project.education.degree\` — Degree program
+- \`project.education.research\` — Academic research
+
+**Personal** (\`project.personal.*\`):
+- \`project.personal.habit\` — Building a new habit
+- \`project.personal.routine\` — Establishing a routine
+- \`project.personal.goal\` — Personal goal achievement
+- \`project.personal.wellness\` — Health/wellness initiative
+- \`project.personal.finance\` — Personal finance project
+
+### Disambiguation Strategy
+
+When classification is ambiguous, ask: **"What does success look like?"**
+
+- "I shipped the feature / it's working" → **technical**
+- "The client achieved their goal" → **service**
+- "We hit revenue target / gained customers" → **business**
+- "I learned the skill / passed the exam" → **education**
+- "It's published / the content is out" → **creative**
+- "I'm doing it consistently / I feel better" → **personal**
+
+### Edge Cases
+
+- **Research** → Usually \`business\` (market research) or \`education\` (academic research)
+- **Operations** → Usually \`business\` (company ops) or \`service\` (client ops)
+- **Design** → Usually \`creative\` (visual/brand) or \`technical\` (UX/product design)
+
+### CRITICAL: Realm ≠ Role
+
+The realm describes the **project**, not the **person**:
+
+- A **developer** writing a technical book → \`project.creative.book\` (not technical)
+- A **writer** building a writing tool → \`project.technical.app\` (not creative)
+- A **coach** launching their practice → \`project.business.startup\` (not service)
+- A **founder** taking a leadership course → \`project.education.course\` (not business)
+
+### Validation Rules
+
+1. Must start with \`project.\`
+2. Must have exactly 3 segments (or 4 with variant): \`project.{realm}.{deliverable}\`
+3. Realm must be one of: creative, technical, business, service, education, personal
+4. All segments must be lowercase with underscores only (no spaces, hyphens, uppercase)
+5. Multi-word deliverables use underscores: \`product_launch\`, \`coaching_program\`
+
+**Valid**: \`project.business.product_launch\`, \`project.technical.app.mobile\`
+**Invalid**: \`business.product_launch\` (missing project prefix), \`project.Business.App\` (uppercase)`;
+}
+
+/**
  * Generates minimal preprocessing steps for short content
  * Used for content < 500 characters to reduce token overhead
  */
@@ -565,8 +724,6 @@ If user gives explicit instructions, follow them exactly.`;
  * Used for content >= 500 characters
  */
 export function generateFullPreprocessingSteps(currentDate: string): string {
-	const currentYear = new Date(currentDate).getFullYear();
-
 	return `**PREPROCESSING STEPS** (Execute in order):
 
 1. **USER INSTRUCTION SCAN**: Look for meta-instructions about how to process this brain dump

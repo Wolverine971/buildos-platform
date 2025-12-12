@@ -88,16 +88,16 @@
 	<div class="mb-12 text-center">
 		<div class="flex justify-center mb-6">
 			<div
-				class="w-16 h-16 dither-soft rounded-2xl flex items-center justify-center shadow-lg"
+				class="w-16 h-16 bg-muted rounded-2xl flex items-center justify-center shadow-ink tx tx-bloom tx-weak"
 			>
-				<Sparkles class="w-8 h-8 text-purple-600 dark:text-purple-400" />
+				<Sparkles class="w-8 h-8 text-accent" />
 			</div>
 		</div>
 
-		<h2 class="text-3xl sm:text-4xl font-bold mb-3 text-gray-900 dark:text-white">
+		<h2 class="text-3xl sm:text-4xl font-bold mb-3 text-foreground">
 			Step 4: Tell Us About Your Workflow
 		</h2>
-		<p class="text-lg text-gray-600 dark:text-gray-400 leading-relaxed">
+		<p class="text-lg text-muted-foreground leading-relaxed">
 			Help us personalize BuildOS to work the way you do.
 		</p>
 	</div>
@@ -105,9 +105,9 @@
 	<!-- Section 1: Archetype Selection -->
 	<div class="mb-12">
 		<h3
-			class="text-2xl font-bold mb-6 text-gray-900 dark:text-white text-center flex items-center justify-center gap-2"
+			class="text-2xl font-bold mb-6 text-foreground text-center flex items-center justify-center gap-2"
 		>
-			<Brain class="w-6 h-6 text-purple-600 dark:text-purple-400" />
+			<Brain class="w-6 h-6 text-accent" />
 			How do you want to use BuildOS?
 		</h3>
 
@@ -118,16 +118,16 @@
 
 				<button
 					onclick={() => selectArchetype(archetype.id)}
-					class="group relative p-6 rounded-2xl border-2 transition-all duration-200 text-left {isSelected
-						? 'border-purple-500 dither-soft shadow-lg scale-105'
-						: 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-purple-300 hover:shadow-md'}"
+					class="group relative p-6 rounded-2xl border transition-all duration-200 text-left pressable {isSelected
+						? 'border-accent bg-accent/5 shadow-ink scale-105'
+						: 'border-border bg-card hover:border-accent/50 hover:shadow-ink'}"
 				>
 					<!-- Selection indicator -->
 					{#if isSelected}
 						<div
-							class="absolute top-4 right-4 w-6 h-6 bg-purple-600 rounded-full flex items-center justify-center"
+							class="absolute top-4 right-4 w-6 h-6 bg-accent rounded-full flex items-center justify-center"
 						>
-							<svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+							<svg class="w-4 h-4 text-accent-foreground" fill="currentColor" viewBox="0 0 20 20">
 								<path
 									fill-rule="evenodd"
 									d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
@@ -139,22 +139,22 @@
 
 					<!-- Icon -->
 					<div
-						class="mb-4 w-14 h-14 rounded-xl dither-subtle flex items-center justify-center {isSelected
+						class="mb-4 w-14 h-14 rounded-xl bg-muted flex items-center justify-center shadow-ink {isSelected
 							? 'scale-110'
 							: 'group-hover:scale-105'} transition-transform duration-200"
 					>
-						<Icon class="w-7 h-7 text-purple-600 dark:text-purple-400" />
+						<Icon class="w-7 h-7 text-accent" />
 					</div>
 
 					<!-- Content -->
 					<h4
 						class="text-xl font-bold mb-2 {isSelected
-							? 'text-purple-900 dark:text-purple-100'
-							: 'text-gray-900 dark:text-white'}"
+							? 'text-foreground'
+							: 'text-foreground'}"
 					>
 						{archetype.title}
 					</h4>
-					<p class="text-sm text-gray-600 dark:text-gray-400 mb-4 leading-relaxed">
+					<p class="text-sm text-muted-foreground mb-4 leading-relaxed">
 						{archetype.description}
 					</p>
 
@@ -162,8 +162,8 @@
 					<ul class="space-y-2">
 						{#each archetype.features as feature}
 							<li class="flex items-start gap-2 text-sm">
-								<span class="text-purple-600 dark:text-purple-400 mt-0.5">✓</span>
-								<span class="text-gray-700 dark:text-gray-300">{feature}</span>
+								<span class="text-accent mt-0.5">✓</span>
+								<span class="text-muted-foreground">{feature}</span>
 							</li>
 						{/each}
 					</ul>
@@ -171,29 +171,29 @@
 			{/each}
 		</div>
 
-		<p class="text-center text-sm text-gray-500 dark:text-gray-400 mt-4">
+		<p class="text-center text-sm text-muted-foreground mt-4">
 			Don't worry — you can change this later in your settings
 		</p>
 	</div>
 
 	<!-- Divider -->
 	<div class="mb-12 flex items-center gap-3">
-		<div class="flex-1 h-px bg-gray-200 dark:bg-gray-700"></div>
-		<Sparkles class="w-5 h-5 text-gray-400" />
-		<div class="flex-1 h-px bg-gray-200 dark:bg-gray-700"></div>
+		<div class="flex-1 h-px bg-border"></div>
+		<Sparkles class="w-5 h-5 text-muted-foreground" />
+		<div class="flex-1 h-px bg-border"></div>
 	</div>
 
 	<!-- Section 2: Challenges Selection -->
 	<div class="mb-8">
 		<h3
-			class="text-2xl font-bold mb-6 text-gray-900 dark:text-white text-center flex items-center justify-center gap-2"
+			class="text-2xl font-bold mb-6 text-foreground text-center flex items-center justify-center gap-2"
 		>
-			<Target class="w-6 h-6 text-amber-600 dark:text-amber-400" />
+			<Target class="w-6 h-6 text-amber-600" />
 			What challenges are you tackling?
-			<span class="text-sm font-normal text-gray-500">(Optional)</span>
+			<span class="text-sm font-normal text-muted-foreground">(Optional)</span>
 		</h3>
 
-		<p class="text-center text-gray-600 dark:text-gray-400 mb-6">
+		<p class="text-center text-muted-foreground mb-6">
 			Select all that apply — this helps BuildOS adapt to your needs
 		</p>
 
@@ -203,15 +203,15 @@
 
 				<button
 					onclick={() => toggleChallenge(challenge.id)}
-					class="w-full p-4 rounded-xl border-2 transition-all duration-200 text-left flex items-start gap-4 {isSelected
-						? 'border-amber-500 dither-soft shadow-md'
-						: 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-amber-300 hover:shadow-sm'}"
+					class="w-full p-4 rounded-xl border transition-all duration-200 text-left flex items-start gap-4 pressable {isSelected
+						? 'border-amber-500 bg-amber-500/5 shadow-ink'
+						: 'border-border bg-card hover:border-amber-400/50 hover:shadow-ink'}"
 				>
 					<!-- Checkbox -->
 					<div
 						class="flex-shrink-0 mt-0.5 w-6 h-6 rounded-md border-2 flex items-center justify-center {isSelected
 							? 'border-amber-500 bg-amber-500'
-							: 'border-gray-300 dark:border-gray-600'} transition-colors duration-200"
+							: 'border-border'} transition-colors duration-200"
 					>
 						{#if isSelected}
 							<svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
@@ -231,7 +231,7 @@
 							<span
 								class="font-medium {isSelected
 									? 'text-amber-900 dark:text-amber-100'
-									: 'text-gray-900 dark:text-white'}"
+									: 'text-foreground'}"
 							>
 								{challenge.label}
 							</span>
@@ -242,7 +242,7 @@
 		</div>
 
 		<!-- Selection count -->
-		<div class="text-center text-sm text-gray-600 dark:text-gray-400">
+		<div class="text-center text-sm text-muted-foreground">
 			{selectedChallenges.size} challenge{selectedChallenges.size !== 1 ? 's' : ''} selected
 		</div>
 	</div>
@@ -255,7 +255,7 @@
 			onclick={saveAndContinue}
 			disabled={!canContinue || isSaving}
 			loading={isSaving}
-			class="min-w-[200px]"
+			class="min-w-[200px] shadow-ink pressable"
 		>
 			{#if isSaving}
 				Saving...

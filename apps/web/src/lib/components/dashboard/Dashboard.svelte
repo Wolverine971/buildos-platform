@@ -196,15 +196,6 @@
 						<FolderOpen class="h-4 w-4 sm:h-5 sm:w-5 text-accent" />
 					</div>
 					<h2 class="text-base sm:text-xl font-bold text-foreground">Your Projects</h2>
-					<!-- Refresh button -->
-					<button
-						onclick={refreshProjects}
-						disabled={isRefreshing}
-						class="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors disabled:opacity-50"
-						title="Refresh projects"
-					>
-						<RefreshCw class="h-4 w-4 {isRefreshing ? 'animate-spin' : ''}" />
-					</button>
 				</div>
 
 				<!-- Projects Grid - 2 columns on mobile -->

@@ -32,9 +32,9 @@
 							class="absolute top-4 right-1/2 w-full h-0.5 -translate-y-1/2"
 							style="z-index: 0;"
 						>
-							<div class="w-full h-full bg-gray-200 dark:bg-gray-700">
+							<div class="w-full h-full bg-border">
 								<div
-									class="h-full bg-gradient-to-r from-purple-500 to-blue-500 transition-all duration-500"
+									class="h-full bg-accent transition-all duration-500"
 									style="width: {isCompleted ? '100%' : '0%'}"
 								></div>
 							</div>
@@ -43,13 +43,13 @@
 
 					<!-- Step circle -->
 					<button
-						class="relative z-0 w-8 h-8 rounded-full transition-all duration-300 flex items-center justify-center cursor-pointer
-              hover:scale-110 focus:outline-none focus:ring-2 focus:ring-purple-500/50
+						class="relative z-0 w-8 h-8 rounded-full transition-all duration-300 flex items-center justify-center cursor-pointer pressable
+              hover:scale-110 focus:outline-none focus:ring-2 focus:ring-ring/50
               {isCompleted
-							? 'dither-gradient shadow-lg shadow-green-500/30 hover:shadow-green-500/50'
+							? 'bg-emerald-600 shadow-ink'
 							: isCurrent
-								? 'dither-gradient shadow-lg shadow-purple-500/30 animate-pulse scale-110'
-								: 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600'}"
+								? 'bg-accent shadow-ink animate-pulse scale-110'
+								: 'bg-muted hover:bg-muted/80'}"
 						onclick={() => onStepClick(index)}
 						aria-label="Go to step {index + 1}: {step.title}"
 						title="Go to step {index + 1}: {step.title}"
@@ -57,9 +57,9 @@
 						{#if isCompleted}
 							<CheckCircle class="w-5 h-5 text-white" />
 						{:else if isCurrent}
-							<div class="w-3 h-3 bg-white rounded-full"></div>
+							<div class="w-3 h-3 bg-accent-foreground rounded-full"></div>
 						{:else}
-							<div class="w-2 h-2 bg-gray-400 dark:bg-gray-500 rounded-full"></div>
+							<div class="w-2 h-2 bg-muted-foreground/50 rounded-full"></div>
 						{/if}
 					</button>
 
@@ -67,8 +67,8 @@
 					<div class="mt-2 text-center hidden sm:block">
 						<p
 							class="text-xs font-medium {isCompleted || isCurrent
-								? 'text-gray-900 dark:text-white'
-								: 'text-gray-400 dark:text-gray-500'}"
+								? 'text-foreground'
+								: 'text-muted-foreground'}"
 						>
 							{step.title}
 						</p>
@@ -80,10 +80,10 @@
 
 	<!-- Progress text -->
 	<div class="text-center">
-		<p class="text-sm font-medium text-gray-700 dark:text-gray-300">
+		<p class="text-sm font-medium text-foreground">
 			Step {currentStep + 1} of {totalSteps}
 		</p>
-		<p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+		<p class="text-xs text-muted-foreground mt-1">
 			{currentStep} completed · {progressPercentage}% done
 		</p>
 	</div>

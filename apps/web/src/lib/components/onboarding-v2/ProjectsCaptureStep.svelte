@@ -470,32 +470,32 @@
 	<div class="mb-8 text-center">
 		<div class="flex justify-center mb-6">
 			<div
-				class="w-16 h-16 dither-soft rounded-2xl flex items-center justify-center shadow-lg"
+				class="w-16 h-16 bg-muted rounded-2xl flex items-center justify-center shadow-ink tx tx-bloom tx-weak"
 			>
-				<Rocket class="w-8 h-8 text-purple-600 dark:text-purple-400" />
+				<Rocket class="w-8 h-8 text-accent" />
 			</div>
 		</div>
 
-		<h2 class="text-3xl sm:text-4xl font-bold mb-3 text-gray-900 dark:text-white">
+		<h2 class="text-3xl sm:text-4xl font-bold mb-3 text-foreground">
 			Step 1: Clarity - Projects & Brain Dumping
 		</h2>
-		<p class="text-lg text-gray-600 dark:text-gray-400 leading-relaxed max-w-2xl mx-auto mb-4">
-			To get organized and productive, you first need <strong>clarity</strong>. And clarity
+		<p class="text-lg text-muted-foreground leading-relaxed max-w-2xl mx-auto mb-4">
+			To get organized and productive, you first need <strong class="text-foreground">clarity</strong>. And clarity
 			comes from getting things out of your head and onto the screen.
 		</p>
-		<p class="text-base text-gray-600 dark:text-gray-400 leading-relaxed max-w-2xl mx-auto">
-			BuildOS works with <strong>projects</strong> — think of them as siloed endeavors with a goal
+		<p class="text-base text-muted-foreground leading-relaxed max-w-2xl mx-auto">
+			BuildOS works with <strong class="text-foreground">projects</strong> — think of them as siloed endeavors with a goal
 			or purpose. They can be work projects, personal goals, creative pursuits, fitness journeys,
 			learning objectives — anything you're working towards.
 		</p>
 	</div>
 
 	<!-- Philosophy Reinforcement + Examples -->
-	<div class="mb-6 p-6 dither-soft rounded-xl border-2 border-blue-200 dark:border-blue-800">
+	<div class="mb-6 p-6 bg-card rounded-xl border border-border shadow-ink tx tx-frame tx-weak">
 		<div
-			class="mb-4 bg-white dark:bg-gray-800 rounded-lg p-8 text-center border-2 border-dashed border-gray-300 dark:border-gray-600"
+			class="mb-4 bg-muted rounded-lg p-8 text-center border border-border"
 		>
-			<p class="text-gray-400 text-sm">
+			<p class="text-muted-foreground text-sm">
 				<img
 					src="/onboarding-assets/screenshots/brain-dump-1.png"
 					alt="Screenshot of BuildOS brain dump input with highlighted project guidance"
@@ -503,37 +503,37 @@
 				/>
 			</p>
 		</div>
-		<h3 class="font-semibold mb-3 flex items-center gap-2 text-gray-900 dark:text-white">
-			<Sparkles class="w-5 h-5 text-purple-600 dark:text-purple-400" />
+		<h3 class="font-semibold mb-3 flex items-center gap-2 text-foreground">
+			<Sparkles class="w-5 h-5 text-accent" />
 			What Makes a Project?
 		</h3>
-		<p class="text-sm text-gray-700 dark:text-gray-300 mb-4 leading-relaxed">
-			Projects are focused endeavors with a <strong>goal</strong>, <strong>purpose</strong>,
-			or <strong>vision</strong>. When you think of what you're working on in terms of
+		<p class="text-sm text-muted-foreground mb-4 leading-relaxed">
+			Projects are focused endeavors with a <strong class="text-foreground">goal</strong>, <strong class="text-foreground">purpose</strong>,
+			or <strong class="text-foreground">vision</strong>. When you think of what you're working on in terms of
 			projects, you can organize structure around actually <em>completing and finishing</em> them.
 			That's the power of the project framework.
 		</p>
 
-		<h4 class="font-semibold text-sm mb-2 text-gray-900 dark:text-white">
+		<h4 class="font-semibold text-sm mb-2 text-foreground">
 			Here are some examples:
 		</h4>
-		<div class="space-y-2 text-sm text-gray-700 dark:text-gray-300">
+		<div class="space-y-2 text-sm text-muted-foreground">
 			<p>
-				💼 <strong class="text-purple-600 dark:text-purple-400">Work Project:</strong>
+				💼 <strong class="text-accent">Work Project:</strong>
 				"Q1 Marketing Campaign — need to coordinate social posts, email sequences, and landing
 				pages before Feb 15."
 			</p>
 			<p>
-				🏋️ <strong class="text-purple-600 dark:text-purple-400">Personal Goal:</strong>
+				🏋️ <strong class="text-accent">Personal Goal:</strong>
 				"Get in shape for summer — track workouts, meal prep, and progress photos. Goal: lose
 				15 lbs by June."
 			</p>
 			<p>
-				🎨 <strong class="text-purple-600 dark:text-purple-400">Creative Pursuit:</strong>
+				🎨 <strong class="text-accent">Creative Pursuit:</strong>
 				"Launch my Etsy shop — design 10 products, set up store, create Instagram presence."
 			</p>
 			<p>
-				📚 <strong class="text-purple-600 dark:text-purple-400">Learning Objective:</strong>
+				📚 <strong class="text-accent">Learning Objective:</strong>
 				"Master Spanish — practice daily with Duolingo, watch Spanish shows, find conversation
 				partner."
 			</p>
@@ -542,9 +542,9 @@
 		<!-- Placeholder for screenshot -->
 
 		<div
-			class="mt-4 bg-white dark:bg-gray-800 rounded-lg p-8 text-center border-2 border-dashed border-gray-300 dark:border-gray-600"
+			class="mt-4 bg-muted rounded-lg p-8 text-center border border-border"
 		>
-			<p class="text-gray-400 text-sm">
+			<p class="text-muted-foreground text-sm">
 				<img
 					src="/onboarding-assets/screenshots/brain-dump-2.png"
 					alt="Screenshot of BuildOS showing generated project summaries after processing a brain dump"
@@ -557,9 +557,9 @@
 	{#if showSuccess}
 		<!-- Success animation -->
 		<div
-			class="mb-6 p-6 bg-green-50 dark:bg-green-900/20 rounded-xl border-2 border-green-200 dark:border-green-800 animate-in fade-in slide-in-from-top-2"
+			class="mb-6 p-6 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl border border-emerald-200 dark:border-emerald-800 animate-in fade-in slide-in-from-top-2 tx tx-grain tx-weak"
 		>
-			<div class="flex items-center gap-3 text-green-700 dark:text-green-300">
+			<div class="flex items-center gap-3 text-emerald-700 dark:text-emerald-300">
 				<CheckCircle class="w-6 h-6" />
 				<p class="font-semibold">Project created successfully! Moving to next step...</p>
 			</div>
@@ -568,7 +568,7 @@
 		<!-- Voice Error Display -->
 		{#if voiceError}
 			<div
-				class="mb-4 flex items-center gap-2 px-4 py-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-sm border border-red-200 dark:border-red-800 rounded-lg shadow-sm"
+				class="mb-4 flex items-center gap-2 px-4 py-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-sm border border-red-200 dark:border-red-800 rounded-lg shadow-ink tx tx-static tx-weak"
 				transition:fade={{ duration: 200 }}
 			>
 				<TriangleAlert class="w-4 h-4 flex-shrink-0" />
@@ -580,21 +580,21 @@
 		{#if showConnectionSuccess}
 			<!-- Connection Success Animation (Transient State) -->
 			<div
-				class="mb-6 p-5 bg-green-50 dark:bg-green-900/20 rounded-xl border-2 border-green-200 dark:border-green-800 shadow-sm"
+				class="mb-6 p-5 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl border border-emerald-200 dark:border-emerald-800 shadow-ink tx tx-grain tx-weak"
 				in:scale={{ duration: 400, start: 0.9 }}
 				out:fade={{ duration: 300 }}
 			>
 				<div class="flex items-center gap-3 mb-4">
 					<div
-						class="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0"
+						class="w-10 h-10 bg-emerald-600 rounded-full flex items-center justify-center flex-shrink-0"
 					>
 						<CheckCircle class="w-6 h-6 text-white" />
 					</div>
 					<div class="flex-1">
-						<h4 class="font-semibold text-green-900 dark:text-green-100">
+						<h4 class="font-semibold text-emerald-900 dark:text-emerald-100">
 							Calendar Connected! 🎉
 						</h4>
-						<p class="text-sm text-green-700 dark:text-green-300">
+						<p class="text-sm text-emerald-700 dark:text-emerald-300">
 							Ready to analyze your schedule
 						</p>
 					</div>
@@ -605,7 +605,7 @@
 					size="lg"
 					onclick={handleStartCalendarAnalysis}
 					disabled={calendarAnalysisStarted}
-					class="w-full"
+					class="w-full shadow-ink pressable"
 				>
 					<Sparkles class="w-5 h-5 mr-2" />
 					{calendarAnalysisStarted ? 'Analysis Running...' : 'Analyze My Calendar Now'}
@@ -614,27 +614,27 @@
 		{:else if !hasCalendarConnected && !isCheckingConnection}
 			<!-- Calendar Not Connected - Value Proposition CTA -->
 			<div
-				class="mb-8 p-6 dither-soft rounded-xl border-2 border-blue-200 dark:border-blue-800 shadow-sm"
+				class="mb-8 p-6 bg-card rounded-xl border border-border shadow-ink tx tx-thread tx-weak"
 			>
 				<!-- Header -->
 				<div class="flex items-start gap-4 mb-4">
 					<div
-						class="w-12 h-12 bg-blue-500 rounded-xl flex items-center justify-center flex-shrink-0"
+						class="w-12 h-12 bg-accent rounded-xl flex items-center justify-center flex-shrink-0 shadow-ink"
 					>
-						<Calendar class="w-6 h-6 text-white" />
+						<Calendar class="w-6 h-6 text-accent-foreground" />
 					</div>
 					<div class="flex-1">
-						<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+						<h3 class="text-lg font-semibold text-foreground mb-2">
 							Let us analyze your calendar
 						</h3>
-						<p class="text-sm text-gray-700 dark:text-gray-300 leading-relaxed mb-3">
+						<p class="text-sm text-muted-foreground leading-relaxed mb-3">
 							Connect your Google Calendar and we'll automatically create projects
 							based on your meetings and events. No manual entry needed!
 						</p>
 						<div
-							class="text-xs text-gray-600 dark:text-gray-400 bg-white/50 dark:bg-gray-800/50 rounded-lg p-3 border border-gray-200 dark:border-gray-700"
+							class="text-xs text-muted-foreground bg-muted rounded-lg p-3 border border-border"
 						>
-							<p class="font-medium mb-1">How it works:</p>
+							<p class="font-medium mb-1 text-foreground">How it works:</p>
 							<p class="leading-relaxed">
 								Our AI scans your calendar for patterns — recurring meetings,
 								project-related events, and commitments — then intelligently groups
@@ -647,22 +647,22 @@
 				</div>
 
 				<!-- Benefits -->
-				<div class="mb-5 space-y-2 text-sm text-gray-700 dark:text-gray-300">
+				<div class="mb-5 space-y-2 text-sm text-muted-foreground">
 					<div class="flex items-center gap-2">
 						<CheckCircle
-							class="w-4 h-4 text-green-600 dark:text-green-400 flex-shrink-0"
+							class="w-4 h-4 text-emerald-600 flex-shrink-0"
 						/>
 						<span>Automatic project detection from recurring meetings</span>
 					</div>
 					<div class="flex items-center gap-2">
 						<CheckCircle
-							class="w-4 h-4 text-green-600 dark:text-green-400 flex-shrink-0"
+							class="w-4 h-4 text-emerald-600 flex-shrink-0"
 						/>
 						<span>Pre-filled tasks with meeting details and dates</span>
 					</div>
 					<div class="flex items-center gap-2">
 						<CheckCircle
-							class="w-4 h-4 text-green-600 dark:text-green-400 flex-shrink-0"
+							class="w-4 h-4 text-emerald-600 flex-shrink-0"
 						/>
 						<span>Smart scheduling around your existing commitments</span>
 					</div>
@@ -671,9 +671,9 @@
 				<!-- Demo Preview (Optional Placeholder) -->
 				{#if ONBOARDING_V2_CONFIG.features.showPlaceholderAssets}
 					<div
-						class="mb-4 bg-white dark:bg-gray-900 rounded-lg p-6 text-center border border-gray-200 dark:border-gray-700"
+						class="mb-4 bg-muted rounded-lg p-6 text-center border border-border"
 					>
-						<p class="text-gray-400 text-xs mb-1">
+						<p class="text-muted-foreground text-xs mb-1">
 							🎥 [15-second demo: Calendar → Projects transformation]
 						</p>
 					</div>
@@ -686,7 +686,7 @@
 					onclick={handleConnectCalendar}
 					disabled={isConnectingCalendar}
 					loading={isConnectingCalendar}
-					class="w-full mb-3"
+					class="w-full mb-3 shadow-ink pressable"
 				>
 					{#if isConnectingCalendar}
 						<Loader2 class="w-5 h-5 mr-2 animate-spin" />
@@ -699,7 +699,7 @@
 
 				<!-- Secondary Action -->
 				<button
-					class="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 w-full text-center transition-colors"
+					class="text-sm text-muted-foreground hover:text-foreground w-full text-center transition-colors"
 					onclick={skipProjectCapture}
 					disabled={isConnectingCalendar}
 				>
@@ -709,26 +709,26 @@
 		{:else if hasCalendarConnected}
 			<!-- Calendar Connected - Ready to Analyze -->
 			<div
-				class="mb-8 p-6 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm"
+				class="mb-8 p-6 bg-card rounded-xl border border-border shadow-ink tx tx-frame tx-weak"
 			>
 				<div class="flex items-start gap-4 mb-4">
 					<div
-						class="w-10 h-10 bg-green-500 rounded-xl flex items-center justify-center flex-shrink-0"
+						class="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center flex-shrink-0 shadow-ink"
 					>
 						<CheckCircle class="w-5 h-5 text-white" />
 					</div>
 					<div class="flex-1">
 						<h4
-							class="font-semibold text-gray-900 dark:text-white mb-2 flex items-center gap-2"
+							class="font-semibold text-foreground mb-2 flex items-center gap-2"
 						>
 							Google Calendar Connected
 							<span
-								class="text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 px-2 py-0.5 rounded-full"
+								class="text-xs bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 rounded-full"
 							>
 								Ready
 							</span>
 						</h4>
-						<p class="text-sm text-gray-600 dark:text-gray-400">
+						<p class="text-sm text-muted-foreground">
 							We can analyze your calendar and automatically suggest projects based on
 							your meetings and events.
 						</p>
@@ -739,7 +739,7 @@
 					variant="secondary"
 					onclick={handleStartCalendarAnalysis}
 					disabled={calendarAnalysisStarted}
-					class="w-full sm:w-auto"
+					class="w-full sm:w-auto shadow-ink pressable"
 				>
 					<Calendar class="w-4 h-4 mr-2" />
 					{calendarAnalysisStarted ? 'Analysis Running...' : 'Analyze My Calendar'}
@@ -747,7 +747,7 @@
 
 				{#if calendarAnalysisStarted}
 					<p
-						class="text-xs text-blue-600 dark:text-blue-400 mt-3 flex items-center gap-2"
+						class="text-xs text-accent mt-3 flex items-center gap-2"
 					>
 						<Loader2 class="w-3 h-3 animate-spin" />
 						Analysis in progress — Check notification panel (bottom-right corner)
@@ -757,13 +757,13 @@
 
 			<!-- Divider -->
 			<div class="mb-6 flex items-center gap-3">
-				<div class="flex-1 h-px bg-gray-200 dark:bg-gray-700"></div>
-				<span class="text-sm text-gray-500 dark:text-gray-400 font-medium">OR</span>
-				<div class="flex-1 h-px bg-gray-200 dark:bg-gray-700"></div>
+				<div class="flex-1 h-px bg-border"></div>
+				<span class="text-sm text-muted-foreground font-medium">OR</span>
+				<div class="flex-1 h-px bg-border"></div>
 			</div>
 
 			<!-- Manual Brain Dump Label -->
-			<h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+			<h4 class="text-sm font-medium text-foreground mb-3">
 				Describe your projects manually
 			</h4>
 		{/if}
@@ -775,7 +775,7 @@
 				{#if isCurrentlyRecording}
 					<!-- Recording Status Badge -->
 					<div
-						class="inline-flex items-center gap-2 px-3.5 py-2 bg-red-50/80 dark:bg-red-900/20 border border-red-200/60 dark:border-red-800/40 rounded-full text-sm text-red-700 dark:text-red-300"
+						class="inline-flex items-center gap-2 px-3.5 py-2 bg-red-50/80 dark:bg-red-900/20 border border-red-200/60 dark:border-red-800/40 rounded-full text-sm text-red-700 dark:text-red-300 tx tx-pulse tx-weak"
 						transition:fade={{ duration: 200 }}
 					>
 						<span class="font-medium">Recording</span>
@@ -806,9 +806,9 @@
 						onclick={toggleRecording}
 						disabled={voiceButtonState.disabled}
 						aria-label={voiceButtonState.ariaLabel}
-						class="relative w-12 h-12 p-0 rounded-full transition-all {isCurrentlyRecording
-							? 'bg-red-600 hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800 text-white scale-110 animate-recording-pulse shadow-lg'
-							: 'bg-white hover:bg-gray-50 dark:bg-gray-800 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-600 hover:scale-105 hover:shadow-md text-gray-700 dark:text-gray-300'} disabled:opacity-50 disabled:cursor-not-allowed disabled:scale-100"
+						class="relative w-12 h-12 p-0 rounded-full transition-all pressable {isCurrentlyRecording
+							? 'bg-red-600 hover:bg-red-700 text-white scale-110 animate-recording-pulse shadow-ink'
+							: 'bg-card hover:bg-muted border border-border hover:scale-105 shadow-ink text-muted-foreground'} disabled:opacity-50 disabled:cursor-not-allowed disabled:scale-100"
 					>
 						{#if voiceButtonState.isLoading}
 							<LoaderCircle class="w-5 h-5 mx-auto animate-spin" />
@@ -830,7 +830,7 @@
 						isProcessing ||
 						isCurrentlyRecording}
 					loading={isProcessing}
-					class="min-w-[140px]"
+					class="min-w-[140px] shadow-ink pressable"
 				>
 					{#if isProcessing}
 						<Loader2 class="w-5 h-5 mr-2 animate-spin" />

@@ -398,10 +398,10 @@
 								href="/onboarding"
 								data-onboarding-link
 								onclick={() => handleMenuItemClick('/onboarding')}
-								class="inline-flex items-center px-2 md:px-3 lg:px-3.5 xl:px-4 py-1.5 md:py-2 lg:py-2.5 text-xs md:text-sm lg:text-sm font-bold tracking-tight rounded shadow-ink pressable transition-all duration-200 whitespace-nowrap border tx tx-pulse tx-weak
+								class="inline-flex items-center px-2 md:px-3 lg:px-3.5 xl:px-4 py-1.5 md:py-2 lg:py-2.5 text-xs md:text-sm lg:text-sm font-bold tracking-tight rounded-lg shadow-ink pressable transition-all duration-200 whitespace-nowrap
 								{onboardingUrgent
-									? 'bg-amber-500 hover:bg-amber-600 text-white border-amber-600'
-									: 'bg-accent hover:bg-accent/90 text-accent-foreground border-accent'}
+									? 'bg-amber-500 hover:bg-amber-600 text-white'
+									: 'bg-accent hover:bg-accent/90 text-accent-foreground'}
 								{loggingOut ? 'opacity-50 pointer-events-none' : ''}
 								{loadingLink === '/onboarding' ? loadingAccentClass : ''}"
 							>
@@ -501,24 +501,26 @@
 
 									<!-- Menu items -->
 									{#if needsOnboarding}
-										<a
-											href="/onboarding"
-											onclick={() => handleMenuItemClick('/onboarding')}
-											class="flex items-center w-full px-4 py-2.5 text-sm font-bold tracking-tight rounded mx-2 mb-2 transition-all duration-200 shadow-ink pressable border tx tx-pulse tx-weak
-												{onboardingUrgent
-												? 'bg-amber-500 hover:bg-amber-600 text-white border-amber-600'
-												: 'bg-accent hover:bg-accent/90 text-accent-foreground border-accent'}
-												{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
-										>
-											{#if onboardingUrgent}
-												<AlertCircle class="w-4 h-4 mr-3" />
-												Complete Setup
-											{:else}
-												<Sparkles class="w-4 h-4 mr-3" />
-												Complete Setup
-											{/if}
-											<ChevronRight class="w-3.5 h-3.5 ml-auto" />
-										</a>
+										<div class="px-3 pt-2 pb-1">
+											<a
+												href="/onboarding"
+												onclick={() => handleMenuItemClick('/onboarding')}
+												class="flex items-center w-full px-4 py-2.5 text-sm font-bold tracking-tight rounded-lg transition-all duration-200 shadow-ink pressable
+													{onboardingUrgent
+													? 'bg-amber-500 hover:bg-amber-600 text-white'
+													: 'bg-accent hover:bg-accent/90 text-accent-foreground'}
+													{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
+											>
+												{#if onboardingUrgent}
+													<AlertCircle class="w-4 h-4 mr-3 animate-pulse" />
+													Complete Setup
+												{:else}
+													<Sparkles class="w-4 h-4 mr-3" />
+													Complete Setup
+												{/if}
+												<ChevronRight class="w-3.5 h-3.5 ml-auto" />
+											</a>
+										</div>
 									{/if}
 
 									<a
@@ -677,10 +679,10 @@
 						<a
 							href="/onboarding"
 							onclick={() => handleMenuItemClick('/onboarding')}
-							class="flex items-center px-3 py-2.5 text-base font-bold tracking-tight rounded shadow-ink pressable transition-all duration-200 border tx tx-pulse tx-weak
+							class="flex items-center px-3 py-2.5 text-base font-bold tracking-tight rounded-lg shadow-ink pressable transition-all duration-200
 							{onboardingUrgent
-								? 'bg-amber-500 hover:bg-amber-600 text-white border-amber-600 animate-pulse'
-								: 'bg-accent hover:bg-accent/90 text-accent-foreground border-accent'}
+								? 'bg-amber-500 hover:bg-amber-600 text-white'
+								: 'bg-accent hover:bg-accent/90 text-accent-foreground'}
 							{loggingOut ? 'opacity-50 pointer-events-none' : ''}
 							{loadingLink === '/onboarding' ? loadingAccentClass : ''}"
 						>

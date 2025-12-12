@@ -1,5 +1,7 @@
 // apps/web/src/lib/services/agentic-chat/prompts/project-creation-enhanced.ts
 
+import { generateProjectTypeKeyGuidance } from '$lib/services/prompts/core/prompt-components';
+
 /**
  * Template-free project creation prompts for agentic chat.
  * Focus on type_key classification + prop inference (no template catalog).
@@ -10,29 +12,24 @@ export const getEnhancedProjectCreationPrompt = (): string => {
 
 You are helping the user create a new ontology project using a prop-based ontology. Your job: infer the right type_key, extract rich props, and create the project.
 
+${generateProjectTypeKeyGuidance('short')}
+
 ### CRITICAL CAPABILITIES
-0) **Type Key Creation (MANDATORY)**: Always set \`project.type_key\` using the schema \`project.{realm}.{deliverable}[.{variant}]\`. Never leave it blank. Pick the closest fit based on the conversation.
-1) **Type Classification**: Choose the best type_key from taxonomy (e.g., project.creative.book, project.technical.app, project.business.startup, project.service.coaching, project.education.course, project.personal.habit).
-2) **Prop Inference**: Extract detailed properties from conversation using standard naming:
+1) **Prop Inference**: Extract detailed properties from conversation using standard naming:
    - snake_case
    - booleans as is_/has_
    - *_count, target_*, *_at or *_date for dates
    - Props are stored in a JSONB column; populate with facts from the user's chat or thoughtful inferences
-3) **Facets**: Derive facets (context, scale, stage) from intent.
-4) **Minimal Clarifications**: Ask 2–3 focused questions only if critical info is missing; prefer inference over interrogation.
+2) **Facets**: Derive facets (context, scale, stage) from intent.
+3) **Minimal Clarifications**: Ask 2–3 focused questions only if critical info is missing; prefer inference over interrogation.
 
 ### WORKFLOW
 **Step 1: Intent Analysis**
 - Parse explicit + implicit requirements (domain, deliverable, audience, timeline, budget, constraints).
 
 **Step 2: Type Classification**
-- Pick project.{realm}.{deliverable}[.{variant}] from taxonomy examples:
-  * creative: project.creative.book | article | content
-  * technical: project.technical.app | feature | api
-  * business: project.business.startup | launch | campaign
-  * service: project.service.coaching | consulting
-  * education: project.education.course | research
-  * personal: project.personal.habit | goal
+- Use the type_key guidance above to select the correct realm and deliverable
+- Ask yourself: "What does success look like?" to disambiguate
 
 **Step 3: Prop Extraction (CRITICAL)**
 - Apply prop naming guidance above.
@@ -53,7 +50,7 @@ You are helping the user create a new ontology project using a prop-based ontolo
 **Step 5: Project Instantiation**
 - Call create_onto_project with:
   * project.name (infer a concise name)
-  * project.type_key (from classification)
+  * project.type_key (MUST be project.{realm}.{deliverable} format from classification)
   * project.props (inferred details + facets)
   * optional goals/tasks/documents if user provided them
 
@@ -63,7 +60,7 @@ If clarification needed:
 2) Ask up to 3 targeted questions.
 
 If ready to create:
-- State the type_key you’ll use and key props you inferred.
+- State the type_key you'll use and key props you inferred.
 - Confirm before calling create_onto_project.
 
 ### AVAILABLE TOOLS
@@ -79,20 +76,23 @@ export const getTypeKeyInferenceSystemPrompt = (): string => {
 
 You classify projects and infer rich properties using taxonomy and prop inference.
 
+${generateProjectTypeKeyGuidance('short')}
+
 ### INFERENCE CAPABILITIES
 1) Pattern Recognition: Identify project type, industry needs, workflow patterns, collaboration needs.
 2) Property Generation: Use standard conventions (snake_case, is_/has_, *_count, target_*, *_at/ *_date). Make properties actionable/measurable. Relationships use ids/refs (not nested objects).
 3) State & Flow Awareness: Use standard lifecycle states (draft → active → complete → archived). Suggest milestones/tasks/outputs when helpful.
-4) Type Naming: project.{realm}.{deliverable}[.{variant}] — keep concise (e.g., project.software.web_app, project.research.user_study, project.business.product_launch, project.creative.video_series, project.personal.habit).
 
 ### PROP PATTERNS BY DOMAIN
-**Software**: tech_stack, architecture, deployment_target, testing_strategy, ci_cd_pipeline, monitoring, user_stories, acceptance_criteria, performance_targets
+**Technical**: tech_stack, architecture, deployment_target, testing_strategy, ci_cd_pipeline, monitoring, user_stories, acceptance_criteria, performance_targets
 **Business**: stakeholders, budget, roi_targets, market_analysis, competitor_analysis, risks, success_metrics, kpis, reporting_schedule
-**Research**: research_questions, hypothesis, methodology, data_sources, analysis_plan, validation_criteria, publication_targets, peer_review, citations
+**Education**: research_questions, hypothesis, methodology, data_sources, analysis_plan, validation_criteria, publication_targets, peer_review, citations
 **Creative**: creative_brief, inspiration_sources, style_guide, revision_rounds, client_feedback, deliverables, portfolio_inclusion, rights_management
-**Event**: venue, attendees, schedule, vendors, budget_breakdown, contingency_plans, logistics, followup_actions, feedback_collection
+**Service**: client_name, engagement_type, deliverables, sow_url, session_count, retainer_terms, success_criteria
+**Personal**: habit_frequency, trigger_cue, reward, streak_count, accountability_partner, milestone_dates
 
 ### QUALITY CHECKS
+- type_key MUST follow project.{realm}.{deliverable} format (3-4 segments)
 - Props follow naming rules and stay concise.
 - Facets included when present (context/scale/stage).
 - Avoid internal implementation references.`;

@@ -26,16 +26,16 @@
 	<div class="mb-8 text-center">
 		<div class="flex justify-center mb-6">
 			<div
-				class="w-16 h-16 dither-soft rounded-2xl flex items-center justify-center shadow-lg"
+				class="w-16 h-16 bg-muted rounded-2xl flex items-center justify-center shadow-ink tx tx-bloom tx-weak"
 			>
-				<RefreshCw class="w-8 h-8 text-orange-600 dark:text-orange-400" />
+				<RefreshCw class="w-8 h-8 text-accent" />
 			</div>
 		</div>
 
-		<h2 class="text-3xl sm:text-4xl font-bold mb-3 text-gray-900 dark:text-white">
+		<h2 class="text-3xl sm:text-4xl font-bold mb-3 text-foreground">
 			Step 3: Flexibility - BuildOS Adapts to You
 		</h2>
-		<p class="text-lg text-gray-600 dark:text-gray-400 leading-relaxed max-w-2xl mx-auto">
+		<p class="text-lg text-muted-foreground leading-relaxed max-w-2xl mx-auto">
 			Life changes. Priorities shift. BuildOS keeps up. Here's how.
 		</p>
 	</div>
@@ -44,30 +44,30 @@
 	<div class="flex gap-2 mb-8 flex-wrap justify-center">
 		<button
 			onclick={() => (activeSection = 'braindump')}
-			class="px-5 py-3 rounded-lg font-medium transition-all duration-200 {activeSection ===
+			class="px-5 py-3 rounded-lg font-medium transition-all duration-200 pressable {activeSection ===
 			'braindump'
-				? 'dither-gradient text-white shadow-lg'
-				: 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:border-purple-300 dark:hover:border-purple-700'}"
+				? 'bg-accent text-accent-foreground shadow-ink'
+				: 'bg-card text-muted-foreground border border-border hover:border-accent/50'}"
 		>
 			<MessageSquare class="w-4 h-4 inline mr-2" />
 			Braindump Flexibility
 		</button>
 		<button
 			onclick={() => (activeSection = 'phases')}
-			class="px-5 py-3 rounded-lg font-medium transition-all duration-200 {activeSection ===
+			class="px-5 py-3 rounded-lg font-medium transition-all duration-200 pressable {activeSection ===
 			'phases'
-				? 'dither-gradient text-white shadow-lg'
-				: 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-700'}"
+				? 'bg-accent text-accent-foreground shadow-ink'
+				: 'bg-card text-muted-foreground border border-border hover:border-accent/50'}"
 		>
 			<Layout class="w-4 h-4 inline mr-2" />
 			Flexible Phases
 		</button>
 		<button
 			onclick={() => (activeSection = 'calendar')}
-			class="px-5 py-3 rounded-lg font-medium transition-all duration-200 {activeSection ===
+			class="px-5 py-3 rounded-lg font-medium transition-all duration-200 pressable {activeSection ===
 			'calendar'
-				? 'dither-gradient text-white shadow-lg'
-				: 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:border-green-300 dark:hover:border-green-700'}"
+				? 'bg-accent text-accent-foreground shadow-ink'
+				: 'bg-card text-muted-foreground border border-border hover:border-accent/50'}"
 		>
 			<Calendar class="w-4 h-4 inline mr-2" />
 			Calendar Flexibility
@@ -80,10 +80,10 @@
 			<!-- Braindump Flexibility Section -->
 			<div class="space-y-6">
 				<div class="text-center mb-6">
-					<h3 class="text-2xl font-bold mb-2 text-gray-900 dark:text-white">
+					<h3 class="text-2xl font-bold mb-2 text-foreground">
 						Braindumps Adapt to Your Needs
 					</h3>
-					<p class="text-gray-600 dark:text-gray-400">
+					<p class="text-muted-foreground">
 						Braindumps aren't just for creating—use them to update, reschedule, or
 						modify existing work.
 					</p>
@@ -91,26 +91,26 @@
 
 				<!-- Update Tasks -->
 				<div
-					class="bg-white dark:bg-gray-800 rounded-xl border-2 border-purple-200 dark:border-purple-800 p-6 shadow-sm"
+					class="bg-card rounded-xl border border-border p-6 shadow-ink tx tx-frame tx-weak"
 				>
 					<div class="flex items-start gap-4 mb-4">
 						<div
-							class="flex-shrink-0 w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center"
+							class="flex-shrink-0 w-12 h-12 bg-muted rounded-lg flex items-center justify-center shadow-ink"
 						>
-							<CheckCircle class="w-6 h-6 text-purple-600 dark:text-purple-400" />
+							<CheckCircle class="w-6 h-6 text-accent" />
 						</div>
 						<div class="flex-1">
-							<h4 class="font-semibold text-lg mb-2 text-gray-900 dark:text-white">
+							<h4 class="font-semibold text-lg mb-2 text-foreground">
 								Update Tasks via Braindump
 							</h4>
-							<p class="text-sm text-gray-700 dark:text-gray-300 mb-3">
+							<p class="text-sm text-muted-foreground mb-3">
 								Mark tasks complete, add context, or update details—all through
 								natural language.
 							</p>
 							<div
-								class="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-4 border border-gray-200 dark:border-gray-700"
+								class="bg-muted rounded-lg p-4 border border-border"
 							>
-								<p class="text-sm italic text-gray-700 dark:text-gray-300">
+								<p class="text-sm italic text-muted-foreground">
 									"The API integration is complete, but we need to add error
 									handling. Also, let's update the design task to high priority."
 								</p>
@@ -120,10 +120,10 @@
 
 					{#if ONBOARDING_V2_CONFIG.features.showPlaceholderAssets}
 						<div
-							class="mt-4 bg-gray-100 dark:bg-gray-800 rounded-lg p-8 text-center border-2 border-dashed border-gray-300 dark:border-gray-600"
+							class="mt-4 bg-muted rounded-lg p-8 text-center border border-border"
 						>
-							<MessageSquare class="w-12 h-12 text-gray-400 mx-auto mb-4" />
-							<p class="text-gray-500 text-sm">
+							<MessageSquare class="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+							<p class="text-muted-foreground text-sm">
 								[Screenshot: Braindump modal updating existing task]
 							</p>
 						</div>
@@ -131,33 +131,33 @@
 						<img
 							src={ONBOARDING_V2_CONFIG.assets.screenshots.braindumpUpdateTask}
 							alt="Braindump updating task"
-							class="rounded-lg shadow-lg"
+							class="rounded-lg shadow-ink"
 						/>
 					{/if}
 				</div>
 
 				<!-- Reschedule Tasks -->
 				<div
-					class="bg-white dark:bg-gray-800 rounded-xl border-2 border-purple-200 dark:border-purple-800 p-6 shadow-sm"
+					class="bg-card rounded-xl border border-border p-6 shadow-ink tx tx-frame tx-weak"
 				>
 					<div class="flex items-start gap-4 mb-4">
 						<div
-							class="flex-shrink-0 w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center"
+							class="flex-shrink-0 w-12 h-12 bg-muted rounded-lg flex items-center justify-center shadow-ink"
 						>
-							<Calendar class="w-6 h-6 text-purple-600 dark:text-purple-400" />
+							<Calendar class="w-6 h-6 text-accent" />
 						</div>
 						<div class="flex-1">
-							<h4 class="font-semibold text-lg mb-2 text-gray-900 dark:text-white">
+							<h4 class="font-semibold text-lg mb-2 text-foreground">
 								Reschedule Tasks via Braindump
 							</h4>
-							<p class="text-sm text-gray-700 dark:text-gray-300 mb-3">
+							<p class="text-sm text-muted-foreground mb-3">
 								Need to reschedule? Just mention it, and BuildOS automatically
 								adjusts your calendar.
 							</p>
 							<div
-								class="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-4 border border-gray-200 dark:border-gray-700"
+								class="bg-muted rounded-lg p-4 border border-border"
 							>
-								<p class="text-sm italic text-gray-700 dark:text-gray-300">
+								<p class="text-sm italic text-muted-foreground">
 									"This week got busy—let's push all Q1 planning tasks to next
 									week and move the design review to next Friday afternoon."
 								</p>
@@ -167,10 +167,10 @@
 
 					{#if ONBOARDING_V2_CONFIG.features.showPlaceholderAssets}
 						<div
-							class="mt-4 bg-gray-100 dark:bg-gray-800 rounded-lg p-8 text-center border-2 border-dashed border-gray-300 dark:border-gray-600"
+							class="mt-4 bg-muted rounded-lg p-8 text-center border border-border"
 						>
-							<Calendar class="w-12 h-12 text-gray-400 mx-auto mb-4" />
-							<p class="text-gray-500 text-sm">
+							<Calendar class="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+							<p class="text-muted-foreground text-sm">
 								[Screenshot: Braindump processing task rescheduling]
 							</p>
 						</div>
@@ -178,7 +178,7 @@
 						<img
 							src={ONBOARDING_V2_CONFIG.assets.screenshots.braindumpReschedule}
 							alt="Braindump rescheduling tasks"
-							class="rounded-lg shadow-lg"
+							class="rounded-lg shadow-ink"
 						/>
 					{/if}
 				</div>
@@ -187,50 +187,50 @@
 			<!-- Phase Flexibility Section -->
 			<div class="space-y-6">
 				<div class="text-center mb-6">
-					<h3 class="text-2xl font-bold mb-2 text-gray-900 dark:text-white">
+					<h3 class="text-2xl font-bold mb-2 text-foreground">
 						Phases That Evolve With You
 					</h3>
-					<p class="text-gray-600 dark:text-gray-400">
+					<p class="text-muted-foreground">
 						Organize tasks into phases, regenerate anytime, and schedule with AI.
 					</p>
 				</div>
 
 				<!-- Create Phases -->
 				<div
-					class="bg-white dark:bg-gray-800 rounded-xl border-2 border-blue-200 dark:border-blue-800 p-6 shadow-sm"
+					class="bg-card rounded-xl border border-border p-6 shadow-ink tx tx-frame tx-weak"
 				>
 					<div class="flex items-start gap-4 mb-4">
 						<div
-							class="flex-shrink-0 w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center"
+							class="flex-shrink-0 w-12 h-12 bg-muted rounded-lg flex items-center justify-center shadow-ink"
 						>
-							<Layout class="w-6 h-6 text-blue-600 dark:text-blue-400" />
+							<Layout class="w-6 h-6 text-accent" />
 						</div>
 						<div class="flex-1">
-							<h4 class="font-semibold text-lg mb-2 text-gray-900 dark:text-white">
+							<h4 class="font-semibold text-lg mb-2 text-foreground">
 								Create Phases
 							</h4>
-							<p class="text-sm text-gray-700 dark:text-gray-300 mb-3">
+							<p class="text-sm text-muted-foreground mb-3">
 								Organize tasks into logical phases—BuildOS can generate them
 								automatically based on your project timeline.
 							</p>
-							<div class="space-y-2 text-sm text-gray-700 dark:text-gray-300">
+							<div class="space-y-2 text-sm text-muted-foreground">
 								<div class="flex items-center gap-2">
-									<div class="w-2 h-2 rounded-full bg-blue-500"></div>
+									<div class="w-2 h-2 rounded-full bg-accent"></div>
 									<span
-										><strong>Phases only</strong> - Just organize, no scheduling</span
+										><strong class="text-foreground">Phases only</strong> - Just organize, no scheduling</span
 									>
 								</div>
 								<div class="flex items-center gap-2">
-									<div class="w-2 h-2 rounded-full bg-blue-500"></div>
+									<div class="w-2 h-2 rounded-full bg-accent"></div>
 									<span
-										><strong>Schedule in phases</strong> - Auto-schedule all phase
+										><strong class="text-foreground">Schedule in phases</strong> - Auto-schedule all phase
 										tasks</span
 									>
 								</div>
 								<div class="flex items-center gap-2">
-									<div class="w-2 h-2 rounded-full bg-blue-500"></div>
+									<div class="w-2 h-2 rounded-full bg-accent"></div>
 									<span
-										><strong>Calendar-optimized</strong> - Smart scheduling around
+										><strong class="text-foreground">Calendar-optimized</strong> - Smart scheduling around
 										your calendar</span
 									>
 								</div>
@@ -240,10 +240,10 @@
 
 					{#if ONBOARDING_V2_CONFIG.features.showPlaceholderAssets}
 						<div
-							class="mt-4 bg-gray-100 dark:bg-gray-800 rounded-lg p-8 text-center border-2 border-dashed border-gray-300 dark:border-gray-600"
+							class="mt-4 bg-muted rounded-lg p-8 text-center border border-border"
 						>
-							<Layout class="w-12 h-12 text-gray-400 mx-auto mb-4" />
-							<p class="text-gray-500 text-sm">
+							<Layout class="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+							<p class="text-muted-foreground text-sm">
 								[Screenshot: Phase generation modal with 3 strategy options]
 							</p>
 						</div>
@@ -251,26 +251,26 @@
 						<img
 							src={ONBOARDING_V2_CONFIG.assets.screenshots.phaseGenerationModal}
 							alt="Phase generation modal"
-							class="rounded-lg shadow-lg"
+							class="rounded-lg shadow-ink"
 						/>
 					{/if}
 				</div>
 
 				<!-- Regenerate Phases -->
 				<div
-					class="bg-white dark:bg-gray-800 rounded-xl border-2 border-blue-200 dark:border-blue-800 p-6 shadow-sm"
+					class="bg-card rounded-xl border border-border p-6 shadow-ink tx tx-frame tx-weak"
 				>
 					<div class="flex items-start gap-4 mb-4">
 						<div
-							class="flex-shrink-0 w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center"
+							class="flex-shrink-0 w-12 h-12 bg-muted rounded-lg flex items-center justify-center shadow-ink"
 						>
-							<RefreshCw class="w-6 h-6 text-blue-600 dark:text-blue-400" />
+							<RefreshCw class="w-6 h-6 text-accent" />
 						</div>
 						<div class="flex-1">
-							<h4 class="font-semibold text-lg mb-2 text-gray-900 dark:text-white">
+							<h4 class="font-semibold text-lg mb-2 text-foreground">
 								Regenerate Phases
 							</h4>
-							<p class="text-sm text-gray-700 dark:text-gray-300 mb-3">
+							<p class="text-sm text-muted-foreground mb-3">
 								Projects evolve. Regenerate phases anytime—BuildOS preserves your
 								completed work and reorganizes the rest.
 							</p>
@@ -279,10 +279,10 @@
 
 					{#if ONBOARDING_V2_CONFIG.features.showPlaceholderAssets}
 						<div
-							class="mt-4 bg-gray-100 dark:bg-gray-800 rounded-lg p-8 text-center border-2 border-dashed border-gray-300 dark:border-gray-600"
+							class="mt-4 bg-muted rounded-lg p-8 text-center border border-border"
 						>
-							<RefreshCw class="w-12 h-12 text-gray-400 mx-auto mb-4" />
-							<p class="text-gray-500 text-sm">
+							<RefreshCw class="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+							<p class="text-muted-foreground text-sm">
 								[Screenshot: Before/after view showing phase regeneration]
 							</p>
 						</div>
@@ -291,26 +291,26 @@
 							src={ONBOARDING_V2_CONFIG.assets.screenshots
 								.phaseRegenerationBeforeAfter}
 							alt="Phase regeneration before and after"
-							class="rounded-lg shadow-lg"
+							class="rounded-lg shadow-ink"
 						/>
 					{/if}
 				</div>
 
 				<!-- Schedule Phase Tasks -->
 				<div
-					class="bg-white dark:bg-gray-800 rounded-xl border-2 border-blue-200 dark:border-blue-800 p-6 shadow-sm"
+					class="bg-card rounded-xl border border-border p-6 shadow-ink tx tx-frame tx-weak"
 				>
 					<div class="flex items-start gap-4 mb-4">
 						<div
-							class="flex-shrink-0 w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center"
+							class="flex-shrink-0 w-12 h-12 bg-muted rounded-lg flex items-center justify-center shadow-ink"
 						>
-							<Sparkles class="w-6 h-6 text-blue-600 dark:text-blue-400" />
+							<Sparkles class="w-6 h-6 text-accent" />
 						</div>
 						<div class="flex-1">
-							<h4 class="font-semibold text-lg mb-2 text-gray-900 dark:text-white">
+							<h4 class="font-semibold text-lg mb-2 text-foreground">
 								Schedule All Tasks in a Phase
 							</h4>
-							<p class="text-sm text-gray-700 dark:text-gray-300 mb-3">
+							<p class="text-sm text-muted-foreground mb-3">
 								Let AI find the perfect time for every task in a phase, considering
 								your calendar and work hours.
 							</p>
@@ -319,10 +319,10 @@
 
 					{#if ONBOARDING_V2_CONFIG.features.showPlaceholderAssets}
 						<div
-							class="mt-4 bg-gray-100 dark:bg-gray-800 rounded-lg p-8 text-center border-2 border-dashed border-gray-300 dark:border-gray-600"
+							class="mt-4 bg-muted rounded-lg p-8 text-center border border-border"
 						>
-							<Sparkles class="w-12 h-12 text-gray-400 mx-auto mb-4" />
-							<p class="text-gray-500 text-sm">
+							<Sparkles class="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+							<p class="text-muted-foreground text-sm">
 								[Screenshot: Calendar view with scheduled phase tasks]
 							</p>
 						</div>
@@ -330,7 +330,7 @@
 						<img
 							src={ONBOARDING_V2_CONFIG.assets.screenshots.phaseScheduling}
 							alt="Phase scheduling with AI"
-							class="rounded-lg shadow-lg"
+							class="rounded-lg shadow-ink"
 						/>
 					{/if}
 				</div>
@@ -339,29 +339,29 @@
 			<!-- Calendar Flexibility Section -->
 			<div class="space-y-6">
 				<div class="text-center mb-6">
-					<h3 class="text-2xl font-bold mb-2 text-gray-900 dark:text-white">
+					<h3 class="text-2xl font-bold mb-2 text-foreground">
 						Your Calendar, Your Way
 					</h3>
-					<p class="text-gray-600 dark:text-gray-400">
+					<p class="text-muted-foreground">
 						Schedule, unschedule, and block time—all seamlessly integrated.
 					</p>
 				</div>
 
 				<!-- Schedule/Unschedule Tasks -->
 				<div
-					class="bg-white dark:bg-gray-800 rounded-xl border-2 border-green-200 dark:border-green-800 p-6 shadow-sm"
+					class="bg-card rounded-xl border border-border p-6 shadow-ink tx tx-frame tx-weak"
 				>
 					<div class="flex items-start gap-4 mb-4">
 						<div
-							class="flex-shrink-0 w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center"
+							class="flex-shrink-0 w-12 h-12 bg-muted rounded-lg flex items-center justify-center shadow-ink"
 						>
-							<Calendar class="w-6 h-6 text-green-600 dark:text-green-400" />
+							<Calendar class="w-6 h-6 text-emerald-600" />
 						</div>
 						<div class="flex-1">
-							<h4 class="font-semibold text-lg mb-2 text-gray-900 dark:text-white">
+							<h4 class="font-semibold text-lg mb-2 text-foreground">
 								Schedule & Unschedule Tasks
 							</h4>
-							<p class="text-sm text-gray-700 dark:text-gray-300 mb-3">
+							<p class="text-sm text-muted-foreground mb-3">
 								Schedule tasks to your calendar with one click—or unschedule them
 								just as easily.
 							</p>
@@ -370,10 +370,10 @@
 
 					{#if ONBOARDING_V2_CONFIG.features.showPlaceholderAssets}
 						<div
-							class="mt-4 bg-gray-100 dark:bg-gray-800 rounded-lg p-8 text-center border-2 border-dashed border-gray-300 dark:border-gray-600"
+							class="mt-4 bg-muted rounded-lg p-8 text-center border border-border"
 						>
-							<Calendar class="w-12 h-12 text-gray-400 mx-auto mb-4" />
-							<p class="text-gray-500 text-sm">
+							<Calendar class="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+							<p class="text-muted-foreground text-sm">
 								[Screenshot: Task detail showing schedule/unschedule buttons]
 							</p>
 						</div>
@@ -381,52 +381,52 @@
 						<img
 							src={ONBOARDING_V2_CONFIG.assets.screenshots.taskScheduleUnschedule}
 							alt="Task schedule and unschedule"
-							class="rounded-lg shadow-lg"
+							class="rounded-lg shadow-ink"
 						/>
 					{/if}
 				</div>
 
 				<!-- Timeblocks -->
 				<div
-					class="bg-white dark:bg-gray-800 rounded-xl border-2 border-green-200 dark:border-green-800 p-6 shadow-sm"
+					class="bg-card rounded-xl border border-border p-6 shadow-ink tx tx-frame tx-weak"
 				>
 					<div class="flex items-start gap-4 mb-4">
 						<div
-							class="flex-shrink-0 w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center"
+							class="flex-shrink-0 w-12 h-12 bg-muted rounded-lg flex items-center justify-center shadow-ink"
 						>
-							<Sparkles class="w-6 h-6 text-green-600 dark:text-green-400" />
+							<Sparkles class="w-6 h-6 text-emerald-600" />
 						</div>
 						<div class="flex-1">
-							<h4 class="font-semibold text-lg mb-2 text-gray-900 dark:text-white">
+							<h4 class="font-semibold text-lg mb-2 text-foreground">
 								Timeblocks
 							</h4>
-							<p class="text-sm text-gray-700 dark:text-gray-300 mb-3">
+							<p class="text-sm text-muted-foreground mb-3">
 								Block off time on your calendar to work on specific projects—BuildOS
 								even suggests what to work on during each block.
 							</p>
 							<div
-								class="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-4 border border-gray-200 dark:border-gray-700 mt-3"
+								class="bg-muted rounded-lg p-4 border border-border mt-3"
 							>
 								<div class="flex items-center gap-2 mb-2">
 									<div class="text-2xl">🕐</div>
-									<div class="font-semibold text-gray-900 dark:text-white">
+									<div class="font-semibold text-foreground">
 										10:00 AM - 12:00 PM: Marketing Campaign
 									</div>
 								</div>
 								<div
-									class="text-sm text-gray-700 dark:text-gray-300 space-y-1 ml-8"
+									class="text-sm text-muted-foreground space-y-1 ml-8"
 								>
-									<p class="font-medium">AI Suggestions for this block:</p>
+									<p class="font-medium text-foreground">AI Suggestions for this block:</p>
 									<div class="flex items-center gap-2">
-										<CheckCircle class="w-4 h-4 text-green-600" />
+										<CheckCircle class="w-4 h-4 text-emerald-600" />
 										<span>Finalize social media calendar</span>
 									</div>
 									<div class="flex items-center gap-2">
-										<CheckCircle class="w-4 h-4 text-green-600" />
+										<CheckCircle class="w-4 h-4 text-emerald-600" />
 										<span>Draft email sequence #3</span>
 									</div>
 									<div class="flex items-center gap-2">
-										<CheckCircle class="w-4 h-4 text-green-600" />
+										<CheckCircle class="w-4 h-4 text-emerald-600" />
 										<span>Review landing page copy</span>
 									</div>
 								</div>
@@ -436,10 +436,10 @@
 
 					{#if ONBOARDING_V2_CONFIG.features.showPlaceholderAssets}
 						<div
-							class="mt-4 bg-gray-100 dark:bg-gray-800 rounded-lg p-8 text-center border-2 border-dashed border-gray-300 dark:border-gray-600"
+							class="mt-4 bg-muted rounded-lg p-8 text-center border border-border"
 						>
-							<Sparkles class="w-12 h-12 text-gray-400 mx-auto mb-4" />
-							<p class="text-gray-500 text-sm">
+							<Sparkles class="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+							<p class="text-muted-foreground text-sm">
 								[Screenshot: Calendar with timeblock and AI task suggestions]
 							</p>
 						</div>
@@ -447,7 +447,7 @@
 						<img
 							src={ONBOARDING_V2_CONFIG.assets.screenshots.timeblockWithSuggestions}
 							alt="Timeblock with AI suggestions"
-							class="rounded-lg shadow-lg"
+							class="rounded-lg shadow-ink"
 						/>
 					{/if}
 				</div>
@@ -457,7 +457,7 @@
 
 	<!-- Navigation -->
 	<div class="flex justify-end mt-8">
-		<Button variant="primary" size="lg" onclick={onNext} class="min-w-[200px]">
+		<Button variant="primary" size="lg" onclick={onNext} class="min-w-[200px] shadow-ink pressable">
 			Continue
 			<Sparkles class="w-5 h-5 ml-2" />
 		</Button>

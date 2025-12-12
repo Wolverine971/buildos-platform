@@ -296,8 +296,8 @@ const ProjectSpecProjectSchema = z.object({
 	type_key: z
 		.string()
 		.regex(
-			/^[a-z_]+\.[a-z_]+(\.[a-z_]+)?$/,
-			'type_key must be 2-3 lowercase dot-separated segments (e.g., "project.creative.book", "project.technical.app"). Use only lowercase letters and underscores.'
+			/^project\.[a-z_]+\.[a-z_]+(\.[a-z_]+)?$/,
+			'type_key must be project.{realm}.{deliverable} format (3-4 segments starting with "project."). Realm must be: creative, technical, business, service, education, or personal. Example: "project.business.product_launch". Use only lowercase letters and underscores.'
 		),
 	also_types: z.array(z.string()).optional(),
 	state_key: z.string().optional(),

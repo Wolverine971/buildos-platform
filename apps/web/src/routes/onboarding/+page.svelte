@@ -465,20 +465,20 @@
 
 {#if showCompletionScreen}
 	<div
-		class="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 flex items-center justify-center p-4"
+		class="min-h-screen bg-background flex items-center justify-center p-4"
 	>
 		<div class="max-w-md mx-auto text-center" in:scale={{ duration: 500, start: 0.9 }}>
 			<div
-				class="w-20 h-20 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center mx-auto mb-8 shadow-xl"
+				class="w-20 h-20 bg-accent rounded-full flex items-center justify-center mx-auto mb-8 shadow-ink-strong tx tx-bloom tx-weak"
 			>
-				<CheckCircle class="w-10 h-10 text-white" />
+				<CheckCircle class="w-10 h-10 text-accent-foreground" />
 			</div>
 			<h1
-				class="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 dark:from-white dark:to-gray-200 bg-clip-text text-transparent mb-4"
+				class="text-3xl sm:text-4xl font-bold text-foreground mb-4"
 			>
 				Welcome to BuildOS!
 			</h1>
-			<p class="text-gray-600 dark:text-gray-400 mb-8 text-lg leading-relaxed">
+			<p class="text-muted-foreground mb-8 text-lg leading-relaxed">
 				Your personalized workspace is ready. Let's start building amazing things together.
 			</p>
 		</div>
@@ -486,7 +486,7 @@
 {:else if useV2}
 	<!-- V2 Onboarding Flow -->
 	<div
-		class="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800"
+		class="min-h-screen bg-background"
 	>
 		<div class="container mx-auto py-8 px-4">
 			<!-- Progress Indicator (show for steps 1-5, not welcome or summary) -->
@@ -528,7 +528,7 @@
 {:else}
 	<!-- V1 Onboarding Flow -->
 	<div
-		class="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800"
+		class="min-h-screen bg-background"
 	>
 		<div class="container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 max-w-4xl">
 			<!-- Enhanced Progress Indicator -->
@@ -537,11 +537,11 @@
 					<div class="relative">
 						<!-- Progress line -->
 						<div
-							class="absolute top-1/2 left-0 right-0 h-0.5 bg-gray-200 dark:bg-gray-700 -translate-y-1/2"
+							class="absolute top-1/2 left-0 right-0 h-0.5 bg-border -translate-y-1/2"
 							style="width: calc(100% - 16px); margin-left: 8px;"
 						>
 							<div
-								class="h-full bg-gradient-to-r from-blue-500 to-purple-500 transition-all duration-500 ease-out"
+								class="h-full bg-accent transition-all duration-500 ease-out"
 								style="width: {progressPercentage}%"
 							></div>
 						</div>
@@ -550,12 +550,12 @@
 						<div class="relative flex items-center space-x-8">
 							{#each steps as step, index (`${index}-${stepStatuses[index]}`)}
 								<button
-									class="relative z-10 w-4 h-4 rounded-full transition-all duration-300 cursor-pointer hover:scale-125 focus:outline-none focus:ring-4 focus:ring-blue-500/20
+									class="relative z-10 w-4 h-4 rounded-full transition-all duration-300 cursor-pointer hover:scale-125 focus:outline-none focus:ring-4 focus:ring-ring/20 pressable
 									{stepStatuses[index] === 'completed'
-										? 'bg-gradient-to-r from-green-500 to-green-600 shadow-lg shadow-green-500/30'
+										? 'bg-emerald-600 shadow-ink'
 										: stepStatuses[index] === 'current'
-											? 'bg-gradient-to-r from-blue-500 to-purple-500 shadow-lg shadow-blue-500/30 animate-pulse scale-125'
-											: 'bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500'}"
+											? 'bg-accent shadow-ink animate-pulse scale-125'
+											: 'bg-muted hover:bg-muted/80'}"
 									onclick={() => handleProgressClick(index)}
 									title={step.title}
 								>
@@ -572,10 +572,10 @@
 
 				<!-- Progress text -->
 				<div class="text-center">
-					<p class="text-sm font-medium text-gray-700 dark:text-gray-300">
+					<p class="text-sm font-medium text-foreground">
 						Step {currentStep + 1} of {steps.length}
 					</p>
-					<p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+					<p class="text-xs text-muted-foreground mt-1">
 						{completedSteps} completed · {progressPercentage}% done
 					</p>
 				</div>
@@ -587,24 +587,24 @@
 				<div class="mb-8 text-center">
 					<div class="flex justify-center mb-4">
 						<div
-							class="w-16 h-16 bg-gradient-to-br from-blue-100 to-purple-100 dark:from-blue-900/30 dark:to-purple-900/30 rounded-2xl flex items-center justify-center shadow-lg"
+							class="w-16 h-16 bg-muted rounded-2xl flex items-center justify-center shadow-ink tx tx-bloom tx-weak"
 							in:scale={{ duration: 300, start: 0.8 }}
 						>
 							{#if currentStepData?.icon}
 								{@const IconComponent = currentStepData.icon}
-								<IconComponent class="w-8 h-8 text-blue-600 dark:text-blue-400" />
+								<IconComponent class="w-8 h-8 text-accent" />
 							{/if}
 						</div>
 					</div>
 
 					<h1
-						class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-3"
+						class="text-2xl sm:text-3xl font-bold text-foreground mb-3"
 						in:fade={{ duration: 300, delay: 200 }}
 					>
 						{currentStepData?.title}
 					</h1>
 					<p
-						class="text-base sm:text-lg text-gray-600 dark:text-gray-400 mb-4"
+						class="text-base sm:text-lg text-muted-foreground mb-4"
 						in:fade={{ duration: 300, delay: 250 }}
 					>
 						{currentStepData?.subtitle}
@@ -612,10 +612,10 @@
 
 					<!-- Question card -->
 					<div
-						class="bg-white dark:bg-gray-800 rounded-2xl shadow-md p-6 mb-4 text-left"
+						class="bg-card border border-border rounded-xl shadow-ink p-6 mb-4 text-left tx tx-frame tx-weak"
 						in:fade={{ duration: 300, delay: 300 }}
 					>
-						<p class="text-gray-700 dark:text-gray-300 leading-relaxed">
+						<p class="text-foreground leading-relaxed">
 							{currentStepData?.question}
 						</p>
 					</div>
@@ -660,15 +660,15 @@
 						rows={8}
 						disabled={$isRecording || isTranscribing}
 						size="lg"
-						class="w-full resize-none shadow-sm"
+						class="w-full resize-none shadow-ink-inner"
 					/>
 					<!-- Live transcript -->
 					{#if $isRecording && $liveTranscript}
 						<div
-							class="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg"
+							class="mt-4 p-3 bg-accent/10 border border-accent/30 rounded-lg tx tx-pulse tx-weak"
 							transition:slide={{ duration: 200 }}
 						>
-							<p class="text-sm text-blue-700 dark:text-blue-300 italic">
+							<p class="text-sm text-accent italic">
 								{$liveTranscript}
 							</p>
 						</div>
@@ -677,7 +677,7 @@
 					<!-- Save indicator -->
 					{#if isSaving}
 						<p
-							class="text-xs text-gray-500 dark:text-gray-400 mt-2 flex items-center"
+							class="text-xs text-muted-foreground mt-2 flex items-center"
 							transition:fade
 						>
 							<Loader2 class="w-3 h-3 mr-1 animate-spin" />
@@ -685,7 +685,7 @@
 						</p>
 					{:else if !hasUnsavedChanges && hasCurrentInput}
 						<p
-							class="text-xs text-green-600 dark:text-green-400 mt-2 flex items-center"
+							class="text-xs text-emerald-600 mt-2 flex items-center"
 							transition:fade
 						>
 							<CheckCircle class="w-3 h-3 mr-1" />
@@ -694,7 +694,7 @@
 					{/if}
 
 					{#if saveFailed}
-						<p class="text-xs text-red-600 dark:text-red-400 mt-2">
+						<p class="text-xs text-red-600 mt-2">
 							We couldn't save your last changes. We'll retry automatically.
 						</p>
 					{/if}
@@ -734,14 +734,14 @@
 				</div>
 
 				<!-- Examples section -->
-				<div class="mt-10 pt-8 border-t border-gray-200 dark:border-gray-700">
-					<p class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-4">
+				<div class="mt-10 pt-8 border-t border-border">
+					<p class="text-sm font-medium text-foreground mb-4">
 						Examples to inspire you:
 					</p>
 					<div class="space-y-3">
 						{#each currentStepData?.examples ?? [] as example, i}
 							<div
-								class="text-sm text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/50 rounded-lg px-4 py-3 border border-gray-200 dark:border-gray-700"
+								class="text-sm text-muted-foreground bg-muted rounded-lg px-4 py-3 border border-border"
 								in:fade={{ duration: 300, delay: 350 + i * 50 }}
 							>
 								{example}
