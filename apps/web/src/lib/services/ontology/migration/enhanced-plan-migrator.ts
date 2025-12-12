@@ -2,15 +2,14 @@
 /**
  * Enhanced Plan Migrator
  *
- * Migrates phases to plans using intelligent template discovery and property extraction.
- * Replaces hardcoded 'plan.project_phase' with dynamic template selection.
+ * Migrates legacy phases to onto_plans with minimal properties.
+ * Templates have been removed (Dec 2025) - uses fixed type_key only.
  *
- * Key improvements over legacy migration:
- * - Uses FindOrCreateTemplateService (unified template discovery + creation)
- * - Uses PropertyExtractorEngine for intelligent property extraction
- * - Supports diverse plan types (not just phase-based execution plans)
- * - Validates properties against template schema
- * - Context-aware plan type selection based on phase characteristics
+ * Behavior:
+ * - Fixed type_key: 'plan.base'
+ * - Preserves phase ordering
+ * - Creates project→plan edges
+ * - No template lookup or property extraction
  */
 
 import type { TypedSupabaseClient } from '@buildos/supabase-client';
@@ -21,19 +20,13 @@ import type {
 	EnhancedPlanMigrationResult
 } from './enhanced-migration.types';
 import type { Facets } from '$lib/types/onto';
-import { SmartLLMService } from '$lib/services/smart-llm-service';
 import { upsertLegacyMapping } from '../legacy-mapping.service';
 
-const TEMPLATE_MATCH_THRESHOLD = 0.7; // 70% match required
-
 export class EnhancedPlanMigrator {
-	constructor(
-		private readonly client: TypedSupabaseClient,
-		private readonly llm: SmartLLMService
-	) {}
+	constructor(private readonly client: TypedSupabaseClient) {}
 
 	/**
-	 * Migrate a phase to plan (template discovery/property extraction removed)
+	 * Migrate a phase to plan with fixed type_key.
 	 */
 	async migrate(
 		phase: LegacyPhase,

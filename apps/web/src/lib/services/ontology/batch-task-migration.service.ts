@@ -4,21 +4,27 @@
  *
  * Efficiently migrates multiple tasks using batch operations to minimize LLM calls and DB queries.
  *
- * Key optimizations over per-task migration:
- * - Phase 1: Single LLM call to classify all tasks (vs N calls)
- * - Phase 2: Single DB query to load all templates (vs N queries)
- * - Phase 3: Batch property extraction grouped by schema (vs N extraction calls)
- * - Phase 4: Batch database inserts for tasks, edges, mappings
+ * Pipeline (3 phases - templates removed Dec 2025):
+ * ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+ * │  CLASSIFY   │───▶│   BUILD     │───▶│   INSERT    │
+ * │ (LLM batch) │    │   PROPS     │    │  (batch DB) │
+ * └─────────────┘    └─────────────┘    └─────────────┘
  *
- * Pipeline:
- * ┌─────────────┐    ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
- * │  CLASSIFY   │───▶│   RESOLVE   │───▶│   EXTRACT   │───▶│   INSERT    │
- * │ (1 LLM/batch)│    │  TEMPLATES  │    │ (N by schema)│    │  (batch DB) │
- * └─────────────┘    └─────────────┘    └─────────────┘    └─────────────┘
+ * Phase 1: Two-phase LLM classification
+ *   - Fast model: work_mode (8 options: execute, create, refine, etc.)
+ *   - Balanced model: specialization (meeting, deploy, code, etc.)
+ *   - Result: task.{work_mode}[.{specialization}]
  *
- * @see /apps/web/docs/features/ontology/BATCH_TASK_MIGRATION_SPEC.md
+ * Phase 2: Build minimal props from legacy data
+ *   - No template lookup or property extraction
+ *   - title, description, type_key, facets only
+ *
+ * Phase 3: Batch database inserts
+ *   - onto_tasks (batch)
+ *   - onto_edges (task↔plan relationships)
+ *   - legacy_entity_mappings (idempotency)
+ *
  * @see /thoughts/shared/research/2025-12-10_migration-system-design.md
- *      For comprehensive system design documentation.
  */
 
 import type { TypedSupabaseClient } from '@buildos/supabase-client';
@@ -152,12 +158,6 @@ interface TaskExtraction {
 	validationErrors?: string[];
 }
 
-/** Template metadata (stub - template table removed) */
-interface TemplateMetadata {
-	template: { id: string; type_key: string; name: string } | null;
-	created: boolean;
-	parentFallback: boolean;
-}
 
 /** Task prepared for classification */
 interface ClassificationTask {
@@ -176,7 +176,6 @@ interface ClassificationTask {
 // ============================================
 
 const DEFAULT_BATCH_SIZE = 20;
-const MAX_TEMPLATES_TO_LOAD = 50;
 const DEFAULT_CLASSIFICATION_CONFIDENCE = 0.8;
 
 /**
@@ -287,7 +286,6 @@ export class BatchTaskMigrationService {
 		// Split into batches
 		const batches = this.chunkArray(activeTasks, batchSize);
 		const allClassifications: TaskClassification[] = [];
-		let templateCache: Map<string, ResolvedTemplateWithMeta> = new Map();
 		const allExtractions: TaskExtraction[] = [];
 
 		// ========== PHASE 1: BATCH CLASSIFICATION ==========
@@ -336,22 +334,11 @@ export class BatchTaskMigrationService {
 				`duration=${timing.classifyMs}ms`
 		);
 
-		// ========== PHASE 2: BATCH TEMPLATE RESOLUTION (REMOVED) ==========
-		const startResolve = Date.now();
-		const uniqueTypeKeys = [...new Set(allClassifications.map((c) => c.typeKey))];
-
-		// Template resolution removed - tasks will need templates to be created separately
-		console.warn(
-			'[BatchTaskMigration] Template resolution removed - templates must exist before migration'
-		);
-
-		timing.resolveMs = Date.now() - startResolve;
-
-		// ========== PHASE 3: BATCH PROPERTY EXTRACTION (REMOVED) ==========
+		// ========== PHASE 2: BUILD MINIMAL EXTRACTIONS ==========
+		// Template resolution and property extraction have been removed.
+		// Tasks are now migrated with classification type_key and minimal props only.
 		const startExtract = Date.now();
-
-		// Property extraction removed - tasks will use minimal props
-		console.warn('[BatchTaskMigration] Property extraction removed - using minimal task data');
+		timing.resolveMs = 0; // No template resolution phase
 
 		// Create minimal extractions for all tasks
 		for (let i = 0; i < allClassifications.length; i++) {
@@ -370,11 +357,11 @@ export class BatchTaskMigrationService {
 
 		timing.extractMs = Date.now() - startExtract;
 		console.info(
-			`[BatchTaskMigration] PHASE_3_COMPLETE extractions=${allExtractions.length} (minimal) ` +
+			`[BatchTaskMigration] PHASE_2_COMPLETE extractions=${allExtractions.length} (minimal) ` +
 				`duration=${timing.extractMs}ms`
 		);
 
-		// ========== PHASE 4: BATCH INSERT ==========
+		// ========== PHASE 3: BATCH INSERT ==========
 		let tasksMigrated = 0;
 		if (!options.dryRun) {
 			const startInsert = Date.now();
@@ -392,7 +379,6 @@ export class BatchTaskMigrationService {
 				tasksMigrated = await this.batchInsertTasks(
 					allExtractions,
 					allClassifications,
-					templateCache,
 					activeTasks,
 					options,
 					context
@@ -429,12 +415,8 @@ export class BatchTaskMigrationService {
 		const result: BatchMigrationResult = {
 			success: errors.length === 0,
 			tasksMigrated,
-			templatesCreated: [...templateCache.values()]
-				.filter((t) => t.created)
-				.map((t) => t.template.type_key),
-			templatesReused: [...templateCache.values()]
-				.filter((t) => !t.created && !t.parentFallback)
-				.map((t) => t.template.type_key),
+			templatesCreated: [], // Templates removed
+			templatesReused: [], // Templates removed
 			typeKeyDistribution,
 			schedulingStats,
 			timing,
@@ -445,12 +427,7 @@ export class BatchTaskMigrationService {
 		if (options.dryRun) {
 			result.preview = {
 				classifications: allClassifications,
-				templateResolutions: [...templateCache.entries()].map(([typeKey, meta]) => ({
-					typeKey,
-					templateId: meta.template.id,
-					created: meta.created,
-					parentFallback: meta.parentFallback
-				})),
+				templateResolutions: [], // Templates removed
 				extractedProps: allExtractions.map((e) => ({
 					legacyId: e.legacyId,
 					typeKey: e.typeKey,
@@ -978,16 +955,16 @@ IMPORTANT:
 	// Tasks are migrated with minimal properties from legacy data only.
 
 	// ============================================
-	// PHASE 4: BATCH DATABASE OPERATIONS
+	// PHASE 3: BATCH DATABASE OPERATIONS
 	// ============================================
 
 	/**
 	 * Batch insert tasks, edges, and mappings.
+	 * Templates have been removed - tasks are created with type_key only.
 	 */
 	private async batchInsertTasks(
 		extractions: TaskExtraction[],
 		classifications: TaskClassification[],
-		templateCache: Map<string, TemplateMetadata>,
 		legacyTasks: LegacyTask[],
 		options: BatchTaskMigrationOptions,
 		context: MigrationContext
@@ -1033,7 +1010,6 @@ IMPORTANT:
 			title: string;
 			project_id: string;
 			type_key: string;
-			template_id: string | null;
 			state_key: string;
 			priority: number;
 			due_at: string | null;
@@ -1049,17 +1025,8 @@ IMPORTANT:
 
 			const classification = classificationMap.get(extraction.legacyId);
 			const typeKey = classification?.typeKey ?? extraction.typeKey;
-			const templateMeta = templateCache.get(typeKey);
 
-			if (!templateMeta) {
-				console.warn(
-					`[BatchTaskMigration] No template for ${typeKey}, skipping task ${extraction.legacyId}`
-				);
-				continue;
-			}
-
-			// No template merging - use extraction props directly
-			// Add metadata to props
+			// Build props with metadata (no template merging)
 			const propsWithMetadata = {
 				...extraction.props,
 				description: legacyTask.description ?? null,
@@ -1067,7 +1034,7 @@ IMPORTANT:
 				facets: { scale: this.inferScale(legacyTask) }
 			};
 
-			// ========== FIX: Resolve per-task plan ID ==========
+			// Resolve per-task plan ID
 			// Look up the phase for this task, then get the plan for that phase
 			let planId: string | null = null;
 			if (options.phaseToPlanMapping && options.taskToPhaseMapping) {
@@ -1085,7 +1052,6 @@ IMPORTANT:
 				title: legacyTask.title,
 				project_id: options.projectId,
 				type_key: typeKey,
-				template_id: templateMeta.template.id,
 				state_key: this.mapStatusToState(legacyTask.status),
 				priority: this.mapPriority(legacyTask.priority),
 				due_at: legacyTask.start_date ?? null, // start_date → due_at

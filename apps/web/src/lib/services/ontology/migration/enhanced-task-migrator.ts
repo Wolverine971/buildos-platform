@@ -2,14 +2,14 @@
 /**
  * Enhanced Task Migrator
  *
- * Migrates tasks using intelligent template discovery and property extraction.
- * Replaces hardcoded 3-type classification with dynamic template selection.
+ * Migrates individual tasks to onto_tasks with minimal properties.
+ * Templates have been removed (Dec 2025) - uses fixed type_key only.
  *
- * Key improvements over legacy migration:
- * - Uses FindOrCreateTemplateService (unified template discovery + creation)
- * - Uses PropertyExtractorEngine for intelligent property extraction
- * - Supports diverse task types beyond (simple, deep_work, recurring)
- * - Validates properties against template schema
+ * NOTE: For batch operations (5+ tasks), use BatchTaskMigrationService instead,
+ * which provides LLM-powered classification into work modes.
+ *
+ * This single-task migrator uses a fixed default type_key ('task.execute')
+ * for simplicity and is primarily used as a fallback.
  */
 
 import type { TypedSupabaseClient } from '@buildos/supabase-client';
@@ -19,19 +19,14 @@ import type {
 	MigrationContext,
 	EnhancedTaskMigrationResult
 } from './enhanced-migration.types';
-import { SmartLLMService } from '$lib/services/smart-llm-service';
 import { upsertLegacyMapping } from '../legacy-mapping.service';
 
-const TEMPLATE_MATCH_THRESHOLD = 0.7; // 70% match required
-
 export class EnhancedTaskMigrator {
-	constructor(
-		private readonly client: TypedSupabaseClient,
-		private readonly llm: SmartLLMService
-	) {}
+	constructor(private readonly client: TypedSupabaseClient) {}
 
 	/**
-	 * Migrate a task (template discovery/property extraction removed)
+	 * Migrate a single task with fixed type_key.
+	 * For batch operations with LLM classification, use BatchTaskMigrationService.
 	 */
 	async migrate(
 		task: LegacyTask,

@@ -4,13 +4,11 @@
  *
  * Handles migration of legacy projects to the ontology system.
  *
- * NOTE: As of December 2025, this service exclusively uses the EnhancedProjectMigrator
- * which integrates with FindOrCreateTemplateService for template operations.
- * The legacy migration path using ProjectTemplateInferenceService has been removed.
+ * NOTE: As of December 2025, templates have been removed from the migration system.
+ * Projects are now migrated with fixed type_key ('project.base') and heuristically
+ * derived facets. The EnhancedProjectMigrator no longer uses templates.
  *
  * @see /thoughts/shared/research/2025-12-10_migration-system-design.md
- *      For comprehensive system design documentation including architecture diagrams,
- *      data flow, component details, and error handling strategies.
  */
 import type { TypedSupabaseClient } from '@buildos/supabase-client';
 import type { Database, Json } from '@buildos/shared-types';
@@ -137,19 +135,13 @@ export class ProjectMigrationService {
 		project: LegacyProjectRow,
 		context: MigrationServiceContext
 	): Promise<ProjectMigrationResult> {
-		// NOTE: As of December 2025, all migrations use the enhanced path
-		// which integrates with FindOrCreateTemplateService.
-		// The legacy migration flow has been removed.
+		// Templates removed Dec 2025 - uses fixed type_key and derived facets
 		console.info(
 			`[ProjectMigration] Start ${project.id} (dryRun=${context.dryRun}, run=${context.runId})`
 		);
 
 		return await this.migrateProjectEnhanced(project, context);
 	}
-
-	// NOTE: Legacy migration flow removed in December 2025 cleanup.
-	// All migrations now use migrateProjectEnhanced which integrates with
-	// FindOrCreateTemplateService. See FIND_OR_CREATE_TEMPLATE_SPEC.md.
 
 	private async buildAnalysis(project: LegacyProjectRow): Promise<ProjectMigrationAnalysis> {
 		const [phaseCount, taskCount, calendarCount, mapping] = await Promise.all([

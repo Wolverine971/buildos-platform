@@ -34,8 +34,6 @@ export interface CreateOntoEventInput {
 	recurrence?: Json;
 	externalLink?: string | null;
 	props?: Json;
-	templateId?: string | null;
-	templateSnapshot?: Json;
 	createdBy: string;
 }
 
@@ -53,8 +51,6 @@ export interface UpdateOntoEventInput {
 	recurrence?: Json;
 	externalLink?: string | null;
 	props?: Json;
-	templateId?: string | null;
-	templateSnapshot?: Json;
 }
 
 export interface OntoEventQueryParams {
@@ -75,12 +71,7 @@ export class OntoEventService {
 	): Promise<OntoEventRow> {
 		this.assertOwner(input.owner);
 
-		const template = await this.resolveTemplate(client, {
-			typeKey: input.typeKey,
-			templateId: input.templateId ?? undefined,
-			templateSnapshot: input.templateSnapshot
-		});
-
+		// Template system removed Dec 2025 - events use type_key only
 		const payload = {
 			org_id: input.orgId ?? null,
 			project_id: input.projectId ?? null,
@@ -88,8 +79,6 @@ export class OntoEventService {
 			owner_entity_id: input.owner.type === 'standalone' ? null : (input.owner.id ?? null),
 			type_key: input.typeKey,
 			state_key: input.stateKey ?? 'scheduled',
-			template_id: template?.id ?? null,
-			template_snapshot: template?.snapshot ?? {},
 			title: input.title,
 			description: input.description ?? null,
 			location: input.location ?? null,
@@ -116,15 +105,8 @@ export class OntoEventService {
 		client: TypedSupabaseClient,
 		input: UpdateOntoEventInput
 	): Promise<OntoEventRow> {
-		const template =
-			input.typeKey || input.templateId || input.templateSnapshot
-				? await this.resolveTemplate(client, {
-						typeKey: input.typeKey,
-						templateId: input.templateId ?? undefined,
-						templateSnapshot: input.templateSnapshot
-					})
-				: null;
 
+		// Template system removed Dec 2025 - events use type_key only
 		const updates: Partial<OntoEventRow> = {
 			title: input.title,
 			description: input.description,
@@ -137,9 +119,7 @@ export class OntoEventService {
 			type_key: input.typeKey,
 			recurrence: input.recurrence,
 			external_link: input.externalLink,
-			props: input.props,
-			template_id: template?.id,
-			template_snapshot: template?.snapshot
+			props: input.props
 		};
 
 		const { data, error } = await client
@@ -213,24 +193,5 @@ export class OntoEventService {
 
 	private static stripUndefined<T extends Record<string, unknown>>(value: T): T {
 		return Object.fromEntries(Object.entries(value).filter(([, v]) => v !== undefined)) as T;
-	}
-
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	private static async resolveTemplate(
-		_client: TypedSupabaseClient,
-		opts: {
-			typeKey?: string;
-			templateId?: string;
-			templateSnapshot?: Json;
-		}
-	): Promise<{ id: string | null; snapshot: Json } | null> {
-		// Template system removed - use provided snapshot if available, otherwise return null
-		if (opts.templateSnapshot && opts.templateId) {
-			return { id: opts.templateId, snapshot: opts.templateSnapshot };
-		}
-		if (opts.templateSnapshot) {
-			return { id: null, snapshot: opts.templateSnapshot };
-		}
-		return null;
 	}
 }

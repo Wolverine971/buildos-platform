@@ -135,15 +135,15 @@
 </script>
 
 <main class="min-h-screen bg-background transition-colors">
-	<div class="container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-10 max-w-7xl">
+	<div class="container mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8 lg:py-10 max-w-7xl">
 		<!-- Header Section -->
-		<header class="mb-6 sm:mb-8">
+		<header class="mb-4 sm:mb-8">
 			<h1
-				class="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground mb-2 tracking-tight"
+				class="text-xl sm:text-3xl lg:text-4xl font-bold text-foreground mb-1 sm:mb-2 tracking-tight"
 			>
 				Welcome back, {displayName}
 			</h1>
-			<p class="text-sm sm:text-base text-muted-foreground font-medium">
+			<p class="text-xs sm:text-base text-muted-foreground font-medium">
 				<time datetime={new Date().toISOString()}>
 					{formatFullDate(new Date())}
 				</time>
@@ -178,39 +178,37 @@
 			</div>
 		{:else}
 			<!-- Projects Grid -->
-			<section class="space-y-6">
+			<section class="space-y-3 sm:space-y-6">
+				<!-- Mobile Create Button (above header on mobile) -->
+				{#if hasProjects}
+					<button
+						onclick={handleCreateProject}
+						class="sm:hidden w-full flex items-center justify-center gap-2 rounded-lg border-2 border-dashed border-accent/50 bg-accent/5 p-3 text-sm font-bold text-accent transition-all duration-200 hover:border-accent hover:bg-accent/10 pressable"
+					>
+						<Plus class="h-4 w-4" />
+						New Project
+					</button>
+				{/if}
+
 				<!-- Section Header -->
-				<div class="flex items-center justify-between">
-					<div class="flex items-center gap-3">
-						<div class="p-2 bg-accent/10 rounded-lg border border-accent/30">
-							<FolderOpen class="h-5 w-5 text-accent" />
-						</div>
-						<h2 class="text-xl font-bold text-foreground">Your Projects</h2>
-						<!-- Refresh button -->
-						<button
-							onclick={refreshProjects}
-							disabled={isRefreshing}
-							class="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors disabled:opacity-50"
-							title="Refresh projects"
-						>
-							<RefreshCw class="h-4 w-4 {isRefreshing ? 'animate-spin' : ''}" />
-						</button>
+				<div class="flex items-center gap-2 sm:gap-3">
+					<div class="p-1.5 sm:p-2 bg-accent/10 rounded-lg border border-accent/30">
+						<FolderOpen class="h-4 w-4 sm:h-5 sm:w-5 text-accent" />
 					</div>
-					{#if hasProjects}
-						<Button
-							variant="primary"
-							size="sm"
-							onclick={handleCreateProject}
-							class="pressable"
-						>
-							<Plus class="h-4 w-4 mr-2" />
-							New Project
-						</Button>
-					{/if}
+					<h2 class="text-base sm:text-xl font-bold text-foreground">Your Projects</h2>
+					<!-- Refresh button -->
+					<button
+						onclick={refreshProjects}
+						disabled={isRefreshing}
+						class="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors disabled:opacity-50"
+						title="Refresh projects"
+					>
+						<RefreshCw class="h-4 w-4 {isRefreshing ? 'animate-spin' : ''}" />
+					</button>
 				</div>
 
-				<!-- Projects Grid -->
-				<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+				<!-- Projects Grid - 2 columns on mobile -->
+				<div class="grid grid-cols-2 md:grid-cols-2 xl:grid-cols-3 gap-2 sm:gap-4">
 					<!-- Create New Project Card (shown first or as only card when empty) -->
 					{#if !hasProjects}
 						<!-- Empty State - Large Create Card -->
@@ -240,18 +238,18 @@
 							</Button>
 						</div>
 					{:else}
-						<!-- Create New Project Card (compact version in grid) -->
+						<!-- Create New Project Card (hidden on mobile, shown on desktop) -->
 						<button
 							onclick={handleCreateProject}
-							class="group flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-border bg-card/50 p-6 shadow-ink transition-all duration-200 hover:border-accent hover:bg-accent/5 pressable min-h-[200px]"
+							class="hidden sm:flex group flex-col items-center justify-center rounded-lg border-2 border-dashed border-border bg-card/50 p-4 sm:p-6 shadow-ink transition-all duration-200 hover:border-accent hover:bg-accent/5 pressable min-h-[160px] sm:min-h-[200px]"
 						>
 							<div
-								class="mb-4 flex h-12 w-12 items-center justify-center rounded-lg border border-accent/30 bg-accent/10 text-accent transition-all group-hover:bg-accent group-hover:text-accent-foreground"
+								class="mb-3 sm:mb-4 flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-lg border border-accent/30 bg-accent/10 text-accent transition-all group-hover:bg-accent group-hover:text-accent-foreground"
 							>
-								<Plus class="h-6 w-6" />
+								<Plus class="h-5 w-5 sm:h-6 sm:w-6" />
 							</div>
 							<span
-								class="text-sm font-bold text-muted-foreground group-hover:text-foreground"
+								class="text-xs sm:text-sm font-bold text-muted-foreground group-hover:text-foreground"
 							>
 								Create New Project
 							</span>
@@ -261,17 +259,18 @@
 						{#each projects as project (project.id)}
 							<a
 								href="/projects/{project.id}"
-								class="group relative flex flex-col rounded-lg border border-border bg-card p-4 shadow-ink transition-all duration-200 hover:border-accent hover:shadow-ink-strong pressable tx tx-frame tx-weak"
+								class="group relative flex flex-col rounded-lg border border-border bg-card p-2.5 sm:p-4 shadow-ink transition-all duration-200 hover:border-accent hover:shadow-ink-strong pressable tx tx-frame tx-weak"
 							>
-								<!-- Header -->
-								<div class="mb-3 flex items-start justify-between gap-3">
+								<!-- Header - Mobile: Title only, Desktop: Title + Badge -->
+								<div class="mb-1.5 sm:mb-3 flex items-start justify-between gap-1 sm:gap-3">
 									<h3
-										class="text-lg font-bold text-foreground truncate transition-colors group-hover:text-accent"
+										class="text-sm sm:text-lg font-bold text-foreground line-clamp-2 transition-colors group-hover:text-accent leading-tight"
 									>
 										{project.name}
 									</h3>
+									<!-- Status badge - hidden on mobile, shown on larger screens -->
 									<span
-										class="flex-shrink-0 rounded-lg border px-2.5 py-1 text-xs font-bold capitalize {getProjectStateBadgeClass(
+										class="hidden sm:inline-flex flex-shrink-0 rounded-lg border px-2.5 py-1 text-xs font-bold capitalize {getProjectStateBadgeClass(
 											project.state_key
 										)}"
 									>
@@ -279,22 +278,33 @@
 									</span>
 								</div>
 
-								<!-- Description -->
+								<!-- Mobile status indicator (compact dot) -->
+								<div class="sm:hidden mb-1.5">
+									<span
+										class="inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[10px] font-bold capitalize {getProjectStateBadgeClass(
+											project.state_key
+										)}"
+									>
+										{project.state_key}
+									</span>
+								</div>
+
+								<!-- Description - Hidden on mobile -->
 								{#if project.description}
 									<p
-										class="mb-3 line-clamp-2 text-sm text-muted-foreground flex-1"
+										class="hidden sm:block mb-3 line-clamp-2 text-sm text-muted-foreground flex-1"
 									>
 										{project.description}
 									</p>
 								{:else}
-									<p class="mb-3 text-sm text-muted-foreground/50 italic flex-1">
+									<p class="hidden sm:block mb-3 text-sm text-muted-foreground/50 italic flex-1">
 										No description
 									</p>
 								{/if}
 
-								<!-- Facets (metadata tags) -->
+								<!-- Facets (metadata tags) - Hidden on mobile -->
 								{#if project.facet_context || project.facet_scale || project.facet_stage}
-									<div class="mb-3 flex flex-wrap gap-2">
+									<div class="hidden sm:flex mb-3 flex-wrap gap-2">
 										{#if project.facet_context}
 											<span
 												class="rounded-lg border border-accent/30 bg-accent/10 px-2 py-0.5 text-xs font-bold text-accent"
@@ -321,9 +331,22 @@
 
 								<!-- Footer Stats -->
 								<div
-									class="mt-auto flex flex-col gap-2 border-t border-border pt-3 text-sm text-muted-foreground"
+									class="mt-auto flex flex-col gap-1 sm:gap-2 border-t border-border pt-2 sm:pt-3 text-sm text-muted-foreground"
 								>
-									<div class="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+									<!-- Mobile: Only show task count -->
+									<div class="flex sm:hidden items-center justify-between">
+										<span
+											class="flex items-center gap-1"
+											aria-label="Task count"
+											title="Tasks"
+										>
+											<ListChecks class="h-3 w-3" />
+											<span class="font-bold text-[10px]">{project.task_count} tasks</span>
+										</span>
+										<ChevronRight class="h-3.5 w-3.5 text-muted-foreground/50" />
+									</div>
+									<!-- Desktop: Full stats -->
+									<div class="hidden sm:flex flex-wrap items-center gap-x-3 gap-y-1.5">
 										<span
 											class="flex items-center gap-1"
 											aria-label="Task count"
@@ -376,7 +399,7 @@
 										</span>
 									</div>
 									<div
-										class="flex items-center justify-between text-xs text-muted-foreground/70"
+										class="hidden sm:flex items-center justify-between text-xs text-muted-foreground/70"
 									>
 										<span
 											>Updated {new Date(

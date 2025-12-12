@@ -1,5 +1,6 @@
 ---
 date: 2025-12-10T00:00:00-08:00
+updated: 2025-12-12T00:00:00-08:00
 researcher: Claude
 repository: buildos-platform
 topic: Migration Flow System Design
@@ -8,688 +9,438 @@ status: complete
 path: thoughts/shared/research/2025-12-10_migration-system-design.md
 ---
 
-<!-- todo -->
-
 # BuildOS Migration System Design Document
+
+**Status**: Current (December 2025 - Post-Template Removal)
+
+---
 
 ## Executive Summary
 
-The BuildOS migration system transforms legacy data structures (projects, phases, tasks, calendar events) into the new **Ontology** schema. It features a multi-tiered architecture with an orchestrator coordinating specialized migrators, LLM-powered template discovery, batch optimizations, comprehensive error handling, and an admin dashboard for monitoring and control.
+The BuildOS migration system transforms legacy projects, phases, and tasks into the new ontology schema. **As of December 2025, templates have been removed** from the migration flow, resulting in a significantly simplified architecture:
+
+| Change | Old Approach | New Approach |
+|--------|-------------|--------------|
+| Template Discovery | LLM-powered matching + creation | **Removed** |
+| Property Extraction | Schema-driven with type inference | **Minimal props only** |
+| Project Type | Dynamically classified | Fixed: `project.base` |
+| Plan Type | Template-matched | Fixed: `plan.phase.project` |
+| Task Type | Two-phase classification | **Still active**: `task.{work_mode}[.{spec}]` |
+
+---
 
 ## Table of Contents
 
-1. [System Overview](#system-overview)
-2. [Architecture Diagram](#architecture-diagram)
-3. [Data Flow](#data-flow)
-4. [Component Details](#component-details)
-5. [Migration Pipeline](#migration-pipeline)
-6. [Error Handling & Recovery](#error-handling--recovery)
-7. [Performance Optimizations](#performance-optimizations)
-8. [Admin Dashboard](#admin-dashboard)
-9. [Database Schema](#database-schema)
-10. [API Endpoints](#api-endpoints)
+1. [System Architecture](#system-architecture)
+2. [Data Flow Diagram](#data-flow-diagram)
+3. [Service Components](#service-components)
+4. [Migration Pipeline](#migration-pipeline)
+5. [Database Schema](#database-schema)
+6. [Error Handling](#error-handling)
+7. [API Endpoints](#api-endpoints)
+8. [Removed Components](#removed-components)
 
 ---
 
-## System Overview
-
-### Purpose
-
-Migrate legacy BuildOS entities to the new Ontology-based schema:
-
-| Legacy Entity | Ontology Entity | Key Transformation |
-|--------------|-----------------|-------------------|
-| `projects` | `onto_projects` | Template-typed with FSM states |
-| `phases` | `onto_plans` | Linked via edges, schedule in props |
-| `tasks` | `onto_tasks` | LLM-classified type_key, facets |
-| `calendar_events` | `onto_tasks` (linked) | Associated via edges |
-
-### Key Features
-
-- **LLM-Powered Classification**: Tasks classified into work modes (execute, create, refine, research, review, coordinate, admin, plan) with optional specializations
-- **Template Discovery**: Automatic template matching/creation via `FindOrCreateTemplateService`
-- **Batch Processing**: Optimized batch operations minimize LLM calls and DB queries
-- **Idempotent Operations**: Legacy mapping table prevents duplicate migrations
-- **Platform Locking**: Ensures single migration run at a time
-- **Error Categorization**: Recoverable, data, and fatal error classification with remediation suggestions
-
----
-
-## Architecture Diagram
+## System Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────────┐
-│                              ADMIN DASHBOARD                                     │
-│                         /admin/migration/+page.svelte                            │
-│  ┌──────────────────────────────────────────────────────────────────────────┐   │
-│  │  Global Progress │ User Stats │ Error Management │ Run Controls          │   │
-│  └──────────────────────────────────────────────────────────────────────────┘   │
-└───────────────────────────────────────┬─────────────────────────────────────────┘
-                                        │
-                                        ▼
-┌─────────────────────────────────────────────────────────────────────────────────┐
-│                                API LAYER                                         │
-│  ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐ ┌───────────────┐  │
-│  │ /api/admin/     │ │ /api/admin/     │ │ /api/admin/     │ │ /api/admin/   │  │
-│  │ migration/start │ │ migration/stats │ │ migration/errors│ │ migration/    │  │
-│  │                 │ │                 │ │                 │ │ preview       │  │
-│  └────────┬────────┘ └────────┬────────┘ └────────┬────────┘ └───────┬───────┘  │
-└───────────┼────────────────────┼────────────────────┼──────────────────┼─────────┘
-            │                    │                    │                  │
-            ▼                    ▼                    ▼                  ▼
-┌─────────────────────────────────────────────────────────────────────────────────┐
-│                           SERVICE LAYER                                          │
-│                                                                                  │
-│  ┌─────────────────────────────────────────────────────────────────────────┐    │
-│  │                    OntologyMigrationOrchestrator                         │    │
-│  │                ontology-migration-orchestrator.ts                        │    │
-│  │                                                                          │    │
-│  │  • Coordinates entire migration pipeline                                 │    │
-│  │  • Manages run/batch context                                             │    │
-│  │  • Handles concurrency (project, phase, task, event)                     │    │
-│  │  • Pre-fetches mappings for performance                                  │    │
-│  └────────────────────────────────┬────────────────────────────────────────┘    │
-│                                   │                                              │
-│  ┌────────────────────────────────┼────────────────────────────────────────┐    │
-│  │                                │                                        │    │
-│  │    ┌───────────────────────────┼───────────────────────────┐           │    │
-│  │    │                           │                           │           │    │
-│  │    ▼                           ▼                           ▼           │    │
-│  │ ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐       │    │
-│  │ │ ProjectMigration │  │  PhaseMigration  │  │  TaskMigration   │       │    │
-│  │ │     Service      │  │     Service      │  │     Service      │       │    │
-│  │ └────────┬─────────┘  └────────┬─────────┘  └────────┬─────────┘       │    │
-│  │          │                     │                     │                 │    │
-│  │          ▼                     ▼                     ▼                 │    │
-│  │ ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐       │    │
-│  │ │ EnhancedProject  │  │  EnhancedPlan    │  │  EnhancedTask    │       │    │
-│  │ │    Migrator      │  │    Migrator      │  │    Migrator      │       │    │
-│  │ └────────┬─────────┘  └────────┬─────────┘  └────────┬─────────┘       │    │
-│  │          │                     │                     │                 │    │
-│  │          └─────────────────────┼─────────────────────┘                 │    │
-│  │                                │                                        │    │
-│  │                                ▼                                        │    │
-│  │          ┌─────────────────────────────────────────────────┐           │    │
-│  │          │         BatchTaskMigrationService               │           │    │
-│  │          │    (Optimized 4-phase batch processing)         │           │    │
-│  │          │                                                 │           │    │
-│  │          │  Phase 1: CLASSIFY  → Work mode + specialization│           │    │
-│  │          │  Phase 2: RESOLVE   → Template lookup/creation  │           │    │
-│  │          │  Phase 3: EXTRACT   → Property extraction       │           │    │
-│  │          │  Phase 4: INSERT    → Batch DB operations       │           │    │
-│  │          └────────────────────┬────────────────────────────┘           │    │
-│  │                               │                                        │    │
-│  └───────────────────────────────┼────────────────────────────────────────┘    │
-│                                  │                                              │
-│  ┌───────────────────────────────┼────────────────────────────────────────┐    │
-│  │                               ▼                                        │    │
-│  │  ┌──────────────────────────────────────────────────────────────────┐ │    │
-│  │  │                    FindOrCreateTemplateService                    │ │    │
-│  │  │                                                                   │ │    │
-│  │  │  • Template discovery with LLM similarity matching                │ │    │
-│  │  │  • Dynamic template creation when no match found                  │ │    │
-│  │  │  • 70% match threshold for template selection                     │ │    │
-│  │  └──────────────────────────────────────────────────────────────────┘ │    │
-│  │                                                                        │    │
-│  │  ┌──────────────────────────────────────────────────────────────────┐ │    │
-│  │  │                    PropertyExtractorEngine                        │ │    │
-│  │  │                                                                   │ │    │
-│  │  │  • Intelligent property extraction from legacy data               │ │    │
-│  │  │  • Type inference ($80k → 80000, "June 2026" → ISO date)         │ │    │
-│  │  │  • Schema validation                                              │ │    │
-│  │  │  • Deep merge with template defaults                              │ │    │
-│  │  └──────────────────────────────────────────────────────────────────┘ │    │
-│  │                                                                        │    │
-│  │  ┌──────────────────────────────────────────────────────────────────┐ │    │
-│  │  │                    SchemaAutoRepairService                        │ │    │
-│  │  │                                                                   │ │    │
-│  │  │  • Detects schema/default mismatches                              │ │    │
-│  │  │  • LLM-powered schema repair suggestions                          │ │    │
-│  │  │  • Auto-fixes validation errors                                   │ │    │
-│  │  └──────────────────────────────────────────────────────────────────┘ │    │
-│  └────────────────────────────────────────────────────────────────────────┘    │
-│                                                                                  │
-│  ┌────────────────────────────────────────────────────────────────────────┐    │
-│  │                         SUPPORT SERVICES                               │    │
-│  │                                                                        │    │
-│  │  ┌────────────────┐  ┌────────────────┐  ┌────────────────────────┐   │    │
-│  │  │ MigrationStats │  │ MigrationError │  │ CalendarMigration      │   │    │
-│  │  │    Service     │  │    Service     │  │      Service           │   │    │
-│  │  │                │  │                │  │                        │   │    │
-│  │  │ • User stats   │  │ • Error query  │  │ • Event linking        │   │    │
-│  │  │ • Global prog  │  │ • Categorize   │  │ • Calendar sync        │   │    │
-│  │  │ • Lock mgmt    │  │ • Remediation  │  │ • Edge creation        │   │    │
-│  │  │ • Recent runs  │  │ • Delete/retry │  │                        │   │    │
-│  │  └────────────────┘  └────────────────┘  └────────────────────────┘   │    │
-│  │                                                                        │    │
-│  │  ┌────────────────────────────────────────────────────────────────┐   │    │
-│  │  │                    LegacyMappingService                         │   │    │
-│  │  │                                                                 │   │    │
-│  │  │  • Tracks legacy_id → onto_id mappings                          │   │    │
-│  │  │  • Checksum-based change detection                              │   │    │
-│  │  │  • Batch lookup for idempotency                                 │   │    │
-│  │  └────────────────────────────────────────────────────────────────┘   │    │
-│  └────────────────────────────────────────────────────────────────────────┘    │
-│                                                                                  │
-└─────────────────────────────────────────────────────────────────────────────────┘
-                                        │
-                                        ▼
-┌─────────────────────────────────────────────────────────────────────────────────┐
-│                              DATABASE LAYER                                      │
-│                                                                                  │
-│  ┌──────────────────────────────────────────────────────────────────────────┐   │
-│  │                           LEGACY TABLES                                   │   │
-│  │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌────────────────┐               │   │
-│  │  │ projects │ │  phases  │ │  tasks   │ │ calendar_events│               │   │
-│  │  └──────────┘ └──────────┘ └──────────┘ └────────────────┘               │   │
-│  └──────────────────────────────────────────────────────────────────────────┘   │
-│                                        │                                         │
-│                                        ▼                                         │
-│  ┌──────────────────────────────────────────────────────────────────────────┐   │
-│  │                         MIGRATION TABLES                                  │   │
-│  │  ┌─────────────────────┐ ┌──────────────────────────┐                    │   │
-│  │  │    migration_log    │ │ legacy_entity_mappings   │                    │   │
-│  │  │                     │ │                          │                    │   │
-│  │  │ • run_id, batch_id  │ │ • legacy_table           │                    │   │
-│  │  │ • entity_type       │ │ • legacy_id              │                    │   │
-│  │  │ • status            │ │ • onto_table             │                    │   │
-│  │  │ • error_message     │ │ • onto_id                │                    │   │
-│  │  │ • metadata          │ │ • checksum               │                    │   │
-│  │  └─────────────────────┘ └──────────────────────────┘                    │   │
-│  │                                                                           │   │
-│  │  ┌─────────────────────────┐ ┌──────────────────────────────────────┐    │   │
-│  │  │ migration_platform_lock │ │ user_migration_stats (materialized)  │    │   │
-│  │  └─────────────────────────┘ └──────────────────────────────────────┘    │   │
-│  └──────────────────────────────────────────────────────────────────────────┘   │
-│                                        │                                         │
-│                                        ▼                                         │
-│  ┌──────────────────────────────────────────────────────────────────────────┐   │
-│  │                          ONTOLOGY TABLES                                  │   │
-│  │  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐ ┌────────────────┐   │   │
-│  │  │onto_projects │ │ onto_plans   │ │ onto_tasks   │ │ onto_templates │   │   │
-│  │  └──────────────┘ └──────────────┘ └──────────────┘ └────────────────┘   │   │
-│  │                                                                           │   │
-│  │  ┌──────────────────────────────────────────────────────────────────┐    │   │
-│  │  │                         onto_edges                                │    │   │
-│  │  │  (project ↔ plan, plan ↔ task, task ↔ calendar relationships)    │    │   │
-│  │  └──────────────────────────────────────────────────────────────────┘    │   │
-│  └──────────────────────────────────────────────────────────────────────────┘   │
-│                                                                                  │
-└─────────────────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         /admin/migration UI                                  │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐        │
+│  │  Project    │  │   Phase     │  │    Task     │  │  Progress   │        │
+│  │  Selection  │  │  Preview    │  │  Preview    │  │  Monitor    │        │
+│  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘        │
+└─────────┼────────────────┼────────────────┼────────────────┼────────────────┘
+          │                │                │                │
+          ▼                ▼                ▼                ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    API Layer (/api/admin/migration/*)                       │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐        │
+│  │  /start     │  │  /preview   │  │  /status    │  │  /cancel    │        │
+│  │  POST       │  │  POST       │  │  GET        │  │  POST       │        │
+│  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘        │
+└─────────┼────────────────┼────────────────┼────────────────┼────────────────┘
+          │                │                │                │
+          ▼                ▼                ▼                ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                   OntologyMigrationOrchestrator                             │
+│  ┌──────────────────────────────────────────────────────────────────────┐   │
+│  │  runMigration(options) → Full Pipeline Execution                     │   │
+│  │                                                                       │   │
+│  │  ┌─────────────┐   ┌─────────────┐   ┌─────────────┐                 │   │
+│  │  │ Project     │ → │ Phase       │ → │ Task        │                 │   │
+│  │  │ Migration   │   │ Migration   │   │ Migration   │                 │   │
+│  │  │ Service     │   │ Service     │   │ Service     │                 │   │
+│  │  └─────────────┘   └─────────────┘   └─────────────┘                 │   │
+│  │                                                                       │   │
+│  │  Flow: Projects → Plans → Tasks (sequential, with parallel batches)  │   │
+│  └──────────────────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Data Flow
-
-### Complete Migration Flow Diagram
+## Data Flow Diagram
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────────┐
-│                            MIGRATION RUN LIFECYCLE                               │
-└─────────────────────────────────────────────────────────────────────────────────┘
+                              MIGRATION DATA FLOW
+                            (December 2025 - Template-Free)
 
-   ┌──────────────────┐
-   │   Admin Triggers │
-   │    Migration     │
-   └────────┬─────────┘
-            │
-            ▼
-   ┌──────────────────────────────────────────────────────────────────┐
-   │                    PRE-FLIGHT CHECKS                              │
-   │  ┌────────────────┐  ┌──────────────┐  ┌──────────────────────┐  │
-   │  │ Auth Check     │─▶│ Admin Check  │─▶│ Lock Acquisition     │  │
-   │  │ (user exists)  │  │ (is_admin)   │  │ (platform-wide runs) │  │
-   │  └────────────────┘  └──────────────┘  └──────────────────────┘  │
-   └───────────────────────────────┬──────────────────────────────────┘
-                                   │
-                                   ▼
-   ┌──────────────────────────────────────────────────────────────────┐
-   │                    ORCHESTRATOR INITIALIZATION                    │
-   │                                                                   │
-   │  1. Generate run_id (UUID)                                        │
-   │  2. Generate batch_id (UUID)                                      │
-   │  3. Create migration context with options:                        │
-   │     • skipCompletedTasks                                          │
-   │     • projectConcurrency (default: 3, max: 10)                    │
-   │     • phaseConcurrency (default: 5, max: 15)                      │
-   │     • taskConcurrency (default: 5, max: 20)                       │
-   │     • eventConcurrency (default: 10, max: 30)                     │
-   │  4. Pre-fetch existing legacy mappings (optimization)             │
-   └───────────────────────────────┬──────────────────────────────────┘
-                                   │
-                                   ▼
-   ┌──────────────────────────────────────────────────────────────────┐
-   │                    LOG MIGRATION RUN START                        │
-   │  INSERT INTO migration_log (entity_type='run', status='pending')  │
-   └───────────────────────────────┬──────────────────────────────────┘
-                                   │
-            ┌──────────────────────┴──────────────────────┐
-            │     FOR EACH PROJECT (with concurrency)     │
-            ▼                                             │
-   ┌──────────────────────────────────────────────────────┴───────────┐
-   │                                                                   │
-   │   ╔═══════════════════════════════════════════════════════════╗  │
-   │   ║              PHASE 1: PROJECT MIGRATION                   ║  │
-   │   ╚═══════════════════════════════════════════════════════════╝  │
-   │                                                                   │
-   │   ┌─────────────────────────────────────────────────────────┐    │
-   │   │ ProjectMigrationService.migrateProject()                │    │
-   │   │                                                          │    │
-   │   │  1. Check legacy mapping (idempotency)                   │    │
-   │   │     └─▶ If exists: Skip (already migrated)               │    │
-   │   │                                                          │    │
-   │   │  2. Load project with phases from legacy DB              │    │
-   │   │                                                          │    │
-   │   │  3. EnhancedProjectMigrator.migrate()                    │    │
-   │   │     ├─▶ Build project narrative (name, desc, context,    │    │
-   │   │     │    core values, tags, executive summary)           │    │
-   │   │     ├─▶ Infer realm (writer, developer, event, etc.)     │    │
-   │   │     ├─▶ FindOrCreateTemplateService.findOrCreate()       │    │
-   │   │     │    • Match against existing templates (70% thresh) │    │
-   │   │     │    • Create new template if no match               │    │
-   │   │     ├─▶ PropertyExtractorEngine.extractProperties()      │    │
-   │   │     ├─▶ SchemaAutoRepairService (if validation fails)    │    │
-   │   │     ├─▶ Merge props with template defaults               │    │
-   │   │     └─▶ INSERT INTO onto_projects                        │    │
-   │   │                                                          │    │
-   │   │  4. Create context document (if project has context)     │    │
-   │   │     └─▶ INSERT INTO onto_documents (type='context')      │    │
-   │   │     └─▶ Link via onto_edges                              │    │
-   │   │                                                          │    │
-   │   │  5. Record legacy mapping                                │    │
-   │   │     └─▶ INSERT INTO legacy_entity_mappings               │    │
-   │   │                                                          │    │
-   │   │  6. Log success/failure                                  │    │
-   │   │     └─▶ INSERT INTO migration_log                        │    │
-   │   └─────────────────────────────────────────────────────────┘    │
-   │                          │                                        │
-   │                          ▼                                        │
-   │   ╔═══════════════════════════════════════════════════════════╗  │
-   │   ║              PHASE 2: PHASE → PLAN MIGRATION              ║  │
-   │   ╚═══════════════════════════════════════════════════════════╝  │
-   │                                                                   │
-   │   ┌─────────────────────────────────────────────────────────┐    │
-   │   │ PhaseMigrationService.migratePhasesForProject()         │    │
-   │   │                                                          │    │
-   │   │  FOR EACH PHASE (with phaseConcurrency):                 │    │
-   │   │                                                          │    │
-   │   │  1. Check legacy mapping (idempotency)                   │    │
-   │   │     └─▶ If exists: Use cached onto_plan_id               │    │
-   │   │                                                          │    │
-   │   │  2. EnhancedPlanMigrator.migrate()                       │    │
-   │   │     ├─▶ Build phase narrative                            │    │
-   │   │     ├─▶ Infer realm from phase name/description          │    │
-   │   │     ├─▶ FindOrCreateTemplateService (scope: 'plan')      │    │
-   │   │     ├─▶ PropertyExtractorEngine for plan props           │    │
-   │   │     ├─▶ Determine state (draft/active/complete)          │    │
-   │   │     └─▶ INSERT INTO onto_plans                           │    │
-   │   │                                                          │    │
-   │   │  3. Create project→plan edge                             │    │
-   │   │     └─▶ INSERT INTO onto_edges (rel='has_plan')          │    │
-   │   │                                                          │    │
-   │   │  4. Record legacy mapping & log                          │    │
-   │   │                                                          │    │
-   │   │  RETURNS: phaseToPlanMapping {legacy_phase_id → plan_id} │    │
-   │   └─────────────────────────────────────────────────────────┘    │
-   │                          │                                        │
-   │                          ▼                                        │
-   │   ╔═══════════════════════════════════════════════════════════╗  │
-   │   ║              PHASE 3: TASK MIGRATION (BATCH)              ║  │
-   │   ╚═══════════════════════════════════════════════════════════╝  │
-   │                                                                   │
-   │   ┌─────────────────────────────────────────────────────────┐    │
-   │   │ TaskMigrationService.migrateTasksForProject()           │    │
-   │   │                                                          │    │
-   │   │  1. Load all tasks for project                           │    │
-   │   │     └─▶ Filter out: deleted, completed (if skipCompleted)│    │
-   │   │                                                          │    │
-   │   │  2. Build taskToPhaseMapping {task_id → phase_id}        │    │
-   │   │                                                          │    │
-   │   │  3. BatchTaskMigrationService.migrateProjectTasks()      │    │
-   │   │                                                          │    │
-   │   │     ┌─────────────────────────────────────────────────┐  │    │
-   │   │     │        BATCH CLASSIFICATION (Phase 1)           │  │    │
-   │   │     │                                                  │  │    │
-   │   │     │  Two-Phase Hierarchical Classification:          │  │    │
-   │   │     │                                                  │  │    │
-   │   │     │  Phase 1a: Work Mode (Fast LLM)                  │  │    │
-   │   │     │  ├─▶ execute (default)                           │  │    │
-   │   │     │  ├─▶ create (new artifacts)                      │  │    │
-   │   │     │  ├─▶ refine (improve existing)                   │  │    │
-   │   │     │  ├─▶ research (investigate)                      │  │    │
-   │   │     │  ├─▶ review (evaluate)                           │  │    │
-   │   │     │  ├─▶ coordinate (sync with others)               │  │    │
-   │   │     │  ├─▶ admin (housekeeping)                        │  │    │
-   │   │     │  └─▶ plan (strategic thinking)                   │  │    │
-   │   │     │                                                  │  │    │
-   │   │     │  Phase 1b: Specialization (Balanced LLM)         │  │    │
-   │   │     │  └─▶ task.execute.deploy                         │  │    │
-   │   │     │  └─▶ task.coordinate.meeting                     │  │    │
-   │   │     │  └─▶ task.review.code                            │  │    │
-   │   │     │  └─▶ (or base: task.execute)                     │  │    │
-   │   │     └─────────────────────────────────────────────────┘  │    │
-   │   │                                                          │    │
-   │   │     ┌─────────────────────────────────────────────────┐  │    │
-   │   │     │        TEMPLATE RESOLUTION (Phase 2)            │  │    │
-   │   │     │                                                  │  │    │
-   │   │     │  1. Single DB query for all task templates       │  │    │
-   │   │     │  2. Separate existing vs new type_keys           │  │    │
-   │   │     │  3. Resolve existing templates (no LLM)          │  │    │
-   │   │     │  4. Create new templates via FindOrCreate        │  │    │
-   │   │     │     └─▶ Or fallback to parent (task.execute)     │  │    │
-   │   │     └─────────────────────────────────────────────────┘  │    │
-   │   │                                                          │    │
-   │   │     ┌─────────────────────────────────────────────────┐  │    │
-   │   │     │        PROPERTY EXTRACTION (Phase 3)            │  │    │
-   │   │     │                                                  │  │    │
-   │   │     │  • Group tasks by type_key                       │  │    │
-   │   │     │  • Batch extract per schema                      │  │    │
-   │   │     │  • Type inference (currency, dates, arrays)      │  │    │
-   │   │     │  • Merge with template defaults                  │  │    │
-   │   │     └─────────────────────────────────────────────────┘  │    │
-   │   │                                                          │    │
-   │   │     ┌─────────────────────────────────────────────────┐  │    │
-   │   │     │        DATABASE OPERATIONS (Phase 4)            │  │    │
-   │   │     │                                                  │  │    │
-   │   │     │  1. Check existing mappings (idempotency)        │  │    │
-   │   │     │  2. Batch INSERT INTO onto_tasks                 │  │    │
-   │   │     │  3. Batch INSERT INTO onto_edges (task→plan)     │  │    │
-   │   │     │     └─▶ Per-task plan linkage via mapping        │  │    │
-   │   │     │  4. Batch INSERT legacy_entity_mappings          │  │    │
-   │   │     └─────────────────────────────────────────────────┘  │    │
-   │   │                                                          │    │
-   │   │  RETURNS: tasksMigrated count, errors array              │    │
-   │   └─────────────────────────────────────────────────────────┘    │
-   │                          │                                        │
-   │                          ▼                                        │
-   │   ╔═══════════════════════════════════════════════════════════╗  │
-   │   ║              PHASE 4: CALENDAR EVENT MIGRATION            ║  │
-   │   ╚═══════════════════════════════════════════════════════════╝  │
-   │                                                                   │
-   │   ┌─────────────────────────────────────────────────────────┐    │
-   │   │ CalendarMigrationService.migrateCalendarForProject()    │    │
-   │   │                                                          │    │
-   │   │  1. Load calendar events linked to project tasks         │    │
-   │   │                                                          │    │
-   │   │  2. FOR EACH EVENT (with eventConcurrency):              │    │
-   │   │     ├─▶ Look up task mapping (legacy → onto)             │    │
-   │   │     ├─▶ Create edge linking event to onto_task           │    │
-   │   │     │    └─▶ INSERT INTO onto_edges                      │    │
-   │   │     │        (rel='has_calendar_event')                  │    │
-   │   │     └─▶ Record legacy mapping                            │    │
-   │   │                                                          │    │
-   │   │  Note: Events stay in calendar_events table,             │    │
-   │   │        linked via edges to onto_tasks                    │    │
-   │   └─────────────────────────────────────────────────────────┘    │
-   │                                                                   │
-   └───────────────────────────────┬──────────────────────────────────┘
-                                   │
-                                   ▼
-   ┌──────────────────────────────────────────────────────────────────┐
-   │                    POST-MIGRATION                                 │
-   │                                                                   │
-   │  1. Release platform lock (if acquired)                           │
-   │  2. Refresh materialized stats view                               │
-   │     └─▶ CALL refresh_user_migration_stats()                       │
-   │  3. Update run status                                             │
-   │     └─▶ UPDATE migration_log SET status='completed'               │
-   │  4. Return summary to caller                                      │
-   │     └─▶ { runId, batchId, status, totalProjects, results }        │
-   └──────────────────────────────────────────────────────────────────┘
+ ┌────────────────────────────────────────────────────────────────────────┐
+ │                           LEGACY SCHEMA                                │
+ │  ┌──────────┐    ┌──────────┐    ┌──────────┐    ┌──────────────────┐ │
+ │  │ projects │    │  phases  │    │  tasks   │    │ phase_tasks (M2M)│ │
+ │  └────┬─────┘    └────┬─────┘    └────┬─────┘    └────────┬─────────┘ │
+ └───────┼───────────────┼───────────────┼──────────────────┼────────────┘
+         │               │               │                  │
+         ▼               ▼               ▼                  ▼
+ ┌────────────────────────────────────────────────────────────────────────┐
+ │                         MIGRATION SERVICES                             │
+ │                                                                        │
+ │  ┌─────────────────────────────────────────────────────────────────┐  │
+ │  │              ProjectMigrationService                             │  │
+ │  │  ┌───────────────┐    ┌───────────────┐    ┌───────────────┐    │  │
+ │  │  │ fetchCandidates│ →  │ buildAnalysis │ →  │migrateProject │    │  │
+ │  │  │               │    │ (counts, etc) │    │ (Enhanced)    │    │  │
+ │  │  └───────────────┘    └───────────────┘    └───────┬───────┘    │  │
+ │  │                                                     │            │  │
+ │  │  EnhancedProjectMigrator:                          │            │  │
+ │  │  ┌─────────────────────────────────────────────────┤            │  │
+ │  │  │ • type_key = 'project.base' (FIXED DEFAULT)    │            │  │
+ │  │  │ • Derives facets from legacy data              │            │  │
+ │  │  │ • NO template lookup                           │            │  │
+ │  │  │ • NO property extraction                       │            │  │
+ │  │  └─────────────────────────────────────────────────┘            │  │
+ │  └─────────────────────────────────────────────────────┬────────────┘  │
+ │                                                        │               │
+ │  ┌─────────────────────────────────────────────────────┼────────────┐  │
+ │  │              PhaseMigrationService                  ▼            │  │
+ │  │  ┌───────────────┐    ┌───────────────┐    ┌───────────────┐    │  │
+ │  │  │ fetchPhases   │ →  │ generatePlans │ →  │ insertPlans   │    │  │
+ │  │  │               │    │ (LLM preview) │    │               │    │  │
+ │  │  └───────────────┘    └───────────────┘    └───────┬───────┘    │  │
+ │  │                                                     │            │  │
+ │  │  PlanGenerationService:                            │            │  │
+ │  │  ┌─────────────────────────────────────────────────┤            │  │
+ │  │  │ • type_key = 'plan.phase.project' (FIXED)      │            │  │
+ │  │  │ • LLM generates plan names/summaries           │            │  │
+ │  │  │ • Creates onto_edges (has_plan)                │            │  │
+ │  │  └─────────────────────────────────────────────────┘            │  │
+ │  └─────────────────────────────────────────────────────┬────────────┘  │
+ │                                                        │               │
+ │  ┌─────────────────────────────────────────────────────┼────────────┐  │
+ │  │              TaskMigrationService                   ▼            │  │
+ │  │  ┌───────────────┐    ┌───────────────┐    ┌───────────────┐    │  │
+ │  │  │ fetchTasks    │ →  │ classifyBatch │ →  │ batchInsert   │    │  │
+ │  │  │ (skip done)   │    │ (LLM 2-phase) │    │ (tasks+edges) │    │  │
+ │  │  └───────────────┘    └───────────────┘    └───────┬───────┘    │  │
+ │  │                              │                     │            │  │
+ │  │  BatchTaskMigrationService (TWO-PHASE LLM):       │            │  │
+ │  │  ┌─────────────────────────────────────────────────┤            │  │
+ │  │  │ Phase 1: Fast LLM → work_mode (8 options)      │            │  │
+ │  │  │ Phase 2: Balanced LLM → specialization         │            │  │
+ │  │  │ Final: task.{mode}[.{spec}]                    │            │  │
+ │  │  │                                                │            │  │
+ │  │  │ • Minimal props (no schema extraction)         │            │  │
+ │  │  │ • Template resolution REMOVED                  │            │  │
+ │  │  └─────────────────────────────────────────────────┘            │  │
+ │  └─────────────────────────────────────────────────────┬────────────┘  │
+ └────────────────────────────────────────────────────────┼───────────────┘
+                                                          │
+                                                          ▼
+ ┌────────────────────────────────────────────────────────────────────────┐
+ │                          ONTOLOGY SCHEMA                               │
+ │  ┌───────────────┐  ┌───────────────┐  ┌───────────────┐              │
+ │  │ onto_projects │  │  onto_plans   │  │  onto_tasks   │              │
+ │  │ • type_key    │  │ • type_key    │  │ • type_key    │              │
+ │  │ • state_key   │  │ • state_key   │  │ • state_key   │              │
+ │  │ • props       │  │ • props       │  │ • props       │              │
+ │  │ • facets      │  │ • facets      │  │ • facet_scale │              │
+ │  └───────┬───────┘  └───────┬───────┘  └───────┬───────┘              │
+ │          │                  │                  │                       │
+ │          ▼                  ▼                  ▼                       │
+ │  ┌─────────────────────────────────────────────────────────────────┐  │
+ │  │                      onto_edges                                  │  │
+ │  │  • project ─[has_plan]→ plan                                    │  │
+ │  │  • plan ─[has_task]→ task                                       │  │
+ │  │  • task ─[belongs_to_plan]→ plan                                │  │
+ │  └─────────────────────────────────────────────────────────────────┘  │
+ │                                                                        │
+ │  ┌───────────────────────────┐  ┌───────────────────────────────────┐ │
+ │  │  legacy_entity_mappings   │  │       migration_log               │ │
+ │  │  • legacy_table           │  │  • run_id, batch_id               │ │
+ │  │  • legacy_id              │  │  • entity_type, entity_id         │ │
+ │  │  • onto_table             │  │  • status, message                │ │
+ │  │  • onto_id                │  │  • legacy_payload, metadata       │ │
+ │  │  • metadata (JSON)        │  │                                   │ │
+ │  └───────────────────────────┘  └───────────────────────────────────┘ │
+ └────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Component Details
+## Service Components
 
 ### 1. OntologyMigrationOrchestrator
 
-**Location**: `apps/web/src/lib/services/ontology/ontology-migration-orchestrator.ts`
+**File**: `src/lib/services/ontology/ontology-migration-orchestrator.ts`
 
-**Responsibilities**:
-- Main entry point for migration runs
-- Coordinates all migration phases
-- Manages concurrency settings
-- Pre-fetches mappings for performance
-- Handles dry-run mode
-
-**Key Methods**:
-```typescript
-start(options: MigrationRunOptions): Promise<MigrationRunSummary>
-```
-
-### 2. Project Migration Service
-
-**Location**: `apps/web/src/lib/services/ontology/project-migration.service.ts`
-
-**Flow**:
-1. Check idempotency via `getLegacyMapping()`
-2. Load project with phases
-3. Call `EnhancedProjectMigrator.migrate()`
-4. Create context document if needed
-5. Record mapping and log
-
-### 3. Phase Migration Service
-
-**Location**: `apps/web/src/lib/services/ontology/phase-migration.service.ts`
-
-**Flow**:
-1. Iterate phases with concurrency
-2. Call `EnhancedPlanMigrator.migrate()`
-3. Create project→plan edges
-4. Build `phaseToPlanMapping` for task migration
-
-### 4. Task Migration Service
-
-**Location**: `apps/web/src/lib/services/ontology/task-migration.service.ts`
-
-**Flow**:
-1. Load tasks, filter completed if needed
-2. Build `taskToPhaseMapping`
-3. Delegate to `BatchTaskMigrationService`
-
-### 5. BatchTaskMigrationService
-
-**Location**: `apps/web/src/lib/services/ontology/batch-task-migration.service.ts`
-
-**Optimization Pipeline**:
-```
-┌─────────────┐    ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
-│  CLASSIFY   │───▶│   RESOLVE   │───▶│   EXTRACT   │───▶│   INSERT    │
-│ (1 LLM/batch)│    │  TEMPLATES  │    │ (N by schema)│    │  (batch DB) │
-└─────────────┘    └─────────────┘    └─────────────┘    └─────────────┘
-```
-
-**Two-Phase Classification**:
-- Phase 1a: Fast LLM selects work_mode (8 options)
-- Phase 1b: Balanced LLM adds specialization per work_mode group
-
-### 6. Enhanced Migrators
-
-All enhanced migrators follow the same pattern:
-
-```
-┌──────────────────┐    ┌──────────────────┐    ┌──────────────────┐
-│  Build Narrative │───▶│  Template Match  │───▶│  Property Extract│
-│  (context-rich)  │    │  (FindOrCreate)  │    │  (LLM-powered)   │
-└──────────────────┘    └──────────────────┘    └──────────────────┘
-         │                                               │
-         │              ┌──────────────────┐             │
-         └─────────────▶│  Schema Validate │◀────────────┘
-                        │  & Auto-Repair   │
-                        └────────┬─────────┘
-                                 │
-                        ┌────────▼─────────┐
-                        │   Merge Defaults │
-                        │   & Insert       │
-                        └──────────────────┘
-```
-
-### 7. FindOrCreateTemplateService
-
-**Location**: `apps/web/src/lib/services/ontology/find-or-create-template.service.ts`
-
-**Key Features**:
-- 70% match threshold for template selection
-- LLM-powered similarity matching
-- Dynamic template creation with proper inheritance
-- Scope-aware (project, plan, task, goal, document)
-
-### 8. Support Services
-
-| Service | Purpose |
-|---------|---------|
-| `MigrationStatsService` | User stats, global progress, lock management |
-| `MigrationErrorService` | Error categorization, remediation suggestions |
-| `LegacyMappingService` | Idempotent mapping tracking with checksums |
-| `CalendarMigrationService` | Event linking via edges |
-
----
-
-## Error Handling & Recovery
-
-### Error Categories
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                      ERROR CLASSIFICATION                        │
-├─────────────────┬───────────────────────────────────────────────┤
-│   RECOVERABLE   │ Timeout, rate limit, connection errors        │
-│                 │ → Action: retry                               │
-├─────────────────┼───────────────────────────────────────────────┤
-│      DATA       │ Template mismatch, validation, schema errors  │
-│                 │ → Action: retry_with_fallback                 │
-├─────────────────┼───────────────────────────────────────────────┤
-│      FATAL      │ Corrupted data, circular refs, unsupported    │
-│                 │ → Action: skip                                │
-└─────────────────┴───────────────────────────────────────────────┘
-```
-
-### Fallback Templates
-
-| Entity Type | Fallback Template |
-|-------------|------------------|
-| project | `project.generic` |
-| task | `task.execute` |
-| phase | `plan.timebox.sprint` |
-| calendar | (none - skip) |
-
-### Retry Logic
-
-- Max 3 retries per entity
-- Exponential backoff for recoverable errors
-- Auto-repair for schema validation failures
-
----
-
-## Performance Optimizations
-
-### 1. Pre-fetched Mappings Cache
+**Purpose**: Top-level coordinator for entire migration flow.
 
 ```typescript
-interface PrefetchedMappingsCache {
-  projects: Map<string, string>;  // legacy_id → onto_id
-  phases: Map<string, string>;
-  tasks: Map<string, string>;
-  events: Map<string, string>;
+interface MigrationOptions {
+  projectIds?: string[];         // Specific projects or all
+  dryRun: boolean;               // Preview mode
+  initiatedBy: string;           // User ID
+  skipCompletedTasks?: boolean;  // Default: true
+  taskConcurrency?: number;      // Parallel task processing
+}
+
+interface MigrationResult {
+  runId: string;
+  status: 'completed' | 'partial' | 'failed';
+  projects: ProjectMigrationResult[];
+  phases: PhaseMigrationBatchResult[];
+  tasks: TaskMigrationBatchResult[];
+  summary: MigrationSummary;
 }
 ```
 
-### 2. Batch Operations
+**Flow**:
+1. Acquire platform lock (prevents concurrent migrations)
+2. Generate run_id and batch_id
+3. Migrate projects → plans → tasks (in order)
+4. Record all mappings to legacy_entity_mappings
+5. Log all operations to migration_log
+6. Release lock and return summary
 
-| Operation | Single | Batch | Improvement |
-|-----------|--------|-------|-------------|
-| Task Classification | N LLM calls | 1 LLM call/batch | ~95% reduction |
-| Template Loading | N DB queries | 1 DB query | ~99% reduction |
-| Property Extraction | N LLM calls | 1 per schema | ~80% reduction |
-| DB Inserts | N queries | Batch insert | ~90% reduction |
+---
 
-### 3. Concurrency Controls
+### 2. ProjectMigrationService + EnhancedProjectMigrator
 
+**File**: `src/lib/services/ontology/project-migration.service.ts`
+
+**Purpose**: Migrates legacy projects to onto_projects.
+
+**Current Behavior (Template-Free)**:
+- Fixed type_key: `project.base`
+- No template discovery or property extraction
+- Derives facets heuristically from legacy data
+
+```
+Legacy Project
+     │
+     ▼
+┌─────────────────┐
+│ EnhancedProject │
+│ Migrator        │
+│                 │
+│ • type_key =    │
+│   'project.base'│     ┌─────────────────┐
+│ • deriveFacets()│ ──▶ │  onto_projects  │
+│ • mapStatus()   │     │  • name         │
+└─────────────────┘     │  • description  │
+                        │  • type_key     │
+                        │  • state_key    │
+                        │  • props{facets}│
+                        └─────────────────┘
+```
+
+**Facet Derivation Logic**:
+```typescript
+// Context (from project.context text)
+if (includes('client')) → 'client'
+if (includes('work'))   → 'commercial'
+if (includes('startup')) → 'startup'
+if (includes('academic')) → 'academic'
+else                    → 'personal'
+
+// Scale (from description length + tags)
+complexity = descLength + tagCount * 50
+if (complexity > 1000)  → 'large'
+if (complexity > 500)   → 'medium'
+if (complexity > 200)   → 'small'
+else                    → 'micro'
+
+// Stage (from status)
+'completed' → 'complete'
+'active'    → 'execution'
+'planning'  → 'planning'
+default     → 'discovery'
+```
+
+---
+
+### 3. PhaseMigrationService
+
+**File**: `src/lib/services/ontology/phase-migration.service.ts`
+
+**Purpose**: Migrates legacy phases to onto_plans.
+
+**Flow**:
+```
+Legacy Phases (ordered)
+        │
+        ▼
+┌───────────────────────┐
+│ PlanGenerationService │
+│ (LLM Enhancement)     │
+│                       │
+│ • Generates summaries │     ┌──────────────┐
+│ • Suggests names      │ ──▶ │  onto_plans  │
+│ • Preserves order     │     │  • name      │
+└───────────────────────┘     │  • type_key  │
+                              │  • state_key │
+        │                     │  • props     │
+        ▼                     └──────┬───────┘
+┌───────────────────────┐            │
+│    onto_edges         │            │
+│  project ─[has_plan]→ │ ◀──────────┘
+│  plan                 │
+└───────────────────────┘
+```
+
+**Default type_key**: `plan.phase.project`
+
+**State Mapping**:
+```typescript
+if (end_date < now)   → 'complete'
+if (start_date <= now) → 'execution'
+else                   → 'planning'
+```
+
+---
+
+### 4. TaskMigrationService + BatchTaskMigrationService
+
+**Files**:
+- `src/lib/services/ontology/task-migration.service.ts`
+- `src/lib/services/ontology/batch-task-migration.service.ts`
+
+**Purpose**: Migrates legacy tasks using batch operations.
+
+**Batch Threshold**: 5+ tasks triggers batch mode
+
+**Two-Phase Classification Pipeline**:
+```
+Legacy Tasks (batch)
+        │
+        ▼
+┌──────────────────────────────────────────┐
+│          PHASE 1: Work Mode              │
+│          (Fast LLM Model)                │
+│                                          │
+│  8 Work Modes:                           │
+│  ┌────────┬────────────────────────────┐ │
+│  │execute │ Action tasks (default)     │ │
+│  │create  │ Produce NEW artifacts      │ │
+│  │refine  │ Improve EXISTING work      │ │
+│  │research│ Investigate/gather info    │ │
+│  │review  │ Evaluate and feedback      │ │
+│  │coordinate│ Sync with others         │ │
+│  │admin   │ Administrative tasks       │ │
+│  │plan    │ Strategic planning         │ │
+│  └────────┴────────────────────────────┘ │
+└──────────────────┬───────────────────────┘
+                   │
+                   ▼
+┌──────────────────────────────────────────┐
+│          PHASE 2: Specialization         │
+│          (Balanced LLM Model)            │
+│                                          │
+│  Per work_mode group:                    │
+│  • coordinate → .meeting, .standup, etc  │
+│  • execute   → .deploy, .checklist, etc  │
+│  • create    → .design, .prototype, etc  │
+│  • (or null for base work mode)          │
+└──────────────────┬───────────────────────┘
+                   │
+                   ▼
+┌──────────────────────────────────────────┐
+│        Final type_key:                   │
+│        task.{work_mode}[.{specialization}]│
+│                                          │
+│        Examples:                         │
+│        • task.execute                    │
+│        • task.coordinate.meeting         │
+│        • task.review.code                │
+│        • task.create.design              │
+└──────────────────┬───────────────────────┘
+                   │
+                   ▼
+┌──────────────────────────────────────────┐
+│          BATCH INSERT                    │
+│                                          │
+│  1. Insert all onto_tasks (batch)        │
+│  2. Insert onto_edges (batch)            │
+│     • task ─[belongs_to_plan]→ plan      │
+│     • plan ─[has_task]→ task             │
+│  3. Insert legacy_entity_mappings        │
+└──────────────────────────────────────────┘
+```
+
+**Task Props Structure** (minimal):
 ```typescript
 {
-  projectConcurrency: 3,   // max: 10
-  phaseConcurrency: 5,     // max: 15
-  taskConcurrency: 5,      // max: 20
-  eventConcurrency: 10     // max: 30
+  title: string;
+  description: string | null;
+  type_key: string;  // From classification
+  facets: {
+    scale: 'micro' | 'small' | 'medium' | 'large'  // Inferred from content length
+  }
 }
 ```
 
-### 4. Two-Phase Classification
-
-- Phase 1: Fast LLM (8-way classification) - low latency
-- Phase 2: Balanced LLM (specialization) - accuracy where needed
-
 ---
 
-## Admin Dashboard
+## Migration Pipeline
 
-### Location
-`apps/web/src/routes/admin/migration/+page.svelte`
+### Entity Transformation Summary
 
-### Features
+| Legacy Entity | Ontology Entity | type_key | Source |
+|--------------|-----------------|----------|--------|
+| `projects` | `onto_projects` | `project.base` | Fixed default |
+| `phases` | `onto_plans` | `plan.phase.project` | Fixed default |
+| `tasks` | `onto_tasks` | `task.{work_mode}[.{spec}]` | LLM classification |
+
+### Edge Creation
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                    MIGRATION DASHBOARD                           │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│  ┌─────────────────────────────────────────────────────────┐    │
-│  │              GLOBAL PROGRESS                             │    │
-│  │  Projects: ████████████░░░░ 75%  (150/200)              │    │
-│  │  Tasks:    ██████████░░░░░░ 62%  (1200/1940)            │    │
-│  │  Users:    ██████████████░░ 88%  (44/50)                │    │
-│  └─────────────────────────────────────────────────────────┘    │
-│                                                                  │
-│  ┌─────────────────────────────────────────────────────────┐    │
-│  │              ACTIVE RUN STATUS                           │    │
-│  │  Run ID: abc-123-def                                     │    │
-│  │  Started: 2 hours ago                                    │    │
-│  │  Projects Processed: 45                                  │    │
-│  │  Locked By: admin@buildos.io                            │    │
-│  └─────────────────────────────────────────────────────────┘    │
-│                                                                  │
-│  ┌─────────────────────────────────────────────────────────┐    │
-│  │              USER MIGRATION STATS                        │    │
-│  │  ┌──────────────────────────────────────────────────┐   │    │
-│  │  │ User         │ Projects │ % Complete │ Status    │   │    │
-│  │  ├──────────────┼──────────┼────────────┼───────────┤   │    │
-│  │  │ user1@...    │ 15       │ 100%       │ complete  │   │    │
-│  │  │ user2@...    │ 8        │ 75%        │ partial   │   │    │
-│  │  │ user3@...    │ 3        │ 0%         │ pending   │   │    │
-│  │  └──────────────┴──────────┴────────────┴───────────┘   │    │
-│  └─────────────────────────────────────────────────────────┘    │
-│                                                                  │
-│  ┌─────────────────────────────────────────────────────────┐    │
-│  │              ERROR MANAGEMENT                            │    │
-│  │  Recoverable: 12    Data: 8    Fatal: 2                 │    │
-│  │                                                          │    │
-│  │  [Retry Recoverable] [Retry with Fallback] [Clear All]  │    │
-│  └─────────────────────────────────────────────────────────┘    │
-│                                                                  │
-│  ┌─────────────────────────────────────────────────────────┐    │
-│  │              RUN CONTROLS                                │    │
-│  │                                                          │    │
-│  │  Target: [○ All Users] [○ Specific User] [○ Projects]   │    │
-│  │                                                          │    │
-│  │  Options:                                                │    │
-│  │  [x] Skip Completed Tasks                                │    │
-│  │  [x] Skip Already Migrated                               │    │
-│  │  [ ] Dry Run                                             │    │
-│  │  [ ] Include Archived                                    │    │
-│  │                                                          │    │
-│  │  [Start Migration]                                       │    │
-│  └─────────────────────────────────────────────────────────┘    │
-│                                                                  │
-└─────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│                    EDGE RELATIONSHIPS                        │
+│                                                              │
+│  onto_projects ────────────────────────► onto_plans          │
+│       │           rel: 'has_plan'            │               │
+│       │                                      │               │
+│       │                                      ▼               │
+│       │                              onto_tasks              │
+│       │                                      ▲               │
+│       │                                      │               │
+│       └──────────────────────────────────────┘               │
+│                   (implicit via plan)                        │
+│                                                              │
+│  onto_plans ◀────────────────────────► onto_tasks            │
+│       │        rel: 'has_task'              │                │
+│       └───────rel: 'belongs_to_plan'────────┘                │
+│                   (bidirectional)                            │
+└──────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
 ## Database Schema
 
-### Migration Tables
+### Core Ontology Tables
+
+| Table | Purpose | Key Columns |
+|-------|---------|-------------|
+| `onto_projects` | Migrated projects | id, name, type_key, state_key, props, facet_* |
+| `onto_plans` | Migrated phases | id, project_id, name, type_key, state_key, props |
+| `onto_tasks` | Migrated tasks | id, project_id, type_key, title, state_key, priority, due_at, props |
+| `onto_edges` | Graph relationships | src_kind, src_id, rel, dst_kind, dst_id |
+
+### Migration Tracking Tables
 
 ```sql
 -- Migration run/entity logging
@@ -697,22 +448,13 @@ CREATE TABLE migration_log (
   id SERIAL PRIMARY KEY,
   run_id UUID NOT NULL,
   batch_id UUID,
-  org_id UUID,
-  user_id UUID,
-  entity_type TEXT NOT NULL,  -- 'run', 'project', 'phase', 'task', 'calendar'
-  operation TEXT,
-  legacy_table TEXT,
-  legacy_id UUID,
-  onto_table TEXT,
-  onto_id UUID,
-  status TEXT NOT NULL,       -- 'pending', 'in_progress', 'completed', 'failed', 'skipped'
-  error_message TEXT,
-  error_category TEXT,        -- 'recoverable', 'data', 'fatal'
-  retry_count INT DEFAULT 0,
-  last_retry_at TIMESTAMPTZ,
+  entity_type TEXT NOT NULL,  -- 'run', 'project', 'phase', 'task'
+  entity_id UUID,
+  status TEXT NOT NULL,       -- 'pending', 'completed', 'failed', 'skipped'
+  message TEXT,
+  legacy_payload JSONB,
   metadata JSONB,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
+  created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- Legacy to Ontology mapping (idempotency)
@@ -722,7 +464,6 @@ CREATE TABLE legacy_entity_mappings (
   legacy_id UUID NOT NULL,
   onto_table TEXT NOT NULL,
   onto_id UUID NOT NULL,
-  checksum TEXT,              -- SHA256 of legacy record
   metadata JSONB,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),
@@ -735,66 +476,101 @@ CREATE TABLE migration_platform_lock (
   run_id UUID,
   locked_by UUID,
   locked_at TIMESTAMPTZ,
-  expires_at TIMESTAMPTZ,
   CHECK (id = 1)  -- Single row table
 );
+```
 
--- Materialized view for user stats
-CREATE MATERIALIZED VIEW user_migration_stats AS
-SELECT
-  u.id as user_id,
-  u.email,
-  u.name,
-  u.avatar_url,
-  COUNT(DISTINCT p.id) as total_projects,
-  COUNT(DISTINCT CASE WHEN m.onto_id IS NOT NULL THEN p.id END) as migrated_projects,
-  -- ... more stats
-FROM users u
-LEFT JOIN projects p ON p.user_id = u.id
-LEFT JOIN legacy_entity_mappings m ON m.legacy_table = 'projects' AND m.legacy_id = p.id
-GROUP BY u.id;
+---
+
+## Error Handling
+
+### Idempotency
+
+All migrations check `legacy_entity_mappings` before creating new entities:
+
+```typescript
+// Before insert
+const existing = await getLegacyMapping(client, 'tasks', task.id);
+if (existing?.onto_id) {
+  return { status: 'completed', message: 'Already migrated' };
+}
+```
+
+### Batch Fallback
+
+If batch migration fails, falls back to per-task processing:
+
+```typescript
+try {
+  return await batchMigrator.migrateProjectTasks(tasks, ...);
+} catch (error) {
+  console.error('Batch migration failed, falling back to per-task');
+  // Record fallback in migration_log
+  // Falls through to single-task loop
+}
+```
+
+### Edge Creation Failures
+
+Edge creation failures are NOT silent - they throw errors:
+
+```typescript
+const { error: edgeError } = await client.from('onto_edges').insert(edges);
+if (edgeError) {
+  throw new Error(`Failed to create task-plan edges: ${edgeError.message}`);
+}
 ```
 
 ---
 
 ## API Endpoints
 
-### Migration Control
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
 | `/api/admin/migration/start` | POST | Start migration run |
-| `/api/admin/migration/preview` | POST | Preview migration (dry-run) |
-| `/api/admin/migration/stats` | GET | Get global progress |
-| `/api/admin/migration/users` | GET | Get user migration stats |
-| `/api/admin/migration/errors` | GET | Get migration errors |
-| `/api/admin/migration/errors/retry` | POST | Retry failed migrations |
-| `/api/admin/migration/errors/delete` | DELETE | Delete error records |
-| `/api/admin/migration/lock` | GET | Get lock status |
-| `/api/admin/migration/refresh-stats` | POST | Refresh materialized view |
+| `/api/admin/migration/preview` | POST | Dry-run preview |
+| `/api/admin/migration/status` | GET | Check migration status |
+| `/api/admin/migration/cancel` | POST | Cancel running migration |
 
 ### Start Migration Request
 
 ```typescript
 POST /api/admin/migration/start
 {
-  // Target selection (mutually exclusive)
-  projectIds?: string[],     // Specific projects
-  userId?: string,           // All projects for user
-  // (empty = platform-wide)
-
-  // Options
-  includeArchived?: boolean,
-  skipAlreadyMigrated?: boolean,  // Default: true
-  skipCompletedTasks?: boolean,   // Default: true
-  dryRun?: boolean,
-
-  // Concurrency
-  projectConcurrency?: number,    // Default: 3, max: 10
-  phaseConcurrency?: number,      // Default: 5, max: 15
-  taskConcurrency?: number,       // Default: 5, max: 20
-  eventConcurrency?: number       // Default: 10, max: 30
+  projectIds?: string[],         // Specific projects
+  includeArchived?: boolean,     // Include archived projects
+  skipCompletedTasks?: boolean,  // Default: true
+  dryRun?: boolean,              // Preview mode
+  taskConcurrency?: number       // Default: 5
 }
+```
+
+---
+
+## Removed Components
+
+The following were removed in December 2025:
+
+| Component | Old Purpose | Status |
+|-----------|-------------|--------|
+| `FindOrCreateTemplateService` | Template discovery + creation | **REMOVED** |
+| `PropertyExtractorEngine` | Schema-driven property extraction | **REMOVED** |
+| `SchemaAutoRepairService` | Self-healing schema validation | **REMOVED** |
+| `ProjectTemplateInferenceService` | LLM template matching | **REMOVED** |
+| `onto_templates` table | Template definitions | **NOT USED** |
+| Template confidence scores | Match quality tracking | **REMOVED** |
+
+### Simplified Flow
+
+**OLD (Template-Driven)**:
+```
+Legacy → Template Discovery → Schema Lookup → Property Extraction →
+Schema Validation → Deep Merge with Defaults → Insert
+```
+
+**NEW (Template-Free)**:
+```
+Legacy → Classification (LLM for tasks only) → Minimal Props → Insert
 ```
 
 ---
@@ -811,29 +587,38 @@ POST /api/admin/migration/start
 | Task Migration | `apps/web/src/lib/services/ontology/task-migration.service.ts` |
 | Batch Task Migration | `apps/web/src/lib/services/ontology/batch-task-migration.service.ts` |
 | Enhanced Project Migrator | `apps/web/src/lib/services/ontology/migration/enhanced-project-migrator.ts` |
-| Enhanced Plan Migrator | `apps/web/src/lib/services/ontology/migration/enhanced-plan-migrator.ts` |
-| Enhanced Task Migrator | `apps/web/src/lib/services/ontology/migration/enhanced-task-migrator.ts` |
-| Find/Create Template | `apps/web/src/lib/services/ontology/find-or-create-template.service.ts` |
-| Property Extractor | `apps/web/src/lib/services/ontology/migration/property-extractor-engine.ts` |
-| Schema Auto-Repair | `apps/web/src/lib/services/ontology/migration/schema-auto-repair.service.ts` |
-| Stats Service | `apps/web/src/lib/services/ontology/migration-stats.service.ts` |
-| Error Service | `apps/web/src/lib/services/ontology/migration-error.service.ts` |
-| Legacy Mapping | `apps/web/src/lib/services/ontology/legacy-mapping.service.ts` |
-| Calendar Migration | `apps/web/src/lib/services/ontology/calendar-migration.service.ts` |
-| Types | `apps/web/src/lib/services/ontology/migration.types.ts` |
+| Enhanced Migration Types | `apps/web/src/lib/services/ontology/migration/enhanced-migration.types.ts` |
+| Legacy Mapping Service | `apps/web/src/lib/services/ontology/legacy-mapping.service.ts` |
+| Migration Types | `apps/web/src/lib/services/ontology/migration.types.ts` |
 
 ---
 
 ## Summary
 
-The BuildOS migration system is a sophisticated, multi-layered architecture designed to:
+The current migration system (December 2025) is **significantly simplified** from the original template-driven approach:
 
-1. **Transform** legacy entities to the new Ontology schema with full fidelity
-2. **Classify** tasks intelligently using two-phase LLM classification
-3. **Match** templates dynamically with 70% confidence threshold
-4. **Extract** properties with intelligent type inference
-5. **Handle errors** gracefully with categorization and remediation
-6. **Optimize performance** through batching, caching, and concurrency
-7. **Provide visibility** via comprehensive admin dashboard
+### What Works
+1. **Project migration** with automatic facet derivation (no templates)
+2. **Phase-to-plan migration** with LLM name/summary generation
+3. **Task migration** with two-phase work mode classification
+4. **Batch operations** for 5+ tasks (optimized LLM calls)
+5. **Idempotency** via legacy_entity_mappings
+6. **Audit logging** via migration_log
 
-The system balances accuracy (LLM-powered analysis) with efficiency (batch operations) to migrate large datasets while maintaining data integrity and providing clear progress visibility.
+### What's Fixed/Simplified
+1. Fixed type_keys for projects (`project.base`) and plans (`plan.phase.project`)
+2. No template discovery or matching required
+3. No schema-driven property extraction
+4. No deep merge with template defaults
+5. Tasks still use LLM classification for dynamic type_keys
+
+### Future Considerations
+1. Project type classification could be re-added if needed
+2. Plan type variety could be added
+3. Property extraction could return for specific use cases
+4. Template system could be rebuilt with simpler approach
+
+---
+
+**Document Updated**: December 12, 2025
+**Status**: Current - reflects post-template removal architecture

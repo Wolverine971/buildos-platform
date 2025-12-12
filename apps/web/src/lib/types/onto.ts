@@ -293,7 +293,12 @@ export type Template = z.infer<typeof TemplateSchema>;
 const ProjectSpecProjectSchema = z.object({
 	name: z.string().min(1),
 	description: z.string().optional(),
-	type_key: z.string().regex(/^[a-z_]+\.[a-z_]+(\.[a-z_]+)?$/),
+	type_key: z
+		.string()
+		.regex(
+			/^[a-z_]+\.[a-z_]+(\.[a-z_]+)?$/,
+			'type_key must be 2-3 lowercase dot-separated segments (e.g., "project.creative.book", "project.technical.app"). Use only lowercase letters and underscores.'
+		),
 	also_types: z.array(z.string()).optional(),
 	state_key: z.string().optional(),
 	props: z
@@ -364,7 +369,10 @@ export const ProjectSpecSchema = z.object({
 				plan_name: z.string().optional(),
 				type_key: z
 					.string()
-					.regex(/^task\.[a-z_]+(\.[a-z_]+)?$/)
+					.regex(
+						/^task\.[a-z_]+(\.[a-z_]+)?$/,
+						'task type_key must start with "task." followed by 1-2 lowercase segments (e.g., "task.execute", "task.coordinate.meeting")'
+					)
 					.optional()
 					.default('task.execute'),
 				state_key: z.string().optional(),

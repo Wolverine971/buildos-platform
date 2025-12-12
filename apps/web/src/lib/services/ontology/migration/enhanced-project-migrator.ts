@@ -2,14 +2,14 @@
 /**
  * Enhanced Project Migrator
  *
- * Migration service aligned with agentic chat template discovery and property extraction patterns.
+ * Migrates legacy projects to onto_projects with minimal properties.
+ * Templates have been removed (Dec 2025) - uses fixed type_key only.
  *
- * Key improvements over legacy migration:
- * - Uses FindOrCreateTemplateService (unified template discovery + creation)
- * - Uses PropertyExtractorEngine (intelligent type inference, detailed examples)
- * - 70% match threshold for template selection
- * - Validation pipeline for extracted properties
- * - Deep merging with template defaults
+ * Behavior:
+ * - Fixed type_key: 'project.base'
+ * - Derives facets heuristically from legacy data (context, scale, stage)
+ * - No template lookup or property extraction
+ * - Creates onto_project with name, description, state_key, props
  */
 
 import type { TypedSupabaseClient } from '@buildos/supabase-client';
@@ -20,20 +20,14 @@ import type {
 	EnhancedProjectMigrationResult
 } from './enhanced-migration.types';
 import type { Facets } from '$lib/types/onto';
-import { SmartLLMService } from '$lib/services/smart-llm-service';
 import { ensureActorId } from '../ontology-projects.service';
 import { upsertLegacyMapping } from '../legacy-mapping.service';
 
-const TEMPLATE_MATCH_THRESHOLD = 0.7; // 70% match required
-
 export class EnhancedProjectMigrator {
-	constructor(
-		private readonly client: TypedSupabaseClient,
-		private readonly llm: SmartLLMService
-	) {}
+	constructor(private readonly client: TypedSupabaseClient) {}
 
 	/**
-	 * Migrate a project (template discovery/property extraction removed)
+	 * Migrate a project with fixed type_key and derived facets.
 	 */
 	async migrate(
 		project: LegacyProject,

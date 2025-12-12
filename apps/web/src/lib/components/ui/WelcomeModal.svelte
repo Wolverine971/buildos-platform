@@ -94,24 +94,16 @@
 	{persistent}
 	customClasses="overflow-hidden"
 >
-	<!-- Custom header with gradient background -->
+	<!-- Custom header - no gradient, clean Inkprint style -->
 	{#snippet header()}
-		<div class="relative">
-			<!-- Gradient Background -->
-			<div
-				class="absolute top-0 left-0 right-0 h-48 bg-gradient-to-br {gradientFrom} {gradientVia} {gradientTo} opacity-10"
-			></div>
-
-			<!-- Empty header (no title bar needed for welcome modal) -->
-			<div class="h-0"></div>
-		</div>
+		<div class="h-0"></div>
 	{/snippet}
 
 	{#snippet children()}
 		<!-- Content -->
-		<div class="relative p-4 sm:p-6 lg:p-8">
+		<div class="relative p-4 sm:p-5">
 			<!-- Icon Slot -->
-			<div class="flex justify-center mb-4 sm:mb-6">
+			<div class="flex justify-center mb-3 sm:mb-4">
 				{@render icon?.()}
 				{#if !icon}
 					<div class="relative">
@@ -129,8 +121,8 @@
 			</div>
 
 			<!-- Title & Description -->
-			<div class="text-center mb-4 sm:mb-6 lg:mb-8">
-				<h2 class="text-2xl font-bold text-foreground mb-3">
+			<div class="text-center mb-3 sm:mb-4">
+				<h2 class="text-xl font-bold text-foreground mb-2">
 					{title}
 				</h2>
 				{#if subtitle}

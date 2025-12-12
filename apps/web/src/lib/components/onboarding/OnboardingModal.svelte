@@ -5,47 +5,50 @@
 	import WelcomeModal from '$lib/components/ui/WelcomeModal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 
-	export let isOpen = false;
-	export let onDismiss: () => void = () => {};
+	interface Props {
+		isOpen?: boolean;
+		onDismiss?: () => void;
+	}
+
+	let { isOpen = $bindable(false), onDismiss = () => {} }: Props = $props();
 
 	function handleStartOnboarding() {
+		isOpen = false;
 		goto('/onboarding');
 	}
 
 	function handleDismiss() {
+		isOpen = false;
 		onDismiss();
 	}
 </script>
 
 <WelcomeModal
-	{isOpen}
+	bind:isOpen
 	title="Welcome to BuildOS!"
 	primaryButtonText="Start Personalization"
 	secondaryButtonText="I'll do this later"
 	showTimeEstimate={true}
-	timeEstimate="Takes about 5 minutes • Use voice or text input"
+	timeEstimate="Takes about 5 minutes"
 	storageKey="onboarding_modal_dismissed"
-	on:primary={handleStartOnboarding}
-	on:secondary={handleDismiss}
-	on:dismiss={handleDismiss}
+	onPrimary={handleStartOnboarding}
+	onSecondary={handleDismiss}
+	onDismiss={handleDismiss}
 >
-	<svelte:fragment slot="icon">
+	{#snippet icon()}
 		<div class="relative">
-			<!-- Animated glow effect -->
+			<!-- Subtle glow effect using Inkprint accent -->
+			<div class="absolute inset-0 bg-accent/20 rounded-xl blur-lg"></div>
+			<!-- Brain-bolt video with Inkprint styling -->
 			<div
-				class="absolute inset-0 dither-gradient rounded-2xl blur-2xl opacity-60 animate-pulse"
-				style="animation-duration: 3s;"
-			></div>
-			<!-- Brain-bolt video with glass effect -->
-			<div
-				class="relative rounded-2xl dither-soft p-3 backdrop-blur-sm border border-purple-200/50 dark:border-purple-700/50 shadow-xl"
+				class="relative rounded-xl bg-card p-2 border border-border shadow-ink tx tx-bloom tx-weak"
 			>
 				<video
 					autoplay
 					loop
 					muted
 					playsinline
-					class="w-20 h-20 object-contain rounded-xl"
+					class="w-14 h-14 object-contain rounded-lg"
 					aria-label="BuildOS brain animation"
 				>
 					<source
@@ -53,89 +56,67 @@
 						type="video/mp4"
 					/>
 					<!-- Fallback -->
-					<div
-						class="w-20 h-20 dither-gradient rounded-full p-4 flex items-center justify-center"
-					>
-						<Sparkles class="w-10 h-10 text-white" />
+					<div class="w-14 h-14 bg-accent/10 rounded-full p-3 flex items-center justify-center">
+						<Sparkles class="w-8 h-8 text-accent" />
 					</div>
 				</video>
 			</div>
 		</div>
-	</svelte:fragment>
+	{/snippet}
 
-	<svelte:fragment slot="description">
-		<p class="text-base text-gray-700 dark:text-gray-300 leading-relaxed">
-			Let's personalize your experience. Share a bit about yourself, your goals, and how you
-			work to unlock <span class="font-semibold text-gray-900 dark:text-white"
-				>AI-powered insights</span
-			> tailored just for you.
+	{#snippet description()}
+		<p class="text-sm text-muted-foreground leading-snug">
+			Share a bit about yourself and your goals to unlock
+			<span class="font-semibold text-foreground">AI-powered insights</span> tailored for you.
 		</p>
-	</svelte:fragment>
+	{/snippet}
 
-	<svelte:fragment slot="features">
-		<div class="space-y-4 mb-8">
-			<div class="flex items-start space-x-3 group">
-				<div
-					class="flex-shrink-0 w-6 h-6 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center mt-0.5 group-hover:scale-105 transition-transform duration-200"
-				>
-					<div class="w-2.5 h-2.5 rounded-full bg-emerald-500"></div>
-				</div>
-				<p class="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
-					Get <span class="font-semibold text-gray-900 dark:text-white"
-						>personalized daily briefs</span
-					> aligned with your goals
+	{#snippet features()}
+		<div class="space-y-2 mb-4">
+			<div class="flex items-center gap-2">
+				<div class="w-2 h-2 rounded-full bg-emerald-500"></div>
+				<p class="text-xs text-muted-foreground">
+					<span class="font-medium text-foreground">Personalized daily briefs</span> aligned with your goals
 				</p>
 			</div>
-			<div class="flex items-start space-x-3 group">
-				<div
-					class="flex-shrink-0 w-6 h-6 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mt-0.5 group-hover:scale-105 transition-transform duration-200"
-				>
-					<div class="w-2.5 h-2.5 rounded-full bg-blue-500"></div>
-				</div>
-				<p class="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
-					AI understands your <span class="font-semibold text-gray-900 dark:text-white"
-						>work style</span
-					> and preferences
+			<div class="flex items-center gap-2">
+				<div class="w-2 h-2 rounded-full bg-blue-500"></div>
+				<p class="text-xs text-muted-foreground">
+					AI understands your <span class="font-medium text-foreground">work style</span>
 				</p>
 			</div>
-			<div class="flex items-start space-x-3 group">
-				<div
-					class="flex-shrink-0 w-6 h-6 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center mt-0.5 group-hover:scale-105 transition-transform duration-200"
-				>
-					<div class="w-2.5 h-2.5 rounded-full bg-purple-500"></div>
-				</div>
-				<p class="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
-					<span class="font-semibold text-gray-900 dark:text-white"
-						>Smart task suggestions</span
-					>
-					based on your context
+			<div class="flex items-center gap-2">
+				<div class="w-2 h-2 rounded-full bg-accent"></div>
+				<p class="text-xs text-muted-foreground">
+					<span class="font-medium text-foreground">Smart task suggestions</span> based on context
 				</p>
 			</div>
 		</div>
-	</svelte:fragment>
+	{/snippet}
 
-	<svelte:fragment slot="actions">
+	{#snippet actions()}
 		<Button
 			onclick={handleStartOnboarding}
 			variant="primary"
-			size="lg"
+			size="md"
 			fullWidth
-			icon={User}
-			iconPosition="left"
-			class="dither-gradient hover:dither-gradient-hover shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 border-none font-semibold"
+			class="shadow-ink-strong pressable"
 		>
-			Start Personalization
-			<ChevronRight class="w-4 h-4 ml-1" />
+			<span class="flex items-center justify-center gap-2">
+				<User class="w-4 h-4" />
+				<span>Start Personalization</span>
+				<ChevronRight class="w-4 h-4" />
+			</span>
 		</Button>
 
 		<Button
 			onclick={handleDismiss}
 			variant="ghost"
-			size="lg"
+			size="sm"
 			fullWidth
-			class="text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors duration-200"
+			class="text-muted-foreground hover:text-foreground"
 		>
 			I'll do this later
 		</Button>
-	</svelte:fragment>
+	{/snippet}
 </WelcomeModal>
