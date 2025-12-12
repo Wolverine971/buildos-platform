@@ -87,6 +87,7 @@ export function renderMarkdown(text: string | null | undefined): string {
 }
 
 // Add a function to get the appropriate prose classes
+// INKPRINT Design System: Uses semantic color tokens for proper theming
 export function getProseClasses(
 	size: 'sm' | 'base' | 'lg' = 'base',
 	removeMaxWidth = true
@@ -94,12 +95,23 @@ export function getProseClasses(
 	const sizeClass = size === 'base' ? 'prose' : `prose-${size}`;
 	const maxWidth = removeMaxWidth ? 'max-w-none' : '';
 
-	return `${sizeClass} prose-gray dark:prose-invert max-w-none
-				prose-headings:text-gray-900 prose-p:text-gray-700 prose-li:text-gray-700
-				prose-strong:text-gray-900 prose-a:text-blue-600 prose-blockquote:text-gray-700
-				dark:prose-headings:text-white dark:prose-p:text-gray-300 dark:prose-li:text-gray-300
-				dark:prose-strong:text-white dark:prose-a:text-blue-400 dark:prose-blockquote:text-gray-300
-				dark:prose-hr:border-gray-700 ${maxWidth}`.trim();
+	// INKPRINT semantic prose styling with proper header hierarchy
+	return `${sizeClass} dark:prose-invert ${maxWidth}
+		prose-headings:text-foreground prose-headings:font-semibold
+		prose-h1:text-lg prose-h1:font-bold prose-h1:mb-3 prose-h1:mt-4
+		prose-h2:text-base prose-h2:font-bold prose-h2:mb-2 prose-h2:mt-3
+		prose-h3:text-sm prose-h3:font-bold prose-h3:mb-2 prose-h3:mt-3
+		prose-h4:text-sm prose-h4:font-semibold prose-h4:mb-1.5 prose-h4:mt-2
+		prose-h5:text-xs prose-h5:font-semibold prose-h5:mb-1 prose-h5:mt-2 prose-h5:uppercase prose-h5:tracking-wide
+		prose-h6:text-xs prose-h6:font-medium prose-h6:mb-1 prose-h6:mt-2 prose-h6:text-muted-foreground
+		prose-p:text-foreground prose-p:leading-relaxed
+		prose-li:text-foreground
+		prose-strong:text-foreground prose-strong:font-semibold
+		prose-a:text-accent prose-a:underline prose-a:underline-offset-2 hover:prose-a:text-accent/80
+		prose-blockquote:text-muted-foreground prose-blockquote:border-l-accent prose-blockquote:not-italic
+		prose-code:text-foreground prose-code:bg-muted prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-[0.85em] prose-code:before:content-none prose-code:after:content-none
+		prose-pre:bg-muted prose-pre:text-foreground
+		prose-hr:border-border`.trim();
 }
 
 /**

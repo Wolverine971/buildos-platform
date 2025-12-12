@@ -19,6 +19,7 @@ export type EnsureActorResponse = string;
 
 /**
  * Response from get_allowed_transitions RPC call
+ * @deprecated FSM transitions are no longer used. Use state enums from onto.ts instead.
  */
 export interface AllowedTransitionResponse {
 	event: string;
@@ -265,6 +266,9 @@ export interface ProjectDetailResponse {
 	decisions: OntoDecision[];
 	metrics: OntoMetric[];
 	template: Template | null;
+	/**
+	 * @deprecated FSM transitions are no longer used. Use state enums from onto.ts instead.
+	 */
 	allowed_transitions: Array<{
 		event: string;
 		to: string;

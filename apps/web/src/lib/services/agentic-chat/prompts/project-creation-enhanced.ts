@@ -73,7 +73,7 @@ If ready to create:
 Remember: Rely on taxonomy + prop inference. Do not mention internal implementation details to the user.`;
 };
 
-export const getTemplateInferenceSystemPrompt = (): string => {
+export const getTypeKeyInferenceSystemPrompt = (): string => {
 	return `
 ## PROJECT TYPE & PROP INFERENCE SYSTEM
 

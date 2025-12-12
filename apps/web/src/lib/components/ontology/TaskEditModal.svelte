@@ -4,7 +4,7 @@
 
 	Provides full CRUD operations for tasks within the BuildOS ontology system:
 	- Edit task details (title, description, priority, state, etc.)
-	- Visualize FSM state transitions
+	- Select task state from enum dropdown
 	- Workspace with RichMarkdownEditor for document editing
 	- Delete tasks with confirmation
 
@@ -17,7 +17,6 @@
 	Related Files:
 	- API Endpoints: /apps/web/src/routes/api/onto/tasks/[id]/+server.ts
 	- Create Modal: /apps/web/src/lib/components/ontology/TaskCreateModal.svelte
-	- FSM Visualizer: /apps/web/src/lib/components/ontology/FSMStateVisualizer.svelte
 -->
 <script lang="ts">
 	import { onDestroy } from 'svelte';
@@ -43,8 +42,8 @@
 	import CardBody from '$lib/components/ui/CardBody.svelte';
 	import { fly } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
-	import FSMStateVisualizer from './FSMStateVisualizer.svelte';
 	import LinkedEntities from './linked-entities/LinkedEntities.svelte';
+	import { TASK_STATES } from '$lib/types/onto';
 	import type { EntityKind } from './linked-entities/linked-entities.types';
 	import type { ComponentType } from 'svelte';
 
@@ -189,9 +188,6 @@
 
 	const detailsFormId = $derived(`task-edit-${taskId}-details`);
 
-	// FSM related
-	let allowedTransitions = $state<any[]>([]);
-
 	const seriesMeta = $derived.by(() => {
 		if (!task?.props || typeof task.props !== 'object') return null;
 		const meta = (task.props as Record<string, any>).series;
@@ -301,16 +297,13 @@
 			selectedWorkspaceDocId = null;
 			workspaceDocContent = '';
 
-			// Parallelize task and transitions fetch for faster loading
+			// Use combined endpoint for optimal loading (task + transitions in one request)
 			// Workspace documents are deferred until user switches to workspace tab
-			const [taskResponse, transitionsResponse] = await Promise.all([
-				fetch(`/api/onto/tasks/${taskId}`),
-				fetch(`/api/onto/fsm/transitions?kind=task&id=${taskId}`).catch(() => null)
-			]);
+			const response = await fetch(`/api/onto/tasks/${taskId}/full`);
 
-			if (!taskResponse.ok) throw new Error('Failed to load task');
+			if (!response.ok) throw new Error('Failed to load task');
 
-			const data = await taskResponse.json();
+			const data = await response.json();
 			task = data.data?.task;
 
 			if (task) {
@@ -326,53 +319,11 @@
 				seriesActionError = '';
 				showSeriesDeleteConfirm = false;
 			}
-
-			// Process transitions response (already fetched in parallel)
-			if (transitionsResponse?.ok) {
-				try {
-					const transData = await transitionsResponse.json();
-					allowedTransitions =
-						(transData.data?.transitions || []).map((transition: any) => ({
-							...transition,
-							can_run:
-								typeof transition?.can_run === 'boolean'
-									? (transition.can_run as boolean)
-									: true,
-							failed_guards: Array.isArray(transition?.failed_guards)
-								? transition.failed_guards
-								: []
-						})) ?? [];
-				} catch {
-					allowedTransitions = [];
-				}
-			}
 		} catch (err) {
 			console.error('Error loading task:', err);
 			error = 'Failed to load task';
 		} finally {
 			isLoading = false;
-		}
-	}
-
-	async function loadTransitions() {
-		try {
-			const response = await fetch(`/api/onto/fsm/transitions?kind=task&id=${taskId}`);
-			if (response.ok) {
-				const data = await response.json();
-				allowedTransitions =
-					(data.data?.transitions || []).map((transition: any) => ({
-						...transition,
-						can_run:
-							typeof transition?.can_run === 'boolean'
-								? (transition.can_run as boolean)
-								: true,
-						failed_guards: Array.isArray(transition?.failed_guards)
-							? transition.failed_guards
-							: []
-					})) ?? [];
-			}
-		} catch (err) {
-			console.error('Error loading transitions:', err);
 		}
 	}
 
@@ -578,13 +529,6 @@
 			isDeleting = false;
 			showDeleteConfirm = false;
 		}
-	}
-
-	async function handleStateChange(event: CustomEvent) {
-		const newState = event.detail.newState;
-		stateKey = newState;
-		await handleSave();
-		await loadTransitions();
 	}
 
 	async function handleSeriesCreated() {
@@ -957,39 +901,30 @@
 											{/if}
 										</div>
 
-										<!-- FSM State Visualizer -->
-										{#if task.type_key && allowedTransitions.length > 0}
-											<div class="pt-4 border-t border-border">
-												<FSMStateVisualizer
-													entityId={taskId}
-													entityKind="task"
-													entityName={title}
-													currentState={stateKey}
-													initialTransitions={allowedTransitions}
-													on:stateChange={handleStateChange}
-												/>
-											</div>
-										{:else}
-											<FormField
-												label="State"
-												labelFor="state"
-												required={true}
+										<!-- Task State -->
+										<FormField label="State" labelFor="state" required={true}>
+											<Select
+												id="state"
+												bind:value={stateKey}
+												disabled={isSaving}
+												size="md"
+												placeholder="Select state"
 											>
-												<Select
-													id="state"
-													bind:value={stateKey}
-													disabled={isSaving}
-													size="md"
-													placeholder="Select state"
-												>
-													<option value="todo">To Do</option>
-													<option value="in_progress">In Progress</option>
-													<option value="blocked">Blocked</option>
-													<option value="done">Done</option>
-													<option value="archived">Archived</option>
-												</Select>
-											</FormField>
-										{/if}
+												{#each TASK_STATES as state}
+													<option value={state}>
+														{state === 'todo'
+															? 'To Do'
+															: state === 'in_progress'
+																? 'In Progress'
+																: state === 'blocked'
+																	? 'Blocked'
+																	: state === 'done'
+																		? 'Done'
+																		: state}
+													</option>
+												{/each}
+											</Select>
+										</FormField>
 
 										<!-- Connected Documents List -->
 										<div class="pt-6 border-t border-border">

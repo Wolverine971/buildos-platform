@@ -4062,7 +4062,7 @@ export type Database = {
           project_id: string
           props: Json
           search_vector: unknown
-          state_key: string
+          state_key: Database["public"]["Enums"]["document_state"]
           title: string
           type_key: string
           updated_at: string
@@ -4074,7 +4074,7 @@ export type Database = {
           project_id: string
           props?: Json
           search_vector?: unknown
-          state_key?: string
+          state_key?: Database["public"]["Enums"]["document_state"]
           title: string
           type_key: string
           updated_at?: string
@@ -4086,7 +4086,7 @@ export type Database = {
           project_id?: string
           props?: Json
           search_vector?: unknown
-          state_key?: string
+          state_key?: Database["public"]["Enums"]["document_state"]
           title?: string
           type_key?: string
           updated_at?: string
@@ -4385,6 +4385,7 @@ export type Database = {
           project_id: string
           props: Json
           search_vector: unknown
+          state_key: Database["public"]["Enums"]["goal_state"]
           type_key: string | null
         }
         Insert: {
@@ -4395,6 +4396,7 @@ export type Database = {
           project_id: string
           props?: Json
           search_vector?: unknown
+          state_key?: Database["public"]["Enums"]["goal_state"]
           type_key?: string | null
         }
         Update: {
@@ -4405,6 +4407,7 @@ export type Database = {
           project_id?: string
           props?: Json
           search_vector?: unknown
+          state_key?: Database["public"]["Enums"]["goal_state"]
           type_key?: string | null
         }
         Relationships: [
@@ -4547,6 +4550,7 @@ export type Database = {
           project_id: string
           props: Json
           search_vector: unknown
+          state_key: Database["public"]["Enums"]["milestone_state"]
           title: string
           type_key: string | null
         }
@@ -4558,6 +4562,7 @@ export type Database = {
           project_id: string
           props?: Json
           search_vector?: unknown
+          state_key?: Database["public"]["Enums"]["milestone_state"]
           title: string
           type_key?: string | null
         }
@@ -4569,6 +4574,7 @@ export type Database = {
           project_id?: string
           props?: Json
           search_vector?: unknown
+          state_key?: Database["public"]["Enums"]["milestone_state"]
           title?: string
           type_key?: string | null
         }
@@ -4632,7 +4638,7 @@ export type Database = {
           search_vector: unknown
           source_document_id: string | null
           source_event_id: string | null
-          state_key: string
+          state_key: Database["public"]["Enums"]["output_state"]
           type_key: string
           updated_at: string
         }
@@ -4647,7 +4653,7 @@ export type Database = {
           search_vector?: unknown
           source_document_id?: string | null
           source_event_id?: string | null
-          state_key?: string
+          state_key?: Database["public"]["Enums"]["output_state"]
           type_key: string
           updated_at?: string
         }
@@ -4662,7 +4668,7 @@ export type Database = {
           search_vector?: unknown
           source_document_id?: string | null
           source_event_id?: string | null
-          state_key?: string
+          state_key?: Database["public"]["Enums"]["output_state"]
           type_key?: string
           updated_at?: string
         }
@@ -4739,7 +4745,7 @@ export type Database = {
           project_id: string
           props: Json
           search_vector: unknown
-          state_key: string
+          state_key: Database["public"]["Enums"]["plan_state"]
           type_key: string
           updated_at: string
         }
@@ -4754,7 +4760,7 @@ export type Database = {
           project_id: string
           props?: Json
           search_vector?: unknown
-          state_key?: string
+          state_key?: Database["public"]["Enums"]["plan_state"]
           type_key: string
           updated_at?: string
         }
@@ -4769,7 +4775,7 @@ export type Database = {
           project_id?: string
           props?: Json
           search_vector?: unknown
-          state_key?: string
+          state_key?: Database["public"]["Enums"]["plan_state"]
           type_key?: string
           updated_at?: string
         }
@@ -4866,7 +4872,7 @@ export type Database = {
           org_id: string | null
           props: Json
           start_at: string | null
-          state_key: string
+          state_key: Database["public"]["Enums"]["project_state"]
           type_key: string
           updated_at: string
         }
@@ -4888,7 +4894,7 @@ export type Database = {
           org_id?: string | null
           props?: Json
           start_at?: string | null
-          state_key?: string
+          state_key?: Database["public"]["Enums"]["project_state"]
           type_key: string
           updated_at?: string
         }
@@ -4910,7 +4916,7 @@ export type Database = {
           org_id?: string | null
           props?: Json
           start_at?: string | null
-          state_key?: string
+          state_key?: Database["public"]["Enums"]["project_state"]
           type_key?: string
           updated_at?: string
         }
@@ -4966,7 +4972,7 @@ export type Database = {
           probability: number | null
           project_id: string
           props: Json
-          state_key: string
+          state_key: Database["public"]["Enums"]["risk_state"]
           title: string
           type_key: string | null
         }
@@ -4978,7 +4984,7 @@ export type Database = {
           probability?: number | null
           project_id: string
           props?: Json
-          state_key?: string
+          state_key?: Database["public"]["Enums"]["risk_state"]
           title: string
           type_key?: string | null
         }
@@ -4990,7 +4996,7 @@ export type Database = {
           probability?: number | null
           project_id?: string
           props?: Json
-          state_key?: string
+          state_key?: Database["public"]["Enums"]["risk_state"]
           title?: string
           type_key?: string | null
         }
@@ -5091,7 +5097,7 @@ export type Database = {
           project_id: string
           props: Json
           search_vector: unknown
-          state_key: string
+          state_key: Database["public"]["Enums"]["task_state"]
           title: string
           type_key: string
           updated_at: string
@@ -5106,7 +5112,7 @@ export type Database = {
           project_id: string
           props?: Json
           search_vector?: unknown
-          state_key?: string
+          state_key?: Database["public"]["Enums"]["task_state"]
           title: string
           type_key?: string
           updated_at?: string
@@ -5121,7 +5127,7 @@ export type Database = {
           project_id?: string
           props?: Json
           search_vector?: unknown
-          state_key?: string
+          state_key?: Database["public"]["Enums"]["task_state"]
           title?: string
           type_key?: string
           updated_at?: string
@@ -8473,15 +8479,6 @@ export type Database = {
           user_id: string
         }[]
       }
-      get_allowed_transitions: {
-        Args: { p_object_id: string; p_object_kind: string }
-        Returns: {
-          actions: Json
-          event: string
-          guards: Json
-          to_state: string
-        }[]
-      }
       get_brief_email_status: {
         Args: { p_brief_id: string }
         Returns: {
@@ -8677,6 +8674,10 @@ export type Database = {
           suggested_name: string
           suggestion_id: string
         }[]
+      }
+      get_project_full: {
+        Args: { p_actor_id: string; p_project_id: string }
+        Returns: Json
       }
       get_project_history: {
         Args: { target_project_id: string }
@@ -8967,10 +8968,6 @@ export type Database = {
       }
       onto_check_guard: {
         Args: { p_entity: Json; p_guard: Json }
-        Returns: boolean
-      }
-      onto_guards_pass: {
-        Args: { p_entity: Json; p_guards: Json }
         Returns: boolean
       }
       onto_jsonb_extract: {
@@ -9265,7 +9262,9 @@ export type Database = {
       brain_dump_status: "pending" | "parsed" | "saved" | "parsed_and_deleted"
       calendar_sync_status: "active" | "paused" | "error"
       calendar_visibility: "public" | "private" | "shared"
+      document_state: "draft" | "review" | "published"
       execution_status: "pending" | "executing" | "completed" | "failed"
+      goal_state: "draft" | "active" | "achieved" | "abandoned"
       llm_operation_type:
         | "brain_dump"
         | "brain_dump_short"
@@ -9289,13 +9288,17 @@ export type Database = {
         | "invalid_response"
       message_role: "system" | "user" | "assistant" | "tool"
       message_sender_type: "planner" | "executor" | "system"
+      milestone_state: "pending" | "in_progress" | "completed" | "missed"
       onto_actor_kind: "human" | "agent"
       onto_braindump_status: "pending" | "processing" | "processed" | "failed"
+      output_state: "draft" | "in_progress" | "review" | "published"
+      plan_state: "draft" | "active" | "completed"
       planning_strategy:
         | "planner_stream"
         | "ask_clarifying_questions"
         | "project_creation"
       priority_level: "low" | "medium" | "high"
+      project_state: "planning" | "active" | "completed" | "cancelled"
       project_status: "active" | "paused" | "completed" | "archived"
       queue_status:
         | "pending"
@@ -9337,6 +9340,7 @@ export type Database = {
         | "monthly"
         | "quarterly"
         | "yearly"
+      risk_state: "identified" | "mitigated" | "occurred" | "closed"
       sms_priority: "low" | "normal" | "high" | "urgent"
       sms_status:
         | "pending"
@@ -9349,6 +9353,7 @@ export type Database = {
         | "scheduled"
         | "cancelled"
       sync_status: "pending" | "synced" | "failed" | "cancelled"
+      task_state: "todo" | "in_progress" | "blocked" | "done"
       task_status: "backlog" | "in_progress" | "done" | "blocked"
       task_type: "one_off" | "recurring"
     }
@@ -9485,7 +9490,9 @@ export const Constants = {
       brain_dump_status: ["pending", "parsed", "saved", "parsed_and_deleted"],
       calendar_sync_status: ["active", "paused", "error"],
       calendar_visibility: ["public", "private", "shared"],
+      document_state: ["draft", "review", "published"],
       execution_status: ["pending", "executing", "completed", "failed"],
+      goal_state: ["draft", "active", "achieved", "abandoned"],
       llm_operation_type: [
         "brain_dump",
         "brain_dump_short",
@@ -9511,14 +9518,18 @@ export const Constants = {
       ],
       message_role: ["system", "user", "assistant", "tool"],
       message_sender_type: ["planner", "executor", "system"],
+      milestone_state: ["pending", "in_progress", "completed", "missed"],
       onto_actor_kind: ["human", "agent"],
       onto_braindump_status: ["pending", "processing", "processed", "failed"],
+      output_state: ["draft", "in_progress", "review", "published"],
+      plan_state: ["draft", "active", "completed"],
       planning_strategy: [
         "planner_stream",
         "ask_clarifying_questions",
         "project_creation",
       ],
       priority_level: ["low", "medium", "high"],
+      project_state: ["planning", "active", "completed", "cancelled"],
       project_status: ["active", "paused", "completed", "archived"],
       queue_status: [
         "pending",
@@ -9564,6 +9575,7 @@ export const Constants = {
         "quarterly",
         "yearly",
       ],
+      risk_state: ["identified", "mitigated", "occurred", "closed"],
       sms_priority: ["low", "normal", "high", "urgent"],
       sms_status: [
         "pending",
@@ -9577,6 +9589,7 @@ export const Constants = {
         "cancelled",
       ],
       sync_status: ["pending", "synced", "failed", "cancelled"],
+      task_state: ["todo", "in_progress", "blocked", "done"],
       task_status: ["backlog", "in_progress", "done", "blocked"],
       task_type: ["one_off", "recurring"],
     },

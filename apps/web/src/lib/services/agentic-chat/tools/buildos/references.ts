@@ -22,13 +22,13 @@ export const FEATURES_INDEX_REFERENCE: BuildosDocReference = {
 export const ONTOLOGY_REFERENCE: BuildosDocReference = {
 	title: 'Ontology System Documentation',
 	summary:
-		'The ontology is BuildOS\'s knowledge graph that connects projects, tasks, plans, goals, and documents. Every project uses a template (like "writer.book" or "dev.app") with three facets (context, scale, stage) to classify work. Context documents store the narrative "story" of a project—capturing why it matters, not just what needs doing. These narratives come from brain dumps and persist as the project evolves, giving AI agents the full picture when planning. The graph structure means tasks link to plans, plans link to goals, and everything ties back to project context—creating a web of meaning instead of isolated to-do lists.'
+		'The ontology is BuildOS\'s knowledge graph that connects projects, tasks, plans, goals, and documents. Every project is classified with a type_key (like "project.creative.book" or "project.technical.app") and three facets (context, scale, stage). Context documents store the narrative "story" of a project—capturing why it matters, not just what needs doing. These narratives come from brain dumps and persist as the project evolves, giving AI agents the full picture when planning. The graph structure means tasks link to plans, plans link to goals, and everything ties back to project context—creating a web of meaning instead of isolated to-do lists.'
 };
 
-export const TEMPLATE_INHERITANCE_REFERENCE: BuildosDocReference = {
-	title: 'Project Template Inheritance Notes',
+export const PROJECT_CLASSIFICATION_REFERENCE: BuildosDocReference = {
+	title: 'Project Classification System',
 	summary:
-		'Templates provide starting points for projects—defining common properties, suggested states, and classification facets. When a project is created, template defaults merge in automatically, but the project schema stays flexible. Users can add custom fields, change workflows, and adapt beyond the template as their needs evolve. Schema definitions describe what fields are possible, but only defaults get merged at instantiation time.'
+		'Projects are classified with a type_key following the pattern project.{realm}.{deliverable}[.{variant}] (e.g., project.creative.book, project.technical.app). Each project has flexible props stored in JSONB for domain-specific properties, and facets (context, scale, stage) for categorization. The schema is flexible—users can add custom fields and adapt as their needs evolve.'
 };
 
 export const CHAT_ARCHITECTURE_REFERENCE: BuildosDocReference = {

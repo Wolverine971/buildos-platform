@@ -29,7 +29,7 @@ import {
 import { getToolsForAgent } from '@buildos/shared-types';
 import { ChatCompressionService } from './chat-compression-service';
 import { ChatContextService } from './chat-context-service';
-import { generateProjectContextFramework } from './prompts/core/prompt-components';
+import { PromptGenerationService } from './agentic-chat/prompts/prompt-generation-service';
 import type {
 	LastTurnContext,
 	OntologyContext,
@@ -41,11 +41,9 @@ import type {
 } from '$lib/types/agent-chat-enhancement';
 import type { EntityLinkedContext } from '$lib/types/linked-entity-context.types';
 import { OntologyContextLoader } from './ontology-context-loader';
-import {
-	formatLinkedEntitiesForSystemPrompt,
-	hasLinkedEntities
-} from './linked-entity-context-formatter';
+import { generateProjectContextFramework } from './prompts/core/prompt-components';
 
+// Project context document guidance for executor prompts
 const PROJECT_CONTEXT_DOC_GUIDANCE = generateProjectContextFramework('condensed');
 
 // ============================================
@@ -141,6 +139,7 @@ export class AgentContextService {
 	private compressionService?: ChatCompressionService;
 	private chatContextService: ChatContextService;
 	private ontologyLoader: OntologyContextLoader;
+	private promptService: PromptGenerationService;
 
 	constructor(
 		private supabase: SupabaseClient<Database>,
@@ -149,6 +148,7 @@ export class AgentContextService {
 		this.compressionService = compressionService;
 		this.chatContextService = new ChatContextService(supabase);
 		this.ontologyLoader = new OntologyContextLoader(supabase);
+		this.promptService = new PromptGenerationService();
 	}
 
 	// ============================================
@@ -205,14 +205,14 @@ export class AgentContextService {
 			}
 		}
 
-		// Step 1: Build system prompt with ontology awareness
-		const systemPrompt = await this.buildEnhancedSystemPrompt(
-			normalizedContext,
+		// Step 1: Build system prompt with ontology awareness (delegated to PromptGenerationService)
+		const systemPrompt = await this.promptService.buildPlannerSystemPrompt({
+			contextType: normalizedContext,
 			ontologyContext,
 			lastTurnContext,
 			entityId,
 			linkedEntitiesContext
-		);
+		});
 
 		// Step 2: Process conversation history with compression if needed
 		const { messages: processedHistory, usageSnapshot: compressionUsage } =
@@ -320,338 +320,6 @@ export class AgentContextService {
 				compressionUsage
 			}
 		};
-	}
-
-	/**
-	 * Build enhanced system prompt with ontology and strategies
-	 */
-	private async buildEnhancedSystemPrompt(
-		contextType: ChatContextType,
-		ontologyContext?: OntologyContext,
-		lastTurnContext?: LastTurnContext,
-		entityId?: string,
-		linkedEntitiesContext?: EntityLinkedContext
-	): Promise<string> {
-		let prompt = `You are an AI assistant in BuildOS with advanced context awareness.
-
-## Current Context
-- Type: ${contextType}
-- Level: ${ontologyContext?.type || 'standard'}
-${lastTurnContext ? `- Previous Turn: "${lastTurnContext.summary}"` : '- Previous Turn: First message'}
-${lastTurnContext?.entities ? `- Active Entities: ${JSON.stringify(lastTurnContext.entities)}` : ''}
-
-## Data Access Pattern (CRITICAL)
-You operate with progressive disclosure:
-1. You start with ABBREVIATED summaries (what's shown in context)
-2. Use detail tools (get_*_details) to drill down when needed
-3. Always indicate when more detailed data is available with hints like "I can get more details if needed"
-
-## Available Strategies
-Analyze each request and choose the appropriate strategy:
-
-1. **planner_stream**: Default autonomous planner loop
-   - Handles quick lookups *and* multi-step investigations inside a single session
-   - Call the \`agent_create_plan\` meta tool when you need structured execution or executor fan-out
-   - Examples: "Analyze project health", "List active tasks and flag blockers"
-
-2. **project_creation**: Only when the user is starting a new project (context_type === project_create)
-   - Select a template (or escalate for template creation), gather missing details, and call \`create_onto_project\`
-   - Populate the context document so the new project has a narrative summary
-
-3. **ask_clarifying_questions**: When ambiguity remains AFTER attempting research
-   - Try to resolve confusion with tools first
-   - Only ask questions if research doesn't resolve ambiguity, and be specific about what you need
-
-## Important Guidelines
-- ALWAYS attempt research before asking for clarification
-- Reference entities by their IDs when found (store in last_turn_context)
-- Maintain conversation continuity using the last_turn_context
-- Respect token limits through progressive disclosure
-- Start with LIST/SEARCH tools before using DETAIL tools`;
-
-		// Special handling for project context workspace
-		if (contextType === 'project' || ontologyContext?.type === 'project') {
-			const projectName =
-				ontologyContext?.entities.project?.name ??
-				ontologyContext?.scope?.projectName ??
-				'current project';
-			const projectIdentifier =
-				ontologyContext?.entities.project?.id ||
-				ontologyContext?.scope?.projectId ||
-				entityId ||
-				'not provided';
-			prompt += `
-
-## Project Workspace Operating Guide
-- You are fully scoped to Project **${projectName}** (ID: ${projectIdentifier}).
-- Treat this chat as the user's dedicated project workspace: they may ask for summaries, risks, decisions, or request concrete changes.
-- Default workflow:
-  1. Identify whether the request is informational (answer with existing data) or operational (requires write tools).
-  2. Start with ontology list/detail tools (e.g., list_onto_projects, list_onto_tasks, get_onto_project_details, get_onto_task_details) to ground your answer before suggesting edits.
-  3. If the user clearly asks to change data, call the corresponding create/update tool and describe the result.
-  4. Proactively surface related insights (risks, blockers, next steps) when helpful—even if the user asked a simple question.
-- Always mention when additional detail is available via tools and ask if you'd like to dive deeper before modifying data.`;
-		}
-
-		// Special handling for project_create context
-		if (contextType === 'project_create') {
-			prompt += `
-
-## PROJECT CREATION CONTEXT
-
-You are helping the user create a new ontology project.
-
-### Your Task: Create a project in ONE interaction
-
-Infer project details from the user's request and immediately call create_onto_project. Do NOT stop to ask for confirmation unless CRITICAL information is completely missing.
-
-### Tool Usage Guide
-- **get_field_info**: Use if you need to check valid field values. Call with entity_type="ontology_project", entity_type="ontology_task", entity_type="ontology_goal", or entity_type="ontology_plan" as needed.
-- **create_onto_project**: Your primary tool - call this to create the project after inferring details.
-
-### Workflow:
-
-**Step 1: Infer All Project Details**
-From the user's message, infer as much as possible:
-- **name**: Extract clear project name (e.g., "book project" → "Book Writing Project")
-- **description**: Expand on what user said (1-2 sentences)
-- **type_key**: Infer appropriate type_key based on project domain (e.g., "project.general", "project.creative", "project.development")
-- **facets**:
-  - context: personal (default), client, commercial, internal
-  - scale: micro, small, medium, large, epic
-  - stage: discovery (default), planning, execution, review, complete
-- **start_at**: Current date/time: ${new Date().toISOString()}
-- **end_at**: Only if deadline is explicitly mentioned
-- **goals**: Create 1-3 relevant goals if user mentions objectives
-- **tasks**: ONLY add tasks if the user explicitly mentions SPECIFIC FUTURE ACTIONS they need to track (e.g., "I need to call the vendor", "remind me to review the contract"). Do NOT create tasks for work you can help with in the conversation or for vague intentions.
-- **outputs**: Include if user mentions deliverables
-
-**Step 2: Create Project Immediately**
-After inferring details, call create_onto_project RIGHT AWAY with all information.
-
-ONLY ask clarifying questions if:
-- User says "create a project" with absolutely NO context about what kind
-- Critical decision affects the entire project structure
-
-Do NOT ask if:
-- You can infer project type from keywords ("book" = writing, "app" = developer)
-- Missing non-critical details (use defaults)
-- User provided enough context to make a reasonable choice
-
-### Example Workflow
-
-User: "Create a book writing project"
-
-Response: "I'll create a book writing project for you."
-
-Then IMMEDIATELY:
-1. Infer details:
-   - name: "Book Writing Project"
-   - description: "A writing project focused on creating a book"
-   - type_key: "project.creative"
-   - facets: { context: "personal", scale: "large", stage: "discovery" }
-   - start_at: "${new Date().toISOString()}"
-2. Call create_onto_project({
-     project: {
-       name: "Book Writing Project",
-       description: "A writing project focused on creating a book",
-       type_key: "project.creative",
-       props: { facets: { context: "personal", scale: "large", stage: "discovery" } },
-       start_at: "${new Date().toISOString()}"
-     },
-     goals: [
-       { name: "Complete first draft", description: "Write the complete first draft of the book" },
-       { name: "Publish book", description: "Finalize and publish the completed book" }
-     ]
-   })
-3. After creation, tell user: "Created your book writing project with 2 goals. You can start adding tasks and content now."
-
-CRITICAL INSTRUCTIONS:
-- IMMEDIATELY call create_onto_project after inferring details
-- Do NOT stop after inferring - continue to creation
-- Do NOT ask for confirmation unless critical info is missing
-- Be decisive and proactive
-
-### Context Document Requirements (MANDATORY)
-${PROJECT_CONTEXT_DOC_GUIDANCE}
-
-Use this guidance to write the \`context_document.body_markdown\` when calling \`create_onto_project\`. This document is the canonical strategic brief for the project, so weave the user's braindump into that structure before submitting the tool call.`;
-		}
-
-		// Special handling for brain_dump context (braindump exploration)
-		if (contextType === 'brain_dump') {
-			prompt += `
-
-## BRAINDUMP EXPLORATION CONTEXT
-
-The user has shared a braindump - raw, unstructured thoughts that they want to explore. Your role is to be a thoughtful sounding board and thought partner.
-
-### Your Core Approach
-
-1. **BE A SOUNDING BOARD**: Listen, reflect, and help clarify their thinking without rushing to structure
-2. **MIRROR THEIR ENERGY**: If they're exploring, explore with them. If they're getting concrete, help them structure
-3. **ASK GENTLE QUESTIONS**: Only when it helps clarify, not to interrogate. Let the conversation flow naturally
-4. **IDENTIFY PATTERNS**: Notice themes, goals, or projects that emerge, but don't force categorization
-5. **AVOID PREMATURE STRUCTURING**: Don't immediately try to create projects/tasks unless they clearly want that
-
-### The User Might Be:
-
-- **Processing raw thoughts** that need space and reflection
-- **Exploring an idea** that could eventually become a project
-- **Working through a decision** or problem that needs clarity
-- **Thinking about tasks/goals** within a broader context they haven't fully articulated
-- **Just wanting to think aloud** with a supportive listener
-
-### Guidelines for Engagement:
-
-- **Start by acknowledging** what they shared and reflecting back key themes you noticed
-- **Ask clarifying questions sparingly** - focus on understanding, not on gathering project requirements
-- **Offer gentle observations** like "It sounds like X is important to you" or "I notice you mentioned Y several times"
-- **Wait for cues** before suggesting structure - phrases like "I should probably..." or "I need to organize..." indicate readiness
-- **If they seem ready for action**, you can offer: "Would you like me to help turn any of this into a project or tasks?"
-
-### What NOT to Do:
-
-- Don't immediately ask "What project is this for?" or "What are the tasks?"
-- Don't create projects/tasks without clear signals from the user
-- Don't overwhelm with multiple questions at once
-- Don't be too formal or business-like - be conversational and warm
-- Don't push for structure when they just want to think
-
-### When to Transition to Action:
-
-Only suggest creating structure (projects, tasks, goals) when:
-- The user explicitly asks for it
-- They express frustration about disorganization
-- They say things like "I should make a plan" or "I need to track this"
-- The conversation naturally evolves toward concrete next steps
-
-Remember: The value here is in the conversation itself, helping them think more clearly. Structure can come later if they want it.`;
-		}
-
-		if (lastTurnContext) {
-			const entityHighlights = this.formatLastTurnEntities(lastTurnContext.entities);
-			prompt += `
-
-## Last Turn Highlights
-- Summary: ${lastTurnContext.summary}
-- Strategy Used: ${lastTurnContext.strategy_used || 'not recorded'}
-- Data Accessed: ${lastTurnContext.data_accessed.length > 0 ? lastTurnContext.data_accessed.join(', ') : 'none'}
-${entityHighlights.length > 0 ? entityHighlights.map((line) => `- ${line}`).join('\n') : '- No entities tracked last turn'}
-- Continue the conversation by referencing these entities when relevant (e.g., pick up the last touched task before moving on).`;
-		}
-
-		// Add ontology-specific context for projects
-		if (ontologyContext?.type === 'project') {
-			const project = ontologyContext.entities.project;
-			prompt += `
-
-## Current Project (Internal Reference)
-- Project ID: ${project?.id ?? 'unknown'}
-- Project Name: ${project?.name ?? 'Unnamed project'}
-- State: ${project?.state_key || 'active'}
-- Type: ${project?.type_key || 'standard'}`;
-
-			if (ontologyContext.metadata?.facets) {
-				prompt += `
-- Facets: ${JSON.stringify(ontologyContext.metadata.facets)}`;
-			}
-
-			if (ontologyContext.metadata?.context_document_id) {
-				prompt += `
-- Context Document: ${ontologyContext.metadata.context_document_id}`;
-			}
-
-			if (ontologyContext.metadata?.entity_count) {
-				const counts = Object.entries(ontologyContext.metadata.entity_count)
-					.map(([type, count]) => `${type}: ${count}`)
-					.join(', ');
-				prompt += `
-- Entity Counts: ${counts}`;
-			}
-
-			if (
-				ontologyContext.relationships?.edges &&
-				ontologyContext.relationships.edges.length > 0
-			) {
-				prompt += `
-- Relationships: ${ontologyContext.relationships.edges.length} edges available
-- Edge Types: ${[...new Set(ontologyContext.relationships.edges.map((e) => e.relation))].join(', ')}`;
-			}
-		}
-
-		// Add ontology-specific context for elements
-		if (ontologyContext?.type === 'element') {
-			const elementType =
-				ontologyContext.scope?.focus?.type ?? this.detectElementType(ontologyContext);
-			const element = this.getScopedEntity(ontologyContext, elementType);
-			const parentProject = ontologyContext.entities.project;
-
-			prompt += `
-
-## Current Element (Internal Reference)
-- Element Type: ${elementType || 'element'}
-- Element ID: ${element?.id ?? 'unknown'}
-- Element Name: ${this.getEntityName(element)}`;
-
-			if (parentProject) {
-				prompt += `
-- Parent Project: ${parentProject.name} (${parentProject.id})
-- Project State: ${parentProject.state_key ?? 'unknown'}`;
-			}
-
-			prompt += `
-- Hierarchy Level: ${ontologyContext.metadata?.hierarchy_level || 0}`;
-
-			if (ontologyContext.relationships?.edges?.length) {
-				prompt += `
-- Direct Relationships: ${ontologyContext.relationships.edges.length}`;
-			}
-		}
-
-		// Add linked entities context when there's a focus entity
-		if (linkedEntitiesContext && hasLinkedEntities(linkedEntitiesContext)) {
-			const linkedEntitiesPrompt = formatLinkedEntitiesForSystemPrompt(linkedEntitiesContext);
-			prompt += `
-
-${linkedEntitiesPrompt}`;
-		}
-
-		// Add global context
-		if (ontologyContext?.type === 'global') {
-			const totalProjects =
-				ontologyContext.metadata?.total_projects ??
-				ontologyContext.entities.projects?.length ??
-				0;
-			const recent = ontologyContext.entities.projects ?? [];
-			const entityTypes = ontologyContext.metadata?.available_entity_types ?? [];
-
-			prompt += `
-
-## Workspace Overview (Internal Reference)
-- Total Projects: ${totalProjects}
-- Recent Projects: ${recent.length} loaded
-- Available Types: ${entityTypes.join(', ') || 'project'}`;
-
-			if (recent.length > 0) {
-				prompt += `
-- Recent Projects:
-${recent
-	.map((project) => `  - ${project.name} (${project.state_key}) · ${project.type_key}`)
-	.slice(0, 5)
-	.join('\n')}`;
-			}
-
-			if (ontologyContext.metadata?.entity_count) {
-				prompt += `
-- Global Entity Distribution:
-${Object.entries(ontologyContext.metadata.entity_count)
-	.map(([type, count]) => `  - ${type}: ${count}`)
-	.join('\n')}`;
-			}
-		}
-
-		return prompt;
 	}
 
 	/**
@@ -1181,39 +849,6 @@ You have access to:
 		};
 
 		return labels[contextType] ?? contextType.replace(/_/g, ' ');
-	}
-
-	private formatLastTurnEntities(entities: LastTurnContext['entities'] = {}): string[] {
-		const lines: string[] = [];
-
-		if (entities.project_id) {
-			lines.push(`Current project focus: ${entities.project_id}`);
-		}
-
-		if (entities.task_ids?.length) {
-			const [primaryTask, ...restTasks] = entities.task_ids;
-			const suffix =
-				restTasks.length > 0 ? ` (additional tasks: ${restTasks.join(', ')})` : '';
-			lines.push(`Last touched task: ${primaryTask}${suffix}`);
-		}
-
-		if (entities.plan_id) {
-			lines.push(`Active plan: ${entities.plan_id}`);
-		}
-
-		if (entities.goal_ids?.length) {
-			lines.push(`Goals referenced: ${entities.goal_ids.join(', ')}`);
-		}
-
-		if (entities.document_id) {
-			lines.push(`Document in focus: ${entities.document_id}`);
-		}
-
-		if (entities.output_id) {
-			lines.push(`Output referenced: ${entities.output_id}`);
-		}
-
-		return lines;
 	}
 
 	private getProgressiveDisclosureForPlanner(): string {

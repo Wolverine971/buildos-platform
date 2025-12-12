@@ -623,18 +623,9 @@ export class ToolExecutionService implements BaseService {
 
 	private normalizeExecutionError(
 		error: unknown,
-		toolName: string,
-		args: Record<string, any>
+		_toolName: string,
+		_args: Record<string, any>
 	): string {
-		const message = error instanceof Error ? error.message : String(error);
-		if (
-			toolName === 'create_onto_project' &&
-			typeof message === 'string' &&
-			message.includes('Active project template not found')
-		) {
-			const typeKey = typeof args?.type_key === 'string' ? args.type_key : 'unknown';
-			return `Project type_key "${typeKey}" was not accepted. Use project.{realm}.{deliverable}[.{variant}] classification and retry. Original error: ${message}`;
-		}
-		return message;
+		return error instanceof Error ? error.message : String(error);
 	}
 }

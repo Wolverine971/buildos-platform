@@ -9,8 +9,7 @@
 	import { toastService } from '$lib/stores/toast.store';
 	import { Copy, Calendar, FileText, X, FolderKanban, Trash2 } from 'lucide-svelte';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
-	import type { Project, Document } from '$lib/types/onto';
-	import { renderMarkdown } from '$lib/utils/markdown';
+	import { PROJECT_STATES, type Project, type Document } from '$lib/types/onto';
 
 	interface Props {
 		isOpen?: boolean;
@@ -54,6 +53,7 @@
 
 	let name = $state('');
 	let description = $state('');
+	let stateKey = $state('planning');
 	let facetContext = $state('');
 	let facetScale = $state('');
 	let facetStage = $state('');
@@ -87,6 +87,7 @@
 
 		name = project.name ?? '';
 		description = project.description ?? '';
+		stateKey = project.state_key ?? 'planning';
 		facetContext = project.facet_context ?? '';
 		facetScale = project.facet_scale ?? '';
 		facetStage = project.facet_stage ?? '';
@@ -185,6 +186,10 @@
 
 		if ((description || '') !== (project.description || '')) {
 			payload.description = description.trim() || null;
+		}
+
+		if ((stateKey || '') !== (project.state_key || '')) {
+			payload.state_key = stateKey || null;
 		}
 
 		if ((facetContext || '') !== (project.facet_context || '')) {
@@ -543,6 +548,36 @@
 									<option value="">Not set</option>
 									{#each FACET_STAGE_OPTIONS as option}
 										<option value={option}>{facetLabel(option)}</option>
+									{/each}
+								</Select>
+							</div>
+
+							<!-- Project State -->
+							<div>
+								<label
+									for="project-state"
+									class="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 block"
+								>
+									📊 Status
+								</label>
+								<Select
+									id="project-state"
+									bind:value={stateKey}
+									size="sm"
+									disabled={isSaving}
+								>
+									{#each PROJECT_STATES as state}
+										<option value={state}>
+											{state === 'planning'
+												? 'Planning'
+												: state === 'active'
+													? 'Active'
+													: state === 'completed'
+														? 'Completed'
+														: state === 'cancelled'
+															? 'Cancelled'
+															: state}
+										</option>
 									{/each}
 								</Select>
 							</div>

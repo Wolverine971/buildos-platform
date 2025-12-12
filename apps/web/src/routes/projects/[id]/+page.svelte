@@ -27,7 +27,7 @@
 	- Output Editing: /apps/web/src/lib/components/ontology/OutputEditModal.svelte
 	- Document Management: /apps/web/src/lib/components/ontology/DocumentModal.svelte
 	- Project Editing: /apps/web/src/lib/components/ontology/OntologyProjectEditModal.svelte
-	- FSM State Bar: /apps/web/src/lib/components/ontology/FSMStateBar.svelte
+	- State Display: /apps/web/src/lib/components/ontology/StateDisplay.svelte
 
 	API Integration:
 	- Server Data Loading: /apps/web/src/routes/projects/[id]/+page.server.ts
@@ -74,6 +74,7 @@
 	import type { PageData } from './$types';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
 	import NextStepDisplay from '$lib/components/project/NextStepDisplay.svelte';
+	import StateDisplay from '$lib/components/ontology/StateDisplay.svelte';
 	import type { EntityReference } from '$lib/utils/entity-reference-parser';
 
 	// ============================================================
@@ -472,16 +473,6 @@
 		editingMilestoneId = null;
 	}
 
-	async function handleProjectStateChange(data: {
-		state: string;
-		actions: string[];
-		event: string;
-	}) {
-		project = { ...project, state_key: data.state };
-		await refreshData();
-		toastService.success(`Project moved to "${data.state}"`);
-	}
-
 	async function handleProjectDeleteConfirm() {
 		if (!project?.id) return;
 		isDeletingProject = true;
@@ -654,16 +645,8 @@
 				</div>
 			</div>
 
-			<!-- FSM State Bar -->
-			{#await import('$lib/components/ontology/FSMStateBar.svelte') then { default: FSMStateBar }}
-				<FSMStateBar
-					entityId={project.id}
-					entityKind="project"
-					currentState={project.state_key}
-					entityName={project.name}
-					onstatechange={handleProjectStateChange}
-				/>
-			{/await}
+			<!-- Project State -->
+			<StateDisplay state={project.state_key} entityKind="project" />
 
 			<!-- Next Step Display -->
 			<NextStepDisplay

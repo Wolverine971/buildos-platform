@@ -1,7 +1,12 @@
 <!-- apps/web/src/lib/components/dashboard/Dashboard.svelte -->
 <!-- Projects-focused dashboard with AgentChatModal integration -->
+<!--
+  PERFORMANCE OPTIMIZATIONS (Dec 2024):
+  - Projects loaded server-side and passed via initialProjects prop
+  - No client-side fetch on mount (eliminates ~200-500ms latency)
+  - Manual refresh only triggered by user action or modal close
+-->
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import {
 		Plus,
 		FolderOpen,
@@ -13,7 +18,8 @@
 		Layers,
 		Target,
 		Calendar,
-		FileText
+		FileText,
+		RefreshCw
 	} from 'lucide-svelte';
 	import { formatFullDate } from '$lib/utils/date-utils';
 	import { getProjectStateBadgeClass } from '$lib/utils/ontology-badge-styles';
@@ -45,31 +51,40 @@
 		is_admin?: boolean;
 	}
 
-	// Props
+	// Props - OPTIMIZATION: Projects now passed from server
 	type Props = {
 		user: User;
+		initialProjects?: OntologyProjectSummary[];
+		isLoadingProjects?: boolean;
+		onrefresh?: () => void;
 	};
 
-	let { user }: Props = $props();
+	let { user, initialProjects = [], isLoadingProjects = false, onrefresh }: Props = $props();
 
-	// State
-	let projects = $state<OntologyProjectSummary[]>([]);
-	let isLoading = $state(true);
+	// State - OPTIMIZATION: Initialize from server-loaded data
+	let projects = $state<OntologyProjectSummary[]>(initialProjects);
+	let isLoading = $state(isLoadingProjects);
 	let error = $state<string | null>(null);
 	let showChatModal = $state(false);
 	let AgentChatModal = $state<any>(null);
+	let isRefreshing = $state(false);
+
+	// OPTIMIZATION: Sync with incoming props when they change (streaming updates)
+	$effect(() => {
+		projects = initialProjects;
+	});
+
+	$effect(() => {
+		isLoading = isLoadingProjects;
+	});
 
 	// Computed
 	const displayName = $derived(user?.name || user?.email?.split('@')[0] || 'there');
 	const hasProjects = $derived(projects.length > 0);
 
-	// Load projects on mount
-	onMount(async () => {
-		await loadProjects();
-	});
-
-	async function loadProjects() {
-		isLoading = true;
+	// OPTIMIZATION: Manual refresh only (not on mount)
+	async function refreshProjects() {
+		isRefreshing = true;
 		error = null;
 
 		try {
@@ -85,17 +100,16 @@
 
 			if (!response.ok || payload?.success === false) {
 				error = payload?.error || 'Failed to load projects';
-				projects = [];
 				return;
 			}
 
 			const fetchedProjects = payload?.data?.projects ?? payload?.projects ?? [];
 			projects = fetchedProjects;
 		} catch (err) {
-			console.error('Failed to load projects:', err);
-			error = 'Failed to load projects. Please try again.';
+			console.error('Failed to refresh projects:', err);
+			error = 'Failed to refresh projects. Please try again.';
 		} finally {
-			isLoading = false;
+			isRefreshing = false;
 		}
 	}
 
@@ -116,7 +130,7 @@
 	function handleChatClose() {
 		showChatModal = false;
 		// Refresh projects after modal closes in case a new project was created
-		loadProjects();
+		refreshProjects();
 	}
 </script>
 
@@ -144,7 +158,12 @@
 				<div class="text-center">
 					<AlertTriangle class="h-8 w-8 text-red-500 mx-auto mb-3" />
 					<p class="text-red-600 dark:text-red-400 mb-4">{error}</p>
-					<Button onclick={loadProjects} variant="primary" size="sm">Try Again</Button>
+					<Button onclick={refreshProjects} variant="primary" size="sm" disabled={isRefreshing}>
+						{#if isRefreshing}
+							<Loader2 class="h-4 w-4 mr-2 animate-spin" />
+						{/if}
+						Try Again
+					</Button>
 				</div>
 			</div>
 		{/if}
@@ -167,6 +186,15 @@
 							<FolderOpen class="h-5 w-5 text-accent" />
 						</div>
 						<h2 class="text-xl font-bold text-foreground">Your Projects</h2>
+						<!-- Refresh button -->
+						<button
+							onclick={refreshProjects}
+							disabled={isRefreshing}
+							class="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors disabled:opacity-50"
+							title="Refresh projects"
+						>
+							<RefreshCw class="h-4 w-4 {isRefreshing ? 'animate-spin' : ''}" />
+						</button>
 					</div>
 					{#if hasProjects}
 						<Button

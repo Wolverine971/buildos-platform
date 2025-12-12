@@ -306,7 +306,7 @@
 	<title>Projects | BuildOS</title>
 </svelte:head>
 
-<div class="space-y-4 sm:space-y-6">
+<div class="mx-auto max-w-screen-2xl px-2 sm:px-4 lg:px-6 py-4 sm:py-6 space-y-4 sm:space-y-6">
 	<!-- Mobile Navigation - Only visible on mobile, Admin Only -->
 	{#if isAdmin}
 		<nav

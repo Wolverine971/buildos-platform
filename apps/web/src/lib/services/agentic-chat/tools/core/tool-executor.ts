@@ -503,21 +503,6 @@ export class ChatToolExecutor {
 		return payload?.data ?? payload;
 	}
 
-	private async ensureTemplateForScope(params: {
-		scope: 'project' | 'plan' | 'task' | 'output' | 'document';
-		typeKey?: string;
-		props?: Record<string, unknown>;
-		nameHint?: string;
-	}): Promise<string | undefined> {
-		// Template system has been removed - this is a no-op stub
-		return params.typeKey;
-	}
-
-	private async ensureTemplatesForProjectSpec(args: CreateOntoProjectArgs): Promise<void> {
-		// Template system has been removed - this is a no-op stub
-		return Promise.resolve();
-	}
-
 	async execute(toolCall: ChatToolCall): Promise<ChatToolResult> {
 		const startTime = Date.now();
 
@@ -1422,8 +1407,6 @@ export class ChatToolExecutor {
 			};
 		}
 
-		await this.ensureTemplatesForProjectSpec(args);
-
 		const contextDocument = buildContextDocumentSpec(args);
 
 		const additionalDocuments =
@@ -1472,13 +1455,6 @@ export class ChatToolExecutor {
 		task: any;
 		message: string;
 	}> {
-		await this.ensureTemplateForScope({
-			scope: 'task',
-			typeKey: args.type_key ?? 'task.execute',
-			props: args.props ?? {},
-			nameHint: args.title
-		});
-
 		const payload = {
 			project_id: args.project_id,
 			title: args.title,
@@ -1529,13 +1505,6 @@ export class ChatToolExecutor {
 		plan: any;
 		message: string;
 	}> {
-		await this.ensureTemplateForScope({
-			scope: 'plan',
-			typeKey: args.type_key ?? 'plan.phase.base',
-			props: args.props ?? {},
-			nameHint: args.name
-		});
-
 		const payload = {
 			project_id: args.project_id,
 			name: args.name,
@@ -1560,13 +1529,6 @@ export class ChatToolExecutor {
 		document: any;
 		message: string;
 	}> {
-		await this.ensureTemplateForScope({
-			scope: 'document',
-			typeKey: args.type_key,
-			props: args.props ?? {},
-			nameHint: args.title
-		});
-
 		const payload = {
 			project_id: args.project_id,
 			title: args.title,
@@ -1927,15 +1889,6 @@ export class ChatToolExecutor {
 	}> {
 		if (!args.task_id) {
 			throw new Error('task_id is required for create_task_document');
-		}
-
-		if (args.type_key) {
-			await this.ensureTemplateForScope({
-				scope: 'document',
-				typeKey: args.type_key,
-				props: args.props ?? {},
-				nameHint: args.title
-			});
 		}
 
 		const payload: Record<string, unknown> = {

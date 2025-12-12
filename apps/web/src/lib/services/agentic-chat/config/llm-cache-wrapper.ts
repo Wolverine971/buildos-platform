@@ -31,7 +31,6 @@ export class LLMCacheWrapper {
 		'task_extraction',
 		'context_extraction',
 		'tool_definition_lookup',
-		'template_generation',
 		'chat_title_generation',
 		'chat_segment_summary'
 	];
@@ -139,7 +138,6 @@ export class LLMCacheWrapper {
 			task_extraction: 0.02,
 			context_extraction: 0.025,
 			tool_definition_lookup: 0.005,
-			template_generation: 0.01,
 			chat_title_generation: 0.002,
 			chat_segment_summary: 0.003
 		};

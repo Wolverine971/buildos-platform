@@ -9,8 +9,12 @@
 
 import type { ChatContextType } from '@buildos/shared-types';
 import type { LastTurnContext, OntologyContext } from '$lib/types/agent-chat-enhancement';
+import type { EntityLinkedContext } from '$lib/types/linked-entity-context.types';
 import { generateProjectContextFramework } from '$lib/services/prompts/core/prompt-components';
-// import { generateProjectContextFramework } from '../../../prompts/core/prompt-components';
+import {
+	formatLinkedEntitiesForSystemPrompt,
+	hasLinkedEntities
+} from '$lib/services/linked-entity-context-formatter';
 
 const PROJECT_CONTEXT_DOC_GUIDANCE = generateProjectContextFramework('condensed');
 
@@ -19,6 +23,7 @@ export interface PromptGenerationContext {
 	ontologyContext?: OntologyContext;
 	lastTurnContext?: LastTurnContext;
 	entityId?: string;
+	linkedEntitiesContext?: EntityLinkedContext;
 }
 
 export class PromptGenerationService {
@@ -26,7 +31,8 @@ export class PromptGenerationService {
 	 * Build enhanced system prompt with ontology and strategies
 	 */
 	async buildPlannerSystemPrompt(context: PromptGenerationContext): Promise<string> {
-		const { contextType, ontologyContext, lastTurnContext, entityId } = context;
+		const { contextType, ontologyContext, lastTurnContext, entityId, linkedEntitiesContext } =
+			context;
 
 		let prompt = this.getBasePrompt(contextType, ontologyContext, lastTurnContext);
 
@@ -39,12 +45,21 @@ export class PromptGenerationService {
 			prompt += this.getProjectCreationPrompt();
 		}
 
+		if (contextType === 'brain_dump') {
+			prompt += this.getBrainDumpPrompt();
+		}
+
 		if (lastTurnContext) {
 			prompt += this.getLastTurnPrompt(lastTurnContext);
 		}
 
 		// Add ontology-specific context
 		prompt += this.getOntologyContextPrompt(ontologyContext);
+
+		// Add linked entities context when there's a focus entity
+		if (linkedEntitiesContext && hasLinkedEntities(linkedEntitiesContext)) {
+			prompt += '\n\n' + formatLinkedEntitiesForSystemPrompt(linkedEntitiesContext);
+		}
 
 		return prompt;
 	}
@@ -306,6 +321,59 @@ Use this guidance to write the \`context_document.body_markdown\` when calling \
 	}
 
 	/**
+	 * Get brain dump exploration prompt
+	 */
+	private getBrainDumpPrompt(): string {
+		return `
+
+## BRAINDUMP EXPLORATION CONTEXT
+
+The user has shared a braindump - raw, unstructured thoughts that they want to explore. Your role is to be a thoughtful sounding board and thought partner.
+
+### Your Core Approach
+
+1. **BE A SOUNDING BOARD**: Listen, reflect, and help clarify their thinking without rushing to structure
+2. **MIRROR THEIR ENERGY**: If they're exploring, explore with them. If they're getting concrete, help them structure
+3. **ASK GENTLE QUESTIONS**: Only when it helps clarify, not to interrogate. Let the conversation flow naturally
+4. **IDENTIFY PATTERNS**: Notice themes, goals, or projects that emerge, but don't force categorization
+5. **AVOID PREMATURE STRUCTURING**: Don't immediately try to create projects/tasks unless they clearly want that
+
+### The User Might Be:
+
+- **Processing raw thoughts** that need space and reflection
+- **Exploring an idea** that could eventually become a project
+- **Working through a decision** or problem that needs clarity
+- **Thinking about tasks/goals** within a broader context they haven't fully articulated
+- **Just wanting to think aloud** with a supportive listener
+
+### Guidelines for Engagement:
+
+- **Start by acknowledging** what they shared and reflecting back key themes you noticed
+- **Ask clarifying questions sparingly** - focus on understanding, not on gathering project requirements
+- **Offer gentle observations** like "It sounds like X is important to you" or "I notice you mentioned Y several times"
+- **Wait for cues** before suggesting structure - phrases like "I should probably..." or "I need to organize..." indicate readiness
+- **If they seem ready for action**, you can offer: "Would you like me to help turn any of this into a project or tasks?"
+
+### What NOT to Do:
+
+- Don't immediately ask "What project is this for?" or "What are the tasks?"
+- Don't create projects/tasks without clear signals from the user
+- Don't overwhelm with multiple questions at once
+- Don't be too formal or business-like - be conversational and warm
+- Don't push for structure when they just want to think
+
+### When to Transition to Action:
+
+Only suggest creating structure (projects, tasks, goals) when:
+- The user explicitly asks for it
+- They express frustration about disorganization
+- They say things like "I should make a plan" or "I need to track this"
+- The conversation naturally evolves toward concrete next steps
+
+Remember: The value here is in the conversation itself, helping them think more clearly. Structure can come later if they want it.`;
+	}
+
+	/**
 	 * Get last turn context prompt
 	 */
 	private getLastTurnPrompt(lastTurnContext: LastTurnContext): string {
@@ -345,6 +413,11 @@ ${entityHighlights.length > 0 ? entityHighlights.map((line) => `- ${line}`).join
 - Facets: ${JSON.stringify(ontologyContext.metadata.facets)}`;
 			}
 
+			if (ontologyContext.metadata?.context_document_id) {
+				prompt += `
+- Context Document: ${ontologyContext.metadata.context_document_id}`;
+			}
+
 			if (ontologyContext.metadata?.entity_count) {
 				const counts = Object.entries(ontologyContext.metadata.entity_count)
 					.map(([type, count]) => `${type}: ${count}`)
@@ -352,11 +425,22 @@ ${entityHighlights.length > 0 ? entityHighlights.map((line) => `- ${line}`).join
 				prompt += `
 - Entity Counts: ${counts}`;
 			}
+
+			// Add relationships info if available
+			if (
+				ontologyContext.relationships?.edges &&
+				ontologyContext.relationships.edges.length > 0
+			) {
+				prompt += `
+- Relationships: ${ontologyContext.relationships.edges.length} edges available
+- Edge Types: ${[...new Set(ontologyContext.relationships.edges.map((e) => e.relation))].join(', ')}`;
+			}
 		}
 
 		// Element context
 		if (ontologyContext.type === 'element') {
-			const elementType = this.detectElementType(ontologyContext);
+			const elementType =
+				ontologyContext.scope?.focus?.type ?? this.detectElementType(ontologyContext);
 			const element = this.getScopedEntity(ontologyContext, elementType);
 			const parentProject = ontologyContext.entities.project;
 			prompt += `
@@ -368,7 +452,16 @@ ${entityHighlights.length > 0 ? entityHighlights.map((line) => `- ${line}`).join
 
 			if (parentProject) {
 				prompt += `
-- Parent Project: ${parentProject.name} (${parentProject.id})`;
+- Parent Project: ${parentProject.name} (${parentProject.id})
+- Project State: ${parentProject.state_key ?? 'unknown'}`;
+			}
+
+			prompt += `
+- Hierarchy Level: ${ontologyContext.metadata?.hierarchy_level || 0}`;
+
+			if (ontologyContext.relationships?.edges?.length) {
+				prompt += `
+- Direct Relationships: ${ontologyContext.relationships.edges.length}`;
 			}
 		}
 
@@ -386,6 +479,28 @@ ${entityHighlights.length > 0 ? entityHighlights.map((line) => `- ${line}`).join
 - Total Projects: ${totalProjects}
 - Recent Projects: ${recentProjects.length} loaded
 - Available Types: ${entityTypes.join(', ') || 'project'}`;
+
+			// Add recent projects listing
+			if (recentProjects.length > 0) {
+				prompt += `
+- Recent Projects:
+${recentProjects
+	.slice(0, 5)
+	.map(
+		(project) =>
+			`  - ${project.name} (${(project as Record<string, unknown>).state_key}) · ${(project as Record<string, unknown>).type_key}`
+	)
+	.join('\n')}`;
+			}
+
+			// Add entity distribution
+			if (ontologyContext.metadata?.entity_count) {
+				prompt += `
+- Global Entity Distribution:
+${Object.entries(ontologyContext.metadata.entity_count)
+	.map(([type, count]) => `  - ${type}: ${count}`)
+	.join('\n')}`;
+			}
 		}
 
 		return prompt;

@@ -23,60 +23,39 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 
 		const supabase = locals.supabase;
 
-		// Fetch project
-		const { data: project, error: projectFetchError } = await supabase
-			.from('onto_projects')
-			.select('*')
-			.eq('id', id)
-			.single();
+		// OPTIMIZATION: Fetch project AND actor ID in parallel
+		// These are independent and can run concurrently
+		const [projectResult, actorResult] = await Promise.all([
+			supabase.from('onto_projects').select('*').eq('id', id).single(),
+			supabase.rpc('ensure_actor_for_user', { p_user_id: user.id })
+		]);
 
-		if (projectFetchError) {
-			console.error('[Project API] Failed to fetch project:', projectFetchError);
-			return ApiResponse.error(`Failed to fetch project: ${projectFetchError.message}`, 500);
+		if (projectResult.error) {
+			console.error('[Project API] Failed to fetch project:', projectResult.error);
+			return ApiResponse.error(
+				`Failed to fetch project: ${projectResult.error.message}`,
+				500
+			);
 		}
 
+		const project = projectResult.data;
 		if (!project) {
 			return ApiResponse.notFound('Project not found');
 		}
 
-		// Fetch context document via edge relationship
-		let contextDocument: Document | null = null;
-		const { data: contextEdge } = await supabase
-			.from('onto_edges')
-			.select('dst_id')
-			.eq('src_kind', 'project')
-			.eq('src_id', id)
-			.eq('rel', 'has_context_document')
-			.eq('dst_kind', 'document')
-			.single();
-
-		if (contextEdge?.dst_id) {
-			const { data: docData } = await supabase
-				.from('onto_documents')
-				.select('*')
-				.eq('id', contextEdge.dst_id)
-				.single();
-
-			if (docData) {
-				contextDocument = docData;
-			}
-		}
-
-		// Security check: Verify user owns this project via actor
-		const { data: actorId, error: actorError } = await supabase.rpc('ensure_actor_for_user', {
-			p_user_id: user.id
-		});
-
-		if (actorError || !actorId) {
-			console.error('[Project API] Failed to get actor:', actorError);
+		if (actorResult.error || !actorResult.data) {
+			console.error('[Project API] Failed to get actor:', actorResult.error);
 			return ApiResponse.error('Failed to resolve user actor', 500);
 		}
 
+		const actorId = actorResult.data;
 		if (project.created_by !== actorId) {
 			return ApiResponse.forbidden('You do not have permission to access this project');
 		}
 
-		// Fetch all related entities in parallel
+		// OPTIMIZATION: Fetch ALL related entities in a single parallel batch
+		// Including context document (via JOIN), task-plan edges, and all entity tables
+		// Note: FSM transitions removed - using simple enum states now (see FSM_SIMPLIFICATION_COMPLETE.md)
 		const [
 			goalsResult,
 			requirementsResult,
@@ -89,7 +68,8 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			risksResult,
 			decisionsResult,
 			metricsResult,
-			allowedTransitionsResult
+			contextDocResult,
+			taskPlanEdgesResult
 		] = await Promise.all([
 			supabase.from('onto_goals').select('*').eq('project_id', id).order('created_at'),
 			supabase.from('onto_requirements').select('*').eq('project_id', id).order('created_at'),
@@ -102,12 +82,25 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			supabase.from('onto_risks').select('*').eq('project_id', id).order('created_at'),
 			supabase.from('onto_decisions').select('*').eq('project_id', id).order('decision_at'),
 			supabase.from('onto_metrics').select('*').eq('project_id', id).order('created_at'),
-			supabase.rpc('get_allowed_transitions', {
-				p_object_kind: 'project',
-				p_object_id: id
-			})
+			// OPTIMIZATION: Fetch context document via edge in single query with JOIN
+			supabase
+				.from('onto_edges')
+				.select('dst_id, document:onto_documents!inner(*)')
+				.eq('src_kind', 'project')
+				.eq('src_id', id)
+				.eq('rel', 'has_context_document')
+				.eq('dst_kind', 'document')
+				.maybeSingle(),
+			// OPTIMIZATION: Fetch task-plan edges in parallel (not after tasks loaded)
+			supabase
+				.from('onto_edges')
+				.select('src_id, dst_id')
+				.eq('rel', 'belongs_to_plan')
+				.eq('src_kind', 'task')
+				.eq('dst_kind', 'plan')
 		]);
 
+		// Log any errors (non-fatal)
 		if (goalsResult.error) {
 			console.error('[Project API] Failed to fetch goals:', goalsResult.error);
 		}
@@ -127,51 +120,33 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			console.error('[Project API] Failed to fetch documents:', documentsResult.error);
 		}
 
-		if (allowedTransitionsResult.error) {
-			console.error(
-				'[Project API] Failed to fetch allowed transitions:',
-				allowedTransitionsResult.error
-			);
-			return ApiResponse.databaseError(allowedTransitionsResult.error);
-		}
+		// Extract context document from JOIN result
+		// The !inner join creates an aliased property with the table name
+		const contextDocument: Document | null = (contextDocResult.data as any)?.document ?? null;
 
-		const allowedTransitions = (allowedTransitionsResult.data || []).map((transition: any) => ({
-			event: transition.event,
-			to: transition.to_state,
-			label: transition.event
-				.replace(/_/g, ' ')
-				.replace(/\b\w/g, (l: string) => l.toUpperCase()),
-			guards: Array.isArray(transition.guards) ? transition.guards : [],
-			actions: Array.isArray(transition.actions) ? transition.actions : [],
-			can_run: typeof transition.can_run === 'boolean' ? transition.can_run : true,
-			failed_guards: Array.isArray(transition.failed_guards) ? transition.failed_guards : []
-		}));
-
-		// Enrich tasks with plan information via edges (plan_id is no longer a column)
+		// Enrich tasks with plan information from pre-fetched edges
 		const tasks = tasksResult.data || [];
 		const plans = plansResult.data || [];
-		if (tasks.length > 0) {
-			const taskIds = tasks.map((t: any) => t.id);
-			const { data: taskPlanEdges } = await supabase
-				.from('onto_edges')
-				.select('src_id, dst_id')
-				.eq('rel', 'belongs_to_plan')
-				.eq('src_kind', 'task')
-				.eq('dst_kind', 'plan')
-				.in('src_id', taskIds);
+		const taskPlanEdges = taskPlanEdgesResult.data || [];
 
-			if (taskPlanEdges && taskPlanEdges.length > 0) {
-				const taskToPlanMap = new Map<string, string>();
-				for (const edge of taskPlanEdges) {
+		if (tasks.length > 0 && taskPlanEdges.length > 0) {
+			// Build a set of task IDs for this project for filtering
+			const projectTaskIds = new Set(tasks.map((t: any) => t.id));
+
+			// Build map from task -> plan (only for tasks in this project)
+			const taskToPlanMap = new Map<string, string>();
+			for (const edge of taskPlanEdges) {
+				if (projectTaskIds.has(edge.src_id)) {
 					taskToPlanMap.set(edge.src_id, edge.dst_id);
 				}
-				// Add plan_id and plan object to each task for backward compatibility
-				for (const task of tasks) {
-					const planId = taskToPlanMap.get(task.id);
-					if (planId) {
-						(task as any).plan_id = planId;
-						(task as any).plan = plans.find((p: any) => p.id === planId) || null;
-					}
+			}
+
+			// Add plan_id and plan object to each task for backward compatibility
+			for (const task of tasks) {
+				const planId = taskToPlanMap.get(task.id);
+				if (planId) {
+					(task as any).plan_id = planId;
+					(task as any).plan = plans.find((p: any) => p.id === planId) || null;
 				}
 			}
 		}
@@ -189,8 +164,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			risks: risksResult.data || [],
 			decisions: decisionsResult.data || [],
 			metrics: metricsResult.data || [],
-			context_document: contextDocument,
-			allowed_transitions: allowedTransitions
+			context_document: contextDocument
 		});
 	} catch (err) {
 		console.error('[Project API] Unexpected error:', err);

@@ -3,83 +3,71 @@
 	import { CircleCheck, Calendar, Zap } from 'lucide-svelte';
 	import './dashboard.css';
 	import type { User } from '$lib/types/dashboard';
-	import type { DashboardData } from '$lib/services/dashboardData.service';
+	import type { OntologyProjectSummary } from '$lib/services/ontology/ontology-projects.service';
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
 	import { browser } from '$app/environment';
 	import { toastService } from '$lib/stores/toast.store';
 	import { invalidateAll, replaceState } from '$app/navigation';
 	import BuildOSFlow from '$lib/components/dashboard/BuildOSFlow.svelte';
-	import Button from '$components/ui/Button.svelte';
 
 	let { data } = $props();
 
-	// Svelte 5 runes: Convert reactive declarations to $derived
+	// Helper to detect streaming promises
 	function isPromiseLike<T>(value: unknown): value is PromiseLike<T> {
 		return !!value && typeof (value as PromiseLike<T>).then === 'function';
-	}
-
-	function getErrorMessage(error: unknown, fallback: string): string {
-		if (error instanceof Error && error.message) return error.message;
-		if (typeof error === 'string' && error.length > 0) return error;
-		return fallback;
 	}
 
 	let isAuthenticated = $derived(!!data?.user);
 	let user = $derived(data?.user as User | null);
 
-	let dashboardStreamVersion = 0;
-	let dashboardDataState = $state<DashboardData | null>(
-		isPromiseLike<DashboardData>(data.dashboardData)
-			? null
-			: ((data.dashboardData as DashboardData | null) ?? null)
+	// Projects streaming state (loaded server-side)
+	let projectsStreamVersion = 0;
+	let projectsState = $state<OntologyProjectSummary[]>(
+		isPromiseLike<OntologyProjectSummary[]>(data.projects)
+			? []
+			: ((data.projects as OntologyProjectSummary[] | null) ?? [])
 	);
-	let dashboardErrorState = $state<string | null>(data.dashboardError ?? null);
-	let dashboardLoadingState = $state<boolean>(
-		Boolean(data.dashboardLoading) || isPromiseLike<DashboardData>(data.dashboardData)
+	let projectsLoadingState = $state<boolean>(
+		isPromiseLike<OntologyProjectSummary[]>(data.projects)
 	);
 
+	// Stream projects from server-loaded promise
 	$effect(() => {
-		const incoming = data.dashboardData;
-		const incomingError = data.dashboardError ?? null;
-		const incomingLoading = Boolean(data.dashboardLoading);
-		const currentVersion = ++dashboardStreamVersion;
+		const incoming = data.projects;
+		const currentVersion = ++projectsStreamVersion;
 
-		if (isPromiseLike<DashboardData>(incoming)) {
-			dashboardLoadingState = true;
+		if (isPromiseLike<OntologyProjectSummary[]>(incoming)) {
+			projectsLoadingState = true;
 
 			incoming
 				.then((result) => {
-					if (currentVersion !== dashboardStreamVersion) return;
-					dashboardDataState = (result as DashboardData) ?? null;
-					dashboardErrorState = incomingError;
-					dashboardLoadingState = incomingLoading;
+					if (currentVersion !== projectsStreamVersion) return;
+					projectsState = result ?? [];
+					projectsLoadingState = false;
 				})
 				.catch((error) => {
-					if (currentVersion !== dashboardStreamVersion) return;
-					dashboardDataState = null;
-					dashboardErrorState = getErrorMessage(error, 'Failed to load dashboard data');
-					dashboardLoadingState = false;
+					if (currentVersion !== projectsStreamVersion) return;
+					console.error('[Dashboard] Failed to load projects:', error);
+					projectsState = [];
+					projectsLoadingState = false;
 				});
 
 			return;
 		}
 
-		dashboardDataState = (incoming as DashboardData | null) ?? null;
-		dashboardErrorState = incomingError;
-		dashboardLoadingState = incomingLoading;
+		projectsState = (incoming as OntologyProjectSummary[] | null) ?? [];
+		projectsLoadingState = false;
 	});
 
-	let dashboardData = $derived(dashboardDataState);
-	let dashboardError = $derived(dashboardErrorState);
-	let isLoadingDashboard = $derived(dashboardLoadingState);
+	let projects = $derived(projectsState);
+	let isLoadingProjects = $derived(projectsLoadingState);
 
 	let innerWidth = $state<number | 0>(0);
 
 	// Lazy load Dashboard component only when needed
 	let Dashboard = $state<any>(null);
 
-	// Svelte 5 runes: Use $effect instead of reactive statement for side effects
 	$effect(() => {
 		if (isAuthenticated && !Dashboard && browser) {
 			import('$lib/components/dashboard/Dashboard.svelte').then((module) => {
@@ -88,15 +76,8 @@
 		}
 	});
 
-	let heroVideoLoaded = false;
-
-	function handleHeroVideoLoad() {
-		heroVideoLoaded = true;
-	}
-
-	// Reload dashboard data when needed
+	// Reload data when needed
 	async function handleDashboardRefresh() {
-		// Invalidate all data to trigger a reload
 		await invalidateAll();
 	}
 
@@ -107,7 +88,6 @@
 
 		if (message) {
 			toastService.success(message);
-			// Clean up URL
 			const url = new URL($page.url);
 			url.searchParams.delete('message');
 			replaceState(url.toString(), {});
@@ -115,7 +95,6 @@
 
 		if (urlError) {
 			toastService.error(urlError);
-			// Clean up URL
 			const url = new URL($page.url);
 			url.searchParams.delete('error');
 			replaceState(url.toString(), {});
@@ -255,9 +234,8 @@
 	{#if Dashboard}
 		<Dashboard
 			user={data.user}
-			initialData={dashboardData}
-			{isLoadingDashboard}
-			{dashboardError}
+			initialProjects={projects}
+			{isLoadingProjects}
 			onrefresh={handleDashboardRefresh}
 		/>
 	{:else}

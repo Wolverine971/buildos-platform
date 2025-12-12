@@ -87,9 +87,15 @@
 			]
 		},
 		{
-			"file": "src/lib/components/ontology/FSMStateBar.svelte",
+			"file": "src/lib/components/ontology/TaskEditModal.svelte",
 			"type": "component",
-			"components": ["Modal"]
+			"components": [
+				"TaskSeriesModal",
+				"DocumentModal",
+				"GoalEditModal",
+				"PlanEditModal",
+				"TaskEditModal"
+			]
 		},
 		{
 			"file": "src/lib/components/project/PhasesSection.svelte",
@@ -131,7 +137,6 @@
 			"file": "src/routes/projects/[id]/+page.svelte",
 			"type": "page",
 			"components": [
-				"FSMStateBar",
 				"OutputCreateModal",
 				"OutputEditModal",
 				"DocumentModal",
@@ -168,24 +173,6 @@
 			"file": "src/routes/admin/ontology/graph/+page.svelte",
 			"type": "page",
 			"components": ["SvelteFlowGraph", "G6Graph"]
-		},
-		{
-			"file": "src/routes/projects/projects-v2/[id]/+page.svelte",
-			"type": "page",
-			"components": [
-				"FSMStateBar",
-				"ConfirmationModal",
-				"OntologyProjectEditModal",
-				"TaskCreateModal",
-				"TaskEditModal",
-				"OutputCreateModal",
-				"OutputEditModal",
-				"PlanCreateModal",
-				"PlanEditModal",
-				"GoalCreateModal",
-				"GoalEditModal",
-				"DocumentModal"
-			]
 		},
 		{
 			"file": "src/lib/components/notifications/types/brain-dump/BrainDumpModalContent.svelte",
@@ -857,13 +844,15 @@
 		"src/lib/components/notifications/NotificationModal.svelte": [
 			"src/lib/components/notifications/types/brain-dump/BrainDumpModalContent.svelte"
 		],
-		"src/routes/projects/[id]/+page.svelte": ["src/lib/components/ontology/FSMStateBar.svelte"],
+		"src/lib/components/ontology/TaskEditModal.svelte": [
+			"src/lib/components/ontology/TaskEditModal.svelte"
+		],
+		"src/routes/projects/[id]/+page.svelte": [
+			"src/lib/components/ontology/TaskEditModal.svelte"
+		],
 		"src/routes/projects-old/[id]/+page.svelte": [
 			"src/lib/components/project/ProjectSynthesis.svelte",
 			"src/lib/components/project/PhasesSection.svelte"
-		],
-		"src/routes/projects/projects-v2/[id]/+page.svelte": [
-			"src/lib/components/ontology/FSMStateBar.svelte"
 		]
 	},
 	"unusedComponents": [

@@ -11,7 +11,6 @@
 	Related Files:
 	- API Endpoints: /apps/web/src/routes/api/onto/plans/[id]/+server.ts
 	- Create Modal: /apps/web/src/lib/components/ontology/PlanCreateModal.svelte
-	- FSM Visualizer: /apps/web/src/lib/components/ontology/FSMStateVisualizer.svelte
 -->
 <script lang="ts">
 	import { browser } from '$app/environment';
@@ -26,8 +25,8 @@
 	import Textarea from '$lib/components/ui/Textarea.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
-	import FSMStateVisualizer from './FSMStateVisualizer.svelte';
 	import LinkedEntities from './linked-entities/LinkedEntities.svelte';
+	import { PLAN_STATES } from '$lib/types/onto';
 	import type { EntityKind } from './linked-entities/linked-entities.types';
 	import GoalEditModal from './GoalEditModal.svelte';
 	import TaskEditModal from './TaskEditModal.svelte';
@@ -67,9 +66,6 @@
 		{ value: 'completed', label: 'Completed' },
 		{ value: 'cancelled', label: 'Cancelled' }
 	];
-
-	// FSM related
-	let allowedTransitions = $state<any[]>([]);
 
 	// Modal states for linked entity navigation
 	let showGoalModal = $state(false);
@@ -127,35 +123,11 @@
 				endDate = plan.props?.end_date || '';
 				stateKey = plan.state_key || 'draft';
 			}
-
-			await loadTransitions();
 		} catch (err) {
 			console.error('Error loading plan:', err);
 			error = 'Failed to load plan';
 		} finally {
 			isLoading = false;
-		}
-	}
-
-	async function loadTransitions() {
-		try {
-			const response = await fetch(`/api/onto/fsm/transitions?kind=plan&id=${planId}`);
-			if (response.ok) {
-				const data = await response.json();
-				allowedTransitions =
-					(data.data?.transitions || []).map((transition: any) => ({
-						...transition,
-						can_run:
-							typeof transition?.can_run === 'boolean'
-								? (transition.can_run as boolean)
-								: true,
-						failed_guards: Array.isArray(transition?.failed_guards)
-							? transition.failed_guards
-							: []
-					})) ?? [];
-			}
-		} catch (err) {
-			console.error('Error loading transitions:', err);
 		}
 	}
 
@@ -232,12 +204,6 @@
 			isDeleting = false;
 			showDeleteConfirm = false;
 		}
-	}
-
-	async function handleStateChange(event: { state: string; actions: string[]; event: string }) {
-		stateKey = event.state;
-		await handleSave();
-		await loadTransitions();
 	}
 
 	function handleClose() {
@@ -459,36 +425,30 @@
 										</FormField>
 									</div>
 
-									{#if allowedTransitions.length > 0}
-										<div class="pt-4 border-t border-border">
-											<FSMStateVisualizer
-												entityId={planId}
-												entityKind="plan"
-												entityName={name}
-												currentState={stateKey}
-												initialTransitions={allowedTransitions}
-												onstatechange={handleStateChange}
-											/>
-										</div>
-									{:else}
-										<FormField
-											label="State"
-											labelFor="plan-state"
-											showOptional={false}
+									<!-- Plan State -->
+									<FormField
+										label="State"
+										labelFor="plan-state"
+										showOptional={false}
+									>
+										<Select
+											id="plan-state"
+											bind:value={stateKey}
+											disabled={formDisabled}
 										>
-											<Select
-												id="plan-state"
-												bind:value={stateKey}
-												disabled={formDisabled}
-											>
-												{#each stateOptions as option}
-													<option value={option.value}
-														>{option.label}</option
-													>
-												{/each}
-											</Select>
-										</FormField>
-									{/if}
+											{#each PLAN_STATES as state}
+												<option value={state}>
+													{state === 'draft'
+														? 'Draft'
+														: state === 'active'
+															? 'Active'
+															: state === 'completed'
+																? 'Completed'
+																: state}
+												</option>
+											{/each}
+										</Select>
+									</FormField>
 
 									{#if error}
 										<div

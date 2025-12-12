@@ -31,9 +31,10 @@ export const ENTITY_FIELD_INFO: Record<string, Record<string, FieldInfo>> = {
 		},
 		type_key: {
 			type: 'string',
-			description: 'Template classification with project prefix such as project.writer.book',
+			description:
+				'Type classification following project.{realm}.{deliverable}[.{variant}] pattern',
 			required: true,
-			example: 'project.writer.book'
+			example: 'project.creative.book'
 		},
 		state_key: {
 			type: 'enum',

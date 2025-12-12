@@ -17,10 +17,9 @@
 	Related Files:
 	- API Endpoints: /apps/web/src/routes/api/onto/risks/[id]/+server.ts
 	- Create Modal: /apps/web/src/lib/components/ontology/RiskCreateModal.svelte
-	- FSM Visualizer: /apps/web/src/lib/components/ontology/FSMStateVisualizer.svelte
 
 	Note: This modal uses custom layout instead of FormModal for advanced features
-	like sidebar metadata and FSM visualization.
+	like sidebar metadata.
 -->
 <script lang="ts">
 	import { browser } from '$app/environment';

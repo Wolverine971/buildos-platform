@@ -1968,7 +1968,14 @@ You must respond with valid JSON only. Follow these rules:
 									.replace(/[\u3164\u200B\uFEFF]+/g, '')
 									.replace(/\u00A0{3,}/g, ' '); // Collapse multiple NBSPs to single space
 
-								if (filteredContent) {
+								// Filter DeepSeek thinking tokens - but preserve legitimate content
+								// Only filter if the ENTIRE chunk is just the thinking pattern
+								// Pattern: repeated sequences of ".,;" or similar punctuation-only chunks
+								const isThinkingToken =
+									/^[.,;]+$/.test(filteredContent.trim()) || // Chunk is ONLY punctuation
+									/^(\s*[.,;]\s*){3,}$/.test(filteredContent); // Repeated .,; pattern only
+
+								if (filteredContent && !isThinkingToken) {
 									// Text content
 									accumulatedContent += filteredContent;
 									yield {

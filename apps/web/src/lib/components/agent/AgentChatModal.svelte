@@ -1022,16 +1022,15 @@
 	function scrollToBottomIfNeeded() {
 		if (!messagesContainer) return;
 
-		// Only scroll if user hasn't manually scrolled up
-		if (!userHasScrolled || isScrolledToBottom(messagesContainer)) {
+		// Only auto-scroll if user hasn't manually scrolled up
+		// This allows users to freely read earlier messages during streaming
+		if (!userHasScrolled) {
 			// Use requestAnimationFrame to batch with browser's paint cycle
 			// This prevents layout thrashing during rapid streaming updates
 			requestAnimationFrame(() => {
 				if (messagesContainer) {
 					// Use instant scroll during streaming to avoid animation lag
-					// The CSS overflow-anchor handles visual stability
 					messagesContainer.scrollTop = messagesContainer.scrollHeight;
-					userHasScrolled = false;
 				}
 			});
 		}
@@ -1049,21 +1048,14 @@
 		}
 	}
 
-	// Derive a "scroll trigger" value that changes when:
-	// 1. New messages are added (messages.length changes)
-	// 2. Content is streamed into the last message (content length changes during streaming)
-	const scrollTrigger = $derived.by(() => {
-		if (messages.length === 0) return 0;
-		const lastMessage = messages[messages.length - 1];
-		// Track both message count and last message content length
-		// This triggers scroll during streaming when content grows
-		return messages.length * 10000 + (lastMessage?.content?.length ?? 0);
-	});
+	// Track when new messages are added (not content changes during streaming)
+	// This prevents constant scroll interruptions during streaming
+	const messageCount = $derived(messages.length);
 
-	// Sticky scroll behavior: Auto-scroll when new messages arrive OR when streaming content grows
-	// Only scrolls if user hasn't manually scrolled up
+	// Auto-scroll only when new messages are added, not during streaming content updates
+	// This allows users to scroll freely during streaming without being snapped back
 	$effect(() => {
-		if (scrollTrigger > 0) {
+		if (messageCount > 0) {
 			scrollToBottomIfNeeded();
 		}
 	});

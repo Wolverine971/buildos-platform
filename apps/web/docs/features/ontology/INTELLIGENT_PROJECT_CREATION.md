@@ -3,12 +3,18 @@
 # Intelligent Project Creation - AI Agent Implementation
 
 **Status**: ✅ Complete
-**Date**: 2025-11-04
-**Feature**: Smart project creation with template selection and inference
+**Date**: 2025-11-04 (Original), 2025-12-12 (Updated)
+**Feature**: Smart project creation with type_key inference and AI-powered props
 
 ## Overview
 
-This document describes the intelligent project creation system that enables the AI agent to create complete ontology projects from natural language commands. The system uses template search, intelligent inference, and the clarifications pattern to create rich project structures with minimal user input.
+This document describes the intelligent project creation system that enables the AI agent to create complete ontology projects from natural language commands. The system uses type_key inference, AI-powered props discovery, and the clarifications pattern to create rich project structures with minimal user input.
+
+The ontology uses a **props-based architecture** where:
+
+- **`type_key`** provides semantic classification (e.g., `project.creative.book`)
+- **`props`** (JSONB) stores flexible, AI-inferred properties
+- **Application-layer state transitions** handle entity lifecycle
 
 ## What Was Implemented
 

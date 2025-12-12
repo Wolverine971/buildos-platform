@@ -2,13 +2,15 @@
 
 # Ontology System API Endpoints Reference
 
-**Last Updated**: December 1, 2025
-**Status**: 95% Implemented
+**Last Updated**: December 12, 2025
+**Status**: Production Ready
 **Base Path**: `/api/onto/`
 
 ## 📋 Overview
 
-The Ontology System API provides comprehensive endpoints for managing templates, projects, and entity lifecycle operations. All endpoints follow RESTful conventions and use the `ApiResponse` wrapper for consistency.
+The Ontology System API provides comprehensive endpoints for managing projects and entity lifecycle operations. All endpoints follow RESTful conventions and use the `ApiResponse` wrapper for consistency.
+
+The API uses a **props-based architecture** where type_key provides semantic classification and props (JSONB) stores flexible entity properties.
 
 ---
 
@@ -32,7 +34,6 @@ const { data: actor } = await supabase
 
 - Require `user.is_admin === true`
 - Use `createAdminSupabaseClient()` to bypass RLS
-- Template management operations
 
 ```typescript
 // Pattern for admin endpoints
@@ -41,120 +42,6 @@ if (!session.user?.is_admin) {
 }
 const adminSupabase = createAdminSupabaseClient();
 ```
-
----
-
-## 📚 Template Management
-
-### List Templates
-
-```http
-GET /api/onto/templates
-```
-
-**Query Parameters:**
-
-- `scope` - Filter by scope (project, plan, task, output, document)
-- `realm` - Filter by metadata.realm (creative, technical, business, service)
-- `search` - Search in name and type_key
-- `context`, `scale`, `stage` - Filter by facet defaults
-- `sort` - Sort field (name, type_key, created_at)
-- `order` - Sort order (asc, desc)
-
-**Response:**
-
-```json
-{
-  "success": true,
-  "data": {
-    "templates": [...],
-    "grouped": { "creative": [...], "technical": [...] },
-    "count": 25
-  }
-}
-```
-
-### Create Template (Admin)
-
-```http
-POST /api/onto/templates
-```
-
-**Request Body:**
-
-```json
-{
-  "type_key": "output.written.article",
-  "name": "Article Template",
-  "scope": "output",
-  "status": "draft",
-  "parent_template_id": "uuid-of-parent",
-  "is_abstract": false,
-  "metadata": {
-    "realm": "creative",
-    "output_type": "content",
-    "typical_scale": "small"
-  },
-  "facet_defaults": {
-    "context": "personal",
-    "scale": "small",
-    "stage": "planning"
-  },
-  "fsm": {
-    "states": ["draft", "writing", "review", "published"],
-    "initial": "draft",
-    "transitions": [...]
-  },
-  "schema": { "type": "object", "properties": {...} }
-}
-```
-
-### Update Template (Admin)
-
-```http
-PUT /api/onto/templates/[id]
-```
-
-**Request Body:** Partial template fields to update
-
-### Delete Template (Admin)
-
-```http
-DELETE /api/onto/templates/[id]
-```
-
-**Note:** Fails if template has children or is in use by projects
-
-### Clone Template (Admin)
-
-```http
-POST /api/onto/templates/[id]/clone
-```
-
-**Request Body:**
-
-```json
-{
-	"type_key": "new.type.key",
-	"name": "Cloned Template Name"
-}
-```
-
-### Promote Template (Admin)
-
-```http
-POST /api/onto/templates/[id]/promote
-```
-
-Changes status from `draft` to `active`
-
-### Deprecate Template (Admin)
-
-```http
-POST /api/onto/templates/[id]/deprecate
-```
-
-Changes status from `active` to `deprecated`
 
 ---
 
@@ -679,35 +566,6 @@ POST /api/onto/specs/patch
     "genre": "Non-fiction",
     "audience": "Business professionals"
   }
-}
-```
-
-### Propose Template from Domain Brief
-
-```http
-POST /api/onto/templates/propose
-```
-
-**Request Body:**
-
-```json
-{
-	"domain_brief": "I run a podcast production company...",
-	"base_type_key": "project"
-}
-```
-
-**Response:**
-
-```json
-{
-  "template_id": "uuid",
-  "template": {
-    "type_key": "project.media.podcast",
-    "name": "Podcast Production",
-    ...
-  },
-  "clarifications": []
 }
 ```
 

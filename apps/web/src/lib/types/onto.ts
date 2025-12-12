@@ -2,9 +2,116 @@
 /**
  * BuildOS Ontology Type Definitions with Zod Validation
  * Generated from v1-migration.sql and endpoint stubs
+ *
+ * Updated: Dec 2025 - Simplified FSM to enum-based states
  */
 
 import { z } from 'zod';
+
+// ============================================
+// STATE ENUMS (New: Dec 2025)
+// These match PostgreSQL enums in the database
+// ============================================
+
+/** Task states: todo → in_progress → done, or blocked */
+export const TASK_STATES = ['todo', 'in_progress', 'blocked', 'done'] as const;
+export type TaskState = (typeof TASK_STATES)[number];
+export const TaskStateSchema = z.enum(TASK_STATES);
+
+/** Project states: planning → active → completed, or cancelled */
+export const PROJECT_STATES = ['planning', 'active', 'completed', 'cancelled'] as const;
+export type ProjectState = (typeof PROJECT_STATES)[number];
+export const ProjectStateSchema = z.enum(PROJECT_STATES);
+
+/** Plan states: draft → active → completed */
+export const PLAN_STATES = ['draft', 'active', 'completed'] as const;
+export type PlanState = (typeof PLAN_STATES)[number];
+export const PlanStateSchema = z.enum(PLAN_STATES);
+
+/** Output states: draft → in_progress → review → published */
+export const OUTPUT_STATES = ['draft', 'in_progress', 'review', 'published'] as const;
+export type OutputState = (typeof OUTPUT_STATES)[number];
+export const OutputStateSchema = z.enum(OUTPUT_STATES);
+
+/** Document states: draft → review → published */
+export const DOCUMENT_STATES = ['draft', 'review', 'published'] as const;
+export type DocumentState = (typeof DOCUMENT_STATES)[number];
+export const DocumentStateSchema = z.enum(DOCUMENT_STATES);
+
+/** Goal states: draft → active → achieved, or abandoned */
+export const GOAL_STATES = ['draft', 'active', 'achieved', 'abandoned'] as const;
+export type GoalState = (typeof GOAL_STATES)[number];
+export const GoalStateSchema = z.enum(GOAL_STATES);
+
+/** Milestone states: pending → in_progress → completed, or missed */
+export const MILESTONE_STATES = ['pending', 'in_progress', 'completed', 'missed'] as const;
+export type MilestoneState = (typeof MILESTONE_STATES)[number];
+export const MilestoneStateSchema = z.enum(MILESTONE_STATES);
+
+/** Risk states: identified → mitigated/occurred → closed */
+export const RISK_STATES = ['identified', 'mitigated', 'occurred', 'closed'] as const;
+export type RiskState = (typeof RISK_STATES)[number];
+export const RiskStateSchema = z.enum(RISK_STATES);
+
+/**
+ * Get valid states for an entity kind
+ */
+export function getStatesForKind(kind: string): readonly string[] {
+	switch (kind) {
+		case 'task':
+			return TASK_STATES;
+		case 'project':
+			return PROJECT_STATES;
+		case 'plan':
+			return PLAN_STATES;
+		case 'output':
+			return OUTPUT_STATES;
+		case 'document':
+			return DOCUMENT_STATES;
+		case 'goal':
+			return GOAL_STATES;
+		case 'milestone':
+			return MILESTONE_STATES;
+		case 'risk':
+			return RISK_STATES;
+		default:
+			return [];
+	}
+}
+
+/**
+ * Validate if a state is valid for a given entity kind
+ */
+export function isValidState(kind: string, state: string): boolean {
+	const validStates = getStatesForKind(kind);
+	return validStates.includes(state);
+}
+
+/**
+ * Get the default state for an entity kind
+ */
+export function getDefaultState(kind: string): string {
+	switch (kind) {
+		case 'task':
+			return 'todo';
+		case 'project':
+			return 'planning';
+		case 'plan':
+			return 'draft';
+		case 'output':
+			return 'draft';
+		case 'document':
+			return 'draft';
+		case 'goal':
+			return 'draft';
+		case 'milestone':
+			return 'pending';
+		case 'risk':
+			return 'identified';
+		default:
+			return 'draft';
+	}
+}
 
 // ============================================
 // FACETS
@@ -52,9 +159,15 @@ export const TemplateMetadataSchema = z.object({
 export type TemplateMetadata = z.infer<typeof TemplateMetadataSchema>;
 
 // ============================================
-// FSM DEFINITIONS
+// FSM DEFINITIONS (DEPRECATED - Dec 2025)
+// These types are kept for backward compatibility during migration.
+// FSM has been replaced with simple enum-based states.
+// See STATE ENUMS section above for the new approach.
 // ============================================
 
+/**
+ * @deprecated FSM guards are no longer used. States are now simple enums.
+ */
 export const FSMGuardSchema = z.object({
 	type: z.enum(['has_property', 'has_facet', 'facet_in', 'all_facets_set', 'type_key_matches']),
 	path: z.string().optional(),
@@ -65,8 +178,12 @@ export const FSMGuardSchema = z.object({
 	pattern: z.string().optional()
 });
 
+/** @deprecated Use simple state enums instead */
 export type FSMGuard = z.infer<typeof FSMGuardSchema>;
 
+/**
+ * @deprecated FSM actions are no longer used. Use direct API calls instead.
+ */
 export const FSMActionSchema = z.object({
 	type: z.enum([
 		'update_facets',
@@ -102,8 +219,12 @@ export const FSMActionSchema = z.object({
 	type_key: z.string().optional()
 });
 
+/** @deprecated Use simple state enums instead */
 export type FSMAction = z.infer<typeof FSMActionSchema>;
 
+/**
+ * @deprecated FSM transitions are no longer used. Change state_key directly.
+ */
 export const FSMTransitionSchema = z.object({
 	from: z.string(),
 	to: z.string(),
@@ -112,8 +233,12 @@ export const FSMTransitionSchema = z.object({
 	actions: z.array(FSMActionSchema).optional()
 });
 
+/** @deprecated Use simple state enums instead */
 export type FSMTransition = z.infer<typeof FSMTransitionSchema>;
 
+/**
+ * @deprecated FSM definitions are no longer used. States are now simple enums.
+ */
 export const FSMDefSchema = z.object({
 	type_key: z.string().regex(/^[a-z_]+\.[a-z_]+(\.[a-z_]+)?$/),
 	initial: z.string().optional(),
@@ -121,6 +246,7 @@ export const FSMDefSchema = z.object({
 	transitions: z.array(FSMTransitionSchema)
 });
 
+/** @deprecated Use simple state enums instead */
 export type FSMDef = z.infer<typeof FSMDefSchema>;
 
 // ============================================
@@ -376,15 +502,19 @@ export const ProjectSpecSchema = z.object({
 export type ProjectSpec = z.infer<typeof ProjectSpecSchema>;
 
 // ============================================
-// FSM TRANSITION REQUEST
+// FSM TRANSITION REQUEST (DEPRECATED)
 // ============================================
 
+/**
+ * @deprecated FSM transitions are no longer used. Update state_key directly via PATCH.
+ */
 export const FSMTransitionRequestSchema = z.object({
 	object_kind: z.enum(['task', 'output', 'plan', 'project', 'document']),
 	object_id: z.string().uuid(),
 	event: z.string()
 });
 
+/** @deprecated Use direct state_key updates via PATCH instead */
 export type FSMTransitionRequest = z.infer<typeof FSMTransitionRequestSchema>;
 
 // ============================================
@@ -398,7 +528,7 @@ export const ProjectSchema = z.object({
 	description: z.string().nullable().optional(),
 	type_key: z.string(),
 	also_types: z.array(z.string()).optional(),
-	state_key: z.string(),
+	state_key: ProjectStateSchema,
 	props: z.record(z.unknown()),
 	facet_context: z.string().nullable().optional(),
 	facet_scale: z.string().nullable().optional(),
@@ -422,7 +552,7 @@ export const PlanSchema = z.object({
 	project_id: z.string().uuid(),
 	name: z.string(),
 	type_key: z.string(),
-	state_key: z.string(),
+	state_key: PlanStateSchema,
 	props: z.record(z.unknown()),
 	facet_context: z.string().nullable().optional(),
 	facet_scale: z.string().nullable().optional(),
@@ -439,7 +569,7 @@ export const TaskSchema = z.object({
 	project_id: z.string().uuid(),
 	title: z.string(),
 	type_key: z.string().regex(/^task\.[a-z_]+(\.[a-z_]+)?$/),
-	state_key: z.string(),
+	state_key: TaskStateSchema,
 	priority: z.number().int().nullable().optional(),
 	due_at: z.string().datetime().nullable().optional(),
 	props: z.record(z.unknown()),
@@ -456,7 +586,7 @@ export const OutputSchema = z.object({
 	project_id: z.string().uuid(),
 	name: z.string(),
 	type_key: z.string(),
-	state_key: z.string(),
+	state_key: OutputStateSchema,
 	props: z.record(z.unknown()),
 	facet_stage: z.string().nullable().optional(),
 	// Promotion source references
@@ -492,7 +622,7 @@ export const DocumentSchema = z.object({
 	project_id: z.string().uuid(),
 	title: z.string(),
 	type_key: z.string(),
-	state_key: z.string().default('draft'),
+	state_key: DocumentStateSchema.default('draft'),
 	props: z.record(z.unknown()),
 	created_by: z.string().uuid(),
 	created_at: z.string().datetime(),
@@ -664,6 +794,7 @@ export function extractTypeKeyParts(typeKey: string): {
 /**
  * Validate FSM definition structure
  * Returns { valid: boolean, errors: string[] }
+ * @deprecated FSM is no longer used. Use isValidState() instead.
  */
 export function validateFSMDef(fsm: unknown): { valid: boolean; errors: string[] } {
 	const result = FSMDefSchema.safeParse(fsm);

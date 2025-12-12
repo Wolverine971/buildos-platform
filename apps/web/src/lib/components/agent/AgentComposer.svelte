@@ -57,7 +57,7 @@
 		bind:canUseLiveTranscript={voiceSupportsLiveTranscript}
 		class="w-full"
 		containerClass="rounded-lg border border-border bg-background shadow-ink-inner"
-		textareaClass="border-none bg-transparent px-2.5 py-2 text-sm font-medium leading-snug text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-0 sm:px-3 sm:py-2.5"
+		textareaClass="border-none bg-transparent px-2.5 py-2 text-base font-medium leading-snug text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-0 sm:px-3 sm:py-2.5"
 		placeholder={`Share the next thing about ${displayContextLabel.toLowerCase()}...`}
 		autoResize
 		rows={1}

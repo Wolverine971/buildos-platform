@@ -24,8 +24,7 @@ import type {
 	AgentChatMessageInsert,
 	ChatSession,
 	Json,
-	ContextUsageSnapshot,
-	TemplateCreationEvent
+	ContextUsageSnapshot
 } from '@buildos/shared-types';
 
 import type {
@@ -287,8 +286,7 @@ export type StreamEvent =
 	| { type: 'tool_call'; toolCall: ChatToolCall }
 	| { type: 'tool_result'; result: ToolExecutionResult }
 	| { type: 'done'; usage?: { total_tokens: number } }
-	| { type: 'error'; error: string }
-	| TemplateCreationEvent;
+	| { type: 'error'; error: string };
 
 export interface ToolExecutorResponse {
 	data: any;
@@ -367,48 +365,220 @@ export interface PersistenceOperations {
 }
 
 // ============================================
+// RESULT TYPES (Functional Error Handling)
+// ============================================
+
+/**
+ * Discriminated union for operation results
+ * Use this for operations that can fail in expected ways
+ */
+export type Result<T, E = AgenticChatError> = { ok: true; value: T } | { ok: false; error: E };
+
+/**
+ * Helper to create success result
+ */
+export function ok<T>(value: T): Result<T, never> {
+	return { ok: true, value };
+}
+
+/**
+ * Helper to create error result
+ */
+export function err<E>(error: E): Result<never, E> {
+	return { ok: false, error };
+}
+
+/**
+ * Type guard to check if result is success
+ */
+export function isOk<T, E>(result: Result<T, E>): result is { ok: true; value: T } {
+	return result.ok === true;
+}
+
+/**
+ * Type guard to check if result is error
+ */
+export function isErr<T, E>(result: Result<T, E>): result is { ok: false; error: E } {
+	return result.ok === false;
+}
+
+// ============================================
 // ERROR TYPES
 // ============================================
 
 /**
- * Custom error types for better error handling
+ * Error categories for classification and handling
+ */
+export enum ErrorCategory {
+	/** Error is temporary and operation can be retried */
+	RETRYABLE = 'retryable',
+	/** Error is permanent and operation should not be retried */
+	FATAL = 'fatal',
+	/** Error should be shown to user with friendly message */
+	USER_FACING = 'user_facing',
+	/** Internal error that should be logged but not shown to user */
+	INTERNAL = 'internal'
+}
+
+/**
+ * Error codes for specific error types
+ */
+export enum ErrorCode {
+	STRATEGY_ERROR = 'STRATEGY_ERROR',
+	PLAN_EXECUTION_ERROR = 'PLAN_EXECUTION_ERROR',
+	TOOL_EXECUTION_ERROR = 'TOOL_EXECUTION_ERROR',
+	PERSISTENCE_ERROR = 'PERSISTENCE_ERROR',
+	VALIDATION_ERROR = 'VALIDATION_ERROR',
+	TIMEOUT_ERROR = 'TIMEOUT_ERROR',
+	RATE_LIMIT_ERROR = 'RATE_LIMIT_ERROR',
+	NOT_FOUND_ERROR = 'NOT_FOUND_ERROR',
+	PERMISSION_ERROR = 'PERMISSION_ERROR',
+	LLM_ERROR = 'LLM_ERROR'
+}
+
+/**
+ * Base error class with categorization support
  */
 export class AgenticChatError extends Error {
 	constructor(
 		message: string,
-		public code: string,
-		public details?: any
+		public code: ErrorCode | string,
+		public category: ErrorCategory = ErrorCategory.INTERNAL,
+		public details?: Record<string, unknown>,
+		public userMessage?: string
 	) {
 		super(message);
 		this.name = 'AgenticChatError';
 	}
+
+	/**
+	 * Check if this error is retryable
+	 */
+	isRetryable(): boolean {
+		return this.category === ErrorCategory.RETRYABLE;
+	}
+
+	/**
+	 * Get user-friendly message
+	 */
+	getUserMessage(): string {
+		return this.userMessage ?? 'An unexpected error occurred. Please try again.';
+	}
+
+	/**
+	 * Convert to Result type
+	 */
+	toResult<T>(): Result<T, AgenticChatError> {
+		return err(this);
+	}
 }
 
 export class StrategyError extends AgenticChatError {
-	constructor(message: string, details?: any) {
-		super(message, 'STRATEGY_ERROR', details);
+	constructor(message: string, details?: Record<string, unknown>) {
+		super(
+			message,
+			ErrorCode.STRATEGY_ERROR,
+			ErrorCategory.INTERNAL,
+			details,
+			'Unable to determine the best approach for your request.'
+		);
 		this.name = 'StrategyError';
 	}
 }
 
 export class PlanExecutionError extends AgenticChatError {
-	constructor(message: string, details?: any) {
-		super(message, 'PLAN_EXECUTION_ERROR', details);
+	constructor(
+		message: string,
+		details?: Record<string, unknown>,
+		category: ErrorCategory = ErrorCategory.RETRYABLE
+	) {
+		super(
+			message,
+			ErrorCode.PLAN_EXECUTION_ERROR,
+			category,
+			details,
+			'There was an issue executing the plan. Please try again.'
+		);
 		this.name = 'PlanExecutionError';
 	}
 }
 
 export class ToolExecutionError extends AgenticChatError {
-	constructor(message: string, toolName: string, details?: any) {
-		super(message, 'TOOL_EXECUTION_ERROR', { toolName, ...details });
+	constructor(
+		message: string,
+		toolName: string,
+		details?: Record<string, unknown>,
+		category: ErrorCategory = ErrorCategory.RETRYABLE
+	) {
+		super(
+			message,
+			ErrorCode.TOOL_EXECUTION_ERROR,
+			category,
+			{ toolName, ...details },
+			`There was an issue with the ${toolName} operation.`
+		);
 		this.name = 'ToolExecutionError';
 	}
 }
 
 export class PersistenceError extends AgenticChatError {
-	constructor(message: string, operation: string, details?: any) {
-		super(message, 'PERSISTENCE_ERROR', { operation, ...details });
+	constructor(
+		message: string,
+		operation: string,
+		details?: Record<string, unknown>,
+		category: ErrorCategory = ErrorCategory.RETRYABLE
+	) {
+		super(
+			message,
+			ErrorCode.PERSISTENCE_ERROR,
+			category,
+			{ operation, ...details },
+			'There was an issue saving your data. Please try again.'
+		);
 		this.name = 'PersistenceError';
+	}
+}
+
+export class ValidationError extends AgenticChatError {
+	constructor(message: string, field?: string, details?: Record<string, unknown>) {
+		super(
+			message,
+			ErrorCode.VALIDATION_ERROR,
+			ErrorCategory.USER_FACING,
+			{ field, ...details },
+			message // Validation errors are usually user-friendly
+		);
+		this.name = 'ValidationError';
+	}
+}
+
+export class TimeoutError extends AgenticChatError {
+	constructor(operation: string, timeoutMs: number, details?: Record<string, unknown>) {
+		super(
+			`Operation '${operation}' timed out after ${timeoutMs}ms`,
+			ErrorCode.TIMEOUT_ERROR,
+			ErrorCategory.RETRYABLE,
+			{ operation, timeoutMs, ...details },
+			'The operation took too long. Please try again.'
+		);
+		this.name = 'TimeoutError';
+	}
+}
+
+export class LLMError extends AgenticChatError {
+	constructor(
+		message: string,
+		details?: Record<string, unknown>,
+		category: ErrorCategory = ErrorCategory.RETRYABLE
+	) {
+		super(
+			message,
+			ErrorCode.LLM_ERROR,
+			category,
+			details,
+			'There was an issue processing your request. Please try again.'
+		);
+		this.name = 'LLMError';
 	}
 }
 

@@ -4,7 +4,7 @@
 
 	Provides full CRUD operations for goals within the BuildOS ontology system:
 	- Edit goal details (name, description, priority, target date, state, etc.)
-	- Visualize FSM state transitions
+	- Change goal state via dropdown
 	- Delete goals with confirmation
 
 	Documentation:
@@ -16,7 +16,6 @@
 	Related Files:
 	- API Endpoints: /apps/web/src/routes/api/onto/goals/[id]/+server.ts
 	- Create Modal: /apps/web/src/lib/components/ontology/GoalCreateModal.svelte
-	- FSM Visualizer: /apps/web/src/lib/components/ontology/FSMStateVisualizer.svelte
 
 	Note: This modal uses custom layout instead of FormModal for advanced features
 	like sidebar metadata and FSM visualization.
@@ -35,8 +34,8 @@
 	import Select from '$lib/components/ui/Select.svelte';
 	import Badge from '$lib/components/ui/Badge.svelte';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
-	import FSMStateVisualizer from './FSMStateVisualizer.svelte';
 	import LinkedEntities from './linked-entities/LinkedEntities.svelte';
+	import { GOAL_STATES } from '$lib/types/onto';
 	import type { EntityKind } from './linked-entities/linked-entities.types';
 	import TaskEditModal from './TaskEditModal.svelte';
 	import PlanEditModal from './PlanEditModal.svelte';
@@ -67,9 +66,6 @@
 	let targetDate = $state('');
 	let measurementCriteria = $state('');
 	let stateKey = $state('draft');
-
-	// FSM related
-	let allowedTransitions = $state<any[]>([]);
 
 	// Modal states for linked entity navigation
 	let showTaskModal = $state(false);
@@ -103,36 +99,11 @@
 				measurementCriteria = goal.props?.measurement_criteria || '';
 				stateKey = goal.state_key || 'draft';
 			}
-
-			// Load FSM transitions if available
-			await loadTransitions();
 		} catch (err) {
 			console.error('Error loading goal:', err);
 			error = 'Failed to load goal';
 		} finally {
 			isLoading = false;
-		}
-	}
-
-	async function loadTransitions() {
-		try {
-			const response = await fetch(`/api/onto/fsm/transitions?kind=goal&id=${goalId}`);
-			if (response.ok) {
-				const data = await response.json();
-				allowedTransitions =
-					(data.data?.transitions || []).map((transition: any) => ({
-						...transition,
-						can_run:
-							typeof transition?.can_run === 'boolean'
-								? (transition.can_run as boolean)
-								: true,
-						failed_guards: Array.isArray(transition?.failed_guards)
-							? transition.failed_guards
-							: []
-					})) ?? [];
-			}
-		} catch (err) {
-			console.error('Error loading transitions:', err);
 		}
 	}
 
@@ -207,13 +178,6 @@
 			isDeleting = false;
 			showDeleteConfirm = false;
 		}
-	}
-
-	async function handleStateChange(event: CustomEvent) {
-		const newState = event.detail.newState;
-		stateKey = newState;
-		await handleSave();
-		await loadTransitions();
 	}
 
 	function handleClose() {
@@ -416,42 +380,35 @@
 								/>
 							</FormField>
 
-							<!-- FSM State Visualizer -->
-							{#if goal.type_key && allowedTransitions.length > 0}
-								<div class="pt-4 border-t border-border">
-									<FSMStateVisualizer
-										entityId={goalId}
-										entityKind="goal"
-										entityName={name}
-										currentState={stateKey}
-										initialTransitions={allowedTransitions}
-										on:stateChange={handleStateChange}
-									/>
-								</div>
-							{:else}
-								<FormField
-									label="State"
-									labelFor="state"
-									required={true}
-									hint="Current goal status"
+							<!-- Goal State -->
+							<FormField
+								label="State"
+								labelFor="state"
+								required={true}
+								hint="Current goal status"
+							>
+								<Select
+									id="state"
+									bind:value={stateKey}
+									disabled={isSaving}
+									size="md"
+									placeholder="Select state"
 								>
-									<Select
-										id="state"
-										bind:value={stateKey}
-										disabled={isSaving}
-										size="md"
-										placeholder="Select state"
-									>
-										<option value="draft">Draft</option>
-										<option value="active">Active</option>
-										<option value="on_track">On Track</option>
-										<option value="at_risk">At Risk</option>
-										<option value="achieved">Achieved</option>
-										<option value="missed">Missed</option>
-										<option value="archived">Archived</option>
-									</Select>
-								</FormField>
-							{/if}
+									{#each GOAL_STATES as state}
+										<option value={state}>
+											{state === 'draft'
+												? 'Draft'
+												: state === 'active'
+													? 'Active'
+													: state === 'achieved'
+														? 'Achieved'
+														: state === 'abandoned'
+															? 'Abandoned'
+															: state}
+										</option>
+									{/each}
+								</Select>
+							</FormField>
 
 							{#if error}
 								<div
