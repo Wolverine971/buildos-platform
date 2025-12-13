@@ -158,7 +158,12 @@
 				<div class="text-center">
 					<AlertTriangle class="h-8 w-8 text-red-500 mx-auto mb-3" />
 					<p class="text-red-600 dark:text-red-400 mb-4">{error}</p>
-					<Button onclick={refreshProjects} variant="primary" size="sm" disabled={isRefreshing}>
+					<Button
+						onclick={refreshProjects}
+						variant="primary"
+						size="sm"
+						disabled={isRefreshing}
+					>
 						{#if isRefreshing}
 							<Loader2 class="h-4 w-4 mr-2 animate-spin" />
 						{/if}
@@ -253,7 +258,9 @@
 								class="group relative flex flex-col rounded-lg border border-border bg-card p-2.5 sm:p-4 shadow-ink transition-all duration-200 hover:border-accent hover:shadow-ink-strong pressable tx tx-frame tx-weak"
 							>
 								<!-- Header - Mobile: Title only, Desktop: Title + Badge -->
-								<div class="mb-1.5 sm:mb-3 flex items-start justify-between gap-1 sm:gap-3">
+								<div
+									class="mb-1.5 sm:mb-3 flex items-start justify-between gap-1 sm:gap-3"
+								>
 									<h3
 										class="text-sm sm:text-lg font-bold text-foreground line-clamp-2 transition-colors group-hover:text-accent leading-tight"
 									>
@@ -288,7 +295,9 @@
 										{project.description}
 									</p>
 								{:else}
-									<p class="hidden sm:block mb-3 text-sm text-muted-foreground/50 italic flex-1">
+									<p
+										class="hidden sm:block mb-3 text-sm text-muted-foreground/50 italic flex-1"
+									>
 										No description
 									</p>
 								{/if}
@@ -332,12 +341,18 @@
 											title="Tasks"
 										>
 											<ListChecks class="h-3 w-3" />
-											<span class="font-bold text-[10px]">{project.task_count} tasks</span>
+											<span class="font-bold text-[10px]"
+												>{project.task_count} tasks</span
+											>
 										</span>
-										<ChevronRight class="h-3.5 w-3.5 text-muted-foreground/50" />
+										<ChevronRight
+											class="h-3.5 w-3.5 text-muted-foreground/50"
+										/>
 									</div>
 									<!-- Desktop: Full stats -->
-									<div class="hidden sm:flex flex-wrap items-center gap-x-3 gap-y-1.5">
+									<div
+										class="hidden sm:flex flex-wrap items-center gap-x-3 gap-y-1.5"
+									>
 										<span
 											class="flex items-center gap-1"
 											aria-label="Task count"

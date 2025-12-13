@@ -11,10 +11,7 @@
 import type { PageServerLoad } from './$types';
 import type { OntologyProjectSummary } from '$lib/services/ontology/ontology-projects.service';
 
-export const load: PageServerLoad = async ({
-	locals: { safeGetSession, supabase },
-	depends
-}) => {
+export const load: PageServerLoad = async ({ locals: { safeGetSession, supabase }, depends }) => {
 	depends('app:auth');
 	depends('dashboard:projects');
 

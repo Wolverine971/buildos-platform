@@ -85,9 +85,7 @@
 			</div>
 		</div>
 
-		<h2
-			class="text-4xl sm:text-5xl font-bold mb-4 text-emerald-600 dark:text-emerald-400"
-		>
+		<h2 class="text-4xl sm:text-5xl font-bold mb-4 text-emerald-600 dark:text-emerald-400">
 			You're All Set!
 		</h2>
 		<p class="text-xl text-muted-foreground leading-relaxed">
@@ -108,21 +106,19 @@
 					<Brain class="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
 				</div>
 				<div class="flex-1">
-					<h3 class="font-semibold text-lg mb-1 text-foreground">
-						Projects Captured
-					</h3>
+					<h3 class="font-semibold text-lg mb-1 text-foreground">Projects Captured</h3>
 					<p class="text-muted-foreground">
 						{#if summary.projectsCreated > 0}
-							Created <strong class="text-foreground">{summary.projectsCreated}</strong>
+							Created <strong class="text-foreground"
+								>{summary.projectsCreated}</strong
+							>
 							project{summary.projectsCreated !== 1 ? 's' : ''} from your brain dump
 						{:else}
 							No projects created yet — you can add them anytime!
 						{/if}
 					</p>
 					{#if summary.calendarAnalyzed}
-						<div
-							class="mt-2 flex items-center gap-2 text-sm text-accent"
-						>
+						<div class="mt-2 flex items-center gap-2 text-sm text-accent">
 							<Calendar class="w-4 h-4" />
 							<span>Analyzed your Google Calendar</span>
 						</div>
@@ -132,9 +128,7 @@
 		</div>
 
 		<!-- Notifications Setup -->
-		<div
-			class="bg-card rounded-xl border border-accent/30 p-6 shadow-ink tx tx-frame tx-weak"
-		>
+		<div class="bg-card rounded-xl border border-accent/30 p-6 shadow-ink tx tx-frame tx-weak">
 			<div class="flex items-start gap-4">
 				<div
 					class="flex-shrink-0 w-12 h-12 bg-accent/10 rounded-lg flex items-center justify-center shadow-ink"
@@ -142,19 +136,21 @@
 					<Bell class="w-6 h-6 text-accent" />
 				</div>
 				<div class="flex-1">
-					<h3 class="font-semibold text-lg mb-1 text-foreground">
-						Accountability Style
-					</h3>
+					<h3 class="font-semibold text-lg mb-1 text-foreground">Accountability Style</h3>
 					<div class="space-y-1 text-sm text-muted-foreground">
 						{#if summary.smsEnabled}
 							<div class="flex items-center gap-2">
-								<CheckCircle class="w-4 h-4 text-emerald-600 dark:text-emerald-500" />
+								<CheckCircle
+									class="w-4 h-4 text-emerald-600 dark:text-emerald-500"
+								/>
 								<span>SMS notifications enabled</span>
 							</div>
 						{/if}
 						{#if summary.emailEnabled}
 							<div class="flex items-center gap-2">
-								<CheckCircle class="w-4 h-4 text-emerald-600 dark:text-emerald-500" />
+								<CheckCircle
+									class="w-4 h-4 text-emerald-600 dark:text-emerald-500"
+								/>
 								<span>Email daily briefs enabled</span>
 							</div>
 						{/if}
@@ -178,9 +174,7 @@
 						<Sparkles class="w-6 h-6 text-purple-600 dark:text-purple-400" />
 					</div>
 					<div class="flex-1">
-						<h3 class="font-semibold text-lg mb-1 text-foreground">
-							Usage Profile
-						</h3>
+						<h3 class="font-semibold text-lg mb-1 text-foreground">Usage Profile</h3>
 						<p class="text-muted-foreground">
 							You'll use BuildOS as: <strong class="text-foreground"
 								>{archetypeLabels[summary.archetype] || summary.archetype}</strong
@@ -206,9 +200,7 @@
 						<h3 class="font-semibold text-lg mb-1 text-foreground">
 							Challenges Identified
 						</h3>
-						<p class="text-muted-foreground mb-2">
-							BuildOS will help you with:
-						</p>
+						<p class="text-muted-foreground mb-2">BuildOS will help you with:</p>
 						<div class="flex flex-wrap gap-2">
 							{#each summary.challenges as challengeId}
 								<span
@@ -242,8 +234,6 @@
 			{/if}
 		</Button>
 
-		<p class="text-sm text-muted-foreground mt-4">
-			Your personalized workspace is ready!
-		</p>
+		<p class="text-sm text-muted-foreground mt-4">Your personalized workspace is ready!</p>
 	</div>
 </div>

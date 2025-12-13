@@ -25,13 +25,13 @@ The BuildOS Ontology System is **production-ready** with comprehensive database 
 
 **The `onto_templates` table has been removed.** The system now operates without a template catalog:
 
-| Before (Templates) | After (Template-Free) |
-|-------------------|----------------------|
-| Template table with inheritance | No template table |
-| LLM discovers/creates templates | LLM classifies directly to type_key |
-| Schema-driven property extraction | Minimal props from legacy data |
-| FindOrCreateTemplateService | Removed |
-| PropertyExtractorEngine | Removed |
+| Before (Templates)                | After (Template-Free)               |
+| --------------------------------- | ----------------------------------- |
+| Template table with inheritance   | No template table                   |
+| LLM discovers/creates templates   | LLM classifies directly to type_key |
+| Schema-driven property extraction | Minimal props from legacy data      |
+| FindOrCreateTemplateService       | Removed                             |
+| PropertyExtractorEngine           | Removed                             |
 
 ### How Type Keys Work Now
 
@@ -39,15 +39,15 @@ Type keys are **string identifiers** that classify entities semantically:
 
 ```typescript
 // Tasks: Assigned via 2-phase LLM classification
-task.execute           // Action tasks (default)
-task.create            // Produce new artifacts
-task.coordinate.meeting // Specialization: meetings
+task.execute; // Action tasks (default)
+task.create; // Produce new artifacts
+task.coordinate.meeting; // Specialization: meetings
 
 // Projects: Fixed default
-project.base           // All migrated projects
+project.base; // All migrated projects
 
 // Plans: Fixed default
-plan.phase.project     // All migrated phases
+plan.phase.project; // All migrated phases
 ```
 
 **Classification happens at runtime via LLM**, not via template lookup.
@@ -95,6 +95,7 @@ plan.phase.project     // All migrated phases
 ```
 
 **Removed Tables:**
+
 ```sql
 ❌ onto_templates          -- DROPPED (Dec 2025)
 ❌ agent_template_creation_requests -- DROPPED (Dec 2025)
@@ -122,23 +123,24 @@ Type keys are now **string conventions** used directly, without a backing templa
 
 ```typescript
 // 8 Base Work Modes (assigned via LLM classification)
-task.execute         // Action tasks - do the work (default)
-task.create          // Produce new artifacts
-task.refine          // Improve existing work
-task.research        // Investigate and gather information
-task.review          // Evaluate and provide feedback
-task.coordinate      // Sync with others
-task.admin           // Administrative housekeeping
-task.plan            // Strategic thinking and planning
+task.execute; // Action tasks - do the work (default)
+task.create; // Produce new artifacts
+task.refine; // Improve existing work
+task.research; // Investigate and gather information
+task.review; // Evaluate and provide feedback
+task.coordinate; // Sync with others
+task.admin; // Administrative housekeeping
+task.plan; // Strategic thinking and planning
 
 // Specializations (assigned in Phase 2 of LLM classification)
-task.coordinate.meeting   // Schedule/conduct meetings
-task.coordinate.standup   // Quick team syncs
-task.execute.deploy       // Production deployments
-task.execute.checklist    // Follow predefined processes
+task.coordinate.meeting; // Schedule/conduct meetings
+task.coordinate.standup; // Quick team syncs
+task.execute.deploy; // Production deployments
+task.execute.checklist; // Follow predefined processes
 ```
 
 **How Classification Works:**
+
 1. **Phase 1 (Fast LLM)**: Selects work_mode from 8 options
 2. **Phase 2 (Balanced LLM)**: Adds specialization if applicable
 3. **Result**: `task.{work_mode}[.{specialization}]`
@@ -146,32 +148,32 @@ task.execute.checklist    // Follow predefined processes
 #### Project Type Keys
 
 ```typescript
-project.base           // Default for all projects (fixed)
+project.base; // Default for all projects (fixed)
 // Future: project.{domain}.{deliverable} patterns
 ```
 
 #### Plan Type Keys
 
 ```typescript
-plan.phase.project     // Default for migrated phases (fixed)
-plan.base              // Generic plan
+plan.phase.project; // Default for migrated phases (fixed)
+plan.base; // Generic plan
 
 // Available taxonomy (for future use):
-plan.timebox.sprint    // Development sprints
-plan.timebox.weekly    // Weekly planning
-plan.pipeline.sales    // Sales pipeline
-plan.roadmap.product   // Product roadmap
+plan.timebox.sprint; // Development sprints
+plan.timebox.weekly; // Weekly planning
+plan.pipeline.sales; // Sales pipeline
+plan.roadmap.product; // Product roadmap
 ```
 
 #### Goal Type Keys
 
 ```typescript
 // Format: goal.{family}[.{variant}]
-goal.base              // Root abstract
-goal.outcome.project   // Project outcome goals
-goal.metric.usage      // Usage metrics (MAU, DAU)
-goal.behavior.cadence  // Frequency goals
-goal.learning.skill    // Skill acquisition
+goal.base; // Root abstract
+goal.outcome.project; // Project outcome goals
+goal.metric.usage; // Usage metrics (MAU, DAU)
+goal.behavior.cadence; // Frequency goals
+goal.learning.skill; // Skill acquisition
 ```
 
 ---
@@ -294,18 +296,16 @@ goal.learning.skill    // Skill acquisition
 **Create Modals:**
 
 ```svelte
-✅ TaskCreateModal.svelte   // Task creation with type selection
-✅ PlanCreateModal.svelte   // Date ranges, plan types
-✅ GoalCreateModal.svelte   // Success criteria, goal types
-✅ OutputCreateModal.svelte // Document creation
+✅ TaskCreateModal.svelte // Task creation with type selection ✅ PlanCreateModal.svelte // Date
+ranges, plan types ✅ GoalCreateModal.svelte // Success criteria, goal types ✅
+OutputCreateModal.svelte // Document creation
 ```
 
 **Edit Modals:**
 
 ```svelte
-✅ TaskEditModal.svelte // Full editing with delete & FSM viz
-✅ PlanEditModal.svelte // Edit dates, description, state
-✅ GoalEditModal.svelte // Edit priority, target date, criteria
+✅ TaskEditModal.svelte // Full editing with delete & FSM viz ✅ PlanEditModal.svelte // Edit dates,
+description, state ✅ GoalEditModal.svelte // Edit priority, target date, criteria
 ```
 
 **Modal Features:**
@@ -343,22 +343,22 @@ goal.learning.skill    // Skill acquisition
 
 ### Code Changes (December 2025)
 
-| Action | Files | Lines Changed |
-|--------|-------|---------------|
-| Template services removed | 4 | -2,000+ |
-| Migration services updated | 6 | ~500 |
-| DB migration (drop tables) | 1 | ~70 |
-| Documentation updates | 5+ | ~500 |
+| Action                     | Files | Lines Changed |
+| -------------------------- | ----- | ------------- |
+| Template services removed  | 4     | -2,000+       |
+| Migration services updated | 6     | ~500          |
+| DB migration (drop tables) | 1     | ~70           |
+| Documentation updates      | 5+    | ~500          |
 
 ### Type Key Inventory
 
-| Entity | Type Keys Available | Assignment Method |
-|--------|--------------------|--------------------|
-| Tasks | 12 (8 modes + 4 specs) | LLM classification |
-| Projects | 1 (project.base) | Fixed default |
-| Plans | 1 (plan.phase.project) | Fixed default |
-| Goals | 13 | Manual selection |
-| Documents | 17 | Manual selection |
+| Entity    | Type Keys Available    | Assignment Method  |
+| --------- | ---------------------- | ------------------ |
+| Tasks     | 12 (8 modes + 4 specs) | LLM classification |
+| Projects  | 1 (project.base)       | Fixed default      |
+| Plans     | 1 (plan.phase.project) | Fixed default      |
+| Goals     | 13                     | Manual selection   |
+| Documents | 17                     | Manual selection   |
 
 ---
 

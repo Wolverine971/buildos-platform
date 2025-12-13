@@ -12,7 +12,8 @@ import type { LastTurnContext, OntologyContext } from '$lib/types/agent-chat-enh
 import type { EntityLinkedContext } from '$lib/types/linked-entity-context.types';
 import {
 	generateProjectContextFramework,
-	generateProjectTypeKeyGuidance
+	generateProjectTypeKeyGuidance,
+	generateTaskTypeKeyGuidance
 } from '$lib/services/prompts/core/prompt-components';
 import {
 	formatLinkedEntitiesForSystemPrompt,
@@ -172,32 +173,7 @@ Before calling \`create_onto_task\`, ask yourself these questions:
 - User: "I need to call the vendor about pricing" → CREATE (user action required)
 - User: "Let's brainstorm feature ideas" → Brainstorm with them, don't create "Brainstorm features" task
 
-### Task Work Mode Selection Guide
-When creating tasks, select the most appropriate \`type_key\` based on the nature of the work:
-
-**8 Base Work Modes:**
-- \`task.execute\`: Action tasks - do the work (default for most tasks)
-- \`task.create\`: Produce new artifacts (write, build, design something new)
-- \`task.refine\`: Improve existing work (edit, polish, iterate)
-- \`task.research\`: Investigate and gather information
-- \`task.review\`: Evaluate and provide feedback
-- \`task.coordinate\`: Sync with others (meetings, standups, check-ins)
-- \`task.admin\`: Administrative housekeeping
-- \`task.plan\`: Strategic thinking and planning
-
-**Specializations (use when applicable):**
-- \`task.coordinate.meeting\`: Schedule/conduct a meeting → "Meet with Sarah about Q2 goals"
-- \`task.coordinate.standup\`: Quick team sync → "Daily standup with dev team"
-- \`task.execute.deploy\`: Production deployment → "Deploy v2.1 to production"
-- \`task.execute.checklist\`: Follow a predefined process → "Run launch checklist"
-
-**Selection Examples:**
-- "Call the vendor" → \`task.execute\` (action)
-- "Write the proposal" → \`task.create\` (producing new content)
-- "Review John's PR" → \`task.review\` (evaluation)
-- "Schedule meeting with marketing" → \`task.coordinate.meeting\`
-- "Research competitor pricing" → \`task.research\`
-- "Update the invoice spreadsheet" → \`task.admin\``;
+${generateTaskTypeKeyGuidance('short')}`;
 	}
 
 	/**

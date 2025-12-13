@@ -201,9 +201,7 @@
 		</div>
 
 		<div class="flex-1">
-			<h4 class="font-semibold text-lg mb-2 text-foreground">
-				SMS Notifications
-			</h4>
+			<h4 class="font-semibold text-lg mb-2 text-foreground">SMS Notifications</h4>
 			<p class="text-sm text-muted-foreground mb-4">
 				Stay on track with text reminders before events, morning kickoffs with your
 				schedule, and evening recaps
@@ -222,7 +220,9 @@
 				<div
 					class="flex items-center gap-2 p-3 bg-emerald-500/10 rounded-lg border border-emerald-500/30 tx tx-grain tx-weak"
 				>
-					<CheckCircle class="w-5 h-5 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
+					<CheckCircle
+						class="w-5 h-5 text-emerald-600 dark:text-emerald-400 flex-shrink-0"
+					/>
 					<div class="flex-1">
 						<p class="font-medium text-emerald-700 dark:text-emerald-300">
 							Phone verified!

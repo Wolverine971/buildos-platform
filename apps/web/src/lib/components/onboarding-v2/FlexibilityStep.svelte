@@ -107,9 +107,7 @@
 								Mark tasks complete, add context, or update details—all through
 								natural language.
 							</p>
-							<div
-								class="bg-muted rounded-lg p-4 border border-border"
-							>
+							<div class="bg-muted rounded-lg p-4 border border-border">
 								<p class="text-sm italic text-muted-foreground">
 									"The API integration is complete, but we need to add error
 									handling. Also, let's update the design task to high priority."
@@ -119,9 +117,7 @@
 					</div>
 
 					{#if ONBOARDING_V2_CONFIG.features.showPlaceholderAssets}
-						<div
-							class="mt-4 bg-muted rounded-lg p-8 text-center border border-border"
-						>
+						<div class="mt-4 bg-muted rounded-lg p-8 text-center border border-border">
 							<MessageSquare class="w-12 h-12 text-muted-foreground mx-auto mb-4" />
 							<p class="text-muted-foreground text-sm">
 								[Screenshot: Braindump modal updating existing task]
@@ -154,9 +150,7 @@
 								Need to reschedule? Just mention it, and BuildOS automatically
 								adjusts your calendar.
 							</p>
-							<div
-								class="bg-muted rounded-lg p-4 border border-border"
-							>
+							<div class="bg-muted rounded-lg p-4 border border-border">
 								<p class="text-sm italic text-muted-foreground">
 									"This week got busy—let's push all Q1 planning tasks to next
 									week and move the design review to next Friday afternoon."
@@ -166,9 +160,7 @@
 					</div>
 
 					{#if ONBOARDING_V2_CONFIG.features.showPlaceholderAssets}
-						<div
-							class="mt-4 bg-muted rounded-lg p-8 text-center border border-border"
-						>
+						<div class="mt-4 bg-muted rounded-lg p-8 text-center border border-border">
 							<Calendar class="w-12 h-12 text-muted-foreground mx-auto mb-4" />
 							<p class="text-muted-foreground text-sm">
 								[Screenshot: Braindump processing task rescheduling]
@@ -217,21 +209,22 @@
 								<div class="flex items-center gap-2">
 									<div class="w-2 h-2 rounded-full bg-accent"></div>
 									<span
-										><strong class="text-foreground">Phases only</strong> - Just organize, no scheduling</span
+										><strong class="text-foreground">Phases only</strong> - Just
+										organize, no scheduling</span
 									>
 								</div>
 								<div class="flex items-center gap-2">
 									<div class="w-2 h-2 rounded-full bg-accent"></div>
 									<span
-										><strong class="text-foreground">Schedule in phases</strong> - Auto-schedule all phase
-										tasks</span
+										><strong class="text-foreground">Schedule in phases</strong>
+										- Auto-schedule all phase tasks</span
 									>
 								</div>
 								<div class="flex items-center gap-2">
 									<div class="w-2 h-2 rounded-full bg-accent"></div>
 									<span
-										><strong class="text-foreground">Calendar-optimized</strong> - Smart scheduling around
-										your calendar</span
+										><strong class="text-foreground">Calendar-optimized</strong>
+										- Smart scheduling around your calendar</span
 									>
 								</div>
 							</div>
@@ -239,9 +232,7 @@
 					</div>
 
 					{#if ONBOARDING_V2_CONFIG.features.showPlaceholderAssets}
-						<div
-							class="mt-4 bg-muted rounded-lg p-8 text-center border border-border"
-						>
+						<div class="mt-4 bg-muted rounded-lg p-8 text-center border border-border">
 							<Layout class="w-12 h-12 text-muted-foreground mx-auto mb-4" />
 							<p class="text-muted-foreground text-sm">
 								[Screenshot: Phase generation modal with 3 strategy options]
@@ -278,9 +269,7 @@
 					</div>
 
 					{#if ONBOARDING_V2_CONFIG.features.showPlaceholderAssets}
-						<div
-							class="mt-4 bg-muted rounded-lg p-8 text-center border border-border"
-						>
+						<div class="mt-4 bg-muted rounded-lg p-8 text-center border border-border">
 							<RefreshCw class="w-12 h-12 text-muted-foreground mx-auto mb-4" />
 							<p class="text-muted-foreground text-sm">
 								[Screenshot: Before/after view showing phase regeneration]
@@ -318,9 +307,7 @@
 					</div>
 
 					{#if ONBOARDING_V2_CONFIG.features.showPlaceholderAssets}
-						<div
-							class="mt-4 bg-muted rounded-lg p-8 text-center border border-border"
-						>
+						<div class="mt-4 bg-muted rounded-lg p-8 text-center border border-border">
 							<Sparkles class="w-12 h-12 text-muted-foreground mx-auto mb-4" />
 							<p class="text-muted-foreground text-sm">
 								[Screenshot: Calendar view with scheduled phase tasks]
@@ -339,9 +326,7 @@
 			<!-- Calendar Flexibility Section -->
 			<div class="space-y-6">
 				<div class="text-center mb-6">
-					<h3 class="text-2xl font-bold mb-2 text-foreground">
-						Your Calendar, Your Way
-					</h3>
+					<h3 class="text-2xl font-bold mb-2 text-foreground">Your Calendar, Your Way</h3>
 					<p class="text-muted-foreground">
 						Schedule, unschedule, and block time—all seamlessly integrated.
 					</p>
@@ -369,9 +354,7 @@
 					</div>
 
 					{#if ONBOARDING_V2_CONFIG.features.showPlaceholderAssets}
-						<div
-							class="mt-4 bg-muted rounded-lg p-8 text-center border border-border"
-						>
+						<div class="mt-4 bg-muted rounded-lg p-8 text-center border border-border">
 							<Calendar class="w-12 h-12 text-muted-foreground mx-auto mb-4" />
 							<p class="text-muted-foreground text-sm">
 								[Screenshot: Task detail showing schedule/unschedule buttons]
@@ -397,26 +380,22 @@
 							<Sparkles class="w-6 h-6 text-emerald-600" />
 						</div>
 						<div class="flex-1">
-							<h4 class="font-semibold text-lg mb-2 text-foreground">
-								Timeblocks
-							</h4>
+							<h4 class="font-semibold text-lg mb-2 text-foreground">Timeblocks</h4>
 							<p class="text-sm text-muted-foreground mb-3">
 								Block off time on your calendar to work on specific projects—BuildOS
 								even suggests what to work on during each block.
 							</p>
-							<div
-								class="bg-muted rounded-lg p-4 border border-border mt-3"
-							>
+							<div class="bg-muted rounded-lg p-4 border border-border mt-3">
 								<div class="flex items-center gap-2 mb-2">
 									<div class="text-2xl">🕐</div>
 									<div class="font-semibold text-foreground">
 										10:00 AM - 12:00 PM: Marketing Campaign
 									</div>
 								</div>
-								<div
-									class="text-sm text-muted-foreground space-y-1 ml-8"
-								>
-									<p class="font-medium text-foreground">AI Suggestions for this block:</p>
+								<div class="text-sm text-muted-foreground space-y-1 ml-8">
+									<p class="font-medium text-foreground">
+										AI Suggestions for this block:
+									</p>
 									<div class="flex items-center gap-2">
 										<CheckCircle class="w-4 h-4 text-emerald-600" />
 										<span>Finalize social media calendar</span>
@@ -435,9 +414,7 @@
 					</div>
 
 					{#if ONBOARDING_V2_CONFIG.features.showPlaceholderAssets}
-						<div
-							class="mt-4 bg-muted rounded-lg p-8 text-center border border-border"
-						>
+						<div class="mt-4 bg-muted rounded-lg p-8 text-center border border-border">
 							<Sparkles class="w-12 h-12 text-muted-foreground mx-auto mb-4" />
 							<p class="text-muted-foreground text-sm">
 								[Screenshot: Calendar with timeblock and AI task suggestions]
@@ -457,7 +434,12 @@
 
 	<!-- Navigation -->
 	<div class="flex justify-end mt-8">
-		<Button variant="primary" size="lg" onclick={onNext} class="min-w-[200px] shadow-ink pressable">
+		<Button
+			variant="primary"
+			size="lg"
+			onclick={onNext}
+			class="min-w-[200px] shadow-ink pressable"
+		>
 			Continue
 			<Sparkles class="w-5 h-5 ml-2" />
 		</Button>

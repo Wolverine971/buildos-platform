@@ -464,20 +464,14 @@
 </svelte:head>
 
 {#if showCompletionScreen}
-	<div
-		class="min-h-screen bg-background flex items-center justify-center p-4"
-	>
+	<div class="min-h-screen bg-background flex items-center justify-center p-4">
 		<div class="max-w-md mx-auto text-center" in:scale={{ duration: 500, start: 0.9 }}>
 			<div
 				class="w-20 h-20 bg-accent rounded-full flex items-center justify-center mx-auto mb-8 shadow-ink-strong tx tx-bloom tx-weak"
 			>
 				<CheckCircle class="w-10 h-10 text-accent-foreground" />
 			</div>
-			<h1
-				class="text-3xl sm:text-4xl font-bold text-foreground mb-4"
-			>
-				Welcome to BuildOS!
-			</h1>
+			<h1 class="text-3xl sm:text-4xl font-bold text-foreground mb-4">Welcome to BuildOS!</h1>
 			<p class="text-muted-foreground mb-8 text-lg leading-relaxed">
 				Your personalized workspace is ready. Let's start building amazing things together.
 			</p>
@@ -485,9 +479,7 @@
 	</div>
 {:else if useV2}
 	<!-- V2 Onboarding Flow -->
-	<div
-		class="min-h-screen bg-background"
-	>
+	<div class="min-h-screen bg-background">
 		<div class="container mx-auto py-8 px-4">
 			<!-- Progress Indicator (show for steps 1-5, not welcome or summary) -->
 			{#if v2CurrentStep > 0 && v2CurrentStep < 6}
@@ -527,9 +519,7 @@
 	</div>
 {:else}
 	<!-- V1 Onboarding Flow -->
-	<div
-		class="min-h-screen bg-background"
-	>
+	<div class="min-h-screen bg-background">
 		<div class="container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 max-w-4xl">
 			<!-- Enhanced Progress Indicator -->
 			<div class="mb-10">
@@ -684,10 +674,7 @@
 							Saving...
 						</p>
 					{:else if !hasUnsavedChanges && hasCurrentInput}
-						<p
-							class="text-xs text-emerald-600 mt-2 flex items-center"
-							transition:fade
-						>
+						<p class="text-xs text-emerald-600 mt-2 flex items-center" transition:fade>
 							<CheckCircle class="w-3 h-3 mr-1" />
 							Saved
 						</p>
@@ -735,9 +722,7 @@
 
 				<!-- Examples section -->
 				<div class="mt-10 pt-8 border-t border-border">
-					<p class="text-sm font-medium text-foreground mb-4">
-						Examples to inspire you:
-					</p>
+					<p class="text-sm font-medium text-foreground mb-4">Examples to inspire you:</p>
 					<div class="space-y-3">
 						{#each currentStepData?.examples ?? [] as example, i}
 							<div

@@ -185,7 +185,8 @@
 									>
 
 									<!-- Content -->
-									<span class="min-w-0 flex-1 break-words [overflow-wrap:anywhere] text-foreground"
+									<span
+										class="min-w-0 flex-1 break-words [overflow-wrap:anywhere] text-foreground"
 										>{activity.content}</span
 									>
 

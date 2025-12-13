@@ -62,9 +62,6 @@
 
 	const isEditing = $derived(Boolean(documentId));
 	const documentFormId = $derived(`document-modal-${documentId ?? 'new'}`);
-	const contextBadgeVariant = $derived(taskId ? 'info' : 'success');
-	const contextBadgeLabel = $derived(taskId ? 'Task workspace' : 'Project document');
-	const lastUpdatedLabel = $derived(formatDate(updatedAt ?? createdAt));
 	const titleFieldError = $derived(formError === 'Title is required' ? formError : '');
 	const typeFieldError = $derived(formError === 'Type key is required' ? formError : '');
 	const globalFormError = $derived.by(() => {
@@ -265,13 +262,6 @@
 		}
 	}
 
-	function formatDate(value: string | null) {
-		if (!value) return null;
-		const date = new Date(value);
-		if (Number.isNaN(date.getTime())) return null;
-		return date.toLocaleString();
-	}
-
 	function getStateVariant(state: string): 'success' | 'warning' | 'info' | 'error' {
 		const normalized = state?.toLowerCase();
 		if (['approved', 'published'].includes(normalized)) {
@@ -327,217 +317,244 @@
 	closeOnBackdrop={false}
 	closeOnEscape={!saving}
 	showCloseButton={false}
+	customClasses="lg:!max-w-5xl xl:!max-w-6xl"
 >
 	{#snippet header()}
-		<!-- Compact Inkprint header -->
+		<!-- Ultra-compact Inkprint header -->
 		<div
-			class="flex-shrink-0 bg-muted/50 border-b border-border px-3 py-2 sm:px-4 sm:py-2.5 flex items-center justify-between gap-2 tx tx-strip tx-weak"
+			class="flex-shrink-0 bg-muted/50 border-b border-border px-2 py-1.5 sm:px-3 sm:py-2 flex items-center justify-between gap-2"
 		>
-			<div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
-				<div class="p-1.5 rounded bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 shrink-0">
-					<FileText class="w-4 h-4" />
+			<div class="flex items-center gap-2 min-w-0 flex-1">
+				<div class="p-1 rounded bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 shrink-0">
+					<FileText class="w-3.5 h-3.5" />
 				</div>
-				<div class="min-w-0 flex-1">
-					<h2
-						class="text-sm sm:text-base font-semibold leading-tight truncate text-foreground"
+				<span class="text-xs sm:text-sm font-semibold text-foreground truncate">
+					{isEditing ? 'Edit Document' : 'New Document'}
+				</span>
+				{#if isEditing}
+					<Badge
+						variant={getStateVariant(stateKey)}
+						size="sm"
+						class="capitalize hidden sm:inline-flex"
 					>
-						{title || (documentId ? 'Document' : 'New Document')}
-					</h2>
-					<p class="text-[10px] sm:text-xs text-muted-foreground mt-0.5">
-						{#if createdAt}Created {new Date(createdAt).toLocaleDateString(undefined, {
-								month: 'short',
-								day: 'numeric'
-							})}{/if}{#if updatedAt && updatedAt !== createdAt}
-							· Updated {new Date(updatedAt).toLocaleDateString(undefined, {
-								month: 'short',
-								day: 'numeric'
-							})}{/if}
-					</p>
-				</div>
+						{stateKey.replace('_', ' ')}
+					</Badge>
+				{/if}
 			</div>
-			<Button
-				variant="ghost"
-				size="sm"
-				onclick={closeModal}
-				class="text-muted-foreground hover:text-foreground shrink-0 !p-1 sm:!p-1.5"
-				disabled={saving}
-			>
-				<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						stroke-width="2"
-						d="M6 18L18 6M6 6l12 12"
-					></path>
-				</svg>
-			</Button>
+			<div class="flex items-center gap-1.5">
+				{#if updatedAt}
+					<span class="text-[10px] text-muted-foreground hidden md:inline">
+						Updated {new Date(updatedAt).toLocaleDateString(undefined, {
+							month: 'short',
+							day: 'numeric'
+						})}
+					</span>
+				{/if}
+				<Button
+					variant="ghost"
+					size="sm"
+					onclick={closeModal}
+					class="text-muted-foreground hover:text-foreground shrink-0 !p-1"
+					disabled={saving}
+				>
+					<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M6 18L18 6M6 6l12 12"
+						></path>
+					</svg>
+				</Button>
+			</div>
 		</div>
 	{/snippet}
 
 	{#snippet children()}
-		<div class="overflow-y-auto" style="max-height: 70vh;">
+		<div class="overflow-y-auto flex-1" style="max-height: calc(100vh - 120px);">
 			{#if loading}
 				<div class="flex items-center justify-center py-12">
 					<Loader class="w-6 h-6 animate-spin text-muted-foreground" />
 				</div>
 			{:else}
-				<form id={documentFormId} class="space-y-6 px-4 sm:px-6 py-6" onsubmit={handleSave}>
-					<section
-						class="rounded border border-border bg-muted/30 p-4 sm:p-5 shadow-ink space-y-2 tx tx-grain tx-weak"
-					>
-						<div class="flex flex-wrap items-center gap-2">
-							<Badge variant={getStateVariant(stateKey)} size="sm" class="capitalize">
-								{stateKey.replace('_', ' ')}
-							</Badge>
-							<Badge variant={contextBadgeVariant} size="sm"
-								>{contextBadgeLabel}</Badge
-							>
-							{#if typeKey}
-								<span class="text-xs text-muted-foreground">Type • {typeKey}</span>
-							{/if}
-						</div>
-						<div class="text-xs text-muted-foreground flex flex-wrap gap-4">
-							{#if createdAt}
-								<span>Created {formatDate(createdAt)}</span>
-							{/if}
-							{#if lastUpdatedLabel}
-								<span>Last updated {lastUpdatedLabel}</span>
-							{/if}
-						</div>
-					</section>
-
-					{#if isEditing}
+				<form id={documentFormId} class="h-full" onsubmit={handleSave}>
+					<!-- Desktop: Two-column layout | Mobile: Stacked -->
+					<div class="flex flex-col lg:flex-row h-full">
+						<!-- Left sidebar (metadata) - Desktop: Fixed width | Mobile: Collapsible top section -->
 						<div
-							class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm text-muted-foreground"
+							class="lg:w-72 xl:w-80 flex-shrink-0 border-b lg:border-b-0 lg:border-r border-border bg-muted/20"
 						>
-							<div>
-								<p class="font-semibold text-foreground">Document ID</p>
-								<p class="font-mono text-xs text-muted-foreground break-all mt-1">
-									{documentId}
-								</p>
-							</div>
-							<div>
-								<p class="font-semibold text-foreground">Created</p>
-								<p class="mt-1 text-foreground">
-									{formatDate(createdAt) ?? '—'}
-								</p>
-							</div>
-							<div>
-								<p class="font-semibold text-foreground">Updated</p>
-								<p class="mt-1 text-foreground">
-									{lastUpdatedLabel ?? '—'}
-								</p>
-							</div>
-						</div>
+							<div class="p-3 space-y-3">
+								<!-- Title field -->
+								<FormField
+									label="Title"
+									labelFor="document-title"
+									required={true}
+									error={titleFieldError}
+									uppercase={false}
+								>
+									<TextInput
+										id="document-title"
+										bind:value={title}
+										required
+										placeholder="Document title"
+										aria-label="Document title"
+										class="text-sm"
+										disabled={saving}
+									/>
+								</FormField>
 
-						<!-- Linked Entities (only show when editing an existing document) -->
-						{#if documentId}
-							<LinkedEntities
-								sourceId={documentId}
-								sourceKind="document"
-								{projectId}
-								onEntityClick={handleLinkedEntityClick}
-								onLinksChanged={() => loadDocument(documentId)}
-							/>
-						{/if}
-					{/if}
-
-					<div class="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
-						<div class="md:col-span-2">
-							<FormField
-								label="Document title"
-								labelFor="document-title"
-								required={true}
-								error={titleFieldError}
-								uppercase={false}
-							>
-								<TextInput
-									id="document-title"
-									bind:value={title}
-									required
-									placeholder="Document title"
-									aria-label="Document title"
-									class="text-sm font-medium"
-									disabled={saving}
-								/>
-							</FormField>
-						</div>
-						<div>
-							<FormField label="State" labelFor="document-state" uppercase={false}>
-								<div class="flex items-center gap-2">
-									<Select
-										id="document-state"
-										bind:value={stateKey}
-										size="sm"
-										class="flex-1"
+								<!-- State & Type - Compact inline on mobile -->
+								<div class="grid grid-cols-2 gap-2">
+									<FormField
+										label="State"
+										labelFor="document-state"
+										uppercase={false}
 									>
-										{#each stateOptions as option}
-											<option value={option.value}>{option.label}</option>
-										{/each}
-									</Select>
-									<Badge
-										variant={getStateVariant(stateKey)}
-										size="sm"
-										class="capitalize shrink-0"
+										<Select
+											id="document-state"
+											bind:value={stateKey}
+											size="sm"
+											class="w-full text-xs"
+										>
+											{#each stateOptions as option}
+												<option value={option.value}>{option.label}</option>
+											{/each}
+										</Select>
+									</FormField>
+									<FormField
+										label="Type"
+										labelFor="document-type-input"
+										uppercase={false}
+										error={typeFieldError}
 									>
-										{stateKey.replace('_', ' ')}
-									</Badge>
+										<input
+											id="document-type-input"
+											list={datalistId}
+											class="w-full rounded border border-border bg-background px-2 py-1.5 text-xs text-foreground font-mono focus:outline-none focus:ring-1 focus:ring-ring focus:border-ring transition-all"
+											bind:value={typeKey}
+											placeholder="doc.type"
+										/>
+										<datalist id={datalistId}>
+											{#each docTypeOptions as option}
+												<option value={option}></option>
+											{/each}
+										</datalist>
+									</FormField>
 								</div>
-							</FormField>
+
+								<!-- Type suggestions - compact -->
+								<div class="flex flex-wrap gap-1 text-[10px] font-mono">
+									<button
+										type="button"
+										class="px-1.5 py-0.5 rounded bg-accent/10 text-accent hover:bg-accent/20 transition-colors"
+										onclick={() => (typeKey = 'doc.project.context')}
+									>
+										.context
+									</button>
+									<button
+										type="button"
+										class="px-1.5 py-0.5 rounded bg-accent/10 text-accent hover:bg-accent/20 transition-colors"
+										onclick={() => (typeKey = 'doc.task.spec')}
+									>
+										.spec
+									</button>
+									<button
+										type="button"
+										class="px-1.5 py-0.5 rounded bg-accent/10 text-accent hover:bg-accent/20 transition-colors"
+										onclick={() => (typeKey = 'doc.project.note')}
+									>
+										.note
+									</button>
+								</div>
+
+								<!-- Linked Entities - Desktop sidebar | Mobile: after content -->
+								{#if isEditing && documentId}
+									<div class="hidden lg:block pt-2 border-t border-border">
+										<LinkedEntities
+											sourceId={documentId}
+											sourceKind="document"
+											{projectId}
+											onEntityClick={handleLinkedEntityClick}
+											onLinksChanged={() => loadDocument(documentId)}
+										/>
+									</div>
+								{/if}
+
+								<!-- Metadata - Compact display -->
+								{#if isEditing}
+									<div
+										class="pt-2 border-t border-border space-y-1 text-[10px] text-muted-foreground"
+									>
+										<div class="flex items-center justify-between">
+											<span>Created</span>
+											<span class="font-mono"
+												>{createdAt
+													? new Date(createdAt).toLocaleDateString()
+													: '—'}</span
+											>
+										</div>
+										<div class="flex items-center justify-between">
+											<span>Updated</span>
+											<span class="font-mono"
+												>{updatedAt
+													? new Date(updatedAt).toLocaleDateString()
+													: '—'}</span
+											>
+										</div>
+										<div class="flex items-start justify-between gap-2">
+											<span class="shrink-0">ID</span>
+											<span class="font-mono truncate text-right"
+												>{documentId}</span
+											>
+										</div>
+									</div>
+								{/if}
+							</div>
+						</div>
+
+						<!-- Right main area (content) - The star of the show -->
+						<div class="flex-1 flex flex-col min-w-0">
+							<div class="p-3 flex-1 flex flex-col">
+								<div class="flex items-center justify-between gap-2 mb-2">
+									<h4
+										class="text-xs font-semibold text-foreground uppercase tracking-wide"
+									>
+										Content
+									</h4>
+									<span class="text-[10px] text-muted-foreground hidden sm:inline"
+										>Markdown supported</span
+									>
+								</div>
+								<div class="flex-1 min-h-[300px] lg:min-h-[400px]">
+									<RichMarkdownEditor
+										bind:value={body}
+										label="Document content"
+										rows={18}
+										maxLength={50000}
+										helpText=""
+									/>
+								</div>
+							</div>
+
+							<!-- Mobile: Linked entities at bottom -->
+							{#if isEditing && documentId}
+								<div class="lg:hidden p-3 border-t border-border bg-muted/20">
+									<LinkedEntities
+										sourceId={documentId}
+										sourceKind="document"
+										{projectId}
+										onEntityClick={handleLinkedEntityClick}
+										onLinksChanged={() => loadDocument(documentId)}
+									/>
+								</div>
+							{/if}
 						</div>
 					</div>
 
-					<FormField
-						label="Document type"
-						labelFor="document-type-input"
-						uppercase={false}
-						error={typeFieldError}
-						hint="Use dot notation so agents can understand the document role."
-					>
-						<input
-							id="document-type-input"
-							list={datalistId}
-							class="w-full rounded border border-border bg-background px-3 py-2 text-sm text-foreground font-mono focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring transition-all"
-							bind:value={typeKey}
-							placeholder="doc.project.context"
-						/>
-						<datalist id={datalistId}>
-							{#each docTypeOptions as option}
-								<option value={option}></option>
-							{/each}
-						</datalist>
-						<div class="flex flex-wrap gap-2 mt-2 text-[11px] font-mono">
-							<span class="px-2 py-0.5 rounded bg-accent/10 text-accent">
-								doc.project.context
-							</span>
-							<span class="px-2 py-0.5 rounded bg-accent/10 text-accent">
-								doc.task.spec
-							</span>
-						</div>
-					</FormField>
-
-					<section class="pt-4 border-t border-border space-y-3">
-						<div
-							class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2"
-						>
-							<h4 class="text-sm font-semibold text-foreground">Content</h4>
-							<p class="text-xs text-muted-foreground">
-								Full GitHub-flavored markdown support. Use the toolbar for
-								shortcuts.
-							</p>
-						</div>
-						<RichMarkdownEditor
-							bind:value={body}
-							label="Document content"
-							rows={14}
-							maxLength={12000}
-							helpText="Supports AI summarization, tables, and embeds."
-						/>
-					</section>
-
 					{#if globalFormError}
 						<div
-							class="flex items-center gap-2 px-3 py-2 bg-destructive/10 border border-destructive/30 rounded-lg"
+							class="mx-3 mb-3 flex items-center gap-2 px-3 py-2 bg-destructive/10 border border-destructive/30 rounded-lg"
 						>
 							<span class="text-sm text-destructive">{globalFormError}</span>
 						</div>
@@ -548,33 +565,30 @@
 	{/snippet}
 	{#snippet footer()}
 		<div
-			class="flex flex-row items-center justify-between gap-2 sm:gap-4 p-2 sm:p-4 border-t border-border bg-muted/30 tx tx-grain tx-weak"
+			class="flex items-center justify-between gap-2 px-3 py-2 border-t border-border bg-muted/30"
 		>
 			{#if documentId}
-				<!-- Danger zone inline on mobile -->
-				<div class="flex items-center gap-1.5 sm:gap-2">
-					<Trash2 class="w-3 h-3 sm:w-4 sm:h-4 text-red-500 shrink-0" />
-					<Button
-						type="button"
-						variant="danger"
-						size="sm"
-						onclick={() => (deleteModalOpen = true)}
-						class="text-[10px] sm:text-xs px-2 py-1 sm:px-3 sm:py-1.5"
-					>
-						Delete
-					</Button>
-				</div>
+				<Button
+					type="button"
+					variant="ghost"
+					size="sm"
+					onclick={() => (deleteModalOpen = true)}
+					class="text-destructive hover:text-destructive hover:bg-destructive/10 text-xs px-2 py-1"
+				>
+					<Trash2 class="w-3.5 h-3.5" />
+					<span class="hidden sm:inline ml-1">Delete</span>
+				</Button>
 			{:else}
 				<div></div>
 			{/if}
-			<div class="flex flex-row items-center gap-2">
+			<div class="flex items-center gap-2">
 				<Button
 					type="button"
-					variant="secondary"
+					variant="ghost"
 					size="sm"
 					onclick={closeModal}
 					disabled={saving}
-					class="text-xs sm:text-sm px-2 sm:px-4"
+					class="text-xs px-3 py-1.5"
 				>
 					Cancel
 				</Button>
@@ -585,11 +599,10 @@
 					size="sm"
 					loading={saving}
 					disabled={saving || !title.trim() || !typeKey.trim()}
-					class="text-xs sm:text-sm px-2 sm:px-4"
+					class="text-xs px-3 py-1.5"
 				>
-					<Save class="w-3 h-3 sm:w-4 sm:h-4" />
-					<span class="hidden sm:inline">{documentId ? 'Save Changes' : 'Create'}</span>
-					<span class="sm:hidden">Save</span>
+					<Save class="w-3.5 h-3.5" />
+					<span class="ml-1">{isEditing ? 'Save' : 'Create'}</span>
 				</Button>
 			</div>
 		</div>
@@ -606,11 +619,14 @@
 	icon="danger"
 	on:confirm={handleDelete}
 	on:cancel={() => (deleteModalOpen = false)}
-	><p class="text-sm text-gray-600 dark:text-gray-300">
-		This action permanently removes the document and its history. Agents will lose access to
-		this context.
-	</p></ConfirmationModal
 >
+	{#snippet content()}
+		<p class="text-sm text-muted-foreground">
+			This action permanently removes the document and its history. Agents will lose access to
+			this context.
+		</p>
+	{/snippet}
+</ConfirmationModal>
 
 <!-- Linked Entity Modals -->
 {#if showTaskModal && selectedTaskIdForModal}

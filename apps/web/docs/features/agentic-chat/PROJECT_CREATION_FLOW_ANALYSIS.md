@@ -9,6 +9,7 @@ This document provides a comprehensive analysis of the current project creation 
 ## Executive Summary
 
 The project creation flow is a **multi-layered, multi-step process** that involves:
+
 - **3 distinct analysis/decision points** spread across different services
 - **2 clarification mechanisms** (pre-strategy and post-strategy)
 - **6+ services** coordinating to create a project
@@ -27,21 +28,21 @@ Plan Generation → Tool Execution → API Endpoint → Database
 
 ### Key Files Involved
 
-| Component | File Path | Responsibility |
-|-----------|-----------|----------------|
-| Frontend Modal | `src/lib/components/agent/AgentChatModal.svelte` | User interface, sends messages to API |
-| API Endpoint | `src/routes/api/agent/stream/+server.ts` | HTTP streaming endpoint, initializes orchestrator |
-| Orchestrator | `src/lib/services/agentic-chat/orchestration/agent-chat-orchestrator.ts` | Main coordination, strategy selection, stream handling |
-| Strategy Analyzer | `src/lib/services/agentic-chat/analysis/strategy-analyzer.ts` | Determines which strategy to use (planner_stream, project_creation, ask_clarifying) |
-| Project Creation Analyzer | `src/lib/services/agentic-chat/analysis/project-creation-analyzer.ts` | Analyzes if sufficient context exists for project creation |
-| Prompt Generation | `src/lib/services/agentic-chat/prompts/prompt-generation-service.ts` | Builds system prompts with context |
-| Enhanced Prompts | `src/lib/services/agentic-chat/prompts/project-creation-enhanced.ts` | Project creation specific prompts |
-| Plan Orchestrator | `src/lib/services/agentic-chat/planning/plan-orchestrator.ts` | Creates and executes multi-step plans |
-| Tool Execution Service | `src/lib/services/agentic-chat/execution/tool-execution-service.ts` | Validates and executes tool calls |
-| Tool Executor | `src/lib/services/agentic-chat/tools/core/tool-executor.ts` | Actual tool implementations |
-| Tool Definitions | `src/lib/services/agentic-chat/tools/core/tool-definitions.ts` | Tool schemas and metadata |
-| Instantiation API | `src/routes/api/onto/projects/instantiate/+server.ts` | HTTP endpoint for project creation |
-| Instantiation Service | `src/lib/services/ontology/instantiation.service.ts` | Database operations for project creation |
+| Component                 | File Path                                                                | Responsibility                                                                      |
+| ------------------------- | ------------------------------------------------------------------------ | ----------------------------------------------------------------------------------- |
+| Frontend Modal            | `src/lib/components/agent/AgentChatModal.svelte`                         | User interface, sends messages to API                                               |
+| API Endpoint              | `src/routes/api/agent/stream/+server.ts`                                 | HTTP streaming endpoint, initializes orchestrator                                   |
+| Orchestrator              | `src/lib/services/agentic-chat/orchestration/agent-chat-orchestrator.ts` | Main coordination, strategy selection, stream handling                              |
+| Strategy Analyzer         | `src/lib/services/agentic-chat/analysis/strategy-analyzer.ts`            | Determines which strategy to use (planner_stream, project_creation, ask_clarifying) |
+| Project Creation Analyzer | `src/lib/services/agentic-chat/analysis/project-creation-analyzer.ts`    | Analyzes if sufficient context exists for project creation                          |
+| Prompt Generation         | `src/lib/services/agentic-chat/prompts/prompt-generation-service.ts`     | Builds system prompts with context                                                  |
+| Enhanced Prompts          | `src/lib/services/agentic-chat/prompts/project-creation-enhanced.ts`     | Project creation specific prompts                                                   |
+| Plan Orchestrator         | `src/lib/services/agentic-chat/planning/plan-orchestrator.ts`            | Creates and executes multi-step plans                                               |
+| Tool Execution Service    | `src/lib/services/agentic-chat/execution/tool-execution-service.ts`      | Validates and executes tool calls                                                   |
+| Tool Executor             | `src/lib/services/agentic-chat/tools/core/tool-executor.ts`              | Actual tool implementations                                                         |
+| Tool Definitions          | `src/lib/services/agentic-chat/tools/core/tool-definitions.ts`           | Tool schemas and metadata                                                           |
+| Instantiation API         | `src/routes/api/onto/projects/instantiate/+server.ts`                    | HTTP endpoint for project creation                                                  |
+| Instantiation Service     | `src/lib/services/ontology/instantiation.service.ts`                     | Database operations for project creation                                            |
 
 ---
 
@@ -60,6 +61,7 @@ API endpoint receives request
 ```
 
 **Key Context Passed:**
+
 - `contextType: 'project_create'` - Signals this is a project creation flow
 - `message` - User's raw input
 - `sessionId` - Chat session identifier
@@ -79,6 +81,7 @@ async *processMessage(message, context, plannerContext, callback) {
 **Critical Decision Point 1: Context Type Check**
 
 The orchestrator checks `context.contextType`:
+
 - If `'project_create'` → Goes to project creation flow
 - Otherwise → Goes to standard planner stream
 
@@ -97,17 +100,17 @@ ProjectCreationAnalyzer.analyzeIntent()
 **This involves:**
 
 1. **Quick Heuristic Analysis** - Fast keyword-based check
-   - Looks for type indicators (app, book, website, etc.)
-   - Looks for deliverable indicators (build, create, launch, etc.)
-   - Calculates confidence score
+    - Looks for type indicators (app, book, website, etc.)
+    - Looks for deliverable indicators (build, create, launch, etc.)
+    - Calculates confidence score
 
 2. **LLM Analysis** (if heuristics inconclusive)
-   - Sends accumulated context to LLM
-   - LLM returns:
-     - `hasSufficientContext: boolean`
-     - `confidence: number`
-     - `clarifyingQuestions?: string[]`
-     - `inferredProjectType?: string`
+    - Sends accumulated context to LLM
+    - LLM returns:
+        - `hasSufficientContext: boolean`
+        - `confidence: number`
+        - `clarifyingQuestions?: string[]`
+        - `inferredProjectType?: string`
 
 **Critical Decision Point 2: Clarification Loop**
 
@@ -128,6 +131,7 @@ if (!hasSufficientContext) {
 ```
 
 **Clarification Metadata Tracked:**
+
 - `roundNumber` - Current clarification round (0, 1, or 2)
 - `accumulatedContext` - All user messages combined
 - `previousQuestions` - Questions already asked
@@ -137,11 +141,11 @@ if (!hasSufficientContext) {
 
 The `StrategyAnalyzer` returns one of:
 
-| Strategy | When Used | Next Step |
-|----------|-----------|-----------|
-| `PROJECT_CREATION` | Sufficient context detected | → Plan Generation |
-| `ASK_CLARIFYING` | Missing critical info | → Return questions to user |
-| `PLANNER_STREAM` | General queries (fallback) | → Standard planner flow |
+| Strategy           | When Used                   | Next Step                  |
+| ------------------ | --------------------------- | -------------------------- |
+| `PROJECT_CREATION` | Sufficient context detected | → Plan Generation          |
+| `ASK_CLARIFYING`   | Missing critical info       | → Return questions to user |
+| `PLANNER_STREAM`   | General queries (fallback)  | → Standard planner flow    |
 
 ### Phase 5: Plan Generation (Second LLM Call)
 
@@ -153,14 +157,16 @@ const plan = await this.generatePlanWithLLM(intent, strategy, plannerContext, co
 ```
 
 **Plan Generation System Prompt includes:**
+
 - Available tools list with summaries
 - Project creation requirements:
-  - Must call `create_onto_project` tool
-  - Must include context document
-  - Type key classification required
-  - Props extraction required
+    - Must call `create_onto_project` tool
+    - Must include context document
+    - Type key classification required
+    - Props extraction required
 
 **Generated Plan Structure:**
+
 ```typescript
 {
     steps: [
@@ -182,12 +188,12 @@ const plan = await this.generatePlanWithLLM(intent, strategy, plannerContext, co
 ```typescript
 // PlanOrchestrator.executePlan()
 for (const step of plan.steps) {
-    if (step.tools.length > 0) {
-        // Execute tools directly
-        for (const toolName of step.tools) {
-            const result = await this.toolExecutor(toolName, args, context);
-        }
-    }
+	if (step.tools.length > 0) {
+		// Execute tools directly
+		for (const toolName of step.tools) {
+			const result = await this.toolExecutor(toolName, args, context);
+		}
+	}
 }
 ```
 
@@ -226,6 +232,7 @@ async createOntoProject(args: CreateOntoProjectArgs) {
 ```
 
 **Tool Arguments Expected:**
+
 ```typescript
 {
     project: {
@@ -256,22 +263,23 @@ async createOntoProject(args: CreateOntoProjectArgs) {
 ```typescript
 // instantiation.service.ts - instantiateProject()
 async function instantiateProject(client, spec, userId) {
-    // 1. Validate spec with Zod schema
-    // 2. Resolve actor ID
-    // 3. Insert project record
-    // 4. Insert context document (if provided)
-    // 5. Insert goals (batch)
-    // 6. Insert requirements (batch)
-    // 7. Insert documents (sequential for title mapping)
-    // 8. Insert plans (sequential for name mapping)
-    // 9. Insert tasks (with plan relationship via edges)
-    // 10. Insert outputs
-    // 11. Insert edges (relationship graph)
-    // 12. Return project_id and counts
+	// 1. Validate spec with Zod schema
+	// 2. Resolve actor ID
+	// 3. Insert project record
+	// 4. Insert context document (if provided)
+	// 5. Insert goals (batch)
+	// 6. Insert requirements (batch)
+	// 7. Insert documents (sequential for title mapping)
+	// 8. Insert plans (sequential for name mapping)
+	// 9. Insert tasks (with plan relationship via edges)
+	// 10. Insert outputs
+	// 11. Insert edges (relationship graph)
+	// 12. Return project_id and counts
 }
 ```
 
 **Database Tables Affected:**
+
 - `onto_projects` - Main project record
 - `onto_documents` - Context and other documents
 - `onto_goals` - Project goals
@@ -379,6 +387,7 @@ These can produce inconsistent results or redundant LLM calls.
 ### 2. Dual Clarification Mechanisms
 
 Clarifications can happen at:
+
 1. **Pre-strategy** (ProjectCreationAnalyzer) - Returns `ASK_CLARIFYING` strategy
 2. **In-tool** (create_onto_project) - Tool can return `clarifications` array
 
@@ -387,6 +396,7 @@ These are disconnected systems with different UX patterns.
 ### 3. Context Document Generation
 
 The context document is built in **two places**:
+
 1. **buildContextDocumentSpec()** in tool-executor.ts - Generates from args
 2. **Prompt instructions** - Tell LLM to generate in create_onto_project call
 
@@ -395,6 +405,7 @@ This can lead to inconsistent context documents.
 ### 4. Props Extraction Redundancy
 
 Props extraction is instructed in:
+
 1. **project-creation-enhanced.ts** prompts
 2. **prompt-generation-service.ts** system prompts
 3. **tool-definitions.ts** tool description
@@ -405,6 +416,7 @@ Each location has slightly different guidance.
 ### 5. Plan Generation Overhead
 
 For project creation, the plan generation step often produces a simple 1-2 step plan:
+
 1. Classify and extract props
 2. Call create_onto_project
 
@@ -416,11 +428,11 @@ This LLM call may be unnecessary for straightforward project creation.
 
 For a typical project creation flow:
 
-| # | Location | Purpose | Avoidable? |
-|---|----------|---------|------------|
-| 1 | ProjectCreationAnalyzer | Determine if sufficient context | Potentially (heuristics may suffice) |
-| 2 | PlanOrchestrator | Generate execution plan | Potentially (deterministic for simple cases) |
-| 3 | Planner Stream | Execute plan steps with LLM | Required for tool selection/args |
+| #   | Location                | Purpose                         | Avoidable?                                   |
+| --- | ----------------------- | ------------------------------- | -------------------------------------------- |
+| 1   | ProjectCreationAnalyzer | Determine if sufficient context | Potentially (heuristics may suffice)         |
+| 2   | PlanOrchestrator        | Generate execution plan         | Potentially (deterministic for simple cases) |
+| 3   | Planner Stream          | Execute plan steps with LLM     | Required for tool selection/args             |
 
 **Minimum LLM calls: 1** (if heuristics pass and plan is deterministic)
 **Typical LLM calls: 2-3**
@@ -430,62 +442,66 @@ For a typical project creation flow:
 ## Key Data Structures
 
 ### ServiceContext
+
 ```typescript
 interface ServiceContext {
-    userId: string;
-    sessionId: string;
-    contextType: ChatContextType;  // 'project_create' | 'project' | etc.
-    entityId?: string;
-    supabase: SupabaseClient;
+	userId: string;
+	sessionId: string;
+	contextType: ChatContextType; // 'project_create' | 'project' | etc.
+	entityId?: string;
+	supabase: SupabaseClient;
 }
 ```
 
 ### PlannerContext
+
 ```typescript
 interface PlannerContext {
-    availableTools: ChatToolDefinition[];
-    ontologyContext?: OntologyContext;
-    locationContext: string;
-    metadata?: {
-        hasOntology: boolean;
-        plannerAgentId?: string;
-    };
+	availableTools: ChatToolDefinition[];
+	ontologyContext?: OntologyContext;
+	locationContext: string;
+	metadata?: {
+		hasOntology: boolean;
+		plannerAgentId?: string;
+	};
 }
 ```
 
 ### StrategyAnalysis
+
 ```typescript
 interface StrategyAnalysis {
-    primary_strategy: ChatStrategy;
-    confidence: number;
-    reasoning: string;
-    needs_clarification: boolean;
-    clarifying_questions?: string[];
-    estimated_steps: number;
-    required_tools: string[];
-    can_complete_directly: boolean;
-    project_creation_analysis?: ProjectCreationIntentAnalysis;
+	primary_strategy: ChatStrategy;
+	confidence: number;
+	reasoning: string;
+	needs_clarification: boolean;
+	clarifying_questions?: string[];
+	estimated_steps: number;
+	required_tools: string[];
+	can_complete_directly: boolean;
+	project_creation_analysis?: ProjectCreationIntentAnalysis;
 }
 ```
 
 ### ProjectSpec (for instantiation)
+
 ```typescript
 interface ProjectSpec {
-    project: {
-        name: string;
-        type_key: string;
-        description?: string;
-        props?: { facets?: Facets; [key: string]: unknown };
-        start_at?: string;
-        end_at?: string;
-    };
-    goals?: GoalSpec[];
-    requirements?: RequirementSpec[];
-    plans?: PlanSpec[];
-    tasks?: TaskSpec[];
-    outputs?: OutputSpec[];
-    documents?: DocumentSpec[];
-    context_document?: ContextDocumentSpec;
+	project: {
+		name: string;
+		type_key: string;
+		description?: string;
+		props?: { facets?: Facets; [key: string]: unknown };
+		start_at?: string;
+		end_at?: string;
+	};
+	goals?: GoalSpec[];
+	requirements?: RequirementSpec[];
+	plans?: PlanSpec[];
+	tasks?: TaskSpec[];
+	outputs?: OutputSpec[];
+	documents?: DocumentSpec[];
+	context_document?: ContextDocumentSpec;
 }
 ```
 
@@ -496,40 +512,52 @@ interface ProjectSpec {
 Based on this analysis, here are potential simplification opportunities:
 
 ### 1. Merge Analysis Points
+
 Combine `StrategyAnalyzer.analyzeProjectCreationIntent()` and `ProjectCreationAnalyzer` into a single service that:
+
 - Performs heuristic check first
 - Only calls LLM if truly ambiguous
 - Returns unified result with strategy + analysis
 
 ### 2. Deterministic Plan for Project Creation
+
 When `contextType === 'project_create'` and analysis passes:
+
 - Skip LLM-based plan generation
 - Use a deterministic plan template:
-  ```typescript
-  const PROJECT_CREATION_PLAN = {
-      steps: [{
-          stepNumber: 1,
-          type: 'action',
-          tools: ['create_onto_project'],
-          executorRequired: false
-      }]
-  };
-  ```
+    ```typescript
+    const PROJECT_CREATION_PLAN = {
+    	steps: [
+    		{
+    			stepNumber: 1,
+    			type: 'action',
+    			tools: ['create_onto_project'],
+    			executorRequired: false
+    		}
+    	]
+    };
+    ```
 
 ### 3. Unified Clarification Flow
+
 Consolidate clarification into one place:
+
 - Remove `clarifications` from tool args
 - Handle all clarification in orchestrator pre-execution
 - Use consistent UX pattern
 
 ### 4. Single Source of Truth for Prompts
+
 Create one authoritative location for project creation prompts:
+
 - Type key taxonomy
 - Props extraction rules
 - Context document requirements
 
 ### 5. Direct Tool Call Path
+
 For simple project creation (high confidence, no clarification):
+
 - Bypass plan orchestration entirely
 - Call `create_onto_project` directly from orchestrator
 - Save 1-2 LLM calls

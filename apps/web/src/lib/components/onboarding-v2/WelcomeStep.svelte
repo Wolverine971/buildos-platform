@@ -79,9 +79,7 @@
 						1
 					</div>
 					<div class="flex-1">
-						<h4 class="font-bold text-xl mb-3 text-foreground">
-							First, Get Clarity
-						</h4>
+						<h4 class="font-bold text-xl mb-3 text-foreground">First, Get Clarity</h4>
 						<p class="text-base text-muted-foreground leading-relaxed">
 							To get organized and boost productivity, you need <strong
 								class="text-foreground">clarity</strong
@@ -103,18 +101,15 @@
 							Then, Organize Into Projects
 						</h4>
 						<p class="text-base text-muted-foreground leading-relaxed mb-3">
-							BuildOS works with <strong class="text-foreground"
-								>projects</strong
-							> — whether that's a work initiative, a personal goal, a creative endeavor,
-							or a life milestone.
+							BuildOS works with <strong class="text-foreground">projects</strong> — whether
+							that's a work initiative, a personal goal, a creative endeavor, or a life
+							milestone.
 						</p>
 						<p class="text-base text-muted-foreground leading-relaxed">
 							Think of projects as focused endeavors with a clear goal or vision. When
 							you organize around projects, you create structure that helps you
 							actually
-							<em class="font-semibold not-italic text-foreground"
-								>finish</em
-							> things.
+							<em class="font-semibold not-italic text-foreground">finish</em> things.
 						</p>
 					</div>
 				</div>
@@ -127,14 +122,11 @@
 						3
 					</div>
 					<div class="flex-1">
-						<h4 class="font-bold text-xl mb-3 text-foreground">
-							Then, Stay Focused
-						</h4>
+						<h4 class="font-bold text-xl mb-3 text-foreground">Then, Stay Focused</h4>
 						<p class="text-base text-muted-foreground leading-relaxed">
 							Clarity and organization mean nothing without follow-through. BuildOS
-							helps you maintain <strong class="text-foreground"
-								>focus</strong
-							> with smart reminders, calendar integration, and daily check-ins.
+							helps you maintain <strong class="text-foreground">focus</strong> with smart
+							reminders, calendar integration, and daily check-ins.
 						</p>
 					</div>
 				</div>
@@ -151,8 +143,8 @@
 							Finally, Stay Flexible
 						</h4>
 						<p class="text-base text-muted-foreground leading-relaxed">
-							Life changes. Priorities shift. BuildOS <strong
-								class="text-foreground">adapts</strong
+							Life changes. Priorities shift. BuildOS <strong class="text-foreground"
+								>adapts</strong
 							> with you. Whether you need to reschedule tasks, regenerate plans, or reorganize
 							projects—BuildOS makes it effortless to pivot without losing momentum.
 						</p>

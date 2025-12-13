@@ -706,6 +706,700 @@ The realm describes the **project**, not the **person**:
 }
 
 /**
+ * Generates task type_key classification guidance
+ *
+ * Format: task.{work_mode}[.{specialization}]
+ *
+ * @param mode - 'short' for quick reference, 'full' for complete guidance
+ */
+export function generateTaskTypeKeyGuidance(mode: 'full' | 'short' = 'short'): string {
+	if (mode === 'short') {
+		return `## Task Type Key
+
+**Format**: \`task.{work_mode}\` (2 segments) or \`task.{work_mode}.{specialization}\` (3 segments)
+
+**8 Work Modes**:
+- **execute** — Action tasks, do the work (default)
+- **create** — Produce new artifacts (write, build, design)
+- **refine** — Improve existing work (edit, polish, iterate)
+- **research** — Investigate and gather information
+- **review** — Evaluate and provide feedback
+- **coordinate** — Sync with others (meetings, check-ins)
+- **admin** — Administrative housekeeping
+- **plan** — Strategic thinking and planning
+
+**Examples**:
+- execute: \`task.execute\`, \`task.execute.deploy\`, \`task.execute.checklist\`
+- create: \`task.create\`
+- coordinate: \`task.coordinate\`, \`task.coordinate.meeting\`, \`task.coordinate.standup\`
+- research: \`task.research\`
+- review: \`task.review\`
+- admin: \`task.admin\`
+
+**Selection Guide**:
+- "Call the vendor" → \`task.execute\`
+- "Write the proposal" → \`task.create\`
+- "Review the PR" → \`task.review\`
+- "Schedule meeting" → \`task.coordinate.meeting\`
+- "Research competitors" → \`task.research\`
+- "Update invoice spreadsheet" → \`task.admin\``;
+	}
+
+	return `## Task Type Key Classification
+
+**Format**: \`task.{work_mode}\` or \`task.{work_mode}.{specialization}\`
+
+### 8 Base Work Modes
+
+| Work Mode | Type Key | Description | When to Use |
+|-----------|----------|-------------|-------------|
+| **execute** | \`task.execute\` | Action tasks - do the work | Default for most tasks, taking action |
+| **create** | \`task.create\` | Produce new artifacts | Writing, building, designing something new |
+| **refine** | \`task.refine\` | Improve existing work | Editing, polishing, iterating |
+| **research** | \`task.research\` | Investigate and gather info | Looking things up, exploring options |
+| **review** | \`task.review\` | Evaluate and provide feedback | Code reviews, document reviews, approvals |
+| **coordinate** | \`task.coordinate\` | Sync with others | Meetings, standups, check-ins |
+| **admin** | \`task.admin\` | Administrative housekeeping | Paperwork, updates, maintenance |
+| **plan** | \`task.plan\` | Strategic thinking | Planning sessions, roadmapping |
+
+### Specializations
+
+| Specialization | Type Key | Parent | Example |
+|----------------|----------|--------|---------|
+| Meeting | \`task.coordinate.meeting\` | coordinate | "Meet with Sarah about Q2 goals" |
+| Standup | \`task.coordinate.standup\` | coordinate | "Daily standup with dev team" |
+| Deploy | \`task.execute.deploy\` | execute | "Deploy v2.1 to production" |
+| Checklist | \`task.execute.checklist\` | execute | "Run launch checklist" |
+
+### Selection Examples
+
+| Task Description | Type Key | Reasoning |
+|-----------------|----------|-----------|
+| "Call the vendor" | \`task.execute\` | Taking an action |
+| "Write the proposal" | \`task.create\` | Producing new content |
+| "Review John's PR" | \`task.review\` | Evaluating work |
+| "Schedule meeting with marketing" | \`task.coordinate.meeting\` | Coordination + meeting |
+| "Research competitor pricing" | \`task.research\` | Investigation |
+| "Update the invoice spreadsheet" | \`task.admin\` | Administrative |
+| "Plan next sprint" | \`task.plan\` | Strategic planning |
+| "Edit the blog post" | \`task.refine\` | Improving existing work |
+| "Deploy to staging" | \`task.execute.deploy\` | Deployment action |
+
+### Default Behavior
+
+If uncertain, use \`task.execute\` as the default — it's the most common work mode.`;
+}
+
+/**
+ * Generates plan type_key classification guidance
+ *
+ * Format: plan.{family}[.{variant}]
+ *
+ * @param mode - 'short' for quick reference, 'full' for complete guidance
+ */
+export function generatePlanTypeKeyGuidance(mode: 'full' | 'short' = 'short'): string {
+	if (mode === 'short') {
+		return `## Plan Type Key
+
+**Format**: \`plan.{family}\` or \`plan.{family}.{variant}\`
+
+**6 Families**:
+- **timebox** — Short, fixed time windows (sprints, weekly plans)
+- **pipeline** — Stage-based funnels/Kanban flows
+- **campaign** — Multi-channel pushes over a period
+- **roadmap** — Long-term directional plans
+- **process** — Repeatable internal processes
+- **phase** — Large phases inside a project
+
+**Examples**:
+- timebox: \`plan.timebox.sprint\`, \`plan.timebox.weekly\`, \`plan.timebox.daily\`
+- pipeline: \`plan.pipeline.sales\`, \`plan.pipeline.hiring\`, \`plan.pipeline.content\`
+- campaign: \`plan.campaign.marketing\`, \`plan.campaign.launch\`, \`plan.campaign.content_calendar\`
+- roadmap: \`plan.roadmap.product\`, \`plan.roadmap.quarterly\`, \`plan.roadmap.annual\`
+- process: \`plan.process.client_onboarding\`, \`plan.process.release\`, \`plan.process.review\`
+- phase: \`plan.phase.project\`, \`plan.phase.development\`, \`plan.phase.launch\`
+
+**Selection Guide**:
+- "2-week sprint" → \`plan.timebox.sprint\`
+- "Sales funnel" → \`plan.pipeline.sales\`
+- "Q1 marketing push" → \`plan.campaign.marketing\`
+- "2025 product roadmap" → \`plan.roadmap.product\`
+- "Client onboarding process" → \`plan.process.client_onboarding\`
+- "Development phase" → \`plan.phase.development\``;
+	}
+
+	return `## Plan Type Key Classification
+
+**Format**: \`plan.{family}\` or \`plan.{family}.{variant}\`
+
+### 6 Plan Families
+
+| Family | Base Type Key | Description | Use When |
+|--------|---------------|-------------|----------|
+| **timebox** | \`plan.timebox\` | Short, fixed time windows | Sprints, weekly plans, daily plans |
+| **pipeline** | \`plan.pipeline\` | Stage-based funnels/Kanban | Sales funnels, hiring pipelines, content workflows |
+| **campaign** | \`plan.campaign\` | Multi-channel pushes | Marketing campaigns, launch campaigns, outreach |
+| **roadmap** | \`plan.roadmap\` | Long-term directional plans | Product roadmaps, quarterly/annual planning |
+| **process** | \`plan.process\` | Repeatable internal processes | Onboarding, release processes, review cycles |
+| **phase** | \`plan.phase\` | Large phases inside a project | Development phases, launch phases, research phases |
+
+### Common Variants
+
+**Timebox**:
+- \`plan.timebox.sprint\` — 1-4 week dev sprint
+- \`plan.timebox.weekly\` — Weekly plan
+- \`plan.timebox.daily\` — Daily plan
+
+**Pipeline**:
+- \`plan.pipeline.sales\` — Sales funnel stages
+- \`plan.pipeline.hiring\` — Recruiting pipeline
+- \`plan.pipeline.content\` — Content production pipeline
+
+**Campaign**:
+- \`plan.campaign.marketing\` — Marketing campaign
+- \`plan.campaign.launch\` — Product/feature launch
+- \`plan.campaign.content_calendar\` — Editorial calendar
+
+**Roadmap**:
+- \`plan.roadmap.product\` — Product roadmap
+- \`plan.roadmap.quarterly\` — Quarterly OKRs/goals
+- \`plan.roadmap.annual\` — Annual planning
+
+**Process**:
+- \`plan.process.client_onboarding\` — Client onboarding
+- \`plan.process.release\` — Release process
+- \`plan.process.review\` — Review/retrospective process
+
+**Phase**:
+- \`plan.phase.project\` — Generic project phase
+- \`plan.phase.development\` — Development phase
+- \`plan.phase.launch\` — Launch phase
+
+### Selection Examples
+
+| Description | Type Key | Reasoning |
+|-------------|----------|-----------|
+| "2-week sprint for MVP" | \`plan.timebox.sprint\` | Fixed time window |
+| "Lead qualification funnel" | \`plan.pipeline.sales\` | Stage-based progression |
+| "Black Friday campaign" | \`plan.campaign.marketing\` | Multi-channel push |
+| "2025 feature roadmap" | \`plan.roadmap.product\` | Long-term direction |
+| "New hire onboarding" | \`plan.process.client_onboarding\` | Repeatable process |
+| "Phase 1: Research" | \`plan.phase.project\` | Project phase |`;
+}
+
+/**
+ * Generates goal type_key classification guidance
+ *
+ * Format: goal.{family}[.{variant}]
+ *
+ * @param mode - 'short' for quick reference, 'full' for complete guidance
+ */
+export function generateGoalTypeKeyGuidance(mode: 'full' | 'short' = 'short'): string {
+	if (mode === 'short') {
+		return `## Goal Type Key
+
+**Format**: \`goal.{family}\` or \`goal.{family}.{variant}\`
+
+**4 Families**:
+- **outcome** — Binary completion goals (done/not done)
+- **metric** — Numeric/quantitative targets
+- **behavior** — Frequency & consistency goals
+- **learning** — Skill level progression
+
+**Examples**:
+- outcome: \`goal.outcome.project\`, \`goal.outcome.milestone\`, \`goal.outcome.launch\`
+- metric: \`goal.metric.revenue\`, \`goal.metric.usage\`, \`goal.metric.growth\`
+- behavior: \`goal.behavior.cadence\`, \`goal.behavior.habit\`, \`goal.behavior.routine\`
+- learning: \`goal.learning.skill\`, \`goal.learning.certification\`, \`goal.learning.mastery\`
+
+**Selection Guide**:
+- "Launch v1 by March" → \`goal.outcome.launch\`
+- "Reach $10k MRR" → \`goal.metric.revenue\`
+- "Post 3x/week on LinkedIn" → \`goal.behavior.cadence\`
+- "Learn React" → \`goal.learning.skill\``;
+	}
+
+	return `## Goal Type Key Classification
+
+**Format**: \`goal.{family}\` or \`goal.{family}.{variant}\`
+
+### 4 Goal Families
+
+| Family | Base Type Key | Measurement | Use When |
+|--------|---------------|-------------|----------|
+| **outcome** | \`goal.outcome\` | Binary completion | Launch, ship, publish, complete |
+| **metric** | \`goal.metric\` | Numeric/quantitative | Revenue, users, growth rates |
+| **behavior** | \`goal.behavior\` | Frequency & consistency | Habits, cadences, routines |
+| **learning** | \`goal.learning\` | Skill level progression | Skills, certifications, mastery |
+
+### Common Variants
+
+**Outcome** (binary: done/not done):
+- \`goal.outcome.project\` — "Launch v1", "Publish book"
+- \`goal.outcome.milestone\` — Intermediate milestone
+- \`goal.outcome.launch\` — Product/feature launch
+- \`goal.outcome.delivery\` — Deliver to client/stakeholder
+
+**Metric** (numeric targets):
+- \`goal.metric.revenue\` — MRR, ARR, GMV
+- \`goal.metric.usage\` — MAU, DAU, retention
+- \`goal.metric.growth\` — Growth rate, conversion rate
+- \`goal.metric.efficiency\` — Cost reduction, time savings
+
+**Behavior** (frequency/consistency):
+- \`goal.behavior.cadence\` — "Post 3x/week"
+- \`goal.behavior.habit\` — Daily/weekly habits
+- \`goal.behavior.routine\` — Establish a routine
+
+**Learning** (skill progression):
+- \`goal.learning.skill\` — "Learn React"
+- \`goal.learning.certification\` — Get certified
+- \`goal.learning.mastery\` — Master a domain
+
+### Selection Examples
+
+| Description | Type Key | Reasoning |
+|-------------|----------|-----------|
+| "Launch MVP by March" | \`goal.outcome.launch\` | Binary completion |
+| "Reach $10k MRR" | \`goal.metric.revenue\` | Numeric target |
+| "1000 active users" | \`goal.metric.usage\` | Usage metric |
+| "Post 3x/week on LinkedIn" | \`goal.behavior.cadence\` | Frequency goal |
+| "Exercise daily" | \`goal.behavior.habit\` | Habit formation |
+| "Learn TypeScript" | \`goal.learning.skill\` | Skill acquisition |
+| "Get AWS certified" | \`goal.learning.certification\` | Certification |`;
+}
+
+/**
+ * Generates document type_key classification guidance
+ *
+ * Format: document.{family}[.{variant}]
+ *
+ * @param mode - 'short' for quick reference, 'full' for complete guidance
+ */
+export function generateDocumentTypeKeyGuidance(mode: 'full' | 'short' = 'short'): string {
+	if (mode === 'short') {
+		return `## Document Type Key
+
+**Format**: \`document.{family}\` or \`document.{family}.{variant}\`
+
+**6 Families**:
+- **context** — Big picture, intent, constraints (project briefs)
+- **knowledge** — Research, findings, raw learning
+- **decision** — Decisions and commitments
+- **spec** — Formalized "what/how" specifications
+- **reference** — Reusable guides/handbooks
+- **intake** — Information gathered at start
+
+**Examples**:
+- context: \`document.context.project\`, \`document.context.brief\`, \`document.context.vision\`
+- knowledge: \`document.knowledge.research\`, \`document.knowledge.notes\`, \`document.knowledge.analysis\`
+- decision: \`document.decision.adr\`, \`document.decision.meeting_notes\`, \`document.decision.proposal\`
+- spec: \`document.spec.product\`, \`document.spec.technical\`, \`document.spec.api\`
+- reference: \`document.reference.handbook\`, \`document.reference.playbook\`, \`document.reference.guide\`
+- intake: \`document.intake.client\`, \`document.intake.project\`, \`document.intake.requirements\`
+
+**Selection Guide**:
+- "Project context doc" → \`document.context.project\`
+- "Competitor research" → \`document.knowledge.research\`
+- "Architecture decision" → \`document.decision.adr\`
+- "Product spec" → \`document.spec.product\`
+- "Team handbook" → \`document.reference.handbook\`
+- "Client intake form" → \`document.intake.client\``;
+	}
+
+	return `## Document Type Key Classification
+
+**Format**: \`document.{family}\` or \`document.{family}.{variant}\`
+
+### 6 Document Families
+
+| Family | Base Type Key | Purpose | Use When |
+|--------|---------------|---------|----------|
+| **context** | \`document.context\` | Big picture, intent, constraints | Project briefs, vision docs, context |
+| **knowledge** | \`document.knowledge\` | Research, findings, raw learning | Research notes, analysis, learnings |
+| **decision** | \`document.decision\` | Decisions and commitments | ADRs, meeting notes, proposals |
+| **spec** | \`document.spec\` | Formalized "what/how" | PRDs, technical specs, API docs |
+| **reference** | \`document.reference\` | Reusable guides/handbooks | Handbooks, playbooks, SOPs |
+| **intake** | \`document.intake\` | Information gathered at start | Client intake, project intake |
+
+### Common Variants
+
+**Context** (big picture):
+- \`document.context.project\` — Canonical project context
+- \`document.context.brief\` — Creative/project brief
+- \`document.context.vision\` — Vision document
+
+**Knowledge** (research/learning):
+- \`document.knowledge.research\` — General research notes
+- \`document.knowledge.notes\` — Meeting/session notes
+- \`document.knowledge.analysis\` — Analysis document
+
+**Decision** (choices/commitments):
+- \`document.decision.adr\` — Architecture Decision Record
+- \`document.decision.meeting_notes\` — Meeting notes + decisions
+- \`document.decision.proposal\` — Proposal document
+
+**Spec** (specifications):
+- \`document.spec.product\` — Product spec/PRD
+- \`document.spec.technical\` — Technical spec
+- \`document.spec.api\` — API specification
+
+**Reference** (guides):
+- \`document.reference.handbook\` — Handbook/playbook
+- \`document.reference.playbook\` — Process playbook
+- \`document.reference.guide\` — How-to guide
+
+**Intake** (initial gathering):
+- \`document.intake.client\` — Client intake form
+- \`document.intake.project\` — Project intake
+- \`document.intake.requirements\` — Requirements gathering
+
+### Special Note: Context Documents
+
+\`document.context.project\` is the canonical project context document that links via \`onto_projects.context_document_id\`. It should contain the project's vision, strategy, and key context.`;
+}
+
+/**
+ * Generates output type_key classification guidance
+ *
+ * Format: output.{family}[.{variant}]
+ *
+ * @param mode - 'short' for quick reference, 'full' for complete guidance
+ */
+export function generateOutputTypeKeyGuidance(mode: 'full' | 'short' = 'short'): string {
+	if (mode === 'short') {
+		return `## Output Type Key (Deliverables)
+
+**Format**: \`output.{family}\` or \`output.{family}.{variant}\`
+
+**4 Families** (by content modality):
+- **written** — Long-form text, structured writing
+- **media** — Visual/audio/video artifacts
+- **software** — Code, releases, APIs
+- **operational** — Business/ops deliverables
+
+**Examples**:
+- written: \`output.written.chapter\`, \`output.written.article\`, \`output.written.blog_post\`
+- media: \`output.media.design_mockup\`, \`output.media.slide_deck\`, \`output.media.video\`
+- software: \`output.software.feature\`, \`output.software.release\`, \`output.software.api\`
+- operational: \`output.operational.report\`, \`output.operational.dashboard\`, \`output.operational.process\`
+
+**Selection Guide**:
+- "Book chapter draft" → \`output.written.chapter\`
+- "Landing page mockup" → \`output.media.design_mockup\`
+- "User auth feature" → \`output.software.feature\`
+- "Monthly sales report" → \`output.operational.report\``;
+	}
+
+	return `## Output Type Key Classification (Deliverables)
+
+**Format**: \`output.{family}\` or \`output.{family}.{variant}\`
+
+### 4 Output Families (by content modality)
+
+| Family | Base Type Key | Description | Use When |
+|--------|---------------|-------------|----------|
+| **written** | \`output.written\` | Long-form text, structured writing | Chapters, articles, blog posts, copy |
+| **media** | \`output.media\` | Visual/audio/video artifacts | Designs, presentations, videos |
+| **software** | \`output.software\` | Code, releases, APIs | Features, releases, integrations |
+| **operational** | \`output.operational\` | Business/ops deliverables | Reports, dashboards, processes |
+
+### Common Variants
+
+**Written**:
+- \`output.written.chapter\` — Book chapter
+- \`output.written.article\` — Article/essay
+- \`output.written.blog_post\` — Blog post
+- \`output.written.copy\` — Marketing copy
+- \`output.written.documentation\` — Technical documentation
+
+**Media**:
+- \`output.media.design_mockup\` — Design mockup
+- \`output.media.slide_deck\` — Presentation deck
+- \`output.media.video\` — Video content
+- \`output.media.graphic\` — Graphic/illustration
+- \`output.media.prototype\` — Interactive prototype
+
+**Software**:
+- \`output.software.feature\` — Shipped feature
+- \`output.software.release\` — Versioned release
+- \`output.software.api\` — API endpoint
+- \`output.software.integration\` — Integration
+- \`output.software.script\` — Script/automation
+
+**Operational**:
+- \`output.operational.report\` — Report
+- \`output.operational.dashboard\` — Live dashboard
+- \`output.operational.process\` — Documented process
+- \`output.operational.template\` — Reusable template
+
+### Selection Examples
+
+| Description | Type Key | Reasoning |
+|-------------|----------|-----------|
+| "Chapter 3 draft" | \`output.written.chapter\` | Written content |
+| "Homepage mockup" | \`output.media.design_mockup\` | Visual artifact |
+| "User auth feature" | \`output.software.feature\` | Code deliverable |
+| "Q3 sales report" | \`output.operational.report\` | Business deliverable |`;
+}
+
+/**
+ * Generates risk type_key classification guidance
+ *
+ * Format: risk.{family}[.{variant}]
+ *
+ * @param mode - 'short' for quick reference, 'full' for complete guidance
+ */
+export function generateRiskTypeKeyGuidance(mode: 'full' | 'short' = 'short'): string {
+	if (mode === 'short') {
+		return `## Risk Type Key
+
+**Format**: \`risk.{family}\` or \`risk.{family}.{variant}\`
+
+**7 Families**:
+- **technical** — Tech/architecture, security, reliability
+- **schedule** — Timing & deadlines
+- **resource** — People, skills, bandwidth
+- **budget** — Money-related risks
+- **scope** — Scope creep & ambiguity
+- **external** — Market, regulatory, vendor
+- **quality** — Bugs, UX, performance
+
+**Examples**:
+- technical: \`risk.technical.security\`, \`risk.technical.scalability\`, \`risk.technical.integration\`
+- schedule: \`risk.schedule.dependency\`, \`risk.schedule.deadline\`, \`risk.schedule.delay\`
+- resource: \`risk.resource.skill_gap\`, \`risk.resource.availability\`, \`risk.resource.turnover\`
+- budget: \`risk.budget.overrun\`, \`risk.budget.funding\`, \`risk.budget.cost\`
+- scope: \`risk.scope.creep\`, \`risk.scope.ambiguity\`, \`risk.scope.change\`
+- external: \`risk.external.regulatory\`, \`risk.external.vendor\`, \`risk.external.market\`
+- quality: \`risk.quality.bugs\`, \`risk.quality.performance\`, \`risk.quality.ux\`
+
+**Selection Guide**:
+- "Database might not scale" → \`risk.technical.scalability\`
+- "Vendor might miss deadline" → \`risk.schedule.dependency\`
+- "No React expertise on team" → \`risk.resource.skill_gap\`
+- "Budget might run out" → \`risk.budget.overrun\``;
+	}
+
+	return `## Risk Type Key Classification
+
+**Format**: \`risk.{family}\` or \`risk.{family}.{variant}\`
+
+### 7 Risk Families
+
+| Family | Base Type Key | Category | Use When |
+|--------|---------------|----------|----------|
+| **technical** | \`risk.technical\` | Tech/architecture | Security, scalability, integration issues |
+| **schedule** | \`risk.schedule\` | Timing & deadlines | Dependencies, delays, deadline risks |
+| **resource** | \`risk.resource\` | People, skills | Skill gaps, availability, turnover |
+| **budget** | \`risk.budget\` | Money-related | Cost overruns, funding gaps |
+| **scope** | \`risk.scope\` | Scope issues | Scope creep, ambiguity, changes |
+| **external** | \`risk.external\` | Outside factors | Market, regulatory, vendor risks |
+| **quality** | \`risk.quality\` | Quality issues | Bugs, performance, UX problems |
+
+### Common Variants
+
+**Technical**:
+- \`risk.technical.security\` — Security vulnerabilities
+- \`risk.technical.scalability\` — Scaling issues
+- \`risk.technical.integration\` — Integration problems
+- \`risk.technical.reliability\` — Uptime/reliability
+
+**Schedule**:
+- \`risk.schedule.dependency\` — Dependent on external timeline
+- \`risk.schedule.deadline\` — Deadline at risk
+- \`risk.schedule.delay\` — Potential delays
+
+**Resource**:
+- \`risk.resource.skill_gap\` — Missing expertise
+- \`risk.resource.availability\` — Team availability
+- \`risk.resource.turnover\` — Key person leaving
+
+**Budget**:
+- \`risk.budget.overrun\` — Cost overrun
+- \`risk.budget.funding\` — Funding uncertainty
+- \`risk.budget.cost\` — Unexpected costs
+
+**Scope**:
+- \`risk.scope.creep\` — Scope creep
+- \`risk.scope.ambiguity\` — Unclear requirements
+- \`risk.scope.change\` — Requirement changes
+
+**External**:
+- \`risk.external.regulatory\` — Compliance/regulatory
+- \`risk.external.vendor\` — Vendor dependency
+- \`risk.external.market\` — Market changes
+
+**Quality**:
+- \`risk.quality.bugs\` — Bug risk
+- \`risk.quality.performance\` — Performance issues
+- \`risk.quality.ux\` — User experience problems
+
+### Risk States (FSM)
+
+Risks follow this lifecycle: \`identified → analyzing → mitigating → monitoring → occurred/closed\``;
+}
+
+/**
+ * Generates event type_key classification guidance
+ *
+ * Format: event.{family}[.{variant}]
+ *
+ * @param mode - 'short' for quick reference, 'full' for complete guidance
+ */
+export function generateEventTypeKeyGuidance(mode: 'full' | 'short' = 'short'): string {
+	if (mode === 'short') {
+		return `## Event Type Key
+
+**Format**: \`event.{family}\` or \`event.{family}.{variant}\`
+
+**3 Families**:
+- **work** — Individual work sessions/focus time
+- **collab** — Coordination with others
+- **marker** — Deadlines, reminders, status markers
+
+**Examples**:
+- work: \`event.work.focus_block\`, \`event.work.time_block\`, \`event.work.deep_work\`
+- collab: \`event.collab.meeting\`, \`event.collab.meeting.standup\`, \`event.collab.meeting.one_on_one\`
+- marker: \`event.marker.deadline\`, \`event.marker.reminder\`, \`event.marker.milestone\`
+
+**Selection Guide**:
+- "2-hour focus block" → \`event.work.focus_block\`
+- "Team standup" → \`event.collab.meeting.standup\`
+- "1:1 with manager" → \`event.collab.meeting.one_on_one\`
+- "Project deadline" → \`event.marker.deadline\``;
+	}
+
+	return `## Event Type Key Classification
+
+**Format**: \`event.{family}\` or \`event.{family}.{variant}\`
+
+### 3 Event Families
+
+| Family | Base Type Key | Description | Use When |
+|--------|---------------|-------------|----------|
+| **work** | \`event.work\` | Individual work sessions | Focus blocks, time blocks, deep work |
+| **collab** | \`event.collab\` | Coordination with others | Meetings, standups, syncs |
+| **marker** | \`event.marker\` | Deadlines/reminders | Deadlines, reminders, milestones |
+
+### Common Variants
+
+**Work**:
+- \`event.work.focus_block\` — Deep work focus block
+- \`event.work.time_block\` — Generic working block
+- \`event.work.deep_work\` — Extended focus session
+
+**Collab**:
+- \`event.collab.meeting\` — General meeting
+- \`event.collab.meeting.standup\` — Daily standup
+- \`event.collab.meeting.one_on_one\` — 1:1 meeting
+- \`event.collab.meeting.review\` — Review meeting
+- \`event.collab.workshop\` — Workshop/working session
+
+**Marker**:
+- \`event.marker.deadline\` — Deadline
+- \`event.marker.reminder\` — Reminder
+- \`event.marker.milestone\` — Milestone marker
+- \`event.marker.out_of_office\` — OOO marker
+
+### Selection Examples
+
+| Description | Type Key | Reasoning |
+|-------------|----------|-----------|
+| "2-hour writing block" | \`event.work.focus_block\` | Individual focus time |
+| "Daily standup 9am" | \`event.collab.meeting.standup\` | Team sync meeting |
+| "1:1 with Sarah" | \`event.collab.meeting.one_on_one\` | 1:1 meeting |
+| "Sprint review" | \`event.collab.meeting.review\` | Review meeting |
+| "MVP deadline" | \`event.marker.deadline\` | Deadline marker |
+| "Vacation Aug 1-15" | \`event.marker.out_of_office\` | OOO marker |`;
+}
+
+/**
+ * Generates requirement type_key classification guidance
+ *
+ * Format: requirement.{type}[.{category}]
+ *
+ * @param mode - 'short' for quick reference, 'full' for complete guidance
+ */
+export function generateRequirementTypeKeyGuidance(mode: 'full' | 'short' = 'short'): string {
+	if (mode === 'short') {
+		return `## Requirement Type Key
+
+**Format**: \`requirement.{type}\` or \`requirement.{type}.{category}\`
+
+**5 Types**:
+- **functional** — What it does (features, capabilities)
+- **non_functional** — How it performs (speed, security, scale)
+- **constraint** — Limitations (budget, timeline, tech)
+- **assumption** — Working assumptions
+- **dependency** — External dependencies
+
+**Examples**:
+- functional: \`requirement.functional\`, \`requirement.functional.feature\`, \`requirement.functional.integration\`
+- non_functional: \`requirement.non_functional\`, \`requirement.non_functional.performance\`, \`requirement.non_functional.security\`
+- constraint: \`requirement.constraint\`, \`requirement.constraint.budget\`, \`requirement.constraint.timeline\`
+- assumption: \`requirement.assumption\`
+- dependency: \`requirement.dependency\`, \`requirement.dependency.api\`, \`requirement.dependency.vendor\`
+
+**Selection Guide**:
+- "Users can export to CSV" → \`requirement.functional\`
+- "Page load under 2s" → \`requirement.non_functional.performance\`
+- "Budget max $50k" → \`requirement.constraint.budget\`
+- "Assuming API v2 is stable" → \`requirement.assumption\`
+- "Requires Stripe API" → \`requirement.dependency.api\``;
+	}
+
+	return `## Requirement Type Key Classification
+
+**Format**: \`requirement.{type}\` or \`requirement.{type}.{category}\`
+
+### 5 Requirement Types
+
+| Type | Type Key | Focus | Use When |
+|------|----------|-------|----------|
+| **functional** | \`requirement.functional\` | What it does | Features, capabilities, behaviors |
+| **non_functional** | \`requirement.non_functional\` | How it performs | Performance, security, scalability |
+| **constraint** | \`requirement.constraint\` | Limitations | Budget, timeline, tech constraints |
+| **assumption** | \`requirement.assumption\` | Working assumptions | Things assumed to be true |
+| **dependency** | \`requirement.dependency\` | External dependencies | APIs, vendors, other systems |
+
+### Common Categories
+
+**Functional**:
+- \`requirement.functional.feature\` — Feature requirement
+- \`requirement.functional.integration\` — Integration requirement
+- \`requirement.functional.workflow\` — Workflow/process requirement
+
+**Non-Functional**:
+- \`requirement.non_functional.performance\` — Performance (speed, latency)
+- \`requirement.non_functional.security\` — Security requirements
+- \`requirement.non_functional.scalability\` — Scalability requirements
+- \`requirement.non_functional.accessibility\` — Accessibility (a11y)
+
+**Constraint**:
+- \`requirement.constraint.budget\` — Budget constraint
+- \`requirement.constraint.timeline\` — Timeline constraint
+- \`requirement.constraint.technology\` — Tech stack constraint
+
+**Dependency**:
+- \`requirement.dependency.api\` — API dependency
+- \`requirement.dependency.vendor\` — Vendor dependency
+- \`requirement.dependency.system\` — System dependency
+
+### Requirement States (FSM)
+
+Requirements follow: \`draft → proposed → approved → implemented → verified\`
+
+### Priority (MoSCoW)
+
+Use MoSCoW prioritization in props:
+- \`must_have\` — Critical, non-negotiable
+- \`should_have\` — Important but not critical
+- \`could_have\` — Nice to have
+- \`wont_have\` — Explicitly out of scope`;
+}
+
+/**
  * Generates minimal preprocessing steps for short content
  * Used for content < 500 characters to reduce token overhead
  */

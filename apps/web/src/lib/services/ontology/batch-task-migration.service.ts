@@ -158,7 +158,6 @@ interface TaskExtraction {
 	validationErrors?: string[];
 }
 
-
 /** Task prepared for classification */
 interface ClassificationTask {
 	legacyId: string;

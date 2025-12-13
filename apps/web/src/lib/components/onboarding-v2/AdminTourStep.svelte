@@ -46,9 +46,7 @@
 			</div>
 		</div>
 
-		<h2 class="text-3xl sm:text-4xl font-bold mb-3 text-foreground">
-			Explore More (Optional)
-		</h2>
+		<h2 class="text-3xl sm:text-4xl font-bold mb-3 text-foreground">Explore More (Optional)</h2>
 		<p class="text-lg text-muted-foreground leading-relaxed max-w-2xl mx-auto">
 			Feel free to skip this—you can explore these features anytime. Here's a quick tour of
 			what else BuildOS offers.
@@ -68,9 +66,7 @@
 					<User class="w-6 h-6 text-accent" />
 				</div>
 				<div class="flex-1">
-					<h3 class="text-xl font-bold mb-2 text-foreground">
-						Your Profile & Settings
-					</h3>
+					<h3 class="text-xl font-bold mb-2 text-foreground">Your Profile & Settings</h3>
 					<p class="text-sm text-muted-foreground mb-4 leading-relaxed">
 						Access all your settings and preferences in one place. Your profile contains
 						everything BuildOS knows about how you work.
@@ -78,41 +74,23 @@
 
 					<!-- Tab Overview -->
 					<div class="grid grid-cols-2 md:grid-cols-3 gap-2 mb-4">
-						<div
-							class="text-xs bg-muted px-3 py-2 rounded-lg border border-border"
-						>
-							<div class="font-medium text-foreground">
-								Brief Settings
-							</div>
+						<div class="text-xs bg-muted px-3 py-2 rounded-lg border border-border">
+							<div class="font-medium text-foreground">Brief Settings</div>
 							<div class="text-muted-foreground">Daily brief timing</div>
 						</div>
-						<div
-							class="text-xs bg-muted px-3 py-2 rounded-lg border border-border"
-						>
+						<div class="text-xs bg-muted px-3 py-2 rounded-lg border border-border">
 							<div class="font-medium text-foreground">Calendar</div>
-							<div class="text-muted-foreground">
-								Google Calendar setup
-							</div>
+							<div class="text-muted-foreground">Google Calendar setup</div>
 						</div>
-						<div
-							class="text-xs bg-muted px-3 py-2 rounded-lg border border-border"
-						>
-							<div class="font-medium text-foreground">
-								Notifications
-							</div>
-							<div class="text-muted-foreground">
-								Email & SMS preferences
-							</div>
+						<div class="text-xs bg-muted px-3 py-2 rounded-lg border border-border">
+							<div class="font-medium text-foreground">Notifications</div>
+							<div class="text-muted-foreground">Email & SMS preferences</div>
 						</div>
-						<div
-							class="text-xs bg-muted px-3 py-2 rounded-lg border border-border"
-						>
+						<div class="text-xs bg-muted px-3 py-2 rounded-lg border border-border">
 							<div class="font-medium text-foreground">Account</div>
 							<div class="text-muted-foreground">Account management</div>
 						</div>
-						<div
-							class="text-xs bg-muted px-3 py-2 rounded-lg border border-border"
-						>
+						<div class="text-xs bg-muted px-3 py-2 rounded-lg border border-border">
 							<div class="font-medium text-foreground">Billing</div>
 							<div class="text-muted-foreground">Subscription details</div>
 						</div>
@@ -122,11 +100,11 @@
 
 			<!-- Screenshot/Placeholder -->
 			{#if ONBOARDING_V2_CONFIG.features.showPlaceholderAssets}
-				<div
-					class="bg-muted rounded-lg p-8 text-center border border-border"
-				>
+				<div class="bg-muted rounded-lg p-8 text-center border border-border">
 					<User class="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-					<p class="text-muted-foreground text-sm">[Screenshot: Profile page with all tabs]</p>
+					<p class="text-muted-foreground text-sm">
+						[Screenshot: Profile page with all tabs]
+					</p>
 				</div>
 			{:else}
 				<img
@@ -159,9 +137,7 @@
 					<History class="w-6 h-6 text-accent" />
 				</div>
 				<div class="flex-1">
-					<h3 class="text-xl font-bold mb-2 text-foreground">
-						Track Your Journey
-					</h3>
+					<h3 class="text-xl font-bold mb-2 text-foreground">Track Your Journey</h3>
 					<p class="text-sm text-muted-foreground mb-4 leading-relaxed">
 						See all your past braindumps, track your activity patterns, and search
 						through your history with a GitHub-style contribution chart.
@@ -169,21 +145,15 @@
 
 					<!-- Features list -->
 					<div class="space-y-2 mb-4">
-						<div
-							class="flex items-center gap-2 text-sm text-muted-foreground"
-						>
+						<div class="flex items-center gap-2 text-sm text-muted-foreground">
 							<div class="w-2 h-2 rounded-full bg-accent"></div>
 							<span>GitHub-style contribution chart showing braindump activity</span>
 						</div>
-						<div
-							class="flex items-center gap-2 text-sm text-muted-foreground"
-						>
+						<div class="flex items-center gap-2 text-sm text-muted-foreground">
 							<div class="w-2 h-2 rounded-full bg-accent"></div>
 							<span>View all past braindumps with search and filter</span>
 						</div>
-						<div
-							class="flex items-center gap-2 text-sm text-muted-foreground"
-						>
+						<div class="flex items-center gap-2 text-sm text-muted-foreground">
 							<div class="w-2 h-2 rounded-full bg-accent"></div>
 							<span>Click any date to see that day's braindumps</span>
 						</div>
@@ -193,9 +163,7 @@
 
 			<!-- Screenshot/Placeholder -->
 			{#if ONBOARDING_V2_CONFIG.features.showPlaceholderAssets}
-				<div
-					class="bg-muted rounded-lg p-8 text-center border border-border"
-				>
+				<div class="bg-muted rounded-lg p-8 text-center border border-border">
 					<History class="w-12 h-12 text-muted-foreground mx-auto mb-4" />
 					<p class="text-muted-foreground text-sm">
 						[Screenshot: History page with contribution chart]
@@ -232,9 +200,7 @@
 					<GitBranch class="w-6 h-6 text-emerald-600" />
 				</div>
 				<div class="flex-1">
-					<h3 class="text-xl font-bold mb-2 text-foreground">
-						See How Projects Evolve
-					</h3>
+					<h3 class="text-xl font-bold mb-2 text-foreground">See How Projects Evolve</h3>
 					<p class="text-sm text-muted-foreground mb-4 leading-relaxed">
 						Every project change is tracked. See version-by-version comparisons, review
 						past decisions, and understand what braindumps triggered each update.
@@ -242,21 +208,15 @@
 
 					<!-- Features list -->
 					<div class="space-y-2 mb-4">
-						<div
-							class="flex items-center gap-2 text-sm text-muted-foreground"
-						>
+						<div class="flex items-center gap-2 text-sm text-muted-foreground">
 							<div class="w-2 h-2 rounded-full bg-emerald-600"></div>
 							<span>Version-by-version project tracking</span>
 						</div>
-						<div
-							class="flex items-center gap-2 text-sm text-muted-foreground"
-						>
+						<div class="flex items-center gap-2 text-sm text-muted-foreground">
 							<div class="w-2 h-2 rounded-full bg-emerald-600"></div>
 							<span>See which braindumps triggered changes</span>
 						</div>
-						<div
-							class="flex items-center gap-2 text-sm text-muted-foreground"
-						>
+						<div class="flex items-center gap-2 text-sm text-muted-foreground">
 							<div class="w-2 h-2 rounded-full bg-emerald-600"></div>
 							<span>Review decision history and past project states</span>
 						</div>
@@ -266,9 +226,7 @@
 
 			<!-- Screenshot/Placeholder -->
 			{#if ONBOARDING_V2_CONFIG.features.showPlaceholderAssets}
-				<div
-					class="bg-muted rounded-lg p-8 text-center border border-border"
-				>
+				<div class="bg-muted rounded-lg p-8 text-center border border-border">
 					<GitBranch class="w-12 h-12 text-muted-foreground mx-auto mb-4" />
 					<p class="text-muted-foreground text-sm">
 						[Screenshot: Project history modal showing version comparison]
@@ -297,7 +255,12 @@
 	<!-- Navigation -->
 	<div class="flex justify-between items-center mt-8">
 		<Button variant="ghost" onclick={handleSkip}>Skip Tour</Button>
-		<Button variant="primary" size="lg" onclick={onNext} class="min-w-[200px] shadow-ink pressable">
+		<Button
+			variant="primary"
+			size="lg"
+			onclick={onNext}
+			class="min-w-[200px] shadow-ink pressable"
+		>
 			Continue to Summary
 			<ArrowRight class="w-5 h-5 ml-2" />
 		</Button>

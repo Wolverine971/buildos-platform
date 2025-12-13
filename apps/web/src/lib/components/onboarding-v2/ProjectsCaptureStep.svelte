@@ -480,21 +480,20 @@
 			Step 1: Clarity - Projects & Brain Dumping
 		</h2>
 		<p class="text-lg text-muted-foreground leading-relaxed max-w-2xl mx-auto mb-4">
-			To get organized and productive, you first need <strong class="text-foreground">clarity</strong>. And clarity
-			comes from getting things out of your head and onto the screen.
+			To get organized and productive, you first need <strong class="text-foreground"
+				>clarity</strong
+			>. And clarity comes from getting things out of your head and onto the screen.
 		</p>
 		<p class="text-base text-muted-foreground leading-relaxed max-w-2xl mx-auto">
-			BuildOS works with <strong class="text-foreground">projects</strong> — think of them as siloed endeavors with a goal
-			or purpose. They can be work projects, personal goals, creative pursuits, fitness journeys,
-			learning objectives — anything you're working towards.
+			BuildOS works with <strong class="text-foreground">projects</strong> — think of them as siloed
+			endeavors with a goal or purpose. They can be work projects, personal goals, creative pursuits,
+			fitness journeys, learning objectives — anything you're working towards.
 		</p>
 	</div>
 
 	<!-- Philosophy Reinforcement + Examples -->
 	<div class="mb-6 p-6 bg-card rounded-xl border border-border shadow-ink tx tx-frame tx-weak">
-		<div
-			class="mb-4 bg-muted rounded-lg p-8 text-center border border-border"
-		>
+		<div class="mb-4 bg-muted rounded-lg p-8 text-center border border-border">
 			<p class="text-muted-foreground text-sm">
 				<img
 					src="/onboarding-assets/screenshots/brain-dump-1.png"
@@ -508,15 +507,14 @@
 			What Makes a Project?
 		</h3>
 		<p class="text-sm text-muted-foreground mb-4 leading-relaxed">
-			Projects are focused endeavors with a <strong class="text-foreground">goal</strong>, <strong class="text-foreground">purpose</strong>,
-			or <strong class="text-foreground">vision</strong>. When you think of what you're working on in terms of
-			projects, you can organize structure around actually <em>completing and finishing</em> them.
-			That's the power of the project framework.
+			Projects are focused endeavors with a <strong class="text-foreground">goal</strong>,
+			<strong class="text-foreground">purpose</strong>, or
+			<strong class="text-foreground">vision</strong>. When you think of what you're working
+			on in terms of projects, you can organize structure around actually
+			<em>completing and finishing</em> them. That's the power of the project framework.
 		</p>
 
-		<h4 class="font-semibold text-sm mb-2 text-foreground">
-			Here are some examples:
-		</h4>
+		<h4 class="font-semibold text-sm mb-2 text-foreground">Here are some examples:</h4>
 		<div class="space-y-2 text-sm text-muted-foreground">
 			<p>
 				💼 <strong class="text-accent">Work Project:</strong>
@@ -541,9 +539,7 @@
 
 		<!-- Placeholder for screenshot -->
 
-		<div
-			class="mt-4 bg-muted rounded-lg p-8 text-center border border-border"
-		>
+		<div class="mt-4 bg-muted rounded-lg p-8 text-center border border-border">
 			<p class="text-muted-foreground text-sm">
 				<img
 					src="/onboarding-assets/screenshots/brain-dump-2.png"
@@ -649,30 +645,22 @@
 				<!-- Benefits -->
 				<div class="mb-5 space-y-2 text-sm text-muted-foreground">
 					<div class="flex items-center gap-2">
-						<CheckCircle
-							class="w-4 h-4 text-emerald-600 flex-shrink-0"
-						/>
+						<CheckCircle class="w-4 h-4 text-emerald-600 flex-shrink-0" />
 						<span>Automatic project detection from recurring meetings</span>
 					</div>
 					<div class="flex items-center gap-2">
-						<CheckCircle
-							class="w-4 h-4 text-emerald-600 flex-shrink-0"
-						/>
+						<CheckCircle class="w-4 h-4 text-emerald-600 flex-shrink-0" />
 						<span>Pre-filled tasks with meeting details and dates</span>
 					</div>
 					<div class="flex items-center gap-2">
-						<CheckCircle
-							class="w-4 h-4 text-emerald-600 flex-shrink-0"
-						/>
+						<CheckCircle class="w-4 h-4 text-emerald-600 flex-shrink-0" />
 						<span>Smart scheduling around your existing commitments</span>
 					</div>
 				</div>
 
 				<!-- Demo Preview (Optional Placeholder) -->
 				{#if ONBOARDING_V2_CONFIG.features.showPlaceholderAssets}
-					<div
-						class="mb-4 bg-muted rounded-lg p-6 text-center border border-border"
-					>
+					<div class="mb-4 bg-muted rounded-lg p-6 text-center border border-border">
 						<p class="text-muted-foreground text-xs mb-1">
 							🎥 [15-second demo: Calendar → Projects transformation]
 						</p>
@@ -718,9 +706,7 @@
 						<CheckCircle class="w-5 h-5 text-white" />
 					</div>
 					<div class="flex-1">
-						<h4
-							class="font-semibold text-foreground mb-2 flex items-center gap-2"
-						>
+						<h4 class="font-semibold text-foreground mb-2 flex items-center gap-2">
 							Google Calendar Connected
 							<span
 								class="text-xs bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 rounded-full"
@@ -746,9 +732,7 @@
 				</Button>
 
 				{#if calendarAnalysisStarted}
-					<p
-						class="text-xs text-accent mt-3 flex items-center gap-2"
-					>
+					<p class="text-xs text-accent mt-3 flex items-center gap-2">
 						<Loader2 class="w-3 h-3 animate-spin" />
 						Analysis in progress — Check notification panel (bottom-right corner)
 					</p>

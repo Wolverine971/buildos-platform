@@ -36,8 +36,9 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 	const MESSAGE_LIMIT = 400;
 	const { data: messages, error: messagesError } = await supabase
 		.from('chat_messages')
-		.select('*')
+		.select('id, session_id, user_id, role, content, tool_calls, tool_call_id, created_at')
 		.eq('session_id', sessionId)
+		.in('role', ['user', 'assistant']) // Only return user-facing messages to avoid tool/system noise
 		.order('created_at', { ascending: true })
 		.limit(MESSAGE_LIMIT);
 

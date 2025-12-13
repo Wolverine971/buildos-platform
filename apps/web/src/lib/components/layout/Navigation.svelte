@@ -512,7 +512,9 @@
 													{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
 											>
 												{#if onboardingUrgent}
-													<AlertCircle class="w-4 h-4 mr-3 animate-pulse" />
+													<AlertCircle
+														class="w-4 h-4 mr-3 animate-pulse"
+													/>
 													Complete Setup
 												{:else}
 													<Sparkles class="w-4 h-4 mr-3" />

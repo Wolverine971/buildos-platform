@@ -151,7 +151,8 @@
 			Step 2: Focus - Reminders & Calendar Integration
 		</h2>
 		<p class="text-lg text-muted-foreground leading-relaxed max-w-2xl mx-auto mb-4">
-			You've got <strong class="text-foreground">clarity</strong> from brain dumping your projects. Now you need
+			You've got <strong class="text-foreground">clarity</strong> from brain dumping your
+			projects. Now you need
 			<strong class="text-foreground">focus</strong> to actually get things done.
 		</p>
 		<p class="text-base text-muted-foreground leading-relaxed max-w-2xl mx-auto">
@@ -175,9 +176,12 @@
 						The BuildOS Way: Clarity → Focus → Results
 					</h3>
 					<p class="text-sm text-muted-foreground leading-relaxed">
-						You've already taken the first step by getting <strong class="text-foreground">clarity</strong>
+						You've already taken the first step by getting <strong
+							class="text-foreground">clarity</strong
+						>
 						through brain dumping your projects. Now BuildOS offers several ways to help
-						you maintain <strong class="text-foreground">focus</strong> — choose what works best for your workflow.
+						you maintain <strong class="text-foreground">focus</strong> — choose what works
+						best for your workflow.
 					</p>
 				</div>
 			</div>
@@ -186,9 +190,7 @@
 
 	<div class="space-y-6">
 		<!-- Daily Brief Email Section -->
-		<div
-			class="bg-card rounded-xl border border-border p-6 shadow-ink tx tx-frame tx-weak"
-		>
+		<div class="bg-card rounded-xl border border-border p-6 shadow-ink tx tx-frame tx-weak">
 			<div class="flex items-start gap-4 mb-4">
 				<div
 					class="flex-shrink-0 w-12 h-12 bg-muted rounded-lg flex items-center justify-center shadow-ink"
@@ -197,9 +199,7 @@
 				</div>
 
 				<div class="flex-1">
-					<h3 class="font-semibold text-xl mb-2 text-foreground">
-						Daily Brief Email
-					</h3>
+					<h3 class="font-semibold text-xl mb-2 text-foreground">Daily Brief Email</h3>
 					<p class="text-sm text-muted-foreground mb-4">
 						Start each morning with clarity. Get a comprehensive email digest that
 						brings everything together in one place.
@@ -207,28 +207,16 @@
 
 					<!-- Benefits list -->
 					<div class="space-y-2 mb-4">
-						<div
-							class="flex items-start gap-2 text-sm text-muted-foreground"
-						>
-							<CheckCircle2
-								class="w-4 h-4 text-emerald-600 mt-0.5 flex-shrink-0"
-							/>
+						<div class="flex items-start gap-2 text-sm text-muted-foreground">
+							<CheckCircle2 class="w-4 h-4 text-emerald-600 mt-0.5 flex-shrink-0" />
 							<span>All your active projects and what needs attention</span>
 						</div>
-						<div
-							class="flex items-start gap-2 text-sm text-muted-foreground"
-						>
-							<CheckCircle2
-								class="w-4 h-4 text-emerald-600 mt-0.5 flex-shrink-0"
-							/>
+						<div class="flex items-start gap-2 text-sm text-muted-foreground">
+							<CheckCircle2 class="w-4 h-4 text-emerald-600 mt-0.5 flex-shrink-0" />
 							<span>Today's tasks and upcoming deadlines</span>
 						</div>
-						<div
-							class="flex items-start gap-2 text-sm text-muted-foreground"
-						>
-							<CheckCircle2
-								class="w-4 h-4 text-emerald-600 mt-0.5 flex-shrink-0"
-							/>
+						<div class="flex items-start gap-2 text-sm text-muted-foreground">
+							<CheckCircle2 class="w-4 h-4 text-emerald-600 mt-0.5 flex-shrink-0" />
 							<span>Your calendar events with context</span>
 						</div>
 					</div>
@@ -256,9 +244,7 @@
 		</div>
 
 		<!-- SMS Notifications Section -->
-		<div
-			class="bg-card rounded-xl border border-border p-6 shadow-ink tx tx-frame tx-weak"
-		>
+		<div class="bg-card rounded-xl border border-border p-6 shadow-ink tx tx-frame tx-weak">
 			<div class="flex items-start gap-4 mb-4">
 				<div
 					class="flex-shrink-0 w-12 h-12 bg-muted rounded-lg flex items-center justify-center shadow-ink"
@@ -267,9 +253,7 @@
 				</div>
 
 				<div class="flex-1">
-					<h3 class="font-semibold text-xl mb-2 text-foreground">
-						SMS Text Messages
-					</h3>
+					<h3 class="font-semibold text-xl mb-2 text-foreground">SMS Text Messages</h3>
 					<p class="text-sm text-muted-foreground mb-4">
 						Get timely nudges throughout the day to keep you on track. Choose the
 						messages that work best for you.
@@ -278,13 +262,9 @@
 					<!-- SMS Options -->
 					<div class="space-y-3">
 						<!-- Event Reminders -->
-						<div
-							class="p-4 bg-muted rounded-lg border border-border"
-						>
+						<div class="p-4 bg-muted rounded-lg border border-border">
 							<div class="flex items-start gap-3">
-								<Bell
-									class="w-5 h-5 text-accent mt-0.5 flex-shrink-0"
-								/>
+								<Bell class="w-5 h-5 text-accent mt-0.5 flex-shrink-0" />
 								<div class="flex-1">
 									<h4 class="font-semibold text-foreground mb-1">
 										Event Reminders
@@ -303,13 +283,9 @@
 						</div>
 
 						<!-- Morning Kickoff -->
-						<div
-							class="p-4 bg-muted rounded-lg border border-border"
-						>
+						<div class="p-4 bg-muted rounded-lg border border-border">
 							<div class="flex items-start gap-3">
-								<Sun
-									class="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0"
-								/>
+								<Sun class="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
 								<div class="flex-1">
 									<h4 class="font-semibold text-foreground mb-1">
 										Morning Kickoff
@@ -328,13 +304,9 @@
 						</div>
 
 						<!-- Evening Recap -->
-						<div
-							class="p-4 bg-muted rounded-lg border border-border"
-						>
+						<div class="p-4 bg-muted rounded-lg border border-border">
 							<div class="flex items-start gap-3">
-								<Moon
-									class="w-5 h-5 text-indigo-600 mt-0.5 flex-shrink-0"
-								/>
+								<Moon class="w-5 h-5 text-indigo-600 mt-0.5 flex-shrink-0" />
 								<div class="flex-1">
 									<h4 class="font-semibold text-foreground mb-1">
 										Evening Recap
@@ -389,9 +361,7 @@
 			<div
 				class="bg-card rounded-xl border border-border p-6 shadow-ink animate-in fade-in slide-in-from-top-2 duration-300 tx tx-grain tx-weak"
 			>
-				<h4
-					class="font-semibold text-lg mb-4 text-foreground flex items-center gap-2"
-				>
+				<h4 class="font-semibold text-lg mb-4 text-foreground flex items-center gap-2">
 					<CheckCircle2 class="w-5 h-5 text-emerald-600" />
 					Choose Your Text Messages
 				</h4>
@@ -410,15 +380,11 @@
 							class="mt-1 w-5 h-5 text-accent rounded border-border focus:ring-2 focus:ring-ring focus:ring-offset-0"
 						/>
 						<div class="flex-1">
-							<div
-								class="font-medium flex items-center gap-2 text-foreground"
-							>
+							<div class="font-medium flex items-center gap-2 text-foreground">
 								<Bell class="w-4 h-4" />
 								Event Reminders
 							</div>
-							<p class="text-xs text-muted-foreground">
-								15 minutes before events
-							</p>
+							<p class="text-xs text-muted-foreground">15 minutes before events</p>
 						</div>
 					</label>
 
@@ -432,9 +398,7 @@
 							class="mt-1 w-5 h-5 text-amber-600 rounded border-border focus:ring-2 focus:ring-ring focus:ring-offset-0"
 						/>
 						<div class="flex-1">
-							<div
-								class="font-medium flex items-center gap-2 text-foreground"
-							>
+							<div class="font-medium flex items-center gap-2 text-foreground">
 								<Sun class="w-4 h-4" />
 								Morning Kickoff
 							</div>
@@ -452,9 +416,7 @@
 							class="mt-1 w-5 h-5 text-indigo-600 rounded border-border focus:ring-2 focus:ring-ring focus:ring-offset-0"
 						/>
 						<div class="flex-1">
-							<div
-								class="font-medium flex items-center gap-2 text-foreground"
-							>
+							<div class="font-medium flex items-center gap-2 text-foreground">
 								<Moon class="w-4 h-4" />
 								Evening Recap
 							</div>
@@ -489,15 +451,11 @@
 		{/if}
 
 		<!-- Info Box -->
-		<div
-			class="p-4 bg-muted rounded-lg border border-border"
-		>
+		<div class="p-4 bg-muted rounded-lg border border-border">
 			<div class="flex gap-3">
 				<Info class="w-5 h-5 text-muted-foreground mt-0.5 flex-shrink-0" />
 				<div class="text-sm text-muted-foreground">
-					<p class="font-medium text-foreground mb-1">
-						You can change these anytime
-					</p>
+					<p class="font-medium text-foreground mb-1">You can change these anytime</p>
 					<p>
 						Update your notification preferences in Settings whenever you need. This
 						step is completely optional.

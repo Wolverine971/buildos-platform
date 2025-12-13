@@ -56,7 +56,9 @@
 						type="video/mp4"
 					/>
 					<!-- Fallback -->
-					<div class="w-14 h-14 bg-accent/10 rounded-full p-3 flex items-center justify-center">
+					<div
+						class="w-14 h-14 bg-accent/10 rounded-full p-3 flex items-center justify-center"
+					>
 						<Sparkles class="w-8 h-8 text-accent" />
 					</div>
 				</video>
@@ -76,7 +78,8 @@
 			<div class="flex items-center gap-2">
 				<div class="w-2 h-2 rounded-full bg-emerald-500"></div>
 				<p class="text-xs text-muted-foreground">
-					<span class="font-medium text-foreground">Personalized daily briefs</span> aligned with your goals
+					<span class="font-medium text-foreground">Personalized daily briefs</span> aligned
+					with your goals
 				</p>
 			</div>
 			<div class="flex items-center gap-2">
@@ -88,7 +91,8 @@
 			<div class="flex items-center gap-2">
 				<div class="w-2 h-2 rounded-full bg-accent"></div>
 				<p class="text-xs text-muted-foreground">
-					<span class="font-medium text-foreground">Smart task suggestions</span> based on context
+					<span class="font-medium text-foreground">Smart task suggestions</span> based on
+					context
 				</p>
 			</div>
 		</div>

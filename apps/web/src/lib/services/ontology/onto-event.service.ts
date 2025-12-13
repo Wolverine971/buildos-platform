@@ -105,7 +105,6 @@ export class OntoEventService {
 		client: TypedSupabaseClient,
 		input: UpdateOntoEventInput
 	): Promise<OntoEventRow> {
-
 		// Template system removed Dec 2025 - events use type_key only
 		const updates: Partial<OntoEventRow> = {
 			title: input.title,

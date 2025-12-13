@@ -528,7 +528,7 @@
 <div class="min-h-screen bg-background overflow-x-hidden">
 	<!-- Header -->
 	<header
-		class="sticky top-0 z-40 border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80"
+		class="sticky top-0 z-0 border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80"
 	>
 		<div
 			class="mx-auto max-w-screen-2xl px-2 sm:px-4 lg:px-6 py-2 sm:py-3 space-y-2 sm:space-y-3"
@@ -595,7 +595,7 @@
 						<!-- Backdrop -->
 						<button
 							type="button"
-							class="fixed inset-0 z-40"
+							class="fixed inset-0 z-0"
 							onclick={() => (showMobileMenu = false)}
 							aria-label="Close menu"
 						></button>

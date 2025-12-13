@@ -141,6 +141,17 @@
 		};
 	}
 
+	function normalizeProjectFocusClient(focus?: ProjectFocus | null): ProjectFocus | null {
+		if (!focus || !focus.projectId) return null;
+		return {
+			focusType: focus.focusType ?? 'project-wide',
+			focusEntityId: focus.focusEntityId ?? null,
+			focusEntityName: focus.focusEntityName ?? null,
+			projectId: focus.projectId,
+			projectName: focus.projectName ?? 'Project'
+		};
+	}
+
 	const defaultProjectFocus = $derived.by<ProjectFocus | null>(() => {
 		if (isProjectContext(selectedContextType) && selectedEntityId) {
 			return buildProjectWideFocus(selectedEntityId, selectedContextLabel);
@@ -951,16 +962,33 @@
 			selectedEntityId = session.entity_id || undefined;
 			selectedContextLabel = session.title || session.auto_title || 'Resumed Chat';
 
-			// Set up project focus if applicable
-			if (isProjectContext(selectedContextType) && selectedEntityId) {
-				projectFocus = buildProjectWideFocus(selectedEntityId, selectedContextLabel);
+			const metadataFocus = normalizeProjectFocusClient(
+				(session.agent_metadata as { focus?: ProjectFocus | null })?.focus
+			);
+
+			// Set up project focus if applicable (prefer stored metadata focus)
+			if (isProjectContext(selectedContextType)) {
+				if (metadataFocus) {
+					projectFocus = metadataFocus;
+					selectedEntityId = metadataFocus.projectId || selectedEntityId;
+				} else if (selectedEntityId) {
+					projectFocus = buildProjectWideFocus(selectedEntityId, selectedContextLabel);
+				} else {
+					projectFocus = null;
+				}
+			} else {
+				projectFocus = null;
 			}
 
 			showContextSelection = false;
 			showProjectActionSelector = false;
 
 			// Convert loaded messages to UIMessages
-			const restoredMessages: UIMessage[] = loadedMessages.map((msg: any) => ({
+			const filteredMessages = (loadedMessages || []).filter(
+				(msg: any) => msg.role === 'user' || msg.role === 'assistant'
+			);
+
+			const restoredMessages: UIMessage[] = filteredMessages.map((msg: any) => ({
 				id: msg.id,
 				session_id: msg.session_id,
 				user_id: msg.user_id,
@@ -980,7 +1008,7 @@
 				const truncationNote: UIMessage = {
 					id: crypto.randomUUID(),
 					type: 'activity',
-					role: 'assistant' as ChatRole,
+					role: 'system' as ChatRole,
 					content:
 						'Note: This conversation has been truncated to show the most recent messages.',
 					timestamp: new Date(),
@@ -993,7 +1021,8 @@
 			const welcomeMessage: UIMessage = {
 				id: crypto.randomUUID(),
 				type: 'assistant',
-				role: 'assistant' as ChatRole,
+				// System role keeps this out of future conversation_history payloads
+				role: 'system' as ChatRole,
 				content: session.summary
 					? `Resuming your conversation. Here's where we left off:\n\n**Summary:** ${session.summary}\n\nHow can I help you continue?`
 					: "Welcome back! I've restored your previous conversation. How can I help you continue?",
@@ -1854,19 +1883,19 @@
 					currentStep: null // Will be updated as steps execute
 				};
 
-			addActivityToThinkingBlock(
-				`Plan created with ${event.plan?.steps?.length || 0} steps`,
-				'plan_created',
-				enrichedMetadata
-			);
-			addPlanStatusAssistantMessage(
-				`I drafted a plan with ${event.plan?.steps?.length || 0} steps and will start executing it.`
-			);
-			break;
-		case 'plan_ready_for_review': {
-			currentPlan = event.plan;
-			const summary =
-				event.summary ||
+				addActivityToThinkingBlock(
+					`Plan created with ${event.plan?.steps?.length || 0} steps`,
+					'plan_created',
+					enrichedMetadata
+				);
+				addPlanStatusAssistantMessage(
+					`I drafted a plan with ${event.plan?.steps?.length || 0} steps and will start executing it.`
+				);
+				break;
+			case 'plan_ready_for_review': {
+				currentPlan = event.plan;
+				const summary =
+					event.summary ||
 					'Plan drafted and waiting for your approval. Reply with any changes or say "run it".';
 
 				// Extract rich metadata for enhanced visualization
@@ -1885,20 +1914,20 @@
 					currentStep: null
 				};
 
-			addActivityToThinkingBlock(
-				`Plan ready for review: ${event.plan?.steps?.length || 0} steps`,
-				'plan_created',
-				reviewMetadata
-			);
-			addActivityToThinkingBlock(summary, 'general');
-			addPlanStatusAssistantMessage(
-				`I drafted a ${event.plan?.steps?.length || 0}-step plan. Review it and say "run it" or suggest changes.`
-			);
-			currentActivity = 'Waiting on your feedback about the plan...';
-			agentState = 'waiting_on_user';
-			agentStateDetails = summary;
-			updateThinkingBlockState('waiting_on_user', summary);
-			break;
+				addActivityToThinkingBlock(
+					`Plan ready for review: ${event.plan?.steps?.length || 0} steps`,
+					'plan_created',
+					reviewMetadata
+				);
+				addActivityToThinkingBlock(summary, 'general');
+				addPlanStatusAssistantMessage(
+					`I drafted a ${event.plan?.steps?.length || 0}-step plan. Review it and say "run it" or suggest changes.`
+				);
+				currentActivity = 'Waiting on your feedback about the plan...';
+				agentState = 'waiting_on_user';
+				agentStateDetails = summary;
+				updateThinkingBlockState('waiting_on_user', summary);
+				break;
 			}
 
 			case 'step_start':

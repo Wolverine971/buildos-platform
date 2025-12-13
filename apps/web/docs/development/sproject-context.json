@@ -17,11 +17,6 @@
 			"components": ["Dashboard"]
 		},
 		{
-			"file": "src/routes/projects/+page.svelte",
-			"type": "page",
-			"components": ["AgentChatModal"]
-		},
-		{
 			"file": "src/routes/projects-old/+page.svelte",
 			"type": "page",
 			"components": [
@@ -30,6 +25,11 @@
 				"DailyBriefModal",
 				"QuickProjectModal"
 			]
+		},
+		{
+			"file": "src/routes/projects/+page.svelte",
+			"type": "page",
+			"components": ["AgentChatModal"]
 		},
 		{
 			"file": "src/lib/components/brain-dump/BrainDumpModal.svelte",
@@ -134,6 +134,17 @@
 			"components": ["SynthesisLoadingState"]
 		},
 		{
+			"file": "src/routes/projects-old/[id]/+page.svelte",
+			"type": "page",
+			"components": [
+				"TasksList",
+				"NotesSection",
+				"ProjectSynthesis",
+				"PhasesSection",
+				"BraindumpsSection"
+			]
+		},
+		{
 			"file": "src/routes/projects/[id]/+page.svelte",
 			"type": "page",
 			"components": [
@@ -157,17 +168,6 @@
 			"file": "src/routes/projects/create/+page.svelte",
 			"type": "page",
 			"components": ["AgentChatModal"]
-		},
-		{
-			"file": "src/routes/projects-old/[id]/+page.svelte",
-			"type": "page",
-			"components": [
-				"TasksList",
-				"NotesSection",
-				"ProjectSynthesis",
-				"PhasesSection",
-				"BraindumpsSection"
-			]
 		},
 		{
 			"file": "src/routes/admin/ontology/graph/+page.svelte",
@@ -847,12 +847,12 @@
 		"src/lib/components/ontology/TaskEditModal.svelte": [
 			"src/lib/components/ontology/TaskEditModal.svelte"
 		],
-		"src/routes/projects/[id]/+page.svelte": [
-			"src/lib/components/ontology/TaskEditModal.svelte"
-		],
 		"src/routes/projects-old/[id]/+page.svelte": [
 			"src/lib/components/project/ProjectSynthesis.svelte",
 			"src/lib/components/project/PhasesSection.svelte"
+		],
+		"src/routes/projects/[id]/+page.svelte": [
+			"src/lib/components/ontology/TaskEditModal.svelte"
 		]
 	},
 	"unusedComponents": [

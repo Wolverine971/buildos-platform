@@ -81,7 +81,9 @@
 					<div
 						class="max-w-[88%] min-w-0 overflow-hidden rounded-lg border border-accent/30 bg-accent/5 px-3 py-2.5 text-sm font-medium text-foreground shadow-ink sm:max-w-[85%] sm:px-4 sm:py-3"
 					>
-						<div class="whitespace-pre-wrap break-words [overflow-wrap:anywhere] leading-relaxed">
+						<div
+							class="whitespace-pre-wrap break-words [overflow-wrap:anywhere] leading-relaxed"
+						>
 							{message.content}
 						</div>
 						<!-- INKPRINT micro-label timestamp -->
@@ -206,14 +208,12 @@
 				{#if dev}
 					<div
 						class="rounded-lg border border-amber-600/30 bg-amber-50 px-2 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-amber-700 tx tx-static tx-weak dark:bg-amber-950/20 dark:text-amber-400"
-						>
+					>
 						⚠️ Dev Warning: Legacy plan message
 					</div>
 				{/if}
 				<!-- Legacy plan with INKPRINT styling -->
-				<div
-					class="flex gap-1.5 text-[0.65rem] text-muted-foreground"
-				>
+				<div class="flex gap-1.5 text-[0.65rem] text-muted-foreground">
 					<div class="w-12 shrink-0 pt-[2px] font-mono uppercase tracking-[0.1em]">
 						{formatTime(message.timestamp)}
 					</div>
@@ -248,14 +248,12 @@
 				{#if dev}
 					<div
 						class="rounded-lg border border-amber-600/30 bg-amber-50 px-2 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-amber-700 tx tx-static tx-weak dark:bg-amber-950/20 dark:text-amber-400"
-						>
+					>
 						⚠️ Dev Warning: Legacy activity message
 					</div>
 				{/if}
 				<!-- Legacy activity with INKPRINT styling -->
-				<div
-					class="flex gap-1.5 text-[0.65rem] text-muted-foreground"
-				>
+				<div class="flex gap-1.5 text-[0.65rem] text-muted-foreground">
 					<div class="w-12 shrink-0 pt-[2px] font-mono uppercase tracking-[0.1em]">
 						{formatTime(message.timestamp)}
 					</div>
@@ -267,9 +265,7 @@
 				</div>
 			{:else}
 				<!-- Default message with INKPRINT styling -->
-				<div
-					class="flex gap-1.5 text-[0.65rem] text-muted-foreground"
-				>
+				<div class="flex gap-1.5 text-[0.65rem] text-muted-foreground">
 					<div class="w-12 shrink-0 pt-[2px] font-mono uppercase tracking-[0.1em]">
 						{formatTime(message.timestamp)}
 					</div>
