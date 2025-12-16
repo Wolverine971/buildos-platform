@@ -6,22 +6,17 @@
 		Loader2,
 		Sparkles,
 		CheckCircle,
-		Mic,
-		MicOff,
-		Square,
-		LoaderCircle,
 		Info,
 		TriangleAlert
 	} from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
-	import Textarea from '$lib/components/ui/Textarea.svelte';
+	import TextareaWithVoice from '$lib/components/ui/TextareaWithVoice.svelte';
 	import { brainDumpService } from '$lib/services/braindump-api.service';
 	import { toastService } from '$lib/stores/toast.store';
 	import { ONBOARDING_V2_CONFIG } from '$lib/config/onboarding.config';
 	import type { DisplayedBrainDumpQuestion } from '$lib/types/brain-dump';
 	import { startCalendarAnalysis } from '$lib/services/calendar-analysis-notification.bridge';
 	import { scale, fade } from 'svelte/transition';
-	import { voiceRecordingService } from '$lib/services/voiceRecording.service';
 
 	interface Props {
 		userContext?: any; // From previous onboarding inputs
@@ -34,20 +29,9 @@
 	let projectInput = $state('');
 	let isProcessing = $state(false);
 
-	// Voice recording state - integrated from VoiceRecordingService
-	// Follows same patterns as BrainDumpModal (see BrainDumpModal.svelte:173-189)
-	let isVoiceSupported = $state(false);
-	let isCurrentlyRecording = $state(false);
-	let recordingDuration = $state(0);
+	// Voice state from TextareaWithVoice (bindable)
+	let isRecording = $state(false);
 	let voiceError = $state('');
-	let isInitializingRecording = $state(false);
-	let canUseLiveTranscript = $state(false);
-	let microphonePermissionGranted = $state(false);
-	let voiceCapabilitiesChecked = $state(false);
-
-	// Derived voice state (reactive to service updates)
-	let accumulatedTranscript = $derived(voiceRecordingService.getCurrentLiveTranscript());
-	let isLiveTranscribing = $derived(voiceRecordingService.isLiveTranscribing());
 
 	// Calendar connection state
 	let hasCalendarConnected = $state(false);
@@ -60,16 +44,17 @@
 	let showSuccess = $state(false);
 	let calendarAnalysisStarted = $state(false);
 
+	// Reference to TextareaWithVoice for cleanup
+	let textareaWithVoiceRef = $state<TextareaWithVoice | null>(null);
+
 	/**
 	 * Check if user has Google Calendar connected
-	 * FIXED: Use correct API endpoint
 	 */
 	async function checkCalendarConnection(): Promise<boolean> {
 		try {
 			isCheckingConnection = true;
 			connectionError = null;
 
-			// FIXED: Correct endpoint is /api/calendar (GET)
 			const response = await fetch('/api/calendar');
 
 			if (!response.ok) {
@@ -77,8 +62,6 @@
 			}
 
 			const result = await response.json();
-
-			// Response format: { success: boolean, connected: boolean, userId: string }
 			return result.success && result.connected === true;
 		} catch (error) {
 			console.error('Failed to check calendar connection:', error);
@@ -91,14 +74,11 @@
 
 	/**
 	 * Initiate Google Calendar OAuth connection
-	 * Opens OAuth flow in same window (will redirect back to onboarding)
 	 */
 	async function handleConnectCalendar() {
 		try {
 			isConnectingCalendar = true;
 
-			// Fetch the calendar auth URL with redirect back to onboarding
-			// IMPORTANT: URL-encode the redirect parameter to preserve query params
 			const redirectPath = '/onboarding?v2=true';
 			const encodedRedirect = encodeURIComponent(redirectPath);
 			const response = await fetch(`/profile/calendar?redirect=${encodedRedirect}`);
@@ -113,7 +93,6 @@
 				throw new Error('No auth URL returned');
 			}
 
-			// Navigate to the auth URL (will redirect to Google OAuth, then back to onboarding)
 			window.location.href = result.calendarAuthUrl;
 		} catch (error) {
 			console.error('Calendar connection error:', error);
@@ -123,64 +102,6 @@
 			isConnectingCalendar = false;
 		}
 	}
-
-	// Initialize voice recording service
-	// Follows BrainDumpModal pattern (see BrainDumpModal.svelte:407-444)
-	$effect(() => {
-		if (typeof window === 'undefined') return;
-
-		// Initialize voice capability
-		isVoiceSupported = voiceRecordingService.isVoiceSupported();
-
-		// Initialize service with callbacks
-		voiceRecordingService.initialize(
-			{
-				onTextUpdate: (text: string) => {
-					// Respect 5000 character limit
-					if (text.length > 5000) {
-						projectInput = text.substring(0, 5000);
-						toastService.warning('Voice input truncated to 5000 characters');
-					} else {
-						projectInput = text;
-					}
-				},
-				onError: (error: string) => {
-					voiceError = error;
-					toastService.error(error);
-				},
-				onPhaseChange: (phase: 'idle' | 'transcribing') => {
-					// Could add isTranscribing state if needed for UI feedback
-					console.log('[Voice] Phase change:', phase);
-				},
-				onPermissionGranted: () => {
-					microphonePermissionGranted = true;
-					console.log('[Voice] Microphone permission granted');
-				},
-				onCapabilityUpdate: (update: { canUseLiveTranscript: boolean }) => {
-					canUseLiveTranscript = update.canUseLiveTranscript;
-					voiceCapabilitiesChecked = true;
-					console.log('[Voice] Capabilities updated:', update);
-				}
-			},
-			brainDumpService
-		);
-
-		// Set initial capability state
-		canUseLiveTranscript = voiceRecordingService.isLiveTranscriptSupported();
-		voiceCapabilitiesChecked = true;
-
-		// Subscribe to recording duration
-		const durationStore = voiceRecordingService.getRecordingDuration();
-		const unsubscribe = durationStore.subscribe((value) => {
-			recordingDuration = value;
-		});
-
-		// Cleanup on unmount
-		return () => {
-			unsubscribe();
-			voiceRecordingService.cleanup();
-		};
-	});
 
 	// Initialize calendar status and handle OAuth callback
 	$effect(() => {
@@ -349,501 +270,309 @@
 		}
 	}
 
-	function skipProjectCapture() {
+	async function skipProjectCapture() {
 		// Stop recording before navigating
-		if (isCurrentlyRecording) {
-			toastService.warning('Please stop recording before continuing');
-			return;
+		if (isRecording) {
+			await textareaWithVoiceRef?.stopRecording();
 		}
 		onNext();
 	}
-
-	// Voice recording handlers
-	// Follows BrainDumpModal pattern (see BrainDumpModal.svelte:1234-1276)
-	async function startRecording() {
-		if (!isVoiceSupported) return;
-
-		voiceError = '';
-		isInitializingRecording = true;
-
-		try {
-			await voiceRecordingService.startRecording(projectInput);
-			isInitializingRecording = false;
-			isCurrentlyRecording = true;
-		} catch (error) {
-			const errorMessage =
-				error instanceof Error
-					? error.message
-					: 'Unable to access microphone. Please check your permissions.';
-			voiceError = errorMessage;
-			isInitializingRecording = false;
-			isCurrentlyRecording = false;
-		}
-	}
-
-	async function stopRecording() {
-		if (!isCurrentlyRecording) return;
-
-		try {
-			await voiceRecordingService.stopRecording(projectInput);
-			isCurrentlyRecording = false;
-		} catch (error) {
-			console.error('Stop recording error:', error);
-			isCurrentlyRecording = false;
-		}
-	}
-
-	function toggleRecording() {
-		if (isCurrentlyRecording) {
-			stopRecording();
-		} else {
-			startRecording();
-		}
-	}
-
-	// Utility functions
-	function isIOS(): boolean {
-		if (typeof window === 'undefined') return false;
-		return /iPad|iPhone|iPod/.test(navigator.userAgent);
-	}
-
-	function formatDuration(seconds: number): string {
-		const mins = Math.floor(seconds / 60);
-		const secs = seconds % 60;
-		return `${mins}:${secs.toString().padStart(2, '0')}`;
-	}
-
-	// Voice button state machine
-	// Follows RecordingView pattern (see RecordingView.svelte:220-286)
-	let voiceButtonState = $derived.by(() => {
-		// Priority 1: Recording
-		if (isCurrentlyRecording) {
-			return {
-				icon: MicOff,
-				ariaLabel: 'Stop recording',
-				disabled: false,
-				isLoading: false
-			};
-		}
-
-		// Priority 2: Initializing
-		if (isInitializingRecording) {
-			return {
-				icon: LoaderCircle,
-				ariaLabel: 'Initializing microphone...',
-				disabled: true,
-				isLoading: true
-			};
-		}
-
-		// Priority 3: Permission needed
-		if (!microphonePermissionGranted && voiceCapabilitiesChecked) {
-			return {
-				icon: Mic,
-				ariaLabel: 'Grant microphone access',
-				disabled: false,
-				isLoading: false
-			};
-		}
-
-		// Priority 4: Processing
-		if (isProcessing) {
-			return {
-				icon: Mic,
-				ariaLabel: 'Processing...',
-				disabled: true,
-				isLoading: false
-			};
-		}
-
-		// Default: Ready
-		return {
-			icon: Mic,
-			ariaLabel: 'Start voice recording',
-			disabled: false,
-			isLoading: false
-		};
-	});
 </script>
 
 <div class="max-w-3xl mx-auto px-4">
-	<div class="mb-8 text-center">
-		<div class="flex justify-center mb-6">
+	<!-- Header - Compact -->
+	<div class="mb-6 text-center">
+		<div class="flex justify-center mb-4">
 			<div
-				class="w-16 h-16 bg-muted rounded-2xl flex items-center justify-center shadow-ink tx tx-bloom tx-weak"
+				class="w-14 h-14 bg-muted rounded-xl flex items-center justify-center shadow-ink tx tx-bloom tx-weak"
 			>
-				<Rocket class="w-8 h-8 text-accent" />
+				<Rocket class="w-7 h-7 text-accent" />
 			</div>
 		</div>
 
-		<h2 class="text-3xl sm:text-4xl font-bold mb-3 text-foreground">
+		<h2 class="text-2xl sm:text-3xl font-bold mb-2 text-foreground">
 			Step 1: Clarity - Projects & Brain Dumping
 		</h2>
-		<p class="text-lg text-muted-foreground leading-relaxed max-w-2xl mx-auto mb-4">
-			To get organized and productive, you first need <strong class="text-foreground"
-				>clarity</strong
-			>. And clarity comes from getting things out of your head and onto the screen.
+		<p class="text-base text-muted-foreground leading-relaxed max-w-xl mx-auto mb-2">
+			Get organized by getting things out of your head and onto the screen.
 		</p>
-		<p class="text-base text-muted-foreground leading-relaxed max-w-2xl mx-auto">
-			BuildOS works with <strong class="text-foreground">projects</strong> — think of them as siloed
-			endeavors with a goal or purpose. They can be work projects, personal goals, creative pursuits,
-			fitness journeys, learning objectives — anything you're working towards.
+		<p class="text-sm text-muted-foreground leading-relaxed max-w-xl mx-auto">
+			BuildOS works with <strong class="text-foreground">projects</strong> — work initiatives, personal goals,
+			creative pursuits, or anything you're working towards.
 		</p>
 	</div>
 
-	<!-- Philosophy Reinforcement + Examples -->
-	<div class="mb-6 p-6 bg-card rounded-xl border border-border shadow-ink tx tx-frame tx-weak">
-		<div class="mb-4 bg-muted rounded-lg p-8 text-center border border-border">
-			<p class="text-muted-foreground text-sm">
-				<img
-					src="/onboarding-assets/screenshots/brain-dump-1.png"
-					alt="Screenshot of BuildOS brain dump input with highlighted project guidance"
-					loading="lazy"
-				/>
-			</p>
+	<!-- Philosophy Reinforcement + Examples - Compact -->
+	<div class="mb-4 p-4 bg-card rounded-xl border border-border shadow-ink tx tx-frame tx-weak">
+		<!-- Screenshot -->
+		<div class="mb-3 bg-muted rounded-lg overflow-hidden border border-border">
+			<img
+				src="/onboarding-assets/screenshots/brain-dump-1.png"
+				alt="Screenshot of BuildOS brain dump input"
+				loading="lazy"
+				class="w-full"
+			/>
 		</div>
-		<h3 class="font-semibold mb-3 flex items-center gap-2 text-foreground">
-			<Sparkles class="w-5 h-5 text-accent" />
+
+		<h3 class="font-semibold mb-2 flex items-center gap-2 text-foreground text-sm">
+			<Sparkles class="w-4 h-4 text-accent" />
 			What Makes a Project?
 		</h3>
-		<p class="text-sm text-muted-foreground mb-4 leading-relaxed">
-			Projects are focused endeavors with a <strong class="text-foreground">goal</strong>,
-			<strong class="text-foreground">purpose</strong>, or
-			<strong class="text-foreground">vision</strong>. When you think of what you're working
-			on in terms of projects, you can organize structure around actually
-			<em>completing and finishing</em> them. That's the power of the project framework.
+		<p class="text-xs text-muted-foreground mb-3 leading-relaxed">
+			Projects are focused endeavors with a goal or purpose. Organize around actually <em>completing</em> things.
 		</p>
 
-		<h4 class="font-semibold text-sm mb-2 text-foreground">Here are some examples:</h4>
-		<div class="space-y-2 text-sm text-muted-foreground">
-			<p>
-				💼 <strong class="text-accent">Work Project:</strong>
-				"Q1 Marketing Campaign — need to coordinate social posts, email sequences, and landing
-				pages before Feb 15."
-			</p>
-			<p>
-				🏋️ <strong class="text-accent">Personal Goal:</strong>
-				"Get in shape for summer — track workouts, meal prep, and progress photos. Goal: lose
-				15 lbs by June."
-			</p>
-			<p>
-				🎨 <strong class="text-accent">Creative Pursuit:</strong>
-				"Launch my Etsy shop — design 10 products, set up store, create Instagram presence."
-			</p>
-			<p>
-				📚 <strong class="text-accent">Learning Objective:</strong>
-				"Master Spanish — practice daily with Duolingo, watch Spanish shows, find conversation
-				partner."
-			</p>
+		<!-- Compact examples grid -->
+		<div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-muted-foreground">
+			<div class="flex gap-2">
+				<span>💼</span>
+				<span><strong class="text-foreground">Work:</strong> "Q1 Marketing Campaign"</span>
+			</div>
+			<div class="flex gap-2">
+				<span>🏋️</span>
+				<span><strong class="text-foreground">Personal:</strong> "Get in shape for summer"</span>
+			</div>
+			<div class="flex gap-2">
+				<span>🎨</span>
+				<span><strong class="text-foreground">Creative:</strong> "Launch my Etsy shop"</span>
+			</div>
+			<div class="flex gap-2">
+				<span>📚</span>
+				<span><strong class="text-foreground">Learning:</strong> "Master Spanish"</span>
+			</div>
 		</div>
 
-		<!-- Placeholder for screenshot -->
-
-		<div class="mt-4 bg-muted rounded-lg p-8 text-center border border-border">
-			<p class="text-muted-foreground text-sm">
-				<img
-					src="/onboarding-assets/screenshots/brain-dump-2.png"
-					alt="Screenshot of BuildOS showing generated project summaries after processing a brain dump"
-					loading="lazy"
-				/>
-			</p>
+		<!-- Second screenshot -->
+		<div class="mt-3 bg-muted rounded-lg overflow-hidden border border-border">
+			<img
+				src="/onboarding-assets/screenshots/brain-dump-2.png"
+				alt="Screenshot of BuildOS showing generated project summaries"
+				loading="lazy"
+				class="w-full"
+			/>
 		</div>
 	</div>
 
 	{#if showSuccess}
-		<!-- Success animation -->
+		<!-- Success animation - Compact -->
 		<div
-			class="mb-6 p-6 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl border border-emerald-200 dark:border-emerald-800 animate-in fade-in slide-in-from-top-2 tx tx-grain tx-weak"
+			class="mb-4 p-4 bg-accent/10 rounded-lg border border-accent/30 animate-in fade-in slide-in-from-top-2 tx tx-grain tx-weak"
 		>
-			<div class="flex items-center gap-3 text-emerald-700 dark:text-emerald-300">
-				<CheckCircle class="w-6 h-6" />
-				<p class="font-semibold">Project created successfully! Moving to next step...</p>
+			<div class="flex items-center gap-2 text-accent">
+				<CheckCircle class="w-5 h-5" />
+				<p class="font-medium text-sm">Project created! Moving to next step...</p>
 			</div>
 		</div>
 	{:else}
-		<!-- Voice Error Display -->
+		<!-- Voice Error Display - Compact -->
 		{#if voiceError}
 			<div
-				class="mb-4 flex items-center gap-2 px-4 py-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-sm border border-red-200 dark:border-red-800 rounded-lg shadow-ink tx tx-static tx-weak"
+				class="mb-3 flex items-center gap-2 px-3 py-2 bg-destructive/10 text-destructive text-xs border border-destructive/30 rounded-lg tx tx-static tx-weak"
 				transition:fade={{ duration: 200 }}
 			>
-				<TriangleAlert class="w-4 h-4 flex-shrink-0" />
+				<TriangleAlert class="w-3.5 h-3.5 flex-shrink-0" />
 				<span>{voiceError}</span>
 			</div>
 		{/if}
 
 		<!-- Calendar Connection & Analysis Section -->
 		{#if showConnectionSuccess}
-			<!-- Connection Success Animation (Transient State) -->
+			<!-- Connection Success - Compact -->
 			<div
-				class="mb-6 p-5 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl border border-emerald-200 dark:border-emerald-800 shadow-ink tx tx-grain tx-weak"
+				class="mb-4 p-4 bg-accent/10 rounded-lg border border-accent/30 shadow-ink tx tx-grain tx-weak"
 				in:scale={{ duration: 400, start: 0.9 }}
 				out:fade={{ duration: 300 }}
 			>
-				<div class="flex items-center gap-3 mb-4">
+				<div class="flex items-center gap-3 mb-3">
 					<div
-						class="w-10 h-10 bg-emerald-600 rounded-full flex items-center justify-center flex-shrink-0"
+						class="w-9 h-9 bg-accent rounded-lg flex items-center justify-center flex-shrink-0"
 					>
-						<CheckCircle class="w-6 h-6 text-white" />
+						<CheckCircle class="w-5 h-5 text-accent-foreground" />
 					</div>
 					<div class="flex-1">
-						<h4 class="font-semibold text-emerald-900 dark:text-emerald-100">
-							Calendar Connected! 🎉
-						</h4>
-						<p class="text-sm text-emerald-700 dark:text-emerald-300">
-							Ready to analyze your schedule
-						</p>
+						<h4 class="font-semibold text-sm text-foreground">Calendar Connected!</h4>
+						<p class="text-xs text-muted-foreground">Ready to analyze your schedule</p>
 					</div>
 				</div>
 
 				<Button
 					variant="primary"
-					size="lg"
 					onclick={handleStartCalendarAnalysis}
 					disabled={calendarAnalysisStarted}
 					class="w-full shadow-ink pressable"
 				>
-					<Sparkles class="w-5 h-5 mr-2" />
+					<Sparkles class="w-4 h-4 mr-2" />
 					{calendarAnalysisStarted ? 'Analysis Running...' : 'Analyze My Calendar Now'}
 				</Button>
 			</div>
 		{:else if !hasCalendarConnected && !isCheckingConnection}
-			<!-- Calendar Not Connected - Value Proposition CTA -->
+			<!-- Calendar Not Connected - Compact CTA -->
 			<div
-				class="mb-8 p-6 bg-card rounded-xl border border-border shadow-ink tx tx-thread tx-weak"
+				class="mb-4 p-4 bg-card rounded-xl border border-border shadow-ink tx tx-thread tx-weak"
 			>
-				<!-- Header -->
-				<div class="flex items-start gap-4 mb-4">
+				<div class="flex items-start gap-3 mb-3">
 					<div
-						class="w-12 h-12 bg-accent rounded-xl flex items-center justify-center flex-shrink-0 shadow-ink"
+						class="w-10 h-10 bg-accent rounded-lg flex items-center justify-center flex-shrink-0 shadow-ink"
 					>
-						<Calendar class="w-6 h-6 text-accent-foreground" />
+						<Calendar class="w-5 h-5 text-accent-foreground" />
 					</div>
 					<div class="flex-1">
-						<h3 class="text-lg font-semibold text-foreground mb-2">
-							Let us analyze your calendar
+						<h3 class="text-sm font-semibold text-foreground mb-1">
+							Analyze your calendar
 						</h3>
-						<p class="text-sm text-muted-foreground leading-relaxed mb-3">
-							Connect your Google Calendar and we'll automatically create projects
-							based on your meetings and events. No manual entry needed!
+						<p class="text-xs text-muted-foreground leading-relaxed">
+							Connect Google Calendar to automatically create projects from your meetings and events.
 						</p>
-						<div
-							class="text-xs text-muted-foreground bg-muted rounded-lg p-3 border border-border"
-						>
-							<p class="font-medium mb-1 text-foreground">How it works:</p>
-							<p class="leading-relaxed">
-								Our AI scans your calendar for patterns — recurring meetings,
-								project-related events, and commitments — then intelligently groups
-								them into projects. This is perfect if you already have work
-								organized in your calendar and want to import that structure into
-								BuildOS without retyping everything.
-							</p>
-						</div>
 					</div>
 				</div>
 
-				<!-- Benefits -->
-				<div class="mb-5 space-y-2 text-sm text-muted-foreground">
-					<div class="flex items-center gap-2">
-						<CheckCircle class="w-4 h-4 text-emerald-600 flex-shrink-0" />
-						<span>Automatic project detection from recurring meetings</span>
-					</div>
-					<div class="flex items-center gap-2">
-						<CheckCircle class="w-4 h-4 text-emerald-600 flex-shrink-0" />
-						<span>Pre-filled tasks with meeting details and dates</span>
-					</div>
-					<div class="flex items-center gap-2">
-						<CheckCircle class="w-4 h-4 text-emerald-600 flex-shrink-0" />
-						<span>Smart scheduling around your existing commitments</span>
-					</div>
+				<!-- Benefits - Compact inline -->
+				<div class="mb-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+					<span class="flex items-center gap-1">
+						<CheckCircle class="w-3 h-3 text-accent flex-shrink-0" />
+						Auto-detect projects
+					</span>
+					<span class="flex items-center gap-1">
+						<CheckCircle class="w-3 h-3 text-accent flex-shrink-0" />
+						Pre-fill tasks
+					</span>
+					<span class="flex items-center gap-1">
+						<CheckCircle class="w-3 h-3 text-accent flex-shrink-0" />
+						Smart scheduling
+					</span>
 				</div>
-
-				<!-- Demo Preview (Optional Placeholder) -->
-				{#if ONBOARDING_V2_CONFIG.features.showPlaceholderAssets}
-					<div class="mb-4 bg-muted rounded-lg p-6 text-center border border-border">
-						<p class="text-muted-foreground text-xs mb-1">
-							🎥 [15-second demo: Calendar → Projects transformation]
-						</p>
-					</div>
-				{/if}
 
 				<!-- Primary CTA -->
 				<Button
 					variant="primary"
-					size="lg"
 					onclick={handleConnectCalendar}
 					disabled={isConnectingCalendar}
 					loading={isConnectingCalendar}
-					class="w-full mb-3 shadow-ink pressable"
+					class="w-full mb-2 shadow-ink pressable"
 				>
 					{#if isConnectingCalendar}
-						<Loader2 class="w-5 h-5 mr-2 animate-spin" />
 						Connecting...
 					{:else}
-						<Calendar class="w-5 h-5 mr-2" />
+						<Calendar class="w-4 h-4 mr-2" />
 						Connect Google Calendar
 					{/if}
 				</Button>
 
 				<!-- Secondary Action -->
 				<button
-					class="text-sm text-muted-foreground hover:text-foreground w-full text-center transition-colors"
+					class="text-xs text-muted-foreground hover:text-foreground w-full text-center transition-colors"
 					onclick={skipProjectCapture}
 					disabled={isConnectingCalendar}
 				>
-					Skip for now — I'll connect later
+					Skip — I'll connect later
 				</button>
 			</div>
 		{:else if hasCalendarConnected}
-			<!-- Calendar Connected - Ready to Analyze -->
+			<!-- Calendar Connected - Compact -->
 			<div
-				class="mb-8 p-6 bg-card rounded-xl border border-border shadow-ink tx tx-frame tx-weak"
+				class="mb-4 p-4 bg-card rounded-xl border border-border shadow-ink tx tx-frame tx-weak"
 			>
-				<div class="flex items-start gap-4 mb-4">
+				<div class="flex items-center gap-3 mb-3">
 					<div
-						class="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center flex-shrink-0 shadow-ink"
+						class="w-9 h-9 bg-accent rounded-lg flex items-center justify-center flex-shrink-0 shadow-ink"
 					>
-						<CheckCircle class="w-5 h-5 text-white" />
+						<CheckCircle class="w-5 h-5 text-accent-foreground" />
 					</div>
 					<div class="flex-1">
-						<h4 class="font-semibold text-foreground mb-2 flex items-center gap-2">
+						<h4 class="font-semibold text-sm text-foreground flex items-center gap-2">
 							Google Calendar Connected
-							<span
-								class="text-xs bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 rounded-full"
-							>
+							<span class="text-[10px] bg-accent/20 text-accent px-1.5 py-0.5 rounded-full font-medium">
 								Ready
 							</span>
 						</h4>
-						<p class="text-sm text-muted-foreground">
-							We can analyze your calendar and automatically suggest projects based on
-							your meetings and events.
+						<p class="text-xs text-muted-foreground">
+							Analyze to auto-suggest projects from your events
 						</p>
 					</div>
 				</div>
 
-				<Button
-					variant="secondary"
-					onclick={handleStartCalendarAnalysis}
-					disabled={calendarAnalysisStarted}
-					class="w-full sm:w-auto shadow-ink pressable"
-				>
-					<Calendar class="w-4 h-4 mr-2" />
-					{calendarAnalysisStarted ? 'Analysis Running...' : 'Analyze My Calendar'}
-				</Button>
+				<div class="flex items-center gap-2">
+					<Button
+						variant="secondary"
+						onclick={handleStartCalendarAnalysis}
+						disabled={calendarAnalysisStarted}
+						class="shadow-ink pressable"
+					>
+						<Calendar class="w-4 h-4 mr-1.5" />
+						{calendarAnalysisStarted ? 'Analyzing...' : 'Analyze Calendar'}
+					</Button>
 
-				{#if calendarAnalysisStarted}
-					<p class="text-xs text-accent mt-3 flex items-center gap-2">
-						<Loader2 class="w-3 h-3 animate-spin" />
-						Analysis in progress — Check notification panel (bottom-right corner)
-					</p>
-				{/if}
+					{#if calendarAnalysisStarted}
+						<span class="text-xs text-muted-foreground flex items-center gap-1">
+							<Loader2 class="w-3 h-3 animate-spin" />
+							Check notifications
+						</span>
+					{/if}
+				</div>
 			</div>
 
 			<!-- Divider -->
-			<div class="mb-6 flex items-center gap-3">
+			<div class="mb-3 flex items-center gap-2">
 				<div class="flex-1 h-px bg-border"></div>
-				<span class="text-sm text-muted-foreground font-medium">OR</span>
+				<span class="text-xs text-muted-foreground">OR</span>
 				<div class="flex-1 h-px bg-border"></div>
 			</div>
 
 			<!-- Manual Brain Dump Label -->
-			<h4 class="text-sm font-medium text-foreground mb-3">
-				Describe your projects manually
-			</h4>
+			<p class="text-xs font-medium text-muted-foreground mb-2">
+				Describe your projects manually:
+			</p>
 		{/if}
 
+		<!-- Brain Dump Input with Voice -->
+		<div class="mb-4">
+			<TextareaWithVoice
+				bind:this={textareaWithVoiceRef}
+				bind:value={projectInput}
+				bind:isRecording
+				bind:voiceError
+				placeholder="Tell me about your projects, goals, and what you're working on. For example: 'I'm launching a new product next month, need to coordinate marketing, finish the website, and hire a designer...'"
+				rows={5}
+				maxRows={8}
+				autoResize
+				disabled={isProcessing}
+				enableVoice={ONBOARDING_V2_CONFIG.features.enableVoiceInput}
+				showStatusRow
+				showLiveTranscriptPreview
+				idleHint="Type or use voice to describe your projects"
+				containerClass="bg-card border border-border rounded-xl shadow-ink-inner"
+				textareaClass="min-h-[120px] resize-none"
+			/>
+		</div>
+
 		<!-- Actions -->
-		<div class="flex items-center justify-between gap-4">
-			<!-- Left side: Recording Status or Skip Button -->
-			<div class="flex-1">
-				{#if isCurrentlyRecording}
-					<!-- Recording Status Badge -->
-					<div
-						class="inline-flex items-center gap-2 px-3.5 py-2 bg-red-50/80 dark:bg-red-900/20 border border-red-200/60 dark:border-red-800/40 rounded-full text-sm text-red-700 dark:text-red-300 tx tx-pulse tx-weak"
-						transition:fade={{ duration: 200 }}
-					>
-						<span class="font-medium">Recording</span>
-						<span class="tabular-nums opacity-90">
-							{formatDuration(recordingDuration)}
-						</span>
-						{#if isLiveTranscribing && canUseLiveTranscript}
-							<span
-								class="hidden sm:inline text-emerald-500 dark:text-emerald-400 text-xs font-semibold"
-							>
-								• Live
-							</span>
-						{/if}
-					</div>
+		<div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+			<!-- Skip Button -->
+			<Button
+				variant="ghost"
+				onclick={skipProjectCapture}
+				disabled={isProcessing || isRecording}
+				class="order-2 sm:order-1"
+			>
+				I'll add projects later
+			</Button>
+
+			<!-- Continue Button -->
+			<Button
+				variant="primary"
+				size="lg"
+				onclick={processBrainDump}
+				disabled={projectInput.trim().length < 20 || isProcessing || isRecording}
+				loading={isProcessing}
+				class="min-w-[160px] order-1 sm:order-2 shadow-ink pressable"
+			>
+				{#if isProcessing}
+					Creating Projects...
 				{:else}
-					<!-- Skip Button -->
-					<Button variant="ghost" onclick={skipProjectCapture} disabled={isProcessing}>
-						I'll add projects later
-					</Button>
+					Continue
+					<Sparkles class="w-5 h-5 ml-2" />
 				{/if}
-			</div>
-
-			<!-- Right side: Voice Button + Continue Button -->
-			<div class="flex items-center gap-3">
-				<!-- Voice Recording Button -->
-				{#if isVoiceSupported && ONBOARDING_V2_CONFIG.features.enableVoiceInput}
-					<button
-						onclick={toggleRecording}
-						disabled={voiceButtonState.disabled}
-						aria-label={voiceButtonState.ariaLabel}
-						class="relative w-12 h-12 p-0 rounded-full transition-all pressable {isCurrentlyRecording
-							? 'bg-red-600 hover:bg-red-700 text-white scale-110 animate-recording-pulse shadow-ink'
-							: 'bg-card hover:bg-muted border border-border hover:scale-105 shadow-ink text-muted-foreground'} disabled:opacity-50 disabled:cursor-not-allowed disabled:scale-100"
-					>
-						{#if voiceButtonState.isLoading}
-							<LoaderCircle class="w-5 h-5 mx-auto animate-spin" />
-						{:else if isCurrentlyRecording}
-							<Square class="w-4 h-4 mx-auto fill-current" />
-						{:else}
-							{@const Icon = voiceButtonState.icon}
-							<Icon class="w-5 h-5 mx-auto" />
-						{/if}
-					</button>
-				{/if}
-
-				<!-- Continue Button -->
-				<Button
-					variant="primary"
-					size="lg"
-					onclick={processBrainDump}
-					disabled={projectInput.trim().length < 20 ||
-						isProcessing ||
-						isCurrentlyRecording}
-					loading={isProcessing}
-					class="min-w-[140px] shadow-ink pressable"
-				>
-					{#if isProcessing}
-						<Loader2 class="w-5 h-5 mr-2 animate-spin" />
-						Creating Projects...
-					{:else}
-						Continue
-						<Sparkles class="w-5 h-5 ml-2" />
-					{/if}
-				</Button>
-			</div>
+			</Button>
 		</div>
 	{/if}
 </div>
-
-<style>
-	/* Recording pulse animation for voice button */
-	@keyframes recording-pulse {
-		0% {
-			box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.4);
-		}
-		50% {
-			box-shadow: 0 0 0 8px rgba(220, 38, 38, 0.15);
-		}
-		100% {
-			box-shadow: 0 0 0 12px rgba(220, 38, 38, 0);
-		}
-	}
-
-	:global(.animate-recording-pulse) {
-		animation: recording-pulse 2s infinite;
-	}
-</style>

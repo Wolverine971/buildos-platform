@@ -261,57 +261,6 @@ export class ProjectMigrationService {
 		return facets;
 	}
 
-	private buildProjectProps(
-		project: LegacyProjectRow,
-		facets: Facets,
-		context: MigrationServiceContext,
-		coreValues: Record<string, string | null>,
-		template?: TemplateClassificationSummary | null,
-		templateProps?: ProjectPropsLLMSummary | null
-	): Json {
-		const templateSummary = template
-			? {
-					...template,
-					creationPlanned: template.creationPlanned ?? null
-				}
-			: null;
-
-		return {
-			legacy_project_id: project.id,
-			legacy_slug: project.slug,
-			legacy_status: project.status,
-			tags: project.tags ?? [],
-			executive_summary: project.executive_summary,
-			context: project.context,
-			core_values: coreValues,
-			calendar: {
-				color_id: project.calendar_color_id,
-				settings: project.calendar_settings,
-				sync_enabled: project.calendar_sync_enabled
-			},
-			source: project.source,
-			source_metadata: project.source_metadata,
-			migration: {
-				run_id: context.runId,
-				batch_id: context.batchId,
-				dry_run: context.dryRun,
-				migrated_at: context.now
-			},
-			facets,
-			template_summary: templateSummary,
-			template_fields: templateProps?.props ?? null,
-			template_notes: templateProps?.notes ?? null,
-			template_confidence: templateProps?.confidence ?? null,
-			template_facets: templateProps?.facets ?? null,
-			legacy_snapshot: {
-				name: project.name,
-				description: project.description,
-				executive_summary: project.executive_summary,
-				tags: project.tags ?? [],
-				status: project.status
-			}
-		};
-	}
 
 	private extractCoreValues(project: LegacyProjectRow): Record<string, string | null> {
 		return {
@@ -325,63 +274,6 @@ export class ProjectMigrationService {
 			core_reality_understanding: project.core_reality_understanding,
 			core_trust_safeguards: project.core_trust_safeguards
 		};
-	}
-
-	private async createContextDocument(params: {
-		project: LegacyProjectRow;
-		ontoProjectId: string;
-		actorId: string;
-		context: MigrationServiceContext;
-		coreValues: Record<string, string | null>;
-	}): Promise<{ documentId: string | null; contextMarkdown: string | null }> {
-		const markdown = params.project.context?.trim();
-		if (!markdown) {
-			return { documentId: null, contextMarkdown: null };
-		}
-
-		if (params.context.dryRun) {
-			return { documentId: null, contextMarkdown: markdown };
-		}
-
-		const { data, error } = await this.client
-			.from('onto_documents')
-			.insert({
-				project_id: params.ontoProjectId,
-				title: `${params.project.name} – Legacy Context`,
-				type_key: CONTEXT_DOCUMENT_TYPE,
-				state_key: 'published',
-				props: {
-					source: 'legacy_project_context',
-					body_markdown: markdown,
-					legacy_project_id: params.project.id,
-					migration_run_id: params.context.runId,
-					migrated_at: params.context.now,
-					core_values: params.coreValues
-				},
-				created_by: params.actorId
-			})
-			.select('id')
-			.single();
-
-		if (error || !data) {
-			console.error('[ProjectMigration] Failed to persist context document', error);
-			return { documentId: null, contextMarkdown: markdown };
-		}
-
-		return { documentId: data.id, contextMarkdown: markdown };
-	}
-
-	private mapStatusToState(status: LegacyProjectRow['status']): string {
-		switch (status) {
-			case 'active':
-				return 'execution';
-			case 'completed':
-				return 'complete';
-			case 'planning':
-				return 'planning';
-			default:
-				return 'discovery';
-		}
 	}
 
 	/**

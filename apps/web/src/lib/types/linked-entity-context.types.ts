@@ -12,7 +12,14 @@ import type { OntologyEntityType } from './agent-chat-enhancement';
  * Entity kinds that can be linked via edges.
  * Matches the EntityKind from linked-entities component.
  */
-export type LinkedEntityKind = 'task' | 'plan' | 'goal' | 'milestone' | 'document' | 'output';
+export type LinkedEntityKind =
+	| 'task'
+	| 'plan'
+	| 'goal'
+	| 'milestone'
+	| 'document'
+	| 'output'
+	| 'risk';
 
 /**
  * A single linked entity with context for chat.
@@ -68,6 +75,7 @@ export interface EntityLinkedContext {
 		milestones: LinkedEntityContext[];
 		documents: LinkedEntityContext[];
 		outputs: LinkedEntityContext[];
+		risks: LinkedEntityContext[];
 	};
 
 	/** Summary counts (total, not just shown) */
@@ -78,6 +86,7 @@ export interface EntityLinkedContext {
 		milestones: number;
 		documents: number;
 		outputs: number;
+		risks: number;
 		total: number;
 	};
 

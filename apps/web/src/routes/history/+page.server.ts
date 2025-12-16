@@ -59,6 +59,41 @@ export interface HistoryItem {
 /** Type filter options */
 type TypeFilter = 'all' | 'braindumps' | 'chats';
 
+const DEFAULT_CHAT_TITLES = [
+	'Agent Session',
+	'Project Assistant',
+	'Task Assistant',
+	'Calendar Assistant',
+	'General Assistant',
+	'New Project Creation',
+	'Project Audit',
+	'Project Forecast',
+	'Task Update',
+	'Daily Brief Settings',
+	'Chat session'
+].map((title) => title.toLowerCase());
+
+const isPlaceholderChatTitle = (title?: string | null) => {
+	const normalized = title?.trim().toLowerCase();
+	if (!normalized) return true;
+	return DEFAULT_CHAT_TITLES.includes(normalized);
+};
+
+const resolveChatTitle = (session: ChatSession): string => {
+	const rawTitle = session.title?.trim() || '';
+	const autoTitle = session.auto_title?.trim() || '';
+
+	if (rawTitle && !isPlaceholderChatTitle(rawTitle)) {
+		return rawTitle;
+	}
+
+	if (autoTitle) {
+		return autoTitle;
+	}
+
+	return rawTitle || 'Untitled Chat';
+};
+
 export const load: PageServerLoad = async ({ locals, url }) => {
 	const { safeGetSession, supabase } = locals;
 	const { user } = await safeGetSession();
@@ -169,7 +204,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 				(c): HistoryItem => ({
 					id: c.id,
 					type: 'chat_session',
-					title: c.title || c.auto_title || 'Untitled Chat',
+					title: resolveChatTitle(c),
 					preview: c.summary || 'No summary available',
 					topics: c.chat_topics || [],
 					status: c.status,
@@ -212,7 +247,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 					selectedItem = {
 						id: found.id,
 						type: 'chat_session',
-						title: found.title || found.auto_title || 'Untitled Chat',
+						title: resolveChatTitle(found),
 						preview: found.summary || 'No summary available',
 						topics: found.chat_topics || [],
 						status: found.status,

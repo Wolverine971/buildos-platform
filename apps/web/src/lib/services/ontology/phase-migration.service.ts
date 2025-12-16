@@ -11,7 +11,7 @@
  */
 import type { TypedSupabaseClient } from '@buildos/supabase-client';
 import type { Database } from '@buildos/shared-types';
-import type { Facets } from '$lib/types/onto';
+import type { Facets, PlanState } from '$lib/types/onto';
 import type {
 	MigrationServiceContext,
 	MigrationStatus,
@@ -63,7 +63,7 @@ export class PhaseMigrationService {
 	) {
 		// Initialize enhanced migrator if LLM service provided
 		if (llmService) {
-			this.enhancedMigrator = new EnhancedPlanMigrator(client, llmService);
+			this.enhancedMigrator = new EnhancedPlanMigrator(client);
 		}
 	}
 
@@ -273,16 +273,20 @@ export class PhaseMigrationService {
 		return counts;
 	}
 
-	private determinePhaseState(phase: LegacyPhaseRow): string {
-		if (new Date(phase.end_date) < new Date()) {
-			return 'complete';
+	private determinePhaseState(phase: LegacyPhaseRow): PlanState {
+		const now = new Date();
+		const startDate = phase.start_date ? new Date(phase.start_date) : null;
+		const endDate = phase.end_date ? new Date(phase.end_date) : null;
+
+		if (endDate && !Number.isNaN(endDate.getTime()) && endDate < now) {
+			return 'completed';
 		}
 
-		if (new Date(phase.start_date) <= new Date()) {
-			return 'execution';
+		if (startDate && !Number.isNaN(startDate.getTime()) && startDate <= now) {
+			return 'active';
 		}
 
-		return 'planning';
+		return 'draft';
 	}
 
 	private determinePhaseScale(taskCount: number): 'micro' | 'small' | 'medium' | 'large' {
@@ -302,6 +306,21 @@ export class PhaseMigrationService {
 		}
 
 		return 'planning';
+	}
+
+	private normalizePlanState(state: string | null | undefined): PlanState {
+		const normalized = state?.trim().toLowerCase();
+		switch (normalized) {
+			case 'active':
+			case 'execution':
+				return 'active';
+			case 'completed':
+			case 'complete':
+			case 'done':
+				return 'completed';
+			default:
+				return 'draft';
+		}
 	}
 
 	private async fetchExistingPhaseMappings(phaseIds: string[]): Promise<Map<string, string>> {
@@ -367,9 +386,9 @@ export class PhaseMigrationService {
 				ontoProjectId: params.ontoProjectId,
 				actorId: params.actorId,
 				typeKey: plan.type_key ?? PLAN_TYPE_KEY,
-				stateKey:
-					plan.state_key ??
-					(legacyPhase ? this.determinePhaseState(legacyPhase) : 'planning'),
+				stateKey: this.normalizePlanState(
+					plan.state_key ?? (legacyPhase ? this.determinePhaseState(legacyPhase) : null)
+				),
 				name: plan.name || legacyPhase?.name || `Plan ${params.phasePlans.length + 1}`,
 				taskCount,
 				projectFacets: params.projectFacets,
@@ -486,7 +505,7 @@ export class PhaseMigrationService {
 		ontoProjectId: string;
 		actorId: string;
 		typeKey: string;
-		stateKey: string;
+		stateKey: PlanState;
 		name: string;
 		taskCount: number;
 		projectFacets?: Facets;

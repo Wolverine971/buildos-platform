@@ -653,9 +653,10 @@
 	{/if}
 
 	<!-- Chart view tooltip - Mobile Responsive -->
+	<!-- Note: !absolute needed to override AdminShell's `.admin-panel > *` rule which sets position:relative -->
 	{#if hoveredDay}
 		<div
-			class="absolute z-10 px-2 sm:px-3 py-1 sm:py-2 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded-lg shadow-lg pointer-events-none transform -translate-x-1/2 -translate-y-full"
+			class="!absolute z-50 px-2 sm:px-3 py-1 sm:py-2 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded-lg shadow-lg pointer-events-none transform -translate-x-1/2 -translate-y-full"
 			style="left: {hoveredDay.x}px; top: {hoveredDay.y}px;"
 		>
 			<div class="font-medium text-xs sm:text-sm">
@@ -677,7 +678,7 @@
 	<!-- Graph view tooltip - Mobile Responsive -->
 	{#if hoveredPoint}
 		<div
-			class="absolute z-10 px-2 sm:px-3 py-1 sm:py-2 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded-lg shadow-lg pointer-events-none transform -translate-x-1/2 -translate-y-full"
+			class="!absolute z-50 px-2 sm:px-3 py-1 sm:py-2 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded-lg shadow-lg pointer-events-none transform -translate-x-1/2 -translate-y-full"
 			style="left: {hoveredPoint.x}px; top: {hoveredPoint.y}px;"
 		>
 			<div class="font-medium text-xs sm:text-sm">
@@ -699,7 +700,7 @@
 	<!-- Signup tooltip - Mobile Responsive -->
 	{#if hoveredSignup}
 		<div
-			class="absolute z-10 px-2 sm:px-3 py-1 sm:py-2 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded-lg shadow-lg pointer-events-none transform -translate-x-1/2 -translate-y-full"
+			class="!absolute z-50 px-2 sm:px-3 py-1 sm:py-2 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded-lg shadow-lg pointer-events-none transform -translate-x-1/2 -translate-y-full"
 			style="left: {hoveredSignup.x}px; top: {hoveredSignup.y}px;"
 		>
 			<div class="font-medium text-xs sm:text-sm">

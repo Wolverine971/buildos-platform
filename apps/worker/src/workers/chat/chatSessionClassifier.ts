@@ -31,6 +31,29 @@ interface ChatMessage {
 	created_at: string | null;
 }
 
+// Titles we consider placeholders until the classifier generates something more descriptive
+const DEFAULT_SESSION_TITLES = new Set(
+	[
+		'Agent Session',
+		'Project Assistant',
+		'Task Assistant',
+		'Calendar Assistant',
+		'General Assistant',
+		'New Project Creation',
+		'Project Audit',
+		'Project Forecast',
+		'Task Update',
+		'Daily Brief Settings',
+		'Chat session' // Sanitized fallback title
+	].map((title) => title.toLowerCase())
+);
+
+const isPlaceholderTitle = (title?: string | null) => {
+	const normalized = title?.trim().toLowerCase();
+	if (!normalized) return true;
+	return DEFAULT_SESSION_TITLES.has(normalized);
+};
+
 /**
  * System prompt for chat classification
  */
@@ -109,12 +132,15 @@ export async function processChatClassificationJob(job: LegacyJob<ChatClassifica
 			);
 		}
 
+		const hasPlaceholderTitle = isPlaceholderTitle(session.title);
+
 		// Skip if already classified (has auto_title, topics, and summary)
 		if (
 			session.auto_title &&
 			session.chat_topics &&
 			session.chat_topics.length > 0 &&
-			session.summary
+			session.summary &&
+			!hasPlaceholderTitle
 		) {
 			console.log(`⏭️  Session ${validatedData.sessionId} already classified, skipping`);
 			await updateJobStatus(job.id, 'completed', 'chat_classification');
@@ -142,14 +168,21 @@ export async function processChatClassificationJob(job: LegacyJob<ChatClassifica
 			const defaultSummary = 'A brief conversation captured for reference.';
 
 			// Update with default values
+			const updatePayload: Record<string, any> = {
+				auto_title: 'Quick chat',
+				chat_topics: ['general'],
+				summary: defaultSummary,
+				updated_at: new Date().toISOString()
+			};
+
+			// Promote the auto title if the existing title is just a placeholder
+			if (hasPlaceholderTitle) {
+				updatePayload.title = 'Quick chat';
+			}
+
 			const { error: updateError } = await supabase
 				.from('chat_sessions')
-				.update({
-					auto_title: 'Quick chat',
-					chat_topics: ['general'],
-					summary: defaultSummary,
-					updated_at: new Date().toISOString()
-				})
+				.update(updatePayload)
 				.eq('id', validatedData.sessionId);
 
 			if (updateError) {
@@ -199,15 +232,22 @@ export async function processChatClassificationJob(job: LegacyJob<ChatClassifica
 		console.log(`📝 Summary: ${summary.slice(0, 100)}${summary.length > 100 ? '...' : ''}`);
 
 		// Update the chat session with classification results
+		const updatePayload: Record<string, any> = {
+			// Preserve any user-provided title; only set the auto title
+			auto_title: title,
+			chat_topics: topics,
+			summary: summary,
+			updated_at: new Date().toISOString()
+		};
+
+		// If the stored title is just a placeholder, promote the classified title
+		if (hasPlaceholderTitle) {
+			updatePayload.title = title;
+		}
+
 		const { error: updateError } = await supabase
 			.from('chat_sessions')
-			.update({
-				// Preserve any user-provided title; only set the auto title
-				auto_title: title,
-				chat_topics: topics,
-				summary: summary,
-				updated_at: new Date().toISOString()
-			})
+			.update(updatePayload)
 			.eq('id', validatedData.sessionId);
 
 		if (updateError) {

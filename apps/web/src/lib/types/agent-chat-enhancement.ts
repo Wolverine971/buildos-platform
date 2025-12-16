@@ -55,7 +55,8 @@ export type OntologyEntityType =
 	| 'plan'
 	| 'document'
 	| 'output'
-	| 'milestone';
+	| 'milestone'
+	| 'risk';
 
 type OntologyEntityRecordMap = {
 	project: Database['public']['Tables']['onto_projects']['Row'];
@@ -65,6 +66,7 @@ type OntologyEntityRecordMap = {
 	document: Database['public']['Tables']['onto_documents']['Row'];
 	output: Database['public']['Tables']['onto_outputs']['Row'];
 	milestone: Database['public']['Tables']['onto_milestones']['Row'];
+	risk: Database['public']['Tables']['onto_risks']['Row'];
 };
 
 type OntologyEntityCollectionMap = {
@@ -75,6 +77,7 @@ type OntologyEntityCollectionMap = {
 	documents: OntologyEntityRecordMap['document'][];
 	outputs: OntologyEntityRecordMap['output'][];
 	milestones: OntologyEntityRecordMap['milestone'][];
+	risks: OntologyEntityRecordMap['risk'][];
 };
 
 export type OntologyContextEntities = Partial<

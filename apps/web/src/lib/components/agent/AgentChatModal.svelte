@@ -168,6 +168,46 @@
 		return projectFocus ?? defaultProjectFocus;
 	});
 
+	// Chat session title helpers - avoid showing placeholder titles when auto titles exist
+	const DEFAULT_CHAT_SESSION_TITLES = [
+		'Agent Session',
+		'Project Assistant',
+		'Task Assistant',
+		'Calendar Assistant',
+		'General Assistant',
+		'New Project Creation',
+		'Project Audit',
+		'Project Forecast',
+		'Task Update',
+		'Daily Brief Settings',
+		'Chat session'
+	].map((title) => title.toLowerCase());
+
+	function isPlaceholderSessionTitle(title?: string | null): boolean {
+		const normalized = title?.trim().toLowerCase();
+		if (!normalized) return true;
+		return DEFAULT_CHAT_SESSION_TITLES.includes(normalized);
+	}
+
+	function deriveSessionTitle(session: ChatSession | null | undefined): string | null {
+		if (!session) return null;
+		const rawTitle = session.title?.trim() ?? '';
+		const autoTitle = session.auto_title?.trim() ?? '';
+
+		// Prefer user/custom titles that are not placeholders
+		if (rawTitle && !isPlaceholderSessionTitle(rawTitle)) {
+			return rawTitle;
+		}
+
+		// Fall back to auto-generated title when the stored title is generic
+		if (autoTitle) {
+			return autoTitle;
+		}
+
+		// As a last resort return whatever raw title exists (even if placeholder)
+		return rawTitle || null;
+	}
+
 	// Conversation state
 	let messages = $state<UIMessage[]>([]);
 	let currentSession = $state<ChatSession | null>(null);
@@ -1003,7 +1043,8 @@
 				session.context_type === 'general' ? 'global' : session.context_type;
 			selectedContextType = contextType as ChatContextType;
 			selectedEntityId = session.entity_id || undefined;
-			selectedContextLabel = session.title || session.auto_title || 'Resumed Chat';
+			const sessionTitle = deriveSessionTitle(session);
+			selectedContextLabel = sessionTitle || 'Resumed Chat';
 
 			const metadataFocus = normalizeProjectFocusClient(
 				(session.agent_metadata as { focus?: ProjectFocus | null })?.focus
@@ -1778,6 +1819,7 @@
 				// Session hydration
 				if (event.session) {
 					currentSession = event.session;
+					const sessionTitle = deriveSessionTitle(event.session);
 					const sessionContextType =
 						(event.session.context_type as ChatContextType) ?? 'global';
 					const normalizedSessionContext =
@@ -1786,9 +1828,13 @@
 						selectedContextType = normalizedSessionContext;
 						selectedEntityId = event.session.entity_id ?? undefined;
 						selectedContextLabel =
-							CONTEXT_DESCRIPTORS[normalizedSessionContext]?.title ??
+							sessionTitle ||
+							CONTEXT_DESCRIPTORS[normalizedSessionContext]?.title ||
 							selectedContextLabel;
 						showContextSelection = false;
+					} else if (sessionTitle) {
+						// Update the label when the session already exists but now has a better title
+						selectedContextLabel = sessionTitle;
 					}
 
 					if (
@@ -1798,7 +1844,7 @@
 					) {
 						projectFocus = buildProjectWideFocus(
 							event.session.entity_id,
-							event.session.title ?? selectedContextLabel
+							sessionTitle ?? selectedContextLabel
 						);
 					}
 

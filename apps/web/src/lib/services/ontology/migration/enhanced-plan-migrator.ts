@@ -19,7 +19,7 @@ import type {
 	MigrationContext,
 	EnhancedPlanMigrationResult
 } from './enhanced-migration.types';
-import type { Facets } from '$lib/types/onto';
+import type { Facets, PlanState } from '$lib/types/onto';
 import { upsertLegacyMapping } from '../legacy-mapping.service';
 
 export class EnhancedPlanMigrator {
@@ -137,21 +137,19 @@ export class EnhancedPlanMigrator {
 	// PRIVATE HELPER METHODS
 	// ============================================
 
-	private determinePhaseState(phase: LegacyPhase): string {
+	private determinePhaseState(phase: LegacyPhase): PlanState {
 		// Infer state from dates
 		const now = new Date();
 		const startDate = phase.start_date ? new Date(phase.start_date) : null;
 		const endDate = phase.end_date ? new Date(phase.end_date) : null;
 
 		// If we have dates, use them to determine state
-		if (startDate && endDate) {
-			if (now < startDate) {
-				return 'draft'; // Future phase
-			} else if (now >= startDate && now <= endDate) {
-				return 'active'; // Current phase
-			} else {
-				return 'complete'; // Past phase
-			}
+		if (endDate && !Number.isNaN(endDate.getTime()) && endDate < now) {
+			return 'completed';
+		}
+
+		if (startDate && !Number.isNaN(startDate.getTime()) && startDate <= now) {
+			return 'active'; // Current phase
 		}
 
 		// If no dates, check order

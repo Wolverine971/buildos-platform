@@ -19,7 +19,7 @@ import type {
 	MigrationContext,
 	EnhancedProjectMigrationResult
 } from './enhanced-migration.types';
-import type { Facets } from '$lib/types/onto';
+import type { Facets, ProjectState } from '$lib/types/onto';
 import { ensureActorId } from '../ontology-projects.service';
 import { upsertLegacyMapping } from '../legacy-mapping.service';
 
@@ -177,18 +177,24 @@ export class EnhancedProjectMigrator {
 		return facets;
 	}
 
-	private mapStatusToState(status: LegacyProject['status']): string {
+	private mapStatusToState(status: LegacyProject['status']): ProjectState {
 		switch (status) {
 			case 'active':
-				return 'execution';
+				return 'active';
 			case 'completed':
-				return 'complete';
+				return 'completed';
 			case 'planning':
 				return 'planning';
+			case 'execution':
+				return 'active';
 			case 'archived':
-				return 'archived';
+				return 'cancelled';
+			case 'cancelled':
+				return 'cancelled';
+			case 'complete':
+				return 'completed';
 			default:
-				return 'discovery';
+				return 'planning';
 		}
 	}
 }
