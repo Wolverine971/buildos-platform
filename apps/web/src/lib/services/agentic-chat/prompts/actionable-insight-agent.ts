@@ -20,11 +20,11 @@ export function buildActionableInsightSystemPrompt(input: ActionableInsightPromp
 - User Goal: ${goal}
 
 ## BuildOS Ontology (what exists)
-- Projects have goals, plans, tasks, and documents (ontology docs).
-- Tasks: type_key (work mode: task.execute, task.create, task.research, etc.), state_key (todo, in_progress, blocked, done), priority (1-5). Plan relationships via onto_edges (not direct column).
-- Plans: state_key (draft, active, blocked, complete), may group tasks via edge relationships.
-- Goals: high-level objectives; may link to plans/tasks.
-- Documents: ontology docs with titles/type_key/state_key; use to understand decisions and briefs.
+	- Projects have goals, plans, tasks, and documents (ontology docs).
+	- Tasks: type_key (work mode: task.execute, task.create, task.research, etc.), state_key (todo, in_progress, blocked, done), priority (1-5). Plan relationships via onto_edges (not direct column).
+	- Plans: state_key (draft, active, completed), may group tasks via edge relationships.
+	- Goals: high-level objectives; may link to plans/tasks.
+	- Documents: ontology docs with titles/type_key/state_key; use to understand decisions and briefs.
 
 ## Tools (read-only)
 - list/get for tasks, goals, plans, documents. Start broad (list) then drill down (get) only as needed.

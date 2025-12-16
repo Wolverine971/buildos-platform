@@ -55,7 +55,17 @@ export class OntologyContextLoader {
 	private cache = new Map<string, { data: OntologyContext; timestamp: number }>();
 	private readonly CACHE_TTL = 60000; // 1 minute cache
 
-	constructor(private supabase: SupabaseClient<Database>) {}
+	constructor(
+		private supabase: SupabaseClient<Database>,
+		private actorId?: string
+	) {}
+
+	private requireActorId(): string {
+		if (!this.actorId) {
+			throw new Error('Actor ID is required to load ontology context');
+		}
+		return this.actorId;
+	}
 
 	private static readonly ELEMENT_TABLE_MAP: ElementTableNameMap = {
 		task: 'onto_tasks',
@@ -106,12 +116,14 @@ export class OntologyContextLoader {
 	 * Load global context - overview of all projects
 	 */
 	async loadGlobalContext(): Promise<OntologyContext> {
+		const actorId = this.requireActorId();
 		console.log('[OntologyLoader] Loading global context');
 
 		// Get recent projects
 		const { data: projects, error: projectError } = await this.supabase
 			.from('onto_projects')
 			.select('*')
+			.eq('created_by', actorId)
 			.limit(10)
 			.order('created_at', { ascending: false });
 
@@ -122,7 +134,8 @@ export class OntologyContextLoader {
 		// Get total counts
 		const { count: totalProjects } = await this.supabase
 			.from('onto_projects')
-			.select('*', { count: 'exact', head: true });
+			.select('*', { count: 'exact', head: true })
+			.eq('created_by', actorId);
 
 		// Get entity type counts
 		const entityCounts = await this.getGlobalEntityCounts();
@@ -146,6 +159,7 @@ export class OntologyContextLoader {
 	 * Load project-specific context with relationships
 	 */
 	async loadProjectContext(projectId: string): Promise<OntologyContext> {
+		const actorId = this.requireActorId();
 		console.log('[OntologyLoader] Loading project context for:', projectId);
 
 		// Check cache first
@@ -161,11 +175,12 @@ export class OntologyContextLoader {
 			.from('onto_projects')
 			.select('*')
 			.eq('id', projectId)
+			.eq('created_by', actorId)
 			.single();
 
 		if (error || !project) {
 			console.error('[OntologyLoader] Failed to load project:', error);
-			throw new Error(`Project ${projectId} not found`);
+			throw new Error(`Project ${projectId} not found or access denied`);
 		}
 
 		// Extract facets from props
@@ -222,6 +237,7 @@ export class OntologyContextLoader {
 		elementType: ElementType,
 		elementId: string
 	): Promise<OntologyContext> {
+		await this.assertEntityOwnership(elementId);
 		console.log('[OntologyLoader] Loading element context:', elementType, elementId);
 
 		// Load the element
@@ -273,6 +289,8 @@ export class OntologyContextLoader {
 		elementType: 'task' | 'goal' | 'plan' | 'document' | 'output' | 'milestone',
 		elementId: string
 	): Promise<OntologyContext> {
+		await this.assertProjectOwnership(projectId);
+		await this.assertEntityOwnership(elementId);
 		console.log('[OntologyLoader] Loading combined context', {
 			projectId,
 			elementType,
@@ -357,6 +375,7 @@ export class OntologyContextLoader {
 		entityName: string,
 		options: LoadLinkedEntitiesOptions = {}
 	): Promise<EntityLinkedContext> {
+		await this.assertEntityOwnership(entityId);
 		const {
 			maxPerType = 3,
 			includeDescriptions = false,
@@ -605,13 +624,15 @@ export class OntologyContextLoader {
 		id: string
 	): Promise<ElementRowMap[T] | null> {
 		const table = OntologyContextLoader.ELEMENT_TABLE_MAP[type];
+		const actorId = this.actorId;
 
 		try {
-			const { data, error } = await this.supabase
-				.from(table)
-				.select('*')
-				.eq('id', id)
-				.single();
+			let query = this.supabase.from(table).select('*').eq('id', id);
+			if (actorId) {
+				query = query.eq('created_by', actorId as any);
+			}
+
+			const { data, error } = await query.single();
 
 			if (error) {
 				console.error(`[OntologyLoader] Failed to load ${type}:`, error);
@@ -681,6 +702,82 @@ export class OntologyContextLoader {
 			edges: relationships,
 			hierarchy_level: 1
 		};
+	}
+
+	private async assertProjectOwnership(projectId: string): Promise<void> {
+		const actorId = this.requireActorId();
+		const { data, error } = await this.supabase
+			.from('onto_projects')
+			.select('id')
+			.eq('id', projectId)
+			.eq('created_by', actorId)
+			.maybeSingle();
+
+		if (error) {
+			throw error;
+		}
+
+		if (!data) {
+			throw new Error('Project not found or access denied');
+		}
+	}
+
+	private async assertEntityOwnership(entityId: string): Promise<void> {
+		const actorId = this.requireActorId();
+
+		const { data: project, error: projectError } = await this.supabase
+			.from('onto_projects')
+			.select('id')
+			.eq('id', entityId)
+			.eq('created_by', actorId)
+			.maybeSingle();
+
+		if (projectError) {
+			throw projectError;
+		}
+		if (project) {
+			return;
+		}
+
+		const tables = [
+			'onto_tasks',
+			'onto_plans',
+			'onto_goals',
+			'onto_outputs',
+			'onto_documents',
+			'onto_milestones'
+		];
+
+		for (const table of tables) {
+			const { data, error } = await this.supabase
+				.from(table as any)
+				.select('project_id, created_by')
+				.eq('id', entityId)
+				.maybeSingle();
+
+			if (error) {
+				throw error;
+			}
+
+			if (!data) {
+				continue;
+			}
+
+			if ((data as any).created_by && (data as any).created_by !== actorId) {
+				throw new Error('Entity not found or access denied');
+			}
+
+			if ((data as any).created_by === actorId) {
+				return;
+			}
+
+			if ((data as any).project_id) {
+				await this.assertProjectOwnership((data as any).project_id);
+				return;
+			}
+		}
+
+		throw new Error('Entity not found or access denied');
 	}
 
 	/**
@@ -811,6 +908,7 @@ export class OntologyContextLoader {
 	 * Get global entity counts
 	 */
 	private async getGlobalEntityCounts(): Promise<Record<string, number>> {
+		const actorId = this.requireActorId();
 		const counts: Record<string, number> = {};
 
 		const tableMappings: Array<{ table: keyof Database['public']['Tables']; key: string }> = [
@@ -824,10 +922,15 @@ export class OntologyContextLoader {
 		];
 
 		for (const { table, key } of tableMappings) {
-			const { count } = await this.supabase
-				.from(table)
-				.select('*', { count: 'exact', head: true });
-			counts[key] = count || 0;
+			try {
+				const { count } = await this.supabase
+					.from(table)
+					.select('*', { count: 'exact', head: true })
+					.eq('created_by', actorId);
+				counts[key] = count || 0;
+			} catch (error) {
+				console.error('[OntologyLoader] Failed to count entities', { table, error });
+			}
 		}
 
 		return counts;

@@ -103,7 +103,7 @@
 					name: project.name ?? 'Untitled project',
 					description: project.description ?? null,
 					typeKey: project.type_key ?? project.typeKey ?? 'project.generic',
-					stateKey: project.state_key ?? project.stateKey ?? 'draft',
+					stateKey: project.state_key ?? project.stateKey ?? 'planning',
 					facetContext: project.facet_context ?? project.facetContext ?? null,
 					facetScale: project.facet_scale ?? project.facetScale ?? null,
 					facetStage: project.facet_stage ?? project.facetStage ?? null,

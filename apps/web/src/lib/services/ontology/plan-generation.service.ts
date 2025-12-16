@@ -162,7 +162,7 @@ ${omittedNote}
 
 ### Output Requirements
 Return JSON: {"plans": Array<Plan>, "reasoning": string?, "confidence": number?}
-Each Plan requires: legacy_phase_id|null, name, summary (<=3 sentences), type_key, state_key (planning|execution|complete|draft), start_date|null, end_date|null, order|null, confidence (0-1).
+Each Plan requires: legacy_phase_id|null, name, summary (<=3 sentences), type_key, state_key (draft|active|completed), start_date|null, end_date|null, order|null, confidence (0-1).
 Ensure plans collectively cover the project's execution narrative using the provided context.`;
 	}
 

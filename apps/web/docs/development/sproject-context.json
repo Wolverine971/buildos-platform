@@ -806,7 +806,13 @@
 			"file": "src/lib/components/ontology/linked-entities/linked-entities.service.ts",
 			"type": "component",
 			"components": [],
-			"exports": ["fetchLinkedEntities", "createEdges", "deleteEdge", "filterEntities"]
+			"exports": [
+				"fetchLinkedEntities",
+				"fetchAvailableEntities",
+				"createEdges",
+				"deleteEdge",
+				"filterEntities"
+			]
 		},
 		{
 			"file": "src/lib/components/ontology/linked-entities/linked-entities.types.ts",

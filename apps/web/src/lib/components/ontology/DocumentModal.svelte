@@ -10,7 +10,7 @@
 	import RichMarkdownEditor from '$lib/components/ui/RichMarkdownEditor.svelte';
 	import Badge from '$lib/components/ui/Badge.svelte';
 	import LinkedEntities from './linked-entities/LinkedEntities.svelte';
-	import type { EntityKind } from './linked-entities/linked-entities.types';
+	import type { EntityKind, LinkedEntitiesResult } from './linked-entities/linked-entities.types';
 	import TaskEditModal from './TaskEditModal.svelte';
 	import PlanEditModal from './PlanEditModal.svelte';
 	import GoalEditModal from './GoalEditModal.svelte';
@@ -44,6 +44,8 @@
 	let deleting = $state(false);
 	let deleteModalOpen = $state(false);
 	let formError = $state<string | null>(null);
+	let linkedEntities = $state<LinkedEntitiesResult | undefined>(undefined);
+	let hasChanges = $state(false);
 
 	let title = $state('');
 	let typeKey = $state('');
@@ -111,7 +113,8 @@
 		try {
 			loading = true;
 			formError = null;
-			const response = await fetch(`/api/onto/documents/${id}`);
+			// Use /full endpoint for optimized single-request loading
+			const response = await fetch(`/api/onto/documents/${id}/full`);
 			const payload = await response.json().catch(() => null);
 
 			if (!response.ok) {
@@ -119,6 +122,7 @@
 			}
 
 			const document = payload?.data?.document;
+			linkedEntities = payload?.data?.linkedEntities;
 			if (!document) {
 				throw new Error('Document not found');
 			}
@@ -303,10 +307,15 @@
 		selectedTaskIdForModal = null;
 		selectedPlanIdForModal = null;
 		selectedGoalIdForModal = null;
-		// Refresh document data to get updated linked entities
-		if (documentId) {
+		// Smart refresh: only reload if links were changed
+		if (hasChanges && documentId) {
 			loadDocument(documentId);
+			hasChanges = false;
 		}
+	}
+
+	function handleLinksChanged() {
+		hasChanges = true;
 	}
 </script>
 
@@ -475,8 +484,9 @@
 											sourceId={documentId}
 											sourceKind="document"
 											{projectId}
+											initialLinkedEntities={linkedEntities}
 											onEntityClick={handleLinkedEntityClick}
-											onLinksChanged={() => loadDocument(documentId)}
+											onLinksChanged={handleLinksChanged}
 										/>
 									</div>
 								{/if}
@@ -544,8 +554,9 @@
 										sourceId={documentId}
 										sourceKind="document"
 										{projectId}
+										initialLinkedEntities={linkedEntities}
 										onEntityClick={handleLinkedEntityClick}
-										onLinksChanged={() => loadDocument(documentId)}
+										onLinksChanged={handleLinksChanged}
 									/>
 								</div>
 							{/if}

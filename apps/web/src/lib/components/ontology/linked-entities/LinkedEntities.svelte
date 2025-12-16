@@ -1,7 +1,11 @@
 <!-- apps/web/src/lib/components/ontology/linked-entities/LinkedEntities.svelte -->
 <!--
 	Self-contained component for displaying and managing entity relationships.
-	Fetches its own data and handles loading states with skeleton UI.
+
+	Performance optimizations:
+	- Accepts optional initialLinkedEntities prop from parent /full endpoint
+	- Defers available entities fetching until user clicks "Add"
+	- Caches loaded available entities per kind
 
 	Documentation: /apps/web/docs/features/ontology/LINKED_ENTITIES_COMPONENT.md
 
@@ -10,6 +14,7 @@
 		sourceId={task.id}
 		sourceKind="task"
 		projectId={projectId}
+		initialLinkedEntities={dataFromFullEndpoint?.linkedEntities}
 		onEntityClick={(kind, id) => openModal(kind, id)}
 		onLinksChanged={() => refreshParent()}
 	/>
@@ -19,10 +24,16 @@
 	import type {
 		EntityKind,
 		LinkedEntitiesResult,
-		AvailableEntitiesResult
+		AvailableEntitiesResult,
+		AvailableEntity
 	} from './linked-entities.types';
 	import { ENTITY_SECTIONS } from './linked-entities.types';
-	import { fetchLinkedEntities, deleteEdge, createEdges } from './linked-entities.service';
+	import {
+		fetchLinkedEntities,
+		fetchAvailableEntities,
+		deleteEdge,
+		createEdges
+	} from './linked-entities.service';
 	import LinkedEntitiesSection from './LinkedEntitiesSection.svelte';
 	import LinkPickerModal from './LinkPickerModal.svelte';
 
@@ -30,6 +41,8 @@
 		sourceId: string;
 		sourceKind: EntityKind;
 		projectId: string;
+		/** Pre-loaded linked entities from parent /full endpoint - skips initial fetch */
+		initialLinkedEntities?: LinkedEntitiesResult;
 		onEntityClick?: (kind: EntityKind, id: string) => void;
 		onLinksChanged?: () => void;
 		allowedEntityTypes?: EntityKind[];
@@ -40,6 +53,7 @@
 		sourceId,
 		sourceKind,
 		projectId,
+		initialLinkedEntities,
 		onEntityClick,
 		onLinksChanged,
 		allowedEntityTypes,
@@ -58,15 +72,19 @@
 		outputs: [],
 		risks: []
 	});
-	let availableEntities = $state<AvailableEntitiesResult>({
-		tasks: [],
-		plans: [],
-		goals: [],
-		milestones: [],
-		documents: [],
-		outputs: [],
-		risks: []
+
+	// Track which kinds have been loaded for available entities
+	let loadedAvailableKinds = $state<Set<EntityKind>>(new Set());
+	let availableEntitiesCache = $state<Record<EntityKind, AvailableEntity[]>>({
+		task: [],
+		plan: [],
+		goal: [],
+		milestone: [],
+		document: [],
+		output: [],
+		risk: []
 	});
+	let loadingAvailableKind = $state<EntityKind | null>(null);
 
 	// Link picker modal state
 	let showLinkPicker = $state(false);
@@ -92,7 +110,26 @@
 	// Load data on mount and when source changes
 	$effect(() => {
 		if (sourceId && sourceKind && projectId) {
-			loadData();
+			// Reset available entities cache when source changes
+			loadedAvailableKinds = new Set();
+			availableEntitiesCache = {
+				task: [],
+				plan: [],
+				goal: [],
+				milestone: [],
+				document: [],
+				output: [],
+				risk: []
+			};
+
+			// Use initial data if provided, otherwise fetch
+			if (initialLinkedEntities) {
+				linkedEntities = initialLinkedEntities;
+				isLoading = false;
+				error = null;
+			} else {
+				loadData();
+			}
 		}
 	});
 
@@ -101,9 +138,11 @@
 		error = null;
 
 		try {
-			const result = await fetchLinkedEntities(sourceId, sourceKind, projectId);
+			// Performance: skip fetching available entities on initial load
+			const result = await fetchLinkedEntities(sourceId, sourceKind, projectId, {
+				includeAvailable: false
+			});
 			linkedEntities = result.linkedEntities;
-			availableEntities = result.availableEntities;
 		} catch (err) {
 			const message = err instanceof Error ? err.message : 'Failed to load linked entities';
 			error = message;
@@ -113,8 +152,53 @@
 		}
 	}
 
-	function handleAddClick(kind: EntityKind) {
+	/**
+	 * Lazy-load available entities for a specific kind when user clicks "Add"
+	 */
+	async function loadAvailableForKind(kind: EntityKind): Promise<AvailableEntity[]> {
+		// Return cached if already loaded
+		if (loadedAvailableKinds.has(kind)) {
+			return availableEntitiesCache[kind];
+		}
+
+		loadingAvailableKind = kind;
+
+		try {
+			// Get IDs of already-linked entities of this kind
+			const linkedIds = getEntitiesForKind(kind).map((e) => e.id);
+
+			const entities = await fetchAvailableEntities(
+				sourceId,
+				sourceKind,
+				projectId,
+				kind,
+				linkedIds
+			);
+
+			// Cache the results
+			availableEntitiesCache[kind] = entities;
+			loadedAvailableKinds = new Set([...loadedAvailableKinds, kind]);
+
+			return entities;
+		} catch (err) {
+			const message =
+				err instanceof Error ? err.message : 'Failed to load available entities';
+			toastService.error(message);
+			console.error('[LinkedEntities] Load available error:', err);
+			return [];
+		} finally {
+			loadingAvailableKind = null;
+		}
+	}
+
+	async function handleAddClick(kind: EntityKind) {
 		linkPickerKind = kind;
+
+		// Load available entities for this kind if not already loaded
+		if (!loadedAvailableKinds.has(kind)) {
+			await loadAvailableForKind(kind);
+		}
+
 		showLinkPicker = true;
 	}
 
@@ -130,6 +214,8 @@
 		try {
 			await deleteEdge(edgeId);
 			toastService.success('Link removed');
+			// Invalidate available cache since something was unlinked
+			loadedAvailableKinds = new Set();
 			onLinksChanged?.();
 		} catch (err) {
 			// Revert on error
@@ -148,8 +234,10 @@
 				`Linked ${targetIds.length} ${targetIds.length === 1 ? 'item' : 'items'}`
 			);
 
-			// Reload to get fresh data with edge IDs
+			// Reload linked entities to get fresh data with edge IDs
 			await loadData();
+			// Invalidate available cache since something was linked
+			loadedAvailableKinds = new Set();
 			onLinksChanged?.();
 		} catch (err) {
 			const message = err instanceof Error ? err.message : 'Failed to create links';
@@ -163,11 +251,15 @@
 		return linkedEntities[`${kind}s` as keyof LinkedEntitiesResult] || [];
 	}
 
-	function getAvailableForKind(kind: EntityKind) {
-		return availableEntities[`${kind}s` as keyof AvailableEntitiesResult] || [];
+	function getAvailableForKind(kind: EntityKind): AvailableEntity[] {
+		return availableEntitiesCache[kind] || [];
 	}
 
 	function getAvailableCountForKind(kind: EntityKind): number {
+		// If not loaded yet, show -1 to indicate "unknown"
+		if (!loadedAvailableKinds.has(kind)) {
+			return -1;
+		}
 		const available = getAvailableForKind(kind);
 		// Count only unlinked entities
 		return available.filter((e) => !e.isLinked).length;
@@ -219,6 +311,7 @@
 					config={section}
 					entities={getEntitiesForKind(section.kind)}
 					availableToLinkCount={getAvailableCountForKind(section.kind)}
+					isLoadingAvailable={loadingAvailableKind === section.kind}
 					{readOnly}
 					onAdd={handleAddClick}
 					onRemove={handleRemoveLink}

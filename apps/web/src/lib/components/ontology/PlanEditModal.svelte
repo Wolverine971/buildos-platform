@@ -27,7 +27,7 @@
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
 	import LinkedEntities from './linked-entities/LinkedEntities.svelte';
 	import { PLAN_STATES } from '$lib/types/onto';
-	import type { EntityKind } from './linked-entities/linked-entities.types';
+	import type { EntityKind, LinkedEntitiesResult } from './linked-entities/linked-entities.types';
 	import GoalEditModal from './GoalEditModal.svelte';
 	import TaskEditModal from './TaskEditModal.svelte';
 	import DocumentModal from './DocumentModal.svelte';
@@ -45,11 +45,13 @@
 
 	let modalOpen = $state(true);
 	let plan = $state<any>(null);
+	let linkedEntities = $state<LinkedEntitiesResult | undefined>(undefined);
 	let isLoading = $state(true);
 	let isSaving = $state(false);
 	let isDeleting = $state(false);
 	let error = $state('');
 	let showDeleteConfirm = $state(false);
+	let hasChanges = $state(false);
 
 	// Form fields
 	let name = $state('');
@@ -110,11 +112,13 @@
 	async function loadPlan() {
 		try {
 			isLoading = true;
-			const response = await fetch(`/api/onto/plans/${planId}`);
+			// Use /full endpoint for optimized single-request loading
+			const response = await fetch(`/api/onto/plans/${planId}/full`);
 			if (!response.ok) throw new Error('Failed to load plan');
 
 			const data = await response.json();
 			plan = data.data?.plan;
+			linkedEntities = data.data?.linkedEntities;
 
 			if (plan) {
 				name = plan.name || '';
@@ -270,8 +274,15 @@
 		selectedGoalIdForModal = null;
 		selectedTaskIdForModal = null;
 		selectedDocumentIdForModal = null;
-		// Refresh plan data to get updated linked entities
-		loadPlan();
+		// Smart refresh: only reload if links were changed
+		if (hasChanges) {
+			loadPlan();
+			hasChanges = false;
+		}
+	}
+
+	function handleLinksChanged() {
+		hasChanges = true;
 	}
 </script>
 
@@ -509,8 +520,9 @@
 							sourceId={planId}
 							sourceKind="plan"
 							{projectId}
+							initialLinkedEntities={linkedEntities}
 							onEntityClick={handleLinkedEntityClick}
-							onLinksChanged={loadPlan}
+							onLinksChanged={handleLinksChanged}
 						/>
 					</div>
 				</div>

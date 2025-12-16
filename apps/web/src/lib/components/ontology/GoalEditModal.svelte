@@ -36,7 +36,7 @@
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
 	import LinkedEntities from './linked-entities/LinkedEntities.svelte';
 	import { GOAL_STATES } from '$lib/types/onto';
-	import type { EntityKind } from './linked-entities/linked-entities.types';
+	import type { EntityKind, LinkedEntitiesResult } from './linked-entities/linked-entities.types';
 	import TaskEditModal from './TaskEditModal.svelte';
 	import PlanEditModal from './PlanEditModal.svelte';
 	import DocumentModal from './DocumentModal.svelte';
@@ -53,11 +53,13 @@
 
 	let modalOpen = $state(true);
 	let goal = $state<any>(null);
+	let linkedEntities = $state<LinkedEntitiesResult | undefined>(undefined);
 	let isLoading = $state(true);
 	let isSaving = $state(false);
 	let isDeleting = $state(false);
 	let error = $state('');
 	let showDeleteConfirm = $state(false);
+	let hasChanges = $state(false);
 
 	// Form fields
 	let name = $state('');
@@ -85,11 +87,13 @@
 	async function loadGoal() {
 		try {
 			isLoading = true;
-			const response = await fetch(`/api/onto/goals/${goalId}`);
+			// Use /full endpoint for optimized single-request loading
+			const response = await fetch(`/api/onto/goals/${goalId}/full`);
 			if (!response.ok) throw new Error('Failed to load goal');
 
 			const data = await response.json();
 			goal = data.data?.goal;
+			linkedEntities = data.data?.linkedEntities;
 
 			if (goal) {
 				name = goal.name || '';
@@ -205,15 +209,24 @@
 		}
 	}
 
-	function closeLinkedEntityModals() {
+	function closeLinkedEntityModals(wasChanged: boolean = true) {
 		showTaskModal = false;
 		showPlanModal = false;
 		showDocumentModal = false;
 		selectedTaskIdForModal = null;
 		selectedPlanIdForModal = null;
 		selectedDocumentIdForModal = null;
-		// Refresh goal data to get updated linked entities
-		loadGoal();
+		// Smart refresh: only reload if changes were made
+		if (wasChanged) {
+			hasChanges = true;
+			loadGoal();
+		}
+	}
+
+	function handleLinksChanged() {
+		hasChanges = true;
+		// Invalidate cached linked entities so component will refetch
+		linkedEntities = undefined;
 	}
 </script>
 
@@ -427,8 +440,9 @@
 							sourceId={goalId}
 							sourceKind="goal"
 							{projectId}
+							initialLinkedEntities={linkedEntities}
 							onEntityClick={handleLinkedEntityClick}
-							onLinksChanged={loadGoal}
+							onLinksChanged={handleLinksChanged}
 						/>
 
 						<!-- Goal Metadata -->

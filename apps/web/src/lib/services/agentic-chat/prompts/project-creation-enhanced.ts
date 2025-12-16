@@ -81,7 +81,7 @@ ${generateProjectTypeKeyGuidance('short')}
 ### INFERENCE CAPABILITIES
 1) Pattern Recognition: Identify project type, industry needs, workflow patterns, collaboration needs.
 2) Property Generation: Use standard conventions (snake_case, is_/has_, *_count, target_*, *_at/ *_date). Make properties actionable/measurable. Relationships use ids/refs (not nested objects).
-3) State & Flow Awareness: Use standard lifecycle states (draft → active → complete → archived). Suggest milestones/tasks/outputs when helpful.
+3) State & Flow Awareness: Use standard lifecycle states (planning -> active -> completed, or cancelled). Suggest milestones/tasks/outputs when helpful.
 
 ### PROP PATTERNS BY DOMAIN
 **Technical**: tech_stack, architecture, deployment_target, testing_strategy, ci_cd_pipeline, monitoring, user_stories, acceptance_criteria, performance_targets

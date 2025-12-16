@@ -15,7 +15,7 @@
  * - type_key: string (default: 'plan.phase.base') - Template type key
  * - name: string (required) - Plan name
  * - description?: string - Plan description
- * - state_key?: string - Initial state (draft, planning, active, etc.)
+ * - state_key?: string - Initial state (draft, active, completed)
  * - start_date?: string - Start date ISO string
  * - end_date?: string - End date ISO string
  * - props?: object - Additional properties

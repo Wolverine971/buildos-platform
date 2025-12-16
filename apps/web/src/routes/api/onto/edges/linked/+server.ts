@@ -86,6 +86,9 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		const sourceId = url.searchParams.get('sourceId');
 		const sourceKind = url.searchParams.get('sourceKind');
 		const projectId = url.searchParams.get('projectId');
+		// Performance optimization: skip fetching available entities on initial load
+		// They will be fetched lazily via /api/onto/edges/available when user clicks "Add"
+		const includeAvailable = url.searchParams.get('includeAvailable') !== 'false';
 
 		if (!sourceId || !sourceKind || !projectId) {
 			return ApiResponse.badRequest('sourceId, sourceKind, and projectId are required');
@@ -120,14 +123,27 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		// Fetch linked entities
 		const linkedEntities = await fetchLinkedEntities(supabase, sourceId, sourceKind);
 
-		// Fetch available entities from the project
-		const availableEntities = await fetchAvailableEntities(
-			supabase,
-			projectId,
-			sourceId,
-			sourceKind,
-			linkedEntities
-		);
+		// Only fetch available entities if explicitly requested (backwards compatibility)
+		// New pattern: skip this on initial load, fetch lazily when user clicks "Add"
+		let availableEntities: AvailableEntitiesResult = {
+			tasks: [],
+			plans: [],
+			goals: [],
+			milestones: [],
+			documents: [],
+			outputs: [],
+			risks: []
+		};
+
+		if (includeAvailable) {
+			availableEntities = await fetchAvailableEntities(
+				supabase,
+				projectId,
+				sourceId,
+				sourceKind,
+				linkedEntities
+			);
+		}
 
 		return ApiResponse.success({
 			linkedEntities,

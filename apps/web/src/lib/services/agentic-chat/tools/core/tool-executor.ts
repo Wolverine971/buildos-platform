@@ -334,7 +334,7 @@ function buildContextDocumentSpec(
 		return {
 			...provided,
 			type_key: provided.type_key ?? 'document.context.project',
-			state_key: provided.state_key ?? 'active'
+			state_key: provided.state_key ?? 'draft'
 		};
 	}
 
@@ -1299,13 +1299,14 @@ export class ChatToolExecutor {
 		counts: Record<string, number>;
 		message: string;
 	}> {
+		const actorId = await this.getActorId();
 		await this.assertEntityOwnership(args.entity_id);
 
 		// Get entity name for context
 		const entityName = await this.getEntityDisplayName(args.entity_id, args.entity_kind);
 
 		// Load linked entities with full details
-		const ontologyLoader = new OntologyContextLoader(this.supabase);
+		const ontologyLoader = new OntologyContextLoader(this.supabase, actorId);
 		const linkedContext = await ontologyLoader.loadLinkedEntitiesContext(
 			args.entity_id,
 			args.entity_kind as OntologyEntityType,

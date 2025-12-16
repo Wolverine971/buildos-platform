@@ -291,7 +291,8 @@ async function loadOntologyContext(
 	supabase: SupabaseClient<Database>,
 	contextType: ChatContextType,
 	entityId?: string,
-	ontologyEntityType?: 'task' | 'plan' | 'goal' | 'document' | 'output'
+	ontologyEntityType?: 'task' | 'plan' | 'goal' | 'document' | 'output',
+	actorId?: string
 ): Promise<OntologyContext | null> {
 	logger.debug('Loading ontology context', {
 		contextType,
@@ -299,7 +300,7 @@ async function loadOntologyContext(
 		ontologyEntityType
 	});
 
-	const loader = new OntologyContextLoader(supabase);
+	const loader = new OntologyContextLoader(supabase, actorId);
 
 	try {
 		// If entity type is specified, load element context
@@ -330,7 +331,7 @@ async function loadOntologyContext(
 		return null;
 	} catch (error) {
 		logger.error('Failed to load ontology context', { error, contextType, entityId });
-		return null; // Don't fail the request, just proceed without ontology
+		throw error;
 	}
 }
 
@@ -510,6 +511,14 @@ export const POST: RequestHandler = async ({
 	}
 
 	const userId = user.id;
+	const { data: actorId, error: actorError } = await supabase.rpc('ensure_actor_for_user', {
+		p_user_id: userId
+	});
+
+	if (actorError || !actorId) {
+		logger.error('Failed to resolve actor for user', { error: actorError, userId });
+		return ApiResponse.error('Failed to resolve actor', 500, 'ACTOR_RESOLUTION_FAILED');
+	}
 
 	// Rate limiting (disabled by default)
 	let userRateLimit: { requests: number; tokens: number; resetAt: number } | undefined;
@@ -658,55 +667,53 @@ export const POST: RequestHandler = async ({
 		await persistChatMessage(supabase, userMessageData);
 
 		// === ONTOLOGY INTEGRATION ===
-
-		const ontologyLoader = new OntologyContextLoader(supabase);
-
-		// Validate ontologyEntityType if provided
-		const validOntologyTypes = ['task', 'plan', 'goal', 'document', 'output'] as const;
-		let validatedOntologyEntityType: (typeof validOntologyTypes)[number] | undefined;
-
-		if (ontologyEntityType) {
-			if (validOntologyTypes.includes(ontologyEntityType as any)) {
-				validatedOntologyEntityType = ontologyEntityType;
-			} else {
-				logger.warn('Invalid ontologyEntityType provided', {
-					provided: ontologyEntityType,
-					validTypes: validOntologyTypes
-				});
-			}
-		}
-
-		// === ONTOLOGY CACHING ===
-		const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
-		const cacheKey = generateOntologyCacheKey(
-			resolvedProjectFocus,
-			normalizedContextType,
-			entity_id
-		);
-		const cached = sessionMetadata.ontologyCache;
-		const cacheAge = cached ? Date.now() - cached.loadedAt : Infinity;
-		const isCacheValid = cached && cached.cacheKey === cacheKey && cacheAge < CACHE_TTL_MS;
-
 		let ontologyContext: OntologyContext | null = null;
+		try {
+			const ontologyLoader = new OntologyContextLoader(supabase, actorId as string);
 
-		if (isCacheValid) {
-			// Use cached ontology context
-			ontologyContext = cached.context;
-			logger.debug('Using cached ontology context', {
-				cacheKey,
-				cacheAgeMs: cacheAge,
-				cacheAgeSec: Math.round(cacheAge / 1000)
-			});
-		} else {
-			// Load fresh ontology context
-			// Check if this is a project-related context type (project, audit, or forecast)
-			const isProjectContext =
-				normalizedContextType === 'project' ||
-				normalizedContextType === 'project_audit' ||
-				normalizedContextType === 'project_forecast';
+			// Validate ontologyEntityType if provided
+			const validOntologyTypes = ['task', 'plan', 'goal', 'document', 'output'] as const;
+			let validatedOntologyEntityType: (typeof validOntologyTypes)[number] | undefined;
 
-			if (resolvedProjectFocus?.projectId && isProjectContext) {
-				try {
+			if (ontologyEntityType) {
+				if (validOntologyTypes.includes(ontologyEntityType as any)) {
+					validatedOntologyEntityType = ontologyEntityType;
+				} else {
+					logger.warn('Invalid ontologyEntityType provided', {
+						provided: ontologyEntityType,
+						validTypes: validOntologyTypes
+					});
+				}
+			}
+
+			// === ONTOLOGY CACHING ===
+			const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+			const cacheKey = generateOntologyCacheKey(
+				resolvedProjectFocus,
+				normalizedContextType,
+				entity_id
+			);
+			const cached = sessionMetadata.ontologyCache;
+			const cacheAge = cached ? Date.now() - cached.loadedAt : Infinity;
+			const isCacheValid = cached && cached.cacheKey === cacheKey && cacheAge < CACHE_TTL_MS;
+
+			if (isCacheValid) {
+				// Use cached ontology context
+				ontologyContext = cached.context;
+				logger.debug('Using cached ontology context', {
+					cacheKey,
+					cacheAgeMs: cacheAge,
+					cacheAgeSec: Math.round(cacheAge / 1000)
+				});
+			} else {
+				// Load fresh ontology context
+				// Check if this is a project-related context type (project, audit, or forecast)
+				const isProjectContext =
+					normalizedContextType === 'project' ||
+					normalizedContextType === 'project_audit' ||
+					normalizedContextType === 'project_forecast';
+
+				if (resolvedProjectFocus?.projectId && isProjectContext) {
 					if (
 						resolvedProjectFocus.focusType !== 'project-wide' &&
 						resolvedProjectFocus.focusEntityId
@@ -721,38 +728,45 @@ export const POST: RequestHandler = async ({
 							resolvedProjectFocus.projectId
 						);
 					}
-				} catch (focusLoadError) {
-					logger.error('Failed to load focus-aware context', {
-						error: focusLoadError,
-						projectFocus: resolvedProjectFocus
+				} else {
+					ontologyContext =
+						normalizedContextType === 'project_create'
+							? null
+							: await loadOntologyContext(
+									supabase,
+									normalizedContextType,
+									entity_id,
+									validatedOntologyEntityType,
+									actorId as string
+								);
+				}
+
+				// Update cache if we loaded context
+				// Note: We defer persistence to end of stream to avoid race conditions
+				if (ontologyContext) {
+					sessionMetadata.ontologyCache = {
+						context: ontologyContext,
+						loadedAt: Date.now(),
+						cacheKey
+					};
+					// Mark for deferred persistence - will be persisted at end of stream
+					logger.debug('Ontology cache updated in memory, will persist at stream end', {
+						cacheKey,
+						sessionId: chatSession.id
 					});
 				}
-			} else {
-				ontologyContext =
-					normalizedContextType === 'project_create'
-						? null
-						: await loadOntologyContext(
-								supabase,
-								normalizedContextType,
-								entity_id,
-								validatedOntologyEntityType
-							);
+			}
+		} catch (ontologyError) {
+			if (ontologyError instanceof Error && ontologyError.message.includes('access denied')) {
+				return ApiResponse.forbidden('You do not have access to this context');
 			}
 
-			// Update cache if we loaded context
-			// Note: We defer persistence to end of stream to avoid race conditions
-			if (ontologyContext) {
-				sessionMetadata.ontologyCache = {
-					context: ontologyContext,
-					loadedAt: Date.now(),
-					cacheKey
-				};
-				// Mark for deferred persistence - will be persisted at end of stream
-				logger.debug('Ontology cache updated in memory, will persist at stream end', {
-					cacheKey,
-					sessionId: chatSession.id
-				});
-			}
+			logger.error('Failed to load ontology context', {
+				error: ontologyError,
+				contextType: normalizedContextType,
+				entityId: entity_id
+			});
+			return ApiResponse.error('Failed to load ontology context', 500);
 		}
 
 		logger.debug('Ontology context loaded', {
@@ -957,11 +971,11 @@ export const POST: RequestHandler = async ({
 				}
 			}
 
-			const message = mapPlannerEventToSSE(event);
-			if (message) {
-				await agentStream.sendMessage(message);
-			}
-		};
+				const sseMessage = mapPlannerEventToSSE(event);
+				if (sseMessage) {
+					await agentStream.sendMessage(sseMessage);
+				}
+			};
 
 		(async () => {
 			try {

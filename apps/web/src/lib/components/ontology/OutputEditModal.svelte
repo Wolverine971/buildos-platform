@@ -8,7 +8,7 @@
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
 	import DocumentEditor from '$lib/components/ontology/DocumentEditor.svelte';
 	import LinkedEntities from './linked-entities/LinkedEntities.svelte';
-	import type { EntityKind } from './linked-entities/linked-entities.types';
+	import type { EntityKind, LinkedEntitiesResult } from './linked-entities/linked-entities.types';
 	import TaskEditModal from './TaskEditModal.svelte';
 	import { toastService } from '$lib/stores/toast.store';
 
@@ -39,6 +39,7 @@
 	};
 
 	let output = $state<OutputRecord | null>(null);
+	let linkedEntities = $state<LinkedEntitiesResult | undefined>(undefined);
 	let isLoading = $state(true);
 	let loadError = $state<string | null>(null);
 	let savingState = $state(false);
@@ -46,6 +47,7 @@
 	let showDeleteConfirm = $state(false);
 	let stateKey = $state('draft');
 	let previousOutputId = $state<string | null>(null);
+	let hasChanges = $state(false);
 
 	const stateOptions = [
 		{ value: 'draft', label: 'Draft' },
@@ -71,7 +73,8 @@
 			isLoading = true;
 			loadError = null;
 
-			const response = await fetch(`/api/onto/outputs/${outputId}`);
+			// Use /full endpoint for optimized single-request loading
+			const response = await fetch(`/api/onto/outputs/${outputId}/full`);
 			const payload = await response.json().catch(() => null);
 
 			if (!response.ok) {
@@ -79,6 +82,7 @@
 			}
 
 			const data = payload?.data?.output;
+			linkedEntities = payload?.data?.linkedEntities;
 			if (!data) {
 				throw new Error('Output not found');
 			}
@@ -209,8 +213,15 @@
 	function closeLinkedEntityModals() {
 		showTaskModal = false;
 		selectedTaskIdForModal = null;
-		// Refresh output data to get updated linked entities
-		loadOutput();
+		// Smart refresh: only reload if links were changed
+		if (hasChanges) {
+			loadOutput();
+			hasChanges = false;
+		}
+	}
+
+	function handleLinksChanged() {
+		hasChanges = true;
 	}
 </script>
 
@@ -327,8 +338,9 @@
 							sourceId={outputId}
 							sourceKind="output"
 							{projectId}
+							initialLinkedEntities={linkedEntities}
 							onEntityClick={handleLinkedEntityClick}
-							onLinksChanged={loadOutput}
+							onLinksChanged={handleLinksChanged}
 						/>
 					</div>
 

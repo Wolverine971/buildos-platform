@@ -38,10 +38,11 @@ export const ENTITY_FIELD_INFO: Record<string, Record<string, FieldInfo>> = {
 		},
 		state_key: {
 			type: 'enum',
-			enum_values: ['draft', 'active', 'paused', 'complete', 'archived'],
-			description: 'Lifecycle state for the ontology project',
+			enum_values: ['planning', 'active', 'completed', 'cancelled'],
+			description:
+				'Lifecycle state for the ontology project (planning -> active -> completed, or cancelled)',
 			required: true,
-			example: 'active'
+			example: 'planning'
 		},
 		description: {
 			type: 'string',
@@ -173,8 +174,8 @@ Examples: plan.timebox.sprint, plan.pipeline.sales, plan.phase.project`,
 		},
 		state_key: {
 			type: 'enum',
-			enum_values: ['draft', 'active', 'blocked', 'complete'],
-			description: 'Execution state for the plan',
+			enum_values: ['draft', 'active', 'completed'],
+			description: 'Execution state for the plan (draft -> active -> completed)',
 			required: true,
 			example: 'active'
 		},
@@ -861,7 +862,7 @@ Examples: document.context.project, document.knowledge.research, document.spec.t
 					},
 					state_key: {
 						type: 'string',
-						description: 'Document state (draft, active, complete)',
+						description: 'Document state (draft, review, published)',
 						default: 'draft'
 					},
 					body_markdown: {
@@ -904,7 +905,7 @@ Also ensures the project has_document edge exists for discovery.`,
 					},
 					state_key: {
 						type: 'string',
-						description: 'Document state (e.g., draft, active)',
+						description: 'Document state (draft, review, published)',
 						default: 'draft'
 					},
 					role: {
@@ -1132,7 +1133,7 @@ Use for edits to plan names, dates, status, or metadata.`,
 					},
 					state_key: {
 						type: 'string',
-						description: 'Plan state (draft, active, blocked, complete)'
+						description: 'Plan state (draft, active, completed)'
 					},
 					props: {
 						type: 'object',
@@ -1322,7 +1323,7 @@ For example:
     name: string (REQUIRED - infer from user message),
     type_key: string (REQUIRED - classify via project.{realm}.{deliverable}[.{variant}]),
     description?: string (infer from user message),
-    state_key?: string (default: "draft"),
+    state_key?: string (default: "planning", valid: planning|active|completed|cancelled),
     props?: { facets?: { context?, scale?, stage? } },
     start_at?: ISO datetime (default to now),
     end_at?: ISO datetime
@@ -1365,7 +1366,8 @@ For example:
 							},
 							state_key: {
 								type: 'string',
-								description: 'Initial state (optional, defaults to "draft")'
+								description:
+									'Initial state (optional, defaults to "planning"). Valid: planning, active, completed, cancelled.'
 							},
 							props: {
 								type: 'object',
@@ -1542,7 +1544,8 @@ DO NOT leave props empty when information is available in the conversation!`,
 							},
 							state_key: {
 								type: 'string',
-								description: 'Document state (defaults to active)'
+								description:
+									'Document state (defaults to draft). Valid: draft, review, published.'
 							},
 							props: {
 								type: 'object',

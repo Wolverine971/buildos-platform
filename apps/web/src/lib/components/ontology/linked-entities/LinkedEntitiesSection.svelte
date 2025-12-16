@@ -15,7 +15,9 @@
 		Target,
 		Flag,
 		FileText,
-		FileOutput
+		FileOutput,
+		AlertTriangle,
+		Loader
 	} from 'lucide-svelte';
 	import type { LinkedEntity, EntityKind, EntitySectionConfig } from './linked-entities.types';
 	import LinkedEntitiesItem from './LinkedEntitiesItem.svelte';
@@ -24,6 +26,7 @@
 		config: EntitySectionConfig;
 		entities: LinkedEntity[];
 		availableToLinkCount?: number;
+		isLoadingAvailable?: boolean;
 		readOnly?: boolean;
 		onAdd?: (kind: EntityKind) => void;
 		onRemove?: (edgeId: string) => void;
@@ -33,7 +36,8 @@
 	let {
 		config,
 		entities,
-		availableToLinkCount = 0,
+		availableToLinkCount = -1,
+		isLoadingAvailable = false,
 		readOnly = false,
 		onAdd,
 		onRemove,
@@ -44,15 +48,17 @@
 
 	const linkedCount = $derived(entities.length);
 	const hasLinkedEntities = $derived(linkedCount > 0);
-	const hasAvailableToLink = $derived(availableToLinkCount > 0);
+
+	// -1 means unknown (not loaded yet), treat as potentially having items
+	const hasAvailableToLink = $derived(availableToLinkCount === -1 || availableToLinkCount > 0);
 
 	// Can expand if there are linked entities to show
 	const canExpand = $derived(hasLinkedEntities);
 
-	// Section is disabled only if there's nothing to show AND nothing to add
-	const isDisabled = $derived(!hasLinkedEntities && !hasAvailableToLink);
+	// Section is disabled only if there's nothing to show AND confirmed nothing to add
+	const isDisabled = $derived(!hasLinkedEntities && availableToLinkCount === 0);
 
-	// Show add button if not readOnly and there are entities available to link
+	// Show add button if not readOnly and there may be entities available to link
 	const showAddButton = $derived(!readOnly && hasAvailableToLink);
 
 	// Icon component lookup
@@ -62,7 +68,8 @@
 		goal: Target,
 		milestone: Flag,
 		document: FileText,
-		output: FileOutput
+		output: FileOutput,
+		risk: AlertTriangle
 	};
 
 	const IconComponent = $derived(iconComponents[config.kind]);
@@ -105,8 +112,12 @@
 			<span class="text-xs text-muted-foreground">({linkedCount})</span>
 		</div>
 
-		<!-- Right side: add button (only if there are entities available to link) -->
-		{#if showAddButton}
+		<!-- Right side: add button or loading indicator -->
+		{#if isLoadingAvailable}
+			<div class="p-1">
+				<Loader class="w-3.5 h-3.5 text-muted-foreground animate-spin" />
+			</div>
+		{:else if showAddButton}
 			<button
 				type="button"
 				class="p-1 rounded text-muted-foreground hover:text-accent hover:bg-accent/10

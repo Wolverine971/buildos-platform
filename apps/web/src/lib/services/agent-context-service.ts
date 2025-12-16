@@ -42,6 +42,7 @@ import type {
 import type { EntityLinkedContext } from '$lib/types/linked-entity-context.types';
 import { OntologyContextLoader } from './ontology-context-loader';
 import { generateProjectContextFramework } from './prompts/core/prompt-components';
+import { ensureActorId } from './ontology/ontology-projects.service';
 
 // Project context document guidance for executor prompts
 const PROJECT_CONTEXT_DOC_GUIDANCE = generateProjectContextFramework('condensed');
@@ -138,8 +139,9 @@ export class AgentContextService {
 
 	private compressionService?: ChatCompressionService;
 	private chatContextService: ChatContextService;
-	private ontologyLoader: OntologyContextLoader;
+	private ontologyLoader: OntologyContextLoader | null = null;
 	private promptService: PromptGenerationService;
+	private loaderUserId?: string;
 
 	constructor(
 		private supabase: SupabaseClient<Database>,
@@ -147,8 +149,18 @@ export class AgentContextService {
 	) {
 		this.compressionService = compressionService;
 		this.chatContextService = new ChatContextService(supabase);
-		this.ontologyLoader = new OntologyContextLoader(supabase);
 		this.promptService = new PromptGenerationService();
+	}
+
+	private async getOntologyLoader(userId: string): Promise<OntologyContextLoader> {
+		if (this.ontologyLoader && this.loaderUserId === userId) {
+			return this.ontologyLoader;
+		}
+
+		const actorId = await ensureActorId(this.supabase as any, userId);
+		this.loaderUserId = userId;
+		this.ontologyLoader = new OntologyContextLoader(this.supabase, actorId);
+		return this.ontologyLoader;
 	}
 
 	// ============================================
@@ -184,12 +196,13 @@ export class AgentContextService {
 		const focus = ontologyContext?.scope?.focus;
 		if (focus?.type && focus?.id && focus?.name) {
 			try {
+				const ontologyLoader = await this.getOntologyLoader(userId);
 				console.log(
 					'[AgentContext] Loading linked entities for focus:',
 					focus.type,
 					focus.id
 				);
-				linkedEntitiesContext = await this.ontologyLoader.loadLinkedEntitiesContext(
+				linkedEntitiesContext = await ontologyLoader.loadLinkedEntitiesContext(
 					focus.id,
 					focus.type,
 					focus.name,
