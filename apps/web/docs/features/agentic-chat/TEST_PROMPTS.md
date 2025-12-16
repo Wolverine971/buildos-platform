@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/agentic-chat/TEST_PROMPTS.md -->
+
 # Agentic Chat Test Prompts
 
 > **Purpose:** Manual testing prompts to validate agentic chat capabilities

@@ -166,33 +166,29 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		}
 
 		// Create edges linking the task to the project, plan (if any), goal, and milestone
+		// All edges include project_id for efficient project-scoped queries
+		// See: docs/specs/PROJECT_GRAPH_QUERY_PATTERN_SPEC.md
 		const edges = [
 			{
 				src_id: project_id,
 				src_kind: 'project',
 				dst_id: task.id,
 				dst_kind: 'task',
-				rel: 'contains'
+				rel: 'contains',
+				project_id: project_id
 			}
 		];
 
 		// Plan relationship via edge (plan_id is no longer a column on onto_tasks)
+		// Convention: Store directionally (plan → task), query bidirectionally
 		if (plan_id) {
-			// Task -> Plan (belongs_to_plan)
-			edges.push({
-				src_id: task.id,
-				src_kind: 'task',
-				dst_id: plan_id,
-				dst_kind: 'plan',
-				rel: 'belongs_to_plan'
-			});
-			// Plan -> Task (has_task) for reverse lookup
 			edges.push({
 				src_id: plan_id,
 				src_kind: 'plan',
 				dst_id: task.id,
 				dst_kind: 'task',
-				rel: 'has_task'
+				rel: 'has_task',
+				project_id: project_id
 			});
 		}
 
@@ -202,7 +198,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				src_kind: 'goal',
 				dst_id: task.id,
 				dst_kind: 'task',
-				rel: 'supports_goal'
+				rel: 'supports_goal',
+				project_id: project_id
 			});
 		}
 
@@ -212,7 +209,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				src_kind: 'milestone',
 				dst_id: task.id,
 				dst_kind: 'task',
-				rel: 'contains'
+				rel: 'contains',
+				project_id: project_id
 			});
 		}
 

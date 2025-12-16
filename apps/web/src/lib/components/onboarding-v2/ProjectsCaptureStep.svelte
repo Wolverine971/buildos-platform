@@ -297,8 +297,8 @@
 			Get organized by getting things out of your head and onto the screen.
 		</p>
 		<p class="text-sm text-muted-foreground leading-relaxed max-w-xl mx-auto">
-			BuildOS works with <strong class="text-foreground">projects</strong> — work initiatives, personal goals,
-			creative pursuits, or anything you're working towards.
+			BuildOS works with <strong class="text-foreground">projects</strong> — work initiatives,
+			personal goals, creative pursuits, or anything you're working towards.
 		</p>
 	</div>
 
@@ -319,7 +319,9 @@
 			What Makes a Project?
 		</h3>
 		<p class="text-xs text-muted-foreground mb-3 leading-relaxed">
-			Projects are focused endeavors with a goal or purpose. Organize around actually <em>completing</em> things.
+			Projects are focused endeavors with a goal or purpose. Organize around actually <em
+				>completing</em
+			> things.
 		</p>
 
 		<!-- Compact examples grid -->
@@ -330,11 +332,14 @@
 			</div>
 			<div class="flex gap-2">
 				<span>🏋️</span>
-				<span><strong class="text-foreground">Personal:</strong> "Get in shape for summer"</span>
+				<span
+					><strong class="text-foreground">Personal:</strong> "Get in shape for summer"</span
+				>
 			</div>
 			<div class="flex gap-2">
 				<span>🎨</span>
-				<span><strong class="text-foreground">Creative:</strong> "Launch my Etsy shop"</span>
+				<span><strong class="text-foreground">Creative:</strong> "Launch my Etsy shop"</span
+				>
 			</div>
 			<div class="flex gap-2">
 				<span>📚</span>
@@ -421,7 +426,8 @@
 							Analyze your calendar
 						</h3>
 						<p class="text-xs text-muted-foreground leading-relaxed">
-							Connect Google Calendar to automatically create projects from your meetings and events.
+							Connect Google Calendar to automatically create projects from your
+							meetings and events.
 						</p>
 					</div>
 				</div>
@@ -481,7 +487,9 @@
 					<div class="flex-1">
 						<h4 class="font-semibold text-sm text-foreground flex items-center gap-2">
 							Google Calendar Connected
-							<span class="text-[10px] bg-accent/20 text-accent px-1.5 py-0.5 rounded-full font-medium">
+							<span
+								class="text-[10px] bg-accent/20 text-accent px-1.5 py-0.5 rounded-full font-medium"
+							>
 								Ready
 							</span>
 						</h4>

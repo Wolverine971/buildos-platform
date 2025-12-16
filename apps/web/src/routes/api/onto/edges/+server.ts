@@ -3,6 +3,11 @@
  * POST /api/onto/edges
  *
  * Creates one or more edge relationships between entities.
+ * Automatically normalizes edges to canonical direction and stamps project_id.
+ *
+ * Convention: Store edges directionally, query bidirectionally.
+ * Deprecated relationship types (e.g., 'belongs_to_plan') are automatically
+ * converted to their canonical equivalents (e.g., 'has_task' with swapped direction).
  *
  * Request body:
  * {
@@ -16,47 +21,72 @@
  *   }>
  * }
  *
+ * See: docs/specs/PROJECT_GRAPH_QUERY_PATTERN_SPEC.md
  * Documentation: /apps/web/docs/features/ontology/LINKED_ENTITIES_COMPONENT.md
  */
 
 import type { RequestHandler } from './$types';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { ApiResponse } from '$lib/utils/api-response';
+import {
+	normalizeEdgeDirection,
+	VALID_RELS,
+	type EdgeInput
+} from '$lib/services/ontology/edge-direction';
 
-interface EdgeInput {
-	src_kind: string;
-	src_id: string;
-	dst_kind: string;
-	dst_id: string;
-	rel: string;
-	props?: Record<string, unknown>;
-}
-
-const VALID_KINDS = ['task', 'plan', 'goal', 'milestone', 'document', 'output', 'project', 'risk'];
-const VALID_RELS = [
-	'belongs_to_plan',
-	'has_task',
-	'supports_goal',
-	'requires',
-	'achieved_by',
-	'depends_on',
-	'blocks',
-	'targets_milestone',
-	'contains',
-	'references',
-	'referenced_by',
-	'produces',
-	'produced_by',
-	'has_document',
-	'relates_to',
-	// Risk relationships
-	'mitigated_by',
-	'addressed_in',
-	'threatens',
-	'documented_in',
-	'mitigates',
-	'addresses',
-	'has_risk'
+const VALID_KINDS = [
+	'task',
+	'plan',
+	'goal',
+	'milestone',
+	'document',
+	'output',
+	'project',
+	'risk',
+	'decision',
+	'metric',
+	'source',
+	'requirement'
 ];
+
+const TABLE_MAP: Record<string, string> = {
+	task: 'onto_tasks',
+	plan: 'onto_plans',
+	goal: 'onto_goals',
+	milestone: 'onto_milestones',
+	document: 'onto_documents',
+	output: 'onto_outputs',
+	project: 'onto_projects',
+	risk: 'onto_risks',
+	decision: 'onto_decisions',
+	metric: 'onto_metrics',
+	source: 'onto_sources',
+	requirement: 'onto_requirements'
+};
+
+/**
+ * Get the project_id for an entity.
+ * For projects, returns the entity's own id.
+ * For other entities, returns the project_id column value.
+ */
+async function getEntityProjectId(
+	supabase: SupabaseClient,
+	kind: string,
+	id: string
+): Promise<string | null> {
+	const table = TABLE_MAP[kind];
+	if (!table) return null;
+
+	if (kind === 'project') {
+		// For projects, the project_id is the entity's own id
+		const { data } = await supabase.from(table).select('id').eq('id', id).single();
+		return data?.id ?? null;
+	}
+
+	// For other entities, get project_id column
+	const { data } = await supabase.from(table).select('project_id').eq('id', id).single();
+	return data?.project_id ?? null;
+}
 
 function validateEdge(edge: EdgeInput): string | null {
 	if (!edge.src_kind || !VALID_KINDS.includes(edge.src_kind)) {
@@ -122,20 +152,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			idsByKind.get(edge.dst_kind)!.add(edge.dst_id);
 		}
 
-		const tableMap: Record<string, string> = {
-			task: 'onto_tasks',
-			plan: 'onto_plans',
-			goal: 'onto_goals',
-			milestone: 'onto_milestones',
-			document: 'onto_documents',
-			output: 'onto_outputs',
-			project: 'onto_projects',
-			risk: 'onto_risks'
-		};
-
 		for (const [kind, idSet] of idsByKind.entries()) {
 			const ids = Array.from(idSet);
-			const table = tableMap[kind];
+			const table = TABLE_MAP[kind];
 			if (!table) {
 				return ApiResponse.badRequest(`Unsupported entity kind: ${kind}`);
 			}
@@ -177,8 +196,68 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			}
 		}
 
-		// Check for existing edges to avoid duplicates
-		const existingEdgesPromises = edges.map((edge) =>
+		// Normalize edges to canonical direction
+		// This handles deprecated rels (e.g., 'belongs_to_plan' → 'has_task' with swapped direction)
+		const normalizedEdges = edges.map((edge) => {
+			const normalized = normalizeEdgeDirection(edge);
+			if (!normalized) {
+				// Should not happen if validation passed, but handle gracefully
+				return {
+					src_kind: edge.src_kind,
+					src_id: edge.src_id,
+					dst_kind: edge.dst_kind,
+					dst_id: edge.dst_id,
+					rel: edge.rel,
+					props: edge.props || {}
+				};
+			}
+			return normalized;
+		});
+
+		// Derive project_id for each edge from the (normalized) source entity
+		// and validate that source and destination are in the same project
+		const edgesWithProjectId: Array<{
+			src_kind: string;
+			src_id: string;
+			dst_kind: string;
+			dst_id: string;
+			rel: string;
+			props: Record<string, unknown>;
+			project_id: string;
+		}> = [];
+
+		for (const edge of normalizedEdges) {
+			// Get project_id from source entity
+			const srcProjectId = await getEntityProjectId(supabase, edge.src_kind, edge.src_id);
+			if (!srcProjectId) {
+				return ApiResponse.badRequest(
+					`Could not determine project for source entity ${edge.src_kind}:${edge.src_id}`
+				);
+			}
+
+			// Validate destination is in the same project (if not a project itself)
+			if (edge.dst_kind !== 'project') {
+				const dstProjectId = await getEntityProjectId(supabase, edge.dst_kind, edge.dst_id);
+				if (dstProjectId && dstProjectId !== srcProjectId) {
+					return ApiResponse.badRequest(
+						`Cross-project edges are not allowed. Source (${edge.src_kind}:${edge.src_id}) is in project ${srcProjectId}, but destination (${edge.dst_kind}:${edge.dst_id}) is in project ${dstProjectId}`
+					);
+				}
+			}
+
+			edgesWithProjectId.push({
+				src_kind: edge.src_kind,
+				src_id: edge.src_id,
+				dst_kind: edge.dst_kind,
+				dst_id: edge.dst_id,
+				rel: edge.rel,
+				props: edge.props || {},
+				project_id: srcProjectId
+			});
+		}
+
+		// Check for existing edges to avoid duplicates (using normalized edges)
+		const existingEdgesPromises = edgesWithProjectId.map((edge) =>
 			supabase
 				.from('onto_edges')
 				.select('id')
@@ -191,7 +270,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		const existingResults = await Promise.all(existingEdgesPromises);
 
 		// Filter out edges that already exist
-		const newEdges = edges.filter((_, index) => {
+		const newEdges = edgesWithProjectId.filter((_, index) => {
 			const result = existingResults[index];
 			return !result?.data; // Only include if no existing edge found
 		});
@@ -201,14 +280,15 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			return ApiResponse.success({ created: 0 });
 		}
 
-		// Prepare edges for insertion
+		// Prepare edges for insertion (already normalized, with project_id)
 		const edgesToInsert = newEdges.map((edge) => ({
 			src_kind: edge.src_kind,
 			src_id: edge.src_id,
 			dst_kind: edge.dst_kind,
 			dst_id: edge.dst_id,
 			rel: edge.rel,
-			props: (edge.props || {}) as Record<string, never>
+			props: edge.props as Record<string, never>,
+			project_id: edge.project_id
 		}));
 
 		// Insert new edges

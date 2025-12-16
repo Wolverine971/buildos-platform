@@ -137,7 +137,9 @@ export interface OntoOutput {
 }
 
 /**
- * Edge entity from onto_edges table
+ * Edge entity from onto_edges table.
+ * Edges include a denormalized project_id for efficient project-scoped queries.
+ * See: docs/specs/PROJECT_GRAPH_QUERY_PATTERN_SPEC.md
  */
 export interface OntoEdge {
 	id: string;
@@ -148,6 +150,8 @@ export interface OntoEdge {
 	rel: string;
 	props?: Record<string, unknown> | null;
 	created_at: string;
+	/** Denormalized project reference for efficient project-scoped queries */
+	project_id: string;
 }
 
 /**

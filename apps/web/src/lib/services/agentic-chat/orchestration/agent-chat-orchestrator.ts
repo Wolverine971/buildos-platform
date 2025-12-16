@@ -33,6 +33,7 @@ import {
 	ProjectCreationAnalyzer,
 	type ClarificationRoundMetadata
 } from '../analysis/project-creation-analyzer';
+import { normalizeContextType } from '../../../../routes/api/agent/stream/utils/context-utils';
 
 const PLAN_TOOL_DEFINITION: ChatToolDefinition = {
 	type: 'function',
@@ -817,11 +818,12 @@ export class AgentChatOrchestrator {
 			.join('\n');
 	}
 
+	/**
+	 * Normalize context type using shared utility.
+	 * @deprecated Use normalizeContextType from context-utils directly
+	 */
 	private normalizeChatContextType(contextType?: ChatContextType | string): ChatContextType {
-		if (!contextType) return 'global';
-		return (contextType as ChatContextType) === 'general'
-			? 'global'
-			: (contextType as ChatContextType);
+		return normalizeContextType(contextType);
 	}
 
 	private buildContextShiftSnapshot(

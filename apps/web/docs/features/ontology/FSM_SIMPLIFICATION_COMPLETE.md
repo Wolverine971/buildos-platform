@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/ontology/FSM_SIMPLIFICATION_COMPLETE.md -->
+
 # FSM Simplification: Migration Complete
 
 **Date**: December 12, 2025

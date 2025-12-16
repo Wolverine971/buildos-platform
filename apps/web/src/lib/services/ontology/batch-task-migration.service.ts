@@ -1090,7 +1090,8 @@ IMPORTANT:
 		const insertedIds = (insertedTasks ?? []).map((t) => t.id);
 		console.info(`[BatchTaskMigration] Inserted ${insertedIds.length} tasks`);
 
-		// 3. Batch insert edges (task → plan relationships) using per-task plan IDs
+		// 3. Batch insert edges (plan → task relationships) using per-task plan IDs
+		// Convention: Store directionally (plan → task), query bidirectionally
 		const edgeRecords: Array<{
 			src_id: string;
 			src_kind: string;
@@ -1104,22 +1105,13 @@ IMPORTANT:
 			const insertedId = insertedIds[i];
 			if (!record || !insertedId || !record._plan_id) continue;
 
-			edgeRecords.push(
-				{
-					src_id: insertedId,
-					src_kind: 'task',
-					dst_id: record._plan_id,
-					dst_kind: 'plan',
-					rel: 'belongs_to_plan'
-				},
-				{
-					src_id: record._plan_id,
-					src_kind: 'plan',
-					dst_id: insertedId,
-					dst_kind: 'task',
-					rel: 'has_task'
-				}
-			);
+			edgeRecords.push({
+				src_id: record._plan_id,
+				src_kind: 'plan',
+				dst_id: insertedId,
+				dst_kind: 'task',
+				rel: 'has_task'
+			});
 		}
 
 		if (edgeRecords.length > 0) {

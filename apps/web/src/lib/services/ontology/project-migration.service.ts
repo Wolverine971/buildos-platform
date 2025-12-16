@@ -261,7 +261,6 @@ export class ProjectMigrationService {
 		return facets;
 	}
 
-
 	private extractCoreValues(project: LegacyProjectRow): Record<string, string | null> {
 		return {
 			core_goals_momentum: project.core_goals_momentum,

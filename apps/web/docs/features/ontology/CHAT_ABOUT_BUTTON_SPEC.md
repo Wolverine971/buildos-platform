@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/ontology/CHAT_ABOUT_BUTTON_SPEC.md -->
+
 # Specification: "Chat About" Button for Ontology Modals
 
 ## Overview

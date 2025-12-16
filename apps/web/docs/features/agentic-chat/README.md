@@ -2,7 +2,7 @@
 
 # Agentic Chat System - Complete Architecture Documentation
 
-> **Last Updated:** 2025-12-02
+> **Last Updated:** 2024-12-16
 > **Status:** Comprehensive Technical Reference (Updated with accurate counts)
 > **Maintainer:** BuildOS Platform Team
 
@@ -36,8 +36,17 @@ The BuildOS Agentic Chat System is a sophisticated multi-agent architecture that
 
 2. **Explore Key Files**
     - Frontend: `src/lib/components/agent/AgentChatModal.svelte`
-    - Backend: `src/routes/api/agent/stream/+server.ts`
+    - Backend: `src/routes/api/agent/stream/` (modular structure - see below)
     - Orchestrator: `src/lib/services/agentic-chat/orchestration/agent-chat-orchestrator.ts`
+
+   > **Note:** The backend endpoint was refactored in December 2024 into a modular structure:
+   > ```
+   > src/routes/api/agent/stream/
+   > ├── +server.ts           # Main orchestrator (~290 lines)
+   > ├── services/            # Session, ontology, persistence, streaming
+   > └── utils/               # Context normalization, rate limiting, event mapping
+   > ```
+   > See `docs/plans/AGENT_STREAM_ENDPOINT_REFACTORING_PLAN.md` for details.
 
 3. **Learn the Tool System**
     - See [Tool System](#tool-system) section
@@ -124,10 +133,13 @@ export function createAgentChatOrchestrator(
    └── AgentChatModal.svelte sends POST to /api/agent/stream
        └── Payload: { message, session_id, context_type, entity_id, conversation_history, projectFocus }
 
-2. API ENDPOINT (/api/agent/stream/+server.ts)
-   └── Creates SSE stream via SSEProcessor.createSSEStream()
-   └── Initializes AgentChatOrchestrator via createAgentChatOrchestrator()
-   └── Calls orchestrator.streamConversation()
+2. API ENDPOINT (/api/agent/stream/)
+   └── +server.ts orchestrates the flow via:
+       ├── SessionManager.resolveSession() - creates/fetches session
+       ├── OntologyCacheService.loadWithSessionCache() - loads context
+       └── StreamHandler.createStream() - manages SSE lifecycle
+           └── Initializes AgentChatOrchestrator
+           └── Calls orchestrator.streamConversation()
 
 3. ORCHESTRATION (AgentChatOrchestrator.streamConversation)
    ├── 3a. Context Building
@@ -896,7 +908,11 @@ interface AgentStreamRequest {
 
 | File                                                                     | Lines | Purpose                 |
 | ------------------------------------------------------------------------ | ----- | ----------------------- |
-| `src/routes/api/agent/stream/+server.ts`                                 | ~500  | API endpoint            |
+| `src/routes/api/agent/stream/+server.ts`                                 | ~290  | API endpoint (refactored Dec 2024) |
+| `src/routes/api/agent/stream/services/session-manager.ts`                | ~310  | Session CRUD operations |
+| `src/routes/api/agent/stream/services/stream-handler.ts`                 | ~480  | SSE lifecycle           |
+| `src/routes/api/agent/stream/services/ontology-cache.ts`                 | ~230  | Session-level caching   |
+| `src/routes/api/agent/stream/utils/context-utils.ts`                     | ~245  | Context normalization   |
 | `src/lib/services/agentic-chat/index.ts`                                 | ~133  | Factory and exports     |
 | `src/lib/services/agentic-chat/orchestration/agent-chat-orchestrator.ts` | ~1048 | Main orchestrator       |
 | `src/lib/services/agent-context-service.ts`                              | ~1738 | Context building        |

@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/ontology/FSM_SIMPLIFICATION_PLAN.md -->
+
 # FSM Simplification Plan: From State Machines to Simple Enums
 
 **Created**: December 12, 2025

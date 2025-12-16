@@ -19,6 +19,7 @@
 	import { onMount } from 'svelte';
 	import { ChevronDown, ChevronUp, Maximize2, EyeOff, GitBranch, Loader2 } from 'lucide-svelte';
 	import OntologyGraph from './graph/OntologyGraph.svelte';
+	import Select from '$lib/components/ui/Select.svelte';
 	import type {
 		GraphNode,
 		GraphSourceData,
@@ -194,15 +195,17 @@
 			>
 				<div class="flex items-center gap-2">
 					<!-- Layout Selector -->
-					<select
+					<Select
 						bind:value={selectedLayout}
-						class="h-7 px-2 text-xs font-medium rounded-md border border-border bg-card text-foreground focus:border-accent focus:outline-none focus:ring-1 focus:ring-ring transition"
+						size="sm"
+						placeholder="Layout"
+						class="!min-h-[28px] !py-0 !pl-2 !pr-8 !text-xs w-[110px]"
 						aria-label="Graph layout"
 					>
 						{#each layouts as layout}
 							<option value={layout.value}>{layout.label}</option>
 						{/each}
-					</select>
+					</Select>
 
 					<!-- Fit Button -->
 					<button

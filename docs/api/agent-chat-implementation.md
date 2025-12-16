@@ -14,39 +14,62 @@ The agent chat system is a sophisticated multi-agent architecture with three mai
 
 ## 1. Main API Endpoint: `/api/agent/stream`
 
-**File:** `/apps/web/src/routes/api/agent/stream/+server.ts`
+**Directory:** `/apps/web/src/routes/api/agent/stream/`
+
+> **Note:** This endpoint was refactored in December 2024 from a single ~1,344 line file into a modular structure. See `docs/plans/AGENT_STREAM_ENDPOINT_REFACTORING_PLAN.md` for details.
+
+### File Structure
+
+```
+apps/web/src/routes/api/agent/stream/
+├── +server.ts              # Main orchestrator (~290 lines)
+├── types.ts                # Endpoint-specific types
+├── constants.ts            # Configuration values
+├── services/
+│   ├── session-manager.ts  # Session CRUD for POST + GET
+│   ├── ontology-cache.ts   # Wraps OntologyContextLoader with session cache
+│   ├── message-persister.ts # Message persistence
+│   └── stream-handler.ts   # SSE lifecycle with metadata consolidation
+└── utils/
+    ├── context-utils.ts    # Pure context normalization functions
+    ├── rate-limiter.ts     # Pluggable rate limiting interface
+    └── event-mapper.ts     # Data-driven event mapping
+```
 
 ### Key Features
 
 - **HTTP Methods:** POST (send message) and GET (fetch sessions)
 - **Authentication:** Required via `safeGetSession()`
-- **Rate Limiting:** 20 requests/minute, 30,000 tokens/minute per user
+- **Rate Limiting:** 20 requests/minute, 30,000 tokens/minute per user (currently disabled)
 - **Response Type:** Server-Sent Events (SSE) for real-time streaming
+- **Ontology Caching:** Session-level cache with 5-minute TTL
 
 ### POST Handler Flow
 
 ```
-1. Authentication Check
+1. Authentication Check (authenticateRequest)
    ↓
-2. Rate Limiting Check
+2. Rate Limiting Check (rateLimiter.checkLimit)
    ↓
-3. Get/Create Chat Session
-4. Load Conversation History (up to 50 messages)
+3. Session Resolution (SessionManager.resolveSession)
+   - Fetch existing or create new session
+   - Load conversation history (up to 50 messages)
    ↓
-5. Initialize Services:
-   - SmartLLMService (LLM operations)
-   - ChatCompressionService (token management)
-   - AgentPlannerService (orchestration)
-   - AgentExecutorService (task execution)
+4. Focus Resolution (SessionManager.resolveProjectFocus)
    ↓
-6. Process Message through Planner
+5. Persist User Message (MessagePersister.persistUserMessage)
    ↓
-7. Save to Database:
-   - User message
-   - Assistant response
-   - Tool calls + results
+6. Load Ontology Context (OntologyCacheService.loadWithSessionCache)
    ↓
-8. Return SSE Stream
+7. Create Stream (StreamHandler.createStream)
+   - Initialize AgentChatOrchestrator
+   - Process events via streamConversation()
+   - Handle context shifts, tool calls, etc.
+   ↓
+8. Finalize (in finally block)
+   - Persist assistant message + tool results
+   - Consolidate metadata (single DB write)
+   - Close stream
 ```
 
 ### Request Format
@@ -83,14 +106,36 @@ type AgentSSEMessage = {
 
 ### Key Implementation Details
 
-**Line 84-398:** POST handler with complete streaming pipeline
+After the December 2024 refactoring, the implementation is split across multiple files:
 
-- Session management (lines 156-208)
-- Conversation history loading (lines 172-181)
-- Message saving to database (lines 211-221)
-- Streaming event processing (lines 242-395)
+**`+server.ts`** - Main orchestrator (~290 lines)
 
-**Lines 409-455:** GET handler for fetching sessions
+- POST handler: Authentication, request parsing, service coordination
+- GET handler: Session listing and retrieval
+
+**`services/session-manager.ts`** - Session lifecycle
+
+- `resolveSession()` - Fetch or create session
+- `resolveProjectFocus()` - Handle focus changes
+- `getSessionWithMessages()` / `listUserSessions()` - GET operations
+
+**`services/stream-handler.ts`** - SSE lifecycle
+
+- `createStream()` - Initialize and run orchestration
+- `runOrchestration()` - Event processing with guarantees:
+    - `done` event always sent (success or error)
+    - `error` event precedes `done` on errors
+    - Metadata consolidated in single DB write (finally block)
+
+**`services/ontology-cache.ts`** - Context caching
+
+- Session-level cache with 5-minute TTL
+- Wraps existing `OntologyContextLoader`
+
+**`utils/context-utils.ts`** - Shared utilities
+
+- `normalizeContextType()` - Handles 'general' → 'global' mapping
+- `buildContextShiftLastTurnContext()` - Context shift handling
 
 ---
 

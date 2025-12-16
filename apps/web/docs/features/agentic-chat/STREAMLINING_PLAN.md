@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/agentic-chat/STREAMLINING_PLAN.md -->
+
 # Agentic Chat Streamlining Plan
 
 > **Status:** In Progress

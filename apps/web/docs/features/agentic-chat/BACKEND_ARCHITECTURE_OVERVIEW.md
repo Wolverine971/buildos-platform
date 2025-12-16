@@ -5,8 +5,11 @@
 ## Document Metadata
 
 - **Created**: 2025-11-05
+- **Updated**: 2024-12-16
 - **Purpose**: High-level and detailed architecture overview of the refactored agentic chat backend
 - **Status**: Documentation of implemented refactoring (Phase 1 complete)
+
+> **December 2024 Update:** The `/api/agent/stream` endpoint has been further refactored from ~1,344 lines to ~290 lines with a modular structure. See `docs/plans/AGENT_STREAM_ENDPOINT_REFACTORING_PLAN.md` for details on the endpoint-level refactoring.
 
 ## Table of Contents
 

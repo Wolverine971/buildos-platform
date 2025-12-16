@@ -28,7 +28,11 @@
       "mcp__perplexity__search",
       "Bash(pnpm label-paths:*)",
       "Bash(pnpm check:*)",
-      "Bash(pnpm exec svelte-check:*)"
+      "Bash(pnpm exec svelte-check:*)",
+      "WebFetch(domain:blog.codacy.com)",
+      "Bash(NODE_OPTIONS=\"--max-old-space-size=8192\" pnpm run check:ts:*)",
+      "Bash(pnpm exec tsc:*)",
+      "Bash(pnpm run test:*)"
     ],
     "deny": [],
     "ask": []

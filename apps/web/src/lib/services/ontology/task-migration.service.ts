@@ -955,31 +955,23 @@ export class TaskMigrationService {
 			};
 		}
 
-		// Create plan relationship edges if plan exists
+		// Create plan relationship edge if plan exists
+		// Convention: Store directionally (plan → task), query bidirectionally
 		if (suggestedPlanId) {
-			const { error: edgeError } = await this.client.from('onto_edges').insert([
-				{
-					src_id: data.id,
-					src_kind: 'task',
-					dst_id: suggestedPlanId,
-					dst_kind: 'plan',
-					rel: 'belongs_to_plan'
-				},
-				{
-					src_id: suggestedPlanId,
-					src_kind: 'plan',
-					dst_id: data.id,
-					dst_kind: 'task',
-					rel: 'has_task'
-				}
-			]);
+			const { error: edgeError } = await this.client.from('onto_edges').insert({
+				src_id: suggestedPlanId,
+				src_kind: 'plan',
+				dst_id: data.id,
+				dst_kind: 'task',
+				rel: 'has_task'
+			});
 
 			if (edgeError) {
 				console.error(
-					`[TaskMigration] Failed to create task-plan edges for task ${task.id} → plan ${suggestedPlanId}: ${edgeError.message}`
+					`[TaskMigration] Failed to create task-plan edge for task ${task.id} → plan ${suggestedPlanId}: ${edgeError.message}`
 				);
 				// Throw to ensure edge creation failures are not silently ignored
-				throw new Error(`Failed to create task-plan edges: ${edgeError.message}`);
+				throw new Error(`Failed to create task-plan edge: ${edgeError.message}`);
 			}
 		}
 

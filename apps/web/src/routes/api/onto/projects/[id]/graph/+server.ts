@@ -2,6 +2,9 @@
 /**
  * GET /api/onto/projects/[id]/graph
  * Returns a graph dataset scoped to a single ontology project.
+ *
+ * Uses the efficient project-scoped query pattern with project_id index.
+ * See: docs/specs/PROJECT_GRAPH_QUERY_PATTERN_SPEC.md
  */
 
 import type { RequestHandler } from './$types';
@@ -12,6 +15,7 @@ import type {
 	GraphStats,
 	ViewMode
 } from '$lib/components/ontology/graph/lib/graph.types';
+import { loadProjectGraphData } from '$lib/services/ontology/project-graph-loader';
 
 const DEFAULT_NODE_LIMIT = 600;
 const VIEW_MODES: ViewMode[] = ['full', 'projects'];
@@ -65,18 +69,14 @@ export const GET: RequestHandler = async ({ params, locals, url }) => {
 			return ApiResponse.error('Failed to resolve user actor', 500);
 		}
 
+		// Verify project exists and user has permission
 		const { data: project, error: projectError } = await supabase
 			.from('onto_projects')
-			.select('*')
+			.select('id, created_by')
 			.eq('id', id)
-			.maybeSingle();
+			.single();
 
-		if (projectError) {
-			console.error('[Project Graph API] Failed to fetch project', projectError);
-			return ApiResponse.databaseError(projectError);
-		}
-
-		if (!project) {
+		if (projectError || !project) {
 			return ApiResponse.notFound('Project not found');
 		}
 
@@ -84,120 +84,25 @@ export const GET: RequestHandler = async ({ params, locals, url }) => {
 			return ApiResponse.forbidden('You do not have permission to access this project');
 		}
 
-		const [tasksRes, outputsRes, documentsRes, plansRes, goalsRes, milestonesRes] =
-			await Promise.all([
-				supabase.from('onto_tasks').select('*').eq('project_id', id),
-				supabase.from('onto_outputs').select('*').eq('project_id', id),
-				supabase.from('onto_documents').select('*').eq('project_id', id),
-				supabase.from('onto_plans').select('*').eq('project_id', id),
-				supabase.from('onto_goals').select('*').eq('project_id', id),
-				supabase.from('onto_milestones').select('*').eq('project_id', id)
-			]);
+		// Load all project data using efficient parallel queries with project_id index
+		const data = await loadProjectGraphData(supabase, id);
 
-		if (tasksRes.error) {
-			console.error('[Project Graph API] Failed to fetch tasks', tasksRes.error);
-			return ApiResponse.databaseError(tasksRes.error);
-		}
-
-		if (outputsRes.error) {
-			console.error('[Project Graph API] Failed to fetch outputs', outputsRes.error);
-			return ApiResponse.databaseError(outputsRes.error);
-		}
-
-		if (documentsRes.error) {
-			console.error('[Project Graph API] Failed to fetch documents', documentsRes.error);
-			return ApiResponse.databaseError(documentsRes.error);
-		}
-
-		if (plansRes.error) {
-			console.error('[Project Graph API] Failed to fetch plans', plansRes.error);
-			return ApiResponse.databaseError(plansRes.error);
-		}
-
-		if (goalsRes.error) {
-			console.error('[Project Graph API] Failed to fetch goals', goalsRes.error);
-			return ApiResponse.databaseError(goalsRes.error);
-		}
-
-		if (milestonesRes.error) {
-			console.error('[Project Graph API] Failed to fetch milestones', milestonesRes.error);
-			return ApiResponse.databaseError(milestonesRes.error);
-		}
-
-		const tasks = (tasksRes.data ?? []) as GraphSourceData['tasks'];
-		const outputs = (outputsRes.data ?? []) as GraphSourceData['outputs'];
-		const documents = (documentsRes.data ?? []) as GraphSourceData['documents'];
-		const plans = (plansRes.data ?? []) as GraphSourceData['plans'];
-		const goals = (goalsRes.data ?? []) as GraphSourceData['goals'];
-		const milestones = (milestonesRes.data ?? []) as GraphSourceData['milestones'];
-
-		const nodeIds = new Set<string>([project.id]);
-		tasks.forEach((task) => task?.id && nodeIds.add(task.id));
-		outputs.forEach((output) => output?.id && nodeIds.add(output.id));
-		documents.forEach((document) => document?.id && nodeIds.add(document.id));
-		plans.forEach((plan) => plan?.id && nodeIds.add(plan.id));
-		goals.forEach((goal) => goal?.id && nodeIds.add(goal.id));
-		milestones.forEach((milestone) => milestone?.id && nodeIds.add(milestone.id));
-
-		let edges: GraphSourceData['edges'] = [];
-
-		if (nodeIds.size > 0) {
-			const idList = Array.from(nodeIds);
-			const [edgesFromSource, edgesFromDest] = await Promise.all([
-				supabase.from('onto_edges').select('*').in('src_id', idList),
-				supabase.from('onto_edges').select('*').in('dst_id', idList)
-			]);
-
-			if (edgesFromSource.error) {
-				console.error(
-					'[Project Graph API] Failed to fetch edges (source)',
-					edgesFromSource.error
-				);
-				return ApiResponse.databaseError(edgesFromSource.error);
-			}
-
-			if (edgesFromDest.error) {
-				console.error(
-					'[Project Graph API] Failed to fetch edges (destination)',
-					edgesFromDest.error
-				);
-				return ApiResponse.databaseError(edgesFromDest.error);
-			}
-
-			const edgeMap = new Map<string, GraphSourceData['edges'][number]>();
-			for (const edge of edgesFromSource.data ?? []) {
-				if (edge?.id) {
-					edgeMap.set(edge.id, edge as GraphSourceData['edges'][number]);
-				}
-			}
-			for (const edge of edgesFromDest.data ?? []) {
-				if (edge?.id) {
-					edgeMap.set(edge.id, edge as GraphSourceData['edges'][number]);
-				}
-			}
-
-			edges = Array.from(edgeMap.values());
-		}
-
-		// Filter edges to only include those between nodes we have
-		const filteredEdges = edges.filter(
-			(edge) =>
-				edge.src_kind !== 'template' &&
-				edge.dst_kind !== 'template' &&
-				Boolean(edge.src_id && nodeIds.has(edge.src_id)) &&
-				Boolean(edge.dst_id && nodeIds.has(edge.dst_id))
-		);
-
+		// Build source data for graph service
 		const sourceData: GraphSourceData = {
-			projects: [project],
-			edges: filteredEdges,
-			tasks,
-			outputs,
-			documents,
-			plans,
-			goals,
-			milestones
+			projects: [data.project],
+			edges: data.edges,
+			tasks: data.tasks,
+			outputs: data.outputs,
+			documents: data.documents,
+			plans: data.plans,
+			goals: data.goals,
+			milestones: data.milestones
 		};
+
+		// Filter out template edges
+		sourceData.edges = sourceData.edges.filter(
+			(edge) => edge.src_kind !== 'template' && edge.dst_kind !== 'template'
+		);
 
 		const graphData = OntologyGraphService.buildGraphData(sourceData, viewMode);
 
@@ -215,14 +120,14 @@ export const GET: RequestHandler = async ({ params, locals, url }) => {
 
 		const stats: GraphStats = {
 			totalProjects: 1,
-			activeProjects: project.state_key === 'active' ? 1 : 0,
-			totalEdges: filteredEdges.length,
-			totalTasks: tasks.length,
-			totalOutputs: outputs.length,
-			totalDocuments: documents.length,
-			totalPlans: plans.length,
-			totalGoals: goals.length,
-			totalMilestones: milestones.length
+			activeProjects: data.project.state_key === 'active' ? 1 : 0,
+			totalEdges: sourceData.edges.length,
+			totalTasks: data.tasks.length,
+			totalOutputs: data.outputs.length,
+			totalDocuments: data.documents.length,
+			totalPlans: data.plans.length,
+			totalGoals: data.goals.length,
+			totalMilestones: data.milestones.length
 		};
 
 		return ApiResponse.success({
@@ -231,7 +136,8 @@ export const GET: RequestHandler = async ({ params, locals, url }) => {
 			stats,
 			metadata: {
 				viewMode,
-				projectId: project.id,
+				projectId: data.project.id,
+				queryPattern: 'efficient-project-id-index',
 				generatedAt: new Date().toISOString()
 			}
 		});

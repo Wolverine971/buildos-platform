@@ -4107,6 +4107,7 @@ export type Database = {
           dst_id: string
           dst_kind: string
           id: string
+          project_id: string
           props: Json
           rel: string
           src_id: string
@@ -4117,6 +4118,7 @@ export type Database = {
           dst_id: string
           dst_kind: string
           id?: string
+          project_id: string
           props?: Json
           rel: string
           src_id: string
@@ -4127,12 +4129,21 @@ export type Database = {
           dst_id?: string
           dst_kind?: string
           id?: string
+          project_id?: string
           props?: Json
           rel?: string
           src_id?: string
           src_kind?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "onto_edges_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       onto_event_sync: {
         Row: {

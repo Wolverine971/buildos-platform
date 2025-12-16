@@ -1,3 +1,4 @@
+-- supabase/migrations/20251212_fix_chat_tool_category_constraint.sql
 -- Migration: Fix chat_tool_executions tool_category constraint
 -- Issue: The CHECK constraint only allows ('list', 'detail', 'action', 'calendar')
 -- but the application uses categories from tools.config.ts:

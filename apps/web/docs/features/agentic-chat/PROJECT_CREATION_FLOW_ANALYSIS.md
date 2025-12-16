@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/agentic-chat/PROJECT_CREATION_FLOW_ANALYSIS.md -->
+
 # Project Creation Flow Analysis
 
 ## Document Purpose

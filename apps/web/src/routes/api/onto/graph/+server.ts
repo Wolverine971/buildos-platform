@@ -2,6 +2,13 @@
 /**
  * GET /api/onto/graph
  * Returns ontology graph datasets scoped to the authenticated actor.
+ *
+ * Query Parameters:
+ * - projectId: Optional. If provided, uses efficient single-project loading pattern
+ * - viewMode: 'full' | 'projects' (default: 'full')
+ * - limit: Maximum number of nodes (default: 1000)
+ *
+ * See: docs/specs/PROJECT_GRAPH_QUERY_PATTERN_SPEC.md
  */
 
 import type { RequestHandler } from './$types';
@@ -12,24 +19,13 @@ import type {
 	GraphStats,
 	ViewMode
 } from '$lib/components/ontology/graph/lib/graph.types';
+import {
+	loadProjectGraphData,
+	loadMultipleProjectGraphs
+} from '$lib/services/ontology/project-graph-loader';
 
 const DEFAULT_NODE_LIMIT = 1000;
 const VIEW_MODES: ViewMode[] = ['full', 'projects'];
-
-// Batch size for .in() queries to avoid URL length limits
-// Each UUID is ~36 chars, 100 UUIDs ≈ 3.6KB which is safe for URL limits
-const IN_QUERY_BATCH_SIZE = 100;
-
-/**
- * Batches an array into chunks of the specified size
- */
-function batchArray<T>(array: T[], batchSize: number): T[][] {
-	const batches: T[][] = [];
-	for (let i = 0; i < array.length; i += batchSize) {
-		batches.push(array.slice(i, i + batchSize));
-	}
-	return batches;
-}
 
 function parseViewMode(raw: string | null): ViewMode | null {
 	if (!raw) return 'full';
@@ -43,6 +39,98 @@ function parseLimit(raw: string | null): number | null {
 		return null;
 	}
 	return parsed;
+}
+
+/**
+ * Handle single-project graph loading using efficient parallel queries.
+ * Uses project_id index on all tables for O(1) lookups.
+ *
+ * This is the new efficient path introduced by PROJECT_GRAPH_QUERY_PATTERN_SPEC.md
+ */
+async function handleSingleProjectGraph(
+	supabase: Parameters<typeof loadProjectGraphData>[0],
+	projectId: string,
+	actorId: string,
+	viewMode: ViewMode,
+	limit: number
+): Promise<Response> {
+	try {
+		// Verify user owns the project
+		const { data: project, error: projectError } = await supabase
+			.from('onto_projects')
+			.select('id, created_by')
+			.eq('id', projectId)
+			.single();
+
+		if (projectError || !project) {
+			return ApiResponse.notFound('Project');
+		}
+
+		if (project.created_by !== actorId) {
+			return ApiResponse.forbidden('You do not have permission to view this project');
+		}
+
+		// Load all project data in parallel using efficient pattern
+		const data = await loadProjectGraphData(supabase, projectId);
+
+		// Build source data for graph service
+		const sourceData: GraphSourceData = {
+			projects: [data.project],
+			edges: data.edges,
+			tasks: data.tasks,
+			outputs: data.outputs,
+			documents: data.documents,
+			plans: data.plans,
+			goals: data.goals,
+			milestones: data.milestones
+		};
+
+		// Filter out template edges
+		sourceData.edges = sourceData.edges.filter(
+			(edge) => edge.src_kind !== 'template' && edge.dst_kind !== 'template'
+		);
+
+		const graphData = OntologyGraphService.buildGraphData(sourceData, viewMode);
+
+		if (graphData.nodes.length > limit) {
+			return ApiResponse.error(
+				`Ontology graph exceeds node limit of ${limit}. Refine your data or contact support.`,
+				413,
+				'GRAPH_LIMIT_EXCEEDED',
+				{
+					nodeCount: graphData.nodes.length,
+					edgeCount: graphData.edges.length
+				}
+			);
+		}
+
+		const stats: GraphStats = {
+			totalProjects: 1,
+			activeProjects: data.project.state_key === 'active' ? 1 : 0,
+			totalEdges: sourceData.edges.length,
+			totalTasks: data.tasks.length,
+			totalOutputs: data.outputs.length,
+			totalDocuments: data.documents.length,
+			totalPlans: data.plans.length,
+			totalGoals: data.goals.length,
+			totalMilestones: data.milestones.length
+		};
+
+		return ApiResponse.success({
+			source: sourceData,
+			graph: graphData,
+			stats,
+			metadata: {
+				viewMode,
+				projectId,
+				queryPattern: 'efficient-single-project',
+				generatedAt: new Date().toISOString()
+			}
+		});
+	} catch (err) {
+		console.error('[Ontology Graph API] Error loading single project graph', err);
+		return ApiResponse.internalError(err, 'Failed to load project graph');
+	}
 }
 
 export const GET: RequestHandler = async ({ locals, url }) => {
@@ -74,6 +162,13 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 			return ApiResponse.error('Failed to resolve user actor', 500);
 		}
 
+		// Check for projectId parameter - use efficient single-project loading
+		const projectId = url.searchParams.get('projectId');
+		if (projectId) {
+			return await handleSingleProjectGraph(supabase, projectId, actorId, viewMode, limit);
+		}
+
+		// Multi-project loading (legacy path)
 		const { data: projects, error: projectsError } = await supabase
 			.from('onto_projects')
 			.select('*')
@@ -87,137 +182,74 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 
 		const projectIds = (projects ?? []).map((project) => project.id);
 
-		const [tasksRes, outputsRes, documentsRes, plansRes, goalsRes, milestonesRes] =
-			projectIds.length
-				? await Promise.all([
-						supabase.from('onto_tasks').select('*').in('project_id', projectIds),
-						supabase.from('onto_outputs').select('*').in('project_id', projectIds),
-						supabase.from('onto_documents').select('*').in('project_id', projectIds),
-						supabase.from('onto_plans').select('*').in('project_id', projectIds),
-						supabase.from('onto_goals').select('*').in('project_id', projectIds),
-						supabase.from('onto_milestones').select('*').in('project_id', projectIds)
-					])
-				: [
-						{ data: [], error: null },
-						{ data: [], error: null },
-						{ data: [], error: null },
-						{ data: [], error: null },
-						{ data: [], error: null },
-						{ data: [], error: null }
-					];
+		if (projectIds.length === 0) {
+			const emptySource: GraphSourceData = {
+				projects: [],
+				edges: [],
+				tasks: [],
+				outputs: [],
+				documents: [],
+				plans: [],
+				goals: [],
+				milestones: []
+			};
 
-		if (tasksRes.error) {
-			console.error('[Ontology Graph API] Failed to fetch tasks', tasksRes.error);
-			return ApiResponse.databaseError(tasksRes.error);
-		}
-
-		if (outputsRes.error) {
-			console.error('[Ontology Graph API] Failed to fetch outputs', outputsRes.error);
-			return ApiResponse.databaseError(outputsRes.error);
-		}
-
-		if (documentsRes.error) {
-			console.error('[Ontology Graph API] Failed to fetch documents', documentsRes.error);
-			return ApiResponse.databaseError(documentsRes.error);
-		}
-
-		if (plansRes.error) {
-			console.error('[Ontology Graph API] Failed to fetch plans', plansRes.error);
-			return ApiResponse.databaseError(plansRes.error);
-		}
-
-		if (goalsRes.error) {
-			console.error('[Ontology Graph API] Failed to fetch goals', goalsRes.error);
-			return ApiResponse.databaseError(goalsRes.error);
-		}
-
-		if (milestonesRes.error) {
-			console.error('[Ontology Graph API] Failed to fetch milestones', milestonesRes.error);
-			return ApiResponse.databaseError(milestonesRes.error);
-		}
-
-		const tasks = (tasksRes.data ?? []) as GraphSourceData['tasks'];
-		const outputs = (outputsRes.data ?? []) as GraphSourceData['outputs'];
-		const documents = (documentsRes.data ?? []) as GraphSourceData['documents'];
-		const plans = (plansRes.data ?? []) as GraphSourceData['plans'];
-		const goals = (goalsRes.data ?? []) as GraphSourceData['goals'];
-		const milestones = (milestonesRes.data ?? []) as GraphSourceData['milestones'];
-
-		const nodeIds = new Set<string>();
-		projects.forEach((project) => nodeIds.add(project.id));
-		tasks.forEach((task) => nodeIds.add(task.id));
-		outputs.forEach((output) => nodeIds.add(output.id));
-		documents.forEach((document) => nodeIds.add(document.id));
-		plans.forEach((plan) => nodeIds.add(plan.id));
-		goals.forEach((goal) => nodeIds.add(goal.id));
-		milestones.forEach((milestone) => nodeIds.add(milestone.id));
-
-		let edges: GraphSourceData['edges'] = [];
-
-		if (nodeIds.size > 0) {
-			const idList = Array.from(nodeIds);
-
-			// Batch the IDs to avoid URL length limits when using .in()
-			const idBatches = batchArray(idList, IN_QUERY_BATCH_SIZE);
-
-			// Fetch edges in batches
-			const edgeMap = new Map<string, GraphSourceData['edges'][number]>();
-
-			for (const batch of idBatches) {
-				const [edgesFromSource, edgesFromDest] = await Promise.all([
-					supabase.from('onto_edges').select('*').in('src_id', batch),
-					supabase.from('onto_edges').select('*').in('dst_id', batch)
-				]);
-
-				if (edgesFromSource.error) {
-					console.error(
-						'[Ontology Graph API] Failed to fetch edges (source)',
-						edgesFromSource.error
-					);
-					return ApiResponse.databaseError(edgesFromSource.error);
+			return ApiResponse.success({
+				source: emptySource,
+				graph: OntologyGraphService.buildGraphData(emptySource, viewMode),
+				stats: {
+					totalProjects: 0,
+					activeProjects: 0,
+					totalEdges: 0,
+					totalTasks: 0,
+					totalOutputs: 0,
+					totalDocuments: 0,
+					totalPlans: 0,
+					totalGoals: 0,
+					totalMilestones: 0
+				},
+				metadata: {
+					viewMode,
+					generatedAt: new Date().toISOString()
 				}
-
-				if (edgesFromDest.error) {
-					console.error(
-						'[Ontology Graph API] Failed to fetch edges (destination)',
-						edgesFromDest.error
-					);
-					return ApiResponse.databaseError(edgesFromDest.error);
-				}
-
-				for (const edge of edgesFromSource.data ?? []) {
-					if (edge?.id) {
-						edgeMap.set(edge.id, edge as GraphSourceData['edges'][number]);
-					}
-				}
-				for (const edge of edgesFromDest.data ?? []) {
-					if (edge?.id) {
-						edgeMap.set(edge.id, edge as GraphSourceData['edges'][number]);
-					}
-				}
-			}
-
-			edges = Array.from(edgeMap.values()).filter(
-				(edge) =>
-					Boolean(edge.src_id && nodeIds.has(edge.src_id)) &&
-					Boolean(edge.dst_id && nodeIds.has(edge.dst_id))
-			);
+			});
 		}
 
-		const filteredEdges = edges.filter(
-			(edge) => edge.src_kind !== 'template' && edge.dst_kind !== 'template'
-		);
+		const graphs = await loadMultipleProjectGraphs(supabase, projectIds);
+		const missingGraphs = projectIds.filter((id) => !graphs.has(id));
+		if (missingGraphs.length > 0) {
+			console.warn('[Ontology Graph API] Missing graph data for projects', missingGraphs);
+		}
 
 		const sourceData: GraphSourceData = {
-			projects: projects ?? [],
-			edges: filteredEdges,
-			tasks,
-			outputs,
-			documents,
-			plans,
-			goals,
-			milestones
+			projects: [],
+			edges: [],
+			tasks: [],
+			outputs: [],
+			documents: [],
+			plans: [],
+			goals: [],
+			milestones: []
 		};
+
+		for (const project of projects ?? []) {
+			const graph = graphs.get(project.id);
+			if (!graph) continue;
+
+			sourceData.projects.push(project);
+			sourceData.tasks.push(...graph.tasks);
+			sourceData.outputs.push(...graph.outputs);
+			sourceData.documents.push(...graph.documents);
+			sourceData.plans.push(...graph.plans);
+			sourceData.goals.push(...graph.goals);
+			sourceData.milestones.push(...graph.milestones);
+			sourceData.edges.push(...graph.edges);
+		}
+
+		// Filter out template edges
+		sourceData.edges = sourceData.edges.filter(
+			(edge) => edge.src_kind !== 'template' && edge.dst_kind !== 'template'
+		);
 
 		const graphData = OntologyGraphService.buildGraphData(sourceData, viewMode);
 
@@ -234,16 +266,16 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 		}
 
 		const stats: GraphStats = {
-			totalProjects: (projects ?? []).length,
-			activeProjects: (projects ?? []).filter((project) => project.state_key === 'active')
+			totalProjects: sourceData.projects.length,
+			activeProjects: sourceData.projects.filter((project) => project.state_key === 'active')
 				.length,
-			totalEdges: filteredEdges.length,
-			totalTasks: tasks.length,
-			totalOutputs: outputs.length,
-			totalDocuments: documents.length,
-			totalPlans: plans.length,
-			totalGoals: goals.length,
-			totalMilestones: milestones.length
+			totalEdges: sourceData.edges.length,
+			totalTasks: sourceData.tasks.length,
+			totalOutputs: sourceData.outputs.length,
+			totalDocuments: sourceData.documents.length,
+			totalPlans: sourceData.plans.length,
+			totalGoals: sourceData.goals.length,
+			totalMilestones: sourceData.milestones.length
 		};
 
 		return ApiResponse.success({
