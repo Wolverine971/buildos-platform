@@ -305,7 +305,7 @@ export type TemplateCreationEvent =
     };
 
 export interface ProjectFocus {
-  focusType: 'project-wide' | 'task' | 'goal' | 'plan' | 'document' | 'output' | 'milestone';
+  focusType: 'project-wide' | 'task' | 'goal' | 'plan' | 'document' | 'output' | 'milestone' | 'risk';
   focusEntityId: string | null;
   focusEntityName: string | null;
   projectId: string;
@@ -315,7 +315,7 @@ export interface ProjectFocus {
 export interface FocusEntitySummary {
   id: string;
   name: string;
-  type: 'task' | 'goal' | 'plan' | 'document' | 'output' | 'milestone';
+  type: 'task' | 'goal' | 'plan' | 'document' | 'output' | 'milestone' | 'risk';
   metadata?: {
     state_key?: string | null;
     priority?: number | null;

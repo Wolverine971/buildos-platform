@@ -971,11 +971,11 @@ export const POST: RequestHandler = async ({
 				}
 			}
 
-				const sseMessage = mapPlannerEventToSSE(event);
-				if (sseMessage) {
-					await agentStream.sendMessage(sseMessage);
-				}
-			};
+			const sseMessage = mapPlannerEventToSSE(event);
+			if (sseMessage) {
+				await agentStream.sendMessage(sseMessage);
+			}
+		};
 
 		(async () => {
 			try {

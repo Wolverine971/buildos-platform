@@ -9,8 +9,21 @@
 	import DocumentEditor from '$lib/components/ontology/DocumentEditor.svelte';
 	import LinkedEntities from './linked-entities/LinkedEntities.svelte';
 	import type { EntityKind, LinkedEntitiesResult } from './linked-entities/linked-entities.types';
+	import type { ComponentType } from 'svelte';
+	import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
 	import TaskEditModal from './TaskEditModal.svelte';
 	import { toastService } from '$lib/stores/toast.store';
+
+	// Lazy-loaded AgentChatModal for better initial load performance
+	let AgentChatModalComponent = $state<ComponentType<any> | null>(null);
+
+	async function loadAgentChatModal() {
+		if (!AgentChatModalComponent) {
+			const mod = await import('$lib/components/agent/AgentChatModal.svelte');
+			AgentChatModalComponent = mod.default;
+		}
+		return AgentChatModalComponent;
+	}
 
 	interface Props {
 		outputId: string;
@@ -60,6 +73,19 @@
 	// Modal states for linked entity navigation
 	let showTaskModal = $state(false);
 	let selectedTaskIdForModal = $state<string | null>(null);
+	let showChatModal = $state(false);
+
+	// Build focus for chat about this output
+	const entityFocus = $derived.by((): ProjectFocus | null => {
+		if (!output || !projectId) return null;
+		return {
+			focusType: 'output',
+			focusEntityId: outputId,
+			focusEntityName: output.name || 'Untitled Output',
+			projectId: projectId,
+			projectName: 'Project'
+		};
+	});
 
 	$effect(() => {
 		if (!browser || !outputId) return;
@@ -223,6 +249,17 @@
 	function handleLinksChanged() {
 		hasChanges = true;
 	}
+
+	// Chat about this output handlers
+	async function openChatAbout() {
+		if (!output || !projectId) return;
+		await loadAgentChatModal();
+		showChatModal = true;
+	}
+
+	function handleChatClose() {
+		showChatModal = false;
+	}
 </script>
 
 <Modal
@@ -253,22 +290,40 @@
 					<p class="text-[10px] sm:text-xs text-muted-foreground mt-0.5">Deliverable</p>
 				</div>
 			</div>
-			<Button
-				variant="ghost"
-				size="sm"
-				onclick={closeModal}
-				class="text-muted-foreground hover:text-foreground shrink-0 !p-1 sm:!p-1.5"
-				disabled={savingState}
-			>
-				<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						stroke-width="2"
-						d="M6 18L18 6M6 6l12 12"
-					></path>
-				</svg>
-			</Button>
+			<div class="flex items-center gap-1">
+				<!-- Chat about this output button -->
+				<Button
+					variant="ghost"
+					size="sm"
+					onclick={openChatAbout}
+					class="text-muted-foreground hover:text-foreground shrink-0 !p-1 sm:!p-1.5"
+					disabled={isLoading || savingState || !output}
+					title="Chat about this output"
+				>
+					<img
+						src="/brain-bolt.png"
+						alt="Chat about this output"
+						class="w-4 h-4 sm:w-5 sm:h-5 rounded object-cover transition-transform hover:scale-110"
+					/>
+				</Button>
+				<!-- Close button -->
+				<Button
+					variant="ghost"
+					size="sm"
+					onclick={closeModal}
+					class="text-muted-foreground hover:text-foreground shrink-0 !p-1 sm:!p-1.5"
+					disabled={savingState}
+				>
+					<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M6 18L18 6M6 6l12 12"
+						></path>
+					</svg>
+				</Button>
+			</div>
 		</div>
 	{/snippet}
 
@@ -419,5 +474,15 @@
 		onClose={closeLinkedEntityModals}
 		onUpdated={closeLinkedEntityModals}
 		onDeleted={closeLinkedEntityModals}
+	/>
+{/if}
+
+<!-- Chat About Modal (Lazy Loaded) -->
+{#if showChatModal && AgentChatModalComponent && entityFocus}
+	<svelte:component
+		this={AgentChatModalComponent}
+		isOpen={showChatModal}
+		initialProjectFocus={entityFocus}
+		onClose={handleChatClose}
 	/>
 {/if}

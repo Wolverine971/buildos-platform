@@ -79,6 +79,7 @@
 		autoInitProject?: AutoInitProjectConfig | null;
 		initialBraindump?: InitialBraindump | null;
 		initialChatSessionId?: string | null;
+		initialProjectFocus?: ProjectFocus | null;
 	}
 
 	type ContextSelectionType = ChatContextType | 'agent_to_agent';
@@ -96,7 +97,8 @@
 		onClose,
 		autoInitProject = null,
 		initialBraindump = null,
-		initialChatSessionId = null
+		initialChatSessionId = null,
+		initialProjectFocus = null
 	}: Props = $props();
 
 	// Context selection state
@@ -918,6 +920,47 @@
 		setTimeout(() => {
 			sendMessage();
 		}, 0);
+	});
+
+	// Handle initialProjectFocus prop - when opening chat focused on a specific ontology entity
+	$effect(() => {
+		if (!isOpen || !initialProjectFocus) return;
+
+		// Skip if already initialized with this focus
+		if (
+			wasOpen &&
+			projectFocus?.focusEntityId === initialProjectFocus.focusEntityId &&
+			projectFocus?.projectId === initialProjectFocus.projectId
+		) {
+			return;
+		}
+
+		// Reset and set up for entity-focused chat
+		resetConversation({ preserveContext: false });
+		selectedContextType = 'project';
+		selectedEntityId = initialProjectFocus.projectId;
+		projectFocus = initialProjectFocus;
+
+		// Build context label based on focus type
+		const focusName = initialProjectFocus.focusEntityName;
+		const projectName = initialProjectFocus.projectName || 'Project';
+		selectedContextLabel =
+			initialProjectFocus.focusType === 'project-wide'
+				? projectName
+				: focusName
+					? `${focusName} (${projectName})`
+					: projectName;
+
+		showContextSelection = false;
+		showProjectActionSelector = false;
+
+		// Seed with a focus-specific initial message
+		const focusTypeLabel = initialProjectFocus.focusType.replace('-', ' ');
+		const message =
+			initialProjectFocus.focusType === 'project-wide'
+				? `What would you like to do with ${projectName}? I can help you explore goals, update tasks, or answer questions about the project.`
+				: `Let's focus on "${focusName}" in ${projectName}. What would you like to know or update about this ${focusTypeLabel}?`;
+		addInitialAssistantMessage(message);
 	});
 
 	// Handle initialChatSessionId prop - when resuming a previous chat session from history

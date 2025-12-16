@@ -37,11 +37,24 @@
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
 	import LinkedEntities from './linked-entities/LinkedEntities.svelte';
 	import type { EntityKind } from './linked-entities/linked-entities.types';
+	import type { ComponentType } from 'svelte';
+	import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
 	import TaskEditModal from './TaskEditModal.svelte';
 	import PlanEditModal from './PlanEditModal.svelte';
 	import GoalEditModal from './GoalEditModal.svelte';
 	import DocumentModal from './DocumentModal.svelte';
 	import RiskEditModal from './RiskEditModal.svelte';
+
+	// Lazy-loaded AgentChatModal for better initial load performance
+	let AgentChatModalComponent = $state<ComponentType<any> | null>(null);
+
+	async function loadAgentChatModal() {
+		if (!AgentChatModalComponent) {
+			const mod = await import('$lib/components/agent/AgentChatModal.svelte');
+			AgentChatModalComponent = mod.default;
+		}
+		return AgentChatModalComponent;
+	}
 
 	interface Props {
 		milestoneId: string;
@@ -111,6 +124,19 @@
 	let selectedDocumentIdForModal = $state<string | null>(null);
 	let showRiskModal = $state(false);
 	let selectedRiskIdForModal = $state<string | null>(null);
+	let showChatModal = $state(false);
+
+	// Build focus for chat about this milestone
+	const entityFocus = $derived.by((): ProjectFocus | null => {
+		if (!milestone || !projectId) return null;
+		return {
+			focusType: 'milestone',
+			focusEntityId: milestoneId,
+			focusEntityName: milestone.title || 'Untitled Milestone',
+			projectId: projectId,
+			projectName: milestone.project?.name || 'Project'
+		};
+	});
 
 	// Computed state badge styling
 	const stateBadge = $derived(STATE_OPTIONS.find((o) => o.value === stateKey));
@@ -316,6 +342,17 @@
 			year: 'numeric'
 		});
 	}
+
+	// Chat about this milestone handlers
+	async function openChatAbout() {
+		if (!milestone || !projectId) return;
+		await loadAgentChatModal();
+		showChatModal = true;
+	}
+
+	function handleChatClose() {
+		showChatModal = false;
+	}
 </script>
 
 <Modal
@@ -347,22 +384,40 @@
 					</p>
 				</div>
 			</div>
-			<Button
-				variant="ghost"
-				size="sm"
-				onclick={handleClose}
-				class="text-muted-foreground hover:text-foreground shrink-0 !p-1 sm:!p-1.5"
-				disabled={isSaving || isDeleting}
-			>
-				<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						stroke-width="2"
-						d="M6 18L18 6M6 6l12 12"
-					></path>
-				</svg>
-			</Button>
+			<div class="flex items-center gap-1">
+				<!-- Chat about this milestone button -->
+				<Button
+					variant="ghost"
+					size="sm"
+					onclick={openChatAbout}
+					class="text-muted-foreground hover:text-foreground shrink-0 !p-1 sm:!p-1.5"
+					disabled={isLoading || isSaving || !milestone}
+					title="Chat about this milestone"
+				>
+					<img
+						src="/brain-bolt.png"
+						alt="Chat about this milestone"
+						class="w-4 h-4 sm:w-5 sm:h-5 rounded object-cover transition-transform hover:scale-110"
+					/>
+				</Button>
+				<!-- Close button -->
+				<Button
+					variant="ghost"
+					size="sm"
+					onclick={handleClose}
+					class="text-muted-foreground hover:text-foreground shrink-0 !p-1 sm:!p-1.5"
+					disabled={isSaving || isDeleting}
+				>
+					<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M6 18L18 6M6 6l12 12"
+						></path>
+					</svg>
+				</Button>
+			</div>
 		</div>
 	{/snippet}
 
@@ -735,5 +790,15 @@
 		onClose={closeLinkedEntityModals}
 		onUpdated={closeLinkedEntityModals}
 		onDeleted={closeLinkedEntityModals}
+	/>
+{/if}
+
+<!-- Chat About Modal (Lazy Loaded) -->
+{#if showChatModal && AgentChatModalComponent && entityFocus}
+	<svelte:component
+		this={AgentChatModalComponent}
+		isOpen={showChatModal}
+		initialProjectFocus={entityFocus}
+		onClose={handleChatClose}
 	/>
 {/if}

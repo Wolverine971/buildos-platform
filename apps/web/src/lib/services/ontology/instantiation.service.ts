@@ -402,28 +402,27 @@ export async function instantiateProject(
 				await assertValidFacets(client, resolvedPlanFacets, 'plan', `plan "${plan.name}"`);
 
 				const mergedPlanProps = mergeProps(plan.props ?? {});
-					if (hasFacetValues(resolvedPlanFacets)) {
-						mergedPlanProps.facets = resolvedPlanFacets;
-					} else {
-						delete mergedPlanProps.facets;
-					}
+				if (hasFacetValues(resolvedPlanFacets)) {
+					mergedPlanProps.facets = resolvedPlanFacets;
+				} else {
+					delete mergedPlanProps.facets;
+				}
 
-					const normalizedPlanState: PlanState =
-						PLAN_STATE_MAP[plan.state_key?.trim().toLowerCase() ?? 'draft'] ??
-						'draft';
+				const normalizedPlanState: PlanState =
+					PLAN_STATE_MAP[plan.state_key?.trim().toLowerCase() ?? 'draft'] ?? 'draft';
 
-					const { data: planRow, error: planError } = await client
-						.from('onto_plans')
-						.insert({
-							project_id: typedProjectId,
-							name: plan.name,
-							type_key: plan.type_key,
-							state_key: normalizedPlanState,
-							props: mergedPlanProps as Json,
-							created_by: actorId
-						})
-						.select('id')
-						.single();
+				const { data: planRow, error: planError } = await client
+					.from('onto_plans')
+					.insert({
+						project_id: typedProjectId,
+						name: plan.name,
+						type_key: plan.type_key,
+						state_key: normalizedPlanState,
+						props: mergedPlanProps as Json,
+						created_by: actorId
+					})
+					.select('id')
+					.single();
 
 				if (planError || !planRow) {
 					throw new OntologyInstantiationError(
@@ -545,26 +544,25 @@ export async function instantiateProject(
 				);
 
 				const mergedOutputProps = mergeProps(output.props ?? {});
-					if (hasFacetValues(resolvedOutputFacets)) {
-						mergedOutputProps.facets = resolvedOutputFacets;
-					} else {
-						delete mergedOutputProps.facets;
-					}
+				if (hasFacetValues(resolvedOutputFacets)) {
+					mergedOutputProps.facets = resolvedOutputFacets;
+				} else {
+					delete mergedOutputProps.facets;
+				}
 
-					const normalizedOutputState: OutputState =
-						OUTPUT_STATE_MAP[output.state_key?.trim().toLowerCase() ?? 'draft'] ??
-						'draft';
+				const normalizedOutputState: OutputState =
+					OUTPUT_STATE_MAP[output.state_key?.trim().toLowerCase() ?? 'draft'] ?? 'draft';
 
-					const { data: outputRow, error: outputError } = await client
-						.from('onto_outputs')
-						.insert({
-							project_id: typedProjectId,
-							name: output.name,
-							type_key: output.type_key,
-							state_key: normalizedOutputState,
-							props: mergedOutputProps as Json,
-							created_by: actorId
-						})
+				const { data: outputRow, error: outputError } = await client
+					.from('onto_outputs')
+					.insert({
+						project_id: typedProjectId,
+						name: output.name,
+						type_key: output.type_key,
+						state_key: normalizedOutputState,
+						props: mergedOutputProps as Json,
+						created_by: actorId
+					})
 					.select('id')
 					.single();
 

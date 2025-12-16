@@ -63,7 +63,8 @@
 		AlertTriangle,
 		Flag,
 		ListChecks,
-		MoreVertical
+		MoreVertical,
+		GitBranch
 	} from 'lucide-svelte';
 	import type { Project, Task, Output, Document, Plan } from '$lib/types/onto';
 	import {
@@ -75,7 +76,9 @@
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
 	import NextStepDisplay from '$lib/components/project/NextStepDisplay.svelte';
 	import StateDisplay from '$lib/components/ontology/StateDisplay.svelte';
+	import ProjectGraphSection from '$lib/components/ontology/ProjectGraphSection.svelte';
 	import type { EntityReference } from '$lib/utils/entity-reference-parser';
+	import type { GraphNode } from '$lib/components/ontology/graph/lib/graph.types';
 
 	// ============================================================
 	// TYPES
@@ -179,6 +182,13 @@
 		milestones: false
 	});
 	let showMobileMenu = $state(false);
+
+	// Graph visibility state - load from localStorage on mount
+	let graphHidden = $state(
+		typeof localStorage !== 'undefined'
+			? localStorage.getItem('buildos:project-graph-hidden') === 'true'
+			: false
+	);
 
 	// ============================================================
 	// DERIVED STATE
@@ -519,6 +529,50 @@
 				console.warn(`Unknown entity type clicked: ${ref.type}`);
 		}
 	}
+
+	function handleGraphNodeClick(node: GraphNode) {
+		// Open the appropriate modal based on node type
+		switch (node.type) {
+			case 'task':
+				editingTaskId = node.id;
+				break;
+			case 'plan':
+				editingPlanId = node.id;
+				break;
+			case 'goal':
+				editingGoalId = node.id;
+				break;
+			case 'output':
+				editingOutputId = node.id;
+				break;
+			case 'document':
+				activeDocumentId = node.id;
+				showDocumentModal = true;
+				break;
+			case 'milestone':
+				editingMilestoneId = node.id;
+				break;
+			case 'project':
+				// Already on this project page, do nothing
+				break;
+			default:
+				console.warn(`Unknown graph node type clicked: ${node.type}`);
+		}
+	}
+
+	function handleGraphHide() {
+		graphHidden = true;
+		if (typeof localStorage !== 'undefined') {
+			localStorage.setItem('buildos:project-graph-hidden', 'true');
+		}
+	}
+
+	function handleGraphShow() {
+		graphHidden = false;
+		if (typeof localStorage !== 'undefined') {
+			localStorage.removeItem('buildos:project-graph-hidden');
+		}
+	}
 </script>
 
 <svelte:head>
@@ -552,6 +606,16 @@
 
 				<!-- Desktop: Show all buttons -->
 				<div class="hidden sm:flex items-center gap-1.5 shrink-0">
+					{#if graphHidden}
+						<button
+							onclick={handleGraphShow}
+							class="p-2 rounded-lg hover:bg-muted transition-colors"
+							aria-label="Show relationship graph"
+							title="Show relationship graph"
+						>
+							<GitBranch class="w-5 h-5 text-muted-foreground" />
+						</button>
+					{/if}
 					<button
 						onclick={refreshData}
 						disabled={dataRefreshing}
@@ -604,6 +668,18 @@
 						<div
 							class="absolute right-0 top-full mt-1 z-50 w-44 rounded-lg border border-border bg-card shadow-ink-strong py-1"
 						>
+							{#if graphHidden}
+								<button
+									onclick={() => {
+										showMobileMenu = false;
+										handleGraphShow();
+									}}
+									class="w-full flex items-center gap-3 px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors"
+								>
+									<GitBranch class="w-4 h-4 text-muted-foreground" />
+									Show graph
+								</button>
+							{/if}
 							<button
 								onclick={() => {
 									showMobileMenu = false;
@@ -662,6 +738,17 @@
 			/>
 		</div>
 	</header>
+
+	<!-- Relationship Graph Section -->
+	{#if !graphHidden}
+		<div class="mx-auto max-w-screen-2xl px-2 sm:px-4 lg:px-6 pt-4">
+			<ProjectGraphSection
+				projectId={project.id}
+				onNodeClick={handleGraphNodeClick}
+				onHide={handleGraphHide}
+			/>
+		</div>
+	{/if}
 
 	<!-- Main Content -->
 	<main class="mx-auto max-w-screen-2xl px-2 sm:px-4 lg:px-6 py-4 sm:py-6 overflow-x-hidden">

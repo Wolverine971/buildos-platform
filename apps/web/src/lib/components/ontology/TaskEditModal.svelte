@@ -53,6 +53,7 @@
 	let GoalEditModalComponent = $state<ComponentType<any> | null>(null);
 	let PlanEditModalComponent = $state<ComponentType<any> | null>(null);
 	let TaskEditModalSelfComponent = $state<ComponentType<any> | null>(null);
+	let AgentChatModalComponent = $state<ComponentType<any> | null>(null);
 
 	async function loadTaskSeriesModal() {
 		if (!TaskSeriesModalComponent) {
@@ -94,6 +95,14 @@
 		return TaskEditModalSelfComponent;
 	}
 
+	async function loadAgentChatModal() {
+		if (!AgentChatModalComponent) {
+			const mod = await import('$lib/components/agent/AgentChatModal.svelte');
+			AgentChatModalComponent = mod.default;
+		}
+		return AgentChatModalComponent;
+	}
+
 	// Linked entities types are imported from linked-entities component
 	import RichMarkdownEditor from '$lib/components/ui/RichMarkdownEditor.svelte';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
@@ -104,6 +113,7 @@
 		type TaskWorkspaceDocument
 	} from '$lib/services/ontology/task-document.service';
 	import { format } from 'date-fns';
+	import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
 
 	interface Props {
 		taskId: string;
@@ -176,6 +186,7 @@
 	let selectedPlanIdForModal = $state<string | null>(null);
 	let showLinkedTaskModal = $state(false);
 	let selectedLinkedTaskId = $state<string | null>(null);
+	let showChatModal = $state(false);
 
 	const deliverableDocuments = $derived.by(() =>
 		workspaceDocuments.filter((item) => item.edge?.props?.role !== 'scratch')
@@ -203,6 +214,18 @@
 
 	const isSeriesMaster = $derived(seriesMeta?.role === 'master');
 	const isSeriesInstance = $derived(seriesMeta?.role === 'instance');
+
+	// Build focus for chat about this task
+	const entityFocus = $derived.by((): ProjectFocus | null => {
+		if (!task || !projectId) return null;
+		return {
+			focusType: 'task',
+			focusEntityId: taskId,
+			focusEntityName: task.title || 'Untitled Task',
+			projectId: projectId,
+			projectName: task.project?.name || 'Project'
+		};
+	});
 
 	// Load task data when modal opens
 	$effect(() => {
@@ -636,6 +659,17 @@
 				console.log(`No modal handler for entity kind: ${kind}`);
 		}
 	}
+
+	// Chat about this task handlers
+	async function openChatAbout() {
+		if (!task || !projectId) return;
+		await loadAgentChatModal();
+		showChatModal = true;
+	}
+
+	function handleChatClose() {
+		showChatModal = false;
+	}
 </script>
 
 <Modal
@@ -674,22 +708,40 @@
 					</p>
 				</div>
 			</div>
-			<Button
-				variant="ghost"
-				size="sm"
-				onclick={handleClose}
-				class="text-muted-foreground hover:text-foreground shrink-0 !p-1 sm:!p-1.5"
-				disabled={isSaving || isDeleting}
-			>
-				<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						stroke-width="2"
-						d="M6 18L18 6M6 6l12 12"
-					></path>
-				</svg>
-			</Button>
+			<div class="flex items-center gap-1">
+				<!-- Chat about this task button -->
+				<Button
+					variant="ghost"
+					size="sm"
+					onclick={openChatAbout}
+					class="text-muted-foreground hover:text-foreground shrink-0 !p-1 sm:!p-1.5"
+					disabled={isLoading || isSaving || !task}
+					title="Chat about this task"
+				>
+					<img
+						src="/brain-bolt.png"
+						alt="Chat about this task"
+						class="w-4 h-4 sm:w-5 sm:h-5 rounded object-cover transition-transform hover:scale-110"
+					/>
+				</Button>
+				<!-- Close button -->
+				<Button
+					variant="ghost"
+					size="sm"
+					onclick={handleClose}
+					class="text-muted-foreground hover:text-foreground shrink-0 !p-1 sm:!p-1.5"
+					disabled={isSaving || isDeleting}
+				>
+					<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M6 18L18 6M6 6l12 12"
+						></path>
+					</svg>
+				</Button>
+			</div>
 		</div>
 	{/snippet}
 
@@ -1566,5 +1618,15 @@
 		onClose={handleLinkedEntityModalClose}
 		onUpdated={handleLinkedEntityModalClose}
 		onDeleted={handleLinkedEntityModalClose}
+	/>
+{/if}
+
+<!-- Chat About Modal (Lazy Loaded) -->
+{#if showChatModal && AgentChatModalComponent && entityFocus}
+	<svelte:component
+		this={AgentChatModalComponent}
+		isOpen={showChatModal}
+		initialProjectFocus={entityFocus}
+		onClose={handleChatClose}
 	/>
 {/if}

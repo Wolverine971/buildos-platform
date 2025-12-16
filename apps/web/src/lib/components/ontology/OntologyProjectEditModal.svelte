@@ -10,6 +10,19 @@
 	import { Copy, Calendar, FileText, X, FolderKanban, Trash2 } from 'lucide-svelte';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
 	import { PROJECT_STATES, type Project, type Document } from '$lib/types/onto';
+	import type { ComponentType } from 'svelte';
+	import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
+
+	// Lazy-loaded AgentChatModal for better initial load performance
+	let AgentChatModalComponent = $state<ComponentType<any> | null>(null);
+
+	async function loadAgentChatModal() {
+		if (!AgentChatModalComponent) {
+			const mod = await import('$lib/components/agent/AgentChatModal.svelte');
+			AgentChatModalComponent = mod.default;
+		}
+		return AgentChatModalComponent;
+	}
 
 	interface Props {
 		isOpen?: boolean;
@@ -63,6 +76,19 @@
 	let isDeleting = $state(false);
 	let showDeleteConfirm = $state(false);
 	let error = $state<string | null>(null);
+	let showChatModal = $state(false);
+
+	// Build focus for chat about this project
+	const entityFocus = $derived.by((): ProjectFocus | null => {
+		if (!project) return null;
+		return {
+			focusType: 'project-wide',
+			focusEntityId: null,
+			focusEntityName: null,
+			projectId: project.id,
+			projectName: project.name || 'Project'
+		};
+	});
 
 	// Context document state - now editable
 	let contextDocumentBody = $state('');
@@ -305,6 +331,17 @@
 			.map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
 			.join(' ');
 	}
+
+	// Chat about this project handlers
+	async function openChatAbout() {
+		if (!project) return;
+		await loadAgentChatModal();
+		showChatModal = true;
+	}
+
+	function handleChatClose() {
+		showChatModal = false;
+	}
 </script>
 
 <Modal bind:isOpen onClose={handleClose} title="" size="xl" showCloseButton={false}>
@@ -339,17 +376,36 @@
 					</p>
 				</div>
 			</div>
-			<Button
-				type="button"
-				onclick={handleClose}
-				variant="ghost"
-				size="sm"
-				class="text-muted-foreground hover:text-foreground shrink-0 !p-1 sm:!p-1.5"
-				disabled={isSaving}
-				aria-label="Close modal"
-			>
-				<X class="w-4 h-4" />
-			</Button>
+			<div class="flex items-center gap-1">
+				<!-- Chat about this project button -->
+				<Button
+					type="button"
+					onclick={openChatAbout}
+					variant="ghost"
+					size="sm"
+					class="text-muted-foreground hover:text-foreground shrink-0 !p-1 sm:!p-1.5"
+					disabled={isSaving || !project}
+					title="Chat about this project"
+				>
+					<img
+						src="/brain-bolt.png"
+						alt="Chat about this project"
+						class="w-4 h-4 sm:w-5 sm:h-5 rounded object-cover transition-transform hover:scale-110"
+					/>
+				</Button>
+				<!-- Close button -->
+				<Button
+					type="button"
+					onclick={handleClose}
+					variant="ghost"
+					size="sm"
+					class="text-muted-foreground hover:text-foreground shrink-0 !p-1 sm:!p-1.5"
+					disabled={isSaving}
+					aria-label="Close modal"
+				>
+					<X class="w-4 h-4" />
+				</Button>
+			</div>
 		</div>
 	{/snippet}
 
@@ -709,6 +765,16 @@
 			permanently deleted.
 		</p>
 	</ConfirmationModal>
+{/if}
+
+<!-- Chat About Modal (Lazy Loaded) -->
+{#if showChatModal && AgentChatModalComponent && entityFocus}
+	<svelte:component
+		this={AgentChatModalComponent}
+		isOpen={showChatModal}
+		initialProjectFocus={entityFocus}
+		onClose={handleChatClose}
+	/>
 {/if}
 
 <style>
