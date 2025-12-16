@@ -113,6 +113,70 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			return ApiResponse.error('Failed to resolve user actor', 500);
 		}
 
+		// Verify user owns all referenced entities before creating edges
+		const idsByKind = new Map<string, Set<string>>();
+		for (const edge of edges) {
+			if (!idsByKind.has(edge.src_kind)) idsByKind.set(edge.src_kind, new Set());
+			if (!idsByKind.has(edge.dst_kind)) idsByKind.set(edge.dst_kind, new Set());
+			idsByKind.get(edge.src_kind)!.add(edge.src_id);
+			idsByKind.get(edge.dst_kind)!.add(edge.dst_id);
+		}
+
+		const tableMap: Record<string, string> = {
+			task: 'onto_tasks',
+			plan: 'onto_plans',
+			goal: 'onto_goals',
+			milestone: 'onto_milestones',
+			document: 'onto_documents',
+			output: 'onto_outputs',
+			project: 'onto_projects',
+			risk: 'onto_risks'
+		};
+
+		for (const [kind, idSet] of idsByKind.entries()) {
+			const ids = Array.from(idSet);
+			const table = tableMap[kind];
+			if (!table) {
+				return ApiResponse.badRequest(`Unsupported entity kind: ${kind}`);
+			}
+
+			let query;
+			if (kind === 'project') {
+				query = supabase.from(table).select('id, created_by').in('id', ids);
+			} else {
+				query = supabase
+					.from(table)
+					.select('id, project:onto_projects!inner(id, created_by)')
+					.in('id', ids);
+			}
+
+			const { data, error } = await query;
+			if (error) {
+				console.error(`[Edges API] Ownership check failed for ${kind}:`, error);
+				return ApiResponse.databaseError(error);
+			}
+
+			const foundIds = new Set<string>();
+			for (const row of data ?? []) {
+				foundIds.add(row.id);
+				const createdBy =
+					kind === 'project'
+						? (row as any).created_by
+						: (row as any)?.project?.created_by;
+				if (createdBy !== actorId) {
+					return ApiResponse.forbidden(
+						`You do not have permission to link ${kind} ${row.id}`
+					);
+				}
+			}
+
+			for (const id of ids) {
+				if (!foundIds.has(id)) {
+					return ApiResponse.notFound(`${kind} not found: ${id}`);
+				}
+			}
+		}
+
 		// Check for existing edges to avoid duplicates
 		const existingEdgesPromises = edges.map((edge) =>
 			supabase

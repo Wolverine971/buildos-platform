@@ -73,14 +73,10 @@
 	let endDate = $state('');
 	let stateKey = $state('draft');
 
-	const stateOptions = [
-		{ value: 'draft', label: 'Draft' },
-		{ value: 'planning', label: 'Planning' },
-		{ value: 'active', label: 'Active' },
-		{ value: 'on_hold', label: 'On Hold' },
-		{ value: 'completed', label: 'Completed' },
-		{ value: 'cancelled', label: 'Cancelled' }
-	];
+	const stateOptions = PLAN_STATES.map((state) => ({
+		value: state,
+		label: state.replace('_', ' ')
+	}));
 
 	// Modal states for linked entity navigation
 	let showGoalModal = $state(false);

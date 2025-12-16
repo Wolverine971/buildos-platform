@@ -27,7 +27,8 @@
       "Bash(pnpm tsc:*)",
       "mcp__perplexity__search",
       "Bash(pnpm label-paths:*)",
-      "Bash(pnpm check:*)"
+      "Bash(pnpm check:*)",
+      "Bash(pnpm exec svelte-check:*)"
     ],
     "deny": [],
     "ask": []

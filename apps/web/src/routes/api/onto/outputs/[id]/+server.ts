@@ -9,6 +9,7 @@
 
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
+import { OUTPUT_STATES } from '$lib/types/onto';
 
 export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 	try {
@@ -24,6 +25,10 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 
 		const body = await request.json();
 		const { name, state_key, props } = body;
+
+		if (state_key !== undefined && !OUTPUT_STATES.includes(state_key)) {
+			return ApiResponse.badRequest(`state_key must be one of: ${OUTPUT_STATES.join(', ')}`);
+		}
 
 		const supabase = locals.supabase;
 

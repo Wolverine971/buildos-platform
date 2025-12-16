@@ -34,9 +34,9 @@
  */
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
+import { MILESTONE_STATES } from '$lib/types/onto';
 
-const VALID_STATES = ['pending', 'in_progress', 'achieved', 'missed', 'deferred'] as const;
-type MilestoneState = (typeof VALID_STATES)[number];
+type MilestoneState = (typeof MILESTONE_STATES)[number];
 
 // GET /api/onto/milestones/[id] - Get a single milestone
 export const GET: RequestHandler = async ({ params, locals }) => {
@@ -66,6 +66,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 				*,
 				project:onto_projects!inner(
 					id,
+					name,
 					created_by
 				)
 			`
@@ -82,10 +83,12 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			return ApiResponse.forbidden('You do not have access to this milestone');
 		}
 
-		// Remove nested project data from response
+		// Extract project data and include project name in response
 		const { project, ...milestoneData } = milestone;
 
-		return ApiResponse.success({ milestone: milestoneData });
+		return ApiResponse.success({
+			milestone: { ...milestoneData, project: { name: project.name } }
+		});
 	} catch (error) {
 		console.error('[Milestone GET] Unexpected error:', error);
 		return ApiResponse.internalError(error);
@@ -106,8 +109,8 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		const { title, due_at, state_key, description, props } = body;
 
 		// Validate state_key if provided
-		if (state_key !== undefined && !VALID_STATES.includes(state_key as MilestoneState)) {
-			return ApiResponse.badRequest(`State must be one of: ${VALID_STATES.join(', ')}`);
+		if (state_key !== undefined && !MILESTONE_STATES.includes(state_key as MilestoneState)) {
+			return ApiResponse.badRequest(`State must be one of: ${MILESTONE_STATES.join(', ')}`);
 		}
 
 		// Validate due_at if provided
@@ -185,6 +188,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		}
 
 		if (state_key !== undefined) {
+			updateData.state_key = state_key;
 			propsUpdate.state_key = state_key;
 			hasPropsUpdate = true;
 		}

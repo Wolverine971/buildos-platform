@@ -39,7 +39,7 @@
 
 	// UI State
 	let isExpanded = $state(false);
-	let selectedLayout = $state<string>('cose-bilkent');
+	let selectedLayout = $state<string>('dagre');
 
 	// Graph data state
 	let graphData = $state<GraphSourceData | null>(null);

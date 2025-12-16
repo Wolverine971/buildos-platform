@@ -6,6 +6,7 @@
 
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
+import { DOCUMENT_STATES } from '$lib/types/onto';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	try {
@@ -38,6 +39,12 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		if (!type_key || typeof type_key !== 'string') {
 			return ApiResponse.badRequest('type_key is required');
+		}
+
+		if (state_key !== undefined && !DOCUMENT_STATES.includes(String(state_key))) {
+			return ApiResponse.badRequest(
+				`state_key must be one of: ${DOCUMENT_STATES.join(', ')}`
+			);
 		}
 
 		const supabase = locals.supabase;

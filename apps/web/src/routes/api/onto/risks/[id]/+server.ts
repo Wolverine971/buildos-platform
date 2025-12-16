@@ -34,19 +34,12 @@
  */
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
+import { RISK_STATES } from '$lib/types/onto';
 
 const VALID_IMPACTS = ['low', 'medium', 'high', 'critical'] as const;
 type Impact = (typeof VALID_IMPACTS)[number];
 
-const VALID_STATES = [
-	'identified',
-	'analyzing',
-	'mitigating',
-	'monitoring',
-	'accepted',
-	'resolved'
-] as const;
-type RiskState = (typeof VALID_STATES)[number];
+type RiskState = (typeof RISK_STATES)[number];
 
 // GET /api/onto/risks/[id] - Get a single risk
 export const GET: RequestHandler = async ({ params, locals }) => {
@@ -76,6 +69,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 				*,
 				project:onto_projects!inner(
 					id,
+					name,
 					created_by
 				)
 			`
@@ -92,10 +86,10 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			return ApiResponse.forbidden('You do not have access to this risk');
 		}
 
-		// Remove nested project data from response
+		// Extract project data and include project name in response
 		const { project, ...riskData } = risk;
 
-		return ApiResponse.success({ risk: riskData });
+		return ApiResponse.success({ risk: { ...riskData, project: { name: project.name } } });
 	} catch (error) {
 		console.error('[Risk GET] Unexpected error:', error);
 		return ApiResponse.internalError(error);
@@ -138,8 +132,8 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		}
 
 		// Validate state_key if provided
-		if (state_key !== undefined && !VALID_STATES.includes(state_key as RiskState)) {
-			return ApiResponse.badRequest(`State must be one of: ${VALID_STATES.join(', ')}`);
+		if (state_key !== undefined && !RISK_STATES.includes(state_key as RiskState)) {
+			return ApiResponse.badRequest(`State must be one of: ${RISK_STATES.join(', ')}`);
 		}
 
 		// Get user's actor ID

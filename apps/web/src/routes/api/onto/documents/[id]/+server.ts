@@ -7,6 +7,7 @@
 
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
+import { DOCUMENT_STATES } from '$lib/types/onto';
 
 type Locals = App.Locals;
 
@@ -131,6 +132,12 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			string,
 			unknown
 		>;
+
+		if (state_key !== undefined && !DOCUMENT_STATES.includes(String(state_key))) {
+			return ApiResponse.badRequest(
+				`state_key must be one of: ${DOCUMENT_STATES.join(', ')}`
+			);
+		}
 
 		let hasUpdates = false;
 		const updatePayload: Record<string, unknown> = {

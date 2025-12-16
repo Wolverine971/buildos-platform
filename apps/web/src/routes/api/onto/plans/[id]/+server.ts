@@ -35,6 +35,7 @@
  */
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
+import { PLAN_STATES } from '$lib/types/onto';
 
 // GET /api/onto/plans/[id] - Get a single plan
 export const GET: RequestHandler = async ({ params, locals }) => {
@@ -102,6 +103,10 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 	try {
 		const body = await request.json();
 		const { name, description, start_date, end_date, state_key, props } = body;
+
+		if (state_key !== undefined && !PLAN_STATES.includes(state_key)) {
+			return ApiResponse.badRequest(`state_key must be one of: ${PLAN_STATES.join(', ')}`);
+		}
 
 		// Get user's actor ID
 		const { data: actorId, error: actorError } = await supabase.rpc('ensure_actor_for_user', {

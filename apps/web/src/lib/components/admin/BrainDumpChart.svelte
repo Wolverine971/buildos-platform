@@ -134,7 +134,7 @@
 							fill="#8b5cf6"
 							stroke="white"
 							stroke-width="2"
-							class="hover:r-6 cursor-pointer transition-all"
+							class="cursor-pointer transition-all hover:opacity-80"
 							role="button"
 							tabindex="0"
 							aria-label="{point.count} brain dumps in {point.month}"

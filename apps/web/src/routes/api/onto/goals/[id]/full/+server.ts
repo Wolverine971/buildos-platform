@@ -41,6 +41,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 					*,
 					project:onto_projects!inner(
 						id,
+						name,
 						created_by
 					)
 				`
@@ -69,11 +70,11 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		// Phase 2: Fetch linked entities (can run after auth is verified)
 		const linkedEntities = await resolveLinkedEntitiesGeneric(supabase, goalId, 'goal');
 
-		// Remove nested project data from response
+		// Extract project data and include project name in response
 		const { project, ...goalData } = goal;
 
 		return ApiResponse.success({
-			goal: goalData,
+			goal: { ...goalData, project: { name: project.name } },
 			linkedEntities
 		});
 	} catch (error) {

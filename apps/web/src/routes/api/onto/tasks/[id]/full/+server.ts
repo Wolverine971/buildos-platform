@@ -44,6 +44,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 					*,
 					project:onto_projects!inner(
 						id,
+						name,
 						created_by
 					)
 				`
@@ -96,11 +97,11 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			}
 		}
 
-		// Remove nested project data from response
+		// Extract project data and include project name in response
 		const { project, ...taskData } = task;
 
 		return ApiResponse.success({
-			task: { ...taskData, plan },
+			task: { ...taskData, plan, project: { name: project.name } },
 			linkedEntities
 		});
 	} catch (error) {

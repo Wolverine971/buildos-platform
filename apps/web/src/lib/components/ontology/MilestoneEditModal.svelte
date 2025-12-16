@@ -44,6 +44,7 @@
 	import GoalEditModal from './GoalEditModal.svelte';
 	import DocumentModal from './DocumentModal.svelte';
 	import RiskEditModal from './RiskEditModal.svelte';
+	import { MILESTONE_STATES } from '$lib/types/onto';
 
 	// Lazy-loaded AgentChatModal for better initial load performance
 	let AgentChatModalComponent = $state<ComponentType<any> | null>(null);
@@ -66,38 +67,26 @@
 
 	let { milestoneId, projectId, onClose, onUpdated, onDeleted }: Props = $props();
 
-	const STATE_OPTIONS = [
-		{
-			value: 'pending',
-			label: 'Pending',
-			description: 'Not yet started',
-			color: 'bg-slate-500/10 text-slate-600'
-		},
-		{
-			value: 'in_progress',
-			label: 'In Progress',
-			description: 'Work underway',
-			color: 'bg-blue-500/10 text-blue-600'
-		},
-		{
-			value: 'achieved',
-			label: 'Achieved',
-			description: 'Successfully completed',
-			color: 'bg-emerald-500/10 text-emerald-600'
-		},
-		{
-			value: 'missed',
-			label: 'Missed',
-			description: 'Deadline not met',
-			color: 'bg-red-500/10 text-red-600'
-		},
-		{
-			value: 'deferred',
-			label: 'Deferred',
-			description: 'Postponed',
-			color: 'bg-amber-500/10 text-amber-600'
-		}
-	];
+	const STATE_OPTIONS = MILESTONE_STATES.map((state) => ({
+		value: state,
+		label: state.replace('_', ' '),
+		description:
+			state === 'pending'
+				? 'Not yet started'
+				: state === 'in_progress'
+					? 'Work underway'
+					: state === 'completed'
+						? 'Successfully completed'
+						: 'Deadline not met',
+		color:
+			state === 'pending'
+				? 'bg-slate-500/10 text-slate-600'
+				: state === 'in_progress'
+					? 'bg-blue-500/10 text-blue-600'
+					: state === 'completed'
+						? 'bg-emerald-500/10 text-emerald-600'
+						: 'bg-red-500/10 text-red-600'
+	}));
 
 	let modalOpen = $state(true);
 	let milestone = $state<any>(null);
@@ -185,7 +174,7 @@
 					const dateObj = new Date(milestone.due_at);
 					dueAt = dateObj.toISOString().split('T')[0];
 				}
-				stateKey = milestone.props?.state_key || 'pending';
+				stateKey = milestone.state_key || milestone.props?.state_key || 'pending';
 				description = milestone.props?.description || '';
 			}
 		} catch (err) {

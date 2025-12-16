@@ -43,6 +43,7 @@
 	import PlanEditModal from './PlanEditModal.svelte';
 	import GoalEditModal from './GoalEditModal.svelte';
 	import DocumentModal from './DocumentModal.svelte';
+	import { RISK_STATES } from '$lib/types/onto';
 
 	// Lazy-loaded AgentChatModal for better initial load performance
 	let AgentChatModalComponent = $state<ComponentType<any> | null>(null);
@@ -80,14 +81,18 @@
 		{ value: '0.9', label: 'Almost Certain (90%)' }
 	];
 
-	const STATE_OPTIONS = [
-		{ value: 'identified', label: 'Identified', description: 'Risk has been logged' },
-		{ value: 'analyzing', label: 'Analyzing', description: 'Being evaluated' },
-		{ value: 'mitigating', label: 'Mitigating', description: 'Mitigation in progress' },
-		{ value: 'monitoring', label: 'Monitoring', description: 'Active watch' },
-		{ value: 'accepted', label: 'Accepted', description: "Won't mitigate" },
-		{ value: 'resolved', label: 'Resolved', description: 'No longer applies' }
-	];
+	const STATE_OPTIONS = RISK_STATES.map((state) => ({
+		value: state,
+		label: state.replace('_', ' '),
+		description:
+			state === 'identified'
+				? 'Risk has been logged'
+				: state === 'mitigated'
+					? 'Mitigation applied'
+					: state === 'occurred'
+						? 'Risk event occurred'
+						: 'Closed out'
+	}));
 
 	let modalOpen = $state(true);
 	let risk = $state<any>(null);

@@ -14,6 +14,7 @@
 	import TaskEditModal from './TaskEditModal.svelte';
 	import PlanEditModal from './PlanEditModal.svelte';
 	import GoalEditModal from './GoalEditModal.svelte';
+	import { DOCUMENT_STATES } from '$lib/types/onto';
 	import { toastService } from '$lib/stores/toast.store';
 	import { FileText, Loader, Save, Trash2 } from 'lucide-svelte';
 
@@ -54,13 +55,10 @@
 	let createdAt = $state<string | null>(null);
 	let updatedAt = $state<string | null>(null);
 
-	const stateOptions = [
-		{ value: 'draft', label: 'Draft' },
-		{ value: 'review', label: 'In Review' },
-		{ value: 'approved', label: 'Approved' },
-		{ value: 'published', label: 'Published' },
-		{ value: 'archived', label: 'Archived' }
-	];
+	const stateOptions = DOCUMENT_STATES.map((state) => ({
+		value: state,
+		label: state.replace('_', ' ')
+	}));
 
 	const isEditing = $derived(Boolean(documentId));
 	const documentFormId = $derived(`document-modal-${documentId ?? 'new'}`);

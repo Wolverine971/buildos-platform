@@ -60,7 +60,8 @@
 
 		// Group into weeks starting from Sunday
 		const weeks: Array<Array<(typeof allDays)[0] | null>> = [];
-		const startDate = parseISO(allDays[0].date);
+		// allDays is always 30 elements (from the loop above), so allDays[0] is guaranteed
+		const startDate = parseISO(allDays[0]!.date);
 		const weekStart = startOfWeek(startDate, { weekStartsOn: 0 }); // Start on Sunday
 
 		// Calculate how many days before our start date to fill the first week
@@ -79,7 +80,8 @@
 
 		// Add our actual days
 		while (dayIndex < allDays.length) {
-			currentWeek.push(allDays[dayIndex]);
+			// The while condition guarantees dayIndex is within bounds
+			currentWeek.push(allDays[dayIndex]!);
 			dayIndex++;
 
 			// If week is complete (7 days) or we're done with data
@@ -222,7 +224,6 @@
 
 	function handlePointMouseEnter(event: MouseEvent, point: any) {
 		const rect = chartContainer.getBoundingClientRect();
-		const target = event.target as HTMLElement;
 
 		hoveredPoint = {
 			date: point.date,
@@ -460,7 +461,18 @@
 									onkeydown={(e) => {
 										if (day && (e.key === 'Enter' || e.key === ' ')) {
 											e.preventDefault();
-											handleDayMouseEnter(e, day);
+											// For keyboard navigation, use the element position
+											const rect = (
+												e.currentTarget as HTMLElement
+											).getBoundingClientRect();
+											const containerRect =
+												chartContainer.getBoundingClientRect();
+											hoveredDay = {
+												date: day.date,
+												count: day.visitor_count,
+												x: rect.left - containerRect.left + rect.width / 2,
+												y: rect.top - containerRect.top - 10
+											};
 										}
 									}}
 								></div>
@@ -528,7 +540,17 @@
 									onkeydown={(e) => {
 										if (e.key === 'Enter' || e.key === ' ') {
 											e.preventDefault();
-											handleSignupMouseEnter(e, point);
+											// For keyboard navigation, use the element position
+											const rect = chartContainer.getBoundingClientRect();
+											const barRect = (
+												e.currentTarget as SVGRectElement
+											).getBoundingClientRect();
+											hoveredSignup = {
+												date: point.date,
+												count: point.signup_count,
+												x: barRect.left - rect.left + barRect.width / 2,
+												y: barRect.top - rect.top - 10
+											};
 										}
 									}}
 								/>
@@ -555,9 +577,12 @@
 								<circle
 									cx={50 + index * (700 / (graphData.length - 1))}
 									cy={170 - (point.visitor_count / maxValue) * 140}
-									r="3"
+									r="4"
 									fill="rgb(59, 130, 246)"
-									class="hover:r-5 cursor-pointer transition-all duration-200"
+									class="cursor-pointer transition-all duration-200 hover:opacity-80"
+									style="transform-origin: {50 +
+										index * (700 / (graphData.length - 1))}px {170 -
+										(point.visitor_count / maxValue) * 140}px;"
 									role="button"
 									tabindex="0"
 									aria-label="{point.visitor_count} visitors on {point.formattedDate}"
@@ -566,7 +591,21 @@
 									onkeydown={(e) => {
 										if (e.key === 'Enter' || e.key === ' ') {
 											e.preventDefault();
-											handlePointMouseEnter(e, point);
+											// For keyboard navigation, use the element position
+											const rect = chartContainer.getBoundingClientRect();
+											const circleRect = (
+												e.currentTarget as SVGCircleElement
+											).getBoundingClientRect();
+											hoveredPoint = {
+												date: point.date,
+												count: point.visitor_count,
+												x:
+													circleRect.left -
+													rect.left +
+													circleRect.width / 2,
+												y: circleRect.top - rect.top - 10,
+												type: 'visitor'
+											};
 										}
 									}}
 								/>

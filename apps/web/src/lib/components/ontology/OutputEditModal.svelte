@@ -12,6 +12,7 @@
 	import type { ComponentType } from 'svelte';
 	import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
 	import TaskEditModal from './TaskEditModal.svelte';
+	import { OUTPUT_STATES } from '$lib/types/onto';
 	import { toastService } from '$lib/stores/toast.store';
 
 	// Lazy-loaded AgentChatModal for better initial load performance
@@ -62,13 +63,10 @@
 	let previousOutputId = $state<string | null>(null);
 	let hasChanges = $state(false);
 
-	const stateOptions = [
-		{ value: 'draft', label: 'Draft' },
-		{ value: 'in_progress', label: 'In Progress' },
-		{ value: 'review', label: 'Review' },
-		{ value: 'approved', label: 'Approved' },
-		{ value: 'published', label: 'Published' }
-	];
+	const stateOptions = OUTPUT_STATES.map((state) => ({
+		value: state,
+		label: state.replace('_', ' ')
+	}));
 
 	// Modal states for linked entity navigation
 	let showTaskModal = $state(false);
