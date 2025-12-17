@@ -72,6 +72,7 @@ export class BaseExecutor {
 
 	/**
 	 * Get authorization headers for API requests.
+	 * Includes X-Change-Source header to identify agentic chat operations.
 	 */
 	protected async getAuthHeaders(): Promise<HeadersInit> {
 		const {
@@ -80,7 +81,8 @@ export class BaseExecutor {
 
 		return {
 			'Content-Type': 'application/json',
-			Authorization: session?.access_token ? `Bearer ${session.access_token}` : ''
+			Authorization: session?.access_token ? `Bearer ${session.access_token}` : '',
+			'X-Change-Source': 'chat'
 		};
 	}
 

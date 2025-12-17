@@ -5177,6 +5177,162 @@ export type Database = {
         }
         Relationships: []
       }
+      ontology_brief_entities: {
+        Row: {
+          created_at: string
+          daily_brief_id: string
+          entity_id: string
+          entity_kind: string
+          id: string
+          project_id: string | null
+          role: string | null
+        }
+        Insert: {
+          created_at?: string
+          daily_brief_id: string
+          entity_id: string
+          entity_kind: string
+          id?: string
+          project_id?: string | null
+          role?: string | null
+        }
+        Update: {
+          created_at?: string
+          daily_brief_id?: string
+          entity_id?: string
+          entity_kind?: string
+          id?: string
+          project_id?: string | null
+          role?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ontology_brief_entities_daily_brief_id_fkey"
+            columns: ["daily_brief_id"]
+            isOneToOne: false
+            referencedRelation: "ontology_daily_briefs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ontology_brief_entities_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ontology_daily_briefs: {
+        Row: {
+          actor_id: string
+          brief_date: string
+          created_at: string
+          executive_summary: string
+          generation_completed_at: string | null
+          generation_error: string | null
+          generation_started_at: string | null
+          generation_status: string
+          id: string
+          llm_analysis: string | null
+          metadata: Json
+          priority_actions: string[] | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          actor_id: string
+          brief_date: string
+          created_at?: string
+          executive_summary?: string
+          generation_completed_at?: string | null
+          generation_error?: string | null
+          generation_started_at?: string | null
+          generation_status?: string
+          id?: string
+          llm_analysis?: string | null
+          metadata?: Json
+          priority_actions?: string[] | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          actor_id?: string
+          brief_date?: string
+          created_at?: string
+          executive_summary?: string
+          generation_completed_at?: string | null
+          generation_error?: string | null
+          generation_started_at?: string | null
+          generation_status?: string
+          id?: string
+          llm_analysis?: string | null
+          metadata?: Json
+          priority_actions?: string[] | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ontology_daily_briefs_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "onto_actors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ontology_daily_briefs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ontology_project_briefs: {
+        Row: {
+          brief_content: string
+          created_at: string
+          daily_brief_id: string
+          id: string
+          metadata: Json
+          project_id: string
+          updated_at: string
+        }
+        Insert: {
+          brief_content: string
+          created_at?: string
+          daily_brief_id: string
+          id?: string
+          metadata?: Json
+          project_id: string
+          updated_at?: string
+        }
+        Update: {
+          brief_content?: string
+          created_at?: string
+          daily_brief_id?: string
+          id?: string
+          metadata?: Json
+          project_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ontology_project_briefs_daily_brief_id_fkey"
+            columns: ["daily_brief_id"]
+            isOneToOne: false
+            referencedRelation: "ontology_daily_briefs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ontology_project_briefs_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payment_methods: {
         Row: {
           card_brand: string | null
@@ -8564,6 +8720,14 @@ export type Database = {
           total_users: number
         }[]
       }
+      get_goal_progress: {
+        Args: { goal_uuid: string }
+        Returns: {
+          completed_tasks: number
+          progress_percent: number
+          total_tasks: number
+        }[]
+      }
       get_link_click_stats: {
         Args: { p_days_back?: number; p_delivery_id?: string }
         Returns: {
@@ -8685,6 +8849,51 @@ export type Database = {
           suggested_name: string
           suggestion_id: string
         }[]
+      }
+      get_plan_tasks: {
+        Args: { plan_uuid: string }
+        Returns: {
+          created_at: string
+          created_by: string
+          due_at: string | null
+          facet_scale: string | null
+          id: string
+          priority: number | null
+          project_id: string
+          props: Json
+          search_vector: unknown
+          state_key: Database["public"]["Enums"]["task_state"]
+          title: string
+          type_key: string
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "onto_tasks"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      get_project_context_document: {
+        Args: { project_uuid: string }
+        Returns: {
+          created_at: string
+          created_by: string
+          id: string
+          project_id: string
+          props: Json
+          search_vector: unknown
+          state_key: Database["public"]["Enums"]["document_state"]
+          title: string
+          type_key: string
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "onto_documents"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       get_project_full: {
         Args: { p_actor_id: string; p_project_id: string }
@@ -8824,12 +9033,29 @@ export type Database = {
           trial_subscriptions: number
         }[]
       }
+      get_task_dependencies: {
+        Args: { task_uuid: string }
+        Returns: {
+          depends_on_id: string
+          depends_on_state: string
+          depends_on_title: string
+        }[]
+      }
       get_task_plan: {
         Args: { p_task_id: string }
         Returns: {
           plan_id: string
           plan_name: string
           plan_type_key: string
+        }[]
+      }
+      get_unblocking_tasks: {
+        Args: { project_uuid: string }
+        Returns: {
+          blocks_count: number
+          task_id: string
+          task_state: string
+          task_title: string
         }[]
       }
       get_user_active_generations: {

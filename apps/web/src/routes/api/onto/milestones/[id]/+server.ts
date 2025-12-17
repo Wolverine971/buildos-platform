@@ -35,6 +35,7 @@
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { MILESTONE_STATES } from '$lib/types/onto';
+import { logUpdateAsync, logDeleteAsync, getChangeSourceFromRequest } from '$lib/services/async-activity-logger';
 
 type MilestoneState = (typeof MILESTONE_STATES)[number];
 
@@ -215,6 +216,26 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			return ApiResponse.error('Failed to update milestone', 500);
 		}
 
+		// Log activity async (non-blocking)
+		logUpdateAsync(
+			supabase,
+			existingMilestone.project_id,
+			'milestone',
+			params.id,
+			{
+				title: existingMilestone.title,
+				due_at: existingMilestone.due_at,
+				props: existingMilestone.props
+			},
+			{
+				title: updatedMilestone.title,
+				due_at: updatedMilestone.due_at,
+				props: updatedMilestone.props
+			},
+			actorId,
+			getChangeSourceFromRequest(request)
+		);
+
 		return ApiResponse.success({ milestone: updatedMilestone });
 	} catch (error) {
 		console.error('[Milestone PATCH] Unexpected error:', error);
@@ -223,7 +244,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 };
 
 // DELETE /api/onto/milestones/[id] - Delete a milestone
-export const DELETE: RequestHandler = async ({ params, locals }) => {
+export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 	const session = await locals.safeGetSession();
 	if (!session?.user) {
 		return ApiResponse.unauthorized('Authentication required');
@@ -242,12 +263,12 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 			return ApiResponse.error('Failed to get user actor', 500);
 		}
 
-		// Get milestone with project to verify ownership
+		// Get milestone with project to verify ownership (fetch full data for logging)
 		const { data: milestone, error: fetchError } = await supabase
 			.from('onto_milestones')
 			.select(
 				`
-				id,
+				*,
 				project:onto_projects!inner(
 					id,
 					created_by
@@ -266,6 +287,13 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 			return ApiResponse.forbidden('You do not have permission to delete this milestone');
 		}
 
+		const projectId = milestone.project_id;
+		const milestoneDataForLog = {
+			title: milestone.title,
+			type_key: milestone.type_key,
+			due_at: milestone.due_at
+		};
+
 		// Delete related edges
 		await supabase
 			.from('onto_edges')
@@ -282,6 +310,17 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 			console.error('[Milestone DELETE] Error deleting milestone:', deleteError);
 			return ApiResponse.error('Failed to delete milestone', 500);
 		}
+
+		// Log activity async (non-blocking)
+		logDeleteAsync(
+			supabase,
+			projectId,
+			'milestone',
+			params.id,
+			milestoneDataForLog,
+			actorId,
+			getChangeSourceFromRequest(request)
+		);
 
 		return ApiResponse.success({ message: 'Milestone deleted successfully' });
 	} catch (error) {

@@ -477,7 +477,9 @@ export class AgentConversationService {
 			profile: 'speed', // Fast executor model
 			temperature: 0.3,
 			maxTokens: 1500,
-			sessionId: session.parentSessionId
+			sessionId: session.parentSessionId,
+			// Context for usage tracking
+			contextType: 'executor_conversation'
 		})) {
 			switch (event.type) {
 				case 'text':
@@ -699,7 +701,9 @@ export class AgentConversationService {
 			profile: 'balanced', // Smart planner model
 			temperature: 0.7,
 			maxTokens: 1000,
-			sessionId: session.parentSessionId
+			sessionId: session.parentSessionId,
+			// Context for usage tracking
+			contextType: 'planner_response'
 		})) {
 			switch (event.type) {
 				case 'text':

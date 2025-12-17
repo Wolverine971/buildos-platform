@@ -36,6 +36,11 @@
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { resolveLinkedEntities } from '../task-linked-helpers';
+import {
+	logUpdateAsync,
+	logDeleteAsync,
+	getChangeSourceFromRequest
+} from '$lib/services/async-activity-logger';
 
 // GET /api/onto/tasks/[id] - Get a single task
 export const GET: RequestHandler = async ({ params, locals }) => {
@@ -387,6 +392,26 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			}
 		}
 
+		// Log activity async (non-blocking)
+		logUpdateAsync(
+			supabase,
+			existingTask.project_id,
+			'task',
+			params.id,
+			{
+				title: existingTask.title,
+				state_key: existingTask.state_key,
+				props: existingTask.props
+			},
+			{
+				title: updatedTask.title,
+				state_key: updatedTask.state_key,
+				props: updatedTask.props
+			},
+			actorId,
+			getChangeSourceFromRequest(request)
+		);
+
 		return ApiResponse.success({ task: updatedTask });
 	} catch (error) {
 		console.error('Error updating task:', error);
@@ -395,7 +420,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 };
 
 // DELETE /api/onto/tasks/[id] - Delete a task
-export const DELETE: RequestHandler = async ({ params, locals }) => {
+export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 	const session = await locals.safeGetSession();
 	if (!session?.user) {
 		return ApiResponse.error('Unauthorized', 401);
@@ -414,12 +439,12 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 			return ApiResponse.error('Failed to get user actor', 500);
 		}
 
-		// Get task with project to verify ownership
+		// Get task with project to verify ownership (fetch full data for logging)
 		const { data: task, error: fetchError } = await supabase
 			.from('onto_tasks')
 			.select(
 				`
-				id,
+				*,
 				project:onto_projects!inner(
 					id,
 					created_by
@@ -438,6 +463,13 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 			return ApiResponse.error('Access denied', 403);
 		}
 
+		const projectId = task.project_id;
+		const taskDataForLog = {
+			title: task.title,
+			type_key: task.type_key,
+			state_key: task.state_key
+		};
+
 		// Delete related edges
 		await supabase
 			.from('onto_edges')
@@ -454,6 +486,17 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 			console.error('Error deleting task:', deleteError);
 			return ApiResponse.error('Failed to delete task', 500);
 		}
+
+		// Log activity async (non-blocking)
+		logDeleteAsync(
+			supabase,
+			projectId,
+			'task',
+			params.id,
+			taskDataForLog,
+			actorId,
+			getChangeSourceFromRequest(request)
+		);
 
 		return ApiResponse.success({ message: 'Task deleted successfully' });
 	} catch (error) {

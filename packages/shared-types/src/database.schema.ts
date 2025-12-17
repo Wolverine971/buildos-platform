@@ -1,5 +1,5 @@
 // Lightweight database schema - auto-generated from database.types.ts
-// Generated on: 2025-12-17T17:57:30.818Z
+// Generated on: 2025-12-17T19:50:38.115Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -1260,6 +1260,40 @@ export type DatabaseSchema = {
 		id: string;
 		name: string;
 	};
+	ontology_brief_entities: {
+		created_at: string;
+		daily_brief_id: string;
+		entity_id: string;
+		entity_kind: string;
+		id: string;
+		project_id: string | null;
+		role: string | null;
+	};
+	ontology_daily_briefs: {
+		actor_id: string;
+		brief_date: string;
+		created_at: string;
+		executive_summary: string;
+		generation_completed_at: string | null;
+		generation_error: string | null;
+		generation_started_at: string | null;
+		generation_status: string;
+		id: string;
+		llm_analysis: string | null;
+		metadata: Json;
+		priority_actions: string[] | null;
+		updated_at: string;
+		user_id: string;
+	};
+	ontology_project_briefs: {
+		brief_content: string;
+		created_at: string;
+		daily_brief_id: string;
+		id: string;
+		metadata: Json;
+		project_id: string;
+		updated_at: string;
+	};
 	payment_methods: {
 		card_brand: string | null;
 		card_last4: string | null;
@@ -2066,6 +2100,9 @@ export const tableNames = [
 	'onto_sources',
 	'onto_tasks',
 	'onto_tools',
+	'ontology_brief_entities',
+	'ontology_daily_briefs',
+	'ontology_project_briefs',
 	'payment_methods',
 	'phase_tasks',
 	'phases',

@@ -601,7 +601,11 @@ Respond with JSON in this exact format:
 				profile: 'balanced', // Use balanced model for planner
 				temperature: 0.7,
 				maxTokens: 2000,
-				sessionId: context.metadata.sessionId
+				sessionId: context.metadata.sessionId,
+				// Context for usage tracking (pass through planner's context type)
+				contextType: context.metadata.contextType,
+				entityId: context.metadata.entityId,
+				projectId: context.locationMetadata?.projectId
 			})) {
 				switch (event.type) {
 					case 'text':
@@ -1285,7 +1289,9 @@ Synthesized response:`;
 				maxTokens: 500,
 				userId: plan.userId,
 				profile: 'balanced', // Use balanced model for synthesis
-				sessionId: plan.sessionId
+				sessionId: plan.sessionId,
+				// Context for usage tracking
+				contextType: 'planner_synthesis'
 			})) {
 				if (event.type === 'text') {
 					synthesizedText += event.content || '';

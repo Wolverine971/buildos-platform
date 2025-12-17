@@ -429,9 +429,12 @@ export class AgentChatOrchestrator {
 				temperature: 0.4, // Can be overridden by wrapper if needed
 				maxTokens: 1800, // Can be overridden by wrapper if needed
 				sessionId: serviceContext.sessionId,
-				// Pass context for optimization
+				// Pass context for optimization and usage logging (builds chat_stream_${contextType})
 				contextType: serviceContext.contextType,
-				operationType: 'planner_stream'
+				operationType: 'planner_stream',
+				// Pass entity IDs for usage tracking
+				entityId: serviceContext.entityId,
+				projectId: serviceContext.contextScope?.projectId
 			}) as AsyncGenerator<LLMStreamEvent>) {
 				if (chunk.type === 'text' && chunk.content) {
 					assistantBuffer += chunk.content;

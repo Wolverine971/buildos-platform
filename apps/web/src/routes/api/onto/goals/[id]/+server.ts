@@ -34,6 +34,11 @@
  */
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
+import {
+	logUpdateAsync,
+	logDeleteAsync,
+	getChangeSourceFromRequest
+} from '$lib/services/async-activity-logger';
 
 // GET /api/onto/goals/[id] - Get a single goal
 export const GET: RequestHandler = async ({ params, locals }) => {
@@ -202,6 +207,18 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			return ApiResponse.error('Failed to update goal', 500);
 		}
 
+		// Log activity async (non-blocking)
+		logUpdateAsync(
+			supabase,
+			existingGoal.project_id,
+			'goal',
+			params.id,
+			{ name: existingGoal.name, props: existingGoal.props },
+			{ name: updatedGoal.name, props: updatedGoal.props },
+			actorId,
+			getChangeSourceFromRequest(request)
+		);
+
 		return ApiResponse.success({ goal: updatedGoal });
 	} catch (error) {
 		console.error('Error updating goal:', error);
@@ -210,7 +227,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 };
 
 // DELETE /api/onto/goals/[id] - Delete a goal
-export const DELETE: RequestHandler = async ({ params, locals }) => {
+export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 	const session = await locals.safeGetSession();
 	if (!session?.user) {
 		return ApiResponse.error('Unauthorized', 401);
@@ -229,12 +246,12 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 			return ApiResponse.error('Failed to get user actor', 500);
 		}
 
-		// Get goal with project to verify ownership
+		// Get goal with project to verify ownership (fetch full data for logging)
 		const { data: goal, error: fetchError } = await supabase
 			.from('onto_goals')
 			.select(
 				`
-				id,
+				*,
 				project:onto_projects!inner(
 					id,
 					created_by
@@ -253,6 +270,9 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 			return ApiResponse.error('Access denied', 403);
 		}
 
+		const projectId = goal.project_id;
+		const goalDataForLog = { name: goal.name, type_key: goal.type_key };
+
 		// Delete related edges
 		await supabase
 			.from('onto_edges')
@@ -269,6 +289,17 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 			console.error('Error deleting goal:', deleteError);
 			return ApiResponse.error('Failed to delete goal', 500);
 		}
+
+		// Log activity async (non-blocking)
+		logDeleteAsync(
+			supabase,
+			projectId,
+			'goal',
+			params.id,
+			goalDataForLog,
+			actorId,
+			getChangeSourceFromRequest(request)
+		);
 
 		return ApiResponse.success({ message: 'Goal deleted successfully' });
 	} catch (error) {

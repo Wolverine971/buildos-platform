@@ -8,6 +8,7 @@
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { DOCUMENT_STATES } from '$lib/types/onto';
+import { logUpdateAsync, logDeleteAsync, getChangeSourceFromRequest } from '$lib/services/async-activity-logger';
 
 type Locals = App.Locals;
 
@@ -194,6 +195,22 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			return ApiResponse.databaseError(updateError);
 		}
 
+		// Log activity async (non-blocking)
+		logUpdateAsync(
+			locals.supabase,
+			document.project_id,
+			'document',
+			documentId,
+			{ title: document.title, state_key: document.state_key, type_key: document.type_key },
+			{
+				title: updatedDocument.title,
+				state_key: updatedDocument.state_key,
+				type_key: updatedDocument.type_key
+			},
+			accessResult.actorId,
+			getChangeSourceFromRequest(request)
+		);
+
 		return ApiResponse.success({ document: updatedDocument });
 	} catch (error) {
 		console.error('[Document API] Unexpected PATCH error:', error);
@@ -201,7 +218,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 	}
 };
 
-export const DELETE: RequestHandler = async ({ params, locals }) => {
+export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 	try {
 		const session = await locals.safeGetSession();
 		if (!session?.user) {
@@ -219,6 +236,14 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 			return accessResult.error;
 		}
 
+		const { document, actorId } = accessResult;
+		const projectId = document.project_id;
+		const documentDataForLog = {
+			title: document.title,
+			type_key: document.type_key,
+			state_key: document.state_key
+		};
+
 		// Delete related edges FIRST (both where document is source and destination)
 		await locals.supabase
 			.from('onto_edges')
@@ -235,6 +260,17 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 			console.error('[Document API] Failed to delete document:', deleteError);
 			return ApiResponse.databaseError(deleteError);
 		}
+
+		// Log activity async (non-blocking)
+		logDeleteAsync(
+			locals.supabase,
+			projectId,
+			'document',
+			documentId,
+			documentDataForLog,
+			actorId,
+			getChangeSourceFromRequest(request)
+		);
 
 		return ApiResponse.success({ deleted: true });
 	} catch (error) {

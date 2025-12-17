@@ -25,6 +25,7 @@ export type ProjectLogEntityType =
 	| 'task'
 	| 'output'
 	| 'note'
+	| 'document'
 	| 'goal'
 	| 'milestone'
 	| 'risk'

@@ -89,6 +89,9 @@ export class EnhancedLLMWrapper {
 		// Enhanced parameters for optimization
 		contextType?: ChatContextType;
 		operationType?: string;
+		// Additional context for usage tracking
+		entityId?: string;
+		projectId?: string;
 	}): AsyncGenerator<{
 		type: 'text' | 'tool_call' | 'done' | 'error';
 		content?: string;
@@ -122,11 +125,16 @@ export class EnhancedLLMWrapper {
 		});
 
 		// Call underlying SmartLLMService with optimized parameters
+		// Pass contextType for usage logging (builds chat_stream_${contextType} operation type)
 		yield* this.smartLLM.streamText({
 			...options,
 			profile,
 			temperature,
-			maxTokens
+			maxTokens,
+			// Ensure contextType is passed for usage logging
+			contextType: contextType as string,
+			entityId: options.entityId,
+			projectId: options.projectId
 		});
 	}
 

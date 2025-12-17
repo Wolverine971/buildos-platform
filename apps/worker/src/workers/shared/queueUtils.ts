@@ -24,6 +24,8 @@ export interface BriefJobData extends Omit<DailyBriefJobMetadata, 'briefDate' | 
 		// Engagement metadata for re-engagement emails
 		isReengagement?: boolean;
 		daysSinceLastLogin?: number;
+		// Ontology brief generation flag
+		useOntology?: boolean;
 	};
 }
 

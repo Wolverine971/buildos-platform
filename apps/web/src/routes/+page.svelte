@@ -254,15 +254,16 @@
 		<section class="border-b border-border">
 			<div class="mx-auto max-w-6xl px-4 py-14 grid md:grid-cols-2 gap-10 items-center">
 				<div class="space-y-6">
-					<div
-						class="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 tx tx-static tx-weak"
+					<a
+						href="/blogs/getting-started/who-is-buildos-for"
+						class="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 tx tx-static tx-weak hover:border-accent/50 transition-colors"
 					>
 						<span class="h-1.5 w-1.5 rounded-full bg-accent"></span>
 						<span
 							class="text-[0.65rem] uppercase tracking-[0.2em] text-muted-foreground"
 							>Built for chaotic brains</span
 						>
-					</div>
+					</a>
 
 					<h1 class="text-3xl sm:text-5xl font-semibold tracking-tight leading-tight">
 						Turn scattered ideas into a <span class="relative">

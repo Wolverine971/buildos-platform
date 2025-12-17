@@ -32,6 +32,7 @@
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import type { EnsureActorResponse } from '$lib/types/onto-api';
+import { logCreateAsync, getChangeSourceFromRequest } from '$lib/services/async-activity-logger';
 
 const VALID_STATES = ['pending', 'in_progress', 'achieved', 'missed', 'deferred'] as const;
 type MilestoneState = (typeof VALID_STATES)[number];
@@ -139,6 +140,17 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			dst_kind: 'milestone',
 			rel: 'contains'
 		});
+
+		// Log activity async (non-blocking)
+		logCreateAsync(
+			supabase,
+			project_id,
+			'milestone',
+			milestone.id,
+			{ title: milestone.title, type_key: milestone.type_key, due_at: milestone.due_at },
+			actorId,
+			getChangeSourceFromRequest(request)
+		);
 
 		return ApiResponse.created({ milestone });
 	} catch (error) {

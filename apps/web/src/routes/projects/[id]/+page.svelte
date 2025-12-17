@@ -77,7 +77,9 @@
 	import NextStepDisplay from '$lib/components/project/NextStepDisplay.svelte';
 	import StateDisplay from '$lib/components/ontology/StateDisplay.svelte';
 	import ProjectGraphSection from '$lib/components/ontology/ProjectGraphSection.svelte';
-	import type { EntityReference } from '@buildos/shared-types';
+	import ProjectActivityLogPanel from '$lib/components/ontology/ProjectActivityLogPanel.svelte';
+	import ProjectBriefsPanel from '$lib/components/ontology/ProjectBriefsPanel.svelte';
+	import type { EntityReference, ProjectLogEntityType } from '@buildos/shared-types';
 	import type { GraphNode } from '$lib/components/ontology/graph/lib/graph.types';
 
 	// ============================================================
@@ -177,7 +179,7 @@
 	let expandedPanels = $state<Record<InsightPanelKey, boolean>>({
 		tasks: false,
 		plans: false,
-		goals: false,
+		goals: true,
 		risks: false,
 		milestones: false
 	});
@@ -223,11 +225,18 @@
 
 	const insightPanels: InsightPanel[] = $derived([
 		{
-			key: 'tasks',
-			label: 'Tasks',
-			icon: ListChecks,
-			items: tasks,
-			description: 'What needs to move'
+			key: 'goals',
+			label: 'Goals',
+			icon: Target,
+			items: goals,
+			description: 'What success looks like'
+		},
+		{
+			key: 'milestones',
+			label: 'Milestones',
+			icon: Flag,
+			items: milestones,
+			description: 'Checkpoints and dates'
 		},
 		{
 			key: 'plans',
@@ -237,11 +246,11 @@
 			description: 'Execution scaffolding'
 		},
 		{
-			key: 'goals',
-			label: 'Goals',
-			icon: Target,
-			items: goals,
-			description: 'What success looks like'
+			key: 'tasks',
+			label: 'Tasks',
+			icon: ListChecks,
+			items: tasks,
+			description: 'What needs to move'
 		},
 		{
 			key: 'risks',
@@ -249,13 +258,6 @@
 			icon: AlertTriangle,
 			items: risks,
 			description: 'What could go wrong'
-		},
-		{
-			key: 'milestones',
-			label: 'Milestones',
-			icon: Flag,
-			items: milestones,
-			description: 'Checkpoints and dates'
 		}
 	]);
 
@@ -571,6 +573,41 @@
 		graphHidden = false;
 		if (typeof localStorage !== 'undefined') {
 			localStorage.removeItem('buildos:project-graph-hidden');
+		}
+	}
+
+	function handleActivityLogEntityClick(entityType: ProjectLogEntityType, entityId: string) {
+		// Open the appropriate modal based on entity type
+		switch (entityType) {
+			case 'task':
+				editingTaskId = entityId;
+				break;
+			case 'plan':
+				editingPlanId = entityId;
+				break;
+			case 'goal':
+				editingGoalId = entityId;
+				break;
+			case 'output':
+				editingOutputId = entityId;
+				break;
+			case 'note':
+				// Notes are documents
+				activeDocumentId = entityId;
+				showDocumentModal = true;
+				break;
+			case 'milestone':
+				editingMilestoneId = entityId;
+				break;
+			case 'risk':
+				editingRiskId = entityId;
+				break;
+			case 'project':
+				// Already on this project page, open edit modal
+				showProjectEditModal = true;
+				break;
+			default:
+				console.warn(`Unknown activity log entity type clicked: ${entityType}`);
 		}
 	}
 </script>
@@ -1265,6 +1302,29 @@
 						{/if}
 					</div>
 				{/each}
+
+				<!-- History Section Divider -->
+				<div class="relative py-3">
+					<div class="absolute inset-0 flex items-center">
+						<div class="w-full border-t border-border/60"></div>
+					</div>
+					<div class="relative flex justify-center">
+						<span
+							class="bg-background px-2 text-xs text-muted-foreground uppercase tracking-wider"
+						>
+							History
+						</span>
+					</div>
+				</div>
+
+				<!-- Daily Briefs Panel -->
+				<ProjectBriefsPanel projectId={project.id} />
+
+				<!-- Activity Log Panel -->
+				<ProjectActivityLogPanel
+					projectId={project.id}
+					onEntityClick={handleActivityLogEntityClick}
+				/>
 			</aside>
 		</div>
 	</main>

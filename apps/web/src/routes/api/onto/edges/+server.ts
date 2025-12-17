@@ -33,6 +33,7 @@ import {
 	VALID_RELS,
 	type EdgeInput
 } from '$lib/services/ontology/edge-direction';
+import { logActivitiesAsync, getChangeSourceFromRequest } from '$lib/services/async-activity-logger';
 
 const VALID_KINDS = [
 	'task',
@@ -300,6 +301,22 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		if (insertError) {
 			console.error('[Edges API] Insert error:', insertError);
 			return ApiResponse.databaseError(insertError);
+		}
+
+		// Log activity async (non-blocking)
+		if (insertedEdges && insertedEdges.length > 0) {
+			const changeSource = getChangeSourceFromRequest(request);
+			logActivitiesAsync(supabase, {
+				logs: newEdges.map((edge, index) => ({
+					projectId: edge.project_id,
+					entityType: 'edge' as const,
+					entityId: insertedEdges[index]?.id ?? 'unknown',
+					action: 'created' as const,
+					afterData: { src_kind: edge.src_kind, dst_kind: edge.dst_kind, rel: edge.rel },
+					changedBy: actorId,
+					changeSource
+				}))
+			});
 		}
 
 		return ApiResponse.success({

@@ -1759,6 +1759,10 @@ You must respond with valid JSON only. Follow these rules:
 		maxTokens?: number;
 		sessionId?: string;
 		messageId?: string;
+		// Context tracking for usage logging
+		contextType?: string; // e.g., 'project', 'general', 'project_create', 'project_task'
+		entityId?: string; // Optional entity ID for additional tracking
+		projectId?: string; // Optional project ID for additional tracking
 	}): AsyncGenerator<{
 		type: 'text' | 'tool_call' | 'done' | 'error';
 		content?: string;
@@ -1914,9 +1918,14 @@ You must respond with valid JSON only. Follow these rules:
 								: 0;
 
 							// Log to database (async, non-blocking)
+							// Build operation type with context: chat_stream_${contextType}
+							const operationType = this.buildChatStreamOperationType(
+								options.contextType
+							);
+
 							this.logUsageToDatabase({
 								userId: options.userId,
-								operationType: 'chat_stream',
+								operationType,
 								modelRequested: preferredModels[0] || 'openai/gpt-4o-mini',
 								modelUsed: actualModel,
 								provider: modelConfig?.provider,
@@ -1934,10 +1943,13 @@ You must respond with valid JSON only. Follow these rules:
 								maxTokens: options.maxTokens,
 								profile,
 								streaming: true,
+								projectId: options.projectId || options.entityId,
 								metadata: {
 									sessionId: options.sessionId,
 									messageId: options.messageId,
-									hasTools: !!options.tools
+									hasTools: !!options.tools,
+									contextType: options.contextType,
+									entityId: options.entityId
 								}
 							}).catch((err) => console.error('Failed to log usage:', err));
 						}
@@ -2047,10 +2059,12 @@ You must respond with valid JSON only. Follow these rules:
 				});
 			}
 
-			// Log failure
+			// Log failure with context-aware operation type
+			const operationType = this.buildChatStreamOperationType(options.contextType);
+
 			this.logUsageToDatabase({
 				userId: options.userId,
-				operationType: 'chat_stream',
+				operationType,
 				modelRequested: preferredModels[0] || 'openai/gpt-4o-mini',
 				modelUsed: preferredModels[0] || 'openai/gpt-4o-mini',
 				promptTokens: 0,
@@ -2068,9 +2082,12 @@ You must respond with valid JSON only. Follow these rules:
 				maxTokens: options.maxTokens,
 				profile,
 				streaming: true,
+				projectId: options.projectId || options.entityId,
 				metadata: {
 					sessionId: options.sessionId,
-					messageId: options.messageId
+					messageId: options.messageId,
+					contextType: options.contextType,
+					entityId: options.entityId
 				}
 			}).catch((err) => console.error('Failed to log error:', err));
 
@@ -2091,5 +2108,27 @@ You must respond with valid JSON only. Follow these rules:
 		} catch {
 			return false;
 		}
+	}
+
+	/**
+	 * Build the operation type string for chat streaming based on context
+	 *
+	 * Format: chat_stream_${contextType}
+	 * Examples:
+	 *   - chat_stream_general
+	 *   - chat_stream_project
+	 *   - chat_stream_project_create
+	 *   - chat_stream_project_task
+	 *   - chat_stream_global
+	 */
+	private buildChatStreamOperationType(contextType?: string): string {
+		if (!contextType) {
+			return 'chat_stream';
+		}
+
+		// Normalize context type to lowercase and replace any invalid characters
+		const normalizedContext = contextType.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+
+		return `chat_stream_${normalizedContext}`;
 	}
 }

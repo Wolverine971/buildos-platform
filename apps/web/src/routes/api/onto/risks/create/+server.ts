@@ -34,6 +34,7 @@
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import type { EnsureActorResponse } from '$lib/types/onto-api';
+import { logCreateAsync, getChangeSourceFromRequest } from '$lib/services/async-activity-logger';
 
 const VALID_IMPACTS = ['low', 'medium', 'high', 'critical'] as const;
 type Impact = (typeof VALID_IMPACTS)[number];
@@ -145,6 +146,22 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			dst_kind: 'risk',
 			rel: 'contains'
 		});
+
+		// Log activity async (non-blocking)
+		logCreateAsync(
+			supabase,
+			project_id,
+			'risk',
+			risk.id,
+			{
+				title: risk.title,
+				type_key: risk.type_key,
+				impact: risk.impact,
+				state_key: risk.state_key
+			},
+			actorId,
+			getChangeSourceFromRequest(request)
+		);
 
 		return ApiResponse.created({ risk });
 	} catch (error) {

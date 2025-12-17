@@ -512,6 +512,24 @@
 					"slug": "understanding-life-goals",
 					"category": "getting-started",
 					"filePath": "src/content/blogs/getting-started/understanding-life-goals.md"
+				},
+				"who-is-buildos-for": {
+					"title": "Who is BuildOS For?",
+					"description": "A comprehensive (and increasingly unhinged) list of everyone who could use BuildOS. Spoiler: probably you.",
+					"author": "DJ Wayne",
+					"date": "2025-12-17",
+					"lastmod": "2025-12-17",
+					"changefreq": "monthly",
+					"priority": "0.8",
+					"published": true,
+					"tags": ["who-is-it-for", "getting-started", "fun", "community"],
+					"readingTime": 8,
+					"excerpt": "Founders, freelancers, overthinkers, underthinkers, people who make lists about making lists. If you have thoughts and want them organized, this is for you.",
+					"pic": "who-is-buildos-for",
+					"path": "apps/web/src/content/blogs/getting-started/who-is-buildos-for.md",
+					"slug": "who-is-buildos-for",
+					"category": "getting-started",
+					"filePath": "src/content/blogs/getting-started/who-is-buildos-for.md"
 				}
 			}
 		},
@@ -1151,7 +1169,7 @@
 			}
 		}
 	},
-	"generatedAt": "2025-12-17T18:52:34.592Z",
-	"totalPosts": 50,
+	"generatedAt": "2025-12-17T19:50:46.383Z",
+	"totalPosts": 51,
 	"totalCategories": 6
 }

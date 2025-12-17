@@ -35,6 +35,7 @@
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { RISK_STATES } from '$lib/types/onto';
+import { logUpdateAsync, logDeleteAsync, getChangeSourceFromRequest } from '$lib/services/async-activity-logger';
 
 const VALID_IMPACTS = ['low', 'medium', 'high', 'critical'] as const;
 type Impact = (typeof VALID_IMPACTS)[number];
@@ -239,6 +240,26 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			return ApiResponse.error('Failed to update risk', 500);
 		}
 
+		// Log activity async (non-blocking)
+		logUpdateAsync(
+			supabase,
+			existingRisk.project_id,
+			'risk',
+			params.id,
+			{
+				title: existingRisk.title,
+				impact: existingRisk.impact,
+				state_key: existingRisk.state_key
+			},
+			{
+				title: updatedRisk.title,
+				impact: updatedRisk.impact,
+				state_key: updatedRisk.state_key
+			},
+			actorId,
+			getChangeSourceFromRequest(request)
+		);
+
 		return ApiResponse.success({ risk: updatedRisk });
 	} catch (error) {
 		console.error('[Risk PATCH] Unexpected error:', error);
@@ -247,7 +268,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 };
 
 // DELETE /api/onto/risks/[id] - Delete a risk
-export const DELETE: RequestHandler = async ({ params, locals }) => {
+export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 	const session = await locals.safeGetSession();
 	if (!session?.user) {
 		return ApiResponse.unauthorized('Authentication required');
@@ -266,12 +287,12 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 			return ApiResponse.error('Failed to get user actor', 500);
 		}
 
-		// Get risk with project to verify ownership
+		// Get risk with project to verify ownership (fetch full data for logging)
 		const { data: risk, error: fetchError } = await supabase
 			.from('onto_risks')
 			.select(
 				`
-				id,
+				*,
 				project:onto_projects!inner(
 					id,
 					created_by
@@ -290,6 +311,14 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 			return ApiResponse.forbidden('You do not have permission to delete this risk');
 		}
 
+		const projectId = risk.project_id;
+		const riskDataForLog = {
+			title: risk.title,
+			type_key: risk.type_key,
+			impact: risk.impact,
+			state_key: risk.state_key
+		};
+
 		// Delete related edges
 		await supabase
 			.from('onto_edges')
@@ -306,6 +335,9 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 			console.error('[Risk DELETE] Error deleting risk:', deleteError);
 			return ApiResponse.error('Failed to delete risk', 500);
 		}
+
+		// Log activity async (non-blocking)
+		logDeleteAsync(supabase, projectId, 'risk', params.id, riskDataForLog, actorId, getChangeSourceFromRequest(request));
 
 		return ApiResponse.success({ message: 'Risk deleted successfully' });
 	} catch (error) {

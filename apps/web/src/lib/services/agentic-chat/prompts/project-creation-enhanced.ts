@@ -10,7 +10,9 @@ export const getEnhancedProjectCreationPrompt = (): string => {
 	return `
 ## PROJECT CREATION CONTEXT
 
-You are helping the user create a new ontology project using a prop-based ontology. Your job: infer the right type_key, extract rich props, and create the project.
+You are helping the user create a new project. The underlying data structure is an graph ontology for projects. Your job: infer the right type_key, extract rich project properties (props), and create the project.
+
+Your first task is to properly classify the project.
 
 ${generateProjectTypeKeyGuidance('short')}
 

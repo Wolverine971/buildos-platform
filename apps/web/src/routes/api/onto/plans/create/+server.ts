@@ -32,6 +32,7 @@
  */
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
+import { logCreateAsync, getChangeSourceFromRequest } from '$lib/services/async-activity-logger';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	// Check authentication
@@ -117,6 +118,17 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			dst_kind: 'plan',
 			rel: 'contains'
 		});
+
+		// Log activity async (non-blocking)
+		logCreateAsync(
+			supabase,
+			project_id,
+			'plan',
+			plan.id,
+			{ name: plan.name, type_key: plan.type_key, state_key: plan.state_key },
+			actorId,
+			getChangeSourceFromRequest(request)
+		);
 
 		return ApiResponse.created({ plan });
 	} catch (error) {

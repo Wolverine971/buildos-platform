@@ -7,6 +7,7 @@
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import type { Project, Document } from '$lib/types/onto';
+import { logUpdateAsync, logDeleteAsync, getChangeSourceFromRequest } from '$lib/services/async-activity-logger';
 
 export const GET: RequestHandler = async ({ params, locals }) => {
 	try {
@@ -313,6 +314,26 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			return ApiResponse.error('Failed to update project', 500);
 		}
 
+		// Log activity async (non-blocking)
+		logUpdateAsync(
+			supabase,
+			id,
+			'project',
+			id,
+			{
+				name: existingProject.name,
+				state_key: existingProject.state_key,
+				description: existingProject.description
+			},
+			{
+				name: updatedProject.name,
+				state_key: updatedProject.state_key,
+				description: updatedProject.description
+			},
+			actorId,
+			getChangeSourceFromRequest(request)
+		);
+
 		return ApiResponse.success({ project: updatedProject });
 	} catch (err) {
 		console.error('[Project PATCH] Unexpected error:', err);
@@ -344,7 +365,7 @@ function normalizeDateInput(value: unknown, fallback: string | null): string | n
 	return isNaN(parsed.getTime()) ? fallback : parsed.toISOString();
 }
 
-export const DELETE: RequestHandler = async ({ params, locals }) => {
+export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 	try {
 		const session = await locals.safeGetSession();
 		if (!session?.user) {
@@ -369,7 +390,7 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 
 		const { data: project, error: fetchError } = await supabase
 			.from('onto_projects')
-			.select('id, created_by')
+			.select('id, name, type_key, created_by')
 			.eq('id', id)
 			.single();
 
@@ -381,6 +402,8 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 			return ApiResponse.forbidden('You do not have permission to delete this project');
 		}
 
+		const projectDataForLog = { name: project.name, type_key: project.type_key };
+
 		const { error: deleteError } = await supabase.rpc('delete_onto_project', {
 			p_project_id: id
 		});
@@ -389,6 +412,9 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 			console.error('[Project DELETE] Failed to delete project:', deleteError);
 			return ApiResponse.error('Failed to delete project', 500);
 		}
+
+		// Log activity async (non-blocking)
+		logDeleteAsync(supabase, id, 'project', id, projectDataForLog, actorId, getChangeSourceFromRequest(request));
 
 		return ApiResponse.success({
 			id,

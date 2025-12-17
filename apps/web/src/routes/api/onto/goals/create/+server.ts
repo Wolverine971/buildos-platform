@@ -33,6 +33,7 @@
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import type { EnsureActorResponse } from '$lib/types/onto-api';
+import { logCreateAsync, getChangeSourceFromRequest } from '$lib/services/async-activity-logger';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	// Check authentication
@@ -114,6 +115,17 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			dst_kind: 'goal',
 			rel: 'contains'
 		});
+
+		// Log activity async (non-blocking)
+		logCreateAsync(
+			supabase,
+			project_id,
+			'goal',
+			goal.id,
+			{ name: goal.name, type_key: goal.type_key },
+			actorId,
+			getChangeSourceFromRequest(request)
+		);
 
 		return ApiResponse.created({ goal });
 	} catch (error) {

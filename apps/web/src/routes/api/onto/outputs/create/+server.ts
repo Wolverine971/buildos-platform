@@ -6,6 +6,7 @@
 
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
+import { logCreateAsync, getChangeSourceFromRequest } from '$lib/services/async-activity-logger';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	try {
@@ -110,6 +111,17 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			// Don't fail the whole operation, just log the error
 			// The output was created successfully
 		}
+
+		// Log activity async (non-blocking)
+		logCreateAsync(
+			supabase,
+			project_id,
+			'output',
+			output.id,
+			{ name: output.name, type_key: output.type_key, state_key: output.state_key },
+			actorId,
+			getChangeSourceFromRequest(request)
+		);
 
 		return ApiResponse.success({ output });
 	} catch (err) {

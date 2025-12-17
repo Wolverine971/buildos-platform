@@ -10,6 +10,7 @@
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { OUTPUT_STATES } from '$lib/types/onto';
+import { logUpdateAsync, logDeleteAsync, getChangeSourceFromRequest } from '$lib/services/async-activity-logger';
 
 export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 	try {
@@ -32,10 +33,10 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 
 		const supabase = locals.supabase;
 
-		// Verify the output exists and get project info
+		// Verify the output exists and get project info (fetch more data for logging)
 		const { data: existingOutput, error: fetchError } = await supabase
 			.from('onto_outputs')
-			.select('id, project_id')
+			.select('id, project_id, name, type_key, state_key')
 			.eq('id', id)
 			.maybeSingle();
 
@@ -109,6 +110,21 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			return ApiResponse.databaseError(updateError);
 		}
 
+		// Log activity async (non-blocking)
+		logUpdateAsync(
+			supabase,
+			existingOutput.project_id,
+			'output',
+			id,
+			{
+				name: existingOutput.name ?? 'unknown',
+				state_key: existingOutput.state_key ?? 'unknown'
+			},
+			{ name: updatedOutput.name, state_key: updatedOutput.state_key },
+			actorId,
+			getChangeSourceFromRequest(request)
+		);
+
 		return ApiResponse.success({ output: updatedOutput });
 	} catch (err) {
 		console.error('[Output API] Unexpected error in PATCH:', err);
@@ -175,7 +191,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 	}
 };
 
-export const DELETE: RequestHandler = async ({ params, locals }) => {
+export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 	try {
 		const session = await locals.safeGetSession();
 		if (!session?.user) {
@@ -191,7 +207,7 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 
 		const { data: output, error: fetchError } = await supabase
 			.from('onto_outputs')
-			.select('id, project_id')
+			.select('id, project_id, name, type_key')
 			.eq('id', id)
 			.maybeSingle();
 
@@ -235,6 +251,12 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 			return ApiResponse.forbidden('You do not have permission to delete this output');
 		}
 
+		const projectId = output.project_id;
+		const outputDataForLog = {
+			name: output.name ?? 'unknown',
+			type_key: output.type_key ?? 'unknown'
+		};
+
 		// Delete related edges FIRST (both where output is source and destination)
 		await supabase.from('onto_edges').delete().or(`src_id.eq.${id},dst_id.eq.${id}`);
 
@@ -245,6 +267,9 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 			console.error('[Output API] Failed to delete output:', deleteError);
 			return ApiResponse.databaseError(deleteError);
 		}
+
+		// Log activity async (non-blocking)
+		logDeleteAsync(supabase, projectId, 'output', id, outputDataForLog, actorId, getChangeSourceFromRequest(request));
 
 		return ApiResponse.success({ deleted: true });
 	} catch (error) {

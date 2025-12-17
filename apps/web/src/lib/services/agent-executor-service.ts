@@ -337,7 +337,9 @@ export class AgentExecutorService {
 			profile: 'speed', // Use fast model for executor
 			temperature: 0.3,
 			maxTokens: 1500,
-			sessionId: context.metadata.sessionId
+			sessionId: context.metadata.sessionId,
+			// Context for usage tracking
+			contextType: 'executor'
 		})) {
 			switch (event.type) {
 				case 'text':

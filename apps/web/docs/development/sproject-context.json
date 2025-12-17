@@ -165,22 +165,6 @@
 			"components": ["SynthesisLoadingState"]
 		},
 		{
-			"file": "src/routes/projects-old/[id]/+page.svelte",
-			"type": "page",
-			"components": [
-				"TasksList",
-				"NotesSection",
-				"ProjectSynthesis",
-				"PhasesSection",
-				"BraindumpsSection"
-			]
-		},
-		{
-			"file": "src/routes/projects/create/+page.svelte",
-			"type": "page",
-			"components": ["AgentChatModal"]
-		},
-		{
 			"file": "src/routes/projects/[id]/+page.svelte",
 			"type": "page",
 			"components": [
@@ -198,6 +182,22 @@
 				"MilestoneCreateModal",
 				"MilestoneEditModal",
 				"OntologyProjectEditModal"
+			]
+		},
+		{
+			"file": "src/routes/projects/create/+page.svelte",
+			"type": "page",
+			"components": ["AgentChatModal"]
+		},
+		{
+			"file": "src/routes/projects-old/[id]/+page.svelte",
+			"type": "page",
+			"components": [
+				"TasksList",
+				"NotesSection",
+				"ProjectSynthesis",
+				"PhasesSection",
+				"BraindumpsSection"
 			]
 		},
 		{
@@ -244,6 +244,19 @@
 			"type": "service",
 			"components": [],
 			"exports": ["AgentPlannerService"]
+		},
+		{
+			"file": "src/lib/services/async-activity-logger.ts",
+			"type": "service",
+			"components": [],
+			"exports": [
+				"getChangeSourceFromRequest",
+				"logActivityAsync",
+				"logActivitiesAsync",
+				"logCreateAsync",
+				"logUpdateAsync",
+				"logDeleteAsync"
+			]
 		},
 		{
 			"file": "src/lib/services/brain-dump-notification.bridge.ts",
@@ -886,10 +899,6 @@
 			"src/lib/components/ontology/PlanEditModal.svelte",
 			"src/lib/components/ontology/TaskEditModal.svelte"
 		],
-		"src/routes/projects-old/[id]/+page.svelte": [
-			"src/lib/components/project/ProjectSynthesis.svelte",
-			"src/lib/components/project/PhasesSection.svelte"
-		],
 		"src/routes/projects/[id]/+page.svelte": [
 			"src/lib/components/ontology/OutputEditModal.svelte",
 			"src/lib/components/ontology/TaskEditModal.svelte",
@@ -898,6 +907,10 @@
 			"src/lib/components/ontology/RiskEditModal.svelte",
 			"src/lib/components/ontology/MilestoneEditModal.svelte",
 			"src/lib/components/ontology/OntologyProjectEditModal.svelte"
+		],
+		"src/routes/projects-old/[id]/+page.svelte": [
+			"src/lib/components/project/ProjectSynthesis.svelte",
+			"src/lib/components/project/PhasesSection.svelte"
 		]
 	},
 	"unusedComponents": [

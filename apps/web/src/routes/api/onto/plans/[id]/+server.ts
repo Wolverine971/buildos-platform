@@ -36,6 +36,11 @@
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { PLAN_STATES } from '$lib/types/onto';
+import {
+	logUpdateAsync,
+	logDeleteAsync,
+	getChangeSourceFromRequest
+} from '$lib/services/async-activity-logger';
 
 // GET /api/onto/plans/[id] - Get a single plan
 export const GET: RequestHandler = async ({ params, locals }) => {
@@ -202,6 +207,22 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			return ApiResponse.error('Failed to update plan', 500);
 		}
 
+		// Log activity async (non-blocking)
+		logUpdateAsync(
+			supabase,
+			existingPlan.project_id,
+			'plan',
+			params.id,
+			{
+				name: existingPlan.name,
+				state_key: existingPlan.state_key,
+				props: existingPlan.props
+			},
+			{ name: updatedPlan.name, state_key: updatedPlan.state_key, props: updatedPlan.props },
+			actorId,
+			getChangeSourceFromRequest(request)
+		);
+
 		return ApiResponse.success({ plan: updatedPlan });
 	} catch (error) {
 		console.error('Error updating plan:', error);
@@ -210,7 +231,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 };
 
 // DELETE /api/onto/plans/[id] - Delete a plan
-export const DELETE: RequestHandler = async ({ params, locals }) => {
+export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 	const session = await locals.safeGetSession();
 	if (!session?.user) {
 		return ApiResponse.error('Unauthorized', 401);
@@ -229,12 +250,12 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 			return ApiResponse.error('Failed to get user actor', 500);
 		}
 
-		// Get plan with project to verify ownership
+		// Get plan with project to verify ownership (fetch full data for logging)
 		const { data: plan, error: fetchError } = await supabase
 			.from('onto_plans')
 			.select(
 				`
-				id,
+				*,
 				project:onto_projects!inner(
 					id,
 					created_by
@@ -253,6 +274,13 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 			return ApiResponse.error('Access denied', 403);
 		}
 
+		const projectId = plan.project_id;
+		const planDataForLog = {
+			name: plan.name,
+			type_key: plan.type_key,
+			state_key: plan.state_key
+		};
+
 		// Delete related edges
 		await supabase
 			.from('onto_edges')
@@ -269,6 +297,17 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 			console.error('Error deleting plan:', deleteError);
 			return ApiResponse.error('Failed to delete plan', 500);
 		}
+
+		// Log activity async (non-blocking)
+		logDeleteAsync(
+			supabase,
+			projectId,
+			'plan',
+			params.id,
+			planDataForLog,
+			actorId,
+			getChangeSourceFromRequest(request)
+		);
 
 		return ApiResponse.success({ message: 'Plan deleted successfully' });
 	} catch (error) {

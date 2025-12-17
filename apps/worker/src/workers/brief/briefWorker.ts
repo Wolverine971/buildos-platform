@@ -12,6 +12,7 @@ import {
 } from '../shared/queueUtils';
 import { LegacyJob } from '../shared/jobAdapter';
 import { generateDailyBrief } from './briefGenerator';
+import { generateOntologyDailyBrief } from './ontologyBriefGenerator';
 import { generateCorrelationId } from '@buildos/shared-utils';
 import { getTaskCount } from '@buildos/shared-types';
 
@@ -89,13 +90,30 @@ export async function processBriefJob(job: LegacyJob<BriefJobData>) {
 			`🕐 User's current time: ${format(userCurrentTime, 'yyyy-MM-dd HH:mm:ss zzz')}`
 		);
 
-		const brief = await generateDailyBrief(
-			job.data.userId,
-			validatedBriefDate,
-			job.data.options,
-			timezone,
-			job.id // Pass the job ID
-		);
+		// Determine if we should use ontology-based brief generation
+		const useOntology = job.data.options?.useOntology === true;
+
+		// Generate brief using appropriate generator
+		let brief: { id: string };
+		if (useOntology) {
+			console.log(`🧬 Using ontology-based brief generation for user ${job.data.userId}`);
+			const ontologyBrief = await generateOntologyDailyBrief(
+				job.data.userId,
+				validatedBriefDate,
+				job.data.options,
+				timezone,
+				job.id
+			);
+			brief = { id: ontologyBrief.id };
+		} else {
+			brief = await generateDailyBrief(
+				job.data.userId,
+				validatedBriefDate,
+				job.data.options,
+				timezone,
+				job.id // Pass the job ID
+			);
+		}
 
 		// Check user notification preferences for daily brief delivery
 		const { data: notificationPrefs, error: notificationPrefsError } = await supabase
@@ -171,41 +189,95 @@ export async function processBriefJob(job: LegacyJob<BriefJobData>) {
 		try {
 			const serviceClient = createServiceClient();
 
-			// Get task and project counts from project_daily_briefs
-			const { data: projectBriefs } = await supabase
-				.from('project_daily_briefs')
-				.select('id, metadata')
-				.eq('user_id', job.data.userId)
-				.eq('brief_date', validatedBriefDate);
+			// Get task and project counts from appropriate table
+			let projectCount = 0;
+			let todaysTaskCount = 0;
+			let overdueTaskCount = 0;
+			let upcomingTaskCount = 0;
+			let nextSevenDaysTaskCount = 0;
+			let recentlyCompletedCount = 0;
 
-			const projectCount = projectBriefs?.length || 0;
+			if (useOntology) {
+				// Query ontology_project_briefs for ontology-based briefs
+				const { data: ontologyProjectBriefs } = await supabase
+					.from('ontology_project_briefs')
+					.select('id, metadata')
+					.eq('daily_brief_id', brief.id);
 
-			// Calculate all task counts from project briefs for comprehensive notification
-			// Using type-safe helper function to extract task counts from metadata
-			const todaysTaskCount =
-				projectBriefs?.reduce((sum, pb) => {
-					return sum + getTaskCount(pb.metadata, 'todays_task_count');
-				}, 0) || 0;
+				projectCount = ontologyProjectBriefs?.length || 0;
 
-			const overdueTaskCount =
-				projectBriefs?.reduce((sum, pb) => {
-					return sum + getTaskCount(pb.metadata, 'overdue_task_count');
-				}, 0) || 0;
+				// Extract counts from ontology metadata (camelCase keys)
+				todaysTaskCount =
+					ontologyProjectBriefs?.reduce((sum, pb) => {
+						const meta = pb.metadata as Record<string, unknown>;
+						return (
+							sum +
+							(typeof meta?.todaysTaskCount === 'number' ? meta.todaysTaskCount : 0)
+						);
+					}, 0) || 0;
 
-			const upcomingTaskCount =
-				projectBriefs?.reduce((sum, pb) => {
-					return sum + getTaskCount(pb.metadata, 'upcoming_task_count');
-				}, 0) || 0;
+				// Ontology briefs use 'thisWeekTaskCount' instead of 'upcomingTaskCount'
+				upcomingTaskCount =
+					ontologyProjectBriefs?.reduce((sum, pb) => {
+						const meta = pb.metadata as Record<string, unknown>;
+						return (
+							sum +
+							(typeof meta?.thisWeekTaskCount === 'number'
+								? meta.thisWeekTaskCount
+								: 0)
+						);
+					}, 0) || 0;
 
-			const nextSevenDaysTaskCount =
-				projectBriefs?.reduce((sum, pb) => {
-					return sum + getTaskCount(pb.metadata, 'next_seven_days_task_count');
-				}, 0) || 0;
+				// blockedTaskCount available in ontology briefs
+				const blockedCount =
+					ontologyProjectBriefs?.reduce((sum, pb) => {
+						const meta = pb.metadata as Record<string, unknown>;
+						return (
+							sum +
+							(typeof meta?.blockedTaskCount === 'number' ? meta.blockedTaskCount : 0)
+						);
+					}, 0) || 0;
 
-			const recentlyCompletedCount =
-				projectBriefs?.reduce((sum, pb) => {
-					return sum + getTaskCount(pb.metadata, 'recently_completed_count');
-				}, 0) || 0;
+				console.log(
+					`🧬 Ontology brief stats - Projects: ${projectCount}, Today's tasks: ${todaysTaskCount}, This week: ${upcomingTaskCount}, Blocked: ${blockedCount}`
+				);
+			} else {
+				// Query legacy project_daily_briefs
+				const { data: projectBriefs } = await supabase
+					.from('project_daily_briefs')
+					.select('id, metadata')
+					.eq('user_id', job.data.userId)
+					.eq('brief_date', validatedBriefDate);
+
+				projectCount = projectBriefs?.length || 0;
+
+				// Calculate all task counts from project briefs for comprehensive notification
+				// Using type-safe helper function to extract task counts from metadata
+				todaysTaskCount =
+					projectBriefs?.reduce((sum, pb) => {
+						return sum + getTaskCount(pb.metadata, 'todays_task_count');
+					}, 0) || 0;
+
+				overdueTaskCount =
+					projectBriefs?.reduce((sum, pb) => {
+						return sum + getTaskCount(pb.metadata, 'overdue_task_count');
+					}, 0) || 0;
+
+				upcomingTaskCount =
+					projectBriefs?.reduce((sum, pb) => {
+						return sum + getTaskCount(pb.metadata, 'upcoming_task_count');
+					}, 0) || 0;
+
+				nextSevenDaysTaskCount =
+					projectBriefs?.reduce((sum, pb) => {
+						return sum + getTaskCount(pb.metadata, 'next_seven_days_task_count');
+					}, 0) || 0;
+
+				recentlyCompletedCount =
+					projectBriefs?.reduce((sum, pb) => {
+						return sum + getTaskCount(pb.metadata, 'recently_completed_count');
+					}, 0) || 0;
+			}
 
 			// Get notification scheduled time from job data (if provided)
 			const notificationScheduledFor = job.data.notificationScheduledFor
@@ -246,10 +318,12 @@ export async function processBriefJob(job: LegacyJob<BriefJobData>) {
 					next_seven_days_task_count: nextSevenDaysTaskCount,
 					recently_completed_count: recentlyCompletedCount,
 					project_count: projectCount,
-					correlationId // Add correlation ID to payload
+					correlationId, // Add correlation ID to payload
+					is_ontology_brief: useOntology // Flag for downstream consumers
 				},
 				p_metadata: {
-					correlationId // Add correlation ID to metadata for tracking
+					correlationId, // Add correlation ID to metadata for tracking
+					is_ontology_brief: useOntology
 				},
 				p_scheduled_for: notificationScheduledFor?.toISOString() // Schedule at user's preferred time
 			});
@@ -266,6 +340,7 @@ export async function processBriefJob(job: LegacyJob<BriefJobData>) {
    → Brief ID: ${brief.id}
    → Brief Date: ${validatedBriefDate}
    → Timezone: ${timezone}
+   → Brief Type: ${useOntology ? 'ONTOLOGY 🧬' : 'LEGACY'}
    → Email Preference: ${shouldEmailBrief ? 'ENABLED ✅ (will be sent via notification system)' : 'DISABLED ❌'}
    → SMS Preference: ${shouldSmsBrief ? 'ENABLED ✅ (will be sent via notification system)' : 'DISABLED ❌'}`);
 	} catch (error) {

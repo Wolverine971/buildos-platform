@@ -34,6 +34,7 @@
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import type { EnsureActorResponse } from '$lib/types/onto-api';
+import { logCreateAsync, getChangeSourceFromRequest } from '$lib/services/async-activity-logger';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	// Check authentication
@@ -215,6 +216,17 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		}
 
 		await supabase.from('onto_edges').insert(edges);
+
+		// Log activity async (non-blocking)
+		logCreateAsync(
+			supabase,
+			project_id,
+			'task',
+			task.id,
+			{ title: task.title, type_key: task.type_key, state_key: task.state_key },
+			actorId,
+			getChangeSourceFromRequest(request)
+		);
 
 		return ApiResponse.created({ task });
 	} catch (error) {

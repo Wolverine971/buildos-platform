@@ -9,8 +9,9 @@
 
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
+import { logDeleteAsync, getChangeSourceFromRequest } from '$lib/services/async-activity-logger';
 
-export const DELETE: RequestHandler = async ({ params, locals }) => {
+export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 	try {
 		const { user } = await locals.safeGetSession();
 		if (!user) {
@@ -51,12 +52,21 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 			return ApiResponse.forbidden('You do not have permission to delete this edge');
 		}
 
+		// Capture edge data for logging before deletion
+		const projectId = edge.project_id;
+		const edgeDataForLog = { src_kind: edge.src_kind, dst_kind: edge.dst_kind, rel: edge.rel };
+
 		// Delete the edge
 		const { error: deleteError } = await supabase.from('onto_edges').delete().eq('id', edgeId);
 
 		if (deleteError) {
 			console.error('[Edges API] Delete error:', deleteError);
 			return ApiResponse.databaseError(deleteError);
+		}
+
+		// Log activity async (non-blocking)
+		if (projectId) {
+			logDeleteAsync(supabase, projectId, 'edge', edgeId, edgeDataForLog, actorId, getChangeSourceFromRequest(request));
 		}
 
 		return ApiResponse.success({ deleted: true });
