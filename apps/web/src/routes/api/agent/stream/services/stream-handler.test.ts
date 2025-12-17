@@ -1,3 +1,4 @@
+// apps/web/src/routes/api/agent/stream/services/stream-handler.test.ts
 import { describe, expect, it, vi } from 'vitest';
 import type { AgentSSEMessage, ChatSession, ChatMessage } from '@buildos/shared-types';
 import type { StreamRequest } from '../types';

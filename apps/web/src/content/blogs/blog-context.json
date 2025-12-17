@@ -454,22 +454,46 @@
 					"filePath": "src/content/blogs/getting-started/first-project-setup.md"
 				},
 				"how-buildos-works": {
-					"title": "How BuildOS Works: From Noise to Structure to Action",
-					"description": "Discover how BuildOS transforms scattered thoughts into organized projects. Unlike rigid productivity tools, BuildOS adapts to how you think—not the other way around.",
+					"title": "How BuildOS Works",
+					"description": "I hated repeating myself in different chats. I wanted to build upon my last conversation. That is why I built BuildOS.",
 					"author": "DJ Wayne",
-					"date": "2025-12-08",
-					"lastmod": "2025-12-08",
+					"date": "2025-12-17",
+					"lastmod": "2025-12-17",
 					"changefreq": "monthly",
 					"priority": "0.9",
 					"published": true,
-					"tags": ["how-it-works", "getting-started", "flexibility", "ai-organization"],
-					"readingTime": 8,
-					"excerpt": "BuildOS is built on a simple truth: your projects are unique, and your tools should adapt to you. Learn how our flexible system turns chaos into clarity.",
+					"tags": ["how-it-works", "getting-started", "founder-story", "ai-organization"],
+					"readingTime": 5,
+					"excerpt": "I hated repeating myself in different chats. I wanted to build upon my last conversation and make progress. That is why I built BuildOS.",
 					"pic": "how-buildos-works",
 					"path": "apps/web/src/content/blogs/getting-started/how-buildos-works.md",
 					"slug": "how-buildos-works",
 					"category": "getting-started",
 					"filePath": "src/content/blogs/getting-started/how-buildos-works.md"
+				},
+				"under-the-hood": {
+					"title": "Under the Hood: How BuildOS Organizes Your Thoughts",
+					"description": "A peek behind the curtain at the flexible system that makes BuildOS work. No rigid templates—just structure that emerges from your conversations.",
+					"author": "DJ Wayne",
+					"date": "2025-12-17",
+					"lastmod": "2025-12-17",
+					"changefreq": "monthly",
+					"priority": "0.8",
+					"published": true,
+					"tags": [
+						"under-the-hood",
+						"getting-started",
+						"ontology",
+						"architecture",
+						"technical"
+					],
+					"readingTime": 7,
+					"excerpt": "Most productivity tools force you into rigid templates. BuildOS takes a different approach—structure emerges from your conversations, not from predetermined boxes.",
+					"pic": "under-the-hood",
+					"path": "apps/web/src/content/blogs/getting-started/under-the-hood.md",
+					"slug": "under-the-hood",
+					"category": "getting-started",
+					"filePath": "src/content/blogs/getting-started/under-the-hood.md"
 				},
 				"understanding-life-goals": {
 					"title": "Understanding Life Goals vs Projects: Strategic vs Tactical Thinking",
@@ -1127,7 +1151,7 @@
 			}
 		}
 	},
-	"generatedAt": "2025-12-17T04:59:07.979Z",
-	"totalPosts": 49,
+	"generatedAt": "2025-12-17T18:52:34.592Z",
+	"totalPosts": 50,
 	"totalCategories": 6
 }

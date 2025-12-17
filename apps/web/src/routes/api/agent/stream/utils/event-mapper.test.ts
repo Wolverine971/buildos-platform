@@ -66,22 +66,6 @@ describe('mapPlannerEventToSSE', () => {
 		});
 	});
 
-	describe('ontology_loaded event', () => {
-		it('should map ontology_loaded event', () => {
-			const event: StreamEvent = {
-				type: 'ontology_loaded',
-				summary: { projectCount: 5, taskCount: 20 }
-			};
-
-			const result = mapPlannerEventToSSE(event);
-
-			expect(result).toEqual({
-				type: 'ontology_loaded',
-				summary: { projectCount: 5, taskCount: 20 }
-			});
-		});
-	});
-
 	describe('last_turn_context event', () => {
 		it('should map last_turn_context event', () => {
 			const event: StreamEvent = {
@@ -183,10 +167,13 @@ describe('mapPlannerEventToSSE', () => {
 
 			const result = mapPlannerEventToSSE(event);
 
-			expect(result).toEqual({
+			expect(result).toMatchObject({
 				type: 'plan_created',
-				plan: { id: 'plan_1', steps: [] }
-			});
+				plan: expect.objectContaining({
+					id: 'plan_1',
+					steps: []
+				})
+			} satisfies AgentSSEMessage);
 		});
 
 		it('should map plan_ready_for_review event', () => {
@@ -199,12 +186,12 @@ describe('mapPlannerEventToSSE', () => {
 
 			const result = mapPlannerEventToSSE(event);
 
-			expect(result).toEqual({
+			expect(result).toMatchObject({
 				type: 'plan_ready_for_review',
-				plan: { id: 'plan_1' },
+				plan: expect.objectContaining({ id: 'plan_1' }),
 				summary: 'Plan summary',
 				recommendations: ['rec1', 'rec2']
-			});
+			} satisfies AgentSSEMessage);
 		});
 
 		it('should map plan_review event', () => {
@@ -218,13 +205,13 @@ describe('mapPlannerEventToSSE', () => {
 
 			const result = mapPlannerEventToSSE(event);
 
-			expect(result).toEqual({
+			expect(result).toMatchObject({
 				type: 'plan_review',
-				plan: { id: 'plan_1' },
+				plan: expect.objectContaining({ id: 'plan_1' }),
 				verdict: 'approved',
 				notes: 'Looks good',
 				reviewer: 'system'
-			});
+			} satisfies AgentSSEMessage);
 		});
 	});
 
@@ -407,7 +394,6 @@ describe('isKnownEventType', () => {
 	it('should return true for registered mapper types', () => {
 		const knownTypes = [
 			'session',
-			'ontology_loaded',
 			'last_turn_context',
 			'context_usage',
 			'agent_state',
@@ -469,7 +455,6 @@ describe('getRegisteredEventTypes', () => {
 		const types = getRegisteredEventTypes();
 		const expectedTypes = [
 			'session',
-			'ontology_loaded',
 			'last_turn_context',
 			'context_usage',
 			'agent_state',

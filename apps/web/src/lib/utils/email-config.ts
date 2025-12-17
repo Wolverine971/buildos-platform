@@ -1,10 +1,7 @@
 // apps/web/src/lib/utils/email-config.ts
 import { createTransport } from 'nodemailer';
 
-import {
-	PRIVATE_DJ_GMAIL_APP_PASSWORD,
-	PRIVATE_ZACH_GMAIL_APP_PASSWORD
-} from '$env/static/private';
+import { PRIVATE_DJ_GMAIL_APP_PASSWORD } from '$env/static/private';
 
 export interface EmailSender {
 	email: string;
@@ -18,11 +15,6 @@ export const EMAIL_SENDERS = {
 		email: 'dj@build-os.com',
 		password: PRIVATE_DJ_GMAIL_APP_PASSWORD,
 		name: 'DJ from BuildOS'
-	},
-	zach: {
-		email: 'zach@build-os.com',
-		password: PRIVATE_ZACH_GMAIL_APP_PASSWORD,
-		name: 'Zach from BuildOS'
 	}
 } as const;
 
@@ -35,9 +27,7 @@ export function getSenderByEmail(email: string): EmailSender | null {
 	if (email === EMAIL_SENDERS.dj.email) {
 		return EMAIL_SENDERS.dj;
 	}
-	if (email === EMAIL_SENDERS.zach.email) {
-		return EMAIL_SENDERS.zach;
-	}
+
 	return EMAIL_SENDERS.dj;
 }
 

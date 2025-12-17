@@ -14,7 +14,11 @@ import type {
 	OntoTask,
 	OntoGoal,
 	OntoEdge,
-	OntoOutput
+	OntoOutput,
+	OntoMilestone,
+	OntoDocument,
+	OntoRisk,
+	OntoDecision
 } from '$lib/types/onto-api';
 
 // Helper to create mock entities
@@ -490,5 +494,258 @@ describe('getGraphStats', () => {
 		expect(stats.edgesByRelationship['has_plan']).toBe(1);
 		expect(stats.edgesByRelationship['has_task']).toBe(2);
 		expect(stats.edgesByRelationship['depends_on']).toBe(1);
+	});
+});
+
+// ============================================
+// Additional Mock Entity Helpers
+// ============================================
+
+function createMockMilestone(id: string, projectId: string, title: string): OntoMilestone {
+	return {
+		id,
+		project_id: projectId,
+		title,
+		type_key: 'milestone.default',
+		props: {},
+		created_by: 'actor-1',
+		created_at: new Date().toISOString()
+	};
+}
+
+function createMockDocument(id: string, projectId: string, title: string): OntoDocument {
+	return {
+		id,
+		project_id: projectId,
+		title,
+		type_key: 'document.default',
+		state_key: 'draft',
+		props: {},
+		created_by: 'actor-1',
+		created_at: new Date().toISOString(),
+		updated_at: new Date().toISOString()
+	};
+}
+
+function createMockRisk(id: string, projectId: string, title: string): OntoRisk {
+	return {
+		id,
+		project_id: projectId,
+		title,
+		type_key: 'risk.default',
+		state_key: 'identified',
+		impact: 'medium',
+		probability: 'medium',
+		props: {},
+		created_by: 'actor-1',
+		created_at: new Date().toISOString(),
+		updated_at: new Date().toISOString()
+	};
+}
+
+function createMockDecision(id: string, projectId: string, title: string): OntoDecision {
+	return {
+		id,
+		project_id: projectId,
+		title,
+		type_key: 'decision.default',
+		props: {},
+		created_by: 'actor-1',
+		created_at: new Date().toISOString()
+	};
+}
+
+// ============================================
+// Project-Level Traversal Methods Tests
+// ============================================
+
+describe('project-level traversal methods', () => {
+	const projectId = 'proj-1';
+
+	const mockDataWithAllEntities: ProjectGraphData = {
+		project: createMockProject(projectId, 'Test Project'),
+		plans: [createMockPlan('plan-1', projectId, 'Plan A')],
+		tasks: [createMockTask('task-1', projectId, 'Task 1')],
+		goals: [createMockGoal('goal-1', projectId, 'Goal 1')],
+		milestones: [
+			createMockMilestone('milestone-1', projectId, 'Milestone 1'),
+			createMockMilestone('milestone-2', projectId, 'Milestone 2')
+		],
+		outputs: [createMockOutput('output-1', projectId, 'Output 1')],
+		documents: [
+			createMockDocument('doc-1', projectId, 'Document 1'),
+			createMockDocument('doc-2', projectId, 'Document 2')
+		],
+		risks: [createMockRisk('risk-1', projectId, 'Risk 1')],
+		decisions: [
+			createMockDecision('decision-1', projectId, 'Decision 1'),
+			createMockDecision('decision-2', projectId, 'Decision 2')
+		],
+		edges: [
+			createMockEdge('e1', 'project', projectId, 'plan', 'plan-1', 'has_plan', projectId),
+			createMockEdge('e2', 'plan', 'plan-1', 'task', 'task-1', 'has_task', projectId),
+			createMockEdge('e3', 'project', projectId, 'goal', 'goal-1', 'has_goal', projectId),
+			createMockEdge(
+				'e4',
+				'project',
+				projectId,
+				'milestone',
+				'milestone-1',
+				'has_milestone',
+				projectId
+			),
+			createMockEdge(
+				'e5',
+				'project',
+				projectId,
+				'milestone',
+				'milestone-2',
+				'has_milestone',
+				projectId
+			),
+			createMockEdge(
+				'e6',
+				'project',
+				projectId,
+				'document',
+				'doc-1',
+				'has_document',
+				projectId
+			),
+			createMockEdge(
+				'e7',
+				'project',
+				projectId,
+				'document',
+				'doc-2',
+				'has_document',
+				projectId
+			),
+			createMockEdge('e8', 'project', projectId, 'risk', 'risk-1', 'has_risk', projectId),
+			createMockEdge(
+				'e9',
+				'project',
+				projectId,
+				'output',
+				'output-1',
+				'has_output',
+				projectId
+			),
+			createMockEdge(
+				'e10',
+				'project',
+				projectId,
+				'decision',
+				'decision-1',
+				'has_decision',
+				projectId
+			),
+			createMockEdge(
+				'e11',
+				'project',
+				projectId,
+				'decision',
+				'decision-2',
+				'has_decision',
+				projectId
+			)
+		]
+	};
+
+	it('getMilestonesForProject returns milestones linked via has_milestone', () => {
+		const graph = buildProjectGraph(mockDataWithAllEntities);
+		const milestones = graph.getMilestonesForProject();
+
+		expect(milestones).toHaveLength(2);
+		expect(milestones.map((m) => m.title)).toContain('Milestone 1');
+		expect(milestones.map((m) => m.title)).toContain('Milestone 2');
+	});
+
+	it('getDocumentsForProject returns documents linked via has_document', () => {
+		const graph = buildProjectGraph(mockDataWithAllEntities);
+		const documents = graph.getDocumentsForProject();
+
+		expect(documents).toHaveLength(2);
+		expect(documents.map((d) => d.title)).toContain('Document 1');
+		expect(documents.map((d) => d.title)).toContain('Document 2');
+	});
+
+	it('getRisksForProject returns risks linked via has_risk', () => {
+		const graph = buildProjectGraph(mockDataWithAllEntities);
+		const risks = graph.getRisksForProject();
+
+		expect(risks).toHaveLength(1);
+		expect(risks[0].title).toBe('Risk 1');
+	});
+
+	it('getDecisionsForProject returns all decisions for the project', () => {
+		const graph = buildProjectGraph(mockDataWithAllEntities);
+		const decisions = graph.getDecisionsForProject();
+
+		expect(decisions).toHaveLength(2);
+		expect(decisions.map((d) => d.title)).toContain('Decision 1');
+		expect(decisions.map((d) => d.title)).toContain('Decision 2');
+	});
+
+	it('getOutputsForProject returns outputs linked via has_output', () => {
+		const graph = buildProjectGraph(mockDataWithAllEntities);
+		const outputs = graph.getOutputsForProject();
+
+		expect(outputs).toHaveLength(1);
+		expect(outputs[0].name).toBe('Output 1');
+	});
+
+	it('getEntitiesForProject generic method works for plans', () => {
+		const graph = buildProjectGraph(mockDataWithAllEntities);
+		const plans = graph.getEntitiesForProject('plan');
+
+		expect(plans).toHaveLength(1);
+		expect(plans[0].name).toBe('Plan A');
+	});
+
+	it('getEntitiesForProject generic method works for milestones', () => {
+		const graph = buildProjectGraph(mockDataWithAllEntities);
+		const milestones = graph.getEntitiesForProject('milestone');
+
+		expect(milestones).toHaveLength(2);
+	});
+
+	it('getEntitiesForProject generic method works for risks', () => {
+		const graph = buildProjectGraph(mockDataWithAllEntities);
+		const risks = graph.getEntitiesForProject('risk');
+
+		expect(risks).toHaveLength(1);
+	});
+
+	it('getEntitiesForProject returns empty array for tasks (belong to plans)', () => {
+		const graph = buildProjectGraph(mockDataWithAllEntities);
+		const tasks = graph.getEntitiesForProject('task');
+
+		expect(tasks).toHaveLength(0);
+	});
+
+	it('getEntitiesForProject returns empty array for project kind', () => {
+		const graph = buildProjectGraph(mockDataWithAllEntities);
+		const projects = graph.getEntitiesForProject('project');
+
+		expect(projects).toHaveLength(0);
+	});
+
+	it('getEntitiesForProject returns all decisions (no edge required)', () => {
+		const graph = buildProjectGraph(mockDataWithAllEntities);
+		const decisions = graph.getEntitiesForProject('decision');
+
+		expect(decisions).toHaveLength(2);
+	});
+
+	it('treats has_decision edges as containment for children/parent lookups', () => {
+		const graph = buildProjectGraph(mockDataWithAllEntities);
+
+		const projectChildren = graph.getChildren(projectId);
+		expect(projectChildren.map((c) => c.id)).toContain('decision-1');
+		expect(projectChildren.map((c) => c.id)).toContain('decision-2');
+
+		const decisionParent = graph.getParent('decision-1');
+		expect(decisionParent?.id).toBe(projectId);
 	});
 });

@@ -19,7 +19,17 @@ import type {
 	EntityKind,
 	TreeNode
 } from '$lib/types/project-graph.types';
-import type { OntoEdge, OntoTask, OntoPlan, OntoGoal } from '$lib/types/onto-api';
+import type {
+	OntoEdge,
+	OntoTask,
+	OntoPlan,
+	OntoGoal,
+	OntoMilestone,
+	OntoDocument,
+	OntoRisk,
+	OntoDecision,
+	OntoOutput
+} from '$lib/types/onto-api';
 
 /**
  * Containment relationship types (parent → child direction).
@@ -33,6 +43,7 @@ const CONTAINMENT_RELATIONSHIPS = new Set([
 	'has_document',
 	'has_risk',
 	'has_milestone',
+	'has_decision',
 	'has_output',
 	// Canonical output relationship
 	'produces'
@@ -43,6 +54,22 @@ const CONTAINMENT_RELATIONSHIPS = new Set([
  * Direction: dependent → dependency (A depends_on B means A needs B)
  */
 const DEPENDENCY_RELATIONSHIPS = new Set(['depends_on', 'requires', 'blocks']);
+
+/**
+ * Containment relationships from project → child entity kind.
+ * Used by getEntitiesForProject to map kinds to their project-level rel.
+ */
+const PROJECT_CONTAINMENT_RELS: Record<EntityKind, string | null> = {
+	project: null, // Project cannot be a child of itself
+	plan: 'has_plan',
+	task: null, // Tasks belong to plans
+	goal: 'has_goal',
+	milestone: 'has_milestone',
+	output: 'has_output',
+	document: 'has_document',
+	risk: 'has_risk',
+	decision: null // Decisions are project-scoped without a required containment edge
+};
 
 /**
  * Build a fully-indexed project graph from flat data.
@@ -134,7 +161,7 @@ export function buildProjectGraph(data: ProjectGraphData): ProjectGraph {
 		if (!byRelationship[edge.rel]) {
 			byRelationship[edge.rel] = [];
 		}
-		byRelationship[edge.rel].push(edge);
+		byRelationship[edge.rel]!.push(edge);
 	}
 
 	const edgeIndex: EdgeIndex = { outgoing, incoming, byRelationship };
@@ -268,6 +295,96 @@ export function buildProjectGraph(data: ProjectGraphData): ProjectGraph {
 			}
 
 			return dependencies;
+		},
+
+		// ─────────────────────────────────────────────────────────────
+		// Project-Level Entity Accessors
+		// ─────────────────────────────────────────────────────────────
+
+		getMilestonesForProject(): OntoMilestone[] {
+			const edges = outgoing.get(data.project.id) ?? [];
+			const milestones: OntoMilestone[] = [];
+
+			for (const edge of edges) {
+				if (edge.rel === 'has_milestone') {
+					const milestone = entitiesByKind.milestone.get(edge.dst_id);
+					if (milestone) milestones.push(milestone);
+				}
+			}
+
+			return milestones;
+		},
+
+		getDocumentsForProject(): OntoDocument[] {
+			const edges = outgoing.get(data.project.id) ?? [];
+			const documents: OntoDocument[] = [];
+
+			for (const edge of edges) {
+				if (edge.rel === 'has_document') {
+					const document = entitiesByKind.document.get(edge.dst_id);
+					if (document) documents.push(document);
+				}
+			}
+
+			return documents;
+		},
+
+		getRisksForProject(): OntoRisk[] {
+			const edges = outgoing.get(data.project.id) ?? [];
+			const risks: OntoRisk[] = [];
+
+			for (const edge of edges) {
+				if (edge.rel === 'has_risk') {
+					const risk = entitiesByKind.risk.get(edge.dst_id);
+					if (risk) risks.push(risk);
+				}
+			}
+
+			return risks;
+		},
+
+		getDecisionsForProject(): OntoDecision[] {
+			// Decisions may not have a specific edge type from project
+			// Return all decisions since they're already scoped via project_id
+			return Array.from(entitiesByKind.decision.values());
+		},
+
+		getOutputsForProject(): OntoOutput[] {
+			const edges = outgoing.get(data.project.id) ?? [];
+			const outputs: OntoOutput[] = [];
+
+			for (const edge of edges) {
+				if (edge.rel === 'has_output') {
+					const output = entitiesByKind.output.get(edge.dst_id);
+					if (output) outputs.push(output);
+				}
+			}
+
+			return outputs;
+		},
+
+		getEntitiesForProject<K extends EntityKind>(kind: K): EntityTypeMap[K][] {
+			// Special case: decisions don't have a specific containment edge
+			if (kind === 'decision') {
+				return Array.from(entitiesByKind.decision.values()) as EntityTypeMap[K][];
+			}
+
+			const rel = PROJECT_CONTAINMENT_RELS[kind];
+			if (!rel) {
+				return [];
+			}
+
+			const edges = outgoing.get(data.project.id) ?? [];
+			const results: EntityTypeMap[K][] = [];
+
+			for (const edge of edges) {
+				if (edge.rel === rel) {
+					const entity = entitiesByKind[kind].get(edge.dst_id);
+					if (entity) results.push(entity as EntityTypeMap[K]);
+				}
+			}
+
+			return results;
 		}
 	};
 

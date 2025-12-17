@@ -180,6 +180,40 @@ export interface ProjectGraph {
 
 	/** Get entities that a given entity depends on */
 	getDependencies(entityId: string): AnyEntity[];
+
+	// ─────────────────────────────────────────────────────────────
+	// Project-Level Entity Accessors
+	// ─────────────────────────────────────────────────────────────
+
+	/** Get milestones for the project (via has_milestone edge) */
+	getMilestonesForProject(): OntoMilestone[];
+
+	/** Get documents for the project (via has_document edge) */
+	getDocumentsForProject(): OntoDocument[];
+
+	/** Get risks for the project (via has_risk edge) */
+	getRisksForProject(): OntoRisk[];
+
+	/** Get decisions for the project */
+	getDecisionsForProject(): OntoDecision[];
+
+	/** Get outputs directly under the project (via has_output edge) */
+	getOutputsForProject(): OntoOutput[];
+
+	/**
+	 * Get all entities of a specific kind that are direct children of the project.
+	 * Uses the appropriate containment relationship for each kind.
+	 *
+	 * @param kind - The entity kind to retrieve
+	 * @returns Array of entities of that kind belonging to the project
+	 *
+	 * @example
+	 * ```typescript
+	 * const risks = graph.getEntitiesForProject('risk');
+	 * const milestones = graph.getEntitiesForProject('milestone');
+	 * ```
+	 */
+	getEntitiesForProject<K extends EntityKind>(kind: K): EntityTypeMap[K][];
 }
 
 /**

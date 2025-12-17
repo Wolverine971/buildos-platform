@@ -1,3 +1,5 @@
+<!-- docs/plans/AGENTIC_CHAT_SERVICES_ANALYSIS.md -->
+
 # Agentic Chat Services Analysis
 
 > **Created:** 2024-12-16
@@ -897,15 +899,15 @@ const snapshot = await projectDataLoader.loadSnapshot(projectId, userId);
 
 ### Immediate (This Sprint)
 
-- [ ] **Add debug event** - Emit `debug_context` stream event with full prompt/tools/context
-- [ ] **Create ProjectDataSnapshot type** - Standardize project data interface
+- [x] **Add debug event** - Emit `debug_context` stream event with full prompt/tools/context
+- [x] **Create ProjectDataSnapshot type** - Standardize project data interface (`apps/web/src/lib/services/project-graph/project-data-snapshot.ts`)
 - [ ] **Document prompt templates** - Extract to markdown files for easy editing
 
 ### Short-Term (Next 2 Sprints)
 
-- [ ] **Split tool-executor.ts** - Apply SRP, create domain-specific executors
-- [ ] **Split tool-definitions.ts** - Group by category
-- [ ] **Split AgentContextService** - Extract formatters and processors
+- [x] **Split tool-executor.ts** - Apply SRP, create domain-specific executors (monolith replaced by refactored orchestrator)
+- [x] **Split tool-definitions.ts** - Group by category
+- [x] **Split AgentContextService** - Extract formatters and processors (core logic now 517 LOC + `services/context/`)
 
 ### Medium-Term (Following Quarter)
 

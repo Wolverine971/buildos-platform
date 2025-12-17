@@ -158,6 +158,7 @@ export class AgentChatOrchestrator {
 
 		let plannerContext: PlannerContext;
 		let plannerAgentId: string | undefined;
+		let doneEmitted = false;
 
 		try {
 			plannerContext = await contextService.buildPlannerContext({
@@ -271,6 +272,7 @@ export class AgentChatOrchestrator {
 
 					// Emit done event
 					const doneEvent: StreamEvent = { type: 'done' };
+					doneEmitted = true;
 					yield doneEvent;
 					await callback(doneEvent);
 					return;
@@ -294,6 +296,9 @@ export class AgentChatOrchestrator {
 				serviceContext,
 				virtualHandlers
 			})) {
+				if (event.type === 'done') {
+					doneEmitted = true;
+				}
 				yield event;
 				await callback(event);
 			}
@@ -313,9 +318,20 @@ export class AgentChatOrchestrator {
 			const errorEvent: StreamEvent = { type: 'error', error: message };
 			yield errorEvent;
 			await callback(errorEvent);
+			if (!doneEmitted) {
+				const doneEvent: StreamEvent = { type: 'done' };
+				doneEmitted = true;
+				yield doneEvent;
+				await callback(doneEvent);
+			}
 		} finally {
 			if (plannerAgentId) {
 				await this.safeUpdatePlannerStatus(plannerAgentId);
+			}
+			if (!doneEmitted) {
+				const doneEvent: StreamEvent = { type: 'done' };
+				yield doneEvent;
+				await callback(doneEvent);
 			}
 		}
 	}
@@ -476,7 +492,7 @@ export class AgentChatOrchestrator {
 				// Type-safe context shift extraction
 				const contextShift = extractContextShift(result);
 				if (contextShift) {
-					const normalizedShiftContext = this.normalizeChatContextType(
+					const normalizedShiftContext = normalizeContextType(
 						(contextShift.new_context as ChatContextType) ?? serviceContext.contextType
 					);
 					serviceContext.contextType = normalizedShiftContext;
@@ -835,14 +851,6 @@ export class AgentChatOrchestrator {
 			.join('\n');
 	}
 
-	/**
-	 * Normalize context type using shared utility.
-	 * @deprecated Use normalizeContextType from context-utils directly
-	 */
-	private normalizeChatContextType(contextType?: ChatContextType | string): ChatContextType {
-		return normalizeContextType(contextType);
-	}
-
 	private buildContextShiftSnapshot(
 		contextShift: {
 			new_context?: ChatContextType | string;
@@ -897,7 +905,7 @@ export class AgentChatOrchestrator {
 		return {
 			summary,
 			entities,
-			context_type: this.normalizeChatContextType(contextShift.new_context ?? defaultContext),
+			context_type: normalizeContextType(contextShift.new_context ?? defaultContext),
 			data_accessed: ['context_shift'],
 			timestamp: new Date().toISOString()
 		};

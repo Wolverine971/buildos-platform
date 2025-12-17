@@ -6,7 +6,7 @@
  * Replaces the large switch statement with a more maintainable approach.
  */
 
-import type { AgentSSEMessage } from '@buildos/shared-types';
+import type { AgentPlan as SSEAgentPlan, AgentSSEMessage } from '@buildos/shared-types';
 import type { StreamEvent } from '$lib/services/agentic-chat/shared/types';
 import { normalizeContextType } from './context-utils';
 
@@ -46,11 +46,6 @@ const EVENT_MAPPERS: EventMapperRegistry = {
 		session: (event as Extract<StreamEvent, { type: 'session' }>).session
 	}),
 
-	ontology_loaded: (event) => ({
-		type: 'ontology_loaded',
-		summary: (event as Extract<StreamEvent, { type: 'ontology_loaded' }>).summary
-	}),
-
 	last_turn_context: (event) => ({
 		type: 'last_turn_context',
 		context: (event as Extract<StreamEvent, { type: 'last_turn_context' }>).context
@@ -76,16 +71,19 @@ const EVENT_MAPPERS: EventMapperRegistry = {
 		questions: (event as Extract<StreamEvent, { type: 'clarifying_questions' }>).questions ?? []
 	}),
 
-	plan_created: (event) => ({
-		type: 'plan_created',
-		plan: (event as any).plan
-	}),
+	plan_created: (event) => {
+		const e = event as Extract<StreamEvent, { type: 'plan_created' }>;
+		return {
+			type: 'plan_created',
+			plan: normalizePlan(e.plan)
+		};
+	},
 
 	plan_ready_for_review: (event) => {
-		const e = event as any;
+		const e = event as Extract<StreamEvent, { type: 'plan_ready_for_review' }>;
 		return {
 			type: 'plan_ready_for_review',
-			plan: e.plan,
+			plan: normalizePlan(e.plan),
 			summary: e.summary,
 			recommendations: e.recommendations
 		};
@@ -120,10 +118,10 @@ const EVENT_MAPPERS: EventMapperRegistry = {
 	},
 
 	plan_review: (event) => {
-		const e = event as any;
+		const e = event as Extract<StreamEvent, { type: 'plan_review' }>;
 		return {
 			type: 'plan_review',
-			plan: e.plan,
+			plan: normalizePlan(e.plan),
 			verdict: e.verdict,
 			notes: e.notes,
 			reviewer: e.reviewer
@@ -224,4 +222,41 @@ export function isKnownEventType(eventType: string): boolean {
  */
 export function getRegisteredEventTypes(): string[] {
 	return Object.keys(EVENT_MAPPERS);
+}
+
+// ============================================
+// HELPERS
+// ============================================
+
+/**
+ * Normalize planner AgentPlan (camelCase) to the shared SSE AgentPlan shape (snake_case).
+ * Accepts either shape and fills required timestamps with safe defaults.
+ */
+function normalizePlan(plan: unknown): SSEAgentPlan {
+	if (!plan || typeof plan !== 'object') {
+		return plan as SSEAgentPlan;
+	}
+
+	const cast = plan as Record<string, any>;
+	const coerceDate = (value: any, fallback?: string): string | undefined => {
+		if (!value) return fallback;
+		if (typeof value === 'string') return value;
+		if (value instanceof Date) return value.toISOString();
+		return fallback ?? String(value);
+	};
+
+	return {
+		id: cast.id,
+		session_id: cast.session_id ?? cast.sessionId ?? '',
+		user_id: cast.user_id ?? cast.userId ?? '',
+		planner_agent_id: cast.planner_agent_id ?? cast.plannerAgentId ?? '',
+		user_message: cast.user_message ?? cast.userMessage ?? '',
+		strategy: cast.strategy ?? 'planner_stream',
+		steps: cast.steps ?? [],
+		metadata: cast.metadata ?? null,
+		status: cast.status ?? 'pending',
+		created_at: coerceDate(cast.created_at ?? cast.createdAt, new Date().toISOString())!,
+		completed_at: coerceDate(cast.completed_at ?? cast.completedAt),
+		updated_at: coerceDate(cast.updated_at ?? cast.updatedAt, new Date().toISOString())
+	};
 }

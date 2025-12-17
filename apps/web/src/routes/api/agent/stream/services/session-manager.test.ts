@@ -1,3 +1,4 @@
+// apps/web/src/routes/api/agent/stream/services/session-manager.test.ts
 import { describe, expect, it, vi } from 'vitest';
 import type { ChatSession } from '@buildos/shared-types';
 import type { StreamRequest, AgentSessionMetadata } from '../types';

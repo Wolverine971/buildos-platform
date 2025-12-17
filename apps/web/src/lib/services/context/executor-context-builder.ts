@@ -10,6 +10,7 @@ import type { ChatContextType, ChatToolDefinition } from '@buildos/shared-types'
 import type { ExecutorTask, ExecutorContext, BuildExecutorContextParams } from './types';
 import { TOKEN_BUDGETS } from './types';
 import { generateProjectContextFramework } from '../prompts/core/prompt-components';
+import { normalizeContextType } from '../../../routes/api/agent/stream/utils/context-utils';
 
 // Project context document guidance for executor prompts
 const PROJECT_CONTEXT_DOC_GUIDANCE = generateProjectContextFramework('condensed');
@@ -156,14 +157,4 @@ function estimateExecutorTokens(params: {
  */
 function estimateTokens(text: string): number {
 	return Math.ceil(text.length / 4);
-}
-
-/**
- * Normalize context type (convert 'general' to 'global')
- */
-function normalizeContextType(contextType: ChatContextType): Exclude<ChatContextType, 'general'> {
-	return (contextType === 'general' ? 'global' : contextType) as Exclude<
-		ChatContextType,
-		'general'
-	>;
 }

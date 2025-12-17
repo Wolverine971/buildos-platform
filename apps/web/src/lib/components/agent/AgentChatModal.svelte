@@ -221,6 +221,7 @@
 	let userHasScrolled = $state(false);
 	let currentAssistantMessageId = $state<string | null>(null);
 	let currentThinkingBlockId = $state<string | null>(null); // NEW: Track current thinking block
+	const pendingToolResults = new Map<string, 'completed' | 'failed'>(); // Tool results that arrive before tool_call
 	let messagesContainer = $state<HTMLElement | undefined>(undefined);
 	let contextUsage = $state<ContextUsageSnapshot | null>(null);
 
@@ -407,6 +408,7 @@
 		ontologyLoaded = false;
 		ontologySummary = null;
 		contextUsage = null;
+		pendingToolResults.clear();
 		voiceErrorMessage = '';
 		showFocusSelector = false;
 		showProjectActionSelector = false;
@@ -1536,8 +1538,8 @@
 		});
 	}
 
-	function updateActivityStatus(toolCallId: string, status: 'completed' | 'failed') {
-		if (!currentThinkingBlockId) return;
+	function updateActivityStatus(toolCallId: string, status: 'completed' | 'failed'): boolean {
+		if (!currentThinkingBlockId) return false;
 
 		let matchFound = false;
 
@@ -1594,6 +1596,8 @@
 				}
 			);
 		}
+
+		return matchFound;
 	}
 
 	function handleClose() {
@@ -2117,12 +2121,20 @@
 					...block,
 					activities: [...block.activities, activity]
 				}));
+
+				if (toolCallId && pendingToolResults.has(toolCallId)) {
+					const pendingStatus = pendingToolResults.get(toolCallId);
+					if (pendingStatus) {
+						updateActivityStatus(toolCallId, pendingStatus);
+					}
+					pendingToolResults.delete(toolCallId);
+				}
 				break;
 
 			case 'tool_result': {
 				// Tool result received - update matching tool call activity
 				const toolResult = event.result;
-				const resultToolCallId = toolResult?.toolCallId;
+				const resultToolCallId = toolResult?.toolCallId ?? toolResult?.tool_call_id;
 				const success = toolResult?.success ?? true;
 				const toolError = toolResult?.error;
 
@@ -2136,7 +2148,14 @@
 
 				if (resultToolCallId) {
 					// Update the matching activity status
-					updateActivityStatus(resultToolCallId, success ? 'completed' : 'failed');
+					const matched = updateActivityStatus(
+						resultToolCallId,
+						success ? 'completed' : 'failed'
+					);
+
+					if (!matched) {
+						pendingToolResults.set(resultToolCallId, success ? 'completed' : 'failed');
+					}
 				} else {
 					// No matching tool call ID - log warning but don't add duplicate message
 					if (dev) {

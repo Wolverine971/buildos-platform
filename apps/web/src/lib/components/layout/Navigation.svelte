@@ -262,26 +262,52 @@
 	<div class="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 xl:px-8">
 		<div class="flex justify-between items-center h-16 gap-2.5">
 			<!-- Left side - Logo and Navigation -->
-			<div class="flex items-center min-w-0 flex-1">
-				<!-- Logo -->
+			<div class="flex items-center min-w-0">
+				<!-- Logo - different styles for authenticated vs unauthenticated -->
 				<div class="flex-shrink-0 flex items-center">
-					<a
-						href="/"
-						class="flex items-center group"
-						onclick={() => handleMenuItemClick('/')}
-					>
-						<span class="sr-only">BuildOS</span>
-						<span
-							class="inline-flex items-baseline gap-[0.08em] font-black tracking-tight text-[clamp(1.5rem,4vw,2.1rem)] sm:text-[clamp(1.75rem,2.5vw,2.1rem)] leading-none"
-							aria-hidden="true"
+					{#if user}
+						<!-- Authenticated: Text logo -->
+						<a
+							href="/"
+							class="flex items-center group"
+							onclick={() => handleMenuItemClick('/')}
 						>
+							<span class="sr-only">BuildOS</span>
 							<span
-								class="text-foreground transition-colors duration-200 group-hover:text-accent/80"
-								>Build</span
+								class="inline-flex items-baseline gap-[0.08em] font-black tracking-tight text-[clamp(1.5rem,4vw,2.1rem)] sm:text-[clamp(1.75rem,2.5vw,2.1rem)] leading-none"
+								aria-hidden="true"
 							>
-							<span class="logo-os">OS</span>
-						</span>
-					</a>
+								<span
+									class="text-foreground transition-colors duration-200 group-hover:text-accent/80"
+									>Build</span
+								>
+								<span class="logo-os">OS</span>
+							</span>
+						</a>
+					{:else}
+						<!-- Unauthenticated: Brain-bolt icon + text -->
+						<a
+							href="/"
+							class="flex items-center gap-3 group"
+							onclick={() => handleMenuItemClick('/')}
+						>
+							<img
+								src="/brain-bolt.png"
+								alt="BuildOS"
+								class="w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 lg:w-10 lg:h-10 rounded-md object-cover"
+							/>
+							<div>
+								<div
+									class="text-[0.7rem] uppercase tracking-[0.22em] text-muted-foreground"
+								>
+									BuildOS
+								</div>
+								<div class="text-xs text-muted-foreground">
+									AI-first project operating system
+								</div>
+							</div>
+						</a>
+					{/if}
 				</div>
 
 				<!-- Desktop Navigation -->
@@ -322,6 +348,15 @@
 				{/if}
 			</div>
 
+			{#if !user}
+				<!-- Centered nav links for non-authenticated users -->
+				<div
+					class="hidden md:flex items-center justify-center flex-1 gap-6 text-xs text-muted-foreground"
+				>
+					<a class="hover:text-foreground transition" href="/#how">How it works</a>
+					<a class="hover:text-foreground transition" href="/#stack">Under the hood</a>
+				</div>
+			{/if}
 			<!-- Right side -->
 			<div class="flex items-center gap-1.5 sm:gap-2 lg:gap-2 xl:gap-3 flex-shrink-0">
 				{#if user}
@@ -619,35 +654,19 @@
 						{/if}
 					</div>
 				{:else}
-					<!-- Auth buttons for non-authenticated users -->
-					<div class="hidden md:flex items-center gap-2 lg:gap-3">
-						<!-- Theme toggle for non-authenticated users -->
-						<Button
-							onclick={toggleMode}
-							variant="ghost"
-							size="sm"
-							btnType="container"
-							class="p-2 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/50 rounded-md transition-colors"
-							aria-label="Toggle theme"
-						>
-							{#if isDark}
-								<Sun class="w-5 h-5" />
-							{:else}
-								<Moon class="w-5 h-5" />
-							{/if}
-						</Button>
-
+					<!-- Auth buttons for non-authenticated users - synesthetic texture style -->
+					<div class="hidden md:flex items-center gap-3">
 						<a
 							href="/auth/login"
-							class="text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors"
+							class="pressable rounded-full border border-border bg-card px-3 py-1.5 text-xs shadow-ink hover:opacity-95"
 						>
-							Sign In
+							Log in
 						</a>
 						<a
 							href="/auth/register"
-							class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
+							class="pressable rounded-full bg-accent px-4 py-2 text-xs font-semibold text-accent-foreground shadow-ink"
 						>
-							Sign Up
+							Sign up free
 						</a>
 					</div>
 
@@ -658,7 +677,7 @@
 						variant="ghost"
 						size="sm"
 						icon={showMobileMenu ? X : Menu}
-						class="md:hidden p-2 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300 min-h-0"
+						class="md:hidden p-2 text-muted-foreground hover:text-foreground min-h-0"
 						aria-expanded={showMobileMenu}
 					></Button>
 				{/if}
@@ -842,36 +861,36 @@
 					</div>
 				</div>
 			{:else}
-				<!-- Mobile auth menu for non-authenticated users -->
+				<!-- Mobile auth menu for non-authenticated users - synesthetic texture style -->
 				<div class="px-2 pt-1.5 pb-2 space-y-1">
-					<!-- Theme toggle for non-authenticated mobile users -->
-					<button
-						onclick={toggleMode}
-						class="flex items-center px-3 py-1.5 text-base font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-md transition-colors w-full"
-						aria-label="Toggle theme"
+					<a
+						href="/#how"
+						onclick={() => handleMenuItemClick('/#how')}
+						class="block px-3 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
 					>
-						{#if isDark}
-							<Sun class="w-5 h-5 mr-3" />
-							Light Mode
-						{:else}
-							<Moon class="w-5 h-5 mr-3" />
-							Dark Mode
-						{/if}
-					</button>
-
+						How it works
+					</a>
+					<a
+						href="/#stack"
+						onclick={() => handleMenuItemClick('/#stack')}
+						class="block px-3 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+					>
+						Under the hood
+					</a>
+					<div class="border-t border-border my-2"></div>
 					<a
 						href="/auth/login"
 						onclick={() => handleMenuItemClick('/auth/login')}
-						class="block px-3 py-1.5 text-base font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-md transition-colors"
+						class="block px-3 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
 					>
-						Sign In
+						Log in
 					</a>
 					<a
 						href="/auth/register"
 						onclick={() => handleMenuItemClick('/auth/register')}
-						class="block px-3 py-1.5 text-base font-medium text-accent hover:text-accent/80 rounded-md transition-colors"
+						class="block px-3 py-2 text-sm font-semibold text-accent hover:text-accent/80 transition-colors"
 					>
-						Sign Up
+						Sign up free
 					</a>
 				</div>
 			{/if}

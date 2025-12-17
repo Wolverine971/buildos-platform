@@ -38,6 +38,7 @@ import type {
 import type { EntityLinkedContext } from '$lib/types/linked-entity-context.types';
 import { OntologyContextLoader } from './ontology-context-loader';
 import { ensureActorId } from './ontology/ontology-projects.service';
+import { normalizeContextType } from '../../routes/api/agent/stream/utils/context-utils';
 
 // Import from new context module
 import {
@@ -116,7 +117,7 @@ export class AgentContextService {
 	): Promise<EnhancedPlannerContext | PlannerContext> {
 		const { sessionId, userId, conversationHistory, userMessage, contextType, entityId } =
 			params;
-		const normalizedContext = this.normalizeContextType(contextType);
+		const normalizedContext = normalizeContextType(contextType);
 
 		// Check if we have enhanced params with ontology
 		const lastTurnContext = 'lastTurnContext' in params ? params.lastTurnContext : undefined;
@@ -425,7 +426,7 @@ export class AgentContextService {
 		contextType: ChatContextType,
 		_ontologyContext?: OntologyContext
 	): Promise<ChatToolDefinition[]> {
-		const normalized = this.normalizeContextType(contextType);
+		const normalized = normalizeContextType(contextType);
 		const tools = getToolsForContextType(normalized as Exclude<ChatContextType, 'general'>);
 		return getToolsForAgent(tools, 'read_write');
 	}
@@ -504,14 +505,5 @@ export class AgentContextService {
 	 */
 	async buildExecutorContext(params: BuildExecutorContextParams): Promise<ExecutorContext> {
 		return buildExecutorContextImpl(params, extractRelevantDataForExecutor);
-	}
-
-	private normalizeContextType(
-		contextType: ChatContextType
-	): Exclude<ChatContextType, 'general'> {
-		return (contextType === 'general' ? 'global' : contextType) as Exclude<
-			ChatContextType,
-			'general'
-		>;
 	}
 }
