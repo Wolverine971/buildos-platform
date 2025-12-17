@@ -85,12 +85,14 @@ export class EnhancedPlanMigrator {
 			}
 
 			// Create has_plan edge to link plan to project
+			// See: docs/specs/PROJECT_GRAPH_QUERY_PATTERN_SPEC.md
 			const { error: edgeError } = await this.client.from('onto_edges').insert({
 				src_kind: 'project',
 				src_id: projectContext.ontoProjectId,
 				rel: 'has_plan',
 				dst_kind: 'plan',
-				dst_id: data.id
+				dst_id: data.id,
+				project_id: projectContext.ontoProjectId
 			});
 
 			if (edgeError) {

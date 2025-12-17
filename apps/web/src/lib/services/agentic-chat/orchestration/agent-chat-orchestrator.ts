@@ -34,6 +34,7 @@ import {
 	type ClarificationRoundMetadata
 } from '../analysis/project-creation-analyzer';
 import { normalizeContextType } from '../../../../routes/api/agent/stream/utils/context-utils';
+import { buildDebugContextInfo, isDebugModeEnabled } from '../observability';
 
 const PLAN_TOOL_DEFINITION: ChatToolDefinition = {
 	type: 'function',
@@ -181,6 +182,22 @@ export class AgentChatOrchestrator {
 				...plannerContext.metadata,
 				plannerAgentId
 			};
+
+			// === DEBUG CONTEXT EMISSION ===
+			// If debug mode is enabled, emit full context info for observability
+			if (isDebugModeEnabled()) {
+				const debugEvent: StreamEvent = {
+					type: 'debug_context',
+					debug: buildDebugContextInfo({
+						plannerContext,
+						requestId: uuidv4(),
+						projectFocus: request.projectFocus,
+						ontologyContext: request.ontologyContext
+					})
+				};
+				yield debugEvent;
+				await callback(debugEvent);
+			}
 
 			const contextScope =
 				request.ontologyContext?.scope ??

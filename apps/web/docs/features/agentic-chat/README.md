@@ -39,14 +39,16 @@ The BuildOS Agentic Chat System is a sophisticated multi-agent architecture that
     - Backend: `src/routes/api/agent/stream/` (modular structure - see below)
     - Orchestrator: `src/lib/services/agentic-chat/orchestration/agent-chat-orchestrator.ts`
 
-   > **Note:** The backend endpoint was refactored in December 2024 into a modular structure:
-   > ```
-   > src/routes/api/agent/stream/
-   > ├── +server.ts           # Main orchestrator (~290 lines)
-   > ├── services/            # Session, ontology, persistence, streaming
-   > └── utils/               # Context normalization, rate limiting, event mapping
-   > ```
-   > See `docs/plans/AGENT_STREAM_ENDPOINT_REFACTORING_PLAN.md` for details.
+    > **Note:** The backend endpoint was refactored in December 2024 into a modular structure:
+    >
+    > ```
+    > src/routes/api/agent/stream/
+    > ├── +server.ts           # Main orchestrator (~290 lines)
+    > ├── services/            # Session, ontology, persistence, streaming
+    > └── utils/               # Context normalization, rate limiting, event mapping
+    > ```
+    >
+    > See `docs/plans/AGENT_STREAM_ENDPOINT_REFACTORING_PLAN.md` for details.
 
 3. **Learn the Tool System**
     - See [Tool System](#tool-system) section
@@ -906,27 +908,27 @@ interface AgentStreamRequest {
 
 ### Backend Files
 
-| File                                                                     | Lines | Purpose                 |
-| ------------------------------------------------------------------------ | ----- | ----------------------- |
+| File                                                                     | Lines | Purpose                            |
+| ------------------------------------------------------------------------ | ----- | ---------------------------------- |
 | `src/routes/api/agent/stream/+server.ts`                                 | ~290  | API endpoint (refactored Dec 2024) |
-| `src/routes/api/agent/stream/services/session-manager.ts`                | ~310  | Session CRUD operations |
-| `src/routes/api/agent/stream/services/stream-handler.ts`                 | ~480  | SSE lifecycle           |
-| `src/routes/api/agent/stream/services/ontology-cache.ts`                 | ~230  | Session-level caching   |
-| `src/routes/api/agent/stream/utils/context-utils.ts`                     | ~245  | Context normalization   |
-| `src/lib/services/agentic-chat/index.ts`                                 | ~133  | Factory and exports     |
-| `src/lib/services/agentic-chat/orchestration/agent-chat-orchestrator.ts` | ~1048 | Main orchestrator       |
-| `src/lib/services/agent-context-service.ts`                              | ~1738 | Context building        |
-| `src/lib/services/agentic-chat/planning/plan-orchestrator.ts`            | ~1327 | Plan creation/execution |
-| `src/lib/services/agentic-chat/execution/tool-execution-service.ts`      | ~641  | Tool execution          |
-| `src/lib/services/agentic-chat/execution/executor-coordinator.ts`        | ~300  | Executor management     |
-| `src/lib/services/agentic-chat/synthesis/response-synthesizer.ts`        | ~600  | Response generation     |
-| `src/lib/services/agentic-chat/persistence/agent-persistence-service.ts` | ~400  | Database operations     |
-| `src/lib/services/agentic-chat/tools/core/tool-definitions.ts`           | ~2292 | Tool schemas (38 tools) |
-| `src/lib/services/agentic-chat/tools/core/tool-executor.ts`              | ~1500 | Tool implementations    |
-| `src/lib/services/agentic-chat/analysis/strategy-analyzer.ts`            | ~400  | Strategy analysis       |
-| `src/lib/services/agentic-chat/analysis/project-creation-analyzer.ts`    | ~300  | Project creation intent |
-| `src/lib/services/agentic-chat/prompts/prompt-generation-service.ts`     | ~600  | System prompt building  |
-| `src/lib/utils/sse-processor.ts`                                         | ~305  | SSE utilities           |
+| `src/routes/api/agent/stream/services/session-manager.ts`                | ~310  | Session CRUD operations            |
+| `src/routes/api/agent/stream/services/stream-handler.ts`                 | ~480  | SSE lifecycle                      |
+| `src/routes/api/agent/stream/services/ontology-cache.ts`                 | ~230  | Session-level caching              |
+| `src/routes/api/agent/stream/utils/context-utils.ts`                     | ~245  | Context normalization              |
+| `src/lib/services/agentic-chat/index.ts`                                 | ~133  | Factory and exports                |
+| `src/lib/services/agentic-chat/orchestration/agent-chat-orchestrator.ts` | ~1048 | Main orchestrator                  |
+| `src/lib/services/agent-context-service.ts`                              | ~1738 | Context building                   |
+| `src/lib/services/agentic-chat/planning/plan-orchestrator.ts`            | ~1327 | Plan creation/execution            |
+| `src/lib/services/agentic-chat/execution/tool-execution-service.ts`      | ~641  | Tool execution                     |
+| `src/lib/services/agentic-chat/execution/executor-coordinator.ts`        | ~300  | Executor management                |
+| `src/lib/services/agentic-chat/synthesis/response-synthesizer.ts`        | ~600  | Response generation                |
+| `src/lib/services/agentic-chat/persistence/agent-persistence-service.ts` | ~400  | Database operations                |
+| `src/lib/services/agentic-chat/tools/core/tool-definitions.ts`           | ~2292 | Tool schemas (38 tools)            |
+| `src/lib/services/agentic-chat/tools/core/tool-executor.ts`              | ~1500 | Tool implementations               |
+| `src/lib/services/agentic-chat/analysis/strategy-analyzer.ts`            | ~400  | Strategy analysis                  |
+| `src/lib/services/agentic-chat/analysis/project-creation-analyzer.ts`    | ~300  | Project creation intent            |
+| `src/lib/services/agentic-chat/prompts/prompt-generation-service.ts`     | ~600  | System prompt building             |
+| `src/lib/utils/sse-processor.ts`                                         | ~305  | SSE utilities                      |
 
 ### Configuration Files
 

@@ -1,7 +1,7 @@
 <!-- apps/web/src/routes/admin/migration/errors/+page.svelte -->
 <!-- Error browser page with filtering and retry actions -->
 <script lang="ts">
-	import { AlertTriangle, ArrowLeft, Download, RotateCcw, Trash2 } from 'lucide-svelte';
+	import { TriangleAlert, Download, RotateCcw, Trash2 } from 'lucide-svelte';
 	import AdminPageHeader from '$lib/components/admin/AdminPageHeader.svelte';
 	import AdminCard from '$lib/components/admin/AdminCard.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
@@ -135,6 +135,24 @@
 		}
 	}
 
+	async function handleRetryWithFallback(errorIds: number[]) {
+		if (errorIds.length === 0) return;
+		retryLoading = true;
+		try {
+			const result = await apiPost<{
+				retrying: number;
+				successful?: number;
+				failed?: number;
+			}>('/api/admin/migration/retry', { errorIds, useFallback: true });
+			setSuccess(`Retry with fallback initiated for ${result.retrying} errors`);
+			await invalidateAll();
+		} catch (err) {
+			setError(err instanceof Error ? err.message : 'Failed to retry with fallback');
+		} finally {
+			retryLoading = false;
+		}
+	}
+
 	function handleViewDetails(error: MigrationError) {
 		selectedError = error;
 		showDetailModal = true;
@@ -212,7 +230,7 @@
 	<AdminPageHeader
 		title="Migration Errors"
 		description="View and manage migration errors with retry capabilities."
-		icon={AlertTriangle}
+		icon={TriangleAlert}
 		backHref="/admin/migration"
 		backLabel="Migration Dashboard"
 	>
@@ -274,7 +292,7 @@
 				<div
 					class="h-10 w-10 rounded-full bg-orange-100 flex items-center justify-center dark:bg-orange-900/30"
 				>
-					<AlertTriangle class="h-5 w-5 text-orange-600 dark:text-orange-400" />
+					<TriangleAlert class="h-5 w-5 text-orange-600 dark:text-orange-400" />
 				</div>
 			</div>
 		</AdminCard>
@@ -289,7 +307,7 @@
 				<div
 					class="h-10 w-10 rounded-full bg-rose-100 flex items-center justify-center dark:bg-rose-900/30"
 				>
-					<AlertTriangle class="h-5 w-5 text-rose-600 dark:text-rose-400" />
+					<TriangleAlert class="h-5 w-5 text-rose-600 dark:text-rose-400" />
 				</div>
 			</div>
 		</AdminCard>
@@ -442,7 +460,7 @@
 			<!-- Actions -->
 			<div class="flex justify-end gap-2 border-t border-gray-200 pt-4 dark:border-gray-700">
 				<Button
-					variant="destructive"
+					variant="danger"
 					onclick={() => {
 						handleDelete([selectedError!.id]);
 						showDetailModal = false;
@@ -503,9 +521,7 @@
 			<Button variant="outline" onclick={cancelDelete} disabled={deleteLoading}>
 				Cancel
 			</Button>
-			<Button variant="destructive" onclick={confirmDelete} loading={deleteLoading}>
-				Delete
-			</Button>
+			<Button variant="danger" onclick={confirmDelete} loading={deleteLoading}>Delete</Button>
 		</div>
 	</div>
 </Modal>

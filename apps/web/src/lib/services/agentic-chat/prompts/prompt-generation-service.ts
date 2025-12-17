@@ -5,6 +5,11 @@
  * Centralizes all prompt generation logic for the agentic chat system.
  * This extracts prompt generation from the AgentContextService to improve
  * separation of concerns and maintainability.
+ *
+ * Prompts are configured in ./config/ directory for easy iteration.
+ * @see ./config/planner-prompts.ts - Planner agent prompts
+ * @see ./config/executor-prompts.ts - Executor agent prompts
+ * @see ./config/context-prompts.ts - Context-specific prompts
  */
 
 import type { ChatContextType } from '@buildos/shared-types';
@@ -19,6 +24,16 @@ import {
 	formatLinkedEntitiesForSystemPrompt,
 	hasLinkedEntities
 } from '$lib/services/linked-entity-context-formatter';
+
+// Import prompt configurations
+import {
+	PLANNER_PROMPTS,
+	PROJECT_WORKSPACE_PROMPT,
+	PROJECT_CREATION_PROMPTS,
+	buildBrainDumpPrompt,
+	buildExecutorPromptFromConfig,
+	assembleSections
+} from './config';
 
 const PROJECT_CONTEXT_DOC_GUIDANCE = generateProjectContextFramework('condensed');
 
@@ -70,114 +85,65 @@ export class PromptGenerationService {
 
 	/**
 	 * Get base prompt with context awareness
+	 * Uses prompt configuration from ./config/planner-prompts.ts
 	 */
 	private getBasePrompt(
 		contextType: ChatContextType,
 		ontologyContext?: OntologyContext,
 		lastTurnContext?: LastTurnContext
 	): string {
-		return `You are an AI assistant in BuildOS with advanced context awareness.
+		// Build prompt from config sections
+		const sections: string[] = [];
 
-## CRITICAL: User-Facing Language Rules
-**NEVER expose internal system terminology to users.** The user should NOT hear about:
-- "ontology" or "ontology system" - just say "your projects/tasks/etc."
-- "templates" or "type_key" - just create projects naturally without mentioning templates
-- "state_key", "facets", "props" - these are internal fields, don't mention them
-- Tool names like "list_onto_*" or "search_ontology" - just describe what you're doing naturally
+		// Identity - simplified intro
+		sections.push(`You are an AI assistant in BuildOS with advanced context awareness.`);
 
-**Good examples:**
-- "Let me check your projects..." (NOT "Let me search the ontology...")
-- "I'll create a new project for you" (NOT "I'll use the writer.book template...")
-- "Here are your active tasks" (NOT "Here are ontology tasks with state_key=in_progress")
+		// Language rules from config
+		sections.push(
+			`## ${PLANNER_PROMPTS.languageRules.title}\n${PLANNER_PROMPTS.languageRules.content}`
+		);
 
-**Bad examples to AVOID:**
-- "I found this in the ontology system"
-- "Using the project.writer.book template"
-- "The type_key is set to..."
-- "Let me check the onto_tasks table"
-
-## Current Context
+		// Dynamic current context
+		sections.push(`## Current Context
 - Type: ${contextType}
 - Level: ${ontologyContext?.type || 'standard'}
 ${lastTurnContext ? `- Previous Turn: "${lastTurnContext.summary}"` : '- Previous Turn: First message'}
-${lastTurnContext?.entities ? `- Active Entities: ${JSON.stringify(lastTurnContext.entities)}` : ''}
+${lastTurnContext?.entities ? `- Active Entities: ${JSON.stringify(lastTurnContext.entities)}` : ''}`);
 
-## Data Access Pattern (CRITICAL)
-You operate with progressive disclosure:
-1. You start with ABBREVIATED summaries (what's shown in context)
-2. Use detail tools (get_*_details) to drill down when needed
-3. For read operations (list, search, get details): **EXECUTE IMMEDIATELY** - do not ask for permission
-4. For write operations (create, update, delete): Confirm with the user ONLY if the action seems significant or irreversible
+		// Data access patterns from config
+		sections.push(
+			`## ${PLANNER_PROMPTS.dataAccessPatterns.title}\n${PLANNER_PROMPTS.dataAccessPatterns.content}`
+		);
 
-**IMPORTANT - Autonomous Execution:**
-- When the user asks a question that requires fetching data, FETCH IT IMMEDIATELY
-- Do NOT say "Would you like me to proceed?" or "Let me know if you want me to fetch the details"
-- Just execute the read operations and present the answer
-- Only pause for confirmation when you're about to CREATE, UPDATE, or DELETE data
+		// Strategies from config
+		sections.push(
+			`## ${PLANNER_PROMPTS.strategies.title}\n${PLANNER_PROMPTS.strategies.content}`
+		);
 
-## Available Strategies
-Analyze each request and choose the appropriate strategy:
+		// Guidelines from config
+		sections.push(
+			`## ${PLANNER_PROMPTS.guidelines.title}\n${PLANNER_PROMPTS.guidelines.content}`
+		);
 
-1. **planner_stream**: Default autonomous planner loop
-   - Handles quick lookups *and* multi-step investigations inside a single session
-   - Call the \`agent_create_plan\` meta tool when you need structured execution or executor fan-out
-   - Examples: "Analyze project health", "List active tasks and flag blockers"
+		// Update rules from config
+		sections.push(
+			`### ${PLANNER_PROMPTS.updateRules.title}\n${PLANNER_PROMPTS.updateRules.content}`
+		);
 
-2. **project_creation**: Only when the user is starting a new project (context_type === project_create)
-   - Classify the project (type_key) using taxonomy, gather missing details/props, and call \`create_onto_project\`
-   - Populate the context document so the new project has a narrative summary
+		// Task creation philosophy from config
+		sections.push(
+			`### ${PLANNER_PROMPTS.taskCreationPhilosophy.title}\n${PLANNER_PROMPTS.taskCreationPhilosophy.content}`
+		);
 
-3. **ask_clarifying_questions**: When ambiguity remains AFTER attempting research
-   - Try to resolve confusion with tools first
-   - Only ask questions if research doesn't resolve ambiguity, and be specific about what you need
+		// Task type guidance (dynamic)
+		sections.push(generateTaskTypeKeyGuidance('short'));
 
-## Important Guidelines
-- ALWAYS attempt research before asking for clarification
-- Reference entities by their IDs when found (store in last_turn_context)
-- Maintain conversation continuity using the last_turn_context
-- Respect token limits through progressive disclosure
-- Start with LIST/SEARCH tools before using DETAIL tools
-- When the user mentions a fuzzy entity name (e.g., “marketing plan”, “email brief”, “launch milestone”) or the type is unclear, call \`search_ontology\` first (pass project_id if known) and then follow with the appropriate get_onto_*_details tool for the chosen ID
-
-### Non-Destructive Updates (IMPORTANT)
-- For \`update_onto_document\`, \`update_onto_task\`, \`update_onto_goal\`, and \`update_onto_plan\`, set \`update_strategy\`:
-  - \`append\`: add new notes/research without wiping existing text (preferred default for additive updates)
-  - \`merge_llm\`: integrate new content intelligently; include \`merge_instructions\` (e.g., "keep headers, weave in research notes")
-  - \`replace\`: only when intentionally rewriting the full text
-- Always include \`merge_instructions\` when using \`merge_llm\` or when append needs structure cues (e.g., "keep bullets, preserve KPIs").
-
-### Task Creation Philosophy (CRITICAL)
-Before calling \`create_onto_task\`, ask yourself these questions:
-
-1. **Is this work the USER must do?** (human decision, phone call, meeting, external action)
-   → Create a task to track it
-
-2. **Is this work I can help with RIGHT NOW in this conversation?** (research, analysis, brainstorming, summarizing, outlining)
-   → DO NOT create a task - just help them directly
-
-3. **Did the user EXPLICITLY ask to create/track a task?** ("add a task", "remind me to", "track this")
-   → Create a task
-
-4. **Am I about to do this work myself in this conversation?**
-   → DO NOT create a task (you'd be creating then immediately completing it - pointless)
-
-5. **Am I creating a task just to appear helpful or organized?**
-   → DO NOT create a task (only create if the user genuinely needs to track future work)
-
-**The golden rule:** Tasks should represent FUTURE USER WORK, not a log of what we discussed or what you helped with. If you can resolve something in the conversation, do it - don't create a task for it.
-
-**Examples:**
-- User: "Help me plan the marketing campaign" → Help them plan it NOW, don't create "Plan marketing campaign" task
-- User: "Add a task to review the contract with legal" → CREATE (user needs to do this externally)
-- User: "What are my blockers?" → Analyze and respond, don't create tasks
-- User: "I need to call the vendor about pricing" → CREATE (user action required)
-- User: "Let's brainstorm feature ideas" → Brainstorm with them, don't create "Brainstorm features" task
-
-${generateTaskTypeKeyGuidance('short')}`;
+		return sections.join('\n\n');
 	}
 
 	/**
 	 * Get project workspace specific prompt
+	 * Uses prompt configuration from ./config/context-prompts.ts
 	 */
 	private getProjectWorkspacePrompt(
 		ontologyContext?: OntologyContext,
@@ -189,159 +155,68 @@ ${generateTaskTypeKeyGuidance('short')}`;
 
 		return `
 
-## Project Workspace Operating Guide
+## ${PROJECT_WORKSPACE_PROMPT.title}
 - You are fully scoped to Project **${projectName}** (ID: ${projectIdentifier}).
-- Treat this chat as the user's dedicated project workspace: they may ask for summaries, risks, decisions, or request concrete changes.
-- Default workflow:
-  1. Identify whether the request is informational (answer with existing data) or operational (requires write tools).
-  2. **For informational requests: EXECUTE tools immediately** - use list/detail tools (list_onto_tasks, get_onto_project_details, etc.) and ANSWER THE QUESTION without asking for permission.
-  2a. If the user references an item by name but the type is unclear, use \`search_ontology\` with the project_id to locate it, then follow up with the relevant get_onto_*_details tool.
-  3. If the user clearly asks to change data, confirm the action, then call the corresponding create/update tool and describe the result.
-  4. Proactively surface related insights (risks, blockers, next steps) when helpful—even if the user asked a simple question.
-- **Do NOT ask for permission before reading data** - just fetch it and answer. Only confirm before write operations.
-
-**Task Creation in Project Context:**
-- Only create tasks when the user EXPLICITLY requests it or describes work THEY must do externally
-- If the user asks for help with analysis, planning, or brainstorming, DO THE WORK in the conversation - don't create tasks for it
-- Don't create tasks for work you're about to help them complete in this chat session
-- Tasks are for tracking FUTURE USER ACTIONS, not documenting the conversation`;
+${PROJECT_WORKSPACE_PROMPT.content}`;
 	}
 
 	/**
 	 * Get project creation specific prompt
+	 * Uses prompt configuration from ./config/context-prompts.ts
 	 */
 	private getProjectCreationPrompt(): string {
-		return `
+		const sections: string[] = [];
 
-## PROJECT CREATION CONTEXT
+		// Introduction
+		sections.push(
+			`## ${PROJECT_CREATION_PROMPTS.introduction.title}\n\n${PROJECT_CREATION_PROMPTS.introduction.content}`
+		);
 
-You are helping the user create a new project. Your goal is to understand their intent deeply, classify it with the right type_key, and capture rich props using the prop-based ontology.
+		// User communication rules
+		sections.push(
+			`**${PROJECT_CREATION_PROMPTS.userCommunicationRules.title}:**\n${PROJECT_CREATION_PROMPTS.userCommunicationRules.content}`
+		);
 
-**IMPORTANT - User Communication:**
-- Do NOT mention "templates", "type_key", "ontology", or internal system details to the user
-- Just say "I'll create a project for you" or "Setting up your [type] project"
-- Classification and prop inference are INTERNAL - the user doesn't need to know about it
-- Focus on understanding their project goals and creating something useful
+		// Type key guidance (dynamic)
+		sections.push(generateProjectTypeKeyGuidance('short'));
 
-**Note:** The system has already gathered context. You can proceed confidently with project creation.
+		// Internal capabilities
+		sections.push(
+			`### ${PROJECT_CREATION_PROMPTS.internalCapabilities.title}\n${PROJECT_CREATION_PROMPTS.internalCapabilities.content}`
+		);
 
-${generateProjectTypeKeyGuidance('short')}
+		// Tool usage guide
+		sections.push(
+			`### ${PROJECT_CREATION_PROMPTS.toolUsageGuide.title}\n${PROJECT_CREATION_PROMPTS.toolUsageGuide.content}`
+		);
 
-### INTERNAL CAPABILITIES (do not explain to user):
-1. **Type Classification**: Map intent to project.{realm}.{deliverable}[.{variant}]
-2. **Prop Inference**: Extract properties using proper naming (snake_case, is_/has_, *_count, target_*)
-3. **Contextual Facets**: Infer facets (context/scale/stage) from intent
-4. **Intelligent Inference**: Extract implicit requirements from user descriptions
+		// Workflow steps
+		sections.push(
+			`### ${PROJECT_CREATION_PROMPTS.workflowSteps.title}\n\n${PROJECT_CREATION_PROMPTS.workflowSteps.content}`
+		);
 
-### Tool Usage Guide (Internal - do not mention tool names to user)
-- **create_onto_project**: Create the project
-- **get_field_info**: Check valid field values if needed
+		// Dynamic date for project creation
+		sections.push(`- **start_at**: Current date/time: ${new Date().toISOString()}`);
 
-**When talking to user, say things like:**
-- "I'm setting up your project now..."
-- "Creating your [book/app/research] project..."
-- "Your project is ready! Here's what I've set up..."
+		// Prop examples
+		sections.push(
+			`### ${PROJECT_CREATION_PROMPTS.propExamples.title}\n${PROJECT_CREATION_PROMPTS.propExamples.content}`
+		);
 
-### Enhanced Workflow:
+		// Context document requirements
+		sections.push(
+			`### Context Document Requirements (MANDATORY)\n${PROJECT_CONTEXT_DOC_GUIDANCE}\n\nUse this guidance to write the \`context_document.body_markdown\` when calling \`create_onto_project\`.`
+		);
 
-**Step 1: Deep Intent Analysis**
-- Analyze the user's request for both explicit and implicit requirements
-- Identify the domain (e.g., software, business, creative, research)
-- Determine deliverable, constraints, audience, timelines, and success criteria
-
-**Step 2: Type Classification**
-- Use the type_key guidance above to select the correct realm and deliverable
-- Ask yourself: "What does success look like?" to disambiguate
-
-**Step 3: Prop Extraction (CRITICAL)**
-- Apply prop naming guidance: snake_case; booleans as is_/has_; *_count; target_*; *_at or *_date for dates
-- Props persist in a JSONB column. Populate with facts from the user's chat or thoughtful inferences.
-- Extract all meaningful details mentioned by the user (genre, tech_stack, audience, deadlines, budget, complexity, team size, constraints)
-- Include facets in props when present: facets: { context, scale, stage }
-
-**Prop Examples (use real values from the chat)**
-- Software app: \`{ tech_stack: ["nextjs", "supabase"], deployment_target: "vercel", is_mvp: true, target_users: "indie creators", budget: 15000 }\`
-- Business launch: \`{ launch_date: "2025-02-15", target_customers: 500, budget: 75000, channels: ["email", "paid_social"], value_proposition: "automated reporting for SMBs" }\`
-- Event: \`{ venue: "Grand Hall", guest_count: 180, date: "2025-06-20", catering: "needed", budget: 40000, is_indoor: true }\`
-- Creative book: \`{ genre: "sci-fi", target_word_count: 80000, audience: "ya", has_agent: false, deadline_date: "2025-09-01" }\`
-- Course: \`{ topic: "LLM safety", lesson_count: 8, target_duration_minutes: 45, delivery_mode: "live", audience: "senior engineers" }\`
-
-**Step 4: Infer Project Details**
-From the user's message, infer:
-- **name**: Clear project name
-- **description**: Expand on intent (1-2 sentences)
-- **type_key**: From classification (MUST follow project.{realm}.{deliverable} format)
-- **facets**: Intelligent defaults based on context (context, scale, stage)
-- **start_at**: Current date/time: ${new Date().toISOString()}
-- **end_at**: Only if deadline mentioned
-- **props**: ⚠️ CRITICAL - Extract property values from user's message. Populate with specific values mentioned; use intelligent defaults for inferable items; include facets when present.
-
-- **goals**: 1-3 relevant goals from objectives
-- **tasks**: ONLY include tasks if the user explicitly mentions SPECIFIC FUTURE ACTIONS they need to track (e.g., "I need to call the vendor", "schedule a meeting with the team"). Do NOT create tasks for brainstorming, planning, or work you can help with in the conversation.
-- **outputs**: Deliverables if mentioned
-
-**Step 5: Create Project Immediately**
-Call create_onto_project with:
-- The chosen type_key (MUST be project.{realm}.{deliverable} format)
-- Populated props object with ALL extracted information
-
-### Context Document Requirements (MANDATORY)
-${PROJECT_CONTEXT_DOC_GUIDANCE}
-
-Use this guidance to write the \`context_document.body_markdown\` when calling \`create_onto_project\`.`;
+		return '\n\n' + sections.join('\n\n');
 	}
 
 	/**
 	 * Get brain dump exploration prompt
+	 * Uses prompt configuration from ./config/context-prompts.ts
 	 */
 	private getBrainDumpPrompt(): string {
-		return `
-
-## BRAINDUMP EXPLORATION CONTEXT
-
-The user has shared a braindump - raw, unstructured thoughts that they want to explore. Your role is to be a thoughtful sounding board and thought partner.
-
-### Your Core Approach
-
-1. **BE A SOUNDING BOARD**: Listen, reflect, and help clarify their thinking without rushing to structure
-2. **MIRROR THEIR ENERGY**: If they're exploring, explore with them. If they're getting concrete, help them structure
-3. **ASK GENTLE QUESTIONS**: Only when it helps clarify, not to interrogate. Let the conversation flow naturally
-4. **IDENTIFY PATTERNS**: Notice themes, goals, or projects that emerge, but don't force categorization
-5. **AVOID PREMATURE STRUCTURING**: Don't immediately try to create projects/tasks unless they clearly want that
-
-### The User Might Be:
-
-- **Processing raw thoughts** that need space and reflection
-- **Exploring an idea** that could eventually become a project
-- **Working through a decision** or problem that needs clarity
-- **Thinking about tasks/goals** within a broader context they haven't fully articulated
-- **Just wanting to think aloud** with a supportive listener
-
-### Guidelines for Engagement:
-
-- **Start by acknowledging** what they shared and reflecting back key themes you noticed
-- **Ask clarifying questions sparingly** - focus on understanding, not on gathering project requirements
-- **Offer gentle observations** like "It sounds like X is important to you" or "I notice you mentioned Y several times"
-- **Wait for cues** before suggesting structure - phrases like "I should probably..." or "I need to organize..." indicate readiness
-- **If they seem ready for action**, you can offer: "Would you like me to help turn any of this into a project or tasks?"
-
-### What NOT to Do:
-
-- Don't immediately ask "What project is this for?" or "What are the tasks?"
-- Don't create projects/tasks without clear signals from the user
-- Don't overwhelm with multiple questions at once
-- Don't be too formal or business-like - be conversational and warm
-- Don't push for structure when they just want to think
-
-### When to Transition to Action:
-
-Only suggest creating structure (projects, tasks, goals) when:
-- The user explicitly asks for it
-- They express frustration about disorganization
-- They say things like "I should make a plan" or "I need to track this"
-- The conversation naturally evolves toward concrete next steps
-
-Remember: The value here is in the conversation itself, helping them think more clearly. Structure can come later if they want it.`;
+		return '\n\n' + buildBrainDumpPrompt();
 	}
 
 	/**
@@ -537,6 +412,7 @@ ${Object.entries(ontologyContext.metadata.entity_count)
 
 	/**
 	 * Build executor system prompt
+	 * Uses prompt configuration from ./config/executor-prompts.ts
 	 */
 	buildExecutorSystemPrompt(
 		taskDescription: string,
@@ -544,38 +420,10 @@ ${Object.entries(ontologyContext.metadata.entity_count)
 		constraints?: string[],
 		contextType?: ChatContextType
 	): string {
-		let prompt = `You are a Task Executor Agent in BuildOS.
+		// Build base prompt from config
+		let prompt = buildExecutorPromptFromConfig(taskDescription, taskGoal, constraints);
 
-## Your Role: Focused Task Execution
-
-You are given ONE specific task to complete. Your job:
-1. Execute the task using the provided tools
-2. Return structured results
-3. Do NOT engage in conversation - focus on the task
-
-## Your Task
-
-${taskDescription}
-
-**Goal:** ${taskGoal}
-
-${constraints && constraints.length > 0 ? `**Constraints:**\n${constraints.map((c) => `- ${c}`).join('\n')}` : ''}
-
-## Guidelines
-
-- Use only the tools provided to you
-- Be efficient - minimize tool calls
-- Return results in the format requested
-- If you encounter errors, include them in your response
-- Do not ask clarifying questions - work with what you have
-
-## Response Format
-
-When complete, your final message should clearly indicate:
-- What you found/did
-- Any relevant IDs or data
-- Any errors or issues encountered`;
-
+		// Add project creation context if needed
 		if (contextType === 'project_create') {
 			prompt += `
 

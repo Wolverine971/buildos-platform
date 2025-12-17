@@ -10,7 +10,7 @@
  *      data flow, component details, and error handling strategies.
  */
 import type { TypedSupabaseClient } from '@buildos/supabase-client';
-import type { Database } from '@buildos/shared-types';
+import type { Database, Json } from '@buildos/shared-types';
 import type { Facets, PlanState } from '$lib/types/onto';
 import type {
 	MigrationServiceContext,
@@ -46,7 +46,7 @@ export interface PhaseMigrationBatchResult {
 	ontoProjectId: string | null;
 	phases: PhaseMigrationPlan[];
 	phaseMapping: Record<string, string | null>;
-	preview?: PlanGenerationPreview;
+	preview?: MigrationPlanPreviewPayload;
 }
 
 // Plan type_key follows family-based taxonomy: plan.{family}[.{variant}]
@@ -54,7 +54,7 @@ export interface PhaseMigrationBatchResult {
 const PLAN_TYPE_KEY = 'plan.phase.project';
 
 export class PhaseMigrationService {
-	private readonly enhancedMigrator: EnhancedPlanMigrator;
+	private readonly enhancedMigrator?: EnhancedPlanMigrator;
 
 	constructor(
 		private readonly client: TypedSupabaseClient,
@@ -392,7 +392,7 @@ export class PhaseMigrationService {
 				name: plan.name || legacyPhase?.name || `Plan ${params.phasePlans.length + 1}`,
 				taskCount,
 				projectFacets: params.projectFacets,
-				phase: legacyPhase,
+				phase: legacyPhase ?? null,
 				order: plan.order ?? legacyPhase?.order ?? params.phasePlans.length + 1,
 				summary: plan.summary,
 				metadata: {
@@ -571,13 +571,13 @@ export class PhaseMigrationService {
 								end: params.phase.end_date
 							}
 						: null,
-					metadata: params.metadata ?? {},
+					metadata: (params.metadata ?? {}) as Json,
 					facets: {
 						context: params.projectFacets?.context ?? null,
 						scale: this.determinePhaseScale(params.taskCount),
 						stage: params.phase ? this.determinePhaseStage(params.phase) : 'planning'
 					}
-				},
+				} as Json,
 				created_by: params.actorId
 			})
 			.select('id')
@@ -590,12 +590,14 @@ export class PhaseMigrationService {
 		}
 
 		// Create has_plan edge to link plan to project
+		// See: docs/specs/PROJECT_GRAPH_QUERY_PATTERN_SPEC.md
 		const { error: edgeError } = await this.client.from('onto_edges').insert({
 			src_kind: 'project',
 			src_id: params.ontoProjectId,
 			rel: 'has_plan',
 			dst_kind: 'plan',
-			dst_id: data.id
+			dst_id: data.id,
+			project_id: params.ontoProjectId
 		});
 
 		if (edgeError) {

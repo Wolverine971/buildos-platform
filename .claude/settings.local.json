@@ -32,7 +32,8 @@
       "WebFetch(domain:blog.codacy.com)",
       "Bash(NODE_OPTIONS=\"--max-old-space-size=8192\" pnpm run check:ts:*)",
       "Bash(pnpm exec tsc:*)",
-      "Bash(pnpm run test:*)"
+      "Bash(pnpm run test:*)",
+      "WebFetch(domain:medium.com)"
     ],
     "deny": [],
     "ask": []

@@ -77,7 +77,7 @@
 	import NextStepDisplay from '$lib/components/project/NextStepDisplay.svelte';
 	import StateDisplay from '$lib/components/ontology/StateDisplay.svelte';
 	import ProjectGraphSection from '$lib/components/ontology/ProjectGraphSection.svelte';
-	import type { EntityReference } from '$lib/utils/entity-reference-parser';
+	import type { EntityReference } from '@buildos/shared-types';
 	import type { GraphNode } from '$lib/components/ontology/graph/lib/graph.types';
 
 	// ============================================================
@@ -1319,7 +1319,7 @@
 			projectId={project.id}
 			{plans}
 			{goals}
-			{milestones}
+			milestones={milestones.map((m) => ({ ...m, due_at: m.due_at ?? undefined }))}
 			onClose={() => (showTaskCreateModal = false)}
 			onCreated={handleTaskCreated}
 		/>
@@ -1334,7 +1334,7 @@
 			projectId={project.id}
 			{plans}
 			{goals}
-			{milestones}
+			milestones={milestones.map((m) => ({ ...m, due_at: m.due_at ?? undefined }))}
 			onClose={() => (editingTaskId = null)}
 			onUpdated={handleTaskUpdated}
 			onDeleted={handleTaskDeleted}
@@ -1459,9 +1459,9 @@
 	<ConfirmationModal
 		title="Delete project"
 		confirmText="Delete"
-		confirmVariant="destructive"
+		confirmVariant="danger"
 		isOpen={showDeleteProjectModal}
-		isProcessing={isDeletingProject}
+		loading={isDeletingProject}
 		on:confirm={handleProjectDeleteConfirm}
 		on:cancel={() => (showDeleteProjectModal = false)}
 	>

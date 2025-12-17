@@ -250,6 +250,55 @@ export interface PlannerContext {
 // ============================================
 
 /**
+ * Debug context info for observability
+ * Allows viewing prompts, context, and tools for any chat session
+ */
+export interface DebugContextInfo {
+	/** Request identifier */
+	requestId: string;
+	/** Timestamp when context was built */
+	timestamp: string;
+	/** Current context type */
+	contextType: string;
+	/** System prompt (full) */
+	systemPrompt: string;
+	/** Token count for system prompt */
+	systemPromptTokens: number;
+	/** Location context string */
+	locationContext: string;
+	/** Token count for location context */
+	locationContextTokens: number;
+	/** Available tools list */
+	availableTools: Array<{
+		name: string;
+		category?: string;
+	}>;
+	/** Token count for tools */
+	toolsTokens: number;
+	/** Ontology snapshot summary */
+	ontologySnapshot?: {
+		type: string;
+		entityCounts: Record<string, number>;
+		focusEntity?: {
+			type: string;
+			id: string;
+			name: string;
+		};
+	};
+	/** Conversation history token count */
+	conversationTokens: number;
+	/** Total estimated tokens */
+	totalTokens: number;
+	/** Project focus if any */
+	projectFocus?: {
+		projectId: string;
+		projectName?: string;
+		focusType?: string;
+		entityId?: string;
+	} | null;
+}
+
+/**
  * Events emitted during processing for SSE streaming
  */
 export type StreamEvent =
@@ -286,7 +335,8 @@ export type StreamEvent =
 	| { type: 'tool_call'; toolCall: ChatToolCall }
 	| { type: 'tool_result'; result: ToolExecutionResult }
 	| { type: 'done'; usage?: { total_tokens: number } }
-	| { type: 'error'; error: string };
+	| { type: 'error'; error: string }
+	| { type: 'debug_context'; debug: DebugContextInfo };
 
 export interface ToolExecutorResponse {
 	data: any;

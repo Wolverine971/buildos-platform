@@ -1092,26 +1092,42 @@ IMPORTANT:
 
 		// 3. Batch insert edges (plan → task relationships) using per-task plan IDs
 		// Convention: Store directionally (plan → task), query bidirectionally
+		// See: docs/specs/PROJECT_GRAPH_QUERY_PATTERN_SPEC.md
 		const edgeRecords: Array<{
 			src_id: string;
 			src_kind: string;
 			dst_id: string;
 			dst_kind: string;
 			rel: string;
+			project_id: string;
 		}> = [];
 
 		for (let i = 0; i < taskRecords.length; i++) {
 			const record = taskRecords[i];
 			const insertedId = insertedIds[i];
-			if (!record || !insertedId || !record._plan_id) continue;
+			if (!record || !insertedId) continue;
 
-			edgeRecords.push({
-				src_id: record._plan_id,
-				src_kind: 'plan',
-				dst_id: insertedId,
-				dst_kind: 'task',
-				rel: 'has_task'
-			});
+			if (record._plan_id) {
+				// Task is in a phase - create plan → task edge
+				edgeRecords.push({
+					src_id: record._plan_id,
+					src_kind: 'plan',
+					dst_id: insertedId,
+					dst_kind: 'task',
+					rel: 'has_task',
+					project_id: record.project_id
+				});
+			} else {
+				// Task is NOT in a phase - link directly to project
+				edgeRecords.push({
+					src_id: record.project_id,
+					src_kind: 'project',
+					dst_id: insertedId,
+					dst_kind: 'task',
+					rel: 'has_task',
+					project_id: record.project_id
+				});
+			}
 		}
 
 		if (edgeRecords.length > 0) {

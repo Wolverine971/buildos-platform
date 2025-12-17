@@ -3,13 +3,13 @@
 <script lang="ts">
 	import {
 		Search,
-		Filter,
+		ListFilter,
 		ChevronLeft,
 		ChevronRight,
 		RotateCcw,
-		AlertCircle,
+		CircleAlert,
 		Info,
-		XCircle,
+		CircleX,
 		ExternalLink,
 		Trash2
 	} from 'lucide-svelte';
@@ -181,13 +181,13 @@
 	function getCategoryIcon(category: ErrorCategory | null) {
 		switch (category) {
 			case 'recoverable':
-				return AlertCircle;
+				return CircleAlert;
 			case 'data':
 				return Info;
 			case 'fatal':
-				return XCircle;
+				return CircleX;
 			default:
-				return AlertCircle;
+				return CircleAlert;
 		}
 	}
 
@@ -204,10 +204,6 @@
 			default:
 				return 'default';
 		}
-	}
-
-	function formatDate(dateStr: string): string {
-		return new Date(dateStr).toLocaleString();
 	}
 </script>
 
@@ -232,7 +228,7 @@
 				onclick={() => (showFilters = !showFilters)}
 				class="sm:hidden"
 			>
-				<Filter class="h-4 w-4" />
+				<ListFilter class="h-4 w-4" />
 			</Button>
 		</div>
 
@@ -259,7 +255,7 @@
 				>
 					Retry with Fallback
 				</Button>
-				<Button variant="destructive" size="sm" onclick={handleDeleteSelected}>
+				<Button variant="danger" size="sm" onclick={handleDeleteSelected}>
 					<Trash2 class="h-3 w-3" />
 					Delete
 				</Button>
@@ -308,7 +304,7 @@
 		<div
 			class="rounded-lg border border-gray-200 bg-gray-50 p-8 text-center dark:border-gray-700 dark:bg-gray-900"
 		>
-			<AlertCircle class="mx-auto h-12 w-12 text-gray-400" />
+			<CircleAlert class="mx-auto h-12 w-12 text-gray-400" />
 			<p class="mt-2 text-gray-500 dark:text-gray-400">
 				No errors found matching your criteria.
 			</p>

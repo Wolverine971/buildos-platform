@@ -218,7 +218,7 @@ export class OntologyContextLoader {
 			relationships,
 			metadata: {
 				entity_count: entityCounts,
-				context_document_id: contextDocumentId,
+				context_document_id: contextDocumentId ?? undefined,
 				facets: facets,
 				last_updated: new Date().toISOString()
 			},
@@ -306,15 +306,12 @@ export class OntologyContextLoader {
 			this.loadElementContext(elementType, elementId)
 		]);
 
-		if (
-			elementContext.data?.parent_project?.id &&
-			elementContext.data.parent_project.id !== projectId
-		) {
+		if (elementContext.scope?.projectId && elementContext.scope.projectId !== projectId) {
 			console.warn(
 				'[OntologyLoader] Focus element parent mismatch. Expected project',
 				projectId,
 				'but found',
-				elementContext.data.parent_project.id
+				elementContext.scope.projectId
 			);
 		}
 
@@ -643,9 +640,10 @@ export class OntologyContextLoader {
 		const actorId = this.actorId;
 
 		try {
-			let query = this.supabase.from(table).select('*').eq('id', id);
+			// Use type assertion to work around complex Supabase type inference
+			let query = (this.supabase.from(table) as any).select('*').eq('id', id);
 			if (actorId) {
-				query = query.eq('created_by', actorId as any);
+				query = query.eq('created_by', actorId);
 			}
 
 			const { data, error } = await query.single();
@@ -875,11 +873,12 @@ export class OntologyContextLoader {
 				}
 
 				// If we found any projects, load and return the first one
-				if (projectIds.length > 0) {
+				const firstProjectId = projectIds[0];
+				if (firstProjectId) {
 					const { data: project, error: projectError } = await this.supabase
 						.from('onto_projects')
 						.select('*')
-						.eq('id', projectIds[0])
+						.eq('id', firstProjectId)
 						.single();
 
 					if (!projectError && project) {
@@ -940,8 +939,8 @@ export class OntologyContextLoader {
 
 		for (const { table, key } of tableMappings) {
 			try {
-				const { count } = await this.supabase
-					.from(table)
+				// Use type assertion to work around complex Supabase type inference
+				const { count } = await (this.supabase.from(table) as any)
 					.select('*', { count: 'exact', head: true })
 					.eq('created_by', actorId);
 				counts[key] = count || 0;
@@ -983,23 +982,27 @@ export class OntologyContextLoader {
 			return undefined;
 		}
 
-		if ('name' in entity && entity.name) {
+		if ('name' in entity && typeof entity.name === 'string' && entity.name) {
 			return entity.name;
 		}
 
-		if ('title' in entity && entity.title) {
+		if ('title' in entity && typeof entity.title === 'string' && entity.title) {
 			return entity.title;
 		}
 
-		if ('summary' in entity && entity.summary) {
+		if ('summary' in entity && typeof entity.summary === 'string' && entity.summary) {
 			return entity.summary;
 		}
 
-		if ('display_name' in entity && entity.display_name) {
+		if (
+			'display_name' in entity &&
+			typeof entity.display_name === 'string' &&
+			entity.display_name
+		) {
 			return entity.display_name;
 		}
 
-		if ('id' in entity && entity.id) {
+		if ('id' in entity && typeof entity.id === 'string' && entity.id) {
 			return `${type}:${entity.id}`;
 		}
 

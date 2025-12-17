@@ -955,15 +955,18 @@ export class TaskMigrationService {
 			};
 		}
 
-		// Create plan relationship edge if plan exists
-		// Convention: Store directionally (plan → task), query bidirectionally
+		// Create relationship edge: plan → task if in phase, otherwise project → task
+		// Convention: Store directionally (parent → child), query bidirectionally
+		// See: docs/specs/PROJECT_GRAPH_QUERY_PATTERN_SPEC.md
 		if (suggestedPlanId) {
+			// Task is in a phase - create plan → task edge
 			const { error: edgeError } = await this.client.from('onto_edges').insert({
 				src_id: suggestedPlanId,
 				src_kind: 'plan',
 				dst_id: data.id,
 				dst_kind: 'task',
-				rel: 'has_task'
+				rel: 'has_task',
+				project_id: ontoProjectId
 			});
 
 			if (edgeError) {
@@ -972,6 +975,24 @@ export class TaskMigrationService {
 				);
 				// Throw to ensure edge creation failures are not silently ignored
 				throw new Error(`Failed to create task-plan edge: ${edgeError.message}`);
+			}
+		} else if (ontoProjectId) {
+			// Task is NOT in a phase - link directly to project
+			const { error: edgeError } = await this.client.from('onto_edges').insert({
+				src_id: ontoProjectId,
+				src_kind: 'project',
+				dst_id: data.id,
+				dst_kind: 'task',
+				rel: 'has_task',
+				project_id: ontoProjectId
+			});
+
+			if (edgeError) {
+				console.error(
+					`[TaskMigration] Failed to create task-project edge for task ${task.id} → project ${ontoProjectId}: ${edgeError.message}`
+				);
+				// Throw to ensure edge creation failures are not silently ignored
+				throw new Error(`Failed to create task-project edge: ${edgeError.message}`);
 			}
 		}
 

@@ -1,18 +1,35 @@
 // apps/web/src/lib/components/ontology/graph/lib/graph.types.ts
-import type { Database } from '@buildos/shared-types';
+/**
+ * Graph visualization types for ontology entities.
+ *
+ * Uses types from onto-api.ts which match the actual API response shapes
+ * from project-graph-loader.ts, rather than raw Database row types.
+ */
+import type {
+	OntoProject,
+	OntoEdge,
+	OntoTask,
+	OntoOutput,
+	OntoDocument,
+	OntoPlan,
+	OntoGoal,
+	OntoMilestone
+} from '$lib/types/onto-api';
+
+// Re-export for convenience
+export type {
+	OntoProject,
+	OntoEdge,
+	OntoTask,
+	OntoOutput,
+	OntoDocument,
+	OntoPlan,
+	OntoGoal,
+	OntoMilestone
+};
 
 // Cytoscape is runtime-loaded; keep loose typing until dedicated types are added.
 export type CytoscapeCore = any;
-
-// Database row types for all ontology entities
-export type OntoProject = Database['public']['Tables']['onto_projects']['Row'];
-export type OntoEdge = Database['public']['Tables']['onto_edges']['Row'];
-export type OntoTask = Database['public']['Tables']['onto_tasks']['Row'];
-export type OntoOutput = Database['public']['Tables']['onto_outputs']['Row'];
-export type OntoDocument = Database['public']['Tables']['onto_documents']['Row'];
-export type OntoPlan = Database['public']['Tables']['onto_plans']['Row'];
-export type OntoGoal = Database['public']['Tables']['onto_goals']['Row'];
-export type OntoMilestone = Database['public']['Tables']['onto_milestones']['Row'];
 
 export type ViewMode = 'projects' | 'full';
 

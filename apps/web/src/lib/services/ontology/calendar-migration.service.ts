@@ -174,7 +174,8 @@ export class CalendarMigrationService {
 						await this.linkEventToTask({
 							taskId: ontoTaskId,
 							eventId: ontoEvent.id,
-							legacyEventId: event.id
+							legacyEventId: event.id,
+							projectId: ontoProjectId
 						});
 
 						return { created: true };
@@ -306,7 +307,9 @@ export class CalendarMigrationService {
 		taskId: string;
 		eventId: string;
 		legacyEventId: string;
+		projectId: string;
 	}): Promise<void> {
+		// See: docs/specs/PROJECT_GRAPH_QUERY_PATTERN_SPEC.md
 		const { error } = await this.client.from('onto_edges').insert({
 			src_id: params.taskId,
 			src_kind: 'task',
@@ -315,7 +318,8 @@ export class CalendarMigrationService {
 			rel: TASK_EVENT_EDGE_REL,
 			props: {
 				legacy_task_calendar_event_id: params.legacyEventId
-			}
+			},
+			project_id: params.projectId
 		});
 
 		if (error) {
