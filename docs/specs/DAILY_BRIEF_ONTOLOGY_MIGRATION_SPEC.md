@@ -4,7 +4,7 @@
 
 **Created**: December 16, 2025
 **Updated**: December 17, 2025
-**Status**: ✅ Implemented
+**Status**: ✅ Implemented (spec aligned to implementation)
 **Author**: Claude (AI-generated)
 **Category**: Technical Specification
 
@@ -48,9 +48,9 @@ The ontology-based daily brief system has been fully implemented and is now the 
 - [x] Context document retrieval via `has_context_document`.
 - [x] Optional entities (outputs/requirements/decisions) included when present.
 - [x] Ontology-native brief tables + migration plan added.
-- [x] Brief metadata/interface aligned to ontology sections.
+- [x] Brief metadata/interface aligned to ontology sections (camelCase keys).
 - [x] Goal/output-centric prompts with recency and next_steps emphasis.
-- [x] Recency signals (recently updated items) added.
+- [x] Recency signals (recently updated items, 24h window) added.
 - [x] Performance notes reference project_id indexing and caching.
 
 ## Executive Summary
@@ -128,7 +128,7 @@ The current daily brief includes:
 
 | Entity           | Table               | Purpose in Brief                                 |
 | ---------------- | ------------------- | ------------------------------------------------ |
-| **Projects**     | `onto_projects`     | Root work units with facets and next_steps       |
+| **Projects**     | `onto_projects`     | Root work units with facets and next_step_short/next_step_long |
 | **Tasks**        | `onto_tasks`        | Actionable items with work modes                 |
 | **Goals**        | `onto_goals`        | Strategic objectives and progress                |
 | **Plans**        | `onto_plans`        | Logical task groupings (replaces phases)         |
@@ -233,12 +233,12 @@ async function getOntoProjectsWithData(
 
 	if (actorError || !actor) throw new Error('Actor not found for user');
 
-	// 2) Fetch actor-owned projects
+	// 2) Fetch actor-owned projects (exclude cancelled)
 	const { data: projects } = await supabase
 		.from('onto_projects')
 		.select('*')
 		.eq('created_by', actor.id)
-		.in('state_key', ['planning', 'active']);
+		.neq('state_key', 'cancelled');
 
 	if (!projects || projects.length === 0) return [];
 	const projectIds = projects.map((p) => p.id);
@@ -335,7 +335,7 @@ interface CategorizedTasks {
 	// Relationship-based
 	unblockingTasks: OntoTask[]; // Tasks that unblock others
 	goalAlignedTasks: OntoTask[]; // Tasks linked to goals
-	recentlyUpdated: OntoTask[]; // Updated in last 48h
+	recentlyUpdated: OntoTask[]; // Updated in last 24h
 }
 
 function categorizeTasks(
@@ -478,7 +478,7 @@ function calculateGoalProgress(goal: OntoGoal, tasks: OntoTask[], edges: OntoEdg
 - **{Goal Name}**: {Progress}% complete ({X}/{Y} tasks)
     - Status: {on_track|at_risk|behind}
     - Key contributing tasks today: {task list}
-    - Last updated: {timestamp}
+    - Recent activity: {created_at (goals recency uses created_at)}
 
 ### Outputs In Flight
 
@@ -504,7 +504,7 @@ function calculateGoalProgress(goal: OntoGoal, tasks: OntoTask[], edges: OntoEdg
 
 ### Active Risks
 
-{Risks with state_key != 'closed'}
+{Risks with state_key not in ('mitigated','closed')}
 
 - **{Risk Title}** - Impact: {high|medium|low}, Probability: {high|medium|low}
     - Project: {project name}
@@ -543,9 +543,9 @@ function calculateGoalProgress(goal: OntoGoal, tasks: OntoTask[], edges: OntoEdg
 - **Admin**: {task.admin.\*}
 - **Plan**: {task.plan.\*}
 
-### Recently Updated (48h)
+### Recently Updated (24h)
 
-- Tasks/Goals/Outputs/Documents touched recently
+- Tasks (updated_at), Goals (created_at), Outputs/Documents (updated_at) touched in the last 24h
 
 ## 📊 Project Status
 
@@ -554,7 +554,7 @@ function calculateGoalProgress(goal: OntoGoal, tasks: OntoTask[], edges: OntoEdg
 {For each active project:}
 
 **Health**: {facet_stage} | **Scale**: {facet_scale} | **Context**: {facet_context}
-**Next Steps**: {project.props.next_steps or synthesized next steps}
+**Next Steps**: {project.next_step_short / project.next_step_long or synthesized}
 
 **Active Plan**: {plan name} ({progress}% via has_task edges)
 
@@ -619,7 +619,7 @@ interface OntologyDailyBrief {
 	brief_date: string;
 
 	// Content sections
-	executive_summary: string;
+	executive_summary: string; // stores full brief markdown (summary + sections)
 	strategic_alignment: StrategicAlignmentSection;
 	attention_required: AttentionRequiredSection;
 	todays_focus: TodaysFocusSection;
@@ -672,7 +672,7 @@ interface ProjectStatusSection {
 	health_stage: string;
 	scale: string;
 	context: string | null;
-	next_steps: string[]; // from project.props.next_steps or derived
+	next_steps: string[]; // from project.next_step_short/next_step_long (or derived)
 	active_plan: PlanProgress | null;
 	goals: GoalProgress[];
 	outputs: OutputStatus[];
@@ -684,30 +684,30 @@ interface ProjectStatusSection {
 
 interface OntologyBriefMetadata {
 	// Counts
-	total_projects: number;
-	total_tasks: number;
-	total_goals: number;
-	total_milestones: number;
-	active_risks_count: number;
-	total_outputs: number;
-	recent_updates_count: number;
+	totalProjects: number;
+	totalTasks: number;
+	totalGoals: number;
+	totalMilestones: number;
+	activeRisksCount: number;
+	totalOutputs: number;
+	recentUpdatesCount: number;
 
 	// Analysis
-	blocked_count: number;
-	overdue_count: number;
-	goals_at_risk: number;
-	milestones_this_week: number;
-	outputs_in_review: number;
+	blockedCount: number;
+	overdueCount: number;
+	goalsAtRisk: number;
+	milestonesThisWeek: number;
+	outputsInReview: number;
 
 	// Graph stats
-	total_edges: number;
-	dependency_chains: number;
+	totalEdges: number;
+	dependencyChains: number;
 
 	// Generation info
-	generated_via: string;
+	generatedVia: string;
 	timezone: string;
 	is_reengagement?: boolean;
-	days_since_last_login?: number;
+	daysSinceLastLogin?: number;
 }
 
 interface OutputStatus {
@@ -745,7 +745,7 @@ const OntologyDailyBriefAnalysisPrompt = {
 	system: `You are a BuildOS productivity strategist writing a daily brief analysis that is **goal- and output-centric**.
 
 Weigh these highest:
-- Project next_steps (from project.props.next_steps or synthesized) and active goals.
+- Project next_steps (from project.next_step_short/next_step_long or synthesized) and active goals.
 - Outputs linked to goals/plans and their latest changes.
 - Recently updated work (tasks/goals/outputs/docs) and active dependencies.
 - Critical risks/requirements/decisions that affect delivery today.
@@ -797,7 +797,7 @@ ${data.projects
 - Blocked tasks: ${data.blockedTasks.length}
 - Overdue tasks: ${data.overdueTasks.length}
 - High priority (P1-P2): ${data.highPriorityCount}
-- Recent updates (48h): tasks ${data.recentUpdates.tasks.length}, goals ${data.recentUpdates.goals.length}, outputs ${data.recentUpdates.outputs.length}, docs ${data.recentUpdates.documents.length}
+- Recent updates (24h): tasks ${data.recentUpdates.tasks.length}, goals ${data.recentUpdates.goals.length}, outputs ${data.recentUpdates.outputs.length}, docs ${data.recentUpdates.documents.length}
 
 Work modes:
 ${Object.entries(data.tasksByWorkMode)
@@ -851,7 +851,7 @@ Create an executive summary for this daily brief:
 - Tasks Today: ${data.todayTaskCount} (${data.overdueCount} overdue, ${data.blockedCount} blocked)
 - Milestones This Week: ${data.milestonesThisWeek}
 - Active Risks: ${data.activeRisksCount}
-- Recent Updates (48h): ${data.recentUpdatesCount}
+- Recent Updates (24h): ${data.recentUpdatesCount}
 
 **Highlights**:
 ${data.highlights.join('\n')}
@@ -992,7 +992,7 @@ This migration will be done in a single shot - replacing the legacy brief genera
     - Use project-graph loader pattern (project_id filtered queries, parallel fetch).
     - Resolve actor via `onto_actors.user_id`; skip `onto_assignments` for now (future extension).
     - Normalize edges to canonical rels (`has_task`, `supports_goal`, `produces`, `has_context_document`, etc.).
-    - Compute goal progress, output status, dependency graph, and recent updates (48h window).
+    - Compute goal progress, output status, dependency graph, and recent updates (24h window).
 
 2. **Add Ontology Brief Persistence** (`ontology_daily_briefs`, `ontology_project_briefs`)
     - Insert new rows when generating; stop writing to legacy `daily_briefs`/`project_daily_briefs`.
@@ -1100,7 +1100,7 @@ describe('Ontology Brief Generator', () => {
 		it('identifies blocked tasks from state_key', () => {});
 		it('groups tasks by work mode type_key', () => {});
 		it('calculates unblocking tasks from edges', () => {});
-		it('detects recently updated tasks (48h)', () => {});
+		it('detects recently updated tasks (24h)', () => {});
 	});
 
 	describe('Goal Progress', () => {
@@ -1152,7 +1152,7 @@ describe('Ontology Brief Generator', () => {
 
 ## 11. Open Questions
 
-1. **Next steps source of truth**: Should we standardize `project.props.next_steps` vs deriving from plan top tasks?
+1. **Next steps source of truth**: Should we rely solely on `project.next_step_short/next_step_long` or synthesize when absent?
 2. **Output surfacing**: How many outputs to show per project email before truncation?
 3. **Risk thresholds**: What impact/probability combinations warrant inclusion?
 4. **Dependency depth**: How many levels of dependencies to show?

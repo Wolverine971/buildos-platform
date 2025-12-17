@@ -171,6 +171,9 @@
 		projectTasks.filter((t: any) => t.id !== task?.id).slice(0, 10)
 	);
 
+	// Task visuals based on current state (used in header)
+	const taskVisuals = $derived(getTaskVisuals(stateKey));
+
 	const entityFocus = $derived.by((): ProjectFocus | null => {
 		if (!task || !project?.id) return null;
 		return {
@@ -731,13 +734,12 @@
 				<div class="flex items-start justify-between gap-4">
 					<div class="min-w-0 flex-1">
 						<div class="flex items-center gap-3 mb-2">
-							{@const visuals = getTaskVisuals(stateKey)}
 							<div
 								class="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center shrink-0"
 							>
 								<svelte:component
-									this={visuals.icon}
-									class="w-5 h-5 {visuals.color}"
+									this={taskVisuals.icon}
+									class="w-5 h-5 {taskVisuals.color}"
 								/>
 							</div>
 							<div class="min-w-0">
