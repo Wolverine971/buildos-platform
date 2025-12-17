@@ -7,7 +7,11 @@
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import type { Project, Document } from '$lib/types/onto';
-import { logUpdateAsync, logDeleteAsync, getChangeSourceFromRequest } from '$lib/services/async-activity-logger';
+import {
+	logUpdateAsync,
+	logDeleteAsync,
+	getChangeSourceFromRequest
+} from '$lib/services/async-activity-logger';
 
 export const GET: RequestHandler = async ({ params, locals }) => {
 	try {
@@ -200,7 +204,9 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			facet_scale,
 			facet_stage,
 			start_at,
-			end_at
+			end_at,
+			next_step_short,
+			next_step_long
 		} = body as Record<string, unknown>;
 
 		const hasUpdates =
@@ -212,7 +218,9 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			facet_scale !== undefined ||
 			facet_stage !== undefined ||
 			start_at !== undefined ||
-			end_at !== undefined;
+			end_at !== undefined ||
+			next_step_short !== undefined ||
+			next_step_long !== undefined;
 
 		if (!hasUpdates) {
 			return ApiResponse.badRequest('No update fields provided');
@@ -300,6 +308,26 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			} else {
 				updateData.props = currentProps;
 			}
+		}
+
+		// Handle next_step fields - user can manually set/edit these
+		if (next_step_short !== undefined || next_step_long !== undefined) {
+			// When user sets next step, update both fields and mark source as 'user'
+			if (next_step_short !== undefined) {
+				updateData.next_step_short =
+					typeof next_step_short === 'string' && next_step_short.trim().length > 0
+						? next_step_short.trim()
+						: null;
+			}
+			if (next_step_long !== undefined) {
+				updateData.next_step_long =
+					typeof next_step_long === 'string' && next_step_long.trim().length > 0
+						? next_step_long.trim()
+						: null;
+			}
+			// Mark as user-set and update timestamp
+			updateData.next_step_source = 'user';
+			updateData.next_step_updated_at = new Date().toISOString();
 		}
 
 		const { data: updatedProject, error: updateError } = await supabase
@@ -414,7 +442,15 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 		}
 
 		// Log activity async (non-blocking)
-		logDeleteAsync(supabase, id, 'project', id, projectDataForLog, actorId, getChangeSourceFromRequest(request));
+		logDeleteAsync(
+			supabase,
+			id,
+			'project',
+			id,
+			projectDataForLog,
+			actorId,
+			getChangeSourceFromRequest(request)
+		);
 
 		return ApiResponse.success({
 			id,

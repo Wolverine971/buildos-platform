@@ -724,6 +724,16 @@
 						class="w-4 h-4 sm:w-5 sm:h-5 rounded object-cover transition-transform hover:scale-110"
 					/>
 				</Button>
+				<!-- Focus mode button - open in dedicated page -->
+				{#if task && projectId}
+					<a
+						href="/projects/{projectId}/tasks/{taskId}"
+						class="p-1 sm:p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0"
+						title="Open in focus mode"
+					>
+						<ExternalLink class="w-4 h-4 sm:w-5 sm:h-5" />
+					</a>
+				{/if}
 				<!-- Close button -->
 				<Button
 					variant="ghost"

@@ -3,9 +3,37 @@
 # Daily Brief Ontology Migration Specification
 
 **Created**: December 16, 2025
-**Status**: Draft
+**Updated**: December 17, 2025
+**Status**: ✅ Implemented
 **Author**: Claude (AI-generated)
 **Category**: Technical Specification
+
+---
+
+## Implementation Status
+
+### ✅ Completed (December 17, 2025)
+
+The ontology-based daily brief system has been fully implemented and is now the default brief generation method.
+
+**Key Implementation Files:**
+
+- `apps/worker/src/workers/brief/ontologyBriefGenerator.ts` - Main brief generator
+- `apps/worker/src/workers/brief/ontologyBriefDataLoader.ts` - Data loading with graph relationships
+- `apps/worker/src/workers/brief/ontologyPrompts.ts` - Goal/output-centric LLM prompts
+- `apps/worker/src/workers/brief/ontologyBriefRepository.ts` - Database persistence
+- `apps/web/src/lib/components/dashboard/DashboardBriefWidget.svelte` - Dashboard UI widget
+
+**URL Patterns:**
+
+- Project links: `/projects/{project_id}`
+- Task links: `/projects/{project_id}/tasks/{task_id}`
+
+**Feature Access:**
+
+- Dashboard widget for generating/viewing briefs
+- `useOntology: true` is the default for all brief generation
+- Full modal view with regeneration support
 
 ---
 

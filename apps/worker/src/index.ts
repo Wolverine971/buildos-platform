@@ -130,7 +130,8 @@ app.post('/queue/brief', async (req, res) => {
 			briefDate: requestedBriefDate,
 			timezone: requestedTimezone,
 			forceImmediate,
-			forceRegenerate
+			forceRegenerate,
+			options: requestOptions // Options from frontend (includes useOntology)
 		} = req.body;
 
 		if (!userId) {
@@ -189,7 +190,10 @@ app.post('/queue/brief', async (req, res) => {
 				briefDate,
 				timezone,
 				options: {
-					forceRegenerate
+					forceRegenerate,
+					useOntology: requestOptions?.useOntology ?? true, // Default to ontology-based briefs
+					includeProjects: requestOptions?.includeProjects,
+					excludeProjects: requestOptions?.excludeProjects
 				}
 			},
 			{

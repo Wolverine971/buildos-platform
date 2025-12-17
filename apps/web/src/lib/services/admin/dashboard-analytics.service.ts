@@ -117,6 +117,40 @@ const DEFAULT_ERROR_SUMMARY = {
 	error_trend: 0
 };
 
+const DEFAULT_AGENT_CHAT_USAGE = {
+	totalSessions: 0,
+	totalMessages: 0,
+	totalTokens: 0,
+	avgMessagesPerSession: 0,
+	avgTokensPerSession: 0,
+	plannerSessions: 0,
+	executorSessions: 0,
+	failedSessions: 0,
+	failureRate: 0
+};
+
+const DEFAULT_BRIEF_DELIVERY = {
+	briefsGenerated: 0,
+	ontologyBriefs: 0,
+	legacyBriefs: 0,
+	emailOptIn: 0,
+	smsOptIn: 0,
+	emailSent: 0,
+	emailDelivered: 0,
+	smsSent: 0,
+	smsDelivered: 0
+};
+
+const DEFAULT_SYSTEM_HEALTH = {
+	llmLatencyMs: {} as Record<string, number>,
+	queueDepth: 0,
+	oldestJobSeconds: 0,
+	failedJobs24h: 0,
+	agentFailureRate: 0,
+	errorCount24h: 0,
+	lastUpdated: null as string | null
+};
+
 const DEFAULT_SUBSCRIPTION_OVERVIEW = {
 	overview: {
 		total_subscribers: 0,
@@ -195,6 +229,13 @@ function resolveDateRange(timeframe: AnalyticsTimeframe): DateRange {
 	return {
 		startDate: toIsoDate(startDate),
 		endDate: toIsoDate(endDate)
+	};
+}
+
+function buildDateTimeRange(range: DateRange) {
+	return {
+		startDateTime: `${range.startDate}T00:00:00Z`,
+		endDateTime: `${range.endDate}T23:59:59Z`
 	};
 }
 
@@ -796,6 +837,256 @@ export async function getErrorSummary(client: TypedSupabaseClient) {
 	};
 }
 
+export async function getAgentChatUsage(
+	client: TypedSupabaseClient,
+	timeframe: AnalyticsTimeframe
+): Promise<typeof DEFAULT_AGENT_CHAT_USAGE> {
+	// Align filtering with existing admin chat analytics endpoints
+	const endDate = new Date();
+	const startDate = new Date();
+	switch (timeframe) {
+		case '7d':
+			startDate.setDate(startDate.getDate() - 7);
+			break;
+		case '90d':
+			startDate.setDate(startDate.getDate() - 90);
+			break;
+		default:
+			startDate.setDate(startDate.getDate() - 30);
+	}
+
+	const thirtyDaysAgo = new Date();
+	thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+	const thirtyDaysAgoISO = thirtyDaysAgo.toISOString();
+
+	const { data: sessions, error: sessionsError } = await client
+		.from('agent_chat_sessions')
+		.select('id, session_type, status, message_count, created_at')
+		.gte('created_at', startDate);
+	// .lte('created_at', endDate.toISOString());
+
+	if (sessionsError) {
+		throw new Error(sessionsError.message);
+	}
+
+	const sessionIds = sessions?.map((s) => s.id) ?? [];
+
+	const { data: messages, error: messagesError } =
+		sessionIds.length > 0
+			? await client
+					.from('agent_chat_messages')
+					.select('agent_session_id, tokens_used')
+					.in('agent_session_id', sessionIds)
+			: { data: [], error: null };
+
+	if (messagesError) {
+		throw new Error(messagesError.message);
+	}
+
+	const totalSessions = sessions?.length || 0;
+	const totalMessages = messages?.length || 0;
+	const totalTokens =
+		messages?.reduce((sum, message) => sum + coerceNumber(message.tokens_used, 0), 0) || 0;
+
+	const plannerSessions =
+		sessions?.filter((s) => (s.session_type || '').includes('planner')).length || 0;
+	const executorSessions =
+		sessions?.filter((s) => (s.session_type || '').includes('executor')).length || 0;
+	const failedSessions =
+		sessions?.filter((s) => (s.status || '').toLowerCase() === 'failed').length || 0;
+
+	const avgMessagesPerSession =
+		totalSessions > 0 ? Math.round((totalMessages / totalSessions) * 100) / 100 : 0;
+	const avgTokensPerSession =
+		totalSessions > 0 ? Math.round((totalTokens / totalSessions) * 100) / 100 : 0;
+	const failureRate = totalSessions > 0 ? (failedSessions / totalSessions) * 100 : 0;
+
+	return {
+		totalSessions,
+		totalMessages,
+		totalTokens,
+		avgMessagesPerSession,
+		avgTokensPerSession,
+		plannerSessions,
+		executorSessions,
+		failedSessions,
+		failureRate
+	};
+}
+
+export async function getBriefDeliveryStats(
+	client: TypedSupabaseClient,
+	timeframe: AnalyticsTimeframe
+): Promise<typeof DEFAULT_BRIEF_DELIVERY> {
+	const dateRange = resolveDateRange(timeframe);
+	const { startDateTime, endDateTime } = buildDateTimeRange(dateRange);
+
+	const [
+		{ data: ontologyBriefs, error: ontologyBriefsError },
+		{ data: legacyBriefs, error: legacyBriefsError }
+	] = await Promise.all([
+		client
+			.from('ontology_daily_briefs')
+			.select('id, created_at')
+			.gte('created_at', startDateTime)
+			.lte('created_at', endDateTime),
+		client
+			.from('daily_briefs')
+			.select('id, created_at')
+			.gte('created_at', startDateTime)
+			.lte('created_at', endDateTime)
+	]);
+
+	if (ontologyBriefsError || legacyBriefsError) {
+		throw new Error(ontologyBriefsError?.message || legacyBriefsError?.message);
+	}
+
+	const { data: notificationPrefs, error: prefsError } = await client
+		.from('user_notification_preferences')
+		.select('should_email_daily_brief, should_sms_daily_brief');
+
+	if (prefsError) {
+		throw new Error(prefsError.message);
+	}
+
+	const emailOptIn =
+		notificationPrefs?.filter((pref) => pref.should_email_daily_brief === true).length || 0;
+	const smsOptIn =
+		notificationPrefs?.filter((pref) => pref.should_sms_daily_brief === true).length || 0;
+
+	const { data: emailRecipients, error: emailRecipientsError } = await client
+		.from('email_recipients')
+		.select(
+			`
+			sent_at,
+			delivered_at,
+			status,
+			emails!inner(category)
+		`
+		)
+		.eq('emails.category', 'daily_brief')
+		.gte('sent_at', startDateTime)
+		.lte('sent_at', endDateTime);
+
+	if (emailRecipientsError) {
+		throw new Error(emailRecipientsError.message);
+	}
+
+	const emailSent = emailRecipients?.length || 0;
+	const emailDelivered =
+		emailRecipients?.filter((rec) => rec.delivered_at || rec.status === 'delivered').length ||
+		0;
+
+	const { data: smsMessages, error: smsError } = await client
+		.from('sms_messages')
+		.select('sent_at, delivered_at, metadata')
+		.contains('metadata', { type: 'daily_brief' })
+		.gte('created_at', startDateTime)
+		.lte('created_at', endDateTime);
+
+	if (smsError) {
+		throw new Error(smsError.message);
+	}
+
+	const smsSent =
+		smsMessages?.filter((sms) => sms.sent_at || sms.metadata)?.length ||
+		smsMessages?.length ||
+		0;
+	const smsDelivered =
+		smsMessages?.filter((sms) => sms.delivered_at !== null && sms.delivered_at !== undefined)
+			.length || 0;
+
+	const ontologyCount = ontologyBriefs?.length || 0;
+	const legacyCount = legacyBriefs?.length || 0;
+
+	return {
+		briefsGenerated: ontologyCount + legacyCount,
+		ontologyBriefs: ontologyCount,
+		legacyBriefs: legacyCount,
+		emailOptIn,
+		smsOptIn,
+		emailSent,
+		emailDelivered,
+		smsSent,
+		smsDelivered
+	};
+}
+
+export async function getSystemHealth(client: TypedSupabaseClient) {
+	const now = new Date();
+	const last24h = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
+
+	const [queueJobs, failedJobs, agentExecutions, errorLogs, llmMetrics] = await Promise.all([
+		client
+			.from('queue_jobs')
+			.select('created_at, scheduled_for, status')
+			.neq('status', 'completed')
+			.neq('status', 'failed'),
+		client.from('queue_jobs').select('id').eq('status', 'failed').gte('updated_at', last24h),
+		client.from('agent_executions').select('id, success').gte('created_at', last24h),
+		client
+			.from('error_logs')
+			.select('id', { count: 'exact', head: true })
+			.gte('created_at', last24h),
+		client
+			.from('system_metrics')
+			.select('metric_name, metric_value, recorded_at')
+			.ilike('metric_name', 'llm_call_duration_%')
+	]);
+
+	if (queueJobs.error) throw new Error(queueJobs.error.message);
+	if (failedJobs.error) throw new Error(failedJobs.error.message);
+	if (agentExecutions.error) throw new Error(agentExecutions.error.message);
+	if (errorLogs.error) throw new Error(errorLogs.error.message);
+	if (llmMetrics.error) throw new Error(llmMetrics.error.message);
+
+	const queueItems = queueJobs.data || [];
+	const queueDepth = queueItems.length;
+	let oldestJobSeconds = 0;
+	if (queueItems.length) {
+		const earliestTs = queueItems.reduce(
+			(earliest: string | null, job) => {
+				const ts = job.scheduled_for || job.created_at;
+				if (!earliest) return ts;
+				return new Date(ts).getTime() < new Date(earliest).getTime() ? ts : earliest;
+			},
+			queueItems[0]?.scheduled_for || queueItems[0]?.created_at || null
+		);
+
+		if (earliestTs) {
+			oldestJobSeconds = Math.max(
+				0,
+				Math.floor((now.getTime() - new Date(earliestTs).getTime()) / 1000)
+			);
+		}
+	}
+
+	const totalExecs = agentExecutions.data?.length || 0;
+	const failedExecs = agentExecutions.data?.filter((exec) => exec.success === false).length || 0;
+	const agentFailureRate = totalExecs > 0 ? (failedExecs / totalExecs) * 100 : 0;
+
+	const errorCount24h = errorLogs.count || 0;
+	const failedJobs24h = failedJobs.data?.length || 0;
+
+	const llmLatencyMs: Record<string, number> = {};
+	(llmMetrics.data || []).forEach((metric) => {
+		const provider = metric.metric_name.replace('llm_call_duration_', '');
+		if (!llmLatencyMs[provider] || new Date(metric.recorded_at).getTime() > 0) {
+			llmLatencyMs[provider] = coerceNumber(metric.metric_value, 0);
+		}
+	});
+
+	return {
+		llmLatencyMs,
+		queueDepth,
+		oldestJobSeconds,
+		failedJobs24h,
+		agentFailureRate,
+		errorCount24h,
+		lastUpdated: now.toISOString()
+	};
+}
+
 export interface DashboardAnalyticsPayload {
 	systemOverview: Awaited<ReturnType<typeof getSystemOverview>>;
 	visitorOverview: Awaited<ReturnType<typeof getVisitorOverview>>;
@@ -810,6 +1101,9 @@ export interface DashboardAnalyticsPayload {
 	subscriptionData: Awaited<ReturnType<typeof getSubscriptionOverview>> | null;
 	comprehensiveAnalytics: Awaited<ReturnType<typeof getComprehensiveAnalytics>>;
 	errorsData: Awaited<ReturnType<typeof getErrorSummary>>;
+	agentChatUsage: Awaited<ReturnType<typeof getAgentChatUsage>>;
+	briefDelivery: Awaited<ReturnType<typeof getBriefDeliveryStats>>;
+	systemHealth: Awaited<ReturnType<typeof getSystemHealth>>;
 }
 
 async function safeFetch<T>(label: string, fallback: () => T, fn: () => Promise<T>): Promise<T> {
@@ -838,7 +1132,10 @@ export async function getDashboardAnalytics(
 		betaOverview,
 		subscriptionData,
 		comprehensiveAnalytics,
-		errorsData
+		errorsData,
+		agentChatUsage,
+		briefDelivery,
+		systemHealth
 	] = await Promise.all([
 		safeFetch(
 			'system overview',
@@ -904,6 +1201,21 @@ export async function getDashboardAnalytics(
 			'error summary',
 			() => clone(DEFAULT_ERROR_SUMMARY),
 			() => getErrorSummary(client)
+		),
+		safeFetch(
+			'agent chat usage',
+			() => clone(DEFAULT_AGENT_CHAT_USAGE),
+			() => getAgentChatUsage(client, timeframe)
+		),
+		safeFetch(
+			'brief delivery',
+			() => clone(DEFAULT_BRIEF_DELIVERY),
+			() => getBriefDeliveryStats(client, timeframe)
+		),
+		safeFetch(
+			'system health',
+			() => clone(DEFAULT_SYSTEM_HEALTH),
+			() => getSystemHealth(client)
 		)
 	]);
 
@@ -920,6 +1232,9 @@ export async function getDashboardAnalytics(
 		betaOverview,
 		subscriptionData,
 		comprehensiveAnalytics,
-		errorsData
+		errorsData,
+		agentChatUsage,
+		briefDelivery,
+		systemHealth
 	};
 }

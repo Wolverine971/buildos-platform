@@ -29,23 +29,16 @@
 		philosophy: Lightbulb
 	};
 
-	const categoryColors = {
-		'getting-started': 'purple',
-		'productivity-tips': 'blue',
-		'product-updates': 'green',
-		'case-studies': 'orange',
-		'advanced-guides': 'red',
-		philosophy: 'indigo'
-	};
-
+	// Using semantic classes that Tailwind can compile statically
 	function getCategoryColorClasses(category: string) {
-		const color = categoryColors[category as keyof typeof categoryColors];
+		// Primary category (getting-started) gets accent color, others get muted
+		const isPrimary = category === 'getting-started';
 		return {
-			bg: `bg-${color}-100 dark:bg-${color}-900/30`,
-			text: `text-${color}-600 dark:text-${color}-400`,
-			iconBg: `bg-${color}-100 dark:bg-${color}-900/30`,
-			iconText: `text-${color}-600 dark:text-${color}-400`,
-			linkText: `text-${color}-600 dark:text-${color}-400`
+			bg: isPrimary ? 'bg-accent/10' : 'bg-muted',
+			text: isPrimary ? 'text-accent' : 'text-foreground',
+			iconBg: isPrimary ? 'bg-accent/10' : 'bg-muted',
+			iconText: isPrimary ? 'text-accent' : 'text-foreground',
+			linkText: 'text-accent'
 		};
 	}
 
@@ -203,7 +196,7 @@
 							{@const categoryName = data.categories[post.category].name}
 
 							<article
-								class="bg-card rounded-lg overflow-hidden shadow-ink hover:shadow-xl transition-all duration-300 hover:scale-105"
+								class="bg-card rounded-lg overflow-hidden shadow-ink hover:shadow-xl transition-all duration-300 hover:scale-105 border border-border tx tx-frame tx-weak"
 							>
 								<div class="p-6">
 									<div
@@ -291,7 +284,7 @@
 						{#if posts?.length}
 							<a
 								href="/blogs/{categoryKey}"
-								class="group bg-card rounded-lg p-8 shadow-ink hover:shadow-xl transition-all duration-300 hover:scale-105"
+								class="group bg-card rounded-lg p-8 shadow-ink hover:shadow-xl transition-all duration-300 hover:scale-105 border border-border tx tx-frame tx-weak pressable"
 							>
 								<div
 									class="flex items-center justify-center w-12 h-12 {colors.iconBg} rounded-xl mb-6 group-hover:scale-110 transition-transform"
@@ -348,7 +341,7 @@
 							<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
 								{#each posts.slice(0, 5) as post}
 									<article
-										class="bg-background rounded-lg overflow-hidden hover:shadow-ink transition-shadow"
+										class="bg-background rounded-lg overflow-hidden hover:shadow-ink transition-shadow border border-border"
 									>
 										<div class="p-6">
 											<div

@@ -74,12 +74,12 @@
 			<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
 				<a
 					href="/blogs/getting-started/effective-brain-dumping"
-					class="group bg-card rounded-lg border border-border shadow-ink p-6 hover:shadow-xl transition-all duration-300 hover:scale-105"
+					class="group bg-card rounded-lg border border-border shadow-ink p-6 hover:shadow-xl transition-all duration-300 hover:scale-105 tx tx-grain tx-weak pressable"
 				>
 					<div
-						class="flex items-center justify-center w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-lg mb-4 group-hover:scale-110 transition-transform"
+						class="flex items-center justify-center w-12 h-12 bg-accent/10 rounded-lg mb-4 group-hover:scale-110 transition-transform"
 					>
-						<Brain class="w-6 h-6 text-purple-600 dark:text-purple-400" />
+						<Brain class="w-6 h-6 text-accent" />
 					</div>
 					<h3 class="font-semibold text-foreground mb-2">1. Brain Dump</h3>
 					<p class="text-sm text-muted-foreground">
@@ -89,12 +89,12 @@
 
 				<a
 					href="/blogs/getting-started/first-project-setup"
-					class="group bg-card rounded-lg border border-border shadow-ink p-6 hover:shadow-xl transition-all duration-300 hover:scale-105"
+					class="group bg-card rounded-lg border border-border shadow-ink p-6 hover:shadow-xl transition-all duration-300 hover:scale-105 tx tx-grain tx-weak pressable"
 				>
 					<div
-						class="flex items-center justify-center w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-lg mb-4 group-hover:scale-110 transition-transform"
+						class="flex items-center justify-center w-12 h-12 bg-muted rounded-lg mb-4 group-hover:scale-110 transition-transform"
 					>
-						<FolderOpen class="w-6 h-6 text-blue-600 dark:text-blue-400" />
+						<FolderOpen class="w-6 h-6 text-foreground" />
 					</div>
 					<h3 class="font-semibold text-foreground mb-2">2. Organize</h3>
 					<p class="text-sm text-muted-foreground">
@@ -104,12 +104,12 @@
 
 				<a
 					href="/blogs/getting-started/understanding-life-goals"
-					class="group bg-card rounded-lg border border-border shadow-ink p-6 hover:shadow-xl transition-all duration-300 hover:scale-105"
+					class="group bg-card rounded-lg border border-border shadow-ink p-6 hover:shadow-xl transition-all duration-300 hover:scale-105 tx tx-grain tx-weak pressable"
 				>
 					<div
-						class="flex items-center justify-center w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-lg mb-4 group-hover:scale-110 transition-transform"
+						class="flex items-center justify-center w-12 h-12 bg-muted rounded-lg mb-4 group-hover:scale-110 transition-transform"
 					>
-						<Target class="w-6 h-6 text-green-600 dark:text-green-400" />
+						<Target class="w-6 h-6 text-foreground" />
 					</div>
 					<h3 class="font-semibold text-foreground mb-2">3. Set Goals</h3>
 					<p class="text-sm text-muted-foreground">
@@ -119,12 +119,12 @@
 
 				<a
 					href="/blogs/getting-started/daily-brief-guide"
-					class="group bg-card rounded-lg border border-border shadow-ink p-6 hover:shadow-xl transition-all duration-300 hover:scale-105"
+					class="group bg-card rounded-lg border border-border shadow-ink p-6 hover:shadow-xl transition-all duration-300 hover:scale-105 tx tx-grain tx-weak pressable"
 				>
 					<div
-						class="flex items-center justify-center w-12 h-12 bg-orange-100 dark:bg-orange-900/30 rounded-lg mb-4 group-hover:scale-110 transition-transform"
+						class="flex items-center justify-center w-12 h-12 bg-muted rounded-lg mb-4 group-hover:scale-110 transition-transform"
 					>
-						<Calendar class="w-6 h-6 text-orange-600 dark:text-orange-400" />
+						<Calendar class="w-6 h-6 text-foreground" />
 					</div>
 					<h3 class="font-semibold text-foreground mb-2">4. Execute</h3>
 					<p class="text-sm text-muted-foreground">Use daily briefs to stay on track</p>
@@ -141,7 +141,9 @@
 			</div>
 
 			<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-				<article class="bg-background rounded-lg p-6 hover:shadow-ink transition-shadow">
+				<article
+					class="bg-background rounded-lg p-6 hover:shadow-ink transition-shadow border border-border"
+				>
 					<h3 class="font-semibold text-foreground mb-3">
 						How to effectively brain dump
 					</h3>
@@ -150,13 +152,15 @@
 					</p>
 					<a
 						href="/blogs/getting-started/effective-brain-dumping"
-						class="text-blue-600 dark:text-blue-400 text-sm font-medium hover:underline flex items-center"
+						class="text-accent text-sm font-medium hover:underline flex items-center"
 					>
 						Read more <ArrowRight class="w-4 h-4 ml-1" />
 					</a>
 				</article>
 
-				<article class="bg-background rounded-lg p-6 hover:shadow-ink transition-shadow">
+				<article
+					class="bg-background rounded-lg p-6 hover:shadow-ink transition-shadow border border-border"
+				>
 					<h3 class="font-semibold text-foreground mb-3">
 						Setting up your first project
 					</h3>
@@ -166,13 +170,15 @@
 					</p>
 					<a
 						href="/blogs/getting-started/first-project-setup"
-						class="text-blue-600 dark:text-blue-400 text-sm font-medium hover:underline flex items-center"
+						class="text-accent text-sm font-medium hover:underline flex items-center"
 					>
 						Read more <ArrowRight class="w-4 h-4 ml-1" />
 					</a>
 				</article>
 
-				<article class="bg-background rounded-lg p-6 hover:shadow-ink transition-shadow">
+				<article
+					class="bg-background rounded-lg p-6 hover:shadow-ink transition-shadow border border-border"
+				>
 					<h3 class="font-semibold text-foreground mb-3">
 						Understanding life goals vs projects
 					</h3>
@@ -181,13 +187,15 @@
 					</p>
 					<a
 						href="/blogs/getting-started/understanding-life-goals"
-						class="text-blue-600 dark:text-blue-400 text-sm font-medium hover:underline flex items-center"
+						class="text-accent text-sm font-medium hover:underline flex items-center"
 					>
 						Read more <ArrowRight class="w-4 h-4 ml-1" />
 					</a>
 				</article>
 
-				<article class="bg-background rounded-lg p-6 hover:shadow-ink transition-shadow">
+				<article
+					class="bg-background rounded-lg p-6 hover:shadow-ink transition-shadow border border-border"
+				>
 					<h3 class="font-semibold text-foreground mb-3">
 						Using daily briefs effectively
 					</h3>
@@ -196,13 +204,15 @@
 					</p>
 					<a
 						href="/blogs/getting-started/daily-brief-guide"
-						class="text-blue-600 dark:text-blue-400 text-sm font-medium hover:underline flex items-center"
+						class="text-accent text-sm font-medium hover:underline flex items-center"
 					>
 						Read more <ArrowRight class="w-4 h-4 ml-1" />
 					</a>
 				</article>
 
-				<article class="bg-background rounded-lg p-6 hover:shadow-ink transition-shadow">
+				<article
+					class="bg-background rounded-lg p-6 hover:shadow-ink transition-shadow border border-border"
+				>
 					<h3 class="font-semibold text-foreground mb-3">
 						Task management best practices
 					</h3>
@@ -211,13 +221,15 @@
 					</p>
 					<a
 						href="/blogs/productivity-tips/task-management-best-practices"
-						class="text-blue-600 dark:text-blue-400 text-sm font-medium hover:underline flex items-center"
+						class="text-accent text-sm font-medium hover:underline flex items-center"
 					>
 						Read more <ArrowRight class="w-4 h-4 ml-1" />
 					</a>
 				</article>
 
-				<article class="bg-background rounded-lg p-6 hover:shadow-ink transition-shadow">
+				<article
+					class="bg-background rounded-lg p-6 hover:shadow-ink transition-shadow border border-border"
+				>
 					<h3 class="font-semibold text-foreground mb-3">
 						Troubleshooting common issues
 					</h3>
@@ -226,7 +238,7 @@
 					</p>
 					<a
 						href="/blogs/advanced-guides/troubleshooting-common-issues"
-						class="text-blue-600 dark:text-blue-400 text-sm font-medium hover:underline flex items-center"
+						class="text-accent text-sm font-medium hover:underline flex items-center"
 					>
 						Read more <ArrowRight class="w-4 h-4 ml-1" />
 					</a>
@@ -243,11 +255,13 @@
 			</div>
 
 			<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-				<div class="bg-card rounded-lg border border-border shadow-ink p-8">
+				<div
+					class="bg-card rounded-lg border border-border shadow-ink p-8 tx tx-frame tx-weak"
+				>
 					<div
-						class="flex items-center justify-center w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-lg mb-6"
+						class="flex items-center justify-center w-12 h-12 bg-accent/10 rounded-lg mb-6"
 					>
-						<Brain class="w-6 h-6 text-purple-600 dark:text-purple-400" />
+						<Brain class="w-6 h-6 text-accent" />
 					</div>
 					<h3 class="text-xl font-bold text-foreground mb-4">Getting Started</h3>
 					<p class="text-muted-foreground mb-6">
@@ -256,17 +270,19 @@
 					</p>
 					<a
 						href="/blogs/getting-started"
-						class="text-purple-600 dark:text-purple-400 font-medium hover:underline flex items-center"
+						class="text-accent font-medium hover:underline flex items-center"
 					>
 						View articles <ArrowRight class="w-4 h-4 ml-1" />
 					</a>
 				</div>
 
-				<div class="bg-card rounded-lg border border-border shadow-ink p-8">
+				<div
+					class="bg-card rounded-lg border border-border shadow-ink p-8 tx tx-frame tx-weak"
+				>
 					<div
-						class="flex items-center justify-center w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-lg mb-6"
+						class="flex items-center justify-center w-12 h-12 bg-muted rounded-lg mb-6"
 					>
-						<FolderOpen class="w-6 h-6 text-blue-600 dark:text-blue-400" />
+						<FolderOpen class="w-6 h-6 text-foreground" />
 					</div>
 					<h3 class="text-xl font-bold text-foreground mb-4">Productivity Tips</h3>
 					<p class="text-muted-foreground mb-6">
@@ -274,17 +290,19 @@
 					</p>
 					<a
 						href="/blogs/productivity-tips"
-						class="text-blue-600 dark:text-blue-400 font-medium hover:underline flex items-center"
+						class="text-accent font-medium hover:underline flex items-center"
 					>
 						View articles <ArrowRight class="w-4 h-4 ml-1" />
 					</a>
 				</div>
 
-				<div class="bg-card rounded-lg border border-border shadow-ink p-8">
+				<div
+					class="bg-card rounded-lg border border-border shadow-ink p-8 tx tx-frame tx-weak"
+				>
 					<div
-						class="flex items-center justify-center w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-lg mb-6"
+						class="flex items-center justify-center w-12 h-12 bg-muted rounded-lg mb-6"
 					>
-						<StickyNote class="w-6 h-6 text-red-600 dark:text-red-400" />
+						<StickyNote class="w-6 h-6 text-foreground" />
 					</div>
 					<h3 class="text-xl font-bold text-foreground mb-4">Advanced Guides</h3>
 					<p class="text-muted-foreground mb-6">
@@ -292,7 +310,7 @@
 					</p>
 					<a
 						href="/blogs/advanced-guides"
-						class="text-red-600 dark:text-red-400 font-medium hover:underline flex items-center"
+						class="text-accent font-medium hover:underline flex items-center"
 					>
 						View articles <ArrowRight class="w-4 h-4 ml-1" />
 					</a>
@@ -312,12 +330,12 @@
 			<div class="grid grid-cols-1">
 				<a
 					href="/feedback"
-					class="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-8 hover:shadow-ink transition-all duration-300 group"
+					class="bg-accent/10 border border-accent/30 rounded-lg p-8 hover:shadow-ink transition-all duration-300 group tx tx-bloom tx-weak pressable"
 				>
 					<div
-						class="flex items-center justify-center w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-lg mb-4 mx-auto group-hover:scale-110 transition-transform"
+						class="flex items-center justify-center w-12 h-12 bg-accent/10 rounded-lg mb-4 mx-auto group-hover:scale-110 transition-transform"
 					>
-						<MessageCircle class="w-6 h-6 text-purple-600 dark:text-purple-400" />
+						<MessageCircle class="w-6 h-6 text-accent" />
 					</div>
 					<h3 class="text-xl font-bold text-foreground mb-3">Send Feedback</h3>
 					<p class="text-muted-foreground">Share your thoughts or request new features</p>

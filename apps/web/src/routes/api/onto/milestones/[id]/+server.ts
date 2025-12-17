@@ -35,7 +35,11 @@
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { MILESTONE_STATES } from '$lib/types/onto';
-import { logUpdateAsync, logDeleteAsync, getChangeSourceFromRequest } from '$lib/services/async-activity-logger';
+import {
+	logUpdateAsync,
+	logDeleteAsync,
+	getChangeSourceFromRequest
+} from '$lib/services/async-activity-logger';
 
 type MilestoneState = (typeof MILESTONE_STATES)[number];
 

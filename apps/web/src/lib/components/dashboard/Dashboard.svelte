@@ -24,6 +24,9 @@
 	import { formatFullDate } from '$lib/utils/date-utils';
 	import { getProjectStateBadgeClass } from '$lib/utils/ontology-badge-styles';
 	import Button from '$lib/components/ui/Button.svelte';
+	import DashboardBriefWidget from './DashboardBriefWidget.svelte';
+	import ProjectCardNextStep from '$lib/components/project/ProjectCardNextStep.svelte';
+	import type { DailyBrief } from '$lib/types/daily-brief';
 
 	// Types
 	interface OntologyProjectSummary {
@@ -42,6 +45,11 @@
 		goal_count: number;
 		plan_count: number;
 		document_count: number;
+		// Next step fields
+		next_step_short: string | null;
+		next_step_long: string | null;
+		next_step_source: 'ai' | 'user' | null;
+		next_step_updated_at: string | null;
 	}
 
 	interface User {
@@ -68,6 +76,11 @@
 	let showChatModal = $state(false);
 	let AgentChatModal = $state<any>(null);
 	let isRefreshing = $state(false);
+
+	// Brief modal state
+	let showBriefModal = $state(false);
+	let selectedBrief = $state<DailyBrief | null>(null);
+	let DailyBriefModal = $state<any>(null);
 
 	// OPTIMIZATION: Sync with incoming props when they change (streaming updates)
 	$effect(() => {
@@ -132,12 +145,32 @@
 		// Refresh projects after modal closes in case a new project was created
 		refreshProjects();
 	}
+
+	async function handleViewBrief(brief: DailyBrief) {
+		// Lazy load the DailyBriefModal
+		if (!DailyBriefModal) {
+			try {
+				const module = await import('$lib/components/briefs/DailyBriefModal.svelte');
+				DailyBriefModal = module.default;
+			} catch (err) {
+				console.error('Failed to load DailyBriefModal:', err);
+				return;
+			}
+		}
+		selectedBrief = brief;
+		showBriefModal = true;
+	}
+
+	function handleBriefModalClose() {
+		showBriefModal = false;
+		selectedBrief = null;
+	}
 </script>
 
 <main class="min-h-screen bg-background transition-colors">
 	<div class="container mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8 lg:py-10 max-w-7xl">
 		<!-- Header Section -->
-		<header class="mb-4 sm:mb-8">
+		<header class="mb-4 sm:mb-6">
 			<h1
 				class="text-xl sm:text-3xl lg:text-4xl font-bold text-foreground mb-1 sm:mb-2 tracking-tight"
 			>
@@ -149,6 +182,11 @@
 				</time>
 			</p>
 		</header>
+
+		<!-- Daily Brief Widget -->
+		<section class="mb-4 sm:mb-6">
+			<DashboardBriefWidget {user} onViewBrief={handleViewBrief} />
+		</section>
 
 		<!-- Error State -->
 		{#if error}
@@ -302,31 +340,13 @@
 									</p>
 								{/if}
 
-								<!-- Facets (metadata tags) - Hidden on mobile -->
-								{#if project.facet_context || project.facet_scale || project.facet_stage}
-									<div class="hidden sm:flex mb-3 flex-wrap gap-2">
-										{#if project.facet_context}
-											<span
-												class="rounded-lg border border-accent/30 bg-accent/10 px-2 py-0.5 text-xs font-bold text-accent"
-											>
-												{project.facet_context}
-											</span>
-										{/if}
-										{#if project.facet_scale}
-											<span
-												class="rounded-lg border border-muted-foreground/30 bg-muted/30 px-2 py-0.5 text-xs font-bold text-muted-foreground"
-											>
-												{project.facet_scale}
-											</span>
-										{/if}
-										{#if project.facet_stage}
-											<span
-												class="rounded-lg border border-foreground/20 bg-muted/50 px-2 py-0.5 text-xs font-bold text-foreground/80"
-											>
-												{project.facet_stage}
-											</span>
-										{/if}
-									</div>
+								<!-- Next Step - Shows short version, expandable to long -->
+								{#if project.next_step_short}
+									<ProjectCardNextStep
+										nextStepShort={project.next_step_short}
+										nextStepLong={project.next_step_long}
+										class="mb-3"
+									/>
 								{/if}
 
 								<!-- Footer Stats -->
@@ -429,4 +449,14 @@
 <!-- Agent Chat Modal for Project Creation -->
 {#if AgentChatModal && showChatModal}
 	<AgentChatModal isOpen={showChatModal} contextType="project_create" onClose={handleChatClose} />
+{/if}
+
+<!-- Daily Brief Modal -->
+{#if DailyBriefModal && showBriefModal}
+	<DailyBriefModal
+		isOpen={showBriefModal}
+		brief={selectedBrief}
+		briefDate={selectedBrief?.brief_date}
+		onClose={handleBriefModalClose}
+	/>
 {/if}

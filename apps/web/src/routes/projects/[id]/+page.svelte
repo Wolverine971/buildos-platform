@@ -1051,28 +1051,40 @@
 											{#each tasks as task}
 												{@const visuals = getTaskVisuals(task.state_key)}
 												<li>
-													<button
-														type="button"
-														onclick={() => (editingTaskId = task.id)}
-														class="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted/60 transition-colors"
-													>
-														<svelte:component
-															this={visuals.icon}
-															class="w-4 h-4 {visuals.color}"
-														/>
-														<div class="min-w-0">
-															<p
-																class="text-sm text-foreground truncate"
-															>
-																{task.title}
-															</p>
-															<p
-																class="text-xs text-muted-foreground"
-															>
-																{task.state_key || 'draft'}
-															</p>
-														</div>
-													</button>
+													<div class="flex items-center">
+														<button
+															type="button"
+															onclick={() =>
+																(editingTaskId = task.id)}
+															class="flex-1 flex items-center gap-3 px-4 py-3 text-left hover:bg-muted/60 transition-colors"
+														>
+															<svelte:component
+																this={visuals.icon}
+																class="w-4 h-4 {visuals.color}"
+															/>
+															<div class="min-w-0">
+																<p
+																	class="text-sm text-foreground truncate"
+																>
+																	{task.title}
+																</p>
+																<p
+																	class="text-xs text-muted-foreground"
+																>
+																	{task.state_key || 'draft'}
+																</p>
+															</div>
+														</button>
+														<a
+															href="/projects/{project.id}/tasks/{task.id}"
+															class="p-2 mr-2 rounded-lg hover:bg-muted transition-colors"
+															title="Open task focus page"
+														>
+															<ExternalLink
+																class="w-4 h-4 text-muted-foreground hover:text-accent"
+															/>
+														</a>
+													</div>
 												</li>
 											{/each}
 										</ul>

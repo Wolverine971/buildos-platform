@@ -57,6 +57,7 @@ export class BriefClientService {
 		user?: { id: string; email: string; is_admin: boolean };
 		timezone?: string;
 		supabaseClient?: any; // Accept supabase client from component
+		useOntology?: boolean; // Use ontology-based brief generation
 	}): Promise<void> {
 		if (!browser || !options.user) return;
 
@@ -148,7 +149,8 @@ export class BriefClientService {
 					briefDate: options.briefDate,
 					forceRegenerate: options.forceRegenerate,
 					user: options.user,
-					timezone: options.timezone || this.getUserTimezone()
+					timezone: options.timezone || this.getUserTimezone(),
+					useOntology: options.useOntology
 				});
 			} else {
 				console.warn('Railway worker unavailable, using local generation');
@@ -217,6 +219,7 @@ export class BriefClientService {
 		forceRegenerate?: boolean;
 		user: { id: string; email: string; is_admin: boolean };
 		timezone?: string;
+		useOntology?: boolean;
 	}): Promise<void> {
 		unifiedBriefGenerationStore.startGeneration('railway');
 		unifiedBriefGenerationStore.update(
@@ -233,7 +236,8 @@ export class BriefClientService {
 		const queueResponse = await RailwayWorkerService.queueBriefGeneration(options.user.id, {
 			scheduledFor: new Date(),
 			briefDate: options.briefDate,
-			timezone: timezone
+			timezone: timezone,
+			useOntology: options.useOntology
 		});
 
 		this.generationState.jobId = queueResponse.jobId;
@@ -427,8 +431,8 @@ export class BriefClientService {
 				);
 
 				// Update streaming status with generation progress if available
-				if (dailyBriefData.brief.generation_progress) {
-					const progress = dailyBriefData.brief.generation_progress;
+				if (dailyBriefData.data.brief.generation_progress) {
+					const progress = dailyBriefData.data.brief.generation_progress;
 					const currentState = get(streamingStatus);
 					const completed = progress.progress || 0;
 					const total = 100;

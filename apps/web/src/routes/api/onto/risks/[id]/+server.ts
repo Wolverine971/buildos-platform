@@ -35,7 +35,11 @@
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { RISK_STATES } from '$lib/types/onto';
-import { logUpdateAsync, logDeleteAsync, getChangeSourceFromRequest } from '$lib/services/async-activity-logger';
+import {
+	logUpdateAsync,
+	logDeleteAsync,
+	getChangeSourceFromRequest
+} from '$lib/services/async-activity-logger';
 
 const VALID_IMPACTS = ['low', 'medium', 'high', 'critical'] as const;
 type Impact = (typeof VALID_IMPACTS)[number];
@@ -337,7 +341,15 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 		}
 
 		// Log activity async (non-blocking)
-		logDeleteAsync(supabase, projectId, 'risk', params.id, riskDataForLog, actorId, getChangeSourceFromRequest(request));
+		logDeleteAsync(
+			supabase,
+			projectId,
+			'risk',
+			params.id,
+			riskDataForLog,
+			actorId,
+			getChangeSourceFromRequest(request)
+		);
 
 		return ApiResponse.success({ message: 'Risk deleted successfully' });
 	} catch (error) {

@@ -32,10 +32,10 @@
 	let emailError = $state('');
 
 	const feedbackCategories = [
-		{ id: 'feature', label: 'Feature Request', icon: Lightbulb, color: 'blue' },
-		{ id: 'bug', label: 'Bug Report', icon: Bug, color: 'red' },
-		{ id: 'improvement', label: 'Improvement', icon: Zap, color: 'green' },
-		{ id: 'general', label: 'General Feedback', icon: MessageCircle, color: 'purple' }
+		{ id: 'feature', label: 'Feature Request', icon: Lightbulb },
+		{ id: 'bug', label: 'Bug Report', icon: Bug },
+		{ id: 'improvement', label: 'Improvement', icon: Zap },
+		{ id: 'general', label: 'General Feedback', icon: MessageCircle }
 	];
 
 	function setRating(value: number) {
@@ -211,15 +211,15 @@
 		<section id="success-message" class="py-20">
 			<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
 				<div
-					class="bg-green-500/10 border border-green-200 dark:border-green-800 rounded-lg p-8 text-center"
+					class="bg-accent/10 border border-accent/30 rounded-lg p-8 text-center shadow-ink tx tx-bloom tx-weak"
 				>
 					<div class="flex justify-center mb-6">
-						<CheckCircle class="w-16 h-16 text-green-600 dark:text-green-400" />
+						<CheckCircle class="w-16 h-16 text-accent" />
 					</div>
-					<h2 class="text-2xl font-bold text-green-800 dark:text-green-300 mb-4">
+					<h2 class="text-2xl font-bold text-foreground mb-4">
 						Thank You for Your Feedback!
 					</h2>
-					<p class="text-green-700 dark:text-green-400 mb-6">
+					<p class="text-muted-foreground mb-6">
 						Your feedback has been submitted successfully. DJ will review it personally
 						and may reach out if you provided your email address.
 					</p>
@@ -233,7 +233,9 @@
 		<!-- Feedback Form -->
 		<section class="py-20">
 			<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-				<div class="bg-card rounded-lg p-8 md:p-12 shadow-ink">
+				<div
+					class="bg-card rounded-lg p-8 md:p-12 shadow-ink border border-border tx tx-grain tx-weak"
+				>
 					<h2 class="text-2xl font-bold text-foreground mb-8 text-center">
 						Share Your Feedback
 					</h2>
@@ -287,17 +289,22 @@
 										size="lg"
 										class="flex items-center p-4 w-full justify-start border-2 rounded-lg transition-all duration-200 {selectedCategory ===
 										category.id
-											? `border-${category.color}-500 bg-${category.color}-50 dark:bg-${category.color}-900/20`
-											: 'border-border hover:border-gray-300 dark:hover:border-gray-500'}"
+											? 'border-accent bg-accent/10'
+											: 'border-border hover:border-muted-foreground/30'}"
 										role="radio"
 										aria-checked={selectedCategory === category.id}
 										aria-label={category.label}
 									>
 										<div
-											class="flex items-center justify-center w-10 h-10 bg-{category.color}-100 dark:bg-{category.color}-900/30 rounded-lg mr-4"
+											class="flex items-center justify-center w-10 h-10 rounded-lg mr-4 {selectedCategory ===
+											category.id
+												? 'bg-accent/20'
+												: 'bg-muted'}"
 										>
 											<CategoryIcon
-												class="w-5 h-5 text-{category.color}-600 dark:text-{category.color}-400"
+												class="w-5 h-5 {selectedCategory === category.id
+													? 'text-accent'
+													: 'text-foreground'}"
 											/>
 										</div>
 										<div class="text-left">
@@ -456,9 +463,9 @@
 
 				<div class="text-center">
 					<div
-						class="flex items-center justify-center w-16 h-16 bg-violet-100 dark:bg-violet-900/30 rounded-lg mb-6 mx-auto"
+						class="flex items-center justify-center w-16 h-16 bg-muted rounded-lg mb-6 mx-auto"
 					>
-						<Users class="w-8 h-8 text-violet-600 dark:text-violet-400" />
+						<Users class="w-8 h-8 text-foreground" />
 					</div>
 					<h3 class="text-xl font-bold text-foreground mb-4">Community Building</h3>
 					<p class="text-muted-foreground">
@@ -469,9 +476,9 @@
 
 				<div class="text-center">
 					<div
-						class="flex items-center justify-center w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-lg mb-6 mx-auto"
+						class="flex items-center justify-center w-16 h-16 bg-muted rounded-lg mb-6 mx-auto"
 					>
-						<Zap class="w-8 h-8 text-green-600 dark:text-green-400" />
+						<Zap class="w-8 h-8 text-foreground" />
 					</div>
 					<h3 class="text-xl font-bold text-foreground mb-4">Rapid Iteration</h3>
 					<p class="text-muted-foreground">
@@ -497,12 +504,14 @@
 
 			<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
 				<!-- Feedback Example 1 -->
-				<div class="bg-card rounded-lg p-6 shadow-ink">
+				<div
+					class="bg-card rounded-lg p-6 shadow-ink border border-border tx tx-frame tx-weak"
+				>
 					<div class="flex items-center mb-4">
 						<div
 							class="w-8 h-8 bg-accent/10 rounded-full flex items-center justify-center mr-3"
 						>
-							<span class="text-sm font-bold text-blue-600">SJ</span>
+							<span class="text-sm font-bold text-accent">PP</span>
 						</div>
 						<div>
 							<div class="font-semibold text-foreground text-sm">Phillip P.</div>
@@ -512,24 +521,26 @@
 					<blockquote class="text-muted-foreground text-sm mb-4 italic">
 						"It would be nice to braindump on any page."
 					</blockquote>
-					<div class="bg-green-500/10 rounded-lg p-3">
-						<div class="flex items-center text-green-700 dark:text-green-300 text-sm">
+					<div class="bg-accent/10 rounded-lg p-3">
+						<div class="flex items-center text-accent text-sm">
 							<ThumbsUp class="w-4 h-4 mr-2" />
 							<span class="font-medium">Implemented!</span>
 						</div>
-						<p class="text-xs text-green-600 dark:text-green-400 mt-1">
+						<p class="text-xs text-muted-foreground mt-1">
 							Added quick brain dump icon in nav bar.
 						</p>
 					</div>
 				</div>
 
 				<!-- Feedback Example 2 -->
-				<div class="bg-card rounded-lg p-6 shadow-ink">
+				<div
+					class="bg-card rounded-lg p-6 shadow-ink border border-border tx tx-frame tx-weak"
+				>
 					<div class="flex items-center mb-4">
 						<div
-							class="w-8 h-8 bg-violet-100 dark:bg-violet-900/30 rounded-full flex items-center justify-center mr-3"
+							class="w-8 h-8 bg-muted rounded-full flex items-center justify-center mr-3"
 						>
-							<span class="text-sm font-bold text-violet-600">MK</span>
+							<span class="text-sm font-bold text-foreground">MK</span>
 						</div>
 						<div>
 							<div class="font-semibold text-foreground text-sm">Mike K.</div>
@@ -540,24 +551,26 @@
 						"The daily brief is great, but could it show progress percentages for each
 						goal?"
 					</blockquote>
-					<div class="bg-green-500/10 rounded-lg p-3">
-						<div class="flex items-center text-green-700 dark:text-green-300 text-sm">
+					<div class="bg-accent/10 rounded-lg p-3">
+						<div class="flex items-center text-accent text-sm">
 							<ThumbsUp class="w-4 h-4 mr-2" />
 							<span class="font-medium">Implemented!</span>
 						</div>
-						<p class="text-xs text-green-600 dark:text-green-400 mt-1">
+						<p class="text-xs text-muted-foreground mt-1">
 							Added progress bars to daily briefs
 						</p>
 					</div>
 				</div>
 
 				<!-- Feedback Example 3 -->
-				<div class="bg-card rounded-lg p-6 shadow-ink">
+				<div
+					class="bg-card rounded-lg p-6 shadow-ink border border-border tx tx-frame tx-weak"
+				>
 					<div class="flex items-center mb-4">
 						<div
-							class="w-8 h-8 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mr-3"
+							class="w-8 h-8 bg-muted rounded-full flex items-center justify-center mr-3"
 						>
-							<span class="text-sm font-bold text-green-600">AL</span>
+							<span class="text-sm font-bold text-foreground">AL</span>
 						</div>
 						<div>
 							<div class="font-semibold text-foreground text-sm">Alex L.</div>
@@ -568,12 +581,12 @@
 						"Love the app! Could we have a dark mode? I work late and it would be easier
 						on my eyes."
 					</blockquote>
-					<div class="bg-green-500/10 rounded-lg p-3">
-						<div class="flex items-center text-green-700 dark:text-green-300 text-sm">
+					<div class="bg-accent/10 rounded-lg p-3">
+						<div class="flex items-center text-accent text-sm">
 							<ThumbsUp class="w-4 h-4 mr-2" />
 							<span class="font-medium">Implemented!</span>
 						</div>
-						<p class="text-xs text-green-600 dark:text-green-400 mt-1">
+						<p class="text-xs text-muted-foreground mt-1">
 							Full dark mode support added
 						</p>
 					</div>
@@ -596,7 +609,7 @@
 			<div class="grid grid-cols-1 md:grid-cols-2 gap-8">
 				<a
 					href="/contact"
-					class="bg-accent/10 border border-accent/30 rounded-lg p-8 hover:shadow-ink transition-all duration-300 group text-left"
+					class="bg-accent/10 border border-accent/30 rounded-lg p-8 hover:shadow-ink transition-all duration-300 group text-left tx tx-bloom tx-weak pressable"
 				>
 					<div
 						class="flex items-center justify-center w-12 h-12 bg-accent/10 rounded-lg mb-4 group-hover:scale-110 transition-transform"
@@ -612,12 +625,12 @@
 
 				<a
 					href="/beta"
-					class="bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-800 rounded-lg p-8 hover:shadow-ink transition-all duration-300 group text-left"
+					class="bg-muted border border-border rounded-lg p-8 hover:shadow-ink transition-all duration-300 group text-left tx tx-grain tx-weak pressable"
 				>
 					<div
-						class="flex items-center justify-center w-12 h-12 bg-violet-100 dark:bg-violet-900/30 rounded-lg mb-4 group-hover:scale-110 transition-transform"
+						class="flex items-center justify-center w-12 h-12 bg-muted rounded-lg mb-4 group-hover:scale-110 transition-transform"
 					>
-						<Users class="w-6 h-6 text-violet-600 dark:text-violet-400" />
+						<Users class="w-6 h-6 text-foreground" />
 					</div>
 					<h3 class="text-xl font-bold text-foreground mb-3">Beta Community</h3>
 					<p class="text-muted-foreground">

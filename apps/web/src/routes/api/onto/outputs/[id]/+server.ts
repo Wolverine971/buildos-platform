@@ -10,7 +10,11 @@
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { OUTPUT_STATES } from '$lib/types/onto';
-import { logUpdateAsync, logDeleteAsync, getChangeSourceFromRequest } from '$lib/services/async-activity-logger';
+import {
+	logUpdateAsync,
+	logDeleteAsync,
+	getChangeSourceFromRequest
+} from '$lib/services/async-activity-logger';
 
 export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 	try {
@@ -269,7 +273,15 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 		}
 
 		// Log activity async (non-blocking)
-		logDeleteAsync(supabase, projectId, 'output', id, outputDataForLog, actorId, getChangeSourceFromRequest(request));
+		logDeleteAsync(
+			supabase,
+			projectId,
+			'output',
+			id,
+			outputDataForLog,
+			actorId,
+			getChangeSourceFromRequest(request)
+		);
 
 		return ApiResponse.success({ deleted: true });
 	} catch (error) {

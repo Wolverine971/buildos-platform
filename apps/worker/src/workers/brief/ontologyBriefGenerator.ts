@@ -143,91 +143,92 @@ async function updateProgress(
 // ============================================================================
 
 function formatOntologyProjectBrief(project: ProjectBriefData, timezone: string): string {
-	let brief = `## [${project.project.name}](/onto/projects/${project.project.id})\n\n`;
-
-	if (project.project.description) {
-		brief += `${project.project.description}\n\n`;
-	}
+	const projectId = project.project.id;
+	const projectName = project.project.name;
+	let brief = `## [${projectName}](/projects/${projectId})\n\n`;
 
 	// Goal Progress Section
-	if (project.goals.length > 0) {
-		const activeGoals = project.goals.filter((g) => g.goal.state_key !== 'achieved');
-		if (activeGoals.length > 0) {
-			brief += `### Goal Progress\n`;
-			for (const goal of activeGoals) {
-				const statusEmoji =
-					goal.status === 'on_track' ? '' : goal.status === 'at_risk' ? '' : '';
-				brief += `- ${statusEmoji} **${goal.goal.name}**: ${goal.progressPercent}% (${goal.completedTasks}/${goal.totalTasks} tasks)\n`;
-			}
-			brief += '\n';
+	const activeGoals = project.goals.filter((g) => g.goal.state_key !== 'achieved');
+	brief += `### Goal Progress\n`;
+	if (activeGoals.length > 0) {
+		for (const goal of activeGoals) {
+			const statusEmoji =
+				goal.status === 'on_track' ? '' : goal.status === 'at_risk' ? '' : '';
+			brief += `- ${statusEmoji} **${goal.goal.name}**: ${goal.progressPercent}% (${goal.completedTasks}/${goal.totalTasks} tasks)\n`;
 		}
+	} else {
+		brief += `N/A\n`;
 	}
+	brief += '\n';
 
 	// Active Outputs Section
 	const activeOutputs = project.outputs.filter((o) => o.state !== 'published');
+	brief += `### Outputs in Progress\n`;
 	if (activeOutputs.length > 0) {
-		brief += `### Outputs in Progress\n`;
 		for (const output of activeOutputs.slice(0, 3)) {
 			brief += `- **${output.output.name}** (${output.state})\n`;
 		}
-		brief += '\n';
+	} else {
+		brief += `N/A\n`;
 	}
+	brief += '\n';
 
 	// Today's Tasks
+	brief += `### Starting Today\n`;
 	if (project.todaysTasks.length > 0) {
-		brief += `### Starting Today\n`;
 		for (const task of project.todaysTasks) {
 			const icon = getTaskStatusIcon(task);
 			const workMode = getWorkMode(task.type_key);
 			const workModeStr = workMode ? ` [${workMode}]` : '';
-			brief += `- ${icon} [${task.title}](/onto/tasks/${task.id})${workModeStr}\n`;
+			brief += `- ${icon} [${task.title}](/projects/${projectId}/tasks/${task.id})${workModeStr}\n`;
 		}
-		brief += '\n';
+	} else {
+		brief += `N/A\n`;
 	}
+	brief += '\n';
 
 	// Blocked Tasks
+	brief += `### Blocked Tasks\n`;
 	if (project.blockedTasks.length > 0) {
-		brief += `### Blocked Tasks\n`;
 		for (const task of project.blockedTasks.slice(0, 3)) {
-			brief += `- [${task.title}](/onto/tasks/${task.id})\n`;
+			brief += `- [${task.title}](/projects/${projectId}/tasks/${task.id})\n`;
 		}
-		brief += '\n';
+	} else {
+		brief += `N/A\n`;
 	}
+	brief += '\n';
 
 	// Unblocking Tasks
+	brief += `### Unblocking Work\n`;
 	if (project.unblockingTasks.length > 0) {
-		brief += `### Unblocking Work\n`;
 		brief += `*These tasks, when completed, will unblock other work:*\n`;
 		for (const task of project.unblockingTasks.slice(0, 3)) {
-			brief += `- [${task.title}](/onto/tasks/${task.id})\n`;
+			brief += `- [${task.title}](/projects/${projectId}/tasks/${task.id})\n`;
 		}
-		brief += '\n';
+	} else {
+		brief += `N/A\n`;
 	}
+	brief += '\n';
 
 	// Next Steps
+	brief += `### Next Steps\n`;
 	if (project.nextSteps.length > 0) {
-		brief += `### Next Steps\n`;
 		for (const step of project.nextSteps) {
 			brief += `- ${step}\n`;
 		}
-		brief += '\n';
+	} else {
+		brief += `N/A\n`;
 	}
+	brief += '\n';
 
 	// Next Milestone
+	brief += `### Upcoming Milestone\n`;
 	if (project.nextMilestone) {
-		brief += `### Upcoming Milestone\n`;
-		brief += `${project.nextMilestone}\n\n`;
+		brief += `${project.nextMilestone}\n`;
+	} else {
+		brief += `N/A\n`;
 	}
-
-	// If no activity
-	if (
-		project.todaysTasks.length === 0 &&
-		project.blockedTasks.length === 0 &&
-		activeOutputs.length === 0 &&
-		project.goals.length === 0
-	) {
-		brief += `*No scheduled tasks or active goals for this project.*\n\n`;
-	}
+	brief += '\n';
 
 	return brief;
 }
@@ -277,6 +278,18 @@ function generateMainBriefMarkdown(
 	executiveSummary: string,
 	holidays: string[] | null
 ): string {
+	// Build a map of project_id -> project name for task linking
+	const projectNameMap = new Map<string, string>();
+	for (const project of briefData.projects) {
+		projectNameMap.set(project.project.id, project.project.name);
+	}
+
+	// Helper to format task with project link
+	const formatTaskWithProject = (task: OntoTask): string => {
+		const projectName = projectNameMap.get(task.project_id) || 'Unknown Project';
+		return `- [${task.title}](/projects/${task.project_id}/tasks/${task.id}) — [${projectName}](/projects/${task.project_id})`;
+	};
+
 	let mainBrief = `# ${formatDate(briefData.briefDate)}\n\n`;
 
 	// Holiday notice
@@ -297,7 +310,9 @@ function generateMainBriefMarkdown(
 		for (const goal of activeGoals) {
 			const statusEmoji =
 				goal.status === 'on_track' ? '' : goal.status === 'at_risk' ? '' : '';
-			mainBrief += `- ${statusEmoji} **${goal.goal.name}**: ${goal.progressPercent}%\n`;
+			const projectName = projectNameMap.get(goal.goal.project_id) || '';
+			const projectSuffix = projectName ? ` — [${projectName}](/projects/${goal.goal.project_id})` : '';
+			mainBrief += `- ${statusEmoji} **${goal.goal.name}**: ${goal.progressPercent}%${projectSuffix}\n`;
 		}
 		mainBrief += '\n';
 	}
@@ -307,7 +322,9 @@ function generateMainBriefMarkdown(
 	if (activeOutputs.length > 0) {
 		mainBrief += `### Outputs in Flight\n`;
 		for (const output of activeOutputs.slice(0, 5)) {
-			mainBrief += `- **${output.output.name}** (${output.state})\n`;
+			const projectName = projectNameMap.get(output.output.project_id) || '';
+			const projectSuffix = projectName ? ` — [${projectName}](/projects/${output.output.project_id})` : '';
+			mainBrief += `- **${output.output.name}** (${output.state})${projectSuffix}\n`;
 		}
 		mainBrief += '\n';
 	}
@@ -323,7 +340,7 @@ function generateMainBriefMarkdown(
 		if (briefData.overdueTasks.length > 0) {
 			mainBrief += `### Overdue Tasks (${briefData.overdueTasks.length})\n`;
 			for (const task of briefData.overdueTasks.slice(0, 5)) {
-				mainBrief += `- [${task.title}](/onto/tasks/${task.id})\n`;
+				mainBrief += formatTaskWithProject(task) + '\n';
 			}
 			mainBrief += '\n';
 		}
@@ -331,7 +348,7 @@ function generateMainBriefMarkdown(
 		if (briefData.blockedTasks.length > 0) {
 			mainBrief += `### Blocked Tasks (${briefData.blockedTasks.length})\n`;
 			for (const task of briefData.blockedTasks.slice(0, 5)) {
-				mainBrief += `- [${task.title}](/onto/tasks/${task.id})\n`;
+				mainBrief += formatTaskWithProject(task) + '\n';
 			}
 			mainBrief += '\n';
 		}
@@ -339,7 +356,9 @@ function generateMainBriefMarkdown(
 		if (briefData.risks.length > 0) {
 			mainBrief += `### Active Risks (${briefData.risks.length})\n`;
 			for (const risk of briefData.risks.slice(0, 3)) {
-				mainBrief += `- **${risk.title}** (Impact: ${risk.impact})\n`;
+				const projectName = projectNameMap.get(risk.project_id) || '';
+				const projectSuffix = projectName ? ` — [${projectName}](/projects/${risk.project_id})` : '';
+				mainBrief += `- **${risk.title}** (Impact: ${risk.impact})${projectSuffix}\n`;
 			}
 			mainBrief += '\n';
 		}
@@ -354,7 +373,7 @@ function generateMainBriefMarkdown(
 			if (tasks.length > 0) {
 				mainBrief += `### ${mode.charAt(0).toUpperCase() + mode.slice(1)} Tasks (${tasks.length})\n`;
 				for (const task of tasks.slice(0, 3)) {
-					mainBrief += `- [${task.title}](/onto/tasks/${task.id})\n`;
+					mainBrief += formatTaskWithProject(task) + '\n';
 				}
 				mainBrief += '\n';
 			}

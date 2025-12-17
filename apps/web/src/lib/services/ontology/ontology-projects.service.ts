@@ -23,6 +23,11 @@ export interface OntologyProjectSummary {
 	goal_count: number;
 	plan_count: number;
 	document_count: number;
+	// Next step fields for "BuildOS surfaces next moves" feature
+	next_step_short: string | null;
+	next_step_long: string | null;
+	next_step_source: 'ai' | 'user' | null;
+	next_step_updated_at: string | null;
 }
 
 /**
@@ -63,6 +68,10 @@ export async function fetchProjectSummaries(
 			facet_stage,
 			created_at,
 			updated_at,
+			next_step_short,
+			next_step_long,
+			next_step_source,
+			next_step_updated_at,
 			onto_tasks(count),
 			onto_outputs(count),
 			onto_goals(count),
@@ -93,6 +102,10 @@ export async function fetchProjectSummaries(
 		output_count: project.onto_outputs?.[0]?.count ?? 0,
 		goal_count: project.onto_goals?.[0]?.count ?? 0,
 		plan_count: project.onto_plans?.[0]?.count ?? 0,
-		document_count: project.onto_documents?.[0]?.count ?? 0
+		document_count: project.onto_documents?.[0]?.count ?? 0,
+		next_step_short: project.next_step_short ?? null,
+		next_step_long: project.next_step_long ?? null,
+		next_step_source: project.next_step_source ?? null,
+		next_step_updated_at: project.next_step_updated_at ?? null
 	}));
 }

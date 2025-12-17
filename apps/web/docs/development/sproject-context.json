@@ -57,7 +57,7 @@
 		{
 			"file": "src/lib/components/dashboard/Dashboard.svelte",
 			"type": "component",
-			"components": ["AgentChatModal"]
+			"components": ["AgentChatModal", "DailyBriefModal"]
 		},
 		{
 			"file": "src/lib/components/layout/Navigation.svelte",
@@ -213,6 +213,19 @@
 				"DualProcessingResults",
 				"SuccessView",
 				"OperationEditModal"
+			]
+		},
+		{
+			"file": "src/routes/projects/[id]/tasks/[task_id]/+page.svelte",
+			"type": "page",
+			"components": [
+				"DocumentModal",
+				"GoalEditModal",
+				"PlanEditModal",
+				"TaskEditModal",
+				"OutputEditModal",
+				"MilestoneEditModal",
+				"AgentChatModal"
 			]
 		},
 		{
@@ -911,6 +924,13 @@
 		"src/routes/projects-old/[id]/+page.svelte": [
 			"src/lib/components/project/ProjectSynthesis.svelte",
 			"src/lib/components/project/PhasesSection.svelte"
+		],
+		"src/routes/projects/[id]/tasks/[task_id]/+page.svelte": [
+			"src/lib/components/ontology/GoalEditModal.svelte",
+			"src/lib/components/ontology/PlanEditModal.svelte",
+			"src/lib/components/ontology/TaskEditModal.svelte",
+			"src/lib/components/ontology/OutputEditModal.svelte",
+			"src/lib/components/ontology/MilestoneEditModal.svelte"
 		]
 	},
 	"unusedComponents": [

@@ -185,6 +185,37 @@
 			activity_data: unknown;
 		}>
 	>([]);
+	let agentChatUsage = $state({
+		totalSessions: 0,
+		totalMessages: 0,
+		totalTokens: 0,
+		avgMessagesPerSession: 0,
+		avgTokensPerSession: 0,
+		plannerSessions: 0,
+		executorSessions: 0,
+		failedSessions: 0,
+		failureRate: 0
+	});
+	let briefDelivery = $state({
+		briefsGenerated: 0,
+		ontologyBriefs: 0,
+		legacyBriefs: 0,
+		emailOptIn: 0,
+		smsOptIn: 0,
+		emailSent: 0,
+		emailDelivered: 0,
+		smsSent: 0,
+		smsDelivered: 0
+	});
+	let systemHealth = $state({
+		llmLatencyMs: {} as Record<string, number>,
+		queueDepth: 0,
+		oldestJobSeconds: 0,
+		failedJobs24h: 0,
+		agentFailureRate: 0,
+		errorCount24h: 0,
+		lastUpdated: null as string | null
+	});
 
 	// Feedback data
 	let feedbackOverview = $state<{
@@ -448,75 +479,66 @@
 						: '0% of total'
 			},
 			{
-				label: `Brain Dumps · ${timeframeRangeLabel}`,
-				value: comprehensiveAnalytics.brainDumpMetrics.total,
-				icon: FileText,
+				label: `Agent Conversations · ${timeframeRangeLabel}`,
+				value: agentChatUsage.totalSessions,
+				icon: MessageSquare,
 				tone: 'info' as const,
-				footnote: `Avg ${formatNumber(
-					comprehensiveAnalytics.brainDumpMetrics.averageLength
-				)} chars`
+				footnote: `Avg ${formatNumber(agentChatUsage.avgMessagesPerSession)} msgs/session`
 			},
 			{
-				label: `New Projects · ${timeframeRangeLabel}`,
-				value: comprehensiveAnalytics.projectMetrics.newProjects,
-				icon: TrendingUp,
+				label: `Tokens · ${timeframeRangeLabel}`,
+				value: agentChatUsage.totalTokens,
+				icon: Zap,
 				tone: 'brand' as const,
-				footnote: `${formatNumber(comprehensiveAnalytics.projectMetrics.updatedProjects)} updated`
+				footnote: `Avg ${formatNumber(agentChatUsage.avgTokensPerSession)} per session`
 			},
 			{
-				label: 'Total Briefs',
-				value: systemOverview.total_briefs,
+				label: `Briefs Generated · ${timeframeRangeLabel}`,
+				value: briefDelivery.briefsGenerated,
 				icon: BarChart3,
-				tone: 'muted' as const,
-				footnote: 'All time'
+				tone: 'warning' as const,
+				footnote: `${formatNumber(briefDelivery.emailSent)} email / ${formatNumber(briefDelivery.smsSent)} sms`
 			},
 			{
-				label: 'Calendar Connections',
-				value: comprehensiveAnalytics.calendarConnections,
-				icon: Globe,
-				tone: 'warning' as const,
-				footnote: 'Connected users'
+				label: 'System Health',
+				value: systemHealth.queueDepth,
+				icon: Activity,
+				tone: 'muted' as const,
+				footnote: `Queue depth • ${formatNumber(systemHealth.failedJobs24h)} failed (24h)`
 			}
 		];
 		return cards;
 	});
 
-	let brainDumpCards = $derived.by(() => {
+	let agentUsageCards = $derived.by(() => {
 		const cards: any[] = [
 			{
-				label: `Brain Dumps · ${timeframeRangeLabel}`,
-				value: comprehensiveAnalytics.brainDumpMetrics.total,
-				icon: FileText,
+				label: `Agent Conversations · ${timeframeRangeLabel}`,
+				value: agentChatUsage.totalSessions,
+				icon: MessageSquare,
 				tone: 'info' as const,
 				footnote: timeframeRelativeLabel
 			},
 			{
-				label: `Avg Length · ${timeframeRangeLabel}`,
-				value: comprehensiveAnalytics.brainDumpMetrics.averageLength,
+				label: `Messages · ${timeframeRangeLabel}`,
+				value: agentChatUsage.totalMessages,
 				icon: Eye,
 				tone: 'muted' as const,
-				footnote: 'Characters'
+				footnote: `Avg ${formatNumber(agentChatUsage.avgMessagesPerSession)} per session`
 			},
 			{
-				label: `New Projects · ${timeframeRangeLabel}`,
-				value: comprehensiveAnalytics.projectMetrics.newProjects,
-				icon: TrendingUp,
-				tone: 'success' as const,
-				footnote: timeframeRelativeLabel
-			},
-			{
-				label: `Project Updates · ${timeframeRangeLabel}`,
-				value: comprehensiveAnalytics.projectMetrics.updatedProjects,
-				icon: RefreshCw,
+				label: `Tokens · ${timeframeRangeLabel}`,
+				value: agentChatUsage.totalTokens,
+				icon: Zap,
 				tone: 'brand' as const,
-				footnote: timeframeRelativeLabel
+				footnote: `Avg ${formatNumber(agentChatUsage.avgTokensPerSession)} per session`
 			},
 			{
-				label: 'Calendar Connections',
-				value: comprehensiveAnalytics.calendarConnections,
-				icon: Globe,
-				tone: 'warning' as const,
-				footnote: 'Users with calendar'
+				label: `Planner / Executor`,
+				value: `${formatNumber(agentChatUsage.plannerSessions)} / ${formatNumber(agentChatUsage.executorSessions)}`,
+				icon: Workflow,
+				tone: 'success' as const,
+				footnote: `${formatPercentage(agentChatUsage.failureRate)} failure rate`
 			}
 		];
 		return cards;
@@ -650,6 +672,9 @@
 		betaOverview = payload.betaOverview;
 		comprehensiveAnalytics = payload.comprehensiveAnalytics;
 		errorsData = payload.errorsData;
+		agentChatUsage = payload.agentChatUsage ?? agentChatUsage;
+		briefDelivery = payload.briefDelivery ?? briefDelivery;
+		systemHealth = payload.systemHealth ?? systemHealth;
 		if (payload.subscriptionData) {
 			subscriptionData = payload.subscriptionData;
 		} else {
@@ -1017,10 +1042,10 @@
 				/>
 			</div>
 
-			<!-- Brain Dump Analytics Section -->
+			<!-- Agent Chat Analytics Section -->
 			<div class="mb-4 sm:mb-6">
 				<h2 class="text-lg sm:text-xl font-bold text-gray-900 dark:text-white mb-4">
-					Brain Dump Analytics
+					Agent Chat Analytics
 					<span class="text-sm font-normal text-gray-600 dark:text-gray-400">
 						({timeframeRangeLabel})
 					</span>
@@ -1028,7 +1053,7 @@
 				<div
 					class="admin-stat-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4"
 				>
-					{#each brainDumpCards as card (card.label)}
+					{#each agentUsageCards as card (card.label)}
 						<AdminStatCard {...card} compact />
 					{/each}
 				</div>

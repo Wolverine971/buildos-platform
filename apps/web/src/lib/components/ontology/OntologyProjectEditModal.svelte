@@ -7,11 +7,23 @@
 	import Select from '$lib/components/ui/Select.svelte';
 	import MarkdownToggleField from '$lib/components/ui/MarkdownToggleField.svelte';
 	import { toastService } from '$lib/stores/toast.store';
-	import { Copy, Calendar, FileText, X, FolderKanban, Trash2 } from 'lucide-svelte';
+	import {
+		Copy,
+		Calendar,
+		FileText,
+		X,
+		FolderKanban,
+		Trash2,
+		Zap,
+		Sparkles,
+		RefreshCw,
+		Loader2
+	} from 'lucide-svelte';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
 	import { PROJECT_STATES, type Project, type Document } from '$lib/types/onto';
 	import type { ComponentType } from 'svelte';
 	import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
+	import { hasEntityReferences } from '$lib/utils/entity-reference-parser';
 
 	// Lazy-loaded AgentChatModal for better initial load performance
 	let AgentChatModalComponent = $state<ComponentType<any> | null>(null);
@@ -78,6 +90,11 @@
 	let error = $state<string | null>(null);
 	let showChatModal = $state(false);
 
+	// Next step state
+	let nextStepShort = $state('');
+	let nextStepLong = $state('');
+	let isGeneratingNextStep = $state(false);
+
 	// Build focus for chat about this project
 	const entityFocus = $derived.by((): ProjectFocus | null => {
 		if (!project) return null;
@@ -106,6 +123,32 @@
 		return '';
 	});
 
+	// Initial next step values from project
+	const initialNextStepShort = $derived(project?.next_step_short ?? '');
+	const initialNextStepLong = $derived(project?.next_step_long ?? '');
+	const nextStepSource = $derived(project?.next_step_source);
+	const nextStepUpdatedAt = $derived(project?.next_step_updated_at);
+
+	// Computed: has existing next step
+	const hasNextStep = $derived(!!nextStepShort.trim());
+
+	// Format "updated at" for display
+	const nextStepTimeAgo = $derived.by(() => {
+		if (!nextStepUpdatedAt) return null;
+		const date = new Date(nextStepUpdatedAt);
+		const now = new Date();
+		const diffMs = now.getTime() - date.getTime();
+		const diffMins = Math.floor(diffMs / 60000);
+		const diffHours = Math.floor(diffMins / 60);
+		const diffDays = Math.floor(diffHours / 24);
+
+		if (diffMins < 1) return 'just now';
+		if (diffMins < 60) return `${diffMins}m ago`;
+		if (diffHours < 24) return `${diffHours}h ago`;
+		if (diffDays < 7) return `${diffDays}d ago`;
+		return date.toLocaleDateString();
+	});
+
 	const modalTitle = $derived(project ? `Edit ${project.name}` : 'Edit Ontology Project');
 
 	$effect(() => {
@@ -120,6 +163,8 @@
 		startDate = toDateInput(project.start_at);
 		endDate = toDateInput(project.end_at);
 		contextDocumentBody = initialContextBody;
+		nextStepShort = initialNextStepShort;
+		nextStepLong = initialNextStepLong;
 		error = null;
 	});
 
@@ -241,6 +286,17 @@
 			payload.end_at = parsedEnd;
 		}
 
+		// Check if next step changed
+		const nextStepShortChanged = nextStepShort !== initialNextStepShort;
+		const nextStepLongChanged = nextStepLong !== initialNextStepLong;
+
+		if (nextStepShortChanged) {
+			payload.next_step_short = nextStepShort.trim() || null;
+		}
+		if (nextStepLongChanged) {
+			payload.next_step_long = nextStepLong.trim() || null;
+		}
+
 		// Check if context document changed
 		const hasContextDocChanges = contextDocument && contextDocumentBody !== initialContextBody;
 		const hasProjectChanges = Object.keys(payload).length > 0;
@@ -330,6 +386,84 @@
 			.split('_')
 			.map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
 			.join(' ');
+	}
+
+	// Generate next step via AI
+	async function handleGenerateNextStep() {
+		if (!project || isGeneratingNextStep) return;
+
+		isGeneratingNextStep = true;
+		try {
+			const response = await fetch(`/api/onto/projects/${project.id}/next-step/generate`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' }
+			});
+
+			const result = await response.json();
+
+			if (!response.ok) {
+				throw new Error(result.error || 'Failed to generate next step');
+			}
+
+			// Update local state with generated values
+			if (result.data) {
+				nextStepShort = result.data.next_step_short || '';
+				nextStepLong = result.data.next_step_long || '';
+			}
+
+			toastService.success('Next step generated!');
+		} catch (err) {
+			console.error('Failed to generate next step:', err);
+			toastService.error(err instanceof Error ? err.message : 'Failed to generate next step');
+		} finally {
+			isGeneratingNextStep = false;
+		}
+	}
+
+	// Clear next step
+	function handleClearNextStep() {
+		nextStepShort = '';
+		nextStepLong = '';
+	}
+
+	// Check if text contains entity links
+	function hasEntityLinks(text: string): boolean {
+		return hasEntityReferences(text);
+	}
+
+	// Render next step content with entity references as styled badges
+	function renderNextStepContent(text: string): string {
+		if (!text) return '';
+
+		// Escape HTML first to prevent XSS
+		let html = text
+			.replace(/&/g, '&amp;')
+			.replace(/</g, '&lt;')
+			.replace(/>/g, '&gt;')
+			.replace(/"/g, '&quot;')
+			.replace(/'/g, '&#39;');
+
+		// Replace entity references with styled spans
+		// Pattern: [[type:id|displayText]] where id can be UUID or slug
+		const regex = /\[\[(\w+):([\w-]+)\|([^\]]+)\]\]/gi;
+
+		html = html.replace(regex, (_match, type, _id, displayText) => {
+			// Use different colors based on entity type
+			const typeColors: Record<string, string> = {
+				task: 'bg-blue-500/15 text-blue-600 dark:text-blue-400',
+				document: 'bg-amber-500/15 text-amber-600 dark:text-amber-400',
+				output: 'bg-purple-500/15 text-purple-600 dark:text-purple-400',
+				goal: 'bg-green-500/15 text-green-600 dark:text-green-400',
+				plan: 'bg-indigo-500/15 text-indigo-600 dark:text-indigo-400',
+				milestone: 'bg-pink-500/15 text-pink-600 dark:text-pink-400',
+				risk: 'bg-red-500/15 text-red-600 dark:text-red-400'
+			};
+			const colorClass = typeColors[type.toLowerCase()] || 'bg-accent/15 text-accent';
+
+			return `<span class="inline-flex items-center px-1.5 py-0.5 rounded ${colorClass} text-xs font-medium">${displayText}</span>`;
+		});
+
+		return html;
 	}
 
 	// Chat about this project handlers
@@ -463,6 +597,112 @@
 									placeholder="One-line summary of what this project achieves"
 									rows={3}
 								/>
+							</div>
+
+							<!-- Next Step Section -->
+							<div class="pt-3 border-t border-border">
+								<div class="flex items-center justify-between mb-2">
+									<div class="flex items-center gap-2">
+										<div
+											class="w-6 h-6 rounded-full bg-accent/15 flex items-center justify-center"
+										>
+											<Zap class="w-3.5 h-3.5 text-accent" />
+										</div>
+										<span
+											class="text-xs font-semibold text-muted-foreground uppercase tracking-wider"
+										>
+											Next Move
+										</span>
+										{#if nextStepSource && nextStepTimeAgo}
+											<span class="text-[10px] text-muted-foreground">
+												{nextStepSource === 'ai' ? 'AI' : 'You'} · {nextStepTimeAgo}
+											</span>
+										{/if}
+									</div>
+									<div class="flex items-center gap-1">
+										<!-- Generate/Regenerate button -->
+										<button
+											type="button"
+											onclick={handleGenerateNextStep}
+											disabled={isGeneratingNextStep || isSaving}
+											class="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-muted-foreground hover:text-foreground bg-muted/50 hover:bg-muted rounded-md transition-colors disabled:opacity-50 pressable"
+											title={hasNextStep
+												? 'Regenerate with AI'
+												: 'Generate with AI'}
+										>
+											{#if isGeneratingNextStep}
+												<Loader2 class="w-3 h-3 animate-spin" />
+												<span class="hidden sm:inline">Generating...</span>
+											{:else if hasNextStep}
+												<RefreshCw class="w-3 h-3" />
+												<span class="hidden sm:inline">Regenerate</span>
+											{:else}
+												<Sparkles class="w-3 h-3" />
+												<span class="hidden sm:inline">Generate</span>
+											{/if}
+										</button>
+										<!-- Clear button (only when there's content) -->
+										{#if hasNextStep}
+											<button
+												type="button"
+												onclick={handleClearNextStep}
+												disabled={isSaving}
+												class="p-1 text-muted-foreground hover:text-destructive rounded transition-colors disabled:opacity-50"
+												title="Clear next step"
+											>
+												<X class="w-3.5 h-3.5" />
+											</button>
+										{/if}
+									</div>
+								</div>
+
+								<!-- Short version (headline) -->
+								<div class="space-y-2">
+									<TextInput
+										bind:value={nextStepShort}
+										placeholder="What's the next concrete action for this project?"
+										disabled={isSaving || isGeneratingNextStep}
+										class="font-medium"
+									/>
+
+									<!-- Long version (details) -->
+									{#if hasNextStep || nextStepLong}
+										<div class="relative">
+											<Textarea
+												bind:value={nextStepLong}
+												placeholder="Add more context or details about the next step (optional)"
+												rows={2}
+												disabled={isSaving || isGeneratingNextStep}
+												class="text-sm text-muted-foreground resize-none"
+											/>
+										</div>
+
+										<!-- Preview of rendered long content with entity badges -->
+										{#if nextStepLong && hasEntityLinks(nextStepLong)}
+											<div
+												class="mt-2 p-2.5 rounded-md bg-muted/30 border border-border/50"
+											>
+												<span
+													class="text-[10px] font-medium text-muted-foreground uppercase tracking-wider block mb-1.5"
+												>
+													Preview
+												</span>
+												<div
+													class="text-sm text-muted-foreground leading-relaxed"
+												>
+													{@html renderNextStepContent(nextStepLong)}
+												</div>
+											</div>
+										{/if}
+									{/if}
+								</div>
+
+								<!-- Empty state hint -->
+								{#if !hasNextStep && !isGeneratingNextStep}
+									<p class="text-xs text-muted-foreground mt-2 italic">
+										Set a clear next action to keep momentum on this project
+									</p>
+								{/if}
 							</div>
 
 							<!-- Context Document - Main Focus -->

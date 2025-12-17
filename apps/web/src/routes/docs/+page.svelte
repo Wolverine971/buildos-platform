@@ -58,7 +58,7 @@
 			<div class="flex flex-col sm:flex-row gap-4 justify-center">
 				<a
 					href="#getting-started"
-					class="inline-flex items-center px-6 py-3 bg-accent text-accent-foreground font-semibold rounded-lg hover:bg-accent/90 transition-colors shadow-ink"
+					class="inline-flex items-center px-6 py-3 bg-accent text-accent-foreground font-semibold rounded-lg hover:bg-accent/90 transition-colors shadow-ink pressable"
 				>
 					<Zap class="w-5 h-5 mr-2" />
 					Quick Start Guide
@@ -82,7 +82,7 @@
 				<div class="lg:col-span-1">
 					<nav class="sticky top-8">
 						<div
-							class="rounded-lg border border-border bg-card shadow-ink p-6 relative"
+							class="rounded-lg border border-border bg-card shadow-ink p-6 relative tx tx-frame tx-weak"
 						>
 							<h3 class="font-semibold text-foreground mb-4">Documentation</h3>
 							<ul class="space-y-2">
@@ -157,7 +157,7 @@
 				<!-- Main Content -->
 				<div class="lg:col-span-3">
 					<div
-						class="rounded-lg border border-border bg-card shadow-ink p-8 relative space-y-12"
+						class="rounded-lg border border-border bg-card shadow-ink p-8 relative space-y-12 tx tx-grain tx-weak"
 					>
 						<!-- Getting Started -->
 						<section id="getting-started">
@@ -230,9 +230,7 @@
 						<!-- Navigation -->
 						<section id="navigation">
 							<h2 class="text-3xl font-bold text-foreground mb-6 flex items-center">
-								<BarChart3
-									class="w-7 h-7 mr-3 text-emerald-600 dark:text-emerald-400"
-								/>
+								<BarChart3 class="w-7 h-7 mr-3 text-foreground" />
 								Key Pages & Navigation
 							</h2>
 							<div class="prose dark:prose-invert max-w-none">
@@ -270,108 +268,74 @@
 									</div>
 
 									<div
-										class="bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-700 rounded-lg p-6"
+										class="bg-accent/10 border border-accent/30 rounded-lg p-6"
 									>
 										<div class="flex items-center mb-3">
-											<Brain
-												class="w-6 h-6 text-purple-600 dark:text-purple-400 mr-3"
-											/>
-											<h4
-												class="font-semibold text-purple-900 dark:text-purple-100"
-											>
+											<Brain class="w-6 h-6 text-accent mr-3" />
+											<h4 class="font-semibold text-foreground">
 												Brain Dump
 											</h4>
 										</div>
-										<p
-											class="text-sm text-purple-800 dark:text-purple-200 mb-2"
-										>
+										<p class="text-sm text-muted-foreground mb-2">
 											Apple Notes-style interface for:
 										</p>
-										<ul
-											class="text-xs text-purple-700 dark:text-purple-300 space-y-1"
-										>
-											<li class="text-purple-700 dark:text-purple-300">
+										<ul class="text-xs text-muted-foreground space-y-1">
+											<li class="text-muted-foreground">
 												• Voice or text input
 											</li>
-											<li class="text-purple-700 dark:text-purple-300">
+											<li class="text-muted-foreground">
 												• Project selection
 											</li>
-											<li class="text-purple-700 dark:text-purple-300">
+											<li class="text-muted-foreground">
 												• Creating new projects
 											</li>
-											<li class="text-purple-700 dark:text-purple-300">
+											<li class="text-muted-foreground">
 												• Adding quick notes
 											</li>
 										</ul>
 									</div>
 
-									<div
-										class="bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-700 rounded-lg p-6"
-									>
+									<div class="bg-muted border border-border rounded-lg p-6">
 										<div class="flex items-center mb-3">
-											<FolderOpen
-												class="w-6 h-6 text-emerald-600 dark:text-emerald-400 mr-3"
-											/>
-											<h4
-												class="font-semibold text-emerald-900 dark:text-emerald-100"
-											>
-												Projects
-											</h4>
+											<FolderOpen class="w-6 h-6 text-foreground mr-3" />
+											<h4 class="font-semibold text-foreground">Projects</h4>
 										</div>
-										<p
-											class="text-sm text-emerald-800 dark:text-emerald-200 mb-2"
-										>
+										<p class="text-sm text-muted-foreground mb-2">
 											View and manage all projects:
 										</p>
-										<ul
-											class="text-xs text-emerald-700 dark:text-emerald-300 space-y-1"
-										>
-											<li class="text-emerald-700 dark:text-emerald-300">
+										<ul class="text-xs text-muted-foreground space-y-1">
+											<li class="text-muted-foreground">
 												• Edit project context
 											</li>
-											<li class="text-emerald-700 dark:text-emerald-300">
+											<li class="text-muted-foreground">
 												• Manage tasks and notes
 											</li>
-											<li class="text-emerald-700 dark:text-emerald-300">
-												• Generate phases
-											</li>
-											<li class="text-emerald-700 dark:text-emerald-300">
+											<li class="text-muted-foreground">• Generate phases</li>
+											<li class="text-muted-foreground">
 												• Export context for LLMs
 											</li>
 										</ul>
 									</div>
 
-									<div
-										class="bg-orange-50 dark:bg-orange-900/30 border border-orange-200 dark:border-orange-700 rounded-lg p-6"
-									>
+									<div class="bg-muted border border-border rounded-lg p-6">
 										<div class="flex items-center mb-3">
-											<Mail
-												class="w-6 h-6 text-orange-600 dark:text-orange-400 mr-3"
-											/>
-											<h4
-												class="font-semibold text-orange-900 dark:text-orange-100"
-											>
-												Briefs
-											</h4>
+											<Mail class="w-6 h-6 text-foreground mr-3" />
+											<h4 class="font-semibold text-foreground">Briefs</h4>
 										</div>
-										<p
-											class="text-sm text-orange-800 dark:text-orange-200 mb-2"
-										>
+										<p class="text-sm text-muted-foreground mb-2">
 											AI-generated project updates:
 										</p>
-										<ul
-											class="text-xs text-orange-700 dark:text-orange-300 space-y-1"
-										>
-											<li class="text-orange-700 dark:text-orange-300">
+										<ul class="text-xs text-muted-foreground space-y-1">
+											<li class="text-muted-foreground">
 												• Individual project briefs
 											</li>
-											<li class="text-orange-700 dark:text-orange-300">
+											<li class="text-muted-foreground">
 												• Master daily briefings
 											</li>
-											<li class="text-orange-700 dark:text-orange-300">
+											<li class="text-muted-foreground">
 												• Customizable frequency
 											</li>
-											<li class="text-orange-700 dark:text-orange-300">
+											<li class="text-muted-foreground">
 												• Email delivery options
 											</li>
 										</ul>
@@ -412,9 +376,7 @@
 						<!-- How It Works -->
 						<section id="workflow">
 							<h2 class="text-3xl font-bold text-foreground mb-6 flex items-center">
-								<Target
-									class="w-7 h-7 mr-3 text-emerald-600 dark:text-emerald-400"
-								/>
+								<Target class="w-7 h-7 mr-3 text-foreground" />
 								How BuildOS Works
 							</h2>
 							<div class="prose dark:prose-invert max-w-none">
@@ -429,11 +391,9 @@
 										<!-- Step 1 -->
 										<div class="flex items-center space-x-4">
 											<div
-												class="flex items-center justify-center w-12 h-12 bg-purple-100 dark:bg-purple-900/50 border border-purple-200 dark:border-purple-700 rounded-full"
+												class="flex items-center justify-center w-12 h-12 bg-accent/20 border border-accent/30 rounded-full"
 											>
-												<Brain
-													class="w-6 h-6 text-purple-600 dark:text-purple-400"
-												/>
+												<Brain class="w-6 h-6 text-accent" />
 											</div>
 											<div class="flex-1">
 												<h4 class="font-semibold text-foreground">
@@ -469,11 +429,9 @@
 										<!-- Step 3 -->
 										<div class="flex items-center space-x-4">
 											<div
-												class="flex items-center justify-center w-12 h-12 bg-emerald-100 dark:bg-emerald-900/50 border border-emerald-200 dark:border-emerald-700 rounded-full"
+												class="flex items-center justify-center w-12 h-12 bg-muted border border-border rounded-full"
 											>
-												<FolderOpen
-													class="w-6 h-6 text-emerald-600 dark:text-emerald-400"
-												/>
+												<FolderOpen class="w-6 h-6 text-foreground" />
 											</div>
 											<div class="flex-1">
 												<h4 class="font-semibold text-foreground">
@@ -490,11 +448,9 @@
 										<!-- Step 4 -->
 										<div class="flex items-center space-x-4">
 											<div
-												class="flex items-center justify-center w-12 h-12 bg-orange-100 dark:bg-orange-900/50 border border-orange-200 dark:border-orange-700 rounded-full"
+												class="flex items-center justify-center w-12 h-12 bg-muted border border-border rounded-full"
 											>
-												<Copy
-													class="w-6 h-6 text-orange-600 dark:text-orange-400"
-												/>
+												<Copy class="w-6 h-6 text-foreground" />
 											</div>
 											<div class="flex-1">
 												<h4 class="font-semibold text-foreground">
@@ -511,11 +467,9 @@
 										<!-- Step 5 -->
 										<div class="flex items-center space-x-4">
 											<div
-												class="flex items-center justify-center w-12 h-12 bg-rose-100 dark:bg-rose-900/50 border border-rose-200 dark:border-rose-700 rounded-full"
+												class="flex items-center justify-center w-12 h-12 bg-muted border border-border rounded-full"
 											>
-												<Brain
-													class="w-6 h-6 text-rose-600 dark:text-rose-400"
-												/>
+												<Brain class="w-6 h-6 text-foreground" />
 											</div>
 											<div class="flex-1">
 												<h4 class="font-semibold text-foreground">
@@ -547,7 +501,7 @@
 						<!-- Brain Dump -->
 						<section id="brain-dump">
 							<h2 class="text-3xl font-bold text-foreground mb-6 flex items-center">
-								<Brain class="w-7 h-7 mr-3 text-purple-600 dark:text-purple-400" />
+								<Brain class="w-7 h-7 mr-3 text-accent" />
 								Brain Dump: The Starting Point
 							</h2>
 							<div class="prose dark:prose-invert max-w-none">
@@ -589,15 +543,11 @@
 								</div>
 
 								<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-									<div
-										class="bg-emerald-50 dark:bg-emerald-900/20 rounded-lg p-6"
-									>
+									<div class="bg-muted rounded-lg p-6">
 										<h4
 											class="font-semibold text-foreground mb-2 flex items-center"
 										>
-											<FolderOpen
-												class="w-5 h-5 mr-2 text-emerald-600 dark:text-emerald-400"
-											/>
+											<FolderOpen class="w-5 h-5 mr-2 text-foreground" />
 											Existing Project
 										</h4>
 										<p class="text-sm text-muted-foreground">
@@ -615,13 +565,11 @@
 											Create a new project with goals, phases, and context
 										</p>
 									</div>
-									<div class="bg-amber-50 dark:bg-amber-900/20 rounded-lg p-6">
+									<div class="bg-muted rounded-lg p-6">
 										<h4
 											class="font-semibold text-foreground mb-2 flex items-center"
 										>
-											<StickyNote
-												class="w-5 h-5 mr-2 text-amber-600 dark:text-amber-400"
-											/>
+											<StickyNote class="w-5 h-5 mr-2 text-foreground" />
 											Quick Note
 										</h4>
 										<p class="text-sm text-muted-foreground">
@@ -653,7 +601,7 @@
 								<h3 class="text-xl font-semibold text-foreground mb-4">
 									Best Practices for New Projects
 								</h3>
-								<div class="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-6 mb-6">
+								<div class="bg-accent/10 rounded-lg p-6 mb-6">
 									<p class="text-muted-foreground mb-4">
 										When creating a new project, include these elements in your
 										brain dump:
@@ -694,7 +642,7 @@
 								<div class="space-y-3 mb-6">
 									<div class="flex items-center space-x-3">
 										<CheckCircle
-											class="w-5 h-5 text-emerald-600 dark:text-emerald-400 flex-shrink-0"
+											class="w-5 h-5 text-foreground flex-shrink-0"
 										/>
 										<span class="text-muted-foreground"
 											>Preview project context sections</span
@@ -702,7 +650,7 @@
 									</div>
 									<div class="flex items-center space-x-3">
 										<CheckCircle
-											class="w-5 h-5 text-emerald-600 dark:text-emerald-400 flex-shrink-0"
+											class="w-5 h-5 text-foreground flex-shrink-0"
 										/>
 										<span class="text-muted-foreground"
 											>Review generated tasks and notes</span
@@ -710,7 +658,7 @@
 									</div>
 									<div class="flex items-center space-x-3">
 										<CheckCircle
-											class="w-5 h-5 text-emerald-600 dark:text-emerald-400 flex-shrink-0"
+											class="w-5 h-5 text-foreground flex-shrink-0"
 										/>
 										<span class="text-muted-foreground"
 											>Edit before final approval</span
@@ -718,7 +666,7 @@
 									</div>
 									<div class="flex items-center space-x-3">
 										<CheckCircle
-											class="w-5 h-5 text-emerald-600 dark:text-emerald-400 flex-shrink-0"
+											class="w-5 h-5 text-foreground flex-shrink-0"
 										/>
 										<span class="text-muted-foreground"
 											>Execute with confidence</span
@@ -796,7 +744,7 @@
 								<div class="space-y-4 mb-8">
 									<div class="flex items-start space-x-3">
 										<div
-											class="w-6 h-6 bg-primary-600 text-white rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 mt-0.5"
+											class="w-6 h-6 bg-accent text-white rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 mt-0.5"
 										>
 											1
 										</div>
@@ -810,7 +758,7 @@
 									</div>
 									<div class="flex items-start space-x-3">
 										<div
-											class="w-6 h-6 bg-primary-600 text-white rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 mt-0.5"
+											class="w-6 h-6 bg-accent text-white rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 mt-0.5"
 										>
 											2
 										</div>
@@ -824,7 +772,7 @@
 									</div>
 									<div class="flex items-start space-x-3">
 										<div
-											class="w-6 h-6 bg-primary-600 text-white rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 mt-0.5"
+											class="w-6 h-6 bg-accent text-white rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 mt-0.5"
 										>
 											3
 										</div>
@@ -838,7 +786,7 @@
 									</div>
 									<div class="flex items-start space-x-3">
 										<div
-											class="w-6 h-6 bg-primary-600 text-white rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 mt-0.5"
+											class="w-6 h-6 bg-accent text-white rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 mt-0.5"
 										>
 											4
 										</div>
@@ -886,13 +834,9 @@
 								</div>
 
 								<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-									<div
-										class="bg-emerald-50 dark:bg-emerald-900/20 rounded-lg p-6"
-									>
+									<div class="bg-muted rounded-lg p-6">
 										<div class="flex items-center mb-3">
-											<Edit3
-												class="w-5 h-5 text-emerald-600 dark:text-emerald-400 mr-2"
-											/>
+											<Edit3 class="w-5 h-5 text-foreground mr-2" />
 											<h4 class="font-semibold text-foreground">
 												Rich Markdown Editor
 											</h4>
@@ -902,11 +846,9 @@
 											formatting for comprehensive project documentation
 										</p>
 									</div>
-									<div class="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-6">
+									<div class="bg-accent/10 rounded-lg p-6">
 										<div class="flex items-center mb-3">
-											<Copy
-												class="w-5 h-5 text-purple-600 dark:text-purple-400 mr-2"
-											/>
+											<Copy class="w-5 h-5 text-accent mr-2" />
 											<h4 class="font-semibold text-foreground">
 												One-Click Export
 											</h4>
@@ -921,9 +863,7 @@
 								<h3 class="text-xl font-semibold text-foreground mb-4">
 									The LLM Collaboration Workflow
 								</h3>
-								<div
-									class="bg-emerald-50 dark:bg-emerald-900/20 rounded-lg p-6 mb-6"
-								>
+								<div class="bg-muted rounded-lg p-6 mb-6">
 									<h4 class="font-semibold text-foreground mb-3">
 										🔄 The Power Loop
 									</h4>
@@ -961,7 +901,7 @@
 									</p>
 								</div>
 
-								<div class="bg-amber-50 dark:bg-amber-900/20 rounded-lg p-6">
+								<div class="bg-muted rounded-lg p-6">
 									<h4 class="font-semibold text-foreground mb-3">
 										💡 Why Context Matters
 									</h4>
@@ -978,9 +918,7 @@
 						<!-- Phases & Task Management -->
 						<section id="phases">
 							<h2 class="text-3xl font-bold text-foreground mb-6 flex items-center">
-								<Calendar
-									class="w-7 h-7 mr-3 text-emerald-600 dark:text-emerald-400"
-								/>
+								<Calendar class="w-7 h-7 mr-3 text-foreground" />
 								Phases & Task Management
 							</h2>
 							<div class="prose dark:prose-invert max-w-none">
@@ -992,7 +930,7 @@
 								<h3 class="text-xl font-semibold text-foreground mb-4">
 									Phase Generation
 								</h3>
-								<div class="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-6 mb-6">
+								<div class="bg-accent/10 rounded-lg p-6 mb-6">
 									<p class="text-muted-foreground mb-4">
 										Click the "Generate Phases" button on any project to create
 										a structured execution plan:
@@ -1045,15 +983,11 @@
 											</li>
 										</ul>
 									</div>
-									<div
-										class="bg-emerald-50 dark:bg-emerald-900/20 rounded-lg p-6"
-									>
+									<div class="bg-muted rounded-lg p-6">
 										<h4
 											class="font-semibold text-foreground mb-2 flex items-center"
 										>
-											<BarChart3
-												class="w-5 h-5 mr-2 text-emerald-600 dark:text-emerald-400"
-											/>
+											<BarChart3 class="w-5 h-5 mr-2 text-foreground" />
 											Timeline View
 										</h4>
 										<p class="text-sm text-muted-foreground mb-3">
@@ -1082,7 +1016,7 @@
 								<div class="space-y-4 mb-6">
 									<div class="flex items-start space-x-3">
 										<CheckCircle
-											class="w-5 h-5 text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-0.5"
+											class="w-5 h-5 text-foreground flex-shrink-0 mt-0.5"
 										/>
 										<div>
 											<p class="text-muted-foreground">
@@ -1094,7 +1028,7 @@
 									</div>
 									<div class="flex items-start space-x-3">
 										<CheckCircle
-											class="w-5 h-5 text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-0.5"
+											class="w-5 h-5 text-foreground flex-shrink-0 mt-0.5"
 										/>
 										<div>
 											<p class="text-muted-foreground">
@@ -1106,7 +1040,7 @@
 									</div>
 									<div class="flex items-start space-x-3">
 										<CheckCircle
-											class="w-5 h-5 text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-0.5"
+											class="w-5 h-5 text-foreground flex-shrink-0 mt-0.5"
 										/>
 										<div>
 											<p class="text-muted-foreground">
@@ -1118,7 +1052,7 @@
 									</div>
 									<div class="flex items-start space-x-3">
 										<CheckCircle
-											class="w-5 h-5 text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-0.5"
+											class="w-5 h-5 text-foreground flex-shrink-0 mt-0.5"
 										/>
 										<div>
 											<p class="text-muted-foreground">
@@ -1130,7 +1064,7 @@
 									</div>
 								</div>
 
-								<div class="bg-amber-50 dark:bg-amber-900/20 rounded-lg p-6">
+								<div class="bg-muted rounded-lg p-6">
 									<h4 class="font-semibold text-foreground mb-3">
 										🎯 Phase Management Tips
 									</h4>
@@ -1162,9 +1096,7 @@
 						<!-- Calendar Integration -->
 						<section id="calendar">
 							<h2 class="text-3xl font-bold text-foreground mb-6 flex items-center">
-								<Calendar
-									class="w-7 h-7 mr-3 text-emerald-600 dark:text-emerald-400"
-								/>
+								<Calendar class="w-7 h-7 mr-3 text-foreground" />
 								Calendar Integration
 							</h2>
 							<div class="prose dark:prose-invert max-w-none">
@@ -1206,13 +1138,9 @@
 									Smart Scheduling Features
 								</h3>
 								<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-									<div
-										class="bg-emerald-50 dark:bg-emerald-900/20 rounded-lg p-6"
-									>
+									<div class="bg-muted rounded-lg p-6">
 										<div class="flex items-center mb-3">
-											<Calendar
-												class="w-5 h-5 text-emerald-600 dark:text-emerald-400 mr-2"
-											/>
+											<Calendar class="w-5 h-5 text-foreground mr-2" />
 											<h4 class="font-semibold text-foreground">
 												One-Click Scheduling
 											</h4>
@@ -1239,7 +1167,7 @@
 								<h3 class="text-xl font-semibold text-foreground mb-4">
 									Calendar vs Task Dates
 								</h3>
-								<div class="bg-amber-50 dark:bg-amber-900/20 rounded-lg p-6 mb-6">
+								<div class="bg-muted rounded-lg p-6 mb-6">
 									<h4 class="font-semibold text-foreground mb-3">
 										📅 Important Distinction
 									</h4>
@@ -1271,7 +1199,7 @@
 								<div class="space-y-4 mb-6">
 									<div class="flex items-start space-x-3">
 										<div
-											class="w-6 h-6 bg-emerald-600 text-white rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 mt-0.5"
+											class="w-6 h-6 bg-accent text-white rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 mt-0.5"
 										>
 											1
 										</div>
@@ -1284,7 +1212,7 @@
 									</div>
 									<div class="flex items-start space-x-3">
 										<div
-											class="w-6 h-6 bg-emerald-600 text-white rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 mt-0.5"
+											class="w-6 h-6 bg-accent text-white rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 mt-0.5"
 										>
 											2
 										</div>
@@ -1298,7 +1226,7 @@
 									</div>
 									<div class="flex items-start space-x-3">
 										<div
-											class="w-6 h-6 bg-emerald-600 text-white rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 mt-0.5"
+											class="w-6 h-6 bg-accent text-white rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 mt-0.5"
 										>
 											3
 										</div>
@@ -1312,7 +1240,7 @@
 									</div>
 									<div class="flex items-start space-x-3">
 										<div
-											class="w-6 h-6 bg-emerald-600 text-white rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 mt-0.5"
+											class="w-6 h-6 bg-accent text-white rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 mt-0.5"
 										>
 											4
 										</div>
@@ -1342,7 +1270,7 @@
 						<!-- Daily Briefs -->
 						<section id="daily-briefs">
 							<h2 class="text-3xl font-bold text-foreground mb-6 flex items-center">
-								<Mail class="w-7 h-7 mr-3 text-orange-600 dark:text-orange-400" />
+								<Mail class="w-7 h-7 mr-3 text-foreground" />
 								Daily Briefs
 							</h2>
 							<div class="prose dark:prose-invert max-w-none">
@@ -1366,9 +1294,7 @@
 											recommendations
 										</p>
 									</div>
-									<div
-										class="bg-emerald-50 dark:bg-emerald-900/20 rounded-lg p-6"
-									>
+									<div class="bg-muted rounded-lg p-6">
 										<h4 class="font-semibold text-foreground mb-2">
 											Master Daily Briefings
 										</h4>
@@ -1406,7 +1332,7 @@
 								<h3 class="text-xl font-semibold text-foreground mb-4">
 									What's Included in Briefs
 								</h3>
-								<div class="bg-orange-50 dark:bg-orange-900/20 rounded-lg p-6 mb-6">
+								<div class="bg-muted rounded-lg p-6 mb-6">
 									<p class="text-muted-foreground mb-4">
 										Each brief is generated from your rich project context and
 										includes:
@@ -1440,7 +1366,7 @@
 									</ul>
 								</div>
 
-								<div class="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-6">
+								<div class="bg-accent/10 rounded-lg p-6">
 									<h4 class="font-semibold text-foreground mb-3">
 										📧 Smart Intelligence Delivery
 									</h4>
@@ -1457,7 +1383,7 @@
 						<!-- LLM Integration -->
 						<section id="llm-integration">
 							<h2 class="text-3xl font-bold text-foreground mb-6 flex items-center">
-								<Copy class="w-7 h-7 mr-3 text-purple-600 dark:text-purple-400" />
+								<Copy class="w-7 h-7 mr-3 text-accent" />
 								LLM Integration: Your AI Collaboration Advantage
 							</h2>
 							<div class="prose dark:prose-invert max-w-none">
@@ -1473,7 +1399,7 @@
 								<div class="space-y-4 mb-8">
 									<div class="flex items-start space-x-3">
 										<div
-											class="w-6 h-6 bg-purple-600 text-white rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 mt-0.5"
+											class="w-6 h-6 bg-accent text-white rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 mt-0.5"
 										>
 											1
 										</div>
@@ -1487,7 +1413,7 @@
 									</div>
 									<div class="flex items-start space-x-3">
 										<div
-											class="w-6 h-6 bg-purple-600 text-white rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 mt-0.5"
+											class="w-6 h-6 bg-accent text-white rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 mt-0.5"
 										>
 											2
 										</div>
@@ -1501,7 +1427,7 @@
 									</div>
 									<div class="flex items-start space-x-3">
 										<div
-											class="w-6 h-6 bg-purple-600 text-white rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 mt-0.5"
+											class="w-6 h-6 bg-accent text-white rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 mt-0.5"
 										>
 											3
 										</div>
@@ -1516,7 +1442,7 @@
 									</div>
 									<div class="flex items-start space-x-3">
 										<div
-											class="w-6 h-6 bg-purple-600 text-white rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 mt-0.5"
+											class="w-6 h-6 bg-accent text-white rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 mt-0.5"
 										>
 											4
 										</div>
@@ -1553,9 +1479,7 @@
 											</li>
 										</ul>
 									</div>
-									<div
-										class="bg-emerald-50 dark:bg-emerald-900/20 rounded-lg p-6"
-									>
+									<div class="bg-muted rounded-lg p-6">
 										<h4 class="font-semibold text-foreground mb-2">
 											Technical Implementation
 										</h4>
@@ -1574,7 +1498,7 @@
 											</li>
 										</ul>
 									</div>
-									<div class="bg-amber-50 dark:bg-amber-900/20 rounded-lg p-6">
+									<div class="bg-muted rounded-lg p-6">
 										<h4 class="font-semibold text-foreground mb-2">
 											Content Creation
 										</h4>
@@ -1593,7 +1517,7 @@
 											</li>
 										</ul>
 									</div>
-									<div class="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-6">
+									<div class="bg-accent/10 rounded-lg p-6">
 										<h4 class="font-semibold text-foreground mb-2">
 											Problem Solving
 										</h4>
@@ -1618,7 +1542,7 @@
 									The Continuous Intelligence Loop
 								</h3>
 								<div
-									class="bg-gradient-to-r from-purple-50 to-primary-50 dark:from-purple-900/20 dark:to-primary-900/20 rounded-lg p-6 mb-6"
+									class="bg-accent/10 border border-accent/30 rounded-lg p-6 mb-6"
 								>
 									<h4 class="font-semibold text-foreground mb-3">
 										🔄 BuildOS + LLMs = Compound Intelligence
@@ -1644,7 +1568,7 @@
 									</ol>
 								</div>
 
-								<div class="bg-emerald-50 dark:bg-emerald-900/20 rounded-lg p-6">
+								<div class="bg-muted rounded-lg p-6">
 									<h4 class="font-semibold text-foreground mb-3">
 										💡 Why This Matters
 									</h4>
@@ -1674,7 +1598,7 @@
 			<div class="flex flex-col sm:flex-row gap-4 justify-center">
 				<a
 					href="/auth/register"
-					class="inline-flex items-center px-6 py-3 bg-accent text-accent-foreground font-semibold rounded-lg hover:bg-accent/90 transition-colors shadow-ink"
+					class="inline-flex items-center px-6 py-3 bg-accent text-accent-foreground font-semibold rounded-lg hover:bg-accent/90 transition-colors shadow-ink pressable"
 				>
 					Get Started Now <ArrowRight class="w-4 h-4 ml-2" />
 				</a>

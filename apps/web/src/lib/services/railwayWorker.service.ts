@@ -105,6 +105,7 @@ export class RailwayWorkerService {
 			timezone?: string; // Add timezone support
 			includeProjects?: string[];
 			excludeProjects?: string[];
+			useOntology?: boolean; // Use ontology-based brief generation
 		}
 	): Promise<QueueBriefResponse> {
 		const targetTime = options?.scheduledFor || new Date();
@@ -125,7 +126,8 @@ export class RailwayWorkerService {
 				forceRegenerate: true,
 				options: {
 					includeProjects: options?.includeProjects,
-					excludeProjects: options?.excludeProjects
+					excludeProjects: options?.excludeProjects,
+					useOntology: options?.useOntology // Pass ontology flag
 				}
 			}),
 			signal: AbortSignal.timeout(this.TIMEOUT)

@@ -8,7 +8,11 @@
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { DOCUMENT_STATES } from '$lib/types/onto';
-import { logUpdateAsync, logDeleteAsync, getChangeSourceFromRequest } from '$lib/services/async-activity-logger';
+import {
+	logUpdateAsync,
+	logDeleteAsync,
+	getChangeSourceFromRequest
+} from '$lib/services/async-activity-logger';
 
 type Locals = App.Locals;
 

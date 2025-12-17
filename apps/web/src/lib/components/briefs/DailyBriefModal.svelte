@@ -216,7 +216,10 @@
 	}
 
 	async function regenerateBrief() {
-		if (!briefDate || !browser) return;
+		if (!briefDate || !browser) {
+			console.warn('Cannot regenerate: briefDate is', briefDate);
+			return;
+		}
 
 		// Get user from page data
 		const userData = $page.data?.user;
@@ -225,18 +228,14 @@
 			return;
 		}
 
-		// Get supabase client from page data
+		// Get supabase client from page data (may be undefined, service will handle it)
 		const supabaseClient = $page.data?.supabase;
-		if (!supabaseClient) {
-			toastService.error('Could not connect to database. Please refresh the page.');
-			return;
-		}
 
 		try {
 			isRegenerating = true;
 			regenerateProgress = { message: 'Starting regeneration...', percentage: 0 };
 
-			// Start streaming generation with force regenerate
+			// Start streaming generation with force regenerate and ontology flag
 			await BriefClientService.startStreamingGeneration({
 				briefDate,
 				forceRegenerate: true,
@@ -246,7 +245,8 @@
 					is_admin: userData.is_admin || false
 				},
 				timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-				supabaseClient
+				supabaseClient,
+				useOntology: true // Use ontology-based brief generation
 			});
 		} catch (err) {
 			console.error('Failed to start regeneration:', err);
@@ -402,7 +402,6 @@
 							variant="primary"
 							size="sm"
 							icon={RefreshCw}
-							disabled={isRegenerating || loading}
 							class="w-full sm:w-auto ml-auto"
 						>
 							{isRegenerating ? 'Regenerating...' : 'Regenerate Brief'}

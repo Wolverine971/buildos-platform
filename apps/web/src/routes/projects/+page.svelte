@@ -20,6 +20,7 @@
 	import { ontologyGraphStore } from '$lib/stores/ontology-graph.store';
 	import { getProjectStateBadgeClass } from '$lib/utils/ontology-badge-styles';
 	import { ListChecks, Layers, Target, Calendar, FileText } from 'lucide-svelte';
+	import ProjectCardNextStep from '$lib/components/project/ProjectCardNextStep.svelte';
 
 	let { data } = $props();
 
@@ -725,30 +726,13 @@
 							</p>
 						{/if}
 
-						{#if project.facet_context || project.facet_scale || project.facet_stage}
-							<div class="mb-4 flex flex-wrap gap-2">
-								{#if project.facet_context}
-									<span
-										class="rounded-lg border border-accent/30 bg-accent/10 px-2 py-0.5 text-xs font-bold text-accent"
-									>
-										{project.facet_context}
-									</span>
-								{/if}
-								{#if project.facet_scale}
-									<span
-										class="rounded-lg border border-muted-foreground/30 bg-muted/30 px-2 py-0.5 text-xs font-bold text-muted-foreground"
-									>
-										{project.facet_scale}
-									</span>
-								{/if}
-								{#if project.facet_stage}
-									<span
-										class="rounded-lg border border-foreground/20 bg-muted/50 px-2 py-0.5 text-xs font-bold text-foreground/80"
-									>
-										{project.facet_stage}
-									</span>
-								{/if}
-							</div>
+						<!-- Next Step - Shows short version, expandable to long -->
+						{#if project.next_step_short}
+							<ProjectCardNextStep
+								nextStepShort={project.next_step_short}
+								nextStepLong={project.next_step_long}
+								class="mb-4"
+							/>
 						{/if}
 
 						<div

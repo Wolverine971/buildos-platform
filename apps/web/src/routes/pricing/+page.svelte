@@ -108,7 +108,7 @@
 			<div class="max-w-md mx-auto" role="region" aria-label="Pricing plan">
 				<!-- BuildOS Pro -->
 				<article
-					class="rounded-lg border border-border bg-card shadow-ink p-8 relative"
+					class="rounded-lg border border-border bg-card shadow-ink p-8 relative tx tx-grain tx-weak"
 					aria-labelledby="pro-plan-heading"
 				>
 					{#if data.trialStatus?.is_in_trial}
@@ -180,7 +180,7 @@
 					{:else if data.hasActiveSubscription}
 						<a
 							href="/profile?tab=billing"
-							class="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3 px-6 rounded-lg font-semibold transition-colors text-center block"
+							class="w-full bg-accent hover:opacity-90 text-accent-foreground py-3 px-6 rounded-lg font-semibold transition-colors text-center block shadow-ink pressable"
 						>
 							Manage Subscription
 						</a>
@@ -219,7 +219,7 @@
 			</div>
 
 			<div class="space-y-8" role="region" aria-label="Frequently asked questions">
-				<article class="bg-muted rounded-lg p-8">
+				<article class="bg-muted rounded-lg p-8 border border-border tx tx-frame tx-weak">
 					<h3 class="text-xl font-semibold text-foreground mb-4">
 						What happens after my 14-day trial?
 					</h3>
@@ -231,7 +231,7 @@
 					</p>
 				</article>
 
-				<article class="bg-muted rounded-lg p-8">
+				<article class="bg-muted rounded-lg p-8 border border-border tx tx-frame tx-weak">
 					<h3 class="text-xl font-semibold text-foreground mb-4">
 						Do I need a credit card to start?
 					</h3>
@@ -242,7 +242,7 @@
 					</p>
 				</article>
 
-				<article class="bg-muted rounded-lg p-8">
+				<article class="bg-muted rounded-lg p-8 border border-border tx tx-frame tx-weak">
 					<h3 class="text-xl font-semibold text-foreground mb-4">
 						What happens to my data if I cancel?
 					</h3>
@@ -252,7 +252,7 @@
 					</p>
 				</article>
 
-				<article class="bg-muted rounded-lg p-8">
+				<article class="bg-muted rounded-lg p-8 border border-border tx tx-frame tx-weak">
 					<h3 class="text-xl font-semibold text-foreground mb-4">
 						Can I cancel anytime?
 					</h3>

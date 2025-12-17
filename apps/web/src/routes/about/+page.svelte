@@ -317,8 +317,10 @@
 			</header>
 
 			<div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-				<article class="bg-card rounded-2xl p-6 text-center">
-					<div class="text-3xl font-bold text-blue-600 mb-2" aria-label="MVP phase">
+				<article
+					class="bg-card rounded-2xl p-6 text-center shadow-ink tx tx-frame tx-weak border border-border"
+				>
+					<div class="text-3xl font-bold text-accent mb-2" aria-label="MVP phase">
 						MVP
 					</div>
 					<h3 class="font-semibold text-foreground mb-2">Building Phase</h3>
@@ -327,8 +329,10 @@
 					</p>
 				</article>
 
-				<article class="bg-card rounded-2xl p-6 text-center">
-					<div class="text-3xl font-bold text-green-600 mb-2" aria-label="July launch">
+				<article
+					class="bg-card rounded-2xl p-6 text-center shadow-ink tx tx-frame tx-weak border border-border"
+				>
+					<div class="text-3xl font-bold text-accent mb-2" aria-label="July launch">
 						July
 					</div>
 					<h3 class="font-semibold text-foreground mb-2">Beta Launch</h3>
@@ -337,8 +341,10 @@
 					</p>
 				</article>
 
-				<article class="bg-card rounded-2xl p-6 text-center">
-					<div class="text-3xl font-bold text-purple-600 mb-2" aria-label="Solo founder">
+				<article
+					class="bg-card rounded-2xl p-6 text-center shadow-ink tx tx-frame tx-weak border border-border"
+				>
+					<div class="text-3xl font-bold text-accent mb-2" aria-label="Solo founder">
 						1
 					</div>
 					<h3 class="font-semibold text-foreground mb-2">Solo Founder</h3>

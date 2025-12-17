@@ -33,7 +33,10 @@ import {
 	VALID_RELS,
 	type EdgeInput
 } from '$lib/services/ontology/edge-direction';
-import { logActivitiesAsync, getChangeSourceFromRequest } from '$lib/services/async-activity-logger';
+import {
+	logActivitiesAsync,
+	getChangeSourceFromRequest
+} from '$lib/services/async-activity-logger';
 
 const VALID_KINDS = [
 	'task',

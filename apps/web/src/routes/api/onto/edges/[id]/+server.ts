@@ -66,7 +66,15 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 
 		// Log activity async (non-blocking)
 		if (projectId) {
-			logDeleteAsync(supabase, projectId, 'edge', edgeId, edgeDataForLog, actorId, getChangeSourceFromRequest(request));
+			logDeleteAsync(
+				supabase,
+				projectId,
+				'edge',
+				edgeId,
+				edgeDataForLog,
+				actorId,
+				getChangeSourceFromRequest(request)
+			);
 		}
 
 		return ApiResponse.success({ deleted: true });
