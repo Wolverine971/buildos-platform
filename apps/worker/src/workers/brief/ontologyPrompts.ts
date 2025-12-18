@@ -17,6 +17,7 @@ import type {
 	ProjectBriefData,
 	RecentUpdates
 } from './ontologyBriefTypes.js';
+import { parseISO } from 'date-fns';
 import { getWorkMode } from './ontologyBriefDataLoader.js';
 
 // ============================================================================
@@ -43,7 +44,7 @@ function formatGoalProgress(goal: GoalProgress): string {
 }
 
 function formatTaskForPrompt(task: OntoTask, projectName?: string): string {
-	const priority = task.priority !== null && task.priority >= 8 ? ' [HIGH]' : '';
+	const priority = task.priority !== null && task.priority <= 2 ? ` [P${task.priority}]` : '';
 	const workMode = getWorkMode(task.type_key);
 	const workModeStr = workMode ? ` (${workMode})` : '';
 	const projectStr = projectName ? ` | ${projectName}` : '';
@@ -138,6 +139,8 @@ ${holidays && holidays.length > 0 ? `Holidays: ${holidays.join(', ')}\n` : ''}
 - Overdue Tasks: ${briefData.overdueTasks.length}
 - High Priority Tasks: ${briefData.highPriorityCount}
 - Active Risks: ${briefData.risks.length}
+- Requirements: ${briefData.requirements.length}
+- Decisions: ${briefData.decisions.length}
 
 `;
 
@@ -221,6 +224,27 @@ ${holidays && holidays.length > 0 ? `Holidays: ${holidays.join(', ')}\n` : ''}
 			prompt += '\n';
 		}
 
+		// Requirements
+		if (briefData.requirements.length > 0) {
+			prompt += `## Requirements\n`;
+			for (const req of briefData.requirements.slice(0, 5)) {
+				prompt += `- ${req.text}\n`;
+			}
+			prompt += '\n';
+		}
+
+		// Decisions
+		if (briefData.decisions.length > 0) {
+			prompt += `## Recent Decisions\n`;
+			const recentDecisions = [...briefData.decisions].sort(
+				(a, b) => parseISO(b.decision_at).getTime() - parseISO(a.decision_at).getTime()
+			);
+			for (const decision of recentDecisions.slice(0, 5)) {
+				prompt += `- ${decision.title}\n`;
+			}
+			prompt += '\n';
+		}
+
 		// Recent Updates
 		const totalUpdates =
 			briefData.recentUpdates.tasks.length +
@@ -231,7 +255,7 @@ ${holidays && holidays.length > 0 ? `Holidays: ${holidays.join(', ')}\n` : ''}
 		if (totalUpdates > 0) {
 			prompt += `## Recent Activity (Last 24h)\n`;
 			prompt += `- ${briefData.recentUpdates.tasks.length} tasks updated\n`;
-			prompt += `- ${briefData.recentUpdates.goals.length} goals updated\n`;
+			prompt += `- ${briefData.recentUpdates.goals.length} goals with activity\n`;
 			prompt += `- ${briefData.recentUpdates.outputs.length} outputs updated\n`;
 			prompt += `- ${briefData.recentUpdates.documents.length} documents updated\n`;
 			prompt += '\n';
@@ -253,7 +277,9 @@ ${holidays && holidays.length > 0 ? `Holidays: ${holidays.join(', ')}\n` : ''}
 				prompt += `- Next Milestone: ${project.nextMilestone}\n`;
 			}
 			if (project.goals.length > 0) {
-				const activeGoals = project.goals.filter((g) => g.goal.state_key !== 'achieved');
+				const activeGoals = project.goals.filter(
+					(g) => g.goal.state_key !== 'achieved' && g.goal.state_key !== 'abandoned'
+				);
 				if (activeGoals.length > 0) {
 					prompt += `- Goal Progress:\n`;
 					for (const goal of activeGoals.slice(0, 2)) {
@@ -341,6 +367,8 @@ ${holidays && holidays.length > 0 ? `Holidays: ${holidays.join(', ')}\n` : ''}
 - High Priority: ${briefData.highPriorityCount}
 - Blocked: ${briefData.blockedTasks.length}
 - Overdue: ${briefData.overdueTasks.length}
+- Requirements: ${briefData.requirements.length}
+- Decisions: ${briefData.decisions.length}
 
 ## Goal Status
 - Active Goals: ${activeGoals.length}
@@ -354,6 +382,27 @@ ${holidays && holidays.length > 0 ? `Holidays: ${holidays.join(', ')}\n` : ''}
 - Active Risks: ${briefData.risks.length}
 
 `;
+
+		// Requirements & decisions (brief)
+		if (briefData.requirements.length > 0 || briefData.decisions.length > 0) {
+			prompt += `## Requirements & Decisions\n`;
+			if (briefData.requirements.length > 0) {
+				prompt += `- Requirements: ${briefData.requirements
+					.slice(0, 3)
+					.map((r) => r.text)
+					.join('; ')}\n`;
+			}
+			if (briefData.decisions.length > 0) {
+				const recentDecisions = [...briefData.decisions].sort(
+					(a, b) => parseISO(b.decision_at).getTime() - parseISO(a.decision_at).getTime()
+				);
+				prompt += `- Recent decisions: ${recentDecisions
+					.slice(0, 3)
+					.map((d) => d.title)
+					.join('; ')}\n`;
+			}
+			prompt += '\n';
+		}
 
 		// Add goal details
 		if (activeGoals.length > 0) {

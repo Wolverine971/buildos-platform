@@ -295,6 +295,8 @@ export interface ProjectBriefData {
 	project: OntoProject;
 	goals: GoalProgress[];
 	outputs: OutputStatus[];
+	requirements: OntoRequirement[];
+	decisions: OntoDecision[];
 	nextSteps: string[];
 	nextMilestone: string | null;
 	activePlan: OntoPlan | null;

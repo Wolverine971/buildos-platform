@@ -126,18 +126,18 @@ The current daily brief includes:
 
 ### 2.1 Entity Types for Daily Brief
 
-| Entity           | Table               | Purpose in Brief                                 |
-| ---------------- | ------------------- | ------------------------------------------------ |
+| Entity           | Table               | Purpose in Brief                                               |
+| ---------------- | ------------------- | -------------------------------------------------------------- |
 | **Projects**     | `onto_projects`     | Root work units with facets and next_step_short/next_step_long |
-| **Tasks**        | `onto_tasks`        | Actionable items with work modes                 |
-| **Goals**        | `onto_goals`        | Strategic objectives and progress                |
-| **Plans**        | `onto_plans`        | Logical task groupings (replaces phases)         |
-| **Milestones**   | `onto_milestones`   | Key dates and deadlines                          |
-| **Risks**        | `onto_risks`        | Active risks requiring attention                 |
-| **Documents**    | `onto_documents`    | Context and reference materials                  |
-| **Outputs**      | `onto_outputs`      | Produced/target artifacts for outcomes           |
-| **Requirements** | `onto_requirements` | Constraints/acceptance criteria (optional)       |
-| **Decisions**    | `onto_decisions`    | Recent decisions/ADRs (optional, include if any) |
+| **Tasks**        | `onto_tasks`        | Actionable items with work modes                               |
+| **Goals**        | `onto_goals`        | Strategic objectives and progress                              |
+| **Plans**        | `onto_plans`        | Logical task groupings (replaces phases)                       |
+| **Milestones**   | `onto_milestones`   | Key dates and deadlines                                        |
+| **Risks**        | `onto_risks`        | Active risks requiring attention                               |
+| **Documents**    | `onto_documents`    | Context and reference materials                                |
+| **Outputs**      | `onto_outputs`      | Produced/target artifacts for outcomes                         |
+| **Requirements** | `onto_requirements` | Constraints/acceptance criteria (optional)                     |
+| **Decisions**    | `onto_decisions`    | Recent decisions/ADRs (optional, include if any)               |
 
 ### 2.2 Graph Relationships (onto_edges)
 
@@ -238,7 +238,7 @@ async function getOntoProjectsWithData(
 		.from('onto_projects')
 		.select('*')
 		.eq('created_by', actor.id)
-		.neq('state_key', 'cancelled');
+		.in('state_key', ['planning', 'active']);
 
 	if (!projects || projects.length === 0) return [];
 	const projectIds = projects.map((p) => p.id);
@@ -478,7 +478,7 @@ function calculateGoalProgress(goal: OntoGoal, tasks: OntoTask[], edges: OntoEdg
 - **{Goal Name}**: {Progress}% complete ({X}/{Y} tasks)
     - Status: {on_track|at_risk|behind}
     - Key contributing tasks today: {task list}
-    - Recent activity: {created_at (goals recency uses created_at)}
+    - Recent activity: {created_at or supporting task updated_at (goals have no updated_at)}
 
 ### Outputs In Flight
 
@@ -545,7 +545,7 @@ function calculateGoalProgress(goal: OntoGoal, tasks: OntoTask[], edges: OntoEdg
 
 ### Recently Updated (24h)
 
-- Tasks (updated_at), Goals (created_at), Outputs/Documents (updated_at) touched in the last 24h
+- Tasks (updated_at), Goals (created_at or supporting task updated_at), Outputs/Documents (updated_at) touched in the last 24h
 
 ## 📊 Project Status
 

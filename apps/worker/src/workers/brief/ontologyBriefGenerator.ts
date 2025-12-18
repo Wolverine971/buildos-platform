@@ -148,7 +148,9 @@ function formatOntologyProjectBrief(project: ProjectBriefData, timezone: string)
 	let brief = `## [${projectName}](/projects/${projectId})\n\n`;
 
 	// Goal Progress Section
-	const activeGoals = project.goals.filter((g) => g.goal.state_key !== 'achieved');
+	const activeGoals = project.goals.filter(
+		(g) => g.goal.state_key !== 'achieved' && g.goal.state_key !== 'abandoned'
+	);
 	brief += `### Goal Progress\n`;
 	if (activeGoals.length > 0) {
 		for (const goal of activeGoals) {
@@ -167,6 +169,31 @@ function formatOntologyProjectBrief(project: ProjectBriefData, timezone: string)
 	if (activeOutputs.length > 0) {
 		for (const output of activeOutputs.slice(0, 3)) {
 			brief += `- **${output.output.name}** (${output.state})\n`;
+		}
+	} else {
+		brief += `N/A\n`;
+	}
+	brief += '\n';
+
+	// Requirements
+	brief += `### Requirements\n`;
+	if (project.requirements.length > 0) {
+		for (const requirement of project.requirements.slice(0, 3)) {
+			brief += `- ${requirement.text}\n`;
+		}
+	} else {
+		brief += `N/A\n`;
+	}
+	brief += '\n';
+
+	// Decisions
+	brief += `### Recent Decisions\n`;
+	if (project.decisions.length > 0) {
+		const recentDecisions = [...project.decisions].sort(
+			(a, b) => parseISO(b.decision_at).getTime() - parseISO(a.decision_at).getTime()
+		);
+		for (const decision of recentDecisions.slice(0, 3)) {
+			brief += `- **${decision.title}**\n`;
 		}
 	} else {
 		brief += `N/A\n`;
@@ -244,8 +271,12 @@ async function generateOntologyProjectBrief(
 		todaysTaskCount: project.todaysTasks.length,
 		thisWeekTaskCount: project.thisWeekTasks.length,
 		blockedTaskCount: project.blockedTasks.length,
-		activeGoalsCount: project.goals.filter((g) => g.goal.state_key !== 'achieved').length,
+		activeGoalsCount: project.goals.filter(
+			(g) => g.goal.state_key !== 'achieved' && g.goal.state_key !== 'abandoned'
+		).length,
 		activeOutputsCount: project.outputs.filter((o) => o.state !== 'published').length,
+		requirementsCount: project.requirements.length,
+		decisionsCount: project.decisions.length,
 		hasNextMilestone: !!project.nextMilestone,
 		activePlanId: project.activePlan?.id || null
 	};
@@ -287,7 +318,8 @@ function generateMainBriefMarkdown(
 	// Helper to format task with project link
 	const formatTaskWithProject = (task: OntoTask): string => {
 		const projectName = projectNameMap.get(task.project_id) || 'Unknown Project';
-		return `- [${task.title}](/projects/${task.project_id}/tasks/${task.id}) — [${projectName}](/projects/${task.project_id})`;
+		const priorityStr = task.priority !== null ? ` (P${task.priority})` : '';
+		return `- [${task.title}](/projects/${task.project_id}/tasks/${task.id})${priorityStr} — [${projectName}](/projects/${task.project_id})`;
 	};
 
 	let mainBrief = `# ${formatDate(briefData.briefDate)}\n\n`;
@@ -311,7 +343,9 @@ function generateMainBriefMarkdown(
 			const statusEmoji =
 				goal.status === 'on_track' ? '' : goal.status === 'at_risk' ? '' : '';
 			const projectName = projectNameMap.get(goal.goal.project_id) || '';
-			const projectSuffix = projectName ? ` — [${projectName}](/projects/${goal.goal.project_id})` : '';
+			const projectSuffix = projectName
+				? ` — [${projectName}](/projects/${goal.goal.project_id})`
+				: '';
 			mainBrief += `- ${statusEmoji} **${goal.goal.name}**: ${goal.progressPercent}%${projectSuffix}\n`;
 		}
 		mainBrief += '\n';
@@ -323,7 +357,9 @@ function generateMainBriefMarkdown(
 		mainBrief += `### Outputs in Flight\n`;
 		for (const output of activeOutputs.slice(0, 5)) {
 			const projectName = projectNameMap.get(output.output.project_id) || '';
-			const projectSuffix = projectName ? ` — [${projectName}](/projects/${output.output.project_id})` : '';
+			const projectSuffix = projectName
+				? ` — [${projectName}](/projects/${output.output.project_id})`
+				: '';
 			mainBrief += `- **${output.output.name}** (${output.state})${projectSuffix}\n`;
 		}
 		mainBrief += '\n';
@@ -333,7 +369,9 @@ function generateMainBriefMarkdown(
 	if (
 		briefData.blockedTasks.length > 0 ||
 		briefData.overdueTasks.length > 0 ||
-		briefData.risks.length > 0
+		briefData.risks.length > 0 ||
+		briefData.requirements.length > 0 ||
+		briefData.decisions.length > 0
 	) {
 		mainBrief += `## Attention Required\n\n`;
 
@@ -357,26 +395,80 @@ function generateMainBriefMarkdown(
 			mainBrief += `### Active Risks (${briefData.risks.length})\n`;
 			for (const risk of briefData.risks.slice(0, 3)) {
 				const projectName = projectNameMap.get(risk.project_id) || '';
-				const projectSuffix = projectName ? ` — [${projectName}](/projects/${risk.project_id})` : '';
+				const projectSuffix = projectName
+					? ` — [${projectName}](/projects/${risk.project_id})`
+					: '';
 				mainBrief += `- **${risk.title}** (Impact: ${risk.impact})${projectSuffix}\n`;
+			}
+			mainBrief += '\n';
+		}
+
+		if (briefData.requirements.length > 0) {
+			mainBrief += `### Requirements (${briefData.requirements.length})\n`;
+			const sortedRequirements = [...briefData.requirements].sort(
+				(a, b) => parseISO(b.created_at).getTime() - parseISO(a.created_at).getTime()
+			);
+			for (const requirement of sortedRequirements.slice(0, 5)) {
+				const projectName = projectNameMap.get(requirement.project_id) || '';
+				const projectSuffix = projectName
+					? ` — [${projectName}](/projects/${requirement.project_id})`
+					: '';
+				mainBrief += `- ${requirement.text}${projectSuffix}\n`;
+			}
+			mainBrief += '\n';
+		}
+
+		if (briefData.decisions.length > 0) {
+			mainBrief += `### Recent Decisions (${briefData.decisions.length})\n`;
+			const sortedDecisions = [...briefData.decisions].sort(
+				(a, b) => parseISO(b.decision_at).getTime() - parseISO(a.decision_at).getTime()
+			);
+			for (const decision of sortedDecisions.slice(0, 5)) {
+				const projectName = projectNameMap.get(decision.project_id) || '';
+				const projectSuffix = projectName
+					? ` — [${projectName}](/projects/${decision.project_id})`
+					: '';
+				mainBrief += `- **${decision.title}**${projectSuffix}\n`;
 			}
 			mainBrief += '\n';
 		}
 	}
 
-	// Today's Focus by Work Mode
-	const tasksByMode = briefData.tasksByWorkMode;
-	const hasWorkModeTasks = Object.values(tasksByMode).some((tasks) => tasks.length > 0);
-	if (hasWorkModeTasks) {
+	// Today's Focus by Work Mode (today's tasks only)
+	if (briefData.todaysTasks.length > 0) {
 		mainBrief += `## Today's Focus by Work Mode\n\n`;
-		for (const [mode, tasks] of Object.entries(tasksByMode)) {
-			if (tasks.length > 0) {
-				mainBrief += `### ${mode.charAt(0).toUpperCase() + mode.slice(1)} Tasks (${tasks.length})\n`;
-				for (const task of tasks.slice(0, 3)) {
-					mainBrief += formatTaskWithProject(task) + '\n';
-				}
-				mainBrief += '\n';
+
+		const modeOrder = [
+			'execute',
+			'create',
+			'refine',
+			'research',
+			'review',
+			'coordinate',
+			'admin',
+			'plan',
+			'other'
+		];
+
+		const tasksByModeToday: Record<string, OntoTask[]> = {};
+		for (const task of briefData.todaysTasks) {
+			const mode = getWorkMode(task.type_key) ?? 'other';
+			tasksByModeToday[mode] = tasksByModeToday[mode] ?? [];
+			tasksByModeToday[mode].push(task);
+		}
+
+		for (const mode of modeOrder) {
+			const tasks = tasksByModeToday[mode] ?? [];
+			if (tasks.length === 0) continue;
+
+			mainBrief += `### ${mode.charAt(0).toUpperCase() + mode.slice(1)} Tasks (${tasks.length})\n`;
+			for (const task of tasks.slice(0, 3)) {
+				mainBrief += formatTaskWithProject(task) + '\n';
 			}
+			if (tasks.length > 3) {
+				mainBrief += `- ... and ${tasks.length - 3} more\n`;
+			}
+			mainBrief += '\n';
 		}
 	}
 
@@ -390,7 +482,7 @@ function generateMainBriefMarkdown(
 	if (totalUpdates > 0) {
 		mainBrief += `## Recent Activity (Last 24h)\n\n`;
 		mainBrief += `- **${briefData.recentUpdates.tasks.length}** tasks updated\n`;
-		mainBrief += `- **${briefData.recentUpdates.goals.length}** goals updated\n`;
+		mainBrief += `- **${briefData.recentUpdates.goals.length}** goals with activity\n`;
 		mainBrief += `- **${briefData.recentUpdates.outputs.length}** outputs updated\n`;
 		mainBrief += `- **${briefData.recentUpdates.documents.length}** documents updated\n\n`;
 	}
@@ -409,9 +501,20 @@ function generateMainBriefMarkdown(
 function extractPriorityActions(briefData: OntologyBriefData): string[] {
 	const actions: string[] = [];
 
-	// High priority tasks
-	const highPriorityTasks = briefData.todaysTasks
-		.filter((t) => t.priority !== null && t.priority >= 8)
+	const taskSort = (a: OntoTask, b: OntoTask): number => {
+		const priorityA = a.priority ?? Number.POSITIVE_INFINITY;
+		const priorityB = b.priority ?? Number.POSITIVE_INFINITY;
+		if (priorityA !== priorityB) return priorityA - priorityB;
+
+		const dueA = a.due_at ? parseISO(a.due_at).getTime() : Number.POSITIVE_INFINITY;
+		const dueB = b.due_at ? parseISO(b.due_at).getTime() : Number.POSITIVE_INFINITY;
+		return dueA - dueB;
+	};
+
+	// High priority tasks (P1/P2), prefer overdue then due today
+	const highPriorityTasks = [...briefData.overdueTasks, ...briefData.todaysTasks]
+		.filter((t) => t.priority !== null && t.priority <= 2 && t.state_key !== 'done')
+		.sort(taskSort)
 		.slice(0, 3);
 	for (const task of highPriorityTasks) {
 		actions.push(task.title);
@@ -526,8 +629,17 @@ export async function generateOntologyDailyBrief(
 		// Step 2: Prepare brief data
 		await updateProgress(dailyBrief.id, { step: 'preparing_brief_data', progress: 25 }, jobId);
 
-		const briefData = dataLoader.prepareBriefData(projectsData, briefDateObj, userTimezone);
-		const metadata = dataLoader.calculateMetadata(projectsData, briefData, userTimezone);
+		const briefData = dataLoader.prepareBriefData(
+			projectsData,
+			briefDateInUserTz,
+			userTimezone
+		);
+		const metadata = dataLoader.calculateMetadata(
+			projectsData,
+			briefData,
+			briefDateInUserTz,
+			userTimezone
+		);
 
 		// Step 3: Generate project briefs
 		await updateProgress(
@@ -796,6 +908,28 @@ async function recordBriefEntities(
 		});
 	}
 
+	// Record requirements
+	for (const requirement of briefData.requirements.slice(0, 10)) {
+		entities.push({
+			daily_brief_id: dailyBriefId,
+			project_id: requirement.project_id,
+			entity_kind: 'requirement',
+			entity_id: requirement.id,
+			role: 'included'
+		});
+	}
+
+	// Record decisions
+	for (const decision of briefData.decisions.slice(0, 10)) {
+		entities.push({
+			daily_brief_id: dailyBriefId,
+			project_id: decision.project_id,
+			entity_kind: 'decision',
+			entity_id: decision.id,
+			role: 'included'
+		});
+	}
+
 	// Record recently updated entities
 	for (const task of briefData.recentUpdates.tasks.slice(0, 5)) {
 		entities.push({
@@ -803,6 +937,26 @@ async function recordBriefEntities(
 			project_id: task.project_id,
 			entity_kind: 'task',
 			entity_id: task.id,
+			role: 'recently_updated'
+		});
+	}
+
+	for (const output of briefData.recentUpdates.outputs.slice(0, 5)) {
+		entities.push({
+			daily_brief_id: dailyBriefId,
+			project_id: output.project_id,
+			entity_kind: 'output',
+			entity_id: output.id,
+			role: 'recently_updated'
+		});
+	}
+
+	for (const document of briefData.recentUpdates.documents.slice(0, 5)) {
+		entities.push({
+			daily_brief_id: dailyBriefId,
+			project_id: document.project_id,
+			entity_kind: 'document',
+			entity_id: document.id,
 			role: 'recently_updated'
 		});
 	}

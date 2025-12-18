@@ -8,8 +8,8 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@buildos/shared-types';
-import { formatInTimeZone, utcToZonedTime, zonedTimeToUtc } from 'date-fns-tz';
-import { addDays, subHours, startOfDay, endOfDay, parseISO, differenceInDays } from 'date-fns';
+import { formatInTimeZone } from 'date-fns-tz';
+import { addDays, subHours, parseISO, differenceInDays } from 'date-fns';
 import type {
 	OntoProject,
 	OntoTask,
@@ -45,14 +45,17 @@ import type {
  */
 export function categorizeTasks(
 	tasks: OntoTask[],
-	briefDate: Date,
+	briefDate: string,
 	timezone: string
 ): CategorizedTasks {
-	const now = utcToZonedTime(new Date(), timezone);
-	const today = startOfDay(utcToZonedTime(briefDate, timezone));
-	const todayEnd = endOfDay(today);
-	const weekEnd = addDays(today, 7);
-	const yesterday = subHours(now, 24);
+	const now = new Date();
+	const cutoff = subHours(now, 24);
+	const todayStr = briefDate; // yyyy-MM-dd (user-local date)
+	const weekEndStr = formatInTimeZone(
+		addDays(parseISO(`${todayStr}T00:00:00Z`), 7),
+		'UTC',
+		'yyyy-MM-dd'
+	);
 
 	// Time-based categorization
 	const todaysTasks: OntoTask[] = [];
@@ -79,23 +82,40 @@ export function categorizeTasks(
 	const goalAlignedTasks: OntoTask[] = [];
 	const recentlyUpdated: OntoTask[] = [];
 
+	const taskSort = (a: OntoTask, b: OntoTask): number => {
+		const priorityA = a.priority ?? Number.POSITIVE_INFINITY;
+		const priorityB = b.priority ?? Number.POSITIVE_INFINITY;
+		if (priorityA !== priorityB) return priorityA - priorityB;
+
+		const dueA = a.due_at ? parseISO(a.due_at).getTime() : Number.POSITIVE_INFINITY;
+		const dueB = b.due_at ? parseISO(b.due_at).getTime() : Number.POSITIVE_INFINITY;
+		if (dueA !== dueB) return dueA - dueB;
+
+		return a.title.localeCompare(b.title);
+	};
+
 	for (const task of tasks) {
 		const dueAt = task.due_at ? parseISO(task.due_at) : null;
+		const dueDateStr = dueAt ? formatInTimeZone(dueAt, timezone, 'yyyy-MM-dd') : null;
 		const updatedAt = parseISO(task.updated_at);
 		const state = task.state_key;
 
+		// Recently updated (last 24 hours, absolute time)
+		if (updatedAt >= cutoff) {
+			recentlyUpdated.push(task);
+		}
+
 		// Time-based
 		if (state === 'done') {
-			const updatedDate = parseISO(task.updated_at);
-			if (updatedDate >= yesterday) {
+			if (updatedAt >= cutoff) {
 				recentlyCompleted.push(task);
 			}
-		} else if (dueAt) {
-			if (dueAt < today) {
+		} else if (dueDateStr) {
+			if (dueDateStr < todayStr) {
 				overdueTasks.push(task);
-			} else if (dueAt >= today && dueAt <= todayEnd) {
+			} else if (dueDateStr === todayStr) {
 				todaysTasks.push(task);
-			} else if (dueAt > todayEnd && dueAt <= weekEnd) {
+			} else if (dueDateStr > todayStr && dueDateStr <= weekEndStr) {
 				upcomingTasks.push(task);
 			}
 		}
@@ -107,74 +127,73 @@ export function categorizeTasks(
 			inProgressTasks.push(task);
 		}
 
+		if (state === 'done') {
+			continue;
+		}
+
 		// Work mode categorization (based on type_key)
 		const typeKey = task.type_key || '';
-		if (typeKey.includes('execute') || typeKey.includes('action')) {
+		if (typeKey.startsWith('task.execute') || typeKey.includes('action')) {
 			executeTasks.push(task);
-		} else if (typeKey.includes('create') || typeKey.includes('produce')) {
+		} else if (typeKey.startsWith('task.create') || typeKey.includes('produce')) {
 			createTasks.push(task);
 		} else if (
-			typeKey.includes('refine') ||
+			typeKey.startsWith('task.refine') ||
 			typeKey.includes('edit') ||
 			typeKey.includes('improve')
 		) {
 			refineTasks.push(task);
 		} else if (
-			typeKey.includes('research') ||
+			typeKey.startsWith('task.research') ||
 			typeKey.includes('learn') ||
 			typeKey.includes('discover')
 		) {
 			researchTasks.push(task);
 		} else if (
-			typeKey.includes('review') ||
+			typeKey.startsWith('task.review') ||
 			typeKey.includes('feedback') ||
 			typeKey.includes('assess')
 		) {
 			reviewTasks.push(task);
 		} else if (
-			typeKey.includes('coordinate') ||
+			typeKey.startsWith('task.coordinate') ||
 			typeKey.includes('discuss') ||
 			typeKey.includes('meeting')
 		) {
 			coordinateTasks.push(task);
 		} else if (
-			typeKey.includes('admin') ||
+			typeKey.startsWith('task.admin') ||
 			typeKey.includes('setup') ||
 			typeKey.includes('config')
 		) {
 			adminTasks.push(task);
 		} else if (
-			typeKey.includes('plan') ||
+			typeKey.startsWith('task.plan') ||
 			typeKey.includes('strategy') ||
 			typeKey.includes('define')
 		) {
 			planTasks.push(task);
 		}
-
-		// Recently updated (last 24 hours)
-		if (updatedAt >= yesterday) {
-			recentlyUpdated.push(task);
-		}
 	}
 
 	return {
-		todaysTasks,
-		overdueTasks,
-		upcomingTasks,
-		recentlyCompleted,
-		blockedTasks,
-		inProgressTasks,
-		executeTasks,
-		createTasks,
-		refineTasks,
-		researchTasks,
-		reviewTasks,
-		coordinateTasks,
-		adminTasks,
-		planTasks,
+		todaysTasks: todaysTasks.sort(taskSort),
+		overdueTasks: overdueTasks.sort(taskSort),
+		upcomingTasks: upcomingTasks.sort(taskSort),
+		recentlyCompleted: recentlyCompleted.sort(taskSort),
+		blockedTasks: blockedTasks.sort(taskSort),
+		inProgressTasks: inProgressTasks.sort(taskSort),
+		executeTasks: executeTasks.sort(taskSort),
+		createTasks: createTasks.sort(taskSort),
+		refineTasks: refineTasks.sort(taskSort),
+		researchTasks: researchTasks.sort(taskSort),
+		reviewTasks: reviewTasks.sort(taskSort),
+		coordinateTasks: coordinateTasks.sort(taskSort),
+		adminTasks: adminTasks.sort(taskSort),
+		planTasks: planTasks.sort(taskSort),
 		unblockingTasks, // Will be populated later
 		goalAlignedTasks, // Will be populated later
-		recentlyUpdated
+		recentlyUpdated: recentlyUpdated.sort(taskSort)
 	};
 }
 
@@ -184,17 +203,20 @@ export function categorizeTasks(
 export function getWorkMode(typeKey: string | null): string | null {
 	if (!typeKey) return null;
 	const key = typeKey.toLowerCase();
-	if (key.includes('execute') || key.includes('action')) return 'execute';
-	if (key.includes('create') || key.includes('produce')) return 'create';
-	if (key.includes('refine') || key.includes('edit') || key.includes('improve')) return 'refine';
-	if (key.includes('research') || key.includes('learn') || key.includes('discover'))
+	if (key.startsWith('task.execute') || key.includes('action')) return 'execute';
+	if (key.startsWith('task.create') || key.includes('produce')) return 'create';
+	if (key.startsWith('task.refine') || key.includes('edit') || key.includes('improve'))
+		return 'refine';
+	if (key.startsWith('task.research') || key.includes('learn') || key.includes('discover'))
 		return 'research';
-	if (key.includes('review') || key.includes('feedback') || key.includes('assess'))
+	if (key.startsWith('task.review') || key.includes('feedback') || key.includes('assess'))
 		return 'review';
-	if (key.includes('coordinate') || key.includes('discuss') || key.includes('meeting'))
+	if (key.startsWith('task.coordinate') || key.includes('discuss') || key.includes('meeting'))
 		return 'coordinate';
-	if (key.includes('admin') || key.includes('setup') || key.includes('config')) return 'admin';
-	if (key.includes('plan') || key.includes('strategy') || key.includes('define')) return 'plan';
+	if (key.startsWith('task.admin') || key.includes('setup') || key.includes('config'))
+		return 'admin';
+	if (key.startsWith('task.plan') || key.includes('strategy') || key.includes('define'))
+		return 'plan';
 	return null;
 }
 
@@ -375,10 +397,23 @@ export function getRecentUpdates(
 	hoursAgo: number = 24
 ): RecentUpdates {
 	const cutoff = subHours(new Date(), hoursAgo);
+	const recentTasks = data.tasks.filter((t) => parseISO(t.updated_at) >= cutoff);
+	const recentTaskIds = new Set(recentTasks.map((t) => t.id));
 
 	return {
-		tasks: data.tasks.filter((t) => parseISO(t.updated_at) >= cutoff),
-		goals: data.goals.filter((g) => parseISO(g.created_at) >= cutoff),
+		tasks: recentTasks,
+		// Goals do not have updated_at; treat as "recent activity" if created recently OR any supporting task was updated recently.
+		goals: data.goals.filter((g) => {
+			if (parseISO(g.created_at) >= cutoff) return true;
+			return data.edges.some(
+				(e) =>
+					e.rel === 'supports_goal' &&
+					e.src_kind === 'task' &&
+					e.dst_kind === 'goal' &&
+					e.dst_id === g.id &&
+					recentTaskIds.has(e.src_id)
+			);
+		}),
 		outputs: data.outputs.filter((o) => parseISO(o.updated_at) >= cutoff),
 		documents: data.documents.filter((d) => parseISO(d.updated_at) >= cutoff)
 	};
@@ -407,7 +442,7 @@ export class OntologyBriefDataLoader {
 			.from('onto_projects')
 			.select('*')
 			.eq('created_by', actorId)
-			.neq('state_key', 'cancelled')
+			.in('state_key', ['planning', 'active'])
 			.order('updated_at', { ascending: false });
 
 		if (projectsError) {
@@ -634,12 +669,9 @@ export class OntologyBriefDataLoader {
 	 */
 	prepareBriefData(
 		projectsData: OntoProjectWithRelations[],
-		briefDate: Date,
+		briefDate: string,
 		timezone: string
 	): OntologyBriefData {
-		const now = utcToZonedTime(new Date(), timezone);
-		const today = startOfDay(utcToZonedTime(briefDate, timezone));
-
 		// Aggregate data across all projects
 		const allTasks = projectsData.flatMap((p) => p.tasks);
 		const allGoals = projectsData.flatMap((p) => p.goals);
@@ -663,10 +695,11 @@ export class OntologyBriefDataLoader {
 			(r) => r.state_key !== 'mitigated' && r.state_key !== 'closed'
 		);
 
-		// Count high priority tasks
-		const highPriorityCount = allTasks.filter(
-			(t) => t.priority !== null && t.priority >= 8 && t.state_key !== 'done'
-		).length;
+		// Count high priority tasks (P1/P2) that are due today or overdue
+		const highPriorityCount = [
+			...categorizedTasks.overdueTasks,
+			...categorizedTasks.todaysTasks
+		].filter((t) => t.priority !== null && t.priority <= 2 && t.state_key !== 'done').length;
 
 		// Aggregate recent updates
 		const allRecentUpdates: RecentUpdates = {
@@ -711,13 +744,15 @@ export class OntologyBriefDataLoader {
 
 			// Get next milestone
 			const nextMilestone = data.milestones
-				.filter((m) => m.state_key !== 'completed')
+				.filter((m) => m.state_key !== 'completed' && m.state_key !== 'missed')
 				.sort((a, b) => parseISO(a.due_at).getTime() - parseISO(b.due_at).getTime())[0];
 
 			return {
 				project: data.project,
 				goals: projectGoals,
 				outputs: projectOutputs,
+				requirements: data.requirements,
+				decisions: data.decisions,
 				nextSteps,
 				nextMilestone: nextMilestone?.title || null,
 				activePlan,
@@ -732,7 +767,7 @@ export class OntologyBriefDataLoader {
 		});
 
 		return {
-			briefDate: formatInTimeZone(briefDate, timezone, 'yyyy-MM-dd'),
+			briefDate,
 			timezone,
 			goals,
 			outputs,
@@ -755,10 +790,14 @@ export class OntologyBriefDataLoader {
 	calculateMetadata(
 		projectsData: OntoProjectWithRelations[],
 		briefData: OntologyBriefData,
+		briefDate: string,
 		timezone: string
 	): OntologyBriefMetadata {
-		const now = utcToZonedTime(new Date(), timezone);
-		const weekEnd = addDays(now, 7);
+		const weekEndStr = formatInTimeZone(
+			addDays(parseISO(`${briefDate}T00:00:00Z`), 7),
+			'UTC',
+			'yyyy-MM-dd'
+		);
 
 		const allTasks = projectsData.flatMap((p) => p.tasks);
 		const allGoals = projectsData.flatMap((p) => p.goals);
@@ -769,8 +808,9 @@ export class OntologyBriefDataLoader {
 
 		// Count milestones this week
 		const milestonesThisWeek = allMilestones.filter((m) => {
-			const dueDate = parseISO(m.due_at);
-			return dueDate <= weekEnd && m.state_key !== 'completed';
+			if (m.state_key === 'completed' || m.state_key === 'missed') return false;
+			const dueDateStr = formatInTimeZone(parseISO(m.due_at), timezone, 'yyyy-MM-dd');
+			return dueDateStr >= briefDate && dueDateStr <= weekEndStr;
 		}).length;
 
 		// Count outputs in review
