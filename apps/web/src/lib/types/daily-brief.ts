@@ -4,6 +4,8 @@ export interface DailyBrief {
 	user_id: string;
 	brief_date: string;
 	summary_content: string;
+	executive_summary?: string; // Used when mapping from ontology briefs
+	llm_analysis?: any; // LLM analysis data from ontology briefs
 	project_brief_ids?: string[];
 	insights?: string;
 	priority_actions?: string[];

@@ -3,7 +3,7 @@
 <script lang="ts">
 	import { Sparkles, Loader2, ChevronRight, AlertCircle, Sun } from 'lucide-svelte';
 	import { browser } from '$app/environment';
-	import { getContext } from 'svelte';
+	import { getContext, onMount } from 'svelte';
 	import {
 		BriefClientService,
 		streamingStatus,
@@ -28,7 +28,8 @@
 	let brief = $state<DailyBrief | null>(null);
 	let isLoading = $state(true);
 	let error = $state<string | null>(null);
-	let userTimezone = $state('UTC');
+	let userTimezone = $state(browser ? Intl.DateTimeFormat().resolvedOptions().timeZone : 'UTC');
+	let hasInitialized = $state(false);
 
 	// Streaming state from stores
 	let currentStreamingStatus = $state<StreamingStatus | null>(null);
@@ -47,7 +48,7 @@
 	);
 	let statusMessage = $derived(currentStreamingStatus?.message ?? 'Generating...');
 
-	// Get today's date in user's timezone
+	// Get today's date in user's timezone - only compute once userTimezone is set
 	let todayDate = $derived.by(() => {
 		if (!browser) return '';
 		return formatInTimeZone(new Date(), userTimezone, 'yyyy-MM-dd');
@@ -66,10 +67,8 @@
 		return stripped.length > 150 ? stripped.slice(0, 150) + '...' : stripped;
 	});
 
-	// Subscribe to streaming stores
-	$effect(() => {
-		if (!browser) return;
-
+	// Subscribe to streaming stores using onMount to avoid repeated subscriptions
+	onMount(() => {
 		const unsubStatus = streamingStatus.subscribe((value) => {
 			currentStreamingStatus = value;
 		});
@@ -92,14 +91,26 @@
 		};
 	});
 
-	// Fetch user timezone and today's brief on mount
-	$effect(() => {
-		if (browser && user?.id) {
-			fetchUserTimezone().then(() => {
-				fetchTodaysBrief();
-			});
-		}
+	// Initialize data fetching once on mount - use onMount to prevent multiple runs
+	onMount(() => {
+		if (!user?.id) return;
+
+		// Set loading state and initialize
+		initializeWidget();
 	});
+
+	async function initializeWidget() {
+		if (hasInitialized) return;
+		hasInitialized = true;
+
+		try {
+			await fetchUserTimezone();
+			await fetchTodaysBrief();
+		} catch (err) {
+			console.error('Failed to initialize brief widget:', err);
+			isLoading = false;
+		}
+	}
 
 	async function fetchUserTimezone() {
 		try {

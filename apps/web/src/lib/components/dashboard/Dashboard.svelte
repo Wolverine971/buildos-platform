@@ -69,9 +69,7 @@
 
 	let { user, initialProjects = [], isLoadingProjects = false, onrefresh }: Props = $props();
 
-	// State - OPTIMIZATION: Initialize from server-loaded data
-	let projects = $state<OntologyProjectSummary[]>(initialProjects);
-	let isLoading = $state(isLoadingProjects);
+	// State - simplified to avoid prop-to-state syncing anti-pattern
 	let error = $state<string | null>(null);
 	let showChatModal = $state(false);
 	let AgentChatModal = $state<any>(null);
@@ -82,14 +80,13 @@
 	let selectedBrief = $state<DailyBrief | null>(null);
 	let DailyBriefModal = $state<any>(null);
 
-	// OPTIMIZATION: Sync with incoming props when they change (streaming updates)
-	$effect(() => {
-		projects = initialProjects;
-	});
+	// Local projects state for refresh functionality
+	let localProjects = $state<OntologyProjectSummary[] | null>(null);
 
-	$effect(() => {
-		isLoading = isLoadingProjects;
-	});
+	// Use derived to merge initial props with local refresh data
+	// This avoids the anti-pattern of syncing props to state in $effect
+	const projects = $derived(localProjects ?? initialProjects);
+	const isLoading = $derived(localProjects === null && isLoadingProjects);
 
 	// Computed
 	const displayName = $derived(user?.name || user?.email?.split('@')[0] || 'there');
@@ -117,7 +114,7 @@
 			}
 
 			const fetchedProjects = payload?.data?.projects ?? payload?.projects ?? [];
-			projects = fetchedProjects;
+			localProjects = fetchedProjects;
 		} catch (err) {
 			console.error('Failed to refresh projects:', err);
 			error = 'Failed to refresh projects. Please try again.';
