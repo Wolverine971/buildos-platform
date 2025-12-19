@@ -28,28 +28,18 @@
 		philosophy: Lightbulb
 	};
 
-	const categoryColors = {
-		'getting-started': 'purple',
-		'productivity-tips': 'blue',
-		'product-updates': 'green',
-		'case-studies': 'orange',
-		'advanced-guides': 'red',
-		philosophy: 'indigo'
-	};
-
 	let categoryKey = $derived($page.params.category);
 	let IconComponent = $derived(categoryIcons[categoryKey as keyof typeof categoryIcons]);
-	let color = $derived(categoryColors[categoryKey as keyof typeof categoryColors]);
 
+	// Using semantic classes that Tailwind can compile statically
 	function getCategoryColorClasses(category: string) {
-		const color = categoryColors[category as keyof typeof categoryColors];
+		const isPrimary = category === 'getting-started';
 		return {
-			bg: `bg-${color}-100 dark:bg-${color}-900/30`,
-			text: `text-${color}-600 dark:text-${color}-400`,
-			iconBg: `bg-${color}-100 dark:bg-${color}-900/30`,
-			iconText: `text-${color}-600 dark:text-${color}-400`,
-			linkText: `text-${color}-600 dark:text-${color}-400`,
-			gradient: `from-${color}-600 to-${color}-700`
+			bg: isPrimary ? 'bg-accent/10' : 'bg-muted',
+			text: isPrimary ? 'text-accent' : 'text-foreground',
+			iconBg: isPrimary ? 'bg-accent/10' : 'bg-muted',
+			iconText: isPrimary ? 'text-accent' : 'text-foreground',
+			linkText: 'text-accent'
 		};
 	}
 
@@ -156,7 +146,7 @@
 		<div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
 			<a
 				href="/blogs"
-				class="inline-flex items-center text-blue-600 dark:text-blue-400 hover:underline mb-8 group"
+				class="inline-flex items-center text-accent hover:underline mb-8 group"
 			>
 				<ArrowLeft class="w-4 h-4 mr-2 group-hover:-translate-x-1 transition-transform" />
 				Back to Blog
@@ -191,7 +181,7 @@
 				<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
 					{#each data.posts as post}
 						<article
-							class="bg-card rounded-lg overflow-hidden shadow-ink hover:shadow-xl transition-all duration-300 hover:scale-105"
+							class="bg-card rounded-lg overflow-hidden shadow-ink hover:shadow-xl transition-all duration-300 hover:scale-105 border border-border tx tx-frame tx-weak"
 						>
 							<div class="p-6">
 								<div
@@ -253,7 +243,7 @@
 					</p>
 					<a
 						href="/blogs"
-						class="inline-flex items-center justify-center px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
+						class="inline-flex items-center justify-center px-6 py-3 bg-accent text-accent-foreground font-medium rounded-lg hover:bg-accent/90 transition-colors shadow-ink pressable"
 					>
 						Explore Other Categories
 					</a>
@@ -279,7 +269,7 @@
 
 							<a
 								href="/blogs/{key}"
-								class="group bg-background rounded-lg p-6 hover:shadow-ink transition-all duration-300"
+								class="group bg-background rounded-lg p-6 hover:shadow-ink transition-all duration-300 border border-border tx tx-frame tx-weak pressable"
 							>
 								<div
 									class="flex items-center justify-center w-10 h-10 {otherColors.iconBg} rounded-lg mb-4 group-hover:scale-110 transition-transform"

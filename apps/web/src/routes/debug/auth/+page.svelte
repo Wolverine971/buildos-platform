@@ -1,4 +1,3 @@
-<!-- apps/web/src/routes/debug/auth/+page.svelte -->
 <script lang="ts">
 	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
@@ -65,6 +64,12 @@
 	let serverUser = $derived(data?.user);
 	let urlParams = $derived(Object.fromEntries($page.url.searchParams));
 </script>
+
+<!-- apps/web/src/routes/debug/auth/+page.svelte -->
+<svelte:head>
+	<meta name="robots" content="noindex, nofollow" />
+	<title>Auth Debug - BuildOS (Internal)</title>
+</svelte:head>
 
 <div class="max-w-6xl mx-auto p-8">
 	<h1 class="text-2xl font-bold mb-6">Auth Debug Page</h1>

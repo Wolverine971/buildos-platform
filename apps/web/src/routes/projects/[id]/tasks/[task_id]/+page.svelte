@@ -120,7 +120,9 @@
 		documents: false,
 		milestones: false,
 		tasks: false,
-		outputs: false
+		outputs: false,
+		connectedDocs: false,
+		linkedEntities: false
 	});
 
 	// Modal states for editing other entities
@@ -1017,106 +1019,122 @@
 						</CardBody>
 					</Card>
 
-					<!-- Connected Documents -->
-					<Card variant="elevated" class="overflow-hidden">
-						<CardHeader variant="accent">
-							<div class="flex items-center justify-between">
+					<!-- Compact secondary sections in a 2-column grid -->
+					<div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+						<!-- Connected Documents - Compact -->
+						<Card variant="elevated" class="overflow-hidden">
+							<button
+								onclick={() => togglePanel('connectedDocs')}
+								class="w-full flex items-center justify-between gap-2 px-3 py-2 text-left hover:bg-muted/60 transition-colors"
+							>
 								<div class="flex items-center gap-2">
-									<FileText class="w-4 h-4 text-accent" />
-									<h3 class="text-sm font-semibold text-foreground">
-										Connected Documents
-									</h3>
+									<FileText class="w-4 h-4 text-blue-500" />
+									<span class="text-sm font-semibold text-foreground"
+										>Documents</span
+									>
 									{#if deliverableDocuments.length > 0}
 										<Badge variant="info" size="sm"
 											>{deliverableDocuments.length}</Badge
 										>
 									{/if}
 								</div>
-								<Button
-									variant="ghost"
-									size="sm"
-									onclick={() => openDocumentModal(null)}
-									class="text-xs"
-								>
-									<Plus class="w-3 h-3" />
-									Add
-								</Button>
-							</div>
-						</CardHeader>
-						<CardBody padding="md">
-							{#if deliverableDocuments.length > 0}
-								<div class="space-y-2" role="list" aria-label="Connected documents">
-									{#each deliverableDocuments as doc}
-										<button
-											type="button"
-											onclick={() => handleDocumentClick(doc.document.id)}
-											class="w-full flex items-center gap-3 p-3 rounded-lg border border-border bg-card hover:bg-muted/60 transition-colors text-left group"
-										>
-											<div
-												class="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center shrink-0"
-											>
-												<FileText class="w-4 h-4 text-blue-500" />
-											</div>
-											<div class="min-w-0 flex-1">
-												<p
-													class="text-sm font-medium text-foreground truncate group-hover:text-accent transition-colors"
-												>
-													{doc.document.title || 'Untitled Document'}
-												</p>
-												<p class="text-xs text-muted-foreground">
-													{doc.document.type_key}
-												</p>
-											</div>
-											<Badge variant="info" size="sm">
-												{doc.document.state_key || 'draft'}
-											</Badge>
-											<ExternalLink
-												class="w-4 h-4 text-muted-foreground group-hover:text-accent transition-colors"
-											/>
-										</button>
-									{/each}
-								</div>
-							{:else}
-								<div class="text-center py-8">
-									<FileText
-										class="w-10 h-10 text-muted-foreground mx-auto mb-3"
+								<div class="flex items-center gap-1">
+									<button
+										type="button"
+										onclick={(e) => {
+											e.stopPropagation();
+											openDocumentModal(null);
+										}}
+										class="p-1 rounded hover:bg-muted transition-colors"
+										title="Add document"
+									>
+										<Plus class="w-3.5 h-3.5 text-muted-foreground" />
+									</button>
+									<ChevronDown
+										class="w-4 h-4 text-muted-foreground transition-transform {expandedPanels.connectedDocs
+											? 'rotate-180'
+											: ''}"
 									/>
-									<p class="text-sm text-muted-foreground mb-4">
-										No documents connected yet. Create one to start working.
-									</p>
-									<div class="flex flex-wrap gap-2 justify-center">
-										<Button
-											variant="secondary"
-											size="sm"
-											onclick={() => setActiveView('workspace')}
-										>
-											Open Workspace
-										</Button>
-										<Button
-											variant="primary"
-											size="sm"
-											onclick={() => openDocumentModal(null)}
-										>
-											Create Document
-										</Button>
-									</div>
+								</div>
+							</button>
+							{#if expandedPanels.connectedDocs}
+								<div class="border-t border-border max-h-40 overflow-y-auto">
+									{#if deliverableDocuments.length > 0}
+										<ul class="divide-y divide-border/80">
+											{#each deliverableDocuments as doc}
+												<li>
+													<button
+														type="button"
+														onclick={() =>
+															handleDocumentClick(doc.document.id)}
+														class="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-muted/60 transition-colors"
+													>
+														<FileText
+															class="w-3.5 h-3.5 text-blue-500 shrink-0"
+														/>
+														<span
+															class="text-xs text-foreground truncate flex-1"
+														>
+															{doc.document.title || 'Untitled'}
+														</span>
+														<span
+															class="text-[10px] text-muted-foreground"
+														>
+															{doc.document.state_key || 'draft'}
+														</span>
+													</button>
+												</li>
+											{/each}
+										</ul>
+									{:else}
+										<div class="px-3 py-4 text-center">
+											<p class="text-xs text-muted-foreground mb-2">
+												No documents yet
+											</p>
+											<Button
+												variant="secondary"
+												size="sm"
+												onclick={() => setActiveView('workspace')}
+											>
+												Open Workspace
+											</Button>
+										</div>
+									{/if}
 								</div>
 							{/if}
-						</CardBody>
-					</Card>
+						</Card>
 
-					<!-- Linked Entities -->
-					<Card variant="elevated" class="overflow-hidden">
-						<CardBody padding="md">
-							<LinkedEntities
-								sourceId={task?.id}
-								sourceKind="task"
-								projectId={project?.id}
-								onEntityClick={handleLinkedEntityClick}
-								onLinksChanged={refreshData}
-							/>
-						</CardBody>
-					</Card>
+						<!-- Linked Entities - Compact -->
+						<Card variant="elevated" class="overflow-hidden">
+							<button
+								onclick={() => togglePanel('linkedEntities')}
+								class="w-full flex items-center justify-between gap-2 px-3 py-2 text-left hover:bg-muted/60 transition-colors"
+							>
+								<div class="flex items-center gap-2">
+									<Layers class="w-4 h-4 text-purple-500" />
+									<span class="text-sm font-semibold text-foreground"
+										>Linked Entities</span
+									>
+								</div>
+								<ChevronDown
+									class="w-4 h-4 text-muted-foreground transition-transform {expandedPanels.linkedEntities
+										? 'rotate-180'
+										: ''}"
+								/>
+							</button>
+							{#if expandedPanels.linkedEntities}
+								<div class="border-t border-border p-2 max-h-48 overflow-y-auto">
+									<LinkedEntities
+										sourceId={task?.id}
+										sourceKind="task"
+										projectId={project?.id}
+										onEntityClick={handleLinkedEntityClick}
+										onLinksChanged={refreshData}
+									/>
+								</div>
+							{/if}
+						</Card>
+					</div>
 				{:else}
 					<!-- WORKSPACE TAB -->
 					<div class="space-y-4">

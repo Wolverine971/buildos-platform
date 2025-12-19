@@ -1,4 +1,3 @@
-<!-- apps/web/src/routes/test-realtime/+page.svelte -->
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	import { supabase } from '$lib/supabase';
@@ -33,6 +32,12 @@
 		}
 	});
 </script>
+
+<!-- apps/web/src/routes/test-realtime/+page.svelte -->
+<svelte:head>
+	<meta name="robots" content="noindex, nofollow" />
+	<title>Real-time Test - BuildOS (Internal)</title>
+</svelte:head>
 
 <div class="p-8">
 	<h1 class="text-2xl font-bold mb-4">Real-time Test Page</h1>

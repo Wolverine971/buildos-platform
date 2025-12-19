@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/admin-dashboard/ONTOLOGY_ANALYTICS_PLAN.md -->
+
 # Admin Analytics Ontology Migration Plan
 
 ## Goals

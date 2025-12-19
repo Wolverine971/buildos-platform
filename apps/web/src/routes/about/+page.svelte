@@ -19,6 +19,36 @@
 	keywords="BuildOS story, DJ Wayne, AI productivity tool, brain dump organization, context building, productivity chaos solution, LLM integration"
 	author="DJ Wayne"
 	twitterCreator="@djwayne3"
+	jsonLd={{
+		'@context': 'https://schema.org',
+		'@type': 'Organization',
+		name: 'BuildOS',
+		url: 'https://build-os.com',
+		logo: 'https://build-os.com/brain-bolt.png',
+		description:
+			'AI-powered productivity platform that transforms unstructured thoughts into actionable plans.',
+		foundingDate: '2024',
+		founder: {
+			'@type': 'Person',
+			name: 'DJ Wayne',
+			jobTitle: 'Founder & CEO',
+			description:
+				'Former USMC Scout Sniper turned software engineer with 8 years of experience building software.',
+			sameAs: ['https://twitter.com/djwayne3']
+		},
+		sameAs: ['https://twitter.com/build_os'],
+		contactPoint: {
+			'@type': 'ContactPoint',
+			email: 'dj@build-os.com',
+			contactType: 'customer service'
+		},
+		address: {
+			'@type': 'PostalAddress',
+			addressLocality: 'Glen Burnie',
+			addressRegion: 'Maryland',
+			addressCountry: 'US'
+		}
+	}}
 />
 
 <main class="min-h-screen bg-background">

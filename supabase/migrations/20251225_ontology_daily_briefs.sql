@@ -1,3 +1,4 @@
+-- supabase/migrations/20251225_ontology_daily_briefs.sql
 -- Migration: Ontology Daily Brief Tables
 -- Description: Creates new ontology-native tables for daily brief generation
 -- Spec Reference: /docs/specs/DAILY_BRIEF_ONTOLOGY_MIGRATION_SPEC.md

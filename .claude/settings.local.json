@@ -33,7 +33,8 @@
       "Bash(NODE_OPTIONS=\"--max-old-space-size=8192\" pnpm run check:ts:*)",
       "Bash(pnpm exec tsc:*)",
       "Bash(pnpm run test:*)",
-      "WebFetch(domain:medium.com)"
+      "WebFetch(domain:medium.com)",
+      "Bash(NODE_OPTIONS=\"--max-old-space-size=8192\" pnpm exec tsc:*)"
     ],
     "deny": [],
     "ask": []

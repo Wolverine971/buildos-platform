@@ -91,7 +91,8 @@ export async function processBriefJob(job: LegacyJob<BriefJobData>) {
 		);
 
 		// Determine if we should use ontology-based brief generation
-		const useOntology = job.data.options?.useOntology === true;
+		// Default to ontology (true) unless explicitly set to false
+		const useOntology = job.data.options?.useOntology !== false;
 
 		// Generate brief using appropriate generator
 		let brief: { id: string };

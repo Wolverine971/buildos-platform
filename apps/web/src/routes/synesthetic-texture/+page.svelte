@@ -1,4 +1,3 @@
-<!-- apps/web/src/routes/synesthetic-texture/+page.svelte -->
 <script lang="ts">
 	const steps = [
 		{
@@ -21,6 +20,12 @@
 		}
 	];
 </script>
+
+<!-- apps/web/src/routes/synesthetic-texture/+page.svelte -->
+<svelte:head>
+	<meta name="robots" content="noindex, nofollow" />
+	<title>Synesthetic Texture Test - BuildOS (Internal)</title>
+</svelte:head>
 
 <div class="min-h-screen bg-background text-foreground">
 	<!-- top strip -->

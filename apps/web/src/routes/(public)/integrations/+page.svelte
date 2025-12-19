@@ -1,5 +1,6 @@
 <!-- apps/web/src/routes/(public)/integrations/+page.svelte -->
 <script lang="ts">
+	import SEOHead from '$lib/components/SEOHead.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
 	import CardBody from '$lib/components/ui/CardBody.svelte';
@@ -220,13 +221,50 @@ if (project.state_key === 'blocked') {
 	}
 </script>
 
-<svelte:head>
-	<title>BuildOS Integrations - Connect Your Tools</title>
-	<meta
-		name="description"
-		content="Integrate with BuildOS to access AI-powered project insights, automate workflows, and sync with your favorite tools."
-	/>
-</svelte:head>
+<SEOHead
+	title="BuildOS Integrations & API - Connect AI Agents to Your Project Data"
+	description="Integrate with BuildOS to access AI-powered project insights, automate workflows, and sync with your favorite tools. REST API, webhooks, and real-time updates for developers."
+	canonical="https://build-os.com/integrations"
+	keywords="BuildOS API, project management integration, AI agent API, productivity API, task automation, webhook integration, developer API, project insights API"
+	ogType="website"
+	jsonLd={{
+		'@context': 'https://schema.org',
+		'@type': 'WebPage',
+		name: 'BuildOS Integrations & API',
+		description:
+			'Connect AI agents and tools to BuildOS for real-time project insights and automated workflows.',
+		url: 'https://build-os.com/integrations',
+		mainEntity: {
+			'@type': 'SoftwareApplication',
+			name: 'BuildOS API',
+			applicationCategory: 'DeveloperApplication',
+			operatingSystem: 'Web',
+			offers: [
+				{
+					'@type': 'Offer',
+					name: 'Developer',
+					price: '0',
+					priceCurrency: 'USD',
+					description: '100 API calls/day, Core endpoints, Community support'
+				},
+				{
+					'@type': 'Offer',
+					name: 'Startup',
+					price: '99',
+					priceCurrency: 'USD',
+					description: '10,000 API calls/day, All endpoints, Email support'
+				},
+				{
+					'@type': 'Offer',
+					name: 'Business',
+					price: '499',
+					priceCurrency: 'USD',
+					description: '100,000 API calls/day, Priority support, SLA guarantee'
+				}
+			]
+		}
+	}}
+/>
 
 <div class="min-h-screen bg-background text-foreground">
 	<!-- Hero Section with enhanced gradients and spacing -->

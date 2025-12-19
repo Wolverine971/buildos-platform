@@ -45,79 +45,85 @@ const DEFAULT_LASTMOD = '2025-10-05'; // Static fallback date for empty categori
 const STATIC_URLS: SitemapUrl[] = [
 	{
 		loc: `${BASE_URL}/`,
-		lastmod: '2025-08-24',
+		lastmod: '2025-12-19',
 		changefreq: 'weekly',
 		priority: '1.0'
 	},
 	{
 		loc: `${BASE_URL}/about`,
-		lastmod: '2025-08-23',
+		lastmod: '2025-12-19',
 		changefreq: 'monthly',
 		priority: '0.8'
 	},
 	{
 		loc: `${BASE_URL}/pricing`,
-		lastmod: '2025-06-02',
+		lastmod: '2025-12-19',
 		changefreq: 'weekly',
 		priority: '0.8'
 	},
 	{
 		loc: `${BASE_URL}/blogs`,
-		lastmod: '2025-06-28',
+		lastmod: '2025-12-19',
 		changefreq: 'weekly',
 		priority: '0.7'
 	},
 	{
 		loc: `${BASE_URL}/contact`,
-		lastmod: '2025-08-23',
+		lastmod: '2025-12-19',
 		changefreq: 'monthly',
 		priority: '0.6'
 	},
 	{
 		loc: `${BASE_URL}/beta`,
-		lastmod: '2025-07-08',
+		lastmod: '2025-12-19',
 		changefreq: 'weekly',
 		priority: '0.9'
 	},
 	{
 		loc: `${BASE_URL}/road-map`,
-		lastmod: '2025-08-04',
+		lastmod: '2025-12-19',
 		changefreq: 'weekly',
 		priority: '0.9'
 	},
 	{
 		loc: `${BASE_URL}/help`,
-		lastmod: '2025-08-05',
+		lastmod: '2025-12-19',
 		changefreq: 'weekly',
 		priority: '0.9'
 	},
 	{
 		loc: `${BASE_URL}/investors`,
-		lastmod: '2025-07-08',
+		lastmod: '2025-12-19',
 		changefreq: 'monthly',
 		priority: '0.6'
 	},
 	{
+		loc: `${BASE_URL}/integrations`,
+		lastmod: '2025-12-19',
+		changefreq: 'monthly',
+		priority: '0.7'
+	},
+	{
 		loc: `${BASE_URL}/feedback`,
-		lastmod: '2025-06-28',
+		lastmod: '2025-12-19',
 		changefreq: 'monthly',
 		priority: '0.7'
 	},
 	{
 		loc: `${BASE_URL}/privacy`,
-		lastmod: '2025-07-10',
+		lastmod: '2025-12-19',
 		changefreq: 'monthly',
 		priority: '0.5'
 	},
 	{
 		loc: `${BASE_URL}/terms`,
-		lastmod: '2025-07-10',
+		lastmod: '2025-12-19',
 		changefreq: 'monthly',
 		priority: '0.5'
 	},
 	{
 		loc: `${BASE_URL}/docs`,
-		lastmod: '2025-06-28',
+		lastmod: '2025-12-19',
 		changefreq: 'weekly',
 		priority: '0.7'
 	}

@@ -1,4 +1,3 @@
-<!-- apps/web/src/routes/test-synthesis/+page.svelte -->
 <script lang="ts">
 	import TaskMappingView from '$lib/components/synthesis/TaskMappingView.svelte';
 	import type { ParsedOperation } from '$lib/types/brain-dump';
@@ -163,6 +162,12 @@
 		alert(`Edit operation: ${operation.data.title}`);
 	}
 </script>
+
+<!-- apps/web/src/routes/test-synthesis/+page.svelte -->
+<svelte:head>
+	<meta name="robots" content="noindex, nofollow" />
+	<title>Synthesis Test - BuildOS (Internal)</title>
+</svelte:head>
 
 <div class="min-h-screen bg-gray-50 dark:bg-gray-900 p-8">
 	<div class="max-w-7xl mx-auto">

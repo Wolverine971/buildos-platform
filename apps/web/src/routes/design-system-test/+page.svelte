@@ -1,4 +1,3 @@
-<!-- apps/web/src/routes/design-system-test/+page.svelte -->
 <script lang="ts">
 	import Button from '$lib/components/ui/Button.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
@@ -29,6 +28,12 @@
 	let selectValue = $state('');
 	let showModal = $state(false);
 </script>
+
+<!-- apps/web/src/routes/design-system-test/+page.svelte -->
+<svelte:head>
+	<meta name="robots" content="noindex, nofollow" />
+	<title>Design System Test - BuildOS (Internal)</title>
+</svelte:head>
 
 <div class="min-h-screen bg-background p-4 sm:p-8">
 	<div class="max-w-7xl mx-auto space-y-12">

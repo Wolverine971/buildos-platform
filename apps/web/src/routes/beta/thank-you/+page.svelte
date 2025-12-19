@@ -61,12 +61,9 @@
 				<div class="flex justify-center mb-8">
 					<div class="relative {animateIn ? 'animate-bounce' : ''}">
 						<div
-							class="w-24 h-24 bg-green-500/10 rounded-full flex items-center justify-center"
+							class="w-24 h-24 bg-accent/10 rounded-full flex items-center justify-center"
 						>
-							<CheckCircle
-								class="w-16 h-16 text-green-600 dark:text-green-400"
-								aria-hidden="true"
-							/>
+							<CheckCircle class="w-16 h-16 text-accent" aria-hidden="true" />
 						</div>
 						<div
 							class="absolute -top-2 -right-2 bg-accent text-accent-foreground text-xs font-bold px-2 py-1 rounded-full animate-pulse"
@@ -119,9 +116,9 @@
 
 					<div class="text-center">
 						<div
-							class="w-12 h-12 bg-green-500/10 rounded-full flex items-center justify-center mx-auto mb-4"
+							class="w-12 h-12 bg-muted rounded-full flex items-center justify-center mx-auto mb-4"
 						>
-							<Mail class="w-6 h-6 text-green-600 dark:text-green-400" />
+							<Mail class="w-6 h-6 text-foreground" />
 						</div>
 						<h3 class="font-semibold text-foreground mb-2">Setup Instructions</h3>
 						<p class="text-sm text-muted-foreground">
@@ -131,9 +128,9 @@
 
 					<div class="text-center">
 						<div
-							class="w-12 h-12 bg-purple-500/10 rounded-full flex items-center justify-center mx-auto mb-4"
+							class="w-12 h-12 bg-muted rounded-full flex items-center justify-center mx-auto mb-4"
 						>
-							<Calendar class="w-6 h-6 text-purple-600 dark:text-purple-400" />
+							<Calendar class="w-6 h-6 text-foreground" />
 						</div>
 						<h3 class="font-semibold text-foreground mb-2">Feedback Sessions</h3>
 						<p class="text-sm text-muted-foreground">
@@ -143,9 +140,9 @@
 
 					<div class="text-center">
 						<div
-							class="w-12 h-12 bg-orange-500/10 rounded-full flex items-center justify-center mx-auto mb-4"
+							class="w-12 h-12 bg-muted rounded-full flex items-center justify-center mx-auto mb-4"
 						>
-							<Users class="w-6 h-6 text-orange-600 dark:text-orange-400" />
+							<Users class="w-6 h-6 text-foreground" />
 						</div>
 						<h3 class="font-semibold text-foreground mb-2">Beta Community</h3>
 						<p class="text-sm text-muted-foreground">

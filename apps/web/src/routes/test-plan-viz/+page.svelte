@@ -1,4 +1,3 @@
-<!-- apps/web/src/routes/test-plan-viz/+page.svelte -->
 <script lang="ts">
 	import PlanVisualization from '$lib/components/agent/PlanVisualization.svelte';
 	import {
@@ -17,6 +16,12 @@
 		collapsedStates[planKey] = !collapsedStates[planKey];
 	}
 </script>
+
+<!-- apps/web/src/routes/test-plan-viz/+page.svelte -->
+<svelte:head>
+	<meta name="robots" content="noindex, nofollow" />
+	<title>Plan Visualization Test - BuildOS (Internal)</title>
+</svelte:head>
 
 <div class="min-h-screen bg-slate-50 p-8 dark:bg-slate-900">
 	<div class="mx-auto max-w-4xl space-y-8">
