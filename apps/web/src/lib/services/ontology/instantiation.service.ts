@@ -123,6 +123,7 @@ async function insertDocument(
 		...(spec.props ?? {})
 	};
 
+	// Store body_markdown in props for backwards compatibility during migration
 	if (spec.body_markdown) {
 		props.body_markdown = spec.body_markdown;
 	}
@@ -134,6 +135,8 @@ async function insertDocument(
 			title: spec.title,
 			type_key: spec.type_key,
 			state_key: normalizedState,
+			// Use new content column
+			content: spec.body_markdown ?? null,
 			props: props as Json,
 			created_by: actorId
 		})
@@ -227,7 +230,6 @@ export async function instantiateProject(
 				name: parsed.project.name,
 				description: parsed.project.description ?? null,
 				type_key: parsed.project.type_key,
-				also_types: parsed.project.also_types ?? [],
 				state_key: projectState,
 				props: mergedProjectProps as Json,
 				start_at: parsed.project.start_at ?? null,

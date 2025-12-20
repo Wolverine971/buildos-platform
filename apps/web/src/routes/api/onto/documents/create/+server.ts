@@ -27,6 +27,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			type_key,
 			state_key = 'draft',
 			body_markdown,
+			content,
+			description,
 			props
 		} = body as Record<string, unknown>;
 
@@ -84,21 +86,27 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			);
 		}
 
-		const normalizedBody =
-			typeof body_markdown === 'string'
-				? body_markdown
-				: typeof props === 'object' &&
-					  props !== null &&
-					  typeof (props as Record<string, unknown>).body_markdown === 'string'
-					? ((props as Record<string, unknown>).body_markdown as string)
-					: '';
+		// Resolve content: prefer content param, fall back to body_markdown, then props.body_markdown
+		const normalizedContent =
+			typeof content === 'string'
+				? content
+				: typeof body_markdown === 'string'
+					? body_markdown
+					: typeof props === 'object' &&
+						  props !== null &&
+						  typeof (props as Record<string, unknown>).body_markdown === 'string'
+						? ((props as Record<string, unknown>).body_markdown as string)
+						: null;
+
+		const normalizedDescription = typeof description === 'string' ? description : null;
 
 		const propsObject =
 			typeof props === 'object' && props !== null ? (props as Record<string, unknown>) : {};
 
+		// Store body_markdown in props for backwards compatibility during migration
 		const documentProps = {
 			...propsObject,
-			body_markdown: normalizedBody
+			...(normalizedContent ? { body_markdown: normalizedContent } : {})
 		};
 
 		const { data: document, error: insertError } = await supabase
@@ -108,6 +116,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				title: title.trim(),
 				type_key,
 				state_key: typeof state_key === 'string' && state_key.trim() ? state_key : 'draft',
+				content: normalizedContent,
+				description: normalizedDescription,
 				props: documentProps,
 				created_by: actorId
 			})

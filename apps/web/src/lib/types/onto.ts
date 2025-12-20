@@ -299,7 +299,6 @@ const ProjectSpecProjectSchema = z.object({
 			/^project\.[a-z_]+\.[a-z_]+(\.[a-z_]+)?$/,
 			'type_key must be project.{realm}.{deliverable} format (3-4 segments starting with "project."). Realm must be: creative, technical, business, service, education, or personal. Example: "project.business.product_launch". Use only lowercase letters and underscores.'
 		),
-	also_types: z.array(z.string()).optional(),
 	state_key: z.string().optional(),
 	props: z
 		.object({
@@ -535,7 +534,6 @@ export const ProjectSchema = z.object({
 	name: z.string(),
 	description: z.string().nullable().optional(),
 	type_key: z.string(),
-	also_types: z.array(z.string()).optional(),
 	state_key: ProjectStateSchema,
 	props: z.record(z.unknown()),
 	facet_context: z.string().nullable().optional(),
@@ -631,6 +629,9 @@ export const DocumentSchema = z.object({
 	title: z.string(),
 	type_key: z.string(),
 	state_key: DocumentStateSchema.default('draft'),
+	content: z.string().nullable().optional(),
+	description: z.string().nullable().optional(),
+	deleted_at: z.string().datetime().nullable().optional(),
 	props: z.record(z.unknown()),
 	created_by: z.string().uuid(),
 	created_at: z.string().datetime(),

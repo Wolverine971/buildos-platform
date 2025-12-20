@@ -268,6 +268,8 @@ export class OntologyWriteExecutor extends BaseExecutor {
 			title: args.title,
 			type_key: args.type_key,
 			state_key: args.state_key ?? 'draft',
+			// Use content column (body_markdown is preserved for backwards compatibility via API)
+			content: args.body_markdown ?? null,
 			body_markdown: args.body_markdown ?? '',
 			props: args.props ?? {}
 		};
@@ -497,20 +499,25 @@ export class OntologyWriteExecutor extends BaseExecutor {
 		if (args.state_key !== undefined) updateData.state_key = args.state_key;
 		if (args.body_markdown !== undefined) {
 			const strategy = args.update_strategy ?? 'replace';
-			updateData.body_markdown = await this.resolveTextWithStrategy({
+			// Resolve content with strategy, then send as content (API handles backwards compat)
+			const resolvedContent = await this.resolveTextWithStrategy({
 				strategy,
 				newContent: args.body_markdown ?? '',
 				instructions: args.merge_instructions,
 				entityLabel: `document:${args.document_id}`,
 				existingLoader: async () => {
 					const existing = await getDocumentDetails(args.document_id);
+					// Prefer content column, fall back to props.body_markdown for backwards compat
 					return (
+						(existing?.document?.content as string) ||
 						(existing?.document?.props?.body_markdown as string) ||
 						(existing?.document?.body_markdown as string) ||
 						''
 					);
 				}
 			});
+			// Use content column (API handles backwards compatibility with props.body_markdown)
+			updateData.content = resolvedContent;
 		}
 		if (args.props !== undefined) updateData.props = args.props;
 

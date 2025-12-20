@@ -124,7 +124,6 @@ function createMockProject(overrides: Partial<OntoProject> = {}): OntoProject {
 		description: null,
 		state_key: 'active',
 		type_key: 'project',
-		also_types: null,
 		org_id: null,
 		start_at: null,
 		end_at: null,
@@ -168,48 +167,57 @@ describe('getWorkMode', () => {
 	});
 
 	it('should return execute for execute-related type keys', () => {
-		expect(getWorkMode('execute')).toBe('execute');
+		// Must start with 'task.execute' OR include 'action'
+		expect(getWorkMode('task.execute')).toBe('execute');
+		expect(getWorkMode('task.execute.quick')).toBe('execute');
 		expect(getWorkMode('action_item')).toBe('execute');
-		expect(getWorkMode('EXECUTE')).toBe('execute');
+		expect(getWorkMode('take_action')).toBe('execute');
 	});
 
 	it('should return create for create-related type keys', () => {
-		expect(getWorkMode('create')).toBe('create');
+		// Must start with 'task.create' OR include 'produce'
+		expect(getWorkMode('task.create')).toBe('create');
 		expect(getWorkMode('produce_document')).toBe('create');
 	});
 
 	it('should return refine for refine-related type keys', () => {
-		expect(getWorkMode('refine')).toBe('refine');
+		// Must start with 'task.refine' OR include 'edit' or 'improve'
+		expect(getWorkMode('task.refine')).toBe('refine');
 		expect(getWorkMode('edit_content')).toBe('refine');
 		expect(getWorkMode('improve_quality')).toBe('refine');
 	});
 
 	it('should return research for research-related type keys', () => {
-		expect(getWorkMode('research')).toBe('research');
+		// Must start with 'task.research' OR include 'learn' or 'discover'
+		expect(getWorkMode('task.research')).toBe('research');
 		expect(getWorkMode('learn_new_skill')).toBe('research');
 		expect(getWorkMode('discover_options')).toBe('research');
 	});
 
 	it('should return review for review-related type keys', () => {
-		expect(getWorkMode('review')).toBe('review');
+		// Must start with 'task.review' OR include 'feedback' or 'assess'
+		expect(getWorkMode('task.review')).toBe('review');
 		expect(getWorkMode('get_feedback')).toBe('review');
 		expect(getWorkMode('assess_progress')).toBe('review');
 	});
 
 	it('should return coordinate for coordination-related type keys', () => {
-		expect(getWorkMode('coordinate')).toBe('coordinate');
+		// Must start with 'task.coordinate' OR include 'discuss' or 'meeting'
+		expect(getWorkMode('task.coordinate')).toBe('coordinate');
 		expect(getWorkMode('discuss_plan')).toBe('coordinate');
 		expect(getWorkMode('meeting_prep')).toBe('coordinate');
 	});
 
 	it('should return admin for admin-related type keys', () => {
-		expect(getWorkMode('admin')).toBe('admin');
+		// Must start with 'task.admin' OR include 'setup' or 'config'
+		expect(getWorkMode('task.admin')).toBe('admin');
 		expect(getWorkMode('setup_environment')).toBe('admin');
 		expect(getWorkMode('config_settings')).toBe('admin');
 	});
 
 	it('should return plan for planning-related type keys', () => {
-		expect(getWorkMode('plan')).toBe('plan');
+		// Must start with 'task.plan' OR include 'strategy' or 'define'
+		expect(getWorkMode('task.plan')).toBe('plan');
 		expect(getWorkMode('strategy_session')).toBe('plan');
 		expect(getWorkMode('define_goals')).toBe('plan');
 	});
@@ -226,7 +234,8 @@ describe('getWorkMode', () => {
 
 describe('categorizeTasks', () => {
 	const timezone = 'America/New_York';
-	const briefDate = new Date('2025-12-17T12:00:00Z');
+	// briefDate should be a yyyy-MM-dd string representing the date in user's timezone
+	const briefDate = '2025-12-17';
 
 	it('should categorize tasks due today', () => {
 		const tasks = [
@@ -271,15 +280,19 @@ describe('categorizeTasks', () => {
 	});
 
 	it('should categorize recently completed tasks', () => {
+		// Use a timestamp within the last 24 hours relative to now
+		const recentTimestamp = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(); // 2 hours ago
 		const tasks = [
 			createMockTask({
 				id: 'task-1',
 				state_key: 'done',
-				updated_at: '2025-12-17T10:00:00Z'
+				updated_at: recentTimestamp
 			})
 		];
 
-		const result = categorizeTasks(tasks, briefDate, timezone);
+		// Use today's date as briefDate for this test
+		const today = new Date().toISOString().split('T')[0];
+		const result = categorizeTasks(tasks, today, timezone);
 		expect(result.recentlyCompleted).toHaveLength(1);
 		expect(result.recentlyCompleted[0].id).toBe('task-1');
 	});
@@ -309,10 +322,14 @@ describe('categorizeTasks', () => {
 	});
 
 	it('should categorize tasks by work mode', () => {
+		// type_key needs to match the patterns in categorizeTasks:
+		// - task.execute* or includes 'action'
+		// - task.create* or includes 'produce'
+		// - task.research* or includes 'learn' or 'discover'
 		const tasks = [
-			createMockTask({ id: 'task-1', type_key: 'execute' }),
-			createMockTask({ id: 'task-2', type_key: 'create' }),
-			createMockTask({ id: 'task-3', type_key: 'research' })
+			createMockTask({ id: 'task-1', type_key: 'task.execute' }),
+			createMockTask({ id: 'task-2', type_key: 'task.create' }),
+			createMockTask({ id: 'task-3', type_key: 'task.research' })
 		];
 
 		const result = categorizeTasks(tasks, briefDate, timezone);
@@ -476,16 +493,17 @@ describe('getOutputStatus', () => {
 // ============================================================================
 
 describe('getMilestoneStatus', () => {
+	const timezone = 'UTC';
+
 	it('should calculate days away correctly', () => {
-		// Using midnight-to-midnight for precise day calculation
-		const now = new Date('2025-12-17T00:00:00Z');
+		const todayStr = '2025-12-17';
 		const milestone = createMockMilestone({
 			due_at: '2025-12-24T00:00:00Z', // Exactly 7 days later
 			state_key: 'pending'
 		});
 		const project = createMockProject();
 
-		const result = getMilestoneStatus(milestone, project, now);
+		const result = getMilestoneStatus(milestone, project, todayStr, timezone);
 
 		expect(result.daysAway).toBe(7);
 		expect(result.isAtRisk).toBe(true); // Within 7 days and not done
@@ -493,31 +511,48 @@ describe('getMilestoneStatus', () => {
 	});
 
 	it('should not mark completed milestones as at risk', () => {
-		const now = new Date('2025-12-17T12:00:00Z');
+		const todayStr = '2025-12-17';
 		const milestone = createMockMilestone({
 			due_at: '2025-12-18T00:00:00Z',
 			state_key: 'completed' // milestone_state uses 'completed' not 'done'
 		});
 		const project = createMockProject();
 
-		const result = getMilestoneStatus(milestone, project, now);
+		const result = getMilestoneStatus(milestone, project, todayStr, timezone);
 
 		expect(result.isAtRisk).toBe(false);
 	});
 
 	it('should not mark far-off milestones as at risk', () => {
-		// Using midnight-to-midnight for precise day calculation
-		const now = new Date('2025-12-17T00:00:00Z');
+		const todayStr = '2025-12-17';
 		const milestone = createMockMilestone({
 			due_at: '2025-12-31T00:00:00Z', // Exactly 14 days later
 			state_key: 'pending'
 		});
 		const project = createMockProject();
 
-		const result = getMilestoneStatus(milestone, project, now);
+		const result = getMilestoneStatus(milestone, project, todayStr, timezone);
 
 		expect(result.daysAway).toBe(14);
 		expect(result.isAtRisk).toBe(false);
+	});
+
+	it('should handle timezone differences correctly', () => {
+		// User is in Pacific timezone (UTC-8)
+		const pacificTimezone = 'America/Los_Angeles';
+		const todayStr = '2025-12-17'; // Dec 17 in Pacific time
+
+		// Milestone is due Dec 24 at 8 AM UTC, which is Dec 24 at midnight Pacific
+		const milestone = createMockMilestone({
+			due_at: '2025-12-24T08:00:00Z',
+			state_key: 'pending'
+		});
+		const project = createMockProject();
+
+		const result = getMilestoneStatus(milestone, project, todayStr, pacificTimezone);
+
+		expect(result.daysAway).toBe(7); // Dec 17 to Dec 24 in Pacific = 7 days
+		expect(result.isAtRisk).toBe(true);
 	});
 });
 

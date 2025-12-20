@@ -761,17 +761,48 @@ Generate an execution plan to fulfill this request.`;
 		const steps = plan.steps || [];
 		const createProjectTools = new Set(['create_onto_project']);
 
-		const createProjectIndex = steps.findIndex((step) =>
-			this.stepUsesTool(step, createProjectTools)
-		);
+		const createProjectStep = steps.find((step) => this.stepUsesTool(step, createProjectTools));
 
-		if (createProjectIndex === -1) {
+		if (!createProjectStep) {
 			throw new PlanExecutionError('Project creation plan must call create_onto_project', {
 				planId: plan.id,
 				availableTools: plannerContext.availableTools.map(
 					(tool) => tool.function.name || ''
 				)
 			});
+		}
+
+		const createStepNumber = createProjectStep.stepNumber;
+
+		for (const step of steps) {
+			if (!step.tools || step.tools.length === 0) {
+				continue;
+			}
+			if (this.stepUsesTool(step, createProjectTools)) {
+				continue;
+			}
+
+			const usesProjectContextTool = step.tools.some((tool) =>
+				this.toolRequiresProjectId(tool)
+			);
+			if (!usesProjectContextTool) {
+				continue;
+			}
+
+			if (step.stepNumber < createStepNumber) {
+				throw new PlanExecutionError(
+					'Project creation must occur before project-dependent steps',
+					{
+						planId: plan.id,
+						stepNumber: step.stepNumber,
+						createStepNumber
+					}
+				);
+			}
+
+			if (!step.dependsOn?.includes(createStepNumber)) {
+				step.dependsOn = [...(step.dependsOn ?? []), createStepNumber];
+			}
 		}
 
 		// Template selection is no longer required in template-free ontology

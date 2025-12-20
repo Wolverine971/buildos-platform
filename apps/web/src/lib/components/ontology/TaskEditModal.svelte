@@ -377,7 +377,8 @@
 		selectedWorkspaceDocId = documentId;
 		const doc = workspaceDocuments.find((d) => d.document.id === documentId);
 		if (doc) {
-			workspaceDocContent = (doc.document?.props?.body_markdown as string) ?? '';
+			// Prefer content column, fall back to props.body_markdown for backwards compatibility
+			workspaceDocContent = (doc.document?.content as string) ?? (doc.document?.props?.body_markdown as string) ?? '';
 		}
 	}
 
@@ -395,7 +396,8 @@
 				method: 'PATCH',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
-					body_markdown: workspaceDocContent
+					// Use content column (API handles backwards compatibility with props.body_markdown)
+					content: workspaceDocContent
 				})
 			});
 
@@ -412,10 +414,7 @@
 							...item,
 							document: {
 								...item.document,
-								props: {
-									...(item.document?.props ?? {}),
-									body_markdown: workspaceDocContent
-								},
+								content: workspaceDocContent,
 								updated_at: new Date().toISOString()
 							}
 						}

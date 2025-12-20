@@ -4056,8 +4056,11 @@ export type Database = {
       }
       onto_documents: {
         Row: {
+          content: string | null
           created_at: string
           created_by: string
+          deleted_at: string | null
+          description: string | null
           id: string
           project_id: string
           props: Json
@@ -4068,8 +4071,11 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          content?: string | null
           created_at?: string
           created_by: string
+          deleted_at?: string | null
+          description?: string | null
           id?: string
           project_id: string
           props?: Json
@@ -4080,8 +4086,11 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          content?: string | null
           created_at?: string
           created_by?: string
+          deleted_at?: string | null
+          description?: string | null
           id?: string
           project_id?: string
           props?: Json
@@ -4866,7 +4875,6 @@ export type Database = {
       }
       onto_projects: {
         Row: {
-          also_types: string[] | null
           created_at: string
           created_by: string
           description: string | null
@@ -4888,7 +4896,6 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          also_types?: string[] | null
           created_at?: string
           created_by: string
           description?: string | null
@@ -4910,7 +4917,6 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          also_types?: string[] | null
           created_at?: string
           created_by?: string
           description?: string | null
@@ -8893,8 +8899,11 @@ export type Database = {
       get_project_context_document: {
         Args: { project_uuid: string }
         Returns: {
+          content: string | null
           created_at: string
           created_by: string
+          deleted_at: string | null
+          description: string | null
           id: string
           project_id: string
           props: Json

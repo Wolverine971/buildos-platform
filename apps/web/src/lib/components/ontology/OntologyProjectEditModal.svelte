@@ -110,15 +110,16 @@
 	// Context document state - now editable
 	let contextDocumentBody = $state('');
 
-	// Initialize context document from props
+	// Initialize context document from content column or props for backwards compat
 	const initialContextBody = $derived.by(() => {
 		if (!contextDocument) return '';
+		// Prefer content column, fall back to props.body_markdown for backwards compatibility
+		if (typeof contextDocument.content === 'string') {
+			return contextDocument.content;
+		}
 		const props = contextDocument.props ?? {};
 		if (typeof props.body_markdown === 'string') {
 			return props.body_markdown;
-		}
-		if (typeof props.content === 'string') {
-			return props.content;
 		}
 		return '';
 	});
@@ -350,9 +351,8 @@
 					method: 'PATCH',
 					headers: { 'Content-Type': 'application/json' },
 					body: JSON.stringify({
-						props: {
-							body_markdown: contextDocumentBody
-						}
+						// Use content column (API handles backwards compatibility with props.body_markdown)
+						content: contextDocumentBody
 					})
 				});
 

@@ -224,10 +224,14 @@ export class OntologyReadExecutor extends BaseExecutor {
 		const actorId = await this.getActorId();
 		let query = this.supabase
 			.from('onto_documents')
-			.select('id, project_id, title, type_key, state_key, props, created_at, updated_at', {
-				count: 'exact'
-			})
+			.select(
+				'id, project_id, title, type_key, state_key, content, description, props, created_at, updated_at',
+				{
+					count: 'exact'
+				}
+			)
 			.eq('created_by', actorId)
+			.is('deleted_at', null) // Exclude soft-deleted documents
 			.order('updated_at', { ascending: false });
 
 		if (args.project_id) {
@@ -418,10 +422,14 @@ export class OntologyReadExecutor extends BaseExecutor {
 
 		let query = this.supabase
 			.from('onto_documents')
-			.select('id, project_id, title, type_key, state_key, props, created_at, updated_at', {
-				count: 'exact'
-			})
+			.select(
+				'id, project_id, title, type_key, state_key, content, description, props, created_at, updated_at',
+				{
+					count: 'exact'
+				}
+			)
 			.eq('created_by', actorId)
+			.is('deleted_at', null) // Exclude soft-deleted documents
 			.order('updated_at', { ascending: false })
 			.ilike('title', likePattern);
 

@@ -1,8 +1,9 @@
 # Ontology Schema Migration Plan
 
 > **Created:** 2024-12-20
-> **Status:** Planning
+> **Status:** In Progress
 > **Priority:** High
+> **Progress:** Phase 1-3 Complete (onto_tasks, onto_projects, onto_documents)
 
 ## Overview
 
@@ -131,7 +132,9 @@ const description = task.description ?? (task.props?.description as string) ?? '
 
 ---
 
-## Phase 2: onto_projects Migration
+## Phase 2: onto_projects Migration ✅ COMPLETE
+
+> **Completed:** 2024-12-20
 
 ### 2.1 Column Changes
 
@@ -141,22 +144,24 @@ ALTER TABLE onto_projects DROP COLUMN IF EXISTS also_types;
 DROP INDEX IF EXISTS idx_onto_projects_also_types;
 ```
 
-### 2.2 Files to Update
+### 2.2 Files Updated
 
-| File                                                                               | Changes Required                                     |
-| ---------------------------------------------------------------------------------- | ---------------------------------------------------- |
-| `/packages/shared-types/src/database.types.ts`                                     | Remove also_types                                    |
-| `/packages/shared-types/src/database.schema.ts`                                    | Remove also_types                                    |
-| `/apps/web/src/lib/types/onto.ts`                                                  | Remove from ProjectSpecProjectSchema (line 302, 538) |
-| `/apps/web/src/lib/services/ontology/instantiation.service.ts`                     | Remove also_types from insert (line 230)             |
-| `/apps/web/src/lib/services/ontology/migration/enhanced-project-migrator.ts`       | Remove also_types (line 72)                          |
-| `/apps/web/src/lib/services/agentic-chat/tools/core/executors/types.ts`            | Remove from CreateOntoProjectArgs (line 182)         |
-| `/apps/web/src/lib/services/agentic-chat/tools/core/definitions/ontology-write.ts` | Remove from schema (lines 353-356)                   |
-| `/apps/worker/tests/ontologyBriefDataLoader.test.ts`                               | Remove from mock (line 127)                          |
+| File                                                                               | Changes Made                   | Status |
+| ---------------------------------------------------------------------------------- | ------------------------------ | ------ |
+| `/packages/shared-types/src/database.types.ts`                                     | Removed also_types             | ✅     |
+| `/packages/shared-types/src/database.schema.ts`                                    | Removed also_types             | ✅     |
+| `/apps/web/src/lib/types/onto.ts`                                                  | Removed from Project schemas   | ✅     |
+| `/apps/web/src/lib/services/ontology/instantiation.service.ts`                     | Removed also_types from insert | ✅     |
+| `/apps/web/src/lib/services/ontology/migration/enhanced-project-migrator.ts`       | Removed also_types             | ✅     |
+| `/apps/web/src/lib/services/agentic-chat/tools/core/executors/types.ts`            | Removed from CreateOntoProjectArgs | ✅     |
+| `/apps/web/src/lib/services/agentic-chat/tools/core/definitions/ontology-write.ts` | Removed from schema            | ✅     |
+| `/apps/worker/tests/ontologyBriefDataLoader.test.ts`                               | Removed from mock              | ✅     |
 
 ---
 
-## Phase 3: onto_documents Migration
+## Phase 3: onto_documents Migration ✅ COMPLETE
+
+> **Completed:** 2024-12-20
 
 ### 3.1 New Columns
 
@@ -166,6 +171,7 @@ ALTER TABLE onto_documents ADD COLUMN IF NOT EXISTS description text;
 ALTER TABLE onto_documents ADD COLUMN IF NOT EXISTS deleted_at timestamptz;
 
 CREATE INDEX IF NOT EXISTS idx_onto_documents_deleted_at ON onto_documents(deleted_at) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_onto_documents_active ON onto_documents(project_id, state_key) WHERE deleted_at IS NULL;
 ```
 
 ### 3.2 Data Migration
@@ -178,40 +184,51 @@ WHERE props->>'body_markdown' IS NOT NULL
   AND content IS NULL;
 ```
 
-### 3.3 Files to Update
+### 3.3 Files Updated
 
 #### API Endpoints
 
-| File                                                            | Changes Required                        |
-| --------------------------------------------------------------- | --------------------------------------- |
-| `/apps/web/src/routes/api/onto/documents/create/+server.ts`     | Accept `content` param, store in column |
-| `/apps/web/src/routes/api/onto/documents/[id]/+server.ts`       | PATCH: update content column            |
-| `/apps/web/src/routes/api/onto/documents/[id]/full/+server.ts`  | Return content column                   |
-| `/apps/web/src/routes/api/onto/tasks/[id]/documents/+server.ts` | Use content column                      |
-
-#### Modal Components
-
-| File                                                                    | Changes Required                              |
-| ----------------------------------------------------------------------- | --------------------------------------------- |
-| `/apps/web/src/lib/components/ontology/DocumentModal.svelte`            | Load/save content column (line 131, 192, 194) |
-| `/apps/web/src/lib/components/ontology/OntologyContextDocModal.svelte`  | Update fallback pattern (lines 38-42, 93)     |
-| `/apps/web/src/lib/components/ontology/OntologyProjectEditModal.svelte` | Read content column (lines 117-120)           |
-| `/apps/web/src/lib/components/ontology/TaskEditModal.svelte`            | Use content column (lines 377, 395, 414)      |
+| File                                                            | Changes Made                                       | Status |
+| --------------------------------------------------------------- | -------------------------------------------------- | ------ |
+| `/apps/web/src/routes/api/onto/documents/create/+server.ts`     | Accept content/description, store in columns       | ✅     |
+| `/apps/web/src/routes/api/onto/documents/[id]/+server.ts`       | PATCH: update content; DELETE: soft delete         | ✅     |
+| `/apps/web/src/routes/api/onto/tasks/[id]/documents/+server.ts` | Use content column, filter deleted                 | ✅     |
 
 #### Chat Tools
 
-| File                                                                                      | Changes Required          |
-| ----------------------------------------------------------------------------------------- | ------------------------- |
-| `/apps/web/src/lib/services/agentic-chat/tools/core/definitions/ontology-write.ts`        | Update schema for content |
-| `/apps/web/src/lib/services/agentic-chat/tools/core/executors/ontology-write-executor.ts` | Use content column        |
-| `/apps/web/src/lib/services/agentic-chat/tools/core/executors/types.ts`                   | Update type definitions   |
+| File                                                                                      | Changes Made                          | Status |
+| ----------------------------------------------------------------------------------------- | ------------------------------------- | ------ |
+| `/apps/web/src/lib/services/agentic-chat/tools/core/executors/ontology-write-executor.ts` | Use content column for create/update  | ✅     |
+| `/apps/web/src/lib/services/agentic-chat/tools/core/executors/ontology-read-executor.ts`  | Select content/description, filter deleted | ✅     |
 
 #### Services
 
-| File                                                           | Changes Required                        |
-| -------------------------------------------------------------- | --------------------------------------- |
-| `/apps/web/src/lib/services/ontology/instantiation.service.ts` | Use content column (lines 110, 126-127) |
-| `/apps/web/src/lib/services/ontology/task-document.service.ts` | Use content column                      |
+| File                                                           | Changes Made                           | Status |
+| -------------------------------------------------------------- | -------------------------------------- | ------ |
+| `/apps/web/src/lib/services/ontology/instantiation.service.ts` | Use content column for document insert | ✅     |
+
+#### Types
+
+| File                                                 | Changes Made                             | Status |
+| ---------------------------------------------------- | ---------------------------------------- | ------ |
+| `/packages/shared-types/src/database.types.ts`       | Added content, description, deleted_at   | ✅     |
+| `/packages/shared-types/src/database.schema.ts`      | Added content, description, deleted_at   | ✅     |
+| `/apps/web/src/lib/types/onto.ts`                    | Added to DocumentSchema                  | ✅     |
+
+### 3.4 Backwards Compatibility
+
+During transition, both `content` column and `props.body_markdown` are maintained:
+- New documents: Content stored in `content` column AND `props.body_markdown`
+- Read operations: Prefer `content` column, fall back to `props.body_markdown`
+
+#### Modal Components ✅
+
+| File                                                                    | Changes Made                                  | Status |
+| ----------------------------------------------------------------------- | --------------------------------------------- | ------ |
+| `/apps/web/src/lib/components/ontology/DocumentModal.svelte`            | Load/save using content column                | ✅     |
+| `/apps/web/src/lib/components/ontology/OntologyContextDocModal.svelte`  | Load/save using content column                | ✅     |
+| `/apps/web/src/lib/components/ontology/OntologyProjectEditModal.svelte` | Read content column with fallback             | ✅     |
+| `/apps/web/src/lib/components/ontology/TaskEditModal.svelte`            | Load/save workspace docs using content        | ✅     |
 
 ---
 

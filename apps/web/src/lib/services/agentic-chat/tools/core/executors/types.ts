@@ -180,7 +180,6 @@ export interface CreateOntoProjectArgs {
 		name: string;
 		type_key: string;
 		description?: string;
-		also_types?: string[];
 		state_key?: string;
 		props?: {
 			facets?: {

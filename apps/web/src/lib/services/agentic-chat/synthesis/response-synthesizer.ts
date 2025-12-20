@@ -23,6 +23,7 @@ import type {
 	ServiceContext,
 	ExecutionResult,
 	ToolExecutionResult,
+	ExecutorResult,
 	AgentPlan,
 	BaseService,
 	StreamCallback,
@@ -140,19 +141,28 @@ export class ResponseSynthesizer implements BaseService {
 	 */
 	async synthesizeComplexResponse(
 		plan: AgentPlan,
-		executorResults: ExecutionResult[],
+		executionResults: ExecutionResult[],
 		context: ServiceContext
 	): Promise<SynthesisResult> {
+		const toolResultCount = executionResults.filter((result) =>
+			this.isToolResult(result)
+		).length;
+		const executorResultCount = executionResults.filter((result) =>
+			this.isExecutorResult(result)
+		).length;
+
 		console.log('[ResponseSynthesizer] Synthesizing complex response', {
 			planId: plan.id,
 			strategy: plan.strategy,
 			stepCount: plan.steps.length,
 			completedSteps: plan.steps.filter((s) => s.status === 'completed').length,
-			executorResultCount: executorResults.length
+			executorResultCount,
+			toolResultCount,
+			executionResultCount: executionResults.length
 		});
 
 		const systemPrompt = this.buildComplexSystemPrompt(context);
-		const prompt = this.buildComplexPrompt(plan, executorResults);
+		const prompt = this.buildComplexPrompt(plan, executionResults);
 
 		try {
 			const result = await this.callLLMWithUsage(
@@ -173,7 +183,7 @@ export class ResponseSynthesizer implements BaseService {
 			console.error('[ResponseSynthesizer] Failed to generate complex response:', error);
 			return {
 				text: this.applyFocusPrefix(
-					this.generateComplexFallbackResponse(plan, executorResults),
+					this.generateComplexFallbackResponse(plan, executionResults),
 					context.projectFocus
 				)
 			};
@@ -393,31 +403,57 @@ export class ResponseSynthesizer implements BaseService {
 	 */
 	summarizeExecutorResults(results: ExecutionResult[]): string {
 		if (results.length === 0) {
-			return 'No executor results to summarize.';
+			return 'No execution results to summarize.';
 		}
 
 		const successful = results.filter((r) => r.success);
 		const failed = results.filter((r) => !r.success);
 
-		let summary = `Executor Results Summary:\n`;
+		const toolSuccesses = successful.filter((r) => this.isToolResult(r));
+		const executorSuccesses = successful.filter((r) => this.isExecutorResult(r));
+		const otherSuccesses = successful.filter(
+			(r) => !this.isToolResult(r) && !this.isExecutorResult(r)
+		);
+
+		const toolFailures = failed.filter((r) => this.isToolResult(r));
+		const executorFailures = failed.filter((r) => this.isExecutorResult(r));
+		const otherFailures = failed.filter(
+			(r) => !this.isToolResult(r) && !this.isExecutorResult(r)
+		);
+
+		let summary = `Execution Results Summary:\n`;
 
 		if (successful.length > 0) {
 			summary += `- ${successful.length} successful executions\n`;
-			successful.forEach((result) => {
-				if (result.data) {
-					const preview = JSON.stringify(result.data, null, 2).substring(0, 100);
-					summary += `  • ${preview}${preview.length >= 100 ? '...' : ''}\n`;
-				}
-			});
+			const pushPreview = (result: ExecutionResult, label?: string) => {
+				if (!result.data) return;
+				const preview = JSON.stringify(result.data, null, 2).substring(0, 100);
+				const prefix = label ? `  • ${label}: ` : '  • ';
+				summary += `${prefix}${preview}${preview.length >= 100 ? '...' : ''}\n`;
+			};
+			toolSuccesses.forEach((result) =>
+				pushPreview(result, (result as ToolExecutionResult).toolName)
+			);
+			executorSuccesses.forEach((result) =>
+				pushPreview(result, (result as ExecutorResult).executorId)
+			);
+			otherSuccesses.forEach((result) => pushPreview(result));
 		}
 
 		if (failed.length > 0) {
 			summary += `- ${failed.length} failed executions\n`;
-			failed.forEach((result) => {
-				if (result.error) {
-					summary += `  • Error: ${result.error}\n`;
-				}
-			});
+			const pushFailure = (result: ExecutionResult, label?: string) => {
+				if (!result.error) return;
+				const prefix = label ? `  • ${label}: ` : '  • ';
+				summary += `${prefix}${result.error}\n`;
+			};
+			toolFailures.forEach((result) =>
+				pushFailure(result, (result as ToolExecutionResult).toolName)
+			);
+			executorFailures.forEach((result) =>
+				pushFailure(result, (result as ExecutorResult).executorId)
+			);
+			otherFailures.forEach((result) => pushFailure(result));
 		}
 
 		return summary;
@@ -499,10 +535,48 @@ Be clear about the overall outcome and any next steps needed.`;
 			}
 		});
 
-		if (executorResults.length > 0) {
+		const toolResults = executorResults.filter((result) => this.isToolResult(result));
+		const executorOnlyResults = executorResults.filter((result) =>
+			this.isExecutorResult(result)
+		);
+		const otherResults = executorResults.filter(
+			(result) => !this.isToolResult(result) && !this.isExecutorResult(result)
+		);
+
+		if (toolResults.length > 0) {
+			prompt += '\nTool results:\n';
+			toolResults.forEach((result, index) => {
+				const toolResult = result as ToolExecutionResult;
+				prompt += `\nTool ${index + 1}: ${toolResult.toolName}\n`;
+				prompt += `Success: ${toolResult.success}\n`;
+				if (toolResult.data) {
+					prompt += `Data: ${JSON.stringify(toolResult.data, null, 2).substring(0, 500)}\n`;
+				}
+				if (toolResult.error) {
+					prompt += `Error: ${toolResult.error}\n`;
+				}
+			});
+		}
+
+		if (executorOnlyResults.length > 0) {
 			prompt += '\nExecutor results:\n';
-			executorResults.forEach((result, index) => {
+			executorOnlyResults.forEach((result, index) => {
+				const executorResult = result as ExecutorResult;
 				prompt += `\nExecutor ${index + 1}:\n`;
+				prompt += `Success: ${executorResult.success}\n`;
+				if (executorResult.data) {
+					prompt += `Data: ${JSON.stringify(executorResult.data, null, 2).substring(0, 500)}\n`;
+				}
+				if (executorResult.error) {
+					prompt += `Error: ${executorResult.error}\n`;
+				}
+			});
+		}
+
+		if (otherResults.length > 0) {
+			prompt += '\nOther execution results:\n';
+			otherResults.forEach((result, index) => {
+				prompt += `\nResult ${index + 1}:\n`;
 				prompt += `Success: ${result.success}\n`;
 				if (result.data) {
 					prompt += `Data: ${JSON.stringify(result.data, null, 2).substring(0, 500)}\n`;
@@ -591,6 +665,14 @@ Format the response as a short introduction followed by a numbered list of the q
 		}
 
 		return response;
+	}
+
+	private isToolResult(result: ExecutionResult): result is ToolExecutionResult {
+		return Boolean((result as ToolExecutionResult).toolName);
+	}
+
+	private isExecutorResult(result: ExecutionResult): result is ExecutorResult {
+		return Boolean((result as ExecutorResult).executorId);
 	}
 
 	private applyFocusPrefix(text: string, focus?: ProjectFocus | null): string {

@@ -34,12 +34,13 @@
 
 	const docBody = $derived.by(() => {
 		if (!document) return '';
+		// Prefer content column, fall back to props.body_markdown for backwards compatibility
+		if (typeof document.content === 'string') {
+			return document.content;
+		}
 		const props = document.props ?? {};
 		if (typeof props.body_markdown === 'string') {
 			return props.body_markdown;
-		}
-		if (typeof props.content === 'string') {
-			return props.content;
 		}
 		return '';
 	});
@@ -89,9 +90,8 @@
 				method: 'PATCH',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
-					props: {
-						body_markdown: editedBody
-					}
+					// Use content column (API handles backwards compatibility with props.body_markdown)
+					content: editedBody
 				})
 			});
 

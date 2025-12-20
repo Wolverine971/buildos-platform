@@ -1032,9 +1032,13 @@ export class AgentChatOrchestrator {
 			}
 		}
 
+		const combinedResults =
+			executorResults.length > 0 || collectedToolResults.length > 0
+				? [...executorResults, ...collectedToolResults]
+				: [];
 		const response = await this.deps.responseSynthesizer.synthesizeComplexResponse(
 			plan,
-			executorResults.length > 0 ? executorResults : collectedToolResults,
+			combinedResults,
 			serviceContext
 		);
 

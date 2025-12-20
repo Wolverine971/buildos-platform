@@ -34,6 +34,7 @@ async function ensureDocumentAccess(
 		.from('onto_documents')
 		.select('*')
 		.eq('id', documentId)
+		.is('deleted_at', null)
 		.maybeSingle();
 
 	if (documentError) {
@@ -133,10 +134,8 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 
 		const { document } = accessResult;
 
-		const { title, state_key, type_key, body_markdown, props } = body as Record<
-			string,
-			unknown
-		>;
+		const { title, state_key, type_key, body_markdown, content, description, props } =
+			body as Record<string, unknown>;
 
 		if (state_key !== undefined && !DOCUMENT_STATES.includes(String(state_key))) {
 			return ApiResponse.badRequest(
@@ -164,6 +163,20 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			hasUpdates = true;
 		}
 
+		// Handle description column
+		if (description !== undefined) {
+			updatePayload.description = typeof description === 'string' ? description : null;
+			hasUpdates = true;
+		}
+
+		// Handle content column - prefer content param, fall back to body_markdown for backwards compatibility
+		const newContent = content !== undefined ? content : body_markdown;
+		if (newContent !== undefined) {
+			const contentValue = typeof newContent === 'string' ? newContent : null;
+			updatePayload.content = contentValue;
+			hasUpdates = true;
+		}
+
 		const propsPayload =
 			typeof props === 'object' && props !== null ? (props as Record<string, unknown>) : {};
 
@@ -172,8 +185,9 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			? { ...(document.props ?? {}), ...propsPayload }
 			: (document.props ?? {});
 
-		if (body_markdown !== undefined) {
-			const markdownContent = typeof body_markdown === 'string' ? body_markdown : '';
+		// Keep body_markdown in props for backwards compatibility during migration
+		if (newContent !== undefined) {
+			const markdownContent = typeof newContent === 'string' ? newContent : '';
 			mergedProps = { ...mergedProps, body_markdown: markdownContent };
 			shouldUpdateProps = true;
 		}
@@ -248,20 +262,15 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 			state_key: document.state_key
 		};
 
-		// Delete related edges FIRST (both where document is source and destination)
-		await locals.supabase
-			.from('onto_edges')
-			.delete()
-			.or(`src_id.eq.${documentId},dst_id.eq.${documentId}`);
-
-		// Then delete the document
+		// Soft delete: set deleted_at timestamp instead of hard delete
+		// Edge relationships are preserved for potential restoration
 		const { error: deleteError } = await locals.supabase
 			.from('onto_documents')
-			.delete()
+			.update({ deleted_at: new Date().toISOString() })
 			.eq('id', documentId);
 
 		if (deleteError) {
-			console.error('[Document API] Failed to delete document:', deleteError);
+			console.error('[Document API] Failed to soft-delete document:', deleteError);
 			return ApiResponse.databaseError(deleteError);
 		}
 

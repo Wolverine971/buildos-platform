@@ -354,11 +354,6 @@ For example:
 								description:
 									'Project description (optional - infer from user message)'
 							},
-							also_types: {
-								type: 'array',
-								items: { type: 'string' },
-								description: 'Additional type classifications (optional)'
-							},
 							state_key: {
 								type: 'string',
 								description:

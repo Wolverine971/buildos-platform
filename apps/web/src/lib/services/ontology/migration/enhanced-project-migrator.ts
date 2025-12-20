@@ -69,7 +69,6 @@ export class EnhancedProjectMigrator {
 					description: project.description,
 					type_key: typeKey,
 					state_key: stateKey,
-					also_types: [],
 					props: propsWithFacets as Json,
 					start_at: project.start_date,
 					end_at: project.end_date,

@@ -428,6 +428,12 @@
 				role="presentation"
 			>
 				<!-- Modal Content -->
+				<!-- Height strategy:
+					 - Portrait: Near full height with safe area padding
+					 - Landscape mobile: Reduced margin for more content space
+					 - Tablet/Desktop (sm+): 85vh max height
+					 - Uses dvh where supported for dynamic viewport height (keyboard handling)
+				-->
 				<div
 					bind:this={modalElement}
 					use:touchGesture
@@ -435,8 +441,9 @@
 						bg-card border border-border
 						{variantClasses.modal}
 						shadow-ink-strong
-						max-h-[calc(100vh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-1rem)]
-						sm:max-h-[85vh]
+						max-h-[calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-1rem)]
+						landscape:max-h-[calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-0.5rem)]
+						sm:max-h-[85dvh]
 						overflow-hidden
 						{customClasses}
 						flex flex-col
@@ -678,9 +685,9 @@
 	@supports (-webkit-touch-callout: none) {
 		/* iOS-specific fixes */
 		.modal-container {
-			/* Account for notch and home indicator */
+			/* Account for notch and home indicator - use dvh for dynamic viewport */
 			max-height: calc(
-				100vh - env(safe-area-inset-top, 0px) -
+				100dvh - env(safe-area-inset-top, 0px) -
 					max(env(safe-area-inset-bottom, 0px), 1rem) - 1rem
 			);
 		}
@@ -688,6 +695,23 @@
 		.modal-footer {
 			/* Ensure footer clears home indicator */
 			padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
+		}
+	}
+
+	/* ==================== Landscape Orientation Support ==================== */
+
+	@media (orientation: landscape) and (max-height: 500px) {
+		/* Compact layout for landscape mobile devices */
+		.modal-container {
+			/* Reduce margins in landscape to maximize content area */
+			max-height: calc(
+				100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 0.5rem
+			);
+		}
+
+		.drag-handle-wrapper {
+			/* Smaller drag handle area in landscape */
+			padding: 0.25rem 0;
 		}
 	}
 

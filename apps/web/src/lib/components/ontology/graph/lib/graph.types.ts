@@ -57,11 +57,23 @@ export interface CytoscapeNode {
 		id: string;
 		label: string;
 		type: NodeType;
+		state?: string;
+		primitive?: string; // For outputs
 		parent?: string;
 		metadata: Record<string, unknown>;
+		// Visual properties
 		color: string;
+		borderColor?: string;
+		borderWidth?: number;
+		borderStyle?: 'solid' | 'dashed' | 'dotted';
+		width?: number;
+		height?: number;
 		size: number;
 		shape: string;
+		fontSize?: number;
+		fontWeight?: number;
+		labelValign?: 'top' | 'center' | 'bottom';
+		labelMarginY?: number;
 	};
 }
 
@@ -72,9 +84,12 @@ export interface CytoscapeEdge {
 		target: string;
 		label: string;
 		relationship: string;
+		category?: string; // Semantic category for styling
 		strength?: number;
 		color?: string;
 		width?: number;
+		lineStyle?: 'solid' | 'dashed' | 'dotted';
+		arrowShape?: string;
 	};
 }
 

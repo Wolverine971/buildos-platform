@@ -128,7 +128,8 @@
 			title = document.title ?? '';
 			typeKey = document.type_key ?? '';
 			stateKey = document.state_key ?? 'draft';
-			body = (document.props?.body_markdown as string) ?? '';
+			// Prefer content column, fall back to props.body_markdown for backwards compatibility
+			body = (document.content as string) ?? (document.props?.body_markdown as string) ?? '';
 			createdAt = document.created_at ?? null;
 			updatedAt = document.updated_at ?? null;
 			lastLoadedId = id;
@@ -189,10 +190,8 @@
 				title: title.trim(),
 				type_key: typeKey.trim(),
 				state_key: stateKey,
-				body_markdown: body,
-				props: {
-					body_markdown: body
-				}
+				// Use content column (API handles backwards compatibility with props.body_markdown)
+				content: body
 			};
 
 			let request: Response;

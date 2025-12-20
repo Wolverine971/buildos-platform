@@ -105,6 +105,8 @@ Secondary issues include missing enforcement of project creation step ordering, 
 
 ## Issue 4: Mixed Plans Drop Tool-Step Results in Synthesis
 
+**Status**: Fixed (2025-12-20)
+
 ### Affected Files
 
 - `apps/web/src/lib/services/agentic-chat/orchestration/agent-chat-orchestrator.ts`
@@ -126,6 +128,8 @@ Secondary issues include missing enforcement of project creation step ordering, 
 ---
 
 ## Issue 5: Project Creation Plan Ordering Not Enforced
+
+**Status**: Fixed (2025-12-20)
 
 ### Affected Files
 
@@ -243,8 +247,8 @@ Plan tool calls bypass `ToolExecutionService` (which extracts entities) and `Cha
 ### Phase 2: Planning Correctness
 
 - [x] Route plan tool execution through `ToolExecutionService` or adapter.
-- [ ] Merge executor + tool results before synthesis.
-- [ ] Enforce project_create step ordering/dependencies.
+- [x] Merge executor + tool results before synthesis.
+- [x] Enforce project_create step ordering/dependencies.
 
 ### Phase 3: Context + Observability
 

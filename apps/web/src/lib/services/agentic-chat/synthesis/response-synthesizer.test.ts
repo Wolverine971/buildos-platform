@@ -609,7 +609,7 @@ describe('ResponseSynthesizer', () => {
 		it('should handle empty results', () => {
 			const summary = synthesizer.summarizeExecutorResults([]);
 
-			expect(summary).toContain('No executor results');
+			expect(summary).toContain('No execution results');
 		});
 	});
 });

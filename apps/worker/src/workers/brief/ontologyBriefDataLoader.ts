@@ -8,7 +8,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@buildos/shared-types';
-import { formatInTimeZone } from 'date-fns-tz';
+import { formatInTimeZone, zonedTimeToUtc } from 'date-fns-tz';
 import { addDays, subHours, parseISO, differenceInDays } from 'date-fns';
 import type {
 	OntoProject,
@@ -37,6 +37,39 @@ import type {
 } from './ontologyBriefTypes.js';
 
 // ============================================================================
+// TIMEZONE UTILITIES
+// ============================================================================
+
+/**
+ * Calculate a date string N days from a given date, respecting the user's timezone.
+ * Uses noon to avoid DST edge cases where midnight might not exist or be ambiguous.
+ *
+ * @param dateStr - The starting date as yyyy-MM-dd in user's local timezone
+ * @param days - Number of days to add (can be negative)
+ * @param timezone - The user's timezone (e.g., 'America/Los_Angeles')
+ * @returns The resulting date as yyyy-MM-dd in user's local timezone
+ */
+function addDaysToLocalDate(dateStr: string, days: number, timezone: string): string {
+	// Convert the user's local date at noon to a UTC Date object
+	// Using noon avoids DST edge cases where midnight might not exist
+	const localDateAtNoon = zonedTimeToUtc(`${dateStr} 12:00:00`, timezone);
+	// Add the specified number of days
+	const resultDate = addDays(localDateAtNoon, days);
+	// Format back to yyyy-MM-dd in user's timezone
+	return formatInTimeZone(resultDate, timezone, 'yyyy-MM-dd');
+}
+
+/**
+ * Get "now" as a yyyy-MM-dd string in the user's timezone.
+ *
+ * @param timezone - The user's timezone
+ * @returns Today's date as yyyy-MM-dd in user's timezone
+ */
+function getTodayInTimezone(timezone: string): string {
+	return formatInTimeZone(new Date(), timezone, 'yyyy-MM-dd');
+}
+
+// ============================================================================
 // TASK CATEGORIZATION UTILITIES
 // ============================================================================
 
@@ -51,11 +84,8 @@ export function categorizeTasks(
 	const now = new Date();
 	const cutoff = subHours(now, 24);
 	const todayStr = briefDate; // yyyy-MM-dd (user-local date)
-	const weekEndStr = formatInTimeZone(
-		addDays(parseISO(`${todayStr}T00:00:00Z`), 7),
-		'UTC',
-		'yyyy-MM-dd'
-	);
+	// Calculate week end date (7 days from today) in user's timezone
+	const weekEndStr = addDaysToLocalDate(todayStr, 7, timezone);
 
 	// Time-based categorization
 	const todaysTasks: OntoTask[] = [];
@@ -294,15 +324,32 @@ export function getOutputStatus(output: OntoOutput, edges: OntoEdge[]): OutputSt
 }
 
 /**
- * Get milestone status with risk assessment
+ * Get milestone status with risk assessment.
+ *
+ * Note: This function calculates days away using calendar dates in the user's timezone,
+ * not absolute time differences. A milestone due "tomorrow" in the user's timezone
+ * will show as 1 day away regardless of the exact hour.
+ *
+ * @param milestone - The milestone to check
+ * @param project - The parent project
+ * @param todayStr - Today's date as yyyy-MM-dd in user's timezone
+ * @param timezone - The user's timezone
  */
 export function getMilestoneStatus(
 	milestone: OntoMilestone,
 	project: OntoProject,
-	now: Date
+	todayStr: string,
+	timezone: string
 ): MilestoneStatus {
-	const dueDate = parseISO(milestone.due_at);
-	const daysAway = differenceInDays(dueDate, now);
+	// Format the milestone due date in user's timezone
+	const dueDateStr = formatInTimeZone(parseISO(milestone.due_at), timezone, 'yyyy-MM-dd');
+
+	// Calculate days away using date strings to avoid timezone confusion
+	// This gives calendar day difference, not 24-hour periods
+	const today = parseISO(`${todayStr}T12:00:00`);
+	const dueDay = parseISO(`${dueDateStr}T12:00:00`);
+	const daysAway = differenceInDays(dueDay, today);
+
 	const isAtRisk = daysAway <= 7 && milestone.state_key !== 'completed';
 
 	return {
@@ -802,11 +849,8 @@ export class OntologyBriefDataLoader {
 		briefDate: string,
 		timezone: string
 	): OntologyBriefMetadata {
-		const weekEndStr = formatInTimeZone(
-			addDays(parseISO(`${briefDate}T00:00:00Z`), 7),
-			'UTC',
-			'yyyy-MM-dd'
-		);
+		// Calculate week end date (7 days from today) in user's timezone
+		const weekEndStr = addDaysToLocalDate(briefDate, 7, timezone);
 
 		const allTasks = projectsData.flatMap((p) => p.tasks);
 		const allGoals = projectsData.flatMap((p) => p.goals);

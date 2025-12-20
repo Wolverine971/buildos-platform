@@ -61,7 +61,8 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		const { data: documents, error: docError } = await supabase
 			.from('onto_documents')
 			.select('*')
-			.in('id', documentIds);
+			.in('id', documentIds)
+			.is('deleted_at', null);
 
 		if (docError) {
 			console.error('[TaskDoc API] Failed to fetch documents:', docError);
@@ -104,6 +105,8 @@ type DocumentCreatePayload = {
 	state_key?: string;
 	role?: string;
 	body_markdown?: string;
+	content?: string;
+	description?: string;
 	props?: Record<string, unknown>;
 	document_id?: string;
 };
@@ -141,6 +144,8 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 			state_key,
 			role = 'deliverable',
 			body_markdown,
+			content,
+			description,
 			props = {}
 		} = body;
 
@@ -151,6 +156,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 				.from('onto_documents')
 				.select('*')
 				.eq('id', document_id)
+				.is('deleted_at', null)
 				.single();
 
 			if (existingError || !existingDoc) {
@@ -166,10 +172,18 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 			const docTitle = title?.trim() || `${task.title ?? 'Task'} Document`;
 			const docType = type_key?.trim() || 'document.task.scratch';
 			const docState = state_key?.trim() || 'draft';
-			const normalizedBody = typeof body_markdown === 'string' ? body_markdown : '';
+			// Prefer content param, fall back to body_markdown for backwards compatibility
+			const normalizedContent =
+				typeof content === 'string'
+					? content
+					: typeof body_markdown === 'string'
+						? body_markdown
+						: null;
+			const normalizedDescription = typeof description === 'string' ? description : null;
+			// Store body_markdown in props for backwards compatibility during migration
 			const mergedProps = {
 				...(props ?? {}),
-				body_markdown: normalizedBody
+				...(normalizedContent ? { body_markdown: normalizedContent } : {})
 			};
 
 			const { data: insertedDoc, error: insertError } = await supabase
@@ -179,6 +193,8 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 					title: docTitle,
 					type_key: docType,
 					state_key: docState,
+					content: normalizedContent,
+					description: normalizedDescription,
 					props: mergedProps,
 					created_by: actorId
 				})

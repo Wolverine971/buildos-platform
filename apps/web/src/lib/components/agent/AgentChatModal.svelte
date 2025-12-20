@@ -2522,8 +2522,14 @@
 
 	{#snippet children()}
 		<!-- INKPRINT panel container with Frame texture -->
+		<!-- Height strategy:
+			 - Portrait mobile: Full height minus header space (8rem/128px for modal chrome)
+			 - Landscape mobile: Reduced height to fit short viewport, no min-height
+			 - Tablet/Desktop (sm+): 75vh with 500px min for comfortable reading
+			 - Uses dvh (dynamic viewport height) for better mobile keyboard handling
+		-->
 		<div
-			class="relative z-10 flex h-[calc(100vh-8rem)] flex-col overflow-hidden rounded-lg border border-border bg-card shadow-ink tx tx-frame tx-weak sm:h-[75vh] sm:min-h-[500px]"
+			class="relative z-10 flex h-[calc(100dvh-8rem)] flex-col overflow-hidden rounded-lg border border-border bg-card shadow-ink tx tx-frame tx-weak landscape:h-[calc(100dvh-4rem)] sm:h-[75dvh] sm:min-h-[500px] sm:landscape:min-h-0"
 		>
 			<!-- Keep context selection mounted so Back returns to prior step -->
 			<div
@@ -2871,5 +2877,26 @@
 
 	:global(.dark .agent-chat-scroll::-webkit-scrollbar-thumb:hover) {
 		background: hsl(var(--accent));
+	}
+
+	/* ==================== Landscape Orientation Support ==================== */
+
+	/* Compact spacing for landscape mobile (short viewport) */
+	@media (orientation: landscape) and (max-height: 500px) {
+		/* Reduce header padding in landscape */
+		:global(.agent-chat-header) {
+			padding-top: 0.25rem;
+			padding-bottom: 0.25rem;
+		}
+
+		/* Compact composer in landscape */
+		:global(.agent-chat-composer) {
+			padding: 0.375rem;
+		}
+
+		/* Smaller scrollbar in landscape to maximize content */
+		:global(.agent-chat-scroll::-webkit-scrollbar) {
+			width: 4px;
+		}
 	}
 </style>
