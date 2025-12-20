@@ -1,5 +1,5 @@
 // Lightweight database schema - auto-generated from database.types.ts
-// Generated on: 2025-12-20T20:53:07.385Z
+// Generated on: 2025-12-20T22:16:38.531Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -962,11 +962,13 @@ export type DatabaseSchema = {
 		created_at: string;
 		created_by: string;
 		decision_at: string;
+		deleted_at: string | null;
 		id: string;
 		project_id: string;
 		props: Json;
 		rationale: string | null;
 		title: string;
+		updated_at: string | null;
 	};
 	onto_document_versions: {
 		created_at: string;
@@ -1069,15 +1071,21 @@ export type DatabaseSchema = {
 		value: string;
 	};
 	onto_goals: {
+		completed_at: string | null;
 		created_at: string;
 		created_by: string;
+		deleted_at: string | null;
+		description: string | null;
+		goal: string | null;
 		id: string;
 		name: string;
 		project_id: string;
 		props: Json;
 		search_vector: unknown;
 		state_key: string;
+		target_date: string | null;
 		type_key: string | null;
+		updated_at: string | null;
 	};
 	onto_insights: {
 		created_at: string;
@@ -1107,16 +1115,21 @@ export type DatabaseSchema = {
 		unit: string;
 	};
 	onto_milestones: {
+		completed_at: string | null;
 		created_at: string;
 		created_by: string;
+		deleted_at: string | null;
+		description: string | null;
 		due_at: string;
 		id: string;
+		milestone: string | null;
 		project_id: string;
 		props: Json;
 		search_vector: unknown;
 		state_key: string;
 		title: string;
 		type_key: string | null;
+		updated_at: string | null;
 	};
 	onto_output_versions: {
 		created_at: string;
@@ -1130,6 +1143,8 @@ export type DatabaseSchema = {
 	onto_outputs: {
 		created_at: string;
 		created_by: string;
+		deleted_at: string | null;
+		description: string | null;
 		facet_stage: string | null;
 		id: string;
 		name: string;
@@ -1154,11 +1169,14 @@ export type DatabaseSchema = {
 	onto_plans: {
 		created_at: string;
 		created_by: string;
+		deleted_at: string | null;
+		description: string | null;
 		facet_context: string | null;
 		facet_scale: string | null;
 		facet_stage: string | null;
 		id: string;
 		name: string;
+		plan: string | null;
 		project_id: string;
 		props: Json;
 		search_vector: unknown;
@@ -1188,6 +1206,7 @@ export type DatabaseSchema = {
 		facet_scale: string | null;
 		facet_stage: string | null;
 		id: string;
+		is_public: boolean | null;
 		name: string;
 		next_step_long: string | null;
 		next_step_short: string | null;
@@ -1203,24 +1222,32 @@ export type DatabaseSchema = {
 	onto_requirements: {
 		created_at: string;
 		created_by: string;
+		deleted_at: string | null;
 		id: string;
+		priority: number | null;
 		project_id: string;
 		props: Json;
 		search_vector: unknown;
 		text: string;
 		type_key: string;
+		updated_at: string | null;
 	};
 	onto_risks: {
+		content: string | null;
 		created_at: string;
 		created_by: string;
+		deleted_at: string | null;
 		id: string;
 		impact: string;
+		mitigated_at: string | null;
 		probability: number | null;
 		project_id: string;
 		props: Json;
+		search_vector: unknown;
 		state_key: string;
 		title: string;
 		type_key: string | null;
+		updated_at: string | null;
 	};
 	onto_signals: {
 		channel: string;

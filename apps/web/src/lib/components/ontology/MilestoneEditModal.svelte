@@ -23,7 +23,7 @@
 -->
 <script lang="ts">
 	import { browser } from '$app/environment';
-	import { Save, Loader, Trash2, Flag, Calendar, Clock } from 'lucide-svelte';
+	import { Save, Loader, Trash2, Flag, Calendar, Clock, X } from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
@@ -373,20 +373,20 @@
 					</p>
 				</div>
 			</div>
-			<div class="flex items-center gap-1">
+			<div class="flex items-center gap-1.5">
 				<!-- Chat about this milestone button -->
 				<Button
 					variant="ghost"
 					size="sm"
 					onclick={openChatAbout}
-					class="text-muted-foreground hover:text-foreground shrink-0 !p-1 sm:!p-1.5"
+					class="text-muted-foreground hover:text-foreground shrink-0 !p-1.5 sm:!p-2"
 					disabled={isLoading || isSaving || !milestone}
 					title="Chat about this milestone"
 				>
 					<img
 						src="/brain-bolt.png"
 						alt="Chat about this milestone"
-						class="w-4 h-4 sm:w-5 sm:h-5 rounded object-cover transition-transform hover:scale-110"
+						class="w-4 h-4 sm:w-5 sm:h-5 rounded object-cover"
 					/>
 				</Button>
 				<!-- Close button -->
@@ -394,17 +394,10 @@
 					variant="ghost"
 					size="sm"
 					onclick={handleClose}
-					class="text-muted-foreground hover:text-foreground shrink-0 !p-1 sm:!p-1.5"
+					class="text-muted-foreground hover:text-foreground shrink-0 !p-1.5 sm:!p-2"
 					disabled={isSaving || isDeleting}
 				>
-					<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M6 18L18 6M6 6l12 12"
-						></path>
-					</svg>
+					<X class="w-4 h-4 sm:w-5 sm:h-5" />
 				</Button>
 			</div>
 		</div>
@@ -630,10 +623,10 @@
 										{/if}
 									</div>
 
-									<div class="flex justify-between">
-										<span class="text-muted-foreground">ID:</span>
-										<span class="font-mono text-xs text-muted-foreground"
-											>{milestone.id.slice(0, 8)}...</span
+									<div class="flex justify-between gap-2">
+										<span class="text-muted-foreground shrink-0">ID:</span>
+										<span class="font-mono text-xs text-muted-foreground break-all text-right"
+											>{milestone.id}</span
 										>
 									</div>
 

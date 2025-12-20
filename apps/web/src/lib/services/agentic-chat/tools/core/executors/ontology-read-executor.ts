@@ -162,8 +162,12 @@ export class OntologyReadExecutor extends BaseExecutor {
 		const actorId = await this.getActorId();
 		let query = this.supabase
 			.from('onto_goals')
-			.select('id, project_id, name, type_key, props, created_at', { count: 'exact' })
+			.select(
+				'id, project_id, name, type_key, description, target_date, state_key, props, created_at, updated_at',
+				{ count: 'exact' }
+			)
 			.eq('created_by', actorId)
+			.is('deleted_at', null) // Exclude soft-deleted goals
 			.order('created_at', { ascending: false });
 
 		if (args.project_id) {
@@ -192,10 +196,14 @@ export class OntologyReadExecutor extends BaseExecutor {
 		const actorId = await this.getActorId();
 		let query = this.supabase
 			.from('onto_plans')
-			.select('id, project_id, name, state_key, type_key, props, created_at, updated_at', {
-				count: 'exact'
-			})
+			.select(
+				'id, project_id, name, state_key, type_key, description, props, created_at, updated_at',
+				{
+					count: 'exact'
+				}
+			)
 			.eq('created_by', actorId)
+			.is('deleted_at', null) // Exclude soft-deleted plans
 			.order('updated_at', { ascending: false });
 
 		if (args.project_id) {

@@ -559,10 +559,13 @@ export const PlanSchema = z.object({
 	name: z.string(),
 	type_key: z.string(),
 	state_key: PlanStateSchema,
+	plan: z.string().nullable().optional(),
+	description: z.string().nullable().optional(),
 	props: z.record(z.unknown()),
 	facet_context: z.string().nullable().optional(),
 	facet_scale: z.string().nullable().optional(),
 	facet_stage: z.string().nullable().optional(),
+	deleted_at: z.string().datetime().nullable().optional(),
 	created_by: z.string().uuid(),
 	created_at: z.string().datetime(),
 	updated_at: z.string().datetime()
@@ -577,7 +580,11 @@ export const TaskSchema = z.object({
 	type_key: z.string().regex(/^task\.[a-z_]+(\.[a-z_]+)?$/),
 	state_key: TaskStateSchema,
 	priority: z.number().int().nullable().optional(),
+	description: z.string().nullable().optional(),
+	start_at: z.string().datetime().nullable().optional(),
 	due_at: z.string().datetime().nullable().optional(),
+	completed_at: z.string().datetime().nullable().optional(),
+	deleted_at: z.string().datetime().nullable().optional(),
 	props: z.record(z.unknown()),
 	facet_scale: z.string().nullable().optional(),
 	created_by: z.string().uuid(),
@@ -593,6 +600,8 @@ export const OutputSchema = z.object({
 	name: z.string(),
 	type_key: z.string(),
 	state_key: OutputStateSchema,
+	description: z.string().nullable().optional(),
+	deleted_at: z.string().datetime().nullable().optional(),
 	props: z.record(z.unknown()),
 	facet_stage: z.string().nullable().optional(),
 	// Promotion source references
@@ -639,6 +648,75 @@ export const DocumentSchema = z.object({
 });
 
 export type Document = z.infer<typeof DocumentSchema>;
+
+// ============================================
+// GOAL SCHEMA
+// ============================================
+
+export const GoalSchema = z.object({
+	id: z.string().uuid(),
+	project_id: z.string().uuid(),
+	name: z.string(),
+	type_key: z.string().nullable().optional(),
+	state_key: GoalStateSchema,
+	goal: z.string().nullable().optional(),
+	description: z.string().nullable().optional(),
+	target_date: z.string().datetime().nullable().optional(),
+	completed_at: z.string().datetime().nullable().optional(),
+	deleted_at: z.string().datetime().nullable().optional(),
+	props: z.record(z.unknown()),
+	created_by: z.string().uuid(),
+	created_at: z.string().datetime(),
+	updated_at: z.string().datetime()
+});
+
+export type Goal = z.infer<typeof GoalSchema>;
+
+// ============================================
+// MILESTONE SCHEMA
+// ============================================
+
+export const MilestoneSchema = z.object({
+	id: z.string().uuid(),
+	project_id: z.string().uuid(),
+	title: z.string(),
+	type_key: z.string().nullable().optional(),
+	state_key: MilestoneStateSchema,
+	milestone: z.string().nullable().optional(),
+	description: z.string().nullable().optional(),
+	due_at: z.string().datetime(),
+	completed_at: z.string().datetime().nullable().optional(),
+	deleted_at: z.string().datetime().nullable().optional(),
+	props: z.record(z.unknown()),
+	created_by: z.string().uuid(),
+	created_at: z.string().datetime(),
+	updated_at: z.string().datetime()
+});
+
+export type Milestone = z.infer<typeof MilestoneSchema>;
+
+// ============================================
+// RISK SCHEMA
+// ============================================
+
+export const RiskSchema = z.object({
+	id: z.string().uuid(),
+	project_id: z.string().uuid(),
+	title: z.string(),
+	type_key: z.string().nullable().optional(),
+	state_key: RiskStateSchema,
+	impact: z.enum(['low', 'medium', 'high', 'critical']),
+	probability: z.number().min(0).max(1).nullable().optional(),
+	content: z.string().nullable().optional(),
+	mitigated_at: z.string().datetime().nullable().optional(),
+	deleted_at: z.string().datetime().nullable().optional(),
+	props: z.record(z.unknown()),
+	created_by: z.string().uuid(),
+	created_at: z.string().datetime(),
+	updated_at: z.string().datetime()
+});
+
+export type Risk = z.infer<typeof RiskSchema>;
 
 // ============================================
 // ONTO_EVENTS (Calendar Events)

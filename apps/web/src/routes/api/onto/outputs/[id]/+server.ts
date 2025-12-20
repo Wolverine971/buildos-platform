@@ -29,7 +29,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		}
 
 		const body = await request.json();
-		const { name, state_key, props } = body;
+		const { name, state_key, description, props } = body;
 
 		if (state_key !== undefined && !OUTPUT_STATES.includes(state_key)) {
 			return ApiResponse.badRequest(`state_key must be one of: ${OUTPUT_STATES.join(', ')}`);
@@ -38,10 +38,12 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		const supabase = locals.supabase;
 
 		// Verify the output exists and get project info (fetch more data for logging)
+		// Exclude soft-deleted outputs
 		const { data: existingOutput, error: fetchError } = await supabase
 			.from('onto_outputs')
-			.select('id, project_id, name, type_key, state_key')
+			.select('id, project_id, name, type_key, state_key, description')
 			.eq('id', id)
+			.is('deleted_at', null)
 			.maybeSingle();
 
 		if (fetchError) {
@@ -89,6 +91,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		interface UpdatePayload {
 			name?: string;
 			state_key?: string;
+			description?: string;
 			props?: Record<string, unknown>;
 			updated_at?: string;
 		}
@@ -99,6 +102,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 
 		if (name !== undefined) updatePayload.name = name;
 		if (state_key !== undefined) updatePayload.state_key = state_key;
+		if (description !== undefined) updatePayload.description = description?.trim() || null;
 		if (props !== undefined) updatePayload.props = props;
 
 		// Update the output
@@ -151,10 +155,12 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		const supabase = locals.supabase;
 
 		// Fetch output with project info for authorization
+		// Exclude soft-deleted outputs
 		const { data: output, error: fetchError } = await supabase
 			.from('onto_outputs')
 			.select('*, project:onto_projects!inner(id, created_by)')
 			.eq('id', id)
+			.is('deleted_at', null)
 			.maybeSingle();
 
 		if (fetchError) {
@@ -209,10 +215,12 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 
 		const supabase = locals.supabase;
 
+		// Exclude already soft-deleted outputs
 		const { data: output, error: fetchError } = await supabase
 			.from('onto_outputs')
 			.select('id, project_id, name, type_key')
 			.eq('id', id)
+			.is('deleted_at', null)
 			.maybeSingle();
 
 		if (fetchError) {
@@ -261,11 +269,11 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 			type_key: output.type_key ?? 'unknown'
 		};
 
-		// Delete related edges FIRST (both where output is source and destination)
-		await supabase.from('onto_edges').delete().or(`src_id.eq.${id},dst_id.eq.${id}`);
-
-		// Then delete the output
-		const { error: deleteError } = await supabase.from('onto_outputs').delete().eq('id', id);
+		// Soft delete the output (set deleted_at timestamp)
+		const { error: deleteError } = await supabase
+			.from('onto_outputs')
+			.update({ deleted_at: new Date().toISOString() })
+			.eq('id', id);
 
 		if (deleteError) {
 			console.error('[Output API] Failed to delete output:', deleteError);

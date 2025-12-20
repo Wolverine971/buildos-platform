@@ -63,7 +63,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			return ApiResponse.error('Failed to get user actor', 500);
 		}
 
-		// Get milestone with project to verify ownership
+		// Get milestone with project to verify ownership (exclude soft-deleted)
 		const { data: milestone, error } = await supabase
 			.from('onto_milestones')
 			.select(
@@ -77,6 +77,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			`
 			)
 			.eq('id', params.id)
+			.is('deleted_at', null)
 			.single();
 
 		if (error || !milestone) {
@@ -136,7 +137,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			return ApiResponse.error('Failed to get user actor', 500);
 		}
 
-		// Get milestone with project to verify ownership
+		// Get milestone with project to verify ownership (exclude soft-deleted)
 		const { data: existingMilestone, error: fetchError } = await supabase
 			.from('onto_milestones')
 			.select(
@@ -149,6 +150,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			`
 			)
 			.eq('id', params.id)
+			.is('deleted_at', null)
 			.single();
 
 		if (fetchError || !existingMilestone) {
@@ -177,6 +179,11 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			updateData.due_at = new Date(due_at).toISOString();
 		}
 
+		// Update dedicated columns
+		if (description !== undefined) {
+			updateData.description = description?.trim() || null;
+		}
+
 		// Handle props update - merge with existing
 		const currentProps = (existingMilestone.props as Record<string, unknown>) || {};
 		let hasPropsUpdate = false;
@@ -187,6 +194,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			hasPropsUpdate = true;
 		}
 
+		// Maintain backwards compatibility by also storing in props
 		if (description !== undefined) {
 			propsUpdate.description = description?.trim() || null;
 			hasPropsUpdate = true;
@@ -201,6 +209,9 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		if (hasPropsUpdate) {
 			updateData.props = propsUpdate;
 		}
+
+		// Always update updated_at
+		updateData.updated_at = new Date().toISOString();
 
 		// Only update if there's something to update
 		if (Object.keys(updateData).length === 0) {
@@ -267,7 +278,7 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 			return ApiResponse.error('Failed to get user actor', 500);
 		}
 
-		// Get milestone with project to verify ownership (fetch full data for logging)
+		// Get milestone with project to verify ownership (exclude already deleted)
 		const { data: milestone, error: fetchError } = await supabase
 			.from('onto_milestones')
 			.select(
@@ -280,6 +291,7 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 			`
 			)
 			.eq('id', params.id)
+			.is('deleted_at', null)
 			.single();
 
 		if (fetchError || !milestone) {
@@ -298,16 +310,10 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 			due_at: milestone.due_at
 		};
 
-		// Delete related edges
-		await supabase
-			.from('onto_edges')
-			.delete()
-			.or(`src_id.eq.${params.id},dst_id.eq.${params.id}`);
-
-		// Delete the milestone
+		// Soft delete the milestone (set deleted_at timestamp)
 		const { error: deleteError } = await supabase
 			.from('onto_milestones')
-			.delete()
+			.update({ deleted_at: new Date().toISOString() })
 			.eq('id', params.id);
 
 		if (deleteError) {

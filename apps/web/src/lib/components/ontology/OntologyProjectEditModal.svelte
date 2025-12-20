@@ -510,21 +510,21 @@
 					</p>
 				</div>
 			</div>
-			<div class="flex items-center gap-1">
+			<div class="flex items-center gap-1.5">
 				<!-- Chat about this project button -->
 				<Button
 					type="button"
 					onclick={openChatAbout}
 					variant="ghost"
 					size="sm"
-					class="text-muted-foreground hover:text-foreground shrink-0 !p-1 sm:!p-1.5"
+					class="text-muted-foreground hover:text-foreground shrink-0 !p-1.5 sm:!p-2"
 					disabled={isSaving || !project}
 					title="Chat about this project"
 				>
 					<img
 						src="/brain-bolt.png"
 						alt="Chat about this project"
-						class="w-4 h-4 sm:w-5 sm:h-5 rounded object-cover transition-transform hover:scale-110"
+						class="w-4 h-4 sm:w-5 sm:h-5 rounded object-cover"
 					/>
 				</Button>
 				<!-- Close button -->
@@ -533,11 +533,11 @@
 					onclick={handleClose}
 					variant="ghost"
 					size="sm"
-					class="text-muted-foreground hover:text-foreground shrink-0 !p-1 sm:!p-1.5"
+					class="text-muted-foreground hover:text-foreground shrink-0 !p-1.5 sm:!p-2"
 					disabled={isSaving}
 					aria-label="Close modal"
 				>
-					<X class="w-4 h-4" />
+					<X class="w-4 h-4 sm:w-5 sm:h-5" />
 				</Button>
 			</div>
 		</div>

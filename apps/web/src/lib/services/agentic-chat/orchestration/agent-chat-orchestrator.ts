@@ -1,5 +1,5 @@
 // apps/web/src/lib/services/agentic-chat/orchestration/agent-chat-orchestrator.ts
-import { v4 as uuidv4, validate as uuidValidate } from 'uuid';
+import { v4 as uuidv4 } from 'uuid';
 import type {
 	AgentChatRequest,
 	ServiceContext,
@@ -26,7 +26,7 @@ import type {
 import type { TextProfile } from '../../smart-llm-service';
 import { SmartLLMService } from '../../smart-llm-service';
 // import type { ErrorLoggerService } from '$lib/services/errorLogger.service';
-import { ErrorLoggerService } from '$lib/services/errorLogger.service';
+// import { ErrorLoggerService } from '$lib/services/errorLogger.service';
 import type { LastTurnContext } from '$lib/types/agent-chat-enhancement';
 import { createEnhancedLLMWrapper, type EnhancedLLMWrapper } from '../config/enhanced-llm-wrapper';
 import { AGENTIC_CHAT_LIMITS } from '../config/agentic-chat-limits';
@@ -36,6 +36,8 @@ import {
 } from '../analysis/project-creation-analyzer';
 import { normalizeContextType } from '../../../../routes/api/agent/stream/utils/context-utils';
 import { buildDebugContextInfo, isDebugModeEnabled } from '../observability';
+import { ErrorLoggerService } from '../../errorLogger.service';
+import { applyContextShiftToContext, extractContextShift } from '../shared/context-shift';
 
 const PLAN_TOOL_DEFINITION: ChatToolDefinition = {
 	type: 'function',
@@ -75,50 +77,6 @@ const PLAN_TOOL_DEFINITION: ChatToolDefinition = {
 		}
 	}
 };
-
-/**
- * Context shift data structure returned by tools that navigate to a new entity
- */
-interface ContextShiftData {
-	new_context?: ChatContextType | string;
-	entity_id?: string;
-	entity_name?: string;
-	entity_type?: 'project' | 'task' | 'plan' | 'goal' | 'document' | 'output';
-	message?: string;
-}
-
-/**
- * Type-safe extraction of context_shift from tool execution result
- * Handles multiple possible locations where context_shift might exist
- */
-function extractContextShift(result: ToolExecutionResult): ContextShiftData | undefined {
-	// Check common locations for context_shift in order of preference
-	const data = result.data;
-
-	// First check if data itself has context_shift
-	if (data && typeof data === 'object' && 'context_shift' in data) {
-		return data.context_shift as ContextShiftData;
-	}
-
-	// Check if data.result has context_shift (nested result pattern)
-	if (data && typeof data === 'object' && 'result' in data) {
-		const nestedResult = data.result;
-		if (nestedResult && typeof nestedResult === 'object' && 'context_shift' in nestedResult) {
-			return nestedResult.context_shift as ContextShiftData;
-		}
-	}
-
-	// Check metadata for context_shift
-	if (
-		result.metadata &&
-		typeof result.metadata === 'object' &&
-		'context_shift' in result.metadata
-	) {
-		return result.metadata.context_shift as ContextShiftData;
-	}
-
-	return undefined;
-}
 
 type LLMStreamEvent =
 	| { type: 'text'; content?: string }
@@ -511,28 +469,6 @@ export class AgentChatOrchestrator {
 		}
 	}
 
-	private updateContextScopeForShift(
-		serviceContext: ServiceContext,
-		contextShift: ContextShiftData,
-		normalizedEntityId: string | undefined,
-		normalizedShiftContext: ChatContextType
-	): void {
-		if (!normalizedEntityId) {
-			return;
-		}
-
-		const isProjectShift =
-			contextShift.entity_type === 'project' || normalizedShiftContext === 'project';
-		if (!isProjectShift) {
-			return;
-		}
-
-		serviceContext.contextScope = {
-			...(serviceContext.contextScope ?? {}),
-			projectId: normalizedEntityId
-		};
-	}
-
 	private async *runPlannerLoop(params: {
 		request: AgentChatRequest;
 		messages: LLMMessage[];
@@ -689,36 +625,18 @@ export class AgentChatOrchestrator {
 				// Type-safe context shift extraction
 				const contextShift = extractContextShift(result);
 				if (contextShift) {
-					const previousContextType = serviceContext.contextType;
-					const previousEntityId = serviceContext.entityId;
-					const normalizedShiftContext = normalizeContextType(
-						(contextShift.new_context as ChatContextType) ?? serviceContext.contextType
-					);
-					const normalizedEntityId = this.normalizeContextShiftEntityId(
-						contextShift.entity_id
-					);
-					serviceContext.contextType = normalizedShiftContext;
-					if (normalizedEntityId) {
-						serviceContext.entityId = normalizedEntityId;
-					}
-					this.updateContextScopeForShift(
-						serviceContext,
-						contextShift,
-						normalizedEntityId,
-						normalizedShiftContext
-					);
+					const { normalizedContext, normalizedEntityId, changed } =
+						applyContextShiftToContext(serviceContext, contextShift);
+
 					serviceContext.lastTurnContext = this.buildContextShiftSnapshot(
 						{
 							...contextShift,
 							entity_id: normalizedEntityId
 						},
-						normalizedShiftContext
+						normalizedContext
 					);
 
-					const shouldRefreshContext =
-						previousContextType !== serviceContext.contextType ||
-						previousEntityId !== serviceContext.entityId;
-					if (shouldRefreshContext) {
+					if (changed) {
 						const refreshed = await this.refreshPlannerContextAfterShift({
 							request,
 							serviceContext,
@@ -1105,26 +1023,6 @@ export class AgentChatOrchestrator {
 					}`
 			)
 			.join('\n');
-	}
-
-	private normalizeContextShiftEntityId(entityId?: string): string | undefined {
-		if (!entityId || typeof entityId !== 'string') {
-			return undefined;
-		}
-
-		const trimmed = entityId.trim();
-		if (!trimmed) {
-			return undefined;
-		}
-
-		if (!uuidValidate(trimmed)) {
-			console.warn('[AgentChatOrchestrator] Invalid context_shift entity_id', {
-				entityId: trimmed
-			});
-			return undefined;
-		}
-
-		return trimmed;
 	}
 
 	private buildContextShiftSnapshot(

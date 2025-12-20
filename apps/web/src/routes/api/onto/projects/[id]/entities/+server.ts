@@ -62,7 +62,12 @@ export const GET: RequestHandler = async ({ params, url, locals }) => {
 		const { table, select, searchField } = ENTITY_CONFIG[typeParam];
 		const supabase = locals.supabase;
 
-		let query = supabase.from(table).select(select).eq('project_id', projectId).limit(50);
+		let query = supabase
+			.from(table)
+			.select(select)
+			.eq('project_id', projectId)
+			.is('deleted_at', null)
+			.limit(50);
 
 		if (search) {
 			query = query.ilike(searchField, `%${search}%`);

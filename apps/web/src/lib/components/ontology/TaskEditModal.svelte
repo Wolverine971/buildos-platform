@@ -28,7 +28,8 @@
 		FileText,
 		ExternalLink,
 		CircleCheck,
-		ListChecks
+		ListChecks,
+		X
 	} from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
@@ -155,6 +156,7 @@
 	let stateKey = $state('todo');
 	let startAt = $state('');
 	let dueAt = $state('');
+	let completedAt = $state('');
 	let showSeriesModal = $state(false);
 	let showSeriesDeleteConfirm = $state(false);
 	let isDeletingSeries = $state(false);
@@ -342,6 +344,7 @@
 				stateKey = task.state_key || 'todo';
 				startAt = task.start_at ? formatDateTimeForInput(task.start_at) : '';
 				dueAt = task.due_at ? formatDateTimeForInput(task.due_at) : '';
+				completedAt = task.completed_at || '';
 				seriesActionError = '';
 				showSeriesDeleteConfirm = false;
 			}
@@ -378,7 +381,10 @@
 		const doc = workspaceDocuments.find((d) => d.document.id === documentId);
 		if (doc) {
 			// Prefer content column, fall back to props.body_markdown for backwards compatibility
-			workspaceDocContent = (doc.document?.content as string) ?? (doc.document?.props?.body_markdown as string) ?? '';
+			workspaceDocContent =
+				(doc.document?.content as string) ??
+				(doc.document?.props?.body_markdown as string) ??
+				'';
 		}
 	}
 
@@ -515,6 +521,14 @@
 
 			if (!response.ok) {
 				throw new Error(result.error || 'Failed to update task');
+			}
+
+			const updatedTask = result?.data?.task;
+			if (updatedTask) {
+				completedAt = updatedTask.completed_at || '';
+				stateKey = updatedTask.state_key || stateKey;
+			} else {
+				completedAt = stateKey === 'done' ? new Date().toISOString() : '';
 			}
 
 			// Success! Call the callback and close
@@ -711,27 +725,27 @@
 					</p>
 				</div>
 			</div>
-			<div class="flex items-center gap-1">
+			<div class="flex items-center gap-1.5">
 				<!-- Chat about this task button -->
 				<Button
 					variant="ghost"
 					size="sm"
 					onclick={openChatAbout}
-					class="text-muted-foreground hover:text-foreground shrink-0 !p-1 sm:!p-1.5"
+					class="text-muted-foreground hover:text-foreground shrink-0 !p-1.5 sm:!p-2"
 					disabled={isLoading || isSaving || !task}
 					title="Chat about this task"
 				>
 					<img
 						src="/brain-bolt.png"
 						alt="Chat about this task"
-						class="w-4 h-4 sm:w-5 sm:h-5 rounded object-cover transition-transform hover:scale-110"
+						class="w-4 h-4 sm:w-5 sm:h-5 rounded object-cover"
 					/>
 				</Button>
 				<!-- Focus mode button - open in dedicated page -->
 				{#if task && projectId}
 					<a
 						href="/projects/{projectId}/tasks/{taskId}"
-						class="p-1 sm:p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0"
+						class="inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted shrink-0 p-1.5 sm:p-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 						title="Open in focus mode"
 					>
 						<ExternalLink class="w-4 h-4 sm:w-5 sm:h-5" />
@@ -742,17 +756,10 @@
 					variant="ghost"
 					size="sm"
 					onclick={handleClose}
-					class="text-muted-foreground hover:text-foreground shrink-0 !p-1 sm:!p-1.5"
+					class="text-muted-foreground hover:text-foreground shrink-0 !p-1.5 sm:!p-2"
 					disabled={isSaving || isDeleting}
 				>
-					<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M6 18L18 6M6 6l12 12"
-						></path>
-					</svg>
+					<X class="w-4 h-4 sm:w-5 sm:h-5" />
 				</Button>
 			</div>
 		</div>
@@ -989,6 +996,14 @@
 													</option>
 												{/each}
 											</Select>
+											{#if stateKey === 'done' && completedAt}
+												<p class="mt-2 text-xs text-muted-foreground">
+													Completed at:
+													<span class="font-medium text-foreground">
+														{format(new Date(completedAt), 'PPpp')}
+													</span>
+												</p>
+											{/if}
 										</FormField>
 
 										<!-- Connected Documents List -->

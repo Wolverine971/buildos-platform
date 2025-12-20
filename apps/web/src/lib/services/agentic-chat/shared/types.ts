@@ -356,6 +356,7 @@ export type StreamEvent =
 export interface ToolExecutorResponse {
 	data: any;
 	streamEvents?: StreamEvent[];
+	metadata?: Record<string, any>;
 }
 
 export type ToolExecutorFunction = (

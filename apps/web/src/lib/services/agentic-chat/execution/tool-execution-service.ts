@@ -25,7 +25,8 @@ import type {
 	ToolExecutionResult,
 	BaseService,
 	ToolExecutorFunction,
-	StreamEvent
+	StreamEvent,
+	ToolExecutorResponse
 } from '../shared/types';
 import { normalizeToolError } from '../shared/error-utils';
 import type { ChatToolCall, ChatToolDefinition } from '@buildos/shared-types';
@@ -208,6 +209,8 @@ export class ToolExecutionService implements BaseService {
 
 			const streamEvents = execution?.streamEvents;
 			const result = execution?.data;
+			const executionMetadata = execution?.metadata;
+			const tokensUsed = this.extractTokensUsed(execution, executionMetadata);
 
 			// Extract entities if present
 			const entitiesAccessed = this.extractEntitiesFromResult(result);
@@ -223,7 +226,9 @@ export class ToolExecutionService implements BaseService {
 				entitiesAccessed: entitiesAccessed.length > 0 ? entitiesAccessed : undefined,
 				streamEvents: Array.isArray(streamEvents)
 					? (streamEvents as StreamEvent[])
-					: undefined
+					: undefined,
+				tokensUsed,
+				metadata: executionMetadata
 			});
 		} catch (error) {
 			console.error('[ToolExecutionService] Tool execution failed', {
@@ -514,6 +519,32 @@ export class ToolExecutionService implements BaseService {
 		delete cleaned._stream_events;
 
 		return cleaned;
+	}
+
+	private extractTokensUsed(
+		execution?: ToolExecutorResponse,
+		metadata?: Record<string, any>
+	): number | undefined {
+		const candidates: Array<number | undefined> = [
+			metadata?.tokensUsed,
+			metadata?.tokens_used,
+			metadata?.usage?.total_tokens,
+			metadata?.usage?.totalTokens,
+			(execution as any)?.tokensUsed,
+			(execution as any)?.tokens_used,
+			(execution as any)?.usage?.total_tokens,
+			(execution as any)?.usage?.totalTokens,
+			(execution as any)?.data?.usage?.total_tokens,
+			(execution as any)?.data?.usage?.totalTokens
+		];
+
+		for (const value of candidates) {
+			if (typeof value === 'number' && Number.isFinite(value)) {
+				return value;
+			}
+		}
+
+		return undefined;
 	}
 
 	/**

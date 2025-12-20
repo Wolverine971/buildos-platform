@@ -58,6 +58,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			impact,
 			probability,
 			state_key = 'identified',
+			content,
 			description,
 			mitigation_strategy,
 			props = {}
@@ -119,6 +120,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			probability:
 				probability !== undefined && probability !== null ? Number(probability) : null,
 			state_key,
+			content: content?.trim() || null,
 			created_by: actorId,
 			props: {
 				...props,

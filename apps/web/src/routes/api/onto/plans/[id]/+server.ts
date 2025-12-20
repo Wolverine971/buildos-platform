@@ -62,7 +62,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			return ApiResponse.error('Failed to get user actor', 500);
 		}
 
-		// Get plan with project to verify ownership
+		// Get plan with project to verify ownership (exclude soft-deleted)
 		const { data: plan, error } = await supabase
 			.from('onto_plans')
 			.select(
@@ -75,6 +75,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			`
 			)
 			.eq('id', params.id)
+			.is('deleted_at', null)
 			.single();
 
 		if (error || !plan) {
@@ -123,7 +124,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			return ApiResponse.error('Failed to get user actor', 500);
 		}
 
-		// Get plan with project to verify ownership
+		// Get plan with project to verify ownership (exclude soft-deleted)
 		const { data: existingPlan, error: fetchError } = await supabase
 			.from('onto_plans')
 			.select(
@@ -136,6 +137,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			`
 			)
 			.eq('id', params.id)
+			.is('deleted_at', null)
 			.single();
 
 		if (fetchError || !existingPlan) {
@@ -148,50 +150,45 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		}
 
 		// Build update object
-		const updateData: any = {
+		const updateData: Record<string, unknown> = {
 			updated_at: new Date().toISOString()
 		};
 
 		if (name !== undefined) updateData.name = name;
 		if (state_key !== undefined) updateData.state_key = state_key;
 
+		// Update description in dedicated column
+		if (description !== undefined) {
+			updateData.description = description || null;
+		}
+
 		// Handle props update - merge with existing
-		if (props !== undefined) {
-			updateData.props = {
-				...existingPlan.props,
-				...props
-			};
-			// Handle individual fields in props
-			if (description !== undefined) {
-				updateData.props.description = description || null;
-			}
-			if (start_date !== undefined) {
-				updateData.props.start_date = start_date || null;
-			}
-			if (end_date !== undefined) {
-				updateData.props.end_date = end_date || null;
-			}
-		} else {
-			// Update individual props fields even if props wasn't passed
-			const propsUpdate: any = { ...existingPlan.props };
-			let hasPropsUpdate = false;
+		const propsUpdate: Record<string, unknown> = {
+			...(existingPlan.props as Record<string, unknown>)
+		};
+		let hasPropsUpdate = false;
 
-			if (description !== undefined) {
-				propsUpdate.description = description || null;
-				hasPropsUpdate = true;
-			}
-			if (start_date !== undefined) {
-				propsUpdate.start_date = start_date || null;
-				hasPropsUpdate = true;
-			}
-			if (end_date !== undefined) {
-				propsUpdate.end_date = end_date || null;
-				hasPropsUpdate = true;
-			}
+		if (props !== undefined && typeof props === 'object' && props !== null) {
+			Object.assign(propsUpdate, props);
+			hasPropsUpdate = true;
+		}
 
-			if (hasPropsUpdate) {
-				updateData.props = propsUpdate;
-			}
+		// Maintain backwards compatibility by also storing in props
+		if (description !== undefined) {
+			propsUpdate.description = description || null;
+			hasPropsUpdate = true;
+		}
+		if (start_date !== undefined) {
+			propsUpdate.start_date = start_date || null;
+			hasPropsUpdate = true;
+		}
+		if (end_date !== undefined) {
+			propsUpdate.end_date = end_date || null;
+			hasPropsUpdate = true;
+		}
+
+		if (hasPropsUpdate) {
+			updateData.props = propsUpdate;
 		}
 
 		// Update the plan
@@ -250,7 +247,7 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 			return ApiResponse.error('Failed to get user actor', 500);
 		}
 
-		// Get plan with project to verify ownership (fetch full data for logging)
+		// Get plan with project to verify ownership (exclude already deleted)
 		const { data: plan, error: fetchError } = await supabase
 			.from('onto_plans')
 			.select(
@@ -263,6 +260,7 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 			`
 			)
 			.eq('id', params.id)
+			.is('deleted_at', null)
 			.single();
 
 		if (fetchError || !plan) {
@@ -281,16 +279,10 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 			state_key: plan.state_key
 		};
 
-		// Delete related edges
-		await supabase
-			.from('onto_edges')
-			.delete()
-			.or(`src_id.eq.${params.id},dst_id.eq.${params.id}`);
-
-		// Delete the plan
+		// Soft delete the plan (set deleted_at timestamp)
 		const { error: deleteError } = await supabase
 			.from('onto_plans')
-			.delete()
+			.update({ deleted_at: new Date().toISOString() })
 			.eq('id', params.id);
 
 		if (deleteError) {

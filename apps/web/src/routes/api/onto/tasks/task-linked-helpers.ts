@@ -118,36 +118,42 @@ export async function resolveLinkedEntities(
 				? supabase
 						.from('onto_plans')
 						.select('id, name, state_key, type_key')
+						.is('deleted_at', null)
 						.in('id', planIds)
 				: Promise.resolve({ data: [] }),
 			goalIds.length > 0
 				? supabase
 						.from('onto_goals')
 						.select('id, name, state_key, type_key')
+						.is('deleted_at', null)
 						.in('id', goalIds)
 				: Promise.resolve({ data: [] }),
 			milestoneIds.length > 0
 				? supabase
 						.from('onto_milestones')
 						.select('id, title, due_at, type_key')
+						.is('deleted_at', null)
 						.in('id', milestoneIds)
 				: Promise.resolve({ data: [] }),
 			documentIds.length > 0
 				? supabase
 						.from('onto_documents')
 						.select('id, title, type_key, state_key')
+						.is('deleted_at', null)
 						.in('id', documentIds)
 				: Promise.resolve({ data: [] }),
 			taskIds.length > 0
 				? supabase
 						.from('onto_tasks')
 						.select('id, title, state_key, type_key, priority')
+						.is('deleted_at', null)
 						.in('id', taskIds)
 				: Promise.resolve({ data: [] }),
 			outputIds.length > 0
 				? supabase
 						.from('onto_outputs')
 						.select('id, name, type_key, state_key')
+						.is('deleted_at', null)
 						.in('id', outputIds)
 				: Promise.resolve({ data: [] })
 		]);

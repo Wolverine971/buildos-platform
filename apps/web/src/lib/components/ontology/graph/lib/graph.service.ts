@@ -64,6 +64,8 @@ export const GRAPH_COLORS: {
 	output: ThemeColors;
 	document: ThemeColors;
 	milestone: ThemeColors;
+	risk: ThemeColors;
+	decision: ThemeColors;
 	states: Record<string, ThemeColors>;
 	primitives: Record<string, ThemeColors>;
 	edges: Record<string, EdgeColors>;
@@ -99,6 +101,14 @@ export const GRAPH_COLORS: {
 	milestone: {
 		light: { bg: '#d1fae5', border: '#059669' },
 		dark: { bg: '#064e3b', border: '#6ee7b7' }
+	},
+	risk: {
+		light: { bg: '#fee2e2', border: '#dc2626' },
+		dark: { bg: '#450a0a', border: '#f87171' }
+	},
+	decision: {
+		light: { bg: '#ede9fe', border: '#7c3aed' },
+		dark: { bg: '#4c1d95', border: '#a78bfa' }
 	},
 
 	// State colors (used across entity types)
@@ -285,6 +295,26 @@ export const NODE_STYLE_CONFIG: Record<NodeType, NodeStyleConfig> = {
 		shape: 'triangle',
 		baseWidth: 26,
 		baseHeight: 30,
+		fontSize: 9,
+		labelValign: 'bottom',
+		labelMarginY: 6,
+		borderWidth: 2,
+		borderStyle: 'solid'
+	},
+	risk: {
+		shape: 'octagon',
+		baseWidth: 28,
+		baseHeight: 28,
+		fontSize: 9,
+		labelValign: 'bottom',
+		labelMarginY: 6,
+		borderWidth: 2,
+		borderStyle: 'solid'
+	},
+	decision: {
+		shape: 'hexagon',
+		baseWidth: 28,
+		baseHeight: 26,
 		fontSize: 9,
 		labelValign: 'bottom',
 		labelMarginY: 6,
@@ -656,7 +686,7 @@ export class OntologyGraphService {
 			return {
 				data: {
 					id: milestone.id,
-					label: milestone.name,
+					label: milestone.title,
 					type: 'milestone',
 					state,
 					metadata: {

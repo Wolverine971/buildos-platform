@@ -8,6 +8,7 @@
 	import { browser } from '$app/environment';
 	import { toastService } from '$lib/stores/toast.store';
 	import { invalidateAll, replaceState } from '$app/navigation';
+	import ExampleProjectGraph from '$lib/components/landing/ExampleProjectGraph.svelte';
 
 	let { data } = $props();
 
@@ -527,6 +528,9 @@
 				</div>
 			</div>
 		</section>
+
+		<!-- Example Project Graph -->
+		<ExampleProjectGraph />
 
 		<!-- final CTA -->
 		<section class="py-20">

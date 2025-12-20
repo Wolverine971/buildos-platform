@@ -113,9 +113,12 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			type_key,
 			title: title.trim(),
 			due_at: dueDate.toISOString(),
+			state_key: state_key || 'pending',
+			description: description?.trim() || null, // Use dedicated column
 			created_by: actorId,
 			props: {
 				...props,
+				// Maintain backwards compatibility by also storing in props
 				description: description?.trim() || null,
 				state_key: state_key || 'pending'
 			}

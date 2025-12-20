@@ -69,6 +69,7 @@
 
 	let selectedType = $state<OutputType | null>(null);
 	let outputName = $state('');
+	let description = $state('');
 	let isCreating = $state(false);
 	let error = $state<string | null>(null);
 	let userHasEditedName = $state(false);
@@ -111,6 +112,7 @@
 					type_key: selectedType.type_key,
 					name: outputName.trim(),
 					state_key: 'draft',
+					description: description.trim() || null,
 					props: {}
 				})
 			});
@@ -294,6 +296,22 @@
 							placeholder={`Enter name for your ${selectedType.name.toLowerCase()}...`}
 							class="w-full px-4 py-2.5 border border-border rounded-lg bg-card focus:ring-2 focus:ring-ring focus:border-ring text-foreground placeholder-muted-foreground transition-shadow"
 							aria-required="true"
+						/>
+					</div>
+
+					<div>
+						<label
+							for="output-description"
+							class="block text-sm font-medium text-foreground mb-2"
+						>
+							Description
+						</label>
+						<textarea
+							id="output-description"
+							bind:value={description}
+							placeholder="What is this output about?"
+							rows="3"
+							class="w-full px-4 py-2.5 border border-border rounded-lg bg-card focus:ring-2 focus:ring-ring focus:border-ring text-foreground placeholder-muted-foreground transition-shadow"
 						/>
 					</div>
 

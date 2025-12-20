@@ -83,14 +83,17 @@ export interface OntoTask {
 	project_id: string;
 	type_key: string;
 	title: string;
+	description?: string | null;
 	state_key: string;
 	priority: number;
 	props: Record<string, unknown> | null;
 	created_by: string;
 	created_at: string;
 	updated_at: string;
+	start_at?: string | null;
 	completed_at?: string | null;
 	due_at?: string | null;
+	deleted_at?: string | null;
 }
 
 /**
@@ -101,9 +104,16 @@ export interface OntoGoal {
 	project_id: string;
 	type_key: string | null;
 	name: string;
+	goal?: string | null;
+	description?: string | null;
+	state_key?: string | null;
+	target_date?: string | null;
 	props: Record<string, unknown> | null;
 	created_by: string;
 	created_at: string;
+	updated_at?: string;
+	completed_at?: string | null;
+	deleted_at?: string | null;
 }
 
 /**
@@ -114,11 +124,14 @@ export interface OntoPlan {
 	project_id: string;
 	type_key: string;
 	name: string;
+	plan?: string | null;
+	description?: string | null;
 	state_key: string;
 	props: Record<string, unknown> | null;
 	created_by: string;
 	created_at: string;
 	updated_at: string;
+	deleted_at?: string | null;
 }
 
 /**
@@ -163,10 +176,13 @@ export interface OntoDocument {
 	type_key: string;
 	title: string;
 	state_key: string;
+	content?: string | null;
+	description?: string | null;
 	props: Record<string, unknown> | null;
 	created_by: string;
 	created_at: string;
 	updated_at: string;
+	deleted_at?: string | null;
 }
 
 /**
@@ -189,9 +205,17 @@ export interface OntoRisk {
 	id: string;
 	project_id: string;
 	title: string;
+	type_key?: string | null;
+	probability?: number | null;
+	impact?: string;
+	state_key?: string;
+	content?: string | null;
 	props: Record<string, unknown> | null;
 	created_by: string;
 	created_at: string;
+	updated_at?: string;
+	mitigated_at?: string | null;
+	deleted_at?: string | null;
 }
 
 /**
@@ -200,12 +224,17 @@ export interface OntoRisk {
 export interface OntoMilestone {
 	id: string;
 	project_id: string;
-	name: string;
+	title: string;
+	type_key?: string | null;
 	due_at?: string | null;
+	milestone?: string | null;
+	description?: string | null;
 	props: Record<string, unknown> | null;
 	created_by: string;
 	created_at: string;
+	updated_at?: string;
 	completed_at?: string | null;
+	deleted_at?: string | null;
 }
 
 /**

@@ -38,15 +38,16 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 				.from('onto_outputs')
 				.select(
 					`
-					*,
-					project:onto_projects!inner(
-						id,
-						name,
-						created_by
-					)
-				`
+				*,
+				project:onto_projects!inner(
+					id,
+					name,
+					created_by
+				)
+			`
 				)
 				.eq('id', outputId)
+				.is('deleted_at', null)
 				.single()
 		]);
 

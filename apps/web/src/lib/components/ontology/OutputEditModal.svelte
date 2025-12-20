@@ -1,7 +1,7 @@
 <!-- apps/web/src/lib/components/ontology/OutputEditModal.svelte -->
 <script lang="ts">
 	import { browser } from '$app/environment';
-	import { Trash2, Layers } from 'lucide-svelte';
+	import { Trash2, Layers, X } from 'lucide-svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
@@ -49,14 +49,17 @@
 		name: string;
 		state_key: string;
 		type_key: string;
+		description?: string | null;
 		props?: Record<string, unknown> | null;
 	};
 
 	let output = $state<OutputRecord | null>(null);
+	let description = $state('');
 	let linkedEntities = $state<LinkedEntitiesResult | undefined>(undefined);
 	let isLoading = $state(true);
 	let loadError = $state<string | null>(null);
 	let savingState = $state(false);
+	let savingDescription = $state(false);
 	let deleting = $state(false);
 	let showDeleteConfirm = $state(false);
 	let stateKey = $state('draft');
@@ -116,11 +119,13 @@
 				name: data.name ?? '',
 				state_key: data.state_key ?? 'draft',
 				type_key: data.type_key ?? '',
+				description: data.description ?? '',
 				props: data.props ?? {}
 			};
 
 			output = normalized;
 			stateKey = normalized.state_key;
+			description = (data.description as string) ?? '';
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Failed to load output';
 			loadError = message;
@@ -165,6 +170,30 @@
 		}
 	}
 
+	async function handleDescriptionSave() {
+		if (!output) return;
+		try {
+			savingDescription = true;
+			const response = await fetch(`/api/onto/outputs/${outputId}`, {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ description: description.trim() || null })
+			});
+			const payload = await response.json().catch(() => null);
+			if (!response.ok) {
+				throw new Error(payload?.error || 'Failed to update description');
+			}
+			output = { ...output, description: description.trim() || null };
+			toastService.success('Description saved');
+			onUpdated?.();
+		} catch (error) {
+			const message = error instanceof Error ? error.message : 'Failed to update description';
+			toastService.error(message);
+		} finally {
+			savingDescription = false;
+		}
+	}
+
 	async function handleContentSave(data: {
 		title: string;
 		content: string;
@@ -177,7 +206,8 @@
 				body: JSON.stringify({
 					name: data.title,
 					props: data.props,
-					state_key: stateKey
+					state_key: stateKey,
+					description: description.trim() || null
 				})
 			});
 
@@ -191,7 +221,8 @@
 				? {
 						...output,
 						name: data.title,
-						props: data.props
+						props: data.props,
+						description: description.trim() || null
 					}
 				: output;
 
@@ -288,20 +319,20 @@
 					<p class="text-[10px] sm:text-xs text-muted-foreground mt-0.5">Deliverable</p>
 				</div>
 			</div>
-			<div class="flex items-center gap-1">
+			<div class="flex items-center gap-1.5">
 				<!-- Chat about this output button -->
 				<Button
 					variant="ghost"
 					size="sm"
 					onclick={openChatAbout}
-					class="text-muted-foreground hover:text-foreground shrink-0 !p-1 sm:!p-1.5"
+					class="text-muted-foreground hover:text-foreground shrink-0 !p-1.5 sm:!p-2"
 					disabled={isLoading || savingState || !output}
 					title="Chat about this output"
 				>
 					<img
 						src="/brain-bolt.png"
 						alt="Chat about this output"
-						class="w-4 h-4 sm:w-5 sm:h-5 rounded object-cover transition-transform hover:scale-110"
+						class="w-4 h-4 sm:w-5 sm:h-5 rounded object-cover"
 					/>
 				</Button>
 				<!-- Close button -->
@@ -309,17 +340,10 @@
 					variant="ghost"
 					size="sm"
 					onclick={closeModal}
-					class="text-muted-foreground hover:text-foreground shrink-0 !p-1 sm:!p-1.5"
+					class="text-muted-foreground hover:text-foreground shrink-0 !p-1.5 sm:!p-2"
 					disabled={savingState}
 				>
-					<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M6 18L18 6M6 6l12 12"
-						></path>
-					</svg>
+					<X class="w-4 h-4 sm:w-5 sm:h-5" />
 				</Button>
 			</div>
 		</div>
@@ -383,6 +407,34 @@
 								<option value={option.value}>{option.label}</option>
 							{/each}
 						</Select>
+					</div>
+
+					<!-- Description -->
+					<div class="mb-6 space-y-2">
+						<div class="flex items-center justify-between gap-2">
+							<label
+								for="output-description"
+								class="block text-sm font-medium text-gray-900 dark:text-white"
+							>
+								Description
+							</label>
+							<Button
+								size="xs"
+								variant="secondary"
+								onclick={handleDescriptionSave}
+								disabled={savingDescription}
+								loading={savingDescription}
+							>
+								Save description
+							</Button>
+						</div>
+						<textarea
+							id="output-description"
+							class="w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+							rows="3"
+							bind:value={description}
+							placeholder="What does this output cover?"
+						/>
 					</div>
 
 					<!-- Linked Entities -->

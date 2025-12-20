@@ -3970,31 +3970,37 @@ export type Database = {
           created_at: string
           created_by: string
           decision_at: string
+          deleted_at: string | null
           id: string
           project_id: string
           props: Json
           rationale: string | null
           title: string
+          updated_at: string | null
         }
         Insert: {
           created_at?: string
           created_by: string
           decision_at: string
+          deleted_at?: string | null
           id?: string
           project_id: string
           props?: Json
           rationale?: string | null
           title: string
+          updated_at?: string | null
         }
         Update: {
           created_at?: string
           created_by?: string
           decision_at?: string
+          deleted_at?: string | null
           id?: string
           project_id?: string
           props?: Json
           rationale?: string | null
           title?: string
+          updated_at?: string | null
         }
         Relationships: [
           {
@@ -4398,37 +4404,55 @@ export type Database = {
       }
       onto_goals: {
         Row: {
+          completed_at: string | null
           created_at: string
           created_by: string
+          deleted_at: string | null
+          description: string | null
+          goal: string | null
           id: string
           name: string
           project_id: string
           props: Json
           search_vector: unknown
           state_key: Database["public"]["Enums"]["goal_state"]
+          target_date: string | null
           type_key: string | null
+          updated_at: string | null
         }
         Insert: {
+          completed_at?: string | null
           created_at?: string
           created_by: string
+          deleted_at?: string | null
+          description?: string | null
+          goal?: string | null
           id?: string
           name: string
           project_id: string
           props?: Json
           search_vector?: unknown
           state_key?: Database["public"]["Enums"]["goal_state"]
+          target_date?: string | null
           type_key?: string | null
+          updated_at?: string | null
         }
         Update: {
+          completed_at?: string | null
           created_at?: string
           created_by?: string
+          deleted_at?: string | null
+          description?: string | null
+          goal?: string | null
           id?: string
           name?: string
           project_id?: string
           props?: Json
           search_vector?: unknown
           state_key?: Database["public"]["Enums"]["goal_state"]
+          target_date?: string | null
           type_key?: string | null
+          updated_at?: string | null
         }
         Relationships: [
           {
@@ -4563,40 +4587,55 @@ export type Database = {
       }
       onto_milestones: {
         Row: {
+          completed_at: string | null
           created_at: string
           created_by: string
+          deleted_at: string | null
+          description: string | null
           due_at: string
           id: string
+          milestone: string | null
           project_id: string
           props: Json
           search_vector: unknown
           state_key: Database["public"]["Enums"]["milestone_state"]
           title: string
           type_key: string | null
+          updated_at: string | null
         }
         Insert: {
+          completed_at?: string | null
           created_at?: string
           created_by: string
+          deleted_at?: string | null
+          description?: string | null
           due_at: string
           id?: string
+          milestone?: string | null
           project_id: string
           props?: Json
           search_vector?: unknown
           state_key?: Database["public"]["Enums"]["milestone_state"]
           title: string
           type_key?: string | null
+          updated_at?: string | null
         }
         Update: {
+          completed_at?: string | null
           created_at?: string
           created_by?: string
+          deleted_at?: string | null
+          description?: string | null
           due_at?: string
           id?: string
+          milestone?: string | null
           project_id?: string
           props?: Json
           search_vector?: unknown
           state_key?: Database["public"]["Enums"]["milestone_state"]
           title?: string
           type_key?: string | null
+          updated_at?: string | null
         }
         Relationships: [
           {
@@ -4650,6 +4689,8 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string
+          deleted_at: string | null
+          description: string | null
           facet_stage: string | null
           id: string
           name: string
@@ -4665,6 +4706,8 @@ export type Database = {
         Insert: {
           created_at?: string
           created_by: string
+          deleted_at?: string | null
+          description?: string | null
           facet_stage?: string | null
           id?: string
           name: string
@@ -4680,6 +4723,8 @@ export type Database = {
         Update: {
           created_at?: string
           created_by?: string
+          deleted_at?: string | null
+          description?: string | null
           facet_stage?: string | null
           id?: string
           name?: string
@@ -4757,11 +4802,14 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string
+          deleted_at: string | null
+          description: string | null
           facet_context: string | null
           facet_scale: string | null
           facet_stage: string | null
           id: string
           name: string
+          plan: string | null
           project_id: string
           props: Json
           search_vector: unknown
@@ -4772,11 +4820,14 @@ export type Database = {
         Insert: {
           created_at?: string
           created_by: string
+          deleted_at?: string | null
+          description?: string | null
           facet_context?: string | null
           facet_scale?: string | null
           facet_stage?: string | null
           id?: string
           name: string
+          plan?: string | null
           project_id: string
           props?: Json
           search_vector?: unknown
@@ -4787,11 +4838,14 @@ export type Database = {
         Update: {
           created_at?: string
           created_by?: string
+          deleted_at?: string | null
+          description?: string | null
           facet_context?: string | null
           facet_scale?: string | null
           facet_stage?: string | null
           id?: string
           name?: string
+          plan?: string | null
           project_id?: string
           props?: Json
           search_vector?: unknown
@@ -4883,6 +4937,7 @@ export type Database = {
           facet_scale: string | null
           facet_stage: string | null
           id: string
+          is_public: boolean | null
           name: string
           next_step_long: string | null
           next_step_short: string | null
@@ -4904,6 +4959,7 @@ export type Database = {
           facet_scale?: string | null
           facet_stage?: string | null
           id?: string
+          is_public?: boolean | null
           name: string
           next_step_long?: string | null
           next_step_short?: string | null
@@ -4925,6 +4981,7 @@ export type Database = {
           facet_scale?: string | null
           facet_stage?: string | null
           id?: string
+          is_public?: boolean | null
           name?: string
           next_step_long?: string | null
           next_step_short?: string | null
@@ -4943,32 +5000,41 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string
+          deleted_at: string | null
           id: string
+          priority: number | null
           project_id: string
           props: Json
           search_vector: unknown
           text: string
           type_key: string
+          updated_at: string | null
         }
         Insert: {
           created_at?: string
           created_by: string
+          deleted_at?: string | null
           id?: string
+          priority?: number | null
           project_id: string
           props?: Json
           search_vector?: unknown
           text: string
           type_key?: string
+          updated_at?: string | null
         }
         Update: {
           created_at?: string
           created_by?: string
+          deleted_at?: string | null
           id?: string
+          priority?: number | null
           project_id?: string
           props?: Json
           search_vector?: unknown
           text?: string
           type_key?: string
+          updated_at?: string | null
         }
         Relationships: [
           {
@@ -4982,40 +5048,55 @@ export type Database = {
       }
       onto_risks: {
         Row: {
+          content: string | null
           created_at: string
           created_by: string
+          deleted_at: string | null
           id: string
           impact: string
+          mitigated_at: string | null
           probability: number | null
           project_id: string
           props: Json
+          search_vector: unknown
           state_key: Database["public"]["Enums"]["risk_state"]
           title: string
           type_key: string | null
+          updated_at: string | null
         }
         Insert: {
+          content?: string | null
           created_at?: string
           created_by: string
+          deleted_at?: string | null
           id?: string
           impact?: string
+          mitigated_at?: string | null
           probability?: number | null
           project_id: string
           props?: Json
+          search_vector?: unknown
           state_key?: Database["public"]["Enums"]["risk_state"]
           title: string
           type_key?: string | null
+          updated_at?: string | null
         }
         Update: {
+          content?: string | null
           created_at?: string
           created_by?: string
+          deleted_at?: string | null
           id?: string
           impact?: string
+          mitigated_at?: string | null
           probability?: number | null
           project_id?: string
           props?: Json
+          search_vector?: unknown
           state_key?: Database["public"]["Enums"]["risk_state"]
           title?: string
           type_key?: string | null
+          updated_at?: string | null
         }
         Relationships: [
           {

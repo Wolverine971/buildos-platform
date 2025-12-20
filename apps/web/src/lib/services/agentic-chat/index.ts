@@ -112,11 +112,30 @@ function createToolExecutor(
 			throw new Error(result.error || `Tool ${toolName} execution failed`);
 		}
 
+		const metadata: Record<string, any> = {};
+		if (typeof result.duration_ms === 'number') {
+			metadata.durationMs = result.duration_ms;
+		}
+		const usage =
+			(result as any)?.usage ??
+			(result.result as any)?.usage ??
+			(result.result as any)?.usage_metrics;
+		const tokensUsed =
+			usage && typeof usage.total_tokens === 'number'
+				? usage.total_tokens
+				: typeof usage?.totalTokens === 'number'
+					? usage.totalTokens
+					: undefined;
+		if (typeof tokensUsed === 'number') {
+			metadata.tokensUsed = tokensUsed;
+		}
+
 		return {
 			data: result.result ?? null,
 			streamEvents: Array.isArray(result.stream_events)
 				? (result.stream_events as StreamEvent[])
-				: undefined
+				: undefined,
+			metadata: Object.keys(metadata).length > 0 ? metadata : undefined
 		};
 	};
 }

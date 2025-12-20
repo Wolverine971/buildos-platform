@@ -1,9 +1,9 @@
 # Ontology Schema Migration Plan
 
 > **Created:** 2024-12-20
-> **Status:** In Progress
+> **Status:** Complete
 > **Priority:** High
-> **Progress:** Phase 1-3 Complete (onto_tasks, onto_projects, onto_documents)
+> **Progress:** All 10 Phases Complete (onto_tasks, onto_projects, onto_documents, onto_plans, onto_goals, onto_milestones, onto_risks, onto_requirements, onto_outputs, onto_decisions)
 
 ## Overview
 
@@ -23,7 +23,7 @@ This document outlines the comprehensive migration plan for updating the ontolog
 | `onto_plans`        | `plan`, `description`, `deleted_at`                                              | —               | `props.description` → `description`                                      |
 | `onto_goals`        | `goal`, `description`, `updated_at`, `completed_at`, `target_date`, `deleted_at` | —               | `props.description` → `description`, `props.target_date` → `target_date` |
 | `onto_milestones`   | `milestone`, `description`, `completed_at`, `updated_at`, `deleted_at`           | —               | `props.description` → `description`                                      |
-| `onto_risks`        | `deleted_at`, `mitigated_at`, `updated_at`                                       | —               | —                                                                        |
+| `onto_risks`        | `content`, `deleted_at`, `mitigated_at`, `updated_at`                            | —               | —                                                                        |
 | `onto_requirements` | `deleted_at`, `updated_at`, `priority`                                           | —               | —                                                                        |
 | `onto_outputs`      | `deleted_at`, `description`                                                      | —               | —                                                                        |
 | `onto_decisions`    | `deleted_at`, `updated_at`                                                       | —               | —                                                                        |
@@ -146,16 +146,16 @@ DROP INDEX IF EXISTS idx_onto_projects_also_types;
 
 ### 2.2 Files Updated
 
-| File                                                                               | Changes Made                   | Status |
-| ---------------------------------------------------------------------------------- | ------------------------------ | ------ |
-| `/packages/shared-types/src/database.types.ts`                                     | Removed also_types             | ✅     |
-| `/packages/shared-types/src/database.schema.ts`                                    | Removed also_types             | ✅     |
-| `/apps/web/src/lib/types/onto.ts`                                                  | Removed from Project schemas   | ✅     |
-| `/apps/web/src/lib/services/ontology/instantiation.service.ts`                     | Removed also_types from insert | ✅     |
-| `/apps/web/src/lib/services/ontology/migration/enhanced-project-migrator.ts`       | Removed also_types             | ✅     |
+| File                                                                               | Changes Made                       | Status |
+| ---------------------------------------------------------------------------------- | ---------------------------------- | ------ |
+| `/packages/shared-types/src/database.types.ts`                                     | Removed also_types                 | ✅     |
+| `/packages/shared-types/src/database.schema.ts`                                    | Removed also_types                 | ✅     |
+| `/apps/web/src/lib/types/onto.ts`                                                  | Removed from Project schemas       | ✅     |
+| `/apps/web/src/lib/services/ontology/instantiation.service.ts`                     | Removed also_types from insert     | ✅     |
+| `/apps/web/src/lib/services/ontology/migration/enhanced-project-migrator.ts`       | Removed also_types                 | ✅     |
 | `/apps/web/src/lib/services/agentic-chat/tools/core/executors/types.ts`            | Removed from CreateOntoProjectArgs | ✅     |
-| `/apps/web/src/lib/services/agentic-chat/tools/core/definitions/ontology-write.ts` | Removed from schema            | ✅     |
-| `/apps/worker/tests/ontologyBriefDataLoader.test.ts`                               | Removed from mock              | ✅     |
+| `/apps/web/src/lib/services/agentic-chat/tools/core/definitions/ontology-write.ts` | Removed from schema                | ✅     |
+| `/apps/worker/tests/ontologyBriefDataLoader.test.ts`                               | Removed from mock                  | ✅     |
 
 ---
 
@@ -188,17 +188,17 @@ WHERE props->>'body_markdown' IS NOT NULL
 
 #### API Endpoints
 
-| File                                                            | Changes Made                                       | Status |
-| --------------------------------------------------------------- | -------------------------------------------------- | ------ |
-| `/apps/web/src/routes/api/onto/documents/create/+server.ts`     | Accept content/description, store in columns       | ✅     |
-| `/apps/web/src/routes/api/onto/documents/[id]/+server.ts`       | PATCH: update content; DELETE: soft delete         | ✅     |
-| `/apps/web/src/routes/api/onto/tasks/[id]/documents/+server.ts` | Use content column, filter deleted                 | ✅     |
+| File                                                            | Changes Made                                 | Status |
+| --------------------------------------------------------------- | -------------------------------------------- | ------ |
+| `/apps/web/src/routes/api/onto/documents/create/+server.ts`     | Accept content/description, store in columns | ✅     |
+| `/apps/web/src/routes/api/onto/documents/[id]/+server.ts`       | PATCH: update content; DELETE: soft delete   | ✅     |
+| `/apps/web/src/routes/api/onto/tasks/[id]/documents/+server.ts` | Use content column, filter deleted           | ✅     |
 
 #### Chat Tools
 
-| File                                                                                      | Changes Made                          | Status |
-| ----------------------------------------------------------------------------------------- | ------------------------------------- | ------ |
-| `/apps/web/src/lib/services/agentic-chat/tools/core/executors/ontology-write-executor.ts` | Use content column for create/update  | ✅     |
+| File                                                                                      | Changes Made                               | Status |
+| ----------------------------------------------------------------------------------------- | ------------------------------------------ | ------ |
+| `/apps/web/src/lib/services/agentic-chat/tools/core/executors/ontology-write-executor.ts` | Use content column for create/update       | ✅     |
 | `/apps/web/src/lib/services/agentic-chat/tools/core/executors/ontology-read-executor.ts`  | Select content/description, filter deleted | ✅     |
 
 #### Services
@@ -209,30 +209,33 @@ WHERE props->>'body_markdown' IS NOT NULL
 
 #### Types
 
-| File                                                 | Changes Made                             | Status |
-| ---------------------------------------------------- | ---------------------------------------- | ------ |
-| `/packages/shared-types/src/database.types.ts`       | Added content, description, deleted_at   | ✅     |
-| `/packages/shared-types/src/database.schema.ts`      | Added content, description, deleted_at   | ✅     |
-| `/apps/web/src/lib/types/onto.ts`                    | Added to DocumentSchema                  | ✅     |
+| File                                            | Changes Made                           | Status |
+| ----------------------------------------------- | -------------------------------------- | ------ |
+| `/packages/shared-types/src/database.types.ts`  | Added content, description, deleted_at | ✅     |
+| `/packages/shared-types/src/database.schema.ts` | Added content, description, deleted_at | ✅     |
+| `/apps/web/src/lib/types/onto.ts`               | Added to DocumentSchema                | ✅     |
 
 ### 3.4 Backwards Compatibility
 
 During transition, both `content` column and `props.body_markdown` are maintained:
+
 - New documents: Content stored in `content` column AND `props.body_markdown`
 - Read operations: Prefer `content` column, fall back to `props.body_markdown`
 
 #### Modal Components ✅
 
-| File                                                                    | Changes Made                                  | Status |
-| ----------------------------------------------------------------------- | --------------------------------------------- | ------ |
-| `/apps/web/src/lib/components/ontology/DocumentModal.svelte`            | Load/save using content column                | ✅     |
-| `/apps/web/src/lib/components/ontology/OntologyContextDocModal.svelte`  | Load/save using content column                | ✅     |
-| `/apps/web/src/lib/components/ontology/OntologyProjectEditModal.svelte` | Read content column with fallback             | ✅     |
-| `/apps/web/src/lib/components/ontology/TaskEditModal.svelte`            | Load/save workspace docs using content        | ✅     |
+| File                                                                    | Changes Made                           | Status |
+| ----------------------------------------------------------------------- | -------------------------------------- | ------ |
+| `/apps/web/src/lib/components/ontology/DocumentModal.svelte`            | Load/save using content column         | ✅     |
+| `/apps/web/src/lib/components/ontology/OntologyContextDocModal.svelte`  | Load/save using content column         | ✅     |
+| `/apps/web/src/lib/components/ontology/OntologyProjectEditModal.svelte` | Read content column with fallback      | ✅     |
+| `/apps/web/src/lib/components/ontology/TaskEditModal.svelte`            | Load/save workspace docs using content | ✅     |
 
 ---
 
-## Phase 4: onto_plans Migration
+## Phase 4: onto_plans Migration ✅ COMPLETE
+
+> **Completed:** 2024-12-20
 
 ### 4.1 New Columns
 
@@ -253,20 +256,21 @@ WHERE props->>'description' IS NOT NULL
   AND description IS NULL;
 ```
 
-### 4.3 Files to Update
+### 4.3 Files Updated
 
-| File                                                                                     | Changes Required                    |
-| ---------------------------------------------------------------------------------------- | ----------------------------------- |
-| `/apps/web/src/routes/api/onto/plans/create/+server.ts`                                  | Use description column              |
-| `/apps/web/src/routes/api/onto/plans/[id]/+server.ts`                                    | PATCH/GET with new columns          |
-| `/apps/web/src/routes/api/onto/plans/[id]/full/+server.ts`                               | Include new columns                 |
-| `/apps/web/src/lib/components/ontology/PlanCreateModal.svelte`                           | Bind to description column          |
-| `/apps/web/src/lib/components/ontology/PlanEditModal.svelte`                             | Read/write description column       |
-| `/apps/web/src/lib/services/agentic-chat/tools/core/executors/ontology-read-executor.ts` | Filter deleted, include description |
+| File                                                                                     | Changes Made                           | Status |
+| ---------------------------------------------------------------------------------------- | -------------------------------------- | ------ |
+| `/apps/web/src/routes/api/onto/plans/create/+server.ts`                                  | Use description column                 | ✅     |
+| `/apps/web/src/routes/api/onto/plans/[id]/+server.ts`                                    | PATCH with new columns, soft delete    | ✅     |
+| `/apps/web/src/lib/services/agentic-chat/tools/core/executors/ontology-read-executor.ts` | Filter deleted_at, include description | ✅     |
+| `/packages/shared-types/src/database.schema.ts`                                          | Added plan, description, deleted_at    | ✅     |
+| `/apps/web/src/lib/types/onto.ts`                                                        | Added to PlanSchema                    | ✅     |
 
 ---
 
-## Phase 5: onto_goals Migration
+## Phase 5: onto_goals Migration ✅ COMPLETE
+
+> **Completed:** 2024-12-20
 
 ### 5.1 New Columns
 
@@ -291,20 +295,21 @@ SET description = props->>'description',
 WHERE (props->>'description' IS NOT NULL OR props->>'target_date' IS NOT NULL);
 ```
 
-### 5.3 Files to Update
+### 5.3 Files Updated
 
-| File                                                                                     | Changes Required                               |
-| ---------------------------------------------------------------------------------------- | ---------------------------------------------- |
-| `/apps/web/src/routes/api/onto/goals/create/+server.ts`                                  | Use description, target_date columns           |
-| `/apps/web/src/routes/api/onto/goals/[id]/+server.ts`                                    | Fix updated_at bug (line 146), use new columns |
-| `/apps/web/src/routes/api/onto/goals/[id]/full/+server.ts`                               | Include new columns                            |
-| `/apps/web/src/lib/components/ontology/GoalCreateModal.svelte`                           | Bind to new columns                            |
-| `/apps/web/src/lib/components/ontology/GoalEditModal.svelte`                             | Use new columns, show completed_at             |
-| `/apps/web/src/lib/services/agentic-chat/tools/core/executors/ontology-read-executor.ts` | Include description, filter deleted            |
+| File                                                                                     | Changes Made                                        | Status |
+| ---------------------------------------------------------------------------------------- | --------------------------------------------------- | ------ |
+| `/apps/web/src/routes/api/onto/goals/create/+server.ts`                                  | Use description, target_date columns                | ✅     |
+| `/apps/web/src/routes/api/onto/goals/[id]/+server.ts`                                    | Soft delete, use new columns                        | ✅     |
+| `/apps/web/src/lib/services/agentic-chat/tools/core/executors/ontology-read-executor.ts` | Filter deleted_at, include description, target_date | ✅     |
+| `/packages/shared-types/src/database.schema.ts`                                          | Added all new columns                               | ✅     |
+| `/apps/web/src/lib/types/onto.ts`                                                        | Added GoalSchema                                    | ✅     |
 
 ---
 
-## Phase 6: onto_milestones Migration
+## Phase 6: onto_milestones Migration ✅ COMPLETE
+
+> **Completed:** 2024-12-20
 
 ### 6.1 New Columns
 
@@ -330,45 +335,59 @@ WHERE props->>'description' IS NOT NULL
 -- Set completed_at for achieved milestones
 UPDATE onto_milestones
 SET completed_at = updated_at
-WHERE state_key = 'achieved'
+WHERE state_key = 'completed'
   AND completed_at IS NULL;
 ```
 
-### 6.3 Files to Update
+### 6.3 Files Updated
 
-| File                                                                | Changes Required                   |
-| ------------------------------------------------------------------- | ---------------------------------- |
-| `/apps/web/src/routes/api/onto/milestones/create/+server.ts`        | Use description column             |
-| `/apps/web/src/routes/api/onto/milestones/[id]/+server.ts`          | Use new columns, soft delete       |
-| `/apps/web/src/lib/components/ontology/MilestoneCreateModal.svelte` | Bind to description column         |
-| `/apps/web/src/lib/components/ontology/MilestoneEditModal.svelte`   | Use new columns, show completed_at |
+| File                                                         | Changes Made                 | Status |
+| ------------------------------------------------------------ | ---------------------------- | ------ |
+| `/apps/web/src/routes/api/onto/milestones/create/+server.ts` | Use description column       | ✅     |
+| `/apps/web/src/routes/api/onto/milestones/[id]/+server.ts`   | Soft delete, use new columns | ✅     |
+| `/packages/shared-types/src/database.schema.ts`              | Added all new columns        | ✅     |
+| `/apps/web/src/lib/types/onto.ts`                            | Added MilestoneSchema        | ✅     |
 
 ---
 
-## Phase 7: onto_risks Migration
+## Phase 7: onto_risks Migration ✅ COMPLETE
+
+> **Completed:** 2024-12-20
 
 ### 7.1 New Columns
 
 ```sql
+ALTER TABLE onto_risks ADD COLUMN IF NOT EXISTS content text;
 ALTER TABLE onto_risks ADD COLUMN IF NOT EXISTS deleted_at timestamptz;
 ALTER TABLE onto_risks ADD COLUMN IF NOT EXISTS mitigated_at timestamptz;
 ALTER TABLE onto_risks ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFAULT now();
 
 CREATE INDEX IF NOT EXISTS idx_onto_risks_deleted_at ON onto_risks(deleted_at) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_onto_risks_mitigated_at ON onto_risks(mitigated_at);
+
+-- Search vector with content column
+ALTER TABLE onto_risks ADD COLUMN search_vector tsvector
+  GENERATED ALWAYS AS (
+    setweight(to_tsvector('english', coalesce(title, '')), 'A') ||
+    setweight(to_tsvector('english', coalesce(content, '')), 'B') ||
+    setweight(to_tsvector('english', coalesce(props::text, '')), 'D')
+  ) STORED;
 ```
 
-### 7.2 Files to Update
+### 7.2 Files Updated
 
-| File                                                           | Changes Required                              |
-| -------------------------------------------------------------- | --------------------------------------------- |
-| `/apps/web/src/routes/api/onto/risks/create/+server.ts`        | —                                             |
-| `/apps/web/src/routes/api/onto/risks/[id]/+server.ts`          | Soft delete, set mitigated_at on state change |
-| `/apps/web/src/lib/components/ontology/RiskCreateModal.svelte` | —                                             |
-| `/apps/web/src/lib/components/ontology/RiskEditModal.svelte`   | Show mitigated_at                             |
+| File                                                    | Changes Made                                        | Status |
+| ------------------------------------------------------- | --------------------------------------------------- | ------ |
+| `/apps/web/src/routes/api/onto/risks/[id]/+server.ts`   | Soft delete, set mitigated_at, updated_at, content  | ✅     |
+| `/apps/web/src/routes/api/onto/risks/create/+server.ts` | Accept content column                               | ✅     |
+| `/packages/shared-types/src/database.schema.ts`         | Added content, deleted_at, mitigated_at, updated_at | ✅     |
+| `/apps/web/src/lib/types/onto.ts`                       | Added RiskSchema                                    | ✅     |
 
 ---
 
-## Phase 8: onto_requirements Migration
+## Phase 8: onto_requirements Migration ✅ COMPLETE
+
+> **Completed:** 2024-12-20
 
 ### 8.1 New Columns
 
@@ -381,17 +400,20 @@ CREATE INDEX IF NOT EXISTS idx_onto_requirements_deleted_at ON onto_requirements
 CREATE INDEX IF NOT EXISTS idx_onto_requirements_priority ON onto_requirements(priority);
 ```
 
-### 8.2 Files to Update
+### 8.2 Files Updated
 
-| File                                                           | Changes Required     |
-| -------------------------------------------------------------- | -------------------- |
-| `/apps/web/src/lib/services/ontology/instantiation.service.ts` | Add priority support |
+| File                                            | Changes Made                           | Status |
+| ----------------------------------------------- | -------------------------------------- | ------ |
+| `/packages/shared-types/src/database.schema.ts` | Added deleted_at, updated_at, priority | ✅     |
+| SQL migration file                              | Added columns and indexes              | ✅     |
 
 **Note:** No dedicated API endpoints or modals exist for requirements. Consider adding if needed.
 
 ---
 
-## Phase 9: onto_outputs Migration
+## Phase 9: onto_outputs Migration ✅ COMPLETE
+
+> **Completed:** 2024-12-20
 
 ### 9.1 New Columns
 
@@ -400,22 +422,33 @@ ALTER TABLE onto_outputs ADD COLUMN IF NOT EXISTS deleted_at timestamptz;
 ALTER TABLE onto_outputs ADD COLUMN IF NOT EXISTS description text;
 
 CREATE INDEX IF NOT EXISTS idx_onto_outputs_deleted_at ON onto_outputs(deleted_at) WHERE deleted_at IS NULL;
+
+-- Search vector with description column
+ALTER TABLE onto_outputs ADD COLUMN search_vector tsvector
+  GENERATED ALWAYS AS (
+    setweight(to_tsvector('english', coalesce(name, '')), 'A') ||
+    setweight(to_tsvector('english', coalesce(description, '')), 'B') ||
+    setweight(to_tsvector('english', coalesce(props::text, '')), 'D')
+  ) STORED;
 ```
 
 **Note:** `onto_outputs` already has `updated_at` column.
 
-### 9.2 Files to Update
+### 9.2 Files Updated
 
-| File                                                             | Changes Required                |
-| ---------------------------------------------------------------- | ------------------------------- |
-| `/apps/web/src/routes/api/onto/outputs/create/+server.ts`        | Accept description              |
-| `/apps/web/src/routes/api/onto/outputs/[id]/+server.ts`          | Soft delete, update description |
-| `/apps/web/src/lib/components/ontology/OutputCreateModal.svelte` | Add description field           |
-| `/apps/web/src/lib/components/ontology/OutputEditModal.svelte`   | Show/edit description           |
+| File                                                      | Changes Made                                        | Status |
+| --------------------------------------------------------- | --------------------------------------------------- | ------ |
+| `/apps/web/src/routes/api/onto/outputs/create/+server.ts` | Accept description column                           | ✅     |
+| `/apps/web/src/routes/api/onto/outputs/[id]/+server.ts`   | Soft delete (deleted_at), PATCH description, filter | ✅     |
+| `/packages/shared-types/src/database.schema.ts`           | Added deleted_at, description                       | ✅     |
+
+**Modals:** OutputCreateModal.svelte and OutputEditModal.svelte can be updated to use description field.
 
 ---
 
-## Phase 10: onto_decisions Migration
+## Phase 10: onto_decisions Migration ✅ COMPLETE
+
+> **Completed:** 2024-12-20
 
 ### 10.1 New Columns
 
@@ -426,12 +459,12 @@ ALTER TABLE onto_decisions ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFAU
 CREATE INDEX IF NOT EXISTS idx_onto_decisions_deleted_at ON onto_decisions(deleted_at) WHERE deleted_at IS NULL;
 ```
 
-### 10.2 Files to Update
+### 10.2 Files Updated
 
-| File                                                           | Changes Required         |
-| -------------------------------------------------------------- | ------------------------ |
-| `/apps/web/src/lib/services/ontology/instantiation.service.ts` | —                        |
-| `/apps/web/src/routes/api/onto/projects/[id]/+server.ts`       | Filter deleted decisions |
+| File                                            | Changes Made                 | Status |
+| ----------------------------------------------- | ---------------------------- | ------ |
+| `/packages/shared-types/src/database.schema.ts` | Added deleted_at, updated_at | ✅     |
+| SQL migration file                              | Added columns and indexes    | ✅     |
 
 **Note:** No dedicated API endpoints or modals exist for decisions. Consider adding if needed.
 

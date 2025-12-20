@@ -90,9 +90,11 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			type_key,
 			name,
 			state_key,
+			description: description || null, // Use dedicated column
 			created_by: actorId,
 			props: {
 				...props,
+				// Maintain backwards compatibility by also storing in props
 				description: description || null,
 				start_date: start_date || null,
 				end_date: end_date || null

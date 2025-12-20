@@ -66,7 +66,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			return ApiResponse.error('Failed to get user actor', 500);
 		}
 
-		// Get risk with project to verify ownership
+		// Get risk with project to verify ownership (exclude soft-deleted)
 		const { data: risk, error } = await supabase
 			.from('onto_risks')
 			.select(
@@ -80,6 +80,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			`
 			)
 			.eq('id', params.id)
+			.is('deleted_at', null)
 			.single();
 
 		if (error || !risk) {
@@ -117,6 +118,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			impact,
 			probability,
 			state_key,
+			content,
 			description,
 			mitigation_strategy,
 			owner,
@@ -151,7 +153,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			return ApiResponse.error('Failed to get user actor', 500);
 		}
 
-		// Get risk with project to verify ownership
+		// Get risk with project to verify ownership (exclude soft-deleted)
 		const { data: existingRisk, error: fetchError } = await supabase
 			.from('onto_risks')
 			.select(
@@ -164,6 +166,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			`
 			)
 			.eq('id', params.id)
+			.is('deleted_at', null)
 			.single();
 
 		if (fetchError || !existingRisk) {
@@ -197,6 +200,11 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			updateData.state_key = state_key;
 		}
 
+		// Handle content column update (new dedicated column)
+		if (content !== undefined) {
+			updateData.content = content?.trim() || null;
+		}
+
 		// Handle props update - merge with existing
 		const currentProps = (existingRisk.props as Record<string, unknown>) || {};
 		let hasPropsUpdate = false;
@@ -224,6 +232,14 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 
 		if (hasPropsUpdate) {
 			updateData.props = propsUpdate;
+		}
+
+		// Always update updated_at
+		updateData.updated_at = new Date().toISOString();
+
+		// Set mitigated_at when state changes to 'mitigated'
+		if (state_key === 'mitigated' && existingRisk.state_key !== 'mitigated') {
+			updateData.mitigated_at = new Date().toISOString();
 		}
 
 		// Only update if there's something to update
@@ -291,7 +307,7 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 			return ApiResponse.error('Failed to get user actor', 500);
 		}
 
-		// Get risk with project to verify ownership (fetch full data for logging)
+		// Get risk with project to verify ownership (exclude already deleted)
 		const { data: risk, error: fetchError } = await supabase
 			.from('onto_risks')
 			.select(
@@ -304,6 +320,7 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 			`
 			)
 			.eq('id', params.id)
+			.is('deleted_at', null)
 			.single();
 
 		if (fetchError || !risk) {
@@ -323,16 +340,10 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 			state_key: risk.state_key
 		};
 
-		// Delete related edges
-		await supabase
-			.from('onto_edges')
-			.delete()
-			.or(`src_id.eq.${params.id},dst_id.eq.${params.id}`);
-
-		// Delete the risk
+		// Soft delete the risk (set deleted_at timestamp)
 		const { error: deleteError } = await supabase
 			.from('onto_risks')
-			.delete()
+			.update({ deleted_at: new Date().toISOString() })
 			.eq('id', params.id);
 
 		if (deleteError) {

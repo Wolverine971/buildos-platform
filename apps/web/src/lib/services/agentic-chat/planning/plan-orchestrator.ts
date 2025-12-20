@@ -40,6 +40,7 @@ import type { ChatToolCall, ChatContextType, AgentPlanMetadata } from '@buildos/
 import { v4 as uuidv4, validate as uuidValidate } from 'uuid';
 import { formatToolSummaries } from '$lib/services/agentic-chat/tools/core/tools.config';
 import { ToolExecutionService } from '../execution/tool-execution-service';
+import { applyContextShiftToContext, extractContextShift } from '../shared/context-shift';
 
 /**
  * Interface for LLM service (subset of SmartLLMService)
@@ -1012,6 +1013,11 @@ Return JSON: {"verdict":"approved|changes_requested|rejected","notes":"short exp
 					throw new Error(message);
 				}
 
+				const contextShift = extractContextShift(toolResult);
+				if (contextShift) {
+					applyContextShiftToContext(context, contextShift);
+				}
+
 				aggregatedResults.push(toolResult.data);
 			}
 
@@ -1437,14 +1443,18 @@ Return JSON: {"verdict":"approved|changes_requested|rejected","notes":"short exp
 
 		for (const event of events) {
 			if (event.type === 'tool_result') {
-				const tokensUsed = event.result.tokensUsed;
+				const tokensUsed =
+					event.result.tokensUsed ??
+					this.extractTokensFromMetadata(event.result.metadata);
 				if (typeof tokensUsed === 'number') {
 					delta += tokensUsed;
 				}
 			}
 
 			if (event.type === 'executor_result') {
-				const tokensUsed = event.result.metadata?.tokensUsed;
+				const tokensUsed =
+					event.result.metadata?.tokensUsed ??
+					this.extractTokensFromMetadata(event.result.metadata);
 				if (typeof tokensUsed === 'number') {
 					delta += tokensUsed;
 				}
@@ -1458,6 +1468,27 @@ Return JSON: {"verdict":"approved|changes_requested|rejected","notes":"short exp
 				totalTokensUsed: totalTokens
 			};
 		}
+	}
+
+	private extractTokensFromMetadata(metadata?: Record<string, any>): number | undefined {
+		if (!metadata || typeof metadata !== 'object') {
+			return undefined;
+		}
+
+		const candidates: Array<number | undefined> = [
+			metadata.tokensUsed,
+			metadata.tokens_used,
+			metadata.usage?.total_tokens,
+			metadata.usage?.totalTokens
+		];
+
+		for (const value of candidates) {
+			if (typeof value === 'number' && Number.isFinite(value)) {
+				return value;
+			}
+		}
+
+		return undefined;
 	}
 
 	private inferFieldInfoEntityType(context: ServiceContext): string {

@@ -16,7 +16,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		}
 
 		const body = await request.json();
-		const { project_id, type_key, name, state_key, props } = body;
+		const { project_id, type_key, name, state_key, description, props } = body;
 
 		if (!project_id) {
 			return ApiResponse.badRequest('project_id is required');
@@ -85,6 +85,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				name,
 				type_key,
 				state_key: state_key || 'draft',
+				description: description?.trim() || null,
 				props: mergedProps,
 				created_by: actorId
 			})

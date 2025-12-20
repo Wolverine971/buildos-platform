@@ -52,6 +52,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			type_key = 'goal.outcome.project',
 			name,
 			description,
+			target_date,
 			props = {}
 		} = body;
 
@@ -89,10 +90,14 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			project_id,
 			type_key,
 			name,
+			description: description || null, // Use dedicated column
+			target_date: target_date || null, // Use dedicated column
 			created_by: actorId,
 			props: {
 				...props,
-				description: description || null
+				// Maintain backwards compatibility by also storing in props
+				description: description || null,
+				target_date: target_date || null
 			}
 		};
 

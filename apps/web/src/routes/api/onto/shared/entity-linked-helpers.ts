@@ -191,7 +191,12 @@ async function fetchEntityDetails(
 ): Promise<any[]> {
 	if (ids.length === 0) return [];
 
-	const { data, error } = await supabase.from(table).select(columns.join(', ')).in('id', ids);
+	let query = supabase.from(table).select(columns.join(', ')).in('id', ids);
+
+	// All ontology entities now support soft deletes
+	query = query.is('deleted_at', null);
+
+	const { data, error } = await query;
 
 	if (error) {
 		console.error(`[Entity Linked Helpers] Error fetching ${table}:`, error);

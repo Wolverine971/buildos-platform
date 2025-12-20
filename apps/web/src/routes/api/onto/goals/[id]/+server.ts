@@ -60,7 +60,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			return ApiResponse.error('Failed to get user actor', 500);
 		}
 
-		// Get goal with project to verify ownership
+		// Get goal with project to verify ownership (exclude soft-deleted)
 		const { data: goal, error } = await supabase
 			.from('onto_goals')
 			.select(
@@ -73,6 +73,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			`
 			)
 			.eq('id', params.id)
+			.is('deleted_at', null)
 			.single();
 
 		if (error || !goal) {
@@ -117,7 +118,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			return ApiResponse.error('Failed to get user actor', 500);
 		}
 
-		// Get goal with project to verify ownership
+		// Get goal with project to verify ownership (exclude soft-deleted)
 		const { data: existingGoal, error: fetchError } = await supabase
 			.from('onto_goals')
 			.select(
@@ -130,6 +131,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			`
 			)
 			.eq('id', params.id)
+			.is('deleted_at', null)
 			.single();
 
 		if (fetchError || !existingGoal) {
@@ -142,56 +144,51 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		}
 
 		// Build update object
-		const updateData: any = {
+		const updateData: Record<string, unknown> = {
 			updated_at: new Date().toISOString()
 		};
 
 		if (name !== undefined) updateData.name = name;
 
+		// Update dedicated columns
+		if (description !== undefined) {
+			updateData.description = description || null;
+		}
+		if (target_date !== undefined) {
+			updateData.target_date = target_date || null;
+		}
+
 		// Handle props update - merge with existing
-		if (props !== undefined) {
-			updateData.props = {
-				...existingGoal.props,
-				...props
-			};
-			// Handle individual fields in props
-			if (description !== undefined) {
-				updateData.props.description = description || null;
-			}
-			if (priority !== undefined) {
-				updateData.props.priority = priority || null;
-			}
-			if (target_date !== undefined) {
-				updateData.props.target_date = target_date || null;
-			}
-			if (measurement_criteria !== undefined) {
-				updateData.props.measurement_criteria = measurement_criteria || null;
-			}
-		} else {
-			// Update individual props fields even if props wasn't passed
-			const propsUpdate: any = { ...existingGoal.props };
-			let hasPropsUpdate = false;
+		const propsUpdate: Record<string, unknown> = {
+			...(existingGoal.props as Record<string, unknown>)
+		};
+		let hasPropsUpdate = false;
 
-			if (description !== undefined) {
-				propsUpdate.description = description || null;
-				hasPropsUpdate = true;
-			}
-			if (priority !== undefined) {
-				propsUpdate.priority = priority || null;
-				hasPropsUpdate = true;
-			}
-			if (target_date !== undefined) {
-				propsUpdate.target_date = target_date || null;
-				hasPropsUpdate = true;
-			}
-			if (measurement_criteria !== undefined) {
-				propsUpdate.measurement_criteria = measurement_criteria || null;
-				hasPropsUpdate = true;
-			}
+		if (props !== undefined && typeof props === 'object' && props !== null) {
+			Object.assign(propsUpdate, props);
+			hasPropsUpdate = true;
+		}
 
-			if (hasPropsUpdate) {
-				updateData.props = propsUpdate;
-			}
+		// Maintain backwards compatibility by also storing in props
+		if (description !== undefined) {
+			propsUpdate.description = description || null;
+			hasPropsUpdate = true;
+		}
+		if (priority !== undefined) {
+			propsUpdate.priority = priority || null;
+			hasPropsUpdate = true;
+		}
+		if (target_date !== undefined) {
+			propsUpdate.target_date = target_date || null;
+			hasPropsUpdate = true;
+		}
+		if (measurement_criteria !== undefined) {
+			propsUpdate.measurement_criteria = measurement_criteria || null;
+			hasPropsUpdate = true;
+		}
+
+		if (hasPropsUpdate) {
+			updateData.props = propsUpdate;
 		}
 
 		// Update the goal
@@ -246,7 +243,7 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 			return ApiResponse.error('Failed to get user actor', 500);
 		}
 
-		// Get goal with project to verify ownership (fetch full data for logging)
+		// Get goal with project to verify ownership (exclude already deleted)
 		const { data: goal, error: fetchError } = await supabase
 			.from('onto_goals')
 			.select(
@@ -259,6 +256,7 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 			`
 			)
 			.eq('id', params.id)
+			.is('deleted_at', null)
 			.single();
 
 		if (fetchError || !goal) {
@@ -273,16 +271,10 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 		const projectId = goal.project_id;
 		const goalDataForLog = { name: goal.name, type_key: goal.type_key };
 
-		// Delete related edges
-		await supabase
-			.from('onto_edges')
-			.delete()
-			.or(`src_id.eq.${params.id},dst_id.eq.${params.id}`);
-
-		// Delete the goal
+		// Soft delete the goal (set deleted_at timestamp)
 		const { error: deleteError } = await supabase
 			.from('onto_goals')
-			.delete()
+			.update({ deleted_at: new Date().toISOString() })
 			.eq('id', params.id);
 
 		if (deleteError) {

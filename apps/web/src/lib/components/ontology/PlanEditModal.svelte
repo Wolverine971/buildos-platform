@@ -14,7 +14,7 @@
 -->
 <script lang="ts">
 	import { browser } from '$app/environment';
-	import { Clock, Loader, Save, Trash2 } from 'lucide-svelte';
+	import { Clock, Loader, Save, Trash2, X } from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
@@ -121,7 +121,7 @@
 	});
 	const lastUpdatedLabel = $derived(formatRelativeTime(plan?.updated_at || plan?.created_at));
 	const planTypeLabel = $derived(plan?.type_key || 'plan.phase.base');
-	const planIdLabel = $derived(plan?.id?.slice(0, 8) || planId.slice(0, 8));
+	const planIdLabel = $derived(plan?.id || planId);
 	const formDisabled = $derived(isSaving || isDeleting);
 
 	// Load plan data when modal opens (client-side only)
@@ -353,20 +353,20 @@
 					</p>
 				</div>
 			</div>
-			<div class="flex items-center gap-1">
+			<div class="flex items-center gap-1.5">
 				<!-- Chat about this plan button -->
 				<Button
 					variant="ghost"
 					size="sm"
 					onclick={openChatAbout}
-					class="text-muted-foreground hover:text-foreground shrink-0 !p-1 sm:!p-1.5"
+					class="text-muted-foreground hover:text-foreground shrink-0 !p-1.5 sm:!p-2"
 					disabled={isLoading || isSaving || !plan}
 					title="Chat about this plan"
 				>
 					<img
 						src="/brain-bolt.png"
 						alt="Chat about this plan"
-						class="w-4 h-4 sm:w-5 sm:h-5 rounded object-cover transition-transform hover:scale-110"
+						class="w-4 h-4 sm:w-5 sm:h-5 rounded object-cover"
 					/>
 				</Button>
 				<!-- Close button -->
@@ -374,17 +374,10 @@
 					variant="ghost"
 					size="sm"
 					onclick={handleClose}
-					class="text-muted-foreground hover:text-foreground shrink-0 !p-1 sm:!p-1.5"
+					class="text-muted-foreground hover:text-foreground shrink-0 !p-1.5 sm:!p-2"
 					disabled={isSaving || isDeleting}
 				>
-					<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M6 18L18 6M6 6l12 12"
-						></path>
-					</svg>
+					<X class="w-4 h-4 sm:w-5 sm:h-5" />
 				</Button>
 			</div>
 		</div>

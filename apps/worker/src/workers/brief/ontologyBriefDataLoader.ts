@@ -523,14 +523,46 @@ export class OntologyBriefDataLoader {
 				.select('*')
 				.in('project_id', projectIds)
 				.is('deleted_at', null),
-			this.supabase.from('onto_goals').select('*').in('project_id', projectIds),
-			this.supabase.from('onto_plans').select('*').in('project_id', projectIds),
-			this.supabase.from('onto_milestones').select('*').in('project_id', projectIds),
-			this.supabase.from('onto_risks').select('*').in('project_id', projectIds),
-			this.supabase.from('onto_documents').select('*').in('project_id', projectIds),
-			this.supabase.from('onto_outputs').select('*').in('project_id', projectIds),
-			this.supabase.from('onto_requirements').select('*').in('project_id', projectIds),
-			this.supabase.from('onto_decisions').select('*').in('project_id', projectIds),
+			this.supabase
+				.from('onto_goals')
+				.select('*')
+				.in('project_id', projectIds)
+				.is('deleted_at', null),
+			this.supabase
+				.from('onto_plans')
+				.select('*')
+				.in('project_id', projectIds)
+				.is('deleted_at', null),
+			this.supabase
+				.from('onto_milestones')
+				.select('*')
+				.in('project_id', projectIds)
+				.is('deleted_at', null),
+			this.supabase
+				.from('onto_risks')
+				.select('*')
+				.in('project_id', projectIds)
+				.is('deleted_at', null),
+			this.supabase
+				.from('onto_documents')
+				.select('*')
+				.in('project_id', projectIds)
+				.is('deleted_at', null),
+			this.supabase
+				.from('onto_outputs')
+				.select('*')
+				.in('project_id', projectIds)
+				.is('deleted_at', null),
+			this.supabase
+				.from('onto_requirements')
+				.select('*')
+				.in('project_id', projectIds)
+				.is('deleted_at', null),
+			this.supabase
+				.from('onto_decisions')
+				.select('*')
+				.in('project_id', projectIds)
+				.is('deleted_at', null),
 			this.supabase.from('onto_edges').select('*').in('project_id', projectIds)
 		]);
 		const queryDuration = Date.now() - queryStartTime;

@@ -27,6 +27,9 @@ CREATE INDEX IF NOT EXISTS idx_onto_tasks_start_at ON onto_tasks(start_at);
 -- Index for completed tasks queries
 CREATE INDEX IF NOT EXISTS idx_onto_tasks_completed_at ON onto_tasks(completed_at);
 
+-- Index for start/due range queries (start_at, due_at)
+CREATE INDEX IF NOT EXISTS idx_onto_tasks_date_range ON onto_tasks(start_at, due_at);
+
 -- Partial index for active (non-deleted) tasks - most common query pattern
 CREATE INDEX IF NOT EXISTS idx_onto_tasks_active ON onto_tasks(project_id, state_key)
   WHERE deleted_at IS NULL;

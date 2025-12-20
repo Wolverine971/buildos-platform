@@ -101,7 +101,8 @@ export class AgentExecutorService {
 	private readonly LIMITS = {
 		MAX_TOOL_CALLS: 10, // Prevent infinite loops
 		MAX_EXECUTION_TIME_MS: 60000, // 60 seconds max
-		MAX_RETRIES: 2 // Max retries per tool call
+		MAX_RETRIES: 2, // Max retries per tool call
+		TOOL_CALL_TIMEOUT_MS: 20000 // Max time per tool execution
 	};
 
 	constructor(
@@ -328,46 +329,68 @@ export class AgentExecutorService {
 		let tokensUsed = 0;
 		let resultData: any = null;
 		const executionStartedAt = Date.now();
+		const getRemainingTime = () =>
+			this.LIMITS.MAX_EXECUTION_TIME_MS - (Date.now() - executionStartedAt);
 
 		while (true) {
-			if (Date.now() - executionStartedAt > this.LIMITS.MAX_EXECUTION_TIME_MS) {
+			if (getRemainingTime() <= 0) {
 				throw new Error('Executor exceeded maximum execution time.');
 			}
 
 			let assistantBuffer = '';
 			const pendingToolCalls: ChatToolCall[] = [];
 
-			for await (const event of this.smartLLM.streamText({
-				messages,
-				tools: writeEnabledTools,
-				tool_choice: 'auto',
-				userId,
-				profile: 'speed', // Use fast model for executor
-				temperature: 0.3,
-				maxTokens: 1500,
-				sessionId: context.metadata.sessionId,
-				// Context for usage tracking
-				contextType: 'executor'
-			})) {
-				switch (event.type) {
-					case 'text':
-						assistantBuffer += event.content || '';
-						break;
+			const streamAbortController = new AbortController();
+			const streamTimeout = setTimeout(
+				() => streamAbortController.abort(),
+				getRemainingTime()
+			);
 
-					case 'tool_call':
-						if (event.tool_call) {
-							pendingToolCalls.push(event.tool_call);
-						}
-						break;
+			try {
+				for await (const event of this.smartLLM.streamText({
+					messages,
+					tools: writeEnabledTools,
+					tool_choice: 'auto',
+					userId,
+					profile: 'speed', // Use fast model for executor
+					temperature: 0.3,
+					maxTokens: 1500,
+					sessionId: context.metadata.sessionId,
+					// Context for usage tracking
+					contextType: 'executor',
+					signal: streamAbortController.signal
+				})) {
+					switch (event.type) {
+						case 'text':
+							assistantBuffer += event.content || '';
+							break;
 
-					case 'done':
-						tokensUsed += event.usage?.total_tokens || 0;
-						break;
+						case 'tool_call':
+							if (event.tool_call) {
+								pendingToolCalls.push(event.tool_call);
+							}
+							break;
 
-					case 'error':
-						console.error('Executor streaming error:', event.error);
-						throw new Error(event.error);
+						case 'done':
+							tokensUsed += event.usage?.total_tokens || 0;
+							break;
+
+						case 'error':
+							console.error('Executor streaming error:', event.error);
+							throw new Error(event.error);
+					}
 				}
+			} catch (error) {
+				if (streamAbortController.signal.aborted) {
+					throw new Error('Executor exceeded maximum execution time.');
+				}
+				throw error;
+			} finally {
+				clearTimeout(streamTimeout);
+			}
+
+			if (streamAbortController.signal.aborted) {
+				throw new Error('Executor exceeded maximum execution time.');
 			}
 
 			if (assistantBuffer.trim()) {
@@ -391,7 +414,11 @@ export class AgentExecutorService {
 					throw new Error('Executor hit tool usage limit.');
 				}
 
-				const result = await toolExecutor.execute(toolCall);
+				const result = await this.runWithTimeout(
+					() => toolExecutor.execute(toolCall),
+					Math.min(this.LIMITS.TOOL_CALL_TIMEOUT_MS, Math.max(1000, getRemainingTime())),
+					'Tool execution timed out.'
+				);
 				const toolPayload =
 					result.result ?? (result.error ? { error: result.error } : null);
 
@@ -430,6 +457,26 @@ export class AgentExecutorService {
 		await this.persistExecution(context, result);
 
 		return result;
+	}
+
+	private async runWithTimeout<T>(
+		fn: () => Promise<T>,
+		timeoutMs: number,
+		errorMessage: string
+	): Promise<T> {
+		return new Promise<T>((resolve, reject) => {
+			const timer = setTimeout(() => reject(new Error(errorMessage)), timeoutMs);
+
+			fn()
+				.then((value) => {
+					clearTimeout(timer);
+					resolve(value);
+				})
+				.catch((error) => {
+					clearTimeout(timer);
+					reject(error);
+				});
+		});
 	}
 
 	/**

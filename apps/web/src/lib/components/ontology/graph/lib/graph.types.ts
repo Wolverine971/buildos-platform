@@ -13,7 +13,9 @@ import type {
 	OntoDocument,
 	OntoPlan,
 	OntoGoal,
-	OntoMilestone
+	OntoMilestone,
+	OntoRisk,
+	OntoDecision
 } from '$lib/types/onto-api';
 
 // Re-export for convenience
@@ -25,7 +27,9 @@ export type {
 	OntoDocument,
 	OntoPlan,
 	OntoGoal,
-	OntoMilestone
+	OntoMilestone,
+	OntoRisk,
+	OntoDecision
 };
 
 // Cytoscape is runtime-loaded; keep loose typing until dedicated types are added.
@@ -41,7 +45,9 @@ export type NodeType =
 	| 'document'
 	| 'plan'
 	| 'goal'
-	| 'milestone';
+	| 'milestone'
+	| 'risk'
+	| 'decision';
 
 export interface GraphNode {
 	id: string;
