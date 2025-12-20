@@ -58,6 +58,7 @@ export interface StreamHandlerParams {
 	supabase: SupabaseClient<Database>;
 	fetch: typeof globalThis.fetch;
 	request: StreamRequest;
+	requestAbortSignal?: AbortSignal;
 	session: ChatSession;
 	ontologyContext: OntologyContext | null;
 	metadata: AgentSessionMetadata;
@@ -102,6 +103,7 @@ export class StreamHandler {
 			supabase,
 			fetch: fetchFn,
 			request,
+			requestAbortSignal,
 			session,
 			ontologyContext,
 			metadata,
@@ -168,6 +170,7 @@ export class StreamHandler {
 			userId,
 			actorId,
 			fetchFn,
+			requestAbortSignal,
 			httpReferer
 		}).catch((uncaughtError) => {
 			// Safety net for errors in error handling or finally block
@@ -192,6 +195,7 @@ export class StreamHandler {
 		sessionMetadata: AgentSessionMetadata;
 		session: ChatSession;
 		request: StreamRequest;
+		requestAbortSignal?: AbortSignal;
 		ontologyContext: OntologyContext | null;
 		conversationHistory: ChatMessage[];
 		lastTurnContextForPlanner: LastTurnContext | undefined;
@@ -208,6 +212,7 @@ export class StreamHandler {
 			sessionMetadata,
 			session,
 			request,
+			requestAbortSignal,
 			ontologyContext,
 			conversationHistory,
 			resolvedFocus,
@@ -220,6 +225,7 @@ export class StreamHandler {
 
 		let { lastTurnContextForPlanner } = params;
 		const userMessageTimestamp = new Date().toISOString();
+		const abortSignal = requestAbortSignal;
 
 		try {
 			// Send focus active event if applicable
@@ -255,7 +261,8 @@ export class StreamHandler {
 				ontologyContext: ontologyContext || undefined,
 				lastTurnContext: lastTurnContextForPlanner || undefined,
 				projectFocus: resolvedFocus || undefined,
-				projectClarificationMetadata
+				projectClarificationMetadata,
+				abortSignal
 			};
 
 			// Create event handler
@@ -265,12 +272,20 @@ export class StreamHandler {
 				sessionMetadata,
 				session,
 				normalizedContextType,
-				userId
+				userId,
+				abortSignal
 			});
 
 			// Run orchestration
 			for await (const _ of orchestrator.streamConversation(orchestratorRequest, sendEvent)) {
 				// Events are handled via the callback
+				if (abortSignal?.aborted) {
+					break;
+				}
+			}
+
+			if (abortSignal?.aborted) {
+				return;
 			}
 
 			// Persist assistant response and tool results
@@ -333,7 +348,7 @@ export class StreamHandler {
 			}
 
 			// Send done event if not already sent
-			if (!state.completionSent) {
+			if (!state.completionSent && !abortSignal?.aborted) {
 				await agentStream.sendMessage({
 					type: 'done',
 					usage: {
@@ -345,6 +360,10 @@ export class StreamHandler {
 				} as AgentSSEMessage);
 			}
 		} catch (streamError) {
+			if (abortSignal?.aborted) {
+				return;
+			}
+
 			logger.error('Agent streaming error', {
 				error: streamError,
 				sessionId: session.id,
@@ -365,7 +384,7 @@ export class StreamHandler {
 			});
 
 			// Ensure done is sent even when errors occur
-			if (!state.completionSent) {
+			if (!state.completionSent && !abortSignal?.aborted) {
 				state.completionSent = true;
 				await agentStream.sendMessage({
 					type: 'done',
@@ -415,12 +434,21 @@ export class StreamHandler {
 		session: ChatSession;
 		normalizedContextType: ChatContextType;
 		userId: string;
+		abortSignal?: AbortSignal;
 	}): (event: StreamEvent | AgentSSEMessage | null | undefined) => Promise<void> {
-		const { agentStream, state, sessionMetadata, session, normalizedContextType, userId } =
-			params;
+		const {
+			agentStream,
+			state,
+			sessionMetadata,
+			session,
+			normalizedContextType,
+			userId,
+			abortSignal
+		} = params;
 
 		return async (event: StreamEvent | AgentSSEMessage | null | undefined) => {
 			if (!event) return;
+			if (abortSignal?.aborted) return;
 
 			// Track text content
 			if ((event as StreamEvent).type === 'text' && (event as any).content) {

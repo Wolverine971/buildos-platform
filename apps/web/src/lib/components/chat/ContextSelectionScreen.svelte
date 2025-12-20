@@ -8,8 +8,7 @@
 
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { browser } from '$app/environment';
-	import { createEventDispatcher } from 'svelte';
+	import { browser, dev } from '$app/environment';
 	import {
 		Globe,
 		Plus,
@@ -38,7 +37,7 @@
 		outputCount: number;
 	}
 
-	interface ContextSelection {
+	export interface ContextSelection {
 		contextType: ChatContextType | 'agent_to_agent';
 		entityId?: string;
 		label?: string;
@@ -47,10 +46,11 @@
 	interface Props {
 		inModal?: boolean;
 		onNavigationChange?: (view: 'primary' | 'projectHub' | 'project-selection') => void;
+		onSelect?: (selection: ContextSelection) => void;
 	}
 
-	// Props
-	let { inModal = true, onNavigationChange }: Props = $props();
+	// Props - Svelte 5 callback pattern
+	let { inModal = true, onNavigationChange, onSelect }: Props = $props();
 
 	// State
 	let selectedView: 'primary' | 'projectHub' | 'project-selection' = $state('primary');
@@ -60,10 +60,6 @@
 	let hasLoadedProjects = $state(false);
 
 	const INACTIVE_PROJECT_STATE_KEYS = new Set(['archived', 'completed', 'retired', 'closed']);
-
-	const dispatch = createEventDispatcher<{
-		select: ContextSelection;
-	}>();
 
 	// Load projects on mount
 	onMount(async () => {
@@ -136,13 +132,13 @@
 		onNavigationChange?.(selectedView);
 	});
 
-	// Primary actions
+	// Primary actions - Svelte 5 callback pattern
 	function selectGlobal() {
-		dispatch('select', { contextType: 'global', label: 'Global conversation' });
+		onSelect?.({ contextType: 'global', label: 'Global conversation' });
 	}
 
 	function selectAgentToAgent() {
-		dispatch('select', { contextType: 'agent_to_agent', label: 'Agent to BuildOS chat' });
+		onSelect?.({ contextType: 'agent_to_agent', label: 'Agent to BuildOS chat' });
 	}
 
 	function goToProjectHub() {
@@ -150,20 +146,20 @@
 	}
 
 	function selectProjectCreate() {
-		dispatch('select', { contextType: 'project_create', label: 'New project flow' });
+		onSelect?.({ contextType: 'project_create', label: 'New project flow' });
 	}
 
 	function selectBraindump() {
-		dispatch('select', { contextType: 'brain_dump', label: 'Braindump' });
+		onSelect?.({ contextType: 'brain_dump', label: 'Braindump' });
 	}
 
 	function showProjectSelection() {
 		selectedView = 'project-selection';
 	}
 
-	// Project selection
+	// Project selection - Svelte 5 callback pattern
 	function selectProject(project: OntologyProjectSummary) {
-		dispatch('select', {
+		onSelect?.({
 			contextType: 'project',
 			entityId: project.id,
 			label: project.name
@@ -261,33 +257,35 @@
 					</div>
 				</button>
 
-				<!-- Agent to BuildOS chat -->
-				<button
-					onclick={selectAgentToAgent}
-					class="group flex h-full flex-col gap-3 rounded-xl border border-slate-200/60 bg-gradient-to-br from-indigo-50/70 via-purple-50/40 to-white/80 dither-soft dither-fade-hover p-5 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-indigo-300/60 hover:shadow-md active:translate-y-0 dark:border-slate-700/60 dark:from-slate-900/80 dark:via-slate-900/50 dark:to-slate-900/70 dark:hover:border-indigo-500/60"
-				>
-					<div
-						class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500/10 via-violet-400/10 to-fuchsia-500/10 dither-subtle text-indigo-600 transition-transform duration-200 group-hover:scale-105 dark:text-indigo-300"
+				<!-- Agent to BuildOS chat (dev only) -->
+				{#if dev}
+					<button
+						onclick={selectAgentToAgent}
+						class="group flex h-full flex-col gap-3 rounded-xl border border-slate-200/60 bg-gradient-to-br from-indigo-50/70 via-purple-50/40 to-white/80 dither-soft dither-fade-hover p-5 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-indigo-300/60 hover:shadow-md active:translate-y-0 dark:border-slate-700/60 dark:from-slate-900/80 dark:via-slate-900/50 dark:to-slate-900/70 dark:hover:border-indigo-500/60"
 					>
-						<Sparkles class="h-5 w-5" />
-					</div>
-					<div class="flex-1 space-y-1">
-						<h3 class="text-sm font-semibold text-slate-900 dark:text-white">
-							Agent to BuildOS chat
-						</h3>
-						<p class="text-xs text-slate-600 dark:text-slate-400 leading-snug">
-							Hand the BuildOS chat to another AI agent with a clear goal.
-						</p>
-					</div>
-					<div
-						class="flex items-center justify-between text-xs font-medium text-indigo-600 dark:text-indigo-400"
-					>
-						<span>Agent-to-BuildOS</span>
-						<ChevronRight
-							class="h-4 w-4 transition-transform group-hover:translate-x-1"
-						/>
-					</div>
-				</button>
+						<div
+							class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500/10 via-violet-400/10 to-fuchsia-500/10 dither-subtle text-indigo-600 transition-transform duration-200 group-hover:scale-105 dark:text-indigo-300"
+						>
+							<Sparkles class="h-5 w-5" />
+						</div>
+						<div class="flex-1 space-y-1">
+							<h3 class="text-sm font-semibold text-slate-900 dark:text-white">
+								Agent to BuildOS chat
+							</h3>
+							<p class="text-xs text-slate-600 dark:text-slate-400 leading-snug">
+								Hand the BuildOS chat to another AI agent with a clear goal.
+							</p>
+						</div>
+						<div
+							class="flex items-center justify-between text-xs font-medium text-indigo-600 dark:text-indigo-400"
+						>
+							<span>Agent-to-BuildOS</span>
+							<ChevronRight
+								class="h-4 w-4 transition-transform group-hover:translate-x-1"
+							/>
+						</div>
+					</button>
+				{/if}
 
 				<!-- Projects workspace -->
 				<button

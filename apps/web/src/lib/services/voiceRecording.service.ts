@@ -9,7 +9,10 @@ import {
 	voiceSupported,
 	liveTranscriptSupported,
 	forceCleanup,
-	setCapabilityUpdateCallback
+	setCapabilityUpdateCallback,
+	prewarmMicrophone,
+	isMicrophonePrewarmed,
+	releasePrewarmedStream
 } from '$lib/utils/voice';
 import { get, writable } from 'svelte/store';
 import { browser } from '$app/environment';
@@ -82,6 +85,33 @@ export class VoiceRecordingService {
 
 	public isLiveTranscriptSupported(): boolean {
 		return liveTranscriptSupported();
+	}
+
+	/**
+	 * Pre-warm the microphone for faster recording start.
+	 * Call this when a voice-enabled component mounts to eliminate the 50-100ms
+	 * getUserMedia delay when the user clicks record.
+	 *
+	 * @returns Promise<boolean> - true if pre-warming succeeded
+	 */
+	public async prewarmMicrophone(): Promise<boolean> {
+		if (!this.isVoiceSupported()) return false;
+		return prewarmMicrophone();
+	}
+
+	/**
+	 * Check if the microphone is pre-warmed and ready for instant recording
+	 */
+	public isMicrophonePrewarmed(): boolean {
+		return isMicrophonePrewarmed();
+	}
+
+	/**
+	 * Release pre-warmed microphone stream without using it
+	 * Call this on component unmount if recording wasn't started
+	 */
+	public releasePrewarmedStream(): void {
+		releasePrewarmedStream();
 	}
 
 	public getRecordingDuration() {
@@ -330,6 +360,9 @@ export class VoiceRecordingService {
 			this.liveTranscriptUnsubscribe();
 			this.liveTranscriptUnsubscribe = null;
 		}
+
+		// Release any pre-warmed stream first
+		this.releasePrewarmedStream();
 
 		// Force cleanup of voice utility
 		forceCleanup();

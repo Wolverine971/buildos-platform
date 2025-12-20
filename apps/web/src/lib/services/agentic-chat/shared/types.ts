@@ -199,6 +199,8 @@ export interface AgentChatRequest {
 	projectFocus?: ProjectFocus | null;
 	/** Metadata for project creation clarification flow */
 	projectClarificationMetadata?: ProjectClarificationMetadata;
+	/** Abort signal to cancel streaming work when the client disconnects */
+	abortSignal?: AbortSignal;
 }
 
 /**

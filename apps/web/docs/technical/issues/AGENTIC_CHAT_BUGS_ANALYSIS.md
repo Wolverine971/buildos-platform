@@ -386,17 +386,17 @@ usage: {
 ### Phase 3: P2 Fixes (Next Sprint) ✅ COMPLETED
 
 - [x] Switch virtual tool IDs to UUID (#8)
-  - Changed all `'virtual-' + Date.now()` to `` `virtual-${uuidv4()}` `` in agent-chat-orchestrator.ts
+    - Changed all `'virtual-' + Date.now()` to `` `virtual-${uuidv4()}` `` in agent-chat-orchestrator.ts
 - [x] Align SSE and session timeouts (#5)
-  - Increased SSE default timeout from 60s to 120s (aligned with 90s session limit + buffer)
-  - Updated documentation in SSEProcessorOptions
+    - Increased SSE default timeout from 60s to 120s (aligned with 90s session limit + buffer)
+    - Updated documentation in SSEProcessorOptions
 - [x] Add race condition protection (#3)
-  - Added retry mechanism with exponential backoff to `updatePlanStep`
-  - Filters out undefined values to prevent overwriting (also fixes #11)
-  - Added `updated_at` timestamp for conflict detection
+    - Added retry mechanism with exponential backoff to `updatePlanStep`
+    - Filters out undefined values to prevent overwriting (also fixes #11)
+    - Added `updated_at` timestamp for conflict detection
 - [x] Fix batch execution ordering (#4)
-  - Changed from array + `find()` to `Map` for O(1) lookup
-  - Added graceful error handling for missing results
+    - Changed from array + `find()` to `Map` for O(1) lookup
+    - Added graceful error handling for missing results
 
 ### Phase 4: P3 Fixes (Backlog)
 
@@ -418,8 +418,8 @@ usage: {
 
 ## Changelog
 
-| Date       | Author   | Changes                                                                        |
-| ---------- | -------- | ------------------------------------------------------------------------------ |
+| Date       | Author   | Changes                                                                               |
+| ---------- | -------- | ------------------------------------------------------------------------------------- |
 | 2025-12-20 | Claude   | P2 fixes implemented - Virtual tool IDs, SSE timeout, race conditions, batch ordering |
-| 2025-12-20 | Claude   | P0 & P1 fixes implemented - Plan ID, step execution, context shift persistence |
-| 2025-12-19 | Analysis | Initial comprehensive bug report                                               |
+| 2025-12-20 | Claude   | P0 & P1 fixes implemented - Plan ID, step execution, context shift persistence        |
+| 2025-12-19 | Analysis | Initial comprehensive bug report                                                      |

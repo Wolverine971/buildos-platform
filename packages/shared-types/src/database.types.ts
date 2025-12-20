@@ -9151,6 +9151,15 @@ export type Database = {
         }[]
       }
       has_active_subscription: { Args: { user_uuid: string }; Returns: boolean }
+      increment_chat_session_metrics: {
+        Args: {
+          p_message_increment?: number
+          p_session_id: string
+          p_token_increment?: number
+          p_tool_increment?: number
+        }
+        Returns: undefined
+      }
       increment_migration_retry_count: {
         Args: { row_id: number }
         Returns: undefined

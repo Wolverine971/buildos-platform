@@ -303,6 +303,11 @@ export class AgentChatOrchestrator {
 				await callback(event);
 			}
 		} catch (error) {
+			if (this.isAbortError(error) || request.abortSignal?.aborted) {
+				doneEmitted = true;
+				return;
+			}
+
 			console.error('[AgentChatOrchestrator] Error during orchestration', error);
 			await this.deps.errorLogger.logError(error, {
 				userId: request.userId,
@@ -328,7 +333,7 @@ export class AgentChatOrchestrator {
 			if (plannerAgentId) {
 				await this.safeUpdatePlannerStatus(plannerAgentId);
 			}
-			if (!doneEmitted) {
+			if (!doneEmitted && !request.abortSignal?.aborted) {
 				const doneEvent: StreamEvent = { type: 'done' };
 				yield doneEvent;
 				await callback(doneEvent);
@@ -413,6 +418,9 @@ export class AgentChatOrchestrator {
 		);
 
 		while (continueLoop) {
+			if (request.abortSignal?.aborted) {
+				return;
+			}
 			this.ensureWithinLimits(startTime, toolCallCount);
 			let assistantBuffer = '';
 			const pendingToolCalls: ChatToolCall[] = [];
@@ -434,8 +442,12 @@ export class AgentChatOrchestrator {
 				operationType: 'planner_stream',
 				// Pass entity IDs for usage tracking
 				entityId: serviceContext.entityId,
-				projectId: serviceContext.contextScope?.projectId
+				projectId: serviceContext.contextScope?.projectId,
+				signal: request.abortSignal
 			}) as AsyncGenerator<LLMStreamEvent>) {
+				if (request.abortSignal?.aborted) {
+					return;
+				}
 				if (chunk.type === 'text' && chunk.content) {
 					assistantBuffer += chunk.content;
 					yield { type: 'text', content: chunk.content };
@@ -449,6 +461,10 @@ export class AgentChatOrchestrator {
 				} else if (chunk.type === 'error') {
 					throw new Error(chunk.error || 'LLM streaming error');
 				}
+			}
+
+			if (request.abortSignal?.aborted) {
+				return;
 			}
 
 			if (pendingToolCalls.length === 0) {
@@ -478,6 +494,9 @@ export class AgentChatOrchestrator {
 			});
 
 			for (const toolCall of pendingToolCalls) {
+				if (request.abortSignal?.aborted) {
+					return;
+				}
 				toolCallCount++;
 				this.ensureWithinLimits(startTime, toolCallCount);
 
@@ -842,7 +861,7 @@ export class AgentChatOrchestrator {
 			usage:
 				combinedTokens > 0
 					? { total_tokens: combinedTokens }
-					: planUsage ?? this.toStreamUsage(response.usage)
+					: (planUsage ?? this.toStreamUsage(response.usage))
 		};
 	}
 
@@ -1145,5 +1164,17 @@ export class AgentChatOrchestrator {
 			return undefined;
 		}
 		return { total_tokens: usage.totalTokens };
+	}
+
+	private isAbortError(error: unknown): boolean {
+		if (!error || typeof error !== 'object') {
+			return false;
+		}
+		const maybeError = error as { name?: string; message?: string };
+		return (
+			maybeError.name === 'AbortError' ||
+			(typeof maybeError.message === 'string' &&
+				maybeError.message.toLowerCase().includes('aborted'))
+		);
 	}
 }

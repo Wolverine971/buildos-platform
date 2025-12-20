@@ -15,6 +15,78 @@ const openai = new OpenAI({
 // whisper-1: Legacy model (deprecated for new projects)
 const TRANSCRIPTION_MODEL = env.TRANSCRIPTION_MODEL || 'gpt-4o-mini-transcribe';
 
+// Timeout and retry configuration
+const TRANSCRIPTION_TIMEOUT_MS = 30000; // 30 seconds timeout
+const MAX_RETRIES = 2; // Maximum retry attempts
+const INITIAL_RETRY_DELAY_MS = 1000; // 1 second initial delay
+
+/**
+ * Custom timeout error for transcription requests
+ */
+class TranscriptionTimeoutError extends Error {
+	constructor(timeoutMs: number) {
+		super(`Transcription request timed out after ${timeoutMs}ms`);
+		this.name = 'TranscriptionTimeoutError';
+	}
+}
+
+/**
+ * Execute a promise with a timeout
+ */
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+	let timeoutId: ReturnType<typeof setTimeout>;
+
+	const timeoutPromise = new Promise<never>((_, reject) => {
+		timeoutId = setTimeout(() => {
+			reject(new TranscriptionTimeoutError(timeoutMs));
+		}, timeoutMs);
+	});
+
+	try {
+		const result = await Promise.race([promise, timeoutPromise]);
+		clearTimeout(timeoutId!);
+		return result;
+	} catch (error) {
+		clearTimeout(timeoutId!);
+		throw error;
+	}
+}
+
+/**
+ * Check if an error is retryable (transient errors that may succeed on retry)
+ */
+function isRetryableError(error: any): boolean {
+	// Timeout errors are retryable
+	if (error instanceof TranscriptionTimeoutError) {
+		return true;
+	}
+
+	// Network errors are retryable
+	if (error.code === 'ENOTFOUND' || error.code === 'ETIMEDOUT' || error.code === 'ECONNRESET') {
+		return true;
+	}
+
+	// Rate limiting (429) is retryable
+	if (error?.response?.status === 429 || error?.status === 429) {
+		return true;
+	}
+
+	// Server errors (5xx) are retryable
+	const status = error?.response?.status || error?.status;
+	if (status && status >= 500 && status < 600) {
+		return true;
+	}
+
+	return false;
+}
+
+/**
+ * Sleep for a given number of milliseconds
+ */
+function sleep(ms: number): Promise<void> {
+	return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 // MIME type to file extension mapping for OpenAI Audio API compatibility
 const MIME_TO_EXTENSION: Record<string, string> = {
 	'audio/webm': 'webm',
@@ -111,20 +183,59 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession }
 
 		// Create a properly formatted File object for OpenAI
 		const audioBlob = new Blob([await audioFile.arrayBuffer()], { type: audioFile.type });
-		const whisperFile = new File([audioBlob], filename, { type: audioFile.type });
+		const transcriptionFile = new File([audioBlob], filename, { type: audioFile.type });
 
 		// console.log(`[Transcribe] Sending to OpenAI: ${filename} (${audioFile.size} bytes)`);
 
-		// Call OpenAI transcription API with optimized parameters
+		// Call OpenAI transcription API with timeout and retry logic
 		// Using gpt-4o-mini-transcribe for better accuracy and fewer hallucinations
 		// Language auto-detection enabled for multilingual support
-		const transcription = await openai.audio.transcriptions.create({
-			model: TRANSCRIPTION_MODEL,
-			file: whisperFile,
-			// No language specified - enables automatic language detection
-			response_format: 'json',
-			temperature: 0.2 // Lower temperature for more consistent results
-		});
+		let lastError: Error | null = null;
+		let transcription: Awaited<ReturnType<typeof openai.audio.transcriptions.create>> | null =
+			null;
+
+		for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+			try {
+				// Add exponential backoff delay for retries
+				if (attempt > 0) {
+					const delay = INITIAL_RETRY_DELAY_MS * Math.pow(2, attempt - 1);
+					console.log(
+						`[Transcribe] Retry attempt ${attempt}/${MAX_RETRIES} after ${delay}ms`
+					);
+					await sleep(delay);
+				}
+
+				// Execute transcription with timeout
+				transcription = await withTimeout(
+					openai.audio.transcriptions.create({
+						model: TRANSCRIPTION_MODEL,
+						file: transcriptionFile,
+						// No language specified - enables automatic language detection
+						response_format: 'json',
+						temperature: 0.2 // Lower temperature for more consistent results
+					}),
+					TRANSCRIPTION_TIMEOUT_MS
+				);
+
+				// Success - break out of retry loop
+				break;
+			} catch (error: any) {
+				lastError = error;
+
+				// Log the attempt failure
+				console.warn(
+					`[Transcribe] Attempt ${attempt + 1}/${MAX_RETRIES + 1} failed:`,
+					error.message || error
+				);
+
+				// If not retryable or last attempt, throw immediately
+				if (!isRetryableError(error) || attempt === MAX_RETRIES) {
+					throw error;
+				}
+
+				// Continue to next retry attempt
+			}
+		}
 
 		const duration = Date.now() - startTime;
 
@@ -132,7 +243,8 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession }
 			return ApiResponse.success({
 				transcript: transcription.text,
 				duration_ms: duration,
-				audio_duration: transcription.duration || null
+				// Duration may not be available in all transcription models
+				audio_duration: (transcription as any).duration ?? null
 			});
 		} else {
 			return ApiResponse.internalError('Failed to transcribe audio. No text returned.');
@@ -140,6 +252,14 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession }
 	} catch (error: any) {
 		const duration = Date.now() - startTime;
 		console.error(`[Transcribe] Error after ${duration}ms:`, error);
+
+		// Handle timeout errors
+		if (error instanceof TranscriptionTimeoutError) {
+			return ApiResponse.error(
+				'Transcription took too long. Please try again with a shorter recording.',
+				504 // Gateway Timeout
+			);
+		}
 
 		// Handle specific OpenAI API errors
 		if (error?.response?.data) {
@@ -168,7 +288,11 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession }
 		}
 
 		// Handle network/timeout errors
-		if (error.code === 'ENOTFOUND' || error.code === 'ETIMEDOUT') {
+		if (
+			error.code === 'ENOTFOUND' ||
+			error.code === 'ETIMEDOUT' ||
+			error.code === 'ECONNRESET'
+		) {
 			return ApiResponse.error(
 				'Network error. Please check your connection and try again.',
 				503

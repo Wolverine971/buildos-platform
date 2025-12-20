@@ -25,6 +25,10 @@ let isInitialized = false;
 let runtimeValidationDone = false;
 let isRecognitionStarting = false; // Track if recognition is currently starting/restarting
 
+// Pre-warming state for faster recording start
+let prewarmedStream: MediaStream | null = null;
+let prewarmPromise: Promise<boolean> | null = null;
+
 // Accumulated transcript to preserve speech across SpeechRecognition restarts (e.g., after pauses)
 let accumulatedFinalTranscript = '';
 
@@ -270,16 +274,23 @@ export async function startRecording(): Promise<void> {
 	accumulatedFinalTranscript = ''; // Reset accumulated transcript for new recording
 
 	try {
-		// Request optimized audio stream
-		currentStream = await navigator.mediaDevices.getUserMedia({
-			audio: {
-				channelCount: 1, // Mono for smaller size
-				sampleRate: 16000, // Optimal for speech recognition
-				echoCancellation: true, // Better quality
-				noiseSuppression: true, // Reduce background noise
-				autoGainControl: true // Normalize volume
-			}
-		});
+		// Check for pre-warmed stream first (eliminates 50-100ms getUserMedia delay)
+		const prewarmed = consumePrewarmedStream();
+		if (prewarmed && prewarmed.active) {
+			currentStream = prewarmed;
+			console.log('[Voice] Using pre-warmed stream for instant start');
+		} else {
+			// Fall back to requesting new stream
+			currentStream = await navigator.mediaDevices.getUserMedia({
+				audio: {
+					channelCount: 1, // Mono for smaller size
+					sampleRate: 16000, // Optimal for speech recognition
+					echoCancellation: true, // Better quality
+					noiseSuppression: true, // Reduce background noise
+					autoGainControl: true // Normalize volume
+				}
+			});
+		}
 
 		// Runtime validation: Now that we have permissions, test if SpeechRecognition actually works
 		if (!runtimeValidationDone && capabilities.liveTranscriptSupported && recognition) {
@@ -452,6 +463,7 @@ export const getRecordingStatus = () => ({
 // Force cleanup (useful for component unmounting)
 export const forceCleanup = () => {
 	cleanupResources();
+	releasePrewarmedStream(); // Also release any pre-warmed stream
 	isInitialized = false;
 	runtimeValidationDone = false; // Reset validation state for next recording session
 	capabilitiesCache = null; // Reset cache to re-detect on next use
@@ -485,6 +497,86 @@ export const checkMicrophonePermission = async (): Promise<boolean> => {
 	} catch (error) {
 		console.log('[Voice] Microphone permission check failed:', error);
 		return false;
+	}
+};
+
+/* ---------- MICROPHONE PRE-WARMING ---------- */
+// Pre-warm the microphone to eliminate getUserMedia delay when recording starts
+// This requests permission and initializes audio hardware ahead of time
+
+/**
+ * Pre-warm the microphone for faster recording start.
+ * Call this when a voice-enabled component mounts to eliminate the 50-100ms
+ * getUserMedia delay when the user clicks record.
+ *
+ * @returns Promise<boolean> - true if pre-warming succeeded, false otherwise
+ */
+export const prewarmMicrophone = async (): Promise<boolean> => {
+	if (!browser || !voiceSupported()) return false;
+
+	// If already pre-warming, return existing promise
+	if (prewarmPromise) {
+		return prewarmPromise;
+	}
+
+	// If already have a pre-warmed stream, return true
+	if (prewarmedStream && prewarmedStream.active) {
+		return true;
+	}
+
+	prewarmPromise = (async () => {
+		try {
+			// Request microphone with optimal audio settings
+			prewarmedStream = await navigator.mediaDevices.getUserMedia({
+				audio: {
+					channelCount: 1,
+					sampleRate: 16000,
+					echoCancellation: true,
+					noiseSuppression: true,
+					autoGainControl: true
+				}
+			});
+
+			console.log('[Voice] Microphone pre-warmed and ready');
+			return true;
+		} catch (error) {
+			console.warn('[Voice] Microphone pre-warm failed:', error);
+			prewarmedStream = null;
+			return false;
+		} finally {
+			prewarmPromise = null;
+		}
+	})();
+
+	return prewarmPromise;
+};
+
+/**
+ * Check if microphone is pre-warmed and ready for instant recording
+ */
+export const isMicrophonePrewarmed = (): boolean => {
+	return !!(prewarmedStream && prewarmedStream.active);
+};
+
+/**
+ * Get the pre-warmed stream and clear it (for use by startRecording)
+ * Returns null if no pre-warmed stream is available
+ */
+export const consumePrewarmedStream = (): MediaStream | null => {
+	const stream = prewarmedStream;
+	prewarmedStream = null;
+	return stream;
+};
+
+/**
+ * Release the pre-warmed stream without using it
+ * Call this when the component unmounts if recording wasn't started
+ */
+export const releasePrewarmedStream = (): void => {
+	if (prewarmedStream) {
+		prewarmedStream.getTracks().forEach((track) => track.stop());
+		prewarmedStream = null;
+		console.log('[Voice] Pre-warmed stream released');
 	}
 };
 

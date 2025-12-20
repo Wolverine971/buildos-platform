@@ -523,17 +523,17 @@
 		pendingBraindumpContent = '';
 	}
 
-	function handleContextSelect(event: CustomEvent<ContextSelectionDetail>) {
+	// ✅ Svelte 5: Callback pattern for ContextSelectionScreen
+	function handleContextSelect(selection: ContextSelectionDetail) {
 		resetConversation();
 		autoInitDismissed = true;
 
-		const detail = event.detail;
-		if (detail.contextType === 'agent_to_agent') {
+		if (selection.contextType === 'agent_to_agent') {
 			agentToAgentMode = true;
 			agentToAgentStep = 'agent';
 			selectedAgentId = null;
 			selectedContextType = null;
-			selectedContextLabel = detail.label ?? 'BuildOS automation';
+			selectedContextLabel = selection.label ?? 'BuildOS automation';
 			projectFocus = null;
 			showContextSelection = false;
 			// No initial message for agent-to-agent mode
@@ -546,26 +546,26 @@
 		agentGoal = '';
 		agentLoopActive = false;
 		agentMessageLoading = false;
-		selectedContextType = detail.contextType;
-		selectedEntityId = detail.entityId;
+		selectedContextType = selection.contextType;
+		selectedEntityId = selection.entityId;
 		selectedContextLabel =
-			detail.label ?? CONTEXT_DESCRIPTORS[detail.contextType]?.title ?? null;
+			selection.label ?? CONTEXT_DESCRIPTORS[selection.contextType]?.title ?? null;
 		showContextSelection = false;
 
-		if (isProjectContext(detail.contextType) && detail.entityId) {
-			projectFocus = buildProjectWideFocus(detail.entityId, detail.label);
+		if (isProjectContext(selection.contextType) && selection.entityId) {
+			projectFocus = buildProjectWideFocus(selection.entityId, selection.label);
 		} else {
 			projectFocus = null;
 			showFocusSelector = false;
 		}
 
 		// If user picked a project from the generic flow, funnel them through the shared action selector
-		showProjectActionSelector = detail.contextType === 'project';
+		showProjectActionSelector = selection.contextType === 'project';
 
 		// Seed the chat with an initial message for contexts that go directly to chat
 		// (not 'project' which shows the action selector first)
-		if (detail.contextType !== 'project') {
-			seedInitialMessage(detail.contextType, detail.label);
+		if (selection.contextType !== 'project') {
+			seedInitialMessage(selection.contextType, selection.label);
 		}
 	}
 
@@ -2531,7 +2531,7 @@
 				<ContextSelectionScreen
 					bind:this={contextSelectionRef}
 					inModal
-					on:select={handleContextSelect}
+					onSelect={handleContextSelect}
 					onNavigationChange={handleContextSelectionNavChange}
 				/>
 			</div>

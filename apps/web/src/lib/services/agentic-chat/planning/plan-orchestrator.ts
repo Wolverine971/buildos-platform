@@ -420,7 +420,11 @@ export class PlanOrchestrator implements BaseService {
 						};
 						emittedEvents.push(completeEvent);
 
-						await this.persistenceService.updatePlanStep(plan.id, step.stepNumber, step);
+						await this.persistenceService.updatePlanStep(
+							plan.id,
+							step.stepNumber,
+							step
+						);
 
 						return { events: emittedEvents, error: outcomeError, fatalFailure };
 					})

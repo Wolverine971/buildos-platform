@@ -387,6 +387,14 @@
 			return;
 		}
 
+		// Pre-warm microphone for faster recording start (non-blocking)
+		// This eliminates the 50-100ms getUserMedia delay when user clicks record
+		voiceRecordingService.prewarmMicrophone().then((success: boolean) => {
+			if (success) {
+				microphonePermissionGranted = true;
+			}
+		});
+
 		voiceRecordingService.initialize(
 			{
 				onTextUpdate: (text: string) => {

@@ -1,15 +1,5 @@
 <!-- apps/web/src/lib/components/agent/PlanVisualization.svelte -->
-<!--
-  PlanVisualization Component
-
-  Enhanced visualization for agent-created plans with:
-  - Progress tracking
-  - Step dependencies
-  - Tool indicators
-  - Real-time status updates
-
-  BuildOS Style: High-end Apple-inspired with responsive design and dark mode
--->
+<!-- INKPRINT Design System: Plan visualization with Thread texture -->
 
 <script lang="ts">
 	import type { AgentPlan, AgentPlanStep } from '@buildos/shared-types';
@@ -66,17 +56,17 @@
 		}
 	}
 
-	// Helper: Get step color classes
+	// INKPRINT: Get step color classes using semantic tokens where possible
 	function getStepColor(status: string) {
 		switch (status) {
 			case 'completed':
-				return 'text-emerald-500 dark:text-emerald-400';
+				return 'text-emerald-600 dark:text-emerald-400';
 			case 'executing':
-				return 'text-blue-500 dark:text-blue-400';
+				return 'text-accent';
 			case 'failed':
-				return 'text-red-500 dark:text-red-400';
+				return 'text-red-600 dark:text-red-400';
 			default:
-				return 'text-slate-400 dark:text-slate-500';
+				return 'text-muted-foreground';
 		}
 	}
 
@@ -122,24 +112,23 @@
 		return 'Completed';
 	}
 
-	// Helper: Get step type badge color
+	// INKPRINT: Get step type badge color with semantic approach
 	function getStepTypeColor(type: string): string {
 		const typeColors: Record<string, string> = {
-			search: 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300',
-			create: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300',
-			update: 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300',
-			delete: 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300',
-			schedule: 'bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300',
-			analyze: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300'
+			search: 'border-blue-600/30 bg-blue-50 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400',
+			create: 'border-emerald-600/30 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400',
+			update: 'border-amber-600/30 bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400',
+			delete: 'border-red-600/30 bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400',
+			schedule:
+				'border-purple-600/30 bg-purple-50 text-purple-700 dark:bg-purple-950/30 dark:text-purple-400',
+			analyze:
+				'border-indigo-600/30 bg-indigo-50 text-indigo-700 dark:bg-indigo-950/30 dark:text-indigo-400'
 		};
 
 		// Find matching type
 		const typeKey = Object.keys(typeColors).find((key) => type.toLowerCase().includes(key));
 
-		return (
-			typeColors[typeKey || ''] ||
-			'bg-slate-100 text-slate-700 dark:bg-slate-900/50 dark:text-slate-300'
-		);
+		return typeColors[typeKey || ''] || 'border-border bg-muted text-muted-foreground';
 	}
 
 	// Format step type for display
@@ -148,49 +137,46 @@
 	}
 </script>
 
+<!-- INKPRINT plan visualization container with Thread texture -->
 <div
-	class="plan-visualization rounded-lg border border-purple-200/60 bg-gradient-to-br from-purple-50/50 to-blue-50/50 dither-gradient p-3 shadow-sm dark:border-purple-800/40 dark:from-purple-950/20 dark:to-blue-950/20"
+	class="plan-visualization rounded-lg border border-border bg-card p-3 shadow-ink tx tx-thread tx-weak"
 >
-	<!-- Collapsible Header -->
+	<!-- INKPRINT Collapsible Header -->
 	<button
 		onclick={onToggle}
-		class="w-full space-y-2 text-left focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-1 rounded-md"
+		class="w-full space-y-2 text-left rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 		aria-expanded={!isCollapsed}
 		aria-label={isCollapsed ? 'Expand plan details' : 'Collapse plan details'}
 	>
 		<div class="flex items-center justify-between">
 			<div class="flex items-center gap-2">
 				<ChevronDown
-					class="h-4 w-4 transition-transform duration-200 {isCollapsed
+					class="h-4 w-4 text-muted-foreground transition-transform duration-200 {isCollapsed
 						? '-rotate-90'
 						: ''}"
 					aria-hidden="true"
 				/>
 				<span class="text-base" aria-hidden="true">📋</span>
-				<span class="font-semibold text-slate-900 dark:text-white">Execution Plan</span>
-				<span class="text-xs text-slate-600 dark:text-slate-400">
+				<span class="font-semibold text-foreground">Execution Plan</span>
+				<span class="text-xs text-muted-foreground">
 					{completedSteps}/{plan.steps.length} steps
 				</span>
 			</div>
 
 			{#if executingSteps > 0}
 				<div class="flex items-center gap-1.5">
-					<Loader2 class="h-3 w-3 animate-spin text-blue-500" aria-label="Executing" />
-					<span class="text-xs font-medium text-blue-600 dark:text-blue-400">
-						Executing...
-					</span>
+					<Loader2 class="h-3 w-3 animate-spin text-accent" aria-label="Executing" />
+					<span class="text-xs font-semibold text-accent"> Executing... </span>
 				</div>
 			{/if}
 		</div>
 
-		<!-- Progress Bar -->
+		<!-- INKPRINT Progress Bar -->
 		{#if plan.steps.length > 0}
 			<div class="mt-2">
-				<div
-					class="h-2 w-full overflow-hidden rounded-full bg-slate-200/80 dark:bg-slate-700/50"
-				>
+				<div class="h-2 w-full overflow-hidden rounded-full bg-muted">
 					<div
-						class="h-full rounded-full bg-gradient-to-r from-purple-500 to-blue-500 dither-soft transition-all duration-500 ease-out"
+						class="h-full rounded-full bg-accent transition-all duration-500 ease-out"
 						style="width: {progressPercent}%"
 						role="progressbar"
 						aria-valuenow={progressPercent}
@@ -202,11 +188,11 @@
 			</div>
 		{/if}
 
-		<!-- Metadata Pills -->
+		<!-- INKPRINT Metadata Pills -->
 		<div class="mt-2 flex flex-wrap gap-1.5">
 			{#if plan.metadata?.estimatedDuration}
 				<span
-					class="inline-flex items-center gap-1 rounded-full bg-white/80 px-2 py-0.5 text-[10px] font-medium text-purple-700 shadow-sm dark:bg-purple-900/50 dark:text-purple-300"
+					class="inline-flex items-center gap-1 rounded-lg border border-purple-600/30 bg-purple-50 px-2 py-0.5 text-[10px] font-semibold text-purple-700 dark:bg-purple-950/30 dark:text-purple-400"
 				>
 					<Clock class="h-3 w-3" aria-hidden="true" />
 					~{formatDuration(plan.metadata.estimatedDuration)}
@@ -215,7 +201,7 @@
 
 			{#if hasDependencies}
 				<span
-					class="inline-flex items-center gap-1 rounded-full bg-white/80 px-2 py-0.5 text-[10px] font-medium text-orange-700 shadow-sm dark:bg-orange-900/50 dark:text-orange-300"
+					class="inline-flex items-center gap-1 rounded-lg border border-amber-600/30 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700 dark:bg-amber-950/30 dark:text-amber-400"
 				>
 					<GitBranch class="h-3 w-3" aria-hidden="true" />
 					Dependencies
@@ -224,7 +210,7 @@
 
 			{#if uniqueTools.length > 0}
 				<span
-					class="inline-flex items-center gap-1 rounded-full bg-white/80 px-2 py-0.5 text-[10px] font-medium text-blue-700 shadow-sm dark:bg-blue-900/50 dark:text-blue-300"
+					class="inline-flex items-center gap-1 rounded-lg border border-blue-600/30 bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700 dark:bg-blue-950/30 dark:text-blue-400"
 				>
 					<Wrench class="h-3 w-3" aria-hidden="true" />
 					{uniqueTools.length}
@@ -234,7 +220,7 @@
 
 			{#if hasExecutors}
 				<span
-					class="inline-flex items-center gap-1 rounded-full bg-white/80 px-2 py-0.5 text-[10px] font-medium text-teal-700 shadow-sm dark:bg-teal-900/50 dark:text-teal-300"
+					class="inline-flex items-center gap-1 rounded-lg border border-teal-600/30 bg-teal-50 px-2 py-0.5 text-[10px] font-semibold text-teal-700 dark:bg-teal-950/30 dark:text-teal-400"
 				>
 					<Zap class="h-3 w-3" aria-hidden="true" />
 					Executors
@@ -243,7 +229,7 @@
 		</div>
 	</button>
 
-	<!-- Expandable Step Details -->
+	<!-- INKPRINT Expandable Step Details -->
 	{#if !isCollapsed && plan.steps.length > 0}
 		<div class="mt-3 space-y-2" role="list" aria-label="Plan steps">
 			{#each plan.steps as step, i (step.stepNumber)}
@@ -258,14 +244,14 @@
 					role="listitem"
 					aria-current={isActive ? 'step' : undefined}
 				>
-					<!-- Step Connector Line -->
+					<!-- INKPRINT Step Connector Line -->
 					{#if i > 0}
 						<div
 							class="absolute left-3 top-0 -mt-2 h-2 w-0.5 {step.dependsOn?.includes(
 								plan.steps[i - 1].stepNumber
 							)
-								? 'bg-gradient-to-b from-orange-400 to-purple-400 dither-subtle dark:from-orange-600 dark:to-purple-600'
-								: 'bg-gradient-to-b from-purple-300 to-blue-300 dither-subtle dark:from-purple-700 dark:to-blue-700'}"
+								? 'bg-amber-500'
+								: 'bg-border'}"
 							aria-hidden="true"
 						></div>
 					{/if}
@@ -280,20 +266,18 @@
 						/>
 					</div>
 
-					<!-- Step Content -->
+					<!-- INKPRINT Step Content -->
 					<div
-						class="rounded-md bg-white/60 p-2 shadow-sm dark:bg-slate-900/60 {isActive
-							? 'ring-2 ring-blue-500 ring-offset-1 dark:ring-blue-400 dark:ring-offset-slate-900'
-							: ''} {step.status === 'completed' ? 'opacity-75' : ''}"
+						class="rounded-lg border bg-background p-2 shadow-ink-inner {isActive
+							? 'border-accent ring-1 ring-accent/30'
+							: 'border-border'} {step.status === 'completed' ? 'opacity-75' : ''}"
 					>
 						<div class="flex flex-wrap items-center gap-2">
-							<span
-								class="text-xs font-semibold text-purple-900 dark:text-purple-100"
-							>
+							<span class="text-xs font-semibold text-foreground">
 								Step {step.stepNumber}
 							</span>
 							<span
-								class="rounded px-1.5 py-0.5 text-[10px] font-mono {getStepTypeColor(
+								class="rounded-lg border px-1.5 py-0.5 text-[10px] font-mono {getStepTypeColor(
 									step.type
 								)}"
 							>
@@ -309,13 +293,11 @@
 							{/if}
 						</div>
 
-						<div
-							class="mt-1 text-xs leading-relaxed text-slate-700 dark:text-slate-300"
-						>
+						<div class="mt-1 text-xs leading-relaxed text-muted-foreground">
 							{step.description}
 						</div>
 
-						<!-- Tools Required -->
+						<!-- INKPRINT Tools Required -->
 						{#if step.tools && step.tools.length > 0}
 							<div
 								class="mt-1.5 flex flex-wrap gap-1"
@@ -324,7 +306,7 @@
 							>
 								{#each step.tools as tool}
 									<span
-										class="inline-block rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-mono text-blue-700 dark:bg-blue-900/50 dark:text-blue-300"
+										class="inline-block rounded-lg border border-blue-600/30 bg-blue-50 px-2 py-0.5 text-[10px] font-mono text-blue-700 dark:bg-blue-950/30 dark:text-blue-400"
 										title={tool}
 										role="listitem"
 									>
@@ -337,16 +319,16 @@
 						<!-- Dependencies -->
 						{#if step.dependsOn && step.dependsOn.length > 0}
 							<div
-								class="mt-1 text-[10px] italic text-orange-600 dark:text-orange-400"
+								class="mt-1 text-[10px] font-medium italic text-amber-600 dark:text-amber-400"
 							>
 								Depends on: {step.dependsOn.map((d) => `Step ${d}`).join(', ')}
 							</div>
 						{/if}
 
-						<!-- Error Display -->
+						<!-- INKPRINT Error Display with Static texture -->
 						{#if step.error}
 							<div
-								class="mt-1.5 flex items-start gap-1 rounded bg-red-100 p-1.5 text-[10px] text-red-700 dark:bg-red-900/30 dark:text-red-300"
+								class="mt-1.5 flex items-start gap-1 rounded-lg border border-red-600/30 bg-red-50 p-1.5 text-[10px] text-red-700 tx tx-static tx-weak dark:bg-red-950/20 dark:text-red-400"
 								role="alert"
 							>
 								<AlertCircle class="h-3 w-3 shrink-0 mt-0.5" aria-hidden="true" />
@@ -354,10 +336,10 @@
 							</div>
 						{/if}
 
-						<!-- Result Preview (if completed) -->
+						<!-- INKPRINT Result Preview (if completed) -->
 						{#if step.result && step.status === 'completed'}
 							<div
-								class="mt-1 rounded bg-emerald-100 p-1 text-[10px] text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
+								class="mt-1 rounded-lg border border-emerald-600/30 bg-emerald-50 p-1 text-[10px] text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-400"
 							>
 								✓ {formatResult(step.result)}
 							</div>
@@ -367,8 +349,9 @@
 			{/each}
 		</div>
 	{:else if !isCollapsed && plan.steps.length === 0}
+		<!-- INKPRINT Empty state -->
 		<div
-			class="mt-3 rounded-md bg-slate-100 p-2 text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-400"
+			class="mt-3 rounded-lg border border-border bg-muted p-2 text-xs text-muted-foreground"
 		>
 			No steps defined for this plan
 		</div>
@@ -376,34 +359,19 @@
 </div>
 
 <style>
-	/* Shimmer effect for progress bar */
-	@keyframes shimmer {
-		0%,
-		100% {
-			opacity: 1;
-		}
-		50% {
-			opacity: 0.8;
-		}
-	}
-
-	/* Pulse effect for active step ring */
+	/* INKPRINT: Subtle pulse effect for active step */
 	@keyframes pulse-ring {
 		0%,
 		100% {
-			box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.5);
+			box-shadow: 0 0 0 0 hsl(var(--accent) / 0.3);
 		}
 		50% {
-			box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2);
+			box-shadow: 0 0 0 3px hsl(var(--accent) / 0.1);
 		}
 	}
 
-	/* Apply animations */
-	.plan-visualization :global(.h-full.rounded-full.bg-gradient-to-r) {
-		animation: shimmer 2s ease-in-out infinite;
-	}
-
-	.plan-visualization :global(.ring-2.ring-blue-500) {
+	/* Apply pulse to active steps */
+	.plan-visualization :global(.ring-1.ring-accent\/30) {
 		animation: pulse-ring 2s ease-in-out infinite;
 	}
 </style>

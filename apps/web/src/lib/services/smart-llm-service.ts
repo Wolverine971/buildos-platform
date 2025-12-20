@@ -1759,6 +1759,7 @@ You must respond with valid JSON only. Follow these rules:
 		maxTokens?: number;
 		sessionId?: string;
 		messageId?: string;
+		signal?: AbortSignal;
 		// Context tracking for usage logging
 		contextType?: string; // e.g., 'project', 'general', 'project_create', 'project_task'
 		entityId?: string; // Optional entity ID for additional tracking
@@ -1831,7 +1832,8 @@ You must respond with valid JSON only. Follow these rules:
 			const response = await fetch(this.apiUrl, {
 				method: 'POST',
 				headers,
-				body: JSON.stringify(body)
+				body: JSON.stringify(body),
+				signal: options.signal
 			});
 
 			if (!response.ok) {
@@ -2044,6 +2046,10 @@ You must respond with valid JSON only. Follow these rules:
 				}
 			}
 		} catch (error) {
+			if (this.isAbortError(error)) {
+				return;
+			}
+
 			const duration = performance.now() - startTime;
 			const requestCompletedAt = new Date();
 
@@ -2096,6 +2102,18 @@ You must respond with valid JSON only. Follow these rules:
 				error: `Stream failed: ${(error as Error).message}`
 			};
 		}
+	}
+
+	private isAbortError(error: unknown): boolean {
+		if (!error || typeof error !== 'object') {
+			return false;
+		}
+		const maybeError = error as { name?: string; message?: string };
+		return (
+			maybeError.name === 'AbortError' ||
+			(typeof maybeError.message === 'string' &&
+				maybeError.message.toLowerCase().includes('aborted'))
+		);
 	}
 
 	/**

@@ -45,8 +45,8 @@ Internal plan statuses include values not present in the database enum:
 ### Recommended Fix
 
 - **Option A (lowest impact):** Map internal statuses to DB-safe values and store extra state in `metadata`.
-  - `pending_review` -> `pending` + `metadata.review_status = 'pending_review'`
-  - `completed_with_errors` -> `completed` + `metadata.has_errors = true`
+    - `pending_review` -> `pending` + `metadata.review_status = 'pending_review'`
+    - `completed_with_errors` -> `completed` + `metadata.has_errors = true`
 - **Option B:** Extend DB enum (requires migration and broader type updates).
 
 ---
@@ -240,17 +240,17 @@ Token usage is not propagated from executor/tool layers into plan metadata. Stre
 
 ## Recommended Fix Priority
 
-| Priority | Issue | Effort | Impact |
-| -------- | ----- | ------ | ------ |
-| 1 | Plan status enum drift | Low | Blocks draft/review + causes execution failure |
-| 2 | Context shift persistence target | Medium | Prevents context recovery and auditability |
-| 3 | Clarification metadata drop | Medium | Breaks multi-round project creation flow |
-| 4 | Executor completion timestamps | Low | Fixes audit/metrics integrity |
-| 5 | Step executing status | Low | Enables accurate UI and recovery |
-| 6 | Project creation enforcement ordering | Low | Prevents invalid plans from persisting |
-| 7 | Parallel execution gap | Medium | Improves performance and user experience |
-| 8 | Token/usage reporting | Medium | Improves analytics accuracy |
-| 9 | Executor permission mismatch | Medium | Aligns with least-privilege design |
+| Priority | Issue                                 | Effort | Impact                                         |
+| -------- | ------------------------------------- | ------ | ---------------------------------------------- |
+| 1        | Plan status enum drift                | Low    | Blocks draft/review + causes execution failure |
+| 2        | Context shift persistence target      | Medium | Prevents context recovery and auditability     |
+| 3        | Clarification metadata drop           | Medium | Breaks multi-round project creation flow       |
+| 4        | Executor completion timestamps        | Low    | Fixes audit/metrics integrity                  |
+| 5        | Step executing status                 | Low    | Enables accurate UI and recovery               |
+| 6        | Project creation enforcement ordering | Low    | Prevents invalid plans from persisting         |
+| 7        | Parallel execution gap                | Medium | Improves performance and user experience       |
+| 8        | Token/usage reporting                 | Medium | Improves analytics accuracy                    |
+| 9        | Executor permission mismatch          | Medium | Aligns with least-privilege design             |
 
 ---
 
@@ -264,15 +264,15 @@ Token usage is not propagated from executor/tool layers into plan metadata. Stre
 
 ### Phase 2: Execution Correctness
 
-- [ ] Record `completed_at` for failed executor runs
-- [ ] Persist `executing` state for steps
-- [ ] Enforce project_create requirements before insert
+- [x] Record `completed_at` for failed executor runs
+- [x] Persist `executing` state for steps
+- [x] Enforce project_create requirements before insert
 
 ### Phase 3: Performance + Observability
 
-- [ ] Execute parallel step groups concurrently
-- [ ] Propagate token usage through plan and synthesis
-- [ ] Align executor permissions with read-only default
+- [x] Execute parallel step groups concurrently
+- [x] Propagate token usage through plan and synthesis
+- [x] Align executor permissions with read-only default
 
 ---
 

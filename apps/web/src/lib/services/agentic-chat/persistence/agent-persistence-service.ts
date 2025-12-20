@@ -294,6 +294,14 @@ export class AgentPersistenceService implements PersistenceOperations {
 				const steps = Array.isArray(plan.steps)
 					? plan.steps
 					: JSON.parse(plan.steps as string);
+				const currentUpdatedAt = plan.updated_at;
+				if (!currentUpdatedAt) {
+					throw new PersistenceError(
+						`Plan ${planId} missing updated_at for optimistic lock`,
+						'updatePlanStep',
+						{ planId, stepNumber }
+					);
+				}
 
 				// Find and update the specific step
 				const stepIndex = steps.findIndex((s: any) => s.stepNumber === stepNumber);
@@ -320,11 +328,28 @@ export class AgentPersistenceService implements PersistenceOperations {
 					...filteredUpdate
 				};
 
-				// Save back to database with updated_at for conflict detection
-				await this.updatePlan(planId, {
-					steps,
-					updated_at: new Date().toISOString()
-				});
+				const nextUpdatedAt = new Date().toISOString();
+				const { error: updateError } = await this.supabase
+					.from('agent_plans')
+					.update({
+						steps,
+						updated_at: nextUpdatedAt
+					})
+					.eq('id', planId)
+					.eq('updated_at', currentUpdatedAt)
+					.select('id')
+					.single();
+
+				if (updateError) {
+					if (updateError.code === 'PGRST116') {
+						throw new Error('Optimistic lock conflict');
+					}
+					throw new PersistenceError(
+						`Failed to update plan step: ${updateError.message}`,
+						'updatePlanStep',
+						{ error: updateError, planId, stepNumber }
+					);
+				}
 
 				console.log(
 					'[AgentPersistence] Updated plan step:',

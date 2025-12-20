@@ -243,6 +243,7 @@ export const POST: RequestHandler = async ({
 			supabase,
 			fetch,
 			request: streamRequest,
+			requestAbortSignal: request.signal,
 			session,
 			ontologyContext,
 			metadata: focusResult.metadata,

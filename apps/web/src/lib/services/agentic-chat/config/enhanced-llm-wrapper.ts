@@ -86,6 +86,7 @@ export class EnhancedLLMWrapper {
 		maxTokens?: number;
 		sessionId?: string;
 		messageId?: string;
+		signal?: AbortSignal;
 		// Enhanced parameters for optimization
 		contextType?: ChatContextType;
 		operationType?: string;

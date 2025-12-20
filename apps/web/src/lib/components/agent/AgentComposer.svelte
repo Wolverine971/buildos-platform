@@ -79,15 +79,15 @@
 			<!-- INKPRINT primary send button -->
 			<button
 				type="submit"
-				class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-foreground text-background shadow-ink transition-all duration-100 touch-manipulation pressable hover:bg-foreground/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 xs:h-9 xs:w-9"
+				class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-foreground text-background shadow-ink transition-all duration-100 touch-manipulation pressable hover:bg-foreground/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 sm:h-10 sm:w-10"
 				style="-webkit-tap-highlight-color: transparent;"
 				aria-label="Send message"
 				disabled={isSendDisabled}
 			>
 				{#if isStreaming}
-					<Loader class="h-4 w-4 animate-spin xs:h-4 xs:w-4" />
+					<Loader class="h-4 w-4 animate-spin" />
 				{:else}
-					<Send class="h-4 w-4 xs:h-4 xs:w-4" />
+					<Send class="h-4 w-4" />
 				{/if}
 			</button>
 		{/snippet}

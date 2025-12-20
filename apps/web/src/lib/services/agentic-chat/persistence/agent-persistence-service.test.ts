@@ -321,6 +321,7 @@ describe('AgentPersistenceService', () => {
 				// First get the current plan
 				const currentPlan = {
 					id: 'plan_123',
+					updated_at: '2025-12-20T10:00:00.000Z',
 					steps: [
 						{ stepNumber: 1, status: 'completed', description: 'Step 1' },
 						{ stepNumber: 2, status: 'pending', description: 'Step 2' },
@@ -348,14 +349,17 @@ describe('AgentPersistenceService', () => {
 								result: { success: true }
 							}),
 							currentPlan.steps[2]
-						])
+						]),
+						updated_at: expect.any(String)
 					})
 				);
+				expect(mockTable.eq).toHaveBeenCalledWith('updated_at', currentPlan.updated_at);
 			});
 
 			it('should throw error if step not found', async () => {
 				const currentPlan = {
 					id: 'plan_123',
+					updated_at: '2025-12-20T10:00:00.000Z',
 					steps: [{ stepNumber: 1, status: 'completed', description: 'Step 1' }]
 				};
 

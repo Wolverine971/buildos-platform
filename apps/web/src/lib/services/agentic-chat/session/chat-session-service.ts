@@ -310,34 +310,23 @@ export class ChatSessionService {
 		}
 	): Promise<void> {
 		try {
-			// First get current values
-			const { data: current, error: fetchError } = await this.supabase
-				.from('chat_sessions')
-				.select('message_count, total_tokens_used, tool_call_count')
-				.eq('id', sessionId)
-				.single();
+			const messageIncrement = metrics.incrementMessages ?? 0;
+			const tokenIncrement = metrics.incrementTokens ?? 0;
+			const toolIncrement = metrics.incrementToolCalls ?? 0;
 
-			if (fetchError) {
-				console.error('[ChatSessionService] Failed to fetch current metrics:', fetchError);
+			if (messageIncrement === 0 && tokenIncrement === 0 && toolIncrement === 0) {
 				return;
 			}
 
-			// Calculate new values
-			const updateData: ChatSessionUpdate = {
-				message_count: (current.message_count ?? 0) + (metrics.incrementMessages ?? 0),
-				total_tokens_used:
-					(current.total_tokens_used ?? 0) + (metrics.incrementTokens ?? 0),
-				tool_call_count: (current.tool_call_count ?? 0) + (metrics.incrementToolCalls ?? 0),
-				updated_at: new Date().toISOString()
-			};
+			const { error } = await this.supabase.rpc('increment_chat_session_metrics', {
+				p_session_id: sessionId,
+				p_message_increment: messageIncrement,
+				p_token_increment: tokenIncrement,
+				p_tool_increment: toolIncrement
+			});
 
-			const { error: updateError } = await this.supabase
-				.from('chat_sessions')
-				.update(updateData)
-				.eq('id', sessionId);
-
-			if (updateError) {
-				console.error('[ChatSessionService] Failed to update metrics:', updateError);
+			if (error) {
+				console.error('[ChatSessionService] Failed to increment metrics:', error);
 			}
 		} catch (error) {
 			console.error('[ChatSessionService] Unexpected error updating metrics:', error);
