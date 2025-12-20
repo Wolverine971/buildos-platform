@@ -3,15 +3,16 @@
 # Agentic Chat Service Type Issues Analysis
 
 > **Created**: 2025-12-19
-> **Status**: Active - Requires Resolution
+> **Status**: Implemented - Pending Verification
 > **Priority**: Medium-High (blocking strict TypeScript compliance)
 
 ## Executive Summary
 
-Three service files in the agentic-chat module have TypeScript errors that prevent strict type checking from passing. These issues stem from two root causes:
+Four service files in the agentic-chat module and the persistence layer have TypeScript and schema-alignment errors that prevent strict type checking from passing. These issues stem from three root causes:
 
 1. **Empty Interface Implementation**: Classes declare `implements BaseService` but the interface has only optional methods
-2. **Null vs Undefined Mismatch**: Database returns `null` for empty values, but TypeScript Insert types use `undefined`
+2. **Null vs Undefined Mismatch**: Database returns `null` for nullable columns, but manual agent types use `undefined`
+3. **Schema Drift in Queries**: Persistence queries reference columns that do not exist or use the wrong column names
 
 ---
 
@@ -21,12 +22,14 @@ Three service files in the agentic-chat module have TypeScript errors that preve
 
 - `src/lib/services/agentic-chat/execution/tool-execution-service.ts` (line 72)
 - `src/lib/services/agentic-chat/planning/plan-orchestrator.ts` (line 111)
+- `src/lib/services/agentic-chat/synthesis/response-synthesizer.ts` (line 88)
 
 ### Error Message
 
 ```
 error TS2559: Type 'ToolExecutionService' has no properties in common with type 'BaseService'.
 error TS2559: Type 'PlanOrchestrator' has no properties in common with type 'BaseService'.
+error TS2559: Type 'ResponseSynthesizer' has no properties in common with type 'BaseService'.
 ```
 
 ### Root Cause
@@ -71,6 +74,17 @@ export class PlanOrchestrator implements BaseService {
   ) {}
 
   async createPlan(...) { ... }
+  // etc.
+}
+```
+
+**ResponseSynthesizer** (line 88):
+
+```typescript
+export class ResponseSynthesizer implements BaseService {
+  constructor(private llmService: LLMService) {}
+
+  async synthesizeSimpleResponse(...) { ... }
   // etc.
 }
 ```
@@ -123,7 +137,7 @@ export interface BaseService {
 
 ### Recommended Approach
 
-**Option B** - Implement empty lifecycle methods. This:
+**Option B** - Implement empty lifecycle methods on all BaseService implementations. This:
 
 1. Makes the interface contract explicit
 2. Allows future addition of initialization/cleanup logic
@@ -136,18 +150,15 @@ export interface BaseService {
 ### Affected File
 
 - `src/lib/services/agentic-chat/persistence/agent-persistence-service.ts`
+- `packages/shared-types/src/agent.types.ts`
 
-### Error Locations & Messages
+### Error Locations & Messages (examples)
 
-| Line     | Error                                                                                     |
-| -------- | ----------------------------------------------------------------------------------------- |
-| 102, 419 | Comparing with `'error'` but status type only allows `'failed' \| 'active' \| undefined'` |
-| 158      | `completed_at: string \| null` not assignable to `string \| undefined`                    |
-| 188, 239 | `AgentPlanStep[]` not assignable to `Json \| undefined` (steps array)                     |
-| 344      | `completed_at: string \| null` not assignable to `string \| undefined`                    |
-| 475      | `completed_at: string \| null` not assignable to `string \| undefined`                    |
-| 559      | `model_used: string \| null` not assignable to `string \| undefined`                      |
-| 667, 668 | `message_count` and `total_tokens` do not exist on select result                          |
+- `completed_at: string | null` not assignable to `string | undefined`
+- `plan_id`, `step_number`, `executor_agent_id`, `context_type`, `entity_id`: `string | null` not assignable to `string | undefined`
+- `sender_agent_id`, `tool_call_id`, `model_used`: `string | null` not assignable to `string | undefined`
+- `tokens_used: number | null` not assignable to `number`
+- `available_tools: Json | null` not assignable to `string[]`
 
 ### Root Cause Analysis
 
@@ -177,7 +188,8 @@ There's a fundamental type mismatch between three layers:
 **The Problem:**
 
 - `database.types.ts` (auto-generated from Supabase) uses `null` for nullable fields
-- `agent.types.ts` (manually defined) uses `undefined` for optional fields
+- `agent.types.ts` (manually defined) uses optional fields without `null` for many nullable columns
+- Structured types like `AgentPlanStep[]` are used where the database expects `Json`
 - These are **not compatible** in strict TypeScript
 
 ### Specific Issues
@@ -204,7 +216,17 @@ export interface AgentChatSessionInsert
 }
 ```
 
-#### 2.2: steps array vs Json
+#### 2.2: Other nullable columns vs undefined
+
+Nullable columns beyond `completed_at` also conflict with manual types:
+
+- `agent_chat_sessions.plan_id`, `step_number`, `executor_agent_id`, `context_type`, `entity_id`
+- `agent_chat_messages.sender_agent_id`, `tool_call_id`, `model_used`, `tokens_used`
+- `agents.available_tools`
+
+These are nullable in the database, but the manual types only allow `undefined`.
+
+#### 2.3: steps array vs Json
 
 **agent.types.ts** defines:
 
@@ -232,9 +254,13 @@ Type 'AgentPlanStep[]' is not assignable to type 'Json[]'.
     Index signature for type 'string' is missing in type 'AgentPlanStep'.
 ```
 
-#### 2.3: Non-existent columns in select
+---
 
-Line 651-654 tries to select columns that don't exist:
+## Issue 3: Persistence Query and Enum Mismatches
+
+#### 3.1: Non-existent columns in select
+
+The session stats query selects a column that does not exist:
 
 ```typescript
 const { data: sessions, error } = await this.supabase
@@ -244,9 +270,20 @@ const { data: sessions, error } = await this.supabase
 
 The `agent_chat_sessions` table has `message_count` but **not** `total_tokens`.
 
-#### 2.4: Status enum mismatch
+#### 3.2: Wrong column name in message query
 
-Lines 102 and 419 compare `data.status === 'error'` but the status enum only includes:
+The message lookup filters on a non-existent column:
+
+```typescript
+const { data, error } = await this.supabase
+	.from('agent_chat_messages')
+	.select('*')
+	.eq('session_id', sessionId); // should be agent_session_id
+```
+
+#### 3.3: Status enum mismatch
+
+The update logic compares against a status that does not exist in the enum:
 
 - `'active'`
 - `'completed'`
@@ -258,9 +295,11 @@ There is no `'error'` value in the database enum.
 
 #### Solution for null/undefined mismatch
 
-**Option A: Unify on `| null` throughout** (Best for DB consistency)
+**Option A: Unify on `| null` throughout** (Selected, best for DB consistency)
 
-Update `agent.types.ts` to use `null` like the database:
+Update `agent.types.ts` to use `null` like the database across all nullable columns
+(`completed_at`, `plan_id`, `step_number`, `executor_agent_id`, `context_type`, `entity_id`,
+`sender_agent_id`, `tool_call_id`, `model_used`, `tokens_used`, `available_tools`, etc.):
 
 ```typescript
 export interface AgentChatSessionInsert {
@@ -306,7 +345,9 @@ export interface AgentChatSessionInsert { ... }
 
 #### Solution for steps array
 
-Cast `steps` to `Json` when inserting:
+Preferred: make `AgentPlanStep` Json-compatible by adding an index signature.
+
+Alternative: cast `steps` to `Json` when inserting:
 
 ```typescript
 const planData: AgentPlanInsert = {
@@ -315,7 +356,7 @@ const planData: AgentPlanInsert = {
 };
 ```
 
-Or define steps as Json-compatible:
+Example of a Json-compatible step:
 
 ```typescript
 export interface AgentPlanStep {
@@ -325,9 +366,10 @@ export interface AgentPlanStep {
 }
 ```
 
-#### Solution for non-existent columns
+#### Solution for query mismatches
 
-Fix the select query to only request existing columns:
+Fix the session stats query to only request existing columns (and compute tokens from
+`agent_chat_messages` if needed):
 
 ```typescript
 // Before (incorrect)
@@ -335,7 +377,17 @@ Fix the select query to only request existing columns:
 
 // After (correct)
 .select('id, message_count')
-// Calculate total_tokens from messages if needed
+// Calculate total tokens from agent_chat_messages if needed
+```
+
+Fix the message query filter to use the correct column name:
+
+```typescript
+// Before (incorrect)
+.eq('session_id', sessionId)
+
+// After (correct)
+.eq('agent_session_id', sessionId)
 ```
 
 #### Solution for status enum
@@ -354,13 +406,14 @@ if (data.status === 'completed' || data.status === 'failed')
 
 ## Recommended Fix Priority
 
-| Priority | Issue                              | Effort | Impact                 |
-| -------- | ---------------------------------- | ------ | ---------------------- |
-| 1        | Status enum `'error'` → `'failed'` | Low    | Fixes logic bug        |
-| 2        | Remove `total_tokens` from select  | Low    | Fixes query error      |
-| 3        | Add null/undefined transformations | Medium | Fixes type safety      |
-| 4        | Implement BaseService methods      | Low    | Fixes interface errors |
-| 5        | Fix steps Json typing              | Medium | Fixes insert errors    |
+| Priority | Issue                                   | Effort | Impact                  |
+| -------- | --------------------------------------- | ------ | ----------------------- | ----------------- |
+| 1        | Status enum `'error'` → `'failed'`      | Low    | Fixes logic bug         |
+| 2        | Fix `agent_session_id` message filter   | Low    | Fixes query correctness |
+| 3        | Fix session stats select + token rollup | Low    | Fixes query error       |
+| 4        | Implement BaseService methods           | Low    | Fixes interface errors  |
+| 5        | Unify nullable fields on `              | null`  | Medium                  | Fixes type safety |
+| 6        | Fix steps Json typing                   | Medium | Fixes insert errors     |
 
 ---
 
@@ -368,18 +421,15 @@ if (data.status === 'completed' || data.status === 'failed')
 
 ### Phase 1: Quick Fixes (< 1 hour)
 
-- [ ] Replace `'error'` with `'failed'` in status comparisons (lines 102, 419)
-- [ ] Remove `total_tokens` from `getSessionStats` select query (line 651)
-- [ ] Add empty `initialize()` and `cleanup()` to `ToolExecutionService`
-- [ ] Add empty `initialize()` and `cleanup()` to `PlanOrchestrator`
+- [ ] Replace `'error'` with `'failed'` in status comparisons
+- [ ] Fix `getMessages` to filter by `agent_session_id`
+- [ ] Remove `total_tokens` from `getSessionStats` and compute tokens from messages
+- [ ] Add empty `initialize()` and `cleanup()` to `ToolExecutionService`, `PlanOrchestrator`, and `ResponseSynthesizer`
 
 ### Phase 2: Type Alignment (2-4 hours)
 
-- [ ] Update `AgentInsert.completed_at` to `string | null | undefined`
-- [ ] Update `AgentPlanInsert.completed_at` to `string | null | undefined`
-- [ ] Update `AgentChatSessionInsert.completed_at` to `string | null | undefined`
-- [ ] Update `AgentChatMessageInsert.model_used` to `string | null | undefined`
-- [ ] Add index signature to `AgentPlanStep` or cast steps to Json on insert
+- [ ] Update nullable fields in `agent.types.ts` to allow `null` (completed_at, plan_id, executor_agent_id, sender_agent_id, tool_call_id, model_used, tokens_used, available_tools, etc.)
+- [ ] Add index signature to `AgentPlanStep` (or cast steps to `Json` on insert)
 
 ### Phase 3: Architecture (Optional, 4+ hours)
 
@@ -394,6 +444,7 @@ if (data.status === 'completed' || data.status === 'failed')
 - `apps/web/src/lib/services/agentic-chat/shared/types.ts` - BaseService interface
 - `apps/web/src/lib/services/agentic-chat/execution/tool-execution-service.ts`
 - `apps/web/src/lib/services/agentic-chat/planning/plan-orchestrator.ts`
+- `apps/web/src/lib/services/agentic-chat/synthesis/response-synthesizer.ts`
 - `apps/web/src/lib/services/agentic-chat/persistence/agent-persistence-service.ts`
 - `packages/shared-types/src/agent.types.ts` - Insert type definitions
 - `packages/shared-types/src/database.types.ts` - Auto-generated Supabase types

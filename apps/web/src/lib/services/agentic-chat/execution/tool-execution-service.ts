@@ -80,6 +80,10 @@ export class ToolExecutionService implements BaseService {
 		private telemetryHook?: ToolExecutionTelemetryHook
 	) {}
 
+	async initialize(): Promise<void> {}
+
+	async cleanup(): Promise<void> {}
+
 	/**
 	 * Execute a single tool
 	 */

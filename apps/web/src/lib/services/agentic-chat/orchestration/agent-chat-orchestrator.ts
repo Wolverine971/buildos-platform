@@ -506,6 +506,25 @@ export class AgentChatOrchestrator {
 						contextShift,
 						normalizedShiftContext
 					);
+
+					// Persist context shift to session for recovery and consistency
+					try {
+						await this.deps.persistenceService.updateChatSession(serviceContext.sessionId, {
+							context_type: normalizedShiftContext,
+							entity_id: contextShift.entity_id ?? null
+						});
+						console.log('[AgentChatOrchestrator] Context shift persisted', {
+							sessionId: serviceContext.sessionId,
+							contextType: normalizedShiftContext,
+							entityId: contextShift.entity_id
+						});
+					} catch (persistError) {
+						// Log but don't fail the operation - context shift is still in memory
+						console.warn('[AgentChatOrchestrator] Failed to persist context shift', {
+							sessionId: serviceContext.sessionId,
+							error: persistError
+						});
+					}
 				}
 
 				if (result.streamEvents) {

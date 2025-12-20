@@ -2,14 +2,20 @@
 <!--
 	Ontology Project Detail - Deliverables-Centric View
 
+	PERFORMANCE: Uses skeleton-first loading for instant perceived performance.
+	- Skeleton renders immediately with project name and entity counts
+	- Full data hydrates in background via /api/onto/projects/[id]/full
+	- No layout shifts during hydration (skeleton matches final dimensions)
+	- View Transitions API animates title from source page
+
 	Deliverable-first layout focusing on outputs as the primary cards:
 	- Outputs as the primary cards with primitive filter (document, event, collection, external)
 	- Documents live directly below as lighter cards ready for promotion
 	- Right rail shows collapsible stacks for goals, plans, tasks, risks, milestones
 	- Sticky header keeps project identity and actions visible
-	- FSM state bar for workflow transitions
 
 	Documentation:
+	- 🚀 Performance Spec: /apps/web/docs/technical/performance/PROJECT_PAGE_INSTANT_LOAD.md
 	- 📚 Ontology System Overview: /apps/web/docs/features/ontology/README.md
 	- 📊 Data Models & Schema: /apps/web/docs/features/ontology/DATA_MODELS.md
 	- 🔧 Implementation Guide: /apps/web/docs/features/ontology/IMPLEMENTATION_SUMMARY.md
@@ -42,8 +48,12 @@
 	- Deliverable Primitives: /apps/web/src/lib/types/onto.ts (getDeliverablePrimitive, isCollectionDeliverable, etc.)
 -->
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { toastService } from '$lib/stores/toast.store';
+	import { getNavigationData } from '$lib/stores/project-navigation.store';
+	import InsightPanelSkeleton from '$lib/components/ontology/InsightPanelSkeleton.svelte';
+	import ProjectContentSkeleton from '$lib/components/ontology/ProjectContentSkeleton.svelte';
 	import {
 		Plus,
 		FileText,
@@ -53,7 +63,6 @@
 		Pencil,
 		Trash2,
 		ArrowLeft,
-		RefreshCw,
 		CheckCircle2,
 		Circle,
 		Clock,
@@ -143,16 +152,59 @@
 	// ============================================================
 	let { data }: { data: PageData } = $props();
 
-	// Core data
-	let project = $state(data.project as Project);
-	let tasks = $state((data.tasks || []) as Task[]);
-	let outputs = $state((data.outputs || []) as Output[]);
-	let documents = $state((data.documents || []) as Document[]);
-	let plans = $state((data.plans || []) as Plan[]);
-	let goals = $state((data.goals || []) as Goal[]);
-	let milestones = $state((data.milestones || []) as Milestone[]);
-	let risks = $state((data.risks || []) as Risk[]);
-	let contextDocument = $state((data.context_document || null) as Document | null);
+	// Skeleton loading state
+	// When data.skeleton is true, we're in skeleton mode and need to hydrate
+	let isHydrating = $state(data.skeleton === true);
+	let hydrationError = $state<string | null>(null);
+
+	// Entity counts from skeleton data (for skeleton rendering)
+	// These are available immediately from the server for skeleton display
+	const skeletonCounts = $derived(
+		data.skeleton
+			? (data.counts as {
+					task_count: number;
+					output_count: number;
+					document_count: number;
+					goal_count: number;
+					plan_count: number;
+					milestone_count: number;
+					risk_count: number;
+				})
+			: null
+	);
+
+	// Core data - initialized from skeleton or full data
+	let project = $state(
+		data.skeleton
+			? ({
+					id: data.project.id,
+					name: data.project.name,
+					description: data.project.description,
+					state_key: data.project.state_key,
+					type_key: data.project.type_key || 'project',
+					next_step_short: data.project.next_step_short,
+					next_step_long: data.project.next_step_long,
+					next_step_source: data.project.next_step_source,
+					next_step_updated_at: data.project.next_step_updated_at
+				} as Project)
+			: (data.project as Project)
+	);
+	let tasks = $state(data.skeleton ? ([] as Task[]) : ((data.tasks || []) as Task[]));
+	let outputs = $state(data.skeleton ? ([] as Output[]) : ((data.outputs || []) as Output[]));
+	let documents = $state(
+		data.skeleton ? ([] as Document[]) : ((data.documents || []) as Document[])
+	);
+	let plans = $state(data.skeleton ? ([] as Plan[]) : ((data.plans || []) as Plan[]));
+	let goals = $state(data.skeleton ? ([] as Goal[]) : ((data.goals || []) as Goal[]));
+	let milestones = $state(
+		data.skeleton ? ([] as Milestone[]) : ((data.milestones || []) as Milestone[])
+	);
+	let risks = $state(data.skeleton ? ([] as Risk[]) : ((data.risks || []) as Risk[]));
+	let contextDocument = $state(
+		data.skeleton ? null : ((data.context_document || null) as Document | null)
+	);
+
+	// Modal states
 	let showOutputCreateModal = $state(false);
 	let showDocumentModal = $state(false);
 	let activeDocumentId = $state<string | null>(null);
@@ -191,6 +243,73 @@
 			? localStorage.getItem('buildos:project-graph-hidden') === 'true'
 			: false
 	);
+
+	// ============================================================
+	// HYDRATION - Load full data after skeleton render
+	// ============================================================
+
+	/**
+	 * Hydrate full project data from the API.
+	 * Called on mount when in skeleton mode.
+	 */
+	async function hydrateFullData() {
+		if (!data.skeleton) return;
+
+		try {
+			const response = await fetch(`/api/onto/projects/${data.projectId}/full`);
+			const payload = await response.json().catch(() => null);
+
+			if (!response.ok) {
+				throw new Error(payload?.error ?? 'Failed to load project data');
+			}
+
+			const fullData = payload?.data;
+			if (!fullData) {
+				throw new Error('No data returned from server');
+			}
+
+			// Hydrate all state at once
+			project = fullData.project || project;
+			tasks = fullData.tasks || [];
+			outputs = fullData.outputs || [];
+			documents = fullData.documents || [];
+			plans = fullData.plans || [];
+			goals = fullData.goals || [];
+			milestones = fullData.milestones || [];
+			risks = fullData.risks || [];
+			contextDocument = fullData.context_document || null;
+
+			isHydrating = false;
+		} catch (err) {
+			console.error('[Project Page] Hydration failed:', err);
+			hydrationError = err instanceof Error ? err.message : 'Failed to load project data';
+			isHydrating = false;
+		}
+	}
+
+	// Hydrate on mount if in skeleton mode
+	onMount(() => {
+		if (data.skeleton) {
+			// Check for warm navigation data first
+			const navData = getNavigationData(data.projectId);
+			if (navData) {
+				// Update project with warm navigation data (may have fresher counts)
+				project = {
+					...project,
+					name: navData.name,
+					description: navData.description,
+					state_key: navData.state_key,
+					next_step_short: navData.next_step_short,
+					next_step_long: navData.next_step_long,
+					next_step_source: navData.next_step_source,
+					next_step_updated_at: navData.next_step_updated_at
+				} as Project;
+			}
+
+			// Hydrate full data
+			hydrateFullData();
+		}
+	});
 
 	// ============================================================
 	// DERIVED STATE
@@ -636,6 +755,7 @@
 					</button>
 					<h1
 						class="text-lg sm:text-xl font-semibold text-foreground leading-tight line-clamp-2 min-w-0"
+						style="view-transition-name: project-title-{project.id}"
 					>
 						{project?.name || 'Untitled Project'}
 					</h1>
@@ -643,6 +763,7 @@
 
 				<!-- Desktop: Show all buttons -->
 				<div class="hidden sm:flex items-center gap-1.5 shrink-0">
+					<StateDisplay state={project.state_key} entityKind="project" />
 					{#if graphHidden}
 						<button
 							onclick={handleGraphShow}
@@ -653,18 +774,6 @@
 							<GitBranch class="w-5 h-5 text-muted-foreground" />
 						</button>
 					{/if}
-					<button
-						onclick={refreshData}
-						disabled={dataRefreshing}
-						class="p-2 rounded-lg hover:bg-muted transition-colors disabled:opacity-50"
-						aria-label="Refresh data"
-					>
-						<RefreshCw
-							class="w-5 h-5 text-muted-foreground {dataRefreshing
-								? 'animate-spin'
-								: ''}"
-						/>
-					</button>
 					<button
 						onclick={() => (showProjectEditModal = true)}
 						class="p-2 rounded-lg hover:bg-muted transition-colors"
@@ -681,88 +790,73 @@
 					</button>
 				</div>
 
-				<!-- Mobile: 3-dot menu -->
-				<div class="relative sm:hidden">
-					<button
-						onclick={() => (showMobileMenu = !showMobileMenu)}
-						class="p-1.5 rounded-lg hover:bg-muted transition-colors"
-						aria-label="Project options"
-						aria-expanded={showMobileMenu}
-					>
-						<MoreVertical class="w-5 h-5 text-muted-foreground" />
-					</button>
-
-					{#if showMobileMenu}
-						<!-- Backdrop -->
+				<!-- Mobile: State + 3-dot menu -->
+				<div class="flex items-center gap-1.5 sm:hidden">
+					<StateDisplay state={project.state_key} entityKind="project" />
+					<div class="relative">
 						<button
-							type="button"
-							class="fixed inset-0 z-0"
-							onclick={() => (showMobileMenu = false)}
-							aria-label="Close menu"
-						></button>
-
-						<!-- Dropdown -->
-						<div
-							class="absolute right-0 top-full mt-1 z-50 w-44 rounded-lg border border-border bg-card shadow-ink-strong py-1"
+							onclick={() => (showMobileMenu = !showMobileMenu)}
+							class="p-1.5 rounded-lg hover:bg-muted transition-colors"
+							aria-label="Project options"
+							aria-expanded={showMobileMenu}
 						>
-							{#if graphHidden}
+							<MoreVertical class="w-5 h-5 text-muted-foreground" />
+						</button>
+
+						{#if showMobileMenu}
+							<!-- Backdrop -->
+							<button
+								type="button"
+								class="fixed inset-0 z-0"
+								onclick={() => (showMobileMenu = false)}
+								aria-label="Close menu"
+							></button>
+
+							<!-- Dropdown -->
+							<div
+								class="absolute right-0 top-full mt-1 z-50 w-44 rounded-lg border border-border bg-card shadow-ink-strong py-1"
+							>
+								{#if graphHidden}
+									<button
+										onclick={() => {
+											showMobileMenu = false;
+											handleGraphShow();
+										}}
+										class="w-full flex items-center gap-3 px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors"
+									>
+										<GitBranch class="w-4 h-4 text-muted-foreground" />
+										Show graph
+									</button>
+								{/if}
 								<button
 									onclick={() => {
 										showMobileMenu = false;
-										handleGraphShow();
+										showProjectEditModal = true;
 									}}
 									class="w-full flex items-center gap-3 px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors"
 								>
-									<GitBranch class="w-4 h-4 text-muted-foreground" />
-									Show graph
+									<Pencil class="w-4 h-4 text-muted-foreground" />
+									Edit project
 								</button>
-							{/if}
-							<button
-								onclick={() => {
-									showMobileMenu = false;
-									refreshData();
-								}}
-								disabled={dataRefreshing}
-								class="w-full flex items-center gap-3 px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors disabled:opacity-50"
-							>
-								<RefreshCw
-									class="w-4 h-4 text-muted-foreground {dataRefreshing
-										? 'animate-spin'
-										: ''}"
-								/>
-								Refresh
-							</button>
-							<button
-								onclick={() => {
-									showMobileMenu = false;
-									showProjectEditModal = true;
-								}}
-								class="w-full flex items-center gap-3 px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors"
-							>
-								<Pencil class="w-4 h-4 text-muted-foreground" />
-								Edit project
-							</button>
-							<hr class="my-1 border-border" />
-							<button
-								onclick={() => {
-									showMobileMenu = false;
-									showDeleteProjectModal = true;
-								}}
-								class="w-full flex items-center gap-3 px-3 py-2 text-sm text-red-500 hover:bg-red-500/10 transition-colors"
-							>
-								<Trash2 class="w-4 h-4" />
-								Delete project
-							</button>
-						</div>
-					{/if}
+								<hr class="my-1 border-border" />
+								<button
+									onclick={() => {
+										showMobileMenu = false;
+										showDeleteProjectModal = true;
+									}}
+									class="w-full flex items-center gap-3 px-3 py-2 text-sm text-red-500 hover:bg-red-500/10 transition-colors"
+								>
+									<Trash2 class="w-4 h-4" />
+									Delete project
+								</button>
+							</div>
+						{/if}
+					</div>
 				</div>
 			</div>
 
-			<!-- Project State -->
-			<StateDisplay state={project.state_key} entityKind="project" />
-
 			<!-- Next Step Display -->
-			<NextStepDisplay
+			<!-- <NextStepDisplay
 				projectId={project.id}
 				nextStepShort={project.next_step_short}
 				nextStepLong={project.next_step_long}
@@ -772,7 +866,7 @@
 				onNextStepGenerated={async () => {
 					await refreshData();
 				}}
-			/>
+			/> -->
 		</div>
 	</header>
 
@@ -789,555 +883,692 @@
 
 	<!-- Main Content -->
 	<main class="mx-auto max-w-screen-2xl px-2 sm:px-4 lg:px-6 py-4 sm:py-6 overflow-x-hidden">
+		<!-- Hydration Error Banner -->
+		{#if hydrationError}
+			<div class="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 p-4">
+				<p class="text-sm text-red-600 dark:text-red-400">
+					Failed to load project data: {hydrationError}
+				</p>
+				<button
+					onclick={() => {
+						hydrationError = null;
+						isHydrating = true;
+						hydrateFullData();
+					}}
+					class="mt-2 text-sm font-medium text-red-600 hover:text-red-500 dark:text-red-400"
+				>
+					Try again
+				</button>
+			</div>
+		{/if}
+
 		<div
 			class="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px] xl:grid-cols-[minmax(0,1fr)_380px] gap-3 sm:gap-4 lg:gap-6"
 		>
 			<!-- Left Column: Outputs & Documents -->
-			<div class="min-w-0 space-y-4">
-				<!-- Outputs Section - Collapsible -->
-				<section
-					class="bg-card border border-border rounded-xl shadow-ink tx tx-frame tx-weak overflow-hidden"
-				>
-					<div class="flex items-center justify-between gap-3 px-4 py-3">
-						<button
-							onclick={() => (outputsExpanded = !outputsExpanded)}
-							class="flex items-center gap-3 flex-1 text-left hover:bg-muted/60 -m-3 p-3 rounded-lg transition-colors"
-						>
-							<div
-								class="w-9 h-9 rounded-lg bg-muted flex items-center justify-center"
-							>
-								<Layers class="w-4 h-4 text-foreground" />
-							</div>
-							<div>
-								<p class="text-sm font-semibold text-foreground">Outputs</p>
-								<p class="text-xs text-muted-foreground">
-									{outputs.length}
-									{outputs.length === 1 ? 'deliverable' : 'deliverables'}
-								</p>
-							</div>
-						</button>
-						<div class="flex items-center gap-2">
-							<button
-								onclick={() => (showOutputCreateModal = true)}
-								class="p-1.5 rounded-md hover:bg-muted transition-colors"
-								aria-label="Add output"
-							>
-								<Plus class="w-4 h-4 text-muted-foreground" />
-							</button>
+			{#if isHydrating && skeletonCounts}
+				<!-- Skeleton state - show loading placeholders with counts -->
+				<ProjectContentSkeleton
+					outputCount={skeletonCounts.output_count}
+					documentCount={skeletonCounts.document_count}
+				/>
+			{:else}
+				<!-- Hydrated state - show real content -->
+				<div class="min-w-0 space-y-4">
+					<!-- Outputs Section - Collapsible -->
+					<section
+						class="bg-card border border-border rounded-xl shadow-ink tx tx-frame tx-weak overflow-hidden"
+					>
+						<div class="flex items-center justify-between gap-3 px-4 py-3">
 							<button
 								onclick={() => (outputsExpanded = !outputsExpanded)}
-								class="p-1.5 rounded-md hover:bg-muted transition-colors"
-								aria-label={outputsExpanded ? 'Collapse outputs' : 'Expand outputs'}
+								class="flex items-center gap-3 flex-1 text-left hover:bg-muted/60 -m-3 p-3 rounded-lg transition-colors"
 							>
-								<ChevronDown
-									class="w-4 h-4 text-muted-foreground transition-transform {outputsExpanded
-										? 'rotate-180'
-										: ''}"
-								/>
+								<div
+									class="w-9 h-9 rounded-lg bg-muted flex items-center justify-center"
+								>
+									<Layers class="w-4 h-4 text-foreground" />
+								</div>
+								<div>
+									<p class="text-sm font-semibold text-foreground">Outputs</p>
+									<p class="text-xs text-muted-foreground">
+										{outputs.length}
+										{outputs.length === 1 ? 'deliverable' : 'deliverables'}
+									</p>
+								</div>
 							</button>
+							<div class="flex items-center gap-2">
+								<button
+									onclick={() => (showOutputCreateModal = true)}
+									class="p-1.5 rounded-md hover:bg-muted transition-colors"
+									aria-label="Add output"
+								>
+									<Plus class="w-4 h-4 text-muted-foreground" />
+								</button>
+								<button
+									onclick={() => (outputsExpanded = !outputsExpanded)}
+									class="p-1.5 rounded-md hover:bg-muted transition-colors"
+									aria-label={outputsExpanded
+										? 'Collapse outputs'
+										: 'Expand outputs'}
+								>
+									<ChevronDown
+										class="w-4 h-4 text-muted-foreground transition-transform {outputsExpanded
+											? 'rotate-180'
+											: ''}"
+									/>
+								</button>
+							</div>
+						</div>
+
+						{#if outputsExpanded}
+							<div class="border-t border-border">
+								{#if outputs.length === 0}
+									<div
+										class="flex items-center gap-3 text-sm text-muted-foreground px-4 py-3"
+									>
+										<Sparkles class="w-4 h-4" />
+										<span>No outputs yet. Create one to get started.</span>
+									</div>
+								{:else}
+									<ul class="divide-y divide-border/80">
+										{#each enrichedOutputs as output}
+											{@const PrimitiveIcon = getPrimitiveIcon(
+												output.primitive
+											)}
+											<li>
+												<button
+													type="button"
+													onclick={() => (editingOutputId = output.id)}
+													class="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted/60 transition-colors"
+												>
+													<div
+														class="w-8 h-8 rounded-lg bg-muted flex items-center justify-center flex-shrink-0"
+													>
+														<PrimitiveIcon
+															class="w-4 h-4 {getPrimitiveColor(
+																output.primitive
+															)}"
+														/>
+													</div>
+													<div class="min-w-0 flex-1">
+														<p class="text-sm text-foreground truncate">
+															{output.name}
+														</p>
+														<p class="text-xs text-muted-foreground">
+															{output.typeLabel}
+														</p>
+													</div>
+													<span
+														class="flex-shrink-0 text-[11px] px-2 py-1 rounded-full border border-border {getStateColor(
+															output.state_key
+														)}"
+													>
+														{normalizeState(output.state_key)}
+													</span>
+												</button>
+											</li>
+										{/each}
+									</ul>
+								{/if}
+							</div>
+						{/if}
+					</section>
+
+					<!-- Documents Section - Collapsible -->
+					<section
+						class="bg-card border border-border rounded-xl shadow-ink tx tx-frame tx-weak overflow-hidden"
+					>
+						<div class="flex items-center justify-between gap-3 px-4 py-3">
+							<button
+								onclick={() => (documentsExpanded = !documentsExpanded)}
+								class="flex items-center gap-3 flex-1 text-left hover:bg-muted/60 -m-3 p-3 rounded-lg transition-colors"
+							>
+								<div
+									class="w-9 h-9 rounded-lg bg-muted flex items-center justify-center"
+								>
+									<FileText class="w-4 h-4 text-foreground" />
+								</div>
+								<div>
+									<p class="text-sm font-semibold text-foreground">Documents</p>
+									<p class="text-xs text-muted-foreground">
+										{documents.length}
+										{documents.length === 1 ? 'document' : 'documents'}
+									</p>
+								</div>
+							</button>
+							<div class="flex items-center gap-2">
+								<button
+									onclick={() => {
+										activeDocumentId = null;
+										showDocumentModal = true;
+									}}
+									class="p-1.5 rounded-md hover:bg-muted transition-colors"
+									aria-label="Add document"
+								>
+									<Plus class="w-4 h-4 text-muted-foreground" />
+								</button>
+								<button
+									onclick={() => (documentsExpanded = !documentsExpanded)}
+									class="p-1.5 rounded-md hover:bg-muted transition-colors"
+									aria-label={documentsExpanded
+										? 'Collapse documents'
+										: 'Expand documents'}
+								>
+									<ChevronDown
+										class="w-4 h-4 text-muted-foreground transition-transform {documentsExpanded
+											? 'rotate-180'
+											: ''}"
+									/>
+								</button>
+							</div>
+						</div>
+
+						{#if documentsExpanded}
+							<div class="border-t border-border">
+								{#if documents.length === 0}
+									<div
+										class="flex items-center gap-3 text-sm text-muted-foreground px-4 py-3"
+									>
+										<Sparkles class="w-4 h-4" />
+										<span>No documents yet. Add research or drafts.</span>
+									</div>
+								{:else}
+									<ul class="divide-y divide-border/80">
+										{#each documents as doc}
+											<li>
+												<button
+													type="button"
+													onclick={() => {
+														activeDocumentId = doc.id;
+														showDocumentModal = true;
+													}}
+													class="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted/60 transition-colors"
+												>
+													<div
+														class="w-8 h-8 rounded-lg bg-muted flex items-center justify-center flex-shrink-0"
+													>
+														<FileText class="w-4 h-4 text-blue-500" />
+													</div>
+													<div class="min-w-0 flex-1">
+														<p class="text-sm text-foreground truncate">
+															{doc.title}
+														</p>
+														<p class="text-xs text-muted-foreground">
+															{getTypeLabel(doc.type_key)}
+														</p>
+													</div>
+													<span
+														class="flex-shrink-0 text-[11px] px-2 py-1 rounded-full bg-card border border-border"
+													>
+														{doc.state_key || 'draft'}
+													</span>
+												</button>
+											</li>
+										{/each}
+									</ul>
+								{/if}
+							</div>
+						{/if}
+					</section>
+				</div>
+			{/if}
+
+			<!-- Right Column: Insight Panels -->
+			{#if isHydrating && skeletonCounts}
+				<!-- Skeleton insight panels -->
+				<aside class="min-w-0 space-y-3 lg:sticky lg:top-24">
+					<InsightPanelSkeleton
+						icon={Target}
+						label="Goals"
+						count={skeletonCounts.goal_count}
+						description="What success looks like"
+						expanded={true}
+					/>
+					<InsightPanelSkeleton
+						icon={Flag}
+						label="Milestones"
+						count={skeletonCounts.milestone_count}
+						description="Checkpoints and dates"
+					/>
+					<InsightPanelSkeleton
+						icon={Calendar}
+						label="Plans"
+						count={skeletonCounts.plan_count}
+						description="Execution scaffolding"
+					/>
+					<InsightPanelSkeleton
+						icon={ListChecks}
+						label="Tasks"
+						count={skeletonCounts.task_count}
+						description="What needs to move"
+					/>
+					<InsightPanelSkeleton
+						icon={AlertTriangle}
+						label="Risks"
+						count={skeletonCounts.risk_count}
+						description="What could go wrong"
+					/>
+
+					<!-- History Section Divider -->
+					<div class="relative py-3">
+						<div class="absolute inset-0 flex items-center">
+							<div class="w-full border-t border-border/60"></div>
+						</div>
+						<div class="relative flex justify-center">
+							<span
+								class="bg-background px-2 text-xs text-muted-foreground uppercase tracking-wider"
+							>
+								History
+							</span>
 						</div>
 					</div>
 
-					{#if outputsExpanded}
-						<div class="border-t border-border">
-							{#if outputs.length === 0}
-								<div
-									class="flex items-center gap-3 text-sm text-muted-foreground px-4 py-3"
-								>
-									<Sparkles class="w-4 h-4" />
-									<span>No outputs yet. Create one to get started.</span>
-								</div>
-							{:else}
-								<ul class="divide-y divide-border/80">
-									{#each enrichedOutputs as output}
-										{@const PrimitiveIcon = getPrimitiveIcon(output.primitive)}
-										<li>
-											<button
-												type="button"
-												onclick={() => (editingOutputId = output.id)}
-												class="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted/60 transition-colors"
-											>
-												<div
-													class="w-8 h-8 rounded-lg bg-muted flex items-center justify-center flex-shrink-0"
-												>
-													<PrimitiveIcon
-														class="w-4 h-4 {getPrimitiveColor(
-															output.primitive
-														)}"
-													/>
-												</div>
-												<div class="min-w-0 flex-1">
-													<p class="text-sm text-foreground truncate">
-														{output.name}
-													</p>
-													<p class="text-xs text-muted-foreground">
-														{output.typeLabel}
-													</p>
-												</div>
-												<span
-													class="flex-shrink-0 text-[11px] px-2 py-1 rounded-full border border-border {getStateColor(
-														output.state_key
-													)}"
-												>
-													{normalizeState(output.state_key)}
-												</span>
-											</button>
-										</li>
-									{/each}
-								</ul>
-							{/if}
-						</div>
-					{/if}
-				</section>
-
-				<!-- Documents Section - Collapsible -->
-				<section
-					class="bg-card border border-border rounded-xl shadow-ink tx tx-frame tx-weak overflow-hidden"
-				>
-					<div class="flex items-center justify-between gap-3 px-4 py-3">
-						<button
-							onclick={() => (documentsExpanded = !documentsExpanded)}
-							class="flex items-center gap-3 flex-1 text-left hover:bg-muted/60 -m-3 p-3 rounded-lg transition-colors"
-						>
+					<!-- Daily Briefs Panel - loads lazily, show placeholder -->
+					<div
+						class="bg-card border border-border rounded-xl shadow-ink tx tx-frame tx-weak overflow-hidden"
+					>
+						<div class="flex items-center gap-3 px-4 py-3">
 							<div
 								class="w-9 h-9 rounded-lg bg-muted flex items-center justify-center"
 							>
 								<FileText class="w-4 h-4 text-foreground" />
 							</div>
 							<div>
-								<p class="text-sm font-semibold text-foreground">Documents</p>
-								<p class="text-xs text-muted-foreground">
-									{documents.length}
-									{documents.length === 1 ? 'document' : 'documents'}
-								</p>
+								<p class="text-sm font-semibold text-foreground">Daily Briefs</p>
+								<p class="text-xs text-muted-foreground">AI-generated summaries</p>
 							</div>
-						</button>
-						<div class="flex items-center gap-2">
-							<button
-								onclick={() => {
-									activeDocumentId = null;
-									showDocumentModal = true;
-								}}
-								class="p-1.5 rounded-md hover:bg-muted transition-colors"
-								aria-label="Add document"
+						</div>
+					</div>
+
+					<!-- Activity Log Panel - loads lazily, show placeholder -->
+					<div
+						class="bg-card border border-border rounded-xl shadow-ink tx tx-frame tx-weak overflow-hidden"
+					>
+						<div class="flex items-center gap-3 px-4 py-3">
+							<div
+								class="w-9 h-9 rounded-lg bg-muted flex items-center justify-center"
 							>
-								<Plus class="w-4 h-4 text-muted-foreground" />
-							</button>
+								<Clock class="w-4 h-4 text-foreground" />
+							</div>
+							<div>
+								<p class="text-sm font-semibold text-foreground">Activity Log</p>
+								<p class="text-xs text-muted-foreground">Recent changes</p>
+							</div>
+						</div>
+					</div>
+				</aside>
+			{:else}
+				<!-- Hydrated insight panels -->
+				<aside class="min-w-0 space-y-3 lg:sticky lg:top-24">
+					{#each insightPanels as section}
+						{@const isOpen = expandedPanels[section.key]}
+						<div
+							class="bg-card border border-border rounded-xl shadow-ink tx tx-frame tx-weak overflow-hidden"
+						>
 							<button
-								onclick={() => (documentsExpanded = !documentsExpanded)}
-								class="p-1.5 rounded-md hover:bg-muted transition-colors"
-								aria-label={documentsExpanded
-									? 'Collapse documents'
-									: 'Expand documents'}
+								onclick={() => togglePanel(section.key)}
+								class="w-full flex items-center justify-between gap-3 px-4 py-3 text-left hover:bg-muted/60 transition-colors"
 							>
+								<div class="flex items-start gap-3">
+									<div
+										class="w-9 h-9 rounded-lg bg-muted flex items-center justify-center"
+									>
+										<svelte:component
+											this={section.icon}
+											class="w-4 h-4 text-foreground"
+										/>
+									</div>
+									<div class="min-w-0">
+										<p class="text-sm font-semibold text-foreground">
+											{section.label}
+										</p>
+										<p class="text-xs text-muted-foreground">
+											{section.items.length}
+											{section.items.length === 1 ? 'item' : 'items'}
+											{#if section.description}
+												· {section.description}
+											{/if}
+										</p>
+									</div>
+								</div>
 								<ChevronDown
-									class="w-4 h-4 text-muted-foreground transition-transform {documentsExpanded
+									class="w-4 h-4 text-muted-foreground transition-transform {isOpen
 										? 'rotate-180'
 										: ''}"
 								/>
 							</button>
-						</div>
-					</div>
 
-					{#if documentsExpanded}
-						<div class="border-t border-border">
-							{#if documents.length === 0}
-								<div
-									class="flex items-center gap-3 text-sm text-muted-foreground px-4 py-3"
-								>
-									<Sparkles class="w-4 h-4" />
-									<span>No documents yet. Add research or drafts.</span>
-								</div>
-							{:else}
-								<ul class="divide-y divide-border/80">
-									{#each documents as doc}
-										<li>
+							{#if isOpen}
+								<div class="border-t border-border">
+									{#if section.key === 'tasks'}
+										<div
+											class="flex items-center justify-between px-4 pt-3 pb-2"
+										>
+											<p
+												class="text-xs text-muted-foreground uppercase tracking-wide"
+											>
+												Tasks
+											</p>
 											<button
 												type="button"
-												onclick={() => {
-													activeDocumentId = doc.id;
-													showDocumentModal = true;
-												}}
-												class="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted/60 transition-colors"
+												onclick={() => (showTaskCreateModal = true)}
+												class="inline-flex items-center gap-2 px-2.5 py-1 text-xs rounded-md border border-border bg-muted/60 hover:bg-muted transition-colors"
 											>
-												<div
-													class="w-8 h-8 rounded-lg bg-muted flex items-center justify-center flex-shrink-0"
-												>
-													<FileText class="w-4 h-4 text-blue-500" />
-												</div>
-												<div class="min-w-0 flex-1">
-													<p class="text-sm text-foreground truncate">
-														{doc.title}
-													</p>
-													<p class="text-xs text-muted-foreground">
-														{getTypeLabel(doc.type_key)}
-													</p>
-												</div>
-												<span
-													class="flex-shrink-0 text-[11px] px-2 py-1 rounded-full bg-card border border-border"
-												>
-													{doc.state_key || 'draft'}
-												</span>
+												<Plus class="w-3.5 h-3.5" />
+												New Task
 											</button>
-										</li>
-									{/each}
-								</ul>
-							{/if}
-						</div>
-					{/if}
-				</section>
-			</div>
-
-			<!-- Right Column: Insight Panels -->
-			<aside class="min-w-0 space-y-3 lg:sticky lg:top-24">
-				{#each insightPanels as section}
-					{@const isOpen = expandedPanels[section.key]}
-					<div
-						class="bg-card border border-border rounded-xl shadow-ink tx tx-frame tx-weak overflow-hidden"
-					>
-						<button
-							onclick={() => togglePanel(section.key)}
-							class="w-full flex items-center justify-between gap-3 px-4 py-3 text-left hover:bg-muted/60 transition-colors"
-						>
-							<div class="flex items-start gap-3">
-								<div
-									class="w-9 h-9 rounded-lg bg-muted flex items-center justify-center"
-								>
-									<svelte:component
-										this={section.icon}
-										class="w-4 h-4 text-foreground"
-									/>
-								</div>
-								<div class="min-w-0">
-									<p class="text-sm font-semibold text-foreground">
-										{section.label}
-									</p>
-									<p class="text-xs text-muted-foreground">
-										{section.items.length}
-										{section.items.length === 1 ? 'item' : 'items'}
-										{#if section.description}
-											· {section.description}
+										</div>
+										{#if tasks.length > 0}
+											<ul class="divide-y divide-border/80">
+												{#each tasks as task}
+													{@const visuals = getTaskVisuals(
+														task.state_key
+													)}
+													<li>
+														<div class="flex items-center">
+															<button
+																type="button"
+																onclick={() =>
+																	(editingTaskId = task.id)}
+																class="flex-1 flex items-center gap-3 px-4 py-3 text-left hover:bg-muted/60 transition-colors"
+															>
+																<svelte:component
+																	this={visuals.icon}
+																	class="w-4 h-4 {visuals.color}"
+																/>
+																<div class="min-w-0">
+																	<p
+																		class="text-sm text-foreground truncate"
+																	>
+																		{task.title}
+																	</p>
+																	<p
+																		class="text-xs text-muted-foreground"
+																	>
+																		{task.state_key || 'draft'}
+																	</p>
+																</div>
+															</button>
+															<a
+																href="/projects/{project.id}/tasks/{task.id}"
+																class="p-2 mr-2 rounded-lg hover:bg-muted transition-colors"
+																title="Open task focus page"
+															>
+																<ExternalLink
+																	class="w-4 h-4 text-muted-foreground hover:text-accent"
+																/>
+															</a>
+														</div>
+													</li>
+												{/each}
+											</ul>
+										{:else}
+											<p class="px-4 py-3 text-sm text-muted-foreground">
+												No tasks yet
+											</p>
 										{/if}
-									</p>
-								</div>
-							</div>
-							<ChevronDown
-								class="w-4 h-4 text-muted-foreground transition-transform {isOpen
-									? 'rotate-180'
-									: ''}"
-							/>
-						</button>
-
-						{#if isOpen}
-							<div class="border-t border-border">
-								{#if section.key === 'tasks'}
-									<div class="flex items-center justify-between px-4 pt-3 pb-2">
-										<p
-											class="text-xs text-muted-foreground uppercase tracking-wide"
+									{:else if section.key === 'plans'}
+										<div
+											class="flex items-center justify-between px-4 pt-3 pb-2"
 										>
-											Tasks
-										</p>
-										<button
-											type="button"
-											onclick={() => (showTaskCreateModal = true)}
-											class="inline-flex items-center gap-2 px-2.5 py-1 text-xs rounded-md border border-border bg-muted/60 hover:bg-muted transition-colors"
-										>
-											<Plus class="w-3.5 h-3.5" />
-											New Task
-										</button>
-									</div>
-									{#if tasks.length > 0}
-										<ul class="divide-y divide-border/80">
-											{#each tasks as task}
-												{@const visuals = getTaskVisuals(task.state_key)}
-												<li>
-													<div class="flex items-center">
+											<p
+												class="text-xs text-muted-foreground uppercase tracking-wide"
+											>
+												Plans
+											</p>
+											<button
+												type="button"
+												onclick={() => (showPlanCreateModal = true)}
+												class="inline-flex items-center gap-2 px-2.5 py-1 text-xs rounded-md border border-border bg-muted/60 hover:bg-muted transition-colors"
+											>
+												<Plus class="w-3.5 h-3.5" />
+												New Plan
+											</button>
+										</div>
+										{#if plans.length > 0}
+											<ul class="divide-y divide-border/80">
+												{#each plans as plan}
+													<li>
 														<button
 															type="button"
 															onclick={() =>
-																(editingTaskId = task.id)}
-															class="flex-1 flex items-center gap-3 px-4 py-3 text-left hover:bg-muted/60 transition-colors"
+																(editingPlanId = plan.id)}
+															class="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted/60 transition-colors"
 														>
-															<svelte:component
-																this={visuals.icon}
-																class="w-4 h-4 {visuals.color}"
+															<Calendar
+																class="w-4 h-4 text-muted-foreground"
 															/>
 															<div class="min-w-0">
 																<p
 																	class="text-sm text-foreground truncate"
 																>
-																	{task.title}
+																	{plan.name}
 																</p>
 																<p
 																	class="text-xs text-muted-foreground"
 																>
-																	{task.state_key || 'draft'}
+																	{plan.state_key || 'draft'}
 																</p>
 															</div>
 														</button>
-														<a
-															href="/projects/{project.id}/tasks/{task.id}"
-															class="p-2 mr-2 rounded-lg hover:bg-muted transition-colors"
-															title="Open task focus page"
+													</li>
+												{/each}
+											</ul>
+										{:else}
+											<p class="px-4 py-3 text-sm text-muted-foreground">
+												No plans yet
+											</p>
+										{/if}
+									{:else if section.key === 'goals'}
+										<div
+											class="flex items-center justify-between px-4 pt-3 pb-2"
+										>
+											<p
+												class="text-xs text-muted-foreground uppercase tracking-wide"
+											>
+												Goals
+											</p>
+											<button
+												type="button"
+												onclick={() => (showGoalCreateModal = true)}
+												class="inline-flex items-center gap-2 px-2.5 py-1 text-xs rounded-md border border-border bg-muted/60 hover:bg-muted transition-colors"
+											>
+												<Plus class="w-3.5 h-3.5" />
+												New Goal
+											</button>
+										</div>
+										{#if goals.length > 0}
+											<ul class="divide-y divide-border/80">
+												{#each goals as goal}
+													<li>
+														<button
+															type="button"
+															onclick={() =>
+																(editingGoalId = goal.id)}
+															class="w-full flex items-start gap-3 px-4 py-3 text-left hover:bg-muted/60 transition-colors"
 														>
-															<ExternalLink
-																class="w-4 h-4 text-muted-foreground hover:text-accent"
+															<Target
+																class="w-4 h-4 text-amber-500"
 															/>
-														</a>
-													</div>
-												</li>
-											{/each}
-										</ul>
-									{:else}
-										<p class="px-4 py-3 text-sm text-muted-foreground">
-											No tasks yet
-										</p>
-									{/if}
-								{:else if section.key === 'plans'}
-									<div class="flex items-center justify-between px-4 pt-3 pb-2">
-										<p
-											class="text-xs text-muted-foreground uppercase tracking-wide"
+															<div class="min-w-0">
+																<p
+																	class="text-sm text-foreground truncate"
+																>
+																	{goal.name}
+																</p>
+																<p
+																	class="text-xs text-muted-foreground"
+																>
+																	{goal.state_key || 'draft'}
+																</p>
+															</div>
+														</button>
+													</li>
+												{/each}
+											</ul>
+										{:else}
+											<p class="px-4 py-3 text-sm text-muted-foreground">
+												No goals yet
+											</p>
+										{/if}
+									{:else if section.key === 'risks'}
+										<div
+											class="flex items-center justify-between px-4 pt-3 pb-2"
 										>
-											Plans
-										</p>
-										<button
-											type="button"
-											onclick={() => (showPlanCreateModal = true)}
-											class="inline-flex items-center gap-2 px-2.5 py-1 text-xs rounded-md border border-border bg-muted/60 hover:bg-muted transition-colors"
-										>
-											<Plus class="w-3.5 h-3.5" />
-											New Plan
-										</button>
-									</div>
-									{#if plans.length > 0}
-										<ul class="divide-y divide-border/80">
-											{#each plans as plan}
-												<li>
-													<button
-														type="button"
-														onclick={() => (editingPlanId = plan.id)}
-														class="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted/60 transition-colors"
-													>
-														<Calendar
-															class="w-4 h-4 text-muted-foreground"
-														/>
-														<div class="min-w-0">
-															<p
-																class="text-sm text-foreground truncate"
-															>
-																{plan.name}
-															</p>
-															<p
-																class="text-xs text-muted-foreground"
-															>
-																{plan.state_key || 'draft'}
-															</p>
-														</div>
-													</button>
-												</li>
-											{/each}
-										</ul>
-									{:else}
-										<p class="px-4 py-3 text-sm text-muted-foreground">
-											No plans yet
-										</p>
-									{/if}
-								{:else if section.key === 'goals'}
-									<div class="flex items-center justify-between px-4 pt-3 pb-2">
-										<p
-											class="text-xs text-muted-foreground uppercase tracking-wide"
-										>
-											Goals
-										</p>
-										<button
-											type="button"
-											onclick={() => (showGoalCreateModal = true)}
-											class="inline-flex items-center gap-2 px-2.5 py-1 text-xs rounded-md border border-border bg-muted/60 hover:bg-muted transition-colors"
-										>
-											<Plus class="w-3.5 h-3.5" />
-											New Goal
-										</button>
-									</div>
-									{#if goals.length > 0}
-										<ul class="divide-y divide-border/80">
-											{#each goals as goal}
-												<li>
-													<button
-														type="button"
-														onclick={() => (editingGoalId = goal.id)}
-														class="w-full flex items-start gap-3 px-4 py-3 text-left hover:bg-muted/60 transition-colors"
-													>
-														<Target class="w-4 h-4 text-amber-500" />
-														<div class="min-w-0">
-															<p
-																class="text-sm text-foreground truncate"
-															>
-																{goal.name}
-															</p>
-															<p
-																class="text-xs text-muted-foreground"
-															>
-																{goal.state_key || 'draft'}
-															</p>
-														</div>
-													</button>
-												</li>
-											{/each}
-										</ul>
-									{:else}
-										<p class="px-4 py-3 text-sm text-muted-foreground">
-											No goals yet
-										</p>
-									{/if}
-								{:else if section.key === 'risks'}
-									<div class="flex items-center justify-between px-4 pt-3 pb-2">
-										<p
-											class="text-xs text-muted-foreground uppercase tracking-wide"
-										>
-											Risks
-										</p>
-										<button
-											type="button"
-											onclick={() => (showRiskCreateModal = true)}
-											class="inline-flex items-center gap-2 px-2.5 py-1 text-xs rounded-md border border-border bg-muted/60 hover:bg-muted transition-colors"
-										>
-											<Plus class="w-3.5 h-3.5" />
-											New Risk
-										</button>
-									</div>
-									{#if risks.length > 0}
-										<ul class="divide-y divide-border/80">
-											{#each risks as risk}
-												{@const impactColor =
-													risk.impact === 'critical'
-														? 'text-red-500'
-														: risk.impact === 'high'
-															? 'text-orange-500'
-															: risk.impact === 'medium'
-																? 'text-amber-500'
-																: 'text-emerald-500'}
-												<li>
-													<button
-														type="button"
-														onclick={() => (editingRiskId = risk.id)}
-														class="w-full flex items-start gap-3 px-4 py-3 text-left hover:bg-muted/60 transition-colors"
-													>
-														<AlertTriangle
-															class="w-4 h-4 {impactColor}"
-														/>
-														<div class="min-w-0 flex-1">
-															<p
-																class="text-sm text-foreground truncate"
-															>
-																{risk.title}
-															</p>
-															<p
-																class="text-xs text-muted-foreground capitalize"
-															>
-																{risk.impact || 'Unrated'} · {risk.state_key?.replace(
-																	/_/g,
-																	' '
-																) || 'identified'}
-															</p>
-														</div>
-													</button>
-												</li>
-											{/each}
-										</ul>
-									{:else}
-										<p class="px-4 py-3 text-sm text-muted-foreground">
-											No risks logged
-										</p>
-									{/if}
-								{:else if section.key === 'milestones'}
-									<div class="flex items-center justify-between px-4 pt-3 pb-2">
-										<p
-											class="text-xs text-muted-foreground uppercase tracking-wide"
-										>
-											Milestones
-										</p>
-										<button
-											type="button"
-											onclick={() => (showMilestoneCreateModal = true)}
-											class="inline-flex items-center gap-2 px-2.5 py-1 text-xs rounded-md border border-border bg-muted/60 hover:bg-muted transition-colors"
-										>
-											<Plus class="w-3.5 h-3.5" />
-											New Milestone
-										</button>
-									</div>
-									{#if milestones.length > 0}
-										<ul class="divide-y divide-border/80">
-											{#each milestones as milestone}
-												{@const stateKey =
-													milestone.props?.state_key || 'pending'}
-												{@const stateColor =
-													stateKey === 'achieved'
-														? 'text-emerald-500'
-														: stateKey === 'missed'
+											<p
+												class="text-xs text-muted-foreground uppercase tracking-wide"
+											>
+												Risks
+											</p>
+											<button
+												type="button"
+												onclick={() => (showRiskCreateModal = true)}
+												class="inline-flex items-center gap-2 px-2.5 py-1 text-xs rounded-md border border-border bg-muted/60 hover:bg-muted transition-colors"
+											>
+												<Plus class="w-3.5 h-3.5" />
+												New Risk
+											</button>
+										</div>
+										{#if risks.length > 0}
+											<ul class="divide-y divide-border/80">
+												{#each risks as risk}
+													{@const impactColor =
+														risk.impact === 'critical'
 															? 'text-red-500'
-															: stateKey === 'in_progress'
-																? 'text-blue-500'
-																: stateKey === 'deferred'
+															: risk.impact === 'high'
+																? 'text-orange-500'
+																: risk.impact === 'medium'
 																	? 'text-amber-500'
-																	: 'text-muted-foreground'}
-												<li>
-													<button
-														type="button"
-														onclick={() =>
-															(editingMilestoneId = milestone.id)}
-														class="w-full flex items-start gap-3 px-4 py-3 text-left hover:bg-muted/60 transition-colors"
-													>
-														<Flag class="w-4 h-4 {stateColor}" />
-														<div class="min-w-0 flex-1">
-															<p
-																class="text-sm text-foreground truncate"
-															>
-																{milestone.title}
-															</p>
-															<p
-																class="text-xs text-muted-foreground"
-															>
-																{formatDueDate(milestone.due_at)}
-															</p>
-														</div>
-													</button>
-												</li>
-											{/each}
-										</ul>
-									{:else}
-										<p class="px-4 py-3 text-sm text-muted-foreground">
-											No milestones yet
-										</p>
+																	: 'text-emerald-500'}
+													<li>
+														<button
+															type="button"
+															onclick={() =>
+																(editingRiskId = risk.id)}
+															class="w-full flex items-start gap-3 px-4 py-3 text-left hover:bg-muted/60 transition-colors"
+														>
+															<AlertTriangle
+																class="w-4 h-4 {impactColor}"
+															/>
+															<div class="min-w-0 flex-1">
+																<p
+																	class="text-sm text-foreground truncate"
+																>
+																	{risk.title}
+																</p>
+																<p
+																	class="text-xs text-muted-foreground capitalize"
+																>
+																	{risk.impact || 'Unrated'} · {risk.state_key?.replace(
+																		/_/g,
+																		' '
+																	) || 'identified'}
+																</p>
+															</div>
+														</button>
+													</li>
+												{/each}
+											</ul>
+										{:else}
+											<p class="px-4 py-3 text-sm text-muted-foreground">
+												No risks logged
+											</p>
+										{/if}
+									{:else if section.key === 'milestones'}
+										<div
+											class="flex items-center justify-between px-4 pt-3 pb-2"
+										>
+											<p
+												class="text-xs text-muted-foreground uppercase tracking-wide"
+											>
+												Milestones
+											</p>
+											<button
+												type="button"
+												onclick={() => (showMilestoneCreateModal = true)}
+												class="inline-flex items-center gap-2 px-2.5 py-1 text-xs rounded-md border border-border bg-muted/60 hover:bg-muted transition-colors"
+											>
+												<Plus class="w-3.5 h-3.5" />
+												New Milestone
+											</button>
+										</div>
+										{#if milestones.length > 0}
+											<ul class="divide-y divide-border/80">
+												{#each milestones as milestone}
+													{@const stateKey =
+														milestone.props?.state_key || 'pending'}
+													{@const stateColor =
+														stateKey === 'achieved'
+															? 'text-emerald-500'
+															: stateKey === 'missed'
+																? 'text-red-500'
+																: stateKey === 'in_progress'
+																	? 'text-blue-500'
+																	: stateKey === 'deferred'
+																		? 'text-amber-500'
+																		: 'text-muted-foreground'}
+													<li>
+														<button
+															type="button"
+															onclick={() =>
+																(editingMilestoneId = milestone.id)}
+															class="w-full flex items-start gap-3 px-4 py-3 text-left hover:bg-muted/60 transition-colors"
+														>
+															<Flag class="w-4 h-4 {stateColor}" />
+															<div class="min-w-0 flex-1">
+																<p
+																	class="text-sm text-foreground truncate"
+																>
+																	{milestone.title}
+																</p>
+																<p
+																	class="text-xs text-muted-foreground"
+																>
+																	{formatDueDate(
+																		milestone.due_at
+																	)}
+																</p>
+															</div>
+														</button>
+													</li>
+												{/each}
+											</ul>
+										{:else}
+											<p class="px-4 py-3 text-sm text-muted-foreground">
+												No milestones yet
+											</p>
+										{/if}
 									{/if}
-								{/if}
-							</div>
-						{/if}
-					</div>
-				{/each}
+								</div>
+							{/if}
+						</div>
+					{/each}
 
-				<!-- History Section Divider -->
-				<div class="relative py-3">
-					<div class="absolute inset-0 flex items-center">
-						<div class="w-full border-t border-border/60"></div>
+					<!-- History Section Divider -->
+					<div class="relative py-3">
+						<div class="absolute inset-0 flex items-center">
+							<div class="w-full border-t border-border/60"></div>
+						</div>
+						<div class="relative flex justify-center">
+							<span
+								class="bg-background px-2 text-xs text-muted-foreground uppercase tracking-wider"
+							>
+								History
+							</span>
+						</div>
 					</div>
-					<div class="relative flex justify-center">
-						<span
-							class="bg-background px-2 text-xs text-muted-foreground uppercase tracking-wider"
-						>
-							History
-						</span>
-					</div>
-				</div>
 
-				<!-- Daily Briefs Panel -->
-				<ProjectBriefsPanel projectId={project.id} />
+					<!-- Daily Briefs Panel -->
+					<ProjectBriefsPanel projectId={project.id} />
 
-				<!-- Activity Log Panel -->
-				<ProjectActivityLogPanel
-					projectId={project.id}
-					onEntityClick={handleActivityLogEntityClick}
-				/>
-			</aside>
+					<!-- Activity Log Panel -->
+					<ProjectActivityLogPanel
+						projectId={project.id}
+						onEntityClick={handleActivityLogEntityClick}
+					/>
+				</aside>
+			{/if}
 		</div>
 	</main>
 </div>

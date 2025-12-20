@@ -1,49 +1,166 @@
 // apps/web/src/routes/projects/[id]/+page.server.ts
 /**
- * Project Detail - Deliverables-Centric View
- * Server load function - fetches project with all entities
+ * Project Detail - Skeleton-First Loading
  *
- * Performance Optimizations Applied (Dec 2024):
- * 1. API endpoint parallelizes all entity queries (14+ queries run concurrently)
- * 2. Project + actor resolution run in parallel (saves ~50ms)
- * 3. Context document fetched via JOIN instead of 2 sequential queries
- * 4. Task-plan edges fetched in parallel batch (not after task load)
- * 5. FSM transitions passed to component to prevent duplicate client-side fetch
+ * This page uses a skeleton-first loading strategy for instant perceived performance:
  *
- * For ultra-optimized single-query loading, use /api/onto/projects/[id]/full
- * which uses the get_project_full() RPC function.
+ * 1. WARM NAVIGATION (from /projects or homepage):
+ *    - Navigation store contains project summary with counts
+ *    - Server returns skeleton flag immediately (no blocking fetch)
+ *    - Client renders skeleton with counts, then hydrates via /api/onto/projects/[id]/full
+ *
+ * 2. COLD LOAD (direct URL, refresh, external link):
+ *    - No navigation store data available
+ *    - Server calls get_project_skeleton RPC (fast - just metadata + counts)
+ *    - Client renders skeleton, then hydrates via /api/onto/projects/[id]/full
+ *
+ * Performance Targets:
+ * - Time to first paint: <100ms (skeleton visible immediately)
+ * - Time to interactive: <500ms (full data hydrated)
+ * - Layout shift (CLS): 0 (skeleton matches final dimensions)
  *
  * Documentation:
+ * - Performance Spec: /apps/web/docs/technical/performance/PROJECT_PAGE_INSTANT_LOAD.md
  * - Ontology System: /apps/web/docs/features/ontology/README.md
  * - Data Models: /apps/web/docs/features/ontology/DATA_MODELS.md
- * - Project API: /apps/web/src/routes/api/onto/projects/[id]/+server.ts
  */
 
 import type { PageServerLoad } from './$types';
 import { error } from '@sveltejs/kit';
+import { ensureActorId } from '$lib/services/ontology/ontology-projects.service';
 
-export const load: PageServerLoad = async ({ params, fetch }) => {
+/**
+ * Skeleton data structure - minimal data for instant rendering
+ */
+export interface ProjectSkeletonData {
+	skeleton: true;
+	projectId: string;
+	project: {
+		id: string;
+		name: string;
+		description: string | null;
+		state_key: string;
+		type_key?: string;
+		next_step_short: string | null;
+		next_step_long: string | null;
+		next_step_source: 'ai' | 'user' | null;
+		next_step_updated_at: string | null;
+	};
+	counts: {
+		task_count: number;
+		output_count: number;
+		document_count: number;
+		goal_count: number;
+		plan_count: number;
+		milestone_count: number;
+		risk_count: number;
+	};
+}
+
+export const load: PageServerLoad = async ({ params, locals, url }) => {
 	const { id } = params;
 
 	if (!id) {
 		throw error(400, 'Project ID required');
 	}
 
-	// Fetch project data from API endpoint
-	const projectResponse = await fetch(`/api/onto/projects/${id}`);
+	const supabase = locals.supabase;
 
-	if (!projectResponse.ok) {
-		if (projectResponse.status === 404) {
-			throw error(404, 'Project not found');
+	// Get user session
+	const { user } = await locals.safeGetSession();
+	if (!user) {
+		throw error(401, 'Authentication required');
+	}
+
+	// Get actor ID for the user
+	let actorId: string;
+	try {
+		actorId = await ensureActorId(supabase, user.id);
+	} catch (err) {
+		console.error('[Project Page] Failed to get actor ID:', err);
+		throw error(500, 'Failed to resolve user');
+	}
+
+	// Check if we have warm navigation data from the URL state
+	// This is passed via sessionStorage by the source page
+	// We can't access sessionStorage server-side, so we use the skeleton RPC
+	// The client will check sessionStorage on mount for warm data
+
+	// COLD LOAD: Fetch skeleton data from RPC
+	// This is fast (~50ms) - just project metadata and counts
+	const { data: skeletonData, error: skeletonError } = await supabase.rpc(
+		'get_project_skeleton',
+		{
+			p_project_id: id,
+			p_actor_id: actorId
 		}
+	);
+
+	if (skeletonError) {
+		console.error('[Project Page] Skeleton RPC error:', skeletonError);
+		// Fall back to full fetch if skeleton fails
+		return loadFullData(id, supabase, actorId);
+	}
+
+	if (!skeletonData) {
+		throw error(404, 'Project not found');
+	}
+
+	// Return skeleton data for instant rendering
+	// Client will hydrate full data after mount
+	return {
+		skeleton: true,
+		projectId: id,
+		project: {
+			id: skeletonData.id,
+			name: skeletonData.name,
+			description: skeletonData.description,
+			state_key: skeletonData.state_key,
+			type_key: skeletonData.type_key,
+			next_step_short: skeletonData.next_step_short,
+			next_step_long: skeletonData.next_step_long,
+			next_step_source: skeletonData.next_step_source,
+			next_step_updated_at: skeletonData.next_step_updated_at
+		},
+		counts: {
+			task_count: skeletonData.task_count ?? 0,
+			output_count: skeletonData.output_count ?? 0,
+			document_count: skeletonData.document_count ?? 0,
+			goal_count: skeletonData.goal_count ?? 0,
+			plan_count: skeletonData.plan_count ?? 0,
+			milestone_count: skeletonData.milestone_count ?? 0,
+			risk_count: skeletonData.risk_count ?? 0
+		}
+	} satisfies ProjectSkeletonData;
+};
+
+/**
+ * Fallback: Load full data if skeleton RPC fails
+ * This maintains backward compatibility
+ */
+async function loadFullData(
+	id: string,
+	supabase: App.Locals['supabase'],
+	actorId: string
+): Promise<any> {
+	const { data, error: rpcError } = await supabase.rpc('get_project_full', {
+		p_project_id: id,
+		p_actor_id: actorId
+	});
+
+	if (rpcError) {
+		console.error('[Project Page] Full RPC error:', rpcError);
 		throw error(500, 'Failed to load project');
 	}
 
-	const projectData = await projectResponse.json();
+	if (!data) {
+		throw error(404, 'Project not found');
+	}
 
-	// Extract from ApiResponse.data wrapper
+	// Return full data (legacy format for backward compatibility)
 	return {
-		...projectData.data,
-		projectId: id
+		skeleton: false,
+		projectId: id,
+		...data
 	};
-};
+}

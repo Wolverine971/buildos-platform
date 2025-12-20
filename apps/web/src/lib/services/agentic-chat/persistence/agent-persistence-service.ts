@@ -43,13 +43,14 @@ export class AgentPersistenceService implements PersistenceOperations {
 
 	/**
 	 * Create a new agent in the database
+	 * If data.id is provided, it will be used; otherwise a new UUID is generated
 	 */
-	async createAgent(data: Omit<AgentInsert, 'id'>): Promise<string> {
+	async createAgent(data: AgentInsert): Promise<string> {
 		try {
 			const agentData: AgentInsert = {
-				id: uuidv4(),
 				...data,
-				created_at: new Date().toISOString()
+				id: data.id || uuidv4(),
+				created_at: data.created_at || new Date().toISOString()
 			};
 
 			const { data: agent, error } = await this.supabase
@@ -97,9 +98,9 @@ export class AgentPersistenceService implements PersistenceOperations {
 				...data
 			};
 
-			// If status is being set to completed or error, add completed_at when missing
+			// If status is being set to completed or failed, add completed_at when missing
 			if (
-				(data.status === 'completed' || data.status === 'error') &&
+				(data.status === 'completed' || data.status === 'failed') &&
 				!updateData.completed_at
 			) {
 				updateData.completed_at = new Date().toISOString();
@@ -174,13 +175,14 @@ export class AgentPersistenceService implements PersistenceOperations {
 
 	/**
 	 * Create a new plan
+	 * If data.id is provided, it will be used; otherwise a new UUID is generated
 	 */
-	async createPlan(data: Omit<AgentPlanInsert, 'id'>): Promise<string> {
+	async createPlan(data: AgentPlanInsert): Promise<string> {
 		try {
 			const planData: AgentPlanInsert = {
-				id: uuidv4(),
 				...data,
-				created_at: new Date().toISOString()
+				id: data.id || uuidv4(),
+				created_at: data.created_at || new Date().toISOString()
 			};
 
 			const { data: plan, error } = await this.supabase
@@ -360,13 +362,14 @@ export class AgentPersistenceService implements PersistenceOperations {
 
 	/**
 	 * Create a new chat session
+	 * If data.id is provided, it will be used; otherwise a new UUID is generated
 	 */
-	async createChatSession(data: Omit<AgentChatSessionInsert, 'id'>): Promise<string> {
+	async createChatSession(data: AgentChatSessionInsert): Promise<string> {
 		try {
 			const sessionData: AgentChatSessionInsert = {
-				id: uuidv4(),
 				...data,
-				created_at: new Date().toISOString()
+				id: data.id || uuidv4(),
+				created_at: data.created_at || new Date().toISOString()
 			};
 
 			const { data: session, error } = await this.supabase
@@ -414,9 +417,9 @@ export class AgentPersistenceService implements PersistenceOperations {
 				...data
 			};
 
-			// If status is completed or error, add completed_at when missing
+			// If status is completed or failed, add completed_at when missing
 			if (
-				(data.status === 'completed' || data.status === 'error') &&
+				(data.status === 'completed' || data.status === 'failed') &&
 				!updateData.completed_at
 			) {
 				updateData.completed_at = new Date().toISOString();
@@ -491,13 +494,14 @@ export class AgentPersistenceService implements PersistenceOperations {
 
 	/**
 	 * Save a chat message
+	 * If data.id is provided, it will be used; otherwise a new UUID is generated
 	 */
-	async saveMessage(data: Omit<AgentChatMessageInsert, 'id'>): Promise<string> {
+	async saveMessage(data: AgentChatMessageInsert): Promise<string> {
 		try {
 			const messageData: AgentChatMessageInsert = {
-				id: uuidv4(),
 				...data,
-				created_at: new Date().toISOString()
+				id: data.id || uuidv4(),
+				created_at: data.created_at || new Date().toISOString()
 			};
 
 			const { data: message, error } = await this.supabase
@@ -544,7 +548,7 @@ export class AgentPersistenceService implements PersistenceOperations {
 			const { data, error } = await this.supabase
 				.from('agent_chat_messages')
 				.select('*')
-				.eq('session_id', sessionId)
+				.eq('agent_session_id', sessionId)
 				.order('created_at', { ascending: true })
 				.limit(limit);
 
@@ -649,7 +653,7 @@ export class AgentPersistenceService implements PersistenceOperations {
 
 			const { data: sessions, error } = await this.supabase
 				.from('agent_chat_sessions')
-				.select('id, message_count, total_tokens')
+				.select('id, message_count')
 				.eq('user_id', userId)
 				.gte('created_at', cutoffDate.toISOString());
 
@@ -665,17 +669,35 @@ export class AgentPersistenceService implements PersistenceOperations {
 				(acc, session) => ({
 					totalSessions: acc.totalSessions + 1,
 					totalMessages: acc.totalMessages + (session.message_count || 0),
-					totalTokens: acc.totalTokens + (session.total_tokens || 0)
+					totalTokens: acc.totalTokens
 				}),
 				{ totalSessions: 0, totalMessages: 0, totalTokens: 0 }
 			);
 
+			const { data: messages, error: messagesError } = await this.supabase
+				.from('agent_chat_messages')
+				.select('tokens_used')
+				.eq('user_id', userId)
+				.gte('created_at', cutoffDate.toISOString());
+
+			if (messagesError) {
+				throw new PersistenceError(
+					`Failed to get session stats messages: ${messagesError.message}`,
+					'getSessionStats',
+					{ error: messagesError, userId, days }
+				);
+			}
+
+			const totalTokens = (messages || []).reduce(
+				(sum, message) => sum + (message.tokens_used || 0),
+				0
+			);
+
 			return {
 				...stats,
+				totalTokens,
 				averageTokensPerSession:
-					stats.totalSessions > 0
-						? Math.round(stats.totalTokens / stats.totalSessions)
-						: 0
+					stats.totalSessions > 0 ? Math.round(totalTokens / stats.totalSessions) : 0
 			};
 		} catch (error) {
 			if (error instanceof PersistenceError) {

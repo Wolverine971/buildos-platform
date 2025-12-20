@@ -6,7 +6,14 @@
 	import { setContext, onMount, onDestroy, untrack } from 'svelte';
 	import { page } from '$app/stores';
 	import { browser, dev } from '$app/environment';
-	import { goto, replaceState, onNavigate, invalidate, invalidateAll } from '$app/navigation';
+	import {
+		goto,
+		replaceState,
+		onNavigate,
+		invalidate,
+		invalidateAll,
+		beforeNavigate
+	} from '$app/navigation';
 	import { createSupabaseBrowser } from '$lib/supabase';
 	import { navigationStore } from '$lib/stores/navigation.store';
 	import Navigation from '$lib/components/layout/Navigation.svelte';
@@ -651,6 +658,24 @@
 			resourcesLoaded = false;
 			visitorTrackingInitialized = false;
 		}
+	});
+
+	// ============================================================
+	// VIEW TRANSITIONS API - Smooth page transitions
+	// ============================================================
+
+	// Enable View Transitions API for smooth page animations
+	// This enables morphing animations between pages (e.g., project title from list to detail)
+	onNavigate((navigation) => {
+		// Skip if View Transitions API is not supported
+		if (!document.startViewTransition) return;
+
+		return new Promise((resolve) => {
+			document.startViewTransition(async () => {
+				resolve();
+				await navigation.complete;
+			});
+		});
 	});
 
 	// PERFORMANCE: Memoize component props to prevent unnecessary re-renders - converted to $derived.by()

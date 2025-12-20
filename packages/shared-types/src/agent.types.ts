@@ -4,6 +4,7 @@
  */
 
 import type { ChatContextType, ChatSession, ChatToolCall } from './chat.types';
+import type { Json } from './database.types';
 
 // ============================================================================
 // Last Turn Context
@@ -75,7 +76,7 @@ export interface ParsedOperation {
   searchQuery?: string;
   conditions?: Record<string, any>; // For update operations
   enabled: boolean;
-  error?: string;
+  error?: string | null;
   reasoning?: string;
   result?: Record<string, any>;
 }
@@ -136,7 +137,7 @@ export interface ProjectDraft {
   // Lifecycle
   created_at: string;
   updated_at: string;
-  completed_at?: string;
+  completed_at?: string | null;
   finalized_project_id?: string;
 
   // Related draft tasks
@@ -608,20 +609,20 @@ export interface Agent {
 
   // Capabilities
   model_preference: string; // e.g., 'deepseek-chat' (planner), 'deepseek-coder' (executor)
-  available_tools: string[]; // Tool names this agent can use
+  available_tools: Json | null; // Tool names this agent can use
   permissions: AgentPermission; // 'read_only' (executor) or 'read_write' (planner)
 
   // Context
   system_prompt: string;
   created_for_session: string; // FK to chat_sessions
-  created_for_plan?: string; // FK to agent_plans (optional)
+  created_for_plan?: string | null; // FK to agent_plans (optional)
 
   // Status
   status: 'active' | 'completed' | 'failed';
 
   // Timestamps
   created_at: string;
-  completed_at?: string;
+  completed_at?: string | null;
 
   // Ownership
   user_id: string;
@@ -680,6 +681,7 @@ export interface AgentPlan {
  * Agent Plan Step
  */
 export interface AgentPlanStep {
+  [key: string]: Json | undefined;
   stepNumber: number;
   type: string; // 'search_project', 'schedule_tasks', etc.
   description: string;
@@ -699,20 +701,20 @@ export interface AgentChatSession {
 
   // Session context
   parent_session_id: string; // FK to chat_sessions (user's session)
-  plan_id?: string; // FK to agent_plans
-  step_number?: number; // Which plan step this is for
+  plan_id?: string | null; // FK to agent_plans
+  step_number?: number | null; // Which plan step this is for
 
   // Participants
   planner_agent_id: string; // FK to agents
-  executor_agent_id?: string; // FK to agents (NULL if planner-only)
+  executor_agent_id?: string | null; // FK to agents (NULL if planner-only)
 
   // Session type
   session_type: 'planner_thinking' | 'planner_executor';
 
   // Context
   initial_context: any; // Initial prompt, tools, constraints
-  context_type?: string; // project, task, calendar, global
-  entity_id?: string; // Project/task ID
+  context_type?: string | null; // project, task, calendar, global
+  entity_id?: string | null; // Project/task ID
 
   // Status
   status: 'active' | 'completed' | 'failed';
@@ -720,7 +722,7 @@ export interface AgentChatSession {
 
   // Timestamps
   created_at: string;
-  completed_at?: string;
+  completed_at?: string | null;
 
   // Ownership
   user_id: string;
@@ -737,17 +739,17 @@ export interface AgentChatMessage {
 
   // Sender
   sender_type: 'planner' | 'executor' | 'system';
-  sender_agent_id?: string; // FK to agents (NULL for system messages)
+  sender_agent_id?: string | null; // FK to agents (NULL for system messages)
 
   // Message content
   role: 'system' | 'user' | 'assistant' | 'tool';
   content: string;
   tool_calls?: any; // Tool calls made in this message
-  tool_call_id?: string; // For tool response messages
+  tool_call_id?: string | null; // For tool response messages
 
   // Metadata
-  tokens_used: number;
-  model_used?: string; // Which LLM model was used
+  tokens_used: number | null;
+  model_used?: string | null; // Which LLM model was used
 
   // Timestamps
   created_at: string;
@@ -781,17 +783,17 @@ export interface AgentExecution {
   error?: string;
 
   // Metrics
-  tokens_used: number;
-  duration_ms: number;
-  tool_calls_made: number;
-  message_count: number; // Messages in the agent session
+  tokens_used: number | null;
+  duration_ms: number | null;
+  tool_calls_made: number | null;
+  message_count: number | null; // Messages in the agent session
 
   // Status
   status: 'pending' | 'executing' | 'completed' | 'failed';
 
   // Timestamps
   created_at: string;
-  completed_at?: string;
+  completed_at?: string | null;
 
   // Ownership
   user_id: string;
@@ -917,20 +919,20 @@ export type MultiAgentStreamEvent =
 export interface AgentInsert extends Omit<Agent, 'id' | 'created_at' | 'completed_at'> {
   id?: string;
   created_at?: string;
-  completed_at?: string;
+  completed_at?: string | null;
 }
 
 export interface AgentPlanInsert extends Omit<AgentPlan, 'id' | 'created_at' | 'completed_at' | 'updated_at'> {
   id?: string;
   created_at?: string;
-  completed_at?: string;
+  completed_at?: string | null;
   updated_at?: string;
 }
 
 export interface AgentChatSessionInsert extends Omit<AgentChatSession, 'id' | 'created_at' | 'completed_at' | 'message_count'> {
   id?: string;
   created_at?: string;
-  completed_at?: string;
+  completed_at?: string | null;
   message_count?: number;
 }
 
@@ -942,5 +944,5 @@ export interface AgentChatMessageInsert extends Omit<AgentChatMessage, 'id' | 'c
 export interface AgentExecutionInsert extends Omit<AgentExecution, 'id' | 'created_at' | 'completed_at'> {
   id?: string;
   created_at?: string;
-  completed_at?: string;
+  completed_at?: string | null;
 }

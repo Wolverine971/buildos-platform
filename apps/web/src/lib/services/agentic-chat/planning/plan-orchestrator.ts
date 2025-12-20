@@ -127,6 +127,10 @@ export class PlanOrchestrator implements BaseService {
 		private persistenceService: PersistenceService
 	) {}
 
+	async initialize(): Promise<void> {}
+
+	async cleanup(): Promise<void> {}
+
 	/**
 	 * Create an execution plan
 	 */
@@ -284,7 +288,9 @@ export class PlanOrchestrator implements BaseService {
 	}
 
 	/**
-	 * Execute a plan
+	 * Execute a plan using proper topological ordering
+	 * Steps are executed in dependency-respecting groups to ensure all
+	 * dependencies are satisfied before a step runs
 	 */
 	async *executePlan(
 		plan: AgentPlan,
@@ -302,91 +308,126 @@ export class PlanOrchestrator implements BaseService {
 		plan.status = 'executing';
 		await this.updatePlanStatus(plan.id, 'executing');
 
-		// Track completed steps
+		// Track completed and failed steps
 		const completedSteps = new Set<number>();
+		const failedSteps = new Set<number>();
 		const stepResults = new Map<number, any>();
 
+		// Get execution groups (topologically sorted by dependencies)
+		const executionGroups = this.getParallelExecutionGroups(plan);
+
+		if (executionGroups.length === 0 && plan.steps.length > 0) {
+			// Circular dependency detected
+			const errorEvent: StreamEvent = {
+				type: 'error',
+				error: 'Plan has circular dependencies and cannot be executed'
+			};
+			yield errorEvent;
+			await callback(errorEvent);
+			plan.status = 'failed';
+			await this.updatePlanStatus(plan.id, 'failed');
+			return;
+		}
+
+		console.log('[PlanOrchestrator] Execution groups:', executionGroups);
+
 		try {
-			// Execute steps
-			for (const step of plan.steps) {
-				// Check dependencies
-				if (!this.canExecuteStep(step, completedSteps)) {
-					console.log('[PlanOrchestrator] Skipping step due to unmet dependencies', {
-						step: step.stepNumber,
-						dependencies: step.dependsOn
-					});
-					continue;
-				}
-
-				// Emit step start event
-				const startEvent: StreamEvent = {
-					type: 'step_start',
-					step
-				};
-				yield startEvent;
-				await callback(startEvent);
-
-				try {
-					// Execute step
-					const { result, events: internalEvents } = await this.executeStep(
-						step,
-						plan,
-						plannerContext,
-						context,
-						stepResults
-					);
-
-					for (const internalEvent of internalEvents) {
-						yield internalEvent;
-						await callback(internalEvent);
+			// Execute each group in order
+			for (const group of executionGroups) {
+				// Execute all steps in this group (they have no inter-dependencies)
+				for (const stepNumber of group) {
+					const step = plan.steps.find((s) => s.stepNumber === stepNumber);
+					if (!step) {
+						console.warn('[PlanOrchestrator] Step not found:', stepNumber);
+						continue;
 					}
 
-					// Update step status
-					step.status = 'completed';
-					step.result = result;
-					stepResults.set(step.stepNumber, result);
-					completedSteps.add(step.stepNumber);
+					// Check if any dependency failed - skip this step if so
+					const hasDependencyFailure = step.dependsOn?.some((dep) => failedSteps.has(dep));
+					if (hasDependencyFailure) {
+						console.log('[PlanOrchestrator] Skipping step due to failed dependency', {
+							step: step.stepNumber,
+							dependencies: step.dependsOn,
+							failedSteps: Array.from(failedSteps)
+						});
+						step.status = 'skipped';
+						step.error = 'Skipped due to failed dependency';
+						await this.persistenceService.updatePlanStep(plan.id, step.stepNumber, step);
+						continue;
+					}
 
-					// Emit step complete event
-					const completeEvent: StreamEvent = {
-						type: 'step_complete',
+					// Emit step start event
+					const startEvent: StreamEvent = {
+						type: 'step_start',
 						step
 					};
-					yield completeEvent;
-					await callback(completeEvent);
+					yield startEvent;
+					await callback(startEvent);
 
-					// Update plan in database
-					await this.persistenceService.updatePlanStep(plan.id, step.stepNumber, step);
-				} catch (error) {
-					// Handle step failure
-					step.status = 'failed';
-					step.error = error instanceof Error ? error.message : String(error);
-
-					// Emit step complete with error
-					const errorEvent: StreamEvent = {
-						type: 'step_complete',
-						step
-					};
-					yield errorEvent;
-					await callback(errorEvent);
-
-					// Update plan in database
-					await this.persistenceService.updatePlanStep(plan.id, step.stepNumber, step);
-
-					// Check if we should continue
-					if (this.shouldStopOnFailure(step, plan)) {
-						throw new PlanExecutionError(
-							`Critical step ${step.stepNumber} failed: ${step.error}`,
-							{ plan, step, error }
+					try {
+						// Execute step
+						const { result, events: internalEvents } = await this.executeStep(
+							step,
+							plan,
+							plannerContext,
+							context,
+							stepResults
 						);
+
+						for (const internalEvent of internalEvents) {
+							yield internalEvent;
+							await callback(internalEvent);
+						}
+
+						// Update step status
+						step.status = 'completed';
+						step.result = result;
+						stepResults.set(step.stepNumber, result);
+						completedSteps.add(step.stepNumber);
+
+						// Emit step complete event
+						const completeEvent: StreamEvent = {
+							type: 'step_complete',
+							step
+						};
+						yield completeEvent;
+						await callback(completeEvent);
+
+						// Update plan in database
+						await this.persistenceService.updatePlanStep(plan.id, step.stepNumber, step);
+					} catch (error) {
+						// Handle step failure
+						step.status = 'failed';
+						step.error = error instanceof Error ? error.message : String(error);
+						failedSteps.add(step.stepNumber);
+
+						// Emit step complete with error
+						const errorEvent: StreamEvent = {
+							type: 'step_complete',
+							step
+						};
+						yield errorEvent;
+						await callback(errorEvent);
+
+						// Update plan in database
+						await this.persistenceService.updatePlanStep(plan.id, step.stepNumber, step);
+
+						// Check if we should stop the entire plan
+						if (this.shouldStopOnFailure(step, plan)) {
+							throw new PlanExecutionError(
+								`Critical step ${step.stepNumber} failed: ${step.error}`,
+								{ plan, step, error }
+							);
+						}
 					}
 				}
 			}
 
-			// Mark plan as completed
-			plan.status = 'completed';
+			// Mark plan as completed (even if some non-critical steps failed)
+			const hasAnyFailures = failedSteps.size > 0;
+			plan.status = hasAnyFailures ? 'completed_with_errors' : 'completed';
 			plan.completedAt = new Date();
-			await this.updatePlanStatus(plan.id, 'completed', plan.completedAt);
+			await this.updatePlanStatus(plan.id, plan.status, plan.completedAt);
 
 			// Emit done event
 			const doneEvent: StreamEvent = {

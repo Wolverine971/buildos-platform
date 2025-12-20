@@ -88,6 +88,10 @@ interface LLMRequestConfig {
 export class ResponseSynthesizer implements BaseService {
 	constructor(private llmService: LLMService) {}
 
+	async initialize(): Promise<void> {}
+
+	async cleanup(): Promise<void> {}
+
 	/**
 	 * Synthesize a simple response from tool results
 	 */

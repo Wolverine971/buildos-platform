@@ -187,3 +187,36 @@
 		scrollbar-gutter: stable;
 	}
 }
+
+/* ============================================================
+   VIEW TRANSITIONS API - Page navigation animations
+   ============================================================ */
+
+/* Smooth cross-fade for page content (default) */
+::view-transition-old(root),
+::view-transition-new(root) {
+	animation-duration: 150ms;
+	animation-timing-function: ease-out;
+}
+
+/* Project title morph animation between list and detail pages */
+::view-transition-old(project-title),
+::view-transition-new(project-title) {
+	animation-duration: 200ms;
+	animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Prevent view-transition on skeleton elements to avoid flickering */
+.skeleton-no-transition {
+	view-transition-name: none !important;
+}
+
+/* Respect reduced motion preferences for view transitions */
+@media (prefers-reduced-motion: reduce) {
+	::view-transition-old(root),
+	::view-transition-new(root),
+	::view-transition-old(project-title),
+	::view-transition-new(project-title) {
+		animation-duration: 0.01ms !important;
+	}
+}

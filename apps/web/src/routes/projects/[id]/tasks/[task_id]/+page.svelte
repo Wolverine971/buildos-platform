@@ -1039,17 +1039,25 @@
 									{/if}
 								</div>
 								<div class="flex items-center gap-1">
-									<button
-										type="button"
+									<span
+										role="button"
+										tabindex="0"
 										onclick={(e) => {
 											e.stopPropagation();
 											openDocumentModal(null);
 										}}
-										class="p-1 rounded hover:bg-muted transition-colors"
+										onkeydown={(e) => {
+											if (e.key === 'Enter' || e.key === ' ') {
+												e.preventDefault();
+												e.stopPropagation();
+												openDocumentModal(null);
+											}
+										}}
+										class="p-1 rounded hover:bg-muted transition-colors cursor-pointer"
 										title="Add document"
 									>
 										<Plus class="w-3.5 h-3.5 text-muted-foreground" />
-									</button>
+									</span>
 									<ChevronDown
 										class="w-4 h-4 text-muted-foreground transition-transform {expandedPanels.connectedDocs
 											? 'rotate-180'

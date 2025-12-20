@@ -21,6 +21,10 @@
 	import { getProjectStateBadgeClass } from '$lib/utils/ontology-badge-styles';
 	import { ListChecks, Layers, Target, Calendar, FileText } from 'lucide-svelte';
 	import ProjectCardNextStep from '$lib/components/project/ProjectCardNextStep.svelte';
+	import {
+		setNavigationData,
+		type ProjectNavigationData
+	} from '$lib/stores/project-navigation.store';
 
 	let { data } = $props();
 
@@ -49,6 +53,30 @@
 		// Refresh the page to show new project if created
 		// Using invalidateAll would be better but for simplicity we reload
 		window.location.reload();
+	}
+
+	/**
+	 * Set navigation data before navigating to project detail.
+	 * This enables instant skeleton rendering with accurate counts.
+	 */
+	function handleProjectClick(project: OntologyProjectSummary) {
+		setNavigationData({
+			id: project.id,
+			name: project.name,
+			description: project.description,
+			state_key: project.state_key,
+			next_step_short: project.next_step_short,
+			next_step_long: project.next_step_long,
+			next_step_source: project.next_step_source,
+			next_step_updated_at: project.next_step_updated_at,
+			task_count: project.task_count,
+			output_count: project.output_count,
+			document_count: project.document_count,
+			goal_count: project.goal_count,
+			plan_count: project.plan_count,
+			milestone_count: 0, // Not available in summary, default to 0
+			risk_count: 0 // Not available in summary, default to 0
+		});
 	}
 
 	// Check if user is admin - only admins see filters, graph, and mobile nav
@@ -701,12 +729,14 @@
 				{#each filteredProjects as project (project.id)}
 					<a
 						href="/projects/{project.id}"
+						onclick={() => handleProjectClick(project)}
 						class="group relative flex h-full flex-col rounded-lg border border-border bg-card p-4 shadow-ink transition-all duration-200 hover:border-accent hover:shadow-ink-strong pressable"
 					>
 						<div class="mb-4 flex items-start justify-between gap-3">
 							<div class="min-w-0">
 								<h3
 									class="truncate text-lg font-bold text-foreground transition-colors group-hover:text-accent"
+									style="view-transition-name: project-title-{project.id}"
 								>
 									{project.name}
 								</h3>
@@ -722,7 +752,9 @@
 
 						{#if project.description}
 							<p class="mb-4 line-clamp-2 text-sm text-muted-foreground">
-								{project.description}
+								{project.description.length > 120
+									? project.description.slice(0, 120) + '…'
+									: project.description}
 							</p>
 						{/if}
 

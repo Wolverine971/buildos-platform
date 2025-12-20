@@ -116,7 +116,7 @@ export interface PlanStep {
 	executorRequired: boolean;
 	tools: string[];
 	dependsOn?: number[];
-	status: 'pending' | 'executing' | 'completed' | 'failed';
+	status: 'pending' | 'executing' | 'completed' | 'failed' | 'skipped';
 	result?: any;
 	error?: string;
 	metadata?: Record<string, any>;
@@ -135,7 +135,7 @@ export interface AgentPlan {
 	userMessage: string;
 	strategy: ChatStrategy;
 	steps: PlanStep[];
-	status: 'pending' | 'pending_review' | 'executing' | 'completed' | 'failed';
+	status: 'pending' | 'pending_review' | 'executing' | 'completed' | 'completed_with_errors' | 'failed';
 	createdAt: Date;
 	completedAt?: Date;
 	metadata?: {
@@ -395,22 +395,27 @@ export interface StreamingService extends BaseService {
  */
 export interface PersistenceOperations {
 	// Agent operations
-	createAgent(data: Omit<AgentInsert, 'id'>): Promise<string>;
+	// Note: id is optional in insert types - if provided, it will be used; otherwise generated
+	createAgent(data: AgentInsert): Promise<string>;
 	updateAgent(id: string, data: Partial<AgentInsert>): Promise<void>;
 	getAgent(id: string): Promise<AgentInsert | null>;
 
 	// Plan operations
-	createPlan(data: Omit<AgentPlanInsert, 'id'>): Promise<string>;
+	// Note: id is optional - if provided, it will be used; otherwise generated
+	createPlan(data: AgentPlanInsert): Promise<string>;
 	updatePlan(id: string, data: Partial<AgentPlanInsert>): Promise<void>;
 	getPlan(id: string): Promise<AgentPlanInsert | null>;
+	updatePlanStep(planId: string, stepNumber: number, stepUpdate: Record<string, any>): Promise<void>;
 
 	// Session operations
-	createChatSession(data: Omit<AgentChatSessionInsert, 'id'>): Promise<string>;
+	// Note: id is optional - if provided, it will be used; otherwise generated
+	createChatSession(data: AgentChatSessionInsert): Promise<string>;
 	updateChatSession(id: string, data: Partial<AgentChatSessionInsert>): Promise<void>;
 	getChatSession(id: string): Promise<AgentChatSessionInsert | null>;
 
 	// Message operations
-	saveMessage(data: Omit<AgentChatMessageInsert, 'id'>): Promise<string>;
+	// Note: id is optional - if provided, it will be used; otherwise generated
+	saveMessage(data: AgentChatMessageInsert): Promise<string>;
 	getMessages(sessionId: string, limit?: number): Promise<AgentChatMessageInsert[]>;
 }
 
