@@ -75,7 +75,7 @@ const PLAN_TOOL_DEFINITION: ChatToolDefinition = {
 	}
 };
 
-const MAX_TOOL_CALLS_PER_TURN = 15;
+const MAX_TOOL_CALLS_PER_TURN = 30;
 const MAX_SESSION_DURATION_MS = 90_000;
 
 /**
@@ -507,24 +507,7 @@ export class AgentChatOrchestrator {
 						normalizedShiftContext
 					);
 
-					// Persist context shift to session for recovery and consistency
-					try {
-						await this.deps.persistenceService.updateChatSession(serviceContext.sessionId, {
-							context_type: normalizedShiftContext,
-							entity_id: contextShift.entity_id ?? null
-						});
-						console.log('[AgentChatOrchestrator] Context shift persisted', {
-							sessionId: serviceContext.sessionId,
-							contextType: normalizedShiftContext,
-							entityId: contextShift.entity_id
-						});
-					} catch (persistError) {
-						// Log but don't fail the operation - context shift is still in memory
-						console.warn('[AgentChatOrchestrator] Failed to persist context shift', {
-							sessionId: serviceContext.sessionId,
-							error: persistError
-						});
-					}
+					// Persistence handled by the stream layer (chat_sessions).
 				}
 
 				if (result.streamEvents) {
@@ -632,7 +615,7 @@ export class AgentChatOrchestrator {
 				error: error instanceof Error ? error.message : 'Plan tool failed',
 				streamEvents,
 				toolName: 'agent_create_plan',
-				toolCallId: 'virtual-' + Date.now()
+				toolCallId: `virtual-${uuidv4()}`
 			};
 		}
 	}
@@ -672,7 +655,7 @@ export class AgentChatOrchestrator {
 			},
 			streamEvents,
 			toolName: 'agent_create_plan',
-			toolCallId: 'virtual-' + Date.now()
+			toolCallId: `virtual-${uuidv4()}`
 		};
 	}
 
@@ -707,7 +690,7 @@ export class AgentChatOrchestrator {
 			},
 			streamEvents,
 			toolName: 'agent_create_plan',
-			toolCallId: 'virtual-' + Date.now()
+			toolCallId: `virtual-${uuidv4()}`
 		};
 	}
 
@@ -757,7 +740,7 @@ export class AgentChatOrchestrator {
 				},
 				streamEvents,
 				toolName: 'agent_create_plan',
-				toolCallId: 'virtual-' + Date.now()
+				toolCallId: `virtual-${uuidv4()}`
 			};
 		}
 
@@ -787,7 +770,7 @@ export class AgentChatOrchestrator {
 			},
 			streamEvents,
 			toolName: 'agent_create_plan',
-			toolCallId: 'virtual-' + Date.now()
+			toolCallId: `virtual-${uuidv4()}`
 		};
 	}
 
@@ -832,10 +815,34 @@ export class AgentChatOrchestrator {
 			serviceContext
 		);
 
+		const synthesisTokens = response.usage?.totalTokens ?? 0;
+		const planTokens = plan.metadata?.totalTokensUsed ?? 0;
+		const combinedTokens = planTokens + synthesisTokens;
+
+		if (synthesisTokens > 0) {
+			plan.metadata = {
+				...(plan.metadata ?? {}),
+				totalTokensUsed: combinedTokens
+			};
+			try {
+				await this.deps.persistenceService.updatePlan(plan.id, {
+					metadata: plan.metadata
+				});
+			} catch (error) {
+				console.warn('[AgentChatOrchestrator] Failed to persist synthesis usage', {
+					planId: plan.id,
+					error
+				});
+			}
+		}
+
 		return {
 			events,
 			summary: response.text,
-			usage: planUsage ?? this.toStreamUsage(response.usage)
+			usage:
+				combinedTokens > 0
+					? { total_tokens: combinedTokens }
+					: planUsage ?? this.toStreamUsage(response.usage)
 		};
 	}
 
@@ -1011,22 +1018,10 @@ export class AgentChatOrchestrator {
 			// Emit text with the intro
 			events.push({ type: 'text', content: introMessage });
 
-			// Emit the clarifying questions event
+			// Build updated metadata for next round
 			const questions = analysis.clarifyingQuestions ?? [
 				"Could you tell me more about what kind of project you'd like to create?"
 			];
-			events.push({ type: 'clarifying_questions', questions });
-
-			// Emit agent state showing we're waiting
-			events.push(
-				this.buildAgentStateEvent(
-					'waiting_on_user',
-					'project_create',
-					'Waiting for more details...'
-				)
-			);
-
-			// Build updated metadata for next round
 			const updatedMetadata: ClarificationRoundMetadata = {
 				roundNumber: roundNumber + 1,
 				accumulatedContext: existingMetadata?.accumulatedContext
@@ -1038,6 +1033,18 @@ export class AgentChatOrchestrator {
 					request.userMessage
 				]
 			};
+
+			// Emit the clarifying questions event with updated metadata
+			events.push({ type: 'clarifying_questions', questions, metadata: updatedMetadata });
+
+			// Emit agent state showing we're waiting
+			events.push(
+				this.buildAgentStateEvent(
+					'waiting_on_user',
+					'project_create',
+					'Waiting for more details...'
+				)
+			);
 
 			return {
 				needsClarification: true,

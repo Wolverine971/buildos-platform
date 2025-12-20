@@ -25,6 +25,9 @@ import type {
 	Database,
 	AgentInsert,
 	AgentPlanInsert,
+	AgentPlanStep,
+	AgentPlanMetadata,
+	PlanningStrategy,
 	AgentChatSessionInsert,
 	AgentChatMessageInsert
 } from '@buildos/shared-types';
@@ -266,60 +269,98 @@ export class AgentPersistenceService implements PersistenceOperations {
 
 	/**
 	 * Update a specific step within a plan
+	 * Uses optimistic update with retry on conflict to handle race conditions
 	 */
 	async updatePlanStep(
 		planId: string,
 		stepNumber: number,
-		stepUpdate: Record<string, any>
+		stepUpdate: Record<string, any>,
+		maxRetries: number = 3
 	): Promise<void> {
-		try {
-			// First, get the current plan to access its steps
-			const plan = await this.getPlan(planId);
-			if (!plan) {
-				throw new PersistenceError(`Plan ${planId} not found`, 'updatePlanStep', {
-					planId,
-					stepNumber
-				});
-			}
+		let lastError: Error | null = null;
 
-			// Parse steps (could be JSON)
-			const steps = Array.isArray(plan.steps) ? plan.steps : JSON.parse(plan.steps as string);
+		for (let attempt = 1; attempt <= maxRetries; attempt++) {
+			try {
+				// First, get the current plan to access its steps
+				const plan = await this.getPlan(planId);
+				if (!plan) {
+					throw new PersistenceError(`Plan ${planId} not found`, 'updatePlanStep', {
+						planId,
+						stepNumber
+					});
+				}
 
-			// Find and update the specific step
-			const stepIndex = steps.findIndex((s: any) => s.stepNumber === stepNumber);
-			if (stepIndex === -1) {
-				throw new PersistenceError(
-					`Step ${stepNumber} not found in plan`,
-					'updatePlanStep',
-					{ planId, stepNumber, steps }
+				// Parse steps (could be JSON)
+				const steps = Array.isArray(plan.steps)
+					? plan.steps
+					: JSON.parse(plan.steps as string);
+
+				// Find and update the specific step
+				const stepIndex = steps.findIndex((s: any) => s.stepNumber === stepNumber);
+				if (stepIndex === -1) {
+					throw new PersistenceError(
+						`Step ${stepNumber} not found in plan`,
+						'updatePlanStep',
+						{
+							planId,
+							stepNumber,
+							steps
+						}
+					);
+				}
+
+				// Filter out undefined values to prevent overwriting with undefined
+				const filteredUpdate = Object.fromEntries(
+					Object.entries(stepUpdate).filter(([_, v]) => v !== undefined)
 				);
+
+				// Update the step
+				steps[stepIndex] = {
+					...steps[stepIndex],
+					...filteredUpdate
+				};
+
+				// Save back to database with updated_at for conflict detection
+				await this.updatePlan(planId, {
+					steps,
+					updated_at: new Date().toISOString()
+				});
+
+				console.log(
+					'[AgentPersistence] Updated plan step:',
+					planId,
+					stepNumber,
+					stepUpdate.status
+				);
+				return; // Success - exit the retry loop
+			} catch (error) {
+				lastError = error instanceof Error ? error : new Error(String(error));
+
+				// Don't retry on definitive errors (not found, etc.)
+				if (error instanceof PersistenceError) {
+					throw error;
+				}
+
+				// Log retry attempt
+				if (attempt < maxRetries) {
+					console.warn(
+						`[AgentPersistence] updatePlanStep attempt ${attempt} failed, retrying...`,
+						{ planId, stepNumber, error: lastError.message }
+					);
+					// Exponential backoff: 100ms, 200ms, 400ms...
+					await new Promise((resolve) =>
+						setTimeout(resolve, 100 * Math.pow(2, attempt - 1))
+					);
+				}
 			}
-
-			// Update the step
-			steps[stepIndex] = {
-				...steps[stepIndex],
-				...stepUpdate
-			};
-
-			// Save back to database
-			await this.updatePlan(planId, { steps });
-
-			console.log(
-				'[AgentPersistence] Updated plan step:',
-				planId,
-				stepNumber,
-				stepUpdate.status
-			);
-		} catch (error) {
-			if (error instanceof PersistenceError) {
-				throw error;
-			}
-			throw new PersistenceError(
-				`Failed to update plan step: ${error instanceof Error ? error.message : 'Unknown error'}`,
-				'updatePlanStep',
-				{ error, planId, stepNumber }
-			);
 		}
+
+		// All retries exhausted
+		throw new PersistenceError(
+			`Failed to update plan step after ${maxRetries} attempts: ${lastError?.message || 'Unknown error'}`,
+			'updatePlanStep',
+			{ planId, stepNumber, lastError }
+		);
 	}
 
 	/**
@@ -343,7 +384,15 @@ export class AgentPersistenceService implements PersistenceOperations {
 				});
 			}
 
-			return data;
+			// Transform database row to AgentPlanInsert type
+			// The database stores Json types for steps/metadata but AgentPlanInsert expects typed versions
+			return {
+				...data,
+				steps: (data.steps as AgentPlanStep[]) ?? [],
+				metadata: data.metadata as AgentPlanMetadata | null,
+				strategy: data.strategy as PlanningStrategy,
+				status: data.status as AgentPlanInsert['status']
+			};
 		} catch (error) {
 			if (error instanceof PersistenceError) {
 				throw error;

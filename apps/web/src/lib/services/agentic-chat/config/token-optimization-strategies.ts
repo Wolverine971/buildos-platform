@@ -116,7 +116,7 @@ export class TokenOptimizer {
 				toolSequence.push(msg);
 			} else {
 				// End of tool sequence
-				if (toolSequence.length > 3) {
+				if (toolSequence.length > 3 && toolSequence[0]) {
 					// Summarize long tool sequences
 					summarized.push({
 						...toolSequence[0],
@@ -191,7 +191,7 @@ export class TokenOptimizer {
 		for (const msg of messages) {
 			// Detect topic changes
 			if (this.isTopicChange(msg, currentTopic)) {
-				if (currentTopic.length > 2) {
+				if (currentTopic.length > 2 && currentTopic[0]) {
 					// Summarize previous topic
 					compressed.push({
 						...currentTopic[0],
@@ -240,17 +240,22 @@ export class TokenOptimizer {
 
 		// Add from end (most recent first)
 		for (let i = messages.length - 1; i >= 0; i--) {
-			const msgTokens = this.estimateTokens([messages[i]]);
+			const msg = messages[i];
+			if (!msg) continue;
+			const msgTokens = this.estimateTokens([msg]);
 			if (currentTokens + msgTokens <= maxTokenBudget) {
-				result.unshift(messages[i]);
+				result.unshift(msg);
 				currentTokens += msgTokens;
 			} else {
 				// Add truncation notice
-				result.unshift({
-					...messages[0],
-					role: 'system',
-					content: `[Earlier context truncated to fit token budget]`
-				});
+				const firstMsg = messages[0];
+				if (firstMsg) {
+					result.unshift({
+						...firstMsg,
+						role: 'system',
+						content: `[Earlier context truncated to fit token budget]`
+					});
+				}
 				break;
 			}
 		}
@@ -297,7 +302,12 @@ export class TokenOptimizer {
 	 */
 	private static getToolSummary(toolMessages: ChatMessage[]): string {
 		const toolNames = toolMessages
-			.map((m) => m.tool_calls?.[0]?.function?.name)
+			.map((m) => {
+				const toolCalls = m.tool_calls;
+				if (!Array.isArray(toolCalls) || toolCalls.length === 0) return null;
+				const firstCall = toolCalls[0] as { function?: { name?: string } } | undefined;
+				return firstCall?.function?.name;
+			})
 			.filter(Boolean)
 			.join(', ');
 

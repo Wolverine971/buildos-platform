@@ -475,7 +475,7 @@ export class StreamHandler {
 	 * Handle clarifying questions event.
 	 */
 	private async handleClarifyingQuestions(
-		event: { questions?: string[] },
+		event: { questions?: string[]; metadata?: ProjectClarificationMetadata },
 		state: StreamState,
 		sessionMetadata: AgentSessionMetadata,
 		contextType: ChatContextType,
@@ -489,6 +489,16 @@ export class StreamHandler {
 
 		// Update metadata for project_create context
 		if (contextType === 'project_create') {
+			if (event.metadata) {
+				sessionMetadata.projectClarification = event.metadata;
+				state.hasPendingMetadataUpdate = true;
+				logger.debug('Clarification metadata updated from event', {
+					roundNumber: event.metadata.roundNumber,
+					sessionId
+				});
+				return;
+			}
+
 			const currentMeta = sessionMetadata.projectClarification ?? {
 				roundNumber: 0,
 				accumulatedContext: '',

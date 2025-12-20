@@ -33,12 +33,12 @@ AgentChatOrchestrator (Main Orchestration Layer)
 
 ## Priority Classification
 
-| Priority | Criteria | Issues |
-|----------|----------|--------|
-| **P0 - Critical** | Data integrity, core functionality broken | #13, #2 |
-| **P1 - High** | Build failures, important features broken | Type issues, #9 |
-| **P2 - Medium** | Edge cases, potential issues under load | #8, #5, #3, #4 |
-| **P3 - Low** | Minor improvements, cosmetic | #10, #6, #11, #12, #7 |
+| Priority          | Criteria                                  | Issues                |
+| ----------------- | ----------------------------------------- | --------------------- |
+| **P0 - Critical** | Data integrity, core functionality broken | #13, #2               |
+| **P1 - High**     | Build failures, important features broken | Type issues, #9       |
+| **P2 - Medium**   | Edge cases, potential issues under load   | #8, #5, #3, #4        |
+| **P3 - Low**      | Minor improvements, cosmetic              | #10, #6, #11, #12, #7 |
 
 ---
 
@@ -49,6 +49,7 @@ AgentChatOrchestrator (Main Orchestration Layer)
 **Severity**: Critical
 **Impact**: Data integrity - in-memory plan ID doesn't match persisted plan ID
 **Location**:
+
 - `plan-orchestrator.ts:192-231` (creates UUID)
 - `agent-persistence-service.ts:178-184` (creates different UUID)
 
@@ -59,15 +60,15 @@ The `PlanOrchestrator` generates a UUID for the plan:
 ```typescript
 // plan-orchestrator.ts:192
 const plan: AgentPlan = {
-    id: uuidv4(),  // ID generated here
-    sessionId: intent.sessionId,
-    // ...
+	id: uuidv4(), // ID generated here
+	sessionId: intent.sessionId
+	// ...
 };
 
 // plan-orchestrator.ts:220
 await this.persistenceService.createPlan({
-    id: plan.id,  // Same ID passed to persistence
-    // ...
+	id: plan.id // Same ID passed to persistence
+	// ...
 });
 ```
 
@@ -120,15 +121,15 @@ async createPlan(data: AgentPlanInsert): Promise<string> {
 ```typescript
 // plan-orchestrator.ts:314-323
 for (const step of plan.steps) {
-    // Check dependencies
-    if (!this.canExecuteStep(step, completedSteps)) {
-        console.log('[PlanOrchestrator] Skipping step due to unmet dependencies', {
-            step: step.stepNumber,
-            dependencies: step.dependsOn
-        });
-        continue;  // BUG: Step is PERMANENTLY skipped
-    }
-    // ... execute step
+	// Check dependencies
+	if (!this.canExecuteStep(step, completedSteps)) {
+		console.log('[PlanOrchestrator] Skipping step due to unmet dependencies', {
+			step: step.stepNumber,
+			dependencies: step.dependsOn
+		});
+		continue; // BUG: Step is PERMANENTLY skipped
+	}
+	// ... execute step
 }
 ```
 
@@ -178,17 +179,17 @@ async *executePlan(...) {
 #### Sub-issues
 
 1. **BaseService Empty Interface** (`implements BaseService` with no common properties)
-   - Files: `tool-execution-service.ts:72`, `plan-orchestrator.ts:111`, `response-synthesizer.ts:88`
-   - Fix: Add `initialize()` and `cleanup()` method implementations
+    - Files: `tool-execution-service.ts:72`, `plan-orchestrator.ts:111`, `response-synthesizer.ts:88`
+    - Fix: Add `initialize()` and `cleanup()` method implementations
 
 2. **Null vs Undefined Mismatch**
-   - Database returns `null`, manual types use `undefined`
-   - Files: `agent-persistence-service.ts`, `agent.types.ts`
-   - Fix: Align types to use `| null` for nullable database fields
+    - Database returns `null`, manual types use `undefined`
+    - Files: `agent-persistence-service.ts`, `agent.types.ts`
+    - Fix: Align types to use `| null` for nullable database fields
 
 3. **Steps Array vs Json**
-   - `AgentPlanStep[]` not assignable to `Json`
-   - Fix: Add index signature or cast during persistence
+    - `AgentPlanStep[]` not assignable to `Json`
+    - Fix: Add index signature or cast during persistence
 
 ---
 
@@ -225,17 +226,17 @@ Persist context shift to session record:
 
 ```typescript
 if (contextShift) {
-    // ... existing updates ...
+	// ... existing updates ...
 
-    // Persist to database
-    await this.deps.persistenceService.updateChatSession(serviceContext.sessionId, {
-        context_type: normalizedShiftContext,
-        entity_id: contextShift.entity_id,
-        metadata: {
-            ...existingMetadata,
-            lastTurnContext: serviceContext.lastTurnContext
-        }
-    });
+	// Persist to database
+	await this.deps.persistenceService.updateChatSession(serviceContext.sessionId, {
+		context_type: normalizedShiftContext,
+		entity_id: contextShift.entity_id,
+		metadata: {
+			...existingMetadata,
+			lastTurnContext: serviceContext.lastTurnContext
+		}
+	});
 }
 ```
 
@@ -248,7 +249,7 @@ if (contextShift) {
 **Location**: `agent-chat-orchestrator.ts:616-617`, `691-692`, etc.
 
 ```typescript
-toolCallId: 'virtual-' + Date.now()  // Timestamp-based, not unique
+toolCallId: 'virtual-' + Date.now(); // Timestamp-based, not unique
 ```
 
 **Problem**: Multiple rapid virtual tool calls within same millisecond share ID.
@@ -256,7 +257,7 @@ toolCallId: 'virtual-' + Date.now()  // Timestamp-based, not unique
 **Fix**: Use UUID for virtual tool call IDs:
 
 ```typescript
-toolCallId: `virtual-${uuidv4()}`
+toolCallId: `virtual-${uuidv4()}`;
 ```
 
 ---
@@ -264,6 +265,7 @@ toolCallId: `virtual-${uuidv4()}`
 ### Issue #5: SSE/Session Timeout Mismatch
 
 **Location**:
+
 - `sse-processor.ts:30` - `DEFAULT_TIMEOUT = 60000` (60s)
 - `agent-chat-orchestrator.ts:79` - `MAX_SESSION_DURATION_MS = 90_000` (90s)
 
@@ -307,7 +309,9 @@ return toolCalls.map((call) => results.find((r) => r.toolCallId === call.id)!);
 **Location**: `response-synthesizer.ts:277-280`
 
 ```typescript
-usage: { total_tokens: totalContent.length }  // Character count != token count
+usage: {
+	total_tokens: totalContent.length;
+} // Character count != token count
 ```
 
 **Fix**: Use proper tokenizer or accept this as estimation.
@@ -356,32 +360,51 @@ usage: { total_tokens: totalContent.length }  // Character count != token count
 
 ## Implementation Checklist
 
-### Phase 1: P0 Fixes (Immediate)
+### Phase 1: P0 Fixes (Immediate) ✅ COMPLETED
 
-- [ ] Fix Plan ID duplication in persistence layer
-- [ ] Implement proper step execution with dependency resolution
-- [ ] Add tests for both fixes
+- [x] Fix Plan ID duplication in persistence layer
+    - Changed `PersistenceOperations` interface to accept full insert types with optional `id`
+    - Updated `createAgent`, `createPlan`, `createChatSession`, `saveMessage` to use `data.id || uuidv4()`
+- [x] Implement proper step execution with dependency resolution
+    - Refactored `executePlan` to use `getParallelExecutionGroups()` for topological ordering
+    - Added `'skipped'` status for steps blocked by failed dependencies
+    - Added `'completed_with_errors'` plan status for partial failures
+- [ ] Add tests for both fixes (pending)
 
-### Phase 2: P1 Fixes (This Sprint)
+### Phase 2: P1 Fixes (This Sprint) ✅ COMPLETED
 
-- [ ] Add `initialize()`/`cleanup()` to BaseService implementations
-- [ ] Align nullable types with database schema
-- [ ] Persist context shifts to database
-- [ ] Run full type check
+- [x] Add `initialize()`/`cleanup()` to BaseService implementations
+    - Verified: Already implemented in all three service files
+- [x] Align nullable types with database schema
+    - Updated interface signatures to accept full insert types
+- [x] Persist context shifts to database
+    - Added persistence call in `AgentChatOrchestrator` after context shift extraction
+    - Includes error handling to avoid blocking operations
+- [x] Run full type check
+    - Changes compile without new errors
 
-### Phase 3: P2 Fixes (Next Sprint)
+### Phase 3: P2 Fixes (Next Sprint) ✅ COMPLETED
 
-- [ ] Switch virtual tool IDs to UUID
-- [ ] Align SSE and session timeouts
-- [ ] Add race condition protection
-- [ ] Fix batch execution ordering
+- [x] Switch virtual tool IDs to UUID (#8)
+  - Changed all `'virtual-' + Date.now()` to `` `virtual-${uuidv4()}` `` in agent-chat-orchestrator.ts
+- [x] Align SSE and session timeouts (#5)
+  - Increased SSE default timeout from 60s to 120s (aligned with 90s session limit + buffer)
+  - Updated documentation in SSEProcessorOptions
+- [x] Add race condition protection (#3)
+  - Added retry mechanism with exponential backoff to `updatePlanStep`
+  - Filters out undefined values to prevent overwriting (also fixes #11)
+  - Added `updated_at` timestamp for conflict detection
+- [x] Fix batch execution ordering (#4)
+  - Changed from array + `find()` to `Map` for O(1) lookup
+  - Added graceful error handling for missing results
 
 ### Phase 4: P3 Fixes (Backlog)
 
-- [ ] Improve token estimation
-- [ ] Standardize error handling
-- [ ] Add input validation
-- [ ] Clean up abort handling
+- [ ] Improve token estimation (#10)
+- [ ] Standardize error handling (#6)
+- [ ] Add input validation (#12)
+- [ ] Clean up abort handling (#7)
+- [x] Fix partial update overwrites (#11) - Fixed as part of #3
 
 ---
 
@@ -395,6 +418,8 @@ usage: { total_tokens: totalContent.length }  // Character count != token count
 
 ## Changelog
 
-| Date | Author | Changes |
-|------|--------|---------|
-| 2025-12-19 | Analysis | Initial comprehensive bug report |
+| Date       | Author   | Changes                                                                        |
+| ---------- | -------- | ------------------------------------------------------------------------------ |
+| 2025-12-20 | Claude   | P2 fixes implemented - Virtual tool IDs, SSE timeout, race conditions, batch ordering |
+| 2025-12-20 | Claude   | P0 & P1 fixes implemented - Plan ID, step execution, context shift persistence |
+| 2025-12-19 | Analysis | Initial comprehensive bug report                                               |

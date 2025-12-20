@@ -135,7 +135,13 @@ export interface AgentPlan {
 	userMessage: string;
 	strategy: ChatStrategy;
 	steps: PlanStep[];
-	status: 'pending' | 'pending_review' | 'executing' | 'completed' | 'completed_with_errors' | 'failed';
+	status:
+		| 'pending'
+		| 'pending_review'
+		| 'executing'
+		| 'completed'
+		| 'completed_with_errors'
+		| 'failed';
 	createdAt: Date;
 	completedAt?: Date;
 	metadata?: {
@@ -147,6 +153,9 @@ export interface AgentPlan {
 		requestedOutputs?: string[];
 		priorityEntities?: string[];
 		draftSavedAt?: string;
+		review_status?: 'pending_review' | 'changes_requested' | 'approved' | 'rejected';
+		completion_status?: 'completed_with_errors';
+		has_errors?: boolean;
 	};
 }
 
@@ -312,7 +321,11 @@ export type StreamEvent =
 			contextType: ChatContextType;
 			details?: string;
 	  }
-	| { type: 'clarifying_questions'; questions: string[] }
+	| {
+			type: 'clarifying_questions';
+			questions: string[];
+			metadata?: ProjectClarificationMetadata;
+	  }
 	| { type: 'plan_created'; plan: AgentPlan }
 	| {
 			type: 'plan_ready_for_review';
@@ -405,7 +418,11 @@ export interface PersistenceOperations {
 	createPlan(data: AgentPlanInsert): Promise<string>;
 	updatePlan(id: string, data: Partial<AgentPlanInsert>): Promise<void>;
 	getPlan(id: string): Promise<AgentPlanInsert | null>;
-	updatePlanStep(planId: string, stepNumber: number, stepUpdate: Record<string, any>): Promise<void>;
+	updatePlanStep(
+		planId: string,
+		stepNumber: number,
+		stepUpdate: Record<string, any>
+	): Promise<void>;
 
 	// Session operations
 	// Note: id is optional - if provided, it will be used; otherwise generated

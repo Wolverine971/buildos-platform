@@ -164,13 +164,36 @@ describe('ExecutorCoordinator', () => {
 
 		expect(mockPersistence.updateAgent).toHaveBeenCalledWith(
 			'executor_123',
-			expect.objectContaining({ status: 'error' })
+			expect.objectContaining({ status: 'failed' })
 		);
 	});
 
 	it('throws when requesting unknown executor', async () => {
 		await expect(coordinator.waitForExecutor('missing')).rejects.toThrow(
 			'Executor missing not found'
+		);
+	});
+
+	it('elevates permissions when a step includes write tools', async () => {
+		step.tools = ['create_onto_task'];
+		plannerContext.availableTools = [
+			{ name: 'create_onto_task', description: 'Create ontology task', parameters: {} }
+		];
+
+		mockExecutorService.executeTask.mockResolvedValueOnce({
+			executorId: 'executor_123',
+			success: true,
+			data: {},
+			error: undefined,
+			durationMs: 0,
+			tokensUsed: 0,
+			toolCallsMade: 0
+		});
+
+		await coordinator.spawnExecutor(buildSpawnParams(), baseContext);
+
+		expect(mockPersistence.createAgent).toHaveBeenCalledWith(
+			expect.objectContaining({ permissions: 'read_write' })
 		);
 	});
 

@@ -36,7 +36,7 @@ import type {
 } from '../shared/types';
 import { PlanExecutionError } from '../shared/types';
 import { ChatStrategy } from '$lib/types/agent-chat-enhancement';
-import type { ChatToolCall, ChatContextType } from '@buildos/shared-types';
+import type { ChatToolCall, ChatContextType, AgentPlanMetadata } from '@buildos/shared-types';
 import { v4 as uuidv4, validate as uuidValidate } from 'uuid';
 import { formatToolSummaries } from '$lib/services/agentic-chat/tools/core/tools.config';
 
@@ -217,6 +217,10 @@ export class PlanOrchestrator implements BaseService {
 				);
 			}
 
+			if (intent.contextType === 'project_create') {
+				this.enforceProjectCreationPlan(plan, plannerContext);
+			}
+
 			await this.persistenceService.createPlan({
 				id: plan.id,
 				session_id: plan.sessionId,
@@ -230,10 +234,6 @@ export class PlanOrchestrator implements BaseService {
 				created_at: plan.createdAt.toISOString()
 			});
 
-			if (intent.contextType === 'project_create') {
-				this.enforceProjectCreationPlan(plan, plannerContext);
-			}
-
 			return plan;
 		} catch (error) {
 			console.error('[PlanOrchestrator] Failed to create plan:', error);
@@ -245,14 +245,16 @@ export class PlanOrchestrator implements BaseService {
 	}
 
 	async persistDraft(plan: AgentPlan): Promise<void> {
-		const metadata = {
+		const metadata: AgentPlanMetadata = {
 			...(plan.metadata ?? {}),
-			draftSavedAt: new Date().toISOString()
+			draftSavedAt: new Date().toISOString(),
+			review_status: 'pending_review'
 		};
 		plan.status = 'pending_review';
 		plan.metadata = metadata;
+		const { status: persistedStatus } = this.mapPlanStatusForPersistence(plan.status);
 		await this.persistenceService.updatePlan(plan.id, {
-			status: plan.status,
+			status: persistedStatus,
 			metadata
 		});
 	}
@@ -306,7 +308,11 @@ export class PlanOrchestrator implements BaseService {
 
 		// Update plan status
 		plan.status = 'executing';
-		await this.updatePlanStatus(plan.id, 'executing');
+		await this.updatePlanStatus(plan.id, 'executing', undefined, plan.metadata);
+		plan.metadata = {
+			...(plan.metadata ?? {}),
+			totalTokensUsed: plan.metadata?.totalTokensUsed ?? 0
+		};
 
 		// Track completed and failed steps
 		const completedSteps = new Set<number>();
@@ -325,7 +331,7 @@ export class PlanOrchestrator implements BaseService {
 			yield errorEvent;
 			await callback(errorEvent);
 			plan.status = 'failed';
-			await this.updatePlanStatus(plan.id, 'failed');
+			await this.updatePlanStatus(plan.id, 'failed', undefined, plan.metadata);
 			return;
 		}
 
@@ -334,7 +340,8 @@ export class PlanOrchestrator implements BaseService {
 		try {
 			// Execute each group in order
 			for (const group of executionGroups) {
-				// Execute all steps in this group (they have no inter-dependencies)
+				const runnableSteps: PlanStep[] = [];
+
 				for (const stepNumber of group) {
 					const step = plan.steps.find((s) => s.stepNumber === stepNumber);
 					if (!step) {
@@ -343,7 +350,9 @@ export class PlanOrchestrator implements BaseService {
 					}
 
 					// Check if any dependency failed - skip this step if so
-					const hasDependencyFailure = step.dependsOn?.some((dep) => failedSteps.has(dep));
+					const hasDependencyFailure = step.dependsOn?.some((dep) =>
+						failedSteps.has(dep)
+					);
 					if (hasDependencyFailure) {
 						console.log('[PlanOrchestrator] Skipping step due to failed dependency', {
 							step: step.stepNumber,
@@ -352,11 +361,19 @@ export class PlanOrchestrator implements BaseService {
 						});
 						step.status = 'skipped';
 						step.error = 'Skipped due to failed dependency';
-						await this.persistenceService.updatePlanStep(plan.id, step.stepNumber, step);
+						await this.persistenceService.updatePlanStep(
+							plan.id,
+							step.stepNumber,
+							step
+						);
 						continue;
 					}
 
-					// Emit step start event
+					step.status = 'executing';
+					await this.persistenceService.updatePlanStep(plan.id, step.stepNumber, {
+						status: step.status
+					});
+
 					const startEvent: StreamEvent = {
 						type: 'step_start',
 						step
@@ -364,70 +381,84 @@ export class PlanOrchestrator implements BaseService {
 					yield startEvent;
 					await callback(startEvent);
 
-					try {
-						// Execute step
-						const { result, events: internalEvents } = await this.executeStep(
-							step,
-							plan,
-							plannerContext,
-							context,
-							stepResults
-						);
+					runnableSteps.push(step);
+				}
 
-						for (const internalEvent of internalEvents) {
-							yield internalEvent;
-							await callback(internalEvent);
+				const stepOutcomes = await Promise.all(
+					runnableSteps.map(async (step) => {
+						const emittedEvents: StreamEvent[] = [];
+						let outcomeError: unknown;
+						let fatalFailure = false;
+
+						try {
+							const { result, events: internalEvents } = await this.executeStep(
+								step,
+								plan,
+								plannerContext,
+								context,
+								stepResults
+							);
+
+							this.accumulateTokensFromEvents(plan, internalEvents);
+							emittedEvents.push(...internalEvents);
+
+							step.status = 'completed';
+							step.result = result;
+							stepResults.set(step.stepNumber, result);
+							completedSteps.add(step.stepNumber);
+						} catch (error) {
+							step.status = 'failed';
+							step.error = error instanceof Error ? error.message : String(error);
+							failedSteps.add(step.stepNumber);
+							outcomeError = error;
+							fatalFailure = this.shouldStopOnFailure(step, plan);
 						}
 
-						// Update step status
-						step.status = 'completed';
-						step.result = result;
-						stepResults.set(step.stepNumber, result);
-						completedSteps.add(step.stepNumber);
-
-						// Emit step complete event
 						const completeEvent: StreamEvent = {
 							type: 'step_complete',
 							step
 						};
-						yield completeEvent;
-						await callback(completeEvent);
+						emittedEvents.push(completeEvent);
 
-						// Update plan in database
-						await this.persistenceService.updatePlanStep(plan.id, step.stepNumber, step);
-					} catch (error) {
-						// Handle step failure
-						step.status = 'failed';
-						step.error = error instanceof Error ? error.message : String(error);
-						failedSteps.add(step.stepNumber);
-
-						// Emit step complete with error
-						const errorEvent: StreamEvent = {
-							type: 'step_complete',
-							step
-						};
-						yield errorEvent;
-						await callback(errorEvent);
-
-						// Update plan in database
 						await this.persistenceService.updatePlanStep(plan.id, step.stepNumber, step);
 
-						// Check if we should stop the entire plan
-						if (this.shouldStopOnFailure(step, plan)) {
-							throw new PlanExecutionError(
-								`Critical step ${step.stepNumber} failed: ${step.error}`,
-								{ plan, step, error }
-							);
-						}
+						return { events: emittedEvents, error: outcomeError, fatalFailure };
+					})
+				);
+
+				let fatalError: { error?: unknown } | undefined;
+				for (const outcome of stepOutcomes) {
+					for (const event of outcome.events) {
+						yield event;
+						await callback(event);
 					}
+					if (outcome.fatalFailure && !fatalError) {
+						fatalError = { error: outcome.error };
+					}
+				}
+
+				if (fatalError) {
+					throw new PlanExecutionError('Critical plan step failed', {
+						plan,
+						error: fatalError.error
+					});
 				}
 			}
 
 			// Mark plan as completed (even if some non-critical steps failed)
 			const hasAnyFailures = failedSteps.size > 0;
-			plan.status = hasAnyFailures ? 'completed_with_errors' : 'completed';
+			if (hasAnyFailures) {
+				plan.status = 'completed_with_errors';
+				plan.metadata = {
+					...(plan.metadata ?? {}),
+					has_errors: true,
+					completion_status: 'completed_with_errors'
+				};
+			} else {
+				plan.status = 'completed';
+			}
 			plan.completedAt = new Date();
-			await this.updatePlanStatus(plan.id, plan.status, plan.completedAt);
+			await this.updatePlanStatus(plan.id, plan.status, plan.completedAt, plan.metadata);
 
 			// Emit done event
 			const doneEvent: StreamEvent = {
@@ -441,7 +472,7 @@ export class PlanOrchestrator implements BaseService {
 		} catch (error) {
 			// Mark plan as failed
 			plan.status = 'failed';
-			await this.updatePlanStatus(plan.id, 'failed');
+			await this.updatePlanStatus(plan.id, 'failed', undefined, plan.metadata);
 
 			// Emit error event
 			const errorEvent: StreamEvent = {
@@ -1330,15 +1361,77 @@ Return JSON: {"verdict":"approved|changes_requested|rejected","notes":"short exp
 	/**
 	 * Update plan status in database
 	 */
+	private mapPlanStatusForPersistence(status: AgentPlan['status']): {
+		status: 'pending' | 'executing' | 'completed' | 'failed';
+		metadataPatch?: Record<string, any>;
+	} {
+		switch (status) {
+			case 'pending_review':
+				return {
+					status: 'pending',
+					metadataPatch: { review_status: 'pending_review' }
+				};
+			case 'completed_with_errors':
+				return {
+					status: 'completed',
+					metadataPatch: { has_errors: true, completion_status: 'completed_with_errors' }
+				};
+			default:
+				return { status: status as 'pending' | 'executing' | 'completed' | 'failed' };
+		}
+	}
+
 	private async updatePlanStatus(
 		planId: string,
-		status: string,
-		completedAt?: Date
+		status: AgentPlan['status'],
+		completedAt?: Date,
+		metadata?: AgentPlan['metadata']
 	): Promise<void> {
-		await this.persistenceService.updatePlan(planId, {
-			status,
+		const { status: persistedStatus, metadataPatch } = this.mapPlanStatusForPersistence(status);
+		const mergedMetadata = metadataPatch ? { ...(metadata ?? {}), ...metadataPatch } : metadata;
+
+		const updateData: Record<string, any> = {
+			status: persistedStatus,
 			completed_at: completedAt?.toISOString()
-		});
+		};
+		if (mergedMetadata) {
+			updateData.metadata = mergedMetadata;
+		}
+
+		await this.persistenceService.updatePlan(planId, updateData);
+	}
+
+	private accumulateTokensFromEvents(plan: AgentPlan, events: StreamEvent[]): void {
+		if (!events.length) {
+			return;
+		}
+
+		let totalTokens = plan.metadata?.totalTokensUsed ?? 0;
+		let delta = 0;
+
+		for (const event of events) {
+			if (event.type === 'tool_result') {
+				const tokensUsed = event.result.tokensUsed;
+				if (typeof tokensUsed === 'number') {
+					delta += tokensUsed;
+				}
+			}
+
+			if (event.type === 'executor_result') {
+				const tokensUsed = event.result.metadata?.tokensUsed;
+				if (typeof tokensUsed === 'number') {
+					delta += tokensUsed;
+				}
+			}
+		}
+
+		if (delta > 0) {
+			totalTokens += delta;
+			plan.metadata = {
+				...(plan.metadata ?? {}),
+				totalTokensUsed: totalTokens
+			};
+		}
 	}
 
 	private inferFieldInfoEntityType(context: ServiceContext): string {

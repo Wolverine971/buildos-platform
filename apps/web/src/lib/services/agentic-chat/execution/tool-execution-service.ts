@@ -556,6 +556,7 @@ export class ToolExecutionService implements BaseService {
 
 	/**
 	 * Batch execute tools with concurrency control
+	 * Returns results in the same order as the input toolCalls
 	 */
 	async batchExecuteTools(
 		toolCalls: ChatToolCall[],
@@ -564,7 +565,8 @@ export class ToolExecutionService implements BaseService {
 		maxConcurrency = 3,
 		options: ToolExecutionOptions = {}
 	): Promise<ToolExecutionResult[]> {
-		const results: ToolExecutionResult[] = [];
+		// Use Map for O(1) lookup and guaranteed order preservation
+		const resultsMap = new Map<string, ToolExecutionResult>();
 		const executing = new Set<Promise<ToolExecutionResult>>();
 
 		for (const toolCall of toolCalls) {
@@ -577,7 +579,7 @@ export class ToolExecutionService implements BaseService {
 			const promise = this.executeTool(toolCall, context, availableTools, options).then(
 				(result) => {
 					executing.delete(promise);
-					results.push(result);
+					resultsMap.set(result.toolCallId, result);
 					return result;
 				}
 			);
@@ -588,8 +590,21 @@ export class ToolExecutionService implements BaseService {
 		// Wait for remaining executions
 		await Promise.all(executing);
 
-		// Return results in original order
-		return toolCalls.map((call) => results.find((r) => r.toolCallId === call.id)!);
+		// Return results in original order with proper error handling
+		return toolCalls.map((call) => {
+			const result = resultsMap.get(call.id);
+			if (!result) {
+				// This should never happen, but handle gracefully
+				console.error('[ToolExecutionService] Missing result for tool call:', call.id);
+				return {
+					success: false,
+					error: `No result found for tool call ${call.id}`,
+					toolName: call.function?.name || 'unknown',
+					toolCallId: call.id
+				};
+			}
+			return result;
+		});
 	}
 
 	/**

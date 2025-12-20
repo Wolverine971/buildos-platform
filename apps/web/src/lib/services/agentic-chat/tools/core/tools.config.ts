@@ -157,7 +157,9 @@ const CONTEXT_TO_TOOL_GROUPS: Record<PlannerContextType, ToolContextScope[]> = {
 	project_audit: ['base', 'project', 'project_audit'],
 	project_forecast: ['base', 'project', 'project_forecast'],
 	task_update: ['base', 'project'],
-	daily_brief_update: ['base']
+	daily_brief_update: ['base'],
+	brain_dump: ['base', 'global'],
+	ontology: ['base', 'project']
 };
 
 const DEFAULT_GROUPS: ToolContextScope[] = ['base', 'global'];

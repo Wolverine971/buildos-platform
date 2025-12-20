@@ -19,14 +19,14 @@ import type {
 	ServiceContext
 } from '../shared/types';
 import { PlanExecutionError } from '../shared/types';
-import type { ChatToolDefinition } from '@buildos/shared-types';
-import { getToolsForAgent } from '@buildos/shared-types';
+import type { AgentPermission, ChatToolDefinition } from '@buildos/shared-types';
 import type {
 	AgentExecutorService,
 	ExecuteTaskParams,
 	ExecutorResult as AgentExecutorRunResult
 } from '../../agent-executor-service';
 import type { ExecutorTask } from '../../agent-context-service';
+import { TOOL_METADATA } from '../tools/core/definitions';
 
 /**
  * Configuration options for the executor coordinator
@@ -69,14 +69,12 @@ export class ExecutorCoordinator {
 	 * Spawn a new executor agent for the provided plan step
 	 */
 	async spawnExecutor(params: ExecutorSpawnParams, context: ServiceContext): Promise<string> {
-		const resolvedReadWriteTools = this.resolveTools(
+		const resolvedTools = this.resolveTools(
 			params.step.tools,
 			params.plannerContext.availableTools
 		);
-		const tools =
-			resolvedReadWriteTools.length > 0
-				? getToolsForAgent(resolvedReadWriteTools, 'read_write')
-				: [];
+		const permissions = this.resolveExecutorPermissions(params.step.tools, resolvedTools);
+		const tools = this.filterToolsForPermission(resolvedTools, permissions);
 
 		if (tools.length === 0) {
 			console.warn(
@@ -97,6 +95,7 @@ export class ExecutorCoordinator {
 			params,
 			context,
 			tools,
+			permissions,
 			executorSystemPrompt
 		);
 
@@ -169,6 +168,7 @@ export class ExecutorCoordinator {
 		params: ExecutorSpawnParams,
 		context: ServiceContext,
 		tools: ChatToolDefinition[],
+		permissions: AgentPermission,
 		systemPrompt: string
 	): Promise<string> {
 		const executorName = `Executor-${params.plan.id.slice(0, 8)}-S${params.step.stepNumber}`;
@@ -178,7 +178,7 @@ export class ExecutorCoordinator {
 			name: executorName,
 			model_preference: this.options.defaultExecutorModel ?? DEFAULT_EXECUTOR_MODEL,
 			available_tools: tools.map((tool) => this.getToolName(tool)),
-			permissions: 'read_write' as const,
+			permissions,
 			system_prompt: systemPrompt,
 			created_for_session: context.sessionId,
 			created_for_plan: params.plan.id,
@@ -253,7 +253,7 @@ export class ExecutorCoordinator {
 	): Promise<ExecutorResult> {
 		try {
 			const result = await this.executorService.executeTask(params);
-			await this.updateExecutorStatus(params.executorId, result, true);
+			await this.updateExecutorStatus(params.executorId, result);
 
 			return this.mapExecutorResult(params, result);
 		} catch (error) {
@@ -267,7 +267,7 @@ export class ExecutorCoordinator {
 				toolCallsMade: 0
 			};
 
-			await this.updateExecutorStatus(params.executorId, failure, false);
+			await this.updateExecutorStatus(params.executorId, failure);
 
 			return this.mapExecutorResult(params, failure);
 		}
@@ -278,13 +278,12 @@ export class ExecutorCoordinator {
 	 */
 	private async updateExecutorStatus(
 		executorId: string,
-		result: AgentExecutorRunResult,
-		hasFinalStatus: boolean
+		result: AgentExecutorRunResult
 	): Promise<void> {
 		try {
 			await this.persistenceService.updateAgent(executorId, {
 				status: result.success ? 'completed' : 'failed',
-				completed_at: hasFinalStatus ? new Date().toISOString() : undefined
+				completed_at: new Date().toISOString()
 			});
 		} catch (error) {
 			console.warn('[ExecutorCoordinator] Failed to update executor status', {
@@ -323,6 +322,34 @@ export class ExecutorCoordinator {
 			return (tool as any).function.name;
 		}
 		return (tool as any).name;
+	}
+
+	private resolveExecutorPermissions(
+		toolNames: string[],
+		tools: ChatToolDefinition[]
+	): AgentPermission {
+		const hasWriteToolName = toolNames.some((toolName) => this.isWriteToolName(toolName));
+		if (hasWriteToolName) {
+			return 'read_write';
+		}
+
+		const hasWriteTool = tools.some((tool) => this.isWriteToolName(this.getToolName(tool)));
+		return hasWriteTool ? 'read_write' : 'read_only';
+	}
+
+	private filterToolsForPermission(
+		tools: ChatToolDefinition[],
+		permissions: AgentPermission
+	): ChatToolDefinition[] {
+		if (permissions === 'read_write') {
+			return tools;
+		}
+
+		return tools.filter((tool) => !this.isWriteToolName(this.getToolName(tool)));
+	}
+
+	private isWriteToolName(toolName: string): boolean {
+		return TOOL_METADATA[toolName]?.category === 'write';
 	}
 
 	/**

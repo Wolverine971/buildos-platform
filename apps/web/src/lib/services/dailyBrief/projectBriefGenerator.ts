@@ -77,6 +77,7 @@ export class ProjectBriefGenerator {
 
 		for (let i = 0; i < projects.length; i++) {
 			const project = projects[i];
+			if (!project) continue;
 
 			try {
 				const brief = await this.generateSingleBrief(
@@ -158,7 +159,7 @@ export class ProjectBriefGenerator {
 
 	private analyzeContextSize(
 		projects: ProjectWithRelations[],
-		userContext: UserContext
+		userContext: UserContext | null
 	): { totalEstimatedTokens: number; requiresCondensed: boolean } {
 		let totalChars = 0;
 

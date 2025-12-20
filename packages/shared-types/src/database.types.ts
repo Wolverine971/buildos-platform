@@ -8914,6 +8914,10 @@ export type Database = {
         Args: { p_project_id: string; p_user_id?: string }
         Returns: Json
       }
+      get_project_skeleton: {
+        Args: { p_actor_id: string; p_project_id: string }
+        Returns: Json
+      }
       get_project_statistics: {
         Args: { p_project_id: string; p_user_id: string }
         Returns: Json

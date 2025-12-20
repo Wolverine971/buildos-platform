@@ -148,7 +148,7 @@ const DEFAULT_SYSTEM_HEALTH = {
 	failedJobs24h: 0,
 	agentFailureRate: 0,
 	errorCount24h: 0,
-	lastUpdated: null as string | null
+	lastUpdated: new Date().toISOString()
 };
 
 const DEFAULT_SUBSCRIPTION_OVERVIEW = {
@@ -1071,7 +1071,8 @@ export async function getSystemHealth(client: TypedSupabaseClient) {
 	const llmLatencyMs: Record<string, number> = {};
 	(llmMetrics.data || []).forEach((metric) => {
 		const provider = metric.metric_name.replace('llm_call_duration_', '');
-		if (!llmLatencyMs[provider] || new Date(metric.recorded_at).getTime() > 0) {
+		const recordedAt = metric.recorded_at;
+		if (!llmLatencyMs[provider] || (recordedAt && new Date(recordedAt).getTime() > 0)) {
 			llmLatencyMs[provider] = coerceNumber(metric.metric_value, 0);
 		}
 	});

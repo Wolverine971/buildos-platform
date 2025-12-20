@@ -734,7 +734,11 @@ export class CalendarService {
 
 			const recurrence = [];
 			if ((task.task_type === 'recurring' || overridePattern) && recurrencePattern) {
-				const rrule = this.convertToRRule(recurrencePattern, recurrenceEnds, start_time);
+				const rrule = this.convertToRRule(
+					recurrencePattern,
+					recurrenceEnds ?? undefined,
+					start_time
+				);
 				if (rrule) recurrence.push(rrule);
 			}
 
@@ -2010,10 +2014,10 @@ export class CalendarService {
 					legacy_task_calendar_event_id: args.legacyTaskCalendarEventId ?? null,
 					google_calendar_event_id: args.googleEvent.id,
 					google_calendar_id: args.calendarId,
-					organizer: args.organizerMetadata,
-					attendees: args.attendees,
+					organizer: args.organizerMetadata as unknown as Record<string, unknown>,
+					attendees: args.attendees as unknown as Record<string, unknown>[],
 					recurrence_rule: args.recurrence[0] ?? null
-				},
+				} as unknown as Record<string, unknown>,
 				createdBy: args.task.user_id
 			});
 		} catch (error) {

@@ -20,12 +20,11 @@
 	/>
 -->
 <script lang="ts">
-	import type { Component } from 'svelte';
-	import { ChevronDown } from 'lucide-svelte';
+	import { ChevronDown, Target } from 'lucide-svelte';
 
 	interface Props {
 		/** Icon component to display */
-		icon: Component;
+		icon: typeof Target;
 		/** Panel label (e.g., "Tasks", "Goals") */
 		label: string;
 		/** Number of items loading */
@@ -61,7 +60,7 @@
 	>
 		<div class="flex items-start gap-3">
 			<div class="w-9 h-9 rounded-lg bg-muted flex items-center justify-center">
-				<svelte:component this={Icon} class="w-4 h-4 text-foreground" />
+				<Icon class="w-4 h-4 text-foreground" />
 			</div>
 			<div class="min-w-0">
 				<p class="text-sm font-semibold text-foreground">

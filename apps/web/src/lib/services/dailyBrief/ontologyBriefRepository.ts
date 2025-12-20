@@ -101,7 +101,7 @@ export class OntologyBriefRepository {
 			throw error;
 		}
 
-		return data as OntologyDailyBrief;
+		return data as unknown as OntologyDailyBrief;
 	}
 
 	/**
@@ -123,7 +123,7 @@ export class OntologyBriefRepository {
 			throw error;
 		}
 
-		return data as OntologyDailyBrief;
+		return data as unknown as OntologyDailyBrief;
 	}
 
 	/**
@@ -160,7 +160,7 @@ export class OntologyBriefRepository {
 
 		if (error) throw error;
 
-		return (data || []) as OntologyDailyBrief[];
+		return (data || []) as unknown as OntologyDailyBrief[];
 	}
 
 	/**
@@ -200,7 +200,7 @@ export class OntologyBriefRepository {
 			return {
 				canStart: false,
 				message: `Brief generation already in progress for ${activeGenerations.brief_date}`,
-				existingBrief: activeGenerations as OntologyDailyBrief
+				existingBrief: activeGenerations as unknown as OntologyDailyBrief
 			};
 		}
 
@@ -304,7 +304,7 @@ export class OntologyBriefRepository {
 				executive_summary: content.executiveSummary,
 				llm_analysis: content.llmAnalysis,
 				priority_actions: content.priorityActions,
-				metadata: content.metadata,
+				metadata: content.metadata as unknown as Record<string, unknown>,
 				generation_status: 'completed',
 				generation_completed_at: new Date().toISOString()
 			})
@@ -314,7 +314,7 @@ export class OntologyBriefRepository {
 
 		if (error) throw error;
 
-		return data as OntologyDailyBrief;
+		return data as unknown as OntologyDailyBrief;
 	}
 
 	/**
@@ -351,7 +351,7 @@ export class OntologyBriefRepository {
 					daily_brief_id: dailyBriefId,
 					project_id: projectId,
 					brief_content: content,
-					metadata
+					metadata: metadata as unknown as Record<string, unknown>
 				},
 				{
 					onConflict: 'daily_brief_id,project_id'
@@ -503,7 +503,7 @@ export class OntologyBriefRepository {
 			totalBriefs: briefs.length,
 			completedBriefs: briefs.filter((b) => b.generation_status === 'completed').length,
 			failedBriefs: briefs.filter((b) => b.generation_status === 'failed').length,
-			lastBriefDate: briefs.length > 0 ? briefs[0].brief_date : null
+			lastBriefDate: briefs.length > 0 ? (briefs[0]?.brief_date ?? null) : null
 		};
 	}
 
@@ -552,7 +552,7 @@ export class OntologyBriefRepository {
 			.from('onto_actors')
 			.select('id')
 			.eq('user_id', userId)
-			.eq('kind', 'user')
+			.eq('kind', 'human')
 			.single();
 
 		if (error) {

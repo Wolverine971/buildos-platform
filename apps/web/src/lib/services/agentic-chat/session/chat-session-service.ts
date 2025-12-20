@@ -290,7 +290,9 @@ export class ChatSessionService {
 			project_audit: 'Project Audit',
 			project_forecast: 'Project Forecast',
 			task_update: 'Task Update',
-			daily_brief_update: 'Daily Brief Settings'
+			daily_brief_update: 'Daily Brief Settings',
+			brain_dump: 'Brain Dump Assistant',
+			ontology: 'Ontology Assistant'
 		};
 
 		return titles[contextType] ?? 'Agent Session';

@@ -1,5 +1,6 @@
 // apps/web/src/routes/api/transcribe/+server.ts
 import { PRIVATE_OPENAI_API_KEY } from '$env/static/private';
+import { env } from '$env/dynamic/private';
 import OpenAI from 'openai';
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
@@ -8,7 +9,13 @@ const openai = new OpenAI({
 	apiKey: PRIVATE_OPENAI_API_KEY
 });
 
-// MIME type to file extension mapping for OpenAI Whisper compatibility
+// Transcription model configuration
+// gpt-4o-mini-transcribe: ~50% lower WER than whisper-1, 89% fewer hallucinations
+// gpt-4o-transcribe: State-of-the-art accuracy, best for accented/noisy speech
+// whisper-1: Legacy model (deprecated for new projects)
+const TRANSCRIPTION_MODEL = env.TRANSCRIPTION_MODEL || 'gpt-4o-mini-transcribe';
+
+// MIME type to file extension mapping for OpenAI Audio API compatibility
 const MIME_TO_EXTENSION: Record<string, string> = {
 	'audio/webm': 'webm',
 	'audio/ogg': 'ogg',
@@ -21,7 +28,7 @@ const MIME_TO_EXTENSION: Record<string, string> = {
 	'audio/aac': 'm4a'
 };
 
-// Get the correct file extension for OpenAI Whisper API
+// Get the correct file extension for OpenAI Audio API
 function getFileExtension(mimeType: string, filename?: string): string {
 	// Strip codec information from MIME type
 	const baseMimeType = mimeType?.split(';')[0]?.trim();
@@ -44,7 +51,7 @@ function getFileExtension(mimeType: string, filename?: string): string {
 	return 'webm';
 }
 
-// Validate if the format is supported by OpenAI Whisper
+// Validate if the format is supported by OpenAI Audio API
 function isSupportedFormat(extension: string): boolean {
 	const supportedFormats = [
 		'flac',
@@ -83,9 +90,9 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession }
 			return ApiResponse.badRequest('No audio data received');
 		}
 
-		// Log received file details
+		// Log received file details and model being used
 		console.log(
-			`[Transcribe] Received: ${audioFile.size} bytes, Type: ${audioFile.type}, Name: ${audioFile.name}`
+			`[Transcribe] Received: ${audioFile.size} bytes, Type: ${audioFile.type}, Name: ${audioFile.name}, Model: ${TRANSCRIPTION_MODEL}`
 		);
 
 		// Determine the correct file extension
@@ -108,11 +115,13 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession }
 
 		// console.log(`[Transcribe] Sending to OpenAI: ${filename} (${audioFile.size} bytes)`);
 
-		// Call OpenAI Whisper API with optimized parameters
+		// Call OpenAI transcription API with optimized parameters
+		// Using gpt-4o-mini-transcribe for better accuracy and fewer hallucinations
+		// Language auto-detection enabled for multilingual support
 		const transcription = await openai.audio.transcriptions.create({
-			model: 'whisper-1',
+			model: TRANSCRIPTION_MODEL,
 			file: whisperFile,
-			language: 'en', // Specify language for better accuracy and speed
+			// No language specified - enables automatic language detection
 			response_format: 'json',
 			temperature: 0.2 // Lower temperature for more consistent results
 		});

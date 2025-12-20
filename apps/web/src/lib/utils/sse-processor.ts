@@ -12,7 +12,7 @@ export interface StreamCallbacks {
 }
 
 export interface SSEProcessorOptions {
-	/** Timeout in milliseconds for the entire stream (default: 60000) */
+	/** Timeout in milliseconds for stream inactivity (default: 120000 - 2 minutes) */
 	timeout?: number;
 	/** Whether to parse JSON in data events (default: true) */
 	parseJSON?: boolean;
@@ -27,7 +27,8 @@ export interface SSEProcessorOptions {
  * Handles buffering, parsing, and event dispatching
  */
 export class SSEProcessor {
-	private static readonly DEFAULT_TIMEOUT = 60000; // 60 seconds
+	// Aligned with MAX_SESSION_DURATION_MS (90s) + buffer for network latency
+	private static readonly DEFAULT_TIMEOUT = 120000; // 2 minutes
 
 	/**
 	 * Process an SSE stream from a Response object

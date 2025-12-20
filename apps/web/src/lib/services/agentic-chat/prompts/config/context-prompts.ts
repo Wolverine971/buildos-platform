@@ -307,38 +307,39 @@ export function getFallbackMessage(contextType: string, entityId?: string): stri
 	const hasEntity = !!entityId;
 
 	// Handle special cases with entity ID variations
+	// Non-null assertions are safe: these keys are defined in FALLBACK_CONTEXT_MESSAGES
 	if (contextType === 'project') {
 		return hasEntity
-			? FALLBACK_CONTEXT_MESSAGES.project.replace('{{entityId}}', entityId!)
-			: FALLBACK_CONTEXT_MESSAGES.project_no_id;
+			? FALLBACK_CONTEXT_MESSAGES.project!.replace('{{entityId}}', entityId!)
+			: FALLBACK_CONTEXT_MESSAGES.project_no_id!;
 	}
 
 	if (contextType === 'task') {
 		return hasEntity
-			? FALLBACK_CONTEXT_MESSAGES.task.replace('{{entityId}}', entityId!)
-			: FALLBACK_CONTEXT_MESSAGES.task_no_id;
+			? FALLBACK_CONTEXT_MESSAGES.task!.replace('{{entityId}}', entityId!)
+			: FALLBACK_CONTEXT_MESSAGES.task_no_id!;
 	}
 
 	if (contextType === 'project_audit') {
 		return hasEntity
-			? FALLBACK_CONTEXT_MESSAGES.project_audit.replace('{{entityId}}', entityId!)
-			: FALLBACK_CONTEXT_MESSAGES.project_audit_no_id;
+			? FALLBACK_CONTEXT_MESSAGES.project_audit!.replace('{{entityId}}', entityId!)
+			: FALLBACK_CONTEXT_MESSAGES.project_audit_no_id!;
 	}
 
 	if (contextType === 'project_forecast') {
 		return hasEntity
-			? FALLBACK_CONTEXT_MESSAGES.project_forecast.replace('{{entityId}}', entityId!)
-			: FALLBACK_CONTEXT_MESSAGES.project_forecast_no_id;
+			? FALLBACK_CONTEXT_MESSAGES.project_forecast!.replace('{{entityId}}', entityId!)
+			: FALLBACK_CONTEXT_MESSAGES.project_forecast_no_id!;
 	}
 
 	if (contextType === 'task_update') {
 		return hasEntity
-			? FALLBACK_CONTEXT_MESSAGES.task_update.replace('{{entityId}}', entityId!)
-			: FALLBACK_CONTEXT_MESSAGES.task_update_no_id;
+			? FALLBACK_CONTEXT_MESSAGES.task_update!.replace('{{entityId}}', entityId!)
+			: FALLBACK_CONTEXT_MESSAGES.task_update_no_id!;
 	}
 
-	// Default fallback
-	return FALLBACK_CONTEXT_MESSAGES[contextType] || FALLBACK_CONTEXT_MESSAGES.global;
+	// Default fallback - use nullish coalescing with global as fallback
+	return FALLBACK_CONTEXT_MESSAGES[contextType] ?? FALLBACK_CONTEXT_MESSAGES.global!;
 }
 
 /**

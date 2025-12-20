@@ -1510,10 +1510,12 @@
 					activity.activityType === 'plan_created' &&
 					activity.metadata?.plan?.id === currentPlan?.id
 				) {
+					// Non-null assertion safe: we just verified metadata.plan.id exists above
+					const existingMetadata = activity.metadata!;
 					// Update the plan steps with new status
 					const updatedPlan = {
-						...activity.metadata.plan,
-						steps: activity.metadata.plan.steps.map((step: any) =>
+						...existingMetadata.plan,
+						steps: existingMetadata.plan.steps.map((step: any) =>
 							step.stepNumber === stepNumber ? { ...step, status } : step
 						)
 					};
@@ -1521,10 +1523,10 @@
 					return {
 						...activity,
 						metadata: {
-							...activity.metadata,
+							...existingMetadata,
 							plan: updatedPlan,
 							currentStep:
-								status === 'executing' ? stepNumber : activity.metadata.currentStep
+								status === 'executing' ? stepNumber : existingMetadata.currentStep
 						}
 					};
 				}
@@ -1554,16 +1556,16 @@
 			}
 
 			matchFound = true;
-			const activity = block.activities[activityIndex];
+			const activity = block.activities[activityIndex]!;
 			const toolName = activity.metadata?.toolName || 'unknown';
 			const args = activity.metadata?.arguments || '';
 			const newContent = formatToolMessage(toolName, args, status);
 
 			const updatedActivity: ActivityEntry = {
 				...activity,
-				id: activity.id || crypto.randomUUID(),
-				timestamp: activity.timestamp || new Date(),
-				activityType: activity.activityType || 'tool_call',
+				id: activity.id,
+				timestamp: activity.timestamp,
+				activityType: activity.activityType,
 				content: newContent,
 				status,
 				metadata: {
