@@ -1,5 +1,5 @@
 <!-- apps/web/src/lib/components/ui/TabNav.svelte -->
-<script lang="ts" context="module">
+<script lang="ts" module>
 	import type { ComponentType } from 'svelte';
 
 	export interface Tab {
@@ -12,21 +12,27 @@
 </script>
 
 <script lang="ts">
-	import { createEventDispatcher } from 'svelte';
+	interface Props {
+		tabs?: Tab[];
+		activeTab: string;
+		containerClass?: string;
+		navClass?: string;
+		ariaLabel?: string;
+		onchange?: (event: { detail: string }) => void;
+	}
 
-	export let tabs: Tab[] = [];
-	export let activeTab: string;
-	export let containerClass = '';
-	export let navClass = '';
-	export let ariaLabel = 'Tabs';
-
-	const dispatch = createEventDispatcher<{
-		change: string;
-	}>();
+	let {
+		tabs = [],
+		activeTab,
+		containerClass = '',
+		navClass = '',
+		ariaLabel = 'Tabs',
+		onchange
+	}: Props = $props();
 
 	function handleTabClick(tabId: string) {
 		if (tabId !== activeTab) {
-			dispatch('change', tabId);
+			onchange?.({ detail: tabId });
 		}
 	}
 </script>

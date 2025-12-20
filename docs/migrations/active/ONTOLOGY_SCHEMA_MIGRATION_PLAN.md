@@ -1,3 +1,4 @@
+<!-- docs/migrations/active/ONTOLOGY_SCHEMA_MIGRATION_PLAN.md -->
 # Ontology Schema Migration Plan
 
 > **Created:** 2024-12-20

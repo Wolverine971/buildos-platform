@@ -79,11 +79,11 @@
 			<!-- Status Legend -->
 			<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
 				<div class="flex items-center gap-2">
-					<CircleCheck class="w-5 h-5 text-emerald-600" />
+					<CircleCheck class="w-5 h-5 text-success" />
 					<span class="text-sm font-medium text-foreground">Live</span>
 				</div>
 				<div class="flex items-center gap-2">
-					<Wrench class="w-5 h-5 text-amber-600" />
+					<Wrench class="w-5 h-5 text-warning" />
 					<span class="text-sm font-medium text-foreground">In Progress</span>
 				</div>
 				<div class="flex items-center gap-2">
@@ -91,7 +91,7 @@
 					<span class="text-sm font-medium text-foreground">Planned</span>
 				</div>
 				<div class="flex items-center gap-2">
-					<Sparkles class="w-5 h-5 text-purple-500" />
+					<Sparkles class="w-5 h-5 text-info" />
 					<span class="text-sm font-medium text-foreground">Future Vision</span>
 				</div>
 			</div>
@@ -104,23 +104,23 @@
 			<!-- JULY 2025 - Current Features -->
 			<div class="mb-16">
 				<div class="flex items-center gap-3 mb-6">
-					<div class="w-3 h-3 bg-emerald-600 rounded-full"></div>
+					<div class="w-3 h-3 bg-success rounded-full"></div>
 					<h2 class="text-2xl font-bold text-foreground">
 						July 2025 - Live & Functional
 					</h2>
 					<span
-						class="px-3 py-1 bg-emerald-600/10 text-emerald-600 dark:text-emerald-400 border border-emerald-600/20 rounded-full text-sm font-medium"
+						class="px-3 py-1 bg-success/10 text-success border border-success/20 rounded-full text-sm font-medium"
 					>
 						Current State
 					</span>
 				</div>
 
-				<div class="border-l-2 border-emerald-600/30 pl-6 ml-1.5 space-y-4">
+				<div class="border-l-2 border-success/30 pl-6 ml-1.5 space-y-4">
 					<div
 						class="bg-card rounded-lg p-4 border border-border shadow-ink tx tx-grain tx-weak"
 					>
 						<h3 class="font-semibold mb-3 flex items-center gap-2 text-foreground">
-							<CircleCheck class="w-4 h-4 text-emerald-600" />
+							<CircleCheck class="w-4 h-4 text-success" />
 							Core Brain Dump & Project System
 						</h3>
 						<ul class="space-y-2 text-sm text-muted-foreground">
@@ -152,7 +152,7 @@
 						class="bg-card rounded-lg p-4 border border-border shadow-ink tx tx-grain tx-weak"
 					>
 						<h3 class="font-semibold mb-3 flex items-center gap-2 text-foreground">
-							<CircleCheck class="w-4 h-4 text-emerald-600" />
+							<CircleCheck class="w-4 h-4 text-success" />
 							Smart Task & Calendar Management
 						</h3>
 						<ul class="space-y-2 text-sm text-muted-foreground">
@@ -180,7 +180,7 @@
 						class="bg-card rounded-lg p-4 border border-border shadow-ink tx tx-grain tx-weak"
 					>
 						<h3 class="font-semibold mb-3 flex items-center gap-2 text-foreground">
-							<CircleCheck class="w-4 h-4 text-emerald-600" />
+							<CircleCheck class="w-4 h-4 text-success" />
 							User Experience & Infrastructure
 						</h3>
 						<ul class="space-y-2 text-sm text-muted-foreground">
@@ -198,21 +198,21 @@
 			<!-- AUGUST 2025 -->
 			<div class="mb-16">
 				<div class="flex items-center gap-3 mb-6">
-					<div class="w-3 h-3 bg-amber-600 rounded-full"></div>
+					<div class="w-3 h-3 bg-warning rounded-full"></div>
 					<h2 class="text-2xl font-bold text-foreground">August 2025</h2>
 					<span
-						class="px-3 py-1 bg-amber-600/10 text-amber-600 dark:text-amber-400 border border-amber-600/20 rounded-full text-sm font-medium"
+						class="px-3 py-1 bg-warning/10 text-warning border border-warning/20 rounded-full text-sm font-medium"
 					>
 						In Progress
 					</span>
 				</div>
 
-				<div class="border-l-2 border-amber-600/30 pl-6 ml-1.5 space-y-4">
+				<div class="border-l-2 border-warning/30 pl-6 ml-1.5 space-y-4">
 					<div
 						class="bg-card rounded-lg p-4 border border-border shadow-ink tx tx-pulse tx-weak"
 					>
 						<h3 class="font-semibold mb-3 flex items-center gap-2 text-foreground">
-							<Wrench class="w-4 h-4 text-amber-600" />
+							<Wrench class="w-4 h-4 text-warning" />
 							User Experience Improvements
 						</h3>
 						<ul class="space-y-2 text-sm text-muted-foreground">
@@ -297,21 +297,21 @@
 			<!-- OCTOBER 2025 -->
 			<div class="mb-16">
 				<div class="flex items-center gap-3 mb-6">
-					<div class="w-3 h-3 bg-purple-500 rounded-full"></div>
+					<div class="w-3 h-3 bg-info rounded-full"></div>
 					<h2 class="text-2xl font-bold text-foreground">October 2025</h2>
 					<span
-						class="px-3 py-1 bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 rounded-full text-sm font-medium"
+						class="px-3 py-1 bg-info/10 text-info border border-info/20 rounded-full text-sm font-medium"
 					>
 						Next Phase
 					</span>
 				</div>
 
-				<div class="border-l-2 border-purple-500/30 pl-6 ml-1.5 space-y-4">
+				<div class="border-l-2 border-info/30 pl-6 ml-1.5 space-y-4">
 					<div
 						class="bg-card rounded-lg p-4 border border-border shadow-ink tx tx-bloom tx-weak"
 					>
 						<h3 class="font-semibold mb-3 flex items-center gap-2 text-foreground">
-							<Sparkles class="w-4 h-4 text-purple-500" />
+							<Sparkles class="w-4 h-4 text-info" />
 							Project Intelligence Engine (Beta)
 						</h3>
 						<ul class="space-y-2 text-sm text-muted-foreground">
@@ -340,21 +340,21 @@
 			<!-- NOVEMBER 2025 -->
 			<div class="mb-16">
 				<div class="flex items-center gap-3 mb-6">
-					<div class="w-3 h-3 bg-purple-500 rounded-full"></div>
+					<div class="w-3 h-3 bg-info rounded-full"></div>
 					<h2 class="text-2xl font-bold text-foreground">November 2025</h2>
 					<span
-						class="px-3 py-1 bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 rounded-full text-sm font-medium"
+						class="px-3 py-1 bg-info/10 text-info border border-info/20 rounded-full text-sm font-medium"
 					>
 						Advanced Features
 					</span>
 				</div>
 
-				<div class="border-l-2 border-purple-500/30 pl-6 ml-1.5 space-y-4">
+				<div class="border-l-2 border-info/30 pl-6 ml-1.5 space-y-4">
 					<div
 						class="bg-card rounded-lg p-4 border border-border shadow-ink tx tx-bloom tx-weak"
 					>
 						<h3 class="font-semibold mb-3 flex items-center gap-2 text-foreground">
-							<Sparkles class="w-4 h-4 text-purple-500" />
+							<Sparkles class="w-4 h-4 text-info" />
 							Predictive Project Management
 						</h3>
 						<ul class="space-y-2 text-sm text-muted-foreground">
@@ -377,7 +377,7 @@
 						class="bg-card rounded-lg p-4 border border-border shadow-ink tx tx-bloom tx-weak"
 					>
 						<h3 class="font-semibold mb-3 flex items-center gap-2 text-foreground">
-							<Sparkles class="w-4 h-4 text-purple-500" />
+							<Sparkles class="w-4 h-4 text-info" />
 							Unified Interface Evolution
 						</h3>
 						<ul class="space-y-2 text-sm text-muted-foreground">
@@ -400,21 +400,21 @@
 			<!-- DECEMBER 2025 -->
 			<div class="mb-16">
 				<div class="flex items-center gap-3 mb-6">
-					<div class="w-3 h-3 bg-indigo-500 rounded-full"></div>
+					<div class="w-3 h-3 bg-accent rounded-full"></div>
 					<h2 class="text-2xl font-bold text-foreground">December 2025</h2>
 					<span
-						class="px-3 py-1 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 rounded-full text-sm font-medium"
+						class="px-3 py-1 bg-accent/10 text-accent border border-accent/20 rounded-full text-sm font-medium"
 					>
 						Premium Launch
 					</span>
 				</div>
 
-				<div class="border-l-2 border-indigo-500/30 pl-6 ml-1.5 space-y-4">
+				<div class="border-l-2 border-accent/30 pl-6 ml-1.5 space-y-4">
 					<div
 						class="bg-card rounded-lg p-4 border border-border shadow-ink tx tx-thread tx-weak"
 					>
 						<h3 class="font-semibold mb-3 flex items-center gap-2 text-foreground">
-							<Sparkles class="w-4 h-4 text-indigo-500" />
+							<Sparkles class="w-4 h-4 text-accent" />
 							Premium Synthesis Features
 						</h3>
 						<ul class="space-y-2 text-sm text-muted-foreground">
@@ -436,7 +436,7 @@
 						class="bg-card rounded-lg p-4 border border-border shadow-ink tx tx-thread tx-weak"
 					>
 						<h3 class="font-semibold mb-3 flex items-center gap-2 text-foreground">
-							<Sparkles class="w-4 h-4 text-indigo-500" />
+							<Sparkles class="w-4 h-4 text-accent" />
 							Complete Life Integration
 						</h3>
 						<ul class="space-y-2 text-sm text-muted-foreground">
@@ -453,22 +453,22 @@
 			<div class="mb-16">
 				<div class="flex items-center gap-3 mb-6">
 					<div
-						class="w-3 h-3 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full"
+						class="w-3 h-3 bg-accent rounded-full"
 					></div>
 					<h2 class="text-2xl font-bold text-foreground">2026+ Future Vision</h2>
 					<span
-						class="px-3 py-1 bg-gradient-to-r from-purple-500/10 to-pink-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 rounded-full text-sm font-medium"
+						class="px-3 py-1 bg-accent/10 text-accent border border-accent/20 rounded-full text-sm font-medium"
 					>
 						Long-term Vision
 					</span>
 				</div>
 
-				<div class="border-l-2 border-purple-500/30 pl-6 ml-1.5 space-y-4">
+				<div class="border-l-2 border-accent/30 pl-6 ml-1.5 space-y-4">
 					<div
-						class="bg-card rounded-lg p-4 border border-purple-500/30 shadow-ink tx tx-bloom tx-med"
+						class="bg-card rounded-lg p-4 border border-accent/30 shadow-ink tx tx-bloom tx-med"
 					>
 						<h3 class="font-semibold mb-3 flex items-center gap-2 text-foreground">
-							<Sparkles class="w-4 h-4 text-purple-500" />
+							<Sparkles class="w-4 h-4 text-accent" />
 							AI Operating System for Projects
 						</h3>
 						<ul class="space-y-2 text-sm text-muted-foreground">

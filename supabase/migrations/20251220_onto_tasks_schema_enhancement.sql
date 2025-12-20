@@ -1,3 +1,4 @@
+-- supabase/migrations/20251220_onto_tasks_schema_enhancement.sql
 -- Migration: onto_tasks schema enhancement
 -- Adds start_at, completed_at, deleted_at, description columns
 -- Part of Ontology Schema Migration Phase 1

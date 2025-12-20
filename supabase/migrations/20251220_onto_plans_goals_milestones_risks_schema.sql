@@ -1,3 +1,4 @@
+-- supabase/migrations/20251220_onto_plans_goals_milestones_risks_schema.sql
 -- Migration: onto_plans, onto_goals, onto_milestones, onto_risks schema updates
 -- Phase 4: Add plan, description, deleted_at to onto_plans
 -- Phase 5: Add goal, description, updated_at, completed_at, target_date, deleted_at to onto_goals

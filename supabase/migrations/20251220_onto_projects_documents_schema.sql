@@ -1,3 +1,4 @@
+-- supabase/migrations/20251220_onto_projects_documents_schema.sql
 -- Migration: onto_projects and onto_documents schema updates
 -- Phase 2: Remove also_types from onto_projects
 -- Phase 3: Add content, description, deleted_at to onto_documents

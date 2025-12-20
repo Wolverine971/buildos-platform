@@ -9,8 +9,6 @@
 			icon: Linkedin,
 			title: 'BuildOS LinkedIn',
 			description: 'Company updates, product launches, and professional insights',
-			bgColor: 'bg-blue-100 dark:bg-blue-900/30',
-			iconColor: 'text-blue-600 dark:text-blue-400',
 			external: true
 		},
 		{
@@ -18,8 +16,6 @@
 			icon: Twitter,
 			title: '@build_os',
 			description: 'Building in public, product updates, AI productivity tips',
-			bgColor: 'bg-sky-100 dark:bg-sky-900/30',
-			iconColor: 'text-sky-600 dark:text-sky-400',
 			external: true
 		},
 		{
@@ -27,8 +23,6 @@
 			icon: Mail,
 			title: 'Direct Email',
 			description: 'Partnerships, investment, strategic discussions',
-			bgColor: 'bg-purple-100 dark:bg-purple-900/30',
-			iconColor: 'text-purple-600 dark:text-purple-400',
 			external: false
 		}
 	];
@@ -39,8 +33,6 @@
 			icon: Linkedin,
 			title: 'DJ Wayne',
 			subtitle: '',
-			bgColor: 'bg-blue-50 dark:bg-blue-900/20',
-			iconColor: 'text-blue-600 dark:text-blue-400',
 			external: true
 		}
 	];
@@ -51,9 +43,6 @@
 			icon: MessageCircle,
 			title: 'Join Beta',
 			description: 'Early access to BuildOS - AI that organizes your brain dumps',
-			gradient: 'from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20',
-			border: 'border-blue-200 dark:border-blue-800',
-			iconColor: 'text-blue-600 dark:text-blue-400',
 			badge: 'Limited Access'
 		},
 		{
@@ -61,9 +50,6 @@
 			icon: Lightbulb,
 			title: 'Give Feedback',
 			description: 'Help shape the future of AI-native productivity',
-			gradient: 'from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20',
-			border: 'border-amber-200 dark:border-amber-800',
-			iconColor: 'text-amber-600 dark:text-amber-400',
 			badge: 'Valued'
 		},
 		{
@@ -71,9 +57,6 @@
 			icon: TrendingUp,
 			title: 'Investment Info',
 			description: '$250K pre-seed - Building the LLM productivity platform',
-			gradient: 'from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20',
-			border: 'border-green-200 dark:border-green-800',
-			iconColor: 'text-green-600 dark:text-green-400',
 			badge: 'Active'
 		}
 	];

@@ -104,7 +104,7 @@
 							</span>
 						</a>
 						{#if user?.is_admin}
-							<span class="px-2 py-1 text-xs font-bold bg-red-600 text-white rounded">
+							<span class="px-2 py-1 text-xs font-bold bg-destructive text-destructive-foreground rounded">
 								Admin
 							</span>
 						{/if}
@@ -177,12 +177,12 @@
 						<div class="pt-4 border-t border-border">
 							<a
 								href="/admin"
-								class="flex items-center justify-center space-x-2 p-3 text-red-600 dark:text-red-400
-									bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30
-									rounded-lg transition-colors"
+								class="flex items-center justify-center space-x-2 p-3 text-destructive
+									bg-destructive/10 hover:bg-destructive/15
+									rounded-lg transition-colors shadow-ink pressable"
 							>
 								<Shield class="w-5 h-5" />
-								<span class="font-medium">Admin Dashboard</span>
+								<span class="font-semibold tracking-tight">Admin Dashboard</span>
 							</a>
 						</div>
 					{/if}
@@ -223,9 +223,8 @@
 								{#if user?.is_admin}
 									<a
 										href="/admin"
-										class="inline-flex items-center px-3 py-2 text-sm font-medium text-red-600
-											dark:text-red-400 hover:text-red-700 dark:hover:text-red-300
-											hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors ml-2"
+										class="inline-flex items-center px-3 py-2 text-sm font-semibold tracking-tight
+											text-destructive hover:bg-destructive/10 rounded-lg transition-colors ml-2"
 									>
 										<Shield class="w-4 h-4 mr-2" />
 										Admin
@@ -270,15 +269,15 @@
 					<span>© {CURRENT_YEAR} BuildOS</span>
 					<span>•</span>
 					<span>Made with</span>
-					<Heart class="w-3 h-3 text-red-600 fill-red-600 mx-1" />
-					<span>for productivity</span>
+					<Heart class="w-3 h-3 text-destructive fill-destructive mx-1" />
+					<span>for the builders</span>
 				</div>
 			</div>
 		{:else}
 			<!-- Non-authenticated User Footer -->
-			<div class="px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+			<div class="px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
 				<!-- Mobile Layout -->
-				<div class="lg:hidden space-y-8">
+				<div class="lg:hidden space-y-6">
 					<!-- Brand & CTA -->
 					<div class="text-center space-y-4">
 						<a href="/" class="inline-flex items-center space-x-2 group">
@@ -323,7 +322,7 @@
 					</div>
 
 					<!-- Links Sections -->
-					<div class="grid grid-cols-2 gap-8">
+					<div class="grid grid-cols-2 gap-6">
 						{#each GUEST_SECTIONS.slice(0, 2) as section}
 							<div>
 								<h4 class="text-sm font-black tracking-tight text-foreground mb-3">
@@ -363,7 +362,7 @@
 					</div>
 
 					<!-- Social & Legal -->
-					<div class="space-y-4 pt-8 border-t border-border">
+					<div class="space-y-4 pt-6 border-t border-border">
 						<!-- Social Icons -->
 						<div class="flex justify-center space-x-4">
 							{#each SOCIAL_LINKS as social}
@@ -393,7 +392,7 @@
 				</div>
 
 				<!-- Desktop Layout -->
-				<div class="hidden lg:block space-y-8">
+				<div class="hidden lg:block space-y-6">
 					<!-- Top Section -->
 					<div class="flex items-start justify-between">
 						<!-- Brand & Description -->
@@ -457,7 +456,7 @@
 					</div>
 
 					<!-- Bottom Section -->
-					<div class="flex items-center justify-between pt-8 border-t border-border">
+					<div class="flex items-center justify-between pt-6 border-t border-border">
 						<!-- Legal Links -->
 						<nav class="flex space-x-4">
 							{#each LEGAL_LINKS as link}
@@ -488,14 +487,14 @@
 
 				<!-- Copyright -->
 				<div
-					class="flex items-center justify-center space-x-1 text-xs text-muted-foreground
-					mt-8 pt-8 border-t border-border"
+					class="flex items-center justify-center space-x-1 text-xs font-semibold tracking-tight text-muted-foreground
+					mt-6 pt-6 border-t border-border"
 				>
 					<span>© {CURRENT_YEAR} BuildOS</span>
 					<span>•</span>
 					<span>Made with</span>
-					<Heart class="w-3 h-3 text-red-500 fill-red-500 mx-1" />
-					<span>for productivity</span>
+					<Heart class="w-3 h-3 text-destructive fill-destructive mx-1" />
+					<span>for the builders</span>
 				</div>
 			</div>
 		{/if}

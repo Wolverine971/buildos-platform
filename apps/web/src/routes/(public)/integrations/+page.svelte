@@ -289,11 +289,7 @@ if (project.state_key === 'blocked') {
 					class="mb-6 text-3xl font-bold tracking-tight text-foreground sm:text-4xl md:text-5xl lg:text-6xl"
 				>
 					Transform Chaos into
-					<span
-						class="bg-gradient-to-r from-accent to-purple-500 bg-clip-text text-transparent"
-					>
-						Actionable Intelligence
-					</span>
+					<span class="text-accent">Actionable Intelligence</span>
 				</h1>
 
 				<!-- Description with better contrast -->
@@ -385,7 +381,7 @@ if (project.state_key === 'blocked') {
 					>
 						<CardBody padding="md">
 							<div
-								class="text-2xl sm:text-3xl lg:text-4xl font-bold bg-gradient-to-r from-accent to-purple-500 bg-clip-text text-transparent"
+								class="text-2xl sm:text-3xl lg:text-4xl font-bold text-accent"
 							>
 								{metric.value}
 							</div>
@@ -421,16 +417,11 @@ if (project.state_key === 'blocked') {
 						onmouseenter={() => (hoveredCategory = i)}
 						onmouseleave={() => (hoveredCategory = null)}
 					>
-						<!-- Gradient overlay -->
-						<div
-							class="absolute inset-0 bg-gradient-to-br {category.bgGradient} opacity-30 group-hover:opacity-50 transition-opacity duration-300"
-						></div>
-
 						<CardHeader class="relative">
 							<div
-								class="mb-3 inline-flex rounded-xl bg-gradient-to-r {category.gradient} p-3 shadow-lg transform transition-transform duration-300 group-hover:scale-110"
+								class="mb-3 inline-flex rounded-xl bg-accent p-3 shadow-ink transform transition-transform duration-300 group-hover:scale-110"
 							>
-								<svelte:component this={category.icon} class="h-6 w-6 text-white" />
+								<svelte:component this={category.icon} class="h-6 w-6 text-accent-foreground" />
 							</div>
 							<h3 class="text-lg font-semibold text-foreground sm:text-xl">
 								{category.title}
@@ -641,17 +632,10 @@ if (project.state_key === 'blocked') {
 					>
 						{#if tier.highlighted}
 							<div
-								class="absolute -top-4 left-1/2 -translate-x-1/2 rounded-full bg-gradient-to-r from-accent to-purple-500 px-4 py-1.5 text-xs font-medium text-accent-foreground shadow-lg"
+								class="absolute -top-4 left-1/2 -translate-x-1/2 rounded-full bg-accent px-4 py-1.5 text-xs font-medium text-accent-foreground shadow-ink"
 							>
 								Most Popular
 							</div>
-						{/if}
-
-						<!-- Gradient background for highlighted tier -->
-						{#if tier.gradient}
-							<div
-								class="absolute inset-0 bg-gradient-to-br {tier.gradient} opacity-20 rounded-lg"
-							></div>
 						{/if}
 
 						<CardHeader class="relative">
@@ -722,7 +706,7 @@ if (project.state_key === 'blocked') {
 				variant="elevated"
 				class="max-w-4xl mx-auto overflow-hidden shadow-ink tx tx-bloom tx-weak"
 			>
-				<div class="absolute inset-0 bg-gradient-to-br from-accent/5 to-purple-500/5"></div>
+				<div class="absolute inset-0 bg-accent/5"></div>
 
 				<CardBody padding="lg" class="relative text-center">
 					<h2 class="mb-4 text-2xl font-bold text-foreground sm:text-3xl lg:text-4xl">

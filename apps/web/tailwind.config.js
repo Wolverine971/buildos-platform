@@ -49,6 +49,12 @@ export default {
 					foreground: withOpacity('--accent-foreground')
 				},
 
+				// Destructive (danger/error actions)
+				destructive: {
+					DEFAULT: withOpacity('--destructive'),
+					foreground: withOpacity('--destructive-foreground')
+				},
+
 				// Status colors (paired with textures per design bible)
 				success: {
 					DEFAULT: '#059669', // emerald-600

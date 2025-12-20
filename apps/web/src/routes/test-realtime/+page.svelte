@@ -1,3 +1,4 @@
+<!-- apps/web/src/routes/test-realtime/+page.svelte -->
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	import { supabase } from '$lib/supabase';

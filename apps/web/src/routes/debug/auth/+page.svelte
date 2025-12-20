@@ -1,3 +1,4 @@
+<!-- apps/web/src/routes/debug/auth/+page.svelte -->
 <script lang="ts">
 	import { page } from '$app/stores';
 	import { onMount } from 'svelte';

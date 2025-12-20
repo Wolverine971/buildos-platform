@@ -28,6 +28,10 @@
 	/* Ring for focus states */
 	--ring: 24 80% 55%;
 
+	/* Destructive (danger/error states) */
+	--destructive: 0 72% 51%; /* red-600 equivalent */
+	--destructive-foreground: 0 0% 100%;
+
 	/* Inkprint texture base color */
 	--tx-ink: 240 10% 10%;
 	--tx-ink-rgb: 24, 24, 27;
@@ -60,6 +64,10 @@
 
 	/* Ring */
 	--ring: 24 85% 58%;
+
+	/* Destructive (brighter in dark mode for visibility) */
+	--destructive: 0 72% 55%;
+	--destructive-foreground: 0 0% 100%;
 
 	/* Dark mode texture ink */
 	--tx-ink: 40 10% 92%;

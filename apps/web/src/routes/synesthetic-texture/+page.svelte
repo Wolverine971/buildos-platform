@@ -1,3 +1,4 @@
+<!-- apps/web/src/routes/synesthetic-texture/+page.svelte -->
 <script lang="ts">
 	const steps = [
 		{

@@ -36,65 +36,69 @@
 	import AccountTab from '$lib/components/profile/AccountTab.svelte';
 	import NotificationsTab from '$lib/components/profile/NotificationsTab.svelte';
 
-	export let data: PageData;
-	export let form;
+	interface Props {
+		data: PageData;
+		form?: any;
+	}
+
+	let { data, form }: Props = $props();
 
 	// State
-	let saveSuccess = false;
-	let saveError = false;
-	let errorMessage = '';
-	let showOnboardingComplete = data.justCompletedOnboarding || false;
-	let activeTab = data.activeTab || 'account'; // Support URL param for initial tab
-	let profileTabs: TabNavTab[] = [];
+	let saveSuccess = $state(false);
+	let saveError = $state(false);
+	let errorMessage = $state('');
+	let showOnboardingComplete = $state(data.justCompletedOnboarding || false);
+	let activeTab = $state(data.activeTab || 'account');
 
 	// Template management state
-	let projectTemplates: any[] = data.projectTemplates || [];
-	let editingTemplate: any = null;
-	let creatingTemplate: 'project' | null = null;
+	let projectTemplates = $state<any[]>(data.projectTemplates || []);
+	let editingTemplate = $state<any>(null);
+	let creatingTemplate = $state<'project' | null>(null);
 
 	// Progress data from server
-	let progressData = data.progressData || {
+	let progressData = $state(data.progressData || {
 		completed: false,
 		progress: 0,
-		missingFields: [],
-		completedFields: [],
-		missingRequiredFields: [],
-		categoryProgress: {}
-	};
+		missingFields: [] as string[],
+		completedFields: [] as string[],
+		missingRequiredFields: [] as string[],
+		categoryProgress: {} as Record<string, boolean>
+	});
 
 	// Handle form submission results
-	$: if (form?.success) {
-		saveSuccess = true;
-		saveError = false;
-		editingTemplate = null;
-		creatingTemplate = null;
+	$effect(() => {
+		if (form?.success) {
+			saveSuccess = true;
+			saveError = false;
+			editingTemplate = null;
+			creatingTemplate = null;
 
-		setTimeout(() => {
-			saveSuccess = false;
-		}, 3000);
+			setTimeout(() => {
+				saveSuccess = false;
+			}, 3000);
 
-		// Refresh data after successful form submission
-		refreshData();
-	}
+			// Refresh data after successful form submission
+			refreshData();
+		}
+	});
 
 	// Watch for URL changes to update active tab
-	$: if ($page.url.searchParams.get('tab') !== activeTab) {
+	$effect(() => {
 		const urlTab = $page.url.searchParams.get('tab');
-		if (
-			urlTab &&
-			['account', 'briefs', 'calendar', 'notifications', 'billing'].includes(urlTab)
-		) {
-			activeTab = urlTab;
+		if (urlTab && urlTab !== activeTab) {
+			if (['account', 'briefs', 'calendar', 'notifications', 'billing'].includes(urlTab)) {
+				activeTab = urlTab;
+			}
 		}
-	}
+	});
 
-	$: profileTabs = [
+	let profileTabs = $derived<TabNavTab[]>([
 		{ id: 'account', label: 'Account', icon: User },
 		{ id: 'briefs', label: 'Brief Settings', icon: Bell },
 		{ id: 'calendar', label: 'Calendar', icon: Calendar },
 		{ id: 'notifications', label: 'Notifications', icon: Bell },
 		...(data.stripeEnabled ? [{ id: 'billing', label: 'Billing', icon: CreditCard }] : [])
-	];
+	]);
 
 	onMount(async () => {
 		// Initialize store with data from page load
@@ -222,41 +226,46 @@
 		showError(event.detail?.message || 'An error occurred');
 	}
 
-	$: activeProjectTemplate = getActiveTemplate();
-	$: storeState = $userContextStore;
+	let activeProjectTemplate = $derived(getActiveTemplate());
+	let storeState = $derived($userContextStore);
 
-	$: if (storeState?.error && browser) {
-		showError(storeState.error);
-		userContextStore.clearError();
-	}
+	// Handle store errors
+	$effect(() => {
+		if (storeState?.error && browser) {
+			showError(storeState.error);
+			userContextStore.clearError();
+		}
+	});
 
 	// Update progress data from store
-	$: if (storeState?.progress) {
-		progressData = {
-			completed: storeState.completedOnboarding,
-			progress: storeState.progress.percentage,
-			missingFields: storeState.progress.missingCategories,
-			completedFields: storeState.progress.completedCategories,
-			missingRequiredFields: storeState.progress.missingCategories.filter(
-				(cat) => ['projects', 'work_style', 'challenges'].includes(cat) // Top 3 most important
-			),
-			categoryProgress: storeState.progress.completedCategories.reduce(
-				(acc, cat) => {
-					acc[cat] = true;
-					return acc;
-				},
-				{} as Record<string, boolean>
-			),
-			categoryCompletion: storeState.progress.completedCategories.reduce(
-				(acc, cat) => {
-					acc[cat] = true;
-					return acc;
-				},
-				{} as Record<string, boolean>
-			),
-			missingCategories: storeState.progress.missingCategories
-		};
-	}
+	$effect(() => {
+		if (storeState?.progress) {
+			progressData = {
+				completed: storeState.completedOnboarding,
+				progress: storeState.progress.percentage,
+				missingFields: storeState.progress.missingCategories,
+				completedFields: storeState.progress.completedCategories,
+				missingRequiredFields: storeState.progress.missingCategories.filter(
+					(cat: string) => ['projects', 'work_style', 'challenges'].includes(cat)
+				),
+				categoryProgress: storeState.progress.completedCategories.reduce(
+					(acc: Record<string, boolean>, cat: string) => {
+						acc[cat] = true;
+						return acc;
+					},
+					{} as Record<string, boolean>
+				),
+				categoryCompletion: storeState.progress.completedCategories.reduce(
+					(acc: Record<string, boolean>, cat: string) => {
+						acc[cat] = true;
+						return acc;
+					},
+					{} as Record<string, boolean>
+				),
+				missingCategories: storeState.progress.missingCategories
+			};
+		}
+	});
 </script>
 
 <svelte:head>
@@ -337,7 +346,7 @@
 			<div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
 				<div class="flex items-center space-x-3 sm:space-x-4">
 					<div
-						class="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-accent to-purple-500 rounded-full flex items-center justify-center flex-shrink-0"
+						class="w-12 h-12 sm:w-16 sm:h-16 bg-accent rounded-full flex items-center justify-center flex-shrink-0 shadow-ink"
 					>
 						<User class="w-6 h-6 sm:w-8 sm:h-8 text-accent-foreground" />
 					</div>
