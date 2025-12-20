@@ -447,7 +447,7 @@ Return a JSON object with:
 
 		return {
 			primary_strategy: strategy,
-			confidence: 0.5, // Lower confidence for fallback
+			confidence: 0.3,
 			reasoning,
 			needs_clarification: false,
 			estimated_steps: complexity,

@@ -27,6 +27,7 @@ import type {
 	ToolExecutorFunction,
 	StreamEvent
 } from '../shared/types';
+import { normalizeToolError } from '../shared/error-utils';
 import type { ChatToolCall, ChatToolDefinition } from '@buildos/shared-types';
 
 /**
@@ -106,12 +107,25 @@ export class ToolExecutionService implements BaseService {
 			const durationMs =
 				(typeof performance !== 'undefined' ? performance.now() : Date.now()) - startTime;
 			if (this.telemetryHook) {
-				void this.telemetryHook(result, {
-					toolName,
-					durationMs,
-					virtual: Boolean(virtualHandler),
-					...overrideTelemetry
-				});
+				try {
+					const maybePromise = this.telemetryHook(result, {
+						toolName,
+						durationMs,
+						virtual: Boolean(virtualHandler),
+						...overrideTelemetry
+					});
+					Promise.resolve(maybePromise).catch((error) => {
+						console.warn('[ToolExecutionService] Telemetry hook failed', {
+							toolName,
+							error: error instanceof Error ? error.message : String(error)
+						});
+					});
+				} catch (error) {
+					console.warn('[ToolExecutionService] Telemetry hook failed', {
+						toolName,
+						error: error instanceof Error ? error.message : String(error)
+					});
+				}
 			}
 			return result;
 		};
@@ -642,9 +656,9 @@ export class ToolExecutionService implements BaseService {
 
 	private normalizeExecutionError(
 		error: unknown,
-		_toolName: string,
+		toolName: string,
 		_args: Record<string, any>
 	): string {
-		return error instanceof Error ? error.message : String(error);
+		return normalizeToolError(error, toolName);
 	}
 }

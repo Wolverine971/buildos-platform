@@ -1,5 +1,5 @@
 // apps/web/src/lib/services/agentic-chat/orchestration/agent-chat-orchestrator.ts
-import { v4 as uuidv4 } from 'uuid';
+import { v4 as uuidv4, validate as uuidValidate } from 'uuid';
 import type {
 	AgentChatRequest,
 	ServiceContext,
@@ -29,6 +29,7 @@ import { SmartLLMService } from '../../smart-llm-service';
 import { ErrorLoggerService } from '$lib/services/errorLogger.service';
 import type { LastTurnContext } from '$lib/types/agent-chat-enhancement';
 import { createEnhancedLLMWrapper, type EnhancedLLMWrapper } from '../config/enhanced-llm-wrapper';
+import { AGENTIC_CHAT_LIMITS } from '../config/agentic-chat-limits';
 import {
 	ProjectCreationAnalyzer,
 	type ClarificationRoundMetadata
@@ -74,9 +75,6 @@ const PLAN_TOOL_DEFINITION: ChatToolDefinition = {
 		}
 	}
 };
-
-const MAX_TOOL_CALLS_PER_TURN = 30;
-const MAX_SESSION_DURATION_MS = 90_000;
 
 /**
  * Context shift data structure returned by tools that navigate to a new entity
@@ -425,46 +423,81 @@ export class AgentChatOrchestrator {
 			let assistantBuffer = '';
 			const pendingToolCalls: ChatToolCall[] = [];
 
+			const elapsedMs = Date.now() - startTime;
+			const remainingMs = AGENTIC_CHAT_LIMITS.MAX_SESSION_DURATION_MS - elapsedMs;
+			if (remainingMs <= 0) {
+				throw new Error('Planner session exceeded time limit. Please try again.');
+			}
+
+			const streamAbortController = new AbortController();
+			let timeoutTriggered = false;
+			const timeoutId = setTimeout(() => {
+				timeoutTriggered = true;
+				streamAbortController.abort();
+			}, remainingMs);
+
+			const handleRequestAbort = () => {
+				streamAbortController.abort();
+			};
+			if (request.abortSignal) {
+				if (request.abortSignal.aborted) {
+					streamAbortController.abort();
+				} else {
+					request.abortSignal.addEventListener('abort', handleRequestAbort);
+				}
+			}
+
 			// Use enhanced wrapper for intelligent model selection
 			// The wrapper will automatically select the best profile based on context
-			for await (const chunk of this.enhancedLLM.streamText({
-				messages,
-				tools,
-				tool_choice: 'auto',
-				userId: serviceContext.userId,
-				// Let the wrapper decide the optimal profile unless explicitly set
-				profile: undefined, // Will be auto-selected based on context
-				temperature: 0.4, // Can be overridden by wrapper if needed
-				maxTokens: 1800, // Can be overridden by wrapper if needed
-				sessionId: serviceContext.sessionId,
-				// Pass context for optimization and usage logging (builds chat_stream_${contextType})
-				contextType: serviceContext.contextType,
-				operationType: 'planner_stream',
-				// Pass entity IDs for usage tracking
-				entityId: serviceContext.entityId,
-				projectId: serviceContext.contextScope?.projectId,
-				signal: request.abortSignal
-			}) as AsyncGenerator<LLMStreamEvent>) {
-				if (request.abortSignal?.aborted) {
-					return;
-				}
-				if (chunk.type === 'text' && chunk.content) {
-					assistantBuffer += chunk.content;
-					yield { type: 'text', content: chunk.content };
-				} else if (chunk.type === 'tool_call' && chunk.tool_call) {
-					pendingToolCalls.push(chunk.tool_call);
-					yield { type: 'tool_call', toolCall: chunk.tool_call };
-				} else if (chunk.type === 'done') {
-					if (chunk.usage?.total_tokens) {
-						lastUsage = { total_tokens: chunk.usage.total_tokens };
+			try {
+				for await (const chunk of this.enhancedLLM.streamText({
+					messages,
+					tools,
+					tool_choice: 'auto',
+					userId: serviceContext.userId,
+					// Let the wrapper decide the optimal profile unless explicitly set
+					profile: undefined, // Will be auto-selected based on context
+					temperature: 0.4, // Can be overridden by wrapper if needed
+					maxTokens: 1800, // Can be overridden by wrapper if needed
+					sessionId: serviceContext.sessionId,
+					// Pass context for optimization and usage logging (builds chat_stream_${contextType})
+					contextType: serviceContext.contextType,
+					operationType: 'planner_stream',
+					// Pass entity IDs for usage tracking
+					entityId: serviceContext.entityId,
+					projectId: serviceContext.contextScope?.projectId,
+					signal: streamAbortController.signal
+				}) as AsyncGenerator<LLMStreamEvent>) {
+					if (request.abortSignal?.aborted) {
+						return;
 					}
-				} else if (chunk.type === 'error') {
-					throw new Error(chunk.error || 'LLM streaming error');
+					if (chunk.type === 'text' && chunk.content) {
+						assistantBuffer += chunk.content;
+						yield { type: 'text', content: chunk.content };
+					} else if (chunk.type === 'tool_call' && chunk.tool_call) {
+						pendingToolCalls.push(chunk.tool_call);
+						yield { type: 'tool_call', toolCall: chunk.tool_call };
+					} else if (chunk.type === 'done') {
+						if (chunk.usage?.total_tokens) {
+							lastUsage = { total_tokens: chunk.usage.total_tokens };
+						}
+					} else if (chunk.type === 'error') {
+						throw new Error(chunk.error || 'LLM streaming error');
+					}
+				}
+			} finally {
+				clearTimeout(timeoutId);
+				if (request.abortSignal) {
+					request.abortSignal.removeEventListener('abort', handleRequestAbort);
 				}
 			}
 
 			if (request.abortSignal?.aborted) {
 				return;
+			}
+
+			if (timeoutTriggered) {
+				throw new Error('LLM stream timeout. Please try again.');
 			}
 
 			if (pendingToolCalls.length === 0) {
@@ -517,12 +550,18 @@ export class AgentChatOrchestrator {
 					const normalizedShiftContext = normalizeContextType(
 						(contextShift.new_context as ChatContextType) ?? serviceContext.contextType
 					);
+					const normalizedEntityId = this.normalizeContextShiftEntityId(
+						contextShift.entity_id
+					);
 					serviceContext.contextType = normalizedShiftContext;
-					if (contextShift.entity_id) {
-						serviceContext.entityId = contextShift.entity_id;
+					if (normalizedEntityId) {
+						serviceContext.entityId = normalizedEntityId;
 					}
 					serviceContext.lastTurnContext = this.buildContextShiftSnapshot(
-						contextShift,
+						{
+							...contextShift,
+							entity_id: normalizedEntityId
+						},
 						normalizedShiftContext
 					);
 
@@ -546,10 +585,10 @@ export class AgentChatOrchestrator {
 	}
 
 	private ensureWithinLimits(startTime: number, toolCallCount: number): void {
-		if (Date.now() - startTime > MAX_SESSION_DURATION_MS) {
+		if (Date.now() - startTime > AGENTIC_CHAT_LIMITS.MAX_SESSION_DURATION_MS) {
 			throw new Error('Planner session exceeded time limit. Please try again.');
 		}
-		if (toolCallCount > MAX_TOOL_CALLS_PER_TURN) {
+		if (toolCallCount > AGENTIC_CHAT_LIMITS.MAX_TOOL_CALLS_PER_TURN) {
 			throw new Error('Planner hit tool usage limit. Please refine your request.');
 		}
 	}
@@ -897,6 +936,26 @@ export class AgentChatOrchestrator {
 					}`
 			)
 			.join('\n');
+	}
+
+	private normalizeContextShiftEntityId(entityId?: string): string | undefined {
+		if (!entityId || typeof entityId !== 'string') {
+			return undefined;
+		}
+
+		const trimmed = entityId.trim();
+		if (!trimmed) {
+			return undefined;
+		}
+
+		if (!uuidValidate(trimmed)) {
+			console.warn('[AgentChatOrchestrator] Invalid context_shift entity_id', {
+				entityId: trimmed
+			});
+			return undefined;
+		}
+
+		return trimmed;
 	}
 
 	private buildContextShiftSnapshot(

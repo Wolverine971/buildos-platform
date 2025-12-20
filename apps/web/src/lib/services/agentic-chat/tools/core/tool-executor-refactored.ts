@@ -26,6 +26,7 @@ import { getToolCategory } from './tools.config';
 import { SmartLLMService } from '$lib/services/smart-llm-service';
 import { ensureActorId } from '$lib/services/ontology/ontology-projects.service';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
+import { normalizeToolError } from '$lib/services/agentic-chat/shared/error-utils';
 
 import {
 	OntologyReadExecutor,
@@ -157,17 +158,35 @@ export class ChatToolExecutor {
 
 	async execute(toolCall: ChatToolCall): Promise<ChatToolResult> {
 		const startTime = Date.now();
+		const rawArgs = toolCall.function.arguments || '{}';
+		const toolName = toolCall.function.name;
+		let args: Record<string, any> = {};
 
 		try {
-			const rawArgs = toolCall.function.arguments || '{}';
-			const args = rawArgs ? JSON.parse(rawArgs) : {};
-			const toolName = toolCall.function.name;
+			try {
+				args = rawArgs ? JSON.parse(rawArgs) : {};
+			} catch (error) {
+				const parseMessage = error instanceof Error ? error.message : String(error);
+				const errorMessage = normalizeToolError(
+					new Error(`Invalid JSON in tool arguments: ${parseMessage}`),
+					toolName
+				);
+				const duration = Date.now() - startTime;
+				await this.logToolExecution(toolCall, null, duration, false, errorMessage, {});
+
+				return {
+					tool_call_id: toolCall.id,
+					result: null,
+					success: false,
+					error: errorMessage
+				};
+			}
 
 			const result = await this.dispatchTool(toolName, args);
 
 			const duration = Date.now() - startTime;
 			const { payload, streamEvents } = this.extractStreamEvents(result);
-			await this.logToolExecution(toolCall, payload, duration, true);
+			await this.logToolExecution(toolCall, payload, duration, true, undefined, args);
 
 			return {
 				tool_call_id: toolCall.id,
@@ -181,17 +200,9 @@ export class ChatToolExecutor {
 			let errorMessage = error?.message || 'Tool execution failed';
 			const toolName = toolCall.function.name;
 
-			if (!errorMessage.includes(toolName)) {
-				errorMessage = `Tool '${toolName}' failed: ${errorMessage}`;
-			}
+			errorMessage = normalizeToolError(error, toolName);
 
-			if (errorMessage.includes('401')) {
-				errorMessage += ' (authentication required)';
-			} else if (errorMessage.includes('404')) {
-				errorMessage += ' (resource not found)';
-			}
-
-			await this.logToolExecution(toolCall, null, duration, false, errorMessage);
+			await this.logToolExecution(toolCall, null, duration, false, errorMessage, args);
 
 			console.error('[ChatToolExecutor] Tool execution failed:', {
 				tool: toolName,
@@ -377,7 +388,8 @@ export class ChatToolExecutor {
 		result: any,
 		duration: number,
 		success: boolean,
-		errorMessage?: string
+		errorMessage?: string,
+		parsedArgs?: Record<string, any>
 	): Promise<void> {
 		if (!this.sessionId) {
 			console.warn(
@@ -387,13 +399,14 @@ export class ChatToolExecutor {
 		}
 
 		const category = getToolCategory(toolCall.function.name);
+		const argumentsPayload = parsedArgs ?? this.safeParseArguments(toolCall.function.arguments);
 
 		try {
 			const { error: insertError } = await this.supabase.from('chat_tool_executions').insert({
 				session_id: this.sessionId,
 				tool_name: toolCall.function.name,
 				tool_category: category,
-				arguments: JSON.parse(toolCall.function.arguments || '{}'),
+				arguments: argumentsPayload,
 				result: success ? result : null,
 				execution_time_ms: duration,
 				success,
@@ -416,6 +429,21 @@ export class ChatToolExecutor {
 				error: error instanceof Error ? error.message : String(error),
 				stack: error instanceof Error ? error.stack : undefined
 			});
+		}
+	}
+
+	private safeParseArguments(rawArguments?: string): Record<string, any> {
+		if (!rawArguments) {
+			return {};
+		}
+
+		try {
+			return JSON.parse(rawArguments);
+		} catch (error) {
+			console.warn('[ChatToolExecutor] Failed to parse tool arguments for logging', {
+				error: error instanceof Error ? error.message : String(error)
+			});
+			return {};
 		}
 	}
 }

@@ -147,115 +147,97 @@ function formatOntologyProjectBrief(project: ProjectBriefData, timezone: string)
 	const projectName = project.project.name;
 	let brief = `## [${projectName}](/projects/${projectId})\n\n`;
 
-	// Goal Progress Section
+	// Goal Progress Section - only show if there are active goals
 	const activeGoals = project.goals.filter(
 		(g) => g.goal.state_key !== 'achieved' && g.goal.state_key !== 'abandoned'
 	);
-	brief += `### Goal Progress\n`;
 	if (activeGoals.length > 0) {
+		brief += `### Goal Progress\n`;
 		for (const goal of activeGoals) {
 			const statusEmoji =
 				goal.status === 'on_track' ? '' : goal.status === 'at_risk' ? '' : '';
 			brief += `- ${statusEmoji} **${goal.goal.name}**: ${goal.progressPercent}% (${goal.completedTasks}/${goal.totalTasks} tasks)\n`;
 		}
-	} else {
-		brief += `N/A\n`;
+		brief += '\n';
 	}
-	brief += '\n';
 
-	// Active Outputs Section
+	// Active Outputs Section - only show if there are active outputs
 	const activeOutputs = project.outputs.filter((o) => o.state !== 'published');
-	brief += `### Outputs in Progress\n`;
 	if (activeOutputs.length > 0) {
+		brief += `### Outputs in Progress\n`;
 		for (const output of activeOutputs.slice(0, 3)) {
 			brief += `- **${output.output.name}** (${output.state})\n`;
 		}
-	} else {
-		brief += `N/A\n`;
+		brief += '\n';
 	}
-	brief += '\n';
 
-	// Requirements
-	brief += `### Requirements\n`;
+	// Requirements - only show if there are requirements
 	if (project.requirements.length > 0) {
+		brief += `### Requirements\n`;
 		for (const requirement of project.requirements.slice(0, 3)) {
 			brief += `- ${requirement.text}\n`;
 		}
-	} else {
-		brief += `N/A\n`;
+		brief += '\n';
 	}
-	brief += '\n';
 
-	// Decisions
-	brief += `### Recent Decisions\n`;
+	// Decisions - only show if there are decisions
 	if (project.decisions.length > 0) {
+		brief += `### Recent Decisions\n`;
 		const recentDecisions = [...project.decisions].sort(
 			(a, b) => parseISO(b.decision_at).getTime() - parseISO(a.decision_at).getTime()
 		);
 		for (const decision of recentDecisions.slice(0, 3)) {
 			brief += `- **${decision.title}**\n`;
 		}
-	} else {
-		brief += `N/A\n`;
+		brief += '\n';
 	}
-	brief += '\n';
 
-	// Today's Tasks
-	brief += `### Starting Today\n`;
+	// Today's Tasks - only show if there are tasks for today
 	if (project.todaysTasks.length > 0) {
+		brief += `### Starting Today\n`;
 		for (const task of project.todaysTasks) {
 			const icon = getTaskStatusIcon(task);
 			const workMode = getWorkMode(task.type_key);
 			const workModeStr = workMode ? ` [${workMode}]` : '';
 			brief += `- ${icon} [${task.title}](/projects/${projectId}/tasks/${task.id})${workModeStr}\n`;
 		}
-	} else {
-		brief += `N/A\n`;
+		brief += '\n';
 	}
-	brief += '\n';
 
-	// Blocked Tasks
-	brief += `### Blocked Tasks\n`;
+	// Blocked Tasks - only show if there are blocked tasks
 	if (project.blockedTasks.length > 0) {
+		brief += `### Blocked Tasks\n`;
 		for (const task of project.blockedTasks.slice(0, 3)) {
 			brief += `- [${task.title}](/projects/${projectId}/tasks/${task.id})\n`;
 		}
-	} else {
-		brief += `N/A\n`;
+		brief += '\n';
 	}
-	brief += '\n';
 
-	// Unblocking Tasks
-	brief += `### Unblocking Work\n`;
+	// Unblocking Tasks - only show if there are unblocking tasks
 	if (project.unblockingTasks.length > 0) {
+		brief += `### Unblocking Work\n`;
 		brief += `*These tasks, when completed, will unblock other work:*\n`;
 		for (const task of project.unblockingTasks.slice(0, 3)) {
 			brief += `- [${task.title}](/projects/${projectId}/tasks/${task.id})\n`;
 		}
-	} else {
-		brief += `N/A\n`;
+		brief += '\n';
 	}
-	brief += '\n';
 
-	// Next Steps
-	brief += `### Next Steps\n`;
+	// Next Steps - only show if there are next steps
 	if (project.nextSteps.length > 0) {
+		brief += `### Next Steps\n`;
 		for (const step of project.nextSteps) {
 			brief += `- ${step}\n`;
 		}
-	} else {
-		brief += `N/A\n`;
+		brief += '\n';
 	}
-	brief += '\n';
 
-	// Next Milestone
-	brief += `### Upcoming Milestone\n`;
+	// Next Milestone - only show if there is a milestone
 	if (project.nextMilestone) {
+		brief += `### Upcoming Milestone\n`;
 		brief += `${project.nextMilestone}\n`;
-	} else {
-		brief += `N/A\n`;
+		brief += '\n';
 	}
-	brief += '\n';
 
 	return brief;
 }
