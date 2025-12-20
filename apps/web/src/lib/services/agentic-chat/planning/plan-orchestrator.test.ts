@@ -345,10 +345,10 @@ describe('PlanOrchestrator', () => {
 			// Mock tool executions
 			mockToolExecutor
 				.mockResolvedValueOnce({
-					tasks: [{ id: 'task_1', title: 'Task 1' }]
+					data: { tasks: [{ id: 'task_1', title: 'Task 1' }] }
 				})
 				.mockResolvedValueOnce({
-					task_id: 'task_new'
+					data: { task_id: 'task_new' }
 				});
 
 			mockPersistence.updatePlan.mockResolvedValue(undefined);
@@ -379,8 +379,8 @@ describe('PlanOrchestrator', () => {
 		it('should emit tool events for direct tool steps', async () => {
 			const events: StreamEvent[] = [];
 			mockToolExecutor
-				.mockResolvedValueOnce({ tasks: [] })
-				.mockResolvedValueOnce({ task_id: 'task_new' });
+				.mockResolvedValueOnce({ data: { tasks: [] } })
+				.mockResolvedValueOnce({ data: { task_id: 'task_new' } });
 
 			const generator = orchestrator.executePlan(
 				mockPlan,
@@ -489,7 +489,7 @@ describe('PlanOrchestrator', () => {
 				const stepNumber =
 					toolName === 'list_onto_tasks' ? 1 : toolName === 'create_onto_task' ? 2 : 3;
 				executionOrder.push(stepNumber);
-				return { result: 'success' };
+				return { data: { result: 'success' } };
 			});
 
 			const generator = orchestrator.executePlan(

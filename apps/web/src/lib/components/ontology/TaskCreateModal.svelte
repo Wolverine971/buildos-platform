@@ -115,6 +115,7 @@
 	let goalId = $state('');
 	let milestoneId = $state('');
 	let stateKey = $state('todo');
+	let startAt = $state('');
 	let dueAt = $state('');
 
 	// Group types by category
@@ -174,10 +175,8 @@
 				state_key: stateKey || 'todo',
 				goal_id: goalId?.trim() || null,
 				supporting_milestone_id: milestoneId?.trim() || null,
-				due_at: parseDateTimeFromInput(dueAt),
-				props: {
-					description: description.trim() || null
-				}
+				start_at: parseDateTimeFromInput(startAt),
+				due_at: parseDateTimeFromInput(dueAt)
 			};
 
 			const response = await fetch('/api/onto/tasks/create', {
@@ -216,6 +215,7 @@
 		goalId = '';
 		milestoneId = '';
 		stateKey = 'todo';
+		startAt = '';
 		dueAt = '';
 		error = '';
 	}
@@ -557,29 +557,64 @@
 											Scheduled
 										</h3>
 									</div>
-									<FormField
-										label="Due Date"
-										labelFor="dueAt"
-										hint="Optional deadline for this task"
-									>
-										<TextInput
-											id="dueAt"
-											type="datetime-local"
-											bind:value={dueAt}
-											disabled={isSaving}
-											size="md"
-										/>
-									</FormField>
-									{#if dueAt}
-										<p class="mt-2 text-xs text-muted-foreground">
-											Due: {new Date(dueAt).toLocaleString('en-US', {
-												weekday: 'short',
-												month: 'short',
-												day: 'numeric',
-												hour: 'numeric',
-												minute: '2-digit'
-											})}
-										</p>
+									<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+										<FormField
+											label="Start Date"
+											labelFor="startAt"
+											hint="When work should begin"
+										>
+											<TextInput
+												id="startAt"
+												type="datetime-local"
+												bind:value={startAt}
+												disabled={isSaving}
+												size="md"
+											/>
+										</FormField>
+										<FormField
+											label="Due Date"
+											labelFor="dueAt"
+											hint="Deadline for this task"
+										>
+											<TextInput
+												id="dueAt"
+												type="datetime-local"
+												bind:value={dueAt}
+												disabled={isSaving}
+												size="md"
+											/>
+										</FormField>
+									</div>
+									{#if startAt || dueAt}
+										<div
+											class="mt-3 flex flex-wrap gap-3 text-xs text-muted-foreground"
+										>
+											{#if startAt}
+												<span>
+													Start: {new Date(startAt).toLocaleString(
+														'en-US',
+														{
+															weekday: 'short',
+															month: 'short',
+															day: 'numeric',
+															hour: 'numeric',
+															minute: '2-digit'
+														}
+													)}
+												</span>
+											{/if}
+											{#if dueAt}
+												<span>
+													Due: {new Date(dueAt).toLocaleString('en-US', {
+														weekday: 'short',
+														month: 'short',
+														day: 'numeric',
+														hour: 'numeric',
+														minute: '2-digit'
+													})}
+												</span>
+											{/if}
+										</div>
 									{/if}
 								</div>
 

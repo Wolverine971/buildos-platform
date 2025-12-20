@@ -196,6 +196,7 @@ export class OntologyWriteExecutor extends BaseExecutor {
 			state_key: args.state_key ?? 'todo',
 			priority: args.priority ?? 3,
 			plan_id: args.plan_id ?? null,
+			start_at: args.start_at ?? null,
 			due_at: args.due_at ?? null,
 			props: args.props ?? {}
 		};
@@ -362,8 +363,8 @@ export class OntologyWriteExecutor extends BaseExecutor {
 				entityLabel: `task:${args.task_id}`,
 				existingLoader: async () => {
 					const details = await getTaskDetails(args.task_id);
-					const props = (details?.task?.props as Record<string, unknown>) || {};
-					const raw = props.description;
+					// Description is now a column, not in props
+					const raw = details?.task?.description;
 					return typeof raw === 'string' ? raw : '';
 				}
 			});
@@ -372,6 +373,7 @@ export class OntologyWriteExecutor extends BaseExecutor {
 		if (args.state_key !== undefined) updateData.state_key = args.state_key;
 		if (args.priority !== undefined) updateData.priority = args.priority;
 		if (args.plan_id !== undefined) updateData.plan_id = args.plan_id;
+		if (args.start_at !== undefined) updateData.start_at = args.start_at;
 		if (args.due_at !== undefined) updateData.due_at = args.due_at;
 		if (args.props !== undefined) updateData.props = args.props;
 

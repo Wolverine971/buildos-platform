@@ -327,70 +327,96 @@ export class AgentExecutorService {
 		let toolCallsMade = 0;
 		let tokensUsed = 0;
 		let resultData: any = null;
+		const executionStartedAt = Date.now();
 
-		// Stream from LLM with READ-ONLY tools
-		for await (const event of this.smartLLM.streamText({
-			messages,
-			tools: writeEnabledTools,
-			tool_choice: 'auto',
-			userId,
-			profile: 'speed', // Use fast model for executor
-			temperature: 0.3,
-			maxTokens: 1500,
-			sessionId: context.metadata.sessionId,
-			// Context for usage tracking
-			contextType: 'executor'
-		})) {
-			switch (event.type) {
-				case 'text':
-					// Accumulate response text
-					if (!resultData) resultData = { response: '' };
-					resultData.response += event.content || '';
-					break;
+		while (true) {
+			if (Date.now() - executionStartedAt > this.LIMITS.MAX_EXECUTION_TIME_MS) {
+				throw new Error('Executor exceeded maximum execution time.');
+			}
 
-				case 'tool_call':
-					// Execute tool with read/write capabilities
-					toolCallsMade++;
-					try {
-						const result = await toolExecutor.execute(event.tool_call!);
+			let assistantBuffer = '';
+			const pendingToolCalls: ChatToolCall[] = [];
 
-						// Add tool result to messages
-						messages.push({
-							role: 'assistant',
-							content: '',
-							tool_calls: [event.tool_call!]
-						});
-						messages.push({
-							role: 'tool',
-							content: JSON.stringify(result.result),
-							tool_call_id: event.tool_call!.id
-						});
+			for await (const event of this.smartLLM.streamText({
+				messages,
+				tools: writeEnabledTools,
+				tool_choice: 'auto',
+				userId,
+				profile: 'speed', // Use fast model for executor
+				temperature: 0.3,
+				maxTokens: 1500,
+				sessionId: context.metadata.sessionId,
+				// Context for usage tracking
+				contextType: 'executor'
+			})) {
+				switch (event.type) {
+					case 'text':
+						assistantBuffer += event.content || '';
+						break;
 
-						// Store tool results
-						if (!resultData) resultData = {};
-						if (!resultData.toolResults) resultData.toolResults = [];
-						resultData.toolResults.push({
-							tool: event.tool_call!.function.name,
-							result: result.result
-						});
-					} catch (error) {
-						console.error('Executor tool execution error:', error);
-						if (!resultData) resultData = {};
-						if (!resultData.errors) resultData.errors = [];
-						resultData.errors.push({
-							tool: event.tool_call!.function.name,
-							error: error instanceof Error ? error.message : 'Unknown error'
-						});
-					}
-					break;
+					case 'tool_call':
+						if (event.tool_call) {
+							pendingToolCalls.push(event.tool_call);
+						}
+						break;
 
-				case 'done':
-					tokensUsed = event.usage?.total_tokens || 0;
-					break;
+					case 'done':
+						tokensUsed += event.usage?.total_tokens || 0;
+						break;
 
-				case 'error':
-					console.error('Executor streaming error:', event.error);
-					throw new Error(event.error);
+					case 'error':
+						console.error('Executor streaming error:', event.error);
+						throw new Error(event.error);
+				}
+			}
+
+			if (assistantBuffer.trim()) {
+				if (!resultData) resultData = { response: '' };
+				resultData.response += assistantBuffer;
+			}
+
+			if (pendingToolCalls.length === 0) {
+				break;
+			}
+
+			messages.push({
+				role: 'assistant',
+				content: assistantBuffer,
+				tool_calls: pendingToolCalls
+			});
+
+			for (const toolCall of pendingToolCalls) {
+				toolCallsMade++;
+				if (toolCallsMade > this.LIMITS.MAX_TOOL_CALLS) {
+					throw new Error('Executor hit tool usage limit.');
+				}
+
+				const result = await toolExecutor.execute(toolCall);
+				const toolPayload =
+					result.result ?? (result.error ? { error: result.error } : null);
+
+				messages.push({
+					role: 'tool',
+					content: JSON.stringify(toolPayload),
+					tool_call_id: toolCall.id
+				});
+
+				if (!resultData) resultData = {};
+				if (!resultData.toolResults) resultData.toolResults = [];
+				resultData.toolResults.push({
+					tool: toolCall.function.name,
+					result: result.result,
+					success: result.success,
+					error: result.error
+				});
+
+				if (!result.success) {
+					if (!resultData.errors) resultData.errors = [];
+					resultData.errors.push({
+						tool: toolCall.function.name,
+						error: result.error || 'Unknown error'
+					});
+				}
 			}
 		}
 

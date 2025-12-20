@@ -83,6 +83,10 @@ Default: task.execute`
 						type: 'string',
 						description: 'Optional plan UUID to associate this task with'
 					},
+					start_at: {
+						type: 'string',
+						description: 'Optional start date in ISO format (when work should begin)'
+					},
 					due_at: {
 						type: 'string',
 						description: 'Optional due date in ISO format (YYYY-MM-DDTHH:mm:ssZ)'
@@ -648,6 +652,10 @@ Only updates fields that are provided - omitted fields remain unchanged.`,
 						description:
 							'Assign to different plan (or null to unassign). Uses edge relationships internally.'
 					},
+					start_at: {
+						type: 'string',
+						description: 'New start date (ISO format) or null to clear'
+					},
 					due_at: {
 						type: 'string',
 						description: 'New due date (ISO format) or null to clear'
@@ -876,9 +884,9 @@ Use for edits to titles, states, body markdown, or metadata.`,
 		type: 'function',
 		function: {
 			name: 'delete_onto_task',
-			description: `Delete a task from the ontology system.
-Removes the task and all associated onto_edges relationships.
-This action is permanent and cannot be undone.
+			description: `Delete (soft delete) a task from the ontology system.
+Sets deleted_at timestamp to mark the task as deleted. The task is excluded from queries but can be recovered.
+Preserves edge relationships for potential restoration.
 Verifies ownership before deletion.`,
 			parameters: {
 				type: 'object',

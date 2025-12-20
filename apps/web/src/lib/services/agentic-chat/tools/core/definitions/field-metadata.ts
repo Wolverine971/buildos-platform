@@ -102,6 +102,12 @@ export const ENTITY_FIELD_INFO: Record<string, Record<string, FieldInfo>> = {
 			required: true,
 			example: 'Draft onboarding email sequence'
 		},
+		description: {
+			type: 'string',
+			description: 'Task description stored in onto_tasks.description column',
+			required: false,
+			example: 'Summarize beta feedback before writing final onboarding email'
+		},
 		state_key: {
 			type: 'enum',
 			enum_values: ['todo', 'in_progress', 'blocked', 'done'],
@@ -115,11 +121,31 @@ export const ENTITY_FIELD_INFO: Record<string, Record<string, FieldInfo>> = {
 			required: false,
 			example: '4'
 		},
+		start_at: {
+			type: 'date',
+			description: 'Optional ISO timestamp indicating when work should begin',
+			required: false,
+			example: '2025-12-15T09:00:00Z'
+		},
 		due_at: {
 			type: 'date',
 			description: 'Optional deadline timestamp',
 			required: false,
 			example: '2025-12-01T15:00:00Z'
+		},
+		completed_at: {
+			type: 'date',
+			description:
+				'Auto-set timestamp when task transitions to done state. Cleared when task moves away from done.',
+			required: false,
+			example: '2025-12-20T14:30:00Z'
+		},
+		deleted_at: {
+			type: 'date',
+			description:
+				'Soft delete timestamp. When set, task is excluded from queries but can be recovered.',
+			required: false,
+			example: '(null when active)'
 		},
 		plan_id: {
 			type: 'string',
@@ -139,9 +165,9 @@ Use the most specific type that matches the task nature.`,
 		},
 		props: {
 			type: 'string',
-			description: 'JSON metadata. Use props.description for detailed task brief.',
+			description: 'JSON metadata for additional custom properties.',
 			required: false,
-			example: '{"description":"Summarize beta feedback before final email"}'
+			example: '{"goal_id":"abc123","supporting_milestone_id":"def456"}'
 		}
 	},
 	ontology_plan: {

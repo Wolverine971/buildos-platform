@@ -194,6 +194,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 
 			// Ensure project → document edge exists for downstream consumers
 			const { error: projectEdgeError } = await supabase.from('onto_edges').insert({
+				project_id: project.id,
 				src_kind: 'project',
 				src_id: project.id,
 				rel: 'has_document',
@@ -226,6 +227,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 
 		// Insert task → document edge
 		const { error: edgeError } = await supabase.from('onto_edges').insert({
+			project_id: project.id,
 			src_kind: 'task',
 			src_id: taskId,
 			rel: TASK_DOCUMENT_REL,

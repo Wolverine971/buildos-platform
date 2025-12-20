@@ -13,11 +13,12 @@
  * Request Body:
  * - project_id: string (required) - Project UUID
  * - title: string (required) - Task title
- * - description?: string - Task description
+ * - description?: string - Task description (stored in column)
  * - priority?: number (1-5) - Task priority
  * - plan_id?: string - Associated plan UUID (creates edge relationship)
  * - type_key?: string (default: 'task.execute') - Task type (e.g., task.create, task.review)
  * - state_key?: string (default: 'todo') - Initial state
+ * - start_at?: string - Start date ISO string (when work should begin)
  * - due_at?: string - Due date ISO string
  * - props?: object - Additional properties
  *
@@ -59,6 +60,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			props = {},
 			goal_id,
 			supporting_milestone_id,
+			start_at,
 			due_at
 		} = body;
 
@@ -138,22 +140,30 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		}
 
 		// Create the task
-		// type_key is now a proper column (not in props)
-		const taskData = {
+		// Description is now a proper column (not just in props)
+		// completed_at is auto-set when state_key is 'done'
+		const taskData: Record<string, unknown> = {
 			project_id,
 			title,
+			description: description || null,
 			type_key: type_key || 'task.execute',
 			state_key,
 			priority,
+			start_at: start_at || null,
 			due_at: due_at || null,
 			created_by: actorId,
 			props: {
 				...props,
-				description: description || null,
+				// Keep goal_id and milestone_id in props for edge reference
 				...(validatedGoalId ? { goal_id: validatedGoalId } : {}),
 				...(validatedMilestoneId ? { supporting_milestone_id: validatedMilestoneId } : {})
 			}
 		};
+
+		// Auto-set completed_at when creating a task as done
+		if (state_key === 'done') {
+			taskData.completed_at = new Date().toISOString();
+		}
 
 		const { data: task, error: createError } = await supabase
 			.from('onto_tasks')

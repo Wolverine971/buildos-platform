@@ -5099,8 +5099,11 @@ export type Database = {
       }
       onto_tasks: {
         Row: {
+          completed_at: string | null
           created_at: string
           created_by: string
+          deleted_at: string | null
+          description: string | null
           due_at: string | null
           facet_scale: string | null
           id: string
@@ -5108,14 +5111,18 @@ export type Database = {
           project_id: string
           props: Json
           search_vector: unknown
+          start_at: string | null
           state_key: Database["public"]["Enums"]["task_state"]
           title: string
           type_key: string
           updated_at: string
         }
         Insert: {
+          completed_at?: string | null
           created_at?: string
           created_by: string
+          deleted_at?: string | null
+          description?: string | null
           due_at?: string | null
           facet_scale?: string | null
           id?: string
@@ -5123,14 +5130,18 @@ export type Database = {
           project_id: string
           props?: Json
           search_vector?: unknown
+          start_at?: string | null
           state_key?: Database["public"]["Enums"]["task_state"]
           title: string
           type_key?: string
           updated_at?: string
         }
         Update: {
+          completed_at?: string | null
           created_at?: string
           created_by?: string
+          deleted_at?: string | null
+          description?: string | null
           due_at?: string | null
           facet_scale?: string | null
           id?: string
@@ -5138,6 +5149,7 @@ export type Database = {
           project_id?: string
           props?: Json
           search_vector?: unknown
+          start_at?: string | null
           state_key?: Database["public"]["Enums"]["task_state"]
           title?: string
           type_key?: string
@@ -8853,8 +8865,11 @@ export type Database = {
       get_plan_tasks: {
         Args: { plan_uuid: string }
         Returns: {
+          completed_at: string | null
           created_at: string
           created_by: string
+          deleted_at: string | null
+          description: string | null
           due_at: string | null
           facet_scale: string | null
           id: string
@@ -8862,6 +8877,7 @@ export type Database = {
           project_id: string
           props: Json
           search_vector: unknown
+          start_at: string | null
           state_key: Database["public"]["Enums"]["task_state"]
           title: string
           type_key: string

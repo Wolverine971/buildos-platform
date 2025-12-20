@@ -50,6 +50,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 				`
 				)
 				.eq('id', taskId)
+				.is('deleted_at', null) // Exclude soft-deleted tasks
 				.single()
 		]);
 

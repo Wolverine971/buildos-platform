@@ -86,17 +86,20 @@ function trimMarkdownForPrompt(markdown: string, maxLength: number = 8000): stri
 	if (markdown.length <= maxLength) {
 		return markdown;
 	}
+	console.warn(
+		`[OntologyBrief] Markdown content truncated from ${markdown.length} to ${maxLength} characters for LLM prompt`
+	);
 	const truncated = markdown.slice(0, maxLength);
 	return `${truncated}\n\n... (content truncated for analysis prompt)`;
 }
 
 function getTaskStatusIcon(task: OntoTask): string {
 	const state = task.state_key;
-	if (state === 'done') return '';
-	if (state === 'in_progress') return '';
-	if (state === 'blocked') return '';
-	if (task.due_at) return '';
-	return '';
+	if (state === 'done') return '✅';
+	if (state === 'in_progress') return '🔄';
+	if (state === 'blocked') return '🚫';
+	if (task.due_at) return '📅';
+	return '📌';
 }
 
 // ============================================================================
@@ -155,7 +158,7 @@ function formatOntologyProjectBrief(project: ProjectBriefData, timezone: string)
 		brief += `### Goal Progress\n`;
 		for (const goal of activeGoals) {
 			const statusEmoji =
-				goal.status === 'on_track' ? '' : goal.status === 'at_risk' ? '' : '';
+				goal.status === 'on_track' ? '✅' : goal.status === 'at_risk' ? '⚠️' : '🔴';
 			brief += `- ${statusEmoji} **${goal.goal.name}**: ${goal.progressPercent}% (${goal.completedTasks}/${goal.totalTasks} tasks)\n`;
 		}
 		brief += '\n';
@@ -323,7 +326,7 @@ function generateMainBriefMarkdown(
 		mainBrief += `### Goal Progress\n`;
 		for (const goal of activeGoals) {
 			const statusEmoji =
-				goal.status === 'on_track' ? '' : goal.status === 'at_risk' ? '' : '';
+				goal.status === 'on_track' ? '✅' : goal.status === 'at_risk' ? '⚠️' : '🔴';
 			const projectName = projectNameMap.get(goal.goal.project_id) || '';
 			const projectSuffix = projectName
 				? ` — [${projectName}](/projects/${goal.goal.project_id})`
@@ -636,13 +639,31 @@ export async function generateOntologyDailyBrief(
 			)
 		);
 
+		// Log any failed project briefs for debugging
+		const failedBriefs = projectBriefResults.filter(
+			(r): r is PromiseRejectedResult => r.status === 'rejected'
+		);
+		if (failedBriefs.length > 0) {
+			console.warn(
+				`[OntologyBrief] ${failedBriefs.length} project briefs failed to generate`
+			);
+			for (const failed of failedBriefs) {
+				console.error('[OntologyBrief] Project brief error:', failed.reason);
+			}
+		}
+
 		const projectBriefs = projectBriefResults
-			.filter((r) => r.status === 'fulfilled')
-			.map((r) => (r as PromiseFulfilledResult<OntologyProjectBriefRow>).value);
+			.filter(
+				(r): r is PromiseFulfilledResult<OntologyProjectBriefRow> =>
+					r.status === 'fulfilled'
+			)
+			.map((r) => r.value);
 
 		const projectBriefContents = projectBriefs.map((b) => b.brief_content);
 
-		console.log(`[OntologyBrief] Generated ${projectBriefs.length} project briefs`);
+		console.log(
+			`[OntologyBrief] Generated ${projectBriefs.length}/${briefData.projects.length} project briefs`
+		);
 
 		// Step 4: Generate executive summary via LLM
 		await updateProgress(
@@ -755,6 +776,39 @@ export async function generateOntologyDailyBrief(
 			console.log(`[OntologyBrief] Generated LLM analysis`);
 		} catch (llmError) {
 			console.error('[OntologyBrief] Failed to generate LLM analysis:', llmError);
+
+			// Fallback LLM analysis with key metrics
+			const blockedCount = briefData.blockedTasks.length;
+			const overdueCount = briefData.overdueTasks.length;
+			const todayCount = briefData.todaysTasks.length;
+			const goalsAtRisk = briefData.goals.filter(
+				(g) => g.status === 'at_risk' || g.status === 'behind'
+			);
+
+			const analysisPoints: string[] = [];
+
+			if (todayCount > 0) {
+				analysisPoints.push(`You have **${todayCount} tasks** scheduled for today.`);
+			}
+			if (overdueCount > 0) {
+				analysisPoints.push(
+					`⚠️ **${overdueCount} tasks are overdue** and need immediate attention.`
+				);
+			}
+			if (blockedCount > 0) {
+				analysisPoints.push(
+					`🚫 **${blockedCount} tasks are blocked** - consider addressing blockers first.`
+				);
+			}
+			if (goalsAtRisk.length > 0) {
+				analysisPoints.push(
+					`🔴 **${goalsAtRisk.length} goals** are at risk or behind schedule.`
+				);
+			}
+
+			if (analysisPoints.length > 0) {
+				llmAnalysis = analysisPoints.join('\n\n');
+			}
 		}
 
 		// Step 6: Generate main brief markdown

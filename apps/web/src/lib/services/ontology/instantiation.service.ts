@@ -25,6 +25,7 @@ type InstantiationCounts = {
 };
 
 type EdgeInsert = {
+	project_id: string;
 	src_kind: string;
 	src_id: string;
 	rel: string;
@@ -268,6 +269,7 @@ export async function instantiateProject(
 
 			// Use has_context_document edge to link the context document
 			edgesToInsert.push({
+				project_id: typedProjectId,
 				src_kind: 'project',
 				src_id: projectId,
 				rel: 'has_context_document',
@@ -300,6 +302,7 @@ export async function instantiateProject(
 			for (const row of goalRows ?? []) {
 				inserted.goals.push(row.id);
 				edgesToInsert.push({
+					project_id: typedProjectId,
 					src_kind: 'project',
 					src_id: projectId,
 					rel: 'has_goal',
@@ -335,6 +338,7 @@ export async function instantiateProject(
 			for (const row of reqRows ?? []) {
 				inserted.requirements.push(row.id);
 				edgesToInsert.push({
+					project_id: typedProjectId,
 					src_kind: 'project',
 					src_id: projectId,
 					rel: 'has_requirement',
@@ -361,6 +365,7 @@ export async function instantiateProject(
 				documentIdByTitle.set(doc.title, docId);
 
 				edgesToInsert.push({
+					project_id: typedProjectId,
 					src_kind: 'project',
 					src_id: projectId,
 					rel: 'has_document',
@@ -379,6 +384,7 @@ export async function instantiateProject(
 					if (fallbackContextDocId) {
 						// Create has_context_document edge for the fallback context doc
 						edgesToInsert.push({
+							project_id: typedProjectId,
 							src_kind: 'project',
 							src_id: projectId,
 							rel: 'has_context_document',
@@ -434,6 +440,7 @@ export async function instantiateProject(
 				planIdByName.set(plan.name, planRow.id);
 
 				edgesToInsert.push({
+					project_id: typedProjectId,
 					src_kind: 'project',
 					src_id: projectId,
 					rel: 'has_plan',
@@ -498,6 +505,7 @@ export async function instantiateProject(
 				const taskId = taskRow.id;
 				inserted.tasks.push(taskId);
 				edgesToInsert.push({
+					project_id: typedProjectId,
 					src_kind: 'project',
 					src_id: projectId,
 					rel: 'has_task',
@@ -509,6 +517,7 @@ export async function instantiateProject(
 				if (planId) {
 					// Plan -> Task (has_task)
 					edgesToInsert.push({
+						project_id: typedProjectId,
 						src_kind: 'plan',
 						src_id: planId,
 						rel: 'has_task',
@@ -517,6 +526,7 @@ export async function instantiateProject(
 					});
 					// Task -> Plan (belongs_to_plan)
 					edgesToInsert.push({
+						project_id: typedProjectId,
 						src_kind: 'task',
 						src_id: taskId,
 						rel: 'belongs_to_plan',
@@ -574,6 +584,7 @@ export async function instantiateProject(
 
 				inserted.outputs.push(outputRow.id);
 				edgesToInsert.push({
+					project_id: typedProjectId,
 					src_kind: 'project',
 					src_id: projectId,
 					rel: 'has_output',
@@ -609,6 +620,7 @@ export async function instantiateProject(
 			for (const row of sourceRows ?? []) {
 				inserted.sources.push(row.id);
 				edgesToInsert.push({
+					project_id: typedProjectId,
 					src_kind: 'project',
 					src_id: projectId,
 					rel: 'has_source',
@@ -644,6 +656,7 @@ export async function instantiateProject(
 			for (const row of metricRows ?? []) {
 				inserted.metrics.push(row.id);
 				edgesToInsert.push({
+					project_id: typedProjectId,
 					src_kind: 'project',
 					src_id: projectId,
 					rel: 'has_metric',
@@ -678,6 +691,7 @@ export async function instantiateProject(
 			for (const row of milestoneRows ?? []) {
 				inserted.milestones.push(row.id);
 				edgesToInsert.push({
+					project_id: typedProjectId,
 					src_kind: 'project',
 					src_id: projectId,
 					rel: 'has_milestone',
@@ -714,6 +728,7 @@ export async function instantiateProject(
 			for (const row of riskRows ?? []) {
 				inserted.risks.push(row.id);
 				edgesToInsert.push({
+					project_id: typedProjectId,
 					src_kind: 'project',
 					src_id: projectId,
 					rel: 'has_risk',
@@ -748,6 +763,7 @@ export async function instantiateProject(
 			for (const row of decisionRows ?? []) {
 				inserted.decisions.push(row.id);
 				edgesToInsert.push({
+					project_id: typedProjectId,
 					src_kind: 'project',
 					src_id: projectId,
 					rel: 'has_decision',
@@ -761,6 +777,7 @@ export async function instantiateProject(
 		if (parsed.edges?.length) {
 			for (const edge of parsed.edges) {
 				edgesToInsert.push({
+					project_id: typedProjectId,
 					src_kind: edge.src_kind,
 					src_id: edge.src_id,
 					rel: edge.rel,

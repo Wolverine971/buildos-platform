@@ -2491,7 +2491,9 @@
 	onClose={handleClose}
 	size="xl"
 	variant="bottom-sheet"
-	enableGestures={true}
+	enableGestures={false}
+	showDragHandle={false}
+	closeOnBackdrop={false}
 	showCloseButton={false}
 	ariaLabel="BuildOS chat assistant dialog"
 >

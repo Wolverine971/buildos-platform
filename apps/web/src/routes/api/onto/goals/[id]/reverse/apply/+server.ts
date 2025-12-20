@@ -126,6 +126,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 		}
 
 		const edgePayloads: Array<{
+			project_id: string;
 			src_kind: string;
 			src_id: string;
 			rel: string;
@@ -137,13 +138,21 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 		for (const milestone of insertedMilestones) {
 			edgePayloads.push(
 				buildEdgePayload(
+					context.project.id,
 					'project',
 					context.project.id,
 					'contains',
 					'milestone',
 					milestone.id
 				),
-				buildEdgePayload('goal', goalId, 'supports_goal', 'milestone', milestone.id)
+				buildEdgePayload(
+					context.project.id,
+					'goal',
+					goalId,
+					'supports_goal',
+					'milestone',
+					milestone.id
+				)
 			);
 		}
 
@@ -151,12 +160,27 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 			const props = (task.props as Record<string, unknown> | null) ?? null;
 			const supportingMilestoneId = props?.supporting_milestone_id as string | undefined;
 			edgePayloads.push(
-				buildEdgePayload('project', context.project.id, 'contains', 'task', task.id),
-				buildEdgePayload('goal', goalId, 'supports_goal', 'task', task.id)
+				buildEdgePayload(
+					context.project.id,
+					'project',
+					context.project.id,
+					'contains',
+					'task',
+					task.id
+				),
+				buildEdgePayload(
+					context.project.id,
+					'goal',
+					goalId,
+					'supports_goal',
+					'task',
+					task.id
+				)
 			);
 			if (supportingMilestoneId) {
 				edgePayloads.push(
 					buildEdgePayload(
+						context.project.id,
 						'milestone',
 						supportingMilestoneId,
 						'contains',
@@ -314,6 +338,7 @@ function buildTaskProps(
 }
 
 function buildEdgePayload(
+	projectId: string,
 	srcKind: string,
 	srcId: string,
 	rel: string,
@@ -321,6 +346,7 @@ function buildEdgePayload(
 	dstId: string
 ) {
 	return {
+		project_id: projectId,
 		src_kind: srcKind,
 		src_id: srcId,
 		rel,

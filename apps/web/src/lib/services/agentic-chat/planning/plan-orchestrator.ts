@@ -39,6 +39,7 @@ import { ChatStrategy } from '$lib/types/agent-chat-enhancement';
 import type { ChatToolCall, ChatContextType, AgentPlanMetadata } from '@buildos/shared-types';
 import { v4 as uuidv4, validate as uuidValidate } from 'uuid';
 import { formatToolSummaries } from '$lib/services/agentic-chat/tools/core/tools.config';
+import { ToolExecutionService } from '../execution/tool-execution-service';
 
 /**
  * Interface for LLM service (subset of SmartLLMService)
@@ -119,13 +120,16 @@ export class PlanOrchestrator implements BaseService {
 		'create_onto_plan',
 		'update_onto_project'
 	]);
+	private toolExecutionService: ToolExecutionService;
 
 	constructor(
 		private llmService: LLMService,
-		private toolExecutor: ToolExecutorFunction,
+		toolExecutor: ToolExecutorFunction,
 		private executorCoordinator: ExecutorCoordinator,
 		private persistenceService: PersistenceService
-	) {}
+	) {
+		this.toolExecutionService = new ToolExecutionService(toolExecutor);
+	}
 
 	async initialize(): Promise<void> {}
 
@@ -951,46 +955,33 @@ Return JSON: {"verdict":"approved|changes_requested|rejected","notes":"short exp
 				};
 				emittedEvents.push(callEvent);
 
-				try {
-					const execution = await this.toolExecutor(toolName, args, context);
-					const toolResult: ToolExecutionResult = {
-						success: true,
-						data: execution.data,
-						toolName,
-						toolCallId: toolCall.id,
-						streamEvents: execution.streamEvents
-					};
+				const toolResult = await this.toolExecutionService.executeTool(
+					toolCall,
+					context,
+					plannerContext.availableTools
+				);
 
-					const resultEvent: StreamEvent = {
-						type: 'tool_result',
-						result: toolResult
-					};
-					emittedEvents.push(resultEvent);
+				const resultEvent: StreamEvent = {
+					type: 'tool_result',
+					result: toolResult
+				};
+				emittedEvents.push(resultEvent);
 
-					if (execution.streamEvents) {
-						for (const event of execution.streamEvents) {
-							emittedEvents.push(event);
-						}
+				if (toolResult.streamEvents) {
+					for (const event of toolResult.streamEvents) {
+						emittedEvents.push(event);
 					}
-
-					aggregatedResults.push(execution.data);
-				} catch (error) {
-					const message = error instanceof Error ? error.message : String(error);
-					const toolResult: ToolExecutionResult = {
-						success: false,
-						error: message,
-						toolName,
-						toolCallId: toolCall.id
-					};
-
-					const resultEvent: StreamEvent = {
-						type: 'tool_result',
-						result: toolResult
-					};
-					emittedEvents.push(resultEvent);
-
-					throw error;
 				}
+
+				if (!toolResult.success) {
+					const message =
+						typeof toolResult.error === 'string'
+							? toolResult.error
+							: toolResult.error?.message || `Tool ${toolName} failed`;
+					throw new Error(message);
+				}
+
+				aggregatedResults.push(toolResult.data);
 			}
 
 			// Return combined results (preserve original shape for downstream steps)

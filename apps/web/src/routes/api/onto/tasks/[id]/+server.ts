@@ -67,6 +67,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 				`
 				)
 				.eq('id', params.id)
+				.is('deleted_at', null) // Exclude soft-deleted tasks
 				.single()
 		]);
 
@@ -145,6 +146,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			props,
 			goal_id,
 			supporting_milestone_id,
+			start_at,
 			due_at
 		} = body;
 
@@ -242,23 +244,41 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 
 		if (title !== undefined) updateData.title = title;
 		if (priority !== undefined) updateData.priority = priority;
-		if (state_key !== undefined) updateData.state_key = state_key;
 		if (type_key !== undefined) updateData.type_key = type_key;
+		if (start_at !== undefined) updateData.start_at = start_at || null;
 		if (due_at !== undefined) updateData.due_at = due_at;
+
+		// Handle description as a direct column (no longer in props)
+		if (description !== undefined) {
+			updateData.description = description || null;
+		}
+
+		// Handle state_key transitions and completed_at
+		if (state_key !== undefined) {
+			updateData.state_key = state_key;
+			const wasNotDone = existingTask.state_key !== 'done';
+			const isNowDone = state_key === 'done';
+			const wasAlreadyDone = existingTask.state_key === 'done';
+			const isNoLongerDone = state_key !== 'done';
+
+			// Transitioning TO done: set completed_at
+			if (wasNotDone && isNowDone) {
+				updateData.completed_at = new Date().toISOString();
+			}
+			// Transitioning FROM done: clear completed_at
+			else if (wasAlreadyDone && isNoLongerDone) {
+				updateData.completed_at = null;
+			}
+		}
 
 		const hasPlanInput = Object.prototype.hasOwnProperty.call(body, 'plan_id');
 
-		// Handle props update - merge with existing
+		// Handle props update - merge with existing (description no longer stored here)
 		const currentProps = (existingTask.props as Record<string, unknown> | null) ?? {};
 		const nextProps = { ...currentProps, ...(props || {}) };
 		let includeProps = false;
 
 		if (props !== undefined) {
-			includeProps = true;
-		}
-
-		if (description !== undefined) {
-			nextProps.description = description || null;
 			includeProps = true;
 		}
 
@@ -309,6 +329,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 
 			if (validatedGoalId) {
 				await supabase.from('onto_edges').insert({
+					project_id: existingTask.project_id,
 					src_id: validatedGoalId,
 					src_kind: 'goal',
 					dst_id: params.id,
@@ -329,6 +350,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 
 			if (validatedMilestoneId) {
 				await supabase.from('onto_edges').insert({
+					project_id: existingTask.project_id,
 					src_id: validatedMilestoneId,
 					src_kind: 'milestone',
 					dst_id: params.id,
@@ -375,6 +397,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 				// Create bidirectional edges
 				await supabase.from('onto_edges').insert([
 					{
+						project_id: existingTask.project_id,
 						src_id: params.id,
 						src_kind: 'task',
 						dst_id: targetPlanId,
@@ -382,6 +405,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 						rel: 'belongs_to_plan'
 					},
 					{
+						project_id: existingTask.project_id,
 						src_id: targetPlanId,
 						src_kind: 'plan',
 						dst_id: params.id,
@@ -419,7 +443,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 	}
 };
 
-// DELETE /api/onto/tasks/[id] - Delete a task
+// DELETE /api/onto/tasks/[id] - Soft delete a task
 export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 	const session = await locals.safeGetSession();
 	if (!session?.user) {
@@ -452,6 +476,7 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 			`
 			)
 			.eq('id', params.id)
+			.is('deleted_at', null) // Only allow deleting non-deleted tasks
 			.single();
 
 		if (fetchError || !task) {
@@ -470,22 +495,22 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 			state_key: task.state_key
 		};
 
-		// Delete related edges
-		await supabase
-			.from('onto_edges')
-			.delete()
-			.or(`src_id.eq.${params.id},dst_id.eq.${params.id}`);
-
-		// Delete the task
+		// Soft delete: set deleted_at timestamp instead of hard delete
 		const { error: deleteError } = await supabase
 			.from('onto_tasks')
-			.delete()
+			.update({
+				deleted_at: new Date().toISOString(),
+				updated_at: new Date().toISOString()
+			})
 			.eq('id', params.id);
 
 		if (deleteError) {
-			console.error('Error deleting task:', deleteError);
+			console.error('Error soft-deleting task:', deleteError);
 			return ApiResponse.error('Failed to delete task', 500);
 		}
+
+		// Note: We keep the edges for soft-deleted tasks to preserve relationships
+		// They will be filtered out when querying active tasks
 
 		// Log activity async (non-blocking)
 		logDeleteAsync(

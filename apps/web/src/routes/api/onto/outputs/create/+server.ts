@@ -98,6 +98,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		// Create edge from project to output
 		const { error: edgeError } = await supabase.from('onto_edges').insert({
+			project_id: project_id,
 			src_kind: 'project',
 			src_id: project_id,
 			rel: 'has_output',

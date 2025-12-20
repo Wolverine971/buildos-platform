@@ -457,7 +457,8 @@ export class OntologyBriefDataLoader {
 
 		const projectIds = projects.map((p) => p.id);
 
-		// Load all entities in parallel
+		// Load all entities in parallel with timing
+		const queryStartTime = Date.now();
 		const [
 			tasksResult,
 			goalsResult,
@@ -470,7 +471,11 @@ export class OntologyBriefDataLoader {
 			decisionsResult,
 			edgesResult
 		] = await Promise.all([
-			this.supabase.from('onto_tasks').select('*').in('project_id', projectIds),
+			this.supabase
+				.from('onto_tasks')
+				.select('*')
+				.in('project_id', projectIds)
+				.is('deleted_at', null),
 			this.supabase.from('onto_goals').select('*').in('project_id', projectIds),
 			this.supabase.from('onto_plans').select('*').in('project_id', projectIds),
 			this.supabase.from('onto_milestones').select('*').in('project_id', projectIds),
@@ -481,6 +486,10 @@ export class OntologyBriefDataLoader {
 			this.supabase.from('onto_decisions').select('*').in('project_id', projectIds),
 			this.supabase.from('onto_edges').select('*').in('project_id', projectIds)
 		]);
+		const queryDuration = Date.now() - queryStartTime;
+		console.log(
+			`[OntologyBriefDataLoader] Loaded ontology data in ${queryDuration}ms for ${projectIds.length} projects`
+		);
 
 		// Check for errors
 		const errors = [

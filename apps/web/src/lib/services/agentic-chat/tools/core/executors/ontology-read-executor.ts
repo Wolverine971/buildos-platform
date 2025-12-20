@@ -105,16 +105,20 @@ export class OntologyReadExecutor extends BaseExecutor {
 				id,
 				project_id,
 				title,
+				description,
 				type_key,
 				state_key,
 				priority,
+				start_at,
 				due_at,
+				completed_at,
 				props,
 				project:onto_projects(name)
 			`,
 				{ count: 'exact' }
 			)
 			.eq('created_by', actorId)
+			.is('deleted_at', null) // Exclude soft-deleted tasks
 			.order('updated_at', { ascending: false });
 
 		if (args.project_id) {
@@ -349,16 +353,20 @@ export class OntologyReadExecutor extends BaseExecutor {
 				id,
 				project_id,
 				title,
+				description,
 				type_key,
 				state_key,
 				priority,
+				start_at,
 				due_at,
+				completed_at,
 				props,
 				project:onto_projects(name)
 			`,
 				{ count: 'exact' }
 			)
 			.eq('created_by', actorId)
+			.is('deleted_at', null) // Exclude soft-deleted tasks
 			.order('updated_at', { ascending: false })
 			.ilike('title', `%${searchTerm}%`);
 

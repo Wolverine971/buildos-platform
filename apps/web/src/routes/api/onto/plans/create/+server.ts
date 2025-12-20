@@ -112,6 +112,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		// Create an edge linking the plan to the project
 		await supabase.from('onto_edges').insert({
+			project_id: project_id,
 			src_id: project_id,
 			src_kind: 'project',
 			dst_id: plan.id,

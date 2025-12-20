@@ -363,6 +363,76 @@ export class AgentChatOrchestrator {
 		return messages;
 	}
 
+	private refreshPlannerMessages(messages: LLMMessage[], plannerContext: PlannerContext): void {
+		if (messages.length === 0) {
+			return;
+		}
+
+		if (messages[0]?.role === 'system') {
+			messages[0] = {
+				...messages[0],
+				content: plannerContext.systemPrompt
+			};
+		}
+
+		const profileContent = plannerContext.userProfile
+			? `## User Preferences\n${plannerContext.userProfile}`
+			: undefined;
+		const profileIndex = messages.findIndex(
+			(message) =>
+				message.role === 'system' &&
+				typeof message.content === 'string' &&
+				message.content.startsWith('## User Preferences')
+		);
+
+		if (profileContent) {
+			if (profileIndex >= 0) {
+				messages[profileIndex] = {
+					...messages[profileIndex],
+					content: profileContent
+				};
+			} else {
+				messages.splice(1, 0, {
+					role: 'system',
+					content: profileContent
+				});
+			}
+		} else if (profileIndex >= 0) {
+			messages.splice(profileIndex, 1);
+		}
+
+		const snapshotContent = `## Context Snapshot\n${plannerContext.locationContext}`;
+		const snapshotIndex = messages.findIndex(
+			(message) =>
+				message.role === 'system' &&
+				typeof message.content === 'string' &&
+				message.content.startsWith('## Context Snapshot')
+		);
+
+		if (snapshotIndex >= 0) {
+			messages[snapshotIndex] = {
+				...messages[snapshotIndex],
+				content: snapshotContent
+			};
+			return;
+		}
+
+		const updatedProfileIndex = messages.findIndex(
+			(message) =>
+				message.role === 'system' &&
+				typeof message.content === 'string' &&
+				message.content.startsWith('## User Preferences')
+		);
+		const insertIndex = Math.min(
+			messages.length,
+			Math.max(1, updatedProfileIndex >= 0 ? updatedProfileIndex + 1 : 1)
+		);
+		messages.splice(insertIndex, 0, {
+			role: 'system',
+			content: snapshotContent
+		});
+	}
+
 	private appendVirtualTools(tools: ChatToolDefinition[]): ChatToolDefinition[] {
 		// ChatToolDefinition is well-typed with function.name property
 		// No need for 'as any' cast - tools array is already typed
@@ -392,6 +462,77 @@ export class AgentChatOrchestrator {
 		};
 	}
 
+	private async refreshPlannerContextAfterShift(params: {
+		request: AgentChatRequest;
+		serviceContext: ServiceContext;
+		messages: LLMMessage[];
+	}): Promise<{
+		plannerContext: PlannerContext;
+		tools: ChatToolDefinition[];
+		virtualHandlers: Record<string, VirtualToolHandler>;
+	} | null> {
+		const { request, serviceContext, messages } = params;
+		try {
+			const refreshedPlannerContext = await this.deps.contextService.buildPlannerContext({
+				sessionId: serviceContext.sessionId,
+				userId: serviceContext.userId,
+				conversationHistory: serviceContext.conversationHistory,
+				userMessage: request.userMessage,
+				contextType: serviceContext.contextType,
+				entityId: serviceContext.entityId,
+				...(serviceContext.ontologyContext
+					? { ontologyContext: serviceContext.ontologyContext }
+					: {}),
+				...(serviceContext.lastTurnContext
+					? { lastTurnContext: serviceContext.lastTurnContext }
+					: {}),
+				projectFocus: serviceContext.projectFocus ?? null
+			});
+
+			this.refreshPlannerMessages(messages, refreshedPlannerContext);
+
+			const refreshedTools = this.appendVirtualTools(refreshedPlannerContext.availableTools);
+			const refreshedVirtualHandlers = this.createVirtualToolHandlers({
+				request,
+				plannerContext: refreshedPlannerContext,
+				serviceContext
+			});
+
+			return {
+				plannerContext: refreshedPlannerContext,
+				tools: refreshedTools,
+				virtualHandlers: refreshedVirtualHandlers
+			};
+		} catch (error) {
+			console.warn('[AgentChatOrchestrator] Failed to refresh planner context', {
+				error
+			});
+			return null;
+		}
+	}
+
+	private updateContextScopeForShift(
+		serviceContext: ServiceContext,
+		contextShift: ContextShiftData,
+		normalizedEntityId: string | undefined,
+		normalizedShiftContext: ChatContextType
+	): void {
+		if (!normalizedEntityId) {
+			return;
+		}
+
+		const isProjectShift =
+			contextShift.entity_type === 'project' || normalizedShiftContext === 'project';
+		if (!isProjectShift) {
+			return;
+		}
+
+		serviceContext.contextScope = {
+			...(serviceContext.contextScope ?? {}),
+			projectId: normalizedEntityId
+		};
+	}
+
 	private async *runPlannerLoop(params: {
 		request: AgentChatRequest;
 		messages: LLMMessage[];
@@ -400,9 +541,10 @@ export class AgentChatOrchestrator {
 		serviceContext: ServiceContext;
 		virtualHandlers: Record<string, VirtualToolHandler>;
 	}): AsyncGenerator<StreamEvent, void, unknown> {
-		const { llmService, toolExecutionService } = this.deps;
-		const { request, messages, tools, serviceContext, plannerContext, virtualHandlers } =
-			params;
+		const { toolExecutionService } = this.deps;
+		const { request, messages, tools, serviceContext, virtualHandlers } = params;
+		let currentTools = tools;
+		let currentVirtualHandlers = virtualHandlers;
 
 		const startTime = Date.now();
 		let toolCallCount = 0;
@@ -452,7 +594,7 @@ export class AgentChatOrchestrator {
 			try {
 				for await (const chunk of this.enhancedLLM.streamText({
 					messages,
-					tools,
+					tools: currentTools,
 					tool_choice: 'auto',
 					userId: serviceContext.userId,
 					// Let the wrapper decide the optimal profile unless explicitly set
@@ -536,9 +678,9 @@ export class AgentChatOrchestrator {
 				const result = await toolExecutionService.executeTool(
 					toolCall,
 					serviceContext,
-					tools,
+					currentTools,
 					{
-						virtualHandlers
+						virtualHandlers: currentVirtualHandlers
 					}
 				);
 
@@ -547,6 +689,8 @@ export class AgentChatOrchestrator {
 				// Type-safe context shift extraction
 				const contextShift = extractContextShift(result);
 				if (contextShift) {
+					const previousContextType = serviceContext.contextType;
+					const previousEntityId = serviceContext.entityId;
 					const normalizedShiftContext = normalizeContextType(
 						(contextShift.new_context as ChatContextType) ?? serviceContext.contextType
 					);
@@ -557,6 +701,12 @@ export class AgentChatOrchestrator {
 					if (normalizedEntityId) {
 						serviceContext.entityId = normalizedEntityId;
 					}
+					this.updateContextScopeForShift(
+						serviceContext,
+						contextShift,
+						normalizedEntityId,
+						normalizedShiftContext
+					);
 					serviceContext.lastTurnContext = this.buildContextShiftSnapshot(
 						{
 							...contextShift,
@@ -564,6 +714,21 @@ export class AgentChatOrchestrator {
 						},
 						normalizedShiftContext
 					);
+
+					const shouldRefreshContext =
+						previousContextType !== serviceContext.contextType ||
+						previousEntityId !== serviceContext.entityId;
+					if (shouldRefreshContext) {
+						const refreshed = await this.refreshPlannerContextAfterShift({
+							request,
+							serviceContext,
+							messages
+						});
+						if (refreshed) {
+							currentTools = refreshed.tools;
+							currentVirtualHandlers = refreshed.virtualHandlers;
+						}
+					}
 
 					// Persistence handled by the stream layer (chat_sessions).
 				}

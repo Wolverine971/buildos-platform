@@ -153,6 +153,7 @@
 	let goalId = $state('');
 	let milestoneId = $state('');
 	let stateKey = $state('todo');
+	let startAt = $state('');
 	let dueAt = $state('');
 	let showSeriesModal = $state(false);
 	let showSeriesDeleteConfirm = $state(false);
@@ -331,13 +332,15 @@
 
 			if (task) {
 				title = task.title || '';
-				description = task.props?.description || '';
+				// Description is now a proper column (migrated from props.description)
+				description = task.description || '';
 				priority = task.priority || 3;
 				// Plan is now fetched via edge relationship, returned as task.plan object
 				planId = task.plan?.id || '';
 				goalId = extractGoalIdFromProps(task.props || null);
 				milestoneId = extractMilestoneIdFromProps(task.props || null);
 				stateKey = task.state_key || 'todo';
+				startAt = task.start_at ? formatDateTimeForInput(task.start_at) : '';
 				dueAt = task.due_at ? formatDateTimeForInput(task.due_at) : '';
 				seriesActionError = '';
 				showSeriesDeleteConfirm = false;
@@ -495,6 +498,7 @@
 				priority: Number(priority),
 				plan_id: planId || null,
 				state_key: stateKey,
+				start_at: parseDateTimeFromInput(startAt),
 				due_at: parseDateTimeFromInput(dueAt),
 				goal_id: goalId?.trim() || null,
 				supporting_milestone_id: milestoneId?.trim() || null
@@ -1149,13 +1153,53 @@
 													class="text-xs font-semibold uppercase tracking-wide flex items-center gap-2"
 												>
 													<span class="text-base">📅</span>
-													{#if !dueAt}Schedule?
+													{#if !startAt && !dueAt}Schedule?
 													{:else}Scheduled
 													{/if}
 												</h3>
 											</CardHeader>
 											<CardBody padding="sm">
 												<div class="space-y-3">
+													<div>
+														<label
+															for="sidebar-start-date"
+															class="block text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1.5"
+														>
+															Start Date
+														</label>
+														<TextInput
+															id="sidebar-start-date"
+															type="datetime-local"
+															inputmode="numeric"
+															enterkeyhint="next"
+															bind:value={startAt}
+															disabled={isSaving}
+															size="sm"
+															class="border-border bg-card focus:ring-2 focus:ring-accent w-full"
+														/>
+														{#if startAt}
+															<p
+																class="mt-1.5 text-xs text-muted-foreground"
+															>
+																{new Date(startAt).toLocaleString(
+																	'en-US',
+																	{
+																		weekday: 'short',
+																		month: 'short',
+																		day: 'numeric',
+																		hour: 'numeric',
+																		minute: '2-digit'
+																	}
+																)}
+															</p>
+														{:else}
+															<p
+																class="mt-1.5 text-xs text-muted-foreground italic"
+															>
+																No start date set
+															</p>
+														{/if}
+													</div>
 													<div>
 														<label
 															for="sidebar-due-date"
