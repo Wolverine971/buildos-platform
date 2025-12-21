@@ -19,7 +19,8 @@
 // Reusable badge class patterns
 const BADGE_MUTED = 'bg-muted text-muted-foreground border-border';
 const BADGE_ACCENT = 'bg-accent/15 text-accent border-accent/30';
-const BADGE_PROGRESS = 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30';
+const BADGE_PROGRESS =
+	'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30';
 const BADGE_SUCCESS = 'bg-indigo-500/15 text-indigo-700 dark:text-indigo-400 border-indigo-500/30';
 const BADGE_WARNING = 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30';
 const BADGE_DANGER = 'bg-destructive/15 text-destructive border-destructive/30';

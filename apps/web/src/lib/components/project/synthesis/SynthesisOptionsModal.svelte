@@ -204,13 +204,15 @@ This analysis helps streamline your project by reducing redundancy, improving wo
 								</p>
 							</div>
 						</div>
-						<Button
+						<!-- Inkprint close button -->
+						<button
+							type="button"
 							onclick={onClose}
-							class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-							aria-label="Close"
+							class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-ink transition-all pressable hover:border-red-600/50 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:hover:border-red-400/50 dark:hover:text-red-400"
+							aria-label="Close modal"
 						>
-							<X class="w-5 h-5 text-gray-500 dark:text-gray-400" />
-						</Button>
+							<X class="h-4 w-4" />
+						</button>
 					</div>
 				</div>
 

@@ -53,7 +53,9 @@
 			</div>
 
 			<!-- Footer: Metadata skeleton - compact on mobile -->
-			<div class="mt-auto flex items-center justify-between border-t border-border pt-1.5 sm:pt-3">
+			<div
+				class="mt-auto flex items-center justify-between border-t border-border pt-1.5 sm:pt-3"
+			>
 				<!-- Date skeleton -->
 				<div class="h-2.5 sm:h-3 w-14 sm:w-24 rounded bg-muted/60"></div>
 				<!-- Message count + chevron skeleton -->

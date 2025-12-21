@@ -14,7 +14,6 @@
 		invalidateAll,
 		beforeNavigate
 	} from '$app/navigation';
-	import { createSupabaseBrowser } from '$lib/supabase';
 	import { navigationStore } from '$lib/stores/navigation.store';
 	import Navigation from '$lib/components/layout/Navigation.svelte';
 	import Footer from '$lib/components/layout/Footer.svelte';
@@ -87,8 +86,8 @@
 	let pwaCleanup = $state<(() => void) | void>(undefined);
 	let installPromptCleanup = $state<(() => void) | void>(undefined);
 
-	// Create supabase client once and memoize
-	const supabase = browser ? createSupabaseBrowser() : null;
+	// Use the Supabase client from +layout.ts (avoids duplicate clients and auth listeners)
+	const supabase = data.supabase;
 	if (supabase) {
 		setContext('supabase', supabase);
 	}

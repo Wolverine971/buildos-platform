@@ -757,16 +757,16 @@
 						<ExternalLink class="w-4 h-4 sm:w-5 sm:h-5" />
 					</a>
 				{/if}
-				<!-- Close button -->
-				<Button
-					variant="ghost"
-					size="sm"
+				<!-- Inkprint close button -->
+				<button
+					type="button"
 					onclick={handleClose}
-					class="text-muted-foreground hover:text-foreground shrink-0 !p-1.5 sm:!p-2"
 					disabled={isSaving || isDeleting}
+					class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-ink transition-all pressable hover:border-red-600/50 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 dark:hover:border-red-400/50 dark:hover:text-red-400"
+					aria-label="Close modal"
 				>
-					<X class="w-4 h-4 sm:w-5 sm:h-5" />
-				</Button>
+					<X class="h-4 w-4" />
+				</button>
 			</div>
 		</div>
 	{/snippet}

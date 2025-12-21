@@ -269,7 +269,9 @@
 
 			<!-- Section Header - More compact on mobile -->
 			<div class="flex items-center gap-1.5 sm:gap-3">
-				<div class="p-1 sm:p-2 bg-accent/10 rounded-md sm:rounded-lg border border-accent/30">
+				<div
+					class="p-1 sm:p-2 bg-accent/10 rounded-md sm:rounded-lg border border-accent/30"
+				>
 					<FolderOpen class="h-3.5 w-3.5 sm:h-5 sm:w-5 text-accent" />
 				</div>
 				<h2 class="text-sm sm:text-xl font-bold text-foreground">Projects</h2>
@@ -313,7 +315,9 @@
 						<h3 class="text-base sm:text-xl font-bold text-foreground mb-1.5 sm:mb-2">
 							Create Your First Project
 						</h3>
-						<p class="text-sm sm:text-base text-muted-foreground mb-4 sm:mb-6 max-w-md mx-auto">
+						<p
+							class="text-sm sm:text-base text-muted-foreground mb-4 sm:mb-6 max-w-md mx-auto"
+						>
 							Tell our AI about your project - we'll help organize everything.
 						</p>
 						<Button
@@ -352,7 +356,9 @@
 							class="group relative flex flex-col rounded-lg border border-border bg-card p-2 sm:p-4 shadow-ink transition-all duration-200 hover:border-accent hover:shadow-ink-strong pressable tx tx-frame tx-weak"
 						>
 							<!-- Header - Mobile: Title + inline status, Desktop: Title + Badge -->
-							<div class="mb-1 sm:mb-3 flex items-start justify-between gap-1 sm:gap-3">
+							<div
+								class="mb-1 sm:mb-3 flex items-start justify-between gap-1 sm:gap-3"
+							>
 								<div class="flex-1 min-w-0">
 									<h3
 										class="text-xs sm:text-lg font-bold text-foreground line-clamp-2 transition-colors group-hover:text-accent leading-tight"
@@ -415,7 +421,7 @@
 									{ key: 'goals', count: project.goal_count, Icon: Target },
 									{ key: 'plans', count: project.plan_count, Icon: Calendar },
 									{ key: 'docs', count: project.document_count, Icon: FileText }
-								].filter(s => s.count > 0)}
+								].filter((s) => s.count > 0)}
 								{@const mobileStats = stats.slice(0, 3)}
 								<div
 									class="mt-auto flex items-center justify-between border-t border-border pt-1.5 sm:pt-3 text-muted-foreground"
@@ -423,16 +429,28 @@
 									<!-- Mobile: Show up to 3 non-zero stats -->
 									<div class="flex sm:hidden items-center gap-2 overflow-hidden">
 										{#each mobileStats as stat (stat.key)}
-											<span class="flex items-center gap-0.5 shrink-0" title={stat.key}>
-												<svelte:component this={stat.Icon} class="h-2.5 w-2.5" />
-												<span class="font-semibold text-[9px]">{stat.count}</span>
+											<span
+												class="flex items-center gap-0.5 shrink-0"
+												title={stat.key}
+											>
+												<svelte:component
+													this={stat.Icon}
+													class="h-2.5 w-2.5"
+												/>
+												<span class="font-semibold text-[9px]"
+													>{stat.count}</span
+												>
 											</span>
 										{/each}
 										{#if stats.length > 3}
-											<span class="text-[8px] text-muted-foreground/50">+{stats.length - 3}</span>
+											<span class="text-[8px] text-muted-foreground/50"
+												>+{stats.length - 3}</span
+											>
 										{/if}
 									</div>
-									<ChevronRight class="sm:hidden h-3 w-3 text-muted-foreground/40 shrink-0" />
+									<ChevronRight
+										class="sm:hidden h-3 w-3 text-muted-foreground/40 shrink-0"
+									/>
 
 									<!-- Desktop: Full stats (non-zero only) -->
 									<div class="hidden sm:flex flex-col gap-2 w-full">
@@ -443,13 +461,24 @@
 													aria-label="{stat.key} count"
 													title={stat.key}
 												>
-													<svelte:component this={stat.Icon} class="h-3.5 w-3.5" />
-													<span class="font-bold text-xs">{stat.count}</span>
+													<svelte:component
+														this={stat.Icon}
+														class="h-3.5 w-3.5"
+													/>
+													<span class="font-bold text-xs"
+														>{stat.count}</span
+													>
 												</span>
 											{/each}
 										</div>
-										<div class="flex items-center justify-between text-xs text-muted-foreground/70">
-											<span>Updated {new Date(project.updated_at).toLocaleDateString()}</span>
+										<div
+											class="flex items-center justify-between text-xs text-muted-foreground/70"
+										>
+											<span
+												>Updated {new Date(
+													project.updated_at
+												).toLocaleDateString()}</span
+											>
 											<ChevronRight
 												class="h-4 w-4 opacity-0 transition-opacity group-hover:opacity-100"
 											/>

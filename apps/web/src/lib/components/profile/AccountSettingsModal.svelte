@@ -244,31 +244,26 @@
 			<div class="sm:hidden">
 				<div class="modal-grab-handle"></div>
 			</div>
-			<div class="px-4 sm:px-6 py-3 sm:py-4 border-b border-border">
-				<div class="flex items-start justify-between">
-					<div class="flex items-center space-x-3">
-						<div class="p-2 bg-accent/20 rounded-lg">
-							<Settings class="w-6 h-6 text-accent" />
-						</div>
-						<div>
-							<h2 class="text-2xl font-semibold text-foreground">Account Settings</h2>
-							<p class="mt-1 text-sm text-muted-foreground">
-								Manage your account information and preferences
-							</p>
-						</div>
+			<!-- Inkprint compact header -->
+			<div
+				class="flex h-12 items-center justify-between gap-2 px-3 sm:px-4 border-b border-border bg-muted/30"
+			>
+				<div class="flex items-center gap-2 min-w-0">
+					<div class="p-1.5 bg-accent/20 rounded-lg shrink-0">
+						<Settings class="w-4 h-4 text-accent" />
 					</div>
-					<Button
-						type="button"
-						onclick={handleClose}
-						disabled={loading}
-						variant="ghost"
-						size="sm"
-						class="!p-1.5 text-muted-foreground hover:text-foreground"
-						aria-label="Close modal"
-					>
-						<X class="w-5 h-5" />
-					</Button>
+					<h2 class="text-sm font-semibold text-foreground truncate">Account Settings</h2>
 				</div>
+				<!-- Inkprint close button -->
+				<button
+					type="button"
+					onclick={handleClose}
+					disabled={loading}
+					class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-ink transition-all pressable hover:border-red-600/50 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 dark:hover:border-red-400/50 dark:hover:text-red-400"
+					aria-label="Close modal"
+				>
+					<X class="h-4 w-4" />
+				</button>
 			</div>
 		</div>
 	{/snippet}

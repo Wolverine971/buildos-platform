@@ -30,17 +30,17 @@ A satirical but detailed tracking of George R.R. Martin's epic fantasy series, f
 
 ## Entity Counts
 
-| Entity Type | Count | Status |
-| ----------- | ----- | ------ |
-| Project     | 1     | ✓      |
-| Goals       | 7     | ✓      |
+| Entity Type | Count | Status                                                                                                                                      |
+| ----------- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| Project     | 1     | ✓                                                                                                                                           |
+| Goals       | 7     | ✓                                                                                                                                           |
 | Milestones  | 33    | ✓ (+7 new: Season 8 backlash, Butterflies controversy, July 2024 update, Snow cancelled, Knight of Seven Kingdoms, HOTD S2, Spinoff Empire) |
-| Plans       | 8     | ✓      |
-| Tasks       | 18    | ✓      |
-| Decisions   | 9     | ✓ (+2 new: Delete Butterflies, Accept HBO Ending Early) |
-| Risks       | 11    | ✓ (+3 new: HBO Creative Differences, Spinoff Dilution, Fire & Blood Vol 2 Pending) |
-| Documents   | 12    | ✓ (+4 new: Butterflies (Deleted), 1993 Letter, Career Before Westeros, ASOIAF Statistics) |
-| Edges       | 100+  | ✓ (+20 new connections for 2024-2025 content) |
+| Plans       | 8     | ✓                                                                                                                                           |
+| Tasks       | 18    | ✓                                                                                                                                           |
+| Decisions   | 9     | ✓ (+2 new: Delete Butterflies, Accept HBO Ending Early)                                                                                     |
+| Risks       | 11    | ✓ (+3 new: HBO Creative Differences, Spinoff Dilution, Fire & Blood Vol 2 Pending)                                                          |
+| Documents   | 12    | ✓ (+4 new: Butterflies (Deleted), 1993 Letter, Career Before Westeros, ASOIAF Statistics)                                                   |
+| Edges       | 100+  | ✓ (+20 new connections for 2024-2025 content)                                                                                               |
 
 ---
 
@@ -240,45 +240,50 @@ All milestones have `props.state` values but no `state_key` column in INSERT.
 **Date Added:** 2025-12-21
 
 ### New Milestones (7):
-| ID | Title | Goal | State |
-|----|-------|------|-------|
-| 44444444-0002-0007-0000-000000000001 | Season 8 Backlash & The Petition | Goal 2 (Expansion) | completed |
-| 44444444-0003-0011-0000-000000000001 | Beware the Butterflies (Deleted Post) | Goal 3 (TWOW) | completed |
-| 44444444-0003-0012-0000-000000000001 | July 2024: Little Progress Admission | Goal 3 (TWOW) | completed |
-| 44444444-0005-0009-0000-000000000001 | Snow Sequel Cancelled | Goal 5 (Distractions) | completed |
+
+| ID                                   | Title                                      | Goal                  | State       |
+| ------------------------------------ | ------------------------------------------ | --------------------- | ----------- |
+| 44444444-0002-0007-0000-000000000001 | Season 8 Backlash & The Petition           | Goal 2 (Expansion)    | completed   |
+| 44444444-0003-0011-0000-000000000001 | Beware the Butterflies (Deleted Post)      | Goal 3 (TWOW)         | completed   |
+| 44444444-0003-0012-0000-000000000001 | July 2024: Little Progress Admission       | Goal 3 (TWOW)         | completed   |
+| 44444444-0005-0009-0000-000000000001 | Snow Sequel Cancelled                      | Goal 5 (Distractions) | completed   |
 | 44444444-0005-0010-0000-000000000001 | A Knight of the Seven Kingdoms Development | Goal 5 (Distractions) | in_progress |
-| 44444444-0005-0011-0000-000000000001 | House of the Dragon Season 2 | Goal 5 (Distractions) | completed |
-| 44444444-0005-0012-0000-000000000001 | The Spinoff Empire (5-6 Shows) | Goal 5 (Distractions) | in_progress |
+| 44444444-0005-0011-0000-000000000001 | House of the Dragon Season 2               | Goal 5 (Distractions) | completed   |
+| 44444444-0005-0012-0000-000000000001 | The Spinoff Empire (5-6 Shows)             | Goal 5 (Distractions) | in_progress |
 
 ### New Risks (3):
-| ID | Title | Status |
-|----|-------|--------|
-| 44444444-0003-0003-0001-000000000004 | HBO Creative Differences | occurred |
-| 44444444-0005-0003-0001-000000000004 | Spinoff Empire Diluting Focus | occurred |
+
+| ID                                   | Title                              | Status     |
+| ------------------------------------ | ---------------------------------- | ---------- |
+| 44444444-0003-0003-0001-000000000004 | HBO Creative Differences           | occurred   |
+| 44444444-0005-0003-0001-000000000004 | Spinoff Empire Diluting Focus      | occurred   |
 | 44444444-0003-0004-0001-000000000004 | Fire & Blood Volume 2 Also Pending | identified |
 
 ### New Documents (4):
-| ID | Title | Type |
-|----|-------|------|
-| 44444444-0003-0004-0001-000000000005 | Beware the Butterflies (Deleted) | controversy.deleted |
-| 44444444-0001-0003-0001-000000000005 | The 1993 Letter (Full Leaked Text) | historical.outline |
-| 44444444-0007-0002-0001-000000000005 | Career Before Westeros | historical.background |
-| 44444444-0007-0003-0001-000000000005 | ASOIAF By The Numbers | statistics.series |
+
+| ID                                   | Title                              | Type                  |
+| ------------------------------------ | ---------------------------------- | --------------------- |
+| 44444444-0003-0004-0001-000000000005 | Beware the Butterflies (Deleted)   | controversy.deleted   |
+| 44444444-0001-0003-0001-000000000005 | The 1993 Letter (Full Leaked Text) | historical.outline    |
+| 44444444-0007-0002-0001-000000000005 | Career Before Westeros             | historical.background |
+| 44444444-0007-0003-0001-000000000005 | ASOIAF By The Numbers              | statistics.series     |
 
 ### New Decisions (2):
-| ID | Title | Date |
-|----|-------|------|
+
+| ID                                   | Title                            | Date       |
+| ------------------------------------ | -------------------------------- | ---------- |
 | 44444444-0003-0002-0001-000000000003 | Delete the Butterflies Blog Post | 2024-07-16 |
 | 44444444-0002-0004-0001-000000000003 | Accept HBO Ending the Show Early | 2019-05-19 |
 
 ### New Edge Connections (20+):
+
 - Goal → Milestone edges for all 7 new milestones
 - Milestone → Document edges (Butterflies → Butterflies doc, etc.)
 - Milestone → Decision edges (Butterflies → Delete decision, etc.)
 - Milestone → Risk edges (Butterflies → HBO tension, Spinoff → Dilution, etc.)
 - Causal relationships:
-  - Season 8 backlash → HOTD involvement
-  - HOTD S2 → Butterflies controversy
-  - Butterflies → July 2024 admission
-  - Snow cancelled → Knight of Seven Kingdoms focus
-  - Multiple shows → Spinoff Empire
+    - Season 8 backlash → HOTD involvement
+    - HOTD S2 → Butterflies controversy
+    - Butterflies → July 2024 admission
+    - Snow cancelled → Knight of Seven Kingdoms focus
+    - Multiple shows → Spinoff Empire

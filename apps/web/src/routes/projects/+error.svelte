@@ -123,9 +123,8 @@
 				<!-- Help Text -->
 				<p class="text-sm text-muted-foreground mt-6">
 					If this problem persists, please contact support or check the
-					<a
-						href="https://status.buildos.dev"
-						class="text-accent hover:underline">system status</a
+					<a href="https://status.buildos.dev" class="text-accent hover:underline"
+						>system status</a
 					>.
 				</p>
 			</CardBody>

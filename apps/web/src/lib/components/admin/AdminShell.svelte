@@ -216,9 +216,7 @@
 		'flex h-10 w-10 items-center justify-center rounded-full bg-foreground text-sm font-semibold uppercase text-background';
 </script>
 
-<div
-	class="admin-shell relative flex min-h-screen bg-background text-foreground transition-colors"
->
+<div class="admin-shell relative flex min-h-screen bg-background text-foreground transition-colors">
 	<!-- Desktop sidebar -->
 	<aside
 		class="relative hidden w-72 shrink-0 border-r border-border bg-card/95 backdrop-blur-xl lg:flex lg:flex-col tx tx-frame tx-weak"
@@ -276,9 +274,7 @@
 		<main class="relative flex-1 overflow-y-auto">
 			<div class="min-h-full">
 				{#if $$slots.hero}
-					<div
-						class="border-b border-border bg-muted/30"
-					>
+					<div class="border-b border-border bg-muted/30">
 						<div class="px-4 py-6 sm:px-6 lg:px-8">
 							<slot name="hero" />
 						</div>
@@ -305,9 +301,7 @@
 				class="relative ml-auto flex h-full w-80 flex-col bg-card shadow-ink-strong animate-slide-in tx tx-frame tx-weak"
 			>
 				<!-- Mobile Header -->
-				<div
-					class="flex items-center justify-between border-b border-border px-6 py-5"
-				>
+				<div class="flex items-center justify-between border-b border-border px-6 py-5">
 					<div class="flex items-center gap-3">
 						<div
 							class="flex h-10 w-10 items-center justify-center rounded-xl bg-accent text-accent-foreground shadow-ink"
@@ -320,9 +314,7 @@
 							>
 								BuildOS
 							</p>
-							<p class="text-sm font-bold text-foreground">
-								Admin Menu
-							</p>
+							<p class="text-sm font-bold text-foreground">Admin Menu</p>
 						</div>
 					</div>
 					<Button
@@ -352,9 +344,7 @@
 							></span>
 						</div>
 						<div class="flex-1 min-w-0">
-							<p
-								class="text-sm font-semibold text-foreground truncate"
-							>
+							<p class="text-sm font-semibold text-foreground truncate">
 								{user?.name || 'Admin'}
 							</p>
 							{#if user?.email}

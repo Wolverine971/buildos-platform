@@ -583,7 +583,8 @@ export class SmartLLMService {
 				return;
 			}
 
-			const { error } = await this.supabase.from('llm_usage_logs').insert({
+			const projectId = this.normalizeProjectIdForLogging(params.projectId);
+			const payload = {
 				user_id: sanitizedUserId,
 				operation_type: params.operationType,
 				model_requested: params.modelRequested,
@@ -604,7 +605,7 @@ export class SmartLLMService {
 				max_tokens: params.maxTokens,
 				profile: params.profile,
 				streaming: params.streaming,
-				project_id: params.projectId,
+				project_id: projectId ?? undefined,
 				brain_dump_id: params.brainDumpId,
 				task_id: params.taskId,
 				brief_id: params.briefId,
@@ -612,9 +613,27 @@ export class SmartLLMService {
 				openrouter_cache_status: params.openrouterCacheStatus,
 				rate_limit_remaining: params.rateLimitRemaining,
 				metadata: params.metadata
-			});
+			};
+
+			const { error } = await this.supabase.from('llm_usage_logs').insert(payload);
 
 			if (error) {
+				if (
+					error.code === '23503' &&
+					error.message?.includes('llm_usage_logs_project_id_fkey')
+				) {
+					const { error: retryError } = await this.supabase
+						.from('llm_usage_logs')
+						.insert({ ...payload, project_id: null });
+					if (retryError) {
+						console.error(
+							'Failed to log LLM usage (retry without project_id):',
+							retryError
+						);
+					}
+					return;
+				}
+
 				console.error('Failed to log LLM usage to database:', error);
 			}
 		} catch (error) {
@@ -640,9 +659,19 @@ export class SmartLLMService {
 	private normalizeUserIdForLogging(userId?: string | null): string | null {
 		if (!userId) return null;
 		const trimmed = userId.trim();
+		return this.isUUID(trimmed) ? trimmed : null;
+	}
+
+	private normalizeProjectIdForLogging(projectId?: string | null): string | null {
+		if (!projectId) return null;
+		const trimmed = projectId.trim();
+		return this.isUUID(trimmed) ? trimmed : null;
+	}
+
+	private isUUID(value: string): boolean {
 		const uuidRegex =
 			/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/;
-		return uuidRegex.test(trimmed) ? trimmed : null;
+		return uuidRegex.test(value);
 	}
 
 	// ============================================
@@ -1946,7 +1975,7 @@ You must respond with valid JSON only. Follow these rules:
 								maxTokens: options.maxTokens,
 								profile,
 								streaming: true,
-								projectId: options.projectId || options.entityId,
+								projectId: options.projectId,
 								metadata: {
 									sessionId: options.sessionId,
 									messageId: options.messageId,

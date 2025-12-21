@@ -352,7 +352,9 @@
 </svelte:head>
 
 <div class="mx-auto max-w-screen-2xl px-3 sm:px-4 lg:px-6 py-2.5 sm:py-6 space-y-2.5 sm:space-y-6">
-	<header class="flex flex-col gap-2 sm:gap-3 sm:flex-row sm:items-center sm:justify-between !mt-0">
+	<header
+		class="flex flex-col gap-2 sm:gap-3 sm:flex-row sm:items-center sm:justify-between !mt-0"
+	>
 		<div class="space-y-0.5 sm:space-y-1 flex-1">
 			<div class="flex items-center gap-2">
 				<h1 class="text-lg sm:text-2xl font-bold text-foreground lg:text-3xl">Projects</h1>
@@ -506,7 +508,9 @@
 					>
 						<p class="micro-label text-[8px] sm:text-[0.65rem]">Projects</p>
 						{#if showSkeletons}
-							<div class="h-5 sm:h-8 w-8 sm:w-12 bg-muted rounded mt-0.5 sm:mt-1 animate-pulse"></div>
+							<div
+								class="h-5 sm:h-8 w-8 sm:w-12 bg-muted rounded mt-0.5 sm:mt-1 animate-pulse"
+							></div>
 						{:else}
 							<p class="text-lg sm:text-2xl font-bold text-foreground mt-0.5 sm:mt-1">
 								{stats.totalProjects}
@@ -518,7 +522,9 @@
 					>
 						<p class="micro-label text-[8px] sm:text-[0.65rem]">Tasks</p>
 						{#if showSkeletons}
-							<div class="h-5 sm:h-8 w-8 sm:w-12 bg-muted rounded mt-0.5 sm:mt-1 animate-pulse"></div>
+							<div
+								class="h-5 sm:h-8 w-8 sm:w-12 bg-muted rounded mt-0.5 sm:mt-1 animate-pulse"
+							></div>
 						{:else}
 							<p class="text-lg sm:text-2xl font-bold text-foreground mt-0.5 sm:mt-1">
 								{stats.totalTasks}
@@ -530,7 +536,9 @@
 					>
 						<p class="micro-label text-[8px] sm:text-[0.65rem]">Outputs</p>
 						{#if showSkeletons}
-							<div class="h-5 sm:h-8 w-8 sm:w-12 bg-muted rounded mt-0.5 sm:mt-1 animate-pulse"></div>
+							<div
+								class="h-5 sm:h-8 w-8 sm:w-12 bg-muted rounded mt-0.5 sm:mt-1 animate-pulse"
+							></div>
 						{:else}
 							<p class="text-lg sm:text-2xl font-bold text-foreground mt-0.5 sm:mt-1">
 								{stats.totalOutputs}
@@ -542,7 +550,9 @@
 					>
 						<p class="micro-label text-[8px] sm:text-[0.65rem]">Active</p>
 						{#if showSkeletons}
-							<div class="h-5 sm:h-8 w-8 sm:w-12 bg-muted rounded mt-0.5 sm:mt-1 animate-pulse"></div>
+							<div
+								class="h-5 sm:h-8 w-8 sm:w-12 bg-muted rounded mt-0.5 sm:mt-1 animate-pulse"
+							></div>
 						{:else}
 							<p class="text-lg sm:text-2xl font-bold text-accent mt-0.5 sm:mt-1">
 								{stats.activeProjects}
@@ -712,7 +722,7 @@
 						{ key: 'goals', count: project.goal_count, Icon: Target },
 						{ key: 'plans', count: project.plan_count, Icon: Calendar },
 						{ key: 'docs', count: project.document_count, Icon: FileText }
-					].filter(s => s.count > 0)}
+					].filter((s) => s.count > 0)}
 					{@const mobileProjectStats = projectStats.slice(0, 3)}
 					<a
 						href="/projects/{project.id}"
@@ -749,7 +759,9 @@
 
 						<!-- Description - Hidden on mobile -->
 						{#if project.description}
-							<p class="hidden sm:block mb-4 line-clamp-2 text-sm text-muted-foreground">
+							<p
+								class="hidden sm:block mb-4 line-clamp-2 text-sm text-muted-foreground"
+							>
 								{project.description.length > 120
 									? project.description.slice(0, 120) + '…'
 									: project.description}
@@ -774,13 +786,18 @@
 							<!-- Mobile: Show up to 3 non-zero stats -->
 							<div class="flex sm:hidden items-center gap-2 overflow-hidden">
 								{#each mobileProjectStats as stat (stat.key)}
-									<span class="flex items-center gap-0.5 shrink-0" title={stat.key}>
+									<span
+										class="flex items-center gap-0.5 shrink-0"
+										title={stat.key}
+									>
 										<svelte:component this={stat.Icon} class="h-2.5 w-2.5" />
 										<span class="font-semibold text-[9px]">{stat.count}</span>
 									</span>
 								{/each}
 								{#if projectStats.length > 3}
-									<span class="text-[8px] text-muted-foreground/50">+{projectStats.length - 3}</span>
+									<span class="text-[8px] text-muted-foreground/50"
+										>+{projectStats.length - 3}</span
+									>
 								{/if}
 							</div>
 
@@ -793,7 +810,10 @@
 											aria-label="{stat.key} count"
 											title={stat.key}
 										>
-											<svelte:component this={stat.Icon} class="h-3.5 w-3.5" />
+											<svelte:component
+												this={stat.Icon}
+												class="h-3.5 w-3.5"
+											/>
 											<span class="font-bold text-xs">{stat.count}</span>
 										</span>
 									{/each}

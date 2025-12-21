@@ -51,7 +51,6 @@
 	import { fade } from 'svelte/transition';
 	import { onDestroy, tick } from 'svelte';
 	import { browser } from '$app/environment';
-	import Button from './Button.svelte';
 	import { portal } from '$lib/actions/portal';
 	import type { Snippet } from 'svelte';
 
@@ -472,21 +471,21 @@
 						</div>
 					{/if}
 
-					<!-- Header (compact spacing) -->
+					<!-- Header (compact spacing - Inkprint design) -->
 					{#if header}
 						{@render header()}
 					{:else if title || showCloseButton}
 						<div
-							class="flex items-center justify-between
-								px-3 sm:px-4 py-2 sm:py-3
+							class="flex h-12 items-center justify-between gap-2
+								px-3 sm:px-4
 								border-b border-border
-								bg-muted/30 tx tx-strip tx-weak
+								bg-muted/30
 								flex-shrink-0"
 						>
 							{#if title}
 								<h2
 									id={titleId}
-									class="text-base sm:text-lg font-semibold text-foreground truncate pr-2"
+									class="text-sm font-semibold text-foreground truncate"
 								>
 									{title}
 								</h2>
@@ -495,14 +494,15 @@
 							{/if}
 
 							{#if showCloseButton && !persistent}
-								<Button
+								<!-- Inkprint close button -->
+								<button
+									type="button"
 									onclick={attemptClose}
-									variant="ghost"
-									size="sm"
-									icon={X}
-									class="flex-shrink-0 !p-1"
+									class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-ink transition-all pressable hover:border-red-600/50 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:hover:border-red-400/50 dark:hover:text-red-400"
 									aria-label="Close dialog"
-								/>
+								>
+									<X class="h-4 w-4" />
+								</button>
 							{/if}
 						</div>
 					{/if}

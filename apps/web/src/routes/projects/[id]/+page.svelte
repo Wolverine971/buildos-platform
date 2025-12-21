@@ -385,19 +385,30 @@
 	// UTILITY FUNCTIONS
 	// ============================================================
 
-	function normalizeState(state: string): string {
+	/**
+	 * Extracts the canonical state key for matching against STATE_COLUMNS.
+	 * Maps various state string variants to their canonical lowercase keys.
+	 */
+	function getStateKey(state: string): string {
 		const s = state?.toLowerCase() || 'draft';
-		let normalized: string;
-		if (s === 'complete' || s === 'completed' || s === 'shipped') normalized = 'published';
-		else if (s === 'in_review' || s === 'reviewing') normalized = 'in review';
-		else if (s === 'in_progress' || s === 'drafting') normalized = 'draft';
-		else if (STATE_COLUMNS.some((c) => c.key === s)) normalized = s;
-		else normalized = 'draft';
-		// Title Case the result
-		return normalized
-			.split(/[_\s]+/)
-			.map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-			.join(' ');
+		if (s === 'complete' || s === 'completed' || s === 'shipped' || s === 'published')
+			return 'published';
+		if (s === 'in_review' || s === 'reviewing' || s === 'review') return 'review';
+		if (s === 'approved') return 'approved';
+		if (s === 'in_progress' || s === 'drafting' || s === 'draft') return 'draft';
+		// Check if it's already a valid key
+		if (STATE_COLUMNS.some((c) => c.key === s)) return s;
+		return 'draft';
+	}
+
+	/**
+	 * Returns a human-readable label for the state (Title Case).
+	 * Uses STATE_COLUMNS.label for consistent display.
+	 */
+	function normalizeState(state: string): string {
+		const key = getStateKey(state);
+		const col = STATE_COLUMNS.find((c) => c.key === key);
+		return col?.label || 'Draft';
 	}
 
 	function getTypeLabel(typeKey: string): string {
@@ -438,8 +449,8 @@
 	}
 
 	function getStateColor(state: string): string {
-		const normalized = normalizeState(state);
-		const col = STATE_COLUMNS.find((c) => c.key === normalized);
+		const key = getStateKey(state);
+		const col = STATE_COLUMNS.find((c) => c.key === key);
 		return col?.color || 'bg-muted';
 	}
 
@@ -880,9 +891,11 @@
 					{ key: 'docs', count: documents.length, Icon: FileText },
 					{ key: 'goals', count: goals.length, Icon: Target },
 					{ key: 'plans', count: plans.length, Icon: Calendar }
-				].filter(s => s.count > 0)}
+				].filter((s) => s.count > 0)}
 				{#if mobileStats.length > 0}
-					<div class="flex sm:hidden items-center gap-2.5 text-muted-foreground overflow-x-auto pb-0.5">
+					<div
+						class="flex sm:hidden items-center gap-2.5 text-muted-foreground overflow-x-auto pb-0.5"
+					>
 						{#each mobileStats as stat (stat.key)}
 							<span class="flex items-center gap-0.5 shrink-0" title={stat.key}>
 								<svelte:component this={stat.Icon} class="h-3 w-3" />
@@ -923,7 +936,9 @@
 	<main class="mx-auto max-w-screen-2xl px-2 sm:px-4 lg:px-6 py-2 sm:py-6 overflow-x-hidden">
 		<!-- Hydration Error Banner -->
 		{#if hydrationError}
-			<div class="mb-4 rounded-lg border border-destructive/30 bg-destructive/10 p-4 tx tx-static tx-weak">
+			<div
+				class="mb-4 rounded-lg border border-destructive/30 bg-destructive/10 p-4 tx tx-static tx-weak"
+			>
 				<p class="text-sm text-destructive">
 					Failed to load project data: {hydrationError}
 				</p>
@@ -957,7 +972,9 @@
 					<section
 						class="bg-card border border-border rounded-lg sm:rounded-xl shadow-ink tx tx-frame tx-weak overflow-hidden"
 					>
-						<div class="flex items-center justify-between gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-3">
+						<div
+							class="flex items-center justify-between gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-3"
+						>
 							<button
 								onclick={() => (outputsExpanded = !outputsExpanded)}
 								class="flex items-center gap-2 sm:gap-3 flex-1 text-left hover:bg-muted/60 -m-2 sm:-m-3 p-2 sm:p-3 rounded-lg transition-colors"
@@ -968,7 +985,9 @@
 									<Layers class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-foreground" />
 								</div>
 								<div>
-									<p class="text-xs sm:text-sm font-semibold text-foreground">Outputs</p>
+									<p class="text-xs sm:text-sm font-semibold text-foreground">
+										Outputs
+									</p>
 									<p class="text-[10px] sm:text-xs text-muted-foreground">
 										{outputs.length}
 										{outputs.length === 1 ? 'deliverable' : 'deliverables'}
@@ -1014,7 +1033,9 @@
 											<Sparkles class="w-3 h-3 sm:w-4 sm:h-4 text-accent" />
 										</div>
 										<div>
-											<p class="text-xs sm:text-sm text-foreground">No outputs yet</p>
+											<p class="text-xs sm:text-sm text-foreground">
+												No outputs yet
+											</p>
 											<p class="text-[10px] sm:text-xs text-muted-foreground">
 												Create one to start delivering
 											</p>
@@ -1042,10 +1063,14 @@
 														/>
 													</div>
 													<div class="min-w-0 flex-1">
-														<p class="text-xs sm:text-sm text-foreground truncate">
+														<p
+															class="text-xs sm:text-sm text-foreground truncate"
+														>
 															{output.name}
 														</p>
-														<p class="text-[10px] sm:text-xs text-muted-foreground hidden sm:block">
+														<p
+															class="text-[10px] sm:text-xs text-muted-foreground hidden sm:block"
+														>
 															{output.typeLabel}
 														</p>
 													</div>
@@ -1069,7 +1094,9 @@
 					<section
 						class="bg-card border border-border rounded-lg sm:rounded-xl shadow-ink tx tx-frame tx-weak overflow-hidden"
 					>
-						<div class="flex items-center justify-between gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-3">
+						<div
+							class="flex items-center justify-between gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-3"
+						>
 							<button
 								onclick={() => (documentsExpanded = !documentsExpanded)}
 								class="flex items-center gap-2 sm:gap-3 flex-1 text-left hover:bg-muted/60 -m-2 sm:-m-3 p-2 sm:p-3 rounded-lg transition-colors"
@@ -1080,7 +1107,9 @@
 									<FileText class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-foreground" />
 								</div>
 								<div>
-									<p class="text-xs sm:text-sm font-semibold text-foreground">Documents</p>
+									<p class="text-xs sm:text-sm font-semibold text-foreground">
+										Documents
+									</p>
 									<p class="text-[10px] sm:text-xs text-muted-foreground">
 										{documents.length}
 										{documents.length === 1 ? 'document' : 'documents'}
@@ -1129,7 +1158,9 @@
 											<FileText class="w-3 h-3 sm:w-4 sm:h-4 text-accent" />
 										</div>
 										<div>
-											<p class="text-xs sm:text-sm text-foreground">No documents yet</p>
+											<p class="text-xs sm:text-sm text-foreground">
+												No documents yet
+											</p>
 											<p class="text-[10px] sm:text-xs text-muted-foreground">
 												Add notes, research, or drafts
 											</p>
@@ -1150,13 +1181,19 @@
 													<div
 														class="w-6 h-6 sm:w-8 sm:h-8 rounded-md sm:rounded-lg bg-accent/10 flex items-center justify-center flex-shrink-0"
 													>
-														<FileText class="w-3 h-3 sm:w-4 sm:h-4 text-accent" />
+														<FileText
+															class="w-3 h-3 sm:w-4 sm:h-4 text-accent"
+														/>
 													</div>
 													<div class="min-w-0 flex-1">
-														<p class="text-xs sm:text-sm text-foreground truncate">
+														<p
+															class="text-xs sm:text-sm text-foreground truncate"
+														>
 															{doc.title}
 														</p>
-														<p class="text-[10px] sm:text-xs text-muted-foreground hidden sm:block">
+														<p
+															class="text-[10px] sm:text-xs text-muted-foreground hidden sm:block"
+														>
 															{getTypeLabel(doc.type_key)}
 														</p>
 													</div>
@@ -1287,9 +1324,13 @@
 									<div class="min-w-0">
 										<p class="text-xs sm:text-sm font-semibold text-foreground">
 											{section.label}
-											<span class="text-muted-foreground font-normal">({section.items.length})</span>
+											<span class="text-muted-foreground font-normal"
+												>({section.items.length})</span
+											>
 										</p>
-										<p class="text-[10px] sm:text-xs text-muted-foreground hidden sm:block">
+										<p
+											class="text-[10px] sm:text-xs text-muted-foreground hidden sm:block"
+										>
 											{#if section.description}
 												{section.description}
 											{/if}
@@ -1379,7 +1420,9 @@
 												<p class="text-xs sm:text-sm text-muted-foreground">
 													No tasks yet
 												</p>
-												<p class="text-[10px] sm:text-xs text-muted-foreground/70 mt-0.5 hidden sm:block">
+												<p
+													class="text-[10px] sm:text-xs text-muted-foreground/70 mt-0.5 hidden sm:block"
+												>
 													Add tasks to track work
 												</p>
 											</div>
@@ -1439,7 +1482,9 @@
 												<p class="text-xs sm:text-sm text-muted-foreground">
 													No plans yet
 												</p>
-												<p class="text-[10px] sm:text-xs text-muted-foreground/70 mt-0.5 hidden sm:block">
+												<p
+													class="text-[10px] sm:text-xs text-muted-foreground/70 mt-0.5 hidden sm:block"
+												>
 													Create a plan to organize work
 												</p>
 											</div>
@@ -1499,7 +1544,9 @@
 												<p class="text-xs sm:text-sm text-muted-foreground">
 													No goals yet
 												</p>
-												<p class="text-[10px] sm:text-xs text-muted-foreground/70 mt-0.5 hidden sm:block">
+												<p
+													class="text-[10px] sm:text-xs text-muted-foreground/70 mt-0.5 hidden sm:block"
+												>
 													Define what success looks like
 												</p>
 											</div>
@@ -1568,7 +1615,9 @@
 												<p class="text-xs sm:text-sm text-muted-foreground">
 													No risks logged
 												</p>
-												<p class="text-[10px] sm:text-xs text-muted-foreground/70 mt-0.5 hidden sm:block">
+												<p
+													class="text-[10px] sm:text-xs text-muted-foreground/70 mt-0.5 hidden sm:block"
+												>
 													Track potential blockers
 												</p>
 											</div>
@@ -1640,7 +1689,9 @@
 												<p class="text-xs sm:text-sm text-muted-foreground">
 													No milestones yet
 												</p>
-												<p class="text-[10px] sm:text-xs text-muted-foreground/70 mt-0.5 hidden sm:block">
+												<p
+													class="text-[10px] sm:text-xs text-muted-foreground/70 mt-0.5 hidden sm:block"
+												>
 													Set checkpoints and deadlines
 												</p>
 											</div>

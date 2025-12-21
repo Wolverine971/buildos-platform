@@ -66,7 +66,8 @@
 		FileText,
 		Sparkles,
 		Type,
-		Hash
+		Hash,
+		X
 	} from 'lucide-svelte';
 	import Modal from './Modal.svelte';
 	import MarkdownToggleField from './MarkdownToggleField.svelte';
@@ -355,7 +356,7 @@
 
 <Modal {isOpen} onClose={handleClose} title="" {size} {customClasses} closeOnBackdrop={true}>
 	{#snippet header()}
-		<!-- Custom header with gradient and improved styling -->
+		<!-- Inkprint compact header -->
 		<div>
 			{#if header}
 				{@render header()}
@@ -365,43 +366,21 @@
 				</div>
 				{#if title}
 					<div
-						class="relative bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-800 dark:via-gray-800/95 dark:to-gray-800 px-6 py-5 border-b border-gray-200 dark:border-gray-700"
+						class="flex h-12 items-center justify-between gap-2 px-3 sm:px-4 border-b border-border bg-muted/30"
 					>
-						<div class="flex items-start justify-between">
-							<div>
-								<h2 class="text-2xl font-semibold text-gray-900 dark:text-white">
-									{title}
-								</h2>
-								{#if title === 'Edit Project'}
-									<p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-										Update project details, context, and timeline
-									</p>
-								{/if}
-							</div>
-							<Button
-								type="button"
-								onclick={handleClose}
-								disabled={loading}
-								variant="ghost"
-								size="sm"
-								class="!p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
-								aria-label="Close modal"
-							>
-								<svg
-									class="w-5 h-5"
-									fill="none"
-									stroke="currentColor"
-									viewBox="0 0 24 24"
-								>
-									<path
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										stroke-width="2"
-										d="M6 18L18 6M6 6l12 12"
-									/>
-								</svg>
-							</Button>
-						</div>
+						<h2 class="text-sm font-semibold text-foreground truncate">
+							{title}
+						</h2>
+						<!-- Inkprint close button -->
+						<button
+							type="button"
+							onclick={handleClose}
+							disabled={loading}
+							class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-ink transition-all pressable hover:border-red-600/50 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 dark:hover:border-red-400/50 dark:hover:text-red-400"
+							aria-label="Close modal"
+						>
+							<X class="h-4 w-4" />
+						</button>
 					</div>
 				{/if}
 			{/if}

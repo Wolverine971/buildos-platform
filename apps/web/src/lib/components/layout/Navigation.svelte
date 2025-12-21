@@ -103,8 +103,7 @@
 		{ href: '/history', label: 'History', icon: StickyNote }
 	];
 
-	const loadingAccentClass =
-		'animate-pulse-accent ring-1 ring-accent/60 shadow-ink-strong';
+	const loadingAccentClass = 'animate-pulse-accent ring-1 ring-accent/60 shadow-ink-strong';
 
 	const needsOnboarding = $derived(user && (!completedOnboarding || onboardingProgress < 100));
 	const onboardingUrgent = $derived(user && onboardingProgress < 50);

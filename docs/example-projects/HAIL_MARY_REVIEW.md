@@ -9,6 +9,7 @@
 ## ✅ FIXED & ENHANCED (2024-12-21) - v4.0
 
 ### Data Consistency Fixes:
+
 1. **Goals**: Added `state_key = 'achieved'` to all 6 goal INSERT statements
 2. **Milestones**: Added `state_key = 'completed'` to all milestone INSERT statements
 3. **Date Consistency**: Fixed chronological timeline:
@@ -20,6 +21,7 @@
 ### Comprehensive Content Enhancements:
 
 **New Character Profile Documents (+9):**
+
 - Commander Yáo Li-Jie (mission commander, chose firearm for death)
 - Engineer Olesya Ilyukhina (chose heroin, brutally honest personality)
 - Dr. Martin DuBois & Annie Shapiro Memorial (killed in explosion)
@@ -31,6 +33,7 @@
 - Eva Stratt Authority and Ethics Report
 
 **New Technical Documents (+4):**
+
 - Coma Pod Technical Specifications
 - Threeworld Planetary Analysis
 - Eridian Numbering System Analysis (base-6)
@@ -38,6 +41,7 @@
 - Rocky Trust Ritual Documentation
 
 **New Pre-Launch Milestones (+5):**
+
 - Grace Recruited by Stratt
 - DuBois and Shapiro Killed in Explosion
 - Grace Refuses Mission
@@ -45,17 +49,20 @@
 - Grace Drugged and Loaded onto Hail Mary
 
 **New Decisions (+4):**
+
 - Grace Initial Refusal of Mission
 - Stratt Orders Grace Drugged and Loaded
 - Implement Crew Suicide Protocol
 - Recruit Redell Despite Criminal Past
 
 **New Risks (+3):**
+
 - Astrophage Testing Explosion
 - Science Specialist Refuses Mission
 - Coerced Crew Member Sabotage
 
 **New Causal Edges (+25):**
+
 - Complete pre-launch storyline connected
 - Memory recovery narrative connected
 - All new documents/decisions/risks linked to milestones
@@ -70,17 +77,17 @@ Based on Andy Weir's 2021 hard science fiction novel. This migration seeds a fic
 
 ## Entity Counts (v4.0)
 
-| Entity Type | Count | Status |
-| ----------- | ----- | ------ |
-| Project     | 1     | ✓      |
-| Goals       | 6     | ✓      |
-| Milestones  | 37    | ✓ (+5 pre-launch) |
-| Plans       | 15    | ✓      |
-| Tasks       | 40    | ✓      |
-| Decisions   | 15    | ✓ (+4 new) |
-| Risks       | 17    | ✓ (+3 new) |
+| Entity Type | Count | Status                                  |
+| ----------- | ----- | --------------------------------------- |
+| Project     | 1     | ✓                                       |
+| Goals       | 6     | ✓                                       |
+| Milestones  | 37    | ✓ (+5 pre-launch)                       |
+| Plans       | 15    | ✓                                       |
+| Tasks       | 40    | ✓                                       |
+| Decisions   | 15    | ✓ (+4 new)                              |
+| Risks       | 17    | ✓ (+3 new)                              |
 | Documents   | 28    | ✓ (+13 character profiles & tech specs) |
-| Edges       | 170+  | ✓ (+25 new causal/hierarchical) |
+| Edges       | 170+  | ✓ (+25 new causal/hierarchical)         |
 
 ---
 

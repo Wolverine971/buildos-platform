@@ -59,14 +59,20 @@
 		aria-label="Loading {label}"
 	>
 		<div class="flex items-start gap-2 sm:gap-3">
-			<div class="w-7 h-7 sm:w-9 sm:h-9 rounded-md sm:rounded-lg bg-muted flex items-center justify-center">
+			<div
+				class="w-7 h-7 sm:w-9 sm:h-9 rounded-md sm:rounded-lg bg-muted flex items-center justify-center"
+			>
 				<Icon class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-foreground" />
 			</div>
 			<div class="min-w-0">
 				<p class="text-xs sm:text-sm font-semibold text-foreground flex items-center gap-1">
 					{label}
-					<span class="inline-flex items-center gap-0.5 text-muted-foreground font-normal">
-						<span class="inline-block w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-accent/60 animate-pulse"></span>
+					<span
+						class="inline-flex items-center gap-0.5 text-muted-foreground font-normal"
+					>
+						<span
+							class="inline-block w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-accent/60 animate-pulse"
+						></span>
 						<span>({count})</span>
 					</span>
 				</p>
@@ -103,12 +109,16 @@
 						<div class="w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full bg-muted"></div>
 						<div class="flex-1 space-y-1.5 sm:space-y-2">
 							<div class="h-3 sm:h-4 rounded bg-muted w-3/4"></div>
-							<div class="h-2.5 sm:h-3 rounded bg-muted/70 w-1/3 hidden sm:block"></div>
+							<div
+								class="h-2.5 sm:h-3 rounded bg-muted/70 w-1/3 hidden sm:block"
+							></div>
 						</div>
 					</div>
 				{/each}
 				{#if count > 3}
-					<div class="px-3 sm:px-4 py-1.5 sm:py-2 text-[10px] sm:text-xs text-muted-foreground text-center">
+					<div
+						class="px-3 sm:px-4 py-1.5 sm:py-2 text-[10px] sm:text-xs text-muted-foreground text-center"
+					>
 						+{count - 3} more...
 					</div>
 				{/if}

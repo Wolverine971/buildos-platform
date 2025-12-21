@@ -16,7 +16,7 @@
 	import GoalEditModal from './GoalEditModal.svelte';
 	import { DOCUMENT_STATES } from '$lib/types/onto';
 	import { toastService } from '$lib/stores/toast.store';
-	import { FileText, Loader, Save, Trash2 } from 'lucide-svelte';
+	import { FileText, Loader, Save, Trash2, X } from 'lucide-svelte';
 
 	interface Props {
 		projectId: string;
@@ -356,22 +356,16 @@
 						})}
 					</span>
 				{/if}
-				<Button
-					variant="ghost"
-					size="sm"
+				<!-- Inkprint close button -->
+				<button
+					type="button"
 					onclick={closeModal}
-					class="text-muted-foreground hover:text-foreground shrink-0 !p-1"
 					disabled={saving}
+					class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-ink transition-all pressable hover:border-red-600/50 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 dark:hover:border-red-400/50 dark:hover:text-red-400"
+					aria-label="Close modal"
 				>
-					<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M6 18L18 6M6 6l12 12"
-						></path>
-					</svg>
-				</Button>
+					<X class="h-4 w-4" />
+				</button>
 			</div>
 		</div>
 	{/snippet}

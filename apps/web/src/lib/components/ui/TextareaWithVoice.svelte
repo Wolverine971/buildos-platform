@@ -370,7 +370,8 @@
 
 	function getVoiceButtonClasses(variant: VoiceButtonVariant): string {
 		// Base classes for all states - Inkprint compliant
-		const base = 'shadow-ink pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 dark:focus-visible:ring-offset-background';
+		const base =
+			'shadow-ink pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 dark:focus-visible:ring-offset-background';
 
 		switch (variant) {
 			case 'recording':
@@ -734,7 +735,9 @@
 						</span>
 					{:else if !isVoiceSupported}
 						<!-- Unsupported: muted text -->
-						<span class="text-xs font-medium text-muted-foreground">Voice unavailable</span>
+						<span class="text-xs font-medium text-muted-foreground"
+							>Voice unavailable</span
+						>
 					{:else if voiceBlocked}
 						<!-- Blocked: warning state -->
 						<span class="text-xs font-medium text-amber-600 dark:text-amber-500"
@@ -743,10 +746,16 @@
 					{:else}
 						<!-- Idle hint: keyboard shortcuts highlighted -->
 						<span class="text-xs text-muted-foreground">
-							<kbd class="rounded border border-border bg-background px-1 py-0.5 font-mono text-[0.65rem] font-medium text-foreground">Enter</kbd>
+							<kbd
+								class="rounded border border-border bg-background px-1 py-0.5 font-mono text-[0.65rem] font-medium text-foreground"
+								>Enter</kbd
+							>
 							<span class="mx-1">send</span>
 							<span class="text-border">·</span>
-							<kbd class="ml-1 rounded border border-border bg-background px-1 py-0.5 font-mono text-[0.65rem] font-medium text-foreground">Shift+Enter</kbd>
+							<kbd
+								class="ml-1 rounded border border-border bg-background px-1 py-0.5 font-mono text-[0.65rem] font-medium text-foreground"
+								>Shift+Enter</kbd
+							>
 							<span class="ml-1">new line</span>
 						</span>
 					{/if}

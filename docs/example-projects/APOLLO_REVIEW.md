@@ -212,11 +212,11 @@ All milestones have `props.state = 'achieved'` but no `state_key` column in INSE
 
 ### New Edges Added (v4.0):
 
-- [x] Goal 3 → Cancelled mission milestones (0014-*)
-- [x] Goal 7 → Skylab & ASTP milestones (0015-*)
-- [x] Goal 7 → Budget milestones (0016-*)
-- [x] Goal 6 → Diplomacy milestones (0017-*)
-- [x] Goal 3 → Personnel milestones (0018-*)
+- [x] Goal 3 → Cancelled mission milestones (0014-\*)
+- [x] Goal 7 → Skylab & ASTP milestones (0015-\*)
+- [x] Goal 7 → Budget milestones (0016-\*)
+- [x] Goal 6 → Diplomacy milestones (0017-\*)
+- [x] Goal 3 → Personnel milestones (0018-\*)
 - [x] Cancellation → Skylab causal link
 - [x] Budget decline → Cancellation causal link
 - [x] Apollo 11 → World Tour → Moon Rocks causal chain
@@ -229,13 +229,13 @@ All milestones have `props.state = 'achieved'` but no `state_key` column in INSE
 
 ### Used Type Keys:
 
-| Entity     | Type Key Examples                                                                                                                                                                                       |
-| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Project    | `project.government.space`                                                                                                                                                                              |
-| Goals      | `goal.strategic.foundation`, `goal.strategic.capability`, `goal.strategic.primary`, `goal.strategic.safety`, `goal.strategic.science`, `goal.strategic.political`, `goal.strategic.legacy`              |
+| Entity     | Type Key Examples                                                                                                                                                                                                                                      |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Project    | `project.government.space`                                                                                                                                                                                                                             |
+| Goals      | `goal.strategic.foundation`, `goal.strategic.capability`, `goal.strategic.primary`, `goal.strategic.safety`, `goal.strategic.science`, `goal.strategic.political`, `goal.strategic.legacy`                                                             |
 | Milestones | `milestone.program.*`, `milestone.mission.*`, `milestone.disaster.*`, `milestone.engineering.*`, `milestone.competition.*`, `milestone.infrastructure.*`, `milestone.robotic.*`, `milestone.training.*`, `milestone.budget.*`, `milestone.diplomacy.*` |
-| Plans      | `plan.engineering.*`, `plan.personnel.*`, `plan.operations.*`, `plan.mission.*`, `plan.safety.*`, `plan.emergency.*`                                                                                    |
-| Tasks      | `task.engineering.*`, `task.training.*`, `task.operations.*`, `task.infrastructure.*`, `task.testing.*`                                                                                                 |
+| Plans      | `plan.engineering.*`, `plan.personnel.*`, `plan.operations.*`, `plan.mission.*`, `plan.safety.*`, `plan.emergency.*`                                                                                                                                   |
+| Tasks      | `task.engineering.*`, `task.training.*`, `task.operations.*`, `task.infrastructure.*`, `task.testing.*`                                                                                                                                                |
 
 ### New Type Keys Added (v4.0):
 
@@ -280,7 +280,7 @@ All milestones have `props.state = 'achieved'` but no `state_key` column in INSE
 
 ## Version History
 
-| Version | Date       | Changes                                                      |
-| ------- | ---------- | ------------------------------------------------------------ |
-| v3.0    | 2024-12-21 | Fixed state_key columns for goals and milestones             |
+| Version | Date       | Changes                                                         |
+| ------- | ---------- | --------------------------------------------------------------- |
+| v3.0    | 2024-12-21 | Fixed state_key columns for goals and milestones                |
 | v4.0    | 2024-12-21 | Added Skylab, ASTP, cancellations, budget, diplomacy, personnel |

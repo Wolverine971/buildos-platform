@@ -10,7 +10,8 @@
       "Bash(cat:*)",
       "Bash(pnpm check:*)",
       "mcp__perplexity__reason",
-      "Bash(pnpm run build:*)"
+      "Bash(pnpm run build:*)",
+      "Bash(pnpm typecheck:*)"
     ],
     "deny": [],
     "ask": []

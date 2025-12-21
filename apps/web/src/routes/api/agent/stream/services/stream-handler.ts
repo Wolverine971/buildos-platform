@@ -178,6 +178,7 @@ export class StreamHandler {
 			request,
 			ontologyContext,
 			conversationHistory,
+			resolvedEntityId: resolvedEntityId ?? undefined,
 			lastTurnContextForPlanner,
 			resolvedFocus,
 			normalizedContextType,
@@ -212,6 +213,7 @@ export class StreamHandler {
 		requestAbortSignal?: AbortSignal;
 		ontologyContext: OntologyContext | null;
 		conversationHistory: ChatMessage[];
+		resolvedEntityId?: string;
 		lastTurnContextForPlanner: LastTurnContext | undefined;
 		resolvedFocus: ProjectFocus | null;
 		normalizedContextType: ChatContextType;
@@ -229,6 +231,7 @@ export class StreamHandler {
 			requestAbortSignal,
 			ontologyContext,
 			conversationHistory,
+			resolvedEntityId,
 			resolvedFocus,
 			normalizedContextType,
 			userId,
@@ -286,7 +289,7 @@ export class StreamHandler {
 				sessionId: session.id,
 				userMessage: request.message,
 				contextType: normalizedContextType,
-				entityId: resolvedEntityId,
+				entityId: resolvedEntityId ?? request.entity_id,
 				conversationHistory,
 				chatSession: session,
 				ontologyContext: ontologyContext || undefined,

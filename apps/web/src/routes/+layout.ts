@@ -1,11 +1,10 @@
 // apps/web/src/routes/+layout.ts
 import { browser } from '$app/environment';
 import { createSupabaseBrowser } from '$lib/supabase';
-import { injectSpeedInsights } from '@vercel/speed-insights/sveltekit';
 import { dev } from '$app/environment';
 import { injectAnalytics } from '@vercel/analytics/sveltekit';
 
-injectSpeedInsights();
+// Note: Speed Insights is injected in +layout.svelte with browser/dev guards
 injectAnalytics({ mode: dev ? 'development' : 'production' });
 
 export const load = async ({ data, depends }) => {

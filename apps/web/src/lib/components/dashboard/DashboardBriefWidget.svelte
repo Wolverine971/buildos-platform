@@ -250,12 +250,16 @@
 		<!-- Generating State - compact on mobile -->
 		<div class="p-2 sm:p-3 rounded-lg border border-accent/30 bg-accent/5 tx tx-pulse tx-weak">
 			<div class="flex items-center gap-2 sm:gap-3 mb-1.5 sm:mb-2">
-				<div class="p-1.5 sm:p-2 rounded-md sm:rounded-lg bg-accent/10 border border-accent/20">
+				<div
+					class="p-1.5 sm:p-2 rounded-md sm:rounded-lg bg-accent/10 border border-accent/20"
+				>
 					<Loader2 class="h-3 w-3 sm:h-4 sm:w-4 text-accent animate-spin" />
 				</div>
 				<div class="flex-1 min-w-0">
 					<p class="text-xs sm:text-sm font-medium text-foreground">Generating brief</p>
-					<p class="text-[10px] sm:text-xs text-muted-foreground truncate">{statusMessage}</p>
+					<p class="text-[10px] sm:text-xs text-muted-foreground truncate">
+						{statusMessage}
+					</p>
 				</div>
 				<span class="text-[10px] sm:text-xs font-bold text-accent">{progress}%</span>
 			</div>
@@ -269,14 +273,19 @@
 		</div>
 	{:else if error}
 		<!-- Error State - compact on mobile -->
-		<div class="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-lg border border-red-500/30 bg-red-500/5">
+		<div
+			class="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-lg border border-red-500/30 bg-red-500/5"
+		>
 			<div class="p-1.5 sm:p-2 rounded-md sm:rounded-lg bg-red-500/10">
 				<AlertCircle class="h-3 w-3 sm:h-4 sm:w-4 text-red-500" />
 			</div>
 			<div class="flex-1">
 				<p class="text-xs sm:text-sm text-red-600 dark:text-red-400">{error}</p>
 			</div>
-			<button onclick={generateBrief} class="text-[10px] sm:text-xs font-medium text-accent hover:underline">
+			<button
+				onclick={generateBrief}
+				class="text-[10px] sm:text-xs font-medium text-accent hover:underline"
+			>
 				Retry
 			</button>
 		</div>
@@ -294,7 +303,9 @@
 				</div>
 				<div class="flex-1 min-w-0">
 					<div class="flex items-center justify-between gap-1.5 sm:gap-2">
-						<h3 class="text-xs sm:text-sm font-semibold text-foreground">Today's Brief</h3>
+						<h3 class="text-xs sm:text-sm font-semibold text-foreground">
+							Today's Brief
+						</h3>
 						<!-- Mobile: Show priority count inline if exists -->
 						{#if brief.priority_actions && brief.priority_actions.length > 0}
 							<span
@@ -308,7 +319,9 @@
 						/>
 					</div>
 					<!-- Desktop: Show snippet and priority actions -->
-					<p class="hidden sm:block text-xs text-muted-foreground line-clamp-2 leading-relaxed mt-1">
+					<p
+						class="hidden sm:block text-xs text-muted-foreground line-clamp-2 leading-relaxed mt-1"
+					>
 						{briefSnippet || 'Your daily brief is ready'}
 					</p>
 					{#if brief.priority_actions && brief.priority_actions.length > 0}
@@ -342,7 +355,9 @@
 			</div>
 			<div class="flex-1 text-left min-w-0">
 				<h3 class="text-xs sm:text-sm font-semibold text-foreground">Generate Brief</h3>
-				<p class="hidden sm:block text-xs text-muted-foreground">Get your AI-powered daily overview</p>
+				<p class="hidden sm:block text-xs text-muted-foreground">
+					Get your AI-powered daily overview
+				</p>
 			</div>
 			<ChevronRight
 				class="h-3 w-3 sm:h-4 sm:w-4 text-accent/50 group-hover:text-accent transition-colors flex-shrink-0"

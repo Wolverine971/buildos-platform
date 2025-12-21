@@ -95,16 +95,24 @@
 	let historyLoading = $state(true);
 	let historyError = $state<string | null>(null);
 
-	// Resolve streamed data
+	// Version token to guard against stale Promise resolution during rapid filter changes
+	let historyResolveVersion = 0;
+
+	// Resolve streamed data with staleness guard
 	$effect(() => {
+		const currentVersion = ++historyResolveVersion;
 		historyLoading = true;
 		historyError = null;
 		data.historyData
 			.then((result) => {
+				// Discard stale results from previous filter/pagination changes
+				if (currentVersion !== historyResolveVersion) return;
 				resolvedData = result;
 				historyLoading = false;
 			})
 			.catch((err) => {
+				// Discard stale errors from previous filter/pagination changes
+				if (currentVersion !== historyResolveVersion) return;
 				historyError = err?.message || 'Failed to load history';
 				historyLoading = false;
 			});
@@ -292,7 +300,9 @@
 					<div class="flex items-center gap-2">
 						<h1 class="text-lg sm:text-2xl font-bold text-foreground">History</h1>
 						{#if historyLoading}
-							<Loader2 class="h-4 w-4 sm:h-5 sm:w-5 animate-spin text-muted-foreground" />
+							<Loader2
+								class="h-4 w-4 sm:h-5 sm:w-5 animate-spin text-muted-foreground"
+							/>
 						{/if}
 					</div>
 					<p class="text-xs sm:text-sm text-muted-foreground hidden sm:block">
@@ -307,13 +317,17 @@
 	<div class="mx-auto max-w-6xl px-2 sm:px-4 lg:px-8 py-3 sm:py-6">
 		<!-- Stats cards - compact on mobile -->
 		<div class="mb-3 sm:mb-6 grid grid-cols-4 gap-1.5 sm:gap-4">
-			<div class="rounded-md sm:rounded-lg border border-border bg-card p-2 sm:p-4 shadow-ink tx tx-frame tx-weak">
+			<div
+				class="rounded-md sm:rounded-lg border border-border bg-card p-2 sm:p-4 shadow-ink tx tx-frame tx-weak"
+			>
 				<div class="text-base sm:text-2xl font-bold text-foreground">
 					{stats.totalBraindumps + stats.totalChatSessions}
 				</div>
 				<div class="text-[9px] sm:text-sm text-muted-foreground">Total</div>
 			</div>
-			<div class="rounded-md sm:rounded-lg border border-border bg-card p-2 sm:p-4 shadow-ink tx tx-frame tx-weak">
+			<div
+				class="rounded-md sm:rounded-lg border border-border bg-card p-2 sm:p-4 shadow-ink tx tx-frame tx-weak"
+			>
 				<div class="flex items-center gap-1 sm:gap-2">
 					<Brain class="h-3 w-3 sm:h-5 sm:w-5 text-purple-500 hidden sm:block" />
 					<span class="text-base sm:text-2xl font-bold text-purple-500">
@@ -322,7 +336,9 @@
 				</div>
 				<div class="text-[9px] sm:text-sm text-muted-foreground">Dumps</div>
 			</div>
-			<div class="rounded-md sm:rounded-lg border border-border bg-card p-2 sm:p-4 shadow-ink tx tx-frame tx-weak">
+			<div
+				class="rounded-md sm:rounded-lg border border-border bg-card p-2 sm:p-4 shadow-ink tx tx-frame tx-weak"
+			>
 				<div class="flex items-center gap-1 sm:gap-2">
 					<MessagesSquare class="h-3 w-3 sm:h-5 sm:w-5 text-accent hidden sm:block" />
 					<span class="text-base sm:text-2xl font-bold text-accent">
@@ -331,7 +347,9 @@
 				</div>
 				<div class="text-[9px] sm:text-sm text-muted-foreground">Chats</div>
 			</div>
-			<div class="rounded-md sm:rounded-lg border border-border bg-card p-2 sm:p-4 shadow-ink tx tx-frame tx-weak">
+			<div
+				class="rounded-md sm:rounded-lg border border-border bg-card p-2 sm:p-4 shadow-ink tx tx-frame tx-weak"
+			>
 				<div class="text-base sm:text-2xl font-bold text-emerald-500">
 					{stats.processedBraindumps + stats.chatSessionsWithSummary}
 				</div>
@@ -488,22 +506,33 @@
 									item.type
 								)}"
 							>
-								<svelte:component this={getTypeIcon(item.type)} class="h-2.5 w-2.5 sm:h-3 sm:w-3" />
-								<span class="hidden sm:inline">{item.type === 'chat_session' ? 'Chat' : 'Braindump'}</span>
+								<svelte:component
+									this={getTypeIcon(item.type)}
+									class="h-2.5 w-2.5 sm:h-3 sm:w-3"
+								/>
+								<span class="hidden sm:inline"
+									>{item.type === 'chat_session' ? 'Chat' : 'Braindump'}</span
+								>
 							</span>
 							<svelte:component
 								this={getStatusIcon(item.status)}
-								class="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0 {getStatusColor(item.status)}"
+								class="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0 {getStatusColor(
+									item.status
+								)}"
 							/>
 						</div>
 
 						<!-- Title -->
-						<h3 class="mb-1 sm:mb-2 line-clamp-2 text-xs sm:text-base font-medium text-foreground">
+						<h3
+							class="mb-1 sm:mb-2 line-clamp-2 text-xs sm:text-base font-medium text-foreground"
+						>
 							{item.title}
 						</h3>
 
 						<!-- Preview / Summary - hidden on mobile for density -->
-						<p class="hidden sm:block mb-3 line-clamp-3 flex-1 text-sm text-muted-foreground">
+						<p
+							class="hidden sm:block mb-3 line-clamp-3 flex-1 text-sm text-muted-foreground"
+						>
 							{item.preview}
 						</p>
 

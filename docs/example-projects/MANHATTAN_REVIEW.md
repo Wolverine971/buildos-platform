@@ -176,15 +176,15 @@ All milestones have `props.state = 'achieved'` but no `state_key` column in INSE
 
 ### Used Type Keys:
 
-| Entity     | Type Key Examples                                                                                                                                                                   |
-| ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Project    | `project.government.military`                                                                                                                                                       |
-| Goals      | `goal.strategic`, `goal.operational`, `goal.technical`, `goal.security`, `goal.institutional`                                                                                       |
+| Entity     | Type Key Examples                                                                                                                                                                                                    |
+| ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Project    | `project.government.military`                                                                                                                                                                                        |
+| Goals      | `goal.strategic`, `goal.operational`, `goal.technical`, `goal.security`, `goal.institutional`                                                                                                                        |
 | Milestones | `milestone.initiation`, `milestone.decision`, `milestone.organizational`, `milestone.scientific`, `milestone.technical`, `milestone.intelligence`, `milestone.external`, `milestone.testing`, `milestone.diplomatic` |
-| Plans      | `plan.organizational`, `plan.engineering`, `plan.production`, `plan.security`                                                                                                       |
-| Tasks      | `task.research`, `task.engineering`, `task.production`, `task.security`                                                                                                             |
-| Documents  | `document.letter`, `document.memo`, `document.report`, `document.treaty`, `document.legislation`                                                                                    |
-| Decisions  | `decision.strategic`, `decision.organizational`, `decision.diplomatic`, `decision.military`, `decision.safety`, `decision.institutional`                                           |
+| Plans      | `plan.organizational`, `plan.engineering`, `plan.production`, `plan.security`                                                                                                                                        |
+| Tasks      | `task.research`, `task.engineering`, `task.production`, `task.security`                                                                                                                                              |
+| Documents  | `document.letter`, `document.memo`, `document.report`, `document.treaty`, `document.legislation`                                                                                                                     |
+| Decisions  | `decision.strategic`, `decision.organizational`, `decision.diplomatic`, `decision.military`, `decision.safety`, `decision.institutional`                                                                             |
 
 ---
 

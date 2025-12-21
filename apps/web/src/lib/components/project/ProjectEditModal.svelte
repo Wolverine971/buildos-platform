@@ -317,52 +317,22 @@
 			<div class="sm:hidden">
 				<div class="modal-grab-handle"></div>
 			</div>
+			<!-- Inkprint compact header -->
 			<div
-				class="relative bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-800 dark:via-gray-800/95 dark:to-gray-800 px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 dark:border-gray-700"
+				class="flex h-12 items-center justify-between gap-2 px-3 sm:px-4 border-b border-border bg-muted/30"
 			>
-				<!-- Mobile Layout -->
-				<div class="sm:hidden">
-					<div class="flex items-center justify-between mb-2">
-						<h2 class="text-lg font-semibold text-gray-900 dark:text-white flex-1 pr-2">
-							{modalTitle}
-						</h2>
-						<Button
-							type="button"
-							onclick={() => onClose?.()}
-							variant="ghost"
-							size="sm"
-							class="!p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
-							aria-label="Close modal"
-						>
-							<X class="w-5 h-5" />
-						</Button>
-					</div>
-					<p class="text-xs text-gray-600 dark:text-gray-400">
-						Update project details, context, and timeline
-					</p>
-				</div>
-
-				<!-- Desktop Layout -->
-				<div class="hidden sm:flex sm:items-start sm:justify-between">
-					<div class="flex-1">
-						<h2 class="text-xl font-semibold text-gray-900 dark:text-white">
-							{modalTitle}
-						</h2>
-						<p class="mt-0.5 text-sm text-gray-600 dark:text-gray-400">
-							Manage project information and objectives
-						</p>
-					</div>
-					<Button
-						type="button"
-						onclick={() => onClose?.()}
-						variant="ghost"
-						size="sm"
-						class="!p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 ml-2"
-						aria-label="Close modal"
-					>
-						<X class="w-5 h-5" />
-					</Button>
-				</div>
+				<h2 class="text-sm font-semibold text-foreground truncate">
+					{modalTitle}
+				</h2>
+				<!-- Inkprint close button -->
+				<button
+					type="button"
+					onclick={() => onClose?.()}
+					class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-ink transition-all pressable hover:border-red-600/50 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:hover:border-red-400/50 dark:hover:text-red-400"
+					aria-label="Close modal"
+				>
+					<X class="h-4 w-4" />
+				</button>
 			</div>
 		</div>
 	{/snippet}

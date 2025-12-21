@@ -620,9 +620,7 @@
 					<div class="flex items-center">
 						<Calendar class="w-8 h-8 mr-3 text-accent" />
 						<div>
-							<h1 class="text-3xl font-bold text-foreground">
-								Daily Briefs
-							</h1>
+							<h1 class="text-3xl font-bold text-foreground">Daily Briefs</h1>
 							<p class="text-sm text-muted-foreground mt-1">
 								AI-generated insights and priority actions
 							</p>
@@ -631,9 +629,7 @@
 					<div class="flex items-center space-x-2">
 						<!-- Next Scheduled Brief Display -->
 						{#if isLoadingNextBrief}
-							<div
-								class="hidden sm:flex items-center text-sm text-muted-foreground"
-							>
+							<div class="hidden sm:flex items-center text-sm text-muted-foreground">
 								<Loader2 class="w-4 h-4 mr-2 animate-spin" />
 								<span>Loading...</span>
 							</div>
@@ -709,9 +705,7 @@
 										</Button>
 									{/if}
 
-									<div
-										class="flex items-center bg-muted rounded-lg"
-									>
+									<div class="flex items-center bg-muted rounded-lg">
 										<Button
 											type="button"
 											onclick={() => navigateDate('prev')}
@@ -723,9 +717,7 @@
 										></Button>
 
 										<div class="px-4 py-2 min-w-[140px] text-center">
-											<span
-												class="text-sm font-medium text-foreground"
-											>
+											<span class="text-sm font-medium text-foreground">
 												{BriefClientService.formatDisplayDate(currentDate)}
 											</span>
 										</div>
@@ -762,12 +754,8 @@
 					<div class="sm:hidden mt-4 space-y-2">
 						<!-- Mobile Next Scheduled Brief Display -->
 						{#if isLoadingNextBrief}
-							<div
-								class="bg-card rounded-lg p-3 shadow-sm border border-border"
-							>
-								<div
-									class="flex items-center text-sm text-muted-foreground"
-								>
+							<div class="bg-card rounded-lg p-3 shadow-sm border border-border">
+								<div class="flex items-center text-sm text-muted-foreground">
 									<Loader2 class="w-4 h-4 mr-2 animate-spin" />
 									<span>Loading next brief...</span>
 								</div>
@@ -776,9 +764,7 @@
 							<div
 								class="bg-accent/10 rounded-lg p-3 shadow-sm border border-accent/30"
 							>
-								<div
-									class="flex items-center text-sm text-muted-foreground"
-								>
+								<div class="flex items-center text-sm text-muted-foreground">
 									<Clock class="w-4 h-4 mr-2 text-accent" />
 									<span class="font-medium">Next Brief:</span>
 									<span class="ml-1"
@@ -877,9 +863,7 @@
 								>
 									Generating Brief
 								</h3>
-								<p
-									class="text-xs sm:text-sm text-accent truncate"
-								>
+								<p class="text-xs sm:text-sm text-accent truncate">
 									{currentStreamingStatus.message}
 								</p>
 							</div>
@@ -897,9 +881,7 @@
 
 					{#if currentStreamingStatus.progress.projects.total > 0}
 						<div class="space-y-2">
-							<div
-								class="flex justify-between text-xs text-muted-foreground"
-							>
+							<div class="flex justify-between text-xs text-muted-foreground">
 								<span
 									>Progress: {currentStreamingStatus.progress.projects
 										.completed}/{currentStreamingStatus.progress.projects
@@ -907,9 +889,7 @@
 								>
 								<span>{overallProgress}%</span>
 							</div>
-							<div
-								class="w-full bg-muted rounded-full h-1.5 sm:h-2"
-							>
+							<div class="w-full bg-muted rounded-full h-1.5 sm:h-2">
 								<div
 									class="bg-accent h-1.5 sm:h-2 rounded-full transition-all duration-500"
 									style="width: {overallProgress}%"
@@ -926,9 +906,7 @@
 					class="bg-destructive/10 border border-destructive/30 rounded-lg p-3 mb-4 sm:mb-6"
 				>
 					<div class="flex items-start">
-						<AlertCircle
-							class="w-4 h-4 mr-2 text-destructive flex-shrink-0 mt-0.5"
-						/>
+						<AlertCircle class="w-4 h-4 mr-2 text-destructive flex-shrink-0 mt-0.5" />
 						<p class="text-xs sm:text-sm text-destructive flex-1">
 							{error || currentStreamingStatus?.error}
 						</p>
@@ -955,9 +933,7 @@
 					>
 						<div class="space-y-3 sm:grid sm:grid-cols-3 sm:gap-4 sm:space-y-0">
 							<div class="sm:col-span-3 md:col-span-1">
-								<div
-									class="block text-xs font-medium text-muted-foreground mb-1"
-								>
+								<div class="block text-xs font-medium text-muted-foreground mb-1">
 									Search
 								</div>
 								<TextInput
@@ -1005,20 +981,12 @@
 				{#if isLoading}
 					<div class="space-y-3 sm:space-y-4">
 						{#each Array(3) as _}
-							<div
-								class="bg-card rounded-lg shadow-sm p-3 sm:p-4 animate-pulse"
-							>
-								<div
-									class="h-3 bg-muted rounded w-1/4 mb-2"
-								></div>
-								<div
-									class="h-4 bg-muted rounded w-3/4 mb-3"
-								></div>
+							<div class="bg-card rounded-lg shadow-sm p-3 sm:p-4 animate-pulse">
+								<div class="h-3 bg-muted rounded w-1/4 mb-2"></div>
+								<div class="h-4 bg-muted rounded w-3/4 mb-3"></div>
 								<div class="space-y-2">
 									<div class="h-2 bg-muted rounded"></div>
-									<div
-										class="h-2 bg-muted rounded w-5/6"
-									></div>
+									<div class="h-2 bg-muted rounded w-5/6"></div>
 								</div>
 							</div>
 						{/each}
@@ -1103,7 +1071,7 @@
 										<div class="flex flex-wrap gap-1">
 											{#each brief.priority_actions.slice(0, 3) as action}
 												<span
-													class="px-1.5 py-0.5 text-xs bg-accent/15 text-accent rounded "
+													class="px-1.5 py-0.5 text-xs bg-accent/15 text-accent rounded"
 												>
 													{action.length > 30
 														? action.substring(0, 30) + '...'
@@ -1131,9 +1099,7 @@
 							<Calendar
 								class="h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground mx-auto mb-3"
 							/>
-							<h3
-								class="text-base sm:text-lg font-semibold text-foreground mb-2"
-							>
+							<h3 class="text-base sm:text-lg font-semibold text-foreground mb-2">
 								No Briefs Found
 							</h3>
 							<p class="text-xs sm:text-sm text-muted-foreground">
@@ -1155,13 +1121,9 @@
 							<div
 								class="bg-accent/15 rounded-full w-14 h-14 sm:w-16 sm:h-16 flex items-center justify-center mx-auto mb-4"
 							>
-								<Sparkles
-									class="h-7 w-7 sm:h-8 sm:w-8 text-accent"
-								/>
+								<Sparkles class="h-7 w-7 sm:h-8 sm:w-8 text-accent" />
 							</div>
-							<h3
-								class="text-lg sm:text-xl font-semibold text-foreground mb-3"
-							>
+							<h3 class="text-lg sm:text-xl font-semibold text-foreground mb-3">
 								No Brief Available
 							</h3>
 							<p class="text-xs sm:text-sm text-muted-foreground mb-6">
@@ -1203,17 +1165,13 @@
 						<div
 							class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4"
 						>
-							<h2
-								class="text-lg sm:text-xl font-bold text-foreground mb-2 sm:mb-0"
-							>
+							<h2 class="text-lg sm:text-xl font-bold text-foreground mb-2 sm:mb-0">
 								Daily Brief
 							</h2>
 							<div
 								class="flex items-center justify-between sm:justify-end sm:space-x-2"
 							>
-								<div
-									class="flex items-center text-xs text-muted-foreground"
-								>
+								<div class="flex items-center text-xs text-muted-foreground">
 									<Clock class="w-3 h-3 mr-1" />
 									{displayDailyBrief.generation_completed_at
 										? formatDateTime(
@@ -1280,9 +1238,7 @@
 								</h3>
 								<ul class="space-y-1.5 sm:space-y-2">
 									{#each displayDailyBrief.priority_actions as action}
-										<li
-											class="flex items-start text-xs sm:text-sm text-accent"
-										>
+										<li class="flex items-start text-xs sm:text-sm text-accent">
 											<ArrowRight
 												class="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-1.5 sm:mr-2 mt-0.5 flex-shrink-0"
 											/>
