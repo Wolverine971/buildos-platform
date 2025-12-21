@@ -1523,7 +1523,7 @@ INSERT INTO onto_documents (id, project_id, title, type_key, state_key, props, c
  '00000000-0000-0000-0000-000000000002'),
 
 -- Articles of Confederation
-('88881111-0005-0002-0001-000000000001', '11111111-1111-1111-1111-111111111111',
+('88881111-0005-0002-0002-000000000001', '11111111-1111-1111-1111-111111111111',
  'Articles of Confederation', 'document.founding.constitution', 'published',
  '{"adopted": "1777-11-15", "ratified": "1781-03-01", "significance": "First constitution of the United States"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),

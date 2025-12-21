@@ -1,7 +1,7 @@
 // apps/web/src/routes/api/sms/verify/+server.ts
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
-import { createServiceClient } from '@buildos/supabase-client';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { TwilioClient } from '@buildos/twilio-service';
 import {
 	PRIVATE_TWILIO_ACCOUNT_SID,
@@ -31,8 +31,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 	try {
 		// Check if phone number is already verified by another user
-		const supabase = createServiceClient();
-		const { data: existingUser } = await supabase
+		// NOTE: Admin client required here because we need to check OTHER users' data
+		// This bypasses RLS intentionally to prevent duplicate phone registration
+		const adminSupabase = createAdminSupabaseClient();
+		const { data: existingUser } = await adminSupabase
 			.from('user_sms_preferences')
 			.select('user_id')
 			.eq('phone_number', phoneNumber)
@@ -47,8 +49,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		// Send verification code
 		const result = await twilioClient.verifyPhoneNumber(phoneNumber);
 
-		// Log verification attempt
-		await supabase.from('user_sms_preferences').upsert(
+		// Log verification attempt - use RLS-respecting client for own data
+		await locals.supabase.from('user_sms_preferences').upsert(
 			{
 				user_id: session.user.id,
 				phone_number: phoneNumber,

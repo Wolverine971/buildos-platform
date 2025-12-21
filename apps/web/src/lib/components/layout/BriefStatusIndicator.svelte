@@ -35,34 +35,51 @@
 
 	const timerManager = new TimerManager();
 
-	// State
-	let elapsedTime = '';
-	let lastJobId: string | undefined;
+	// State (Svelte 5 runes)
+	let elapsedTime = $state('');
+	let lastJobId = $state<string | undefined>(undefined);
 
-	// Reactive variables from store
-	$: ({
-		isGenerating,
-		briefDate,
-		progress = 0,
-		message = '',
-		startedAt,
-		jobId
-	} = $briefNotificationStatus);
+	// Derived values from store
+	let isGenerating = $derived($briefNotificationStatus.isGenerating);
+	let briefDate = $derived($briefNotificationStatus.briefDate);
+	let progress = $derived($briefNotificationStatus.progress ?? 0);
+	let message = $derived($briefNotificationStatus.message ?? '');
+	let startedAt = $derived($briefNotificationStatus.startedAt);
+	let jobId = $derived($briefNotificationStatus.jobId);
 
 	// Detect job changes (regeneration)
-	$: if (jobId && jobId !== lastJobId) {
-		lastJobId = jobId;
-		// If we detect a new job, refresh the elapsed time
-		elapsedTime = '';
-	}
+	$effect(() => {
+		if (jobId && jobId !== lastJobId) {
+			lastJobId = jobId;
+			elapsedTime = '';
+		}
+	});
+
+	// Update elapsed time when generating
+	$effect(() => {
+		if (isGenerating && startedAt) {
+			updateElapsedTime();
+			timerManager.set(
+				'elapsed',
+				function updateTimer() {
+					updateElapsedTime();
+					if (isGenerating) {
+						timerManager.set('elapsed', updateTimer, 1000);
+					}
+				},
+				1000
+			);
+		} else {
+			timerManager.clear('elapsed');
+			elapsedTime = '';
+		}
+	});
 
 	// Handle click navigation
 	function handleClick() {
 		if (isGenerating && briefDate) {
-			// Navigate to projects page Daily Briefs tab while generating
 			goto(`/projects?tab=briefs&date=${briefDate}`);
 		} else if (isGenerating) {
-			// No specific date, just go to Daily Briefs tab
 			goto('/projects?tab=briefs');
 		}
 	}
@@ -81,49 +98,25 @@
 		elapsedTime = minutes > 0 ? `${minutes}m ${seconds % 60}s` : `${seconds}s`;
 	}
 
-	// Update elapsed time when generating
-	$: if (isGenerating && startedAt) {
-		updateElapsedTime();
-		// Update every second
-		timerManager.set(
-			'elapsed',
-			function updateTimer() {
-				updateElapsedTime();
-				if (isGenerating) {
-					timerManager.set('elapsed', updateTimer, 1000);
-				}
-			},
-			1000
-		);
-	} else {
-		timerManager.clear('elapsed');
-		elapsedTime = '';
-	}
-
 	// Format brief date for display
 	function formatBriefDate(dateStr: string | undefined): string {
 		if (!dateStr) return '';
 
 		try {
-			// Parse the date string (YYYY-MM-DD format)
 			const [year, month, day] = dateStr.split('-').map(Number);
-			const briefDate = new Date(year, month - 1, day);
+			const briefDateObj = new Date(year, month - 1, day);
 
-			// Get today at midnight
 			const today = new Date();
 			today.setHours(0, 0, 0, 0);
 
-			// Get brief date at midnight
 			const briefDateMidnight = new Date(year, month - 1, day);
 			briefDateMidnight.setHours(0, 0, 0, 0);
 
-			// Compare dates
 			if (briefDateMidnight.getTime() === today.getTime()) {
 				return 'Today';
 			}
 
-			// Format date
-			return briefDate.toLocaleDateString('en-US', {
+			return briefDateObj.toLocaleDateString('en-US', {
 				month: 'short',
 				day: 'numeric'
 			});
@@ -150,26 +143,30 @@
 		onclick={handleClick}
 		variant="ghost"
 		btnType="container"
-		class="relative flex items-center space-x-2 px-2 py-1 rounded-lg transition-all duration-200 transform hover:scale-105 min-h-0 dither-subtle hover:bg-blue-200 dark:hover:bg-blue-900/50"
+		class="relative flex items-center gap-2 px-2 py-1.5 rounded-lg border border-border
+			bg-card shadow-ink tx tx-grain tx-weak
+			hover:border-accent hover:bg-accent/5
+			transition-colors min-h-0 pressable
+			focus:ring-2 focus:ring-ring focus:ring-offset-1"
 		title={getTooltip()}
 	>
 		<!-- Icon -->
-		<Loader2 class="w-4 h-4 text-blue-600 dark:text-blue-400 animate-spin" />
+		<Loader2 class="w-4 h-4 text-accent animate-spin shrink-0" />
 
 		<!-- Main content -->
 		<div class="flex flex-col items-start min-w-0">
 			<!-- Status label -->
-			<span class="text-sm font-medium truncate text-blue-700 dark:text-blue-300">
+			<span class="text-sm font-medium text-foreground truncate">
 				Generating Brief
 			</span>
 
 			<!-- Secondary info -->
 			{#if briefDate || elapsedTime}
-				<span class="text-xs opacity-75 truncate">
+				<span class="text-xs text-muted-foreground truncate">
 					{#if elapsedTime && progress === 0}
 						{elapsedTime}
 					{:else if progress > 0}
-						{progress}% - {formatBriefDate(briefDate)}
+						{progress}% · {formatBriefDate(briefDate)}
 					{:else}
 						{formatBriefDate(briefDate)}
 					{/if}
@@ -180,27 +177,23 @@
 		<!-- Progress bar -->
 		{#if progress > 0}
 			<div
-				class="absolute bottom-0 left-0 right-0 h-1 bg-blue-200 dark:bg-blue-800 rounded-b-lg overflow-hidden"
+				class="absolute bottom-0 left-0 right-0 h-0.5 bg-muted rounded-b-lg overflow-hidden"
 			>
 				<div
-					class="h-full dither-subtle bg-gradient-to-r from-blue-500 to-blue-600 transition-all duration-500 ease-out"
+					class="h-full bg-accent transition-all duration-500 ease-out"
 					style="width: {progress}%"
 				></div>
 			</div>
 		{/if}
 
-		<!-- Active generation indicator -->
+		<!-- Active generation indicator (pulse) -->
 		<div class="absolute -top-1 -right-1">
-			<span class="relative flex h-3 w-3">
+			<span class="relative flex h-2.5 w-2.5">
 				<span
-					class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"
+					class="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent/75"
 				></span>
-				<span class="relative inline-flex rounded-full h-3 w-3 bg-blue-500"></span>
+				<span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-accent"></span>
 			</span>
 		</div>
 	</Button>
 {/if}
-
-<style>
-	/* Component is self-contained with Tailwind classes */
-</style>

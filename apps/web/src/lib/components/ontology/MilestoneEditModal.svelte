@@ -80,9 +80,9 @@
 						: 'Deadline not met',
 		color:
 			state === 'pending'
-				? 'bg-slate-500/10 text-slate-600'
+				? 'bg-muted text-muted-foreground'
 				: state === 'in_progress'
-					? 'bg-blue-500/10 text-blue-600'
+					? 'bg-accent/10 text-accent'
 					: state === 'completed'
 						? 'bg-emerald-500/10 text-emerald-600'
 						: 'bg-red-500/10 text-red-600'
@@ -132,7 +132,7 @@
 
 	// Computed due date info
 	const dueDate = $derived(dueAt ? new Date(dueAt) : null);
-	const daysUntilDue = $derived(() => {
+	const daysUntilDue = $derived.by(() => {
 		if (!dueDate) return null;
 		const now = new Date();
 		now.setHours(0, 0, 0, 0);
@@ -140,14 +140,13 @@
 		due.setHours(0, 0, 0, 0);
 		return Math.ceil((due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
 	});
-	const dueDateStatus = $derived(() => {
-		const days = daysUntilDue();
-		if (days === null) return 'unknown';
+	const dueDateStatus = $derived.by(() => {
+		if (daysUntilDue === null) return 'unknown';
 		if (stateKey === 'achieved') return 'achieved';
 		if (stateKey === 'missed') return 'missed';
-		if (days < 0) return 'overdue';
-		if (days === 0) return 'today';
-		if (days <= 7) return 'soon';
+		if (daysUntilDue < 0) return 'overdue';
+		if (daysUntilDue === 0) return 'today';
+		if (daysUntilDue <= 7) return 'soon';
 		return 'upcoming';
 	});
 
@@ -379,7 +378,7 @@
 					variant="ghost"
 					size="sm"
 					onclick={openChatAbout}
-					class="text-muted-foreground hover:text-foreground shrink-0 !p-1.5 sm:!p-2"
+					class="text-muted-foreground hover:text-foreground shrink-0 !p-1.5 sm:!p-2 tx tx-grain tx-weak"
 					disabled={isLoading || isSaving || !milestone}
 					title="Chat about this milestone"
 				>
@@ -538,8 +537,8 @@
 							<CardBody padding="sm">
 								<div class="text-center py-2">
 									{#if dueDate}
-										{@const days = daysUntilDue()}
-										{@const status = dueDateStatus()}
+										{@const days = daysUntilDue}
+										{@const status = dueDateStatus}
 										<div class="flex items-center justify-center gap-2 mb-2">
 											<Clock
 												class="w-5 h-5 {status === 'overdue' ||

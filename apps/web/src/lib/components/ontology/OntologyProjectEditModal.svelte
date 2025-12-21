@@ -517,7 +517,7 @@
 					onclick={openChatAbout}
 					variant="ghost"
 					size="sm"
-					class="text-muted-foreground hover:text-foreground shrink-0 !p-1.5 sm:!p-2"
+					class="text-muted-foreground hover:text-foreground shrink-0 !p-1.5 sm:!p-2 tx tx-grain tx-weak"
 					disabled={isSaving || !project}
 					title="Chat about this project"
 				>
@@ -1000,10 +1000,12 @@
 		on:confirm={handleDelete}
 		on:cancel={() => (showDeleteConfirm = false)}
 	>
-		<p class="text-sm text-gray-600 dark:text-gray-300" slot="content">
-			This action cannot be undone. The project and all its associated data will be
-			permanently deleted.
-		</p>
+		{#snippet content()}
+			<p class="text-sm text-muted-foreground">
+				This action cannot be undone. The project and all its associated data will be
+				permanently deleted.
+			</p>
+		{/snippet}
 	</ConfirmationModal>
 {/if}
 

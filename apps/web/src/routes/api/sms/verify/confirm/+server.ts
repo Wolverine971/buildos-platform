@@ -1,7 +1,6 @@
 // apps/web/src/routes/api/sms/verify/confirm/+server.ts
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
-import { createServiceClient } from '@buildos/supabase-client';
 import { TwilioClient } from '@buildos/twilio-service';
 import {
 	PRIVATE_TWILIO_ACCOUNT_SID,
@@ -38,7 +37,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		}
 
 		// Update user preferences with verified phone
-		const supabase = createServiceClient();
+		// Use locals.supabase (RLS-respecting client) since we're only modifying current user's data
+		const supabase = locals.supabase;
 		const { error } = await supabase.from('user_sms_preferences').upsert(
 			{
 				user_id: session.user.id,

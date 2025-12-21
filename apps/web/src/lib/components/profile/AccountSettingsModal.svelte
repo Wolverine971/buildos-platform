@@ -9,7 +9,8 @@
 		CheckCircle,
 		Settings,
 		Eye,
-		EyeOff
+		EyeOff,
+		X
 	} from 'lucide-svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
@@ -243,17 +244,17 @@
 			<div class="sm:hidden">
 				<div class="modal-grab-handle"></div>
 			</div>
-			<div class="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 dark:border-gray-700">
+			<div class="px-4 sm:px-6 py-3 sm:py-4 border-b border-border">
 				<div class="flex items-start justify-between">
 					<div class="flex items-center space-x-3">
-						<div class="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-							<Settings class="w-6 h-6 text-blue-600 dark:text-blue-400" />
+						<div class="p-2 bg-accent/20 rounded-lg">
+							<Settings class="w-6 h-6 text-accent" />
 						</div>
 						<div>
-							<h2 class="text-2xl font-semibold text-gray-900 dark:text-white">
+							<h2 class="text-2xl font-semibold text-foreground">
 								Account Settings
 							</h2>
-							<p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
+							<p class="mt-1 text-sm text-muted-foreground">
 								Manage your account information and preferences
 							</p>
 						</div>
@@ -264,17 +265,10 @@
 						disabled={loading}
 						variant="ghost"
 						size="sm"
-						class="!p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+						class="!p-1.5 text-muted-foreground hover:text-foreground"
 						aria-label="Close modal"
 					>
-						<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								stroke-width="2"
-								d="M6 18L18 6M6 6l12 12"
-							/>
-						</svg>
+						<X class="w-5 h-5" />
 					</Button>
 				</div>
 			</div>
@@ -284,7 +278,7 @@
 	{#snippet children()}
 		<div class="flex flex-col h-full">
 			<!-- Tab Navigation -->
-			<div class="border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+			<div class="border-b border-border bg-card">
 				<nav class="flex space-x-8 px-6" aria-label="Tabs">
 					<Button
 						onclick={() => switchTab('profile')}
@@ -293,8 +287,8 @@
 						size="md"
 						class="py-4 px-1 border-b-0 font-medium text-sm transition-colors whitespace-nowrap focus:ring-0 focus:ring-offset-0
 					{activeTab === 'profile'
-							? 'border-blue-500 text-blue-600 dark:text-blue-400'
-							: 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'}"
+							? 'border-accent text-accent'
+							: 'border-transparent text-muted-foreground hover:text-foreground'}"
 						icon={User}
 					>
 						Profile
@@ -306,8 +300,8 @@
 						size="md"
 						class="py-4 px-1 border-b-0 font-medium text-sm transition-colors whitespace-nowrap focus:ring-0 focus:ring-offset-0
 					{activeTab === 'password'
-							? 'border-blue-500 text-blue-600 dark:text-blue-400'
-							: 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'}"
+							? 'border-accent text-accent'
+							: 'border-transparent text-muted-foreground hover:text-foreground'}"
 						icon={Lock}
 					>
 						Password
@@ -319,8 +313,8 @@
 						size="md"
 						class="py-4 px-1 border-b-0 font-medium text-sm transition-colors whitespace-nowrap focus:ring-0 focus:ring-offset-0
 					{activeTab === 'danger'
-							? 'border-red-500 text-red-600 dark:text-red-400'
-							: 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'}"
+							? 'border-red-500 text-red-500'
+							: 'border-transparent text-muted-foreground hover:text-foreground'}"
 						icon={Trash2}
 					>
 						Delete Account
@@ -329,15 +323,15 @@
 			</div>
 
 			<!-- Tab Content -->
-			<div class="flex-1 overflow-y-auto bg-gray-50/50 dark:bg-gray-900/30">
+			<div class="flex-1 overflow-y-auto bg-muted/30">
 				<!-- Success Message -->
 				{#if successMessage}
 					<div
-						class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 mx-6 mt-6"
+						class="bg-emerald-500/10 border border-emerald-500/30 rounded-lg p-4 mx-6 mt-6 shadow-ink tx tx-grain tx-weak"
 					>
 						<div class="flex items-center space-x-2">
-							<CheckCircle class="w-5 h-5 text-green-600 dark:text-green-400" />
-							<p class="text-sm text-green-700 dark:text-green-300">
+							<CheckCircle class="w-5 h-5 text-emerald-500" />
+							<p class="text-sm text-foreground">
 								{successMessage}
 							</p>
 						</div>
@@ -347,11 +341,11 @@
 				<!-- Error Messages -->
 				{#if errors.length > 0}
 					<div
-						class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 mx-6 mt-6"
+						class="bg-red-500/10 border border-red-500/30 rounded-lg p-4 mx-6 mt-6 shadow-ink tx tx-static tx-weak"
 					>
 						<div class="flex items-start space-x-2">
-							<AlertCircle class="w-5 h-5 text-red-600 dark:text-red-400 mt-0.5" />
-							<div class="text-sm text-red-700 dark:text-red-300">
+							<AlertCircle class="w-5 h-5 text-red-500 mt-0.5" />
+							<div class="text-sm text-foreground">
 								{#each errors as error}
 									<p>{error}</p>
 								{/each}
@@ -364,11 +358,11 @@
 				{#if activeTab === 'profile'}
 					<div class="px-4 sm:px-6 py-4 space-y-3 sm:space-y-4">
 						<div
-							class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 sm:p-5 lg:p-6"
+							class="bg-card rounded-xl border border-border p-4 sm:p-5 lg:p-6 shadow-ink tx tx-frame tx-weak"
 						>
 							<div class="flex items-center gap-3 mb-6">
-								<User class="w-5 h-5 text-blue-600 dark:text-blue-400" />
-								<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+								<User class="w-5 h-5 text-accent" />
+								<h3 class="text-lg font-semibold text-foreground">
 									Profile Information
 								</h3>
 							</div>
@@ -409,9 +403,9 @@
 									variant="primary"
 									size="md"
 									{loading}
-									loadingText="Updating Profile..."
+									class="shadow-ink pressable"
 								>
-									Update Profile
+									{loading ? 'Updating...' : 'Update Profile'}
 								</Button>
 							</div>
 						</div>
@@ -422,11 +416,11 @@
 				{#if activeTab === 'password'}
 					<div class="px-4 sm:px-6 py-4 space-y-3 sm:space-y-4">
 						<div
-							class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 sm:p-5 lg:p-6"
+							class="bg-card rounded-xl border border-border p-4 sm:p-5 lg:p-6 shadow-ink tx tx-frame tx-weak"
 						>
 							<div class="flex items-center gap-3 mb-6">
-								<Lock class="w-5 h-5 text-green-600 dark:text-green-400" />
-								<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+								<Lock class="w-5 h-5 text-emerald-500" />
+								<h3 class="text-lg font-semibold text-foreground">
 									Change Password
 								</h3>
 							</div>
@@ -452,7 +446,7 @@
 											type="button"
 											onclick={() =>
 												(showCurrentPassword = !showCurrentPassword)}
-											class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
+											class="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
 										>
 											{#if showCurrentPassword}
 												<EyeOff class="w-4 h-4" />
@@ -482,7 +476,7 @@
 										<button
 											type="button"
 											onclick={() => (showNewPassword = !showNewPassword)}
-											class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
+											class="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
 										>
 											{#if showNewPassword}
 												<EyeOff class="w-4 h-4" />
@@ -512,7 +506,7 @@
 											type="button"
 											onclick={() =>
 												(showConfirmPassword = !showConfirmPassword)}
-											class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
+											class="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
 										>
 											{#if showConfirmPassword}
 												<EyeOff class="w-4 h-4" />
@@ -531,9 +525,9 @@
 									variant="primary"
 									size="md"
 									{loading}
-									loadingText="Updating Password..."
+									class="shadow-ink pressable"
 								>
-									Update Password
+									{loading ? 'Updating...' : 'Update Password'}
 								</Button>
 							</div>
 						</div>
@@ -544,35 +538,35 @@
 				{#if activeTab === 'danger'}
 					<div class="px-4 sm:px-6 py-4 space-y-3 sm:space-y-4">
 						<div
-							class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-6"
+							class="bg-red-500/10 border border-red-500/30 rounded-xl p-6 tx tx-static tx-weak"
 						>
 							<div class="flex items-center gap-3 mb-6">
-								<Trash2 class="w-5 h-5 text-red-600 dark:text-red-400" />
-								<h3 class="text-lg font-semibold text-red-900 dark:text-red-100">
+								<Trash2 class="w-5 h-5 text-red-500" />
+								<h3 class="text-lg font-semibold text-foreground">
 									Delete Account
 								</h3>
 							</div>
 
 							<div class="space-y-4">
 								<div
-									class="bg-white dark:bg-gray-800 rounded-lg p-4 border border-red-200 dark:border-red-700"
+									class="bg-card rounded-lg p-4 border border-red-500/30 shadow-ink"
 								>
 									<div class="flex items-start space-x-3">
 										<AlertCircle
-											class="w-5 h-5 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0"
+											class="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0"
 										/>
 										<div class="text-sm">
 											<p
-												class="text-red-800 dark:text-red-200 font-medium mb-2"
+												class="text-foreground font-medium mb-2"
 											>
 												This action cannot be undone
 											</p>
-											<p class="text-red-700 dark:text-red-300">
+											<p class="text-muted-foreground">
 												Deleting your account will permanently remove all
 												your data, including:
 											</p>
 											<ul
-												class="list-disc list-inside mt-2 text-red-700 dark:text-red-300 space-y-1"
+												class="list-disc list-inside mt-2 text-muted-foreground space-y-1"
 											>
 												<li>All projects and tasks</li>
 												<li>Daily briefs and brain dumps</li>
@@ -590,7 +584,7 @@
 									disabled={loading}
 									variant="outline"
 									size="md"
-									class="text-red-600 hover:text-white hover:bg-red-600 border-red-600"
+									class="text-red-500 hover:text-white hover:bg-red-600 border-red-500 shadow-ink pressable"
 									icon={Trash2}
 								>
 									Delete My Account
@@ -622,12 +616,8 @@
 	.modal-grab-handle {
 		width: 32px;
 		height: 4px;
-		background-color: rgb(209 213 219);
+		background-color: hsl(var(--muted-foreground) / 0.3);
 		border-radius: 2px;
 		margin: 8px auto 16px auto;
-	}
-
-	.dark .modal-grab-handle {
-		background-color: rgb(75 85 99);
 	}
 </style>

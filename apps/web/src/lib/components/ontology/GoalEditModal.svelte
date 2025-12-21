@@ -309,7 +309,7 @@
 					variant="ghost"
 					size="sm"
 					onclick={openChatAbout}
-					class="text-muted-foreground hover:text-foreground shrink-0 !p-1.5 sm:!p-2"
+					class="text-muted-foreground hover:text-foreground shrink-0 !p-1.5 sm:!p-2 tx tx-grain tx-weak"
 					disabled={isLoading || isSaving || !goal}
 					title="Chat about this goal"
 				>
@@ -611,9 +611,11 @@
 		on:confirm={handleDelete}
 		on:cancel={() => (showDeleteConfirm = false)}
 	>
-		<p class="text-sm text-gray-600 dark:text-gray-300" slot="content">
-			This action cannot be undone. The goal and all its data will be permanently deleted.
-		</p>
+		{#snippet content()}
+			<p class="text-sm text-muted-foreground">
+				This action cannot be undone. The goal and all its data will be permanently deleted.
+			</p>
+		{/snippet}
 	</ConfirmationModal>
 {/if}
 

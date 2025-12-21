@@ -409,7 +409,7 @@ ON CONFLICT (id) DO NOTHING;
 -- ============================================
 INSERT INTO onto_tasks (id, project_id, type_key, title, state_key, priority, due_at, props, created_by) VALUES
 -- Research Tasks
-('33333333-0001-0001-0001-000000000001', '33333333-3333-3333-3333-333333333333',
+('33333333-0001-0001-0001-000000000002', '33333333-3333-3333-3333-333333333333',
  'task.research.analysis', 'Analyze Venus probe samples', 'done', 1, '2024-02-01'::timestamptz,
  '{"finding": "Alien single-celled microbes identified in Venus upper atmosphere", "properties": "Absorb electromagnetic radiation, store at 2 Kelvin", "significance": "First confirmed extraterrestrial life", "scientist": "Dr. Ryland Grace"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
@@ -424,13 +424,13 @@ INSERT INTO onto_tasks (id, project_id, type_key, title, state_key, priority, du
  '{"finding": "10^15 joules per kilogram - far exceeds any known energy storage", "storage_temperature": "2 Kelvin (near absolute zero)", "implication": "Viable as spacecraft fuel - enables interstellar travel", "comparison": "Exceeds nuclear fuel by orders of magnitude"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
-('33333333-0001-0002-0001-000000000001', '33333333-3333-3333-3333-333333333333',
+('33333333-0001-0002-0001-000000000002', '33333333-3333-3333-3333-333333333333',
  'task.astronomy.observation', 'Survey nearby stars for dimming', 'done', 1, '2024-03-15'::timestamptz,
  '{"method": "Comprehensive spectroscopic analysis of all nearby stars", "key_finding": "Tau Ceti (12 light-years) shows NO dimming while similar stars do", "implication": "Something at Tau Ceti controls Astrophage naturally", "recommendation": "Investigate Tau Ceti as potential source of solution"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 -- Engineering Tasks
-('33333333-0002-0001-0001-000000000001', '33333333-3333-3333-3333-333333333333',
+('33333333-0002-0001-0001-000000000002', '33333333-3333-3333-3333-333333333333',
  'task.engineering.propulsion', 'Design Astrophage propulsion system', 'done', 1, '2025-01-01'::timestamptz,
  '{"innovation": "Spin drive - first Astrophage-powered engine", "mechanism": "Heat Astrophage, it emits IR light, use mirrors to direct thrust", "acceleration": "1.5g continuous thrust", "irony": "The organism consuming our Sun becomes our means of interstellar travel"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
@@ -445,18 +445,18 @@ INSERT INTO onto_tasks (id, project_id, type_key, title, state_key, priority, du
  '{"equipment": "Full spectroscopy, cultivation chambers, microscopy, analysis systems", "purpose": "Enable in-situ research at Tau Ceti without Earth communication", "design": "Self-sufficient scientific capability", "samples": "Storage for Astrophage and any discovered organisms"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
-('33333333-0002-0002-0001-000000000001', '33333333-3333-3333-3333-333333333333',
+('33333333-0002-0002-0001-000000000002', '33333333-3333-3333-3333-333333333333',
  'task.personnel.selection', 'Select and train crew', 'done', 1, '2025-09-01'::timestamptz,
  '{"selected": ["Dr. Ryland Grace (science)", "Commander Yao (command)", "Olesya Ilyukhina (engineering)"], "criteria": "Scientific expertise, psychological resilience, willingness for suicide mission", "grace_issue": "Refused mission - had to be coerced by Stratt", "training": "Compressed intensive preparation"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 -- First Contact Tasks
-('33333333-0003-0001-0001-000000000001', '33333333-3333-3333-3333-333333333333',
+('33333333-0003-0001-0001-000000000002', '33333333-3333-3333-3333-333333333333',
  'task.diplomacy.approach', 'Establish non-threatening approach to alien vessel', 'done', 1, '2030-01-01'::timestamptz,
  '{"method": "Slow, predictable movements - demonstrate non-hostile intent", "signals": "Mathematical patterns (universal language)", "response": "Alien vessel (Blip-A) mirrors behavior", "outcome": "Mutual recognition of intelligence and peaceful intent"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
-('33333333-0003-0002-0001-000000000001', '33333333-3333-3333-3333-333333333333',
+('33333333-0003-0002-0001-000000000002', '33333333-3333-3333-3333-333333333333',
  'task.communication.visual', 'Develop visual communication symbols', 'done', 2, '2030-01-15'::timestamptz,
  '{"elements": "Star maps, numbers, chemical formulas, geometric shapes", "initial_success": "Established basic concepts and shared understanding", "limitation_discovered": "Rocky perceives through echolocation, not vision - can''t see Grace''s drawings", "adaptation_needed": "Switch to audio-based communication"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
@@ -467,7 +467,7 @@ INSERT INTO onto_tasks (id, project_id, type_key, title, state_key, priority, du
  '00000000-0000-0000-0000-000000000002'),
 
 -- Solution Tasks
-('33333333-0004-0001-0001-000000000001', '33333333-3333-3333-3333-333333333333',
+('33333333-0004-0001-0001-000000000002', '33333333-3333-3333-3333-333333333333',
  'task.engineering.construction', 'Connect Hail Mary and Blip-A via tunnel', 'done', 1, '2030-02-15'::timestamptz,
  '{"challenge": "29 atm ammonia (Rocky) vs 1 atm oxygen (Grace) - incompatible atmospheres", "solution": "Rocky builds xenonite tunnel and airlock system", "xenonite": "Eridian wonder material - mix two liquids, hardens into ultra-strong solid", "result": "Shared workspace enabling collaboration"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
@@ -482,7 +482,7 @@ INSERT INTO onto_tasks (id, project_id, type_key, title, state_key, priority, du
  '{"problem": "Hail Mary fuel tank breach - damaged fuel system", "rocky_solution": "Builds Eridian-style Astrophage power generator", "materials": "Xenonite construction using Eridian methods", "outcome": "Ship functional again, can complete mission"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
-('33333333-0004-0002-0001-000000000001', '33333333-3333-3333-3333-333333333333',
+('33333333-0004-0002-0001-000000000002', '33333333-3333-3333-3333-333333333333',
  'task.research.sampling', 'Collect samples from Adrian (Tau Ceti planet)', 'done', 1, '2030-04-01'::timestamptz,
  '{"planet": "Adrian (Tau Ceti e)", "method": "Beetle probes with 10km xenonite collection chain", "finding": "Atmospheric samples contain unknown organism", "naming": "Grace names it Taumoeba (Tau Ceti amoeba)", "significance": "Potential solution to Astrophage problem"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
@@ -493,7 +493,7 @@ INSERT INTO onto_tasks (id, project_id, type_key, title, state_key, priority, du
  '00000000-0000-0000-0000-000000000002'),
 
 -- Adrian Sampling Tasks
-('33333333-0004-0003-0001-000000000001', '33333333-3333-3333-3333-333333333333',
+('33333333-0004-0003-0001-000000000002', '33333333-3333-3333-3333-333333333333',
  'task.engineering.manufacturing', 'Manufacture 10km xenonite sampling chain', 'done', 1, '2030-03-20'::timestamptz,
  '{"length": "10 kilometers", "material": "Xenonite (Eridian super-material)", "constructor": "Rocky", "purpose": "Extend from orbit into Adrian''s atmosphere", "properties": "Strong enough to withstand atmospheric drag at 12.6 km/s"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
@@ -509,7 +509,7 @@ INSERT INTO onto_tasks (id, project_id, type_key, title, state_key, priority, du
  '00000000-0000-0000-0000-000000000002'),
 
 -- Nitrogen Crisis Tasks
-('33333333-0005-0002-0001-000000000001', '33333333-3333-3333-3333-333333333333',
+('33333333-0005-0002-0001-000000000002', '33333333-3333-3333-3333-333333333333',
  'task.research.testing', 'Test Taumoeba in simulated Venus atmosphere', 'done', 1, '2030-05-01'::timestamptz,
  '{"objective": "Verify Taumoeba survival in Venus conditions", "atmosphere": "Simulated Venus with 3.5% nitrogen", "result": "Taumoeba dies instantly upon nitrogen exposure", "crisis": "Solution found but cannot be deployed without modification"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
@@ -530,7 +530,7 @@ INSERT INTO onto_tasks (id, project_id, type_key, title, state_key, priority, du
  '00000000-0000-0000-0000-000000000002'),
 
 -- Fuel Contamination Tasks
-('33333333-0005-0003-0001-000000000001', '33333333-3333-3333-3333-333333333333',
+('33333333-0005-0003-0001-000000000002', '33333333-3333-3333-3333-333333333333',
  'task.emergency.sterilization', 'Flood compartments with pure nitrogen', 'done', 1, '2030-07-01'::timestamptz,
  '{"trigger": "Taumoeba detected consuming Astrophage fuel", "action": "Disable life support, depressurize, flood with nitrogen", "purpose": "Kill escaped Taumoeba using their nitrogen vulnerability", "risk": "Grace must survive without life support during process"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
@@ -546,7 +546,7 @@ INSERT INTO onto_tasks (id, project_id, type_key, title, state_key, priority, du
  '00000000-0000-0000-0000-000000000002'),
 
 -- Beetle Thruster Conversion Tasks
-('33333333-0005-0004-0001-000000000001', '33333333-3333-3333-3333-333333333333',
+('33333333-0005-0004-0001-000000000002', '33333333-3333-3333-3333-333333333333',
  'task.EVA.retrieval', 'Perform EVA during ship spin to retrieve beetles', 'done', 1, '2030-07-10'::timestamptz,
  '{"conditions": "Ship spinning uncontrollably, centrifugal forces extreme", "objective": "Retrieve beetles John, Paul, George from external mounts", "difficulty": "Life-threatening - any mistake means death", "outcome": "Three beetles successfully retrieved despite spin"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
@@ -567,7 +567,7 @@ INSERT INTO onto_tasks (id, project_id, type_key, title, state_key, priority, du
  '00000000-0000-0000-0000-000000000002'),
 
 -- Rescue Operation Tasks
-('33333333-0006-0001-0001-000000000001', '33333333-3333-3333-3333-333333333333',
+('33333333-0006-0001-0001-000000000002', '33333333-3333-3333-3333-333333333333',
  'task.navigation.rescue', 'Turn Hail Mary around to search for Rocky', 'done', 1, '2030-08-01'::timestamptz,
  '{"decision": "Grace chooses rescue over Earth return", "maneuver": "Complete 180-degree course reversal", "cost": "Uses fuel needed for Earth journey", "consequence": "Grace permanently stranded, cannot return home"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
@@ -588,7 +588,7 @@ INSERT INTO onto_tasks (id, project_id, type_key, title, state_key, priority, du
  '00000000-0000-0000-0000-000000000002'),
 
 -- Final Data Return Tasks
-('33333333-0006-0002-0001-000000000001', '33333333-3333-3333-3333-333333333333',
+('33333333-0006-0002-0001-000000000002', '33333333-3333-3333-3333-333333333333',
  'task.mission.launch', 'Launch Ringo beetle with solution to Earth', 'done', 1, '2030-07-20'::timestamptz,
  '{"probe": "Ringo (last remaining beetle)", "payload": ["Taumoeba-35 cultures", "Complete breeding protocols", "Deployment instructions", "Astrophage documentation"], "timing": "Launched before Grace turns around for rescue", "purpose": "Ensure humanity receives solution regardless of Grace''s fate"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
@@ -599,7 +599,7 @@ INSERT INTO onto_tasks (id, project_id, type_key, title, state_key, priority, du
  '00000000-0000-0000-0000-000000000002'),
 
 -- Erid Survival Tasks
-('33333333-0006-0003-0001-000000000001', '33333333-3333-3333-3333-333333333333',
+('33333333-0006-0003-0001-000000000002', '33333333-3333-3333-3333-333333333333',
  'task.survival.nutrition', 'Eat Taumoeba for survival nutrition', 'done', 2, '2030-09-01'::timestamptz,
  '{"discovery": "Rocky''s ship contains 22 million kg of Taumoeba", "revelation": "Taumoeba is edible and nutritious for humans", "irony": "Organism that caused crisis becomes salvation", "duration": "Grace survives on Taumoeba during journey to Erid"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
@@ -624,68 +624,68 @@ ON CONFLICT (id) DO NOTHING;
 -- DECISIONS
 -- ============================================
 INSERT INTO onto_decisions (id, project_id, title, decision_at, rationale, props, created_by) VALUES
-('33333333-0001-0001-0001-000000000001', '33333333-3333-3333-3333-333333333333',
+('33333333-0001-0001-0001-000000000003', '33333333-3333-3333-3333-333333333333',
  'Form Petrova Taskforce with Unlimited Authority', '2024-02-01'::timestamptz,
  'Existential threat requires unified response without bureaucracy',
  '{"type": "decision.organization.emergency", "state": "decided", "decider": "World governments (unanimous)", "director": "Eva Stratt (Dutch administrator)", "authority": "Unprecedented - unlimited power over all nations, resources, personnel", "controversy": "Suspends normal legal protections", "outcome": "Enables rapid Hail Mary construction"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
-('33333333-0002-0001-0001-000000000001', '33333333-3333-3333-3333-333333333333',
+('33333333-0002-0001-0001-000000000003', '33333333-3333-3333-3333-333333333333',
  'Use Astrophage as Spacecraft Fuel', '2024-06-01'::timestamptz,
  'Only known method for interstellar travel - 10^15 J/kg energy density enables journey to Tau Ceti',
  '{"type": "decision.engineering.propulsion", "state": "decided", "decider": "Petrova Taskforce engineering team", "irony": "The organism consuming our Sun becomes our only hope for travel", "mechanism": "Heat to emit IR, direct with mirrors", "risk": "Working with the dangerous organism threatening humanity", "outcome": "Enables Hail Mary mission"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
-('33333333-0002-0002-0001-000000000001', '33333333-3333-3333-3333-333333333333',
+('33333333-0002-0002-0001-000000000003', '33333333-3333-3333-3333-333333333333',
  'Coerce Grace onto Mission with Memory Drugs', '2025-10-01'::timestamptz,
  'Humanity needs him - billions of lives vs one person''s consent. Grace is only person who fully understands Astrophage biology',
  '{"type": "decision.ethics.coercion", "state": "decided", "decider": "Eva Stratt", "context": "Grace refused the suicide mission out of fear", "method": "Coma drugs include memory-affecting compounds", "moral_cost": "Violated fundamental human rights for species survival", "stratt_quote": "I will do whatever it takes"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
-('33333333-0003-0001-0001-000000000001', '33333333-3333-3333-3333-333333333333',
+('33333333-0003-0001-0001-000000000003', '33333333-3333-3333-3333-333333333333',
  'Trust Rocky and Share Information Fully', '2030-01-15'::timestamptz,
  'Rocky faces identical existential threat - cooperation is logical. Science is the universal language',
  '{"type": "decision.diplomacy.trust", "state": "decided", "decider": "Grace (unilateral, no Earth guidance)", "context": "First contact with alien intelligence", "risk": "Alien could be hostile or deceptive", "principle": "Shared methodology indicates trustworthiness", "outcome": "Partnership saves two civilizations"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
-('33333333-0004-0001-0001-000000000001', '33333333-3333-3333-3333-333333333333',
+('33333333-0004-0001-0001-000000000003', '33333333-3333-3333-3333-333333333333',
  'Risk Ammonia Exposure to Save Rocky', '2030-03-01'::timestamptz,
  'Rocky collapsed in human atmosphere - Grace floods ship with 29 atm ammonia despite fatal risk to himself',
  '{"type": "decision.personal.sacrifice", "state": "decided", "decider": "Grace (split-second decision)", "context": "Rocky dying in 1 atm environment, needs 29 atm ammonia", "consequence": "Severe lung damage to Grace from ammonia exposure", "outcome": "Both survive, trust and friendship cemented", "symbolism": "Both willing to die for the other"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
-('33333333-0005-0001-0001-000000000001', '33333333-3333-3333-3333-333333333333',
+('33333333-0005-0001-0001-000000000003', '33333333-3333-3333-3333-333333333333',
  'Sacrifice Return to Earth to Save Erid', '2030-07-25'::timestamptz,
  'Cannot let his friend and an entire civilization die when he can save them - the ultimate sacrifice',
  '{"type": "decision.moral.ultimate", "state": "decided", "decider": "Grace", "situation": "Rocky''s ship damaged, needs fuel to return to Erid with Taumoeba solution", "options": ["Keep fuel, return to Earth alone, let Rocky and all Eridians die", "Give fuel to Rocky, strand self forever, save billions of Eridian lives"], "choice": "Give fuel to Rocky - strand himself", "irony": "The coward who refused to volunteer now willingly makes ultimate sacrifice", "rocky_reaction": "Refuses at first, heartbroken, but accepts when Grace insists"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
-('33333333-0005-0002-0001-000000000001', '33333333-3333-3333-3333-333333333333',
+('33333333-0005-0002-0001-000000000003', '33333333-3333-3333-3333-333333333333',
  'Choose to Remain on Erid as Teacher', '2040-06-01'::timestamptz,
  'This is who I truly am - a teacher. These students need me.',
  '{"type": "decision.personal.legacy", "state": "decided", "decider": "Grace", "context": "16 years after sacrifice, Earth builds ship to bring him home", "options": ["Return to Earth as hero", "Stay on Erid with Rocky and students"], "choice": "Stay on Erid", "role": "Science teacher to young Eridians in special habitat", "full_circle": "Once a middle school science teacher, now teaches next generation of alien civilization", "quote": "I am the teacher. This is what I do."}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 -- Additional Decisions for Key Plot Points
-('33333333-0006-0001-0001-000000000001', '33333333-3333-3333-3333-333333333333',
+('33333333-0006-0001-0001-000000000003', '33333333-3333-3333-3333-333333333333',
  'Sacrifice Beetles as Emergency Thrusters', '2030-07-10'::timestamptz,
  'Ship stability required for survival; one beetle sufficient for Earth data return',
  '{"type": "decision.engineering.emergency", "state": "decided", "decider": "Grace with Rocky''s engineering support", "situation": "Main propulsion disabled, ship in deadly uncontrolled spin", "resources": "Four beetle probes (John, Paul, George, Ringo)", "options": ["Keep all beetles for data return", "Sacrifice some for ship stabilization"], "choice": "Sacrifice John, Paul, George as thrusters, keep Ringo", "irony": "Named after Beatles - three give their lives"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
-('33333333-0006-0002-0001-000000000001', '33333333-3333-3333-3333-333333333333',
+('33333333-0006-0002-0001-000000000003', '33333333-3333-3333-3333-333333333333',
  'Accept Food from Aliens (Eat Taumoeba)', '2030-08-15'::timestamptz,
  'No other food available - Taumoeba contains human-compatible proteins and nutrients',
  '{"type": "decision.survival.nutrition", "state": "decided", "decider": "Grace (no real choice)", "situation": "Stranded in space, no human food available", "discovery": "Rocky''s ship contains 22 million kg of Taumoeba", "test": "Grace tastes Taumoeba - not toxic, surprisingly edible", "outcome": "Grace survives journey to Erid on Taumoeba diet", "irony": "Organism that caused fuel crisis becomes life-saving food"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
-('33333333-0006-0003-0001-000000000001', '33333333-3333-3333-3333-333333333333',
+('33333333-0006-0003-0001-000000000003', '33333333-3333-3333-3333-333333333333',
  'Launch Ringo Before Rescue Attempt', '2030-07-20'::timestamptz,
  'If rescue fails, humanity still gets saved - mission success must be ensured first',
  '{"type": "decision.mission.priority", "state": "decided", "decider": "Grace", "situation": "Rocky''s ship disabled, Grace must choose: launch beetle first or rescue immediately", "choice": "Launch Ringo with solution before turning around", "payload": "Taumoeba-35, breeding protocols, first contact documentation", "sequence": "Launch → turnaround → search → rescue", "outcome": "Earth receives solution, rescue also succeeds"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
-('33333333-0006-0004-0001-000000000001', '33333333-3333-3333-3333-333333333333',
+('33333333-0006-0004-0001-000000000003', '33333333-3333-3333-3333-333333333333',
  'Conduct Directed Evolution Despite Risks', '2030-05-10'::timestamptz,
  'Without adaptation, both civilizations die anyway - the risk is acceptable',
  '{"type": "decision.research.ethics", "state": "decided", "decider": "Grace and Rocky (jointly)", "problem": "Natural Taumoeba dies in nitrogen - useless for Venus and Threeworld", "proposed_solution": "Directed evolution to create nitrogen-tolerant strains", "risk_identified": "Evolution might create dangerous new capabilities", "risk_realized": "Taumoeba-82.5 gained xenonite permeation ability", "outcome": "Success with serious side effect (xenonite contamination)"}'::jsonb,
@@ -696,68 +696,68 @@ ON CONFLICT (id) DO NOTHING;
 -- RISKS
 -- ============================================
 INSERT INTO onto_risks (id, project_id, title, type_key, probability, impact, state_key, props, created_by) VALUES
-('33333333-0001-0001-0001-000000000001', '33333333-3333-3333-3333-333333333333',
+('33333333-0001-0001-0001-000000000004', '33333333-3333-3333-3333-333333333333',
  'No Solution Exists at Tau Ceti', 'risk.mission.failure', 0.4, 'critical', 'closed',
  '{"scenario": "Tau Ceti immunity is unexplainable or cannot be replicated", "stakes": "If no solution found, Earth faces extinction in 30 years", "mitigation": "None - mission is humanity''s last and only hope", "actual_outcome": "Solution found - Taumoeba is natural Astrophage predator", "resolution": "Risk closed with discovery"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
-('33333333-0002-0001-0001-000000000001', '33333333-3333-3333-3333-333333333333',
+('33333333-0002-0001-0001-000000000004', '33333333-3333-3333-3333-333333333333',
  'Crew Death During Journey', 'risk.personnel.mortality', 0.3, 'high', 'occurred',
  '{"anticipated_risk": "Multi-year coma may cause fatalities", "occurrence": "Yao and Ilyukhina died during 4-year coma transit", "cause": "Coma system failure - bodies maintained but consciousness lost", "survivor": "Grace alone (ironic - the one who refused to go)", "impact": "Mission continues with single operator", "mitigation_in_future": "Improve coma pod reliability"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
-('33333333-0003-0001-0001-000000000001', '33333333-3333-3333-3333-333333333333',
+('33333333-0003-0001-0001-000000000004', '33333333-3333-3333-3333-333333333333',
  'Hostile First Contact', 'risk.diplomacy.conflict', 0.3, 'critical', 'closed',
  '{"scenario": "Aliens attack, refuse cooperation, or deceive", "potential_outcomes": ["Military conflict", "Sabotage", "Being used as resource"], "mitigation": "Cautious approach, demonstrate intelligence and peaceful intent through math", "actual_outcome": "Rocky becomes trusted ally and friend", "significance": "First contact in human history is peaceful scientific partnership"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
-('33333333-0003-0002-0001-000000000001', '33333333-3333-3333-3333-333333333333',
+('33333333-0003-0002-0001-000000000004', '33333333-3333-3333-3333-333333333333',
  'Communication Impossible', 'risk.technical.communication', 0.5, 'high', 'closed',
  '{"scenario": "Cannot establish meaningful communication with alien", "challenge": "Eridians perceive via echolocation (sound), not vision like humans", "additional_challenge": "Eridian language uses musical chords, not human phonemes", "solution": "Grace builds chord-to-English audio translator using math as bridge", "outcome": "Full conversational ability achieved"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
-('33333333-0004-0001-0001-000000000001', '33333333-3333-3333-3333-333333333333',
+('33333333-0004-0001-0001-000000000004', '33333333-3333-3333-3333-333333333333',
  'Atmospheric Incompatibility Fatal', 'risk.environmental.atmosphere', 0.6, 'critical', 'mitigated',
  '{"hazard": "Rocky requires 29-atm ammonia atmosphere - instantly lethal to humans", "reverse_hazard": "Grace requires 1-atm oxygen - causes catastrophic decompression for Rocky", "mitigation": "Xenonite airlock system built by Rocky", "incident": "Rocky entered human atmosphere to save Grace, nearly died", "counter_incident": "Grace flooded ship with ammonia to save Rocky, severely damaged lungs", "symbolism": "Both willing to die to save the other"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
-('33333333-0004-0002-0001-000000000001', '33333333-3333-3333-3333-333333333333',
+('33333333-0004-0002-0001-000000000004', '33333333-3333-3333-3333-333333333333',
  'Spacecraft Systems Failure', 'risk.technical.systems', 0.4, 'critical', 'occurred',
  '{"occurrence": "Engine malfunction during Adrian sampling, fuel tank breach from heat", "consequences": ["Uncontrolled acceleration", "Fuel system damage", "Radiator soot blockage"], "response": "Rocky and Grace collaborate - Rocky rebuilds systems, Grace devises creative solutions", "outcome": "Mission continues through partnership", "lesson": "Two species'' complementary skills overcome problems neither could solve alone"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
-('33333333-0005-0001-0001-000000000001', '33333333-3333-3333-3333-333333333333',
+('33333333-0005-0001-0001-000000000004', '33333333-3333-3333-3333-333333333333',
  'Grace Starvation on Erid', 'risk.survival.nutrition', 0.7, 'critical', 'mitigated',
  '{"problem": "All Eridian food is toxic to humans - incompatible biochemistry", "no_return": "Grace has no fuel to return to Earth for food", "immediate_solution": "Eat Taumoeba - discovered to contain human-compatible nutrients", "long_term_solution": "Eridians use Hail Mary knowledge archive to synthesize Earth-compatible food", "construction": "Build sealed human habitat on Erid", "outcome": "Sustainable indefinite survival on alien world"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
-('33333333-0005-0002-0001-000000000001', '33333333-3333-3333-3333-333333333333',
+('33333333-0005-0002-0001-000000000004', '33333333-3333-3333-3333-333333333333',
  'Earth Solution Fails to Arrive', 'risk.mission.failure', 0.2, 'critical', 'closed',
  '{"scenario": "Beetle probes fail during 12-light-year journey or Taumoeba dies in transit", "mitigation": "Multiple redundant beetles launched", "stakes": "If fails, humanity goes extinct", "actual_outcome": "At least one beetle reached Earth successfully", "confirmation": "Rocky reports Earth''s Sun restored to normal luminosity 16 years later", "significance": "Grace''s sacrifice was not in vain"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 -- Additional Risks for Comprehensive Coverage
-('33333333-0006-0001-0001-000000000001', '33333333-3333-3333-3333-333333333333',
+('33333333-0006-0001-0001-000000000004', '33333333-3333-3333-3333-333333333333',
  'Taumoeba Fuel Tank Contamination', 'risk.technical.contamination', 0.6, 'critical', 'occurred',
  '{"hazard": "Taumoeba escapes containment into Astrophage fuel supply", "occurrence": "Taumoeba consumed significant portion of fuel before detection", "detection": "Power fluctuations, fuel gauge readings dropping", "immediate_impact": "Life support failing, ship losing power", "response": "Flood with nitrogen to kill Taumoeba (exploiting their weakness)", "recovery": "Rocky donates Astrophage to restore power", "lesson": "Biological containment critical when working with fuel-eating organisms"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
-('33333333-0006-0002-0001-000000000001', '33333333-3333-3333-3333-333333333333',
+('33333333-0006-0002-0001-000000000004', '33333333-3333-3333-3333-333333333333',
  'Xenonite Permeation by Evolved Taumoeba', 'risk.technical.evolution', 0.3, 'critical', 'occurred',
  '{"hazard": "Directed evolution creates Taumoeba capable of penetrating xenonite", "mechanism": "Nitrogen resistance mutations enabled molecular-level xenonite infiltration", "unexpected": "Natural Taumoeba cannot penetrate xenonite - only evolved strain", "impact": "Rocky''s xenonite fuel tanks contaminated, ship disabled", "detection": "Rocky''s engine signature disappears during return journey", "cascade": "Forces Grace to choose between Earth return and rescue"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
-('33333333-0006-0003-0001-000000000001', '33333333-3333-3333-3333-333333333333',
+('33333333-0006-0003-0001-000000000004', '33333333-3333-3333-3333-333333333333',
  'Adrian Sampling Chain Failure', 'risk.engineering.sampling', 0.4, 'high', 'mitigated',
  '{"hazard": "10km xenonite chain breaks or fails during Adrian atmospheric sampling", "consequences": ["Lost sampling capability", "Potential debris damage to ship", "Mission failure if no samples collected"], "mitigation": "Rocky''s superior xenonite engineering, careful orbital mechanics", "tension": "Chain deployed at extreme depth into atmosphere", "actual_outcome": "Successful sample collection, Taumoeba discovered"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
-('33333333-0006-0004-0001-000000000001', '33333333-3333-3333-3333-333333333333',
+('33333333-0006-0004-0001-000000000004', '33333333-3333-3333-3333-333333333333',
  'EVA During Ship Spin', 'risk.personnel.EVA', 0.7, 'critical', 'mitigated',
  '{"hazard": "Grace must perform spacewalk while ship is spinning uncontrollably", "forces": "Centrifugal force throwing astronaut away from ship", "equipment": "Suit tether, timing, and precision critical", "task": "Retrieve beetle probes for thruster conversion", "grace_approach": "Time movements with spin, use ship geometry", "outcome": "Successful beetle retrieval despite extreme danger", "count": "Multiple EVAs required throughout mission"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
-('33333333-0006-0005-0001-000000000001', '33333333-3333-3333-3333-333333333333',
+('33333333-0006-0005-0001-000000000004', '33333333-3333-3333-3333-333333333333',
  'Rocky Cannot Be Located for Rescue', 'risk.mission.search', 0.5, 'critical', 'closed',
  '{"hazard": "Disabled Blip-A drifting in vast empty space without power or beacon", "search_area": "Enormous volume, tiny target", "method": "Use Petrovascope as IR source, scan for reflections", "duration": "Hours of agonizing scanning", "emotional_stakes": "Rocky dying while Grace searches", "breakthrough": "Detect faint Petrova-wavelength reflection", "outcome": "Successful location and rescue"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
@@ -772,78 +772,78 @@ ON CONFLICT (id) DO NOTHING;
 -- DOCUMENTS
 -- ============================================
 INSERT INTO onto_documents (id, project_id, title, type_key, state_key, props, created_by) VALUES
-('33333333-0001-0001-0001-000000000001', '33333333-3333-3333-3333-333333333333',
+('33333333-0001-0001-0001-000000000005', '33333333-3333-3333-3333-333333333333',
  'Petrova Line Discovery Report', 'document.scientific.discovery', 'published',
  '{"author": "Dr. Irina Petrova (Russian astronomer)", "finding": "Constant-wavelength infrared emission (25.984 microns) streaming from Sun toward Venus", "wavelength_precision": "Impossibly precise for natural phenomenon", "significance": "First detection of what would be named Astrophage", "implication": "Something is transporting energy from the Sun"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
-('33333333-0001-0002-0001-000000000001', '33333333-3333-3333-3333-333333333333',
+('33333333-0001-0002-0001-000000000005', '33333333-3333-3333-3333-333333333333',
  'Astrophage Biology Paper', 'document.scientific.research', 'published',
  '{"author": "Dr. Ryland Grace (molecular biologist)", "title": "Complete Characterization of Astrophage Lifecycle and Energy Storage", "key_findings": ["Single-celled alien organism", "Absorbs stellar energy", "Stores at 2 Kelvin in exotic state", "10^15 J/kg energy density", "Breeds in Venus atmosphere", "Propels via IR emission"], "breakthrough": "First complete understanding of extraterrestrial life"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
-('33333333-0002-0001-0001-000000000001', '33333333-3333-3333-3333-333333333333',
+('33333333-0002-0001-0001-000000000005', '33333333-3333-3333-3333-333333333333',
  'Hail Mary Mission Specifications', 'document.engineering.specification', 'published',
  '{"spacecraft": "Hail Mary", "propulsion": "Spin drive - Astrophage-powered via IR emission and mirror direction", "acceleration": "1.5g continuous", "destination": "Tau Ceti (12 light-years)", "travel_time": "4 years subjective", "crew": 3, "mission_type": "One-way investigation", "equipment": ["Research laboratory", "Coma pods", "Beetle probes"], "fuel": "Astrophage tanks - the threat becomes the fuel"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
-('33333333-0003-0001-0001-000000000001', '33333333-3333-3333-3333-333333333333',
+('33333333-0003-0001-0001-000000000005', '33333333-3333-3333-3333-333333333333',
  'First Contact Log', 'document.diplomatic.log', 'published',
  '{"author": "Dr. Ryland Grace", "subject": "Initial contact and communication with Eridian vessel (Blip-A) and occupant (Rocky)", "communication_evolution": ["Mathematical signals", "Visual symbols (limited by Rocky''s sound-based perception)", "Audio chord-to-English translator"], "key_discovery": "Eridians face same Astrophage threat to their star (40 Eridani)", "outcome": "Scientific partnership and friendship established"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
-('33333333-0003-0002-0001-000000000001', '33333333-3333-3333-3333-333333333333',
+('33333333-0003-0002-0001-000000000005', '33333333-3333-3333-3333-333333333333',
  'Eridian-Human Dictionary', 'document.linguistic.reference', 'published',
  '{"languages": ["English", "Eridian (musical chord-based)"], "format": "Audio translation mappings", "entries": "Thousands of translated concepts - numbers, objects, abstract ideas", "creators": "Dr. Ryland Grace and Rocky (collaborative effort)", "method": "Start with mathematics, expand through shared scientific observations", "significance": "First interspecies dictionary in history"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
-('33333333-0004-0001-0001-000000000001', '33333333-3333-3333-3333-333333333333',
+('33333333-0004-0001-0001-000000000005', '33333333-3333-3333-3333-333333333333',
  'Taumoeba Discovery Report', 'document.scientific.breakthrough', 'published',
  '{"discoverers": "Dr. Ryland Grace and Rocky (joint discovery)", "organism": "Taumoeba (Tau Ceti amoeba) - single-celled Astrophage predator", "source": "Adrian (Tau Ceti e) atmosphere, collected via beetle probe with 10km xenonite chain", "mechanism": "Taumoeba evolved to consume Astrophage as food source", "significance": "Explains why Tau Ceti is unaffected - natural population control", "application": "Can be seeded around affected stars to eliminate Astrophage"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
-('33333333-0005-0001-0001-000000000001', '33333333-3333-3333-3333-333333333333',
+('33333333-0005-0001-0001-000000000005', '33333333-3333-3333-3333-333333333333',
  'Instructions for Taumoeba Deployment', 'document.operational.protocol', 'published',
  '{"author": "Dr. Ryland Grace", "payload": "Beetle probes containing Taumoeba breeding populations", "destination": "Earth (autonomous 12-light-year journey)", "instructions": ["Cultivation environment requirements", "Breeding protocols", "Solar deployment procedures", "Expected consumption rates"], "redundancy": "Multiple beetles with identical payloads", "purpose": "Save humanity even if Grace cannot return"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
-('33333333-0005-0002-0001-000000000001', '33333333-3333-3333-3333-333333333333',
+('33333333-0005-0002-0001-000000000005', '33333333-3333-3333-3333-333333333333',
  'Grace''s Final Message to Earth', 'document.personal.farewell', 'published',
  '{"author": "Dr. Ryland Grace", "context": "Message sent with beetle probes, knowing he cannot return", "content": ["Explanation of Taumoeba solution and deployment", "Account of first contact with Eridians", "Apology for initial cowardice, gratitude for second chance", "Description of sacrifice for Rocky and Erid", "Hope for humanity''s future"], "tone": "Hopeful and at peace despite personal cost", "closing": "I was a teacher. This is what I do."}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 -- Additional Documents for Comprehensive Coverage
-('33333333-0005-0003-0001-000000000001', '33333333-3333-3333-3333-333333333333',
+('33333333-0005-0003-0001-000000000005', '33333333-3333-3333-3333-333333333333',
  'Xenonite Material Specifications', 'document.engineering.specification', 'published',
  '{"author": "Rocky (transcribed by Grace)", "material": "Xenonite - Eridian wonder material", "creation": "Mix two liquid components, hardens into ultra-strong solid", "properties": ["Stronger than any human alloy", "Gas-tight", "Transparent to sound", "Can be formed into any shape"], "applications": ["Ship hull", "Airlocks", "Sampling chain", "Human habitat dome"], "limitation": "Evolved Taumoeba-82.5 can permeate at molecular level"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
-('33333333-0005-0004-0001-000000000001', '33333333-3333-3333-3333-333333333333',
+('33333333-0005-0004-0001-000000000005', '33333333-3333-3333-3333-333333333333',
  'Taumoeba Evolution Log', 'document.scientific.log', 'published',
  '{"author": "Dr. Ryland Grace", "objective": "Create nitrogen-tolerant Taumoeba strains", "methodology": "Directed evolution through selective pressure", "generations_tracked": "Hundreds of cycles over weeks", "key_milestones": ["Taumoeba-5 (first survivors at 0.5% nitrogen)", "Taumoeba-35 (Venus-compatible at 3.5%)", "Taumoeba-82.5 (Threeworld-compatible at 8.25%)"], "unexpected_discovery": "Taumoeba-82.5 gained ability to permeate xenonite", "success": "Both Earth and Erid can now receive compatible strains"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
-('33333333-0006-0001-0001-000000000001', '33333333-3333-3333-3333-333333333333',
+('33333333-0006-0001-0001-000000000005', '33333333-3333-3333-3333-333333333333',
  'Beetle Probe Operations Manual', 'document.engineering.manual', 'published',
  '{"author": "Hail Mary mission engineering team", "probes": ["John", "Paul", "George", "Ringo"], "primary_function": "Autonomous sample collection and data return", "propulsion": "Astrophage-powered mini-drives", "range": "Interstellar (12+ light-years)", "sampling_capability": "Atmospheric collection with xenonite chain extension", "data_capacity": "Complete mission documentation plus samples", "fate": {"John": "Converted to emergency thruster", "Paul": "Converted to emergency thruster", "George": "Converted to emergency thruster", "Ringo": "Launched to Earth with Taumoeba solution"}}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
-('33333333-0006-0002-0001-000000000001', '33333333-3333-3333-3333-333333333333',
+('33333333-0006-0002-0001-000000000005', '33333333-3333-3333-3333-333333333333',
  'Eridian Biology Reference', 'document.scientific.reference', 'published',
  '{"subject": "Rocky and Eridian species physiology", "home_system": "40 Eridani (triple star, 16.3 light-years from Earth)", "home_planet": "Erid (twice Earth gravity, 29 atmospheres, ammonia atmosphere)", "temperature": "~290K average", "body_mass": "~400 kg", "exoskeleton": "Xenonite composition", "senses": "Echolocation (no eyes - planet is pitch black)", "communication": "Musical chord-based language", "lifespan": "Unknown, but includes multiple generations for interstellar missions", "diet": "Ammonia-based biochemistry", "reproduction": "Egg-laying species"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
-('33333333-0006-0003-0001-000000000001', '33333333-3333-3333-3333-333333333333',
+('33333333-0006-0003-0001-000000000005', '33333333-3333-3333-3333-333333333333',
  'Blip-A Spacecraft Analysis', 'document.engineering.analysis', 'published',
  '{"author": "Dr. Ryland Grace", "designation": "Blip-A (informal)", "species": "Eridian", "propulsion": "Astrophage-powered (same principle as Hail Mary)", "hull": "Xenonite construction", "atmosphere": "29 atm ammonia", "crew": "Rocky (solo mission like Grace)", "mission": "Investigate Tau Ceti for Astrophage solution", "notable_features": ["No windows (Eridians perceive via sound)", "Pressurized for high-gravity environment"], "outcome": "Disabled by Taumoeba-82.5 contamination, rescued by Grace"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
-('33333333-0006-0004-0001-000000000001', '33333333-3333-3333-3333-333333333333',
+('33333333-0006-0004-0001-000000000005', '33333333-3333-3333-3333-333333333333',
  'Adrian Planetary Survey', 'document.scientific.survey', 'published',
  '{"planet": "Adrian (Tau Ceti e)", "distance_from_star": "Habitable zone equivalent", "atmosphere": "Contains Astrophage breeding layer at ~91km altitude", "key_discovery": "Home of Taumoeba - natural Astrophage predator", "ecosystem": "Taumoeba consumes Astrophage, preventing star dimming", "sampling_method": "10km xenonite chain from orbital altitude", "significance": "Explains why Tau Ceti is unaffected - natural population control", "samples_collected": "Multiple Taumoeba specimens for cultivation"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
-('33333333-0006-0005-0001-000000000001', '33333333-3333-3333-3333-333333333333',
+('33333333-0006-0005-0001-000000000005', '33333333-3333-3333-3333-333333333333',
  'Erid Habitat Construction Plans', 'document.engineering.construction', 'published',
  '{"purpose": "Human-habitable dome on Erid for Grace", "material": "Xenonite (Eridian construction)", "internal_atmosphere": "1 atm oxygen, Earth-normal composition", "lighting": "Artificial full-spectrum (Erid is pitch black)", "temperature": "Comfortable human range despite 210°C external", "food_production": "Synthesis from Hail Mary knowledge archives", "innovations": "Cloned human muscle tissue for meburgers", "size": "Classroom plus living quarters", "builders": "Eridian engineers supervised by Rocky"}'::jsonb,
  '00000000-0000-0000-0000-000000000002')
@@ -927,104 +927,104 @@ INSERT INTO onto_edges (src_kind, src_id, rel, dst_kind, dst_id, project_id, pro
 ('milestone', '33333333-0004-0004-0000-000000000001', 'has', 'plan', '33333333-0004-0003-0001-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
 
 -- Plans → Tasks
-('plan', '33333333-0001-0001-0001-000000000001', 'has', 'task', '33333333-0001-0001-0001-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
+('plan', '33333333-0001-0001-0001-000000000001', 'has', 'task', '33333333-0001-0001-0001-000000000002', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
 ('plan', '33333333-0001-0001-0001-000000000001', 'has', 'task', '33333333-0001-0001-0002-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
 ('plan', '33333333-0001-0001-0001-000000000001', 'has', 'task', '33333333-0001-0001-0003-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
-('plan', '33333333-0001-0002-0001-000000000001', 'has', 'task', '33333333-0001-0002-0001-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
-('plan', '33333333-0002-0001-0001-000000000001', 'has', 'task', '33333333-0002-0001-0001-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
+('plan', '33333333-0001-0002-0001-000000000001', 'has', 'task', '33333333-0001-0002-0001-000000000002', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
+('plan', '33333333-0002-0001-0001-000000000001', 'has', 'task', '33333333-0002-0001-0001-000000000002', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
 ('plan', '33333333-0002-0001-0001-000000000001', 'has', 'task', '33333333-0002-0001-0002-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
 ('plan', '33333333-0002-0001-0001-000000000001', 'has', 'task', '33333333-0002-0001-0003-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
-('plan', '33333333-0002-0002-0001-000000000001', 'has', 'task', '33333333-0002-0002-0001-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
-('plan', '33333333-0003-0001-0001-000000000001', 'has', 'task', '33333333-0003-0001-0001-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
-('plan', '33333333-0003-0002-0001-000000000001', 'has', 'task', '33333333-0003-0002-0001-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
+('plan', '33333333-0002-0002-0001-000000000001', 'has', 'task', '33333333-0002-0002-0001-000000000002', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
+('plan', '33333333-0003-0001-0001-000000000001', 'has', 'task', '33333333-0003-0001-0001-000000000002', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
+('plan', '33333333-0003-0002-0001-000000000001', 'has', 'task', '33333333-0003-0002-0001-000000000002', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
 ('plan', '33333333-0003-0002-0001-000000000001', 'has', 'task', '33333333-0003-0002-0002-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
-('plan', '33333333-0004-0001-0001-000000000001', 'has', 'task', '33333333-0004-0001-0001-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
+('plan', '33333333-0004-0001-0001-000000000001', 'has', 'task', '33333333-0004-0001-0001-000000000002', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
 ('plan', '33333333-0004-0001-0001-000000000001', 'has', 'task', '33333333-0004-0001-0002-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
 ('plan', '33333333-0004-0001-0001-000000000001', 'has', 'task', '33333333-0004-0001-0003-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
-('plan', '33333333-0004-0002-0001-000000000001', 'has', 'task', '33333333-0004-0002-0001-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
+('plan', '33333333-0004-0002-0001-000000000001', 'has', 'task', '33333333-0004-0002-0001-000000000002', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
 ('plan', '33333333-0004-0002-0001-000000000001', 'has', 'task', '33333333-0004-0002-0002-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
 ('plan', '33333333-0005-0001-0001-000000000001', 'has', 'task', '33333333-0005-0001-0001-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
 ('plan', '33333333-0005-0001-0001-000000000001', 'has', 'task', '33333333-0005-0001-0002-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
 ('plan', '33333333-0005-0001-0001-000000000001', 'has', 'task', '33333333-0005-0001-0003-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
 -- Adrian Sampling Tasks
-('plan', '33333333-0004-0003-0001-000000000001', 'has', 'task', '33333333-0004-0003-0001-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
+('plan', '33333333-0004-0003-0001-000000000001', 'has', 'task', '33333333-0004-0003-0001-000000000002', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
 ('plan', '33333333-0004-0003-0001-000000000001', 'has', 'task', '33333333-0004-0003-0002-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
 ('plan', '33333333-0004-0003-0001-000000000001', 'has', 'task', '33333333-0004-0003-0003-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
 -- Nitrogen Crisis Tasks
-('plan', '33333333-0005-0001-0001-000000000001', 'has', 'task', '33333333-0005-0002-0001-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
+('plan', '33333333-0005-0001-0001-000000000001', 'has', 'task', '33333333-0005-0002-0001-000000000002', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
 ('plan', '33333333-0005-0001-0001-000000000001', 'has', 'task', '33333333-0005-0002-0002-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
 ('plan', '33333333-0005-0001-0001-000000000001', 'has', 'task', '33333333-0005-0002-0003-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
 ('plan', '33333333-0005-0001-0001-000000000001', 'has', 'task', '33333333-0005-0002-0004-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
 -- Fuel Contamination Tasks
-('plan', '33333333-0005-0002-0001-000000000001', 'has', 'task', '33333333-0005-0003-0001-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
+('plan', '33333333-0005-0002-0001-000000000001', 'has', 'task', '33333333-0005-0003-0001-000000000002', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
 ('plan', '33333333-0005-0002-0001-000000000001', 'has', 'task', '33333333-0005-0003-0002-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
 ('plan', '33333333-0005-0002-0001-000000000001', 'has', 'task', '33333333-0005-0003-0003-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
 -- Beetle Thruster Tasks
-('plan', '33333333-0005-0003-0001-000000000001', 'has', 'task', '33333333-0005-0004-0001-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
+('plan', '33333333-0005-0003-0001-000000000001', 'has', 'task', '33333333-0005-0004-0001-000000000002', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
 ('plan', '33333333-0005-0003-0001-000000000001', 'has', 'task', '33333333-0005-0004-0002-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
 ('plan', '33333333-0005-0003-0001-000000000001', 'has', 'task', '33333333-0005-0004-0003-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
 ('plan', '33333333-0005-0003-0001-000000000001', 'has', 'task', '33333333-0005-0004-0004-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
 -- Rescue Operation Tasks
-('plan', '33333333-0006-0001-0001-000000000001', 'has', 'task', '33333333-0006-0001-0001-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
+('plan', '33333333-0006-0001-0001-000000000001', 'has', 'task', '33333333-0006-0001-0001-000000000002', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
 ('plan', '33333333-0006-0001-0001-000000000001', 'has', 'task', '33333333-0006-0001-0002-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
 ('plan', '33333333-0006-0001-0001-000000000001', 'has', 'task', '33333333-0006-0001-0003-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
 ('plan', '33333333-0006-0001-0001-000000000001', 'has', 'task', '33333333-0006-0001-0004-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
 -- Beetle Data Return Tasks
-('plan', '33333333-0006-0002-0001-000000000001', 'has', 'task', '33333333-0006-0002-0001-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
+('plan', '33333333-0006-0002-0001-000000000001', 'has', 'task', '33333333-0006-0002-0001-000000000002', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
 ('plan', '33333333-0006-0002-0001-000000000001', 'has', 'task', '33333333-0006-0002-0002-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
 -- Erid Survival Tasks
-('plan', '33333333-0006-0003-0001-000000000001', 'has', 'task', '33333333-0006-0003-0001-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
+('plan', '33333333-0006-0003-0001-000000000001', 'has', 'task', '33333333-0006-0003-0001-000000000002', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
 ('plan', '33333333-0006-0003-0001-000000000001', 'has', 'task', '33333333-0006-0003-0002-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
 ('plan', '33333333-0006-0003-0001-000000000001', 'has', 'task', '33333333-0006-0003-0003-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
 ('plan', '33333333-0006-0003-0001-000000000001', 'has', 'task', '33333333-0006-0003-0004-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
 
 -- Milestones → Documents
-('milestone', '33333333-0001-0001-0000-000000000001', 'has', 'document', '33333333-0001-0001-0001-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
-('milestone', '33333333-0001-0004-0000-000000000001', 'has', 'document', '33333333-0001-0002-0001-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
-('milestone', '33333333-0002-0003-0000-000000000001', 'has', 'document', '33333333-0002-0001-0001-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
-('milestone', '33333333-0003-0005-0000-000000000001', 'has', 'document', '33333333-0003-0001-0001-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
-('milestone', '33333333-0003-0005-0000-000000000001', 'has', 'document', '33333333-0003-0002-0001-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
-('milestone', '33333333-0004-0004-0000-000000000001', 'has', 'document', '33333333-0004-0001-0001-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
-('milestone', '33333333-0005-0002-0000-000000000001', 'has', 'document', '33333333-0005-0001-0001-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
-('milestone', '33333333-0005-0002-0000-000000000001', 'has', 'document', '33333333-0005-0002-0001-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
+('milestone', '33333333-0001-0001-0000-000000000001', 'has', 'document', '33333333-0001-0001-0001-000000000005', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
+('milestone', '33333333-0001-0004-0000-000000000001', 'has', 'document', '33333333-0001-0002-0001-000000000005', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
+('milestone', '33333333-0002-0003-0000-000000000001', 'has', 'document', '33333333-0002-0001-0001-000000000005', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
+('milestone', '33333333-0003-0005-0000-000000000001', 'has', 'document', '33333333-0003-0001-0001-000000000005', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
+('milestone', '33333333-0003-0005-0000-000000000001', 'has', 'document', '33333333-0003-0002-0001-000000000005', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
+('milestone', '33333333-0004-0004-0000-000000000001', 'has', 'document', '33333333-0004-0001-0001-000000000005', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
+('milestone', '33333333-0005-0002-0000-000000000001', 'has', 'document', '33333333-0005-0001-0001-000000000005', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
+('milestone', '33333333-0005-0002-0000-000000000001', 'has', 'document', '33333333-0005-0002-0001-000000000005', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
 -- Additional Document Edges
-('milestone', '33333333-0004-0002-0000-000000000001', 'has', 'document', '33333333-0005-0003-0001-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
-('milestone', '33333333-0005-0005-0000-000000000001', 'has', 'document', '33333333-0005-0004-0001-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
-('milestone', '33333333-0005-0004-0000-000000000001', 'has', 'document', '33333333-0006-0001-0001-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
-('milestone', '33333333-0003-0005-0000-000000000001', 'has', 'document', '33333333-0006-0002-0001-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
-('milestone', '33333333-0003-0004-0000-000000000001', 'has', 'document', '33333333-0006-0003-0001-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
-('milestone', '33333333-0004-0004-0000-000000000001', 'has', 'document', '33333333-0006-0004-0001-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
-('milestone', '33333333-0006-0006-0000-000000000001', 'has', 'document', '33333333-0006-0005-0001-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
+('milestone', '33333333-0004-0002-0000-000000000001', 'has', 'document', '33333333-0005-0003-0001-000000000005', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
+('milestone', '33333333-0005-0005-0000-000000000001', 'has', 'document', '33333333-0005-0004-0001-000000000005', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
+('milestone', '33333333-0005-0004-0000-000000000001', 'has', 'document', '33333333-0006-0001-0001-000000000005', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
+('milestone', '33333333-0003-0005-0000-000000000001', 'has', 'document', '33333333-0006-0002-0001-000000000005', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
+('milestone', '33333333-0003-0004-0000-000000000001', 'has', 'document', '33333333-0006-0003-0001-000000000005', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
+('milestone', '33333333-0004-0004-0000-000000000001', 'has', 'document', '33333333-0006-0004-0001-000000000005', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
+('milestone', '33333333-0006-0006-0000-000000000001', 'has', 'document', '33333333-0006-0005-0001-000000000005', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
 
 -- Milestones → Decisions
-('milestone', '33333333-0002-0001-0000-000000000001', 'has', 'decision', '33333333-0001-0001-0001-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
-('milestone', '33333333-0002-0002-0000-000000000001', 'has', 'decision', '33333333-0002-0001-0001-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
-('milestone', '33333333-0002-0004-0000-000000000001', 'has', 'decision', '33333333-0002-0002-0001-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
-('milestone', '33333333-0003-0005-0000-000000000001', 'has', 'decision', '33333333-0003-0001-0001-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
-('milestone', '33333333-0004-0003-0000-000000000001', 'has', 'decision', '33333333-0004-0001-0001-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
-('milestone', '33333333-0005-0001-0000-000000000001', 'has', 'decision', '33333333-0005-0001-0001-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
-('milestone', '33333333-0005-0005-0000-000000000001', 'has', 'decision', '33333333-0005-0002-0001-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
+('milestone', '33333333-0002-0001-0000-000000000001', 'has', 'decision', '33333333-0001-0001-0001-000000000003', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
+('milestone', '33333333-0002-0002-0000-000000000001', 'has', 'decision', '33333333-0002-0001-0001-000000000003', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
+('milestone', '33333333-0002-0004-0000-000000000001', 'has', 'decision', '33333333-0002-0002-0001-000000000003', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
+('milestone', '33333333-0003-0005-0000-000000000001', 'has', 'decision', '33333333-0003-0001-0001-000000000003', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
+('milestone', '33333333-0004-0003-0000-000000000001', 'has', 'decision', '33333333-0004-0001-0001-000000000003', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
+('milestone', '33333333-0005-0001-0000-000000000001', 'has', 'decision', '33333333-0005-0001-0001-000000000003', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
+('milestone', '33333333-0005-0005-0000-000000000001', 'has', 'decision', '33333333-0005-0002-0001-000000000003', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
 -- Additional Decision Edges
-('milestone', '33333333-0005-0004-0000-000000000001', 'has', 'decision', '33333333-0006-0001-0001-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
-('milestone', '33333333-0006-0005-0000-000000000001', 'has', 'decision', '33333333-0006-0002-0001-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
-('milestone', '33333333-0006-0004-0000-000000000001', 'has', 'decision', '33333333-0006-0003-0001-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
-('milestone', '33333333-0005-0002-0000-000000000001', 'has', 'decision', '33333333-0006-0004-0001-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
+('milestone', '33333333-0005-0004-0000-000000000001', 'has', 'decision', '33333333-0006-0001-0001-000000000003', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
+('milestone', '33333333-0006-0005-0000-000000000001', 'has', 'decision', '33333333-0006-0002-0001-000000000003', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
+('milestone', '33333333-0006-0004-0000-000000000001', 'has', 'decision', '33333333-0006-0003-0001-000000000003', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
+('milestone', '33333333-0005-0002-0000-000000000001', 'has', 'decision', '33333333-0006-0004-0001-000000000003', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
 
 -- Milestones → Risks
-('milestone', '33333333-0001-0005-0000-000000000001', 'has', 'risk', '33333333-0001-0001-0001-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
-('milestone', '33333333-0003-0001-0000-000000000001', 'has', 'risk', '33333333-0002-0001-0001-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
-('milestone', '33333333-0003-0004-0000-000000000001', 'has', 'risk', '33333333-0003-0001-0001-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
-('milestone', '33333333-0003-0005-0000-000000000001', 'has', 'risk', '33333333-0003-0002-0001-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
-('milestone', '33333333-0004-0002-0000-000000000001', 'has', 'risk', '33333333-0004-0001-0001-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
-('milestone', '33333333-0004-0003-0000-000000000001', 'has', 'risk', '33333333-0004-0002-0001-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
-('milestone', '33333333-0005-0003-0000-000000000001', 'has', 'risk', '33333333-0005-0001-0001-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
-('milestone', '33333333-0005-0002-0000-000000000001', 'has', 'risk', '33333333-0005-0002-0001-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
+('milestone', '33333333-0001-0005-0000-000000000001', 'has', 'risk', '33333333-0001-0001-0001-000000000004', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
+('milestone', '33333333-0003-0001-0000-000000000001', 'has', 'risk', '33333333-0002-0001-0001-000000000004', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
+('milestone', '33333333-0003-0004-0000-000000000001', 'has', 'risk', '33333333-0003-0001-0001-000000000004', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
+('milestone', '33333333-0003-0005-0000-000000000001', 'has', 'risk', '33333333-0003-0002-0001-000000000004', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
+('milestone', '33333333-0004-0002-0000-000000000001', 'has', 'risk', '33333333-0004-0001-0001-000000000004', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
+('milestone', '33333333-0004-0003-0000-000000000001', 'has', 'risk', '33333333-0004-0002-0001-000000000004', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
+('milestone', '33333333-0005-0003-0000-000000000001', 'has', 'risk', '33333333-0005-0001-0001-000000000004', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
+('milestone', '33333333-0005-0002-0000-000000000001', 'has', 'risk', '33333333-0005-0002-0001-000000000004', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
 -- Additional Risk Edges
-('milestone', '33333333-0005-0003-0000-000000000001', 'has', 'risk', '33333333-0006-0001-0001-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
-('milestone', '33333333-0005-0006-0000-000000000001', 'has', 'risk', '33333333-0006-0002-0001-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
-('milestone', '33333333-0004-0004-0000-000000000001', 'has', 'risk', '33333333-0006-0003-0001-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
-('milestone', '33333333-0005-0004-0000-000000000001', 'has', 'risk', '33333333-0006-0004-0001-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
-('milestone', '33333333-0006-0003-0000-000000000001', 'has', 'risk', '33333333-0006-0005-0001-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
+('milestone', '33333333-0005-0003-0000-000000000001', 'has', 'risk', '33333333-0006-0001-0001-000000000004', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
+('milestone', '33333333-0005-0006-0000-000000000001', 'has', 'risk', '33333333-0006-0002-0001-000000000004', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
+('milestone', '33333333-0004-0004-0000-000000000001', 'has', 'risk', '33333333-0006-0003-0001-000000000004', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
+('milestone', '33333333-0005-0004-0000-000000000001', 'has', 'risk', '33333333-0006-0004-0001-000000000004', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
+('milestone', '33333333-0006-0003-0000-000000000001', 'has', 'risk', '33333333-0006-0005-0001-000000000004', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
 ('milestone', '33333333-0003-0001-0000-000000000001', 'has', 'risk', '33333333-0006-0006-0001-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
 
 -- Cross-cutting causal relationships

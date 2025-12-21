@@ -403,7 +403,7 @@ ON CONFLICT (id) DO NOTHING;
 -- ============================================
 INSERT INTO onto_tasks (id, project_id, type_key, title, state_key, priority, due_at, props, created_by) VALUES
 -- Early Writing Tasks (1991-1996)
-('44444444-0001-0001-0001-000000000001', '44444444-4444-4444-4444-444444444444',
+('44444444-0001-0001-0001-000000000002', '44444444-4444-4444-4444-444444444444',
  'task.writing.chapter', 'Write Bran I - The Direwolves', 'done', 1, '1991-06-15'::timestamptz,
  '{"time": "3 days", "inspiration": "Vision came unbidden while writing Avalon", "scene": "Stark children find direwolf pups after execution", "symbolism": "6 pups for 6 children, Ghost (albino runt) for Jon the outsider", "foreshadowing": "Dead mother killed by stag - Baratheons will destroy Starks", "quality": "One of the most iconic fantasy openings ever written"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
@@ -418,7 +418,7 @@ INSERT INTO onto_tasks (id, project_id, type_key, title, state_key, priority, du
  '{"height": "700 feet", "length": "300 miles", "age": "8000 years", "builder": "Bran the Builder (legendary)", "purpose": "Keep Others out (forgotten)", "oaths": "Night gathers and now my watch begins...", "castles": "19 castles, only 3 manned by AGOT", "horn_of_winter": "Legendary horn said to bring down the Wall"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
-('44444444-0001-0002-0001-000000000001', '44444444-4444-4444-4444-444444444444',
+('44444444-0001-0002-0001-000000000002', '44444444-4444-4444-4444-444444444444',
  'task.writing.chapter', 'Write the Red Wedding (Catelyn XI)', 'done', 1, '2000-08-01'::timestamptz,
  '{"book": "A Storm of Swords", "chapter": "Catelyn VII (Chapter 51)", "written": "LAST - avoided until rest of book done", "author_quote": "It was like murdering two of my children", "years_carried": "8 years with Robb, Catelyn", "parris_reaction": "Cried when she read it", "reader_reactions": "Books thrown against walls, into fireplaces", "historical_basis": ["Black Dinner 1440", "Glencoe Massacre 1692"], "foreshadowing": "Bread and salt, The Rains of Castamere, Grey Wind''s behavior", "deaths": ["Robb Stark", "Catelyn Stark", "Grey Wind", "Most of Stark army"], "author_comparison": "Purple Wedding was easy and fun - Joffrey deserved it"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
@@ -429,7 +429,7 @@ INSERT INTO onto_tasks (id, project_id, type_key, title, state_key, priority, du
  '00000000-0000-0000-0000-000000000002'),
 
 -- TWOW Tasks (The Long Wait)
-('44444444-0003-0001-0001-000000000001', '44444444-4444-4444-4444-444444444444',
+('44444444-0003-0001-0001-000000000002', '44444444-4444-4444-4444-444444444444',
  'task.writing.plot', 'Resolve the Meereenese Knot (finally)', 'in_progress', 1, '2026-12-31'::timestamptz,
  '{"description": "Get all characters to Meereen in right order with right information", "characters_converging": ["Tyrion (via Volantis, slavers)", "Victarion (Iron Fleet, dragonbinder horn)", "Quentyn (arrived, died trying to tame dragon)", "Barristan (POV added to cover while Dany gone)", "Marwyn the Mage (still sailing)", "Moqorro (red priest with visions)"], "complications": ["Dany flew off on Drogon", "Tyrion enslaved then freed", "Pale mare plague", "Yunkish siege", "Hizdahr''s loyalty unknown"], "versions_written": "Multiple Quentyn timelines tested", "years_struggling": "10+", "status": "Partially untangled in TWOW"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
@@ -475,7 +475,7 @@ INSERT INTO onto_tasks (id, project_id, type_key, title, state_key, priority, du
  '00000000-0000-0000-0000-000000000002'),
 
 -- Future Tasks (Aspirational)
-('44444444-0004-0001-0001-000000000001', '44444444-4444-4444-4444-444444444444',
+('44444444-0004-0001-0001-000000000002', '44444444-4444-4444-4444-444444444444',
  'task.writing.book7', 'Start writing A Dream of Spring', 'todo', 1, '2030-12-31'::timestamptz,
  '{"prerequisite": "Finish Winds of Winter", "estimated_start": "Unknown - years away", "estimated_length": "1500+ pages", "fan_patience": "Exhausted", "actuarial_concern": "Non-trivial", "content": "Long Night, final battle with Others, all prophecies resolved, bittersweet ending"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
@@ -491,7 +491,7 @@ INSERT INTO onto_tasks (id, project_id, type_key, title, state_key, priority, du
  '00000000-0000-0000-0000-000000000002'),
 
 -- Distraction Tasks (All Done Unfortunately)
-('44444444-0005-0001-0001-000000000001', '44444444-4444-4444-4444-444444444444',
+('44444444-0005-0001-0001-000000000002', '44444444-4444-4444-4444-444444444444',
  'task.distraction.writing', 'Write HBO episodes S1-S4', 'done', 3, '2014-04-13'::timestamptz,
  '{"episodes_written": ["The Pointy End (S1E8)", "Blackwater (S2E9)", "The Bear and the Maiden Fair (S3E7)", "The Lion and the Rose (S4E2)"], "blackwater": "Considered one of best episodes", "purple_wedding": "Fun to write - Joffrey deserved it", "stopped_after_s4": "Too busy with other obligations", "time_consumed": "Significant - screenplay is different skill"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
@@ -516,25 +516,25 @@ ON CONFLICT (id) DO NOTHING;
 -- DECISIONS
 -- ============================================
 INSERT INTO onto_decisions (id, project_id, title, decision_at, rationale, props, created_by) VALUES
-('44444444-0001-0001-0001-000000000001', '44444444-4444-4444-4444-444444444444',
+('44444444-0001-0001-0001-000000000003', '44444444-4444-4444-4444-444444444444',
  'Adopt Gardener Writing Philosophy', '1991-06-01'::timestamptz,
  'Chose to discover the story while writing rather than follow a detailed outline - allows for organic character development but makes completion dates impossible to predict',
  '{"type": "decision.creative.methodology", "state": "decided", "choice": "Gardener over Architect", "meaning": "Discover story while writing vs. detailed outline", "consequence": "Cannot predict completion", "regret_level": "Unknown"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
-('44444444-0001-0002-0001-000000000001', '44444444-4444-4444-4444-444444444444',
+('44444444-0001-0002-0001-000000000003', '44444444-4444-4444-4444-444444444444',
  'Use WordStar 4.0 Forever', '1987-01-01'::timestamptz,
  'Familiarity and lack of distracting features outweigh benefits of modern word processors - writing on DOS machine with 1987 software ensures focus on prose',
  '{"type": "decision.technical.tooling", "state": "decided", "software": "WordStar 4.0", "operating_system": "DOS", "reason": "Familiarity, no distracting features", "year_of_software": "1987", "refusal_to_upgrade": "Absolute"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
-('44444444-0002-0001-0001-000000000001', '44444444-4444-4444-4444-444444444444',
+('44444444-0002-0001-0001-000000000003', '44444444-4444-4444-4444-444444444444',
  'Abandon the Five-Year Gap', '2001-01-01'::timestamptz,
  'Too many flashbacks needed to explain what happened during the gap - decided to write everything chronologically even though it meant longer series',
  '{"type": "decision.creative.structure", "state": "decided", "original_plan": "Skip 5 years in narrative", "problem": "Too many flashbacks", "new_approach": "Write everything chronologically", "impact": "Series became much longer"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
-('44444444-0002-0002-0001-000000000001', '44444444-4444-4444-4444-444444444444',
+('44444444-0002-0002-0001-000000000003', '44444444-4444-4444-4444-444444444444',
  'Split Book 4 Geographically', '2005-01-01'::timestamptz,
  'Manuscript too large for single book - split by character location with Feast for Crows covering Westeros and Dance with Dragons covering Essos and the Wall',
  '{"type": "decision.publication.structure", "state": "decided", "problem": "Manuscript too large", "solution": "Split by character location", "books": ["Feast for Crows (Westeros)", "Dance with Dragons (Essos + Wall)"], "reader_confusion": "Significant"}'::jsonb,
@@ -546,13 +546,13 @@ INSERT INTO onto_decisions (id, project_id, title, decision_at, rationale, props
  '{"type": "decision.business.adaptation", "state": "decided", "year": "2007", "showrunners": ["Benioff", "Weiss"], "payment": "Substantial", "creative_control": "Partial", "regret_about_ending": "Documented"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
-('44444444-0003-0001-0001-000000000001', '44444444-4444-4444-4444-444444444444',
+('44444444-0003-0001-0001-000000000003', '44444444-4444-4444-4444-444444444444',
  'Stop Making Deadline Predictions', '2021-01-01'::timestamptz,
  'Every prediction becomes a broken promise and leads to fan disappointment - decided to never estimate completion dates again after years of missed deadlines',
  '{"type": "decision.communication.policy", "state": "decided", "date": "2021", "reason": "Every prediction becomes a broken promise", "quote": "Assholes on the Internet take that as a promise", "wisdom": "Hard-won"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
-('44444444-0005-0001-0001-000000000001', '44444444-4444-4444-4444-444444444444',
+('44444444-0005-0001-0001-000000000003', '44444444-4444-4444-4444-444444444444',
  'Accept Every Side Project', '2011-04-17'::timestamptz,
  'Creative fulfillment from diverse projects justified taking time away from TWOW - side projects provide mental breaks and different creative challenges',
  '{"type": "decision.productivity.fatal", "state": "decided", "projects": ["Wild Cards", "Elden Ring", "House of the Dragon", "Theatre", "Film adaptations"], "impact_on_TWOW": "Devastating", "justification": "Creative fulfillment", "fan_reaction": "WRITE THE BOOK"}'::jsonb,
@@ -563,27 +563,27 @@ ON CONFLICT (id) DO NOTHING;
 -- RISKS
 -- ============================================
 INSERT INTO onto_risks (id, project_id, title, type_key, probability, impact, state_key, props, created_by) VALUES
-('44444444-0001-0001-0001-000000000001', '44444444-4444-4444-4444-444444444444',
+('44444444-0001-0001-0001-000000000004', '44444444-4444-4444-4444-444444444444',
  'Story Outgrows Original Plan', 'risk.creative.scope', 0.9, 'high', 'occurred',
  '{"planned": "Trilogy", "actual": "7+ books", "mitigation": "None - embraced the growth", "status": "Fully realized"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
-('44444444-0002-0001-0001-000000000001', '44444444-4444-4444-4444-444444444444',
+('44444444-0002-0001-0001-000000000004', '44444444-4444-4444-4444-444444444444',
  'The Meereenese Knot Problem', 'risk.creative.complexity', 0.8, 'critical', 'occurred',
  '{"description": "Plot threads too tangled around Meereen", "years_delayed": "5+", "characters_stuck": ["Daenerys", "Tyrion", "Others"], "resolution": "Partial, ongoing"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
-('44444444-0003-0001-0001-000000000001', '44444444-4444-4444-4444-444444444444',
+('44444444-0003-0001-0001-000000000004', '44444444-4444-4444-4444-444444444444',
  'TV Show Catches Up to Books', 'risk.business.adaptation', 0.9, 'critical', 'occurred',
  '{"occurrence": "Season 6 (2016)", "impact_description": "Major spoilers", "author_feeling": "Disappointment", "mitigation_possible": "No"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
-('44444444-0003-0002-0001-000000000001', '44444444-4444-4444-4444-444444444444',
+('44444444-0003-0002-0001-000000000004', '44444444-4444-4444-4444-444444444444',
  'Perpetual Distraction Syndrome', 'risk.productivity.distractions', 1.0, 'critical', 'occurred',
  '{"distractions": "Endless", "willpower": "Insufficient", "fan_frustration": "Maximum", "solution": "Not found"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
-('44444444-0004-0001-0001-000000000001', '44444444-4444-4444-4444-444444444444',
+('44444444-0004-0001-0001-000000000004', '44444444-4444-4444-4444-444444444444',
  'Author Mortality Concerns', 'risk.existential.time', 0.3, 'critical', 'identified',
  '{"author_age": 76, "books_remaining": 2, "average_pace": "6 years per book", "math": "Concerning", "fan_anxiety": "Significant", "author_response": "Still writing"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
@@ -593,7 +593,7 @@ INSERT INTO onto_risks (id, project_id, title, type_key, probability, impact, st
  '{"scenario": "Author unable to finish", "contingency": "Unknown - refuses to let others finish", "robert_jordan_model": "Rejected", "fan_nightmare": "Real possibility"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
-('44444444-0006-0001-0001-000000000001', '44444444-4444-4444-4444-444444444444',
+('44444444-0006-0001-0001-000000000004', '44444444-4444-4444-4444-444444444444',
  'Fan Patience Exhaustion', 'risk.community.engagement', 0.9, 'high', 'occurred',
  '{"wait_time": "14+ years for Book 6", "memes": "Abundant", "subreddit_mood": "Cynical", "hope_remaining": "Trace amounts"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
@@ -608,27 +608,27 @@ ON CONFLICT (id) DO NOTHING;
 -- DOCUMENTS
 -- ============================================
 INSERT INTO onto_documents (id, project_id, title, type_key, state_key, props, created_by) VALUES
-('44444444-0001-0001-0001-000000000001', '44444444-4444-4444-4444-444444444444',
+('44444444-0001-0001-0001-000000000005', '44444444-4444-4444-4444-444444444444',
  'Original Trilogy Proposal', 'document.business.proposal', 'published',
  '{"date": "1993", "content": "Three-book outline", "accuracy_to_final": "Low", "pages": "Unknown", "agent": "Received with interest"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
-('44444444-0001-0002-0001-000000000001', '44444444-4444-4444-4444-444444444444',
+('44444444-0001-0002-0001-000000000005', '44444444-4444-4444-4444-444444444444',
  'The World of Ice and Fire', 'document.reference.worldbook', 'published',
  '{"date": "2014", "authors": ["GRRM", "Elio Garcia", "Linda Antonsson"], "pages": 326, "content": "Complete history of Westeros", "time_that_could_have_been_spent_on_TWOW": "Considerable"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
-('44444444-0002-0001-0001-000000000001', '44444444-4444-4444-4444-444444444444',
+('44444444-0002-0001-0001-000000000005', '44444444-4444-4444-4444-444444444444',
  'Fire & Blood', 'document.history.targaryen', 'published',
  '{"date": "2018", "pages": 736, "content": "Targaryen history", "source_for": "House of the Dragon", "fan_reaction": "WHERE IS WINDS"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
-('44444444-0003-0001-0001-000000000001', '44444444-4444-4444-4444-444444444444',
+('44444444-0003-0001-0001-000000000005', '44444444-4444-4444-4444-444444444444',
  'TWOW Sample Chapters (Released)', 'document.preview.chapters', 'published',
  '{"chapters_released": ["Theon", "Arianne I", "Arianne II", "Mercy", "Alayne", "Tyrion", "Barristan", "Victarion"], "purpose": "Maintain fan interest", "effect": "Torture"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
-('44444444-0003-0002-0001-000000000001', '44444444-4444-4444-4444-444444444444',
+('44444444-0003-0002-0001-000000000005', '44444444-4444-4444-4444-444444444444',
  'Not A Blog: Year-End Updates', 'document.communication.blog', 'published',
  '{"platform": "LiveJournal", "content": "Annual progress updates", "reliability": "Variable", "famous_posts": ["Last Year (Winds of Winter)", "No, Winter is NOT coming"]}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
@@ -638,12 +638,12 @@ INSERT INTO onto_documents (id, project_id, title, type_key, state_key, props, c
  '{"date": "2016-01-02", "title": "Last Year (Winds of Winter)", "content": "Detailed explanation of missed deadlines", "quote": "I tried. I failed.", "fan_response": "Sympathetic but frustrated"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
-('44444444-0005-0001-0001-000000000001', '44444444-4444-4444-4444-444444444444',
+('44444444-0005-0001-0001-000000000005', '44444444-4444-4444-4444-444444444444',
  'Elden Ring Lore Documents', 'document.distraction.gaming', 'published',
  '{"date": "2019-2022", "collaboration": "FromSoftware", "content": "Worldbuilding and mythology", "pages_of_TWOW_not_written": "Classified"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
-('44444444-0006-0001-0001-000000000001', '44444444-4444-4444-4444-444444444444',
+('44444444-0006-0001-0001-000000000005', '44444444-4444-4444-4444-444444444444',
  'The No More Predictions Manifesto', 'document.policy.announcement', 'published',
  '{"date": "2021", "quote": "I will make no predictions on when I will finish. Every time I do, assholes on the Internet take that as a promise, and then wait eagerly to crucify me when I miss the deadline.", "wisdom": "Earned through suffering"}'::jsonb,
  '00000000-0000-0000-0000-000000000002')
@@ -722,13 +722,13 @@ INSERT INTO onto_edges (src_kind, src_id, rel, dst_kind, dst_id, project_id, pro
 ('milestone', '44444444-0005-0006-0000-000000000001', 'has_plan', 'plan', '44444444-0005-0001-0001-000000000001', '44444444-4444-4444-4444-444444444444', '{}'::jsonb),
 
 -- Plans → Tasks (expanded with new TWOW tasks)
-('plan', '44444444-0001-0002-0001-000000000001', 'has_task', 'task', '44444444-0001-0001-0001-000000000001', '44444444-4444-4444-4444-444444444444', '{}'::jsonb),
+('plan', '44444444-0001-0002-0001-000000000001', 'has_task', 'task', '44444444-0001-0001-0001-000000000002', '44444444-4444-4444-4444-444444444444', '{}'::jsonb),
 ('plan', '44444444-0001-0002-0001-000000000001', 'has_task', 'task', '44444444-0001-0001-0002-000000000001', '44444444-4444-4444-4444-444444444444', '{}'::jsonb),
 ('plan', '44444444-0001-0002-0001-000000000001', 'has_task', 'task', '44444444-0001-0001-0003-000000000001', '44444444-4444-4444-4444-444444444444', '{}'::jsonb),
-('milestone', '44444444-0001-0005-0000-000000000001', 'has_task', 'task', '44444444-0001-0002-0001-000000000001', '44444444-4444-4444-4444-444444444444', '{}'::jsonb),
+('milestone', '44444444-0001-0005-0000-000000000001', 'has_task', 'task', '44444444-0001-0002-0001-000000000002', '44444444-4444-4444-4444-444444444444', '{}'::jsonb),
 ('milestone', '44444444-0001-0005-0000-000000000001', 'has_task', 'task', '44444444-0001-0002-0002-000000000001', '44444444-4444-4444-4444-444444444444', '{}'::jsonb),
 -- TWOW tasks (expanded)
-('plan', '44444444-0003-0001-0001-000000000001', 'has_task', 'task', '44444444-0003-0001-0001-000000000001', '44444444-4444-4444-4444-444444444444', '{}'::jsonb),
+('plan', '44444444-0003-0001-0001-000000000001', 'has_task', 'task', '44444444-0003-0001-0001-000000000002', '44444444-4444-4444-4444-444444444444', '{}'::jsonb),
 ('plan', '44444444-0003-0001-0001-000000000001', 'has_task', 'task', '44444444-0003-0001-0002-000000000001', '44444444-4444-4444-4444-444444444444', '{}'::jsonb),
 ('plan', '44444444-0003-0001-0001-000000000001', 'has_task', 'task', '44444444-0003-0001-0003-000000000001', '44444444-4444-4444-4444-444444444444', '{}'::jsonb),
 ('plan', '44444444-0003-0001-0001-000000000001', 'has_task', 'task', '44444444-0003-0001-0004-000000000001', '44444444-4444-4444-4444-444444444444', '{}'::jsonb),
@@ -738,42 +738,42 @@ INSERT INTO onto_edges (src_kind, src_id, rel, dst_kind, dst_id, project_id, pro
 ('plan', '44444444-0003-0001-0001-000000000001', 'has_task', 'task', '44444444-0003-0001-0008-000000000001', '44444444-4444-4444-4444-444444444444', '{}'::jsonb),
 ('plan', '44444444-0003-0001-0001-000000000001', 'has_task', 'task', '44444444-0003-0001-0009-000000000001', '44444444-4444-4444-4444-444444444444', '{}'::jsonb),
 -- ADOS tasks
-('plan', '44444444-0004-0001-0001-000000000001', 'has_task', 'task', '44444444-0004-0001-0001-000000000001', '44444444-4444-4444-4444-444444444444', '{}'::jsonb),
+('plan', '44444444-0004-0001-0001-000000000001', 'has_task', 'task', '44444444-0004-0001-0001-000000000002', '44444444-4444-4444-4444-444444444444', '{}'::jsonb),
 ('plan', '44444444-0004-0001-0001-000000000001', 'has_task', 'task', '44444444-0004-0001-0002-000000000001', '44444444-4444-4444-4444-444444444444', '{}'::jsonb),
 ('plan', '44444444-0004-0001-0001-000000000001', 'has_task', 'task', '44444444-0004-0001-0003-000000000001', '44444444-4444-4444-4444-444444444444', '{}'::jsonb),
 -- Distraction tasks
-('plan', '44444444-0005-0001-0001-000000000001', 'has_task', 'task', '44444444-0005-0001-0001-000000000001', '44444444-4444-4444-4444-444444444444', '{}'::jsonb),
+('plan', '44444444-0005-0001-0001-000000000001', 'has_task', 'task', '44444444-0005-0001-0001-000000000002', '44444444-4444-4444-4444-444444444444', '{}'::jsonb),
 ('plan', '44444444-0005-0001-0001-000000000001', 'has_task', 'task', '44444444-0005-0001-0002-000000000001', '44444444-4444-4444-4444-444444444444', '{}'::jsonb),
 ('plan', '44444444-0005-0001-0001-000000000001', 'has_task', 'task', '44444444-0005-0001-0003-000000000001', '44444444-4444-4444-4444-444444444444', '{}'::jsonb),
 ('plan', '44444444-0005-0001-0001-000000000001', 'has_task', 'task', '44444444-0005-0001-0004-000000000001', '44444444-4444-4444-4444-444444444444', '{}'::jsonb),
 
 -- Milestones → Documents
-('milestone', '44444444-0001-0002-0000-000000000001', 'has_document', 'document', '44444444-0001-0001-0001-000000000001', '44444444-4444-4444-4444-444444444444', '{}'::jsonb),
-('milestone', '44444444-0002-0005-0000-000000000001', 'has_document', 'document', '44444444-0001-0002-0001-000000000001', '44444444-4444-4444-4444-444444444444', '{}'::jsonb),
-('milestone', '44444444-0002-0005-0000-000000000001', 'has_document', 'document', '44444444-0002-0001-0001-000000000001', '44444444-4444-4444-4444-444444444444', '{}'::jsonb),
-('milestone', '44444444-0003-0001-0000-000000000001', 'has_document', 'document', '44444444-0003-0001-0001-000000000001', '44444444-4444-4444-4444-444444444444', '{}'::jsonb),
-('milestone', '44444444-0003-0005-0000-000000000001', 'has_document', 'document', '44444444-0003-0002-0001-000000000001', '44444444-4444-4444-4444-444444444444', '{}'::jsonb),
+('milestone', '44444444-0001-0002-0000-000000000001', 'has_document', 'document', '44444444-0001-0001-0001-000000000005', '44444444-4444-4444-4444-444444444444', '{}'::jsonb),
+('milestone', '44444444-0002-0005-0000-000000000001', 'has_document', 'document', '44444444-0001-0002-0001-000000000005', '44444444-4444-4444-4444-444444444444', '{}'::jsonb),
+('milestone', '44444444-0002-0005-0000-000000000001', 'has_document', 'document', '44444444-0002-0001-0001-000000000005', '44444444-4444-4444-4444-444444444444', '{}'::jsonb),
+('milestone', '44444444-0003-0001-0000-000000000001', 'has_document', 'document', '44444444-0003-0001-0001-000000000005', '44444444-4444-4444-4444-444444444444', '{}'::jsonb),
+('milestone', '44444444-0003-0005-0000-000000000001', 'has_document', 'document', '44444444-0003-0002-0001-000000000005', '44444444-4444-4444-4444-444444444444', '{}'::jsonb),
 ('milestone', '44444444-0003-0003-0000-000000000001', 'has_document', 'document', '44444444-0003-0003-0001-000000000001', '44444444-4444-4444-4444-444444444444', '{}'::jsonb),
-('milestone', '44444444-0005-0003-0000-000000000001', 'has_document', 'document', '44444444-0005-0001-0001-000000000001', '44444444-4444-4444-4444-444444444444', '{}'::jsonb),
-('milestone', '44444444-0003-0005-0000-000000000001', 'has_document', 'document', '44444444-0006-0001-0001-000000000001', '44444444-4444-4444-4444-444444444444', '{}'::jsonb),
+('milestone', '44444444-0005-0003-0000-000000000001', 'has_document', 'document', '44444444-0005-0001-0001-000000000005', '44444444-4444-4444-4444-444444444444', '{}'::jsonb),
+('milestone', '44444444-0003-0005-0000-000000000001', 'has_document', 'document', '44444444-0006-0001-0001-000000000005', '44444444-4444-4444-4444-444444444444', '{}'::jsonb),
 
 -- Milestones → Decisions
-('milestone', '44444444-0001-0001-0000-000000000001', 'has_decision', 'decision', '44444444-0001-0001-0001-000000000001', '44444444-4444-4444-4444-444444444444', '{}'::jsonb),
-('milestone', '44444444-0001-0001-0000-000000000001', 'has_decision', 'decision', '44444444-0001-0002-0001-000000000001', '44444444-4444-4444-4444-444444444444', '{}'::jsonb),
-('milestone', '44444444-0002-0001-0000-000000000001', 'has_decision', 'decision', '44444444-0002-0001-0001-000000000001', '44444444-4444-4444-4444-444444444444', '{}'::jsonb),
-('milestone', '44444444-0002-0003-0000-000000000001', 'has_decision', 'decision', '44444444-0002-0002-0001-000000000001', '44444444-4444-4444-4444-444444444444', '{}'::jsonb),
+('milestone', '44444444-0001-0001-0000-000000000001', 'has_decision', 'decision', '44444444-0001-0001-0001-000000000003', '44444444-4444-4444-4444-444444444444', '{}'::jsonb),
+('milestone', '44444444-0001-0001-0000-000000000001', 'has_decision', 'decision', '44444444-0001-0002-0001-000000000003', '44444444-4444-4444-4444-444444444444', '{}'::jsonb),
+('milestone', '44444444-0002-0001-0000-000000000001', 'has_decision', 'decision', '44444444-0002-0001-0001-000000000003', '44444444-4444-4444-4444-444444444444', '{}'::jsonb),
+('milestone', '44444444-0002-0003-0000-000000000001', 'has_decision', 'decision', '44444444-0002-0002-0001-000000000003', '44444444-4444-4444-4444-444444444444', '{}'::jsonb),
 ('milestone', '44444444-0002-0004-0000-000000000001', 'has_decision', 'decision', '44444444-0002-0003-0001-000000000001', '44444444-4444-4444-4444-444444444444', '{}'::jsonb),
-('milestone', '44444444-0003-0005-0000-000000000001', 'has_decision', 'decision', '44444444-0003-0001-0001-000000000001', '44444444-4444-4444-4444-444444444444', '{}'::jsonb),
-('milestone', '44444444-0005-0002-0000-000000000001', 'has_decision', 'decision', '44444444-0005-0001-0001-000000000001', '44444444-4444-4444-4444-444444444444', '{}'::jsonb),
+('milestone', '44444444-0003-0005-0000-000000000001', 'has_decision', 'decision', '44444444-0003-0001-0001-000000000003', '44444444-4444-4444-4444-444444444444', '{}'::jsonb),
+('milestone', '44444444-0005-0002-0000-000000000001', 'has_decision', 'decision', '44444444-0005-0001-0001-000000000003', '44444444-4444-4444-4444-444444444444', '{}'::jsonb),
 
 -- Milestones → Risks
-('milestone', '44444444-0001-0005-0000-000000000001', 'has_risk', 'risk', '44444444-0001-0001-0001-000000000001', '44444444-4444-4444-4444-444444444444', '{}'::jsonb),
-('milestone', '44444444-0002-0002-0000-000000000001', 'has_risk', 'risk', '44444444-0002-0001-0001-000000000001', '44444444-4444-4444-4444-444444444444', '{}'::jsonb),
-('milestone', '44444444-0003-0004-0000-000000000001', 'has_risk', 'risk', '44444444-0003-0001-0001-000000000001', '44444444-4444-4444-4444-444444444444', '{}'::jsonb),
-('milestone', '44444444-0005-0006-0000-000000000001', 'has_risk', 'risk', '44444444-0003-0002-0001-000000000001', '44444444-4444-4444-4444-444444444444', '{}'::jsonb),
-('milestone', '44444444-0004-0001-0000-000000000001', 'has_risk', 'risk', '44444444-0004-0001-0001-000000000001', '44444444-4444-4444-4444-444444444444', '{}'::jsonb),
+('milestone', '44444444-0001-0005-0000-000000000001', 'has_risk', 'risk', '44444444-0001-0001-0001-000000000004', '44444444-4444-4444-4444-444444444444', '{}'::jsonb),
+('milestone', '44444444-0002-0002-0000-000000000001', 'has_risk', 'risk', '44444444-0002-0001-0001-000000000004', '44444444-4444-4444-4444-444444444444', '{}'::jsonb),
+('milestone', '44444444-0003-0004-0000-000000000001', 'has_risk', 'risk', '44444444-0003-0001-0001-000000000004', '44444444-4444-4444-4444-444444444444', '{}'::jsonb),
+('milestone', '44444444-0005-0006-0000-000000000001', 'has_risk', 'risk', '44444444-0003-0002-0001-000000000004', '44444444-4444-4444-4444-444444444444', '{}'::jsonb),
+('milestone', '44444444-0004-0001-0000-000000000001', 'has_risk', 'risk', '44444444-0004-0001-0001-000000000004', '44444444-4444-4444-4444-444444444444', '{}'::jsonb),
 ('milestone', '44444444-0004-0002-0000-000000000001', 'has_risk', 'risk', '44444444-0004-0002-0001-000000000001', '44444444-4444-4444-4444-444444444444', '{}'::jsonb),
-('milestone', '44444444-0006-0002-0000-000000000001', 'has_risk', 'risk', '44444444-0006-0001-0001-000000000001', '44444444-4444-4444-4444-444444444444', '{}'::jsonb),
+('milestone', '44444444-0006-0002-0000-000000000001', 'has_risk', 'risk', '44444444-0006-0001-0001-000000000004', '44444444-4444-4444-4444-444444444444', '{}'::jsonb),
 ('milestone', '44444444-0003-0004-0000-000000000001', 'has_risk', 'risk', '44444444-0006-0002-0001-000000000001', '44444444-4444-4444-4444-444444444444', '{}'::jsonb),
 
 -- Cross-cutting causal relationships

@@ -3,7 +3,10 @@
     "allow": [
       "WebSearch",
       "mcp__perplexity__deep_research",
-      "mcp__perplexity__search"
+      "mcp__perplexity__search",
+      "Bash(cp:*)",
+      "Bash(python3:*)",
+      "mcp__ide__getDiagnostics"
     ],
     "deny": [],
     "ask": []

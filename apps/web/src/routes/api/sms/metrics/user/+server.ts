@@ -1,6 +1,5 @@
 // apps/web/src/routes/api/sms/metrics/user/+server.ts
 import type { RequestHandler } from './$types';
-import { createServiceClient } from '@buildos/supabase-client';
 import { smsMetricsService } from '@buildos/shared-utils';
 import { ApiResponse } from '$lib/utils/api-response';
 

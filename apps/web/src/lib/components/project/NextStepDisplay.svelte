@@ -16,10 +16,8 @@
 -->
 <script lang="ts">
 	import { ChevronDown, Sparkles, User, Zap, RefreshCw, Loader2 } from 'lucide-svelte';
-	import {
-		parseEntityReferences,
-		type EntityReference
-	} from '$lib/utils/entity-reference-parser';
+	import { parseEntityReferences } from '$lib/utils/entity-reference-parser';
+	import type { EntityReference } from '@buildos/shared-types';
 	import { toastService } from '$lib/stores/toast.store';
 
 	// Props
@@ -53,18 +51,18 @@
 	const hasNextStep = $derived(!!nextStepShort);
 	const hasLongVersion = $derived(!!nextStepLong && nextStepLong !== nextStepShort);
 
-	const parsedLong = $derived(() => {
+	const parsedLong = $derived.by(() => {
 		if (!nextStepLong) return null;
 		return parseEntityReferences(nextStepLong);
 	});
 
-	const sourceLabel = $derived(() => {
+	const sourceLabel = $derived.by(() => {
 		if (nextStepSource === 'ai') return 'AI suggested';
 		if (nextStepSource === 'user') return 'Set by you';
 		return null;
 	});
 
-	const updatedTimeAgo = $derived(() => {
+	const updatedTimeAgo = $derived.by(() => {
 		if (!nextStepUpdatedAt) return null;
 		const date = new Date(nextStepUpdatedAt);
 		const now = new Date();
@@ -134,7 +132,7 @@
 	function renderLongContent(): string {
 		if (!nextStepLong) return '';
 
-		const parsed = parsedLong();
+		const parsed = parsedLong;
 		if (!parsed) return nextStepLong;
 
 		// Replace entity references with styled spans
@@ -172,7 +170,7 @@
 
 {#if hasNextStep}
 	<div
-		class="group rounded-lg border border-border bg-card shadow-ink tx tx-frame tx-weak {className}"
+		class="group rounded-lg border border-border border-l-2 border-l-accent/40 bg-card shadow-ink tx tx-grain tx-weak {className}"
 		role="region"
 		aria-label="Next step"
 	>
@@ -218,9 +216,9 @@
 							>
 								Next Move
 							</span>
-							{#if updatedTimeAgo()}
+							{#if updatedTimeAgo}
 								<span class="text-[10px] text-muted-foreground">
-									{updatedTimeAgo()}
+									{updatedTimeAgo}
 								</span>
 							{/if}
 							<!-- Desktop: Regenerate button (hover reveal) -->

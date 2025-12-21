@@ -737,7 +737,7 @@
 					variant="ghost"
 					size="sm"
 					onclick={openChatAbout}
-					class="text-muted-foreground hover:text-foreground shrink-0 !p-1.5 sm:!p-2"
+					class="text-muted-foreground hover:text-foreground shrink-0 !p-1.5 sm:!p-2 tx tx-grain tx-weak"
 					disabled={isLoading || isSaving || !task}
 					title="Chat about this task"
 				>

@@ -326,7 +326,7 @@
 					variant="ghost"
 					size="sm"
 					onclick={openChatAbout}
-					class="text-muted-foreground hover:text-foreground shrink-0 !p-1.5 sm:!p-2"
+					class="text-muted-foreground hover:text-foreground shrink-0 !p-1.5 sm:!p-2 tx tx-grain tx-weak"
 					disabled={isLoading || savingState || !output}
 					title="Chat about this output"
 				>
@@ -354,13 +354,13 @@
 		<div class="overflow-y-auto" style="max-height: 70vh;">
 			{#if isLoading}
 				<div class="flex items-center justify-center py-12">
-					<div class="animate-pulse text-gray-500 dark:text-gray-400">
+					<div class="animate-pulse text-muted-foreground">
 						Loading editor…
 					</div>
 				</div>
 			{:else if loadError}
 				<div class="flex flex-col items-center justify-center gap-3 text-center px-6 py-12">
-					<p class="text-gray-600 dark:text-gray-300">{loadError}</p>
+					<p class="text-muted-foreground">{loadError}</p>
 					<Button variant="secondary" onclick={loadOutput}>Try again</Button>
 				</div>
 			{:else if output}
@@ -392,7 +392,7 @@
 					<div class="mb-6">
 						<label
 							for="output-state"
-							class="block text-sm font-medium text-gray-900 dark:text-white mb-2"
+							class="block text-sm font-medium text-foreground mb-2"
 						>
 							Output State
 						</label>
@@ -415,7 +415,7 @@
 						<div class="flex items-center justify-between gap-2">
 							<label
 								for="output-description"
-								class="block text-sm font-medium text-gray-900 dark:text-white"
+								class="block text-sm font-medium text-foreground"
 							>
 								Description
 							</label>
@@ -463,7 +463,7 @@
 				</div>
 			{:else}
 				<div
-					class="flex items-center justify-center py-12 text-gray-500 dark:text-gray-400"
+					class="flex items-center justify-center py-12 text-muted-foreground"
 				>
 					Unable to load editor for this output.
 				</div>
@@ -512,7 +512,7 @@
 	on:cancel={() => (showDeleteConfirm = false)}
 >
 	{#snippet content()}
-		<p class="text-sm text-gray-600 dark:text-gray-300">
+		<p class="text-sm text-muted-foreground">
 			This removes the text document and any references in the project. This action cannot be
 			undone.
 		</p>

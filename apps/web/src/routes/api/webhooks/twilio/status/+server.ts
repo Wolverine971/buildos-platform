@@ -5,7 +5,7 @@ import twilio from 'twilio';
 import { PRIVATE_TWILIO_AUTH_TOKEN } from '$env/static/private';
 import { PUBLIC_APP_URL } from '$env/static/public';
 
-import { createServiceClient } from '@buildos/supabase-client';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { smsMetricsService, createLogger, extractCorrelationContext } from '@buildos/shared-utils';
 
 /**
@@ -87,7 +87,7 @@ function categorizeErrorCode(errorCode: string | null): {
 }
 
 export const POST: RequestHandler = async ({ request, url }) => {
-	const supabase = createServiceClient();
+	const supabase = createAdminSupabaseClient();
 	const baseLogger = createLogger('web:webhook:twilio', supabase);
 	const startTime = Date.now();
 

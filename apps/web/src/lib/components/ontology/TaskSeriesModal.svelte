@@ -194,7 +194,7 @@
 						<option value={tz} />
 					{/each}
 				</datalist>
-				<p class="text-xs text-slate-500">
+				<p class="text-xs text-muted-foreground">
 					Start and recurrence will follow this timezone.
 				</p>
 			</div>

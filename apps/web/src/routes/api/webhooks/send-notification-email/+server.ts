@@ -3,7 +3,7 @@ import { ApiResponse } from '$lib/utils/api-response';
 import type { RequestHandler } from './$types';
 import { PRIVATE_BUILDOS_WEBHOOK_SECRET } from '$env/static/private';
 import { EmailService } from '$lib/services/email-service';
-import { createServiceClient } from '@buildos/supabase-client';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
 
 /**
  * Webhook endpoint for worker to send notification emails
@@ -66,7 +66,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		);
 
 		// Create Supabase client and EmailService
-		const supabase = createServiceClient();
+		const supabase = createAdminSupabaseClient();
 
 		// ✅ TRIPLE-CHECK USER PREFERENCES
 		// Final safety check before sending via SMTP

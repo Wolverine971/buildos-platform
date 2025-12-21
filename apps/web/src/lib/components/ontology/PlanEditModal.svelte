@@ -359,7 +359,7 @@
 					variant="ghost"
 					size="sm"
 					onclick={openChatAbout}
-					class="text-muted-foreground hover:text-foreground shrink-0 !p-1.5 sm:!p-2"
+					class="text-muted-foreground hover:text-foreground shrink-0 !p-1.5 sm:!p-2 tx tx-grain tx-weak"
 					disabled={isLoading || isSaving || !plan}
 					title="Chat about this plan"
 				>
@@ -637,9 +637,11 @@
 		on:confirm={handleDelete}
 		on:cancel={() => (showDeleteConfirm = false)}
 	>
-		<p class="text-sm text-gray-600 dark:text-gray-400" slot="content">
-			This will permanently remove the plan and disconnect linked tasks.
-		</p>
+		{#snippet content()}
+			<p class="text-sm text-muted-foreground">
+				This will permanently remove the plan and disconnect linked tasks.
+			</p>
+		{/snippet}
 	</ConfirmationModal>
 {/if}
 

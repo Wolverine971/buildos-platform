@@ -29,7 +29,7 @@
 	}
 
 	// Derive status label and color
-	const statusLabel = $derived(() => {
+	const statusLabel = $derived.by(() => {
 		if (block.status === 'active') {
 			return block.content || 'Working...';
 		}
@@ -39,7 +39,7 @@
 		return block.content || 'Complete';
 	});
 
-	const statusClass = $derived(() => {
+	const statusClass = $derived.by(() => {
 		switch (block.status) {
 			case 'active':
 				return 'text-emerald-600 dark:text-emerald-400';

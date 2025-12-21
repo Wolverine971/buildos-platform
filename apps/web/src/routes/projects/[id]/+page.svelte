@@ -315,7 +315,7 @@
 	// DERIVED STATE
 	// ============================================================
 
-	const projectStats = $derived(() => ({
+	const projectStats = $derived.by(() => ({
 		outputs: outputs.length,
 		documents: documents.length,
 		tasks: tasks.length,
@@ -323,7 +323,7 @@
 		goals: goals.length
 	}));
 
-	const documentTypeOptions = $derived(() => {
+	const documentTypeOptions = $derived.by(() => {
 		const set = new Set<string>();
 		for (const doc of documents) {
 			if (doc.type_key) set.add(doc.type_key);
@@ -856,7 +856,7 @@
 			</div>
 
 			<!-- Next Step Display -->
-			<!-- <NextStepDisplay
+			<NextStepDisplay
 				projectId={project.id}
 				nextStepShort={project.next_step_short}
 				nextStepLong={project.next_step_long}
@@ -866,7 +866,7 @@
 				onNextStepGenerated={async () => {
 					await refreshData();
 				}}
-			/> -->
+			/>
 		</div>
 	</header>
 
@@ -1590,6 +1590,7 @@
 		<OutputEditModal
 			outputId={editingOutputId}
 			projectId={project.id}
+			isOpen={true}
 			onClose={() => (editingOutputId = null)}
 			onUpdated={handleOutputUpdated}
 			onDeleted={handleOutputDeleted}
@@ -1604,7 +1605,7 @@
 			bind:isOpen={showDocumentModal}
 			projectId={project.id}
 			documentId={activeDocumentId}
-			typeOptions={documentTypeOptions()}
+			typeOptions={documentTypeOptions}
 			onClose={() => {
 				showDocumentModal = false;
 				activeDocumentId = null;
