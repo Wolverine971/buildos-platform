@@ -1,5 +1,5 @@
 // Lightweight database schema - auto-generated from database.types.ts
-// Generated on: 2025-12-21T05:24:37.988Z
+// Generated on: 2025-12-21T20:14:12.633Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -1200,6 +1200,7 @@ export type DatabaseSchema = {
 	onto_projects: {
 		created_at: string;
 		created_by: string;
+		deleted_at: string | null;
 		description: string | null;
 		end_at: string | null;
 		facet_context: string | null;

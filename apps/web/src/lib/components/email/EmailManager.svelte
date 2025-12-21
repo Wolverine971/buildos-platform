@@ -754,21 +754,21 @@
 	icon="danger"
 	loading={isDeleting}
 	loadingText="Deleting..."
-	on:confirm={deleteEmail}
-	on:cancel={() => (showDeleteModal = false)}
+	onconfirm={deleteEmail}
+	oncancel={() => (showDeleteModal = false)}
 >
-	<div slot="content">
-		<p class="text-sm text-gray-500 dark:text-gray-400">
+	{#snippet content()}
+		<p class="text-sm text-muted-foreground">
 			Are you sure you want to delete this email? This action cannot be undone.
 		</p>
-	</div>
+	{/snippet}
 
-	<div slot="details">
+	{#snippet details()}
 		{#if emailToDelete}
-			<div class="mt-3 text-sm text-gray-600 dark:text-gray-400">
+			<div class="mt-3 text-sm text-muted-foreground">
 				<p><strong>Subject:</strong> {emailToDelete.subject}</p>
 				<p><strong>Status:</strong> {emailToDelete.status}</p>
 			</div>
 		{/if}
-	</div>
+	{/snippet}
 </ConfirmationModal>

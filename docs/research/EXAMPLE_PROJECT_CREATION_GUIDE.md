@@ -454,17 +454,17 @@ INSERT INTO onto_edges (
 
 **Always use these exact values - invalid enums will cause migration failures:**
 
-| Enum Type         | Valid Values                                               |
-| ----------------- | ---------------------------------------------------------- |
-| `task_state`      | `'todo'`, `'in_progress'`, `'blocked'`, `'done'`           |
-| `decision_state`  | `'pending'`, `'decided'`, `'revisited'`                    |
-| `risk_state`      | `'identified'`, `'mitigated'`, `'occurred'`, `'closed'`    |
-| `document_state`  | `'draft'`, `'review'`, `'published'`                       |
-| `milestone_state` | `'pending'`, `'in_progress'`, `'completed'`, `'missed'`    |
-| `goal_state`      | `'draft'`, `'active'`, `'achieved'`, `'abandoned'`         |
-| `plan_state`      | `'draft'`, `'active'`, `'completed'`                       |
-| `project_state`   | `'planning'`, `'active'`, `'completed'`, `'cancelled'`     |
-| `output_state`    | `'draft'`, `'in_progress'`, `'review'`, `'published'`      |
+| Enum Type         | Valid Values                                            |
+| ----------------- | ------------------------------------------------------- |
+| `task_state`      | `'todo'`, `'in_progress'`, `'blocked'`, `'done'`        |
+| `decision_state`  | `'pending'`, `'decided'`, `'revisited'`                 |
+| `risk_state`      | `'identified'`, `'mitigated'`, `'occurred'`, `'closed'` |
+| `document_state`  | `'draft'`, `'review'`, `'published'`                    |
+| `milestone_state` | `'pending'`, `'in_progress'`, `'completed'`, `'missed'` |
+| `goal_state`      | `'draft'`, `'active'`, `'achieved'`, `'abandoned'`      |
+| `plan_state`      | `'draft'`, `'active'`, `'completed'`                    |
+| `project_state`   | `'planning'`, `'active'`, `'completed'`, `'cancelled'`  |
+| `output_state`    | `'draft'`, `'in_progress'`, `'review'`, `'published'`   |
 
 **Important Column Types:**
 
@@ -762,23 +762,23 @@ const PROJECT_COMMANDERS: Record<string, string> = {
 
 ### Current Example Projects
 
-| Project             | UUID                                   | Commander                             |
-| ------------------- | -------------------------------------- | ------------------------------------- |
-| Washington Campaign | `11111111-1111-1111-1111-111111111111` | General George Washington             |
-| Apollo Program      | `22222222-2222-2222-2222-222222222222` | NASA Administrator James E. Webb      |
-| Project Hail Mary   | `33333333-3333-3333-3333-333333333333` | Dr. Ryland Grace                      |
-| ASOIAF Writing      | `44444444-4444-4444-4444-444444444444` | George R.R. Martin                    |
-| ACOTAR Writing      | `55555555-5555-5555-5555-555555555555` | Sarah J. Maas                         |
-| Manhattan Project   | `66666666-6666-6666-6666-666666666666` | Brigadier General Leslie R. Groves    |
+| Project             | UUID                                   | Commander                          |
+| ------------------- | -------------------------------------- | ---------------------------------- |
+| Washington Campaign | `11111111-1111-1111-1111-111111111111` | General George Washington          |
+| Apollo Program      | `22222222-2222-2222-2222-222222222222` | NASA Administrator James E. Webb   |
+| Project Hail Mary   | `33333333-3333-3333-3333-333333333333` | Dr. Ryland Grace                   |
+| ASOIAF Writing      | `44444444-4444-4444-4444-444444444444` | George R.R. Martin                 |
+| ACOTAR Writing      | `55555555-5555-5555-5555-555555555555` | Sarah J. Maas                      |
+| Manhattan Project   | `66666666-6666-6666-6666-666666666666` | Brigadier General Leslie R. Groves |
 
 ---
 
 ## Version History
 
-| Version | Date       | Changes                                                                                                                       |
-| ------- | ---------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| 1.0     | 2024-12-20 | Initial guide based on Washington project                                                                                     |
-| 1.1     | 2024-12-20 | Added Phase 3.5: Database Schema Reference with correct column definitions for all entity types                               |
-| 1.2     | 2024-12-20 | Added Phase 7: UI Display Configuration for project commanders                                                                |
-| 1.3     | 2024-12-21 | Fixed `onto_edges` schema: no `id` or `created_by` columns; fixed `onto_risks.probability` must be numeric (0.0-1.0) not text |
+| Version | Date       | Changes                                                                                                                                                                                                                  |
+| ------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1.0     | 2024-12-20 | Initial guide based on Washington project                                                                                                                                                                                |
+| 1.1     | 2024-12-20 | Added Phase 3.5: Database Schema Reference with correct column definitions for all entity types                                                                                                                          |
+| 1.2     | 2024-12-20 | Added Phase 7: UI Display Configuration for project commanders                                                                                                                                                           |
+| 1.3     | 2024-12-21 | Fixed `onto_edges` schema: no `id` or `created_by` columns; fixed `onto_risks.probability` must be numeric (0.0-1.0) not text                                                                                            |
 | 1.4     | 2024-12-21 | Fixed enum values: `milestone_state` uses `pending`/`completed` not `not_started`/`achieved`; `goal_state` includes `draft`; added `project_state` and `output_state` enums; added ACOTAR and Manhattan Project examples |

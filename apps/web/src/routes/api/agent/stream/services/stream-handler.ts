@@ -113,7 +113,14 @@ export class StreamHandler {
 			httpReferer
 		} = params;
 
-		const normalizedContextType = normalizeContextType(request.context_type);
+		const normalizedContextType = normalizeContextType(
+			session.context_type &&
+				request.context_type !== session.context_type &&
+				session.entity_id
+				? (session.context_type as ChatContextType)
+				: request.context_type
+		);
+		const resolvedEntityId = request.entity_id ?? session.entity_id ?? undefined;
 		const resolvedFocus = metadata.focus ?? request.project_focus ?? null;
 
 		// Initialize stream state
@@ -133,9 +140,19 @@ export class StreamHandler {
 		const sessionMetadata: AgentSessionMetadata = { ...metadata };
 
 		// Generate initial last turn context
+		const toolResultsFromHistory = this.extractToolResultsFromHistory(conversationHistory);
+		const toolResultsForContext =
+			toolResultsFromHistory.length > 0
+				? toolResultsFromHistory
+				: request.history && request.history.length > 0
+					? await this.safeLoadRecentToolResults(session.id)
+					: [];
+
 		let lastTurnContextForPlanner =
-			generateLastTurnContext(conversationHistory, normalizedContextType) ??
 			request.last_turn_context ??
+			generateLastTurnContext(conversationHistory, normalizedContextType, {
+				toolResults: toolResultsForContext
+			}) ??
 			undefined;
 
 		// Create SSE stream
@@ -256,7 +273,7 @@ export class StreamHandler {
 				sessionId: session.id,
 				userMessage: request.message,
 				contextType: normalizedContextType,
-				entityId: request.entity_id,
+				entityId: resolvedEntityId,
 				conversationHistory,
 				chatSession: session,
 				ontologyContext: ontologyContext || undefined,
@@ -736,6 +753,105 @@ export class StreamHandler {
 				sessionId
 			});
 		}
+	}
+
+	/**
+	 * Safely load recent tool results to rebuild last-turn context when client history omits them.
+	 */
+	private async safeLoadRecentToolResults(sessionId: string): Promise<ToolResultData[]> {
+		try {
+			const rawResults = await this.sessionManager.loadRecentToolResults(sessionId, 20);
+			return rawResults.map((result) => {
+				const entities = this.extractEntitiesFromResult(result.result);
+				return {
+					tool_call_id: result.tool_call_id ?? '',
+					tool_name: result.tool_name ?? undefined,
+					result: result.result,
+					entities_accessed: entities.length > 0 ? entities : undefined
+				};
+			});
+		} catch (error) {
+			logger.warn('Failed to load tool results for last turn context', {
+				sessionId,
+				error
+			});
+			return [];
+		}
+	}
+
+	/**
+	 * Lightweight entity extractor for persisted tool results.
+	 */
+	private extractEntitiesFromResult(result: any): string[] {
+		const entities = new Set<string>();
+
+		const findIds = (obj: any, depth = 0): void => {
+			if (depth > 10 || obj == null) return;
+
+			if (Array.isArray(obj)) {
+				obj.forEach((item) => findIds(item, depth + 1));
+				return;
+			}
+
+			if (typeof obj === 'object') {
+				if (typeof obj.id === 'string') {
+					entities.add(obj.id);
+				}
+
+				for (const [key, value] of Object.entries(obj)) {
+					if (typeof value === 'string' && (key.endsWith('_id') || key.endsWith('Id'))) {
+						entities.add(value);
+					}
+				}
+
+				if (Array.isArray((obj as any)._entities_accessed)) {
+					for (const id of (obj as any)._entities_accessed) {
+						if (typeof id === 'string') {
+							entities.add(id);
+						}
+					}
+				}
+
+				for (const value of Object.values(obj)) {
+					if (value && typeof value === 'object') {
+						findIds(value, depth + 1);
+					}
+				}
+			}
+		};
+
+		findIds(result);
+		return Array.from(entities);
+	}
+
+	/**
+	 * Extract tool result payloads from conversation history (when tool role messages are present).
+	 */
+	private extractToolResultsFromHistory(history: ChatMessage[]): ToolResultData[] {
+		const results: ToolResultData[] = [];
+
+		for (const message of history) {
+			if (message.role !== 'tool') continue;
+
+			let parsedResult: unknown = (message as any).tool_result ?? null;
+			if (!parsedResult && message.content) {
+				try {
+					parsedResult = JSON.parse(message.content);
+				} catch {
+					parsedResult = message.content;
+				}
+			}
+
+			const entities = this.extractEntitiesFromResult(parsedResult);
+			results.push({
+				tool_call_id: (message as any).tool_call_id ?? '',
+				tool_name: (message as any).tool_name ?? undefined,
+				result: parsedResult,
+				entities_accessed: entities.length > 0 ? entities : undefined
+			});
+		}
+
+		return results;
 	}
 }
 

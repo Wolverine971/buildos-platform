@@ -1,3 +1,5 @@
+<!-- docs/research/EXAMPLE_PROJECT_IDEAS.md -->
+
 # Example Project Ideas for BuildOS
 
 ## Overview

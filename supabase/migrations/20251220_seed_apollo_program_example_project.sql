@@ -92,40 +92,40 @@ ON CONFLICT (id) DO NOTHING;
 -- ============================================
 -- GOALS (6 Strategic Objectives)
 -- ============================================
-INSERT INTO onto_goals (id, project_id, name, type_key, props, created_by) VALUES
+INSERT INTO onto_goals (id, project_id, name, type_key, state_key, props, created_by) VALUES
 -- Goal 1: Prove Human Spaceflight (Mercury)
 ('22222222-0001-0000-0000-000000000001', '22222222-2222-2222-2222-222222222222',
- 'Prove Human Spaceflight is Possible', 'goal.strategic.foundation',
+ 'Prove Human Spaceflight is Possible', 'goal.strategic.foundation', 'achieved',
  '{"priority": "critical", "state": "achieved", "program": "Project Mercury", "timeframe": "1958-1963", "budget": "$277 million", "missions": 6, "astronauts": ["Alan Shepard", "Gus Grissom", "John Glenn", "Scott Carpenter", "Wally Schirra", "Gordon Cooper"], "key_question": "Can humans survive and function in space?", "answer": "Yes - 6 successful crewed flights proved it"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 -- Goal 2: Master Orbital Operations (Gemini)
 ('22222222-0002-0000-0000-000000000001', '22222222-2222-2222-2222-222222222222',
- 'Master Orbital Operations', 'goal.strategic.capability',
+ 'Master Orbital Operations', 'goal.strategic.capability', 'achieved',
  '{"priority": "critical", "state": "achieved", "program": "Project Gemini", "timeframe": "1965-1966", "budget": "$1.3 billion", "missions": 10, "crew_size": 2, "capabilities_demonstrated": ["space rendezvous", "orbital docking", "spacewalks (EVA)", "long-duration flight (14 days)", "precision reentry", "orbital maneuvering"], "longest_mission": "Gemini 7 - 14 days", "first_docking": "Gemini 8 with Agena - March 16, 1966", "total_astronauts": 16}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 -- Goal 3: Land on the Moon
 ('22222222-0003-0000-0000-000000000001', '22222222-2222-2222-2222-222222222222',
- 'Land Humans on the Moon', 'goal.strategic.primary',
+ 'Land Humans on the Moon', 'goal.strategic.primary', 'achieved',
  '{"priority": "critical", "state": "achieved", "program": "Apollo", "deadline": "Before December 31, 1969", "first_landing": "July 20, 1969 (Apollo 11)", "last_landing": "December 11, 1972 (Apollo 17)", "total_landings": 6, "moonwalkers": ["Neil Armstrong", "Buzz Aldrin", "Pete Conrad", "Alan Bean", "Alan Shepard", "Edgar Mitchell", "David Scott", "James Irwin", "John Young", "Charles Duke", "Eugene Cernan", "Harrison Schmitt"], "armstrong_quote": "That is one small step for [a] man, one giant leap for mankind", "landing_sites": ["Sea of Tranquility", "Ocean of Storms", "Fra Mauro", "Hadley Rille", "Descartes Highlands", "Taurus-Littrow"]}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 -- Goal 4: Return Safely to Earth
 ('22222222-0004-0000-0000-000000000001', '22222222-2222-2222-2222-222222222222',
- 'Return Astronauts Safely to Earth', 'goal.strategic.safety',
+ 'Return Astronauts Safely to Earth', 'goal.strategic.safety', 'achieved',
  '{"priority": "critical", "state": "achieved", "in_flight_deaths": 0, "ground_test_deaths": 3, "apollo_1_tragedy": "Grissom, White, Chaffee - January 27, 1967", "close_calls": ["Apollo 13 - oxygen tank explosion, crew rescued via LM lifeboat"], "reentry_speed": "25,000 mph from lunar return trajectory", "heatshield": "Ablative design by Avco Corporation", "recovery_method": "Pacific Ocean splashdown with Navy recovery ships", "flight_director_quote": "Failure is not an option - Gene Kranz"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 -- Goal 5: Scientific Discovery
 ('22222222-0005-0000-0000-000000000001', '22222222-2222-2222-2222-222222222222',
- 'Conduct Lunar Science', 'goal.strategic.science',
+ 'Conduct Lunar Science', 'goal.strategic.science', 'achieved',
  '{"priority": "high", "state": "achieved", "samples_returned": "842 pounds (382 kg) of lunar material", "sample_count": 2196, "oldest_sample_age": "4.5 billion years", "experiments": "Apollo Lunar Surface Experiments Package (ALSEP)", "discoveries": ["Lunar origin from giant impact", "Magma ocean crystallization history", "Troctolite 76535 - evidence of ancient magnetic field", "Armalcolite mineral (named for Armstrong, Aldrin, Collins)"], "ongoing_research": "Samples still being studied 50+ years later with new technology", "laser_retroreflectors": "Still used today for Earth-Moon distance measurements"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 -- Goal 6: Beat the Soviets
 ('22222222-0006-0000-0000-000000000001', '22222222-2222-2222-2222-222222222222',
- 'Win the Space Race', 'goal.strategic.political',
+ 'Win the Space Race', 'goal.strategic.political', 'achieved',
  '{"priority": "critical", "state": "achieved", "context": "Cold War technological and ideological competition", "soviet_advantages": ["First satellite (Sputnik, 1957)", "First human in space (Gagarin, 1961)", "First spacewalk (Leonov, 1965)"], "soviet_moon_program": "N1 rocket failed all 4 test flights (1969-1972)", "outcome": "USA first and only nation to land humans on Moon (as of 2024)", "geopolitical_impact": "Demonstrated technological superiority of free market democracy", "kennedy_motivation": "Needed clear goal where US could win"}'::jsonb,
  '00000000-0000-0000-0000-000000000002')
 ON CONFLICT (id) DO NOTHING;
@@ -133,40 +133,40 @@ ON CONFLICT (id) DO NOTHING;
 -- ============================================
 -- MILESTONES - GOAL 1: Mercury Program
 -- ============================================
-INSERT INTO onto_milestones (id, project_id, title, type_key, due_at, props, created_by) VALUES
+INSERT INTO onto_milestones (id, project_id, title, type_key, state_key, due_at, props, created_by) VALUES
 -- Mercury Milestones
 ('22222222-0001-0001-0000-000000000001', '22222222-2222-2222-2222-222222222222',
- 'NASA Established', 'milestone.program.founding',
+ 'NASA Established', 'milestone.program.founding', 'completed',
  '1958-10-01'::timestamptz,
  '{"state": "achieved", "significance": "National Aeronautics and Space Administration created from NACA"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('22222222-0001-0002-0000-000000000001', '22222222-2222-2222-2222-222222222222',
- 'Mercury Seven Selected', 'milestone.personnel.selection',
+ 'Mercury Seven Selected', 'milestone.personnel.selection', 'completed',
  '1959-04-09'::timestamptz,
  '{"state": "achieved", "location": "Dolley Madison House, Washington DC", "astronauts": {"navy": ["Alan B. Shepard Jr.", "Walter M. Schirra Jr.", "M. Scott Carpenter"], "air_force": ["L. Gordon Cooper Jr.", "Virgil I. Grissom", "Donald K. Slayton"], "marines": ["John H. Glenn Jr."]}, "selection_process": "From 508 candidates to 32 finalists to 7 selected", "requirements": "Military test pilots, under 40, under 5 ft 11 in", "medical_testing": "Lovelace Clinic (NM) and Wright Aeromedical Lab (OH)", "significance": "Instant national heroes - compared to Columbus and Wright Brothers"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('22222222-0001-0003-0000-000000000001', '22222222-2222-2222-2222-222222222222',
- 'First American in Space', 'milestone.mission.crewed',
+ 'First American in Space', 'milestone.mission.crewed', 'completed',
  '1961-05-05'::timestamptz,
  '{"state": "achieved", "launch_time": "09:34 EST", "mission": "Mercury-Redstone 3 (Freedom 7)", "astronaut": "Alan B. Shepard Jr.", "duration": "15 minutes 28 seconds", "altitude": "116.5 miles (187 km)", "type": "Suborbital ballistic trajectory", "max_speed": "5,180 mph", "landing": "Atlantic Ocean, recovered by USS Lake Champlain", "significance": "First American in space, 23 days after Yuri Gagarin", "presidential_witness": "JFK and Jackie watched live TV coverage"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('22222222-0001-0004-0000-000000000001', '22222222-2222-2222-2222-222222222222',
- 'Kennedy''s Moon Challenge', 'milestone.political.declaration',
+ 'Kennedy''s Moon Challenge', 'milestone.political.declaration', 'completed',
  '1961-05-25'::timestamptz,
  '{"state": "achieved", "location": "Joint Session of Congress, U.S. Capitol", "speaker": "President John F. Kennedy", "speech_title": "Special Message to the Congress on Urgent National Needs", "quote": "I believe that this nation should commit itself to achieving the goal, before this decade is out, of landing a man on the Moon and returning him safely to the Earth", "context": "20 days after Shepard flight, 6 weeks after Gagarin", "budget_request": "$7-9 billion over 5 years", "why_the_moon": "Goal where America could win - Soviets were ahead in orbital flight", "later_rice_speech": "September 12, 1962 - We choose to go to the Moon"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('22222222-0001-0005-0000-000000000001', '22222222-2222-2222-2222-222222222222',
- 'First American in Orbit', 'milestone.mission.crewed',
+ 'First American in Orbit', 'milestone.mission.crewed', 'completed',
  '1962-02-20'::timestamptz,
  '{"state": "achieved", "mission": "Mercury-Atlas 6 (Friendship 7)", "astronaut": "John H. Glenn Jr.", "orbits": 3, "duration": "4 hours 55 minutes 23 seconds", "altitude": "162 miles (261 km)", "speed": "17,544 mph", "landing": "Atlantic Ocean near Grand Turk Island", "drama": "False indicator suggested loose heat shield - ground decided not to jettison retropack as precaution", "national_reaction": "Ticker-tape parade in NYC, addressed Joint Session of Congress", "significance": "First American to orbit Earth - 10 months after Gagarin"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('22222222-0001-0006-0000-000000000001', '22222222-2222-2222-2222-222222222222',
- 'Mercury Program Completed', 'milestone.program.completion',
+ 'Mercury Program Completed', 'milestone.program.completion', 'completed',
  '1963-05-16'::timestamptz,
  '{"state": "achieved", "final_mission": "Mercury-Atlas 9 (Faith 7)", "astronaut": "L. Gordon Cooper Jr.", "duration": "34 hours 19 minutes 49 seconds", "orbits": 22, "total_crewed_missions": 6, "total_astronauts_flown": 6, "deke_slayton": "Grounded for heart condition, never flew Mercury", "program_cost": "$277 million", "lessons_learned": ["Humans can survive weightlessness", "Humans can function and work in space", "Spacecraft systems can support human life", "Successful recovery from orbit possible"], "next_step": "Project Gemini"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
@@ -175,37 +175,37 @@ INSERT INTO onto_milestones (id, project_id, title, type_key, due_at, props, cre
 -- MILESTONES - GOAL 2: Gemini Program
 -- ============================================
 ('22222222-0002-0001-0000-000000000001', '22222222-2222-2222-2222-222222222222',
- 'First Gemini Crewed Flight', 'milestone.mission.crewed',
+ 'First Gemini Crewed Flight', 'milestone.mission.crewed', 'completed',
  '1965-03-23'::timestamptz,
  '{"state": "achieved", "mission": "Gemini 3 (Molly Brown)", "crew": ["Virgil I. Grissom (Commander)", "John W. Young (Pilot)"], "duration": "4 hours 52 minutes 31 seconds", "orbits": 3, "achievement": "First American two-person crew, first manual spacecraft maneuvers in orbit", "nickname_story": "Grissom named it Molly Brown (unsinkable) after his Mercury capsule sank", "corned_beef_sandwich": "Young smuggled sandwich aboard - minor controversy"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('22222222-0002-0002-0000-000000000001', '22222222-2222-2222-2222-222222222222',
- 'First American Spacewalk', 'milestone.mission.eva',
+ 'First American Spacewalk', 'milestone.mission.eva', 'completed',
  '1965-06-03'::timestamptz,
  '{"state": "achieved", "mission": "Gemini 4", "crew": ["James A. McDivitt (Commander)", "Edward H. White II (Pilot)"], "mission_duration": "4 days 1 hour 56 minutes", "eva_duration": "23 minutes", "eva_astronaut": "Edward H. White II", "eva_equipment": "Hand-held maneuvering unit (HHMU)", "white_quote": "I am returning now - most reluctant words", "comparison": "Soviets first (Alexei Leonov, March 18, 1965) by 10 weeks", "significance": "Proved Americans could also work outside spacecraft"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('22222222-0002-0003-0000-000000000001', '22222222-2222-2222-2222-222222222222',
- 'Long-Duration Flight Achieved', 'milestone.mission.endurance',
+ 'Long-Duration Flight Achieved', 'milestone.mission.endurance', 'completed',
  '1965-08-21'::timestamptz,
  '{"state": "achieved", "mission": "Gemini 5 (8 Days or Bust)", "crew": ["L. Gordon Cooper Jr. (Commander)", "Charles Conrad Jr. (Pilot)"], "duration": "7 days 22 hours 55 minutes", "orbits": 120, "innovation": "First use of fuel cells for spacecraft electrical power", "significance": "Demonstrated 8-day endurance needed for lunar mission round trip", "problem": "Fuel cell issues reduced power, phantom rendezvous simulation cancelled"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('22222222-0002-0004-0000-000000000001', '22222222-2222-2222-2222-222222222222',
- 'First Space Rendezvous', 'milestone.mission.rendezvous',
+ 'First Space Rendezvous', 'milestone.mission.rendezvous', 'completed',
  '1965-12-15'::timestamptz,
  '{"state": "achieved", "missions": ["Gemini 6A", "Gemini 7"], "gemini_7_crew": ["Frank Borman (Commander)", "James A. Lovell Jr. (Pilot)"], "gemini_6a_crew": ["Walter M. Schirra Jr. (Commander)", "Thomas P. Stafford (Pilot)"], "gemini_7_launch": "December 4, 1965", "gemini_6a_launch": "December 15, 1965", "gemini_7_duration": "13 days 18 hours 35 minutes (longest Gemini)", "closest_approach": "1 foot (30 cm) - nose to nose", "soviet_comparison": "USSR Vostok pairs came within several kilometers but could not maneuver", "significance": "First true rendezvous - proved orbital mechanics for lunar mission"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('22222222-0002-0005-0000-000000000001', '22222222-2222-2222-2222-222222222222',
- 'First Space Docking', 'milestone.mission.docking',
+ 'First Space Docking', 'milestone.mission.docking', 'completed',
  '1966-03-16'::timestamptz,
  '{"state": "achieved", "mission": "Gemini 8", "crew": ["Neil A. Armstrong (Commander)", "David R. Scott (Pilot)"], "target": "Agena Target Vehicle (ATV)", "docking_time": "6 hours 33 minutes into flight", "emergency": "Stuck thruster caused violent roll up to 1 revolution per second", "armstrong_response": "Undocked from Agena, used reentry control system to stabilize", "mission_duration": "10 hours 41 minutes (cut short)", "spin_rate": "Nearly 1 rpm - approaching blackout and structural limits", "significance": "First docking in space, first in-flight emergency, Armstrong proved cool under pressure", "foreshadowing": "Armstrong would later command Apollo 11"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('22222222-0002-0006-0000-000000000001', '22222222-2222-2222-2222-222222222222',
- 'Gemini Program Completed', 'milestone.program.completion',
+ 'Gemini Program Completed', 'milestone.program.completion', 'completed',
  '1966-11-15'::timestamptz,
  '{"state": "achieved", "final_mission": "Gemini 12", "crew": ["James A. Lovell Jr. (Commander)", "Edwin E. Aldrin Jr. (Pilot)"], "aldrin_eva": "5 hours 30 minutes total over 3 EVAs", "aldrin_innovations": "Underwater neutral buoyancy training, planned rest periods, foot restraints, handholds", "program_totals": {"missions": 10, "astronauts_flown": 16, "crew_time": "nearly 1,000 hours", "evas": 10, "cost": "$1.3 billion"}, "skills_proven": ["Rendezvous", "Docking", "EVA", "Long-duration flight", "Precision landing", "Fuel cells"], "outcome": "All objectives achieved - ready for Apollo lunar missions"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
@@ -214,73 +214,73 @@ INSERT INTO onto_milestones (id, project_id, title, type_key, due_at, props, cre
 -- MILESTONES - GOAL 3: Apollo Lunar Landings
 -- ============================================
 ('22222222-0003-0001-0000-000000000001', '22222222-2222-2222-2222-222222222222',
- 'Apollo 1 Fire', 'milestone.disaster.fire',
+ 'Apollo 1 Fire', 'milestone.disaster.fire', 'completed',
  '1967-01-27'::timestamptz,
  '{"state": "achieved", "time": "18:31 EST", "location": "Launch Complex 34, Cape Kennedy", "crew_lost": ["Virgil I. Grissom (Commander)", "Edward H. White II (Senior Pilot)", "Roger B. Chaffee (Pilot)"], "test_type": "Plugs-out test - simulated launch countdown", "cause_of_death": "Cardiac arrest from carbon monoxide, fire lasted 25 seconds", "fire_origin": "Electrical arc under Grissom left footrest", "contributing_factors": ["Pure oxygen atmosphere at 16.7 psi", "Extensive flammable materials (Velcro, nylon)", "Inward-opening hatch impossible to open quickly", "Deficient wiring and quality control"], "investigation": "Apollo 204 Review Board chaired by Floyd L. Thompson", "report_date": "April 5, 1967", "delay": "21 months before next crewed flight", "legacy": "Gene Kranz Tough and Competent speech - safety culture transformation"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('22222222-0003-0002-0000-000000000001', '22222222-2222-2222-2222-222222222222',
- 'First Crewed Apollo Flight', 'milestone.mission.crewed',
+ 'First Crewed Apollo Flight', 'milestone.mission.crewed', 'completed',
  '1968-10-11'::timestamptz,
  '{"state": "achieved", "mission": "Apollo 7", "crew": ["Walter M. Schirra Jr. (Commander)", "Donn F. Eisele (CM Pilot)", "R. Walter Cunningham (LM Pilot)"], "launch_vehicle": "Saturn IB", "duration": "10 days 20 hours 9 minutes", "orbits": 163, "firsts": "First live TV broadcast from American spacecraft", "crew_issues": "Crew developed colds, tensions with ground - only Apollo crew not to fly again", "block_ii_changes": ["New quick-opening hatch", "Reduced flammables", "Mixed gas atmosphere on pad"], "significance": "Validated redesigned Block II Command Module - 101% success"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('22222222-0003-0003-0000-000000000001', '22222222-2222-2222-2222-222222222222',
- 'First Humans to the Moon', 'milestone.mission.lunar_orbit',
+ 'First Humans to the Moon', 'milestone.mission.lunar_orbit', 'completed',
  '1968-12-21'::timestamptz,
  '{"state": "achieved", "mission": "Apollo 8", "crew": ["Frank Borman (Commander)", "James A. Lovell Jr. (CM Pilot)", "William A. Anders (LM Pilot)"], "duration": "6 days 3 hours 42 seconds", "lunar_orbits": 10, "firsts": ["First crewed Saturn V launch", "First humans to leave Earth orbit", "First humans to orbit another world", "First humans to see lunar far side", "First humans to see whole Earth"], "bold_decision": "LM not ready - sent CSM alone, intelligence suggested Soviet circumlunar attempt", "christmas_eve_broadcast": "Genesis reading - largest TV audience to date", "earthrise_photo": "Photographed by Bill Anders - became symbol of environmental movement", "anders_quote": "We came all this way to explore the Moon, and the most important thing is that we discovered the Earth"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('22222222-0003-0004-0000-000000000001', '22222222-2222-2222-2222-222222222222',
- 'Lunar Module Test in Earth Orbit', 'milestone.mission.test',
+ 'Lunar Module Test in Earth Orbit', 'milestone.mission.test', 'completed',
  '1969-03-03'::timestamptz,
  '{"state": "achieved", "mission": "Apollo 9", "crew": ["James A. McDivitt (Commander)", "David R. Scott (CM Pilot)", "Russell L. Schweickart (LM Pilot)"], "duration": "10 days 1 hour 54 seconds", "call_signs": {"csm": "Gumdrop", "lm": "Spider"}, "tests_performed": ["First crewed LM flight", "LM extraction from S-IVB", "LM descent and ascent engine firings", "LM-CSM rendezvous and docking", "EVA transfer test (shortened due to Schweickart illness)"], "max_separation": "111 miles between LM and CSM", "significance": "Validated all Apollo lunar mission systems in Earth orbit safety"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('22222222-0003-0005-0000-000000000001', '22222222-2222-2222-2222-222222222222',
- 'Lunar Module Test in Lunar Orbit', 'milestone.mission.dress_rehearsal',
+ 'Lunar Module Test in Lunar Orbit', 'milestone.mission.dress_rehearsal', 'completed',
  '1969-05-18'::timestamptz,
  '{"state": "achieved", "mission": "Apollo 10", "crew": ["Thomas P. Stafford (Commander)", "John W. Young (CM Pilot)", "Eugene A. Cernan (LM Pilot)"], "duration": "8 days 3 minutes 23 seconds", "call_signs": {"csm": "Charlie Brown", "lm": "Snoopy"}, "closest_approach": "47,400 feet (8.4 nautical miles) above lunar surface", "snoopy_incident": "LM ascent stage gyrated wildly during staging - Cernan exclaimed profanity on live broadcast", "why_not_land": "LM too heavy, short fuel deliberately to prevent temptation to land", "speed_record": "24,791 mph - fastest humans have ever traveled (still stands)", "significance": "Everything but the landing - cleared the way for Apollo 11"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('22222222-0003-0006-0000-000000000001', '22222222-2222-2222-2222-222222222222',
- 'First Lunar Landing - Apollo 11', 'milestone.mission.lunar_landing',
+ 'First Lunar Landing - Apollo 11', 'milestone.mission.lunar_landing', 'completed',
  '1969-07-20'::timestamptz,
  '{"state": "achieved", "mission": "Apollo 11", "launch_date": "July 16, 1969 13:32:00 UTC", "crew": ["Neil A. Armstrong (Commander)", "Edwin E. Aldrin Jr. (LM Pilot)", "Michael Collins (CM Pilot)"], "call_signs": {"csm": "Columbia", "lm": "Eagle"}, "landing_time": "20:17:40 UTC", "landing_site": "Sea of Tranquility (Mare Tranquillitatis)", "landing_coordinates": "0.67408°N, 23.47297°E", "tranquility_base": "Houston, Tranquility Base here. The Eagle has landed.", "first_step_time": "02:56:15 UTC on July 21", "armstrong_quote": "That is one small step for [a] man, one giant leap for mankind", "eva_duration": "2 hours 31 minutes 40 seconds", "time_on_surface": "21 hours 36 minutes", "samples": "47.5 pounds (21.5 kg)", "experiments": "Seismometer, laser ranging retroreflector, solar wind collector", "plaque_text": "Here men from the planet Earth first set foot upon the Moon, July 1969 A.D. We came in peace for all mankind", "splashdown": "July 24, 1969 - Pacific Ocean", "mission_duration": "8 days 3 hours 18 minutes 35 seconds", "distance_traveled": "953,054 miles", "tv_audience": "600 million people worldwide"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('22222222-0003-0007-0000-000000000001', '22222222-2222-2222-2222-222222222222',
- 'Apollo 12 - Precision Landing', 'milestone.mission.lunar_landing',
+ 'Apollo 12 - Precision Landing', 'milestone.mission.lunar_landing', 'completed',
  '1969-11-19'::timestamptz,
  '{"state": "achieved", "mission": "Apollo 12", "launch_date": "November 14, 1969", "crew": ["Charles Conrad Jr. (Commander)", "Alan L. Bean (LM Pilot)", "Richard F. Gordon Jr. (CM Pilot)"], "call_signs": {"csm": "Yankee Clipper", "lm": "Intrepid"}, "landing_site": "Ocean of Storms (Oceanus Procellarum)", "lightning_strikes": "Rocket struck by lightning twice 36 and 52 seconds after launch - systems recovered", "precision_landing": "Within 600 feet (183 m) of Surveyor 3 probe (landed April 1967)", "surveyor_parts": "Retrieved TV camera and other components for study", "evas": 2, "total_eva_time": "7 hours 45 minutes", "samples": "75.7 pounds (34.4 kg)", "conrad_quote": "Whoopee! Man, that may have been a small one for Neil, but that is a long one for me"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('22222222-0003-0008-0000-000000000001', '22222222-2222-2222-2222-222222222222',
- 'Apollo 13 - Successful Failure', 'milestone.mission.abort',
+ 'Apollo 13 - Successful Failure', 'milestone.mission.abort', 'completed',
  '1970-04-13'::timestamptz,
  '{"state": "achieved", "mission": "Apollo 13", "launch_date": "April 11, 1970", "crew": ["James A. Lovell Jr. (Commander)", "John L. Swigert Jr. (CM Pilot)", "Fred W. Haise Jr. (LM Pilot)"], "call_signs": {"csm": "Odyssey", "lm": "Aquarius"}, "mattingly_replacement": "Swigert replaced Ken Mattingly 72 hours before launch due to rubella exposure", "explosion_time": "55:54:53 mission elapsed time (April 13, 22:08 UTC)", "cause": "Oxygen tank No. 2 explosion from damaged wiring during ground test years earlier", "swigert_words": "Okay Houston, we have had a problem here", "lovell_words": "Houston, we have had a problem", "movie_misquote": "Houston, we have a problem (present tense in 1995 film)", "lifeboat": "LM Aquarius used as lifeboat for 4 days", "co2_fix": "Square CM lithium hydroxide canisters adapted to fit round LM receptacles using duct tape, cardboard, plastic bags", "temperature": "Cabin dropped to 38°F (3°C)", "power_down": "CM powered down to preserve batteries for reentry", "trajectory": "Free-return around Moon with correction burns", "splashdown": "April 17, 1970 in Pacific Ocean", "mission_duration": "5 days 22 hours 54 minutes", "flight_director": "Gene Kranz led White Team through crisis", "significance": "Greatest rescue in space history - proved NASA could handle emergencies"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('22222222-0003-0009-0000-000000000001', '22222222-2222-2222-2222-222222222222',
- 'Apollo 14 - Return to the Moon', 'milestone.mission.lunar_landing',
+ 'Apollo 14 - Return to the Moon', 'milestone.mission.lunar_landing', 'completed',
  '1971-02-05'::timestamptz,
  '{"state": "achieved", "mission": "Apollo 14", "launch_date": "January 31, 1971", "crew": ["Alan B. Shepard Jr. (Commander)", "Edgar D. Mitchell (LM Pilot)", "Stuart A. Roosa (CM Pilot)"], "call_signs": {"csm": "Kitty Hawk", "lm": "Antares"}, "landing_site": "Fra Mauro highlands (intended Apollo 13 site)", "shepard_return": "Only Mercury astronaut to walk on Moon, 10 years after first American spaceflight", "shepard_golf": "Hit two golf balls with improvised 6-iron - second went miles and miles and miles", "cone_crater": "Crew nearly reached rim but turned back - post-flight analysis showed they were within 65 feet", "evas": 2, "total_eva_time": "9 hours 22 minutes", "samples": "94.35 pounds (42.8 kg)", "modular_equipment_transporter": "Two-wheeled cart to carry tools and samples"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('22222222-0003-0010-0000-000000000001', '22222222-2222-2222-2222-222222222222',
- 'Apollo 15 - First Lunar Rover', 'milestone.mission.lunar_landing',
+ 'Apollo 15 - First Lunar Rover', 'milestone.mission.lunar_landing', 'completed',
  '1971-07-30'::timestamptz,
  '{"state": "achieved", "mission": "Apollo 15", "launch_date": "July 26, 1971", "crew": ["David R. Scott (Commander)", "James B. Irwin (LM Pilot)", "Alfred M. Worden (CM Pilot)"], "call_signs": {"csm": "Endeavour", "lm": "Falcon"}, "j_mission": "First extended J-mission with longer stays and more science", "landing_site": "Hadley-Apennine region at base of Apennine Mountains", "lunar_rover": "First Lunar Roving Vehicle (LRV) - built by Boeing, folded in LM", "rover_specs": {"max_speed": "8 mph", "range": "57 miles", "weight": "460 pounds"}, "rover_distance": "17.5 miles (28.2 km) total", "evas": 3, "total_eva_time": "18 hours 33 minutes", "samples": "170.4 pounds (77.3 kg)", "genesis_rock": "Sample 15415 - 4.1 billion year old anorthosite from original lunar crust", "galileo_experiment": "Scott dropped hammer and feather simultaneously - fell at same rate in vacuum", "fallen_astronaut": "Scott secretly placed memorial statue and plaque for deceased astronauts/cosmonauts"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('22222222-0003-0011-0000-000000000001', '22222222-2222-2222-2222-222222222222',
- 'Apollo 16 - Highlands Exploration', 'milestone.mission.lunar_landing',
+ 'Apollo 16 - Highlands Exploration', 'milestone.mission.lunar_landing', 'completed',
  '1972-04-21'::timestamptz,
  '{"state": "achieved", "mission": "Apollo 16", "launch_date": "April 16, 1972", "crew": ["John W. Young (Commander)", "Charles M. Duke Jr. (LM Pilot)", "Thomas K. Mattingly II (CM Pilot)"], "call_signs": {"csm": "Casper", "lm": "Orion"}, "mattingly_vindication": "Finally flew after being grounded from Apollo 13 - never got rubella", "landing_site": "Descartes Highlands - first mission to lunar highlands", "near_abort": "CSM main engine oscillation nearly aborted landing - fixed from orbit", "evas": 3, "total_eva_time": "20 hours 14 minutes", "rover_distance": "16.8 miles (27 km)", "samples": "211.4 pounds (95.8 kg)", "speed_record": "Young set lunar speed record of 11.2 mph in rover", "duke_family_photo": "Duke left family photo on lunar surface"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('22222222-0003-0012-0000-000000000001', '22222222-2222-2222-2222-222222222222',
- 'Apollo 17 - Final Lunar Mission', 'milestone.mission.lunar_landing',
+ 'Apollo 17 - Final Lunar Mission', 'milestone.mission.lunar_landing', 'completed',
  '1972-12-11'::timestamptz,
  '{"state": "achieved", "mission": "Apollo 17", "launch_date": "December 7, 1972 (05:33 UTC - only night launch)", "crew": ["Eugene A. Cernan (Commander)", "Harrison H. Schmitt (LM Pilot)", "Ronald E. Evans (CM Pilot)"], "call_signs": {"csm": "America", "lm": "Challenger"}, "landing_site": "Taurus-Littrow valley", "schmitt_significance": "Only professional geologist to walk on Moon - replaced Joe Engle", "troctolite_76535": "Most scientifically important lunar sample - evidence of ancient magnetic field", "orange_soil": "Schmitt discovered orange volcanic glass beads (3.7 billion years old)", "evas": 3, "total_eva_time": "22 hours 3 minutes 57 seconds (longest total)", "rover_distance": "22.3 miles (35.9 km)", "samples": "243.7 pounds (110.5 kg) - most of any mission", "final_plaque": "Here man completed his first explorations of the Moon, December 1972 A.D. May the spirit of peace in which we came be reflected in the lives of all mankind", "cernan_last_words": "We leave as we came and, God willing, as we shall return, with peace and hope for all mankind", "last_to_walk": "Cernan was last person on Moon (Schmitt entered LM first)", "blue_marble": "Crew photographed famous Blue Marble image of Earth"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
@@ -289,13 +289,13 @@ INSERT INTO onto_milestones (id, project_id, title, type_key, due_at, props, cre
 -- MILESTONES - GOAL 4: Safe Return
 -- ============================================
 ('22222222-0004-0001-0000-000000000001', '22222222-2222-2222-2222-222222222222',
- 'Heatshield Design Validated', 'milestone.engineering.thermal',
+ 'Heatshield Design Validated', 'milestone.engineering.thermal', 'completed',
  '1968-10-22'::timestamptz,
  '{"state": "achieved", "significance": "Ablative heatshield proven to protect crew during 25,000 mph reentry from lunar return trajectory"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('22222222-0004-0002-0000-000000000001', '22222222-2222-2222-2222-222222222222',
- 'Recovery Operations Perfected', 'milestone.operations.recovery',
+ 'Recovery Operations Perfected', 'milestone.operations.recovery', 'completed',
  '1969-07-24'::timestamptz,
  '{"state": "achieved", "method": "Splashdown in Pacific Ocean", "recovery_ships": "US Navy aircraft carriers", "helicopter_retrieval": "Astronauts lifted to ship"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
@@ -304,13 +304,13 @@ INSERT INTO onto_milestones (id, project_id, title, type_key, due_at, props, cre
 -- MILESTONES - GOAL 5: Science
 -- ============================================
 ('22222222-0005-0001-0000-000000000001', '22222222-2222-2222-2222-222222222222',
- 'Lunar Sample Return', 'milestone.science.samples',
+ 'Lunar Sample Return', 'milestone.science.samples', 'completed',
  '1972-12-19'::timestamptz,
  '{"state": "achieved", "total_samples": "842 pounds (382 kg)", "missions_contributing": ["Apollo 11", "Apollo 12", "Apollo 14", "Apollo 15", "Apollo 16", "Apollo 17"], "oldest_sample": "4.5 billion years"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('22222222-0005-0002-0000-000000000001', '22222222-2222-2222-2222-222222222222',
- 'ALSEP Experiments Deployed', 'milestone.science.experiments',
+ 'ALSEP Experiments Deployed', 'milestone.science.experiments', 'completed',
  '1972-12-11'::timestamptz,
  '{"state": "achieved", "name": "Apollo Lunar Surface Experiments Package", "experiments": ["seismometers", "laser ranging retroreflectors", "solar wind collectors", "heat flow probes"], "data_transmission": "Until 1977"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
@@ -319,19 +319,19 @@ INSERT INTO onto_milestones (id, project_id, title, type_key, due_at, props, cre
 -- MILESTONES - GOAL 6: Space Race
 -- ============================================
 ('22222222-0006-0001-0000-000000000001', '22222222-2222-2222-2222-222222222222',
- 'Soviets Launch Sputnik', 'milestone.competition.soviet',
+ 'Soviets Launch Sputnik', 'milestone.competition.soviet', 'completed',
  '1957-10-04'::timestamptz,
  '{"state": "achieved", "significance": "First artificial satellite, started Space Race", "american_response": "Shock and urgency to catch up"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('22222222-0006-0002-0000-000000000001', '22222222-2222-2222-2222-222222222222',
- 'Gagarin First Human in Space', 'milestone.competition.soviet',
+ 'Gagarin First Human in Space', 'milestone.competition.soviet', 'completed',
  '1961-04-12'::timestamptz,
  '{"state": "achieved", "cosmonaut": "Yuri Gagarin", "mission": "Vostok 1", "significance": "Soviets ahead - first human in space"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('22222222-0006-0003-0000-000000000001', '22222222-2222-2222-2222-222222222222',
- 'America Wins the Moon Race', 'milestone.competition.victory',
+ 'America Wins the Moon Race', 'milestone.competition.victory', 'completed',
  '1969-07-20'::timestamptz,
  '{"state": "achieved", "significance": "USA first (and only) nation to land humans on Moon", "soviet_program": "N1 rocket failed all 4 test flights", "outcome": "Decisive American victory in Space Race"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
@@ -340,25 +340,25 @@ INSERT INTO onto_milestones (id, project_id, title, type_key, due_at, props, cre
 -- MILESTONES - INFRASTRUCTURE & FACILITIES
 -- ============================================
 ('22222222-0007-0001-0000-000000000001', '22222222-2222-2222-2222-222222222222',
- 'Vehicle Assembly Building Completed', 'milestone.infrastructure.construction',
+ 'Vehicle Assembly Building Completed', 'milestone.infrastructure.construction', 'completed',
  '1966-06-30'::timestamptz,
  '{"state": "achieved", "location": "Kennedy Space Center, Florida", "dimensions": {"height": "526 feet (160 m)", "floor_area": "8 acres", "volume": "129,428,000 cubic feet"}, "features": "Largest single-story building in world, 4 high bays for Saturn V stacking", "architect": "Max O. Urbahn", "contractor": "Morrison-Knudsen", "cost": "$117 million", "significance": "Could stack 4 Saturn V rockets simultaneously"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('22222222-0007-0002-0000-000000000001', '22222222-2222-2222-2222-222222222222',
- 'Mission Control Center Operational', 'milestone.infrastructure.operations',
+ 'Mission Control Center Operational', 'milestone.infrastructure.operations', 'completed',
  '1965-06-01'::timestamptz,
  '{"state": "achieved", "location": "Manned Spacecraft Center (now Johnson Space Center), Houston, Texas", "first_mission": "Gemini 4", "rooms": {"MOCR_1": "Gemini missions", "MOCR_2": "Apollo missions"}, "design": "Christopher Kraft", "features": ["Giant display screens", "Individual consoles for each discipline", "Real-time telemetry", "Voice communications"], "famous_quotes_location": "Where Houston, we have a problem was received"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('22222222-0007-0003-0000-000000000001', '22222222-2222-2222-2222-222222222222',
- 'Launch Complex 39 Activated', 'milestone.infrastructure.launch',
+ 'Launch Complex 39 Activated', 'milestone.infrastructure.launch', 'completed',
  '1967-11-09'::timestamptz,
  '{"state": "achieved", "location": "Kennedy Space Center, Florida", "pads": {"39A": "Primary Apollo pad", "39B": "Backup pad"}, "crawler_transporter": {"speed": "1 mph loaded", "weight": "6 million pounds", "purpose": "Move Saturn V from VAB to pad"}, "mobile_launch_platform": "Platform with umbilical tower", "first_launch": "Apollo 4 (November 9, 1967)", "flame_trench": "42 feet deep, deflects 7.5 million pounds of thrust"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('22222222-0007-0004-0000-000000000001', '22222222-2222-2222-2222-222222222222',
- 'Lunar Receiving Laboratory Ready', 'milestone.infrastructure.science',
+ 'Lunar Receiving Laboratory Ready', 'milestone.infrastructure.science', 'completed',
  '1969-01-01'::timestamptz,
  '{"state": "achieved", "location": "Manned Spacecraft Center, Houston", "purpose": "Quarantine astronauts and process lunar samples", "quarantine_period": "21 days after return", "features": ["Biological barrier facility", "Sample processing labs", "Vacuum chambers", "Crew quarters"], "used_for": ["Apollo 11", "Apollo 12", "Apollo 14"], "quarantine_ended": "After Apollo 14 - no lunar pathogens found"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
@@ -367,19 +367,19 @@ INSERT INTO onto_milestones (id, project_id, title, type_key, due_at, props, cre
 -- MILESTONES - ROBOTIC PRECURSOR MISSIONS
 -- ============================================
 ('22222222-0008-0001-0000-000000000001', '22222222-2222-2222-2222-222222222222',
- 'Ranger Program Success', 'milestone.robotic.reconnaissance',
+ 'Ranger Program Success', 'milestone.robotic.reconnaissance', 'completed',
  '1965-03-24'::timestamptz,
  '{"state": "achieved", "program_dates": "1961-1965", "purpose": "First close-up photographs of lunar surface", "successes": ["Ranger 7 (Jul 1964) - 4,316 photos", "Ranger 8 (Feb 1965) - 7,137 photos", "Ranger 9 (Mar 1965) - 5,814 photos"], "failures": "Rangers 1-6 all failed", "impact_imaging": "Transmitted photos until impact with Moon", "contribution": "Proved Moon surface could support lander - not deep dust"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('22222222-0008-0002-0000-000000000001', '22222222-2222-2222-2222-222222222222',
- 'Surveyor Soft Landings', 'milestone.robotic.landing',
+ 'Surveyor Soft Landings', 'milestone.robotic.landing', 'completed',
  '1968-01-10'::timestamptz,
  '{"state": "achieved", "program_dates": "1966-1968", "purpose": "Soft land on Moon, test surface properties", "successes": ["Surveyor 1 (Jun 1966) - first US soft landing", "Surveyor 3 (Apr 1967) - visited by Apollo 12", "Surveyor 5 (Sep 1967)", "Surveyor 6 (Nov 1967)", "Surveyor 7 (Jan 1968)"], "failures": ["Surveyor 2", "Surveyor 4"], "discoveries": ["Surface can support spacecraft", "Soil composition analysis", "17,000+ photos transmitted"], "apollo_12_retrieval": "Conrad and Bean retrieved Surveyor 3 camera"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('22222222-0008-0003-0000-000000000001', '22222222-2222-2222-2222-222222222222',
- 'Lunar Orbiter Mapping Complete', 'milestone.robotic.mapping',
+ 'Lunar Orbiter Mapping Complete', 'milestone.robotic.mapping', 'completed',
  '1967-08-01'::timestamptz,
  '{"state": "achieved", "program_dates": "1966-1967", "purpose": "Photograph and map potential Apollo landing sites", "missions": 5, "success_rate": "100% - all 5 successful", "coverage": "99% of lunar surface photographed", "resolution": "1 meter at best", "famous_image": "Lunar Orbiter 1 - First photo of Earth from lunar orbit (Aug 1966)", "landing_sites_selected": "Identified and certified Apollo landing sites", "orbit_type": "Polar orbits for full coverage"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
@@ -388,43 +388,43 @@ INSERT INTO onto_milestones (id, project_id, title, type_key, due_at, props, cre
 -- MILESTONES - SOVIET COMPETITION (Expanded)
 -- ============================================
 ('22222222-0006-0004-0000-000000000001', '22222222-2222-2222-2222-222222222222',
- 'First Spacewalk (Soviet)', 'milestone.competition.soviet',
+ 'First Spacewalk (Soviet)', 'milestone.competition.soviet', 'completed',
  '1965-03-18'::timestamptz,
  '{"state": "achieved", "mission": "Voskhod 2", "cosmonaut": "Alexei Leonov", "duration": "12 minutes", "problems": "Suit ballooned in vacuum - nearly could not reenter airlock", "us_response": "Ed White spacewalk 10 weeks later (Gemini 4)", "significance": "Soviets still ahead in space firsts"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('22222222-0006-0005-0000-000000000001', '22222222-2222-2222-2222-222222222222',
- 'Luna 9 First Soft Landing', 'milestone.competition.soviet',
+ 'Luna 9 First Soft Landing', 'milestone.competition.soviet', 'completed',
  '1966-02-03'::timestamptz,
  '{"state": "achieved", "mission": "Luna 9", "significance": "First spacecraft to soft-land on Moon and transmit photos", "landing_site": "Oceanus Procellarum", "photos": "First panoramic images from lunar surface", "us_response": "Surveyor 1 landed 4 months later (June 1966)", "settled_debate": "Proved Moon surface was solid, not deep dust"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('22222222-0006-0006-0000-000000000001', '22222222-2222-2222-2222-222222222222',
- 'Luna 10 First Lunar Orbit', 'milestone.competition.soviet',
+ 'Luna 10 First Lunar Orbit', 'milestone.competition.soviet', 'completed',
  '1966-04-03'::timestamptz,
  '{"state": "achieved", "mission": "Luna 10", "significance": "First spacecraft to orbit the Moon", "orbit_period": "2 hours 58 minutes", "instruments": "Measured radiation, micrometeorites, magnetic field", "broadcast": "Played Internationale from lunar orbit during Party Congress"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('22222222-0006-0007-0000-000000000001', '22222222-2222-2222-2222-222222222222',
- 'Zond Circumlunar Flights', 'milestone.competition.soviet',
+ 'Zond Circumlunar Flights', 'milestone.competition.soviet', 'completed',
  '1968-09-21'::timestamptz,
  '{"state": "achieved", "missions": ["Zond 5 (Sep 1968) - first circumlunar return with animals", "Zond 6 (Nov 1968) - more animals, camera"], "significance": "Soviets could have sent cosmonauts around Moon before Apollo 8", "why_no_crew": "Parachute failures on return, deemed too risky", "us_response": "Accelerated Apollo 8 to beat potential Soviet circumlunar mission"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('22222222-0006-0008-0000-000000000001', '22222222-2222-2222-2222-222222222222',
- 'N1 Rocket Failures', 'milestone.competition.soviet',
+ 'N1 Rocket Failures', 'milestone.competition.soviet', 'completed',
  '1972-11-23'::timestamptz,
  '{"state": "achieved", "test_flights": [{"date": "1969-02-21", "result": "Engine shutdown at 66 seconds, destroyed"}, {"date": "1969-07-03", "result": "Exploded on pad - largest artificial non-nuclear explosion"}, {"date": "1971-06-27", "result": "Rolled and broke apart at 51 seconds"}, {"date": "1972-11-23", "result": "Reached 40km, then destroyed"}], "height": "344 feet (taller than Saturn V)", "engines": "30 NK-15 engines in first stage", "problems": "Engine synchronization, vibration, quality control", "program_cancelled": "1976", "significance": "Soviet Moon program failure ended Space Race"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('22222222-0006-0009-0000-000000000001', '22222222-2222-2222-2222-222222222222',
- 'Luna 16 First Robotic Sample Return', 'milestone.competition.soviet',
+ 'Luna 16 First Robotic Sample Return', 'milestone.competition.soviet', 'completed',
  '1970-09-24'::timestamptz,
  '{"state": "achieved", "mission": "Luna 16", "landing_site": "Sea of Fertility", "sample_mass": "101 grams", "significance": "First robotic lunar sample return - Soviet alternative to crewed landing", "comparison": "Apollo returned 842 pounds; Luna missions returned about 300 grams total", "technology": "Proved robotic sample return possible"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('22222222-0006-0010-0000-000000000001', '22222222-2222-2222-2222-222222222222',
- 'Lunokhod 1 First Lunar Rover', 'milestone.competition.soviet',
+ 'Lunokhod 1 First Lunar Rover', 'milestone.competition.soviet', 'completed',
  '1970-11-17'::timestamptz,
  '{"state": "achieved", "mission": "Luna 17 / Lunokhod 1", "significance": "First remote-controlled rover on another world", "duration": "11 months of operation", "distance": "10.54 km traveled", "features": ["8 wheels", "Solar panels", "Cameras", "Soil analysis"], "comparison": "Beat Apollo Lunar Rover (July 1971) by 8 months, but unmanned"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
@@ -433,31 +433,31 @@ INSERT INTO onto_milestones (id, project_id, title, type_key, due_at, props, cre
 -- MILESTONES - TRAINING & TESTING
 -- ============================================
 ('22222222-0009-0001-0000-000000000001', '22222222-2222-2222-2222-222222222222',
- 'Lunar Landing Research Vehicle Flights', 'milestone.training.simulation',
+ 'Lunar Landing Research Vehicle Flights', 'milestone.training.simulation', 'completed',
  '1968-05-06'::timestamptz,
  '{"state": "achieved", "dates": "1964-1972", "vehicle": "LLRV / LLTV (Flying Bedstead)", "location": "Ellington Field, Houston", "purpose": "Simulate lunar module handling in last 150 feet of descent", "pilots": "All lunar landing commanders trained", "armstrong_ejection": "May 6, 1968 - Armstrong ejected safely when LLRV crashed", "neil_quote": "Valuable training - worth the risk", "crashes": 3, "significance": "Critical for landing confidence"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('22222222-0009-0002-0000-000000000001', '22222222-2222-2222-2222-222222222222',
- 'Neutral Buoyancy Simulator Operational', 'milestone.training.facility',
+ 'Neutral Buoyancy Simulator Operational', 'milestone.training.facility', 'completed',
  '1966-01-01'::timestamptz,
  '{"state": "achieved", "location": "Marshall Space Flight Center", "purpose": "Underwater EVA training simulating weightlessness", "pool_size": "75 feet diameter, 40 feet deep", "innovation": "Buzz Aldrin used extensively for Gemini 12 EVA success", "still_used": "Evolved into current Neutral Buoyancy Lab at JSC", "significance": "Solved EVA exhaustion problems plaguing earlier Gemini missions"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('22222222-0009-0003-0000-000000000001', '22222222-2222-2222-2222-222222222222',
- 'Apollo 4 - First Saturn V Test', 'milestone.testing.rocket',
+ 'Apollo 4 - First Saturn V Test', 'milestone.testing.rocket', 'completed',
  '1967-11-09'::timestamptz,
  '{"state": "achieved", "mission": "Apollo 4 (AS-501)", "type": "Uncrewed all-up test", "achievements": ["First Saturn V flight", "First S-IC stage flight", "First S-II stage flight", "First S-IVB restart in orbit", "CM reentry at lunar return velocity"], "walter_cronkite": "CBS ceiling tiles fell during launch - This is really something!", "outcome": "Complete success - validated all-up testing approach", "significance": "Proved Saturn V could reach the Moon"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('22222222-0009-0004-0000-000000000001', '22222222-2222-2222-2222-222222222222',
- 'Apollo 5 - First Lunar Module Test', 'milestone.testing.spacecraft',
+ 'Apollo 5 - First Lunar Module Test', 'milestone.testing.spacecraft', 'completed',
  '1968-01-22'::timestamptz,
  '{"state": "achieved", "mission": "Apollo 5 (AS-204)", "launch_vehicle": "Saturn IB", "type": "Uncrewed LM test in Earth orbit", "tests": ["Descent engine firing", "Ascent engine firing", "Stage separation (fire-in-the-hole)", "Abort staging simulation"], "outcome": "Successful despite minor issues", "significance": "Validated LM propulsion systems", "lm_designation": "LM-1"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('22222222-0009-0005-0000-000000000001', '22222222-2222-2222-2222-222222222222',
- 'Apollo 6 - Final Uncrewed Saturn V', 'milestone.testing.rocket',
+ 'Apollo 6 - Final Uncrewed Saturn V', 'milestone.testing.rocket', 'completed',
  '1968-04-04'::timestamptz,
  '{"state": "achieved", "mission": "Apollo 6 (AS-502)", "type": "Uncrewed Saturn V test", "problems": ["Pogo oscillation in S-II stage", "Two J-2 engines shut down early", "S-IVB failed to restart"], "outcome": "Partial success - problems identified and fixed", "fixes": "Helium injection to dampen pogo, J-2 engine modifications", "significance": "Last test before crewed flights - all issues resolved"}'::jsonb,
  '00000000-0000-0000-0000-000000000002')

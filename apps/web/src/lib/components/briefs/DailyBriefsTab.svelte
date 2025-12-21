@@ -967,19 +967,19 @@
 	cancelText="Cancel"
 	confirmVariant="danger"
 	icon="danger"
-	on:confirm={confirmDeleteBrief}
-	on:cancel={cancelDeleteBrief}
+	onconfirm={confirmDeleteBrief}
+	oncancel={cancelDeleteBrief}
 >
-	<div slot="content">
-		<p class="text-sm text-gray-500 dark:text-gray-400">
+	{#snippet content()}
+		<p class="text-sm text-muted-foreground">
 			Are you sure you want to delete this brief? This action cannot be undone.
 		</p>
-	</div>
-	<div slot="details" class="mt-2">
-		<p class="text-xs text-gray-400 dark:text-gray-500">
+	{/snippet}
+	{#snippet details()}
+		<p class="text-xs text-muted-foreground mt-2">
 			Brief: {briefToDelete?.brief_date}
 		</p>
-	</div>
+	{/snippet}
 </ConfirmationModal>
 
 <!-- Briefs Settings Modal -->

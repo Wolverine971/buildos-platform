@@ -25,7 +25,7 @@
 <div class="min-w-0 space-y-4">
 	<!-- Outputs Section Skeleton -->
 	<section
-		class="bg-card border border-border rounded-xl shadow-ink tx tx-frame tx-weak overflow-hidden"
+		class="bg-card border border-border rounded-xl shadow-ink tx tx-pulse tx-weak overflow-hidden"
 	>
 		<div class="flex items-center justify-between gap-3 px-4 py-3">
 			<div class="flex items-center gap-3 flex-1">
@@ -52,9 +52,14 @@
 
 		<div class="border-t border-border">
 			{#if outputCount === 0}
-				<div class="flex items-center gap-3 text-sm text-muted-foreground px-4 py-3">
-					<Sparkles class="w-4 h-4" />
-					<span>No outputs yet. Create one to get started.</span>
+				<div class="flex items-center gap-3 px-4 py-4 bg-muted/30 tx tx-bloom tx-weak">
+					<div class="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center">
+						<Sparkles class="w-4 h-4 text-accent" />
+					</div>
+					<div>
+						<p class="text-sm text-foreground">No outputs yet</p>
+						<p class="text-xs text-muted-foreground">Create one to start delivering</p>
+					</div>
 				</div>
 			{:else}
 				<ul class="divide-y divide-border/80">
@@ -82,7 +87,7 @@
 
 	<!-- Documents Section Skeleton -->
 	<section
-		class="bg-card border border-border rounded-xl shadow-ink tx tx-frame tx-weak overflow-hidden"
+		class="bg-card border border-border rounded-xl shadow-ink tx tx-pulse tx-weak overflow-hidden"
 	>
 		<div class="flex items-center justify-between gap-3 px-4 py-3">
 			<div class="flex items-center gap-3 flex-1">
@@ -109,9 +114,14 @@
 
 		<div class="border-t border-border">
 			{#if documentCount === 0}
-				<div class="flex items-center gap-3 text-sm text-muted-foreground px-4 py-3">
-					<Sparkles class="w-4 h-4" />
-					<span>No documents yet. Add research or drafts.</span>
+				<div class="flex items-center gap-3 px-4 py-4 bg-muted/30 tx tx-bloom tx-weak">
+					<div class="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center">
+						<Sparkles class="w-4 h-4 text-accent" />
+					</div>
+					<div>
+						<p class="text-sm text-foreground">No documents yet</p>
+						<p class="text-xs text-muted-foreground">Add research or drafts</p>
+					</div>
 				</div>
 			{:else}
 				<ul class="divide-y divide-border/80">

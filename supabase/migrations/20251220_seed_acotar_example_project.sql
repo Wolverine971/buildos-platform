@@ -135,46 +135,46 @@ ON CONFLICT (id) DO NOTHING;
 -- ============================================
 -- GOALS (7 Strategic Objectives)
 -- ============================================
-INSERT INTO onto_goals (id, project_id, name, type_key, props, created_by) VALUES
+INSERT INTO onto_goals (id, project_id, name, type_key, state_key, props, created_by) VALUES
 -- Goal 1: Write the Original ACOTAR
 ('55555555-0001-0000-0000-000000000001', '55555555-5555-5555-5555-555555555555',
- 'Write A Court of Thorns and Roses', 'goal.strategic.foundation',
+ 'Write A Court of Thorns and Roses', 'goal.strategic.foundation', 'achieved',
  '{"priority": "critical", "state": "achieved", "original_plan": "Beauty and the Beast retelling with fae", "inspiration": ["Beauty and the Beast", "East of the Sun and West of the Moon", "Tam Lin"], "writing_period": "2009-2015", "pages": 416, "key_innovation": "Subverting fairy tale expectations - the beast is not the true love interest", "timeline": "6 years from concept to publication"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 -- Goal 2: The ACOMAF Revolution
 ('55555555-0002-0000-0000-000000000001', '55555555-5555-5555-5555-555555555555',
- 'Transform the Series with A Court of Mist and Fury', 'goal.strategic.expansion',
+ 'Transform the Series with A Court of Mist and Fury', 'goal.strategic.expansion', 'achieved',
  '{"priority": "critical", "state": "achieved", "pivot": "Complete love interest switch from Tamlin to Rhysand", "inspiration": ["Hades and Persephone", "Twelve Dancing Princesses"], "key_themes": ["Trauma recovery", "Found family", "Reclaiming agency"], "pages": 624, "cultural_impact": "Redefined romantasy genre expectations", "fan_reaction": "The book that broke the internet", "goodreads_choice_award": "Best YA Fantasy 2016"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 -- Goal 3: Complete the Original Trilogy
 ('55555555-0003-0000-0000-000000000001', '55555555-5555-5555-5555-555555555555',
- 'Complete the Trilogy with A Court of Wings and Ruin', 'goal.strategic.primary',
+ 'Complete the Trilogy with A Court of Wings and Ruin', 'goal.strategic.primary', 'achieved',
  '{"priority": "critical", "state": "achieved", "focus": "War with Hybern, uniting the courts", "pages": 699, "key_events": ["War against King of Hybern", "Feyre becomes High Lady", "Nesta and Elain Made", "Father redemption arc"], "timeline": "Published May 2017"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 -- Goal 4: Expand with New Perspectives
 ('55555555-0004-0000-0000-000000000001', '55555555-5555-5555-5555-555555555555',
- 'Continue the Series with Nesta''s Story', 'goal.strategic.expansion',
+ 'Continue the Series with Nesta''s Story', 'goal.strategic.expansion', 'achieved',
  '{"priority": "high", "state": "achieved", "books": ["A Court of Frost and Starlight (2018)", "A Court of Silver Flames (2021)"], "new_protagonist": "Nesta Archeron", "themes": ["Healing from trauma", "Self-acceptance", "Found sisterhood with Gwyn and Emerie"], "key_innovations": ["Valkyrie training arc", "House of Wind sentient house", "Cassian romance"], "goodreads_choice_award": "Best Fantasy 2021"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 -- Goal 5: Build the World of Prythian
 ('55555555-0005-0000-0000-000000000001', '55555555-5555-5555-5555-555555555555',
- 'Develop the Prythian Worldbuilding System', 'goal.strategic.creative',
+ 'Develop the Prythian Worldbuilding System', 'goal.strategic.creative', 'achieved',
  '{"priority": "high", "state": "achieved", "courts_created": ["Night", "Spring", "Summer", "Autumn", "Winter", "Dawn", "Day", "Dusk (extinct)"], "magic_systems": ["High Lord powers", "Daemati abilities", "Illyrian siphons", "Cauldron magic", "Mate bonds"], "locations": ["Velaris", "Hewn City", "Spring Court manor", "Under the Mountain", "The Prison"], "factions": ["Inner Circle", "Archeron sisters", "Court of Nightmares", "Hybern forces"]}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 -- Goal 6: Cultural Phenomenon
 ('55555555-0006-0000-0000-000000000001', '55555555-5555-5555-5555-555555555555',
- 'Build the ACOTAR Fandom and Cultural Impact', 'goal.strategic.community',
+ 'Build the ACOTAR Fandom and Cultural Impact', 'goal.strategic.community', 'achieved',
  '{"priority": "medium", "state": "achieved", "booktok_views": "8.5 billion", "copies_sold": "38+ million", "tattoo_trend": "Eight-pointed star, Night Court constellation", "merchandise": "Extensive licensed and fan-made", "fan_theories": ["Azriel/Gwyn vs Azriel/Elain", "Eris redemption arc", "Elain villain theory", "Mor''s full power reveal"], "cultural_moments": ["The Rhysand reveal twist", "To the stars quote phenomenon", "Mate bond discourse"], "publisher_impact": "Bloomsbury 79% sales increase 2023"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 -- Goal 7: The Future
 ('55555555-0007-0000-0000-000000000001', '55555555-5555-5555-5555-555555555555',
- 'Plan the Future of ACOTAR', 'goal.strategic.legacy',
+ 'Plan the Future of ACOTAR', 'goal.strategic.legacy', 'active',
  '{"priority": "ultimate", "state": "active", "book_6": {"first_draft_completed": "July 2025", "likely_focus": "Elain or Azriel", "estimated_length": "Long - SJM confirmed"}, "multiverse_expansion": "Connection to Crescent City established in House of Flame and Shadow", "tv_adaptation": {"status": "Canceled by Hulu March 2025", "future": "SJM shopping to other networks"}, "remaining_mysteries": ["Elain''s seer powers", "Azriel''s mate", "Mor''s full power", "Koschei threat", "Dusk Court history"]}'::jsonb,
  '00000000-0000-0000-0000-000000000002')
 ON CONFLICT (id) DO NOTHING;
@@ -182,44 +182,44 @@ ON CONFLICT (id) DO NOTHING;
 -- ============================================
 -- MILESTONES - GOAL 1: A Court of Thorns and Roses (2009-2015)
 -- ============================================
-INSERT INTO onto_milestones (id, project_id, title, type_key, due_at, props, created_by) VALUES
+INSERT INTO onto_milestones (id, project_id, title, type_key, state_key, due_at, props, created_by) VALUES
 ('55555555-0001-0001-0000-000000000001', '55555555-5555-5555-5555-555555555555',
- 'The Vision of Prythian', 'milestone.creative.inception', '2009-01-01'::timestamptz,
+ 'The Vision of Prythian', 'milestone.creative.inception', 'completed', '2009-01-01'::timestamptz,
  '{"state": "achieved", "description": "While developing Throne of Glass, SJM begins writing ACOTAR as a passion project", "initial_concept": "Beauty and the Beast retelling with fae", "inspiration_moment": "Wanted to explore what happens AFTER the fairy tale kiss", "key_question": "What if the love story is just the beginning of the real conflict?", "side_project": true}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('55555555-0001-0002-0000-000000000001', '55555555-5555-5555-5555-555555555555',
- 'Feyre Archeron Created', 'milestone.creative.character', '2009-06-01'::timestamptz,
+ 'Feyre Archeron Created', 'milestone.creative.character', 'completed', '2009-06-01'::timestamptz,
  '{"state": "achieved", "character": "Feyre Archeron", "age": 19, "role": "Protagonist, later High Lady", "initial_concept": "Mortal huntress supporting her family", "evolution": "From survivor to High Lady of Night Court", "name_meaning": "Feyre pronounced FAY-ruh", "key_traits": ["Artist", "Huntress", "Survivor", "Deeply loyal"], "sisters": ["Nesta (eldest)", "Elain (middle)"]}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('55555555-0001-0003-0000-000000000001', '55555555-5555-5555-5555-555555555555',
- 'The Seven Courts Designed', 'milestone.creative.worldbuilding', '2010-01-01'::timestamptz,
+ 'The Seven Courts Designed', 'milestone.creative.worldbuilding', 'completed', '2010-01-01'::timestamptz,
  '{"state": "achieved", "courts": {"Seasonal": ["Spring", "Summer", "Autumn", "Winter"], "Solar": ["Night", "Day", "Dawn"]}, "lost_court": "Dusk Court - destroyed, connected to The Prison", "structure": "Each ruled by a High Lord with inherited powers", "key_innovation": "Night Court as morally complex, not evil", "wall": "Magical barrier separating mortal and fae lands"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('55555555-0001-0004-0000-000000000001', '55555555-5555-5555-5555-555555555555',
- 'Tamlin and Rhysand Created', 'milestone.creative.character', '2010-06-01'::timestamptz,
+ 'Tamlin and Rhysand Created', 'milestone.creative.character', 'completed', '2010-06-01'::timestamptz,
  '{"state": "achieved", "tamlin": {"role": "High Lord of Spring Court", "initial_role": "Love interest", "mask_curse": "Trapped in permanent mask by Amarantha", "shape_shifter": true, "tragic_flaw": "Overprotection becomes control"}, "rhysand": {"role": "High Lord of Night Court", "initial_presentation": "Villain/antagonist", "hidden_truth": "Actually protecting everyone", "powers": ["Daemati (mind reading)", "Darkness manipulation", "Most powerful High Lord ever"], "plan": "Secret hero all along"}}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('55555555-0001-0005-0000-000000000001', '55555555-5555-5555-5555-555555555555',
- 'Under the Mountain Concept', 'milestone.creative.plot', '2011-01-01'::timestamptz,
+ 'Under the Mountain Concept', 'milestone.creative.plot', 'completed', '2011-01-01'::timestamptz,
  '{"state": "achieved", "villain": "Amarantha - Queen Under the Mountain", "threat": "Enslaved all High Lords for 49 years", "trials": "Three deadly tasks for Feyre", "riddle": "What demands an answer but asks no question? (Love)", "key_moments": ["Clare Beddor tortured as warning", "Rhysand helps Feyre secretly", "Feyre solves riddle", "Feyre dies and is resurrected by all High Lords"], "resurrection": "Feyre becomes High Fae with all seven High Lord powers"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('55555555-0001-0006-0000-000000000001', '55555555-5555-5555-5555-555555555555',
- 'Throne of Glass Published', 'milestone.business.prior_success', '2012-08-07'::timestamptz,
+ 'Throne of Glass Published', 'milestone.business.prior_success', 'completed', '2012-08-07'::timestamptz,
  '{"state": "achieved", "significance": "SJM establishes herself as fantasy author", "publisher": "Bloomsbury", "impact_on_acotar": "Publisher confidence for ACOTAR deal", "writing_approach_refined": "Learned from ToG revision process", "agent": "Tamar Rydzinski"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('55555555-0001-0007-0000-000000000001', '55555555-5555-5555-5555-555555555555',
- 'ACOTAR Manuscript Completed', 'milestone.creative.draft', '2014-06-01'::timestamptz,
+ 'ACOTAR Manuscript Completed', 'milestone.creative.draft', 'completed', '2014-06-01'::timestamptz,
  '{"state": "achieved", "draft_number": "Multiple revisions", "word_count": "~110,000 words", "pov": "First person Feyre", "genre_classification": "YA Fantasy/New Adult crossover", "sexual_content_negotiation": "SJM fought to keep mature content uncensored", "editor": "Worked extensively with Bloomsbury team"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('55555555-0001-0008-0000-000000000001', '55555555-5555-5555-5555-555555555555',
- 'A Court of Thorns and Roses Published', 'milestone.publication.book1', '2015-05-05'::timestamptz,
+ 'A Court of Thorns and Roses Published', 'milestone.publication.book1', 'completed', '2015-05-05'::timestamptz,
  '{"state": "achieved", "publisher": "Bloomsbury", "pages": 416, "chapters": 46, "pov": "Feyre Archeron (first person)", "dedication": "For Josh—the love of my life", "cover": "Rose with thorns design", "initial_reception": "Strong but not phenomenon level yet", "fairy_tale_basis": ["Beauty and the Beast", "East of the Sun West of the Moon", "Tam Lin"], "ending_twist": "Rhysand claims his bargain with Feyre"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
@@ -227,32 +227,32 @@ INSERT INTO onto_milestones (id, project_id, title, type_key, due_at, props, cre
 -- MILESTONES - GOAL 2: A Court of Mist and Fury (2015-2016)
 -- ============================================
 ('55555555-0002-0001-0000-000000000001', '55555555-5555-5555-5555-555555555555',
- 'The Pivot Decision', 'milestone.creative.decision', '2015-06-01'::timestamptz,
+ 'The Pivot Decision', 'milestone.creative.decision', 'completed', '2015-06-01'::timestamptz,
  '{"state": "achieved", "description": "SJM decides to make Rhysand the true love interest", "boldness": "Complete subversion of Book 1 romance", "risk": "Alienating readers invested in Tamlin", "inspiration": "Hades and Persephone myth", "key_insight": "Tamlin''s protection becomes imprisonment", "rhysand_development": "Villain revealed as traumatized hero"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('55555555-0002-0002-0000-000000000001', '55555555-5555-5555-5555-555555555555',
- 'The Inner Circle Created', 'milestone.creative.ensemble', '2015-08-01'::timestamptz,
+ 'The Inner Circle Created', 'milestone.creative.ensemble', 'completed', '2015-08-01'::timestamptz,
  '{"state": "achieved", "members": {"Rhysand": "High Lord, Daemati, most powerful", "Cassian": "General of armies, Illyrian warrior, 7 siphons", "Azriel": "Spymaster, Shadowsinger, scarred hands", "Mor": "Truth power, escaped Court of Nightmares", "Amren": "Ancient being, formerly imprisoned, speaks all languages"}, "dynamic": "Found family, centuries of loyalty", "location": "Velaris - hidden City of Starlight", "innovation": "Male characters with emotional depth and healthy masculinity"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('55555555-0002-0003-0000-000000000001', '55555555-5555-5555-5555-555555555555',
- 'Velaris Worldbuilding', 'milestone.creative.worldbuilding', '2015-09-01'::timestamptz,
+ 'Velaris Worldbuilding', 'milestone.creative.worldbuilding', 'completed', '2015-09-01'::timestamptz,
  '{"state": "achieved", "name": "Velaris - The City of Starlight", "hidden_for": "5000+ years", "concealment": "Ancient High Lord blood magic", "locations": {"Rainbow": "Artistic quarter", "House_of_Wind": "Mountain residence", "Sidra_River": "Sapphire blue river through city", "Palace_of_Bone_and_Salt": "Court of Nightmares below"}, "culture": "Art, music, freedom - opposite of Night Court reputation", "contrast": "Court of Dreams vs Court of Nightmares"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('55555555-0002-0004-0000-000000000001', '55555555-5555-5555-5555-555555555555',
- 'Feyre''s PTSD Arc Written', 'milestone.creative.theme', '2015-10-01'::timestamptz,
+ 'Feyre''s PTSD Arc Written', 'milestone.creative.theme', 'completed', '2015-10-01'::timestamptz,
  '{"state": "achieved", "portrayal": "Authentic trauma recovery", "symptoms": ["Nightmares", "Panic attacks", "Emotional numbness", "Flashbacks", "Physical deterioration"], "healing_through": ["Rhysand''s patience", "Learning to read", "Art therapy in Rainbow", "Training powers", "Found family"], "critical_acclaim": "Praised for realistic mental health representation", "tamlin_contrast": "His protection becomes retraumatizing"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('55555555-0002-0005-0000-000000000001', '55555555-5555-5555-5555-555555555555',
- 'The Mate Bond Reveal Written', 'milestone.creative.romance', '2015-12-01'::timestamptz,
+ 'The Mate Bond Reveal Written', 'milestone.creative.romance', 'completed', '2015-12-01'::timestamptz,
  '{"state": "achieved", "scene": "Feyre realizes Rhysand is her true mate", "location": "During Calanmai/Starfall celebration", "fan_reaction": "Broke the internet", "quote": "My mate. My mate. My mate.", "significance": "Redefined the concept of destined love in fantasy", "contrast": "vs Tamlin bond (toxic, controlling)", "aftermath": "Massive fandom pivot to Rhysand"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('55555555-0002-0006-0000-000000000001', '55555555-5555-5555-5555-555555555555',
- 'A Court of Mist and Fury Published', 'milestone.publication.book2', '2016-05-03'::timestamptz,
+ 'A Court of Mist and Fury Published', 'milestone.publication.book2', 'completed', '2016-05-03'::timestamptz,
  '{"state": "achieved", "publisher": "Bloomsbury", "pages": 624, "chapters": 65, "pov": "Feyre Archeron (first person)", "dedication": "For my mom, who taught me to believe in fairy tales", "cultural_impact": "Transformed the romantasy genre", "goodreads_choice_award": "Best YA Fantasy & Sci-Fi 2016", "key_quote": "To the stars who listen—and the dreams that are answered.", "iconic_moments": ["Starfall scene", "Mate bond reveal", "Feyre learns to read", "First flight with Rhysand", "Under the Mountain flashbacks"], "fairy_tale_basis": ["Hades and Persephone", "Twelve Dancing Princesses"]}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
@@ -260,27 +260,27 @@ INSERT INTO onto_milestones (id, project_id, title, type_key, due_at, props, cre
 -- MILESTONES - GOAL 3: A Court of Wings and Ruin (2016-2017)
 -- ============================================
 ('55555555-0003-0001-0000-000000000001', '55555555-5555-5555-5555-555555555555',
- 'War Plot Development', 'milestone.creative.plot', '2016-06-01'::timestamptz,
+ 'War Plot Development', 'milestone.creative.plot', 'completed', '2016-06-01'::timestamptz,
  '{"state": "achieved", "antagonist": "King of Hybern", "goal": "Destroy the Wall, conquer mortal and fae lands", "weapon": "The Cauldron - primordial magic object", "allies": {"hybern": ["Jurian (resurrected)", "Ianthe (traitor priestess)", "Tamlin (manipulated)"]}, "defenders": "All seven courts united (eventually)", "stakes": "Survival of both worlds"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('55555555-0003-0002-0000-000000000001', '55555555-5555-5555-5555-555555555555',
- 'Nesta and Elain Made', 'milestone.creative.character', '2016-08-01'::timestamptz,
+ 'Nesta and Elain Made', 'milestone.creative.character', 'completed', '2016-08-01'::timestamptz,
  '{"state": "achieved", "event": "Archeron sisters forced into Cauldron", "nesta": {"powers": "Cauldron-Made, took power from Cauldron itself", "reaction": "Rage, trauma, depression", "later_arc": "Valkyrie training, Cassian mate bond"}, "elain": {"powers": "Seer abilities", "reaction": "Broken, withdrawn", "later_arc": "Mate bond with Lucien, mysterious future"}, "significance": "Sets up books 4-6 story arcs"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('55555555-0003-0003-0000-000000000001', '55555555-5555-5555-5555-555555555555',
- 'First Female High Lady', 'milestone.creative.theme', '2016-10-01'::timestamptz,
+ 'First Female High Lady', 'milestone.creative.theme', 'completed', '2016-10-01'::timestamptz,
  '{"state": "achieved", "moment": "Rhysand names Feyre High Lady of the Night Court", "significance": "First in Prythian history", "quote": "There are different kinds of strength", "symbolism": "Power shared equally between partners", "fan_reaction": "Iconic feminist moment", "political_impact": "Other courts skeptical but cannot deny"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('55555555-0003-0004-0000-000000000001', '55555555-5555-5555-5555-555555555555',
- 'Battle Against Hybern Written', 'milestone.creative.climax', '2016-12-01'::timestamptz,
+ 'Battle Against Hybern Written', 'milestone.creative.climax', 'completed', '2016-12-01'::timestamptz,
  '{"state": "achieved", "location": "Multiple fronts across Prythian", "key_battles": ["Spring Court infiltration", "Summer Court defense", "Final battle at the Wall"], "casualties": {"major_deaths": ["Mr. Archeron (father)", "Hybern King"]}, "father_redemption": "Archeron father dies protecting daughters", "resolution": "Wall destroyed but peace achieved"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('55555555-0003-0005-0000-000000000001', '55555555-5555-5555-5555-555555555555',
- 'A Court of Wings and Ruin Published', 'milestone.publication.book3', '2017-05-02'::timestamptz,
+ 'A Court of Wings and Ruin Published', 'milestone.publication.book3', 'completed', '2017-05-02'::timestamptz,
  '{"state": "achieved", "publisher": "Bloomsbury", "pages": 699, "chapters": 80, "pov": "Feyre Archeron (first person)", "dedication": "For my father, who taught me strength", "conclusion": "Original trilogy complete", "open_threads": ["Nesta''s trauma", "Elain''s powers", "Mor''s secret", "Koschei threat"], "key_quote": "Be happy, Feyre."}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
@@ -288,32 +288,32 @@ INSERT INTO onto_milestones (id, project_id, title, type_key, due_at, props, cre
 -- MILESTONES - GOAL 4: Nesta's Story (2018-2021)
 -- ============================================
 ('55555555-0004-0001-0000-000000000001', '55555555-5555-5555-5555-555555555555',
- 'Bridge Novel Concept', 'milestone.creative.decision', '2017-06-01'::timestamptz,
+ 'Bridge Novel Concept', 'milestone.creative.decision', 'completed', '2017-06-01'::timestamptz,
  '{"state": "achieved", "book": "A Court of Frost and Starlight", "purpose": "Holiday novella bridging original trilogy and Nesta''s story", "format": "Multiple POVs including Rhysand, Cassian, Feyre", "tone": "Lighter, healing-focused", "criticism": "Some fans found it lacking plot", "defense": "Intentional palate cleanser after war trauma"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('55555555-0004-0002-0000-000000000001', '55555555-5555-5555-5555-555555555555',
- 'A Court of Frost and Starlight Published', 'milestone.publication.novella', '2018-05-01'::timestamptz,
+ 'A Court of Frost and Starlight Published', 'milestone.publication.novella', 'completed', '2018-05-01'::timestamptz,
  '{"state": "achieved", "publisher": "Bloomsbury", "pages": 229, "format": "Novella", "pov": "Multiple (Feyre, Rhysand, Mor, Cassian)", "setting": "Winter Solstice celebration in Velaris", "purpose": "Post-war healing, setup for ACOSF", "criticism": "Lighter on plot, heavy on domesticity", "seeds_planted": ["Nesta''s spiral", "Cassian longing", "Koschei mention"]}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('55555555-0004-0003-0000-000000000001', '55555555-5555-5555-5555-555555555555',
- 'Nesta as Protagonist Decision', 'milestone.creative.pivot', '2018-06-01'::timestamptz,
+ 'Nesta as Protagonist Decision', 'milestone.creative.pivot', 'completed', '2018-06-01'::timestamptz,
  '{"state": "achieved", "decision": "Make Nesta the focus of Book 5", "risk": "Nesta was divisive - many readers disliked her", "opportunity": "Explore trauma recovery from different angle", "approach": "Authentic portrayal of depression, self-destruction, healing", "cassian_pairing": "Slow burn romance as part of healing", "theme": "You are allowed to struggle and still be worthy of love"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('55555555-0004-0004-0000-000000000001', '55555555-5555-5555-5555-555555555555',
- 'The Valkyrie Concept', 'milestone.creative.innovation', '2019-01-01'::timestamptz,
+ 'The Valkyrie Concept', 'milestone.creative.innovation', 'completed', '2019-01-01'::timestamptz,
  '{"state": "achieved", "concept": "Ancient female warriors training tradition", "participants": ["Nesta", "Gwyn", "Emerie"], "location": "House of Wind training ring", "rituals": ["Blood Rite", "Valkyrie oaths", "Training regimens"], "significance": "Female friendship as healing force", "fan_favorite": "Gwyn and Emerie became beloved characters"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('55555555-0004-0005-0000-000000000001', '55555555-5555-5555-5555-555555555555',
- 'Cassian and Nesta Romance Written', 'milestone.creative.romance', '2019-06-01'::timestamptz,
+ 'Cassian and Nesta Romance Written', 'milestone.creative.romance', 'completed', '2019-06-01'::timestamptz,
  '{"state": "achieved", "dynamic": "Enemies to lovers, slow burn", "years_of_tension": "Multiple books of buildup", "key_moment": "Bargain for training sessions", "obstacles": ["Nesta''s self-destruction", "Cassian''s fear of rejection", "Mate bond denial"], "resolution": "Nesta accepts bond, declares love", "fan_reaction": "Intense satisfaction after years of waiting"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('55555555-0004-0006-0000-000000000001', '55555555-5555-5555-5555-555555555555',
- 'A Court of Silver Flames Published', 'milestone.publication.book5', '2021-02-16'::timestamptz,
+ 'A Court of Silver Flames Published', 'milestone.publication.book5', 'completed', '2021-02-16'::timestamptz,
  '{"state": "achieved", "publisher": "Bloomsbury", "pages": 757, "chapters": 82, "pov": "Nesta Archeron (third person), some Cassian", "dedication": "For the women who fell, who got back up, who found each other", "new_classification": "Moved to Adult Fantasy", "goodreads_choice_award": "Best Fantasy 2021", "key_themes": ["Healing is not linear", "Female friendship", "Self-forgiveness"], "explicit_content": "Significantly more adult content than previous books", "nesta_transformation": "From villain-coded to beloved protagonist"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
@@ -321,27 +321,27 @@ INSERT INTO onto_milestones (id, project_id, title, type_key, due_at, props, cre
 -- MILESTONES - GOAL 5: Worldbuilding
 -- ============================================
 ('55555555-0005-0001-0000-000000000001', '55555555-5555-5555-5555-555555555555',
- 'The Night Court Duality', 'milestone.worldbuilding.complete', '2016-05-01'::timestamptz,
+ 'The Night Court Duality', 'milestone.worldbuilding.complete', 'completed', '2016-05-01'::timestamptz,
  '{"state": "achieved", "structure": {"Court_of_Dreams": "Velaris - art, freedom, starlight", "Court_of_Nightmares": "Hewn City - cruelty, politics, fear"}, "governance": "Rhysand rules both, plays dual roles", "key_insight": "Night Court reputation is deliberate misdirection", "velaris_secret": "Hidden for 5000+ years from all outsiders", "symbolism": "Light within darkness, hope within despair"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('55555555-0005-0002-0000-000000000001', '55555555-5555-5555-5555-555555555555',
- 'Illyrian Culture Development', 'milestone.worldbuilding.culture', '2016-03-01'::timestamptz,
+ 'Illyrian Culture Development', 'milestone.worldbuilding.culture', 'completed', '2016-03-01'::timestamptz,
  '{"state": "achieved", "society": "Warrior culture in Night Court mountains", "key_figures": ["Cassian (bastard-born general)", "Azriel (tortured childhood)", "Rhysand (half-Illyrian)"], "features": {"wings": "Membrane wings, can be clipped", "siphons": "Power amplifiers worn by strongest warriors", "war_camps": "Training grounds, often brutal"}, "criticism_addressed": "Series acknowledges Illyrian misogyny as problem to solve"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('55555555-0005-0003-0000-000000000001', '55555555-5555-5555-5555-555555555555',
- 'The Cauldron Mythology', 'milestone.worldbuilding.magic', '2017-01-01'::timestamptz,
+ 'The Cauldron Mythology', 'milestone.worldbuilding.magic', 'completed', '2017-01-01'::timestamptz,
  '{"state": "achieved", "nature": "Primordial magical object that created the world", "powers": ["Create life", "Unmake beings", "Transform mortals to fae"], "corrupted_use": "King of Hybern wields it as weapon", "nesta_connection": "Stole power from Cauldron during transformation", "significance": "Source of Made beings'' power"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('55555555-0005-0004-0000-000000000001', '55555555-5555-5555-5555-555555555555',
- 'Mate Bonds Lore Established', 'milestone.worldbuilding.romance', '2016-05-01'::timestamptz,
+ 'Mate Bonds Lore Established', 'milestone.worldbuilding.romance', 'completed', '2016-05-01'::timestamptz,
  '{"state": "achieved", "definition": "Soul-deep magical bond between fated partners", "manifestation": "Recognized through scent, instinct, or magical signal", "acceptance": "Must be consciously accepted by both parties", "rejection": "Can be rejected but causes pain", "key_couples": ["Rhysand/Feyre", "Cassian/Nesta", "Lucien/Elain (complicated)"], "cultural_impact": "Term mate entered common fan vocabulary"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('55555555-0005-0005-0000-000000000001', '55555555-5555-5555-5555-555555555555',
- 'High Lord Powers System', 'milestone.worldbuilding.magic', '2015-12-01'::timestamptz,
+ 'High Lord Powers System', 'milestone.worldbuilding.magic', 'completed', '2015-12-01'::timestamptz,
  '{"state": "achieved", "inheritance": "Power passes to heir upon death", "court_powers": {"Spring": "Growth, shape-shifting", "Summer": "Water manipulation", "Autumn": "Fire", "Winter": "Ice and cold", "Dawn": "Healing, invention", "Day": "Spell-cleaving, light", "Night": "Darkness, dreams, Daemati"}, "feyre_unique": "Received power from all seven during resurrection"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
@@ -349,22 +349,22 @@ INSERT INTO onto_milestones (id, project_id, title, type_key, due_at, props, cre
 -- MILESTONES - GOAL 6: Cultural Phenomenon
 -- ============================================
 ('55555555-0006-0001-0000-000000000001', '55555555-5555-5555-5555-555555555555',
- 'BookTok Explosion', 'milestone.cultural.viral', '2020-06-01'::timestamptz,
+ 'BookTok Explosion', 'milestone.cultural.viral', 'completed', '2020-06-01'::timestamptz,
  '{"state": "achieved", "platform": "TikTok", "hashtag": "#ACOTAR", "views": "8.5 billion+", "content_types": ["Book reactions", "Cosplay", "Fan art", "Theory videos", "Character analyses", "Fitness challenges (Valkyrie)", "Tattoo reveals"], "demographic": "Primarily women 16-35", "impact": "Major driver of sales resurgence"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('55555555-0006-0002-0000-000000000001', '55555555-5555-5555-5555-555555555555',
- 'Publisher Sales Surge', 'milestone.business.success', '2023-06-01'::timestamptz,
+ 'Publisher Sales Surge', 'milestone.business.success', 'completed', '2023-06-01'::timestamptz,
  '{"state": "achieved", "announcement": "Bloomsbury reports 79% sales increase H1 2023", "comparison": "Described as Harry Potter effect", "cause": "BookTok viral spread", "copies_sold": "38+ million worldwide", "formats": ["Hardcover", "Paperback", "Audiobook", "Special editions"], "merchandise": "Licensed products, fan-made items"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('55555555-0006-0003-0000-000000000001', '55555555-5555-5555-5555-555555555555',
- 'Fan Theory Culture', 'milestone.cultural.engagement', '2021-01-01'::timestamptz,
+ 'Fan Theory Culture', 'milestone.cultural.engagement', 'completed', '2021-01-01'::timestamptz,
  '{"state": "achieved", "major_theories": {"azriel_mate": ["Gwyn supporters", "Elain supporters", "Evidence wars"], "elain_arc": ["Villain theory", "Tamlin redemption romance", "Spring Court High Lady"], "mor_power": "Banshee-like truth abilities", "eris_redemption": "Secret ally all along"}, "platforms": ["Reddit r/acotar", "Tumblr", "TikTok", "YouTube"], "engagement": "Detailed textual analysis, quote tracking"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('55555555-0006-0004-0000-000000000001', '55555555-5555-5555-5555-555555555555',
- 'ACOTAR Tattoo Trend', 'milestone.cultural.expression', '2021-06-01'::timestamptz,
+ 'ACOTAR Tattoo Trend', 'milestone.cultural.expression', 'completed', '2021-06-01'::timestamptz,
  '{"state": "achieved", "popular_designs": ["Eight-pointed star", "Night Court constellation", "To the stars who listen quote", "Inner Circle symbols", "Mountain and stars"], "significance": "Physical embodiment of fandom identity", "community": "Fans bond over shared tattoos", "locations": "Often wrist, forearm, back"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
@@ -372,27 +372,27 @@ INSERT INTO onto_milestones (id, project_id, title, type_key, due_at, props, cre
 -- MILESTONES - GOAL 7: The Future
 -- ============================================
 ('55555555-0007-0001-0000-000000000001', '55555555-5555-5555-5555-555555555555',
- 'Multiverse Reveal with Crescent City', 'milestone.creative.crossover', '2024-01-30'::timestamptz,
+ 'Multiverse Reveal with Crescent City', 'milestone.creative.crossover', 'completed', '2024-01-30'::timestamptz,
  '{"state": "achieved", "book": "House of Flame and Shadow (Crescent City Book 3)", "event": "Bryce Quinlan travels to Prythian", "connections": ["Eight-pointed star symbol", "Shared magical history", "Nesta and Azriel appearances", "Truth-Teller dagger"], "fan_reaction": "Excitement mixed with continuity questions", "implications": "Three series share one megaverse"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('55555555-0007-0002-0000-000000000001', '55555555-5555-5555-5555-555555555555',
- 'TV Adaptation Announced (Hulu)', 'milestone.business.adaptation', '2021-03-01'::timestamptz,
+ 'TV Adaptation Announced (Hulu)', 'milestone.business.adaptation', 'completed', '2021-03-01'::timestamptz,
  '{"state": "achieved", "network": "Hulu", "showrunner": "Ronald D. Moore (Outlander creator)", "sjm_role": "Co-adapter, heavily involved", "work_schedule": "4 hours daily Zoom calls with Moore", "format": "TV series adaptation of Book 1", "fan_excitement": "Massive anticipation"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('55555555-0007-0003-0000-000000000001', '55555555-5555-5555-5555-555555555555',
- 'Ronald D. Moore Departs', 'milestone.business.setback', '2024-07-01'::timestamptz,
+ 'Ronald D. Moore Departs', 'milestone.business.setback', 'completed', '2024-07-01'::timestamptz,
  '{"state": "achieved", "reason": "Moore returned to Sony projects", "impact": "Major blow to adaptation momentum", "fan_reaction": "Concern but continued hope", "status": "Project in limbo"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('55555555-0007-0004-0000-000000000001', '55555555-5555-5555-5555-555555555555',
- 'Hulu Cancels ACOTAR Adaptation', 'milestone.business.cancellation', '2025-03-01'::timestamptz,
+ 'Hulu Cancels ACOTAR Adaptation', 'milestone.business.cancellation', 'completed', '2025-03-01'::timestamptz,
  '{"state": "achieved", "announcement": "Hulu officially cancels adaptation", "reason": "Creative and business challenges post-Moore departure", "sjm_response": "Will shop adaptation to other networks", "fan_reaction": "Disappointment but not surprise", "future": "Other networks potentially interested"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('55555555-0007-0005-0000-000000000001', '55555555-5555-5555-5555-555555555555',
- 'Book 6 First Draft Completed', 'milestone.creative.progress', '2025-07-15'::timestamptz,
+ 'Book 6 First Draft Completed', 'milestone.creative.progress', 'completed', '2025-07-15'::timestamptz,
  '{"state": "achieved", "announcement": "SJM Instagram announcement", "length": "Long book - SJM confirmed", "likely_focus": "Elain or Azriel POV expected", "mysteries_to_address": ["Elain''s seer powers", "Azriel''s mate", "Koschei threat"], "publication": "Estimated early 2026", "fan_reaction": "Excitement after 4+ year wait since ACOSF"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
@@ -400,27 +400,27 @@ INSERT INTO onto_milestones (id, project_id, title, type_key, due_at, props, cre
 -- SUB-MILESTONES: Under the Mountain Events
 -- ============================================
 ('55552222-0001-0005-0001-000000000001', '55555555-5555-5555-5555-555555555555',
- 'First Trial: The Wyrm', 'milestone.plot.trial', '2015-05-05'::timestamptz,
+ 'First Trial: The Wyrm', 'milestone.plot.trial', 'completed', '2015-05-05'::timestamptz,
  '{"state": "achieved", "task": "Kill the Middengard Wyrm in underground tunnels", "danger": "Massive worm creature in complete darkness", "injury": "Feyre badly wounded", "rhysand_role": "Secretly helps Feyre heal afterward", "bargain": "Feyre owes one week per month to Rhysand"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('55552222-0001-0005-0002-000000000001', '55555555-5555-5555-5555-555555555555',
- 'Second Trial: The Riddle Challenge', 'milestone.plot.trial', '2015-05-05'::timestamptz,
+ 'Second Trial: The Riddle Challenge', 'milestone.plot.trial', 'completed', '2015-05-05'::timestamptz,
  '{"state": "achieved", "task": "Solve impossible riddle within time limit", "riddle": "What demands an answer but asks no question?", "answer": "Love", "near_failure": "Feyre struggles with literacy", "symbolism": "Feyre cannot read - barrier to knowledge and power"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('55552222-0001-0005-0003-000000000001', '55555555-5555-5555-5555-555555555555',
- 'Third Trial: Kill the Innocents', 'milestone.plot.trial', '2015-05-05'::timestamptz,
+ 'Third Trial: Kill the Innocents', 'milestone.plot.trial', 'completed', '2015-05-05'::timestamptz,
  '{"state": "achieved", "task": "Kill two fae with a knife", "twist": "Feyre stabs them but Amarantha intended cruel death regardless", "revelation": "Victims were already dying from earlier torture", "moral_weight": "Feyre carries guilt despite circumstances"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('55552222-0001-0005-0004-000000000001', '55555555-5555-5555-5555-555555555555',
- 'Feyre Solves the Riddle', 'milestone.plot.climax', '2015-05-05'::timestamptz,
+ 'Feyre Solves the Riddle', 'milestone.plot.climax', 'completed', '2015-05-05'::timestamptz,
  '{"state": "achieved", "moment": "Feyre realizes answer during third trial", "word": "Love", "significance": "Recognition of her feelings for Tamlin (subverted in book 2)", "amarantha_reaction": "Kills Feyre anyway out of spite"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('55552222-0001-0005-0005-000000000001', '55555555-5555-5555-5555-555555555555',
- 'Feyre''s Death and Resurrection', 'milestone.plot.transformation', '2015-05-05'::timestamptz,
+ 'Feyre''s Death and Resurrection', 'milestone.plot.transformation', 'completed', '2015-05-05'::timestamptz,
  '{"state": "achieved", "death": "Amarantha kills Feyre", "resurrection": "All seven High Lords contribute power to revive her", "transformation": "Feyre becomes High Fae", "new_powers": "Access to all seven courts'' magic", "significance": "Feyre reborn as something entirely new"}'::jsonb,
  '00000000-0000-0000-0000-000000000002')
 ON CONFLICT (id) DO NOTHING;

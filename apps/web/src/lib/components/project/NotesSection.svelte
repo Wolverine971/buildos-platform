@@ -302,26 +302,28 @@
 	confirmVariant="danger"
 	icon="danger"
 	loading={deleteModalLoading}
-	on:confirm={confirmDeleteNote}
-	on:cancel={cancelDeleteNote}
+	onconfirm={confirmDeleteNote}
+	oncancel={cancelDeleteNote}
 >
-	<div slot="content">
+	{#snippet content()}
 		{#if deleteModalData}
 			<p class="text-sm text-gray-600 dark:text-gray-400">
 				Are you sure you want to delete this note? This action cannot be undone.
 			</p>
 		{/if}
-	</div>
-	<div slot="details" class="mt-3">
-		{#if deleteModalData}
-			<p
-				class="text-xs text-gray-500 dark:text-gray-500 bg-gray-50 dark:bg-gray-800 p-2 rounded border"
-			>
-				<span class="font-medium">Note:</span>
-				{deleteModalData.title}
-			</p>
-		{/if}
-	</div>
+	{/snippet}
+	{#snippet details()}
+		<div class="mt-3">
+			{#if deleteModalData}
+				<p
+					class="text-xs text-gray-500 dark:text-gray-500 bg-gray-50 dark:bg-gray-800 p-2 rounded border"
+				>
+					<span class="font-medium">Note:</span>
+					{deleteModalData.title}
+				</p>
+			{/if}
+		</div>
+	{/snippet}
 </ConfirmationModal>
 
 <style>

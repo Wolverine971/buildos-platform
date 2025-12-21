@@ -16,6 +16,7 @@ import {
 	TimeBlockSuggestionService,
 	type TimeBlockSuggestionResult
 } from './time-block-suggestion.service';
+import { PUBLIC_APP_URL } from '$env/static/public';
 
 type TypedSupabaseClient = SupabaseClient<Database>;
 
@@ -46,20 +47,9 @@ function validateColorId(colorId: string | null | undefined): string {
 	}
 	return DEFAULT_PROJECT_COLOR;
 }
-const APP_BASE_URL = (() => {
-	const raw =
-		typeof process !== 'undefined' &&
-		process.env &&
-		typeof process.env.PUBLIC_APP_URL === 'string'
-			? process.env.PUBLIC_APP_URL.trim()
-			: '';
 
-	if (raw.length === 0) {
-		return FALLBACK_APP_URL;
-	}
-
-	return raw.replace(/\/$/, '');
-})();
+// Use SvelteKit's $env module for environment variables
+const APP_BASE_URL = (PUBLIC_APP_URL || FALLBACK_APP_URL).replace(/\/$/, '');
 
 export class TimeBlockService {
 	constructor(

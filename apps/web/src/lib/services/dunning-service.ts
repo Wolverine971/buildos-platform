@@ -3,6 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { DUNNING_CONFIG, EMAIL_TEMPLATES, type DunningStage } from '$lib/config/dunning';
 import { EmailService } from './email-service';
 import { StripeService } from './stripe-service';
+import { PUBLIC_APP_URL } from '$env/static/public';
 
 export interface FailedPayment {
 	id: string;
@@ -125,8 +126,8 @@ export class DunningService {
 		const template = EMAIL_TEMPLATES[stage.emailTemplate];
 		if (!template) return;
 
-		// Use a base URL that can be configured
-		const baseUrl = (process.env.PUBLIC_APP_URL || 'https://build-os.com').trim();
+		// Use SvelteKit's $env module for environment variables
+		const baseUrl = (PUBLIC_APP_URL || 'https://build-os.com').trim();
 		const updatePaymentUrl = `${baseUrl}/profile?tab=billing&action=update_payment`;
 		const reactivateUrl = `${baseUrl}/pricing`;
 

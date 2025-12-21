@@ -50,7 +50,7 @@
 </script>
 
 <div
-	class="bg-card border border-border rounded-xl shadow-ink tx tx-frame tx-weak overflow-hidden {className}"
+	class="bg-card border border-border rounded-xl shadow-ink tx tx-pulse tx-weak overflow-hidden {className}"
 >
 	<!-- Header - matches real panel header exactly -->
 	<div

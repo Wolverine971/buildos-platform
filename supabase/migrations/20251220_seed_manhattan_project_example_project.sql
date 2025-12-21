@@ -83,40 +83,40 @@ INSERT INTO onto_projects (
 -- ============================================
 -- GOALS (6 Strategic Objectives)
 -- ============================================
-INSERT INTO onto_goals (id, project_id, name, type_key, props, created_by) VALUES
+INSERT INTO onto_goals (id, project_id, name, type_key, state_key, props, created_by) VALUES
 -- Goal 1: Beat Germany to the Bomb
 ('22226666-0001-0000-0000-000000000001', '66666666-6666-6666-6666-666666666666',
- 'Develop Atomic Weapons Before Nazi Germany', 'goal.strategic',
+ 'Develop Atomic Weapons Before Nazi Germany', 'goal.strategic', 'achieved',
  '{"priority": 1, "state": "achieved", "description": "The original strategic imperative: fear that Germany, with its advanced physics establishment, might develop atomic weapons first. This existential threat drove the initial urgency and massive investment.", "outcome": "Germany surrendered May 1945 before completing program; U.S. tested first bomb July 1945"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 -- Goal 2: Produce Fissile Material
 ('22226666-0002-0000-0000-000000000001', '66666666-6666-6666-6666-666666666666',
- 'Produce Sufficient Fissile Material at Industrial Scale', 'goal.operational',
+ 'Produce Sufficient Fissile Material at Industrial Scale', 'goal.operational', 'achieved',
  '{"priority": 1, "state": "achieved", "description": "Enrich uranium-235 and produce plutonium-239 in quantities sufficient for multiple weapons. This required building the largest industrial facilities ever constructed, using technologies never before attempted at scale.", "sites": ["Oak Ridge", "Hanford"], "materials": ["U-235", "Pu-239"], "outcome": "Produced material for 3 bombs"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 -- Goal 3: Design and Build Weapons
 ('22226666-0003-0000-0000-000000000001', '66666666-6666-6666-6666-666666666666',
- 'Design and Build Deliverable Nuclear Weapons', 'goal.technical',
+ 'Design and Build Deliverable Nuclear Weapons', 'goal.technical', 'achieved',
  '{"priority": 1, "state": "achieved", "description": "Transform theoretical physics into practical weapons small enough for aircraft delivery. Required solving unprecedented engineering challenges in explosives, metallurgy, and electronics.", "site": "Los Alamos", "designs": ["Little Boy (gun-type)", "Fat Man (implosion)"], "outcome": "Both designs deployed successfully"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 -- Goal 4: Maintain Secrecy
 ('22226666-0004-0000-0000-000000000001', '66666666-6666-6666-6666-666666666666',
- 'Maintain Absolute Secrecy', 'goal.security',
+ 'Maintain Absolute Secrecy', 'goal.security', 'achieved',
  '{"priority": 1, "state": "achieved", "description": "Prevent enemies from learning about the program through compartmentalization, security protocols, and counterintelligence. Over 130,000 workers, most unaware of what they were building.", "methods": ["compartmentalization", "need-to-know", "cover stories"], "outcome": "Public secrecy maintained; Soviet penetration not discovered until 1950"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 -- Goal 5: End War with Japan
 ('22226666-0005-0000-0000-000000000001', '66666666-6666-6666-6666-666666666666',
- 'End the War with Japan', 'goal.strategic',
+ 'End the War with Japan', 'goal.strategic', 'achieved',
  '{"priority": 1, "state": "achieved", "description": "Use atomic weapons to force Japanese surrender and avoid the costly invasion of the Japanese mainland (Operation Downfall), projected to cause massive casualties on both sides.", "targets": ["Hiroshima", "Nagasaki"], "outcome": "Japan surrendered August 15, 1945"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 -- Goal 6: Establish Post-War Nuclear Capability
 ('22226666-0006-0000-0000-000000000001', '66666666-6666-6666-6666-666666666666',
- 'Establish Post-War Nuclear Capability', 'goal.institutional',
+ 'Establish Post-War Nuclear Capability', 'goal.institutional', 'achieved',
  '{"priority": 2, "state": "achieved", "description": "Transition from wartime military project to peacetime atomic energy program. Maintain nuclear monopoly while building institutional infrastructure for continued development.", "outcome": "Atomic Energy Act of 1946 created civilian AEC"}'::jsonb,
  '00000000-0000-0000-0000-000000000002')
 ON CONFLICT (id) DO NOTHING;
@@ -124,60 +124,60 @@ ON CONFLICT (id) DO NOTHING;
 -- ============================================
 -- MILESTONES - Goal 1: Beat Germany
 -- ============================================
-INSERT INTO onto_milestones (id, project_id, title, type_key, due_at, props, created_by) VALUES
+INSERT INTO onto_milestones (id, project_id, title, type_key, state_key, due_at, props, created_by) VALUES
 
 ('33336666-0001-0001-0000-000000000001', '66666666-6666-6666-6666-666666666666',
  'Einstein-Szilard Letter Sent to FDR',
- 'milestone.initiation',
+ 'milestone.initiation', 'completed',
  '1939-08-02'::timestamptz,
  '{"state": "achieved", "description": "Leo Szilard drafted and Albert Einstein signed letter warning President Roosevelt that Germany might develop atomic bombs, urging U.S. to begin nuclear research", "personnel": ["Albert Einstein", "Leo Szilard", "Edward Teller", "Eugene Wigner"]}',
  '00000000-0000-0000-0000-000000000002'),
 
 ('33336666-0001-0002-0000-000000000001', '66666666-6666-6666-6666-666666666666',
  'FDR Briefed by Alexander Sachs',
- 'milestone.decision',
+ 'milestone.decision', 'completed',
  '1939-10-11'::timestamptz,
  '{"state": "achieved", "description": "Economist Alexander Sachs personally delivered Einstein letter to Roosevelt and convinced him of its importance over two meetings", "personnel": ["FDR", "Alexander Sachs"]}',
  '00000000-0000-0000-0000-000000000002'),
 
 ('33336666-0001-0003-0000-000000000001', '66666666-6666-6666-6666-666666666666',
  'Advisory Committee on Uranium Established',
- 'milestone.organizational',
+ 'milestone.organizational', 'completed',
  '1939-10-21'::timestamptz,
  '{"state": "achieved", "description": "First U.S. government body to study atomic energy for military purposes, chaired by Lyman Briggs with $6,000 budget", "personnel": ["Lyman Briggs"], "budget": "$6,000"}',
  '00000000-0000-0000-0000-000000000002'),
 
 ('33336666-0001-0004-0000-000000000001', '66666666-6666-6666-6666-666666666666',
  'Office of Scientific Research and Development Created',
- 'milestone.organizational',
+ 'milestone.organizational', 'completed',
  '1941-06-28'::timestamptz,
  '{"state": "achieved", "description": "FDR Executive Order 8807 created OSRD under Vannevar Bush, centralizing wartime scientific research", "personnel": ["Vannevar Bush", "James Conant"]}',
  '00000000-0000-0000-0000-000000000002'),
 
 ('33336666-0001-0005-0000-000000000001', '66666666-6666-6666-6666-666666666666',
  'National Academy of Sciences Report Confirms Feasibility',
- 'milestone.technical',
+ 'milestone.technical', 'completed',
  '1941-05-17'::timestamptz,
  '{"state": "achieved", "description": "Arthur Compton report to NAS concluded atomic bombs were feasible and recommended accelerated development", "personnel": ["Arthur Compton"]}',
  '00000000-0000-0000-0000-000000000002'),
 
 ('33336666-0001-0006-0000-000000000001', '66666666-6666-6666-6666-666666666666',
  'FDR Authorizes Full-Scale Development',
- 'milestone.decision',
+ 'milestone.decision', 'completed',
  '1941-12-06'::timestamptz,
  '{"state": "achieved", "description": "One day before Pearl Harbor, FDR approved accelerated atomic bomb program with full government commitment", "personnel": ["FDR", "Vannevar Bush"]}',
  '00000000-0000-0000-0000-000000000002'),
 
 ('33336666-0001-0007-0000-000000000001', '66666666-6666-6666-6666-666666666666',
  'Alsos Mission Confirms German Program Far Behind',
- 'milestone.intelligence',
+ 'milestone.intelligence', 'completed',
  '1944-11-15'::timestamptz,
  '{"state": "achieved", "description": "Military intelligence mission led by Col. Boris Pash captured German scientists and documents, confirming Nazi atomic program was years behind U.S.", "personnel": ["Col. Boris Pash", "Samuel Goudsmit"]}',
  '00000000-0000-0000-0000-000000000002'),
 
 ('33336666-0001-0008-0000-000000000001', '66666666-6666-6666-6666-666666666666',
  'Germany Surrenders (V-E Day)',
- 'milestone.external',
+ 'milestone.external', 'completed',
  '1945-05-08'::timestamptz,
  '{"state": "achieved", "description": "Germany surrendered unconditionally, eliminating the original threat that motivated the Manhattan Project"}',
  '00000000-0000-0000-0000-000000000002');
@@ -185,102 +185,102 @@ INSERT INTO onto_milestones (id, project_id, title, type_key, due_at, props, cre
 -- ============================================
 -- MILESTONES - Goal 2: Produce Fissile Material
 -- ============================================
-INSERT INTO onto_milestones (id, project_id, title, type_key, due_at, props, created_by) VALUES
+INSERT INTO onto_milestones (id, project_id, title, type_key, state_key, due_at, props, created_by) VALUES
 
 ('33336666-0002-0001-0000-000000000001', '66666666-6666-6666-6666-666666666666',
  'Plutonium Discovered at Berkeley',
- 'milestone.scientific',
+ 'milestone.scientific', 'completed',
  '1940-12-14'::timestamptz,
  '{"state": "achieved", "description": "Glenn Seaborg and team bombarded uranium with deuterons, producing neptunium-238 which decayed to plutonium-238—a new element", "personnel": ["Glenn Seaborg", "Edwin McMillan", "Joseph Kennedy", "Arthur Wahl"]}',
  '00000000-0000-0000-0000-000000000002'),
 
 ('33336666-0002-0002-0000-000000000001', '66666666-6666-6666-6666-666666666666',
  'Plutonium-239 Proven Fissile',
- 'milestone.scientific',
+ 'milestone.scientific', 'completed',
  '1941-03-28'::timestamptz,
  '{"state": "achieved", "description": "Seaborg, Segrè, and Kennedy demonstrated Pu-239 undergoes neutron-induced fission—opening second path to atomic weapons", "personnel": ["Glenn Seaborg", "Emilio Segrè", "Joseph Kennedy"]}',
  '00000000-0000-0000-0000-000000000002'),
 
 ('33336666-0002-0003-0000-000000000001', '66666666-6666-6666-6666-666666666666',
  'Oak Ridge Site Approved',
- 'milestone.construction',
+ 'milestone.construction', 'completed',
  '1942-09-29'::timestamptz,
  '{"state": "achieved", "description": "Under Secretary Patterson authorized acquisition of 56,000 acres near Elza, Tennessee for uranium enrichment facilities", "personnel": ["Robert Patterson", "Leslie Groves"], "cost": "$3.5 million (land)"}',
  '00000000-0000-0000-0000-000000000002'),
 
 ('33336666-0002-0004-0000-000000000001', '66666666-6666-6666-6666-666666666666',
  'Chicago Pile-1 Achieves Criticality',
- 'milestone.scientific',
+ 'milestone.scientific', 'completed',
  '1942-12-02'::timestamptz,
  '{"state": "achieved", "description": "First controlled, self-sustaining nuclear chain reaction achieved under Stagg Field bleachers at University of Chicago. Compton coded message: The Italian navigator has just landed in the new world.", "personnel": ["Enrico Fermi", "Leo Szilard", "Herbert Anderson"], "power": "0.5 watts"}',
  '00000000-0000-0000-0000-000000000002'),
 
 ('33336666-0002-0005-0000-000000000001', '66666666-6666-6666-6666-666666666666',
  'Hanford Site Selected',
- 'milestone.construction',
+ 'milestone.construction', 'completed',
  '1943-01-16'::timestamptz,
  '{"state": "achieved", "description": "Col. Franklin Matthias selected 500,000-acre site in Washington State for plutonium production reactors, near Columbia River and Grand Coulee Dam power", "personnel": ["Col. Franklin Matthias", "Leslie Groves"]}',
  '00000000-0000-0000-0000-000000000002'),
 
 ('33336666-0002-0006-0000-000000000001', '66666666-6666-6666-6666-666666666666',
  'Y-12 Electromagnetic Plant Construction Begins',
- 'milestone.construction',
+ 'milestone.construction', 'completed',
  '1943-02-18'::timestamptz,
  '{"state": "achieved", "description": "Construction of calutron racetracks for electromagnetic uranium separation began at Oak Ridge", "contractor": "Tennessee Eastman", "cost": "$477.6 million total"}',
  '00000000-0000-0000-0000-000000000002'),
 
 ('33336666-0002-0007-0000-000000000001', '66666666-6666-6666-6666-666666666666',
  'K-25 Gaseous Diffusion Plant Construction Begins',
- 'milestone.construction',
+ 'milestone.construction', 'completed',
  '1943-06-02'::timestamptz,
  '{"state": "achieved", "description": "Construction began on worlds largest building under one roof for gaseous diffusion uranium enrichment", "contractor": "Union Carbide", "cost": "$512.2 million total"}',
  '00000000-0000-0000-0000-000000000002'),
 
 ('33336666-0002-0008-0000-000000000001', '66666666-6666-6666-6666-666666666666',
  'Hanford B Reactor Construction Begins',
- 'milestone.construction',
+ 'milestone.construction', 'completed',
  '1943-08-01'::timestamptz,
  '{"state": "achieved", "description": "DuPont began construction of first full-scale plutonium production reactor", "contractor": "DuPont"}',
  '00000000-0000-0000-0000-000000000002'),
 
 ('33336666-0002-0009-0000-000000000001', '66666666-6666-6666-6666-666666666666',
  'Silver Bullion Acquired for Calutrons',
- 'milestone.procurement',
+ 'milestone.procurement', 'completed',
  '1943-03-01'::timestamptz,
  '{"state": "achieved", "description": "Treasury Department loaned 14,700 short tons of silver bullion from West Point for electromagnetic separation coils—copper was scarce", "quantity": "14,700 short tons"}',
  '00000000-0000-0000-0000-000000000002'),
 
 ('33336666-0002-0010-0000-000000000001', '66666666-6666-6666-6666-666666666666',
  'Hanford B Reactor Completed',
- 'milestone.construction',
+ 'milestone.construction', 'completed',
  '1944-09-13'::timestamptz,
  '{"state": "achieved", "description": "First full-scale plutonium production reactor completed at Hanford", "personnel": ["DuPont engineers"]}',
  '00000000-0000-0000-0000-000000000002'),
 
 ('33336666-0002-0011-0000-000000000001', '66666666-6666-6666-6666-666666666666',
  'Xenon Poisoning Crisis Solved',
- 'milestone.technical',
+ 'milestone.technical', 'completed',
  '1944-09-27'::timestamptz,
  '{"state": "achieved", "description": "B Reactor mysteriously shut down hours after startup. Fermi diagnosed xenon-135 neutron poisoning; DuPonts conservative design with extra tube capacity saved the project", "personnel": ["Enrico Fermi", "John Wheeler", "DuPont engineers"]}',
  '00000000-0000-0000-0000-000000000002'),
 
 ('33336666-0002-0012-0000-000000000001', '66666666-6666-6666-6666-666666666666',
  'First Plutonium Produced at Hanford',
- 'milestone.production',
+ 'milestone.production', 'completed',
  '1944-11-06'::timestamptz,
  '{"state": "achieved", "description": "B Reactor produced first plutonium after xenon problem solved by loading additional fuel tubes"}',
  '00000000-0000-0000-0000-000000000002'),
 
 ('33336666-0002-0013-0000-000000000001', '66666666-6666-6666-6666-666666666666',
  'First Plutonium Arrives at Los Alamos',
- 'milestone.delivery',
+ 'milestone.delivery', 'completed',
  '1945-02-02'::timestamptz,
  '{"state": "achieved", "description": "First weapons-grade plutonium delivered from Hanford to Los Alamos for bomb fabrication"}',
  '00000000-0000-0000-0000-000000000002'),
 
 ('33336666-0002-0014-0000-000000000001', '66666666-6666-6666-6666-666666666666',
  'Little Boy Uranium Core Completed',
- 'milestone.production',
+ 'milestone.production', 'completed',
  '1945-07-24'::timestamptz,
  '{"state": "achieved", "description": "64 kg of weapons-grade uranium-235 assembled for Little Boy gun-type bomb", "material": "64 kg U-235"}',
  '00000000-0000-0000-0000-000000000002');
@@ -288,88 +288,88 @@ INSERT INTO onto_milestones (id, project_id, title, type_key, due_at, props, cre
 -- ============================================
 -- MILESTONES - Goal 3: Design and Build Weapons
 -- ============================================
-INSERT INTO onto_milestones (id, project_id, title, type_key, due_at, props, created_by) VALUES
+INSERT INTO onto_milestones (id, project_id, title, type_key, state_key, due_at, props, created_by) VALUES
 
 ('33336666-0003-0001-0000-000000000001', '66666666-6666-6666-6666-666666666666',
  'Los Alamos Site Selected',
- 'milestone.construction',
+ 'milestone.construction', 'completed',
  '1942-11-16'::timestamptz,
  '{"state": "achieved", "description": "Oppenheimer, Groves, and team selected Los Alamos Ranch School site in New Mexico for bomb design laboratory", "personnel": ["J. Robert Oppenheimer", "Leslie Groves"]}',
  '00000000-0000-0000-0000-000000000002'),
 
 ('33336666-0003-0002-0000-000000000001', '66666666-6666-6666-6666-666666666666',
  'Oppenheimer Named Scientific Director',
- 'milestone.organizational',
+ 'milestone.organizational', 'completed',
  '1942-10-15'::timestamptz,
  '{"state": "achieved", "description": "Groves selected Oppenheimer to lead Los Alamos despite security concerns about his leftist associations", "personnel": ["Leslie Groves", "J. Robert Oppenheimer"]}',
  '00000000-0000-0000-0000-000000000002'),
 
 ('33336666-0003-0003-0000-000000000001', '66666666-6666-6666-6666-666666666666',
  'Los Alamos Laboratory Opens',
- 'milestone.organizational',
+ 'milestone.organizational', 'completed',
  '1943-04-01'::timestamptz,
  '{"state": "achieved", "description": "Project Y officially opened. Scientists began arriving at the secret mesa laboratory in New Mexico", "personnel": ["J. Robert Oppenheimer"]}',
  '00000000-0000-0000-0000-000000000002'),
 
 ('33336666-0003-0004-0000-000000000001', '66666666-6666-6666-6666-666666666666',
  'Gun-Type Design Established',
- 'milestone.technical',
+ 'milestone.technical', 'completed',
  '1943-08-01'::timestamptz,
  '{"state": "achieved", "description": "Thin Man gun-type design established for uranium bomb—one subcritical mass fired into another at high speed", "design": "gun-type"}',
  '00000000-0000-0000-0000-000000000002'),
 
 ('33336666-0003-0005-0000-000000000001', '66666666-6666-6666-6666-666666666666',
  'Implosion Research Group Formed',
- 'milestone.organizational',
+ 'milestone.organizational', 'completed',
  '1944-01-11'::timestamptz,
  '{"state": "achieved", "description": "Special implosion group formed under Edward Teller to study compression-based bomb design", "personnel": ["Edward Teller", "Seth Neddermeyer"]}',
  '00000000-0000-0000-0000-000000000002'),
 
 ('33336666-0003-0006-0000-000000000001', '66666666-6666-6666-6666-666666666666',
  'Pu-240 Spontaneous Fission Problem Discovered',
- 'milestone.technical',
+ 'milestone.technical', 'completed',
  '1944-04-05'::timestamptz,
  '{"state": "achieved", "description": "Emilio Segrè discovered reactor-produced plutonium contained Pu-240 with high spontaneous fission rate—gun-type design impossible for plutonium", "personnel": ["Emilio Segrè"], "impact": "Required complete redesign to implosion"}',
  '00000000-0000-0000-0000-000000000002'),
 
 ('33336666-0003-0007-0000-000000000001', '66666666-6666-6666-6666-666666666666',
  'Crash Implosion Program Launched',
- 'milestone.organizational',
+ 'milestone.organizational', 'completed',
  '1944-08-01'::timestamptz,
  '{"state": "achieved", "description": "Los Alamos reorganized around implosion design. George Kistiakowsky brought in to lead explosive lens development", "personnel": ["George Kistiakowsky", "J. Robert Oppenheimer"]}',
  '00000000-0000-0000-0000-000000000002'),
 
 ('33336666-0003-0008-0000-000000000001', '66666666-6666-6666-6666-666666666666',
  'Explosive Lens Design Perfected',
- 'milestone.technical',
+ 'milestone.technical', 'completed',
  '1945-02-01'::timestamptz,
  '{"state": "achieved", "description": "Kistiakowsky team perfected 32-point explosive lens system for symmetric implosion of plutonium core", "personnel": ["George Kistiakowsky"]}',
  '00000000-0000-0000-0000-000000000002'),
 
 ('33336666-0003-0009-0000-000000000001', '66666666-6666-6666-6666-666666666666',
  'Trinity Test Site Prepared',
- 'milestone.construction',
+ 'milestone.construction', 'completed',
  '1945-05-07'::timestamptz,
  '{"state": "achieved", "description": "100-foot tower and instrumentation installed at Jornada del Muerto test site, 210 miles south of Los Alamos", "location": "Alamogordo, NM"}',
  '00000000-0000-0000-0000-000000000002'),
 
 ('33336666-0003-0010-0000-000000000001', '66666666-6666-6666-6666-666666666666',
  'TRINITY TEST - First Nuclear Explosion',
- 'milestone.achievement',
+ 'milestone.achievement', 'completed',
  '1945-07-16'::timestamptz,
  '{"state": "achieved", "description": "5:29:45 AM - First nuclear weapon detonated. Implosion device yielded 21 kilotons, vaporizing tower and creating trinitite glass. Oppenheimer quoted Bhagavad Gita: Now I am become Death, the destroyer of worlds", "yield": "21 kilotons", "personnel": ["J. Robert Oppenheimer", "Kenneth Bainbridge", "Norris Bradbury"]}',
  '00000000-0000-0000-0000-000000000002'),
 
 ('33336666-0003-0011-0000-000000000001', '66666666-6666-6666-6666-666666666666',
  'Little Boy Assembled on Tinian',
- 'milestone.deployment',
+ 'milestone.deployment', 'completed',
  '1945-07-31'::timestamptz,
  '{"state": "achieved", "description": "Gun-type uranium bomb assembled on Tinian Island in Pacific, ready for deployment", "location": "Tinian Island"}',
  '00000000-0000-0000-0000-000000000002'),
 
 ('33336666-0003-0012-0000-000000000001', '66666666-6666-6666-6666-666666666666',
  'Fat Man Assembled on Tinian',
- 'milestone.deployment',
+ 'milestone.deployment', 'completed',
  '1945-08-08'::timestamptz,
  '{"state": "achieved", "description": "Implosion plutonium bomb assembled and loaded onto B-29 Bockscar", "location": "Tinian Island"}',
  '00000000-0000-0000-0000-000000000002');
@@ -377,46 +377,46 @@ INSERT INTO onto_milestones (id, project_id, title, type_key, due_at, props, cre
 -- ============================================
 -- MILESTONES - Goal 4: Maintain Secrecy
 -- ============================================
-INSERT INTO onto_milestones (id, project_id, title, type_key, due_at, props, created_by) VALUES
+INSERT INTO onto_milestones (id, project_id, title, type_key, state_key, due_at, props, created_by) VALUES
 
 ('33336666-0004-0001-0000-000000000001', '66666666-6666-6666-6666-666666666666',
  'Manhattan Engineer District Established',
- 'milestone.organizational',
+ 'milestone.organizational', 'completed',
  '1942-08-16'::timestamptz,
  '{"state": "achieved", "description": "Innocuous name chosen to hide atomic bomb project within Army Corps of Engineers bureaucracy", "location": "270 Broadway, New York"}',
  '00000000-0000-0000-0000-000000000002'),
 
 ('33336666-0004-0002-0000-000000000001', '66666666-6666-6666-6666-666666666666',
  'Compartmentalization Policy Implemented',
- 'milestone.security',
+ 'milestone.security', 'completed',
  '1942-09-23'::timestamptz,
  '{"state": "achieved", "description": "Groves implemented strict need-to-know policy. Workers knew only their specific tasks, not overall project purpose"}',
  '00000000-0000-0000-0000-000000000002'),
 
 ('33336666-0004-0003-0000-000000000001', '66666666-6666-6666-6666-666666666666',
  'Security Clearances Established',
- 'milestone.security',
+ 'milestone.security', 'completed',
  '1942-10-01'::timestamptz,
  '{"state": "achieved", "description": "Multi-level security clearance system established for all project personnel"}',
  '00000000-0000-0000-0000-000000000002'),
 
 ('33336666-0004-0004-0000-000000000001', '66666666-6666-6666-6666-666666666666',
  'Klaus Fuchs Begins Espionage',
- 'milestone.security',
+ 'milestone.security', 'completed',
  '1944-08-01'::timestamptz,
  '{"state": "achieved", "description": "German-British physicist Klaus Fuchs, working at Los Alamos, began passing detailed bomb designs to Soviet intelligence. Not discovered until 1950", "personnel": ["Klaus Fuchs"], "impact": "Accelerated Soviet bomb by 1-2 years"}',
  '00000000-0000-0000-0000-000000000002'),
 
 ('33336666-0004-0005-0000-000000000001', '66666666-6666-6666-6666-666666666666',
  'David Greenglass Passes Information',
- 'milestone.security',
+ 'milestone.security', 'completed',
  '1945-01-01'::timestamptz,
  '{"state": "achieved", "description": "Army machinist David Greenglass provided implosion lens diagrams to Soviet handler. Brother-in-law of Julius Rosenberg", "personnel": ["David Greenglass"]}',
  '00000000-0000-0000-0000-000000000002'),
 
 ('33336666-0004-0006-0000-000000000001', '66666666-6666-6666-6666-666666666666',
  'Trinity Test Cover Story Released',
- 'milestone.security',
+ 'milestone.security', 'completed',
  '1945-07-16'::timestamptz,
  '{"state": "achieved", "description": "Alamogordo Air Base issued press release claiming remotely located ammunition magazine exploded. True cause not revealed until after Hiroshima"}',
  '00000000-0000-0000-0000-000000000002');
@@ -424,67 +424,67 @@ INSERT INTO onto_milestones (id, project_id, title, type_key, due_at, props, cre
 -- ============================================
 -- MILESTONES - Goal 5: End War with Japan
 -- ============================================
-INSERT INTO onto_milestones (id, project_id, title, type_key, due_at, props, created_by) VALUES
+INSERT INTO onto_milestones (id, project_id, title, type_key, state_key, due_at, props, created_by) VALUES
 
 ('33336666-0005-0001-0000-000000000001', '66666666-6666-6666-6666-666666666666',
  'Target Committee Formed',
- 'milestone.organizational',
+ 'milestone.organizational', 'completed',
  '1945-04-27'::timestamptz,
  '{"state": "achieved", "description": "Committee formed to select Japanese cities for atomic attack. Criteria: military significance, size, minimal prior bomb damage", "personnel": ["Leslie Groves"]}',
  '00000000-0000-0000-0000-000000000002'),
 
 ('33336666-0005-0002-0000-000000000001', '66666666-6666-6666-6666-666666666666',
  'Interim Committee Recommends Use Without Warning',
- 'milestone.decision',
+ 'milestone.decision', 'completed',
  '1945-06-01'::timestamptz,
  '{"state": "achieved", "description": "Advisory committee to Truman recommended military use against Japan without prior warning or demonstration", "personnel": ["Henry Stimson", "James Byrnes"]}',
  '00000000-0000-0000-0000-000000000002'),
 
 ('33336666-0005-0003-0000-000000000001', '66666666-6666-6666-6666-666666666666',
  'Franck Report Urges Demonstration',
- 'milestone.ethics',
+ 'milestone.ethics', 'completed',
  '1945-06-11'::timestamptz,
  '{"state": "achieved", "description": "Chicago scientists committee led by James Franck urged demonstration rather than direct military use. Report was not forwarded to Truman", "personnel": ["James Franck", "Leo Szilard", "Glenn Seaborg"]}',
  '00000000-0000-0000-0000-000000000002'),
 
 ('33336666-0005-0004-0000-000000000001', '66666666-6666-6666-6666-666666666666',
  'Szilard Petition Circulated',
- 'milestone.ethics',
+ 'milestone.ethics', 'completed',
  '1945-07-17'::timestamptz,
  '{"state": "achieved", "description": "70 scientists signed petition urging Truman not to use bomb without warning Japan. Petition never reached the President", "personnel": ["Leo Szilard"]}',
  '00000000-0000-0000-0000-000000000002'),
 
 ('33336666-0005-0005-0000-000000000001', '66666666-6666-6666-6666-666666666666',
  'Potsdam Declaration Issued',
- 'milestone.diplomatic',
+ 'milestone.diplomatic', 'completed',
  '1945-07-26'::timestamptz,
  '{"state": "achieved", "description": "Truman, Churchill, and Chiang demanded Japan surrender unconditionally or face prompt and utter destruction. No explicit mention of atomic weapons", "personnel": ["Harry Truman", "Winston Churchill", "Chiang Kai-shek"]}',
  '00000000-0000-0000-0000-000000000002'),
 
 ('33336666-0005-0006-0000-000000000001', '66666666-6666-6666-6666-666666666666',
  'Bombing Order Issued',
- 'milestone.military',
+ 'milestone.military', 'completed',
  '1945-07-25'::timestamptz,
  '{"state": "achieved", "description": "General Carl Spaatz ordered to bomb Hiroshima, Kokura, Niigata, or Nagasaki as weather permitted, after August 3", "personnel": ["Gen. Carl Spaatz", "Gen. Thomas Handy"]}',
  '00000000-0000-0000-0000-000000000002'),
 
 ('33336666-0005-0007-0000-000000000001', '66666666-6666-6666-6666-666666666666',
  'HIROSHIMA - Little Boy Dropped',
- 'milestone.achievement',
+ 'milestone.achievement', 'completed',
  '1945-08-06'::timestamptz,
  '{"state": "achieved", "description": "8:15 AM - B-29 Enola Gay dropped Little Boy uranium bomb on Hiroshima. 15 kiloton yield. ~80,000 killed instantly, 60,000+ died later", "aircraft": "Enola Gay", "pilot": "Col. Paul Tibbets", "yield": "15 kilotons", "casualties": "140,000+"}',
  '00000000-0000-0000-0000-000000000002'),
 
 ('33336666-0005-0008-0000-000000000001', '66666666-6666-6666-6666-666666666666',
  'NAGASAKI - Fat Man Dropped',
- 'milestone.achievement',
+ 'milestone.achievement', 'completed',
  '1945-08-09'::timestamptz,
  '{"state": "achieved", "description": "11:02 AM - B-29 Bockscar dropped Fat Man plutonium bomb on Nagasaki (Kokura obscured by clouds). 21 kiloton yield. ~40,000 killed instantly", "aircraft": "Bockscar", "pilot": "Maj. Charles Sweeney", "yield": "21 kilotons", "casualties": "70,000+"}',
  '00000000-0000-0000-0000-000000000002'),
 
 ('33336666-0005-0009-0000-000000000001', '66666666-6666-6666-6666-666666666666',
  'Japan Announces Surrender',
- 'milestone.achievement',
+ 'milestone.achievement', 'completed',
  '1945-08-15'::timestamptz,
  '{"state": "achieved", "description": "Emperor Hirohito overruled military leaders and announced Japans acceptance of Potsdam Declaration terms. V-J Day"}',
  '00000000-0000-0000-0000-000000000002');
@@ -492,25 +492,25 @@ INSERT INTO onto_milestones (id, project_id, title, type_key, due_at, props, cre
 -- ============================================
 -- MILESTONES - Goal 6: Post-War Capability
 -- ============================================
-INSERT INTO onto_milestones (id, project_id, title, type_key, due_at, props, created_by) VALUES
+INSERT INTO onto_milestones (id, project_id, title, type_key, state_key, due_at, props, created_by) VALUES
 
 ('33336666-0006-0001-0000-000000000001', '66666666-6666-6666-6666-666666666666',
  'Atomic Energy Act Signed',
- 'milestone.legislative',
+ 'milestone.legislative', 'completed',
  '1946-08-01'::timestamptz,
  '{"state": "achieved", "description": "Truman signed act transferring control of atomic energy from military to civilian Atomic Energy Commission", "personnel": ["Harry Truman"]}',
  '00000000-0000-0000-0000-000000000002'),
 
 ('33336666-0006-0002-0000-000000000001', '66666666-6666-6666-6666-666666666666',
  'Atomic Energy Commission Established',
- 'milestone.organizational',
+ 'milestone.organizational', 'completed',
  '1947-01-01'::timestamptz,
  '{"state": "achieved", "description": "Civilian AEC assumed control of all atomic energy matters from Manhattan Engineer District"}',
  '00000000-0000-0000-0000-000000000002'),
 
 ('33336666-0006-0003-0000-000000000001', '66666666-6666-6666-6666-666666666666',
  'National Laboratories Established',
- 'milestone.organizational',
+ 'milestone.organizational', 'completed',
  '1946-07-01'::timestamptz,
  '{"state": "achieved", "description": "Los Alamos, Oak Ridge, Argonne, and other Manhattan Project sites transitioned to national laboratories for continued research"}',
  '00000000-0000-0000-0000-000000000002');

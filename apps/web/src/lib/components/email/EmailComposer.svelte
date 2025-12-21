@@ -1141,18 +1141,18 @@
 	icon="info"
 	loading={isSending}
 	loadingText="Sending..."
-	on:confirm={sendEmail}
-	on:cancel={() => (showSendModal = false)}
+	onconfirm={sendEmail}
+	oncancel={() => (showSendModal = false)}
 >
-	<div slot="content">
-		<p class="text-sm text-gray-500 dark:text-gray-400">
+	{#snippet content()}
+		<p class="text-sm text-muted-foreground">
 			Are you sure you want to send this email to {emailData.recipients.length} recipient{emailData
 				.recipients.length !== 1
 				? 's'
 				: ''}?
 		</p>
 		{#if emailData.recipients.length > 0}
-			<div class="mt-3 text-sm text-gray-600 dark:text-gray-400">
+			<div class="mt-3 text-sm text-muted-foreground">
 				<p><strong>Recipients include:</strong></p>
 				<ul class="mt-1 space-y-1">
 					{#each emailData.recipients.slice(0, 5) as recipient}
@@ -1161,30 +1161,31 @@
 							{recipient.recipient_name || recipient.name || 'No name'}
 							&lt;{recipient.recipient_email || recipient.email}&gt;
 							{#if recipient.recipient_type === 'custom' || recipient.type === 'custom'}
-								<span class="ml-2 text-xs bg-gray-100 text-gray-600 px-1 rounded"
+								<span
+									class="ml-2 text-xs bg-muted text-muted-foreground px-1 rounded"
 									>Custom</span
 								>
 							{/if}
 						</li>
 					{/each}
 					{#if emailData.recipients.length > 5}
-						<li class="text-gray-500 italic">
+						<li class="text-muted-foreground italic">
 							...and {emailData.recipients.length - 5} more
 						</li>
 					{/if}
 				</ul>
 			</div>
 		{/if}
-	</div>
-	<div slot="details">
-		<div class="mt-3 text-sm text-gray-600 dark:text-gray-400">
+	{/snippet}
+	{#snippet details()}
+		<div class="mt-3 text-sm text-muted-foreground">
 			<p><strong>Subject:</strong> {emailData.subject}</p>
 			<p><strong>From:</strong> {emailData.from_name} &lt;{emailData.from_email}&gt;</p>
 			{#if isScheduled && scheduleDate && scheduleTime}
 				<p><strong>Scheduled for:</strong> {scheduleDate} at {scheduleTime}</p>
 			{/if}
 		</div>
-	</div>
+	{/snippet}
 </ConfirmationModal>
 
 <ImageUploadModal

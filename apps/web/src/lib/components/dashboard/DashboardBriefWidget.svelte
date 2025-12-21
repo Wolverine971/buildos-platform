@@ -1,5 +1,12 @@
 <!-- apps/web/src/lib/components/dashboard/DashboardBriefWidget.svelte -->
-<!-- Compact daily brief widget for the dashboard with ontology support -->
+<!--
+  Compact daily brief widget for the dashboard with ontology support.
+
+  PERFORMANCE (Dec 2024):
+  - Fixed-height container prevents layout shift during state transitions
+  - Skeleton loading state matches final card dimensions
+  - Brief data deferred - doesn't block initial page render
+-->
 <script lang="ts">
 	import { Sparkles, Loader2, ChevronRight, AlertCircle, Sun } from 'lucide-svelte';
 	import { browser } from '$app/environment';
@@ -91,12 +98,24 @@
 		};
 	});
 
-	// Initialize data fetching once on mount - use onMount to prevent multiple runs
+	// Initialize data fetching once on mount - DEFERRED to not block initial render
+	// Brief data is not critical for initial page visibility
 	onMount(() => {
 		if (!user?.id) return;
 
-		// Set loading state and initialize
-		initializeWidget();
+		// Defer initialization to allow projects to render first
+		// Use requestIdleCallback if available, otherwise small delay
+		if ('requestIdleCallback' in window) {
+			requestIdleCallback(
+				() => {
+					initializeWidget();
+				},
+				{ timeout: 1000 }
+			); // Max 1 second delay
+		} else {
+			// Fallback: small delay to allow main content to render
+			setTimeout(initializeWidget, 100);
+		}
 	});
 
 	async function initializeWidget() {
@@ -211,14 +230,21 @@
 	}
 </script>
 
-<div class="w-full">
+<!-- Fixed-height container prevents layout shift during state transitions -->
+<div class="w-full min-h-[60px]">
 	{#if isLoading}
-		<!-- Loading State -->
-		<div class="flex items-center gap-3 p-3 rounded-lg border border-border bg-card/50">
+		<!-- Skeleton Loading State - matches dimensions of brief card -->
+		<div
+			class="flex items-center gap-3 p-3 rounded-lg border border-border bg-card/50 animate-pulse"
+			aria-hidden="true"
+		>
 			<div class="p-2 rounded-lg bg-muted">
-				<Loader2 class="h-4 w-4 text-muted-foreground animate-spin" />
+				<div class="h-4 w-4 bg-muted-foreground/20 rounded"></div>
 			</div>
-			<span class="text-sm text-muted-foreground">Loading brief...</span>
+			<div class="flex-1 space-y-2">
+				<div class="h-4 bg-muted rounded w-24"></div>
+				<div class="h-3 bg-muted rounded w-48"></div>
+			</div>
 		</div>
 	{:else if isGenerating}
 		<!-- Generating State -->

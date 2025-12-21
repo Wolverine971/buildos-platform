@@ -30,6 +30,8 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 
 		// OPTIMIZATION: Fetch project AND actor ID in parallel
 		// These are independent and can run concurrently
+		// Note: We don't filter deleted_at here to allow viewing deleted projects
+		// (but we return deleted_at status so frontend can handle it)
 		const [projectResult, actorResult] = await Promise.all([
 			supabase.from('onto_projects').select('*').eq('id', id).single(),
 			supabase.rpc('ensure_actor_for_user', { p_user_id: user.id })
@@ -45,6 +47,11 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 
 		const project = projectResult.data;
 		if (!project) {
+			return ApiResponse.notFound('Project not found');
+		}
+
+		// Return 404 for soft-deleted projects (they shouldn't be accessed directly)
+		if (project.deleted_at) {
 			return ApiResponse.notFound('Project not found');
 		}
 
@@ -432,12 +439,21 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 
 		const projectDataForLog = { name: project.name, type_key: project.type_key };
 
-		const { error: deleteError } = await supabase.rpc('delete_onto_project', {
+		// Determine delete strategy based on environment:
+		// - Development: Hard delete (permanent removal for clean dev iterations)
+		// - Production: Soft delete (preserve data, set deleted_at timestamp)
+		const isProduction = process.env.NODE_ENV === 'production';
+		const deleteRpcName = isProduction ? 'soft_delete_onto_project' : 'delete_onto_project';
+
+		const { error: deleteError } = await supabase.rpc(deleteRpcName, {
 			p_project_id: id
 		});
 
 		if (deleteError) {
-			console.error('[Project DELETE] Failed to delete project:', deleteError);
+			console.error(
+				`[Project DELETE] Failed to ${isProduction ? 'soft' : 'hard'} delete project:`,
+				deleteError
+			);
 			return ApiResponse.error('Failed to delete project', 500);
 		}
 
@@ -454,7 +470,8 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 
 		return ApiResponse.success({
 			id,
-			message: 'Project deleted'
+			message: isProduction ? 'Project archived' : 'Project deleted',
+			deleteType: isProduction ? 'soft' : 'hard'
 		});
 	} catch (err) {
 		console.error('[Project DELETE] Unexpected error:', err);

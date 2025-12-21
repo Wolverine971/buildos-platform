@@ -648,14 +648,14 @@
 	confirmVariant="danger"
 	icon="danger"
 	loading={isDeleting}
-	on:confirm={async () => {
+	onconfirm={async () => {
 		await handleCloseModal('projectDelete');
 		onDeleteConfirm();
 	}}
-	on:cancel={() => handleCloseModal('projectDelete')}
+	oncancel={() => handleCloseModal('projectDelete')}
 >
-	<div slot="content">
-		<p class="text-sm text-gray-600 dark:text-gray-400">
+	{#snippet content()}
+		<p class="text-sm text-muted-foreground">
 			Are you sure you want to delete "{project?.name}"? This action cannot be undone.
 		</p>
 		{#if taskCount > 0 || noteCount > 0}
@@ -671,7 +671,7 @@
 				</ul>
 			</div>
 		{/if}
-	</div>
+	{/snippet}
 </ConfirmationModal>
 
 <ConfirmationModal
@@ -681,18 +681,18 @@
 	cancelText="Cancel"
 	confirmVariant="warning"
 	icon="warning"
-	on:confirm={async () => {
+	onconfirm={async () => {
 		await handleCloseModal('calendarRefresh');
 		onCalendarRefreshConfirm();
 	}}
-	on:cancel={() => handleCloseModal('calendarRefresh')}
+	oncancel={() => handleCloseModal('calendarRefresh')}
 >
-	<div slot="content">
-		<p class="text-sm text-gray-600 dark:text-gray-400">
+	{#snippet content()}
+		<p class="text-sm text-muted-foreground">
 			Your Google Calendar connection needs to be refreshed. You'll be redirected to the
 			calendar settings page.
 		</p>
-	</div>
+	{/snippet}
 </ConfirmationModal>
 
 <ConfirmationModal
@@ -702,7 +702,7 @@
 	cancelText="Cancel"
 	confirmVariant="danger"
 	icon="danger"
-	on:confirm={async () => {
+	onconfirm={async () => {
 		if (markDeletedData) {
 			// Store the data before closing modal (closing clears the data)
 			const taskToMarkDeleted = markDeletedData;
@@ -710,18 +710,18 @@
 			onMarkDeletedConfirm(taskToMarkDeleted);
 		}
 	}}
-	on:cancel={() => handleCloseModal('markDeleted')}
+	oncancel={() => handleCloseModal('markDeleted')}
 >
-	<div slot="content">
+	{#snippet content()}
 		{#if markDeletedData}
-			<p class="text-sm text-gray-600 dark:text-gray-400">
+			<p class="text-sm text-muted-foreground">
 				Are you sure you want to delete "{markDeletedData.title}"?
 			</p>
-			<p class="text-sm text-gray-500 dark:text-gray-500 mt-2">
+			<p class="text-sm text-muted-foreground mt-2">
 				Deleted tasks won't appear in your active task list but can be restored later.
 			</p>
 		{/if}
-	</div>
+	{/snippet}
 </ConfirmationModal>
 
 <!-- Unschedule All Tasks Modal -->
@@ -760,19 +760,19 @@
 	cancelText="Cancel"
 	confirmVariant="danger"
 	icon="danger"
-	on:confirm={() => {
+	onconfirm={() => {
 		if (deletePhaseData) {
 			handleDeletePhase(deletePhaseData);
 		}
 	}}
-	on:cancel={() => handleCloseModal('deletePhase')}
+	oncancel={() => handleCloseModal('deletePhase')}
 >
-	<div slot="content">
-		<p class="text-sm text-gray-500 dark:text-gray-400">
+	{#snippet content()}
+		<p class="text-sm text-muted-foreground">
 			Are you sure you want to delete "{deletePhaseData?.name}"? All tasks in this phase will
 			be moved to the backlog.
 		</p>
-	</div>
+	{/snippet}
 </ConfirmationModal>
 
 <!-- Delete Phase Task Modal -->
@@ -783,18 +783,18 @@
 	cancelText="Cancel"
 	confirmVariant="danger"
 	icon="danger"
-	on:confirm={() => {
+	onconfirm={() => {
 		if (deletePhaseTaskId) {
 			handleDeletePhaseTask(deletePhaseTaskId);
 		}
 	}}
-	on:cancel={() => handleCloseModal('deletePhaseTask')}
+	oncancel={() => handleCloseModal('deletePhaseTask')}
 >
-	<div slot="content">
-		<p class="text-sm text-gray-500 dark:text-gray-400">
+	{#snippet content()}
+		<p class="text-sm text-muted-foreground">
 			Are you sure you want to delete this task? This action cannot be undone.
 		</p>
-	</div>
+	{/snippet}
 </ConfirmationModal>
 
 <!-- Assign Backlog Tasks Modal -->

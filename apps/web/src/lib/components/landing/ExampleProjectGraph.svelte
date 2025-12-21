@@ -19,9 +19,9 @@
 		GitBranch,
 		Loader2,
 		Target,
-		CheckCircle2,
+		ListChecks,
 		FileText,
-		ListTodo,
+		Calendar,
 		Flag,
 		AlertTriangle,
 		Maximize2,
@@ -321,11 +321,11 @@
 								>
 							</div>
 							<div class="flex items-center gap-1.5">
-								<ListTodo class="w-3.5 h-3.5 text-indigo-500" />
+								<Calendar class="w-3.5 h-3.5 text-indigo-500" />
 								<span class="text-muted-foreground">{stats.totalPlans} Plans</span>
 							</div>
 							<div class="flex items-center gap-1.5">
-								<CheckCircle2 class="w-3.5 h-3.5 text-slate-500" />
+								<ListChecks class="w-3.5 h-3.5 text-slate-500" />
 								<span class="text-muted-foreground">{stats.totalTasks} Tasks</span>
 							</div>
 							<div class="hidden sm:flex items-center gap-1.5">
@@ -452,9 +452,9 @@
 								{:else if selectedNode.type === 'milestone'}
 									<Flag class="w-4 h-4 text-emerald-500" />
 								{:else if selectedNode.type === 'plan'}
-									<ListTodo class="w-4 h-4 text-indigo-500" />
+									<Calendar class="w-4 h-4 text-indigo-500" />
 								{:else if selectedNode.type === 'task'}
-									<CheckCircle2 class="w-4 h-4 text-slate-500" />
+									<ListChecks class="w-4 h-4 text-slate-500" />
 								{:else if selectedNode.type === 'document'}
 									<FileText class="w-4 h-4 text-sky-500" />
 								{:else if selectedNode.type === 'risk'}

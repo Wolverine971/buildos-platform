@@ -5,6 +5,11 @@
   - Projects loaded server-side and passed via initialProjects prop
   - No client-side fetch on mount (eliminates ~200-500ms latency)
   - Manual refresh only triggered by user action or modal close
+
+  SKELETON LOADING (Dec 2024):
+  - projectCount passed immediately for instant skeleton rendering
+  - Skeletons hydrate gracefully when full project data arrives
+  - Zero layout shift - exact number of cards rendered from start
 -->
 <script lang="ts">
 	import {
@@ -25,6 +30,7 @@
 	import { getProjectStateBadgeClass } from '$lib/utils/ontology-badge-styles';
 	import Button from '$lib/components/ui/Button.svelte';
 	import DashboardBriefWidget from './DashboardBriefWidget.svelte';
+	import ProjectCardSkeleton from './ProjectCardSkeleton.svelte';
 	import ProjectCardNextStep from '$lib/components/project/ProjectCardNextStep.svelte';
 	import { setNavigationData } from '$lib/stores/project-navigation.store';
 	import type { DailyBrief } from '$lib/types/daily-brief';
@@ -56,19 +62,26 @@
 	interface User {
 		id: string;
 		email?: string;
-		name?: string;
+		name?: string | null;
 		is_admin?: boolean;
 	}
 
-	// Props - OPTIMIZATION: Projects now passed from server
+	// Props - OPTIMIZATION: Projects now passed from server with count for skeleton rendering
 	type Props = {
 		user: User;
 		initialProjects?: OntologyProjectSummary[];
 		isLoadingProjects?: boolean;
+		projectCount?: number; // For instant skeleton rendering
 		onrefresh?: () => void;
 	};
 
-	let { user, initialProjects = [], isLoadingProjects = false, onrefresh }: Props = $props();
+	let {
+		user,
+		initialProjects = [],
+		isLoadingProjects = false,
+		projectCount = 0,
+		onrefresh
+	}: Props = $props();
 
 	// State - simplified to avoid prop-to-state syncing anti-pattern
 	let error = $state<string | null>(null);
@@ -90,8 +103,13 @@
 	const isLoading = $derived(localProjects === null && isLoadingProjects);
 
 	// Computed
-	const displayName = $derived(user?.name || user?.email?.split('@')[0] || 'there');
-	const hasProjects = $derived(projects.length > 0);
+	const displayName = $derived(user?.name ?? user?.email?.split('@')[0] ?? 'there');
+	const hasProjects = $derived(projects.length > 0 || projectCount > 0);
+
+	// SKELETON LOADING: Calculate how many skeletons to show while loading
+	// Use projectCount for initial render, then actual projects once loaded
+	const skeletonCount = $derived(isLoading ? projectCount : 0);
+	const showSkeletons = $derived(isLoading && projectCount > 0);
 
 	/**
 	 * Set navigation data before navigating to project detail.
@@ -233,242 +251,245 @@
 			</div>
 		{/if}
 
-		<!-- Loading State -->
-		{#if isLoading}
-			<div class="bg-card rounded-lg shadow-ink p-8 sm:p-12 tx tx-frame tx-weak">
-				<div class="flex flex-col items-center justify-center">
-					<Loader2 class="h-10 w-10 text-accent animate-spin mb-4" />
-					<p class="text-muted-foreground">Loading your projects...</p>
+		<!-- Projects Grid - Always render structure, use skeletons or real cards -->
+		<section class="space-y-3 sm:space-y-6">
+			<!-- Mobile Create Button (above header on mobile) -->
+			{#if hasProjects}
+				<button
+					onclick={handleCreateProject}
+					class="sm:hidden w-full flex items-center justify-center gap-2 rounded-lg border-2 border-dashed border-accent/50 bg-accent/5 p-3 text-sm font-bold text-accent transition-all duration-200 hover:border-accent hover:bg-accent/10 pressable"
+				>
+					<Plus class="h-4 w-4" />
+					New Project
+				</button>
+			{/if}
+
+			<!-- Section Header -->
+			<div class="flex items-center gap-2 sm:gap-3">
+				<div class="p-1.5 sm:p-2 bg-accent/10 rounded-lg border border-accent/30">
+					<FolderOpen class="h-4 w-4 sm:h-5 sm:w-5 text-accent" />
 				</div>
+				<h2 class="text-base sm:text-xl font-bold text-foreground">Your Projects</h2>
+				{#if isLoading}
+					<Loader2 class="h-4 w-4 text-muted-foreground animate-spin" />
+				{/if}
 			</div>
-		{:else}
-			<!-- Projects Grid -->
-			<section class="space-y-3 sm:space-y-6">
-				<!-- Mobile Create Button (above header on mobile) -->
-				{#if hasProjects}
+
+			<!-- Projects Grid - 2 columns on mobile -->
+			<div class="grid grid-cols-2 md:grid-cols-2 xl:grid-cols-3 gap-2 sm:gap-4">
+				<!-- Loading State with Skeletons -->
+				{#if showSkeletons}
+					<!-- Create New Project Card (skeleton placeholder on desktop) -->
+					<div
+						class="hidden sm:flex group flex-col items-center justify-center rounded-lg border-2 border-dashed border-border bg-card/50 p-4 sm:p-6 shadow-ink min-h-[160px] sm:min-h-[200px] opacity-50"
+					>
+						<div
+							class="mb-3 sm:mb-4 flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-lg border border-accent/30 bg-accent/10 text-accent"
+						>
+							<Plus class="h-5 w-5 sm:h-6 sm:w-6" />
+						</div>
+						<span class="text-xs sm:text-sm font-bold text-muted-foreground">
+							Create New Project
+						</span>
+					</div>
+
+					<!-- Skeleton Cards based on projectCount -->
+					{#each Array(skeletonCount) as _, i (i)}
+						<ProjectCardSkeleton />
+					{/each}
+				{:else if !hasProjects && !isLoading}
+					<!-- Empty State - Large Create Card -->
+					<div
+						class="col-span-full rounded-lg border-2 border-dashed border-border bg-card p-8 sm:p-12 text-center shadow-ink tx tx-bloom tx-weak"
+					>
+						<div
+							class="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-xl border border-accent/30 bg-accent/10 text-accent"
+						>
+							<Sparkles class="h-8 w-8" />
+						</div>
+						<h3 class="text-xl font-bold text-foreground mb-2">
+							Create Your First Project
+						</h3>
+						<p class="text-muted-foreground mb-6 max-w-md mx-auto">
+							Start by telling our AI assistant about your project. Describe your
+							goals, tasks, and timeline - we'll help you organize everything.
+						</p>
+						<Button
+							variant="primary"
+							size="lg"
+							onclick={handleCreateProject}
+							class="pressable"
+						>
+							<Plus class="h-5 w-5 mr-2" />
+							Create Project
+						</Button>
+					</div>
+				{:else}
+					<!-- Create New Project Card (hidden on mobile, shown on desktop) -->
 					<button
 						onclick={handleCreateProject}
-						class="sm:hidden w-full flex items-center justify-center gap-2 rounded-lg border-2 border-dashed border-accent/50 bg-accent/5 p-3 text-sm font-bold text-accent transition-all duration-200 hover:border-accent hover:bg-accent/10 pressable"
+						class="hidden sm:flex group flex-col items-center justify-center rounded-lg border-2 border-dashed border-border bg-card/50 p-4 sm:p-6 shadow-ink transition-all duration-200 hover:border-accent hover:bg-accent/5 pressable min-h-[160px] sm:min-h-[200px]"
 					>
-						<Plus class="h-4 w-4" />
-						New Project
-					</button>
-				{/if}
-
-				<!-- Section Header -->
-				<div class="flex items-center gap-2 sm:gap-3">
-					<div class="p-1.5 sm:p-2 bg-accent/10 rounded-lg border border-accent/30">
-						<FolderOpen class="h-4 w-4 sm:h-5 sm:w-5 text-accent" />
-					</div>
-					<h2 class="text-base sm:text-xl font-bold text-foreground">Your Projects</h2>
-				</div>
-
-				<!-- Projects Grid - 2 columns on mobile -->
-				<div class="grid grid-cols-2 md:grid-cols-2 xl:grid-cols-3 gap-2 sm:gap-4">
-					<!-- Create New Project Card (shown first or as only card when empty) -->
-					{#if !hasProjects}
-						<!-- Empty State - Large Create Card -->
 						<div
-							class="col-span-full rounded-lg border-2 border-dashed border-border bg-card p-8 sm:p-12 text-center shadow-ink tx tx-bloom tx-weak"
+							class="mb-3 sm:mb-4 flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-lg border border-accent/30 bg-accent/10 text-accent transition-all group-hover:bg-accent group-hover:text-accent-foreground"
 						>
-							<div
-								class="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-xl border border-accent/30 bg-accent/10 text-accent"
-							>
-								<Sparkles class="h-8 w-8" />
-							</div>
-							<h3 class="text-xl font-bold text-foreground mb-2">
-								Create Your First Project
-							</h3>
-							<p class="text-muted-foreground mb-6 max-w-md mx-auto">
-								Start by telling our AI assistant about your project. Describe your
-								goals, tasks, and timeline - we'll help you organize everything.
-							</p>
-							<Button
-								variant="primary"
-								size="lg"
-								onclick={handleCreateProject}
-								class="pressable"
-							>
-								<Plus class="h-5 w-5 mr-2" />
-								Create Project
-							</Button>
+							<Plus class="h-5 w-5 sm:h-6 sm:w-6" />
 						</div>
-					{:else}
-						<!-- Create New Project Card (hidden on mobile, shown on desktop) -->
-						<button
-							onclick={handleCreateProject}
-							class="hidden sm:flex group flex-col items-center justify-center rounded-lg border-2 border-dashed border-border bg-card/50 p-4 sm:p-6 shadow-ink transition-all duration-200 hover:border-accent hover:bg-accent/5 pressable min-h-[160px] sm:min-h-[200px]"
+						<span
+							class="text-xs sm:text-sm font-bold text-muted-foreground group-hover:text-foreground"
 						>
+							Create New Project
+						</span>
+					</button>
+
+					<!-- Project Cards -->
+					{#each projects as project (project.id)}
+						<a
+							href="/projects/{project.id}"
+							onclick={() => handleProjectClick(project)}
+							class="group relative flex flex-col rounded-lg border border-border bg-card p-2.5 sm:p-4 shadow-ink transition-all duration-200 hover:border-accent hover:shadow-ink-strong pressable tx tx-frame tx-weak"
+						>
+							<!-- Header - Mobile: Title only, Desktop: Title + Badge -->
 							<div
-								class="mb-3 sm:mb-4 flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-lg border border-accent/30 bg-accent/10 text-accent transition-all group-hover:bg-accent group-hover:text-accent-foreground"
+								class="mb-1.5 sm:mb-3 flex items-start justify-between gap-1 sm:gap-3"
 							>
-								<Plus class="h-5 w-5 sm:h-6 sm:w-6" />
+								<h3
+									class="text-sm sm:text-lg font-bold text-foreground line-clamp-2 transition-colors group-hover:text-accent leading-tight"
+									style="view-transition-name: project-title-{project.id}"
+								>
+									{project.name}
+								</h3>
+								<!-- Status badge - hidden on mobile, shown on larger screens -->
+								<span
+									class="hidden sm:inline-flex flex-shrink-0 rounded-lg border px-2.5 py-1 text-xs font-bold capitalize {getProjectStateBadgeClass(
+										project.state_key
+									)}"
+								>
+									{project.state_key}
+								</span>
 							</div>
-							<span
-								class="text-xs sm:text-sm font-bold text-muted-foreground group-hover:text-foreground"
-							>
-								Create New Project
-							</span>
-						</button>
 
-						<!-- Project Cards -->
-						{#each projects as project (project.id)}
-							<a
-								href="/projects/{project.id}"
-								onclick={() => handleProjectClick(project)}
-								class="group relative flex flex-col rounded-lg border border-border bg-card p-2.5 sm:p-4 shadow-ink transition-all duration-200 hover:border-accent hover:shadow-ink-strong pressable tx tx-frame tx-weak"
-							>
-								<!-- Header - Mobile: Title only, Desktop: Title + Badge -->
-								<div
-									class="mb-1.5 sm:mb-3 flex items-start justify-between gap-1 sm:gap-3"
+							<!-- Mobile status indicator (compact dot) -->
+							<div class="sm:hidden mb-1.5">
+								<span
+									class="inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[10px] font-bold capitalize {getProjectStateBadgeClass(
+										project.state_key
+									)}"
 								>
-									<h3
-										class="text-sm sm:text-lg font-bold text-foreground line-clamp-2 transition-colors group-hover:text-accent leading-tight"
-										style="view-transition-name: project-title-{project.id}"
-									>
-										{project.name}
-									</h3>
-									<!-- Status badge - hidden on mobile, shown on larger screens -->
+									{project.state_key}
+								</span>
+							</div>
+
+							<!-- Description - Hidden on mobile -->
+							{#if project.description}
+								<p
+									class="hidden sm:block mb-3 line-clamp-2 text-sm text-muted-foreground flex-1"
+								>
+									{project.description.length > 120
+										? project.description.slice(0, 120) + '…'
+										: project.description}
+								</p>
+							{:else}
+								<p
+									class="hidden sm:block mb-3 text-sm text-muted-foreground/50 italic flex-1"
+								>
+									No description
+								</p>
+							{/if}
+
+							<!-- Next Step - Shows short version, expandable to long -->
+							{#if project.next_step_short}
+								<ProjectCardNextStep
+									nextStepShort={project.next_step_short}
+									nextStepLong={project.next_step_long}
+									class="mb-3"
+								/>
+							{/if}
+
+							<!-- Footer Stats -->
+							<div
+								class="mt-auto flex flex-col gap-1 sm:gap-2 border-t border-border pt-2 sm:pt-3 text-sm text-muted-foreground"
+							>
+								<!-- Mobile: Only show task count -->
+								<div class="flex sm:hidden items-center justify-between">
 									<span
-										class="hidden sm:inline-flex flex-shrink-0 rounded-lg border px-2.5 py-1 text-xs font-bold capitalize {getProjectStateBadgeClass(
-											project.state_key
-										)}"
+										class="flex items-center gap-1"
+										aria-label="Task count"
+										title="Tasks"
 									>
-										{project.state_key}
+										<ListChecks class="h-3 w-3" />
+										<span class="font-bold text-[10px]"
+											>{project.task_count} tasks</span
+										>
+									</span>
+									<ChevronRight class="h-3.5 w-3.5 text-muted-foreground/50" />
+								</div>
+								<!-- Desktop: Full stats -->
+								<div
+									class="hidden sm:flex flex-wrap items-center gap-x-3 gap-y-1.5"
+								>
+									<span
+										class="flex items-center gap-1"
+										aria-label="Task count"
+										title="Tasks"
+									>
+										<ListChecks class="h-3.5 w-3.5" />
+										<span class="font-bold text-xs">{project.task_count}</span>
+									</span>
+									<span
+										class="flex items-center gap-1"
+										aria-label="Output count"
+										title="Outputs"
+									>
+										<Layers class="h-3.5 w-3.5" />
+										<span class="font-bold text-xs">{project.output_count}</span
+										>
+									</span>
+									<span
+										class="flex items-center gap-1"
+										aria-label="Goal count"
+										title="Goals"
+									>
+										<Target class="h-3.5 w-3.5" />
+										<span class="font-bold text-xs">{project.goal_count}</span>
+									</span>
+									<span
+										class="flex items-center gap-1"
+										aria-label="Plan count"
+										title="Plans"
+									>
+										<Calendar class="h-3.5 w-3.5" />
+										<span class="font-bold text-xs">{project.plan_count}</span>
+									</span>
+									<span
+										class="flex items-center gap-1"
+										aria-label="Document count"
+										title="Documents"
+									>
+										<FileText class="h-3.5 w-3.5" />
+										<span class="font-bold text-xs"
+											>{project.document_count}</span
+										>
 									</span>
 								</div>
-
-								<!-- Mobile status indicator (compact dot) -->
-								<div class="sm:hidden mb-1.5">
+								<div
+									class="hidden sm:flex items-center justify-between text-xs text-muted-foreground/70"
+								>
 									<span
-										class="inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[10px] font-bold capitalize {getProjectStateBadgeClass(
-											project.state_key
-										)}"
+										>Updated {new Date(
+											project.updated_at
+										).toLocaleDateString()}</span
 									>
-										{project.state_key}
-									</span>
-								</div>
-
-								<!-- Description - Hidden on mobile -->
-								{#if project.description}
-									<p
-										class="hidden sm:block mb-3 line-clamp-2 text-sm text-muted-foreground flex-1"
-									>
-										{project.description.length > 120
-											? project.description.slice(0, 120) + '…'
-											: project.description}
-									</p>
-								{:else}
-									<p
-										class="hidden sm:block mb-3 text-sm text-muted-foreground/50 italic flex-1"
-									>
-										No description
-									</p>
-								{/if}
-
-								<!-- Next Step - Shows short version, expandable to long -->
-								{#if project.next_step_short}
-									<ProjectCardNextStep
-										nextStepShort={project.next_step_short}
-										nextStepLong={project.next_step_long}
-										class="mb-3"
+									<ChevronRight
+										class="h-4 w-4 opacity-0 transition-opacity group-hover:opacity-100"
 									/>
-								{/if}
-
-								<!-- Footer Stats -->
-								<div
-									class="mt-auto flex flex-col gap-1 sm:gap-2 border-t border-border pt-2 sm:pt-3 text-sm text-muted-foreground"
-								>
-									<!-- Mobile: Only show task count -->
-									<div class="flex sm:hidden items-center justify-between">
-										<span
-											class="flex items-center gap-1"
-											aria-label="Task count"
-											title="Tasks"
-										>
-											<ListChecks class="h-3 w-3" />
-											<span class="font-bold text-[10px]"
-												>{project.task_count} tasks</span
-											>
-										</span>
-										<ChevronRight
-											class="h-3.5 w-3.5 text-muted-foreground/50"
-										/>
-									</div>
-									<!-- Desktop: Full stats -->
-									<div
-										class="hidden sm:flex flex-wrap items-center gap-x-3 gap-y-1.5"
-									>
-										<span
-											class="flex items-center gap-1"
-											aria-label="Task count"
-											title="Tasks"
-										>
-											<ListChecks class="h-3.5 w-3.5" />
-											<span class="font-bold text-xs"
-												>{project.task_count}</span
-											>
-										</span>
-										<span
-											class="flex items-center gap-1"
-											aria-label="Output count"
-											title="Outputs"
-										>
-											<Layers class="h-3.5 w-3.5" />
-											<span class="font-bold text-xs"
-												>{project.output_count}</span
-											>
-										</span>
-										<span
-											class="flex items-center gap-1"
-											aria-label="Goal count"
-											title="Goals"
-										>
-											<Target class="h-3.5 w-3.5" />
-											<span class="font-bold text-xs"
-												>{project.goal_count}</span
-											>
-										</span>
-										<span
-											class="flex items-center gap-1"
-											aria-label="Plan count"
-											title="Plans"
-										>
-											<Calendar class="h-3.5 w-3.5" />
-											<span class="font-bold text-xs"
-												>{project.plan_count}</span
-											>
-										</span>
-										<span
-											class="flex items-center gap-1"
-											aria-label="Document count"
-											title="Documents"
-										>
-											<FileText class="h-3.5 w-3.5" />
-											<span class="font-bold text-xs"
-												>{project.document_count}</span
-											>
-										</span>
-									</div>
-									<div
-										class="hidden sm:flex items-center justify-between text-xs text-muted-foreground/70"
-									>
-										<span
-											>Updated {new Date(
-												project.updated_at
-											).toLocaleDateString()}</span
-										>
-										<ChevronRight
-											class="h-4 w-4 opacity-0 transition-opacity group-hover:opacity-100"
-										/>
-									</div>
 								</div>
-							</a>
-						{/each}
-					{/if}
-				</div>
-			</section>
-		{/if}
+							</div>
+						</a>
+					{/each}
+				{/if}
+			</div>
+		</section>
 	</div>
 </main>
 

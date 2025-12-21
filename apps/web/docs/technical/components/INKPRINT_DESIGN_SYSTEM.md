@@ -712,6 +712,88 @@ Only after structure is clean:
 
 ---
 
+## 11. Data Model Icon Conventions
+
+BuildOS uses consistent icons from Lucide for all core data models. **These icons must be used everywhere a data model is represented visually.**
+
+### Canonical Icon Mapping
+
+| Data Model    | Icon            | Color Class        | Import                      |
+| ------------- | --------------- | ------------------ | --------------------------- |
+| **Project**   | `FolderKanban`  | `text-emerald-500` | `FolderKanban` from lucide  |
+| **Goal**      | `Target`        | `text-amber-500`   | `Target` from lucide        |
+| **Plan**      | `Calendar`      | `text-indigo-500`  | `Calendar` from lucide      |
+| **Task**      | `ListChecks`    | `text-slate-500`   | `ListChecks` from lucide    |
+| **Milestone** | `Flag`          | `text-emerald-500` | `Flag` from lucide          |
+| **Output**    | `Layers`        | `text-purple-500`  | `Layers` from lucide        |
+| **Document**  | `FileText`      | `text-sky-500`     | `FileText` from lucide      |
+| **Risk**      | `AlertTriangle` | `text-red-500`     | `AlertTriangle` from lucide |
+| **Decision**  | `Scale`         | `text-violet-500`  | `Scale` from lucide         |
+
+### Canonical Source
+
+The **authoritative source** for these icons is the InsightPanels in `/apps/web/src/routes/projects/[id]/+page.svelte` (lines 346-382).
+
+### Usage Locations
+
+These icons should be used consistently in:
+
+1. **InsightPanels** (`/projects/[id]`) - Right rail entity panels
+2. **Dashboard** - Project cards with entity counts
+3. **Graph Nodes** - Svelte Flow graph visualization nodes
+4. **Graph Legend** - `GraphControls.svelte` legend section
+5. **Landing Page** - "Under the hood" data model cards
+6. **Example Project Graph** - Stats row and node previews
+7. **Node Details Panel** - Entity type headers
+
+### Example Usage
+
+```svelte
+<script lang="ts">
+	import {
+		Target,
+		Calendar,
+		ListChecks,
+		Flag,
+		FileText,
+		AlertTriangle,
+		Layers
+	} from 'lucide-svelte';
+</script>
+
+<!-- Goal with canonical icon -->
+<div class="flex items-center gap-2">
+	<Target class="w-4 h-4 text-amber-500" />
+	<span>Goals</span>
+</div>
+
+<!-- Task with canonical icon -->
+<div class="flex items-center gap-2">
+	<ListChecks class="w-4 h-4 text-slate-500" />
+	<span>Tasks</span>
+</div>
+```
+
+### Common Mistakes to Avoid
+
+| ❌ Wrong Icon  | ✅ Correct Icon | Entity    |
+| -------------- | --------------- | --------- |
+| `CheckCircle2` | `ListChecks`    | Task      |
+| `ListTodo`     | `Calendar`      | Plan      |
+| `File`         | `FileText`      | Document  |
+| `Bookmark`     | `Flag`          | Milestone |
+
+### Icon Size Guidelines
+
+| Context           | Size Class    |
+| ----------------- | ------------- |
+| Inline with text  | `w-3.5 h-3.5` |
+| Panel headers     | `w-4 h-4`     |
+| Card headers      | `w-5 h-5`     |
+| Hero/empty states | `w-6 h-6`+    |
+
+---
+
 ## Related Documentation
 
 - **Migration Tracker:** `/apps/web/docs/technical/INKPRINT_MIGRATION.md`

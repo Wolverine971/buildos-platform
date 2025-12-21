@@ -157,9 +157,7 @@
 	<!-- Header -->
 	<div class="flex items-center justify-between">
 		<div>
-			<h3 class="text-lg font-semibold text-foreground">
-				Scheduled Event Reminders
-			</h3>
+			<h3 class="text-lg font-semibold text-foreground">Scheduled Event Reminders</h3>
 			<p class="text-sm text-muted-foreground mt-1">
 				{#if upcomingCount > 0}
 					{upcomingCount} upcoming {upcomingCount === 1 ? 'message' : 'messages'}
@@ -168,7 +166,13 @@
 				{/if}
 			</p>
 		</div>
-		<Button variant="ghost" size="sm" onclick={loadScheduledMessages} disabled={loading} class="pressable">
+		<Button
+			variant="ghost"
+			size="sm"
+			onclick={loadScheduledMessages}
+			disabled={loading}
+			class="pressable"
+		>
 			<RefreshCw class="w-4 h-4 {loading ? 'animate-spin' : ''}" />
 			<span class="ml-2">Refresh</span>
 		</Button>
@@ -229,11 +233,14 @@
 			<div class="flex items-start gap-3">
 				<AlertCircle class="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
 				<div>
-					<p class="text-sm font-medium text-foreground">
-						Error loading messages
-					</p>
+					<p class="text-sm font-medium text-foreground">Error loading messages</p>
 					<p class="text-sm text-muted-foreground mt-1">{error}</p>
-					<Button variant="ghost" size="sm" onclick={loadScheduledMessages} class="mt-2 pressable">
+					<Button
+						variant="ghost"
+						size="sm"
+						onclick={loadScheduledMessages}
+						class="mt-2 pressable"
+					>
 						Try again
 					</Button>
 				</div>
@@ -302,9 +309,7 @@
 							</p>
 
 							<!-- Timing Info -->
-							<div
-								class="flex items-center gap-4 mt-3 text-xs text-muted-foreground"
-							>
+							<div class="flex items-center gap-4 mt-3 text-xs text-muted-foreground">
 								<div class="flex items-center gap-1.5">
 									<Clock class="w-3.5 h-3.5" />
 									<span>

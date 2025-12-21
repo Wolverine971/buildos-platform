@@ -110,34 +110,34 @@ INSERT INTO onto_projects (
 -- GOALS (Level 1 - directly under Project)
 -- ============================================
 
-INSERT INTO onto_goals (id, project_id, name, type_key, props, created_by) VALUES
+INSERT INTO onto_goals (id, project_id, name, type_key, state_key, props, created_by) VALUES
 -- Goal 1: Preserve Army
 ('22221111-0001-0000-0000-000000000001', '11111111-1111-1111-1111-111111111111',
- 'Maintain Continental Army as a Viable Fighting Force', 'goal.strategic.primary',
+ 'Maintain Continental Army as a Viable Fighting Force', 'goal.strategic.primary', 'achieved',
  '{"priority": "critical", "state": "achieved", "strategic_principle": "The army itself is more important than any individual battle", "key_insight": "Washington understood that as long as the army existed, the revolution continued"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 -- Goal 2: Foreign Alliance
 ('22221111-0002-0000-0000-000000000001', '11111111-1111-1111-1111-111111111111',
- 'Secure French Military Alliance', 'goal.strategic.diplomatic',
+ 'Secure French Military Alliance', 'goal.strategic.diplomatic', 'achieved',
  '{"priority": "critical", "state": "achieved", "target_ally": "France", "achieved_date": "1778-02-06", "catalyst": "Victory at Saratoga proved American viability"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 -- Goal 3: Independence
 ('22221111-0003-0000-0000-000000000001', '11111111-1111-1111-1111-111111111111',
- 'Achieve American Independence from Great Britain', 'goal.strategic.ultimate',
+ 'Achieve American Independence from Great Britain', 'goal.strategic.ultimate', 'achieved',
  '{"priority": "critical", "state": "achieved", "achieved_date": "1783-09-03", "treaty": "Treaty of Paris", "primary_objective": true}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 -- Goal 4: Civilian Control
 ('22221111-0004-0000-0000-000000000001', '11111111-1111-1111-1111-111111111111',
- 'Maintain Civilian Authority Over Military', 'goal.principle.governance',
+ 'Maintain Civilian Authority Over Military', 'goal.principle.governance', 'achieved',
  '{"priority": "critical", "state": "achieved", "principle": "Military subordinate to civilian government", "precedent_setting": true}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 -- Goal 5: Naval/Marine Forces (NEW - the Marine Corps goal)
 ('22221111-0005-0000-0000-000000000001', '11111111-1111-1111-1111-111111111111',
- 'Establish Continental Naval and Marine Forces', 'goal.strategic.military',
+ 'Establish Continental Naval and Marine Forces', 'goal.strategic.military', 'achieved',
  '{"priority": "high", "state": "achieved", "navy_established": "1775-10-13", "marines_established": "1775-11-10", "champion": "John Adams", "significance": "Created amphibious warfare capability unique to American forces", "birthplace": "Tun Tavern, Philadelphia"}'::jsonb,
  '00000000-0000-0000-0000-000000000002')
 ON CONFLICT (id) DO NOTHING;
@@ -146,160 +146,160 @@ ON CONFLICT (id) DO NOTHING;
 -- MILESTONES (Level 2 - under Goals)
 -- ============================================
 
-INSERT INTO onto_milestones (id, project_id, title, type_key, due_at, props, created_by) VALUES
+INSERT INTO onto_milestones (id, project_id, title, type_key, state_key, due_at, props, created_by) VALUES
 -- ====== Under Goal 1: Preserve Army ======
 ('33331111-0001-0001-0000-000000000001', '11111111-1111-1111-1111-111111111111',
- 'Army Preserved Through Strategic Retreat (New York)', 'milestone.military.survival',
+ 'Army Preserved Through Strategic Retreat (New York)', 'milestone.military.survival', 'completed',
  '1776-11-16'::timestamptz,
  '{"state": "achieved", "location": "New York/New Jersey", "troops_remaining": 3000, "significance": "Washington chose army preservation over holding terrain"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('33331111-0001-0002-0000-000000000001', '11111111-1111-1111-1111-111111111111',
- 'Army Morale and Strength Restored (Trenton)', 'milestone.military.revival',
+ 'Army Morale and Strength Restored (Trenton)', 'milestone.military.revival', 'completed',
  '1776-12-26'::timestamptz,
  '{"state": "achieved", "hessians_captured": 900, "american_casualties": 0, "morale_impact": "Saved the Revolution"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('33331111-0001-0003-0000-000000000001', '11111111-1111-1111-1111-111111111111',
- 'Continental Army Professionalized (Valley Forge)', 'milestone.organizational.reform',
+ 'Continental Army Professionalized (Valley Forge)', 'milestone.organizational.reform', 'completed',
  '1778-06-19'::timestamptz,
  '{"state": "achieved", "location": "Valley Forge, PA", "duration_months": 6, "trainer": "Baron von Steuben", "transformation": "Militia became professional army"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 -- ====== Under Goal 2: Foreign Alliance ======
 ('33331111-0002-0001-0000-000000000001', '11111111-1111-1111-1111-111111111111',
- 'British Army Surrenders at Saratoga', 'milestone.military.decisive',
+ 'British Army Surrenders at Saratoga', 'milestone.military.decisive', 'completed',
  '1777-10-17'::timestamptz,
  '{"state": "achieved", "location": "Saratoga, NY", "british_surrendered": 5900, "commander": "Horatio Gates", "significance": "Convinced France to ally openly"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('33331111-0002-0002-0000-000000000001', '11111111-1111-1111-1111-111111111111',
- 'Treaty of Alliance Signed with France', 'milestone.diplomatic.alliance',
+ 'Treaty of Alliance Signed with France', 'milestone.diplomatic.alliance', 'completed',
  '1778-02-06'::timestamptz,
  '{"state": "achieved", "location": "Paris", "french_minister": "Comte de Vergennes", "negotiator": "Benjamin Franklin", "terms": ["mutual defense", "no separate peace", "recognition of independence"]}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('33331111-0002-0003-0000-000000000001', '11111111-1111-1111-1111-111111111111',
- 'French Army Arrives at Newport', 'milestone.military.reinforcement',
+ 'French Army Arrives at Newport', 'milestone.military.reinforcement', 'completed',
  '1780-07-11'::timestamptz,
  '{"state": "achieved", "location": "Newport, RI", "commander": "Comte de Rochambeau", "troops": 5500, "significance": "Professional French army ready for combined operations"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 -- ====== Under Goal 3: Independence ======
 ('33331111-0003-0001-0000-000000000001', '11111111-1111-1111-1111-111111111111',
- 'British Evacuation of Boston', 'milestone.military.victory',
+ 'British Evacuation of Boston', 'milestone.military.victory', 'completed',
  '1776-03-17'::timestamptz,
  '{"state": "achieved", "british_evacuated": 11000, "method": "Knox artillery positioned on Dorchester Heights", "first_major_victory": true}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('33331111-0003-0002-0000-000000000001', '11111111-1111-1111-1111-111111111111',
- 'Declaration of Independence Adopted', 'milestone.political.founding',
+ 'Declaration of Independence Adopted', 'milestone.political.founding', 'completed',
  '1776-07-04'::timestamptz,
  '{"state": "achieved", "location": "Philadelphia", "signers": 56, "author": "Thomas Jefferson", "significance": "Formal break with Britain - defined the cause"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('33331111-0003-0003-0000-000000000001', '11111111-1111-1111-1111-111111111111',
- 'British Surrender at Yorktown', 'milestone.military.decisive',
+ 'British Surrender at Yorktown', 'milestone.military.decisive', 'completed',
  '1781-10-19'::timestamptz,
  '{"state": "achieved", "british_surrendered": 7000, "cornwallis": true, "effectively_ended_war": true, "combined_operation": "Franco-American"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('33331111-0003-0004-0000-000000000001', '11111111-1111-1111-1111-111111111111',
- 'Treaty of Paris Signed', 'milestone.diplomatic.peace',
+ 'Treaty of Paris Signed', 'milestone.diplomatic.peace', 'completed',
  '1783-09-03'::timestamptz,
  '{"state": "achieved", "negotiators": ["Benjamin Franklin", "John Adams", "John Jay"], "territory": "Atlantic to Mississippi", "terms": ["independence recognized", "fishing rights", "territorial boundaries"]}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 -- ====== Under Goal 4: Civilian Control ======
 ('33331111-0004-0001-0000-000000000001', '11111111-1111-1111-1111-111111111111',
- 'Newburgh Conspiracy Defused', 'milestone.governance.crisis',
+ 'Newburgh Conspiracy Defused', 'milestone.governance.crisis', 'completed',
  '1783-03-15'::timestamptz,
  '{"state": "achieved", "location": "Newburgh, NY", "issue": "Officers threatening coup over unpaid wages", "resolution": "Washington personal appeal", "spectacles_moment": "Gentlemen, you will permit me to put on my spectacles, for I have not only grown gray but almost blind in the service of my country"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('33331111-0004-0002-0000-000000000001', '11111111-1111-1111-1111-111111111111',
- 'Washington Resigns Commission', 'milestone.governance.precedent',
+ 'Washington Resigns Commission', 'milestone.governance.precedent', 'completed',
  '1783-12-23'::timestamptz,
  '{"state": "achieved", "location": "Annapolis, MD", "congress_president": "Thomas Mifflin", "significance": "First military leader in modern history to voluntarily surrender power", "king_george_quote": "If he does that, he will be the greatest man in the world"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 -- ====== Under Goal 5: Naval/Marine Forces (NEW) ======
 ('33331111-0005-0001-0000-000000000001', '11111111-1111-1111-1111-111111111111',
- 'Continental Navy Established', 'milestone.military.founding',
+ 'Continental Navy Established', 'milestone.military.founding', 'completed',
  '1775-10-13'::timestamptz,
  '{"state": "achieved", "location": "Philadelphia", "authorized_vessels": 2, "purpose": "Intercept British supply ships", "champion": "John Adams"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('33331111-0005-0002-0000-000000000001', '11111111-1111-1111-1111-111111111111',
- 'Continental Marines Established', 'milestone.military.founding',
+ 'Continental Marines Established', 'milestone.military.founding', 'completed',
  '1775-11-10'::timestamptz,
  '{"state": "achieved", "location": "Philadelphia - Tun Tavern", "battalions_authorized": 2, "first_commandant": "Captain Samuel Nicholas", "recruiting_location": "Tun Tavern, Water Street", "recruiter": "Robert Mullan", "recruiting_incentive": "A cold beer and a hot meal", "initial_strength": 300, "birthplace_of_marines": true}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('33331111-0005-0003-0000-000000000001', '11111111-1111-1111-1111-111111111111',
- 'First Amphibious Assault: Nassau Raid', 'milestone.military.operation',
+ 'First Amphibious Assault: Nassau Raid', 'milestone.military.operation', 'completed',
  '1776-03-04'::timestamptz,
  '{"state": "achieved", "location": "New Providence Island, Bahamas", "commander": "Captain Samuel Nicholas", "marines": 250, "sailors": 50, "captured_cannons": 71, "captured_mortars": 15, "first_amphibious_assault_usmc": true, "significance": "Established amphibious assault as Marine specialty"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('33331111-0005-0004-0000-000000000001', '11111111-1111-1111-1111-111111111111',
- 'Marines Fight at Trenton and Princeton', 'milestone.military.land_combat',
+ 'Marines Fight at Trenton and Princeton', 'milestone.military.land_combat', 'completed',
  '1777-01-03'::timestamptz,
  '{"state": "achieved", "locations": ["Trenton, NJ", "Princeton, NJ"], "significance": "Marines demonstrated ability to fight effectively on land alongside Army", "versatility_proven": true}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('33331111-0005-0005-0000-000000000001', '11111111-1111-1111-1111-111111111111',
- 'Bonhomme Richard Defeats HMS Serapis', 'milestone.naval.victory',
+ 'Bonhomme Richard Defeats HMS Serapis', 'milestone.naval.victory', 'completed',
  '1779-09-23'::timestamptz,
  '{"state": "achieved", "location": "Off Flamborough Head, England", "captain": "John Paul Jones", "marines_aboard": 137, "famous_quote": "I have not yet begun to fight!", "marine_contribution": "Sharpshooters swept enemy deck, grenade ignited powder magazine", "ship_lost": "Bonhomme Richard sank after battle", "prize_captured": "HMS Serapis"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('33331111-0005-0006-0000-000000000001', '11111111-1111-1111-1111-111111111111',
- 'Penobscot Expedition (Disaster)', 'milestone.military.defeat',
+ 'Penobscot Expedition (Disaster)', 'milestone.military.defeat', 'completed',
  '1779-08-14'::timestamptz,
  '{"state": "achieved", "location": "Penobscot Bay, Maine", "outcome": "Worst American naval defeat until Pearl Harbor", "ships_lost": 43, "lessons": ["Unity of command essential", "Speed and decisiveness critical", "Interservice cooperation necessary"], "marines_performed_well": true, "leadership_failed": true}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('33331111-0005-0007-0000-000000000001', '11111111-1111-1111-1111-111111111111',
- 'Continental Marines Disbanded', 'milestone.organizational.closure',
+ 'Continental Marines Disbanded', 'milestone.organizational.closure', 'completed',
  '1783-10-01'::timestamptz,
  '{"state": "achieved", "reason": "War ended, no need for naval forces", "legacy": "Marines re-established July 11, 1798", "tradition_continues": true}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 -- ====== Sub-Milestones under Saratoga ======
 ('33332222-0002-0001-0001-000000000001', '11111111-1111-1111-1111-111111111111',
- 'First Battle of Saratoga (Freeman''s Farm)', 'milestone.military.battle',
+ 'First Battle of Saratoga (Freeman''s Farm)', 'milestone.military.battle', 'completed',
  '1777-09-19'::timestamptz,
  '{"state": "achieved", "outcome": "Tactical British victory but costly", "british_casualties": 600, "american_casualties": 300}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('33332222-0002-0001-0002-000000000001', '11111111-1111-1111-1111-111111111111',
- 'Second Battle of Saratoga (Bemis Heights)', 'milestone.military.battle',
+ 'Second Battle of Saratoga (Bemis Heights)', 'milestone.military.battle', 'completed',
  '1777-10-07'::timestamptz,
  '{"state": "achieved", "hero": "Benedict Arnold", "outcome": "Decisive American victory", "arnold_wounded": true}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('33332222-0002-0001-0003-000000000001', '11111111-1111-1111-1111-111111111111',
- 'General Burgoyne Surrenders 5,900 Troops', 'milestone.military.surrender',
+ 'General Burgoyne Surrenders 5,900 Troops', 'milestone.military.surrender', 'completed',
  '1777-10-17'::timestamptz,
  '{"state": "achieved", "troops_surrendered": 5900, "first_full_army_surrender": true, "convention_army": true}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 -- ====== Sub-Milestones under Nassau Raid ======
 ('33332222-0005-0003-0001-000000000001', '11111111-1111-1111-1111-111111111111',
- 'Fort Montagu Captured', 'milestone.military.assault',
+ 'Fort Montagu Captured', 'milestone.military.assault', 'completed',
  '1776-03-03'::timestamptz,
  '{"state": "achieved", "location": "Eastern New Providence", "resistance": "minimal", "first_objective": true}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('33332222-0005-0003-0002-000000000001', '11111111-1111-1111-1111-111111111111',
- 'Fort Nassau Surrendered', 'milestone.military.surrender',
+ 'Fort Nassau Surrendered', 'milestone.military.surrender', 'completed',
  '1776-03-04'::timestamptz,
  '{"state": "achieved", "governor_captured": "Montfort Browne", "main_objective_achieved": true}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('33332222-0005-0003-0003-000000000001', '11111111-1111-1111-1111-111111111111',
- 'Military Supplies Secured', 'milestone.logistics.acquisition',
+ 'Military Supplies Secured', 'milestone.logistics.acquisition', 'completed',
  '1776-03-04'::timestamptz,
  '{"state": "achieved", "cannons": 71, "mortars": 15, "ammunition": "significant quantity", "gunpowder": "some shipped away before capture"}'::jsonb,
  '00000000-0000-0000-0000-000000000002')
@@ -1043,45 +1043,45 @@ ON CONFLICT (id) DO NOTHING;
 -- PHILADELPHIA CAMPAIGN MILESTONES (1777)
 -- ============================================
 
-INSERT INTO onto_milestones (id, project_id, title, type_key, due_at, props, created_by) VALUES
+INSERT INTO onto_milestones (id, project_id, title, type_key, state_key, due_at, props, created_by) VALUES
 -- Battle of Brandywine
 ('33331111-0003-0005-0000-000000000001', '11111111-1111-1111-1111-111111111111',
- 'Battle of Brandywine', 'milestone.military.battle',
+ 'Battle of Brandywine', 'milestone.military.battle', 'completed',
  '1777-09-11'::timestamptz,
  '{"state": "achieved", "outcome": "British tactical victory", "location": "Brandywine Creek, PA", "american_casualties": 1000, "british_casualties": 500, "british_commander": "William Howe", "american_commander": "George Washington", "lafayette_wounded": true, "british_flanking_maneuver": true, "significance": "British advance on Philadelphia - army preserved despite defeat"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 -- Paoli Massacre
 ('33331111-0003-0006-0000-000000000001', '11111111-1111-1111-1111-111111111111',
- 'Paoli Massacre', 'milestone.military.battle',
+ 'Paoli Massacre', 'milestone.military.battle', 'completed',
  '1777-09-20'::timestamptz,
  '{"state": "achieved", "outcome": "British surprise attack", "location": "Paoli, PA", "american_commander": "Anthony Wayne", "british_commander": "Charles Grey", "method": "Night bayonet assault", "american_casualties": 300, "significance": "Wayne sought revenge - got it at Stony Point"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 -- British Capture Philadelphia
 ('33331111-0003-0007-0000-000000000001', '11111111-1111-1111-1111-111111111111',
- 'British Capture Philadelphia', 'milestone.military.occupation',
+ 'British Capture Philadelphia', 'milestone.military.occupation', 'completed',
  '1777-09-26'::timestamptz,
  '{"state": "achieved", "outcome": "British occupy capital", "location": "Philadelphia", "duration_months": 9, "congress_fled": true, "significance": "Lost capital but not the war"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 -- Battle of Germantown
 ('33331111-0003-0008-0000-000000000001', '11111111-1111-1111-1111-111111111111',
- 'Battle of Germantown', 'milestone.military.battle',
+ 'Battle of Germantown', 'milestone.military.battle', 'completed',
  '1777-10-04'::timestamptz,
  '{"state": "achieved", "outcome": "American defeat but impressive counterattack", "location": "Germantown, PA", "american_casualties": 1000, "british_casualties": 550, "fog_confusion": true, "four_prong_attack": true, "significance": "Bold attack impressed France - proved American fighting spirit despite losses"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 -- Battle of Monmouth
 ('33331111-0001-0004-0000-000000000001', '11111111-1111-1111-1111-111111111111',
- 'Battle of Monmouth - Army Proves Transformation', 'milestone.military.battle',
+ 'Battle of Monmouth - Army Proves Transformation', 'milestone.military.battle', 'completed',
  '1778-06-28'::timestamptz,
  '{"state": "achieved", "outcome": "Tactical draw - strategic American success", "location": "Monmouth Courthouse, NJ", "american_casualties": 362, "british_casualties": 381, "charles_lee_disgrace": true, "washington_rallied_troops": true, "heat_casualties": true, "significance": "Proved Valley Forge transformation - army could stand against British regulars"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 -- Stony Point Raid
 ('33331111-0003-0009-0000-000000000001', '11111111-1111-1111-1111-111111111111',
- 'Stony Point Raid - Wayne''s Bayonet Assault', 'milestone.military.raid',
+ 'Stony Point Raid - Wayne''s Bayonet Assault', 'milestone.military.raid', 'completed',
  '1779-07-16'::timestamptz,
  '{"state": "achieved", "outcome": "American victory", "location": "Stony Point, NY", "commander": "Anthony Wayne", "method": "Night bayonet assault - no loaded muskets", "american_casualties": 98, "british_casualties": 600, "prisoners_captured": 472, "significance": "Restored Wayne''s reputation after Paoli"}'::jsonb,
  '00000000-0000-0000-0000-000000000002')
@@ -1091,52 +1091,52 @@ ON CONFLICT (id) DO NOTHING;
 -- SOUTHERN CAMPAIGN MILESTONES (1780-1781)
 -- ============================================
 
-INSERT INTO onto_milestones (id, project_id, title, type_key, due_at, props, created_by) VALUES
+INSERT INTO onto_milestones (id, project_id, title, type_key, state_key, due_at, props, created_by) VALUES
 -- Fall of Charleston
 ('33331111-0003-0010-0000-000000000001', '11111111-1111-1111-1111-111111111111',
- 'Fall of Charleston - Southern Disaster', 'milestone.military.defeat',
+ 'Fall of Charleston - Southern Disaster', 'milestone.military.defeat', 'completed',
  '1780-05-12'::timestamptz,
  '{"state": "achieved", "outcome": "Worst American defeat of the war", "location": "Charleston, SC", "american_commander": "Benjamin Lincoln", "british_commander": "Henry Clinton", "americans_captured": 5000, "ships_lost": 4, "significance": "Catastrophic loss - entire Southern army captured"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 -- Battle of Camden
 ('33331111-0003-0011-0000-000000000001', '11111111-1111-1111-1111-111111111111',
- 'Battle of Camden - Gates'' Disaster', 'milestone.military.defeat',
+ 'Battle of Camden - Gates'' Disaster', 'milestone.military.defeat', 'completed',
  '1780-08-16'::timestamptz,
  '{"state": "achieved", "outcome": "Devastating American defeat", "location": "Camden, SC", "american_commander": "Horatio Gates", "british_commander": "Lord Cornwallis", "american_casualties": 2000, "british_casualties": 350, "gates_fled_60_miles": true, "de_kalb_killed": true, "significance": "Gates disgraced - led to Greene appointment"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 -- Battle of Kings Mountain
 ('33331111-0003-0012-0000-000000000001', '11111111-1111-1111-1111-111111111111',
- 'Battle of Kings Mountain - Turning Point', 'milestone.military.victory',
+ 'Battle of Kings Mountain - Turning Point', 'milestone.military.victory', 'completed',
  '1780-10-07'::timestamptz,
  '{"state": "achieved", "outcome": "Decisive American victory", "location": "Kings Mountain, SC", "american_commanders": ["William Campbell", "John Sevier", "Isaac Shelby"], "british_commander": "Patrick Ferguson", "loyalist_casualties": 1000, "american_casualties": 90, "ferguson_killed": true, "overmountain_men": true, "jefferson_quote": "The turn of the tide of success", "significance": "Destroyed British Loyalist strategy - turning point in South"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 -- Greene Takes Command
 ('33331111-0003-0013-0000-000000000001', '11111111-1111-1111-1111-111111111111',
- 'Greene Takes Command of Southern Department', 'milestone.organizational.command',
+ 'Greene Takes Command of Southern Department', 'milestone.organizational.command', 'completed',
  '1780-12-02'::timestamptz,
  '{"state": "achieved", "location": "Charlotte, NC", "predecessor": "Horatio Gates", "significance": "Best strategic general assigned to save the South"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 -- Battle of Cowpens
 ('33331111-0003-0014-0000-000000000001', '11111111-1111-1111-1111-111111111111',
- 'Battle of Cowpens - Morgan''s Masterpiece', 'milestone.military.victory',
+ 'Battle of Cowpens - Morgan''s Masterpiece', 'milestone.military.victory', 'completed',
  '1781-01-17'::timestamptz,
  '{"state": "achieved", "outcome": "Decisive American victory - tactical masterpiece", "location": "Cowpens, SC", "american_commander": "Daniel Morgan", "british_commander": "Banastre Tarleton", "american_forces": 1900, "british_forces": 1100, "british_casualties": 868, "american_casualties": 72, "casualty_rate_british": "86%", "double_envelopment": true, "feigned_retreat": true, "morgan_quote": "I have given [Tarleton] a devil of a whipping", "significance": "One of most tactically perfect battles in military history"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 -- Battle of Guilford Courthouse
 ('33331111-0003-0015-0000-000000000001', '11111111-1111-1111-1111-111111111111',
- 'Battle of Guilford Courthouse - Cornwallis'' Pyrrhic Victory', 'milestone.military.battle',
+ 'Battle of Guilford Courthouse - Cornwallis'' Pyrrhic Victory', 'milestone.military.battle', 'completed',
  '1781-03-15'::timestamptz,
  '{"state": "achieved", "outcome": "British tactical victory - strategic disaster", "location": "Guilford Courthouse, NC", "american_commander": "Nathanael Greene", "british_commander": "Lord Cornwallis", "american_forces": 4440, "british_forces": 2100, "british_casualties": 550, "british_casualty_rate": "25%", "american_casualties": 260, "three_line_defense": true, "fox_quote": "Another such victory would ruin the British army", "significance": "Cornwallis crippled - forced to Virginia and Yorktown"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 -- Eutaw Springs
 ('33331111-0003-0016-0000-000000000001', '11111111-1111-1111-1111-111111111111',
- 'Battle of Eutaw Springs', 'milestone.military.battle',
+ 'Battle of Eutaw Springs', 'milestone.military.battle', 'completed',
  '1781-09-08'::timestamptz,
  '{"state": "achieved", "outcome": "Tactical draw - strategic American success", "location": "Eutaw Springs, SC", "american_commander": "Nathanael Greene", "british_commander": "Alexander Stewart", "last_major_southern_battle": true, "significance": "British confined to Charleston - Greene won South without winning a battle"}'::jsonb,
  '00000000-0000-0000-0000-000000000002')
@@ -1146,52 +1146,52 @@ ON CONFLICT (id) DO NOTHING;
 -- INTELLIGENCE MILESTONES (Goal 6)
 -- ============================================
 
-INSERT INTO onto_milestones (id, project_id, title, type_key, due_at, props, created_by) VALUES
+INSERT INTO onto_milestones (id, project_id, title, type_key, state_key, due_at, props, created_by) VALUES
 -- Nathan Hale Execution
 ('33331111-0006-0001-0000-000000000001', '11111111-1111-1111-1111-111111111111',
- 'Nathan Hale Execution - Lesson Learned', 'milestone.intelligence.failure',
+ 'Nathan Hale Execution - Lesson Learned', 'milestone.intelligence.failure', 'completed',
  '1776-09-22'::timestamptz,
  '{"state": "achieved", "outcome": "Captured and executed", "location": "New York City", "last_words": "I only regret that I have but one life to lose for my country", "lesson": "Use civilians not soldiers for espionage", "significance": "Led to creation of professional spy networks"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 -- Tallmadge Appointed
 ('33331111-0006-0002-0000-000000000001', '11111111-1111-1111-1111-111111111111',
- 'Benjamin Tallmadge Appointed Intelligence Director', 'milestone.intelligence.organization',
+ 'Benjamin Tallmadge Appointed Intelligence Director', 'milestone.intelligence.organization', 'completed',
  '1778-11-01'::timestamptz,
  '{"state": "achieved", "alias": "John Bolton", "significance": "Professional intelligence organization begins"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 -- Culper Ring Established
 ('33331111-0006-0003-0000-000000000001', '11111111-1111-1111-1111-111111111111',
- 'Culper Ring Spy Network Established', 'milestone.intelligence.network',
+ 'Culper Ring Spy Network Established', 'milestone.intelligence.network', 'completed',
  '1778-10-01'::timestamptz,
  '{"state": "achieved", "location": "Long Island and New York City", "key_members": ["Abraham Woodhull (Culper Sr.)", "Robert Townsend (Culper Jr.)", "Anna Strong", "Caleb Brewster", "Austin Roe"], "code_system": {"washington": 711, "new_york": 727, "long_island": 728}, "methods": ["invisible ink", "coded letters", "clothesline signals"], "significance": "Most effective American spy network of the war"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 -- Culper Ring Saves French at Newport
 ('33331111-0006-0004-0000-000000000001', '11111111-1111-1111-1111-111111111111',
- 'Culper Ring Prevents Clinton Attack on French', 'milestone.intelligence.success',
+ 'Culper Ring Prevents Clinton Attack on French', 'milestone.intelligence.success', 'completed',
  '1780-07-01'::timestamptz,
  '{"state": "achieved", "intelligence": "Clinton planned surprise attack on newly arrived French at Newport", "action": "Washington positioned army offensively", "result": "Clinton cancelled attack", "significance": "Saved French alliance at critical moment"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 -- Arnold Treason Detected
 ('33331111-0006-0005-0000-000000000001', '11111111-1111-1111-1111-111111111111',
- 'Arnold Treason Discovered', 'milestone.intelligence.counterintelligence',
+ 'Arnold Treason Discovered', 'milestone.intelligence.counterintelligence', 'completed',
  '1780-09-23'::timestamptz,
  '{"state": "achieved", "traitor": "Benedict Arnold", "contact": "Major John André", "plot": "Surrender West Point for £20,000", "discovery_method": "André captured with incriminating documents by three militiamen", "location": "Tarrytown, NY", "washington_quote": "Treason of the blackest dye was yesterday discovered!", "significance": "West Point preserved - critical strategic position saved"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 -- André Executed
 ('33331111-0006-0006-0000-000000000001', '11111111-1111-1111-1111-111111111111',
- 'Major John André Executed', 'milestone.intelligence.execution',
+ 'Major John André Executed', 'milestone.intelligence.execution', 'completed',
  '1780-10-02'::timestamptz,
  '{"state": "achieved", "location": "Tappan, NY", "method": "Hanging", "arnold_escaped": true, "significance": "Arnold fled to British - became brigadier general"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 -- Yorktown Deception
 ('33331111-0006-0007-0000-000000000001', '11111111-1111-1111-1111-111111111111',
- 'Yorktown Strategic Deception', 'milestone.intelligence.deception',
+ 'Yorktown Strategic Deception', 'milestone.intelligence.deception', 'completed',
  '1781-08-01'::timestamptz,
  '{"state": "achieved", "objective": "Convince Clinton attack was on New York", "methods": ["False dispatches", "Fake camp movements", "Deliberate misinformation"], "result": "Clinton held reinforcements in New York while Washington marched to Virginia", "significance": "Enabled Yorktown victory"}'::jsonb,
  '00000000-0000-0000-0000-000000000002')
@@ -1201,24 +1201,24 @@ ON CONFLICT (id) DO NOTHING;
 -- LOGISTICS MILESTONES (Goal 7)
 -- ============================================
 
-INSERT INTO onto_milestones (id, project_id, title, type_key, due_at, props, created_by) VALUES
+INSERT INTO onto_milestones (id, project_id, title, type_key, state_key, due_at, props, created_by) VALUES
 -- Smallpox Inoculation Order
 ('33331111-0007-0001-0000-000000000001', '11111111-1111-1111-1111-111111111111',
- 'Mass Smallpox Inoculation Ordered', 'milestone.logistics.medical',
+ 'Mass Smallpox Inoculation Ordered', 'milestone.logistics.medical', 'completed',
  '1777-02-05'::timestamptz,
  '{"state": "achieved", "decision_date": "1777-02-05", "order_to_shippen": "1777-02-06", "mortality_before": "50%+", "mortality_after": "less than 2%", "method": "variolation", "location": "Philadelphia initially", "timing": "Winter - recovery before spring campaigns", "secrecy": "Kept secret to prevent British exploitation", "washington_quote": "Should the disorder infect the Army in the natural way and rage with its usual virulence we should have more to dread from it than from the Sword of the Enemy", "significance": "First mass immunization in American history - may have saved the Revolution"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 -- Greene Appointed Quartermaster
 ('33331111-0007-0002-0000-000000000001', '11111111-1111-1111-1111-111111111111',
- 'Greene Appointed Quartermaster General', 'milestone.logistics.organization',
+ 'Greene Appointed Quartermaster General', 'milestone.logistics.organization', 'completed',
  '1778-03-02'::timestamptz,
  '{"state": "achieved", "predecessor": "Thomas Mifflin", "improvement": "Dramatic - saved army from starvation", "significance": "Supply system reformed"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 -- Robert Morris Finance
 ('33331111-0007-0003-0000-000000000001', '11111111-1111-1111-1111-111111111111',
- 'Robert Morris Becomes Superintendent of Finance', 'milestone.logistics.finance',
+ 'Robert Morris Becomes Superintendent of Finance', 'milestone.logistics.finance', 'completed',
  '1781-02-20'::timestamptz,
  '{"state": "achieved", "significance": "Financial genius stabilized war funding for Yorktown campaign"}'::jsonb,
  '00000000-0000-0000-0000-000000000002')
@@ -1228,24 +1228,24 @@ ON CONFLICT (id) DO NOTHING;
 -- MUTINY MILESTONES
 -- ============================================
 
-INSERT INTO onto_milestones (id, project_id, title, type_key, due_at, props, created_by) VALUES
+INSERT INTO onto_milestones (id, project_id, title, type_key, state_key, due_at, props, created_by) VALUES
 -- Pennsylvania Line Mutiny
 ('33331111-0001-0005-0000-000000000001', '11111111-1111-1111-1111-111111111111',
- 'Pennsylvania Line Mutiny', 'milestone.crisis.mutiny',
+ 'Pennsylvania Line Mutiny', 'milestone.crisis.mutiny', 'completed',
  '1781-01-01'::timestamptz,
  '{"state": "achieved", "location": "Jockey Hollow near Morristown, NJ", "mutineers": 1500, "total_strength": 2400, "causes": ["unpaid wages", "expired enlistments", "deplorable conditions"], "duration_days": 10, "negotiator": "Anthony Wayne", "resolution": "Negotiated settlement - 1250 discharged", "casualties": 1, "significance": "Revealed fundamental morale crisis"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 -- New Jersey Line Mutiny
 ('33331111-0001-0006-0000-000000000001', '11111111-1111-1111-1111-111111111111',
- 'New Jersey Line Mutiny - Suppressed', 'milestone.crisis.mutiny',
+ 'New Jersey Line Mutiny - Suppressed', 'milestone.crisis.mutiny', 'completed',
  '1781-01-20'::timestamptz,
  '{"state": "achieved", "location": "Pompton, NJ", "response": "Military suppression", "commander": "Robert Howe", "washington_reasoning": "Feared contagion of rebellion", "executions": true, "significance": "Different response than Pennsylvania - showed limits of patience"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 -- Charles Lee Court-Martial
 ('33331111-0001-0007-0000-000000000001', '11111111-1111-1111-1111-111111111111',
- 'Charles Lee Court-Martial', 'milestone.personnel.discipline',
+ 'Charles Lee Court-Martial', 'milestone.personnel.discipline', 'completed',
  '1778-08-12'::timestamptz,
  '{"state": "achieved", "dates": "July 4 - August 12, 1778", "charges": ["disobedience of orders", "misbehavior before enemy", "disrespect to commander"], "verdict": "Guilty on all counts", "sentence": "Suspended from command for one year", "result": "Never held field command again", "significance": "Established Washington''s authority over problematic subordinates"}'::jsonb,
  '00000000-0000-0000-0000-000000000002')

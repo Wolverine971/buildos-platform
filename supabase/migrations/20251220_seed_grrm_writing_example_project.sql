@@ -110,46 +110,46 @@ ON CONFLICT (id) DO NOTHING;
 -- ============================================
 -- GOALS (7 Strategic Objectives)
 -- ============================================
-INSERT INTO onto_goals (id, project_id, name, type_key, props, created_by) VALUES
+INSERT INTO onto_goals (id, project_id, name, type_key, state_key, props, created_by) VALUES
 -- Goal 1: Write the Original Trilogy
 ('44444444-0001-0000-0000-000000000001', '44444444-4444-4444-4444-444444444444',
- 'Complete the Original Trilogy', 'goal.strategic.foundation',
+ 'Complete the Original Trilogy', 'goal.strategic.foundation', 'achieved',
  '{"priority": "critical", "state": "achieved", "original_plan": "3 books as promised in 1993 letter", "actual": "Grew into 7+ books", "1993_letter_plans": {"jon_arya_romance": true, "tyrion_villain": true, "jaime_takes_throne": true, "sansa_bears_joffrey_son": true}, "lesson": "Never trust a gardener with a deadline", "timeline": "1991-2000", "pages_delivered": 2428}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 -- Goal 2: Expand the Series
 ('44444444-0002-0000-0000-000000000001', '44444444-4444-4444-4444-444444444444',
- 'Expand Beyond the Trilogy', 'goal.strategic.expansion',
+ 'Expand Beyond the Trilogy', 'goal.strategic.expansion', 'achieved',
  '{"priority": "high", "state": "achieved", "books_4_and_5": "Split into two parallel novels by geography", "feast_characters": ["Cersei", "Jaime", "Brienne", "Sansa", "Arya", "Samwell", "Ironborn", "Dorne"], "dance_characters": ["Jon", "Tyrion", "Daenerys", "Bran", "Theon"], "complication": "The Meereenese Knot", "five_year_gap": "Abandoned - too many flashbacks needed", "timeline": "2001-2011", "pages_delivered": 1769}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 -- Goal 3: Finish Winds of Winter
 ('44444444-0003-0000-0000-000000000001', '44444444-4444-4444-4444-444444444444',
- 'Finish The Winds of Winter', 'goal.strategic.primary',
+ 'Finish The Winds of Winter', 'goal.strategic.primary', 'active',
  '{"priority": "critical", "state": "active", "status": "~75% complete (2022 estimate)", "years_in_progress": 14, "estimated_pages": 1500, "current_pages": "~1200", "sample_chapters_released": ["Theon I", "Arianne I", "Arianne II", "Mercy (Arya)", "Alayne (Sansa)", "Tyrion I", "Tyrion II", "Barristan I", "Barristan II", "Victarion I", "The Forsaken (Aeron)"], "major_battles_pending": ["Battle of Ice (Winterfell)", "Battle of Fire (Meereen)"], "challenges": ["Interweaving 12+ POV narratives", "Resolving Jon resurrection", "Tyrion/Dany convergence"], "mood": "Cautiously Optimistic™", "covid_progress": "Best writing year since ADWD"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 -- Goal 4: Complete the Series
 ('44444444-0004-0000-0000-000000000001', '44444444-4444-4444-4444-444444444444',
- 'Write A Dream of Spring', 'goal.strategic.finale',
+ 'Write A Dream of Spring', 'goal.strategic.finale', 'draft',
  '{"priority": "critical", "state": "not_started", "status": "Not started (officially)", "fan_hope_level": "Minimal", "actuarial_concern": "Significant", "ending_known": "To GRRM, D&D, and possibly editors", "differs_from_show": "Confirmed - same broad strokes, different execution", "bran_still_king": "Probably", "bittersweet_promise": "Yes", "robert_jordan_model": "Rejected - no one else will finish", "timeline": "TBD-TBD"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 -- Goal 5: Manage Distractions
 ('44444444-0005-0000-0000-000000000001', '44444444-4444-4444-4444-444444444444',
- 'Resist All Distractions', 'goal.strategic.focus',
+ 'Resist All Distractions', 'goal.strategic.focus', 'abandoned',
  '{"priority": "critical", "state": "failed_spectacularly", "distractions": {"hbo_got": "8 seasons, occasional writer, constant consultant", "house_of_dragon": "Executive Producer since 2022", "knight_seven_kingdoms": "Executive Producer, premieres Jan 2026", "wild_cards": "34 volumes edited since 1987", "elden_ring": "Worldbuilding 2019-2022, FromSoftware collab", "jean_cocteau_cinema": "Purchased 2013, still operating", "fire_and_blood": "736 pages published 2018", "world_of_ice_and_fire": "326 pages published 2014", "conventions": "WorldCon, SDCC, NYCC, countless others", "not_a_blog": "235+ NFL posts, 15+ years of blogging", "jets_giants": "Two teams, infinite disappointment", "theater_projects": "Various", "ten_thousand_ships": "In development", "aegons_conquest": "In development"}, "success_rate": "0%", "fan_reaction": "WRITE THE BOOK"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 -- Goal 6: Keep Fans Hopeful
 ('44444444-0006-0000-0000-000000000001', '44444444-4444-4444-4444-444444444444',
- 'Maintain Fan Hope (Without Promises)', 'goal.strategic.community',
+ 'Maintain Fan Hope (Without Promises)', 'goal.strategic.community', 'active',
  '{"priority": "medium", "state": "active", "strategy": "Periodic vague updates on Not A Blog", "key_phrases": ["Still working on it", "Making progress", "It is a challenging book", "When it is done"], "effectiveness": "Diminishing returns since 2016", "neil_gaiman_defense": "George R.R. Martin is not your bitch (2009)", "subreddit_status": "r/asoiaf in permanent meme mode", "notable_coping": ["Preston Jacobs videos", "Alt Shift X essays", "Re-reading for the 47th time"]}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 -- Goal 7: Honor the Craft (New)
 ('44444444-0007-0000-0000-000000000001', '44444444-4444-4444-4444-444444444444',
- 'Write an Ending Worthy of the Journey', 'goal.strategic.legacy',
+ 'Write an Ending Worthy of the Journey', 'goal.strategic.legacy', 'active',
  '{"priority": "ultimate", "state": "philosophical", "philosophy": "A rushed book is forever bad, a delayed book is eventually good", "show_ending_reaction": "I do not want to repeat what happened with Game of Thrones", "key_reveals_remaining": ["Jon''s full parentage implications", "Azor Ahai identity", "Three-headed dragon prophecy", "Bran''s true purpose", "Hodor origin (done differently)", "Lady Stoneheart resolution"], "theories_to_address": ["R+L=J ✓", "Cleganebowl", "fAegon vs Aegon", "Grand Northern Conspiracy", "Southron Ambitions"], "valonqar_prophecy": "Still unresolved"}'::jsonb,
  '00000000-0000-0000-0000-000000000002')
 ON CONFLICT (id) DO NOTHING;
@@ -157,29 +157,29 @@ ON CONFLICT (id) DO NOTHING;
 -- ============================================
 -- MILESTONES - GOAL 1: Original Trilogy Era (1991-2000)
 -- ============================================
-INSERT INTO onto_milestones (id, project_id, title, type_key, due_at, props, created_by) VALUES
+INSERT INTO onto_milestones (id, project_id, title, type_key, state_key, due_at, props, created_by) VALUES
 ('44444444-0001-0001-0000-000000000001', '44444444-4444-4444-4444-444444444444',
- 'The Vision in Summer Snows', 'milestone.creative.inception', '1991-06-01'::timestamptz,
+ 'The Vision in Summer Snows', 'milestone.creative.inception', 'completed', '1991-06-01'::timestamptz,
  '{"state": "achieved", "description": "While writing sci-fi novel Avalon, GRRM has sudden vision of direwolf pups in summer snow", "first_chapter": "Bran I - written in 3 days", "initial_pages": 100, "scene": "A man beheaded, a dead direwolf mother, six pups for six Stark children", "ghost_detail": "Jon finds the albino runt last - a clear sign of his outsider status", "inspiration": "The image just came to him unbidden", "abandoned_project": "Avalon sci-fi novel never completed", "mood": "Excited"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('44444444-0001-0002-0000-000000000001', '44444444-4444-4444-4444-444444444444',
- 'The 1993 Letter to Agent', 'milestone.business.proposal', '1993-10-01'::timestamptz,
+ 'The 1993 Letter to Agent', 'milestone.business.proposal', 'completed', '1993-10-01'::timestamptz,
  '{"state": "achieved", "agent": "Kirby McCauley (later Ralph Vicinanza)", "document": "3-page outline letter", "plan": "Three books as generational saga", "five_survivors": ["Tyrion", "Daenerys", "Jon", "Arya", "Bran"], "shocking_original_plans": {"jon_arya_romance": "Tormented love between supposed half-siblings", "tyrion_villain": "Kills Joffrey, blamed for other murders, joins Starks for revenge", "jaime_king": "Kills everyone ahead of him in succession, takes throne", "sansa_tragedy": "Bears Joffrey a son, torn between child and family", "catelyn_death": "Killed by White Walkers beyond the Wall", "robb_death": "Dies in battle (Red Wedding invented later)"}, "irony_level": "Maximum - nothing went as planned", "letter_location": "HarperCollins UK offices, leaked via Waterstones Twitter 2015"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('44444444-0001-0003-0000-000000000001', '44444444-4444-4444-4444-444444444444',
- 'A Game of Thrones Published', 'milestone.publication.book1', '1996-08-01'::timestamptz,
+ 'A Game of Thrones Published', 'milestone.publication.book1', 'completed', '1996-08-01'::timestamptz,
  '{"state": "achieved", "publisher": "Bantam Spectra", "pages": 694, "chapters": 73, "pov_characters": ["Eddard", "Catelyn", "Sansa", "Arya", "Bran", "Jon", "Tyrion", "Daenerys"], "iconic_moments": ["Winter is Coming", "Bran pushed from tower", "Ned loses head"], "ned_death": "Subverted fantasy expectations - protagonist dies in book 1", "awards": ["Locus Award nomination", "World Fantasy Award nomination"], "time_to_write": "~5 years (1991-1996)", "initial_print_run": "Small - fantasy was not mainstream yet", "dedication": "For Parris"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('44444444-0001-0004-0000-000000000001', '44444444-4444-4444-4444-444444444444',
- 'A Clash of Kings Published', 'milestone.publication.book2', '1998-11-16'::timestamptz,
+ 'A Clash of Kings Published', 'milestone.publication.book2', 'completed', '1998-11-16'::timestamptz,
  '{"state": "achieved", "pages": 761, "chapters": 70, "gap_from_previous": "2 years 3 months", "new_pov": "Theon Greyjoy, Davos Seaworth", "iconic_moments": ["Battle of Blackwater", "Shadow baby assassination", "Theon takes Winterfell", "House of the Undying visions"], "prophecies_introduced": ["Azor Ahai", "The Prince That Was Promised", "Three treasons", "Three fires", "Three mounts"], "awards": ["Locus Award winner"], "fan_mood": "Optimistic - 2 year gap seemed normal"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('44444444-0001-0005-0000-000000000001', '44444444-4444-4444-4444-444444444444',
- 'A Storm of Swords Published', 'milestone.publication.book3', '2000-11-08'::timestamptz,
+ 'A Storm of Swords Published', 'milestone.publication.book3', 'completed', '2000-11-08'::timestamptz,
  '{"state": "achieved", "pages": 973, "chapters": 82, "gap_from_previous": "2 years", "new_pov": "Jaime Lannister, Samwell Tarly", "iconic_moments": ["Red Wedding", "Purple Wedding", "Oberyn vs Mountain", "Jon becomes Lord Commander", "Tyrion kills Tywin", "Lady Stoneheart reveal"], "red_wedding_writing": "Written LAST - GRRM avoided it until whole book done", "red_wedding_reaction": "Like murdering two of my children", "parris_reaction": "Cried when she read it", "fan_trauma": "Books thrown against walls and into fireplaces", "real_history_basis": ["Black Dinner (1440 Scotland)", "Glencoe Massacre (1692)"], "writing_pace": "Still reasonable - fans had hope"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
@@ -187,32 +187,32 @@ INSERT INTO onto_milestones (id, project_id, title, type_key, due_at, props, cre
 -- MILESTONES - GOAL 2: Expansion Era (2001-2011)
 -- ============================================
 ('44444444-0002-0001-0000-000000000001', '44444444-4444-4444-4444-444444444444',
- 'The Five-Year Gap Abandoned', 'milestone.creative.restructure', '2001-01-01'::timestamptz,
+ 'The Five-Year Gap Abandoned', 'milestone.creative.restructure', 'completed', '2001-01-01'::timestamptz,
  '{"state": "achieved", "original_plan": "Skip 5 years in story after ASOS", "intended_purpose": "Let child characters age to teenagers", "problem": "Too many flashbacks needed - readers would be confused", "affected_characters": ["Arya (9→14)", "Bran (7→12)", "Sansa (11→16)", "Jon (14→19)", "Daenerys (13→18)"], "solution": "Write everything in real-time", "consequence": "Books 4 and 5 become unwieldy, characters remain young", "pages_discarded": "Hundreds", "lesson": "Some structural decisions cannot be undone"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('44444444-0002-0002-0000-000000000001', '44444444-4444-4444-4444-444444444444',
- 'The Meereenese Knot Emerges', 'milestone.creative.problem', '2002-01-01'::timestamptz,
+ 'The Meereenese Knot Emerges', 'milestone.creative.problem', 'completed', '2002-01-01'::timestamptz,
  '{"state": "achieved", "description": "Complex plot tangle - getting all characters to Meereen in right order with right information", "characters_converging": ["Daenerys (already there)", "Tyrion (via Volantis)", "Victarion (Iron Fleet)", "Quentyn Martell (secret mission)", "Barristan (already there)", "Marwyn the Mage (sailing)", "Moqorro (visions)"], "complications": ["Xaro''s ship offer timing", "Daenerys marriage to Hizdahr", "Yunkish siege", "Daario imprisonment", "Drogon''s return", "The pale mare plague", "Tyrion''s slave journey"], "versions_written": {"quentyn_arrival": "Three different versions tested"}, "solution": "Added Barristan POV to cover Meereen while Dany rides Drogon", "years_to_untangle": "5+ years", "fan_essay": "The Meereenese Blot analysis - still debated"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('44444444-0002-0003-0000-000000000001', '44444444-4444-4444-4444-444444444444',
- 'A Feast for Crows Published', 'milestone.publication.book4', '2005-10-17'::timestamptz,
+ 'A Feast for Crows Published', 'milestone.publication.book4', 'completed', '2005-10-17'::timestamptz,
  '{"state": "achieved", "pages": 753, "chapters": 46, "gap_from_previous": "5 YEARS - the waiting begins", "split_decision": "Manuscript too large - split by geography not chronology", "pov_characters": ["Cersei", "Jaime", "Brienne", "Sansa (as Alayne)", "Arya", "Samwell", "Aeron Greyjoy", "Victarion", "Asha", "Arianne Martell", "Areo Hotah"], "missing_characters": ["Jon Snow", "Tyrion Lannister", "Daenerys Targaryen", "Bran Stark"], "infamous_author_note": "Meanwhile, back at the Wall...", "new_locations": ["Dorne", "Iron Islands", "Oldtown", "Braavos"], "kingsmoot": "First in 4000 years", "cersei_descent": "POV reveals her paranoia and incompetence", "fan_reaction": "Where is Tyrion? Where is Dany? WHERE IS JON?"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('44444444-0002-0004-0000-000000000001', '44444444-4444-4444-4444-444444444444',
- 'HBO Acquires TV Rights', 'milestone.business.adaptation', '2007-01-01'::timestamptz,
+ 'HBO Acquires TV Rights', 'milestone.business.adaptation', 'completed', '2007-01-01'::timestamptz,
  '{"state": "achieved", "showrunners": ["David Benioff", "D.B. Weiss"], "pitch": "The Sopranos in Middle-earth", "how_they_convinced_grrm": "Correctly answered who Jon Snow''s mother was", "pilot_filmed": "2009 (reshot after poor reception)", "series_order": "2010", "promise": "Faithful adaptation of books", "grrm_involvement": "Wrote one episode per season (S1-S4)", "future_impact": "Massive distraction incoming", "ironic_foreshadowing": "Show would finish before books"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('44444444-0002-0005-0000-000000000001', '44444444-4444-4444-4444-444444444444',
- 'A Dance with Dragons Published', 'milestone.publication.book5', '2011-07-12'::timestamptz,
+ 'A Dance with Dragons Published', 'milestone.publication.book5', 'completed', '2011-07-12'::timestamptz,
  '{"state": "achieved", "pages": 1016, "chapters": 73, "gap_from_previous": "5 years 9 months", "parallel_to": "A Feast for Crows (same timeline, different POVs)", "pov_characters": ["Jon Snow", "Tyrion", "Daenerys", "Bran", "Theon (as Reek)", "Davos", "Barristan (NEW)", "Melisandre (NEW)", "Quentyn Martell (NEW)", "Jon Connington (NEW)"], "iconic_moments": ["Jon stabbed by Night''s Watch (For the Watch)", "Tyrion meets Young Griff/Aegon", "Dany rides Drogon", "Theon escapes with Jeyne Poole", "Quentyn tries to tame dragons (Oh)"], "ending_cliffhangers": ["Is Jon dead?", "Where is Dany?", "Will Stannis defeat Boltons?", "Is Aegon real or fake (fAegon)?"], "deadline_pressure": "HBO show premiered 3 months earlier", "fan_mood": "Relieved but worried about future waits"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('44444444-0002-0006-0000-000000000001', '44444444-4444-4444-4444-444444444444',
- 'Game of Thrones TV Premiere', 'milestone.adaptation.premiere', '2011-04-17'::timestamptz,
+ 'Game of Thrones TV Premiere', 'milestone.adaptation.premiere', 'completed', '2011-04-17'::timestamptz,
  '{"state": "achieved", "network": "HBO", "episode": "Winter Is Coming", "budget": "$6M per episode (Season 1)", "cast": ["Sean Bean (Ned)", "Peter Dinklage (Tyrion)", "Emilia Clarke (Dany)", "Kit Harington (Jon)"], "reception": "Critical acclaim, massive viewership", "total_run": {"seasons": 8, "episodes": 73, "years": "2011-2019"}, "impact_on_writing": "Catastrophic distraction - GRRM involved in production", "episodes_written_by_grrm": ["The Pointy End (S1)", "Blackwater (S2)", "The Bear and the Maiden Fair (S3)", "The Lion and the Rose (S4)"], "ending_controversy": {"season_8_rating": "Lowest rated season", "petition_signatures": "1.7 million demanded remake", "bran_king_reaction": "Widespread disbelief"}, "grrm_quote_on_ending": "I do not want to repeat what happened with Game of Thrones"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
@@ -220,52 +220,52 @@ INSERT INTO onto_milestones (id, project_id, title, type_key, due_at, props, cre
 -- MILESTONES - GOAL 3: The Winds of Winter Saga (2011-Present)
 -- ============================================
 ('44444444-0003-0001-0000-000000000001', '44444444-4444-4444-4444-444444444444',
- 'Winds of Winter Announced', 'milestone.announcement.book6', '2010-01-01'::timestamptz,
+ 'Winds of Winter Announced', 'milestone.announcement.book6', 'completed', '2010-01-01'::timestamptz,
  '{"state": "achieved", "initial_chapters": "4 chapters left over from ADWD", "initial_pages": "100+", "chapters_moved_from_adwd": ["Theon sample chapter", "Parts of Arianne", "Barristan battle setup"], "optimism": "High - just continuing momentum", "narrator": "And so the waiting began..."}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('44444444-0003-0002-0000-000000000001', '44444444-4444-4444-4444-444444444444',
- 'Three Year Estimate Given', 'milestone.estimate.optimistic', '2011-04-01'::timestamptz,
+ 'Three Year Estimate Given', 'milestone.estimate.optimistic', 'completed', '2011-04-01'::timestamptz,
  '{"state": "achieved", "quote": "Realistically, it is going to take me three years to finish Winds of Winter", "context": "Interview after ADWD publication", "expected_year": "2014", "actual_result": "14+ years and counting", "accuracy": "0%", "lesson": "Never trust the gardener"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('44444444-0003-0003-0000-000000000001', '44444444-4444-4444-4444-444444444444',
- 'Sample Chapters Released (Torture)', 'milestone.marketing.samples', '2016-05-01'::timestamptz,
+ 'Sample Chapters Released (Torture)', 'milestone.marketing.samples', 'completed', '2016-05-01'::timestamptz,
  '{"state": "achieved", "purpose": "Keep fans interested during long wait", "effect": "Torture - taste of book they cannot have", "chapters_released": {"theon_i": {"date": "2011-12", "event": "Website", "content": "Theon with Stannis at crofters village"}, "arianne_i": {"date": "2013-01", "event": "Website", "content": "Arianne travels to meet Aegon"}, "mercy": {"date": "2014-03", "event": "Website", "content": "Arya as actress, kills Raff the Sweetling"}, "alayne": {"date": "2015-04", "event": "Website", "content": "Sansa at tourney in Vale"}, "arianne_ii": {"date": "2016-05", "event": "Website", "content": "Arianne approaches Storm''s End"}, "the_forsaken": {"date": "2016-05", "event": "Balticon reading", "content": "Aeron Damphair captive of Euron - extremely dark"}}, "readings_at_cons": ["Victarion", "Tyrion I", "Tyrion II", "Barristan I", "Barristan II"], "total_chapters_known": 11}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('44444444-0003-0004-0000-000000000001', '44444444-4444-4444-4444-444444444444',
- 'First Major Deadline Missed', 'milestone.deadline.missed', '2016-01-02'::timestamptz,
+ 'First Major Deadline Missed', 'milestone.deadline.missed', 'missed', '2016-01-02'::timestamptz,
  '{"state": "missed", "deadline": "Finish before Season 6 airs (April 2016)", "quote": "The last couple of months I have been pretty good, so I remain optimistic", "result": "Not done", "blog_post_date": "2016-01-02", "blog_post_title": "Last Year (Winds of Winter)", "famous_admission": "I tried. I failed.", "word_count_at_time": "Hundreds of pages short", "fan_reaction": "Sympathetic but frustrated"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('44444444-0003-0005-0000-000000000001', '44444444-4444-4444-4444-444444444444',
- 'The Show Overtakes the Books', 'milestone.crisis.overtaken', '2016-04-24'::timestamptz,
+ 'The Show Overtakes the Books', 'milestone.crisis.overtaken', 'completed', '2016-04-24'::timestamptz,
  '{"state": "achieved", "event": "Season 6 Episode 1 - The Red Woman", "major_spoilers_revealed": ["Jon Snow resurrection", "Hodor origin (Hold the Door)", "R+L=J confirmation", "Battle of the Bastards outcome", "Cersei destroys Sept of Baelor", "Dany sails for Westeros"], "author_reaction": "Deep disappointment - wanted books first", "fan_reaction": "Complex emotions - excitement mixed with loss", "quote": "The show has now gone ahead of the books", "lasting_impact": "Every major reveal now spoiled for book readers"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('44444444-0003-0006-0000-000000000001', '44444444-4444-4444-4444-444444444444',
- 'Neil Gaiman Defense Invoked', 'milestone.cultural.moment', '2009-05-12'::timestamptz,
+ 'Neil Gaiman Defense Invoked', 'milestone.cultural.moment', 'completed', '2009-05-12'::timestamptz,
  '{"state": "achieved", "original_post": "Entitlement Issues - Neil Gaiman blog", "famous_quote": "George R.R. Martin is not your bitch", "context": "Fan asked Gaiman if wrong to be frustrated about wait", "gaiman_argument": "Authors are not machines, not on contract to readers, have lives", "advice": "Wait. Read something else. Get on with your life.", "lasting_impact": "Became touchstone in author-reader relationship debates", "still_cited": "Every time someone complains about TWOW"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('44444444-0003-0007-0000-000000000001', '44444444-4444-4444-4444-444444444444',
- 'COVID Isolation Progress', 'milestone.progress.actual', '2020-12-31'::timestamptz,
+ 'COVID Isolation Progress', 'milestone.progress.actual', 'completed', '2020-12-31'::timestamptz,
  '{"state": "achieved", "progress": "Hundreds and hundreds of pages", "quote": "I am making progress on Winds of Winter", "location": "Remote mountain cabin in New Mexico", "reason": "Pandemic isolation - no conventions, no travel, no distractions", "best_year": "Since Dance with Dragons was completed", "irony": "Global tragedy became writing opportunity", "pages_written_2020": "Significant progress on all fronts"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('44444444-0003-0008-0000-000000000001', '44444444-4444-4444-4444-444444444444',
- 'Three-Quarters Done Announcement', 'milestone.progress.update', '2022-10-01'::timestamptz,
+ 'Three-Quarters Done Announcement', 'milestone.progress.update', 'completed', '2022-10-01'::timestamptz,
  '{"state": "achieved", "event": "Interview/blog update", "status": "About three-quarters done", "pages_estimate": "~1100-1200 of estimated 1500", "remaining": "~300-400 pages", "context": "First concrete progress update in years", "fan_reaction": "Cautious hope mixed with PTSD from past estimates", "challenge": "Still need to interweave all storylines"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('44444444-0003-0009-0000-000000000001', '44444444-4444-4444-4444-444444444444',
- 'No More Predictions Announcement', 'milestone.policy.change', '2021-01-01'::timestamptz,
+ 'No More Predictions Announcement', 'milestone.policy.change', 'completed', '2021-01-01'::timestamptz,
  '{"state": "achieved", "quote": "I will make no predictions on when I will finish. Every time I do, assholes on the Internet take that as a promise, and then wait eagerly to crucify me when I miss the deadline.", "wisdom": "Hard-earned after years of broken promises", "policy": "When it is done, it will be done", "fan_reaction": "Resigned acceptance"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('44444444-0003-0010-0000-000000000001', '44444444-4444-4444-4444-444444444444',
- 'Still Not Finished (2025)', 'milestone.status.current', '2025-12-31'::timestamptz,
+ 'Still Not Finished (2025)', 'milestone.status.current', 'in_progress', '2025-12-31'::timestamptz,
  '{"state": "in_progress", "pages_written": "~1200+", "years_since_adwd": 14, "challenge": "Interweaving 12+ POV narratives into one cohesive plot", "quote": "It is a challenging book", "major_remaining_work": ["Battle of Ice resolution", "Battle of Fire resolution", "Jon resurrection aftermath", "Tyrion/Dany meeting", "Aegon invasion of Westeros", "Cersei trial by combat"], "convention_updates": "Vague but hopeful", "fan_status": "Permanent state of cautious despair"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
@@ -273,17 +273,17 @@ INSERT INTO onto_milestones (id, project_id, title, type_key, due_at, props, cre
 -- MILESTONES - GOAL 4: A Dream of Spring (Theoretical)
 -- ============================================
 ('44444444-0004-0001-0000-000000000001', '44444444-4444-4444-4444-444444444444',
- 'Dream of Spring Conceptualized', 'milestone.planning.theoretical', '2030-12-31'::timestamptz,
+ 'Dream of Spring Conceptualized', 'milestone.planning.theoretical', 'pending', '2030-12-31'::timestamptz,
  '{"state": "not_started", "status": "Exists in GRRM''s mind only", "outline": "Presumably exists - ending shared with D&D", "writing_started": "Unknown - possibly some notes", "fan_expectation": "Approaching zero", "estimated_length": "1500+ pages", "book_number": 7, "final_book": "Supposedly - unless it grows again"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('44444444-0004-0002-0000-000000000001', '44444444-4444-4444-4444-444444444444',
- 'Ending Known Only to GRRM', 'milestone.secret.ending', '2035-12-31'::timestamptz,
+ 'Ending Known Only to GRRM', 'milestone.secret.ending', 'pending', '2035-12-31'::timestamptz,
  '{"state": "not_started", "shared_with": ["D&D (showrunners) - broad strokes only", "Possibly editors", "Wife Parris"], "differs_from_show": "Confirmed - execution will be very different", "show_ending_elements": {"bran_king": "Likely still happens", "dany_fate": "Similar but better developed", "jon_exile": "Unknown", "kings_landing_destruction": "Probably different"}, "bittersweet_promise": "Tolkien-inspired ending planned", "details": "Classified - GRRM takes to grave if unfinished"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('44444444-0004-0003-0000-000000000001', '44444444-4444-4444-4444-444444444444',
- 'Robert Jordan Model Rejected', 'milestone.policy.succession', '2014-06-01'::timestamptz,
+ 'Robert Jordan Model Rejected', 'milestone.policy.succession', 'completed', '2014-06-01'::timestamptz,
  '{"state": "achieved", "context": "Robert Jordan died before finishing Wheel of Time", "jordan_solution": "Brandon Sanderson completed series from notes", "grrm_position": "Will not allow another author to finish", "quote": "I don''t want anybody else to write about Westeros when I am gone", "instructions_left": "None - or at least none public", "fan_anxiety": "Maximum"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
@@ -291,42 +291,42 @@ INSERT INTO onto_milestones (id, project_id, title, type_key, due_at, props, cre
 -- MILESTONES - GOAL 5: Distractions
 -- ============================================
 ('44444444-0005-0001-0000-000000000001', '44444444-4444-4444-4444-444444444444',
- 'Wild Cards Anthology Editing', 'milestone.distraction.ongoing', '2025-02-01'::timestamptz,
+ 'Wild Cards Anthology Editing', 'milestone.distraction.ongoing', 'completed', '2025-02-01'::timestamptz,
  '{"state": "achieved", "description": "Shared-world superhero anthology series started 1987", "origin": "Superworld RPG campaign - GRRM was gamemaster", "role": "Editor and contributor", "volumes_published": 34, "co_editor": "Melinda Snodgrass (later volumes)", "grrm_character": "The Great and Powerful Turtle", "publisher_history": ["Bantam (1987-1993)", "Baen (1993-1995)", "Tor Books (2008-present)"], "time_consumed": "Significant - editing anthology is real work", "fan_reaction": "WHY ARE YOU EDITING WILD CARDS"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('44444444-0005-0002-0000-000000000001', '44444444-4444-4444-4444-444444444444',
- 'HBO Show Involvement (2011-2019)', 'milestone.distraction.major', '2019-05-19'::timestamptz,
+ 'HBO Show Involvement (2011-2019)', 'milestone.distraction.major', 'completed', '2019-05-19'::timestamptz,
  '{"state": "achieved", "seasons": 8, "episodes": 73, "grrm_episodes_written": 4, "involvement_level": "Consultant, producer, occasional writer", "convention_appearances": "Countless - panels, premieres, interviews", "travel": "LA, NYC, London, Belfast", "impact_on_writing": "Major time sink - admitted he should have declined more", "irony": "Show finished 5+ years before next book"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('44444444-0005-0003-0000-000000000001', '44444444-4444-4444-4444-444444444444',
- 'Elden Ring Worldbuilding', 'milestone.distraction.gaming', '2022-02-25'::timestamptz,
+ 'Elden Ring Worldbuilding', 'milestone.distraction.gaming', 'completed', '2022-02-25'::timestamptz,
  '{"state": "achieved", "date": "2019-2022", "collaboration": "FromSoftware / Hidetaka Miyazaki", "contribution": "Mythology and worldbuilding for The Lands Between", "grrm_work": "Wrote the overarching mythos and history before the Shattering", "game_release": "2022-02-25", "metacritic": 96, "copies_sold": "25+ million", "fan_reaction": "Great game, but WRITE THE BOOK GEORGE", "time_spent": "Unknown but clearly substantial"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('44444444-0005-0004-0000-000000000001', '44444444-4444-4444-4444-444444444444',
- 'House of the Dragon Involvement', 'milestone.distraction.spinoff', '2022-08-21'::timestamptz,
+ 'House of the Dragon Involvement', 'milestone.distraction.spinoff', 'completed', '2022-08-21'::timestamptz,
  '{"state": "achieved", "premiere": "2022-08-21", "network": "HBO", "role": "Executive Producer and consultant", "source_material": "Fire & Blood (2018)", "showrunner": "Ryan Condal", "seasons_aired": 2, "seasons_planned": 4, "reception": "Much better than GoT S8", "time_cost": "Considerable - active involvement in production", "upcoming": "A Knight of the Seven Kingdoms (Jan 2026)"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('44444444-0005-0005-0000-000000000001', '44444444-4444-4444-4444-444444444444',
- 'Jean Cocteau Cinema Acquired', 'milestone.distraction.local', '2013-08-09'::timestamptz,
+ 'Jean Cocteau Cinema Acquired', 'milestone.distraction.local', 'completed', '2013-08-09'::timestamptz,
  '{"state": "achieved", "venue": "Jean Cocteau Cinema", "location": "Santa Fe, New Mexico Railyard District", "acquired": "2013", "history": "Originally opened 1976, closed 2006, GRRM bought entire building", "reopened": "August 9, 2013", "role": "Owner and operator", "associated_businesses": ["Beastly Books", "Milk of the Poppy (bar concept)"], "events": "Film screenings, author events, game nights", "company": "Highgarden Entertainment", "justification": "Supporting local arts and community"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('44444444-0005-0006-0000-000000000001', '44444444-4444-4444-4444-444444444444',
- 'Constant Convention Appearances', 'milestone.distraction.travel', '2019-12-31'::timestamptz,
+ 'Constant Convention Appearances', 'milestone.distraction.travel', 'completed', '2019-12-31'::timestamptz,
  '{"state": "achieved", "events": ["WorldCon (annually)", "San Diego Comic-Con", "New York Comic Con", "Balticon", "Loncon", "Sasquan", "Countless others"], "impact": "Cannot write while traveling", "writing_days_lost": "Weeks per year minimum", "fan_demand": "High - people want to see him", "irony": "Same fans who want book also want appearances", "covid_benefit": "2020 - no travel, actual writing progress"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('44444444-0005-0007-0000-000000000001', '44444444-4444-4444-4444-444444444444',
- 'Fire & Blood Published Instead', 'milestone.distraction.book', '2018-11-20'::timestamptz,
+ 'Fire & Blood Published Instead', 'milestone.distraction.book', 'completed', '2018-11-20'::timestamptz,
  '{"state": "achieved", "date": "2018-11-20", "pages": 736, "content": "History of House Targaryen from Aegon I to Aegon III", "irony": "Published a 736-page book that was NOT Winds of Winter", "purpose": "Source material for House of the Dragon", "fan_reaction": "Grateful but frustrated - WHERE IS TWOW", "justification": "Different kind of writing, clears head"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('44444444-0005-0008-0000-000000000001', '44444444-4444-4444-4444-444444444444',
- 'Not A Blog Football Posts', 'milestone.distraction.blogging', '2024-12-31'::timestamptz,
+ 'Not A Blog Football Posts', 'milestone.distraction.blogging', 'completed', '2024-12-31'::timestamptz,
  '{"state": "achieved", "platform": "LiveJournal (now georgerrmartin.com)", "started": "2006", "nfl_posts": "235+ posts tagged NFL", "teams": ["New York Jets", "New York Giants"], "famous_phrase": "Life is meaningless and full of pain", "usage_of_phrase": {"jets_losses": 23, "giants_losses": 25}, "time_spent": "Unknown but clearly loves football", "fan_reaction": "Stop blogging about Jets and WRITE"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
@@ -334,12 +334,12 @@ INSERT INTO onto_milestones (id, project_id, title, type_key, due_at, props, cre
 -- MILESTONES - GOAL 6: Fan Relations
 -- ============================================
 ('44444444-0006-0001-0000-000000000001', '44444444-4444-4444-4444-444444444444',
- 'Not A Blog Updates', 'milestone.communication.blog', '2006-04-01'::timestamptz,
+ 'Not A Blog Updates', 'milestone.communication.blog', 'completed', '2006-04-01'::timestamptz,
  '{"state": "achieved", "platform": "Started LiveJournal, now georgerrmartin.com/notablog", "started": "2006", "origin_of_name": "Didnt think hed have time for a real blog", "content_breakdown": {"football": "40%", "wild_cards": "20%", "politics": "15%", "conventions": "15%", "twow_updates": "5%", "other": "5%"}, "frequency": "When inspired", "annual_new_year_post": "Tradition - usually mentions TWOW vaguely"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('44444444-0006-0002-0000-000000000001', '44444444-4444-4444-4444-444444444444',
- 'The Waiting Community Forms', 'milestone.community.emergence', '2012-01-01'::timestamptz,
+ 'The Waiting Community Forms', 'milestone.community.emergence', 'completed', '2012-01-01'::timestamptz,
  '{"state": "achieved", "subreddit": "r/asoiaf", "members": "1+ million", "founded": "During the long wait", "famous_content_creators": ["Preston Jacobs", "Alt Shift X", "Lucifer Means Lightbringer", "Ideas of Ice and Fire"], "coping_mechanisms": ["Re-reads (47th time)", "Tinfoil theories", "Denial", "Reading other fantasy", "Making memes"], "popular_theories": ["R+L=J (confirmed)", "Cleganebowl (confirmed)", "fAegon Blackfyre", "Grand Northern Conspiracy", "Southron Ambitions"], "memes": ["Sweet summer child", "Get hype", "TWOW when", "George please"]}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
@@ -347,7 +347,7 @@ INSERT INTO onto_milestones (id, project_id, title, type_key, due_at, props, cre
 -- MILESTONES - GOAL 7: Legacy (New)
 -- ============================================
 ('44444444-0007-0001-0000-000000000001', '44444444-4444-4444-4444-444444444444',
- 'Marriage to Parris McBride', 'milestone.personal.marriage', '2011-02-15'::timestamptz,
+ 'Marriage to Parris McBride', 'milestone.personal.marriage', 'completed', '2011-02-15'::timestamptz,
  '{"state": "achieved", "date": "2011-02-15", "location": "Santa Fe home (small ceremony)", "larger_reception": "WorldCon Reno, August 2011", "met": "1975 at Kubla Khan Sci-Fi convention Nashville", "together_since": "1981 (after his first marriage ended)", "years_before_marriage": 30, "grrm_joke": "Maybe this relationship was going to work out after all", "rings": "Custom Celtic-inspired by local artisans", "parris_request": "Donate to animal charities instead of gifts"}'::jsonb,
  '00000000-0000-0000-0000-000000000002')
 ON CONFLICT (id) DO NOTHING;

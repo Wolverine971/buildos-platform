@@ -2251,10 +2251,10 @@
 	icon="success"
 	loading={isApproving}
 	loadingText="Sending approval email..."
-	on:confirm={handleApprovalConfirm}
-	on:cancel={handleApprovalCancel}
+	onconfirm={handleApprovalConfirm}
+	oncancel={handleApprovalCancel}
 >
-	<div slot="content">
+	{#snippet content()}
 		{#if pendingApprovalSignup}
 			<div class="space-y-4">
 				<p class="text-sm text-gray-600 dark:text-gray-400">
@@ -2280,7 +2280,7 @@
 				</div>
 			</div>
 		{/if}
-	</div>
+	{/snippet}
 </ConfirmationModal>
 
 <!-- Details Modal - Keep your existing modal content -->

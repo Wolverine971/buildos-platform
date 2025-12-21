@@ -251,9 +251,7 @@
 							<Settings class="w-6 h-6 text-accent" />
 						</div>
 						<div>
-							<h2 class="text-2xl font-semibold text-foreground">
-								Account Settings
-							</h2>
+							<h2 class="text-2xl font-semibold text-foreground">Account Settings</h2>
 							<p class="mt-1 text-sm text-muted-foreground">
 								Manage your account information and preferences
 							</p>
@@ -556,9 +554,7 @@
 											class="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0"
 										/>
 										<div class="text-sm">
-											<p
-												class="text-foreground font-medium mb-2"
-											>
+											<p class="text-foreground font-medium mb-2">
 												This action cannot be undone
 											</p>
 											<p class="text-muted-foreground">

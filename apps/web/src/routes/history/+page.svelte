@@ -4,6 +4,11 @@
 
   Unified history view showing both braindumps and chat sessions.
   Users can view, filter, and resume previous conversations.
+
+  PERFORMANCE (Dec 2024):
+  - itemCount returned IMMEDIATELY for instant skeleton rendering
+  - Full history data streamed in background
+  - Zero layout shift - exact number of skeleton cards rendered from start
 -->
 
 <script lang="ts">
@@ -26,6 +31,7 @@
 		MessagesSquare
 	} from 'lucide-svelte';
 	import AgentChatModal from '$lib/components/agent/AgentChatModal.svelte';
+	import HistoryListSkeleton from '$lib/components/history/HistoryListSkeleton.svelte';
 	import type { HistoryItem } from './+page.server';
 
 	interface OntoBraindump {
@@ -43,11 +49,10 @@
 		updated_at: string;
 	}
 
-	interface PageData {
+	/** Streamed history data structure */
+	interface HistoryDataResult {
 		items: HistoryItem[];
 		totalItems: number;
-		braindumpCount: number;
-		chatSessionCount: number;
 		stats: {
 			totalBraindumps: number;
 			processedBraindumps: number;
@@ -55,6 +60,15 @@
 			totalChatSessions: number;
 			chatSessionsWithSummary: number;
 		};
+		selectedItem: HistoryItem | null;
+		hasMore: boolean;
+	}
+
+	interface PageData {
+		// Immediate data for skeleton rendering
+		itemCount: number;
+		braindumpCount: number;
+		chatSessionCount: number;
 		filters: {
 			limit: number;
 			offset: number;
@@ -64,13 +78,39 @@
 			selectedId: string | null;
 			selectedType: string | null;
 		};
-		selectedItem: HistoryItem | null;
-		hasMore: boolean;
+		user: { id: string };
+		// Streamed data
+		historyData: Promise<HistoryDataResult>;
 	}
 
 	let { data }: { data: PageData } = $props();
 
-	// Local state
+	// Immediate counts for skeleton rendering
+	const itemCount = $derived(data.itemCount);
+	const braindumpCount = $derived(data.braindumpCount);
+	const chatSessionCount = $derived(data.chatSessionCount);
+
+	// Local state for resolved streamed data
+	let resolvedData = $state<HistoryDataResult | null>(null);
+	let historyLoading = $state(true);
+	let historyError = $state<string | null>(null);
+
+	// Resolve streamed data
+	$effect(() => {
+		historyLoading = true;
+		historyError = null;
+		data.historyData
+			.then((result) => {
+				resolvedData = result;
+				historyLoading = false;
+			})
+			.catch((err) => {
+				historyError = err?.message || 'Failed to load history';
+				historyLoading = false;
+			});
+	});
+
+	// Local filter state
 	let searchInput = $state(data.filters.search);
 	let statusFilter = $state<string>(data.filters.status || '');
 	let typeFilter = $state<'all' | 'braindumps' | 'chats'>(data.filters.typeFilter || 'all');
@@ -79,28 +119,39 @@
 	let selectedChatSessionId = $state<string | null>(null);
 	let isLoadingChatSession = $state(false);
 
-	// Open modal if we have a selectedItem from URL
+	// Open modal if we have a selectedItem from streamed data
 	$effect(() => {
-		if (data.selectedItem && browser) {
-			if (data.selectedItem.type === 'braindump') {
-				selectedBraindumpForChat = data.selectedItem.originalData as OntoBraindump;
+		if (resolvedData?.selectedItem && browser) {
+			if (resolvedData.selectedItem.type === 'braindump') {
+				selectedBraindumpForChat = resolvedData.selectedItem.originalData as OntoBraindump;
 				selectedChatSessionId = null;
 				isAgentModalOpen = true;
-			} else if (data.selectedItem.type === 'chat_session') {
-				selectedChatSessionId = data.selectedItem.id;
+			} else if (resolvedData.selectedItem.type === 'chat_session') {
+				selectedChatSessionId = resolvedData.selectedItem.id;
 				selectedBraindumpForChat = null;
 				isAgentModalOpen = true;
 			}
 		}
 	});
 
-	// Derived states
-	const items = $derived(data.items);
-	const stats = $derived(data.stats);
-	const hasMore = $derived(data.hasMore);
+	// Derived states from resolved data
+	const items = $derived(resolvedData?.items ?? []);
+	const stats = $derived(
+		resolvedData?.stats ?? {
+			totalBraindumps: braindumpCount,
+			processedBraindumps: 0,
+			pendingBraindumps: 0,
+			totalChatSessions: chatSessionCount,
+			chatSessionsWithSummary: 0
+		}
+	);
+	const hasMore = $derived(resolvedData?.hasMore ?? false);
 	const currentOffset = $derived(data.filters.offset);
 	const limit = $derived(data.filters.limit);
-	const totalItems = $derived(data.totalItems);
+	const totalItems = $derived(resolvedData?.totalItems ?? itemCount);
+
+	// Show skeletons while loading if we have items to show
+	const showSkeletons = $derived(historyLoading && itemCount > 0);
 
 	function getStatusIcon(status: string) {
 		switch (status) {
@@ -238,7 +289,12 @@
 					<Lightbulb class="h-6 w-6 text-violet-600 dark:text-violet-400" />
 				</div>
 				<div>
-					<h1 class="text-2xl font-bold text-foreground">History</h1>
+					<div class="flex items-center gap-2">
+						<h1 class="text-2xl font-bold text-foreground">History</h1>
+						{#if historyLoading}
+							<Loader2 class="h-5 w-5 animate-spin text-muted-foreground" />
+						{/if}
+					</div>
 					<p class="text-sm text-muted-foreground">
 						Your braindumps and chat conversations
 					</p>
@@ -380,7 +436,25 @@
 		</div>
 
 		<!-- History items list -->
-		{#if items.length === 0}
+		{#if showSkeletons}
+			<!-- Show skeletons while loading - exact count for zero layout shift -->
+			<HistoryListSkeleton count={itemCount} />
+		{:else if historyError}
+			<!-- Error state -->
+			<div
+				class="flex flex-col items-center justify-center rounded-lg border border-dashed border-red-300 bg-red-50 py-16 dark:border-red-800 dark:bg-red-900/20"
+			>
+				<AlertCircle class="mb-4 h-12 w-12 text-red-500" />
+				<h3 class="mb-2 text-lg font-medium text-foreground">Failed to load history</h3>
+				<p class="mb-4 text-center text-sm text-muted-foreground">{historyError}</p>
+				<button
+					onclick={() => location.reload()}
+					class="rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 pressable"
+				>
+					Retry
+				</button>
+			</div>
+		{:else if items.length === 0}
 			<div
 				class="flex flex-col items-center justify-center rounded-lg border border-dashed border-border bg-muted/50 py-16 tx tx-bloom tx-weak"
 			>

@@ -354,9 +354,7 @@
 		<div class="overflow-y-auto" style="max-height: 70vh;">
 			{#if isLoading}
 				<div class="flex items-center justify-center py-12">
-					<div class="animate-pulse text-muted-foreground">
-						Loading editor…
-					</div>
+					<div class="animate-pulse text-muted-foreground">Loading editor…</div>
 				</div>
 			{:else if loadError}
 				<div class="flex flex-col items-center justify-center gap-3 text-center px-6 py-12">
@@ -462,9 +460,7 @@
 					/>
 				</div>
 			{:else}
-				<div
-					class="flex items-center justify-center py-12 text-muted-foreground"
-				>
+				<div class="flex items-center justify-center py-12 text-muted-foreground">
 					Unable to load editor for this output.
 				</div>
 			{/if}
@@ -508,8 +504,8 @@
 	loading={deleting}
 	loadingText="Deleting..."
 	icon="danger"
-	on:confirm={handleDelete}
-	on:cancel={() => (showDeleteConfirm = false)}
+	onconfirm={handleDelete}
+	oncancel={() => (showDeleteConfirm = false)}
 >
 	{#snippet content()}
 		<p class="text-sm text-muted-foreground">

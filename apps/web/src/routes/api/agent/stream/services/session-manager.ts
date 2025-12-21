@@ -376,6 +376,57 @@ export class SessionManager {
 		// Reverse to get chronological order
 		return (data ?? []).reverse();
 	}
+
+	/**
+	 * Load recent tool result messages for a session.
+	 * Useful when the client-provided history omits tool role entries.
+	 *
+	 * @param sessionId - The session ID
+	 * @param limit - Maximum tool result messages to load
+	 * @returns Array of normalized tool result payloads
+	 */
+	async loadRecentToolResults(
+		sessionId: string,
+		limit: number = 20
+	): Promise<
+		Array<{
+			tool_call_id?: string | null;
+			tool_name?: string | null;
+			result: unknown;
+			created_at?: string;
+		}>
+	> {
+		const { data, error } = await this.supabase
+			.from('chat_messages')
+			.select('tool_call_id, tool_name, tool_result, content, created_at')
+			.eq('session_id', sessionId)
+			.eq('role', 'tool')
+			.order('created_at', { ascending: false })
+			.limit(limit);
+
+		if (error) {
+			logger.warn('Failed to load recent tool results', { sessionId, error });
+			return [];
+		}
+
+		return (data ?? []).map((row) => {
+			let parsedResult: unknown = row.tool_result ?? null;
+			if (!parsedResult && row.content) {
+				try {
+					parsedResult = JSON.parse(row.content);
+				} catch {
+					parsedResult = row.content;
+				}
+			}
+
+			return {
+				tool_call_id: row.tool_call_id,
+				tool_name: row.tool_name,
+				result: parsedResult,
+				created_at: row.created_at
+			};
+		});
+	}
 }
 
 // ============================================

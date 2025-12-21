@@ -12,16 +12,6 @@
 			]
 		},
 		{
-			"file": "src/routes/+page.svelte",
-			"type": "page",
-			"components": ["Dashboard"]
-		},
-		{
-			"file": "src/routes/projects/+page.svelte",
-			"type": "page",
-			"components": ["AgentChatModal"]
-		},
-		{
 			"file": "src/routes/projects-old/+page.svelte",
 			"type": "page",
 			"components": [
@@ -30,6 +20,11 @@
 				"DailyBriefModal",
 				"QuickProjectModal"
 			]
+		},
+		{
+			"file": "src/routes/projects/+page.svelte",
+			"type": "page",
+			"components": ["AgentChatModal"]
 		},
 		{
 			"file": "src/lib/components/brain-dump/BrainDumpModal.svelte",
@@ -176,11 +171,6 @@
 			]
 		},
 		{
-			"file": "src/routes/projects/create/+page.svelte",
-			"type": "page",
-			"components": ["AgentChatModal"]
-		},
-		{
 			"file": "src/routes/projects/[id]/+page.svelte",
 			"type": "page",
 			"components": [
@@ -199,6 +189,11 @@
 				"MilestoneEditModal",
 				"OntologyProjectEditModal"
 			]
+		},
+		{
+			"file": "src/routes/projects/create/+page.svelte",
+			"type": "page",
+			"components": ["AgentChatModal"]
 		},
 		{
 			"file": "src/routes/admin/ontology/graph/+page.svelte",
@@ -914,7 +909,6 @@
 		}
 	],
 	"dependencies": {
-		"src/routes/+page.svelte": ["src/lib/components/dashboard/Dashboard.svelte"],
 		"src/lib/components/notifications/NotificationModal.svelte": [
 			"src/lib/components/notifications/types/brain-dump/BrainDumpModalContent.svelte"
 		],
@@ -947,6 +941,7 @@
 	"unusedComponents": [
 		"src/lib/components/brain-dump/BrainDumpModal.svelte",
 		"src/lib/components/dashboard/Dashboard-old.svelte",
+		"src/lib/components/dashboard/Dashboard.svelte",
 		"src/lib/components/layout/Navigation.svelte",
 		"src/lib/components/notifications/MinimizedNotification.svelte",
 		"src/lib/components/notifications/NotificationModal.svelte",

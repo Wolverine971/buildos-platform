@@ -4,21 +4,44 @@
 	import { Check } from 'lucide-svelte';
 	import Modal from './Modal.svelte';
 	import Button from './Button.svelte';
+	import type { Snippet, Component } from 'svelte';
 
-	export let isOpen: boolean = false;
-	export let title: string = 'Choose an Option';
-	export let options: Array<{
+	interface ChoiceOption {
 		id: string;
 		label: string;
 		description?: string;
-		icon?: any;
+		icon?: Component<{ class?: string }>;
 		disabled?: boolean;
-	}> = [];
-	export let selectedId: string = '';
-	export let confirmText: string = 'Confirm';
-	export let cancelText: string = 'Cancel';
-	export let allowEmpty: boolean = false;
+	}
 
+	interface Props {
+		isOpen?: boolean;
+		title?: string;
+		options?: ChoiceOption[];
+		selectedId?: string;
+		confirmText?: string;
+		cancelText?: string;
+		allowEmpty?: boolean;
+		description?: Snippet;
+		// Svelte 5 callback props (preferred)
+		onconfirm?: (data: { selectedId: string }) => void;
+		oncancel?: () => void;
+	}
+
+	let {
+		isOpen = false,
+		title = 'Choose an Option',
+		options = [],
+		selectedId = $bindable(''),
+		confirmText = 'Confirm',
+		cancelText = 'Cancel',
+		allowEmpty = false,
+		description,
+		onconfirm,
+		oncancel
+	}: Props = $props();
+
+	// Legacy event dispatcher for backwards compatibility
 	const dispatch = createEventDispatcher<{
 		confirm: { selectedId: string };
 		cancel: void;
@@ -26,10 +49,12 @@
 
 	function handleConfirm() {
 		if (!allowEmpty && !selectedId) return;
+		onconfirm?.({ selectedId });
 		dispatch('confirm', { selectedId });
 	}
 
 	function handleCancel() {
+		oncancel?.();
 		dispatch('cancel');
 	}
 
@@ -41,8 +66,10 @@
 <Modal {isOpen} {title} size="sm" onClose={handleCancel}>
 	{#snippet children()}
 		<div class="px-3 sm:px-4 lg:px-6 py-3 sm:py-4">
-			<!-- Description slot -->
-			<slot name="description" />
+			<!-- Description snippet -->
+			{#if description}
+				{@render description()}
+			{/if}
 
 			<!-- Options -->
 			<div class="space-y-2 my-4">
@@ -65,9 +92,11 @@
 						<div class="flex items-start space-x-3">
 							<!-- Icon -->
 							{#if option.icon}
-								{@const OptionIcon = option.icon}
 								<div class="flex-shrink-0 mt-1">
-									<OptionIcon class="w-5 h-5 text-muted-foreground" />
+									<svelte:component
+										this={option.icon}
+										class="w-5 h-5 text-muted-foreground"
+									/>
 								</div>
 							{/if}
 
@@ -92,11 +121,11 @@
 				{/each}
 			</div>
 		</div>
+	{/snippet}
 
-		<!-- Actions -->
+	{#snippet footer()}
 		<div
 			class="flex flex-col sm:flex-row gap-3 sm:justify-end px-3 sm:px-4 lg:px-6 py-3 sm:py-4 border-t border-border bg-muted/30"
-			slot="footer"
 		>
 			<Button
 				type="button"

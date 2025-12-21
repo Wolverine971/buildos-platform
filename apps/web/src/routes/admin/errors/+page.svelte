@@ -1286,7 +1286,7 @@
 <InfoModal
 	isOpen={infoModal.isOpen}
 	title={infoModal.title}
-	on:close={() => (infoModal.isOpen = false)}
+	onclose={() => (infoModal.isOpen = false)}
 >
 	<p class="text-gray-600 dark:text-gray-400">{infoModal.message}</p>
 </InfoModal>
@@ -1296,7 +1296,7 @@
 	isOpen={resolveModalOpen}
 	title="Resolve Error"
 	buttonText="Resolve"
-	on:close={resolveError}
+	onclose={resolveError}
 	size="md"
 >
 	<div class="space-y-4">
@@ -1319,7 +1319,7 @@
 	buttonText={bulkProcessing
 		? 'Resolving...'
 		: `Resolve ${selectedErrorIds.size} Error${selectedErrorIds.size > 1 ? 's' : ''}`}
-	on:close={bulkResolveErrors}
+	onclose={bulkResolveErrors}
 	size="md"
 >
 	<div class="space-y-4">

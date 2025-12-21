@@ -156,9 +156,7 @@
 		<!-- Main content -->
 		<div class="flex flex-col items-start min-w-0">
 			<!-- Status label -->
-			<span class="text-sm font-medium text-foreground truncate">
-				Generating Brief
-			</span>
+			<span class="text-sm font-medium text-foreground truncate"> Generating Brief </span>
 
 			<!-- Secondary info -->
 			{#if briefDate || elapsedTime}

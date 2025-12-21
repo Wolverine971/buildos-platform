@@ -4931,6 +4931,7 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string
+          deleted_at: string | null
           description: string | null
           end_at: string | null
           facet_context: string | null
@@ -4953,6 +4954,7 @@ export type Database = {
         Insert: {
           created_at?: string
           created_by: string
+          deleted_at?: string | null
           description?: string | null
           end_at?: string | null
           facet_context?: string | null
@@ -4975,6 +4977,7 @@ export type Database = {
         Update: {
           created_at?: string
           created_by?: string
+          deleted_at?: string | null
           description?: string | null
           end_at?: string | null
           facet_context?: string | null
@@ -9409,6 +9412,10 @@ export type Database = {
         Args: { task_id_param: string }
         Returns: boolean
       }
+      restore_onto_project: {
+        Args: { p_project_id: string }
+        Returns: undefined
+      }
       search_all_content: {
         Args: {
           current_user_id: string
@@ -9478,6 +9485,10 @@ export type Database = {
       }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
+      soft_delete_onto_project: {
+        Args: { p_project_id: string }
+        Returns: undefined
+      }
       start_daily_brief_generation: {
         Args: { p_brief_date?: string; p_user_id: string }
         Returns: Json

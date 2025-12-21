@@ -9,6 +9,7 @@
 	Loaded asynchronously when the panel is expanded.
 -->
 <script lang="ts">
+	import { slide } from 'svelte/transition';
 	import {
 		History,
 		ChevronDown,
@@ -16,7 +17,8 @@
 		Pencil,
 		Trash2,
 		Loader2,
-		ExternalLink
+		ExternalLink,
+		Clock
 	} from 'lucide-svelte';
 	import type { ProjectLogEntry, ProjectLogEntityType } from '@buildos/shared-types';
 
@@ -202,7 +204,7 @@
 >
 	<button
 		onclick={handleToggle}
-		class="w-full flex items-center justify-between gap-3 px-4 py-3 text-left hover:bg-muted/60 transition-colors"
+		class="w-full flex items-center justify-between gap-3 px-4 py-3 text-left hover:bg-accent/5 transition-colors pressable"
 	>
 		<div class="flex items-start gap-3">
 			<div class="w-9 h-9 rounded-lg bg-muted flex items-center justify-center">
@@ -227,17 +229,25 @@
 	</button>
 
 	{#if isExpanded}
-		<div class="border-t border-border">
+		<div class="border-t border-border" transition:slide={{ duration: 200 }}>
 			{#if isLoading}
 				<div class="flex items-center justify-center py-8">
 					<Loader2 class="w-5 h-5 text-muted-foreground animate-spin" />
 				</div>
 			{:else if error}
-				<div class="px-4 py-3 text-sm text-red-500">
+				<div class="px-4 py-3 text-sm text-red-600 dark:text-red-400">
 					{error}
 				</div>
 			{:else if logs.length === 0}
-				<p class="px-4 py-3 text-sm text-muted-foreground">No activity recorded yet</p>
+				<div class="px-4 py-4 text-center">
+					<div
+						class="w-10 h-10 rounded-lg bg-muted/50 flex items-center justify-center mx-auto mb-2"
+					>
+						<Clock class="w-5 h-5 text-muted-foreground" />
+					</div>
+					<p class="text-sm text-muted-foreground">No activity yet</p>
+					<p class="text-xs text-muted-foreground/70 mt-0.5">Changes will appear here</p>
+				</div>
 			{:else}
 				<!-- Log entries - styled like a terminal/log file -->
 				<div class="font-mono text-xs divide-y divide-border/50">
@@ -296,7 +306,7 @@
 						<button
 							onclick={handleLoadMore}
 							disabled={isLoadingMore}
-							class="w-full text-xs text-muted-foreground hover:text-foreground py-1.5 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+							class="w-full text-xs text-muted-foreground hover:text-accent py-2 transition-colors disabled:opacity-50 flex items-center justify-center gap-2 rounded-md hover:bg-accent/5 pressable"
 						>
 							{#if isLoadingMore}
 								<Loader2 class="w-3 h-3 animate-spin" />

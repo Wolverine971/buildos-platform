@@ -49,6 +49,7 @@
 -->
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { slide } from 'svelte/transition';
 	import { goto } from '$app/navigation';
 	import { toastService } from '$lib/stores/toast.store';
 	import { getNavigationData } from '$lib/stores/project-navigation.store';
@@ -386,11 +387,17 @@
 
 	function normalizeState(state: string): string {
 		const s = state?.toLowerCase() || 'draft';
-		if (s === 'complete' || s === 'completed' || s === 'shipped') return 'published';
-		if (s === 'in_review' || s === 'reviewing') return 'review';
-		if (s === 'in_progress' || s === 'drafting') return 'draft';
-		if (STATE_COLUMNS.some((c) => c.key === s)) return s;
-		return 'draft';
+		let normalized: string;
+		if (s === 'complete' || s === 'completed' || s === 'shipped') normalized = 'published';
+		else if (s === 'in_review' || s === 'reviewing') normalized = 'in review';
+		else if (s === 'in_progress' || s === 'drafting') normalized = 'draft';
+		else if (STATE_COLUMNS.some((c) => c.key === s)) normalized = s;
+		else normalized = 'draft';
+		// Title Case the result
+		return normalized
+			.split(/[_\s]+/)
+			.map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+			.join(' ');
 	}
 
 	function getTypeLabel(typeKey: string): string {
@@ -753,12 +760,22 @@
 					>
 						<ArrowLeft class="w-5 h-5 text-muted-foreground" />
 					</button>
-					<h1
-						class="text-lg sm:text-xl font-semibold text-foreground leading-tight line-clamp-2 min-w-0"
-						style="view-transition-name: project-title-{project.id}"
-					>
-						{project?.name || 'Untitled Project'}
-					</h1>
+					<div class="min-w-0">
+						<h1
+							class="text-lg sm:text-xl font-semibold text-foreground leading-tight line-clamp-1 sm:line-clamp-2"
+							style="view-transition-name: project-title-{project.id}"
+						>
+							{project?.name || 'Untitled Project'}
+						</h1>
+						{#if project?.description}
+							<p
+								class="text-xs text-muted-foreground mt-0.5 line-clamp-1 hidden sm:block"
+								title={project.description}
+							>
+								{project.description}
+							</p>
+						{/if}
+					</div>
 				</div>
 
 				<!-- Desktop: Show all buttons -->
@@ -962,13 +979,25 @@
 						</div>
 
 						{#if outputsExpanded}
-							<div class="border-t border-border">
+							<div
+								class="border-t border-border"
+								transition:slide={{ duration: 200 }}
+							>
 								{#if outputs.length === 0}
 									<div
-										class="flex items-center gap-3 text-sm text-muted-foreground px-4 py-3"
+										class="flex items-center gap-3 px-4 py-4 bg-muted/30 tx tx-bloom tx-weak"
 									>
-										<Sparkles class="w-4 h-4" />
-										<span>No outputs yet. Create one to get started.</span>
+										<div
+											class="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center"
+										>
+											<Sparkles class="w-4 h-4 text-accent" />
+										</div>
+										<div>
+											<p class="text-sm text-foreground">No outputs yet</p>
+											<p class="text-xs text-muted-foreground">
+												Create one to start delivering
+											</p>
+										</div>
 									</div>
 								{:else}
 									<ul class="divide-y divide-border/80">
@@ -980,7 +1009,7 @@
 												<button
 													type="button"
 													onclick={() => (editingOutputId = output.id)}
-													class="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted/60 transition-colors"
+													class="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-accent/5 transition-colors pressable"
 												>
 													<div
 														class="w-8 h-8 rounded-lg bg-muted flex items-center justify-center flex-shrink-0"
@@ -1065,13 +1094,25 @@
 						</div>
 
 						{#if documentsExpanded}
-							<div class="border-t border-border">
+							<div
+								class="border-t border-border"
+								transition:slide={{ duration: 200 }}
+							>
 								{#if documents.length === 0}
 									<div
-										class="flex items-center gap-3 text-sm text-muted-foreground px-4 py-3"
+										class="flex items-center gap-3 px-4 py-4 bg-muted/30 tx tx-bloom tx-weak"
 									>
-										<Sparkles class="w-4 h-4" />
-										<span>No documents yet. Add research or drafts.</span>
+										<div
+											class="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center"
+										>
+											<FileText class="w-4 h-4 text-blue-500" />
+										</div>
+										<div>
+											<p class="text-sm text-foreground">No documents yet</p>
+											<p class="text-xs text-muted-foreground">
+												Add notes, research, or drafts
+											</p>
+										</div>
 									</div>
 								{:else}
 									<ul class="divide-y divide-border/80">
@@ -1083,7 +1124,7 @@
 														activeDocumentId = doc.id;
 														showDocumentModal = true;
 													}}
-													class="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted/60 transition-colors"
+													class="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-accent/5 transition-colors pressable"
 												>
 													<div
 														class="w-8 h-8 rounded-lg bg-muted flex items-center justify-center flex-shrink-0"
@@ -1099,9 +1140,12 @@
 														</p>
 													</div>
 													<span
-														class="flex-shrink-0 text-[11px] px-2 py-1 rounded-full bg-card border border-border"
+														class="flex-shrink-0 text-[11px] px-2 py-1 rounded-full bg-card border border-border capitalize"
 													>
-														{doc.state_key || 'draft'}
+														{(doc.state_key || 'draft').replace(
+															/_/g,
+															' '
+														)}
 													</span>
 												</button>
 											</li>
@@ -1151,13 +1195,13 @@
 					/>
 
 					<!-- History Section Divider -->
-					<div class="relative py-3">
-						<div class="absolute inset-0 flex items-center">
-							<div class="w-full border-t border-border/60"></div>
+					<div class="relative py-4">
+						<div class="absolute inset-0 flex items-center px-4">
+							<div class="w-full border-t border-border/40"></div>
 						</div>
 						<div class="relative flex justify-center">
 							<span
-								class="bg-background px-2 text-xs text-muted-foreground uppercase tracking-wider"
+								class="bg-background px-3 text-[10px] font-medium text-muted-foreground/70 uppercase tracking-widest"
 							>
 								History
 							</span>
@@ -1208,7 +1252,7 @@
 						>
 							<button
 								onclick={() => togglePanel(section.key)}
-								class="w-full flex items-center justify-between gap-3 px-4 py-3 text-left hover:bg-muted/60 transition-colors"
+								class="w-full flex items-center justify-between gap-3 px-4 py-3 text-left hover:bg-accent/5 transition-colors pressable"
 							>
 								<div class="flex items-start gap-3">
 									<div
@@ -1240,7 +1284,10 @@
 							</button>
 
 							{#if isOpen}
-								<div class="border-t border-border">
+								<div
+									class="border-t border-border"
+									transition:slide={{ duration: 200 }}
+								>
 									{#if section.key === 'tasks'}
 										<div
 											class="flex items-center justify-between px-4 pt-3 pb-2"
@@ -1253,7 +1300,7 @@
 											<button
 												type="button"
 												onclick={() => (showTaskCreateModal = true)}
-												class="inline-flex items-center gap-2 px-2.5 py-1 text-xs rounded-md border border-border bg-muted/60 hover:bg-muted transition-colors"
+												class="inline-flex items-center gap-2 px-2.5 py-1 text-xs rounded-md border border-border bg-muted/60 hover:bg-accent/10 hover:border-accent/50 transition-colors pressable"
 											>
 												<Plus class="w-3.5 h-3.5" />
 												New Task
@@ -1271,7 +1318,7 @@
 																type="button"
 																onclick={() =>
 																	(editingTaskId = task.id)}
-																class="flex-1 flex items-center gap-3 px-4 py-3 text-left hover:bg-muted/60 transition-colors"
+																class="flex-1 flex items-center gap-3 px-4 py-3 text-left hover:bg-accent/5 transition-colors pressable"
 															>
 																<svelte:component
 																	this={visuals.icon}
@@ -1284,15 +1331,18 @@
 																		{task.title}
 																	</p>
 																	<p
-																		class="text-xs text-muted-foreground"
+																		class="text-xs text-muted-foreground capitalize"
 																	>
-																		{task.state_key || 'draft'}
+																		{(
+																			task.state_key ||
+																			'draft'
+																		).replace(/_/g, ' ')}
 																	</p>
 																</div>
 															</button>
 															<a
 																href="/projects/{project.id}/tasks/{task.id}"
-																class="p-2 mr-2 rounded-lg hover:bg-muted transition-colors"
+																class="p-2 mr-2 rounded-lg hover:bg-accent/10 transition-colors pressable"
 																title="Open task focus page"
 															>
 																<ExternalLink
@@ -1304,9 +1354,14 @@
 												{/each}
 											</ul>
 										{:else}
-											<p class="px-4 py-3 text-sm text-muted-foreground">
-												No tasks yet
-											</p>
+											<div class="px-4 py-4 text-center">
+												<p class="text-sm text-muted-foreground">
+													No tasks yet
+												</p>
+												<p class="text-xs text-muted-foreground/70 mt-0.5">
+													Add tasks to track work
+												</p>
+											</div>
 										{/if}
 									{:else if section.key === 'plans'}
 										<div
@@ -1320,7 +1375,7 @@
 											<button
 												type="button"
 												onclick={() => (showPlanCreateModal = true)}
-												class="inline-flex items-center gap-2 px-2.5 py-1 text-xs rounded-md border border-border bg-muted/60 hover:bg-muted transition-colors"
+												class="inline-flex items-center gap-2 px-2.5 py-1 text-xs rounded-md border border-border bg-muted/60 hover:bg-accent/10 hover:border-accent/50 transition-colors pressable"
 											>
 												<Plus class="w-3.5 h-3.5" />
 												New Plan
@@ -1334,7 +1389,7 @@
 															type="button"
 															onclick={() =>
 																(editingPlanId = plan.id)}
-															class="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted/60 transition-colors"
+															class="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-accent/5 transition-colors pressable"
 														>
 															<Calendar
 																class="w-4 h-4 text-muted-foreground"
@@ -1346,9 +1401,11 @@
 																	{plan.name}
 																</p>
 																<p
-																	class="text-xs text-muted-foreground"
+																	class="text-xs text-muted-foreground capitalize"
 																>
-																	{plan.state_key || 'draft'}
+																	{(
+																		plan.state_key || 'draft'
+																	).replace(/_/g, ' ')}
 																</p>
 															</div>
 														</button>
@@ -1356,9 +1413,14 @@
 												{/each}
 											</ul>
 										{:else}
-											<p class="px-4 py-3 text-sm text-muted-foreground">
-												No plans yet
-											</p>
+											<div class="px-4 py-4 text-center">
+												<p class="text-sm text-muted-foreground">
+													No plans yet
+												</p>
+												<p class="text-xs text-muted-foreground/70 mt-0.5">
+													Create a plan to organize work
+												</p>
+											</div>
 										{/if}
 									{:else if section.key === 'goals'}
 										<div
@@ -1372,7 +1434,7 @@
 											<button
 												type="button"
 												onclick={() => (showGoalCreateModal = true)}
-												class="inline-flex items-center gap-2 px-2.5 py-1 text-xs rounded-md border border-border bg-muted/60 hover:bg-muted transition-colors"
+												class="inline-flex items-center gap-2 px-2.5 py-1 text-xs rounded-md border border-border bg-muted/60 hover:bg-accent/10 hover:border-accent/50 transition-colors pressable"
 											>
 												<Plus class="w-3.5 h-3.5" />
 												New Goal
@@ -1386,10 +1448,10 @@
 															type="button"
 															onclick={() =>
 																(editingGoalId = goal.id)}
-															class="w-full flex items-start gap-3 px-4 py-3 text-left hover:bg-muted/60 transition-colors"
+															class="w-full flex items-start gap-3 px-4 py-3 text-left hover:bg-accent/5 transition-colors pressable"
 														>
 															<Target
-																class="w-4 h-4 text-amber-500"
+																class="w-4 h-4 text-amber-500 mt-0.5"
 															/>
 															<div class="min-w-0">
 																<p
@@ -1398,9 +1460,11 @@
 																	{goal.name}
 																</p>
 																<p
-																	class="text-xs text-muted-foreground"
+																	class="text-xs text-muted-foreground capitalize"
 																>
-																	{goal.state_key || 'draft'}
+																	{(
+																		goal.state_key || 'draft'
+																	).replace(/_/g, ' ')}
 																</p>
 															</div>
 														</button>
@@ -1408,9 +1472,14 @@
 												{/each}
 											</ul>
 										{:else}
-											<p class="px-4 py-3 text-sm text-muted-foreground">
-												No goals yet
-											</p>
+											<div class="px-4 py-4 text-center">
+												<p class="text-sm text-muted-foreground">
+													No goals yet
+												</p>
+												<p class="text-xs text-muted-foreground/70 mt-0.5">
+													Define what success looks like
+												</p>
+											</div>
 										{/if}
 									{:else if section.key === 'risks'}
 										<div
@@ -1424,7 +1493,7 @@
 											<button
 												type="button"
 												onclick={() => (showRiskCreateModal = true)}
-												class="inline-flex items-center gap-2 px-2.5 py-1 text-xs rounded-md border border-border bg-muted/60 hover:bg-muted transition-colors"
+												class="inline-flex items-center gap-2 px-2.5 py-1 text-xs rounded-md border border-border bg-muted/60 hover:bg-accent/10 hover:border-accent/50 transition-colors pressable"
 											>
 												<Plus class="w-3.5 h-3.5" />
 												New Risk
@@ -1446,10 +1515,10 @@
 															type="button"
 															onclick={() =>
 																(editingRiskId = risk.id)}
-															class="w-full flex items-start gap-3 px-4 py-3 text-left hover:bg-muted/60 transition-colors"
+															class="w-full flex items-start gap-3 px-4 py-3 text-left hover:bg-accent/5 transition-colors pressable"
 														>
 															<AlertTriangle
-																class="w-4 h-4 {impactColor}"
+																class="w-4 h-4 {impactColor} mt-0.5"
 															/>
 															<div class="min-w-0 flex-1">
 																<p
@@ -1471,9 +1540,14 @@
 												{/each}
 											</ul>
 										{:else}
-											<p class="px-4 py-3 text-sm text-muted-foreground">
-												No risks logged
-											</p>
+											<div class="px-4 py-4 text-center">
+												<p class="text-sm text-muted-foreground">
+													No risks logged
+												</p>
+												<p class="text-xs text-muted-foreground/70 mt-0.5">
+													Track potential blockers
+												</p>
+											</div>
 										{/if}
 									{:else if section.key === 'milestones'}
 										<div
@@ -1487,7 +1561,7 @@
 											<button
 												type="button"
 												onclick={() => (showMilestoneCreateModal = true)}
-												class="inline-flex items-center gap-2 px-2.5 py-1 text-xs rounded-md border border-border bg-muted/60 hover:bg-muted transition-colors"
+												class="inline-flex items-center gap-2 px-2.5 py-1 text-xs rounded-md border border-border bg-muted/60 hover:bg-accent/10 hover:border-accent/50 transition-colors pressable"
 											>
 												<Plus class="w-3.5 h-3.5" />
 												New Milestone
@@ -1513,9 +1587,11 @@
 															type="button"
 															onclick={() =>
 																(editingMilestoneId = milestone.id)}
-															class="w-full flex items-start gap-3 px-4 py-3 text-left hover:bg-muted/60 transition-colors"
+															class="w-full flex items-start gap-3 px-4 py-3 text-left hover:bg-accent/5 transition-colors pressable"
 														>
-															<Flag class="w-4 h-4 {stateColor}" />
+															<Flag
+																class="w-4 h-4 {stateColor} mt-0.5"
+															/>
 															<div class="min-w-0 flex-1">
 																<p
 																	class="text-sm text-foreground truncate"
@@ -1535,9 +1611,14 @@
 												{/each}
 											</ul>
 										{:else}
-											<p class="px-4 py-3 text-sm text-muted-foreground">
-												No milestones yet
-											</p>
+											<div class="px-4 py-4 text-center">
+												<p class="text-sm text-muted-foreground">
+													No milestones yet
+												</p>
+												<p class="text-xs text-muted-foreground/70 mt-0.5">
+													Set checkpoints and deadlines
+												</p>
+											</div>
 										{/if}
 									{/if}
 								</div>
@@ -1546,13 +1627,13 @@
 					{/each}
 
 					<!-- History Section Divider -->
-					<div class="relative py-3">
-						<div class="absolute inset-0 flex items-center">
-							<div class="w-full border-t border-border/60"></div>
+					<div class="relative py-4">
+						<div class="absolute inset-0 flex items-center px-4">
+							<div class="w-full border-t border-border/40"></div>
 						</div>
 						<div class="relative flex justify-center">
 							<span
-								class="bg-background px-2 text-xs text-muted-foreground uppercase tracking-wider"
+								class="bg-background px-3 text-[10px] font-medium text-muted-foreground/70 uppercase tracking-widest"
 							>
 								History
 							</span>
@@ -1560,7 +1641,7 @@
 					</div>
 
 					<!-- Daily Briefs Panel -->
-					<ProjectBriefsPanel projectId={project.id} />
+					<ProjectBriefsPanel projectId={project.id} projectName={project.name} />
 
 					<!-- Activity Log Panel -->
 					<ProjectActivityLogPanel
@@ -1766,8 +1847,8 @@
 		confirmVariant="danger"
 		isOpen={showDeleteProjectModal}
 		loading={isDeletingProject}
-		on:confirm={handleProjectDeleteConfirm}
-		on:cancel={() => (showDeleteProjectModal = false)}
+		onconfirm={handleProjectDeleteConfirm}
+		oncancel={() => (showDeleteProjectModal = false)}
 	>
 		{#snippet content()}
 			<p class="text-sm text-muted-foreground">

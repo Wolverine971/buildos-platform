@@ -11,13 +11,14 @@
  */
 
 import { createSupabaseBrowser } from '@buildos/supabase-client';
-import { PUBLIC_SUPABASE_ANON_KEY, PUBLIC_SUPABASE_URL } from '$env/static/public';
+import { PUBLIC_SUPABASE_ANON_KEY, PUBLIC_SUPABASE_URL, PUBLIC_APP_URL } from '$env/static/public';
 
 // Base URL for shortened links (should match deployed domain)
+// In browser, use window.location.origin; on server, use PUBLIC_APP_URL
 const BASE_URL =
 	typeof window !== 'undefined'
 		? window.location.origin
-		: process.env.PUBLIC_BASE_URL || 'https://build-os.com';
+		: PUBLIC_APP_URL || 'https://build-os.com';
 
 class LinkShortenerService {
 	private supabase = createSupabaseBrowser(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY);

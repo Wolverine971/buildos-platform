@@ -80,6 +80,7 @@ export async function fetchProjectSummaries(
 		`
 		)
 		.eq('created_by', actorId)
+		.is('deleted_at', null) // Exclude soft-deleted projects
 		.order('updated_at', { ascending: false });
 
 	if (error) {

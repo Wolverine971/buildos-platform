@@ -4,18 +4,36 @@
 	import { Info } from 'lucide-svelte';
 	import Modal from './Modal.svelte';
 	import Button from './Button.svelte';
+	import type { Snippet } from 'svelte';
 
-	export let isOpen: boolean = false;
-	export let title: string = 'Information';
-	export let buttonText: string = 'Got it';
-	export let showIcon: boolean = true;
-	export let size: 'sm' | 'md' | 'lg' | 'xl' = 'sm';
+	interface Props {
+		isOpen?: boolean;
+		title?: string;
+		buttonText?: string;
+		showIcon?: boolean;
+		size?: 'sm' | 'md' | 'lg' | 'xl';
+		children?: Snippet;
+		// Svelte 5 callback props (preferred)
+		onclose?: () => void;
+	}
 
+	let {
+		isOpen = false,
+		title = 'Information',
+		buttonText = 'Got it',
+		showIcon = true,
+		size = 'sm',
+		children,
+		onclose
+	}: Props = $props();
+
+	// Legacy event dispatcher for backwards compatibility with on:close
 	const dispatch = createEventDispatcher<{
 		close: void;
 	}>();
 
 	function handleClose() {
+		onclose?.();
 		dispatch('close');
 	}
 </script>
@@ -33,17 +51,20 @@
 						</div>
 					</div>
 					<div class="flex-1">
-						<slot />
+						{#if children}
+							{@render children()}
+						{/if}
 					</div>
 				</div>
-			{:else}
-				<slot />
+			{:else if children}
+				{@render children()}
 			{/if}
 		</div>
+	{/snippet}
 
+	{#snippet footer()}
 		<div
 			class="flex justify-end px-3 sm:px-4 lg:px-6 py-3 sm:py-4 border-t border-border bg-muted/30"
-			slot="footer"
 		>
 			<Button onclick={handleClose} variant="primary" size="md" class="w-full sm:w-auto">
 				{buttonText}

@@ -59,15 +59,15 @@
 					case 'published':
 					case 'closed':
 					case 'mitigated':
-						return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400';
+						return 'bg-emerald-100/80 text-emerald-700 dark:bg-emerald-900/25 dark:text-emerald-400';
 					case 'blocked':
 					case 'missed':
 					case 'occurred':
 					case 'abandoned':
 					case 'cancelled':
-						return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400';
+						return 'bg-red-100/80 text-red-700 dark:bg-red-900/25 dark:text-red-400';
 					case 'review':
-						return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400';
+						return 'bg-amber-100/80 text-amber-700 dark:bg-amber-900/25 dark:text-amber-400';
 					default:
 						return 'bg-muted text-muted-foreground';
 				}

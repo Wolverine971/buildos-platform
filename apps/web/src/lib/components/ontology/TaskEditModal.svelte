@@ -1647,8 +1647,8 @@
 		loading={isDeleting}
 		loadingText="Deleting..."
 		icon="danger"
-		on:confirm={handleDelete}
-		on:cancel={() => (showDeleteConfirm = false)}
+		onconfirm={handleDelete}
+		oncancel={() => (showDeleteConfirm = false)}
 	>
 		{#snippet content()}
 			<p class="text-sm text-muted-foreground">

@@ -625,8 +625,8 @@
 	loading={deleting}
 	loadingText="Deleting..."
 	icon="danger"
-	on:confirm={handleDelete}
-	on:cancel={() => (deleteModalOpen = false)}
+	onconfirm={handleDelete}
+	oncancel={() => (deleteModalOpen = false)}
 >
 	{#snippet content()}
 		<p class="text-sm text-muted-foreground">

@@ -19,6 +19,9 @@
 		content?: Snippet;
 		details?: Snippet;
 		footer?: Snippet;
+		// Svelte 5 callback props (preferred)
+		onconfirm?: () => void;
+		oncancel?: () => void;
 	}
 
 	let {
@@ -32,19 +35,24 @@
 		icon = 'warning',
 		content,
 		details,
-		footer
+		footer,
+		onconfirm,
+		oncancel
 	}: Props = $props();
 
+	// Legacy event dispatcher for backwards compatibility with on:confirm/on:cancel
 	const dispatch = createEventDispatcher<{
 		confirm: void;
 		cancel: void;
 	}>();
 
 	function handleConfirm() {
+		onconfirm?.();
 		dispatch('confirm');
 	}
 
 	function handleCancel() {
+		oncancel?.();
 		dispatch('cancel');
 	}
 

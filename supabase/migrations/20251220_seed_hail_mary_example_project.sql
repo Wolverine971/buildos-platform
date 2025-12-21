@@ -76,42 +76,42 @@ INSERT INTO onto_projects (
 ON CONFLICT (id) DO NOTHING;
 
 -- ============================================
--- GOALS (5 Strategic Objectives)
+-- GOALS (6 Strategic Objectives)
 -- ============================================
-INSERT INTO onto_goals (id, project_id, name, type_key, props, created_by) VALUES
+INSERT INTO onto_goals (id, project_id, name, type_key, state_key, props, created_by) VALUES
 -- Goal 1: Understand the Threat
 ('33333333-0001-0000-0000-000000000001', '33333333-3333-3333-3333-333333333333',
- 'Understand the Petrova Problem', 'goal.strategic.research',
+ 'Understand the Petrova Problem', 'goal.strategic.research', 'achieved',
  '{"priority": "critical", "state": "achieved", "phase": "Discovery", "timeframe": "Years 1-2", "key_question": "Why is the Sun dimming?", "outcome": "Astrophage identified as single-celled alien microbe consuming stellar energy", "lead_scientist": "Dr. Ryland Grace", "discovery_method": "Venus atmospheric samples"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 -- Goal 2: Build the Mission
 ('33333333-0002-0000-0000-000000000001', '33333333-3333-3333-3333-333333333333',
- 'Build and Launch Hail Mary', 'goal.strategic.engineering',
+ 'Build and Launch Hail Mary', 'goal.strategic.engineering', 'achieved',
  '{"priority": "critical", "state": "achieved", "phase": "Construction", "timeframe": "Years 2-4", "innovation": "First Astrophage-powered spacecraft", "crew_capacity": 3, "propulsion": "Spin drive using Astrophage IR emission", "acceleration": "1.5g continuous", "construction_sites": "Global collaboration under Stratt authority"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 -- Goal 3: Reach Tau Ceti
 ('33333333-0003-0000-0000-000000000001', '33333333-3333-3333-3333-333333333333',
- 'Reach Tau Ceti and Investigate', 'goal.strategic.exploration',
+ 'Reach Tau Ceti and Investigate', 'goal.strategic.exploration', 'achieved',
  '{"priority": "critical", "state": "achieved", "phase": "Journey", "distance": "12 light-years", "travel_time": "4 years subjective (relativistic)", "crew_survival": "1 of 3 (Yao and Ilyukhina died in coma)", "key_discovery": "First contact with Eridian civilization", "target_rationale": "Only nearby star not dimming from Astrophage"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 -- Goal 4: Find a Solution
 ('33333333-0004-0000-0000-000000000001', '33333333-3333-3333-3333-333333333333',
- 'Find a Solution to Save Earth', 'goal.strategic.primary',
+ 'Find a Solution to Save Earth', 'goal.strategic.primary', 'achieved',
  '{"priority": "critical", "state": "achieved", "phase": "Discovery", "partner": "Rocky (Eridian engineer)", "solution": "Taumoeba - natural predator that consumes Astrophage", "source_planet": "Adrian (Tau Ceti e)", "collection_method": "Beetle probes with 10km xenonite chain", "validation": "Laboratory cultivation confirms Astrophage consumption"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 -- Goal 5: Overcome the Nitrogen Problem
 ('33333333-0005-0000-0000-000000000001', '33333333-3333-3333-3333-333333333333',
- 'Develop Nitrogen-Resistant Taumoeba', 'goal.strategic.engineering',
+ 'Develop Nitrogen-Resistant Taumoeba', 'goal.strategic.engineering', 'achieved',
  '{"priority": "critical", "state": "achieved", "phase": "Crisis Resolution", "problem": "Natural Taumoeba dies instantly in nitrogen-rich atmospheres", "implication": "Cannot deploy to Venus or Threeworld without adaptation", "solution": "Directed evolution through selective pressure", "method": "Expose successive generations to increasing nitrogen concentrations", "result": "Taumoeba-82.5 strain survives 8% nitrogen", "scientist": "Dr. Ryland Grace"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 -- Goal 6: Save Both Civilizations
 ('33333333-0006-0000-0000-000000000001', '33333333-3333-3333-3333-333333333333',
- 'Save Earth and Erid', 'goal.strategic.cooperation',
+ 'Save Earth and Erid', 'goal.strategic.cooperation', 'achieved',
  '{"priority": "critical", "state": "achieved", "phase": "Resolution", "sacrifice": "Grace gives up return fuel to rescue Rocky", "delivery_method": "Modified beetle probes as autonomous return vessels", "earth_outcome": "Sun restored to normal luminosity", "erid_outcome": "40 Eridani saved", "confirmation": "Rocky reports success 16 years later", "grace_fate": "Lives as teacher on Erid", "theme": "Friendship transcends species"}'::jsonb,
  '00000000-0000-0000-0000-000000000002')
 ON CONFLICT (id) DO NOTHING;
@@ -119,29 +119,29 @@ ON CONFLICT (id) DO NOTHING;
 -- ============================================
 -- MILESTONES - GOAL 1: Understand the Threat
 -- ============================================
-INSERT INTO onto_milestones (id, project_id, title, type_key, due_at, props, created_by) VALUES
+INSERT INTO onto_milestones (id, project_id, title, type_key, state_key, due_at, props, created_by) VALUES
 ('33333333-0001-0001-0000-000000000001', '33333333-3333-3333-3333-333333333333',
- 'Detection of Petrova Line', 'milestone.discovery.anomaly', '2024-01-15'::timestamptz,
+ 'Detection of Petrova Line', 'milestone.discovery.anomaly', 'completed', '2024-01-15'::timestamptz,
  '{"description": "Constant-wavelength infrared emission detected streaming from Sun toward Venus", "discoverer": "Dr. Irina Petrova (Russian astronomer)", "wavelength": "25.984 microns - impossibly precise for natural phenomenon", "significance": "First evidence something artificial or biological is at work", "implication": "Energy is being transported from the Sun"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('33333333-0001-0002-0000-000000000001', '33333333-3333-3333-3333-333333333333',
- 'Sun Dimming Confirmed', 'milestone.crisis.confirmation', '2024-02-01'::timestamptz,
+ 'Sun Dimming Confirmed', 'milestone.crisis.confirmation', 'completed', '2024-02-01'::timestamptz,
  '{"impact": "Solar output reducing by measurable percentage", "projection": "4% reduction would cause global ice age", "timeline": "Earth uninhabitable in approximately 30 years", "affected_stars": "Multiple stars in vicinity also dimming", "response": "Unprecedented global emergency declared"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('33333333-0001-0003-0000-000000000001', '33333333-3333-3333-3333-333333333333',
- 'Venus Probe Discovers Astrophage', 'milestone.discovery.organism', '2024-02-06'::timestamptz,
+ 'Venus Probe Discovers Astrophage', 'milestone.discovery.organism', 'completed', '2024-02-06'::timestamptz,
  '{"finding": "Alien microbes collected from Venus upper atmosphere", "name_origin": "Astrophage = star-eater (Greek)", "properties": "Single-celled organism, absorbs electromagnetic radiation, stores at 2 Kelvin", "energy_density": "10^15 joules per kilogram (far exceeding nuclear fuel)", "propulsion": "Emits infrared light for thrust, travels between Sun and Venus"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('33333333-0001-0004-0000-000000000001', '33333333-3333-3333-3333-333333333333',
- 'Grace Identifies Astrophage Biology', 'milestone.research.breakthrough', '2024-03-11'::timestamptz,
+ 'Grace Identifies Astrophage Biology', 'milestone.research.breakthrough', 'completed', '2024-03-11'::timestamptz,
  '{"scientist": "Dr. Ryland Grace (molecular biologist)", "key_insight": "Astrophage is not from our solar system - truly alien life", "lifecycle": "Absorbs stellar energy, stores in exotic state at 2K, breeds on Venus, returns to Sun", "breeding_location": "Venus atmosphere provides ideal conditions", "breakthrough": "Understanding lifecycle enables potential countermeasures"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('33333333-0001-0005-0000-000000000001', '33333333-3333-3333-3333-333333333333',
- 'Tau Ceti Identified as Unaffected', 'milestone.discovery.target', '2024-04-16'::timestamptz,
+ 'Tau Ceti Identified as Unaffected', 'milestone.discovery.target', 'completed', '2024-04-16'::timestamptz,
  '{"observation": "Spectroscopic analysis shows Tau Ceti is NOT dimming", "distance": "12 light-years from Earth", "star_type": "G-type main sequence (similar to Sun)", "hypothesis": "Something at Tau Ceti naturally controls Astrophage", "critical_question": "What is protecting Tau Ceti?", "decision": "Send mission to investigate and find solution"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
@@ -149,27 +149,27 @@ INSERT INTO onto_milestones (id, project_id, title, type_key, due_at, props, cre
 -- MILESTONES - GOAL 2: Build the Mission
 -- ============================================
 ('33333333-0002-0001-0000-000000000001', '33333333-3333-3333-3333-333333333333',
- 'Petrova Taskforce Formed', 'milestone.organization.founding', '2024-05-21'::timestamptz,
+ 'Petrova Taskforce Formed', 'milestone.organization.founding', 'completed', '2024-05-21'::timestamptz,
  '{"director": "Eva Stratt (Dutch administrator)", "authority": "Unprecedented - unlimited global power over all nations", "mandate": "Save humanity by any means necessary", "resources": "Can commandeer any facility, personnel, or funding worldwide", "oversight": "None - operates above all governments", "justification": "Existential threat requires unified response without bureaucracy"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('33333333-0002-0002-0000-000000000001', '33333333-3333-3333-3333-333333333333',
- 'Astrophage Fuel Discovery', 'milestone.engineering.propulsion', '2024-06-26'::timestamptz,
+ 'Astrophage Fuel Discovery', 'milestone.engineering.propulsion', 'completed', '2024-06-26'::timestamptz,
  '{"breakthrough": "Astrophage can power spacecraft - 10^15 J/kg energy density", "comparison": "Far exceeds chemical fuels (gasoline: 46 MJ/kg) and nuclear", "mechanism": "Heat Astrophage, it emits IR light, use mirrors to direct thrust", "irony": "The threat consuming our Sun becomes our only hope for interstellar travel", "implication": "Tau Ceti mission becomes physically possible"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('33333333-0002-0003-0000-000000000001', '33333333-3333-3333-3333-333333333333',
- 'Hail Mary Construction', 'milestone.engineering.spacecraft', '2024-07-03'::timestamptz,
+ 'Hail Mary Construction', 'milestone.engineering.spacecraft', 'completed', '2024-07-03'::timestamptz,
  '{"design": "Astrophage-powered spin drive vessel", "crew_capacity": 3, "acceleration": "1.5g continuous thrust", "destination": "Tau Ceti (12 light-years)", "travel_time": "4 years subjective due to relativistic effects", "features": ["Full research laboratory", "Coma pods for journey", "Beetle probes for sample collection", "Centrifuge for artificial gravity"], "construction": "Fastest spacecraft ever built under global emergency"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('33333333-0002-0004-0000-000000000001', '33333333-3333-3333-3333-333333333333',
- 'Crew Selection and Training', 'milestone.personnel.selection', '2024-08-08'::timestamptz,
+ 'Crew Selection and Training', 'milestone.personnel.selection', 'completed', '2024-08-08'::timestamptz,
  '{"crew": ["Dr. Ryland Grace (molecular biologist/science lead)", "Commander Yao (Chinese military, mission commander)", "Engineer Olesya Ilyukhina (Russian, spacecraft systems)"], "selection_criteria": "Scientific expertise, psychological resilience, willingness for one-way mission", "coma_protocol": "Medically induced with memory-affecting drugs", "grace_problem": "Initially refused mission, had to be coerced", "training_duration": "Intensive but compressed due to timeline"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('33333333-0002-0005-0000-000000000001', '33333333-3333-3333-3333-333333333333',
- 'Hail Mary Launch', 'milestone.mission.launch', '2024-09-13'::timestamptz,
+ 'Hail Mary Launch', 'milestone.mission.launch', 'completed', '2024-09-13'::timestamptz,
  '{"mission_type": "One-way suicide mission (intentional)", "objective": "Reach Tau Ceti, find solution, transmit data back to Earth via beetles", "crew_status": "Placed in medically induced coma", "expected_return": "None - insufficient fuel for round trip", "backup_plan": "Beetles programmed to return with solution autonomously if crew fails"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
@@ -177,32 +177,32 @@ INSERT INTO onto_milestones (id, project_id, title, type_key, due_at, props, cre
 -- MILESTONES - GOAL 3: Reach Tau Ceti
 -- ============================================
 ('33333333-0003-0001-0000-000000000001', '33333333-3333-3333-3333-333333333333',
- 'Grace Awakens with Amnesia', 'milestone.crisis.awakening', '2024-10-18'::timestamptz,
+ 'Grace Awakens with Amnesia', 'milestone.crisis.awakening', 'completed', '2024-10-18'::timestamptz,
  '{"location": "Aboard Hail Mary at Tau Ceti", "condition": "Complete retrograde amnesia from coma drugs", "discovery": "Two crewmates (Yao and Ilyukhina) died during journey - coma failure", "bodies": "Preserved in bags, later given space burial", "challenge": "Alone, amnesiac, must piece together mission and identity", "first_words": "What is two plus two? (computer testing cognition)"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('33333333-0003-0002-0000-000000000001', '33333333-3333-3333-3333-333333333333',
- 'Memory Recovery', 'milestone.personal.recovery', '2024-11-23'::timestamptz,
+ 'Memory Recovery', 'milestone.personal.recovery', 'completed', '2024-11-23'::timestamptz,
  '{"method": "Gradual flashbacks triggered by environmental cues", "key_memories": ["His profession as science teacher", "Astrophage research under Stratt", "Eva Stratt forcing him onto mission", "His cowardice in refusing to volunteer"], "revelation": "Grace tried to back out - Stratt used memory-affecting drugs to ensure compliance", "emotional_arc": "From confusion to purpose to guilt to redemption"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('33333333-0003-0003-0000-000000000001', '33333333-3333-3333-3333-333333333333',
- 'Arrival at Tau Ceti', 'milestone.mission.arrival', '2024-12-28'::timestamptz,
+ 'Arrival at Tau Ceti', 'milestone.mission.arrival', 'completed', '2024-12-28'::timestamptz,
  '{"system": "Tau Ceti (12 light-years from Earth)", "star_status": "Confirmed unaffected by Astrophage", "planets_observed": "Multiple, including Adrian (Tau Ceti e)", "key_question": "What natural mechanism protects this star?", "mission_status": "Can proceed despite crew loss"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('33333333-0003-0004-0000-000000000001', '33333333-3333-3333-3333-333333333333',
- 'Detection of Alien Spacecraft', 'milestone.discovery.first_contact', '2024-01-05'::timestamptz,
+ 'Detection of Alien Spacecraft', 'milestone.discovery.first_contact', 'completed', '2028-01-05'::timestamptz,
  '{"designation": "Blip-A (Grace''s informal name)", "design": "Radically different from human engineering", "origin": "Unknown at detection", "significance": "First evidence of extraterrestrial intelligence in human history", "grace_reaction": "Terror, excitement, scientific curiosity", "approach": "Cautious observation, attempts mathematical communication"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('33333333-0003-0005-0000-000000000001', '33333333-3333-3333-3333-333333333333',
- 'First Contact with Rocky', 'milestone.diplomacy.contact', '2024-02-10'::timestamptz,
+ 'First Contact with Rocky', 'milestone.diplomacy.contact', 'completed', '2028-02-10'::timestamptz,
  '{"alien_name": "Rocky (nickname given by Grace)", "species": "Eridian (from 40 Eridani system, 16.3 light-years from Earth)", "home_planet": "Erid - twice Earth gravity, 29 atmospheres ammonia, ~290K", "biology": "Rock-like exoskeleton, ~400kg mass, ammonia-based metabolism, perceives via echolocation (no eyes)", "communication_challenge": "Eridians use musical chord sounds, not visual language", "breakthrough": "Grace builds chord-to-English audio translator using math as common ground", "relationship": "Scientific partnership evolves into deep friendship"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('33333333-0003-0006-0000-000000000001', '33333333-3333-3333-3333-333333333333',
- 'Shared Problem Revealed', 'milestone.discovery.alliance', '2024-03-15'::timestamptz,
+ 'Shared Problem Revealed', 'milestone.discovery.alliance', 'completed', '2028-03-15'::timestamptz,
  '{"revelation": "40 Eridani (Rocky''s star) is ALSO being consumed by Astrophage", "eridian_timeline": "72 years before extinction (vs Earth''s 30) due to thicker atmosphere", "implication": "Two civilizations independently sent missions to Tau Ceti for same reason", "convergent_evolution": "Both species developed similar scientific methods", "decision": "Combine resources and expertise to find solution together", "rocky_quote": "You and me...same same. Save star. Save people."}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
@@ -210,27 +210,27 @@ INSERT INTO onto_milestones (id, project_id, title, type_key, due_at, props, cre
 -- MILESTONES - GOAL 4: Find a Solution
 -- ============================================
 ('33333333-0004-0001-0000-000000000001', '33333333-3333-3333-3333-333333333333',
- 'Grace-Rocky Partnership Established', 'milestone.cooperation.formation', '2024-04-20'::timestamptz,
+ 'Grace-Rocky Partnership Established', 'milestone.cooperation.formation', 'completed', '2028-04-20'::timestamptz,
  '{"basis": "Shared scientific methodology - math and physics work the same everywhere", "communication_evolution": "From pointing at stars → visual symbols → audio chord translation", "rocky_skills": "Master engineer, built xenonite material (stronger than any human alloy)", "grace_skills": "Molecular biology, problem-solving, creative thinking", "trust_basis": "Both risking everything to save their species"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('33333333-0004-0002-0000-000000000001', '33333333-3333-3333-3333-333333333333',
- 'Joint Laboratory Operations', 'milestone.research.collaboration', '2024-05-25'::timestamptz,
+ 'Joint Laboratory Operations', 'milestone.research.collaboration', 'completed', '2028-05-25'::timestamptz,
  '{"method": "Connected Hail Mary and Blip-A via xenonite tunnel", "challenge": "Incompatible atmospheres - 29 atm ammonia (Rocky) vs 1 atm oxygen (Grace)", "solution": "Rocky builds airlock system, each can visit other''s ship briefly", "xenonite": "Eridian wonder material - created by mixing two liquids, hardens into ultra-strong solid", "shared_resources": "Samples, scientific equipment, complementary expertise"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('33333333-0004-0003-0000-000000000001', '33333333-3333-3333-3333-333333333333',
- 'Engine Crisis and Mutual Rescue', 'milestone.crisis.survival', '2024-06-02'::timestamptz,
+ 'Engine Crisis and Mutual Rescue', 'milestone.crisis.survival', 'completed', '2028-06-02'::timestamptz,
  '{"incident": "Sampling Adrian causes engine malfunction - fuel tank breach from heat", "crisis": "Uncontrolled Astrophage thrust, Grace pinned by acceleration", "grace_danger": "Suffocating, trapped, approaching death", "rocky_sacrifice": "Enters human atmosphere (fatal to him) to save Grace", "rocky_collapses": "29-atm body in 1-atm environment - catastrophic", "grace_choice": "Repressurizes ship with ammonia, severely damages own lungs", "outcome": "Both survive through mutual sacrifice", "significance": "Trust and friendship cemented forever"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('33333333-0004-0004-0000-000000000001', '33333333-3333-3333-3333-333333333333',
- 'Discovery of Taumoeba', 'milestone.discovery.solution', '2024-07-07'::timestamptz,
+ 'Discovery of Taumoeba', 'milestone.discovery.solution', 'completed', '2028-07-07'::timestamptz,
  '{"organism": "Taumoeba (named by Grace - Tau Ceti amoeba)", "property": "Single-celled predator that consumes Astrophage as food source", "source": "Adrian (Tau Ceti e) - collected using beetle probes with 10km xenonite chain", "mechanism": "Taumoeba evolved to eat Astrophage, preventing it from reaching Tau Ceti", "significance": "Natural ecosystem control - why Tau Ceti is unaffected", "solution_potential": "Seed Taumoeba around affected stars to consume Astrophage"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('33333333-0004-0005-0000-000000000001', '33333333-3333-3333-3333-333333333333',
- 'Taumoeba Cultivation Success', 'milestone.research.validation', '2024-08-12'::timestamptz,
+ 'Taumoeba Cultivation Success', 'milestone.research.validation', 'completed', '2028-08-12'::timestamptz,
  '{"experiment": "Grow Taumoeba populations in Hail Mary lab", "result": "Successfully reproduces and actively consumes Astrophage samples", "rate": "Consumption rate sufficient to save a star", "challenge": "Finding right conditions for long-term cultivation", "breakthrough": "Grace and Rocky determine optimal environment", "next_step": "Prepare Taumoeba for delivery to Earth and Erid"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
@@ -238,32 +238,32 @@ INSERT INTO onto_milestones (id, project_id, title, type_key, due_at, props, cre
 -- MILESTONES - GOAL 5: Nitrogen Problem
 -- ============================================
 ('33333333-0005-0001-0000-000000000001', '33333333-3333-3333-3333-333333333333',
- 'Nitrogen Lethality Discovery', 'milestone.crisis.discovery', '2024-09-17'::timestamptz,
+ 'Nitrogen Lethality Discovery', 'milestone.crisis.discovery', 'completed', '2028-09-17'::timestamptz,
  '{"test": "Expose Taumoeba to simulated Venus atmosphere", "result": "Taumoeba dies instantly upon nitrogen exposure", "nitrogen_content": "Venus atmosphere contains 3.5% nitrogen, Threeworld 8%", "implication": "Natural Taumoeba cannot survive on either breeding planet", "crisis": "Solution found but cannot be deployed without modification"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('33333333-0005-0002-0000-000000000001', '33333333-3333-3333-3333-333333333333',
- 'Directed Evolution Strategy', 'milestone.research.methodology', '2024-10-22'::timestamptz,
+ 'Directed Evolution Strategy', 'milestone.research.methodology', 'completed', '2028-10-22'::timestamptz,
  '{"inspiration": "Antibiotic-resistant bacteria on Earth", "hypothesis": "Selective pressure can create nitrogen-tolerant Taumoeba", "method": "Expose generations to sub-lethal nitrogen, select survivors", "goal": "Create strain surviving 8% nitrogen for Threeworld", "secondary_goal": "3.5% nitrogen for Venus"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('33333333-0005-0003-0000-000000000001', '33333333-3333-3333-3333-333333333333',
- 'Fuel Contamination Crisis', 'milestone.crisis.contamination', '2024-11-27'::timestamptz,
+ 'Fuel Contamination Crisis', 'milestone.crisis.contamination', 'completed', '2028-11-27'::timestamptz,
  '{"discovery": "Taumoeba escaped containment, contaminated Astrophage fuel tanks", "effect": "Fuel being consumed, ship losing power", "severity": "Complete power loss, life support failing", "immediate_response": "Flood compartments with pure nitrogen to kill Taumoeba", "rocky_help": "Rocky donates Astrophage fuel to restore power"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('33333333-0005-0004-0000-000000000001', '33333333-3333-3333-3333-333333333333',
- 'Beetle Repurposing as Thrusters', 'milestone.engineering.adaptation', '2024-12-04'::timestamptz,
+ 'Beetle Repurposing as Thrusters', 'milestone.engineering.adaptation', 'completed', '2028-12-04'::timestamptz,
  '{"problem": "Main propulsion damaged, ship spinning uncontrollably", "solution": "Repurpose beetle probes as emergency thrusters", "EVA_required": "Grace performs dangerous spacewalk during spin", "beetles_used": "John, Paul, and George (Ringo kept for data return)", "rocky_contribution": "Modifies beetle controls for acoustic commands", "outcome": "Ship stabilized, limited propulsion restored"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('33333333-0005-0005-0000-000000000001', '33333333-3333-3333-3333-333333333333',
- 'Taumoeba-82.5 Strain Achieved', 'milestone.research.breakthrough', '2025-01-09'::timestamptz,
+ 'Taumoeba-82.5 Strain Achieved', 'milestone.research.breakthrough', 'completed', '2029-01-09'::timestamptz,
  '{"strain_name": "Taumoeba-82.5", "nitrogen_tolerance": "Survives 8.25% nitrogen concentration", "venus_strain": "Taumoeba-35 (3.5% nitrogen) also created", "threeworld_compatible": "Yes - Erid breeding planet has 8% nitrogen", "earth_compatible": "Yes - Venus has 3.5% nitrogen", "method": "Weeks of directed evolution experiments"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('33333333-0005-0006-0000-000000000001', '33333333-3333-3333-3333-333333333333',
- 'Xenonite Permeation Discovery', 'milestone.crisis.discovery', '2025-02-14'::timestamptz,
+ 'Xenonite Permeation Discovery', 'milestone.crisis.discovery', 'completed', '2029-02-14'::timestamptz,
  '{"discovery": "Evolved Taumoeba-82.5 can penetrate xenonite at molecular level", "implication": "Rocky''s ship is vulnerable to contamination", "difference": "Natural Taumoeba cannot penetrate xenonite", "evolution_side_effect": "Nitrogen resistance enabled xenonite permeation", "rocky_danger": "His fuel tanks are xenonite - could be contaminated"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
@@ -271,47 +271,47 @@ INSERT INTO onto_milestones (id, project_id, title, type_key, due_at, props, cre
 -- MILESTONES - GOAL 6: Save Both Civilizations
 -- ============================================
 ('33333333-0006-0001-0000-000000000001', '33333333-3333-3333-3333-333333333333',
- 'Rocky''s Ship Disabled', 'milestone.crisis.emergency', '2025-03-19'::timestamptz,
+ 'Rocky''s Ship Disabled', 'milestone.crisis.emergency', 'completed', '2029-03-19'::timestamptz,
  '{"detection": "Rocky''s engine signature vanishes from sensors", "diagnosis": "Taumoeba-82.5 contaminated xenonite fuel tanks", "effect": "Total propulsion and power loss", "rocky_status": "Stranded, dying without power", "grace_options": ["Continue to Earth, abandon Rocky", "Turn around, attempt rescue"]}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('33333333-0006-0002-0000-000000000001', '33333333-3333-3333-3333-333333333333',
- 'The Impossible Choice', 'milestone.decision.sacrifice', '2025-04-24'::timestamptz,
+ 'The Impossible Choice', 'milestone.decision.sacrifice', 'completed', '2029-04-24'::timestamptz,
  '{"situation": "Rocky stranded, Grace has fuel to return to Earth OR rescue Rocky", "options": ["Return to Earth as hero, let Rocky and Eridians die", "Turn around, rescue Rocky, strand self forever"], "grace_choice": "Sacrifice - turns ship around", "reasoning": "Cannot abandon friend to death", "irony": "Coward who refused mission now makes ultimate sacrifice", "beetle_launch": "Launches remaining beetle with solution before turning around"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('33333333-0006-0003-0000-000000000001', '33333333-3333-3333-3333-333333333333',
- 'Rescue of Rocky', 'milestone.mission.rescue', '2025-05-01'::timestamptz,
+ 'Rescue of Rocky', 'milestone.mission.rescue', 'completed', '2029-05-01'::timestamptz,
  '{"search": "Grace uses Petrovascope as IR beacon to locate Blip-A", "duration": "Agonizing search through vast empty space", "discovery": "Detects faint reflected signal from Rocky''s ship", "EVA": "Grace approaches in spacewalk, knocks on hull", "response": "Faint chord sound - Rocky is alive", "extraction": "Connect airlock tunnel, Rocky emerges injured but alive"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('33333333-0006-0004-0000-000000000001', '33333333-3333-3333-3333-333333333333',
- 'Beetle Probes Launched to Earth', 'milestone.mission.transmission', '2025-06-06'::timestamptz,
+ 'Beetle Probes Launched to Earth', 'milestone.mission.transmission', 'completed', '2029-06-06'::timestamptz,
  '{"payload": "Taumoeba-35 cultures, breeding protocols, deployment instructions", "probe": "Ringo (last remaining beetle)", "navigation": "Pre-programmed autonomous return to Earth", "data": "Complete scientific documentation of Astrophage and Taumoeba", "purpose": "Ensure humanity receives solution regardless of Grace''s fate"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('33333333-0006-0005-0000-000000000001', '33333333-3333-3333-3333-333333333333',
- 'Survival Solution: Taumoeba as Food', 'milestone.survival.adaptation', '2025-07-11'::timestamptz,
+ 'Survival Solution: Taumoeba as Food', 'milestone.survival.adaptation', 'completed', '2029-07-11'::timestamptz,
  '{"discovery": "Rocky''s ship contains 22 million kg of Taumoeba", "revelation": "Grace can eat Taumoeba - contains human-compatible nutrients", "irony": "The organism that caused crisis becomes salvation", "nutrition": "Sufficient protein and nutrients for long-term survival", "journey": "Grace can survive trip to Erid by eating Taumoeba"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('33333333-0006-0006-0000-000000000001', '33333333-3333-3333-3333-333333333333',
- 'Grace Arrives on Erid', 'milestone.survival.new_home', '2025-08-16'::timestamptz,
+ 'Grace Arrives on Erid', 'milestone.survival.new_home', 'completed', '2033-08-16'::timestamptz,
  '{"journey": "Rocky brings Grace to Erid on his repaired ship", "environment": "29 atm ammonia, 2x Earth gravity, 210°C, pitch black", "initial_survival": "Continues eating Taumoeba", "long_term": "Eridians synthesize Earth food from Hail Mary archives", "habitat": "Xenonite dome with Earth-like lighting and atmosphere", "status": "First human resident of alien world"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('33333333-0006-0007-0000-000000000001', '33333333-3333-3333-3333-333333333333',
- 'Confirmation: Both Stars Saved', 'milestone.success.confirmation', '2025-09-21'::timestamptz,
+ 'Confirmation: Both Stars Saved', 'milestone.success.confirmation', 'completed', '2045-09-21'::timestamptz,
  '{"earth_sun": "Returned to normal luminosity", "eridian_star": "40 Eridani restored", "timeline": "16 years after Grace''s sacrifice", "method": "Long-range astronomical observation from Erid", "messenger": "Rocky brings news to Grace personally", "grace_reaction": "Joy, relief, validation - sacrifice was not in vain"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('33333333-0006-0008-0000-000000000001', '33333333-3333-3333-3333-333333333333',
- 'Return Option Offered', 'milestone.decision.homecoming', '2025-10-26'::timestamptz,
+ 'Return Option Offered', 'milestone.decision.homecoming', 'completed', '2045-10-26'::timestamptz,
  '{"offer": "Earth builds ship to bring Grace home after success confirmed", "travel_time": "Another multi-year journey possible", "grace_choice": "Chooses to stay on Erid", "reasoning": "This is who I am - a teacher. These students need me.", "role": "Science teacher to young Eridians", "legacy": "Living bridge between two civilizations"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 ('33333333-0006-0009-0000-000000000001', '33333333-3333-3333-3333-333333333333',
- 'Grace Becomes Teacher on Erid', 'milestone.legacy.teaching', '2025-11-03'::timestamptz,
+ 'Grace Becomes Teacher on Erid', 'milestone.legacy.teaching', 'completed', '2045-11-03'::timestamptz,
  '{"classroom": "Xenonite dome with Earth-like conditions", "students": "Young Eridians learning human science", "first_lesson": "What is the speed of light?", "full_circle": "Middle school teacher becomes interstellar educator", "final_words": "I am the teacher. This is what I do.", "redemption": "Once a coward, now living embodiment of sacrifice and duty"}'::jsonb,
  '00000000-0000-0000-0000-000000000002')
 ON CONFLICT (id) DO NOTHING;

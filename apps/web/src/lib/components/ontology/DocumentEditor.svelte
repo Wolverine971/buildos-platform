@@ -267,9 +267,7 @@
 
 <div class="document-editor flex flex-col h-full">
 	<!-- Header - Inkprint styled -->
-	<div
-		class="editor-header border-b border-border p-4 sm:p-6 bg-card"
-	>
+	<div class="editor-header border-b border-border p-4 sm:p-6 bg-card">
 		<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
 			<div class="flex items-center gap-2 flex-1 min-w-0">
 				<FileText class="w-5 h-5 text-muted-foreground flex-shrink-0" />
@@ -299,7 +297,12 @@
 						✓ Saved
 					</span>
 				{/if}
-				<Button onclick={handleSave} loading={isSaving} disabled={!isDirty} class="pressable">
+				<Button
+					onclick={handleSave}
+					loading={isSaving}
+					disabled={!isDirty}
+					class="pressable"
+				>
 					<Save class="w-4 h-4 mr-1" />
 					{isSaving ? 'Saving...' : 'Save'}
 				</Button>
@@ -332,9 +335,7 @@
 		aria-label="Text formatting toolbar"
 	>
 		<!-- Text formatting group -->
-		<div
-			class="toolbar-group flex items-center gap-1 border-r border-border pr-2 mr-2"
-		>
+		<div class="toolbar-group flex items-center gap-1 border-r border-border pr-2 mr-2">
 			<button
 				onclick={toggleBold}
 				class="toolbar-btn p-1.5 rounded transition-colors duration-200 hover:bg-accent/10 focus:outline-none focus:ring-2 focus:ring-ring {editor?.isActive(
@@ -364,9 +365,7 @@
 		</div>
 
 		<!-- Heading group -->
-		<div
-			class="toolbar-group flex items-center gap-1 border-r border-border pr-2 mr-2"
-		>
+		<div class="toolbar-group flex items-center gap-1 border-r border-border pr-2 mr-2">
 			<button
 				onclick={() => setHeading(1)}
 				class="toolbar-btn p-1.5 rounded transition-colors duration-200 hover:bg-accent/10 focus:outline-none focus:ring-2 focus:ring-ring {editor?.isActive(
@@ -398,9 +397,7 @@
 		</div>
 
 		<!-- List group -->
-		<div
-			class="toolbar-group flex items-center gap-1 border-r border-border pr-2 mr-2"
-		>
+		<div class="toolbar-group flex items-center gap-1 border-r border-border pr-2 mr-2">
 			<button
 				onclick={toggleBulletList}
 				class="toolbar-btn p-1.5 rounded transition-colors duration-200 hover:bg-accent/10 focus:outline-none focus:ring-2 focus:ring-ring {editor?.isActive(
@@ -460,9 +457,7 @@
 		</div>
 
 		<!-- Media group -->
-		<div
-			class="toolbar-group flex items-center gap-1 border-r border-border pr-2 mr-2"
-		>
+		<div class="toolbar-group flex items-center gap-1 border-r border-border pr-2 mr-2">
 			<button
 				onclick={addLink}
 				class="toolbar-btn p-1.5 rounded transition-colors duration-200 hover:bg-accent/10 focus:outline-none focus:ring-2 focus:ring-ring text-muted-foreground hover:text-foreground"

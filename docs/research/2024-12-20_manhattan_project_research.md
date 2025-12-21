@@ -3,6 +3,7 @@ type: research
 project: Manhattan Project
 created: 2024-12-20
 status: complete
+path: docs/research/2024-12-20_manhattan_project_research.md
 ---
 
 # Manhattan Project Research (1939-1946)

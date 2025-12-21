@@ -1448,13 +1448,13 @@
 	cancelText="Cancel"
 	confirmVariant="primary"
 	icon="warning"
-	on:confirm={executeBulkRemoveDates}
-	on:cancel={() => {
+	onconfirm={executeBulkRemoveDates}
+	oncancel={() => {
 		showRemoveDatesModal = false;
 		tasksWithDatesToRemove = [];
 	}}
 >
-	<svelte:fragment slot="content">
+	{#snippet content()}
 		<p class="text-sm text-gray-600 dark:text-gray-400">
 			Remove start dates from <span class="font-semibold text-gray-900 dark:text-white"
 				>{tasksWithDatesToRemove.length} task{tasksWithDatesToRemove.length > 1
@@ -1462,9 +1462,9 @@
 					: ''}</span
 			>?
 		</p>
-	</svelte:fragment>
+	{/snippet}
 
-	<svelte:fragment slot="details">
+	{#snippet details()}
 		<div class="mt-3 text-xs text-gray-500 dark:text-gray-400 space-y-1">
 			<p>This action will:</p>
 			<ul class="list-disc list-inside ml-2 space-y-0.5">
@@ -1473,7 +1473,7 @@
 				<li>Clear any recurrence patterns</li>
 			</ul>
 		</div>
-	</svelte:fragment>
+	{/snippet}
 </ConfirmationModal>
 
 <!-- Delete Tasks Confirmation Modal -->
@@ -1484,18 +1484,18 @@
 	cancelText="Cancel"
 	confirmVariant="primary"
 	icon="danger"
-	on:confirm={executeBulkDelete}
-	on:cancel={() => (showDeleteModal = false)}
+	onconfirm={executeBulkDelete}
+	oncancel={() => (showDeleteModal = false)}
 >
-	<svelte:fragment slot="content">
+	{#snippet content()}
 		<p class="text-sm text-gray-600 dark:text-gray-400">
 			Delete <span class="font-semibold text-gray-900 dark:text-white"
 				>{selectedTaskIds.size} task{selectedTaskIds.size > 1 ? 's' : ''}</span
 			>?
 		</p>
-	</svelte:fragment>
+	{/snippet}
 
-	<svelte:fragment slot="details">
+	{#snippet details()}
 		<div class="mt-3 text-xs text-gray-500 dark:text-gray-400">
 			<p>
 				You can restore deleted tasks later from the <span class="font-medium"
@@ -1503,7 +1503,7 @@
 				>.
 			</p>
 		</div>
-	</svelte:fragment>
+	{/snippet}
 </ConfirmationModal>
 
 <style>

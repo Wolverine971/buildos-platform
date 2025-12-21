@@ -1,4 +1,10 @@
 <!-- apps/web/src/routes/projects/+page.svelte -->
+<!--
+  PERFORMANCE OPTIMIZATIONS (Dec 2024):
+  - projectCount available immediately for skeleton rendering
+  - Projects stream in background and hydrate skeletons
+  - Zero layout shift - exact number of cards rendered from start
+-->
 <script lang="ts">
 	import { get } from 'svelte/store';
 	import { goto } from '$app/navigation';
@@ -7,6 +13,7 @@
 	import Card from '$lib/components/ui/Card.svelte';
 	import CardBody from '$lib/components/ui/CardBody.svelte';
 	import LoadingSkeleton from '$lib/components/ui/LoadingSkeleton.svelte';
+	import ProjectListSkeleton from '$lib/components/projects/ProjectListSkeleton.svelte';
 	import GraphControls from '$lib/components/ontology/graph/GraphControls.svelte';
 	import OntologyGraph from '$lib/components/ontology/graph/OntologyGraph.svelte';
 	import NodeDetailsPanel from '$lib/components/ontology/graph/NodeDetailsPanel.svelte';
@@ -19,7 +26,7 @@
 	import type { OntologyProjectSummary } from '$lib/services/ontology/ontology-projects.service';
 	import { ontologyGraphStore } from '$lib/stores/ontology-graph.store';
 	import { getProjectStateBadgeClass } from '$lib/utils/ontology-badge-styles';
-	import { ListChecks, Layers, Target, Calendar, FileText } from 'lucide-svelte';
+	import { ListChecks, Layers, Target, Calendar, FileText, Loader2 } from 'lucide-svelte';
 	import ProjectCardNextStep from '$lib/components/project/ProjectCardNextStep.svelte';
 	import {
 		setNavigationData,
@@ -82,6 +89,9 @@
 	// Check if user is admin - only admins see filters, graph, and mobile nav
 	const isAdmin = $derived(data?.user?.is_admin ?? false);
 
+	// projectCount is available immediately for skeleton rendering
+	const projectCount = $derived(data?.projectCount ?? 0);
+
 	const graphStore = ontologyGraphStore;
 
 	let activeTab = $state<'overview' | 'graph'>(
@@ -120,6 +130,10 @@
 	let projectSummaries = $state<OntologyProjectSummary[]>(
 		Array.isArray(data.projects) ? (data.projects as OntologyProjectSummary[]) : []
 	);
+
+	// SKELETON LOADING: Show skeletons based on projectCount while loading
+	// Must be defined after projectsLoading to avoid temporal dead zone
+	const showSkeletons = $derived(projectsLoading && projectCount > 0);
 
 	$effect(() => {
 		const incoming = data.projects;
@@ -390,7 +404,12 @@
 
 	<header class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between !mt-0">
 		<div class="space-y-1 flex-1">
-			<h1 class="text-2xl font-bold text-foreground sm:text-3xl">Projects</h1>
+			<div class="flex items-center gap-2">
+				<h1 class="text-2xl font-bold text-foreground sm:text-3xl">Projects</h1>
+				{#if projectsLoading}
+					<Loader2 class="h-5 w-5 text-muted-foreground animate-spin" />
+				{/if}
+			</div>
 			<p class="text-sm text-muted-foreground sm:text-base">
 				Manage and organize your active projects and workflows.
 			</p>
@@ -432,7 +451,8 @@
 
 	{#if activeTab === 'overview'}
 		<section class="space-y-4">
-			{#if projectsLoading}
+			{#if projectsLoading && !showSkeletons}
+				<!-- Fallback loading state when projectCount is 0 or unknown -->
 				<div class="space-y-6">
 					<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
 						{#each Array.from({ length: 3 }) as _}
@@ -444,16 +464,6 @@
 								<div class="mt-2 h-3 w-2/3 rounded bg-muted/80"></div>
 							</div>
 						{/each}
-					</div>
-					<div
-						class="rounded-lg border border-border bg-card p-6 shadow-ink animate-pulse"
-					>
-						<div class="h-5 w-1/4 rounded bg-muted"></div>
-						<div class="mt-4 grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-							{#each Array.from({ length: 6 }) as _}
-								<div class="h-24 rounded bg-muted/80"></div>
-							{/each}
-						</div>
 					</div>
 				</div>
 			{:else if projectsError}
@@ -545,33 +555,49 @@
 						class="rounded-lg border border-border bg-card p-4 shadow-ink tx tx-bloom tx-weak ink-frame"
 					>
 						<p class="micro-label">Projects</p>
-						<p class="text-2xl font-bold text-foreground mt-1">
-							{stats.totalProjects}
-						</p>
+						{#if showSkeletons}
+							<div class="h-8 w-12 bg-muted rounded mt-1 animate-pulse"></div>
+						{:else}
+							<p class="text-2xl font-bold text-foreground mt-1">
+								{stats.totalProjects}
+							</p>
+						{/if}
 					</div>
 					<div
 						class="rounded-lg border border-border bg-card p-4 shadow-ink tx tx-grain tx-weak ink-frame"
 					>
 						<p class="micro-label">Tasks</p>
-						<p class="text-2xl font-bold text-foreground mt-1">
-							{stats.totalTasks}
-						</p>
+						{#if showSkeletons}
+							<div class="h-8 w-12 bg-muted rounded mt-1 animate-pulse"></div>
+						{:else}
+							<p class="text-2xl font-bold text-foreground mt-1">
+								{stats.totalTasks}
+							</p>
+						{/if}
 					</div>
 					<div
 						class="rounded-lg border border-border bg-card p-4 shadow-ink tx tx-thread tx-weak ink-frame"
 					>
 						<p class="micro-label">Outputs</p>
-						<p class="text-2xl font-bold text-foreground mt-1">
-							{stats.totalOutputs}
-						</p>
+						{#if showSkeletons}
+							<div class="h-8 w-12 bg-muted rounded mt-1 animate-pulse"></div>
+						{:else}
+							<p class="text-2xl font-bold text-foreground mt-1">
+								{stats.totalOutputs}
+							</p>
+						{/if}
 					</div>
 					<div
 						class="rounded-lg border border-border bg-card p-4 shadow-ink tx tx-pulse tx-weak ink-frame"
 					>
 						<p class="micro-label">Active</p>
-						<p class="text-2xl font-bold text-accent mt-1">
-							{stats.activeProjects}
-						</p>
+						{#if showSkeletons}
+							<div class="h-8 w-12 bg-muted rounded mt-1 animate-pulse"></div>
+						{:else}
+							<p class="text-2xl font-bold text-accent mt-1">
+								{stats.activeProjects}
+							</p>
+						{/if}
 					</div>
 				</div>
 
@@ -684,7 +710,10 @@
 			{/if}
 		</section>
 
-		{#if filteredProjects.length === 0}
+		<!-- SKELETON LOADING: Show exact number of skeleton cards while loading -->
+		{#if showSkeletons}
+			<ProjectListSkeleton count={projectCount} />
+		{:else if filteredProjects.length === 0 && !projectsLoading}
 			<div
 				class="rounded-lg border border-dashed border-border bg-card px-4 py-12 text-center shadow-ink tx tx-thread tx-weak sm:px-6 sm:py-16"
 			>
@@ -724,7 +753,7 @@
 					{/if}
 				</div>
 			</div>
-		{:else}
+		{:else if filteredProjects.length > 0}
 			<div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
 				{#each filteredProjects as project (project.id)}
 					<a

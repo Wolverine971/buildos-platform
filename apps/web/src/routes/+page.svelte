@@ -1,14 +1,32 @@
 <!-- apps/web/src/routes/+page.svelte -->
+<!--
+  PERFORMANCE OPTIMIZATIONS (Dec 2024):
+  - Dashboard imported statically (eliminates "Preparing dashboard..." phase)
+  - projectCount available immediately for skeleton card rendering
+  - projects stream in background and hydrate skeletons
+  - Zero layout shift - exact number of cards rendered from start
+-->
 <script lang="ts">
 	import './dashboard.css';
-	import type { User } from '$lib/types/dashboard';
 	import type { OntologyProjectSummary } from '$lib/services/ontology/ontology-projects.service';
 	import { onMount } from 'svelte';
-	import { page } from '$app/stores';
-	import { browser } from '$app/environment';
+	import { page } from '$app/state';
 	import { toastService } from '$lib/stores/toast.store';
 	import { invalidateAll, replaceState } from '$app/navigation';
 	import ExampleProjectGraph from '$lib/components/landing/ExampleProjectGraph.svelte';
+	// PERFORMANCE: Static import eliminates "Preparing dashboard..." loading phase
+	import Dashboard from '$lib/components/dashboard/Dashboard.svelte';
+	// Canonical data model icons (consistent with InsightPanels on /projects/[id])
+	import {
+		FolderKanban,
+		Target,
+		Calendar,
+		ListChecks,
+		Flag,
+		FileText,
+		AlertTriangle,
+		Sparkles
+	} from 'lucide-svelte';
 
 	let { data } = $props();
 
@@ -18,7 +36,9 @@
 	}
 
 	let isAuthenticated = $derived(!!data?.user);
-	let user = $derived(data?.user as User | null);
+
+	// projectCount is available immediately for skeleton rendering
+	let projectCount = $derived(data?.projectCount ?? 0);
 
 	// Projects streaming state (loaded server-side)
 	let projectsStreamVersion = 0;
@@ -62,17 +82,6 @@
 	let projects = $derived(projectsState);
 	let isLoadingProjects = $derived(projectsLoadingState);
 
-	// Lazy load Dashboard component only when needed
-	let Dashboard = $state<any>(null);
-
-	$effect(() => {
-		if (isAuthenticated && !Dashboard && browser) {
-			import('$lib/components/dashboard/Dashboard.svelte').then((module) => {
-				Dashboard = module.default;
-			});
-		}
-	});
-
 	// Reload data when needed
 	async function handleDashboardRefresh() {
 		await invalidateAll();
@@ -80,19 +89,19 @@
 
 	// Handle any messages on mount
 	onMount(() => {
-		const message = $page.url.searchParams.get('message');
-		const urlError = $page.url.searchParams.get('error');
+		const message = page.url.searchParams.get('message');
+		const urlError = page.url.searchParams.get('error');
 
 		if (message) {
 			toastService.success(message);
-			const url = new URL($page.url);
+			const url = new URL(page.url);
 			url.searchParams.delete('message');
 			replaceState(url.toString(), {});
 		}
 
 		if (urlError) {
 			toastService.error(urlError);
-			const url = new URL($page.url);
+			const url = new URL(page.url);
 			url.searchParams.delete('error');
 			replaceState(url.toString(), {});
 		}
@@ -224,30 +233,20 @@
 	</script>`}
 </svelte:head>
 
-{#if isAuthenticated}
-	<!-- PERFORMANCE: Render Dashboard when component is loaded -->
-	{#if Dashboard}
-		<Dashboard
-			user={data.user}
-			initialProjects={projects}
-			{isLoadingProjects}
-			onrefresh={handleDashboardRefresh}
-		/>
-	{:else}
-		<!-- PERFORMANCE: Lightweight loading state with better UX -->
-		<div class="min-h-screen bg-background text-foreground" aria-busy="true">
-			<div class="flex items-center justify-center min-h-screen">
-				<div class="text-center">
-					<div
-						class="animate-spin rounded-full h-8 w-8 border-b-2 border-accent mx-auto mb-4"
-						role="status"
-						aria-label="Loading dashboard"
-					></div>
-					<p class="text-muted-foreground">Preparing dashboard...</p>
-				</div>
-			</div>
-		</div>
-	{/if}
+{#if isAuthenticated && data.user}
+	<!-- PERFORMANCE: Dashboard rendered immediately with skeleton cards -->
+	<Dashboard
+		user={{
+			id: data.user.id,
+			email: data.user.email,
+			name: data.user.name ?? undefined,
+			is_admin: data.user.is_admin
+		}}
+		initialProjects={projects}
+		{isLoadingProjects}
+		{projectCount}
+		onrefresh={handleDashboardRefresh}
+	/>
 {:else}
 	<!-- Synesthetic Texture Landing Page -->
 	<div class="min-h-screen bg-background text-foreground">
@@ -448,68 +447,82 @@
 
 				<div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
 					<div class="rounded-2xl border border-border bg-card tx tx-frame tx-weak p-4">
-						<div
-							class="text-[0.65rem] uppercase tracking-[0.15em] text-muted-foreground mb-1"
-						>
-							Projects
+						<div class="flex items-center gap-2 mb-1">
+							<FolderKanban class="w-3.5 h-3.5 text-emerald-500" />
+							<span
+								class="text-[0.65rem] uppercase tracking-[0.15em] text-muted-foreground"
+								>Projects</span
+							>
 						</div>
 						<p class="text-sm text-foreground">
 							The big containers for everything you're working toward.
 						</p>
 					</div>
 					<div class="rounded-2xl border border-border bg-card tx tx-frame tx-weak p-4">
-						<div
-							class="text-[0.65rem] uppercase tracking-[0.15em] text-muted-foreground mb-1"
-						>
-							Goals
+						<div class="flex items-center gap-2 mb-1">
+							<Target class="w-3.5 h-3.5 text-amber-500" />
+							<span
+								class="text-[0.65rem] uppercase tracking-[0.15em] text-muted-foreground"
+								>Goals</span
+							>
 						</div>
 						<p class="text-sm text-foreground">
 							The outcomes you're driving toward. The "why."
 						</p>
 					</div>
 					<div class="rounded-2xl border border-border bg-card tx tx-frame tx-weak p-4">
-						<div
-							class="text-[0.65rem] uppercase tracking-[0.15em] text-muted-foreground mb-1"
-						>
-							Plans
+						<div class="flex items-center gap-2 mb-1">
+							<Calendar class="w-3.5 h-3.5 text-indigo-500" />
+							<span
+								class="text-[0.65rem] uppercase tracking-[0.15em] text-muted-foreground"
+								>Plans</span
+							>
 						</div>
 						<p class="text-sm text-foreground">
 							Strategic groupings of work. Phases and sprints.
 						</p>
 					</div>
 					<div class="rounded-2xl border border-border bg-card tx tx-frame tx-weak p-4">
-						<div
-							class="text-[0.65rem] uppercase tracking-[0.15em] text-muted-foreground mb-1"
-						>
-							Tasks
+						<div class="flex items-center gap-2 mb-1">
+							<ListChecks class="w-3.5 h-3.5 text-slate-500" />
+							<span
+								class="text-[0.65rem] uppercase tracking-[0.15em] text-muted-foreground"
+								>Tasks</span
+							>
 						</div>
 						<p class="text-sm text-foreground">The actual work. What you do today.</p>
 					</div>
 					<div class="rounded-2xl border border-border bg-card tx tx-frame tx-weak p-4">
-						<div
-							class="text-[0.65rem] uppercase tracking-[0.15em] text-muted-foreground mb-1"
-						>
-							Milestones
+						<div class="flex items-center gap-2 mb-1">
+							<Flag class="w-3.5 h-3.5 text-emerald-500" />
+							<span
+								class="text-[0.65rem] uppercase tracking-[0.15em] text-muted-foreground"
+								>Milestones</span
+							>
 						</div>
 						<p class="text-sm text-foreground">
 							Significant markers. Progress made visible.
 						</p>
 					</div>
 					<div class="rounded-2xl border border-border bg-card tx tx-frame tx-weak p-4">
-						<div
-							class="text-[0.65rem] uppercase tracking-[0.15em] text-muted-foreground mb-1"
-						>
-							Documents
+						<div class="flex items-center gap-2 mb-1">
+							<FileText class="w-3.5 h-3.5 text-sky-500" />
+							<span
+								class="text-[0.65rem] uppercase tracking-[0.15em] text-muted-foreground"
+								>Documents</span
+							>
 						</div>
 						<p class="text-sm text-foreground">
 							Notes, specs, context. The knowledge you need.
 						</p>
 					</div>
 					<div class="rounded-2xl border border-border bg-card tx tx-frame tx-weak p-4">
-						<div
-							class="text-[0.65rem] uppercase tracking-[0.15em] text-muted-foreground mb-1"
-						>
-							Risks
+						<div class="flex items-center gap-2 mb-1">
+							<AlertTriangle class="w-3.5 h-3.5 text-red-500" />
+							<span
+								class="text-[0.65rem] uppercase tracking-[0.15em] text-muted-foreground"
+								>Risks</span
+							>
 						</div>
 						<p class="text-sm text-foreground">
 							Things that could go wrong. Tracked and mitigated.
@@ -518,8 +531,11 @@
 					<div
 						class="rounded-2xl border border-border bg-accent/10 tx tx-bloom tx-weak p-4"
 					>
-						<div class="text-[0.65rem] uppercase tracking-[0.15em] text-accent mb-1">
-							Flexible Props
+						<div class="flex items-center gap-2 mb-1">
+							<Sparkles class="w-3.5 h-3.5 text-accent" />
+							<span class="text-[0.65rem] uppercase tracking-[0.15em] text-accent"
+								>Flexible Props</span
+							>
 						</div>
 						<p class="text-sm text-foreground">
 							AI-inferred properties that adapt to your project.
